@@ -1,15 +1,15 @@
-error: generator cannot be sent between threads safely
+error: coroutine cannot be sent between threads safely
   --> $DIR/issue-68112.rs:40:5
    |
 LL |     require_send(send_gen);
-   |     ^^^^^^^^^^^^ generator is not `Send`
+   |     ^^^^^^^^^^^^ coroutine is not `Send`
    |
    = help: the trait `Sync` is not implemented for `RefCell<i32>`
    = note: if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` instead
-note: generator is not `Send` as this value is used across a yield
+note: coroutine is not `Send` as this value is used across a yield
   --> $DIR/issue-68112.rs:36:9
    |
-LL |         let _non_send_gen = make_non_send_generator();
+LL |         let _non_send_gen = make_non_send_coroutine();
    |             ------------- has type `impl Coroutine<Return = Arc<RefCell<i32>>>` which is not `Send`
 LL |
 LL |         yield;
@@ -29,7 +29,7 @@ LL |     require_send(send_gen);
    = help: the trait `Sync` is not implemented for `RefCell<i32>`
    = note: if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` instead
    = note: required for `Arc<RefCell<i32>>` to implement `Send`
-note: required because it's used within this generator
+note: required because it's used within this coroutine
   --> $DIR/issue-68112.rs:49:5
    |
 LL |     || {
@@ -42,10 +42,10 @@ LL | pub fn make_gen2<T>(t: T) -> impl Coroutine<Return = T> {
 note: required because it appears within the type `impl Coroutine<Return = Arc<RefCell<i32>>>`
   --> $DIR/issue-68112.rs:54:34
    |
-LL | fn make_non_send_generator2() -> impl Coroutine<Return = Arc<RefCell<i32>>> {
+LL | fn make_non_send_coroutine2() -> impl Coroutine<Return = Arc<RefCell<i32>>> {
    |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: required because it captures the following types: `impl Coroutine<Return = Arc<RefCell<i32>>>`
-note: required because it's used within this generator
+note: required because it's used within this coroutine
   --> $DIR/issue-68112.rs:60:20
    |
 LL |     let send_gen = || {

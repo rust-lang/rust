@@ -1,8 +1,8 @@
-// Test that niche finding works with captured generator upvars.
+// Test that niche finding works with captured coroutine upvars.
 
 // run-pass
 
-#![feature(generators)]
+#![feature(coroutines)]
 
 use std::mem::size_of_val;
 

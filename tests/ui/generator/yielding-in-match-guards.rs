@@ -8,7 +8,7 @@
 // indeed a temporary borrow `y` from `x` is live
 // while `f().await` is being evaluated.
 // Thus, `&'_ u8` should be included in type signature
-// of the underlying generator.
+// of the underlying coroutine.
 
 #![feature(if_let_guard)]
 

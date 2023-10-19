@@ -1,4 +1,4 @@
-#![feature(generators, generator_trait)]
+#![feature(coroutines, coroutine_trait)]
 use std::ops::{Coroutine, CoroutineState};
 use std::pin::Pin;
 

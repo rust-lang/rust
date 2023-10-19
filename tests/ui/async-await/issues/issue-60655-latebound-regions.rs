@@ -19,7 +19,7 @@ async fn async_nop(_: &u8) {}
 
 pub type ServeFut = impl Future<Output=()>;
 
-// Late bound regions occur in the generator witness type here.
+// Late bound regions occur in the coroutine witness type here.
 fn serve() -> ServeFut {
     async move {
         let x = 5;

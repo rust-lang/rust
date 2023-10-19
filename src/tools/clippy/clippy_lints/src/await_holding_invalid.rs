@@ -196,25 +196,25 @@ impl LateLintPass<'_> for AwaitHolding {
 
     fn check_body(&mut self, cx: &LateContext<'_>, body: &'_ Body<'_>) {
         use AsyncCoroutineKind::{Block, Closure, Fn};
-        if let Some(CoroutineKind::Async(Block | Closure | Fn)) = body.generator_kind {
+        if let Some(CoroutineKind::Async(Block | Closure | Fn)) = body.coroutine_kind {
             let def_id = cx.tcx.hir().body_owner_def_id(body.id());
-            if let Some(generator_layout) = cx.tcx.mir_generator_witnesses(def_id) {
-                self.check_interior_types(cx, generator_layout);
+            if let Some(coroutine_layout) = cx.tcx.mir_coroutine_witnesses(def_id) {
+                self.check_interior_types(cx, coroutine_layout);
             }
         }
     }
 }
 
 impl AwaitHolding {
-    fn check_interior_types(&self, cx: &LateContext<'_>, generator: &CoroutineLayout<'_>) {
-        for (ty_index, ty_cause) in generator.field_tys.iter_enumerated() {
+    fn check_interior_types(&self, cx: &LateContext<'_>, coroutine: &CoroutineLayout<'_>) {
+        for (ty_index, ty_cause) in coroutine.field_tys.iter_enumerated() {
             if let rustc_middle::ty::Adt(adt, _) = ty_cause.ty.kind() {
                 let await_points = || {
-                    generator
+                    coroutine
                         .variant_source_info
                         .iter_enumerated()
                         .filter_map(|(variant, source_info)| {
-                            generator.variant_fields[variant]
+                            coroutine.variant_fields[variant]
                                 .raw
                                 .contains(&ty_index)
                                 .then_some(source_info.span)

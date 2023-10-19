@@ -1,6 +1,6 @@
-// Check that generators respect the muatability of their upvars.
+// Check that coroutines respect the muatability of their upvars.
 
-#![feature(generators)]
+#![feature(coroutines)]
 
 fn mutate_upvar() {
     let x = 0;

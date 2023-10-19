@@ -2,7 +2,7 @@
 // "cannot relate bound region: ReLateBound(DebruijnIndex(1), BrAnon(1)) <= '?1"
 // run-pass
 // edition:2018
-#![feature(generators,generator_trait)]
+#![feature(coroutines,coroutine_trait)]
 use std::ops::Coroutine;
 
 fn with<F>(f: F) -> impl Coroutine<Yield=(), Return=()>
@@ -19,7 +19,7 @@ where F: Fn() -> ()
 
 fn main() {
     let data = &vec![1];
-    || { //~ WARN unused generator that must be used
+    || { //~ WARN unused coroutine that must be used
         let _to_pin = with(move || println!("{:p}", data));
         loop {
             yield

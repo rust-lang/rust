@@ -1,7 +1,7 @@
-#![feature(generators)]
+#![feature(coroutines)]
 
 // Test for issue #47189. Here, both `s` and `t` are live for the
-// generator's lifetime, but within the generator they have distinct
+// coroutine's lifetime, but within the coroutine they have distinct
 // lifetimes. We accept this code -- even though the borrow extends
 // over a yield -- because the data that is borrowed (`*x`) is not
 // stored on the stack.

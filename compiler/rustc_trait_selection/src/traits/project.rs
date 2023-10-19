@@ -2003,7 +2003,7 @@ fn confirm_select_candidate<'cx, 'tcx>(
             let trait_def_id = obligation.predicate.trait_def_id(selcx.tcx());
             let lang_items = selcx.tcx().lang_items();
             if lang_items.gen_trait() == Some(trait_def_id) {
-                confirm_generator_candidate(selcx, obligation, data)
+                confirm_coroutine_candidate(selcx, obligation, data)
             } else if lang_items.future_trait() == Some(trait_def_id) {
                 confirm_future_candidate(selcx, obligation, data)
             } else if selcx.tcx().fn_trait_kind_from_def_id(trait_def_id).is_some() {
@@ -2030,7 +2030,7 @@ fn confirm_select_candidate<'cx, 'tcx>(
     }
 }
 
-fn confirm_generator_candidate<'cx, 'tcx>(
+fn confirm_coroutine_candidate<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,
     nested: Vec<PredicateObligation<'tcx>>,
@@ -2040,7 +2040,7 @@ fn confirm_generator_candidate<'cx, 'tcx>(
     else {
         unreachable!()
     };
-    let gen_sig = args.as_generator().poly_sig();
+    let gen_sig = args.as_coroutine().poly_sig();
     let Normalized { value: gen_sig, obligations } = normalize_with_depth(
         selcx,
         obligation.param_env,
@@ -2049,13 +2049,13 @@ fn confirm_generator_candidate<'cx, 'tcx>(
         gen_sig,
     );
 
-    debug!(?obligation, ?gen_sig, ?obligations, "confirm_generator_candidate");
+    debug!(?obligation, ?gen_sig, ?obligations, "confirm_coroutine_candidate");
 
     let tcx = selcx.tcx();
 
     let gen_def_id = tcx.require_lang_item(LangItem::Coroutine, None);
 
-    let predicate = super::util::generator_trait_ref_and_outputs(
+    let predicate = super::util::coroutine_trait_ref_and_outputs(
         tcx,
         gen_def_id,
         obligation.predicate.self_ty(),
@@ -2092,7 +2092,7 @@ fn confirm_future_candidate<'cx, 'tcx>(
     else {
         unreachable!()
     };
-    let gen_sig = args.as_generator().poly_sig();
+    let gen_sig = args.as_coroutine().poly_sig();
     let Normalized { value: gen_sig, obligations } = normalize_with_depth(
         selcx,
         obligation.param_env,

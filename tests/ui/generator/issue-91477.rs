@@ -1,4 +1,4 @@
-#![feature(generators)]
+#![feature(coroutines)]
 
 fn foo() -> impl Sized {
     yield 1; //~ ERROR E0627

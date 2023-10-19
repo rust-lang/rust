@@ -1,4 +1,4 @@
-error[E0627]: yield expression outside of generator literal
+error[E0627]: yield expression outside of coroutine literal
   --> $DIR/issue-91477.rs:4:5
    |
 LL |     yield 1;

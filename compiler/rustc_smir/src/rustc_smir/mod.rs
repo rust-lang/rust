@@ -768,11 +768,11 @@ impl<'tcx> Stable<'tcx> for mir::AssertMessage<'tcx> {
             AssertKind::RemainderByZero(op) => {
                 stable_mir::mir::AssertMessage::RemainderByZero(op.stable(tables))
             }
-            AssertKind::ResumedAfterReturn(generator) => {
-                stable_mir::mir::AssertMessage::ResumedAfterReturn(generator.stable(tables))
+            AssertKind::ResumedAfterReturn(coroutine) => {
+                stable_mir::mir::AssertMessage::ResumedAfterReturn(coroutine.stable(tables))
             }
-            AssertKind::ResumedAfterPanic(generator) => {
-                stable_mir::mir::AssertMessage::ResumedAfterPanic(generator.stable(tables))
+            AssertKind::ResumedAfterPanic(coroutine) => {
+                stable_mir::mir::AssertMessage::ResumedAfterPanic(coroutine.stable(tables))
             }
             AssertKind::MisalignedPointerDereference { required, found } => {
                 stable_mir::mir::AssertMessage::MisalignedPointerDereference {
@@ -851,7 +851,7 @@ impl<'tcx> Stable<'tcx> for mir::AggregateKind<'tcx> {
             }
             mir::AggregateKind::Coroutine(def_id, generic_arg, movability) => {
                 stable_mir::mir::AggregateKind::Coroutine(
-                    tables.generator_def(*def_id),
+                    tables.coroutine_def(*def_id),
                     generic_arg.stable(tables),
                     movability.stable(tables),
                 )
@@ -1232,7 +1232,7 @@ impl<'tcx> Stable<'tcx> for Ty<'tcx> {
                 generic_args.stable(tables),
             )),
             ty::Coroutine(def_id, generic_args, movability) => TyKind::RigidTy(RigidTy::Coroutine(
-                tables.generator_def(*def_id),
+                tables.coroutine_def(*def_id),
                 generic_args.stable(tables),
                 movability.stable(tables),
             )),

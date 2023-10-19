@@ -1,4 +1,4 @@
-#![feature(generators, negative_impls, rustc_attrs)]
+#![feature(coroutines, negative_impls, rustc_attrs)]
 
 macro_rules! type_combinations {
     (

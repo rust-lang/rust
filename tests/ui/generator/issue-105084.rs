@@ -1,6 +1,6 @@
-#![feature(generators)]
-#![feature(generator_clone)]
-#![feature(generator_trait)]
+#![feature(coroutines)]
+#![feature(coroutine_clone)]
+#![feature(coroutine_trait)]
 #![feature(rustc_attrs, stmt_expr_attributes)]
 
 use std::ops::Coroutine;
@@ -25,9 +25,9 @@ fn main() {
     // Allocate the temporary box.
     Pin::new(&mut g).resume(());
 
-    // The temporary box is in generator locals.
+    // The temporary box is in coroutine locals.
     // As it is not taken into account for trait computation,
-    // the generator is `Copy`.
+    // the coroutine is `Copy`.
     let mut h = copy(g);
     //~^ ERROR the trait bound `Box<(i32, ())>: Copy` is not satisfied in
 

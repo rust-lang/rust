@@ -1,4 +1,4 @@
-// Verify debuginfo for generators:
+// Verify debuginfo for coroutines:
 //  - Each variant points to the file and line of its yield point
 //  - The discriminants are marked artificial
 //  - Other fields are not marked artificial
@@ -7,10 +7,10 @@
 // compile-flags: -C debuginfo=2
 // only-msvc
 
-#![feature(generators, generator_trait)]
+#![feature(coroutines, coroutine_trait)]
 use std::ops::Coroutine;
 
-fn generator_test() -> impl Coroutine<Yield = i32, Return = ()> {
+fn coroutine_test() -> impl Coroutine<Yield = i32, Return = ()> {
     || {
         yield 0;
         let s = String::from("foo");
@@ -20,7 +20,7 @@ fn generator_test() -> impl Coroutine<Yield = i32, Return = ()> {
 
 // FIXME: No way to reliably check the filename.
 
-// CHECK-DAG:  [[GEN:!.*]] = !DICompositeType(tag: DW_TAG_union_type, name: "enum2$<generator_debug_msvc::generator_test::generator_env$0>"
+// CHECK-DAG:  [[GEN:!.*]] = !DICompositeType(tag: DW_TAG_union_type, name: "enum2$<coroutine_debug_msvc::coroutine_test::coroutine_env$0>"
 // CHECK:      {{!.*}} = !DIDerivedType(tag: DW_TAG_member, name: "variant0", scope: [[GEN]],
 // For brevity, we only check the struct name and members of the last variant.
 // CHECK-SAME: file: [[FILE:![0-9]*]], line: 14,
@@ -55,5 +55,5 @@ fn generator_test() -> impl Coroutine<Yield = i32, Return = ()> {
 // CHECK-NOT: flags: DIFlagArtificial
 
 fn main() {
-    let _dummy = generator_test();
+    let _dummy = coroutine_test();
 }

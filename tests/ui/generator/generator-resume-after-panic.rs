@@ -1,11 +1,11 @@
 // run-fail
 // needs-unwind
-// error-pattern:generator resumed after panicking
+// error-pattern:coroutine resumed after panicking
 // ignore-emscripten no processes
 
-// Test that we get the correct message for resuming a panicked generator.
+// Test that we get the correct message for resuming a panicked coroutine.
 
-#![feature(generators, generator_trait)]
+#![feature(coroutines, coroutine_trait)]
 
 use std::{
     ops::Coroutine,

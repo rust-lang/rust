@@ -1,5 +1,5 @@
 // edition:2021
-#![feature(generators)]
+#![feature(coroutines)]
 
 fn main() {
     let x = &mut ();

@@ -382,9 +382,9 @@ pub enum ExprKind<'tcx> {
     VarRef {
         id: LocalVarId,
     },
-    /// Used to represent upvars mentioned in a closure/generator
+    /// Used to represent upvars mentioned in a closure/coroutine
     UpvarRef {
-        /// DefId of the closure/generator
+        /// DefId of the closure/coroutine
         closure_def_id: DefId,
 
         /// HirId of the root variable

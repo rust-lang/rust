@@ -1,12 +1,12 @@
 // skip-filecheck
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 // compile-flags: -Zinline-mir-hint-threshold=1000
-#![feature(generators, generator_trait)]
+#![feature(coroutines, coroutine_trait)]
 
 use std::ops::Coroutine;
 use std::pin::Pin;
 
-// EMIT_MIR inline_generator.main.Inline.diff
+// EMIT_MIR inline_coroutine.main.Inline.diff
 fn main() {
     let _r = Pin::new(&mut g()).resume(false);
 }

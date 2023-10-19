@@ -70,8 +70,8 @@
 // cdb-check:[...] a!function_names::generic_func::closure$0<i32> (void)
 
 // Coroutine
-// cdb-command:x a!function_names::*::generator*
-// cdb-check:[...] a!function_names::main::generator$1 (void)
+// cdb-command:x a!function_names::*::coroutine*
+// cdb-check:[...] a!function_names::main::coroutine$1 (void)
 
 // Const generic parameter
 // cdb-command:x a!function_names::const_generic_fn*
@@ -83,7 +83,7 @@
 #![allow(unused_variables)]
 #![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
-#![feature(adt_const_params, generators, generator_trait)]
+#![feature(adt_const_params, coroutines, coroutine_trait)]
 #![allow(incomplete_features)]
 
 use std::ops::Coroutine;
@@ -111,11 +111,11 @@ fn main() {
     closure();
 
     // Coroutine
-    let mut generator = || {
+    let mut coroutine = || {
         yield;
         return;
     };
-    Pin::new(&mut generator).resume(());
+    Pin::new(&mut coroutine).resume(());
 
     // Const generic functions
     const_generic_fn_bool::<false>();

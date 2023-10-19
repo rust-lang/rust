@@ -1,6 +1,6 @@
 // check-pass
 
-#![feature(generators, generator_trait)]
+#![feature(coroutines, coroutine_trait)]
 #![feature(type_alias_impl_trait)]
 
 trait Trait {}

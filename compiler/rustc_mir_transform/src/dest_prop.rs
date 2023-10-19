@@ -114,7 +114,7 @@
 //! approach that only works for some classes of CFGs:
 //! - rustc now has a powerful dataflow analysis framework that can handle forwards and backwards
 //!   analyses efficiently.
-//! - Layout optimizations for generators have been added to improve code generation for
+//! - Layout optimizations for coroutines have been added to improve code generation for
 //!   async/await, which are very similar in spirit to what this optimization does.
 //!
 //! Also, rustc now has a simple NRVO pass (see `nrvo.rs`), which handles a subset of the cases that

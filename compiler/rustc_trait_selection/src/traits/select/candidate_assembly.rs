@@ -111,7 +111,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
 
                 if lang_items.gen_trait() == Some(def_id) {
-                    self.assemble_generator_candidates(obligation, &mut candidates);
+                    self.assemble_coroutine_candidates(obligation, &mut candidates);
                 } else if lang_items.future_trait() == Some(def_id) {
                     self.assemble_future_candidates(obligation, &mut candidates);
                 }
@@ -201,25 +201,25 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         Ok(())
     }
 
-    fn assemble_generator_candidates(
+    fn assemble_coroutine_candidates(
         &mut self,
         obligation: &PolyTraitObligation<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) {
-        // Okay to skip binder because the args on generator types never
+        // Okay to skip binder because the args on coroutine types never
         // touch bound regions, they just capture the in-scope
         // type/region parameters.
         let self_ty = obligation.self_ty().skip_binder();
         match self_ty.kind() {
-            // async constructs get lowered to a special kind of generator that
+            // async constructs get lowered to a special kind of coroutine that
             // should *not* `impl Coroutine`.
-            ty::Coroutine(did, ..) if !self.tcx().generator_is_async(*did) => {
-                debug!(?self_ty, ?obligation, "assemble_generator_candidates",);
+            ty::Coroutine(did, ..) if !self.tcx().coroutine_is_async(*did) => {
+                debug!(?self_ty, ?obligation, "assemble_coroutine_candidates",);
 
                 candidates.vec.push(CoroutineCandidate);
             }
             ty::Infer(ty::TyVar(_)) => {
-                debug!("assemble_generator_candidates: ambiguous self-type");
+                debug!("assemble_coroutine_candidates: ambiguous self-type");
                 candidates.ambiguous = true;
             }
             _ => {}
@@ -233,9 +233,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) {
         let self_ty = obligation.self_ty().skip_binder();
         if let ty::Coroutine(did, ..) = self_ty.kind() {
-            // async constructs get lowered to a special kind of generator that
+            // async constructs get lowered to a special kind of coroutine that
             // should directly `impl Future`.
-            if self.tcx().generator_is_async(*did) {
+            if self.tcx().coroutine_is_async(*did) {
                 debug!(?self_ty, ?obligation, "assemble_future_candidates",);
 
                 candidates.vec.push(FutureCandidate);
@@ -518,11 +518,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 {
                     match movability {
                         hir::Movability::Static => {
-                            // Immovable generators are never `Unpin`, so
+                            // Immovable coroutines are never `Unpin`, so
                             // suppress the normal auto-impl candidate for it.
                         }
                         hir::Movability::Movable => {
-                            // Movable generators are always `Unpin`, so add an
+                            // Movable coroutines are always `Unpin`, so add an
                             // unconditional builtin candidate.
                             candidates.vec.push(BuiltinCandidate { has_nested: false });
                         }

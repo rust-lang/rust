@@ -1,6 +1,6 @@
 // build-pass
 
-#![feature(generators)]
+#![feature(coroutines)]
 
 #![allow(unused_assignments, dead_code)]
 

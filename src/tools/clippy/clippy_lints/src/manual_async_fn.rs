@@ -188,7 +188,7 @@ fn desugared_async_block<'tcx>(cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>)
             ..
         } = block_expr;
         let closure_body = cx.tcx.hir().body(body);
-        if closure_body.generator_kind == Some(CoroutineKind::Async(AsyncCoroutineKind::Block));
+        if closure_body.coroutine_kind == Some(CoroutineKind::Async(AsyncCoroutineKind::Block));
         then {
             return Some(closure_body);
         }

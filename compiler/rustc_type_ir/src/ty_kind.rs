@@ -15,8 +15,8 @@ use crate::{DebruijnIndex, DebugWithInfcx, InferCtxtLike, OptWithInfcx};
 
 use self::TyKind::*;
 
-/// The movability of a generator / closure literal:
-/// whether a generator contains self-references, causing it to be `!Unpin`.
+/// The movability of a coroutine / closure literal:
+/// whether a coroutine contains self-references, causing it to be `!Unpin`.
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable, Debug, Copy)]
 #[derive(HashStable_Generic)]
 pub enum Movability {
@@ -195,30 +195,30 @@ pub enum TyKind<I: Interner> {
     /// `ClosureArgs` for more details.
     Closure(I::DefId, I::GenericArgs),
 
-    /// The anonymous type of a generator. Used to represent the type of
+    /// The anonymous type of a coroutine. Used to represent the type of
     /// `|a| yield a`.
     ///
-    /// For more info about generator args, visit the documentation for
+    /// For more info about coroutine args, visit the documentation for
     /// `CoroutineArgs`.
     Coroutine(I::DefId, I::GenericArgs, Movability),
 
-    /// A type representing the types stored inside a generator.
+    /// A type representing the types stored inside a coroutine.
     /// This should only appear as part of the `CoroutineArgs`.
     ///
     /// Unlike upvars, the witness can reference lifetimes from
-    /// inside of the generator itself. To deal with them in
-    /// the type of the generator, we convert them to higher ranked
+    /// inside of the coroutine itself. To deal with them in
+    /// the type of the coroutine, we convert them to higher ranked
     /// lifetimes bound by the witness itself.
     ///
     /// This variant is only using when `drop_tracking_mir` is set.
-    /// This contains the `DefId` and the `GenericArgsRef` of the generator.
-    /// The actual witness types are computed on MIR by the `mir_generator_witnesses` query.
+    /// This contains the `DefId` and the `GenericArgsRef` of the coroutine.
+    /// The actual witness types are computed on MIR by the `mir_coroutine_witnesses` query.
     ///
-    /// Looking at the following example, the witness for this generator
+    /// Looking at the following example, the witness for this coroutine
     /// may end up as something like `for<'a> [Vec<i32>, &'a Vec<i32>]`:
     ///
     /// ```ignore UNSOLVED (ask @compiler-errors, should this error? can we just swap the yields?)
-    /// #![feature(generators)]
+    /// #![feature(coroutines)]
     /// |a| {
     ///     let x = &vec![3];
     ///     yield a;

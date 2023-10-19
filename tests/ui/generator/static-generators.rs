@@ -1,20 +1,20 @@
 // run-pass
 
-#![feature(generators, generator_trait)]
+#![feature(coroutines, coroutine_trait)]
 
 use std::pin::Pin;
 use std::ops::{Coroutine, CoroutineState};
 
 fn main() {
-    let mut generator = static || {
+    let mut coroutine = static || {
         let a = true;
         let b = &a;
         yield;
         assert_eq!(b as *const _, &a as *const _);
     };
-    // SAFETY: We shadow the original generator variable so have no safe API to
+    // SAFETY: We shadow the original coroutine variable so have no safe API to
     // move it after this point.
-    let mut generator = unsafe { Pin::new_unchecked(&mut generator) };
-    assert_eq!(generator.as_mut().resume(()), CoroutineState::Yielded(()));
-    assert_eq!(generator.as_mut().resume(()), CoroutineState::Complete(()));
+    let mut coroutine = unsafe { Pin::new_unchecked(&mut coroutine) };
+    assert_eq!(coroutine.as_mut().resume(()), CoroutineState::Yielded(()));
+    assert_eq!(coroutine.as_mut().resume(()), CoroutineState::Complete(()));
 }

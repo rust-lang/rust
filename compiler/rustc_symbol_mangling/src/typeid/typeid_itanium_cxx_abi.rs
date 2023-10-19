@@ -648,7 +648,7 @@ fn encode_ty<'tcx>(
             // Encode parent args only
             s.push_str(&encode_args(
                 tcx,
-                tcx.mk_args(args.as_generator().parent_args()),
+                tcx.mk_args(args.as_coroutine().parent_args()),
                 dict,
                 options,
             ));
@@ -893,7 +893,7 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
         }
 
         ty::Coroutine(def_id, args, movability) => {
-            ty = Ty::new_generator(tcx, *def_id, transform_args(tcx, args, options), *movability);
+            ty = Ty::new_coroutine(tcx, *def_id, transform_args(tcx, args, options), *movability);
         }
 
         ty::Ref(region, ty0, ..) => {

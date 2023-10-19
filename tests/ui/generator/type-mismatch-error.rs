@@ -1,7 +1,7 @@
 //! Test that we get the expected type mismatch error instead of "closure is expected to take 0
 //! arguments" (which got introduced after implementing resume arguments).
 
-#![feature(generators, generator_trait)]
+#![feature(coroutines, coroutine_trait)]
 
 use std::ops::Coroutine;
 

@@ -1,4 +1,4 @@
-#![feature(generators, generator_trait)]
+#![feature(coroutines, coroutine_trait)]
 
 use std::{
     cell::RefCell,
@@ -25,20 +25,20 @@ fn require_send(_: impl Send) {}
 //~| NOTE required by this bound
 //~| NOTE required by this bound
 
-fn make_non_send_generator() -> impl Coroutine<Return = Arc<RefCell<i32>>> {
+fn make_non_send_coroutine() -> impl Coroutine<Return = Arc<RefCell<i32>>> {
     make_gen1(Arc::new(RefCell::new(0)))
 }
 
 fn test1() {
     let send_gen = || {
-        let _non_send_gen = make_non_send_generator();
+        let _non_send_gen = make_non_send_coroutine();
         //~^ NOTE not `Send`
         yield;
         //~^ NOTE yield occurs here
         //~| NOTE value is used across a yield
     };
     require_send(send_gen);
-    //~^ ERROR generator cannot be sent between threads
+    //~^ ERROR coroutine cannot be sent between threads
     //~| NOTE not `Send`
     //~| NOTE use `std::sync::RwLock` instead
 }
@@ -46,19 +46,19 @@ fn test1() {
 pub fn make_gen2<T>(t: T) -> impl Coroutine<Return = T> {
 //~^ NOTE appears within the type
 //~| NOTE expansion of desugaring
-    || { //~ NOTE used within this generator
+    || { //~ NOTE used within this coroutine
         yield;
         t
     }
 }
-fn make_non_send_generator2() -> impl Coroutine<Return = Arc<RefCell<i32>>> { //~ NOTE appears within the type
+fn make_non_send_coroutine2() -> impl Coroutine<Return = Arc<RefCell<i32>>> { //~ NOTE appears within the type
 //~^ NOTE expansion of desugaring
     make_gen2(Arc::new(RefCell::new(0)))
 }
 
 fn test2() {
-    let send_gen = || { //~ NOTE used within this generator
-        let _non_send_gen = make_non_send_generator2();
+    let send_gen = || { //~ NOTE used within this coroutine
+        let _non_send_gen = make_non_send_coroutine2();
         yield;
     };
     require_send(send_gen);

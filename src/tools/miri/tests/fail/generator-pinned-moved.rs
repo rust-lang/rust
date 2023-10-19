@@ -1,5 +1,5 @@
 //@compile-flags: -Zmiri-disable-validation -Zmiri-disable-stacked-borrows
-#![feature(generators, generator_trait)]
+#![feature(coroutines, coroutine_trait)]
 
 use std::{
     ops::{Coroutine, CoroutineState},
@@ -35,12 +35,12 @@ where
 }
 
 fn main() {
-    let mut generator_iterator_2 = {
-        let mut generator_iterator = Box::new(CoroutineIteratorAdapter(firstn()));
-        generator_iterator.next(); // pin it
+    let mut coroutine_iterator_2 = {
+        let mut coroutine_iterator = Box::new(CoroutineIteratorAdapter(firstn()));
+        coroutine_iterator.next(); // pin it
 
-        Box::new(*generator_iterator) // move it
-    }; // *deallocate* generator_iterator
+        Box::new(*coroutine_iterator) // move it
+    }; // *deallocate* coroutine_iterator
 
-    generator_iterator_2.next(); // and use moved value
+    coroutine_iterator_2.next(); // and use moved value
 }

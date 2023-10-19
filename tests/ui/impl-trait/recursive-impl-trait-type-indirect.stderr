@@ -81,24 +81,24 @@ LL |     || closure_sig()
 error[E0720]: cannot resolve opaque type
   --> $DIR/recursive-impl-trait-type-indirect.rs:53:23
    |
-LL | fn generator_sig() -> impl Sized {
+LL | fn coroutine_sig() -> impl Sized {
    |                       ^^^^^^^^^^ recursive opaque type
 LL |
-LL |     || generator_sig()
+LL |     || coroutine_sig()
    |     ------------------ returning here with type `{closure@$DIR/recursive-impl-trait-type-indirect.rs:55:5: 55:7}`
 
 error[E0720]: cannot resolve opaque type
   --> $DIR/recursive-impl-trait-type-indirect.rs:58:27
    |
-LL |   fn generator_capture() -> impl Sized {
+LL |   fn coroutine_capture() -> impl Sized {
    |                             ^^^^^^^^^^ recursive opaque type
 ...
 LL | /     move || {
 LL | |         yield;
 LL | |         x;
-   | |         - generator captures itself here
+   | |         - coroutine captures itself here
 LL | |     }
-   | |_____- returning here with type `{generator@$DIR/recursive-impl-trait-type-indirect.rs:61:5: 61:12}`
+   | |_____- returning here with type `{coroutine@$DIR/recursive-impl-trait-type-indirect.rs:61:5: 61:12}`
 
 error[E0720]: cannot resolve opaque type
   --> $DIR/recursive-impl-trait-type-indirect.rs:67:35
@@ -112,11 +112,11 @@ LL |     (substs_change::<&T>(),)
 error[E0720]: cannot resolve opaque type
   --> $DIR/recursive-impl-trait-type-indirect.rs:72:24
    |
-LL | fn generator_hold() -> impl Sized {
+LL | fn coroutine_hold() -> impl Sized {
    |                        ^^^^^^^^^^ recursive opaque type
 ...
-LL |         let x = generator_hold();
-   |             - generator captures itself here
+LL |         let x = coroutine_hold();
+   |             - coroutine captures itself here
 
 error[E0720]: cannot resolve opaque type
   --> $DIR/recursive-impl-trait-type-indirect.rs:86:26

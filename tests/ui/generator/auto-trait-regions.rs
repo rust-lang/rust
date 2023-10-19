@@ -1,4 +1,4 @@
-#![feature(generators)]
+#![feature(coroutines)]
 #![feature(auto_traits)]
 #![feature(negative_impls)]
 
@@ -21,7 +21,7 @@ impl<'a> Foo for &'a OnlyFooIfRef {}
 fn assert_foo<T: Foo>(f: T) {}
 
 fn main() {
-    // Make sure 'static is erased for generator interiors so we can't match it in trait selection
+    // Make sure 'static is erased for coroutine interiors so we can't match it in trait selection
     let x: &'static _ = &OnlyFooIfStaticRef(No);
     let gen = move || {
         let x = x;
@@ -40,7 +40,7 @@ fn main() {
     };
     assert_foo(gen); // ok
 
-    // Disallow impls which relates lifetimes in the generator interior
+    // Disallow impls which relates lifetimes in the coroutine interior
     let gen = move || {
         let a = A(&mut true, &mut true, No);
         //~^ temporary value dropped while borrowed

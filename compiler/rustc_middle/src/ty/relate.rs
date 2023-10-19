@@ -461,20 +461,20 @@ pub fn structurally_relate_tys<'tcx, R: TypeRelation<'tcx>>(
             if a_id == b_id =>
         {
             // All Coroutine types with the same id represent
-            // the (anonymous) type of the same generator expression. So
+            // the (anonymous) type of the same coroutine expression. So
             // all of their regions should be equated.
             let args = relate_args_invariantly(relation, a_args, b_args)?;
-            Ok(Ty::new_generator(tcx, a_id, args, movability))
+            Ok(Ty::new_coroutine(tcx, a_id, args, movability))
         }
 
         (&ty::CoroutineWitness(a_id, a_args), &ty::CoroutineWitness(b_id, b_args))
             if a_id == b_id =>
         {
             // All CoroutineWitness types with the same id represent
-            // the (anonymous) type of the same generator expression. So
+            // the (anonymous) type of the same coroutine expression. So
             // all of their regions should be equated.
             let args = relate_args_invariantly(relation, a_args, b_args)?;
-            Ok(Ty::new_generator_witness(tcx, a_id, args))
+            Ok(Ty::new_coroutine_witness(tcx, a_id, args))
         }
 
         (&ty::Closure(a_id, a_args), &ty::Closure(b_id, b_args)) if a_id == b_id => {

@@ -1,7 +1,7 @@
 // compile-flags: -Zverbose
 
-// Same as test/ui/generator/not-send-sync.rs
-#![feature(generators)]
+// Same as test/ui/coroutine/not-send-sync.rs
+#![feature(coroutines)]
 #![feature(negative_impls)]
 
 struct NotSend;
@@ -15,14 +15,14 @@ fn main() {
     fn assert_send<T: Send>(_: T) {}
 
     assert_sync(|| {
-        //~^ ERROR: generator cannot be shared between threads safely
+        //~^ ERROR: coroutine cannot be shared between threads safely
         let a = NotSync;
         yield;
         drop(a);
     });
 
     assert_send(|| {
-        //~^ ERROR: generator cannot be sent between threads safely
+        //~^ ERROR: coroutine cannot be sent between threads safely
         let a = NotSend;
         yield;
         drop(a);

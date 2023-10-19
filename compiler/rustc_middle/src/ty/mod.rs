@@ -2421,10 +2421,10 @@ impl<'tcx> TyCtxt<'tcx> {
         self.def_kind(trait_def_id) == DefKind::TraitAlias
     }
 
-    /// Returns layout of a generator. Layout might be unavailable if the
-    /// generator is tainted by errors.
-    pub fn generator_layout(self, def_id: DefId) -> Option<&'tcx CoroutineLayout<'tcx>> {
-        self.optimized_mir(def_id).generator_layout()
+    /// Returns layout of a coroutine. Layout might be unavailable if the
+    /// coroutine is tainted by errors.
+    pub fn coroutine_layout(self, def_id: DefId) -> Option<&'tcx CoroutineLayout<'tcx>> {
+        self.optimized_mir(def_id).coroutine_layout()
     }
 
     /// Given the `DefId` of an impl, returns the `DefId` of the trait it implements.

@@ -1,7 +1,7 @@
-#![feature(generators)]
+#![feature(coroutines)]
 
 fn foo(x: &i32) {
-    // In this case, a reference to `b` escapes the generator, but not
+    // In this case, a reference to `b` escapes the coroutine, but not
     // because of a yield. We see that there is no yield in the scope of
     // `b` and give the more generic error message.
     let mut a = &3;
@@ -9,7 +9,7 @@ fn foo(x: &i32) {
         yield();
         let b = 5;
         a = &b;
-        //~^ ERROR borrowed data escapes outside of generator
+        //~^ ERROR borrowed data escapes outside of coroutine
     };
 }
 

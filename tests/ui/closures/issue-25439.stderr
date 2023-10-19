@@ -1,4 +1,4 @@
-error[E0644]: closure/generator type that references itself
+error[E0644]: closure/coroutine type that references itself
   --> $DIR/issue-25439.rs:8:9
    |
 LL |     fix(|_, x| x);

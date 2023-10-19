@@ -126,7 +126,7 @@ impl DefKind {
     ///
     /// If you have access to `TyCtxt`, use `TyCtxt::def_descr` or
     /// `TyCtxt::def_kind_descr` instead, because they give better
-    /// information for generators and associated functions.
+    /// information for coroutines and associated functions.
     pub fn descr(self, def_id: DefId) -> &'static str {
         match self {
             DefKind::Fn => "function",
@@ -161,7 +161,7 @@ impl DefKind {
             DefKind::Field => "field",
             DefKind::Impl { .. } => "implementation",
             DefKind::Closure => "closure",
-            DefKind::Coroutine => "generator",
+            DefKind::Coroutine => "coroutine",
             DefKind::ExternCrate => "extern crate",
             DefKind::GlobalAsm => "global assembly block",
         }
@@ -171,7 +171,7 @@ impl DefKind {
     ///
     /// If you have access to `TyCtxt`, use `TyCtxt::def_descr_article` or
     /// `TyCtxt::def_kind_descr_article` instead, because they give better
-    /// information for generators and associated functions.
+    /// information for coroutines and associated functions.
     pub fn article(&self) -> &'static str {
         match *self {
             DefKind::AssocTy

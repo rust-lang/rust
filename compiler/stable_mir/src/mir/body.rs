@@ -228,7 +228,7 @@ pub enum Rvalue {
     /// has a destructor.
     ///
     /// Disallowed after deaggregation for all aggregate kinds except `Array` and `Coroutine`. After
-    /// generator lowering, `Coroutine` aggregate kinds are disallowed too.
+    /// coroutine lowering, `Coroutine` aggregate kinds are disallowed too.
     Aggregate(AggregateKind, Vec<Operand>),
 
     /// * `Offset` has the same semantics as `<*const T>::offset`, except that the second

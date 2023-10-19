@@ -31,7 +31,7 @@ pub(super) fn check_fn<'a, 'tcx>(
     decl: &'tcx hir::FnDecl<'tcx>,
     fn_def_id: LocalDefId,
     body: &'tcx hir::Body<'tcx>,
-    can_be_generator: Option<hir::Movability>,
+    can_be_coroutine: Option<hir::Movability>,
     params_can_be_unsized: bool,
 ) -> Option<CoroutineTypes<'tcx>> {
     let fn_id = fcx.tcx.hir().local_def_id_to_hir_id(fn_def_id);
@@ -55,8 +55,8 @@ pub(super) fn check_fn<'a, 'tcx>(
 
     fn_maybe_err(tcx, span, fn_sig.abi);
 
-    if let Some(kind) = body.generator_kind
-        && can_be_generator.is_some()
+    if let Some(kind) = body.coroutine_kind
+        && can_be_coroutine.is_some()
     {
         let yield_ty = if kind == hir::CoroutineKind::Gen {
             let yield_ty = fcx.next_ty_var(TypeVariableOrigin {
@@ -69,7 +69,7 @@ pub(super) fn check_fn<'a, 'tcx>(
             Ty::new_unit(tcx)
         };
 
-        // Resume type defaults to `()` if the generator has no argument.
+        // Resume type defaults to `()` if the coroutine has no argument.
         let resume_ty = fn_sig.inputs().get(0).copied().unwrap_or_else(|| Ty::new_unit(tcx));
 
         fcx.resume_yield_tys = Some((resume_ty, yield_ty));
@@ -124,13 +124,13 @@ pub(super) fn check_fn<'a, 'tcx>(
     fcx.require_type_is_sized(declared_ret_ty, return_or_body_span, traits::SizedReturnType);
     fcx.check_return_expr(&body.value, false);
 
-    // We insert the deferred_generator_interiors entry after visiting the body.
-    // This ensures that all nested generators appear before the entry of this generator.
-    // resolve_generator_interiors relies on this property.
-    let gen_ty = if let (Some(_), Some(gen_kind)) = (can_be_generator, body.generator_kind) {
+    // We insert the deferred_coroutine_interiors entry after visiting the body.
+    // This ensures that all nested coroutines appear before the entry of this coroutine.
+    // resolve_coroutine_interiors relies on this property.
+    let gen_ty = if let (Some(_), Some(gen_kind)) = (can_be_coroutine, body.coroutine_kind) {
         let interior = fcx
             .next_ty_var(TypeVariableOrigin { kind: TypeVariableOriginKind::MiscVariable, span });
-        fcx.deferred_generator_interiors.borrow_mut().push((
+        fcx.deferred_coroutine_interiors.borrow_mut().push((
             fn_def_id,
             body.id(),
             interior,
@@ -142,7 +142,7 @@ pub(super) fn check_fn<'a, 'tcx>(
             resume_ty,
             yield_ty,
             interior,
-            movability: can_be_generator.unwrap(),
+            movability: can_be_coroutine.unwrap(),
         })
     } else {
         None

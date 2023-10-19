@@ -1485,7 +1485,7 @@ pub struct BodyId {
 ///
 /// - an `params` array containing the `(x, y)` pattern
 /// - a `value` containing the `x + y` expression (maybe wrapped in a block)
-/// - `generator_kind` would be `None`
+/// - `coroutine_kind` would be `None`
 ///
 /// All bodies have an **owner**, which can be accessed via the HIR
 /// map using `body_owner_def_id()`.
@@ -1493,7 +1493,7 @@ pub struct BodyId {
 pub struct Body<'hir> {
     pub params: &'hir [Param<'hir>],
     pub value: &'hir Expr<'hir>,
-    pub generator_kind: Option<CoroutineKind>,
+    pub coroutine_kind: Option<CoroutineKind>,
 }
 
 impl<'hir> Body<'hir> {
@@ -1501,19 +1501,19 @@ impl<'hir> Body<'hir> {
         BodyId { hir_id: self.value.hir_id }
     }
 
-    pub fn generator_kind(&self) -> Option<CoroutineKind> {
-        self.generator_kind
+    pub fn coroutine_kind(&self) -> Option<CoroutineKind> {
+        self.coroutine_kind
     }
 }
 
-/// The type of source expression that caused this generator to be created.
+/// The type of source expression that caused this coroutine to be created.
 #[derive(Clone, PartialEq, Eq, Debug, Copy, Hash)]
 #[derive(HashStable_Generic, Encodable, Decodable)]
 pub enum CoroutineKind {
     /// An explicit `async` block or the body of an async function.
     Async(AsyncCoroutineKind),
 
-    /// A generator literal created via a `yield` inside a closure.
+    /// A coroutine literal created via a `yield` inside a closure.
     Gen,
 }
 
@@ -1521,7 +1521,7 @@ impl fmt::Display for CoroutineKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             CoroutineKind::Async(k) => fmt::Display::fmt(k, f),
-            CoroutineKind::Gen => f.write_str("generator"),
+            CoroutineKind::Gen => f.write_str("coroutine"),
         }
     }
 }
@@ -1530,12 +1530,12 @@ impl CoroutineKind {
     pub fn descr(&self) -> &'static str {
         match self {
             CoroutineKind::Async(ask) => ask.descr(),
-            CoroutineKind::Gen => "generator",
+            CoroutineKind::Gen => "coroutine",
         }
     }
 }
 
-/// In the case of a generator created as part of an async construct,
+/// In the case of a coroutine created as part of an async construct,
 /// which kind of async construct caused it to be created?
 ///
 /// This helps error messages but is also used to drive coercions in
@@ -2004,7 +2004,7 @@ pub enum ExprKind<'hir> {
     ///
     /// The `Span` is the argument block `|...|`.
     ///
-    /// This may also be a generator literal or an `async block` as indicated by the
+    /// This may also be a coroutine literal or an `async block` as indicated by the
     /// `Option<Movability>`.
     Closure(&'hir Closure<'hir>),
     /// A block (e.g., `'label: { ... }`).
@@ -2055,7 +2055,7 @@ pub enum ExprKind<'hir> {
     /// to be repeated; the second is the number of times to repeat it.
     Repeat(&'hir Expr<'hir>, ArrayLen),
 
-    /// A suspension point for generators (i.e., `yield <expr>`).
+    /// A suspension point for coroutines (i.e., `yield <expr>`).
     Yield(&'hir Expr<'hir>, YieldSource),
 
     /// A placeholder for an expression that wasn't syntactically well formed in some way.
@@ -2250,7 +2250,7 @@ impl fmt::Display for YieldSource {
 impl From<CoroutineKind> for YieldSource {
     fn from(kind: CoroutineKind) -> Self {
         match kind {
-            // Guess based on the kind of the current generator.
+            // Guess based on the kind of the current coroutine.
             CoroutineKind::Gen => Self::Yield,
             CoroutineKind::Async(_) => Self::Await { expr: None },
         }

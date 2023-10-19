@@ -1,6 +1,6 @@
 // check-pass
 
-#![feature(negative_impls, generators)]
+#![feature(negative_impls, coroutines)]
 
 struct Foo;
 impl !Send for Foo {}

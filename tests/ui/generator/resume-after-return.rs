@@ -2,7 +2,7 @@
 // needs-unwind
 
 
-#![feature(generators, generator_trait)]
+#![feature(coroutines, coroutine_trait)]
 
 use std::ops::{CoroutineState, Coroutine};
 use std::pin::Pin;
@@ -22,7 +22,7 @@ fn main() {
     }
 
     match panic::catch_unwind(move || Pin::new(&mut foo).resume(())) {
-        Ok(_) => panic!("generator successfully resumed"),
+        Ok(_) => panic!("coroutine successfully resumed"),
         Err(_) => {}
     }
 }

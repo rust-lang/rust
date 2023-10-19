@@ -1,9 +1,9 @@
-//! Tests that generator discriminant sizes and ranges are chosen optimally and that they are
+//! Tests that coroutine discriminant sizes and ranges are chosen optimally and that they are
 //! reflected in the output of `mem::discriminant`.
 
 // run-pass
 
-#![feature(generators, generator_trait, core_intrinsics, discriminant_kind)]
+#![feature(coroutines, coroutine_trait, core_intrinsics, discriminant_kind)]
 
 use std::intrinsics::discriminant_value;
 use std::marker::{DiscriminantKind, Unpin};

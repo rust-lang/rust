@@ -1,7 +1,7 @@
 // revisions: current next
 //[next] compile-flags: -Ztrait-solver=next
 
-#![feature(generators)]
+#![feature(coroutines)]
 
 // normalize-stderr-test "std::pin::Unpin" -> "std::marker::Unpin"
 
@@ -11,8 +11,8 @@ fn assert_unpin<T: Unpin>(_: T) {
 }
 
 fn main() {
-    let mut generator = static || {
+    let mut coroutine = static || {
         yield;
     };
-    assert_unpin(generator); //~ ERROR E0277
+    assert_unpin(coroutine); //~ ERROR E0277
 }

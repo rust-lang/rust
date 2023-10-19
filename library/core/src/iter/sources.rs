@@ -1,6 +1,6 @@
 mod empty;
+mod from_coroutine;
 mod from_fn;
-mod from_generator;
 mod once;
 mod once_with;
 mod repeat;
@@ -27,11 +27,11 @@ pub use self::repeat_with::{repeat_with, RepeatWith};
 pub use self::from_fn::{from_fn, FromFn};
 
 #[unstable(
-    feature = "iter_from_generator",
+    feature = "iter_from_coroutine",
     issue = "43122",
-    reason = "generators are unstable"
+    reason = "coroutines are unstable"
 )]
-pub use self::from_generator::from_generator;
+pub use self::from_coroutine::from_coroutine;
 
 #[stable(feature = "iter_successors", since = "1.34.0")]
 pub use self::successors::{successors, Successors};

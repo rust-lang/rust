@@ -5,7 +5,7 @@ LL |     Pin::new(&mut b).resume();
    |                      ^^^^^^-- an argument of type `()` is missing
    |
 note: method defined here
-  --> $SRC_DIR/core/src/ops/generator.rs:LL:COL
+  --> $SRC_DIR/core/src/ops/coroutine.rs:LL:COL
 help: provide the argument
    |
 LL |     Pin::new(&mut b).resume(());

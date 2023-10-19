@@ -266,11 +266,11 @@ impl<'tcx> GenericArgs<'tcx> {
         ClosureArgs { args: self }
     }
 
-    /// Interpret these generic args as the args of a generator type.
+    /// Interpret these generic args as the args of a coroutine type.
     /// Coroutine args have a particular structure controlled by the
-    /// compiler that encodes information like the signature and generator kind;
+    /// compiler that encodes information like the signature and coroutine kind;
     /// see `ty::CoroutineArgs` struct for more comments.
-    pub fn as_generator(&'tcx self) -> CoroutineArgs<'tcx> {
+    pub fn as_coroutine(&'tcx self) -> CoroutineArgs<'tcx> {
         CoroutineArgs { args: self }
     }
 

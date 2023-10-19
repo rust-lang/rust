@@ -1,22 +1,22 @@
-//! This is the implementation of the pass which transforms generators into state machines.
+//! This is the implementation of the pass which transforms coroutines into state machines.
 //!
-//! MIR generation for generators creates a function which has a self argument which
-//! passes by value. This argument is effectively a generator type which only contains upvars and
-//! is only used for this argument inside the MIR for the generator.
+//! MIR generation for coroutines creates a function which has a self argument which
+//! passes by value. This argument is effectively a coroutine type which only contains upvars and
+//! is only used for this argument inside the MIR for the coroutine.
 //! It is passed by value to enable upvars to be moved out of it. Drop elaboration runs on that
 //! MIR before this pass and creates drop flags for MIR locals.
-//! It will also drop the generator argument (which only consists of upvars) if any of the upvars
-//! are moved out of. This pass elaborates the drops of upvars / generator argument in the case
+//! It will also drop the coroutine argument (which only consists of upvars) if any of the upvars
+//! are moved out of. This pass elaborates the drops of upvars / coroutine argument in the case
 //! that none of the upvars were moved out of. This is because we cannot have any drops of this
-//! generator in the MIR, since it is used to create the drop glue for the generator. We'd get
+//! coroutine in the MIR, since it is used to create the drop glue for the coroutine. We'd get
 //! infinite recursion otherwise.
 //!
 //! This pass creates the implementation for either the `Coroutine::resume` or `Future::poll`
-//! function and the drop shim for the generator based on the MIR input.
-//! It converts the generator argument from Self to &mut Self adding derefs in the MIR as needed.
-//! It computes the final layout of the generator struct which looks like this:
+//! function and the drop shim for the coroutine based on the MIR input.
+//! It converts the coroutine argument from Self to &mut Self adding derefs in the MIR as needed.
+//! It computes the final layout of the coroutine struct which looks like this:
 //!     First upvars are stored
-//!     It is followed by the generator state field.
+//!     It is followed by the coroutine state field.
 //!     Then finally the MIR locals which are live across a suspension point are stored.
 //!     ```ignore (illustrative)
 //!     struct Coroutine {
@@ -26,28 +26,28 @@
 //!     }
 //!     ```
 //! This pass computes the meaning of the state field and the MIR locals which are live
-//! across a suspension point. There are however three hardcoded generator states:
+//! across a suspension point. There are however three hardcoded coroutine states:
 //!     0 - Coroutine have not been resumed yet
 //!     1 - Coroutine has returned / is completed
 //!     2 - Coroutine has been poisoned
 //!
-//! It also rewrites `return x` and `yield y` as setting a new generator state and returning
+//! It also rewrites `return x` and `yield y` as setting a new coroutine state and returning
 //! `CoroutineState::Complete(x)` and `CoroutineState::Yielded(y)`,
 //! or `Poll::Ready(x)` and `Poll::Pending` respectively.
-//! MIR locals which are live across a suspension point are moved to the generator struct
-//! with references to them being updated with references to the generator struct.
+//! MIR locals which are live across a suspension point are moved to the coroutine struct
+//! with references to them being updated with references to the coroutine struct.
 //!
-//! The pass creates two functions which have a switch on the generator state giving
+//! The pass creates two functions which have a switch on the coroutine state giving
 //! the action to take.
 //!
 //! One of them is the implementation of `Coroutine::resume` / `Future::poll`.
-//! For generators with state 0 (unresumed) it starts the execution of the generator.
-//! For generators with state 1 (returned) and state 2 (poisoned) it panics.
+//! For coroutines with state 0 (unresumed) it starts the execution of the coroutine.
+//! For coroutines with state 1 (returned) and state 2 (poisoned) it panics.
 //! Otherwise it continues the execution from the last suspension point.
 //!
-//! The other function is the drop glue for the generator.
-//! For generators with state 0 (unresumed) it drops the upvars of the generator.
-//! For generators with state 1 (returned) and state 2 (poisoned) it does nothing.
+//! The other function is the drop glue for the coroutine.
+//! For coroutines with state 0 (unresumed) it drops the upvars of the coroutine.
+//! For coroutines with state 1 (returned) and state 2 (poisoned) it does nothing.
 //! Otherwise it drops all the values in scope at the last suspension point.
 
 use crate::abort_unwinding_calls;
@@ -203,12 +203,12 @@ const RETURNED: usize = CoroutineArgs::RETURNED;
 /// Coroutine has panicked and is poisoned.
 const POISONED: usize = CoroutineArgs::POISONED;
 
-/// Number of variants to reserve in generator state. Corresponds to
-/// `UNRESUMED` (beginning of a generator) and `RETURNED`/`POISONED`
-/// (end of a generator) states.
+/// Number of variants to reserve in coroutine state. Corresponds to
+/// `UNRESUMED` (beginning of a coroutine) and `RETURNED`/`POISONED`
+/// (end of a coroutine) states.
 const RESERVED_VARIANTS: usize = 3;
 
-/// A `yield` point in the generator.
+/// A `yield` point in the coroutine.
 struct SuspensionPoint<'tcx> {
     /// State discriminant used when suspending or resuming at this point.
     state: usize,
@@ -216,7 +216,7 @@ struct SuspensionPoint<'tcx> {
     resume: BasicBlock,
     /// Where to move the resume argument after resumption.
     resume_arg: Place<'tcx>,
-    /// Which block to jump to if the generator is dropped in this state.
+    /// Which block to jump to if the coroutine is dropped in this state.
     drop: Option<BasicBlock>,
     /// Set of locals that have live storage while at this suspension point.
     storage_liveness: GrowableBitSet<Local>,
@@ -228,10 +228,10 @@ struct TransformVisitor<'tcx> {
     state_adt_ref: AdtDef<'tcx>,
     state_args: GenericArgsRef<'tcx>,
 
-    // The type of the discriminant in the generator struct
+    // The type of the discriminant in the coroutine struct
     discr_ty: Ty<'tcx>,
 
-    // Mapping from Local to (type of local, generator struct index)
+    // Mapping from Local to (type of local, coroutine struct index)
     // FIXME(eddyb) This should use `IndexVec<Local, Option<_>>`.
     remap: FxHashMap<Local, (Ty<'tcx>, VariantIdx, FieldIdx)>,
 
@@ -297,7 +297,7 @@ impl<'tcx> TransformVisitor<'tcx> {
         });
     }
 
-    // Create a Place referencing a generator struct field
+    // Create a Place referencing a coroutine struct field
     fn make_field(&self, variant_index: VariantIdx, idx: FieldIdx, ty: Ty<'tcx>) -> Place<'tcx> {
         let self_place = Place::from(SELF_ARG);
         let base = self.tcx.mk_place_downcast_unnamed(self_place, variant_index);
@@ -349,7 +349,7 @@ impl<'tcx> MutVisitor<'tcx> for TransformVisitor<'tcx> {
         _context: PlaceContext,
         _location: Location,
     ) {
-        // Replace an Local in the remap with a generator struct access
+        // Replace an Local in the remap with a coroutine struct access
         if let Some(&(ty, variant_index, idx)) = self.remap.get(&place.local) {
             replace_base(place, self.make_field(variant_index, idx, ty), self.tcx);
         }
@@ -413,7 +413,7 @@ impl<'tcx> MutVisitor<'tcx> for TransformVisitor<'tcx> {
     }
 }
 
-fn make_generator_state_argument_indirect<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+fn make_coroutine_state_argument_indirect<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let gen_ty = body.local_decls.raw[1].ty;
 
     let ref_gen_ty = Ty::new_ref(
@@ -422,14 +422,14 @@ fn make_generator_state_argument_indirect<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Bo
         ty::TypeAndMut { ty: gen_ty, mutbl: Mutability::Mut },
     );
 
-    // Replace the by value generator argument
+    // Replace the by value coroutine argument
     body.local_decls.raw[1].ty = ref_gen_ty;
 
-    // Add a deref to accesses of the generator state
+    // Add a deref to accesses of the coroutine state
     DerefArgVisitor { tcx }.visit_body(body);
 }
 
-fn make_generator_state_argument_pinned<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+fn make_coroutine_state_argument_pinned<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let ref_gen_ty = body.local_decls.raw[1].ty;
 
     let pin_did = tcx.require_lang_item(LangItem::Pin, Some(body.span));
@@ -437,10 +437,10 @@ fn make_generator_state_argument_pinned<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body
     let args = tcx.mk_args(&[ref_gen_ty.into()]);
     let pin_ref_gen_ty = Ty::new_adt(tcx, pin_adt_ref, args);
 
-    // Replace the by ref generator argument
+    // Replace the by ref coroutine argument
     body.local_decls.raw[1].ty = pin_ref_gen_ty;
 
-    // Add the Pin field access to accesses of the generator state
+    // Add the Pin field access to accesses of the coroutine state
     PinArgVisitor { ref_gen_ty, tcx }.visit_body(body);
 }
 
@@ -465,7 +465,7 @@ fn replace_local<'tcx>(
     new_local
 }
 
-/// Transforms the `body` of the generator applying the following transforms:
+/// Transforms the `body` of the coroutine applying the following transforms:
 ///
 /// - Eliminates all the `get_context` calls that async lowering created.
 /// - Replace all `Local` `ResumeTy` types with `&mut Context<'_>` (`context_mut_ref`).
@@ -485,7 +485,7 @@ fn replace_local<'tcx>(
 ///
 /// The async lowering step and the type / lifetime inference / checking are
 /// still using the `ResumeTy` indirection for the time being, and that indirection
-/// is removed here. After this transform, the generator body only knows about `&mut Context<'_>`.
+/// is removed here. After this transform, the coroutine body only knows about `&mut Context<'_>`.
 fn transform_async_context<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let context_mut_ref = Ty::new_task_context(tcx);
 
@@ -601,7 +601,7 @@ fn locals_live_across_suspend_points<'tcx>(
     // Calculate the MIR locals which have been previously
     // borrowed (even if they are still active).
     let borrowed_locals_results =
-        MaybeBorrowedLocals.into_engine(tcx, body_ref).pass_name("generator").iterate_to_fixpoint();
+        MaybeBorrowedLocals.into_engine(tcx, body_ref).pass_name("coroutine").iterate_to_fixpoint();
 
     let mut borrowed_locals_cursor = borrowed_locals_results.cloned_results_cursor(body_ref);
 
@@ -616,7 +616,7 @@ fn locals_live_across_suspend_points<'tcx>(
     // Calculate the liveness of MIR locals ignoring borrows.
     let mut liveness = MaybeLiveLocals
         .into_engine(tcx, body_ref)
-        .pass_name("generator")
+        .pass_name("coroutine")
         .iterate_to_fixpoint()
         .into_results_cursor(body_ref);
 
@@ -635,8 +635,8 @@ fn locals_live_across_suspend_points<'tcx>(
 
             if !movable {
                 // The `liveness` variable contains the liveness of MIR locals ignoring borrows.
-                // This is correct for movable generators since borrows cannot live across
-                // suspension points. However for immovable generators we need to account for
+                // This is correct for movable coroutines since borrows cannot live across
+                // suspension points. However for immovable coroutines we need to account for
                 // borrows, so we conservatively assume that all borrowed locals are live until
                 // we find a StorageDead statement referencing the locals.
                 // To do this we just union our `liveness` result with `borrowed_locals`, which
@@ -659,7 +659,7 @@ fn locals_live_across_suspend_points<'tcx>(
             requires_storage_cursor.seek_before_primary_effect(loc);
             live_locals.intersect(requires_storage_cursor.get());
 
-            // The generator argument is ignored.
+            // The coroutine argument is ignored.
             live_locals.remove(SELF_ARG);
 
             debug!("loc = {:?}, live_locals = {:?}", loc, live_locals);
@@ -803,7 +803,7 @@ struct StorageConflictVisitor<'mir, 'tcx, 's> {
     body: &'mir Body<'tcx>,
     saved_locals: &'s CoroutineSavedLocals,
     // FIXME(tmandry): Consider using sparse bitsets here once we have good
-    // benchmarks for generators.
+    // benchmarks for coroutines.
     local_conflicts: BitMatrix<Local, Local>,
 }
 
@@ -873,7 +873,7 @@ fn compute_layout<'tcx>(
     let mut locals = IndexVec::<CoroutineSavedLocal, _>::new();
     let mut tys = IndexVec::<CoroutineSavedLocal, _>::new();
     for (saved_local, local) in saved_locals.iter_enumerated() {
-        debug!("generator saved local {:?} => {:?}", saved_local, local);
+        debug!("coroutine saved local {:?} => {:?}", saved_local, local);
 
         locals.push(local);
         let decl = &body.local_decls[local];
@@ -914,8 +914,8 @@ fn compute_layout<'tcx>(
     .copied()
     .collect();
 
-    // Build the generator variant field list.
-    // Create a map from local indices to generator struct indices.
+    // Build the coroutine variant field list.
+    // Create a map from local indices to coroutine struct indices.
     let mut variant_fields: IndexVec<VariantIdx, IndexVec<FieldIdx, CoroutineSavedLocal>> =
         iter::repeat(IndexVec::new()).take(RESERVED_VARIANTS).collect();
     let mut remap = FxHashMap::default();
@@ -926,7 +926,7 @@ fn compute_layout<'tcx>(
             fields.push(saved_local);
             // Note that if a field is included in multiple variants, we will
             // just use the first one here. That's fine; fields do not move
-            // around inside generators, so it doesn't matter which variant
+            // around inside coroutines, so it doesn't matter which variant
             // index we access them by.
             let idx = FieldIdx::from_usize(idx);
             remap.entry(locals[saved_local]).or_insert((tys[saved_local].ty, variant_index, idx));
@@ -934,8 +934,8 @@ fn compute_layout<'tcx>(
         variant_fields.push(fields);
         variant_source_info.push(source_info_at_suspension_points[suspension_point_idx]);
     }
-    debug!("generator variant_fields = {:?}", variant_fields);
-    debug!("generator storage_conflicts = {:#?}", storage_conflicts);
+    debug!("coroutine variant_fields = {:?}", variant_fields);
+    debug!("coroutine storage_conflicts = {:#?}", storage_conflicts);
 
     let mut field_names = IndexVec::from_elem(None, &tys);
     for var in &body.var_debug_info {
@@ -959,7 +959,7 @@ fn compute_layout<'tcx>(
     (remap, layout, storage_liveness)
 }
 
-/// Replaces the entry point of `body` with a block that switches on the generator discriminant and
+/// Replaces the entry point of `body` with a block that switches on the coroutine discriminant and
 /// dispatches to blocks according to `cases`.
 ///
 /// After this function, the former entry point of the function will be bb1.
@@ -992,14 +992,14 @@ fn insert_switch<'tcx>(
     }
 }
 
-fn elaborate_generator_drops<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+fn elaborate_coroutine_drops<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     use crate::shim::DropShimElaborator;
     use rustc_middle::mir::patch::MirPatch;
     use rustc_mir_dataflow::elaborate_drops::{elaborate_drop, Unwind};
 
-    // Note that `elaborate_drops` only drops the upvars of a generator, and
+    // Note that `elaborate_drops` only drops the upvars of a coroutine, and
     // this is ok because `open_drop` can only be reached within that own
-    // generator's resume function.
+    // coroutine's resume function.
 
     let def_id = body.source.def_id();
     let param_env = tcx.param_env(def_id);
@@ -1047,7 +1047,7 @@ fn elaborate_generator_drops<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     elaborator.patch.apply(body);
 }
 
-fn create_generator_drop_shim<'tcx>(
+fn create_coroutine_drop_shim<'tcx>(
     tcx: TyCtxt<'tcx>,
     transform: &TransformVisitor<'tcx>,
     gen_ty: Ty<'tcx>,
@@ -1078,9 +1078,9 @@ fn create_generator_drop_shim<'tcx>(
     // Replace the return variable
     body.local_decls[RETURN_PLACE] = LocalDecl::with_source_info(Ty::new_unit(tcx), source_info);
 
-    make_generator_state_argument_indirect(tcx, &mut body);
+    make_coroutine_state_argument_indirect(tcx, &mut body);
 
-    // Change the generator argument from &mut to *mut
+    // Change the coroutine argument from &mut to *mut
     body.local_decls[SELF_ARG] = LocalDecl::with_source_info(
         Ty::new_ptr(tcx, ty::TypeAndMut { ty: gen_ty, mutbl: hir::Mutability::Mut }),
         source_info,
@@ -1104,10 +1104,10 @@ fn create_generator_drop_shim<'tcx>(
         None,
     );
 
-    // Temporary change MirSource to generator's instance so that dump_mir produces more sensible
+    // Temporary change MirSource to coroutine's instance so that dump_mir produces more sensible
     // filename.
     body.source.instance = gen_instance;
-    dump_mir(tcx, false, "generator_drop", &0, &body, |_, _| Ok(()));
+    dump_mir(tcx, false, "coroutine_drop", &0, &body, |_, _| Ok(()));
     body.source.instance = drop_instance;
 
     body
@@ -1191,7 +1191,7 @@ fn can_unwind<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) -> bool {
             TerminatorKind::UnwindResume => {}
 
             TerminatorKind::Yield { .. } => {
-                unreachable!("`can_unwind` called before generator transform")
+                unreachable!("`can_unwind` called before coroutine transform")
             }
 
             // These may unwind.
@@ -1206,7 +1206,7 @@ fn can_unwind<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) -> bool {
     false
 }
 
-fn create_generator_resume_function<'tcx>(
+fn create_coroutine_resume_function<'tcx>(
     tcx: TyCtxt<'tcx>,
     transform: TransformVisitor<'tcx>,
     body: &mut Body<'tcx>,
@@ -1214,7 +1214,7 @@ fn create_generator_resume_function<'tcx>(
 ) {
     let can_unwind = can_unwind(tcx, body);
 
-    // Poison the generator when it unwinds
+    // Poison the coroutine when it unwinds
     if can_unwind {
         let source_info = SourceInfo::outermost(body.span);
         let poison_block = body.basic_blocks_mut().push(BasicBlockData {
@@ -1253,26 +1253,26 @@ fn create_generator_resume_function<'tcx>(
     cases.insert(0, (UNRESUMED, START_BLOCK));
 
     // Panic when resumed on the returned or poisoned state
-    let generator_kind = body.generator_kind().unwrap();
+    let coroutine_kind = body.coroutine_kind().unwrap();
 
     if can_unwind {
         cases.insert(
             1,
-            (POISONED, insert_panic_block(tcx, body, ResumedAfterPanic(generator_kind))),
+            (POISONED, insert_panic_block(tcx, body, ResumedAfterPanic(coroutine_kind))),
         );
     }
 
     if can_return {
         cases.insert(
             1,
-            (RETURNED, insert_panic_block(tcx, body, ResumedAfterReturn(generator_kind))),
+            (RETURNED, insert_panic_block(tcx, body, ResumedAfterReturn(coroutine_kind))),
         );
     }
 
     insert_switch(body, cases, &transform, TerminatorKind::Unreachable);
 
-    make_generator_state_argument_indirect(tcx, body);
-    make_generator_state_argument_pinned(tcx, body);
+    make_coroutine_state_argument_indirect(tcx, body);
+    make_coroutine_state_argument_pinned(tcx, body);
 
     // Make sure we remove dead blocks to remove
     // unrelated code from the drop part of the function
@@ -1280,7 +1280,7 @@ fn create_generator_resume_function<'tcx>(
 
     pm::run_passes_no_validate(tcx, body, &[&abort_unwinding_calls::AbortUnwindingCalls], None);
 
-    dump_mir(tcx, false, "generator_resume", &0, body, |_, _| Ok(()));
+    dump_mir(tcx, false, "coroutine_resume", &0, body, |_, _| Ok(()));
 }
 
 fn insert_clean_drop(body: &mut Body<'_>) -> BasicBlock {
@@ -1294,7 +1294,7 @@ fn insert_clean_drop(body: &mut Body<'_>) -> BasicBlock {
     };
     let source_info = SourceInfo::outermost(body.span);
 
-    // Create a block to destroy an unresumed generators. This can only destroy upvars.
+    // Create a block to destroy an unresumed coroutines. This can only destroy upvars.
     body.basic_blocks_mut().push(BasicBlockData {
         statements: Vec::new(),
         terminator: Some(Terminator { source_info, kind: term }),
@@ -1302,7 +1302,7 @@ fn insert_clean_drop(body: &mut Body<'_>) -> BasicBlock {
     })
 }
 
-/// An operation that can be performed on a generator.
+/// An operation that can be performed on a coroutine.
 #[derive(PartialEq, Copy, Clone)]
 enum Operation {
     Resume,
@@ -1381,7 +1381,7 @@ fn create_cases<'tcx>(
 }
 
 #[instrument(level = "debug", skip(tcx), ret)]
-pub(crate) fn mir_generator_witnesses<'tcx>(
+pub(crate) fn mir_coroutine_witnesses<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
 ) -> Option<CoroutineLayout<'tcx>> {
@@ -1389,56 +1389,56 @@ pub(crate) fn mir_generator_witnesses<'tcx>(
     let body = body.borrow();
     let body = &*body;
 
-    // The first argument is the generator type passed by value
+    // The first argument is the coroutine type passed by value
     let gen_ty = body.local_decls[ty::CAPTURE_STRUCT_LOCAL].ty;
 
     // Get the interior types and args which typeck computed
     let movable = match *gen_ty.kind() {
         ty::Coroutine(_, _, movability) => movability == hir::Movability::Movable,
         ty::Error(_) => return None,
-        _ => span_bug!(body.span, "unexpected generator type {}", gen_ty),
+        _ => span_bug!(body.span, "unexpected coroutine type {}", gen_ty),
     };
 
-    // When first entering the generator, move the resume argument into its new local.
+    // When first entering the coroutine, move the resume argument into its new local.
     let always_live_locals = always_storage_live_locals(&body);
 
     let liveness_info = locals_live_across_suspend_points(tcx, body, &always_live_locals, movable);
 
     // Extract locals which are live across suspension point into `layout`
-    // `remap` gives a mapping from local indices onto generator struct indices
+    // `remap` gives a mapping from local indices onto coroutine struct indices
     // `storage_liveness` tells us which locals have live storage at suspension points
-    let (_, generator_layout, _) = compute_layout(liveness_info, body);
+    let (_, coroutine_layout, _) = compute_layout(liveness_info, body);
 
-    check_suspend_tys(tcx, &generator_layout, &body);
+    check_suspend_tys(tcx, &coroutine_layout, &body);
 
-    Some(generator_layout)
+    Some(coroutine_layout)
 }
 
 impl<'tcx> MirPass<'tcx> for StateTransform {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let Some(yield_ty) = body.yield_ty() else {
-            // This only applies to generators
+            // This only applies to coroutines
             return;
         };
 
-        assert!(body.generator_drop().is_none());
+        assert!(body.coroutine_drop().is_none());
 
-        // The first argument is the generator type passed by value
+        // The first argument is the coroutine type passed by value
         let gen_ty = body.local_decls.raw[1].ty;
 
         // Get the discriminant type and args which typeck computed
         let (discr_ty, movable) = match *gen_ty.kind() {
             ty::Coroutine(_, args, movability) => {
-                let args = args.as_generator();
+                let args = args.as_coroutine();
                 (args.discr_ty(tcx), movability == hir::Movability::Movable)
             }
             _ => {
-                tcx.sess.delay_span_bug(body.span, format!("unexpected generator type {gen_ty}"));
+                tcx.sess.delay_span_bug(body.span, format!("unexpected coroutine type {gen_ty}"));
                 return;
             }
         };
 
-        let is_async_kind = matches!(body.generator_kind(), Some(CoroutineKind::Async(_)));
+        let is_async_kind = matches!(body.coroutine_kind(), Some(CoroutineKind::Async(_)));
         let (state_adt_ref, state_args) = if is_async_kind {
             // Compute Poll<return_ty>
             let poll_did = tcx.require_lang_item(LangItem::Poll, None);
@@ -1465,8 +1465,8 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
 
         // We also replace the resume argument and insert an `Assign`.
         // This is needed because the resume argument `_2` might be live across a `yield`, in which
-        // case there is no `Assign` to it that the transform can turn into a store to the generator
-        // state. After the yield the slot in the generator state would then be uninitialized.
+        // case there is no `Assign` to it that the transform can turn into a store to the coroutine
+        // state. After the yield the slot in the coroutine state would then be uninitialized.
         let resume_local = Local::new(2);
         let resume_ty = if is_async_kind {
             Ty::new_task_context(tcx)
@@ -1475,7 +1475,7 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
         };
         let new_resume_local = replace_local(resume_local, resume_ty, body, tcx);
 
-        // When first entering the generator, move the resume argument into its new local.
+        // When first entering the coroutine, move the resume argument into its new local.
         let source_info = SourceInfo::outermost(body.span);
         let stmts = &mut body.basic_blocks_mut()[START_BLOCK].statements;
         stmts.insert(
@@ -1505,15 +1505,15 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
         }
 
         // Extract locals which are live across suspension point into `layout`
-        // `remap` gives a mapping from local indices onto generator struct indices
+        // `remap` gives a mapping from local indices onto coroutine struct indices
         // `storage_liveness` tells us which locals have live storage at suspension points
         let (remap, layout, storage_liveness) = compute_layout(liveness_info, body);
 
         let can_return = can_return(tcx, body, tcx.param_env(body.source.def_id()));
 
-        // Run the transformation which converts Places from Local to generator struct
+        // Run the transformation which converts Places from Local to coroutine struct
         // accesses for locals in `remap`.
-        // It also rewrites `return x` and `yield y` as writing a new generator state and returning
+        // It also rewrites `return x` and `yield y` as writing a new coroutine state and returning
         // either CoroutineState::Complete(x) and CoroutineState::Yielded(y),
         // or Poll::Ready(x) and Poll::Pending respectively depending on `is_async_kind`.
         let mut transform = TransformVisitor {
@@ -1541,30 +1541,30 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
             var.argument_index = None;
         }
 
-        body.generator.as_mut().unwrap().yield_ty = None;
-        body.generator.as_mut().unwrap().generator_layout = Some(layout);
+        body.coroutine.as_mut().unwrap().yield_ty = None;
+        body.coroutine.as_mut().unwrap().coroutine_layout = Some(layout);
 
-        // Insert `drop(generator_struct)` which is used to drop upvars for generators in
+        // Insert `drop(coroutine_struct)` which is used to drop upvars for coroutines in
         // the unresumed state.
-        // This is expanded to a drop ladder in `elaborate_generator_drops`.
+        // This is expanded to a drop ladder in `elaborate_coroutine_drops`.
         let drop_clean = insert_clean_drop(body);
 
-        dump_mir(tcx, false, "generator_pre-elab", &0, body, |_, _| Ok(()));
+        dump_mir(tcx, false, "coroutine_pre-elab", &0, body, |_, _| Ok(()));
 
-        // Expand `drop(generator_struct)` to a drop ladder which destroys upvars.
+        // Expand `drop(coroutine_struct)` to a drop ladder which destroys upvars.
         // If any upvars are moved out of, drop elaboration will handle upvar destruction.
         // However we need to also elaborate the code generated by `insert_clean_drop`.
-        elaborate_generator_drops(tcx, body);
+        elaborate_coroutine_drops(tcx, body);
 
-        dump_mir(tcx, false, "generator_post-transform", &0, body, |_, _| Ok(()));
+        dump_mir(tcx, false, "coroutine_post-transform", &0, body, |_, _| Ok(()));
 
-        // Create a copy of our MIR and use it to create the drop shim for the generator
-        let drop_shim = create_generator_drop_shim(tcx, &transform, gen_ty, body, drop_clean);
+        // Create a copy of our MIR and use it to create the drop shim for the coroutine
+        let drop_shim = create_coroutine_drop_shim(tcx, &transform, gen_ty, body, drop_clean);
 
-        body.generator.as_mut().unwrap().generator_drop = Some(drop_shim);
+        body.coroutine.as_mut().unwrap().coroutine_drop = Some(drop_shim);
 
         // Create the Coroutine::resume / Future::poll function
-        create_generator_resume_function(tcx, transform, body, can_return);
+        create_coroutine_resume_function(tcx, transform, body, can_return);
 
         // Run derefer to fix Derefs that are not in the first place
         deref_finder(tcx, body);
@@ -1572,14 +1572,14 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
 }
 
 /// Looks for any assignments between locals (e.g., `_4 = _5`) that will both be converted to fields
-/// in the generator state machine but whose storage is not marked as conflicting
+/// in the coroutine state machine but whose storage is not marked as conflicting
 ///
 /// Validation needs to happen immediately *before* `TransformVisitor` is invoked, not after.
 ///
 /// This condition would arise when the assignment is the last use of `_5` but the initial
 /// definition of `_4` if we weren't extra careful to mark all locals used inside a statement as
-/// conflicting. Non-conflicting generator saved locals may be stored at the same location within
-/// the generator state machine, which would result in ill-formed MIR: the left-hand and right-hand
+/// conflicting. Non-conflicting coroutine saved locals may be stored at the same location within
+/// the coroutine state machine, which would result in ill-formed MIR: the left-hand and right-hand
 /// sides of an assignment may not alias. This caused a miscompilation in [#73137].
 ///
 /// [#73137]: https://github.com/rust-lang/rust/issues/73137
@@ -1624,7 +1624,7 @@ impl<'tcx> Visitor<'tcx> for EnsureCoroutineFieldAssignmentsNeverAlias<'_> {
 
         if !self.storage_conflicts.contains(lhs, rhs) {
             bug!(
-                "Assignment between generator saved locals whose storage is not \
+                "Assignment between coroutine saved locals whose storage is not \
                     marked as conflicting: {:?}: {:?} = {:?}",
                 location,
                 lhs,

@@ -304,7 +304,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             hir::ExprKind::Block(..),
         ) = (parent_node, callee_node)
         {
-            let fn_decl_span = if hir.body(body).generator_kind
+            let fn_decl_span = if hir.body(body).coroutine_kind
                 == Some(hir::CoroutineKind::Async(hir::AsyncCoroutineKind::Closure))
             {
                 // Actually need to unwrap one more layer of HIR to get to

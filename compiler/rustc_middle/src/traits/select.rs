@@ -137,10 +137,10 @@ pub enum SelectionCandidate<'tcx> {
     },
 
     /// Implementation of a `Coroutine` trait by one of the anonymous types
-    /// generated for a generator.
+    /// generated for a coroutine.
     CoroutineCandidate,
 
-    /// Implementation of a `Future` trait by one of the generator types
+    /// Implementation of a `Future` trait by one of the coroutine types
     /// generated for an async construct.
     FutureCandidate,
 

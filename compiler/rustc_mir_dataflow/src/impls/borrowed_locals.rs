@@ -9,7 +9,7 @@ use crate::{AnalysisDomain, GenKill, GenKillAnalysis};
 ///
 /// At present, this is used as a very limited form of alias analysis. For example,
 /// `MaybeBorrowedLocals` is used to compute which locals are live during a yield expression for
-/// immovable generators.
+/// immovable coroutines.
 #[derive(Clone, Copy)]
 pub struct MaybeBorrowedLocals;
 

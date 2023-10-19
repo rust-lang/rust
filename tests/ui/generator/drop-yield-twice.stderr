@@ -1,11 +1,11 @@
-error: generator cannot be sent between threads safely
+error: coroutine cannot be sent between threads safely
   --> $DIR/drop-yield-twice.rs:7:5
    |
 LL |     assert_send(|| {
-   |     ^^^^^^^^^^^ generator is not `Send`
+   |     ^^^^^^^^^^^ coroutine is not `Send`
    |
-   = help: within `{generator@$DIR/drop-yield-twice.rs:7:17: 7:19}`, the trait `Send` is not implemented for `Foo`
-note: generator is not `Send` as this value is used across a yield
+   = help: within `{coroutine@$DIR/drop-yield-twice.rs:7:17: 7:19}`, the trait `Send` is not implemented for `Foo`
+note: coroutine is not `Send` as this value is used across a yield
   --> $DIR/drop-yield-twice.rs:9:9
    |
 LL |         let guard = Foo(42);

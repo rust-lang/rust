@@ -898,7 +898,7 @@ where
                 ty::Array(element, _) | ty::Slice(element) => TyMaybeWithLayout::Ty(element),
                 ty::Str => TyMaybeWithLayout::Ty(tcx.types.u8),
 
-                // Tuples, generators and closures.
+                // Tuples, coroutines and closures.
                 ty::Closure(_, ref args) => field_ty_or_layout(
                     TyAndLayout { ty: args.as_closure().tupled_upvars_ty(), ..this },
                     cx,
@@ -907,7 +907,7 @@ where
 
                 ty::Coroutine(def_id, ref args, _) => match this.variants {
                     Variants::Single { index } => TyMaybeWithLayout::Ty(
-                        args.as_generator()
+                        args.as_coroutine()
                             .state_tys(def_id, tcx)
                             .nth(index.as_usize())
                             .unwrap()
@@ -918,7 +918,7 @@ where
                         if i == tag_field {
                             return TyMaybeWithLayout::TyAndLayout(tag_layout(tag));
                         }
-                        TyMaybeWithLayout::Ty(args.as_generator().prefix_tys()[i])
+                        TyMaybeWithLayout::Ty(args.as_coroutine().prefix_tys()[i])
                     }
                 },
 

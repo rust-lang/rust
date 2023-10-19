@@ -342,7 +342,7 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
         // We look up the generics of the enclosing function and truncate the args
         // to their length in order to cut off extra stuff that might be in there for
-        // closures or generators.
+        // closures or coroutines.
         let generics = tcx.generics_of(enclosing_fn_def_id);
         let args = instance.args.truncate_to(tcx, generics);
 

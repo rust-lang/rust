@@ -2,7 +2,7 @@
 
 // aux-build:xcrate-reachable.rs
 
-#![feature(generator_trait)]
+#![feature(coroutine_trait)]
 
 extern crate xcrate_reachable as foo;
 

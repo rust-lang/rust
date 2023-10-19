@@ -1,4 +1,4 @@
-#![feature(core_intrinsics, generators, generator_trait, is_sorted)]
+#![feature(core_intrinsics, coroutines, coroutine_trait, is_sorted)]
 
 #[cfg(feature="master")]
 use std::arch::x86_64::*;

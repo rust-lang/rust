@@ -1,4 +1,4 @@
-#![feature(generators)]
+#![feature(coroutines)]
 #![allow(dropping_copy_types)]
 
 // run-pass
@@ -22,7 +22,7 @@ fn main() {
         }
     };
 
-    // Neither of these generators have the resume arg live across the `yield`, so they should be
+    // Neither of these coroutines have the resume arg live across the `yield`, so they should be
     // 1 Byte in size (only storing the discriminant)
     assert_eq!(size_of_val(&gen_copy), 1);
     assert_eq!(size_of_val(&gen_move), 1);

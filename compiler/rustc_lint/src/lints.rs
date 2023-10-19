@@ -1700,7 +1700,7 @@ pub struct UnusedClosure<'a> {
 // FIXME(davidtwco): this isn't properly translatable because of the
 // pre/post strings
 #[derive(LintDiagnostic)]
-#[diag(lint_unused_generator)]
+#[diag(lint_unused_coroutine)]
 #[note]
 pub struct UnusedCoroutine<'a> {
     pub count: usize,

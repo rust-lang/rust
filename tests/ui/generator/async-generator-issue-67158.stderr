@@ -1,4 +1,4 @@
-error[E0727]: `async` generators are not yet supported
+error[E0727]: `async` coroutines are not yet supported
   --> $DIR/async-generator-issue-67158.rs:5:13
    |
 LL |     async { yield print!(":C") };

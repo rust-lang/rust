@@ -583,7 +583,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    /// Lower an `async` construct to a generator that implements `Future`.
+    /// Lower an `async` construct to a coroutine that implements `Future`.
     ///
     /// This results in:
     ///
@@ -613,7 +613,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             span: unstable_span,
         };
 
-        // The closure/generator `FnDecl` takes a single (resume) argument of type `input_ty`.
+        // The closure/coroutine `FnDecl` takes a single (resume) argument of type `input_ty`.
         let fn_decl = self.arena.alloc(hir::FnDecl {
             inputs: arena_vec![self; input_ty],
             output,
@@ -637,7 +637,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let params = arena_vec![self; param];
 
         let body = self.lower_body(move |this| {
-            this.generator_kind = Some(hir::CoroutineKind::Async(async_gen_kind));
+            this.coroutine_kind = Some(hir::CoroutineKind::Async(async_gen_kind));
 
             let old_ctx = this.task_context;
             this.task_context = Some(task_context_hid);
@@ -710,7 +710,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     /// ```
     fn lower_expr_await(&mut self, await_kw_span: Span, expr: &Expr) -> hir::ExprKind<'hir> {
         let full_span = expr.span.to(await_kw_span);
-        match self.generator_kind {
+        match self.coroutine_kind {
             Some(hir::CoroutineKind::Async(_)) => {}
             Some(hir::CoroutineKind::Gen) | None => {
                 self.tcx.sess.emit_err(AwaitOnlyInAsyncFnAndBlocks {
@@ -887,19 +887,19 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ) -> hir::ExprKind<'hir> {
         let (binder_clause, generic_params) = self.lower_closure_binder(binder);
 
-        let (body_id, generator_option) = self.with_new_scopes(move |this| {
+        let (body_id, coroutine_option) = self.with_new_scopes(move |this| {
             let prev = this.current_item;
             this.current_item = Some(fn_decl_span);
-            let mut generator_kind = None;
+            let mut coroutine_kind = None;
             let body_id = this.lower_fn_body(decl, |this| {
                 let e = this.lower_expr_mut(body);
-                generator_kind = this.generator_kind;
+                coroutine_kind = this.coroutine_kind;
                 e
             });
-            let generator_option =
-                this.generator_movability_for_fn(&decl, fn_decl_span, generator_kind, movability);
+            let coroutine_option =
+                this.coroutine_movability_for_fn(&decl, fn_decl_span, coroutine_kind, movability);
             this.current_item = prev;
-            (body_id, generator_option)
+            (body_id, coroutine_option)
         });
 
         let bound_generic_params = self.lower_lifetime_binder(closure_id, generic_params);
@@ -915,21 +915,21 @@ impl<'hir> LoweringContext<'_, 'hir> {
             body: body_id,
             fn_decl_span: self.lower_span(fn_decl_span),
             fn_arg_span: Some(self.lower_span(fn_arg_span)),
-            movability: generator_option,
+            movability: coroutine_option,
             constness: self.lower_constness(constness),
         });
 
         hir::ExprKind::Closure(c)
     }
 
-    fn generator_movability_for_fn(
+    fn coroutine_movability_for_fn(
         &mut self,
         decl: &FnDecl,
         fn_decl_span: Span,
-        generator_kind: Option<hir::CoroutineKind>,
+        coroutine_kind: Option<hir::CoroutineKind>,
         movability: Movability,
     ) -> Option<hir::Movability> {
-        match generator_kind {
+        match coroutine_kind {
             Some(hir::CoroutineKind::Gen) => {
                 if decl.inputs.len() > 1 {
                     self.tcx.sess.emit_err(CoroutineTooManyParameters { fn_decl_span });
@@ -1444,12 +1444,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_expr_yield(&mut self, span: Span, opt_expr: Option<&Expr>) -> hir::ExprKind<'hir> {
-        match self.generator_kind {
+        match self.coroutine_kind {
             Some(hir::CoroutineKind::Gen) => {}
             Some(hir::CoroutineKind::Async(_)) => {
                 self.tcx.sess.emit_err(AsyncCoroutinesNotSupported { span });
             }
-            None => self.generator_kind = Some(hir::CoroutineKind::Gen),
+            None => self.coroutine_kind = Some(hir::CoroutineKind::Gen),
         }
 
         let expr =

@@ -2,7 +2,7 @@
 
 // aux-build:xcrate.rs
 
-#![feature(generators, generator_trait)]
+#![feature(coroutines, coroutine_trait)]
 
 extern crate xcrate;
 

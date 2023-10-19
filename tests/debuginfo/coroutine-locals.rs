@@ -54,7 +54,7 @@
 // lldbg-check:(int) $7 = 6
 // lldbr-check:(int) c = 6
 
-#![feature(omit_gdb_pretty_printer_section, generators, generator_trait)]
+#![feature(omit_gdb_pretty_printer_section, coroutines, coroutine_trait)]
 #![omit_gdb_pretty_printer_section]
 
 use std::ops::Coroutine;

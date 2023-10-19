@@ -1848,7 +1848,7 @@ impl<'a> Parser<'a> {
         let lo = self.prev_token.span;
         let kind = ExprKind::Yield(self.parse_expr_opt()?);
         let span = lo.to(self.prev_token.span);
-        self.sess.gated_spans.gate(sym::generators, span);
+        self.sess.gated_spans.gate(sym::coroutines, span);
         let expr = self.mk_expr(span, kind);
         self.maybe_recover_from_bad_qpath(expr)
     }

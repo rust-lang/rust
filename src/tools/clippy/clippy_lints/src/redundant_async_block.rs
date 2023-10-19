@@ -71,7 +71,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantAsyncBlock {
 fn desugar_async_block<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
     if let ExprKind::Closure(Closure { body, def_id, .. }) = expr.kind &&
         let body = cx.tcx.hir().body(*body) &&
-        matches!(body.generator_kind, Some(CoroutineKind::Async(AsyncCoroutineKind::Block)))
+        matches!(body.coroutine_kind, Some(CoroutineKind::Async(AsyncCoroutineKind::Block)))
     {
         cx
             .typeck_results()

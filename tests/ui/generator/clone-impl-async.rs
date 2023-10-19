@@ -1,8 +1,8 @@
 // edition:2021
-// gate-test-generator_clone
-// Verifies that feature(generator_clone) doesn't allow async blocks to be cloned/copied.
+// gate-test-coroutine_clone
+// Verifies that feature(coroutine_clone) doesn't allow async blocks to be cloned/copied.
 
-#![feature(generators, generator_clone)]
+#![feature(coroutines, coroutine_clone)]
 
 use std::future::ready;
 

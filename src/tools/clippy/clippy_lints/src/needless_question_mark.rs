@@ -87,7 +87,7 @@ impl LateLintPass<'_> for NeedlessQuestionMark {
     }
 
     fn check_body(&mut self, cx: &LateContext<'_>, body: &'_ Body<'_>) {
-        if let Some(CoroutineKind::Async(AsyncCoroutineKind::Fn)) = body.generator_kind {
+        if let Some(CoroutineKind::Async(AsyncCoroutineKind::Fn)) = body.coroutine_kind {
             if let ExprKind::Block(
                 Block {
                     expr:

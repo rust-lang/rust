@@ -1,10 +1,10 @@
 // build-pass
 
-// A test to ensure generators capture values that were conditionally dropped,
+// A test to ensure coroutines capture values that were conditionally dropped,
 // and also that values that are dropped along all paths to a yield do not get
-// included in the generator type.
+// included in the coroutine type.
 
-#![feature(generators, negative_impls)]
+#![feature(coroutines, negative_impls)]
 #![allow(unused_assignments, dead_code)]
 
 struct Ptr;

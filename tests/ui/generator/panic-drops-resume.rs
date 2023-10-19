@@ -1,9 +1,9 @@
-//! Tests that panics inside a generator will correctly drop the initial resume argument.
+//! Tests that panics inside a coroutine will correctly drop the initial resume argument.
 
 // run-pass
 // needs-unwind
 
-#![feature(generators, generator_trait)]
+#![feature(coroutines, coroutine_trait)]
 
 use std::ops::Coroutine;
 use std::panic::{catch_unwind, AssertUnwindSafe};

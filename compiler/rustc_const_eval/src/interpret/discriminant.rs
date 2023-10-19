@@ -1,4 +1,4 @@
-//! Functions for reading and writing discriminants of multi-variant layouts (enums and generators).
+//! Functions for reading and writing discriminants of multi-variant layouts (enums and coroutines).
 
 use rustc_middle::ty::layout::{LayoutOf, PrimitiveExt, TyAndLayout};
 use rustc_middle::{mir, ty};
@@ -171,10 +171,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         adt.discriminants(*self.tcx).find(|(_, var)| var.val == discr_bits)
                     }
                     ty::Coroutine(def_id, args, _) => {
-                        let args = args.as_generator();
+                        let args = args.as_coroutine();
                         args.discriminants(def_id, *self.tcx).find(|(_, var)| var.val == discr_bits)
                     }
-                    _ => span_bug!(self.cur_span(), "tagged layout for non-adt non-generator"),
+                    _ => span_bug!(self.cur_span(), "tagged layout for non-adt non-coroutine"),
                 }
                 .ok_or_else(|| err_ub!(InvalidTag(Scalar::from_uint(tag_bits, tag_layout.size))))?;
                 // Return the cast value, and the index.

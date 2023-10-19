@@ -1,5 +1,5 @@
 // edition:2018
-#![feature(generators, generator_trait)]
+#![feature(coroutines, coroutine_trait)]
 
 use std::future::Future;
 use std::ops::Coroutine;
@@ -8,35 +8,35 @@ async fn async_fn() {}
 fn returns_async_block() -> impl Future<Output = ()> {
     async {}
 }
-fn returns_generator() -> impl Coroutine<(), Yield = (), Return = ()> {
+fn returns_coroutine() -> impl Coroutine<(), Yield = (), Return = ()> {
     || {
         let _: () = yield ();
     }
 }
 
 fn takes_future(_f: impl Future<Output = ()>) {}
-fn takes_generator<ResumeTy>(_g: impl Coroutine<ResumeTy, Yield = (), Return = ()>) {}
+fn takes_coroutine<ResumeTy>(_g: impl Coroutine<ResumeTy, Yield = (), Return = ()>) {}
 
 fn main() {
     // okay:
     takes_future(async_fn());
     takes_future(returns_async_block());
     takes_future(async {});
-    takes_generator(returns_generator());
-    takes_generator(|| {
+    takes_coroutine(returns_coroutine());
+    takes_coroutine(|| {
         let _: () = yield ();
     });
 
-    // async futures are not generators:
-    takes_generator(async_fn());
+    // async futures are not coroutines:
+    takes_coroutine(async_fn());
     //~^ ERROR the trait bound
-    takes_generator(returns_async_block());
+    takes_coroutine(returns_async_block());
     //~^ ERROR the trait bound
-    takes_generator(async {});
+    takes_coroutine(async {});
     //~^ ERROR the trait bound
 
-    // generators are not futures:
-    takes_future(returns_generator());
+    // coroutines are not futures:
+    takes_future(returns_coroutine());
     //~^ ERROR is not a future
     takes_future(|ctx| {
         //~^ ERROR is not a future

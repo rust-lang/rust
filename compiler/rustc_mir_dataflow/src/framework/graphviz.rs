@@ -267,7 +267,7 @@ where
 
             mir::TerminatorKind::Yield { resume, resume_arg, .. } => {
                 self.write_row(w, "", "(on yield resume)", |this, w, fmt| {
-                    let state_on_generator_drop = this.results.get().clone();
+                    let state_on_coroutine_drop = this.results.get().clone();
                     this.results.apply_custom_effect(|analysis, state| {
                         analysis.apply_call_return_effect(
                             state,
@@ -283,7 +283,7 @@ where
                         fmt = fmt,
                         diff = diff_pretty(
                             this.results.get(),
-                            &state_on_generator_drop,
+                            &state_on_coroutine_drop,
                             this.results.analysis()
                         ),
                     )

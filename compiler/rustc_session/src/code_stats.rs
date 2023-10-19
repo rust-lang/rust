@@ -106,7 +106,7 @@ impl CodeStats {
         // used here so that source code order is preserved for all variants
         // that have the same size.
         // Except for Coroutines, whose variants are already sorted according to
-        // their yield points in `variant_info_for_generator`.
+        // their yield points in `variant_info_for_coroutine`.
         if kind != DataTypeKind::Coroutine {
             variants.sort_by_key(|info| cmp::Reverse(info.size));
         }

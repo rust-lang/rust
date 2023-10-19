@@ -257,20 +257,20 @@ pub fn dtorck_constraint_for_ty_inner<'tcx>(
 
         ty::Coroutine(_, args, _movability) => {
             // rust-lang/rust#49918: types can be constructed, stored
-            // in the interior, and sit idle when generator yields
+            // in the interior, and sit idle when coroutine yields
             // (and is subsequently dropped).
             //
             // It would be nice to descend into interior of a
-            // generator to determine what effects dropping it might
+            // coroutine to determine what effects dropping it might
             // have (by looking at any drop effects associated with
             // its interior).
             //
             // However, the interior's representation uses things like
             // CoroutineWitness that explicitly assume they are not
             // traversed in such a manner. So instead, we will
-            // simplify things for now by treating all generators as
+            // simplify things for now by treating all coroutines as
             // if they were like trait objects, where its upvars must
-            // all be alive for the generator's (potential)
+            // all be alive for the coroutine's (potential)
             // destructor.
             //
             // In particular, skipping over `_interior` is safe
@@ -279,20 +279,20 @@ pub fn dtorck_constraint_for_ty_inner<'tcx>(
             // derived from lifetimes attached to the upvars and resume
             // argument, and we *do* incorporate those here.
 
-            if !args.as_generator().is_valid() {
+            if !args.as_coroutine().is_valid() {
                 // By the time this code runs, all type variables ought to
                 // be fully resolved.
                 tcx.sess.delay_span_bug(
                     span,
-                    format!("upvar_tys for generator not found. Expected capture information for generator {ty}",),
+                    format!("upvar_tys for coroutine not found. Expected capture information for coroutine {ty}",),
                 );
                 return Err(NoSolution);
             }
 
             constraints
                 .outlives
-                .extend(args.as_generator().upvar_tys().iter().map(ty::GenericArg::from));
-            constraints.outlives.push(args.as_generator().resume_ty().into());
+                .extend(args.as_coroutine().upvar_tys().iter().map(ty::GenericArg::from));
+            constraints.outlives.push(args.as_coroutine().resume_ty().into());
         }
 
         ty::Adt(def, args) => {

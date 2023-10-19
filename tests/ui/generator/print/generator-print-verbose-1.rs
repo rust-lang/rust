@@ -1,8 +1,8 @@
 // compile-flags: -Zverbose
 
-// Same as: tests/ui/generator/issue-68112.stderr
+// Same as: tests/ui/coroutine/issue-68112.stderr
 
-#![feature(generators, generator_trait)]
+#![feature(coroutines, coroutine_trait)]
 
 use std::{
     cell::RefCell,
@@ -25,17 +25,17 @@ pub fn make_gen1<T>(t: T) -> Ready<T> {
 
 fn require_send(_: impl Send) {}
 
-fn make_non_send_generator() -> impl Coroutine<Return = Arc<RefCell<i32>>> {
+fn make_non_send_coroutine() -> impl Coroutine<Return = Arc<RefCell<i32>>> {
     make_gen1(Arc::new(RefCell::new(0)))
 }
 
 fn test1() {
     let send_gen = || {
-        let _non_send_gen = make_non_send_generator();
+        let _non_send_gen = make_non_send_coroutine();
         yield;
     };
     require_send(send_gen);
-    //~^ ERROR generator cannot be sent between threads
+    //~^ ERROR coroutine cannot be sent between threads
 }
 
 pub fn make_gen2<T>(t: T) -> impl Coroutine<Return = T> {
@@ -44,13 +44,13 @@ pub fn make_gen2<T>(t: T) -> impl Coroutine<Return = T> {
         t
     }
 }
-fn make_non_send_generator2() -> impl Coroutine<Return = Arc<RefCell<i32>>> {
+fn make_non_send_coroutine2() -> impl Coroutine<Return = Arc<RefCell<i32>>> {
     make_gen2(Arc::new(RefCell::new(0)))
 }
 
 fn test2() {
     let send_gen = || {
-        let _non_send_gen = make_non_send_generator2();
+        let _non_send_gen = make_non_send_coroutine2();
         yield;
     };
     require_send(send_gen);

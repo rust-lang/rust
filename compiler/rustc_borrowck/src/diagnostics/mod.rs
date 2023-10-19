@@ -501,8 +501,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 pub(super) enum UseSpans<'tcx> {
     /// The access is caused by capturing a variable for a closure.
     ClosureUse {
-        /// This is true if the captured variable was from a generator.
-        generator_kind: Option<CoroutineKind>,
+        /// This is true if the captured variable was from a coroutine.
+        coroutine_kind: Option<CoroutineKind>,
         /// The span of the args of the closure, including the `move` keyword if
         /// it's present.
         args_span: Span,
@@ -569,9 +569,9 @@ impl UseSpans<'_> {
         }
     }
 
-    pub(super) fn generator_kind(self) -> Option<CoroutineKind> {
+    pub(super) fn coroutine_kind(self) -> Option<CoroutineKind> {
         match self {
-            UseSpans::ClosureUse { generator_kind, .. } => generator_kind,
+            UseSpans::ClosureUse { coroutine_kind, .. } => coroutine_kind,
             _ => None,
         }
     }
@@ -596,8 +596,8 @@ impl UseSpans<'_> {
     ) {
         use crate::InitializationRequiringAction::*;
         use CaptureVarPathUseCause::*;
-        if let UseSpans::ClosureUse { generator_kind, path_span, .. } = self {
-            match generator_kind {
+        if let UseSpans::ClosureUse { coroutine_kind, path_span, .. } = self {
+            match coroutine_kind {
                 Some(_) => {
                     err.subdiagnostic(match action {
                         Borrow => BorrowInCoroutine { path_span },
@@ -626,7 +626,7 @@ impl UseSpans<'_> {
         kind: Option<rustc_middle::mir::BorrowKind>,
         f: impl FnOnce(Option<CoroutineKind>, Span) -> CaptureVarCause,
     ) {
-        if let UseSpans::ClosureUse { generator_kind, capture_kind_span, path_span, .. } = self {
+        if let UseSpans::ClosureUse { coroutine_kind, capture_kind_span, path_span, .. } = self {
             if capture_kind_span != path_span {
                 err.subdiagnostic(match kind {
                     Some(kd) => match kd {
@@ -642,7 +642,7 @@ impl UseSpans<'_> {
                     None => CaptureVarKind::Move { kind_span: capture_kind_span },
                 });
             };
-            let diag = f(generator_kind, path_span);
+            let diag = f(coroutine_kind, path_span);
             match handler {
                 Some(hd) => err.eager_subdiagnostic(hd, diag),
                 None => err.subdiagnostic(diag),
@@ -653,15 +653,15 @@ impl UseSpans<'_> {
     /// Returns `false` if this place is not used in a closure.
     pub(super) fn for_closure(&self) -> bool {
         match *self {
-            UseSpans::ClosureUse { generator_kind, .. } => generator_kind.is_none(),
+            UseSpans::ClosureUse { coroutine_kind, .. } => coroutine_kind.is_none(),
             _ => false,
         }
     }
 
-    /// Returns `false` if this place is not used in a generator.
-    pub(super) fn for_generator(&self) -> bool {
+    /// Returns `false` if this place is not used in a coroutine.
+    pub(super) fn for_coroutine(&self) -> bool {
         match *self {
-            UseSpans::ClosureUse { generator_kind, .. } => generator_kind.is_some(),
+            UseSpans::ClosureUse { coroutine_kind, .. } => coroutine_kind.is_some(),
             _ => false,
         }
     }
@@ -785,10 +785,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         {
             debug!("move_spans: def_id={:?} places={:?}", def_id, places);
             let def_id = def_id.expect_local();
-            if let Some((args_span, generator_kind, capture_kind_span, path_span)) =
+            if let Some((args_span, coroutine_kind, capture_kind_span, path_span)) =
                 self.closure_span(def_id, moved_place, places)
             {
-                return ClosureUse { generator_kind, args_span, capture_kind_span, path_span };
+                return ClosureUse { coroutine_kind, args_span, capture_kind_span, path_span };
             }
         }
 
@@ -800,11 +800,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 | FakeReadCause::ForLet(Some(closure_def_id)) => {
                     debug!("move_spans: def_id={:?} place={:?}", closure_def_id, place);
                     let places = &[Operand::Move(place)];
-                    if let Some((args_span, generator_kind, capture_kind_span, path_span)) =
+                    if let Some((args_span, coroutine_kind, capture_kind_span, path_span)) =
                         self.closure_span(closure_def_id, moved_place, IndexSlice::from_raw(places))
                     {
                         return ClosureUse {
-                            generator_kind,
+                            coroutine_kind,
                             args_span,
                             capture_kind_span,
                             path_span,
@@ -914,7 +914,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         for stmt in statements.chain(maybe_additional_statement) {
             if let StatementKind::Assign(box (_, Rvalue::Aggregate(kind, places))) = &stmt.kind {
-                let (&def_id, is_generator) = match kind {
+                let (&def_id, is_coroutine) = match kind {
                     box AggregateKind::Closure(def_id, _) => (def_id, false),
                     box AggregateKind::Coroutine(def_id, _, _) => (def_id, true),
                     _ => continue,
@@ -922,13 +922,13 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 let def_id = def_id.expect_local();
 
                 debug!(
-                    "borrow_spans: def_id={:?} is_generator={:?} places={:?}",
-                    def_id, is_generator, places
+                    "borrow_spans: def_id={:?} is_coroutine={:?} places={:?}",
+                    def_id, is_coroutine, places
                 );
-                if let Some((args_span, generator_kind, capture_kind_span, path_span)) =
+                if let Some((args_span, coroutine_kind, capture_kind_span, path_span)) =
                     self.closure_span(def_id, Place::from(target).as_ref(), places)
                 {
-                    return ClosureUse { generator_kind, args_span, capture_kind_span, path_span };
+                    return ClosureUse { coroutine_kind, args_span, capture_kind_span, path_span };
                 } else {
                     return OtherUse(use_span);
                 }
@@ -942,7 +942,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         OtherUse(use_span)
     }
 
-    /// Finds the spans of a captured place within a closure or generator.
+    /// Finds the spans of a captured place within a closure or coroutine.
     /// The first span is the location of the use resulting in the capture kind of the capture
     /// The second span is the location the use resulting in the captured path of the capture
     fn closure_span(
@@ -968,11 +968,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     {
                         debug!("closure_span: found captured local {:?}", place);
                         let body = self.infcx.tcx.hir().body(body);
-                        let generator_kind = body.generator_kind();
+                        let coroutine_kind = body.coroutine_kind();
 
                         return Some((
                             fn_decl_span,
-                            generator_kind,
+                            coroutine_kind,
                             captured_place.get_capture_kind_span(self.infcx.tcx),
                             captured_place.get_path_span(self.infcx.tcx),
                         ));

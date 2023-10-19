@@ -1,7 +1,7 @@
 error: lifetime bound not satisfied
   --> $DIR/issue-100013.rs:15:5
    |
-LL | /     async { // a generator checked for autotrait impl `Send`
+LL | /     async { // a coroutine checked for autotrait impl `Send`
 LL | |         let x = None::<I::Future<'_, '_>>; // a type referencing GAT
 LL | |         async {}.await; // a yield point
 LL | |     }
@@ -12,7 +12,7 @@ LL | |     }
 error: lifetime bound not satisfied
   --> $DIR/issue-100013.rs:22:5
    |
-LL | /     async { // a generator checked for autotrait impl `Send`
+LL | /     async { // a coroutine checked for autotrait impl `Send`
 LL | |         let x = None::<I::Future<'a, 'b>>; // a type referencing GAT
 LL | |         async {}.await; // a yield point
 LL | |     }
@@ -27,7 +27,7 @@ LL | fn call2<'a, 'b, I: FutureIterator>() -> impl Send {
    |          --  -- lifetime `'b` defined here
    |          |
    |          lifetime `'a` defined here
-LL |     async { // a generator checked for autotrait impl `Send`
+LL |     async { // a coroutine checked for autotrait impl `Send`
 LL |         let x = None::<I::Future<'a, 'b>>; // a type referencing GAT
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'a` must outlive `'b`
    |
@@ -36,7 +36,7 @@ LL |         let x = None::<I::Future<'a, 'b>>; // a type referencing GAT
 error: lifetime bound not satisfied
   --> $DIR/issue-100013.rs:29:5
    |
-LL | /     async { // a generator checked for autotrait impl `Send`
+LL | /     async { // a coroutine checked for autotrait impl `Send`
 LL | |         let x = None::<I::Future<'a, 'b>>; // a type referencing GAT
 LL | |         async {}.await; // a yield point
 LL | |     }

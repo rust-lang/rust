@@ -2821,7 +2821,7 @@ impl<'tcx> ObligationCauseExt<'tcx> for ObligationCause<'tcx> {
             // say, also take a look at the error code, maybe we can
             // tailor to that.
             _ => match terr {
-                TypeError::CyclicTy(ty) if ty.is_closure() || ty.is_generator() => Error0644,
+                TypeError::CyclicTy(ty) if ty.is_closure() || ty.is_coroutine() => Error0644,
                 TypeError::IntrinsicCast => Error0308,
                 _ => Error0308,
             },
@@ -2868,7 +2868,7 @@ impl<'tcx> ObligationCauseExt<'tcx> for ObligationCause<'tcx> {
             // say, also take a look at the error code, maybe we can
             // tailor to that.
             _ => match terr {
-                TypeError::CyclicTy(ty) if ty.is_closure() || ty.is_generator() => {
+                TypeError::CyclicTy(ty) if ty.is_closure() || ty.is_coroutine() => {
                     ObligationCauseFailureCode::ClosureSelfref { span }
                 }
                 TypeError::IntrinsicCast => {
@@ -2960,7 +2960,7 @@ impl TyCategory {
                 Some((kind, def_id))
             }
             ty::Coroutine(def_id, ..) => {
-                Some((Self::Coroutine(tcx.generator_kind(def_id).unwrap()), def_id))
+                Some((Self::Coroutine(tcx.coroutine_kind(def_id).unwrap()), def_id))
             }
             ty::Foreign(def_id) => Some((Self::Foreign, def_id)),
             _ => None,

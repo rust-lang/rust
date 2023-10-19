@@ -1,4 +1,4 @@
-#![feature(generators)]
+#![feature(coroutines)]
 
 enum Test { A(i32), B, }
 
@@ -6,7 +6,7 @@ fn main() { }
 
 fn fun(test: Test) {
     move || {
-        if let Test::A(ref _a) = test { //~ ERROR borrow may still be in use when generator yields
+        if let Test::A(ref _a) = test { //~ ERROR borrow may still be in use when coroutine yields
             yield ();
             _a.use_ref();
         }

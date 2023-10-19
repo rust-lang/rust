@@ -6,7 +6,7 @@
 // ignore-emscripten no threads support
 // compile-flags: --test
 
-#![feature(generators, generator_trait)]
+#![feature(coroutines, coroutine_trait)]
 
 use std::ops::{CoroutineState, Coroutine};
 use std::pin::Pin;

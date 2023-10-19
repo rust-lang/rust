@@ -472,11 +472,11 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                 self.check_unwind_edge(location, *unwind);
             }
             TerminatorKind::Yield { resume, drop, .. } => {
-                if self.body.generator.is_none() {
-                    self.fail(location, "`Yield` cannot appear outside generator bodies");
+                if self.body.coroutine.is_none() {
+                    self.fail(location, "`Yield` cannot appear outside coroutine bodies");
                 }
                 if self.mir_phase >= MirPhase::Runtime(RuntimePhase::Initial) {
-                    self.fail(location, "`Yield` should have been replaced by generator lowering");
+                    self.fail(location, "`Yield` should have been replaced by coroutine lowering");
                 }
                 self.check_edge(location, *resume, EdgeKind::Normal);
                 if let Some(drop) = drop {
@@ -510,13 +510,13 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                 self.check_unwind_edge(location, *unwind);
             }
             TerminatorKind::CoroutineDrop => {
-                if self.body.generator.is_none() {
-                    self.fail(location, "`CoroutineDrop` cannot appear outside generator bodies");
+                if self.body.coroutine.is_none() {
+                    self.fail(location, "`CoroutineDrop` cannot appear outside coroutine bodies");
                 }
                 if self.mir_phase >= MirPhase::Runtime(RuntimePhase::Initial) {
                     self.fail(
                         location,
-                        "`CoroutineDrop` should have been replaced by generator lowering",
+                        "`CoroutineDrop` should have been replaced by coroutine lowering",
                     );
                 }
             }
@@ -724,10 +724,10 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                                 self.tcx.optimized_mir(def_id)
                             };
 
-                            let Some(layout) = gen_body.generator_layout() else {
+                            let Some(layout) = gen_body.coroutine_layout() else {
                                 self.fail(
                                     location,
-                                    format!("No generator layout for {parent_ty:?}"),
+                                    format!("No coroutine layout for {parent_ty:?}"),
                                 );
                                 return;
                             };
@@ -747,7 +747,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
 
                             ty::EarlyBinder::bind(f_ty.ty).instantiate(self.tcx, args)
                         } else {
-                            let Some(&f_ty) = args.as_generator().prefix_tys().get(f.index())
+                            let Some(&f_ty) = args.as_coroutine().prefix_tys().get(f.index())
                             else {
                                 fail_out_of_bounds(self, location);
                                 return;
@@ -1215,7 +1215,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     self.fail(
                         location,
                         format!(
-                            "`SetDiscriminant` is only allowed on ADTs and generators, not {pty:?}"
+                            "`SetDiscriminant` is only allowed on ADTs and coroutines, not {pty:?}"
                         ),
                     );
                 }

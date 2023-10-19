@@ -325,17 +325,17 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
 
         // Coroutines are not futures unless they come from `async` desugaring
         let tcx = ecx.tcx();
-        if !tcx.generator_is_async(def_id) {
+        if !tcx.coroutine_is_async(def_id) {
             return Err(NoSolution);
         }
 
-        // Async generator unconditionally implement `Future`
+        // Async coroutine unconditionally implement `Future`
         // Technically, we need to check that the future output type is Sized,
-        // but that's already proven by the generator being WF.
+        // but that's already proven by the coroutine being WF.
         ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }
 
-    fn consider_builtin_generator_candidate(
+    fn consider_builtin_coroutine_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
@@ -348,20 +348,20 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             return Err(NoSolution);
         };
 
-        // `async`-desugared generators do not implement the generator trait
+        // `async`-desugared coroutines do not implement the coroutine trait
         let tcx = ecx.tcx();
-        if tcx.generator_is_async(def_id) {
+        if tcx.coroutine_is_async(def_id) {
             return Err(NoSolution);
         }
 
-        let generator = args.as_generator();
+        let coroutine = args.as_coroutine();
         Self::consider_implied_clause(
             ecx,
             goal,
-            ty::TraitRef::new(tcx, goal.predicate.def_id(), [self_ty, generator.resume_ty()])
+            ty::TraitRef::new(tcx, goal.predicate.def_id(), [self_ty, coroutine.resume_ty()])
                 .to_predicate(tcx),
-            // Technically, we need to check that the generator types are Sized,
-            // but that's already proven by the generator being WF.
+            // Technically, we need to check that the coroutine types are Sized,
+            // but that's already proven by the coroutine being WF.
             [],
         )
     }

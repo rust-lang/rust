@@ -763,7 +763,7 @@ fn switch_on_enum_discriminant<'mir, 'tcx>(
                     ty::Adt(def, _) => return Some((*discriminated, *def)),
 
                     // `Rvalue::Discriminant` is also used to get the active yield point for a
-                    // generator, but we do not need edge-specific effects in that case. This may
+                    // coroutine, but we do not need edge-specific effects in that case. This may
                     // change in the future.
                     ty::Coroutine(..) => return None,
 

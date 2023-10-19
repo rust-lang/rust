@@ -145,10 +145,10 @@ pub struct CoroutineSavedTy<'tcx> {
     pub ignore_for_traits: bool,
 }
 
-/// The layout of generator state.
+/// The layout of coroutine state.
 #[derive(Clone, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
 pub struct CoroutineLayout<'tcx> {
-    /// The type of every local stored inside the generator.
+    /// The type of every local stored inside the coroutine.
     pub field_tys: IndexVec<CoroutineSavedLocal, CoroutineSavedTy<'tcx>>,
 
     /// The name for debuginfo.
@@ -185,7 +185,7 @@ impl Debug for CoroutineLayout<'_> {
             }
         }
 
-        /// Prints the generator variant name.
+        /// Prints the coroutine variant name.
         struct GenVariantPrinter(VariantIdx);
         impl From<VariantIdx> for GenVariantPrinter {
             fn from(idx: VariantIdx) -> Self {
@@ -259,7 +259,7 @@ pub struct ConstQualifs {
 ///
 /// The requirements are listed as being between various `RegionVid`. The 0th
 /// region refers to `'static`; subsequent region vids refer to the free
-/// regions that appear in the closure (or generator's) type, in order of
+/// regions that appear in the closure (or coroutine's) type, in order of
 /// appearance. (This numbering is actually defined by the `UniversalRegions`
 /// struct in the NLL region checker. See for example
 /// `UniversalRegions::closure_mapping`.) Note the free regions in the

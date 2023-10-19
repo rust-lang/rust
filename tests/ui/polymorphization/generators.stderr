@@ -1,7 +1,7 @@
 warning: the feature `generic_const_exprs` is incomplete and may not be safe to use and/or cause compiler crashes
   --> $DIR/generators.rs:3:12
    |
-LL | #![feature(generic_const_exprs, generators, generator_trait, rustc_attrs)]
+LL | #![feature(generic_const_exprs, coroutines, coroutine_trait, rustc_attrs)]
    |            ^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #76560 <https://github.com/rust-lang/rust/issues/76560> for more information

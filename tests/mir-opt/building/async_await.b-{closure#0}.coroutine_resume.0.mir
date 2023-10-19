@@ -1,5 +1,5 @@
-// MIR for `b::{closure#0}` 0 generator_resume
-/* generator_layout = CoroutineLayout {
+// MIR for `b::{closure#0}` 0 coroutine_resume
+/* coroutine_layout = CoroutineLayout {
     field_tys: {
         _0: CoroutineSavedTy {
             ty: Coroutine(

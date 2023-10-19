@@ -1,4 +1,4 @@
-error: generator cannot be sent between threads safely
+error: coroutine cannot be sent between threads safely
   --> $DIR/ref-upvar-not-send.rs:15:17
    |
 LL |       assert_send(move || {
@@ -8,7 +8,7 @@ LL | |
 LL | |         yield;
 LL | |         let _x = x;
 LL | |     });
-   | |_____^ generator is not `Send`
+   | |_____^ coroutine is not `Send`
    |
    = help: the trait `Sync` is not implemented for `*mut ()`
 note: captured value is not `Send` because `&` references cannot be sent unless their referent is `Sync`
@@ -22,7 +22,7 @@ note: required by a bound in `assert_send`
 LL | fn assert_send<T: Send>(_: T) {}
    |                   ^^^^ required by this bound in `assert_send`
 
-error: generator cannot be sent between threads safely
+error: coroutine cannot be sent between threads safely
   --> $DIR/ref-upvar-not-send.rs:23:17
    |
 LL |       assert_send(move || {
@@ -32,9 +32,9 @@ LL | |
 LL | |         yield;
 LL | |         let _y = y;
 LL | |     });
-   | |_____^ generator is not `Send`
+   | |_____^ coroutine is not `Send`
    |
-   = help: within `{generator@$DIR/ref-upvar-not-send.rs:23:17: 23:24}`, the trait `Send` is not implemented for `*mut ()`
+   = help: within `{coroutine@$DIR/ref-upvar-not-send.rs:23:17: 23:24}`, the trait `Send` is not implemented for `*mut ()`
 note: captured value is not `Send` because `&mut` references cannot be sent unless their referent is `Send`
   --> $DIR/ref-upvar-not-send.rs:27:18
    |

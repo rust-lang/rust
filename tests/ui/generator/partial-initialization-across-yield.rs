@@ -1,7 +1,7 @@
-// Test that we don't allow yielding from a generator while a local is partially
+// Test that we don't allow yielding from a coroutine while a local is partially
 // initialized.
 
-#![feature(generators)]
+#![feature(coroutines)]
 
 struct S { x: i32, y: i32 }
 struct T(i32, i32);

@@ -1,4 +1,4 @@
-#![feature(generators, generator_trait)]
+#![feature(coroutines, coroutine_trait)]
 
 use std::ops::{Coroutine, CoroutineState};
 use std::pin::Pin;
@@ -11,7 +11,7 @@ impl<'a, 'b> Drop for SetToNone<'a, 'b> {
     }
 }
 
-fn drop_using_generator() -> i32 {
+fn drop_using_coroutine() -> i32 {
     let mut y = Some(&0);
     let z = &mut y;
     let r;
@@ -29,5 +29,5 @@ fn drop_using_generator() -> i32 {
 }
 
 fn main() {
-    println!("{}", drop_using_generator());
+    println!("{}", drop_using_coroutine());
 }

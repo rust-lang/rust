@@ -59,10 +59,10 @@ impl<'tcx> MirLint<'tcx> for ConstPropLint {
             return;
         }
 
-        // FIXME(welseywiser) const prop doesn't work on generators because of query cycles
+        // FIXME(welseywiser) const prop doesn't work on coroutines because of query cycles
         // computing their layout.
         if let DefKind::Coroutine = def_kind {
-            trace!("ConstPropLint skipped for generator {:?}", def_id);
+            trace!("ConstPropLint skipped for coroutine {:?}", def_id);
             return;
         }
 

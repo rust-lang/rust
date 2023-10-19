@@ -1,10 +1,10 @@
 // compile-flags: -Zverbose
 
-#![feature(generators, generator_trait)]
+#![feature(coroutines, coroutine_trait)]
 
 fn main() {
     let x = "Type mismatch test";
-    let generator :() = || {
+    let coroutine :() = || {
     //~^ ERROR mismatched types
         yield 1i32;
         return x

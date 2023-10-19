@@ -1,8 +1,8 @@
-// gate-test-generator_clone
-// Verifies that non-static generators can be cloned/copied if all their upvars and locals held
+// gate-test-coroutine_clone
+// Verifies that non-static coroutines can be cloned/copied if all their upvars and locals held
 // across awaits can be cloned/copied.
 
-#![feature(generators, generator_clone)]
+#![feature(coroutines, coroutine_clone)]
 
 struct NonClone;
 

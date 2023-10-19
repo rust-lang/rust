@@ -1,5 +1,5 @@
 // build-pass
-#![feature(generators)]
+#![feature(coroutines)]
 
 static A: [i32; 5] = [1, 2, 3, 4, 5];
 

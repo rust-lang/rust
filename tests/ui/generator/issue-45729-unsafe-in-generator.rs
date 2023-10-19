@@ -1,7 +1,7 @@
 // revisions: mir thir
 // [thir]compile-flags: -Z thir-unsafeck
 
-#![feature(generators)]
+#![feature(coroutines)]
 
 fn main() {
     let _ = || {

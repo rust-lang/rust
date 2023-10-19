@@ -1,6 +1,6 @@
 // build-fail
 // compile-flags:-Zpolymorphize=on -Zinline-mir=off
-#![feature(generic_const_exprs, generators, generator_trait, rustc_attrs)]
+#![feature(generic_const_exprs, coroutines, coroutine_trait, rustc_attrs)]
 //~^ WARN the feature `generic_const_exprs` is incomplete
 
 use std::marker::Unpin;
@@ -28,7 +28,7 @@ where
     }
 }
 
-// This test checks that the polymorphization analysis functions on generators.
+// This test checks that the polymorphization analysis functions on coroutines.
 
 #[rustc_polymorphize_error]
 pub fn unused_type<T>() -> impl Coroutine<(), Yield = u32, Return = u32> + Unpin {

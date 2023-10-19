@@ -325,7 +325,7 @@ impl<T> Trait<T> for X {
             }
             CyclicTy(ty) => {
                 // Watch out for various cases of cyclic types and try to explain.
-                if ty.is_closure() || ty.is_generator() {
+                if ty.is_closure() || ty.is_coroutine() {
                     diag.note(
                         "closures cannot capture themselves or take themselves as argument;\n\
                          this error may be the result of a recent compiler bug-fix,\n\

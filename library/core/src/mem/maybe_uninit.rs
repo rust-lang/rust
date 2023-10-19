@@ -242,7 +242,7 @@ use crate::slice;
 /// the same size, alignment, and ABI as `T`; it's just that the way `MaybeUninit` implements that
 /// guarantee may evolve.
 #[stable(feature = "maybe_uninit", since = "1.36.0")]
-// Lang item so we can wrap other types in it. This is useful for generators.
+// Lang item so we can wrap other types in it. This is useful for coroutines.
 #[lang = "maybe_uninit"]
 #[derive(Copy)]
 #[repr(transparent)]

@@ -227,7 +227,7 @@ struct MarkUsedGenericParams<'a, 'tcx> {
 
 impl<'a, 'tcx> MarkUsedGenericParams<'a, 'tcx> {
     /// Invoke `unused_generic_params` on a body contained within the current item (e.g.
-    /// a closure, generator or constant).
+    /// a closure, coroutine or constant).
     #[instrument(level = "debug", skip(self, def_id, args))]
     fn visit_child_body(&mut self, def_id: DefId, args: GenericArgsRef<'tcx>) {
         let instance = ty::InstanceDef::Item(def_id);
@@ -249,7 +249,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
         if local == Local::from_usize(1) {
             let def_kind = self.tcx.def_kind(self.def_id);
             if matches!(def_kind, DefKind::Closure | DefKind::Coroutine) {
-                // Skip visiting the closure/generator that is currently being processed. This only
+                // Skip visiting the closure/coroutine that is currently being processed. This only
                 // happens because the first argument to the closure is a reference to itself and
                 // that will call `visit_args`, resulting in each generic parameter captured being
                 // considered used by default.
@@ -321,12 +321,12 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for MarkUsedGenericParams<'a, 'tcx> {
         match *ty.kind() {
             ty::Closure(def_id, args) | ty::Coroutine(def_id, args, ..) => {
                 debug!(?def_id);
-                // Avoid cycle errors with generators.
+                // Avoid cycle errors with coroutines.
                 if def_id == self.def_id {
                     return ControlFlow::Continue(());
                 }
 
-                // Consider any generic parameters used by any closures/generators as used in the
+                // Consider any generic parameters used by any closures/coroutines as used in the
                 // parent.
                 self.visit_child_body(def_id, args);
                 ControlFlow::Continue(())

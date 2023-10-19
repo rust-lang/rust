@@ -4,7 +4,7 @@
 // `complex` below.)
 //
 // The exact sizes here can change (we'd like to know when they do). What we
-// don't want to see is the `complex` generator size being upwards of 2048 bytes
+// don't want to see is the `complex` coroutine size being upwards of 2048 bytes
 // (which would indicate it is reserving space for two copies of Foo.)
 //
 // See issue #59123 for a full explanation.
@@ -14,7 +14,7 @@
 // ignore-asmjs issue #62807
 // needs-unwind Size of Closures change on panic=abort
 
-#![feature(generators, generator_trait)]
+#![feature(coroutines, coroutine_trait)]
 
 use std::ops::Coroutine;
 

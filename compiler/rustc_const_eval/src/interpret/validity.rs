@@ -171,8 +171,8 @@ fn write_path(out: &mut String, path: &[PathElem]) {
             Field(name) => write!(out, ".{name}"),
             EnumTag => write!(out, ".<enum-tag>"),
             Variant(name) => write!(out, ".<enum-variant({name})>"),
-            CoroutineTag => write!(out, ".<generator-tag>"),
-            CoroutineState(idx) => write!(out, ".<generator-state({})>", idx.index()),
+            CoroutineTag => write!(out, ".<coroutine-tag>"),
+            CoroutineState(idx) => write!(out, ".<coroutine-state({})>", idx.index()),
             CapturedVar(name) => write!(out, ".<captured-var({name})>"),
             TupleElem(idx) => write!(out, ".{idx}"),
             ArrayElem(idx) => write!(out, "[{idx}]"),
@@ -216,7 +216,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
 
         // Now we know we are projecting to a field, so figure out which one.
         match layout.ty.kind() {
-            // generators and closures.
+            // coroutines and closures.
             ty::Closure(def_id, _) | ty::Coroutine(def_id, _, _) => {
                 let mut name = None;
                 // FIXME this should be more descriptive i.e. CapturePlace instead of CapturedVar
@@ -225,7 +225,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                     let captures = self.ecx.tcx.closure_captures(local_def_id);
                     if let Some(captured_place) = captures.get(field) {
                         // Sometimes the index is beyond the number of upvars (seen
-                        // for a generator).
+                        // for a coroutine).
                         let var_hir_id = captured_place.get_root_variable();
                         let node = self.ecx.tcx.hir().get(var_hir_id);
                         if let hir::Node::Pat(pat) = node {

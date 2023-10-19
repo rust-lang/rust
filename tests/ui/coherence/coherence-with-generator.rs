@@ -1,5 +1,5 @@
 // Test that encountering closures during coherence does not cause issues.
-#![feature(type_alias_impl_trait, generators)]
+#![feature(type_alias_impl_trait, coroutines)]
 #![cfg_attr(specialized, feature(specialization))]
 #![allow(incomplete_features)]
 

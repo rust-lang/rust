@@ -1,31 +1,31 @@
-#![feature(generator_trait)]
-#![feature(generators)]
+#![feature(coroutine_trait)]
+#![feature(coroutines)]
 
-// Test that we cannot create a generator that returns a value of its
+// Test that we cannot create a coroutine that returns a value of its
 // own type.
 
 use std::ops::Coroutine;
 
-pub fn want_cyclic_generator_return<T>(_: T)
+pub fn want_cyclic_coroutine_return<T>(_: T)
     where T: Coroutine<Yield = (), Return = T>
 {
 }
 
-fn supply_cyclic_generator_return() {
-    want_cyclic_generator_return(|| {
+fn supply_cyclic_coroutine_return() {
+    want_cyclic_coroutine_return(|| {
         //~^ ERROR type mismatch
         if false { yield None.unwrap(); }
         None.unwrap()
     })
 }
 
-pub fn want_cyclic_generator_yield<T>(_: T)
+pub fn want_cyclic_coroutine_yield<T>(_: T)
     where T: Coroutine<Yield = T, Return = ()>
 {
 }
 
-fn supply_cyclic_generator_yield() {
-    want_cyclic_generator_yield(|| {
+fn supply_cyclic_coroutine_yield() {
+    want_cyclic_coroutine_yield(|| {
         //~^ ERROR type mismatch
         if false { yield None.unwrap(); }
         None.unwrap()

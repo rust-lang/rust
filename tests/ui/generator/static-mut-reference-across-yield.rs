@@ -2,7 +2,7 @@
 // revisions: mir thir
 // [thir]compile-flags: -Zthir-unsafeck
 
-#![feature(generators)]
+#![feature(coroutines)]
 
 static mut A: [i32; 5] = [1, 2, 3, 4, 5];
 

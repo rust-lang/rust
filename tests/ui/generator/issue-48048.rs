@@ -1,4 +1,4 @@
-#![feature(generators)]
+#![feature(coroutines)]
 
 fn main() {
     let x = (|_| {},);
@@ -6,7 +6,7 @@ fn main() {
     || {
         let x = x;
 
-        x.0({ //~ ERROR borrow may still be in use when generator yields
+        x.0({ //~ ERROR borrow may still be in use when coroutine yields
             yield;
         });
     };

@@ -12,7 +12,7 @@ use crate::solve::EvalCtxt;
 
 // Calculates the constituent types of a type for `auto trait` purposes.
 //
-// For types with an "existential" binder, i.e. generator witnesses, we also
+// For types with an "existential" binder, i.e. coroutine witnesses, we also
 // instantiate the binder with placeholders eagerly.
 pub(in crate::solve) fn instantiate_constituent_tys_for_auto_trait<'tcx>(
     ecx: &EvalCtxt<'_, 'tcx>,
@@ -57,13 +57,13 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_auto_trait<'tcx>(
         ty::Closure(_, ref args) => Ok(vec![args.as_closure().tupled_upvars_ty()]),
 
         ty::Coroutine(_, ref args, _) => {
-            let generator_args = args.as_generator();
-            Ok(vec![generator_args.tupled_upvars_ty(), generator_args.witness()])
+            let coroutine_args = args.as_coroutine();
+            Ok(vec![coroutine_args.tupled_upvars_ty(), coroutine_args.witness()])
         }
 
         ty::CoroutineWitness(def_id, args) => Ok(ecx
             .tcx()
-            .generator_hidden_types(def_id)
+            .coroutine_hidden_types(def_id)
             .map(|bty| {
                 ecx.instantiate_binder_with_placeholders(replace_erased_lifetimes_with_bound_vars(
                     tcx,
@@ -192,9 +192,9 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
         ty::Closure(_, args) => Ok(vec![args.as_closure().tupled_upvars_ty()]),
 
         ty::Coroutine(_, args, Movability::Movable) => {
-            if ecx.tcx().features().generator_clone {
-                let generator = args.as_generator();
-                Ok(vec![generator.tupled_upvars_ty(), generator.witness()])
+            if ecx.tcx().features().coroutine_clone {
+                let coroutine = args.as_coroutine();
+                Ok(vec![coroutine.tupled_upvars_ty(), coroutine.witness()])
             } else {
                 Err(NoSolution)
             }
@@ -202,7 +202,7 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
 
         ty::CoroutineWitness(def_id, args) => Ok(ecx
             .tcx()
-            .generator_hidden_types(def_id)
+            .coroutine_hidden_types(def_id)
             .map(|bty| {
                 ecx.instantiate_binder_with_placeholders(replace_erased_lifetimes_with_bound_vars(
                     ecx.tcx(),

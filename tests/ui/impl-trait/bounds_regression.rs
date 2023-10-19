@@ -9,7 +9,7 @@ pub trait FakeFuture {
     type Output;
 }
 
-pub fn future_from_generator<
+pub fn future_from_coroutine<
     T: FakeCoroutine<Yield = ()>
 >(x: T) -> impl FakeFuture<Output = T::Return> {
     GenFuture(x)

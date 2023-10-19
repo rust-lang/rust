@@ -144,7 +144,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClosureCall {
             // without this check, we'd end up linting twice.
             && !matches!(recv.kind, hir::ExprKind::Call(..))
             && let (full_expr, call_depth) = get_parent_call_exprs(cx, expr)
-            && let Some((body, fn_decl, generator_kind)) = find_innermost_closure(cx, recv, call_depth)
+            && let Some((body, fn_decl, coroutine_kind)) = find_innermost_closure(cx, recv, call_depth)
         {
             span_lint_and_then(
                 cx,
@@ -156,7 +156,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClosureCall {
                         let mut applicability = Applicability::MachineApplicable;
                         let mut hint = Sugg::hir_with_context(cx, body, full_expr.span.ctxt(), "..", &mut applicability);
 
-                        if generator_kind.is_async()
+                        if coroutine_kind.is_async()
                             && let hir::ExprKind::Closure(closure) = body.kind
                         {
                             let async_closure_body = cx.tcx.hir().body(closure.body);

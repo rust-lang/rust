@@ -2106,7 +2106,7 @@ impl<T: ?Sized, A: Allocator> AsMut<T> for Box<T, A> {
 #[stable(feature = "pin", since = "1.33.0")]
 impl<T: ?Sized, A: Allocator> Unpin for Box<T, A> where A: 'static {}
 
-#[unstable(feature = "generator_trait", issue = "43122")]
+#[unstable(feature = "coroutine_trait", issue = "43122")]
 impl<G: ?Sized + Coroutine<R> + Unpin, R, A: Allocator> Coroutine<R> for Box<G, A>
 where
     A: 'static,
@@ -2119,7 +2119,7 @@ where
     }
 }
 
-#[unstable(feature = "generator_trait", issue = "43122")]
+#[unstable(feature = "coroutine_trait", issue = "43122")]
 impl<G: ?Sized + Coroutine<R>, R, A: Allocator> Coroutine<R> for Pin<Box<G, A>>
 where
     A: 'static,

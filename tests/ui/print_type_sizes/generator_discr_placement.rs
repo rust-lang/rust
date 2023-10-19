@@ -2,10 +2,10 @@
 // build-pass
 // ignore-pass
 
-// Tests a generator that has its discriminant as the *final* field.
+// Tests a coroutine that has its discriminant as the *final* field.
 
 // Avoid emitting panic handlers, like the rest of these tests...
-#![feature(generators)]
+#![feature(coroutines)]
 #![allow(dropping_copy_types)]
 
 pub fn foo() {

@@ -1,4 +1,4 @@
-error[E0626]: borrow may still be in use when generator yields
+error[E0626]: borrow may still be in use when coroutine yields
   --> $DIR/yield-while-iterating.rs:13:18
    |
 LL |         for p in &x {
@@ -12,7 +12,7 @@ error[E0502]: cannot borrow `x` as immutable because it is also borrowed as muta
 LL |     let mut b = || {
    |                 -- mutable borrow occurs here
 LL |         for p in &mut x {
-   |                       - first borrow occurs due to use of `x` in generator
+   |                       - first borrow occurs due to use of `x` in coroutine
 ...
 LL |     println!("{}", x[0]);
    |                    ^ immutable borrow occurs here

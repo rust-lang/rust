@@ -1,7 +1,7 @@
 #![feature(
     core_intrinsics,
-    generators,
-    generator_trait,
+    coroutines,
+    coroutine_trait,
     is_sorted,
     repr_simd,
     tuple_trait,

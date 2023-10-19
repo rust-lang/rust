@@ -302,8 +302,8 @@ fn do_mir_borrowck<'tcx>(
         .pass_name("borrowck")
         .iterate_to_fixpoint();
 
-    let movable_generator =
-        // The first argument is the generator type passed by value
+    let movable_coroutine =
+        // The first argument is the coroutine type passed by value
         if let Some(local) = body.local_decls.raw.get(1)
         // Get the interior types and args which typeck computed
         && let ty::Coroutine(_, _, hir::Movability::Static) = local.ty.kind()
@@ -323,7 +323,7 @@ fn do_mir_borrowck<'tcx>(
                 body: promoted_body,
                 move_data: &move_data,
                 location_table, // no need to create a real one for the promoted, it is not used
-                movable_generator,
+                movable_coroutine,
                 fn_self_span_reported: Default::default(),
                 locals_are_invalidated_at_exit,
                 access_place_error_reported: Default::default(),
@@ -351,7 +351,7 @@ fn do_mir_borrowck<'tcx>(
         body,
         move_data: &mdpe.move_data,
         location_table,
-        movable_generator,
+        movable_coroutine,
         locals_are_invalidated_at_exit,
         fn_self_span_reported: Default::default(),
         access_place_error_reported: Default::default(),
@@ -536,7 +536,7 @@ struct MirBorrowckCtxt<'cx, 'tcx> {
     /// when MIR borrowck begins.
     location_table: &'cx LocationTable,
 
-    movable_generator: bool,
+    movable_coroutine: bool,
     /// This keeps track of whether local variables are free-ed when the function
     /// exits even without a `StorageDead`, which appears to be the case for
     /// constants.
@@ -797,7 +797,7 @@ impl<'cx, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx, R> for MirBorro
 
         match term.kind {
             TerminatorKind::Yield { value: _, resume: _, resume_arg: _, drop: _ } => {
-                if self.movable_generator {
+                if self.movable_coroutine {
                     // Look for any active borrows to locals
                     let borrow_set = self.borrow_set.clone();
                     for i in flow_state.borrows.iter() {
@@ -1549,12 +1549,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     }
 
     /// Reports an error if this is a borrow of local data.
-    /// This is called for all Yield expressions on movable generators
+    /// This is called for all Yield expressions on movable coroutines
     fn check_for_local_borrow(&mut self, borrow: &BorrowData<'tcx>, yield_span: Span) {
         debug!("check_for_local_borrow({:?})", borrow);
 
         if borrow_of_local_data(borrow.borrowed_place) {
-            let err = self.cannot_borrow_across_generator_yield(
+            let err = self.cannot_borrow_across_coroutine_yield(
                 self.retrieve_borrow_spans(borrow).var_or_use(),
                 yield_span,
             );

@@ -970,7 +970,7 @@ pub fn promote_candidates<'tcx>(
             0,
             vec![],
             body.span,
-            body.generator_kind(),
+            body.coroutine_kind(),
             body.tainted_by_errors,
         );
         promoted.phase = MirPhase::Analysis(AnalysisPhase::Initial);

@@ -2,11 +2,11 @@
 // build-pass
 // ignore-pass
 
-#![feature(generators, generator_trait)]
+#![feature(coroutines, coroutine_trait)]
 
 use std::ops::Coroutine;
 
-fn generator<const C: usize>(array: [u8; C]) -> impl Coroutine<Yield = (), Return = ()> {
+fn coroutine<const C: usize>(array: [u8; C]) -> impl Coroutine<Yield = (), Return = ()> {
     move |()| {
         yield ();
         let _ = array;
@@ -14,5 +14,5 @@ fn generator<const C: usize>(array: [u8; C]) -> impl Coroutine<Yield = (), Retur
 }
 
 pub fn foo() {
-    let _ = generator([0; 8192]);
+    let _ = coroutine([0; 8192]);
 }

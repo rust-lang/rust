@@ -1,5 +1,5 @@
-#![feature(generator_trait)]
-#![feature(generators)]
+#![feature(coroutine_trait)]
+#![feature(coroutines)]
 #![deny(unused_braces, unused_parens)]
 
 use std::ops::Coroutine;

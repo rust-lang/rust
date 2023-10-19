@@ -221,7 +221,7 @@ provide! { tcx, def_id, other, cdata,
     optimized_mir => { table }
     mir_for_ctfe => { table }
     closure_saved_names_of_captured_variables => { table }
-    mir_generator_witnesses => { table }
+    mir_coroutine_witnesses => { table }
     promoted_mir => { table }
     def_span => { table }
     def_ident_span => { table }
@@ -241,7 +241,7 @@ provide! { tcx, def_id, other, cdata,
     rendered_const => { table }
     asyncness => { table_direct }
     fn_arg_names => { table }
-    generator_kind => { table }
+    coroutine_kind => { table }
     trait_def => { table }
     deduced_param_attrs => { table }
     is_type_alias_impl_trait => {

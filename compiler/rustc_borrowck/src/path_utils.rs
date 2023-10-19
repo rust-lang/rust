@@ -137,7 +137,7 @@ pub(super) fn is_active<'tcx>(
 }
 
 /// Determines if a given borrow is borrowing local data
-/// This is called for all Yield expressions on movable generators
+/// This is called for all Yield expressions on movable coroutines
 pub(super) fn borrow_of_local_data(place: Place<'_>) -> bool {
     // Reborrow of already borrowed data is ignored
     // Any errors will be caught on the initial borrow
@@ -165,7 +165,7 @@ pub(crate) fn is_upvar_field_projection<'tcx>(
     match place_ref.last_projection() {
         Some((place_base, ProjectionElem::Field(field, _ty))) => {
             let base_ty = place_base.ty(body, tcx).ty;
-            if (base_ty.is_closure() || base_ty.is_generator())
+            if (base_ty.is_closure() || base_ty.is_coroutine())
                 && (!by_ref || upvars[field.index()].by_ref)
             {
                 Some(field)

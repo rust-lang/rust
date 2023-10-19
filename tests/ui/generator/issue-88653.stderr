@@ -1,4 +1,4 @@
-error[E0631]: type mismatch in generator arguments
+error[E0631]: type mismatch in coroutine arguments
   --> $DIR/issue-88653.rs:8:22
    |
 LL | fn foo(bar: bool) -> impl Coroutine<(bool,)> {
@@ -7,8 +7,8 @@ LL | fn foo(bar: bool) -> impl Coroutine<(bool,)> {
 LL |     |bar| {
    |     ----- found signature defined here
    |
-   = note: expected generator signature `fn((bool,)) -> _`
-              found generator signature `fn(bool) -> _`
+   = note: expected coroutine signature `fn((bool,)) -> _`
+              found coroutine signature `fn(bool) -> _`
 
 error: aborting due to previous error
 

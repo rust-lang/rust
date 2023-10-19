@@ -1,4 +1,4 @@
-#![feature(generators)]
+#![feature(coroutines)]
 
 fn foo(_b: &bool, _a: ()) {}
 

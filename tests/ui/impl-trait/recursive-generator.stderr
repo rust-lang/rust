@@ -5,7 +5,7 @@ LL | fn foo() -> impl Coroutine<Yield = (), Return = ()> {
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ recursive opaque type
 ...
 LL |         let mut gen = Box::pin(foo());
-   |             ------- generator captures itself here
+   |             ------- coroutine captures itself here
 
 error: aborting due to previous error
 

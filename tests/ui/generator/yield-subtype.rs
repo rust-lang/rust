@@ -2,13 +2,13 @@
 #![allow(dead_code)]
 #![allow(dead_code)]
 
-#![feature(generators)]
+#![feature(coroutines)]
 
 fn bar<'a>() {
     let a: &'static str = "hi";
     let b: &'a str = a;
 
-    || { //~ WARN unused generator that must be used
+    || { //~ WARN unused coroutine that must be used
         yield a;
         yield b;
     };

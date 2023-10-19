@@ -1,4 +1,4 @@
-// A variant of #53548 that does not actually require generators,
+// A variant of #53548 that does not actually require coroutines,
 // but which encountered the same ICE/error. See `issue-53548.rs`
 // for details.
 //

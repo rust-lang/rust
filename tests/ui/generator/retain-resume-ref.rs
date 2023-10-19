@@ -1,6 +1,6 @@
 //! This test ensures that a mutable reference cannot be passed as a resume argument twice.
 
-#![feature(generators, generator_trait)]
+#![feature(coroutines, coroutine_trait)]
 
 use std::marker::Unpin;
 use std::ops::{

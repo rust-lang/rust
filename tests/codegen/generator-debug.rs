@@ -1,4 +1,4 @@
-// Verify debuginfo for generators:
+// Verify debuginfo for coroutines:
 //  - Each variant points to the file and line of its yield point
 //  - The discriminants are marked artificial
 //  - Other fields are not marked artificial
@@ -7,10 +7,10 @@
 // compile-flags: -C debuginfo=2 --edition=2018
 // ignore-msvc
 
-#![feature(generators, generator_trait)]
+#![feature(coroutines, coroutine_trait)]
 use std::ops::Coroutine;
 
-fn generator_test() -> impl Coroutine<Yield = i32, Return = ()> {
+fn coroutine_test() -> impl Coroutine<Yield = i32, Return = ()> {
     || {
         yield 0;
         let s = String::from("foo");
@@ -20,8 +20,8 @@ fn generator_test() -> impl Coroutine<Yield = i32, Return = ()> {
 
 // FIXME: No way to reliably check the filename.
 
-// CHECK-DAG:  [[GEN_FN:!.*]] = !DINamespace(name: "generator_test"
-// CHECK-DAG:  [[GEN:!.*]] = !DICompositeType(tag: DW_TAG_structure_type, name: "{generator_env#0}", scope: [[GEN_FN]]
+// CHECK-DAG:  [[GEN_FN:!.*]] = !DINamespace(name: "coroutine_test"
+// CHECK-DAG:  [[GEN:!.*]] = !DICompositeType(tag: DW_TAG_structure_type, name: "{coroutine_env#0}", scope: [[GEN_FN]]
 // CHECK:      [[VARIANT:!.*]] = !DICompositeType(tag: DW_TAG_variant_part, scope: [[GEN]],
 // CHECK-NOT:  flags: DIFlagArtificial
 // CHECK-SAME: discriminator: [[DISC:![0-9]*]]
@@ -58,5 +58,5 @@ fn generator_test() -> impl Coroutine<Yield = i32, Return = ()> {
 // CHECK-SAME: flags: DIFlagArtificial
 
 fn main() {
-    let _dummy = generator_test();
+    let _dummy = coroutine_test();
 }

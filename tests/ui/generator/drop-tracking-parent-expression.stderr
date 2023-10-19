@@ -1,8 +1,8 @@
-error: generator cannot be sent between threads safely
+error: coroutine cannot be sent between threads safely
   --> $DIR/drop-tracking-parent-expression.rs:23:13
    |
 LL |               assert_send(g);
-   |               ^^^^^^^^^^^ generator is not `Send`
+   |               ^^^^^^^^^^^ coroutine is not `Send`
 ...
 LL | /     type_combinations!(
 LL | |         // OK
@@ -13,8 +13,8 @@ LL | |         };
 LL | |     );
    | |_____- in this macro invocation
    |
-   = help: within `{generator@$DIR/drop-tracking-parent-expression.rs:17:21: 17:28}`, the trait `Send` is not implemented for `derived_drop::Client`
-note: generator is not `Send` as this value is used across a yield
+   = help: within `{coroutine@$DIR/drop-tracking-parent-expression.rs:17:21: 17:28}`, the trait `Send` is not implemented for `derived_drop::Client`
+note: coroutine is not `Send` as this value is used across a yield
   --> $DIR/drop-tracking-parent-expression.rs:21:22
    |
 LL |               let g = move || match drop($name::Client { ..$name::Client::default() }) {
@@ -38,11 +38,11 @@ LL | fn assert_send<T: Send>(_thing: T) {}
    |                   ^^^^ required by this bound in `assert_send`
    = note: this error originates in the macro `type_combinations` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: generator cannot be sent between threads safely
+error: coroutine cannot be sent between threads safely
   --> $DIR/drop-tracking-parent-expression.rs:23:13
    |
 LL |               assert_send(g);
-   |               ^^^^^^^^^^^ generator is not `Send`
+   |               ^^^^^^^^^^^ coroutine is not `Send`
 ...
 LL | /     type_combinations!(
 LL | |         // OK
@@ -53,8 +53,8 @@ LL | |         };
 LL | |     );
    | |_____- in this macro invocation
    |
-   = help: within `{generator@$DIR/drop-tracking-parent-expression.rs:17:21: 17:28}`, the trait `Send` is not implemented for `significant_drop::Client`
-note: generator is not `Send` as this value is used across a yield
+   = help: within `{coroutine@$DIR/drop-tracking-parent-expression.rs:17:21: 17:28}`, the trait `Send` is not implemented for `significant_drop::Client`
+note: coroutine is not `Send` as this value is used across a yield
   --> $DIR/drop-tracking-parent-expression.rs:21:22
    |
 LL |               let g = move || match drop($name::Client { ..$name::Client::default() }) {
@@ -78,11 +78,11 @@ LL | fn assert_send<T: Send>(_thing: T) {}
    |                   ^^^^ required by this bound in `assert_send`
    = note: this error originates in the macro `type_combinations` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: generator cannot be sent between threads safely
+error: coroutine cannot be sent between threads safely
   --> $DIR/drop-tracking-parent-expression.rs:23:13
    |
 LL |               assert_send(g);
-   |               ^^^^^^^^^^^ generator is not `Send`
+   |               ^^^^^^^^^^^ coroutine is not `Send`
 ...
 LL | /     type_combinations!(
 LL | |         // OK
@@ -93,8 +93,8 @@ LL | |         };
 LL | |     );
    | |_____- in this macro invocation
    |
-   = help: within `{generator@$DIR/drop-tracking-parent-expression.rs:17:21: 17:28}`, the trait `Send` is not implemented for `insignificant_dtor::Client`
-note: generator is not `Send` as this value is used across a yield
+   = help: within `{coroutine@$DIR/drop-tracking-parent-expression.rs:17:21: 17:28}`, the trait `Send` is not implemented for `insignificant_dtor::Client`
+note: coroutine is not `Send` as this value is used across a yield
   --> $DIR/drop-tracking-parent-expression.rs:21:22
    |
 LL |               let g = move || match drop($name::Client { ..$name::Client::default() }) {

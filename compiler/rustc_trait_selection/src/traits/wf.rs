@@ -673,13 +673,13 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                 }
 
                 ty::Coroutine(did, args, ..) => {
-                    // Walk ALL the types in the generator: this will
+                    // Walk ALL the types in the coroutine: this will
                     // include the upvar types as well as the yield
                     // type. Note that this is mildly distinct from
                     // the closure case, where we have to be careful
                     // about the signature of the closure. We don't
                     // have the problem of implied bounds here since
-                    // generators don't take arguments.
+                    // coroutines don't take arguments.
                     let obligations = self.nominal_obligations(did, args);
                     self.out.extend(obligations);
                 }

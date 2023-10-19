@@ -9,25 +9,25 @@ LL |         *num += 1;
 help: ALLOC was allocated here:
   --> $DIR/generator-pinned-moved.rs:LL:CC
    |
-LL |         let mut generator_iterator = Box::new(CoroutineIteratorAdapter(firstn()));
+LL |         let mut coroutine_iterator = Box::new(CoroutineIteratorAdapter(firstn()));
    |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: ALLOC was deallocated here:
   --> $DIR/generator-pinned-moved.rs:LL:CC
    |
-LL |     }; // *deallocate* generator_iterator
+LL |     }; // *deallocate* coroutine_iterator
    |     ^
    = note: BACKTRACE (of the first span):
    = note: inside closure at $DIR/generator-pinned-moved.rs:LL:CC
-note: inside `<CoroutineIteratorAdapter<{static generator@$DIR/generator-pinned-moved.rs:LL:CC}> as std::iter::Iterator>::next`
+note: inside `<CoroutineIteratorAdapter<{static coroutine@$DIR/generator-pinned-moved.rs:LL:CC}> as std::iter::Iterator>::next`
   --> $DIR/generator-pinned-moved.rs:LL:CC
    |
 LL |         match me.resume(()) {
    |               ^^^^^^^^^^^^^
-   = note: inside `<std::boxed::Box<CoroutineIteratorAdapter<{static generator@$DIR/generator-pinned-moved.rs:LL:CC}>> as std::iter::Iterator>::next` at RUSTLIB/alloc/src/boxed.rs:LL:CC
+   = note: inside `<std::boxed::Box<CoroutineIteratorAdapter<{static coroutine@$DIR/generator-pinned-moved.rs:LL:CC}>> as std::iter::Iterator>::next` at RUSTLIB/alloc/src/boxed.rs:LL:CC
 note: inside `main`
   --> $DIR/generator-pinned-moved.rs:LL:CC
    |
-LL |     generator_iterator_2.next(); // and use moved value
+LL |     coroutine_iterator_2.next(); // and use moved value
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace

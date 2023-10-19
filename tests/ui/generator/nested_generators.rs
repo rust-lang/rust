@@ -1,17 +1,17 @@
 // run-pass
 
-#![feature(generators, generator_trait)]
+#![feature(coroutines, coroutine_trait)]
 
 use std::ops::{Coroutine, CoroutineState};
 use std::pin::Pin;
 
 fn main() {
-    let _generator = || {
-        let mut sub_generator = || {
+    let _coroutine = || {
+        let mut sub_coroutine = || {
             yield 2;
         };
 
-        match Pin::new(&mut sub_generator).resume(()) {
+        match Pin::new(&mut sub_coroutine).resume(()) {
             CoroutineState::Yielded(x) => {
                 yield x;
             }

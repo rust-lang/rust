@@ -20,8 +20,8 @@ impl<'tcx> MirPass<'tcx> for ScalarReplacementOfAggregates {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         debug!(def_id = ?body.source.def_id());
 
-        // Avoid query cycles (generators require optimized MIR for layout).
-        if tcx.type_of(body.source.def_id()).instantiate_identity().is_generator() {
+        // Avoid query cycles (coroutines require optimized MIR for layout).
+        if tcx.type_of(body.source.def_id()).instantiate_identity().is_coroutine() {
             return;
         }
 

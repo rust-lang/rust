@@ -1,7 +1,7 @@
-error[E0271]: type mismatch resolving `<{generator@$DIR/generator-yielding-or-returning-itself.rs:15:34: 15:36} as Coroutine>::Return == {generator@$DIR/generator-yielding-or-returning-itself.rs:15:34: 15:36}`
+error[E0271]: type mismatch resolving `<{coroutine@$DIR/generator-yielding-or-returning-itself.rs:15:34: 15:36} as Coroutine>::Return == {coroutine@$DIR/generator-yielding-or-returning-itself.rs:15:34: 15:36}`
   --> $DIR/generator-yielding-or-returning-itself.rs:15:34
    |
-LL |       want_cyclic_generator_return(|| {
+LL |       want_cyclic_coroutine_return(|| {
    |  _____----------------------------_^
    | |     |
    | |     required by a bound introduced by this call
@@ -15,18 +15,18 @@ LL | |     })
            this error may be the result of a recent compiler bug-fix,
            see issue #46062 <https://github.com/rust-lang/rust/issues/46062>
            for more information
-note: required by a bound in `want_cyclic_generator_return`
+note: required by a bound in `want_cyclic_coroutine_return`
   --> $DIR/generator-yielding-or-returning-itself.rs:10:36
    |
-LL | pub fn want_cyclic_generator_return<T>(_: T)
+LL | pub fn want_cyclic_coroutine_return<T>(_: T)
    |        ---------------------------- required by a bound in this function
 LL |     where T: Coroutine<Yield = (), Return = T>
-   |                                    ^^^^^^^^^^ required by this bound in `want_cyclic_generator_return`
+   |                                    ^^^^^^^^^^ required by this bound in `want_cyclic_coroutine_return`
 
-error[E0271]: type mismatch resolving `<{generator@$DIR/generator-yielding-or-returning-itself.rs:28:33: 28:35} as Coroutine>::Yield == {generator@$DIR/generator-yielding-or-returning-itself.rs:28:33: 28:35}`
+error[E0271]: type mismatch resolving `<{coroutine@$DIR/generator-yielding-or-returning-itself.rs:28:33: 28:35} as Coroutine>::Yield == {coroutine@$DIR/generator-yielding-or-returning-itself.rs:28:33: 28:35}`
   --> $DIR/generator-yielding-or-returning-itself.rs:28:33
    |
-LL |       want_cyclic_generator_yield(|| {
+LL |       want_cyclic_coroutine_yield(|| {
    |  _____---------------------------_^
    | |     |
    | |     required by a bound introduced by this call
@@ -40,13 +40,13 @@ LL | |     })
            this error may be the result of a recent compiler bug-fix,
            see issue #46062 <https://github.com/rust-lang/rust/issues/46062>
            for more information
-note: required by a bound in `want_cyclic_generator_yield`
+note: required by a bound in `want_cyclic_coroutine_yield`
   --> $DIR/generator-yielding-or-returning-itself.rs:23:24
    |
-LL | pub fn want_cyclic_generator_yield<T>(_: T)
+LL | pub fn want_cyclic_coroutine_yield<T>(_: T)
    |        --------------------------- required by a bound in this function
 LL |     where T: Coroutine<Yield = T, Return = ()>
-   |                        ^^^^^^^^^ required by this bound in `want_cyclic_generator_yield`
+   |                        ^^^^^^^^^ required by this bound in `want_cyclic_coroutine_yield`
 
 error: aborting due to 2 previous errors
 

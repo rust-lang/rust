@@ -534,7 +534,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 ty::Coroutine(def_id, ..)
                     if matches!(
-                        self.tcx.generator_kind(def_id),
+                        self.tcx.coroutine_kind(def_id),
                         Some(CoroutineKind::Async(AsyncCoroutineKind::Closure))
                     ) =>
                 {

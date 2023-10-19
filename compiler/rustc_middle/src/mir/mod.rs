@@ -247,18 +247,18 @@ impl<'tcx> MirSource<'tcx> {
 
 #[derive(Clone, TyEncodable, TyDecodable, Debug, HashStable, TypeFoldable, TypeVisitable)]
 pub struct CoroutineInfo<'tcx> {
-    /// The yield type of the function, if it is a generator.
+    /// The yield type of the function, if it is a coroutine.
     pub yield_ty: Option<Ty<'tcx>>,
 
     /// Coroutine drop glue.
-    pub generator_drop: Option<Body<'tcx>>,
+    pub coroutine_drop: Option<Body<'tcx>>,
 
-    /// The layout of a generator. Produced by the state transformation.
-    pub generator_layout: Option<CoroutineLayout<'tcx>>,
+    /// The layout of a coroutine. Produced by the state transformation.
+    pub coroutine_layout: Option<CoroutineLayout<'tcx>>,
 
-    /// If this is a generator then record the type of source expression that caused this generator
+    /// If this is a coroutine then record the type of source expression that caused this coroutine
     /// to be created.
-    pub generator_kind: CoroutineKind,
+    pub coroutine_kind: CoroutineKind,
 }
 
 /// The lowered representation of a single function.
@@ -284,7 +284,7 @@ pub struct Body<'tcx> {
     /// and used for debuginfo. Indexed by a `SourceScope`.
     pub source_scopes: IndexVec<SourceScope, SourceScopeData<'tcx>>,
 
-    pub generator: Option<Box<CoroutineInfo<'tcx>>>,
+    pub coroutine: Option<Box<CoroutineInfo<'tcx>>>,
 
     /// Declarations of locals.
     ///
@@ -365,7 +365,7 @@ impl<'tcx> Body<'tcx> {
         arg_count: usize,
         var_debug_info: Vec<VarDebugInfo<'tcx>>,
         span: Span,
-        generator_kind: Option<CoroutineKind>,
+        coroutine_kind: Option<CoroutineKind>,
         tainted_by_errors: Option<ErrorGuaranteed>,
     ) -> Self {
         // We need `arg_count` locals, and one for the return place.
@@ -382,12 +382,12 @@ impl<'tcx> Body<'tcx> {
             source,
             basic_blocks: BasicBlocks::new(basic_blocks),
             source_scopes,
-            generator: generator_kind.map(|generator_kind| {
+            coroutine: coroutine_kind.map(|coroutine_kind| {
                 Box::new(CoroutineInfo {
                     yield_ty: None,
-                    generator_drop: None,
-                    generator_layout: None,
-                    generator_kind,
+                    coroutine_drop: None,
+                    coroutine_layout: None,
+                    coroutine_kind,
                 })
             }),
             local_decls,
@@ -418,7 +418,7 @@ impl<'tcx> Body<'tcx> {
             source: MirSource::item(CRATE_DEF_ID.to_def_id()),
             basic_blocks: BasicBlocks::new(basic_blocks),
             source_scopes: IndexVec::new(),
-            generator: None,
+            coroutine: None,
             local_decls: IndexVec::new(),
             user_type_annotations: IndexVec::new(),
             arg_count: 0,
@@ -548,22 +548,22 @@ impl<'tcx> Body<'tcx> {
 
     #[inline]
     pub fn yield_ty(&self) -> Option<Ty<'tcx>> {
-        self.generator.as_ref().and_then(|generator| generator.yield_ty)
+        self.coroutine.as_ref().and_then(|coroutine| coroutine.yield_ty)
     }
 
     #[inline]
-    pub fn generator_layout(&self) -> Option<&CoroutineLayout<'tcx>> {
-        self.generator.as_ref().and_then(|generator| generator.generator_layout.as_ref())
+    pub fn coroutine_layout(&self) -> Option<&CoroutineLayout<'tcx>> {
+        self.coroutine.as_ref().and_then(|coroutine| coroutine.coroutine_layout.as_ref())
     }
 
     #[inline]
-    pub fn generator_drop(&self) -> Option<&Body<'tcx>> {
-        self.generator.as_ref().and_then(|generator| generator.generator_drop.as_ref())
+    pub fn coroutine_drop(&self) -> Option<&Body<'tcx>> {
+        self.coroutine.as_ref().and_then(|coroutine| coroutine.coroutine_drop.as_ref())
     }
 
     #[inline]
-    pub fn generator_kind(&self) -> Option<CoroutineKind> {
-        self.generator.as_ref().map(|generator| generator.generator_kind)
+    pub fn coroutine_kind(&self) -> Option<CoroutineKind> {
+        self.coroutine.as_ref().map(|coroutine| coroutine.coroutine_kind)
     }
 
     #[inline]

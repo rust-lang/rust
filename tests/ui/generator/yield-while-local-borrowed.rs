@@ -1,4 +1,4 @@
-#![feature(generators, generator_trait)]
+#![feature(coroutines, coroutine_trait)]
 
 use std::cell::Cell;
 use std::ops::{Coroutine, CoroutineState};
@@ -11,7 +11,7 @@ fn borrow_local_inline() {
     // `b` and gets extended by region inference.)
     let mut b = move || {
         let a = &mut 3;
-        //~^ ERROR borrow may still be in use when generator yields
+        //~^ ERROR borrow may still be in use when coroutine yields
         yield ();
         println!("{}", a);
     };
@@ -38,7 +38,7 @@ fn borrow_local() {
         let a = 3;
         {
             let b = &a;
-            //~^ ERROR borrow may still be in use when generator yields
+            //~^ ERROR borrow may still be in use when coroutine yields
             yield ();
             println!("{}", b);
         }

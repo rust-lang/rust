@@ -3,7 +3,7 @@
 // revisions: pass fail
 //[pass] check-pass
 
-#![feature(generator_trait, generators)]
+#![feature(coroutine_trait, coroutines)]
 
 use std::ops::Coroutine;
 
@@ -11,11 +11,11 @@ struct A;
 struct B;
 struct C;
 
-fn needs_generator(_: impl Coroutine<A, Yield = B, Return = C>) {}
+fn needs_coroutine(_: impl Coroutine<A, Yield = B, Return = C>) {}
 
 #[cfg(fail)]
 fn main() {
-    needs_generator(|| {
+    needs_coroutine(|| {
         //[fail]~^ ERROR Coroutine<A>` is not satisfied
         //[fail]~| ERROR as Coroutine<A>>::Yield == B`
         //[fail]~| ERROR as Coroutine<A>>::Return == C`
@@ -25,7 +25,7 @@ fn main() {
 
 #[cfg(pass)]
 fn main() {
-    needs_generator(|_: A| {
+    needs_coroutine(|_: A| {
         let _: A = yield B;
         C
     })

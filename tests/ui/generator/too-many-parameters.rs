@@ -1,8 +1,8 @@
-#![feature(generators)]
+#![feature(coroutines)]
 
 fn main() {
     |(), ()| {
-        //~^ error: too many parameters for a generator
+        //~^ error: too many parameters for a coroutine
         yield;
     };
 }

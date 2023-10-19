@@ -1447,8 +1447,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 }
             }
             if let DefKind::Coroutine = def_kind {
-                let data = self.tcx.generator_kind(def_id).unwrap();
-                record!(self.tables.generator_kind[def_id] <- data);
+                let data = self.tcx.coroutine_kind(def_id).unwrap();
+                record!(self.tables.coroutine_kind[def_id] <- data);
             }
             if let DefKind::Enum | DefKind::Struct | DefKind::Union = def_kind {
                 self.encode_info_for_adt(local_id);
@@ -1630,9 +1630,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     <- tcx.closure_saved_names_of_captured_variables(def_id));
 
                 if let DefKind::Coroutine = self.tcx.def_kind(def_id)
-                    && let Some(witnesses) = tcx.mir_generator_witnesses(def_id)
+                    && let Some(witnesses) = tcx.mir_coroutine_witnesses(def_id)
                 {
-                    record!(self.tables.mir_generator_witnesses[def_id.to_def_id()] <- witnesses);
+                    record!(self.tables.mir_coroutine_witnesses[def_id.to_def_id()] <- witnesses);
                 }
             }
             if encode_const {
@@ -1657,9 +1657,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             record!(self.tables.promoted_mir[def_id.to_def_id()] <- tcx.promoted_mir(def_id));
 
             if let DefKind::Coroutine = self.tcx.def_kind(def_id)
-                && let Some(witnesses) = tcx.mir_generator_witnesses(def_id)
+                && let Some(witnesses) = tcx.mir_coroutine_witnesses(def_id)
             {
-                record!(self.tables.mir_generator_witnesses[def_id.to_def_id()] <- witnesses);
+                record!(self.tables.mir_coroutine_witnesses[def_id.to_def_id()] <- witnesses);
             }
 
             let instance = ty::InstanceDef::Item(def_id.to_def_id());

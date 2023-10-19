@@ -4,8 +4,8 @@
 //
 // check-pass
 
-#![feature(generator_trait)]
-#![feature(generators)]
+#![feature(coroutine_trait)]
+#![feature(coroutines)]
 
 use std::ops::Coroutine;
 

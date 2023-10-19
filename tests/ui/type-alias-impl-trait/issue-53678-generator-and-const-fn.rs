@@ -1,4 +1,4 @@
-#![feature(generators, generator_trait, rustc_attrs)]
+#![feature(coroutines, coroutine_trait, rustc_attrs)]
 #![feature(type_alias_impl_trait)]
 
 // check-pass
@@ -8,7 +8,7 @@ mod gen {
 
     pub type GenOnce<Y, R> = impl Coroutine<Yield = Y, Return = R>;
 
-    pub const fn const_generator<Y, R>(yielding: Y, returning: R) -> GenOnce<Y, R> {
+    pub const fn const_coroutine<Y, R>(yielding: Y, returning: R) -> GenOnce<Y, R> {
         move || {
             yield yielding;
 
@@ -17,6 +17,6 @@ mod gen {
     }
 }
 
-const FOO: gen::GenOnce<usize, usize> = gen::const_generator(10, 100);
+const FOO: gen::GenOnce<usize, usize> = gen::const_coroutine(10, 100);
 
 fn main() {}

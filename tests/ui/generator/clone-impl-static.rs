@@ -1,7 +1,7 @@
-// gate-test-generator_clone
-// Verifies that static generators cannot be cloned/copied.
+// gate-test-coroutine_clone
+// Verifies that static coroutines cannot be cloned/copied.
 
-#![feature(generators, generator_clone)]
+#![feature(coroutines, coroutine_clone)]
 
 fn main() {
     let gen = static move || {

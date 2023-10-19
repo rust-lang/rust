@@ -1,9 +1,9 @@
 // run-pass
 
-#![feature(generators)]
+#![feature(coroutines)]
 
 fn _run(bar: &mut i32) {
-    || { //~ WARN unused generator that must be used
+    || { //~ WARN unused coroutine that must be used
         {
             let _baz = &*bar;
             yield;

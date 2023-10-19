@@ -1,4 +1,4 @@
-#![feature(generators)]
+#![feature(coroutines)]
 #![warn(clippy::large_futures)]
 #![allow(clippy::never_loop)]
 #![allow(clippy::future_not_send)]

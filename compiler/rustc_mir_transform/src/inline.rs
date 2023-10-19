@@ -79,10 +79,10 @@ fn inline<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
     if body.source.promoted.is_some() {
         return false;
     }
-    // Avoid inlining into generators, since their `optimized_mir` is used for layout computation,
+    // Avoid inlining into coroutines, since their `optimized_mir` is used for layout computation,
     // which can create a cycle, even when no attempt is made to inline the function in the other
     // direction.
-    if body.generator.is_some() {
+    if body.coroutine.is_some() {
         return false;
     }
 

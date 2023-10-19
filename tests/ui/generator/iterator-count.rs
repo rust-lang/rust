@@ -1,6 +1,6 @@
 // run-pass
 
-#![feature(generators, generator_trait)]
+#![feature(coroutines, coroutine_trait)]
 
 use std::marker::Unpin;
 use std::ops::{Coroutine, CoroutineState};
@@ -8,7 +8,7 @@ use std::pin::Pin;
 
 struct W<T>(T);
 
-// This impl isn't safe in general, but the generator used in this test is movable
+// This impl isn't safe in general, but the coroutine used in this test is movable
 // so it won't cause problems.
 impl<T: Coroutine<(), Return = ()> + Unpin> Iterator for W<T> {
     type Item = T::Yield;

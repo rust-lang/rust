@@ -1,7 +1,7 @@
 // run-pass
 #![allow(dead_code)]
 
-#![feature(generators)]
+#![feature(coroutines)]
 
 enum Enum {
     A(String),
@@ -9,7 +9,7 @@ enum Enum {
 }
 
 fn main() {
-    || { //~ WARN unused generator that must be used
+    || { //~ WARN unused coroutine that must be used
         loop {
             if let true = true {
                 match Enum::A(String::new()) {

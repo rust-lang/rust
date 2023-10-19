@@ -1,6 +1,6 @@
 // run-pass
 
-#![feature(generators)]
+#![feature(coroutines)]
 
 fn main() {
     let _a = || {

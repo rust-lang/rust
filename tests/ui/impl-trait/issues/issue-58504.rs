@@ -1,4 +1,4 @@
-#![feature(generators, generator_trait, never_type)]
+#![feature(coroutines, coroutine_trait, never_type)]
 
 use std::ops::Coroutine;
 

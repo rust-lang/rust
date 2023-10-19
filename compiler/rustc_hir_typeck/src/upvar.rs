@@ -366,7 +366,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Note that we *always* infer a minimal kind, even if
     /// we don't always *use* that in the final result (i.e., sometimes
     /// we've taken the closure kind from the expectations instead, and
-    /// for generators we don't even implement the closure traits
+    /// for coroutines we don't even implement the closure traits
     /// really).
     ///
     /// If we inferred that the closure needs to be FnMut/FnOnce, last element of the returned tuple

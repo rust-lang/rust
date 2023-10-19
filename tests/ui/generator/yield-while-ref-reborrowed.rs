@@ -1,4 +1,4 @@
-#![feature(generators, generator_trait)]
+#![feature(coroutines, coroutine_trait)]
 
 use std::ops::{CoroutineState, Coroutine};
 use std::cell::Cell;
@@ -6,7 +6,7 @@ use std::pin::Pin;
 
 fn reborrow_shared_ref(x: &i32) {
     // This is OK -- we have a borrow live over the yield, but it's of
-    // data that outlives the generator.
+    // data that outlives the coroutine.
     let mut b = move || {
         let a = &*x;
         yield();
@@ -17,7 +17,7 @@ fn reborrow_shared_ref(x: &i32) {
 
 fn reborrow_mutable_ref(x: &mut i32) {
     // This is OK -- we have a borrow live over the yield, but it's of
-    // data that outlives the generator.
+    // data that outlives the coroutine.
     let mut b = move || {
         let a = &mut *x;
         yield();

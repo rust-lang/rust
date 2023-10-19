@@ -1,5 +1,5 @@
 // Regression test for #53548. The `Box<dyn Trait>` type below is
-// expanded to `Box<dyn Trait + 'static>`, but the generator "witness"
+// expanded to `Box<dyn Trait + 'static>`, but the coroutine "witness"
 // that results is `for<'r> { Box<dyn Trait + 'r> }`. The WF code was
 // encountering an ICE (when debug-assertions were enabled) and an
 // unexpected compilation error (without debug-asserions) when trying
@@ -17,7 +17,7 @@
 //
 // check-pass
 
-#![feature(generators)]
+#![feature(coroutines)]
 
 use std::cell::RefCell;
 use std::rc::Rc;
