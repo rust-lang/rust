@@ -558,9 +558,16 @@ pub struct ReprIdent {
     pub span: Span,
 }
 
+#[derive(Diagnostic)]
+#[diag(passes_repr_conflicting, code = "E0566")]
+pub struct ReprConflicting {
+    #[primary_span]
+    pub hint_spans: Vec<Span>,
+}
+
 #[derive(LintDiagnostic)]
 #[diag(passes_repr_conflicting, code = "E0566")]
-pub struct ReprConflicting;
+pub struct ReprConflictingLint;
 
 #[derive(Diagnostic)]
 #[diag(passes_used_static)]
