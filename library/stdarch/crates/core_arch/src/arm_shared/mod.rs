@@ -64,13 +64,20 @@ mod crc;
 #[cfg(any(target_arch = "aarch64", target_feature = "v7", doc))]
 pub use crc::*;
 
+// NEON intrinsics are currently broken on big-endian, so don't expose them. (#1484)
+#[cfg(target_endian = "little")]
 #[cfg(any(target_arch = "aarch64", target_feature = "v7", doc))]
 mod crypto;
+// NEON intrinsics are currently broken on big-endian, so don't expose them. (#1484)
+#[cfg(target_endian = "little")]
 #[cfg(any(target_arch = "aarch64", target_feature = "v7", doc))]
 pub use self::crypto::*;
 
+// NEON intrinsics are currently broken on big-endian, so don't expose them. (#1484)
+#[cfg(target_endian = "little")]
 #[cfg(any(target_arch = "aarch64", target_feature = "v7", doc))]
 pub(crate) mod neon;
+#[cfg(target_endian = "little")]
 #[cfg(any(target_arch = "aarch64", target_feature = "v7", doc))]
 pub use self::neon::*;
 

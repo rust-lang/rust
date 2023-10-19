@@ -12699,7 +12699,7 @@ mod tests {
     test_vcombine!(test_vcombine_f64 => vcombine_f64([-3_f64], [13_f64]));
 }
 
-#[cfg(all(test, target_arch = "arm", target_endian = "little"))]
+#[cfg(all(test, target_arch = "arm"))]
 mod table_lookup_tests;
 
 #[cfg(all(test, target_arch = "arm"))]
