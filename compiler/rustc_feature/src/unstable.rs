@@ -195,6 +195,8 @@ declare_features! (
     (internal, intrinsics, "1.0.0", None, None),
     /// Allows using `#[lang = ".."]` attribute for linking items to special compiler logic.
     (internal, lang_items, "1.0.0", None, None),
+    /// Changes `impl Trait` to capture all lifetimes in scope.
+    (unstable, lifetime_capture_rules_2024, "CURRENT_RUSTC_VERSION", None, None),
     /// Allows `#[link(..., cfg(..))]`; perma-unstable per #37406
     (unstable, link_cfg, "1.14.0", None, None),
     /// Allows the `multiple_supertrait_upcastable` lint.
