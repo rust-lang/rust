@@ -13,7 +13,7 @@
 
 use log::trace;
 
-use rustc_ast::Mutability;
+use rustc_middle::ty::Mutability;
 use rustc_middle::{mir, ty};
 use rustc_span::Symbol;
 use rustc_target::spec::abi::Abi;

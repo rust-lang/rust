@@ -11,10 +11,10 @@ use either::Either;
 use rand::rngs::StdRng;
 use rand::SeedableRng;
 
-use rustc_ast::ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 #[allow(unused)]
 use rustc_data_structures::static_assert_size;
+use rustc_middle::ty::Mutability;
 use rustc_middle::{
     mir,
     ty::{
