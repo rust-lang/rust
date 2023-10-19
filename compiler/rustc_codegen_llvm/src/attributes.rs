@@ -331,7 +331,7 @@ pub fn from_fn_attrs<'ll, 'tcx>(
         to_add.push(llvm::CreateAttrString(cx.llcx, "use-sample-profile"));
     }
 
-    // FIXME: none of these three functions interact with source level attributes.
+    // FIXME: none of these functions interact with source level attributes.
     to_add.extend(frame_pointer_type_attr(cx));
     to_add.extend(instrument_function_attr(cx));
     to_add.extend(nojumptables_attr(cx));
