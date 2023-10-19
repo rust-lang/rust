@@ -222,9 +222,7 @@ where
     /// # }
     /// ```
     pub fn find(&self, hash: u64, eq: impl FnMut(&T) -> bool) -> Option<&T> {
-        self.raw
-            .find(hash, eq)
-            .map(|bucket| unsafe { bucket.as_ref() })
+        self.raw.get(hash, eq)
     }
 
     /// Returns a mutable reference to an entry in the table with the given hash
@@ -263,9 +261,7 @@ where
     /// # }
     /// ```
     pub fn find_mut(&mut self, hash: u64, eq: impl FnMut(&T) -> bool) -> Option<&mut T> {
-        self.raw
-            .find(hash, eq)
-            .map(|bucket| unsafe { bucket.as_mut() })
+        self.raw.get_mut(hash, eq)
     }
 
     /// Returns an `OccupiedEntry` for an entry in the table with the given hash
@@ -1788,6 +1784,7 @@ where
 /// type will be removed.
 ///
 /// [limitations]: https://smallcultfollowing.com/babysteps/blog/2018/06/15/mir-based-borrow-check-nll-status-update/#polonius
+///
 /// # Examples
 ///
 /// ```
