@@ -122,7 +122,6 @@ rm tests/ui/typeck/issue-46112.rs # same
 rm tests/ui/consts/const_cmp_type_id.rs # same
 rm tests/ui/consts/issue-73976-monomorphic.rs # same
 rm tests/ui/rfcs/rfc-3348-c-string-literals/non-ascii.rs # same
-rm tests/ui/consts/const-eval/nonnull_as_ref_ub.rs # same
 rm tests/ui/consts/issue-94675.rs # same
 rm tests/ui/associated-types/issue-85103-layout-debug.rs # same
 
