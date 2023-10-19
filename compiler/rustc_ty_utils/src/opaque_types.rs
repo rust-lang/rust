@@ -27,7 +27,7 @@ struct OpaqueTypeCollector<'tcx> {
     item: LocalDefId,
 
     /// Avoid infinite recursion due to recursive declarations.
-    seen: FxHashSet<LocalDefId>,
+    seen: FxHashSet<Ty<'tcx>>,
 
     span: Option<Span>,
 
@@ -222,13 +222,16 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
 
     #[instrument(skip(self), ret, level = "trace")]
     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<!> {
+        // Erase all free and escaping bound regions, to make sure that
+        // we're not walking into a type that contains itself modulo
+        // regions.
+        if !self.seen.insert(self.tcx.fold_regions(t, |_, _| self.tcx.lifetimes.re_erased)) {
+            return ControlFlow::Continue(());
+        }
+
         t.super_visit_with(self)?;
         match t.kind() {
             ty::Alias(ty::Opaque, alias_ty) if alias_ty.def_id.is_local() => {
-                if !self.seen.insert(alias_ty.def_id.expect_local()) {
-                    return ControlFlow::Continue(());
-                }
-
                 // TAITs outside their defining scopes are ignored.
                 let origin = self.tcx.opaque_type_origin(alias_ty.def_id.expect_local());
                 trace!(?origin);
