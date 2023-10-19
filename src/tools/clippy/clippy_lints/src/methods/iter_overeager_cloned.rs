@@ -3,10 +3,10 @@ use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::{implements_trait, is_copy};
 use rustc_ast::BindingAnnotation;
 use rustc_errors::Applicability;
-use rustc_hir::{Body, Expr, ExprKind, HirId, HirIdSet, PatKind};
+use rustc_hir::{Body, Expr, ExprKind, HirId, HirIdSet, PatKind, Mutability};
 use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 use rustc_lint::LateContext;
-use rustc_middle::mir::{FakeReadCause, Mutability};
+use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::{self, BorrowKind};
 use rustc_span::sym;
 

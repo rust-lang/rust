@@ -7,10 +7,11 @@ use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::intravisit::{walk_expr, Visitor};
-use rustc_hir::{Closure, Expr, ExprKind, HirId, LangItem, Local, Mutability, PatKind, UnOp};
+use rustc_hir::{Closure, Expr, ExprKind, HirId, LangItem, Local, PatKind, UnOp};
 use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter::OnlyBodies;
 use rustc_middle::ty::adjustment::Adjust;
+use rustc_middle::ty;
 use rustc_span::symbol::sym;
 use rustc_span::Symbol;
 
@@ -48,7 +49,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
     // If the iterator is a field or the iterator is accessed after the loop is complete it needs to be
     // borrowed mutably. TODO: If the struct can be partially moved from and the struct isn't used
     // afterwards a mutable borrow of a field isn't necessary.
-    let by_ref = if cx.typeck_results().expr_ty(iter_expr).ref_mutability() == Some(Mutability::Mut)
+    let by_ref = if cx.typeck_results().expr_ty(iter_expr).ref_mutability() == Some(ty::Mutability::Mut)
         || !iter_expr_struct.can_move
         || !iter_expr_struct.fields.is_empty()
         || needs_mutable_borrow(cx, &iter_expr_struct, loop_expr)

@@ -4,7 +4,7 @@ use clippy_utils::source::snippet;
 use clippy_utils::sugg;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, Mutability};
+use rustc_hir::Expr;
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, Ty};
 
@@ -27,7 +27,7 @@ pub(super) fn check<'tcx>(
             if let ty::Uint(ty::UintTy::U8) = slice_ty.kind();
             if from_mutbl == to_mutbl;
             then {
-                let postfix = if *from_mutbl == Mutability::Mut {
+                let postfix = if *from_mutbl == ty::Mutability::Mut {
                     "_mut"
                 } else {
                     ""
@@ -66,7 +66,7 @@ pub(super) fn check<'tcx>(
                             let sugg_paren = arg
                                 .as_ty(Ty::new_ptr(cx.tcx,ty_from_and_mut))
                                 .as_ty(Ty::new_ptr(cx.tcx,ty_to_and_mut));
-                            let sugg = if *to_mutbl == Mutability::Mut {
+                            let sugg = if *to_mutbl == ty::Mutability::Mut {
                                 sugg_paren.mut_addr_deref()
                             } else {
                                 sugg_paren.addr_deref()

@@ -8,11 +8,10 @@ use clippy_utils::visitors::find_all_ret_expressions;
 use clippy_utils::{fn_def_id, get_parent_expr, is_diag_item_method, is_diag_trait_item, return_ty};
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{BorrowKind, Expr, ExprKind, ItemKind, Node};
+use rustc_hir::{BorrowKind, Expr, ExprKind, ItemKind, Node, Mutability};
 use rustc_hir_typeck::{FnCtxt, Inherited};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
-use rustc_middle::mir::Mutability;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, OverloadedDeref};
 use rustc_middle::ty::{
     self, ClauseKind, EarlyBinder, GenericArg, GenericArgKind, GenericArgsRef, ParamTy, ProjectionPredicate,
@@ -278,7 +277,7 @@ fn check_other_call_arg<'tcx>(
                 cx.tcx.lifetimes.re_erased,
                 ty::TypeAndMut {
                     ty: receiver_ty,
-                    mutbl: Mutability::Not,
+                    mutbl: ty::Mutability::Not,
                 },
             )))
         } else {

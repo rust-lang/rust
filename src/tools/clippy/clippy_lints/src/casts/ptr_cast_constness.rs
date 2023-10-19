@@ -3,9 +3,9 @@ use clippy_utils::msrvs::{Msrv, POINTER_CAST_CONSTNESS};
 use clippy_utils::sugg::Sugg;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, Mutability};
+use rustc_hir::{Expr};
 use rustc_lint::LateContext;
-use rustc_middle::ty::{self, Ty, TypeAndMut};
+use rustc_middle::ty::{self, Ty, TypeAndMut, Mutability};
 
 use super::PTR_CAST_CONSTNESS;
 

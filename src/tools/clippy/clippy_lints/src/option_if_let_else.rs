@@ -10,6 +10,7 @@ use rustc_hir::def::Res;
 use rustc_hir::LangItem::{OptionNone, OptionSome, ResultErr, ResultOk};
 use rustc_hir::{Arm, BindingAnnotation, Expr, ExprKind, MatchSource, Mutability, Pat, PatKind, Path, QPath, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::SyntaxContext;
 
@@ -140,7 +141,7 @@ fn try_get_option_occurrence<'tcx>(
                 ExprKind::AddrOf(_, Mutability::Not, _) => (true, false),
                 ExprKind::AddrOf(_, Mutability::Mut, _) => (false, true),
                 _ if let Some(mutb) = cx.typeck_results().expr_ty(expr).ref_mutability() => {
-                    (mutb == Mutability::Not, mutb == Mutability::Mut)
+                    (mutb == ty::Mutability::Not, mutb == ty::Mutability::Mut)
                 }
                 _ => (bind_annotation == BindingAnnotation::REF, bind_annotation == BindingAnnotation::REF_MUT),
             };
@@ -157,9 +158,9 @@ fn try_get_option_occurrence<'tcx>(
                     match some_captures.get(local_id)
                         .or_else(|| (method_sugg == "map_or_else").then_some(()).and_then(|()| none_captures.get(local_id)))
                     {
-                        Some(CaptureKind::Value | CaptureKind::Ref(Mutability::Mut)) => return None,
-                        Some(CaptureKind::Ref(Mutability::Not)) if as_mut => return None,
-                        Some(CaptureKind::Ref(Mutability::Not)) | None => (),
+                        Some(CaptureKind::Value | CaptureKind::Ref(ty::Mutability::Mut)) => return None,
+                        Some(CaptureKind::Ref(ty::Mutability::Not)) if as_mut => return None,
+                        Some(CaptureKind::Ref(ty::Mutability::Not)) | None => (),
                     }
                 }
             }

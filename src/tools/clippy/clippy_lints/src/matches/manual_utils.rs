@@ -14,6 +14,7 @@ use rustc_hir::LangItem::{OptionNone, OptionSome};
 use rustc_hir::{BindingAnnotation, Expr, ExprKind, HirId, Mutability, Pat, PatKind, Path, QPath};
 use rustc_lint::LateContext;
 use rustc_span::{sym, SyntaxContext};
+use rustc_middle::ty;
 
 #[expect(clippy::too_many_arguments)]
 #[expect(clippy::too_many_lines)]
@@ -101,11 +102,11 @@ where
                 });
                 if let ExprKind::Path(QPath::Resolved(None, Path { res: Res::Local(l), .. })) = e.kind {
                     match captures.get(l) {
-                        Some(CaptureKind::Value | CaptureKind::Ref(Mutability::Mut)) => return None,
-                        Some(CaptureKind::Ref(Mutability::Not)) if binding_ref_mutability == Mutability::Mut => {
+                        Some(CaptureKind::Value | CaptureKind::Ref(ty::Mutability::Mut)) => return None,
+                        Some(CaptureKind::Ref(ty::Mutability::Not)) if binding_ref_mutability == Mutability::Mut => {
                             return None;
                         },
-                        Some(CaptureKind::Ref(Mutability::Not)) | None => (),
+                        Some(CaptureKind::Ref(ty::Mutability::Not)) | None => (),
                     }
                 }
             }

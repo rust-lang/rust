@@ -104,7 +104,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MutArgVisitor<'a, 'tcx> {
                 if let Some(adj) = self.cx.typeck_results().adjustments().get(expr.hir_id) {
                     if adj
                         .iter()
-                        .any(|a| matches!(a.target.kind(), ty::Ref(_, _, Mutability::Mut)))
+                        .any(|a| matches!(a.target.kind(), ty::Ref(_, _, ty::Mutability::Mut)))
                     {
                         self.found = true;
                         return;

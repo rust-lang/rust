@@ -11,7 +11,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, MultiSpan};
 use rustc_hir::intravisit::{walk_block, walk_expr, Visitor};
 use rustc_hir::{
-    BindingAnnotation, Block, Expr, ExprKind, HirId, HirIdSet, Local, Mutability, Node, PatKind, Stmt, StmtKind,
+    BindingAnnotation, Block, Expr, ExprKind, HirId, HirIdSet, Local, Node, PatKind, Stmt, StmtKind,
 };
 use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter;
@@ -231,7 +231,7 @@ fn is_contains_sig(cx: &LateContext<'_>, call_id: HirId, iter_expr: &Expr<'_>) -
         && let sig = cx.tcx.fn_sig(id).instantiate_identity()
         && sig.skip_binder().output().is_bool()
         && let [_, search_ty] = *sig.skip_binder().inputs()
-        && let ty::Ref(_, search_ty, Mutability::Not) = *cx.tcx.erase_late_bound_regions(sig.rebind(search_ty)).kind()
+        && let ty::Ref(_, search_ty, ty::Mutability::Not) = *cx.tcx.erase_late_bound_regions(sig.rebind(search_ty)).kind()
         && let Some(iter_trait) = cx.tcx.get_diagnostic_item(sym::Iterator)
         && let Some(iter_item) = cx.tcx
             .associated_items(iter_trait)
@@ -501,7 +501,7 @@ fn get_captured_ids(cx: &LateContext<'_>, ty: Ty<'_>) -> HirIdSet {
                         .unwrap()
                         .into_iter()
                         .for_each(|(hir_id, capture_kind)| {
-                            if matches!(capture_kind, CaptureKind::Ref(Mutability::Mut)) {
+                            if matches!(capture_kind, CaptureKind::Ref(ty::Mutability::Mut)) {
                                 set.insert(hir_id);
                             }
                         });

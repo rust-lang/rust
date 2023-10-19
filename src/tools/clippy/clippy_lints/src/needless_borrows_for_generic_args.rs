@@ -7,7 +7,7 @@ use clippy_utils::{expr_use_ctxt, peel_n_hir_expr_refs, DefinedTy, ExprUseNode};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::{Body, Expr, ExprKind, Mutability, Path, QPath};
+use rustc_hir::{Body, Expr, ExprKind, Path, QPath};
 use rustc_index::bit_set::BitSet;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
@@ -227,7 +227,7 @@ fn needless_borrow_count<'tcx>(
         }
 
         // https://github.com/rust-lang/rust-clippy/pull/9136#pullrequestreview-1037379321
-        if trait_with_ref_mut_self_method && !matches!(referent_ty.kind(), ty::Ref(_, _, Mutability::Mut)) {
+        if trait_with_ref_mut_self_method && !matches!(referent_ty.kind(), ty::Ref(_, _, ty::Mutability::Mut)) {
             return false;
         }
 
@@ -284,7 +284,7 @@ fn has_ref_mut_self_method(cx: &LateContext<'_>, trait_def_id: DefId) -> bool {
                     .instantiate_identity()
                     .skip_binder()
                     .inputs()[0];
-                matches!(self_ty.kind(), ty::Ref(_, _, Mutability::Mut))
+                matches!(self_ty.kind(), ty::Ref(_, _, ty::Mutability::Mut))
             } else {
                 false
             }

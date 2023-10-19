@@ -11,7 +11,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::intravisit::FnKind;
-use rustc_hir::{BindingAnnotation, Body, FnDecl, Impl, ItemKind, MutTy, Mutability, Node, PatKind};
+use rustc_hir::{BindingAnnotation, Body, FnDecl, Impl, ItemKind, MutTy, Node, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::adjustment::{Adjust, PointerCoercion};
 use rustc_middle::ty::layout::LayoutOf;
@@ -166,7 +166,7 @@ impl<'tcx> PassByRefOrValue {
             }
 
             match *ty.skip_binder().kind() {
-                ty::Ref(lt, ty, Mutability::Not) => {
+                ty::Ref(lt, ty, ty::Mutability::Not) => {
                     match lt.kind() {
                         RegionKind::ReLateBound(index, region)
                             if index.as_u32() == 0 && output_regions.contains(&region) =>

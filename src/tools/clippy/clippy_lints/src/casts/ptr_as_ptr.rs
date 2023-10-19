@@ -3,9 +3,9 @@ use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sugg::Sugg;
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, Mutability, TyKind};
+use rustc_hir::{Expr, ExprKind, TyKind};
 use rustc_lint::LateContext;
-use rustc_middle::ty::{self, TypeAndMut};
+use rustc_middle::ty::{self, TypeAndMut, Mutability};
 
 use super::PTR_AS_PTR;
 

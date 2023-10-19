@@ -46,8 +46,8 @@ fn ty_has_iter_method(cx: &LateContext<'_>, self_ref_ty: Ty<'_>) -> Option<(Symb
             unreachable!()
         };
         let method_name = match mutbl {
-            hir::Mutability::Not => "iter",
-            hir::Mutability::Mut => "iter_mut",
+            ty::Mutability::Not => "iter",
+            ty::Mutability::Mut => "iter_mut",
         };
         (ty_name, method_name)
     })

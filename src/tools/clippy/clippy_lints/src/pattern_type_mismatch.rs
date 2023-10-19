@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_help;
-use rustc_hir::{intravisit, Body, Expr, ExprKind, FnDecl, Let, LocalSource, Mutability, Pat, PatKind, Stmt, StmtKind};
+use rustc_hir::{intravisit, Body, Expr, ExprKind, FnDecl, Let, LocalSource, Pat, PatKind, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
@@ -145,8 +145,8 @@ fn apply_lint(cx: &LateContext<'_>, pat: &Pat<'_>, deref_possible: DerefPossible
                     _ => "",
                 },
                 match mutability {
-                    Mutability::Mut => "&mut _",
-                    Mutability::Not => "&_",
+                    ty::Mutability::Mut => "&mut _",
+                    ty::Mutability::Not => "&_",
                 },
             ),
         );
@@ -162,7 +162,7 @@ enum Level {
     Lower,
 }
 
-fn find_first_mismatch(cx: &LateContext<'_>, pat: &Pat<'_>) -> Option<(Span, Mutability, Level)> {
+fn find_first_mismatch(cx: &LateContext<'_>, pat: &Pat<'_>) -> Option<(Span, ty::Mutability, Level)> {
     let mut result = None;
     pat.walk(|p| {
         if result.is_some() {

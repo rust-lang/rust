@@ -4,9 +4,8 @@ use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::{get_parent_expr, is_from_proc_macro, is_lint_allowed};
 use rustc_errors::Applicability;
-use rustc_hir::{ExprKind, UnOp};
+use rustc_hir::{ExprKind, UnOp, Mutability};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::mir::Mutability;
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
@@ -57,7 +56,7 @@ impl<'tcx> LateLintPass<'tcx> for BorrowDerefRef {
             if !deref_target.span.from_expansion();
             if !matches!(deref_target.kind, ExprKind::Unary(UnOp::Deref, ..) );
             let ref_ty = cx.typeck_results().expr_ty(deref_target);
-            if let ty::Ref(_, inner_ty, Mutability::Not) = ref_ty.kind();
+            if let ty::Ref(_, inner_ty, ty::Mutability::Not) = ref_ty.kind();
             if !is_from_proc_macro(cx, e);
             then{
 

@@ -12,7 +12,7 @@ use rustc_hir::hir_id::HirIdMap;
 use rustc_hir::intravisit::{walk_expr, Visitor};
 use rustc_hir::{
     self as hir, AnonConst, BinOpKind, BindingAnnotation, Body, Expr, ExprKind, FnRetTy, FnSig, GenericArg,
-    ImplItemKind, ItemKind, Lifetime, Mutability, Node, Param, PatKind, QPath, TraitFn, TraitItem, TraitItemKind,
+    ImplItemKind, ItemKind, Lifetime, Node, Param, PatKind, QPath, TraitFn, TraitItem, TraitItemKind,
     TyKind, Unsafety,
 };
 use rustc_infer::infer::TyCtxtInferExt;
@@ -174,7 +174,7 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
                 sig.decl.inputs,
                 &[],
             )
-            .filter(|arg| arg.mutability() == Mutability::Not)
+            .filter(|arg| arg.mutability() == ty::Mutability::Not)
             {
                 span_lint_hir_and_then(cx, PTR_ARG, arg.emission_id, arg.span, &arg.build_msg(), |diag| {
                     diag.span_suggestion(
@@ -231,7 +231,7 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
         let decl = sig.decl;
         let sig = cx.tcx.fn_sig(item_id).instantiate_identity().skip_binder();
         let lint_args: Vec<_> = check_fn_args(cx, sig, decl.inputs, body.params)
-            .filter(|arg| !is_trait_item || arg.mutability() == Mutability::Not)
+            .filter(|arg| !is_trait_item || arg.mutability() == ty::Mutability::Not)
             .collect();
         let results = check_ptr_arg_usage(cx, body, &lint_args);
 
@@ -345,14 +345,14 @@ impl PtrArg<'_> {
         )
     }
 
-    fn mutability(&self) -> Mutability {
+    fn mutability(&self) -> ty::Mutability {
         self.ref_prefix.mutability
     }
 }
 
 struct RefPrefix {
     lt: Lifetime,
-    mutability: Mutability,
+    mutability: ty::Mutability,
 }
 impl fmt::Display for RefPrefix {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -461,7 +461,7 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
                             [("clone", ".to_path_buf()"), ("as_path", "")].as_slice(),
                             DerefTy::Path,
                         ),
-                        Some(sym::Cow) if mutability == Mutability::Not => {
+                        Some(sym::Cow) if mutability == ty::Mutability::Not => {
                             if let Some((lifetime, ty)) = name.args
                                 .and_then(|args| {
                                     if let [GenericArg::Lifetime(lifetime), ty] = args.args {
@@ -543,7 +543,7 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
 
 fn check_mut_from_ref<'tcx>(cx: &LateContext<'tcx>, sig: &FnSig<'_>, body: Option<&'tcx Body<'_>>) {
     if let FnRetTy::Return(ty) = sig.decl.output
-        && let Some((out, Mutability::Mut, _)) = get_ref_lm(ty)
+        && let Some((out, hir::Mutability::Mut, _)) = get_ref_lm(ty)
     {
         let out_region = cx.tcx.named_bound_var(out.hir_id);
         let args: Option<Vec<_>> = sig
@@ -552,7 +552,7 @@ fn check_mut_from_ref<'tcx>(cx: &LateContext<'tcx>, sig: &FnSig<'_>, body: Optio
             .iter()
             .filter_map(get_ref_lm)
             .filter(|&(lt, _, _)| cx.tcx.named_bound_var(lt.hir_id) == out_region)
-            .map(|(_, mutability, span)| (mutability == Mutability::Not).then_some(span))
+            .map(|(_, mutability, span)| (mutability == hir::Mutability::Not).then_some(span))
             .collect();
         if let Some(args) = args
             && !args.is_empty()
@@ -747,7 +747,7 @@ fn matches_preds<'tcx>(
     })
 }
 
-fn get_ref_lm<'tcx>(ty: &'tcx hir::Ty<'tcx>) -> Option<(&'tcx Lifetime, Mutability, Span)> {
+fn get_ref_lm<'tcx>(ty: &'tcx hir::Ty<'tcx>) -> Option<(&'tcx Lifetime, hir::Mutability, Span)> {
     if let TyKind::Ref(lt, ref m) = ty.kind {
         Some((lt, m.mutbl, ty.span))
     } else {

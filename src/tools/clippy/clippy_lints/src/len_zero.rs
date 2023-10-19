@@ -9,7 +9,7 @@ use rustc_hir::def::Res;
 use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_hir::{
     AssocItemKind, BinOpKind, Expr, ExprKind, FnRetTy, GenericArg, GenericBound, ImplItem, ImplItemKind,
-    ImplicitSelfKind, Item, ItemKind, LangItem, Mutability, Node, PatKind, PathSegment, PrimTy, QPath, TraitItemRef,
+    ImplicitSelfKind, Item, ItemKind, LangItem, Node, PatKind, PathSegment, PrimTy, QPath, TraitItemRef,
     TyKind, TypeBindingKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
@@ -406,8 +406,8 @@ fn check_is_empty_sig<'tcx>(
         [arg, res] if len_output.matches_is_empty_output(cx, *res) => {
             matches!(
                 (arg.kind(), self_kind),
-                (ty::Ref(_, _, Mutability::Not), ImplicitSelfKind::ImmRef)
-                    | (ty::Ref(_, _, Mutability::Mut), ImplicitSelfKind::MutRef)
+                (ty::Ref(_, _, ty::Mutability::Not), ImplicitSelfKind::ImmRef)
+                    | (ty::Ref(_, _, ty::Mutability::Mut), ImplicitSelfKind::MutRef)
             ) || (!arg.is_ref() && matches!(self_kind, ImplicitSelfKind::Imm | ImplicitSelfKind::Mut))
         },
         _ => false,

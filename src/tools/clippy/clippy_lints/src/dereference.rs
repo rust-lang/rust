@@ -598,7 +598,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                 if !pat.span.from_expansion();
                 if let ty::Ref(_, tam, _) = *cx.typeck_results().pat_ty(pat).kind();
                 // only lint immutable refs, because borrowed `&mut T` cannot be moved out
-                if let ty::Ref(_, _, Mutability::Not) = *tam.kind();
+                if let ty::Ref(_, _, ty::Mutability::Not) = *tam.kind();
                 then {
                     let mut app = Applicability::MachineApplicable;
                     let snip = snippet_with_context(cx, name.span, pat.span.ctxt(), "..", &mut app).0;
@@ -913,7 +913,7 @@ fn report<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, state: State, data
             };
             let addr_of_str = if ty_changed_count < ref_count {
                 // Check if a reborrow from &mut T -> &T is required.
-                if mutbl == Mutability::Not && matches!(ty.kind(), ty::Ref(_, _, Mutability::Mut)) {
+                if mutbl == Mutability::Not && matches!(ty.kind(), ty::Ref(_, _, ty::Mutability::Mut)) {
                     "&*"
                 } else {
                     ""

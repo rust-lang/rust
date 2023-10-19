@@ -145,7 +145,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for CloneOrCopyVisitor<'cx, 'tcx> {
                             if let Some(method_def_id) = self.cx.typeck_results().type_dependent_def_id(parent.hir_id);
                             let method_ty = self.cx.tcx.type_of(method_def_id).instantiate_identity();
                             let self_ty = method_ty.fn_sig(self.cx.tcx).input(0).skip_binder();
-                            if matches!(self_ty.kind(), ty::Ref(_, _, Mutability::Not));
+                            if matches!(self_ty.kind(), ty::Ref(_, _, ty::Mutability::Not));
                             then {
                                 return;
                             }

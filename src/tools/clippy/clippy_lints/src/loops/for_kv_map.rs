@@ -4,7 +4,7 @@ use clippy_utils::source::snippet;
 use clippy_utils::sugg;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::visitors::is_local_used;
-use rustc_hir::{BorrowKind, Expr, ExprKind, Mutability, Pat, PatKind};
+use rustc_hir::{BorrowKind, Expr, ExprKind, Pat, PatKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
 use rustc_span::sym;
@@ -19,14 +19,14 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, pat: &'tcx Pat<'_>, arg: &'tcx
             let (new_pat_span, kind, ty, mutbl) = match *cx.typeck_results().expr_ty(arg).kind() {
                 ty::Ref(_, ty, mutbl) => match (&pat[0].kind, &pat[1].kind) {
                     (key, _) if pat_is_wild(cx, key, body) => (pat[1].span, "value", ty, mutbl),
-                    (_, value) if pat_is_wild(cx, value, body) => (pat[0].span, "key", ty, Mutability::Not),
+                    (_, value) if pat_is_wild(cx, value, body) => (pat[0].span, "key", ty, ty::Mutability::Not),
                     _ => return,
                 },
                 _ => return,
             };
             let mutbl = match mutbl {
-                Mutability::Not => "",
-                Mutability::Mut => "_mut",
+                ty::Mutability::Not => "",
+                ty::Mutability::Mut => "_mut",
             };
             let arg = match arg.kind {
                 ExprKind::AddrOf(BorrowKind::Ref, _, expr) => expr,

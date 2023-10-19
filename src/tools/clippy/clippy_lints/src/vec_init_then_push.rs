@@ -11,6 +11,7 @@ use rustc_hir::{
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
+use rustc_middle::ty;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{Span, Symbol};
 
@@ -77,8 +78,8 @@ impl VecPushSearcher {
                 return ControlFlow::Continue(());
             };
             let adjusted_ty = cx.typeck_results().expr_ty_adjusted(e);
-            let adjusted_mut = adjusted_ty.ref_mutability().unwrap_or(Mutability::Not);
-            needs_mut |= adjusted_mut == Mutability::Mut;
+            let adjusted_mut = adjusted_ty.ref_mutability().unwrap_or(ty::Mutability::Not);
+            needs_mut |= adjusted_mut == ty::Mutability::Mut;
             match parent.kind {
                 ExprKind::AddrOf(_, Mutability::Mut, _) => {
                     needs_mut = true;
@@ -96,13 +97,13 @@ impl VecPushSearcher {
                         }
                     }
                     needs_mut |= cx.typeck_results().expr_ty_adjusted(last_place).ref_mutability()
-                        == Some(Mutability::Mut)
+                        == Some(ty::Mutability::Mut)
                         || get_parent_expr(cx, last_place)
                             .map_or(false, |e| matches!(e.kind, ExprKind::AddrOf(_, Mutability::Mut, _)));
                 },
                 ExprKind::MethodCall(_, recv, ..)
                     if recv.hir_id == e.hir_id
-                        && adjusted_mut == Mutability::Mut
+                        && adjusted_mut == ty::Mutability::Mut
                         && !adjusted_ty.peel_refs().is_slice() =>
                 {
                     // No need to set `needs_mut` to true. The receiver will be either explicitly borrowed, or it will

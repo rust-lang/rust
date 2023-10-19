@@ -7,7 +7,7 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_qpath, FnKind, Visitor};
 use rustc_hir::{
-    Body, Closure, Expr, ExprKind, FnDecl, HirId, HirIdMap, HirIdSet, Impl, ItemKind, Mutability, Node, PatKind, QPath,
+    Body, Closure, Expr, ExprKind, FnDecl, HirId, HirIdMap, HirIdSet, Impl, ItemKind, Node, PatKind, QPath,
 };
 use rustc_hir_typeck::expr_use_visitor as euv;
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
@@ -79,7 +79,7 @@ fn should_skip<'tcx>(
     arg: &rustc_hir::Param<'_>,
 ) -> bool {
     // We check if this a `&mut`. `ref_mutability` returns `None` if it's not a reference.
-    if !matches!(ty.ref_mutability(), Some(Mutability::Mut)) {
+    if !matches!(ty.ref_mutability(), Some(ty::Mutability::Mut)) {
         return true;
     }
 
@@ -324,7 +324,7 @@ impl<'tcx> euv::Delegate<'tcx> for MutablyUsedVariablesCtxt<'tcx> {
                     self.add_alias(bind_id, *vid);
                 }
             } else if !self.prev_move_to_closure.contains(vid)
-                && matches!(base_ty.ref_mutability(), Some(Mutability::Mut))
+                && matches!(base_ty.ref_mutability(), Some(ty::Mutability::Mut))
             {
                 self.add_mutably_used_var(*vid);
             }
@@ -352,7 +352,7 @@ impl<'tcx> euv::Delegate<'tcx> for MutablyUsedVariablesCtxt<'tcx> {
             // return `ImmBorrow`. So if there is "Unique" and it's a mutable reference, we add it
             // to the mutably used variables set.
             if borrow == ty::BorrowKind::MutBorrow
-                || (borrow == ty::BorrowKind::UniqueImmBorrow && base_ty.ref_mutability() == Some(Mutability::Mut))
+                || (borrow == ty::BorrowKind::UniqueImmBorrow && base_ty.ref_mutability() == Some(ty::Mutability::Mut))
             {
                 self.add_mutably_used_var(*vid);
             }

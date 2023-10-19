@@ -7,7 +7,7 @@ use clippy_utils::ty::{
     make_normalized_projection_with_regions, normalize_with_regions,
 };
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, Mutability};
+use rustc_hir::Expr;
 use rustc_lint::LateContext;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
 use rustc_middle::ty::{self, EarlyBinder, Ty, TypeAndMut};
@@ -61,10 +61,10 @@ enum AdjustKind {
     ReborrowMut,
 }
 impl AdjustKind {
-    fn borrow(mutbl: Mutability) -> Self {
+    fn borrow(mutbl: ty::Mutability) -> Self {
         match mutbl {
-            Mutability::Not => Self::Borrow,
-            Mutability::Mut => Self::BorrowMut,
+            ty::Mutability::Not => Self::Borrow,
+            ty::Mutability::Mut => Self::BorrowMut,
         }
     }
 
@@ -75,10 +75,10 @@ impl AdjustKind {
         }
     }
 
-    fn reborrow(mutbl: Mutability) -> Self {
+    fn reborrow(mutbl: ty::Mutability) -> Self {
         match mutbl {
-            Mutability::Not => Self::Reborrow,
-            Mutability::Mut => Self::ReborrowMut,
+            ty::Mutability::Not => Self::Reborrow,
+            ty::Mutability::Mut => Self::ReborrowMut,
         }
     }
 
@@ -150,7 +150,7 @@ fn is_ref_iterable<'tcx>(
                     return Some((AdjustKind::None, self_ty));
                 }
             } else if enforce_iter_loop_reborrow
-                && let ty::Ref(region, ty, Mutability::Mut) = *self_ty.kind()
+                && let ty::Ref(region, ty, ty::Mutability::Mut) = *self_ty.kind()
                 && let Some(mutbl) = mutbl
             {
                 // Attempt to reborrow the mutable reference

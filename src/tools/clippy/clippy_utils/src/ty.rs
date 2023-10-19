@@ -513,8 +513,8 @@ pub fn peel_mid_ty_refs(ty: Ty<'_>) -> (Ty<'_>, usize) {
 pub fn peel_mid_ty_refs_is_mutable(ty: Ty<'_>) -> (Ty<'_>, usize, Mutability) {
     fn f(ty: Ty<'_>, count: usize, mutability: Mutability) -> (Ty<'_>, usize, Mutability) {
         match ty.kind() {
-            ty::Ref(_, ty, Mutability::Mut) => f(*ty, count + 1, mutability),
-            ty::Ref(_, ty, Mutability::Not) => f(*ty, count + 1, Mutability::Not),
+            ty::Ref(_, ty, ty::Mutability::Mut) => f(*ty, count + 1, mutability),
+            ty::Ref(_, ty, ty::Mutability::Not) => f(*ty, count + 1, Mutability::Not),
             _ => (ty, count, mutability),
         }
     }
@@ -1182,7 +1182,7 @@ pub fn make_normalized_projection<'tcx>(
 /// etc.
 pub fn is_interior_mut_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
     match *ty.kind() {
-        ty::Ref(_, inner_ty, mutbl) => mutbl == Mutability::Mut || is_interior_mut_ty(cx, inner_ty),
+        ty::Ref(_, inner_ty, mutbl) => mutbl == ty::Mutability::Mut || is_interior_mut_ty(cx, inner_ty),
         ty::Slice(inner_ty) => is_interior_mut_ty(cx, inner_ty),
         ty::Array(inner_ty, size) => {
             size.try_eval_target_usize(cx.tcx, cx.param_env)

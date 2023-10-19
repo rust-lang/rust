@@ -68,7 +68,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for MutVisitor<'a, 'tcx> {
                     expr.span,
                     "generally you want to avoid `&mut &mut _` if possible",
                 );
-            } else if let ty::Ref(_, ty, hir::Mutability::Mut) = self.cx.typeck_results().expr_ty(e).kind() {
+            } else if let ty::Ref(_, ty, ty::Mutability::Mut) = self.cx.typeck_results().expr_ty(e).kind() {
                 if ty.peel_refs().is_sized(self.cx.tcx, self.cx.param_env) {
                     span_lint(
                         self.cx,

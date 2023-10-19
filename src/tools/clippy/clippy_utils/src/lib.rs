@@ -90,7 +90,7 @@ use rustc_hir::LangItem::{OptionNone, OptionSome, ResultErr, ResultOk};
 use rustc_hir::{
     self as hir, def, Arm, ArrayLen, BindingAnnotation, Block, BlockCheckMode, Body, Closure, Destination, Expr,
     ExprField, ExprKind, FnDecl, FnRetTy, GenericArgs, HirId, Impl, ImplItem, ImplItemKind, ImplItemRef, Item,
-    ItemKind, LangItem, Local, MatchSource, Mutability, Node, OwnerId, Param, Pat, PatKind, Path, PathSegment, PrimTy,
+    ItemKind, LangItem, Local, MatchSource, Node, OwnerId, Param, Pat, PatKind, Path, PathSegment, PrimTy,
     QPath, Stmt, StmtKind, TraitItem, TraitItemKind, TraitItemRef, TraitRef, TyKind, UnOp,
 };
 use rustc_lexer::{tokenize, TokenKind};
@@ -103,7 +103,7 @@ use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{
     self as rustc_ty, Binder, BorrowKind, ClosureKind, FloatTy, IntTy, ParamEnv, ParamEnvAnd, Ty, TyCtxt, TypeAndMut,
-    TypeVisitableExt, UintTy, UpvarCapture,
+    TypeVisitableExt, UintTy, UpvarCapture, Mutability,
 };
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::SourceMap;
@@ -1041,7 +1041,10 @@ pub fn capture_local_usage(cx: &LateContext<'_>, e: &Expr<'_>) -> CaptureKind {
 
         match parent {
             Node::Expr(e) => match e.kind {
-                ExprKind::AddrOf(_, mutability, _) => return CaptureKind::Ref(mutability),
+                ExprKind::AddrOf(_, mutability, _) => return CaptureKind::Ref(match mutability {
+                    hir::Mutability::Not => Mutability::Not,
+                    hir::Mutability::Mut => Mutability::Mut,
+                }),
                 ExprKind::Index(..) | ExprKind::Unary(UnOp::Deref, _) => capture = CaptureKind::Ref(Mutability::Not),
                 ExprKind::Assign(lhs, ..) | ExprKind::AssignOp(_, lhs, _) if lhs.hir_id == child_id => {
                     return CaptureKind::Ref(Mutability::Mut);

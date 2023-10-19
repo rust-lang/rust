@@ -58,7 +58,7 @@ fn check_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, span: Span) -> McfResult {
         };
 
         match ty.kind() {
-            ty::Ref(_, _, hir::Mutability::Mut) => {
+            ty::Ref(_, _, ty::Mutability::Mut) => {
                 return Err((span, "mutable references in const fn are unstable".into()));
             },
             ty::Alias(ty::Opaque, ..) => return Err((span, "`impl Trait` in const fn is unstable".into())),

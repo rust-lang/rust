@@ -2,7 +2,6 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::get_parent_as_impl;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::{implements_trait, make_normalized_projection};
-use rustc_ast::Mutability;
 use rustc_errors::Applicability;
 use rustc_hir::{FnRetTy, ImplItemKind, ImplicitSelfKind, ItemKind, TyKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -124,8 +123,8 @@ impl LateLintPass<'_> for IterWithoutIntoIter {
             && trait_ref.trait_def_id().is_some_and(|did| cx.tcx.is_diagnostic_item(sym::IntoIterator, did))
             && let &ty::Ref(_, ty, mtbl) = cx.tcx.type_of(item.owner_id).instantiate_identity().kind()
             && let expected_method_name = match mtbl {
-                Mutability::Mut => sym::iter_mut,
-                Mutability::Not => sym::iter,
+                ty::Mutability::Mut => sym::iter_mut,
+                ty::Mutability::Not => sym::iter,
             }
             && !type_has_inherent_method(cx, ty, expected_method_name)
             && let Some(iter_assoc_span) = imp.items.iter().find_map(|item| {

@@ -4,7 +4,7 @@ use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sugg;
 use rustc_errors::Applicability;
-use rustc_hir::{self as hir, Expr, GenericArg, Mutability, Path, TyKind};
+use rustc_hir::{self as hir, Expr, GenericArg, Path, TyKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 
@@ -28,7 +28,7 @@ pub(super) fn check<'tcx>(
                 &format!("transmute from a pointer type (`{from_ty}`) to a reference type (`{to_ty}`)"),
                 |diag| {
                     let arg = sugg::Sugg::hir(cx, arg, "..");
-                    let (deref, cast) = if *mutbl == Mutability::Mut {
+                    let (deref, cast) = if *mutbl == ty::Mutability::Mut {
                         ("&mut *", "*mut")
                     } else {
                         ("&*", "*const")

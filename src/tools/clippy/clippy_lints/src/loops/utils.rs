@@ -331,8 +331,8 @@ pub(super) fn make_iterator_snippet(cx: &LateContext<'_>, arg: &Expr<'_>, applic
         match &arg_ty.kind() {
             ty::Ref(_, inner_ty, mutbl) if has_iter_method(cx, *inner_ty).is_some() => {
                 let method_name = match mutbl {
-                    Mutability::Mut => "iter_mut",
-                    Mutability::Not => "iter",
+                    ty::Mutability::Mut => "iter_mut",
+                    ty::Mutability::Not => "iter",
                 };
                 let caller = match &arg.kind {
                     ExprKind::AddrOf(BorrowKind::Ref, _, arg_inner) => arg_inner,

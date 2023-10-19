@@ -1836,8 +1836,8 @@ impl PrimitiveType {
                 // or start with a more complex refactoring.
                 Tuple => [SimplifiedType::Tuple(1), SimplifiedType::Tuple(2), SimplifiedType::Tuple(3)].into(),
                 Unit => single(SimplifiedType::Tuple(0)),
-                RawPointer => [SimplifiedType::Ptr(Mutability::Not), SimplifiedType::Ptr(Mutability::Mut)].into_iter().collect(),
-                Reference => [SimplifiedType::Ref(Mutability::Not), SimplifiedType::Ref(Mutability::Mut)].into_iter().collect(),
+                RawPointer => [SimplifiedType::Ptr(ty::Mutability::Not), SimplifiedType::Ptr(ty::Mutability::Mut)].into_iter().collect(),
+                Reference => [SimplifiedType::Ref(ty::Mutability::Not), SimplifiedType::Ref(ty::Mutability::Mut)].into_iter().collect(),
                 // FIXME: This will be wrong if we ever add inherent impls
                 // for function pointers.
                 Fn => single(SimplifiedType::Function(1)),
