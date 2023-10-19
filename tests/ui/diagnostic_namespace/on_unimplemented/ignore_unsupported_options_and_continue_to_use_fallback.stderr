@@ -8,8 +8,9 @@ LL | |     if(Self = ()),
 ...  |
 LL | |     note = "not used yet"
 LL | | )]
-   | |__^
+   | |__^ invalid option found here
    |
+   = help: only `message`, `note` and `label` are allowed as options
    = note: `#[warn(unknown_or_malformed_diagnostic_attributes)]` on by default
 
 warning: malformed `on_unimplemented` attribute
@@ -22,8 +23,9 @@ LL | |     if(Self = ()),
 ...  |
 LL | |     note = "not used yet"
 LL | | )]
-   | |__^
+   | |__^ invalid option found here
    |
+   = help: only `message`, `note` and `label` are allowed as options
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0277]: fallback!!
