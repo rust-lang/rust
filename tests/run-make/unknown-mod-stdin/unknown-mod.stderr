@@ -5,6 +5,7 @@ error[E0583]: file not found for module `unknown`
   | ^^^^^^^^^^^^
   |
   = help: to create the module `unknown`, create file "unknown.rs" or "unknown/mod.rs"
+  = note: if there is a `mod unknown` elsewhere in the crate already, import it with `use crate::...` instead
 
 error: aborting due to previous error
 

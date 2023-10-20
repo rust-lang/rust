@@ -5,6 +5,7 @@ LL |     mod missing;
    |     ^^^^^^^^^^^^
    |
    = help: to create the module `missing`, create file "$DIR/foo_inline/inline/missing.rs" or "$DIR/foo_inline/inline/missing/mod.rs"
+   = note: if there is a `mod missing` elsewhere in the crate already, import it with `use crate::...` instead
 
 error: aborting due to previous error
 

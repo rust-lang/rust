@@ -5,6 +5,7 @@ LL | mod řųśť;
    | ^^^^^^^^^
    |
    = help: to create the module `řųśť`, create file "$DIR/řųśť.rs" or "$DIR/řųśť/mod.rs"
+   = note: if there is a `mod řųśť` elsewhere in the crate already, import it with `use crate::...` instead
 
 error[E0754]: trying to load file for module `řųśť` with non-ascii identifier name
   --> $DIR/mod_file_nonascii_forbidden.rs:1:5
