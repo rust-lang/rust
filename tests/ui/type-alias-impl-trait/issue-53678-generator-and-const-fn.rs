@@ -6,9 +6,9 @@
 mod gen {
     use std::ops::Coroutine;
 
-    pub type GenOnce<Y, R> = impl Coroutine<Yield = Y, Return = R>;
+    pub type CoroOnce<Y, R> = impl Coroutine<Yield = Y, Return = R>;
 
-    pub const fn const_coroutine<Y, R>(yielding: Y, returning: R) -> GenOnce<Y, R> {
+    pub const fn const_coroutine<Y, R>(yielding: Y, returning: R) -> CoroOnce<Y, R> {
         move || {
             yield yielding;
 
@@ -17,6 +17,6 @@ mod gen {
     }
 }
 
-const FOO: gen::GenOnce<usize, usize> = gen::const_coroutine(10, 100);
+const FOO: gen::CoroOnce<usize, usize> = gen::const_coroutine(10, 100);
 
 fn main() {}

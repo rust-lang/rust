@@ -2,17 +2,17 @@
 use std::ops::Coroutine;
 
 trait Runnable {
-    type Gen: Coroutine<Yield = (), Return = ()>;
+    type Coro: Coroutine<Yield = (), Return = ()>;
 
-    fn run(&mut self) -> Self::Gen;
+    fn run(&mut self) -> Self::Coro;
 }
 
 struct Implementor {}
 
 impl Runnable for Implementor {
-    type Gen = impl Coroutine<Yield = (), Return = ()>;
+    type Coro = impl Coroutine<Yield = (), Return = ()>;
 
-    fn run(&mut self) -> Self::Gen {
+    fn run(&mut self) -> Self::Coro {
         //~^ ERROR: type mismatch resolving
         move || {
             yield 1;

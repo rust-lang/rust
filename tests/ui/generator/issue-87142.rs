@@ -10,18 +10,18 @@
 use std::ops::Coroutine;
 
 pub trait CoroutineProviderAlt: Sized {
-    type Gen: Coroutine<(), Return = (), Yield = ()>;
+    type Coro: Coroutine<(), Return = (), Yield = ()>;
 
-    fn start(ctx: Context<Self>) -> Self::Gen;
+    fn start(ctx: Context<Self>) -> Self::Coro;
 }
 
 pub struct Context<G: 'static + CoroutineProviderAlt> {
-    pub link: Box<G::Gen>,
+    pub link: Box<G::Coro>,
 }
 
 impl CoroutineProviderAlt for () {
-    type Gen = impl Coroutine<(), Return = (), Yield = ()>;
-    fn start(ctx: Context<Self>) -> Self::Gen {
+    type Coro = impl Coroutine<(), Return = (), Yield = ()>;
+    fn start(ctx: Context<Self>) -> Self::Coro {
         move || {
             match ctx {
                 _ => (),
