@@ -183,7 +183,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     self.arena.alloc_from_iter(arms.iter().map(|x| self.lower_arm(x))),
                     hir::MatchSource::Normal,
                 ),
-                ExprKind::Async(capture_clause, block) => self.make_async_expr(
+                ExprKind::Gen(capture_clause, block, GenBlockKind::Async) => self.make_async_expr(
                     *capture_clause,
                     e.id,
                     None,
@@ -317,6 +317,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         rest,
                     )
                 }
+                ExprKind::Gen(capture_clause, block, GenBlockKind::Gen) => self.make_gen_expr(
+                    *capture_clause,
+                    e.id,
+                    None,
+                    e.span,
+                    hir::CoroutineSource::Block,
+                    |this| this.with_new_scopes(|this| this.lower_block_expr(block)),
+                ),
                 ExprKind::Yield(opt_expr) => self.lower_expr_yield(e.span, opt_expr.as_deref()),
                 ExprKind::Err => hir::ExprKind::Err(
                     self.tcx.sess.delay_span_bug(e.span, "lowered ExprKind::Err"),
@@ -647,6 +655,57 @@ impl<'hir> LoweringContext<'_, 'hir> {
         });
 
         // `static |_task_context| -> <ret_ty> { body }`:
+        hir::ExprKind::Closure(self.arena.alloc(hir::Closure {
+            def_id: self.local_def_id(closure_node_id),
+            binder: hir::ClosureBinder::Default,
+            capture_clause,
+            bound_generic_params: &[],
+            fn_decl,
+            body,
+            fn_decl_span: self.lower_span(span),
+            fn_arg_span: None,
+            movability: Some(hir::Movability::Static),
+            constness: hir::Constness::NotConst,
+        }))
+    }
+
+    /// Lower a `gen` construct to a generator that implements `Iterator`.
+    ///
+    /// This results in:
+    ///
+    /// ```text
+    /// static move? |()| -> () {
+    ///     <body>
+    /// }
+    /// ```
+    pub(super) fn make_gen_expr(
+        &mut self,
+        capture_clause: CaptureBy,
+        closure_node_id: NodeId,
+        _yield_ty: Option<hir::FnRetTy<'hir>>,
+        span: Span,
+        gen_kind: hir::CoroutineSource,
+        body: impl FnOnce(&mut Self) -> hir::Expr<'hir>,
+    ) -> hir::ExprKind<'hir> {
+        let output = hir::FnRetTy::DefaultReturn(self.lower_span(span));
+
+        // The closure/generator `FnDecl` takes a single (resume) argument of type `input_ty`.
+        let fn_decl = self.arena.alloc(hir::FnDecl {
+            inputs: &[],
+            output,
+            c_variadic: false,
+            implicit_self: hir::ImplicitSelfKind::None,
+            lifetime_elision_allowed: false,
+        });
+
+        let body = self.lower_body(move |this| {
+            this.coroutine_kind = Some(hir::CoroutineKind::Gen(gen_kind));
+
+            let res = body(this);
+            (&[], res)
+        });
+
+        // `static |()| -> () { body }`:
         hir::ExprKind::Closure(self.arena.alloc(hir::Closure {
             def_id: self.local_def_id(closure_node_id),
             binder: hir::ClosureBinder::Default,

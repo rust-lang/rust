@@ -9,7 +9,7 @@ use super::{
 use crate::errors;
 use crate::maybe_recover_from_interpolated_ty_qpath;
 use ast::mut_visit::{noop_visit_expr, MutVisitor};
-use ast::{Path, PathSegment};
+use ast::{GenBlockKind, Path, PathSegment};
 use core::mem;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Token, TokenKind};
@@ -1422,9 +1422,6 @@ impl<'a> Parser<'a> {
             } else if this.is_try_block() {
                 this.expect_keyword(kw::Try)?;
                 this.parse_try_block(lo)
-            } else if this.is_gen_block() {
-                this.expect_keyword(kw::Gen)?;
-                this.parse_gen_block(lo)
             } else if this.eat_keyword(kw::Return) {
                 this.parse_expr_return()
             } else if this.eat_keyword(kw::Continue) {
@@ -1446,12 +1443,14 @@ impl<'a> Parser<'a> {
                 if this.check_keyword(kw::Async) {
                     if this.is_async_block() {
                         // Check for `async {` and `async move {`.
-                        this.parse_async_block()
+                        this.parse_gen_block()
                     } else {
                         this.parse_expr_closure()
                     }
                 } else if this.eat_keyword(kw::Await) {
                     this.recover_incorrect_await_syntax(lo, this.prev_token.span)
+                } else if this.token.uninterpolated_span().at_least_rust_2024() {
+                    if this.is_gen_block() { this.parse_gen_block() } else { this.parse_expr_lit() }
                 } else {
                     this.parse_expr_lit()
                 }
@@ -3043,14 +3042,6 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parses a `gen {...}` expression (`gen` token already eaten).
-    fn parse_gen_block(&mut self, _span_lo: Span) -> PResult<'a, P<Expr>> {
-        let (_attrs, _body) = self.parse_inner_attrs_and_block()?;
-
-        Err(errors::GenBlock { span: self.prev_token.span }
-            .into_diagnostic(&self.sess.span_diagnostic))
-    }
-
     fn is_do_catch_block(&self) -> bool {
         self.token.is_keyword(kw::Do)
             && self.is_keyword_ahead(1, &[kw::Catch])
@@ -3077,13 +3068,18 @@ impl<'a> Parser<'a> {
             && self.token.uninterpolated_span().at_least_rust_2024()
     }
 
-    /// Parses an `async move? {...}` expression.
-    fn parse_async_block(&mut self) -> PResult<'a, P<Expr>> {
+    /// Parses an `async move? {...}` or `gen move? {...}` expression.
+    fn parse_gen_block(&mut self) -> PResult<'a, P<Expr>> {
         let lo = self.token.span;
-        self.expect_keyword(kw::Async)?;
+        let kind = if self.eat_keyword(kw::Async) {
+            GenBlockKind::Async
+        } else {
+            assert!(self.eat_keyword(kw::Gen));
+            GenBlockKind::Gen
+        };
         let capture_clause = self.parse_capture_clause()?;
         let (attrs, body) = self.parse_inner_attrs_and_block()?;
-        let kind = ExprKind::Async(capture_clause, body);
+        let kind = ExprKind::Gen(capture_clause, body, kind);
         Ok(self.mk_expr_with_attrs(lo.to(self.prev_token.span), kind, attrs))
     }
 
@@ -3614,7 +3610,7 @@ impl MutVisitor for CondChecker<'_> {
             | ExprKind::Match(_, _)
             | ExprKind::Closure(_)
             | ExprKind::Block(_, _)
-            | ExprKind::Async(_, _)
+            | ExprKind::Gen(_, _, _)
             | ExprKind::TryBlock(_)
             | ExprKind::Underscore
             | ExprKind::Path(_, _)

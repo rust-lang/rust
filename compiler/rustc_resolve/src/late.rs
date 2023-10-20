@@ -4321,7 +4321,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                 );
             }
             ExprKind::Closure(..) => visit::walk_expr(self, expr),
-            ExprKind::Async(..) => {
+            ExprKind::Gen(..) => {
                 self.with_label_rib(RibKind::ClosureOrAsync, |this| visit::walk_expr(this, expr));
             }
             ExprKind::Repeat(ref elem, ref ct) => {

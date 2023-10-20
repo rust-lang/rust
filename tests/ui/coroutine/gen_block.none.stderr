@@ -1,5 +1,5 @@
 error: expected identifier, found reserved keyword `yield`
-  --> $DIR/gen_block.rs:8:19
+  --> $DIR/gen_block.rs:9:19
    |
 LL |     let y = gen { yield 42 };
    |             ---   ^^^^^ expected identifier, found reserved keyword
@@ -7,19 +7,19 @@ LL |     let y = gen { yield 42 };
    |             while parsing this struct
 
 error[E0422]: cannot find struct, variant or union type `gen` in this scope
-  --> $DIR/gen_block.rs:5:13
+  --> $DIR/gen_block.rs:6:13
    |
 LL |     let x = gen {};
    |             ^^^ not found in this scope
 
 error[E0422]: cannot find struct, variant or union type `gen` in this scope
-  --> $DIR/gen_block.rs:8:13
+  --> $DIR/gen_block.rs:9:13
    |
 LL |     let y = gen { yield 42 };
    |             ^^^ not found in this scope
 
 error[E0422]: cannot find struct, variant or union type `gen` in this scope
-  --> $DIR/gen_block.rs:11:5
+  --> $DIR/gen_block.rs:12:5
    |
 LL |     gen {};
    |     ^^^ not found in this scope

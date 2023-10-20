@@ -1,10 +1,9 @@
-error: `gen` blocks are not yet implemented
-  --> $DIR/gen_block.rs:5:18
+error[E0282]: type annotations needed
+  --> $DIR/gen_block.rs:6:17
    |
 LL |     let x = gen {};
-   |                  ^
-   |
-   = help: only the keyword is reserved for now
+   |                 ^^ cannot infer type
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0282`.
