@@ -1,4 +1,3 @@
-// skip-filecheck
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 // needs-unwind
 
@@ -18,6 +17,8 @@ pub fn foo<T>()
 where
     IntFactory: Factory<T>,
 {
+    // CHECK-LABEL: fn foo(
+    // CHECK-NOT: (inlined bar::<T>)
     let mut x: <IntFactory as Factory<T>>::Item = bar::<T>();
 }
 
