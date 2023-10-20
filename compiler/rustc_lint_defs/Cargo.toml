@@ -4,12 +4,14 @@ version = "0.0.0"
 edition = "2021"
 
 [dependencies]
-serde = { version = "1.0.125", features = ["derive"] }
+# tidy-alphabetical-start
 rustc_ast = { path = "../rustc_ast" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_error_messages = { path = "../rustc_error_messages" }
-rustc_span = { path = "../rustc_span" }
-rustc_serialize = { path = "../rustc_serialize" }
-rustc_macros = { path = "../rustc_macros" }
-rustc_target = { path = "../rustc_target" }
 rustc_hir = { path = "../rustc_hir" }
+rustc_macros = { path = "../rustc_macros" }
+rustc_serialize = { path = "../rustc_serialize" }
+rustc_span = { path = "../rustc_span" }
+rustc_target = { path = "../rustc_target" }
+serde = { version = "1.0.125", features = ["derive"] }
+# tidy-alphabetical-end

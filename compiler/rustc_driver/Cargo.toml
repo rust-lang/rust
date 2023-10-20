@@ -7,4 +7,6 @@ edition = "2021"
 crate-type = ["dylib"]
 
 [dependencies]
+# tidy-alphabetical-start
 rustc_driver_impl = { path = "../rustc_driver_impl" }
+# tidy-alphabetical-end

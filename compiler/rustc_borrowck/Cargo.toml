@@ -3,19 +3,16 @@ name = "rustc_borrowck"
 version = "0.0.0"
 edition = "2021"
 
-[lib]
-
 [dependencies]
+# tidy-alphabetical-start
 either = "1.5.0"
 itertools = "0.10.1"
-tracing = "0.1"
 polonius-engine = "0.13.0"
-smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_errors = { path = "../rustc_errors" }
+rustc_fluent_macro = { path = "../rustc_fluent_macro" }
 rustc_graphviz = { path = "../rustc_graphviz" }
 rustc_hir = { path = "../rustc_hir" }
-rustc_fluent_macro = { path = "../rustc_fluent_macro" }
 rustc_index = { path = "../rustc_index" }
 rustc_infer = { path = "../rustc_infer" }
 rustc_lexer = { path = "../rustc_lexer" }
@@ -24,7 +21,10 @@ rustc_middle = { path = "../rustc_middle" }
 rustc_mir_dataflow = { path = "../rustc_mir_dataflow" }
 rustc_serialize = { path = "../rustc_serialize" }
 rustc_session = { path = "../rustc_session" }
+rustc_span = { path = "../rustc_span" }
 rustc_target = { path = "../rustc_target" }
 rustc_trait_selection = { path = "../rustc_trait_selection" }
 rustc_traits = { path = "../rustc_traits" }
-rustc_span = { path = "../rustc_span" }
+smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
+tracing = "0.1"
+# tidy-alphabetical-end

@@ -3,8 +3,6 @@ name = "rustc_driver_impl"
 version = "0.0.0"
 edition = "2021"
 
-[lib]
-
 [dependencies]
 # tidy-alphabetical-start
 rustc_ast = { path = "../rustc_ast" }
@@ -57,7 +55,9 @@ tracing = { version = "0.1.35" }
 # tidy-alphabetical-end
 
 [target.'cfg(unix)'.dependencies]
+# tidy-alphabetical-start
 libc = "0.2"
+# tidy-alphabetical-end
 
 [target.'cfg(windows)'.dependencies.windows]
 version = "0.48.0"
@@ -66,6 +66,7 @@ features = [
 ]
 
 [features]
+# tidy-alphabetical-start
 llvm = ['rustc_interface/llvm']
 max_level_info = ['rustc_log/max_level_info']
 rustc_use_parallel_compiler = [
@@ -73,3 +74,4 @@ rustc_use_parallel_compiler = [
     'rustc_interface/rustc_use_parallel_compiler',
     'rustc_middle/rustc_use_parallel_compiler'
 ]
+# tidy-alphabetical-end

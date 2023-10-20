@@ -3,31 +3,33 @@ name = "rustc_mir_transform"
 version = "0.0.0"
 edition = "2021"
 
-[lib]
-
 [dependencies]
-itertools = "0.10.1"
-smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
-tracing = "0.1"
+# tidy-alphabetical-start
 either = "1"
-rustc_ast = { path = "../rustc_ast" }
+itertools = "0.10.1"
 rustc_arena = { path = "../rustc_arena" }
+rustc_ast = { path = "../rustc_ast" }
 rustc_attr = { path = "../rustc_attr" }
+rustc_const_eval = { path = "../rustc_const_eval" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_errors = { path = "../rustc_errors" }
+rustc_fluent_macro = { path = "../rustc_fluent_macro" }
 rustc_hir = { path = "../rustc_hir" }
 rustc_index = { path = "../rustc_index" }
+rustc_macros = { path = "../rustc_macros" }
 rustc_middle = { path = "../rustc_middle" }
-rustc_const_eval = { path = "../rustc_const_eval" }
 rustc_mir_build = { path = "../rustc_mir_build" }
 rustc_mir_dataflow = { path = "../rustc_mir_dataflow" }
 rustc_serialize = { path = "../rustc_serialize" }
 rustc_session = { path = "../rustc_session" }
+rustc_span = { path = "../rustc_span" }
 rustc_target = { path = "../rustc_target" }
 rustc_trait_selection = { path = "../rustc_trait_selection" }
-rustc_span = { path = "../rustc_span" }
-rustc_fluent_macro = { path = "../rustc_fluent_macro" }
-rustc_macros = { path = "../rustc_macros" }
+smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
+tracing = "0.1"
+# tidy-alphabetical-end
 
 [dev-dependencies]
+# tidy-alphabetical-start
 coverage_test_macros = { path = "src/coverage/test_macros" }
+# tidy-alphabetical-end
