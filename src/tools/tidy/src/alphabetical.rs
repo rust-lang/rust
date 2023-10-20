@@ -1,6 +1,6 @@
 //! Checks that a list of items is in alphabetical order
 //!
-//! To use, use the following annotation in the code:
+//! Use the following marker in the code:
 //! ```rust
 //! // tidy-alphabetical-start
 //! fn aaa() {}
@@ -30,27 +30,25 @@ fn is_close_bracket(c: char) -> bool {
 }
 
 // Don't let tidy check this here :D
-const START_COMMENT: &str = concat!("tidy-alphabetical", "-start");
-const END_COMMENT: &str = "tidy-alphabetical-end";
+const START_MARKER: &str = concat!("tidy-alphabetical", "-start");
+const END_MARKER: &str = "tidy-alphabetical-end";
 
 fn check_section<'a>(
     file: impl Display,
     lines: impl Iterator<Item = (usize, &'a str)>,
     bad: &mut bool,
 ) {
-    let content_lines = lines.take_while(|(_, line)| !line.contains(END_COMMENT));
-
     let mut prev_line = String::new();
     let mut first_indent = None;
     let mut in_split_line = None;
 
-    for (line_idx, line) in content_lines {
-        if line.contains(START_COMMENT) {
-            tidy_error!(
-                bad,
-                "{file}:{} found `{START_COMMENT}` expecting `{END_COMMENT}`",
-                line_idx
-            )
+    for (line_idx, line) in lines {
+        if line.contains(START_MARKER) {
+            tidy_error!(bad, "{file}:{} found `{START_MARKER}` expecting `{END_MARKER}`", line_idx)
+        }
+
+        if line.contains(END_MARKER) {
+            return;
         }
 
         let indent = first_indent.unwrap_or_else(|| {
@@ -92,19 +90,18 @@ fn check_section<'a>(
 
         prev_line = line;
     }
+
+    tidy_error!(bad, "{file}: reached end of file expecting `{END_MARKER}`")
 }
 
 pub fn check(path: &Path, bad: &mut bool) {
     walk(path, |path, _is_dir| filter_dirs(path), &mut |entry, contents| {
         let file = &entry.path().display();
 
-        let mut lines = contents.lines().enumerate().peekable();
+        let mut lines = contents.lines().enumerate();
         while let Some((_, line)) = lines.next() {
-            if line.contains(START_COMMENT) {
+            if line.contains(START_MARKER) {
                 check_section(file, &mut lines, bad);
-                if lines.peek().is_none() {
-                    tidy_error!(bad, "{file}: reached end of file expecting `{END_COMMENT}`")
-                }
             }
         }
     });
