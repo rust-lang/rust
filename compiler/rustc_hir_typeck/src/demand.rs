@@ -983,6 +983,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else {
             return false;
         }
+        let e_ok = args_e.type_at(0);
+        let f_ok = args_f.type_at(0);
+        if !self.infcx.can_eq(self.param_env, f_ok, e_ok) {
+            return false;
+        }
         let e = args_e.type_at(1);
         let f = args_f.type_at(1);
         if self
