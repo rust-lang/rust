@@ -49,4 +49,5 @@ TrivialTypeTraversalImpls! {
     u64,
     String,
     crate::DebruijnIndex,
+    crate::AliasRelationDirection,
 }

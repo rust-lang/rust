@@ -97,12 +97,12 @@ pub use self::rvalue_scopes::RvalueScopes;
 pub use self::sty::BoundRegionKind::*;
 pub use self::sty::{
     AliasTy, Article, Binder, BoundRegion, BoundRegionKind, BoundTy, BoundTyKind, BoundVar,
-    BoundVariableKind, CanonicalPolyFnSig, ClosureArgs, ClosureArgsParts, ConstKind, ConstVid,
-    CoroutineArgs, CoroutineArgsParts, EarlyBoundRegion, EffectVid, ExistentialPredicate,
+    BoundVariableKind, CanonicalPolyFnSig, ClauseKind, ClosureArgs, ClosureArgsParts, ConstKind,
+    ConstVid, CoroutineArgs, CoroutineArgsParts, EarlyBoundRegion, EffectVid, ExistentialPredicate,
     ExistentialProjection, ExistentialTraitRef, FnSig, FreeRegion, GenSig, InlineConstArgs,
     InlineConstArgsParts, ParamConst, ParamTy, PolyExistentialPredicate, PolyExistentialProjection,
-    PolyExistentialTraitRef, PolyFnSig, PolyGenSig, PolyTraitRef, Region, RegionKind, RegionVid,
-    TraitRef, TyKind, TypeAndMut, UpvarArgs, VarianceDiagInfo,
+    PolyExistentialTraitRef, PolyFnSig, PolyGenSig, PolyTraitRef, PredicateKind, Region,
+    RegionKind, RegionVid, TraitRef, TyKind, TypeAndMut, UpvarArgs, VarianceDiagInfo,
 };
 pub use self::trait_def::TraitDef;
 pub use self::typeck_results::{
@@ -622,98 +622,6 @@ impl<'tcx> Clause<'tcx> {
             Some(clause.rebind(o))
         } else {
             None
-        }
-    }
-}
-
-#[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
-/// A clause is something that can appear in where bounds or be inferred
-/// by implied bounds.
-pub enum ClauseKind<'tcx> {
-    /// Corresponds to `where Foo: Bar<A, B, C>`. `Foo` here would be
-    /// the `Self` type of the trait reference and `A`, `B`, and `C`
-    /// would be the type parameters.
-    Trait(TraitPredicate<'tcx>),
-
-    /// `where 'a: 'b`
-    RegionOutlives(RegionOutlivesPredicate<'tcx>),
-
-    /// `where T: 'a`
-    TypeOutlives(TypeOutlivesPredicate<'tcx>),
-
-    /// `where <T as TraitRef>::Name == X`, approximately.
-    /// See the `ProjectionPredicate` struct for details.
-    Projection(ProjectionPredicate<'tcx>),
-
-    /// Ensures that a const generic argument to a parameter `const N: u8`
-    /// is of type `u8`.
-    ConstArgHasType(Const<'tcx>, Ty<'tcx>),
-
-    /// No syntax: `T` well-formed.
-    WellFormed(GenericArg<'tcx>),
-
-    /// Constant initializer must evaluate successfully.
-    ConstEvaluatable(ty::Const<'tcx>),
-}
-
-#[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
-#[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
-pub enum PredicateKind<'tcx> {
-    /// Prove a clause
-    Clause(ClauseKind<'tcx>),
-
-    /// Trait must be object-safe.
-    ObjectSafe(DefId),
-
-    /// No direct syntax. May be thought of as `where T: FnFoo<...>`
-    /// for some generic args `...` and `T` being a closure type.
-    /// Satisfied (or refuted) once we know the closure's kind.
-    ClosureKind(DefId, GenericArgsRef<'tcx>, ClosureKind),
-
-    /// `T1 <: T2`
-    ///
-    /// This obligation is created most often when we have two
-    /// unresolved type variables and hence don't have enough
-    /// information to process the subtyping obligation yet.
-    Subtype(SubtypePredicate<'tcx>),
-
-    /// `T1` coerced to `T2`
-    ///
-    /// Like a subtyping obligation, this is created most often
-    /// when we have two unresolved type variables and hence
-    /// don't have enough information to process the coercion
-    /// obligation yet. At the moment, we actually process coercions
-    /// very much like subtyping and don't handle the full coercion
-    /// logic.
-    Coerce(CoercePredicate<'tcx>),
-
-    /// Constants must be equal. The first component is the const that is expected.
-    ConstEquate(Const<'tcx>, Const<'tcx>),
-
-    /// A marker predicate that is always ambiguous.
-    /// Used for coherence to mark opaque types as possibly equal to each other but ambiguous.
-    Ambiguous,
-
-    /// Separate from `ClauseKind::Projection` which is used for normalization in new solver.
-    /// This predicate requires two terms to be equal to eachother.
-    ///
-    /// Only used for new solver
-    AliasRelate(Term<'tcx>, Term<'tcx>, AliasRelationDirection),
-}
-
-#[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
-#[derive(HashStable, Debug)]
-pub enum AliasRelationDirection {
-    Equate,
-    Subtype,
-}
-
-impl std::fmt::Display for AliasRelationDirection {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            AliasRelationDirection::Equate => write!(f, "=="),
-            AliasRelationDirection::Subtype => write!(f, "<:"),
         }
     }
 }

@@ -1,4 +1,5 @@
 use rustc_data_structures::stable_hasher::HashStable;
+use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_serialize::{Decodable, Decoder, Encodable};
 use std::cmp::Ordering;
 use std::fmt;
@@ -381,11 +382,7 @@ where
     I::PlaceholderRegion: HashStable<CTX>,
 {
     #[inline]
-    fn hash_stable(
-        &self,
-        hcx: &mut CTX,
-        hasher: &mut rustc_data_structures::stable_hasher::StableHasher,
-    ) {
+    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
         std::mem::discriminant(self).hash_stable(hcx, hasher);
         match self {
             ReErased | ReStatic | ReError(_) => {
