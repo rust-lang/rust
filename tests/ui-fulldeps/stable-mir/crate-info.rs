@@ -4,6 +4,7 @@
 // ignore-stage1
 // ignore-cross-compile
 // ignore-remote
+// ignore-windows-gnu mingw has troubles with linking https://github.com/rust-lang/rust/pull/116837
 // edition: 2021
 
 #![feature(rustc_private)]
@@ -130,7 +131,8 @@ fn test_stable_mir(_tcx: TyCtxt<'_>) -> ControlFlow<()> {
                                 mut args,
                             )) => {
                                 let func = def.body();
-                                match func.locals[1].ty
+                                match func.locals[1]
+                                    .ty
                                     .fold(&mut args)
                                     .continue_value()
                                     .unwrap()

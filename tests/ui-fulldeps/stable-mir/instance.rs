@@ -4,6 +4,7 @@
 // ignore-stage1
 // ignore-cross-compile
 // ignore-remote
+// ignore-windows-gnu mingw has troubles with linking https://github.com/rust-lang/rust/pull/116837
 // edition: 2021
 
 #![feature(rustc_private)]
@@ -13,14 +14,14 @@
 extern crate rustc_middle;
 #[macro_use]
 extern crate rustc_smir;
-extern crate stable_mir;
 extern crate rustc_driver;
 extern crate rustc_interface;
+extern crate stable_mir;
 
 use rustc_middle::ty::TyCtxt;
 
-use stable_mir::*;
 use rustc_smir::rustc_internal;
+use stable_mir::*;
 use std::io::Write;
 use std::ops::ControlFlow;
 
@@ -31,16 +32,16 @@ fn test_stable_mir(_tcx: TyCtxt<'_>) -> ControlFlow<()> {
     let items = stable_mir::all_local_items();
 
     // Get all items and split generic vs monomorphic items.
-    let (generic, mono) : (Vec<_>, Vec<_>) = items.into_iter().partition(|item| {
-        item.requires_monomorphization()
-    });
+    let (generic, mono): (Vec<_>, Vec<_>) =
+        items.into_iter().partition(|item| item.requires_monomorphization());
     assert_eq!(mono.len(), 3, "Expected 2 mono functions and one constant");
     assert_eq!(generic.len(), 2, "Expected 2 generic functions");
 
     // For all monomorphic items, get the correspondent instances.
-    let instances = mono.iter().filter_map(|item| {
-        mir::mono::Instance::try_from(*item).ok()
-    }).collect::<Vec<mir::mono::Instance>>();
+    let instances = mono
+        .iter()
+        .filter_map(|item| mir::mono::Instance::try_from(*item).ok())
+        .collect::<Vec<mir::mono::Instance>>();
     assert_eq!(instances.len(), mono.len());
 
     // For all generic items, try_from should fail.
@@ -48,7 +49,6 @@ fn test_stable_mir(_tcx: TyCtxt<'_>) -> ControlFlow<()> {
 
     ControlFlow::Continue(())
 }
-
 
 /// This test will generate and analyze a dummy crate using the stable mir.
 /// For that, it will first write the dummy crate into a file.
