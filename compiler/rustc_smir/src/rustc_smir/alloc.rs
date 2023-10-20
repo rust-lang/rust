@@ -24,7 +24,7 @@ fn new_empty_allocation(align: rustc_target::abi::Align) -> Allocation {
 pub fn new_allocation<'tcx>(
     ty: rustc_middle::ty::Ty<'tcx>,
     const_value: ConstValue<'tcx>,
-    tables: &mut Tables<'tcx>,
+    tables: &Tables<'tcx>,
 ) -> Allocation {
     match const_value {
         ConstValue::Scalar(scalar) => {
@@ -87,7 +87,7 @@ pub fn new_allocation<'tcx>(
 pub(super) fn allocation_filter<'tcx>(
     alloc: &rustc_middle::mir::interpret::Allocation,
     alloc_range: AllocRange,
-    tables: &mut Tables<'tcx>,
+    tables: &Tables<'tcx>,
 ) -> Allocation {
     let mut bytes: Vec<Option<u8>> = alloc
         .inspect_with_uninit_and_ptr_outside_interpreter(

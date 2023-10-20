@@ -174,17 +174,17 @@ pub fn trait_impl(trait_impl: &ImplDef) -> ImplTrait {
 }
 
 pub trait Context {
-    fn entry_fn(&mut self) -> Option<CrateItem>;
+    fn entry_fn(&self) -> Option<CrateItem>;
     /// Retrieve all items of the local crate that have a MIR associated with them.
-    fn all_local_items(&mut self) -> CrateItems;
-    fn mir_body(&mut self, item: DefId) -> mir::Body;
-    fn all_trait_decls(&mut self) -> TraitDecls;
-    fn trait_decl(&mut self, trait_def: &TraitDef) -> TraitDecl;
-    fn all_trait_impls(&mut self) -> ImplTraitDecls;
-    fn trait_impl(&mut self, trait_impl: &ImplDef) -> ImplTrait;
-    fn generics_of(&mut self, def_id: DefId) -> Generics;
-    fn predicates_of(&mut self, def_id: DefId) -> GenericPredicates;
-    fn explicit_predicates_of(&mut self, def_id: DefId) -> GenericPredicates;
+    fn all_local_items(&self) -> CrateItems;
+    fn mir_body(&self, item: DefId) -> mir::Body;
+    fn all_trait_decls(&self) -> TraitDecls;
+    fn trait_decl(&self, trait_def: &TraitDef) -> TraitDecl;
+    fn all_trait_impls(&self) -> ImplTraitDecls;
+    fn trait_impl(&self, trait_impl: &ImplDef) -> ImplTrait;
+    fn generics_of(&self, def_id: DefId) -> Generics;
+    fn predicates_of(&self, def_id: DefId) -> GenericPredicates;
+    fn explicit_predicates_of(&self, def_id: DefId) -> GenericPredicates;
     /// Get information about the local crate.
     fn local_crate(&self) -> Crate;
     /// Retrieve a list of all external crates.
@@ -206,30 +206,30 @@ pub trait Context {
     fn get_lines(&self, span: &Span) -> LineInfo;
 
     /// Returns the `kind` of given `DefId`
-    fn def_kind(&mut self, def_id: DefId) -> DefKind;
+    fn def_kind(&self, def_id: DefId) -> DefKind;
 
     /// `Span` of an item
-    fn span_of_an_item(&mut self, def_id: DefId) -> Span;
+    fn span_of_an_item(&self, def_id: DefId) -> Span;
 
     /// Obtain the representation of a type.
-    fn ty_kind(&mut self, ty: Ty) -> TyKind;
+    fn ty_kind(&self, ty: Ty) -> TyKind;
 
     /// Create a new `Ty` from scratch without information from rustc.
-    fn mk_ty(&mut self, kind: TyKind) -> Ty;
+    fn mk_ty(&self, kind: TyKind) -> Ty;
 
     /// Get the body of an Instance.
     /// FIXME: Monomorphize the body.
-    fn instance_body(&mut self, instance: InstanceDef) -> Body;
+    fn instance_body(&self, instance: InstanceDef) -> Body;
 
     /// Get the instance type with generic substitutions applied and lifetimes erased.
-    fn instance_ty(&mut self, instance: InstanceDef) -> Ty;
+    fn instance_ty(&self, instance: InstanceDef) -> Ty;
 
     /// Get the instance.
-    fn instance_def_id(&mut self, instance: InstanceDef) -> DefId;
+    fn instance_def_id(&self, instance: InstanceDef) -> DefId;
 
     /// Convert a non-generic crate item into an instance.
     /// This function will panic if the item is generic.
-    fn mono_instance(&mut self, item: CrateItem) -> Instance;
+    fn mono_instance(&self, item: CrateItem) -> Instance;
 
     /// Item requires monomorphization.
     fn requires_monomorphization(&self, def_id: DefId) -> bool;

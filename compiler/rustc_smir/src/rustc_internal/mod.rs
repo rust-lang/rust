@@ -12,109 +12,91 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::{CrateNum, DefId};
 use rustc_span::Span;
 use stable_mir::ty::IndexedVal;
+use std::cell::RefCell;
 use std::fmt::Debug;
 use std::hash::Hash;
-use std::ops::Index;
-
-impl<'tcx> Index<stable_mir::DefId> for Tables<'tcx> {
-    type Output = DefId;
-
-    #[inline(always)]
-    fn index(&self, index: stable_mir::DefId) -> &Self::Output {
-        &self.def_ids[index]
-    }
-}
-
-impl<'tcx> Index<stable_mir::ty::Span> for Tables<'tcx> {
-    type Output = Span;
-
-    #[inline(always)]
-    fn index(&self, index: stable_mir::ty::Span) -> &Self::Output {
-        &self.spans[index]
-    }
-}
 
 impl<'tcx> Tables<'tcx> {
-    pub fn crate_item(&mut self, did: DefId) -> stable_mir::CrateItem {
+    pub fn crate_item(&self, did: DefId) -> stable_mir::CrateItem {
         stable_mir::CrateItem(self.create_def_id(did))
     }
 
-    pub fn adt_def(&mut self, did: DefId) -> stable_mir::ty::AdtDef {
+    pub fn adt_def(&self, did: DefId) -> stable_mir::ty::AdtDef {
         stable_mir::ty::AdtDef(self.create_def_id(did))
     }
 
-    pub fn foreign_def(&mut self, did: DefId) -> stable_mir::ty::ForeignDef {
+    pub fn foreign_def(&self, did: DefId) -> stable_mir::ty::ForeignDef {
         stable_mir::ty::ForeignDef(self.create_def_id(did))
     }
 
-    pub fn fn_def(&mut self, did: DefId) -> stable_mir::ty::FnDef {
+    pub fn fn_def(&self, did: DefId) -> stable_mir::ty::FnDef {
         stable_mir::ty::FnDef(self.create_def_id(did))
     }
 
-    pub fn closure_def(&mut self, did: DefId) -> stable_mir::ty::ClosureDef {
+    pub fn closure_def(&self, did: DefId) -> stable_mir::ty::ClosureDef {
         stable_mir::ty::ClosureDef(self.create_def_id(did))
     }
 
-    pub fn generator_def(&mut self, did: DefId) -> stable_mir::ty::GeneratorDef {
+    pub fn generator_def(&self, did: DefId) -> stable_mir::ty::GeneratorDef {
         stable_mir::ty::GeneratorDef(self.create_def_id(did))
     }
 
-    pub fn alias_def(&mut self, did: DefId) -> stable_mir::ty::AliasDef {
+    pub fn alias_def(&self, did: DefId) -> stable_mir::ty::AliasDef {
         stable_mir::ty::AliasDef(self.create_def_id(did))
     }
 
-    pub fn param_def(&mut self, did: DefId) -> stable_mir::ty::ParamDef {
+    pub fn param_def(&self, did: DefId) -> stable_mir::ty::ParamDef {
         stable_mir::ty::ParamDef(self.create_def_id(did))
     }
 
-    pub fn br_named_def(&mut self, did: DefId) -> stable_mir::ty::BrNamedDef {
+    pub fn br_named_def(&self, did: DefId) -> stable_mir::ty::BrNamedDef {
         stable_mir::ty::BrNamedDef(self.create_def_id(did))
     }
 
-    pub fn trait_def(&mut self, did: DefId) -> stable_mir::ty::TraitDef {
+    pub fn trait_def(&self, did: DefId) -> stable_mir::ty::TraitDef {
         stable_mir::ty::TraitDef(self.create_def_id(did))
     }
 
-    pub fn generic_def(&mut self, did: DefId) -> stable_mir::ty::GenericDef {
+    pub fn generic_def(&self, did: DefId) -> stable_mir::ty::GenericDef {
         stable_mir::ty::GenericDef(self.create_def_id(did))
     }
 
-    pub fn const_def(&mut self, did: DefId) -> stable_mir::ty::ConstDef {
+    pub fn const_def(&self, did: DefId) -> stable_mir::ty::ConstDef {
         stable_mir::ty::ConstDef(self.create_def_id(did))
     }
 
-    pub fn impl_def(&mut self, did: DefId) -> stable_mir::ty::ImplDef {
+    pub fn impl_def(&self, did: DefId) -> stable_mir::ty::ImplDef {
         stable_mir::ty::ImplDef(self.create_def_id(did))
     }
 
-    pub fn region_def(&mut self, did: DefId) -> stable_mir::ty::RegionDef {
+    pub fn region_def(&self, did: DefId) -> stable_mir::ty::RegionDef {
         stable_mir::ty::RegionDef(self.create_def_id(did))
     }
 
-    pub fn prov(&mut self, aid: AllocId) -> stable_mir::ty::Prov {
+    pub fn prov(&self, aid: AllocId) -> stable_mir::ty::Prov {
         stable_mir::ty::Prov(self.create_alloc_id(aid))
     }
 
-    pub(crate) fn create_def_id(&mut self, did: DefId) -> stable_mir::DefId {
+    pub(crate) fn create_def_id(&self, did: DefId) -> stable_mir::DefId {
         self.def_ids.create_or_fetch(did)
     }
 
-    fn create_alloc_id(&mut self, aid: AllocId) -> stable_mir::AllocId {
+    fn create_alloc_id(&self, aid: AllocId) -> stable_mir::AllocId {
         self.alloc_ids.create_or_fetch(aid)
     }
 
-    pub(crate) fn create_span(&mut self, span: Span) -> stable_mir::ty::Span {
+    pub(crate) fn create_span(&self, span: Span) -> stable_mir::ty::Span {
         self.spans.create_or_fetch(span)
     }
 
     pub(crate) fn instance_def(
-        &mut self,
+        &self,
         instance: ty::Instance<'tcx>,
     ) -> stable_mir::mir::mono::InstanceDef {
         self.instances.create_or_fetch(instance)
     }
 
-    pub(crate) fn static_def(&mut self, did: DefId) -> stable_mir::mir::mono::StaticDef {
+    pub(crate) fn static_def(&self, did: DefId) -> stable_mir::mir::mono::StaticDef {
         stable_mir::mir::mono::StaticDef(self.create_def_id(did))
     }
 }
@@ -130,7 +112,7 @@ pub fn run(tcx: TyCtxt<'_>, f: impl FnOnce()) {
             def_ids: IndexMap::default(),
             alloc_ids: IndexMap::default(),
             spans: IndexMap::default(),
-            types: vec![],
+            types: RefCell::new(vec![]),
             instances: IndexMap::default(),
         },
         f,
@@ -217,31 +199,29 @@ macro_rules! run {
 /// Simmilar to rustc's `FxIndexMap`, `IndexMap` with extra
 /// safety features added.
 pub struct IndexMap<K, V> {
-    index_map: fx::FxIndexMap<K, V>,
+    index_map: RefCell<fx::FxIndexMap<K, V>>,
 }
 
 impl<K, V> Default for IndexMap<K, V> {
     fn default() -> Self {
-        Self { index_map: FxIndexMap::default() }
+        Self { index_map: RefCell::new(FxIndexMap::default()) }
     }
 }
 
 impl<K: PartialEq + Hash + Eq, V: Copy + Debug + PartialEq + IndexedVal> IndexMap<K, V> {
-    pub fn create_or_fetch(&mut self, key: K) -> V {
-        let len = self.index_map.len();
-        let v = self.index_map.entry(key).or_insert(V::to_val(len));
+    pub fn create_or_fetch(&self, key: K) -> V {
+        let mut index_map = self.index_map.borrow_mut();
+        let len = index_map.len();
+        let v = index_map.entry(key).or_insert(V::to_val(len));
         *v
     }
 }
 
-impl<K: PartialEq + Hash + Eq, V: Copy + Debug + PartialEq + IndexedVal> Index<V>
-    for IndexMap<K, V>
-{
-    type Output = K;
-
-    fn index(&self, index: V) -> &Self::Output {
-        let (k, v) = self.index_map.get_index(index.to_index()).unwrap();
-        assert_eq!(*v, index, "Provided value doesn't match with indexed value");
+impl<K: PartialEq + Hash + Eq + Copy, V: Copy + Debug + PartialEq + IndexedVal> IndexMap<K, V> {
+    pub fn index_of(&self, index: V) -> K {
+        let map = self.index_map.borrow();
+        let (&k, &v) = map.get_index(index.to_index()).unwrap();
+        assert_eq!(v, index, "Provided value doesn't match with indexed value");
         k
     }
 }
