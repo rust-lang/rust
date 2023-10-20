@@ -819,6 +819,8 @@ symbols! {
         ge,
         gen_future,
         gen_kill,
+        generator_clone,
+        generators,
         generic_arg_infer,
         generic_assert,
         generic_associated_types,
