@@ -1717,7 +1717,7 @@ fn windows_unix_socket_exists() {
     let tmp = tmpdir();
     let socket_path = tmp.join("socket");
 
-    // std doesn't current support Unix sockets on Windows so manually create one here.
+    // std doesn't currently support Unix sockets on Windows so manually create one here.
     net::init();
     unsafe {
         let socket = c::WSASocketW(
@@ -1728,7 +1728,16 @@ fn windows_unix_socket_exists() {
             0,
             c::WSA_FLAG_OVERLAPPED | c::WSA_FLAG_NO_HANDLE_INHERIT,
         );
-        assert_ne!(socket, c::INVALID_SOCKET);
+        // AF_UNIX is not supported on earlier versions of Windows,
+        // so skip this test if it's unsupported and we're not in CI.
+        if socket == c::INVALID_SOCKET {
+            let error = c::WSAGetLastError();
+            if env::var_os("CI").is_none() && error == c::WSAEAFNOSUPPORT {
+                return;
+            } else {
+                panic!("Creating AF_UNIX socket failed (OS error {error})");
+            }
+        }
         let mut addr = c::SOCKADDR_UN { sun_family: c::AF_UNIX, sun_path: mem::zeroed() };
         let bytes = socket_path.as_os_str().as_encoded_bytes();
         addr.sun_path[..bytes.len()].copy_from_slice(bytes);
