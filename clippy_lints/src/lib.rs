@@ -750,7 +750,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
             suppress_restriction_lint_in_const,
         ))
     });
-    store.register_late_pass(|_| Box::new(non_copy_const::NonCopyConst));
+    let ignore_interior_mutability = conf.ignore_interior_mutability.clone();
+    store.register_late_pass(move |_| Box::new(non_copy_const::NonCopyConst::new(ignore_interior_mutability.clone())));
     store.register_late_pass(|_| Box::new(ptr_offset_with_cast::PtrOffsetWithCast));
     store.register_late_pass(|_| Box::new(redundant_clone::RedundantClone));
     store.register_late_pass(|_| Box::new(slow_vector_initialization::SlowVectorInit));
