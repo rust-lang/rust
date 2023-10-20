@@ -1514,14 +1514,14 @@ pub enum CoroutineKind {
     Async(AsyncCoroutineKind),
 
     /// A coroutine literal created via a `yield` inside a closure.
-    Gen,
+    Coroutine,
 }
 
 impl fmt::Display for CoroutineKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             CoroutineKind::Async(k) => fmt::Display::fmt(k, f),
-            CoroutineKind::Gen => f.write_str("coroutine"),
+            CoroutineKind::Coroutine => f.write_str("coroutine"),
         }
     }
 }
@@ -1530,7 +1530,7 @@ impl CoroutineKind {
     pub fn descr(&self) -> &'static str {
         match self {
             CoroutineKind::Async(ask) => ask.descr(),
-            CoroutineKind::Gen => "coroutine",
+            CoroutineKind::Coroutine => "coroutine",
         }
     }
 }
@@ -2251,7 +2251,7 @@ impl From<CoroutineKind> for YieldSource {
     fn from(kind: CoroutineKind) -> Self {
         match kind {
             // Guess based on the kind of the current coroutine.
-            CoroutineKind::Gen => Self::Yield,
+            CoroutineKind::Coroutine => Self::Yield,
             CoroutineKind::Async(_) => Self::Await { expr: None },
         }
     }

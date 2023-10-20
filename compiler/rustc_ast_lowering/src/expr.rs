@@ -712,7 +712,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let full_span = expr.span.to(await_kw_span);
         match self.coroutine_kind {
             Some(hir::CoroutineKind::Async(_)) => {}
-            Some(hir::CoroutineKind::Gen) | None => {
+            Some(hir::CoroutineKind::Coroutine) | None => {
                 self.tcx.sess.emit_err(AwaitOnlyInAsyncFnAndBlocks {
                     await_kw_span,
                     item_span: self.current_item,
@@ -930,7 +930,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         movability: Movability,
     ) -> Option<hir::Movability> {
         match coroutine_kind {
-            Some(hir::CoroutineKind::Gen) => {
+            Some(hir::CoroutineKind::Coroutine) => {
                 if decl.inputs.len() > 1 {
                     self.tcx.sess.emit_err(CoroutineTooManyParameters { fn_decl_span });
                 }
@@ -1445,11 +1445,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_expr_yield(&mut self, span: Span, opt_expr: Option<&Expr>) -> hir::ExprKind<'hir> {
         match self.coroutine_kind {
-            Some(hir::CoroutineKind::Gen) => {}
+            Some(hir::CoroutineKind::Coroutine) => {}
             Some(hir::CoroutineKind::Async(_)) => {
                 self.tcx.sess.emit_err(AsyncCoroutinesNotSupported { span });
             }
-            None => self.coroutine_kind = Some(hir::CoroutineKind::Gen),
+            None => self.coroutine_kind = Some(hir::CoroutineKind::Coroutine),
         }
 
         let expr =

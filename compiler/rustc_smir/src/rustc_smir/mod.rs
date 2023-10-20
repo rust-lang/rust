@@ -873,7 +873,7 @@ impl<'tcx> Stable<'tcx> for rustc_hir::CoroutineKind {
                 };
                 stable_mir::mir::CoroutineKind::Async(async_gen)
             }
-            CoroutineKind::Gen => stable_mir::mir::CoroutineKind::Gen,
+            CoroutineKind::Coroutine => stable_mir::mir::CoroutineKind::Coroutine,
         }
     }
 }

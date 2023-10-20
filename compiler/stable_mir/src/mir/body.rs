@@ -134,7 +134,7 @@ pub enum UnOp {
 #[derive(Clone, Debug)]
 pub enum CoroutineKind {
     Async(AsyncCoroutineKind),
-    Gen,
+    Coroutine,
 }
 
 #[derive(Clone, Debug)]

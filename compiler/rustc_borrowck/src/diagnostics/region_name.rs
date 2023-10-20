@@ -698,7 +698,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                             " of async function"
                         }
                     },
-                    Some(hir::CoroutineKind::Gen) => " of coroutine",
+                    Some(hir::CoroutineKind::Coroutine) => " of coroutine",
                     None => " of closure",
                 };
                 (span, mir_description, hir_ty)

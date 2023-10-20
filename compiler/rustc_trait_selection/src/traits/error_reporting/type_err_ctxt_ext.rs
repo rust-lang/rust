@@ -1615,7 +1615,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
     fn describe_coroutine(&self, body_id: hir::BodyId) -> Option<&'static str> {
         self.tcx.hir().body(body_id).coroutine_kind.map(|gen_kind| match gen_kind {
-            hir::CoroutineKind::Gen => "a coroutine",
+            hir::CoroutineKind::Coroutine => "a coroutine",
             hir::CoroutineKind::Async(hir::AsyncCoroutineKind::Block) => "an async block",
             hir::CoroutineKind::Async(hir::AsyncCoroutineKind::Fn) => "an async function",
             hir::CoroutineKind::Async(hir::AsyncCoroutineKind::Closure) => "an async closure",

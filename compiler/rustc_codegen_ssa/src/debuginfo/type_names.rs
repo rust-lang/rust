@@ -563,7 +563,7 @@ fn coroutine_kind_label(coroutine_kind: Option<CoroutineKind>) -> &'static str {
         Some(CoroutineKind::Async(AsyncCoroutineKind::Block)) => "async_block",
         Some(CoroutineKind::Async(AsyncCoroutineKind::Closure)) => "async_closure",
         Some(CoroutineKind::Async(AsyncCoroutineKind::Fn)) => "async_fn",
-        Some(CoroutineKind::Gen) => "coroutine",
+        Some(CoroutineKind::Coroutine) => "coroutine",
         None => "closure",
     }
 }

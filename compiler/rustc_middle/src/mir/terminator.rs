@@ -139,9 +139,9 @@ impl<O> AssertKind<O> {
             Overflow(op, _, _) => bug!("{:?} cannot overflow", op),
             DivisionByZero(_) => "attempt to divide by zero",
             RemainderByZero(_) => "attempt to calculate the remainder with a divisor of zero",
-            ResumedAfterReturn(CoroutineKind::Gen) => "coroutine resumed after completion",
+            ResumedAfterReturn(CoroutineKind::Coroutine) => "coroutine resumed after completion",
             ResumedAfterReturn(CoroutineKind::Async(_)) => "`async fn` resumed after completion",
-            ResumedAfterPanic(CoroutineKind::Gen) => "coroutine resumed after panicking",
+            ResumedAfterPanic(CoroutineKind::Coroutine) => "coroutine resumed after panicking",
             ResumedAfterPanic(CoroutineKind::Async(_)) => "`async fn` resumed after panicking",
             BoundsCheck { .. } | MisalignedPointerDereference { .. } => {
                 bug!("Unexpected AssertKind")
@@ -229,9 +229,13 @@ impl<O> AssertKind<O> {
             DivisionByZero(_) => middle_assert_divide_by_zero,
             RemainderByZero(_) => middle_assert_remainder_by_zero,
             ResumedAfterReturn(CoroutineKind::Async(_)) => middle_assert_async_resume_after_return,
-            ResumedAfterReturn(CoroutineKind::Gen) => middle_assert_coroutine_resume_after_return,
+            ResumedAfterReturn(CoroutineKind::Coroutine) => {
+                middle_assert_coroutine_resume_after_return
+            }
             ResumedAfterPanic(CoroutineKind::Async(_)) => middle_assert_async_resume_after_panic,
-            ResumedAfterPanic(CoroutineKind::Gen) => middle_assert_coroutine_resume_after_panic,
+            ResumedAfterPanic(CoroutineKind::Coroutine) => {
+                middle_assert_coroutine_resume_after_panic
+            }
 
             MisalignedPointerDereference { .. } => middle_assert_misaligned_ptr_deref,
         }

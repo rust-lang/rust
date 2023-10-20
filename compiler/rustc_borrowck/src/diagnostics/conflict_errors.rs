@@ -2488,7 +2488,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     AsyncCoroutineKind::Closure => "async closure",
                     _ => bug!("async block/closure expected, but async function found."),
                 },
-                CoroutineKind::Gen => "coroutine",
+                CoroutineKind::Coroutine => "coroutine",
             },
             None => "closure",
         };

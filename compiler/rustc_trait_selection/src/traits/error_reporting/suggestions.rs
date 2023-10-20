@@ -2409,7 +2409,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             let message = outer_coroutine
                 .and_then(|coroutine_did| {
                     Some(match self.tcx.coroutine_kind(coroutine_did).unwrap() {
-                        CoroutineKind::Gen => format!("coroutine is not {trait_name}"),
+                        CoroutineKind::Coroutine => format!("coroutine is not {trait_name}"),
                         CoroutineKind::Async(AsyncCoroutineKind::Fn) => self
                             .tcx
                             .parent(coroutine_did)
@@ -2882,7 +2882,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             }
             ObligationCauseCode::SizedCoroutineInterior(coroutine_def_id) => {
                 let what = match self.tcx.coroutine_kind(coroutine_def_id) {
-                    None | Some(hir::CoroutineKind::Gen) => "yield",
+                    None | Some(hir::CoroutineKind::Coroutine) => "yield",
                     Some(hir::CoroutineKind::Async(..)) => "await",
                 };
                 err.note(format!(
