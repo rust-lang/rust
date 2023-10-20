@@ -20,9 +20,8 @@ extern crate rustc_interface;
 extern crate stable_mir;
 
 use rustc_hir::def::DefKind;
-use rustc_middle::ty::TyCtxt;
-use rustc_smir::rustc_internal;
 
+use rustc_smir::rustc_smir::Tables;
 use stable_mir::fold::Foldable;
 use std::assert_matches::assert_matches;
 use std::io::Write;
@@ -31,7 +30,7 @@ use std::ops::ControlFlow;
 const CRATE_NAME: &str = "input";
 
 /// This function uses the Stable MIR APIs to get information about the test crate.
-fn test_stable_mir(_tcx: TyCtxt<'_>) -> ControlFlow<()> {
+fn test_stable_mir(_tables: &Tables<'_>) -> ControlFlow<()> {
     // Get the local crate using stable_mir API.
     let local = stable_mir::local_crate();
     assert_eq!(&local.name, CRATE_NAME);

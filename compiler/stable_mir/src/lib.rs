@@ -237,17 +237,17 @@ pub trait Context {
 
 // A thread local variable that stores a pointer to the tables mapping between TyCtxt
 // datastructures and stable MIR datastructures
-scoped_thread_local! (static TLV: Cell<*mut ()>);
+scoped_thread_local! (static TLV: Cell<*const ()>);
 
-pub fn run(mut context: impl Context, f: impl FnOnce()) {
+pub fn run<C: Context>(context: &C, f: impl FnOnce()) {
     assert!(!TLV.is_set());
-    fn g<'a>(mut context: &mut (dyn Context + 'a), f: impl FnOnce()) {
-        let ptr: *mut () = &mut context as *mut &mut _ as _;
+    fn g<'a>(context: &(dyn Context + 'a), f: impl FnOnce()) {
+        let ptr: *const () = &context as *const &_ as _;
         TLV.set(&Cell::new(ptr), || {
             f();
         });
     }
-    g(&mut context, f);
+    g(context, f);
 }
 
 /// Loads the current context and calls a function with it.

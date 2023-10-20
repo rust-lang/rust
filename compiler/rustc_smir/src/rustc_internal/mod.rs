@@ -105,28 +105,27 @@ pub fn crate_num(item: &stable_mir::Crate) -> CrateNum {
     item.id.into()
 }
 
-pub fn run(tcx: TyCtxt<'_>, f: impl FnOnce()) {
-    stable_mir::run(
-        Tables {
-            tcx,
-            def_ids: IndexMap::default(),
-            alloc_ids: IndexMap::default(),
-            spans: IndexMap::default(),
-            types: RefCell::new(vec![]),
-            instances: IndexMap::default(),
-        },
-        f,
-    );
+pub fn run<'tcx>(tcx: TyCtxt<'tcx>, f: impl FnOnce(&Tables<'tcx>)) {
+    let tables = Tables {
+        tcx,
+        def_ids: IndexMap::default(),
+        alloc_ids: IndexMap::default(),
+        spans: IndexMap::default(),
+        types: RefCell::new(vec![]),
+        instances: IndexMap::default(),
+    };
+    stable_mir::run(&tables, || f(&tables));
 }
 
 #[macro_export]
 macro_rules! run {
     ($args:expr, $callback:expr) => {
-        run!($args, tcx, $callback)
+        run!($args, tables, $callback)
     };
-    ($args:expr, $tcx:ident, $callback:expr) => {{
+    ($args:expr, $tables:ident, $callback:expr) => {{
         use rustc_driver::{Callbacks, Compilation, RunCompiler};
         use rustc_interface::{interface, Queries};
+        use rustc_smir::rustc_smir::Tables;
         use stable_mir::CompilerError;
         use std::ops::ControlFlow;
 
@@ -136,7 +135,7 @@ macro_rules! run {
             C: Send,
         {
             args: Vec<String>,
-            callback: fn(TyCtxt<'_>) -> ControlFlow<B, C>,
+            callback: fn(&Tables<'_>) -> ControlFlow<B, C>,
             result: Option<ControlFlow<B, C>>,
         }
 
@@ -146,7 +145,7 @@ macro_rules! run {
             C: Send,
         {
             /// Creates a new `StableMir` instance, with given test_function and arguments.
-            pub fn new(args: Vec<String>, callback: fn(TyCtxt<'_>) -> ControlFlow<B, C>) -> Self {
+            pub fn new(args: Vec<String>, callback: fn(&Tables<'_>) -> ControlFlow<B, C>) -> Self {
                 StableMir { args, callback, result: None }
             }
 
@@ -180,8 +179,8 @@ macro_rules! run {
                 queries: &'tcx Queries<'tcx>,
             ) -> Compilation {
                 queries.global_ctxt().unwrap().enter(|tcx| {
-                    rustc_internal::run(tcx, || {
-                        self.result = Some((self.callback)(tcx));
+                    rustc_smir::rustc_internal::run(tcx, |tables| {
+                        self.result = Some((self.callback)(tables));
                     });
                     if self.result.as_ref().is_some_and(|val| val.is_continue()) {
                         Compilation::Continue
@@ -192,7 +191,7 @@ macro_rules! run {
             }
         }
 
-        StableMir::new($args, |$tcx| $callback).run()
+        StableMir::new($args, |$tables| $callback).run()
     }};
 }
 
