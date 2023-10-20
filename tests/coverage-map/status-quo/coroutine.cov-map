@@ -1,4 +1,4 @@
-Function name: generator::get_u32
+Function name: coroutine::get_u32
 Raw bytes (28): 0x[01, 01, 02, 01, 05, 05, 02, 04, 01, 0b, 01, 01, 0b, 05, 01, 0e, 00, 13, 02, 00, 1d, 00, 3c, 07, 01, 01, 00, 02]
 Number of files: 1
 - file 0 => global file 1
@@ -13,7 +13,7 @@ Number of file 0 mappings: 4
 - Code(Expression(1, Add)) at (prev + 1, 1) to (start + 0, 2)
     = (c1 + (c0 - c1))
 
-Function name: generator::main
+Function name: coroutine::main
 Raw bytes (65): 0x[01, 01, 08, 05, 07, 09, 0d, 11, 15, 1e, 19, 11, 15, 15, 19, 1e, 19, 11, 15, 09, 01, 0f, 01, 02, 16, 01, 07, 0b, 00, 2e, 11, 01, 2b, 00, 2d, 03, 01, 0e, 00, 35, 11, 02, 0b, 00, 2e, 1e, 01, 22, 00, 27, 1a, 00, 2c, 00, 2e, 17, 01, 0e, 00, 35, 1a, 02, 01, 00, 02]
 Number of files: 1
 - file 0 => global file 1
@@ -42,7 +42,7 @@ Number of file 0 mappings: 9
 - Code(Expression(6, Sub)) at (prev + 2, 1) to (start + 0, 2)
     = ((c4 - c5) - c6)
 
-Function name: generator::main::{closure#0}
+Function name: coroutine::main::{closure#0}
 Raw bytes (14): 0x[01, 01, 00, 02, 01, 11, 1c, 01, 1f, 05, 02, 10, 01, 06]
 Number of files: 1
 - file 0 => global file 1
