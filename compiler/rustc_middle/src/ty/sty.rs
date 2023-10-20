@@ -33,13 +33,13 @@ use std::marker::PhantomData;
 use std::ops::{ControlFlow, Deref, Range};
 use ty::util::IntTypeExt;
 
-use rustc_type_ir::sty::TyKind::*;
 use rustc_type_ir::CollectAndApply;
 use rustc_type_ir::ConstKind as IrConstKind;
 use rustc_type_ir::DebugWithInfcx;
 use rustc_type_ir::DynKind;
 use rustc_type_ir::RegionKind as IrRegionKind;
 use rustc_type_ir::TyKind as IrTyKind;
+use rustc_type_ir::TyKind::*;
 
 use super::GenericParamDefKind;
 

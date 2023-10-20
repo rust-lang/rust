@@ -47,7 +47,7 @@ use crate::query::Providers;
 use crate::ty::context::TyCtxt;
 use crate::ty::{self, DefId, Ty, VariantDef, Visibility};
 
-use rustc_type_ir::sty::TyKind::*;
+use rustc_type_ir::TyKind::*;
 
 pub mod inhabited_predicate;
 
