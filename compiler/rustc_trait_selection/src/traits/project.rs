@@ -1798,7 +1798,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                 let self_ty = selcx.infcx.shallow_resolve(obligation.predicate.self_ty());
 
                 let lang_items = selcx.tcx().lang_items();
-                if [lang_items.gen_trait(), lang_items.future_trait()].contains(&Some(trait_ref.def_id))
+                if [lang_items.gen_trait(), lang_items.future_trait(), lang_items.iterator_trait()].contains(&Some(trait_ref.def_id))
                     || selcx.tcx().fn_trait_kind_from_def_id(trait_ref.def_id).is_some()
                 {
                     true
@@ -2015,6 +2015,8 @@ fn confirm_select_candidate<'cx, 'tcx>(
                 confirm_coroutine_candidate(selcx, obligation, data)
             } else if lang_items.future_trait() == Some(trait_def_id) {
                 confirm_future_candidate(selcx, obligation, data)
+            } else if lang_items.iterator_trait() == Some(trait_def_id) {
+                confirm_iterator_candidate(selcx, obligation, data)
             } else if selcx.tcx().fn_trait_kind_from_def_id(trait_def_id).is_some() {
                 if obligation.predicate.self_ty().is_closure() {
                     confirm_closure_candidate(selcx, obligation, data)
@@ -2127,6 +2129,50 @@ fn confirm_future_candidate<'cx, 'tcx>(
         ty::ProjectionPredicate {
             projection_ty: ty::AliasTy::new(tcx, obligation.predicate.def_id, trait_ref.args),
             term: return_ty.into(),
+        }
+    });
+
+    confirm_param_env_candidate(selcx, obligation, predicate, false)
+        .with_addl_obligations(nested)
+        .with_addl_obligations(obligations)
+}
+
+fn confirm_iterator_candidate<'cx, 'tcx>(
+    selcx: &mut SelectionContext<'cx, 'tcx>,
+    obligation: &ProjectionTyObligation<'tcx>,
+    nested: Vec<PredicateObligation<'tcx>>,
+) -> Progress<'tcx> {
+    let ty::Coroutine(_, args, _) =
+        selcx.infcx.shallow_resolve(obligation.predicate.self_ty()).kind()
+    else {
+        unreachable!()
+    };
+    let gen_sig = args.as_coroutine().poly_sig();
+    let Normalized { value: gen_sig, obligations } = normalize_with_depth(
+        selcx,
+        obligation.param_env,
+        obligation.cause.clone(),
+        obligation.recursion_depth + 1,
+        gen_sig,
+    );
+
+    debug!(?obligation, ?gen_sig, ?obligations, "confirm_future_candidate");
+
+    let tcx = selcx.tcx();
+    let iter_def_id = tcx.require_lang_item(LangItem::Iterator, None);
+
+    let predicate = super::util::iterator_trait_ref_and_outputs(
+        tcx,
+        iter_def_id,
+        obligation.predicate.self_ty(),
+        gen_sig,
+    )
+    .map_bound(|(trait_ref, yield_ty)| {
+        debug_assert_eq!(tcx.associated_item(obligation.predicate.def_id).name, sym::Item);
+
+        ty::ProjectionPredicate {
+            projection_ty: ty::AliasTy::new(tcx, obligation.predicate.def_id, trait_ref.args),
+            term: yield_ty.into(),
         }
     });
 

@@ -652,6 +652,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         },
                     )
                 }
+                Some(hir::CoroutineKind::Gen(hir::CoroutineSource::Fn)) => {
+                    todo!("gen closures do not exist yet")
+                }
 
                 _ => astconv.ty_infer(None, decl.output.span()),
             },

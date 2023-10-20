@@ -1888,6 +1888,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 | ClosureCandidate { .. }
                 | CoroutineCandidate
                 | FutureCandidate
+                | IteratorCandidate
                 | FnPointerCandidate { .. }
                 | BuiltinObjectCandidate
                 | BuiltinUnsizeCandidate
@@ -1916,6 +1917,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 | ClosureCandidate { .. }
                 | CoroutineCandidate
                 | FutureCandidate
+                | IteratorCandidate
                 | FnPointerCandidate { .. }
                 | BuiltinObjectCandidate
                 | BuiltinUnsizeCandidate
@@ -1950,6 +1952,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 | ClosureCandidate { .. }
                 | CoroutineCandidate
                 | FutureCandidate
+                | IteratorCandidate
                 | FnPointerCandidate { .. }
                 | BuiltinObjectCandidate
                 | BuiltinUnsizeCandidate
@@ -1964,6 +1967,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 | ClosureCandidate { .. }
                 | CoroutineCandidate
                 | FutureCandidate
+                | IteratorCandidate
                 | FnPointerCandidate { .. }
                 | BuiltinObjectCandidate
                 | BuiltinUnsizeCandidate
@@ -2070,6 +2074,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 | ClosureCandidate { .. }
                 | CoroutineCandidate
                 | FutureCandidate
+                | IteratorCandidate
                 | FnPointerCandidate { .. }
                 | BuiltinObjectCandidate
                 | BuiltinUnsizeCandidate
@@ -2080,6 +2085,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 | ClosureCandidate { .. }
                 | CoroutineCandidate
                 | FutureCandidate
+                | IteratorCandidate
                 | FnPointerCandidate { .. }
                 | BuiltinObjectCandidate
                 | BuiltinUnsizeCandidate

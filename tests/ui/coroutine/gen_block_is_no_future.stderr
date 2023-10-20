@@ -1,0 +1,12 @@
+error[E0277]: `{gen block@$DIR/gen_block_is_no_future.rs:5:5: 5:21}` is not a future
+  --> $DIR/gen_block_is_no_future.rs:4:13
+   |
+LL | fn foo() -> impl std::future::Future {
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^ `{gen block@$DIR/gen_block_is_no_future.rs:5:5: 5:21}` is not a future
+   |
+   = help: the trait `Future` is not implemented for `{gen block@$DIR/gen_block_is_no_future.rs:5:5: 5:21}`
+   = note: {gen block@$DIR/gen_block_is_no_future.rs:5:5: 5:21} must be a future or must implement `IntoFuture` to be awaited
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

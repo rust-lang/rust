@@ -226,6 +226,7 @@ symbols! {
         IpAddr,
         IrTyKind,
         Is,
+        Item,
         ItemContext,
         IterEmpty,
         IterOnce,
