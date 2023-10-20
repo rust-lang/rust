@@ -3,14 +3,11 @@
   
   fn disappearing_bb(_1: u8) -> u8 {
       let mut _0: u8;
-      let mut _2: i8;
+      let mut _2: bool;
       let mut _3: bool;
-      let mut _4: bool;
   
       bb0: {
-          _4 = const false;
-          _3 = const false;
-          _4 = const true;
+          _2 = const true;
           _3 = const true;
           switchInt(_1) -> [0: bb3, 1: bb3, 2: bb1, otherwise: bb2];
       }
@@ -26,7 +23,7 @@
       }
   
       bb3: {
-          _4 = const false;
+          _2 = const false;
           goto -> bb4;
       }
   
@@ -35,7 +32,7 @@
       }
   
       bb5: {
-          switchInt(_4) -> [0: bb6, otherwise: bb8];
+          switchInt(_2) -> [0: bb6, otherwise: bb8];
       }
   
       bb6: {
