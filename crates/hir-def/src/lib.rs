@@ -73,6 +73,7 @@ use hir_expand::{
     db::ExpandDatabase,
     eager::expand_eager_macro_input,
     hygiene::Hygiene,
+    name::Name,
     proc_macro::ProcMacroExpander,
     AstId, ExpandError, ExpandResult, ExpandTo, HirFileId, InFile, MacroCallId, MacroCallKind,
     MacroDefId, MacroDefKind, UnresolvedMacro,
@@ -172,6 +173,18 @@ impl ModuleId {
 
     pub fn krate(self) -> CrateId {
         self.krate
+    }
+
+    pub fn name(self, db: &dyn db::DefDatabase) -> Option<Name> {
+        let def_map = self.def_map(db);
+        let parent = def_map[self.local_id].parent?;
+        def_map[parent].children.iter().find_map(|(name, module_id)| {
+            if *module_id == self.local_id {
+                Some(name.clone())
+            } else {
+                None
+            }
+        })
     }
 
     pub fn containing_module(self, db: &dyn db::DefDatabase) -> Option<ModuleId> {

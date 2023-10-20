@@ -452,15 +452,7 @@ impl HasVisibility for ModuleDef {
 impl Module {
     /// Name of this module.
     pub fn name(self, db: &dyn HirDatabase) -> Option<Name> {
-        let def_map = self.id.def_map(db.upcast());
-        let parent = def_map[self.id.local_id].parent?;
-        def_map[parent].children.iter().find_map(|(name, module_id)| {
-            if *module_id == self.id.local_id {
-                Some(name.clone())
-            } else {
-                None
-            }
-        })
+        self.id.name(db.upcast())
     }
 
     /// Returns the crate this module is part of.
@@ -571,6 +563,7 @@ impl Module {
                     if def_map[m.id.local_id].origin.is_inline() {
                         m.diagnostics(db, acc)
                     }
+                    acc.extend(def.diagnostics(db))
                 }
                 ModuleDef::Trait(t) => {
                     for diag in db.trait_data_with_diagnostics(t.id).1.iter() {
