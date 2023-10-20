@@ -333,6 +333,22 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
         return Ok(bx.context.new_rvalue_from_vector(None, vector_ty, &new_elements));
     }
 
+    if name == sym::simd_ctlz || name == sym::simd_cttz {
+        let vector = args[0].immediate();
+        let elements: Vec<_> = (0..in_len)
+            .map(|i| {
+                let index = bx.context.new_rvalue_from_long(bx.i32_type, i as i64);
+                let value = bx.extract_element(vector, index).to_rvalue();
+                if name == sym::simd_ctlz {
+                    bx.count_leading_zeroes(value.get_type().get_size() as u64 * 8, value)
+                } else {
+                    bx.count_trailing_zeroes(value.get_type().get_size() as u64 * 8, value)
+                }
+            })
+            .collect();
+        return Ok(bx.context.new_rvalue_from_vector(None, vector.get_type(), &elements));
+    }
+
     if name == sym::simd_shuffle {
         // Make sure this is actually an array, since typeck only checks the length-suffixed
         // version of this intrinsic.
