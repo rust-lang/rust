@@ -88,8 +88,6 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type Predicate = Predicate<'tcx>;
     type PredicateKind = ty::PredicateKind<'tcx>;
     type TypeAndMut = TypeAndMut<'tcx>;
-    type Mutability = hir::Mutability;
-    type Movability = hir::Movability;
     type Ty = Ty<'tcx>;
     type Tys = &'tcx List<Ty<'tcx>>;
     type AliasTy = ty::AliasTy<'tcx>;
@@ -118,12 +116,8 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
 
     fn ty_and_mut_to_parts(
         TypeAndMut { ty, mutbl }: TypeAndMut<'tcx>,
-    ) -> (Self::Ty, Self::Mutability) {
+    ) -> (Self::Ty, ty::Mutability) {
         (ty, mutbl)
-    }
-
-    fn mutability_is_mut(mutbl: Self::Mutability) -> bool {
-        mutbl.is_mut()
     }
 }
 

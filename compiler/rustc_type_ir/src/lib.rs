@@ -59,8 +59,6 @@ pub trait Interner: Sized {
     type PredicateKind: Clone + Debug + Hash + PartialEq + Eq;
 
     type TypeAndMut: Clone + Debug + Hash + Ord;
-    type Mutability: Clone + Debug + Hash + Ord;
-    type Movability: Clone + Debug + Hash + Ord;
 
     // Kinds of tys
     type Ty: Clone + DebugWithInfcx<Self> + Hash + Ord;
@@ -95,8 +93,7 @@ pub trait Interner: Sized {
     type InferRegion: Clone + DebugWithInfcx<Self> + Hash + Ord;
     type PlaceholderRegion: Clone + Debug + Hash + Ord;
 
-    fn ty_and_mut_to_parts(ty_and_mut: Self::TypeAndMut) -> (Self::Ty, Self::Mutability);
-    fn mutability_is_mut(mutbl: Self::Mutability) -> bool;
+    fn ty_and_mut_to_parts(ty_and_mut: Self::TypeAndMut) -> (Self::Ty, Mutability);
 }
 
 /// Imagine you have a function `F: FnOnce(&[T]) -> R`, plus an iterator `iter`

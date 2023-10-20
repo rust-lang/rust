@@ -3419,6 +3419,7 @@ dependencies = [
  "rustc_macros",
  "rustc_serialize",
  "rustc_span",
+ "rustc_type_ir",
  "smallvec",
  "thin-vec",
  "tracing",
