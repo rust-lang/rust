@@ -263,6 +263,16 @@ pub mod arch {
     pub mod nvptx {
         pub use crate::core_arch::nvptx::*;
     }
+
+    /// Platform-specific intrinsics for the `loongarch` platform.
+    ///
+    /// See the [module documentation](../index.html) for more details.
+    #[cfg(any(target_arch = "loongarch64", doc))]
+    #[doc(cfg(target_arch = "loongarch64"))]
+    #[unstable(feature = "stdarch_loongarch", issue = "117427")]
+    pub mod loongarch64 {
+        pub use crate::core_arch::loongarch64::*;
+    }
 }
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64", doc))]
@@ -306,3 +316,7 @@ mod powerpc64;
 #[cfg(any(target_arch = "nvptx64", doc))]
 #[doc(cfg(target_arch = "nvptx64"))]
 mod nvptx;
+
+#[cfg(any(target_arch = "loongarch64", doc))]
+#[doc(cfg(target_arch = "loongarch64"))]
+mod loongarch64;

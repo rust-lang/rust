@@ -24,6 +24,7 @@
     avx512_target_feature,
     mips_target_feature,
     powerpc_target_feature,
+    loongarch_target_feature,
     wasm_target_feature,
     abi_unadjusted,
     rtm_target_feature,
