@@ -40,7 +40,9 @@ pub enum CoroutineState<Y, R> {
 /// closure-like:
 ///
 /// ```rust
-/// #![feature(coroutines, coroutine_trait)]
+/// #![cfg_attr(bootstrap, feature(generators))]
+/// #![cfg_attr(not(bootstrap), feature(coroutines))]
+/// #![feature(coroutine_trait)]
 ///
 /// use std::ops::{Coroutine, CoroutineState};
 /// use std::pin::Pin;
