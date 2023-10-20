@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/generator-region-requirements.rs:12:51
+  --> $DIR/coroutine-region-requirements.rs:12:51
    |
 LL | fn dangle(x: &mut i32) -> &'static mut i32 {
    |              - let's call the lifetime of this reference `'1`

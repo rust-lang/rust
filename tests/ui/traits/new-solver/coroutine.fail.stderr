@@ -1,5 +1,5 @@
-error[E0277]: the trait bound `{coroutine@$DIR/generator.rs:18:21: 18:23}: Coroutine<A>` is not satisfied
-  --> $DIR/generator.rs:18:21
+error[E0277]: the trait bound `{coroutine@$DIR/coroutine.rs:18:21: 18:23}: Coroutine<A>` is not satisfied
+  --> $DIR/coroutine.rs:18:21
    |
 LL |       needs_coroutine(|| {
    |  _____---------------_^
@@ -10,16 +10,16 @@ LL | |
 LL | |
 LL | |         yield ();
 LL | |     });
-   | |_____^ the trait `Coroutine<A>` is not implemented for `{coroutine@$DIR/generator.rs:18:21: 18:23}`
+   | |_____^ the trait `Coroutine<A>` is not implemented for `{coroutine@$DIR/coroutine.rs:18:21: 18:23}`
    |
 note: required by a bound in `needs_coroutine`
-  --> $DIR/generator.rs:14:28
+  --> $DIR/coroutine.rs:14:28
    |
 LL | fn needs_coroutine(_: impl Coroutine<A, Yield = B, Return = C>) {}
    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `needs_coroutine`
 
-error[E0271]: type mismatch resolving `<{coroutine@$DIR/generator.rs:18:21: 18:23} as Coroutine<A>>::Yield == B`
-  --> $DIR/generator.rs:18:21
+error[E0271]: type mismatch resolving `<{coroutine@$DIR/coroutine.rs:18:21: 18:23} as Coroutine<A>>::Yield == B`
+  --> $DIR/coroutine.rs:18:21
    |
 LL |       needs_coroutine(|| {
    |  _____---------------_^
@@ -33,13 +33,13 @@ LL | |     });
    | |_____^ types differ
    |
 note: required by a bound in `needs_coroutine`
-  --> $DIR/generator.rs:14:41
+  --> $DIR/coroutine.rs:14:41
    |
 LL | fn needs_coroutine(_: impl Coroutine<A, Yield = B, Return = C>) {}
    |                                         ^^^^^^^^^ required by this bound in `needs_coroutine`
 
-error[E0271]: type mismatch resolving `<{coroutine@$DIR/generator.rs:18:21: 18:23} as Coroutine<A>>::Return == C`
-  --> $DIR/generator.rs:18:21
+error[E0271]: type mismatch resolving `<{coroutine@$DIR/coroutine.rs:18:21: 18:23} as Coroutine<A>>::Return == C`
+  --> $DIR/coroutine.rs:18:21
    |
 LL |       needs_coroutine(|| {
    |  _____---------------_^
@@ -53,7 +53,7 @@ LL | |     });
    | |_____^ types differ
    |
 note: required by a bound in `needs_coroutine`
-  --> $DIR/generator.rs:14:52
+  --> $DIR/coroutine.rs:14:52
    |
 LL | fn needs_coroutine(_: impl Coroutine<A, Yield = B, Return = C>) {}
    |                                                    ^^^^^^^^^^ required by this bound in `needs_coroutine`

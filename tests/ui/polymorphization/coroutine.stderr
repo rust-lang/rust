@@ -1,5 +1,5 @@
 warning: the feature `generic_const_exprs` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/generators.rs:3:12
+  --> $DIR/coroutine.rs:3:12
    |
 LL | #![feature(generic_const_exprs, coroutines, coroutine_trait, rustc_attrs)]
    |            ^^^^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL | #![feature(generic_const_exprs, coroutines, coroutine_trait, rustc_attrs)]
    = note: `#[warn(incomplete_features)]` on by default
 
 error: item has unused generic parameters
-  --> $DIR/generators.rs:35:5
+  --> $DIR/coroutine.rs:35:5
    |
 LL | pub fn unused_type<T>() -> impl Coroutine<(), Yield = u32, Return = u32> + Unpin {
    |                    - generic parameter `T` is unused
@@ -16,7 +16,7 @@ LL |     || {
    |     ^^
 
 error: item has unused generic parameters
-  --> $DIR/generators.rs:60:5
+  --> $DIR/coroutine.rs:60:5
    |
 LL | pub fn unused_const<const T: u32>() -> impl Coroutine<(), Yield = u32, Return = u32> + Unpin {
    |                     ------------ generic parameter `T` is unused

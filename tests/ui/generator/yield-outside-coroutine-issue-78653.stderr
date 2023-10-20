@@ -1,11 +1,11 @@
 error[E0627]: yield expression outside of coroutine literal
-  --> $DIR/yield-outside-generator-issue-78653.rs:4:5
+  --> $DIR/yield-outside-coroutine-issue-78653.rs:4:5
    |
 LL |     yield || for i in 0 { }
    |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: `{integer}` is not an iterator
-  --> $DIR/yield-outside-generator-issue-78653.rs:4:23
+  --> $DIR/yield-outside-coroutine-issue-78653.rs:4:23
    |
 LL |     yield || for i in 0 { }
    |                       ^ `{integer}` is not an iterator
