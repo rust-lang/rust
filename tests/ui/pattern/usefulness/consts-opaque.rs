@@ -95,8 +95,10 @@ fn main() {
     const QUUX: Quux = quux;
 
     match QUUX {
-        QUUX => {}
-        QUUX => {}
+        QUUX => {} //~WARN behave unpredictably
+        //~| previously accepted
+        QUUX => {} //~WARN behave unpredictably
+        //~| previously accepted
         _ => {}
     }
 
@@ -105,14 +107,17 @@ fn main() {
     const WRAPQUUX: Wrap<Quux> = Wrap(quux);
 
     match WRAPQUUX {
-        WRAPQUUX => {}
-        WRAPQUUX => {}
+        WRAPQUUX => {} //~WARN behave unpredictably
+        //~| previously accepted
+        WRAPQUUX => {} //~WARN behave unpredictably
+        //~| previously accepted
         Wrap(_) => {}
     }
 
     match WRAPQUUX {
         Wrap(_) => {}
-        WRAPQUUX => {}
+        WRAPQUUX => {} //~WARN behave unpredictably
+        //~| previously accepted
     }
 
     match WRAPQUUX {
@@ -121,7 +126,8 @@ fn main() {
 
     match WRAPQUUX {
         //~^ ERROR: non-exhaustive patterns: `Wrap(_)` not covered
-        WRAPQUUX => {}
+        WRAPQUUX => {} //~WARN behave unpredictably
+        //~| previously accepted
     }
 
     #[derive(PartialEq, Eq)]
@@ -132,9 +138,11 @@ fn main() {
     const WHOKNOWSQUUX: WhoKnows<Quux> = WhoKnows::Yay(quux);
 
     match WHOKNOWSQUUX {
-        WHOKNOWSQUUX => {}
+        WHOKNOWSQUUX => {} //~WARN behave unpredictably
+        //~| previously accepted
         WhoKnows::Yay(_) => {}
-        WHOKNOWSQUUX => {}
+        WHOKNOWSQUUX => {} //~WARN behave unpredictably
+        //~| previously accepted
         WhoKnows::Nope => {}
     }
 }

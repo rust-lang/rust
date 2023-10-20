@@ -2226,7 +2226,7 @@ declare_lint! {
     /// in different crates and not deduplicated again via LTO. Pointer identity for memory
     /// created by `const` is similarly unreliable.
     pub POINTER_STRUCTURAL_MATCH,
-    Allow,
+    Warn,
     "pointers are not structural-match",
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,

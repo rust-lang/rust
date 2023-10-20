@@ -1,0 +1,93 @@
+warning: function pointers and raw pointers not derived from integers in patterns behave unpredictably and should not be relied upon. See https://github.com/rust-lang/rust/issues/70861 for details.
+  --> $DIR/fn-ptr-is-structurally-matchable.rs:43:14
+   |
+LL |         Wrap(CFN1) => count += 1,
+   |              ^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #62411 <https://github.com/rust-lang/rust/issues/70861>
+   = note: `#[warn(pointer_structural_match)]` on by default
+
+warning: function pointers and raw pointers not derived from integers in patterns behave unpredictably and should not be relied upon. See https://github.com/rust-lang/rust/issues/70861 for details.
+  --> $DIR/fn-ptr-is-structurally-matchable.rs:52:14
+   |
+LL |         Wrap(CFN2) => count += 1,
+   |              ^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #62411 <https://github.com/rust-lang/rust/issues/70861>
+
+warning: function pointers and raw pointers not derived from integers in patterns behave unpredictably and should not be relied upon. See https://github.com/rust-lang/rust/issues/70861 for details.
+  --> $DIR/fn-ptr-is-structurally-matchable.rs:61:14
+   |
+LL |         Wrap(CFN3) => count += 1,
+   |              ^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #62411 <https://github.com/rust-lang/rust/issues/70861>
+
+warning: function pointers and raw pointers not derived from integers in patterns behave unpredictably and should not be relied upon. See https://github.com/rust-lang/rust/issues/70861 for details.
+  --> $DIR/fn-ptr-is-structurally-matchable.rs:70:14
+   |
+LL |         Wrap(CFN4) => count += 1,
+   |              ^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #62411 <https://github.com/rust-lang/rust/issues/70861>
+
+warning: function pointers and raw pointers not derived from integers in patterns behave unpredictably and should not be relied upon. See https://github.com/rust-lang/rust/issues/70861 for details.
+  --> $DIR/fn-ptr-is-structurally-matchable.rs:79:14
+   |
+LL |         Wrap(CFN5) => count += 1,
+   |              ^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #62411 <https://github.com/rust-lang/rust/issues/70861>
+
+warning: function pointers and raw pointers not derived from integers in patterns behave unpredictably and should not be relied upon. See https://github.com/rust-lang/rust/issues/70861 for details.
+  --> $DIR/fn-ptr-is-structurally-matchable.rs:88:14
+   |
+LL |         Wrap(CFN6) => count += 1,
+   |              ^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #62411 <https://github.com/rust-lang/rust/issues/70861>
+
+warning: function pointers and raw pointers not derived from integers in patterns behave unpredictably and should not be relied upon. See https://github.com/rust-lang/rust/issues/70861 for details.
+  --> $DIR/fn-ptr-is-structurally-matchable.rs:97:14
+   |
+LL |         Wrap(CFN7) => count += 1,
+   |              ^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #62411 <https://github.com/rust-lang/rust/issues/70861>
+
+warning: function pointers and raw pointers not derived from integers in patterns behave unpredictably and should not be relied upon. See https://github.com/rust-lang/rust/issues/70861 for details.
+  --> $DIR/fn-ptr-is-structurally-matchable.rs:106:14
+   |
+LL |         Wrap(CFN8) => count += 1,
+   |              ^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #62411 <https://github.com/rust-lang/rust/issues/70861>
+
+warning: function pointers and raw pointers not derived from integers in patterns behave unpredictably and should not be relied upon. See https://github.com/rust-lang/rust/issues/70861 for details.
+  --> $DIR/fn-ptr-is-structurally-matchable.rs:115:14
+   |
+LL |         Wrap(CFN9) => count += 1,
+   |              ^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #62411 <https://github.com/rust-lang/rust/issues/70861>
+
+warning: function pointers and raw pointers not derived from integers in patterns behave unpredictably and should not be relied upon. See https://github.com/rust-lang/rust/issues/70861 for details.
+  --> $DIR/fn-ptr-is-structurally-matchable.rs:138:9
+   |
+LL |         CFOO => count += 1,
+   |         ^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #62411 <https://github.com/rust-lang/rust/issues/70861>
+
+warning: 10 warnings emitted
+

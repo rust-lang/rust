@@ -40,7 +40,8 @@ fn main() {
     const CFN1: Wrap<fn()> = Wrap(trivial);
     let input: Wrap<fn()> = Wrap(trivial);
     match Wrap(input) {
-        Wrap(CFN1) => count += 1,
+        Wrap(CFN1) => count += 1, //~WARN behave unpredictably
+        //~| previously accepted
         Wrap(_) => {}
     };
 
@@ -48,7 +49,8 @@ fn main() {
     const CFN2: Wrap<fn(SM)> = Wrap(sm_to);
     let input: Wrap<fn(SM)> = Wrap(sm_to);
     match Wrap(input) {
-        Wrap(CFN2) => count += 1,
+        Wrap(CFN2) => count += 1, //~WARN behave unpredictably
+        //~| previously accepted
         Wrap(_) => {}
     };
 
@@ -56,7 +58,8 @@ fn main() {
     const CFN3: Wrap<fn() -> SM> = Wrap(to_sm);
     let input: Wrap<fn() -> SM> = Wrap(to_sm);
     match Wrap(input) {
-        Wrap(CFN3) => count += 1,
+        Wrap(CFN3) => count += 1, //~WARN behave unpredictably
+        //~| previously accepted
         Wrap(_) => {}
     };
 
@@ -64,7 +67,8 @@ fn main() {
     const CFN4: Wrap<fn(NotSM)> = Wrap(not_sm_to);
     let input: Wrap<fn(NotSM)> = Wrap(not_sm_to);
     match Wrap(input) {
-        Wrap(CFN4) => count += 1,
+        Wrap(CFN4) => count += 1, //~WARN behave unpredictably
+        //~| previously accepted
         Wrap(_) => {}
     };
 
@@ -72,7 +76,8 @@ fn main() {
     const CFN5: Wrap<fn() -> NotSM> = Wrap(to_not_sm);
     let input: Wrap<fn() -> NotSM> = Wrap(to_not_sm);
     match Wrap(input) {
-        Wrap(CFN5) => count += 1,
+        Wrap(CFN5) => count += 1, //~WARN behave unpredictably
+        //~| previously accepted
         Wrap(_) => {}
     };
 
@@ -80,7 +85,8 @@ fn main() {
     const CFN6: Wrap<fn(&SM)> = Wrap(r_sm_to);
     let input: Wrap<fn(&SM)> = Wrap(r_sm_to);
     match Wrap(input) {
-        Wrap(CFN6) => count += 1,
+        Wrap(CFN6) => count += 1, //~WARN behave unpredictably
+        //~| previously accepted
         Wrap(_) => {}
     };
 
@@ -88,7 +94,8 @@ fn main() {
     const CFN7: Wrap<fn(&()) -> &SM> = Wrap(r_to_r_sm);
     let input: Wrap<fn(&()) -> &SM> = Wrap(r_to_r_sm);
     match Wrap(input) {
-        Wrap(CFN7) => count += 1,
+        Wrap(CFN7) => count += 1, //~WARN behave unpredictably
+        //~| previously accepted
         Wrap(_) => {}
     };
 
@@ -96,7 +103,8 @@ fn main() {
     const CFN8: Wrap<fn(&NotSM)> = Wrap(r_not_sm_to);
     let input: Wrap<fn(&NotSM)> = Wrap(r_not_sm_to);
     match Wrap(input) {
-        Wrap(CFN8) => count += 1,
+        Wrap(CFN8) => count += 1, //~WARN behave unpredictably
+        //~| previously accepted
         Wrap(_) => {}
     };
 
@@ -104,7 +112,8 @@ fn main() {
     const CFN9: Wrap<fn(&()) -> &NotSM> = Wrap(r_to_r_not_sm);
     let input: Wrap<fn(&()) -> &NotSM> = Wrap(r_to_r_not_sm);
     match Wrap(input) {
-        Wrap(CFN9) => count += 1,
+        Wrap(CFN9) => count += 1, //~WARN behave unpredictably
+        //~| previously accepted
         Wrap(_) => {}
     };
 
@@ -126,7 +135,8 @@ fn main() {
 
     let input = Foo { alpha: not_sm_to, beta: to_not_sm, gamma: sm_to, delta: to_sm };
     match input {
-        CFOO => count += 1,
+        CFOO => count += 1, //~WARN behave unpredictably
+        //~| previously accepted
         Foo { .. } => {}
     };
 
