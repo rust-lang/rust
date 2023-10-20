@@ -712,7 +712,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let full_span = expr.span.to(await_kw_span);
         match self.coroutine_kind {
             Some(hir::CoroutineKind::Async(_)) => {}
-            Some(hir::CoroutineKind::Coroutine) | None => {
+            Some(hir::CoroutineKind::Coroutine) | Some(hir::CoroutineKind::Gen(_)) | None => {
                 self.tcx.sess.emit_err(AwaitOnlyInAsyncFnAndBlocks {
                     await_kw_span,
                     item_span: self.current_item,
@@ -936,8 +936,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }
                 Some(movability)
             }
-            Some(hir::CoroutineKind::Async(_)) => {
-                panic!("non-`async` closure body turned `async` during lowering");
+            Some(hir::CoroutineKind::Gen(_)) | Some(hir::CoroutineKind::Async(_)) => {
+                panic!("non-`async`/`gen` closure body turned `async`/`gen` during lowering");
             }
             None => {
                 if movability == Movability::Static {
@@ -1446,6 +1446,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_expr_yield(&mut self, span: Span, opt_expr: Option<&Expr>) -> hir::ExprKind<'hir> {
         match self.coroutine_kind {
             Some(hir::CoroutineKind::Coroutine) => {}
+            Some(hir::CoroutineKind::Gen(_)) => {}
             Some(hir::CoroutineKind::Async(_)) => {
                 self.tcx.sess.emit_err(AsyncCoroutinesNotSupported { span });
             }

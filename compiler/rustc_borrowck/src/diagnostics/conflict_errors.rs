@@ -2505,6 +2505,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         };
         let kind = match use_span.coroutine_kind() {
             Some(coroutine_kind) => match coroutine_kind {
+                CoroutineKind::Gen(kind) => match kind {
+                    CoroutineSource::Block => "gen block",
+                    CoroutineSource::Closure => "gen closure",
+                    _ => bug!("gen block/closure expected, but gen function found."),
+                },
                 CoroutineKind::Async(async_kind) => match async_kind {
                     CoroutineSource::Block => "async block",
                     CoroutineSource::Closure => "async closure",

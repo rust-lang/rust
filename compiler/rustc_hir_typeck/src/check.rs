@@ -58,15 +58,16 @@ pub(super) fn check_fn<'a, 'tcx>(
     if let Some(kind) = body.coroutine_kind
         && can_be_coroutine.is_some()
     {
-        let yield_ty = if kind == hir::CoroutineKind::Coroutine {
-            let yield_ty = fcx.next_ty_var(TypeVariableOrigin {
-                kind: TypeVariableOriginKind::TypeInference,
-                span,
-            });
-            fcx.require_type_is_sized(yield_ty, span, traits::SizedYieldType);
-            yield_ty
-        } else {
-            Ty::new_unit(tcx)
+        let yield_ty = match kind {
+            hir::CoroutineKind::Gen(..) | hir::CoroutineKind::Coroutine => {
+                let yield_ty = fcx.next_ty_var(TypeVariableOrigin {
+                    kind: TypeVariableOriginKind::TypeInference,
+                    span,
+                });
+                fcx.require_type_is_sized(yield_ty, span, traits::SizedYieldType);
+                yield_ty
+            }
+            hir::CoroutineKind::Async(..) => Ty::new_unit(tcx),
         };
 
         // Resume type defaults to `()` if the coroutine has no argument.

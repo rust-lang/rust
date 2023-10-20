@@ -148,8 +148,14 @@ impl<O> AssertKind<O> {
             RemainderByZero(_) => "attempt to calculate the remainder with a divisor of zero",
             ResumedAfterReturn(CoroutineKind::Coroutine) => "coroutine resumed after completion",
             ResumedAfterReturn(CoroutineKind::Async(_)) => "`async fn` resumed after completion",
+            ResumedAfterReturn(CoroutineKind::Gen(_)) => {
+                bug!("`gen fn` should just keep returning `None` after the first time")
+            }
             ResumedAfterPanic(CoroutineKind::Coroutine) => "coroutine resumed after panicking",
             ResumedAfterPanic(CoroutineKind::Async(_)) => "`async fn` resumed after panicking",
+            ResumedAfterPanic(CoroutineKind::Gen(_)) => {
+                bug!("`gen fn` should just keep returning `None` after panicking")
+            }
             BoundsCheck { .. } | MisalignedPointerDereference { .. } => {
                 bug!("Unexpected AssertKind")
             }
@@ -236,10 +242,14 @@ impl<O> AssertKind<O> {
             DivisionByZero(_) => middle_assert_divide_by_zero,
             RemainderByZero(_) => middle_assert_remainder_by_zero,
             ResumedAfterReturn(CoroutineKind::Async(_)) => middle_assert_async_resume_after_return,
+            // FIXME(gen_blocks): custom error message for `gen` blocks
+            ResumedAfterReturn(CoroutineKind::Gen(_)) => middle_assert_async_resume_after_return,
             ResumedAfterReturn(CoroutineKind::Coroutine) => {
                 middle_assert_coroutine_resume_after_return
             }
             ResumedAfterPanic(CoroutineKind::Async(_)) => middle_assert_async_resume_after_panic,
+            // FIXME(gen_blocks): custom error message for `gen` blocks
+            ResumedAfterPanic(CoroutineKind::Gen(_)) => middle_assert_async_resume_after_panic,
             ResumedAfterPanic(CoroutineKind::Coroutine) => {
                 middle_assert_coroutine_resume_after_panic
             }
