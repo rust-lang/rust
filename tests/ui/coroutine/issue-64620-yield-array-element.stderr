@@ -1,0 +1,9 @@
+error[E0627]: yield expression outside of coroutine literal
+  --> $DIR/issue-64620-yield-array-element.rs:6:5
+   |
+LL |     yield arr[0];
+   |     ^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0627`.

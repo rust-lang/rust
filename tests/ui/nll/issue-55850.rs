@@ -1,16 +1,16 @@
 #![allow(unused_mut)]
-#![feature(generators, generator_trait)]
+#![feature(coroutines, coroutine_trait)]
 
 use std::marker::Unpin;
-use std::ops::Generator;
-use std::ops::GeneratorState::Yielded;
+use std::ops::Coroutine;
+use std::ops::CoroutineState::Yielded;
 use std::pin::Pin;
 
 pub struct GenIter<G>(G);
 
 impl <G> Iterator for GenIter<G>
 where
-    G: Generator + Unpin,
+    G: Coroutine + Unpin,
 {
     type Item = G::Yield;
 
@@ -26,7 +26,7 @@ fn bug<'a>() -> impl Iterator<Item = &'a str> {
     GenIter(move || {
         let mut s = String::new();
         yield &s[..] //~ ERROR cannot yield value referencing local variable `s` [E0515]
-        //~| ERROR borrow may still be in use when generator yields
+        //~| ERROR borrow may still be in use when coroutine yields
     })
 }
 

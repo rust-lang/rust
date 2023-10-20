@@ -302,11 +302,11 @@ fn do_mir_borrowck<'tcx>(
         .pass_name("borrowck")
         .iterate_to_fixpoint();
 
-    let movable_generator =
-        // The first argument is the generator type passed by value
+    let movable_coroutine =
+        // The first argument is the coroutine type passed by value
         if let Some(local) = body.local_decls.raw.get(1)
         // Get the interior types and args which typeck computed
-        && let ty::Generator(_, _, hir::Movability::Static) = local.ty.kind()
+        && let ty::Coroutine(_, _, hir::Movability::Static) = local.ty.kind()
     {
         false
     } else {
@@ -323,7 +323,7 @@ fn do_mir_borrowck<'tcx>(
                 body: promoted_body,
                 move_data: &move_data,
                 location_table, // no need to create a real one for the promoted, it is not used
-                movable_generator,
+                movable_coroutine,
                 fn_self_span_reported: Default::default(),
                 locals_are_invalidated_at_exit,
                 access_place_error_reported: Default::default(),
@@ -351,7 +351,7 @@ fn do_mir_borrowck<'tcx>(
         body,
         move_data: &mdpe.move_data,
         location_table,
-        movable_generator,
+        movable_coroutine,
         locals_are_invalidated_at_exit,
         fn_self_span_reported: Default::default(),
         access_place_error_reported: Default::default(),
@@ -536,7 +536,7 @@ struct MirBorrowckCtxt<'cx, 'tcx> {
     /// when MIR borrowck begins.
     location_table: &'cx LocationTable,
 
-    movable_generator: bool,
+    movable_coroutine: bool,
     /// This keeps track of whether local variables are free-ed when the function
     /// exits even without a `StorageDead`, which appears to be the case for
     /// constants.
@@ -778,7 +778,7 @@ impl<'cx, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx, R> for MirBorro
             | TerminatorKind::Unreachable
             | TerminatorKind::UnwindResume
             | TerminatorKind::Return
-            | TerminatorKind::GeneratorDrop
+            | TerminatorKind::CoroutineDrop
             | TerminatorKind::FalseEdge { real_target: _, imaginary_target: _ }
             | TerminatorKind::FalseUnwind { real_target: _, unwind: _ } => {
                 // no data used, thus irrelevant to borrowck
@@ -797,7 +797,7 @@ impl<'cx, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx, R> for MirBorro
 
         match term.kind {
             TerminatorKind::Yield { value: _, resume: _, resume_arg: _, drop: _ } => {
-                if self.movable_generator {
+                if self.movable_coroutine {
                     // Look for any active borrows to locals
                     let borrow_set = self.borrow_set.clone();
                     for i in flow_state.borrows.iter() {
@@ -809,7 +809,7 @@ impl<'cx, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx, R> for MirBorro
 
             TerminatorKind::UnwindResume
             | TerminatorKind::Return
-            | TerminatorKind::GeneratorDrop => {
+            | TerminatorKind::CoroutineDrop => {
                 // Returning from the function implicitly kills storage for all locals and statics.
                 // Often, the storage will already have been killed by an explicit
                 // StorageDead, but we don't always emit those (notably on unwind paths),
@@ -1326,7 +1326,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 // moved into the closure and subsequently used by the closure,
                 // in order to populate our used_mut set.
                 match **aggregate_kind {
-                    AggregateKind::Closure(def_id, _) | AggregateKind::Generator(def_id, _, _) => {
+                    AggregateKind::Closure(def_id, _) | AggregateKind::Coroutine(def_id, _, _) => {
                         let def_id = def_id.expect_local();
                         let BorrowCheckResult { used_mut_upvars, .. } =
                             self.infcx.tcx.mir_borrowck(def_id);
@@ -1549,12 +1549,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     }
 
     /// Reports an error if this is a borrow of local data.
-    /// This is called for all Yield expressions on movable generators
+    /// This is called for all Yield expressions on movable coroutines
     fn check_for_local_borrow(&mut self, borrow: &BorrowData<'tcx>, yield_span: Span) {
         debug!("check_for_local_borrow({:?})", borrow);
 
         if borrow_of_local_data(borrow.borrowed_place) {
-            let err = self.cannot_borrow_across_generator_yield(
+            let err = self.cannot_borrow_across_coroutine_yield(
                 self.retrieve_borrow_spans(borrow).var_or_use(),
                 yield_span,
             );

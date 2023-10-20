@@ -181,19 +181,19 @@ infer_more_targeted = {$has_param_name ->
 
 infer_msl_introduces_static = introduces a `'static` lifetime requirement
 infer_msl_unmet_req = because this has an unmet lifetime requirement
-infer_need_type_info_in_generator =
-    type inside {$generator_kind ->
+infer_need_type_info_in_coroutine =
+    type inside {$coroutine_kind ->
     [async_block] `async` block
     [async_closure] `async` closure
     [async_fn] `async fn` body
-    *[generator] generator
+    *[coroutine] coroutine
     } must be known in this context
 
 
 infer_nothing = {""}
 
 infer_oc_cant_coerce = cannot coerce intrinsics to function pointers
-infer_oc_closure_selfref = closure/generator type that references itself
+infer_oc_closure_selfref = closure/coroutine type that references itself
 infer_oc_const_compat = const not compatible with trait
 infer_oc_fn_lang_correct_type = {$lang_item_name ->
         [panic_impl] `#[panic_handler]`
@@ -284,7 +284,7 @@ infer_sbfrit_change_return_type = you could change the return type to be a boxed
 infer_source_kind_closure_return =
     try giving this closure an explicit return type
 
-# generator_kind  may need to be translated
+# coroutine_kind  may need to be translated
 infer_source_kind_fully_qualified =
     try using a fully qualified path to specify the expected types
 

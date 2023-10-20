@@ -149,7 +149,7 @@ impl<'tcx> LanguageItemCollector<'tcx> {
         // Now check whether the lang_item has the expected number of generic
         // arguments. Generally speaking, binary and indexing operations have
         // one (for the RHS/index), unary operations have none, the closure
-        // traits have one for the argument list, generators have one for the
+        // traits have one for the argument list, coroutines have one for the
         // resume argument, and ordering/equality relations have one for the RHS
         // Some other types like Box and various functions like drop_in_place
         // have minimum requirements.

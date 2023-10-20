@@ -1,0 +1,36 @@
+error: Undefined Behavior: memory access failed: ALLOC has been freed, so this pointer is dangling
+  --> $DIR/coroutine-pinned-moved.rs:LL:CC
+   |
+LL |         *num += 1;
+   |         ^^^^^^^^^ memory access failed: ALLOC has been freed, so this pointer is dangling
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+help: ALLOC was allocated here:
+  --> $DIR/coroutine-pinned-moved.rs:LL:CC
+   |
+LL |         let mut coroutine_iterator = Box::new(CoroutineIteratorAdapter(firstn()));
+   |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: ALLOC was deallocated here:
+  --> $DIR/coroutine-pinned-moved.rs:LL:CC
+   |
+LL |     }; // *deallocate* coroutine_iterator
+   |     ^
+   = note: BACKTRACE (of the first span):
+   = note: inside closure at $DIR/coroutine-pinned-moved.rs:LL:CC
+note: inside `<CoroutineIteratorAdapter<{static coroutine@$DIR/coroutine-pinned-moved.rs:LL:CC}> as std::iter::Iterator>::next`
+  --> $DIR/coroutine-pinned-moved.rs:LL:CC
+   |
+LL |         match me.resume(()) {
+   |               ^^^^^^^^^^^^^
+   = note: inside `<std::boxed::Box<CoroutineIteratorAdapter<{static coroutine@$DIR/coroutine-pinned-moved.rs:LL:CC}>> as std::iter::Iterator>::next` at RUSTLIB/alloc/src/boxed.rs:LL:CC
+note: inside `main`
+  --> $DIR/coroutine-pinned-moved.rs:LL:CC
+   |
+LL |     coroutine_iterator_2.next(); // and use moved value
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

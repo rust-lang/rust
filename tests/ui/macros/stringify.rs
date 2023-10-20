@@ -7,7 +7,7 @@
 #![feature(box_patterns)]
 #![feature(const_trait_impl)]
 #![feature(decl_macro)]
-#![feature(generators)]
+#![feature(coroutines)]
 #![feature(more_qualified_paths)]
 #![feature(raw_ref_op)]
 #![feature(trait_alias)]

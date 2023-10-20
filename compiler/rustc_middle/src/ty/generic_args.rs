@@ -2,7 +2,7 @@
 
 use crate::ty::codec::{TyDecoder, TyEncoder};
 use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable};
-use crate::ty::sty::{ClosureArgs, GeneratorArgs, InlineConstArgs};
+use crate::ty::sty::{ClosureArgs, CoroutineArgs, InlineConstArgs};
 use crate::ty::visit::{TypeVisitable, TypeVisitableExt, TypeVisitor};
 use crate::ty::{self, Lift, List, ParamConst, Ty, TyCtxt};
 
@@ -266,12 +266,12 @@ impl<'tcx> GenericArgs<'tcx> {
         ClosureArgs { args: self }
     }
 
-    /// Interpret these generic args as the args of a generator type.
-    /// Generator args have a particular structure controlled by the
-    /// compiler that encodes information like the signature and generator kind;
-    /// see `ty::GeneratorArgs` struct for more comments.
-    pub fn as_generator(&'tcx self) -> GeneratorArgs<'tcx> {
-        GeneratorArgs { args: self }
+    /// Interpret these generic args as the args of a coroutine type.
+    /// Coroutine args have a particular structure controlled by the
+    /// compiler that encodes information like the signature and coroutine kind;
+    /// see `ty::CoroutineArgs` struct for more comments.
+    pub fn as_coroutine(&'tcx self) -> CoroutineArgs<'tcx> {
+        CoroutineArgs { args: self }
     }
 
     /// Interpret these generic args as the args of an inline const.

@@ -161,7 +161,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
             }
             TerminatorKind::UnwindResume
             | TerminatorKind::Return
-            | TerminatorKind::GeneratorDrop => {
+            | TerminatorKind::CoroutineDrop => {
                 // Invalidate all borrows of local places
                 let borrow_set = self.borrow_set;
                 let start = self.location_table.start_index(location);

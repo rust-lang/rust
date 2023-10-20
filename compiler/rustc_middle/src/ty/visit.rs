@@ -47,7 +47,7 @@ pub trait TypeVisitableExt<'tcx>: TypeVisitable<TyCtxt<'tcx>> {
     fn has_opaque_types(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_TY_OPAQUE)
     }
-    fn has_generators(&self) -> bool {
+    fn has_coroutines(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_TY_GENERATOR)
     }
     fn references_error(&self) -> bool {

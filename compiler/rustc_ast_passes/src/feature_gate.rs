@@ -554,7 +554,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
         "consider removing `for<...>`"
     );
     gate_all!(more_qualified_paths, "usage of qualified paths in this context is experimental");
-    gate_all!(generators, "yield syntax is experimental");
+    gate_all!(coroutines, "yield syntax is experimental");
     gate_all!(raw_ref_op, "raw address of syntax is experimental");
     gate_all!(const_trait_impl, "const trait impls are experimental");
     gate_all!(

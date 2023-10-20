@@ -671,8 +671,8 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                         PlaceTy { ty: base_ty, variant_index: Some(index) }
                     }
                 }
-                // We do not need to handle generators here, because this runs
-                // before the generator transform stage.
+                // We do not need to handle coroutines here, because this runs
+                // before the coroutine transform stage.
                 _ => {
                     let ty = if let Some(name) = maybe_name {
                         span_mirbug_and_err!(
@@ -774,13 +774,13 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
         let (variant, args) = match base_ty {
             PlaceTy { ty, variant_index: Some(variant_index) } => match *ty.kind() {
                 ty::Adt(adt_def, args) => (adt_def.variant(variant_index), args),
-                ty::Generator(def_id, args, _) => {
-                    let mut variants = args.as_generator().state_tys(def_id, tcx);
+                ty::Coroutine(def_id, args, _) => {
+                    let mut variants = args.as_coroutine().state_tys(def_id, tcx);
                     let Some(mut variant) = variants.nth(variant_index.into()) else {
                         bug!(
-                            "variant_index of generator out of range: {:?}/{:?}",
+                            "variant_index of coroutine out of range: {:?}/{:?}",
                             variant_index,
-                            args.as_generator().state_tys(def_id, tcx).count()
+                            args.as_coroutine().state_tys(def_id, tcx).count()
                         );
                     };
                     return match variant.nth(field.index()) {
@@ -788,7 +788,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                         None => Err(FieldAccessError::OutOfRange { field_count: variant.count() }),
                     };
                 }
-                _ => bug!("can't have downcast of non-adt non-generator type"),
+                _ => bug!("can't have downcast of non-adt non-coroutine type"),
             },
             PlaceTy { ty, variant_index: None } => match *ty.kind() {
                 ty::Adt(adt_def, args) if !adt_def.is_enum() => {
@@ -802,13 +802,13 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                         }),
                     };
                 }
-                ty::Generator(_, args, _) => {
+                ty::Coroutine(_, args, _) => {
                     // Only prefix fields (upvars and current state) are
                     // accessible without a variant index.
-                    return match args.as_generator().prefix_tys().get(field.index()) {
+                    return match args.as_coroutine().prefix_tys().get(field.index()) {
                         Some(ty) => Ok(*ty),
                         None => Err(FieldAccessError::OutOfRange {
-                            field_count: args.as_generator().prefix_tys().len(),
+                            field_count: args.as_coroutine().prefix_tys().len(),
                         }),
                     };
                 }
@@ -1351,7 +1351,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             | TerminatorKind::UnwindResume
             | TerminatorKind::UnwindTerminate(_)
             | TerminatorKind::Return
-            | TerminatorKind::GeneratorDrop
+            | TerminatorKind::CoroutineDrop
             | TerminatorKind::Unreachable
             | TerminatorKind::Drop { .. }
             | TerminatorKind::FalseEdge { .. }
@@ -1468,7 +1468,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
                 let value_ty = value.ty(body, tcx);
                 match body.yield_ty() {
-                    None => span_mirbug!(self, term, "yield in non-generator"),
+                    None => span_mirbug!(self, term, "yield in non-coroutine"),
                     Some(ty) => {
                         if let Err(terr) = self.sub_types(
                             value_ty,
@@ -1648,9 +1648,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     span_mirbug!(self, block_data, "return on cleanup block")
                 }
             }
-            TerminatorKind::GeneratorDrop { .. } => {
+            TerminatorKind::CoroutineDrop { .. } => {
                 if is_cleanup {
-                    span_mirbug!(self, block_data, "generator_drop in cleanup block")
+                    span_mirbug!(self, block_data, "coroutine_drop in cleanup block")
                 }
             }
             TerminatorKind::Yield { resume, drop, .. } => {
@@ -1797,14 +1797,14 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }),
                 }
             }
-            AggregateKind::Generator(_, args, _) => {
+            AggregateKind::Coroutine(_, args, _) => {
                 // It doesn't make sense to look at a field beyond the prefix;
                 // these require a variant index, and are not initialized in
                 // aggregate rvalues.
-                match args.as_generator().prefix_tys().get(field_index.as_usize()) {
+                match args.as_coroutine().prefix_tys().get(field_index.as_usize()) {
                     Some(ty) => Ok(*ty),
                     None => Err(FieldAccessError::OutOfRange {
-                        field_count: args.as_generator().prefix_tys().len(),
+                        field_count: args.as_coroutine().prefix_tys().len(),
                     }),
                 }
             }
@@ -2397,7 +2397,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 AggregateKind::Array(_) => None,
                 AggregateKind::Tuple => None,
                 AggregateKind::Closure(_, _) => None,
-                AggregateKind::Generator(_, _, _) => None,
+                AggregateKind::Coroutine(_, _, _) => None,
             },
         }
     }
@@ -2625,7 +2625,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             // desugaring. A closure gets desugared to a struct, and
             // these extra requirements are basically like where
             // clauses on the struct.
-            AggregateKind::Closure(def_id, args) | AggregateKind::Generator(def_id, args, _) => {
+            AggregateKind::Closure(def_id, args) | AggregateKind::Coroutine(def_id, args, _) => {
                 (def_id, self.prove_closure_bounds(tcx, def_id.expect_local(), args, location))
             }
 
@@ -2673,7 +2673,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
         let parent_args = match tcx.def_kind(def_id) {
             DefKind::Closure => args.as_closure().parent_args(),
-            DefKind::Generator => args.as_generator().parent_args(),
+            DefKind::Coroutine => args.as_coroutine().parent_args(),
             DefKind::InlineConst => args.as_inline_const().parent_args(),
             other => bug!("unexpected item {:?}", other),
         };

@@ -268,7 +268,7 @@ impl<'tcx> crate::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'_, '_, 'tcx> {
 
             // Note that we do *not* gen the `resume_arg` of `Yield` terminators. The reason for
             // that is that a `yield` will return from the function, and `resume_arg` is written
-            // only when the generator is later resumed. Unlike `Call`, this doesn't require the
+            // only when the coroutine is later resumed. Unlike `Call`, this doesn't require the
             // place to have storage *before* the yield, only after.
             TerminatorKind::Yield { .. } => {}
 
@@ -296,7 +296,7 @@ impl<'tcx> crate::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'_, '_, 'tcx> {
             | TerminatorKind::Drop { .. }
             | TerminatorKind::FalseEdge { .. }
             | TerminatorKind::FalseUnwind { .. }
-            | TerminatorKind::GeneratorDrop
+            | TerminatorKind::CoroutineDrop
             | TerminatorKind::Goto { .. }
             | TerminatorKind::UnwindResume
             | TerminatorKind::Return
@@ -333,7 +333,7 @@ impl<'tcx> crate::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'_, '_, 'tcx> {
             | TerminatorKind::Drop { .. }
             | TerminatorKind::FalseEdge { .. }
             | TerminatorKind::FalseUnwind { .. }
-            | TerminatorKind::GeneratorDrop
+            | TerminatorKind::CoroutineDrop
             | TerminatorKind::Goto { .. }
             | TerminatorKind::UnwindResume
             | TerminatorKind::Return

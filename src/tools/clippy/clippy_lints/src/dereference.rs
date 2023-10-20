@@ -842,8 +842,8 @@ impl TyCoercionStability {
                 | ty::Adt(..)
                 | ty::Foreign(_)
                 | ty::FnDef(..)
-                | ty::Generator(..)
-                | ty::GeneratorWitness(..)
+                | ty::Coroutine(..)
+                | ty::CoroutineWitness(..)
                 | ty::Closure(..)
                 | ty::Never
                 | ty::Tuple(_)

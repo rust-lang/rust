@@ -9,7 +9,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{
-    AsyncGeneratorKind, Expr, ExprKind, GeneratorKind, GenericBound, HirId, Node, Path, QPath,
+    AsyncCoroutineKind, CoroutineKind, Expr, ExprKind, GenericBound, HirId, Node, Path, QPath,
     Stmt, StmtKind, TyKind, WherePredicate,
 };
 use rustc_hir_analysis::astconv::AstConv;
@@ -532,10 +532,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ty::Tuple(tuple) if tuple.is_empty() => {
                     errors::SuggestBoxing::Unit { start: span.shrink_to_lo(), end: span }
                 }
-                ty::Generator(def_id, ..)
+                ty::Coroutine(def_id, ..)
                     if matches!(
-                        self.tcx.generator_kind(def_id),
-                        Some(GeneratorKind::Async(AsyncGeneratorKind::Closure))
+                        self.tcx.coroutine_kind(def_id),
+                        Some(CoroutineKind::Async(AsyncCoroutineKind::Closure))
                     ) =>
                 {
                     errors::SuggestBoxing::AsyncBody

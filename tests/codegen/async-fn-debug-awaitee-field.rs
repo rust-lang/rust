@@ -1,4 +1,4 @@
-// This test makes sure that the generator field capturing the awaitee in a `.await` expression
+// This test makes sure that the coroutine field capturing the awaitee in a `.await` expression
 // is called "__awaitee" in debuginfo. This name must not be changed since debuggers and debugger
 // extensions rely on the field having this name.
 

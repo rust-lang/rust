@@ -37,7 +37,7 @@ pub(crate) fn thir_body(
 
         // The resume argument may be missing, in that case we need to provide it here.
         // It will always be `()` in this case.
-        if tcx.def_kind(owner_def) == DefKind::Generator && body.params.is_empty() {
+        if tcx.def_kind(owner_def) == DefKind::Coroutine && body.params.is_empty() {
             cx.thir.params.push(Param {
                 ty: Ty::new_unit(tcx),
                 pat: None,
@@ -148,7 +148,7 @@ impl<'tcx> Cx<'tcx> {
 
                 Some(env_param)
             }
-            DefKind::Generator => {
+            DefKind::Coroutine => {
                 let gen_ty = self.typeck_results.node_type(owner_id);
                 let gen_param =
                     Param { ty: gen_ty, pat: None, ty_span: None, self_kind: None, hir_id: None };

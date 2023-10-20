@@ -779,7 +779,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         let closure_def_id = closure_expr.def_id;
         let upvars = tcx.upvars_mentioned(self.body_owner);
 
-        // For purposes of this function, generator and closures are equivalent.
+        // For purposes of this function, coroutine and closures are equivalent.
         let body_owner_is_closure =
             matches!(tcx.hir().body_owner_kind(self.body_owner), hir::BodyOwnerKind::Closure,);
 

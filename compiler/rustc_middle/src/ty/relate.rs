@@ -352,19 +352,19 @@ impl<'tcx> Relate<'tcx> for ty::ExistentialTraitRef<'tcx> {
 }
 
 #[derive(PartialEq, Copy, Debug, Clone, TypeFoldable, TypeVisitable)]
-struct GeneratorWitness<'tcx>(&'tcx ty::List<Ty<'tcx>>);
+struct CoroutineWitness<'tcx>(&'tcx ty::List<Ty<'tcx>>);
 
-impl<'tcx> Relate<'tcx> for GeneratorWitness<'tcx> {
+impl<'tcx> Relate<'tcx> for CoroutineWitness<'tcx> {
     fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
-        a: GeneratorWitness<'tcx>,
-        b: GeneratorWitness<'tcx>,
-    ) -> RelateResult<'tcx, GeneratorWitness<'tcx>> {
+        a: CoroutineWitness<'tcx>,
+        b: CoroutineWitness<'tcx>,
+    ) -> RelateResult<'tcx, CoroutineWitness<'tcx>> {
         assert_eq!(a.0.len(), b.0.len());
         let tcx = relation.tcx();
         let types =
             tcx.mk_type_list_from_iter(iter::zip(a.0, b.0).map(|(a, b)| relation.relate(a, b)))?;
-        Ok(GeneratorWitness(types))
+        Ok(CoroutineWitness(types))
     }
 }
 
@@ -457,24 +457,24 @@ pub fn structurally_relate_tys<'tcx, R: TypeRelation<'tcx>>(
             Ok(Ty::new_dynamic(tcx, relation.relate(a_obj, b_obj)?, region_bound, a_repr))
         }
 
-        (&ty::Generator(a_id, a_args, movability), &ty::Generator(b_id, b_args, _))
+        (&ty::Coroutine(a_id, a_args, movability), &ty::Coroutine(b_id, b_args, _))
             if a_id == b_id =>
         {
-            // All Generator types with the same id represent
-            // the (anonymous) type of the same generator expression. So
+            // All Coroutine types with the same id represent
+            // the (anonymous) type of the same coroutine expression. So
             // all of their regions should be equated.
             let args = relate_args_invariantly(relation, a_args, b_args)?;
-            Ok(Ty::new_generator(tcx, a_id, args, movability))
+            Ok(Ty::new_coroutine(tcx, a_id, args, movability))
         }
 
-        (&ty::GeneratorWitness(a_id, a_args), &ty::GeneratorWitness(b_id, b_args))
+        (&ty::CoroutineWitness(a_id, a_args), &ty::CoroutineWitness(b_id, b_args))
             if a_id == b_id =>
         {
-            // All GeneratorWitness types with the same id represent
-            // the (anonymous) type of the same generator expression. So
+            // All CoroutineWitness types with the same id represent
+            // the (anonymous) type of the same coroutine expression. So
             // all of their regions should be equated.
             let args = relate_args_invariantly(relation, a_args, b_args)?;
-            Ok(Ty::new_generator_witness(tcx, a_id, args))
+            Ok(Ty::new_coroutine_witness(tcx, a_id, args))
         }
 
         (&ty::Closure(a_id, a_args), &ty::Closure(b_id, b_args)) if a_id == b_id => {
@@ -710,14 +710,14 @@ impl<'tcx> Relate<'tcx> for ty::ClosureArgs<'tcx> {
     }
 }
 
-impl<'tcx> Relate<'tcx> for ty::GeneratorArgs<'tcx> {
+impl<'tcx> Relate<'tcx> for ty::CoroutineArgs<'tcx> {
     fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
-        a: ty::GeneratorArgs<'tcx>,
-        b: ty::GeneratorArgs<'tcx>,
-    ) -> RelateResult<'tcx, ty::GeneratorArgs<'tcx>> {
+        a: ty::CoroutineArgs<'tcx>,
+        b: ty::CoroutineArgs<'tcx>,
+    ) -> RelateResult<'tcx, ty::CoroutineArgs<'tcx>> {
         let args = relate_args_invariantly(relation, a.args, b.args)?;
-        Ok(ty::GeneratorArgs { args })
+        Ok(ty::CoroutineArgs { args })
     }
 }
 

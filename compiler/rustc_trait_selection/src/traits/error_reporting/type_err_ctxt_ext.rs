@@ -1036,7 +1036,7 @@ pub(super) trait InferCtxtPrivExt<'tcx> {
         ignoring_lifetimes: bool,
     ) -> Option<CandidateSimilarity>;
 
-    fn describe_generator(&self, body_id: hir::BodyId) -> Option<&'static str>;
+    fn describe_coroutine(&self, body_id: hir::BodyId) -> Option<&'static str>;
 
     fn find_similar_impl_candidates(
         &self,
@@ -1564,9 +1564,9 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 ty::Alias(ty::Weak, ..) => Some(15),
                 ty::Never => Some(16),
                 ty::Adt(..) => Some(17),
-                ty::Generator(..) => Some(18),
+                ty::Coroutine(..) => Some(18),
                 ty::Foreign(..) => Some(19),
-                ty::GeneratorWitness(..) => Some(20),
+                ty::CoroutineWitness(..) => Some(20),
                 ty::Placeholder(..) | ty::Bound(..) | ty::Infer(..) | ty::Error(_) => None,
             }
         }
@@ -1613,12 +1613,12 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         }
     }
 
-    fn describe_generator(&self, body_id: hir::BodyId) -> Option<&'static str> {
-        self.tcx.hir().body(body_id).generator_kind.map(|gen_kind| match gen_kind {
-            hir::GeneratorKind::Gen => "a generator",
-            hir::GeneratorKind::Async(hir::AsyncGeneratorKind::Block) => "an async block",
-            hir::GeneratorKind::Async(hir::AsyncGeneratorKind::Fn) => "an async function",
-            hir::GeneratorKind::Async(hir::AsyncGeneratorKind::Closure) => "an async closure",
+    fn describe_coroutine(&self, body_id: hir::BodyId) -> Option<&'static str> {
+        self.tcx.hir().body(body_id).coroutine_kind.map(|gen_kind| match gen_kind {
+            hir::CoroutineKind::Coroutine => "a coroutine",
+            hir::CoroutineKind::Async(hir::AsyncCoroutineKind::Block) => "an async block",
+            hir::CoroutineKind::Async(hir::AsyncCoroutineKind::Fn) => "an async function",
+            hir::CoroutineKind::Async(hir::AsyncCoroutineKind::Closure) => "an async closure",
         })
     }
 
@@ -3098,7 +3098,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         };
 
         let found_did = match *found_trait_ty.kind() {
-            ty::Closure(did, _) | ty::Foreign(did) | ty::FnDef(did, _) | ty::Generator(did, ..) => {
+            ty::Closure(did, _) | ty::Foreign(did) | ty::FnDef(did, _) | ty::Coroutine(did, ..) => {
                 Some(did)
             }
             ty::Adt(def, _) => Some(def.did()),

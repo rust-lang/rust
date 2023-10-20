@@ -1,0 +1,17 @@
+error[E0308]: mismatched types
+  --> $DIR/resume-arg-late-bound.rs:15:5
+   |
+LL |     test(gen);
+   |     ^^^^^^^^^ one type is more general than the other
+   |
+   = note: expected trait `for<'a> Coroutine<&'a mut bool>`
+              found trait `Coroutine<&mut bool>`
+note: the lifetime requirement is introduced here
+  --> $DIR/resume-arg-late-bound.rs:8:17
+   |
+LL | fn test(a: impl for<'a> Coroutine<&'a mut bool>) {}
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

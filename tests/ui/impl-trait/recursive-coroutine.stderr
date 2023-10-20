@@ -1,0 +1,12 @@
+error[E0720]: cannot resolve opaque type
+  --> $DIR/recursive-coroutine.rs:5:13
+   |
+LL | fn foo() -> impl Coroutine<Yield = (), Return = ()> {
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ recursive opaque type
+...
+LL |         let mut gen = Box::pin(foo());
+   |             ------- coroutine captures itself here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0720`.

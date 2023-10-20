@@ -41,7 +41,7 @@ pub(crate) enum RegionNameSource {
     AnonRegionFromUpvar(Span, Symbol),
     /// The region corresponding to the return type of a closure.
     AnonRegionFromOutput(RegionNameHighlight, &'static str),
-    /// The region from a type yielded by a generator.
+    /// The region from a type yielded by a coroutine.
     AnonRegionFromYieldTy(Span, String),
     /// An anonymous region from an async fn.
     AnonRegionFromAsyncFn(Span),
@@ -322,7 +322,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                     let def_ty = self.regioncx.universal_regions().defining_ty;
 
                     let DefiningTy::Closure(_, args) = def_ty else {
-                        // Can't have BrEnv in functions, constants or generators.
+                        // Can't have BrEnv in functions, constants or coroutines.
                         bug!("BrEnv outside of closure.");
                     };
                     let hir::ExprKind::Closure(&hir::Closure { fn_decl_span, .. }) =
@@ -680,16 +680,16 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                     }
                     hir::FnRetTy::Return(hir_ty) => (fn_decl.output.span(), Some(hir_ty)),
                 };
-                let mir_description = match hir.body(body).generator_kind {
-                    Some(hir::GeneratorKind::Async(gen)) => match gen {
-                        hir::AsyncGeneratorKind::Block => " of async block",
-                        hir::AsyncGeneratorKind::Closure => " of async closure",
-                        hir::AsyncGeneratorKind::Fn => {
+                let mir_description = match hir.body(body).coroutine_kind {
+                    Some(hir::CoroutineKind::Async(gen)) => match gen {
+                        hir::AsyncCoroutineKind::Block => " of async block",
+                        hir::AsyncCoroutineKind::Closure => " of async closure",
+                        hir::AsyncCoroutineKind::Fn => {
                             let parent_item =
                                 hir.get_by_def_id(hir.get_parent_item(mir_hir_id).def_id);
                             let output = &parent_item
                                 .fn_decl()
-                                .expect("generator lowered from async fn should be in fn")
+                                .expect("coroutine lowered from async fn should be in fn")
                                 .output;
                             span = output.span();
                             if let hir::FnRetTy::Return(ret) = output {
@@ -698,7 +698,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                             " of async function"
                         }
                     },
-                    Some(hir::GeneratorKind::Gen) => " of generator",
+                    Some(hir::CoroutineKind::Coroutine) => " of coroutine",
                     None => " of closure",
                 };
                 (span, mir_description, hir_ty)
@@ -793,7 +793,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         &self,
         fr: RegionVid,
     ) -> Option<RegionName> {
-        // Note: generators from `async fn` yield `()`, so we don't have to
+        // Note: coroutines from `async fn` yield `()`, so we don't have to
         // worry about them here.
         let yield_ty = self.regioncx.universal_regions().yield_ty?;
         debug!("give_name_if_anonymous_region_appears_in_yield_ty: yield_ty = {:?}", yield_ty);

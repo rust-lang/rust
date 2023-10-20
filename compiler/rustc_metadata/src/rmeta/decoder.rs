@@ -1239,7 +1239,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         id: DefIndex,
         sess: &'a Session,
     ) -> impl Iterator<Item = ModChild> + 'a {
-        iter::from_generator(move || {
+        iter::from_coroutine(move || {
             if let Some(data) = &self.root.proc_macro_data {
                 // If we are loading as a proc macro, we want to return
                 // the view of this crate as a proc macro crate.

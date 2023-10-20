@@ -139,10 +139,10 @@ impl<O> AssertKind<O> {
             Overflow(op, _, _) => bug!("{:?} cannot overflow", op),
             DivisionByZero(_) => "attempt to divide by zero",
             RemainderByZero(_) => "attempt to calculate the remainder with a divisor of zero",
-            ResumedAfterReturn(GeneratorKind::Gen) => "generator resumed after completion",
-            ResumedAfterReturn(GeneratorKind::Async(_)) => "`async fn` resumed after completion",
-            ResumedAfterPanic(GeneratorKind::Gen) => "generator resumed after panicking",
-            ResumedAfterPanic(GeneratorKind::Async(_)) => "`async fn` resumed after panicking",
+            ResumedAfterReturn(CoroutineKind::Coroutine) => "coroutine resumed after completion",
+            ResumedAfterReturn(CoroutineKind::Async(_)) => "`async fn` resumed after completion",
+            ResumedAfterPanic(CoroutineKind::Coroutine) => "coroutine resumed after panicking",
+            ResumedAfterPanic(CoroutineKind::Async(_)) => "`async fn` resumed after panicking",
             BoundsCheck { .. } | MisalignedPointerDereference { .. } => {
                 bug!("Unexpected AssertKind")
             }
@@ -228,10 +228,14 @@ impl<O> AssertKind<O> {
             OverflowNeg(_) => middle_assert_overflow_neg,
             DivisionByZero(_) => middle_assert_divide_by_zero,
             RemainderByZero(_) => middle_assert_remainder_by_zero,
-            ResumedAfterReturn(GeneratorKind::Async(_)) => middle_assert_async_resume_after_return,
-            ResumedAfterReturn(GeneratorKind::Gen) => middle_assert_generator_resume_after_return,
-            ResumedAfterPanic(GeneratorKind::Async(_)) => middle_assert_async_resume_after_panic,
-            ResumedAfterPanic(GeneratorKind::Gen) => middle_assert_generator_resume_after_panic,
+            ResumedAfterReturn(CoroutineKind::Async(_)) => middle_assert_async_resume_after_return,
+            ResumedAfterReturn(CoroutineKind::Coroutine) => {
+                middle_assert_coroutine_resume_after_return
+            }
+            ResumedAfterPanic(CoroutineKind::Async(_)) => middle_assert_async_resume_after_panic,
+            ResumedAfterPanic(CoroutineKind::Coroutine) => {
+                middle_assert_coroutine_resume_after_panic
+            }
 
             MisalignedPointerDereference { .. } => middle_assert_misaligned_ptr_deref,
         }
@@ -331,7 +335,7 @@ impl<'tcx> TerminatorKind<'tcx> {
             }
             UnwindResume
             | UnwindTerminate(_)
-            | GeneratorDrop
+            | CoroutineDrop
             | Return
             | Unreachable
             | Call { target: None, unwind: _, .. }
@@ -373,7 +377,7 @@ impl<'tcx> TerminatorKind<'tcx> {
             }
             UnwindResume
             | UnwindTerminate(_)
-            | GeneratorDrop
+            | CoroutineDrop
             | Return
             | Unreachable
             | Call { target: None, unwind: _, .. }
@@ -392,7 +396,7 @@ impl<'tcx> TerminatorKind<'tcx> {
             | TerminatorKind::UnwindTerminate(_)
             | TerminatorKind::Return
             | TerminatorKind::Unreachable
-            | TerminatorKind::GeneratorDrop
+            | TerminatorKind::CoroutineDrop
             | TerminatorKind::Yield { .. }
             | TerminatorKind::SwitchInt { .. }
             | TerminatorKind::FalseEdge { .. } => None,
@@ -411,7 +415,7 @@ impl<'tcx> TerminatorKind<'tcx> {
             | TerminatorKind::UnwindTerminate(_)
             | TerminatorKind::Return
             | TerminatorKind::Unreachable
-            | TerminatorKind::GeneratorDrop
+            | TerminatorKind::CoroutineDrop
             | TerminatorKind::Yield { .. }
             | TerminatorKind::SwitchInt { .. }
             | TerminatorKind::FalseEdge { .. } => None,
@@ -493,7 +497,7 @@ impl<'tcx> TerminatorKind<'tcx> {
     pub fn edges(&self) -> TerminatorEdges<'_, 'tcx> {
         use TerminatorKind::*;
         match *self {
-            Return | UnwindResume | UnwindTerminate(_) | GeneratorDrop | Unreachable => {
+            Return | UnwindResume | UnwindTerminate(_) | CoroutineDrop | Unreachable => {
                 TerminatorEdges::None
             }
 

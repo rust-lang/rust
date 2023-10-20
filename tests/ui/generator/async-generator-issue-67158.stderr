@@ -1,9 +1,0 @@
-error[E0727]: `async` generators are not yet supported
-  --> $DIR/async-generator-issue-67158.rs:5:13
-   |
-LL |     async { yield print!(":C") };
-   |             ^^^^^^^^^^^^^^^^^^
-
-error: aborting due to previous error
-
-For more information about this error, try `rustc --explain E0727`.

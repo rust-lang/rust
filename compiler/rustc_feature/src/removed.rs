@@ -42,7 +42,7 @@ declare_features! (
      Some("subsumed by `.await` syntax")),
     /// Allows using the `box $expr` syntax.
     (removed, box_syntax, "1.70.0", Some(49733), None, Some("replaced with `#[rustc_box]`")),
-    /// Allows capturing disjoint fields in a closure/generator (RFC 2229).
+    /// Allows capturing disjoint fields in a closure/coroutine (RFC 2229).
     (removed, capture_disjoint_fields, "1.49.0", Some(53488), None, Some("stabilized in Rust 2021")),
     /// Allows comparing raw pointers during const eval.
     (removed, const_compare_raw_pointers, "1.46.0", Some(53020), None,
@@ -96,6 +96,10 @@ declare_features! (
     /// Allows `#[doc(include = "some-file")]`.
     (removed, external_doc, "1.54.0", Some(44732), None,
      Some("use #[doc = include_str!(\"filename\")] instead, which handles macro invocations")),
+    /// Allows generators to be cloned.
+    (removed, generator_clone, "1.65.0", Some(95360), None, Some("renamed to `coroutine_clone`")),
+    /// Allows defining generators.
+    (removed, generators, "1.21.0", Some(43122), None, Some("renamed to `coroutine`")),
     /// Allows `impl Trait` in bindings (`let`, `const`, `static`).
     (removed, impl_trait_in_bindings, "1.55.0", Some(63065), None,
      Some("the implementation was not maintainable, the feature may get reintroduced once the current refactorings are done")),

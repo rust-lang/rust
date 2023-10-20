@@ -1,0 +1,19 @@
+error[E0308]: mismatched types
+  --> $DIR/coroutine-print-verbose-3.rs:7:25
+   |
+LL |       let coroutine :() = || {
+   |  ____________________--___^
+   | |                    |
+   | |                    expected due to this
+LL | |
+LL | |         yield 1i32;
+LL | |         return x
+LL | |     };
+   | |_____^ expected `()`, found coroutine
+   |
+   = note: expected unit type `()`
+              found coroutine `{main::{closure#0} upvar_tys=(unavailable)}`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

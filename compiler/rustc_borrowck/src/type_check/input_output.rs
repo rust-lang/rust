@@ -101,7 +101,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         );
 
         // We will not have a universal_regions.yield_ty if we yield (by accident)
-        // outside of a generator and return an `impl Trait`, so emit a delay_span_bug
+        // outside of a coroutine and return an `impl Trait`, so emit a delay_span_bug
         // because we don't want to panic in an assert here if we've already got errors.
         if body.yield_ty().is_some() != universal_regions.yield_ty.is_some() {
             self.tcx().sess.delay_span_bug(

@@ -75,7 +75,7 @@ pub(in crate::build) struct PlaceBuilder<'tcx> {
 
 /// Given a list of MIR projections, convert them to list of HIR ProjectionKind.
 /// The projections are truncated to represent a path that might be captured by a
-/// closure/generator. This implies the vector returned from this function doesn't contain
+/// closure/coroutine. This implies the vector returned from this function doesn't contain
 /// ProjectionElems `Downcast`, `ConstantIndex`, `Index`, or `Subslice` because those will never be
 /// part of a path that is captured by a closure. We stop applying projections once we see the first
 /// projection that isn't captured by a closure.
@@ -213,7 +213,7 @@ fn to_upvars_resolved_place_builder<'tcx>(
 /// projections.
 ///
 /// Supports only HIR projection kinds that represent a path that might be
-/// captured by a closure or a generator, i.e., an `Index` or a `Subslice`
+/// captured by a closure or a coroutine, i.e., an `Index` or a `Subslice`
 /// projection kinds are unsupported.
 fn strip_prefix<'a, 'tcx>(
     mut base_ty: Ty<'tcx>,

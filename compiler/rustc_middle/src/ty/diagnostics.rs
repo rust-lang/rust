@@ -482,8 +482,8 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IsSuggestableVisitor<'tcx> {
             FnDef(..)
             | Closure(..)
             | Infer(..)
-            | Generator(..)
-            | GeneratorWitness(..)
+            | Coroutine(..)
+            | CoroutineWitness(..)
             | Bound(_, _)
             | Placeholder(_)
             | Error(_) => {
@@ -567,8 +567,8 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for MakeSuggestableFolder<'tcx> {
             // FIXME(compiler-errors): We could replace these with infer, I guess.
             Closure(..)
             | Infer(..)
-            | Generator(..)
-            | GeneratorWitness(..)
+            | Coroutine(..)
+            | CoroutineWitness(..)
             | Bound(_, _)
             | Placeholder(_)
             | Error(_) => {

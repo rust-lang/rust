@@ -142,7 +142,7 @@ pub enum RigidTy {
     FnDef(FnDef, GenericArgs),
     FnPtr(PolyFnSig),
     Closure(ClosureDef, GenericArgs),
-    Generator(GeneratorDef, GenericArgs, Movability),
+    Coroutine(CoroutineDef, GenericArgs, Movability),
     Dynamic(Vec<Binder<ExistentialPredicate>>, Region, DynKind),
     Never,
     Tuple(Vec<Ty>),
@@ -196,7 +196,7 @@ impl FnDef {
 pub struct ClosureDef(pub DefId);
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub struct GeneratorDef(pub DefId);
+pub struct CoroutineDef(pub DefId);
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct ParamDef(pub DefId);

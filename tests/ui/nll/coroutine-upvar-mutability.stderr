@@ -1,0 +1,12 @@
+error[E0594]: cannot assign to `x`, as it is not declared as mutable
+  --> $DIR/coroutine-upvar-mutability.rs:8:9
+   |
+LL |     let x = 0;
+   |         - help: consider changing this to be mutable: `mut x`
+LL |     move || {
+LL |         x = 1;
+   |         ^^^^^ cannot assign
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0594`.

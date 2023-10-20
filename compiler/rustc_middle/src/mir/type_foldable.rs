@@ -19,8 +19,8 @@ TrivialTypeTraversalImpls! {
     hir::Movability,
     BasicBlock,
     SwitchTargets,
-    GeneratorKind,
-    GeneratorSavedLocal,
+    CoroutineKind,
+    CoroutineSavedLocal,
 }
 
 TrivialTypeTraversalImpls! {

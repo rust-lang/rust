@@ -15,7 +15,7 @@ use crate::ty::{Region, UserTypeAnnotationIndex};
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir};
-use rustc_hir::{self, GeneratorKind};
+use rustc_hir::{self, CoroutineKind};
 use rustc_index::IndexVec;
 use rustc_target::abi::{FieldIdx, VariantIdx};
 
@@ -82,10 +82,10 @@ pub enum MirPhase {
     ///    that Rust itself has them. Where exactly these are is generally subject to change, and so we
     ///    don't document this here. Runtime MIR has most retags explicit (though implicit retags
     ///    can still occur at `Rvalue::{Ref,AddrOf}`).
-    ///  - Generator bodies: In analysis MIR, locals may actually be behind a pointer that user code has
-    ///    access to. This occurs in generator bodies. Such locals do not behave like other locals,
+    ///  - Coroutine bodies: In analysis MIR, locals may actually be behind a pointer that user code has
+    ///    access to. This occurs in coroutine bodies. Such locals do not behave like other locals,
     ///    because they eg may be aliased in surprising ways. Runtime MIR has no such special locals -
-    ///    all generator bodies are lowered and so all places that look like locals really are locals.
+    ///    all coroutine bodies are lowered and so all places that look like locals really are locals.
     ///
     /// Also note that the lint pass which reports eg `200_u8 + 200_u8` as an error is run as a part
     /// of analysis to runtime MIR lowering. To ensure lints are reported reliably, this means that
@@ -137,7 +137,7 @@ pub enum RuntimePhase {
     /// In addition to the semantic changes, beginning with this phase, the following variants are
     /// disallowed:
     /// * [`TerminatorKind::Yield`]
-    /// * [`TerminatorKind::GeneratorDrop`]
+    /// * [`TerminatorKind::CoroutineDrop`]
     /// * [`Rvalue::Aggregate`] for any `AggregateKind` except `Array`
     /// * [`PlaceElem::OpaqueCast`]
     ///
@@ -292,7 +292,7 @@ pub enum StatementKind<'tcx> {
 
     /// Write the discriminant for a variant to the enum Place.
     ///
-    /// This is permitted for both generators and ADTs. This does not necessarily write to the
+    /// This is permitted for both coroutines and ADTs. This does not necessarily write to the
     /// entire place; instead, it writes to the minimum set of bytes as required by the layout for
     /// the type.
     SetDiscriminant { place: Box<Place<'tcx>>, variant_index: VariantIdx },
@@ -626,8 +626,8 @@ pub enum TerminatorKind<'tcx> {
     /// `dest = move _0`. It might additionally do other things, like have side-effects in the
     /// aliasing model.
     ///
-    /// If the body is a generator body, this has slightly different semantics; it instead causes a
-    /// `GeneratorState::Returned(_0)` to be created (as if by an `Aggregate` rvalue) and assigned
+    /// If the body is a coroutine body, this has slightly different semantics; it instead causes a
+    /// `CoroutineState::Returned(_0)` to be created (as if by an `Aggregate` rvalue) and assigned
     /// to the return place.
     Return,
 
@@ -709,14 +709,14 @@ pub enum TerminatorKind<'tcx> {
 
     /// Marks a suspend point.
     ///
-    /// Like `Return` terminators in generator bodies, this computes `value` and then a
-    /// `GeneratorState::Yielded(value)` as if by `Aggregate` rvalue. That value is then assigned to
+    /// Like `Return` terminators in coroutine bodies, this computes `value` and then a
+    /// `CoroutineState::Yielded(value)` as if by `Aggregate` rvalue. That value is then assigned to
     /// the return place of the function calling this one, and execution continues in the calling
     /// function. When next invoked with the same first argument, execution of this function
     /// continues at the `resume` basic block, with the second argument written to the `resume_arg`
-    /// place. If the generator is dropped before then, the `drop` basic block is invoked.
+    /// place. If the coroutine is dropped before then, the `drop` basic block is invoked.
     ///
-    /// Not permitted in bodies that are not generator bodies, or after generator lowering.
+    /// Not permitted in bodies that are not coroutine bodies, or after coroutine lowering.
     ///
     /// **Needs clarification**: What about the evaluation order of the `resume_arg` and `value`?
     Yield {
@@ -726,21 +726,21 @@ pub enum TerminatorKind<'tcx> {
         resume: BasicBlock,
         /// The place to store the resume argument in.
         resume_arg: Place<'tcx>,
-        /// Cleanup to be done if the generator is dropped at this suspend point.
+        /// Cleanup to be done if the coroutine is dropped at this suspend point.
         drop: Option<BasicBlock>,
     },
 
-    /// Indicates the end of dropping a generator.
+    /// Indicates the end of dropping a coroutine.
     ///
-    /// Semantically just a `return` (from the generators drop glue). Only permitted in the same situations
+    /// Semantically just a `return` (from the coroutines drop glue). Only permitted in the same situations
     /// as `yield`.
     ///
-    /// **Needs clarification**: Is that even correct? The generator drop code is always confusing
+    /// **Needs clarification**: Is that even correct? The coroutine drop code is always confusing
     /// to me, because it's not even really in the current body.
     ///
     /// **Needs clarification**: Are there type system constraints on these terminators? Should
     /// there be a "block type" like `cleanup` blocks for them?
-    GeneratorDrop,
+    CoroutineDrop,
 
     /// A block where control flow only ever takes one real path, but borrowck needs to be more
     /// conservative.
@@ -815,7 +815,7 @@ impl TerminatorKind<'_> {
             TerminatorKind::Call { .. } => "Call",
             TerminatorKind::Assert { .. } => "Assert",
             TerminatorKind::Yield { .. } => "Yield",
-            TerminatorKind::GeneratorDrop => "GeneratorDrop",
+            TerminatorKind::CoroutineDrop => "CoroutineDrop",
             TerminatorKind::FalseEdge { .. } => "FalseEdge",
             TerminatorKind::FalseUnwind { .. } => "FalseUnwind",
             TerminatorKind::InlineAsm { .. } => "InlineAsm",
@@ -883,8 +883,8 @@ pub enum AssertKind<O> {
     OverflowNeg(O),
     DivisionByZero(O),
     RemainderByZero(O),
-    ResumedAfterReturn(GeneratorKind),
-    ResumedAfterPanic(GeneratorKind),
+    ResumedAfterReturn(CoroutineKind),
+    ResumedAfterPanic(CoroutineKind),
     MisalignedPointerDereference { required: O, found: O },
 }
 
@@ -961,8 +961,8 @@ pub type AssertMessage<'tcx> = AssertKind<Operand<'tcx>>;
 ///    was unsized and so had metadata associated with it, then the metadata is retained if the
 ///    field is unsized and thrown out if it is sized.
 ///
-///    These projections are only legal for tuples, ADTs, closures, and generators. If the ADT or
-///    generator has more than one variant, the parent place's variant index must be set, indicating
+///    These projections are only legal for tuples, ADTs, closures, and coroutines. If the ADT or
+///    coroutine has more than one variant, the parent place's variant index must be set, indicating
 ///    which variant is being used. If it has just one variant, the variant index may or may not be
 ///    included - the single possible variant is inferred if it is not included.
 ///  - [`OpaqueCast`](ProjectionElem::OpaqueCast): This projection changes the place's type to the
@@ -1068,7 +1068,7 @@ pub enum ProjectionElem<V, T> {
         from_end: bool,
     },
 
-    /// "Downcast" to a variant of an enum or a generator.
+    /// "Downcast" to a variant of an enum or a coroutine.
     ///
     /// The included Symbol is the name of the variant, used for printing MIR.
     Downcast(Option<Symbol>, VariantIdx),
@@ -1278,8 +1278,8 @@ pub enum Rvalue<'tcx> {
     /// `dest = Foo { x: ..., y: ... }` from `dest.x = ...; dest.y = ...;` in the case that `Foo`
     /// has a destructor.
     ///
-    /// Disallowed after deaggregation for all aggregate kinds except `Array` and `Generator`. After
-    /// generator lowering, `Generator` aggregate kinds are disallowed too.
+    /// Disallowed after deaggregation for all aggregate kinds except `Array` and `Coroutine`. After
+    /// coroutine lowering, `Coroutine` aggregate kinds are disallowed too.
     Aggregate(Box<AggregateKind<'tcx>>, IndexVec<FieldIdx, Operand<'tcx>>),
 
     /// Transmutes a `*mut u8` into shallow-initialized `Box<T>`.
@@ -1344,7 +1344,7 @@ pub enum AggregateKind<'tcx> {
     Adt(DefId, VariantIdx, GenericArgsRef<'tcx>, Option<UserTypeAnnotationIndex>, Option<FieldIdx>),
 
     Closure(DefId, GenericArgsRef<'tcx>),
-    Generator(DefId, GenericArgsRef<'tcx>, hir::Movability),
+    Coroutine(DefId, GenericArgsRef<'tcx>, hir::Movability),
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]

@@ -141,10 +141,10 @@
 mod arith;
 mod bit;
 mod control_flow;
+mod coroutine;
 mod deref;
 mod drop;
 mod function;
-mod generator;
 mod index;
 mod index_range;
 mod range;
@@ -198,8 +198,8 @@ pub use self::try_trait::Residual;
 
 pub(crate) use self::try_trait::{ChangeOutputType, NeverShortCircuit};
 
-#[unstable(feature = "generator_trait", issue = "43122")]
-pub use self::generator::{Generator, GeneratorState};
+#[unstable(feature = "coroutine_trait", issue = "43122")]
+pub use self::coroutine::{Coroutine, CoroutineState};
 
 #[unstable(feature = "coerce_unsized", issue = "18598")]
 pub use self::unsize::CoerceUnsized;

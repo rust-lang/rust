@@ -1,7 +1,7 @@
 use crate::lints::{
     PathStatementDrop, PathStatementDropSub, PathStatementNoEffect, UnusedAllocationDiag,
-    UnusedAllocationMutDiag, UnusedClosure, UnusedDef, UnusedDefSuggestion, UnusedDelim,
-    UnusedDelimSuggestion, UnusedGenerator, UnusedImportBracesDiag, UnusedOp, UnusedOpSuggestion,
+    UnusedAllocationMutDiag, UnusedClosure, UnusedCoroutine, UnusedDef, UnusedDefSuggestion,
+    UnusedDelim, UnusedDelimSuggestion, UnusedImportBracesDiag, UnusedOp, UnusedOpSuggestion,
     UnusedResult,
 };
 use crate::Lint;
@@ -257,8 +257,8 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
             Array(Box<Self>, u64),
             /// The root of the unused_closures lint.
             Closure(Span),
-            /// The root of the unused_generators lint.
-            Generator(Span),
+            /// The root of the unused_coroutines lint.
+            Coroutine(Span),
         }
 
         #[instrument(skip(cx, expr), level = "debug", ret)]
@@ -350,16 +350,16 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                         .map(|inner| MustUsePath::Array(Box::new(inner), len)),
                 },
                 ty::Closure(..) => Some(MustUsePath::Closure(span)),
-                ty::Generator(def_id, ..) => {
+                ty::Coroutine(def_id, ..) => {
                     // async fn should be treated as "implementor of `Future`"
-                    let must_use = if cx.tcx.generator_is_async(def_id) {
+                    let must_use = if cx.tcx.coroutine_is_async(def_id) {
                         let def_id = cx.tcx.lang_items().future_trait()?;
                         is_def_must_use(cx, def_id, span)
                             .map(|inner| MustUsePath::Opaque(Box::new(inner)))
                     } else {
                         None
                     };
-                    must_use.or(Some(MustUsePath::Generator(span)))
+                    must_use.or(Some(MustUsePath::Coroutine(span)))
                 }
                 _ => None,
             }
@@ -482,11 +482,11 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                         UnusedClosure { count: plural_len, pre: descr_pre, post: descr_post },
                     );
                 }
-                MustUsePath::Generator(span) => {
+                MustUsePath::Coroutine(span) => {
                     cx.emit_spanned_lint(
                         UNUSED_MUST_USE,
                         *span,
-                        UnusedGenerator { count: plural_len, pre: descr_pre, post: descr_post },
+                        UnusedCoroutine { count: plural_len, pre: descr_pre, post: descr_post },
                     );
                 }
                 MustUsePath::Def(span, def_id, reason) => {

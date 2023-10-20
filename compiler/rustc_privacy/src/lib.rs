@@ -188,7 +188,7 @@ where
             | ty::Foreign(def_id)
             | ty::FnDef(def_id, ..)
             | ty::Closure(def_id, ..)
-            | ty::Generator(def_id, ..) => {
+            | ty::Coroutine(def_id, ..) => {
                 self.def_id_visitor.visit_def_id(def_id, "type", &ty)?;
                 if V::SHALLOW {
                     return ControlFlow::Continue(());
@@ -294,7 +294,7 @@ where
             | ty::Param(..)
             | ty::Bound(..)
             | ty::Error(_)
-            | ty::GeneratorWitness(..) => {}
+            | ty::CoroutineWitness(..) => {}
             ty::Placeholder(..) | ty::Infer(..) => {
                 bug!("unexpected type: {:?}", ty)
             }
@@ -666,7 +666,7 @@ impl<'tcx> EmbargoVisitor<'tcx> {
             | DefKind::GlobalAsm
             | DefKind::Impl { .. }
             | DefKind::Closure
-            | DefKind::Generator => (),
+            | DefKind::Coroutine => (),
         }
     }
 }

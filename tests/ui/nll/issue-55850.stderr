@@ -7,7 +7,7 @@ LL |         yield &s[..]
    |         |      `s` is borrowed here
    |         yields a value referencing data owned by the current function
 
-error[E0626]: borrow may still be in use when generator yields
+error[E0626]: borrow may still be in use when coroutine yields
   --> $DIR/issue-55850.rs:28:16
    |
 LL |         yield &s[..]

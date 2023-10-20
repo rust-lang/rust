@@ -368,7 +368,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         err
     }
 
-    pub(crate) fn cannot_borrow_across_generator_yield(
+    pub(crate) fn cannot_borrow_across_coroutine_yield(
         &self,
         span: Span,
         yield_span: Span,
@@ -377,7 +377,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
             self,
             span,
             E0626,
-            "borrow may still be in use when generator yields",
+            "borrow may still be in use when coroutine yields",
         );
         err.span_label(yield_span, "possible yield occurs here");
         err

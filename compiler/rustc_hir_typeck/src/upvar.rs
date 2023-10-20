@@ -172,7 +172,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ty = self.node_ty(closure_hir_id);
         let (closure_def_id, args) = match *ty.kind() {
             ty::Closure(def_id, args) => (def_id, UpvarArgs::Closure(args)),
-            ty::Generator(def_id, args, _) => (def_id, UpvarArgs::Generator(args)),
+            ty::Coroutine(def_id, args, _) => (def_id, UpvarArgs::Coroutine(args)),
             ty::Error(_) => {
                 // #51714: skip analysis when we have already encountered type errors
                 return;
@@ -366,7 +366,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Note that we *always* infer a minimal kind, even if
     /// we don't always *use* that in the final result (i.e., sometimes
     /// we've taken the closure kind from the expectations instead, and
-    /// for generators we don't even implement the closure traits
+    /// for coroutines we don't even implement the closure traits
     /// really).
     ///
     /// If we inferred that the closure needs to be FnMut/FnOnce, last element of the returned tuple

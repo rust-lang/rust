@@ -189,8 +189,8 @@ fn push_inner<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent: GenericArg<'tcx>)
             }
             ty::Adt(_, args)
             | ty::Closure(_, args)
-            | ty::Generator(_, args, _)
-            | ty::GeneratorWitness(_, args)
+            | ty::Coroutine(_, args, _)
+            | ty::CoroutineWitness(_, args)
             | ty::FnDef(_, args) => {
                 stack.extend(args.iter().rev());
             }

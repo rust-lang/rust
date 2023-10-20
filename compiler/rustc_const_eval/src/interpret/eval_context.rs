@@ -963,8 +963,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 | ty::RawPtr(..)
                 | ty::Char
                 | ty::Ref(..)
-                | ty::Generator(..)
-                | ty::GeneratorWitness(..)
+                | ty::Coroutine(..)
+                | ty::CoroutineWitness(..)
                 | ty::Array(..)
                 | ty::Closure(..)
                 | ty::Never

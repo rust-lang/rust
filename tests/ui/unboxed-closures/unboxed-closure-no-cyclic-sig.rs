@@ -5,5 +5,5 @@
 fn g<F>(_: F) where F: FnOnce(Option<F>) {}
 
 fn main() {
-    g(|_| {  }); //~ ERROR closure/generator type that references itself
+    g(|_| {  }); //~ ERROR closure/coroutine type that references itself
 }

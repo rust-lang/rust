@@ -1,9 +1,0 @@
-error[E0626]: borrow may still be in use when generator yields
-  --> $DIR/yield-in-args.rs:8:13
-   |
-LL |         foo(&b, yield);
-   |             ^^  ----- possible yield occurs here
-
-error: aborting due to previous error
-
-For more information about this error, try `rustc --explain E0626`.

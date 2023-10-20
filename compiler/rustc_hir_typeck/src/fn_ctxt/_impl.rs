@@ -509,40 +509,40 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         typeck_results.rvalue_scopes = rvalue_scopes;
     }
 
-    /// Unify the inference variables corresponding to generator witnesses, and save all the
+    /// Unify the inference variables corresponding to coroutine witnesses, and save all the
     /// predicates that were stalled on those inference variables.
     ///
-    /// This process allows to conservatively save all predicates that do depend on the generator
-    /// interior types, for later processing by `check_generator_obligations`.
+    /// This process allows to conservatively save all predicates that do depend on the coroutine
+    /// interior types, for later processing by `check_coroutine_obligations`.
     ///
     /// We must not attempt to select obligations after this method has run, or risk query cycle
     /// ICE.
     #[instrument(level = "debug", skip(self))]
-    pub(in super::super) fn resolve_generator_interiors(&self, def_id: DefId) {
+    pub(in super::super) fn resolve_coroutine_interiors(&self, def_id: DefId) {
         // Try selecting all obligations that are not blocked on inference variables.
-        // Once we start unifying generator witnesses, trying to select obligations on them will
+        // Once we start unifying coroutine witnesses, trying to select obligations on them will
         // trigger query cycle ICEs, as doing so requires MIR.
         self.select_obligations_where_possible(|_| {});
 
-        let generators = std::mem::take(&mut *self.deferred_generator_interiors.borrow_mut());
-        debug!(?generators);
+        let coroutines = std::mem::take(&mut *self.deferred_coroutine_interiors.borrow_mut());
+        debug!(?coroutines);
 
-        for &(expr_def_id, body_id, interior, _) in generators.iter() {
+        for &(expr_def_id, body_id, interior, _) in coroutines.iter() {
             debug!(?expr_def_id);
 
-            // Create the `GeneratorWitness` type that we will unify with `interior`.
+            // Create the `CoroutineWitness` type that we will unify with `interior`.
             let args = ty::GenericArgs::identity_for_item(
                 self.tcx,
                 self.tcx.typeck_root_def_id(expr_def_id.to_def_id()),
             );
-            let witness = Ty::new_generator_witness(self.tcx, expr_def_id.to_def_id(), args);
+            let witness = Ty::new_coroutine_witness(self.tcx, expr_def_id.to_def_id(), args);
 
             // Unify `interior` with `witness` and collect all the resulting obligations.
             let span = self.tcx.hir().body(body_id).value.span;
             let ok = self
                 .at(&self.misc(span), self.param_env)
                 .eq(DefineOpaqueTypes::No, interior, witness)
-                .expect("Failed to unify generator interior type");
+                .expect("Failed to unify coroutine interior type");
             let mut obligations = ok.obligations;
 
             // Also collect the obligations that were unstalled by this unification.
@@ -553,7 +553,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             debug!(?obligations);
             self.typeck_results
                 .borrow_mut()
-                .generator_interior_predicates
+                .coroutine_interior_predicates
                 .insert(expr_def_id, obligations);
         }
     }

@@ -534,8 +534,8 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
             OverflowNeg(op) => OverflowNeg(eval_to_int(op)?),
             DivisionByZero(op) => DivisionByZero(eval_to_int(op)?),
             RemainderByZero(op) => RemainderByZero(eval_to_int(op)?),
-            ResumedAfterReturn(generator_kind) => ResumedAfterReturn(*generator_kind),
-            ResumedAfterPanic(generator_kind) => ResumedAfterPanic(*generator_kind),
+            ResumedAfterReturn(coroutine_kind) => ResumedAfterReturn(*coroutine_kind),
+            ResumedAfterPanic(coroutine_kind) => ResumedAfterPanic(*coroutine_kind),
             MisalignedPointerDereference { ref required, ref found } => {
                 MisalignedPointerDereference {
                     required: eval_to_int(required)?,

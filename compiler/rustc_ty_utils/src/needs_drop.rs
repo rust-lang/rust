@@ -130,10 +130,10 @@ where
 
             for component in components {
                 match *component.kind() {
-                    // The information required to determine whether a generator has drop is
+                    // The information required to determine whether a coroutine has drop is
                     // computed on MIR, while this very method is used to build MIR.
-                    // To avoid cycles, we consider that generators always require drop.
-                    ty::Generator(..) => {
+                    // To avoid cycles, we consider that coroutines always require drop.
+                    ty::Coroutine(..) => {
                         return Some(Err(AlwaysRequiresDrop));
                     }
 
@@ -191,7 +191,7 @@ where
                     | ty::FnPtr(..)
                     | ty::Tuple(_)
                     | ty::Bound(..)
-                    | ty::GeneratorWitness(..)
+                    | ty::CoroutineWitness(..)
                     | ty::Never
                     | ty::Infer(_)
                     | ty::Error(_) => {

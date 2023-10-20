@@ -274,7 +274,7 @@ pub trait ValueAnalysis<'tcx> {
             | TerminatorKind::Return
             | TerminatorKind::Unreachable
             | TerminatorKind::Assert { .. }
-            | TerminatorKind::GeneratorDrop
+            | TerminatorKind::CoroutineDrop
             | TerminatorKind::FalseEdge { .. }
             | TerminatorKind::FalseUnwind { .. } => {
                 // These terminators have no effect on the analysis.
@@ -915,7 +915,7 @@ impl Map {
     ) {
         for sibling in self.children(parent) {
             let elem = self.places[sibling].proj_elem;
-            // Only invalidate variants and discriminant. Fields (for generators) are not
+            // Only invalidate variants and discriminant. Fields (for coroutines) are not
             // invalidated by assignment to a variant.
             if let Some(TrackElem::Variant(..) | TrackElem::Discriminant) = elem
                 // Only invalidate the other variants, the current one is fine.

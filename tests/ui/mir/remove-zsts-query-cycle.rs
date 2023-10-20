@@ -1,5 +1,5 @@
 // Regression test for #88972. Used to cause a query cycle:
-//   optimized mir -> remove zsts -> layout of a generator -> optimized mir.
+//   optimized mir -> remove zsts -> layout of a coroutine -> optimized mir.
 //
 // edition:2018
 // compile-flags: --crate-type=lib -Zinline-mir=yes

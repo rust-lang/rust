@@ -1,0 +1,86 @@
+// MIR for `main::{closure#0}` 0 coroutine_resume
+/* coroutine_layout = CoroutineLayout {
+    field_tys: {
+        _0: CoroutineSavedTy {
+            ty: HasDrop,
+            source_info: SourceInfo {
+                span: $DIR/coroutine_tiny.rs:21:13: 21:15 (#0),
+                scope: scope[0],
+            },
+            ignore_for_traits: false,
+        },
+    },
+    variant_fields: {
+        Unresumed(0): [],
+        Returned (1): [],
+        Panicked (2): [],
+        Suspend0 (3): [_0],
+    },
+    storage_conflicts: BitMatrix(1x1) {
+        (_0, _0),
+    },
+} */
+
+fn main::{closure#0}(_1: Pin<&mut {coroutine@$DIR/coroutine_tiny.rs:20:16: 20:24}>, _2: u8) -> CoroutineState<(), ()> {
+    debug _x => _10;
+    let mut _0: std::ops::CoroutineState<(), ()>;
+    let _3: HasDrop;
+    let mut _4: !;
+    let mut _5: ();
+    let _6: u8;
+    let mut _7: ();
+    let _8: ();
+    let mut _9: ();
+    let _10: u8;
+    let mut _11: u32;
+    scope 1 {
+        debug _d => (((*(_1.0: &mut {coroutine@$DIR/coroutine_tiny.rs:20:16: 20:24})) as variant#3).0: HasDrop);
+    }
+
+    bb0: {
+        _11 = discriminant((*(_1.0: &mut {coroutine@$DIR/coroutine_tiny.rs:20:16: 20:24})));
+        switchInt(move _11) -> [0: bb1, 3: bb5, otherwise: bb6];
+    }
+
+    bb1: {
+        _10 = move _2;
+        nop;
+        (((*(_1.0: &mut {coroutine@$DIR/coroutine_tiny.rs:20:16: 20:24})) as variant#3).0: HasDrop) = HasDrop;
+        StorageLive(_4);
+        goto -> bb2;
+    }
+
+    bb2: {
+        StorageLive(_6);
+        StorageLive(_7);
+        _7 = ();
+        _0 = CoroutineState::<(), ()>::Yielded(move _7);
+        discriminant((*(_1.0: &mut {coroutine@$DIR/coroutine_tiny.rs:20:16: 20:24}))) = 3;
+        return;
+    }
+
+    bb3: {
+        StorageDead(_7);
+        StorageDead(_6);
+        StorageLive(_8);
+        _8 = callee() -> [return: bb4, unwind unreachable];
+    }
+
+    bb4: {
+        StorageDead(_8);
+        _5 = const ();
+        goto -> bb2;
+    }
+
+    bb5: {
+        StorageLive(_4);
+        StorageLive(_6);
+        StorageLive(_7);
+        _6 = move _2;
+        goto -> bb3;
+    }
+
+    bb6: {
+        unreachable;
+    }
+}

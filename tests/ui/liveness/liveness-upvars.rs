@@ -1,6 +1,6 @@
 // edition:2018
 // check-pass
-#![feature(generators)]
+#![feature(coroutines)]
 #![warn(unused)]
 #![allow(unreachable_code)]
 
@@ -60,7 +60,7 @@ pub fn f() {
     };
     let _ = async move {
         println!("{}", c);
-        // Never read because this is a generator.
+        // Never read because this is a coroutine.
         c += 1; //~  WARN value assigned to `c` is never read
     };
 }
@@ -110,7 +110,7 @@ async fn yield_now() {
     todo!();
 }
 
-pub fn async_generator() {
+pub fn async_coroutine() {
     let mut state: u32 = 0;
 
     let _ = async {
@@ -129,7 +129,7 @@ pub fn async_generator() {
     };
 }
 
-pub fn generator() {
+pub fn coroutine() {
     let mut s: u32 = 0;
     let _ = |_| {
         s = 0;

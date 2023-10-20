@@ -24,7 +24,7 @@ pub enum SizeKind {
 pub enum FieldKind {
     AdtField,
     Upvar,
-    GeneratorLocal,
+    CoroutineLocal,
 }
 
 impl std::fmt::Display for FieldKind {
@@ -32,7 +32,7 @@ impl std::fmt::Display for FieldKind {
         match self {
             FieldKind::AdtField => write!(w, "field"),
             FieldKind::Upvar => write!(w, "upvar"),
-            FieldKind::GeneratorLocal => write!(w, "local"),
+            FieldKind::CoroutineLocal => write!(w, "local"),
         }
     }
 }
@@ -52,7 +52,7 @@ pub enum DataTypeKind {
     Union,
     Enum,
     Closure,
-    Generator,
+    Coroutine,
 }
 
 #[derive(PartialEq, Eq, Hash, Debug)]
@@ -105,9 +105,9 @@ impl CodeStats {
         // Sort variants so the largest ones are shown first. A stable sort is
         // used here so that source code order is preserved for all variants
         // that have the same size.
-        // Except for Generators, whose variants are already sorted according to
-        // their yield points in `variant_info_for_generator`.
-        if kind != DataTypeKind::Generator {
+        // Except for Coroutines, whose variants are already sorted according to
+        // their yield points in `variant_info_for_coroutine`.
+        if kind != DataTypeKind::Coroutine {
             variants.sort_by_key(|info| cmp::Reverse(info.size));
         }
         let info = TypeSizeInfo {
@@ -160,7 +160,7 @@ impl CodeStats {
 
             let struct_like = match kind {
                 DataTypeKind::Struct | DataTypeKind::Closure => true,
-                DataTypeKind::Enum | DataTypeKind::Union | DataTypeKind::Generator => false,
+                DataTypeKind::Enum | DataTypeKind::Union | DataTypeKind::Coroutine => false,
             };
             for (i, variant_info) in variants.into_iter().enumerate() {
                 let VariantInfo { ref name, kind: _, align: _, size, ref fields } = *variant_info;

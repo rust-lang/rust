@@ -551,18 +551,18 @@ lint_unused_closure =
 
 lint_unused_comparisons = comparison is useless due to type limits
 
+lint_unused_coroutine =
+    unused {$pre}{$count ->
+        [one] coroutine
+        *[other] coroutine
+    }{$post} that must be used
+    .note = coroutines are lazy and do nothing unless resumed
+
 lint_unused_def = unused {$pre}`{$def}`{$post} that must be used
     .suggestion = use `let _ = ...` to ignore the resulting value
 
 lint_unused_delim = unnecessary {$delim} around {$item}
     .suggestion = remove these {$delim}
-
-lint_unused_generator =
-    unused {$pre}{$count ->
-        [one] generator
-        *[other] generator
-    }{$post} that must be used
-    .note = generators are lazy and do nothing unless resumed
 
 lint_unused_import_braces = braces around {$node} is unnecessary
 

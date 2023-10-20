@@ -1,7 +1,7 @@
 error[E0562]: `impl Trait` only allowed in function and inherent method argument and return types, not in variable bindings
   --> $DIR/issue-58504.rs:10:16
    |
-LL |     let gens: [impl Generator<Return=!, Yield=()>;2] = [ mk_gen(), mk_gen() ];
+LL |     let gens: [impl Coroutine<Return=!, Yield=()>;2] = [ mk_gen(), mk_gen() ];
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error

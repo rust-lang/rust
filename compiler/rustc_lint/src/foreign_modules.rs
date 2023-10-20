@@ -369,8 +369,8 @@ fn structurally_same_type_impl<'tcx>(
                 (Dynamic(..), Dynamic(..))
                 | (Error(..), Error(..))
                 | (Closure(..), Closure(..))
-                | (Generator(..), Generator(..))
-                | (GeneratorWitness(..), GeneratorWitness(..))
+                | (Coroutine(..), Coroutine(..))
+                | (CoroutineWitness(..), CoroutineWitness(..))
                 | (Alias(ty::Projection, ..), Alias(ty::Projection, ..))
                 | (Alias(ty::Inherent, ..), Alias(ty::Inherent, ..))
                 | (Alias(ty::Opaque, ..), Alias(ty::Opaque, ..)) => false,

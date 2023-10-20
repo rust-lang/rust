@@ -15,8 +15,8 @@ use crate::{DebruijnIndex, DebugWithInfcx, InferCtxtLike, OptWithInfcx};
 
 use self::TyKind::*;
 
-/// The movability of a generator / closure literal:
-/// whether a generator contains self-references, causing it to be `!Unpin`.
+/// The movability of a coroutine / closure literal:
+/// whether a coroutine contains self-references, causing it to be `!Unpin`.
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable, Debug, Copy)]
 #[derive(HashStable_Generic)]
 pub enum Movability {
@@ -195,30 +195,30 @@ pub enum TyKind<I: Interner> {
     /// `ClosureArgs` for more details.
     Closure(I::DefId, I::GenericArgs),
 
-    /// The anonymous type of a generator. Used to represent the type of
+    /// The anonymous type of a coroutine. Used to represent the type of
     /// `|a| yield a`.
     ///
-    /// For more info about generator args, visit the documentation for
-    /// `GeneratorArgs`.
-    Generator(I::DefId, I::GenericArgs, Movability),
+    /// For more info about coroutine args, visit the documentation for
+    /// `CoroutineArgs`.
+    Coroutine(I::DefId, I::GenericArgs, Movability),
 
-    /// A type representing the types stored inside a generator.
-    /// This should only appear as part of the `GeneratorArgs`.
+    /// A type representing the types stored inside a coroutine.
+    /// This should only appear as part of the `CoroutineArgs`.
     ///
     /// Unlike upvars, the witness can reference lifetimes from
-    /// inside of the generator itself. To deal with them in
-    /// the type of the generator, we convert them to higher ranked
+    /// inside of the coroutine itself. To deal with them in
+    /// the type of the coroutine, we convert them to higher ranked
     /// lifetimes bound by the witness itself.
     ///
     /// This variant is only using when `drop_tracking_mir` is set.
-    /// This contains the `DefId` and the `GenericArgsRef` of the generator.
-    /// The actual witness types are computed on MIR by the `mir_generator_witnesses` query.
+    /// This contains the `DefId` and the `GenericArgsRef` of the coroutine.
+    /// The actual witness types are computed on MIR by the `mir_coroutine_witnesses` query.
     ///
-    /// Looking at the following example, the witness for this generator
+    /// Looking at the following example, the witness for this coroutine
     /// may end up as something like `for<'a> [Vec<i32>, &'a Vec<i32>]`:
     ///
     /// ```ignore UNSOLVED (ask @compiler-errors, should this error? can we just swap the yields?)
-    /// #![feature(generators)]
+    /// #![feature(coroutines)]
     /// |a| {
     ///     let x = &vec![3];
     ///     yield a;
@@ -226,7 +226,7 @@ pub enum TyKind<I: Interner> {
     /// }
     /// # ;
     /// ```
-    GeneratorWitness(I::DefId, I::GenericArgs),
+    CoroutineWitness(I::DefId, I::GenericArgs),
 
     /// The never type `!`.
     Never,
@@ -311,8 +311,8 @@ const fn tykind_discriminant<I: Interner>(value: &TyKind<I>) -> usize {
         FnPtr(_) => 13,
         Dynamic(..) => 14,
         Closure(_, _) => 15,
-        Generator(_, _, _) => 16,
-        GeneratorWitness(_, _) => 17,
+        Coroutine(_, _, _) => 16,
+        CoroutineWitness(_, _) => 17,
         Never => 18,
         Tuple(_) => 19,
         Alias(_, _) => 20,
@@ -344,8 +344,8 @@ impl<I: Interner> Clone for TyKind<I> {
             FnPtr(s) => FnPtr(s.clone()),
             Dynamic(p, r, repr) => Dynamic(p.clone(), r.clone(), *repr),
             Closure(d, s) => Closure(d.clone(), s.clone()),
-            Generator(d, s, m) => Generator(d.clone(), s.clone(), m.clone()),
-            GeneratorWitness(d, s) => GeneratorWitness(d.clone(), s.clone()),
+            Coroutine(d, s, m) => Coroutine(d.clone(), s.clone(), m.clone()),
+            CoroutineWitness(d, s) => CoroutineWitness(d.clone(), s.clone()),
             Never => Never,
             Tuple(t) => Tuple(t.clone()),
             Alias(k, p) => Alias(*k, p.clone()),
@@ -384,10 +384,10 @@ impl<I: Interner> PartialEq for TyKind<I> {
                 a_p == b_p && a_r == b_r && a_repr == b_repr
             }
             (Closure(a_d, a_s), Closure(b_d, b_s)) => a_d == b_d && a_s == b_s,
-            (Generator(a_d, a_s, a_m), Generator(b_d, b_s, b_m)) => {
+            (Coroutine(a_d, a_s, a_m), Coroutine(b_d, b_s, b_m)) => {
                 a_d == b_d && a_s == b_s && a_m == b_m
             }
-            (GeneratorWitness(a_d, a_s), GeneratorWitness(b_d, b_s)) => a_d == b_d && a_s == b_s,
+            (CoroutineWitness(a_d, a_s), CoroutineWitness(b_d, b_s)) => a_d == b_d && a_s == b_s,
             (Tuple(a_t), Tuple(b_t)) => a_t == b_t,
             (Alias(a_i, a_p), Alias(b_i, b_p)) => a_i == b_i && a_p == b_p,
             (Param(a_p), Param(b_p)) => a_p == b_p,
@@ -441,12 +441,12 @@ impl<I: Interner> Ord for TyKind<I> {
                     a_p.cmp(b_p).then_with(|| a_r.cmp(b_r).then_with(|| a_repr.cmp(b_repr)))
                 }
                 (Closure(a_p, a_s), Closure(b_p, b_s)) => a_p.cmp(b_p).then_with(|| a_s.cmp(b_s)),
-                (Generator(a_d, a_s, a_m), Generator(b_d, b_s, b_m)) => {
+                (Coroutine(a_d, a_s, a_m), Coroutine(b_d, b_s, b_m)) => {
                     a_d.cmp(b_d).then_with(|| a_s.cmp(b_s).then_with(|| a_m.cmp(b_m)))
                 }
                 (
-                    GeneratorWitness(a_d, a_s),
-                    GeneratorWitness(b_d, b_s),
+                    CoroutineWitness(a_d, a_s),
+                    CoroutineWitness(b_d, b_s),
                 ) => match Ord::cmp(a_d, b_d) {
                     Ordering::Equal => Ord::cmp(a_s, b_s),
                     cmp => cmp,
@@ -506,12 +506,12 @@ impl<I: Interner> hash::Hash for TyKind<I> {
                 d.hash(state);
                 s.hash(state)
             }
-            Generator(d, s, m) => {
+            Coroutine(d, s, m) => {
                 d.hash(state);
                 s.hash(state);
                 m.hash(state)
             }
-            GeneratorWitness(d, s) => {
+            CoroutineWitness(d, s) => {
                 d.hash(state);
                 s.hash(state);
             }
@@ -584,9 +584,9 @@ impl<I: Interner> DebugWithInfcx<I> for TyKind<I> {
                 }
             },
             Closure(d, s) => f.debug_tuple_field2_finish("Closure", d, &this.wrap(s)),
-            Generator(d, s, m) => f.debug_tuple_field3_finish("Generator", d, &this.wrap(s), m),
-            GeneratorWitness(d, s) => {
-                f.debug_tuple_field2_finish("GeneratorWitness", d, &this.wrap(s))
+            Coroutine(d, s, m) => f.debug_tuple_field3_finish("Coroutine", d, &this.wrap(s), m),
+            CoroutineWitness(d, s) => {
+                f.debug_tuple_field2_finish("CoroutineWitness", d, &this.wrap(s))
             }
             Never => write!(f, "!"),
             Tuple(t) => {
@@ -696,12 +696,12 @@ where
                 def_id.encode(e);
                 args.encode(e);
             }),
-            Generator(def_id, args, m) => e.emit_enum_variant(disc, |e| {
+            Coroutine(def_id, args, m) => e.emit_enum_variant(disc, |e| {
                 def_id.encode(e);
                 args.encode(e);
                 m.encode(e);
             }),
-            GeneratorWitness(def_id, args) => e.emit_enum_variant(disc, |e| {
+            CoroutineWitness(def_id, args) => e.emit_enum_variant(disc, |e| {
                 def_id.encode(e);
                 args.encode(e);
             }),
@@ -774,8 +774,8 @@ where
             13 => FnPtr(Decodable::decode(d)),
             14 => Dynamic(Decodable::decode(d), Decodable::decode(d), Decodable::decode(d)),
             15 => Closure(Decodable::decode(d), Decodable::decode(d)),
-            16 => Generator(Decodable::decode(d), Decodable::decode(d), Decodable::decode(d)),
-            17 => GeneratorWitness(Decodable::decode(d), Decodable::decode(d)),
+            16 => Coroutine(Decodable::decode(d), Decodable::decode(d), Decodable::decode(d)),
+            17 => CoroutineWitness(Decodable::decode(d), Decodable::decode(d)),
             18 => Never,
             19 => Tuple(Decodable::decode(d)),
             20 => Alias(Decodable::decode(d), Decodable::decode(d)),
@@ -874,12 +874,12 @@ where
                 def_id.hash_stable(__hcx, __hasher);
                 args.hash_stable(__hcx, __hasher);
             }
-            Generator(def_id, args, m) => {
+            Coroutine(def_id, args, m) => {
                 def_id.hash_stable(__hcx, __hasher);
                 args.hash_stable(__hcx, __hasher);
                 m.hash_stable(__hcx, __hasher);
             }
-            GeneratorWitness(def_id, args) => {
+            CoroutineWitness(def_id, args) => {
                 def_id.hash_stable(__hcx, __hasher);
                 args.hash_stable(__hcx, __hasher);
             }

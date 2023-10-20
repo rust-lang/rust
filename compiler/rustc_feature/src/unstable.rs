@@ -371,9 +371,9 @@ declare_features! (
     (unstable, cfg_version, "1.45.0", Some(64796), None),
     /// Allows to use the `#[cfi_encoding = ""]` attribute.
     (unstable, cfi_encoding, "1.71.0", Some(89653), None),
-    /// Allows `for<...>` on closures and generators.
+    /// Allows `for<...>` on closures and coroutines.
     (unstable, closure_lifetime_binder, "1.64.0", Some(97362), None),
-    /// Allows `#[track_caller]` on closures and generators.
+    /// Allows `#[track_caller]` on closures and coroutines.
     (unstable, closure_track_caller, "1.57.0", Some(87417), None),
     /// Allows to use the `#[cmse_nonsecure_entry]` attribute.
     (unstable, cmse_nonsecure_entry, "1.48.0", Some(75835), None),
@@ -399,6 +399,10 @@ declare_features! (
     (unstable, const_trait_impl, "1.42.0", Some(67792), None),
     /// Allows the `?` operator in const contexts.
     (unstable, const_try, "1.56.0", Some(74935), None),
+    /// Allows coroutines to be cloned.
+    (unstable, coroutine_clone, "1.65.0", Some(95360), None),
+    /// Allows defining coroutines.
+    (unstable, coroutines, "1.21.0", Some(43122), None),
     /// Allows function attribute `#[coverage(on/off)]`, to control coverage
     /// instrumentation of that function.
     (unstable, coverage_attribute, "1.74.0", Some(84605), None),
@@ -451,10 +455,6 @@ declare_features! (
     (unstable, ffi_returns_twice, "1.34.0", Some(58314), None),
     /// Allows using `#[repr(align(...))]` on function items
     (unstable, fn_align, "1.53.0", Some(82232), None),
-    /// Allows generators to be cloned.
-    (unstable, generator_clone, "1.65.0", Some(95360), None),
-    /// Allows defining generators.
-    (unstable, generators, "1.21.0", Some(43122), None),
     /// Infer generic args for both consts and types.
     (unstable, generic_arg_infer, "1.55.0", Some(85077), None),
     /// An extension to the `generic_associated_types` feature, allowing incomplete features.
