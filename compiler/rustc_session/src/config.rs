@@ -3420,9 +3420,10 @@ impl DumpMonoStatsFormat {
 
 /// `-Zpolonius` values, enabling the borrow checker polonius analysis, and which version: legacy,
 /// or future prototype.
-#[derive(Clone, Copy, PartialEq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Hash, Debug, Default)]
 pub enum Polonius {
     /// The default value: disabled.
+    #[default]
     Off,
 
     /// Legacy version, using datalog and the `polonius-engine` crate. Historical value for `-Zpolonius`.
@@ -3430,12 +3431,6 @@ pub enum Polonius {
 
     /// In-tree prototype, extending the NLL infrastructure.
     Next,
-}
-
-impl Default for Polonius {
-    fn default() -> Self {
-        Polonius::Off
-    }
 }
 
 impl Polonius {
