@@ -19,8 +19,7 @@
           StorageLive(_1);
           _1 = DFA::A;
           StorageLive(_2);
--         goto -> bb1;
-+         goto -> bb7;
+          goto -> bb1;
       }
   
       bb1: {
@@ -64,11 +63,6 @@
           _3 = const ();
           StorageDead(_7);
           goto -> bb1;
-+     }
-+ 
-+     bb7: {
-+         _4 = discriminant(_1);
-+         goto -> bb4;
       }
   }
   

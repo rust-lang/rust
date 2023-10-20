@@ -743,7 +743,7 @@ enum Update {
 /// Compute the set of loop headers in the given body. We define a loop header as a block which has
 /// at least a predecessor which it dominates. This definition is only correct for reducible CFGs.
 /// But if the CFG is already irreducible, there is no point in trying much harder.
-/// is already irreducibl
+/// is already irreducible.
 fn loop_headers(body: &Body<'_>) -> BitSet<BasicBlock> {
     let mut loop_headers = BitSet::new_empty(body.basic_blocks.len());
     let dominators = body.basic_blocks.dominators();
@@ -751,7 +751,7 @@ fn loop_headers(body: &Body<'_>) -> BitSet<BasicBlock> {
     for (bb, bbdata) in traversal::preorder(body) {
         for succ in bbdata.terminator().successors() {
             if dominators.dominates(succ, bb) {
-                loop_headers.insert(bb);
+                loop_headers.insert(succ);
             }
         }
     }
