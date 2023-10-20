@@ -146,20 +146,20 @@ pub trait Swizzle<const N: usize> {
         }
     }
 
-    /// Create a new mask from the elements of `first` and `second`.
+    /// Create a new mask from the elements of `mask`.
     ///
     /// Element `i` of the output is `concat[Self::INDEX[i]]`, where `concat` is the concatenation of
     /// `first` and `second`.
     #[inline]
     #[must_use = "method returns a new mask and does not mutate the original inputs"]
-    fn swizzle_mask<T, const M: usize>(vector: Mask<T, M>) -> Mask<T, N>
+    fn swizzle_mask<T, const M: usize>(mask: Mask<T, M>) -> Mask<T, N>
     where
         T: MaskElement,
         LaneCount<N>: SupportedLaneCount,
         LaneCount<M>: SupportedLaneCount,
     {
         // SAFETY: all elements of this mask come from another mask
-        unsafe { Mask::from_int_unchecked(Self::swizzle(vector.to_int())) }
+        unsafe { Mask::from_int_unchecked(Self::swizzle(mask.to_int())) }
     }
 
     /// Create a new mask from the elements of `first` and `second`.
