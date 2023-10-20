@@ -1557,38 +1557,24 @@ fn compare_number_of_generics<'tcx>(
                 DiagnosticId::Error("E0049".into()),
             );
 
-            let mut suffix = None;
-
+            let msg =
+                format!("expected {trait_count} {kind} parameter{}", pluralize!(trait_count),);
             if let Some(spans) = trait_spans {
                 let mut spans = spans.iter();
                 if let Some(span) = spans.next() {
-                    err.span_label(
-                        *span,
-                        format!(
-                            "expected {} {} parameter{}",
-                            trait_count,
-                            kind,
-                            pluralize!(trait_count),
-                        ),
-                    );
+                    err.span_label(*span, msg);
                 }
                 for span in spans {
                     err.span_label(*span, "");
                 }
             } else {
-                suffix = Some(format!(", expected {trait_count}"));
+                err.span_label(tcx.def_span(trait_.def_id), msg);
             }
 
             if let Some(span) = span {
                 err.span_label(
                     span,
-                    format!(
-                        "found {} {} parameter{}{}",
-                        impl_count,
-                        kind,
-                        pluralize!(impl_count),
-                        suffix.unwrap_or_default(),
-                    ),
+                    format!("found {} {} parameter{}", impl_count, kind, pluralize!(impl_count),),
                 );
             }
 
