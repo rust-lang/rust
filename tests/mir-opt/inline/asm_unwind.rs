@@ -1,4 +1,3 @@
-// skip-filecheck
 // Tests inlining of `may_unwind` inline assembly.
 //
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
@@ -20,5 +19,7 @@ fn foo() {
 
 // EMIT_MIR asm_unwind.main.Inline.diff
 pub fn main() {
+    // CHECK-LABEL: fn main(
+    // CHECK: (inlined foo)
     foo();
 }
