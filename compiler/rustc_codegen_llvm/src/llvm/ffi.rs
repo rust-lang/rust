@@ -1,6 +1,8 @@
 #![allow(non_camel_case_types)]
 #![allow(non_upper_case_globals)]
 
+
+use std::ptr;
 use rustc_codegen_ssa::coverageinfo::map as coverage_map;
 use rustc_middle::middle::autodiff_attrs::DiffActivity;
 
@@ -1062,6 +1064,8 @@ pub(crate) unsafe fn enzyme_rust_forward_diff(
     EnzymeCreateForwardDiff(
         logic_ref, // Logic
         fnc,
+        ptr::null(),
+        ptr::null(),
         ret_activity, // LLVM function, return type
         input_activity.as_ptr(),
         input_activity.len(), // constant arguments
@@ -1124,6 +1128,8 @@ pub(crate) unsafe fn enzyme_rust_reverse_diff(
     EnzymeCreatePrimalAndGradient(
         logic_ref, // Logic
         fnc,
+        ptr::null(),
+        ptr::null(),
         ret_activity, // LLVM function, return type
         input_activity.as_ptr(),
         input_activity.len(), // constant arguments
@@ -2819,6 +2825,8 @@ extern "C" {
     fn EnzymeCreatePrimalAndGradient<'a>(
         arg1: EnzymeLogicRef,
         todiff: &'a Value,
+        builderCtx: *const u8, // &'a Builder<'_>,
+        callerCtx: *const u8,// &'a Value,
         retType: CDIFFE_TYPE,
         constant_args: *const CDIFFE_TYPE,
         constant_args_size: size_t,
@@ -2842,6 +2850,8 @@ extern "C" {
     fn EnzymeCreateForwardDiff<'a>(
         arg1: EnzymeLogicRef,
         todiff: &'a Value,
+        builderCtx: *const u8,// &'a Builder<'_>,
+        callerCtx: *const u8,// &'a Value,
         retType: CDIFFE_TYPE,
         constant_args: *const CDIFFE_TYPE,
         constant_args_size: size_t,
