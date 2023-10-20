@@ -1,5 +1,5 @@
 use crate::mir::Body;
-use crate::ty::{IndexedVal, Ty};
+use crate::ty::{FnDef, GenericArgs, IndexedVal, Ty};
 use crate::{with, CrateItem, DefId, Error, Opaque};
 use std::fmt::Debug;
 
@@ -40,6 +40,15 @@ impl Instance {
     /// Get the instance type with generic substitutions applied and lifetimes erased.
     pub fn ty(&self) -> Ty {
         with(|context| context.instance_ty(self.def))
+    }
+
+    /// Resolve an instance starting from a function definition and generic arguments.
+    pub fn resolve(def: FnDef, args: &GenericArgs) -> Result<Instance, crate::Error> {
+        with(|context| {
+            context.resolve_instance(def, args).ok_or_else(|| {
+                crate::Error::new(format!("Failed to resolve `{def:?}` with `{args:?}`"))
+            })
+        })
     }
 }
 
