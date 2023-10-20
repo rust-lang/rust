@@ -29,6 +29,14 @@ pub unsafe fn f1() {
     sse2();
 }
 
+// CHECK-LABEL: fn f2()
+// CHECK:       bb0: {
+// CHECK-NEXT:  return;
+#[target_feature(enable = "avx")]
+pub unsafe fn f2() {
+    nop();
+}
+
 #[inline]
 #[no_sanitize(address)]
 pub unsafe fn no_sanitize() {}
