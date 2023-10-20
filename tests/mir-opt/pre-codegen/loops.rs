@@ -1,3 +1,4 @@
+// skip-filecheck
 // compile-flags: -O -Zmir-opt-level=2 -g
 // needs-unwind
 

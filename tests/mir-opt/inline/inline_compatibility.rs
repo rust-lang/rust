@@ -1,3 +1,4 @@
+// skip-filecheck
 // Checks that only functions with compatible attributes are inlined.
 //
 // only-x86_64

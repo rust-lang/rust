@@ -1,3 +1,4 @@
+// skip-filecheck
 // unit-test: ConstProp
 
 // EMIT_MIR mutable_variable_aggregate_mut_ref.main.ConstProp.diff

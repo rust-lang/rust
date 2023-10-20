@@ -1,7 +1,7 @@
-- // MIR for `opt` before InstSimplify
-+ // MIR for `opt` after InstSimplify
+- // MIR for `ne_false` before InstSimplify
++ // MIR for `ne_false` after InstSimplify
   
-  fn opt(_1: bool) -> u32 {
+  fn ne_false(_1: bool) -> u32 {
       debug x => _1;
       let mut _0: u32;
       let mut _2: bool;

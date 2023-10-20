@@ -1,3 +1,4 @@
+// skip-filecheck
 // unit-test: ConstProp
 
 static FOO: u8 = 2;

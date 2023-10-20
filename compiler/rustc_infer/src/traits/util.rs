@@ -2,7 +2,7 @@ use smallvec::smallvec;
 
 use crate::infer::outlives::components::{push_outlives_components, Component};
 use crate::traits::{self, Obligation, PredicateObligation};
-use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt};
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
@@ -76,7 +76,13 @@ impl<'tcx> Extend<ty::Predicate<'tcx>> for PredicateSet<'tcx> {
 pub struct Elaborator<'tcx, O> {
     stack: Vec<O>,
     visited: PredicateSet<'tcx>,
-    only_self: bool,
+    mode: Filter,
+}
+
+enum Filter {
+    All,
+    OnlySelf,
+    OnlySelfThatDefines(Ident),
 }
 
 /// Describes how to elaborate an obligation into a sub-obligation.
@@ -224,7 +230,7 @@ pub fn elaborate<'tcx, O: Elaboratable<'tcx>>(
     obligations: impl IntoIterator<Item = O>,
 ) -> Elaborator<'tcx, O> {
     let mut elaborator =
-        Elaborator { stack: Vec::new(), visited: PredicateSet::new(tcx), only_self: false };
+        Elaborator { stack: Vec::new(), visited: PredicateSet::new(tcx), mode: Filter::All };
     elaborator.extend_deduped(obligations);
     elaborator
 }
@@ -242,7 +248,13 @@ impl<'tcx, O: Elaboratable<'tcx>> Elaborator<'tcx, O> {
     /// Filter to only the supertraits of trait predicates, i.e. only the predicates
     /// that have `Self` as their self type, instead of all implied predicates.
     pub fn filter_only_self(mut self) -> Self {
-        self.only_self = true;
+        self.mode = Filter::OnlySelf;
+        self
+    }
+
+    /// Filter to only the supertraits of trait predicates that define the assoc_ty.
+    pub fn filter_only_self_that_defines(mut self, assoc_ty: Ident) -> Self {
+        self.mode = Filter::OnlySelfThatDefines(assoc_ty);
         self
     }
 
@@ -257,10 +269,12 @@ impl<'tcx, O: Elaboratable<'tcx>> Elaborator<'tcx, O> {
                     return;
                 }
                 // Get predicates implied by the trait, or only super predicates if we only care about self predicates.
-                let predicates = if self.only_self {
-                    tcx.super_predicates_of(data.def_id())
-                } else {
-                    tcx.implied_predicates_of(data.def_id())
+                let predicates = match self.mode {
+                    Filter::All => tcx.implied_predicates_of(data.def_id()),
+                    Filter::OnlySelf => tcx.super_predicates_of(data.def_id()),
+                    Filter::OnlySelfThatDefines(ident) => {
+                        tcx.super_predicates_that_define_assoc_item((data.def_id(), ident))
+                    }
                 };
 
                 let obligations =
@@ -409,14 +423,14 @@ impl<'tcx, O: Elaboratable<'tcx>> Iterator for Elaborator<'tcx, O> {
 pub fn supertraits<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_ref: ty::PolyTraitRef<'tcx>,
-) -> impl Iterator<Item = ty::PolyTraitRef<'tcx>> {
+) -> FilterToTraits<Elaborator<'tcx, ty::Predicate<'tcx>>> {
     elaborate(tcx, [trait_ref.to_predicate(tcx)]).filter_only_self().filter_to_traits()
 }
 
 pub fn transitive_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_refs: impl Iterator<Item = ty::PolyTraitRef<'tcx>>,
-) -> impl Iterator<Item = ty::PolyTraitRef<'tcx>> {
+) -> FilterToTraits<Elaborator<'tcx, ty::Predicate<'tcx>>> {
     elaborate(tcx, trait_refs.map(|trait_ref| trait_ref.to_predicate(tcx)))
         .filter_only_self()
         .filter_to_traits()
@@ -429,31 +443,12 @@ pub fn transitive_bounds<'tcx>(
 /// `T::Item` and helps to avoid cycle errors (see e.g. #35237).
 pub fn transitive_bounds_that_define_assoc_item<'tcx>(
     tcx: TyCtxt<'tcx>,
-    bounds: impl Iterator<Item = ty::PolyTraitRef<'tcx>>,
+    trait_refs: impl Iterator<Item = ty::PolyTraitRef<'tcx>>,
     assoc_name: Ident,
-) -> impl Iterator<Item = ty::PolyTraitRef<'tcx>> {
-    let mut stack: Vec<_> = bounds.collect();
-    let mut visited = FxIndexSet::default();
-
-    std::iter::from_fn(move || {
-        while let Some(trait_ref) = stack.pop() {
-            let anon_trait_ref = tcx.anonymize_bound_vars(trait_ref);
-            if visited.insert(anon_trait_ref) {
-                let super_predicates =
-                    tcx.super_predicates_that_define_assoc_item((trait_ref.def_id(), assoc_name));
-                for (super_predicate, _) in super_predicates.predicates {
-                    let subst_predicate = super_predicate.subst_supertrait(tcx, &trait_ref);
-                    if let Some(binder) = subst_predicate.as_trait_clause() {
-                        stack.push(binder.map_bound(|t| t.trait_ref));
-                    }
-                }
-
-                return Some(trait_ref);
-            }
-        }
-
-        return None;
-    })
+) -> FilterToTraits<Elaborator<'tcx, ty::Predicate<'tcx>>> {
+    elaborate(tcx, trait_refs.map(|trait_ref| trait_ref.to_predicate(tcx)))
+        .filter_only_self_that_defines(assoc_name)
+        .filter_to_traits()
 }
 
 ///////////////////////////////////////////////////////////////////////////

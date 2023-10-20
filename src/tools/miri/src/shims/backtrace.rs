@@ -135,7 +135,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             this.tcx.sess.source_map().lookup_char_pos(BytePos(offset.bytes().try_into().unwrap()));
 
         let name = fn_instance.to_string();
-        let filename = lo.file.name.prefer_remapped().to_string();
+        let filename = lo.file.name.prefer_remapped_unconditionaly().to_string();
 
         Ok((fn_instance, lo, name, filename))
     }

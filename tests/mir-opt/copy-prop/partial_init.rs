@@ -1,3 +1,4 @@
+// skip-filecheck
 // unit-test: CopyProp
 // Verify that we do not ICE on partial initializations.
 

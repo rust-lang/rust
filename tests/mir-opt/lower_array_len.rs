@@ -4,6 +4,9 @@
 
 // EMIT_MIR lower_array_len.array_bound.NormalizeArrayLen.diff
 pub fn array_bound<const N: usize>(index: usize, slice: &[u8; N]) -> u8 {
+    // CHECK-LABEL: fn array_bound(
+    // CHECK: [[len:_.*]] = const N;
+    // CHECK: Lt(move {{_.*}}, move [[len]]);
     if index < slice.len() {
         slice[index]
     } else {
@@ -13,6 +16,9 @@ pub fn array_bound<const N: usize>(index: usize, slice: &[u8; N]) -> u8 {
 
 // EMIT_MIR lower_array_len.array_bound_mut.NormalizeArrayLen.diff
 pub fn array_bound_mut<const N: usize>(index: usize, slice: &mut [u8; N]) -> u8 {
+    // CHECK-LABEL: fn array_bound_mut(
+    // CHECK: [[len:_.*]] = const N;
+    // CHECK: Lt(move {{_.*}}, move [[len]]);
     if index < slice.len() {
         slice[index]
     } else {
@@ -24,16 +30,22 @@ pub fn array_bound_mut<const N: usize>(index: usize, slice: &mut [u8; N]) -> u8 
 
 // EMIT_MIR lower_array_len.array_len.NormalizeArrayLen.diff
 pub fn array_len<const N: usize>(arr: &[u8; N]) -> usize {
+    // CHECK-LABEL: fn array_len(
+    // CHECK: _0 = const N;
     arr.len()
 }
 
 // EMIT_MIR lower_array_len.array_len_by_value.NormalizeArrayLen.diff
 pub fn array_len_by_value<const N: usize>(arr: [u8; N]) -> usize {
+    // CHECK-LABEL: fn array_len_by_value(
+    // CHECK: _0 = const N;
     arr.len()
 }
 
 // EMIT_MIR lower_array_len.array_len_reborrow.NormalizeArrayLen.diff
 pub fn array_len_reborrow<const N: usize>(mut arr: [u8; N]) -> usize {
+    // CHECK-LABEL: fn array_len_reborrow(
+    // CHECK: _0 = const N;
     let arr: &mut [_] = &mut arr;
     let arr = &*arr;
     arr.len()
@@ -41,6 +53,8 @@ pub fn array_len_reborrow<const N: usize>(mut arr: [u8; N]) -> usize {
 
 // EMIT_MIR lower_array_len.array_len_raw.NormalizeArrayLen.diff
 pub fn array_len_raw<const N: usize>(arr: [u8; N]) -> usize {
+    // CHECK-LABEL: fn array_len_raw(
+    // CHECK: _0 = const N;
     let arr: &[_] = &arr;
     let arr = std::ptr::addr_of!(*arr);
     unsafe { &*arr }.len()

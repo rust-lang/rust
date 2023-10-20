@@ -1,3 +1,4 @@
+// skip-filecheck
 // unit-test: ConstProp
 // compile-flags: -O
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY

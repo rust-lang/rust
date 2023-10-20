@@ -1,3 +1,4 @@
+// skip-filecheck
 // unit-test: ConstGoto
 
 pub enum Foo {

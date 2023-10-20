@@ -8,16 +8,31 @@
 fn opaque(_: impl Sized) {}
 
 fn reference_propagation<'a, T: Copy>(single: &'a T, mut multiple: &'a T) {
+    // CHECK-LABEL: fn reference_propagation(
+
     // Propagation through a reference.
     {
+        // CHECK: bb0: {
+        // CHECK: [[a:_.*]] = const 5_usize;
+        // CHECK: [[b:_.*]] = &[[a]];
+        // CHECK: [[c:_.*]] = [[a]];
+
         let a = 5_usize;
         let b = &a; // This borrow is only used once.
         let c = *b; // This should be optimized.
         opaque(()); // We use opaque to separate cases into basic blocks in the MIR.
     }
 
-    // Propagation through a two references.
+    // Propagation through two references.
     {
+        // CHECK: bb1: {
+        // CHECK: [[a:_.*]] = const 5_usize;
+        // CHECK: [[a2:_.*]] = const 7_usize;
+        // CHECK: [[b:_.*]] = &[[a]];
+        // CHECK: [[btmp:_.*]] = &[[a2]];
+        // CHECK: [[b]] = move [[btmp]];
+        // CHECK: [[c:_.*]] = (*[[b]]);
+
         let a = 5_usize;
         let a2 = 7_usize;
         let mut b = &a;
@@ -29,6 +44,12 @@ fn reference_propagation<'a, T: Copy>(single: &'a T, mut multiple: &'a T) {
 
     // Propagation through a borrowed reference.
     {
+        // CHECK: bb2: {
+        // CHECK: [[a:_.*]] = const 5_usize;
+        // CHECK: [[b:_.*]] = &[[a]];
+        // CHECK: [[d:_.*]] = &[[b]];
+        // CHECK: [[c:_.*]] = (*[[b]]);
+
         let a = 5_usize;
         let b = &a;
         let d = &b;
@@ -36,8 +57,14 @@ fn reference_propagation<'a, T: Copy>(single: &'a T, mut multiple: &'a T) {
         opaque(d); // prevent `d` from being removed.
     }
 
-    // Propagation through a borrowed reference.
+    // Propagation through a mutably borrowed reference.
     {
+        // CHECK: bb3: {
+        // CHECK: [[a:_.*]] = const 5_usize;
+        // CHECK: [[b:_.*]] = &[[a]];
+        // CHECK: [[d:_.*]] = &raw mut [[b]];
+        // CHECK: [[c:_.*]] = (*[[b]]);
+
         let a = 5_usize;
         let mut b = &a;
         let d = &raw mut b;
@@ -47,6 +74,11 @@ fn reference_propagation<'a, T: Copy>(single: &'a T, mut multiple: &'a T) {
 
     // Propagation through an escaping borrow.
     {
+        // CHECK: bb4: {
+        // CHECK: [[a:_.*]] = const 7_usize;
+        // CHECK: [[b:_.*]] = &[[a]];
+        // CHECK: [[c:_.*]] = [[a]];
+
         let a = 7_usize;
         let b = &a;
         let c = *b;
@@ -55,6 +87,14 @@ fn reference_propagation<'a, T: Copy>(single: &'a T, mut multiple: &'a T) {
 
     // Propagation through a transitively escaping borrow.
     {
+        // CHECK: bb5: {
+        // CHECK: [[a:_.*]] = const 7_usize;
+        // CHECK: [[b1:_.*]] = &[[a]];
+        // CHECK: [[c:_.*]] = [[a]];
+        // CHECK: [[b2:_.*]] = [[b1]];
+        // CHECK: [[c2:_.*]] = [[a]];
+        // CHECK: [[b3:_.*]] = [[b2]];
+
         let a = 7_usize;
         let b1 = &a;
         let c = *b1;
@@ -68,6 +108,10 @@ fn reference_propagation<'a, T: Copy>(single: &'a T, mut multiple: &'a T) {
 
     // Propagation a reborrow of an argument.
     {
+        // CHECK: bb6: {
+        // CHECK-NOT: {{_.*}} = &(*_1);
+        // CHECK: [[b:_.*]] = (*_1);
+
         let a = &*single;
         let b = *a; // This should be optimized as `*single`.
         opaque(());
@@ -75,6 +119,12 @@ fn reference_propagation<'a, T: Copy>(single: &'a T, mut multiple: &'a T) {
 
     // Propagation a reborrow of a mutated argument.
     {
+        // CHECK: bb7: {
+        // CHECK: [[a:_.*]] = &(*_2);
+        // CHECK: [[tmp:_.*]] = &(*_1);
+        // CHECK: _2 = move [[tmp]];
+        // CHECK: [[b:_.*]] = (*[[a]]);
+
         let a = &*multiple;
         multiple = &*single;
         let b = *a; // This should not be optimized.
@@ -83,6 +133,13 @@ fn reference_propagation<'a, T: Copy>(single: &'a T, mut multiple: &'a T) {
 
     // Fixed-point propagation through a borrowed reference.
     {
+        // CHECK: bb8: {
+        // CHECK: [[a:_.*]] = const 5_usize;
+        // CHECK: [[b:_.*]] = &[[a]];
+        // CHECK: [[d:_.*]] = &[[b]];
+        // FIXME this could be [[a]]
+        // CHECK: [[c:_.*]] = (*[[b]]);
+
         let a = 5_usize;
         let b = &a;
         let d = &b; // first round promotes debuginfo for `d`
@@ -90,8 +147,15 @@ fn reference_propagation<'a, T: Copy>(single: &'a T, mut multiple: &'a T) {
         opaque(());
     }
 
-    // Fixed-point propagation through a borrowed reference.
+    // Fixed-point propagation through a mutably borrowed reference.
     {
+        // CHECK: bb9: {
+        // CHECK: [[a:_.*]] = const 5_usize;
+        // CHECK: [[b:_.*]] = &[[a]];
+        // CHECK: [[d:_.*]] = &mut [[b]];
+        // FIXME this could be [[a]]
+        // CHECK: [[c:_.*]] = (*[[b]]);
+
         let a = 5_usize;
         let mut b = &a;
         let d = &mut b; // first round promotes debuginfo for `d`
@@ -101,16 +165,31 @@ fn reference_propagation<'a, T: Copy>(single: &'a T, mut multiple: &'a T) {
 }
 
 fn reference_propagation_mut<'a, T: Copy>(single: &'a mut T, mut multiple: &'a mut T) {
+    // CHECK-LABEL: fn reference_propagation_mut(
+
     // Propagation through a reference.
     {
+        // CHECK: bb0: {
+        // CHECK: [[a:_.*]] = const 5_usize;
+        // CHECK: [[b:_.*]] = &mut [[a]];
+        // CHECK: [[c:_.*]] = [[a]];
+
         let mut a = 5_usize;
         let b = &mut a; // This borrow is only used once.
         let c = *b; // This should be optimized.
         opaque(());
     }
 
-    // Propagation through a two references.
+    // Propagation through two references.
     {
+        // CHECK: bb1: {
+        // CHECK: [[a:_.*]] = const 5_usize;
+        // CHECK: [[a2:_.*]] = const 7_usize;
+        // CHECK: [[b:_.*]] = &mut [[a]];
+        // CHECK: [[btmp:_.*]] = &mut [[a2]];
+        // CHECK: [[b]] = move [[btmp]];
+        // CHECK: [[c:_.*]] = (*[[b]]);
+
         let mut a = 5_usize;
         let mut a2 = 7_usize;
         let mut b = &mut a;
@@ -122,6 +201,12 @@ fn reference_propagation_mut<'a, T: Copy>(single: &'a mut T, mut multiple: &'a m
 
     // Propagation through a borrowed reference.
     {
+        // CHECK: bb2: {
+        // CHECK: [[a:_.*]] = const 5_usize;
+        // CHECK: [[b:_.*]] = &mut [[a]];
+        // CHECK: [[d:_.*]] = &[[b]];
+        // CHECK: [[c:_.*]] = (*[[b]]);
+
         let mut a = 5_usize;
         let b = &mut a;
         let d = &b;
@@ -129,8 +214,14 @@ fn reference_propagation_mut<'a, T: Copy>(single: &'a mut T, mut multiple: &'a m
         opaque(d); // prevent `d` from being removed.
     }
 
-    // Propagation through a borrowed reference.
+    // Propagation through a mutably borrowed reference.
     {
+        // CHECK: bb3: {
+        // CHECK: [[a:_.*]] = const 5_usize;
+        // CHECK: [[b:_.*]] = &mut [[a]];
+        // CHECK: [[d:_.*]] = &raw mut [[b]];
+        // CHECK: [[c:_.*]] = (*[[b]]);
+
         let mut a = 5_usize;
         let mut b = &mut a;
         let d = &raw mut b;
@@ -140,6 +231,11 @@ fn reference_propagation_mut<'a, T: Copy>(single: &'a mut T, mut multiple: &'a m
 
     // Propagation through an escaping borrow.
     {
+        // CHECK: bb4: {
+        // CHECK: [[a:_.*]] = const 7_usize;
+        // CHECK: [[b:_.*]] = &mut [[a]];
+        // CHECK: [[c:_.*]] = (*[[b]]);
+
         let mut a = 7_usize;
         let b = &mut a;
         let c = *b;
@@ -148,6 +244,14 @@ fn reference_propagation_mut<'a, T: Copy>(single: &'a mut T, mut multiple: &'a m
 
     // Propagation through a transitively escaping borrow.
     {
+        // CHECK: bb5: {
+        // CHECK: [[a:_.*]] = const 7_usize;
+        // CHECK: [[b1:_.*]] = &mut [[a]];
+        // CHECK: [[c:_.*]] = (*[[b1]]);
+        // CHECK: [[b2:_.*]] = move [[b1]];
+        // CHECK: [[c2:_.*]] = (*[[b2]]);
+        // CHECK: [[b3:_.*]] = move [[b2]];
+
         let mut a = 7_usize;
         let b1 = &mut a;
         let c = *b1;
@@ -161,6 +265,10 @@ fn reference_propagation_mut<'a, T: Copy>(single: &'a mut T, mut multiple: &'a m
 
     // Propagation a reborrow of an argument.
     {
+        // CHECK: bb6: {
+        // CHECK-NOT: {{_.*}} = &(*_1);
+        // CHECK: [[b:_.*]] = (*_1);
+
         let a = &mut *single;
         let b = *a; // This should be optimized as `*single`.
         opaque(());
@@ -168,6 +276,12 @@ fn reference_propagation_mut<'a, T: Copy>(single: &'a mut T, mut multiple: &'a m
 
     // Propagation a reborrow of a mutated argument.
     {
+        // CHECK: bb7: {
+        // CHECK: [[a:_.*]] = &mut (*_2);
+        // CHECK: [[tmp:_.*]] = &mut (*_1);
+        // CHECK: _2 = move [[tmp]];
+        // CHECK: [[b:_.*]] = (*[[a]]);
+
         let a = &mut *multiple;
         multiple = &mut *single;
         let b = *a; // This should not be optimized.
@@ -176,6 +290,13 @@ fn reference_propagation_mut<'a, T: Copy>(single: &'a mut T, mut multiple: &'a m
 
     // Fixed-point propagation through a borrowed reference.
     {
+        // CHECK: bb8: {
+        // CHECK: [[a:_.*]] = const 5_usize;
+        // CHECK: [[b:_.*]] = &mut [[a]];
+        // CHECK: [[d:_.*]] = &[[b]];
+        // FIXME this could be [[a]]
+        // CHECK: [[c:_.*]] = (*[[b]]);
+
         let mut a = 5_usize;
         let b = &mut a;
         let d = &b; // first round promotes debuginfo for `d`
@@ -183,8 +304,15 @@ fn reference_propagation_mut<'a, T: Copy>(single: &'a mut T, mut multiple: &'a m
         opaque(());
     }
 
-    // Fixed-point propagation through a borrowed reference.
+    // Fixed-point propagation through a mutably borrowed reference.
     {
+        // CHECK: bb9: {
+        // CHECK: [[a:_.*]] = const 5_usize;
+        // CHECK: [[b:_.*]] = &mut [[a]];
+        // CHECK: [[d:_.*]] = &mut [[b]];
+        // FIXME this could be [[a]]
+        // CHECK: [[c:_.*]] = (*[[b]]);
+
         let mut a = 5_usize;
         let mut b = &mut a;
         let d = &mut b; // first round promotes debuginfo for `d`
@@ -194,16 +322,31 @@ fn reference_propagation_mut<'a, T: Copy>(single: &'a mut T, mut multiple: &'a m
 }
 
 fn reference_propagation_const_ptr<T: Copy>(single: *const T, mut multiple: *const T) {
+    // CHECK-LABEL: fn reference_propagation_const_ptr(
+
     // Propagation through a reference.
     unsafe {
+        // CHECK: bb0: {
+        // CHECK: [[a:_.*]] = const 5_usize;
+        // CHECK: [[b:_.*]] = &raw const [[a]];
+        // CHECK: [[c:_.*]] = [[a]];
+
         let a = 5_usize;
         let b = &raw const a; // This borrow is only used once.
         let c = *b; // This should be optimized.
         opaque(());
     }
 
-    // Propagation through a two references.
+    // Propagation through two references.
     unsafe {
+        // CHECK: bb1: {
+        // CHECK: [[a:_.*]] = const 5_usize;
+        // CHECK: [[a2:_.*]] = const 7_usize;
+        // CHECK: [[b:_.*]] = &raw const [[a]];
+        // CHECK: [[btmp:_.*]] = &raw const [[a2]];
+        // CHECK: [[b]] = move [[btmp]];
+        // CHECK: [[c:_.*]] = (*[[b]]);
+
         let a = 5_usize;
         let a2 = 7_usize;
         let mut b = &raw const a;
@@ -215,6 +358,12 @@ fn reference_propagation_const_ptr<T: Copy>(single: *const T, mut multiple: *con
 
     // Propagation through a borrowed reference.
     unsafe {
+        // CHECK: bb2: {
+        // CHECK: [[a:_.*]] = const 5_usize;
+        // CHECK: [[b:_.*]] = &raw const [[a]];
+        // CHECK: [[d:_.*]] = &[[b]];
+        // CHECK: [[c:_.*]] = (*[[b]]);
+
         let a = 5_usize;
         let b = &raw const a;
         let d = &b;
@@ -222,8 +371,14 @@ fn reference_propagation_const_ptr<T: Copy>(single: *const T, mut multiple: *con
         opaque(d); // prevent `d` from being removed.
     }
 
-    // Propagation through a borrowed reference.
+    // Propagation through a mutably borrowed reference.
     unsafe {
+        // CHECK: bb3: {
+        // CHECK: [[a:_.*]] = const 5_usize;
+        // CHECK: [[b:_.*]] = &raw const [[a]];
+        // CHECK: [[d:_.*]] = &raw mut [[b]];
+        // CHECK: [[c:_.*]] = (*[[b]]);
+
         let a = 5_usize;
         let mut b = &raw const a;
         let d = &raw mut b;
@@ -233,6 +388,11 @@ fn reference_propagation_const_ptr<T: Copy>(single: *const T, mut multiple: *con
 
     // Propagation through an escaping borrow.
     unsafe {
+        // CHECK: bb4: {
+        // CHECK: [[a:_.*]] = const 7_usize;
+        // CHECK: [[b:_.*]] = &raw const [[a]];
+        // CHECK: [[c:_.*]] = [[a]];
+
         let a = 7_usize;
         let b = &raw const a;
         let c = *b;
@@ -241,6 +401,14 @@ fn reference_propagation_const_ptr<T: Copy>(single: *const T, mut multiple: *con
 
     // Propagation through a transitively escaping borrow.
     unsafe {
+        // CHECK: bb5: {
+        // CHECK: [[a:_.*]] = const 7_usize;
+        // CHECK: [[b1:_.*]] = &raw const [[a]];
+        // CHECK: [[c:_.*]] = [[a]];
+        // CHECK: [[b2:_.*]] = [[b1]];
+        // CHECK: [[c2:_.*]] = [[a]];
+        // CHECK: [[b3:_.*]] = [[b2]];
+
         let a = 7_usize;
         let b1 = &raw const a;
         let c = *b1;
@@ -254,6 +422,10 @@ fn reference_propagation_const_ptr<T: Copy>(single: *const T, mut multiple: *con
 
     // Propagation a reborrow of an argument.
     unsafe {
+        // CHECK: bb6: {
+        // CHECK-NOT: {{_.*}} = &(*_1);
+        // CHECK: [[b:_.*]] = (*_1);
+
         let a = &raw const *single;
         let b = *a; // This should be optimized as `*single`.
         opaque(());
@@ -261,6 +433,12 @@ fn reference_propagation_const_ptr<T: Copy>(single: *const T, mut multiple: *con
 
     // Propagation a reborrow of a mutated argument.
     unsafe {
+        // CHECK: bb7: {
+        // CHECK: [[a:_.*]] = &raw const (*_2);
+        // CHECK: [[tmp:_.*]] = &raw const (*_1);
+        // CHECK: _2 = move [[tmp]];
+        // CHECK: [[b:_.*]] = (*[[a]]);
+
         let a = &raw const *multiple;
         multiple = &raw const *single;
         let b = *a; // This should not be optimized.
@@ -269,6 +447,12 @@ fn reference_propagation_const_ptr<T: Copy>(single: *const T, mut multiple: *con
 
     // Propagation through a reborrow.
     unsafe {
+        // CHECK: bb8: {
+        // CHECK: [[a:_.*]] = const 13_usize;
+        // CHECK: [[b:_.*]] = &raw const [[a]];
+        // CHECK: [[d:_.*]] = &raw const [[a]];
+        // CHECK: [[c:_.*]] = [[a]];
+
         let a = 13_usize;
         let b = &raw const a;
         let c = &raw const *b;
@@ -278,6 +462,13 @@ fn reference_propagation_const_ptr<T: Copy>(single: *const T, mut multiple: *con
 
     // Fixed-point propagation through a borrowed reference.
     unsafe {
+        // CHECK: bb9: {
+        // CHECK: [[a:_.*]] = const 5_usize;
+        // CHECK: [[b:_.*]] = &raw const [[a]];
+        // CHECK: [[d:_.*]] = &[[b]];
+        // FIXME this could be [[a]]
+        // CHECK: [[c:_.*]] = (*[[b]]);
+
         let a = 5_usize;
         let b = &raw const a;
         let d = &b; // first round promotes debuginfo for `d`
@@ -287,6 +478,13 @@ fn reference_propagation_const_ptr<T: Copy>(single: *const T, mut multiple: *con
 
     // Fixed-point propagation through a borrowed reference.
     unsafe {
+        // CHECK: bb10: {
+        // CHECK: [[a:_.*]] = const 5_usize;
+        // CHECK: [[b:_.*]] = &raw const [[a]];
+        // CHECK: [[d:_.*]] = &mut [[b]];
+        // FIXME this could be [[a]]
+        // CHECK: [[c:_.*]] = (*[[b]]);
+
         let a = 5_usize;
         let mut b = &raw const a;
         let d = &mut b; // first round promotes debuginfo for `d`
@@ -296,16 +494,31 @@ fn reference_propagation_const_ptr<T: Copy>(single: *const T, mut multiple: *con
 }
 
 fn reference_propagation_mut_ptr<T: Copy>(single: *mut T, mut multiple: *mut T) {
+    // CHECK-LABEL: fn reference_propagation_mut_ptr(
+
     // Propagation through a reference.
     unsafe {
+        // CHECK: bb0: {
+        // CHECK: [[a:_.*]] = const 5_usize;
+        // CHECK: [[b:_.*]] = &raw mut [[a]];
+        // CHECK: [[c:_.*]] = [[a]];
+
         let mut a = 5_usize;
         let b = &raw mut a; // This borrow is only used once.
         let c = *b; // This should be optimized.
         opaque(());
     }
 
-    // Propagation through a two references.
+    // Propagation through two references.
     unsafe {
+        // CHECK: bb1: {
+        // CHECK: [[a:_.*]] = const 5_usize;
+        // CHECK: [[a2:_.*]] = const 7_usize;
+        // CHECK: [[b:_.*]] = &raw mut [[a]];
+        // CHECK: [[btmp:_.*]] = &raw mut [[a2]];
+        // CHECK: [[b]] = move [[btmp]];
+        // CHECK: [[c:_.*]] = (*[[b]]);
+
         let mut a = 5_usize;
         let mut a2 = 7_usize;
         let mut b = &raw mut a;
@@ -317,6 +530,12 @@ fn reference_propagation_mut_ptr<T: Copy>(single: *mut T, mut multiple: *mut T) 
 
     // Propagation through a borrowed reference.
     unsafe {
+        // CHECK: bb2: {
+        // CHECK: [[a:_.*]] = const 5_usize;
+        // CHECK: [[b:_.*]] = &raw mut [[a]];
+        // CHECK: [[d:_.*]] = &[[b]];
+        // CHECK: [[c:_.*]] = (*[[b]]);
+
         let mut a = 5_usize;
         let b = &raw mut a;
         let d = &b;
@@ -324,8 +543,14 @@ fn reference_propagation_mut_ptr<T: Copy>(single: *mut T, mut multiple: *mut T) 
         opaque(d); // prevent `d` from being removed.
     }
 
-    // Propagation through a borrowed reference.
+    // Propagation through a mutably borrowed reference.
     unsafe {
+        // CHECK: bb3: {
+        // CHECK: [[a:_.*]] = const 5_usize;
+        // CHECK: [[b:_.*]] = &raw mut [[a]];
+        // CHECK: [[d:_.*]] = &raw mut [[b]];
+        // CHECK: [[c:_.*]] = (*[[b]]);
+
         let mut a = 5_usize;
         let mut b = &raw mut a;
         let d = &raw mut b;
@@ -335,6 +560,11 @@ fn reference_propagation_mut_ptr<T: Copy>(single: *mut T, mut multiple: *mut T) 
 
     // Propagation through an escaping borrow.
     unsafe {
+        // CHECK: bb4: {
+        // CHECK: [[a:_.*]] = const 7_usize;
+        // CHECK: [[b:_.*]] = &raw mut [[a]];
+        // CHECK: [[c:_.*]] = (*[[b]]);
+
         let mut a = 7_usize;
         let b = &raw mut a;
         let c = *b;
@@ -343,6 +573,14 @@ fn reference_propagation_mut_ptr<T: Copy>(single: *mut T, mut multiple: *mut T) 
 
     // Propagation through a transitively escaping borrow.
     unsafe {
+        // CHECK: bb5: {
+        // CHECK: [[a:_.*]] = const 7_usize;
+        // CHECK: [[b1:_.*]] = &raw mut [[a]];
+        // CHECK: [[c:_.*]] = (*[[b1]]);
+        // CHECK: [[b2:_.*]] = [[b1]];
+        // CHECK: [[c2:_.*]] = (*[[b2]]);
+        // CHECK: [[b3:_.*]] = [[b2]];
+
         let mut a = 7_usize;
         let b1 = &raw mut a;
         let c = *b1;
@@ -356,6 +594,10 @@ fn reference_propagation_mut_ptr<T: Copy>(single: *mut T, mut multiple: *mut T) 
 
     // Propagation a reborrow of an argument.
     unsafe {
+        // CHECK: bb6: {
+        // CHECK-NOT: {{_.*}} = &(*_1);
+        // CHECK: [[b:_.*]] = (*_1);
+
         let a = &raw mut *single;
         let b = *a; // This should be optimized as `*single`.
         opaque(());
@@ -363,6 +605,12 @@ fn reference_propagation_mut_ptr<T: Copy>(single: *mut T, mut multiple: *mut T) 
 
     // Propagation a reborrow of a mutated argument.
     unsafe {
+        // CHECK: bb7: {
+        // CHECK: [[a:_.*]] = &raw mut (*_2);
+        // CHECK: [[tmp:_.*]] = &raw mut (*_1);
+        // CHECK: _2 = move [[tmp]];
+        // CHECK: [[b:_.*]] = (*[[a]]);
+
         let a = &raw mut *multiple;
         multiple = &raw mut *single;
         let b = *a; // This should not be optimized.
@@ -371,6 +619,13 @@ fn reference_propagation_mut_ptr<T: Copy>(single: *mut T, mut multiple: *mut T) 
 
     // Fixed-point propagation through a borrowed reference.
     unsafe {
+        // CHECK: bb8: {
+        // CHECK: [[a:_.*]] = const 5_usize;
+        // CHECK: [[b:_.*]] = &raw mut [[a]];
+        // CHECK: [[d:_.*]] = &[[b]];
+        // FIXME this could be [[a]]
+        // CHECK: [[c:_.*]] = (*[[b]]);
+
         let mut a = 5_usize;
         let b = &raw mut a;
         let d = &b; // first round promotes debuginfo for `d`
@@ -378,8 +633,15 @@ fn reference_propagation_mut_ptr<T: Copy>(single: *mut T, mut multiple: *mut T) 
         opaque(());
     }
 
-    // Fixed-point propagation through a borrowed reference.
+    // Fixed-point propagation through a mutably borrowed reference.
     unsafe {
+        // CHECK: bb9: {
+        // CHECK: [[a:_.*]] = const 5_usize;
+        // CHECK: [[b:_.*]] = &raw mut [[a]];
+        // CHECK: [[d:_.*]] = &mut [[b]];
+        // FIXME this could be [[a]]
+        // CHECK: [[c:_.*]] = (*[[b]]);
+
         let mut a = 5_usize;
         let mut b = &raw mut a;
         let d = &mut b; // first round promotes debuginfo for `d`
@@ -390,8 +652,13 @@ fn reference_propagation_mut_ptr<T: Copy>(single: *mut T, mut multiple: *mut T) 
 
 #[custom_mir(dialect = "runtime", phase = "post-cleanup")]
 fn read_through_raw(x: &mut usize) -> usize {
-    use std::intrinsics::mir::*;
+    // CHECK-LABEL: read_through_raw
+    // CHECK: bb0: {
+    // CHECK-NEXT: _0 = (*_1);
+    // CHECK-NEXT: _0 = (*_1);
+    // CHECK-NEXT: return;
 
+    use std::intrinsics::mir::*;
     mir!(
         let r1: &mut usize;
         let r2: &mut usize;
@@ -413,8 +680,10 @@ fn read_through_raw(x: &mut usize) -> usize {
 
 #[custom_mir(dialect = "runtime", phase = "post-cleanup")]
 fn multiple_storage() {
-    use std::intrinsics::mir::*;
+    // CHECK-LABEL: multiple_storage
+    // CHECK: _3 = (*_2);
 
+    use std::intrinsics::mir::*;
     mir!(
         let x: i32;
         {
@@ -437,8 +706,10 @@ fn multiple_storage() {
 
 #[custom_mir(dialect = "runtime", phase = "post-cleanup")]
 fn dominate_storage() {
-    use std::intrinsics::mir::*;
+    // CHECK-LABEL: dominate_storage
+    // CHECK: _5 = (*_2);
 
+    use std::intrinsics::mir::*;
     mir!(
         let x: i32;
         let r: &i32;
@@ -465,8 +736,10 @@ fn dominate_storage() {
 
 #[custom_mir(dialect = "runtime", phase = "post-cleanup")]
 fn maybe_dead(m: bool) {
-    use std::intrinsics::mir::*;
+    // CHECK-LABEL: fn maybe_dead(
+    // CHECK: (*_5) = const 7_i32;
 
+    use std::intrinsics::mir::*;
     mir!(
         let x: i32;
         let y: i32;
@@ -506,6 +779,9 @@ fn maybe_dead(m: bool) {
 }
 
 fn mut_raw_then_mut_shr() -> (i32, i32) {
+    // CHECK-LABEL: fn mut_raw_then_mut_shr(
+    // CHECK-NOT: (*{{_.*}})
+
     let mut x = 2;
     let xref = &mut x;
     let xraw = &mut *xref as *mut _;
@@ -517,6 +793,18 @@ fn mut_raw_then_mut_shr() -> (i32, i32) {
 }
 
 fn unique_with_copies() {
+    // CHECK-LABEL: fn unique_with_copies(
+    // CHECK: [[a:_.*]] = const 0_i32;
+    // CHECK: [[x:_.*]] = &raw mut [[a]];
+    // CHECK-NOT: [[a]]
+    // CHECK: [[tmp:_.*]] = (*[[x]]);
+    // CHECK-NEXT: opaque::<i32>(move [[tmp]])
+    // CHECK-NOT: [[a]]
+    // CHECK: StorageDead([[a]]);
+    // CHECK-NOT: [[a]]
+    // CHECK: [[tmp:_.*]] = (*[[x]]);
+    // CHECK-NEXT: opaque::<i32>(move [[tmp]])
+
     let y = {
         let mut a = 0;
         let x = &raw mut a;
@@ -529,6 +817,17 @@ fn unique_with_copies() {
 }
 
 fn debuginfo() {
+    // CHECK-LABEL: fn debuginfo(
+    // FIXME: This features waits for DWARF implicit pointers in LLVM.
+    // CHECK: debug ref_mut_u8 => _{{.*}};
+    // CHECK: debug field => _{{.*}};
+    // CHECK: debug reborrow => _{{.*}};
+    // CHECK: debug variant_field => _{{.*}};
+    // CHECK: debug constant_index => _{{.*}};
+    // CHECK: debug subslice => _{{.*}};
+    // CHECK: debug constant_index_from_end => _{{.*}};
+    // CHECK: debug multiple_borrow => _{{.*}};
+
     struct T(u8);
 
     let ref_mut_u8 = &mut 5_u8;
@@ -551,6 +850,10 @@ fn debuginfo() {
 }
 
 fn many_debuginfo() {
+    // CHECK-LABEL: fn many_debuginfo(
+    // FIXME: This features waits for DWARF implicit pointers in LLVM.
+    // CHECK: debug many_borrow => _{{.*}};
+
     let a = 0;
 
     // Verify that we do not ICE on deeply nested borrows.

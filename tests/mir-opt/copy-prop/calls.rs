@@ -1,3 +1,4 @@
+// skip-filecheck
 // Check that CopyProp does propagate return values of call terminators.
 // unit-test: CopyProp
 // needs-unwind

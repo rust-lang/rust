@@ -1,3 +1,4 @@
+// skip-filecheck
 // Make sure redundant testing paths in `match` expressions are sorted out.
 
 #![feature(exclusive_range_pattern)]

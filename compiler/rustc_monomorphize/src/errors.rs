@@ -76,10 +76,6 @@ pub struct LargeAssignmentsLint {
 }
 
 #[derive(Diagnostic)]
-#[diag(monomorphize_unknown_partition_strategy)]
-pub struct UnknownPartitionStrategy;
-
-#[derive(Diagnostic)]
 #[diag(monomorphize_symbol_already_defined)]
 pub struct SymbolAlreadyDefined {
     #[primary_span]

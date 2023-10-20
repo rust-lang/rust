@@ -1,3 +1,4 @@
+// skip-filecheck
 // unit-test: Derefer
 // EMIT_MIR derefer_complex_case.main.Derefer.diff
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY

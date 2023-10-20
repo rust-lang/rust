@@ -1,3 +1,4 @@
+// skip-filecheck
 // unit-test: SimplifyLocals-before-const-prop
 
 

@@ -3,9 +3,10 @@ use rustc_data_structures::fx::FxHashSet;
 use crate::ty::{PolyTraitRef, TyCtxt};
 
 /// Given a PolyTraitRef, get the PolyTraitRefs of the trait's (transitive) supertraits.
-///
-/// A simplified version of the same function at `rustc_infer::traits::util::supertraits`.
-pub fn supertraits<'tcx>(
+/// This only exists in `rustc_middle` because the more powerful elaborator depends on
+/// `rustc_infer` for elaborating outlives bounds -- this should only be used for pretty
+/// printing.
+pub fn supertraits_for_pretty_printing<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_ref: PolyTraitRef<'tcx>,
 ) -> impl Iterator<Item = PolyTraitRef<'tcx>> {

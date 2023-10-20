@@ -4,9 +4,10 @@ use crate::{
 };
 
 use rustc_hir as hir;
-use rustc_middle::{traits::util::supertraits, ty};
+use rustc_middle::ty;
 use rustc_session::lint::FutureIncompatibilityReason;
 use rustc_span::sym;
+use rustc_trait_selection::traits::supertraits;
 
 declare_lint! {
     /// The `deref_into_dyn_supertrait` lint is output whenever there is a use of the

@@ -17,8 +17,8 @@
 | '?2 live at {bb1[0]}
 | '?3 live at {bb1[1..=3]}
 | '?4 live at {bb1[4..=7], bb2[0..=2]}
-| '?2: '?3 due to Assignment at Single(bb1[0]) ($DIR/region_subtyping_basic.rs:18:13: 18:18 (#0)
-| '?3: '?4 due to Assignment at Single(bb1[3]) ($DIR/region_subtyping_basic.rs:19:13: 19:14 (#0)
+| '?2: '?3 due to Assignment at Single(bb1[0]) ($DIR/region_subtyping_basic.rs:19:13: 19:18 (#0)
+| '?3: '?4 due to Assignment at Single(bb1[3]) ($DIR/region_subtyping_basic.rs:20:13: 20:14 (#0)
 |
 fn main() -> () {
     let mut _0: ();

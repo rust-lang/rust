@@ -1,3 +1,4 @@
+// skip-filecheck
 // unit-test: ConstProp
 // ignore-endian-big
 // EMIT_MIR_FOR_EACH_BIT_WIDTH

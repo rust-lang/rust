@@ -8,25 +8,25 @@
       let _3: ();
   
       bb0: {
-          nop;
+          StorageLive(_1);
           _1 = assert_inhabited::<T>() -> [return: bb1, unwind unreachable];
       }
   
       bb1: {
-          nop;
-          nop;
+          StorageDead(_1);
+          StorageLive(_2);
           _2 = assert_zero_valid::<T>() -> [return: bb2, unwind unreachable];
       }
   
       bb2: {
-          nop;
-          nop;
+          StorageDead(_2);
+          StorageLive(_3);
           _3 = assert_mem_uninitialized_valid::<T>() -> [return: bb3, unwind unreachable];
       }
   
       bb3: {
-          nop;
-          nop;
+          StorageDead(_3);
+          _0 = const ();
           return;
       }
   }

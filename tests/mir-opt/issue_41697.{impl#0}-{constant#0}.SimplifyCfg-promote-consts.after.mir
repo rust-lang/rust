@@ -1,6 +1,6 @@
-// MIR for `<impl at $DIR/issue_41697.rs:18:1: 18:23>::{constant#0}` after SimplifyCfg-promote-consts
+// MIR for `<impl at $DIR/issue_41697.rs:19:1: 19:23>::{constant#0}` after SimplifyCfg-promote-consts
 
-<impl at $DIR/issue_41697.rs:18:1: 18:23>::{constant#0}: usize = {
+<impl at $DIR/issue_41697.rs:19:1: 19:23>::{constant#0}: usize = {
     let mut _0: usize;
     let mut _1: (usize, bool);
 

@@ -1,3 +1,4 @@
+// skip-filecheck
 #![feature(generators, generator_trait)]
 
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY

@@ -1,3 +1,4 @@
+// skip-filecheck
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 // Check that CopyProp considers reborrows as not mutating the pointer.
 // unit-test: CopyProp

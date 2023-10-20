@@ -1,3 +1,4 @@
+// skip-filecheck
 // unit-test: ConstProp
 
 // EMIT_MIR mult_by_zero.test.ConstProp.diff
