@@ -7,7 +7,7 @@
 //!
 //! For now, we are developing everything inside `rustc`, thus, we keep this module private.
 
-use crate::rustc_internal::IndexMap;
+use crate::rustc_internal::{IndexMap, RustcInternal};
 use crate::rustc_smir::hir::def::DefKind;
 use crate::rustc_smir::stable_mir::ty::{BoundRegion, EarlyBoundRegion, Region};
 use rustc_hir as hir;
@@ -26,6 +26,7 @@ use stable_mir::{self, opaque, Context, Filename};
 use tracing::debug;
 
 mod alloc;
+mod builder;
 
 impl<'tcx> Context for Tables<'tcx> {
     fn local_crate(&self) -> stable_mir::Crate {
@@ -171,8 +172,9 @@ impl<'tcx> Context for Tables<'tcx> {
         }
     }
 
-    fn instance_body(&mut self, _def: InstanceDef) -> Body {
-        todo!("Monomorphize the body")
+    fn instance_body(&mut self, def: InstanceDef) -> Body {
+        let instance = self.instances[def];
+        builder::BodyBuilder::new(self.tcx, instance).build(self)
     }
 
     fn instance_ty(&mut self, def: InstanceDef) -> stable_mir::ty::Ty {
@@ -195,8 +197,20 @@ impl<'tcx> Context for Tables<'tcx> {
         let def_id = self[def_id];
         let generics = self.tcx.generics_of(def_id);
         let result = generics.requires_monomorphization(self.tcx);
-        println!("req {result}: {def_id:?}");
         result
+    }
+
+    fn resolve_instance(
+        &mut self,
+        def: stable_mir::ty::FnDef,
+        args: &stable_mir::ty::GenericArgs,
+    ) -> Option<stable_mir::mir::mono::Instance> {
+        let def_id = def.0.internal(self);
+        let args_ref = args.internal(self);
+        match Instance::resolve(self.tcx, ParamEnv::reveal_all(), def_id, args_ref) {
+            Ok(Some(instance)) => Some(instance.stable(self)),
+            Ok(None) | Err(_) => None,
+        }
     }
 }
 
