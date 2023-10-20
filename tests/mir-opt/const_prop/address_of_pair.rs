@@ -1,3 +1,4 @@
+// skip-filecheck
 // unit-test: ConstProp
 
 // EMIT_MIR address_of_pair.fn0.ConstProp.diff

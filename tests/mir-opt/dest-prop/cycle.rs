@@ -1,3 +1,4 @@
+// skip-filecheck
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 //! Tests that cyclic assignments don't hang DestinationPropagation, and result in reasonable code.
 // unit-test: DestinationPropagation

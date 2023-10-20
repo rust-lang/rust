@@ -1,3 +1,4 @@
+// skip-filecheck
 // EMIT_MIR issue_75439.foo.MatchBranchSimplification.diff
 // ignore-endian-big
 

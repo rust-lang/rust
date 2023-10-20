@@ -7,10 +7,7 @@ LL |     ($variant:tt) => (if let EnumUnit::$variant::<i32, u32> {} = 5 { true }
    |                                        not allowed on this type
 ...
 LL |     recursive_tt!();
-   |     ---------------
-   |     |
-   |     in this macro invocation
-   |     in this macro invocation
+   |     --------------- in this macro invocation
    |
    = note: enum variants can't have type parameters
    = note: this error originates in the macro `recursive_tt` (in Nightly builds, run with -Z macro-backtrace for more info)
@@ -44,10 +41,7 @@ LL |     ($variant:ident) => (if let EnumUnit::$variant::<i32, u32> {} = 5 { tru
    |                                                      ^^^  ^^^ type argument not allowed
 ...
 LL |     recursive_ident!();
-   |     ------------------
-   |     |
-   |     in this macro invocation
-   |     in this macro invocation
+   |     ------------------ in this macro invocation
    |
    = note: enum variants can't have type parameters
    = note: this error originates in the macro `recursive_ident` (in Nightly builds, run with -Z macro-backtrace for more info)
@@ -81,10 +75,7 @@ LL |     ($variant:tt) => (if let EnumUnit::$variant::<i32, u32> {} = 5 { true }
    |                                        not allowed on this type
 ...
 LL |     nested1_tt!();
-   |     -------------
-   |     |
-   |     in this macro invocation
-   |     in this macro invocation
+   |     ------------- in this macro invocation
    |
    = note: enum variants can't have type parameters
    = note: this error originates in the macro `nested2_tt` which comes from the expansion of the macro `nested1_tt` (in Nightly builds, run with -Z macro-backtrace for more info)
@@ -119,10 +110,7 @@ LL |     ($variant:ident) => (if let EnumUnit::$variant::<i32, u32> {} = 5 { tru
    |                                                      ^^^  ^^^ type argument not allowed
 ...
 LL |     nested1_ident!();
-   |     ----------------
-   |     |
-   |     in this macro invocation
-   |     in this macro invocation
+   |     ---------------- in this macro invocation
    |
    = note: enum variants can't have type parameters
    = note: this error originates in the macro `nested2_ident` which comes from the expansion of the macro `nested1_ident` (in Nightly builds, run with -Z macro-backtrace for more info)
@@ -156,10 +144,7 @@ LL |     ($arg1:tt, $arg2:tt) => (if let EnumUnit::VariantB::<$arg1, $arg2> {}
    |                                               not allowed on this type
 ...
 LL |     nested1_tt_args_in_first_macro!();
-   |     ---------------------------------
-   |     |
-   |     in this macro invocation
-   |     in this macro invocation
+   |     --------------------------------- in this macro invocation
    |
    = note: enum variants can't have type parameters
    = note: this error originates in the macro `nested1_tt_args_in_first_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
@@ -194,10 +179,7 @@ LL |     ($arg1:ident, $arg2:ident) => (if let EnumUnit::VariantB::<$arg1, $arg2
    |                                                     not allowed on this type
 ...
 LL |     nested1_ident_args_in_first_macro!();
-   |     ------------------------------------
-   |     |
-   |     in this macro invocation
-   |     in this macro invocation
+   |     ------------------------------------ in this macro invocation
    |
    = note: enum variants can't have type parameters
    = note: this error originates in the macro `nested2_ident_args_in_first_macro` which comes from the expansion of the macro `nested1_ident_args_in_first_macro` (in Nightly builds, run with -Z macro-backtrace for more info)

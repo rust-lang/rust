@@ -1,3 +1,4 @@
+// skip-filecheck
 // ignore-endian-big
 extern "C" {
     static X: i32;

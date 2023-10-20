@@ -1,3 +1,4 @@
+// skip-filecheck
 // unit-test: ConstProp
 // compile-flags: -Zmir-enable-passes=+RemoveZsts
 // Verify that we can pretty print invalid constants.

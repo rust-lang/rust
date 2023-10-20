@@ -1,0 +1,21 @@
+- // MIR for `roundtrip` before InstSimplify
++ // MIR for `roundtrip` after InstSimplify
+  
+  fn roundtrip(_1: *const u8) -> *const u8 {
+      debug x => _1;
+      let mut _0: *const u8;
+      let mut _2: *mut u8;
+      let mut _3: *const u8;
+  
+      bb0: {
+          StorageLive(_2);
+          StorageLive(_3);
+          _3 = _1;
+          _2 = move _3 as *mut u8 (PtrToPtr);
+          _0 = move _2 as *const u8 (PointerCoercion(MutToConstPointer));
+          StorageDead(_3);
+          StorageDead(_2);
+          return;
+      }
+  }
+  

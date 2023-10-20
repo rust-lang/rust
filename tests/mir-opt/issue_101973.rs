@@ -1,3 +1,4 @@
+// skip-filecheck
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 // compile-flags: -O -C debug-assertions=on
 // This needs inlining followed by ConstProp to reproduce, so we cannot use "unit-test".

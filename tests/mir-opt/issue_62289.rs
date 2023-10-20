@@ -1,3 +1,4 @@
+// skip-filecheck
 // check that we don't forget to drop the Box if we early return before
 // initializing it
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY

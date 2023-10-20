@@ -1,3 +1,4 @@
+// skip-filecheck
 // compile-flags: -C overflow-checks=no -Zunsound-mir-opts
 
 struct Point {

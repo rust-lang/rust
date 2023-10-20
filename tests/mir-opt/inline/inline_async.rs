@@ -1,3 +1,4 @@
+// skip-filecheck
 // Checks that inliner doesn't introduce cycles when optimizing generators.
 // The outcome of optimization is not verfied, just the absence of the cycle.
 // Regression test for #76181.

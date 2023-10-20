@@ -1,3 +1,4 @@
+// unit-test: ElaborateDrops
 // needs-unwind
 // this tests move up progration, which is not yet implemented
 
@@ -10,6 +11,23 @@
 // destruction.
 
 fn main() {
+    // CHECK-LABEL: fn main(
+    // CHECK: debug nodrop_x => [[nodrop_x:_.*]];
+    // CHECK: debug nodrop_y => [[nodrop_y:_.*]];
+    // CHECK: debug drop_x => [[drop_x:_.*]];
+    // CHECK: debug drop_y => [[drop_y:_.*]];
+    // CHECK-NOT: drop([[nodrop_x]])
+    // CHECK-NOT: drop([[nodrop_y]])
+    // CHECK-NOT: drop([[drop_x]])
+    // CHECK: [[drop_tmp:_.*]] = move [[drop_x]];
+    // CHECK-NOT: drop([[drop_x]])
+    // CHECK-NOT: drop([[drop_tmp]])
+    // CHECK: [[drop_y]] = move [[drop_tmp]];
+    // CHECK-NOT: drop([[drop_x]])
+    // CHECK-NOT: drop([[drop_tmp]])
+    // CHECK: drop([[drop_y]])
+    // CHECK-NOT: drop([[drop_x]])
+    // CHECK-NOT: drop([[drop_tmp]])
     let nodrop_x = false;
     let nodrop_y;
 

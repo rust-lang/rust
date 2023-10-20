@@ -1,10 +1,16 @@
 use std::fs;
 use std::path::Path;
 
-pub struct MiroptTestFiles {
+pub struct MiroptTestFile {
     pub expected_file: std::path::PathBuf,
     pub from_file: String,
     pub to_file: Option<String>,
+}
+
+pub struct MiroptTest {
+    pub run_filecheck: bool,
+    pub suffix: String,
+    pub files: Vec<MiroptTestFile>,
     /// Vec of passes under test to be dumped
     pub passes: Vec<String>,
 }
@@ -14,11 +20,7 @@ pub enum PanicStrategy {
     Abort,
 }
 
-pub fn output_file_suffix(
-    testfile: &Path,
-    bit_width: u32,
-    panic_strategy: PanicStrategy,
-) -> String {
+fn output_file_suffix(testfile: &Path, bit_width: u32, panic_strategy: PanicStrategy) -> String {
     let mut each_bit_width = false;
     let mut each_panic_strategy = false;
     for line in fs::read_to_string(testfile).unwrap().lines() {
@@ -47,7 +49,7 @@ pub fn files_for_miropt_test(
     testfile: &std::path::Path,
     bit_width: u32,
     panic_strategy: PanicStrategy,
-) -> Vec<MiroptTestFiles> {
+) -> MiroptTest {
     let mut out = Vec::new();
     let test_file_contents = fs::read_to_string(&testfile).unwrap();
 
@@ -55,8 +57,14 @@ pub fn files_for_miropt_test(
     let test_crate = testfile.file_stem().unwrap().to_str().unwrap().replace('-', "_");
 
     let suffix = output_file_suffix(testfile, bit_width, panic_strategy);
+    let mut run_filecheck = true;
+    let mut passes = Vec::new();
 
     for l in test_file_contents.lines() {
+        if l.starts_with("// skip-filecheck") {
+            run_filecheck = false;
+            continue;
+        }
         if l.starts_with("// EMIT_MIR ") {
             let test_name = l.trim_start_matches("// EMIT_MIR ").trim();
             let mut test_names = test_name.split(' ');
@@ -65,7 +73,6 @@ pub fn files_for_miropt_test(
             let mut expected_file;
             let from_file;
             let to_file;
-            let mut passes = Vec::new();
 
             if test_name.ends_with(".diff") {
                 let trimmed = test_name.trim_end_matches(".diff");
@@ -114,9 +121,9 @@ pub fn files_for_miropt_test(
             }
             let expected_file = test_dir.join(expected_file);
 
-            out.push(MiroptTestFiles { expected_file, from_file, to_file, passes });
+            out.push(MiroptTestFile { expected_file, from_file, to_file });
         }
     }
 
-    out
+    MiroptTest { run_filecheck, suffix, files: out, passes }
 }

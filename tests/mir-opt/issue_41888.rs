@@ -1,3 +1,4 @@
+// skip-filecheck
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 // check that we clear the "ADT master drop flag" even when there are
 // no fields to be dropped.

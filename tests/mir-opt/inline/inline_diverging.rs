@@ -1,3 +1,4 @@
+// skip-filecheck
 // Tests inlining of diverging calls.
 //
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY

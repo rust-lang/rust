@@ -1,3 +1,4 @@
+// skip-filecheck
 // Test that simple or-patterns don't get expanded to exponentially large CFGs
 
 // EMIT_MIR exponential_or.match_tuple.SimplifyCfg-initial.after.mir

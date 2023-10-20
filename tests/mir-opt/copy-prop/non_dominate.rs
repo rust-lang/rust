@@ -1,3 +1,4 @@
+// skip-filecheck
 // unit-test: CopyProp
 
 #![feature(custom_mir, core_intrinsics)]

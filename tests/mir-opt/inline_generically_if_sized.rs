@@ -1,3 +1,4 @@
+// skip-filecheck
 // unit-test: Inline
 // compile-flags: --crate-type=lib -C panic=abort
 

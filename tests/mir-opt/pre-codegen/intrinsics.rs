@@ -1,3 +1,4 @@
+// skip-filecheck
 // compile-flags: -O -C debuginfo=0 -Zmir-opt-level=2
 // only-64bit
 
