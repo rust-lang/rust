@@ -135,7 +135,7 @@
    LL|      0|}
    LL|       |
    LL|       |impl std::fmt::Debug for Foo {
-   LL|       |    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+   LL|      7|    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
    LL|      7|        write!(f, "try and succeed")?;
                                                   ^0
    LL|      7|        Ok(())
