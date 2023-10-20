@@ -31,7 +31,7 @@ pub unsafe fn f1() {
 
 // CHECK-LABEL: fn f2()
 // CHECK:       bb0: {
-// CHECK-NEXT:  return;
+// CHECK-NEXT:  nop()
 #[target_feature(enable = "avx")]
 pub unsafe fn f2() {
     nop();
