@@ -239,19 +239,15 @@ impl<'tcx> ConstToPat<'tcx> {
                     }
                 }
             } else if !self.saw_const_match_lint.get() {
-                match cv.ty().kind() {
-                    ty::RawPtr(..) if have_valtree => {
-                        // This is a good raw pointer, it was accepted by valtree construction.
-                    }
-                    ty::FnPtr(..) | ty::RawPtr(..) => {
-                        self.tcx().emit_spanned_lint(
-                            lint::builtin::POINTER_STRUCTURAL_MATCH,
-                            self.id,
-                            self.span,
-                            PointerPattern,
-                        );
-                    }
-                    _ => {}
+                if !have_valtree {
+                    // The only way valtree construction can fail without the structural match
+                    // checker finding a violation is if there is a pointer somewhere.
+                    self.tcx().emit_spanned_lint(
+                        lint::builtin::POINTER_STRUCTURAL_MATCH,
+                        self.id,
+                        self.span,
+                        PointerPattern,
+                    );
                 }
             }
 
