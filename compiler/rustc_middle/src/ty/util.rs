@@ -38,9 +38,6 @@ pub enum CheckRegions {
     /// Only permit early bound regions. This is useful for Adts which
     /// can never have late bound regions.
     OnlyEarlyBound,
-    /// Permit both late bound and early bound regions. Use this for functions,
-    /// which frequently have late bound regions.
-    Bound,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -464,33 +461,15 @@ impl<'tcx> TyCtxt<'tcx> {
         ignore_regions: CheckRegions,
     ) -> Result<(), NotUniqueParam<'tcx>> {
         let mut seen = GrowableBitSet::default();
-        let mut seen_late = FxHashSet::default();
         for arg in args {
             match arg.unpack() {
                 GenericArgKind::Lifetime(lt) => match (ignore_regions, lt.kind()) {
-                    (
-                        CheckRegions::Bound,
-                        ty::ReFree(ty::FreeRegion {
-                            bound_region: ty::BoundRegionKind::BrNamed(def_id, _),
-                            ..
-                        })
-                        | ty::ReLateBound(
-                            _,
-                            ty::BoundRegion {
-                                kind: ty::BoundRegionKind::BrNamed(def_id, _), ..
-                            },
-                        ),
-                    ) => {
-                        if !seen_late.insert(def_id) {
-                            return Err(NotUniqueParam::DuplicateParam(lt.into()));
-                        }
-                    }
-                    (CheckRegions::OnlyEarlyBound | CheckRegions::Bound, ty::ReEarlyBound(p)) => {
+                    (CheckRegions::OnlyEarlyBound, ty::ReEarlyBound(p)) => {
                         if !seen.insert(p.index) {
                             return Err(NotUniqueParam::DuplicateParam(lt.into()));
                         }
                     }
-                    (CheckRegions::OnlyEarlyBound | CheckRegions::Bound, _) => {
+                    (CheckRegions::OnlyEarlyBound, _) => {
                         return Err(NotUniqueParam::NotParam(lt.into()));
                     }
                     (CheckRegions::No, _) => {}

@@ -7,7 +7,6 @@ use rustc_infer::infer::{InferOk, TyCtxtInferExt};
 use rustc_infer::traits::{TraitEngine, TraitEngineExt as _};
 use rustc_middle::query::Providers;
 use rustc_middle::traits::ObligationCause;
-use rustc_middle::ty::util::{CheckRegions, NotUniqueParam};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{TypeFoldable, TypeSuperVisitable, TypeVisitableExt, TypeVisitor};
 use rustc_span::{ErrorGuaranteed, Span};
@@ -15,8 +14,6 @@ use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt;
 use rustc_trait_selection::traits::project::with_replaced_escaping_bound_vars;
 use rustc_trait_selection::traits::{NormalizeExt, TraitEngineExt as _};
 use std::ops::ControlFlow;
-
-use crate::errors::{DuplicateArg, NotParam};
 
 struct OpaqueTypeCollector<'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -44,12 +41,6 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
             span: None,
             binder: ty::INNERMOST,
         }
-    }
-
-    fn span(&self) -> Span {
-        self.span.unwrap_or_else(|| {
-            self.tcx.def_ident_span(self.item).unwrap_or_else(|| self.tcx.def_span(self.item))
-        })
     }
 
     fn visit_spanned_after_normalizing(
@@ -265,49 +256,19 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
 
                 self.opaques.push(alias_ty.def_id.expect_local());
 
-                match self.tcx.uses_unique_generic_params(alias_ty.args, CheckRegions::Bound) {
-                    Ok(()) => {
-                        // FIXME: implement higher kinded lifetime bounds on nested opaque types. They are not
-                        // supported at all, so this is sound to do, but once we want to support them, you'll
-                        // start seeing the error below.
-
-                        // Collect opaque types nested within the associated type bounds of this opaque type.
-                        for (pred, span) in self
-                            .tcx
-                            .explicit_item_bounds(alias_ty.def_id)
-                            .iter_instantiated_copied(self.tcx, alias_ty.args)
-                        {
-                            trace!(?pred);
-                            self.visit_spanned_after_normalizing(span, pred);
-                        }
-                    }
-                    Err(NotUniqueParam::NotParam(arg)) => {
-                        self.tcx.sess.emit_err(NotParam {
-                            arg,
-                            span: self.span(),
-                            opaque_span: self.tcx.def_span(alias_ty.def_id),
-                        });
-                    }
-                    Err(NotUniqueParam::DuplicateParam(arg)) => {
-                        self.tcx.sess.emit_err(DuplicateArg {
-                            arg,
-                            span: self.span(),
-                            opaque_span: self.tcx.def_span(alias_ty.def_id),
-                        });
-                    }
+                // Collect opaque types nested within the associated type bounds of this opaque type.
+                for (pred, span) in self
+                    .tcx
+                    .explicit_item_bounds(alias_ty.def_id)
+                    .iter_instantiated_copied(self.tcx, alias_ty.args)
+                {
+                    trace!(?pred);
+                    self.visit_spanned_after_normalizing(span, pred);
                 }
             }
             ty::Adt(def, args) if def.did().is_local() => {
                 for variant in def.variants().iter() {
                     for field in variant.fields.iter() {
-                        // Don't use the `ty::Adt` args, we either
-                        // * found the opaque in the args
-                        // * will find the opaque in the unsubstituted fields
-                        // The only other situation that can occur is that after substituting,
-                        // some projection resolves to an opaque that we would have otherwise
-                        // not found. While we could substitute and walk those, that would mean we
-                        // would have to walk all substitutions of an Adt, which can quickly
-                        // degenerate into looking at an exponential number of types.
                         let ty = self.tcx.type_of(field.did).instantiate(self.tcx, args);
                         self.visit_spanned_after_normalizing(self.tcx.def_span(field.did), ty);
                     }
@@ -315,6 +276,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
             }
             _ => trace!(kind=?t.kind()),
         }
+
         ControlFlow::Continue(())
     }
 }
