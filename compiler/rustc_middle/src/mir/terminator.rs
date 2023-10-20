@@ -149,13 +149,14 @@ impl<O> AssertKind<O> {
             ResumedAfterReturn(CoroutineKind::Coroutine) => "coroutine resumed after completion",
             ResumedAfterReturn(CoroutineKind::Async(_)) => "`async fn` resumed after completion",
             ResumedAfterReturn(CoroutineKind::Gen(_)) => {
-                bug!("`gen fn` should just keep returning `None` after the first time")
+                "`gen fn` should just keep returning `None` after completion"
             }
             ResumedAfterPanic(CoroutineKind::Coroutine) => "coroutine resumed after panicking",
             ResumedAfterPanic(CoroutineKind::Async(_)) => "`async fn` resumed after panicking",
             ResumedAfterPanic(CoroutineKind::Gen(_)) => {
-                bug!("`gen fn` should just keep returning `None` after panicking")
+                "`gen fn` should just keep returning `None` after panicking"
             }
+
             BoundsCheck { .. } | MisalignedPointerDereference { .. } => {
                 bug!("Unexpected AssertKind")
             }
