@@ -125,7 +125,6 @@ macro_rules! test_mask_api {
                 cast_impl::<isize>();
             }
 
-            #[cfg(feature = "generic_const_exprs")]
             #[test]
             fn roundtrip_bitmask_array_conversion() {
                 use core_simd::simd::ToBitMaskArray;

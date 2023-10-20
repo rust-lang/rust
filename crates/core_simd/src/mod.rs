@@ -3,9 +3,6 @@ mod swizzle;
 
 pub(crate) mod intrinsics;
 
-#[cfg(feature = "generic_const_exprs")]
-mod to_bytes;
-
 mod alias;
 mod cast;
 mod elements;
@@ -18,6 +15,7 @@ mod ops;
 mod ord;
 mod select;
 mod swizzle_dyn;
+mod to_bytes;
 mod vector;
 mod vendor;
 
@@ -37,5 +35,6 @@ pub mod simd {
     pub use crate::core_simd::ord::*;
     pub use crate::core_simd::swizzle::*;
     pub use crate::core_simd::swizzle_dyn::*;
+    pub use crate::core_simd::to_bytes::ToBytes;
     pub use crate::core_simd::vector::*;
 }

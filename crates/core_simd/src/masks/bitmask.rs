@@ -119,7 +119,6 @@ where
         unsafe { Self(intrinsics::simd_bitmask(value), PhantomData) }
     }
 
-    #[cfg(feature = "generic_const_exprs")]
     #[inline]
     #[must_use = "method returns a new array and does not mutate the original value"]
     pub fn to_bitmask_array<const N: usize>(self) -> [u8; N] {
@@ -129,7 +128,6 @@ where
         unsafe { core::mem::transmute_copy(&self.0) }
     }
 
-    #[cfg(feature = "generic_const_exprs")]
     #[inline]
     #[must_use = "method returns a new mask and does not mutate the original value"]
     pub fn from_bitmask_array<const N: usize>(bitmask: [u8; N]) -> Self {

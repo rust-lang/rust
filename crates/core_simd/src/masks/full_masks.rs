@@ -1,11 +1,8 @@
 //! Masks that take up full SIMD vector registers.
 
-use super::MaskElement;
+use super::{to_bitmask::ToBitMaskArray, MaskElement};
 use crate::simd::intrinsics;
 use crate::simd::{LaneCount, Simd, SupportedLaneCount, ToBitMask};
-
-#[cfg(feature = "generic_const_exprs")]
-use crate::simd::ToBitMaskArray;
 
 #[repr(transparent)]
 pub struct Mask<T, const LANES: usize>(Simd<T, LANES>)
@@ -145,23 +142,19 @@ where
         unsafe { Mask(intrinsics::simd_cast(self.0)) }
     }
 
-    #[cfg(feature = "generic_const_exprs")]
     #[inline]
     #[must_use = "method returns a new array and does not mutate the original value"]
     pub fn to_bitmask_array<const N: usize>(self) -> [u8; N]
     where
         super::Mask<T, LANES>: ToBitMaskArray,
-        [(); <super::Mask<T, LANES> as ToBitMaskArray>::BYTES]: Sized,
     {
-        assert_eq!(<super::Mask<T, LANES> as ToBitMaskArray>::BYTES, N);
-
-        // Safety: N is the correct bitmask size
+        // Safety: Bytes is the right size array
         unsafe {
             // Compute the bitmask
-            let bitmask: [u8; <super::Mask<T, LANES> as ToBitMaskArray>::BYTES] =
+            let bitmask: <super::Mask<T, LANES> as ToBitMaskArray>::BitMaskArray =
                 intrinsics::simd_bitmask(self.0);
 
-            // Transmute to the return type, previously asserted to be the same size
+            // Transmute to the return type
             let mut bitmask: [u8; N] = core::mem::transmute_copy(&bitmask);
 
             // LLVM assumes bit order should match endianness
@@ -175,17 +168,13 @@ where
         }
     }
 
-    #[cfg(feature = "generic_const_exprs")]
     #[inline]
     #[must_use = "method returns a new mask and does not mutate the original value"]
     pub fn from_bitmask_array<const N: usize>(mut bitmask: [u8; N]) -> Self
     where
         super::Mask<T, LANES>: ToBitMaskArray,
-        [(); <super::Mask<T, LANES> as ToBitMaskArray>::BYTES]: Sized,
     {
-        assert_eq!(<super::Mask<T, LANES> as ToBitMaskArray>::BYTES, N);
-
-        // Safety: N is the correct bitmask size
+        // Safety: Bytes is the right size array
         unsafe {
             // LLVM assumes bit order should match endianness
             if cfg!(target_endian = "big") {
@@ -194,8 +183,8 @@ where
                 }
             }
 
-            // Transmute to the bitmask type, previously asserted to be the same size
-            let bitmask: [u8; <super::Mask<T, LANES> as ToBitMaskArray>::BYTES] =
+            // Transmute to the bitmask
+            let bitmask: <super::Mask<T, LANES> as ToBitMaskArray>::BitMaskArray =
                 core::mem::transmute_copy(&bitmask);
 
             // Compute the regular mask
