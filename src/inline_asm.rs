@@ -8,6 +8,7 @@ use rustc_span::sym;
 use rustc_target::asm::*;
 use target_lexicon::BinaryFormat;
 
+use crate::global_asm::asm_supported;
 use crate::prelude::*;
 
 enum CInlineAsmOperand<'tcx> {
@@ -44,9 +45,13 @@ pub(crate) fn codegen_inline_asm<'tcx>(
 ) {
     // FIXME add .eh_frame unwind info directives
 
-    if !template.is_empty()
-        && (cfg!(not(feature = "inline_asm")) || fx.tcx.sess.target.is_like_windows)
-    {
+    if !asm_supported(fx.tcx) {
+        if template.is_empty() {
+            let destination_block = fx.get_block(destination.unwrap());
+            fx.bcx.ins().jump(destination_block, &[]);
+            return;
+        }
+
         // Used by panic_abort
         if template[0] == InlineAsmTemplatePiece::String("int $$0x29".to_string()) {
             fx.bcx.ins().trap(TrapCode::User(1));
