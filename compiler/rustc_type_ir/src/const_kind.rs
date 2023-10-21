@@ -5,8 +5,8 @@ use std::fmt;
 use std::hash;
 
 use crate::{
-    DebruijnIndex, DebugWithInfcx, HashStableContext, InferCtxtLike, Interner, OptWithInfcx,
-    TyDecoder, TyEncoder,
+    DebruijnIndex, DebugWithInfcx, HashStableContext, InferCtxtLike, Interner, TyDecoder,
+    TyEncoder, WithInfcx,
 };
 
 use self::ConstKind::*;
@@ -231,13 +231,13 @@ impl<I: Interner> Clone for ConstKind<I> {
 
 impl<I: Interner> fmt::Debug for ConstKind<I> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        OptWithInfcx::with_no_infcx(self).fmt(f)
+        WithInfcx::with_no_infcx(self).fmt(f)
     }
 }
 
 impl<I: Interner> DebugWithInfcx<I> for ConstKind<I> {
-    fn fmt<Infcx: InferCtxtLike<I>>(
-        this: OptWithInfcx<'_, I, Infcx, &Self>,
+    fn fmt<Infcx: InferCtxtLike<Interner = I>>(
+        this: WithInfcx<'_, Infcx, &Self>,
         f: &mut core::fmt::Formatter<'_>,
     ) -> core::fmt::Result {
         use ConstKind::*;

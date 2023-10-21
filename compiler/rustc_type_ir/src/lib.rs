@@ -34,7 +34,7 @@ mod region_kind;
 
 pub use codec::*;
 pub use const_kind::*;
-pub use debug::{DebugWithInfcx, InferCtxtLike, OptWithInfcx};
+pub use debug::{DebugWithInfcx, InferCtxtLike, WithInfcx};
 pub use flags::*;
 pub use interner::*;
 pub use region_kind::*;
