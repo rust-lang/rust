@@ -1,0 +1,36 @@
+error: opaque type used twice with different lifetimes
+  --> $DIR/non-defining-use-lifetimes.rs:15:16
+   |
+LL |       fn foo<'a>(_: Lt<'a>) -> impl Sized + 'a {
+   |  ______________________________________________-
+LL | |         let _: () = foo(Lt::<'static>::None);
+   | |                ^^ lifetime `'static` used here
+LL | |
+LL | |     }
+   | |_____- lifetime `'a` previously used here
+   |
+note: if all non-lifetime generic parameters are the same, but the lifetime parameters differ, it is not possible to differentiate the opaque types
+  --> $DIR/non-defining-use-lifetimes.rs:15:16
+   |
+LL |         let _: () = foo(Lt::<'static>::None);
+   |                ^^
+
+error: opaque type used twice with different lifetimes
+  --> $DIR/non-defining-use-lifetimes.rs:33:16
+   |
+LL |       fn foo<'a, 'b>(_: Lt<'a>, _: Lt<'b>) -> impl Sized + 'a + 'b {
+   |  __________________________________________________________________-
+LL | |         let _: () = foo(Lt::<'a>::None, Lt::<'a>::None);
+   | |                ^^ lifetime `'a` used here
+LL | |
+LL | |     }
+   | |_____- lifetime `'b` previously used here
+   |
+note: if all non-lifetime generic parameters are the same, but the lifetime parameters differ, it is not possible to differentiate the opaque types
+  --> $DIR/non-defining-use-lifetimes.rs:33:16
+   |
+LL |         let _: () = foo(Lt::<'a>::None, Lt::<'a>::None);
+   |                ^^
+
+error: aborting due to 2 previous errors
+

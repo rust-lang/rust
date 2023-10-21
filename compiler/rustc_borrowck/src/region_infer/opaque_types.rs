@@ -432,6 +432,10 @@ fn check_opaque_type_well_formed<'tcx>(
     }
 }
 
+/// Opaque type parameter validity check as documented in the [rustc-dev-guide chapter].
+///
+/// [rustc-dev-guide chapter]:
+/// https://rustc-dev-guide.rust-lang.org/opaque-types-region-infer-restrictions.html
 fn check_opaque_type_parameter_valid<'tcx>(
     tcx: TyCtxt<'tcx>,
     opaque_type_key: OpaqueTypeKey<'tcx>,
@@ -444,6 +448,7 @@ fn check_opaque_type_parameter_valid<'tcx>(
     };
 
     let opaque_generics = tcx.generics_of(opaque_type_key.def_id);
+    let opaque_env = LazyOpaqueTyEnv::new(tcx, opaque_type_key.def_id);
     let mut seen_params: FxIndexMap<_, Vec<_>> = FxIndexMap::default();
 
     for (i, arg) in opaque_type_key.iter_captured_args(tcx) {
@@ -451,6 +456,7 @@ fn check_opaque_type_parameter_valid<'tcx>(
             GenericArgKind::Type(ty) => matches!(ty.kind(), ty::Param(_)),
             GenericArgKind::Lifetime(lt) if is_ty_alias => {
                 matches!(*lt, ty::ReEarlyParam(_) | ty::ReLateParam(_))
+                    || (lt.is_static() && opaque_env.param_equal_static(i))
             }
             // FIXME(#113916): we can't currently check for unique lifetime params,
             // see that issue for more. We will also have to ignore unused lifetime
@@ -460,7 +466,13 @@ fn check_opaque_type_parameter_valid<'tcx>(
         };
 
         if arg_is_param {
-            seen_params.entry(arg).or_default().push(i);
+            // Register if the same lifetime appears multiple times in the generic args.
+            // There is an exception when the opaque type *requires* the lifetimes to be equal.
+            // See [rustc-dev-guide chapter] § "An exception to uniqueness rule".
+            let seen_where = seen_params.entry(arg).or_default();
+            if !seen_where.first().is_some_and(|&prev_i| opaque_env.params_equal(i, prev_i)) {
+                seen_where.push(i);
+            }
         } else {
             // Prevent `fn foo() -> Foo<u32>` from being defining.
             let opaque_param = opaque_generics.param_at(i, tcx);
@@ -493,4 +505,88 @@ fn check_opaque_type_parameter_valid<'tcx>(
     }
 
     Ok(())
+}
+
+/// Computes if an opaque type requires a lifetime parameter to be equal to
+/// another one or to the `'static` lifetime.
+/// These requirements are derived from the explicit and implied bounds.
+struct LazyOpaqueTyEnv<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    def_id: LocalDefId,
+
+    /// Equal parameters will have the same name. Computed Lazily.
+    /// Example:
+    ///     `type Opaque<'a: 'static, 'b: 'c, 'c: 'b> = impl Sized;`
+    ///     Identity args: `['a, 'b, 'c]`
+    ///     Canonical args: `['static, 'b, 'b]`
+    canonical_args: std::cell::OnceCell<ty::GenericArgsRef<'tcx>>,
+}
+
+impl<'tcx> LazyOpaqueTyEnv<'tcx> {
+    pub fn new(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Self {
+        Self { tcx, def_id, canonical_args: std::cell::OnceCell::new() }
+    }
+
+    pub fn param_equal_static(&self, param_index: usize) -> bool {
+        self.get_canonical_args()[param_index].expect_region().is_static()
+    }
+
+    pub fn params_equal(&self, param1: usize, param2: usize) -> bool {
+        let canonical_args = self.get_canonical_args();
+        canonical_args[param1] == canonical_args[param2]
+    }
+
+    fn get_canonical_args(&self) -> ty::GenericArgsRef<'tcx> {
+        use rustc_hir as hir;
+        use rustc_infer::infer::outlives::env::OutlivesEnvironment;
+        use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt as _;
+
+        if let Some(&canonical_args) = self.canonical_args.get() {
+            return canonical_args;
+        }
+
+        let &Self { tcx, def_id, .. } = self;
+        let origin = tcx.opaque_type_origin(def_id);
+        let parent = match origin {
+            hir::OpaqueTyOrigin::FnReturn(parent)
+            | hir::OpaqueTyOrigin::AsyncFn(parent)
+            | hir::OpaqueTyOrigin::TyAlias { parent, .. } => parent,
+        };
+        let param_env = tcx.param_env(parent);
+        let args = GenericArgs::identity_for_item(tcx, parent).extend_to(
+            tcx,
+            def_id.to_def_id(),
+            |param, _| {
+                tcx.map_opaque_lifetime_to_parent_lifetime(param.def_id.expect_local()).into()
+            },
+        );
+
+        let infcx = tcx.infer_ctxt().build();
+        let ocx = ObligationCtxt::new(&infcx);
+
+        let wf_tys = ocx.assumed_wf_types(param_env, parent).unwrap_or_else(|_| {
+            tcx.dcx().span_delayed_bug(tcx.def_span(def_id), "error getting implied bounds");
+            Default::default()
+        });
+        let implied_bounds = infcx.implied_bounds_tys(param_env, parent, &wf_tys);
+        let outlives_env = OutlivesEnvironment::with_bounds(param_env, implied_bounds);
+
+        let mut seen = vec![tcx.lifetimes.re_static];
+        let canonical_args = tcx.fold_regions(args, |r1, _| {
+            if r1.is_error() {
+                r1
+            } else if let Some(&r2) = seen.iter().find(|&&r2| {
+                let free_regions = outlives_env.free_region_map();
+                free_regions.sub_free_regions(tcx, r1, r2)
+                    && free_regions.sub_free_regions(tcx, r2, r1)
+            }) {
+                r2
+            } else {
+                seen.push(r1);
+                r1
+            }
+        });
+        self.canonical_args.set(canonical_args).unwrap();
+        canonical_args
+    }
 }
