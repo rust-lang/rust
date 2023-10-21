@@ -1,4 +1,4 @@
-//! Types and traits associated with masking lanes of vectors.
+//! Types and traits associated with masking elements of vectors.
 //! Types representing
 #![allow(non_camel_case_types)]
 
@@ -82,7 +82,7 @@ impl_element! { isize }
 
 /// A SIMD vector mask for `LANES` elements of width specified by `Element`.
 ///
-/// Masks represent boolean inclusion/exclusion on a per-lane basis.
+/// Masks represent boolean inclusion/exclusion on a per-element basis.
 ///
 /// The layout of this type is unspecified, and may change between platforms
 /// and/or Rust versions, and code should not assume that it is equivalent to
@@ -116,7 +116,7 @@ where
     T: MaskElement,
     LaneCount<LANES>: SupportedLaneCount,
 {
-    /// Construct a mask by setting all lanes to the given value.
+    /// Construct a mask by setting all elements to the given value.
     #[inline]
     pub fn splat(value: bool) -> Self {
         Self(mask_impl::Mask::splat(value))
@@ -163,7 +163,7 @@ where
     /// represents `true`.
     ///
     /// # Safety
-    /// All lanes must be either 0 or -1.
+    /// All elements must be either 0 or -1.
     #[inline]
     #[must_use = "method returns a new mask and does not mutate the original value"]
     pub unsafe fn from_int_unchecked(value: Simd<T, LANES>) -> Self {
@@ -175,7 +175,7 @@ where
     /// represents `true`.
     ///
     /// # Panics
-    /// Panics if any lane is not 0 or -1.
+    /// Panics if any element is not 0 or -1.
     #[inline]
     #[must_use = "method returns a new mask and does not mutate the original value"]
     #[track_caller]
@@ -193,71 +193,71 @@ where
         self.0.to_int()
     }
 
-    /// Converts the mask to a mask of any other lane size.
+    /// Converts the mask to a mask of any other element size.
     #[inline]
     #[must_use = "method returns a new mask and does not mutate the original value"]
     pub fn cast<U: MaskElement>(self) -> Mask<U, LANES> {
         Mask(self.0.convert())
     }
 
-    /// Tests the value of the specified lane.
+    /// Tests the value of the specified element.
     ///
     /// # Safety
-    /// `lane` must be less than `LANES`.
+    /// `element` must be less than `self.len()`.
     #[inline]
     #[must_use = "method returns a new bool and does not mutate the original value"]
-    pub unsafe fn test_unchecked(&self, lane: usize) -> bool {
+    pub unsafe fn test_unchecked(&self, index: usize) -> bool {
         // Safety: the caller must confirm this invariant
-        unsafe { self.0.test_unchecked(lane) }
+        unsafe { self.0.test_unchecked(index) }
     }
 
-    /// Tests the value of the specified lane.
+    /// Tests the value of the specified element.
     ///
     /// # Panics
-    /// Panics if `lane` is greater than or equal to the number of lanes in the vector.
+    /// Panics if `index` is greater than or equal to the number of elements in the vector.
     #[inline]
     #[must_use = "method returns a new bool and does not mutate the original value"]
     #[track_caller]
-    pub fn test(&self, lane: usize) -> bool {
-        assert!(lane < LANES, "lane index out of range");
-        // Safety: the lane index has been checked
-        unsafe { self.test_unchecked(lane) }
+    pub fn test(&self, index: usize) -> bool {
+        assert!(index < LANES, "element index out of range");
+        // Safety: the element index has been checked
+        unsafe { self.test_unchecked(index) }
     }
 
-    /// Sets the value of the specified lane.
+    /// Sets the value of the specified element.
     ///
     /// # Safety
-    /// `lane` must be less than `LANES`.
+    /// `index` must be less than `self.len()`.
     #[inline]
-    pub unsafe fn set_unchecked(&mut self, lane: usize, value: bool) {
+    pub unsafe fn set_unchecked(&mut self, index: usize, value: bool) {
         // Safety: the caller must confirm this invariant
         unsafe {
-            self.0.set_unchecked(lane, value);
+            self.0.set_unchecked(index, value);
         }
     }
 
-    /// Sets the value of the specified lane.
+    /// Sets the value of the specified element.
     ///
     /// # Panics
-    /// Panics if `lane` is greater than or equal to the number of lanes in the vector.
+    /// Panics if `index` is greater than or equal to the number of elements in the vector.
     #[inline]
     #[track_caller]
-    pub fn set(&mut self, lane: usize, value: bool) {
-        assert!(lane < LANES, "lane index out of range");
-        // Safety: the lane index has been checked
+    pub fn set(&mut self, index: usize, value: bool) {
+        assert!(index < LANES, "element index out of range");
+        // Safety: the element index has been checked
         unsafe {
-            self.set_unchecked(lane, value);
+            self.set_unchecked(index, value);
         }
     }
 
-    /// Returns true if any lane is set, or false otherwise.
+    /// Returns true if any element is set, or false otherwise.
     #[inline]
     #[must_use = "method returns a new bool and does not mutate the original value"]
     pub fn any(self) -> bool {
         self.0.any()
     }
 
-    /// Returns true if all lanes are set, or false otherwise.
+    /// Returns true if all elements are set, or false otherwise.
     #[inline]
     #[must_use = "method returns a new bool and does not mutate the original value"]
     pub fn all(self) -> bool {
@@ -294,7 +294,7 @@ where
     LaneCount<LANES>: SupportedLaneCount,
 {
     #[inline]
-    #[must_use = "method returns a defaulted mask with all lanes set to false (0)"]
+    #[must_use = "method returns a defaulted mask with all elements set to false (0)"]
     fn default() -> Self {
         Self::splat(false)
     }
@@ -332,7 +332,7 @@ where
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list()
-            .entries((0..LANES).map(|lane| self.test(lane)))
+            .entries((0..LANES).map(|i| self.test(i)))
             .finish()
     }
 }

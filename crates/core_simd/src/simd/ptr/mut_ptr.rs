@@ -5,13 +5,13 @@ use crate::simd::{
 
 /// Operations on SIMD vectors of mutable pointers.
 pub trait SimdMutPtr: Copy + Sealed {
-    /// Vector of `usize` with the same number of lanes.
+    /// Vector of `usize` with the same number of elements.
     type Usize;
 
-    /// Vector of `isize` with the same number of lanes.
+    /// Vector of `isize` with the same number of elements.
     type Isize;
 
-    /// Vector of const pointers with the same number of lanes.
+    /// Vector of const pointers with the same number of elements.
     type CastPtr<T>;
 
     /// Vector of constant pointers to the same type.
@@ -20,17 +20,17 @@ pub trait SimdMutPtr: Copy + Sealed {
     /// Mask type used for manipulating this SIMD vector type.
     type Mask;
 
-    /// Returns `true` for each lane that is null.
+    /// Returns `true` for each element that is null.
     fn is_null(self) -> Self::Mask;
 
     /// Casts to a pointer of another type.
     ///
-    /// Equivalent to calling [`pointer::cast`] on each lane.
+    /// Equivalent to calling [`pointer::cast`] on each element.
     fn cast<T>(self) -> Self::CastPtr<T>;
 
     /// Changes constness without changing the type.
     ///
-    /// Equivalent to calling [`pointer::cast_const`] on each lane.
+    /// Equivalent to calling [`pointer::cast_const`] on each element.
     fn cast_const(self) -> Self::ConstPtr;
 
     /// Gets the "address" portion of the pointer.
@@ -38,7 +38,7 @@ pub trait SimdMutPtr: Copy + Sealed {
     /// This method discards pointer semantic metadata, so the result cannot be
     /// directly cast into a valid pointer.
     ///
-    /// Equivalent to calling [`pointer::addr`] on each lane.
+    /// Equivalent to calling [`pointer::addr`] on each element.
     fn addr(self) -> Self::Usize;
 
     /// Creates a new pointer with the given address.
@@ -46,7 +46,7 @@ pub trait SimdMutPtr: Copy + Sealed {
     /// This performs the same operation as a cast, but copies the *address-space* and
     /// *provenance* of `self` to the new pointer.
     ///
-    /// Equivalent to calling [`pointer::with_addr`] on each lane.
+    /// Equivalent to calling [`pointer::with_addr`] on each element.
     fn with_addr(self, addr: Self::Usize) -> Self;
 
     /// Gets the "address" portion of the pointer, and "exposes" the provenance part for future use
@@ -55,22 +55,22 @@ pub trait SimdMutPtr: Copy + Sealed {
 
     /// Convert an address back to a pointer, picking up a previously "exposed" provenance.
     ///
-    /// Equivalent to calling [`core::ptr::from_exposed_addr_mut`] on each lane.
+    /// Equivalent to calling [`core::ptr::from_exposed_addr_mut`] on each element.
     fn from_exposed_addr(addr: Self::Usize) -> Self;
 
     /// Calculates the offset from a pointer using wrapping arithmetic.
     ///
-    /// Equivalent to calling [`pointer::wrapping_offset`] on each lane.
+    /// Equivalent to calling [`pointer::wrapping_offset`] on each element.
     fn wrapping_offset(self, offset: Self::Isize) -> Self;
 
     /// Calculates the offset from a pointer using wrapping arithmetic.
     ///
-    /// Equivalent to calling [`pointer::wrapping_add`] on each lane.
+    /// Equivalent to calling [`pointer::wrapping_add`] on each element.
     fn wrapping_add(self, count: Self::Usize) -> Self;
 
     /// Calculates the offset from a pointer using wrapping arithmetic.
     ///
-    /// Equivalent to calling [`pointer::wrapping_sub`] on each lane.
+    /// Equivalent to calling [`pointer::wrapping_sub`] on each element.
     fn wrapping_sub(self, count: Self::Usize) -> Self;
 }
 

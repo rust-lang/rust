@@ -206,11 +206,11 @@ where
     }
 
     /// Rotates the vector such that the first `OFFSET` elements of the slice move to the end
-    /// while the last `LANES - OFFSET` elements move to the front. After calling `rotate_lanes_left`,
-    /// the element previously in lane `OFFSET` will become the first element in the slice.
+    /// while the last `self.len() - OFFSET` elements move to the front. After calling `rotate_elements_left`,
+    /// the element previously at index `OFFSET` will become the first element in the slice.
     #[inline]
     #[must_use = "method returns a new vector and does not mutate the original inputs"]
-    pub fn rotate_lanes_left<const OFFSET: usize>(self) -> Self {
+    pub fn rotate_elements_left<const OFFSET: usize>(self) -> Self {
         struct Rotate<const OFFSET: usize>;
 
         impl<const OFFSET: usize, const N: usize> Swizzle<N> for Rotate<OFFSET> {
@@ -229,12 +229,12 @@ where
         Rotate::<OFFSET>::swizzle(self)
     }
 
-    /// Rotates the vector such that the first `LANES - OFFSET` elements of the vector move to
-    /// the end while the last `OFFSET` elements move to the front. After calling `rotate_lanes_right`,
-    /// the element previously at index `LANES - OFFSET` will become the first element in the slice.
+    /// Rotates the vector such that the first `self.len() - OFFSET` elements of the vector move to
+    /// the end while the last `OFFSET` elements move to the front. After calling `rotate_elements_right`,
+    /// the element previously at index `self.len() - OFFSET` will become the first element in the slice.
     #[inline]
     #[must_use = "method returns a new vector and does not mutate the original inputs"]
-    pub fn rotate_lanes_right<const OFFSET: usize>(self) -> Self {
+    pub fn rotate_elements_right<const OFFSET: usize>(self) -> Self {
         struct Rotate<const OFFSET: usize>;
 
         impl<const OFFSET: usize, const N: usize> Swizzle<N> for Rotate<OFFSET> {

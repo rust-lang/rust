@@ -6,10 +6,10 @@ where
     T: MaskElement,
     LaneCount<LANES>: SupportedLaneCount,
 {
-    /// Choose lanes from two vectors.
+    /// Choose elements from two vectors.
     ///
-    /// For each lane in the mask, choose the corresponding lane from `true_values` if
-    /// that lane mask is true, and `false_values` if that lane mask is false.
+    /// For each element in the mask, choose the corresponding element from `true_values` if
+    /// that element mask is true, and `false_values` if that element mask is false.
     ///
     /// # Examples
     /// ```
@@ -36,10 +36,10 @@ where
         unsafe { intrinsics::simd_select(self.to_int(), true_values, false_values) }
     }
 
-    /// Choose lanes from two masks.
+    /// Choose elements from two masks.
     ///
-    /// For each lane in the mask, choose the corresponding lane from `true_values` if
-    /// that lane mask is true, and `false_values` if that lane mask is false.
+    /// For each element in the mask, choose the corresponding element from `true_values` if
+    /// that element mask is true, and `false_values` if that element mask is false.
     ///
     /// # Examples
     /// ```

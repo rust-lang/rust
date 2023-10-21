@@ -61,7 +61,7 @@ pub trait SimdInt: Copy + Sealed {
     fn saturating_sub(self, second: Self) -> Self;
 
     /// Lanewise absolute value, implemented in Rust.
-    /// Every lane becomes its absolute value.
+    /// Every element becomes its absolute value.
     ///
     /// # Examples
     /// ```
@@ -111,19 +111,19 @@ pub trait SimdInt: Copy + Sealed {
     /// ```
     fn saturating_neg(self) -> Self;
 
-    /// Returns true for each positive lane and false if it is zero or negative.
+    /// Returns true for each positive element and false if it is zero or negative.
     fn is_positive(self) -> Self::Mask;
 
-    /// Returns true for each negative lane and false if it is zero or positive.
+    /// Returns true for each negative element and false if it is zero or positive.
     fn is_negative(self) -> Self::Mask;
 
-    /// Returns numbers representing the sign of each lane.
+    /// Returns numbers representing the sign of each element.
     /// * `0` if the number is zero
     /// * `1` if the number is positive
     /// * `-1` if the number is negative
     fn signum(self) -> Self;
 
-    /// Returns the sum of the lanes of the vector, with wrapping addition.
+    /// Returns the sum of the elements of the vector, with wrapping addition.
     ///
     /// # Examples
     ///
@@ -141,7 +141,7 @@ pub trait SimdInt: Copy + Sealed {
     /// ```
     fn reduce_sum(self) -> Self::Scalar;
 
-    /// Returns the product of the lanes of the vector, with wrapping multiplication.
+    /// Returns the product of the elements of the vector, with wrapping multiplication.
     ///
     /// # Examples
     ///
@@ -159,7 +159,7 @@ pub trait SimdInt: Copy + Sealed {
     /// ```
     fn reduce_product(self) -> Self::Scalar;
 
-    /// Returns the maximum lane in the vector.
+    /// Returns the maximum element in the vector.
     ///
     /// # Examples
     ///
@@ -173,7 +173,7 @@ pub trait SimdInt: Copy + Sealed {
     /// ```
     fn reduce_max(self) -> Self::Scalar;
 
-    /// Returns the minimum lane in the vector.
+    /// Returns the minimum element in the vector.
     ///
     /// # Examples
     ///
@@ -187,13 +187,13 @@ pub trait SimdInt: Copy + Sealed {
     /// ```
     fn reduce_min(self) -> Self::Scalar;
 
-    /// Returns the cumulative bitwise "and" across the lanes of the vector.
+    /// Returns the cumulative bitwise "and" across the elements of the vector.
     fn reduce_and(self) -> Self::Scalar;
 
-    /// Returns the cumulative bitwise "or" across the lanes of the vector.
+    /// Returns the cumulative bitwise "or" across the elements of the vector.
     fn reduce_or(self) -> Self::Scalar;
 
-    /// Returns the cumulative bitwise "xor" across the lanes of the vector.
+    /// Returns the cumulative bitwise "xor" across the elements of the vector.
     fn reduce_xor(self) -> Self::Scalar;
 
     /// Reverses the byte order of each element.
