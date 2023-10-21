@@ -86,6 +86,7 @@ expand_module_circular =
 expand_module_file_not_found =
     file not found for module `{$name}`
     .help = to create the module `{$name}`, create file "{$default_path}" or "{$secondary_path}"
+    .note = if there is a `mod {$name}` elsewhere in the crate already, import it with `use crate::...` instead
 
 expand_module_in_block =
     cannot declare a non-inline module inside a block unless it has a path attribute
