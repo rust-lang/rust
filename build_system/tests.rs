@@ -104,8 +104,8 @@ const BASE_SYSROOT_SUITE: &[TestCase] = &[
 pub(crate) static RAND_REPO: GitRepo = GitRepo::github(
     "rust-random",
     "rand",
-    "f3dd0b885c4597b9617ca79987a0dd899ab29fcb",
-    "3f869e4fcd602b66",
+    "9a02c819cc1e4ec6959ae25eafbb5cf6acb68234",
+    "4934f0afb1d1c2ca",
     "rand",
 );
 
@@ -125,7 +125,7 @@ pub(crate) static PORTABLE_SIMD_REPO: GitRepo = GitRepo::github(
     "rust-lang",
     "portable-simd",
     "4825b2a64d765317066948867e8714674419359b",
-    "8b188cc41f5af835",
+    "9e67d07c00f5fb0b",
     "portable-simd",
 );
 
