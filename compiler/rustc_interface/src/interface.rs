@@ -146,6 +146,10 @@ pub(crate) fn parse_check_cfg(handler: &EarlyErrorHandler, specs: Vec<String>) -
             error!("expected `cfg(name, values(\"value1\", \"value2\", ... \"valueN\"))`")
         };
 
+        let cannot_mix_error = || {
+            error!("cannot mix `cfg(...)` with deprecated syntax `names(...)` and `values(...)`")
+        };
+
         let Ok(mut parser) = maybe_new_parser_from_source_str(&sess, filename, s.to_string())
         else {
             expected_error();
@@ -169,6 +173,8 @@ pub(crate) fn parse_check_cfg(handler: &EarlyErrorHandler, specs: Vec<String>) -
             if old_syntax == None {
                 check_cfg.exhaustive_names = false;
                 check_cfg.exhaustive_values = false;
+            } else if old_syntax == Some(false) {
+                cannot_mix_error();
             }
             old_syntax = Some(true);
         };
@@ -226,6 +232,9 @@ pub(crate) fn parse_check_cfg(handler: &EarlyErrorHandler, specs: Vec<String>) -
                 expected_error();
             }
         } else if meta_item.has_name(sym::cfg) {
+            if old_syntax == Some(true) {
+                cannot_mix_error();
+            }
             old_syntax = Some(false);
 
             let mut names = Vec::new();

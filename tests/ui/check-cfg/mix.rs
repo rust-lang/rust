@@ -5,8 +5,9 @@
 // check-pass
 // revisions: names_values cfg
 // compile-flags: --cfg feature="bar" --cfg unknown_name -Z unstable-options
-// compile-flags: --check-cfg=cfg(names_values,cfg)
 // [names_values]compile-flags: --check-cfg=names() --check-cfg=values(feature,"foo")
+// [names_values]compile-flags: --check-cfg=names(names_values,cfg)
+// [cfg]compile-flags: --check-cfg=cfg(names_values,cfg)
 // [cfg]compile-flags: --check-cfg=cfg(feature,values("foo"))
 
 #[cfg(windows)]
