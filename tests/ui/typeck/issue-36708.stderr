@@ -2,7 +2,12 @@ error[E0049]: method `foo` has 1 type parameter but its trait declaration has 0 
   --> $DIR/issue-36708.rs:8:12
    |
 LL |     fn foo<T>() {}
-   |            ^ found 1 type parameter, expected 0
+   |            ^ found 1 type parameter
+   |
+  ::: $DIR/auxiliary/issue-36708.rs:4:5
+   |
+LL |     fn foo();
+   |     --------- expected 0 type parameters
 
 error: aborting due to previous error
 
