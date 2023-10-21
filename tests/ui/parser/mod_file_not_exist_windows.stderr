@@ -5,6 +5,7 @@ LL | mod not_a_real_file;
    | ^^^^^^^^^^^^^^^^^^^^
    |
    = help: to create the module `not_a_real_file`, create file "$DIR/not_a_real_file.rs" or "$DIR/not_a_real_file/mod.rs"
+   = note: if there is a `mod not_a_real_file` elsewhere in the crate already, import it with `use crate::...` instead
 
 error[E0433]: failed to resolve: use of undeclared crate or module `mod_file_aux`
   --> $DIR/mod_file_not_exist_windows.rs:7:16

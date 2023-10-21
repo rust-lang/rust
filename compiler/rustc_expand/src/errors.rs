@@ -350,6 +350,7 @@ pub(crate) struct ModuleInBlockName {
 #[derive(Diagnostic)]
 #[diag(expand_module_file_not_found, code = "E0583")]
 #[help]
+#[note]
 pub(crate) struct ModuleFileNotFound {
     #[primary_span]
     pub span: Span,
