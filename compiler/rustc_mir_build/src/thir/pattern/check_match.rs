@@ -760,7 +760,7 @@ fn non_exhaustive_match<'p, 'tcx>(
         pattern = if witnesses.len() < 4 {
             witnesses
                 .iter()
-                .map(|witness| witness.to_pat(cx).to_string())
+                .map(|witness| witness.to_diagnostic_pat(cx).to_string())
                 .collect::<Vec<String>>()
                 .join(" | ")
         } else {
@@ -915,13 +915,13 @@ pub(crate) fn joined_uncovered_patterns<'p, 'tcx>(
     witnesses: &[WitnessPat<'tcx>],
 ) -> String {
     const LIMIT: usize = 3;
-    let pat_to_str = |pat: &WitnessPat<'tcx>| pat.to_pat(cx).to_string();
+    let pat_to_str = |pat: &WitnessPat<'tcx>| pat.to_diagnostic_pat(cx).to_string();
     match witnesses {
         [] => bug!(),
-        [witness] => format!("`{}`", witness.to_pat(cx)),
+        [witness] => format!("`{}`", witness.to_diagnostic_pat(cx)),
         [head @ .., tail] if head.len() < LIMIT => {
             let head: Vec<_> = head.iter().map(pat_to_str).collect();
-            format!("`{}` and `{}`", head.join("`, `"), tail.to_pat(cx))
+            format!("`{}` and `{}`", head.join("`, `"), tail.to_diagnostic_pat(cx))
         }
         _ => {
             let (head, tail) = witnesses.split_at(LIMIT);

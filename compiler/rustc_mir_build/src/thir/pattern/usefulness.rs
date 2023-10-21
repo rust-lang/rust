@@ -1014,7 +1014,7 @@ fn lint_overlapping_range_endpoints<'p, 'tcx>(
 
     if IntRange::is_integral(ty) {
         let emit_lint = |overlap: &IntRange, this_span: Span, overlapped_spans: &[Span]| {
-            let overlap_as_pat = overlap.to_pat(ty, cx.tcx);
+            let overlap_as_pat = overlap.to_diagnostic_pat(ty, cx.tcx);
             let overlaps: Vec<_> = overlapped_spans
                 .iter()
                 .copied()

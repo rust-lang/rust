@@ -140,8 +140,13 @@ impl MaybeInfiniteInt {
             PatRangeBoundary::PosInfinity => PosInfinity,
         }
     }
-    // This could change from finite to infinite if we got `usize::MAX+1` after range splitting.
-    fn to_pat_range_bdy<'tcx>(self, ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> PatRangeBoundary<'tcx> {
+    /// Used only for diagnostics.
+    /// This could change from finite to infinite if we got `usize::MAX+1` after range splitting.
+    fn to_diagnostic_pat_range_bdy<'tcx>(
+        self,
+        ty: Ty<'tcx>,
+        tcx: TyCtxt<'tcx>,
+    ) -> PatRangeBoundary<'tcx> {
         match self {
             NegInfinity => PatRangeBoundary::NegInfinity,
             Finite(x) => {
@@ -326,25 +331,25 @@ impl IntRange {
     /// Whether the range denotes the values before `isize::MIN` or the values after
     /// `usize::MAX`/`isize::MAX`.
     pub(crate) fn is_beyond_boundaries<'tcx>(&self, ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> bool {
-        // First check if we are usize/isize to avoid unnecessary `to_pat_range_bdy`.
+        // First check if we are usize/isize to avoid unnecessary `to_diagnostic_pat_range_bdy`.
         ty.is_ptr_sized_integral() && !tcx.features().precise_pointer_size_matching && {
-            let lo = self.lo.to_pat_range_bdy(ty, tcx);
-            let hi = self.hi.to_pat_range_bdy(ty, tcx);
+            let lo = self.lo.to_diagnostic_pat_range_bdy(ty, tcx);
+            let hi = self.hi.to_diagnostic_pat_range_bdy(ty, tcx);
             matches!(lo, PatRangeBoundary::PosInfinity)
                 || matches!(hi, PatRangeBoundary::NegInfinity)
         }
     }
     /// Only used for displaying the range.
-    pub(super) fn to_pat<'tcx>(&self, ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> Pat<'tcx> {
+    pub(super) fn to_diagnostic_pat<'tcx>(&self, ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> Pat<'tcx> {
         let kind = if matches!((self.lo, self.hi), (NegInfinity, PosInfinity)) {
             PatKind::Wild
         } else if self.is_singleton() {
-            let lo = self.lo.to_pat_range_bdy(ty, tcx);
+            let lo = self.lo.to_diagnostic_pat_range_bdy(ty, tcx);
             let value = lo.as_finite().unwrap();
             PatKind::Constant { value }
         } else {
-            let mut lo = self.lo.to_pat_range_bdy(ty, tcx);
-            let mut hi = self.hi.to_pat_range_bdy(ty, tcx);
+            let mut lo = self.lo.to_diagnostic_pat_range_bdy(ty, tcx);
+            let mut hi = self.hi.to_diagnostic_pat_range_bdy(ty, tcx);
             let end = if hi.is_finite() {
                 RangeEnd::Included
             } else {
@@ -1803,13 +1808,14 @@ impl<'tcx> WitnessPat<'tcx> {
         self.ty
     }
 
-    /// Convert back to a `thir::Pat` for diagnostic purposes.
-    pub(crate) fn to_pat(&self, cx: &MatchCheckCtxt<'_, 'tcx>) -> Pat<'tcx> {
+    /// Convert back to a `thir::Pat` for diagnostic purposes. This panics for patterns that don't
+    /// appear in diagnostics, like float ranges.
+    pub(crate) fn to_diagnostic_pat(&self, cx: &MatchCheckCtxt<'_, 'tcx>) -> Pat<'tcx> {
         let is_wildcard = |pat: &Pat<'_>| matches!(pat.kind, PatKind::Wild);
-        let mut subpatterns = self.iter_fields().map(|p| Box::new(p.to_pat(cx)));
+        let mut subpatterns = self.iter_fields().map(|p| Box::new(p.to_diagnostic_pat(cx)));
         let kind = match &self.ctor {
             Bool(b) => PatKind::Constant { value: mir::Const::from_bool(cx.tcx, *b) },
-            IntRange(range) => return range.to_pat(self.ty, cx.tcx),
+            IntRange(range) => return range.to_diagnostic_pat(self.ty, cx.tcx),
             Single | Variant(_) => match self.ty.kind() {
                 ty::Tuple(..) => PatKind::Leaf {
                     subpatterns: subpatterns
