@@ -121,8 +121,8 @@ where
 
     #[inline]
     #[must_use = "method returns a new array and does not mutate the original value"]
-    pub fn to_bitmask_array<const N: usize>(self) -> [u8; N] {
-        assert!(core::mem::size_of::<Self>() == N);
+    pub fn to_bitmask_array<const M: usize>(self) -> [u8; M] {
+        assert!(core::mem::size_of::<Self>() == M);
 
         // Safety: converting an integer to an array of bytes of the same size is safe
         unsafe { core::mem::transmute_copy(&self.0) }
@@ -130,8 +130,8 @@ where
 
     #[inline]
     #[must_use = "method returns a new mask and does not mutate the original value"]
-    pub fn from_bitmask_array<const N: usize>(bitmask: [u8; N]) -> Self {
-        assert!(core::mem::size_of::<Self>() == N);
+    pub fn from_bitmask_array<const M: usize>(bitmask: [u8; M]) -> Self {
+        assert!(core::mem::size_of::<Self>() == M);
 
         // Safety: converting an array of bytes to an integer of the same size is safe
         Self(unsafe { core::mem::transmute_copy(&bitmask) }, PhantomData)
