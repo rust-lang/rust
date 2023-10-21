@@ -574,6 +574,29 @@ fn repeat() {
     let array = [val, val, val, val, val, val, val, val, val, val];
 }
 
+/// Verify that we do not merge fn pointers created by casts.
+fn fn_pointers() {
+    // CHECK-LABEL: fn fn_pointers(
+    // CHECK: [[f:_.*]] = identity::<u8> as fn(u8) -> u8 (PointerCoercion(ReifyFnPointer
+    // CHECK: opaque::<fn(u8) -> u8>([[f]])
+    let f = identity as fn(u8) -> u8;
+    opaque(f);
+    // CHECK: [[g:_.*]] = identity::<u8> as fn(u8) -> u8 (PointerCoercion(ReifyFnPointer
+    // CHECK: opaque::<fn(u8) -> u8>([[g]])
+    let g = identity as fn(u8) -> u8;
+    opaque(g);
+
+    // CHECK: [[cf:_.*]] = const {{.*}} as fn() (PointerCoercion(ClosureFnPointer
+    // CHECK: opaque::<fn()>([[cf]])
+    let closure = || {};
+    let cf = closure as fn();
+    opaque(cf);
+    // CHECK: [[cg:_.*]] = const {{.*}} as fn() (PointerCoercion(ClosureFnPointer
+    // CHECK: opaque::<fn()>([[cg]])
+    let cg = closure as fn();
+    opaque(cg);
+}
+
 fn main() {
     subexpression_elimination(2, 4, 5);
     wrap_unwrap(5);
@@ -590,6 +613,7 @@ fn main() {
     let (direct, indirect) = duplicate_slice();
     assert_eq!(direct, indirect);
     repeat();
+    fn_pointers();
 }
 
 #[inline(never)]
@@ -614,3 +638,4 @@ fn identity<T>(x: T) -> T {
 // EMIT_MIR gvn.slices.GVN.diff
 // EMIT_MIR gvn.duplicate_slice.GVN.diff
 // EMIT_MIR gvn.repeat.GVN.diff
+// EMIT_MIR gvn.fn_pointers.GVN.diff

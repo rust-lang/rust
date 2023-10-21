@@ -92,6 +92,7 @@ use rustc_index::IndexVec;
 use rustc_macros::newtype_index;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
+use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeAndMut};
 use rustc_span::def_id::DefId;
@@ -761,6 +762,14 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             Rvalue::Cast(kind, ref mut value, to) => {
                 let from = value.ty(self.local_decls, self.tcx);
                 let value = self.simplify_operand(value, location)?;
+                if let CastKind::PointerCoercion(
+                    PointerCoercion::ReifyFnPointer | PointerCoercion::ClosureFnPointer(_),
+                ) = kind
+                {
+                    // Each reification of a generic fn may get a different pointer.
+                    // Do not try to merge them.
+                    return self.new_opaque();
+                }
                 Value::Cast { kind, value, from, to }
             }
             Rvalue::BinaryOp(op, box (ref mut lhs, ref mut rhs)) => {
