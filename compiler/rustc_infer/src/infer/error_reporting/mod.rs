@@ -776,6 +776,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 ref prior_arms,
                 opt_suggest_box_span,
                 scrut_span,
+                scrut_hir_id,
                 ..
             }) => match source {
                 hir::MatchSource::TryDesugar(scrut_hir_id) => {
@@ -842,6 +843,18 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         arm_span,
                     ) {
                         err.subdiagnostic(subdiag);
+                    }
+                    if let Some(hir::Node::Expr(m)) = self.tcx.hir().find_parent(scrut_hir_id)
+                        && let Some(hir::Node::Stmt(stmt)) = self.tcx.hir().find_parent(m.hir_id)
+                        && let hir::StmtKind::Expr(_) = stmt.kind
+                    {
+                        err.span_suggestion_verbose(
+                            stmt.span.shrink_to_hi(),
+                            "consider using a semicolon here, but this will discard any values \
+                             in the match arms",
+                            ";",
+                            Applicability::MaybeIncorrect,
+                        );
                     }
                     if let Some(ret_sp) = opt_suggest_box_span {
                         // Get return type span and point to it.

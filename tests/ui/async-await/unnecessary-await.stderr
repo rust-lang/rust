@@ -49,6 +49,19 @@ LL |     f!(());
    = note: required for `()` to implement `IntoFuture`
    = note: this error originates in the macro `f` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 3 previous errors
+error[E0277]: `()` is not a future
+  --> $DIR/unnecessary-await.rs:36:20
+   |
+LL |     for x in [] {}.await
+   |                   -^^^^^
+   |                   ||
+   |                   |`()` is not a future
+   |                   help: remove the `.await`
+   |
+   = help: the trait `Future` is not implemented for `()`
+   = note: () must be a future or must implement `IntoFuture` to be awaited
+   = note: required for `()` to implement `IntoFuture`
+
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0277`.
