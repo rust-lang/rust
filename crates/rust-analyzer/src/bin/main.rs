@@ -193,7 +193,7 @@ fn run_server() -> anyhow::Result<()> {
     let mut is_visual_studio_code = false;
     if let Some(client_info) = client_info {
         tracing::info!("Client '{}' {}", client_info.name, client_info.version.unwrap_or_default());
-        is_visual_studio_code = client_info.name == "Visual Studio Code";
+        is_visual_studio_code = client_info.name.starts_with("Visual Studio Code");
     }
 
     let workspace_roots = workspace_folders
