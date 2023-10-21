@@ -122,3 +122,37 @@ fn main() {
         }
     }
 }
+
+fn issue11635() {
+    // A little more involved than the original repro in the issue, but this tests that it correctly
+    // works for more than one deref step
+
+    use std::ops::Deref;
+
+    pub struct Thing(Vec<u8>);
+    pub struct Thing2(Thing);
+
+    impl Deref for Thing {
+        type Target = [u8];
+
+        fn deref(&self) -> &Self::Target {
+            &self.0
+        }
+    }
+
+    impl Deref for Thing2 {
+        type Target = Thing;
+        fn deref(&self) -> &Self::Target {
+            &self.0
+        }
+    }
+
+    impl<'a> IntoIterator for &'a Thing2 {
+        type Item = &'a u8;
+        type IntoIter = <&'a [u8] as IntoIterator>::IntoIter;
+
+        fn into_iter(self) -> Self::IntoIter {
+            self.0.iter()
+        }
+    }
+}

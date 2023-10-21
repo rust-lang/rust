@@ -13,6 +13,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::mir::ConstValue;
 use rustc_middle::ty;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_span::sym;
 use rustc_span::symbol::Symbol;
 
 use std::borrow::Cow;
@@ -160,12 +161,8 @@ impl<'tcx> LateLintPass<'tcx> for InterningDefinedSymbol {
 
 impl InterningDefinedSymbol {
     fn symbol_str_expr<'tcx>(&self, expr: &'tcx Expr<'tcx>, cx: &LateContext<'tcx>) -> Option<SymbolStrExpr<'tcx>> {
-        static IDENT_STR_PATHS: &[&[&str]] = &[&paths::IDENT_AS_STR, &paths::TO_STRING_METHOD];
-        static SYMBOL_STR_PATHS: &[&[&str]] = &[
-            &paths::SYMBOL_AS_STR,
-            &paths::SYMBOL_TO_IDENT_STRING,
-            &paths::TO_STRING_METHOD,
-        ];
+        static IDENT_STR_PATHS: &[&[&str]] = &[&paths::IDENT_AS_STR];
+        static SYMBOL_STR_PATHS: &[&[&str]] = &[&paths::SYMBOL_AS_STR, &paths::SYMBOL_TO_IDENT_STRING];
         let call = if_chain! {
             if let ExprKind::AddrOf(_, _, e) = expr.kind;
             if let ExprKind::Unary(UnOp::Deref, e) = e.kind;
@@ -186,9 +183,19 @@ impl InterningDefinedSymbol {
             };
             // ...which converts it to a string
             let paths = if is_ident { IDENT_STR_PATHS } else { SYMBOL_STR_PATHS };
-            if let Some(path) = paths.iter().find(|path| match_def_path(cx, did, path));
+            if let Some(is_to_owned) = paths
+                .iter()
+                .find_map(|path| if match_def_path(cx, did, path) {
+                    Some(path == &paths::SYMBOL_TO_IDENT_STRING)
+                } else {
+                    None
+                })
+                .or_else(|| if cx.tcx.is_diagnostic_item(sym::to_string_method, did) {
+                    Some(true)
+                } else {
+                    None
+                });
             then {
-                let is_to_owned = path.last().unwrap().ends_with("string");
                 return Some(SymbolStrExpr::Expr {
                     item,
                     is_ident,

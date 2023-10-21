@@ -54,7 +54,6 @@ declare_clippy_lint! {
     "unnecessary structure name repetition whereas `Self` is applicable"
 }
 
-#[derive(Default)]
 pub struct UseSelf {
     msrv: Msrv,
     stack: Vec<StackItem>,
@@ -65,7 +64,7 @@ impl UseSelf {
     pub fn new(msrv: Msrv) -> Self {
         Self {
             msrv,
-            ..Self::default()
+            stack: Vec::new(),
         }
     }
 }

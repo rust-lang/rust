@@ -189,7 +189,7 @@ fn needless_continue_in_else(else_expr: &ast::Expr, label: Option<&ast::Label>) 
 }
 
 fn is_first_block_stmt_continue(block: &ast::Block, label: Option<&ast::Label>) -> bool {
-    block.stmts.get(0).map_or(false, |stmt| match stmt.kind {
+    block.stmts.first().map_or(false, |stmt| match stmt.kind {
         ast::StmtKind::Semi(ref e) | ast::StmtKind::Expr(ref e) => {
             if let ast::ExprKind::Continue(ref l) = e.kind {
                 compare_labels(label, l.as_ref())
@@ -434,7 +434,7 @@ fn erode_from_back(s: &str) -> String {
 }
 
 fn span_of_first_expr_in_block(block: &ast::Block) -> Option<Span> {
-    block.stmts.get(0).map(|stmt| stmt.span)
+    block.stmts.first().map(|stmt| stmt.span)
 }
 
 #[cfg(test)]

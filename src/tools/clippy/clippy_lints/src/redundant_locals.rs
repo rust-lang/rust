@@ -62,7 +62,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantLocals {
             if let Res::Local(binding_id) = cx.qpath_res(&qpath, expr.hir_id);
             if let Node::Pat(binding_pat) = cx.tcx.hir().get(binding_id);
             // the previous binding has the same mutability
-            if find_binding(binding_pat, ident).unwrap().1 == mutability;
+            if find_binding(binding_pat, ident).is_some_and(|bind| bind.1 == mutability);
             // the local does not change the effect of assignments to the binding. see #11290
             if !affects_assignments(cx, mutability, binding_id, local.hir_id);
             // the local does not affect the code's drop behavior

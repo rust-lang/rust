@@ -105,27 +105,20 @@ static EXTERN_FLAGS: LazyLock<Vec<String>> = LazyLock::new(|| {
 // whether to run internal tests or not
 const RUN_INTERNAL_TESTS: bool = cfg!(feature = "internal");
 
-fn canonicalize(path: impl AsRef<Path>) -> PathBuf {
-    let path = path.as_ref();
-    fs::create_dir_all(path).unwrap();
-    fs::canonicalize(path).unwrap_or_else(|err| panic!("{} cannot be canonicalized: {err}", path.display()))
-}
-
 fn base_config(test_dir: &str) -> (Config, Args) {
     let mut args = Args::test().unwrap();
     args.bless |= var_os("RUSTC_BLESS").is_some_and(|v| v != "0");
 
+    let target_dir = PathBuf::from(var_os("CARGO_TARGET_DIR").unwrap_or_else(|| "target".into()));
     let mut config = Config {
         mode: Mode::Yolo {
             rustfix: ui_test::RustfixMode::Everything,
         },
-        stderr_filters: vec![(Match::PathBackslash, b"/")],
-        stdout_filters: vec![],
         filter_files: env::var("TESTNAME")
             .map(|filters| filters.split(',').map(str::to_string).collect())
             .unwrap_or_default(),
         target: None,
-        out_dir: canonicalize(var_os("CARGO_TARGET_DIR").unwrap_or_else(|| "target".into())).join("ui_test"),
+        out_dir: target_dir.join("ui_test"),
         ..Config::rustc(Path::new("tests").join(test_dir))
     };
     config.with_args(&args, /* bless by default */ false);
@@ -168,19 +161,13 @@ fn run_ui() {
     config
         .program
         .envs
-        .push(("CLIPPY_CONF_DIR".into(), Some(canonicalize("tests").into())));
-
-    let quiet = args.quiet;
+        .push(("CLIPPY_CONF_DIR".into(), Some("tests".into())));
 
     ui_test::run_tests_generic(
         vec![config],
         ui_test::default_file_filter,
         ui_test::default_per_file_config,
-        if quiet {
-            status_emitter::Text::quiet()
-        } else {
-            status_emitter::Text::verbose()
-        },
+        status_emitter::Text::from(args.format),
     )
     .unwrap();
 }
@@ -194,17 +181,12 @@ fn run_internal_tests() {
     if let OutputConflictHandling::Error(err) = &mut config.output_conflict_handling {
         *err = "cargo uitest --features internal -- -- --bless".into();
     }
-    let quiet = args.quiet;
 
     ui_test::run_tests_generic(
         vec![config],
         ui_test::default_file_filter,
         ui_test::default_per_file_config,
-        if quiet {
-            status_emitter::Text::quiet()
-        } else {
-            status_emitter::Text::verbose()
-        },
+        status_emitter::Text::from(args.format),
     )
     .unwrap();
 }
@@ -212,22 +194,9 @@ fn run_internal_tests() {
 fn run_ui_toml() {
     let (mut config, args) = base_config("ui-toml");
 
-    config.stderr_filters = vec![
-        (
-            Match::Exact(
-                canonicalize("tests")
-                    .parent()
-                    .unwrap()
-                    .to_string_lossy()
-                    .as_bytes()
-                    .to_vec(),
-            ),
-            b"$DIR",
-        ),
-        (Match::Exact(b"\\".to_vec()), b"/"),
-    ];
-
-    let quiet = args.quiet;
+    config
+        .stderr_filters
+        .push((Match::from(env::current_dir().unwrap().as_path()), b"$DIR"));
 
     ui_test::run_tests_generic(
         vec![config],
@@ -238,11 +207,7 @@ fn run_ui_toml() {
                 .envs
                 .push(("CLIPPY_CONF_DIR".into(), Some(path.parent().unwrap().into())));
         },
-        if quiet {
-            status_emitter::Text::quiet()
-        } else {
-            status_emitter::Text::verbose()
-        },
+        status_emitter::Text::from(args.format),
     )
     .unwrap();
 }
@@ -270,22 +235,9 @@ fn run_ui_cargo() {
     });
     config.edition = None;
 
-    config.stderr_filters = vec![
-        (
-            Match::Exact(
-                canonicalize("tests")
-                    .parent()
-                    .unwrap()
-                    .to_string_lossy()
-                    .as_bytes()
-                    .to_vec(),
-            ),
-            b"$DIR",
-        ),
-        (Match::Exact(b"\\".to_vec()), b"/"),
-    ];
-
-    let quiet = args.quiet;
+    config
+        .stderr_filters
+        .push((Match::from(env::current_dir().unwrap().as_path()), b"$DIR"));
 
     let ignored_32bit = |path: &Path| {
         // FIXME: for some reason the modules are linted in a different order for this test
@@ -297,20 +249,8 @@ fn run_ui_cargo() {
         |path, config| {
             path.ends_with("Cargo.toml") && ui_test::default_any_file_filter(path, config) && !ignored_32bit(path)
         },
-        |config, path, _file_contents| {
-            config.out_dir = canonicalize(
-                std::env::current_dir()
-                    .unwrap()
-                    .join("target")
-                    .join("ui_test_cargo/")
-                    .join(path.parent().unwrap()),
-            );
-        },
-        if quiet {
-            status_emitter::Text::quiet()
-        } else {
-            status_emitter::Text::verbose()
-        },
+        |_config, _path, _file_contents| {},
+        status_emitter::Text::from(args.format),
     )
     .unwrap();
 }

@@ -19,6 +19,9 @@ fn main() {
     });
     let _: Result<u32, u32> = Ok(1).map_err(|a| a);
     let _: Result<u32, u32> = Ok(1).map_err(|a: u32| a * 42);
+    // : u32 guides type inference
+    let _ = Ok(1).map_err(|a: u32| a);
+    let _ = Ok(1).map_err(std::convert::identity::<u32>);
 }
 
 fn not_identity(x: &u16) -> u16 {

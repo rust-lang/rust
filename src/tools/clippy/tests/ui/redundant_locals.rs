@@ -117,6 +117,14 @@ fn macros() {
         let x = 1;
         let x = x;
     }
+
+    let x = 10;
+    macro_rules! rebind_outer_macro {
+        ($x:ident) => {
+            let x = x;
+        };
+    }
+    rebind_outer_macro!(y);
 }
 
 struct WithDrop(usize);

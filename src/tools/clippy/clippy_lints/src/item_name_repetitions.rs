@@ -1,9 +1,10 @@
 //! lint on enum variants that are prefixed or suffixed by the same characters
 
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_hir};
+use clippy_utils::macros::span_is_local;
 use clippy_utils::source::is_present_in_source;
-use clippy_utils::str_utils::{camel_case_split, count_match_end, count_match_start};
-use rustc_hir::{EnumDef, Item, ItemKind, OwnerId, Variant};
+use clippy_utils::str_utils::{camel_case_split, count_match_end, count_match_start, to_camel_case, to_snake_case};
+use rustc_hir::{EnumDef, FieldDef, Item, ItemKind, OwnerId, Variant, VariantData};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Span;
@@ -103,31 +104,183 @@ declare_clippy_lint! {
     style,
     "modules that have the same name as their parent module"
 }
+declare_clippy_lint! {
+    /// ### What it does
+    /// Detects struct fields that are prefixed or suffixed
+    /// by the same characters or the name of the struct itself.
+    ///
+    /// ### Why is this bad?
+    /// Information common to all struct fields is better represented in the struct name.
+    ///
+    /// ### Limitations
+    /// Characters with no casing will be considered when comparing prefixes/suffixes
+    /// This applies to numbers and non-ascii characters without casing
+    /// e.g. `foo1` and `foo2` is considered to have different prefixes
+    /// (the prefixes are `foo1` and `foo2` respectively), as also `bar螃`, `bar蟹`
+    ///
+    /// ### Example
+    /// ```rust
+    /// struct Cake {
+    ///     cake_sugar: u8,
+    ///     cake_flour: u8,
+    ///     cake_eggs: u8
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// struct Cake {
+    ///     sugar: u8,
+    ///     flour: u8,
+    ///     eggs: u8
+    /// }
+    /// ```
+    #[clippy::version = "1.75.0"]
+    pub STRUCT_FIELD_NAMES,
+    pedantic,
+    "structs where all fields share a prefix/postfix or contain the name of the struct"
+}
 
-pub struct EnumVariantNames {
+pub struct ItemNameRepetitions {
     modules: Vec<(Symbol, String, OwnerId)>,
-    threshold: u64,
+    enum_threshold: u64,
+    struct_threshold: u64,
     avoid_breaking_exported_api: bool,
     allow_private_module_inception: bool,
 }
 
-impl EnumVariantNames {
+impl ItemNameRepetitions {
     #[must_use]
-    pub fn new(threshold: u64, avoid_breaking_exported_api: bool, allow_private_module_inception: bool) -> Self {
+    pub fn new(
+        enum_threshold: u64,
+        struct_threshold: u64,
+        avoid_breaking_exported_api: bool,
+        allow_private_module_inception: bool,
+    ) -> Self {
         Self {
             modules: Vec::new(),
-            threshold,
+            enum_threshold,
+            struct_threshold,
             avoid_breaking_exported_api,
             allow_private_module_inception,
         }
     }
 }
 
-impl_lint_pass!(EnumVariantNames => [
+impl_lint_pass!(ItemNameRepetitions => [
     ENUM_VARIANT_NAMES,
+    STRUCT_FIELD_NAMES,
     MODULE_NAME_REPETITIONS,
     MODULE_INCEPTION
 ]);
+
+#[must_use]
+fn have_no_extra_prefix(prefixes: &[&str]) -> bool {
+    prefixes.iter().all(|p| p == &"" || p == &"_")
+}
+
+fn check_fields(cx: &LateContext<'_>, threshold: u64, item: &Item<'_>, fields: &[FieldDef<'_>]) {
+    if (fields.len() as u64) < threshold {
+        return;
+    }
+
+    check_struct_name_repetition(cx, item, fields);
+
+    // if the SyntaxContext of the identifiers of the fields and struct differ dont lint them.
+    // this prevents linting in macros in which the location of the field identifier names differ
+    if !fields.iter().all(|field| item.ident.span.eq_ctxt(field.ident.span)) {
+        return;
+    }
+
+    let mut pre: Vec<&str> = match fields.first() {
+        Some(first_field) => first_field.ident.name.as_str().split('_').collect(),
+        None => return,
+    };
+    let mut post = pre.clone();
+    post.reverse();
+    for field in fields {
+        let field_split: Vec<&str> = field.ident.name.as_str().split('_').collect();
+        if field_split.len() == 1 {
+            return;
+        }
+
+        pre = pre
+            .into_iter()
+            .zip(field_split.iter())
+            .take_while(|(a, b)| &a == b)
+            .map(|e| e.0)
+            .collect();
+        post = post
+            .into_iter()
+            .zip(field_split.iter().rev())
+            .take_while(|(a, b)| &a == b)
+            .map(|e| e.0)
+            .collect();
+    }
+    let prefix = pre.join("_");
+    post.reverse();
+    let postfix = match post.last() {
+        Some(&"") => post.join("_") + "_",
+        Some(_) | None => post.join("_"),
+    };
+    if fields.len() > 1 {
+        let (what, value) = match (
+            prefix.is_empty() || prefix.chars().all(|c| c == '_'),
+            postfix.is_empty(),
+        ) {
+            (true, true) => return,
+            (false, _) => ("pre", prefix),
+            (true, false) => ("post", postfix),
+        };
+        span_lint_and_help(
+            cx,
+            STRUCT_FIELD_NAMES,
+            item.span,
+            &format!("all fields have the same {what}fix: `{value}`"),
+            None,
+            &format!("remove the {what}fixes"),
+        );
+    }
+}
+
+fn check_struct_name_repetition(cx: &LateContext<'_>, item: &Item<'_>, fields: &[FieldDef<'_>]) {
+    let snake_name = to_snake_case(item.ident.name.as_str());
+    let item_name_words: Vec<&str> = snake_name.split('_').collect();
+    for field in fields {
+        if field.ident.span.eq_ctxt(item.ident.span) {
+            //consider linting only if the field identifier has the same SyntaxContext as the item(struct)
+            let field_words: Vec<&str> = field.ident.name.as_str().split('_').collect();
+            if field_words.len() >= item_name_words.len() {
+                // if the field name is shorter than the struct name it cannot contain it
+                if field_words.iter().zip(item_name_words.iter()).all(|(a, b)| a == b) {
+                    span_lint_hir(
+                        cx,
+                        STRUCT_FIELD_NAMES,
+                        field.hir_id,
+                        field.span,
+                        "field name starts with the struct's name",
+                    );
+                }
+                if field_words.len() > item_name_words.len() {
+                    // lint only if the end is not covered by the start
+                    if field_words
+                        .iter()
+                        .rev()
+                        .zip(item_name_words.iter().rev())
+                        .all(|(a, b)| a == b)
+                    {
+                        span_lint_hir(
+                            cx,
+                            STRUCT_FIELD_NAMES,
+                            field.hir_id,
+                            field.span,
+                            "field name ends with the struct's name",
+                        );
+                    }
+                }
+            }
+        }
+    }
+}
 
 fn check_enum_start(cx: &LateContext<'_>, item_name: &str, variant: &Variant<'_>) {
     let name = variant.ident.name.as_str();
@@ -218,35 +371,7 @@ fn check_variant(cx: &LateContext<'_>, threshold: u64, def: &EnumDef<'_>, item_n
     );
 }
 
-#[must_use]
-fn have_no_extra_prefix(prefixes: &[&str]) -> bool {
-    prefixes.iter().all(|p| p == &"" || p == &"_")
-}
-
-#[must_use]
-fn to_camel_case(item_name: &str) -> String {
-    let mut s = String::new();
-    let mut up = true;
-    for c in item_name.chars() {
-        if c.is_uppercase() {
-            // we only turn snake case text into CamelCase
-            return item_name.to_string();
-        }
-        if c == '_' {
-            up = true;
-            continue;
-        }
-        if up {
-            up = false;
-            s.extend(c.to_uppercase());
-        } else {
-            s.push(c);
-        }
-    }
-    s
-}
-
-impl LateLintPass<'_> for EnumVariantNames {
+impl LateLintPass<'_> for ItemNameRepetitions {
     fn check_item_post(&mut self, _cx: &LateContext<'_>, _item: &Item<'_>) {
         let last = self.modules.pop();
         assert!(last.is_some());
@@ -303,9 +428,15 @@ impl LateLintPass<'_> for EnumVariantNames {
                 }
             }
         }
-        if let ItemKind::Enum(ref def, _) = item.kind {
-            if !(self.avoid_breaking_exported_api && cx.effective_visibilities.is_exported(item.owner_id.def_id)) {
-                check_variant(cx, self.threshold, def, item_name, item.span);
+        if !(self.avoid_breaking_exported_api && cx.effective_visibilities.is_exported(item.owner_id.def_id))
+            && span_is_local(item.span)
+        {
+            match item.kind {
+                ItemKind::Enum(def, _) => check_variant(cx, self.enum_threshold, &def, item_name, item.span),
+                ItemKind::Struct(VariantData::Struct(fields, _), _) => {
+                    check_fields(cx, self.struct_threshold, item, fields);
+                },
+                _ => (),
             }
         }
         self.modules.push((item.ident.name, item_camel, item.owner_id));
