@@ -179,10 +179,10 @@ pub trait Swizzle<const N: usize> {
     }
 }
 
-impl<T, const LANES: usize> Simd<T, LANES>
+impl<T, const N: usize> Simd<T, N>
 where
     T: SimdElement,
-    LaneCount<LANES>: SupportedLaneCount,
+    LaneCount<N>: SupportedLaneCount,
 {
     /// Reverse the order of the elements in the vector.
     #[inline]

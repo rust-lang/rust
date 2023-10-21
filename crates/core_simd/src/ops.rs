@@ -9,10 +9,10 @@ mod deref;
 mod shift_scalar;
 mod unary;
 
-impl<I, T, const LANES: usize> core::ops::Index<I> for Simd<T, LANES>
+impl<I, T, const N: usize> core::ops::Index<I> for Simd<T, N>
 where
     T: SimdElement,
-    LaneCount<LANES>: SupportedLaneCount,
+    LaneCount<N>: SupportedLaneCount,
     I: core::slice::SliceIndex<[T]>,
 {
     type Output = I::Output;
@@ -22,10 +22,10 @@ where
     }
 }
 
-impl<I, T, const LANES: usize> core::ops::IndexMut<I> for Simd<T, LANES>
+impl<I, T, const N: usize> core::ops::IndexMut<I> for Simd<T, N>
 where
     T: SimdElement,
-    LaneCount<LANES>: SupportedLaneCount,
+    LaneCount<N>: SupportedLaneCount,
     I: core::slice::SliceIndex<[T]>,
 {
     #[inline]

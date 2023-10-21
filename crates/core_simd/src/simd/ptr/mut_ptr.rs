@@ -74,18 +74,18 @@ pub trait SimdMutPtr: Copy + Sealed {
     fn wrapping_sub(self, count: Self::Usize) -> Self;
 }
 
-impl<T, const LANES: usize> Sealed for Simd<*mut T, LANES> where LaneCount<LANES>: SupportedLaneCount
+impl<T, const N: usize> Sealed for Simd<*mut T, N> where LaneCount<N>: SupportedLaneCount
 {}
 
-impl<T, const LANES: usize> SimdMutPtr for Simd<*mut T, LANES>
+impl<T, const N: usize> SimdMutPtr for Simd<*mut T, N>
 where
-    LaneCount<LANES>: SupportedLaneCount,
+    LaneCount<N>: SupportedLaneCount,
 {
-    type Usize = Simd<usize, LANES>;
-    type Isize = Simd<isize, LANES>;
-    type CastPtr<U> = Simd<*mut U, LANES>;
-    type ConstPtr = Simd<*const T, LANES>;
-    type Mask = Mask<isize, LANES>;
+    type Usize = Simd<usize, N>;
+    type Isize = Simd<isize, N>;
+    type CastPtr<U> = Simd<*mut U, N>;
+    type ConstPtr = Simd<*const T, N>;
+    type Mask = Mask<isize, N>;
 
     #[inline]
     fn is_null(self) -> Self::Mask {

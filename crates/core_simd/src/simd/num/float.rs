@@ -240,20 +240,20 @@ pub trait SimdFloat: Copy + Sealed {
 macro_rules! impl_trait {
     { $($ty:ty { bits: $bits_ty:ty, mask: $mask_ty:ty }),* } => {
         $(
-        impl<const LANES: usize> Sealed for Simd<$ty, LANES>
+        impl<const N: usize> Sealed for Simd<$ty, N>
         where
-            LaneCount<LANES>: SupportedLaneCount,
+            LaneCount<N>: SupportedLaneCount,
         {
         }
 
-        impl<const LANES: usize> SimdFloat for Simd<$ty, LANES>
+        impl<const N: usize> SimdFloat for Simd<$ty, N>
         where
-            LaneCount<LANES>: SupportedLaneCount,
+            LaneCount<N>: SupportedLaneCount,
         {
-            type Mask = Mask<<$mask_ty as SimdElement>::Mask, LANES>;
+            type Mask = Mask<<$mask_ty as SimdElement>::Mask, N>;
             type Scalar = $ty;
-            type Bits = Simd<$bits_ty, LANES>;
-            type Cast<T: SimdElement> = Simd<T, LANES>;
+            type Bits = Simd<$bits_ty, N>;
+            type Cast<T: SimdElement> = Simd<T, N>;
 
             #[inline]
             fn cast<T: SimdCast>(self) -> Self::Cast<T>
@@ -273,14 +273,14 @@ macro_rules! impl_trait {
             }
 
             #[inline]
-            fn to_bits(self) -> Simd<$bits_ty, LANES> {
+            fn to_bits(self) -> Simd<$bits_ty, N> {
                 assert_eq!(core::mem::size_of::<Self>(), core::mem::size_of::<Self::Bits>());
                 // Safety: transmuting between vector types is safe
                 unsafe { core::mem::transmute_copy(&self) }
             }
 
             #[inline]
-            fn from_bits(bits: Simd<$bits_ty, LANES>) -> Self {
+            fn from_bits(bits: Simd<$bits_ty, N>) -> Self {
                 assert_eq!(core::mem::size_of::<Self>(), core::mem::size_of::<Self::Bits>());
                 // Safety: transmuting between vector types is safe
                 unsafe { core::mem::transmute_copy(&bits) }

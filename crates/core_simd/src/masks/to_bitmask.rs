@@ -7,10 +7,10 @@ mod sealed {
 }
 pub use sealed::Sealed;
 
-impl<T, const LANES: usize> Sealed for Mask<T, LANES>
+impl<T, const N: usize> Sealed for Mask<T, N>
 where
     T: MaskElement,
-    LaneCount<LANES>: SupportedLaneCount,
+    LaneCount<N>: SupportedLaneCount,
 {
 }
 

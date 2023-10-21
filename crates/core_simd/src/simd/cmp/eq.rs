@@ -21,11 +21,11 @@ pub trait SimdPartialEq {
 macro_rules! impl_number {
     { $($number:ty),* } => {
         $(
-        impl<const LANES: usize> SimdPartialEq for Simd<$number, LANES>
+        impl<const N: usize> SimdPartialEq for Simd<$number, N>
         where
-            LaneCount<LANES>: SupportedLaneCount,
+            LaneCount<N>: SupportedLaneCount,
         {
-            type Mask = Mask<<$number as SimdElement>::Mask, LANES>;
+            type Mask = Mask<<$number as SimdElement>::Mask, N>;
 
             #[inline]
             fn simd_eq(self, other: Self) -> Self::Mask {
@@ -50,9 +50,9 @@ impl_number! { f32, f64, u8, u16, u32, u64, usize, i8, i16, i32, i64, isize }
 macro_rules! impl_mask {
     { $($integer:ty),* } => {
         $(
-        impl<const LANES: usize> SimdPartialEq for Mask<$integer, LANES>
+        impl<const N: usize> SimdPartialEq for Mask<$integer, N>
         where
-            LaneCount<LANES>: SupportedLaneCount,
+            LaneCount<N>: SupportedLaneCount,
         {
             type Mask = Self;
 
@@ -76,11 +76,11 @@ macro_rules! impl_mask {
 
 impl_mask! { i8, i16, i32, i64, isize }
 
-impl<T, const LANES: usize> SimdPartialEq for Simd<*const T, LANES>
+impl<T, const N: usize> SimdPartialEq for Simd<*const T, N>
 where
-    LaneCount<LANES>: SupportedLaneCount,
+    LaneCount<N>: SupportedLaneCount,
 {
-    type Mask = Mask<isize, LANES>;
+    type Mask = Mask<isize, N>;
 
     #[inline]
     fn simd_eq(self, other: Self) -> Self::Mask {
@@ -93,11 +93,11 @@ where
     }
 }
 
-impl<T, const LANES: usize> SimdPartialEq for Simd<*mut T, LANES>
+impl<T, const N: usize> SimdPartialEq for Simd<*mut T, N>
 where
-    LaneCount<LANES>: SupportedLaneCount,
+    LaneCount<N>: SupportedLaneCount,
 {
-    type Mask = Mask<isize, LANES>;
+    type Mask = Mask<isize, N>;
 
     #[inline]
     fn simd_eq(self, other: Self) -> Self::Mask {

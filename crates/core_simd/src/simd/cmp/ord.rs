@@ -49,9 +49,9 @@ pub trait SimdOrd: SimdPartialOrd {
 macro_rules! impl_integer {
     { $($integer:ty),* } => {
         $(
-        impl<const LANES: usize> SimdPartialOrd for Simd<$integer, LANES>
+        impl<const N: usize> SimdPartialOrd for Simd<$integer, N>
         where
-            LaneCount<LANES>: SupportedLaneCount,
+            LaneCount<N>: SupportedLaneCount,
         {
             #[inline]
             fn simd_lt(self, other: Self) -> Self::Mask {
@@ -82,9 +82,9 @@ macro_rules! impl_integer {
             }
         }
 
-        impl<const LANES: usize> SimdOrd for Simd<$integer, LANES>
+        impl<const N: usize> SimdOrd for Simd<$integer, N>
         where
-            LaneCount<LANES>: SupportedLaneCount,
+            LaneCount<N>: SupportedLaneCount,
         {
             #[inline]
             fn simd_max(self, other: Self) -> Self {
@@ -115,9 +115,9 @@ impl_integer! { u8, u16, u32, u64, usize, i8, i16, i32, i64, isize }
 macro_rules! impl_float {
     { $($float:ty),* } => {
         $(
-        impl<const LANES: usize> SimdPartialOrd for Simd<$float, LANES>
+        impl<const N: usize> SimdPartialOrd for Simd<$float, N>
         where
-            LaneCount<LANES>: SupportedLaneCount,
+            LaneCount<N>: SupportedLaneCount,
         {
             #[inline]
             fn simd_lt(self, other: Self) -> Self::Mask {
@@ -156,9 +156,9 @@ impl_float! { f32, f64 }
 macro_rules! impl_mask {
     { $($integer:ty),* } => {
         $(
-        impl<const LANES: usize> SimdPartialOrd for Mask<$integer, LANES>
+        impl<const N: usize> SimdPartialOrd for Mask<$integer, N>
         where
-            LaneCount<LANES>: SupportedLaneCount,
+            LaneCount<N>: SupportedLaneCount,
         {
             #[inline]
             fn simd_lt(self, other: Self) -> Self::Mask {
@@ -189,9 +189,9 @@ macro_rules! impl_mask {
             }
         }
 
-        impl<const LANES: usize> SimdOrd for Mask<$integer, LANES>
+        impl<const N: usize> SimdOrd for Mask<$integer, N>
         where
-            LaneCount<LANES>: SupportedLaneCount,
+            LaneCount<N>: SupportedLaneCount,
         {
             #[inline]
             fn simd_max(self, other: Self) -> Self {
@@ -219,9 +219,9 @@ macro_rules! impl_mask {
 
 impl_mask! { i8, i16, i32, i64, isize }
 
-impl<T, const LANES: usize> SimdPartialOrd for Simd<*const T, LANES>
+impl<T, const N: usize> SimdPartialOrd for Simd<*const T, N>
 where
-    LaneCount<LANES>: SupportedLaneCount,
+    LaneCount<N>: SupportedLaneCount,
 {
     #[inline]
     fn simd_lt(self, other: Self) -> Self::Mask {
@@ -244,9 +244,9 @@ where
     }
 }
 
-impl<T, const LANES: usize> SimdOrd for Simd<*const T, LANES>
+impl<T, const N: usize> SimdOrd for Simd<*const T, N>
 where
-    LaneCount<LANES>: SupportedLaneCount,
+    LaneCount<N>: SupportedLaneCount,
 {
     #[inline]
     fn simd_max(self, other: Self) -> Self {
@@ -269,9 +269,9 @@ where
     }
 }
 
-impl<T, const LANES: usize> SimdPartialOrd for Simd<*mut T, LANES>
+impl<T, const N: usize> SimdPartialOrd for Simd<*mut T, N>
 where
-    LaneCount<LANES>: SupportedLaneCount,
+    LaneCount<N>: SupportedLaneCount,
 {
     #[inline]
     fn simd_lt(self, other: Self) -> Self::Mask {
@@ -294,9 +294,9 @@ where
     }
 }
 
-impl<T, const LANES: usize> SimdOrd for Simd<*mut T, LANES>
+impl<T, const N: usize> SimdOrd for Simd<*mut T, N>
 where
-    LaneCount<LANES>: SupportedLaneCount,
+    LaneCount<N>: SupportedLaneCount,
 {
     #[inline]
     fn simd_max(self, other: Self) -> Self {

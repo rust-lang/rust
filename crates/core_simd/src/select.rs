@@ -1,10 +1,10 @@
 use crate::simd::intrinsics;
 use crate::simd::{LaneCount, Mask, MaskElement, Simd, SimdElement, SupportedLaneCount};
 
-impl<T, const LANES: usize> Mask<T, LANES>
+impl<T, const N: usize> Mask<T, N>
 where
     T: MaskElement,
-    LaneCount<LANES>: SupportedLaneCount,
+    LaneCount<N>: SupportedLaneCount,
 {
     /// Choose elements from two vectors.
     ///
@@ -25,9 +25,9 @@ where
     #[must_use = "method returns a new vector and does not mutate the original inputs"]
     pub fn select<U>(
         self,
-        true_values: Simd<U, LANES>,
-        false_values: Simd<U, LANES>,
-    ) -> Simd<U, LANES>
+        true_values: Simd<U, N>,
+        false_values: Simd<U, N>,
+    ) -> Simd<U, N>
     where
         U: SimdElement<Mask = T>,
     {

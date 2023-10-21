@@ -219,20 +219,20 @@ pub trait SimdInt: Copy + Sealed {
 macro_rules! impl_trait {
     { $($ty:ident ($unsigned:ident)),* } => {
         $(
-        impl<const LANES: usize> Sealed for Simd<$ty, LANES>
+        impl<const N: usize> Sealed for Simd<$ty, N>
         where
-            LaneCount<LANES>: SupportedLaneCount,
+            LaneCount<N>: SupportedLaneCount,
         {
         }
 
-        impl<const LANES: usize> SimdInt for Simd<$ty, LANES>
+        impl<const N: usize> SimdInt for Simd<$ty, N>
         where
-            LaneCount<LANES>: SupportedLaneCount,
+            LaneCount<N>: SupportedLaneCount,
         {
-            type Mask = Mask<<$ty as SimdElement>::Mask, LANES>;
+            type Mask = Mask<<$ty as SimdElement>::Mask, N>;
             type Scalar = $ty;
-            type Unsigned = Simd<$unsigned, LANES>;
-            type Cast<T: SimdElement> = Simd<T, LANES>;
+            type Unsigned = Simd<$unsigned, N>;
+            type Cast<T: SimdElement> = Simd<T, N>;
 
             #[inline]
             fn cast<T: SimdCast>(self) -> Self::Cast<T> {
