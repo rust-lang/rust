@@ -10,7 +10,7 @@ LL | #![deny(non_exhaustive_omitted_patterns)]
    = note: `#[warn(unknown_lints)]` on by default
 
 warning: unknown lint: `non_exhaustive_omitted_patterns`
-  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:6:1
+  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:7:1
    |
 LL | #![allow(non_exhaustive_omitted_patterns)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -20,7 +20,7 @@ LL | #![allow(non_exhaustive_omitted_patterns)]
    = help: add `#![feature(non_exhaustive_omitted_patterns_lint)]` to the crate attributes to enable
 
 warning: unknown lint: `non_exhaustive_omitted_patterns`
-  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:15:5
+  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:19:5
    |
 LL |     #[allow(non_exhaustive_omitted_patterns)]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -30,7 +30,7 @@ LL |     #[allow(non_exhaustive_omitted_patterns)]
    = help: add `#![feature(non_exhaustive_omitted_patterns_lint)]` to the crate attributes to enable
 
 warning: unknown lint: `non_exhaustive_omitted_patterns`
-  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:15:5
+  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:19:5
    |
 LL |     #[allow(non_exhaustive_omitted_patterns)]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -41,14 +41,25 @@ LL |     #[allow(non_exhaustive_omitted_patterns)]
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 warning: unknown lint: `non_exhaustive_omitted_patterns`
-  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:29:9
+  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:31:5
    |
-LL |         #[warn(non_exhaustive_omitted_patterns)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     #[warn(non_exhaustive_omitted_patterns)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: the `non_exhaustive_omitted_patterns` lint is unstable
    = note: see issue #89554 <https://github.com/rust-lang/rust/issues/89554> for more information
    = help: add `#![feature(non_exhaustive_omitted_patterns_lint)]` to the crate attributes to enable
+
+warning: unknown lint: `non_exhaustive_omitted_patterns`
+  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:31:5
+   |
+LL |     #[warn(non_exhaustive_omitted_patterns)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the `non_exhaustive_omitted_patterns` lint is unstable
+   = note: see issue #89554 <https://github.com/rust-lang/rust/issues/89554> for more information
+   = help: add `#![feature(non_exhaustive_omitted_patterns_lint)]` to the crate attributes to enable
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 warning: unknown lint: `non_exhaustive_omitted_patterns`
   --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:3:1
@@ -62,7 +73,7 @@ LL | #![deny(non_exhaustive_omitted_patterns)]
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 warning: unknown lint: `non_exhaustive_omitted_patterns`
-  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:6:1
+  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:7:1
    |
 LL | #![allow(non_exhaustive_omitted_patterns)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -73,7 +84,7 @@ LL | #![allow(non_exhaustive_omitted_patterns)]
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 warning: unknown lint: `non_exhaustive_omitted_patterns`
-  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:15:5
+  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:19:5
    |
 LL |     #[allow(non_exhaustive_omitted_patterns)]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -84,7 +95,7 @@ LL |     #[allow(non_exhaustive_omitted_patterns)]
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 warning: unknown lint: `non_exhaustive_omitted_patterns`
-  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:15:5
+  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:19:5
    |
 LL |     #[allow(non_exhaustive_omitted_patterns)]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -95,10 +106,21 @@ LL |     #[allow(non_exhaustive_omitted_patterns)]
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 warning: unknown lint: `non_exhaustive_omitted_patterns`
-  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:29:9
+  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:31:5
    |
-LL |         #[warn(non_exhaustive_omitted_patterns)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     #[warn(non_exhaustive_omitted_patterns)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the `non_exhaustive_omitted_patterns` lint is unstable
+   = note: see issue #89554 <https://github.com/rust-lang/rust/issues/89554> for more information
+   = help: add `#![feature(non_exhaustive_omitted_patterns_lint)]` to the crate attributes to enable
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: unknown lint: `non_exhaustive_omitted_patterns`
+  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:31:5
+   |
+LL |     #[warn(non_exhaustive_omitted_patterns)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: the `non_exhaustive_omitted_patterns` lint is unstable
    = note: see issue #89554 <https://github.com/rust-lang/rust/issues/89554> for more information
@@ -106,18 +128,19 @@ LL |         #[warn(non_exhaustive_omitted_patterns)]
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0004]: non-exhaustive patterns: `Foo::C` not covered
-  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:20:11
+  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:25:11
    |
 LL |     match Foo::A {
    |           ^^^^^^ pattern `Foo::C` not covered
    |
 note: `Foo` defined here
-  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:12:15
+  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:16:9
    |
 LL |     enum Foo {
    |          ---
-LL |         A, B, C,
-   |               ^ not covered
+...
+LL |         C,
+   |         ^ not covered
    = note: the matched value is of type `Foo`
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
@@ -125,6 +148,50 @@ LL ~         Foo::B => {},
 LL +         Foo::C => todo!()
    |
 
-error: aborting due to previous error; 10 warnings emitted
+warning: unknown lint: `non_exhaustive_omitted_patterns`
+  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:3:1
+   |
+LL | #![deny(non_exhaustive_omitted_patterns)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the `non_exhaustive_omitted_patterns` lint is unstable
+   = note: see issue #89554 <https://github.com/rust-lang/rust/issues/89554> for more information
+   = help: add `#![feature(non_exhaustive_omitted_patterns_lint)]` to the crate attributes to enable
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: unknown lint: `non_exhaustive_omitted_patterns`
+  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:7:1
+   |
+LL | #![allow(non_exhaustive_omitted_patterns)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the `non_exhaustive_omitted_patterns` lint is unstable
+   = note: see issue #89554 <https://github.com/rust-lang/rust/issues/89554> for more information
+   = help: add `#![feature(non_exhaustive_omitted_patterns_lint)]` to the crate attributes to enable
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: unknown lint: `non_exhaustive_omitted_patterns`
+  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:19:5
+   |
+LL |     #[allow(non_exhaustive_omitted_patterns)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the `non_exhaustive_omitted_patterns` lint is unstable
+   = note: see issue #89554 <https://github.com/rust-lang/rust/issues/89554> for more information
+   = help: add `#![feature(non_exhaustive_omitted_patterns_lint)]` to the crate attributes to enable
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: unknown lint: `non_exhaustive_omitted_patterns`
+  --> $DIR/feature-gate-non_exhaustive_omitted_patterns_lint.rs:31:5
+   |
+LL |     #[warn(non_exhaustive_omitted_patterns)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the `non_exhaustive_omitted_patterns` lint is unstable
+   = note: see issue #89554 <https://github.com/rust-lang/rust/issues/89554> for more information
+   = help: add `#![feature(non_exhaustive_omitted_patterns_lint)]` to the crate attributes to enable
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to previous error; 16 warnings emitted
 
 For more information about this error, try `rustc --explain E0004`.

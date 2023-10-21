@@ -6,23 +6,23 @@
 // aux-build:unstable.rs
 extern crate unstable;
 
-use unstable::{UnstableEnum, OnlyUnstableEnum, UnstableStruct, OnlyUnstableStruct};
+use unstable::{OnlyUnstableEnum, OnlyUnstableStruct, UnstableEnum, UnstableStruct};
 
 fn main() {
     // OK: this matches all the stable variants
+    #[deny(non_exhaustive_omitted_patterns)]
     match UnstableEnum::Stable {
         UnstableEnum::Stable => {}
         UnstableEnum::Stable2 => {}
-        #[deny(non_exhaustive_omitted_patterns)]
         _ => {}
     }
 
+    #[deny(non_exhaustive_omitted_patterns)]
     match UnstableEnum::Stable {
+        //~^ some variants are not matched explicitly
         UnstableEnum::Stable => {}
-        #[deny(non_exhaustive_omitted_patterns)]
         _ => {}
     }
-    //~^^ some variants are not matched explicitly
 
     // Ok: although this is a bit odd, we don't have anything to report
     // since there is no stable variants and the feature is off
