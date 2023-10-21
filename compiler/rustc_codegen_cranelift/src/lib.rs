@@ -1,6 +1,6 @@
-#![cfg_attr(not(bootstrap), allow(internal_features))]
-#![cfg_attr(not(bootstrap), feature(rustdoc_internals))]
-#![cfg_attr(not(bootstrap), doc(rust_logo))]
+#![cfg_attr(all(doc, not(bootstrap)), allow(internal_features))]
+#![cfg_attr(all(doc, not(bootstrap)), feature(rustdoc_internals))]
+#![cfg_attr(all(doc, not(bootstrap)), doc(rust_logo))]
 #![feature(rustc_private)]
 // Note: please avoid adding other feature gates where possible
 #![warn(rust_2018_idioms)]
@@ -189,7 +189,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
     }
 
     fn target_features(&self, _sess: &Session, _allow_unstable: bool) -> Vec<rustc_span::Symbol> {
-        vec![]
+        vec![] // FIXME necessary for #[cfg(target_feature]
     }
 
     fn print_version(&self) {
