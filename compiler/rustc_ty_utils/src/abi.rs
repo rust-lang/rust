@@ -97,8 +97,8 @@ fn fn_sig_for_fn_abi<'tcx>(
                 bound_vars,
             )
         }
-        ty::Generator(did, args, _) => {
-            let sig = args.as_generator().poly_sig();
+        ty::Coroutine(did, args, _) => {
+            let sig = args.as_coroutine().poly_sig();
 
             let bound_vars = tcx.mk_bound_variable_kinds_from_iter(
                 sig.bound_vars().iter().chain(iter::once(ty::BoundVariableKind::Region(ty::BrEnv))),
@@ -116,11 +116,11 @@ fn fn_sig_for_fn_abi<'tcx>(
             let env_ty = Ty::new_adt(tcx, pin_adt_ref, pin_args);
 
             let sig = sig.skip_binder();
-            // The `FnSig` and the `ret_ty` here is for a generators main
-            // `Generator::resume(...) -> GeneratorState` function in case we
-            // have an ordinary generator, or the `Future::poll(...) -> Poll`
-            // function in case this is a special generator backing an async construct.
-            let (resume_ty, ret_ty) = if tcx.generator_is_async(did) {
+            // The `FnSig` and the `ret_ty` here is for a coroutines main
+            // `Coroutine::resume(...) -> CoroutineState` function in case we
+            // have an ordinary coroutine, or the `Future::poll(...) -> Poll`
+            // function in case this is a special coroutine backing an async construct.
+            let (resume_ty, ret_ty) = if tcx.coroutine_is_async(did) {
                 // The signature should be `Future::poll(_, &mut Context<'_>) -> Poll<Output>`
                 let poll_did = tcx.require_lang_item(LangItem::Poll, None);
                 let poll_adt_ref = tcx.adt_def(poll_did);
@@ -143,8 +143,8 @@ fn fn_sig_for_fn_abi<'tcx>(
 
                 (context_mut_ref, ret_ty)
             } else {
-                // The signature should be `Generator::resume(_, Resume) -> GeneratorState<Yield, Return>`
-                let state_did = tcx.require_lang_item(LangItem::GeneratorState, None);
+                // The signature should be `Coroutine::resume(_, Resume) -> CoroutineState<Yield, Return>`
+                let state_did = tcx.require_lang_item(LangItem::CoroutineState, None);
                 let state_adt_ref = tcx.adt_def(state_did);
                 let state_args = tcx.mk_args(&[sig.yield_ty.into(), sig.return_ty.into()]);
                 let ret_ty = Ty::new_adt(tcx, state_adt_ref, state_args);

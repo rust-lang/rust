@@ -1,7 +1,7 @@
 // Test that we do not suggest to add type annotations for unnamable types.
 
 #![crate_type="lib"]
-#![feature(generators)]
+#![feature(coroutines)]
 
 const A = 5;
 //~^ ERROR: missing type for `const` item

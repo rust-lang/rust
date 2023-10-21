@@ -76,7 +76,7 @@ pub fn provide(providers: &mut Providers) {
         fn_sig,
         impl_trait_ref,
         impl_polarity,
-        generator_kind,
+        coroutine_kind,
         collect_mod_item_types,
         is_type_alias_impl_trait,
         ..*providers
@@ -1548,12 +1548,12 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
     fty
 }
 
-fn generator_kind(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<hir::GeneratorKind> {
+fn coroutine_kind(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<hir::CoroutineKind> {
     match tcx.hir().get_by_def_id(def_id) {
         Node::Expr(&rustc_hir::Expr {
             kind: rustc_hir::ExprKind::Closure(&rustc_hir::Closure { body, .. }),
             ..
-        }) => tcx.hir().body(body).generator_kind(),
+        }) => tcx.hir().body(body).coroutine_kind(),
         _ => None,
     }
 }

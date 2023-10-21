@@ -19,18 +19,18 @@ print-type-size     variant `Suspend0`: 2052 bytes
 print-type-size         upvar `.fut`: 1025 bytes, offset: 0 bytes, alignment: 1 bytes
 print-type-size         padding: 1 bytes
 print-type-size         local `.fut`: 1025 bytes, alignment: 1 bytes
-print-type-size         local `..generator_field4`: 1 bytes
+print-type-size         local `..coroutine_field4`: 1 bytes
 print-type-size         local `.__awaitee`: 1 bytes
 print-type-size     variant `Suspend1`: 3076 bytes
 print-type-size         upvar `.fut`: 1025 bytes, offset: 0 bytes, alignment: 1 bytes
 print-type-size         padding: 1026 bytes
-print-type-size         local `..generator_field4`: 1 bytes, alignment: 1 bytes
+print-type-size         local `..coroutine_field4`: 1 bytes, alignment: 1 bytes
 print-type-size         local `.__awaitee`: 1025 bytes
 print-type-size     variant `Suspend2`: 2052 bytes
 print-type-size         upvar `.fut`: 1025 bytes, offset: 0 bytes, alignment: 1 bytes
 print-type-size         padding: 1 bytes
 print-type-size         local `.fut`: 1025 bytes, alignment: 1 bytes
-print-type-size         local `..generator_field4`: 1 bytes
+print-type-size         local `..coroutine_field4`: 1 bytes
 print-type-size         local `.__awaitee`: 1 bytes
 print-type-size     variant `Returned`: 1025 bytes
 print-type-size         upvar `.fut`: 1025 bytes, offset: 0 bytes, alignment: 1 bytes

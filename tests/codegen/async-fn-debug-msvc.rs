@@ -1,4 +1,4 @@
-// Verify debuginfo for generators:
+// Verify debuginfo for coroutines:
 //  - Each variant points to the file and line of its yield point
 //  - The discriminants are marked artificial
 //  - Other fields are not marked artificial

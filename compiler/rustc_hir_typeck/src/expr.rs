@@ -10,7 +10,7 @@ use crate::errors::TypeMismatchFruTypo;
 use crate::errors::{AddressOfTemporaryTaken, ReturnStmtOutsideOfFnBody, StructExprNonExhaustive};
 use crate::errors::{
     FieldMultiplySpecifiedInInitializer, FunctionalRecordUpdateOnNonStruct, HelpUseLatestEdition,
-    YieldExprOutsideOfGenerator,
+    YieldExprOutsideOfCoroutine,
 };
 use crate::fatally_break_rust;
 use crate::method::{MethodCallComponents, SelfSource};
@@ -3019,7 +3019,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Ty::new_unit(self.tcx)
             }
             _ => {
-                self.tcx.sess.emit_err(YieldExprOutsideOfGenerator { span: expr.span });
+                self.tcx.sess.emit_err(YieldExprOutsideOfCoroutine { span: expr.span });
                 // Avoid expressions without types during writeback (#78653).
                 self.check_expr(value);
                 Ty::new_unit(self.tcx)

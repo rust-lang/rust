@@ -427,7 +427,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
             | ty::FnDef(def_id, args)
             | ty::Alias(ty::Projection | ty::Opaque, ty::AliasTy { def_id, args, .. })
             | ty::Closure(def_id, args)
-            | ty::Generator(def_id, args, _) => {
+            | ty::Coroutine(def_id, args, _) => {
                 self = self.print_def_path(def_id, args)?;
             }
             ty::Foreign(def_id) => {
@@ -476,7 +476,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
 
             ty::Alias(ty::Inherent, _) => bug!("symbol_names: unexpected inherent projection"),
             ty::Alias(ty::Weak, _) => bug!("symbol_names: unexpected weak projection"),
-            ty::GeneratorWitness(..) => bug!("symbol_names: unexpected `GeneratorWitness`"),
+            ty::CoroutineWitness(..) => bug!("symbol_names: unexpected `CoroutineWitness`"),
         }
 
         // Only cache types that do not refer to an enclosing

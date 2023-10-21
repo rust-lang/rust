@@ -65,7 +65,7 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{FieldIdx, Layout, LayoutS, TargetDataLayout, VariantIdx};
 use rustc_target::spec::abi;
-use rustc_type_ir::sty::TyKind::*;
+use rustc_type_ir::TyKind::*;
 use rustc_type_ir::WithCachedTypeInfo;
 use rustc_type_ir::{CollectAndApply, Interner, TypeFlags};
 
@@ -761,9 +761,9 @@ impl<'tcx> TyCtxt<'tcx> {
         self.diagnostic_items(did.krate).name_to_id.get(&name) == Some(&did)
     }
 
-    /// Returns `true` if the node pointed to by `def_id` is a generator for an async construct.
-    pub fn generator_is_async(self, def_id: DefId) -> bool {
-        matches!(self.generator_kind(def_id), Some(hir::GeneratorKind::Async(_)))
+    /// Returns `true` if the node pointed to by `def_id` is a coroutine for an async construct.
+    pub fn coroutine_is_async(self, def_id: DefId) -> bool {
+        matches!(self.coroutine_kind(def_id), Some(hir::CoroutineKind::Async(_)))
     }
 
     pub fn stability(self) -> &'tcx stability::Index {
@@ -951,7 +951,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self.dep_graph.read_index(DepNodeIndex::FOREVER_RED_NODE);
 
         let definitions = &self.untracked.definitions;
-        std::iter::from_generator(|| {
+        std::iter::from_coroutine(|| {
             let mut i = 0;
 
             // Recompute the number of definitions each time, because our caller may be creating
@@ -1382,8 +1382,8 @@ impl<'tcx> TyCtxt<'tcx> {
                     FnDef,
                     FnPtr,
                     Placeholder,
-                    Generator,
-                    GeneratorWitness,
+                    Coroutine,
+                    CoroutineWitness,
                     Dynamic,
                     Closure,
                     Tuple,

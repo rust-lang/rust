@@ -62,7 +62,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 local,
                 projection: [proj_base @ .., ProjectionElem::Field(upvar_index, _)],
             } => {
-                debug_assert!(is_closure_or_generator(
+                debug_assert!(is_closure_or_coroutine(
                     Place::ty_from(local, proj_base, self.body, self.infcx.tcx).ty
                 ));
 
@@ -122,7 +122,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 {
                     item_msg = access_place_desc;
                     debug_assert!(self.body.local_decls[ty::CAPTURE_STRUCT_LOCAL].ty.is_ref());
-                    debug_assert!(is_closure_or_generator(
+                    debug_assert!(is_closure_or_coroutine(
                         the_place_err.ty(self.body, self.infcx.tcx).ty
                     ));
 
@@ -385,7 +385,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 local,
                 projection: [proj_base @ .., ProjectionElem::Field(upvar_index, _)],
             } => {
-                debug_assert!(is_closure_or_generator(
+                debug_assert!(is_closure_or_coroutine(
                     Place::ty_from(local, proj_base, self.body, self.infcx.tcx).ty
                 ));
 
@@ -1377,8 +1377,8 @@ fn suggest_ampmut<'tcx>(
     }
 }
 
-fn is_closure_or_generator(ty: Ty<'_>) -> bool {
-    ty.is_closure() || ty.is_generator()
+fn is_closure_or_coroutine(ty: Ty<'_>) -> bool {
+    ty.is_closure() || ty.is_coroutine()
 }
 
 /// Given a field that needs to be mutable, returns a span where the " mut " could go.

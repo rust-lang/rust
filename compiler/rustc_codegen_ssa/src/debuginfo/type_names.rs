@@ -15,7 +15,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stable_hasher::{Hash64, HashStable, StableHasher};
 use rustc_hir::def_id::DefId;
 use rustc_hir::definitions::{DefPathData, DefPathDataName, DisambiguatedDefPathData};
-use rustc_hir::{AsyncGeneratorKind, GeneratorKind, Mutability};
+use rustc_hir::{AsyncCoroutineKind, CoroutineKind, Mutability};
 use rustc_middle::ty::layout::{IntegerExt, TyAndLayout};
 use rustc_middle::ty::{self, ExistentialProjection, ParamEnv, Ty, TyCtxt};
 use rustc_middle::ty::{GenericArgKind, GenericArgsRef};
@@ -398,23 +398,23 @@ fn push_debuginfo_type_name<'tcx>(
             // processing
             visited.remove(&t);
         }
-        ty::Closure(def_id, args) | ty::Generator(def_id, args, ..) => {
-            // Name will be "{closure_env#0}<T1, T2, ...>", "{generator_env#0}<T1, T2, ...>", or
+        ty::Closure(def_id, args) | ty::Coroutine(def_id, args, ..) => {
+            // Name will be "{closure_env#0}<T1, T2, ...>", "{coroutine_env#0}<T1, T2, ...>", or
             // "{async_fn_env#0}<T1, T2, ...>", etc.
             // In the case of cpp-like debuginfo, the name additionally gets wrapped inside of
             // an artificial `enum2$<>` type, as defined in msvc_enum_fallback().
-            if cpp_like_debuginfo && t.is_generator() {
+            if cpp_like_debuginfo && t.is_coroutine() {
                 let ty_and_layout = tcx.layout_of(ParamEnv::reveal_all().and(t)).unwrap();
                 msvc_enum_fallback(
                     ty_and_layout,
                     &|output, visited| {
-                        push_closure_or_generator_name(tcx, def_id, args, true, output, visited);
+                        push_closure_or_coroutine_name(tcx, def_id, args, true, output, visited);
                     },
                     output,
                     visited,
                 );
             } else {
-                push_closure_or_generator_name(tcx, def_id, args, qualified, output, visited);
+                push_closure_or_coroutine_name(tcx, def_id, args, qualified, output, visited);
             }
         }
         // Type parameters from polymorphized functions.
@@ -426,7 +426,7 @@ fn push_debuginfo_type_name<'tcx>(
         | ty::Placeholder(..)
         | ty::Alias(..)
         | ty::Bound(..)
-        | ty::GeneratorWitness(..) => {
+        | ty::CoroutineWitness(..) => {
             bug!(
                 "debuginfo: Trying to create type name for \
                   unexpected type: {:?}",
@@ -558,12 +558,12 @@ pub fn push_item_name(tcx: TyCtxt<'_>, def_id: DefId, qualified: bool, output: &
     push_unqualified_item_name(tcx, def_id, def_key.disambiguated_data, output);
 }
 
-fn generator_kind_label(generator_kind: Option<GeneratorKind>) -> &'static str {
-    match generator_kind {
-        Some(GeneratorKind::Async(AsyncGeneratorKind::Block)) => "async_block",
-        Some(GeneratorKind::Async(AsyncGeneratorKind::Closure)) => "async_closure",
-        Some(GeneratorKind::Async(AsyncGeneratorKind::Fn)) => "async_fn",
-        Some(GeneratorKind::Gen) => "generator",
+fn coroutine_kind_label(coroutine_kind: Option<CoroutineKind>) -> &'static str {
+    match coroutine_kind {
+        Some(CoroutineKind::Async(AsyncCoroutineKind::Block)) => "async_block",
+        Some(CoroutineKind::Async(AsyncCoroutineKind::Closure)) => "async_closure",
+        Some(CoroutineKind::Async(AsyncCoroutineKind::Fn)) => "async_fn",
+        Some(CoroutineKind::Coroutine) => "coroutine",
         None => "closure",
     }
 }
@@ -592,7 +592,7 @@ fn push_unqualified_item_name(
             output.push_str(tcx.crate_name(def_id.krate).as_str());
         }
         DefPathData::ClosureExpr => {
-            let label = generator_kind_label(tcx.generator_kind(def_id));
+            let label = coroutine_kind_label(tcx.coroutine_kind(def_id));
 
             push_disambiguated_special_name(
                 label,
@@ -707,7 +707,7 @@ pub fn push_generic_params<'tcx>(
     push_generic_params_internal(tcx, args, def_id, output, &mut visited);
 }
 
-fn push_closure_or_generator_name<'tcx>(
+fn push_closure_or_coroutine_name<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
     args: GenericArgsRef<'tcx>,
@@ -715,10 +715,10 @@ fn push_closure_or_generator_name<'tcx>(
     output: &mut String,
     visited: &mut FxHashSet<Ty<'tcx>>,
 ) {
-    // Name will be "{closure_env#0}<T1, T2, ...>", "{generator_env#0}<T1, T2, ...>", or
+    // Name will be "{closure_env#0}<T1, T2, ...>", "{coroutine_env#0}<T1, T2, ...>", or
     // "{async_fn_env#0}<T1, T2, ...>", etc.
     let def_key = tcx.def_key(def_id);
-    let generator_kind = tcx.generator_kind(def_id);
+    let coroutine_kind = tcx.coroutine_kind(def_id);
 
     if qualified {
         let parent_def_id = DefId { index: def_key.parent.unwrap(), ..def_id };
@@ -727,7 +727,7 @@ fn push_closure_or_generator_name<'tcx>(
     }
 
     let mut label = String::with_capacity(20);
-    write!(&mut label, "{}_env", generator_kind_label(generator_kind)).unwrap();
+    write!(&mut label, "{}_env", coroutine_kind_label(coroutine_kind)).unwrap();
 
     push_disambiguated_special_name(
         &label,
@@ -736,7 +736,7 @@ fn push_closure_or_generator_name<'tcx>(
         output,
     );
 
-    // We also need to add the generic arguments of the async fn/generator or
+    // We also need to add the generic arguments of the async fn/coroutine or
     // the enclosing function (for closures or async blocks), so that we end
     // up with a unique name for every instantiation.
 
@@ -745,7 +745,7 @@ fn push_closure_or_generator_name<'tcx>(
     let generics = tcx.generics_of(enclosing_fn_def_id);
 
     // Truncate the args to the length of the above generics. This will cut off
-    // anything closure- or generator-specific.
+    // anything closure- or coroutine-specific.
     let args = args.truncate_to(tcx, generics);
     push_generic_params_internal(tcx, args, enclosing_fn_def_id, output, visited);
 }

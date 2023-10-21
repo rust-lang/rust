@@ -31,8 +31,8 @@
 // gdb-check:[...]static fn function_names::main::{closure#0}(*mut function_names::main::{closure_env#0});
 // gdb-check:[...]static fn function_names::{impl#2}::impl_function::{closure#0}<i32, i32>(*mut function_names::{impl#2}::impl_function::{closure_env#0}<i32, i32>);
 
-// Generator
-// Generators don't seem to appear in GDB's symbol table.
+// Coroutine
+// Coroutines don't seem to appear in GDB's symbol table.
 
 // Const generic parameter
 // gdb-command:info functions -q function_names::const_generic_fn.*
@@ -69,9 +69,9 @@
 // cdb-check:[...] a!function_names::main::closure$0 (void)
 // cdb-check:[...] a!function_names::generic_func::closure$0<i32> (void)
 
-// Generator
-// cdb-command:x a!function_names::*::generator*
-// cdb-check:[...] a!function_names::main::generator$1 (void)
+// Coroutine
+// cdb-command:x a!function_names::*::coroutine*
+// cdb-check:[...] a!function_names::main::coroutine$1 (void)
 
 // Const generic parameter
 // cdb-command:x a!function_names::const_generic_fn*
@@ -83,10 +83,10 @@
 #![allow(unused_variables)]
 #![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
-#![feature(adt_const_params, generators, generator_trait)]
+#![feature(adt_const_params, coroutines, coroutine_trait)]
 #![allow(incomplete_features)]
 
-use std::ops::Generator;
+use std::ops::Coroutine;
 use std::pin::Pin;
 use Mod1::TestTrait2;
 
@@ -110,12 +110,12 @@ fn main() {
     let closure = || TestStruct1;
     closure();
 
-    // Generator
-    let mut generator = || {
+    // Coroutine
+    let mut coroutine = || {
         yield;
         return;
     };
-    Pin::new(&mut generator).resume(());
+    Pin::new(&mut coroutine).resume(());
 
     // Const generic functions
     const_generic_fn_bool::<false>();

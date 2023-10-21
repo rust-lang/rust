@@ -460,7 +460,7 @@ pub fn type_di_node<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) -> &'ll D
         }
         ty::FnDef(..) | ty::FnPtr(_) => build_subroutine_type_di_node(cx, unique_type_id),
         ty::Closure(..) => build_closure_env_di_node(cx, unique_type_id),
-        ty::Generator(..) => enums::build_generator_di_node(cx, unique_type_id),
+        ty::Coroutine(..) => enums::build_coroutine_di_node(cx, unique_type_id),
         ty::Adt(def, ..) => match def.adt_kind() {
             AdtKind::Struct => build_struct_type_di_node(cx, unique_type_id),
             AdtKind::Union => build_union_type_di_node(cx, unique_type_id),
@@ -1026,20 +1026,20 @@ fn build_struct_type_di_node<'ll, 'tcx>(
 // Tuples
 //=-----------------------------------------------------------------------------
 
-/// Builds the DW_TAG_member debuginfo nodes for the upvars of a closure or generator.
-/// For a generator, this will handle upvars shared by all states.
+/// Builds the DW_TAG_member debuginfo nodes for the upvars of a closure or coroutine.
+/// For a coroutine, this will handle upvars shared by all states.
 fn build_upvar_field_di_nodes<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
-    closure_or_generator_ty: Ty<'tcx>,
-    closure_or_generator_di_node: &'ll DIType,
+    closure_or_coroutine_ty: Ty<'tcx>,
+    closure_or_coroutine_di_node: &'ll DIType,
 ) -> SmallVec<&'ll DIType> {
-    let (&def_id, up_var_tys) = match closure_or_generator_ty.kind() {
-        ty::Generator(def_id, args, _) => (def_id, args.as_generator().prefix_tys()),
+    let (&def_id, up_var_tys) = match closure_or_coroutine_ty.kind() {
+        ty::Coroutine(def_id, args, _) => (def_id, args.as_coroutine().prefix_tys()),
         ty::Closure(def_id, args) => (def_id, args.as_closure().upvar_tys()),
         _ => {
             bug!(
-                "build_upvar_field_di_nodes() called with non-closure-or-generator-type: {:?}",
-                closure_or_generator_ty
+                "build_upvar_field_di_nodes() called with non-closure-or-coroutine-type: {:?}",
+                closure_or_coroutine_ty
             )
         }
     };
@@ -1049,7 +1049,7 @@ fn build_upvar_field_di_nodes<'ll, 'tcx>(
     );
 
     let capture_names = cx.tcx.closure_saved_names_of_captured_variables(def_id);
-    let layout = cx.layout_of(closure_or_generator_ty);
+    let layout = cx.layout_of(closure_or_coroutine_ty);
 
     up_var_tys
         .into_iter()
@@ -1058,7 +1058,7 @@ fn build_upvar_field_di_nodes<'ll, 'tcx>(
         .map(|(index, (up_var_ty, capture_name))| {
             build_field_di_node(
                 cx,
-                closure_or_generator_di_node,
+                closure_or_coroutine_di_node,
                 capture_name.as_str(),
                 cx.size_and_align_of(up_var_ty),
                 layout.fields.offset(index),

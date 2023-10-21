@@ -118,7 +118,7 @@ pub fn separate_const_switch(body: &mut Body<'_>) -> usize {
                         | TerminatorKind::Return
                         | TerminatorKind::Unreachable
                         | TerminatorKind::InlineAsm { .. }
-                        | TerminatorKind::GeneratorDrop => {
+                        | TerminatorKind::CoroutineDrop => {
                             continue 'predec_iter;
                         }
                     }
@@ -169,7 +169,7 @@ pub fn separate_const_switch(body: &mut Body<'_>) -> usize {
             | TerminatorKind::UnwindTerminate(_)
             | TerminatorKind::Return
             | TerminatorKind::Unreachable
-            | TerminatorKind::GeneratorDrop
+            | TerminatorKind::CoroutineDrop
             | TerminatorKind::Assert { .. }
             | TerminatorKind::FalseUnwind { .. }
             | TerminatorKind::Drop { .. }

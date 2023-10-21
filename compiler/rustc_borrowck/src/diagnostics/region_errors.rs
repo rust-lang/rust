@@ -580,7 +580,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let err = FnMutError {
             span: *span,
             ty_err: match output_ty.kind() {
-                ty::Generator(def, ..) if self.infcx.tcx.generator_is_async(*def) => {
+                ty::Coroutine(def, ..) if self.infcx.tcx.coroutine_is_async(*def) => {
                     FnMutReturnTypeErr::ReturnAsyncBlock { span: *span }
                 }
                 _ if output_ty.contains_closure() => {
@@ -1036,7 +1036,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 ..
             }) => {
                 let body = map.body(*body);
-                if !matches!(body.generator_kind, Some(hir::GeneratorKind::Async(..))) {
+                if !matches!(body.coroutine_kind, Some(hir::CoroutineKind::Async(..))) {
                     closure_span = Some(expr.span.shrink_to_lo());
                 }
             }

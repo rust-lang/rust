@@ -1,5 +1,5 @@
 // Verifies that inliner emits StorageLive & StorageDead when introducing
-// temporaries for arguments, so that they don't become part of the generator.
+// temporaries for arguments, so that they don't become part of the coroutine.
 // Regression test for #71793.
 //
 // check-pass

@@ -155,7 +155,7 @@ impl Foldable for RigidTy {
             RigidTy::FnDef(_, args) => *args = args.fold(folder)?,
             RigidTy::FnPtr(sig) => *sig = sig.fold(folder)?,
             RigidTy::Closure(_, args) => *args = args.fold(folder)?,
-            RigidTy::Generator(_, args, _) => *args = args.fold(folder)?,
+            RigidTy::Coroutine(_, args, _) => *args = args.fold(folder)?,
             RigidTy::Dynamic(pred, r, _) => {
                 *pred = pred.fold(folder)?;
                 *r = r.fold(folder)?;

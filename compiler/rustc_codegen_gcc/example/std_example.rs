@@ -1,9 +1,9 @@
-#![feature(core_intrinsics, generators, generator_trait, is_sorted)]
+#![feature(core_intrinsics, coroutines, coroutine_trait, is_sorted)]
 
 #[cfg(feature="master")]
 use std::arch::x86_64::*;
 use std::io::Write;
-use std::ops::Generator;
+use std::ops::Coroutine;
 
 extern {
     pub fn printf(format: *const i8, ...) -> i32;

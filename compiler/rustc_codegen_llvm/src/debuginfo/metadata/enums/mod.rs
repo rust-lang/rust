@@ -6,11 +6,11 @@ use rustc_hir::def::CtorKind;
 use rustc_index::IndexSlice;
 use rustc_middle::{
     bug,
-    mir::GeneratorLayout,
+    mir::CoroutineLayout,
     ty::{
         self,
         layout::{IntegerExt, LayoutOf, PrimitiveExt, TyAndLayout},
-        AdtDef, GeneratorArgs, Ty, VariantDef,
+        AdtDef, CoroutineArgs, Ty, VariantDef,
     },
 };
 use rustc_span::Symbol;
@@ -66,14 +66,14 @@ pub(super) fn build_enum_type_di_node<'ll, 'tcx>(
     }
 }
 
-pub(super) fn build_generator_di_node<'ll, 'tcx>(
+pub(super) fn build_coroutine_di_node<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     unique_type_id: UniqueTypeId<'tcx>,
 ) -> DINodeCreationResult<'ll> {
     if cpp_like_debuginfo(cx.tcx) {
-        cpp_like::build_generator_di_node(cx, unique_type_id)
+        cpp_like::build_coroutine_di_node(cx, unique_type_id)
     } else {
-        native::build_generator_di_node(cx, unique_type_id)
+        native::build_coroutine_di_node(cx, unique_type_id)
     }
 }
 
@@ -101,13 +101,13 @@ fn build_c_style_enum_di_node<'ll, 'tcx>(
     }
 }
 
-/// Extract the type with which we want to describe the tag of the given enum or generator.
+/// Extract the type with which we want to describe the tag of the given enum or coroutine.
 fn tag_base_type<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     enum_type_and_layout: TyAndLayout<'tcx>,
 ) -> Ty<'tcx> {
     debug_assert!(match enum_type_and_layout.ty.kind() {
-        ty::Generator(..) => true,
+        ty::Coroutine(..) => true,
         ty::Adt(adt_def, _) => adt_def.is_enum(),
         _ => false,
     });
@@ -300,8 +300,8 @@ fn build_enum_variant_struct_type_di_node<'ll, 'tcx>(
     .di_node
 }
 
-/// Build the struct type for describing a single generator state.
-/// See [build_generator_variant_struct_type_di_node].
+/// Build the struct type for describing a single coroutine state.
+/// See [build_coroutine_variant_struct_type_di_node].
 ///
 /// ```txt
 ///
@@ -317,25 +317,25 @@ fn build_enum_variant_struct_type_di_node<'ll, 'tcx>(
 ///  --->   DW_TAG_structure_type            (type of variant 3)
 ///
 /// ```
-pub fn build_generator_variant_struct_type_di_node<'ll, 'tcx>(
+pub fn build_coroutine_variant_struct_type_di_node<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     variant_index: VariantIdx,
-    generator_type_and_layout: TyAndLayout<'tcx>,
-    generator_type_di_node: &'ll DIType,
-    generator_layout: &GeneratorLayout<'tcx>,
+    coroutine_type_and_layout: TyAndLayout<'tcx>,
+    coroutine_type_di_node: &'ll DIType,
+    coroutine_layout: &CoroutineLayout<'tcx>,
     common_upvar_names: &IndexSlice<FieldIdx, Symbol>,
 ) -> &'ll DIType {
-    let variant_name = GeneratorArgs::variant_name(variant_index);
+    let variant_name = CoroutineArgs::variant_name(variant_index);
     let unique_type_id = UniqueTypeId::for_enum_variant_struct_type(
         cx.tcx,
-        generator_type_and_layout.ty,
+        coroutine_type_and_layout.ty,
         variant_index,
     );
 
-    let variant_layout = generator_type_and_layout.for_variant(cx, variant_index);
+    let variant_layout = coroutine_type_and_layout.for_variant(cx, variant_index);
 
-    let generator_args = match generator_type_and_layout.ty.kind() {
-        ty::Generator(_, args, _) => args.as_generator(),
+    let coroutine_args = match coroutine_type_and_layout.ty.kind() {
+        ty::Coroutine(_, args, _) => args.as_coroutine(),
         _ => unreachable!(),
     };
 
@@ -346,17 +346,17 @@ pub fn build_generator_variant_struct_type_di_node<'ll, 'tcx>(
             Stub::Struct,
             unique_type_id,
             &variant_name,
-            size_and_align_of(generator_type_and_layout),
-            Some(generator_type_di_node),
+            size_and_align_of(coroutine_type_and_layout),
+            Some(coroutine_type_di_node),
             DIFlags::FlagZero,
         ),
         |cx, variant_struct_type_di_node| {
             // Fields that just belong to this variant/state
             let state_specific_fields: SmallVec<_> = (0..variant_layout.fields.count())
                 .map(|field_index| {
-                    let generator_saved_local = generator_layout.variant_fields[variant_index]
+                    let coroutine_saved_local = coroutine_layout.variant_fields[variant_index]
                         [FieldIdx::from_usize(field_index)];
-                    let field_name_maybe = generator_layout.field_names[generator_saved_local];
+                    let field_name_maybe = coroutine_layout.field_names[coroutine_saved_local];
                     let field_name = field_name_maybe
                         .as_ref()
                         .map(|s| Cow::from(s.as_str()))
@@ -377,7 +377,7 @@ pub fn build_generator_variant_struct_type_di_node<'ll, 'tcx>(
                 .collect();
 
             // Fields that are common to all states
-            let common_fields: SmallVec<_> = generator_args
+            let common_fields: SmallVec<_> = coroutine_args
                 .prefix_tys()
                 .iter()
                 .zip(common_upvar_names)
@@ -388,7 +388,7 @@ pub fn build_generator_variant_struct_type_di_node<'ll, 'tcx>(
                         variant_struct_type_di_node,
                         upvar_name.as_str(),
                         cx.size_and_align_of(upvar_ty),
-                        generator_type_and_layout.fields.offset(index),
+                        coroutine_type_and_layout.fields.offset(index),
                         DIFlags::FlagZero,
                         type_di_node(cx, upvar_ty),
                     )
@@ -397,7 +397,7 @@ pub fn build_generator_variant_struct_type_di_node<'ll, 'tcx>(
 
             state_specific_fields.into_iter().chain(common_fields.into_iter()).collect()
         },
-        |cx| build_generic_type_param_di_nodes(cx, generator_type_and_layout.ty),
+        |cx| build_generic_type_param_di_nodes(cx, coroutine_type_and_layout.ty),
     )
     .di_node
 }

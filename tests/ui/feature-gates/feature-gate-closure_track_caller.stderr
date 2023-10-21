@@ -10,7 +10,7 @@ LL |     let _closure = #[track_caller] || {};
 error[E0658]: `#[track_caller]` on closures is currently unstable
   --> $DIR/feature-gate-closure_track_caller.rs:7:22
    |
-LL |     let _generator = #[track_caller] || { yield; };
+LL |     let _coroutine = #[track_caller] || { yield; };
    |                      ^^^^^^^^^^^^^^^
    |
    = note: see issue #87417 <https://github.com/rust-lang/rust/issues/87417> for more information

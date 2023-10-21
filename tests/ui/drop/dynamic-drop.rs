@@ -1,7 +1,7 @@
 // run-pass
 // needs-unwind
 
-#![feature(generators, generator_trait)]
+#![feature(coroutines, coroutine_trait)]
 #![feature(if_let_guard)]
 
 #![allow(unused_assignments)]
@@ -9,7 +9,7 @@
 
 use std::cell::{Cell, RefCell};
 use std::mem::ManuallyDrop;
-use std::ops::Generator;
+use std::ops::Coroutine;
 use std::panic;
 use std::pin::Pin;
 
@@ -173,7 +173,7 @@ fn vec_simple(a: &Allocator) {
     let _x = vec![a.alloc(), a.alloc(), a.alloc(), a.alloc()];
 }
 
-fn generator(a: &Allocator, run_count: usize) {
+fn coroutine(a: &Allocator, run_count: usize) {
     assert!(run_count < 4);
 
     let mut gen = || {
@@ -471,10 +471,10 @@ fn main() {
     run_test(|a| field_assignment(a, false));
     run_test(|a| field_assignment(a, true));
 
-    run_test(|a| generator(a, 0));
-    run_test(|a| generator(a, 1));
-    run_test(|a| generator(a, 2));
-    run_test(|a| generator(a, 3));
+    run_test(|a| coroutine(a, 0));
+    run_test(|a| coroutine(a, 1));
+    run_test(|a| coroutine(a, 2));
+    run_test(|a| coroutine(a, 3));
 
     run_test(|a| mixed_drop_and_nondrop(a));
 

@@ -12,7 +12,7 @@ use rustc_middle::{
     ty::{
         self,
         layout::{LayoutOf, TyAndLayout},
-        AdtDef, GeneratorArgs, Ty,
+        AdtDef, CoroutineArgs, Ty,
     },
 };
 use rustc_target::abi::{Align, Endian, Size, TagEncoding, VariantIdx, Variants};
@@ -268,18 +268,18 @@ pub(super) fn build_enum_type_di_node<'ll, 'tcx>(
     )
 }
 
-/// A generator debuginfo node looks the same as a that of an enum type.
+/// A coroutine debuginfo node looks the same as a that of an enum type.
 ///
 /// See [build_enum_type_di_node] for more information.
-pub(super) fn build_generator_di_node<'ll, 'tcx>(
+pub(super) fn build_coroutine_di_node<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     unique_type_id: UniqueTypeId<'tcx>,
 ) -> DINodeCreationResult<'ll> {
-    let generator_type = unique_type_id.expect_ty();
-    let generator_type_and_layout = cx.layout_of(generator_type);
-    let generator_type_name = compute_debuginfo_type_name(cx.tcx, generator_type, false);
+    let coroutine_type = unique_type_id.expect_ty();
+    let coroutine_type_and_layout = cx.layout_of(coroutine_type);
+    let coroutine_type_name = compute_debuginfo_type_name(cx.tcx, coroutine_type, false);
 
-    debug_assert!(!wants_c_like_enum_debuginfo(generator_type_and_layout));
+    debug_assert!(!wants_c_like_enum_debuginfo(coroutine_type_and_layout));
 
     type_map::build_type_with_children(
         cx,
@@ -287,24 +287,24 @@ pub(super) fn build_generator_di_node<'ll, 'tcx>(
             cx,
             type_map::Stub::Union,
             unique_type_id,
-            &generator_type_name,
-            size_and_align_of(generator_type_and_layout),
+            &coroutine_type_name,
+            size_and_align_of(coroutine_type_and_layout),
             NO_SCOPE_METADATA,
             DIFlags::FlagZero,
         ),
-        |cx, generator_type_di_node| match generator_type_and_layout.variants {
+        |cx, coroutine_type_di_node| match coroutine_type_and_layout.variants {
             Variants::Multiple { tag_encoding: TagEncoding::Direct, .. } => {
-                build_union_fields_for_direct_tag_generator(
+                build_union_fields_for_direct_tag_coroutine(
                     cx,
-                    generator_type_and_layout,
-                    generator_type_di_node,
+                    coroutine_type_and_layout,
+                    coroutine_type_di_node,
                 )
             }
             Variants::Single { .. }
             | Variants::Multiple { tag_encoding: TagEncoding::Niche { .. }, .. } => {
                 bug!(
-                    "Encountered generator with non-direct-tag layout: {:?}",
-                    generator_type_and_layout
+                    "Encountered coroutine with non-direct-tag layout: {:?}",
+                    coroutine_type_and_layout
                 )
             }
         },
@@ -428,7 +428,7 @@ fn build_union_fields_for_enum<'ll, 'tcx>(
         })
         .collect();
 
-    build_union_fields_for_direct_tag_enum_or_generator(
+    build_union_fields_for_direct_tag_enum_or_coroutine(
         cx,
         enum_type_and_layout,
         enum_type_di_node,
@@ -469,8 +469,8 @@ fn build_variant_names_type_di_node<'ll, 'tcx>(
 
 fn build_variant_struct_wrapper_type_di_node<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
-    enum_or_generator_type_and_layout: TyAndLayout<'tcx>,
-    enum_or_generator_type_di_node: &'ll DIType,
+    enum_or_coroutine_type_and_layout: TyAndLayout<'tcx>,
+    enum_or_coroutine_type_di_node: &'ll DIType,
     variant_index: VariantIdx,
     untagged_variant_index: Option<VariantIdx>,
     variant_struct_type_di_node: &'ll DIType,
@@ -486,13 +486,13 @@ fn build_variant_struct_wrapper_type_di_node<'ll, 'tcx>(
             Stub::Struct,
             UniqueTypeId::for_enum_variant_struct_type_wrapper(
                 cx.tcx,
-                enum_or_generator_type_and_layout.ty,
+                enum_or_coroutine_type_and_layout.ty,
                 variant_index,
             ),
             &variant_struct_wrapper_type_name(variant_index),
             // NOTE: We use size and align of enum_type, not from variant_layout:
-            size_and_align_of(enum_or_generator_type_and_layout),
-            Some(enum_or_generator_type_di_node),
+            size_and_align_of(enum_or_coroutine_type_and_layout),
+            Some(enum_or_coroutine_type_di_node),
             DIFlags::FlagZero,
         ),
         |cx, wrapper_struct_type_di_node| {
@@ -535,7 +535,7 @@ fn build_variant_struct_wrapper_type_di_node<'ll, 'tcx>(
                 cx,
                 wrapper_struct_type_di_node,
                 "value",
-                size_and_align_of(enum_or_generator_type_and_layout),
+                size_and_align_of(enum_or_coroutine_type_and_layout),
                 Size::ZERO,
                 DIFlags::FlagZero,
                 variant_struct_type_di_node,
@@ -662,40 +662,40 @@ fn split_128(value: u128) -> Split128 {
     Split128 { hi: (value >> 64) as u64, lo: value as u64 }
 }
 
-fn build_union_fields_for_direct_tag_generator<'ll, 'tcx>(
+fn build_union_fields_for_direct_tag_coroutine<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
-    generator_type_and_layout: TyAndLayout<'tcx>,
-    generator_type_di_node: &'ll DIType,
+    coroutine_type_and_layout: TyAndLayout<'tcx>,
+    coroutine_type_di_node: &'ll DIType,
 ) -> SmallVec<&'ll DIType> {
     let Variants::Multiple { tag_encoding: TagEncoding::Direct, tag_field, .. } =
-        generator_type_and_layout.variants
+        coroutine_type_and_layout.variants
     else {
         bug!("This function only supports layouts with directly encoded tags.")
     };
 
-    let (generator_def_id, generator_args) = match generator_type_and_layout.ty.kind() {
-        &ty::Generator(def_id, args, _) => (def_id, args.as_generator()),
+    let (coroutine_def_id, coroutine_args) = match coroutine_type_and_layout.ty.kind() {
+        &ty::Coroutine(def_id, args, _) => (def_id, args.as_coroutine()),
         _ => unreachable!(),
     };
 
-    let generator_layout = cx.tcx.optimized_mir(generator_def_id).generator_layout().unwrap();
+    let coroutine_layout = cx.tcx.optimized_mir(coroutine_def_id).coroutine_layout().unwrap();
 
-    let common_upvar_names = cx.tcx.closure_saved_names_of_captured_variables(generator_def_id);
-    let variant_range = generator_args.variant_range(generator_def_id, cx.tcx);
+    let common_upvar_names = cx.tcx.closure_saved_names_of_captured_variables(coroutine_def_id);
+    let variant_range = coroutine_args.variant_range(coroutine_def_id, cx.tcx);
     let variant_count = (variant_range.start.as_u32()..variant_range.end.as_u32()).len();
 
-    let tag_base_type = tag_base_type(cx, generator_type_and_layout);
+    let tag_base_type = tag_base_type(cx, coroutine_type_and_layout);
 
     let variant_names_type_di_node = build_variant_names_type_di_node(
         cx,
-        generator_type_di_node,
+        coroutine_type_di_node,
         variant_range
             .clone()
-            .map(|variant_index| (variant_index, GeneratorArgs::variant_name(variant_index))),
+            .map(|variant_index| (variant_index, CoroutineArgs::variant_name(variant_index))),
     );
 
     let discriminants: IndexVec<VariantIdx, DiscrResult> = {
-        let discriminants_iter = generator_args.discriminants(generator_def_id, cx.tcx);
+        let discriminants_iter = coroutine_args.discriminants(coroutine_def_id, cx.tcx);
         let mut discriminants: IndexVec<VariantIdx, DiscrResult> =
             IndexVec::with_capacity(variant_count);
         for (variant_index, discr) in discriminants_iter {
@@ -709,16 +709,16 @@ fn build_union_fields_for_direct_tag_generator<'ll, 'tcx>(
     // Build the type node for each field.
     let variant_field_infos: SmallVec<VariantFieldInfo<'ll>> = variant_range
         .map(|variant_index| {
-            let variant_struct_type_di_node = super::build_generator_variant_struct_type_di_node(
+            let variant_struct_type_di_node = super::build_coroutine_variant_struct_type_di_node(
                 cx,
                 variant_index,
-                generator_type_and_layout,
-                generator_type_di_node,
-                generator_layout,
+                coroutine_type_and_layout,
+                coroutine_type_di_node,
+                coroutine_layout,
                 &common_upvar_names,
             );
 
-            let span = generator_layout.variant_source_info[variant_index].span;
+            let span = coroutine_layout.variant_source_info[variant_index].span;
             let source_info = if !span.is_dummy() {
                 let loc = cx.lookup_debug_loc(span.lo());
                 Some((file_metadata(cx, &loc.file), loc.line as c_uint))
@@ -735,10 +735,10 @@ fn build_union_fields_for_direct_tag_generator<'ll, 'tcx>(
         })
         .collect();
 
-    build_union_fields_for_direct_tag_enum_or_generator(
+    build_union_fields_for_direct_tag_enum_or_coroutine(
         cx,
-        generator_type_and_layout,
-        generator_type_di_node,
+        coroutine_type_and_layout,
+        coroutine_type_di_node,
         &variant_field_infos[..],
         variant_names_type_di_node,
         tag_base_type,
@@ -747,9 +747,9 @@ fn build_union_fields_for_direct_tag_generator<'ll, 'tcx>(
     )
 }
 
-/// This is a helper function shared between enums and generators that makes sure fields have the
+/// This is a helper function shared between enums and coroutines that makes sure fields have the
 /// expect names.
-fn build_union_fields_for_direct_tag_enum_or_generator<'ll, 'tcx>(
+fn build_union_fields_for_direct_tag_enum_or_coroutine<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     enum_type_and_layout: TyAndLayout<'tcx>,
     enum_type_di_node: &'ll DIType,

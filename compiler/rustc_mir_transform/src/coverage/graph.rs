@@ -147,7 +147,7 @@ impl CoverageGraph {
                 | TerminatorKind::Unreachable
                 | TerminatorKind::Drop { .. }
                 | TerminatorKind::Call { .. }
-                | TerminatorKind::GeneratorDrop
+                | TerminatorKind::CoroutineDrop
                 | TerminatorKind::Assert { .. }
                 | TerminatorKind::FalseEdge { .. }
                 | TerminatorKind::FalseUnwind { .. }

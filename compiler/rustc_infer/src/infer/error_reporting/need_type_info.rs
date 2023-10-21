@@ -864,11 +864,11 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
                 GenericArgKind::Type(ty) => {
                     if matches!(
                         ty.kind(),
-                        ty::Alias(ty::Opaque, ..) | ty::Closure(..) | ty::Generator(..)
+                        ty::Alias(ty::Opaque, ..) | ty::Closure(..) | ty::Coroutine(..)
                     ) {
                         // Opaque types can't be named by the user right now.
                         //
-                        // Both the generic arguments of closures and generators can
+                        // Both the generic arguments of closures and coroutines can
                         // also not be named. We may want to only look into the closure
                         // signature in case it has no captures, as that can be represented
                         // using `fn(T) -> R`.

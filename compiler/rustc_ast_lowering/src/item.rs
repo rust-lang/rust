@@ -82,7 +82,7 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
             is_in_loop_condition: false,
             is_in_trait_impl: false,
             is_in_dyn_type: false,
-            generator_kind: None,
+            coroutine_kind: None,
             task_context: None,
             current_item: None,
             impl_trait_defs: Vec::new(),
@@ -974,7 +974,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         value: hir::Expr<'hir>,
     ) -> hir::BodyId {
         let body = hir::Body {
-            generator_kind: self.generator_kind,
+            coroutine_kind: self.coroutine_kind,
             params,
             value: self.arena.alloc(value),
         };
@@ -988,12 +988,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         f: impl FnOnce(&mut Self) -> (&'hir [hir::Param<'hir>], hir::Expr<'hir>),
     ) -> hir::BodyId {
-        let prev_gen_kind = self.generator_kind.take();
+        let prev_gen_kind = self.coroutine_kind.take();
         let task_context = self.task_context.take();
         let (parameters, result) = f(self);
         let body_id = self.record_body(parameters, result);
         self.task_context = task_context;
-        self.generator_kind = prev_gen_kind;
+        self.coroutine_kind = prev_gen_kind;
         body_id
     }
 
@@ -1206,7 +1206,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 closure_id,
                 None,
                 body.span,
-                hir::AsyncGeneratorKind::Fn,
+                hir::AsyncCoroutineKind::Fn,
                 |this| {
                     // Create a block from the user's function body:
                     let user_body = this.lower_block_expr(body);

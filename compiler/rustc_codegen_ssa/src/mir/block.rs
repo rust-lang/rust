@@ -1265,8 +1265,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 fn_span,
                 mergeable_succ(),
             ),
-            mir::TerminatorKind::GeneratorDrop | mir::TerminatorKind::Yield { .. } => {
-                bug!("generator ops in codegen")
+            mir::TerminatorKind::CoroutineDrop | mir::TerminatorKind::Yield { .. } => {
+                bug!("coroutine ops in codegen")
             }
             mir::TerminatorKind::FalseEdge { .. } | mir::TerminatorKind::FalseUnwind { .. } => {
                 bug!("borrowck false edges in codegen")

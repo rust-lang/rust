@@ -102,17 +102,17 @@ fn compute_components<'tcx>(
                 compute_components(tcx, tupled_ty, out, visited);
             }
 
-            ty::Generator(_, ref args, _) => {
+            ty::Coroutine(_, ref args, _) => {
                 // Same as the closure case
-                let tupled_ty = args.as_generator().tupled_upvars_ty();
+                let tupled_ty = args.as_coroutine().tupled_upvars_ty();
                 compute_components(tcx, tupled_ty, out, visited);
 
-                // We ignore regions in the generator interior as we don't
+                // We ignore regions in the coroutine interior as we don't
                 // want these to affect region inference
             }
 
             // All regions are bound inside a witness
-            ty::GeneratorWitness(..) => (),
+            ty::CoroutineWitness(..) => (),
 
             // OutlivesTypeParameterEnv -- the actual checking that `X:'a`
             // is implied by the environment is done in regionck.

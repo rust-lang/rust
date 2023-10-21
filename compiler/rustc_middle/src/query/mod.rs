@@ -541,28 +541,28 @@ rustc_queries! {
         }
     }
 
-    /// Returns names of captured upvars for closures and generators.
+    /// Returns names of captured upvars for closures and coroutines.
     ///
     /// Here are some examples:
     ///  - `name__field1__field2` when the upvar is captured by value.
     ///  - `_ref__name__field` when the upvar is captured by reference.
     ///
-    /// For generators this only contains upvars that are shared by all states.
+    /// For coroutines this only contains upvars that are shared by all states.
     query closure_saved_names_of_captured_variables(def_id: DefId) -> &'tcx IndexVec<abi::FieldIdx, Symbol> {
         arena_cache
         desc { |tcx| "computing debuginfo for closure `{}`", tcx.def_path_str(def_id) }
         separate_provide_extern
     }
 
-    query mir_generator_witnesses(key: DefId) -> &'tcx Option<mir::GeneratorLayout<'tcx>> {
+    query mir_coroutine_witnesses(key: DefId) -> &'tcx Option<mir::CoroutineLayout<'tcx>> {
         arena_cache
-        desc { |tcx| "generator witness types for `{}`", tcx.def_path_str(key) }
+        desc { |tcx| "coroutine witness types for `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }
         separate_provide_extern
     }
 
-    query check_generator_obligations(key: LocalDefId) {
-        desc { |tcx| "verify auto trait bounds for generator interior type `{}`", tcx.def_path_str(key) }
+    query check_coroutine_obligations(key: LocalDefId) {
+        desc { |tcx| "verify auto trait bounds for coroutine interior type `{}`", tcx.def_path_str(key) }
     }
 
     /// MIR after our optimization passes have run. This is MIR that is ready
@@ -743,9 +743,9 @@ rustc_queries! {
         desc { |tcx| "checking if item is promotable: `{}`", tcx.def_path_str(key) }
     }
 
-    /// Returns `Some(generator_kind)` if the node pointed to by `def_id` is a generator.
-    query generator_kind(def_id: DefId) -> Option<hir::GeneratorKind> {
-        desc { |tcx| "looking up generator kind of `{}`", tcx.def_path_str(def_id) }
+    /// Returns `Some(coroutine_kind)` if the node pointed to by `def_id` is a coroutine.
+    query coroutine_kind(def_id: DefId) -> Option<hir::CoroutineKind> {
+        desc { |tcx| "looking up coroutine kind of `{}`", tcx.def_path_str(def_id) }
         separate_provide_extern
     }
 

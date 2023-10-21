@@ -1,4 +1,4 @@
-// This test created a generator whose size was not rounded to a multiple of its
+// This test created a coroutine whose size was not rounded to a multiple of its
 // alignment. This caused an assertion error in codegen.
 
 // build-pass

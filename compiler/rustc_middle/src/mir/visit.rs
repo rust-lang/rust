@@ -473,7 +473,7 @@ macro_rules! make_mir_visitor {
                     TerminatorKind::Goto { .. } |
                     TerminatorKind::UnwindResume |
                     TerminatorKind::UnwindTerminate(_) |
-                    TerminatorKind::GeneratorDrop |
+                    TerminatorKind::CoroutineDrop |
                     TerminatorKind::Unreachable |
                     TerminatorKind::FalseEdge { .. } |
                     TerminatorKind::FalseUnwind { .. } => {}
@@ -735,12 +735,12 @@ macro_rules! make_mir_visitor {
                             ) => {
                                 self.visit_args(closure_args, location);
                             }
-                            AggregateKind::Generator(
+                            AggregateKind::Coroutine(
                                 _,
-                                generator_args,
+                                coroutine_args,
                                 _movability,
                             ) => {
-                                self.visit_args(generator_args, location);
+                                self.visit_args(coroutine_args, location);
                             }
                         }
 
@@ -992,7 +992,7 @@ macro_rules! extra_body_methods {
 macro_rules! super_body {
     ($self:ident, $body:ident, $($mutability:ident, $invalidate:tt)?) => {
         let span = $body.span;
-        if let Some(gen) = &$($mutability)? $body.generator {
+        if let Some(gen) = &$($mutability)? $body.coroutine {
             if let Some(yield_ty) = $(& $mutability)? gen.yield_ty {
                 $self.visit_ty(
                     yield_ty,

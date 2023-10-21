@@ -37,7 +37,7 @@ macro_rules! is_sync_send {
 }
 
 fn main() {
-    // The iterator "generator" list should exhaust what corresponding
+    // The iterator "coroutine" list should exhaust what corresponding
     // implementations have where `Sync` and `Send` semantics apply.
     all_sync_send!(BinaryHeap::<usize>::new(), iter, drain, into_iter);
 

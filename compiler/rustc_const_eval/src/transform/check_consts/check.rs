@@ -247,7 +247,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
 
         // `async` functions cannot be `const fn`. This is checked during AST lowering, so there's
         // no need to emit duplicate errors here.
-        if self.ccx.is_async() || body.generator.is_some() {
+        if self.ccx.is_async() || body.coroutine.is_some() {
             tcx.sess.delay_span_bug(body.span, "`async` functions cannot be `const fn`");
             return;
         }
@@ -463,11 +463,11 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             | Rvalue::Len(_) => {}
 
             Rvalue::Aggregate(kind, ..) => {
-                if let AggregateKind::Generator(def_id, ..) = kind.as_ref()
-                    && let Some(generator_kind @ hir::GeneratorKind::Async(..)) =
-                        self.tcx.generator_kind(def_id)
+                if let AggregateKind::Coroutine(def_id, ..) = kind.as_ref()
+                    && let Some(coroutine_kind @ hir::CoroutineKind::Async(..)) =
+                        self.tcx.coroutine_kind(def_id)
                 {
-                    self.check_op(ops::Generator(generator_kind));
+                    self.check_op(ops::Coroutine(coroutine_kind));
                 }
             }
 
@@ -1042,8 +1042,8 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
             TerminatorKind::InlineAsm { .. } => self.check_op(ops::InlineAsm),
 
-            TerminatorKind::GeneratorDrop | TerminatorKind::Yield { .. } => {
-                self.check_op(ops::Generator(hir::GeneratorKind::Gen))
+            TerminatorKind::CoroutineDrop | TerminatorKind::Yield { .. } => {
+                self.check_op(ops::Coroutine(hir::CoroutineKind::Coroutine))
             }
 
             TerminatorKind::UnwindTerminate(_) => {

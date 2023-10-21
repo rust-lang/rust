@@ -5,31 +5,31 @@ each one organized by a "feature flag." That is, when using an unstable
 feature of Rust, you must use a flag, like this:
 
 ```rust
-#![feature(generators, generator_trait)]
+#![feature(coroutines, coroutine_trait)]
 
-use std::ops::{Generator, GeneratorState};
+use std::ops::{Coroutine, CoroutineState};
 use std::pin::Pin;
 
 fn main() {
-    let mut generator = || {
+    let mut coroutine = || {
         yield 1;
         return "foo"
     };
 
-    match Pin::new(&mut generator).resume(()) {
-        GeneratorState::Yielded(1) => {}
+    match Pin::new(&mut coroutine).resume(()) {
+        CoroutineState::Yielded(1) => {}
         _ => panic!("unexpected value from resume"),
     }
-    match Pin::new(&mut generator).resume(()) {
-        GeneratorState::Complete("foo") => {}
+    match Pin::new(&mut coroutine).resume(()) {
+        CoroutineState::Complete("foo") => {}
         _ => panic!("unexpected value from resume"),
     }
 }
 ```
 
-The `generators` feature [has a chapter][generators] describing how to use it.
+The `coroutines` feature [has a chapter][coroutines] describing how to use it.
 
-[generators]: language-features/generators.md
+[coroutines]: language-features/coroutines.md
 
 Because this documentation relates to unstable features, we make no guarantees
 that what is contained here is accurate or up to date. It's developed on a

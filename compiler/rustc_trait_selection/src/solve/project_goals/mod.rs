@@ -392,8 +392,8 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                 | ty::FnPtr(..)
                 | ty::Closure(..)
                 | ty::Infer(ty::IntVar(..) | ty::FloatVar(..))
-                | ty::Generator(..)
-                | ty::GeneratorWitness(..)
+                | ty::Coroutine(..)
+                | ty::CoroutineWitness(..)
                 | ty::Never
                 | ty::Foreign(..) => tcx.types.unit,
 
@@ -459,17 +459,17 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
         let self_ty = goal.predicate.self_ty();
-        let ty::Generator(def_id, args, _) = *self_ty.kind() else {
+        let ty::Coroutine(def_id, args, _) = *self_ty.kind() else {
             return Err(NoSolution);
         };
 
-        // Generators are not futures unless they come from `async` desugaring
+        // Coroutines are not futures unless they come from `async` desugaring
         let tcx = ecx.tcx();
-        if !tcx.generator_is_async(def_id) {
+        if !tcx.coroutine_is_async(def_id) {
             return Err(NoSolution);
         }
 
-        let term = args.as_generator().return_ty().into();
+        let term = args.as_coroutine().return_ty().into();
 
         Self::consider_implied_clause(
             ecx,
@@ -480,35 +480,35 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
             }
             .to_predicate(tcx),
             // Technically, we need to check that the future type is Sized,
-            // but that's already proven by the generator being WF.
+            // but that's already proven by the coroutine being WF.
             [],
         )
     }
 
-    fn consider_builtin_generator_candidate(
+    fn consider_builtin_coroutine_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
         let self_ty = goal.predicate.self_ty();
-        let ty::Generator(def_id, args, _) = *self_ty.kind() else {
+        let ty::Coroutine(def_id, args, _) = *self_ty.kind() else {
             return Err(NoSolution);
         };
 
-        // `async`-desugared generators do not implement the generator trait
+        // `async`-desugared coroutines do not implement the coroutine trait
         let tcx = ecx.tcx();
-        if tcx.generator_is_async(def_id) {
+        if tcx.coroutine_is_async(def_id) {
             return Err(NoSolution);
         }
 
-        let generator = args.as_generator();
+        let coroutine = args.as_coroutine();
 
         let name = tcx.associated_item(goal.predicate.def_id()).name;
         let term = if name == sym::Return {
-            generator.return_ty().into()
+            coroutine.return_ty().into()
         } else if name == sym::Yield {
-            generator.yield_ty().into()
+            coroutine.yield_ty().into()
         } else {
-            bug!("unexpected associated item `<{self_ty} as Generator>::{name}`")
+            bug!("unexpected associated item `<{self_ty} as Coroutine>::{name}`")
         };
 
         Self::consider_implied_clause(
@@ -518,13 +518,13 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                 projection_ty: ty::AliasTy::new(
                     ecx.tcx(),
                     goal.predicate.def_id(),
-                    [self_ty, generator.resume_ty()],
+                    [self_ty, coroutine.resume_ty()],
                 ),
                 term,
             }
             .to_predicate(tcx),
             // Technically, we need to check that the future type is Sized,
-            // but that's already proven by the generator being WF.
+            // but that's already proven by the coroutine being WF.
             [],
         )
     }
@@ -561,8 +561,8 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
             | ty::FnPtr(..)
             | ty::Closure(..)
             | ty::Infer(ty::IntVar(..) | ty::FloatVar(..))
-            | ty::Generator(..)
-            | ty::GeneratorWitness(..)
+            | ty::Coroutine(..)
+            | ty::CoroutineWitness(..)
             | ty::Never
             | ty::Foreign(..)
             | ty::Adt(_, _)

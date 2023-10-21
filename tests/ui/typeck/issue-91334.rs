@@ -2,6 +2,6 @@
 
 // error-pattern: this file contains an unclosed delimiter
 
-#![feature(generators)]
+#![feature(coroutines)]
 
 fn f(){||yield(((){),

@@ -121,7 +121,7 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
         self.tcx.lint_level_at_node(UNSAFE_OP_IN_UNSAFE_FN, self.hir_context).0 == Level::Allow
     }
 
-    /// Handle closures/generators/inline-consts, which is unsafecked with their parent body.
+    /// Handle closures/coroutines/inline-consts, which is unsafecked with their parent body.
     fn visit_inner_body(&mut self, def: LocalDefId) {
         if let Ok((inner_thir, expr)) = self.tcx.thir_body(def) {
             let inner_thir = &inner_thir.borrow();

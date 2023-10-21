@@ -136,11 +136,11 @@ pub enum SelectionCandidate<'tcx> {
         is_const: bool,
     },
 
-    /// Implementation of a `Generator` trait by one of the anonymous types
-    /// generated for a generator.
-    GeneratorCandidate,
+    /// Implementation of a `Coroutine` trait by one of the anonymous types
+    /// generated for a coroutine.
+    CoroutineCandidate,
 
-    /// Implementation of a `Future` trait by one of the generator types
+    /// Implementation of a `Future` trait by one of the coroutine types
     /// generated for an async construct.
     FutureCandidate,
 

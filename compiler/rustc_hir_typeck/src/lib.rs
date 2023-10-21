@@ -255,11 +255,11 @@ fn typeck_with_fallback<'tcx>(
     fcx.check_casts();
     fcx.select_obligations_where_possible(|_| {});
 
-    // Closure and generator analysis may run after fallback
+    // Closure and coroutine analysis may run after fallback
     // because they don't constrain other type variables.
     fcx.closure_analyze(body);
     assert!(fcx.deferred_call_resolutions.borrow().is_empty());
-    // Before the generator analysis, temporary scopes shall be marked to provide more
+    // Before the coroutine analysis, temporary scopes shall be marked to provide more
     // precise information on types to be captured.
     fcx.resolve_rvalue_scopes(def_id.to_def_id());
 
@@ -273,7 +273,7 @@ fn typeck_with_fallback<'tcx>(
     debug!(pending_obligations = ?fcx.fulfillment_cx.borrow().pending_obligations());
 
     // This must be the last thing before `report_ambiguity_errors`.
-    fcx.resolve_generator_interiors(def_id.to_def_id());
+    fcx.resolve_coroutine_interiors(def_id.to_def_id());
 
     debug!(pending_obligations = ?fcx.fulfillment_cx.borrow().pending_obligations());
 
@@ -298,20 +298,20 @@ fn typeck_with_fallback<'tcx>(
     typeck_results
 }
 
-/// When `check_fn` is invoked on a generator (i.e., a body that
+/// When `check_fn` is invoked on a coroutine (i.e., a body that
 /// includes yield), it returns back some information about the yield
 /// points.
-struct GeneratorTypes<'tcx> {
-    /// Type of generator argument / values returned by `yield`.
+struct CoroutineTypes<'tcx> {
+    /// Type of coroutine argument / values returned by `yield`.
     resume_ty: Ty<'tcx>,
 
     /// Type of value that is yielded.
     yield_ty: Ty<'tcx>,
 
-    /// Types that are captured (see `GeneratorInterior` for more).
+    /// Types that are captured (see `CoroutineInterior` for more).
     interior: Ty<'tcx>,
 
-    /// Indicates if the generator is movable or static (immovable).
+    /// Indicates if the coroutine is movable or static (immovable).
     movability: hir::Movability,
 }
 

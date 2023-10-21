@@ -243,8 +243,8 @@ fn do_orphan_check_impl<'tcx>(
             | ty::Tuple(..) => (LocalImpl::Allow, NonlocalImpl::DisallowOther),
 
             ty::Closure(..)
-            | ty::Generator(..)
-            | ty::GeneratorWitness(..)
+            | ty::Coroutine(..)
+            | ty::CoroutineWitness(..)
             | ty::Bound(..)
             | ty::Placeholder(..)
             | ty::Infer(..) => {

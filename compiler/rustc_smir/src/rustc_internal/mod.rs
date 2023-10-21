@@ -59,8 +59,8 @@ impl<'tcx> Tables<'tcx> {
         stable_mir::ty::ClosureDef(self.create_def_id(did))
     }
 
-    pub fn generator_def(&mut self, did: DefId) -> stable_mir::ty::GeneratorDef {
-        stable_mir::ty::GeneratorDef(self.create_def_id(did))
+    pub fn coroutine_def(&mut self, did: DefId) -> stable_mir::ty::CoroutineDef {
+        stable_mir::ty::CoroutineDef(self.create_def_id(did))
     }
 
     pub fn alias_def(&mut self, did: DefId) -> stable_mir::ty::AliasDef {

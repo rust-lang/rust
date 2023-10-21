@@ -632,23 +632,6 @@ impl<'a> Parser<'a> {
                         // Recover from parser, skip type error to avoid extra errors.
                         Ok(true) => true,
                         Err(mut e) => {
-                            if let TokenKind::DocComment(..) = self.token.kind
-                                && let Ok(snippet) = self.span_to_snippet(self.token.span)
-                            {
-                                let sp = self.token.span;
-                                let marker = &snippet[..3];
-                                let (comment_marker, doc_comment_marker) = marker.split_at(2);
-
-                                e.span_suggestion(
-                                    sp.with_hi(sp.lo() + BytePos(marker.len() as u32)),
-                                    format!(
-                                        "add a space before `{doc_comment_marker}` to use a regular comment",
-                                    ),
-                                    format!("{comment_marker} {doc_comment_marker}"),
-                                    Applicability::MaybeIncorrect,
-                                );
-                            }
-
                             if self.recover_colon_as_semi() {
                                 // recover_colon_as_semi has already emitted a nicer error.
                                 e.delay_as_bug();

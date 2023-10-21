@@ -784,11 +784,11 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 }
             }
             ty::Str => p!("str"),
-            ty::Generator(did, args, movability) => {
+            ty::Coroutine(did, args, movability) => {
                 p!(write("{{"));
-                let generator_kind = self.tcx().generator_kind(did).unwrap();
+                let coroutine_kind = self.tcx().coroutine_kind(did).unwrap();
                 let should_print_movability =
-                    self.should_print_verbose() || generator_kind == hir::GeneratorKind::Gen;
+                    self.should_print_verbose() || coroutine_kind == hir::CoroutineKind::Coroutine;
 
                 if should_print_movability {
                     match movability {
@@ -798,7 +798,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 }
 
                 if !self.should_print_verbose() {
-                    p!(write("{}", generator_kind));
+                    p!(write("{}", coroutine_kind));
                     // FIXME(eddyb) should use `def_span`.
                     if let Some(did) = did.as_local() {
                         let span = self.tcx().def_span(did);
@@ -814,24 +814,24 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 } else {
                     p!(print_def_path(did, args));
                     p!(" upvar_tys=(");
-                    if !args.as_generator().is_valid() {
+                    if !args.as_coroutine().is_valid() {
                         p!("unavailable");
                     } else {
-                        self = self.comma_sep(args.as_generator().upvar_tys().iter())?;
+                        self = self.comma_sep(args.as_coroutine().upvar_tys().iter())?;
                     }
                     p!(")");
 
-                    if args.as_generator().is_valid() {
-                        p!(" ", print(args.as_generator().witness()));
+                    if args.as_coroutine().is_valid() {
+                        p!(" ", print(args.as_coroutine().witness()));
                     }
                 }
 
                 p!("}}")
             }
-            ty::GeneratorWitness(did, args) => {
+            ty::CoroutineWitness(did, args) => {
                 p!(write("{{"));
                 if !self.tcx().sess.verbose() {
-                    p!("generator witness");
+                    p!("coroutine witness");
                     // FIXME(eddyb) should use `def_span`.
                     if let Some(did) = did.as_local() {
                         let span = self.tcx().def_span(did);
@@ -1048,16 +1048,16 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     }
 
                     for (assoc_item_def_id, term) in assoc_items {
-                        // Skip printing `<{generator@} as Generator<_>>::Return` from async blocks,
-                        // unless we can find out what generator return type it comes from.
+                        // Skip printing `<{coroutine@} as Coroutine<_>>::Return` from async blocks,
+                        // unless we can find out what coroutine return type it comes from.
                         let term = if let Some(ty) = term.skip_binder().ty()
                             && let ty::Alias(ty::Projection, proj) = ty.kind()
                             && let Some(assoc) = tcx.opt_associated_item(proj.def_id)
                             && assoc.trait_container(tcx) == tcx.lang_items().gen_trait()
                             && assoc.name == rustc_span::sym::Return
                         {
-                            if let ty::Generator(_, args, _) = args.type_at(0).kind() {
-                                let return_ty = args.as_generator().return_ty();
+                            if let ty::Coroutine(_, args, _) = args.type_at(0).kind() {
+                                let return_ty = args.as_coroutine().return_ty();
                                 if !return_ty.is_ty_var() {
                                     return_ty.into()
                                 } else {

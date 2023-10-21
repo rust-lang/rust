@@ -39,7 +39,7 @@ use rustc_errors::{
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident};
-use rustc_span::{Span, SpanSnippetError, Symbol, DUMMY_SP};
+use rustc_span::{BytePos, Span, SpanSnippetError, Symbol, DUMMY_SP};
 use std::mem::take;
 use std::ops::{Deref, DerefMut};
 use thin_vec::{thin_vec, ThinVec};
@@ -644,6 +644,26 @@ impl<'a> Parser<'a> {
                 self.prev_token.span,
                 "write `pub` instead of `public` to make the item public",
                 "pub",
+                Applicability::MachineApplicable,
+            );
+        }
+
+        if let token::DocComment(kind, style, _) = self.token.kind {
+            // We have something like `expr //!val` where the user likely meant `expr // !val`
+            let pos = self.token.span.lo() + BytePos(2);
+            let span = self.token.span.with_lo(pos).with_hi(pos);
+            err.span_suggestion_verbose(
+                span,
+                format!(
+                    "add a space before {} to write a regular comment",
+                    match (kind, style) {
+                        (token::CommentKind::Line, ast::AttrStyle::Inner) => "`!`",
+                        (token::CommentKind::Block, ast::AttrStyle::Inner) => "`!`",
+                        (token::CommentKind::Line, ast::AttrStyle::Outer) => "the last `/`",
+                        (token::CommentKind::Block, ast::AttrStyle::Outer) => "the last `*`",
+                    },
+                ),
+                " ".to_string(),
                 Applicability::MachineApplicable,
             );
         }

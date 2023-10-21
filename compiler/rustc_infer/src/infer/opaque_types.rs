@@ -454,16 +454,16 @@ where
                 args.as_closure().sig_as_fn_ptr_ty().visit_with(self);
             }
 
-            ty::Generator(_, ref args, _) => {
+            ty::Coroutine(_, ref args, _) => {
                 // Skip lifetime parameters of the enclosing item(s)
                 // Also skip the witness type, because that has no free regions.
 
-                for upvar in args.as_generator().upvar_tys() {
+                for upvar in args.as_coroutine().upvar_tys() {
                     upvar.visit_with(self);
                 }
-                args.as_generator().return_ty().visit_with(self);
-                args.as_generator().yield_ty().visit_with(self);
-                args.as_generator().resume_ty().visit_with(self);
+                args.as_coroutine().return_ty().visit_with(self);
+                args.as_coroutine().yield_ty().visit_with(self);
+                args.as_coroutine().resume_ty().visit_with(self);
             }
 
             ty::Alias(ty::Opaque, ty::AliasTy { def_id, ref args, .. }) => {

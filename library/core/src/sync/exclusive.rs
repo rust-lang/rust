@@ -3,7 +3,7 @@
 use core::fmt;
 use core::future::Future;
 use core::marker::Tuple;
-use core::ops::{Generator, GeneratorState};
+use core::ops::{Coroutine, CoroutineState};
 use core::pin::Pin;
 use core::task::{Context, Poll};
 
@@ -206,16 +206,16 @@ where
     }
 }
 
-#[unstable(feature = "generator_trait", issue = "43122")] // also #98407
-impl<R, G> Generator<R> for Exclusive<G>
+#[unstable(feature = "coroutine_trait", issue = "43122")] // also #98407
+impl<R, G> Coroutine<R> for Exclusive<G>
 where
-    G: Generator<R> + ?Sized,
+    G: Coroutine<R> + ?Sized,
 {
     type Yield = G::Yield;
     type Return = G::Return;
 
     #[inline]
-    fn resume(self: Pin<&mut Self>, arg: R) -> GeneratorState<Self::Yield, Self::Return> {
+    fn resume(self: Pin<&mut Self>, arg: R) -> CoroutineState<Self::Yield, Self::Return> {
         G::resume(self.get_pin_mut(), arg)
     }
 }

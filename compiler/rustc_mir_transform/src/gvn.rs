@@ -383,7 +383,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     AggregateKind::Array(..)
                     | AggregateKind::Tuple
                     | AggregateKind::Closure(..)
-                    | AggregateKind::Generator(..) => FIRST_VARIANT,
+                    | AggregateKind::Coroutine(..) => FIRST_VARIANT,
                     AggregateKind::Adt(_, variant_index, _, _, None) => variant_index,
                     // Do not track unions.
                     AggregateKind::Adt(_, _, _, _, Some(_)) => return None,

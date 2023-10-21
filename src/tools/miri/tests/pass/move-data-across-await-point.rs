@@ -15,7 +15,7 @@ async fn data_moved_async() {
         // `raw_pointer` points to the original location where the Vec was stored in the caller.
         // `data` is where that Vec (to be precise, its ptr+capacity+len on-stack data)
         // got moved to. Those will usually not be the same since the Vec got moved twice
-        // (into the function call, and then into the generator upvar).
+        // (into the function call, and then into the coroutine upvar).
         assert_ne!(raw_pointer, raw_pointer2);
         unsafe {
             // This writes into the `x` in `data_moved_async`, re-initializing it.

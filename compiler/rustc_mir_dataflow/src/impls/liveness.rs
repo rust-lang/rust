@@ -98,7 +98,7 @@ where
 {
     fn visit_place(&mut self, place: &mir::Place<'tcx>, context: PlaceContext, location: Location) {
         if let PlaceContext::MutatingUse(MutatingUseContext::Yield) = context {
-            // The resume place is evaluated and assigned to only after generator resumes, so its
+            // The resume place is evaluated and assigned to only after coroutine resumes, so its
             // effect is handled separately in `call_resume_effect`.
             return;
         }

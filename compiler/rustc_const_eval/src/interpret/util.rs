@@ -34,7 +34,7 @@ where
             match *ty.kind() {
                 ty::Param(_) => ControlFlow::Break(FoundParam),
                 ty::Closure(def_id, args)
-                | ty::Generator(def_id, args, ..)
+                | ty::Coroutine(def_id, args, ..)
                 | ty::FnDef(def_id, args) => {
                     let instance = ty::InstanceDef::Item(def_id);
                     let unused_params = self.tcx.unused_generic_params(instance);
@@ -42,10 +42,10 @@ where
                         let index = index
                             .try_into()
                             .expect("more generic parameters than can fit into a `u32`");
-                        // Only recurse when generic parameters in fns, closures and generators
+                        // Only recurse when generic parameters in fns, closures and coroutines
                         // are used and have to be instantiated.
                         //
-                        // Just in case there are closures or generators within this subst,
+                        // Just in case there are closures or coroutines within this subst,
                         // recurse.
                         if unused_params.is_used(index) && subst.has_param() {
                             return subst.visit_with(self);

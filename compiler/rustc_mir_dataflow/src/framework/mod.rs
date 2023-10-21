@@ -114,7 +114,7 @@ pub trait AnalysisDomain<'tcx> {
     //
     // FIXME: For backward dataflow analyses, the initial state should be applied to every basic
     // block where control flow could exit the MIR body (e.g., those terminated with `return` or
-    // `resume`). It's not obvious how to handle `yield` points in generators, however.
+    // `resume`). It's not obvious how to handle `yield` points in coroutines, however.
     fn initialize_start_block(&self, body: &mir::Body<'tcx>, state: &mut Self::Domain);
 }
 
