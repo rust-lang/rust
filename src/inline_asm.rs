@@ -149,6 +149,16 @@ pub(crate) fn codegen_inline_asm<'tcx>(
             return;
         }
 
+        // Used by core::hint::spin_loop()
+        if template[0]
+            == InlineAsmTemplatePiece::String(".insn i 0x0F, 0, x0, x0, 0x010".to_string())
+            && template.len() == 1
+        {
+            let destination_block = fx.get_block(destination.unwrap());
+            fx.bcx.ins().jump(destination_block, &[]);
+            return;
+        }
+
         // Used by measureme
         if template[0] == InlineAsmTemplatePiece::String("xor %eax, %eax".to_string())
             && template[1] == InlineAsmTemplatePiece::String("\n".to_string())
