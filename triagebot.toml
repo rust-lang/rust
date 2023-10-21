@@ -23,10 +23,10 @@ allow-unauthenticated = [
     "needs-triage",
 ]
 
-[review-submitted] 
-# This label is added when a "request changes" review is submitted. 
-reviewed_label = "S-waiting-on-author" 
-# These labels are removed when a "request changes" review is submitted. 
+[review-submitted]
+# This label is added when a "request changes" review is submitted.
+reviewed_label = "S-waiting-on-author"
+# These labels are removed when a "request changes" review is submitted.
 review_labels = ["S-waiting-on-review"]
 
 [review-requested]
@@ -586,17 +586,19 @@ message = "`src/tools/x` was changed. Bump version of Cargo.toml in `src/tools/x
 message = "Third-party dependency whitelist may have been modified! You must ensure that any new dependencies have compatible licenses before merging."
 cc = ["@davidtwco", "@wesleywiser"]
 
-[mentions."src/bootstrap/config.rs"]
-message = "This PR changes `src/bootstrap/config.rs`. If appropriate, please also update `CONFIG_CHANGE_HISTORY` in `src/bootstrap/lib.rs` and `change-id` in `config.example.toml`."
+[mentions."src/bootstrap/src/core/config"]
+message = "This PR modifies `src/bootstrap/src/core/config`. If appropriate, please also update `CONFIG_CHANGE_HISTORY` in `src/bootstrap/src/lib.rs` and `change-id` in `config.example.toml`."
+[mentions."src/bootstrap/defaults"]
+message = "This PR modifies `src/bootstrap/defaults`. If appropriate, please also update `CONFIG_CHANGE_HISTORY` in `src/bootstrap/src/lib.rs` and `change-id` in `config.example.toml`."
 [mentions."config.example.toml"]
-message = "This PR changes `config.example.toml`. If appropriate, please also update `CONFIG_CHANGE_HISTORY` in `src/bootstrap/lib.rs` and `change-id` in `config.example.toml`."
+message = "This PR changes `config.example.toml`. If appropriate, please also update `CONFIG_CHANGE_HISTORY` in `src/bootstrap/src/lib.rs` and `change-id` in `config.example.toml`."
 
 [mentions."src/bootstrap/defaults/config.compiler.toml"]
 message = "This PR changes src/bootstrap/defaults/config.compiler.toml. If appropriate, please also update `config.codegen.toml` so the defaults are in sync."
 [mentions."src/bootstrap/defaults/config.codegen.toml"]
 message = "This PR changes src/bootstrap/defaults/config.codegen.toml. If appropriate, please also update `config.compiler.toml` so the defaults are in sync."
 
-[mentions."src/bootstrap/llvm.rs"]
+[mentions."src/bootstrap/src/core/build_steps/llvm.rs"]
 message = "This PR changes how LLVM is built. Consider updating src/bootstrap/download-ci-llvm-stamp."
 
 [mentions."tests/ui/deriving/deriving-all-codegen.stdout"]
