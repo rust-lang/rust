@@ -120,7 +120,9 @@ where
     ///
     /// ```
     /// # #![feature(portable_simd)]
-    /// # use core::simd::u32x4;
+    /// # #[cfg(feature = "as_crate")] use core_simd::simd;
+    /// # #[cfg(not(feature = "as_crate"))] use core::simd;
+    /// # use simd::u32x4;
     /// let v = u32x4::splat(0);
     /// assert_eq!(v.len(), 4);
     /// ```
@@ -135,7 +137,9 @@ where
     ///
     /// ```
     /// # #![feature(portable_simd)]
-    /// # use core::simd::u32x4;
+    /// # #[cfg(feature = "as_crate")] use core_simd::simd;
+    /// # #[cfg(not(feature = "as_crate"))] use core::simd;
+    /// # use simd::u32x4;
     /// let v = u32x4::splat(8);
     /// assert_eq!(v.as_array(), &[8, 8, 8, 8]);
     /// ```
