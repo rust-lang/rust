@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 set -e
 
-./y.sh build
+# Compiletest expects all standard library paths to start with /rustc/FAKE_PREFIX.
+# CG_CLIF_STDLIB_REMAP_PATH_PREFIX will cause cg_clif's build system to pass
+# --remap-path-prefix to handle this.
+CG_CLIF_STDLIB_REMAP_PATH_PREFIX=/rustc/FAKE_PREFIX ./y.sh build
 
 echo "[SETUP] Rust fork"
 git clone https://github.com/rust-lang/rust.git || true
@@ -31,8 +34,6 @@ deny-warnings = false
 verbose-tests = false
 EOF
 popd
-
-export CFG_VIRTUAL_RUST_SOURCE_BASE_DIR="$(cd build/stdlib; pwd)"
 
 # Allow the testsuite to use llvm tools
 host_triple=$(rustc -vV | grep host | cut -d: -f2 | tr -d " ")
