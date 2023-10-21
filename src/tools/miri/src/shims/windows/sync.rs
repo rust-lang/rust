@@ -321,8 +321,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         this.atomic_fence(AtomicFenceOrd::SeqCst)?;
 
         let layout = this.machine.layouts.uint(size).unwrap();
-        let futex_val = this
-            .read_scalar_atomic(&this.ptr_to_mplace(ptr, layout), AtomicReadOrd::Relaxed)?;
+        let futex_val =
+            this.read_scalar_atomic(&this.ptr_to_mplace(ptr, layout), AtomicReadOrd::Relaxed)?;
         let compare_val = this.read_scalar(&this.ptr_to_mplace(compare, layout))?;
 
         if futex_val == compare_val {

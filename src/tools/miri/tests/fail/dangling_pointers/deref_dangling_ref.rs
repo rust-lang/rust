@@ -1,7 +1,7 @@
 // Should be caught even without retagging
 //@compile-flags: -Zmiri-disable-stacked-borrows
 #![feature(strict_provenance)]
-use std::ptr::{addr_of_mut, self};
+use std::ptr::{self, addr_of_mut};
 
 // Deref'ing a dangling raw pointer is fine, but for a dangling reference it is not.
 // We do this behind a pointer indirection to potentially fool validity checking.

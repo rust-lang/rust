@@ -805,12 +805,7 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 this.ptr_get_alloc_id(ptr_dest)?;
                 this.ptr_get_alloc_id(ptr_src)?;
 
-                this.mem_copy(
-                    ptr_src,
-                    ptr_dest,
-                    Size::from_bytes(n),
-                    true,
-                )?;
+                this.mem_copy(ptr_src, ptr_dest, Size::from_bytes(n), true)?;
                 this.write_pointer(ptr_dest, dest)?;
             }
             "strcpy" => {
@@ -826,12 +821,7 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 // reason to have `strcpy` destroy pointer provenance.
                 // This reads at least 1 byte, so we are already enforcing that this is a valid pointer.
                 let n = this.read_c_str(ptr_src)?.len().checked_add(1).unwrap();
-                this.mem_copy(
-                    ptr_src,
-                    ptr_dest,
-                    Size::from_bytes(n),
-                    true,
-                )?;
+                this.mem_copy(ptr_src, ptr_dest, Size::from_bytes(n), true)?;
                 this.write_pointer(ptr_dest, dest)?;
             }
 

@@ -188,7 +188,7 @@ jobs:
         with:
           fetch-depth: 256 # get a bit more of the history
       - name: install josh-proxy
-        run: cargo +stable install josh-proxy --git https://github.com/josh-project/josh --tag r22.12.06
+        run: RUSTFLAGS="--cap-lints warn" cargo +stable install josh-proxy --git https://github.com/josh-project/josh --tag r22.12.06
       - name: setup bot git name and email
         run: |
           git config --global user.name 'The Miri Conjob Bot'
@@ -208,7 +208,7 @@ jobs:
           git push -u origin $BRANCH
       - name: Create Pull Request
         run: |
-          PR=$(gh pr create -B master --title 'Automatic sync from rustc' --body '')
+          PR=$(gh pr create -B master --title 'Automatic Rustup' --body '')
           ~/.local/bin/zulip-send --user $ZULIP_BOT_EMAIL --api-key $ZULIP_API_TOKEN --site https://rust-lang.zulipchat.com \
             --stream miri --subject "Cron Job Failure (miri, $(date -u +%Y-%m))" \
             --message "A PR doing a rustc-pull [has been automatically created]($PR) for your convenience."

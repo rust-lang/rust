@@ -34,10 +34,26 @@ fn const_fn_call() -> i64 {
     x
 }
 
+fn call_return_into_passed_reference() {
+    pub fn func<T>(v: &mut T, f: fn(&T) -> T) {
+        // MIR building will introduce a temporary, so this becomes
+        // `let temp = f(v); *v = temp;`.
+        // If this got optimized to `*v = f(v)` on the MIR level we'd have UB
+        // since the return place may not be observed while the function runs!
+        *v = f(v);
+    }
+
+    let mut x = 0;
+    func(&mut x, |v| v + 1);
+    assert_eq!(x, 1);
+}
+
 fn main() {
     assert_eq!(call(), 2);
     assert_eq!(factorial_recursive(), 3628800);
     assert_eq!(call_generic(), (42, true));
     assert_eq!(cross_crate_fn_call(), 1);
     assert_eq!(const_fn_call(), 11);
+
+    call_return_into_passed_reference();
 }

@@ -1,4 +1,6 @@
-//@compile-flags: -Zmiri-tree-borrows
+// This does need an aliasing model.
+//@revisions: stack tree
+//@[tree]compile-flags: -Zmiri-tree-borrows
 #![feature(raw_ref_op)]
 #![feature(core_intrinsics)]
 #![feature(custom_mir)]
@@ -25,6 +27,7 @@ pub fn main() {
 fn myfun(ptr: *mut i32) -> i32 {
     // This overwrites the return place, which shouldn't be possible through another pointer.
     unsafe { ptr.write(0) };
-    //~^ ERROR: /write access .* forbidden/
+    //~[stack]^ ERROR: tag does not exist in the borrow stack
+    //~[tree]| ERROR: /write access .* forbidden/
     13
 }

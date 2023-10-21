@@ -206,11 +206,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
         // Make sure the new permission makes sense as the initial permission of a fresh tag.
         assert!(new_perm.initial_state.is_initial());
         // Ensure we bail out if the pointer goes out-of-bounds (see miri#1050).
-        this.check_ptr_access(
-            place.ptr(),
-            ptr_size,
-            CheckInAllocMsg::InboundsTest,
-        )?;
+        this.check_ptr_access(place.ptr(), ptr_size, CheckInAllocMsg::InboundsTest)?;
 
         // It is crucial that this gets called on all code paths, to ensure we track tag creation.
         let log_creation = |this: &MiriInterpCx<'mir, 'tcx>,

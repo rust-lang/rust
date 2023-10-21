@@ -7,9 +7,11 @@ use crate::*;
 use helpers::bool_to_simd_element;
 use shims::foreign_items::EmulateForeignItemResult;
 
+mod aesni;
 mod sse;
 mod sse2;
 mod sse3;
+mod sse41;
 mod ssse3;
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
@@ -100,6 +102,17 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                     this, link_name, abi, args, dest,
                 );
             }
+            name if name.starts_with("sse41.") => {
+                return sse41::EvalContextExt::emulate_x86_sse41_intrinsic(
+                    this, link_name, abi, args, dest,
+                );
+            }
+            name if name.starts_with("aesni.") => {
+                return aesni::EvalContextExt::emulate_x86_aesni_intrinsic(
+                    this, link_name, abi, args, dest,
+                );
+            }
+
             _ => return Ok(EmulateForeignItemResult::NotSupported),
         }
         Ok(EmulateForeignItemResult::NeedsJumping)

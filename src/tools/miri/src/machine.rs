@@ -1006,7 +1006,10 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
     }
 
     #[inline(always)]
-    fn generate_nan<F1: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F2>, F2: rustc_apfloat::Float>(
+    fn generate_nan<
+        F1: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F2>,
+        F2: rustc_apfloat::Float,
+    >(
         ecx: &InterpCx<'mir, 'tcx, Self>,
         inputs: &[F1],
     ) -> F2 {
@@ -1146,7 +1149,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
             // Value does not matter, SB is disabled
             BorTag::default()
         };
-        intptrcast::GlobalStateInner::ptr_from_rel_ptr(ecx, ptr, tag)
+        ecx.ptr_from_rel_ptr(ptr, tag)
     }
 
     /// Called on `usize as ptr` casts.
@@ -1155,7 +1158,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         ecx: &MiriInterpCx<'mir, 'tcx>,
         addr: u64,
     ) -> InterpResult<'tcx, Pointer<Option<Self::Provenance>>> {
-        intptrcast::GlobalStateInner::ptr_from_addr_cast(ecx, addr)
+        ecx.ptr_from_addr_cast(addr)
     }
 
     /// Called on `ptr as usize` casts.
@@ -1166,8 +1169,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         ptr: Pointer<Self::Provenance>,
     ) -> InterpResult<'tcx> {
         match ptr.provenance {
-            Provenance::Concrete { alloc_id, tag } =>
-                intptrcast::GlobalStateInner::expose_ptr(ecx, alloc_id, tag),
+            Provenance::Concrete { alloc_id, tag } => ecx.expose_ptr(alloc_id, tag),
             Provenance::Wildcard => {
                 // No need to do anything for wildcard pointers as
                 // their provenances have already been previously exposed.
@@ -1188,7 +1190,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         ecx: &MiriInterpCx<'mir, 'tcx>,
         ptr: Pointer<Self::Provenance>,
     ) -> Option<(AllocId, Size, Self::ProvenanceExtra)> {
-        let rel = intptrcast::GlobalStateInner::ptr_get_alloc(ecx, ptr);
+        let rel = ecx.ptr_get_alloc(ptr);
 
         rel.map(|(alloc_id, size)| {
             let tag = match ptr.provenance {
@@ -1260,6 +1262,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         {
             *deallocated_at = Some(machine.current_span());
         }
+        machine.intptrcast.get_mut().free_alloc_id(alloc_id);
         Ok(())
     }
 
