@@ -169,22 +169,22 @@ impl CoverageCounters {
         self.bcb_counters[bcb].as_ref()
     }
 
-    pub(super) fn take_bcb_counter(&mut self, bcb: BasicCoverageBlock) -> Option<BcbCounter> {
-        self.bcb_counters[bcb].take()
-    }
-
-    pub(super) fn drain_bcb_counters(
-        &mut self,
-    ) -> impl Iterator<Item = (BasicCoverageBlock, BcbCounter)> + '_ {
+    pub(super) fn bcb_node_counters(
+        &self,
+    ) -> impl Iterator<Item = (BasicCoverageBlock, &BcbCounter)> {
         self.bcb_counters
-            .iter_enumerated_mut()
-            .filter_map(|(bcb, counter)| Some((bcb, counter.take()?)))
+            .iter_enumerated()
+            .filter_map(|(bcb, counter_kind)| Some((bcb, counter_kind.as_ref()?)))
     }
 
-    pub(super) fn drain_bcb_edge_counters(
-        &mut self,
-    ) -> impl Iterator<Item = ((BasicCoverageBlock, BasicCoverageBlock), BcbCounter)> + '_ {
-        self.bcb_edge_counters.drain()
+    /// For each edge in the BCB graph that has an associated counter, yields
+    /// that edge's *from* and *to* nodes, and its counter.
+    pub(super) fn bcb_edge_counters(
+        &self,
+    ) -> impl Iterator<Item = (BasicCoverageBlock, BasicCoverageBlock, &BcbCounter)> {
+        self.bcb_edge_counters
+            .iter()
+            .map(|(&(from_bcb, to_bcb), counter_kind)| (from_bcb, to_bcb, counter_kind))
     }
 
     pub(super) fn take_expressions(&mut self) -> IndexVec<ExpressionId, Expression> {

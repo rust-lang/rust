@@ -39,6 +39,7 @@ pub mod visitor;
 
 pub use error::*;
 use mir::mono::Instance;
+use ty::{FnDef, GenericArgs};
 
 /// Use String for now but we should replace it.
 pub type Symbol = String;
@@ -233,6 +234,9 @@ pub trait Context {
 
     /// Item requires monomorphization.
     fn requires_monomorphization(&self, def_id: DefId) -> bool;
+
+    /// Resolve an instance from the given function definition and generic arguments.
+    fn resolve_instance(&mut self, def: FnDef, args: &GenericArgs) -> Option<Instance>;
 }
 
 // A thread local variable that stores a pointer to the tables mapping between TyCtxt
