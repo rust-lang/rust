@@ -2,10 +2,7 @@
 // Code ported from the `packed_simd` crate
 // Run this code with `cargo test --example matrix_inversion`
 #![feature(array_chunks, portable_simd)]
-use core_simd::simd::{
-    prelude::*,
-    Which::{self, *},
-};
+use core_simd::simd::prelude::*;
 
 // Gotta define our own 4x4 matrix since Rust doesn't ship multidim arrays yet :^)
 #[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
@@ -166,10 +163,10 @@ pub fn simd_inv4x4(m: Matrix4x4) -> Option<Matrix4x4> {
     let m_2 = f32x4::from_array(m[2]);
     let m_3 = f32x4::from_array(m[3]);
 
-    const SHUFFLE01: [Which; 4] = [First(0), First(1), Second(0), Second(1)];
-    const SHUFFLE02: [Which; 4] = [First(0), First(2), Second(0), Second(2)];
-    const SHUFFLE13: [Which; 4] = [First(1), First(3), Second(1), Second(3)];
-    const SHUFFLE23: [Which; 4] = [First(2), First(3), Second(2), Second(3)];
+    const SHUFFLE01: [usize; 4] = [0, 1, 4, 5];
+    const SHUFFLE02: [usize; 4] = [0, 2, 4, 6];
+    const SHUFFLE13: [usize; 4] = [1, 3, 5, 7];
+    const SHUFFLE23: [usize; 4] = [2, 3, 6, 7];
 
     let tmp = simd_swizzle!(m_0, m_1, SHUFFLE01);
     let row1 = simd_swizzle!(m_2, m_3, SHUFFLE01);
