@@ -347,7 +347,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                 continue;
             };
 
-            // This place does not need dropping. It is not have an associated move-path, so the
+            // This place does not need dropping. It does not have an associated move-path, so the
             // match below will conservatively keep an unconditional drop. As that drop is useless,
             // just remove it here and now.
             if !place
