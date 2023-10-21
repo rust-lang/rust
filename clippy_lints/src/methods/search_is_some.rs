@@ -39,7 +39,7 @@ pub(super) fn check<'tcx>(
                 if search_method == "find";
                 if let hir::ExprKind::Closure(&hir::Closure { body, .. }) = search_arg.kind;
                 let closure_body = cx.tcx.hir().body(body);
-                if let Some(closure_arg) = closure_body.params.get(0);
+                if let Some(closure_arg) = closure_body.params.first();
                 then {
                     if let hir::PatKind::Ref(..) = closure_arg.pat.kind {
                         Some(search_snippet.replacen('&', "", 1))

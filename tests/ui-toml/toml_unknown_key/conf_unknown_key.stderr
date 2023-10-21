@@ -53,6 +53,7 @@ error: error reading Clippy's configuration file: unknown field `foobar`, expect
            single-char-binding-names-threshold
            stack-size-threshold
            standard-macro-braces
+           struct-field-name-threshold
            suppress-restriction-lint-in-const
            third-party
            too-large-for-stack
@@ -126,6 +127,7 @@ error: error reading Clippy's configuration file: unknown field `barfoo`, expect
            single-char-binding-names-threshold
            stack-size-threshold
            standard-macro-braces
+           struct-field-name-threshold
            suppress-restriction-lint-in-const
            third-party
            too-large-for-stack

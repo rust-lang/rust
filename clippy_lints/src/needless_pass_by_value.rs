@@ -1,10 +1,10 @@
 use clippy_utils::diagnostics::{multispan_sugg, span_lint_and_then};
+use clippy_utils::is_self;
 use clippy_utils::ptr::get_spans;
 use clippy_utils::source::{snippet, snippet_opt};
 use clippy_utils::ty::{
     implements_trait, implements_trait_with_env_from_iter, is_copy, is_type_diagnostic_item, is_type_lang_item,
 };
-use clippy_utils::is_self;
 use if_chain::if_chain;
 use rustc_ast::ast::Attribute;
 use rustc_errors::{Applicability, Diagnostic};

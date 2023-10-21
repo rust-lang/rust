@@ -11,6 +11,8 @@ allow-unauthenticated = [
 
 # Have rustbot inform users about the *No Merge Policy*
 [no-merges]
+exclude_titles = ["Rustup"] # exclude syncs from rust-lang/rust
+labels = ["has-merge-commits", "S-waiting-on-author"]
 
 [autolabel."S-waiting-on-review"]
 new_pr = true

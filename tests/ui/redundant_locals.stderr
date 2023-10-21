@@ -157,13 +157,13 @@ LL |     let x = 1;
    |         ^
 
 error: redundant redefinition of a binding `a`
-  --> $DIR/redundant_locals.rs:144:5
+  --> $DIR/redundant_locals.rs:152:5
    |
 LL |     let a = a;
    |     ^^^^^^^^^^
    |
 help: `a` is initially defined here
-  --> $DIR/redundant_locals.rs:142:9
+  --> $DIR/redundant_locals.rs:150:9
    |
 LL |     let a = WithoutDrop(1);
    |         ^

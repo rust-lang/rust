@@ -7,7 +7,8 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_qpath, FnKind, Visitor};
 use rustc_hir::{
-    Body, Closure, Expr, ExprKind, FnDecl, HirId, HirIdMap, HirIdSet, Impl, ItemKind, Mutability, Node, PatKind, QPath,
+    BlockCheckMode, Body, Closure, Expr, ExprKind, FnDecl, HirId, HirIdMap, HirIdSet, Impl, ItemKind, Mutability, Node,
+    PatKind, QPath,
 };
 use rustc_hir_typeck::expr_use_visitor as euv;
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
@@ -139,13 +140,23 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
         let hir_id = cx.tcx.hir().local_def_id_to_hir_id(fn_def_id);
         let is_async = match kind {
             FnKind::ItemFn(.., header) => {
+                if header.is_unsafe() {
+                    // We don't check unsafe functions.
+                    return;
+                }
                 let attrs = cx.tcx.hir().attrs(hir_id);
                 if header.abi != Abi::Rust || requires_exact_signature(attrs) {
                     return;
                 }
                 header.is_async()
             },
-            FnKind::Method(.., sig) => sig.header.is_async(),
+            FnKind::Method(.., sig) => {
+                if sig.header.is_unsafe() {
+                    // We don't check unsafe functions.
+                    return;
+                }
+                sig.header.is_async()
+            },
             FnKind::Closure => return,
         };
 
@@ -186,20 +197,21 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
             };
             let infcx = cx.tcx.infer_ctxt().build();
             euv::ExprUseVisitor::new(&mut ctx, &infcx, fn_def_id, cx.param_env, cx.typeck_results()).consume_body(body);
+
+            let mut checked_closures = FxHashSet::default();
+
+            // We retrieve all the closures declared in the function because they will not be found
+            // by `euv::Delegate`.
+            let mut closures: FxHashSet<LocalDefId> = FxHashSet::default();
+            for_each_expr_with_closures(cx, body, |expr| {
+                if let ExprKind::Closure(closure) = expr.kind {
+                    closures.insert(closure.def_id);
+                }
+                ControlFlow::<()>::Continue(())
+            });
+            check_closures(&mut ctx, cx, &infcx, &mut checked_closures, closures);
+
             if is_async {
-                let mut checked_closures = FxHashSet::default();
-
-                // We retrieve all the closures declared in the async function because they will
-                // not be found by `euv::Delegate`.
-                let mut closures: FxHashSet<LocalDefId> = FxHashSet::default();
-                for_each_expr_with_closures(cx, body, |expr| {
-                    if let ExprKind::Closure(closure) = expr.kind {
-                        closures.insert(closure.def_id);
-                    }
-                    ControlFlow::<()>::Continue(())
-                });
-                check_closures(&mut ctx, cx, &infcx, &mut checked_closures, closures);
-
                 while !ctx.async_closures.is_empty() {
                     let async_closures = ctx.async_closures.clone();
                     ctx.async_closures.clear();
@@ -304,10 +316,27 @@ impl<'tcx> MutablyUsedVariablesCtxt<'tcx> {
         }
         self.aliases.insert(alias, target);
     }
+
+    // The goal here is to find if the current scope is unsafe or not. It stops when it finds
+    // a function or an unsafe block.
+    fn is_in_unsafe_block(&self, item: HirId) -> bool {
+        let hir = self.tcx.hir();
+        for (parent, node) in hir.parent_iter(item) {
+            if let Some(fn_sig) = hir.fn_sig_by_hir_id(parent) {
+                return fn_sig.header.is_unsafe();
+            } else if let Node::Block(block) = node {
+                if matches!(block.rules, BlockCheckMode::UnsafeBlock(_)) {
+                    return true;
+                }
+            }
+        }
+        false
+    }
 }
 
 impl<'tcx> euv::Delegate<'tcx> for MutablyUsedVariablesCtxt<'tcx> {
-    fn consume(&mut self, cmt: &euv::PlaceWithHirId<'tcx>, _id: HirId) {
+    #[allow(clippy::if_same_then_else)]
+    fn consume(&mut self, cmt: &euv::PlaceWithHirId<'tcx>, id: HirId) {
         if let euv::Place {
             base:
                 euv::PlaceBase::Local(vid)
@@ -327,13 +356,18 @@ impl<'tcx> euv::Delegate<'tcx> for MutablyUsedVariablesCtxt<'tcx> {
                 && matches!(base_ty.ref_mutability(), Some(Mutability::Mut))
             {
                 self.add_mutably_used_var(*vid);
+            } else if self.is_in_unsafe_block(id) {
+                // If we are in an unsafe block, any operation on this variable must not be warned
+                // upon!
+                self.add_mutably_used_var(*vid);
             }
             self.prev_bind = None;
             self.prev_move_to_closure.remove(vid);
         }
     }
 
-    fn borrow(&mut self, cmt: &euv::PlaceWithHirId<'tcx>, _id: HirId, borrow: ty::BorrowKind) {
+    #[allow(clippy::if_same_then_else)]
+    fn borrow(&mut self, cmt: &euv::PlaceWithHirId<'tcx>, id: HirId, borrow: ty::BorrowKind) {
         self.prev_bind = None;
         if let euv::Place {
             base:
@@ -354,6 +388,10 @@ impl<'tcx> euv::Delegate<'tcx> for MutablyUsedVariablesCtxt<'tcx> {
             if borrow == ty::BorrowKind::MutBorrow
                 || (borrow == ty::BorrowKind::UniqueImmBorrow && base_ty.ref_mutability() == Some(Mutability::Mut))
             {
+                self.add_mutably_used_var(*vid);
+            } else if self.is_in_unsafe_block(id) {
+                // If we are in an unsafe block, any operation on this variable must not be warned
+                // upon!
                 self.add_mutably_used_var(*vid);
             }
         } else if borrow == ty::ImmBorrow {
@@ -397,7 +435,21 @@ impl<'tcx> euv::Delegate<'tcx> for MutablyUsedVariablesCtxt<'tcx> {
         }
     }
 
-    fn copy(&mut self, _cmt: &euv::PlaceWithHirId<'tcx>, _id: HirId) {
+    fn copy(&mut self, cmt: &euv::PlaceWithHirId<'tcx>, id: HirId) {
+        if let euv::Place {
+            base:
+                euv::PlaceBase::Local(vid)
+                | euv::PlaceBase::Upvar(UpvarId {
+                    var_path: UpvarPath { hir_id: vid },
+                    ..
+                }),
+            ..
+        } = &cmt.place
+        {
+            if self.is_in_unsafe_block(id) {
+                self.add_mutably_used_var(*vid);
+            }
+        }
         self.prev_bind = None;
     }
 
@@ -427,8 +479,22 @@ impl<'tcx> euv::Delegate<'tcx> for MutablyUsedVariablesCtxt<'tcx> {
         }
     }
 
-    fn bind(&mut self, _cmt: &euv::PlaceWithHirId<'tcx>, id: HirId) {
+    fn bind(&mut self, cmt: &euv::PlaceWithHirId<'tcx>, id: HirId) {
         self.prev_bind = Some(id);
+        if let euv::Place {
+            base:
+                euv::PlaceBase::Local(vid)
+                | euv::PlaceBase::Upvar(UpvarId {
+                    var_path: UpvarPath { hir_id: vid },
+                    ..
+                }),
+            ..
+        } = &cmt.place
+        {
+            if self.is_in_unsafe_block(id) {
+                self.add_mutably_used_var(*vid);
+            }
+        }
     }
 }
 

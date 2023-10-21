@@ -270,6 +270,38 @@ pub async fn closure4(n: &mut usize) {
     })();
 }
 
+// Should not warn.
+async fn _f(v: &mut Vec<()>) {
+    let x = || v.pop();
+    _ = || || x;
+}
+
+struct Data<T: ?Sized> {
+    value: T,
+}
+// Unsafe functions should not warn.
+unsafe fn get_mut_unchecked<T>(ptr: &mut NonNull<Data<T>>) -> &mut T {
+    &mut (*ptr.as_ptr()).value
+}
+// Unsafe blocks should not warn.
+fn get_mut_unchecked2<T>(ptr: &mut NonNull<Data<T>>) -> &mut T {
+    unsafe { &mut (*ptr.as_ptr()).value }
+}
+
+fn set_true(b: &mut bool) {
+    *b = true;
+}
+
+// Should not warn.
+fn true_setter(b: &mut bool) -> impl FnOnce() + '_ {
+    move || set_true(b)
+}
+
+// Should not warn.
+fn filter_copy<T: Copy>(predicate: &mut impl FnMut(T) -> bool) -> impl FnMut(&T) -> bool + '_ {
+    move |&item| predicate(item)
+}
+
 fn main() {
     let mut u = 0;
     let mut v = vec![0];

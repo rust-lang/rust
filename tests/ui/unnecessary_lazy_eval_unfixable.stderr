@@ -25,5 +25,13 @@ LL |     let _ = Ok(1).unwrap_or_else(|SomeStruct { .. }| 2);
    |                   |
    |                   help: use `unwrap_or(..)` instead: `unwrap_or(2)`
 
-error: aborting due to 3 previous errors
+error: unnecessary closure used with `bool::then`
+  --> $DIR/unnecessary_lazy_eval_unfixable.rs:31:13
+   |
+LL |     let _ = true.then(|| -> &[u8] { &[] });
+   |             ^^^^^-------------------------
+   |                  |
+   |                  help: use `then_some(..)` instead: `then_some({ &[] })`
+
+error: aborting due to 4 previous errors
 
