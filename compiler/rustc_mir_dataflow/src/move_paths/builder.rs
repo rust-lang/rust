@@ -20,10 +20,7 @@ struct MoveDataBuilder<'a, 'tcx, F> {
     filter: F,
 }
 
-impl<'a, 'tcx, F> MoveDataBuilder<'a, 'tcx, F>
-where
-    F: Fn(Ty<'tcx>) -> bool,
-{
+impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
     fn new(
         body: &'a Body<'tcx>,
         tcx: TyCtxt<'tcx>,
@@ -108,10 +105,7 @@ enum MovePathResult {
     Error,
 }
 
-impl<'b, 'a, 'tcx, F> Gatherer<'b, 'a, 'tcx, F>
-where
-    F: Fn(Ty<'tcx>) -> bool,
-{
+impl<'b, 'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> Gatherer<'b, 'a, 'tcx, F> {
     /// This creates a MovePath for a given place, returning an `MovePathError`
     /// if that place can't be moved from.
     ///
@@ -323,10 +317,7 @@ pub(super) fn gather_moves<'tcx>(
     builder.finalize()
 }
 
-impl<'a, 'tcx, F> MoveDataBuilder<'a, 'tcx, F>
-where
-    F: Fn(Ty<'tcx>) -> bool,
-{
+impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
     fn gather_args(&mut self) {
         for arg in self.body.args_iter() {
             if let Some(path) = self.data.rev_lookup.find_local(arg) {
@@ -359,10 +350,7 @@ struct Gatherer<'b, 'a, 'tcx, F> {
     loc: Location,
 }
 
-impl<'b, 'a, 'tcx, F> Gatherer<'b, 'a, 'tcx, F>
-where
-    F: Fn(Ty<'tcx>) -> bool,
-{
+impl<'b, 'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> Gatherer<'b, 'a, 'tcx, F> {
     fn gather_statement(&mut self, stmt: &Statement<'tcx>) {
         match &stmt.kind {
             StatementKind::Assign(box (place, Rvalue::CopyForDeref(reffed))) => {
