@@ -1511,9 +1511,22 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 ),
             );
         }
+
+        let (span, sugg, post) = if let SuggestionTarget::SimilarlyNamed = suggestion.target
+            && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span)
+            && let Some(span) = suggestion.span
+            && let Some(candidate) = suggestion.candidate.as_str().strip_prefix("_")
+            && snippet == candidate
+        {
+            // When the suggested binding change would be from `x` to `_x`, suggest changing the
+            // original binding definition instead. (#60164)
+            (span, snippet, ", consider changing it")
+        } else {
+            (span, suggestion.candidate.to_string(), "")
+        };
         let msg = match suggestion.target {
             SuggestionTarget::SimilarlyNamed => format!(
-                "{} {} with a similar name exists",
+                "{} {} with a similar name exists{post}",
                 suggestion.res.article(),
                 suggestion.res.descr()
             ),
@@ -1521,7 +1534,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 format!("maybe you meant this {}", suggestion.res.descr())
             }
         };
-        err.span_suggestion(span, msg, suggestion.candidate, Applicability::MaybeIncorrect);
+        err.span_suggestion(span, msg, sugg, Applicability::MaybeIncorrect);
         true
     }
 
