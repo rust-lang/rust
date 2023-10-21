@@ -30,6 +30,7 @@ because that's clearly a non-descriptive name.
   - [Documentation](#documentation)
   - [Running rustfmt](#running-rustfmt)
   - [Debugging](#debugging)
+  - [Conflicting lints](#conflicting-lints)
   - [PR Checklist](#pr-checklist)
   - [Adding configuration to a lint](#adding-configuration-to-a-lint)
   - [Cheat Sheet](#cheat-sheet)
@@ -611,6 +612,24 @@ macro anywhere in your code. Running the tests should then include the debug
 output in the `stdout` part.
 
 [`dbg!`]: https://doc.rust-lang.org/std/macro.dbg.html
+
+## Conflicting lints
+
+There are several lints that deal with the same pattern but suggest different approaches. In other words, some lints
+may suggest modifications that go in the opposite direction to what some other lints already propose for the same
+code, creating conflicting diagnostics.
+
+When you are creating a lint that ends up in this scenario, the following tips should be encouraged to guide
+classification:
+
+* The only case where they should be in the same category is if that category is `restriction`. For example,
+`semicolon_inside_block` and `semicolon_outside_block`.
+* For all the other cases, they should be in different categories with different levels of allowance. For example,
+`implicit_return` (restriction, allow) and `needless_return` (style, warn).
+
+For lints that are in different categories, it is also recommended that at least one of them should be in the
+`restriction` category. The reason for this is that the `restriction` group is the only group where we don't
+recommend to enable the entire set, but cherry pick lints out of.
 
 ## PR Checklist
 

@@ -25,3 +25,8 @@ fn main() {
     let arr = [(Some(1),)];
     Some(&0).and_then(|&i| arr[i].0);
 }
+
+fn issue11672() {
+    // Return type annotation helps type inference and removing it can break code
+    let _ = true.then(|| -> &[u8] { &[] });
+}

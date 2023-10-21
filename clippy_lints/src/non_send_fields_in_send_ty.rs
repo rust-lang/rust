@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::is_lint_allowed;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::{implements_trait, is_copy};
-use clippy_utils::is_lint_allowed;
 use rustc_ast::ImplPolarity;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{FieldDef, Item, ItemKind, Node};

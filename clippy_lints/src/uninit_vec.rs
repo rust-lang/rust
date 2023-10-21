@@ -201,7 +201,7 @@ fn extract_set_len_self<'tcx>(cx: &LateContext<'_>, expr: &'tcx Expr<'_>) -> Opt
     let expr = peel_hir_expr_while(expr, |e| {
         if let ExprKind::Block(block, _) = e.kind {
             // Extract the first statement/expression
-            match (block.stmts.get(0).map(|stmt| &stmt.kind), block.expr) {
+            match (block.stmts.first().map(|stmt| &stmt.kind), block.expr) {
                 (None, Some(expr)) => Some(expr),
                 (Some(StmtKind::Expr(expr) | StmtKind::Semi(expr)), _) => Some(expr),
                 _ => None,
