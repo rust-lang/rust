@@ -564,7 +564,7 @@ dependencies = [
  "tester",
  "tokio",
  "toml 0.7.5",
- "ui_test 0.20.0",
+ "ui_test",
  "walkdir",
 ]
 
@@ -614,6 +614,7 @@ dependencies = [
  "if_chain",
  "itertools",
  "rustc-semver",
+ "serde",
 ]
 
 [[package]]
@@ -2511,7 +2512,7 @@ dependencies = [
  "rustc_version",
  "serde",
  "smallvec",
- "ui_test 0.21.2",
+ "ui_test",
 ]
 
 [[package]]
@@ -5739,33 +5740,6 @@ name = "ucd-trie"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9e79c4d996edb816c91e4308506774452e55e95c3c9de07b6729e17e15a5ef81"
-
-[[package]]
-name = "ui_test"
-version = "0.20.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bfd8fb9b15c8332cf51bfc2dc4830063b2446a9c9d732421b56f2478024a3971"
-dependencies = [
- "annotate-snippets",
- "anyhow",
- "bstr",
- "cargo-platform",
- "cargo_metadata 0.15.4",
- "color-eyre",
- "colored",
- "comma",
- "crossbeam-channel",
- "indicatif",
- "lazy_static",
- "levenshtein",
- "prettydiff",
- "regex",
- "rustc_version",
- "rustfix",
- "serde",
- "serde_json",
- "tempfile",
-]
 
 [[package]]
 name = "ui_test"
