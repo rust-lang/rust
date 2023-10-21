@@ -311,11 +311,15 @@ pub fn parse_check_cfg(handler: &EarlyErrorHandler, specs: Vec<String>) -> Check
                 }
 
                 if any_specified {
-                    if !names.is_empty() || !values.is_empty() || values_any_specified {
+                    if names.is_empty()
+                        && values.is_empty()
+                        && !values_specified
+                        && !values_any_specified
+                    {
+                        check_cfg.exhaustive_names = false;
+                    } else {
                         error!("`cfg(any())` can only be provided in isolation");
                     }
-
-                    check_cfg.exhaustive_names = false;
                 } else {
                     for name in names {
                         check_cfg
