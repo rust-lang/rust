@@ -23,11 +23,7 @@ where
     /// ```
     #[inline]
     #[must_use = "method returns a new vector and does not mutate the original inputs"]
-    pub fn select<U>(
-        self,
-        true_values: Simd<U, N>,
-        false_values: Simd<U, N>,
-    ) -> Simd<U, N>
+    pub fn select<U>(self, true_values: Simd<U, N>, false_values: Simd<U, N>) -> Simd<U, N>
     where
         U: SimdElement<Mask = T>,
     {

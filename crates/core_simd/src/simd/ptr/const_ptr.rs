@@ -77,10 +77,7 @@ pub trait SimdConstPtr: Copy + Sealed {
     fn wrapping_sub(self, count: Self::Usize) -> Self;
 }
 
-impl<T, const N: usize> Sealed for Simd<*const T, N> where
-    LaneCount<N>: SupportedLaneCount
-{
-}
+impl<T, const N: usize> Sealed for Simd<*const T, N> where LaneCount<N>: SupportedLaneCount {}
 
 impl<T, const N: usize> SimdConstPtr for Simd<*const T, N>
 where

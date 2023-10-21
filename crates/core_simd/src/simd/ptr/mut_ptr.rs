@@ -74,8 +74,7 @@ pub trait SimdMutPtr: Copy + Sealed {
     fn wrapping_sub(self, count: Self::Usize) -> Self;
 }
 
-impl<T, const N: usize> Sealed for Simd<*mut T, N> where LaneCount<N>: SupportedLaneCount
-{}
+impl<T, const N: usize> Sealed for Simd<*mut T, N> where LaneCount<N>: SupportedLaneCount {}
 
 impl<T, const N: usize> SimdMutPtr for Simd<*mut T, N>
 where
