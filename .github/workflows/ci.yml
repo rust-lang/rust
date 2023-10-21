@@ -17,8 +17,6 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        llvm: ["11", "12", "13", "14", "15", "16"]
-        build: ["Release"] # "RelWithDebInfo"
         os: [ubuntu-20.04]
 
     timeout-minutes: 600
