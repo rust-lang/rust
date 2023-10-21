@@ -249,6 +249,30 @@
 //!    `Call(ret_val = function(arg1, arg2, ...), ReturnTo(next_block), UnwindContinue())`.
 //!  - [`TailCall`] does not have a return destination or next block, so its syntax is just
 //!    `TailCall(function(arg1, arg2, ...))`.
+//!
+//! #### Debuginfo
+//!
+//!  - A debuginfo name can be given to a local using `debug my_name => contents;`.
+//!    For `contents`, we use the same syntax as operands, to support both places and constants.
+//!
+//! ```rust
+//! #![allow(internal_features)]
+//! #![feature(core_intrinsics, custom_mir)]
+//!
+//! use core::intrinsics::mir::*;
+//!
+//! #[custom_mir(dialect = "built")]
+//! fn debuginfo(option: Option<&i32>) {
+//!     mir!(
+//!         debug option => option;
+//!         debug projection => *Field::<&i32>(Variant(option, 1), 0);
+//!         debug constant => 5_usize;
+//!         {
+//!             Return()
+//!         }
+//!     )
+//! }
+//! ```
 
 #![unstable(
     feature = "custom_mir",
