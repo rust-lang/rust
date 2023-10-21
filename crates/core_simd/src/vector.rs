@@ -112,7 +112,7 @@ where
     T: SimdElement,
 {
     /// Number of elements in this vector.
-    pub const LANES: usize = N;
+    pub const LEN: usize = N;
 
     /// Returns the number of elements in this SIMD vector.
     ///
@@ -122,11 +122,11 @@ where
     /// # #![feature(portable_simd)]
     /// # use core::simd::u32x4;
     /// let v = u32x4::splat(0);
-    /// assert_eq!(v.lanes(), 4);
+    /// assert_eq!(v.len(), 4);
     /// ```
     #[inline]
-    pub const fn lanes(&self) -> usize {
-        Self::LANES
+    pub const fn len(&self) -> usize {
+        Self::LEN
     }
 
     /// Constructs a new SIMD vector with all elements set to the given value.
@@ -273,7 +273,7 @@ where
     #[track_caller]
     pub const fn from_slice(slice: &[T]) -> Self {
         assert!(
-            slice.len() >= Self::LANES,
+            slice.len() >= Self::LEN,
             "slice length must be at least the number of elements"
         );
         // SAFETY: We just checked that the slice contains
@@ -303,7 +303,7 @@ where
     #[track_caller]
     pub fn copy_to_slice(self, slice: &mut [T]) {
         assert!(
-            slice.len() >= Self::LANES,
+            slice.len() >= Self::LEN,
             "slice length must be at least the number of elements"
         );
         // SAFETY: We just checked that the slice contains
