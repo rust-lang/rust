@@ -449,7 +449,7 @@ pub fn get_vec_init_kind<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -
                 } else if name.ident.name == symbol::kw::Default {
                     return Some(VecInitKind::Default);
                 } else if name.ident.name.as_str() == "with_capacity" {
-                    let arg = args.get(0)?;
+                    let arg = args.first()?;
                     return match constant_simple(cx, cx.typeck_results(), arg) {
                         Some(Constant::Int(num)) => Some(VecInitKind::WithConstCapacity(num)),
                         _ => Some(VecInitKind::WithExprCapacity(arg.hir_id)),

@@ -4,7 +4,7 @@ use clippy_utils::source::snippet;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{AsyncCoroutineKind, Block, Body, Expr, ExprKind, CoroutineKind, LangItem, MatchSource, QPath};
+use rustc_hir::{AsyncCoroutineKind, Block, Body, CoroutineKind, Expr, ExprKind, LangItem, MatchSource, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 

@@ -287,5 +287,8 @@ fn is_mutex_guard(cx: &LateContext<'_>, def_id: DefId) -> bool {
 }
 
 fn is_refcell_ref(cx: &LateContext<'_>, def_id: DefId) -> bool {
-    matches!(cx.tcx.get_diagnostic_name(def_id), Some(sym::RefCellRef | sym::RefCellRefMut))
+    matches!(
+        cx.tcx.get_diagnostic_name(def_id),
+        Some(sym::RefCellRef | sym::RefCellRefMut)
+    )
 }

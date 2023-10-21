@@ -236,6 +236,59 @@ pub fn count_match_end(str1: &str, str2: &str) -> StrCount {
         })
 }
 
+/// Returns a `snake_case` version of the input
+/// ```
+/// use clippy_utils::str_utils::to_snake_case;
+/// assert_eq!(to_snake_case("AbcDef"), "abc_def");
+/// assert_eq!(to_snake_case("ABCD"), "a_b_c_d");
+/// assert_eq!(to_snake_case("AbcDD"), "abc_d_d");
+/// assert_eq!(to_snake_case("Abc1DD"), "abc1_d_d");
+/// ```
+pub fn to_snake_case(name: &str) -> String {
+    let mut s = String::new();
+    for (i, c) in name.chars().enumerate() {
+        if c.is_uppercase() {
+            // characters without capitalization are considered lowercase
+            if i != 0 {
+                s.push('_');
+            }
+            s.extend(c.to_lowercase());
+        } else {
+            s.push(c);
+        }
+    }
+    s
+}
+/// Returns a `CamelCase` version of the input
+/// ```
+/// use clippy_utils::str_utils::to_camel_case;
+/// assert_eq!(to_camel_case("abc_def"), "AbcDef");
+/// assert_eq!(to_camel_case("a_b_c_d"), "ABCD");
+/// assert_eq!(to_camel_case("abc_d_d"), "AbcDD");
+/// assert_eq!(to_camel_case("abc1_d_d"), "Abc1DD");
+/// ```
+pub fn to_camel_case(item_name: &str) -> String {
+    let mut s = String::new();
+    let mut up = true;
+    for c in item_name.chars() {
+        if c.is_uppercase() {
+            // we only turn snake case text into CamelCase
+            return item_name.to_string();
+        }
+        if c == '_' {
+            up = true;
+            continue;
+        }
+        if up {
+            up = false;
+            s.extend(c.to_uppercase());
+        } else {
+            s.push(c);
+        }
+    }
+    s
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

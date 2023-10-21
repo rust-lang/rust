@@ -1,9 +1,7 @@
-use std::sync::OnceLock;
-
 use rustc_ast::Attribute;
 use rustc_semver::RustcVersion;
 use rustc_session::Session;
-use rustc_span::Span;
+use serde::Deserialize;
 
 use crate::attrs::get_unique_attr;
 
@@ -53,65 +51,45 @@ msrv_aliases! {
     1,15,0 { MAYBE_BOUND_IN_WHERE }
 }
 
-fn parse_msrv(msrv: &str, sess: Option<&Session>, span: Option<Span>) -> Option<RustcVersion> {
-    if let Ok(version) = RustcVersion::parse(msrv) {
-        return Some(version);
-    } else if let Some(sess) = sess {
-        if let Some(span) = span {
-            sess.span_err(span, format!("`{msrv}` is not a valid Rust version"));
-        }
-    }
-    None
-}
-
 /// Tracks the current MSRV from `clippy.toml`, `Cargo.toml` or set via `#[clippy::msrv]`
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct Msrv {
     stack: Vec<RustcVersion>,
 }
 
+impl<'de> Deserialize<'de> for Msrv {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let v = String::deserialize(deserializer)?;
+        RustcVersion::parse(&v)
+            .map(|v| Msrv { stack: vec![v] })
+            .map_err(|_| serde::de::Error::custom("not a valid Rust version"))
+    }
+}
+
 impl Msrv {
-    fn new(initial: Option<RustcVersion>) -> Self {
-        Self {
-            stack: Vec::from_iter(initial),
-        }
+    pub fn empty() -> Msrv {
+        Msrv { stack: Vec::new() }
     }
 
-    fn read_inner(conf_msrv: &Option<String>, sess: &Session) -> Self {
+    pub fn read_cargo(&mut self, sess: &Session) {
         let cargo_msrv = std::env::var("CARGO_PKG_RUST_VERSION")
             .ok()
-            .and_then(|v| parse_msrv(&v, None, None));
-        let clippy_msrv = conf_msrv.as_ref().and_then(|s| {
-            parse_msrv(s, None, None).or_else(|| {
-                sess.err(format!(
-                    "error reading Clippy's configuration file. `{s}` is not a valid Rust version"
-                ));
-                None
-            })
-        });
+            .and_then(|v| RustcVersion::parse(&v).ok());
 
-        // if both files have an msrv, let's compare them and emit a warning if they differ
-        if let Some(cargo_msrv) = cargo_msrv
-            && let Some(clippy_msrv) = clippy_msrv
-            && clippy_msrv != cargo_msrv
-        {
-            sess.warn(format!(
-                "the MSRV in `clippy.toml` and `Cargo.toml` differ; using `{clippy_msrv}` from `clippy.toml`"
-            ));
+        match (self.current(), cargo_msrv) {
+            (None, Some(cargo_msrv)) => self.stack = vec![cargo_msrv],
+            (Some(clippy_msrv), Some(cargo_msrv)) => {
+                if clippy_msrv != cargo_msrv {
+                    sess.warn(format!(
+                        "the MSRV in `clippy.toml` and `Cargo.toml` differ; using `{clippy_msrv}` from `clippy.toml`"
+                    ));
+                }
+            },
+            _ => {},
         }
-
-        Self::new(clippy_msrv.or(cargo_msrv))
-    }
-
-    /// Set the initial MSRV from the Clippy config file or from Cargo due to the `rust-version`
-    /// field in `Cargo.toml`
-    ///
-    /// Returns a `&'static Msrv` as `Copy` types are more easily passed to the
-    /// `register_{late,early}_pass` callbacks
-    pub fn read(conf_msrv: &Option<String>, sess: &Session) -> &'static Self {
-        static PARSED: OnceLock<Msrv> = OnceLock::new();
-
-        PARSED.get_or_init(|| Self::read_inner(conf_msrv, sess))
     }
 
     pub fn current(&self) -> Option<RustcVersion> {
@@ -125,10 +103,14 @@ impl Msrv {
     fn parse_attr(sess: &Session, attrs: &[Attribute]) -> Option<RustcVersion> {
         if let Some(msrv_attr) = get_unique_attr(sess, attrs, "msrv") {
             if let Some(msrv) = msrv_attr.value_str() {
-                return parse_msrv(&msrv.to_string(), Some(sess), Some(msrv_attr.span));
-            }
+                if let Ok(version) = RustcVersion::parse(msrv.as_str()) {
+                    return Some(version);
+                }
 
-            sess.span_err(msrv_attr.span, "bad clippy attribute");
+                sess.span_err(msrv_attr.span, format!("`{msrv}` is not a valid Rust version"));
+            } else {
+                sess.span_err(msrv_attr.span, "bad clippy attribute");
+            }
         }
 
         None

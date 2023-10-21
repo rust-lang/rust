@@ -5,7 +5,7 @@ use clippy_utils::peel_blocks;
 use clippy_utils::source::{snippet, walk_span_to_context};
 use clippy_utils::visitors::for_each_expr;
 use rustc_errors::Applicability;
-use rustc_hir::{AsyncCoroutineKind, Closure, Expr, ExprKind, CoroutineKind, MatchSource};
+use rustc_hir::{AsyncCoroutineKind, Closure, CoroutineKind, Expr, ExprKind, MatchSource};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::UpvarCapture;

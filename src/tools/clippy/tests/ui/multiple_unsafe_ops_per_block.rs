@@ -147,4 +147,11 @@ fn _field_fn_ptr(x: unsafe fn()) {
     }
 }
 
+// await expands to an unsafe block with several operations, but this is fine.: #11312
+async fn await_desugaring_silent() {
+    async fn helper() {}
+
+    helper().await;
+}
+
 fn main() {}

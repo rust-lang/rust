@@ -8,8 +8,9 @@ use serde::de::{Deserializer, IgnoredAny, IntoDeserializer, MapAccess, Visitor};
 use serde::Deserialize;
 use std::fmt::{Debug, Display, Formatter};
 use std::ops::Range;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::str::FromStr;
+use std::sync::OnceLock;
 use std::{cmp, env, fmt, fs, io};
 
 #[rustfmt::skip]
@@ -78,62 +79,35 @@ pub struct TryConf {
 
 impl TryConf {
     fn from_toml_error(file: &SourceFile, error: &toml::de::Error) -> Self {
-        ConfError::from_toml(file, error).into()
-    }
-}
-
-impl From<ConfError> for TryConf {
-    fn from(value: ConfError) -> Self {
         Self {
             conf: Conf::default(),
-            errors: vec![value],
+            errors: vec![ConfError::from_toml(file, error)],
             warnings: vec![],
         }
-    }
-}
-
-impl From<io::Error> for TryConf {
-    fn from(value: io::Error) -> Self {
-        ConfError::from(value).into()
     }
 }
 
 #[derive(Debug)]
 pub struct ConfError {
     pub message: String,
-    pub span: Option<Span>,
+    pub span: Span,
 }
 
 impl ConfError {
     fn from_toml(file: &SourceFile, error: &toml::de::Error) -> Self {
-        if let Some(span) = error.span() {
-            Self::spanned(file, error.message(), span)
-        } else {
-            Self {
-                message: error.message().to_string(),
-                span: None,
-            }
-        }
+        let span = error.span().unwrap_or(0..file.source_len.0 as usize);
+        Self::spanned(file, error.message(), span)
     }
 
     fn spanned(file: &SourceFile, message: impl Into<String>, span: Range<usize>) -> Self {
         Self {
             message: message.into(),
-            span: Some(Span::new(
+            span: Span::new(
                 file.start_pos + BytePos::from_usize(span.start),
                 file.start_pos + BytePos::from_usize(span.end),
                 SyntaxContext::root(),
                 None,
-            )),
-        }
-    }
-}
-
-impl From<io::Error> for ConfError {
-    fn from(value: io::Error) -> Self {
-        Self {
-            message: value.to_string(),
-            span: None,
+            ),
         }
     }
 }
@@ -297,7 +271,7 @@ define_Conf! {
     /// Lint: MANUAL_SPLIT_ONCE, MANUAL_STR_REPEAT, CLONED_INSTEAD_OF_COPIED, REDUNDANT_FIELD_NAMES, OPTION_MAP_UNWRAP_OR, REDUNDANT_STATIC_LIFETIMES, FILTER_MAP_NEXT, CHECKED_CONVERSIONS, MANUAL_RANGE_CONTAINS, USE_SELF, MEM_REPLACE_WITH_DEFAULT, MANUAL_NON_EXHAUSTIVE, OPTION_AS_REF_DEREF, MAP_UNWRAP_OR, MATCH_LIKE_MATCHES_MACRO, MANUAL_STRIP, MISSING_CONST_FOR_FN, UNNESTED_OR_PATTERNS, FROM_OVER_INTO, PTR_AS_PTR, IF_THEN_SOME_ELSE_NONE, APPROX_CONSTANT, DEPRECATED_CFG_ATTR, INDEX_REFUTABLE_SLICE, MAP_CLONE, BORROW_AS_PTR, MANUAL_BITS, ERR_EXPECT, CAST_ABS_TO_UNSIGNED, UNINLINED_FORMAT_ARGS, MANUAL_CLAMP, MANUAL_LET_ELSE, UNCHECKED_DURATION_SUBTRACTION, COLLAPSIBLE_STR_REPLACE, SEEK_FROM_CURRENT, SEEK_REWIND, UNNECESSARY_LAZY_EVALUATIONS, TRANSMUTE_PTR_TO_REF, ALMOST_COMPLETE_RANGE, NEEDLESS_BORROW, DERIVABLE_IMPLS, MANUAL_IS_ASCII_CHECK, MANUAL_REM_EUCLID, MANUAL_RETAIN, TYPE_REPETITION_IN_BOUNDS, TUPLE_ARRAY_CONVERSIONS, MANUAL_TRY_FOLD, MANUAL_HASH_ONE.
     ///
     /// The minimum rust version that the project supports
-    (msrv: Option<String> = None),
+    (msrv: crate::Msrv = crate::Msrv::empty()),
     /// DEPRECATED LINT: BLACKLISTED_NAME.
     ///
     /// Use the Disallowed Names lint instead
@@ -360,6 +334,10 @@ define_Conf! {
     ///
     /// The minimum number of enum variants for the lints about variant names to trigger
     (enum_variant_name_threshold: u64 = 3),
+    /// Lint: STRUCT_VARIANT_NAMES.
+    ///
+    /// The minimum number of struct fields for the lints about field names to trigger
+    (struct_field_name_threshold: u64 = 3),
     /// Lint: LARGE_ENUM_VARIANT.
     ///
     /// The maximum size of an enum's variant to avoid box suggestion
@@ -641,15 +619,8 @@ pub fn lookup_conf_file() -> io::Result<(Option<PathBuf>, Vec<String>)> {
     }
 }
 
-/// Read the `toml` configuration file.
-///
-/// In case of error, the function tries to continue as much as possible.
-pub fn read(sess: &Session, path: &Path) -> TryConf {
-    let file = match sess.source_map().load_file(path) {
-        Err(e) => return e.into(),
-        Ok(file) => file,
-    };
-    match toml::de::Deserializer::new(file.src.as_ref().unwrap()).deserialize_map(ConfVisitor(&file)) {
+fn deserialize(file: &SourceFile) -> TryConf {
+    match toml::de::Deserializer::new(file.src.as_ref().unwrap()).deserialize_map(ConfVisitor(file)) {
         Ok(mut conf) => {
             extend_vec_if_indicator_present(&mut conf.conf.doc_valid_idents, DEFAULT_DOC_VALID_IDENTS);
             extend_vec_if_indicator_present(&mut conf.conf.disallowed_names, DEFAULT_DISALLOWED_NAMES);
@@ -662,13 +633,67 @@ pub fn read(sess: &Session, path: &Path) -> TryConf {
 
             conf
         },
-        Err(e) => TryConf::from_toml_error(&file, &e),
+        Err(e) => TryConf::from_toml_error(file, &e),
     }
 }
 
 fn extend_vec_if_indicator_present(vec: &mut Vec<String>, default: &[&str]) {
     if vec.contains(&"..".to_string()) {
         vec.extend(default.iter().map(ToString::to_string));
+    }
+}
+
+impl Conf {
+    pub fn read(sess: &Session, path: &io::Result<(Option<PathBuf>, Vec<String>)>) -> &'static Conf {
+        static CONF: OnceLock<Conf> = OnceLock::new();
+        CONF.get_or_init(|| Conf::read_inner(sess, path))
+    }
+
+    fn read_inner(sess: &Session, path: &io::Result<(Option<PathBuf>, Vec<String>)>) -> Conf {
+        match path {
+            Ok((_, warnings)) => {
+                for warning in warnings {
+                    sess.warn(warning.clone());
+                }
+            },
+            Err(error) => {
+                sess.err(format!("error finding Clippy's configuration file: {error}"));
+            },
+        }
+
+        let TryConf {
+            mut conf,
+            errors,
+            warnings,
+        } = match path {
+            Ok((Some(path), _)) => match sess.source_map().load_file(path) {
+                Ok(file) => deserialize(&file),
+                Err(error) => {
+                    sess.err(format!("failed to read `{}`: {error}", path.display()));
+                    TryConf::default()
+                },
+            },
+            _ => TryConf::default(),
+        };
+
+        conf.msrv.read_cargo(sess);
+
+        // all conf errors are non-fatal, we just use the default conf in case of error
+        for error in errors {
+            sess.span_err(
+                error.span,
+                format!("error reading Clippy's configuration file: {}", error.message),
+            );
+        }
+
+        for warning in warnings {
+            sess.span_warn(
+                warning.span,
+                format!("error reading Clippy's configuration file: {}", warning.message),
+            );
+        }
+
+        conf
     }
 }
 

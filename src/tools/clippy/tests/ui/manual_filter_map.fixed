@@ -2,6 +2,7 @@
 #![warn(clippy::manual_filter_map)]
 #![allow(clippy::redundant_closure)] // FIXME suggestion may have redundant closure
 #![allow(clippy::useless_vec)]
+#![allow(clippy::struct_field_names)]
 
 fn main() {
     // is_some(), unwrap()

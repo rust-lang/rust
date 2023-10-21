@@ -147,9 +147,9 @@ impl rustc_driver::Callbacks for ClippyCallbacks {
                 (previous)(sess, lint_store);
             }
 
-            let conf = clippy_lints::read_conf(sess, &conf_path);
-            clippy_lints::register_plugins(lint_store, sess, &conf);
-            clippy_lints::register_pre_expansion_lints(lint_store, sess, &conf);
+            let conf = clippy_lints::Conf::read(sess, &conf_path);
+            clippy_lints::register_plugins(lint_store, sess, conf);
+            clippy_lints::register_pre_expansion_lints(lint_store, conf);
             clippy_lints::register_renamed(lint_store);
         }));
 

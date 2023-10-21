@@ -100,7 +100,7 @@ Suppress lints whenever the suggested change would cause breakage for other crat
 ## `msrv`
 The minimum rust version that the project supports
 
-**Default Value:** `None` (`Option<String>`)
+**Default Value:** `Msrv { stack: [] }` (`crate::Msrv`)
 
 ---
 **Affected lints:**
@@ -271,6 +271,16 @@ The minimum number of enum variants for the lints about variant names to trigger
 ---
 **Affected lints:**
 * [`enum_variant_names`](https://rust-lang.github.io/rust-clippy/master/index.html#enum_variant_names)
+
+
+## `struct-field-name-threshold`
+The minimum number of struct fields for the lints about field names to trigger
+
+**Default Value:** `3` (`u64`)
+
+---
+**Affected lints:**
+* [`struct_variant_names`](https://rust-lang.github.io/rust-clippy/master/index.html#struct_variant_names)
 
 
 ## `enum-variant-size-threshold`

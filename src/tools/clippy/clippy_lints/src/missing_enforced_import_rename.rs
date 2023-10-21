@@ -17,6 +17,9 @@ declare_clippy_lint! {
     /// Checks for imports that do not rename the item as specified
     /// in the `enforce-import-renames` config option.
     ///
+    /// Note: Even though this lint is warn-by-default, it will only trigger if
+    /// import renames are defined in the clippy.toml file.
+    ///
     /// ### Why is this bad?
     /// Consistency is important, if a project has defined import
     /// renames they should be followed. More practically, some item names are too
@@ -38,7 +41,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.55.0"]
     pub MISSING_ENFORCED_IMPORT_RENAMES,
-    restriction,
+    style,
     "enforce import renames"
 }
 

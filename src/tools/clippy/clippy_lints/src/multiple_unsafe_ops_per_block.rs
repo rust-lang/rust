@@ -9,7 +9,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::Span;
+use rustc_span::{DesugaringKind, Span};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -64,7 +64,10 @@ declare_lint_pass!(MultipleUnsafeOpsPerBlock => [MULTIPLE_UNSAFE_OPS_PER_BLOCK])
 
 impl<'tcx> LateLintPass<'tcx> for MultipleUnsafeOpsPerBlock {
     fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx hir::Block<'_>) {
-        if !matches!(block.rules, BlockCheckMode::UnsafeBlock(_)) || in_external_macro(cx.tcx.sess, block.span) {
+        if !matches!(block.rules, BlockCheckMode::UnsafeBlock(_))
+            || in_external_macro(cx.tcx.sess, block.span)
+            || block.span.is_desugaring(DesugaringKind::Await)
+        {
             return;
         }
         let mut unsafe_ops = vec![];

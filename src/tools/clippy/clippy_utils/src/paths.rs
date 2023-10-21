@@ -98,7 +98,6 @@ pub const SYMBOL_TO_IDENT_STRING: [&str; 4] = ["rustc_span", "symbol", "Symbol",
 pub const SYM_MODULE: [&str; 3] = ["rustc_span", "symbol", "sym"];
 #[cfg(feature = "internal")]
 pub const SYNTAX_CONTEXT: [&str; 3] = ["rustc_span", "hygiene", "SyntaxContext"];
-pub const TO_STRING_METHOD: [&str; 4] = ["alloc", "string", "ToString", "to_string"];
 #[expect(clippy::invalid_paths)] // internal lints do not know about all external crates
 pub const TOKIO_IO_ASYNCREADEXT: [&str; 5] = ["tokio", "io", "util", "async_read_ext", "AsyncReadExt"];
 #[expect(clippy::invalid_paths)] // internal lints do not know about all external crates
