@@ -1644,7 +1644,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
             // use nth(1) to skip one layer of desugaring from `IntoIter::into_iter`
             if let Some((_, hir::Node::Expr(await_expr))) = hir.parent_iter(*hir_id).nth(1)
-                && let Some(expr_span) = expr.span.find_ancestor_inside(await_expr.span)
+                && let Some(expr_span) = expr.span.find_ancestor_inside_same_ctxt(await_expr.span)
             {
                 let removal_span = self
                     .tcx
