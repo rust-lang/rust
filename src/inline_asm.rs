@@ -789,7 +789,7 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
                 generated_asm.push_str("    ud2\n");
             }
             InlineAsmArch::AArch64 => {
-                generated_asm.push_str("    brk     #0x1");
+                generated_asm.push_str("    brk     #0x1\n");
             }
             InlineAsmArch::RiscV64 => {
                 generated_asm.push_str("    ebreak\n");
