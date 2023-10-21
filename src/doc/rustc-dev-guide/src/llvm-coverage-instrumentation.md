@@ -73,21 +73,21 @@ When compiling with `-C instrument-coverage`,
 Coverage instrumentation is performed on the MIR with a [MIR pass][mir-passes]
 called [`InstrumentCoverage`][mir-instrument-coverage]. This MIR pass analyzes
 the control flow graph (CFG)--represented by MIR `BasicBlock`s--to identify
-code branches, and injects additional [`Coverage`][coverage-statement]
-statements into the `BasicBlock`s.
+code branches, attaches [`FunctionCoverageInfo`] to the function's body,
+and injects additional [`Coverage`][coverage-statement] statements into the
+`BasicBlock`s.
 
 A MIR `Coverage` statement is a virtual instruction that indicates a counter
 should be incremented when its adjacent statements are executed, to count
 a span of code ([`CodeRegion`][code-region]). It counts the number of times a
-branch is executed, and also specifies the exact location of that code span in
-the Rust source code.
+branch is executed, and is referred to by coverage mappings in the function's
+coverage-info struct.
 
-Note that many of these `Coverage` statements will _not_ be converted into
+Note that many coverage counters will _not_ be converted into
 physical counters (or any other executable instructions) in the final binary.
-Some of them will be (see [`CoverageKind::Counter`]),
+Some of them will be (see [`CoverageKind::CounterIncrement`]),
 but other counters can be computed on the fly, when generating a coverage
-report, by mapping a `CodeRegion` to a
-[`CoverageKind::Expression`].
+report, by mapping a `CodeRegion` to a coverage-counter _expression_.
 
 As an example:
 
@@ -121,8 +121,8 @@ determines when to break out of a loop (a `while` condition, or an `if` or
 `match` with a `break`). In MIR, this is typically lowered to a `SwitchInt`,
 with one branch to stay in the loop, and another branch to break out of the
 loop. The branch that breaks out will almost always execute less often,
-so `InstrumentCoverage` chooses to add a `Counter` to that branch, and an
-`Expression(continue) = Counter(loop) - Counter(break)` to the branch that
+so `InstrumentCoverage` chooses to add a `CounterIncrement` to that branch, and
+uses an expression (`Counter(loop) - Counter(break)`) for the branch that
 continues.
 
 The `InstrumentCoverage` MIR pass is documented in
@@ -130,9 +130,9 @@ The `InstrumentCoverage` MIR pass is documented in
 
 [mir-passes]: mir/passes.md
 [mir-instrument-coverage]: https://github.com/rust-lang/rust/tree/master/compiler/rustc_mir_transform/src/coverage
+[`FunctionCoverageInfo`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/coverage/struct.FunctionCoverageInfo.html
 [code-region]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/coverage/struct.CodeRegion.html
-[`CoverageKind::Counter`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/coverage/enum.CoverageKind.html#variant.Counter
-[`CoverageKind::Expression`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/coverage/enum.CoverageKind.html#variant.Expression
+[`CoverageKind::CounterIncrement`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/coverage/enum.CoverageKind.html#variant.CounterIncrement
 [coverage-statement]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/enum.StatementKind.html#variant.Coverage
 [instrument-coverage-pass-details]: #implementation-details-of-the-instrumentcoverage-mir-pass
 
@@ -150,40 +150,38 @@ MIR `Statement` into some backend-specific action or instruction.
         match statement.kind {
             ...
             mir::StatementKind::Coverage(box ref coverage) => {
-                self.codegen_coverage(&mut bx, coverage.clone(), statement.source_info.scope);
-                bx
+                self.codegen_coverage(bx, coverage, statement.source_info.scope);
             }
 ```
 
-`codegen_coverage()` handles each `CoverageKind` as follows:
+`codegen_coverage()` handles inlined statements and then forwards the coverage
+statement to [`Builder::add_coverage`], which handles each `CoverageKind` as
+follows:
 
-- For all `CoverageKind`s, Coverage data (counter ID, expression equation
-  and ID, and code regions) are passed to the backend's `Builder`, to
-  populate data structures that will be used to generate the crate's
-  "Coverage Map". (See the [`FunctionCoverage`][function-coverage] `struct`.)
-- For `CoverageKind::Counter`s, an instruction is injected in the backend
+
+- For both `CounterIncrement` and `ExpressionUsed`, the underlying counter or
+  expression ID is passed through to the corresponding [`FunctionCoverage`]
+  struct to indicate that the corresponding regions of code were not removed
+  by MIR optimizations.
+- For `CoverageKind::CounterIncrement`s, an instruction is injected in the backend
   IR to increment the physical counter, by calling the `BuilderMethod`
   [`instrprof_increment()`][instrprof-increment].
 
 ```rust
-    pub fn codegen_coverage(&self, bx: &mut Bx, coverage: Coverage, scope: SourceScope) {
+    fn add_coverage(&mut self, instance: Instance<'tcx>, coverage: &Coverage) {
         ...
-        let instance = ... // the scoped instance (current or inlined function)
-        let Coverage { kind, code_region } = coverage;
-        match kind {
-            CoverageKind::Counter { function_source_hash, id } => {
-                ...
-                bx.add_coverage_counter(instance, id, code_region);
+        let Coverage { kind } = coverage;
+        match *kind {
+            CoverageKind::CounterIncrement { id } => {
+                func_coverage.mark_counter_id_seen(id);
                 ...
                 bx.instrprof_increment(fn_name, hash, num_counters, index);
             }
-            CoverageKind::Expression { id, lhs, op, rhs } => {
-                bx.add_coverage_counter_expression(instance, id, lhs, op, rhs, code_region);
+            CoverageKind::ExpressionUsed { id } => {
+                func_coverage.mark_expression_id_seen(id);
             }
-            CoverageKind::Unreachable => {
-                bx.add_coverage_unreachable(
-                    instance,
-                    code_region.expect(...
+        }
+    }
 ```
 
 > The function name `instrprof_increment()` is taken from the LLVM intrinsic
@@ -199,7 +197,8 @@ statements is only implemented for LLVM, at this time.
 [backend-lowering-mir]: backend/lowering-mir.md
 [codegen-statement]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/mir/struct.FunctionCx.html#method.codegen_statement
 [codegen-coverage]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/mir/struct.FunctionCx.html#method.codegen_coverage
-[function-coverage]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_llvm/coverageinfo/map_data/struct.FunctionCoverage.html
+[`Builder::add_coverage`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_llvm/builder/struct.Builder.html#method.add_coverage
+[`FunctionCoverage`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_llvm/coverageinfo/map_data/struct.FunctionCoverage.html
 [instrprof-increment]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_codegen_ssa/traits/trait.BuilderMethods.html#tymethod.instrprof_increment
 
 ### Coverage Map Generation
@@ -327,9 +326,10 @@ Instrumentor::new(&self.name(), tcx, mir_body).inject_counters();
 The `CoverageGraph` is a coverage-specific simplification of the MIR control
 flow graph (CFG). Its nodes are [`BasicCoverageBlock`s][bcb], which
 encompass one or more sequentially-executed MIR `BasicBlock`s
-(with no internal branching), plus a `CoverageKind` counter (to
-be added, via coverage analysis), and an optional set of additional counters
-to count incoming edges (if there are more than one).
+(with no internal branching).
+
+Nodes and edges in the graph can have associated [`BcbCounter`]s, which are
+stored in [`CoverageCounters`].
 
 The `Instrumentor`'s `inject_counters()` uses the `CoverageGraph` to
 compute the best places to inject coverage counters, as MIR `Statement`s,
@@ -338,16 +338,15 @@ with the following steps:
 1. [`generate_coverage_spans()`][generate-coverage-spans] computes the minimum set of distinct,
    non-branching code regions, from the MIR. These `CoverageSpan`s
    represent a span of code that must be counted.
-2. [`make_bcb_counters()`][make-bcb-counters] generates `CoverageKind::Counter`s and
-   `CoverageKind::Expression`s for each `CoverageSpan`, plus additional
-   `intermediate_expressions`[^intermediate-expressions], not associated with any `CodeRegion`, but
+2. [`make_bcb_counters()`][make-bcb-counters] generates `BcbCounter::Counter`s and
+   `BcbCounter::Expression`s for each `CoverageSpan`, plus additional
+   _intermediate expressions_[^intermediate-expressions] that are not associated
+   with any `CodeRegion`, but
    are required to compute a final `Expression` value for a `CodeRegion`.
 3. Inject the new counters into the MIR, as new `StatementKind::Coverage`
-   statements. This is done by three distinct functions:
-   - `inject_coverage_span_counters()`
-   - `inject_indirect_counters()`
-   - `inject_intermediate_expression()`, called for each intermediate expression
-     returned from `make_bcb_counters()`
+   statements.
+4. Attach all other necessary coverage information to the function's body as
+  [`FunctionCoverageInfo`].
 
 [^intermediate-expressions]: Intermediate expressions are sometimes required
 because `Expression`s are limited to binary additions or subtractions. For
@@ -359,7 +358,8 @@ intermediate expression for `B - C`.
 [coverage-graph]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/coverage/graph/struct.CoverageGraph.html
 [inject-counters]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/coverage/struct.Instrumentor.html#method.inject_counters
 [bcb]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/coverage/graph/struct.BasicCoverageBlock.html
-[debug]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/coverage/debug
+[`BcbCounter`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/coverage/counters/enum.BcbCounter.html
+[`CoverageCounters`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/coverage/counters/struct.CoverageCounters.html
 [generate-coverage-spans]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/coverage/spans/struct.CoverageSpans.html#method.generate_coverage_spans
 [make-bcb-counters]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/coverage/counters/struct.BcbCounters.html#method.make_bcb_counters
 
@@ -505,34 +505,3 @@ its `Counter` or `Expression`.
 
 [bcb-counters]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/coverage/counters/struct.BcbCounters.html
 [traverse-coverage-graph-with-loops]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/coverage/graph/struct.TraverseCoverageGraphWithLoops.html
-
-### Injecting counters into a MIR `BasicBlock`
-
-With the refined `CoverageSpan`s, and after all `Counter`s and `Expression`s are
-created, the final step is to inject the `StatementKind::Coverage` statements
-into the MIR. There are three distinct sources, handled by the following
-functions:
-
-- [`inject_coverage_span_counters()`][inject-coverage-span-counters] injects the
-  counter from each `CoverageSpan`'s BCB.
-- [`inject_indirect_counters()`][inject-indirect-counters] injects counters
-  for any BCB not assigned to a `CoverageSpan`, and for all edge counters.
-  These counters don't have `CoverageSpan`s.
-- [`inject_intermediate_expression()`][inject-intermediate-expression] injects
-  the intermediate expressions returned from `make_bcb_counters()`. These
-  counters aren't associated with any BCB, edge, or `CoverageSpan`.
-
-These three functions inject the `Coverage` statements into the MIR.
-`Counter`s and `Expression`s with `CoverageSpan`s add `Coverage` statements
-to a corresponding `BasicBlock`, with a `CodeRegion` computed from the
-refined `Span` and current `SourceMap`.
-
-All other `Coverage` statements have a `CodeRegion` of `None`, but they
-still must be injected because they contribute to other `Expression`s.
-
-Finally, edge's with a `CoverageKind::Counter` require a new `BasicBlock`,
-so the counter is only incremented when traversing the branch edge.
-
-[inject-coverage-span-counters]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/coverage/struct.Instrumentor.html#method.inject_coverage_span_counters
-[inject-indirect-counters]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/coverage/struct.Instrumentor.html#method.inject_indirect_counters
-[inject-intermediate-expression]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/coverage/fn.inject_intermediate_expression.html
