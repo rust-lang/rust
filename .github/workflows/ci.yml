@@ -1,25 +1,27 @@
-name: CI
+name: Rust CI
 
-on:
+on: 
   push:
     branches:
-    - main
+    - master
   pull_request:
     branches:
-    - main
+    - master
   merge_group:
 
 jobs:
   build:
-    name: "PR - ${{ matrix.name }}"
+    name: Rust Integration CI LLVM ${{ matrix.llvm }} ${{ matrix.build }} ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    
     strategy:
+      fail-fast: false
       matrix:
-        include:
-          - name: Build and test Enzyme rust
-          - os: ubuntu-latest
-          - env: {}
+        llvm: ["11", "12", "13", "14", "15", "16"]
+        build: ["Release"] # "RelWithDebInfo"
+        os: [ubuntu-20.04]
+
     timeout-minutes: 600
-    runs-on: "${{ matrix.os }}"
     steps:
       - name: checkout the source code
         uses: actions/checkout@v3
