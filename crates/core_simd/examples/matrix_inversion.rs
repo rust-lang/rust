@@ -2,8 +2,10 @@
 // Code ported from the `packed_simd` crate
 // Run this code with `cargo test --example matrix_inversion`
 #![feature(array_chunks, portable_simd)]
-use core_simd::simd::*;
-use Which::*;
+use core_simd::simd::{
+    prelude::*,
+    Which::{self, *},
+};
 
 // Gotta define our own 4x4 matrix since Rust doesn't ship multidim arrays yet :^)
 #[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]

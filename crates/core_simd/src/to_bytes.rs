@@ -1,4 +1,7 @@
-use crate::simd::{LaneCount, Simd, SimdElement, SimdFloat, SimdInt, SimdUint, SupportedLaneCount};
+use crate::simd::{
+    num::{SimdFloat, SimdInt, SimdUint},
+    LaneCount, Simd, SimdElement, SupportedLaneCount,
+};
 
 mod sealed {
     use super::*;

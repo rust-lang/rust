@@ -1,4 +1,4 @@
-use crate::simd::{LaneCount, Simd, SimdElement, SimdPartialEq, SupportedLaneCount};
+use crate::simd::{cmp::SimdPartialEq, LaneCount, Simd, SimdElement, SupportedLaneCount};
 use core::ops::{Add, Mul};
 use core::ops::{BitAnd, BitOr, BitXor};
 use core::ops::{Div, Rem, Sub};

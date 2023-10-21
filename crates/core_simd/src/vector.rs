@@ -1,6 +1,8 @@
 use crate::simd::{
-    intrinsics, LaneCount, Mask, MaskElement, SimdConstPtr, SimdMutPtr, SimdPartialOrd,
-    SupportedLaneCount, Swizzle,
+    cmp::SimdPartialOrd,
+    intrinsics,
+    ptr::{SimdConstPtr, SimdMutPtr},
+    LaneCount, Mask, MaskElement, SupportedLaneCount, Swizzle,
 };
 use core::convert::{TryFrom, TryInto};
 
@@ -394,7 +396,7 @@ where
     /// # #![feature(portable_simd)]
     /// # #[cfg(feature = "as_crate")] use core_simd::simd;
     /// # #[cfg(not(feature = "as_crate"))] use core::simd;
-    /// # use simd::{Simd, SimdPartialOrd, Mask};
+    /// # use simd::{Simd, cmp::SimdPartialOrd, Mask};
     /// let vec: Vec<i32> = vec![10, 11, 12, 13, 14, 15, 16, 17, 18];
     /// let idxs = Simd::from_array([9, 3, 0, 5]); // Includes an out-of-bounds index
     /// let alt = Simd::from_array([-5, -4, -3, -2]);
@@ -434,7 +436,7 @@ where
     /// # #![feature(portable_simd)]
     /// # #[cfg(feature = "as_crate")] use core_simd::simd;
     /// # #[cfg(not(feature = "as_crate"))] use core::simd;
-    /// # use simd::{Simd, SimdConstPtr};
+    /// # use simd::prelude::*;
     /// let values = [6, 2, 4, 9];
     /// let offsets = Simd::from_array([1, 0, 0, 3]);
     /// let source = Simd::splat(values.as_ptr()).wrapping_add(offsets);
@@ -467,7 +469,7 @@ where
     /// # #![feature(portable_simd)]
     /// # #[cfg(feature = "as_crate")] use core_simd::simd;
     /// # #[cfg(not(feature = "as_crate"))] use core::simd;
-    /// # use simd::{Mask, Simd, SimdConstPtr};
+    /// # use simd::prelude::*;
     /// let values = [6, 2, 4, 9];
     /// let enable = Mask::from_array([true, true, false, true]);
     /// let offsets = Simd::from_array([1, 0, 0, 3]);
@@ -550,7 +552,7 @@ where
     /// # #![feature(portable_simd)]
     /// # #[cfg(feature = "as_crate")] use core_simd::simd;
     /// # #[cfg(not(feature = "as_crate"))] use core::simd;
-    /// # use simd::{Simd, SimdPartialOrd, Mask};
+    /// # use simd::{Simd, cmp::SimdPartialOrd, Mask};
     /// let mut vec: Vec<i32> = vec![10, 11, 12, 13, 14, 15, 16, 17, 18];
     /// let idxs = Simd::from_array([9, 3, 0, 0]);
     /// let vals = Simd::from_array([-27, 82, -41, 124]);
@@ -604,7 +606,7 @@ where
     /// # #![feature(portable_simd)]
     /// # #[cfg(feature = "as_crate")] use core_simd::simd;
     /// # #[cfg(not(feature = "as_crate"))] use core::simd;
-    /// # use simd::{Simd, SimdMutPtr};
+    /// # use simd::{Simd, ptr::SimdMutPtr};
     /// let mut values = [0; 4];
     /// let offset = Simd::from_array([3, 2, 1, 0]);
     /// let ptrs = Simd::splat(values.as_mut_ptr()).wrapping_add(offset);
@@ -631,7 +633,7 @@ where
     /// # #![feature(portable_simd)]
     /// # #[cfg(feature = "as_crate")] use core_simd::simd;
     /// # #[cfg(not(feature = "as_crate"))] use core::simd;
-    /// # use simd::{Mask, Simd, SimdMutPtr};
+    /// # use simd::{Mask, Simd, ptr::SimdMutPtr};
     /// let mut values = [0; 4];
     /// let offset = Simd::from_array([3, 2, 1, 0]);
     /// let ptrs = Simd::splat(values.as_mut_ptr()).wrapping_add(offset);

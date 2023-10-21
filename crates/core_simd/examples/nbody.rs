@@ -5,7 +5,7 @@ extern crate std_float;
 /// Taken from the `packed_simd` crate
 /// Run this benchmark with `cargo test --example nbody`
 mod nbody {
-    use core_simd::simd::*;
+    use core_simd::simd::prelude::*;
     #[allow(unused)] // False positive?
     use std_float::StdFloat;
 

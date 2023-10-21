@@ -1,7 +1,7 @@
 use super::sealed::Sealed;
 use crate::simd::{
-    intrinsics, LaneCount, Mask, Simd, SimdCast, SimdElement, SimdPartialEq, SimdPartialOrd,
-    SupportedLaneCount,
+    cmp::{SimdPartialEq, SimdPartialOrd},
+    intrinsics, LaneCount, Mask, Simd, SimdCast, SimdElement, SupportedLaneCount,
 };
 
 /// Operations on SIMD vectors of floats.
@@ -28,7 +28,7 @@ pub trait SimdFloat: Copy + Sealed {
     /// # #![feature(portable_simd)]
     /// # #[cfg(feature = "as_crate")] use core_simd::simd;
     /// # #[cfg(not(feature = "as_crate"))] use core::simd;
-    /// # use simd::{SimdFloat, SimdInt, Simd};
+    /// # use simd::prelude::*;
     /// let floats: Simd<f32, 4> = Simd::from_array([1.9, -4.5, f32::INFINITY, f32::NAN]);
     /// let ints = floats.cast::<i32>();
     /// assert_eq!(ints, Simd::from_array([1, -4, i32::MAX, 0]));
@@ -162,7 +162,7 @@ pub trait SimdFloat: Copy + Sealed {
     /// # #![feature(portable_simd)]
     /// # #[cfg(feature = "as_crate")] use core_simd::simd;
     /// # #[cfg(not(feature = "as_crate"))] use core::simd;
-    /// # use simd::{f32x2, SimdFloat};
+    /// # use simd::prelude::*;
     /// let v = f32x2::from_array([1., 2.]);
     /// assert_eq!(v.reduce_sum(), 3.);
     /// ```
@@ -176,7 +176,7 @@ pub trait SimdFloat: Copy + Sealed {
     /// # #![feature(portable_simd)]
     /// # #[cfg(feature = "as_crate")] use core_simd::simd;
     /// # #[cfg(not(feature = "as_crate"))] use core::simd;
-    /// # use simd::{f32x2, SimdFloat};
+    /// # use simd::prelude::*;
     /// let v = f32x2::from_array([3., 4.]);
     /// assert_eq!(v.reduce_product(), 12.);
     /// ```
@@ -195,7 +195,7 @@ pub trait SimdFloat: Copy + Sealed {
     /// # #![feature(portable_simd)]
     /// # #[cfg(feature = "as_crate")] use core_simd::simd;
     /// # #[cfg(not(feature = "as_crate"))] use core::simd;
-    /// # use simd::{f32x2, SimdFloat};
+    /// # use simd::prelude::*;
     /// let v = f32x2::from_array([1., 2.]);
     /// assert_eq!(v.reduce_max(), 2.);
     ///
@@ -222,7 +222,7 @@ pub trait SimdFloat: Copy + Sealed {
     /// # #![feature(portable_simd)]
     /// # #[cfg(feature = "as_crate")] use core_simd::simd;
     /// # #[cfg(not(feature = "as_crate"))] use core::simd;
-    /// # use simd::{f32x2, SimdFloat};
+    /// # use simd::prelude::*;
     /// let v = f32x2::from_array([3., 7.]);
     /// assert_eq!(v.reduce_min(), 3.);
     ///
