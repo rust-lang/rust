@@ -3,7 +3,7 @@
 //! For that, we define APIs that will temporarily be public to 3P that exposes rustc internal APIs
 //! until stable MIR is complete.
 
-use crate::rustc_smir::Tables;
+use crate::rustc_smir::{Stable, Tables, TablesWrapper};
 use rustc_data_structures::fx;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_middle::mir::interpret::AllocId;
@@ -11,12 +11,20 @@ use rustc_middle::ty;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::{CrateNum, DefId};
 use rustc_span::Span;
+use scoped_tls::scoped_thread_local;
 use stable_mir::ty::IndexedVal;
+use std::cell::Cell;
+use std::cell::RefCell;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::ops::Index;
+use std::rc::Rc;
 
 mod internal;
+
+pub unsafe fn stable<'tcx, S: Stable<'tcx>>(item: &S) -> S::T {
+    with_tables(|tables| item.stable(tables))
+}
 
 impl<'tcx> Index<stable_mir::DefId> for Tables<'tcx> {
     type Output = DefId;
@@ -125,18 +133,44 @@ pub fn crate_num(item: &stable_mir::Crate) -> CrateNum {
     item.id.into()
 }
 
+// A thread local variable that stores a pointer to the tables mapping between TyCtxt
+// datastructures and stable MIR datastructures
+scoped_thread_local! (static TLV: Cell<*const ()>);
+
+pub(crate) fn init<'tcx>(tables: TablesWrapper<'tcx>, f: impl FnOnce()) {
+    assert!(!TLV.is_set());
+    fn g<'a, 'tcx>(context: &'a TablesWrapper<'tcx>, f: impl FnOnce()) {
+        let ptr: *const () = &context as *const &_ as _;
+        TLV.set(&Cell::new(ptr), || {
+            f();
+        });
+    }
+    g(&tables, f);
+}
+
+/// Loads the current context and calls a function with it.
+/// Do not nest these, as that will ICE.
+pub(crate) fn with_tables<'tcx, R>(f: impl FnOnce(&mut Tables<'tcx>) -> R) -> R {
+    assert!(TLV.is_set());
+    TLV.with(|tlv| {
+        let ptr = tlv.get();
+        assert!(!ptr.is_null());
+        let wrapper = unsafe { *(ptr as *const &TablesWrapper<'tcx>) };
+        let mut tables = wrapper.0.borrow_mut();
+        f(&mut *tables)
+    })
+}
+
 pub fn run(tcx: TyCtxt<'_>, f: impl FnOnce()) {
-    stable_mir::run(
-        Tables {
-            tcx,
-            def_ids: IndexMap::default(),
-            alloc_ids: IndexMap::default(),
-            spans: IndexMap::default(),
-            types: vec![],
-            instances: IndexMap::default(),
-        },
-        f,
-    );
+    let tables = Rc::new(RefCell::new(Tables {
+        tcx,
+        def_ids: IndexMap::default(),
+        alloc_ids: IndexMap::default(),
+        spans: IndexMap::default(),
+        types: vec![],
+        instances: IndexMap::default(),
+    }));
+    stable_mir::run(TablesWrapper(Rc::clone(&tables)), || init(TablesWrapper(tables), f));
 }
 
 #[macro_export]
