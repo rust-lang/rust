@@ -228,6 +228,16 @@ pub(crate) fn codegen_inline_asm<'tcx>(
             fx.bcx.ins().jump(destination_block, &[]);
             return;
         }
+
+        if cfg!(not(feature = "inline_asm")) {
+            fx.tcx.sess.span_err(
+                span,
+                "asm! and global_asm! support is disabled while compiling rustc_codegen_cranelift",
+            );
+        } else {
+            fx.tcx.sess.span_err(span, "asm! and global_asm! are not yet supported on Windows");
+        }
+        return;
     }
 
     let operands = operands
