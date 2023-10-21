@@ -64,9 +64,9 @@ def_regs! {
         r20: reg = ["r20","t4"],// feature high-register
         r21: reg = ["r21","t5"],// feature high-register
         r22: reg = ["r22","t6"],// feature high-register
-        r23: reg = ["r23","t7", "fp"],// feature high-register
-        r24: reg = ["r24","t8", "sop"],// feature high-register
-        r25: reg = ["r25","t9","tp", "bsp"],// feature high-register
+        r23: reg = ["r23","t7"],// feature high-register
+        r24: reg = ["r24","t8"],// feature high-register
+        r25: reg = ["r25","t9"],// feature high-register
         f0: freg = ["fr0","vr0"],
         f1: freg = ["fr1","vr1"],
         f2: freg = ["fr2","vr2"],
