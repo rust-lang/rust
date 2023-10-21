@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::{is_ty_alias, match_def_path, paths};
+use clippy_utils::is_ty_alias;
 use hir::def::Res;
 use hir::ExprKind;
 use rustc_errors::Applicability;
@@ -7,6 +7,7 @@ use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -63,7 +64,7 @@ impl LateLintPass<'_> for DefaultConstructedUnitStructs {
             // `<Foo as Bar>::Assoc` cannot be used as a constructor
             if !is_alias(*base);
             if let Res::Def(_, def_id) = cx.qpath_res(qpath, fn_expr.hir_id);
-            if match_def_path(cx, def_id, &paths::DEFAULT_TRAIT_METHOD);
+            if cx.tcx.is_diagnostic_item(sym::default_fn, def_id);
             // make sure we have a struct with no fields (unit struct)
             if let ty::Adt(def, ..) = cx.typeck_results().expr_ty(expr).kind();
             if def.is_struct();

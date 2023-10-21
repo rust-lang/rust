@@ -245,7 +245,7 @@ impl<'a> PanicExpn<'a> {
             return None;
         };
         let result = match name {
-            "panic" if arg.span.ctxt() == expr.span.ctxt() => Self::Empty,
+            "panic" if arg.span.eq_ctxt(expr.span) => Self::Empty,
             "panic" | "panic_str" => Self::Str(arg),
             "panic_display" | "panic_cold_display" => {
                 let ExprKind::AddrOf(_, _, e) = &arg.kind else {

@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::implements_trait;
-use clippy_utils::{is_expr_path_def_path, paths, sugg};
+use clippy_utils::{is_path_diagnostic_item, sugg};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -13,7 +13,7 @@ use super::FROM_ITER_INSTEAD_OF_COLLECT;
 
 pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Expr<'_>], func: &hir::Expr<'_>) {
     if_chain! {
-        if is_expr_path_def_path(cx, func, &paths::FROM_ITERATOR_METHOD);
+        if is_path_diagnostic_item(cx, func, sym::from_iter_fn);
         let ty = cx.typeck_results().expr_ty(expr);
         let arg_ty = cx.typeck_results().expr_ty(&args[0]);
         if let Some(iter_id) = cx.tcx.get_diagnostic_item(sym::Iterator);

@@ -135,7 +135,7 @@ fn check_to_owned(
     if msrv.meets(msrvs::STRING_RETAIN)
         && let hir::ExprKind::MethodCall(_, filter_expr, [], _) = &target_expr.kind
         && let Some(to_owned_def_id) = cx.typeck_results().type_dependent_def_id(target_expr.hir_id)
-        && match_def_path(cx, to_owned_def_id, &paths::TO_OWNED_METHOD)
+        && cx.tcx.is_diagnostic_item(sym::to_owned_method, to_owned_def_id)
         && let hir::ExprKind::MethodCall(_, chars_expr, [_], _) = &filter_expr.kind
         && let Some(filter_def_id) = cx.typeck_results().type_dependent_def_id(filter_expr.hir_id)
         && match_def_path(cx, filter_def_id, &paths::CORE_ITER_FILTER)

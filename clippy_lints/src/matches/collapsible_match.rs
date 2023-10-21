@@ -57,7 +57,7 @@ fn check_arm<'tcx>(
                 }
             },
         };
-        if outer_pat.span.ctxt() == inner_scrutinee.span.ctxt();
+        if outer_pat.span.eq_ctxt(inner_scrutinee.span);
         // match expression must be a local binding
         // match <local> { .. }
         if let Some(binding_id) = path_to_local(peel_ref_operators(cx, inner_scrutinee));

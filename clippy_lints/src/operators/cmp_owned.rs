@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::path_def_id;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::{implements_trait, is_copy};
-use clippy_utils::{match_def_path, path_def_id, paths};
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, UnOp};
 use rustc_lint::LateContext;
@@ -50,7 +50,7 @@ fn check_op(cx: &LateContext<'_>, expr: &Expr<'_>, other: &Expr<'_>, left: bool)
         },
         ExprKind::Call(path, [arg])
             if path_def_id(cx, path).map_or(false, |did| {
-                if match_def_path(cx, did, &paths::FROM_STR_METHOD) {
+                if cx.tcx.is_diagnostic_item(sym::from_str_method, did) {
                     true
                 } else if cx.tcx.is_diagnostic_item(sym::from_fn, did) {
                     !is_copy(cx, typeck.expr_ty(expr))

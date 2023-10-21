@@ -1,11 +1,11 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::ty::implements_trait;
-use clippy_utils::{get_trait_def_id, is_expr_used_or_unified, match_def_path, paths};
+use clippy_utils::{is_expr_used_or_unified, match_def_path, paths};
 use rustc_ast::ast::{LitIntType, LitKind};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::LateContext;
-use rustc_span::Span;
+use rustc_span::{sym, Span};
 
 use super::SEEK_TO_START_INSTEAD_OF_REWIND;
 
@@ -23,7 +23,7 @@ pub(super) fn check<'tcx>(
         return;
     }
 
-    if let Some(seek_trait_id) = get_trait_def_id(cx, &paths::STD_IO_SEEK) &&
+    if let Some(seek_trait_id) = cx.tcx.get_diagnostic_item(sym::IoSeek) &&
         implements_trait(cx, ty, seek_trait_id, &[]) &&
         let ExprKind::Call(func, args1) = arg.kind &&
         let ExprKind::Path(ref path) = func.kind &&

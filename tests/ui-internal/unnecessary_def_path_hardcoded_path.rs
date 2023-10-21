@@ -11,6 +11,6 @@ fn main() {
     const DEREF_MUT_TRAIT: [&str; 4] = ["core", "ops", "deref", "DerefMut"];
     const DEREF_TRAIT_METHOD: [&str; 5] = ["core", "ops", "deref", "Deref", "deref"];
 
-    // Don't lint, not yet a diagnostic or language item
-    const DEREF_MUT_TRAIT_METHOD: [&str; 5] = ["core", "ops", "deref", "DerefMut", "deref_mut"];
+    // Don't lint, not a diagnostic or language item
+    const OPS_MOD: [&str; 2] = ["core", "ops"];
 }

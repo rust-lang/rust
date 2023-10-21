@@ -5,7 +5,7 @@ use clippy_utils::peel_blocks;
 use clippy_utils::source::{snippet, walk_span_to_context};
 use clippy_utils::visitors::for_each_expr;
 use rustc_errors::Applicability;
-use rustc_hir::{AsyncGeneratorKind, Closure, Expr, ExprKind, GeneratorKind, MatchSource};
+use rustc_hir::{AsyncCoroutineKind, Closure, CoroutineKind, Expr, ExprKind, MatchSource};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::UpvarCapture;
@@ -48,7 +48,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantAsyncBlock {
             let Some(body_expr) = desugar_async_block(cx, expr) &&
             let Some(expr) = desugar_await(peel_blocks(body_expr)) &&
             // The await prefix must not come from a macro as its content could change in the future.
-            expr.span.ctxt() == body_expr.span.ctxt() &&
+            expr.span.eq_ctxt(body_expr.span) &&
             // An async block does not have immediate side-effects from a `.await` point-of-view.
             (!expr.can_have_side_effects() || desugar_async_block(cx, expr).is_some()) &&
             let Some(shortened_span) = walk_span_to_context(expr.span, span.ctxt())
@@ -71,7 +71,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantAsyncBlock {
 fn desugar_async_block<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
     if let ExprKind::Closure(Closure { body, def_id, .. }) = expr.kind &&
         let body = cx.tcx.hir().body(*body) &&
-        matches!(body.generator_kind, Some(GeneratorKind::Async(AsyncGeneratorKind::Block)))
+        matches!(body.coroutine_kind, Some(CoroutineKind::Async(AsyncCoroutineKind::Block)))
     {
         cx
             .typeck_results()

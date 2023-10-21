@@ -1,17 +1,17 @@
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::paths;
-use clippy_utils::ty::match_type;
+use clippy_utils::ty::is_type_diagnostic_item;
 use rustc_ast::ast::LitKind;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::LateContext;
 use rustc_span::source_map::{Span, Spanned};
+use rustc_span::sym;
 
 use super::NONSENSICAL_OPEN_OPTIONS;
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>, recv: &'tcx Expr<'_>) {
     if let Some(method_id) = cx.typeck_results().type_dependent_def_id(e.hir_id)
         && let Some(impl_id) = cx.tcx.impl_of_method(method_id)
-        && match_type(cx, cx.tcx.type_of(impl_id).instantiate_identity(), &paths::OPEN_OPTIONS)
+        && is_type_diagnostic_item(cx, cx.tcx.type_of(impl_id).instantiate_identity(), sym::FsOpenOptions)
     {
         let mut options = Vec::new();
         get_open_options(cx, recv, &mut options);
@@ -40,7 +40,7 @@ fn get_open_options(cx: &LateContext<'_>, argument: &Expr<'_>, options: &mut Vec
         let obj_ty = cx.typeck_results().expr_ty(receiver).peel_refs();
 
         // Only proceed if this is a call on some object of type std::fs::OpenOptions
-        if match_type(cx, obj_ty, &paths::OPEN_OPTIONS) && !arguments.is_empty() {
+        if is_type_diagnostic_item(cx, obj_ty, sym::FsOpenOptions) && !arguments.is_empty() {
             let argument_option = match arguments[0].kind {
                 ExprKind::Lit(span) => {
                     if let Spanned {

@@ -1,6 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::{snippet_opt, snippet_with_applicability};
-use clippy_utils::ty::{is_type_diagnostic_item, match_type};
 use clippy_utils::{match_def_path, paths};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
@@ -45,15 +44,14 @@ impl<'tcx> LateLintPass<'tcx> for NonOctalUnixPermissions {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         match &expr.kind {
             ExprKind::MethodCall(path, func, [param], _) => {
-                let obj_ty = cx.typeck_results().expr_ty(func).peel_refs();
-
                 if_chain! {
+                    if let Some(adt) = cx.typeck_results().expr_ty(func).peel_refs().ty_adt_def();
                     if (path.ident.name == sym!(mode)
-                        && (match_type(cx, obj_ty, &paths::OPEN_OPTIONS)
-                            || is_type_diagnostic_item(cx, obj_ty, sym::DirBuilder)))
-                        || (path.ident.name == sym!(set_mode) && match_type(cx, obj_ty, &paths::PERMISSIONS));
+                        && matches!(cx.tcx.get_diagnostic_name(adt.did()), Some(sym::FsOpenOptions | sym::DirBuilder)))
+                        || (path.ident.name == sym!(set_mode)
+                            && cx.tcx.is_diagnostic_item(sym::FsPermissions, adt.did()));
                     if let ExprKind::Lit(_) = param.kind;
-                    if param.span.ctxt() == expr.span.ctxt();
+                    if param.span.eq_ctxt(expr.span);
 
                     then {
                         let Some(snip) = snippet_opt(cx, param.span) else {
@@ -72,7 +70,7 @@ impl<'tcx> LateLintPass<'tcx> for NonOctalUnixPermissions {
                     if let Some(def_id) = cx.qpath_res(path, func.hir_id).opt_def_id();
                     if match_def_path(cx, def_id, &paths::PERMISSIONS_FROM_MODE);
                     if let ExprKind::Lit(_) = param.kind;
-                    if param.span.ctxt() == expr.span.ctxt();
+                    if param.span.eq_ctxt(expr.span);
                     if let Some(snip) = snippet_opt(cx, param.span);
                     if !snip.starts_with("0o");
                     then {

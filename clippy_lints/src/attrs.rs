@@ -183,7 +183,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for empty lines after documenation comments.
+    /// Checks for empty lines after documentation comments.
     ///
     /// ### Why is this bad?
     /// The documentation comment was most likely meant to be an inner attribute or regular comment.
@@ -795,7 +795,7 @@ impl EarlyLintPass for EarlyAttributes {
 
 /// Check for empty lines after outer attributes.
 ///
-/// Attributes and documenation comments are both considered outer attributes
+/// Attributes and documentation comments are both considered outer attributes
 /// by the AST. However, the average user likely considers them to be different.
 /// Checking for empty lines after each of these attributes is split into two different
 /// lints but can share the same logic.

@@ -2,7 +2,6 @@
 //! expecting a count of T
 
 use clippy_utils::diagnostics::span_lint_and_help;
-use clippy_utils::{match_def_path, paths};
 use if_chain::if_chain;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -67,16 +66,6 @@ fn get_pointee_ty_and_count_expr<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &'tcx Expr<'_>,
 ) -> Option<(Ty<'tcx>, &'tcx Expr<'tcx>)> {
-    const FUNCTIONS: [&[&str]; 8] = [
-        &paths::PTR_COPY_NONOVERLAPPING,
-        &paths::PTR_COPY,
-        &paths::PTR_WRITE_BYTES,
-        &paths::PTR_SWAP_NONOVERLAPPING,
-        &paths::PTR_SLICE_FROM_RAW_PARTS,
-        &paths::PTR_SLICE_FROM_RAW_PARTS_MUT,
-        &paths::SLICE_FROM_RAW_PARTS,
-        &paths::SLICE_FROM_RAW_PARTS_MUT,
-    ];
     const METHODS: [&str; 11] = [
         "write_bytes",
         "copy_to",
@@ -97,7 +86,16 @@ fn get_pointee_ty_and_count_expr<'tcx>(
         if let ExprKind::Call(func, [.., count]) = expr.kind;
         if let ExprKind::Path(ref func_qpath) = func.kind;
         if let Some(def_id) = cx.qpath_res(func_qpath, func.hir_id).opt_def_id();
-        if FUNCTIONS.iter().any(|func_path| match_def_path(cx, def_id, func_path));
+        if matches!(cx.tcx.get_diagnostic_name(def_id), Some(
+            sym::ptr_copy
+            | sym::ptr_copy_nonoverlapping
+            | sym::ptr_slice_from_raw_parts
+            | sym::ptr_slice_from_raw_parts_mut
+            | sym::ptr_swap_nonoverlapping
+            | sym::ptr_write_bytes
+            | sym::slice_from_raw_parts
+            | sym::slice_from_raw_parts_mut
+        ));
 
         // Get the pointee type
         if let Some(pointee_ty) = cx.typeck_results().node_args(func.hir_id).types().next();

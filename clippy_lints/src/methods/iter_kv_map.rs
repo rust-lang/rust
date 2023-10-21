@@ -26,7 +26,7 @@ pub(super) fn check<'tcx>(
     if_chain! {
         if !expr.span.from_expansion();
         if let ExprKind::Closure(c) = m_arg.kind;
-        if let Body {params: [p], value: body_expr, generator_kind: _ } = cx.tcx.hir().body(c.body);
+        if let Body {params: [p], value: body_expr, coroutine_kind: _ } = cx.tcx.hir().body(c.body);
         if let PatKind::Tuple([key_pat, val_pat], _) = p.pat.kind;
 
         let (replacement_kind, annotation, bound_ident) = match (&key_pat.kind, &val_pat.kind) {

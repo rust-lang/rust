@@ -2,18 +2,19 @@ use rustc_ast::ast::{LitIntType, LitKind};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::LateContext;
+use rustc_span::sym;
 
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::implements_trait;
-use clippy_utils::{get_trait_def_id, match_def_path, paths};
+use clippy_utils::{match_def_path, paths};
 
 use super::SEEK_FROM_CURRENT;
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, recv: &'tcx Expr<'_>, arg: &'tcx Expr<'_>) {
     let ty = cx.typeck_results().expr_ty(recv);
 
-    if let Some(def_id) = get_trait_def_id(cx, &paths::STD_IO_SEEK) {
+    if let Some(def_id) = cx.tcx.get_diagnostic_item(sym::IoSeek) {
         if implements_trait(cx, ty, def_id, &[]) && arg_is_seek_from_current(cx, arg) {
             let mut applicability = Applicability::MachineApplicable;
             let snip = snippet_with_applicability(cx, recv.span, "..", &mut applicability);
