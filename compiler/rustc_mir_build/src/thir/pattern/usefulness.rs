@@ -884,6 +884,9 @@ fn collect_nonexhaustive_missing_variants<'p, 'tcx>(
     cx: &MatchCheckCtxt<'p, 'tcx>,
     column: &[&DeconstructedPat<'p, 'tcx>],
 ) -> Vec<WitnessPat<'tcx>> {
+    if column.is_empty() {
+        return Vec::new();
+    }
     let ty = column[0].ty();
     let pcx = &PatCtxt { cx, ty, span: DUMMY_SP, is_top_level: false };
 
