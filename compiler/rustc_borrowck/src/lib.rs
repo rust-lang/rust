@@ -1693,10 +1693,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             self.move_errors.push(MoveError::new(
                                 place,
                                 location,
-                                InteriorOfSliceOrArray {
-                                    ty: place_ty.ty,
-                                    is_index: matches!(elem, ProjectionElem::Index(..)),
-                                },
+                                InteriorOfSliceOrArray { ty: place_ty.ty, is_index: false },
                             ));
                             return;
                         }
@@ -1705,22 +1702,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     }
                 }
                 ProjectionElem::Index(_) => match place_ty.ty.kind() {
-                    ty::Array(..) => {
+                    ty::Array(..) | ty::Slice(..) => {
                         self.move_errors.push(MoveError::new(
                             place,
                             location,
                             InteriorOfSliceOrArray { ty: place_ty.ty, is_index: true },
-                        ));
-                        return;
-                    }
-                    ty::Slice(_) => {
-                        self.move_errors.push(MoveError::new(
-                            place,
-                            location,
-                            InteriorOfSliceOrArray {
-                                ty: place_ty.ty,
-                                is_index: matches!(elem, ProjectionElem::Index(..)),
-                            },
                         ));
                         return;
                     }
