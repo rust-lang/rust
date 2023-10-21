@@ -21,35 +21,17 @@
 //!
 //! [c]: https://rust-lang.github.io/chalk/book/canonical_queries/canonicalization.html
 
+use rustc_macros::HashStable;
+use rustc_type_ir::Canonical as IrCanonical;
+use smallvec::SmallVec;
+use std::ops::Index;
+
 use crate::infer::MemberConstraint;
 use crate::mir::ConstraintCategory;
 use crate::ty::GenericArg;
 use crate::ty::{self, BoundVar, List, Region, Ty, TyCtxt};
-use rustc_macros::HashStable;
-use smallvec::SmallVec;
-use std::fmt::Display;
-use std::ops::Index;
 
-/// A "canonicalized" type `V` is one where all free inference
-/// variables have been rewritten to "canonical vars". These are
-/// numbered starting from 0 in order of first appearance.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TyDecodable, TyEncodable)]
-#[derive(HashStable, TypeFoldable, TypeVisitable)]
-pub struct Canonical<'tcx, V> {
-    pub value: V,
-    pub max_universe: ty::UniverseIndex,
-    pub variables: CanonicalVarInfos<'tcx>,
-}
-
-impl<'tcx, V: Display> std::fmt::Display for Canonical<'tcx, V> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "Canonical {{ value: {}, max_universe: {:?}, variables: {:?} }}",
-            self.value, self.max_universe, self.variables
-        )
-    }
-}
+pub type Canonical<'tcx, V> = IrCanonical<TyCtxt<'tcx>, V>;
 
 pub type CanonicalVarInfos<'tcx> = &'tcx List<CanonicalVarInfo<'tcx>>;
 
@@ -376,56 +358,6 @@ impl Certainty {
 impl<'tcx, R> QueryResponse<'tcx, R> {
     pub fn is_proven(&self) -> bool {
         self.certainty.is_proven()
-    }
-}
-
-impl<'tcx, R> Canonical<'tcx, QueryResponse<'tcx, R>> {
-    pub fn is_proven(&self) -> bool {
-        self.value.is_proven()
-    }
-
-    pub fn is_ambiguous(&self) -> bool {
-        !self.is_proven()
-    }
-}
-
-impl<'tcx, V> Canonical<'tcx, V> {
-    /// Allows you to map the `value` of a canonical while keeping the
-    /// same set of bound variables.
-    ///
-    /// **WARNING:** This function is very easy to mis-use, hence the
-    /// name!  In particular, the new value `W` must use all **the
-    /// same type/region variables** in **precisely the same order**
-    /// as the original! (The ordering is defined by the
-    /// `TypeFoldable` implementation of the type in question.)
-    ///
-    /// An example of a **correct** use of this:
-    ///
-    /// ```rust,ignore (not real code)
-    /// let a: Canonical<'_, T> = ...;
-    /// let b: Canonical<'_, (T,)> = a.unchecked_map(|v| (v, ));
-    /// ```
-    ///
-    /// An example of an **incorrect** use of this:
-    ///
-    /// ```rust,ignore (not real code)
-    /// let a: Canonical<'tcx, T> = ...;
-    /// let ty: Ty<'tcx> = ...;
-    /// let b: Canonical<'tcx, (T, Ty<'tcx>)> = a.unchecked_map(|v| (v, ty));
-    /// ```
-    pub fn unchecked_map<W>(self, map_op: impl FnOnce(V) -> W) -> Canonical<'tcx, W> {
-        let Canonical { max_universe, variables, value } = self;
-        Canonical { max_universe, variables, value: map_op(value) }
-    }
-
-    /// Allows you to map the `value` of a canonical while keeping the same set of
-    /// bound variables.
-    ///
-    /// **WARNING:** This function is very easy to mis-use, hence the name! See
-    /// the comment of [Canonical::unchecked_map] for more details.
-    pub fn unchecked_rebind<W>(self, value: W) -> Canonical<'tcx, W> {
-        let Canonical { max_universe, variables, value: _ } = self;
-        Canonical { max_universe, variables, value }
     }
 }
 

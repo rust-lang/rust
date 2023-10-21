@@ -207,7 +207,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         debug!("fcx {}", self.tag());
 
-        if !canonical_user_type_annotation.is_identity() {
+        // FIXME: is_identity being on `UserType` and not `Canonical<UserType>` is awkward
+        if !canonical_user_type_annotation.value.is_identity() {
             self.typeck_results
                 .borrow_mut()
                 .user_provided_types_mut()

@@ -594,11 +594,24 @@ pub struct CanonicalUserTypeAnnotation<'tcx> {
 /// Canonical user type annotation.
 pub type CanonicalUserType<'tcx> = Canonical<'tcx, UserType<'tcx>>;
 
-impl<'tcx> CanonicalUserType<'tcx> {
+/// A user-given type annotation attached to a constant. These arise
+/// from constants that are named via paths, like `Foo::<A>::new` and
+/// so forth.
+#[derive(Copy, Clone, Debug, PartialEq, TyEncodable, TyDecodable)]
+#[derive(Eq, Hash, HashStable, TypeFoldable, TypeVisitable)]
+pub enum UserType<'tcx> {
+    Ty(Ty<'tcx>),
+
+    /// The canonical type is the result of `type_of(def_id)` with the
+    /// given substitutions applied.
+    TypeOf(DefId, UserArgs<'tcx>),
+}
+
+impl<'tcx> UserType<'tcx> {
     /// Returns `true` if this represents a substitution of the form `[?0, ?1, ?2]`,
     /// i.e., each thing is mapped to a canonical variable with the same index.
     pub fn is_identity(&self) -> bool {
-        match self.value {
+        match self {
             UserType::Ty(_) => false,
             UserType::TypeOf(_, user_args) => {
                 if user_args.user_self_ty.is_some() {
@@ -638,19 +651,6 @@ impl<'tcx> CanonicalUserType<'tcx> {
             }
         }
     }
-}
-
-/// A user-given type annotation attached to a constant. These arise
-/// from constants that are named via paths, like `Foo::<A>::new` and
-/// so forth.
-#[derive(Copy, Clone, Debug, PartialEq, TyEncodable, TyDecodable)]
-#[derive(Eq, Hash, HashStable, TypeFoldable, TypeVisitable)]
-pub enum UserType<'tcx> {
-    Ty(Ty<'tcx>),
-
-    /// The canonical type is the result of `type_of(def_id)` with the
-    /// given substitutions applied.
-    TypeOf(DefId, UserArgs<'tcx>),
 }
 
 impl<'tcx> std::fmt::Display for UserType<'tcx> {

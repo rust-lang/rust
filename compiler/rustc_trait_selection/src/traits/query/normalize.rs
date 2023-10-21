@@ -293,7 +293,7 @@ impl<'cx, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'cx, 'tcx> 
                     _ => unreachable!(),
                 }?;
                 // We don't expect ambiguity.
-                if result.is_ambiguous() {
+                if !result.value.is_proven() {
                     // Rustdoc normalizes possibly not well-formed types, so only
                     // treat this as a bug if we're not in rustdoc.
                     if !tcx.sess.opts.actually_rustdoc {
