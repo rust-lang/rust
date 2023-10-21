@@ -26,15 +26,15 @@ impl<I: Interner> InferCtxtLike<I> for core::convert::Infallible {
 }
 
 pub trait DebugWithInfcx<I: Interner>: fmt::Debug {
-    fn fmt<InfCtx: InferCtxtLike<I>>(
-        this: OptWithInfcx<'_, I, InfCtx, &Self>,
+    fn fmt<Infcx: InferCtxtLike<I>>(
+        this: OptWithInfcx<'_, I, Infcx, &Self>,
         f: &mut fmt::Formatter<'_>,
     ) -> fmt::Result;
 }
 
 impl<I: Interner, T: DebugWithInfcx<I> + ?Sized> DebugWithInfcx<I> for &'_ T {
-    fn fmt<InfCtx: InferCtxtLike<I>>(
-        this: OptWithInfcx<'_, I, InfCtx, &Self>,
+    fn fmt<Infcx: InferCtxtLike<I>>(
+        this: OptWithInfcx<'_, I, Infcx, &Self>,
         f: &mut fmt::Formatter<'_>,
     ) -> fmt::Result {
         <T as DebugWithInfcx<I>>::fmt(this.map(|&data| data), f)
@@ -42,8 +42,8 @@ impl<I: Interner, T: DebugWithInfcx<I> + ?Sized> DebugWithInfcx<I> for &'_ T {
 }
 
 impl<I: Interner, T: DebugWithInfcx<I>> DebugWithInfcx<I> for [T] {
-    fn fmt<InfCtx: InferCtxtLike<I>>(
-        this: OptWithInfcx<'_, I, InfCtx, &Self>,
+    fn fmt<Infcx: InferCtxtLike<I>>(
+        this: OptWithInfcx<'_, I, Infcx, &Self>,
         f: &mut fmt::Formatter<'_>,
     ) -> fmt::Result {
         match f.alternate() {
@@ -70,46 +70,46 @@ impl<I: Interner, T: DebugWithInfcx<I>> DebugWithInfcx<I> for [T] {
     }
 }
 
-pub struct OptWithInfcx<'a, I: Interner, InfCtx: InferCtxtLike<I>, T> {
+pub struct OptWithInfcx<'a, I: Interner, Infcx: InferCtxtLike<I>, T> {
     pub data: T,
-    pub infcx: Option<&'a InfCtx>,
+    pub infcx: Option<&'a Infcx>,
     _interner: PhantomData<I>,
 }
 
-impl<I: Interner, InfCtx: InferCtxtLike<I>, T: Copy> Copy for OptWithInfcx<'_, I, InfCtx, T> {}
+impl<I: Interner, Infcx: InferCtxtLike<I>, T: Copy> Copy for OptWithInfcx<'_, I, Infcx, T> {}
 
-impl<I: Interner, InfCtx: InferCtxtLike<I>, T: Clone> Clone for OptWithInfcx<'_, I, InfCtx, T> {
+impl<I: Interner, Infcx: InferCtxtLike<I>, T: Clone> Clone for OptWithInfcx<'_, I, Infcx, T> {
     fn clone(&self) -> Self {
         Self { data: self.data.clone(), infcx: self.infcx, _interner: self._interner }
     }
 }
 
 impl<'a, I: Interner, T> OptWithInfcx<'a, I, core::convert::Infallible, T> {
-    pub fn new_no_ctx(data: T) -> Self {
+    pub fn with_no_infcx(data: T) -> Self {
         Self { data, infcx: None, _interner: PhantomData }
     }
 }
 
-impl<'a, I: Interner, InfCtx: InferCtxtLike<I>, T> OptWithInfcx<'a, I, InfCtx, T> {
-    pub fn new(data: T, infcx: &'a InfCtx) -> Self {
+impl<'a, I: Interner, Infcx: InferCtxtLike<I>, T> OptWithInfcx<'a, I, Infcx, T> {
+    pub fn new(data: T, infcx: &'a Infcx) -> Self {
         Self { data, infcx: Some(infcx), _interner: PhantomData }
     }
 
-    pub fn wrap<U>(self, u: U) -> OptWithInfcx<'a, I, InfCtx, U> {
+    pub fn wrap<U>(self, u: U) -> OptWithInfcx<'a, I, Infcx, U> {
         OptWithInfcx { data: u, infcx: self.infcx, _interner: PhantomData }
     }
 
-    pub fn map<U>(self, f: impl FnOnce(T) -> U) -> OptWithInfcx<'a, I, InfCtx, U> {
+    pub fn map<U>(self, f: impl FnOnce(T) -> U) -> OptWithInfcx<'a, I, Infcx, U> {
         OptWithInfcx { data: f(self.data), infcx: self.infcx, _interner: PhantomData }
     }
 
-    pub fn as_ref(&self) -> OptWithInfcx<'a, I, InfCtx, &T> {
+    pub fn as_ref(&self) -> OptWithInfcx<'a, I, Infcx, &T> {
         OptWithInfcx { data: &self.data, infcx: self.infcx, _interner: PhantomData }
     }
 }
 
-impl<I: Interner, InfCtx: InferCtxtLike<I>, T: DebugWithInfcx<I>> fmt::Debug
-    for OptWithInfcx<'_, I, InfCtx, T>
+impl<I: Interner, Infcx: InferCtxtLike<I>, T: DebugWithInfcx<I>> fmt::Debug
+    for OptWithInfcx<'_, I, Infcx, T>
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         DebugWithInfcx::fmt(self.as_ref(), f)

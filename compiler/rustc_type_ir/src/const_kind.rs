@@ -231,13 +231,13 @@ impl<I: Interner> Clone for ConstKind<I> {
 
 impl<I: Interner> fmt::Debug for ConstKind<I> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        OptWithInfcx::new_no_ctx(self).fmt(f)
+        OptWithInfcx::with_no_infcx(self).fmt(f)
     }
 }
 
 impl<I: Interner> DebugWithInfcx<I> for ConstKind<I> {
-    fn fmt<InfCtx: InferCtxtLike<I>>(
-        this: OptWithInfcx<'_, I, InfCtx, &Self>,
+    fn fmt<Infcx: InferCtxtLike<I>>(
+        this: OptWithInfcx<'_, I, Infcx, &Self>,
         f: &mut core::fmt::Formatter<'_>,
     ) -> core::fmt::Result {
         use ConstKind::*;

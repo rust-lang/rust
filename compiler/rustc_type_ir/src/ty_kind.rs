@@ -534,8 +534,8 @@ impl<I: Interner> hash::Hash for TyKind<I> {
 }
 
 impl<I: Interner> DebugWithInfcx<I> for TyKind<I> {
-    fn fmt<InfCtx: InferCtxtLike<I>>(
-        this: OptWithInfcx<'_, I, InfCtx, &Self>,
+    fn fmt<Infcx: InferCtxtLike<I>>(
+        this: OptWithInfcx<'_, I, Infcx, &Self>,
         f: &mut core::fmt::Formatter<'_>,
     ) -> fmt::Result {
         match this.data {
@@ -617,7 +617,7 @@ impl<I: Interner> DebugWithInfcx<I> for TyKind<I> {
 // This is manually implemented because a derive would require `I: Debug`
 impl<I: Interner> fmt::Debug for TyKind<I> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        OptWithInfcx::new_no_ctx(self).fmt(f)
+        OptWithInfcx::with_no_infcx(self).fmt(f)
     }
 }
 
@@ -1239,8 +1239,8 @@ impl fmt::Debug for InferTy {
 }
 
 impl<I: Interner<InferTy = InferTy>> DebugWithInfcx<I> for InferTy {
-    fn fmt<InfCtx: InferCtxtLike<I>>(
-        this: OptWithInfcx<'_, I, InfCtx, &Self>,
+    fn fmt<Infcx: InferCtxtLike<I>>(
+        this: OptWithInfcx<'_, I, Infcx, &Self>,
         f: &mut fmt::Formatter<'_>,
     ) -> fmt::Result {
         use InferTy::*;
