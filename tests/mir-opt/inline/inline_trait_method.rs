@@ -1,4 +1,3 @@
-// skip-filecheck
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 // compile-flags: -Z span_free_formats
 
@@ -8,6 +7,8 @@ fn main() {
 
 // EMIT_MIR inline_trait_method.test.Inline.after.mir
 fn test(x: &dyn X) -> u32 {
+    // CHECK-LABEL: fn test(
+    // CHECK-NOT: (inlined <dyn X as X>::y)
     x.y()
 }
 
