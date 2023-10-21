@@ -1,0 +1,16 @@
+warning: unused coroutine that must be used
+  --> $DIR/issue-57084.rs:22:5
+   |
+LL | /     || {
+LL | |         let _to_pin = with(move || println!("{:p}", data));
+LL | |         loop {
+LL | |             yield
+LL | |         }
+LL | |     };
+   | |_____^
+   |
+   = note: coroutines are lazy and do nothing unless resumed
+   = note: `#[warn(unused_must_use)]` on by default
+
+warning: 1 warning emitted
+

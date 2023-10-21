@@ -17,7 +17,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{PredicateOrigin, WherePredicate};
 use rustc_span::{BytePos, Span};
-use rustc_type_ir::sty::TyKind::*;
+use rustc_type_ir::TyKind::*;
 
 impl<'tcx> IntoDiagnosticArg for Ty<'tcx> {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
@@ -482,8 +482,8 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IsSuggestableVisitor<'tcx> {
             FnDef(..)
             | Closure(..)
             | Infer(..)
-            | Generator(..)
-            | GeneratorWitness(..)
+            | Coroutine(..)
+            | CoroutineWitness(..)
             | Bound(_, _)
             | Placeholder(_)
             | Error(_) => {
@@ -567,8 +567,8 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for MakeSuggestableFolder<'tcx> {
             // FIXME(compiler-errors): We could replace these with infer, I guess.
             Closure(..)
             | Infer(..)
-            | Generator(..)
-            | GeneratorWitness(..)
+            | Coroutine(..)
+            | CoroutineWitness(..)
             | Bound(_, _)
             | Placeholder(_)
             | Error(_) => {

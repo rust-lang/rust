@@ -1,9 +1,9 @@
 // run-pass
-#![feature(generators)]
-#![feature(generator_trait)]
+#![feature(coroutines)]
+#![feature(coroutine_trait)]
 use std::cell::Cell;
 use std::mem;
-use std::ops::Generator;
+use std::ops::Coroutine;
 use std::pin::Pin;
 
 struct Aligned<'a> {
@@ -44,7 +44,7 @@ fn main() {
         let _ = &p;
         p.1 = Aligned { drop_count };
         assert_eq!(drop_count.get(), 1);
-        // Test that a generator drop function moves a value from a packed
+        // Test that a coroutine drop function moves a value from a packed
         // struct to a separate local before dropping it. We move out the
         // first field to generate and open drop for the second field.
         drop(p.0);

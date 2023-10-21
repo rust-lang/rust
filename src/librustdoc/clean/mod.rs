@@ -2266,9 +2266,9 @@ pub(crate) fn clean_middle_ty<'tcx>(
         }
 
         ty::Closure(..) => panic!("Closure"),
-        ty::Generator(..) => panic!("Generator"),
+        ty::Coroutine(..) => panic!("Coroutine"),
         ty::Placeholder(..) => panic!("Placeholder"),
-        ty::GeneratorWitness(..) => panic!("GeneratorWitness"),
+        ty::CoroutineWitness(..) => panic!("CoroutineWitness"),
         ty::Infer(..) => panic!("Infer"),
         ty::Error(_) => rustc_errors::FatalError.raise(),
     }

@@ -82,7 +82,7 @@ trivially_parameterized_over_tcx! {
     rustc_attr::Stability,
     rustc_hir::Constness,
     rustc_hir::Defaultness,
-    rustc_hir::GeneratorKind,
+    rustc_hir::CoroutineKind,
     rustc_hir::IsAsync,
     rustc_hir::LangItem,
     rustc_hir::def::DefKind,
@@ -123,7 +123,7 @@ macro_rules! parameterized_over_tcx {
 parameterized_over_tcx! {
     crate::middle::exported_symbols::ExportedSymbol,
     crate::mir::Body,
-    crate::mir::GeneratorLayout,
+    crate::mir::CoroutineLayout,
     ty::Ty,
     ty::FnSig,
     ty::GenericPredicates,

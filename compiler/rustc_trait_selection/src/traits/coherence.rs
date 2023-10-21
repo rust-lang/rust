@@ -817,7 +817,7 @@ where
                 }
             }
             ty::Error(_) => ControlFlow::Break(OrphanCheckEarlyExit::LocalTy(ty)),
-            ty::Closure(did, ..) | ty::Generator(did, ..) => {
+            ty::Closure(did, ..) | ty::Coroutine(did, ..) => {
                 if self.def_id_is_local(did) {
                     ControlFlow::Break(OrphanCheckEarlyExit::LocalTy(ty))
                 } else {
@@ -827,7 +827,7 @@ where
             // This should only be created when checking whether we have to check whether some
             // auto trait impl applies. There will never be multiple impls, so we can just
             // act as if it were a local type here.
-            ty::GeneratorWitness(..) => ControlFlow::Break(OrphanCheckEarlyExit::LocalTy(ty)),
+            ty::CoroutineWitness(..) => ControlFlow::Break(OrphanCheckEarlyExit::LocalTy(ty)),
             ty::Alias(ty::Opaque, ..) => {
                 // This merits some explanation.
                 // Normally, opaque types are not involved when performing

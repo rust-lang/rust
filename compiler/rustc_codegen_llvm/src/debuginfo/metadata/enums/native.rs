@@ -110,12 +110,12 @@ pub(super) fn build_enum_type_di_node<'ll, 'tcx>(
     )
 }
 
-/// Build the debuginfo node for a generator environment. It looks the same as the debuginfo for
+/// Build the debuginfo node for a coroutine environment. It looks the same as the debuginfo for
 /// an enum. See [build_enum_type_di_node] for more information.
 ///
 /// ```txt
 ///
-///  ---> DW_TAG_structure_type              (top-level type for the generator)
+///  ---> DW_TAG_structure_type              (top-level type for the coroutine)
 ///         DW_TAG_variant_part              (variant part)
 ///           DW_AT_discr                    (reference to discriminant DW_TAG_member)
 ///           DW_TAG_member                  (discriminant member)
@@ -127,21 +127,21 @@ pub(super) fn build_enum_type_di_node<'ll, 'tcx>(
 ///         DW_TAG_structure_type            (type of variant 3)
 ///
 /// ```
-pub(super) fn build_generator_di_node<'ll, 'tcx>(
+pub(super) fn build_coroutine_di_node<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     unique_type_id: UniqueTypeId<'tcx>,
 ) -> DINodeCreationResult<'ll> {
-    let generator_type = unique_type_id.expect_ty();
-    let &ty::Generator(generator_def_id, _, _) = generator_type.kind() else {
-        bug!("build_generator_di_node() called with non-generator type: `{:?}`", generator_type)
+    let coroutine_type = unique_type_id.expect_ty();
+    let &ty::Coroutine(coroutine_def_id, _, _) = coroutine_type.kind() else {
+        bug!("build_coroutine_di_node() called with non-coroutine type: `{:?}`", coroutine_type)
     };
 
-    let containing_scope = get_namespace_for_item(cx, generator_def_id);
-    let generator_type_and_layout = cx.layout_of(generator_type);
+    let containing_scope = get_namespace_for_item(cx, coroutine_def_id);
+    let coroutine_type_and_layout = cx.layout_of(coroutine_type);
 
-    debug_assert!(!wants_c_like_enum_debuginfo(generator_type_and_layout));
+    debug_assert!(!wants_c_like_enum_debuginfo(coroutine_type_and_layout));
 
-    let generator_type_name = compute_debuginfo_type_name(cx.tcx, generator_type, false);
+    let coroutine_type_name = compute_debuginfo_type_name(cx.tcx, coroutine_type, false);
 
     type_map::build_type_with_children(
         cx,
@@ -149,37 +149,37 @@ pub(super) fn build_generator_di_node<'ll, 'tcx>(
             cx,
             Stub::Struct,
             unique_type_id,
-            &generator_type_name,
-            size_and_align_of(generator_type_and_layout),
+            &coroutine_type_name,
+            size_and_align_of(coroutine_type_and_layout),
             Some(containing_scope),
             DIFlags::FlagZero,
         ),
-        |cx, generator_type_di_node| {
-            let generator_layout =
-                cx.tcx.optimized_mir(generator_def_id).generator_layout().unwrap();
+        |cx, coroutine_type_di_node| {
+            let coroutine_layout =
+                cx.tcx.optimized_mir(coroutine_def_id).coroutine_layout().unwrap();
 
             let Variants::Multiple { tag_encoding: TagEncoding::Direct, ref variants, .. } =
-                generator_type_and_layout.variants
+                coroutine_type_and_layout.variants
             else {
                 bug!(
-                    "Encountered generator with non-direct-tag layout: {:?}",
-                    generator_type_and_layout
+                    "Encountered coroutine with non-direct-tag layout: {:?}",
+                    coroutine_type_and_layout
                 )
             };
 
             let common_upvar_names =
-                cx.tcx.closure_saved_names_of_captured_variables(generator_def_id);
+                cx.tcx.closure_saved_names_of_captured_variables(coroutine_def_id);
 
             // Build variant struct types
             let variant_struct_type_di_nodes: SmallVec<_> = variants
                 .indices()
                 .map(|variant_index| {
                     // FIXME: This is problematic because just a number is not a valid identifier.
-                    //        GeneratorArgs::variant_name(variant_index), would be consistent
+                    //        CoroutineArgs::variant_name(variant_index), would be consistent
                     //        with enums?
                     let variant_name = format!("{}", variant_index.as_usize()).into();
 
-                    let span = generator_layout.variant_source_info[variant_index].span;
+                    let span = coroutine_layout.variant_source_info[variant_index].span;
                     let source_info = if !span.is_dummy() {
                         let loc = cx.lookup_debug_loc(span.lo());
                         Some((file_metadata(cx, &loc.file), loc.line))
@@ -191,12 +191,12 @@ pub(super) fn build_generator_di_node<'ll, 'tcx>(
                         variant_index,
                         variant_name,
                         variant_struct_type_di_node:
-                            super::build_generator_variant_struct_type_di_node(
+                            super::build_coroutine_variant_struct_type_di_node(
                                 cx,
                                 variant_index,
-                                generator_type_and_layout,
-                                generator_type_di_node,
-                                generator_layout,
+                                coroutine_type_and_layout,
+                                coroutine_type_di_node,
+                                coroutine_layout,
                                 &common_upvar_names,
                             ),
                         source_info,
@@ -206,18 +206,18 @@ pub(super) fn build_generator_di_node<'ll, 'tcx>(
 
             smallvec![build_enum_variant_part_di_node(
                 cx,
-                generator_type_and_layout,
-                generator_type_di_node,
+                coroutine_type_and_layout,
+                coroutine_type_di_node,
                 &variant_struct_type_di_nodes[..],
             )]
         },
-        // We don't seem to be emitting generic args on the generator type, it seems. Rather
+        // We don't seem to be emitting generic args on the coroutine type, it seems. Rather
         // they get attached to the struct type of each variant.
         NO_GENERICS,
     )
 }
 
-/// Builds the DW_TAG_variant_part of an enum or generator debuginfo node:
+/// Builds the DW_TAG_variant_part of an enum or coroutine debuginfo node:
 ///
 /// ```txt
 ///       DW_TAG_structure_type              (top-level type for enum)
@@ -306,11 +306,11 @@ fn build_enum_variant_part_di_node<'ll, 'tcx>(
 /// ```
 fn build_discr_member_di_node<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
-    enum_or_generator_type_and_layout: TyAndLayout<'tcx>,
-    enum_or_generator_type_di_node: &'ll DIType,
+    enum_or_coroutine_type_and_layout: TyAndLayout<'tcx>,
+    enum_or_coroutine_type_di_node: &'ll DIType,
 ) -> Option<&'ll DIType> {
-    let tag_name = match enum_or_generator_type_and_layout.ty.kind() {
-        ty::Generator(..) => "__state",
+    let tag_name = match enum_or_coroutine_type_and_layout.ty.kind() {
+        ty::Coroutine(..) => "__state",
         _ => "",
     };
 
@@ -320,14 +320,14 @@ fn build_discr_member_di_node<'ll, 'tcx>(
     //       In LLVM IR the wrong scope will be listed but when DWARF is
     //       generated from it, the DW_TAG_member will be a child the
     //       DW_TAG_variant_part.
-    let containing_scope = enum_or_generator_type_di_node;
+    let containing_scope = enum_or_coroutine_type_di_node;
 
-    match enum_or_generator_type_and_layout.layout.variants() {
+    match enum_or_coroutine_type_and_layout.layout.variants() {
         // A single-variant enum has no discriminant.
         &Variants::Single { .. } => None,
 
         &Variants::Multiple { tag_field, .. } => {
-            let tag_base_type = tag_base_type(cx, enum_or_generator_type_and_layout);
+            let tag_base_type = tag_base_type(cx, enum_or_coroutine_type_and_layout);
             let (size, align) = cx.size_and_align_of(tag_base_type);
 
             unsafe {
@@ -340,7 +340,7 @@ fn build_discr_member_di_node<'ll, 'tcx>(
                     UNKNOWN_LINE_NUMBER,
                     size.bits(),
                     align.bits() as u32,
-                    enum_or_generator_type_and_layout.fields.offset(tag_field).bits(),
+                    enum_or_coroutine_type_and_layout.fields.offset(tag_field).bits(),
                     DIFlags::FlagArtificial,
                     type_di_node(cx, tag_base_type),
                 ))

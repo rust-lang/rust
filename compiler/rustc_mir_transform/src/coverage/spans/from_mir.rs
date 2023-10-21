@@ -160,7 +160,7 @@ fn filtered_terminator_span(terminator: &Terminator<'_>) -> Option<Span> {
         | TerminatorKind::UnwindTerminate(_)
         | TerminatorKind::Return
         | TerminatorKind::Yield { .. }
-        | TerminatorKind::GeneratorDrop
+        | TerminatorKind::CoroutineDrop
         | TerminatorKind::FalseUnwind { .. }
         | TerminatorKind::InlineAsm { .. } => {
             Some(terminator.source_info.span)

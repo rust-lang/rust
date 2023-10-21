@@ -305,8 +305,8 @@ fn check_terminator<'tcx>(
             Ok(())
         },
         TerminatorKind::SwitchInt { discr, targets: _ } => check_operand(tcx, discr, span, body),
-        TerminatorKind::GeneratorDrop | TerminatorKind::Yield { .. } => {
-            Err((span, "const fn generators are unstable".into()))
+        TerminatorKind::CoroutineDrop | TerminatorKind::Yield { .. } => {
+            Err((span, "const fn coroutines are unstable".into()))
         },
         TerminatorKind::Call {
             func,

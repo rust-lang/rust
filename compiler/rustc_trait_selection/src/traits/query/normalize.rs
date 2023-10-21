@@ -231,7 +231,7 @@ impl<'cx, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'cx, 'tcx> 
                         let args = data.args.try_fold_with(self)?;
                         let recursion_limit = self.interner().recursion_limit();
                         if !recursion_limit.value_within_limit(self.anon_depth) {
-                            // A closure or generator may have itself as in its upvars.
+                            // A closure or coroutine may have itself as in its upvars.
                             // This should be checked handled by the recursion check for opaque
                             // types, but we may end up here before that check can happen.
                             // In that case, we delay a bug to mark the trip, and continue without

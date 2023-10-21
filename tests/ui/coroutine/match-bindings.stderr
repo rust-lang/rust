@@ -1,0 +1,17 @@
+warning: unused coroutine that must be used
+  --> $DIR/match-bindings.rs:12:5
+   |
+LL | /     || {
+LL | |         loop {
+LL | |             if let true = true {
+LL | |                 match Enum::A(String::new()) {
+...  |
+LL | |         }
+LL | |     };
+   | |_____^
+   |
+   = note: coroutines are lazy and do nothing unless resumed
+   = note: `#[warn(unused_must_use)]` on by default
+
+warning: 1 warning emitted
+

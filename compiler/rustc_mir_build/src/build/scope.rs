@@ -108,8 +108,8 @@ pub struct Scopes<'tcx> {
     /// [DropTree] for more details.
     unwind_drops: DropTree,
 
-    /// Drops that need to be done on paths to the `GeneratorDrop` terminator.
-    generator_drops: DropTree,
+    /// Drops that need to be done on paths to the `CoroutineDrop` terminator.
+    coroutine_drops: DropTree,
 }
 
 #[derive(Debug)]
@@ -133,8 +133,8 @@ struct Scope {
     cached_unwind_block: Option<DropIdx>,
 
     /// The drop index that will drop everything in and below this scope on a
-    /// generator drop path.
-    cached_generator_drop_block: Option<DropIdx>,
+    /// coroutine drop path.
+    cached_coroutine_drop_block: Option<DropIdx>,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -194,7 +194,7 @@ const ROOT_NODE: DropIdx = DropIdx::from_u32(0);
 /// A tree of drops that we have deferred lowering. It's used for:
 ///
 /// * Drops on unwind paths
-/// * Drops on generator drop paths (when a suspended generator is dropped)
+/// * Drops on coroutine drop paths (when a suspended coroutine is dropped)
 /// * Drops on return and loop exit paths
 /// * Drops on the else path in an `if let` chain
 ///
@@ -222,8 +222,8 @@ impl Scope {
     ///  * polluting the cleanup MIR with StorageDead creates
     ///    landing pads even though there's no actual destructors
     ///  * freeing up stack space has no effect during unwinding
-    /// Note that for generators we do emit StorageDeads, for the
-    /// use of optimizations in the MIR generator transform.
+    /// Note that for coroutines we do emit StorageDeads, for the
+    /// use of optimizations in the MIR coroutine transform.
     fn needs_cleanup(&self) -> bool {
         self.drops.iter().any(|drop| match drop.kind {
             DropKind::Value => true,
@@ -233,7 +233,7 @@ impl Scope {
 
     fn invalidate_cache(&mut self) {
         self.cached_unwind_block = None;
-        self.cached_generator_drop_block = None;
+        self.cached_coroutine_drop_block = None;
     }
 }
 
@@ -407,7 +407,7 @@ impl<'tcx> Scopes<'tcx> {
             breakable_scopes: Vec::new(),
             if_then_scope: None,
             unwind_drops: DropTree::new(),
-            generator_drops: DropTree::new(),
+            coroutine_drops: DropTree::new(),
         }
     }
 
@@ -419,7 +419,7 @@ impl<'tcx> Scopes<'tcx> {
             drops: vec![],
             moved_locals: vec![],
             cached_unwind_block: None,
-            cached_generator_drop_block: None,
+            cached_coroutine_drop_block: None,
         });
     }
 
@@ -734,7 +734,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // If we are emitting a `drop` statement, we need to have the cached
         // diverge cleanup pads ready in case that drop panics.
         let needs_cleanup = self.scopes.scopes.last().is_some_and(|scope| scope.needs_cleanup());
-        let is_generator = self.generator_kind.is_some();
+        let is_coroutine = self.coroutine_kind.is_some();
         let unwind_to = if needs_cleanup { self.diverge_cleanup() } else { DropIdx::MAX };
 
         let scope = self.scopes.scopes.last().expect("leave_top_scope called with no scopes");
@@ -744,7 +744,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             scope,
             block,
             unwind_to,
-            is_generator && needs_cleanup,
+            is_coroutine && needs_cleanup,
             self.arg_count,
         ))
     }
@@ -984,11 +984,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // caches gets invalidated. i.e., if a new drop is added into the middle scope, the
         // cache of outer scope stays intact.
         //
-        // Since we only cache drops for the unwind path and the generator drop
+        // Since we only cache drops for the unwind path and the coroutine drop
         // path, we only need to invalidate the cache for drops that happen on
-        // the unwind or generator drop paths. This means that for
-        // non-generators we don't need to invalidate caches for `DropKind::Storage`.
-        let invalidate_caches = needs_drop || self.generator_kind.is_some();
+        // the unwind or coroutine drop paths. This means that for
+        // non-coroutines we don't need to invalidate caches for `DropKind::Storage`.
+        let invalidate_caches = needs_drop || self.coroutine_kind.is_some();
         for scope in self.scopes.scopes.iter_mut().rev() {
             if invalidate_caches {
                 scope.invalidate_cache();
@@ -1101,10 +1101,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             return cached_drop;
         }
 
-        let is_generator = self.generator_kind.is_some();
+        let is_coroutine = self.coroutine_kind.is_some();
         for scope in &mut self.scopes.scopes[uncached_scope..=target] {
             for drop in &scope.drops {
-                if is_generator || drop.kind == DropKind::Value {
+                if is_coroutine || drop.kind == DropKind::Value {
                     cached_drop = self.scopes.unwind_drops.add_drop(*drop, cached_drop);
                 }
             }
@@ -1137,17 +1137,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     /// Sets up a path that performs all required cleanup for dropping a
-    /// generator, starting from the given block that ends in
+    /// coroutine, starting from the given block that ends in
     /// [TerminatorKind::Yield].
     ///
-    /// This path terminates in GeneratorDrop.
-    pub(crate) fn generator_drop_cleanup(&mut self, yield_block: BasicBlock) {
+    /// This path terminates in CoroutineDrop.
+    pub(crate) fn coroutine_drop_cleanup(&mut self, yield_block: BasicBlock) {
         debug_assert!(
             matches!(
                 self.cfg.block_data(yield_block).terminator().kind,
                 TerminatorKind::Yield { .. }
             ),
-            "generator_drop_cleanup called on block with non-yield terminator."
+            "coroutine_drop_cleanup called on block with non-yield terminator."
         );
         let (uncached_scope, mut cached_drop) = self
             .scopes
@@ -1156,18 +1156,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             .enumerate()
             .rev()
             .find_map(|(scope_idx, scope)| {
-                scope.cached_generator_drop_block.map(|cached_block| (scope_idx + 1, cached_block))
+                scope.cached_coroutine_drop_block.map(|cached_block| (scope_idx + 1, cached_block))
             })
             .unwrap_or((0, ROOT_NODE));
 
         for scope in &mut self.scopes.scopes[uncached_scope..] {
             for drop in &scope.drops {
-                cached_drop = self.scopes.generator_drops.add_drop(*drop, cached_drop);
+                cached_drop = self.scopes.coroutine_drops.add_drop(*drop, cached_drop);
             }
-            scope.cached_generator_drop_block = Some(cached_drop);
+            scope.cached_coroutine_drop_block = Some(cached_drop);
         }
 
-        self.scopes.generator_drops.add_entry(yield_block, cached_drop);
+        self.scopes.coroutine_drops.add_entry(yield_block, cached_drop);
     }
 
     /// Utility function for *non*-scope code to build their own drops
@@ -1274,7 +1274,7 @@ fn build_scope_drops<'tcx>(
     // drops panic (panicking while unwinding will abort, so there's no need for
     // another set of arrows).
     //
-    // For generators, we unwind from a drop on a local to its StorageDead
+    // For coroutines, we unwind from a drop on a local to its StorageDead
     // statement. For other functions we don't worry about StorageDead. The
     // drops for the unwind path should have already been generated by
     // `diverge_cleanup_gen`.
@@ -1346,7 +1346,7 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
         blocks[ROOT_NODE] = continue_block;
 
         drops.build_mir::<ExitScopes>(&mut self.cfg, &mut blocks);
-        let is_generator = self.generator_kind.is_some();
+        let is_coroutine = self.coroutine_kind.is_some();
 
         // Link the exit drop tree to unwind drop tree.
         if drops.drops.iter().any(|(drop, _)| drop.kind == DropKind::Value) {
@@ -1355,7 +1355,7 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
             for (drop_idx, drop_data) in drops.drops.iter_enumerated().skip(1) {
                 match drop_data.0.kind {
                     DropKind::Storage => {
-                        if is_generator {
+                        if is_coroutine {
                             let unwind_drop = self
                                 .scopes
                                 .unwind_drops
@@ -1381,10 +1381,10 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
         blocks[ROOT_NODE].map(BasicBlock::unit)
     }
 
-    /// Build the unwind and generator drop trees.
+    /// Build the unwind and coroutine drop trees.
     pub(crate) fn build_drop_trees(&mut self) {
-        if self.generator_kind.is_some() {
-            self.build_generator_drop_trees();
+        if self.coroutine_kind.is_some() {
+            self.build_coroutine_drop_trees();
         } else {
             Self::build_unwind_tree(
                 &mut self.cfg,
@@ -1395,18 +1395,18 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
         }
     }
 
-    fn build_generator_drop_trees(&mut self) {
-        // Build the drop tree for dropping the generator while it's suspended.
-        let drops = &mut self.scopes.generator_drops;
+    fn build_coroutine_drop_trees(&mut self) {
+        // Build the drop tree for dropping the coroutine while it's suspended.
+        let drops = &mut self.scopes.coroutine_drops;
         let cfg = &mut self.cfg;
         let fn_span = self.fn_span;
         let mut blocks = IndexVec::from_elem(None, &drops.drops);
-        drops.build_mir::<GeneratorDrop>(cfg, &mut blocks);
+        drops.build_mir::<CoroutineDrop>(cfg, &mut blocks);
         if let Some(root_block) = blocks[ROOT_NODE] {
             cfg.terminate(
                 root_block,
                 SourceInfo::outermost(fn_span),
-                TerminatorKind::GeneratorDrop,
+                TerminatorKind::CoroutineDrop,
             );
         }
 
@@ -1416,11 +1416,11 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
         Self::build_unwind_tree(cfg, unwind_drops, fn_span, resume_block);
 
         // Build the drop tree for unwinding when dropping a suspended
-        // generator.
+        // coroutine.
         //
         // This is a different tree to the standard unwind paths here to
         // prevent drop elaboration from creating drop flags that would have
-        // to be captured by the generator. I'm not sure how important this
+        // to be captured by the coroutine. I'm not sure how important this
         // optimization is, but it is here.
         for (drop_idx, drop_data) in drops.drops.iter_enumerated() {
             if let DropKind::Value = drop_data.0.kind {
@@ -1461,9 +1461,9 @@ impl<'tcx> DropTreeBuilder<'tcx> for ExitScopes {
     }
 }
 
-struct GeneratorDrop;
+struct CoroutineDrop;
 
-impl<'tcx> DropTreeBuilder<'tcx> for GeneratorDrop {
+impl<'tcx> DropTreeBuilder<'tcx> for CoroutineDrop {
     fn make_block(cfg: &mut CFG<'tcx>) -> BasicBlock {
         cfg.start_new_block()
     }
@@ -1474,7 +1474,7 @@ impl<'tcx> DropTreeBuilder<'tcx> for GeneratorDrop {
         } else {
             span_bug!(
                 term.source_info.span,
-                "cannot enter generator drop tree from {:?}",
+                "cannot enter coroutine drop tree from {:?}",
                 term.kind
             )
         }
@@ -1511,7 +1511,7 @@ impl<'tcx> DropTreeBuilder<'tcx> for Unwind {
             | TerminatorKind::Return
             | TerminatorKind::Unreachable
             | TerminatorKind::Yield { .. }
-            | TerminatorKind::GeneratorDrop
+            | TerminatorKind::CoroutineDrop
             | TerminatorKind::FalseEdge { .. } => {
                 span_bug!(term.source_info.span, "cannot unwind from {:?}", term.kind)
             }

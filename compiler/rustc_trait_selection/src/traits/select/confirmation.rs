@@ -83,9 +83,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ImplSource::Builtin(BuiltinImplSource::Misc, vtable_closure)
             }
 
-            GeneratorCandidate => {
-                let vtable_generator = self.confirm_generator_candidate(obligation)?;
-                ImplSource::Builtin(BuiltinImplSource::Misc, vtable_generator)
+            CoroutineCandidate => {
+                let vtable_coroutine = self.confirm_coroutine_candidate(obligation)?;
+                ImplSource::Builtin(BuiltinImplSource::Misc, vtable_coroutine)
             }
 
             FutureCandidate => {
@@ -711,23 +711,23 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         trait_obligations
     }
 
-    fn confirm_generator_candidate(
+    fn confirm_coroutine_candidate(
         &mut self,
         obligation: &PolyTraitObligation<'tcx>,
     ) -> Result<Vec<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
-        // Okay to skip binder because the args on generator types never
+        // Okay to skip binder because the args on coroutine types never
         // touch bound regions, they just capture the in-scope
         // type/region parameters.
         let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
-        let ty::Generator(generator_def_id, args, _) = *self_ty.kind() else {
+        let ty::Coroutine(coroutine_def_id, args, _) = *self_ty.kind() else {
             bug!("closure candidate for non-closure {:?}", obligation);
         };
 
-        debug!(?obligation, ?generator_def_id, ?args, "confirm_generator_candidate");
+        debug!(?obligation, ?coroutine_def_id, ?args, "confirm_coroutine_candidate");
 
-        let gen_sig = args.as_generator().poly_sig();
+        let gen_sig = args.as_coroutine().poly_sig();
 
-        // NOTE: The self-type is a generator type and hence is
+        // NOTE: The self-type is a coroutine type and hence is
         // in fact unparameterized (or at least does not reference any
         // regions bound in the obligation).
         let self_ty = obligation
@@ -736,7 +736,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .no_bound_vars()
             .expect("unboxed closure type should not capture bound vars from the predicate");
 
-        let trait_ref = super::util::generator_trait_ref_and_outputs(
+        let trait_ref = super::util::coroutine_trait_ref_and_outputs(
             self.tcx(),
             obligation.predicate.def_id(),
             self_ty,
@@ -745,7 +745,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         .map_bound(|(trait_ref, ..)| trait_ref);
 
         let nested = self.confirm_poly_trait_refs(obligation, trait_ref)?;
-        debug!(?trait_ref, ?nested, "generator candidate obligations");
+        debug!(?trait_ref, ?nested, "coroutine candidate obligations");
 
         Ok(nested)
     }
@@ -754,17 +754,17 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         &mut self,
         obligation: &PolyTraitObligation<'tcx>,
     ) -> Result<Vec<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
-        // Okay to skip binder because the args on generator types never
+        // Okay to skip binder because the args on coroutine types never
         // touch bound regions, they just capture the in-scope
         // type/region parameters.
         let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
-        let ty::Generator(generator_def_id, args, _) = *self_ty.kind() else {
+        let ty::Coroutine(coroutine_def_id, args, _) = *self_ty.kind() else {
             bug!("closure candidate for non-closure {:?}", obligation);
         };
 
-        debug!(?obligation, ?generator_def_id, ?args, "confirm_future_candidate");
+        debug!(?obligation, ?coroutine_def_id, ?args, "confirm_future_candidate");
 
-        let gen_sig = args.as_generator().poly_sig();
+        let gen_sig = args.as_coroutine().poly_sig();
 
         let trait_ref = super::util::future_trait_ref_and_outputs(
             self.tcx(),
@@ -1234,13 +1234,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ty::Closure(_, args) => {
                     stack.push(args.as_closure().tupled_upvars_ty());
                 }
-                ty::Generator(_, args, _) => {
-                    let generator = args.as_generator();
-                    stack.extend([generator.tupled_upvars_ty(), generator.witness()]);
+                ty::Coroutine(_, args, _) => {
+                    let coroutine = args.as_coroutine();
+                    stack.extend([coroutine.tupled_upvars_ty(), coroutine.witness()]);
                 }
-                ty::GeneratorWitness(def_id, args) => {
+                ty::CoroutineWitness(def_id, args) => {
                     let tcx = self.tcx();
-                    stack.extend(tcx.generator_hidden_types(def_id).map(|bty| {
+                    stack.extend(tcx.coroutine_hidden_types(def_id).map(|bty| {
                         let ty = bty.instantiate(tcx, args);
                         debug_assert!(!ty.has_late_bound_regions());
                         ty

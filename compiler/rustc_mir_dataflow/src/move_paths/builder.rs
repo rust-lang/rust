@@ -143,8 +143,8 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                     | ty::FnPtr(_)
                     | ty::Dynamic(_, _, _)
                     | ty::Closure(_, _)
-                    | ty::Generator(_, _, _)
-                    | ty::GeneratorWitness(..)
+                    | ty::Coroutine(_, _, _)
+                    | ty::CoroutineWitness(..)
                     | ty::Never
                     | ty::Tuple(_)
                     | ty::Alias(_, _)
@@ -168,7 +168,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                             union_path.get_or_insert(base);
                         }
                     }
-                    ty::Closure(_, _) | ty::Generator(_, _, _) | ty::Tuple(_) => (),
+                    ty::Closure(_, _) | ty::Coroutine(_, _, _) | ty::Tuple(_) => (),
                     ty::Bool
                     | ty::Char
                     | ty::Int(_)
@@ -183,7 +183,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                     | ty::FnDef(_, _)
                     | ty::FnPtr(_)
                     | ty::Dynamic(_, _, _)
-                    | ty::GeneratorWitness(..)
+                    | ty::CoroutineWitness(..)
                     | ty::Never
                     | ty::Alias(_, _)
                     | ty::Param(_)
@@ -454,7 +454,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             | TerminatorKind::Return
             | TerminatorKind::UnwindResume
             | TerminatorKind::UnwindTerminate(_)
-            | TerminatorKind::GeneratorDrop
+            | TerminatorKind::CoroutineDrop
             | TerminatorKind::Unreachable
             | TerminatorKind::Drop { .. } => {}
 

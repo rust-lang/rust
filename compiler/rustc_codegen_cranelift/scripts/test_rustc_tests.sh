@@ -157,7 +157,7 @@ rm -r tests/run-make/compressed-debuginfo
 
 rm -r tests/run-make/extern-fn-explicit-align # argument alignment not yet supported
 
-rm tests/ui/codegen/subtyping-enforces-type-equality.rs # assert_assignable bug with Generator's
+rm tests/ui/codegen/subtyping-enforces-type-equality.rs # assert_assignable bug with Coroutine's
 
 # bugs in the test suite
 # ======================

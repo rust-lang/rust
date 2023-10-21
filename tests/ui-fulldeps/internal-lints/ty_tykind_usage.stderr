@@ -109,13 +109,13 @@ LL |         TyKind::Closure(..) => (),
 error: usage of `ty::TyKind::<kind>`
   --> $DIR/ty_tykind_usage.rs:32:9
    |
-LL |         TyKind::Generator(..) => (),
+LL |         TyKind::Coroutine(..) => (),
    |         ^^^^^^ help: try using `ty::<kind>` directly: `ty`
 
 error: usage of `ty::TyKind::<kind>`
   --> $DIR/ty_tykind_usage.rs:33:9
    |
-LL |         TyKind::GeneratorWitness(..) => (),
+LL |         TyKind::CoroutineWitness(..) => (),
    |         ^^^^^^ help: try using `ty::<kind>` directly: `ty`
 
 error: usage of `ty::TyKind::<kind>`

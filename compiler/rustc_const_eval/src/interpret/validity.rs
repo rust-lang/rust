@@ -112,13 +112,13 @@ macro_rules! try_validation {
 pub enum PathElem {
     Field(Symbol),
     Variant(Symbol),
-    GeneratorState(VariantIdx),
+    CoroutineState(VariantIdx),
     CapturedVar(Symbol),
     ArrayElem(usize),
     TupleElem(usize),
     Deref,
     EnumTag,
-    GeneratorTag,
+    CoroutineTag,
     DynDowncast,
 }
 
@@ -171,8 +171,8 @@ fn write_path(out: &mut String, path: &[PathElem]) {
             Field(name) => write!(out, ".{name}"),
             EnumTag => write!(out, ".<enum-tag>"),
             Variant(name) => write!(out, ".<enum-variant({name})>"),
-            GeneratorTag => write!(out, ".<generator-tag>"),
-            GeneratorState(idx) => write!(out, ".<generator-state({})>", idx.index()),
+            CoroutineTag => write!(out, ".<coroutine-tag>"),
+            CoroutineState(idx) => write!(out, ".<coroutine-state({})>", idx.index()),
             CapturedVar(name) => write!(out, ".<captured-var({name})>"),
             TupleElem(idx) => write!(out, ".{idx}"),
             ArrayElem(idx) => write!(out, "[{idx}]"),
@@ -206,7 +206,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 if tag_field == field {
                     return match layout.ty.kind() {
                         ty::Adt(def, ..) if def.is_enum() => PathElem::EnumTag,
-                        ty::Generator(..) => PathElem::GeneratorTag,
+                        ty::Coroutine(..) => PathElem::CoroutineTag,
                         _ => bug!("non-variant type {:?}", layout.ty),
                     };
                 }
@@ -216,8 +216,8 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
 
         // Now we know we are projecting to a field, so figure out which one.
         match layout.ty.kind() {
-            // generators and closures.
-            ty::Closure(def_id, _) | ty::Generator(def_id, _, _) => {
+            // coroutines and closures.
+            ty::Closure(def_id, _) | ty::Coroutine(def_id, _, _) => {
                 let mut name = None;
                 // FIXME this should be more descriptive i.e. CapturePlace instead of CapturedVar
                 // https://github.com/rust-lang/project-rfc-2229/issues/46
@@ -225,7 +225,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                     let captures = self.ecx.tcx.closure_captures(local_def_id);
                     if let Some(captured_place) = captures.get(field) {
                         // Sometimes the index is beyond the number of upvars (seen
-                        // for a generator).
+                        // for a coroutine).
                         let var_hir_id = captured_place.get_root_variable();
                         let node = self.ecx.tcx.hir().get(var_hir_id);
                         if let hir::Node::Pat(pat) = node {
@@ -580,7 +580,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
             | ty::Str
             | ty::Dynamic(..)
             | ty::Closure(..)
-            | ty::Generator(..) => Ok(false),
+            | ty::Coroutine(..) => Ok(false),
             // Some types only occur during typechecking, they have no layout.
             // We should not see them here and we could not check them anyway.
             ty::Error(_)
@@ -589,7 +589,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
             | ty::Bound(..)
             | ty::Param(..)
             | ty::Alias(..)
-            | ty::GeneratorWitness(..) => bug!("Encountered invalid type {:?}", ty),
+            | ty::CoroutineWitness(..) => bug!("Encountered invalid type {:?}", ty),
         }
     }
 
@@ -692,8 +692,8 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
     ) -> InterpResult<'tcx> {
         let name = match old_op.layout.ty.kind() {
             ty::Adt(adt, _) => PathElem::Variant(adt.variant(variant_id).name),
-            // Generators also have variants
-            ty::Generator(..) => PathElem::GeneratorState(variant_id),
+            // Coroutines also have variants
+            ty::Coroutine(..) => PathElem::CoroutineState(variant_id),
             _ => bug!("Unexpected type with variant: {:?}", old_op.layout.ty),
         };
         self.with_elem(name, move |this| this.visit_value(new_op))

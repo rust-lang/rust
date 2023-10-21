@@ -44,7 +44,7 @@ pub fn categorize(context: PlaceContext) -> Option<DefUse> {
         PlaceContext::MutatingUse(MutatingUseContext::Projection) |
 
         // Borrows only consider their local used at the point of the borrow.
-        // This won't affect the results since we use this analysis for generators
+        // This won't affect the results since we use this analysis for coroutines
         // and we only care about the result at suspension points. Borrows cannot
         // cross suspension points so this behavior is unproblematic.
         PlaceContext::MutatingUse(MutatingUseContext::Borrow) |

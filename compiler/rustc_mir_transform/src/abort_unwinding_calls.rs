@@ -40,7 +40,7 @@ impl<'tcx> MirPass<'tcx> for AbortUnwindingCalls {
         let body_abi = match body_ty.kind() {
             ty::FnDef(..) => body_ty.fn_sig(tcx).abi(),
             ty::Closure(..) => Abi::RustCall,
-            ty::Generator(..) => Abi::Rust,
+            ty::Coroutine(..) => Abi::Rust,
             _ => span_bug!(body.span, "unexpected body ty: {:?}", body_ty),
         };
         let body_can_unwind = layout::fn_can_unwind(tcx, Some(def_id), body_abi);

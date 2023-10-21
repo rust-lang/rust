@@ -2,14 +2,14 @@ error[E0790]: cannot call associated function on trait without specifying the co
   --> $DIR/E0283.rs:30:21
    |
 LL |     fn create() -> u32;
-   |     ------------------- `Generator::create` defined here
+   |     ------------------- `Coroutine::create` defined here
 ...
-LL |     let cont: u32 = Generator::create();
+LL |     let cont: u32 = Coroutine::create();
    |                     ^^^^^^^^^^^^^^^^^ cannot call associated function of trait
    |
 help: use a fully-qualified path to a specific available implementation
    |
-LL |     let cont: u32 = </* self type */ as Generator>::create();
+LL |     let cont: u32 = </* self type */ as Coroutine>::create();
    |                     +++++++++++++++++++          +
 
 error[E0283]: type annotations needed

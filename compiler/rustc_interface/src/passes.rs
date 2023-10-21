@@ -799,9 +799,9 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
     });
 
     tcx.hir().par_body_owners(|def_id| {
-        if let rustc_hir::def::DefKind::Generator = tcx.def_kind(def_id) {
-            tcx.ensure().mir_generator_witnesses(def_id);
-            tcx.ensure().check_generator_obligations(def_id);
+        if let rustc_hir::def::DefKind::Coroutine = tcx.def_kind(def_id) {
+            tcx.ensure().mir_coroutine_witnesses(def_id);
+            tcx.ensure().check_coroutine_obligations(def_id);
         }
     });
 

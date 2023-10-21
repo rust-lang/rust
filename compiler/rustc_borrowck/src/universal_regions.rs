@@ -58,7 +58,7 @@ pub struct UniversalRegions<'tcx> {
     num_universals: usize,
 
     /// The "defining" type for this function, with all universal
-    /// regions instantiated. For a closure or generator, this is the
+    /// regions instantiated. For a closure or coroutine, this is the
     /// closure type, but for a top-level function it's the `FnDef`.
     pub defining_ty: DefiningTy<'tcx>,
 
@@ -91,10 +91,10 @@ pub enum DefiningTy<'tcx> {
     /// `ClosureArgs::closure_sig_ty`.
     Closure(DefId, GenericArgsRef<'tcx>),
 
-    /// The MIR is a generator. The signature is that generators take
+    /// The MIR is a coroutine. The signature is that coroutines take
     /// no parameters and return the result of
-    /// `ClosureArgs::generator_return_ty`.
-    Generator(DefId, GenericArgsRef<'tcx>, hir::Movability),
+    /// `ClosureArgs::coroutine_return_ty`.
+    Coroutine(DefId, GenericArgsRef<'tcx>, hir::Movability),
 
     /// The MIR is a fn item with the given `DefId` and args. The signature
     /// of the function can be bound then with the `fn_sig` query.
@@ -112,13 +112,13 @@ pub enum DefiningTy<'tcx> {
 
 impl<'tcx> DefiningTy<'tcx> {
     /// Returns a list of all the upvar types for this MIR. If this is
-    /// not a closure or generator, there are no upvars, and hence it
+    /// not a closure or coroutine, there are no upvars, and hence it
     /// will be an empty list. The order of types in this list will
     /// match up with the upvar order in the HIR, typesystem, and MIR.
     pub fn upvar_tys(self) -> &'tcx ty::List<Ty<'tcx>> {
         match self {
             DefiningTy::Closure(_, args) => args.as_closure().upvar_tys(),
-            DefiningTy::Generator(_, args, _) => args.as_generator().upvar_tys(),
+            DefiningTy::Coroutine(_, args, _) => args.as_coroutine().upvar_tys(),
             DefiningTy::FnDef(..) | DefiningTy::Const(..) | DefiningTy::InlineConst(..) => {
                 ty::List::empty()
             }
@@ -130,7 +130,7 @@ impl<'tcx> DefiningTy<'tcx> {
     /// user's code.
     pub fn implicit_inputs(self) -> usize {
         match self {
-            DefiningTy::Closure(..) | DefiningTy::Generator(..) => 1,
+            DefiningTy::Closure(..) | DefiningTy::Coroutine(..) => 1,
             DefiningTy::FnDef(..) | DefiningTy::Const(..) | DefiningTy::InlineConst(..) => 0,
         }
     }
@@ -146,7 +146,7 @@ impl<'tcx> DefiningTy<'tcx> {
     pub fn def_id(&self) -> DefId {
         match *self {
             DefiningTy::Closure(def_id, ..)
-            | DefiningTy::Generator(def_id, ..)
+            | DefiningTy::Coroutine(def_id, ..)
             | DefiningTy::FnDef(def_id, ..)
             | DefiningTy::Const(def_id, ..)
             | DefiningTy::InlineConst(def_id, ..) => def_id,
@@ -178,7 +178,7 @@ pub enum RegionClassification {
     Global,
 
     /// An **external** region is only relevant for
-    /// closures, generators, and inline consts. In that
+    /// closures, coroutines, and inline consts. In that
     /// case, it refers to regions that are free in the type
     /// -- basically, something bound in the surrounding context.
     ///
@@ -196,7 +196,7 @@ pub enum RegionClassification {
     /// Here, the lifetimes `'a` and `'b` would be **external** to the
     /// closure.
     ///
-    /// If we are not analyzing a closure/generator/inline-const,
+    /// If we are not analyzing a closure/coroutine/inline-const,
     /// there are no external lifetimes.
     External,
 
@@ -354,7 +354,7 @@ impl<'tcx> UniversalRegions<'tcx> {
                     err.note(format!("late-bound region is {:?}", self.to_region_vid(r)));
                 });
             }
-            DefiningTy::Generator(def_id, args, _) => {
+            DefiningTy::Coroutine(def_id, args, _) => {
                 let v = with_no_trimmed_paths!(
                     args[tcx.generics_of(def_id).parent_count..]
                         .iter()
@@ -362,7 +362,7 @@ impl<'tcx> UniversalRegions<'tcx> {
                         .collect::<Vec<_>>()
                 );
                 err.note(format!(
-                    "defining type: {} with generator args [\n    {},\n]",
+                    "defining type: {} with coroutine args [\n    {},\n]",
                     tcx.def_path_str_with_args(def_id, args),
                     v.join(",\n    "),
                 ));
@@ -426,13 +426,13 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
 
         let typeck_root_def_id = self.infcx.tcx.typeck_root_def_id(self.mir_def.to_def_id());
 
-        // If this is a 'root' body (not a closure/generator/inline const), then
+        // If this is a 'root' body (not a closure/coroutine/inline const), then
         // there are no extern regions, so the local regions start at the same
         // position as the (empty) sub-list of extern regions
         let first_local_index = if self.mir_def.to_def_id() == typeck_root_def_id {
             first_extern_index
         } else {
-            // If this is a closure, generator, or inline-const, then the late-bound regions from the enclosing
+            // If this is a closure, coroutine, or inline-const, then the late-bound regions from the enclosing
             // function/closures are actually external regions to us. For example, here, 'a is not local
             // to the closure c (although it is local to the fn foo):
             // fn foo<'a>() {
@@ -528,7 +528,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         debug!("build: local regions  = {}..{}", first_local_index, num_universals);
 
         let yield_ty = match defining_ty {
-            DefiningTy::Generator(_, args, _) => Some(args.as_generator().yield_ty()),
+            DefiningTy::Coroutine(_, args, _) => Some(args.as_coroutine().yield_ty()),
             _ => None,
         };
 
@@ -563,8 +563,8 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
 
                 match *defining_ty.kind() {
                     ty::Closure(def_id, args) => DefiningTy::Closure(def_id, args),
-                    ty::Generator(def_id, args, movability) => {
-                        DefiningTy::Generator(def_id, args, movability)
+                    ty::Coroutine(def_id, args, movability) => {
+                        DefiningTy::Coroutine(def_id, args, movability)
                     }
                     ty::FnDef(def_id, args) => DefiningTy::FnDef(def_id, args),
                     _ => span_bug!(
@@ -621,7 +621,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         let identity_args = GenericArgs::identity_for_item(tcx, typeck_root_def_id);
         let fr_args = match defining_ty {
             DefiningTy::Closure(_, args)
-            | DefiningTy::Generator(_, args, _)
+            | DefiningTy::Coroutine(_, args, _)
             | DefiningTy::InlineConst(_, args) => {
                 // In the case of closures, we rely on the fact that
                 // the first N elements in the ClosureArgs are
@@ -686,13 +686,13 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 )
             }
 
-            DefiningTy::Generator(def_id, args, movability) => {
+            DefiningTy::Coroutine(def_id, args, movability) => {
                 assert_eq!(self.mir_def.to_def_id(), def_id);
-                let resume_ty = args.as_generator().resume_ty();
-                let output = args.as_generator().return_ty();
-                let generator_ty = Ty::new_generator(tcx, def_id, args, movability);
+                let resume_ty = args.as_coroutine().resume_ty();
+                let output = args.as_coroutine().return_ty();
+                let coroutine_ty = Ty::new_coroutine(tcx, def_id, args, movability);
                 let inputs_and_output =
-                    self.infcx.tcx.mk_type_list(&[generator_ty, resume_ty, output]);
+                    self.infcx.tcx.mk_type_list(&[coroutine_ty, resume_ty, output]);
                 ty::Binder::dummy(inputs_and_output)
             }
 

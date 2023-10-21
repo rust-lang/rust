@@ -547,7 +547,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     source_info,
                     TerminatorKind::Yield { value, resume, resume_arg: destination, drop: None },
                 );
-                this.generator_drop_cleanup(block);
+                this.coroutine_drop_cleanup(block);
                 resume.unit()
             }
 

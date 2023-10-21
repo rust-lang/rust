@@ -301,8 +301,8 @@ pub enum ObligationCauseCode<'tcx> {
     InlineAsmSized,
     /// Captured closure type must be `Sized`.
     SizedClosureCapture(LocalDefId),
-    /// Types live across generator yields must be `Sized`.
-    SizedGeneratorInterior(LocalDefId),
+    /// Types live across coroutine yields must be `Sized`.
+    SizedCoroutineInterior(LocalDefId),
     /// `[expr; N]` requires `type_of(expr): Copy`.
     RepeatElementCopy {
         /// If element is a `const fn` we display a help message suggesting to move the

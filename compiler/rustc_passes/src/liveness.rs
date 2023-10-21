@@ -706,7 +706,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         //
         // When computing the liveness for captured variables we take into
         // account how variable is captured (ByRef vs ByValue) and what is the
-        // closure kind (Generator / FnOnce vs Fn / FnMut).
+        // closure kind (Coroutine / FnOnce vs Fn / FnMut).
         //
         // Variables captured by reference are assumed to be used on the exit
         // from the closure.
@@ -752,7 +752,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 ty::ClosureKind::FnMut => {}
                 ty::ClosureKind::FnOnce => return succ,
             },
-            ty::Generator(..) => return succ,
+            ty::Coroutine(..) => return succ,
             _ => {
                 span_bug!(
                     body.value.span,

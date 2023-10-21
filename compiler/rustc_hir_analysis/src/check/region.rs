@@ -598,7 +598,7 @@ fn resolve_local<'tcx>(
     }
 
     // Make sure we visit the initializer first, so expr_and_pat_count remains correct.
-    // The correct order, as shared between generator_interior, drop_ranges and intravisitor,
+    // The correct order, as shared between coroutine_interior, drop_ranges and intravisitor,
     // is to walk initializer, followed by pattern bindings, finally followed by the `else` block.
     if let Some(expr) = init {
         visitor.visit_expr(expr);
@@ -825,7 +825,7 @@ impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
             resolve_local(self, None, Some(&body.value));
         }
 
-        if body.generator_kind.is_some() {
+        if body.coroutine_kind.is_some() {
             self.scope_tree.body_expr_count.insert(body_id, self.expr_and_pat_count);
         }
 

@@ -179,7 +179,7 @@ fn entry_point_type(item: &ast::Item, at_root: bool) -> EntryPointType {
 }
 
 /// A folder used to remove any entry points (like fn main) because the harness
-/// generator will provide its own
+/// coroutine will provide its own
 struct EntryPointCleaner<'a> {
     // Current depth in the ast
     sess: &'a Session,

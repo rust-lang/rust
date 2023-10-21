@@ -9,7 +9,7 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::{GeneratorKind, Node};
+use rustc_hir::{CoroutineKind, Node};
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
@@ -173,7 +173,7 @@ struct Builder<'a, 'tcx> {
     check_overflow: bool,
     fn_span: Span,
     arg_count: usize,
-    generator_kind: Option<GeneratorKind>,
+    coroutine_kind: Option<CoroutineKind>,
 
     /// The current set of scopes, updated as we traverse;
     /// see the `scope` module for more details.
@@ -448,7 +448,7 @@ fn construct_fn<'tcx>(
 ) -> Body<'tcx> {
     let span = tcx.def_span(fn_def);
     let fn_id = tcx.hir().local_def_id_to_hir_id(fn_def);
-    let generator_kind = tcx.generator_kind(fn_def);
+    let coroutine_kind = tcx.coroutine_kind(fn_def);
 
     // The representation of thir for `-Zunpretty=thir-tree` relies on
     // the entry expression being the last element of `thir.exprs`.
@@ -478,12 +478,12 @@ fn construct_fn<'tcx>(
 
     let arguments = &thir.params;
 
-    let (yield_ty, return_ty) = if generator_kind.is_some() {
+    let (yield_ty, return_ty) = if coroutine_kind.is_some() {
         let gen_ty = arguments[thir::UPVAR_ENV_PARAM].ty;
         let gen_sig = match gen_ty.kind() {
-            ty::Generator(_, gen_args, ..) => gen_args.as_generator().sig(),
+            ty::Coroutine(_, gen_args, ..) => gen_args.as_coroutine().sig(),
             _ => {
-                span_bug!(span, "generator w/o generator type: {:?}", gen_ty)
+                span_bug!(span, "coroutine w/o coroutine type: {:?}", gen_ty)
             }
         };
         (Some(gen_sig.yield_ty), gen_sig.return_ty)
@@ -519,7 +519,7 @@ fn construct_fn<'tcx>(
         safety,
         return_ty,
         return_ty_span,
-        generator_kind,
+        coroutine_kind,
     );
 
     let call_site_scope =
@@ -553,7 +553,7 @@ fn construct_fn<'tcx>(
         None
     };
     if yield_ty.is_some() {
-        body.generator.as_mut().unwrap().yield_ty = yield_ty;
+        body.coroutine.as_mut().unwrap().yield_ty = yield_ty;
     }
     body
 }
@@ -619,7 +619,7 @@ fn construct_const<'a, 'tcx>(
 fn construct_error(tcx: TyCtxt<'_>, def: LocalDefId, err: ErrorGuaranteed) -> Body<'_> {
     let span = tcx.def_span(def);
     let hir_id = tcx.hir().local_def_id_to_hir_id(def);
-    let generator_kind = tcx.generator_kind(def);
+    let coroutine_kind = tcx.coroutine_kind(def);
     let body_owner_kind = tcx.hir().body_owner_kind(def);
 
     let ty = Ty::new_error(tcx, err);
@@ -629,8 +629,8 @@ fn construct_error(tcx: TyCtxt<'_>, def: LocalDefId, err: ErrorGuaranteed) -> Bo
             let ty = tcx.type_of(def).instantiate_identity();
             match ty.kind() {
                 ty::Closure(_, args) => 1 + args.as_closure().sig().inputs().skip_binder().len(),
-                ty::Generator(..) => 2,
-                _ => bug!("expected closure or generator, found {ty:?}"),
+                ty::Coroutine(..) => 2,
+                _ => bug!("expected closure or coroutine, found {ty:?}"),
             }
         }
         hir::BodyOwnerKind::Const { .. } => 0,
@@ -669,10 +669,10 @@ fn construct_error(tcx: TyCtxt<'_>, def: LocalDefId, err: ErrorGuaranteed) -> Bo
         num_params,
         vec![],
         span,
-        generator_kind,
+        coroutine_kind,
         Some(err),
     );
-    body.generator.as_mut().map(|gen| gen.yield_ty = Some(ty));
+    body.coroutine.as_mut().map(|gen| gen.yield_ty = Some(ty));
     body
 }
 
@@ -687,7 +687,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         safety: Safety,
         return_ty: Ty<'tcx>,
         return_span: Span,
-        generator_kind: Option<GeneratorKind>,
+        coroutine_kind: Option<CoroutineKind>,
     ) -> Builder<'a, 'tcx> {
         let tcx = infcx.tcx;
         let attrs = tcx.hir().attrs(hir_id);
@@ -718,7 +718,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             cfg: CFG { basic_blocks: IndexVec::new() },
             fn_span: span,
             arg_count,
-            generator_kind,
+            coroutine_kind,
             scopes: scope::Scopes::new(),
             block_context: BlockContext::new(),
             source_scopes: IndexVec::new(),
@@ -760,7 +760,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.arg_count,
             self.var_debug_info,
             self.fn_span,
-            self.generator_kind,
+            self.coroutine_kind,
             None,
         )
     }
@@ -777,7 +777,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         let upvar_args = match closure_ty.kind() {
             ty::Closure(_, args) => ty::UpvarArgs::Closure(args),
-            ty::Generator(_, args, _) => ty::UpvarArgs::Generator(args),
+            ty::Coroutine(_, args, _) => ty::UpvarArgs::Coroutine(args),
             _ => return,
         };
 

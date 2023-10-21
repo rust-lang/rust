@@ -182,7 +182,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
                     // Otherwise, just report the whole type (and use
                     // the intentionally fuzzy phrase "destructor")
                     ty::Closure(..) => ("destructor", "closure".to_owned()),
-                    ty::Generator(..) => ("destructor", "generator".to_owned()),
+                    ty::Coroutine(..) => ("destructor", "coroutine".to_owned()),
 
                     _ => ("destructor", format!("type `{}`", local_decl.ty)),
                 };

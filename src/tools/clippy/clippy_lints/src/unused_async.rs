@@ -86,7 +86,7 @@ impl<'a, 'tcx> Visitor<'tcx> for AsyncFnVisitor<'a, 'tcx> {
     }
 
     fn visit_body(&mut self, b: &'tcx Body<'tcx>) {
-        let is_async_block = matches!(b.generator_kind, Some(rustc_hir::GeneratorKind::Async(_)));
+        let is_async_block = matches!(b.coroutine_kind, Some(rustc_hir::CoroutineKind::Async(_)));
 
         if is_async_block {
             self.async_depth += 1;

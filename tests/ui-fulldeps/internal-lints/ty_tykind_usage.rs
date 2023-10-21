@@ -29,8 +29,8 @@ fn main() {
         TyKind::FnPtr(..) => (),            //~ ERROR usage of `ty::TyKind::<kind>`
         TyKind::Dynamic(..) => (),          //~ ERROR usage of `ty::TyKind::<kind>`
         TyKind::Closure(..) => (),          //~ ERROR usage of `ty::TyKind::<kind>`
-        TyKind::Generator(..) => (),        //~ ERROR usage of `ty::TyKind::<kind>`
-        TyKind::GeneratorWitness(..) => (), //~ ERROR usage of `ty::TyKind::<kind>`
+        TyKind::Coroutine(..) => (),        //~ ERROR usage of `ty::TyKind::<kind>`
+        TyKind::CoroutineWitness(..) => (), //~ ERROR usage of `ty::TyKind::<kind>`
         TyKind::Never => (),                //~ ERROR usage of `ty::TyKind::<kind>`
         TyKind::Tuple(..) => (),            //~ ERROR usage of `ty::TyKind::<kind>`
         TyKind::Alias(..) => (),            //~ ERROR usage of `ty::TyKind::<kind>`

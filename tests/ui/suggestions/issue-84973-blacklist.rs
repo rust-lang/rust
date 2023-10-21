@@ -1,7 +1,7 @@
 // Checks that certain traits for which we don't want to suggest borrowing
 // are blacklisted and don't cause the suggestion to be issued.
 
-#![feature(generators)]
+#![feature(coroutines)]
 
 fn f_copy<T: Copy>(t: T) {}
 fn f_clone<T: Clone>(t: T) {}

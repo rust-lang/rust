@@ -510,7 +510,7 @@ pub(crate) fn mir_operand_get_const_val<'tcx>(
                     | TerminatorKind::Drop { .. }
                     | TerminatorKind::Assert { .. } => {}
                     TerminatorKind::Yield { .. }
-                    | TerminatorKind::GeneratorDrop
+                    | TerminatorKind::CoroutineDrop
                     | TerminatorKind::FalseEdge { .. }
                     | TerminatorKind::FalseUnwind { .. } => unreachable!(),
                     TerminatorKind::InlineAsm { .. } => return None,

@@ -102,7 +102,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         let node = hir.find(hir_id)?;
         match &node {
             hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(sig, _, body_id), .. }) => {
-                self.describe_generator(*body_id).or_else(|| {
+                self.describe_coroutine(*body_id).or_else(|| {
                     Some(match sig.header {
                         hir::FnHeader { asyncness: hir::IsAsync::Async(_), .. } => {
                             "an async function"
@@ -114,11 +114,11 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             hir::Node::TraitItem(hir::TraitItem {
                 kind: hir::TraitItemKind::Fn(_, hir::TraitFn::Provided(body_id)),
                 ..
-            }) => self.describe_generator(*body_id).or_else(|| Some("a trait method")),
+            }) => self.describe_coroutine(*body_id).or_else(|| Some("a trait method")),
             hir::Node::ImplItem(hir::ImplItem {
                 kind: hir::ImplItemKind::Fn(sig, body_id),
                 ..
-            }) => self.describe_generator(*body_id).or_else(|| {
+            }) => self.describe_coroutine(*body_id).or_else(|| {
                 Some(match sig.header {
                     hir::FnHeader { asyncness: hir::IsAsync::Async(_), .. } => "an async method",
                     _ => "a method",
@@ -127,7 +127,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             hir::Node::Expr(hir::Expr {
                 kind: hir::ExprKind::Closure(hir::Closure { body, movability, .. }),
                 ..
-            }) => self.describe_generator(*body).or_else(|| {
+            }) => self.describe_coroutine(*body).or_else(|| {
                 Some(if movability.is_some() { "an async closure" } else { "a closure" })
             }),
             hir::Node::Expr(hir::Expr { .. }) => {

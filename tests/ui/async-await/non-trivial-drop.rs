@@ -1,7 +1,7 @@
 // build-pass
 // edition:2018
 
-#![feature(generators)]
+#![feature(coroutines)]
 
 fn main() {
     foo();

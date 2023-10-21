@@ -36,7 +36,7 @@ pub enum InstanceDef<'tcx> {
     /// This includes:
     /// - `fn` items
     /// - closures
-    /// - generators
+    /// - coroutines
     Item(DefId),
 
     /// An intrinsic `fn` item (with `"rust-intrinsic"` or `"platform-intrinsic"` ABI).
@@ -653,15 +653,15 @@ fn polymorphize<'tcx>(
     let unused = tcx.unused_generic_params(instance);
     debug!("polymorphize: unused={:?}", unused);
 
-    // If this is a closure or generator then we need to handle the case where another closure
+    // If this is a closure or coroutine then we need to handle the case where another closure
     // from the function is captured as an upvar and hasn't been polymorphized. In this case,
     // the unpolymorphized upvar closure would result in a polymorphized closure producing
     // multiple mono items (and eventually symbol clashes).
     let def_id = instance.def_id();
     let upvars_ty = if tcx.is_closure(def_id) {
         Some(args.as_closure().tupled_upvars_ty())
-    } else if tcx.type_of(def_id).skip_binder().is_generator() {
-        Some(args.as_generator().tupled_upvars_ty())
+    } else if tcx.type_of(def_id).skip_binder().is_coroutine() {
+        Some(args.as_coroutine().tupled_upvars_ty())
     } else {
         None
     };
@@ -689,13 +689,13 @@ fn polymorphize<'tcx>(
                         Ty::new_closure(self.tcx, def_id, polymorphized_args)
                     }
                 }
-                ty::Generator(def_id, args, movability) => {
+                ty::Coroutine(def_id, args, movability) => {
                     let polymorphized_args =
                         polymorphize(self.tcx, ty::InstanceDef::Item(def_id), args);
                     if args == polymorphized_args {
                         ty
                     } else {
-                        Ty::new_generator(self.tcx, def_id, polymorphized_args, movability)
+                        Ty::new_coroutine(self.tcx, def_id, polymorphized_args, movability)
                     }
                 }
                 _ => ty.super_fold_with(self),
@@ -715,7 +715,7 @@ fn polymorphize<'tcx>(
                 upvars_ty == Some(args[param.index as usize].expect_ty()) => {
                     // ..then double-check that polymorphization marked it used..
                     debug_assert!(!is_unused);
-                    // ..and polymorphize any closures/generators captured as upvars.
+                    // ..and polymorphize any closures/coroutines captured as upvars.
                     let upvars_ty = upvars_ty.unwrap();
                     let polymorphized_upvars_ty = upvars_ty.fold_with(
                         &mut PolymorphizationFolder { tcx });

@@ -20,7 +20,7 @@ use rustc_span::Span;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::error_reporting::suggestions::TypeErrCtxtExt as _;
 use rustc_trait_selection::traits::{self, FulfillmentError, ObligationCtxt};
-use rustc_type_ir::sty::TyKind::*;
+use rustc_type_ir::TyKind::*;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Checks a `a <op>= b`

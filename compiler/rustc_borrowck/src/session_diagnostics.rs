@@ -139,23 +139,23 @@ pub(crate) enum RequireStaticErr {
 
 #[derive(Subdiagnostic)]
 pub(crate) enum CaptureVarPathUseCause {
-    #[label(borrowck_borrow_due_to_use_generator)]
-    BorrowInGenerator {
+    #[label(borrowck_borrow_due_to_use_coroutine)]
+    BorrowInCoroutine {
         #[primary_span]
         path_span: Span,
     },
-    #[label(borrowck_use_due_to_use_generator)]
-    UseInGenerator {
+    #[label(borrowck_use_due_to_use_coroutine)]
+    UseInCoroutine {
         #[primary_span]
         path_span: Span,
     },
-    #[label(borrowck_assign_due_to_use_generator)]
-    AssignInGenerator {
+    #[label(borrowck_assign_due_to_use_coroutine)]
+    AssignInCoroutine {
         #[primary_span]
         path_span: Span,
     },
-    #[label(borrowck_assign_part_due_to_use_generator)]
-    AssignPartInGenerator {
+    #[label(borrowck_assign_part_due_to_use_coroutine)]
+    AssignPartInCoroutine {
         #[primary_span]
         path_span: Span,
     },
@@ -202,8 +202,8 @@ pub(crate) enum CaptureVarKind {
 
 #[derive(Subdiagnostic)]
 pub(crate) enum CaptureVarCause {
-    #[label(borrowck_var_borrow_by_use_place_in_generator)]
-    BorrowUsePlaceGenerator {
+    #[label(borrowck_var_borrow_by_use_place_in_coroutine)]
+    BorrowUsePlaceCoroutine {
         is_single_var: bool,
         place: String,
         #[primary_span]
@@ -216,8 +216,8 @@ pub(crate) enum CaptureVarCause {
         #[primary_span]
         var_span: Span,
     },
-    #[label(borrowck_var_borrow_by_use_in_generator)]
-    BorrowUseInGenerator {
+    #[label(borrowck_var_borrow_by_use_in_coroutine)]
+    BorrowUseInCoroutine {
         #[primary_span]
         var_span: Span,
     },
@@ -226,8 +226,8 @@ pub(crate) enum CaptureVarCause {
         #[primary_span]
         var_span: Span,
     },
-    #[label(borrowck_var_move_by_use_in_generator)]
-    MoveUseInGenerator {
+    #[label(borrowck_var_move_by_use_in_coroutine)]
+    MoveUseInCoroutine {
         #[primary_span]
         var_span: Span,
     },
@@ -236,8 +236,8 @@ pub(crate) enum CaptureVarCause {
         #[primary_span]
         var_span: Span,
     },
-    #[label(borrowck_var_first_borrow_by_use_place_in_generator)]
-    FirstBorrowUsePlaceGenerator {
+    #[label(borrowck_var_first_borrow_by_use_place_in_coroutine)]
+    FirstBorrowUsePlaceCoroutine {
         place: String,
         #[primary_span]
         var_span: Span,
@@ -248,8 +248,8 @@ pub(crate) enum CaptureVarCause {
         #[primary_span]
         var_span: Span,
     },
-    #[label(borrowck_var_second_borrow_by_use_place_in_generator)]
-    SecondBorrowUsePlaceGenerator {
+    #[label(borrowck_var_second_borrow_by_use_place_in_coroutine)]
+    SecondBorrowUsePlaceCoroutine {
         place: String,
         #[primary_span]
         var_span: Span,
@@ -266,8 +266,8 @@ pub(crate) enum CaptureVarCause {
         #[primary_span]
         var_span: Span,
     },
-    #[label(borrowck_partial_var_move_by_use_in_generator)]
-    PartialMoveUseInGenerator {
+    #[label(borrowck_partial_var_move_by_use_in_coroutine)]
+    PartialMoveUseInCoroutine {
         #[primary_span]
         var_span: Span,
         is_partial: bool,

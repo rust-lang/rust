@@ -150,5 +150,5 @@ hir_typeck_union_pat_multiple_fields = union patterns should have exactly one fi
 hir_typeck_use_is_empty =
     consider using the `is_empty` method on `{$expr_ty}` to determine if it contains anything
 
-hir_typeck_yield_expr_outside_of_generator =
-    yield expression outside of generator literal
+hir_typeck_yield_expr_outside_of_coroutine =
+    yield expression outside of coroutine literal

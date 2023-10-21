@@ -291,7 +291,7 @@ fn check_opaque_meets_bounds<'tcx>(
 
     let opaque_ty = Ty::new_opaque(tcx, def_id.to_def_id(), args);
 
-    // `ReErased` regions appear in the "parent_args" of closures/generators.
+    // `ReErased` regions appear in the "parent_args" of closures/coroutines.
     // We're ignoring them here and replacing them with fresh region variables.
     // See tests in ui/type-alias-impl-trait/closure_{parent_args,wf_outlives}.rs.
     //
@@ -1394,7 +1394,7 @@ fn opaque_type_cycle_error(
                                 self.opaques.push(def);
                                 ControlFlow::Continue(())
                             }
-                            ty::Closure(def_id, ..) | ty::Generator(def_id, ..) => {
+                            ty::Closure(def_id, ..) | ty::Coroutine(def_id, ..) => {
                                 self.closures.push(def_id);
                                 t.super_visit_with(self)
                             }
@@ -1446,11 +1446,11 @@ fn opaque_type_cycle_error(
                     {
                         label_match(capture.place.ty(), capture.get_path_span(tcx));
                     }
-                    // Label any generator locals that capture the opaque
-                    if let DefKind::Generator = tcx.def_kind(closure_def_id)
-                        && let Some(generator_layout) = tcx.mir_generator_witnesses(closure_def_id)
+                    // Label any coroutine locals that capture the opaque
+                    if let DefKind::Coroutine = tcx.def_kind(closure_def_id)
+                        && let Some(coroutine_layout) = tcx.mir_coroutine_witnesses(closure_def_id)
                     {
-                        for interior_ty in &generator_layout.field_tys {
+                        for interior_ty in &coroutine_layout.field_tys {
                             label_match(interior_ty.ty, interior_ty.source_info.span);
                         }
                     }
@@ -1464,14 +1464,14 @@ fn opaque_type_cycle_error(
     err.emit()
 }
 
-pub(super) fn check_generator_obligations(tcx: TyCtxt<'_>, def_id: LocalDefId) {
-    debug_assert!(matches!(tcx.def_kind(def_id), DefKind::Generator));
+pub(super) fn check_coroutine_obligations(tcx: TyCtxt<'_>, def_id: LocalDefId) {
+    debug_assert!(matches!(tcx.def_kind(def_id), DefKind::Coroutine));
 
     let typeck = tcx.typeck(def_id);
     let param_env = tcx.param_env(def_id);
 
-    let generator_interior_predicates = &typeck.generator_interior_predicates[&def_id];
-    debug!(?generator_interior_predicates);
+    let coroutine_interior_predicates = &typeck.coroutine_interior_predicates[&def_id];
+    debug!(?coroutine_interior_predicates);
 
     let infcx = tcx
         .infer_ctxt()
@@ -1483,15 +1483,15 @@ pub(super) fn check_generator_obligations(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         .build();
 
     let mut fulfillment_cx = <dyn TraitEngine<'_>>::new(&infcx);
-    for (predicate, cause) in generator_interior_predicates {
+    for (predicate, cause) in coroutine_interior_predicates {
         let obligation = Obligation::new(tcx, cause.clone(), param_env, *predicate);
         fulfillment_cx.register_predicate_obligation(&infcx, obligation);
     }
 
     if (tcx.features().unsized_locals || tcx.features().unsized_fn_params)
-        && let Some(generator) = tcx.mir_generator_witnesses(def_id)
+        && let Some(coroutine) = tcx.mir_coroutine_witnesses(def_id)
     {
-        for field_ty in generator.field_tys.iter() {
+        for field_ty in coroutine.field_tys.iter() {
             fulfillment_cx.register_bound(
                 &infcx,
                 param_env,
@@ -1500,7 +1500,7 @@ pub(super) fn check_generator_obligations(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                 ObligationCause::new(
                     field_ty.source_info.span,
                     def_id,
-                    ObligationCauseCode::SizedGeneratorInterior(def_id),
+                    ObligationCauseCode::SizedCoroutineInterior(def_id),
                 ),
             );
         }

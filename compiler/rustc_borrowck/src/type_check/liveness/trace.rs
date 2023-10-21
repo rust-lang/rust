@@ -101,7 +101,7 @@ pub(super) fn trace<'mir, 'tcx>(
     results.dropck_boring_locals(boring_locals);
 }
 
-/// Contextual state for the type-liveness generator.
+/// Contextual state for the type-liveness coroutine.
 struct LivenessContext<'me, 'typeck, 'flow, 'tcx> {
     /// Current type-checker, giving us our inference context etc.
     typeck: &'me mut TypeChecker<'typeck, 'tcx>,

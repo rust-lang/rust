@@ -1,5 +1,5 @@
 // This test makes sure that the LLDB pretty printer does not throw an exception
-// for nested closures and generators.
+// for nested closures and coroutines.
 
 // Require a gdb that can read DW_TAG_variant_part.
 // min-gdb-version: 8.2
@@ -14,7 +14,7 @@
 // gdb-check:$1 = issue_57822::main::{closure_env#1} {f: issue_57822::main::{closure_env#0} {x: 1}}
 
 // gdb-command:print b
-// gdb-check:$2 = issue_57822::main::{generator_env#3}::Unresumed{a: issue_57822::main::{generator_env#2}::Unresumed{y: 2}}
+// gdb-check:$2 = issue_57822::main::{coroutine_env#3}::Unresumed{a: issue_57822::main::{coroutine_env#2}::Unresumed{y: 2}}
 
 // === LLDB TESTS ==================================================================================
 
@@ -24,12 +24,12 @@
 // lldbg-check:(issue_57822::main::{closure_env#1}) $0 = { f = { x = 1 } }
 
 // lldb-command:print b
-// lldbg-check:(issue_57822::main::{generator_env#3}) $1 =
+// lldbg-check:(issue_57822::main::{coroutine_env#3}) $1 =
 
-#![feature(omit_gdb_pretty_printer_section, generators, generator_trait)]
+#![feature(omit_gdb_pretty_printer_section, coroutines, coroutine_trait)]
 #![omit_gdb_pretty_printer_section]
 
-use std::ops::Generator;
+use std::ops::Coroutine;
 use std::pin::Pin;
 
 fn main() {

@@ -329,8 +329,8 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'_, 'tcx> {
             | ty::FnPtr(_)
             | ty::Dynamic(_, _, _)
             | ty::Closure(_, _)
-            | ty::Generator(_, _, _)
-            | ty::GeneratorWitness(..)
+            | ty::Coroutine(_, _, _)
+            | ty::CoroutineWitness(..)
             | ty::Never
             | ty::Tuple(_)
             | ty::Alias(_, _)

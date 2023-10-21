@@ -55,8 +55,8 @@ pub struct Inherited<'tcx> {
 
     pub(super) deferred_asm_checks: RefCell<Vec<(&'tcx hir::InlineAsm<'tcx>, hir::HirId)>>,
 
-    pub(super) deferred_generator_interiors:
-        RefCell<Vec<(LocalDefId, hir::BodyId, Ty<'tcx>, hir::GeneratorKind)>>,
+    pub(super) deferred_coroutine_interiors:
+        RefCell<Vec<(LocalDefId, hir::BodyId, Ty<'tcx>, hir::CoroutineKind)>>,
 
     /// Whenever we introduce an adjustment from `!` into a type variable,
     /// we record that type variable here. This is later used to inform
@@ -94,7 +94,7 @@ impl<'tcx> Inherited<'tcx> {
             deferred_cast_checks: RefCell::new(Vec::new()),
             deferred_transmute_checks: RefCell::new(Vec::new()),
             deferred_asm_checks: RefCell::new(Vec::new()),
-            deferred_generator_interiors: RefCell::new(Vec::new()),
+            deferred_coroutine_interiors: RefCell::new(Vec::new()),
             diverging_type_vars: RefCell::new(Default::default()),
             infer_var_info: RefCell::new(Default::default()),
         }

@@ -4,7 +4,7 @@ use crate::iter::{FusedIterator, TrustedLen};
 /// Creates an iterator that lazily generates a value exactly once by invoking
 /// the provided closure.
 ///
-/// This is commonly used to adapt a single value generator into a [`chain()`] of
+/// This is commonly used to adapt a single value coroutine into a [`chain()`] of
 /// other kinds of iteration. Maybe you have an iterator that covers almost
 /// everything, but you need an extra special case. Maybe you have a function
 /// which works on iterators, but you only need to process one value.

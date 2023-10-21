@@ -62,7 +62,7 @@
 //! respectively. (This follows from RPO respecting CFG domination).
 //!
 //! This order consistency is required in a few places in rustc, for
-//! example generator inference, and possibly also HIR borrowck.
+//! example coroutine inference, and possibly also HIR borrowck.
 
 use crate::hir::*;
 use rustc_ast::walk_list;

@@ -262,7 +262,7 @@ fn structurally_same_type_impl<'tcx>(
         true
     } else {
         // Do a full, depth-first comparison between the two.
-        use rustc_type_ir::sty::TyKind::*;
+        use rustc_type_ir::TyKind::*;
         let a_kind = a.kind();
         let b_kind = b.kind();
 
@@ -369,8 +369,8 @@ fn structurally_same_type_impl<'tcx>(
                 (Dynamic(..), Dynamic(..))
                 | (Error(..), Error(..))
                 | (Closure(..), Closure(..))
-                | (Generator(..), Generator(..))
-                | (GeneratorWitness(..), GeneratorWitness(..))
+                | (Coroutine(..), Coroutine(..))
+                | (CoroutineWitness(..), CoroutineWitness(..))
                 | (Alias(ty::Projection, ..), Alias(ty::Projection, ..))
                 | (Alias(ty::Inherent, ..), Alias(ty::Inherent, ..))
                 | (Alias(ty::Opaque, ..), Alias(ty::Opaque, ..)) => false,

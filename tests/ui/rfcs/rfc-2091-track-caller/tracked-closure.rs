@@ -2,10 +2,10 @@
 
 #![feature(stmt_expr_attributes)]
 #![feature(closure_track_caller)]
-#![feature(generator_trait)]
-#![feature(generators)]
+#![feature(coroutine_trait)]
+#![feature(coroutines)]
 
-use std::ops::{Generator, GeneratorState};
+use std::ops::{Coroutine, CoroutineState};
 use std::pin::Pin;
 use std::panic::Location;
 
@@ -93,53 +93,53 @@ fn test_closure() {
 
 
 #[track_caller]
-fn mono_generator<F: Generator<String, Yield = (&'static str, String, Loc), Return = ()>>(
+fn mono_coroutine<F: Coroutine<String, Yield = (&'static str, String, Loc), Return = ()>>(
     val: Pin<&mut F>
 ) -> (&'static str, String, Loc) {
     match val.resume("Mono".to_string()) {
-        GeneratorState::Yielded(val) => val,
+        CoroutineState::Yielded(val) => val,
         _ => unreachable!()
     }
 }
 
 #[track_caller]
-fn dyn_generator(
-    val: Pin<&mut dyn Generator<String, Yield = (&'static str, String, Loc), Return = ()>>
+fn dyn_coroutine(
+    val: Pin<&mut dyn Coroutine<String, Yield = (&'static str, String, Loc), Return = ()>>
 ) -> (&'static str, String, Loc) {
     match val.resume("Dyn".to_string()) {
-        GeneratorState::Yielded(val) => val,
+        CoroutineState::Yielded(val) => val,
         _ => unreachable!()
     }
 }
 
-fn test_generator() {
-    let generator = #[track_caller] |arg: String| {
+fn test_coroutine() {
+    let coroutine = #[track_caller] |arg: String| {
         yield ("first", arg.clone(), Location::caller());
         yield ("second", arg.clone(), Location::caller());
     };
 
-    let mut pinned = Box::pin(generator);
-    let (dyn_ret, dyn_arg, dyn_loc) = dyn_generator(pinned.as_mut());
+    let mut pinned = Box::pin(coroutine);
+    let (dyn_ret, dyn_arg, dyn_loc) = dyn_coroutine(pinned.as_mut());
     assert_eq!(dyn_ret, "first");
     assert_eq!(dyn_arg, "Dyn".to_string());
-    // The `Generator` trait does not have `#[track_caller]` on `resume`, so
+    // The `Coroutine` trait does not have `#[track_caller]` on `resume`, so
     // this will not match.
     assert_ne!(dyn_loc.file(), file!());
 
 
-    let (mono_ret, mono_arg, mono_loc) = mono_generator(pinned.as_mut());
+    let (mono_ret, mono_arg, mono_loc) = mono_coroutine(pinned.as_mut());
     let mono_line = line!() - 1;
     assert_eq!(mono_ret, "second");
-    // The generator ignores the argument to the second `resume` call
+    // The coroutine ignores the argument to the second `resume` call
     assert_eq!(mono_arg, "Dyn".to_string());
     assert_eq!(mono_loc.file(), file!());
     assert_eq!(mono_loc.line(), mono_line);
     assert_eq!(mono_loc.column(), 42);
 
-    let non_tracked_generator = || { yield Location::caller(); };
-    let non_tracked_line = line!() - 1; // This is the line of the generator, not its caller
-    let non_tracked_loc = match Box::pin(non_tracked_generator).as_mut().resume(()) {
-        GeneratorState::Yielded(val) => val,
+    let non_tracked_coroutine = || { yield Location::caller(); };
+    let non_tracked_line = line!() - 1; // This is the line of the coroutine, not its caller
+    let non_tracked_loc = match Box::pin(non_tracked_coroutine).as_mut().resume(()) {
+        CoroutineState::Yielded(val) => val,
         _ => unreachable!()
     };
     assert_eq!(non_tracked_loc.file(), file!());
@@ -150,5 +150,5 @@ fn test_generator() {
 
 fn main() {
     test_closure();
-    test_generator();
+    test_coroutine();
 }

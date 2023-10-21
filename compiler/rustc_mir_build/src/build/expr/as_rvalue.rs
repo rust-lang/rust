@@ -181,7 +181,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 block = success;
 
                 // The `Box<T>` temporary created here is not a part of the HIR,
-                // and therefore is not considered during generator auto-trait
+                // and therefore is not considered during coroutine auto-trait
                 // determination. See the comment about `box` at `yield_in_scope`.
                 let result = this.local_decls.push(LocalDecl::new(expr.ty, expr_span));
                 this.cfg.push(
@@ -487,11 +487,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     .collect();
 
                 let result = match args {
-                    UpvarArgs::Generator(args) => {
+                    UpvarArgs::Coroutine(args) => {
                         // We implicitly set the discriminant to 0. See
                         // librustc_mir/transform/deaggregator.rs for details.
                         let movability = movability.unwrap();
-                        Box::new(AggregateKind::Generator(closure_id.to_def_id(), args, movability))
+                        Box::new(AggregateKind::Coroutine(closure_id.to_def_id(), args, movability))
                     }
                     UpvarArgs::Closure(args) => {
                         Box::new(AggregateKind::Closure(closure_id.to_def_id(), args))

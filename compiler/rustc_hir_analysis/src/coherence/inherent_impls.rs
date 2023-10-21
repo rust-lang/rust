@@ -155,8 +155,8 @@ impl<'tcx> InherentCollect<'tcx> {
             }
             ty::FnDef(..)
             | ty::Closure(..)
-            | ty::Generator(..)
-            | ty::GeneratorWitness(..)
+            | ty::Coroutine(..)
+            | ty::CoroutineWitness(..)
             | ty::Bound(..)
             | ty::Placeholder(_)
             | ty::Infer(_) => {
