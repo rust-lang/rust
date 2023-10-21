@@ -2,9 +2,9 @@
 //
 // check-pass
 // revisions: names exhaustive
-// compile-flags: --check-cfg=cfg(names,exhaustive)
-// [names]compile-flags: --check-cfg=names() -Z unstable-options
-// [exhaustive]compile-flags: --check-cfg=cfg() -Z unstable-options
+// compile-flags: -Z unstable-options
+// [names]compile-flags: --check-cfg=names() --check-cfg=names(names,exhaustive)
+// [exhaustive]compile-flags: --check-cfg=cfg() --check-cfg=cfg(names,exhaustive)
 
 #[cfg(widnows)]
 //~^ WARNING unexpected `cfg` condition name
