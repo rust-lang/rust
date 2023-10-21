@@ -25,7 +25,7 @@ extern crate tracing;
 extern crate rustc_middle;
 
 use rustc_ast as ast;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
 use rustc_fluent_macro::fluent_messages;
@@ -158,7 +158,6 @@ pub struct CrateInfo {
     pub local_crate_name: Symbol,
     pub compiler_builtins: Option<CrateNum>,
     pub profiler_runtime: Option<CrateNum>,
-    pub is_no_builtins: FxHashSet<CrateNum>,
     pub native_libraries: FxHashMap<CrateNum, Vec<NativeLib>>,
     pub crate_name: FxHashMap<CrateNum, Symbol>,
     pub used_libraries: Vec<NativeLib>,

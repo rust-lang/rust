@@ -848,7 +848,6 @@ impl CrateInfo {
             local_crate_name,
             compiler_builtins,
             profiler_runtime: None,
-            is_no_builtins: Default::default(),
             native_libraries: Default::default(),
             used_libraries: tcx.native_libraries(LOCAL_CRATE).iter().map(Into::into).collect(),
             crate_name: Default::default(),
@@ -874,9 +873,6 @@ impl CrateInfo {
             info.used_crate_source.insert(cnum, used_crate_source.clone());
             if tcx.is_profiler_runtime(cnum) {
                 info.profiler_runtime = Some(cnum);
-            }
-            if tcx.is_no_builtins(cnum) {
-                info.is_no_builtins.insert(cnum);
             }
         }
 
