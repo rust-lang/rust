@@ -1052,7 +1052,7 @@ fn lint_overlapping_range_endpoints<'p, 'tcx>(
                             emit_lint(overlap_range, this_span, &prefixes);
                         }
                         suffixes.push(this_span)
-                    } else if this_range.hi == overlap {
+                    } else if this_range.hi == overlap.plus_one() {
                         // `this_range` looks like `this_range.lo..=overlap`; it overlaps with any
                         // ranges that look like `overlap..=hi`.
                         if !suffixes.is_empty() {

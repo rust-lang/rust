@@ -101,7 +101,7 @@ pub(crate) enum MaybeInfiniteInt {
     NegInfinity,
     /// Encoded value. DO NOT CONSTRUCT BY HAND; use `new_finite`.
     Finite(u128),
-    /// The integer after `u128::MAX`. Used when we switch to exclusive ranges in `IntRange::split`.
+    /// The integer after `u128::MAX`. We need it to represent `x..=u128::MAX` as an exclusive range.
     JustAfterMax,
     PosInfinity,
 }
@@ -140,8 +140,11 @@ impl MaybeInfiniteInt {
             PatRangeBoundary::PosInfinity => PosInfinity,
         }
     }
+
     /// Used only for diagnostics.
-    /// This could change from finite to infinite if we got `usize::MAX+1` after range splitting.
+    /// Note: it is possible to get `isize/usize::MAX+1` here, as explained in the doc for
+    /// [`IntRange::split`]. This cannot be represented as a `Const`, so we represent it with
+    /// `PosInfinity`.
     fn to_diagnostic_pat_range_bdy<'tcx>(
         self,
         ty: Ty<'tcx>,
@@ -168,20 +171,19 @@ impl MaybeInfiniteInt {
         }
     }
 
-    fn is_finite(self) -> bool {
-        matches!(self, Finite(_))
-    }
-    fn minus_one(self) -> Self {
+    /// Note: this will not turn a finite value into an infinite one or vice-versa.
+    pub(crate) fn minus_one(self) -> Self {
         match self {
             Finite(n) => match n.checked_sub(1) {
                 Some(m) => Finite(m),
-                None => NegInfinity,
+                None => bug!(),
             },
             JustAfterMax => Finite(u128::MAX),
             x => x,
         }
     }
-    fn plus_one(self) -> Self {
+    /// Note: this will not turn a finite value into an infinite one or vice-versa.
+    pub(crate) fn plus_one(self) -> Self {
         match self {
             Finite(n) => match n.checked_add(1) {
                 Some(m) => Finite(m),
@@ -193,18 +195,15 @@ impl MaybeInfiniteInt {
     }
 }
 
-/// An inclusive interval, used for precise integer exhaustiveness checking. `IntRange`s always
+/// An exclusive interval, used for precise integer exhaustiveness checking. `IntRange`s always
 /// store a contiguous range.
 ///
 /// `IntRange` is never used to encode an empty range or a "range" that wraps around the (offset)
-/// space: i.e., `range.lo <= range.hi`.
-///
-/// Note: the range can be `NegInfinity..=NegInfinity` or `PosInfinity..=PosInfinity` to represent
-/// the values before `isize::MIN` and after `isize::MAX`/`usize::MAX`.
+/// space: i.e., `range.lo < range.hi`.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) struct IntRange {
-    pub(crate) lo: MaybeInfiniteInt,
-    pub(crate) hi: MaybeInfiniteInt,
+    pub(crate) lo: MaybeInfiniteInt, // Must not be `PosInfinity`.
+    pub(crate) hi: MaybeInfiniteInt, // Must not be `NegInfinity`.
 }
 
 impl IntRange {
@@ -215,23 +214,25 @@ impl IntRange {
 
     /// Best effort; will not know that e.g. `255u8..` is a singleton.
     pub(super) fn is_singleton(&self) -> bool {
-        self.lo == self.hi && self.lo.is_finite()
+        // Since `lo` and `hi` can't be the same `Infinity` and `plus_one` never changes from finite
+        // to infinite, this correctly only detects ranges that contain exacly one `Finite(x)`.
+        self.lo.plus_one() == self.hi
     }
 
     #[inline]
     fn from_bits<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, bits: u128) -> IntRange {
         let x = MaybeInfiniteInt::new_finite(tcx, ty, bits);
-        IntRange { lo: x, hi: x }
+        IntRange { lo: x, hi: x.plus_one() }
     }
 
     #[inline]
     fn from_range(lo: MaybeInfiniteInt, mut hi: MaybeInfiniteInt, end: RangeEnd) -> IntRange {
-        if end == RangeEnd::Excluded {
-            hi = hi.minus_one();
+        if end == RangeEnd::Included {
+            hi = hi.plus_one();
         }
-        if lo > hi {
+        if lo >= hi {
             // This should have been caught earlier by E0030.
-            bug!("malformed range pattern: {lo:?}..={hi:?}");
+            bug!("malformed range pattern: {lo:?}..{hi:?}");
         }
         IntRange { lo, hi }
     }
@@ -241,7 +242,7 @@ impl IntRange {
     }
 
     fn intersection(&self, other: &Self) -> Option<Self> {
-        if self.lo <= other.hi && other.lo <= self.hi {
+        if self.lo < other.hi && other.lo < self.hi {
             Some(IntRange { lo: max(self.lo, other.lo), hi: min(self.hi, other.hi) })
         } else {
             None
@@ -275,38 +276,45 @@ impl IntRange {
     /// ```
     /// where each sequence of dashes is an output range, and dashes outside parentheses are marked
     /// as `Presence::Missing`.
+    ///
+    /// ## `isize`/`usize`
+    ///
+    /// Whereas a wildcard of type `i32` stands for the range `i32::MIN..=i32::MAX`, a `usize`
+    /// wildcard stands for `0..PosInfinity` and a `isize` wildcard stands for
+    /// `NegInfinity..PosInfinity`. In other words, as far as `IntRange` is concerned, there are
+    /// values before `isize::MIN` and after `usize::MAX`/`isize::MAX`.
+    /// This is to avoid e.g. `0..(u32::MAX as usize)` from being exhaustive on one architecture and
+    /// not others. See discussions around the `precise_pointer_size_matching` feature for more
+    /// details.
+    ///
+    /// These infinities affect splitting subtly: it is possible to get `NegInfinity..0` and
+    /// `usize::MAX+1..PosInfinity` in the output. Diagnostics must be careful to handle these
+    /// fictitious ranges sensibly.
     fn split(
         &self,
         column_ranges: impl Iterator<Item = IntRange>,
     ) -> impl Iterator<Item = (Presence, IntRange)> {
-        // Make the range into an exclusive range.
-        fn unpack_intrange(range: IntRange) -> [MaybeInfiniteInt; 2] {
-            [range.lo, range.hi.plus_one()]
-        }
-
         // The boundaries of ranges in `column_ranges` intersected with `self`.
         // We do parenthesis matching for input ranges. A boundary counts as +1 if it starts
         // a range and -1 if it ends it. When the count is > 0 between two boundaries, we
         // are within an input range.
         let mut boundaries: Vec<(MaybeInfiniteInt, isize)> = column_ranges
             .filter_map(|r| self.intersection(&r))
-            .map(unpack_intrange)
-            .flat_map(|[lo, hi]| [(lo, 1), (hi, -1)])
+            .flat_map(|r| [(r.lo, 1), (r.hi, -1)])
             .collect();
         // We sort by boundary, and for each boundary we sort the "closing parentheses" first. The
         // order of +1/-1 for a same boundary value is actually irrelevant, because we only look at
         // the accumulated count between distinct boundary values.
         boundaries.sort_unstable();
 
-        let [self_start, self_end] = unpack_intrange(*self);
         // Accumulate parenthesis counts.
         let mut paren_counter = 0isize;
         // Gather pairs of adjacent boundaries.
-        let mut prev_bdy = self_start;
+        let mut prev_bdy = self.lo;
         boundaries
             .into_iter()
             // End with the end of the range. The count is ignored.
-            .chain(once((self_end, 0)))
+            .chain(once((self.hi, 0)))
             // List pairs of adjacent boundaries and the count between them.
             .map(move |(bdy, delta)| {
                 // `delta` affects the count as we cross `bdy`, so the relevant count between
@@ -322,21 +330,22 @@ impl IntRange {
             .map(move |(prev_bdy, paren_count, bdy)| {
                 use Presence::*;
                 let presence = if paren_count > 0 { Seen } else { Unseen };
-                // Turn back into an inclusive range.
-                let range = IntRange::from_range(prev_bdy, bdy, RangeEnd::Excluded);
+                let range = IntRange { lo: prev_bdy, hi: bdy };
                 (presence, range)
             })
     }
 
-    /// Whether the range denotes the values before `isize::MIN` or the values after
-    /// `usize::MAX`/`isize::MAX`.
+    /// Whether the range denotes the fictitious values before `isize::MIN` or after
+    /// `usize::MAX`/`isize::MAX` (see doc of [`IntRange::split`] for why these exist).
     pub(crate) fn is_beyond_boundaries<'tcx>(&self, ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> bool {
-        // First check if we are usize/isize to avoid unnecessary `to_diagnostic_pat_range_bdy`.
         ty.is_ptr_sized_integral() && !tcx.features().precise_pointer_size_matching && {
+            // The two invalid ranges are `NegInfinity..isize::MIN` (represented as
+            // `NegInfinity..0`), and `{u,i}size::MAX+1..PosInfinity`. `to_diagnostic_pat_range_bdy`
+            // converts `MAX+1` to `PosInfinity`, and we couldn't have `PosInfinity` in `self.lo`
+            // otherwise.
             let lo = self.lo.to_diagnostic_pat_range_bdy(ty, tcx);
-            let hi = self.hi.to_diagnostic_pat_range_bdy(ty, tcx);
             matches!(lo, PatRangeBoundary::PosInfinity)
-                || matches!(hi, PatRangeBoundary::NegInfinity)
+                || matches!(self.hi, MaybeInfiniteInt::Finite(0))
         }
     }
     /// Only used for displaying the range.
@@ -348,28 +357,27 @@ impl IntRange {
             let value = lo.as_finite().unwrap();
             PatKind::Constant { value }
         } else {
+            // We convert to an inclusive range for diagnostics.
+            let mut end = RangeEnd::Included;
             let mut lo = self.lo.to_diagnostic_pat_range_bdy(ty, tcx);
-            let mut hi = self.hi.to_diagnostic_pat_range_bdy(ty, tcx);
-            let end = if hi.is_finite() {
-                RangeEnd::Included
-            } else {
-                // `0..=` isn't a valid pattern.
-                RangeEnd::Excluded
-            };
-            if matches!(hi, PatRangeBoundary::NegInfinity) {
-                // The range denotes the values before `isize::MIN`.
-                let c = ty.numeric_min_val(tcx).unwrap();
-                let value = mir::Const::from_ty_const(c, tcx);
-                hi = PatRangeBoundary::Finite(value);
-            }
             if matches!(lo, PatRangeBoundary::PosInfinity) {
-                // The range denotes the values after `usize::MAX`/`isize::MAX`.
-                // We represent this as `usize::MAX..` which is slightly incorrect but probably
-                // clear enough.
+                // The only reason to get `PosInfinity` here is the special case where
+                // `to_diagnostic_pat_range_bdy` found `{u,i}size::MAX+1`. So the range denotes the
+                // fictitious values after `{u,i}size::MAX` (see [`IntRange::split`] for why we do
+                // this). We show this to the user as `usize::MAX..` which is slightly incorrect but
+                // probably clear enough.
                 let c = ty.numeric_max_val(tcx).unwrap();
                 let value = mir::Const::from_ty_const(c, tcx);
                 lo = PatRangeBoundary::Finite(value);
             }
+            let hi = if matches!(self.hi, MaybeInfiniteInt::Finite(0)) {
+                // The range encodes `..ty::MIN`, so we can't convert it to an inclusive range.
+                end = RangeEnd::Excluded;
+                self.hi
+            } else {
+                self.hi.minus_one()
+            };
+            let hi = hi.to_diagnostic_pat_range_bdy(ty, tcx);
             PatKind::Range(Box::new(PatRange { lo, hi, end, ty }))
         };
 
@@ -384,7 +392,7 @@ impl fmt::Debug for IntRange {
         if let Finite(lo) = self.lo {
             write!(f, "{lo}")?;
         }
-        write!(f, "{}", RangeEnd::Included)?;
+        write!(f, "{}", RangeEnd::Excluded)?;
         if let Finite(hi) = self.hi {
             write!(f, "{hi}")?;
         }
