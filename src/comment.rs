@@ -2074,28 +2074,6 @@ fn main() {
             expected_line_start: &str,
         ) {
             let block = ItemizedBlock::new(test_input).unwrap();
-<<<<<<< HEAD
-            assert_eq!(1, block.lines.len(), "test_input: {:?}", test_input);
-            assert_eq!(
-                expected_line, &block.lines[0],
-                "test_input: {:?}",
-                test_input
-            );
-            assert_eq!(
-                expected_indent, block.indent,
-                "test_input: {:?}",
-                test_input
-            );
-            assert_eq!(
-                expected_opener, &block.opener,
-                "test_input: {:?}",
-                test_input
-            );
-            assert_eq!(
-                expected_line_start, &block.line_start,
-                "test_input: {:?}",
-                test_input
-=======
             assert_eq!(1, block.lines.len(), "test_input: {test_input:?}");
             assert_eq!(expected_line, &block.lines[0], "test_input: {test_input:?}");
             assert_eq!(expected_indent, block.indent, "test_input: {test_input:?}");
@@ -2103,7 +2081,6 @@ fn main() {
             assert_eq!(
                 expected_line_start, &block.line_start,
                 "test_input: {test_input:?}"
->>>>>>> upstream/master
             );
         }
 
@@ -2155,23 +2132,15 @@ fn main() {
             // https://spec.commonmark.org/0.30 says: "A start number may not be negative":
             "-1. Not a list item.",
             "-1 Not a list item.",
-<<<<<<< HEAD
-=======
             // Marker without prefix are not recognized as item markers:
             ".   Not a list item.",
             ")   Not a list item.",
->>>>>>> upstream/master
         ];
         for line in test_inputs.iter() {
             let maybe_block = ItemizedBlock::new(line);
             assert!(
                 maybe_block.is_none(),
-<<<<<<< HEAD
-                "The following line shouldn't be classified as a list item: {}",
-                line
-=======
                 "The following line shouldn't be classified as a list item: {line}"
->>>>>>> upstream/master
             );
         }
     }
