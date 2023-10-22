@@ -13,11 +13,12 @@ fn main() {
         && let None = aaaaaaaaaa
     {}
 
-    if aaaaaaaaaaaaaaaaaaaaa && aaaaaaaaaaaaaaa
-        || aaaaaaaaa
-            && let Some(x) = xxxxxxxxxxxx
-            && aaaaaaa
-            && let None = aaaaaaaaaa
+    if aaaaaaaaaaaaaaaaaaaaa
+        && aaaaaaaaaaaaaaa
+        && aaaaaaaaa
+        && let Some(x) = xxxxxxxxxxxx
+        && aaaaaaa
+        && let None = aaaaaaaaaa
     {}
 
     if let Some(Struct { x: TS(1, 2) }) = path::to::<_>(hehe)
@@ -29,7 +30,7 @@ fn main() {
             hi, /*hi*/
             ..loopy()
         })
-        || summons::triumphantly()
+        && summons::triumphantly()
     {
         todo!()
     }
