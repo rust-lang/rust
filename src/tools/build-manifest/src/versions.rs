@@ -108,7 +108,6 @@ impl PkgType {
             ReproducibleArtifacts => HOSTS,
             RustcDocs => HOSTS,
             Cargo => HOSTS,
-            // FIXME should this use the exact list of targets for which we build cg_clif?
             RustcCodegenCranelift => HOSTS,
             RustMingw => MINGW,
             RustStd => TARGETS,
