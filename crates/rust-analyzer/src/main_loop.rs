@@ -434,7 +434,7 @@ impl GlobalState {
             }
         }
 
-        if self.config.cargo_autoreload() {
+        if self.config.cargo_autoreload_config() {
             if let Some((cause, force_crate_graph_reload)) =
                 self.fetch_workspaces_queue.should_start_op()
             {
