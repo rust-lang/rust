@@ -3,17 +3,11 @@ use std::env;
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
     let target = env::var("TARGET").expect("TARGET was not set");
-    if target.contains("freebsd") {
-        if env::var("RUST_STD_FREEBSD_12_ABI").is_ok() {
-            println!("cargo:rustc-cfg=freebsd12");
-        } else if env::var("RUST_STD_FREEBSD_13_ABI").is_ok() {
-            println!("cargo:rustc-cfg=freebsd12");
-            println!("cargo:rustc-cfg=freebsd13");
-        }
-    } else if target.contains("linux")
+    if target.contains("linux")
         || target.contains("netbsd")
         || target.contains("dragonfly")
         || target.contains("openbsd")
+        || target.contains("freebsd")
         || target.contains("solaris")
         || target.contains("illumos")
         || target.contains("apple-darwin")

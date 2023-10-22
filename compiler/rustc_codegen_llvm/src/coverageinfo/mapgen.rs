@@ -4,14 +4,16 @@ use crate::coverageinfo::ffi::CounterMappingRegion;
 use crate::coverageinfo::map_data::FunctionCoverage;
 use crate::llvm;
 
-use rustc_codegen_ssa::traits::ConstMethods;
+use rustc_codegen_ssa::traits::{BaseTypeMethods, ConstMethods};
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_index::IndexVec;
 use rustc_middle::bug;
+use rustc_middle::mir;
 use rustc_middle::mir::coverage::CodeRegion;
 use rustc_middle::ty::{self, TyCtxt};
+use rustc_span::def_id::DefIdSet;
 use rustc_span::Symbol;
 
 /// Generates and exports the Coverage Map.
@@ -94,8 +96,14 @@ pub fn finalize(cx: &CodegenCx<'_, '_>) {
     // Generate the LLVM IR representation of the coverage map and store it in a well-known global
     let cov_data_val = generate_coverage_map(cx, version, filenames_size, filenames_val);
 
+    let mut unused_function_names = Vec::new();
+
     let covfun_section_name = coverageinfo::covfun_section_name(cx);
     for (mangled_function_name, source_hash, is_used, coverage_mapping_buffer) in function_data {
+        if !is_used {
+            unused_function_names.push(mangled_function_name);
+        }
+
         save_function_record(
             cx,
             &covfun_section_name,
@@ -105,6 +113,25 @@ pub fn finalize(cx: &CodegenCx<'_, '_>) {
             coverage_mapping_buffer,
             is_used,
         );
+    }
+
+    // For unused functions, we need to take their mangled names and store them
+    // in a specially-named global array. LLVM's `InstrProfiling` pass will
+    // detect this global and include those names in its `__llvm_prf_names`
+    // section. (See `llvm/lib/Transforms/Instrumentation/InstrProfiling.cpp`.)
+    if !unused_function_names.is_empty() {
+        assert!(cx.codegen_unit.is_code_coverage_dead_code_cgu());
+
+        let name_globals = unused_function_names
+            .into_iter()
+            .map(|mangled_function_name| cx.const_str(mangled_function_name).0)
+            .collect::<Vec<_>>();
+        let initializer = cx.const_array(cx.type_ptr(), &name_globals);
+
+        let array = llvm::add_global(cx.llmod, cx.val_ty(initializer), "__llvm_coverage_names");
+        llvm::set_global_constant(array, true);
+        llvm::set_linkage(array, llvm::Linkage::InternalLinkage);
+        llvm::set_initializer(array, initializer);
     }
 
     // Save the coverage data value to LLVM IR
@@ -287,13 +314,12 @@ fn save_function_record(
 /// `-Clink-dead-code` will not generate code for unused generic functions.)
 ///
 /// We can find the unused functions (including generic functions) by the set difference of all MIR
-/// `DefId`s (`tcx` query `mir_keys`) minus the codegenned `DefId`s (`tcx` query
-/// `codegened_and_inlined_items`).
+/// `DefId`s (`tcx` query `mir_keys`) minus the codegenned `DefId`s (`codegenned_and_inlined_items`).
 ///
-/// These unused functions are then codegen'd in one of the CGUs which is marked as the
-/// "code coverage dead code cgu" during the partitioning process. This prevents us from generating
-/// code regions for the same function more than once which can lead to linker errors regarding
-/// duplicate symbols.
+/// These unused functions don't need to be codegenned, but we do need to add them to the function
+/// coverage map (in a single designated CGU) so that we still emit coverage mappings for them.
+/// We also end up adding their symbol names to a special global array that LLVM will include in
+/// its embedded coverage data.
 fn add_unused_functions(cx: &CodegenCx<'_, '_>) {
     assert!(cx.codegen_unit.is_code_coverage_dead_code_cgu());
 
@@ -324,19 +350,80 @@ fn add_unused_functions(cx: &CodegenCx<'_, '_>) {
         })
         .collect();
 
-    let codegenned_def_ids = tcx.codegened_and_inlined_items(());
+    let codegenned_def_ids = codegenned_and_inlined_items(tcx);
 
-    for non_codegenned_def_id in
-        eligible_def_ids.into_iter().filter(|id| !codegenned_def_ids.contains(id))
-    {
+    // For each `DefId` that should have coverage instrumentation but wasn't
+    // codegenned, add it to the function coverage map as an unused function.
+    for def_id in eligible_def_ids.into_iter().filter(|id| !codegenned_def_ids.contains(id)) {
         // Skip any function that didn't have coverage data added to it by the
         // coverage instrumentor.
-        let body = tcx.instance_mir(ty::InstanceDef::Item(non_codegenned_def_id));
+        let body = tcx.instance_mir(ty::InstanceDef::Item(def_id));
         let Some(function_coverage_info) = body.function_coverage_info.as_deref() else {
             continue;
         };
 
-        debug!("generating unused fn: {:?}", non_codegenned_def_id);
-        cx.define_unused_fn(non_codegenned_def_id, function_coverage_info);
+        debug!("generating unused fn: {def_id:?}");
+        let instance = declare_unused_fn(tcx, def_id);
+        add_unused_function_coverage(cx, instance, function_coverage_info);
+    }
+}
+
+/// All items participating in code generation together with (instrumented)
+/// items inlined into them.
+fn codegenned_and_inlined_items(tcx: TyCtxt<'_>) -> DefIdSet {
+    let (items, cgus) = tcx.collect_and_partition_mono_items(());
+    let mut visited = DefIdSet::default();
+    let mut result = items.clone();
+
+    for cgu in cgus {
+        for item in cgu.items().keys() {
+            if let mir::mono::MonoItem::Fn(ref instance) = item {
+                let did = instance.def_id();
+                if !visited.insert(did) {
+                    continue;
+                }
+                let body = tcx.instance_mir(instance.def);
+                for block in body.basic_blocks.iter() {
+                    for statement in &block.statements {
+                        let mir::StatementKind::Coverage(_) = statement.kind else { continue };
+                        let scope = statement.source_info.scope;
+                        if let Some(inlined) = scope.inlined_instance(&body.source_scopes) {
+                            result.insert(inlined.def_id());
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    result
+}
+
+fn declare_unused_fn<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> ty::Instance<'tcx> {
+    ty::Instance::new(
+        def_id,
+        ty::GenericArgs::for_item(tcx, def_id, |param, _| {
+            if let ty::GenericParamDefKind::Lifetime = param.kind {
+                tcx.lifetimes.re_erased.into()
+            } else {
+                tcx.mk_param_from_def(param)
+            }
+        }),
+    )
+}
+
+fn add_unused_function_coverage<'tcx>(
+    cx: &CodegenCx<'_, 'tcx>,
+    instance: ty::Instance<'tcx>,
+    function_coverage_info: &'tcx mir::coverage::FunctionCoverageInfo,
+) {
+    // An unused function's mappings will automatically be rewritten to map to
+    // zero, because none of its counters/expressions are marked as seen.
+    let function_coverage = FunctionCoverage::unused(instance, function_coverage_info);
+
+    if let Some(coverage_context) = cx.coverage_context() {
+        coverage_context.function_coverage_map.borrow_mut().insert(instance, function_coverage);
+    } else {
+        bug!("Could not get the `coverage_context`");
     }
 }

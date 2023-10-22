@@ -50,10 +50,12 @@ jobs:
           - os: ubuntu-latest
             env:
               TARGET_TRIPLE: aarch64-unknown-linux-gnu
-          # s390x requires QEMU 6.1 or greater, we could build it from source, but ubuntu 22.04 comes with 6.2 by default
           - os: ubuntu-latest
             env:
               TARGET_TRIPLE: s390x-unknown-linux-gnu
+          - os: ubuntu-latest
+            env:
+              TARGET_TRIPLE: riscv64gc-unknown-linux-gnu
           - os: windows-latest
             env:
               TARGET_TRIPLE: x86_64-pc-windows-msvc
@@ -91,6 +93,12 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y gcc-s390x-linux-gnu qemu-user
+
+    - name: Install riscv64gc toolchain and qemu
+      if: matrix.env.TARGET_TRIPLE == 'riscv64gc-unknown-linux-gnu'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gcc-riscv64-linux-gnu qemu-user
 
     - name: Prepare dependencies
       run: ./y.sh prepare

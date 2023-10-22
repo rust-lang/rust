@@ -5,6 +5,7 @@ LL | pub mod baz;
    | ^^^^^^^^^^^^
    |
    = help: to create the module `baz`, create file "$DIR/auxiliary/foo/bar/baz.rs" or "$DIR/auxiliary/foo/bar/baz/mod.rs"
+   = note: if there is a `mod baz` elsewhere in the crate already, import it with `use crate::...` instead
 
 error: aborting due to previous error
 

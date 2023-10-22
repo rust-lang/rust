@@ -2263,6 +2263,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     current: usize,
                     found: usize,
                     prop_expr: Option<&'tcx hir::Expr<'tcx>>,
+                    call: Option<&'tcx hir::Expr<'tcx>>,
                 }
 
                 impl<'tcx> Visitor<'tcx> for NestedStatementVisitor<'tcx> {
@@ -2272,6 +2273,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         self.current -= 1;
                     }
                     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
+                        if let hir::ExprKind::MethodCall(_, rcvr, _, _) = expr.kind {
+                            if self.span == rcvr.span.source_callsite() {
+                                self.call = Some(expr);
+                            }
+                        }
                         if self.span == expr.span.source_callsite() {
                             self.found = self.current;
                             if self.prop_expr.is_none() {
@@ -2295,6 +2301,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             current: 0,
                             found: 0,
                             prop_expr: None,
+                            call: None,
                         };
                         visitor.visit_stmt(stmt);
 
@@ -2316,6 +2323,21 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             && let Some(p) = sm.span_to_margin(stmt.span)
                             && let Ok(s) = sm.span_to_snippet(proper_span)
                         {
+                            if let Some(call) = visitor.call
+                                && let hir::ExprKind::MethodCall(path, _, [], _) = call.kind
+                                && path.ident.name == sym::iter
+                                && let Some(ty) = expr_ty
+                            {
+                                err.span_suggestion_verbose(
+                                    path.ident.span,
+                                    format!(
+                                        "consider consuming the `{ty}` when turning it into an \
+                                         `Iterator`",
+                                    ),
+                                    "into_iter".to_string(),
+                                    Applicability::MaybeIncorrect,
+                                );
+                            }
                             if !is_format_arguments_item {
                                 let addition = format!("let binding = {};\n{}", s, " ".repeat(p));
                                 err.multipart_suggestion_verbose(

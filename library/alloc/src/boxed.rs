@@ -207,7 +207,7 @@ impl<T> Box<T> {
     /// ```
     /// let five = Box::new(5);
     /// ```
-    #[cfg(all(not(no_global_oom_handling)))]
+    #[cfg(not(no_global_oom_handling))]
     #[inline(always)]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]

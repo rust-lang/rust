@@ -7,15 +7,15 @@ Number of file 0 mappings: 1
 - Code(Counter(0)) at (prev + 4, 10) to (start + 0, 19)
 
 Function name: <issue_84561::Foo as core::fmt::Debug>::fmt
-Raw bytes (29): 0x[01, 01, 02, 01, 05, 05, 02, 04, 01, 89, 01, 09, 00, 25, 05, 00, 25, 00, 26, 02, 01, 09, 00, 0f, 07, 01, 05, 00, 06]
+Raw bytes (29): 0x[01, 01, 02, 01, 05, 05, 02, 04, 01, 88, 01, 05, 01, 25, 05, 01, 25, 00, 26, 02, 01, 09, 00, 0f, 07, 01, 05, 00, 06]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 2
 - expression 0 operands: lhs = Counter(0), rhs = Counter(1)
 - expression 1 operands: lhs = Counter(1), rhs = Expression(0, Sub)
 Number of file 0 mappings: 4
-- Code(Counter(0)) at (prev + 137, 9) to (start + 0, 37)
-- Code(Counter(1)) at (prev + 0, 37) to (start + 0, 38)
+- Code(Counter(0)) at (prev + 136, 5) to (start + 1, 37)
+- Code(Counter(1)) at (prev + 1, 37) to (start + 0, 38)
 - Code(Expression(0, Sub)) at (prev + 1, 9) to (start + 0, 15)
     = (c0 - c1)
 - Code(Expression(1, Add)) at (prev + 1, 5) to (start + 0, 6)

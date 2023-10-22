@@ -967,7 +967,6 @@ declare_clippy_lint! {
     "checks for unnecessary guards in match expressions"
 }
 
-#[derive(Default)]
 pub struct Matches {
     msrv: Msrv,
     infallible_destructuring_match_linted: bool,
@@ -978,7 +977,7 @@ impl Matches {
     pub fn new(msrv: Msrv) -> Self {
         Self {
             msrv,
-            ..Matches::default()
+            infallible_destructuring_match_linted: false,
         }
     }
 }

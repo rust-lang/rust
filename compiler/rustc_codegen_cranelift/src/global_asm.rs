@@ -81,6 +81,10 @@ pub(crate) fn codegen_global_asm_item(tcx: TyCtxt<'_>, global_asm: &mut String, 
     }
 }
 
+pub(crate) fn asm_supported(tcx: TyCtxt<'_>) -> bool {
+    cfg!(feature = "inline_asm") && !tcx.sess.target.is_like_windows
+}
+
 #[derive(Debug)]
 pub(crate) struct GlobalAsmConfig {
     asm_enabled: bool,
@@ -90,10 +94,8 @@ pub(crate) struct GlobalAsmConfig {
 
 impl GlobalAsmConfig {
     pub(crate) fn new(tcx: TyCtxt<'_>) -> Self {
-        let asm_enabled = cfg!(feature = "inline_asm") && !tcx.sess.target.is_like_windows;
-
         GlobalAsmConfig {
-            asm_enabled,
+            asm_enabled: asm_supported(tcx),
             assembler: crate::toolchain::get_toolchain_binary(tcx.sess, "as"),
             output_filenames: tcx.output_filenames(()).clone(),
         }

@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 set -e
 
-./y.sh build
+# Compiletest expects all standard library paths to start with /rustc/FAKE_PREFIX.
+# CG_CLIF_STDLIB_REMAP_PATH_PREFIX will cause cg_clif's build system to pass
+# --remap-path-prefix to handle this.
+CG_CLIF_STDLIB_REMAP_PATH_PREFIX=/rustc/FAKE_PREFIX ./y.sh build
 
 echo "[SETUP] Rust fork"
 git clone https://github.com/rust-lang/rust.git || true
@@ -12,23 +15,6 @@ git checkout "$(rustc -V | cut -d' ' -f3 | tr -d '(')"
 
 git -c user.name=Dummy -c user.email=dummy@example.com -c commit.gpgSign=false \
     am ../patches/*-stdlib-*.patch
-
-git apply - <<EOF
-diff --git a/library/alloc/Cargo.toml b/library/alloc/Cargo.toml
-index d95b5b7f17f..00b6f0e3635 100644
---- a/library/alloc/Cargo.toml
-+++ b/library/alloc/Cargo.toml
-@@ -8,7 +8,7 @@ edition = "2018"
-
- [dependencies]
- core = { path = "../core" }
--compiler_builtins = { version = "0.1.40", features = ['rustc-dep-of-std'] }
-+compiler_builtins = { version = "0.1.66", features = ['rustc-dep-of-std', 'no-asm'] }
-
- [dev-dependencies]
- rand = { version = "0.8.5", default-features = false, features = ["alloc"] }
- rand_xorshift = "0.3.0"
-EOF
 
 cat > config.toml <<EOF
 change-id = 115898
@@ -48,11 +34,6 @@ deny-warnings = false
 verbose-tests = false
 EOF
 popd
-
-# FIXME remove once inline asm is fully supported
-export RUSTFLAGS="$RUSTFLAGS --cfg=rustix_use_libc"
-
-export CFG_VIRTUAL_RUST_SOURCE_BASE_DIR="$(cd build/stdlib; pwd)"
 
 # Allow the testsuite to use llvm tools
 host_triple=$(rustc -vV | grep host | cut -d: -f2 | tr -d " ")

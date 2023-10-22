@@ -1,11 +1,12 @@
-cfg_if!(
-    if #[cfg(not(parallel_compiler))] {
+cfg_match! {
+    cfg(not(parallel_compiler)) => {
         pub auto trait DynSend {}
         pub auto trait DynSync {}
 
         impl<T> DynSend for T {}
         impl<T> DynSync for T {}
-    } else {
+    }
+    _ => {
         #[rustc_on_unimplemented(
             message = "`{Self}` doesn't implement `DynSend`. \
             Add it to `rustc_data_structures::marker` or use `IntoDynSyncSend` if it's already `Send`"
@@ -48,13 +49,10 @@ cfg_if!(
             [std::io::StdoutLock<'_>]
             [std::io::StderrLock<'_>]
         );
-        cfg_if!(
-            // Consistent with `std`
-            // `os_imp::Env` is `!Send` in these platforms
-            if #[cfg(any(unix, target_os = "hermit", target_os = "wasi", target_os = "solid_asp3"))] {
-                impl !DynSend for std::env::VarsOs {}
-            }
-        );
+
+        #[cfg(any(unix, target_os = "hermit", target_os = "wasi", target_os = "solid_asp3"))]
+        // Consistent with `std`, `os_imp::Env` is `!Sync` in these platforms
+        impl !DynSend for std::env::VarsOs {}
 
         macro_rules! already_send {
             ($([$ty: ty])*) => {
@@ -123,13 +121,10 @@ cfg_if!(
             [std::sync::mpsc::Receiver<T> where T]
             [std::sync::mpsc::Sender<T> where T]
         );
-        cfg_if!(
-            // Consistent with `std`
-            // `os_imp::Env` is `!Sync` in these platforms
-            if #[cfg(any(unix, target_os = "hermit", target_os = "wasi", target_os = "solid_asp3"))] {
-                impl !DynSync for std::env::VarsOs {}
-            }
-        );
+
+        #[cfg(any(unix, target_os = "hermit", target_os = "wasi", target_os = "solid_asp3"))]
+        // Consistent with `std`, `os_imp::Env` is `!Sync` in these platforms
+        impl !DynSync for std::env::VarsOs {}
 
         macro_rules! already_sync {
             ($([$ty: ty])*) => {
@@ -183,7 +178,7 @@ cfg_if!(
             [thin_vec::ThinVec<T> where T: DynSync]
         );
     }
-);
+}
 
 pub fn assert_dyn_sync<T: ?Sized + DynSync>() {}
 pub fn assert_dyn_send<T: ?Sized + DynSend>() {}

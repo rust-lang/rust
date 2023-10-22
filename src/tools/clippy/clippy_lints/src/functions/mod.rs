@@ -360,18 +360,26 @@ declare_clippy_lint! {
 }
 
 #[derive(Copy, Clone)]
+#[allow(clippy::struct_field_names)]
 pub struct Functions {
     too_many_arguments_threshold: u64,
     too_many_lines_threshold: u64,
     large_error_threshold: u64,
+    avoid_breaking_exported_api: bool,
 }
 
 impl Functions {
-    pub fn new(too_many_arguments_threshold: u64, too_many_lines_threshold: u64, large_error_threshold: u64) -> Self {
+    pub fn new(
+        too_many_arguments_threshold: u64,
+        too_many_lines_threshold: u64,
+        large_error_threshold: u64,
+        avoid_breaking_exported_api: bool,
+    ) -> Self {
         Self {
             too_many_arguments_threshold,
             too_many_lines_threshold,
             large_error_threshold,
+            avoid_breaking_exported_api,
         }
     }
 }
@@ -415,6 +423,7 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::ImplItem<'_>) {
         must_use::check_impl_item(cx, item);
         result::check_impl_item(cx, item, self.large_error_threshold);
+        impl_trait_in_params::check_impl_item(cx, item);
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::TraitItem<'_>) {
@@ -422,5 +431,6 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
         not_unsafe_ptr_arg_deref::check_trait_item(cx, item);
         must_use::check_trait_item(cx, item);
         result::check_trait_item(cx, item, self.large_error_threshold);
+        impl_trait_in_params::check_trait_item(cx, item, self.avoid_breaking_exported_api);
     }
 }

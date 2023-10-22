@@ -98,28 +98,40 @@ LL |     ('A'..='Z').contains(cool_letter);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `cool_letter.is_ascii_uppercase()`
 
 error: manual check for common ascii range
-  --> $DIR/manual_is_ascii_check.rs:40:13
+  --> $DIR/manual_is_ascii_check.rs:41:13
    |
 LL |     assert!(matches!(b'1', b'0'..=b'9'));
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `b'1'.is_ascii_digit()`
 
 error: manual check for common ascii range
-  --> $DIR/manual_is_ascii_check.rs:41:13
+  --> $DIR/manual_is_ascii_check.rs:42:13
    |
 LL |     assert!(matches!('X', 'A'..='Z'));
    |             ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `'X'.is_ascii_uppercase()`
 
 error: manual check for common ascii range
-  --> $DIR/manual_is_ascii_check.rs:42:13
+  --> $DIR/manual_is_ascii_check.rs:43:13
    |
 LL |     assert!(matches!('x', 'A'..='Z' | 'a'..='z'));
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `'x'.is_ascii_alphabetic()`
 
 error: manual check for common ascii range
-  --> $DIR/manual_is_ascii_check.rs:52:23
+  --> $DIR/manual_is_ascii_check.rs:44:13
+   |
+LL |     assert!(matches!('x', '0'..='9' | 'a'..='f' | 'A'..='F'));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `'x'.is_ascii_hexdigit()`
+
+error: manual check for common ascii range
+  --> $DIR/manual_is_ascii_check.rs:55:23
    |
 LL |     const FOO: bool = matches!('x', '0'..='9');
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `'x'.is_ascii_digit()`
 
-error: aborting due to 20 previous errors
+error: manual check for common ascii range
+  --> $DIR/manual_is_ascii_check.rs:56:23
+   |
+LL |     const BAR: bool = matches!('x', '0'..='9' | 'a'..='f' | 'A'..='F');
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `'x'.is_ascii_hexdigit()`
+
+error: aborting due to 22 previous errors
 

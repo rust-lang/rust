@@ -394,28 +394,31 @@ pub(crate) fn run_aot(
     let modules = tcx.sess.time("codegen mono items", || {
         cgus.iter()
             .enumerate()
-            .map(|(i, cgu)| match cgu_reuse[i] {
-                CguReuse::No => {
-                    let dep_node = cgu.codegen_dep_node(tcx);
-                    tcx.dep_graph
-                        .with_task(
-                            dep_node,
-                            tcx,
-                            (
-                                backend_config.clone(),
-                                global_asm_config.clone(),
-                                cgu.name(),
-                                concurrency_limiter.acquire(tcx.sess.diagnostic()),
-                            ),
-                            module_codegen,
-                            Some(rustc_middle::dep_graph::hash_result),
-                        )
-                        .0
-                }
-                CguReuse::PreLto => unreachable!("LTO not yet supported"),
-                CguReuse::PostLto => {
-                    concurrency_limiter.job_already_done();
-                    OngoingModuleCodegen::Sync(reuse_workproduct_for_cgu(tcx, cgu))
+            .map(|(i, cgu)| {
+                let cgu_reuse =
+                    if backend_config.disable_incr_cache { CguReuse::No } else { cgu_reuse[i] };
+                match cgu_reuse {
+                    CguReuse::No => {
+                        let dep_node = cgu.codegen_dep_node(tcx);
+                        tcx.dep_graph
+                            .with_task(
+                                dep_node,
+                                tcx,
+                                (
+                                    backend_config.clone(),
+                                    global_asm_config.clone(),
+                                    cgu.name(),
+                                    concurrency_limiter.acquire(tcx.sess.diagnostic()),
+                                ),
+                                module_codegen,
+                                Some(rustc_middle::dep_graph::hash_result),
+                            )
+                            .0
+                    }
+                    CguReuse::PreLto | CguReuse::PostLto => {
+                        concurrency_limiter.job_already_done();
+                        OngoingModuleCodegen::Sync(reuse_workproduct_for_cgu(tcx, cgu))
+                    }
                 }
             })
             .collect::<Vec<_>>()

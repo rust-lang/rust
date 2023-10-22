@@ -143,6 +143,7 @@ impl GitRepo {
             RelPath::PATCHES.to_path(dirs).join(format!("{}-lock.toml", self.patch_name));
         let target_lockfile = download_dir.join("Cargo.lock");
         if source_lockfile.exists() {
+            assert!(!target_lockfile.exists());
             fs::copy(source_lockfile, target_lockfile).unwrap();
         } else {
             assert!(target_lockfile.exists());
