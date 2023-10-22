@@ -94,6 +94,7 @@ Term                                                  | Meaning
 <span id="upvar">upvar</span>                  &nbsp; |  A variable captured by a closure from outside the closure.
 <span id="variance">variance</span>            &nbsp; |  Determines how changes to a generic type/lifetime parameter affect subtyping; for example, if `T` is a subtype of `U`, then `Vec<T>` is a subtype `Vec<U>` because `Vec` is *covariant* in its generic parameter. See [the background chapter](./background.md#variance) for a more general explanation. See the [variance chapter](../variance.md) for an explanation of how type checking handles variance.
 <span id="variant-idx">variant index</span>    &nbsp; |  In an enum, identifies a variant by assigning them indices starting at 0.  This is purely internal and not to be confused with the ["discriminant"](#discriminant) which can be overwritten by the user (e.g. `enum Bool { True = 42, False = 0 }`).
+<span id="WF">Well-formedness</span>           &nbsp; |  Semantically:An expression that evaluates to meaningful result. In Type Systems: A type related construct which follows rules of the type system.
 <span id="wide-ptr">wide pointer</span>        &nbsp; |  A pointer with additional metadata. See "fat pointer" for more.
 <span id="zst">ZST</span>                      &nbsp; |  Zero-Sized Type. A type whose values have size 0 bytes. Since `2^0 = 1`, such types can have exactly one value. For example, `()` (unit) is a ZST. `struct Foo;` is also a ZST. The compiler can do some nice optimizations around ZSTs.
 
