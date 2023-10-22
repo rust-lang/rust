@@ -597,6 +597,18 @@ fn fn_pointers() {
     opaque(cg);
 }
 
+/// Verify that we do not create a `ConstValue::Indirect` backed by a static's AllocId.
+#[custom_mir(dialect = "analysis")]
+fn indirect_static() {
+    static A: Option<u8> = None;
+
+    mir!({
+        let ptr = Static(A);
+        let out = Field::<u8>(Variant(*ptr, 1), 0);
+        Return()
+    })
+}
+
 fn main() {
     subexpression_elimination(2, 4, 5);
     wrap_unwrap(5);
@@ -614,6 +626,7 @@ fn main() {
     assert_eq!(direct, indirect);
     repeat();
     fn_pointers();
+    indirect_static();
 }
 
 #[inline(never)]
@@ -639,3 +652,4 @@ fn identity<T>(x: T) -> T {
 // EMIT_MIR gvn.duplicate_slice.GVN.diff
 // EMIT_MIR gvn.repeat.GVN.diff
 // EMIT_MIR gvn.fn_pointers.GVN.diff
+// EMIT_MIR gvn.indirect_static.GVN.diff

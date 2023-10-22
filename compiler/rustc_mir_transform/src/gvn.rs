@@ -90,6 +90,7 @@ use rustc_hir::def::DefKind;
 use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
 use rustc_macros::newtype_index;
+use rustc_middle::mir::interpret::GlobalAlloc;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::adjustment::PointerCoercion;
@@ -922,7 +923,11 @@ fn op_to_prop_const<'tcx>(
         let pointer = mplace.ptr().into_pointer_or_addr().ok()?;
         let (alloc_id, offset) = pointer.into_parts();
         intern_const_alloc_for_constprop(ecx, alloc_id).ok()?;
-        return Some(ConstValue::Indirect { alloc_id, offset });
+        if matches!(ecx.tcx.global_alloc(alloc_id), GlobalAlloc::Memory(_)) {
+            // `alloc_id` may point to a static. Codegen will choke on an `Indirect` with anything
+            // by `GlobalAlloc::Memory`, so do fall through to copying if needed.
+            return Some(ConstValue::Indirect { alloc_id, offset });
+        }
     }
 
     // Everything failed: create a new allocation to hold the data.
