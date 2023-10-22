@@ -395,13 +395,7 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
         } else {
             // Alignment is too big to handle using the above hack. Dynamically realign a stack slot
             // instead. This wastes some space for the realignment.
-            let stack_slot = self.bcx.create_sized_stack_slot(StackSlotData {
-                kind: StackSlotKind::ExplicitSlot,
-                // FIXME is this calculation to ensure there is enough space to dyanmically realign
-                // as well as keep a 16 byte realignment for the other stack slots correct?
-                size: ((size + align - 1) + 16) / 16 * 16,
-            });
-            let base_ptr = self.bcx.ins().stack_addr(self.pointer_type, stack_slot, 0);
+            let base_ptr = self.create_stack_slot(size + align, 16).get_addr(self);
             let misalign_offset = self.bcx.ins().urem_imm(base_ptr, i64::from(align));
             let realign_offset = self.bcx.ins().irsub_imm(misalign_offset, i64::from(align));
             Pointer::new(self.bcx.ins().iadd(base_ptr, realign_offset))
