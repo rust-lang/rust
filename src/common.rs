@@ -384,13 +384,28 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
     }
 
     pub(crate) fn create_stack_slot(&mut self, size: u32, align: u32) -> Pointer {
-        let stack_slot = self.bcx.create_sized_stack_slot(StackSlotData {
-            kind: StackSlotKind::ExplicitSlot,
-            // FIXME Don't force the size to a multiple of 16 bytes once Cranelift gets a way to
-            // specify stack slot alignment.
-            size: (size + 15) / 16 * 16,
-        });
-        Pointer::stack_slot(stack_slot)
+        if align <= 16 {
+            let stack_slot = self.bcx.create_sized_stack_slot(StackSlotData {
+                kind: StackSlotKind::ExplicitSlot,
+                // FIXME Don't force the size to a multiple of 16 bytes once Cranelift gets a way to
+                // specify stack slot alignment.
+                size: (size + 15) / 16 * 16,
+            });
+            Pointer::stack_slot(stack_slot)
+        } else {
+            // Alignment is too big to handle using the above hack. Dynamically realign a stack slot
+            // instead. This wastes some space for the realignment.
+            let stack_slot = self.bcx.create_sized_stack_slot(StackSlotData {
+                kind: StackSlotKind::ExplicitSlot,
+                // FIXME is this calculation to ensure there is enough space to dyanmically realign
+                // as well as keep a 16 byte realignment for the other stack slots correct?
+                size: ((size + align - 1) + 16) / 16 * 16,
+            });
+            let base_ptr = self.bcx.ins().stack_addr(self.pointer_type, stack_slot, 0);
+            let misalign_offset = self.bcx.ins().urem_imm(base_ptr, i64::from(align));
+            let realign_offset = self.bcx.ins().irsub_imm(misalign_offset, i64::from(align));
+            Pointer::new(self.bcx.ins().iadd(base_ptr, realign_offset))
+        }
     }
 
     pub(crate) fn set_debug_loc(&mut self, source_info: mir::SourceInfo) {

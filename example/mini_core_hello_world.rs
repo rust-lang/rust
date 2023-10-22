@@ -353,6 +353,17 @@ fn main() {
 
     let f = V([0.0, 1.0]);
     let _a = f.0[0];
+
+    stack_val_align();
+}
+
+#[inline(never)]
+fn stack_val_align() {
+    #[repr(align(8192))]
+    struct Foo(u8);
+
+    let a = Foo(0);
+    assert_eq!(&a as *const Foo as usize % 8192, 0);
 }
 
 #[cfg(all(
