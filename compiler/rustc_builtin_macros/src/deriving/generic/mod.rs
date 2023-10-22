@@ -695,15 +695,13 @@ impl<'a> TraitDef<'a> {
             }
         }));
 
-        let mut ty_params = params
+        let ty_param_names: Vec<Symbol> = params
             .iter()
             .filter(|param| matches!(param.kind, ast::GenericParamKind::Type { .. }))
-            .peekable();
+            .map(|ty_param| ty_param.ident.name)
+            .collect();
 
-        if ty_params.peek().is_some() {
-            let ty_param_names: Vec<Symbol> =
-                ty_params.map(|ty_param| ty_param.ident.name).collect();
-
+        if !ty_param_names.is_empty() {
             for field_ty in field_tys {
                 let field_ty_params = find_type_parameters(&field_ty, &ty_param_names, cx);
 
