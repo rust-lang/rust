@@ -220,25 +220,22 @@ impl WriteType {
 /// for data-race detection.
 #[derive(Clone, PartialEq, Eq, Debug)]
 struct MemoryCellClocks {
-    /// The vector-clock timestamp of the last write
-    /// corresponding to the writing threads timestamp.
-    write: VTimestamp,
-
-    /// The identifier of the vector index, corresponding to a thread
-    /// that performed the last write operation.
-    write_index: VectorIdx,
+    /// The vector-clock timestamp and the thread that did the last non-atomic write. We don't need
+    /// a full `VClock` here, it's always a single thread and nothing synchronizes, so the effective
+    /// clock is all-0 except for the thread that did the write.
+    write: (VectorIdx, VTimestamp),
 
     /// The type of operation that the write index represents,
     /// either newly allocated memory, a non-atomic write or
     /// a deallocation of memory.
     write_type: WriteType,
 
-    /// The vector-clock of the timestamp of the last read operation
-    /// performed by a thread since the last write operation occurred.
-    /// It is reset to zero on each write operation.
+    /// The vector-clock of all non-atomic reads that happened since the last non-atomic write
+    /// (i.e., we join together the "singleton" clocks corresponding to each read). It is reset to
+    /// zero on each write operation.
     read: VClock,
 
-    /// Atomic acquire & release sequence tracking clocks.
+    /// Atomic access, acquire, release sequence tracking clocks.
     /// For non-atomic memory in the common case this
     /// value is set to None.
     atomic_ops: Option<Box<AtomicMemoryCellClocks>>,
@@ -250,11 +247,22 @@ impl MemoryCellClocks {
     fn new(alloc: VTimestamp, alloc_index: VectorIdx) -> Self {
         MemoryCellClocks {
             read: VClock::default(),
-            write: alloc,
-            write_index: alloc_index,
+            write: (alloc_index, alloc),
             write_type: WriteType::Allocate,
             atomic_ops: None,
         }
+    }
+
+    #[inline]
+    fn write_was_before(&self, other: &VClock) -> bool {
+        // This is the same as `self.write() <= other` but
+        // without actually manifesting a clock for `self.write`.
+        self.write.1 <= other[self.write.0]
+    }
+
+    #[inline]
+    fn write(&self) -> VClock {
+        VClock::new_with_index(self.write.0, self.write.1)
     }
 
     /// Load the internal atomic memory cells if they exist.
@@ -376,7 +384,7 @@ impl MemoryCellClocks {
         log::trace!("Atomic read with vectors: {:#?} :: {:#?}", self, thread_clocks);
         let atomic = self.atomic_mut();
         atomic.read_vector.set_at_index(&thread_clocks.clock, index);
-        if self.write <= thread_clocks.clock[self.write_index] { Ok(()) } else { Err(DataRace) }
+        if self.write_was_before(&thread_clocks.clock) { Ok(()) } else { Err(DataRace) }
     }
 
     /// Detect data-races with an atomic write, either with a non-atomic read or with
@@ -389,7 +397,7 @@ impl MemoryCellClocks {
         log::trace!("Atomic write with vectors: {:#?} :: {:#?}", self, thread_clocks);
         let atomic = self.atomic_mut();
         atomic.write_vector.set_at_index(&thread_clocks.clock, index);
-        if self.write <= thread_clocks.clock[self.write_index] && self.read <= thread_clocks.clock {
+        if self.write_was_before(&thread_clocks.clock) && self.read <= thread_clocks.clock {
             Ok(())
         } else {
             Err(DataRace)
@@ -408,7 +416,7 @@ impl MemoryCellClocks {
         if !current_span.is_dummy() {
             thread_clocks.clock[index].span = current_span;
         }
-        if self.write <= thread_clocks.clock[self.write_index] {
+        if self.write_was_before(&thread_clocks.clock) {
             let race_free = if let Some(atomic) = self.atomic() {
                 atomic.write_vector <= thread_clocks.clock
             } else {
@@ -434,15 +442,14 @@ impl MemoryCellClocks {
         if !current_span.is_dummy() {
             thread_clocks.clock[index].span = current_span;
         }
-        if self.write <= thread_clocks.clock[self.write_index] && self.read <= thread_clocks.clock {
+        if self.write_was_before(&thread_clocks.clock) && self.read <= thread_clocks.clock {
             let race_free = if let Some(atomic) = self.atomic() {
                 atomic.write_vector <= thread_clocks.clock
                     && atomic.read_vector <= thread_clocks.clock
             } else {
                 true
             };
-            self.write = thread_clocks.clock[index];
-            self.write_index = index;
+            self.write = (index, thread_clocks.clock[index]);
             self.write_type = write_type;
             if race_free {
                 self.read.set_zero_vector();
@@ -790,37 +797,35 @@ impl VClockAlloc {
     ) -> InterpResult<'tcx> {
         let (current_index, current_clocks) = global.current_thread_state(thread_mgr);
         let write_clock;
-        let (other_action, other_thread, other_clock) = if mem_clocks.write
-            > current_clocks.clock[mem_clocks.write_index]
-        {
-            // Convert the write action into the vector clock it
-            // represents for diagnostic purposes.
-            write_clock = VClock::new_with_index(mem_clocks.write_index, mem_clocks.write);
-            (mem_clocks.write_type.get_descriptor(), mem_clocks.write_index, &write_clock)
-        } else if let Some(idx) = Self::find_gt_index(&mem_clocks.read, &current_clocks.clock) {
-            ("Read", idx, &mem_clocks.read)
-        } else if !is_atomic {
-            if let Some(atomic) = mem_clocks.atomic() {
-                if let Some(idx) = Self::find_gt_index(&atomic.write_vector, &current_clocks.clock)
-                {
-                    ("Atomic Store", idx, &atomic.write_vector)
-                } else if let Some(idx) =
-                    Self::find_gt_index(&atomic.read_vector, &current_clocks.clock)
-                {
-                    ("Atomic Load", idx, &atomic.read_vector)
+        #[rustfmt::skip]
+        let (other_action, other_thread, other_clock) =
+            if mem_clocks.write.1 > current_clocks.clock[mem_clocks.write.0] {
+                write_clock = mem_clocks.write();
+                (mem_clocks.write_type.get_descriptor(), mem_clocks.write.0, &write_clock)
+            } else if let Some(idx) = Self::find_gt_index(&mem_clocks.read, &current_clocks.clock) {
+                ("Read", idx, &mem_clocks.read)
+            } else if !is_atomic {
+                if let Some(atomic) = mem_clocks.atomic() {
+                    if let Some(idx) = Self::find_gt_index(&atomic.write_vector, &current_clocks.clock)
+                    {
+                        ("Atomic Store", idx, &atomic.write_vector)
+                    } else if let Some(idx) =
+                        Self::find_gt_index(&atomic.read_vector, &current_clocks.clock)
+                    {
+                        ("Atomic Load", idx, &atomic.read_vector)
+                    } else {
+                        unreachable!(
+                            "Failed to report data-race for non-atomic operation: no race found"
+                        )
+                    }
                 } else {
                     unreachable!(
-                        "Failed to report data-race for non-atomic operation: no race found"
+                        "Failed to report data-race for non-atomic operation: no atomic component"
                     )
                 }
             } else {
-                unreachable!(
-                    "Failed to report data-race for non-atomic operation: no atomic component"
-                )
-            }
-        } else {
-            unreachable!("Failed to report data-race for atomic operation")
-        };
+                unreachable!("Failed to report data-race for atomic operation")
+            };
 
         // Load elaborated thread information about the racing thread actions.
         let current_thread_info = global.print_thread_metadata(thread_mgr, current_index);
