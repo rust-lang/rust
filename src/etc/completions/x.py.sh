@@ -61,7 +61,7 @@ _x.py() {
 
     case "${cmd}" in
         x.py)
-            opts="-v -i -j -h --verbose --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --stage --keep-stage --keep-stage-std --src --jobs --warnings --error-format --json-output --color --llvm-skip-rebuild --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --reproducible-artifact --set --help [PATHS]... [ARGS]... build check clippy fix fmt doc test bench clean dist install run setup suggest"
+            opts="-v -i -j -h --verbose --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --stage --keep-stage --keep-stage-std --src --jobs --warnings --error-format --json-output --color --llvm-skip-rebuild --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --help [PATHS]... [ARGS]... build check clippy fix fmt doc test bench clean dist install run setup suggest"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 1 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -171,7 +171,7 @@ _x.py() {
             return 0
             ;;
         x.py__bench)
-            opts="-v -i -j -h --test-args --verbose --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --stage --keep-stage --keep-stage-std --src --jobs --warnings --error-format --json-output --color --llvm-skip-rebuild --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --reproducible-artifact --set --help [PATHS]... [ARGS]..."
+            opts="-v -i -j -h --test-args --verbose --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --stage --keep-stage --keep-stage-std --src --jobs --warnings --error-format --json-output --color --llvm-skip-rebuild --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --help [PATHS]... [ARGS]..."
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -285,7 +285,7 @@ _x.py() {
             return 0
             ;;
         x.py__build)
-            opts="-v -i -j -h --verbose --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --stage --keep-stage --keep-stage-std --src --jobs --warnings --error-format --json-output --color --llvm-skip-rebuild --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --reproducible-artifact --set --help [PATHS]... [ARGS]..."
+            opts="-v -i -j -h --verbose --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --stage --keep-stage --keep-stage-std --src --jobs --warnings --error-format --json-output --color --llvm-skip-rebuild --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --help [PATHS]... [ARGS]..."
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -395,7 +395,7 @@ _x.py() {
             return 0
             ;;
         x.py__check)
-            opts="-v -i -j -h --all-targets --verbose --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --stage --keep-stage --keep-stage-std --src --jobs --warnings --error-format --json-output --color --llvm-skip-rebuild --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --reproducible-artifact --set --help [PATHS]... [ARGS]..."
+            opts="-v -i -j -h --all-targets --verbose --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --stage --keep-stage --keep-stage-std --src --jobs --warnings --error-format --json-output --color --llvm-skip-rebuild --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --help [PATHS]... [ARGS]..."
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -505,7 +505,7 @@ _x.py() {
             return 0
             ;;
         x.py__clean)
-            opts="-v -i -j -h --all --stage --verbose --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --keep-stage --keep-stage-std --src --jobs --warnings --error-format --json-output --color --llvm-skip-rebuild --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --reproducible-artifact --set --help [PATHS]... [ARGS]..."
+            opts="-v -i -j -h --all --stage --verbose --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --keep-stage --keep-stage-std --src --jobs --warnings --error-format --json-output --color --llvm-skip-rebuild --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --help [PATHS]... [ARGS]..."
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -615,7 +615,7 @@ _x.py() {
             return 0
             ;;
         x.py__clippy)
-            opts="-A -D -W -F -v -i -j -h --fix --verbose --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --stage --keep-stage --keep-stage-std --src --jobs --warnings --error-format --json-output --color --llvm-skip-rebuild --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --reproducible-artifact --set --help [PATHS]... [ARGS]..."
+            opts="-A -D -W -F -v -i -j -h --fix --verbose --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --stage --keep-stage --keep-stage-std --src --jobs --warnings --error-format --json-output --color --llvm-skip-rebuild --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --help [PATHS]... [ARGS]..."
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -741,7 +741,7 @@ _x.py() {
             return 0
             ;;
         x.py__dist)
-            opts="-v -i -j -h --verbose --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --stage --keep-stage --keep-stage-std --src --jobs --warnings --error-format --json-output --color --llvm-skip-rebuild --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --reproducible-artifact --set --help [PATHS]... [ARGS]..."
+            opts="-v -i -j -h --verbose --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --stage --keep-stage --keep-stage-std --src --jobs --warnings --error-format --json-output --color --llvm-skip-rebuild --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --help [PATHS]... [ARGS]..."
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -851,7 +851,7 @@ _x.py() {
             return 0
             ;;
         x.py__doc)
-            opts="-v -i -j -h --open --json --verbose --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --stage --keep-stage --keep-stage-std --src --jobs --warnings --error-format --json-output --color --llvm-skip-rebuild --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --reproducible-artifact --set --help [PATHS]... [ARGS]..."
+            opts="-v -i -j -h --open --json --verbose --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --stage --keep-stage --keep-stage-std --src --jobs --warnings --error-format --json-output --color --llvm-skip-rebuild --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --help [PATHS]... [ARGS]..."
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -961,7 +961,7 @@ _x.py() {
             return 0
             ;;
         x.py__fix)
-            opts="-v -i -j -h --verbose --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --stage --keep-stage --keep-stage-std --src --jobs --warnings --error-format --json-output --color --llvm-skip-rebuild --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --reproducible-artifact --set --help [PATHS]... [ARGS]..."
+            opts="-v -i -j -h --verbose --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --stage --keep-stage --keep-stage-std --src --jobs --warnings --error-format --json-output --color --llvm-skip-rebuild --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --help [PATHS]... [ARGS]..."
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -1071,7 +1071,7 @@ _x.py() {
             return 0
             ;;
         x.py__fmt)
-            opts="-v -i -j -h --check --verbose --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --stage --keep-stage --keep-stage-std --src --jobs --warnings --error-format --json-output --color --llvm-skip-rebuild --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --reproducible-artifact --set --help [PATHS]... [ARGS]..."
+            opts="-v -i -j -h --check --verbose --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --stage --keep-stage --keep-stage-std --src --jobs --warnings --error-format --json-output --color --llvm-skip-rebuild --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --help [PATHS]... [ARGS]..."
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -1181,7 +1181,7 @@ _x.py() {
             return 0
             ;;
         x.py__install)
-            opts="-v -i -j -h --verbose --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --stage --keep-stage --keep-stage-std --src --jobs --warnings --error-format --json-output --color --llvm-skip-rebuild --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --reproducible-artifact --set --help [PATHS]... [ARGS]..."
+            opts="-v -i -j -h --verbose --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --stage --keep-stage --keep-stage-std --src --jobs --warnings --error-format --json-output --color --llvm-skip-rebuild --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --help [PATHS]... [ARGS]..."
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -1291,7 +1291,7 @@ _x.py() {
             return 0
             ;;
         x.py__run)
-            opts="-v -i -j -h --args --verbose --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --stage --keep-stage --keep-stage-std --src --jobs --warnings --error-format --json-output --color --llvm-skip-rebuild --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --reproducible-artifact --set --help [PATHS]... [ARGS]..."
+            opts="-v -i -j -h --args --verbose --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --stage --keep-stage --keep-stage-std --src --jobs --warnings --error-format --json-output --color --llvm-skip-rebuild --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --help [PATHS]... [ARGS]..."
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -1405,7 +1405,7 @@ _x.py() {
             return 0
             ;;
         x.py__setup)
-            opts="-v -i -j -h --verbose --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --stage --keep-stage --keep-stage-std --src --jobs --warnings --error-format --json-output --color --llvm-skip-rebuild --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --reproducible-artifact --set --help [<PROFILE>|hook|vscode|link] [PATHS]... [ARGS]..."
+            opts="-v -i -j -h --verbose --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --stage --keep-stage --keep-stage-std --src --jobs --warnings --error-format --json-output --color --llvm-skip-rebuild --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --help [<PROFILE>|hook|vscode|link] [PATHS]... [ARGS]..."
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -1515,7 +1515,7 @@ _x.py() {
             return 0
             ;;
         x.py__suggest)
-            opts="-v -i -j -h --run --verbose --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --stage --keep-stage --keep-stage-std --src --jobs --warnings --error-format --json-output --color --llvm-skip-rebuild --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --reproducible-artifact --set --help [PATHS]... [ARGS]..."
+            opts="-v -i -j -h --run --verbose --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --stage --keep-stage --keep-stage-std --src --jobs --warnings --error-format --json-output --color --llvm-skip-rebuild --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --help [PATHS]... [ARGS]..."
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -1625,7 +1625,7 @@ _x.py() {
             return 0
             ;;
         x.py__test)
-            opts="-v -i -j -h --no-fail-fast --skip --test-args --rustc-args --no-doc --doc --bless --extra-checks --force-rerun --only-modified --compare-mode --pass --run --rustfix-coverage --verbose --incremental --config --build-dir --build --host --target --exclude --include-default-paths --rustc-error-format --on-fail --dry-run --stage --keep-stage --keep-stage-std --src --jobs --warnings --error-format --json-output --color --llvm-skip-rebuild --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --reproducible-artifact --set --help [PATHS]... [ARGS]..."
+            opts="-v -i -j -h --no-fail-fast --skip --test-args --rustc-args --no-doc --doc --bless --extra-checks --force-rerun --only-modified --compare-mode --pass --run --rustfix-coverage --verbose --incremental --config --build-dir --build --host --target --exclude --include-default-paths --rustc-error-format --on-fail --dry-run --stage --keep-stage --keep-stage-std --src --jobs --warnings --error-format --json-output --color --llvm-skip-rebuild --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --help [PATHS]... [ARGS]..."
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0

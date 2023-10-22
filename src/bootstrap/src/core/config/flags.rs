@@ -155,6 +155,9 @@ pub struct Flags {
     /// Enable BOLT link flags
     #[arg(global(true), long)]
     pub enable_bolt_settings: bool,
+    /// Skip stage0 compiler validation
+    #[arg(global(true), long)]
+    pub skip_stage0_validation: bool,
     /// Additional reproducible artifacts that should be added to the reproducible artifacts archive.
     #[arg(global(true), long)]
     pub reproducible_artifact: Vec<String>,

@@ -28,6 +28,7 @@ complete -c x.py -n "__fish_use_subcommand" -l dry-run -d 'dry run; don\'t build
 complete -c x.py -n "__fish_use_subcommand" -l json-output -d 'use message-format=json'
 complete -c x.py -n "__fish_use_subcommand" -l llvm-profile-generate -d 'generate PGO profile with llvm built for rustc'
 complete -c x.py -n "__fish_use_subcommand" -l enable-bolt-settings -d 'Enable BOLT link flags'
+complete -c x.py -n "__fish_use_subcommand" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
 complete -c x.py -n "__fish_use_subcommand" -s h -l help -d 'Print help'
 complete -c x.py -n "__fish_use_subcommand" -f -a "build" -d 'Compile either the compiler or libraries'
 complete -c x.py -n "__fish_use_subcommand" -f -a "check" -d 'Compile either the compiler or libraries, using cargo check'
@@ -73,6 +74,7 @@ complete -c x.py -n "__fish_seen_subcommand_from build" -l dry-run -d 'dry run; 
 complete -c x.py -n "__fish_seen_subcommand_from build" -l json-output -d 'use message-format=json'
 complete -c x.py -n "__fish_seen_subcommand_from build" -l llvm-profile-generate -d 'generate PGO profile with llvm built for rustc'
 complete -c x.py -n "__fish_seen_subcommand_from build" -l enable-bolt-settings -d 'Enable BOLT link flags'
+complete -c x.py -n "__fish_seen_subcommand_from build" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
 complete -c x.py -n "__fish_seen_subcommand_from build" -s h -l help -d 'Print help (see more with \'--help\')'
 complete -c x.py -n "__fish_seen_subcommand_from check" -l config -d 'TOML configuration file for build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from check" -l build-dir -d 'Build directory, overrides `build.build-dir` in `config.toml`' -r -f -a "(__fish_complete_directories)"
@@ -105,6 +107,7 @@ complete -c x.py -n "__fish_seen_subcommand_from check" -l dry-run -d 'dry run; 
 complete -c x.py -n "__fish_seen_subcommand_from check" -l json-output -d 'use message-format=json'
 complete -c x.py -n "__fish_seen_subcommand_from check" -l llvm-profile-generate -d 'generate PGO profile with llvm built for rustc'
 complete -c x.py -n "__fish_seen_subcommand_from check" -l enable-bolt-settings -d 'Enable BOLT link flags'
+complete -c x.py -n "__fish_seen_subcommand_from check" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
 complete -c x.py -n "__fish_seen_subcommand_from check" -s h -l help -d 'Print help (see more with \'--help\')'
 complete -c x.py -n "__fish_seen_subcommand_from clippy" -s A -d 'clippy lints to allow' -r
 complete -c x.py -n "__fish_seen_subcommand_from clippy" -s D -d 'clippy lints to deny' -r
@@ -141,6 +144,7 @@ complete -c x.py -n "__fish_seen_subcommand_from clippy" -l dry-run -d 'dry run;
 complete -c x.py -n "__fish_seen_subcommand_from clippy" -l json-output -d 'use message-format=json'
 complete -c x.py -n "__fish_seen_subcommand_from clippy" -l llvm-profile-generate -d 'generate PGO profile with llvm built for rustc'
 complete -c x.py -n "__fish_seen_subcommand_from clippy" -l enable-bolt-settings -d 'Enable BOLT link flags'
+complete -c x.py -n "__fish_seen_subcommand_from clippy" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
 complete -c x.py -n "__fish_seen_subcommand_from clippy" -s h -l help -d 'Print help (see more with \'--help\')'
 complete -c x.py -n "__fish_seen_subcommand_from fix" -l config -d 'TOML configuration file for build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from fix" -l build-dir -d 'Build directory, overrides `build.build-dir` in `config.toml`' -r -f -a "(__fish_complete_directories)"
@@ -172,6 +176,7 @@ complete -c x.py -n "__fish_seen_subcommand_from fix" -l dry-run -d 'dry run; do
 complete -c x.py -n "__fish_seen_subcommand_from fix" -l json-output -d 'use message-format=json'
 complete -c x.py -n "__fish_seen_subcommand_from fix" -l llvm-profile-generate -d 'generate PGO profile with llvm built for rustc'
 complete -c x.py -n "__fish_seen_subcommand_from fix" -l enable-bolt-settings -d 'Enable BOLT link flags'
+complete -c x.py -n "__fish_seen_subcommand_from fix" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
 complete -c x.py -n "__fish_seen_subcommand_from fix" -s h -l help -d 'Print help (see more with \'--help\')'
 complete -c x.py -n "__fish_seen_subcommand_from fmt" -l config -d 'TOML configuration file for build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from fmt" -l build-dir -d 'Build directory, overrides `build.build-dir` in `config.toml`' -r -f -a "(__fish_complete_directories)"
@@ -204,6 +209,7 @@ complete -c x.py -n "__fish_seen_subcommand_from fmt" -l dry-run -d 'dry run; do
 complete -c x.py -n "__fish_seen_subcommand_from fmt" -l json-output -d 'use message-format=json'
 complete -c x.py -n "__fish_seen_subcommand_from fmt" -l llvm-profile-generate -d 'generate PGO profile with llvm built for rustc'
 complete -c x.py -n "__fish_seen_subcommand_from fmt" -l enable-bolt-settings -d 'Enable BOLT link flags'
+complete -c x.py -n "__fish_seen_subcommand_from fmt" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
 complete -c x.py -n "__fish_seen_subcommand_from fmt" -s h -l help -d 'Print help (see more with \'--help\')'
 complete -c x.py -n "__fish_seen_subcommand_from doc" -l config -d 'TOML configuration file for build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from doc" -l build-dir -d 'Build directory, overrides `build.build-dir` in `config.toml`' -r -f -a "(__fish_complete_directories)"
@@ -237,6 +243,7 @@ complete -c x.py -n "__fish_seen_subcommand_from doc" -l dry-run -d 'dry run; do
 complete -c x.py -n "__fish_seen_subcommand_from doc" -l json-output -d 'use message-format=json'
 complete -c x.py -n "__fish_seen_subcommand_from doc" -l llvm-profile-generate -d 'generate PGO profile with llvm built for rustc'
 complete -c x.py -n "__fish_seen_subcommand_from doc" -l enable-bolt-settings -d 'Enable BOLT link flags'
+complete -c x.py -n "__fish_seen_subcommand_from doc" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
 complete -c x.py -n "__fish_seen_subcommand_from doc" -s h -l help -d 'Print help (see more with \'--help\')'
 complete -c x.py -n "__fish_seen_subcommand_from test" -l skip -d 'skips tests matching SUBSTRING, if supported by test tool. May be passed multiple times' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from test" -l test-args -d 'extra arguments to be passed for the test tool being used (e.g. libtest, compiletest or rustdoc)' -r
@@ -281,6 +288,7 @@ complete -c x.py -n "__fish_seen_subcommand_from test" -l dry-run -d 'dry run; d
 complete -c x.py -n "__fish_seen_subcommand_from test" -l json-output -d 'use message-format=json'
 complete -c x.py -n "__fish_seen_subcommand_from test" -l llvm-profile-generate -d 'generate PGO profile with llvm built for rustc'
 complete -c x.py -n "__fish_seen_subcommand_from test" -l enable-bolt-settings -d 'Enable BOLT link flags'
+complete -c x.py -n "__fish_seen_subcommand_from test" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
 complete -c x.py -n "__fish_seen_subcommand_from test" -s h -l help -d 'Print help (see more with \'--help\')'
 complete -c x.py -n "__fish_seen_subcommand_from bench" -l test-args -r
 complete -c x.py -n "__fish_seen_subcommand_from bench" -l config -d 'TOML configuration file for build' -r -F
@@ -313,6 +321,7 @@ complete -c x.py -n "__fish_seen_subcommand_from bench" -l dry-run -d 'dry run; 
 complete -c x.py -n "__fish_seen_subcommand_from bench" -l json-output -d 'use message-format=json'
 complete -c x.py -n "__fish_seen_subcommand_from bench" -l llvm-profile-generate -d 'generate PGO profile with llvm built for rustc'
 complete -c x.py -n "__fish_seen_subcommand_from bench" -l enable-bolt-settings -d 'Enable BOLT link flags'
+complete -c x.py -n "__fish_seen_subcommand_from bench" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
 complete -c x.py -n "__fish_seen_subcommand_from bench" -s h -l help -d 'Print help'
 complete -c x.py -n "__fish_seen_subcommand_from clean" -l stage -d 'Clean a specific stage without touching other artifacts. By default, every stage is cleaned if this option is not used' -r
 complete -c x.py -n "__fish_seen_subcommand_from clean" -l config -d 'TOML configuration file for build' -r -F
@@ -345,6 +354,7 @@ complete -c x.py -n "__fish_seen_subcommand_from clean" -l dry-run -d 'dry run; 
 complete -c x.py -n "__fish_seen_subcommand_from clean" -l json-output -d 'use message-format=json'
 complete -c x.py -n "__fish_seen_subcommand_from clean" -l llvm-profile-generate -d 'generate PGO profile with llvm built for rustc'
 complete -c x.py -n "__fish_seen_subcommand_from clean" -l enable-bolt-settings -d 'Enable BOLT link flags'
+complete -c x.py -n "__fish_seen_subcommand_from clean" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
 complete -c x.py -n "__fish_seen_subcommand_from clean" -s h -l help -d 'Print help'
 complete -c x.py -n "__fish_seen_subcommand_from dist" -l config -d 'TOML configuration file for build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from dist" -l build-dir -d 'Build directory, overrides `build.build-dir` in `config.toml`' -r -f -a "(__fish_complete_directories)"
@@ -376,6 +386,7 @@ complete -c x.py -n "__fish_seen_subcommand_from dist" -l dry-run -d 'dry run; d
 complete -c x.py -n "__fish_seen_subcommand_from dist" -l json-output -d 'use message-format=json'
 complete -c x.py -n "__fish_seen_subcommand_from dist" -l llvm-profile-generate -d 'generate PGO profile with llvm built for rustc'
 complete -c x.py -n "__fish_seen_subcommand_from dist" -l enable-bolt-settings -d 'Enable BOLT link flags'
+complete -c x.py -n "__fish_seen_subcommand_from dist" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
 complete -c x.py -n "__fish_seen_subcommand_from dist" -s h -l help -d 'Print help'
 complete -c x.py -n "__fish_seen_subcommand_from install" -l config -d 'TOML configuration file for build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from install" -l build-dir -d 'Build directory, overrides `build.build-dir` in `config.toml`' -r -f -a "(__fish_complete_directories)"
@@ -407,6 +418,7 @@ complete -c x.py -n "__fish_seen_subcommand_from install" -l dry-run -d 'dry run
 complete -c x.py -n "__fish_seen_subcommand_from install" -l json-output -d 'use message-format=json'
 complete -c x.py -n "__fish_seen_subcommand_from install" -l llvm-profile-generate -d 'generate PGO profile with llvm built for rustc'
 complete -c x.py -n "__fish_seen_subcommand_from install" -l enable-bolt-settings -d 'Enable BOLT link flags'
+complete -c x.py -n "__fish_seen_subcommand_from install" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
 complete -c x.py -n "__fish_seen_subcommand_from install" -s h -l help -d 'Print help'
 complete -c x.py -n "__fish_seen_subcommand_from run" -l args -d 'arguments for the tool' -r
 complete -c x.py -n "__fish_seen_subcommand_from run" -l config -d 'TOML configuration file for build' -r -F
@@ -439,6 +451,7 @@ complete -c x.py -n "__fish_seen_subcommand_from run" -l dry-run -d 'dry run; do
 complete -c x.py -n "__fish_seen_subcommand_from run" -l json-output -d 'use message-format=json'
 complete -c x.py -n "__fish_seen_subcommand_from run" -l llvm-profile-generate -d 'generate PGO profile with llvm built for rustc'
 complete -c x.py -n "__fish_seen_subcommand_from run" -l enable-bolt-settings -d 'Enable BOLT link flags'
+complete -c x.py -n "__fish_seen_subcommand_from run" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
 complete -c x.py -n "__fish_seen_subcommand_from run" -s h -l help -d 'Print help (see more with \'--help\')'
 complete -c x.py -n "__fish_seen_subcommand_from setup" -l config -d 'TOML configuration file for build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from setup" -l build-dir -d 'Build directory, overrides `build.build-dir` in `config.toml`' -r -f -a "(__fish_complete_directories)"
@@ -470,6 +483,7 @@ complete -c x.py -n "__fish_seen_subcommand_from setup" -l dry-run -d 'dry run; 
 complete -c x.py -n "__fish_seen_subcommand_from setup" -l json-output -d 'use message-format=json'
 complete -c x.py -n "__fish_seen_subcommand_from setup" -l llvm-profile-generate -d 'generate PGO profile with llvm built for rustc'
 complete -c x.py -n "__fish_seen_subcommand_from setup" -l enable-bolt-settings -d 'Enable BOLT link flags'
+complete -c x.py -n "__fish_seen_subcommand_from setup" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
 complete -c x.py -n "__fish_seen_subcommand_from setup" -s h -l help -d 'Print help (see more with \'--help\')'
 complete -c x.py -n "__fish_seen_subcommand_from suggest" -l config -d 'TOML configuration file for build' -r -F
 complete -c x.py -n "__fish_seen_subcommand_from suggest" -l build-dir -d 'Build directory, overrides `build.build-dir` in `config.toml`' -r -f -a "(__fish_complete_directories)"
@@ -502,4 +516,5 @@ complete -c x.py -n "__fish_seen_subcommand_from suggest" -l dry-run -d 'dry run
 complete -c x.py -n "__fish_seen_subcommand_from suggest" -l json-output -d 'use message-format=json'
 complete -c x.py -n "__fish_seen_subcommand_from suggest" -l llvm-profile-generate -d 'generate PGO profile with llvm built for rustc'
 complete -c x.py -n "__fish_seen_subcommand_from suggest" -l enable-bolt-settings -d 'Enable BOLT link flags'
+complete -c x.py -n "__fish_seen_subcommand_from suggest" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
 complete -c x.py -n "__fish_seen_subcommand_from suggest" -s h -l help -d 'Print help (see more with \'--help\')'
