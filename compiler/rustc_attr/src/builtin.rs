@@ -200,8 +200,7 @@ pub fn find_stability(
             sym::rustc_allowed_through_unstable_modules => allowed_through_unstable_modules = true,
             sym::unstable => {
                 if stab.is_some() {
-                    sess.parse_sess
-                        .emit_err(session_diagnostics::MultipleStabilityLevels { span: attr.span });
+                    sess.emit_err(session_diagnostics::MultipleStabilityLevels { span: attr.span });
                     break;
                 }
 
@@ -211,8 +210,7 @@ pub fn find_stability(
             }
             sym::stable => {
                 if stab.is_some() {
-                    sess.parse_sess
-                        .emit_err(session_diagnostics::MultipleStabilityLevels { span: attr.span });
+                    sess.emit_err(session_diagnostics::MultipleStabilityLevels { span: attr.span });
                     break;
                 }
                 if let Some((feature, level)) = parse_stability(sess, attr) {
@@ -256,8 +254,7 @@ pub fn find_const_stability(
             sym::rustc_promotable => promotable = true,
             sym::rustc_const_unstable => {
                 if const_stab.is_some() {
-                    sess.parse_sess
-                        .emit_err(session_diagnostics::MultipleStabilityLevels { span: attr.span });
+                    sess.emit_err(session_diagnostics::MultipleStabilityLevels { span: attr.span });
                     break;
                 }
 
@@ -268,8 +265,7 @@ pub fn find_const_stability(
             }
             sym::rustc_const_stable => {
                 if const_stab.is_some() {
-                    sess.parse_sess
-                        .emit_err(session_diagnostics::MultipleStabilityLevels { span: attr.span });
+                    sess.emit_err(session_diagnostics::MultipleStabilityLevels { span: attr.span });
                     break;
                 }
                 if let Some((feature, level)) = parse_stability(sess, attr) {
@@ -303,8 +299,7 @@ pub fn find_body_stability(
     for attr in attrs {
         if attr.has_name(sym::rustc_default_body_unstable) {
             if body_stab.is_some() {
-                sess.parse_sess
-                    .emit_err(session_diagnostics::MultipleStabilityLevels { span: attr.span });
+                sess.emit_err(session_diagnostics::MultipleStabilityLevels { span: attr.span });
                 break;
             }
 
@@ -319,7 +314,7 @@ pub fn find_body_stability(
 
 fn insert_or_error(sess: &Session, meta: &MetaItem, item: &mut Option<Symbol>) -> Option<()> {
     if item.is_some() {
-        sess.parse_sess.emit_err(session_diagnostics::MultipleItem {
+        sess.emit_err(session_diagnostics::MultipleItem {
             span: meta.span,
             item: pprust::path_to_string(&meta.path),
         });
@@ -343,11 +338,11 @@ fn parse_stability(sess: &Session, attr: &Attribute) -> Option<(Symbol, Stabilit
     let mut since = None;
     for meta in metas {
         let Some(mi) = meta.meta_item() else {
-            sess.parse_sess.emit_err(session_diagnostics::UnsupportedLiteral {
+            sess.emit_err(session_diagnostics::UnsupportedLiteral {
                 span: meta.span(),
                 reason: UnsupportedLiteralReason::Generic,
                 is_bytestr: false,
-                start_point_span: sess.parse_sess.source_map().start_point(meta.span()),
+                start_point_span: sess.source_map().start_point(meta.span()),
             });
             return None;
         };
@@ -356,7 +351,7 @@ fn parse_stability(sess: &Session, attr: &Attribute) -> Option<(Symbol, Stabilit
             sym::feature => insert_or_error(sess, mi, &mut feature)?,
             sym::since => insert_or_error(sess, mi, &mut since)?,
             _ => {
-                sess.parse_sess.emit_err(session_diagnostics::UnknownMetaItem {
+                sess.emit_err(session_diagnostics::UnknownMetaItem {
                     span: meta.span(),
                     item: pprust::path_to_string(&mi.path),
                     expected: &["feature", "since"],
@@ -378,11 +373,11 @@ fn parse_stability(sess: &Session, attr: &Attribute) -> Option<(Symbol, Stabilit
             Some((feature, level))
         }
         (None, _) => {
-            sess.parse_sess.emit_err(session_diagnostics::MissingFeature { span: attr.span });
+            sess.emit_err(session_diagnostics::MissingFeature { span: attr.span });
             None
         }
         _ => {
-            sess.parse_sess.emit_err(session_diagnostics::MissingSince { span: attr.span });
+            sess.emit_err(session_diagnostics::MissingSince { span: attr.span });
             None
         }
     }
@@ -402,11 +397,11 @@ fn parse_unstability(sess: &Session, attr: &Attribute) -> Option<(Symbol, Stabil
     let mut implied_by = None;
     for meta in metas {
         let Some(mi) = meta.meta_item() else {
-            sess.parse_sess.emit_err(session_diagnostics::UnsupportedLiteral {
+            sess.emit_err(session_diagnostics::UnsupportedLiteral {
                 span: meta.span(),
                 reason: UnsupportedLiteralReason::Generic,
                 is_bytestr: false,
-                start_point_span: sess.parse_sess.source_map().start_point(meta.span()),
+                start_point_span: sess.source_map().start_point(meta.span()),
             });
             return None;
         };
@@ -446,7 +441,7 @@ fn parse_unstability(sess: &Session, attr: &Attribute) -> Option<(Symbol, Stabil
             }
             sym::implied_by => insert_or_error(sess, mi, &mut implied_by)?,
             _ => {
-                sess.parse_sess.emit_err(session_diagnostics::UnknownMetaItem {
+                sess.emit_err(session_diagnostics::UnknownMetaItem {
                     span: meta.span(),
                     item: pprust::path_to_string(&mi.path),
                     expected: &["feature", "reason", "issue", "soft", "implied_by"],
@@ -459,7 +454,7 @@ fn parse_unstability(sess: &Session, attr: &Attribute) -> Option<(Symbol, Stabil
     match (feature, reason, issue) {
         (Some(feature), reason, Some(_)) => {
             if !rustc_lexer::is_ident(feature.as_str()) {
-                sess.parse_sess.emit_err(session_diagnostics::NonIdentFeature { span: attr.span });
+                sess.emit_err(session_diagnostics::NonIdentFeature { span: attr.span });
                 return None;
             }
             let level = StabilityLevel::Unstable {
@@ -471,7 +466,7 @@ fn parse_unstability(sess: &Session, attr: &Attribute) -> Option<(Symbol, Stabil
             Some((feature, level))
         }
         (None, _, _) => {
-            sess.parse_sess.emit_err(session_diagnostics::MissingFeature { span: attr.span });
+            sess.emit_err(session_diagnostics::MissingFeature { span: attr.span });
             return None;
         }
         _ => {
@@ -753,7 +748,7 @@ pub fn find_deprecation(
             MetaItemKind::List(list) => {
                 let get = |meta: &MetaItem, item: &mut Option<Symbol>| {
                     if item.is_some() {
-                        sess.parse_sess.emit_err(session_diagnostics::MultipleItem {
+                        sess.emit_err(session_diagnostics::MultipleItem {
                             span: meta.span,
                             item: pprust::path_to_string(&meta.path),
                         });
@@ -764,14 +759,11 @@ pub fn find_deprecation(
                         true
                     } else {
                         if let Some(lit) = meta.name_value_literal() {
-                            sess.parse_sess.emit_err(session_diagnostics::UnsupportedLiteral {
+                            sess.emit_err(session_diagnostics::UnsupportedLiteral {
                                 span: lit.span,
                                 reason: UnsupportedLiteralReason::DeprecatedString,
                                 is_bytestr: lit.kind.is_bytestr(),
-                                start_point_span: sess
-                                    .parse_sess
-                                    .source_map()
-                                    .start_point(lit.span),
+                                start_point_span: sess.source_map().start_point(lit.span),
                             });
                         } else {
                             sess.emit_err(session_diagnostics::IncorrectMetaItem {
@@ -810,7 +802,7 @@ pub fn find_deprecation(
                                 }
                             }
                             _ => {
-                                sess.parse_sess.emit_err(session_diagnostics::UnknownMetaItem {
+                                sess.emit_err(session_diagnostics::UnknownMetaItem {
                                     span: meta.span(),
                                     item: pprust::path_to_string(&mi.path),
                                     expected: if features.deprecated_suggestion {
@@ -823,14 +815,11 @@ pub fn find_deprecation(
                             }
                         },
                         NestedMetaItem::Lit(lit) => {
-                            sess.parse_sess.emit_err(session_diagnostics::UnsupportedLiteral {
+                            sess.emit_err(session_diagnostics::UnsupportedLiteral {
                                 span: lit.span,
                                 reason: UnsupportedLiteralReason::DeprecatedKvPair,
                                 is_bytestr: false,
-                                start_point_span: sess
-                                    .parse_sess
-                                    .source_map()
-                                    .start_point(lit.span),
+                                start_point_span: sess.source_map().start_point(lit.span),
                             });
                             continue 'outer;
                         }
@@ -841,7 +830,7 @@ pub fn find_deprecation(
 
         if is_rustc {
             if since.is_none() {
-                sess.parse_sess.emit_err(session_diagnostics::MissingSince { span: attr.span });
+                sess.emit_err(session_diagnostics::MissingSince { span: attr.span });
                 continue;
             }
 
