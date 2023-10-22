@@ -27,9 +27,9 @@ pub type GlobalState = RefCell<GlobalStateInner>;
 #[derive(Clone, Debug)]
 pub struct GlobalStateInner {
     /// This is used as a map between the address of each allocation and its `AllocId`. It is always
-    /// sorted. We cannot use a `HashMap` since we can be given an address that is offset from the
-    /// base address, and we need to find the `AllocId` it belongs to.
-    /// This is not the *full* inverse of `base_addr`; dead allocations have been removed.
+    /// sorted by address. We cannot use a `HashMap` since we can be given an address that is offset
+    /// from the base address, and we need to find the `AllocId` it belongs to. This is not the
+    /// *full* inverse of `base_addr`; dead allocations have been removed.
     int_to_ptr_map: Vec<(u64, AllocId)>,
     /// The base address for each allocation.  We cannot put that into
     /// `AllocExtra` because function pointers also have a base address, and
@@ -285,7 +285,12 @@ impl GlobalStateInner {
         // However, we *can* remove it from `int_to_ptr_map`, since any wildcard pointers that exist
         // can no longer actually be accessing that address. This ensures `alloc_id_from_addr` never
         // returns a dead allocation.
-        self.int_to_ptr_map.retain(|&(_, id)| id != dead_id);
+        // To avoid a linear scan we first look up the address in `base_addr`, and then find it in
+        // `int_to_ptr_map`.
+        let addr = *self.base_addr.get(&dead_id).unwrap();
+        let pos = self.int_to_ptr_map.binary_search_by_key(&addr, |(addr, _)| *addr).unwrap();
+        let removed = self.int_to_ptr_map.remove(pos);
+        assert_eq!(removed, (addr, dead_id)); // double-check that we removed the right thing
         // We can also remove it from `exposed`, since this allocation can anyway not be returned by
         // `alloc_id_from_addr` any more.
         self.exposed.remove(&dead_id);
