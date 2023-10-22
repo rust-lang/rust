@@ -296,7 +296,7 @@ impl<'b, T: Write + 'b> FormatHandler for Session<'b, T> {
                 Ok(ref result) if result.has_diff => report.add_diff(),
                 Err(e) => {
                     // Create a new error with path_str to help users see which files failed
-                    let err_msg = format!("{}: {}", path, e);
+                    let err_msg = format!("{path}: {e}");
                     return Err(io::Error::new(e.kind(), err_msg).into());
                 }
                 _ => {}

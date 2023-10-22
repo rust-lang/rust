@@ -1,5 +1,10 @@
 #!/bin/bash
 
+set -e
+
+# https://github.com/rust-lang/rustfmt/issues/5675
+export LD_LIBRARY_PATH=$(rustc --print sysroot)/lib:$LD_LIBRARY_PATH
+
 function print_usage() {
     echo "usage check_diff REMOTE_REPO FEATURE_BRANCH [COMMIT_HASH] [OPTIONAL_RUSTFMT_CONFIGS]"
 }
@@ -110,7 +115,7 @@ function compile_rustfmt() {
     git fetch feature $FEATURE_BRANCH
 
     cargo build --release --bin rustfmt && cp target/release/rustfmt $1/rustfmt
-    if [ -z "$OPTIONAL_COMMIT_HASH" ]; then
+    if [ -z "$OPTIONAL_COMMIT_HASH" ] || [ "$FEATURE_BRANCH" = "$OPTIONAL_COMMIT_HASH" ]; then
         git switch $FEATURE_BRANCH
     else
         git switch $OPTIONAL_COMMIT_HASH --detach
@@ -140,9 +145,15 @@ function check_repo() {
         init_submodules $SUBMODULES
     fi
 
+
+    # rustfmt --check returns 1 if a diff was found
+    # Also check_diff returns 1 if there was a diff between master rustfmt and the feature branch
+    # so we want to ignore the exit status check
+    set +e
     check_diff $REPO_NAME
     # append the status of running `check_diff` to the STATUSES array
     STATUSES+=($?)
+    set -e
 
     echo "removing tmp_dir $tmp_dir"
     rm -rf $tmp_dir

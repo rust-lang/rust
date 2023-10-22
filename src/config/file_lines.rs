@@ -162,7 +162,7 @@ impl fmt::Display for FileLines {
             None => write!(f, "None")?,
             Some(map) => {
                 for (file_name, ranges) in map.iter() {
-                    write!(f, "{}: ", file_name)?;
+                    write!(f, "{file_name}: ")?;
                     write!(f, "{}\n", ranges.iter().format(", "))?;
                 }
             }
