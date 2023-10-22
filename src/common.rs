@@ -383,6 +383,16 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
         })
     }
 
+    pub(crate) fn create_stack_slot(&mut self, size: u32, align: u32) -> Pointer {
+        let stack_slot = self.bcx.create_sized_stack_slot(StackSlotData {
+            kind: StackSlotKind::ExplicitSlot,
+            // FIXME Don't force the size to a multiple of 16 bytes once Cranelift gets a way to
+            // specify stack slot alignment.
+            size: (size + 15) / 16 * 16,
+        });
+        Pointer::stack_slot(stack_slot)
+    }
+
     pub(crate) fn set_debug_loc(&mut self, source_info: mir::SourceInfo) {
         if let Some(debug_context) = &mut self.cx.debug_context {
             let (file, line, column) =
