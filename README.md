@@ -11,6 +11,20 @@ standard library, and documentation.
 If you wish to _contribute_ to the compiler, you should read
 [CONTRIBUTING.md](CONTRIBUTING.md) instead.
 
+<details>
+<summary>Table of content</summary>
+
+- [Quick Start](#quick-start)
+- [Installing from Source](#installing-from-source)
+- [Building Documentation](#building-documentation)
+- [Notes](#notes)
+- [Getting Help](#getting-help)
+- [Contributing](#contributing)
+- [License](#license)
+- [Trademark](#trademark)
+
+</details>
+
 ## Quick Start
 
 Read ["Installation"] from [The Book].

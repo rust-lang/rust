@@ -5,8 +5,10 @@ use crate::{ty::Ty, Span};
 #[derive(Clone, Debug)]
 pub struct Body {
     pub blocks: Vec<BasicBlock>,
-    pub locals: Vec<LocalDecl>,
+    pub locals: LocalDecls,
 }
+
+type LocalDecls = Vec<LocalDecl>;
 
 #[derive(Clone, Debug)]
 pub struct LocalDecl {
@@ -344,6 +346,7 @@ pub enum Operand {
 #[derive(Clone, Debug)]
 pub struct Place {
     pub local: Local,
+    /// projection out of a place (access a field, deref a pointer, etc)
     pub projection: String,
 }
 
@@ -461,4 +464,26 @@ pub enum NullOp {
     AlignOf,
     /// Returns the offset of a field.
     OffsetOf(Vec<FieldIdx>),
+}
+
+impl Operand {
+    pub fn ty(&self, locals: &LocalDecls) -> Ty {
+        match self {
+            Operand::Copy(place) | Operand::Move(place) => place.ty(locals),
+            Operand::Constant(c) => c.ty(),
+        }
+    }
+}
+
+impl Constant {
+    pub fn ty(&self) -> Ty {
+        self.literal.ty
+    }
+}
+
+impl Place {
+    pub fn ty(&self, locals: &LocalDecls) -> Ty {
+        let _start_ty = locals[self.local].ty;
+        todo!("Implement projection")
+    }
 }

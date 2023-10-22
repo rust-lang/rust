@@ -859,8 +859,8 @@ fn get_thread_id() -> u32 {
 }
 
 // Memory reporting
-cfg_if! {
-    if #[cfg(windows)] {
+cfg_match! {
+    cfg(windows) => {
         pub fn get_resident_set_size() -> Option<usize> {
             use std::mem;
 
@@ -885,7 +885,8 @@ cfg_if! {
 
             Some(pmc.WorkingSetSize)
         }
-    } else if #[cfg(target_os = "macos")] {
+    }
+    cfg(target_os = "macos")  => {
         pub fn get_resident_set_size() -> Option<usize> {
             use libc::{c_int, c_void, getpid, proc_pidinfo, proc_taskinfo, PROC_PIDTASKINFO};
             use std::mem;
@@ -903,7 +904,8 @@ cfg_if! {
                 }
             }
         }
-    } else if #[cfg(unix)] {
+    }
+    cfg(unix) => {
         pub fn get_resident_set_size() -> Option<usize> {
             let field = 1;
             let contents = fs::read("/proc/self/statm").ok()?;
@@ -912,7 +914,8 @@ cfg_if! {
             let npages = s.parse::<usize>().ok()?;
             Some(npages * 4096)
         }
-    } else {
+    }
+    _ => {
         pub fn get_resident_set_size() -> Option<usize> {
             None
         }

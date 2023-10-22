@@ -9,6 +9,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::{sym, Symbol};
+use std::iter;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -52,12 +53,13 @@ declare_clippy_lint! {
 declare_clippy_lint! {
     /// ### What it does
     /// This is the opposite of the `iter_without_into_iter` lint.
-    /// It looks for `IntoIterator for (&|&mut) Type` implementations without an inherent `iter` or `iter_mut` method.
+    /// It looks for `IntoIterator for (&|&mut) Type` implementations without an inherent `iter` or `iter_mut` method
+    /// on the type or on any of the types in its `Deref` chain.
     ///
     /// ### Why is this bad?
     /// It's not bad, but having them is idiomatic and allows the type to be used in iterator chains
-    /// by just calling `.iter()`, instead of the more awkward `<&Type>::into_iter` or `(&val).iter()` syntax
-    /// in case of ambiguity with another `Intoiterator` impl.
+    /// by just calling `.iter()`, instead of the more awkward `<&Type>::into_iter` or `(&val).into_iter()` syntax
+    /// in case of ambiguity with another `IntoIterator` impl.
     ///
     /// ### Example
     /// ```rust
@@ -102,7 +104,20 @@ fn is_nameable_in_impl_trait(ty: &rustc_hir::Ty<'_>) -> bool {
     !matches!(ty.kind, TyKind::OpaqueDef(..))
 }
 
-fn type_has_inherent_method(cx: &LateContext<'_>, ty: Ty<'_>, method_name: Symbol) -> bool {
+/// Returns the deref chain of a type, starting with the type itself.
+fn deref_chain<'cx, 'tcx>(cx: &'cx LateContext<'tcx>, ty: Ty<'tcx>) -> impl Iterator<Item = Ty<'tcx>> + 'cx {
+    iter::successors(Some(ty), |&ty| {
+        if let Some(deref_did) = cx.tcx.lang_items().deref_trait()
+            && implements_trait(cx, ty, deref_did, &[])
+        {
+            make_normalized_projection(cx.tcx, cx.param_env, deref_did, sym::Target, [ty])
+        } else {
+            None
+        }
+    })
+}
+
+fn adt_has_inherent_method(cx: &LateContext<'_>, ty: Ty<'_>, method_name: Symbol) -> bool {
     if let Some(ty_did) = ty.ty_adt_def().map(ty::AdtDef::did) {
         cx.tcx.inherent_impls(ty_did).iter().any(|&did| {
             cx.tcx
@@ -127,7 +142,11 @@ impl LateLintPass<'_> for IterWithoutIntoIter {
                 Mutability::Mut => sym::iter_mut,
                 Mutability::Not => sym::iter,
             }
-            && !type_has_inherent_method(cx, ty, expected_method_name)
+            && !deref_chain(cx, ty)
+                .any(|ty| {
+                    // We can't check inherent impls for slices, but we know that they have an `iter(_mut)` method
+                    ty.peel_refs().is_slice() || adt_has_inherent_method(cx, ty, expected_method_name)
+                })
             && let Some(iter_assoc_span) = imp.items.iter().find_map(|item| {
                 if item.ident.name == sym!(IntoIter) {
                     Some(cx.tcx.hir().impl_item(item.id).expect_type().span)

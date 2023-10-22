@@ -109,8 +109,8 @@ mod mode {
 
 pub use mode::{is_dyn_thread_safe, set_dyn_thread_safe_mode};
 
-cfg_if! {
-    if #[cfg(not(parallel_compiler))] {
+cfg_match! {
+    cfg(not(parallel_compiler)) => {
         use std::ops::Add;
         use std::cell::Cell;
 
@@ -251,7 +251,8 @@ cfg_if! {
                 MTLock(self.0.clone())
             }
         }
-    } else {
+    }
+    _ => {
         pub use std::marker::Send as Send;
         pub use std::marker::Sync as Sync;
 

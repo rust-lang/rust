@@ -225,6 +225,7 @@ pub struct ImplDef(pub DefId);
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct RegionDef(pub DefId);
 
+/// A list of generic arguments.
 #[derive(Clone, Debug)]
 pub struct GenericArgs(pub Vec<GenericArgKind>);
 

@@ -105,7 +105,6 @@ use rustc_hir::def_id::{DefId, DefIdSet, LOCAL_CRATE};
 use rustc_hir::definitions::DefPathDataName;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::exported_symbols::{SymbolExportInfo, SymbolExportLevel};
-use rustc_middle::mir;
 use rustc_middle::mir::mono::{
     CodegenUnit, CodegenUnitNameBuilder, InstantiationMode, Linkage, MonoItem, MonoItemData,
     Visibility,
@@ -1279,38 +1278,8 @@ fn dump_mono_items_stats<'tcx>(
     Ok(())
 }
 
-fn codegened_and_inlined_items(tcx: TyCtxt<'_>, (): ()) -> &DefIdSet {
-    let (items, cgus) = tcx.collect_and_partition_mono_items(());
-    let mut visited = DefIdSet::default();
-    let mut result = items.clone();
-
-    for cgu in cgus {
-        for item in cgu.items().keys() {
-            if let MonoItem::Fn(ref instance) = item {
-                let did = instance.def_id();
-                if !visited.insert(did) {
-                    continue;
-                }
-                let body = tcx.instance_mir(instance.def);
-                for block in body.basic_blocks.iter() {
-                    for statement in &block.statements {
-                        let mir::StatementKind::Coverage(_) = statement.kind else { continue };
-                        let scope = statement.source_info.scope;
-                        if let Some(inlined) = scope.inlined_instance(&body.source_scopes) {
-                            result.insert(inlined.def_id());
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    tcx.arena.alloc(result)
-}
-
 pub fn provide(providers: &mut Providers) {
     providers.collect_and_partition_mono_items = collect_and_partition_mono_items;
-    providers.codegened_and_inlined_items = codegened_and_inlined_items;
 
     providers.is_codegened_item = |tcx, def_id| {
         let (all_mono_items, _) = tcx.collect_and_partition_mono_items(());

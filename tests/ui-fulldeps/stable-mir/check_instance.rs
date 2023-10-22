@@ -15,7 +15,8 @@ extern crate rustc_smir;
 extern crate stable_mir;
 
 use rustc_middle::ty::TyCtxt;
-
+use mir::{mono::Instance, TerminatorKind::*};
+use stable_mir::ty::{TyKind, RigidTy};
 use stable_mir::*;
 use rustc_smir::rustc_internal;
 use std::io::Write;
@@ -43,7 +44,26 @@ fn test_stable_mir(_tcx: TyCtxt<'_>) -> ControlFlow<()> {
     // For all generic items, try_from should fail.
     assert!(generic.iter().all(|item| mir::mono::Instance::try_from(*item).is_err()));
 
+    for instance in instances {
+        test_body(instance.body())
+    }
     ControlFlow::Continue(())
+}
+
+/// Inspect the instance body
+fn test_body(body: mir::Body) {
+    for term in body.blocks.iter().map(|bb| &bb.terminator) {
+        match &term.kind {
+            Call{ func, .. } => {
+                let TyKind::RigidTy(ty) = func.ty(&body.locals).kind() else { unreachable!() };
+                let RigidTy::FnDef(def, args) = ty else { unreachable!() };
+                let result = Instance::resolve(def, &args);
+                assert!(result.is_ok());
+            }
+            Goto {..} | Assert{..} | SwitchInt{..} | Return | Drop {..} => { /* Do nothing */}
+            _ => { unreachable!("Unexpected terminator {term:?}") }
+        }
+    }
 }
 
 
@@ -56,6 +76,7 @@ fn main() {
     generate_input(&path).unwrap();
     let args = vec![
         "rustc".to_string(),
+        "-Cpanic=abort".to_string(),
         "--crate-type=lib".to_string(),
         "--crate-name".to_string(),
         CRATE_NAME.to_string(),
@@ -78,6 +99,9 @@ fn generate_input(path: &str) -> std::io::Result<()> {
     }}
 
     pub fn monomorphic() {{
+        let v = vec![10];
+        let dup = ty_param(&v);
+        assert_eq!(v, dup);
     }}
 
     pub mod foo {{

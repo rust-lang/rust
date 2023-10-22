@@ -5,6 +5,7 @@ LL | unsafe mod n;
    | ^^^^^^^^^^^^^
    |
    = help: to create the module `n`, create file "$DIR/n.rs" or "$DIR/n/mod.rs"
+   = note: if there is a `mod n` elsewhere in the crate already, import it with `use crate::...` instead
 
 error: module cannot be declared unsafe
   --> $DIR/unsafe-mod.rs:1:1

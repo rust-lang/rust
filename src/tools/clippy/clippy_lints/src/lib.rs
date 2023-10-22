@@ -50,9 +50,6 @@ extern crate clippy_utils;
 #[macro_use]
 extern crate declare_clippy_lint;
 
-use std::io;
-use std::path::PathBuf;
-
 use clippy_utils::msrvs::Msrv;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_lint::{Lint, LintId};
@@ -121,7 +118,6 @@ mod empty_structs_with_brackets;
 mod endian_bytes;
 mod entry;
 mod enum_clike;
-mod enum_variants;
 mod equatable_if_let;
 mod error_impl_error;
 mod escape;
@@ -166,6 +162,7 @@ mod inline_fn_without_body;
 mod instant_subtraction;
 mod int_plus_one;
 mod invalid_upcast_comparisons;
+mod item_name_repetitions;
 mod items_after_statements;
 mod items_after_test_module;
 mod iter_not_returning_iterator;
@@ -362,7 +359,6 @@ mod zero_sized_map_values;
 // end lints modules, do not remove this comment, it’s used in `update_lints`
 
 use crate::utils::conf::metadata::get_configuration_metadata;
-use crate::utils::conf::TryConf;
 pub use crate::utils::conf::{lookup_conf_file, Conf};
 use crate::utils::FindAll;
 
@@ -374,63 +370,11 @@ use crate::utils::FindAll;
 /// level (i.e `#![cfg_attr(...)]`) will still be expanded even when using a pre-expansion pass.
 ///
 /// Used in `./src/driver.rs`.
-pub fn register_pre_expansion_lints(store: &mut rustc_lint::LintStore, sess: &Session, conf: &Conf) {
+pub fn register_pre_expansion_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     // NOTE: Do not add any more pre-expansion passes. These should be removed eventually.
-    let msrv = Msrv::read(&conf.msrv, sess);
-    let msrv = move || msrv.clone();
+    let msrv = || conf.msrv.clone();
 
     store.register_pre_expansion_pass(move || Box::new(attrs::EarlyAttributes { msrv: msrv() }));
-}
-
-#[doc(hidden)]
-pub fn read_conf(sess: &Session, path: &io::Result<(Option<PathBuf>, Vec<String>)>) -> Conf {
-    if let Ok((_, warnings)) = path {
-        for warning in warnings {
-            sess.warn(warning.clone());
-        }
-    }
-    let file_name = match path {
-        Ok((Some(path), _)) => path,
-        Ok((None, _)) => return Conf::default(),
-        Err(error) => {
-            sess.err(format!("error finding Clippy's configuration file: {error}"));
-            return Conf::default();
-        },
-    };
-
-    let TryConf { conf, errors, warnings } = utils::conf::read(sess, file_name);
-    // all conf errors are non-fatal, we just use the default conf in case of error
-    for error in errors {
-        if let Some(span) = error.span {
-            sess.span_err(
-                span,
-                format!("error reading Clippy's configuration file: {}", error.message),
-            );
-        } else {
-            sess.err(format!(
-                "error reading Clippy's configuration file `{}`: {}",
-                file_name.display(),
-                error.message
-            ));
-        }
-    }
-
-    for warning in warnings {
-        if let Some(span) = warning.span {
-            sess.span_warn(
-                span,
-                format!("error reading Clippy's configuration file: {}", warning.message),
-            );
-        } else {
-            sess.warn(format!(
-                "error reading Clippy's configuration file `{}`: {}",
-                file_name.display(),
-                warning.message
-            ));
-        }
-    }
-
-    conf
 }
 
 #[derive(Default)]
@@ -558,7 +502,7 @@ fn register_categories(store: &mut rustc_lint::LintStore) {
 ///
 /// Used in `./src/driver.rs`.
 #[expect(clippy::too_many_lines)]
-pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf: &Conf) {
+pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf: &'static Conf) {
     register_removed_non_tool_lints(store);
     register_categories(store);
 
@@ -660,8 +604,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|_| Box::new(non_octal_unix_permissions::NonOctalUnixPermissions));
     store.register_early_pass(|| Box::new(unnecessary_self_imports::UnnecessarySelfImports));
 
-    let msrv = Msrv::read(&conf.msrv, sess);
-    let msrv = move || msrv.clone();
+    let msrv = || conf.msrv.clone();
     let avoid_breaking_exported_api = conf.avoid_breaking_exported_api;
     let allow_expect_in_tests = conf.allow_expect_in_tests;
     let allow_unwrap_in_tests = conf.allow_unwrap_in_tests;
@@ -762,6 +705,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
             too_many_arguments_threshold,
             too_many_lines_threshold,
             large_error_threshold,
+            avoid_breaking_exported_api,
         ))
     });
     let doc_valid_idents = conf.doc_valid_idents.iter().cloned().collect::<FxHashSet<_>>();
@@ -806,7 +750,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
             suppress_restriction_lint_in_const,
         ))
     });
-    store.register_late_pass(|_| Box::new(non_copy_const::NonCopyConst));
+    let ignore_interior_mutability = conf.ignore_interior_mutability.clone();
+    store.register_late_pass(move |_| Box::new(non_copy_const::NonCopyConst::new(ignore_interior_mutability.clone())));
     store.register_late_pass(|_| Box::new(ptr_offset_with_cast::PtrOffsetWithCast));
     store.register_late_pass(|_| Box::new(redundant_clone::RedundantClone));
     store.register_late_pass(|_| Box::new(slow_vector_initialization::SlowVectorInit));
@@ -851,10 +796,12 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         ))
     });
     let enum_variant_name_threshold = conf.enum_variant_name_threshold;
+    let struct_field_name_threshold = conf.struct_field_name_threshold;
     let allow_private_module_inception = conf.allow_private_module_inception;
     store.register_late_pass(move |_| {
-        Box::new(enum_variants::EnumVariantNames::new(
+        Box::new(item_name_repetitions::ItemNameRepetitions::new(
             enum_variant_name_threshold,
+            struct_field_name_threshold,
             avoid_breaking_exported_api,
             allow_private_module_inception,
         ))

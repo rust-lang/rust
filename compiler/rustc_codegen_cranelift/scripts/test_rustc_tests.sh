@@ -27,8 +27,6 @@ rm tests/ui/parser/unclosed-delimiter-in-dep.rs # submodule contains //~ERROR
 # missing features
 # ================
 
-rm -r tests/run-make/comment-section # cg_clif doesn't yet write the .comment section
-
 # requires stack unwinding
 # FIXME add needs-unwind to these tests
 rm -r tests/run-make/libtest-junit
@@ -44,10 +42,8 @@ rm tests/ui/proc-macro/allowed-signatures.rs
 rm tests/ui/proc-macro/no-mangle-in-proc-macro-issue-111888.rs
 
 # vendor intrinsics
-rm tests/ui/sse2.rs # cpuid not supported, so sse2 not detected
+rm tests/ui/sse2.rs # CodegenBackend::target_features not yet implemented
 rm tests/ui/simd/array-type.rs # "Index argument for `simd_insert` is not a constant"
-rm tests/ui/simd/intrinsic/generic-bswap-byte.rs # simd_bswap not yet implemented
-rm tests/ui/simd/intrinsic/generic-arithmetic-pass.rs # many missing simd intrinsics
 
 # exotic linkages
 rm tests/ui/issues/issue-33992.rs # unsupported linkages
@@ -114,21 +110,6 @@ rm tests/ui/mir/mir_raw_fat_ptr.rs # same
 rm tests/ui/consts/issue-33537.rs # same
 rm tests/ui/layout/valid_range_oob.rs # different ICE message
 rm tests/ui/const-generics/generic_const_exprs/issue-80742.rs # gives error instead of ICE with cg_clif
-
-rm tests/ui/consts/issue-miri-1910.rs # different error message
-rm tests/ui/consts/offset_ub.rs # same
-rm tests/ui/consts/const-eval/ub-slice-get-unchecked.rs # same
-rm tests/ui/intrinsics/panic-uninitialized-zeroed.rs # same
-rm tests/ui/lint/lint-const-item-mutation.rs # same
-rm tests/ui/pattern/usefulness/doc-hidden-non-exhaustive.rs # same
-rm tests/ui/suggestions/derive-trait-for-method-call.rs # same
-rm tests/ui/typeck/issue-46112.rs # same
-rm tests/ui/consts/const_cmp_type_id.rs # same
-rm tests/ui/consts/issue-73976-monomorphic.rs # same
-rm tests/ui/rfcs/rfc-3348-c-string-literals/non-ascii.rs # same
-rm tests/ui/consts/const-eval/nonnull_as_ref_ub.rs # same
-rm tests/ui/consts/issue-94675.rs # same
-rm tests/ui/associated-types/issue-85103-layout-debug.rs # same
 
 # rustdoc-clif passes extra args, suppressing the help message when no args are passed
 rm -r tests/run-make/issue-88756-default-output

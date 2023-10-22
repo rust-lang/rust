@@ -30,7 +30,7 @@ impl<'tcx> LateLintPass<'tcx> for IfChainStyle {
                 if_chain_local_span(cx, local, if_chain_span),
                 "`let` expression should be above the `if_chain!`",
             );
-        } else if local.span.ctxt() == block.span.ctxt() && is_if_chain_then(after, block.expr, if_chain_span) {
+        } else if local.span.eq_ctxt(block.span) && is_if_chain_then(after, block.expr, if_chain_span) {
             span_lint(
                 cx,
                 IF_CHAIN_STYLE,

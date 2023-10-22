@@ -174,9 +174,9 @@ dependencies = [
 
 [[package]]
 name = "libc"
-version = "0.2.148"
+version = "0.2.149"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9cdc71e17332e86d2e1d38c1f99edcb6288ee11b815fb1a4b049eaa2114d369b"
+checksum = "a08173bc88b7955d1b3145aa561539096c421ac8debde8cbc3612ec635fee29b"
 dependencies = [
  "rustc-std-workspace-core",
 ]
@@ -361,7 +361,6 @@ version = "0.0.0"
 dependencies = [
  "addr2line",
  "alloc",
- "cc",
  "cfg-if",
  "compiler_builtins",
  "core",

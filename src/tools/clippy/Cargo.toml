@@ -29,7 +29,7 @@ color-print = "0.3.4" # Sync version with Cargo
 anstream = "0.5.0"
 
 [dev-dependencies]
-ui_test = "0.20"
+ui_test = "0.21.2"
 tester = "0.9"
 regex = "1.5"
 toml = "0.7.3"

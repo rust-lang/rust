@@ -5,6 +5,7 @@ LL | mod lib;
    | ^^^^^^^^
    |
    = help: to create the module `lib`, create file "$DIR/lib.rs" or "$DIR/lib/mod.rs"
+   = note: if there is a `mod lib` elsewhere in the crate already, import it with `use crate::...` instead
 
 error[E0583]: file not found for module `main`
   --> $DIR/special_module_name.rs:4:1
@@ -13,6 +14,7 @@ LL | mod main;
    | ^^^^^^^^^
    |
    = help: to create the module `main`, create file "$DIR/main.rs" or "$DIR/main/mod.rs"
+   = note: if there is a `mod main` elsewhere in the crate already, import it with `use crate::...` instead
 
 warning: found module declaration for lib.rs
   --> $DIR/special_module_name.rs:1:1

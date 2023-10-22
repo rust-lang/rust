@@ -1644,7 +1644,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
             // use nth(1) to skip one layer of desugaring from `IntoIter::into_iter`
             if let Some((_, hir::Node::Expr(await_expr))) = hir.parent_iter(*hir_id).nth(1)
-                && let Some(expr_span) = expr.span.find_ancestor_inside(await_expr.span)
+                && let Some(expr_span) = expr.span.find_ancestor_inside_same_ctxt(await_expr.span)
             {
                 let removal_span = self
                     .tcx
@@ -2665,6 +2665,29 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             // Check for foreign traits being reachable.
                             self.tcx.visible_parent_map(()).get(&def_id).is_some()
                         };
+                        if Some(def_id) == self.tcx.lang_items().sized_trait()
+                            && let Some(hir::Node::TraitItem(hir::TraitItem {
+                                ident,
+                                kind: hir::TraitItemKind::Type(bounds, None),
+                                ..
+                            })) = tcx.hir().get_if_local(item_def_id)
+                            // Do not suggest relaxing if there is an explicit `Sized` obligation.
+                            && !bounds.iter()
+                                .filter_map(|bound| bound.trait_ref())
+                                .any(|tr| tr.trait_def_id() == self.tcx.lang_items().sized_trait())
+                        {
+                            let (span, separator) = if let [.., last] = bounds {
+                                (last.span().shrink_to_hi(), " +")
+                            } else {
+                                (ident.span.shrink_to_hi(), ":")
+                            };
+                            err.span_suggestion_verbose(
+                                span,
+                                "consider relaxing the implicit `Sized` restriction",
+                                format!("{separator} ?Sized"),
+                                Applicability::MachineApplicable,
+                            );
+                        }
                         if let DefKind::Trait = tcx.def_kind(item_def_id)
                             && !visible_item
                         {

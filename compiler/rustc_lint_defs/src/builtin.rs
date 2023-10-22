@@ -3953,8 +3953,13 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `non_exhaustive_omitted_patterns` lint detects when a wildcard (`_` or `..`) in a
-    /// pattern for a `#[non_exhaustive]` struct or enum is reachable.
+    /// The `non_exhaustive_omitted_patterns` lint aims to help consumers of a `#[non_exhaustive]`
+    /// struct or enum who want to match all of its fields/variants explicitly.
+    ///
+    /// The `#[non_exhaustive]` annotation forces matches to use wildcards, so exhaustiveness
+    /// checking cannot be used to ensure that all fields/variants are matched explicitly. To remedy
+    /// this, this allow-by-default lint warns the user when a match mentions some but not all of
+    /// the fields/variants of a `#[non_exhaustive]` struct or enum.
     ///
     /// ### Example
     ///
@@ -3968,9 +3973,9 @@ declare_lint! {
     ///
     /// // in crate B
     /// #![feature(non_exhaustive_omitted_patterns_lint)]
+    /// #[warn(non_exhaustive_omitted_patterns)]
     /// match Bar::A {
     ///     Bar::A => {},
-    ///     #[warn(non_exhaustive_omitted_patterns)]
     ///     _ => {},
     /// }
     /// ```
@@ -3978,29 +3983,32 @@ declare_lint! {
     /// This will produce:
     ///
     /// ```text
-    /// warning: reachable patterns not covered of non exhaustive enum
+    /// warning: some variants are not matched explicitly
     ///    --> $DIR/reachable-patterns.rs:70:9
     ///    |
-    /// LL |         _ => {}
-    ///    |         ^ pattern `B` not covered
+    /// LL |         match Bar::A {
+    ///    |               ^ pattern `Bar::B` not covered
     ///    |
     ///  note: the lint level is defined here
     ///   --> $DIR/reachable-patterns.rs:69:16
     ///    |
     /// LL |         #[warn(non_exhaustive_omitted_patterns)]
     ///    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    ///    = help: ensure that all possible cases are being handled by adding the suggested match arms
+    ///    = help: ensure that all variants are matched explicitly by adding the suggested match arms
     ///    = note: the matched value is of type `Bar` and the `non_exhaustive_omitted_patterns` attribute was found
     /// ```
     ///
+    /// Warning: setting this to `deny` will make upstream non-breaking changes (adding fields or
+    /// variants to a `#[non_exhaustive]` struct or enum) break your crate. This goes against
+    /// expected semver behavior.
+    ///
     /// ### Explanation
     ///
-    /// Structs and enums tagged with `#[non_exhaustive]` force the user to add a
-    /// (potentially redundant) wildcard when pattern-matching, to allow for future
-    /// addition of fields or variants. The `non_exhaustive_omitted_patterns` lint
-    /// detects when such a wildcard happens to actually catch some fields/variants.
-    /// In other words, when the match without the wildcard would not be exhaustive.
-    /// This lets the user be informed if new fields/variants were added.
+    /// Structs and enums tagged with `#[non_exhaustive]` force the user to add a (potentially
+    /// redundant) wildcard when pattern-matching, to allow for future addition of fields or
+    /// variants. The `non_exhaustive_omitted_patterns` lint detects when such a wildcard happens to
+    /// actually catch some fields/variants. In other words, when the match without the wildcard
+    /// would not be exhaustive. This lets the user be informed if new fields/variants were added.
     pub NON_EXHAUSTIVE_OMITTED_PATTERNS,
     Allow,
     "detect when patterns of types marked `non_exhaustive` are missed",
