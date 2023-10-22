@@ -2,6 +2,8 @@
 
 use crate::intrinsics::assert_unsafe_precondition;
 use crate::intrinsics::const_eval_select;
+#[cfg(not(bootstrap))]
+use crate::intrinsics::slice_index;
 use crate::intrinsics::unchecked_sub;
 use crate::ops;
 use crate::ptr;
@@ -213,14 +215,38 @@ unsafe impl<T> SliceIndex<[T]> for usize {
 
     #[inline]
     fn get(self, slice: &[T]) -> Option<&T> {
-        // SAFETY: `self` is checked to be in bounds.
-        if self < slice.len() { unsafe { Some(&*self.get_unchecked(slice)) } } else { None }
+        if self < slice.len() {
+            #[cfg(bootstrap)]
+            // SAFETY: `self` is checked to be in bounds.
+            unsafe {
+                Some(&*self.get_unchecked(slice))
+            }
+            #[cfg(not(bootstrap))]
+            // SAFETY: `self` is checked to be in bounds.
+            unsafe {
+                Some(slice_index(slice, self))
+            }
+        } else {
+            None
+        }
     }
 
     #[inline]
     fn get_mut(self, slice: &mut [T]) -> Option<&mut T> {
-        // SAFETY: `self` is checked to be in bounds.
-        if self < slice.len() { unsafe { Some(&mut *self.get_unchecked_mut(slice)) } } else { None }
+        if self < slice.len() {
+            #[cfg(bootstrap)]
+            // SAFETY: `self` is checked to be in bounds.
+            unsafe {
+                Some(&mut *self.get_unchecked_mut(slice))
+            }
+            #[cfg(not(bootstrap))]
+            // SAFETY: `self` is checked to be in bounds.
+            unsafe {
+                Some(slice_index(slice, self))
+            }
+        } else {
+            None
+        }
     }
 
     #[inline]
@@ -231,11 +257,18 @@ unsafe impl<T> SliceIndex<[T]> for usize {
         // `self` is in bounds of `slice` so `self` cannot overflow an `isize`,
         // so the call to `add` is safe.
         unsafe {
-            assert_unsafe_precondition!(
-                "slice::get_unchecked requires that the index is within the slice",
-                [T](this: usize, slice: *const [T]) => this < slice.len()
-            );
-            slice.as_ptr().add(self)
+            #[cfg(bootstrap)]
+            {
+                assert_unsafe_precondition!(
+                    "slice::get_unchecked requires that the index is within the slice",
+                    [T](this: usize, slice: *const [T]) => this < slice.len()
+                );
+                slice.as_ptr().add(self)
+            }
+            #[cfg(not(bootstrap))]
+            {
+                slice_index(slice, this)
+            }
         }
     }
 
@@ -244,11 +277,18 @@ unsafe impl<T> SliceIndex<[T]> for usize {
         let this = self;
         // SAFETY: see comments for `get_unchecked` above.
         unsafe {
-            assert_unsafe_precondition!(
-                "slice::get_unchecked_mut requires that the index is within the slice",
-                [T](this: usize, slice: *mut [T]) => this < slice.len()
-            );
-            slice.as_mut_ptr().add(self)
+            #[cfg(bootstrap)]
+            {
+                assert_unsafe_precondition!(
+                    "slice::get_unchecked_mut requires that the index is within the slice",
+                    [T](this: usize, slice: *mut [T]) => this < slice.len()
+                );
+                slice.as_mut_ptr().add(self)
+            }
+            #[cfg(not(bootstrap))]
+            {
+                slice_index(slice, this)
+            }
         }
     }
 
