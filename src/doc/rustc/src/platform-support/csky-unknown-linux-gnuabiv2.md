@@ -6,10 +6,10 @@ This target supports [C-SKY](https://github.com/c-sky) CPUs with `abi` v2 and `g
 
 target | std | host | notes
 -------|:---:|:----:|-------
-`csky-unknown-linux-gnuabiv2` | ✓ |  | C-SKY abiv2 Linux(little endian)
+`csky-unknown-linux-gnuabiv2` | ✓ |  | C-SKY abiv2 Linux (little endian)
 `csky-unknown-linux-gnuabiv2hf` | ✓ |  | C-SKY abiv2 Linux, hardfloat (little endian)
 
-Refrence:
+Reference:
 https://c-sky.github.io/
 
 https://gitlab.com/c-sky/

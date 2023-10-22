@@ -259,7 +259,7 @@ target | std | host | notes
 `avr-unknown-gnu-atmega328` | * |  | AVR. Requires `-Z build-std=core`
 `bpfeb-unknown-none` | * |  | BPF (big endian)
 `bpfel-unknown-none` | * |  | BPF (little endian)
-`csky-unknown-linux-gnuabiv2` | ✓ |  | C-SKY abiv2 Linux(little endian)
+`csky-unknown-linux-gnuabiv2` | ✓ |  | C-SKY abiv2 Linux (little endian)
 `csky-unknown-linux-gnuabiv2hf` | ✓ |  | C-SKY abiv2 Linux, hardfloat (little endian)
 `hexagon-unknown-linux-musl` | ? |  |
 `i386-apple-ios` | ✓ |  | 32-bit x86 iOS [^x86_32-floats-return-ABI]
