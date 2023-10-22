@@ -175,4 +175,19 @@ fn main() {
             "#,
         );
     }
+
+    #[test]
+    fn regression_15787() {
+        check_diagnostics(
+            r#"
+//- minicore: coerce_unsized, slice, copy
+fn foo(mut slice: &[u32]) -> usize {
+    slice = match slice {
+        [0, rest @ ..] | rest => rest,
+    };
+    slice.len()
+}
+"#,
+        );
+    }
 }
