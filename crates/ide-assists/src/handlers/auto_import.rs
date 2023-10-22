@@ -5,7 +5,7 @@ use ide_db::{
     helpers::mod_path_to_ast,
     imports::{
         import_assets::{ImportAssets, ImportCandidate, LocatedImport},
-        insert_use::{insert_use, ImportScope},
+        insert_use::{insert_use, insert_use_as_alias, ImportScope},
     },
 };
 use syntax::{ast, AstNode, NodeOrToken, SyntaxElement};
@@ -129,10 +129,12 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
     for import in proposed_imports {
         let import_path = import.import_path;
 
+        let (assist_id, import_name) =
+            (AssistId("auto_import", AssistKind::QuickFix), import_path.display(ctx.db()));
         acc.add_group(
             &group_label,
-            AssistId("auto_import", AssistKind::QuickFix),
-            format!("Import `{}`", import_path.display(ctx.db())),
+            assist_id,
+            format!("Import `{}`", import_name),
             range,
             |builder| {
                 let scope = match scope.clone() {
@@ -143,6 +145,38 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
                 insert_use(&scope, mod_path_to_ast(&import_path), &ctx.config.insert_use);
             },
         );
+
+        match import_assets.import_candidate() {
+            ImportCandidate::TraitAssocItem(name) | ImportCandidate::TraitMethod(name) => {
+                let is_method =
+                    matches!(import_assets.import_candidate(), ImportCandidate::TraitMethod(_));
+                let type_ = if is_method { "method" } else { "item" };
+                let group_label = GroupLabel(format!(
+                    "Import a trait for {} {} by alias",
+                    type_,
+                    name.assoc_item_name.text()
+                ));
+                acc.add_group(
+                    &group_label,
+                    assist_id,
+                    format!("Import `{} as _`", import_name),
+                    range,
+                    |builder| {
+                        let scope = match scope.clone() {
+                            ImportScope::File(it) => ImportScope::File(builder.make_mut(it)),
+                            ImportScope::Module(it) => ImportScope::Module(builder.make_mut(it)),
+                            ImportScope::Block(it) => ImportScope::Block(builder.make_mut(it)),
+                        };
+                        insert_use_as_alias(
+                            &scope,
+                            mod_path_to_ast(&import_path),
+                            &ctx.config.insert_use,
+                        );
+                    },
+                );
+            }
+            _ => {}
+        }
     }
     Some(())
 }
@@ -723,7 +757,7 @@ fn main() {
             }
             ",
             r"
-            use test_mod::TestTrait;
+            use test_mod::TestTrait as _;
 
             mod test_mod {
                 pub trait TestTrait {
@@ -794,7 +828,7 @@ fn main() {
             }
             ",
             r"
-            use test_mod::TestTrait;
+            use test_mod::TestTrait as _;
 
             mod test_mod {
                 pub trait TestTrait {
@@ -866,7 +900,7 @@ fn main() {
             }
             ",
             r"
-            use test_mod::TestTrait;
+            use test_mod::TestTrait as _;
 
             mod test_mod {
                 pub trait TestTrait {
@@ -908,7 +942,7 @@ fn main() {
             }
             ",
             r"
-            use dep::test_mod::TestTrait;
+            use dep::test_mod::TestTrait as _;
 
             fn main() {
                 let test_struct = dep::test_mod::TestStruct {};
@@ -939,7 +973,7 @@ fn main() {
             }
             ",
             r"
-            use dep::test_mod::TestTrait;
+            use dep::test_mod::TestTrait as _;
 
             fn main() {
                 dep::test_mod::TestStruct::test_function
@@ -969,7 +1003,7 @@ fn main() {
             }
             ",
             r"
-            use dep::test_mod::TestTrait;
+            use dep::test_mod::TestTrait as _;
 
             fn main() {
                 dep::test_mod::TestStruct::CONST
