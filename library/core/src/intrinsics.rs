@@ -74,6 +74,7 @@ pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
     unsafe { crate::ptr::drop_in_place(to_drop) }
 }
 
+#[allow(private_bounds)]
 extern "rust-intrinsic" {
     // N.B., these intrinsics take raw pointers because they mutate aliased
     // memory, which is not valid for either `&` or `&mut`.
@@ -1410,6 +1411,39 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn needs_drop<T: ?Sized>() -> bool;
 
+    /// Indexes into a slice using `ProjectionElem::Index`
+    ///
+    /// Depending on the return type, this lowers to one of the following in MIR:
+    /// - `&raw const (*slice)[index]`, for `*const _`
+    /// - `&raw mut (*slice)[index]`, for `*mut _`
+    /// - `&(*slice)[index]`, for `&_`
+    /// - `&mut (*slice)[index]`, for `&mut _`
+    ///
+    /// This is intended for use in implementing `[T]::get_unchecked_mut`,
+    /// `[T]::get`, and friends. It should not be used elsewhere; ICEs from
+    /// misuse in callers of intrinsics are *not* considered compiler bugs.
+    ///
+    /// While semantically unnecessary, as it could be done via `offset`, this
+    /// reduces and simplifies the MIR produced for common operations.
+    ///
+    /// # Safety
+    ///
+    /// Requires `index < slice.len()` and that `slice` points to a valid slice.
+    ///
+    /// If the return type is a reference (mutable or shared), then you must
+    /// ensure that its lifetime is no longer than the input's.
+    #[cfg(not(bootstrap))]
+    #[must_use = "returns a new pointer rather than modifying its argument"]
+    #[rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
+    #[rustc_nounwind]
+    pub fn slice_index<
+        Slice: PointerOrReference<To = [Item::To]>,
+        Item: PointerOrReference<To: Sized>,
+    >(
+        slice: Slice,
+        index: usize,
+    ) -> Item;
+
     /// Calculates the offset from a pointer.
     ///
     /// This is implemented as an intrinsic to avoid converting to and from an
@@ -1430,7 +1464,7 @@ extern "rust-intrinsic" {
     #[must_use = "returns a new pointer rather than modifying its argument"]
     #[rustc_const_stable(feature = "const_ptr_offset", since = "1.61.0")]
     #[rustc_nounwind]
-    pub fn offset<Ptr, Delta>(dst: Ptr, offset: Delta) -> Ptr;
+    pub fn offset<Ptr: PointerOrReference<To: Sized>, Delta>(dst: Ptr, offset: Delta) -> Ptr;
 
     /// Calculates the offset from a pointer, potentially wrapping.
     ///
@@ -2854,4 +2888,21 @@ pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
         );
         write_bytes(dst, val, count)
     }
+}
+
+/// No semantic meaning; just to help reduce mistakes with generic intrinsics
+trait PointerOrReference {
+    type To: ?Sized;
+}
+impl<T: ?Sized> PointerOrReference for &T {
+    type To = T;
+}
+impl<T: ?Sized> PointerOrReference for &mut T {
+    type To = T;
+}
+impl<T: ?Sized> PointerOrReference for *const T {
+    type To = T;
+}
+impl<T: ?Sized> PointerOrReference for *mut T {
+    type To = T;
 }

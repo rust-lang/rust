@@ -241,3 +241,11 @@ pub unsafe fn ptr_offset(p: *const i32, d: isize) -> *const i32 {
 
     core::intrinsics::offset(p, d)
 }
+
+// EMIT_MIR lower_intrinsics.index_project.LowerIntrinsics.diff
+pub unsafe fn index_project(a: &mut [i32], b: &[i32], c: *mut [i32], d: *const [i32], i: usize) {
+    let _a: &mut i32 = core::intrinsics::slice_index(a, i);
+    let _b: &i32 = core::intrinsics::slice_index(b, i);
+    let _c: *mut i32 = core::intrinsics::slice_index(c, i);
+    let _d: *const i32 = core::intrinsics::slice_index(d, i);
+}

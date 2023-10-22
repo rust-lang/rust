@@ -234,6 +234,43 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                             terminator.kind = TerminatorKind::Goto { target };
                         }
                     }
+                    sym::slice_index => {
+                        let target = target.unwrap();
+
+                        let elem =
+                            if let Some(slice_ptr) = args[0].place()
+                            && let Some(index_place) = args[1].place()
+                            && let Some(index) = index_place.as_local()
+                            {
+                                let slice = tcx.mk_place_deref(slice_ptr);
+                                tcx.mk_place_index(slice, index)
+                            } else {
+                                span_bug!(
+                                    terminator.source_info.span,
+                                    "Invalid call to slice_index"
+                                );
+                            };
+
+                        let elem_ptr =
+                            match generic_args.type_at(1).kind() {
+                                ty::Ref(region, _, Mutability::Mut) =>
+                                    Rvalue::Ref(*region, BorrowKind::Mut { kind: MutBorrowKind::Default }, elem),
+                                ty::Ref(region, _, Mutability::Not) =>
+                                    Rvalue::Ref(*region, BorrowKind::Shared, elem),
+                                ty::RawPtr(ty_and_mut) =>
+                                    Rvalue::AddressOf(ty_and_mut.mutbl, elem),
+                                x => bug!("Invalid return type for slice_index: {x:?}"),
+                            };
+
+                        block.statements.push(Statement {
+                            source_info: terminator.source_info,
+                            kind: StatementKind::Assign(Box::new((
+                                *destination,
+                                elem_ptr,
+                            ))),
+                        });
+                        terminator.kind = TerminatorKind::Goto { target };
+                    }
                     sym::offset => {
                         let target = target.unwrap();
                         let Ok([ptr, delta]) = <[_; 2]>::try_from(std::mem::take(args)) else {
