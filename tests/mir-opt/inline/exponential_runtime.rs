@@ -85,6 +85,7 @@ impl A for () {
 // EMIT_MIR exponential_runtime.main.Inline.diff
 fn main() {
     // CHECK-LABEL: fn main(
+    // CHECK-NOT: inlined
     // CHECK: (inlined <() as G>::call)
     // CHECK: (inlined <() as F>::call)
     // CHECK: (inlined <() as E>::call)

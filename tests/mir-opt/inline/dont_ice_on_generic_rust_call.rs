@@ -8,6 +8,6 @@ use std::marker::Tuple;
 // EMIT_MIR dont_ice_on_generic_rust_call.call.Inline.diff
 pub fn call<I: Tuple>(mut mock: Box<dyn FnMut<I, Output = ()>>, input: I) {
     // CHECK-LABEL: fn call(
-    // CHECK-NOT: (inlined <Box<dyn FnMut<I, Output = ()>> as FnMut<I>>::call_mut)
+    // CHECK-NOT: inlined
     mock.call_mut(input)
 }
