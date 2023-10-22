@@ -10,9 +10,10 @@
 //! ```
 //!
 //! The following lines are ignored:
+//! - Empty lines
 //! - Lines that are indented with more or less spaces than the first line
-//! - Lines starting with `//`, `#[`, `)`, `]`, `}` if the comment has the same indentation as
-//!   the first line
+//! - Lines starting with `//`, `#` (except those starting with `#!`), `)`, `]`, `}` if the comment
+//!   has the same indentation as the first line
 //!
 //! If a line ends with an opening bracket, the line is ignored and the next line will have
 //! its extra indentation ignored.
@@ -43,6 +44,10 @@ fn check_section<'a>(
     let mut in_split_line = None;
 
     for (line_idx, line) in lines {
+        if line.is_empty() {
+            continue;
+        }
+
         if line.contains(START_MARKER) {
             tidy_error!(bad, "{file}:{} found `{START_MARKER}` expecting `{END_MARKER}`", line_idx)
         }
@@ -71,7 +76,7 @@ fn check_section<'a>(
         let trimmed_line = line.trim_start_matches(' ');
 
         if trimmed_line.starts_with("//")
-            || trimmed_line.starts_with("#[")
+            || (trimmed_line.starts_with("#") && !trimmed_line.starts_with("#!"))
             || trimmed_line.starts_with(is_close_bracket)
         {
             continue;
