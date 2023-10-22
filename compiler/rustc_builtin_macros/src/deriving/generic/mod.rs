@@ -695,65 +695,61 @@ impl<'a> TraitDef<'a> {
             }
         }));
 
-        {
-            // Extra scope required here so ty_params goes out of scope before params is moved
+        let mut ty_params = params
+            .iter()
+            .filter(|param| matches!(param.kind, ast::GenericParamKind::Type { .. }))
+            .peekable();
 
-            let mut ty_params = params
-                .iter()
-                .filter(|param| matches!(param.kind, ast::GenericParamKind::Type { .. }))
-                .peekable();
+        if ty_params.peek().is_some() {
+            let ty_param_names: Vec<Symbol> =
+                ty_params.map(|ty_param| ty_param.ident.name).collect();
 
-            if ty_params.peek().is_some() {
-                let ty_param_names: Vec<Symbol> =
-                    ty_params.map(|ty_param| ty_param.ident.name).collect();
+            for field_ty in field_tys {
+                let field_ty_params = find_type_parameters(&field_ty, &ty_param_names, cx);
 
-                for field_ty in field_tys {
-                    let field_ty_params = find_type_parameters(&field_ty, &ty_param_names, cx);
-
-                    for field_ty_param in field_ty_params {
-                        // if we have already handled this type, skip it
-                        if let ast::TyKind::Path(_, p) = &field_ty_param.ty.kind
-                            && let [sole_segment] = &*p.segments
-                            && ty_param_names.contains(&sole_segment.ident.name)
-                        {
-                            continue;
-                        }
-                        let mut bounds: Vec<_> = self
-                            .additional_bounds
-                            .iter()
-                            .map(|p| {
-                                cx.trait_bound(
-                                    p.to_path(cx, self.span, type_ident, generics),
-                                    self.is_const,
-                                )
-                            })
-                            .collect();
-
-                        // Require the current trait.
-                        if !self.skip_path_as_bound {
-                            bounds.push(cx.trait_bound(trait_path.clone(), self.is_const));
-                        }
-
-                        // Add a `Copy` bound if required.
-                        if is_packed && self.needs_copy_as_bound_if_packed {
-                            let p = deriving::path_std!(marker::Copy);
-                            bounds.push(cx.trait_bound(
+                for field_ty_param in field_ty_params {
+                    // if we have already handled this type, skip it
+                    if let ast::TyKind::Path(_, p) = &field_ty_param.ty.kind
+                        && let [sole_segment] = &*p.segments
+                        && ty_param_names.contains(&sole_segment.ident.name)
+                    {
+                        continue;
+                    }
+                    let mut bounds: Vec<_> = self
+                        .additional_bounds
+                        .iter()
+                        .map(|p| {
+                            cx.trait_bound(
                                 p.to_path(cx, self.span, type_ident, generics),
                                 self.is_const,
-                            ));
-                        }
+                            )
+                        })
+                        .collect();
 
-                        if !bounds.is_empty() {
-                            let predicate = ast::WhereBoundPredicate {
-                                span: self.span,
-                                bound_generic_params: field_ty_param.bound_generic_params,
-                                bounded_ty: field_ty_param.ty,
-                                bounds,
-                            };
+                    // Require the current trait.
+                    if !self.skip_path_as_bound {
+                        bounds.push(cx.trait_bound(trait_path.clone(), self.is_const));
+                    }
 
-                            let predicate = ast::WherePredicate::BoundPredicate(predicate);
-                            where_clause.predicates.push(predicate);
-                        }
+                    // Add a `Copy` bound if required.
+                    if is_packed && self.needs_copy_as_bound_if_packed {
+                        let p = deriving::path_std!(marker::Copy);
+                        bounds.push(cx.trait_bound(
+                            p.to_path(cx, self.span, type_ident, generics),
+                            self.is_const,
+                        ));
+                    }
+
+                    if !bounds.is_empty() {
+                        let predicate = ast::WhereBoundPredicate {
+                            span: self.span,
+                            bound_generic_params: field_ty_param.bound_generic_params,
+                            bounded_ty: field_ty_param.ty,
+                            bounds,
+                        };
+
+                        let predicate = ast::WherePredicate::BoundPredicate(predicate);
+                        where_clause.predicates.push(predicate);
                     }
                 }
             }
