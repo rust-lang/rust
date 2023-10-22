@@ -57,6 +57,7 @@
   ```
 - Improve formatting of `let-else` statements that have leading attributes When setting `version = Two` [#5901](https://github.com/rust-lang/rustfmt/issues/5901)
 - Prevent comment duplication in expressions wrapped in parenthesis. [#5871](https://github.com/rust-lang/rustfmt/issues/5871)
+- Adjust the span derivation used when rewriting const generics. The incorrect span derivation lead to invalid code after reformatting. [#5935](https://github.com/rust-lang/rustfmt/issues/5935)
 
 
 ### Changed
@@ -68,6 +69,7 @@
 ### Added
 
 - Users can now set `skip_macro_invocations` in `rustfmt.toml` [#5816](https://github.com/rust-lang/rustfmt/issues/5816)
+- Adds initial support for formatting `let-chains`. **`let-chains` are still a nightly feature and their formatting is subject to change** [#5910](https://github.com/rust-lang/rustfmt/pull/5910). Formatting was implemented following the rules outlined in [rust-lang/rust#110568](https://github.com/rust-lang/rust/pull/110568)
 
 ### Misc
 
