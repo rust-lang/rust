@@ -11,7 +11,7 @@ use std::path::Path;
 struct BuildArg {
     codegen_release_channel: bool,
     sysroot_release_channel: bool,
-    features: Vec<String>,
+    flags: Vec<String>,
     gcc_path: String,
 }
 
@@ -30,12 +30,12 @@ impl BuildArg {
                 "--release" => build_arg.codegen_release_channel = true,
                 "--release-sysroot" => build_arg.sysroot_release_channel = true,
                 "--no-default-features" => {
-                    build_arg.features.push("--no-default-features".to_string());
+                    build_arg.flags.push("--no-default-features".to_string());
                 }
                 "--features" => {
                     if let Some(arg) = args.next() {
-                        build_arg.features.push("--features".to_string());
-                        build_arg.features.push(arg.as_str().into());
+                        build_arg.flags.push("--features".to_string());
+                        build_arg.flags.push(arg.as_str().into());
                     } else {
                         return Err(
                             "Expected a value after `--features`, found nothing".to_string()
@@ -45,6 +45,15 @@ impl BuildArg {
                 "--help" => {
                     Self::usage();
                     return Ok(None);
+                }
+                "--target-triple" => {
+                    if args.next().is_some() {
+                        // Handled in config.rs.
+                    } else {
+                        return Err(
+                            "Expected a value after `--target-triple`, found nothing".to_string()
+                        );
+                    }
                 }
                 arg => return Err(format!("Unknown argument `{}`", arg)),
             }
@@ -61,6 +70,7 @@ impl BuildArg {
     --release-sysroot      : Build sysroot in release mode
     --no-default-features  : Add `--no-default-features` flag
     --features [arg]       : Add a new feature [arg]
+    --target-triple [arg]  : Set the target triple to [arg]
     --help                 : Show this help
 "#
         )
@@ -147,8 +157,6 @@ fn build_sysroot(
                 &"build",
                 &"--target",
                 &target_triple,
-                &"--features",
-                &"compiler_builtins/c",
             ],
             None,
             Some(env),
@@ -175,16 +183,6 @@ fn build_sysroot(
 fn build_codegen(args: &BuildArg) -> Result<(), String> {
     let mut env = HashMap::new();
 
-    let current_dir =
-        std::env::current_dir().map_err(|error| format!("`current_dir` failed: {:?}", error))?;
-    if let Ok(rt_root) = std::env::var("RUST_COMPILER_RT_ROOT") {
-        env.insert("RUST_COMPILER_RT_ROOT".to_string(), rt_root);
-    } else {
-        env.insert(
-            "RUST_COMPILER_RT_ROOT".to_string(),
-            format!("{}", current_dir.join("llvm/compiler-rt").display()),
-        );
-    }
     env.insert("LD_LIBRARY_PATH".to_string(), args.gcc_path.clone());
     env.insert("LIBRARY_PATH".to_string(), args.gcc_path.clone());
 
@@ -196,9 +194,9 @@ fn build_codegen(args: &BuildArg) -> Result<(), String> {
     } else {
         env.insert("CHANNEL".to_string(), "debug".to_string());
     }
-    let ref_features = args.features.iter().map(|s| s.as_str()).collect::<Vec<_>>();
-    for feature in &ref_features {
-        command.push(feature);
+    let flags = args.flags.iter().map(|s| s.as_str()).collect::<Vec<_>>();
+    for flag in &flags {
+        command.push(flag);
     }
     run_command_with_output_and_env(&command, None, Some(&env))?;
 

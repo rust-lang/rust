@@ -98,10 +98,11 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol, target_info: Lock
             .map(|string| &string[1..])
             .collect();
 
-        // TODO(antoyo): only set on x86 platforms.
-        context.add_command_line_option("-masm=intel");
+        if tcx.sess.target.arch == "x86" || tcx.sess.target.arch == "x86_64" {
+            context.add_command_line_option("-masm=intel");
+        }
 
-        if !disabled_features.contains("avx") {
+        if !disabled_features.contains("avx") && tcx.sess.target.arch == "x86_64" {
             // NOTE: we always enable AVX because the equivalent of llvm.x86.sse2.cmp.pd in GCC for
             // SSE2 is multiple builtins, so we use the AVX __builtin_ia32_cmppd instead.
             // FIXME(antoyo): use the proper builtins for llvm.x86.sse2.cmp.pd and similar.

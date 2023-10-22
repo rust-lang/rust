@@ -119,11 +119,11 @@ impl<'gcc, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     }
 
     fn type_f32(&self) -> Type<'gcc> {
-        self.context.new_type::<f32>()
+        self.float_type
     }
 
     fn type_f64(&self) -> Type<'gcc> {
-        self.context.new_type::<f64>()
+        self.double_type
     }
 
     fn type_func(&self, params: &[Type<'gcc>], return_type: Type<'gcc>) -> Type<'gcc> {

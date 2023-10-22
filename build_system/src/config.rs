@@ -5,7 +5,6 @@ use std::env as std_env;
 pub struct ConfigInfo {
     pub target_triple: String,
     pub rustc_command: Vec<String>,
-    pub run_wrapper: Option<&'static str>,
 }
 
 // Returns the beginning for the command line of rustc.
@@ -30,22 +29,28 @@ pub fn set_config(
     };
     let host_triple = get_rustc_host_triple()?;
     let mut linker = None;
-    let mut target_triple = host_triple.as_str();
-    let mut run_wrapper = None;
-    // FIXME: handle this with a command line flag?
-    // let mut target_triple = "m68k-unknown-linux-gnu";
+    let mut target_triple = host_triple.clone();
+
+    // We skip binary name and the command.
+    let mut args = std::env::args().skip(2);
+
+    while let Some(arg) = args.next() {
+        match arg.as_str() {
+            "--target-triple" => {
+                if let Some(arg) = args.next() {
+                    target_triple = arg;
+                } else {
+                    return Err(
+                        "Expected a value after `--target-triple`, found nothing".to_string()
+                    );
+                }
+            },
+            _ => (),
+        }
+    }
 
     if host_triple != target_triple {
-        if target_triple == "m68k-unknown-linux-gnu" {
-            target_triple = "mips-unknown-linux-gnu";
-            linker = Some("-Clinker=m68k-linux-gcc");
-        } else if target_triple == "aarch64-unknown-linux-gnu" {
-            // We are cross-compiling for aarch64. Use the correct linker and run tests in qemu.
-            linker = Some("-Clinker=aarch64-linux-gnu-gcc");
-            run_wrapper = Some("qemu-aarch64 -L /usr/aarch64-linux-gnu");
-        } else {
-            return Err(format!("unknown non-native platform `{}`", target_triple));
-        }
+        linker = Some(format!("-Clinker={}-gcc", target_triple));
     }
     let current_dir =
         std_env::current_dir().map_err(|error| format!("`current_dir` failed: {:?}", error))?;
@@ -120,6 +125,5 @@ pub fn set_config(
     Ok(ConfigInfo {
         target_triple: target_triple.to_string(),
         rustc_command,
-        run_wrapper,
     })
 }
