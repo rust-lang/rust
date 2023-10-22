@@ -247,7 +247,7 @@ impl<'tcx> Context<'tcx> {
             // No need to include the namespace for primitive types and keywords
             title.push_str(&join_with_double_colon(&self.current));
         };
-        title.push_str(" - Rust");
+        title.push_str(" \u{2013} Rust");
         let tyname = it.type_();
         let desc = plain_text_summary(&it.doc_value(), &it.link_names(&self.cache()));
         let desc = if !desc.is_empty() {
