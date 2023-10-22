@@ -104,6 +104,12 @@ fn is_nameable_in_impl_trait(ty: &rustc_hir::Ty<'_>) -> bool {
     !matches!(ty.kind, TyKind::OpaqueDef(..))
 }
 
+fn is_ty_exported(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
+    ty.ty_adt_def()
+        .and_then(|adt| adt.did().as_local())
+        .is_some_and(|did| cx.effective_visibilities.is_exported(did))
+}
+
 /// Returns the deref chain of a type, starting with the type itself.
 fn deref_chain<'cx, 'tcx>(cx: &'cx LateContext<'tcx>, ty: Ty<'tcx>) -> impl Iterator<Item = Ty<'tcx>> + 'cx {
     iter::successors(Some(ty), |&ty| {
@@ -154,6 +160,7 @@ impl LateLintPass<'_> for IterWithoutIntoIter {
                     None
                 }
             })
+            && is_ty_exported(cx, ty)
         {
             span_lint_and_then(
                 cx,
@@ -226,6 +233,7 @@ impl {self_ty_without_ref} {{
             )
             // Only lint if the `IntoIterator` impl doesn't actually exist
             && !implements_trait(cx, ref_ty, into_iter_did, &[])
+            && is_ty_exported(cx, ref_ty.peel_refs())
         {
             let self_ty_snippet = format!("{borrow_prefix}{}", snippet(cx, imp.self_ty.span, ".."));
 
@@ -247,8 +255,8 @@ impl {self_ty_without_ref} {{
 "
 impl IntoIterator for {self_ty_snippet} {{
     type IntoIter = {ret_ty};
-    type Iter = {iter_ty};
-    fn into_iter() -> Self::IntoIter {{
+    type Item = {iter_ty};
+    fn into_iter(self) -> Self::IntoIter {{
         self.iter()
     }}
 }}
