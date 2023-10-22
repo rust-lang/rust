@@ -20,7 +20,7 @@ pub trait Query {
 #[inline(always)]
 pub fn mk_cycle<V: Debug>(c: &dyn Cache<V = V>) {
     // CHECK-LABEL: fn mk_cycle(
-    // CHECK-NOT: (inlined <dyn Cache<V = V> as Cache>::store_nocache)
+    // CHECK-NOT: inlined
     c.store_nocache()
 }
 
@@ -36,7 +36,7 @@ pub fn try_execute_query<C: Cache>(c: &C) {
 #[inline(always)]
 pub fn get_query<Q: Query, T>(t: &T) {
     // CHECK-LABEL: fn get_query(
-    // CHECK-NOT: (inlined <Q as Query>::cache::<T>)
+    // CHECK-NOT: inlined
     let c = Q::cache(t);
     // CHECK: (inlined try_execute_query::<<Q as Query>::C>)
     // CHECK: (inlined mk_cycle::<<Q as Query>::V>)
