@@ -8,6 +8,7 @@ use rustc_span::sym;
 use rustc_target::asm::*;
 use target_lexicon::BinaryFormat;
 
+use crate::global_asm::asm_supported;
 use crate::prelude::*;
 
 enum CInlineAsmOperand<'tcx> {
@@ -44,9 +45,13 @@ pub(crate) fn codegen_inline_asm<'tcx>(
 ) {
     // FIXME add .eh_frame unwind info directives
 
-    if !template.is_empty()
-        && (cfg!(not(feature = "inline_asm")) || fx.tcx.sess.target.is_like_windows)
-    {
+    if !asm_supported(fx.tcx) {
+        if template.is_empty() {
+            let destination_block = fx.get_block(destination.unwrap());
+            fx.bcx.ins().jump(destination_block, &[]);
+            return;
+        }
+
         // Used by panic_abort
         if template[0] == InlineAsmTemplatePiece::String("int $$0x29".to_string()) {
             fx.bcx.ins().trap(TrapCode::User(1));
@@ -144,6 +149,16 @@ pub(crate) fn codegen_inline_asm<'tcx>(
             return;
         }
 
+        // Used by core::hint::spin_loop()
+        if template[0]
+            == InlineAsmTemplatePiece::String(".insn i 0x0F, 0, x0, x0, 0x010".to_string())
+            && template.len() == 1
+        {
+            let destination_block = fx.get_block(destination.unwrap());
+            fx.bcx.ins().jump(destination_block, &[]);
+            return;
+        }
+
         // Used by measureme
         if template[0] == InlineAsmTemplatePiece::String("xor %eax, %eax".to_string())
             && template[1] == InlineAsmTemplatePiece::String("\n".to_string())
@@ -223,6 +238,16 @@ pub(crate) fn codegen_inline_asm<'tcx>(
             fx.bcx.ins().jump(destination_block, &[]);
             return;
         }
+
+        if cfg!(not(feature = "inline_asm")) {
+            fx.tcx.sess.span_err(
+                span,
+                "asm! and global_asm! support is disabled while compiling rustc_codegen_cranelift",
+            );
+        } else {
+            fx.tcx.sess.span_err(span, "asm! and global_asm! are not yet supported on Windows");
+        }
+        return;
     }
 
     let operands = operands
@@ -745,6 +770,13 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
                 // x19 is reserved by LLVM for the "base pointer", so rustc doesn't allow using it
                 generated_asm.push_str("    mov x19, x0\n");
             }
+            InlineAsmArch::RiscV64 => {
+                generated_asm.push_str("    addi sp, sp, -16\n");
+                generated_asm.push_str("    sd ra, 8(sp)\n");
+                generated_asm.push_str("    sd s1, 0(sp)\n"); // s1 is callee saved
+                // s1/x9 is reserved by LLVM for the "base pointer", so rustc doesn't allow using it
+                generated_asm.push_str("    mv s1, a0\n");
+            }
             _ => unimplemented!("prologue for {:?}", arch),
         }
     }
@@ -761,6 +793,12 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
                 generated_asm.push_str("    ldp fp, lr, [sp], #32\n");
                 generated_asm.push_str("    ret\n");
             }
+            InlineAsmArch::RiscV64 => {
+                generated_asm.push_str("    ld s1, 0(sp)\n");
+                generated_asm.push_str("    ld ra, 8(sp)\n");
+                generated_asm.push_str("    addi sp, sp, 16\n");
+                generated_asm.push_str("    ret\n");
+            }
             _ => unimplemented!("epilogue for {:?}", arch),
         }
     }
@@ -771,7 +809,10 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
                 generated_asm.push_str("    ud2\n");
             }
             InlineAsmArch::AArch64 => {
-                generated_asm.push_str("    brk     #0x1");
+                generated_asm.push_str("    brk     #0x1\n");
+            }
+            InlineAsmArch::RiscV64 => {
+                generated_asm.push_str("    ebreak\n");
             }
             _ => unimplemented!("epilogue_noreturn for {:?}", arch),
         }
@@ -794,6 +835,11 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
                 reg.emit(generated_asm, InlineAsmArch::AArch64, None).unwrap();
                 writeln!(generated_asm, ", [x19, 0x{:x}]", offset.bytes()).unwrap();
             }
+            InlineAsmArch::RiscV64 => {
+                generated_asm.push_str("    sd ");
+                reg.emit(generated_asm, InlineAsmArch::RiscV64, None).unwrap();
+                writeln!(generated_asm, ", 0x{:x}(s1)", offset.bytes()).unwrap();
+            }
             _ => unimplemented!("save_register for {:?}", arch),
         }
     }
@@ -814,6 +860,11 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
                 generated_asm.push_str("    ldr ");
                 reg.emit(generated_asm, InlineAsmArch::AArch64, None).unwrap();
                 writeln!(generated_asm, ", [x19, 0x{:x}]", offset.bytes()).unwrap();
+            }
+            InlineAsmArch::RiscV64 => {
+                generated_asm.push_str("    ld ");
+                reg.emit(generated_asm, InlineAsmArch::RiscV64, None).unwrap();
+                writeln!(generated_asm, ", 0x{:x}(s1)", offset.bytes()).unwrap();
             }
             _ => unimplemented!("restore_register for {:?}", arch),
         }

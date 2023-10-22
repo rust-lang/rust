@@ -20,7 +20,7 @@ use crate::prelude::*;
 
 pub(crate) fn producer() -> String {
     format!(
-        "cg_clif (rustc {}, cranelift {})",
+        "rustc version {} with cranelift {}",
         rustc_interface::util::rustc_version_str().unwrap_or("unknown version"),
         cranelift_codegen::VERSION,
     )
