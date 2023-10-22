@@ -1275,8 +1275,7 @@ impl Config {
         }
 
         config.initial_rustc = if let Some(rustc) = build.rustc {
-            // FIXME(#115065): re-enable this check
-            // config.check_build_rustc_version(&rustc);
+            config.check_build_rustc_version(&rustc);
             PathBuf::from(rustc)
         } else {
             config.download_beta_toolchain();
