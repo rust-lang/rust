@@ -408,8 +408,8 @@ fn download_rustc_perf(env: &Environment) -> anyhow::Result<()> {
 
     // FIXME: add some mechanism for synchronization of this commit SHA with
     // Linux (which builds rustc-perf in a Dockerfile)
-    // rustc-perf version from 2023-05-30
-    const PERF_COMMIT: &str = "8b2ac3042e1ff2c0074455a0a3618adef97156b1";
+    // rustc-perf version from 2023-10-22
+    const PERF_COMMIT: &str = "4f313add609f43e928e98132358e8426ed3969ae";
 
     let url = format!("https://ci-mirrors.rust-lang.org/rustc/rustc-perf-{PERF_COMMIT}.zip");
     let client = reqwest::blocking::Client::builder()
