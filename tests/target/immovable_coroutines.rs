@@ -1,4 +1,4 @@
-#![feature(generators)]
+#![feature(coroutines)]
 
 unsafe fn foo() {
     let mut ga = static || {

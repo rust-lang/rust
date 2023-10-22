@@ -274,7 +274,7 @@ impl<'a, 'b> PairList<'a, 'b, ast::Expr> {
     fn let_chain_count(&self) -> usize {
         self.list
             .iter()
-            .filter(|(expr, _)| matches!(expr.kind, ast::ExprKind::Let(_, _, _)))
+            .filter(|(expr, _)| matches!(expr.kind, ast::ExprKind::Let(..)))
             .count()
     }
 
@@ -284,7 +284,7 @@ impl<'a, 'b> PairList<'a, 'b, ast::Expr> {
         }
 
         let fist_item_is_ident = is_ident(self.list[0].0);
-        let second_item_is_let_chain = matches!(self.list[1].0.kind, ast::ExprKind::Let(_, _, _));
+        let second_item_is_let_chain = matches!(self.list[1].0.kind, ast::ExprKind::Let(..));
 
         fist_item_is_ident && second_item_is_let_chain
     }
