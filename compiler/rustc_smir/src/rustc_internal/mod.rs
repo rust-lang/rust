@@ -3,22 +3,18 @@
 //! For that, we define APIs that will temporarily be public to 3P that exposes rustc internal APIs
 //! until stable MIR is complete.
 
-use crate::rustc_internal;
 use crate::rustc_smir::Tables;
 use rustc_data_structures::fx;
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_driver::{Callbacks, Compilation, RunCompiler};
-use rustc_interface::{interface, Queries};
 use rustc_middle::mir::interpret::AllocId;
 use rustc_middle::ty;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::{CrateNum, DefId};
 use rustc_span::Span;
 use stable_mir::ty::IndexedVal;
-use stable_mir::CompilerError;
 use std::fmt::Debug;
 use std::hash::Hash;
-use std::ops::{ControlFlow, Index};
+use std::ops::Index;
 
 mod internal;
 
@@ -143,63 +139,81 @@ pub fn run(tcx: TyCtxt<'_>, f: impl FnOnce()) {
     );
 }
 
-pub struct StableMir<B = (), C = ()>
-where
-    B: Send,
-    C: Send,
-{
-    args: Vec<String>,
-    callback: fn(TyCtxt<'_>) -> ControlFlow<B, C>,
-    result: Option<ControlFlow<B, C>>,
-}
+#[macro_export]
+macro_rules! run {
+    ($args:expr, $callback:expr) => {
+        run!($args, tcx, $callback)
+    };
+    ($args:expr, $tcx:ident, $callback:expr) => {{
+        use rustc_driver::{Callbacks, Compilation, RunCompiler};
+        use rustc_interface::{interface, Queries};
+        use stable_mir::CompilerError;
+        use std::ops::ControlFlow;
 
-impl<B, C> StableMir<B, C>
-where
-    B: Send,
-    C: Send,
-{
-    /// Creates a new `StableMir` instance, with given test_function and arguments.
-    pub fn new(args: Vec<String>, callback: fn(TyCtxt<'_>) -> ControlFlow<B, C>) -> Self {
-        StableMir { args, callback, result: None }
-    }
-
-    /// Runs the compiler against given target and tests it with `test_function`
-    pub fn run(&mut self) -> Result<C, CompilerError<B>> {
-        let compiler_result =
-            rustc_driver::catch_fatal_errors(|| RunCompiler::new(&self.args.clone(), self).run());
-        match (compiler_result, self.result.take()) {
-            (Ok(Ok(())), Some(ControlFlow::Continue(value))) => Ok(value),
-            (Ok(Ok(())), Some(ControlFlow::Break(value))) => Err(CompilerError::Interrupted(value)),
-            (Ok(Ok(_)), None) => Err(CompilerError::Skipped),
-            (Ok(Err(_)), _) => Err(CompilerError::CompilationFailed),
-            (Err(_), _) => Err(CompilerError::ICE),
+        pub struct StableMir<B = (), C = ()>
+        where
+            B: Send,
+            C: Send,
+        {
+            args: Vec<String>,
+            callback: fn(TyCtxt<'_>) -> ControlFlow<B, C>,
+            result: Option<ControlFlow<B, C>>,
         }
-    }
-}
 
-impl<B, C> Callbacks for StableMir<B, C>
-where
-    B: Send,
-    C: Send,
-{
-    /// Called after analysis. Return value instructs the compiler whether to
-    /// continue the compilation afterwards (defaults to `Compilation::Continue`)
-    fn after_analysis<'tcx>(
-        &mut self,
-        _compiler: &interface::Compiler,
-        queries: &'tcx Queries<'tcx>,
-    ) -> Compilation {
-        queries.global_ctxt().unwrap().enter(|tcx| {
-            rustc_internal::run(tcx, || {
-                self.result = Some((self.callback)(tcx));
-            });
-            if self.result.as_ref().is_some_and(|val| val.is_continue()) {
-                Compilation::Continue
-            } else {
-                Compilation::Stop
+        impl<B, C> StableMir<B, C>
+        where
+            B: Send,
+            C: Send,
+        {
+            /// Creates a new `StableMir` instance, with given test_function and arguments.
+            pub fn new(args: Vec<String>, callback: fn(TyCtxt<'_>) -> ControlFlow<B, C>) -> Self {
+                StableMir { args, callback, result: None }
             }
-        })
-    }
+
+            /// Runs the compiler against given target and tests it with `test_function`
+            pub fn run(&mut self) -> Result<C, CompilerError<B>> {
+                let compiler_result = rustc_driver::catch_fatal_errors(|| {
+                    RunCompiler::new(&self.args.clone(), self).run()
+                });
+                match (compiler_result, self.result.take()) {
+                    (Ok(Ok(())), Some(ControlFlow::Continue(value))) => Ok(value),
+                    (Ok(Ok(())), Some(ControlFlow::Break(value))) => {
+                        Err(CompilerError::Interrupted(value))
+                    }
+                    (Ok(Ok(_)), None) => Err(CompilerError::Skipped),
+                    (Ok(Err(_)), _) => Err(CompilerError::CompilationFailed),
+                    (Err(_), _) => Err(CompilerError::ICE),
+                }
+            }
+        }
+
+        impl<B, C> Callbacks for StableMir<B, C>
+        where
+            B: Send,
+            C: Send,
+        {
+            /// Called after analysis. Return value instructs the compiler whether to
+            /// continue the compilation afterwards (defaults to `Compilation::Continue`)
+            fn after_analysis<'tcx>(
+                &mut self,
+                _compiler: &interface::Compiler,
+                queries: &'tcx Queries<'tcx>,
+            ) -> Compilation {
+                queries.global_ctxt().unwrap().enter(|tcx| {
+                    rustc_internal::run(tcx, || {
+                        self.result = Some((self.callback)(tcx));
+                    });
+                    if self.result.as_ref().is_some_and(|val| val.is_continue()) {
+                        Compilation::Continue
+                    } else {
+                        Compilation::Stop
+                    }
+                })
+            }
+        }
+
+        StableMir::new($args, |$tcx| $callback).run()
+    }};
 }
 
 /// Simmilar to rustc's `FxIndexMap`, `IndexMap` with extra
