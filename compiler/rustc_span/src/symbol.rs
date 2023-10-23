@@ -910,6 +910,7 @@ symbols! {
         iter,
         iter_mut,
         iter_repeat,
+        iterator,
         iterator_collect_fn,
         kcfi,
         keyword,
