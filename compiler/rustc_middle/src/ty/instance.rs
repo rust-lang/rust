@@ -298,9 +298,9 @@ fn fmt_instance(
     ty::tls::with(|tcx| {
         let args = tcx.lift(instance.args).expect("could not lift for printing");
 
-        let s = FmtPrinter::new_with_limit(tcx, Namespace::ValueNS, type_length)
-            .print_def_path(instance.def_id(), args)?
-            .into_buffer();
+        let mut cx = FmtPrinter::new_with_limit(tcx, Namespace::ValueNS, type_length);
+        cx.print_def_path(instance.def_id(), args)?;
+        let s = cx.into_buffer();
         f.write_str(&s)
     })?;
 
