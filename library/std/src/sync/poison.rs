@@ -55,6 +55,7 @@ impl Flag {
     }
 }
 
+#[derive(Clone)]
 pub struct Guard {
     panicking: bool,
 }
