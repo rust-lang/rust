@@ -33,7 +33,7 @@
     - [\*-esp-espidf](platform-support/esp-idf.md)
     - [\*-unknown-fuchsia](platform-support/fuchsia.md)
     - [\*-kmc-solid_\*](platform-support/kmc-solid.md)
-    - [csky-unknown-linux-gnuabiv2](platform-support/csky-unknown-linux-gnuabiv2.md)
+    - [csky-unknown-linux-gnuabiv2\*](platform-support/csky-unknown-linux-gnuabiv2.md)
     - [loongarch\*-unknown-linux-\*](platform-support/loongarch-linux.md)
     - [loongarch\*-unknown-none\*](platform-support/loongarch-none.md)
     - [m68k-unknown-linux-gnu](platform-support/m68k-unknown-linux-gnu.md)

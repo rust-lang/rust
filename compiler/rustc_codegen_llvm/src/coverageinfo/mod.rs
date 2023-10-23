@@ -3,7 +3,7 @@ use crate::llvm;
 use crate::builder::Builder;
 use crate::common::CodegenCx;
 use crate::coverageinfo::ffi::{CounterExpression, CounterMappingRegion};
-use crate::coverageinfo::map_data::FunctionCoverage;
+use crate::coverageinfo::map_data::FunctionCoverageCollector;
 
 use libc::c_uint;
 use rustc_codegen_ssa::traits::{
@@ -29,7 +29,8 @@ const VAR_ALIGN_BYTES: usize = 8;
 /// A context object for maintaining all state needed by the coverageinfo module.
 pub struct CrateCoverageContext<'ll, 'tcx> {
     /// Coverage data for each instrumented function identified by DefId.
-    pub(crate) function_coverage_map: RefCell<FxHashMap<Instance<'tcx>, FunctionCoverage<'tcx>>>,
+    pub(crate) function_coverage_map:
+        RefCell<FxHashMap<Instance<'tcx>, FunctionCoverageCollector<'tcx>>>,
     pub(crate) pgo_func_name_var_map: RefCell<FxHashMap<Instance<'tcx>, &'ll llvm::Value>>,
 }
 
@@ -41,7 +42,9 @@ impl<'ll, 'tcx> CrateCoverageContext<'ll, 'tcx> {
         }
     }
 
-    pub fn take_function_coverage_map(&self) -> FxHashMap<Instance<'tcx>, FunctionCoverage<'tcx>> {
+    pub fn take_function_coverage_map(
+        &self,
+    ) -> FxHashMap<Instance<'tcx>, FunctionCoverageCollector<'tcx>> {
         self.function_coverage_map.replace(FxHashMap::default())
     }
 }
@@ -93,7 +96,7 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
         let mut coverage_map = coverage_context.function_coverage_map.borrow_mut();
         let func_coverage = coverage_map
             .entry(instance)
-            .or_insert_with(|| FunctionCoverage::new(instance, function_coverage_info));
+            .or_insert_with(|| FunctionCoverageCollector::new(instance, function_coverage_info));
 
         let Coverage { kind } = coverage;
         match *kind {

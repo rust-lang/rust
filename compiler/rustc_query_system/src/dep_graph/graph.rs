@@ -332,7 +332,7 @@ impl<D: Deps> DepGraphData<D> {
     /// - If you need 3+ arguments, use a tuple for the
     ///   `arg` parameter.
     ///
-    /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/incremental-compilation.html
+    /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/queries/incremental-compilation.html
     #[inline(always)]
     pub fn with_task<Ctxt: HasDepContext<Deps = D>, A: Debug, R>(
         &self,

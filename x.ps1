@@ -17,11 +17,6 @@ foreach ($arg in $args) {
 
 function Get-Application($app) {
     $cmd = Get-Command $app -ErrorAction SilentlyContinue -CommandType Application | Select-Object -First 1
-    if ($cmd.source -match '.*AppData\\Local\\Microsoft\\WindowsApps\\.*exe') {
-        # Windows for some reason puts a `python3.exe` executable in PATH that just opens the windows store.
-        # Ignore it.
-        return $false
-    }
     return $cmd
 }
 
