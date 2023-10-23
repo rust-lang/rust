@@ -311,7 +311,10 @@ use super::deconstruct_pat::{
     Constructor, ConstructorSet, DeconstructedPat, IntRange, MaybeInfiniteInt, SplitConstructorSet,
     WitnessPat,
 };
-use crate::errors::{NonExhaustiveOmittedPattern, Overlap, OverlappingRangeEndpoints, Uncovered};
+use crate::errors::{
+    NonExhaustiveOmittedPattern, NonExhaustiveOmittedPatternLintOnArm, Overlap,
+    OverlappingRangeEndpoints, Uncovered,
+};
 
 use rustc_data_structures::captures::Captures;
 
@@ -1149,28 +1152,45 @@ pub(crate) fn compute_match_usefulness<'p, 'tcx>(
 
     // Run the non_exhaustive_omitted_patterns lint. Only run on refutable patterns to avoid hitting
     // `if let`s. Only run if the match is exhaustive otherwise the error is redundant.
-    if cx.refutable
-        && non_exhaustiveness_witnesses.is_empty()
-        && !matches!(
+    if cx.refutable && non_exhaustiveness_witnesses.is_empty() {
+        if !matches!(
             cx.tcx.lint_level_at_node(NON_EXHAUSTIVE_OMITTED_PATTERNS, lint_root).0,
             rustc_session::lint::Level::Allow
-        )
-    {
-        let witnesses = collect_nonexhaustive_missing_variants(cx, &pat_column);
-        if !witnesses.is_empty() {
-            // Report that a match of a `non_exhaustive` enum marked with `non_exhaustive_omitted_patterns`
-            // is not exhaustive enough.
-            //
-            // NB: The partner lint for structs lives in `compiler/rustc_hir_analysis/src/check/pat.rs`.
-            cx.tcx.emit_spanned_lint(
-                NON_EXHAUSTIVE_OMITTED_PATTERNS,
-                lint_root,
-                scrut_span,
-                NonExhaustiveOmittedPattern {
-                    scrut_ty,
-                    uncovered: Uncovered::new(scrut_span, cx, witnesses),
-                },
-            );
+        ) {
+            let witnesses = collect_nonexhaustive_missing_variants(cx, &pat_column);
+
+            if !witnesses.is_empty() {
+                // Report that a match of a `non_exhaustive` enum marked with `non_exhaustive_omitted_patterns`
+                // is not exhaustive enough.
+                //
+                // NB: The partner lint for structs lives in `compiler/rustc_hir_analysis/src/check/pat.rs`.
+                cx.tcx.emit_spanned_lint(
+                    NON_EXHAUSTIVE_OMITTED_PATTERNS,
+                    lint_root,
+                    scrut_span,
+                    NonExhaustiveOmittedPattern {
+                        scrut_ty,
+                        uncovered: Uncovered::new(scrut_span, cx, witnesses),
+                    },
+                );
+            }
+        } else {
+            // We used to allow putting the `#[allow(non_exhaustive_omitted_patterns)]` on a match
+            // arm. This no longer makes sense so we warn users, to avoid silently breaking their
+            // usage of the lint.
+            for arm in arms {
+                if !matches!(
+                    cx.tcx.lint_level_at_node(NON_EXHAUSTIVE_OMITTED_PATTERNS, arm.hir_id).0,
+                    rustc_session::lint::Level::Allow
+                ) {
+                    cx.tcx.emit_spanned_lint(
+                        NON_EXHAUSTIVE_OMITTED_PATTERNS,
+                        arm.hir_id,
+                        arm.pat.span(),
+                        NonExhaustiveOmittedPatternLintOnArm,
+                    );
+                }
+            }
         }
     }
 

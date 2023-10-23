@@ -789,6 +789,11 @@ pub(crate) struct NonExhaustiveOmittedPattern<'tcx> {
     pub uncovered: Uncovered<'tcx>,
 }
 
+#[derive(LintDiagnostic)]
+#[diag(mir_build_non_exhaustive_omitted_pattern_lint_on_arm)]
+#[help]
+pub(crate) struct NonExhaustiveOmittedPatternLintOnArm;
+
 #[derive(Subdiagnostic)]
 #[label(mir_build_uncovered)]
 pub(crate) struct Uncovered<'tcx> {
