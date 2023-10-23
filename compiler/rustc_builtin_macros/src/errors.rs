@@ -647,6 +647,27 @@ pub(crate) struct FormatPositionalMismatch {
 }
 
 #[derive(Diagnostic)]
+#[diag(builtin_macros_format_redundant_args)]
+pub(crate) struct FormatRedundantArgs {
+    #[primary_span]
+    pub(crate) span: MultiSpan,
+    pub(crate) n: usize,
+
+    #[note]
+    pub(crate) note: MultiSpan,
+
+    #[subdiagnostic]
+    pub(crate) sugg: Option<FormatRedundantArgsSugg>,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(builtin_macros_suggestion, applicability = "machine-applicable")]
+pub(crate) struct FormatRedundantArgsSugg {
+    #[suggestion_part(code = "")]
+    pub(crate) spans: Vec<Span>,
+}
+
+#[derive(Diagnostic)]
 #[diag(builtin_macros_test_case_non_item)]
 pub(crate) struct TestCaseNonItem {
     #[primary_span]

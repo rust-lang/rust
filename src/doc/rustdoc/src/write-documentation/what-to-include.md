@@ -73,7 +73,7 @@ and your test suite, this example needs some additional code:
 ``````text
 /// Example
 /// ```rust
-/// # main() -> Result<(), std::num::ParseIntError> {
+/// # fn main() -> Result<(), std::num::ParseIntError> {
 /// let fortytwo = "42".parse::<u32>()?;
 /// println!("{} + 10 = {}", fortytwo, fortytwo+10);
 /// #     Ok(())

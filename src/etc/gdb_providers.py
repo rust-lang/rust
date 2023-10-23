@@ -18,70 +18,79 @@ def unwrap_unique_or_non_null(unique_or_nonnull):
     return ptr if ptr.type.code == gdb.TYPE_CODE_PTR else ptr[ptr.type.fields()[0]]
 
 
-class EnumProvider:
+# GDB 14 has a tag class that indicates that extension methods are ok
+# to call.  Use of this tag only requires that printers hide local
+# attributes and methods by prefixing them with "_".
+if hasattr(gdb, 'ValuePrinter'):
+    printer_base = gdb.ValuePrinter
+else:
+    printer_base = object
+
+
+class EnumProvider(printer_base):
     def __init__(self, valobj):
         content = valobj[valobj.type.fields()[0]]
         fields = content.type.fields()
-        self.empty = len(fields) == 0
-        if not self.empty:
+        self._empty = len(fields) == 0
+        if not self._empty:
             if len(fields) == 1:
                 discriminant = 0
             else:
                 discriminant = int(content[fields[0]]) + 1
-            self.active_variant = content[fields[discriminant]]
-            self.name = fields[discriminant].name
-            self.full_name = "{}::{}".format(valobj.type.name, self.name)
+            self._active_variant = content[fields[discriminant]]
+            self._name = fields[discriminant].name
+            self._full_name = "{}::{}".format(valobj.type.name, self._name)
         else:
-            self.full_name = valobj.type.name
+            self._full_name = valobj.type.name
 
     def to_string(self):
-        return self.full_name
+        return self._full_name
 
     def children(self):
-        if not self.empty:
-            yield self.name, self.active_variant
+        if not self._empty:
+            yield self._name, self._active_variant
 
 
-class StdStringProvider:
+class StdStringProvider(printer_base):
     def __init__(self, valobj):
-        self.valobj = valobj
+        self._valobj = valobj
         vec = valobj["vec"]
-        self.length = int(vec["len"])
-        self.data_ptr = unwrap_unique_or_non_null(vec["buf"]["ptr"])
+        self._length = int(vec["len"])
+        self._data_ptr = unwrap_unique_or_non_null(vec["buf"]["ptr"])
 
     def to_string(self):
-        return self.data_ptr.lazy_string(encoding="utf-8", length=self.length)
+        return self._data_ptr.lazy_string(encoding="utf-8", length=self._length)
 
     @staticmethod
     def display_hint():
         return "string"
 
 
-class StdOsStringProvider:
+class StdOsStringProvider(printer_base):
     def __init__(self, valobj):
-        self.valobj = valobj
-        buf = self.valobj["inner"]["inner"]
+        self._valobj = valobj
+        buf = self._valobj["inner"]["inner"]
         is_windows = "Wtf8Buf" in buf.type.name
         vec = buf[ZERO_FIELD] if is_windows else buf
 
-        self.length = int(vec["len"])
-        self.data_ptr = unwrap_unique_or_non_null(vec["buf"]["ptr"])
+        self._length = int(vec["len"])
+        self._data_ptr = unwrap_unique_or_non_null(vec["buf"]["ptr"])
 
     def to_string(self):
-        return self.data_ptr.lazy_string(encoding="utf-8", length=self.length)
+        return self._data_ptr.lazy_string(encoding="utf-8", length=self._length)
 
     def display_hint(self):
         return "string"
 
 
-class StdStrProvider:
+class StdStrProvider(printer_base):
     def __init__(self, valobj):
-        self.valobj = valobj
-        self.length = int(valobj["length"])
-        self.data_ptr = valobj["data_ptr"]
+        self._valobj = valobj
+        self._length = int(valobj["length"])
+        self._data_ptr = valobj["data_ptr"]
 
     def to_string(self):
-        return self.data_ptr.lazy_string(encoding="utf-8", length=self.length)
+        return self._data_ptr.lazy_string(encoding="utf-8", length=self._length)
 
     @staticmethod
     def display_hint():
@@ -103,57 +112,36 @@ def _enumerate_array_elements(element_ptrs):
 
         yield key, element
 
-class StdSliceProvider:
+class StdSliceProvider(printer_base):
     def __init__(self, valobj):
-        self.valobj = valobj
-        self.length = int(valobj["length"])
-        self.data_ptr = valobj["data_ptr"]
+        self._valobj = valobj
+        self._length = int(valobj["length"])
+        self._data_ptr = valobj["data_ptr"]
 
     def to_string(self):
-        return "{}(size={})".format(self.valobj.type, self.length)
+        return "{}(size={})".format(self._valobj.type, self._length)
 
     def children(self):
         return _enumerate_array_elements(
-            self.data_ptr + index for index in xrange(self.length)
+            self._data_ptr + index for index in xrange(self._length)
         )
 
     @staticmethod
     def display_hint():
         return "array"
 
-class StdVecProvider:
+class StdVecProvider(printer_base):
     def __init__(self, valobj):
-        self.valobj = valobj
-        self.length = int(valobj["len"])
-        self.data_ptr = unwrap_unique_or_non_null(valobj["buf"]["ptr"])
+        self._valobj = valobj
+        self._length = int(valobj["len"])
+        self._data_ptr = unwrap_unique_or_non_null(valobj["buf"]["ptr"])
 
     def to_string(self):
-        return "Vec(size={})".format(self.length)
+        return "Vec(size={})".format(self._length)
 
     def children(self):
         return _enumerate_array_elements(
-            self.data_ptr + index for index in xrange(self.length)
-        )
-
-    @staticmethod
-    def display_hint():
-        return "array"
-
-
-class StdVecDequeProvider:
-    def __init__(self, valobj):
-        self.valobj = valobj
-        self.head = int(valobj["head"])
-        self.size = int(valobj["len"])
-        self.cap = int(valobj["buf"]["cap"])
-        self.data_ptr = unwrap_unique_or_non_null(valobj["buf"]["ptr"])
-
-    def to_string(self):
-        return "VecDeque(size={})".format(self.size)
-
-    def children(self):
-        return _enumerate_array_elements(
-            (self.data_ptr + ((self.head + index) % self.cap)) for index in xrange(self.size)
+            self._data_ptr + index for index in xrange(self._length)
         )
 
     @staticmethod
@@ -161,81 +149,102 @@ class StdVecDequeProvider:
         return "array"
 
 
-class StdRcProvider:
+class StdVecDequeProvider(printer_base):
+    def __init__(self, valobj):
+        self._valobj = valobj
+        self._head = int(valobj["head"])
+        self._size = int(valobj["len"])
+        self._cap = int(valobj["buf"]["cap"])
+        self._data_ptr = unwrap_unique_or_non_null(valobj["buf"]["ptr"])
+
+    def to_string(self):
+        return "VecDeque(size={})".format(self._size)
+
+    def children(self):
+        return _enumerate_array_elements(
+            (self._data_ptr + ((self._head + index) % self._cap)) for index in xrange(self._size)
+        )
+
+    @staticmethod
+    def display_hint():
+        return "array"
+
+
+class StdRcProvider(printer_base):
     def __init__(self, valobj, is_atomic=False):
-        self.valobj = valobj
-        self.is_atomic = is_atomic
-        self.ptr = unwrap_unique_or_non_null(valobj["ptr"])
-        self.value = self.ptr["data" if is_atomic else "value"]
-        self.strong = self.ptr["strong"]["v" if is_atomic else "value"]["value"]
-        self.weak = self.ptr["weak"]["v" if is_atomic else "value"]["value"] - 1
+        self._valobj = valobj
+        self._is_atomic = is_atomic
+        self._ptr = unwrap_unique_or_non_null(valobj["ptr"])
+        self._value = self._ptr["data" if is_atomic else "value"]
+        self._strong = self._ptr["strong"]["v" if is_atomic else "value"]["value"]
+        self._weak = self._ptr["weak"]["v" if is_atomic else "value"]["value"] - 1
 
     def to_string(self):
-        if self.is_atomic:
-            return "Arc(strong={}, weak={})".format(int(self.strong), int(self.weak))
+        if self._is_atomic:
+            return "Arc(strong={}, weak={})".format(int(self._strong), int(self._weak))
         else:
-            return "Rc(strong={}, weak={})".format(int(self.strong), int(self.weak))
+            return "Rc(strong={}, weak={})".format(int(self._strong), int(self._weak))
 
     def children(self):
-        yield "value", self.value
-        yield "strong", self.strong
-        yield "weak", self.weak
+        yield "value", self._value
+        yield "strong", self._strong
+        yield "weak", self._weak
 
 
-class StdCellProvider:
+class StdCellProvider(printer_base):
     def __init__(self, valobj):
-        self.value = valobj["value"]["value"]
+        self._value = valobj["value"]["value"]
 
     def to_string(self):
         return "Cell"
 
     def children(self):
-        yield "value", self.value
+        yield "value", self._value
 
 
-class StdRefProvider:
+class StdRefProvider(printer_base):
     def __init__(self, valobj):
-        self.value = valobj["value"].dereference()
-        self.borrow = valobj["borrow"]["borrow"]["value"]["value"]
+        self._value = valobj["value"].dereference()
+        self._borrow = valobj["borrow"]["borrow"]["value"]["value"]
 
     def to_string(self):
-        borrow = int(self.borrow)
+        borrow = int(self._borrow)
         if borrow >= 0:
             return "Ref(borrow={})".format(borrow)
         else:
             return "Ref(borrow_mut={})".format(-borrow)
 
     def children(self):
-        yield "*value", self.value
-        yield "borrow", self.borrow
+        yield "*value", self._value
+        yield "borrow", self._borrow
 
 
-class StdRefCellProvider:
+class StdRefCellProvider(printer_base):
     def __init__(self, valobj):
-        self.value = valobj["value"]["value"]
-        self.borrow = valobj["borrow"]["value"]["value"]
+        self._value = valobj["value"]["value"]
+        self._borrow = valobj["borrow"]["value"]["value"]
 
     def to_string(self):
-        borrow = int(self.borrow)
+        borrow = int(self._borrow)
         if borrow >= 0:
             return "RefCell(borrow={})".format(borrow)
         else:
             return "RefCell(borrow_mut={})".format(-borrow)
 
     def children(self):
-        yield "value", self.value
-        yield "borrow", self.borrow
+        yield "value", self._value
+        yield "borrow", self._borrow
 
 
-class StdNonZeroNumberProvider:
+class StdNonZeroNumberProvider(printer_base):
     def __init__(self, valobj):
         fields = valobj.type.fields()
         assert len(fields) == 1
         field = list(fields)[0]
-        self.value = str(valobj[field.name])
+        self._value = str(valobj[field.name])
 
     def to_string(self):
-        return self.value
+        return self._value
 
 
 # Yields children (in a provider's sense of the word) for a BTreeMap.
@@ -280,15 +289,15 @@ def children_of_btree_map(map):
             yield child
 
 
-class StdBTreeSetProvider:
+class StdBTreeSetProvider(printer_base):
     def __init__(self, valobj):
-        self.valobj = valobj
+        self._valobj = valobj
 
     def to_string(self):
-        return "BTreeSet(size={})".format(self.valobj["map"]["length"])
+        return "BTreeSet(size={})".format(self._valobj["map"]["length"])
 
     def children(self):
-        inner_map = self.valobj["map"]
+        inner_map = self._valobj["map"]
         for i, (child, _) in enumerate(children_of_btree_map(inner_map)):
             yield "[{}]".format(i), child
 
@@ -297,15 +306,15 @@ class StdBTreeSetProvider:
         return "array"
 
 
-class StdBTreeMapProvider:
+class StdBTreeMapProvider(printer_base):
     def __init__(self, valobj):
-        self.valobj = valobj
+        self._valobj = valobj
 
     def to_string(self):
-        return "BTreeMap(size={})".format(self.valobj["length"])
+        return "BTreeMap(size={})".format(self._valobj["length"])
 
     def children(self):
-        for i, (key, val) in enumerate(children_of_btree_map(self.valobj)):
+        for i, (key, val) in enumerate(children_of_btree_map(self._valobj)):
             yield "key{}".format(i), key
             yield "val{}".format(i), val
 
@@ -315,124 +324,124 @@ class StdBTreeMapProvider:
 
 
 # BACKCOMPAT: rust 1.35
-class StdOldHashMapProvider:
+class StdOldHashMapProvider(printer_base):
     def __init__(self, valobj, show_values=True):
-        self.valobj = valobj
-        self.show_values = show_values
+        self._valobj = valobj
+        self._show_values = show_values
 
-        self.table = self.valobj["table"]
-        self.size = int(self.table["size"])
-        self.hashes = self.table["hashes"]
-        self.hash_uint_type = self.hashes.type
-        self.hash_uint_size = self.hashes.type.sizeof
-        self.modulo = 2 ** self.hash_uint_size
-        self.data_ptr = self.hashes[ZERO_FIELD]["pointer"]
+        self._table = self._valobj["table"]
+        self._size = int(self._table["size"])
+        self._hashes = self._table["hashes"]
+        self._hash_uint_type = self._hashes.type
+        self._hash_uint_size = self._hashes.type.sizeof
+        self._modulo = 2 ** self._hash_uint_size
+        self._data_ptr = self._hashes[ZERO_FIELD]["pointer"]
 
-        self.capacity_mask = int(self.table["capacity_mask"])
-        self.capacity = (self.capacity_mask + 1) % self.modulo
+        self._capacity_mask = int(self._table["capacity_mask"])
+        self._capacity = (self._capacity_mask + 1) % self._modulo
 
-        marker = self.table["marker"].type
-        self.pair_type = marker.template_argument(0)
-        self.pair_type_size = self.pair_type.sizeof
+        marker = self._table["marker"].type
+        self._pair_type = marker.template_argument(0)
+        self._pair_type_size = self._pair_type.sizeof
 
-        self.valid_indices = []
-        for idx in range(self.capacity):
-            data_ptr = self.data_ptr.cast(self.hash_uint_type.pointer())
+        self._valid_indices = []
+        for idx in range(self._capacity):
+            data_ptr = self._data_ptr.cast(self._hash_uint_type.pointer())
             address = data_ptr + idx
             hash_uint = address.dereference()
             hash_ptr = hash_uint[ZERO_FIELD]["pointer"]
             if int(hash_ptr) != 0:
-                self.valid_indices.append(idx)
+                self._valid_indices.append(idx)
 
     def to_string(self):
-        if self.show_values:
-            return "HashMap(size={})".format(self.size)
+        if self._show_values:
+            return "HashMap(size={})".format(self._size)
         else:
-            return "HashSet(size={})".format(self.size)
+            return "HashSet(size={})".format(self._size)
 
     def children(self):
-        start = int(self.data_ptr) & ~1
+        start = int(self._data_ptr) & ~1
 
-        hashes = self.hash_uint_size * self.capacity
-        align = self.pair_type_size
-        len_rounded_up = (((((hashes + align) % self.modulo - 1) % self.modulo) & ~(
-                (align - 1) % self.modulo)) % self.modulo - hashes) % self.modulo
+        hashes = self._hash_uint_size * self._capacity
+        align = self._pair_type_size
+        len_rounded_up = (((((hashes + align) % self._modulo - 1) % self._modulo) & ~(
+                (align - 1) % self._modulo)) % self._modulo - hashes) % self._modulo
 
         pairs_offset = hashes + len_rounded_up
-        pairs_start = gdb.Value(start + pairs_offset).cast(self.pair_type.pointer())
+        pairs_start = gdb.Value(start + pairs_offset).cast(self._pair_type.pointer())
 
-        for index in range(self.size):
-            table_index = self.valid_indices[index]
-            idx = table_index & self.capacity_mask
+        for index in range(self._size):
+            table_index = self._valid_indices[index]
+            idx = table_index & self._capacity_mask
             element = (pairs_start + idx).dereference()
-            if self.show_values:
+            if self._show_values:
                 yield "key{}".format(index), element[ZERO_FIELD]
                 yield "val{}".format(index), element[FIRST_FIELD]
             else:
                 yield "[{}]".format(index), element[ZERO_FIELD]
 
     def display_hint(self):
-        return "map" if self.show_values else "array"
+        return "map" if self._show_values else "array"
 
 
-class StdHashMapProvider:
+class StdHashMapProvider(printer_base):
     def __init__(self, valobj, show_values=True):
-        self.valobj = valobj
-        self.show_values = show_values
+        self._valobj = valobj
+        self._show_values = show_values
 
-        table = self.table()
+        table = self._table()
         table_inner = table["table"]
         capacity = int(table_inner["bucket_mask"]) + 1
         ctrl = table_inner["ctrl"]["pointer"]
 
-        self.size = int(table_inner["items"])
-        self.pair_type = table.type.template_argument(0).strip_typedefs()
+        self._size = int(table_inner["items"])
+        self._pair_type = table.type.template_argument(0).strip_typedefs()
 
-        self.new_layout = not table_inner.type.has_key("data")
-        if self.new_layout:
-            self.data_ptr = ctrl.cast(self.pair_type.pointer())
+        self._new_layout = not table_inner.type.has_key("data")
+        if self._new_layout:
+            self._data_ptr = ctrl.cast(self._pair_type.pointer())
         else:
-            self.data_ptr = table_inner["data"]["pointer"]
+            self._data_ptr = table_inner["data"]["pointer"]
 
-        self.valid_indices = []
+        self._valid_indices = []
         for idx in range(capacity):
             address = ctrl + idx
             value = address.dereference()
             is_presented = value & 128 == 0
             if is_presented:
-                self.valid_indices.append(idx)
+                self._valid_indices.append(idx)
 
-    def table(self):
-        if self.show_values:
-            hashbrown_hashmap = self.valobj["base"]
-        elif self.valobj.type.fields()[0].name == "map":
+    def _table(self):
+        if self._show_values:
+            hashbrown_hashmap = self._valobj["base"]
+        elif self._valobj.type.fields()[0].name == "map":
             # BACKCOMPAT: rust 1.47
             # HashSet wraps std::collections::HashMap, which wraps hashbrown::HashMap
-            hashbrown_hashmap = self.valobj["map"]["base"]
+            hashbrown_hashmap = self._valobj["map"]["base"]
         else:
             # HashSet wraps hashbrown::HashSet, which wraps hashbrown::HashMap
-            hashbrown_hashmap = self.valobj["base"]["map"]
+            hashbrown_hashmap = self._valobj["base"]["map"]
         return hashbrown_hashmap["table"]
 
     def to_string(self):
-        if self.show_values:
-            return "HashMap(size={})".format(self.size)
+        if self._show_values:
+            return "HashMap(size={})".format(self._size)
         else:
-            return "HashSet(size={})".format(self.size)
+            return "HashSet(size={})".format(self._size)
 
     def children(self):
-        pairs_start = self.data_ptr
+        pairs_start = self._data_ptr
 
-        for index in range(self.size):
-            idx = self.valid_indices[index]
-            if self.new_layout:
+        for index in range(self._size):
+            idx = self._valid_indices[index]
+            if self._new_layout:
                 idx = -(idx + 1)
             element = (pairs_start + idx).dereference()
-            if self.show_values:
+            if self._show_values:
                 yield "key{}".format(index), element[ZERO_FIELD]
                 yield "val{}".format(index), element[FIRST_FIELD]
             else:
                 yield "[{}]".format(index), element[ZERO_FIELD]
 
     def display_hint(self):
-        return "map" if self.show_values else "array"
+        return "map" if self._show_values else "array"

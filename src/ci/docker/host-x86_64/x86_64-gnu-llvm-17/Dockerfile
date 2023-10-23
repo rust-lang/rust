@@ -1,4 +1,4 @@
-FROM ubuntu:23.04
+FROM ubuntu:23.10
 
 ARG DEBIAN_FRONTEND=noninteractive
 
@@ -15,8 +15,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   cmake \
   sudo \
   gdb \
-  llvm-16-tools \
-  llvm-16-dev \
+  llvm-17-tools \
+  llvm-17-dev \
   libedit-dev \
   libssl-dev \
   pkg-config \
@@ -38,14 +38,10 @@ RUN sh /scripts/sccache.sh
 # LLVM, rather than the typical src/llvm-project LLVM.
 ENV NO_DOWNLOAD_CI_LLVM 1
 
-# This is not the latest LLVM version, so some components required by tests may
-# be missing.
-ENV IS_NOT_LATEST_LLVM 1
-
 # Using llvm-link-shared due to libffi issues -- see #34486
 ENV RUST_CONFIGURE_ARGS \
       --build=x86_64-unknown-linux-gnu \
-      --llvm-root=/usr/lib/llvm-16 \
+      --llvm-root=/usr/lib/llvm-17 \
       --enable-llvm-link-shared \
       --set rust.thin-lto-import-instr-limit=10
 
