@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::{match_def_path, paths};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{AsyncCoroutineKind, Body, CoroutineKind};
+use rustc_hir::{CoroutineSource, Body, CoroutineKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::mir::CoroutineLayout;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
@@ -195,7 +195,7 @@ impl LateLintPass<'_> for AwaitHolding {
     }
 
     fn check_body(&mut self, cx: &LateContext<'_>, body: &'_ Body<'_>) {
-        use AsyncCoroutineKind::{Block, Closure, Fn};
+        use CoroutineSource::{Block, Closure, Fn};
         if let Some(CoroutineKind::Async(Block | Closure | Fn)) = body.coroutine_kind {
             let def_id = cx.tcx.hir().body_owner_def_id(body.id());
             if let Some(coroutine_layout) = cx.tcx.mir_coroutine_witnesses(def_id) {
