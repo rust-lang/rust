@@ -11,18 +11,6 @@ fn while_loop(_1: bool) -> () {
     }
 
     bb0: {
-        goto -> bb1;
-    }
-
-    bb1: {
-        switchInt(_1) -> [0: bb3, otherwise: bb2];
-    }
-
-    bb2: {
-        switchInt(_1) -> [0: bb1, otherwise: bb3];
-    }
-
-    bb3: {
         return;
     }
 }

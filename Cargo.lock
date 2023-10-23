@@ -4279,6 +4279,7 @@ dependencies = [
  "coverage_test_macros",
  "either",
  "itertools",
+ "rustc_arena",
  "rustc_ast",
  "rustc_attr",
  "rustc_const_eval",
