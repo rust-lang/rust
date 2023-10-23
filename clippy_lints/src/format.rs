@@ -23,13 +23,13 @@ declare_clippy_lint! {
     /// if `foo: &str`.
     ///
     /// ### Examples
-    /// ```rust
+    /// ```no_run
     /// let foo = "foo";
     /// format!("{}", foo);
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let foo = "foo";
     /// foo.to_owned();
     /// ```

@@ -16,7 +16,7 @@ declare_clippy_lint! {
     /// display settings of the author and reader differ.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// ///
     /// /// Struct to hold two strings:
     /// /// 	- first		one
@@ -34,7 +34,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Will be converted to:
-    /// ```rust
+    /// ```no_run
     /// ///
     /// /// Struct to hold two strings:
     /// ///     - first        one

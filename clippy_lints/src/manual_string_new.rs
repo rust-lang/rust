@@ -19,12 +19,12 @@ declare_clippy_lint! {
     /// be confusing.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let a = "".to_string();
     /// let b: String = "".into();
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let a = String::new();
     /// let b = String::new();
     /// ```

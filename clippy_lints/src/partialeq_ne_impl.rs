@@ -16,7 +16,7 @@ declare_clippy_lint! {
     /// re-implement it.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// struct Foo;
     ///
     /// impl PartialEq for Foo {

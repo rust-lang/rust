@@ -15,14 +15,14 @@ declare_clippy_lint! {
     /// Readability suffers from unnecessary struct building.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// struct S { s: String }
     ///
     /// let a = S { s: String::from("Hello, world!") };
     /// let b = S { ..a };
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// struct S { s: String }
     ///
     /// let a = S { s: String::from("Hello, world!") };

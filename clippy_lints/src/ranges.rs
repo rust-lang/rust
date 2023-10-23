@@ -39,7 +39,7 @@ declare_clippy_lint! {
     /// ([#3307](https://github.com/rust-lang/rust-clippy/issues/3307)).
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # let x = 0;
     /// # let y = 1;
     /// for i in x..(y+1) {
@@ -48,7 +48,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # let x = 0;
     /// # let y = 1;
     /// for i in x..=y {
@@ -77,7 +77,7 @@ declare_clippy_lint! {
     /// ([#3307](https://github.com/rust-lang/rust-clippy/issues/3307)).
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # let x = 0;
     /// # let y = 1;
     /// for i in x..=(y-1) {
@@ -86,7 +86,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # let x = 0;
     /// # let y = 1;
     /// for i in x..y {
@@ -118,7 +118,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// fn main() {
     ///     (0..=10).rev().for_each(|x| println!("{}", x));
     ///
@@ -142,14 +142,14 @@ declare_clippy_lint! {
     /// failure modes (such as fencepost errors or using `||` instead of `&&`).
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// // given
     /// let x = 6;
     ///
     /// assert!(x >= 3 && x < 8);
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     ///# let x = 6;
     /// assert!((3..8).contains(&x));
     /// ```

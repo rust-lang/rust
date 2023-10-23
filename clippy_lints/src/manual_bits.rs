@@ -20,11 +20,11 @@ declare_clippy_lint! {
     /// Can be written as the shorter `T::BITS`.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// std::mem::size_of::<usize>() * 8;
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// usize::BITS as usize;
     /// ```
     #[clippy::version = "1.60.0"]

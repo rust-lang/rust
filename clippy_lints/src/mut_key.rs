@@ -47,7 +47,7 @@ declare_clippy_lint! {
     /// [#6745](https://github.com/rust-lang/rust-clippy/issues/6745).
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// use std::cmp::{PartialEq, Eq};
     /// use std::collections::HashSet;
     /// use std::hash::{Hash, Hasher};

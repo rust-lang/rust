@@ -32,7 +32,7 @@ declare_clippy_lint! {
     /// this lint will not be raised.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # let optional: Option<u32> = Some(0);
     /// # fn do_complicated_function() -> u32 { 5 };
     /// let _ = if let Some(foo) = optional {
@@ -54,7 +54,7 @@ declare_clippy_lint! {
     ///
     /// should be
     ///
-    /// ```rust
+    /// ```no_run
     /// # let optional: Option<u32> = Some(0);
     /// # fn do_complicated_function() -> u32 { 5 };
     /// let _ = optional.map_or(5, |foo| foo);

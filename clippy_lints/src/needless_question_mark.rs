@@ -16,7 +16,7 @@ declare_clippy_lint! {
     /// There's no reason to use `?` to short-circuit when execution of the body will end there anyway.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// struct TO {
     ///     magic: Option<usize>,
     /// }
@@ -35,7 +35,7 @@ declare_clippy_lint! {
     ///
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// struct TO {
     ///     magic: Option<usize>,
     /// }

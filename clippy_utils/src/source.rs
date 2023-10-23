@@ -108,7 +108,7 @@ fn first_char_in_first_line<T: LintContext>(cx: &T, span: Span) -> Option<BytePo
 
 /// Extends the span to the beginning of the spans line, incl. whitespaces.
 ///
-/// ```rust
+/// ```no_run
 ///        let x = ();
 /// //             ^^
 /// // will be converted to

@@ -44,14 +44,14 @@ declare_clippy_lint! {
     /// and bugs.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// use std::ptr::NonNull;
     /// let a = &mut 42;
     ///
     /// let ptr = unsafe { NonNull::new_unchecked(a) };
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// use std::ptr::NonNull;
     /// let a = &mut 42;
     ///
@@ -72,7 +72,7 @@ declare_clippy_lint! {
     /// describe safety invariants.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// use std::ptr::NonNull;
     /// let a = &mut 42;
     ///
@@ -80,7 +80,7 @@ declare_clippy_lint! {
     /// let ptr = NonNull::new(a).unwrap();
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// use std::ptr::NonNull;
     /// let a = &mut 42;
     ///

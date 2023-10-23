@@ -14,12 +14,12 @@ declare_clippy_lint! {
     /// ### Why is this bad?
     /// `std::iter::empty()` is the more idiomatic way.
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let _ = std::iter::Empty::<usize>::default();
     /// let iter: std::iter::Empty<usize> = std::iter::Empty::default();
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let _ = std::iter::empty::<usize>();
     /// let iter: std::iter::Empty<usize> = std::iter::empty();
     /// ```

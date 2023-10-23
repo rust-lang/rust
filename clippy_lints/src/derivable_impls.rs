@@ -21,7 +21,7 @@ declare_clippy_lint! {
     /// It is less concise.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// struct Foo {
     ///     bar: bool
     /// }
@@ -36,7 +36,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// #[derive(Default)]
     /// struct Foo {
     ///     bar: bool

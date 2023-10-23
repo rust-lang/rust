@@ -26,11 +26,11 @@ declare_clippy_lint! {
     /// the letters in the second acronym.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// struct HTTPResponse;
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// struct HttpResponse;
     /// ```
     #[clippy::version = "1.51.0"]

@@ -33,14 +33,14 @@ declare_clippy_lint! {
     /// This is less efficient.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// fn foo(_x: &[u8]) {}
     ///
     /// foo(&vec![1, 2]);
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # fn foo(_x: &[u8]) {}
     /// foo(&[1, 2]);
     /// ```

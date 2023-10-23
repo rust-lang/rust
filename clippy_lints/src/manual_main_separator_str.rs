@@ -19,11 +19,11 @@ declare_clippy_lint! {
     /// an extra memory allocation.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let s: &str = &std::path::MAIN_SEPARATOR.to_string();
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let s: &str = std::path::MAIN_SEPARATOR_STR;
     /// ```
     #[clippy::version = "1.70.0"]

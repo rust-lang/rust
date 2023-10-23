@@ -25,14 +25,14 @@ declare_clippy_lint! {
     /// `None`.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// use std::mem;
     ///
     /// let mut an_option = Some(0);
     /// let replaced = mem::replace(&mut an_option, None);
     /// ```
     /// Is better expressed with:
-    /// ```rust
+    /// ```no_run
     /// let mut an_option = Some(0);
     /// let taken = an_option.take();
     /// ```
@@ -53,7 +53,7 @@ declare_clippy_lint! {
     /// observed in the case of a panic.
     ///
     /// ### Example
-    /// ```
+    /// ```no_run
     /// use std::mem;
     ///# fn may_panic(v: Vec<i32>) -> Vec<i32> { v }
     ///
@@ -84,12 +84,12 @@ declare_clippy_lint! {
     /// take the current value and replace it with the default value of that type.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let mut text = String::from("foo");
     /// let replaced = std::mem::replace(&mut text, String::default());
     /// ```
     /// Is better expressed with:
-    /// ```rust
+    /// ```no_run
     /// let mut text = String::from("foo");
     /// let taken = std::mem::take(&mut text);
     /// ```

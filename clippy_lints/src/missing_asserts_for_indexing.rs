@@ -43,14 +43,14 @@ declare_clippy_lint! {
     /// about the length of a slice, but this lint will not detect that.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// fn sum(v: &[u8]) -> u8 {
     ///     // 4 bounds checks
     ///     v[0] + v[1] + v[2] + v[3]
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// fn sum(v: &[u8]) -> u8 {
     ///     assert!(v.len() > 4);
     ///     // no bounds checks

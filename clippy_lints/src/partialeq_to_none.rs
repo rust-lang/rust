@@ -21,13 +21,13 @@ declare_clippy_lint! {
     /// way relies on `T: PartialEq` to do the comparison, which is unneeded.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// fn foo(f: Option<u32>) -> &'static str {
     ///     if f != None { "yay" } else { "nay" }
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// fn foo(f: Option<u32>) -> &'static str {
     ///     if f.is_some() { "yay" } else { "nay" }
     /// }

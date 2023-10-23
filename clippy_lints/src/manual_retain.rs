@@ -35,13 +35,13 @@ declare_clippy_lint! {
     /// ### Why is this bad?
     /// `.retain()` is simpler and avoids needless allocation.
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let mut vec = vec![0, 1, 2];
     /// vec = vec.iter().filter(|&x| x % 2 == 0).copied().collect();
     /// vec = vec.into_iter().filter(|x| x % 2 == 0).collect();
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let mut vec = vec![0, 1, 2];
     /// vec.retain(|x| x % 2 == 0);
     /// ```

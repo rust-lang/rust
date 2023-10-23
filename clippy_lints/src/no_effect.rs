@@ -23,7 +23,7 @@ declare_clippy_lint! {
     /// readable.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// 0;
     /// ```
     #[clippy::version = "pre 1.29.0"]

@@ -20,11 +20,11 @@ declare_clippy_lint! {
     /// This results in longer and less readable code
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// vec!["1", "2", "3"].join(&String::new());
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// vec!["1", "2", "3"].join("");
     /// ```
     #[clippy::version = "1.62.0"]

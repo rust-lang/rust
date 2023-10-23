@@ -30,7 +30,7 @@ declare_clippy_lint! {
     ///
     /// In some cases, this would not catch all useless arguments.
     ///
-    /// ```rust
+    /// ```no_run
     /// fn foo(a: usize, b: usize) -> usize {
     ///     let f = |x| x + 1;
     ///
@@ -53,7 +53,7 @@ declare_clippy_lint! {
     /// Also, when you recurse the function name with path segments, it is not possible to detect.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// fn f(a: usize, b: usize) -> usize {
     ///     if a == 0 {
     ///         1
@@ -66,7 +66,7 @@ declare_clippy_lint! {
     /// # }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// fn f(a: usize) -> usize {
     ///     if a == 0 {
     ///         1

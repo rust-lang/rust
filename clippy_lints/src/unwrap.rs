@@ -26,7 +26,7 @@ declare_clippy_lint! {
     /// Using `if let` or `match` is more idiomatic.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # let option = Some(0);
     /// # fn do_something_with(_x: usize) {}
     /// if option.is_some() {
@@ -36,7 +36,7 @@ declare_clippy_lint! {
     ///
     /// Could be written:
     ///
-    /// ```rust
+    /// ```no_run
     /// # let option = Some(0);
     /// # fn do_something_with(_x: usize) {}
     /// if let Some(value) = option {
@@ -61,7 +61,7 @@ declare_clippy_lint! {
     /// So something like `let x: Option<()> = None; x.unwrap();` will not be recognized.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # let option = Some(0);
     /// # fn do_something_with(_x: usize) {}
     /// if option.is_none() {

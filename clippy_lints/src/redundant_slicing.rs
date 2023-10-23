@@ -51,12 +51,12 @@ declare_clippy_lint! {
     /// Some people may prefer to dereference rather than slice.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let vec = vec![1, 2, 3];
     /// let slice = &vec[..];
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let vec = vec![1, 2, 3];
     /// let slice = &*vec;
     /// ```

@@ -19,13 +19,13 @@ declare_clippy_lint! {
     /// Reduces the readability of statements & is error prone.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # let foo: u32 = 5;
     /// foo <= i32::MAX as u32;
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # let foo = 1;
     /// # #[allow(unused)]
     /// i32::try_from(foo).is_ok();

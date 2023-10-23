@@ -774,7 +774,7 @@ Additional dotfiles (files or directories starting with a dot) to allow
 
 ## `enforce-iter-loop-reborrow`
 #### Example
-```
+```no_run
 let mut vec = vec![1, 2, 3];
 let rmvec = &mut vec;
 for _ in rmvec.iter() {}
@@ -782,7 +782,7 @@ for _ in rmvec.iter_mut() {}
 ```
 
 Use instead:
-```
+```no_run
 let mut vec = vec![1, 2, 3];
 let rmvec = &mut vec;
 for _ in &*rmvec {}

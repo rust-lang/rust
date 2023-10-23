@@ -15,7 +15,7 @@ declare_clippy_lint! {
     /// This method is also implicitly defined if a type implements the `Display` trait. As the functionality of `Display` is much more versatile, it should be preferred.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// pub struct A;
     ///
     /// impl A {
@@ -26,7 +26,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// use std::fmt;
     ///
     /// pub struct A;
@@ -51,7 +51,7 @@ declare_clippy_lint! {
     /// This method is also implicitly defined if a type implements the `Display` trait. The less versatile inherent method will then shadow the implementation introduced by `Display`.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// use std::fmt;
     ///
     /// pub struct A;
@@ -70,7 +70,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// use std::fmt;
     ///
     /// pub struct A;

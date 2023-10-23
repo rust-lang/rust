@@ -20,7 +20,7 @@ declare_clippy_lint! {
     /// Note that although these bindings do not affect your code's meaning, they _may_ affect `rustc`'s stack allocation.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let a = 0;
     /// let a = a;
     ///
@@ -29,7 +29,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let a = 0;
     /// // no redefinition with the same name
     ///

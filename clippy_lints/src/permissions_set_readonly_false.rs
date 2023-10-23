@@ -14,7 +14,7 @@ declare_clippy_lint! {
     /// On Unix platforms this results in the file being world writable,
     /// equivalent to `chmod a+w <file>`.
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// use std::fs::File;
     /// let f = File::create("foo.txt").unwrap();
     /// let metadata = f.metadata().unwrap();

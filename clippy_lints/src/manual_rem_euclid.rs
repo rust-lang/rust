@@ -18,12 +18,12 @@ declare_clippy_lint! {
     /// It's simpler and more readable.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let x: i32 = 24;
     /// let rem = ((x % 4) + 4) % 4;
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let x: i32 = 24;
     /// let rem = x.rem_euclid(4);
     /// ```

@@ -27,7 +27,7 @@ declare_clippy_lint! {
     ///
     /// Also, the lint only runs one pass over the code. Consider these two non-const functions:
     ///
-    /// ```rust
+    /// ```no_run
     /// fn a() -> i32 {
     ///     0
     /// }
@@ -42,7 +42,7 @@ declare_clippy_lint! {
     ///
     /// If you are marking a public function with `const`, removing it again will break API compatibility.
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # struct Foo {
     /// #     random_number: usize,
     /// # }
@@ -55,7 +55,7 @@ declare_clippy_lint! {
     ///
     /// Could be a const fn:
     ///
-    /// ```rust
+    /// ```no_run
     /// # struct Foo {
     /// #     random_number: usize,
     /// # }

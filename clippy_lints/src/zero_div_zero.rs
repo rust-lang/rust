@@ -13,12 +13,12 @@ declare_clippy_lint! {
     /// It's less readable than `f32::NAN` or `f64::NAN`.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let nan = 0.0f32 / 0.0;
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let nan = f32::NAN;
     /// ```
     #[clippy::version = "pre 1.29.0"]

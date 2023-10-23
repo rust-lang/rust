@@ -26,7 +26,7 @@ declare_clippy_lint! {
     /// https://github.com/rust-lang/rust-clippy/issues/886
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let x: u8 = 1;
     /// (x as u32) > 300;
     /// ```

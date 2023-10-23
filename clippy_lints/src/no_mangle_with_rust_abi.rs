@@ -18,13 +18,13 @@ declare_clippy_lint! {
     /// Rust ABI can break this at any point.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     ///  #[no_mangle]
     ///  fn example(arg_one: u32, arg_two: usize) {}
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     ///  #[no_mangle]
     ///  extern "C" fn example(arg_one: u32, arg_two: usize) {}
     /// ```

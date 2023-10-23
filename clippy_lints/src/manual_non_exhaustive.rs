@@ -22,7 +22,7 @@ declare_clippy_lint! {
     /// and allows possible optimizations when applied to enums.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// struct S {
     ///     pub a: i32,
     ///     pub b: i32,
@@ -39,7 +39,7 @@ declare_clippy_lint! {
     /// struct T(pub i32, pub i32, ());
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// #[non_exhaustive]
     /// struct S {
     ///     pub a: i32,

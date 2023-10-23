@@ -36,7 +36,7 @@ declare_clippy_lint! {
     /// in such a case can change the semantics of the code.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// fn f(_: impl AsRef<str>) {}
     ///
     /// let x = "foo";
@@ -44,7 +44,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// fn f(_: impl AsRef<str>) {}
     ///
     /// let x = "foo";

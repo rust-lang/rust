@@ -35,12 +35,12 @@ declare_clippy_lint! {
     /// The recommended code is both shorter and avoids a temporary allocation.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # use std::panic::Location;
     /// println!("error: {}", format!("something failed at {}", Location::caller()));
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # use std::panic::Location;
     /// println!("error: something failed at {}", Location::caller());
     /// ```
@@ -61,12 +61,12 @@ declare_clippy_lint! {
     /// unnecessary.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # use std::panic::Location;
     /// println!("error: something failed at {}", Location::caller().to_string());
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # use std::panic::Location;
     /// println!("error: something failed at {}", Location::caller());
     /// ```
@@ -87,7 +87,7 @@ declare_clippy_lint! {
     /// The inlined syntax, where allowed, is simpler.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # let var = 42;
     /// # let width = 1;
     /// # let prec = 2;
@@ -98,7 +98,7 @@ declare_clippy_lint! {
     /// format!("{:.*}", prec, var);
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # let var = 42;
     /// # let width = 1;
     /// # let prec = 2;
@@ -111,12 +111,12 @@ declare_clippy_lint! {
     ///
     /// If allow-mixed-uninlined-format-args is set to false in clippy.toml,
     /// the following code will also trigger the lint:
-    /// ```rust
+    /// ```no_run
     /// # let var = 42;
     /// format!("{} {}", var, 1+2);
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # let var = 42;
     /// format!("{var} {}", 1+2);
     /// ```
@@ -141,13 +141,13 @@ declare_clippy_lint! {
     /// an expected formatting operation such as adding padding isn't happening.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// println!("{:.}", 1.0);
     ///
     /// println!("not padded: {:5}", format_args!("..."));
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// println!("{}", 1.0);
     ///
     /// println!("not padded: {}", format_args!("..."));

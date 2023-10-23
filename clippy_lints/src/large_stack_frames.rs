@@ -49,7 +49,7 @@ declare_clippy_lint! {
     /// ### Example
     /// This function creates four 500 KB arrays on the stack. Quite big but just small enough to not trigger `large_stack_arrays`.
     /// However, looking at the function as a whole, it's clear that this uses a lot of stack space.
-    /// ```rust
+    /// ```no_run
     /// struct QuiteLargeType([u8; 500_000]);
     /// fn foo() {
     ///     // ... some function that uses a lot of stack space ...
@@ -62,7 +62,7 @@ declare_clippy_lint! {
     ///
     /// Instead of doing this, allocate the arrays on the heap.
     /// This currently requires going through a `Vec` first and then converting it to a `Box`:
-    /// ```rust
+    /// ```no_run
     /// struct NotSoLargeType(Box<[u8]>);
     ///
     /// fn foo() {

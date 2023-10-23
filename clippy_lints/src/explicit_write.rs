@@ -19,7 +19,7 @@ declare_clippy_lint! {
     /// Using `(e)println! is clearer and more concise
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # use std::io::Write;
     /// # let bar = "furchtbar";
     /// writeln!(&mut std::io::stderr(), "foo: {:?}", bar).unwrap();
@@ -27,7 +27,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # use std::io::Write;
     /// # let bar = "furchtbar";
     /// eprintln!("foo: {:?}", bar);

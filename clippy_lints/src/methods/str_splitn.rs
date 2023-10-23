@@ -115,7 +115,7 @@ fn check_manual_split_once(
 
 /// checks for
 ///
-/// ```
+/// ```no_run
 /// let mut iter = "a.b.c".splitn(2, '.');
 /// let a = iter.next();
 /// let b = iter.next();

@@ -23,7 +23,7 @@ declare_clippy_lint! {
     /// clear that it's not a specific subset of characters, but all
     /// ASCII (lowercase|uppercase|digit|hexdigit) characters.
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// fn main() {
     ///     assert!(matches!('x', 'a'..='z'));
     ///     assert!(matches!(b'X', b'A'..=b'Z'));
@@ -37,7 +37,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// fn main() {
     ///     assert!('x'.is_ascii_lowercase());
     ///     assert!(b'X'.is_ascii_uppercase());

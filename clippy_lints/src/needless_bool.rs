@@ -32,7 +32,7 @@ declare_clippy_lint! {
     /// shorter code.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # let x = true;
     /// if x {
     ///     false
@@ -43,7 +43,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # let x = true;
     /// !x
     /// # ;

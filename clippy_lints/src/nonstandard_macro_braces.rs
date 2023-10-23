@@ -23,11 +23,11 @@ declare_clippy_lint! {
     /// doesn't give you a semicolon in item position, which can be unexpected.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// vec!{1, 2, 3};
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// vec![1, 2, 3];
     /// ```
     #[clippy::version = "1.55.0"]
