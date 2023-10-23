@@ -145,7 +145,17 @@ impl<'tcx> InferCtxt<'tcx> {
                             return None;
                         }
                     }
-                    DefiningAnchor::Bubble => {}
+                    DefiningAnchor::Bubble => {
+                        if let ty::Alias(ty::Opaque, _) = b.kind() {
+                            let obligation = traits::Obligation::new(
+                                self.tcx,
+                                cause.clone(),
+                                param_env,
+                                ty::PredicateKind::Ambiguous,
+                            );
+                            return Some(Ok(InferOk { value: (), obligations: vec![obligation] }));
+                        }
+                    }
                     DefiningAnchor::Error => return None,
                 };
                 if let ty::Alias(ty::Opaque, ty::AliasTy { def_id: b_def_id, .. }) = *b.kind() {

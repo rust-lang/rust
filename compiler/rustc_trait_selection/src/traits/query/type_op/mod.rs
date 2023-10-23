@@ -6,7 +6,7 @@ use crate::traits::{ObligationCause, ObligationCtxt};
 use rustc_errors::ErrorGuaranteed;
 use rustc_infer::infer::canonical::Certainty;
 use rustc_infer::traits::PredicateObligations;
-use rustc_middle::traits::query::NoSolution;
+use rustc_middle::traits::{query::NoSolution, DefiningAnchor};
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{ClassicInput, TyCtxt};
 use rustc_span::Span;
@@ -95,7 +95,7 @@ pub trait QueryTypeOp<'tcx>: fmt::Debug + Copy + TypeFoldable<TyCtxt<'tcx>> + 't
     ) -> Result<Self::QueryResponse, NoSolution>;
 
     fn fully_perform_into(
-        query_key: ClassicInput<'tcx, Self>,
+        mut query_key: ClassicInput<'tcx, Self>,
         infcx: &InferCtxt<'tcx>,
         output_query_region_constraints: &mut QueryRegionConstraints<'tcx>,
     ) -> Result<
@@ -111,15 +111,25 @@ pub trait QueryTypeOp<'tcx>: fmt::Debug + Copy + TypeFoldable<TyCtxt<'tcx>> + 't
             return Ok((result, None, vec![], Certainty::Proven));
         }
 
-        // FIXME(#33684) -- We need to use
-        // `canonicalize_query_keep_static` here because of things
-        // like the subtype query, which go awry around
-        // `'static` otherwise.
-        let mut canonical_var_values = OriginalQueryValues::default();
         let old_param_env = query_key.param_env;
-        let canonical_self =
-            infcx.canonicalize_query_keep_static(query_key, &mut canonical_var_values);
-        let canonical_result = Self::perform_query(infcx.tcx, canonical_self)?;
+        let original_anchor = std::mem::replace(&mut query_key.anchor, DefiningAnchor::Bubble);
+        let (canonical_var_values, canonical_self, canonical_result) = loop {
+            // FIXME(#33684) -- We need to use
+            // `canonicalize_query_keep_static` here because of things
+            // like the subtype query, which go awry around
+            // `'static` otherwise.
+            let mut canonical_var_values = OriginalQueryValues::default();
+            let canonical_self =
+                infcx.canonicalize_query_keep_static(query_key, &mut canonical_var_values);
+            let canonical_result = Self::perform_query(infcx.tcx, canonical_self)?;
+            if matches!(canonical_result.value.certainty, Certainty::Ambiguous)
+                && query_key.anchor != original_anchor
+            {
+                query_key.anchor = original_anchor;
+                continue;
+            }
+            break (canonical_var_values, canonical_self, canonical_result);
+        };
 
         let InferOk { value, obligations } = infcx
             .instantiate_nll_query_response_and_region_obligations(
