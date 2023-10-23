@@ -221,7 +221,7 @@ unsafe impl<T: ?Sized + Sync> Sync for MutexGuard<'_, T> {}
 /// of scope), the lock will be unlocked.
 ///
 /// The main difference between `MappedMutexGuard` and [`MutexGuard`] is that the
-/// former cannot be used with [`CondVar`], since that
+/// former cannot be used with [`Condvar`], since that
 /// could introduce soundness issues if the locked object is modified by another
 /// thread while the `Mutex` is unlocked.
 ///
@@ -233,7 +233,7 @@ unsafe impl<T: ?Sized + Sync> Sync for MutexGuard<'_, T> {}
 ///
 /// [`map`]: MutexGuard::map
 /// [`try_map`]: MutexGuard::try_map
-/// [`CondVar`]: crate::sync::CondVar
+/// [`Condvar`]: crate::sync::Condvar
 #[must_use = "if unused the Mutex will immediately unlock"]
 #[must_not_suspend = "holding a MappedMutexGuard across suspend \
                       points can cause deadlocks, delays, \
