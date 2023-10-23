@@ -112,6 +112,7 @@ mod useless_asref;
 mod utils;
 mod vec_resize_to_zero;
 mod verbose_file_reads;
+mod waker_clone_wake;
 mod wrong_self_convention;
 mod zst_offset;
 
@@ -3632,6 +3633,28 @@ declare_clippy_lint! {
     "`as_str` used to call a method on `str` that is also available on `String`"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `waker.clone().wake()`
+    ///
+    /// ### Why is this bad?
+    /// Cloning the waker is not necessary, `wake_by_ref()` enables the same operation
+    /// without extra cloning/dropping.
+    ///
+    /// ### Example
+    /// ```rust,ignore
+    /// waker.clone().wake();
+    /// ```
+    /// Should be written
+    /// ```rust,ignore
+    /// waker.wake_by_ref();
+    /// ```
+    #[clippy::version = "1.75.0"]
+    pub WAKER_CLONE_WAKE,
+    perf,
+    "cloning a `Waker` only to wake it"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Msrv,
@@ -3777,6 +3800,7 @@ impl_lint_pass!(Methods => [
     ITER_OUT_OF_BOUNDS,
     PATH_ENDS_WITH_EXT,
     REDUNDANT_AS_STR,
+    WAKER_CLONE_WAKE,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -4365,6 +4389,9 @@ impl Methods {
                     }
                     unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
                 },
+                ("wake", []) => {
+                    waker_clone_wake::check(cx, expr, recv);
+                }
                 ("write", []) => {
                     readonly_write_lock::check(cx, expr, recv);
                 }

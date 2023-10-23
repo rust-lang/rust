@@ -1,0 +1,11 @@
+error: cloning a `Waker` only to wake it
+  --> $DIR/waker_clone_wake.rs:9:5
+   |
+LL |     cx.waker().clone().wake();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `cx.waker().wake_by_ref()`
+   |
+   = note: `-D clippy::waker-clone-wake` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::waker_clone_wake)]`
+
+error: aborting due to previous error
+

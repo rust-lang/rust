@@ -112,6 +112,7 @@ pub const VEC_RESIZE: [&str; 4] = ["alloc", "vec", "Vec", "resize"];
 pub const INSTANT_NOW: [&str; 4] = ["std", "time", "Instant", "now"];
 pub const VEC_IS_EMPTY: [&str; 4] = ["alloc", "vec", "Vec", "is_empty"];
 pub const VEC_POP: [&str; 4] = ["alloc", "vec", "Vec", "pop"];
+pub const WAKER: [&str; 4] = ["core", "task", "wake", "Waker"];
 pub const OPTION_UNWRAP: [&str; 4] = ["core", "option", "Option", "unwrap"];
 pub const OPTION_EXPECT: [&str; 4] = ["core", "option", "Option", "expect"];
 #[expect(clippy::invalid_paths)] // not sure why it thinks this, it works so
