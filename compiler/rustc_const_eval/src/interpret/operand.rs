@@ -107,10 +107,10 @@ impl<Prov: Provenance> std::fmt::Display for ImmTy<'_, Prov> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         /// Helper function for printing a scalar to a FmtPrinter
         fn p<'a, 'tcx, Prov: Provenance>(
-            cx: FmtPrinter<'a, 'tcx>,
+            cx: &mut FmtPrinter<'a, 'tcx>,
             s: Scalar<Prov>,
             ty: Ty<'tcx>,
-        ) -> Result<FmtPrinter<'a, 'tcx>, std::fmt::Error> {
+        ) -> Result<(), std::fmt::Error> {
             match s {
                 Scalar::Int(int) => cx.pretty_print_const_scalar_int(int, ty, true),
                 Scalar::Ptr(ptr, _sz) => {
@@ -125,8 +125,9 @@ impl<Prov: Provenance> std::fmt::Display for ImmTy<'_, Prov> {
             match self.imm {
                 Immediate::Scalar(s) => {
                     if let Some(ty) = tcx.lift(self.layout.ty) {
-                        let cx = FmtPrinter::new(tcx, Namespace::ValueNS);
-                        f.write_str(&p(cx, s, ty)?.into_buffer())?;
+                        let s =
+                            FmtPrinter::print_string(tcx, Namespace::ValueNS, |cx| p(cx, s, ty))?;
+                        f.write_str(&s)?;
                         return Ok(());
                     }
                     write!(f, "{:x}: {}", s, self.layout.ty)

@@ -246,14 +246,10 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         if pred_str.len() > 50 {
             // We don't need to save the type to a file, we will be talking about this type already
             // in a separate note when we explain the obligation, so it will be available that way.
-            pred_str = predicate
-                .print(FmtPrinter::new_with_limit(
-                    self.tcx,
-                    Namespace::TypeNS,
-                    rustc_session::Limit(6),
-                ))
-                .unwrap()
-                .into_buffer();
+            let mut cx: FmtPrinter<'_, '_> =
+                FmtPrinter::new_with_limit(self.tcx, Namespace::TypeNS, rustc_session::Limit(6));
+            predicate.print(&mut cx).unwrap();
+            pred_str = cx.into_buffer();
         }
         let mut err = struct_span_err!(
             self.tcx.sess,
@@ -1408,17 +1404,15 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     self.maybe_detailed_projection_msg(predicate, normalized_term, expected_term)
                 })
                 .unwrap_or_else(|| {
-                    with_forced_trimmed_paths!(format!(
-                        "type mismatch resolving `{}`",
-                        self.resolve_vars_if_possible(predicate)
-                            .print(FmtPrinter::new_with_limit(
-                                self.tcx,
-                                Namespace::TypeNS,
-                                rustc_session::Limit(10),
-                            ))
-                            .unwrap()
-                            .into_buffer()
-                    ))
+                    let mut cx = FmtPrinter::new_with_limit(
+                        self.tcx,
+                        Namespace::TypeNS,
+                        rustc_session::Limit(10),
+                    );
+                    with_forced_trimmed_paths!(format!("type mismatch resolving `{}`", {
+                        self.resolve_vars_if_possible(predicate).print(&mut cx).unwrap();
+                        cx.into_buffer()
+                    }))
                 });
             let mut diag = struct_span_err!(self.tcx.sess, obligation.cause.span, E0271, "{msg}");
 
@@ -1463,14 +1457,15 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         ty.span,
                         with_forced_trimmed_paths!(Cow::from(format!(
                             "type mismatch resolving `{}`",
-                            self.resolve_vars_if_possible(predicate)
-                                .print(FmtPrinter::new_with_limit(
+                            {
+                                let mut cx = FmtPrinter::new_with_limit(
                                     self.tcx,
                                     Namespace::TypeNS,
                                     rustc_session::Limit(5),
-                                ))
-                                .unwrap()
-                                .into_buffer()
+                                );
+                                self.resolve_vars_if_possible(predicate).print(&mut cx).unwrap();
+                                cx.into_buffer()
+                            }
                         ))),
                     )),
                     _ => None,

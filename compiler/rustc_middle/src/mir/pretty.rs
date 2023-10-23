@@ -998,9 +998,9 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                         ty::tls::with(|tcx| {
                             let variant_def = &tcx.adt_def(adt_did).variant(variant);
                             let args = tcx.lift(args).expect("could not lift for printing");
-                            let name = FmtPrinter::new(tcx, Namespace::ValueNS)
-                                .print_def_path(variant_def.def_id, args)?
-                                .into_buffer();
+                            let name = FmtPrinter::print_string(tcx, Namespace::ValueNS, |cx| {
+                                cx.print_def_path(variant_def.def_id, args)
+                            })?;
 
                             match variant_def.ctor_kind() {
                                 Some(CtorKind::Const) => fmt.write_str(&name),
@@ -1740,7 +1740,7 @@ fn pretty_print_const_value_tcx<'tcx>(
                         let args = tcx.lift(args).unwrap();
                         let mut cx = FmtPrinter::new(tcx, Namespace::ValueNS);
                         cx.print_alloc_ids = true;
-                        let cx = cx.print_value_path(variant_def.def_id, args)?;
+                        cx.print_value_path(variant_def.def_id, args)?;
                         fmt.write_str(&cx.into_buffer())?;
 
                         match variant_def.ctor_kind() {
@@ -1775,14 +1775,14 @@ fn pretty_print_const_value_tcx<'tcx>(
             let mut cx = FmtPrinter::new(tcx, Namespace::ValueNS);
             cx.print_alloc_ids = true;
             let ty = tcx.lift(ty).unwrap();
-            cx = cx.pretty_print_const_scalar(scalar, ty)?;
+            cx.pretty_print_const_scalar(scalar, ty)?;
             fmt.write_str(&cx.into_buffer())?;
             return Ok(());
         }
         (ConstValue::ZeroSized, ty::FnDef(d, s)) => {
             let mut cx = FmtPrinter::new(tcx, Namespace::ValueNS);
             cx.print_alloc_ids = true;
-            let cx = cx.print_value_path(*d, s)?;
+            cx.print_value_path(*d, s)?;
             fmt.write_str(&cx.into_buffer())?;
             return Ok(());
         }
