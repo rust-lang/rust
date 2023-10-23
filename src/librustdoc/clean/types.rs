@@ -852,9 +852,9 @@ pub(crate) enum ItemKind {
     ProcMacroItem(ProcMacro),
     PrimitiveItem(PrimitiveType),
     /// A required associated constant in a trait declaration.
-    TyAssocConstItem(Box<Generics>, Type),
+    TyAssocConstItem(Generics, Box<Type>),
     /// An associated constant in a trait impl or a provided one in a trait declaration.
-    AssocConstItem(Box<Generics>, Type, ConstantKind),
+    AssocConstItem(Generics, Box<Type>, ConstantKind),
     /// A required associated type in a trait declaration.
     ///
     /// The bounds may be non-empty if there is a `where` clause.
@@ -2282,8 +2282,8 @@ pub(crate) struct Static {
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub(crate) struct Constant {
-    pub(crate) type_: Type,
-    pub(crate) generics: Box<Generics>,
+    pub(crate) type_: Box<Type>,
+    pub(crate) generics: Generics,
     pub(crate) kind: ConstantKind,
 }
 
@@ -2524,8 +2524,7 @@ mod size_asserts {
     static_assert_size!(GenericParamDef, 56);
     static_assert_size!(Generics, 16);
     static_assert_size!(Item, 56);
-    // FIXME(generic_const_items): Further reduce the size.
-    static_assert_size!(ItemKind, 72);
+    static_assert_size!(ItemKind, 56);
     static_assert_size!(PathSegment, 40);
     static_assert_size!(Type, 32);
     // tidy-alphabetical-end
