@@ -3,7 +3,10 @@ mod tests;
 
 use crate::cell::UnsafeCell;
 use crate::fmt;
+use crate::marker::PhantomData;
+use crate::mem::ManuallyDrop;
 use crate::ops::{Deref, DerefMut};
+use crate::ptr::NonNull;
 use crate::sync::{poison, LockResult, TryLockError, TryLockResult};
 use crate::sys::locks as sys;
 
@@ -212,6 +215,43 @@ pub struct MutexGuard<'a, T: ?Sized + 'a> {
 impl<T: ?Sized> !Send for MutexGuard<'_, T> {}
 #[stable(feature = "mutexguard", since = "1.19.0")]
 unsafe impl<T: ?Sized + Sync> Sync for MutexGuard<'_, T> {}
+
+/// An RAII mutex guard returned by `MutexGuard::map`, which can point to a
+/// subfield of the protected data. When this structure is dropped (falls out
+/// of scope), the lock will be unlocked.
+///
+/// The main difference between `MappedMutexGuard` and [`MutexGuard`] is that the
+/// former cannot be used with [`CondVar`], since that
+/// could introduce soundness issues if the locked object is modified by another
+/// thread while the `Mutex` is unlocked.
+///
+/// The data protected by the mutex can be accessed through this guard via its
+/// [`Deref`] and [`DerefMut`] implementations.
+///
+/// This structure is created by the [`map`] and [`try_map`] methods on
+/// [`MutexGuard`].
+///
+/// [`map`]: MutexGuard::map
+/// [`try_map`]: MutexGuard::try_map
+/// [`CondVar`]: crate::sync::CondVar
+#[must_use = "if unused the Mutex will immediately unlock"]
+#[must_not_suspend = "holding a MappedMutexGuard across suspend \
+                      points can cause deadlocks, delays, \
+                      and cause Futures to not implement `Send`"]
+#[unstable(feature = "mapped_lock_guards", issue = "none")]
+#[clippy::has_significant_drop]
+pub struct MappedMutexGuard<'a, T: ?Sized + 'a> {
+    data: NonNull<T>,
+    inner: &'a sys::Mutex,
+    poison_flag: &'a poison::Flag,
+    poison: poison::Guard,
+    _variance: PhantomData<&'a mut T>,
+}
+
+#[unstable(feature = "mapped_lock_guards", issue = "none")]
+impl<T: ?Sized> !Send for MappedMutexGuard<'_, T> {}
+#[unstable(feature = "mapped_lock_guards", issue = "none")]
+unsafe impl<T: ?Sized + Sync> Sync for MappedMutexGuard<'_, T> {}
 
 impl<T> Mutex<T> {
     /// Creates a new mutex in an unlocked state ready for use.
@@ -551,4 +591,157 @@ pub fn guard_lock<'a, T: ?Sized>(guard: &MutexGuard<'a, T>) -> &'a sys::Mutex {
 
 pub fn guard_poison<'a, T: ?Sized>(guard: &MutexGuard<'a, T>) -> &'a poison::Flag {
     &guard.lock.poison
+}
+
+impl<'a, T: ?Sized> MutexGuard<'a, T> {
+    /// Makes a [`MappedMutexGuard`] for a component of the borrowed data, e.g.
+    /// an enum variant.
+    ///
+    /// The `Mutex` is already locked, so this cannot fail.
+    ///
+    /// This is an associated function that needs to be used as
+    /// `MutexGuard::map(...)`. A method would interfere with methods of the
+    /// same name on the contents of the `MutexGuard` used through `Deref`.
+    #[unstable(feature = "mapped_lock_guards", issue = "none")]
+    pub fn map<U, F>(orig: Self, f: F) -> MappedMutexGuard<'a, U>
+    where
+        F: FnOnce(&mut T) -> &mut U,
+        U: ?Sized,
+    {
+        let mut orig = ManuallyDrop::new(orig);
+        let value = NonNull::from(f(&mut *orig));
+        MappedMutexGuard {
+            data: value,
+            inner: &orig.lock.inner,
+            poison_flag: &orig.lock.poison,
+            poison: orig.poison.clone(),
+            _variance: PhantomData,
+        }
+    }
+
+    /// Makes a [`MappedMutexGuard`] for a component of the borrowed data. The
+    /// original guard is returned as an `Err(...)` if the closure returns
+    /// `None`.
+    ///
+    /// The `Mutex` is already locked, so this cannot fail.
+    ///
+    /// This is an associated function that needs to be used as
+    /// `MutexGuard::try_map(...)`. A method would interfere with methods of the
+    /// same name on the contents of the `MutexGuard` used through `Deref`.
+    #[doc(alias = "filter_map")]
+    #[unstable(feature = "mapped_lock_guards", issue = "none")]
+    pub fn try_map<U, F>(orig: Self, f: F) -> Result<MappedMutexGuard<'a, U>, Self>
+    where
+        F: FnOnce(&mut T) -> Option<&mut U>,
+        U: ?Sized,
+    {
+        let mut orig = ManuallyDrop::new(orig);
+        match f(&mut *orig).map(NonNull::from) {
+            Some(value) => Ok(MappedMutexGuard {
+                data: value,
+                inner: &orig.lock.inner,
+                poison_flag: &orig.lock.poison,
+                poison: orig.poison.clone(),
+                _variance: PhantomData,
+            }),
+            None => Err(ManuallyDrop::into_inner(orig)),
+        }
+    }
+}
+
+#[unstable(feature = "mapped_lock_guards", issue = "none")]
+impl<T: ?Sized> Deref for MappedMutexGuard<'_, T> {
+    type Target = T;
+
+    fn deref(&self) -> &T {
+        unsafe { self.data.as_ref() }
+    }
+}
+
+#[unstable(feature = "mapped_lock_guards", issue = "none")]
+impl<T: ?Sized> DerefMut for MappedMutexGuard<'_, T> {
+    fn deref_mut(&mut self) -> &mut T {
+        unsafe { self.data.as_mut() }
+    }
+}
+
+#[unstable(feature = "mapped_lock_guards", issue = "none")]
+impl<T: ?Sized> Drop for MappedMutexGuard<'_, T> {
+    #[inline]
+    fn drop(&mut self) {
+        unsafe {
+            self.poison_flag.done(&self.poison);
+            self.inner.unlock();
+        }
+    }
+}
+
+#[unstable(feature = "mapped_lock_guards", issue = "none")]
+impl<T: ?Sized + fmt::Debug> fmt::Debug for MappedMutexGuard<'_, T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Debug::fmt(&**self, f)
+    }
+}
+
+#[unstable(feature = "mapped_lock_guards", issue = "none")]
+impl<T: ?Sized + fmt::Display> fmt::Display for MappedMutexGuard<'_, T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        (**self).fmt(f)
+    }
+}
+
+impl<'a, T: ?Sized> MappedMutexGuard<'a, T> {
+    /// Makes a [`MappedMutexGuard`] for a component of the borrowed data, e.g.
+    /// an enum variant.
+    ///
+    /// The `Mutex` is already locked, so this cannot fail.
+    ///
+    /// This is an associated function that needs to be used as
+    /// `MutexGuard::map(...)`. A method would interfere with methods of the
+    /// same name on the contents of the `MutexGuard` used through `Deref`.
+    #[unstable(feature = "mapped_lock_guards", issue = "none")]
+    pub fn map<U, F>(orig: Self, f: F) -> MappedMutexGuard<'a, U>
+    where
+        F: FnOnce(&mut T) -> &mut U,
+        U: ?Sized,
+    {
+        let mut orig = ManuallyDrop::new(orig);
+        let value = NonNull::from(f(&mut *orig));
+        MappedMutexGuard {
+            data: value,
+            inner: orig.inner,
+            poison_flag: orig.poison_flag,
+            poison: orig.poison.clone(),
+            _variance: PhantomData,
+        }
+    }
+
+    /// Makes a [`MappedMutexGuard`] for a component of the borrowed data. The
+    /// original guard is returned as an `Err(...)` if the closure returns
+    /// `None`.
+    ///
+    /// The `Mutex` is already locked, so this cannot fail.
+    ///
+    /// This is an associated function that needs to be used as
+    /// `MutexGuard::try_map(...)`. A method would interfere with methods of the
+    /// same name on the contents of the `MutexGuard` used through `Deref`.
+    #[doc(alias = "filter_map")]
+    #[unstable(feature = "mapped_lock_guards", issue = "none")]
+    pub fn try_map<U, F>(orig: Self, f: F) -> Result<MappedMutexGuard<'a, U>, Self>
+    where
+        F: FnOnce(&mut T) -> Option<&mut U>,
+        U: ?Sized,
+    {
+        let mut orig = ManuallyDrop::new(orig);
+        match f(&mut *orig).map(NonNull::from) {
+            Some(value) => Ok(MappedMutexGuard {
+                data: value,
+                inner: orig.inner,
+                poison_flag: orig.poison_flag,
+                poison: orig.poison.clone(),
+                _variance: PhantomData,
+            }),
+            None => Err(ManuallyDrop::into_inner(orig)),
+        }
+    }
 }
