@@ -607,11 +607,15 @@ pub enum UserType<'tcx> {
     TypeOf(DefId, UserArgs<'tcx>),
 }
 
-impl<'tcx> UserType<'tcx> {
+pub trait IsIdentity {
+    fn is_identity(&self) -> bool;
+}
+
+impl<'tcx> IsIdentity for CanonicalUserType<'tcx> {
     /// Returns `true` if this represents a substitution of the form `[?0, ?1, ?2]`,
     /// i.e., each thing is mapped to a canonical variable with the same index.
-    pub fn is_identity(&self) -> bool {
-        match self {
+    fn is_identity(&self) -> bool {
+        match self.value {
             UserType::Ty(_) => false,
             UserType::TypeOf(_, user_args) => {
                 if user_args.user_self_ty.is_some() {
