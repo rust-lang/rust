@@ -310,6 +310,40 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
             let val = CValue::by_val_pair(cb_out, c, layout);
             ret.write_cvalue(fx, val);
         }
+        "llvm.x86.sse2.pavg.b" | "llvm.x86.sse2.pavg.w" => {
+            intrinsic_args!(fx, args => (a, b); intrinsic);
+
+            // FIXME use vector instructions when possible
+            simd_pair_for_each_lane(
+                fx,
+                a,
+                b,
+                ret,
+                &|fx, _lane_ty, _res_lane_ty, a_lane, b_lane| {
+                    // (a + b + 1) >> 1
+                    let lane_ty = fx.bcx.func.dfg.value_type(a_lane);
+                    let a_lane = fx.bcx.ins().uextend(lane_ty.double_width().unwrap(), a_lane);
+                    let b_lane = fx.bcx.ins().uextend(lane_ty.double_width().unwrap(), b_lane);
+                    let sum = fx.bcx.ins().iadd(a_lane, b_lane);
+                    let num_plus_one = fx.bcx.ins().iadd_imm(sum, 1);
+                    let res = fx.bcx.ins().ushr_imm(num_plus_one, 1);
+                    fx.bcx.ins().ireduce(lane_ty, res)
+                },
+            );
+        }
+        "llvm.x86.sse2.psra.w" => {
+            intrinsic_args!(fx, args => (a, count); intrinsic);
+
+            let count_lane = count.force_stack(fx).0.load(fx, types::I64, MemFlags::trusted());
+            let lane_ty = fx.clif_type(a.layout().ty.simd_size_and_type(fx.tcx).1).unwrap();
+            let max_count = fx.bcx.ins().iconst(types::I64, i64::from(lane_ty.bits() - 1));
+            let saturated_count = fx.bcx.ins().umin(count_lane, max_count);
+
+            // FIXME use vector instructions when possible
+            simd_for_each_lane(fx, a, ret, &|fx, _lane_ty, _res_lane_ty, a_lane| {
+                fx.bcx.ins().sshr(a_lane, saturated_count)
+            });
+        }
         _ => {
             fx.tcx
                 .sess
