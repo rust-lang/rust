@@ -165,6 +165,12 @@ fn try_get_option_occurrence<'tcx>(
             }
 
             let mut app = Applicability::Unspecified;
+
+            let (none_body, is_argless_call) = match none_body.kind {
+                ExprKind::Call(call_expr, []) if !none_body.span.from_expansion() => (call_expr, true),
+                _ => (none_body, false),
+            };
+
             return Some(OptionOccurrence {
                 option: format_option_in_sugg(
                     Sugg::hir_with_context(cx, cond_expr, ctxt, "..", &mut app),
@@ -178,7 +184,7 @@ fn try_get_option_occurrence<'tcx>(
                 ),
                 none_expr: format!(
                     "{}{}",
-                    if method_sugg == "map_or" { "" } else if is_result { "|_| " } else { "|| "},
+                    if method_sugg == "map_or" || is_argless_call { "" } else if is_result { "|_| " } else { "|| "},
                     Sugg::hir_with_context(cx, none_body, ctxt, "..", &mut app),
                 ),
             });
