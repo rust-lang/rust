@@ -52,8 +52,8 @@ pub unsafe fn undef_union_as_integer() -> u32 {
 // EMIT_MIR transmute.unreachable_direct.DataflowConstProp.diff
 pub unsafe fn unreachable_direct() -> ! {
     // CHECK-LABEL: fn unreachable_direct(
-    // CHECK: [[unit:_.*]] = ();
-    // CHECK: move [[unit]] as Never (Transmute);
+    // CHECK: = const ();
+    // CHECK: = const ZeroSized: Never;
     let x: Never = unsafe { transmute(()) };
     match x {}
 }

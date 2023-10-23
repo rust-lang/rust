@@ -41,7 +41,8 @@
 +                             debug ((f: (bool, bool, u32)).2: u32) => const 123_u32;
                               let _10: std::option::Option<u16>;
                               scope 7 {
-                                  debug o => _10;
+-                                 debug o => _10;
++                                 debug o => const Option::<u16>::Some(99_u16);
                                   let _17: u32;
                                   let _18: u32;
                                   scope 8 {
@@ -81,7 +82,7 @@
           _15 = const false;
           _16 = const 123_u32;
           StorageLive(_10);
-          _10 = Option::<u16>::Some(const 99_u16);
+          _10 = const Option::<u16>::Some(99_u16);
           _17 = const 32_u32;
           _18 = const 32_u32;
           StorageLive(_11);
@@ -95,5 +96,9 @@
           StorageDead(_4);
           return;
       }
+  }
+  
+  ALLOC0 (size: 4, align: 2) {
+      01 00 63 00                                     │ ..c.
   }
   
