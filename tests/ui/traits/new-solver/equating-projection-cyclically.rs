@@ -1,3 +1,4 @@
+// check-pass
 // compile-flags: -Ztrait-solver=next
 
 trait Test {
@@ -22,7 +23,9 @@ fn main() {
     let mut x: Inv<_> = Inv(None);
     // This ends up equating `Inv<?x>` with `Inv<<?x as Test>::Assoc>`
     // which fails the occurs check when generalizing `?x`.
+    //
+    // We end up emitting a delayed obligation, causing this to still
+    // succeed.
     x = transform(x);
-    //~^ ERROR mismatched types
     x = Inv::<i32>(None);
 }
