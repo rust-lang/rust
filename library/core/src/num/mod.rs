@@ -114,7 +114,7 @@ macro_rules! midpoint_impl {
                       without modifying the original"]
         #[inline]
         pub const fn midpoint(self, rhs: $SelfT) -> $SelfT {
-            // Use the well known branchless algorthim from Hacker's Delight to compute
+            // Use the well known branchless algorithm from Hacker's Delight to compute
             // `(a + b) / 2` without overflowing: `((a ^ b) >> 1) + (a & b)`.
             ((self ^ rhs) >> 1) + (self & rhs)
         }

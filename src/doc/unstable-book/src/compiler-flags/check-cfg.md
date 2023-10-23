@@ -123,7 +123,7 @@ rustc --check-cfg 'cfg(is_embedded, has_feathers, values(any()))' \
 fn do_embedded() {}         // and because names exhaustiveness was not disabled
 
 #[cfg(has_feathers)]        // This is expected as "has_feathers" was provided in cfg()
-fn do_features() {}         // and because names exhaustiveness was not disbaled
+fn do_features() {}         // and because names exhaustiveness was not disabled
 
 #[cfg(has_feathers = "zapping")] // This is expected as "has_feathers" was provided in cfg()
                                  // and because no value checking was enable for "has_feathers"
