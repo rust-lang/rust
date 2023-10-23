@@ -12,6 +12,7 @@ use rustc_hir::pat_util::EnumerateAndAdjustIterator;
 use rustc_hir::{HirId, Pat, PatKind};
 use rustc_infer::infer;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::{self, Adt, BindingMode, Ty, TypeVisitableExt};
 use rustc_session::lint::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
 use rustc_span::edit_distance::find_best_match_for_name;
@@ -2164,7 +2165,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         len: ty::Const<'tcx>,
         min_len: u64,
     ) -> (Option<Ty<'tcx>>, Ty<'tcx>) {
-        let guar = if let Some(len) = len.try_eval_target_usize(self.tcx, self.param_env) {
+        let len = match len.eval(self.tcx, self.param_env, None) {
+            Ok(val) => val
+                .try_to_scalar()
+                .and_then(|scalar| scalar.try_to_int().ok())
+                .and_then(|int| int.try_to_target_usize(self.tcx).ok()),
+            Err(ErrorHandled::Reported(..)) => {
+                let guar = self.error_scrutinee_unfixed_length(span);
+                return (Some(Ty::new_error(self.tcx, guar)), arr_ty);
+            }
+            Err(ErrorHandled::TooGeneric(..)) => None,
+        };
+
+        let guar = if let Some(len) = len {
             // Now we know the length...
             if slice.is_none() {
                 // ...and since there is no variable-length pattern,

@@ -49,8 +49,8 @@ where
         let mut printer = ty::print::FmtPrinter::new(self.tcx, Namespace::TypeNS);
         printer.region_highlight_mode = self.highlight;
 
-        let s = self.value.print(printer)?.into_buffer();
-        f.write_str(&s)
+        self.value.print(&mut printer)?;
+        f.write_str(&printer.into_buffer())
     }
 }
 

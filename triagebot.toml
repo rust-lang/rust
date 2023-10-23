@@ -554,13 +554,9 @@ cc = ["@davidtwco", "@compiler-errors", "@JohnTitor", "@TaKO8Ki"]
 message = "`rustc_macros::diagnostics` was changed"
 cc = ["@davidtwco", "@compiler-errors", "@JohnTitor", "@TaKO8Ki"]
 
-[mentions."compiler/rustc_smir"]
-message = "This PR changes Stable MIR"
-cc = ["@oli-obk", "@celinval", "@spastorino", "@ouz-a"]
-
 [mentions."compiler/stable_mir"]
 message = "This PR changes Stable MIR"
-cc = ["@oli-obk", "@celinval", "@spastorino"]
+cc = ["@oli-obk", "@celinval", "@spastorino", "@ouz-a"]
 
 [mentions."compiler/rustc_target/src/spec"]
 message = """
