@@ -1,6 +1,11 @@
 use std::hash::BuildHasherDefault;
 
-pub use rustc_hash::{FxHashMap, FxHashSet, FxHasher};
+// pub use rustc_hash::{FxHashMap, FxHashSet, FxHasher};
+// what a great fxhash we have here, very fxhash
+pub use crate::carbon_hash::CarbonHasher as FxHasher;
+
+pub type FxHashMap<K, V> = std::collections::HashMap<K, V, BuildHasherDefault<FxHasher>>;
+pub type FxHashSet<V> = std::collections::HashSet<V, BuildHasherDefault<FxHasher>>;
 
 pub type StdEntry<'a, K, V> = std::collections::hash_map::Entry<'a, K, V>;
 

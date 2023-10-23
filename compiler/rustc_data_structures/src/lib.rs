@@ -60,6 +60,7 @@ pub fn outline<F: FnOnce() -> R, R>(f: F) -> R {
 pub mod base_n;
 pub mod binary_search_util;
 pub mod captures;
+pub mod carbon_hash;
 pub mod flat_map_in_place;
 pub mod flock;
 pub mod fx;

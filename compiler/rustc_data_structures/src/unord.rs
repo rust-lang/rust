@@ -2,7 +2,7 @@
 //! ordering. This is a useful property for deterministic computations, such
 //! as required by the query system.
 
-use rustc_hash::{FxHashMap, FxHashSet};
+use crate::fx::{FxHashMap, FxHashSet};
 use smallvec::SmallVec;
 use std::{
     borrow::Borrow,
