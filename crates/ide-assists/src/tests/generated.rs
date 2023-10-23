@@ -2948,6 +2948,8 @@ fn main() {
 mod std { pub mod ops { pub trait Add { fn add(self, _: Self) {} } impl Add for i32 {} } }
 "#####,
         r#####"
+use std::ops::Add;
+
 fn main() {
     1.add(2);
 }
