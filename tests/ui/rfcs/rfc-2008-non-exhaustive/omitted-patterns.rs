@@ -251,3 +251,10 @@ fn main() {
 pub fn takes_non_exhaustive(_: NonExhaustiveEnum) {
     let _closure = |_: NonExhaustiveEnum| {};
 }
+
+// ICE #117033
+enum Void {}
+#[deny(non_exhaustive_omitted_patterns)]
+pub fn void(v: Void) -> ! {
+    match v {}
+}

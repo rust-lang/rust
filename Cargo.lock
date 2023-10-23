@@ -1663,9 +1663,9 @@ checksum = "8a9ee70c43aaf417c914396645a0fa852624801b24ebb7ae78fe8272889ac888"
 
 [[package]]
 name = "hashbrown"
-version = "0.14.0"
+version = "0.14.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2c6201b9ff9fd90a5a3bac2e56a830d0caa509576f0e503818ee82c181b3437a"
+checksum = "f93e7192158dbcda357bdec5fb5788eebf8bbac027f3f33e719d29135ae84156"
 dependencies = [
  "ahash",
  "allocator-api2",
@@ -1982,7 +1982,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d5477fe2230a79769d8dc68e0eabf5437907c0457a5614a9e8dddb67f65eb65d"
 dependencies = [
  "equivalent",
- "hashbrown 0.14.0",
+ "hashbrown 0.14.2",
  "rustc-rayon",
  "serde",
 ]
@@ -2621,7 +2621,7 @@ dependencies = [
  "compiler_builtins",
  "crc32fast",
  "flate2",
- "hashbrown 0.14.0",
+ "hashbrown 0.14.2",
  "indexmap 2.0.0",
  "memchr",
  "rustc-std-workspace-alloc",
@@ -5095,7 +5095,7 @@ dependencies = [
  "core",
  "dlmalloc",
  "fortanix-sgx-abi",
- "hashbrown 0.14.0",
+ "hashbrown 0.14.2",
  "hermit-abi 0.3.2",
  "libc",
  "miniz_oxide",
@@ -5415,7 +5415,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4db52ee8fec06e119b692ef3dd2c4cf621a99204c1b8c47407870ed050305b9b"
 dependencies = [
  "gimli",
- "hashbrown 0.14.0",
+ "hashbrown 0.14.2",
  "object",
  "tracing",
 ]

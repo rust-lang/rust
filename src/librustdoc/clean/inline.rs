@@ -641,13 +641,13 @@ fn build_const(cx: &mut DocContext<'_>, def_id: DefId) -> clean::Constant {
     clean::simplify::move_bounds_to_generic_parameters(&mut generics);
 
     clean::Constant {
-        type_: clean_middle_ty(
+        type_: Box::new(clean_middle_ty(
             ty::Binder::dummy(cx.tcx.type_of(def_id).instantiate_identity()),
             cx,
             Some(def_id),
             None,
-        ),
-        generics: Box::new(generics),
+        )),
+        generics,
         kind: clean::ConstantKind::Extern { def_id },
     }
 }

@@ -177,7 +177,7 @@ impl FromWithTcx<clean::Constant> for Constant {
         let expr = constant.expr(tcx);
         let value = constant.value(tcx);
         let is_literal = constant.is_literal(tcx);
-        Constant { type_: constant.type_.into_tcx(tcx), expr, value, is_literal }
+        Constant { type_: (*constant.type_).into_tcx(tcx), expr, value, is_literal }
     }
 }
 
@@ -325,11 +325,11 @@ fn from_clean_item(item: clean::Item, tcx: TyCtxt<'_>) -> ItemEnum {
         }
         // FIXME(generic_const_items): Add support for generic associated consts.
         TyAssocConstItem(_generics, ty) => {
-            ItemEnum::AssocConst { type_: ty.into_tcx(tcx), default: None }
+            ItemEnum::AssocConst { type_: (*ty).into_tcx(tcx), default: None }
         }
         // FIXME(generic_const_items): Add support for generic associated consts.
         AssocConstItem(_generics, ty, default) => {
-            ItemEnum::AssocConst { type_: ty.into_tcx(tcx), default: Some(default.expr(tcx)) }
+            ItemEnum::AssocConst { type_: (*ty).into_tcx(tcx), default: Some(default.expr(tcx)) }
         }
         TyAssocTypeItem(g, b) => ItemEnum::AssocType {
             generics: g.into_tcx(tcx),
