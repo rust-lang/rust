@@ -661,13 +661,11 @@ impl<'tcx> Tree {
             for (perms_range, perms) in self.rperms.iter_mut_all() {
                 let idx = self.tag_mapping.get(&tag).unwrap();
                 // Only visit initialized permissions
-                if let Some(p) = perms.get(idx) && p.initialized {
-                    TreeVisitor {
-                        nodes: &mut self.nodes,
-                        tag_mapping: &self.tag_mapping,
-                        perms,
-                    }
-                    .traverse_nonchildren(
+                if let Some(p) = perms.get(idx)
+                    && p.initialized
+                {
+                    TreeVisitor { nodes: &mut self.nodes, tag_mapping: &self.tag_mapping, perms }
+                        .traverse_nonchildren(
                         tag,
                         |args| node_app(perms_range.clone(), args),
                         |args| err_handler(perms_range.clone(), args),

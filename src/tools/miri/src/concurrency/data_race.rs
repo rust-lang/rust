@@ -563,6 +563,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
         let old = this.allow_data_races_mut(|this| this.read_immediate(place))?;
         let lt = this.wrapping_binary_op(mir::BinOp::Lt, &old, &rhs)?.to_scalar().to_bool()?;
 
+        #[rustfmt::skip] // rustfmt makes this unreadable
         let new_val = if min {
             if lt { &old } else { &rhs }
         } else {
