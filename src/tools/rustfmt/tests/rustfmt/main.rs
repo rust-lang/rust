@@ -27,7 +27,7 @@ fn rustfmt(args: &[&str]) -> (String, String) {
             String::from_utf8(output.stdout).expect("utf-8"),
             String::from_utf8(output.stderr).expect("utf-8"),
         ),
-        Err(e) => panic!("failed to run `{:?} {:?}`: {}", cmd, args, e),
+        Err(e) => panic!("failed to run `{cmd:?} {args:?}`: {e}"),
     }
 }
 
@@ -71,9 +71,7 @@ fn print_config() {
     ]);
     assert!(
         Path::new("minimal-config").exists(),
-        "stdout:\n{}\nstderr:\n{}",
-        stdout,
-        stderr
+        "stdout:\n{stdout}\nstderr:\n{stderr}"
     );
     remove_file("minimal-config").unwrap();
 }

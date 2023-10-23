@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::cmp::min;
 
 use itertools::Itertools;
-use rustc_ast::token::{Delimiter, LitKind};
+use rustc_ast::token::{Delimiter, Lit, LitKind};
 use rustc_ast::{ast, ptr, token};
 use rustc_span::{BytePos, Span};
 
@@ -26,6 +26,7 @@ use crate::rewrite::{Rewrite, RewriteContext};
 use crate::shape::{Indent, Shape};
 use crate::source_map::{LineRangeUtils, SpanUtils};
 use crate::spanned::Spanned;
+use crate::stmt;
 use crate::string::{rewrite_string, StringFormat};
 use crate::types::{rewrite_path, PathContext};
 use crate::utils::{
@@ -46,6 +47,10 @@ impl Rewrite for ast::Expr {
 pub(crate) enum ExprType {
     Statement,
     SubExpression,
+}
+
+pub(crate) fn lit_ends_in_dot(lit: &Lit) -> bool {
+    matches!(lit, Lit { kind: LitKind::Float, suffix: None, symbol } if symbol.as_str().ends_with('.'))
 }
 
 pub(crate) fn format_expr(
@@ -127,7 +132,7 @@ pub(crate) fn format_expr(
         ast::ExprKind::Tup(ref items) => {
             rewrite_tuple(context, items.iter(), expr.span, shape, items.len() == 1)
         }
-        ast::ExprKind::Let(..) => None,
+        ast::ExprKind::Let(ref pat, ref expr, _span, _) => rewrite_let(context, shape, pat, expr),
         ast::ExprKind::If(..)
         | ast::ExprKind::ForLoop(..)
         | ast::ExprKind::Loop(..)
@@ -182,7 +187,7 @@ pub(crate) fn format_expr(
                 Some(label) => format!(" {}", label.ident),
                 None => String::new(),
             };
-            Some(format!("continue{}", id_str))
+            Some(format!("continue{id_str}"))
         }
         ast::ExprKind::Break(ref opt_label, ref opt_expr) => {
             let id_str = match *opt_label {
@@ -191,9 +196,9 @@ pub(crate) fn format_expr(
             };
 
             if let Some(ref expr) = *opt_expr {
-                rewrite_unary_prefix(context, &format!("break{} ", id_str), &**expr, shape)
+                rewrite_unary_prefix(context, &format!("break{id_str} "), &**expr, shape)
             } else {
-                Some(format!("break{}", id_str))
+                Some(format!("break{id_str}"))
             }
         }
         ast::ExprKind::Yield(ref opt_expr) => {
@@ -275,12 +280,7 @@ pub(crate) fn format_expr(
 
             fn needs_space_before_range(context: &RewriteContext<'_>, lhs: &ast::Expr) -> bool {
                 match lhs.kind {
-                    ast::ExprKind::Lit(token_lit) => match token_lit.kind {
-                        token::LitKind::Float if token_lit.suffix.is_none() => {
-                            context.snippet(lhs.span).ends_with('.')
-                        }
-                        _ => false,
-                    },
+                    ast::ExprKind::Lit(token_lit) => lit_ends_in_dot(&token_lit),
                     ast::ExprKind::Unary(_, ref expr) => needs_space_before_range(context, expr),
                     _ => false,
                 }
@@ -309,7 +309,7 @@ pub(crate) fn format_expr(
             match (lhs.as_ref().map(|x| &**x), rhs.as_ref().map(|x| &**x)) {
                 (Some(lhs), Some(rhs)) => {
                     let sp_delim = if context.config.spaces_around_ranges() {
-                        format!(" {} ", delim)
+                        format!(" {delim} ")
                     } else {
                         default_sp_delim(Some(lhs), Some(rhs))
                     };
@@ -324,7 +324,7 @@ pub(crate) fn format_expr(
                 }
                 (None, Some(rhs)) => {
                     let sp_delim = if context.config.spaces_around_ranges() {
-                        format!("{} ", delim)
+                        format!("{delim} ")
                     } else {
                         default_sp_delim(None, Some(rhs))
                     };
@@ -332,7 +332,7 @@ pub(crate) fn format_expr(
                 }
                 (Some(lhs), None) => {
                     let sp_delim = if context.config.spaces_around_ranges() {
-                        format!(" {}", delim)
+                        format!(" {delim}")
                     } else {
                         default_sp_delim(Some(lhs), None)
                     };
@@ -375,7 +375,7 @@ pub(crate) fn format_expr(
             };
             if let rw @ Some(_) = rewrite_single_line_block(
                 context,
-                format!("{}{}", "async ", mover).as_str(),
+                format!("async {mover}").as_str(),
                 block,
                 Some(&expr.attrs),
                 None,
@@ -386,9 +386,7 @@ pub(crate) fn format_expr(
                 // 6 = `async `
                 let budget = shape.width.saturating_sub(6);
                 Some(format!(
-                    "{}{}{}",
-                    "async ",
-                    mover,
+                    "async {mover}{}",
                     rewrite_block(
                         block,
                         Some(&expr.attrs),
@@ -460,7 +458,7 @@ fn rewrite_empty_block(
     }
 
     if !block_contains_comment(context, block) && shape.width >= 2 {
-        return Some(format!("{}{}{{}}", prefix, label_str));
+        return Some(format!("{prefix}{label_str}{{}}"));
     }
 
     // If a block contains only a single-line comment, then leave it on one line.
@@ -473,7 +471,7 @@ fn rewrite_empty_block(
             && !comment_str.starts_with("//")
             && comment_str.len() + 4 <= shape.width
         {
-            return Some(format!("{}{}{{ {} }}", prefix, label_str, comment_str));
+            return Some(format!("{prefix}{label_str}{{ {comment_str} }}"));
         }
     }
 
@@ -516,11 +514,11 @@ fn rewrite_single_line_block(
     label: Option<ast::Label>,
     shape: Shape,
 ) -> Option<String> {
-    if is_simple_block(context, block, attrs) {
+    if let Some(block_expr) = stmt::Stmt::from_simple_block(context, block, attrs) {
         let expr_shape = shape.offset_left(last_line_width(prefix))?;
-        let expr_str = block.stmts[0].rewrite(context, expr_shape)?;
+        let expr_str = block_expr.rewrite(context, expr_shape)?;
         let label_str = rewrite_label(label);
-        let result = format!("{}{}{{ {} }}", prefix, label_str, expr_str);
+        let result = format!("{prefix}{label_str}{{ {expr_str} }}");
         if result.len() <= shape.width && !result.contains('\n') {
             return Some(result);
         }
@@ -800,19 +798,19 @@ impl<'a> ControlFlow<'a> {
         let fixed_cost = self.keyword.len() + "  {  } else {  }".len();
 
         if let ast::ExprKind::Block(ref else_node, _) = else_block.kind {
-            if !is_simple_block(context, self.block, None)
-                || !is_simple_block(context, else_node, None)
-                || pat_expr_str.contains('\n')
-            {
-                return None;
-            }
+            let (if_expr, else_expr) = match (
+                stmt::Stmt::from_simple_block(context, self.block, None),
+                stmt::Stmt::from_simple_block(context, else_node, None),
+                pat_expr_str.contains('\n'),
+            ) {
+                (Some(if_expr), Some(else_expr), false) => (if_expr, else_expr),
+                _ => return None,
+            };
 
             let new_width = width.checked_sub(pat_expr_str.len() + fixed_cost)?;
-            let expr = &self.block.stmts[0];
-            let if_str = expr.rewrite(context, Shape::legacy(new_width, Indent::empty()))?;
+            let if_str = if_expr.rewrite(context, Shape::legacy(new_width, Indent::empty()))?;
 
             let new_width = new_width.checked_sub(if_str.len())?;
-            let else_expr = &else_node.stmts[0];
             let else_str = else_expr.rewrite(context, Shape::legacy(new_width, Indent::empty()))?;
 
             if if_str.contains('\n') || else_str.contains('\n') {
@@ -1100,7 +1098,7 @@ impl<'a> Rewrite for ControlFlow<'a> {
             result?
         };
 
-        let mut result = format!("{}{}", cond_str, block_str);
+        let mut result = format!("{cond_str}{block_str}");
 
         if let Some(else_block) = self.else_block {
             let shape = Shape::indented(shape.indent, context.config);
@@ -1160,8 +1158,7 @@ fn rewrite_label(opt_label: Option<ast::Label>) -> Cow<'static, str> {
 fn extract_comment(span: Span, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
     match rewrite_missing_comment(span, shape, context) {
         Some(ref comment) if !comment.is_empty() => Some(format!(
-            "{indent}{}{indent}",
-            comment,
+            "{indent}{comment}{indent}",
             indent = shape.indent.to_string_with_newline(context.config)
         )),
         _ => None,
@@ -1436,7 +1433,7 @@ pub(crate) fn span_ends_with_comma(context: &RewriteContext<'_>, span: Span) -> 
     result
 }
 
-fn rewrite_paren(
+pub(crate) fn rewrite_paren(
     context: &RewriteContext<'_>,
     mut subexpr: &ast::Expr,
     shape: Shape,
@@ -1452,7 +1449,7 @@ fn rewrite_paren(
     let remove_nested_parens = context.config.remove_nested_parens();
     loop {
         // 1 = "(" or ")"
-        pre_span = mk_sp(span.lo() + BytePos(1), subexpr.span.lo());
+        pre_span = mk_sp(span.lo() + BytePos(1), subexpr.span().lo());
         post_span = mk_sp(subexpr.span.hi(), span.hi() - BytePos(1));
         pre_comment = rewrite_missing_comment(pre_span, shape, context)?;
         post_comment = rewrite_missing_comment(post_span, shape, context)?;
@@ -1474,7 +1471,7 @@ fn rewrite_paren(
     let subexpr_str = subexpr.rewrite(context, sub_shape)?;
     let fits_single_line = !pre_comment.contains("//") && !post_comment.contains("//");
     if fits_single_line {
-        Some(format!("({}{}{})", pre_comment, subexpr_str, post_comment))
+        Some(format!("({pre_comment}{subexpr_str}{post_comment})"))
     } else {
         rewrite_paren_in_multi_line(context, subexpr, shape, pre_span, post_span)
     }
@@ -1538,7 +1535,7 @@ fn rewrite_index(
     // Return if index fits in a single line.
     match orig_index_rw {
         Some(ref index_str) if !index_str.contains('\n') => {
-            return Some(format!("{}[{}]", expr_str, index_str));
+            return Some(format!("{expr_str}[{index_str}]"));
         }
         _ => (),
     }
@@ -1561,7 +1558,7 @@ fn rewrite_index(
             indent.to_string_with_newline(context.config),
             new_index_str,
         )),
-        (Some(ref index_str), _) => Some(format!("{}[{}]", expr_str, index_str)),
+        (Some(ref index_str), _) => Some(format!("{expr_str}[{index_str}]")),
         _ => None,
     }
 }
@@ -1593,9 +1590,9 @@ fn rewrite_struct_lit<'a>(
     let path_str = rewrite_path(context, PathContext::Expr, qself, path, path_shape)?;
 
     let has_base_or_rest = match struct_rest {
-        ast::StructRest::None if fields.is_empty() => return Some(format!("{} {{}}", path_str)),
+        ast::StructRest::None if fields.is_empty() => return Some(format!("{path_str} {{}}")),
         ast::StructRest::Rest(_) if fields.is_empty() => {
-            return Some(format!("{} {{ .. }}", path_str));
+            return Some(format!("{path_str} {{ .. }}"));
         }
         ast::StructRest::Rest(_) | ast::StructRest::Base(_) => true,
         _ => false,
@@ -1686,7 +1683,7 @@ fn rewrite_struct_lit<'a>(
 
     let fields_str =
         wrap_struct_field(context, attrs, &fields_str, shape, v_shape, one_line_width)?;
-    Some(format!("{} {{{}}}", path_str, fields_str))
+    Some(format!("{path_str} {{{fields_str}}}"))
 
     // FIXME if context.config.indent_style() == Visual, but we run out
     // of space, we should fall back to BlockIndent.
@@ -1716,7 +1713,7 @@ pub(crate) fn wrap_struct_field(
             ))
         } else {
             // One liner or visual indent.
-            Some(format!(" {} ", fields_str))
+            Some(format!(" {fields_str} "))
         }
     } else {
         Some(format!(
@@ -1765,7 +1762,7 @@ pub(crate) fn rewrite_field(
             {
                 Some(attrs_str + name)
             }
-            Some(e) => Some(format!("{}{}{}{}", attrs_str, name, separator, e)),
+            Some(e) => Some(format!("{attrs_str}{name}{separator}{e}")),
             None => {
                 let expr_offset = shape.indent.block_indent(context.config);
                 let expr = field
@@ -1830,7 +1827,41 @@ fn rewrite_tuple_in_visual_indent_style<'a, T: 'a + IntoOverflowableItem<'a>>(
         .ends_with_newline(false);
     let list_str = write_list(&item_vec, &fmt)?;
 
-    Some(format!("({})", list_str))
+    Some(format!("({list_str})"))
+}
+
+fn rewrite_let(
+    context: &RewriteContext<'_>,
+    shape: Shape,
+    pat: &ast::Pat,
+    expr: &ast::Expr,
+) -> Option<String> {
+    let mut result = "let ".to_owned();
+
+    // TODO(ytmimi) comments could appear between `let` and the `pat`
+
+    // 4 = "let ".len()
+    let pat_shape = shape.offset_left(4)?;
+    let pat_str = pat.rewrite(context, pat_shape)?;
+    result.push_str(&pat_str);
+
+    // TODO(ytmimi) comments could appear between `pat` and `=`
+    result.push_str(" =");
+
+    let comments_lo = context
+        .snippet_provider
+        .span_after(expr.span.with_lo(pat.span.hi()), "=");
+    let comments_span = mk_sp(comments_lo, expr.span.lo());
+    rewrite_assign_rhs_with_comments(
+        context,
+        result,
+        expr,
+        shape,
+        &RhsAssignKind::Expr(&expr.kind, expr.span),
+        RhsTactics::Default,
+        comments_span,
+        true,
+    )
 }
 
 pub(crate) fn rewrite_tuple<'a, T: 'a + IntoOverflowableItem<'a>>(
@@ -2072,7 +2103,7 @@ fn choose_rhs<R: Rewrite>(
         Some(ref new_str)
             if !new_str.contains('\n') && unicode_str_width(new_str) <= shape.width =>
         {
-            Some(format!(" {}", new_str))
+            Some(format!(" {new_str}"))
         }
         _ => {
             // Expression did not fit on the same line as the identifier.
@@ -2089,21 +2120,21 @@ fn choose_rhs<R: Rewrite>(
                 (Some(ref orig_rhs), Some(ref new_rhs))
                     if !filtered_str_fits(&new_rhs, context.config.max_width(), new_shape) =>
                 {
-                    Some(format!("{}{}", before_space_str, orig_rhs))
+                    Some(format!("{before_space_str}{orig_rhs}"))
                 }
                 (Some(ref orig_rhs), Some(ref new_rhs))
                     if prefer_next_line(orig_rhs, new_rhs, rhs_tactics) =>
                 {
-                    Some(format!("{}{}", new_indent_str, new_rhs))
+                    Some(format!("{new_indent_str}{new_rhs}"))
                 }
-                (None, Some(ref new_rhs)) => Some(format!("{}{}", new_indent_str, new_rhs)),
+                (None, Some(ref new_rhs)) => Some(format!("{new_indent_str}{new_rhs}")),
                 (None, None) if rhs_tactics == RhsTactics::AllowOverflow => {
                     let shape = shape.infinite_width();
                     expr.rewrite(context, shape)
                         .map(|s| format!("{}{}", before_space_str, s))
                 }
                 (None, None) => None,
-                (Some(orig_rhs), _) => Some(format!("{}{}", before_space_str, orig_rhs)),
+                (Some(orig_rhs), _) => Some(format!("{before_space_str}{orig_rhs}")),
             }
         }
     }

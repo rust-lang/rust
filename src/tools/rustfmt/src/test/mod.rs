@@ -47,7 +47,7 @@ const FILE_SKIP_LIST: &[&str] = &[
 ];
 
 fn init_log() {
-    let _ = env_logger::builder().is_test(true).try_init();
+    let _ = tracing_subscriber::fmt().with_test_writer().try_init();
 }
 
 struct TestSetting {
@@ -203,8 +203,8 @@ fn coverage_tests() {
     let files = get_test_files(Path::new("tests/coverage/source"), true);
     let (_reports, count, fails) = check_files(files, &None);
 
-    println!("Ran {} tests in coverage mode.", count);
-    assert_eq!(fails, 0, "{} tests failed", fails);
+    println!("Ran {count} tests in coverage mode.");
+    assert_eq!(fails, 0, "{fails} tests failed");
 }
 
 #[test]
@@ -396,8 +396,8 @@ fn self_tests() {
     let mut warnings = 0;
 
     // Display results.
-    println!("Ran {} self tests.", count);
-    assert_eq!(fails, 0, "{} self tests failed", fails);
+    println!("Ran {count} self tests.");
+    assert_eq!(fails, 0, "{fails} self tests failed");
 
     for format_report in reports {
         println!(
@@ -407,11 +407,7 @@ fn self_tests() {
         warnings += format_report.warning_count();
     }
 
-    assert_eq!(
-        warnings, 0,
-        "Rustfmt's code generated {} warnings",
-        warnings
-    );
+    assert_eq!(warnings, 0, "Rustfmt's code generated {warnings} warnings");
 }
 
 #[test]
@@ -606,7 +602,7 @@ fn stdin_handles_mod_inner_ignore_attr() {
 fn format_lines_errors_are_reported() {
     init_log();
     let long_identifier = String::from_utf8(vec![b'a'; 239]).unwrap();
-    let input = Input::Text(format!("fn {}() {{}}", long_identifier));
+    let input = Input::Text(format!("fn {long_identifier}() {{}}"));
     let mut config = Config::default();
     config.set().error_on_line_overflow(true);
     let mut session = Session::<io::Stdout>::new(config, None);
@@ -618,7 +614,7 @@ fn format_lines_errors_are_reported() {
 fn format_lines_errors_are_reported_with_tabs() {
     init_log();
     let long_identifier = String::from_utf8(vec![b'a'; 97]).unwrap();
-    let input = Input::Text(format!("fn a() {{\n\t{}\n}}", long_identifier));
+    let input = Input::Text(format!("fn a() {{\n\t{long_identifier}\n}}"));
     let mut config = Config::default();
     config.set().error_on_line_overflow(true);
     config.set().hard_tabs(true);
@@ -829,11 +825,11 @@ fn handle_result(
     for (file_name, fmt_text) in result {
         // If file is in tests/source, compare to file with same name in tests/target.
         let target = get_target(&file_name, target);
-        let open_error = format!("couldn't open target {:?}", target);
+        let open_error = format!("couldn't open target {target:?}");
         let mut f = fs::File::open(&target).expect(&open_error);
 
         let mut text = String::new();
-        let read_error = format!("failed reading target {:?}", target);
+        let read_error = format!("failed reading target {target:?}");
         f.read_to_string(&mut text).expect(&read_error);
 
         // Ignore LF and CRLF difference for Windows.

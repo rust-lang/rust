@@ -105,7 +105,7 @@ pub(crate) fn is_skip_attr(segments: &[ast::PathSegment]) -> bool {
 
 fn get_skip_names(kind: &str, attrs: &[ast::Attribute]) -> Vec<String> {
     let mut skip_names = vec![];
-    let path = format!("{}::{}::{}", RUSTFMT, SKIP, kind);
+    let path = format!("{RUSTFMT}::{SKIP}::{kind}");
     for attr in attrs {
         // rustc_ast::ast::Path is implemented partialEq
         // but it is designed for segments.len() == 1
