@@ -2,10 +2,20 @@ use crate::ty::{AdtDef, ClosureDef, Const, CoroutineDef, GenericArgs, Movability
 use crate::Opaque;
 use crate::{ty::Ty, Span};
 
+/// The SMIR representation of a single function.
 #[derive(Clone, Debug)]
 pub struct Body {
     pub blocks: Vec<BasicBlock>,
+
+    /// Declarations of locals.
+    ///
+    /// The first local is the return value pointer, followed by `arg_count`
+    /// locals for the function arguments, followed by any user-declared
+    /// variables and temporaries.
     pub locals: LocalDecls,
+
+    /// The number of arguments this function takes.
+    pub arg_count: usize,
 }
 
 type LocalDecls = Vec<LocalDecl>;

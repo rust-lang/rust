@@ -308,6 +308,7 @@ impl<'tcx> Stable<'tcx> for mir::Body<'tcx> {
                     span: decl.source_info.span.stable(tables),
                 })
                 .collect(),
+            arg_count: self.arg_count,
         }
     }
 }
