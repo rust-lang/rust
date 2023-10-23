@@ -470,7 +470,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             }
         }
 
-        ty.print(printer).unwrap().into_buffer()
+        ty.print(&mut printer).unwrap();
+        printer.into_buffer()
     }
 
     /// Returns the name of the provided `Ty` (that must be a reference)'s region with a
@@ -492,7 +493,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             bug!("ty for annotation of borrow region is not a reference");
         };
 
-        region.print(printer).unwrap().into_buffer()
+        region.print(&mut printer).unwrap();
+        printer.into_buffer()
     }
 }
 
