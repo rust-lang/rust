@@ -80,7 +80,7 @@ fn main() {
     // but Miri currently uses a fixed address for monomorphic functions.
     assert!(return_fn_ptr(i) == i);
     assert!(return_fn_ptr(i) as unsafe fn() -> i32 == i as fn() -> i32 as unsafe fn() -> i32);
-    // Miri gives it many different addresses to different reifications of a generic function.
+    // Miri gives different addresses to different reifications of a generic function.
     assert!(return_fn_ptr(f) != f);
     // However, if we only turn `f` into a function pointer and use that pointer,
     // it is equal to itself.
