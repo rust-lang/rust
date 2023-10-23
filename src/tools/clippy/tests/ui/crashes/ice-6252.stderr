@@ -24,16 +24,6 @@ help: you might be missing a type parameter
 LL | impl<N, M, VAL> TypeVal<usize> for Multiply<N, M> where N: TypeVal<VAL> {}
    |          +++++
 
-error[E0046]: not all trait items implemented, missing: `VAL`
-  --> $DIR/ice-6252.rs:11:1
-   |
-LL |     const VAL: T;
-   |     ------------ `VAL` from trait
-...
-LL | impl<N, M> TypeVal<usize> for Multiply<N, M> where N: TypeVal<VAL> {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `VAL` in implementation
+error: aborting due to 2 previous errors
 
-error: aborting due to 3 previous errors
-
-Some errors have detailed explanations: E0046, E0412.
-For more information about an error, try `rustc --explain E0046`.
+For more information about this error, try `rustc --explain E0412`.
