@@ -1,5 +1,5 @@
 //compile-flags: --edition 2024 -Zunstable-options
-#![feature(coroutines, coroutine_trait)]
+#![feature(coroutines, coroutine_trait, gen_blocks)]
 
 use std::ops::Coroutine;
 

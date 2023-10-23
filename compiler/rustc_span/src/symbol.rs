@@ -819,6 +819,7 @@ symbols! {
         future_trait,
         gdb_script_file,
         ge,
+        gen_blocks,
         gen_future,
         gen_kill,
         generator_clone,
@@ -1780,6 +1781,7 @@ symbols! {
         xmm_reg,
         yeet_desugar_details,
         yeet_expr,
+        yield_expr,
         ymm_reg,
         zmm_reg,
     }

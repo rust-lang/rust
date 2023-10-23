@@ -456,6 +456,8 @@ declare_features! (
     (unstable, ffi_returns_twice, "1.34.0", Some(58314), None),
     /// Allows using `#[repr(align(...))]` on function items
     (unstable, fn_align, "1.53.0", Some(82232), None),
+    /// Allows defining gen blocks and `gen fn`.
+    (unstable, gen_blocks, "CURRENT_RUSTC_VERSION", Some(117078), None),
     /// Infer generic args for both consts and types.
     (unstable, generic_arg_infer, "1.55.0", Some(85077), None),
     /// An extension to the `generic_associated_types` feature, allowing incomplete features.

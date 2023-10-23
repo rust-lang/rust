@@ -2,7 +2,7 @@
 //compile-flags: --edition 2024 -Zunstable-options
 //[next] compile-flags: -Ztrait-solver=next
 // check-pass
-#![feature(coroutines)]
+#![feature(gen_blocks)]
 
 fn foo() -> impl Iterator<Item = u32> {
     gen { yield 42 }

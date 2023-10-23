@@ -1,6 +1,6 @@
 // revisions: e2024 none
 //[e2024] compile-flags: --edition 2024 -Zunstable-options
-#![cfg_attr(e2024, feature(coroutines))]
+#![cfg_attr(e2024, feature(gen_blocks))]
 
 fn main() {
     let x = gen {};

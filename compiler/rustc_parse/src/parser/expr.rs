@@ -1850,7 +1850,7 @@ impl<'a> Parser<'a> {
         let lo = self.prev_token.span;
         let kind = ExprKind::Yield(self.parse_expr_opt()?);
         let span = lo.to(self.prev_token.span);
-        self.sess.gated_spans.gate(sym::coroutines, span);
+        self.sess.gated_spans.gate(sym::yield_expr, span);
         let expr = self.mk_expr(span, kind);
         self.maybe_recover_from_bad_qpath(expr)
     }
@@ -3075,6 +3075,7 @@ impl<'a> Parser<'a> {
             GenBlockKind::Async
         } else {
             assert!(self.eat_keyword(kw::Gen));
+            self.sess.gated_spans.gate(sym::gen_blocks, lo.to(self.token.span));
             GenBlockKind::Gen
         };
         let capture_clause = self.parse_capture_clause()?;
