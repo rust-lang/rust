@@ -111,7 +111,7 @@ See [the rustc-dev-guide for more info][sysllvm].
 
    If you plan to use `x.py install` to create an installation, it is
    recommended that you set the `prefix` value in the `[install]` section to a
-   directory: `./configure --set install.prefix=<path>`
+   directory: `./configure --set install.prefix=<path>`.
 
 3. Build and install:
 
@@ -178,7 +178,7 @@ toolchain.
 2. Run `mingw32_shell.bat` or `mingw64_shell.bat` from the MSYS2 installation
    directory (e.g. `C:\msys64`), depending on whether you want 32-bit or 64-bit
    Rust. (As of the latest version of MSYS2 you have to run `msys2_shell.cmd
-   -mingw32` or `msys2_shell.cmd -mingw64` from the command line instead.)
+   -mingw32` or `msys2_shell.cmd -mingw64` from the command line instead).
 
 3. From this terminal, install the required tools:
 
@@ -217,7 +217,7 @@ MSVC builds of Rust additionally require an installation of Visual Studio 2017
 [Visual Studio]: https://visualstudio.microsoft.com/downloads/
 
 (If you're installing CMake yourself, be careful that "C++ CMake tools for
-Windows" doesn't get included under "Individual components".)
+Windows" doesn't get included under "Individual components").
 
 With these dependencies installed, you can build the compiler in a `cmd.exe`
 shell with:
