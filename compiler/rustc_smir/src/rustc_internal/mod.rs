@@ -26,6 +26,10 @@ pub unsafe fn stable<'tcx, S: Stable<'tcx>>(item: &S) -> S::T {
     with_tables(|tables| item.stable(tables))
 }
 
+pub unsafe fn internal<'tcx, S: RustcInternal<'tcx>>(item: &S) -> S::T {
+    with_tables(|tables| item.internal(tables))
+}
+
 impl<'tcx> Index<stable_mir::DefId> for Tables<'tcx> {
     type Output = DefId;
 
@@ -285,7 +289,7 @@ impl<K: PartialEq + Hash + Eq, V: Copy + Debug + PartialEq + IndexedVal> Index<V
 /// Trait used to translate a stable construct to its rustc counterpart.
 ///
 /// This is basically a mirror of [crate::rustc_smir::Stable].
-pub(crate) trait RustcInternal<'tcx> {
+pub trait RustcInternal<'tcx> {
     type T;
     fn internal(&self, tables: &mut Tables<'tcx>) -> Self::T;
 }
