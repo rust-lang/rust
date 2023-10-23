@@ -43,7 +43,7 @@
 -         _6 = CheckedAdd(_4, _5);
 -         assert(!move (_6.1: bool), "attempt to compute `{} + {}`, which would overflow", move _4, move _5) -> [success: bb1, unwind continue];
 +         _5 = const 2_i32;
-+         _6 = CheckedAdd(const 1_i32, const 2_i32);
++         _6 = const (3_i32, false);
 +         assert(!const false, "attempt to compute `{} + {}`, which would overflow", const 1_i32, const 2_i32) -> [success: bb1, unwind continue];
       }
   
@@ -60,7 +60,7 @@
 -         _10 = CheckedAdd(_9, const 1_i32);
 -         assert(!move (_10.1: bool), "attempt to compute `{} + {}`, which would overflow", move _9, const 1_i32) -> [success: bb2, unwind continue];
 +         _9 = const i32::MAX;
-+         _10 = CheckedAdd(const i32::MAX, const 1_i32);
++         _10 = const (i32::MIN, true);
 +         assert(!const true, "attempt to compute `{} + {}`, which would overflow", const i32::MAX, const 1_i32) -> [success: bb2, unwind continue];
       }
   
@@ -76,5 +76,13 @@
           StorageDead(_1);
           return;
       }
++ }
++ 
++ ALLOC0 (size: 8, align: 4) {
++     00 00 00 80 01 __ __ __                         │ .....░░░
++ }
++ 
++ ALLOC1 (size: 8, align: 4) {
++     03 00 00 00 00 __ __ __                         │ .....░░░
   }
   

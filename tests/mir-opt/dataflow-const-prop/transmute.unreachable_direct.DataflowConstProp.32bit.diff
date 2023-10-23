@@ -14,8 +14,10 @@
       bb0: {
           StorageLive(_1);
           StorageLive(_2);
-          _2 = ();
-          _1 = move _2 as Never (Transmute);
+-         _2 = ();
+-         _1 = move _2 as Never (Transmute);
++         _2 = const ();
++         _1 = const ZeroSized: Never;
           unreachable;
       }
   }
