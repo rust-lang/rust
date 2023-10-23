@@ -38,7 +38,7 @@ impl CarbonHasher {
         let data_ptr = bytes.as_ptr();
         let size = bytes.len();
 
-        if size == 0 {
+        if core::intrinsics::unlikely(size == 0) {
             self.hash_one(0);
             return;
         }
