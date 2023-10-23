@@ -369,6 +369,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "unicode-security",
     "unicode-width",
     "unicode-xid",
+    "unwinding",
     "valuable",
     "version_check",
     "wasi",
