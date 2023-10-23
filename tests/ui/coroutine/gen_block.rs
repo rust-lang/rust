@@ -12,6 +12,6 @@ fn main() {
     gen {};
     //[none]~^ ERROR: cannot find
 
-    // FIXME(gen_blocks): should also error in 2024 edition
     let _ = || yield true; //[none]~ ERROR yield syntax is experimental
+    //~^ ERROR yield syntax is experimental
 }

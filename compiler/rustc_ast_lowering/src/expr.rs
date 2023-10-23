@@ -1504,12 +1504,22 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_expr_yield(&mut self, span: Span, opt_expr: Option<&Expr>) -> hir::ExprKind<'hir> {
         match self.coroutine_kind {
-            Some(hir::CoroutineKind::Coroutine) => {}
             Some(hir::CoroutineKind::Gen(_)) => {}
             Some(hir::CoroutineKind::Async(_)) => {
                 self.tcx.sess.emit_err(AsyncCoroutinesNotSupported { span });
             }
-            None => self.coroutine_kind = Some(hir::CoroutineKind::Coroutine),
+            Some(hir::CoroutineKind::Coroutine) | None => {
+                if !self.tcx.features().coroutines {
+                    rustc_session::parse::feature_err(
+                        &self.tcx.sess.parse_sess,
+                        sym::coroutines,
+                        span,
+                        "yield syntax is experimental",
+                    )
+                    .emit();
+                }
+                self.coroutine_kind = Some(hir::CoroutineKind::Coroutine)
+            }
         }
 
         let expr =

@@ -2,10 +2,12 @@
 //[e2024] compile-flags: --edition 2024 -Zunstable-options
 
 fn main() {
-    yield true; //[none]~ ERROR yield syntax is experimental
+    yield true; //~ ERROR yield syntax is experimental
                 //~^ ERROR yield expression outside of coroutine literal
+                //[none]~^^ ERROR yield syntax is experimental
 
-    let _ = || yield true; //[none]~ ERROR yield syntax is experimental
+    let _ = || yield true; //~ ERROR yield syntax is experimental
+    //[none]~^ ERROR yield syntax is experimental
 }
 
 #[cfg(FALSE)]
