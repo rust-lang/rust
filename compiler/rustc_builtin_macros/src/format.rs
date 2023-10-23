@@ -1,3 +1,4 @@
+use parse::Position::ArgumentNamed;
 use rustc_ast::ptr::P;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{token, StmtKind};
@@ -7,7 +8,9 @@ use rustc_ast::{
     FormatDebugHex, FormatOptions, FormatPlaceholder, FormatSign, FormatTrait,
 };
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{Applicability, MultiSpan, PResult, SingleLabelManySpans};
+use rustc_errors::{
+    Applicability, DiagnosticBuilder, ErrorGuaranteed, MultiSpan, PResult, SingleLabelManySpans,
+};
 use rustc_expand::base::{self, *};
 use rustc_parse_format as parse;
 use rustc_span::symbol::{Ident, Symbol};
@@ -364,8 +367,8 @@ fn make_format_args(
     let mut unfinished_literal = String::new();
     let mut placeholder_index = 0;
 
-    for piece in pieces {
-        match piece {
+    for piece in &pieces {
+        match *piece {
             parse::Piece::String(s) => {
                 unfinished_literal.push_str(s);
             }
@@ -513,7 +516,17 @@ fn make_format_args(
         // If there's a lot of unused arguments,
         // let's check if this format arguments looks like another syntax (printf / shell).
         let detect_foreign_fmt = unused.len() > args.explicit_args().len() / 2;
-        report_missing_placeholders(ecx, unused, detect_foreign_fmt, str_style, fmt_str, fmt_span);
+        report_missing_placeholders(
+            ecx,
+            unused,
+            &used,
+            &args,
+            &pieces,
+            detect_foreign_fmt,
+            str_style,
+            fmt_str,
+            fmt_span,
+        );
     }
 
     // Only check for unused named argument names if there are no other errors to avoid causing
@@ -580,6 +593,9 @@ fn invalid_placeholder_type_error(
 fn report_missing_placeholders(
     ecx: &mut ExtCtxt<'_>,
     unused: Vec<(Span, bool)>,
+    used: &[bool],
+    args: &FormatArguments,
+    pieces: &[parse::Piece<'_>],
     detect_foreign_fmt: bool,
     str_style: Option<usize>,
     fmt_str: &str,
@@ -597,6 +613,26 @@ fn report_missing_placeholders(
             unused_labels,
         })
     };
+
+    let placeholders = pieces
+        .iter()
+        .filter_map(|piece| {
+            if let parse::Piece::NextArgument(argument) = piece && let ArgumentNamed(binding) = argument.position {
+                let span = fmt_span.from_inner(InnerSpan::new(argument.position_span.start, argument.position_span.end));
+                Some((span, binding))
+            } else { None }
+        })
+        .collect::<Vec<_>>();
+
+    if !placeholders.is_empty() {
+        if let Some(mut new_diag) =
+            report_redundant_format_arguments(ecx, &args, used, placeholders)
+        {
+            diag.cancel();
+            new_diag.emit();
+            return;
+        }
+    }
 
     // Used to ensure we only report translations for *one* kind of foreign format.
     let mut found_foreign = false;
@@ -683,6 +719,76 @@ fn report_missing_placeholders(
     }
 
     diag.emit();
+}
+
+/// This function detects and reports unused format!() arguments that are
+/// redundant due to implicit captures (e.g. `format!("{x}", x)`).
+fn report_redundant_format_arguments<'a>(
+    ecx: &mut ExtCtxt<'a>,
+    args: &FormatArguments,
+    used: &[bool],
+    placeholders: Vec<(Span, &str)>,
+) -> Option<DiagnosticBuilder<'a, ErrorGuaranteed>> {
+    let mut fmt_arg_indices = vec![];
+    let mut args_spans = vec![];
+    let mut fmt_spans = vec![];
+
+    for (i, unnamed_arg) in args.unnamed_args().iter().enumerate().rev() {
+        let Some(ty) = unnamed_arg.expr.to_ty() else { continue };
+        let Some(argument_binding) = ty.kind.is_simple_path() else { continue };
+        let argument_binding = argument_binding.as_str();
+
+        if used[i] {
+            continue;
+        }
+
+        let matching_placeholders = placeholders
+            .iter()
+            .filter(|(_, inline_binding)| argument_binding == *inline_binding)
+            .map(|(span, _)| span)
+            .collect::<Vec<_>>();
+
+        if !matching_placeholders.is_empty() {
+            fmt_arg_indices.push(i);
+            args_spans.push(unnamed_arg.expr.span);
+            for span in &matching_placeholders {
+                if fmt_spans.contains(*span) {
+                    continue;
+                }
+                fmt_spans.push(**span);
+            }
+        }
+    }
+
+    if !args_spans.is_empty() {
+        let multispan = MultiSpan::from(fmt_spans);
+        let mut suggestion_spans = vec![];
+
+        for (arg_span, fmt_arg_idx) in args_spans.iter().zip(fmt_arg_indices.iter()) {
+            let span = if fmt_arg_idx + 1 == args.explicit_args().len() {
+                *arg_span
+            } else {
+                arg_span.until(args.explicit_args()[*fmt_arg_idx + 1].expr.span)
+            };
+
+            suggestion_spans.push(span);
+        }
+
+        let sugg = if args.named_args().len() == 0 {
+            Some(errors::FormatRedundantArgsSugg { spans: suggestion_spans })
+        } else {
+            None
+        };
+
+        return Some(ecx.create_err(errors::FormatRedundantArgs {
+            n: args_spans.len(),
+            span: MultiSpan::from(args_spans),
+            note: multispan,
+            sugg,
+        }));
+    }
+
+    None
 }
 
 /// Handle invalid references to positional arguments. Output different
