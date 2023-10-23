@@ -99,7 +99,7 @@ declare_features! (
     /// Allows generators to be cloned.
     (removed, generator_clone, "1.65.0", Some(95360), None, Some("renamed to `coroutine_clone`")),
     /// Allows defining generators.
-    (removed, generators, "1.21.0", Some(43122), None, Some("renamed to `coroutine`")),
+    (removed, generators, "1.21.0", Some(43122), None, Some("renamed to `coroutines`")),
     /// Allows `impl Trait` in bindings (`let`, `const`, `static`).
     (removed, impl_trait_in_bindings, "1.55.0", Some(63065), None,
      Some("the implementation was not maintainable, the feature may get reintroduced once the current refactorings are done")),

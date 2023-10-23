@@ -644,11 +644,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         self.scc_universes[scc]
     }
 
-    /// Once region solving has completed, this function will return
-    /// the member constraints that were applied to the value of a given
-    /// region `r`. See `AppliedMemberConstraint`.
-    pub(crate) fn applied_member_constraints(&self, r: RegionVid) -> &[AppliedMemberConstraint] {
-        let scc = self.constraint_sccs.scc(r);
+    /// Once region solving has completed, this function will return the member constraints that
+    /// were applied to the value of a given SCC `scc`. See `AppliedMemberConstraint`.
+    pub(crate) fn applied_member_constraints(
+        &self,
+        scc: ConstraintSccIndex,
+    ) -> &[AppliedMemberConstraint] {
         binary_search_util::binary_search_slice(
             &self.member_constraints_applied,
             |applied| applied.member_region_scc,
@@ -1945,7 +1946,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             // Member constraints can also give rise to `'r: 'x` edges that
             // were not part of the graph initially, so watch out for those.
             // (But they are extremely rare; this loop is very cold.)
-            for constraint in self.applied_member_constraints(r) {
+            for constraint in self.applied_member_constraints(self.constraint_sccs.scc(r)) {
                 let p_c = &self.member_constraints[constraint.member_constraint_index];
                 let constraint = OutlivesConstraint {
                     sup: r,
@@ -2290,11 +2291,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// Access to the SCC constraint graph.
     pub(crate) fn constraint_sccs(&self) -> &Sccs<RegionVid, ConstraintSccIndex> {
         self.constraint_sccs.as_ref()
-    }
-
-    /// Returns whether the given SCC has any member constraints.
-    pub(crate) fn scc_has_member_constraints(&self, scc: ConstraintSccIndex) -> bool {
-        self.member_constraints.indices(scc).next().is_some()
     }
 
     /// Returns whether the given SCC is live at all points: whether the representative is a
