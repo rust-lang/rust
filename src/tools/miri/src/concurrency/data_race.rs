@@ -374,7 +374,7 @@ impl MemoryCellClocks {
         Ok(())
     }
 
-    /// Detect data-races with an atomic read, caused by a non-atomic write that does
+    /// Detect data-races with an atomic read, caused by a non-atomic access that does
     /// not happen-before the atomic-read.
     fn atomic_read_detect(
         &mut self,
@@ -384,7 +384,12 @@ impl MemoryCellClocks {
         log::trace!("Atomic read with vectors: {:#?} :: {:#?}", self, thread_clocks);
         let atomic = self.atomic_mut();
         atomic.read_vector.set_at_index(&thread_clocks.clock, index);
-        if self.write_was_before(&thread_clocks.clock) { Ok(()) } else { Err(DataRace) }
+        // Make sure the last non-atomic write and all non-atomic reads were before this access.
+        if self.write_was_before(&thread_clocks.clock) && self.read <= thread_clocks.clock {
+            Ok(())
+        } else {
+            Err(DataRace)
+        }
     }
 
     /// Detect data-races with an atomic write, either with a non-atomic read or with
@@ -397,6 +402,7 @@ impl MemoryCellClocks {
         log::trace!("Atomic write with vectors: {:#?} :: {:#?}", self, thread_clocks);
         let atomic = self.atomic_mut();
         atomic.write_vector.set_at_index(&thread_clocks.clock, index);
+        // Make sure the last non-atomic write and all non-atomic reads were before this access.
         if self.write_was_before(&thread_clocks.clock) && self.read <= thread_clocks.clock {
             Ok(())
         } else {
@@ -418,7 +424,10 @@ impl MemoryCellClocks {
         }
         if self.write_was_before(&thread_clocks.clock) {
             let race_free = if let Some(atomic) = self.atomic() {
+                // We must be ordered-after all atomic accesses, reads and writes.
+                // This ensures we don't mix atomic and non-atomic accesses.
                 atomic.write_vector <= thread_clocks.clock
+                    && atomic.read_vector <= thread_clocks.clock
             } else {
                 true
             };
