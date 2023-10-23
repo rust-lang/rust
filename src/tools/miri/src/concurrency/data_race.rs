@@ -845,6 +845,7 @@ impl VClockAlloc {
     ) -> InterpResult<'tcx> {
         let (current_index, current_clocks) = global.current_thread_state(thread_mgr);
         let mut action = Cow::Borrowed(action);
+        let mut involves_non_atomic = true;
         let write_clock;
         #[rustfmt::skip]
         let (other_action, other_thread, other_clock) =
@@ -856,6 +857,7 @@ impl VClockAlloc {
             } else if is_atomic && let Some(atomic) = mem_clocks.atomic() && atomic.size != access_size {
                 // This is only a race if we are not synchronized with all atomic accesses, so find
                 // the one we are not synchronized with.
+                involves_non_atomic = false;
                 action = format!("{}-byte (different-size) {action}", access_size.bytes()).into();
                 if let Some(idx) = Self::find_gt_index(&atomic.write_vector, &current_clocks.clock)
                     {
@@ -898,6 +900,7 @@ impl VClockAlloc {
 
         // Throw the data-race detection.
         Err(err_machine_stop!(TerminationInfo::DataRace {
+            involves_non_atomic,
             ptr: ptr_dbg,
             op1: RacingOp {
                 action: other_action.to_string(),

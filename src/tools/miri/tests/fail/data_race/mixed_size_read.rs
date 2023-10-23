@@ -19,7 +19,7 @@ fn main() {
         });
         s.spawn(|| {
             a8[0].load(Ordering::SeqCst);
-            //~^ ERROR: Data race detected between (1) 2-byte Atomic Load on thread `<unnamed>` and (2) 1-byte (different-size) Atomic Load on thread `<unnamed>`
+            //~^ ERROR: Race condition detected between (1) 2-byte Atomic Load on thread `<unnamed>` and (2) 1-byte (different-size) Atomic Load on thread `<unnamed>`
         });
     });
 }

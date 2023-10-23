@@ -1,8 +1,8 @@
-error: Undefined Behavior: Data race detected between (1) 4-byte Atomic Load on thread `<unnamed>` and (2) 2-byte (different-size) Atomic Load on thread `<unnamed>` at ALLOC. (2) just happened here
+error: Undefined Behavior: Race condition detected between (1) 4-byte Atomic Load on thread `<unnamed>` and (2) 2-byte (different-size) Atomic Load on thread `<unnamed>` at ALLOC. (2) just happened here
   --> $DIR/racing_mixed_size_read.rs:LL:CC
    |
 LL |             (*hi).load(Relaxed);
-   |             ^^^^^^^^^^^^^^^^^^^ Data race detected between (1) 4-byte Atomic Load on thread `<unnamed>` and (2) 2-byte (different-size) Atomic Load on thread `<unnamed>` at ALLOC. (2) just happened here
+   |             ^^^^^^^^^^^^^^^^^^^ Race condition detected between (1) 4-byte Atomic Load on thread `<unnamed>` and (2) 2-byte (different-size) Atomic Load on thread `<unnamed>` at ALLOC. (2) just happened here
    |
 help: and (1) occurred earlier here
   --> $DIR/racing_mixed_size_read.rs:LL:CC
