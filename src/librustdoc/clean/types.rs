@@ -2524,7 +2524,6 @@ mod size_asserts {
     static_assert_size!(GenericParamDef, 56);
     static_assert_size!(Generics, 16);
     static_assert_size!(Item, 56);
-    // FIXME(generic_const_items): Further reduce the size.
     static_assert_size!(ItemKind, 56);
     static_assert_size!(PathSegment, 40);
     static_assert_size!(Type, 32);
