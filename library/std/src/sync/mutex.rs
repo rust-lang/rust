@@ -238,9 +238,13 @@ unsafe impl<T: ?Sized + Sync> Sync for MutexGuard<'_, T> {}
 #[must_not_suspend = "holding a MappedMutexGuard across suspend \
                       points can cause deadlocks, delays, \
                       and cause Futures to not implement `Send`"]
-#[unstable(feature = "mapped_lock_guards", issue = "none")]
+#[unstable(feature = "mapped_lock_guards", issue = "117108")]
 #[clippy::has_significant_drop]
 pub struct MappedMutexGuard<'a, T: ?Sized + 'a> {
+    // NB: we use a pointer instead of `&'a mut T` to avoid `noalias` violations, because a
+    // `MappedMutexGuard` argument doesn't hold uniqueness for its whole scope, only until it drops.
+    // `NonNull` is covariant over `T`, so we add a `PhantomData<&'a mut T>` field
+    // below for the correct variance over `T` (invariance).
     data: NonNull<T>,
     inner: &'a sys::Mutex,
     poison_flag: &'a poison::Flag,
@@ -248,9 +252,9 @@ pub struct MappedMutexGuard<'a, T: ?Sized + 'a> {
     _variance: PhantomData<&'a mut T>,
 }
 
-#[unstable(feature = "mapped_lock_guards", issue = "none")]
+#[unstable(feature = "mapped_lock_guards", issue = "117108")]
 impl<T: ?Sized> !Send for MappedMutexGuard<'_, T> {}
-#[unstable(feature = "mapped_lock_guards", issue = "none")]
+#[unstable(feature = "mapped_lock_guards", issue = "117108")]
 unsafe impl<T: ?Sized + Sync> Sync for MappedMutexGuard<'_, T> {}
 
 impl<T> Mutex<T> {
@@ -602,7 +606,7 @@ impl<'a, T: ?Sized> MutexGuard<'a, T> {
     /// This is an associated function that needs to be used as
     /// `MutexGuard::map(...)`. A method would interfere with methods of the
     /// same name on the contents of the `MutexGuard` used through `Deref`.
-    #[unstable(feature = "mapped_lock_guards", issue = "none")]
+    #[unstable(feature = "mapped_lock_guards", issue = "117108")]
     pub fn map<U, F>(orig: Self, f: F) -> MappedMutexGuard<'a, U>
     where
         F: FnOnce(&mut T) -> &mut U,
@@ -629,7 +633,7 @@ impl<'a, T: ?Sized> MutexGuard<'a, T> {
     /// `MutexGuard::try_map(...)`. A method would interfere with methods of the
     /// same name on the contents of the `MutexGuard` used through `Deref`.
     #[doc(alias = "filter_map")]
-    #[unstable(feature = "mapped_lock_guards", issue = "none")]
+    #[unstable(feature = "mapped_lock_guards", issue = "117108")]
     pub fn try_map<U, F>(orig: Self, f: F) -> Result<MappedMutexGuard<'a, U>, Self>
     where
         F: FnOnce(&mut T) -> Option<&mut U>,
@@ -649,7 +653,7 @@ impl<'a, T: ?Sized> MutexGuard<'a, T> {
     }
 }
 
-#[unstable(feature = "mapped_lock_guards", issue = "none")]
+#[unstable(feature = "mapped_lock_guards", issue = "117108")]
 impl<T: ?Sized> Deref for MappedMutexGuard<'_, T> {
     type Target = T;
 
@@ -658,14 +662,14 @@ impl<T: ?Sized> Deref for MappedMutexGuard<'_, T> {
     }
 }
 
-#[unstable(feature = "mapped_lock_guards", issue = "none")]
+#[unstable(feature = "mapped_lock_guards", issue = "117108")]
 impl<T: ?Sized> DerefMut for MappedMutexGuard<'_, T> {
     fn deref_mut(&mut self) -> &mut T {
         unsafe { self.data.as_mut() }
     }
 }
 
-#[unstable(feature = "mapped_lock_guards", issue = "none")]
+#[unstable(feature = "mapped_lock_guards", issue = "117108")]
 impl<T: ?Sized> Drop for MappedMutexGuard<'_, T> {
     #[inline]
     fn drop(&mut self) {
@@ -676,14 +680,14 @@ impl<T: ?Sized> Drop for MappedMutexGuard<'_, T> {
     }
 }
 
-#[unstable(feature = "mapped_lock_guards", issue = "none")]
+#[unstable(feature = "mapped_lock_guards", issue = "117108")]
 impl<T: ?Sized + fmt::Debug> fmt::Debug for MappedMutexGuard<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&**self, f)
     }
 }
 
-#[unstable(feature = "mapped_lock_guards", issue = "none")]
+#[unstable(feature = "mapped_lock_guards", issue = "117108")]
 impl<T: ?Sized + fmt::Display> fmt::Display for MappedMutexGuard<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         (**self).fmt(f)
@@ -699,7 +703,7 @@ impl<'a, T: ?Sized> MappedMutexGuard<'a, T> {
     /// This is an associated function that needs to be used as
     /// `MutexGuard::map(...)`. A method would interfere with methods of the
     /// same name on the contents of the `MutexGuard` used through `Deref`.
-    #[unstable(feature = "mapped_lock_guards", issue = "none")]
+    #[unstable(feature = "mapped_lock_guards", issue = "117108")]
     pub fn map<U, F>(orig: Self, f: F) -> MappedMutexGuard<'a, U>
     where
         F: FnOnce(&mut T) -> &mut U,
@@ -726,7 +730,7 @@ impl<'a, T: ?Sized> MappedMutexGuard<'a, T> {
     /// `MutexGuard::try_map(...)`. A method would interfere with methods of the
     /// same name on the contents of the `MutexGuard` used through `Deref`.
     #[doc(alias = "filter_map")]
-    #[unstable(feature = "mapped_lock_guards", issue = "none")]
+    #[unstable(feature = "mapped_lock_guards", issue = "117108")]
     pub fn try_map<U, F>(orig: Self, f: F) -> Result<MappedMutexGuard<'a, U>, Self>
     where
         F: FnOnce(&mut T) -> Option<&mut U>,
