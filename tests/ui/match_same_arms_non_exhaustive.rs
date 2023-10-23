@@ -9,12 +9,12 @@ fn repeat() -> ! {
 }
 
 pub fn f(x: Ordering) {
+    #[deny(non_exhaustive_omitted_patterns)]
     match x {
         Ordering::Relaxed => println!("relaxed"),
         Ordering::Release => println!("release"),
         Ordering::Acquire => println!("acquire"),
         Ordering::AcqRel | Ordering::SeqCst => repeat(),
-        #[deny(non_exhaustive_omitted_patterns)]
         _ => repeat(),
     }
 }
