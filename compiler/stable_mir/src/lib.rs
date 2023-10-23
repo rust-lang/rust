@@ -243,15 +243,12 @@ pub trait Context {
 // datastructures and stable MIR datastructures
 scoped_thread_local! (static TLV: Cell<*const ()>);
 
-pub fn run(context: impl Context, f: impl FnOnce()) {
+pub fn run(context: &dyn Context, f: impl FnOnce()) {
     assert!(!TLV.is_set());
-    fn g<'a>(context: &(dyn Context + 'a), f: impl FnOnce()) {
-        let ptr: *const () = &context as *const &_ as _;
-        TLV.set(&Cell::new(ptr), || {
-            f();
-        });
-    }
-    g(&context, f);
+    let ptr: *const () = &context as *const &_ as _;
+    TLV.set(&Cell::new(ptr), || {
+        f();
+    });
 }
 
 /// Loads the current context and calls a function with it.

@@ -279,7 +279,7 @@ impl<S, R: PartialEq> PartialEq<R> for MaybeStable<S, R> {
     }
 }
 
-pub(crate) struct TablesWrapper<'tcx>(pub(crate) std::rc::Rc<RefCell<Tables<'tcx>>>);
+pub(crate) struct TablesWrapper<'tcx>(pub(crate) RefCell<Tables<'tcx>>);
 
 pub struct Tables<'tcx> {
     pub(crate) tcx: TyCtxt<'tcx>,

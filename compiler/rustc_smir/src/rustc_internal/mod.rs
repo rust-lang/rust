@@ -18,15 +18,14 @@ use std::cell::RefCell;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::ops::Index;
-use std::rc::Rc;
 
 mod internal;
 
-pub unsafe fn stable<'tcx, S: Stable<'tcx>>(item: &S) -> S::T {
+pub fn stable<'tcx, S: Stable<'tcx>>(item: &S) -> S::T {
     with_tables(|tables| item.stable(tables))
 }
 
-pub unsafe fn internal<'tcx, S: RustcInternal<'tcx>>(item: &S) -> S::T {
+pub fn internal<'tcx, S: RustcInternal<'tcx>>(item: &S) -> S::T {
     with_tables(|tables| item.internal(tables))
 }
 
@@ -141,15 +140,12 @@ pub fn crate_num(item: &stable_mir::Crate) -> CrateNum {
 // datastructures and stable MIR datastructures
 scoped_thread_local! (static TLV: Cell<*const ()>);
 
-pub(crate) fn init<'tcx>(tables: TablesWrapper<'tcx>, f: impl FnOnce()) {
+pub(crate) fn init<'tcx>(tables: &TablesWrapper<'tcx>, f: impl FnOnce()) {
     assert!(!TLV.is_set());
-    fn g<'a, 'tcx>(context: &'a TablesWrapper<'tcx>, f: impl FnOnce()) {
-        let ptr: *const () = &context as *const &_ as _;
-        TLV.set(&Cell::new(ptr), || {
-            f();
-        });
-    }
-    g(&tables, f);
+    let ptr: *const () = &tables as *const &_ as _;
+    TLV.set(&Cell::new(ptr), || {
+        f();
+    });
 }
 
 /// Loads the current context and calls a function with it.
@@ -166,7 +162,7 @@ pub(crate) fn with_tables<'tcx, R>(f: impl FnOnce(&mut Tables<'tcx>) -> R) -> R 
 }
 
 pub fn run(tcx: TyCtxt<'_>, f: impl FnOnce()) {
-    let tables = Rc::new(RefCell::new(Tables {
+    let tables = TablesWrapper(RefCell::new(Tables {
         tcx,
         def_ids: IndexMap::default(),
         alloc_ids: IndexMap::default(),
@@ -174,7 +170,7 @@ pub fn run(tcx: TyCtxt<'_>, f: impl FnOnce()) {
         types: vec![],
         instances: IndexMap::default(),
     }));
-    stable_mir::run(TablesWrapper(Rc::clone(&tables)), || init(TablesWrapper(tables), f));
+    stable_mir::run(&tables, || init(&tables, f));
 }
 
 #[macro_export]
