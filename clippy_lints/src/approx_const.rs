@@ -24,12 +24,12 @@ declare_clippy_lint! {
     /// issue](https://github.com/rust-lang/rust/issues).
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let x = 3.14;
     /// let y = 1_f64 / x;
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let x = std::f32::consts::PI;
     /// let y = std::f64::consts::FRAC_1_PI;
     /// ```

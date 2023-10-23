@@ -19,7 +19,7 @@ declare_clippy_lint! {
     /// It is more concise to use the `hash_one` method.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// use std::hash::{BuildHasher, Hash, Hasher};
     /// use std::collections::hash_map::RandomState;
     ///
@@ -31,7 +31,7 @@ declare_clippy_lint! {
     /// let hash = hasher.finish();
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// use std::hash::BuildHasher;
     /// use std::collections::hash_map::RandomState;
     ///

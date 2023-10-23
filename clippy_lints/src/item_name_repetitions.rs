@@ -26,7 +26,7 @@ declare_clippy_lint! {
     /// (the prefixes are `Foo1` and `Foo2` respectively), as also `Bar螃`, `Bar蟹`
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// enum Cake {
     ///     BlackForestCake,
     ///     HummingbirdCake,
@@ -34,7 +34,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// enum Cake {
     ///     BlackForest,
     ///     Hummingbird,
@@ -56,14 +56,14 @@ declare_clippy_lint! {
     /// It requires the user to type the module name twice.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// mod cake {
     ///     struct BlackForestCake;
     /// }
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// mod cake {
     ///     struct BlackForest;
     /// }
@@ -119,7 +119,7 @@ declare_clippy_lint! {
     /// (the prefixes are `foo1` and `foo2` respectively), as also `bar螃`, `bar蟹`
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// struct Cake {
     ///     cake_sugar: u8,
     ///     cake_flour: u8,
@@ -127,7 +127,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// struct Cake {
     ///     sugar: u8,
     ///     flour: u8,

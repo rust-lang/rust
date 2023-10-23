@@ -23,12 +23,12 @@ declare_clippy_lint! {
     /// complexity.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let a = (|| 42)();
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let a = 42;
     /// ```
     #[clippy::version = "pre 1.29.0"]

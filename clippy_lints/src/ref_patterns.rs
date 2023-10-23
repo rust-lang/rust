@@ -10,12 +10,12 @@ declare_clippy_lint! {
     /// The `ref` keyword can be confusing for people unfamiliar with it, and often
     /// it is more concise to use `&` instead.
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let opt = Some(5);
     /// if let Some(ref foo) = opt {}
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let opt = Some(5);
     /// if let Some(foo) = &opt {}
     /// ```

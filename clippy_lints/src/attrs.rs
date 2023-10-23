@@ -129,7 +129,7 @@ declare_clippy_lint! {
     /// a valid semver. Failing that, the contained information is useless.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// #[deprecated(since = "forever")]
     /// fn something_else() { /* ... */ }
     /// ```
@@ -156,14 +156,14 @@ declare_clippy_lint! {
     /// currently works for basic cases but is not perfect.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// #[allow(dead_code)]
     ///
     /// fn not_quite_good_code() { }
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// // Good (as inner attribute)
     /// #![allow(dead_code)]
     ///
@@ -198,25 +198,25 @@ declare_clippy_lint! {
     /// Does not detect empty lines after doc attributes (e.g. `#[doc = ""]`).
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// /// Some doc comment with a blank line after it.
     ///
     /// fn not_quite_good_code() { }
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// /// Good (no blank line)
     /// fn this_is_fine() { }
     /// ```
     ///
-    /// ```rust
+    /// ```no_run
     /// // Good (convert to a regular comment)
     ///
     /// fn this_is_fine_too() { }
     /// ```
     ///
-    /// ```rust
+    /// ```no_run
     /// //! Good (convert to a comment on an inner attribute)
     ///
     /// fn this_is_fine_as_well() { }
@@ -236,12 +236,12 @@ declare_clippy_lint! {
     /// These lints should only be enabled on a lint-by-lint basis and with careful consideration.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// #![deny(clippy::restriction)]
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// #![deny(clippy::as_conversions)]
     /// ```
     #[clippy::version = "1.47.0"]
@@ -265,13 +265,13 @@ declare_clippy_lint! {
     /// [#3123](https://github.com/rust-lang/rust-clippy/pull/3123#issuecomment-422321765)
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// #[cfg_attr(rustfmt, rustfmt_skip)]
     /// fn main() { }
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// #[rustfmt::skip]
     /// fn main() { }
     /// ```
@@ -290,13 +290,13 @@ declare_clippy_lint! {
     /// by the conditional compilation engine.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// #[cfg(linux)]
     /// fn conditional() { }
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # mod hidden {
     /// #[cfg(target_os = "linux")]
     /// fn conditional() { }
@@ -325,14 +325,14 @@ declare_clippy_lint! {
     /// ensure that others understand the reasoning
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// #![feature(lint_reasons)]
     ///
     /// #![allow(clippy::some_lint)]
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// #![feature(lint_reasons)]
     ///
     /// #![allow(clippy::some_lint, reason = "False positive rust-lang/rust-clippy#1002020")]
@@ -352,7 +352,7 @@ declare_clippy_lint! {
     /// panicking with the expected message, and not another unrelated panic.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// fn random() -> i32 { 0 }
     ///
     /// #[should_panic]
@@ -363,7 +363,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// fn random() -> i32 { 0 }
     ///
     /// #[should_panic = "attempt to divide by zero"]
@@ -386,13 +386,13 @@ declare_clippy_lint! {
     /// If there is only one condition, no need to wrap it into `any` or `all` combinators.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// #[cfg(any(unix))]
     /// pub struct Bar;
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// #[cfg(unix)]
     /// pub struct Bar;
     /// ```
@@ -412,13 +412,13 @@ declare_clippy_lint! {
     /// may cause conditional compilation not work quitely.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// #[cfg(features = "some-feature")]
     /// fn conditional() { }
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// #[cfg(feature = "some-feature")]
     /// fn conditional() { }
     /// ```

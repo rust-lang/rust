@@ -29,7 +29,7 @@ declare_clippy_lint! {
     /// to wrap the `.lock()` call in a block instead of explicitly dropping the guard.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # use std::sync::Mutex;
     /// # async fn baz() {}
     /// async fn foo(x: &Mutex<u32>) {
@@ -47,7 +47,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # use std::sync::Mutex;
     /// # async fn baz() {}
     /// async fn foo(x: &Mutex<u32>) {
@@ -87,7 +87,7 @@ declare_clippy_lint! {
     /// to wrap the `.borrow[_mut]()` call in a block instead of explicitly dropping the ref.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # use std::cell::RefCell;
     /// # async fn baz() {}
     /// async fn foo(x: &RefCell<u32>) {
@@ -105,7 +105,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # use std::cell::RefCell;
     /// # async fn baz() {}
     /// async fn foo(x: &RefCell<u32>) {
@@ -151,7 +151,7 @@ declare_clippy_lint! {
     /// ]
     /// ```
     ///
-    /// ```rust
+    /// ```no_run
     /// # async fn baz() {}
     /// struct CustomLockType;
     /// struct OtherCustomLockType;

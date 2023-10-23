@@ -549,7 +549,7 @@ define_Conf! {
     /// Whether to recommend using implicit into iter for reborrowed values.
     ///
     /// #### Example
-    /// ```
+    /// ```no_run
     /// let mut vec = vec![1, 2, 3];
     /// let rmvec = &mut vec;
     /// for _ in rmvec.iter() {}
@@ -557,7 +557,7 @@ define_Conf! {
     /// ```
     ///
     /// Use instead:
-    /// ```
+    /// ```no_run
     /// let mut vec = vec![1, 2, 3];
     /// let rmvec = &mut vec;
     /// for _ in &*rmvec {}

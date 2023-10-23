@@ -20,13 +20,13 @@ declare_clippy_lint! {
     /// It's more idiomatic to use the dedicated syntax.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// use std::future::Future;
     ///
     /// fn foo() -> impl Future<Output = i32> { async { 42 } }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// async fn foo() -> i32 { 42 }
     /// ```
     #[clippy::version = "1.45.0"]

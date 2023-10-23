@@ -16,7 +16,7 @@ declare_clippy_lint! {
     /// it's hard to figure out which item is meant in a statement.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// fn foo() {
     ///     println!("cake");
     /// }
@@ -31,7 +31,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// fn foo() {
     ///     println!("cake");
     /// }

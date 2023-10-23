@@ -17,7 +17,7 @@ declare_clippy_lint! {
     /// Negations reduce the readability of statements.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # let v: Vec<usize> = vec![];
     /// # fn a() {}
     /// # fn b() {}
@@ -30,7 +30,7 @@ declare_clippy_lint! {
     ///
     /// Could be written:
     ///
-    /// ```rust
+    /// ```no_run
     /// # let v: Vec<usize> = vec![];
     /// # fn a() {}
     /// # fn b() {}

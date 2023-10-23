@@ -94,7 +94,7 @@ impl Parse for ClippyLint {
 ///
 /// # Example
 ///
-/// ```
+/// ```ignore
 /// use rustc_session::declare_tool_lint;
 ///
 /// declare_clippy_lint! {

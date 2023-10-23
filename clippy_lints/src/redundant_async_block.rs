@@ -19,7 +19,7 @@ declare_clippy_lint! {
     /// It is simpler and more efficient to use the future directly.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let f = async {
     ///    1 + 2
     /// };
@@ -28,7 +28,7 @@ declare_clippy_lint! {
     /// };
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let f = async {
     ///    1 + 2
     /// };

@@ -38,7 +38,7 @@ declare_clippy_lint! {
     /// are mentioned due to potential false positives.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// // Unnecessary lifetime annotations
     /// fn in_and_out<'a>(x: &'a u8, y: u8) -> &'a u8 {
     ///     x
@@ -46,7 +46,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// fn elided(x: &u8, y: u8) -> &u8 {
     ///     x
     /// }
@@ -69,7 +69,7 @@ declare_clippy_lint! {
     /// them leads to more readable code.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// // unnecessary lifetimes
     /// fn unused_lifetime<'a>(x: u8) {
     ///     // ..
@@ -77,7 +77,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// fn no_lifetime(x: u8) {
     ///     // ...
     /// }

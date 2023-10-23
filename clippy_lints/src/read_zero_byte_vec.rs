@@ -24,7 +24,7 @@ declare_clippy_lint! {
     /// a zero-byte read would allocate a `Vec` for it.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// use std::io;
     /// fn foo<F: io::Read>(mut f: F) {
     ///     let mut data = Vec::with_capacity(100);
@@ -32,7 +32,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// use std::io;
     /// fn foo<F: io::Read>(mut f: F) {
     ///     let mut data = Vec::with_capacity(100);

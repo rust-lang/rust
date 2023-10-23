@@ -16,14 +16,14 @@ declare_clippy_lint! {
     /// `assert!` is simpler than `if`-then-`panic!`.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let sad_people: Vec<&str> = vec![];
     /// if !sad_people.is_empty() {
     ///     panic!("there are sad people: {:?}", sad_people);
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let sad_people: Vec<&str> = vec![];
     /// assert!(sad_people.is_empty(), "there are sad people: {:?}", sad_people);
     /// ```

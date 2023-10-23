@@ -19,7 +19,7 @@ declare_clippy_lint! {
     /// Since the order of fields in a constructor doesn't affect the
     /// resulted instance as the below example indicates,
     ///
-    /// ```rust
+    /// ```no_run
     /// #[derive(Debug, PartialEq, Eq)]
     /// struct Foo {
     ///     x: i32,
@@ -35,7 +35,7 @@ declare_clippy_lint! {
     /// inconsistent order can be confusing and decreases readability and consistency.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// struct Foo {
     ///     x: i32,
     ///     y: i32,
@@ -47,7 +47,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # struct Foo {
     /// #     x: i32,
     /// #     y: i32,

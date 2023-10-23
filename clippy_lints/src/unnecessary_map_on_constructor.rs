@@ -16,11 +16,11 @@ declare_clippy_lint! {
     /// construct the Option or Result from the output.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// Some(4).map(i32::swap_bytes);
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// Some(i32::swap_bytes(4));
     /// ```
     #[clippy::version = "1.73.0"]

@@ -63,7 +63,7 @@ declare_clippy_lint! {
     /// descriptive name.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let _1 = 1;
     /// let ___1 = 1;
     /// let __1___2 = 11;

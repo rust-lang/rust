@@ -34,14 +34,14 @@ declare_clippy_lint! {
     /// bound without first assigning it to a let-binding.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// fn foo() -> String {
     ///     let x = String::new();
     ///     x
     /// }
     /// ```
     /// instead, use
-    /// ```
+    /// ```no_run
     /// fn foo() -> String {
     ///     String::new()
     /// }
@@ -61,13 +61,13 @@ declare_clippy_lint! {
     /// more rusty.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// fn foo(x: usize) -> usize {
     ///     return x;
     /// }
     /// ```
     /// simplify to
-    /// ```rust
+    /// ```no_run
     /// fn foo(x: usize) -> usize {
     ///     x
     /// }

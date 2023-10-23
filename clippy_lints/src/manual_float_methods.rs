@@ -17,12 +17,12 @@ declare_clippy_lint! {
     /// The method `is_infinite` is shorter and more readable.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # let x = 1.0f32;
     /// if x == f32::INFINITY || x == f32::NEG_INFINITY {}
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # let x = 1.0f32;
     /// if x.is_infinite() {}
     /// ```
@@ -40,13 +40,13 @@ declare_clippy_lint! {
     /// The method `is_finite` is shorter and more readable.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # let x = 1.0f32;
     /// if x != f32::INFINITY && x != f32::NEG_INFINITY {}
     /// if x.abs() < f32::INFINITY {}
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # let x = 1.0f32;
     /// if x.is_finite() {}
     /// if x.is_finite() {}

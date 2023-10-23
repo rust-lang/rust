@@ -27,7 +27,7 @@ declare_clippy_lint! {
     /// Negatively impacts accuracy.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let a = 3f32;
     /// let _ = a.powf(1.0 / 3.0);
     /// let _ = (1.0 + a).ln();
@@ -35,7 +35,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let a = 3f32;
     /// let _ = a.cbrt();
     /// let _ = a.ln_1p();
@@ -57,7 +57,7 @@ declare_clippy_lint! {
     /// Negatively impacts accuracy and performance.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// use std::f32::consts::E;
     ///
     /// let a = 3f32;
@@ -83,7 +83,7 @@ declare_clippy_lint! {
     ///
     /// is better expressed as
     ///
-    /// ```rust
+    /// ```no_run
     /// use std::f32::consts::E;
     ///
     /// let a = 3f32;

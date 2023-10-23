@@ -18,7 +18,7 @@ declare_clippy_lint! {
     /// Confusing.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// trait T {
     ///     fn foo(&self) {}
     /// }

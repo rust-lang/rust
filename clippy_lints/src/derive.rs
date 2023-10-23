@@ -173,7 +173,7 @@ declare_clippy_lint! {
     /// `Eq` themselves.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// #[derive(PartialEq)]
     /// struct Foo {
     ///     i_am_eq: i32,
@@ -181,7 +181,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// #[derive(PartialEq, Eq)]
     /// struct Foo {
     ///     i_am_eq: i32,

@@ -17,13 +17,13 @@ declare_clippy_lint! {
     /// more straight forward to use the dedicated `is_digit` method.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # let c = 'c';
     /// # let radix = 10;
     /// let is_digit = c.to_digit(radix).is_some();
     /// ```
     /// can be written as:
-    /// ```
+    /// ```no_run
     /// # let c = 'c';
     /// # let radix = 10;
     /// let is_digit = c.is_digit(radix);

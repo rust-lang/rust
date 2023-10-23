@@ -17,7 +17,7 @@ declare_clippy_lint! {
     /// expr
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// fn f() -> Result<u32, u32> {
     ///     Ok(0)
     /// }
@@ -69,7 +69,7 @@ declare_clippy_lint! {
     /// and ignore the resulting value.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// async fn foo() -> Result<(), ()> {
     ///     Ok(())
     /// }
@@ -77,7 +77,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # async fn context() {
     /// async fn foo() -> Result<(), ()> {
     ///     Ok(())
@@ -107,14 +107,14 @@ declare_clippy_lint! {
     /// lints.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// fn foo() -> Result<u32, ()> {
     ///     Ok(123)
     /// }
     /// let _ = foo();
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// fn foo() -> Result<u32, ()> {
     ///     Ok(123)
     /// }

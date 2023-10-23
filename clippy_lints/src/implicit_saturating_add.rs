@@ -18,7 +18,7 @@ declare_clippy_lint! {
     /// The built-in function is more readable and may be faster.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     ///let mut u:u32 = 7000;
     ///
     /// if u != u32::MAX {
@@ -26,7 +26,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     ///let mut u:u32 = 7000;
     ///
     /// u = u.saturating_add(1);

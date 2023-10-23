@@ -29,13 +29,13 @@ declare_clippy_lint! {
     /// In the example above, `Some` is repeated, which unnecessarily complicates the pattern.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// fn main() {
     ///     if let Some(0) | Some(2) = Some(0) {}
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// fn main() {
     ///     if let Some(0 | 2) = Some(0) {}
     /// }

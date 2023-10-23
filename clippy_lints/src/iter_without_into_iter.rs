@@ -20,7 +20,7 @@ declare_clippy_lint! {
     /// (`for val in &iter {}`), without having to first call `iter()` or `iter_mut()`.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// struct MySlice<'a>(&'a [u8]);
     /// impl<'a> MySlice<'a> {
     ///     pub fn iter(&self) -> std::slice::Iter<'a, u8> {
@@ -29,7 +29,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// struct MySlice<'a>(&'a [u8]);
     /// impl<'a> MySlice<'a> {
     ///     pub fn iter(&self) -> std::slice::Iter<'a, u8> {
@@ -62,7 +62,7 @@ declare_clippy_lint! {
     /// in case of ambiguity with another `IntoIterator` impl.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// struct MySlice<'a>(&'a [u8]);
     /// impl<'a> IntoIterator for &MySlice<'a> {
     ///     type Item = &'a u8;
@@ -73,7 +73,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// struct MySlice<'a>(&'a [u8]);
     /// impl<'a> MySlice<'a> {
     ///     pub fn iter(&self) -> std::slice::Iter<'a, u8> {

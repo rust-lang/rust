@@ -14,11 +14,11 @@ declare_clippy_lint! {
     /// ### Why is this bad?
     /// It's most probably a typo and may lead to unexpected behaviours.
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let x = 3_i32 ^ 4_i32;
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let x = 3_i32.pow(4);
     /// ```
     #[clippy::version = "1.67.0"]

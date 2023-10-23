@@ -58,14 +58,14 @@ declare_clippy_lint! {
     /// would fail.
     ///
     /// ### Examples
-    /// ```rust
+    /// ```no_run
     /// /// Do something with the foo_bar parameter. See also
     /// /// that::other::module::foo.
     /// // ^ `foo_bar` and `that::other::module::foo` should be ticked.
     /// fn doit(foo_bar: usize) {}
     /// ```
     ///
-    /// ```rust
+    /// ```no_run
     /// // Link text with `[]` brackets should be written as following:
     /// /// Consume the array and return the inner
     /// /// [`SmallVec<[T; INLINE_CAPACITY]>`][SmallVec].
@@ -88,7 +88,7 @@ declare_clippy_lint! {
     /// preconditions, so that users can be sure they are using them safely.
     ///
     /// ### Examples
-    /// ```rust
+    /// ```no_run
     ///# type Universe = ();
     /// /// This function should really be documented
     /// pub unsafe fn start_apocalypse(u: &mut Universe) {
@@ -98,7 +98,7 @@ declare_clippy_lint! {
     ///
     /// At least write a line about safety:
     ///
-    /// ```rust
+    /// ```no_run
     ///# type Universe = ();
     /// /// # Safety
     /// ///
@@ -126,7 +126,7 @@ declare_clippy_lint! {
     /// Since the following function returns a `Result` it has an `# Errors` section in
     /// its doc comment:
     ///
-    /// ```rust
+    /// ```no_run
     ///# use std::io;
     /// /// # Errors
     /// ///
@@ -155,7 +155,7 @@ declare_clippy_lint! {
     /// Since the following function may panic it has a `# Panics` section in
     /// its doc comment:
     ///
-    /// ```rust
+    /// ```no_run
     /// /// # Panics
     /// ///
     /// /// Will panic if y is 0
@@ -182,7 +182,7 @@ declare_clippy_lint! {
     /// if the `fn main()` is left implicit.
     ///
     /// ### Examples
-    /// ```rust
+    /// ```no_run
     /// /// An example of a doctest with a `main()` function
     /// ///
     /// /// # Examples
@@ -210,12 +210,12 @@ declare_clippy_lint! {
     /// It is likely a typo when defining an intra-doc link
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// /// See also: ['foo']
     /// fn bar() {}
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// /// See also: [`foo`]
     /// fn bar() {}
     /// ```
@@ -235,7 +235,7 @@ declare_clippy_lint! {
     /// need to describe safety preconditions that users are required to uphold.
     ///
     /// ### Examples
-    /// ```rust
+    /// ```no_run
     ///# type Universe = ();
     /// /// # Safety
     /// ///
@@ -248,7 +248,7 @@ declare_clippy_lint! {
     /// The function is safe, so there shouldn't be any preconditions
     /// that have to be explained for safety reasons.
     ///
-    /// ```rust
+    /// ```no_run
     ///# type Universe = ();
     /// /// This function should really be documented
     /// pub fn start_apocalypse(u: &mut Universe) {

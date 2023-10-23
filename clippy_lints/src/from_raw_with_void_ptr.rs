@@ -18,13 +18,13 @@ declare_clippy_lint! {
     /// For this to be safe, `c_void` would need to have the same memory layout as the original type, which is often not the case.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # use std::ffi::c_void;
     /// let ptr = Box::into_raw(Box::new(42usize)) as *mut c_void;
     /// let _ = unsafe { Box::from_raw(ptr) };
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # use std::ffi::c_void;
     /// # let ptr = Box::into_raw(Box::new(42usize)) as *mut c_void;
     /// let _ = unsafe { Box::from_raw(ptr as *mut usize) };

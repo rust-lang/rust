@@ -64,7 +64,7 @@ declare_clippy_lint! {
     /// in `Some`.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # use std::cmp::Ordering;
     /// #[derive(Eq, PartialEq)]
     /// struct A(u32);
@@ -84,7 +84,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # use std::cmp::Ordering;
     /// #[derive(Eq, PartialEq)]
     /// struct A(u32);

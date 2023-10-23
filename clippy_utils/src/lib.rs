@@ -144,7 +144,7 @@ macro_rules! extract_msrv_attr {
 /// instead.
 ///
 /// Examples:
-/// ```
+/// ```no_run
 /// let abc = 1;
 /// //        ^ output
 /// let def = abc;
@@ -699,7 +699,7 @@ pub fn get_trait_def_id(cx: &LateContext<'_>, path: &[&str]) -> Option<DefId> {
 ///
 /// Use this if you want to find the `TraitRef` of the `Add` trait in this example:
 ///
-/// ```rust
+/// ```no_run
 /// struct Point(isize, isize);
 ///
 /// impl std::ops::Add for Point {
@@ -895,7 +895,7 @@ fn is_default_equivalent_from(cx: &LateContext<'_>, from_func: &Expr<'_>, arg: &
 ///
 /// For example, given the following function:
 ///
-/// ```
+/// ```no_run
 /// fn f<'a>(iter: &mut impl Iterator<Item = (usize, &'a mut String)>) {
 ///     for item in iter {
 ///         let s = item.1;
@@ -1609,7 +1609,7 @@ pub fn is_expn_of(mut span: Span, name: &str) -> Option<Span> {
 /// Returns the pre-expansion span if the span directly comes from an expansion
 /// of the macro `name`.
 /// The difference with [`is_expn_of`] is that in
-/// ```rust
+/// ```no_run
 /// # macro_rules! foo { ($name:tt!$args:tt) => { $name!$args } }
 /// # macro_rules! bar { ($e:expr) => { $e } }
 /// foo!(bar!(42));
@@ -2204,7 +2204,7 @@ pub fn is_no_core_crate(cx: &LateContext<'_>) -> bool {
 
 /// Check if parent of a hir node is a trait implementation block.
 /// For example, `f` in
-/// ```rust
+/// ```no_run
 /// # struct S;
 /// # trait Trait { fn f(); }
 /// impl Trait for S {

@@ -18,7 +18,7 @@ declare_clippy_lint! {
     /// either `T` should be made `Send + Sync` or an `Rc` should be used instead of an `Arc`
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # use std::cell::RefCell;
     /// # use std::sync::Arc;
     ///

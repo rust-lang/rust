@@ -31,7 +31,7 @@ declare_clippy_lint! {
     /// patterns.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let slice: Option<&[u32]> = Some(&[1, 2, 3]);
     ///
     /// if let Some(slice) = slice {
@@ -39,7 +39,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let slice: Option<&[u32]> = Some(&[1, 2, 3]);
     ///
     /// if let Some(&[first, ..]) = slice {

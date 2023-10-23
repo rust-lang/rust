@@ -30,12 +30,12 @@ declare_clippy_lint! {
     /// multiple `push` calls.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let mut v = Vec::new();
     /// v.push(0);
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let v = vec![0];
     /// ```
     #[clippy::version = "1.51.0"]

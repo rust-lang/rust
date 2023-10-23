@@ -34,7 +34,7 @@ declare_clippy_lint! {
     ///   successful results, using `map_while()` would stop at the first error.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # use std::{fs::File, io::{self, BufRead, BufReader}};
     /// # let _ = || -> io::Result<()> {
     /// let mut lines = BufReader::new(File::open("some-path")?).lines().filter_map(Result::ok);
@@ -43,7 +43,7 @@ declare_clippy_lint! {
     /// # Ok(()) };
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # use std::{fs::File, io::{self, BufRead, BufReader}};
     /// # let _ = || -> io::Result<()> {
     /// let mut lines = BufReader::new(File::open("some-path")?).lines().map_while(Result::ok);

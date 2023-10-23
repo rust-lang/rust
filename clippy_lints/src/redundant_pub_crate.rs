@@ -18,14 +18,14 @@ declare_clippy_lint! {
     /// module's visibility.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// mod internal {
     ///     pub(crate) fn internal_fn() { }
     /// }
     /// ```
     /// This function is not visible outside the module and it can be declared with `pub` or
     /// private visibility
-    /// ```rust
+    /// ```no_run
     /// mod internal {
     ///     pub fn internal_fn() { }
     /// }

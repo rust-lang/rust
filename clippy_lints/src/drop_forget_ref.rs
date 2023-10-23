@@ -16,7 +16,7 @@ declare_clippy_lint! {
     /// have been intended.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// struct Foo;
     /// let x = Foo;
     /// std::mem::drop(x);
@@ -36,7 +36,7 @@ declare_clippy_lint! {
     /// have been intended.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// struct Foo;
     /// let x = Foo;
     /// std::mem::forget(x);
@@ -57,7 +57,7 @@ declare_clippy_lint! {
     /// destructor, possibly causing leaks.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # use std::mem;
     /// # use std::rc::Rc;
     /// mem::forget(Rc::new(55))

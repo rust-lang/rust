@@ -16,7 +16,7 @@ declare_clippy_lint! {
     /// the field name is redundant.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let bar: u8 = 123;
     ///
     /// struct Foo {

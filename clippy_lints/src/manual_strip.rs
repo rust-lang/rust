@@ -27,14 +27,14 @@ declare_clippy_lint! {
     /// used by `str::{starts,ends}_with` and in the slicing.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let s = "hello, world!";
     /// if s.starts_with("hello, ") {
     ///     assert_eq!(s["hello, ".len()..].to_uppercase(), "WORLD!");
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let s = "hello, world!";
     /// if let Some(end) = s.strip_prefix("hello, ") {
     ///     assert_eq!(end.to_uppercase(), "WORLD!");

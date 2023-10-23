@@ -21,7 +21,7 @@ declare_clippy_lint! {
     /// then opt out for specific methods where this might not make sense.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// pub fn foo() {} // missing #[inline]
     /// fn ok() {} // ok
     /// #[inline] pub fn bar() {} // ok

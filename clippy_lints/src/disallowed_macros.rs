@@ -35,7 +35,7 @@ declare_clippy_lint! {
     ///     { path = "serde::Serialize", reason = "no serializing" },
     /// ]
     /// ```
-    /// ```
+    /// ```no_run
     /// use serde::Serialize;
     ///
     /// // Example code where clippy issues a warning

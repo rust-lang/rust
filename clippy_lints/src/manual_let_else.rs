@@ -30,14 +30,14 @@ declare_clippy_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust
+    /// ```no_run
     /// # let w = Some(0);
     /// let v = if let Some(v) = w { v } else { return };
     /// ```
     ///
     /// Could be written:
     ///
-    /// ```rust
+    /// ```no_run
     /// # fn main () {
     /// # let w = Some(0);
     /// let Some(v) = w else { return };

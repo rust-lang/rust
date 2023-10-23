@@ -21,13 +21,13 @@ declare_clippy_lint! {
     /// While using `write!` in the suggested way should never fail, this isn't necessarily clear to the programmer.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let mut s = String::new();
     /// s += &format!("0x{:X}", 1024);
     /// s.push_str(&format!("0x{:X}", 1024));
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// use std::fmt::Write as _; // import without risk of name clashing
     ///
     /// let mut s = String::new();
