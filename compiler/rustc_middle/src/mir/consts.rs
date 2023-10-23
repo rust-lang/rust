@@ -173,16 +173,19 @@ impl<'tcx> ConstValue<'tcx> {
         Some(data.inner().inspect_with_uninit_and_ptr_outside_interpreter(start..end))
     }
 
-    pub fn has_provenance(&self, tcx: TyCtxt<'tcx>, size: Size) -> bool {
-        let (alloc, start, end) = match *self {
+    /// Check if a constant may contain provenance information. This is used by MIR opts.
+    pub fn may_have_provenance(&self, tcx: TyCtxt<'tcx>, size: Size) -> bool {
+        match *self {
             ConstValue::ZeroSized | ConstValue::Scalar(Scalar::Int(_)) => return false,
             ConstValue::Scalar(Scalar::Ptr(..)) => return true,
-            ConstValue::Slice { data, meta } => (data, Size::ZERO, Size::from_bytes(meta)),
-            ConstValue::Indirect { alloc_id, offset } => {
-                (tcx.global_alloc(alloc_id).unwrap_memory(), offset, offset + size)
-            }
-        };
-        !alloc.inner().provenance().range_empty(super::AllocRange::from(start..end), &tcx)
+            ConstValue::Slice { data, meta: _ } => !data.inner().provenance().ptrs().is_empty(),
+            ConstValue::Indirect { alloc_id, offset } => !tcx
+                .global_alloc(alloc_id)
+                .unwrap_memory()
+                .inner()
+                .provenance()
+                .range_empty(super::AllocRange::from(offset..offset + size), &tcx),
+        }
     }
 }
 

@@ -474,9 +474,12 @@ pub fn intern_const_alloc_for_constprop<
 
     alloc.mutability = Mutability::Not;
 
-    // link the alloc id to the actual allocation
+    // We are not doing recursive interning, so we don't currently support provenance.
+    // (If this assertion ever triggers, we should just implement a
+    // proper recursive interning loop.)
     assert!(alloc.provenance().ptrs().is_empty());
 
+    // Link the alloc id to the actual allocation
     let alloc = ecx.tcx.mk_const_alloc(alloc);
     ecx.tcx.set_alloc_id_memory(alloc_id, alloc);
 

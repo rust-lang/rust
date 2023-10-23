@@ -910,11 +910,13 @@ fn op_to_prop_const<'tcx>(
         return Some(ConstValue::Scalar(scalar));
     }
 
-    // If this constant is a projection of another, we can return it directly.
+    // If this constant is already represented as an `Allocation`,
+    // try putting it into global memory to return it.
     if let Either::Left(mplace) = op.as_mplace_or_imm() {
         let (size, _align) = ecx.size_and_align_of_mplace(&mplace).ok()??;
 
         // Do not try interning a value that contains provenance.
+        // Due to https://github.com/rust-lang/rust/issues/79738, doing so could lead to bugs.
         let alloc_ref = ecx.get_ptr_alloc(mplace.ptr(), size).ok()??;
         if alloc_ref.has_provenance() {
             return None;
@@ -935,7 +937,10 @@ fn op_to_prop_const<'tcx>(
         ecx.intern_with_temp_alloc(op.layout, |ecx, dest| ecx.copy_op(op, dest, false)).ok()?;
     let value = ConstValue::Indirect { alloc_id, offset: Size::ZERO };
 
-    if !value.has_provenance(*ecx.tcx, op.layout.size) {
+    // Check that we do not leak a pointer.
+    // Those pointers may lose part of their identity in codegen.
+    // See https://github.com/rust-lang/rust/issues/79738.
+    if !value.may_have_provenance(*ecx.tcx, op.layout.size) {
         return Some(value);
     }
 
@@ -964,7 +969,8 @@ impl<'tcx> VnState<'_, 'tcx> {
 
         // Check that we do not leak a pointer.
         // Those pointers may lose part of their identity in codegen.
-        assert!(!value.has_provenance(self.tcx, op.layout.size));
+        // See https://github.com/rust-lang/rust/issues/79738.
+        assert!(!value.may_have_provenance(self.tcx, op.layout.size));
 
         let const_ = Const::Val(value, op.layout.ty);
         Some(ConstOperand { span: rustc_span::DUMMY_SP, user_ty: None, const_ })
