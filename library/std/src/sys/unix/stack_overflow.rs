@@ -134,9 +134,19 @@ mod imp {
         // OpenBSD requires this flag for stack mapping
         // otherwise the said mapping will fail as a no-op on most systems
         // and has a different meaning on FreeBSD
-        #[cfg(any(target_os = "openbsd", target_os = "netbsd", target_os = "linux",))]
+        #[cfg(any(
+            target_os = "openbsd",
+            target_os = "netbsd",
+            target_os = "linux",
+            target_os = "dragonfly",
+        ))]
         let flags = MAP_PRIVATE | MAP_ANON | libc::MAP_STACK;
-        #[cfg(not(any(target_os = "openbsd", target_os = "netbsd", target_os = "linux",)))]
+        #[cfg(not(any(
+            target_os = "openbsd",
+            target_os = "netbsd",
+            target_os = "linux",
+            target_os = "dragonfly",
+        )))]
         let flags = MAP_PRIVATE | MAP_ANON;
         let stackp =
             mmap64(ptr::null_mut(), SIGSTKSZ + page_size(), PROT_READ | PROT_WRITE, flags, -1, 0);
