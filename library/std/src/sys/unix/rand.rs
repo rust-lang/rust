@@ -62,18 +62,15 @@ mod imp {
         unsafe { getrandom(buf.as_mut_ptr().cast(), buf.len(), libc::GRND_NONBLOCK) }
     }
 
-    #[cfg(any(target_os = "espidf", target_os = "horizon"))]
+    #[cfg(any(target_os = "espidf", target_os = "horizon", target_os = "freebsd"))]
     fn getrandom(buf: &mut [u8]) -> libc::ssize_t {
-        unsafe { libc::getrandom(buf.as_mut_ptr().cast(), buf.len(), 0) }
-    }
-
-    #[cfg(target_os = "freebsd")]
-    fn getrandom(buf: &mut [u8]) -> libc::ssize_t {
-        // FIXME: using the above when libary std's libc is updated
+        #[cfg(not(target_os = "freebsd"))]
+        use libc::getrandom;
+        #[cfg(target_os = "freebsd")]
         extern "C" {
             fn getrandom(
-                buffer: *mut libc::c_void,
-                length: libc::size_t,
+                buf: *mut libc::c_void,
+                buflen: libc::size_t,
                 flags: libc::c_uint,
             ) -> libc::ssize_t;
         }
@@ -236,6 +233,7 @@ mod imp {
     }
 }
 
+// FIXME: once the 10.x release becomes the minimum, this can be dropped for simplification.
 #[cfg(target_os = "netbsd")]
 mod imp {
     use crate::ptr;
