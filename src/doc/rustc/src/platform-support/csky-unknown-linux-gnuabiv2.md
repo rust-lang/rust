@@ -4,7 +4,14 @@
 
 This target supports [C-SKY](https://github.com/c-sky) CPUs with `abi` v2 and `glibc`.
 
+target | std | host | notes
+-------|:---:|:----:|-------
+`csky-unknown-linux-gnuabiv2` | ✓ |  | C-SKY abiv2 Linux (little endian)
+`csky-unknown-linux-gnuabiv2hf` | ✓ |  | C-SKY abiv2 Linux, hardfloat (little endian)
+
+Reference:
 https://c-sky.github.io/
+
 https://gitlab.com/c-sky/
 
 ## Target maintainers
@@ -12,7 +19,6 @@ https://gitlab.com/c-sky/
 * [@Dirreke](https://github.com/Dirreke)
 
 ## Requirements
-
 
 ## Building the target
 
@@ -28,10 +34,14 @@ The target can be built by enabling it for a `rustc` build, by placing the follo
 
 ```toml
 [build]
-target = ["x86_64-unknown-linux-gnu", "csky-unknown-linux-gnuabiv2"]
+target = ["x86_64-unknown-linux-gnu", "csky-unknown-linux-gnuabiv2", "csky-unknown-linux-gnuabiv2hf"]
 stage = 2
 
 [target.csky-unknown-linux-gnuabiv2]
+# ADJUST THIS PATH TO POINT AT YOUR TOOLCHAIN
+cc = "${TOOLCHAIN_PATH}/bin/csky-linux-gnuabiv2-gcc"
+
+[target.csky-unknown-linux-gnuabiv2hf]
 # ADJUST THIS PATH TO POINT AT YOUR TOOLCHAIN
 cc = "${TOOLCHAIN_PATH}/bin/csky-linux-gnuabiv2-gcc"
 
