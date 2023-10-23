@@ -75,6 +75,7 @@ cfg_if::cfg_if! {
             return 0;
         }
     } else {
+        #[allow(unused_imports)]
         pub use libc::{sigemptyset, sigaddset};
     }
 }

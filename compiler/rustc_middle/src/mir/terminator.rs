@@ -3,12 +3,10 @@ use rustc_hir::LangItem;
 use smallvec::SmallVec;
 
 use super::{BasicBlock, InlineAsmOperand, Operand, SourceInfo, TerminatorKind, UnwindAction};
-pub use rustc_ast::Mutability;
 use rustc_macros::HashStable;
 use std::iter;
 use std::slice;
 
-pub use super::query::*;
 use super::*;
 
 impl SwitchTargets {

@@ -11,44 +11,44 @@ LL |         pub use super::foo;
    |                 ^^^^^^^^^^
 
 error[E0603]: module import `foo` is private
-  --> $DIR/reexports.rs:33:15
+  --> $DIR/reexports.rs:36:15
    |
 LL |     use b::a::foo::S;
    |               ^^^ private module import
    |
 note: the module import `foo` is defined here...
-  --> $DIR/reexports.rs:21:17
+  --> $DIR/reexports.rs:24:17
    |
 LL |         pub use super::foo; // This is OK since the value `foo` is visible enough.
    |                 ^^^^^^^^^^
 note: ...and refers to the module `foo` which is defined here
-  --> $DIR/reexports.rs:16:5
+  --> $DIR/reexports.rs:19:5
    |
 LL |     mod foo {
    |     ^^^^^^^
 
 error[E0603]: module import `foo` is private
-  --> $DIR/reexports.rs:34:15
+  --> $DIR/reexports.rs:37:15
    |
 LL |     use b::b::foo::S as T;
    |               ^^^ private module import
    |
 note: the module import `foo` is defined here...
-  --> $DIR/reexports.rs:26:17
+  --> $DIR/reexports.rs:29:17
    |
 LL |         pub use super::*; // This is also OK since the value `foo` is visible enough.
    |                 ^^^^^^^^
 note: ...and refers to the module `foo` which is defined here
-  --> $DIR/reexports.rs:16:5
+  --> $DIR/reexports.rs:19:5
    |
 LL |     mod foo {
    |     ^^^^^^^
 
-warning: glob import doesn't reexport anything because no candidate is public enough
-  --> $DIR/reexports.rs:9:17
+warning: unused import: `super::foo`
+  --> $DIR/reexports.rs:8:17
    |
-LL |         pub use super::*;
-   |                 ^^^^^^^^
+LL |         pub use super::foo;
+   |                 ^^^^^^^^^^
    |
 note: the lint level is defined here
   --> $DIR/reexports.rs:1:9
@@ -56,7 +56,19 @@ note: the lint level is defined here
 LL | #![warn(unused_imports)]
    |         ^^^^^^^^^^^^^^
 
-error: aborting due to 3 previous errors; 1 warning emitted
+warning: glob import doesn't reexport anything because no candidate is public enough
+  --> $DIR/reexports.rs:11:17
+   |
+LL |         pub use super::*;
+   |                 ^^^^^^^^
+
+warning: unused import: `super::*`
+  --> $DIR/reexports.rs:11:17
+   |
+LL |         pub use super::*;
+   |                 ^^^^^^^^
+
+error: aborting due to 3 previous errors; 3 warnings emitted
 
 Some errors have detailed explanations: E0364, E0603.
 For more information about an error, try `rustc --explain E0364`.

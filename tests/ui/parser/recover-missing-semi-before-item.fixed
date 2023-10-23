@@ -1,6 +1,6 @@
 // run-rustfix
 
-#![allow(unused_variables, dead_code)]
+#![allow(unused_variables, dead_code, unused_imports)]
 
 fn for_struct() {
     let foo = 3; //~ ERROR expected `;`, found keyword `struct`
