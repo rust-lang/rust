@@ -1,53 +1,93 @@
-//! [`super::usefulness`] explains most of what is happening in this file. As explained there,
-//! values and patterns are made from constructors applied to fields. This file defines a
-//! `Constructor` enum, a `Fields` struct, and various operations to manipulate them and convert
-//! them from/to patterns.
+//! As explained in [`super::usefulness`], values and patterns are made from constructors applied to
+//! fields. This file defines a `Constructor` enum, a `Fields` struct, and various operations to
+//! manipulate them and convert them from/to patterns.
 //!
-//! There's one idea that is not detailed in [`super::usefulness`] because the details are not
-//! needed there: _constructor splitting_.
+//! There are two important bits of core logic in this file: constructor inclusion and constructor
+//! splitting. Constructor inclusion, i.e. whether a constructor is included in/covered by another,
+//! is straightforward and defined in [`Constructor::is_covered_by`].
 //!
-//! # Constructor splitting
+//! Constructor splitting is mentioned in [`super::usefulness`] but not detailed. We describe it
+//! precisely here.
 //!
-//! The idea is as follows: given a constructor `c` and a matrix, we want to specialize in turn
-//! with all the value constructors that are covered by `c`, and compute usefulness for each.
-//! Instead of listing all those constructors (which is intractable), we group those value
-//! constructors together as much as possible. Example:
 //!
+//! # Constructor grouping and splitting
+//!
+//! As explained in the corresponding section in [`super::usefulness`], to make usefulness tractable
+//! we need to group together constructors that have the same effect when they are used to
+//! specialize the matrix.
+//!
+//! Example:
 //! ```compile_fail,E0004
 //! match (0, false) {
-//!     (0 ..=100, true) => {} // `p_1`
-//!     (50..=150, false) => {} // `p_2`
-//!     (0 ..=200, _) => {} // `q`
+//!     (0 ..=100, true) => {}
+//!     (50..=150, false) => {}
+//!     (0 ..=200, _) => {}
 //! }
 //! ```
 //!
-//! The naive approach would try all numbers in the range `0..=200`. But we can be a lot more
-//! clever: `0` and `1` for example will match the exact same rows, and return equivalent
-//! witnesses. In fact all of `0..50` would. We can thus restrict our exploration to 4
-//! constructors: `0..50`, `50..=100`, `101..=150` and `151..=200`. That is enough and infinitely
-//! more tractable.
+//! In this example we can restrict specialization to 5 cases: `0..50`, `50..=100`, `101..=150`,
+//! `151..=200` and `200..`.
 //!
-//! We capture this idea in a function `split(p_1 ... p_n, c)` which returns a list of constructors
-//! `c'` covered by `c`. Given such a `c'`, we require that all value ctors `c''` covered by `c'`
-//! return an equivalent set of witnesses after specializing and computing usefulness.
-//! In the example above, witnesses for specializing by `c''` covered by `0..50` will only differ
-//! in their first element.
+//! In [`super::usefulness`], we had said that `specialize` only takes value-only constructors. We
+//! now relax this restriction: we allow `specialize` to take constructors like `0..50` as long as
+//! we're careful to only do that with constructors that make sense. For example, `specialize(0..50,
+//! (0..=100, true))` is sensible, but `specialize(50..=200, (0..=100, true))` is not. The rule is
+//! that we must only use a constructor that is a subset of constructors in the column (as computed
+//! by [`Constructor::is_covered_by`]). No non-trivial intersections are allowed.
 //!
-//! We usually also ask that the `c'` together cover all of the original `c`. However we allow
-//! skipping some constructors as long as it doesn't change whether the resulting list of witnesses
-//! is empty of not. We use this in the wildcard `_` case.
+//! Note how we only consider the first column of the match. In fact we take as input only the list
+//! of the constructors of that column. We must return a set of constructors that cover the whole
+//! type and is grouped as much as possible, without breaking the "must be included" rule above. The
+//! precise set of invariants is described in [`SplitConstructorSet`].
 //!
-//! Splitting is implemented in the [`Constructor::split`] function. We don't do splitting for
-//! or-patterns; instead we just try the alternatives one-by-one. For details on splitting
-//! wildcards, see [`Constructor::split`]; for integer ranges, see
-//! [`IntRange::split`]; for slices, see [`Slice::split`].
+//! We compute this in two steps: first [`ConstructorSet::for_ty`] computes a representation of the
+//! set of all possible constructors for the type. Then [`ConstructorSet::split`] looks at the
+//! column of constructors and splits the set into groups accordingly.
+//!
+//! Constructor splitting has two interesting special cases: integer range splitting (see
+//! [`IntRange::split`]) and slice splitting (see [`Slice::split`]).
+//!
+//!
+//! # The `Missing` constructor
+//!
+//! We detail a special case of constructor splitting that is a bit subtle. Take the following:
+//!
+//! ```
+//! enum Direction { North, South, East, West }
+//! # let wind = (Direction::North, 0u8);
+//! match wind {
+//!     (Direction::North, 50..) => {}
+//!     (_, _) => {}
+//! }
+//! ```
+//!
+//! Here we expect constructor splitting to output two cases: `North`, and "everything else". This
+//! "everything else" is represented by [`Constructor::Missing`]. Unlike other constructors, it's a
+//! bit contextual: to know the exact list of constructors it represents we have to look at the
+//! column. In practice however we don't need to, because by construction it only matches rows that
+//! have wildcards. This is how this constructor is special: the only constructor that covers it is
+//! `Wildcard`.
+//!
+//! The only place where we care about which constructors `Missing` represents is in diagnostics
+//! (see `super::usefulness::WitnessMatrix::apply_constructor`).
+//!
+//! Extra special implementation detail: in fact, in the case where all the constructors are
+//! missing, we replace `Missing` with `Wildcard` to signal this. It only makes a difference for
+//! diagnostics: for `Missing` we list the missing constructors; for `Wildcard` we only output `_`.
+//!
+//! FIXME(Nadrieril): maybe `Missing { all_missing: bool }` would be less confusing.
+//!
+//! We choose whether to specialize with `Missing`/`Wildcard` in
+//! `super::usefulness::compute_exhaustiveness_and_reachability`.
+//!
+//!
 //!
 //! ## Opaque patterns
 //!
-//! Some patterns, such as TODO, cannot be inspected, which we handle with `Constructor::Opaque`.
-//! Since we know nothing of these patterns, we assume they never cover each other. In order to
-//! respect the invariants of [`SplitConstructorSet`], we give each `Opaque` constructor a unique id
-//! so we can recognize it.
+//! Some patterns, such as constants that are not allowed to be matched structurally, cannot be
+//! inspected, which we handle with `Constructor::Opaque`. Since we know nothing of these patterns,
+//! we assume they never cover each other. In order to respect the invariants of
+//! [`SplitConstructorSet`], we give each `Opaque` constructor a unique id so we can recognize it.
 
 use std::cell::Cell;
 use std::cmp::{self, max, min, Ordering};
@@ -645,8 +685,8 @@ impl OpaqueId {
 /// `Fields`.
 #[derive(Clone, Debug, PartialEq)]
 pub(super) enum Constructor<'tcx> {
-    /// The constructor for patterns that have a single constructor, like tuples, struct patterns
-    /// and fixed-length arrays.
+    /// The constructor for patterns that have a single constructor, like tuples, struct patterns,
+    /// and references. Fixed-length arrays are treated separately with `Slice`.
     Single,
     /// Enum variants.
     Variant(VariantIdx),
@@ -678,8 +718,8 @@ pub(super) enum Constructor<'tcx> {
     /// We use this for variants behind an unstable gate as well as
     /// `#[doc(hidden)]` ones.
     Hidden,
-    /// Fake extra constructor for constructors that are not seen in the matrix, as explained in the
-    /// code for [`Constructor::split`].
+    /// Fake extra constructor for constructors that are not seen in the matrix, as explained at the
+    /// top of the file.
     Missing,
 }
 
@@ -761,104 +801,12 @@ impl<'tcx> Constructor<'tcx> {
         }
     }
 
-    /// Some constructors (namely `Wildcard`, `IntRange` and `Slice`) actually stand for a set of
-    /// actual constructors (like variants, integers or fixed-sized slices). When specializing for
-    /// these constructors, we want to be specialising for the actual underlying constructors.
-    /// Naively, we would simply return the list of constructors they correspond to. We instead are
-    /// more clever: if there are constructors that we know will behave the same w.r.t. the current
-    /// matrix, we keep them grouped. For example, all slices of a sufficiently large length will
-    /// either be all useful or all non-useful with a given matrix.
-    ///
-    /// See the branches for details on how the splitting is done.
-    ///
-    /// This function may discard some irrelevant constructors if this preserves behavior. Eg. for
-    /// the `_` case, we ignore the constructors already present in the column, unless all of them
-    /// are.
-    pub(super) fn split<'a>(
-        &self,
-        pcx: &PatCtxt<'_, '_, 'tcx>,
-        ctors: impl Iterator<Item = &'a Constructor<'tcx>> + Clone,
-    ) -> SmallVec<[Self; 1]>
-    where
-        'tcx: 'a,
-    {
-        match self {
-            Wildcard => {
-                let split_set = ConstructorSet::for_ty(pcx.cx, pcx.ty).split(pcx, ctors);
-                if !split_set.missing.is_empty() {
-                    // We are splitting a wildcard in order to compute its usefulness. Some constructors are
-                    // not present in the column. The first thing we note is that specializing with any of
-                    // the missing constructors would select exactly the rows with wildcards. Moreover, they
-                    // would all return equivalent results. We can therefore group them all into a
-                    // fictitious `Missing` constructor.
-                    //
-                    // As an important optimization, this function will skip all the present constructors.
-                    // This is correct because specializing with any of the present constructors would
-                    // select a strict superset of the wildcard rows, and thus would only find witnesses
-                    // already found with the `Missing` constructor.
-                    // This does mean that diagnostics are incomplete: in
-                    // ```
-                    // match x {
-                    //   Some(true) => {}
-                    // }
-                    // ```
-                    // we report `None` as missing but not `Some(false)`.
-                    //
-                    // When all the constructors are missing we can equivalently return the `Wildcard`
-                    // constructor on its own. The difference between `Wildcard` and `Missing` will then
-                    // only be in diagnostics.
-
-                    // If some constructors are missing, we typically want to report those constructors,
-                    // e.g.:
-                    // ```
-                    //     enum Direction { N, S, E, W }
-                    //     let Direction::N = ...;
-                    // ```
-                    // we can report 3 witnesses: `S`, `E`, and `W`.
-                    //
-                    // However, if the user didn't actually specify a constructor
-                    // in this arm, e.g., in
-                    // ```
-                    //     let x: (Direction, Direction, bool) = ...;
-                    //     let (_, _, false) = x;
-                    // ```
-                    // we don't want to show all 16 possible witnesses `(<direction-1>, <direction-2>,
-                    // true)` - we are satisfied with `(_, _, true)`. So if all constructors are missing we
-                    // prefer to report just a wildcard `_`.
-                    //
-                    // The exception is: if we are at the top-level, for example in an empty match, we
-                    // usually prefer to report the full list of constructors.
-                    let all_missing = split_set.present.is_empty();
-                    let report_when_all_missing =
-                        pcx.is_top_level && !IntRange::is_integral(pcx.ty);
-                    let ctor =
-                        if all_missing && !report_when_all_missing { Wildcard } else { Missing };
-                    smallvec![ctor]
-                } else {
-                    split_set.present
-                }
-            }
-            // Fast-track if the range is trivial.
-            IntRange(this_range) if !this_range.is_singleton() => {
-                let column_ranges = ctors.filter_map(|ctor| ctor.as_int_range()).cloned();
-                this_range.split(column_ranges).map(|(_, range)| IntRange(range)).collect()
-            }
-            Slice(this_slice @ Slice { kind: VarLen(..), .. }) => {
-                let column_slices = ctors.filter_map(|c| c.as_slice());
-                this_slice.split(column_slices).map(|(_, slice)| Slice(slice)).collect()
-            }
-            // Any other constructor can be used unchanged.
-            _ => smallvec![self.clone()],
-        }
-    }
-
     /// Returns whether `self` is covered by `other`, i.e. whether `self` is a subset of `other`.
     /// For the simple cases, this is simply checking for equality. For the "grouped" constructors,
     /// this checks for inclusion.
     // We inline because this has a single call site in `Matrix::specialize_constructor`.
     #[inline]
     pub(super) fn is_covered_by<'p>(&self, pcx: &PatCtxt<'_, 'p, 'tcx>, other: &Self) -> bool {
-        // This must be kept in sync with `is_covered_by_any`.
         match (self, other) {
             // Wildcards cover anything
             (_, Wildcard) => true,
@@ -943,16 +891,16 @@ pub(super) enum ConstructorSet {
 /// `present` is morally the set of constructors present in the column, and `missing` is the set of
 /// constructors that exist in the type but are not present in the column.
 ///
-/// More formally, they respect the following constraints:
-/// - the union of `present` and `missing` covers the whole type
-/// - `present` and `missing` are disjoint
-/// - neither contains wildcards
-/// - each constructor in `present` is covered by some non-wildcard constructor in the column
-/// - together, the constructors in `present` cover all the non-wildcard constructor in the column
-/// - non-wildcards in the column do no cover anything in `missing`
-/// - constructors in `present` and `missing` are split for the column; in other words, they are
-///     either fully included in or disjoint from each constructor in the column. This avoids
-///     non-trivial intersections like between `0..10` and `5..15`.
+/// More formally, if we discard wildcards from the column, this respects the following constraints:
+/// 1. the union of `present` and `missing` covers the whole type
+/// 2. each constructor in `present` is covered by something in the column
+/// 3. no constructor in `missing` is covered by anything in the column
+/// 4. each constructor in the column is equal to the union of one or more constructors in `present`
+/// 5. `missing` does not contain empty constructors (see discussion about emptiness at the top of
+///    the file);
+/// 6. constructors in `present` and `missing` are split for the column; in other words, they are
+///    either fully included in or fully disjoint from each constructor in the column. In other
+///    words, there are no non-trivial intersections like between `0..10` and `5..15`.
 #[derive(Debug)]
 pub(super) struct SplitConstructorSet<'tcx> {
     pub(super) present: SmallVec<[Constructor<'tcx>; 1]>,
@@ -960,6 +908,7 @@ pub(super) struct SplitConstructorSet<'tcx> {
 }
 
 impl ConstructorSet {
+    /// Creates a set that represents all the constructors of `ty`.
     #[instrument(level = "debug", skip(cx), ret)]
     pub(super) fn for_ty<'p, 'tcx>(cx: &MatchCheckCtxt<'p, 'tcx>, ty: Ty<'tcx>) -> Self {
         let make_range = |start, end| {
@@ -1095,9 +1044,10 @@ impl ConstructorSet {
         }
     }
 
-    /// This is the core logical operation of exhaustiveness checking. This analyzes a column a
-    /// constructors to 1/ determine which constructors of the type (if any) are missing; 2/ split
-    /// constructors to handle non-trivial intersections e.g. on ranges or slices.
+    /// This analyzes a column of constructors to 1/ determine which constructors of the type (if
+    /// any) are missing; 2/ split constructors to handle non-trivial intersections e.g. on ranges
+    /// or slices. This can get subtle; see [`SplitConstructorSet`] for details of this operation
+    /// and its invariants.
     #[instrument(level = "debug", skip(self, pcx, ctors), ret)]
     pub(super) fn split<'a, 'tcx>(
         &self,
@@ -1243,19 +1193,6 @@ impl ConstructorSet {
         }
 
         SplitConstructorSet { present, missing }
-    }
-
-    /// Compute the set of constructors missing from this column.
-    /// This is only used for reporting to the user.
-    pub(super) fn compute_missing<'a, 'tcx>(
-        &self,
-        pcx: &PatCtxt<'_, '_, 'tcx>,
-        ctors: impl Iterator<Item = &'a Constructor<'tcx>> + Clone,
-    ) -> Vec<Constructor<'tcx>>
-    where
-        'tcx: 'a,
-    {
-        self.split(pcx, ctors).missing
     }
 }
 
@@ -1422,6 +1359,8 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
         DeconstructedPat { ctor, fields, ty, span, reachable: Cell::new(false) }
     }
 
+    /// Note: the input patterns must have been lowered through
+    /// `super::check_match::MatchVisitor::lower_pattern`.
     pub(crate) fn from_pat(cx: &MatchCheckCtxt<'p, 'tcx>, pat: &Pat<'tcx>) -> Self {
         let mkpat = |pat| DeconstructedPat::from_pat(cx, pat);
         let ctor;
@@ -1697,7 +1636,17 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
         self.reachable.set(true)
     }
     pub(super) fn is_reachable(&self) -> bool {
-        self.reachable.get()
+        if self.reachable.get() {
+            true
+        } else if self.is_or_pat() && self.iter_fields().any(|f| f.is_reachable()) {
+            // We always expand or patterns in the matrix, so we will never see the actual
+            // or-pattern (the one with constructor `Or`) in the column. As such, it will not be
+            // marked as reachable itself, only its children will. We recover this information here.
+            self.set_reachable();
+            true
+        } else {
+            false
+        }
     }
 
     /// Report the spans of subpatterns that were not reachable, if any.
@@ -1706,7 +1655,6 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
         self.collect_unreachable_spans(&mut spans);
         spans
     }
-
     fn collect_unreachable_spans(&self, spans: &mut Vec<Span>) {
         // We don't look at subpatterns if we already reported the whole pattern as unreachable.
         if !self.is_reachable() {
