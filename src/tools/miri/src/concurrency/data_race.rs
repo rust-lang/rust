@@ -339,15 +339,6 @@ impl MemoryCellClocks {
         Ok(())
     }
 
-    /// Checks if the memory cell access is ordered with all prior atomic reads and writes
-    fn race_free_with_atomic(&self, thread_clocks: &ThreadClockSet) -> bool {
-        if let Some(atomic) = self.atomic() {
-            atomic.read_vector <= thread_clocks.clock && atomic.write_vector <= thread_clocks.clock
-        } else {
-            true
-        }
-    }
-
     /// Update memory cell data-race tracking for atomic
     /// load relaxed semantics, is a no-op if this memory was
     /// not used previously as atomic memory.
@@ -542,7 +533,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
         // the *value* (including the associated provenance if this is an AtomicPtr) at this location.
         // Only metadata on the location itself is used.
         let scalar = this.allow_data_races_ref(move |this| this.read_scalar(place))?;
-        this.validate_overlapping_atomic(place)?;
         this.buffered_atomic_read(place, atomic, scalar, || {
             this.validate_atomic_load(place, atomic)
         })
@@ -558,7 +548,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
         let this = self.eval_context_mut();
         this.atomic_access_check(dest)?;
 
-        this.validate_overlapping_atomic(dest)?;
         this.allow_data_races_mut(move |this| this.write_scalar(val, dest))?;
         this.validate_atomic_store(dest, atomic)?;
         // FIXME: it's not possible to get the value before write_scalar. A read_scalar will cause
@@ -581,7 +570,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
         let this = self.eval_context_mut();
         this.atomic_access_check(place)?;
 
-        this.validate_overlapping_atomic(place)?;
         let old = this.allow_data_races_mut(|this| this.read_immediate(place))?;
 
         // Atomics wrap around on overflow.
@@ -606,7 +594,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
         let this = self.eval_context_mut();
         this.atomic_access_check(place)?;
 
-        this.validate_overlapping_atomic(place)?;
         let old = this.allow_data_races_mut(|this| this.read_scalar(place))?;
         this.allow_data_races_mut(|this| this.write_scalar(new, place))?;
 
@@ -628,7 +615,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
         let this = self.eval_context_mut();
         this.atomic_access_check(place)?;
 
-        this.validate_overlapping_atomic(place)?;
         let old = this.allow_data_races_mut(|this| this.read_immediate(place))?;
         let lt = this.wrapping_binary_op(mir::BinOp::Lt, &old, &rhs)?.to_scalar().to_bool()?;
 
@@ -668,7 +654,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
         let this = self.eval_context_mut();
         this.atomic_access_check(place)?;
 
-        this.validate_overlapping_atomic(place)?;
         // Failure ordering cannot be stronger than success ordering, therefore first attempt
         // to read with the failure ordering and if successful then try again with the success
         // read ordering and write in the success case.
@@ -927,26 +912,6 @@ impl VClockAlloc {
         }))?
     }
 
-    /// Detect racing atomic read and writes (not data races)
-    /// on every byte of the current access range
-    pub(super) fn race_free_with_atomic(
-        &self,
-        range: AllocRange,
-        global: &GlobalState,
-        thread_mgr: &ThreadManager<'_, '_>,
-    ) -> bool {
-        if global.race_detecting() {
-            let (_, thread_clocks) = global.current_thread_state(thread_mgr);
-            let alloc_ranges = self.alloc_ranges.borrow();
-            for (_, mem_clocks) in alloc_ranges.iter(range.start, range.size) {
-                if !mem_clocks.race_free_with_atomic(&thread_clocks) {
-                    return false;
-                }
-            }
-        }
-        true
-    }
-
     /// Detect data-races for an unsynchronized read operation, will not perform
     /// data-race detection if `race_detecting()` is false, either due to no threads
     /// being created or if it is temporarily disabled during a racy read or write
@@ -1138,7 +1103,6 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
         atomic: AtomicReadOrd,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_ref();
-        this.validate_overlapping_atomic(place)?;
         this.validate_atomic_op(
             place,
             atomic,
@@ -1161,7 +1125,6 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
         atomic: AtomicWriteOrd,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        this.validate_overlapping_atomic(place)?;
         this.validate_atomic_op(
             place,
             atomic,
@@ -1187,7 +1150,6 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
         let acquire = matches!(atomic, Acquire | AcqRel | SeqCst);
         let release = matches!(atomic, Release | AcqRel | SeqCst);
         let this = self.eval_context_mut();
-        this.validate_overlapping_atomic(place)?;
         this.validate_atomic_op(place, atomic, "Atomic RMW", move |memory, clocks, index, _| {
             if acquire {
                 memory.load_acquire(clocks, index, place.layout.size)?;
