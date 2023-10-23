@@ -16,7 +16,7 @@
       }
   }
   ```
-- Calling methods on float literals ending in `.` will now be wrappen in parenthesis. e.g. `0. .to_string()` will be formatted as `(0.).to_string()` [#5791](https://github.com/rust-lang/rustfmt/issues/5791)
+- Calling methods on float literals ending in `.` will now be wrapped in parenthesis. e.g. `0. .to_string()` will be formatted as `(0.).to_string()` [#5791](https://github.com/rust-lang/rustfmt/issues/5791)
 - Prevent ICE when formatting empty `macro_rules!` branch [#5730](https://github.com/rust-lang/rustfmt/issues/5730)
   ```rust
   macro_rules! statement {
@@ -25,7 +25,7 @@
   ```
 - Prevent ICE when formatting `vec!{}` [#5735](https://github.com/rust-lang/rustfmt/issues/5735)
 - Prevent internal trailing whitespace error when formatting an empty `macro_rules!` defintion e.g. `macro_rules! foo {}` [#5882](https://github.com/rust-lang/rustfmt/issues/5882)
-- When formatting doc comments lines that start with `.` or `)` won't be treated as ordered markdown lists if `.` or `)` aren't follwed by a number [#5835](https://github.com/rust-lang/rustfmt/pull/5835)
+- Formatting doc comment lines that start with `.` or `)` won't be treated as ordered markdown lists because `.` or `)` must be preceded by a number to start an ordered markdown list [#5835](https://github.com/rust-lang/rustfmt/pull/5835)
 - Add parenthesis around closures when they're used as method receives, don't have a block body, and end with `.` [#4808](https://github.com/rust-lang/rustfmt/issues/4808)
   ```rust
   fn main() {
@@ -83,11 +83,7 @@
 - Support for formatting let-else statements [#5690]
 - New config option, `single_line_let_else_max_width`, that allows users to configure the maximum length of single line `let-else` statements. `let-else` statements that otherwise meet the requirements to be formatted on a single line will have their divergent`else` block formatted over multiple lines if they exceed this length [#5684]
 
-<<<<<<< HEAD
-[#5690]: (https://github.com/rust-lang/rustfmt/pulls/5690)
-=======
 [#5690]: https://github.com/rust-lang/rustfmt/pull/5690
->>>>>>> upstream/master
 [#5684]: https://github.com/rust-lang/rustfmt/issues/5684
 
 ## [1.5.3] 2023-06-20
@@ -96,11 +92,7 @@
 
 - When formatting doc comments with `wrap_comments = true` rustfmt will no longer wrap markdown tables [#4210](https://github.com/rust-lang/rustfmt/issues/4210)
 - Properly handle wrapping comments that include a numbered list in markdown [#5416](https://github.com/rust-lang/rustfmt/issues/5416)
-<<<<<<< HEAD
-- Properly handle markdown sublists that utilize a `+` [#4041](https://github.com/rust-lang/rustfmt/issues/4210)
-=======
 - Properly handle markdown sublists that utilize a `+` [#4041](https://github.com/rust-lang/rustfmt/issues/4041)
->>>>>>> upstream/master
 - rustfmt will no longer use shorthand initialization when rewriting a tuple struct even when `use_field_init_shorthand = true` as this leads to code that could no longer compile.
   Take the following struct as an example `struct MyStruct(u64);`. rustfmt will no longer format `MyStruct { 0: 0 }` as `MyStruct { 0 }` [#5488](https://github.com/rust-lang/rustfmt/issues/5488)
 - rustfmt no longer panics when formatting an empty code block in a doc comment with `format_code_in_doc_comments = true` [#5234](https://github.com/rust-lang/rustfmt/issues/5234). For example:
