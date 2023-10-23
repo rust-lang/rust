@@ -1,11 +1,11 @@
 [package]
 
 name = "rustfmt-nightly"
-version = "1.6.0"
+version = "1.7.0"
 description = "Tool to find and fix Rust formatting issues"
 repository = "https://github.com/rust-lang/rustfmt"
 readme = "README.md"
-license = "Apache-2.0/MIT"
+license = "Apache-2.0 OR MIT"
 build = "build.rs"
 categories = ["development-tools"]
 edition = "2021"
@@ -35,26 +35,27 @@ generic-simd = ["bytecount/generic-simd"]
 [dependencies]
 annotate-snippets = { version = "0.9", features = ["color"] }
 anyhow = "1.0"
-bytecount = "0.6"
+bytecount = "0.6.4"
 cargo_metadata = "0.15.4"
-clap = { version = "4.2.1", features = ["derive"] }
+clap = { version = "4.4.2", features = ["derive"] }
+clap-cargo = "0.12.0"
 diff = "0.1"
 dirs = "4.0"
-env_logger = "0.10.0"
 getopts = "0.2"
 ignore = "0.4"
 itertools = "0.10"
 lazy_static = "1.4"
-log = "0.4"
-regex = "1.5"
+regex = "1.7"
 serde = { version = "1.0.160", features = ["derive"] }
 serde_json = "1.0"
 term = "0.7"
 thiserror = "1.0.40"
 toml = "0.7.4"
+tracing = "0.1.37"
+tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
 unicode-segmentation = "1.9"
 unicode-width = "0.1"
-unicode_categories = "0.1"
+unicode-properties = { version = "0.1", default-features = false, features = ["general-category"] }
 
 rustfmt-config_proc_macro = { version = "0.3", path = "config_proc_macro" }
 

@@ -10,7 +10,11 @@ rustc -Vv
 cargo -V
 
 # Build and test main crate
-cargo build --locked
+if [ "$CFG_RELEASE_CHANNEL" == "nightly" ]; then
+    cargo build --locked --all-features
+else
+    cargo build --locked
+fi
 cargo test
 
 # Build and test other crates

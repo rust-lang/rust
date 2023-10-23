@@ -9,7 +9,7 @@
 #[macro_use]
 extern crate lazy_static;
 #[macro_use]
-extern crate log;
+extern crate tracing;
 
 // N.B. these crates are loaded from the sysroot, so they need extern crate.
 extern crate rustc_ast;
@@ -29,6 +29,7 @@ extern crate thin_vec;
 extern crate rustc_driver;
 
 use std::cell::RefCell;
+use std::cmp::min;
 use std::collections::HashMap;
 use std::fmt;
 use std::io::{self, Write};
@@ -386,9 +387,15 @@ fn format_code_block(
         .snippet
         .rfind('}')
         .unwrap_or_else(|| formatted.snippet.len());
+
+    // It's possible that `block_len < FN_MAIN_PREFIX.len()`. This can happen if the code block was
+    // formatted into the empty string, leading to the enclosing `fn main() {\n}` being formatted
+    // into `fn main() {}`. In this case no unindentation is done.
+    let block_start = min(FN_MAIN_PREFIX.len(), block_len);
+
     let mut is_indented = true;
     let indent_str = Indent::from_width(config, config.tab_spaces()).to_string(config);
-    for (kind, ref line) in LineClasses::new(&formatted.snippet[FN_MAIN_PREFIX.len()..block_len]) {
+    for (kind, ref line) in LineClasses::new(&formatted.snippet[block_start..block_len]) {
         if !is_first {
             result.push('\n');
         } else {
