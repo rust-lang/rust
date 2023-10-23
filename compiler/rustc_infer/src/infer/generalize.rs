@@ -47,9 +47,9 @@ pub(super) fn generalize<'tcx, D: GeneralizerDelegate<'tcx>, T: Into<Term<'tcx>>
     };
 
     assert!(!term.has_escaping_bound_vars());
-    let value = generalizer.relate(term, term)?;
+    let value_may_be_infer = generalizer.relate(term, term)?;
     let needs_wf = generalizer.needs_wf;
-    Ok(Generalization { value: HandleProjection(value), needs_wf })
+    Ok(Generalization { value_may_be_infer, needs_wf })
 }
 
 /// Abstracts the handling of region vars between HIR and MIR/NLL typechecking
@@ -153,10 +153,11 @@ struct Generalizer<'me, 'tcx, D> {
 
     cache: SsoHashMap<Ty<'tcx>, Ty<'tcx>>,
 
-    /// This is set once we're generalizing the arguments of an alias. In case
-    /// we encounter an occurs check failure we generalize the alias to an
-    /// inference variable instead of erroring. This is necessary to avoid
-    /// incorrect errors when relating `?0` with `<?0 as Trait>::Assoc`.
+    /// This is set once we're generalizing the arguments of an alias.
+    ///
+    /// This is necessary to correctly handle
+    /// `<T as Bar<<?0 as Foo>::Assoc>::Assoc == ?0`. This equality can
+    /// hold by either normalizing the outer or the inner associated type.
     in_alias: bool,
 
     /// See the field `needs_wf` in `Generalization`.
@@ -330,6 +331,12 @@ where
             }
 
             ty::Alias(kind, data) => {
+                // An occurs check failure inside of an alias does not mean
+                // that the types definitely don't unify. We may be able
+                // to normalize the alias after all.
+                //
+                // We handle this by lazily equating the alias and generalizing
+                // it to an inference variable.
                 let is_nested_alias = mem::replace(&mut self.in_alias, true);
                 let result = match self.relate(data, data) {
                     Ok(data) => Ok(Ty::new_alias(self.tcx(), kind, data)),
@@ -343,7 +350,7 @@ where
                                 self.for_universe.can_name(visitor.max_universe())
                                     && !t.has_escaping_bound_vars();
                             if !infer_replacement_is_complete {
-                                warn!("incomplete generalization of an alias type: {t:?}");
+                                warn!("may incompletely handle alias type: {t:?}");
                             }
 
                             debug!("generalization failure in alias");
@@ -504,20 +511,20 @@ where
     }
 }
 
-#[derive(Debug)]
-pub(super) struct HandleProjection<T>(T);
-impl<T> HandleProjection<T> {
-    pub(super) fn may_be_infer(self) -> T {
-        self.0
-    }
-}
-
 /// Result from a generalization operation. This includes
 /// not only the generalized type, but also a bool flag
 /// indicating whether further WF checks are needed.
 #[derive(Debug)]
 pub(super) struct Generalization<T> {
-    pub(super) value: HandleProjection<T>,
+    /// When generalizing `<?0 as Trait>::Assoc` or
+    /// `<T as Bar<<?0 as Foo>::Assoc>>::Assoc`
+    /// for `?0` generalization returns an inference
+    /// variable.
+    ///
+    /// This has to be handled wotj care as it can
+    /// otherwise very easily result in infinite
+    /// recursion.
+    pub(super) value_may_be_infer: T,
 
     /// If true, then the generalized type may not be well-formed,
     /// even if the source type is well-formed, so we should add an

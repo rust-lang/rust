@@ -214,7 +214,7 @@ where
     }
 
     fn generalize(&mut self, ty: Ty<'tcx>, for_vid: ty::TyVid) -> RelateResult<'tcx, Ty<'tcx>> {
-        let Generalization { value, needs_wf: _ } = generalize::generalize(
+        let Generalization { value_may_be_infer: ty, needs_wf: _ } = generalize::generalize(
             self.infcx,
             &mut self.delegate,
             ty,
@@ -222,9 +222,8 @@ where
             self.ambient_variance,
         )?;
 
-        let ty = value.may_be_infer();
         if ty.is_ty_var() {
-            warn!("occurs check failure in MIR typeck");
+            span_bug!(self.delegate.span(), "occurs check failure in MIR typeck");
         }
         Ok(ty)
     }
