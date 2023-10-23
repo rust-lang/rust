@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+
+## [1.7.0] 2023-10-22
+
 ### Fixed
 
 - Sometimes when `format_code_in_doc_comments=true` was set some line comments were converted to block comments [#5533](https://github.com/rust-lang/rustfmt/issues/5533)
