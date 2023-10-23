@@ -940,7 +940,7 @@ fn op_to_prop_const<'tcx>(
     // Check that we do not leak a pointer.
     // Those pointers may lose part of their identity in codegen.
     // See https://github.com/rust-lang/rust/issues/79738.
-    if !value.may_have_provenance(*ecx.tcx, op.layout.size) {
+    if ecx.tcx.global_alloc(alloc_id).unwrap_memory().inner().provenance().ptrs().is_empty() {
         return Some(value);
     }
 
