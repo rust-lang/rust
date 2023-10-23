@@ -929,7 +929,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// - no pointers to statics.
     /// - no `UnsafeCell` or non-ZST `&mut`.
     #[inline(always)]
-    pub fn const_validate_operand(
+    pub(crate) fn const_validate_operand(
         &self,
         op: &OpTy<'tcx, M::Provenance>,
         path: Vec<PathElem>,
