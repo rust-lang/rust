@@ -202,7 +202,7 @@ where
     /// Tests the value of the specified element.
     ///
     /// # Safety
-    /// `element` must be less than `self.len()`.
+    /// `index` must be less than `self.len()`.
     #[inline]
     #[must_use = "method returns a new bool and does not mutate the original value"]
     pub unsafe fn test_unchecked(&self, index: usize) -> bool {
