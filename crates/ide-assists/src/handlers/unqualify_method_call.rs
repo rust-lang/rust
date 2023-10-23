@@ -89,31 +89,38 @@ fn add_import(
     ctx: &AssistContext<'_>,
     edit: &mut ide_db::source_change::SourceChangeBuilder,
 ) {
-    // for `<i32 as std::ops::Add>`
-    let path_type =
-        qualifier.segment().unwrap().syntax().children().filter_map(ast::PathType::cast).last();
-    let import = match path_type {
-        Some(it) => it.path().unwrap(),
-        None => qualifier,
-    };
-
-    // in case for `<_>`
-    if import.coloncolon_token().is_none() {
-        return;
-    }
-
-    let scope = ide_db::imports::insert_use::ImportScope::find_insert_use_container(
-        import.syntax(),
-        &ctx.sema,
-    );
-
-    if let Some(scope) = scope {
-        let scope = match scope {
-            ImportScope::File(it) => ImportScope::File(edit.make_mut(it)),
-            ImportScope::Module(it) => ImportScope::Module(edit.make_mut(it)),
-            ImportScope::Block(it) => ImportScope::Block(edit.make_mut(it)),
+    if let Some(path_segment) = qualifier.segment() {
+        // for `<i32 as std::ops::Add>`
+        let path_type = path_segment.syntax().children().filter_map(ast::PathType::cast).last();
+        let import = match path_type {
+            Some(it) => {
+                if let Some(path) = it.path() {
+                    path
+                } else {
+                    return;
+                }
+            }
+            None => qualifier,
         };
-        ide_db::imports::insert_use::insert_use(&scope, import, &ctx.config.insert_use);
+
+        // in case for `<_>`
+        if import.coloncolon_token().is_none() {
+            return;
+        }
+
+        let scope = ide_db::imports::insert_use::ImportScope::find_insert_use_container(
+            import.syntax(),
+            &ctx.sema,
+        );
+
+        if let Some(scope) = scope {
+            let scope = match scope {
+                ImportScope::File(it) => ImportScope::File(edit.make_mut(it)),
+                ImportScope::Module(it) => ImportScope::Module(edit.make_mut(it)),
+                ImportScope::Block(it) => ImportScope::Block(edit.make_mut(it)),
+            };
+            ide_db::imports::insert_use::insert_use(&scope, import, &ctx.config.insert_use);
+        }
     }
 }
 
