@@ -1401,8 +1401,8 @@ impl<'a> Builder<'a> {
             rustflags.arg("-Zunstable-options");
         }
 
-        // #[cfg(bootstrap)] should remove every code path where it's false
-        const USE_NEW_CHECK_CFG_SYNTAX: bool = false;
+        // #[cfg(bootstrap)]
+        let use_new_check_cfg_syntax = self.local_rebuild;
 
         // Enable compile-time checking of `cfg` names, values and Cargo `features`.
         //
@@ -1411,7 +1411,7 @@ impl<'a> Builder<'a> {
         // features but cargo isn't involved in the #[path] process and so cannot pass the
         // complete list of features, so for that reason we don't enable checking of
         // features for std crates.
-        if USE_NEW_CHECK_CFG_SYNTAX {
+        if use_new_check_cfg_syntax {
             cargo.arg("-Zcheck-cfg");
             if mode == Mode::Std {
                 rustflags.arg("--check-cfg=cfg(feature,values(any()))");
@@ -1442,7 +1442,7 @@ impl<'a> Builder<'a> {
                         .collect::<String>(),
                     None => String::new(),
                 };
-                if USE_NEW_CHECK_CFG_SYNTAX {
+                if use_new_check_cfg_syntax {
                     let values = values.strip_prefix(",").unwrap_or(&values); // remove the first `,`
                     rustflags.arg(&format!("--check-cfg=cfg({name},values({values}))"));
                 } else {
@@ -1463,7 +1463,7 @@ impl<'a> Builder<'a> {
         // We also declare that the flag is expected, which we need to do to not
         // get warnings about it being unexpected.
         hostflags.arg("-Zunstable-options");
-        if USE_NEW_CHECK_CFG_SYNTAX {
+        if use_new_check_cfg_syntax {
             hostflags.arg("--check-cfg=cfg(bootstrap)");
         } else {
             hostflags.arg("--check-cfg=values(bootstrap)");
