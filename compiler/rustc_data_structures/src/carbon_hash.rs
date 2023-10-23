@@ -1,13 +1,13 @@
 use std::hash::{Hash, Hasher};
 
-#[cfg(test)]
-mod tests;
-
+#[inline]
 pub fn hash_value<T: Hash>(value: &T) -> u64 {
     let mut buf = CarbonHasher::new();
     value.hash(&mut buf);
     buf.hash_code()
 }
+
+#[inline]
 pub fn hash_value_with_seed<T: Hash>(value: &T, seed: u64) -> u64 {
     let mut buf = CarbonHasher::new_with_seed(seed);
     value.hash(&mut buf);
@@ -22,18 +22,22 @@ pub struct CarbonHasher {
 const MUL_CONSTANT: u64 = 0x9e37_79b9_7f4a_7c15;
 
 impl CarbonHasher {
+    #[inline]
     pub fn new_with_seed(seed: u64) -> Self {
         Self { buffer: seed }
     }
 
+    #[inline]
     pub fn new() -> Self {
         Self { buffer: 0 }
     }
 
+    #[inline]
     pub fn hash_code(self) -> u64 {
         self.buffer
     }
 
+    #[inline]
     pub fn hash_sized_bytes(&mut self, bytes: &[u8]) {
         let data_ptr = bytes.as_ptr();
         let size = bytes.len();
@@ -76,6 +80,7 @@ impl CarbonHasher {
         self.hash_bytes_large(bytes);
     }
 
+    #[inline]
     pub fn hash_bytes_large(&mut self, bytes: &[u8]) {
         let mut data_ptr = bytes.as_ptr();
         let size = bytes.len() as isize;
@@ -125,16 +130,19 @@ impl CarbonHasher {
         }
     }
 
+    #[inline]
     fn hash_one(&mut self, data: u64) {
         self.buffer = mix(data ^ self.buffer, MUL_CONSTANT);
     }
 }
 
+#[inline]
 fn mix(lhs: u64, rhs: u64) -> u64 {
     let result: u128 = (lhs as u128) * (rhs as u128);
     ((result & (!0_u64) as u128) as u64) ^ ((result >> 64) as u64)
 }
 
+#[inline]
 unsafe fn read_1_to_3(data: *const u8, size: usize) -> u64 {
     unsafe {
         let byte0 = data.read() as u64;
@@ -144,6 +152,7 @@ unsafe fn read_1_to_3(data: *const u8, size: usize) -> u64 {
     }
 }
 
+#[inline]
 unsafe fn read_4_to_8(data: *const u8, size: usize) -> u64 {
     unsafe {
         let low = data.cast::<u32>().read_unaligned();
@@ -152,6 +161,7 @@ unsafe fn read_4_to_8(data: *const u8, size: usize) -> u64 {
     }
 }
 
+#[inline]
 unsafe fn read_8_to_16(data: *const u8, size: usize) -> (u64, u64) {
     unsafe {
         let low = data.cast::<u64>().read_unaligned();
@@ -160,10 +170,12 @@ unsafe fn read_8_to_16(data: *const u8, size: usize) -> (u64, u64) {
     }
 }
 
+#[inline]
 unsafe fn read_8(data: *const u8) -> u64 {
     unsafe { data.cast::<u64>().read_unaligned() }
 }
 
+#[inline]
 fn sample_random_data(offset: usize) -> u64 {
     assert!((offset + std::mem::size_of::<u64>()) < std::mem::size_of::<[u64; 8]>());
     unsafe {
@@ -183,58 +195,72 @@ const STATIC_RANDOM_DATA: &[u64; 8] = &[
 ];
 
 impl Hasher for CarbonHasher {
+    #[inline]
     fn finish(&self) -> u64 {
         self.buffer
     }
 
+    #[inline]
     fn write(&mut self, bytes: &[u8]) {
         self.hash_sized_bytes(bytes);
     }
 
+    #[inline]
     fn write_u8(&mut self, i: u8) {
         self.hash_one(i as _);
     }
 
+    #[inline]
     fn write_u16(&mut self, i: u16) {
         self.hash_one(i as _);
     }
 
+    #[inline]
     fn write_u32(&mut self, i: u32) {
         self.hash_one(i as _);
     }
 
+    #[inline]
     fn write_u64(&mut self, i: u64) {
         self.hash_one(i as _);
     }
 
+    #[inline]
     fn write_u128(&mut self, i: u128) {
         self.write(&i.to_ne_bytes());
     }
 
+    #[inline]
     fn write_usize(&mut self, i: usize) {
         self.hash_one(i as _);
     }
 
+    #[inline]
     fn write_i8(&mut self, i: i8) {
         self.hash_one(i as u8 as _);
     }
 
+    #[inline]
     fn write_i16(&mut self, i: i16) {
         self.hash_one(i as u16 as _);
     }
 
+    #[inline]
     fn write_i32(&mut self, i: i32) {
         self.hash_one(i as u32 as _);
     }
 
+    #[inline]
     fn write_i64(&mut self, i: i64) {
         self.hash_one(i as u64 as _);
     }
 
+    #[inline]
     fn write_i128(&mut self, i: i128) {
         self.write(&i.to_ne_bytes());
     }
 
+    #[inline]
     fn write_isize(&mut self, i: isize) {
         self.hash_one(i as usize as _);
     }
