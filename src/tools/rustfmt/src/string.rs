@@ -1,7 +1,7 @@
 // Format string literals.
 
 use regex::Regex;
-use unicode_categories::UnicodeCategories;
+use unicode_properties::{GeneralCategory, UnicodeGeneralCategory};
 use unicode_segmentation::UnicodeSegmentation;
 
 use crate::config::Config;
@@ -366,7 +366,7 @@ fn is_whitespace(grapheme: &str) -> bool {
 fn is_punctuation(grapheme: &str) -> bool {
     grapheme
         .chars()
-        .all(UnicodeCategories::is_punctuation_other)
+        .all(|c| c.general_category() == GeneralCategory::OtherPunctuation)
 }
 
 fn graphemes_width(graphemes: &[&str]) -> usize {

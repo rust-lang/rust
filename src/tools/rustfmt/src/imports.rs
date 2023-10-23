@@ -191,7 +191,7 @@ impl UseSegment {
             "crate" => UseSegmentKind::Crate(None),
             _ => {
                 let mod_sep = if modsep { "::" } else { "" };
-                UseSegmentKind::Ident(format!("{}{}", mod_sep, name), None)
+                UseSegmentKind::Ident(format!("{mod_sep}{name}"), None)
             }
         };
 
@@ -295,8 +295,8 @@ impl fmt::Display for UseSegmentKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             UseSegmentKind::Glob => write!(f, "*"),
-            UseSegmentKind::Ident(ref s, Some(ref alias)) => write!(f, "{} as {}", s, alias),
-            UseSegmentKind::Ident(ref s, None) => write!(f, "{}", s),
+            UseSegmentKind::Ident(ref s, Some(ref alias)) => write!(f, "{s} as {alias}"),
+            UseSegmentKind::Ident(ref s, None) => write!(f, "{s}"),
             UseSegmentKind::Slf(..) => write!(f, "self"),
             UseSegmentKind::Super(..) => write!(f, "super"),
             UseSegmentKind::Crate(..) => write!(f, "crate"),
@@ -306,7 +306,7 @@ impl fmt::Display for UseSegmentKind {
                     if i != 0 {
                         write!(f, ", ")?;
                     }
-                    write!(f, "{}", item)?;
+                    write!(f, "{item}")?;
                 }
                 write!(f, "}}")
             }
@@ -319,7 +319,7 @@ impl fmt::Display for UseTree {
             if i != 0 {
                 write!(f, "::")?;
             }
-            write!(f, "{}", segment)?;
+            write!(f, "{segment}")?;
         }
         Ok(())
     }
@@ -589,7 +589,7 @@ impl UseTree {
 
         // Normalise foo::{bar} -> foo::bar
         if let UseSegmentKind::List(ref list) = last.kind {
-            if list.len() == 1 && list[0].to_string() != "self" {
+            if list.len() == 1 && list[0].to_string() != "self" && !list[0].has_comment() {
                 normalize_sole_list = true;
             }
         }
@@ -1032,7 +1032,9 @@ fn rewrite_nested_use_tree(
 
     let list_str = write_list(&list_items, &fmt)?;
 
-    let result = if (list_str.contains('\n') || list_str.len() > remaining_width)
+    let result = if (list_str.contains('\n')
+        || list_str.len() > remaining_width
+        || tactic == DefinitiveListTactic::Vertical)
         && context.config.imports_indent() == IndentStyle::Block
     {
         format!(
@@ -1042,7 +1044,7 @@ fn rewrite_nested_use_tree(
             shape.indent.to_string(context.config)
         )
     } else {
-        format!("{{{}}}", list_str)
+        format!("{{{list_str}}}")
     };
 
     Some(result)
@@ -1052,14 +1054,14 @@ impl Rewrite for UseSegment {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
         Some(match self.kind {
             UseSegmentKind::Ident(ref ident, Some(ref rename)) => {
-                format!("{} as {}", ident, rename)
+                format!("{ident} as {rename}")
             }
             UseSegmentKind::Ident(ref ident, None) => ident.clone(),
-            UseSegmentKind::Slf(Some(ref rename)) => format!("self as {}", rename),
+            UseSegmentKind::Slf(Some(ref rename)) => format!("self as {rename}"),
             UseSegmentKind::Slf(None) => "self".to_owned(),
-            UseSegmentKind::Super(Some(ref rename)) => format!("super as {}", rename),
+            UseSegmentKind::Super(Some(ref rename)) => format!("super as {rename}"),
             UseSegmentKind::Super(None) => "super".to_owned(),
-            UseSegmentKind::Crate(Some(ref rename)) => format!("crate as {}", rename),
+            UseSegmentKind::Crate(Some(ref rename)) => format!("crate as {rename}"),
             UseSegmentKind::Crate(None) => "crate".to_owned(),
             UseSegmentKind::Glob => "*".to_owned(),
             UseSegmentKind::List(ref use_tree_list) => rewrite_nested_use_tree(

@@ -3,7 +3,7 @@
 use itertools::Itertools;
 use std::{fmt, str};
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use serde_json as json;
 use thiserror::Error;
 
@@ -30,10 +30,20 @@ impl From<MacroName> for String {
 }
 
 /// Defines a selector to match against a macro.
-#[derive(Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd, Deserialize, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd, Serialize)]
 pub enum MacroSelector {
     Name(MacroName),
     All,
+}
+
+impl<'de> Deserialize<'de> for MacroSelector {
+    fn deserialize<D>(de: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(de)?;
+        std::str::FromStr::from_str(&s).map_err(serde::de::Error::custom)
+    }
 }
 
 impl fmt::Display for MacroSelector {
@@ -113,6 +123,6 @@ mod test {
     #[test]
     fn macro_names_display() {
         let macro_names = MacroSelectors::from_str(r#"["foo", "*", "bar"]"#).unwrap();
-        assert_eq!(format!("{}", macro_names), "foo, *, bar");
+        assert_eq!(format!("{macro_names}"), "foo, *, bar");
     }
 }

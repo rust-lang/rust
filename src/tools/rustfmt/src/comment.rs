@@ -58,25 +58,23 @@ fn custom_opener(s: &str) -> &str {
 }
 
 impl<'a> CommentStyle<'a> {
-    /// Returns `true` if the commenting style covers a line only.
+    /// Returns `true` if the commenting style cannot span multiple lines.
     pub(crate) fn is_line_comment(&self) -> bool {
-        match *self {
+        matches!(
+            self,
             CommentStyle::DoubleSlash
-            | CommentStyle::TripleSlash
-            | CommentStyle::Doc
-            | CommentStyle::Custom(_) => true,
-            _ => false,
-        }
+                | CommentStyle::TripleSlash
+                | CommentStyle::Doc
+                | CommentStyle::Custom(_)
+        )
     }
 
-    /// Returns `true` if the commenting style can span over multiple lines.
+    /// Returns `true` if the commenting style can span multiple lines.
     pub(crate) fn is_block_comment(&self) -> bool {
-        match *self {
-            CommentStyle::SingleBullet | CommentStyle::DoubleBullet | CommentStyle::Exclamation => {
-                true
-            }
-            _ => false,
-        }
+        matches!(
+            self,
+            CommentStyle::SingleBullet | CommentStyle::DoubleBullet | CommentStyle::Exclamation
+        )
     }
 
     /// Returns `true` if the commenting style is for documentation.
@@ -367,7 +365,11 @@ fn identify_comment(
             trim_left_preserve_layout(first_group, shape.indent, config)?
         } else if !config.normalize_comments()
             && !config.wrap_comments()
-            && !config.format_code_in_doc_comments()
+            && !(
+                // `format_code_in_doc_comments` should only take effect on doc comments,
+                // so we only consider it when this comment block is a doc comment block.
+                is_doc_comment && config.format_code_in_doc_comments()
+            )
         {
             light_rewrite_comment(first_group, shape.indent, config, is_doc_comment)
         } else {
@@ -484,7 +486,9 @@ impl ItemizedBlock {
         // allowed.
         for suffix in [". ", ") "] {
             if let Some((prefix, _)) = trimmed.split_once(suffix) {
-                if prefix.len() <= 2 && prefix.chars().all(|c| char::is_ascii_digit(&c)) {
+                let has_leading_digits = (1..=2).contains(&prefix.len())
+                    && prefix.chars().all(|c| char::is_ascii_digit(&c));
+                if has_leading_digits {
                     return Some(prefix.len() + suffix.len());
                 }
             }
@@ -623,7 +627,7 @@ impl<'a> CommentRewrite<'a> {
             is_prev_line_multi_line: false,
             code_block_attr: None,
             item_block: None,
-            comment_line_separator: format!("{}{}", indent_str, line_start),
+            comment_line_separator: format!("{indent_str}{line_start}"),
             max_width,
             indent_str,
             fmt_indent: shape.indent,
@@ -953,7 +957,7 @@ const RUSTFMT_CUSTOM_COMMENT_PREFIX: &str = "//#### ";
 fn hide_sharp_behind_comment(s: &str) -> Cow<'_, str> {
     let s_trimmed = s.trim();
     if s_trimmed.starts_with("# ") || s_trimmed == "#" {
-        Cow::from(format!("{}{}", RUSTFMT_CUSTOM_COMMENT_PREFIX, s))
+        Cow::from(format!("{RUSTFMT_CUSTOM_COMMENT_PREFIX}{s}"))
     } else {
         Cow::from(s)
     }
@@ -1037,7 +1041,7 @@ pub(crate) fn recover_missing_comment_in_span(
         } else {
             Cow::from(" ")
         };
-        Some(format!("{}{}", sep, missing_comment))
+        Some(format!("{sep}{missing_comment}"))
     }
 }
 
@@ -1834,8 +1838,7 @@ fn remove_comment_header(comment: &str) -> &str {
     } else {
         assert!(
             comment.starts_with("/*"),
-            "string '{}' is not a comment",
-            comment
+            "string '{comment}' is not a comment"
         );
         &comment[2..comment.len() - 2]
     }
@@ -2071,26 +2074,13 @@ fn main() {
             expected_line_start: &str,
         ) {
             let block = ItemizedBlock::new(test_input).unwrap();
-            assert_eq!(1, block.lines.len(), "test_input: {:?}", test_input);
-            assert_eq!(
-                expected_line, &block.lines[0],
-                "test_input: {:?}",
-                test_input
-            );
-            assert_eq!(
-                expected_indent, block.indent,
-                "test_input: {:?}",
-                test_input
-            );
-            assert_eq!(
-                expected_opener, &block.opener,
-                "test_input: {:?}",
-                test_input
-            );
+            assert_eq!(1, block.lines.len(), "test_input: {test_input:?}");
+            assert_eq!(expected_line, &block.lines[0], "test_input: {test_input:?}");
+            assert_eq!(expected_indent, block.indent, "test_input: {test_input:?}");
+            assert_eq!(expected_opener, &block.opener, "test_input: {test_input:?}");
             assert_eq!(
                 expected_line_start, &block.line_start,
-                "test_input: {:?}",
-                test_input
+                "test_input: {test_input:?}"
             );
         }
 
@@ -2142,13 +2132,15 @@ fn main() {
             // https://spec.commonmark.org/0.30 says: "A start number may not be negative":
             "-1. Not a list item.",
             "-1 Not a list item.",
+            // Marker without prefix are not recognized as item markers:
+            ".   Not a list item.",
+            ")   Not a list item.",
         ];
         for line in test_inputs.iter() {
             let maybe_block = ItemizedBlock::new(line);
             assert!(
                 maybe_block.is_none(),
-                "The following line shouldn't be classified as a list item: {}",
-                line
+                "The following line shouldn't be classified as a list item: {line}"
             );
         }
     }
