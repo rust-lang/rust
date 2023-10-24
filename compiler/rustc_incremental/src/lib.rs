@@ -18,7 +18,6 @@ mod assert_dep_graph;
 mod errors;
 mod persist;
 
-use assert_dep_graph::assert_dep_graph;
 pub use persist::copy_cgu_workproduct_to_incr_comp_cache_dir;
 pub use persist::finalize_session_directory;
 pub use persist::in_incr_comp_dir;
