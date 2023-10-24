@@ -152,6 +152,15 @@ extern "system" {
 }
 #[link(name = "kernel32")]
 extern "system" {
+    pub fn CreateWaitableTimerExW(
+        lptimerattributes: *const SECURITY_ATTRIBUTES,
+        lptimername: PCWSTR,
+        dwflags: u32,
+        dwdesiredaccess: u32,
+    ) -> HANDLE;
+}
+#[link(name = "kernel32")]
+extern "system" {
     pub fn DeleteFileW(lpfilename: PCWSTR) -> BOOL;
 }
 #[link(name = "kernel32")]
@@ -506,6 +515,17 @@ extern "system" {
 #[link(name = "kernel32")]
 extern "system" {
     pub fn SetThreadStackGuarantee(stacksizeinbytes: *mut u32) -> BOOL;
+}
+#[link(name = "kernel32")]
+extern "system" {
+    pub fn SetWaitableTimer(
+        htimer: HANDLE,
+        lpduetime: *const i64,
+        lperiod: i32,
+        pfncompletionroutine: PTIMERAPCROUTINE,
+        lpargtocompletionroutine: *const ::core::ffi::c_void,
+        fresume: BOOL,
+    ) -> BOOL;
 }
 #[link(name = "kernel32")]
 extern "system" {
@@ -1165,6 +1185,8 @@ pub const CREATE_SEPARATE_WOW_VDM: PROCESS_CREATION_FLAGS = 2048u32;
 pub const CREATE_SHARED_WOW_VDM: PROCESS_CREATION_FLAGS = 4096u32;
 pub const CREATE_SUSPENDED: PROCESS_CREATION_FLAGS = 4u32;
 pub const CREATE_UNICODE_ENVIRONMENT: PROCESS_CREATION_FLAGS = 1024u32;
+pub const CREATE_WAITABLE_TIMER_HIGH_RESOLUTION: u32 = 2u32;
+pub const CREATE_WAITABLE_TIMER_MANUAL_RESET: u32 = 1u32;
 pub const CSTR_EQUAL: COMPARESTRING_RESULT = 2i32;
 pub const CSTR_GREATER_THAN: COMPARESTRING_RESULT = 3i32;
 pub const CSTR_LESS_THAN: COMPARESTRING_RESULT = 1i32;
@@ -3775,6 +3797,13 @@ pub const PROFILE_SERVER: PROCESS_CREATION_FLAGS = 1073741824u32;
 pub const PROFILE_USER: PROCESS_CREATION_FLAGS = 268435456u32;
 pub const PROGRESS_CONTINUE: u32 = 0u32;
 pub type PSTR = *mut u8;
+pub type PTIMERAPCROUTINE = ::core::option::Option<
+    unsafe extern "system" fn(
+        lpargtocompletionroutine: *const ::core::ffi::c_void,
+        dwtimerlowvalue: u32,
+        dwtimerhighvalue: u32,
+    ) -> (),
+>;
 pub type PWSTR = *mut u16;
 pub const READ_CONTROL: FILE_ACCESS_RIGHTS = 131072u32;
 pub const REALTIME_PRIORITY_CLASS: PROCESS_CREATION_FLAGS = 256u32;
@@ -3922,6 +3951,7 @@ pub type SYMBOLIC_LINK_FLAGS = u32;
 pub const SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE: SYMBOLIC_LINK_FLAGS = 2u32;
 pub const SYMBOLIC_LINK_FLAG_DIRECTORY: SYMBOLIC_LINK_FLAGS = 1u32;
 pub const SYMLINK_FLAG_RELATIVE: u32 = 1u32;
+pub type SYNCHRONIZATION_ACCESS_RIGHTS = u32;
 pub const SYNCHRONIZE: FILE_ACCESS_RIGHTS = 1048576u32;
 #[repr(C)]
 pub struct SYSTEM_INFO {
@@ -3968,6 +3998,8 @@ pub const TCP_NODELAY: i32 = 1i32;
 pub const THREAD_CREATE_RUN_IMMEDIATELY: THREAD_CREATION_FLAGS = 0u32;
 pub const THREAD_CREATE_SUSPENDED: THREAD_CREATION_FLAGS = 4u32;
 pub type THREAD_CREATION_FLAGS = u32;
+pub const TIMER_ALL_ACCESS: SYNCHRONIZATION_ACCESS_RIGHTS = 2031619u32;
+pub const TIMER_MODIFY_STATE: SYNCHRONIZATION_ACCESS_RIGHTS = 2u32;
 #[repr(C)]
 pub struct TIMEVAL {
     pub tv_sec: i32,

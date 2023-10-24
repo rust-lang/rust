@@ -12,6 +12,7 @@ use crate::time::Duration;
 
 use core::ffi::c_void;
 
+use super::time::WaitableTimer;
 use super::to_u16s;
 
 pub const DEFAULT_MIN_STACK_SIZE: usize = 2 * 1024 * 1024;
@@ -87,7 +88,17 @@ impl Thread {
     }
 
     pub fn sleep(dur: Duration) {
-        unsafe { c::Sleep(super::dur2timeout(dur)) }
+        fn high_precision_sleep(dur: Duration) -> Result<(), ()> {
+            let timer = WaitableTimer::high_resolution()?;
+            timer.set(dur)?;
+            timer.wait()
+        }
+        // Attempt to use high-precision sleep (Windows 10, version 1803+).
+        // On error fallback to the standard `Sleep` function.
+        // Also preserves the zero duration behaviour of `Sleep`.
+        if dur.is_zero() || high_precision_sleep(dur).is_err() {
+            unsafe { c::Sleep(super::dur2timeout(dur)) }
+        }
     }
 
     pub fn handle(&self) -> &Handle {
