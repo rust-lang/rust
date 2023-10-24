@@ -30,6 +30,7 @@ use serde::{Deserialize, Deserializer};
 use serde_derive::Deserialize;
 
 pub use crate::core::config::flags::Subcommand;
+use build_helper::git::GitConfig;
 
 macro_rules! check_ci_llvm {
     ($name:expr) => {
@@ -318,6 +319,7 @@ pub struct Stage0Config {
     pub artifacts_server: String,
     pub artifacts_with_llvm_assertions_server: String,
     pub git_merge_commit_email: String,
+    pub github_repository: String,
     pub nightly_branch: String,
 }
 #[derive(Default, Deserialize, Clone)]
@@ -2003,6 +2005,13 @@ impl Config {
 
     pub fn default_codegen_backend(&self) -> Option<Interned<String>> {
         self.rust_codegen_backends.get(0).cloned()
+    }
+
+    pub fn git_config(&self) -> GitConfig<'_> {
+        GitConfig {
+            github_repository: &self.stage0_metadata.config.github_repository,
+            nightly_branch: &self.stage0_metadata.config.nightly_branch,
+        }
     }
 
     pub fn check_build_rustc_version(&self, rustc_path: &str) {
