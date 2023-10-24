@@ -1,25 +1,28 @@
-#![feature(associated_type_defaults)]
-#![feature(fmt_helpers_for_derive)]
-#![feature(get_mut_unchecked)]
-#![feature(min_specialization)]
-#![feature(never_type)]
-#![feature(new_uninit)]
-#![feature(rustc_attrs)]
-#![feature(unwrap_infallible)]
+#![cfg_attr(
+    feature = "nightly",
+    feature(associated_type_defaults, min_specialization, never_type, rustc_attrs)
+)]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
-#![allow(internal_features)]
+#![cfg_attr(feature = "nightly", allow(internal_features))]
 
+#[cfg(feature = "nightly")]
 extern crate self as rustc_type_ir;
 
 #[macro_use]
 extern crate bitflags;
+#[cfg(feature = "nightly")]
 #[macro_use]
 extern crate rustc_macros;
 
+#[cfg(feature = "nightly")]
+use rustc_data_structures::sync::Lrc;
 use std::fmt;
 use std::hash::Hash;
+#[cfg(not(feature = "nightly"))]
+use std::sync::Arc as Lrc;
 
+#[cfg(feature = "nightly")]
 pub mod codec;
 pub mod fold;
 pub mod ty_info;
@@ -37,6 +40,7 @@ mod predicate_kind;
 mod region_kind;
 
 pub use canonical::*;
+#[cfg(feature = "nightly")]
 pub use codec::*;
 pub use const_kind::*;
 pub use debug::{DebugWithInfcx, InferCtxtLike, WithInfcx};
@@ -90,8 +94,9 @@ rustc_index::newtype_index! {
     /// is the outer fn.
     ///
     /// [dbi]: https://en.wikipedia.org/wiki/De_Bruijn_index
-    #[derive(HashStable_Generic)]
+    #[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
     #[debug_format = "DebruijnIndex({})"]
+    #[gate_rustc_only]
     pub struct DebruijnIndex {
         const INNERMOST = 0;
     }
@@ -173,8 +178,9 @@ pub fn debug_bound_var<T: std::fmt::Write>(
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Decodable, Encodable, Hash, HashStable_Generic)]
-#[rustc_pass_by_value]
+#[derive(Copy, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "nightly", derive(Decodable, Encodable, Hash, HashStable_Generic))]
+#[cfg_attr(feature = "nightly", rustc_pass_by_value)]
 pub enum Variance {
     Covariant,     // T<A> <: T<B> iff A <: B -- e.g., function return type
     Invariant,     // T<A> <: T<B> iff B == A -- e.g., type of mutable cell
@@ -289,8 +295,9 @@ rustc_index::newtype_index! {
     /// declared, but a type name in a non-zero universe is a placeholder
     /// type -- an idealized representative of "types in general" that we
     /// use for checking generic functions.
-    #[derive(HashStable_Generic)]
+    #[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
     #[debug_format = "U{}"]
+    #[gate_rustc_only]
     pub struct UniverseIndex {}
 }
 

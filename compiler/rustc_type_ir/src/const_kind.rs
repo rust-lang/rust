@@ -1,8 +1,8 @@
-use rustc_data_structures::stable_hasher::HashStable;
-use rustc_data_structures::stable_hasher::StableHasher;
+#[cfg(feature = "nightly")]
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use std::fmt;
 
-use crate::{DebruijnIndex, DebugWithInfcx, HashStableContext, InferCtxtLike, Interner, WithInfcx};
+use crate::{DebruijnIndex, DebugWithInfcx, InferCtxtLike, Interner, WithInfcx};
 
 use self::ConstKind::*;
 
@@ -16,7 +16,7 @@ use self::ConstKind::*;
     Ord = "feature_allow_slow_enum",
     Hash(bound = "")
 )]
-#[derive(TyEncodable, TyDecodable)]
+#[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable))]
 pub enum ConstKind<I: Interner> {
     /// A const generic parameter.
     Param(I::ParamConst),
@@ -47,6 +47,7 @@ pub enum ConstKind<I: Interner> {
     Expr(I::ExprConst),
 }
 
+#[cfg(feature = "nightly")]
 const fn const_kind_discriminant<I: Interner>(value: &ConstKind<I>) -> usize {
     match value {
         Param(_) => 0,
@@ -60,7 +61,8 @@ const fn const_kind_discriminant<I: Interner>(value: &ConstKind<I>) -> usize {
     }
 }
 
-impl<CTX: HashStableContext, I: Interner> HashStable<CTX> for ConstKind<I>
+#[cfg(feature = "nightly")]
+impl<CTX: crate::HashStableContext, I: Interner> HashStable<CTX> for ConstKind<I>
 where
     I::ParamConst: HashStable<CTX>,
     I::InferConst: HashStable<CTX>,

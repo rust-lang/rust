@@ -1,16 +1,17 @@
+#[cfg(feature = "nightly")]
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use std::fmt;
 use std::ops::ControlFlow;
 
 use crate::fold::{FallibleTypeFolder, TypeFoldable};
 use crate::visit::{TypeVisitable, TypeVisitor};
-use crate::{HashStableContext, Interner};
+use crate::Interner;
 
 /// A clause is something that can appear in where bounds or be inferred
 /// by implied bounds.
 #[derive(derivative::Derivative)]
 #[derivative(Clone(bound = ""), Hash(bound = ""))]
-#[derive(TyEncodable, TyDecodable)]
+#[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable))]
 pub enum ClauseKind<I: Interner> {
     /// Corresponds to `where Foo: Bar<A, B, C>`. `Foo` here would be
     /// the `Self` type of the trait reference and `A`, `B`, and `C`
@@ -67,6 +68,7 @@ impl<I: Interner> PartialEq for ClauseKind<I> {
 
 impl<I: Interner> Eq for ClauseKind<I> {}
 
+#[cfg(feature = "nightly")]
 fn clause_kind_discriminant<I: Interner>(value: &ClauseKind<I>) -> usize {
     match value {
         ClauseKind::Trait(_) => 0,
@@ -79,7 +81,8 @@ fn clause_kind_discriminant<I: Interner>(value: &ClauseKind<I>) -> usize {
     }
 }
 
-impl<CTX: HashStableContext, I: Interner> HashStable<CTX> for ClauseKind<I>
+#[cfg(feature = "nightly")]
+impl<CTX: crate::HashStableContext, I: Interner> HashStable<CTX> for ClauseKind<I>
 where
     I::Ty: HashStable<CTX>,
     I::Const: HashStable<CTX>,
@@ -161,7 +164,7 @@ where
 
 #[derive(derivative::Derivative)]
 #[derivative(Clone(bound = ""), Hash(bound = ""))]
-#[derive(TyEncodable, TyDecodable)]
+#[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable))]
 pub enum PredicateKind<I: Interner> {
     /// Prove a clause
     Clause(ClauseKind<I>),
@@ -239,6 +242,7 @@ impl<I: Interner> PartialEq for PredicateKind<I> {
 
 impl<I: Interner> Eq for PredicateKind<I> {}
 
+#[cfg(feature = "nightly")]
 fn predicate_kind_discriminant<I: Interner>(value: &PredicateKind<I>) -> usize {
     match value {
         PredicateKind::Clause(_) => 0,
@@ -252,7 +256,8 @@ fn predicate_kind_discriminant<I: Interner>(value: &PredicateKind<I>) -> usize {
     }
 }
 
-impl<CTX: HashStableContext, I: Interner> HashStable<CTX> for PredicateKind<I>
+#[cfg(feature = "nightly")]
+impl<CTX: crate::HashStableContext, I: Interner> HashStable<CTX> for PredicateKind<I>
 where
     I::DefId: HashStable<CTX>,
     I::Const: HashStable<CTX>,
@@ -361,7 +366,7 @@ where
 }
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Copy)]
-#[derive(HashStable_Generic, Encodable, Decodable)]
+#[cfg_attr(feature = "nightly", derive(HashStable_Generic, Encodable, Decodable))]
 pub enum AliasRelationDirection {
     Equate,
     Subtype,

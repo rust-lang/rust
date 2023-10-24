@@ -1,8 +1,8 @@
-use rustc_data_structures::stable_hasher::HashStable;
-use rustc_data_structures::stable_hasher::StableHasher;
+#[cfg(feature = "nightly")]
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use std::fmt;
 
-use crate::{DebruijnIndex, DebugWithInfcx, HashStableContext, InferCtxtLike, Interner, WithInfcx};
+use crate::{DebruijnIndex, DebugWithInfcx, InferCtxtLike, Interner, WithInfcx};
 
 use self::RegionKind::*;
 
@@ -121,7 +121,7 @@ use self::RegionKind::*;
     Ord = "feature_allow_slow_enum",
     Hash(bound = "")
 )]
-#[derive(TyEncodable, TyDecodable)]
+#[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable))]
 pub enum RegionKind<I: Interner> {
     /// A region parameter; for example `'a` in `impl<'a> Trait for &'a ()`.
     ///
@@ -261,8 +261,9 @@ impl<I: Interner> fmt::Debug for RegionKind<I> {
     }
 }
 
+#[cfg(feature = "nightly")]
 // This is not a derived impl because a derive would require `I: HashStable`
-impl<CTX: HashStableContext, I: Interner> HashStable<CTX> for RegionKind<I>
+impl<CTX: crate::HashStableContext, I: Interner> HashStable<CTX> for RegionKind<I>
 where
     I::EarlyParamRegion: HashStable<CTX>,
     I::BoundRegion: HashStable<CTX>,

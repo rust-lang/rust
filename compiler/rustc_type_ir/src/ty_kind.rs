@@ -1,11 +1,11 @@
 #![allow(rustc::usage_of_ty_tykind)]
 
+#[cfg(feature = "nightly")]
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+#[cfg(feature = "nightly")]
 use rustc_data_structures::unify::{EqUnifyValue, UnifyKey};
 use std::fmt;
-use std::mem::discriminant;
 
-use crate::HashStableContext;
 use crate::Interner;
 use crate::{DebruijnIndex, DebugWithInfcx, InferCtxtLike, WithInfcx};
 
@@ -13,8 +13,8 @@ use self::TyKind::*;
 
 /// The movability of a coroutine / closure literal:
 /// whether a coroutine contains self-references, causing it to be `!Unpin`.
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable, Debug, Copy)]
-#[derive(HashStable_Generic)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Copy)]
+#[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_Generic))]
 pub enum Movability {
     /// May contain self-references, `!Unpin`.
     Static,
@@ -23,7 +23,7 @@ pub enum Movability {
 }
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Copy)]
-#[derive(HashStable_Generic, Encodable, Decodable)]
+#[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_Generic))]
 pub enum Mutability {
     // N.B. Order is deliberate, so that Not < Mut
     Not,
@@ -75,7 +75,7 @@ impl Mutability {
 
 /// Specifies how a trait object is represented.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-#[derive(Encodable, Decodable, HashStable_Generic)]
+#[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_Generic))]
 pub enum DynKind {
     /// An unsized `dyn Trait` object
     Dyn,
@@ -89,7 +89,7 @@ pub enum DynKind {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-#[derive(Encodable, Decodable, HashStable_Generic)]
+#[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_Generic))]
 pub enum AliasKind {
     /// A projection `<Type as Trait>::AssocType`.
     /// Can get normalized away if monomorphic enough.
@@ -109,7 +109,7 @@ pub enum AliasKind {
 ///
 /// Types written by the user start out as `hir::TyKind` and get
 /// converted to this representation using `AstConv::ast_ty_to_ty`.
-#[rustc_diagnostic_item = "IrTyKind"]
+#[cfg_attr(feature = "nightly", rustc_diagnostic_item = "IrTyKind")]
 #[derive(derivative::Derivative)]
 #[derivative(
     Clone(bound = ""),
@@ -119,7 +119,7 @@ pub enum AliasKind {
     Ord = "feature_allow_slow_enum",
     Hash(bound = "")
 )]
-#[derive(TyEncodable, TyDecodable)]
+#[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable))]
 pub enum TyKind<I: Interner> {
     /// The primitive boolean type. Written as `bool`.
     Bool,
@@ -407,7 +407,7 @@ impl<I: Interner> DebugWithInfcx<I> for TyKind<I> {
 
                 write!(f, ">")
             }
-            Foreign(d) => f.debug_tuple_field1_finish("Foreign", d),
+            Foreign(d) => f.debug_tuple("Foreign").field(d).finish(),
             Str => write!(f, "str"),
             Array(t, c) => write!(f, "[{:?}; {:?}]", &this.wrap(t), &this.wrap(c)),
             Slice(t) => write!(f, "[{:?}]", &this.wrap(t)),
@@ -423,7 +423,7 @@ impl<I: Interner> DebugWithInfcx<I> for TyKind<I> {
                 Mutability::Mut => write!(f, "&{:?} mut {:?}", &this.wrap(r), &this.wrap(t)),
                 Mutability::Not => write!(f, "&{:?} {:?}", &this.wrap(r), &this.wrap(t)),
             },
-            FnDef(d, s) => f.debug_tuple_field2_finish("FnDef", d, &this.wrap(s)),
+            FnDef(d, s) => f.debug_tuple("FnDef").field(d).field(&this.wrap(s)).finish(),
             FnPtr(s) => write!(f, "{:?}", &this.wrap(s)),
             Dynamic(p, r, repr) => match repr {
                 DynKind::Dyn => write!(f, "dyn {:?} + {:?}", &this.wrap(p), &this.wrap(r)),
@@ -431,10 +431,12 @@ impl<I: Interner> DebugWithInfcx<I> for TyKind<I> {
                     write!(f, "dyn* {:?} + {:?}", &this.wrap(p), &this.wrap(r))
                 }
             },
-            Closure(d, s) => f.debug_tuple_field2_finish("Closure", d, &this.wrap(s)),
-            Coroutine(d, s, m) => f.debug_tuple_field3_finish("Coroutine", d, &this.wrap(s), m),
+            Closure(d, s) => f.debug_tuple("Closure").field(d).field(&this.wrap(s)).finish(),
+            Coroutine(d, s, m) => {
+                f.debug_tuple("Coroutine").field(d).field(&this.wrap(s)).field(m).finish()
+            }
             CoroutineWitness(d, s) => {
-                f.debug_tuple_field2_finish("CoroutineWitness", d, &this.wrap(s))
+                f.debug_tuple("CoroutineWitness").field(d).field(&this.wrap(s)).finish()
             }
             Never => write!(f, "!"),
             Tuple(t) => {
@@ -453,7 +455,7 @@ impl<I: Interner> DebugWithInfcx<I> for TyKind<I> {
                 }
                 write!(f, ")")
             }
-            Alias(i, a) => f.debug_tuple_field2_finish("Alias", i, &this.wrap(a)),
+            Alias(i, a) => f.debug_tuple("Alias").field(i).field(&this.wrap(a)).finish(),
             Param(p) => write!(f, "{p:?}"),
             Bound(d, b) => crate::debug_bound_var(f, *d, b),
             Placeholder(p) => write!(f, "{p:?}"),
@@ -471,8 +473,9 @@ impl<I: Interner> fmt::Debug for TyKind<I> {
 }
 
 // This is not a derived impl because a derive would require `I: HashStable`
+#[cfg(feature = "nightly")]
 #[allow(rustc::usage_of_ty_tykind)]
-impl<CTX: HashStableContext, I: Interner> HashStable<CTX> for TyKind<I>
+impl<CTX: crate::HashStableContext, I: Interner> HashStable<CTX> for TyKind<I>
 where
     I::AdtDef: HashStable<CTX>,
     I::DefId: HashStable<CTX>,
@@ -583,7 +586,7 @@ where
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[derive(Encodable, Decodable, HashStable_Generic)]
+#[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_Generic))]
 pub enum IntTy {
     Isize,
     I8,
@@ -641,7 +644,7 @@ impl IntTy {
 }
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Copy)]
-#[derive(Encodable, Decodable, HashStable_Generic)]
+#[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_Generic))]
 pub enum UintTy {
     Usize,
     U8,
@@ -699,7 +702,7 @@ impl UintTy {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[derive(Encodable, Decodable, HashStable_Generic)]
+#[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_Generic))]
 pub enum FloatTy {
     F32,
     F64,
@@ -733,18 +736,21 @@ pub struct FloatVarValue(pub FloatTy);
 rustc_index::newtype_index! {
     /// A **ty**pe **v**ariable **ID**.
     #[debug_format = "?{}t"]
+    #[gate_rustc_only]
     pub struct TyVid {}
 }
 
 rustc_index::newtype_index! {
     /// An **int**egral (`u32`, `i32`, `usize`, etc.) type **v**ariable **ID**.
     #[debug_format = "?{}i"]
+    #[gate_rustc_only]
     pub struct IntVid {}
 }
 
 rustc_index::newtype_index! {
     /// A **float**ing-point (`f32` or `f64`) type **v**ariable **ID**.
     #[debug_format = "?{}f"]
+    #[gate_rustc_only]
     pub struct FloatVid {}
 }
 
@@ -753,7 +759,8 @@ rustc_index::newtype_index! {
 /// E.g., if we have an empty array (`[]`), then we create a fresh
 /// type variable for the element type since we won't know until it's
 /// used what the element type is supposed to be.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "nightly", derive(Encodable, Decodable))]
 pub enum InferTy {
     /// A type variable.
     TyVar(TyVid),
@@ -786,6 +793,7 @@ pub enum InferTy {
 
 /// Raw `TyVid` are used as the unification key for `sub_relations`;
 /// they carry no values.
+#[cfg(feature = "nightly")]
 impl UnifyKey for TyVid {
     type Value = ();
     #[inline]
@@ -801,8 +809,10 @@ impl UnifyKey for TyVid {
     }
 }
 
+#[cfg(feature = "nightly")]
 impl EqUnifyValue for IntVarValue {}
 
+#[cfg(feature = "nightly")]
 impl UnifyKey for IntVid {
     type Value = Option<IntVarValue>;
     #[inline] // make this function eligible for inlining - it is quite hot.
@@ -818,8 +828,10 @@ impl UnifyKey for IntVid {
     }
 }
 
+#[cfg(feature = "nightly")]
 impl EqUnifyValue for FloatVarValue {}
 
+#[cfg(feature = "nightly")]
 impl UnifyKey for FloatVid {
     type Value = Option<FloatVarValue>;
     #[inline]
@@ -835,10 +847,11 @@ impl UnifyKey for FloatVid {
     }
 }
 
+#[cfg(feature = "nightly")]
 impl<CTX> HashStable<CTX> for InferTy {
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
         use InferTy::*;
-        discriminant(self).hash_stable(ctx, hasher);
+        std::mem::discriminant(self).hash_stable(ctx, hasher);
         match self {
             TyVar(_) | IntVar(_) | FloatVar(_) => {
                 panic!("type variables should not be hashed: {self:?}")
