@@ -1,4 +1,4 @@
-use crate::config::set_config;
+use crate::config::{set_config, ConfigInfo};
 use crate::utils::{
     get_gcc_path, run_command, run_command_with_output_and_env, walk_dir,
 };
@@ -55,6 +55,15 @@ impl BuildArg {
                         );
                     }
                 }
+                "--target" => {
+                    if args.next().is_some() {
+                        // Handled in config.rs.
+                    } else {
+                        return Err(
+                            "Expected a value after `--target`, found nothing".to_string()
+                        );
+                    }
+                }
                 arg => return Err(format!("Unknown argument `{}`", arg)),
             }
         }
@@ -80,7 +89,7 @@ impl BuildArg {
 fn build_sysroot(
     env: &mut HashMap<String, String>,
     release_mode: bool,
-    target_triple: &str,
+    config: &ConfigInfo,
 ) -> Result<(), String> {
     std::env::set_current_dir("build_sysroot")
         .map_err(|error| format!("Failed to go to `build_sysroot` directory: {:?}", error))?;
@@ -143,7 +152,7 @@ fn build_sysroot(
                 &"cargo",
                 &"build",
                 &"--target",
-                &target_triple,
+                &config.target,
                 &"--release",
             ],
             None,
@@ -156,7 +165,7 @@ fn build_sysroot(
                 &"cargo",
                 &"build",
                 &"--target",
-                &target_triple,
+                &config.target,
             ],
             None,
             Some(env),
@@ -165,14 +174,14 @@ fn build_sysroot(
     };
 
     // Copy files to sysroot
-    let sysroot_path = format!("sysroot/lib/rustlib/{}/lib/", target_triple);
+    let sysroot_path = format!("sysroot/lib/rustlib/{}/lib/", config.target_triple);
     fs::create_dir_all(&sysroot_path)
         .map_err(|error| format!("Failed to create directory `{}`: {:?}", sysroot_path, error))?;
     let copier = |dir_to_copy: &Path| {
         run_command(&[&"cp", &"-r", &dir_to_copy, &sysroot_path], None).map(|_| ())
     };
     walk_dir(
-        &format!("target/{}/{}/deps", target_triple, channel),
+        &format!("target/{}/{}/deps", config.target_triple, channel),
         copier,
         copier,
     )?;
@@ -216,7 +225,7 @@ fn build_codegen(args: &BuildArg) -> Result<(), String> {
     build_sysroot(
         &mut env,
         args.sysroot_release_channel,
-        &config.target_triple,
+        &config,
     )?;
     Ok(())
 }

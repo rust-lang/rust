@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use std::env as std_env;
 
 pub struct ConfigInfo {
+    pub target: String,
     pub target_triple: String,
     pub rustc_command: Vec<String>,
 }
@@ -30,23 +31,41 @@ pub fn set_config(
     let host_triple = get_rustc_host_triple()?;
     let mut linker = None;
     let mut target_triple = host_triple.clone();
+    let mut target = target_triple.clone();
 
     // We skip binary name and the command.
     let mut args = std::env::args().skip(2);
 
+    let mut set_target_triple = false;
+    let mut set_target = false;
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--target-triple" => {
                 if let Some(arg) = args.next() {
                     target_triple = arg;
+                    set_target_triple = true;
                 } else {
                     return Err(
                         "Expected a value after `--target-triple`, found nothing".to_string()
                     );
                 }
             },
+            "--target" => {
+                if let Some(arg) = args.next() {
+                    target = arg;
+                    set_target = true;
+                } else {
+                    return Err(
+                        "Expected a value after `--target`, found nothing".to_string()
+                    );
+                }
+            },
             _ => (),
         }
+    }
+
+    if set_target_triple && !set_target {
+        target = target_triple.clone();
     }
 
     if host_triple != target_triple {
@@ -123,7 +142,8 @@ pub fn set_config(
         "target/out".to_string(),
     ]);
     Ok(ConfigInfo {
-        target_triple: target_triple.to_string(),
+        target,
+        target_triple,
         rustc_command,
     })
 }
