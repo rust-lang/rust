@@ -158,6 +158,8 @@ pub enum Since {
     Version(Version),
     /// Stabilized in the upcoming version, whatever number that is.
     Current,
+    /// Failed to parse a stabilization version.
+    Err,
 }
 
 impl StabilityLevel {
@@ -381,22 +383,24 @@ fn parse_stability(sess: &Session, attr: &Attribute) -> Option<(Symbol, Stabilit
 
     let since = if let Some(since) = since {
         if since.as_str() == VERSION_PLACEHOLDER {
-            Ok(Since::Current)
+            Since::Current
         } else if let Some(version) = parse_version(since.as_str(), false) {
-            Ok(Since::Version(version))
+            Since::Version(version)
         } else {
-            Err(sess.emit_err(session_diagnostics::InvalidSince { span: attr.span }))
+            sess.emit_err(session_diagnostics::InvalidSince { span: attr.span });
+            Since::Err
         }
     } else {
-        Err(sess.emit_err(session_diagnostics::MissingSince { span: attr.span }))
+        sess.emit_err(session_diagnostics::MissingSince { span: attr.span });
+        Since::Err
     };
 
-    match (feature, since) {
-        (Ok(feature), Ok(since)) => {
+    match feature {
+        Ok(feature) => {
             let level = StabilityLevel::Stable { since, allowed_through_unstable_modules: false };
             Some((feature, level))
         }
-        (Err(ErrorGuaranteed { .. }), _) | (_, Err(ErrorGuaranteed { .. })) => None,
+        Err(ErrorGuaranteed { .. }) => None,
     }
 }
 

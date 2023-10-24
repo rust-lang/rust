@@ -260,6 +260,10 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
                             }
                         }
                     }
+                    Since::Err => {
+                        // An error already reported. Assume the unparseable stabilization
+                        // version is older than the deprecation version.
+                    }
                 }
             }
 
