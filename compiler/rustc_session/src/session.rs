@@ -702,6 +702,10 @@ impl Session {
         self.opts.cg.instrument_coverage() != InstrumentCoverage::Off
     }
 
+    pub fn instrument_coverage_branch(&self) -> bool {
+        self.opts.cg.instrument_coverage() == InstrumentCoverage::Branch
+    }
+
     pub fn instrument_coverage_except_unused_generics(&self) -> bool {
         self.opts.cg.instrument_coverage() == InstrumentCoverage::ExceptUnusedGenerics
     }
