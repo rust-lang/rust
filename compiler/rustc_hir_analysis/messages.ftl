@@ -72,6 +72,12 @@ hir_analysis_copy_impl_on_type_with_dtor =
     the trait `Copy` cannot be implemented for this type; the type has a destructor
     .label = `Copy` not allowed on types with destructors
 
+hir_analysis_cross_crate_traits = cross-crate traits with a default impl, like `{$traits}`, can only be implemented for a struct/enum type, not `{$self_ty}`
+    .label = can't implement cross-crate trait with a default impl for non-struct/enum type
+
+hir_analysis_cross_crate_traits_defined = cross-crate traits with a default impl, like `{$traits}`, can only be implemented for a struct/enum type defined in the current crate
+    .label = can't implement cross-crate trait for type in another crate
+
 hir_analysis_dispatch_from_dyn_multi = implementing the `DispatchFromDyn` trait requires multiple coercions
     .note = the trait `DispatchFromDyn` may only be implemented for a coercion between structures with a single field being coerced
     .coercions_note = currently, {$number} fields need coercions: {$coercions}
@@ -237,6 +243,28 @@ hir_analysis_must_implement_not_function_span_note = required by this annotation
 
 hir_analysis_must_implement_one_of_attribute = the `#[rustc_must_implement_one_of]` attribute must be used with at least 2 args
 
+hir_analysis_only_current_traits_arbitrary = only traits defined in the current crate can be implemented for arbitrary types
+
+hir_analysis_only_current_traits_foreign = this is not defined in the current crate because this is a foreign trait
+
+hir_analysis_only_current_traits_label = impl doesn't use only types from inside the current crate
+
+hir_analysis_only_current_traits_name = this is not defined in the current crate because {$name} are always foreign
+
+hir_analysis_only_current_traits_note = define and implement a trait or new type instead
+
+hir_analysis_only_current_traits_opaque = type alias impl trait is treated as if it were foreign, because its hidden type could be from a foreign crate
+
+hir_analysis_only_current_traits_outside = only traits defined in the current crate can be implemented for types defined outside of the crate
+
+hir_analysis_only_current_traits_pointer = `{$pointer}` is not defined in the current crate because raw pointers are always foreign
+
+hir_analysis_only_current_traits_pointer_sugg = consider introducing a new wrapper type
+
+hir_analysis_only_current_traits_primitive = only traits defined in the current crate can be implemented for primitive types
+
+hir_analysis_only_current_traits_ty = `{$ty}` is not defined in the current crate
+
 hir_analysis_paren_sugar_attribute = the `#[rustc_paren_sugar]` attribute is a temporary means of controlling which traits can use parenthetical notation
     .help = add `#![feature(unboxed_closures)]` to the crate attributes to use it
 
@@ -326,6 +354,9 @@ hir_analysis_trait_object_declared_with_no_traits =
     at least one trait is required for an object type
     .alias_span = this alias does not contain a trait
 
+hir_analysis_traits_with_defualt_impl = traits with a default impl, like `{$traits}`, cannot be implemented for {$problematic_kind} `{$self_ty}`
+    .note = a trait object implements `{$traits}` if and only if `{$traits}` is one of the trait object's trait bounds
+
 hir_analysis_transparent_enum_variant = transparent enum needs exactly one variant, but has {$number}
     .label = needs exactly one variant, but has {$number}
     .many_label = too many variants in `{$path}`
@@ -338,6 +369,16 @@ hir_analysis_transparent_non_zero_sized = transparent {$desc} needs at most one 
 hir_analysis_transparent_non_zero_sized_enum = the variant of a transparent {$desc} needs at most one field with non-trivial size or alignment, but has {$field_count}
     .label = needs at most one field with non-trivial size or alignment, but has {$field_count}
     .labels = this field has non-zero size or requires alignment
+
+hir_analysis_ty_param_first_local = type parameter `{$param_ty}` must be covered by another type when it appears before the first local type (`{$local_type}`)
+    .label = type parameter `{$param_ty}` must be covered by another type when it appears before the first local type (`{$local_type}`)
+    .note = implementing a foreign trait is only possible if at least one of the types for which it is implemented is local, and no uncovered type parameters appear before that first local type
+    .case_note = in this case, 'before' refers to the following order: `impl<..> ForeignTrait<T1, ..., Tn> for T0`, where `T0` is the first and `Tn` is the last
+
+hir_analysis_ty_param_some = type parameter `{$param_ty}` must be used as the type parameter for some local type (e.g., `MyStruct<{$param_ty}>`)
+    .label = type parameter `{$param_ty}` must be used as the type parameter for some local type
+    .note = implementing a foreign trait is only possible if at least one of the types for which it is implemented is local
+    .only_note = only traits defined in the current crate can be implemented for a type parameter
 
 hir_analysis_type_of = {$type_of}
 
