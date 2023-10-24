@@ -2686,8 +2686,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // try to add a suggestion in case the field is a nested field of a field of the Adt
         let mod_id = self.tcx.parent_module(id).to_def_id();
+        let (ty, unwrap) = if let ty::Adt(def, args) = expr_t.kind()
+            && (self.tcx.is_diagnostic_item(sym::Result, def.did())
+                || self.tcx.is_diagnostic_item(sym::Option, def.did())
+            )
+            && let Some(arg) = args.get(0)
+            && let Some(ty) = arg.as_type()
+        {
+            (ty, "unwrap().")
+        } else {
+            (expr_t, "")
+        };
         for (found_fields, args) in
-            self.get_field_candidates_considering_privacy(span, expr_t, mod_id, id)
+            self.get_field_candidates_considering_privacy(span, ty, mod_id, id)
         {
             let field_names = found_fields.iter().map(|field| field.name).collect::<Vec<_>>();
             let candidate_fields: Vec<_> = found_fields
@@ -2707,9 +2718,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     field_path.pop();
                     field_path
                         .iter()
-                        .map(|id| id.name.to_ident_string())
-                        .collect::<Vec<String>>()
-                        .join(".")
+                        .map(|id| format!("{}.", id.name.to_ident_string()))
+                        .collect::<String>()
                 })
                 .collect::<Vec<_>>();
 
@@ -2722,15 +2732,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         if len > 1 { "some" } else { "one" },
                         if len > 1 { "have" } else { "has" },
                     ),
-                    candidate_fields.iter().map(|path| format!("{path}.")),
+                    candidate_fields.iter().map(|path| format!("{unwrap}{path}")),
                     Applicability::MaybeIncorrect,
                 );
             } else {
                 if let Some(field_name) = find_best_match_for_name(&field_names, field.name, None) {
-                    err.span_suggestion(
+                    err.span_suggestion_verbose(
                         field.span,
                         "a field with a similar name exists",
-                        field_name,
+                        format!("{unwrap}{}", field_name),
                         Applicability::MaybeIncorrect,
                     );
                 } else if !field_names.is_empty() {
