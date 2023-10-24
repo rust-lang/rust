@@ -361,12 +361,26 @@ pub(crate) fn run_aot(
     metadata: EncodedMetadata,
     need_metadata_module: bool,
 ) -> Box<OngoingCodegen> {
+    // FIXME handle `-Ctarget-cpu=native`
+    let target_cpu = match tcx.sess.opts.cg.target_cpu {
+        Some(ref name) => name,
+        None => tcx.sess.target.cpu.as_ref(),
+    }
+    .to_owned();
+
     let cgus = if tcx.sess.opts.output_types.should_codegen() {
         tcx.collect_and_partition_mono_items(()).1
     } else {
         // If only `--emit metadata` is used, we shouldn't perform any codegen.
         // Also `tcx.collect_and_partition_mono_items` may panic in that case.
-        &[]
+        return Box::new(OngoingCodegen {
+            modules: vec![],
+            allocator_module: None,
+            metadata_module: None,
+            metadata,
+            crate_info: CrateInfo::new(tcx, target_cpu),
+            concurrency_limiter: ConcurrencyLimiter::new(tcx.sess, 0),
+        });
     };
 
     if tcx.dep_graph.is_fully_enabled() {
@@ -480,13 +494,6 @@ pub(crate) fn run_aot(
     } else {
         None
     };
-
-    // FIXME handle `-Ctarget-cpu=native`
-    let target_cpu = match tcx.sess.opts.cg.target_cpu {
-        Some(ref name) => name,
-        None => tcx.sess.target.cpu.as_ref(),
-    }
-    .to_owned();
 
     Box::new(OngoingCodegen {
         modules,
