@@ -8,15 +8,31 @@ const EXPECTED = [
     {
         'query': 'Wrap',
         'in_args': [
-            { 'path': 'generics_match_ambiguity', 'name': 'bar' },
-            { 'path': 'generics_match_ambiguity', 'name': 'foo' },
+            {
+                'path': 'generics_match_ambiguity',
+                'name': 'bar',
+                'displayTypeSignature': '*Wrap*, Wrap'
+            },
+            {
+                'path': 'generics_match_ambiguity',
+                'name': 'foo',
+                'displayTypeSignature': '*Wrap*, Wrap'
+            },
         ],
     },
     {
         'query': 'Wrap<i32>',
         'in_args': [
-            { 'path': 'generics_match_ambiguity', 'name': 'bar' },
-            { 'path': 'generics_match_ambiguity', 'name': 'foo' },
+            {
+                'path': 'generics_match_ambiguity',
+                'name': 'bar',
+                'displayTypeSignature': '*Wrap*<*i32*, u32>, Wrap'
+            },
+            {
+                'path': 'generics_match_ambiguity',
+                'name': 'foo',
+                'displayTypeSignature': '*Wrap*<*i32*>, Wrap'
+            },
         ],
     },
     {

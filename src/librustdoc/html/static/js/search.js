@@ -262,6 +262,14 @@ function initSearch(rawSearchIndex) {
      * Special type name IDs for searching by both array and slice (`[]` syntax).
      */
     let typeNameIdOfArrayOrSlice;
+    /**
+     * Special type name IDs for searching never (the `!` type).
+     */
+    let typeNameIdOfNever;
+    /**
+     * Special type name IDs for searching tuple (the `()` type).
+     */
+    let typeNameIdOfTuple;
 
     /**
      * Add an item to the type Name->ID map, or, if one already exists, use it.
@@ -467,12 +475,13 @@ function initSearch(rawSearchIndex) {
      * @param {ParsedQuery} query
      * @param {ParserState} parserState
      * @param {string} name                  - Name of the query element.
+     * @param {string} normalizedName        - Name of the query element will be used for searching.
      * @param {Array<QueryElement>} generics - List of generics of this query element.
      *
      * @return {QueryElement}                - The newly created `QueryElement`.
      */
-    function createQueryElement(query, parserState, name, generics, isInGenerics) {
-        const path = name.trim();
+    function createQueryElement(query, parserState, name, normalizedName, generics, isInGenerics) {
+        const path = normalizedName.trim();
         if (path.length === 0 && generics.length === 0) {
             throw ["Unexpected ", parserState.userQuery[parserState.pos]];
         } else if (path === "*") {
@@ -483,7 +492,7 @@ function initSearch(rawSearchIndex) {
         }
         const typeFilter = parserState.typeFilter;
         parserState.typeFilter = null;
-        if (name === "!") {
+        if (normalizedName === "!") {
             if (typeFilter !== null && typeFilter !== "primitive") {
                 throw [
                     "Invalid search type: primitive never type ",
@@ -502,6 +511,7 @@ function initSearch(rawSearchIndex) {
             }
             return {
                 name: "never",
+                normalizedName: "never",
                 id: null,
                 fullPath: ["never"],
                 pathWithoutLast: [],
@@ -544,6 +554,7 @@ function initSearch(rawSearchIndex) {
         }
         return {
             name: name.trim(),
+            normalizedName: normalizedName.trim(),
             id: null,
             fullPath: pathSegments,
             pathWithoutLast: pathSegments.slice(0, pathSegments.length - 1),
@@ -673,6 +684,7 @@ function initSearch(rawSearchIndex) {
             }
             elems.push({
                 name: "[]",
+                normalizedName: "[]",
                 id: null,
                 fullPath: ["[]"],
                 pathWithoutLast: [],
@@ -709,6 +721,7 @@ function initSearch(rawSearchIndex) {
                 createQueryElement(
                     query,
                     parserState,
+                    parserState.original.slice(start, end),
                     parserState.userQuery.slice(start, end),
                     generics,
                     isInGenerics
@@ -771,7 +784,7 @@ function initSearch(rawSearchIndex) {
                 // The type filter doesn't count as an element since it's a modifier.
                 const typeFilterElem = elems.pop();
                 checkExtraTypeFilterCharacters(start, parserState);
-                parserState.typeFilter = typeFilterElem.name;
+                parserState.typeFilter = typeFilterElem.normalizedName;
                 parserState.pos += 1;
                 parserState.totalElems -= 1;
                 query.literalSearch = false;
@@ -894,7 +907,7 @@ function initSearch(rawSearchIndex) {
                 // The type filter doesn't count as an element since it's a modifier.
                 const typeFilterElem = query.elems.pop();
                 checkExtraTypeFilterCharacters(start, parserState);
-                parserState.typeFilter = typeFilterElem.name;
+                parserState.typeFilter = typeFilterElem.normalizedName;
                 parserState.pos += 1;
                 parserState.totalElems -= 1;
                 query.literalSearch = false;
@@ -1063,6 +1076,7 @@ function initSearch(rawSearchIndex) {
             totalElems: 0,
             genericsElems: 0,
             typeFilter: null,
+            original: userQuery,
             userQuery: userQuery.toLowerCase(),
         };
         let query = newParsedQuery(userQuery);
@@ -1129,35 +1143,155 @@ function initSearch(rawSearchIndex) {
          * marked for removal.
          *
          * @param {[ResultObject]} results
+         * @param {boolean} isType - True will include function signature string
          * @returns {[ResultObject]}
          */
-        function transformResults(results) {
+        function transformResults(results, isType) {
             const duplicates = new Set();
             const out = [];
 
             for (const result of results) {
                 if (result.id !== -1) {
                     const obj = searchIndex[result.id];
-                    obj.dist = result.dist;
                     const res = buildHrefAndPath(obj);
-                    obj.displayPath = pathSplitter(res[0]);
-                    obj.fullPath = obj.displayPath + obj.name;
+                    const displayPath = pathSplitter(res[0]);
+                    let fullPath = displayPath + obj.name;
                     // To be sure than it some items aren't considered as duplicate.
-                    obj.fullPath += "|" + obj.ty;
+                    fullPath += "|" + obj.ty;
 
-                    if (duplicates.has(obj.fullPath)) {
+                    if (!isType && duplicates.has(fullPath)) {
                         continue;
                     }
-                    duplicates.add(obj.fullPath);
+                    duplicates.add(fullPath);
 
-                    obj.href = res[1];
-                    out.push(obj);
+                    out.push(Object.assign({
+                        dist: result.dist,
+                        index: result.index,
+                        displayTypeSignature: result.displayTypeSignature,
+                        displayPath,
+                        fullPath,
+                        href: res[1],
+                    }, obj));
                     if (out.length >= MAX_RESULTS) {
                         break;
                     }
                 }
             }
             return out;
+        }
+
+        /**
+         * Convert a type signature to a readable string.
+         *
+         * @param {FunctionSearchType?} results
+         *
+         * @returns string?
+         */
+        function formatResultTypeSignature(row) {
+            const type = row.type;
+            if (type === null) {
+                return null;
+            }
+
+            let result = [];
+
+            function pushNotHighlighted(text) {
+                if (result.length % 2 === 0) {
+                    result.push("");
+                }
+                result[result.length - 1] = `${result[result.length - 1]}${text}`;
+            }
+            function pushHighlighted(text) {
+                if (result.length === 0) {
+                    result.push("");
+                }
+                if (result.length % 2 !== 0) {
+                    result.push("");
+                }
+                result[result.length - 1] = `${result[result.length - 1]}${text}`;
+            }
+            function push(text, highlighted) {
+                if (highlighted) {
+                    pushHighlighted(text);
+                } else {
+                    pushNotHighlighted(text);
+                }
+            }
+
+            function isTransitivelyHighlighted(fnType) {
+                // Caching the flag is necessary to avoid quadratic complexity
+                // in this function.
+                if (Object.prototype.hasOwnProperty.call(fnType, "isTransitivelyHighlighted")) {
+                    return fnType.isTransitivelyHighlighted;
+                }
+                const isHighlighted = fnType.highlighted ||
+                    (fnType.generics && fnType.generics.length > 0 &&
+                        fnType.generics.some(isTransitivelyHighlighted)) ||
+                    (type.where_clause && type.where_clause[(-fnType.id) - 1] &&
+                        type.where_clause[(-fnType.id) - 1].some(isTransitivelyHighlighted));
+                fnType.isTransitivelyHighlighted = isHighlighted;
+                return isHighlighted;
+            }
+
+            function formatTypeList(fnTypes, delim) {
+                if (!fnTypes) {
+                    return;
+                }
+                let first = true;
+                for (const fnType of fnTypes) {
+                    if (first) {
+                        first = false;
+                    } else {
+                        pushNotHighlighted(delim);
+                    }
+                    if (fnType.ty === TY_PRIMITIVE &&
+                        (fnType.id === typeNameIdOfSlice || fnType.id === typeNameIdOfArray)
+                    ) {
+                        push("[", fnType.highlighted);
+                        if (fnType.generics && fnType.generics.some(isTransitivelyHighlighted)) {
+                            formatTypeList(fnType.generics, ", ");
+                        }
+                        push("]", fnType.highlighted);
+                    } else if (fnType.ty === TY_PRIMITIVE && fnType.id === typeNameIdOfNever) {
+                        push("!", fnType.highlighted);
+                    } else if (fnType.name === null) {
+                        if (fnType.generics && fnType.generics.some(t => t.name !== null)) {
+                            push("impl ", fnType.highlighted);
+                            formatTypeList(fnType.generics, " + ");
+                        } else if (type.where_clause && type.where_clause[(-fnType.id) - 1] &&
+                            type.where_clause[(-fnType.id) - 1].some(isTransitivelyHighlighted)
+                        ) {
+                            push("impl ", fnType.highlighted);
+                            formatTypeList(type.where_clause[(-fnType.id) - 1], " + ");
+                        } else {
+                            push("_", fnType.highlighted);
+                        }
+                    } else {
+                        push(fnType.name, fnType.highlighted);
+                        if (fnType.generics && fnType.generics.some(isTransitivelyHighlighted)) {
+                            pushNotHighlighted("<");
+                            formatTypeList(fnType.generics, ", ");
+                            pushNotHighlighted(">");
+                        }
+                    }
+                }
+            }
+
+            formatTypeList(type.inputs, ", ");
+            if (result.every(f => f === "")) {
+                result = [];
+            }
+            const returnsUnit = type.output.length === 1 &&
+                type.output[0].id === typeNameIdOfTuple &&
+                type.output[0].generics.length === 0;
+            if (type.output.length !== 0 && !returnsUnit) {
+                pushNotHighlighted(result.length === 0 ? "-> " : " -> ");
+                formatTypeList(type.output, ", ");
+            }
+            if (result.every(f => f === "")) {
+                return null;
+            }
+            return result;
         }
 
         /**
@@ -1305,7 +1439,35 @@ function initSearch(rawSearchIndex) {
                     result.id = -1;
                 }
             }
-            return transformResults(result_list);
+            return transformResults(result_list, isType);
+        }
+
+        /**
+         * The type tree on each function is annotated with information about which
+         * node to highlight. This is then used to generate the formatted type
+         * signature for the result.
+         *
+         * Between each result, it gets cleared out. This function clears it.
+         */
+        function clearHighlighted(fnType) {
+            function doClearHighlighted(fnTypeList) {
+                if (!fnTypeList) {
+                    return;
+                }
+                for (const fnType of fnTypeList) {
+                    fnType.highlighted = false;
+                    delete fnType.isTransitivelyHighlighted;
+                    delete fnType.matchedGenerics;
+                    doClearHighlighted(fnType.generics);
+                }
+            }
+            doClearHighlighted(fnType.inputs);
+            doClearHighlighted(fnType.output);
+            if (fnType.where_clause) {
+                for (const where of fnType.where_clause) {
+                    doClearHighlighted(where);
+                }
+            }
         }
 
         /**
@@ -1323,9 +1485,10 @@ function initSearch(rawSearchIndex) {
          * @param {[FunctionType]} whereClause - Trait bounds for generic items.
          * @param {Map<number,number>|null} mgensIn
          *     - Map functions generics to query generics (never modified).
-         * @param {null|Map<number,number> -> bool} solutionCb - Called for each `mgens` solution.
+         * @param {(null|Map<number,number>, Array<FunctionType>) -> bool} solutionCb
+         *     - Called for each `mgens` solution.
          *
-         * @return {boolean} - Returns true if a match, false otherwise.
+         * @return {Array<Functiontype>|false} - Returns array of matched parts, false otherwise.
          */
         function unifyFunctionTypes(fnTypesIn, queryElems, whereClause, mgensIn, solutionCb) {
             /**
@@ -1333,7 +1496,7 @@ function initSearch(rawSearchIndex) {
              */
             let mgens = new Map(mgensIn);
             if (queryElems.length === 0) {
-                return !solutionCb || solutionCb(mgens);
+                return !solutionCb || solutionCb(mgens, []);
             }
             if (!fnTypesIn || fnTypesIn.length === 0) {
                 return false;
@@ -1381,6 +1544,7 @@ function initSearch(rawSearchIndex) {
                         queryElemsOffset,
                         fnTypesOffset,
                         unbox,
+                        matchedGenerics,
                     } = backtracking.pop();
                     mgens = new Map(mgensScratch);
                     const fnType = fnTypesScratch[fnTypesOffset];
@@ -1410,6 +1574,7 @@ function initSearch(rawSearchIndex) {
                         fl = fnTypes.length;
                         const tmp = fnTypes[queryElemsOffset];
                         fnTypes[queryElemsOffset] = fnTypes[fnTypesOffset];
+                        fnTypes[queryElemsOffset].matchedGenerics = matchedGenerics;
                         fnTypes[fnTypesOffset] = tmp;
                         // this is known as a good match; go to the next one
                         i = queryElemsOffset;
@@ -1440,10 +1605,11 @@ function initSearch(rawSearchIndex) {
                             queryElem.generics,
                             whereClause,
                             mgens,
-                            mgensScratch => {
+                            (mgensScratch, matchedGenerics) => {
                                 matchCandidates.push({
                                     fnTypesScratch,
                                     mgensScratch,
+                                    matchedGenerics,
                                     queryElemsOffset: i,
                                     fnTypesOffset: j,
                                     unbox: false,
@@ -1462,6 +1628,7 @@ function initSearch(rawSearchIndex) {
                         backtracking.push({
                             fnTypesScratch,
                             mgensScratch,
+                            matchedGenerics: [],
                             queryElemsOffset: i,
                             fnTypesOffset: j,
                             unbox: true,
@@ -1476,7 +1643,8 @@ function initSearch(rawSearchIndex) {
                     }
                 }
                 // use the current candidate
-                const {fnTypesOffset: candidate, mgensScratch: mgensNew} = matchCandidates.pop();
+                const {fnTypesOffset: candidate, mgensScratch: mgensNew, matchedGenerics}
+                    = matchCandidates.shift();
                 if (fnTypes[candidate].id < 0 && queryElems[i].id < 0) {
                     mgens.set(fnTypes[candidate].id, queryElems[i].id);
                 }
@@ -1493,9 +1661,22 @@ function initSearch(rawSearchIndex) {
                 for (const otherCandidate of matchCandidates) {
                     backtracking.push(otherCandidate);
                 }
+                fnTypes[i].matchedGenerics = matchedGenerics;
                 // If we're on the last item, check the solution with the callback
                 // backtrack if the callback says its unsuitable
-                while (i === (ql - 1) && solutionCb && !solutionCb(mgens)) {
+                while (i === (ql - 1) && solutionCb) {
+                    // The above loop partitions the list into "matched" and "unmatched" parts
+                    // by swapping things into place when they match.
+                    let highlightable = fnTypes.slice(0, ql);
+                    for (let j = 0; j < highlightable.length; ++j) {
+                        if (highlightable[j].matchedGenerics.length === 0) {
+                            continue;
+                        }
+                        highlightable = [...highlightable, ...highlightable[j].matchedGenerics];
+                    }
+                    if (solutionCb(mgens, highlightable)) {
+                        break;
+                    }
                     if (!backtrack()) {
                         return false;
                     }
@@ -1778,8 +1959,19 @@ function initSearch(rawSearchIndex) {
          * @param {integer} index
          * @param {integer} dist
          * @param {integer} path_dist
+         * @param {integer} maxEditDistance
+         * @param {boolean} isType
          */
-        function addIntoResults(results, fullId, id, index, dist, path_dist, maxEditDistance) {
+        function addIntoResults(
+            results,
+            fullId,
+            id,
+            index,
+            dist,
+            path_dist,
+            maxEditDistance,
+            isType
+        ) {
             const inBounds = dist <= maxEditDistance || index !== -1;
             if (dist === 0 || (!parsedQuery.literalSearch && inBounds)) {
                 if (results.has(fullId)) {
@@ -1788,12 +1980,16 @@ function initSearch(rawSearchIndex) {
                         return;
                     }
                 }
+                const displayTypeSignature = isType ?
+                    formatResultTypeSignature(searchIndex[id]) :
+                    null;
                 results.set(fullId, {
                     id: id,
                     index: index,
                     dontValidate: parsedQuery.literalSearch,
                     dist: dist,
                     path_dist: path_dist,
+                    displayTypeSignature,
                 });
             }
         }
@@ -1832,14 +2028,46 @@ function initSearch(rawSearchIndex) {
             const in_args = row.type && row.type.inputs
                 && checkIfInList(row.type.inputs, elem, row.type.where_clause);
             if (in_args) {
+                // Generate type signature information for search result display.
+                clearHighlighted(row.type);
+                unifyFunctionTypes(
+                    row.type.inputs,
+                    parsedQuery.elems,
+                    row.type.where_clause,
+                    null,
+                    (mgens, parts) => {
+                        writeNamesToTypeParameters(mgens, row.type, parsedQuery);
+                        for (const part of parts) {
+                            part.highlighted = true;
+                        }
+                        return true;
+                    }
+                );
                 // path_dist is 0 because no parent path information is currently stored
                 // in the search index
-                addIntoResults(results_in_args, fullId, pos, -1, 0, 0, maxEditDistance);
+                addIntoResults(results_in_args, fullId, pos, -1, 0, 0, maxEditDistance, true);
             }
             const returned = row.type && row.type.output
                 && checkIfInList(row.type.output, elem, row.type.where_clause);
             if (returned) {
-                addIntoResults(results_returned, fullId, pos, -1, 0, 0, maxEditDistance);
+                // Generate type signature information for search result display.
+                if (!in_args) {
+                    clearHighlighted(row.type);
+                    unifyFunctionTypes(
+                        row.type.output,
+                        parsedQuery.elems,
+                        row.type.where_clause,
+                        null,
+                        (mgens, parts) => {
+                            writeNamesToTypeParameters(mgens, row.type, parsedQuery);
+                            for (const part of parts) {
+                                part.highlighted = true;
+                            }
+                            return true;
+                        }
+                    );
+                }
+                addIntoResults(results_returned, fullId, pos, -1, 0, 0, maxEditDistance, true);
             }
 
             if (!typePassesFilter(elem.typeFilter, row.ty)) {
@@ -1869,8 +2097,17 @@ function initSearch(rawSearchIndex) {
             }
 
             if (parsedQuery.literalSearch) {
-                if (searchWord === elem.name) {
-                    addIntoResults(results_others, fullId, pos, index, 0, path_dist);
+                if (searchWord === elem.normalizedName) {
+                    addIntoResults(
+                        results_others,
+                        fullId,
+                        pos,
+                        index,
+                        0,
+                        path_dist,
+                        -1,
+                        false
+                    );
                 }
                 return;
             }
@@ -1881,7 +2118,16 @@ function initSearch(rawSearchIndex) {
                 return;
             }
 
-            addIntoResults(results_others, fullId, pos, index, dist, path_dist, maxEditDistance);
+            addIntoResults(
+                results_others,
+                fullId,
+                pos,
+                index,
+                dist,
+                path_dist,
+                maxEditDistance,
+                false
+            );
         }
 
         /**
@@ -1898,25 +2144,80 @@ function initSearch(rawSearchIndex) {
                 return;
             }
 
-            // If the result is too "bad", we return false and it ends this search.
             if (!unifyFunctionTypes(
                 row.type.inputs,
                 parsedQuery.elems,
                 row.type.where_clause,
                 null,
-                mgens => {
+                (mgens, matchedPartsParams) => {
                     return unifyFunctionTypes(
                         row.type.output,
                         parsedQuery.returned,
                         row.type.where_clause,
-                        mgens
+                        mgens,
+                        (completeMgens, matchedPartsReturn) => {
+                            writeNamesToTypeParameters(completeMgens, row.type, parsedQuery);
+                            clearHighlighted(row.type);
+                            for (const part of matchedPartsParams) {
+                                part.highlighted = true;
+                            }
+                            for (const part of matchedPartsReturn) {
+                                part.highlighted = true;
+                            }
+                            return true;
+                        }
                     );
                 }
             )) {
                 return;
             }
 
-            addIntoResults(results, row.id, pos, 0, 0, 0, Number.MAX_VALUE);
+            addIntoResults(results, row.id, pos, 0, 0, 0, Number.MAX_VALUE, true);
+        }
+
+        function writeNamesToTypeParameters(mgens, rowType, parsedQuery) {
+            const queryTypeToName = new Map();
+            function getQueryTypeFromList(list) {
+                if (!list) {
+                    return;
+                }
+                for (const queryElem of list) {
+                    if (queryElem.generics && queryElem.generics.length > 0) {
+                        getQueryTypeFromList(queryElem.generics);
+                    }
+                    if (!queryTypeToName.has(queryElem.id)) {
+                        queryTypeToName.set(queryElem.id, queryElem.name);
+                    }
+                }
+            }
+            getQueryTypeFromList(parsedQuery.elems);
+            getQueryTypeFromList(parsedQuery.returned);
+            function assignFunctionNameFromList(list) {
+                if (!list) {
+                    return;
+                }
+                for (const fnType of list) {
+                    if (fnType.id < 0) {
+                        assignFunctionNameFromList(rowType.where_clause[(-fnType.id) - 1]);
+                        if (mgens.has(fnType.id)) {
+                            const queryId = mgens.get(fnType.id);
+                            if (queryTypeToName.has(queryId) && queryId < 0) {
+                                const queryName = queryTypeToName.get(queryId);
+                                fnType.name = queryName;
+                            } else {
+                                fnType.name = null;
+                            }
+                        } else {
+                            fnType.name = null;
+                        }
+                    }
+                    if (fnType.generics && fnType.generics.length > 0) {
+                        assignFunctionNameFromList(fnType.generics);
+                    }
+                }
+            }
+            assignFunctionNameFromList(rowType.inputs);
+            assignFunctionNameFromList(rowType.output);
         }
 
         function innerRunQuery() {
@@ -1924,10 +2225,10 @@ function initSearch(rawSearchIndex) {
 
             let queryLen = 0;
             for (const elem of parsedQuery.elems) {
-                queryLen += elem.name.length;
+                queryLen += elem.normalizedName.length;
             }
             for (const elem of parsedQuery.returned) {
-                queryLen += elem.name.length;
+                queryLen += elem.normalizedName.length;
             }
             const maxEditDistance = Math.floor(queryLen / 3);
 
@@ -1974,21 +2275,21 @@ function initSearch(rawSearchIndex) {
                 if ((elem.id === null && parsedQuery.totalElems > 1 && elem.typeFilter === -1
                      && elem.generics.length === 0)
                     || elem.typeFilter === TY_GENERIC) {
-                    if (genericSymbols.has(elem.name)) {
-                        elem.id = genericSymbols.get(elem.name);
+                    if (genericSymbols.has(elem.normalizedName)) {
+                        elem.id = genericSymbols.get(elem.normalizedName);
                     } else {
                         elem.id = -(genericSymbols.size + 1);
-                        genericSymbols.set(elem.name, elem.id);
+                        genericSymbols.set(elem.normalizedName, elem.id);
                     }
-                    if (elem.typeFilter === -1 && elem.name.length >= 3) {
+                    if (elem.typeFilter === -1 && elem.normalizedName.length >= 3) {
                         // Silly heuristic to catch if the user probably meant
                         // to not write a generic parameter. We don't use it,
                         // just bring it up.
-                        const maxPartDistance = Math.floor(elem.name.length / 3);
+                        const maxPartDistance = Math.floor(elem.normalizedName.length / 3);
                         let matchDist = maxPartDistance + 1;
                         let matchName = "";
                         for (const name of typeNameIdMap.keys()) {
-                            const dist = editDistance(name, elem.name, maxPartDistance);
+                            const dist = editDistance(name, elem.normalizedName, maxPartDistance);
                             if (dist <= matchDist && dist <= maxPartDistance) {
                                 if (dist === matchDist && matchName > name) {
                                     continue;
@@ -2045,10 +2346,22 @@ function initSearch(rawSearchIndex) {
                     elem = parsedQuery.returned[0];
                     for (i = 0, nSearchWords = searchWords.length; i < nSearchWords; ++i) {
                         row = searchIndex[i];
-                        in_returned = row.type && unifyFunctionTypes(
+                        if (!row.type) {
+                            continue;
+                        }
+                        in_returned = unifyFunctionTypes(
                             row.type.output,
                             parsedQuery.returned,
-                            row.type.where_clause
+                            row.type.where_clause,
+                            null,
+                            (mgens, parts) => {
+                                writeNamesToTypeParameters(mgens, row.type, parsedQuery);
+                                clearHighlighted(row.type);
+                                for (const part of parts) {
+                                    part.highlighted = true;
+                                }
+                                return true;
+                            }
                         );
                         if (in_returned) {
                             addIntoResults(
@@ -2057,7 +2370,9 @@ function initSearch(rawSearchIndex) {
                                 i,
                                 -1,
                                 0,
-                                Number.MAX_VALUE
+                                Number.MAX_VALUE,
+                                undefined,
+                                true
                             );
                         }
                     }
@@ -2073,10 +2388,11 @@ function initSearch(rawSearchIndex) {
             innerRunQuery();
         }
 
+        const isOthersTypeSearch = parsedQuery.foundElems > 1 || parsedQuery.returned.length > 0;
         const ret = createQueryResults(
             sortResults(results_in_args, true, currentCrate),
             sortResults(results_returned, true, currentCrate),
-            sortResults(results_others, false, currentCrate),
+            sortResults(results_others, isOthersTypeSearch, currentCrate),
             parsedQuery);
         handleAliases(ret, parsedQuery.original.replace(/"/g, ""), filterCrates, currentCrate);
         if (parsedQuery.error !== null && ret.others.length !== 0) {
@@ -2211,11 +2527,12 @@ function initSearch(rawSearchIndex) {
 
     /**
      * Render a set of search results for a single tab.
-     * @param {Array<?>}    array   - The search results for this tab
+     * @param {Array<?>}    array - The search results for this tab
      * @param {ParsedQuery} query
      * @param {boolean}     display - True if this is the active tab
+     * @param {boolean}     isType - True shows the function signature
      */
-    function addTab(array, query, display) {
+    function addTab(array, query, display, isType) {
         let extraClass = "";
         if (display === true) {
             extraClass = " active";
@@ -2260,6 +2577,20 @@ ${item.displayPath}<span class="${type}">${name}</span>\
 
                 const description = document.createElement("div");
                 description.className = "desc";
+                if (isType) {
+                    const displayTypeSignature = document.createElement("div");
+                    item.displayTypeSignature.forEach((value, index) => {
+                        if (index % 2 !== 0) {
+                            const highlight = document.createElement("strong");
+                            highlight.appendChild(document.createTextNode(value));
+                            displayTypeSignature.appendChild(highlight);
+                        } else {
+                            displayTypeSignature.appendChild(document.createTextNode(value));
+                        }
+                    });
+                    displayTypeSignature.className = "type-signature";
+                    description.appendChild(displayTypeSignature);
+                }
                 description.insertAdjacentHTML("beforeend", item.desc);
 
                 link.appendChild(description);
@@ -2339,9 +2670,24 @@ ${item.displayPath}<span class="${type}">${name}</span>\
 
         currentResults = results.query.userQuery;
 
-        const ret_others = addTab(results.others, results.query, true);
-        const ret_in_args = addTab(results.in_args, results.query, false);
-        const ret_returned = addTab(results.returned, results.query, false);
+        const ret_others = addTab(
+            results.others,
+            results.query,
+            true,
+            results.query.foundElems > 1 || results.query.returned.length > 0
+        );
+        const ret_in_args = addTab(
+            results.in_args,
+            results.query,
+            false,
+            true
+        );
+        const ret_returned = addTab(
+            results.returned,
+            results.query,
+            false,
+            true
+        );
 
         // Navigate to the relevant tab if the current tab is empty, like in case users search
         // for "-> String". If they had selected another tab previously, they have to click on
@@ -2373,6 +2719,9 @@ ${item.displayPath}<span class="${type}">${name}</span>\
         let output = `<h1 class="search-results-title">Results${crates}</h1>`;
         if (results.query.error !== null) {
             const error = results.query.error;
+            if (!error.forEach) {
+                throw error;
+            }
             error.forEach((value, index) => {
                 value = value.split("<").join("&lt;").split(">").join("&gt;");
                 if (index % 2 !== 0) {
@@ -2516,19 +2865,22 @@ ${item.displayPath}<span class="${type}">${name}</span>\
      *
      * @param {null|Array<RawFunctionType>} types
      * @param {Array<{name: string, ty: number}>} lowercasePaths
+     * @param {Array<{name: string, ty: number}>} paths
      *
      * @return {Array<FunctionSearchType>}
      */
-    function buildItemSearchTypeAll(types, lowercasePaths) {
-        return types.map(type => buildItemSearchType(type, lowercasePaths));
+    function buildItemSearchTypeAll(types, lowercasePaths, paths) {
+        return types.map(type => buildItemSearchType(type, lowercasePaths, paths));
     }
 
     /**
      * Converts a single type.
      *
      * @param {RawFunctionType} type
+     * @param {Array<{name: string, ty: number}>} lowercasePaths
+     * @param {Array<{name: string, ty: number}>} paths
      */
-    function buildItemSearchType(type, lowercasePaths) {
+    function buildItemSearchType(type, lowercasePaths, paths) {
         const PATH_INDEX_DATA = 0;
         const GENERICS_DATA = 1;
         let pathIndex, generics;
@@ -2539,7 +2891,8 @@ ${item.displayPath}<span class="${type}">${name}</span>\
             pathIndex = type[PATH_INDEX_DATA];
             generics = buildItemSearchTypeAll(
                 type[GENERICS_DATA],
-                lowercasePaths
+                lowercasePaths,
+                paths
             );
         }
         if (pathIndex < 0) {
@@ -2547,6 +2900,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
             // the actual names of generic parameters aren't stored, since they aren't API
             return {
                 id: pathIndex,
+                name: null,
                 ty: TY_GENERIC,
                 path: null,
                 generics,
@@ -2556,6 +2910,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
             // `0` is used as a sentinel because it's fewer bytes than `null`
             return {
                 id: null,
+                name: null,
                 ty: null,
                 path: null,
                 generics,
@@ -2564,6 +2919,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
         const item = lowercasePaths[pathIndex - 1];
         return {
             id: buildTypeMapIndex(item.name),
+            name: paths[pathIndex - 1].name,
             ty: item.ty,
             path: item.path,
             generics,
@@ -2582,11 +2938,11 @@ ${item.displayPath}<span class="${type}">${name}</span>\
      *
      * @param {RawFunctionSearchType} functionSearchType
      * @param {Array<{name: string, ty: number}>} lowercasePaths
-     * @param {Map<string, integer>}
+     * @param {Array<{name: string, ty: number}>} paths
      *
      * @return {null|FunctionSearchType}
      */
-    function buildFunctionSearchType(functionSearchType, lowercasePaths) {
+    function buildFunctionSearchType(functionSearchType, lowercasePaths, paths) {
         const INPUTS_DATA = 0;
         const OUTPUT_DATA = 1;
         // `0` is used as a sentinel because it's fewer bytes than `null`
@@ -2595,20 +2951,26 @@ ${item.displayPath}<span class="${type}">${name}</span>\
         }
         let inputs, output;
         if (typeof functionSearchType[INPUTS_DATA] === "number") {
-            inputs = [buildItemSearchType(functionSearchType[INPUTS_DATA], lowercasePaths)];
+            inputs = [buildItemSearchType(functionSearchType[INPUTS_DATA], lowercasePaths, paths)];
         } else {
             inputs = buildItemSearchTypeAll(
                 functionSearchType[INPUTS_DATA],
-                lowercasePaths
+                lowercasePaths,
+                paths
             );
         }
         if (functionSearchType.length > 1) {
             if (typeof functionSearchType[OUTPUT_DATA] === "number") {
-                output = [buildItemSearchType(functionSearchType[OUTPUT_DATA], lowercasePaths)];
+                output = [buildItemSearchType(
+                    functionSearchType[OUTPUT_DATA],
+                    lowercasePaths,
+                    paths
+                )];
             } else {
                 output = buildItemSearchTypeAll(
                     functionSearchType[OUTPUT_DATA],
-                    lowercasePaths
+                    lowercasePaths,
+                    paths
                 );
             }
         } else {
@@ -2618,8 +2980,8 @@ ${item.displayPath}<span class="${type}">${name}</span>\
         const l = functionSearchType.length;
         for (let i = 2; i < l; ++i) {
             where_clause.push(typeof functionSearchType[i] === "number"
-                ? [buildItemSearchType(functionSearchType[i], lowercasePaths)]
-                : buildItemSearchTypeAll(functionSearchType[i], lowercasePaths));
+                ? [buildItemSearchType(functionSearchType[i], lowercasePaths, paths)]
+                : buildItemSearchTypeAll(functionSearchType[i], lowercasePaths, paths));
         }
         return {
             inputs, output, where_clause,
@@ -2644,6 +3006,8 @@ ${item.displayPath}<span class="${type}">${name}</span>\
         typeNameIdOfArray = buildTypeMapIndex("array");
         typeNameIdOfSlice = buildTypeMapIndex("slice");
         typeNameIdOfArrayOrSlice = buildTypeMapIndex("[]");
+        typeNameIdOfNever = buildTypeMapIndex("never");
+        typeNameIdOfTuple = buildTypeMapIndex("tuple");
 
         for (const crate in rawSearchIndex) {
             if (!hasOwnPropertyRustdoc(rawSearchIndex, crate)) {
@@ -2803,7 +3167,8 @@ ${item.displayPath}<span class="${type}">${name}</span>\
                     parent: itemParentIdxs[i] > 0 ? paths[itemParentIdxs[i] - 1] : undefined,
                     type: buildFunctionSearchType(
                         itemFunctionSearchTypes[i],
-                        lowercasePaths
+                        lowercasePaths,
+                        paths
                     ),
                     id: id,
                     normalizedName: word.indexOf("_") === -1 ? word : word.replace(/_/g, ""),

@@ -2,7 +2,8 @@ const PARSED = [
     {
         query: "R<!>",
         elems: [{
-            name: "r",
+            name: "R",
+            normalizedName: "r",
             fullPath: ["r"],
             pathWithoutLast: [],
             pathLast: "r",
@@ -28,6 +29,7 @@ const PARSED = [
         query: "!",
         elems: [{
             name: "never",
+            normalizedName: "never",
             fullPath: ["never"],
             pathWithoutLast: [],
             pathLast: "never",
@@ -44,6 +46,7 @@ const PARSED = [
         query: "a!",
         elems: [{
             name: "a",
+            normalizedName: "a",
             fullPath: ["a"],
             pathWithoutLast: [],
             pathLast: "a",
@@ -78,6 +81,7 @@ const PARSED = [
         query: "!::b",
         elems: [{
             name: "!::b",
+            normalizedName: "!::b",
             fullPath: ["never", "b"],
             pathWithoutLast: ["never"],
             pathLast: "b",
@@ -126,7 +130,8 @@ const PARSED = [
             pathLast: "b",
             generics: [
                 {
-                    name: "t",
+                    name: "T",
+                    normalizedName: "t",
                     fullPath: ["t"],
                     pathWithoutLast: [],
                     pathLast: "t",

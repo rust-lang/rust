@@ -30,7 +30,7 @@ const PARSED = [
                                 pathLast: "[]",
                                 generics: [
                                     {
-                                        name: "d",
+                                        name: "D",
                                         fullPath: ["d"],
                                         pathWithoutLast: [],
                                         pathLast: "d",

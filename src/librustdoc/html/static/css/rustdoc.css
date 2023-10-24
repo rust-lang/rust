@@ -328,10 +328,11 @@ details:not(.toggle) summary {
 	margin-bottom: .6em;
 }
 
-code, pre, a.test-arrow, .code-header {
+code, pre, a.test-arrow, .code-header, .search-results .type-signature {
 	font-family: "Source Code Pro", monospace;
 }
-.docblock code, .docblock-short code {
+.docblock code, .docblock-short code,
+.search-results .type-signature strong {
 	border-radius: 3px;
 	padding: 0 0.125em;
 }
@@ -681,7 +682,8 @@ ul.block, .block li {
 }
 
 .docblock code, .docblock-short code,
-pre, .rustdoc.src .example-wrap {
+pre, .rustdoc.src .example-wrap,
+.search-results .type-signature strong {
 	background-color: var(--code-block-background-color);
 }
 

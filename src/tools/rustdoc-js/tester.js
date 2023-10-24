@@ -373,8 +373,35 @@ function loadSearchJS(doc_folder, resource_suffix) {
 
     return {
         doSearch: function(queryStr, filterCrate, currentCrate) {
-            return searchModule.execQuery(searchModule.parseQuery(queryStr), searchWords,
+            const results = searchModule.execQuery(searchModule.parseQuery(queryStr), searchWords,
                 filterCrate, currentCrate);
+            for (const key in results) {
+                if (results[key]) {
+                    for (const resultKey in results[key]) {
+                        if (!Object.prototype.hasOwnProperty.call(results[key], resultKey)) {
+                            continue;
+                        }
+                        const entry = results[key][resultKey];
+                        if (!entry) {
+                            continue;
+                        }
+                        if (Object.prototype.hasOwnProperty.call(entry, "displayTypeSignature") &&
+                            entry.displayTypeSignature !== null &&
+                            entry.displayTypeSignature instanceof Array
+                        ) {
+                            entry.displayTypeSignature.forEach((value, index) => {
+                                if (index % 2 === 1) {
+                                    entry.displayTypeSignature[index] = "*" + value + "*";
+                                } else {
+                                    entry.displayTypeSignature[index] = value;
+                                }
+                            });
+                            entry.displayTypeSignature = entry.displayTypeSignature.join("");
+                        }
+                    }
+                }
+            }
+            return results;
         },
         getCorrections: function(queryStr, filterCrate, currentCrate) {
             const parsedQuery = searchModule.parseQuery(queryStr);

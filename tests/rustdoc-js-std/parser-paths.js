@@ -2,7 +2,8 @@ const PARSED = [
     {
         query: 'A::B',
         elems: [{
-            name: "a::b",
+            name: "A::B",
+            normalizedName: "a::b",
             fullPath: ["a", "b"],
             pathWithoutLast: ["a"],
             pathLast: "b",
@@ -19,7 +20,8 @@ const PARSED = [
         query: 'A::B,C',
         elems: [
             {
-                name: "a::b",
+                name: "A::B",
+                normalizedName: "a::b",
                 fullPath: ["a", "b"],
                 pathWithoutLast: ["a"],
                 pathLast: "b",
@@ -27,7 +29,8 @@ const PARSED = [
                 typeFilter: -1,
             },
             {
-                name: "c",
+                name: "C",
+                normalizedName: "c",
                 fullPath: ["c"],
                 pathWithoutLast: [],
                 pathLast: "c",
@@ -45,13 +48,15 @@ const PARSED = [
         query: 'A::B<f>,C',
         elems: [
             {
-                name: "a::b",
+                name: "A::B",
+                normalizedName: "a::b",
                 fullPath: ["a", "b"],
                 pathWithoutLast: ["a"],
                 pathLast: "b",
                 generics: [
                     {
                         name: "f",
+                        normalizedName: "f",
                         fullPath: ["f"],
                         pathWithoutLast: [],
                         pathLast: "f",
@@ -61,7 +66,8 @@ const PARSED = [
                 typeFilter: -1,
             },
             {
-                name: "c",
+                name: "C",
+                normalizedName: "c",
                 fullPath: ["c"],
                 pathWithoutLast: [],
                 pathLast: "c",

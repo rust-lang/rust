@@ -2,13 +2,15 @@ const PARSED = [
     {
         query: 'R<P>',
         elems: [{
-            name: "r",
+            name: "R",
+            normalizedName: "r",
             fullPath: ["r"],
             pathWithoutLast: [],
             pathLast: "r",
             generics: [
                 {
-                    name: "p",
+                    name: "P",
+                    normalizedName: "p",
                     fullPath: ["p"],
                     pathWithoutLast: [],
                     pathLast: "p",

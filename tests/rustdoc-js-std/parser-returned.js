@@ -5,13 +5,13 @@ const PARSED = [
         foundElems: 1,
         original: "-> F<P>",
         returned: [{
-            name: "f",
+            name: "F",
             fullPath: ["f"],
             pathWithoutLast: [],
             pathLast: "f",
             generics: [
                 {
-                    name: "p",
+                    name: "P",
                     fullPath: ["p"],
                     pathWithoutLast: [],
                     pathLast: "p",
@@ -29,7 +29,7 @@ const PARSED = [
         foundElems: 1,
         original: "-> P",
         returned: [{
-            name: "p",
+            name: "P",
             fullPath: ["p"],
             pathWithoutLast: [],
             pathLast: "p",
