@@ -10,7 +10,7 @@ use crate::framework::SwitchIntEdgeEffects;
 use crate::move_paths::{HasMoveData, InitIndex, InitKind, LookupResult, MoveData, MovePathIndex};
 use crate::on_lookup_result_bits;
 use crate::MoveDataParamEnv;
-use crate::{drop_flag_effects, on_all_children_bits, on_all_drop_children_bits};
+use crate::{drop_flag_effects, on_all_children_bits};
 use crate::{lattice, AnalysisDomain, GenKill, GenKillAnalysis, MaybeReachable};
 
 /// `MaybeInitializedPlaces` tracks all places that might be
@@ -72,7 +72,7 @@ impl<'a, 'tcx> MaybeInitializedPlaces<'a, 'tcx> {
     ) -> bool {
         if let LookupResult::Exact(path) = self.move_data().rev_lookup.find(place.as_ref()) {
             let mut maybe_live = false;
-            on_all_drop_children_bits(self.tcx, self.body, self.mdpe, path, |child| {
+            on_all_children_bits(self.tcx, self.body, self.move_data(), path, |child| {
                 maybe_live |= state.contains(child);
             });
             !maybe_live
@@ -690,9 +690,13 @@ impl<'tcx> GenKillAnalysis<'tcx> for EverInitializedPlaces<'_, 'tcx> {
         if let mir::StatementKind::StorageDead(local) = stmt.kind {
             // End inits for StorageDead, so that an immutable variable can
             // be reinitialized on the next iteration of the loop.
-            let move_path_index = rev_lookup.find_local(local);
-            debug!("clears the ever initialized status of {:?}", init_path_map[move_path_index]);
-            trans.kill_all(init_path_map[move_path_index].iter().copied());
+            if let Some(move_path_index) = rev_lookup.find_local(local) {
+                debug!(
+                    "clears the ever initialized status of {:?}",
+                    init_path_map[move_path_index]
+                );
+                trans.kill_all(init_path_map[move_path_index].iter().copied());
+            }
         }
     }
 
