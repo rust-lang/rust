@@ -4,6 +4,7 @@
 // ignore-stage1
 // ignore-cross-compile
 // ignore-remote
+// ignore-windows-gnu mingw has troubles with linking https://github.com/rust-lang/rust/pull/116837
 // edition: 2021
 
 #![feature(rustc_private)]
@@ -12,7 +13,10 @@
 
 extern crate rustc_hir;
 extern crate rustc_middle;
+#[macro_use]
 extern crate rustc_smir;
+extern crate rustc_driver;
+extern crate rustc_interface;
 extern crate stable_mir;
 
 use rustc_hir::def::DefKind;
@@ -185,7 +189,7 @@ fn main() {
         CRATE_NAME.to_string(),
         path.to_string(),
     ];
-    rustc_internal::StableMir::new(args, test_stable_mir).run().unwrap();
+    run!(args, tcx, test_stable_mir(tcx)).unwrap();
 }
 
 fn generate_input(path: &str) -> std::io::Result<()> {

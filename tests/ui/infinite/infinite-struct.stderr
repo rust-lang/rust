@@ -22,6 +22,10 @@ help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to break the cycle
 LL |     x: Bar<Box<Foo>>,
    |            ++++   +
 
-error: aborting due to 2 previous errors
+error: reached the recursion limit finding the struct tail for `Take`
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]`
+
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0072`.

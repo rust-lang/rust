@@ -26,7 +26,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::{env, iter};
 
-use crate::core::config::{Target, TargetSelection};
+use crate::core::config::TargetSelection;
 use crate::utils::helpers::output;
 use crate::{Build, CLang, GitRepo};
 
@@ -107,10 +107,11 @@ pub fn find(build: &Build) {
 pub fn find_target(build: &Build, target: TargetSelection) {
     let mut cfg = new_cc_build(build, target);
     let config = build.config.target_config.get(&target);
-    if let Some(cc) = config.and_then(|c| c.cc.as_ref()) {
+    if let Some(cc) = config
+        .and_then(|c| c.cc.clone())
+        .or_else(|| default_compiler(&mut cfg, Language::C, target, build))
+    {
         cfg.compiler(cc);
-    } else {
-        set_compiler(&mut cfg, Language::C, target, config, build);
     }
 
     let compiler = cfg.get_compiler();
@@ -127,11 +128,11 @@ pub fn find_target(build: &Build, target: TargetSelection) {
     // We'll need one anyways if the target triple is also a host triple
     let mut cfg = new_cc_build(build, target);
     cfg.cpp(true);
-    let cxx_configured = if let Some(cxx) = config.and_then(|c| c.cxx.as_ref()) {
+    let cxx_configured = if let Some(cxx) = config
+        .and_then(|c| c.cxx.clone())
+        .or_else(|| default_compiler(&mut cfg, Language::CPlusPlus, target, build))
+    {
         cfg.compiler(cxx);
-        true
-    } else if build.hosts.contains(&target) || build.build == target {
-        set_compiler(&mut cfg, Language::CPlusPlus, target, config, build);
         true
     } else {
         // Use an auto-detected compiler (or one configured via `CXX_target_triple` env vars).
@@ -161,22 +162,21 @@ pub fn find_target(build: &Build, target: TargetSelection) {
     }
 }
 
-fn set_compiler(
+fn default_compiler(
     cfg: &mut cc::Build,
     compiler: Language,
     target: TargetSelection,
-    config: Option<&Target>,
     build: &Build,
-) {
+) -> Option<PathBuf> {
     match &*target.triple {
         // When compiling for android we may have the NDK configured in the
         // config.toml in which case we look there. Otherwise the default
         // compiler already takes into account the triple in question.
-        t if t.contains("android") => {
-            if let Some(ndk) = config.and_then(|c| c.ndk.as_ref()) {
-                cfg.compiler(ndk_compiler(compiler, &*target.triple, ndk));
-            }
-        }
+        t if t.contains("android") => build
+            .config
+            .android_ndk
+            .as_ref()
+            .map(|ndk| ndk_compiler(compiler, &*target.triple, ndk)),
 
         // The default gcc version from OpenBSD may be too old, try using egcc,
         // which is a gcc version from ports, if this is the case.
@@ -184,45 +184,48 @@ fn set_compiler(
             let c = cfg.get_compiler();
             let gnu_compiler = compiler.gcc();
             if !c.path().ends_with(gnu_compiler) {
-                return;
+                return None;
             }
 
             let output = output(c.to_command().arg("--version"));
-            let i = match output.find(" 4.") {
-                Some(i) => i,
-                None => return,
-            };
+            let i = output.find(" 4.")?;
             match output[i + 3..].chars().next().unwrap() {
                 '0'..='6' => {}
-                _ => return,
+                _ => return None,
             }
             let alternative = format!("e{gnu_compiler}");
             if Command::new(&alternative).output().is_ok() {
-                cfg.compiler(alternative);
+                Some(PathBuf::from(alternative))
+            } else {
+                None
             }
         }
 
-        "mips-unknown-linux-musl" => {
+        "mips-unknown-linux-musl" if compiler == Language::C => {
             if cfg.get_compiler().path().to_str() == Some("gcc") {
-                cfg.compiler("mips-linux-musl-gcc");
+                Some(PathBuf::from("mips-linux-musl-gcc"))
+            } else {
+                None
             }
         }
-        "mipsel-unknown-linux-musl" => {
+        "mipsel-unknown-linux-musl" if compiler == Language::C => {
             if cfg.get_compiler().path().to_str() == Some("gcc") {
-                cfg.compiler("mipsel-linux-musl-gcc");
+                Some(PathBuf::from("mipsel-linux-musl-gcc"))
+            } else {
+                None
             }
         }
 
-        t if t.contains("musl") => {
+        t if t.contains("musl") && compiler == Language::C => {
             if let Some(root) = build.musl_root(target) {
                 let guess = root.join("bin/musl-gcc");
-                if guess.exists() {
-                    cfg.compiler(guess);
-                }
+                if guess.exists() { Some(guess) } else { None }
+            } else {
+                None
             }
         }
 
-        _ => {}
+        _ => None,
     }
 }
 
@@ -243,10 +246,22 @@ pub(crate) fn ndk_compiler(compiler: Language, triple: &str, ndk: &Path) -> Path
     let api_level =
         if triple.contains("aarch64") || triple.contains("x86_64") { "21" } else { "19" };
     let compiler = format!("{}{}-{}", triple_translated, api_level, compiler.clang());
-    ndk.join("bin").join(compiler)
+    let host_tag = if cfg!(target_os = "macos") {
+        // The NDK uses universal binaries, so this is correct even on ARM.
+        "darwin-x86_64"
+    } else if cfg!(target_os = "windows") {
+        "windows-x86_64"
+    } else {
+        // NDK r25b only has official releases for macOS, Windows and Linux.
+        // Try the Linux directory everywhere else, on the assumption that the OS has an
+        // emulation layer that can cope (e.g. BSDs).
+        "linux-x86_64"
+    };
+    ndk.join("toolchains").join("llvm").join("prebuilt").join(host_tag).join("bin").join(compiler)
 }
 
 /// The target programming language for a native compiler.
+#[derive(PartialEq)]
 pub(crate) enum Language {
     /// The compiler is targeting C.
     C,

@@ -96,7 +96,7 @@ impl JsonEmitter {
             });
         }
         self.mismatched_files.push(MismatchedFile {
-            name: format!("{}", filename),
+            name: format!("{filename}"),
             mismatches,
         });
         Ok(())
@@ -281,7 +281,7 @@ mod tests {
         }])
         .unwrap();
         assert_eq!(result.has_diff, true);
-        assert_eq!(&writer[..], format!("{}\n", exp_json).as_bytes());
+        assert_eq!(&writer[..], format!("{exp_json}\n").as_bytes());
     }
 
     #[test]
@@ -341,6 +341,6 @@ mod tests {
         };
 
         let exp_json = to_json_string(&vec![exp_bin, exp_lib]).unwrap();
-        assert_eq!(&writer[..], format!("{}\n", exp_json).as_bytes());
+        assert_eq!(&writer[..], format!("{exp_json}\n").as_bytes());
     }
 }

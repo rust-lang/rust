@@ -200,12 +200,15 @@ fn ty_to_string<'tcx>(
     ty: Ty<'tcx>,
     called_method_def_id: Option<DefId>,
 ) -> String {
-    let printer = fmt_printer(infcx, Namespace::TypeNS);
+    let mut printer = fmt_printer(infcx, Namespace::TypeNS);
     let ty = infcx.resolve_vars_if_possible(ty);
     match (ty.kind(), called_method_def_id) {
         // We don't want the regular output for `fn`s because it includes its path in
         // invalid pseudo-syntax, we want the `fn`-pointer output instead.
-        (ty::FnDef(..), _) => ty.fn_sig(infcx.tcx).print(printer).unwrap().into_buffer(),
+        (ty::FnDef(..), _) => {
+            ty.fn_sig(infcx.tcx).print(&mut printer).unwrap();
+            printer.into_buffer()
+        }
         (_, Some(def_id))
             if ty.is_ty_or_numeric_infer()
                 && infcx.tcx.get_diagnostic_item(sym::iterator_collect_fn) == Some(def_id) =>
@@ -218,7 +221,10 @@ fn ty_to_string<'tcx>(
         //
         // We do have to hide the `extern "rust-call"` ABI in that case though,
         // which is too much of a bother for now.
-        _ => ty.print(printer).unwrap().into_buffer(),
+        _ => {
+            ty.print(&mut printer).unwrap();
+            printer.into_buffer()
+        }
     }
 }
 
@@ -285,8 +291,9 @@ impl<'tcx> InferCtxt<'tcx> {
                 if let Some(highlight) = highlight {
                     printer.region_highlight_mode = highlight;
                 }
+                ty.print(&mut printer).unwrap();
                 InferenceDiagnosticsData {
-                    name: ty.print(printer).unwrap().into_buffer(),
+                    name: printer.into_buffer(),
                     span: None,
                     kind: UnderspecifiedArgKind::Type { prefix: ty.prefix_string(self.tcx) },
                     parent: None,
@@ -312,8 +319,9 @@ impl<'tcx> InferCtxt<'tcx> {
                     if let Some(highlight) = highlight {
                         printer.region_highlight_mode = highlight;
                     }
+                    ct.print(&mut printer).unwrap();
                     InferenceDiagnosticsData {
-                        name: ct.print(printer).unwrap().into_buffer(),
+                        name: printer.into_buffer(),
                         span: Some(origin.span),
                         kind: UnderspecifiedArgKind::Const { is_parameter: false },
                         parent: None,
@@ -329,8 +337,9 @@ impl<'tcx> InferCtxt<'tcx> {
                     if let Some(highlight) = highlight {
                         printer.region_highlight_mode = highlight;
                     }
+                    ct.print(&mut printer).unwrap();
                     InferenceDiagnosticsData {
-                        name: ct.print(printer).unwrap().into_buffer(),
+                        name: printer.into_buffer(),
                         span: None,
                         kind: UnderspecifiedArgKind::Const { is_parameter: false },
                         parent: None,
@@ -487,7 +496,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 {
                     "Vec<_>".to_string()
                 } else {
-                    fmt_printer(self, Namespace::TypeNS)
+                    let mut printer = fmt_printer(self, Namespace::TypeNS);
+                    printer
                         .comma_sep(generic_args.iter().copied().map(|arg| {
                             if arg.is_suggestable(self.tcx, true) {
                                 return arg;
@@ -512,8 +522,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                                     .into(),
                             }
                         }))
-                        .unwrap()
-                        .into_buffer()
+                        .unwrap();
+                    printer.into_buffer()
                 };
 
                 if !have_turbofish {
@@ -525,8 +535,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 }
             }
             InferSourceKind::FullyQualifiedMethodCall { receiver, successor, args, def_id } => {
-                let printer = fmt_printer(self, Namespace::ValueNS);
-                let def_path = printer.print_def_path(def_id, args).unwrap().into_buffer();
+                let mut printer = fmt_printer(self, Namespace::ValueNS);
+                printer.print_def_path(def_id, args).unwrap();
+                let def_path = printer.into_buffer();
 
                 // We only care about whether we have to add `&` or `&mut ` for now.
                 // This is the case if the last adjustment is a borrow and the

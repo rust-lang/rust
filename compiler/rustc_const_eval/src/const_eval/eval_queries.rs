@@ -3,7 +3,7 @@ use std::mem;
 use either::{Left, Right};
 
 use rustc_hir::def::DefKind;
-use rustc_middle::mir::interpret::{ErrorHandled, InterpErrorInfo};
+use rustc_middle::mir::interpret::{AllocId, ErrorHandled, InterpErrorInfo};
 use rustc_middle::mir::pretty::write_allocation_bytes;
 use rustc_middle::mir::{self, ConstAlloc, ConstValue};
 use rustc_middle::traits::Reveal;
@@ -285,7 +285,7 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
     let def = cid.instance.def.def_id();
     let is_static = tcx.is_static(def);
 
-    let mut ecx = InterpCx::new(
+    let ecx = InterpCx::new(
         tcx,
         tcx.def_span(def),
         key.param_env,
@@ -293,7 +293,14 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
         // they do not have to behave "as if" they were evaluated at runtime.
         CompileTimeInterpreter::new(CanAccessStatics::from(is_static), CheckAlignment::Error),
     );
+    eval_in_interpreter(ecx, cid, is_static)
+}
 
+pub fn eval_in_interpreter<'mir, 'tcx>(
+    mut ecx: InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>,
+    cid: GlobalId<'tcx>,
+    is_static: bool,
+) -> ::rustc_middle::mir::interpret::EvalToAllocationRawResult<'tcx> {
     let res = ecx.load_mir(cid.instance.def, cid.promoted);
     match res.and_then(|body| eval_body_using_ecx(&mut ecx, cid, &body)) {
         Err(error) => {
@@ -306,7 +313,7 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
                 // If the current item has generics, we'd like to enrich the message with the
                 // instance and its args: to show the actual compile-time values, in addition to
                 // the expression, leading to the const eval error.
-                let instance = &key.value.instance;
+                let instance = &cid.instance;
                 if !instance.args.is_empty() {
                     let instance = with_no_trimmed_paths!(instance.to_string());
                     ("const_with_path", instance)
@@ -331,60 +338,76 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
         Ok(mplace) => {
             // Since evaluation had no errors, validate the resulting constant.
             // This is a separate `try` block to provide more targeted error reporting.
-            let validation: Result<_, InterpErrorInfo<'_>> = try {
-                let mut ref_tracking = RefTracking::new(mplace.clone());
-                let mut inner = false;
-                while let Some((mplace, path)) = ref_tracking.todo.pop() {
-                    let mode = match tcx.static_mutability(cid.instance.def_id()) {
-                        Some(_) if cid.promoted.is_some() => {
-                            // Promoteds in statics are allowed to point to statics.
-                            CtfeValidationMode::Const { inner, allow_static_ptrs: true }
-                        }
-                        Some(_) => CtfeValidationMode::Regular, // a `static`
-                        None => CtfeValidationMode::Const { inner, allow_static_ptrs: false },
-                    };
-                    ecx.const_validate_operand(&mplace.into(), path, &mut ref_tracking, mode)?;
-                    inner = true;
-                }
-            };
+            let validation =
+                const_validate_mplace(&ecx, &mplace, is_static, cid.promoted.is_some());
+
             let alloc_id = mplace.ptr().provenance.unwrap();
 
             // Validation failed, report an error.
             if let Err(error) = validation {
-                let (error, backtrace) = error.into_parts();
-                backtrace.print_backtrace();
-
-                let ub_note = matches!(error, InterpError::UndefinedBehavior(_)).then(|| {});
-
-                let alloc = ecx.tcx.global_alloc(alloc_id).unwrap_memory().inner();
-                let mut bytes = String::new();
-                if alloc.size() != abi::Size::ZERO {
-                    bytes = "\n".into();
-                    // FIXME(translation) there might be pieces that are translatable.
-                    write_allocation_bytes(*ecx.tcx, alloc, &mut bytes, "    ").unwrap();
-                }
-                let raw_bytes = errors::RawBytesNote {
-                    size: alloc.size().bytes(),
-                    align: alloc.align.bytes(),
-                    bytes,
-                };
-
-                Err(super::report(
-                    *ecx.tcx,
-                    error,
-                    None,
-                    || super::get_span_and_frames(&ecx),
-                    move |span, frames| errors::UndefinedBehavior {
-                        span,
-                        ub_note,
-                        frames,
-                        raw_bytes,
-                    },
-                ))
+                Err(const_report_error(&ecx, error, alloc_id))
             } else {
                 // Convert to raw constant
                 Ok(ConstAlloc { alloc_id, ty: mplace.layout.ty })
             }
         }
     }
+}
+
+#[inline(always)]
+pub fn const_validate_mplace<'mir, 'tcx>(
+    ecx: &InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>,
+    mplace: &MPlaceTy<'tcx>,
+    is_static: bool,
+    is_promoted: bool,
+) -> InterpResult<'tcx> {
+    let mut ref_tracking = RefTracking::new(mplace.clone());
+    let mut inner = false;
+    while let Some((mplace, path)) = ref_tracking.todo.pop() {
+        let mode = if is_static {
+            if is_promoted {
+                // Promoteds in statics are allowed to point to statics.
+                CtfeValidationMode::Const { inner, allow_static_ptrs: true }
+            } else {
+                // a `static`
+                CtfeValidationMode::Regular
+            }
+        } else {
+            CtfeValidationMode::Const { inner, allow_static_ptrs: false }
+        };
+        ecx.const_validate_operand(&mplace.into(), path, &mut ref_tracking, mode)?;
+        inner = true;
+    }
+
+    Ok(())
+}
+
+#[inline(always)]
+pub fn const_report_error<'mir, 'tcx>(
+    ecx: &InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>,
+    error: InterpErrorInfo<'tcx>,
+    alloc_id: AllocId,
+) -> ErrorHandled {
+    let (error, backtrace) = error.into_parts();
+    backtrace.print_backtrace();
+
+    let ub_note = matches!(error, InterpError::UndefinedBehavior(_)).then(|| {});
+
+    let alloc = ecx.tcx.global_alloc(alloc_id).unwrap_memory().inner();
+    let mut bytes = String::new();
+    if alloc.size() != abi::Size::ZERO {
+        bytes = "\n".into();
+        // FIXME(translation) there might be pieces that are translatable.
+        write_allocation_bytes(*ecx.tcx, alloc, &mut bytes, "    ").unwrap();
+    }
+    let raw_bytes =
+        errors::RawBytesNote { size: alloc.size().bytes(), align: alloc.align.bytes(), bytes };
+
+    crate::const_eval::report(
+        *ecx.tcx,
+        error,
+        None,
+        || crate::const_eval::get_span_and_frames(ecx),
+        move |span, frames| errors::UndefinedBehavior { span, ub_note, frames, raw_bytes },
+    )
 }

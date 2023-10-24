@@ -103,7 +103,7 @@ fn rewrite_macro_name(
         format!("{}!", pprust::path_to_string(path))
     };
     match extra_ident {
-        Some(ident) if ident.name != kw::Empty => format!("{} {}", name, ident),
+        Some(ident) if ident.name != kw::Empty => format!("{name} {ident}"),
         _ => name,
     }
 }
@@ -214,14 +214,14 @@ fn rewrite_macro_inner(
     if ts.is_empty() && !has_comment {
         return match style {
             Delimiter::Parenthesis if position == MacroPosition::Item => {
-                Some(format!("{}();", macro_name))
+                Some(format!("{macro_name}();"))
             }
             Delimiter::Bracket if position == MacroPosition::Item => {
-                Some(format!("{}[];", macro_name))
+                Some(format!("{macro_name}[];"))
             }
-            Delimiter::Parenthesis => Some(format!("{}()", macro_name)),
-            Delimiter::Bracket => Some(format!("{}[]", macro_name)),
-            Delimiter::Brace => Some(format!("{} {{}}", macro_name)),
+            Delimiter::Parenthesis => Some(format!("{macro_name}()")),
+            Delimiter::Bracket => Some(format!("{macro_name}[]")),
+            Delimiter::Brace => Some(format!("{macro_name} {{}}")),
             _ => unreachable!(),
         };
     }
@@ -255,6 +255,7 @@ fn rewrite_macro_inner(
             &macro_name,
             shape,
             style,
+            original_style,
             position,
             mac.span(),
         );
@@ -295,20 +296,19 @@ fn rewrite_macro_inner(
                 // If we are rewriting `vec!` macro or other special macros,
                 // then we can rewrite this as a usual array literal.
                 // Otherwise, we must preserve the original existence of trailing comma.
-                let macro_name = &macro_name.as_str();
                 let mut force_trailing_comma = if trailing_comma {
                     Some(SeparatorTactic::Always)
                 } else {
                     Some(SeparatorTactic::Never)
                 };
-                if FORCED_BRACKET_MACROS.contains(macro_name) && !is_nested_macro {
+                if is_forced_bracket && !is_nested_macro {
                     context.leave_macro();
                     if context.use_block_indent() {
                         force_trailing_comma = Some(SeparatorTactic::Vertical);
                     };
                 }
                 let rewrite = rewrite_array(
-                    macro_name,
+                    &macro_name,
                     arg_vec.iter(),
                     mac.span(),
                     context,
@@ -321,7 +321,7 @@ fn rewrite_macro_inner(
                     _ => "",
                 };
 
-                Some(format!("{}{}", rewrite, comma))
+                Some(format!("{rewrite}{comma}"))
             }
         }
         Delimiter::Brace => {
@@ -330,8 +330,8 @@ fn rewrite_macro_inner(
             // anything in between the braces (for now).
             let snippet = context.snippet(mac.span()).trim_start_matches(|c| c != '{');
             match trim_left_preserve_layout(snippet, shape.indent, context.config) {
-                Some(macro_body) => Some(format!("{} {}", macro_name, macro_body)),
-                None => Some(format!("{} {}", macro_name, snippet)),
+                Some(macro_body) => Some(format!("{macro_name} {macro_body}")),
+                None => Some(format!("{macro_name} {snippet}")),
             }
         }
         _ => unreachable!(),
@@ -362,7 +362,7 @@ fn handle_vec_semi(
         && lhs.len() + rhs.len() + total_overhead <= shape.width
     {
         // macro_name(lhs; rhs) or macro_name[lhs; rhs]
-        Some(format!("{}{}{}; {}{}", macro_name, left, lhs, rhs, right))
+        Some(format!("{macro_name}{left}{lhs}; {rhs}{right}"))
     } else {
         // macro_name(\nlhs;\nrhs\n) or macro_name[\nlhs;\nrhs\n]
         Some(format!(
@@ -377,6 +377,23 @@ fn handle_vec_semi(
             right
         ))
     }
+}
+
+fn rewrite_empty_macro_def_body(
+    context: &RewriteContext<'_>,
+    span: Span,
+    shape: Shape,
+) -> Option<String> {
+    // Create an empty, dummy `ast::Block` representing an empty macro body
+    let block = ast::Block {
+        stmts: vec![].into(),
+        id: rustc_ast::node_id::DUMMY_NODE_ID,
+        rules: ast::BlockCheckMode::Default,
+        span: span,
+        tokens: None,
+        could_be_bare_literal: false,
+    };
+    block.rewrite(context, shape)
 }
 
 pub(crate) fn rewrite_macro_def(
@@ -418,6 +435,13 @@ pub(crate) fn rewrite_macro_def(
     } else {
         shape
     };
+
+    if parsed_def.branches.len() == 0 {
+        let lo = context.snippet_provider.span_before(span, "{");
+        result += " ";
+        result += &rewrite_empty_macro_def_body(context, span.with_lo(lo), shape)?;
+        return Some(result);
+    }
 
     let branch_items = itemize_list(
         context.snippet_provider,
@@ -572,8 +596,8 @@ fn delim_token_to_str(
             .block_indent(context.config)
             .to_string_with_newline(context.config);
         (
-            format!("{}{}", lhs, nested_indent_str),
-            format!("{}{}", indent_str, rhs),
+            format!("{lhs}{nested_indent_str}"),
+            format!("{indent_str}{rhs}"),
         )
     } else {
         (lhs.to_owned(), rhs.to_owned())
@@ -630,7 +654,7 @@ impl MacroArgKind {
         };
 
         match *self {
-            MacroArgKind::MetaVariable(ty, ref name) => Some(format!("${}:{}", name, ty)),
+            MacroArgKind::MetaVariable(ty, ref name) => Some(format!("${name}:{ty}")),
             MacroArgKind::Repeat(delim_tok, ref args, ref another, ref tok) => {
                 let (lhs, inner, rhs) = rewrite_delimited_inner(delim_tok, args)?;
                 let another = another
@@ -639,14 +663,14 @@ impl MacroArgKind {
                     .unwrap_or_else(|| "".to_owned());
                 let repeat_tok = pprust::token_to_string(tok);
 
-                Some(format!("${}{}{}{}{}", lhs, inner, rhs, another, repeat_tok))
+                Some(format!("${lhs}{inner}{rhs}{another}{repeat_tok}"))
             }
             MacroArgKind::Delimited(delim_tok, ref args) => {
                 rewrite_delimited_inner(delim_tok, args)
                     .map(|(lhs, inner, rhs)| format!("{}{}{}", lhs, inner, rhs))
             }
-            MacroArgKind::Separator(ref sep, ref prefix) => Some(format!("{}{} ", prefix, sep)),
-            MacroArgKind::Other(ref inner, ref prefix) => Some(format!("{}{}", prefix, inner)),
+            MacroArgKind::Separator(ref sep, ref prefix) => Some(format!("{prefix}{sep} ")),
+            MacroArgKind::Other(ref inner, ref prefix) => Some(format!("{prefix}{inner}")),
         }
     }
 }
@@ -1378,15 +1402,19 @@ fn rewrite_macro_with_items(
     macro_name: &str,
     shape: Shape,
     style: Delimiter,
+    original_style: Delimiter,
     position: MacroPosition,
     span: Span,
 ) -> Option<String> {
-    let (opener, closer) = match style {
-        Delimiter::Parenthesis => ("(", ")"),
-        Delimiter::Bracket => ("[", "]"),
-        Delimiter::Brace => (" {", "}"),
-        _ => return None,
+    let style_to_delims = |style| match style {
+        Delimiter::Parenthesis => Some(("(", ")")),
+        Delimiter::Bracket => Some(("[", "]")),
+        Delimiter::Brace => Some((" {", "}")),
+        _ => None,
     };
+
+    let (opener, closer) = style_to_delims(style)?;
+    let (original_opener, _) = style_to_delims(original_style)?;
     let trailing_semicolon = match style {
         Delimiter::Parenthesis | Delimiter::Bracket if position == MacroPosition::Item => ";",
         _ => "",
@@ -1394,7 +1422,13 @@ fn rewrite_macro_with_items(
 
     let mut visitor = FmtVisitor::from_context(context);
     visitor.block_indent = shape.indent.block_indent(context.config);
-    visitor.last_pos = context.snippet_provider.span_after(span, opener.trim());
+
+    // The current opener may be different from the original opener. This can happen
+    // if our macro is a forced bracket macro originally written with non-bracket
+    // delimiters. We need to use the original opener to locate the span after it.
+    visitor.last_pos = context
+        .snippet_provider
+        .span_after(span, original_opener.trim());
     for item in items {
         let item = match item {
             MacroArg::Item(item) => item,

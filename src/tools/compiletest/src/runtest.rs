@@ -2470,7 +2470,7 @@ impl<'test> TestCx<'test> {
             }
             CoverageMap => {
                 rustc.arg("-Cinstrument-coverage");
-                // These tests only compile to MIR, so they don't need the
+                // These tests only compile to LLVM IR, so they don't need the
                 // profiler runtime to be present.
                 rustc.arg("-Zno-profiler-runtime");
                 // Coverage mappings are sensitive to MIR optimizations, and

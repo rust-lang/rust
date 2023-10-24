@@ -31,13 +31,8 @@ use rustc_index::{IndexSlice, IndexVec};
 use rustc_infer::infer::{
     InferCtxt, NllRegionVariableOrigin, RegionVariableOrigin, TyCtxtInferExt,
 };
-use rustc_middle::mir::{
-    traversal, Body, ClearCrossCrate, Local, Location, MutBorrowKind, Mutability,
-    NonDivergingIntrinsic, Operand, Place, PlaceElem, PlaceRef, VarDebugInfoContents,
-};
-use rustc_middle::mir::{AggregateKind, BasicBlock, BorrowCheckResult, BorrowKind};
-use rustc_middle::mir::{InlineAsmOperand, Terminator, TerminatorKind};
-use rustc_middle::mir::{ProjectionElem, Promoted, Rvalue, Statement, StatementKind};
+use rustc_middle::mir::tcx::PlaceTy;
+use rustc_middle::mir::*;
 use rustc_middle::query::Providers;
 use rustc_middle::traits::DefiningAnchor;
 use rustc_middle::ty::{self, CapturedPlace, ParamEnv, RegionVid, TyCtxt};
@@ -55,13 +50,13 @@ use rustc_mir_dataflow::impls::{
     EverInitializedPlaces, MaybeInitializedPlaces, MaybeUninitializedPlaces,
 };
 use rustc_mir_dataflow::move_paths::{InitIndex, MoveOutIndex, MovePathIndex};
-use rustc_mir_dataflow::move_paths::{InitLocation, LookupResult, MoveData, MoveError};
+use rustc_mir_dataflow::move_paths::{InitLocation, LookupResult, MoveData};
 use rustc_mir_dataflow::Analysis;
 use rustc_mir_dataflow::MoveDataParamEnv;
 
 use crate::session_diagnostics::VarNeedNotMut;
 
-use self::diagnostics::{AccessKind, RegionName};
+use self::diagnostics::{AccessKind, IllegalMoveOriginKind, MoveError, RegionName};
 use self::location::LocationTable;
 use self::prefixes::PrefixSet;
 use consumers::{BodyWithBorrowckFacts, ConsumerOptions};
@@ -224,14 +219,10 @@ fn do_mir_borrowck<'tcx>(
     let location_table_owned = LocationTable::new(body);
     let location_table = &location_table_owned;
 
-    let (move_data, move_errors): (MoveData<'tcx>, Vec<(Place<'tcx>, MoveError<'tcx>)>) =
-        match MoveData::gather_moves(&body, tcx, param_env) {
-            Ok(move_data) => (move_data, Vec::new()),
-            Err((move_data, move_errors)) => (move_data, move_errors),
-        };
-    let promoted_errors = promoted
+    let move_data = MoveData::gather_moves(&body, tcx, param_env, |_| true);
+    let promoted_move_data = promoted
         .iter_enumerated()
-        .map(|(idx, body)| (idx, MoveData::gather_moves(&body, tcx, param_env)));
+        .map(|(idx, body)| (idx, MoveData::gather_moves(&body, tcx, param_env, |_| true)));
 
     let mdpe = MoveDataParamEnv { move_data, param_env };
 
@@ -313,36 +304,49 @@ fn do_mir_borrowck<'tcx>(
         true
     };
 
-    for (idx, move_data_results) in promoted_errors {
-        let promoted_body = &promoted[idx];
+    for (idx, move_data) in promoted_move_data {
+        use rustc_middle::mir::visit::Visitor;
 
-        if let Err((move_data, move_errors)) = move_data_results {
-            let mut promoted_mbcx = MirBorrowckCtxt {
-                infcx: &infcx,
-                param_env,
-                body: promoted_body,
-                move_data: &move_data,
-                location_table, // no need to create a real one for the promoted, it is not used
-                movable_coroutine,
-                fn_self_span_reported: Default::default(),
-                locals_are_invalidated_at_exit,
-                access_place_error_reported: Default::default(),
-                reservation_error_reported: Default::default(),
-                uninitialized_error_reported: Default::default(),
-                regioncx: regioncx.clone(),
-                used_mut: Default::default(),
-                used_mut_upvars: SmallVec::new(),
-                borrow_set: Rc::clone(&borrow_set),
-                upvars: Vec::new(),
-                local_names: IndexVec::from_elem(None, &promoted_body.local_decls),
-                region_names: RefCell::default(),
-                next_region_name: RefCell::new(1),
-                polonius_output: None,
-                errors,
-            };
-            promoted_mbcx.report_move_errors(move_errors);
-            errors = promoted_mbcx.errors;
+        let promoted_body = &promoted[idx];
+        let mut promoted_mbcx = MirBorrowckCtxt {
+            infcx: &infcx,
+            param_env,
+            body: promoted_body,
+            move_data: &move_data,
+            location_table, // no need to create a real one for the promoted, it is not used
+            movable_coroutine,
+            fn_self_span_reported: Default::default(),
+            locals_are_invalidated_at_exit,
+            access_place_error_reported: Default::default(),
+            reservation_error_reported: Default::default(),
+            uninitialized_error_reported: Default::default(),
+            regioncx: regioncx.clone(),
+            used_mut: Default::default(),
+            used_mut_upvars: SmallVec::new(),
+            borrow_set: Rc::clone(&borrow_set),
+            upvars: Vec::new(),
+            local_names: IndexVec::from_elem(None, &promoted_body.local_decls),
+            region_names: RefCell::default(),
+            next_region_name: RefCell::new(1),
+            polonius_output: None,
+            move_errors: Vec::new(),
+            errors,
         };
+        MoveVisitor { ctxt: &mut promoted_mbcx }.visit_body(promoted_body);
+        promoted_mbcx.report_move_errors();
+        errors = promoted_mbcx.errors;
+
+        struct MoveVisitor<'a, 'cx, 'tcx> {
+            ctxt: &'a mut MirBorrowckCtxt<'cx, 'tcx>,
+        }
+
+        impl<'tcx> Visitor<'tcx> for MoveVisitor<'_, '_, 'tcx> {
+            fn visit_operand(&mut self, operand: &Operand<'tcx>, location: Location) {
+                if let Operand::Move(place) = operand {
+                    self.ctxt.check_movable_place(location, *place);
+                }
+            }
+        }
     }
 
     let mut mbcx = MirBorrowckCtxt {
@@ -366,6 +370,7 @@ fn do_mir_borrowck<'tcx>(
         region_names: RefCell::default(),
         next_region_name: RefCell::new(1),
         polonius_output,
+        move_errors: Vec::new(),
         errors,
     };
 
@@ -378,14 +383,14 @@ fn do_mir_borrowck<'tcx>(
         borrows: flow_borrows,
     };
 
-    mbcx.report_move_errors(move_errors);
-
     rustc_mir_dataflow::visit_results(
         body,
         traversal::reverse_postorder(body).map(|(bb, _)| bb),
         &mut results,
         &mut mbcx,
     );
+
+    mbcx.report_move_errors();
 
     // For each non-user used mutable variable, check if it's been assigned from
     // a user-declared local. If so, then put that local into the used_mut set.
@@ -595,6 +600,7 @@ struct MirBorrowckCtxt<'cx, 'tcx> {
     polonius_output: Option<Rc<PoloniusOutput>>,
 
     errors: error::BorrowckErrors<'tcx>,
+    move_errors: Vec<MoveError<'tcx>>,
 }
 
 // Check that:
@@ -725,7 +731,6 @@ impl<'cx, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx, R> for MirBorro
             }
             TerminatorKind::Assert { cond, expected: _, msg, target: _, unwind: _ } => {
                 self.consume_operand(loc, (cond, span), flow_state);
-                use rustc_middle::mir::AssertKind;
                 if let AssertKind::BoundsCheck { len, index } = &**msg {
                     self.consume_operand(loc, (len, span), flow_state);
                     self.consume_operand(loc, (index, span), flow_state);
@@ -1409,7 +1414,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         // As such we have to search for the local that this
                         // capture comes from and mark it as being used as mut.
 
-                        let temp_mpi = self.move_data.rev_lookup.find_local(local);
+                        let Some(temp_mpi) = self.move_data.rev_lookup.find_local(local) else {
+                            bug!("temporary should be tracked");
+                        };
                         let init = if let [init_index] = *self.move_data.init_path_map[temp_mpi] {
                             &self.move_data.inits[init_index]
                         } else {
@@ -1469,6 +1476,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 );
             }
             Operand::Move(place) => {
+                // Check if moving from this place makes sense.
+                self.check_movable_place(location, place);
+
                 // move of place: check if this is move of already borrowed path
                 self.access_place(
                     location,
@@ -1587,6 +1597,131 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             // We do not need to call `check_if_path_or_subpath_is_moved`
             // again, as we already called it when we made the
             // initial reservation.
+        }
+    }
+
+    fn check_movable_place(&mut self, location: Location, place: Place<'tcx>) {
+        use IllegalMoveOriginKind::*;
+
+        let body = self.body;
+        let tcx = self.infcx.tcx;
+        let mut place_ty = PlaceTy::from_ty(body.local_decls[place.local].ty);
+        for (place_ref, elem) in place.iter_projections() {
+            match elem {
+                ProjectionElem::Deref => match place_ty.ty.kind() {
+                    ty::Ref(..) | ty::RawPtr(..) => {
+                        self.move_errors.push(MoveError::new(
+                            place,
+                            location,
+                            BorrowedContent {
+                                target_place: place_ref.project_deeper(&[elem], tcx),
+                            },
+                        ));
+                        return;
+                    }
+                    ty::Adt(adt, _) => {
+                        if !adt.is_box() {
+                            bug!("Adt should be a box type when Place is deref");
+                        }
+                    }
+                    ty::Bool
+                    | ty::Char
+                    | ty::Int(_)
+                    | ty::Uint(_)
+                    | ty::Float(_)
+                    | ty::Foreign(_)
+                    | ty::Str
+                    | ty::Array(_, _)
+                    | ty::Slice(_)
+                    | ty::FnDef(_, _)
+                    | ty::FnPtr(_)
+                    | ty::Dynamic(_, _, _)
+                    | ty::Closure(_, _)
+                    | ty::Coroutine(_, _, _)
+                    | ty::CoroutineWitness(..)
+                    | ty::Never
+                    | ty::Tuple(_)
+                    | ty::Alias(_, _)
+                    | ty::Param(_)
+                    | ty::Bound(_, _)
+                    | ty::Infer(_)
+                    | ty::Error(_)
+                    | ty::Placeholder(_) => {
+                        bug!("When Place is Deref it's type shouldn't be {place_ty:#?}")
+                    }
+                },
+                ProjectionElem::Field(_, _) => match place_ty.ty.kind() {
+                    ty::Adt(adt, _) => {
+                        if adt.has_dtor(tcx) {
+                            self.move_errors.push(MoveError::new(
+                                place,
+                                location,
+                                InteriorOfTypeWithDestructor { container_ty: place_ty.ty },
+                            ));
+                            return;
+                        }
+                    }
+                    ty::Closure(_, _) | ty::Coroutine(_, _, _) | ty::Tuple(_) => (),
+                    ty::Bool
+                    | ty::Char
+                    | ty::Int(_)
+                    | ty::Uint(_)
+                    | ty::Float(_)
+                    | ty::Foreign(_)
+                    | ty::Str
+                    | ty::Array(_, _)
+                    | ty::Slice(_)
+                    | ty::RawPtr(_)
+                    | ty::Ref(_, _, _)
+                    | ty::FnDef(_, _)
+                    | ty::FnPtr(_)
+                    | ty::Dynamic(_, _, _)
+                    | ty::CoroutineWitness(..)
+                    | ty::Never
+                    | ty::Alias(_, _)
+                    | ty::Param(_)
+                    | ty::Bound(_, _)
+                    | ty::Infer(_)
+                    | ty::Error(_)
+                    | ty::Placeholder(_) => bug!(
+                        "When Place contains ProjectionElem::Field it's type shouldn't be {place_ty:#?}"
+                    ),
+                },
+                ProjectionElem::ConstantIndex { .. } | ProjectionElem::Subslice { .. } => {
+                    match place_ty.ty.kind() {
+                        ty::Slice(_) => {
+                            self.move_errors.push(MoveError::new(
+                                place,
+                                location,
+                                InteriorOfSliceOrArray { ty: place_ty.ty, is_index: false },
+                            ));
+                            return;
+                        }
+                        ty::Array(_, _) => (),
+                        _ => bug!("Unexpected type {:#?}", place_ty.ty),
+                    }
+                }
+                ProjectionElem::Index(_) => match place_ty.ty.kind() {
+                    ty::Array(..) | ty::Slice(..) => {
+                        self.move_errors.push(MoveError::new(
+                            place,
+                            location,
+                            InteriorOfSliceOrArray { ty: place_ty.ty, is_index: true },
+                        ));
+                        return;
+                    }
+                    _ => bug!("Unexpected type {place_ty:#?}"),
+                },
+                // `OpaqueCast`: only transmutes the type, so no moves there.
+                // `Downcast`  : only changes information about a `Place` without moving.
+                // `Subtype`   : only transmutes the type, so no moves.
+                // So it's safe to skip these.
+                ProjectionElem::OpaqueCast(_)
+                | ProjectionElem::Subtype(_)
+                | ProjectionElem::Downcast(_, _) => (),
+            }
+
+            place_ty = place_ty.projection_ty(tcx, elem);
         }
     }
 
@@ -2074,7 +2209,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         local: Local,
         flow_state: &Flows<'cx, 'tcx>,
     ) -> Option<InitIndex> {
-        let mpi = self.move_data.rev_lookup.find_local(local);
+        let mpi = self.move_data.rev_lookup.find_local(local)?;
         let ii = &self.move_data.init_path_map[mpi];
         ii.into_iter().find(|&&index| flow_state.ever_inits.contains(index)).copied()
     }

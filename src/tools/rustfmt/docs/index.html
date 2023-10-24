@@ -87,7 +87,7 @@
           </article>
         </div>
         <script>
-            const RusfmtTagsUrl = 'https://api.github.com/repos/rust-lang/rustfmt/tags';
+            const RustfmtTagsUrl = 'https://api.github.com/repos/rust-lang/rustfmt/tags';
             const RustfmtLatestUrl = 'https://api.github.com/repos/rust-lang/rustfmt/releases/latest';
             const UrlHash = window.location.hash.replace(/^#/, '');
             const queryParams = new URLSearchParams(window.location.search);
@@ -190,7 +190,7 @@
               created: async function() {
                 let tags;
                 try {
-                  tags = (await axios.get(RusfmtTagsUrl)).data;
+                  tags = (await axios.get(RustfmtTagsUrl)).data;
                 } catch(e) {
                   this.handleReqFailure(e);
                   return;
@@ -230,7 +230,7 @@
                       `<p>The rate limit will be reset at ${resetDate}.</p>`;
                   } else {
                     this.aboutHtml =
-                      `<p>Ecountered an error when fetching documentation data:</p>` +
+                      `<p>Encountered an error when fetching documentation data:</p>` +
                       `<pre><code>${e.response.data}</code></pre>` +
                       `<p>We would appreciate <a href="https://github.com/rust-lang/rustfmt/issues/new?template=bug_report.md">a bug report</a>.` +
                       `<p>Try refreshing the page.</p>`;

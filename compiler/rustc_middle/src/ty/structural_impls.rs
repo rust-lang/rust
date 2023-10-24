@@ -22,11 +22,10 @@ impl fmt::Debug for ty::TraitDef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         ty::tls::with(|tcx| {
             with_no_trimmed_paths!({
-                f.write_str(
-                    &FmtPrinter::new(tcx, Namespace::TypeNS)
-                        .print_def_path(self.def_id, &[])?
-                        .into_buffer(),
-                )
+                let s = FmtPrinter::print_string(tcx, Namespace::TypeNS, |cx| {
+                    cx.print_def_path(self.def_id, &[])
+                })?;
+                f.write_str(&s)
             })
         })
     }
@@ -36,11 +35,10 @@ impl<'tcx> fmt::Debug for ty::AdtDef<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         ty::tls::with(|tcx| {
             with_no_trimmed_paths!({
-                f.write_str(
-                    &FmtPrinter::new(tcx, Namespace::TypeNS)
-                        .print_def_path(self.did(), &[])?
-                        .into_buffer(),
-                )
+                let s = FmtPrinter::print_string(tcx, Namespace::TypeNS, |cx| {
+                    cx.print_def_path(self.did(), &[])
+                })?;
+                f.write_str(&s)
             })
         })
     }
@@ -350,9 +348,8 @@ impl<'tcx> DebugWithInfcx<TyCtxt<'tcx>> for ty::Const<'tcx> {
                 let ConstKind::Value(valtree) = lifted.kind() else {
                     bug!("we checked that this is a valtree")
                 };
-                let cx = FmtPrinter::new(tcx, Namespace::ValueNS);
-                let cx =
-                    cx.pretty_print_const_valtree(valtree, lifted.ty(), /*print_ty*/ true)?;
+                let mut cx = FmtPrinter::new(tcx, Namespace::ValueNS);
+                cx.pretty_print_const_valtree(valtree, lifted.ty(), /*print_ty*/ true)?;
                 f.write_str(&cx.into_buffer())
             });
         }

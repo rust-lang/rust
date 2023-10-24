@@ -9,9 +9,9 @@ use rustc_mir_dataflow::elaborate_drops::{elaborate_drop, DropFlagState, Unwind}
 use rustc_mir_dataflow::elaborate_drops::{DropElaborator, DropFlagMode, DropStyle};
 use rustc_mir_dataflow::impls::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
 use rustc_mir_dataflow::move_paths::{LookupResult, MoveData, MovePathIndex};
+use rustc_mir_dataflow::on_all_children_bits;
 use rustc_mir_dataflow::on_lookup_result_bits;
 use rustc_mir_dataflow::MoveDataParamEnv;
-use rustc_mir_dataflow::{on_all_children_bits, on_all_drop_children_bits};
 use rustc_mir_dataflow::{Analysis, ResultsCursor};
 use rustc_span::Span;
 use rustc_target::abi::{FieldIdx, VariantIdx};
@@ -54,16 +54,10 @@ impl<'tcx> MirPass<'tcx> for ElaborateDrops {
 
         let def_id = body.source.def_id();
         let param_env = tcx.param_env_reveal_all_normalized(def_id);
-        let move_data = match MoveData::gather_moves(body, tcx, param_env) {
-            Ok(move_data) => move_data,
-            Err((move_data, _)) => {
-                tcx.sess.delay_span_bug(
-                    body.span,
-                    "No `move_errors` should be allowed in MIR borrowck",
-                );
-                move_data
-            }
-        };
+        // For types that do not need dropping, the behaviour is trivial. So we only need to track
+        // init/uninit for types that do need dropping.
+        let move_data =
+            MoveData::gather_moves(&body, tcx, param_env, |ty| ty.needs_drop(tcx, param_env));
         let elaborate_patch = {
             let env = MoveDataParamEnv { move_data, param_env };
 
@@ -178,13 +172,19 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for Elaborator<'a, '_, 'tcx> {
                 let mut some_live = false;
                 let mut some_dead = false;
                 let mut children_count = 0;
-                on_all_drop_children_bits(self.tcx(), self.body(), self.ctxt.env, path, |child| {
-                    let (live, dead) = self.ctxt.init_data.maybe_live_dead(child);
-                    debug!("elaborate_drop: state({:?}) = {:?}", child, (live, dead));
-                    some_live |= live;
-                    some_dead |= dead;
-                    children_count += 1;
-                });
+                on_all_children_bits(
+                    self.tcx(),
+                    self.body(),
+                    self.ctxt.move_data(),
+                    path,
+                    |child| {
+                        let (live, dead) = self.ctxt.init_data.maybe_live_dead(child);
+                        debug!("elaborate_drop: state({:?}) = {:?}", child, (live, dead));
+                        some_live |= live;
+                        some_dead |= dead;
+                        children_count += 1;
+                    },
+                );
                 ((some_live, some_dead), children_count != 1)
             }
         };
@@ -296,26 +296,36 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
     fn collect_drop_flags(&mut self) {
         for (bb, data) in self.body.basic_blocks.iter_enumerated() {
             let terminator = data.terminator();
-            let place = match terminator.kind {
-                TerminatorKind::Drop { ref place, .. } => place,
-                _ => continue,
-            };
-
-            self.init_data.seek_before(self.body.terminator_loc(bb));
+            let TerminatorKind::Drop { ref place, .. } = terminator.kind else { continue };
 
             let path = self.move_data().rev_lookup.find(place.as_ref());
             debug!("collect_drop_flags: {:?}, place {:?} ({:?})", bb, place, path);
 
-            let path = match path {
-                LookupResult::Exact(e) => e,
-                LookupResult::Parent(None) => continue,
+            match path {
+                LookupResult::Exact(path) => {
+                    self.init_data.seek_before(self.body.terminator_loc(bb));
+                    on_all_children_bits(self.tcx, self.body, self.move_data(), path, |child| {
+                        let (maybe_live, maybe_dead) = self.init_data.maybe_live_dead(child);
+                        debug!(
+                            "collect_drop_flags: collecting {:?} from {:?}@{:?} - {:?}",
+                            child,
+                            place,
+                            path,
+                            (maybe_live, maybe_dead)
+                        );
+                        if maybe_live && maybe_dead {
+                            self.create_drop_flag(child, terminator.source_info.span)
+                        }
+                    });
+                }
+                LookupResult::Parent(None) => {}
                 LookupResult::Parent(Some(parent)) => {
-                    let (_maybe_live, maybe_dead) = self.init_data.maybe_live_dead(parent);
-
                     if self.body.local_decls[place.local].is_deref_temp() {
                         continue;
                     }
 
+                    self.init_data.seek_before(self.body.terminator_loc(bb));
+                    let (_maybe_live, maybe_dead) = self.init_data.maybe_live_dead(parent);
                     if maybe_dead {
                         self.tcx.sess.delay_span_bug(
                             terminator.source_info.span,
@@ -324,80 +334,74 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                             ),
                         );
                     }
-                    continue;
                 }
             };
-
-            on_all_drop_children_bits(self.tcx, self.body, self.env, path, |child| {
-                let (maybe_live, maybe_dead) = self.init_data.maybe_live_dead(child);
-                debug!(
-                    "collect_drop_flags: collecting {:?} from {:?}@{:?} - {:?}",
-                    child,
-                    place,
-                    path,
-                    (maybe_live, maybe_dead)
-                );
-                if maybe_live && maybe_dead {
-                    self.create_drop_flag(child, terminator.source_info.span)
-                }
-            });
         }
     }
 
     fn elaborate_drops(&mut self) {
+        // This function should mirror what `collect_drop_flags` does.
         for (bb, data) in self.body.basic_blocks.iter_enumerated() {
-            let loc = Location { block: bb, statement_index: data.statements.len() };
             let terminator = data.terminator();
+            let TerminatorKind::Drop { place, target, unwind, replace } = terminator.kind else {
+                continue;
+            };
 
-            match terminator.kind {
-                TerminatorKind::Drop { place, target, unwind, replace } => {
-                    self.init_data.seek_before(loc);
-                    match self.move_data().rev_lookup.find(place.as_ref()) {
-                        LookupResult::Exact(path) => {
-                            let unwind = if data.is_cleanup {
-                                Unwind::InCleanup
-                            } else {
-                                match unwind {
-                                    UnwindAction::Cleanup(cleanup) => Unwind::To(cleanup),
-                                    UnwindAction::Continue => Unwind::To(self.patch.resume_block()),
-                                    UnwindAction::Unreachable => {
-                                        Unwind::To(self.patch.unreachable_cleanup_block())
-                                    }
-                                    UnwindAction::Terminate(reason) => {
-                                        debug_assert_ne!(
-                                            reason,
-                                            UnwindTerminateReason::InCleanup,
-                                            "we are not in a cleanup block, InCleanup reason should be impossible"
-                                        );
-                                        Unwind::To(self.patch.terminate_block(reason))
-                                    }
-                                }
-                            };
-                            elaborate_drop(
-                                &mut Elaborator { ctxt: self },
-                                terminator.source_info,
-                                place,
-                                path,
-                                target,
-                                unwind,
-                                bb,
-                            )
+            // This place does not need dropping. It does not have an associated move-path, so the
+            // match below will conservatively keep an unconditional drop. As that drop is useless,
+            // just remove it here and now.
+            if !place
+                .ty(&self.body.local_decls, self.tcx)
+                .ty
+                .needs_drop(self.tcx, self.env.param_env)
+            {
+                self.patch.patch_terminator(bb, TerminatorKind::Goto { target });
+                continue;
+            }
+
+            let path = self.move_data().rev_lookup.find(place.as_ref());
+            match path {
+                LookupResult::Exact(path) => {
+                    let unwind = match unwind {
+                        _ if data.is_cleanup => Unwind::InCleanup,
+                        UnwindAction::Cleanup(cleanup) => Unwind::To(cleanup),
+                        UnwindAction::Continue => Unwind::To(self.patch.resume_block()),
+                        UnwindAction::Unreachable => {
+                            Unwind::To(self.patch.unreachable_cleanup_block())
                         }
-                        LookupResult::Parent(..) => {
-                            if !replace {
-                                self.tcx.sess.delay_span_bug(
-                                    terminator.source_info.span,
-                                    format!("drop of untracked value {bb:?}"),
-                                );
-                            }
-                            // A drop and replace behind a pointer/array/whatever.
-                            // The borrow checker requires that these locations are initialized before the assignment,
-                            // so we just leave an unconditional drop.
-                            assert!(!data.is_cleanup);
+                        UnwindAction::Terminate(reason) => {
+                            debug_assert_ne!(
+                                reason,
+                                UnwindTerminateReason::InCleanup,
+                                "we are not in a cleanup block, InCleanup reason should be impossible"
+                            );
+                            Unwind::To(self.patch.terminate_block(reason))
                         }
-                    }
+                    };
+                    self.init_data.seek_before(self.body.terminator_loc(bb));
+                    elaborate_drop(
+                        &mut Elaborator { ctxt: self },
+                        terminator.source_info,
+                        place,
+                        path,
+                        target,
+                        unwind,
+                        bb,
+                    )
                 }
-                _ => continue,
+                LookupResult::Parent(None) => {}
+                LookupResult::Parent(Some(_)) => {
+                    if !replace {
+                        self.tcx.sess.delay_span_bug(
+                            terminator.source_info.span,
+                            format!("drop of untracked value {bb:?}"),
+                        );
+                    }
+                    // A drop and replace behind a pointer/array/whatever.
+                    // The borrow checker requires that these locations are initialized before the assignment,
+                    // so we just leave an unconditional drop.
+                    assert!(!data.is_cleanup);
+                }
             }
         }
     }

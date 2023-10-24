@@ -6,7 +6,7 @@ trait Test<T> {
 
 async fn f() {
     let x = Some(2);
-    if x.is_some() {
+    if x.is_some() { //~ ERROR mismatched types
         println!("Some");
     }
 }

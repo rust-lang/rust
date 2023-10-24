@@ -1,58 +1,66 @@
 use rustc_index::IndexVec;
-use rustc_middle::mir::tcx::RvalueInitializationState;
+use rustc_middle::mir::tcx::{PlaceTy, RvalueInitializationState};
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use smallvec::{smallvec, SmallVec};
 
 use std::mem;
 
 use super::abs_domain::Lift;
-use super::IllegalMoveOriginKind::*;
-use super::{Init, InitIndex, InitKind, InitLocation, LookupResult, MoveError};
+use super::{Init, InitIndex, InitKind, InitLocation, LookupResult};
 use super::{
     LocationMap, MoveData, MoveOut, MoveOutIndex, MovePath, MovePathIndex, MovePathLookup,
 };
 
-struct MoveDataBuilder<'a, 'tcx> {
+struct MoveDataBuilder<'a, 'tcx, F> {
     body: &'a Body<'tcx>,
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     data: MoveData<'tcx>,
-    errors: Vec<(Place<'tcx>, MoveError<'tcx>)>,
+    filter: F,
 }
 
-impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
-    fn new(body: &'a Body<'tcx>, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> Self {
+impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
+    fn new(
+        body: &'a Body<'tcx>,
+        tcx: TyCtxt<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        filter: F,
+    ) -> Self {
         let mut move_paths = IndexVec::new();
         let mut path_map = IndexVec::new();
         let mut init_path_map = IndexVec::new();
+
+        let locals = body
+            .local_decls
+            .iter_enumerated()
+            .map(|(i, l)| {
+                if l.is_deref_temp() {
+                    return None;
+                }
+                if filter(l.ty) {
+                    Some(new_move_path(
+                        &mut move_paths,
+                        &mut path_map,
+                        &mut init_path_map,
+                        None,
+                        Place::from(i),
+                    ))
+                } else {
+                    None
+                }
+            })
+            .collect();
 
         MoveDataBuilder {
             body,
             tcx,
             param_env,
-            errors: Vec::new(),
             data: MoveData {
                 moves: IndexVec::new(),
                 loc_map: LocationMap::new(body),
                 rev_lookup: MovePathLookup {
-                    locals: body
-                        .local_decls
-                        .iter_enumerated()
-                        .map(|(i, l)| {
-                            if l.is_deref_temp() {
-                                MovePathIndex::MAX
-                            } else {
-                                Self::new_move_path(
-                                    &mut move_paths,
-                                    &mut path_map,
-                                    &mut init_path_map,
-                                    None,
-                                    Place::from(i),
-                                )
-                            }
-                        })
-                        .collect(),
+                    locals,
                     projections: Default::default(),
                     un_derefer: Default::default(),
                 },
@@ -62,35 +70,42 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
                 init_loc_map: LocationMap::new(body),
                 init_path_map,
             },
+            filter,
         }
-    }
-
-    fn new_move_path(
-        move_paths: &mut IndexVec<MovePathIndex, MovePath<'tcx>>,
-        path_map: &mut IndexVec<MovePathIndex, SmallVec<[MoveOutIndex; 4]>>,
-        init_path_map: &mut IndexVec<MovePathIndex, SmallVec<[InitIndex; 4]>>,
-        parent: Option<MovePathIndex>,
-        place: Place<'tcx>,
-    ) -> MovePathIndex {
-        let move_path =
-            move_paths.push(MovePath { next_sibling: None, first_child: None, parent, place });
-
-        if let Some(parent) = parent {
-            let next_sibling = mem::replace(&mut move_paths[parent].first_child, Some(move_path));
-            move_paths[move_path].next_sibling = next_sibling;
-        }
-
-        let path_map_ent = path_map.push(smallvec![]);
-        assert_eq!(path_map_ent, move_path);
-
-        let init_path_map_ent = init_path_map.push(smallvec![]);
-        assert_eq!(init_path_map_ent, move_path);
-
-        move_path
     }
 }
 
-impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
+fn new_move_path<'tcx>(
+    move_paths: &mut IndexVec<MovePathIndex, MovePath<'tcx>>,
+    path_map: &mut IndexVec<MovePathIndex, SmallVec<[MoveOutIndex; 4]>>,
+    init_path_map: &mut IndexVec<MovePathIndex, SmallVec<[InitIndex; 4]>>,
+    parent: Option<MovePathIndex>,
+    place: Place<'tcx>,
+) -> MovePathIndex {
+    let move_path =
+        move_paths.push(MovePath { next_sibling: None, first_child: None, parent, place });
+
+    if let Some(parent) = parent {
+        let next_sibling = mem::replace(&mut move_paths[parent].first_child, Some(move_path));
+        move_paths[move_path].next_sibling = next_sibling;
+    }
+
+    let path_map_ent = path_map.push(smallvec![]);
+    assert_eq!(path_map_ent, move_path);
+
+    let init_path_map_ent = init_path_map.push(smallvec![]);
+    assert_eq!(init_path_map_ent, move_path);
+
+    move_path
+}
+
+enum MovePathResult {
+    Path(MovePathIndex),
+    Union(MovePathIndex),
+    Error,
+}
+
+impl<'b, 'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> Gatherer<'b, 'a, 'tcx, F> {
     /// This creates a MovePath for a given place, returning an `MovePathError`
     /// if that place can't be moved from.
     ///
@@ -98,11 +113,13 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
     /// problematic for borrowck.
     ///
     /// Maybe we should have separate "borrowck" and "moveck" modes.
-    fn move_path_for(&mut self, place: Place<'tcx>) -> Result<MovePathIndex, MoveError<'tcx>> {
+    fn move_path_for(&mut self, place: Place<'tcx>) -> MovePathResult {
         let data = &mut self.builder.data;
 
         debug!("lookup({:?})", place);
-        let mut base = data.rev_lookup.find_local(place.local);
+        let Some(mut base) = data.rev_lookup.find_local(place.local) else {
+            return MovePathResult::Error;
+        };
 
         // The move path index of the first union that we find. Once this is
         // some we stop creating child move paths, since moves from unions
@@ -118,12 +135,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             match elem {
                 ProjectionElem::Deref => match place_ty.kind() {
                     ty::Ref(..) | ty::RawPtr(..) => {
-                        return Err(MoveError::cannot_move_out_of(
-                            self.loc,
-                            BorrowedContent {
-                                target_place: place_ref.project_deeper(&[elem], tcx),
-                            },
-                        ));
+                        return MovePathResult::Error;
                     }
                     ty::Adt(adt, _) => {
                         if !adt.is_box() {
@@ -159,10 +171,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                 ProjectionElem::Field(_, _) => match place_ty.kind() {
                     ty::Adt(adt, _) => {
                         if adt.has_dtor(tcx) {
-                            return Err(MoveError::cannot_move_out_of(
-                                self.loc,
-                                InteriorOfTypeWithDestructor { container_ty: place_ty },
-                            ));
+                            return MovePathResult::Error;
                         }
                         if adt.is_union() {
                             union_path.get_or_insert(base);
@@ -197,33 +206,15 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                 ProjectionElem::ConstantIndex { .. } | ProjectionElem::Subslice { .. } => {
                     match place_ty.kind() {
                         ty::Slice(_) => {
-                            return Err(MoveError::cannot_move_out_of(
-                                self.loc,
-                                InteriorOfSliceOrArray {
-                                    ty: place_ty,
-                                    is_index: matches!(elem, ProjectionElem::Index(..)),
-                                },
-                            ));
+                            return MovePathResult::Error;
                         }
                         ty::Array(_, _) => (),
                         _ => bug!("Unexpected type {:#?}", place_ty.is_array()),
                     }
                 }
                 ProjectionElem::Index(_) => match place_ty.kind() {
-                    ty::Array(..) => {
-                        return Err(MoveError::cannot_move_out_of(
-                            self.loc,
-                            InteriorOfSliceOrArray { ty: place_ty, is_index: true },
-                        ));
-                    }
-                    ty::Slice(_) => {
-                        return Err(MoveError::cannot_move_out_of(
-                            self.loc,
-                            InteriorOfSliceOrArray {
-                                ty: place_ty,
-                                is_index: matches!(elem, ProjectionElem::Index(..)),
-                            },
-                        ));
+                    ty::Array(..) | ty::Slice(_) => {
+                        return MovePathResult::Error;
                     }
                     _ => bug!("Unexpected type {place_ty:#?}"),
                 },
@@ -235,11 +226,15 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                 | ProjectionElem::Subtype(_)
                 | ProjectionElem::Downcast(_, _) => (),
             }
+            let elem_ty = PlaceTy::from_ty(place_ty).projection_ty(tcx, elem).ty;
+            if !(self.builder.filter)(elem_ty) {
+                return MovePathResult::Error;
+            }
             if union_path.is_none() {
                 // inlined from add_move_path because of a borrowck conflict with the iterator
                 base =
                     *data.rev_lookup.projections.entry((base, elem.lift())).or_insert_with(|| {
-                        MoveDataBuilder::new_move_path(
+                        new_move_path(
                             &mut data.move_paths,
                             &mut data.path_map,
                             &mut data.init_path_map,
@@ -252,9 +247,9 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
 
         if let Some(base) = union_path {
             // Move out of union - always move the entire union.
-            Err(MoveError::UnionMove { path: base })
+            MovePathResult::Union(base)
         } else {
-            Ok(base)
+            MovePathResult::Path(base)
         }
     }
 
@@ -270,13 +265,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             ..
         } = self.builder;
         *rev_lookup.projections.entry((base, elem.lift())).or_insert_with(move || {
-            MoveDataBuilder::new_move_path(
-                move_paths,
-                path_map,
-                init_path_map,
-                Some(base),
-                mk_place(*tcx),
-            )
+            new_move_path(move_paths, path_map, init_path_map, Some(base), mk_place(*tcx))
         })
     }
 
@@ -287,11 +276,8 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
     }
 }
 
-pub type MoveDat<'tcx> =
-    Result<MoveData<'tcx>, (MoveData<'tcx>, Vec<(Place<'tcx>, MoveError<'tcx>)>)>;
-
-impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
-    fn finalize(self) -> MoveDat<'tcx> {
+impl<'a, 'tcx, F> MoveDataBuilder<'a, 'tcx, F> {
+    fn finalize(self) -> MoveData<'tcx> {
         debug!("{}", {
             debug!("moves for {:?}:", self.body.span);
             for (j, mo) in self.data.moves.iter_enumerated() {
@@ -304,7 +290,7 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
             "done dumping moves"
         });
 
-        if self.errors.is_empty() { Ok(self.data) } else { Err((self.data, self.errors)) }
+        self.data
     }
 }
 
@@ -312,8 +298,9 @@ pub(super) fn gather_moves<'tcx>(
     body: &Body<'tcx>,
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-) -> MoveDat<'tcx> {
-    let mut builder = MoveDataBuilder::new(body, tcx, param_env);
+    filter: impl Fn(Ty<'tcx>) -> bool,
+) -> MoveData<'tcx> {
+    let mut builder = MoveDataBuilder::new(body, tcx, param_env, filter);
 
     builder.gather_args();
 
@@ -330,20 +317,20 @@ pub(super) fn gather_moves<'tcx>(
     builder.finalize()
 }
 
-impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
+impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
     fn gather_args(&mut self) {
         for arg in self.body.args_iter() {
-            let path = self.data.rev_lookup.find_local(arg);
+            if let Some(path) = self.data.rev_lookup.find_local(arg) {
+                let init = self.data.inits.push(Init {
+                    path,
+                    kind: InitKind::Deep,
+                    location: InitLocation::Argument(arg),
+                });
 
-            let init = self.data.inits.push(Init {
-                path,
-                kind: InitKind::Deep,
-                location: InitLocation::Argument(arg),
-            });
+                debug!("gather_args: adding init {:?} of {:?} for argument {:?}", init, path, arg);
 
-            debug!("gather_args: adding init {:?} of {:?} for argument {:?}", init, path, arg);
-
-            self.data.init_path_map[path].push(init);
+                self.data.init_path_map[path].push(init);
+            }
         }
     }
 
@@ -358,12 +345,12 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
     }
 }
 
-struct Gatherer<'b, 'a, 'tcx> {
-    builder: &'b mut MoveDataBuilder<'a, 'tcx>,
+struct Gatherer<'b, 'a, 'tcx, F> {
+    builder: &'b mut MoveDataBuilder<'a, 'tcx, F>,
     loc: Location,
 }
 
-impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
+impl<'b, 'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> Gatherer<'b, 'a, 'tcx, F> {
     fn gather_statement(&mut self, stmt: &Statement<'tcx>) {
         match &stmt.kind {
             StatementKind::Assign(box (place, Rvalue::CopyForDeref(reffed))) => {
@@ -546,13 +533,12 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             let base_place =
                 Place { local: place.local, projection: self.builder.tcx.mk_place_elems(base) };
             let base_path = match self.move_path_for(base_place) {
-                Ok(path) => path,
-                Err(MoveError::UnionMove { path }) => {
+                MovePathResult::Path(path) => path,
+                MovePathResult::Union(path) => {
                     self.record_move(place, path);
                     return;
                 }
-                Err(error @ MoveError::IllegalMove { .. }) => {
-                    self.builder.errors.push((base_place, error));
+                MovePathResult::Error => {
                     return;
                 }
             };
@@ -572,10 +558,10 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             }
         } else {
             match self.move_path_for(place) {
-                Ok(path) | Err(MoveError::UnionMove { path }) => self.record_move(place, path),
-                Err(error @ MoveError::IllegalMove { .. }) => {
-                    self.builder.errors.push((place, error));
+                MovePathResult::Path(path) | MovePathResult::Union(path) => {
+                    self.record_move(place, path)
                 }
+                MovePathResult::Error => {}
             };
         }
     }

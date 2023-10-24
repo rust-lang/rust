@@ -3,12 +3,10 @@ use rustc_hir::LangItem;
 use smallvec::SmallVec;
 
 use super::{BasicBlock, InlineAsmOperand, Operand, SourceInfo, TerminatorKind, UnwindAction};
-pub use rustc_ast::Mutability;
 use rustc_macros::HashStable;
 use std::iter;
 use std::slice;
 
-pub use super::query::*;
 use super::*;
 
 impl SwitchTargets {
@@ -26,6 +24,15 @@ impl SwitchTargets {
     /// and to `else_` if not.
     pub fn static_if(value: u128, then: BasicBlock, else_: BasicBlock) -> Self {
         Self { values: smallvec![value], targets: smallvec![then, else_] }
+    }
+
+    /// Inverse of `SwitchTargets::static_if`.
+    pub fn as_static_if(&self) -> Option<(u128, BasicBlock, BasicBlock)> {
+        if let &[value] = &self.values[..] && let &[then, else_] = &self.targets[..] {
+            Some((value, then, else_))
+        } else {
+            None
+        }
     }
 
     /// Returns the fallback target that is jumped to when none of the values match the operand.

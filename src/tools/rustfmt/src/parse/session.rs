@@ -316,8 +316,7 @@ impl LineRangeUtils for ParseSess {
 
         debug_assert_eq!(
             lo.sf.name, hi.sf.name,
-            "span crossed file boundary: lo: {:?}, hi: {:?}",
-            lo, hi
+            "span crossed file boundary: lo: {lo:?}, hi: {hi:?}"
         );
 
         // in case the span starts with a newline, the line range is off by 1 without the

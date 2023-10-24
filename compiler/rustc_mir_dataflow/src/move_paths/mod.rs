@@ -1,4 +1,3 @@
-use crate::move_paths::builder::MoveDat;
 use crate::un_derefer::UnDerefer;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::{IndexSlice, IndexVec};
@@ -291,7 +290,7 @@ impl Init {
 /// Tables mapping from a place to its MovePathIndex.
 #[derive(Debug)]
 pub struct MovePathLookup<'tcx> {
-    locals: IndexVec<Local, MovePathIndex>,
+    locals: IndexVec<Local, Option<MovePathIndex>>,
 
     /// projections are made from a base-place and a projection
     /// elem. The base-place will have a unique MovePathIndex; we use
@@ -318,7 +317,9 @@ impl<'tcx> MovePathLookup<'tcx> {
     // unknown place, but will rather return the nearest available
     // parent.
     pub fn find(&self, place: PlaceRef<'tcx>) -> LookupResult {
-        let mut result = self.find_local(place.local);
+        let Some(mut result) = self.find_local(place.local) else {
+            return LookupResult::Parent(None);
+        };
 
         for (_, elem) in self.un_derefer.iter_projections(place) {
             if let Some(&subpath) = self.projections.get(&(result, elem.lift())) {
@@ -332,7 +333,7 @@ impl<'tcx> MovePathLookup<'tcx> {
     }
 
     #[inline]
-    pub fn find_local(&self, local: Local) -> MovePathIndex {
+    pub fn find_local(&self, local: Local) -> Option<MovePathIndex> {
         self.locals[local]
     }
 
@@ -340,46 +341,8 @@ impl<'tcx> MovePathLookup<'tcx> {
     /// `MovePathIndex`es.
     pub fn iter_locals_enumerated(
         &self,
-    ) -> impl DoubleEndedIterator<Item = (Local, MovePathIndex)> + ExactSizeIterator + '_ {
-        self.locals.iter_enumerated().map(|(l, &idx)| (l, idx))
-    }
-}
-
-#[derive(Debug)]
-pub struct IllegalMoveOrigin<'tcx> {
-    pub location: Location,
-    pub kind: IllegalMoveOriginKind<'tcx>,
-}
-
-#[derive(Debug)]
-pub enum IllegalMoveOriginKind<'tcx> {
-    /// Illegal move due to attempt to move from behind a reference.
-    BorrowedContent {
-        /// The place the reference refers to: if erroneous code was trying to
-        /// move from `(*x).f` this will be `*x`.
-        target_place: Place<'tcx>,
-    },
-
-    /// Illegal move due to attempt to move from field of an ADT that
-    /// implements `Drop`. Rust maintains invariant that all `Drop`
-    /// ADT's remain fully-initialized so that user-defined destructor
-    /// can safely read from all of the ADT's fields.
-    InteriorOfTypeWithDestructor { container_ty: Ty<'tcx> },
-
-    /// Illegal move due to attempt to move out of a slice or array.
-    InteriorOfSliceOrArray { ty: Ty<'tcx>, is_index: bool },
-}
-
-#[derive(Debug)]
-pub enum MoveError<'tcx> {
-    IllegalMove { cannot_move_out_of: IllegalMoveOrigin<'tcx> },
-    UnionMove { path: MovePathIndex },
-}
-
-impl<'tcx> MoveError<'tcx> {
-    fn cannot_move_out_of(location: Location, kind: IllegalMoveOriginKind<'tcx>) -> Self {
-        let origin = IllegalMoveOrigin { location, kind };
-        MoveError::IllegalMove { cannot_move_out_of: origin }
+    ) -> impl DoubleEndedIterator<Item = (Local, MovePathIndex)> + '_ {
+        self.locals.iter_enumerated().filter_map(|(l, &idx)| Some((l, idx?)))
     }
 }
 
@@ -388,8 +351,9 @@ impl<'tcx> MoveData<'tcx> {
         body: &Body<'tcx>,
         tcx: TyCtxt<'tcx>,
         param_env: ParamEnv<'tcx>,
-    ) -> MoveDat<'tcx> {
-        builder::gather_moves(body, tcx, param_env)
+        filter: impl Fn(Ty<'tcx>) -> bool,
+    ) -> MoveData<'tcx> {
+        builder::gather_moves(body, tcx, param_env, filter)
     }
 
     /// For the move path `mpi`, returns the root local variable (if any) that starts the path.

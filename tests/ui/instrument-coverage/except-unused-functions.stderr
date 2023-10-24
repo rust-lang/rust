@@ -1,0 +1,2 @@
+error: `-C instrument-coverage=except-*` requires `-Z unstable-options`
+

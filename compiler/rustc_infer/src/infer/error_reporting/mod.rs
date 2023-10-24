@@ -588,60 +588,60 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 self.tcx
             }
 
-            fn print_region(self, _region: ty::Region<'_>) -> Result<Self, PrintError> {
+            fn print_region(&mut self, _region: ty::Region<'_>) -> Result<(), PrintError> {
                 Err(fmt::Error)
             }
 
-            fn print_type(self, _ty: Ty<'tcx>) -> Result<Self, PrintError> {
+            fn print_type(&mut self, _ty: Ty<'tcx>) -> Result<(), PrintError> {
                 Err(fmt::Error)
             }
 
             fn print_dyn_existential(
-                self,
+                &mut self,
                 _predicates: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
-            ) -> Result<Self, PrintError> {
+            ) -> Result<(), PrintError> {
                 Err(fmt::Error)
             }
 
-            fn print_const(self, _ct: ty::Const<'tcx>) -> Result<Self, PrintError> {
+            fn print_const(&mut self, _ct: ty::Const<'tcx>) -> Result<(), PrintError> {
                 Err(fmt::Error)
             }
 
-            fn path_crate(mut self, cnum: CrateNum) -> Result<Self, PrintError> {
+            fn path_crate(&mut self, cnum: CrateNum) -> Result<(), PrintError> {
                 self.segments = vec![self.tcx.crate_name(cnum).to_string()];
-                Ok(self)
+                Ok(())
             }
             fn path_qualified(
-                self,
+                &mut self,
                 _self_ty: Ty<'tcx>,
                 _trait_ref: Option<ty::TraitRef<'tcx>>,
-            ) -> Result<Self, PrintError> {
+            ) -> Result<(), PrintError> {
                 Err(fmt::Error)
             }
 
             fn path_append_impl(
-                self,
-                _print_prefix: impl FnOnce(Self) -> Result<Self, PrintError>,
+                &mut self,
+                _print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
                 _disambiguated_data: &DisambiguatedDefPathData,
                 _self_ty: Ty<'tcx>,
                 _trait_ref: Option<ty::TraitRef<'tcx>>,
-            ) -> Result<Self, PrintError> {
+            ) -> Result<(), PrintError> {
                 Err(fmt::Error)
             }
             fn path_append(
-                mut self,
-                print_prefix: impl FnOnce(Self) -> Result<Self, PrintError>,
+                &mut self,
+                print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
                 disambiguated_data: &DisambiguatedDefPathData,
-            ) -> Result<Self, PrintError> {
-                self = print_prefix(self)?;
+            ) -> Result<(), PrintError> {
+                print_prefix(self)?;
                 self.segments.push(disambiguated_data.to_string());
-                Ok(self)
+                Ok(())
             }
             fn path_generic_args(
-                self,
-                print_prefix: impl FnOnce(Self) -> Result<Self, PrintError>,
+                &mut self,
+                print_prefix: impl FnOnce(&mut Self) -> Result<(), PrintError>,
                 _args: &[GenericArg<'tcx>],
-            ) -> Result<Self, PrintError> {
+            ) -> Result<(), PrintError> {
                 print_prefix(self)
             }
         }
@@ -652,9 +652,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             // let _ = [{struct Foo; Foo}, {struct Foo; Foo}];
             if did1.krate != did2.krate {
                 let abs_path = |def_id| {
-                    AbsolutePathPrinter { tcx: self.tcx, segments: vec![] }
-                        .print_def_path(def_id, &[])
-                        .map(|p| p.segments)
+                    let mut printer = AbsolutePathPrinter { tcx: self.tcx, segments: vec![] };
+                    printer.print_def_path(def_id, &[]).map(|_| printer.segments)
                 };
 
                 // We compare strings because DefPath can be different
@@ -1071,7 +1070,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
         let get_lifetimes = |sig| {
             use rustc_hir::def::Namespace;
-            let (_, sig, reg) = ty::print::FmtPrinter::new(self.tcx, Namespace::TypeNS)
+            let (sig, reg) = ty::print::FmtPrinter::new(self.tcx, Namespace::TypeNS)
                 .name_all_regions(sig)
                 .unwrap();
             let lts: Vec<String> = reg.into_values().map(|kind| kind.to_string()).collect();

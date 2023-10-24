@@ -2633,9 +2633,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         /* Check if the mpi is initialized as an argument */
         let mut is_argument = false;
         for arg in self.body.args_iter() {
-            let path = self.move_data.rev_lookup.find_local(arg);
-            if mpis.contains(&path) {
-                is_argument = true;
+            if let Some(path) = self.move_data.rev_lookup.find_local(arg) {
+                if mpis.contains(&path) {
+                    is_argument = true;
+                }
             }
         }
 

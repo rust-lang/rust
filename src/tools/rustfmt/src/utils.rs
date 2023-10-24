@@ -69,7 +69,7 @@ pub(crate) fn format_visibility(
             let path = segments_iter.collect::<Vec<_>>().join("::");
             let in_str = if is_keyword(&path) { "" } else { "in " };
 
-            Cow::from(format!("pub({}{}) ", in_str, path))
+            Cow::from(format!("pub({in_str}{path}) "))
         }
     }
 }
@@ -131,23 +131,18 @@ pub(crate) fn format_mutability(mutability: ast::Mutability) -> &'static str {
 }
 
 #[inline]
-pub(crate) fn format_extern(
-    ext: ast::Extern,
-    explicit_abi: bool,
-    is_mod: bool,
-) -> Cow<'static, str> {
-    let abi = match ext {
-        ast::Extern::None => "Rust".to_owned(),
-        ast::Extern::Implicit(_) => "C".to_owned(),
-        ast::Extern::Explicit(abi, _) => abi.symbol_unescaped.to_string(),
-    };
-
-    if abi == "Rust" && !is_mod {
-        Cow::from("")
-    } else if abi == "C" && !explicit_abi {
-        Cow::from("extern ")
-    } else {
-        Cow::from(format!(r#"extern "{}" "#, abi))
+pub(crate) fn format_extern(ext: ast::Extern, explicit_abi: bool) -> Cow<'static, str> {
+    match ext {
+        ast::Extern::None => Cow::from(""),
+        ast::Extern::Implicit(_) if explicit_abi => Cow::from("extern \"C\" "),
+        ast::Extern::Implicit(_) => Cow::from("extern "),
+        // turn `extern "C"` into `extern` when `explicit_abi` is set to false
+        ast::Extern::Explicit(abi, _) if abi.symbol_unescaped == sym::C && !explicit_abi => {
+            Cow::from("extern ")
+        }
+        ast::Extern::Explicit(abi, _) => {
+            Cow::from(format!(r#"extern "{}" "#, abi.symbol_unescaped))
+        }
     }
 }
 
@@ -292,14 +287,20 @@ pub(crate) fn semicolon_for_expr(context: &RewriteContext<'_>, expr: &ast::Expr)
 }
 
 #[inline]
-pub(crate) fn semicolon_for_stmt(context: &RewriteContext<'_>, stmt: &ast::Stmt) -> bool {
+pub(crate) fn semicolon_for_stmt(
+    context: &RewriteContext<'_>,
+    stmt: &ast::Stmt,
+    is_last_expr: bool,
+) -> bool {
     match stmt.kind {
         ast::StmtKind::Semi(ref expr) => match expr.kind {
             ast::ExprKind::While(..) | ast::ExprKind::Loop(..) | ast::ExprKind::ForLoop(..) => {
                 false
             }
             ast::ExprKind::Break(..) | ast::ExprKind::Continue(..) | ast::ExprKind::Ret(..) => {
-                context.config.trailing_semicolon()
+                // The only time we can skip the semi-colon is if the config option is set to false
+                // **and** this is the last expr (even though any following exprs are unreachable)
+                context.config.trailing_semicolon() || !is_last_expr
             }
             _ => true,
         },

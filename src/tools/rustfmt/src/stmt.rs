@@ -3,7 +3,7 @@ use rustc_span::Span;
 
 use crate::comment::recover_comment_removed;
 use crate::config::Version;
-use crate::expr::{format_expr, ExprType};
+use crate::expr::{format_expr, is_simple_block, ExprType};
 use crate::rewrite::{Rewrite, RewriteContext};
 use crate::shape::Shape;
 use crate::source_map::LineRangeUtils;
@@ -30,6 +30,21 @@ impl<'a> Stmt<'a> {
         match self.inner.kind {
             ast::StmtKind::Item(ref item) => Some(&**item),
             _ => None,
+        }
+    }
+
+    pub(crate) fn from_simple_block(
+        context: &RewriteContext<'_>,
+        block: &'a ast::Block,
+        attrs: Option<&[ast::Attribute]>,
+    ) -> Option<Self> {
+        if is_simple_block(context, block, attrs) {
+            let inner = &block.stmts[0];
+            // Simple blocks only contain one expr and no stmts
+            let is_last = true;
+            Some(Stmt { inner, is_last })
+        } else {
+            None
         }
     }
 
@@ -80,13 +95,13 @@ impl<'a> Rewrite for Stmt<'a> {
         } else {
             ExprType::Statement
         };
-        format_stmt(context, shape, self.as_ast_node(), expr_type)
-    }
-}
-
-impl Rewrite for ast::Stmt {
-    fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
-        format_stmt(context, shape, self, ExprType::Statement)
+        format_stmt(
+            context,
+            shape,
+            self.as_ast_node(),
+            expr_type,
+            self.is_last_expr(),
+        )
     }
 }
 
@@ -95,13 +110,14 @@ fn format_stmt(
     shape: Shape,
     stmt: &ast::Stmt,
     expr_type: ExprType,
+    is_last_expr: bool,
 ) -> Option<String> {
     skip_out_of_file_lines_range!(context, stmt.span());
 
     let result = match stmt.kind {
         ast::StmtKind::Local(ref local) => local.rewrite(context, shape),
         ast::StmtKind::Expr(ref ex) | ast::StmtKind::Semi(ref ex) => {
-            let suffix = if semicolon_for_stmt(context, stmt) {
+            let suffix = if semicolon_for_stmt(context, stmt, is_last_expr) {
                 ";"
             } else {
                 ""
