@@ -120,32 +120,25 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
         args: &[Value],
     ) -> Cow<'_, [Value]> {
         if self.tcx.sess.target.is_like_windows {
-            let (mut params, mut args): (Vec<_>, Vec<_>) =
-                params
-                    .into_iter()
-                    .zip(args)
-                    .map(|(param, &arg)| {
-                        if param.value_type == types::I128 {
-                            let arg_ptr = Pointer::stack_slot(self.bcx.create_sized_stack_slot(
-                                StackSlotData { kind: StackSlotKind::ExplicitSlot, size: 16 },
-                            ));
-                            arg_ptr.store(self, arg, MemFlags::trusted());
-                            (AbiParam::new(self.pointer_type), arg_ptr.get_addr(self))
-                        } else {
-                            (param, arg)
-                        }
-                    })
-                    .unzip();
+            let (mut params, mut args): (Vec<_>, Vec<_>) = params
+                .into_iter()
+                .zip(args)
+                .map(|(param, &arg)| {
+                    if param.value_type == types::I128 {
+                        let arg_ptr = self.create_stack_slot(16, 16);
+                        arg_ptr.store(self, arg, MemFlags::trusted());
+                        (AbiParam::new(self.pointer_type), arg_ptr.get_addr(self))
+                    } else {
+                        (param, arg)
+                    }
+                })
+                .unzip();
 
             let indirect_ret_val = returns.len() == 1 && returns[0].value_type == types::I128;
 
             if indirect_ret_val {
                 params.insert(0, AbiParam::new(self.pointer_type));
-                let ret_ptr =
-                    Pointer::stack_slot(self.bcx.create_sized_stack_slot(StackSlotData {
-                        kind: StackSlotKind::ExplicitSlot,
-                        size: 16,
-                    }));
+                let ret_ptr = self.create_stack_slot(16, 16);
                 args.insert(0, ret_ptr.get_addr(self));
                 self.lib_call_unadjusted(name, params, vec![], &args);
                 return Cow::Owned(vec![ret_ptr.load(self, types::I128, MemFlags::trusted())]);
