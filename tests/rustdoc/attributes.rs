@@ -11,3 +11,12 @@ pub extern "C" fn g() {}
 // @has foo/struct.Repr.html '//pre[@class="rust item-decl"]' '#[repr(C, align(8))]'
 #[repr(C, align(8))]
 pub struct Repr;
+
+// checking for the presence of the "Default" chip on the variant
+// @has foo/enum.Enum2.html '//section[@id="variant.Foo"]' 'Default'
+#[derive(Default)]
+pub enum Enum2 {
+    #[default]
+    Foo,
+    Bar,
+}

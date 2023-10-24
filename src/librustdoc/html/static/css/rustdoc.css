@@ -213,7 +213,6 @@ a.anchor,
 .mobile-topbar h2 a,
 h1 a,
 .search-results a,
-.stab,
 .result-name i {
 	color: var(--main-color);
 }
@@ -1083,6 +1082,25 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	padding: 0 20px 20px 17px;
 }
 
+.chip {
+	padding: 0 4px;
+	background-color: var(--chip-background-color);
+}
+
+.stab, .chip {
+	font-size: 0.875rem;
+	font-weight: normal;
+	color: var(--main-color);
+	width: fit-content;
+	white-space: pre-wrap;
+	border-radius: 3px;
+	display: inline;
+	vertical-align: baseline;
+}
+.stab {
+	padding: 0 2px;
+	background-color: var(--stab-background-color);
+}
 .item-info .stab {
 	/* This min-height is needed to unify the height of the stab elements because some of them
 	   have emojis.
@@ -1096,18 +1114,6 @@ so that we can apply CSS-filters to change the arrow color in themes */
 }
 .item-name .stab {
 	margin-left: 0.3125em;
-}
-.stab {
-	padding: 0 2px;
-	font-size: 0.875rem;
-	font-weight: normal;
-	color: var(--main-color);
-	background-color: var(--stab-background-color);
-	width: fit-content;
-	white-space: pre-wrap;
-	border-radius: 3px;
-	display: inline;
-	vertical-align: baseline;
 }
 
 .stab.portability > code {
@@ -2226,6 +2232,7 @@ in src-script.js
 	--search-tab-button-not-selected-background: #e6e6e6;
 	--search-tab-button-selected-border-top-color: #0089ff;
 	--search-tab-button-selected-background: #fff;
+	--chip-background-color: #fff5d6;
 	--stab-background-color: #fff5d6;
 	--stab-code-color: #000;
 	--code-highlight-kw-color: #8959a8;
@@ -2328,6 +2335,7 @@ in src-script.js
 	--search-tab-button-not-selected-background: #252525;
 	--search-tab-button-selected-border-top-color: #0089ff;
 	--search-tab-button-selected-background: #353535;
+	--chip-background-color: #314559;
 	--stab-background-color: #314559;
 	--stab-code-color: #e6e1cf;
 	--code-highlight-kw-color: #ab8ac1;
@@ -2437,6 +2445,7 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--search-tab-button-not-selected-background: transparent !important;
 	--search-tab-button-selected-border-top-color: none;
 	--search-tab-button-selected-background: #141920 !important;
+	--chip-background-color: #314559;
 	--stab-background-color: #314559;
 	--stab-code-color: #e6e1cf;
 	--code-highlight-kw-color: #ff7733;

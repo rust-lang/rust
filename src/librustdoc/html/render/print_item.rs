@@ -1716,6 +1716,9 @@ fn item_variants(
         if let clean::VariantKind::Tuple(ref s) = variant_data.kind {
             write!(w, "({})", print_tuple_struct_fields(cx, s));
         }
+        if variant.attrs.other_attrs.iter().any(|a| a.has_name(kw::Default)) {
+            write!(w, "{}", chip("Default", "default"));
+        }
         w.write_str("</h3></section>");
 
         let heading_and_fields = match &variant_data.kind {
@@ -2367,4 +2370,14 @@ fn document_non_exhaustive<'a>(item: &'a clean::Item) -> impl fmt::Display + 'a 
 
 fn pluralize(count: usize) -> &'static str {
     if count > 1 { "s" } else { "" }
+}
+
+fn chip<'a, 'cx: 'a>(
+    inner: &'a str,
+    extra_classes: &'a str,
+) -> impl fmt::Display + 'a + Captures<'cx> {
+    display_fn(move |f| {
+        f.write_fmt(format_args!(" <span class=\"chip {extra_classes}\">{inner}</span>"))?;
+        Ok(())
+    })
 }
