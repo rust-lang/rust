@@ -1505,16 +1505,6 @@ pub struct UselessStability {
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_invalid_stability)]
-pub struct InvalidStability {
-    #[primary_span]
-    #[label]
-    pub span: Span,
-    #[label(passes_item)]
-    pub item_sp: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(passes_cannot_stabilize_deprecated)]
 pub struct CannotStabilizeDeprecated {
     #[primary_span]

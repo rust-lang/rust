@@ -144,11 +144,20 @@ pub enum StabilityLevel {
     /// `#[stable]`
     Stable {
         /// Rust release which stabilized this feature.
-        since: Symbol,
+        since: Since,
         /// Is this item allowed to be referred to on stable, despite being contained in unstable
         /// modules?
         allowed_through_unstable_modules: bool,
     },
+}
+
+/// Rust release in which a feature is stabilized.
+#[derive(Encodable, Decodable, PartialEq, Copy, Clone, Debug, Eq, Hash)]
+#[derive(HashStable_Generic)]
+pub enum Since {
+    Version(Version),
+    /// Stabilized in the upcoming version, whatever number that is.
+    Current,
 }
 
 impl StabilityLevel {
@@ -372,9 +381,9 @@ fn parse_stability(sess: &Session, attr: &Attribute) -> Option<(Symbol, Stabilit
 
     let since = if let Some(since) = since {
         if since.as_str() == VERSION_PLACEHOLDER {
-            Ok(rust_version_symbol())
-        } else if parse_version(since.as_str(), false).is_some() {
-            Ok(since)
+            Ok(Since::Current)
+        } else if let Some(version) = parse_version(since.as_str(), false) {
+            Ok(Since::Version(version))
         } else {
             Err(sess.emit_err(session_diagnostics::InvalidSince { span: attr.span }))
         }
@@ -556,11 +565,12 @@ fn gate_cfg(gated_cfg: &GatedCfg, cfg_span: Span, sess: &ParseSess, features: &F
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-struct Version {
-    major: u16,
-    minor: u16,
-    patch: u16,
+#[derive(Encodable, Decodable, Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(HashStable_Generic)]
+pub struct Version {
+    pub major: u16,
+    pub minor: u16,
+    pub patch: u16,
 }
 
 fn parse_version(s: &str, allow_appendix: bool) -> Option<Version> {
