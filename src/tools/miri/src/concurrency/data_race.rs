@@ -847,13 +847,27 @@ impl VClockAlloc {
         let mut action = Cow::Borrowed(action);
         let mut involves_non_atomic = true;
         let write_clock;
-        #[rustfmt::skip]
         let (other_action, other_thread, other_clock) =
-            if mem_clocks.write.1 > current_clocks.clock[mem_clocks.write.0] {
+            // First check the atomic-nonatomic cases. If it looks like multiple
+            // cases apply, this one should take precedence, else it might look like
+            // we are reporting races between two non-atomic reads.
+            if !is_atomic &&
+                let Some(atomic) = mem_clocks.atomic() &&
+                let Some(idx) = Self::find_gt_index(&atomic.write_vector, &current_clocks.clock)
+            {
+                (format!("Atomic Store"), idx, &atomic.write_vector)
+            } else if !is_atomic &&
+                let Some(atomic) = mem_clocks.atomic() &&
+                let Some(idx) = Self::find_gt_index(&atomic.read_vector, &current_clocks.clock)
+            {
+                (format!("Atomic Load"), idx, &atomic.read_vector)
+            // Then check races with non-atomic writes/reads.
+            } else if mem_clocks.write.1 > current_clocks.clock[mem_clocks.write.0] {
                 write_clock = mem_clocks.write();
                 (mem_clocks.write_type.get_descriptor().to_owned(), mem_clocks.write.0, &write_clock)
             } else if let Some(idx) = Self::find_gt_index(&mem_clocks.read, &current_clocks.clock) {
                 (format!("Read"), idx, &mem_clocks.read)
+            // Finally, mixed-size races.
             } else if is_atomic && let Some(atomic) = mem_clocks.atomic() && atomic.size != access_size {
                 // This is only a race if we are not synchronized with all atomic accesses, so find
                 // the one we are not synchronized with.
@@ -871,27 +885,8 @@ impl VClockAlloc {
                             "Failed to report data-race for mixed-size access: no race found"
                         )
                     }
-            } else if !is_atomic {
-                if let Some(atomic) = mem_clocks.atomic() {
-                    if let Some(idx) = Self::find_gt_index(&atomic.write_vector, &current_clocks.clock)
-                    {
-                        (format!("Atomic Store"), idx, &atomic.write_vector)
-                    } else if let Some(idx) =
-                        Self::find_gt_index(&atomic.read_vector, &current_clocks.clock)
-                    {
-                        (format!("Atomic Load"), idx, &atomic.read_vector)
-                    } else {
-                        unreachable!(
-                            "Failed to report data-race for non-atomic operation: no race found"
-                        )
-                    }
-                } else {
-                    unreachable!(
-                        "Failed to report data-race for non-atomic operation: no atomic component"
-                    )
-                }
             } else {
-                unreachable!("Failed to report data-race for atomic operation")
+                unreachable!("Failed to report data-race")
             };
 
         // Load elaborated thread information about the racing thread actions.

@@ -10,10 +10,15 @@ fn main() {
 
     thread::scope(|s| {
         s.spawn(|| {
+            // We also put a non-atomic access here, but that should *not* be reported.
+            let ptr = &a as *const AtomicU16 as *mut u16;
+            unsafe { ptr.read() };
+            // Then do the atomic access.
             a.load(Ordering::SeqCst);
         });
         s.spawn(|| {
             thread::yield_now();
+
             let ptr = &a as *const AtomicU16 as *mut u16;
             unsafe { ptr.read() };
             //~^ ERROR: Data race detected between (1) Atomic Load on thread `<unnamed>` and (2) Read on thread `<unnamed>`
