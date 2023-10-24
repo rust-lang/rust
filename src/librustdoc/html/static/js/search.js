@@ -1268,7 +1268,10 @@ function initSearch(rawSearchIndex) {
                         }
                     } else {
                         push(fnType.name, fnType.highlighted);
-                        if (fnType.generics && fnType.generics.some(isTransitivelyHighlighted)) {
+                        if (fnType.generics && fnType.generics.length > 0 &&
+                            (fnType.generics.some(isTransitivelyHighlighted)
+                                || row.implDisambiguator !== null)
+                        ) {
                             pushNotHighlighted("<");
                             formatTypeList(fnType.generics, ", ");
                             pushNotHighlighted(">");

@@ -11,7 +11,8 @@ const EXPECTED = [
             {
                 'path': 'search_method_disambiguate::MyTy',
                 'name': 'my_method',
-                'href': '../search_method_disambiguate/struct.MyTy.html#impl-X-for-MyTy%3Cbool%3E/method.my_method'
+                'href': '../search_method_disambiguate/struct.MyTy.html#impl-X-for-MyTy%3Cbool%3E/method.my_method',
+                'displayTypeSignature': '*MyTy*<bool> -> *bool*',
             },
         ],
     },
@@ -21,7 +22,8 @@ const EXPECTED = [
             {
                 'path': 'search_method_disambiguate::MyTy',
                 'name': 'my_method',
-                'href': '../search_method_disambiguate/struct.MyTy.html#impl-X-for-MyTy%3Cu8%3E/method.my_method'
+                'href': '../search_method_disambiguate/struct.MyTy.html#impl-X-for-MyTy%3Cu8%3E/method.my_method',
+                'displayTypeSignature': '*MyTy*<u8> -> *u8*',
             },
         ],
     }
