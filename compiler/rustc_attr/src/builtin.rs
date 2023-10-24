@@ -13,6 +13,7 @@ use rustc_session::parse::{feature_err, ParseSess};
 use rustc_session::Session;
 use rustc_span::hygiene::Transparency;
 use rustc_span::{symbol::sym, symbol::Symbol, Span};
+use std::fmt::{self, Display};
 use std::num::NonZeroU32;
 
 use crate::session_diagnostics::{self, IncorrectReprFormatGenericCause};
@@ -588,6 +589,12 @@ fn parse_version(s: &str, allow_appendix: bool) -> Option<Version> {
     let minor = digits.next()?.parse().ok()?;
     let patch = digits.next().unwrap_or("0").parse().ok()?;
     Some(Version { major, minor, patch })
+}
+
+impl Display for Version {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(formatter, "{}.{}.{}", self.major, self.minor, self.patch)
+    }
 }
 
 /// Evaluate a cfg-like condition (with `any` and `all`), using `eval` to
