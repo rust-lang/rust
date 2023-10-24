@@ -14,6 +14,7 @@ LL | trait Foo {
    |       --- this trait cannot be made into an object...
 LL |     fn foo(self: &Rc<Self>) -> usize;
    |                  ^^^^^^^^^ ...because method `foo`'s `self` parameter cannot be dispatched on
+   = help: only type `usize` implements the trait, consider using it directly instead
    = note: required for the cast from `Rc<usize>` to `Rc<dyn Foo>`
 
 error: aborting due to previous error

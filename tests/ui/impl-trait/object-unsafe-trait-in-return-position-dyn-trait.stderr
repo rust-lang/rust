@@ -11,6 +11,9 @@ LL | trait NotObjectSafe {
    |       ------------- this trait cannot be made into an object...
 LL |     fn foo() -> Self;
    |        ^^^ ...because associated function `foo` has no `self` parameter
+   = help: the following types implement the trait, consider defining an enum where each variant holds one of these types, implementing `NotObjectSafe` for this new enum and using it instead:
+             A
+             B
 help: consider turning `foo` into a method by giving it a `&self` argument
    |
 LL |     fn foo(&self) -> Self;
@@ -33,6 +36,9 @@ LL | trait NotObjectSafe {
    |       ------------- this trait cannot be made into an object...
 LL |     fn foo() -> Self;
    |        ^^^ ...because associated function `foo` has no `self` parameter
+   = help: the following types implement the trait, consider defining an enum where each variant holds one of these types, implementing `NotObjectSafe` for this new enum and using it instead:
+             A
+             B
 help: consider turning `foo` into a method by giving it a `&self` argument
    |
 LL |     fn foo(&self) -> Self;

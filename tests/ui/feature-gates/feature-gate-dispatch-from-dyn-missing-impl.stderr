@@ -14,6 +14,7 @@ LL | trait Trait {
    |       ----- this trait cannot be made into an object...
 LL |     fn ptr(self: Ptr<Self>);
    |                  ^^^^^^^^^ ...because method `ptr`'s `self` parameter cannot be dispatched on
+   = help: only type `i32` implements the trait, consider using it directly instead
 
 error[E0038]: the trait `Trait` cannot be made into an object
   --> $DIR/feature-gate-dispatch-from-dyn-missing-impl.rs:32:5
@@ -31,6 +32,7 @@ LL | trait Trait {
    |       ----- this trait cannot be made into an object...
 LL |     fn ptr(self: Ptr<Self>);
    |                  ^^^^^^^^^ ...because method `ptr`'s `self` parameter cannot be dispatched on
+   = help: only type `i32` implements the trait, consider using it directly instead
    = note: required for the cast from `Ptr<{integer}>` to `Ptr<dyn Trait>`
 
 error: aborting due to 2 previous errors

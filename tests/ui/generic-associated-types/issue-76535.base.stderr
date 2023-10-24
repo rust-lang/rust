@@ -28,6 +28,8 @@ LL | pub trait SuperTrait {
 LL |     type SubType<'a>: SubTrait where Self: 'a;
    |          ^^^^^^^ ...because it contains the generic associated type `SubType`
    = help: consider moving `SubType` to another trait
+   = help: only type `SuperStruct` is seen to implement the trait in this crate, consider using it directly instead
+   = note: `SuperTrait` can be implemented in other crates; if you want to support your users passing their own types here, you can't refer to a specific type
 
 error[E0038]: the trait `SuperTrait` cannot be made into an object
   --> $DIR/issue-76535.rs:39:57
@@ -43,6 +45,8 @@ LL | pub trait SuperTrait {
 LL |     type SubType<'a>: SubTrait where Self: 'a;
    |          ^^^^^^^ ...because it contains the generic associated type `SubType`
    = help: consider moving `SubType` to another trait
+   = help: only type `SuperStruct` is seen to implement the trait in this crate, consider using it directly instead
+   = note: `SuperTrait` can be implemented in other crates; if you want to support your users passing their own types here, you can't refer to a specific type
    = note: required for the cast from `Box<SuperStruct>` to `Box<dyn SuperTrait<SubType = SubStruct<'_>>>`
 
 error: aborting due to 3 previous errors
