@@ -128,18 +128,6 @@ impl<'tcx> DebugWithInfcx<TyCtxt<'tcx>> for ty::FnSig<'tcx> {
     }
 }
 
-impl<'tcx> fmt::Debug for ty::ConstVid<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "?{}c", self.index)
-    }
-}
-
-impl fmt::Debug for ty::EffectVid<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "?{}e", self.index)
-    }
-}
-
 impl<'tcx> fmt::Debug for ty::TraitRef<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         with_no_trimmed_paths!(fmt::Display::fmt(self, f))
@@ -251,7 +239,7 @@ impl<'tcx> DebugWithInfcx<TyCtxt<'tcx>> for AliasTy<'tcx> {
     }
 }
 
-impl<'tcx> fmt::Debug for ty::InferConst<'tcx> {
+impl fmt::Debug for ty::InferConst {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             InferConst::Var(var) => write!(f, "{var:?}"),
@@ -260,7 +248,7 @@ impl<'tcx> fmt::Debug for ty::InferConst<'tcx> {
         }
     }
 }
-impl<'tcx> DebugWithInfcx<TyCtxt<'tcx>> for ty::InferConst<'tcx> {
+impl<'tcx> DebugWithInfcx<TyCtxt<'tcx>> for ty::InferConst {
     fn fmt<Infcx: InferCtxtLike<Interner = TyCtxt<'tcx>>>(
         this: WithInfcx<'_, Infcx, &Self>,
         f: &mut core::fmt::Formatter<'_>,
@@ -269,8 +257,8 @@ impl<'tcx> DebugWithInfcx<TyCtxt<'tcx>> for ty::InferConst<'tcx> {
         match this.infcx.universe_of_ct(*this.data) {
             None => write!(f, "{:?}", this.data),
             Some(universe) => match *this.data {
-                Var(vid) => write!(f, "?{}_{}c", vid.index, universe.index()),
-                EffectVar(vid) => write!(f, "?{}_{}e", vid.index, universe.index()),
+                Var(vid) => write!(f, "?{}_{}c", vid.index(), universe.index()),
+                EffectVar(vid) => write!(f, "?{}_{}e", vid.index(), universe.index()),
                 Fresh(_) => {
                     unreachable!()
                 }
@@ -862,7 +850,7 @@ impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for ty::Const<'tcx> {
     }
 }
 
-impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for InferConst<'tcx> {
+impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for InferConst {
     fn try_fold_with<F: FallibleTypeFolder<TyCtxt<'tcx>>>(
         self,
         _folder: &mut F,
@@ -871,7 +859,7 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for InferConst<'tcx> {
     }
 }
 
-impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for InferConst<'tcx> {
+impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for InferConst {
     fn visit_with<V: TypeVisitor<TyCtxt<'tcx>>>(
         &self,
         _visitor: &mut V,

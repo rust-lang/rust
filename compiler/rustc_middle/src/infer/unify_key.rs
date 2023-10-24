@@ -141,18 +141,30 @@ pub struct ConstVarValue<'tcx> {
     pub val: ConstVariableValue<'tcx>,
 }
 
-impl<'tcx> UnifyKey for ty::ConstVid<'tcx> {
+#[derive(PartialEq, Copy, Clone, Debug)]
+pub struct ConstVidKey<'tcx> {
+    pub vid: ty::ConstVid,
+    pub phantom: PhantomData<ty::Const<'tcx>>,
+}
+
+impl<'tcx> From<ty::ConstVid> for ConstVidKey<'tcx> {
+    fn from(vid: ty::ConstVid) -> Self {
+        ConstVidKey { vid, phantom: PhantomData }
+    }
+}
+
+impl<'tcx> UnifyKey for ConstVidKey<'tcx> {
     type Value = ConstVarValue<'tcx>;
     #[inline]
     fn index(&self) -> u32 {
-        self.index
+        self.vid.as_u32()
     }
     #[inline]
     fn from_index(i: u32) -> Self {
-        ty::ConstVid { index: i, phantom: PhantomData }
+        ConstVidKey::from(ty::ConstVid::from_u32(i))
     }
     fn tag() -> &'static str {
-        "ConstVid"
+        "ConstVidKey"
     }
 }
 
@@ -224,17 +236,29 @@ impl<'tcx> UnifyValue for EffectVarValue<'tcx> {
     }
 }
 
-impl<'tcx> UnifyKey for ty::EffectVid<'tcx> {
+#[derive(PartialEq, Copy, Clone, Debug)]
+pub struct EffectVidKey<'tcx> {
+    pub vid: ty::EffectVid,
+    pub phantom: PhantomData<EffectVarValue<'tcx>>,
+}
+
+impl<'tcx> From<ty::EffectVid> for EffectVidKey<'tcx> {
+    fn from(vid: ty::EffectVid) -> Self {
+        EffectVidKey { vid, phantom: PhantomData }
+    }
+}
+
+impl<'tcx> UnifyKey for EffectVidKey<'tcx> {
     type Value = Option<EffectVarValue<'tcx>>;
     #[inline]
     fn index(&self) -> u32 {
-        self.index
+        self.vid.as_u32()
     }
     #[inline]
     fn from_index(i: u32) -> Self {
-        ty::EffectVid { index: i, phantom: PhantomData }
+        EffectVidKey::from(ty::EffectVid::from_u32(i))
     }
     fn tag() -> &'static str {
-        "EffectVid"
+        "EffectVidKey"
     }
 }

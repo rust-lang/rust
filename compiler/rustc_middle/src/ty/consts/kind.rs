@@ -80,19 +80,19 @@ static_assert_size!(super::ConstKind<'_>, 32);
 
 /// An inference variable for a const, for use in const generics.
 #[derive(Copy, Clone, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable, Hash)]
-pub enum InferConst<'tcx> {
+pub enum InferConst {
     /// Infer the value of the const.
-    Var(ty::ConstVid<'tcx>),
+    Var(ty::ConstVid),
     /// Infer the value of the effect.
     ///
     /// For why this is separate from the `Var` variant above, see the
     /// documentation on `EffectVid`.
-    EffectVar(ty::EffectVid<'tcx>),
+    EffectVar(ty::EffectVid),
     /// A fresh const variable. See `infer::freshen` for more details.
     Fresh(u32),
 }
 
-impl<CTX> HashStable<CTX> for InferConst<'_> {
+impl<CTX> HashStable<CTX> for InferConst {
     fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
         match self {
             InferConst::Var(_) | InferConst::EffectVar(_) => {
