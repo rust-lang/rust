@@ -1,5 +1,3 @@
-#![allow(incomplete_features)]
-
 struct Wrapper<T>(T);
 
 trait Foo {

@@ -342,6 +342,19 @@ const CSKY_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("hard-float-abi", Some(sym::csky_target_feature)),
     // tidy-alphabetical-end
 ];
+
+const LOONGARCH_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
+    // tidy-alphabetical-start
+    ("d", Some(sym::loongarch_target_feature)),
+    ("f", Some(sym::loongarch_target_feature)),
+    ("lasx", Some(sym::loongarch_target_feature)),
+    ("lbt", Some(sym::loongarch_target_feature)),
+    ("lsx", Some(sym::loongarch_target_feature)),
+    ("lvz", Some(sym::loongarch_target_feature)),
+    ("ual", Some(sym::loongarch_target_feature)),
+    // tidy-alphabetical-end
+];
+
 /// When rustdoc is running, provide a list of all known features so that all their respective
 /// primitives may be documented.
 ///
@@ -358,6 +371,7 @@ pub fn all_known_features() -> impl Iterator<Item = (&'static str, Option<Symbol
         .chain(WASM_ALLOWED_FEATURES.iter())
         .chain(BPF_ALLOWED_FEATURES.iter())
         .chain(CSKY_ALLOWED_FEATURES)
+        .chain(LOONGARCH_ALLOWED_FEATURES)
         .cloned()
 }
 
@@ -373,6 +387,7 @@ pub fn supported_target_features(sess: &Session) -> &'static [(&'static str, Opt
         "wasm32" | "wasm64" => WASM_ALLOWED_FEATURES,
         "bpf" => BPF_ALLOWED_FEATURES,
         "csky" => CSKY_ALLOWED_FEATURES,
+        "loongarch64" => LOONGARCH_ALLOWED_FEATURES,
         _ => &[],
     }
 }
@@ -445,6 +460,7 @@ pub fn from_target_feature(
                 Some(sym::bpf_target_feature) => rust_features.bpf_target_feature,
                 Some(sym::aarch64_ver_target_feature) => rust_features.aarch64_ver_target_feature,
                 Some(sym::csky_target_feature) => rust_features.csky_target_feature,
+                Some(sym::loongarch_target_feature) => rust_features.loongarch_target_feature,
                 Some(name) => bug!("unknown target feature gate {}", name),
                 None => true,
             };

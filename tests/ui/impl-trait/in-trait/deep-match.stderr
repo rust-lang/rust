@@ -1,5 +1,5 @@
 error[E0053]: method `bar` has an incompatible return type for trait
-  --> $DIR/deep-match.rs:10:17
+  --> $DIR/deep-match.rs:8:17
    |
 LL |     fn bar() -> i32 {
    |                 ^^^

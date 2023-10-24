@@ -1,5 +1,3 @@
-#![allow(incomplete_features)]
-
 trait Foo {
     fn bar() -> impl std::fmt::Display;
 }

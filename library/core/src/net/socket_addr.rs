@@ -1,6 +1,4 @@
-use crate::cmp::Ordering;
 use crate::fmt::{self, Write};
-use crate::hash;
 use crate::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
 use super::display_buffer::DisplayBuffer;
@@ -63,7 +61,7 @@ pub enum SocketAddr {
 /// assert_eq!(socket.ip(), &Ipv4Addr::new(127, 0, 0, 1));
 /// assert_eq!(socket.port(), 8080);
 /// ```
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct SocketAddrV4 {
     ip: Ipv4Addr,
@@ -96,7 +94,7 @@ pub struct SocketAddrV4 {
 /// assert_eq!(socket.ip(), &Ipv6Addr::new(0x2001, 0xdb8, 0, 0, 0, 0, 0, 1));
 /// assert_eq!(socket.port(), 8080);
 /// ```
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct SocketAddrV6 {
     ip: Ipv6Addr,
@@ -642,50 +640,5 @@ impl fmt::Display for SocketAddrV6 {
 impl fmt::Debug for SocketAddrV6 {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(self, fmt)
-    }
-}
-
-#[stable(feature = "socketaddr_ordering", since = "1.45.0")]
-impl PartialOrd for SocketAddrV4 {
-    #[inline]
-    fn partial_cmp(&self, other: &SocketAddrV4) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-#[stable(feature = "socketaddr_ordering", since = "1.45.0")]
-impl PartialOrd for SocketAddrV6 {
-    #[inline]
-    fn partial_cmp(&self, other: &SocketAddrV6) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-#[stable(feature = "socketaddr_ordering", since = "1.45.0")]
-impl Ord for SocketAddrV4 {
-    #[inline]
-    fn cmp(&self, other: &SocketAddrV4) -> Ordering {
-        self.ip().cmp(other.ip()).then(self.port().cmp(&other.port()))
-    }
-}
-
-#[stable(feature = "socketaddr_ordering", since = "1.45.0")]
-impl Ord for SocketAddrV6 {
-    #[inline]
-    fn cmp(&self, other: &SocketAddrV6) -> Ordering {
-        self.ip().cmp(other.ip()).then(self.port().cmp(&other.port()))
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl hash::Hash for SocketAddrV4 {
-    fn hash<H: hash::Hasher>(&self, s: &mut H) {
-        (self.port, self.ip).hash(s)
-    }
-}
-#[stable(feature = "rust1", since = "1.0.0")]
-impl hash::Hash for SocketAddrV6 {
-    fn hash<H: hash::Hasher>(&self, s: &mut H) {
-        (self.port, &self.ip, self.flowinfo, self.scope_id).hash(s)
     }
 }

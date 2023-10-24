@@ -2,8 +2,6 @@
 // known-bug: #102682
 // edition: 2021
 
-#![allow(incomplete_features)]
-
 use std::fmt::Debug;
 use std::hash::Hash;
 

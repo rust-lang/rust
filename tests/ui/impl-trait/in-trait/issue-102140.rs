@@ -1,5 +1,3 @@
-#![allow(incomplete_features)]
-
 trait Marker {}
 impl Marker for u32 {}
 
