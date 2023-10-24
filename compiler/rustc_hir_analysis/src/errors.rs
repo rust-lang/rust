@@ -683,7 +683,6 @@ pub(crate) struct SIMDFFIHighlyExperimental {
 }
 
 #[derive(Diagnostic)]
-
 pub enum ImplNotMarkedDefault {
     #[diag(hir_analysis_impl_not_marked_default, code = "E0520")]
     #[note]
@@ -1158,4 +1157,175 @@ pub struct ImplForTyRequires {
     pub error_predicate: String,
     pub trait_name: String,
     pub ty: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_traits_with_defualt_impl, code = "E0321")]
+#[note]
+pub struct TraitsWithDefaultImpl<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub traits: String,
+    pub problematic_kind: &'a str,
+    pub self_ty: Ty<'a>,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_cross_crate_traits, code = "E0321")]
+pub struct CrossCrateTraits<'a> {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub traits: String,
+    pub self_ty: Ty<'a>,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_cross_crate_traits_defined, code = "E0321")]
+pub struct CrossCrateTraitsDefined {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub traits: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_ty_param_first_local, code = "E0210")]
+#[note]
+pub struct TyParamFirstLocal<'a> {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[note(hir_analysis_case_note)]
+    pub note: (),
+    pub param_ty: Ty<'a>,
+    pub local_type: Ty<'a>,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_ty_param_some, code = "E0210")]
+#[note]
+pub struct TyParamSome<'a> {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[note(hir_analysis_only_note)]
+    pub note: (),
+    pub param_ty: Ty<'a>,
+}
+
+#[derive(Diagnostic)]
+pub enum OnlyCurrentTraits<'a> {
+    #[diag(hir_analysis_only_current_traits_outside, code = "E0117")]
+    Outside {
+        #[primary_span]
+        #[label(hir_analysis_only_current_traits_label)]
+        span: Span,
+        #[note(hir_analysis_only_current_traits_note)]
+        note: (),
+        #[subdiagnostic]
+        opaque: Vec<OnlyCurrentTraitsOpaque>,
+        #[subdiagnostic]
+        foreign: Vec<OnlyCurrentTraitsForeign>,
+        #[subdiagnostic]
+        name: Vec<OnlyCurrentTraitsName<'a>>,
+        #[subdiagnostic]
+        pointer: Vec<OnlyCurrentTraitsPointer<'a>>,
+        #[subdiagnostic]
+        ty: Vec<OnlyCurrentTraitsTy<'a>>,
+        #[subdiagnostic]
+        sugg: Option<OnlyCurrentTraitsPointerSugg<'a>>,
+    },
+    #[diag(hir_analysis_only_current_traits_primitive, code = "E0117")]
+    Primitive {
+        #[primary_span]
+        #[label(hir_analysis_only_current_traits_label)]
+        span: Span,
+        #[note(hir_analysis_only_current_traits_note)]
+        note: (),
+        #[subdiagnostic]
+        opaque: Vec<OnlyCurrentTraitsOpaque>,
+        #[subdiagnostic]
+        foreign: Vec<OnlyCurrentTraitsForeign>,
+        #[subdiagnostic]
+        name: Vec<OnlyCurrentTraitsName<'a>>,
+        #[subdiagnostic]
+        pointer: Vec<OnlyCurrentTraitsPointer<'a>>,
+        #[subdiagnostic]
+        ty: Vec<OnlyCurrentTraitsTy<'a>>,
+        #[subdiagnostic]
+        sugg: Option<OnlyCurrentTraitsPointerSugg<'a>>,
+    },
+    #[diag(hir_analysis_only_current_traits_arbitrary, code = "E0117")]
+    Arbitrary {
+        #[primary_span]
+        #[label(hir_analysis_only_current_traits_label)]
+        span: Span,
+        #[note(hir_analysis_only_current_traits_note)]
+        note: (),
+        #[subdiagnostic]
+        opaque: Vec<OnlyCurrentTraitsOpaque>,
+        #[subdiagnostic]
+        foreign: Vec<OnlyCurrentTraitsForeign>,
+        #[subdiagnostic]
+        name: Vec<OnlyCurrentTraitsName<'a>>,
+        #[subdiagnostic]
+        pointer: Vec<OnlyCurrentTraitsPointer<'a>>,
+        #[subdiagnostic]
+        ty: Vec<OnlyCurrentTraitsTy<'a>>,
+        #[subdiagnostic]
+        sugg: Option<OnlyCurrentTraitsPointerSugg<'a>>,
+    },
+}
+
+#[derive(Subdiagnostic)]
+#[label(hir_analysis_only_current_traits_opaque)]
+pub struct OnlyCurrentTraitsOpaque {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[label(hir_analysis_only_current_traits_foreign)]
+pub struct OnlyCurrentTraitsForeign {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[label(hir_analysis_only_current_traits_name)]
+pub struct OnlyCurrentTraitsName<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub name: &'a str,
+}
+
+#[derive(Subdiagnostic)]
+#[label(hir_analysis_only_current_traits_pointer)]
+pub struct OnlyCurrentTraitsPointer<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub pointer: Ty<'a>,
+}
+
+#[derive(Subdiagnostic)]
+#[label(hir_analysis_only_current_traits_ty)]
+pub struct OnlyCurrentTraitsTy<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub ty: Ty<'a>,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    hir_analysis_only_current_traits_pointer_sugg,
+    applicability = "maybe-incorrect"
+)]
+pub struct OnlyCurrentTraitsPointerSugg<'a> {
+    #[suggestion_part(code = "WrapperType")]
+    pub wrapper_span: Span,
+    #[suggestion_part(code = "struct WrapperType(*{mut_key}{ptr_ty});\n\n")]
+    pub struct_span: Span,
+    pub mut_key: &'a str,
+    pub ptr_ty: Ty<'a>,
 }
