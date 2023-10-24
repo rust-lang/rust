@@ -9,7 +9,7 @@ struct S(i32);
 struct SmallStruct(f32, Option<S>, &'static [f32]);
 
 #[derive(Copy, Clone)]
-struct BigStruct(f32, Option<S>, &'static [f64]);
+struct BigStruct(f32, Option<S>, &'static [f32]);
 
 // EMIT_MIR struct.main.DataflowConstProp.diff
 fn main() {
