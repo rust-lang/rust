@@ -7,8 +7,8 @@
 #![feature(auto_traits)]
 #![feature(box_patterns)]
 #![feature(const_trait_impl)]
-#![feature(decl_macro)]
 #![feature(coroutines)]
+#![feature(decl_macro)]
 #![feature(explicit_tail_calls)]
 #![feature(more_qualified_paths)]
 #![feature(raw_ref_op)]
@@ -97,6 +97,7 @@ fn test_expr() {
     // ExprKind::MethodCall
     c1!(expr, [ x.f() ], "x.f()");
     c2!(expr, [ x.f::<u8>() ], "x.f::<u8>()", "x.f :: < u8 > ()");
+    c2!(expr, [ x.collect::<Vec<_>>() ], "x.collect::<Vec<_>>()", "x.collect :: < Vec < _ >> ()");
 
     // ExprKind::Tup
     c1!(expr, [ () ], "()");
@@ -107,6 +108,13 @@ fn test_expr() {
     // ExprKind::Binary
     c1!(expr, [ true || false ], "true || false");
     c1!(expr, [ true || false && false ], "true || false && false");
+    c1!(expr, [ a < 1 && 2 < b && c > 3 && 4 > d ], "a < 1 && 2 < b && c > 3 && 4 > d");
+    c2!(expr, [ a & b & !c ], "a & b & !c", "a & b &! c"); // FIXME
+    c2!(expr,
+        [ a + b * c - d + -1 * -2 - -3],
+        "a + b * c - d + -1 * -2 - -3",
+        "a + b * c - d + - 1 * - 2 - - 3"
+    );
 
     // ExprKind::Unary
     c2!(expr, [ *expr ], "*expr", "* expr");
@@ -129,18 +137,12 @@ fn test_expr() {
 
     // ExprKind::If
     c1!(expr, [ if true {} ], "if true {}");
-    c1!(expr,
-        [ if true {
-        } else {
-        } ],
-        "if true {} else {}"
+    c2!(expr,
+        [ if ::std::blah() { } else { } ],
+        "if ::std::blah() {} else {}",
+        "if :: std :: blah() {} else {}"
     );
-    c1!(expr,
-        [ if let true = true {
-        } else {
-        } ],
-        "if let true = true {} else {}"
-    );
+    c1!(expr, [ if let true = true {} else {} ], "if let true = true {} else {}");
     c1!(expr,
         [ if true {
         } else if false {
@@ -205,16 +207,8 @@ fn test_expr() {
     c1!(expr, [ async move || self ], "async move || self");
     c1!(expr, [ static || self ], "static || self");
     c1!(expr, [ static move || self ], "static move || self");
-    #[rustfmt::skip] // https://github.com/rust-lang/rustfmt/issues/5149
-    c1!(expr,
-        [ static async || self ],
-        "static async || self"
-    );
-    #[rustfmt::skip] // https://github.com/rust-lang/rustfmt/issues/5149
-    c1!(expr,
-        [ static async move || self ],
-        "static async move || self"
-    );
+    c1!(expr, [ static async || self ], "static async || self");
+    c1!(expr, [ static async move || self ], "static async move || self");
     c1!(expr, [ || -> u8 { self } ], "|| -> u8 { self }");
     c2!(expr, [ 1 + || {} ], "1 + (|| {})", "1 + || {}"); // AST??
 
@@ -222,13 +216,7 @@ fn test_expr() {
     c1!(expr, [ {} ], "{}");
     c1!(expr, [ unsafe {} ], "unsafe {}");
     c2!(expr, [ 'a: {} ], "'a: {}", "'a : {}");
-    c1!(expr,
-        [
-            #[attr]
-            {}
-        ],
-        "#[attr] {}"
-    );
+    c1!(expr, [ #[attr] {} ], "#[attr] {}");
     c2!(expr,
         [
             {
@@ -316,7 +304,6 @@ fn test_expr() {
 
     // ExprKind::Struct
     c1!(expr, [ Struct {} ], "Struct {}");
-    #[rustfmt::skip] // https://github.com/rust-lang/rustfmt/issues/5151
     c2!(expr,
         [ <Struct as Trait>::Type {} ],
         "<Struct as Trait>::Type {}",
@@ -379,6 +366,7 @@ fn test_item() {
         "pub use crate::{a, b::c};",
         "pub use crate :: { a, b :: c } ;"
     );
+    c2!(item, [ pub use A::*; ], "pub use A::*;", "pub use A :: * ;");
 
     // ItemKind::Static
     c2!(item, [ pub static S: () = {}; ], "pub static S: () = {};", "pub static S : () = {} ;");
@@ -395,6 +383,16 @@ fn test_item() {
         [ pub default const async unsafe extern "C" fn f() {} ],
         "pub default const async unsafe extern \"C\" fn f() {}"
     );
+    c2!(item,
+        [ fn g<T>(t: Vec<Vec<Vec<T>>>) {} ],
+        "fn g<T>(t: Vec<Vec<Vec<T>>>) {}",
+        "fn g < T > (t : Vec < Vec < Vec < T >> >) {}"
+    );
+    c2!(item,
+        [ fn h<'a>(t: &'a Vec<Cell<dyn D>>) {} ],
+        "fn h<'a>(t: &'a Vec<Cell<dyn D>>) {}",
+        "fn h < 'a > (t : & 'a Vec < Cell < dyn D >>) {}"
+    );
 
     // ItemKind::Mod
     c2!(item, [ pub mod m; ], "pub mod m;", "pub mod m ;");
@@ -404,21 +402,16 @@ fn test_item() {
 
     // ItemKind::ForeignMod
     c1!(item, [ extern "C" {} ], "extern \"C\" {}");
-    #[rustfmt::skip]
     c2!(item,
         [ pub extern "C" {} ],
         "extern \"C\" {}", // ??
         "pub extern \"C\" {}"
     );
-    c1!(item,
-        [ unsafe extern "C++" {} ],
-        "unsafe extern \"C++\" {}"
-    );
+    c1!(item, [ unsafe extern "C++" {} ], "unsafe extern \"C++\" {}");
 
     // ItemKind::GlobalAsm: untestable because this test works pre-expansion.
 
     // ItemKind::TyAlias
-    #[rustfmt::skip]
     c2!(item,
         [
             pub default type Type<'a>: Bound
@@ -579,7 +572,6 @@ fn test_pat() {
     c1!(pat, [ Struct { .. } ], "Struct { .. }");
     c1!(pat, [ Struct { x, .. } ], "Struct { x, .. }");
     c2!(pat, [ Struct { x: _x, .. } ], "Struct { x: _x, .. }", "Struct { x : _x, .. }");
-    #[rustfmt::skip] // https://github.com/rust-lang/rustfmt/issues/5151
     c2!(pat,
         [ <Struct as Trait>::Type {} ],
         "<Struct as Trait>::Type {}",
@@ -669,6 +661,12 @@ fn test_stmt() {
     c2!(stmt, [ let _ ], "let _;", "let _");
     c2!(stmt, [ let x = true ], "let x = true;", "let x = true");
     c2!(stmt, [ let x: bool = true ], "let x: bool = true;", "let x : bool = true");
+    c2!(stmt, [ let (a, b) = (1, 2) ], "let (a, b) = (1, 2);", "let(a, b) = (1, 2)"); // FIXME
+    c2!(stmt,
+        [ let (a, b): (u32, u32) = (1, 2) ],
+        "let (a, b): (u32, u32) = (1, 2);",
+        "let(a, b) : (u32, u32) = (1, 2)"
+    );
 
     // StmtKind::Item
     c2!(stmt, [ struct S; ], "struct S;", "struct S ;");
@@ -705,14 +703,14 @@ fn test_ty() {
     c2!(ty, [ &T ], "&T", "& T");
     c2!(ty, [ &mut T ], "&mut T", "& mut T");
     c2!(ty, [ &'a T ], "&'a T", "& 'a T");
-    c2!(ty, [ &'a mut T ], "&'a mut T", "& 'a mut T");
+    c2!(ty, [ &'a mut [T] ], "&'a mut [T]", "& 'a mut [T]");
+    c2!(ty, [ &A<B<C<D<E>>>> ], "&A<B<C<D<E>>>>", "& A < B < C < D < E >> >>");
 
     // TyKind::BareFn
     c1!(ty, [ fn() ], "fn()");
     c1!(ty, [ fn() -> () ], "fn() -> ()");
     c1!(ty, [ fn(u8) ], "fn(u8)");
     c2!(ty, [ fn(x: u8) ], "fn(x: u8)", "fn(x : u8)");
-    #[rustfmt::skip]
     c2!(ty, [ for<> fn() ], "fn()", "for < > fn()");
     c2!(ty, [ for<'a> fn() ], "for<'a> fn()", "for < 'a > fn()");
 
@@ -760,7 +758,7 @@ fn test_ty() {
 
     // TyKind::Infer
     c1!(ty, [ _ ], "_");
- 
+
     // TyKind::ImplicitSelf: there is no syntax for this.
 
     // TyKind::MacCall
