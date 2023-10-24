@@ -701,7 +701,7 @@ impl<'a, T: ?Sized> MappedMutexGuard<'a, T> {
     /// The `Mutex` is already locked, so this cannot fail.
     ///
     /// This is an associated function that needs to be used as
-    /// `MutexGuard::map(...)`. A method would interfere with methods of the
+    /// `MappedMutexGuard::map(...)`. A method would interfere with methods of the
     /// same name on the contents of the `MutexGuard` used through `Deref`.
     #[unstable(feature = "mapped_lock_guards", issue = "117108")]
     pub fn map<U, F>(orig: Self, f: F) -> MappedMutexGuard<'a, U>
@@ -727,7 +727,7 @@ impl<'a, T: ?Sized> MappedMutexGuard<'a, T> {
     /// The `Mutex` is already locked, so this cannot fail.
     ///
     /// This is an associated function that needs to be used as
-    /// `MutexGuard::try_map(...)`. A method would interfere with methods of the
+    /// `MappedMutexGuard::try_map(...)`. A method would interfere with methods of the
     /// same name on the contents of the `MutexGuard` used through `Deref`.
     #[doc(alias = "filter_map")]
     #[unstable(feature = "mapped_lock_guards", issue = "117108")]
