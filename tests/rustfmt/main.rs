@@ -184,3 +184,19 @@ fn dont_emit_ICE() {
         assert!(!stderr.contains("thread 'main' panicked"));
     }
 }
+
+#[test]
+fn rustfmt_emits_error_when_control_brace_style_is_always_next_line() {
+    // See also https://github.com/rust-lang/rustfmt/issues/5912
+    let args = [
+        "--config=color=Never",
+        "--config",
+        "control_brace_style=AlwaysNextLine",
+        "--config",
+        "match_arm_blocks=false",
+        "tests/target/issue_5912.rs",
+    ];
+
+    let (_stdout, stderr) = rustfmt(&args);
+    assert!(!stderr.contains("error[internal]: left behind trailing whitespace"))
+}
