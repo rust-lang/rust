@@ -1441,7 +1441,7 @@ impl<'a> Parser<'a> {
             } else if this.token.uninterpolated_span().at_least_rust_2018() {
                 // `Span:.at_least_rust_2018()` is somewhat expensive; don't get it repeatedly.
                 if this.check_keyword(kw::Async) {
-                    if this.is_async_block() {
+                    if this.is_gen_block(kw::Async) {
                         // Check for `async {` and `async move {`.
                         this.parse_gen_block()
                     } else {
@@ -1450,7 +1450,11 @@ impl<'a> Parser<'a> {
                 } else if this.eat_keyword(kw::Await) {
                     this.recover_incorrect_await_syntax(lo, this.prev_token.span)
                 } else if this.token.uninterpolated_span().at_least_rust_2024() {
-                    if this.is_gen_block() { this.parse_gen_block() } else { this.parse_expr_lit() }
+                    if this.is_gen_block(kw::Gen) {
+                        this.parse_gen_block()
+                    } else {
+                        this.parse_expr_lit()
+                    }
                 } else {
                     this.parse_expr_lit()
                 }
@@ -3061,13 +3065,6 @@ impl<'a> Parser<'a> {
             && self.token.uninterpolated_span().at_least_rust_2018()
     }
 
-    fn is_gen_block(&self) -> bool {
-        self.token.is_keyword(kw::Gen)
-            && self
-                .look_ahead(1, |t| *t == token::OpenDelim(Delimiter::Brace) || t.is_whole_block())
-            && self.token.uninterpolated_span().at_least_rust_2024()
-    }
-
     /// Parses an `async move? {...}` or `gen move? {...}` expression.
     fn parse_gen_block(&mut self) -> PResult<'a, P<Expr>> {
         let lo = self.token.span;
@@ -3084,8 +3081,8 @@ impl<'a> Parser<'a> {
         Ok(self.mk_expr_with_attrs(lo.to(self.prev_token.span), kind, attrs))
     }
 
-    fn is_async_block(&self) -> bool {
-        self.token.is_keyword(kw::Async)
+    fn is_gen_block(&self, kw: Symbol) -> bool {
+        self.token.is_keyword(kw)
             && ((
                 // `async move {`
                 self.is_keyword_ahead(1, &[kw::Move])
