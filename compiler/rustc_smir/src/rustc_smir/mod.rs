@@ -23,27 +23,31 @@ use stable_mir::ty::{
     FloatTy, GenericParamDef, IntTy, LineInfo, Movability, RigidTy, Span, TyKind, UintTy,
 };
 use stable_mir::{self, opaque, Context, Filename};
+use std::cell::RefCell;
 use tracing::debug;
 
 mod alloc;
 mod builder;
 
-impl<'tcx> Context for Tables<'tcx> {
+impl<'tcx> Context for TablesWrapper<'tcx> {
     fn local_crate(&self) -> stable_mir::Crate {
-        smir_crate(self.tcx, LOCAL_CRATE)
+        let tables = self.0.borrow();
+        smir_crate(tables.tcx, LOCAL_CRATE)
     }
 
     fn external_crates(&self) -> Vec<stable_mir::Crate> {
-        self.tcx.crates(()).iter().map(|crate_num| smir_crate(self.tcx, *crate_num)).collect()
+        let tables = self.0.borrow();
+        tables.tcx.crates(()).iter().map(|crate_num| smir_crate(tables.tcx, *crate_num)).collect()
     }
 
     fn find_crates(&self, name: &str) -> Vec<stable_mir::Crate> {
+        let tables = self.0.borrow();
         let crates: Vec<stable_mir::Crate> = [LOCAL_CRATE]
             .iter()
-            .chain(self.tcx.crates(()).iter())
+            .chain(tables.tcx.crates(()).iter())
             .map(|crate_num| {
-                let crate_name = self.tcx.crate_name(*crate_num).to_string();
-                (name == crate_name).then(|| smir_crate(self.tcx, *crate_num))
+                let crate_name = tables.tcx.crate_name(*crate_num).to_string();
+                (name == crate_name).then(|| smir_crate(tables.tcx, *crate_num))
             })
             .into_iter()
             .filter_map(|c| c)
@@ -52,163 +56,197 @@ impl<'tcx> Context for Tables<'tcx> {
     }
 
     fn name_of_def_id(&self, def_id: stable_mir::DefId) -> String {
-        self.tcx.def_path_str(self[def_id])
+        let tables = self.0.borrow();
+        tables.tcx.def_path_str(tables[def_id])
     }
 
     fn span_to_string(&self, span: stable_mir::ty::Span) -> String {
-        self.tcx.sess.source_map().span_to_diagnostic_string(self[span])
+        let tables = self.0.borrow();
+        tables.tcx.sess.source_map().span_to_diagnostic_string(tables[span])
     }
 
     fn get_filename(&self, span: &Span) -> Filename {
+        let tables = self.0.borrow();
         opaque(
-            &self
+            &tables
                 .tcx
                 .sess
                 .source_map()
-                .span_to_filename(self[*span])
+                .span_to_filename(tables[*span])
                 .display(rustc_span::FileNameDisplayPreference::Local)
                 .to_string(),
         )
     }
 
     fn get_lines(&self, span: &Span) -> LineInfo {
-        let lines = &self.tcx.sess.source_map().span_to_location_info(self[*span]);
+        let tables = self.0.borrow();
+        let lines = &tables.tcx.sess.source_map().span_to_location_info(tables[*span]);
         LineInfo { start_line: lines.1, start_col: lines.2, end_line: lines.3, end_col: lines.4 }
     }
 
-    fn def_kind(&mut self, def_id: stable_mir::DefId) -> stable_mir::DefKind {
-        self.tcx.def_kind(self[def_id]).stable(self)
+    fn def_kind(&self, def_id: stable_mir::DefId) -> stable_mir::DefKind {
+        let mut tables = self.0.borrow_mut();
+        tables.tcx.def_kind(tables[def_id]).stable(&mut *tables)
     }
 
-    fn span_of_an_item(&mut self, def_id: stable_mir::DefId) -> Span {
-        self.tcx.def_span(self[def_id]).stable(self)
+    fn span_of_an_item(&self, def_id: stable_mir::DefId) -> Span {
+        let mut tables = self.0.borrow_mut();
+        tables.tcx.def_span(tables[def_id]).stable(&mut *tables)
     }
 
-    fn all_local_items(&mut self) -> stable_mir::CrateItems {
-        self.tcx.mir_keys(()).iter().map(|item| self.crate_item(item.to_def_id())).collect()
+    fn all_local_items(&self) -> stable_mir::CrateItems {
+        let mut tables = self.0.borrow_mut();
+        tables.tcx.mir_keys(()).iter().map(|item| tables.crate_item(item.to_def_id())).collect()
     }
 
-    fn entry_fn(&mut self) -> Option<stable_mir::CrateItem> {
-        Some(self.crate_item(self.tcx.entry_fn(())?.0))
+    fn entry_fn(&self) -> Option<stable_mir::CrateItem> {
+        let mut tables = self.0.borrow_mut();
+        let tcx = tables.tcx;
+        Some(tables.crate_item(tcx.entry_fn(())?.0))
     }
 
-    fn all_trait_decls(&mut self) -> stable_mir::TraitDecls {
-        self.tcx
+    fn all_trait_decls(&self) -> stable_mir::TraitDecls {
+        let mut tables = self.0.borrow_mut();
+        tables
+            .tcx
             .traits(LOCAL_CRATE)
             .iter()
-            .map(|trait_def_id| self.trait_def(*trait_def_id))
+            .map(|trait_def_id| tables.trait_def(*trait_def_id))
             .collect()
     }
 
-    fn trait_decl(&mut self, trait_def: &stable_mir::ty::TraitDef) -> stable_mir::ty::TraitDecl {
-        let def_id = self[trait_def.0];
-        let trait_def = self.tcx.trait_def(def_id);
-        trait_def.stable(self)
+    fn trait_decl(&self, trait_def: &stable_mir::ty::TraitDef) -> stable_mir::ty::TraitDecl {
+        let mut tables = self.0.borrow_mut();
+        let def_id = tables[trait_def.0];
+        let trait_def = tables.tcx.trait_def(def_id);
+        trait_def.stable(&mut *tables)
     }
 
-    fn all_trait_impls(&mut self) -> stable_mir::ImplTraitDecls {
-        self.tcx
+    fn all_trait_impls(&self) -> stable_mir::ImplTraitDecls {
+        let mut tables = self.0.borrow_mut();
+        tables
+            .tcx
             .trait_impls_in_crate(LOCAL_CRATE)
             .iter()
-            .map(|impl_def_id| self.impl_def(*impl_def_id))
+            .map(|impl_def_id| tables.impl_def(*impl_def_id))
             .collect()
     }
 
-    fn trait_impl(&mut self, impl_def: &stable_mir::ty::ImplDef) -> stable_mir::ty::ImplTrait {
-        let def_id = self[impl_def.0];
-        let impl_trait = self.tcx.impl_trait_ref(def_id).unwrap();
-        impl_trait.stable(self)
+    fn trait_impl(&self, impl_def: &stable_mir::ty::ImplDef) -> stable_mir::ty::ImplTrait {
+        let mut tables = self.0.borrow_mut();
+        let def_id = tables[impl_def.0];
+        let impl_trait = tables.tcx.impl_trait_ref(def_id).unwrap();
+        impl_trait.stable(&mut *tables)
     }
 
-    fn mir_body(&mut self, item: stable_mir::DefId) -> stable_mir::mir::Body {
-        let def_id = self[item];
-        self.tcx.instance_mir(ty::InstanceDef::Item(def_id)).stable(self)
+    fn mir_body(&self, item: stable_mir::DefId) -> stable_mir::mir::Body {
+        let mut tables = self.0.borrow_mut();
+        let def_id = tables[item];
+        tables.tcx.instance_mir(ty::InstanceDef::Item(def_id)).stable(&mut tables)
     }
 
-    fn ty_kind(&mut self, ty: stable_mir::ty::Ty) -> TyKind {
-        self.types[ty.0].clone().stable(self)
+    fn ty_kind(&self, ty: stable_mir::ty::Ty) -> TyKind {
+        let mut tables = self.0.borrow_mut();
+        tables.types[ty.0].clone().stable(&mut *tables)
     }
 
-    fn mk_ty(&mut self, kind: TyKind) -> stable_mir::ty::Ty {
-        let n = self.types.len();
-        self.types.push(MaybeStable::Stable(kind));
+    fn mk_ty(&self, kind: TyKind) -> stable_mir::ty::Ty {
+        let mut tables = self.0.borrow_mut();
+        let n = tables.types.len();
+        tables.types.push(MaybeStable::Stable(kind));
         stable_mir::ty::Ty(n)
     }
 
-    fn generics_of(&mut self, def_id: stable_mir::DefId) -> stable_mir::ty::Generics {
-        let def_id = self[def_id];
-        let generics = self.tcx.generics_of(def_id);
-        generics.stable(self)
+    fn generics_of(&self, def_id: stable_mir::DefId) -> stable_mir::ty::Generics {
+        let mut tables = self.0.borrow_mut();
+        let def_id = tables[def_id];
+        let generics = tables.tcx.generics_of(def_id);
+        generics.stable(&mut *tables)
     }
 
-    fn predicates_of(&mut self, def_id: stable_mir::DefId) -> stable_mir::ty::GenericPredicates {
-        let def_id = self[def_id];
-        let ty::GenericPredicates { parent, predicates } = self.tcx.predicates_of(def_id);
+    fn predicates_of(&self, def_id: stable_mir::DefId) -> stable_mir::ty::GenericPredicates {
+        let mut tables = self.0.borrow_mut();
+        let def_id = tables[def_id];
+        let ty::GenericPredicates { parent, predicates } = tables.tcx.predicates_of(def_id);
         stable_mir::ty::GenericPredicates {
-            parent: parent.map(|did| self.trait_def(did)),
+            parent: parent.map(|did| tables.trait_def(did)),
             predicates: predicates
                 .iter()
                 .map(|(clause, span)| {
-                    (clause.as_predicate().kind().skip_binder().stable(self), span.stable(self))
+                    (
+                        clause.as_predicate().kind().skip_binder().stable(&mut *tables),
+                        span.stable(&mut *tables),
+                    )
                 })
                 .collect(),
         }
     }
 
     fn explicit_predicates_of(
-        &mut self,
+        &self,
         def_id: stable_mir::DefId,
     ) -> stable_mir::ty::GenericPredicates {
-        let def_id = self[def_id];
-        let ty::GenericPredicates { parent, predicates } = self.tcx.explicit_predicates_of(def_id);
+        let mut tables = self.0.borrow_mut();
+        let def_id = tables[def_id];
+        let ty::GenericPredicates { parent, predicates } =
+            tables.tcx.explicit_predicates_of(def_id);
         stable_mir::ty::GenericPredicates {
-            parent: parent.map(|did| self.trait_def(did)),
+            parent: parent.map(|did| tables.trait_def(did)),
             predicates: predicates
                 .iter()
                 .map(|(clause, span)| {
-                    (clause.as_predicate().kind().skip_binder().stable(self), span.stable(self))
+                    (
+                        clause.as_predicate().kind().skip_binder().stable(&mut *tables),
+                        span.stable(&mut *tables),
+                    )
                 })
                 .collect(),
         }
     }
 
-    fn instance_body(&mut self, def: InstanceDef) -> Body {
-        let instance = self.instances[def];
-        builder::BodyBuilder::new(self.tcx, instance).build(self)
+    fn instance_body(&self, def: InstanceDef) -> Body {
+        let mut tables = self.0.borrow_mut();
+        let instance = tables.instances[def];
+        builder::BodyBuilder::new(tables.tcx, instance).build(&mut *tables)
     }
 
-    fn instance_ty(&mut self, def: InstanceDef) -> stable_mir::ty::Ty {
-        let instance = self.instances[def];
-        let ty = instance.ty(self.tcx, ParamEnv::empty());
-        self.intern_ty(ty)
+    fn instance_ty(&self, def: InstanceDef) -> stable_mir::ty::Ty {
+        let mut tables = self.0.borrow_mut();
+        let instance = tables.instances[def];
+        let ty = instance.ty(tables.tcx, ParamEnv::empty());
+        tables.intern_ty(ty)
     }
 
-    fn instance_def_id(&mut self, def: InstanceDef) -> stable_mir::DefId {
-        let def_id = self.instances[def].def_id();
-        self.create_def_id(def_id)
+    fn instance_def_id(&self, def: InstanceDef) -> stable_mir::DefId {
+        let mut tables = self.0.borrow_mut();
+        let def_id = tables.instances[def].def_id();
+        tables.create_def_id(def_id)
     }
 
-    fn mono_instance(&mut self, item: stable_mir::CrateItem) -> stable_mir::mir::mono::Instance {
-        let def_id = self[item.0];
-        Instance::mono(self.tcx, def_id).stable(self)
+    fn mono_instance(&self, item: stable_mir::CrateItem) -> stable_mir::mir::mono::Instance {
+        let mut tables = self.0.borrow_mut();
+        let def_id = tables[item.0];
+        Instance::mono(tables.tcx, def_id).stable(&mut *tables)
     }
 
     fn requires_monomorphization(&self, def_id: stable_mir::DefId) -> bool {
-        let def_id = self[def_id];
-        let generics = self.tcx.generics_of(def_id);
-        let result = generics.requires_monomorphization(self.tcx);
+        let tables = self.0.borrow();
+        let def_id = tables[def_id];
+        let generics = tables.tcx.generics_of(def_id);
+        let result = generics.requires_monomorphization(tables.tcx);
         result
     }
 
     fn resolve_instance(
-        &mut self,
+        &self,
         def: stable_mir::ty::FnDef,
         args: &stable_mir::ty::GenericArgs,
     ) -> Option<stable_mir::mir::mono::Instance> {
-        let def_id = def.0.internal(self);
-        let args_ref = args.internal(self);
-        match Instance::resolve(self.tcx, ParamEnv::reveal_all(), def_id, args_ref) {
-            Ok(Some(instance)) => Some(instance.stable(self)),
+        let mut tables = self.0.borrow_mut();
+        let def_id = def.0.internal(&mut *tables);
+        let args_ref = args.internal(&mut *tables);
+        match Instance::resolve(tables.tcx, ParamEnv::reveal_all(), def_id, args_ref) {
+            Ok(Some(instance)) => Some(instance.stable(&mut *tables)),
             Ok(None) | Err(_) => None,
         }
     }
@@ -241,13 +279,15 @@ impl<S, R: PartialEq> PartialEq<R> for MaybeStable<S, R> {
     }
 }
 
+pub(crate) struct TablesWrapper<'tcx>(pub(crate) RefCell<Tables<'tcx>>);
+
 pub struct Tables<'tcx> {
-    pub tcx: TyCtxt<'tcx>,
-    pub def_ids: IndexMap<DefId, stable_mir::DefId>,
-    pub alloc_ids: IndexMap<AllocId, stable_mir::AllocId>,
-    pub spans: IndexMap<rustc_span::Span, Span>,
-    pub types: Vec<MaybeStable<TyKind, Ty<'tcx>>>,
-    pub instances: IndexMap<ty::Instance<'tcx>, InstanceDef>,
+    pub(crate) tcx: TyCtxt<'tcx>,
+    pub(crate) def_ids: IndexMap<DefId, stable_mir::DefId>,
+    pub(crate) alloc_ids: IndexMap<AllocId, stable_mir::AllocId>,
+    pub(crate) spans: IndexMap<rustc_span::Span, Span>,
+    pub(crate) types: Vec<MaybeStable<TyKind, Ty<'tcx>>>,
+    pub(crate) instances: IndexMap<ty::Instance<'tcx>, InstanceDef>,
 }
 
 impl<'tcx> Tables<'tcx> {
@@ -270,7 +310,7 @@ fn smir_crate(tcx: TyCtxt<'_>, crate_num: CrateNum) -> stable_mir::Crate {
 }
 
 /// Trait used to convert between an internal MIR type to a Stable MIR type.
-pub(crate) trait Stable<'tcx> {
+pub trait Stable<'tcx> {
     /// The stable representation of the type implementing Stable.
     type T;
     /// Converts an object to the equivalent Stable MIR representation.
