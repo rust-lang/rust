@@ -169,6 +169,7 @@ pub fn run(tcx: TyCtxt<'_>, f: impl FnOnce()) {
         spans: IndexMap::default(),
         types: vec![],
         instances: IndexMap::default(),
+        constants: IndexMap::default(),
     }));
     stable_mir::run(&tables, || init(&tables, f));
 }

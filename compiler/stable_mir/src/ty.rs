@@ -21,16 +21,44 @@ impl Ty {
     }
 }
 
-impl From<TyKind> for Ty {
-    fn from(value: TyKind) -> Self {
-        with(|context| context.mk_ty(value))
+/// Represents a constant in MIR or from the Type system.
+#[derive(Clone, Debug)]
+pub struct Const {
+    /// The constant kind.
+    kind: ConstantKind,
+    /// The constant type.
+    ty: Ty,
+    /// Used for internal tracking of the internal constant.
+    pub id: ConstId,
+}
+
+impl Const {
+    /// Build a constant. Note that this should only be used by the compiler.
+    pub fn new(kind: ConstantKind, ty: Ty, id: ConstId) -> Const {
+        Const { kind, ty, id }
+    }
+
+    /// Retrieve the constant kind.
+    pub fn kind(&self) -> &ConstantKind {
+        &self.kind
+    }
+
+    /// Get the constant type.
+    pub fn ty(&self) -> Ty {
+        self.ty
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct Const {
-    pub literal: ConstantKind,
-    pub ty: Ty,
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ConstId(pub usize);
+
+impl IndexedVal for ConstId {
+    fn to_val(index: usize) -> Self {
+        ConstId(index)
+    }
+    fn to_index(&self) -> usize {
+        self.0
+    }
 }
 
 type Ident = Opaque;

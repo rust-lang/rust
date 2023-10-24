@@ -477,7 +477,7 @@ impl Operand {
 
 impl Constant {
     pub fn ty(&self) -> Ty {
-        self.literal.ty
+        self.literal.ty()
     }
 }
 
