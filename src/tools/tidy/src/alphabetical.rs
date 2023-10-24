@@ -14,11 +14,13 @@
 //! - Lines that are indented with more or less spaces than the first line
 //! - Lines starting with `//`, `#` (except those starting with `#!`), `)`, `]`, `}` if the comment
 //!   has the same indentation as the first line
+//! - Lines starting with a closing delimiter (`)`, `[`, `}`) are ignored.
 //!
-//! If a line ends with an opening bracket, the line is ignored and the next line will have
-//! its extra indentation ignored.
+//! If a line ends with an opening delimiter, we effectively join the following line to it before
+//! checking it. E.g. `foo(\nbar)` is treated like `foo(bar)`.
 
-use std::{fmt::Display, path::Path};
+use std::fmt::Display;
+use std::path::Path;
 
 use crate::walk::{filter_dirs, walk};
 
@@ -30,8 +32,7 @@ fn is_close_bracket(c: char) -> bool {
     matches!(c, ')' | ']' | '}')
 }
 
-// Don't let tidy check this here :D
-const START_MARKER: &str = concat!("tidy-alphabetical", "-start");
+const START_MARKER: &str = "tidy-alphabetical-start";
 const END_MARKER: &str = "tidy-alphabetical-end";
 
 fn check_section<'a>(
@@ -43,13 +44,14 @@ fn check_section<'a>(
     let mut first_indent = None;
     let mut in_split_line = None;
 
-    for (line_idx, line) in lines {
+    for (idx, line) in lines {
         if line.is_empty() {
             continue;
         }
 
         if line.contains(START_MARKER) {
-            tidy_error!(bad, "{file}:{} found `{START_MARKER}` expecting `{END_MARKER}`", line_idx)
+            tidy_error!(bad, "{file}:{} found `{START_MARKER}` expecting `{END_MARKER}`", idx + 1);
+            return;
         }
 
         if line.contains(END_MARKER) {
@@ -63,6 +65,7 @@ fn check_section<'a>(
         });
 
         let line = if let Some(prev_split_line) = in_split_line {
+            // Join the split lines.
             in_split_line = None;
             format!("{prev_split_line}{}", line.trim_start())
         } else {
@@ -90,7 +93,7 @@ fn check_section<'a>(
         let prev_line_trimmed_lowercase = prev_line.trim_start_matches(' ').to_lowercase();
 
         if trimmed_line.to_lowercase() < prev_line_trimmed_lowercase {
-            tidy_error!(bad, "{file}:{}: line not in alphabetical order", line_idx + 1,);
+            tidy_error!(bad, "{file}:{}: line not in alphabetical order", idx + 1);
         }
 
         prev_line = line;
@@ -104,7 +107,15 @@ pub fn check(path: &Path, bad: &mut bool) {
         let file = &entry.path().display();
 
         let mut lines = contents.lines().enumerate();
-        while let Some((_, line)) = lines.next() {
+        while let Some((idx, line)) = lines.next() {
+            if line.contains(END_MARKER) {
+                tidy_error!(
+                    bad,
+                    "{file}:{} found `{END_MARKER}` expecting `{START_MARKER}`",
+                    idx + 1
+                )
+            }
+
             if line.contains(START_MARKER) {
                 check_section(file, &mut lines, bad);
             }
