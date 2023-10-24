@@ -3,6 +3,7 @@
 use rustc_ast::{self as ast, attr};
 use rustc_ast::{Attribute, LitKind, MetaItem, MetaItemKind, MetaItemLit, NestedMetaItem, NodeId};
 use rustc_ast_pretty::pprust;
+use rustc_errors::ErrorGuaranteed;
 use rustc_feature::{find_gated_cfg, is_builtin_attr_name, Features, GatedCfg};
 use rustc_macros::HashStable_Generic;
 use rustc_session::config::ExpectedValues;
@@ -361,25 +362,32 @@ fn parse_stability(sess: &Session, attr: &Attribute) -> Option<(Symbol, Stabilit
         }
     }
 
-    if let Some(s) = since
-        && s.as_str() == VERSION_PLACEHOLDER
-    {
-        since = Some(rust_version_symbol());
-    }
+    let feature = match feature {
+        Some(feature) if rustc_lexer::is_ident(feature.as_str()) => Ok(feature),
+        Some(_bad_feature) => {
+            Err(sess.emit_err(session_diagnostics::NonIdentFeature { span: attr.span }))
+        }
+        None => Err(sess.emit_err(session_diagnostics::MissingFeature { span: attr.span })),
+    };
+
+    let since = if let Some(since) = since {
+        if since.as_str() == VERSION_PLACEHOLDER {
+            Ok(rust_version_symbol())
+        } else if parse_version(since.as_str(), false).is_some() {
+            Ok(since)
+        } else {
+            Err(sess.emit_err(session_diagnostics::InvalidSince { span: attr.span }))
+        }
+    } else {
+        Err(sess.emit_err(session_diagnostics::MissingSince { span: attr.span }))
+    };
 
     match (feature, since) {
-        (Some(feature), Some(since)) => {
+        (Ok(feature), Ok(since)) => {
             let level = StabilityLevel::Stable { since, allowed_through_unstable_modules: false };
             Some((feature, level))
         }
-        (None, _) => {
-            sess.emit_err(session_diagnostics::MissingFeature { span: attr.span });
-            None
-        }
-        _ => {
-            sess.emit_err(session_diagnostics::MissingSince { span: attr.span });
-            None
-        }
+        (Err(ErrorGuaranteed { .. }), _) | (_, Err(ErrorGuaranteed { .. })) => None,
     }
 }
 
@@ -451,12 +459,19 @@ fn parse_unstability(sess: &Session, attr: &Attribute) -> Option<(Symbol, Stabil
         }
     }
 
-    match (feature, reason, issue) {
-        (Some(feature), reason, Some(_)) => {
-            if !rustc_lexer::is_ident(feature.as_str()) {
-                sess.emit_err(session_diagnostics::NonIdentFeature { span: attr.span });
-                return None;
-            }
+    let feature = match feature {
+        Some(feature) if rustc_lexer::is_ident(feature.as_str()) => Ok(feature),
+        Some(_bad_feature) => {
+            Err(sess.emit_err(session_diagnostics::NonIdentFeature { span: attr.span }))
+        }
+        None => Err(sess.emit_err(session_diagnostics::MissingFeature { span: attr.span })),
+    };
+
+    let issue =
+        issue.ok_or_else(|| sess.emit_err(session_diagnostics::MissingIssue { span: attr.span }));
+
+    match (feature, issue) {
+        (Ok(feature), Ok(_)) => {
             let level = StabilityLevel::Unstable {
                 reason: UnstableReason::from_opt_reason(reason),
                 issue: issue_num,
@@ -465,14 +480,7 @@ fn parse_unstability(sess: &Session, attr: &Attribute) -> Option<(Symbol, Stabil
             };
             Some((feature, level))
         }
-        (None, _, _) => {
-            sess.emit_err(session_diagnostics::MissingFeature { span: attr.span });
-            return None;
-        }
-        _ => {
-            sess.emit_err(session_diagnostics::MissingIssue { span: attr.span });
-            return None;
-        }
+        (Err(ErrorGuaranteed { .. }), _) | (_, Err(ErrorGuaranteed { .. })) => None,
     }
 }
 
