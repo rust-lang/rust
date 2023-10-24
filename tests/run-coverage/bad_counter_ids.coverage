@@ -23,25 +23,26 @@
                                              ^0
    LL|      1|}
    LL|       |
-   LL|       |fn ne_good() {
-   LL|       |    println!("c");
-   LL|       |    assert_ne!(Foo(1), Foo(3));
-   LL|       |}
+   LL|      1|fn ne_good() {
+   LL|      1|    println!("c");
+   LL|      1|    assert_ne!(Foo(1), Foo(3));
+   LL|      1|}
    LL|       |
-   LL|       |fn ne_good_message() {
-   LL|       |    println!("d");
-   LL|       |    assert_ne!(Foo(1), Foo(3), "message d");
-   LL|       |}
+   LL|      1|fn ne_good_message() {
+   LL|      1|    println!("d");
+   LL|      1|    assert_ne!(Foo(1), Foo(3), "message d");
+                                             ^0
+   LL|      1|}
    LL|       |
    LL|      1|fn eq_bad() {
    LL|      1|    println!("e");
    LL|      1|    assert_eq!(Foo(1), Foo(3));
    LL|      0|}
    LL|       |
-   LL|       |fn eq_bad_message() {
-   LL|       |    println!("f");
-   LL|       |    assert_eq!(Foo(1), Foo(3), "message f");
-   LL|       |}
+   LL|      1|fn eq_bad_message() {
+   LL|      1|    println!("f");
+   LL|      1|    assert_eq!(Foo(1), Foo(3), "message f");
+   LL|      0|}
    LL|       |
    LL|      1|fn ne_bad() {
    LL|      1|    println!("g");
