@@ -1,3 +1,5 @@
+//~ ERROR overflow evaluating the requirement `([isize; 0], _): Sized
+
 trait Foo<A> {
     fn get(&self, A: &A) { }
 }
@@ -23,8 +25,7 @@ impl<T:Bar<Out=U>,U> Foo<T> for [isize;3] {
 }
 
 impl<T,U> Foo<T> for U {
-    // OK, T, U are used everywhere. Note that the coherence check
-    // hasn't executed yet, so no errors about overlap.
+    //~^ ERROR conflicting implementations of trait `Foo<_>` for type `[isize; 0]`
 }
 
 impl<T,U> Bar for T {
