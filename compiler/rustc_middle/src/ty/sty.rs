@@ -683,8 +683,8 @@ pub enum ExistentialPredicate<'tcx> {
 }
 
 impl<'tcx> DebugWithInfcx<TyCtxt<'tcx>> for ExistentialPredicate<'tcx> {
-    fn fmt<InfCtx: rustc_type_ir::InferCtxtLike<TyCtxt<'tcx>>>(
-        this: rustc_type_ir::OptWithInfcx<'_, TyCtxt<'tcx>, InfCtx, &Self>,
+    fn fmt<Infcx: rustc_type_ir::InferCtxtLike<Interner = TyCtxt<'tcx>>>(
+        this: rustc_type_ir::WithInfcx<'_, Infcx, &Self>,
         f: &mut core::fmt::Formatter<'_>,
     ) -> core::fmt::Result {
         fmt::Debug::fmt(&this.data, f)

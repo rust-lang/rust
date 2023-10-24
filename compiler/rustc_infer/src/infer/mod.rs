@@ -341,7 +341,9 @@ pub struct InferCtxt<'tcx> {
     next_trait_solver: bool,
 }
 
-impl<'tcx> ty::InferCtxtLike<TyCtxt<'tcx>> for InferCtxt<'tcx> {
+impl<'tcx> ty::InferCtxtLike for InferCtxt<'tcx> {
+    type Interner = TyCtxt<'tcx>;
+
     fn universe_of_ty(&self, ty: ty::InferTy) -> Option<ty::UniverseIndex> {
         use InferTy::*;
         match ty {
