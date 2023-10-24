@@ -46,6 +46,7 @@ mod mutability_errors;
 mod region_errors;
 
 pub(crate) use bound_region_errors::{ToUniverseInfo, UniverseInfo};
+pub(crate) use move_errors::{IllegalMoveOriginKind, MoveError};
 pub(crate) use mutability_errors::AccessKind;
 pub(crate) use outlives_suggestion::OutlivesSuggestionBuilder;
 pub(crate) use region_errors::{ErrorConstraintInfo, RegionErrorKind, RegionErrors};
@@ -470,7 +471,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             }
         }
 
-        ty.print(printer).unwrap().into_buffer()
+        ty.print(&mut printer).unwrap();
+        printer.into_buffer()
     }
 
     /// Returns the name of the provided `Ty` (that must be a reference)'s region with a
@@ -492,7 +494,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             bug!("ty for annotation of borrow region is not a reference");
         };
 
-        region.print(printer).unwrap().into_buffer()
+        region.print(&mut printer).unwrap();
+        printer.into_buffer()
     }
 }
 

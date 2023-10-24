@@ -1,3 +1,5 @@
+#![allow(unused_imports)]
+
 use std::collections::{hash_set, HashSet};
 use std::fmt;
 use std::path::{Path, PathBuf};
@@ -243,7 +245,7 @@ pub struct WidthHeuristics {
 
 impl fmt::Display for WidthHeuristics {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self)
+        write!(f, "{self:?}")
     }
 }
 

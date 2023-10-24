@@ -42,7 +42,7 @@ mod foo {
     pub struct Square{pub p: Point, pub h: usize, pub w: usize}
 }
 
-mod bar {
+pub mod bar {
     // Don't ignore on 'pub use' because we're not sure if it's used or not
     pub use std::cmp::PartialEq;
     pub struct Square;

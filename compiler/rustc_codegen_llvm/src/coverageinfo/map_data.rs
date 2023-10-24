@@ -1,16 +1,18 @@
 use crate::coverageinfo::ffi::{Counter, CounterExpression, ExprKind};
 
+use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::coverage::{
     CodeRegion, CounterId, CovTerm, Expression, ExpressionId, FunctionCoverageInfo, Mapping, Op,
 };
 use rustc_middle::ty::Instance;
+use rustc_span::Symbol;
 
 /// Holds all of the coverage mapping data associated with a function instance,
 /// collected during traversal of `Coverage` statements in the function's MIR.
 #[derive(Debug)]
-pub struct FunctionCoverage<'tcx> {
+pub struct FunctionCoverageCollector<'tcx> {
     /// Coverage info that was attached to this function by the instrumentor.
     function_coverage_info: &'tcx FunctionCoverageInfo,
     is_used: bool,
@@ -26,7 +28,7 @@ pub struct FunctionCoverage<'tcx> {
     expressions_seen: BitSet<ExpressionId>,
 }
 
-impl<'tcx> FunctionCoverage<'tcx> {
+impl<'tcx> FunctionCoverageCollector<'tcx> {
     /// Creates a new set of coverage data for a used (called) function.
     pub fn new(
         instance: Instance<'tcx>,
@@ -74,11 +76,6 @@ impl<'tcx> FunctionCoverage<'tcx> {
             counters_seen: BitSet::new_empty(num_counters),
             expressions_seen,
         }
-    }
-
-    /// Returns true for a used (called) function, and false for an unused function.
-    pub fn is_used(&self) -> bool {
-        self.is_used
     }
 
     /// Marks a counter ID as having been seen in a counter-increment statement.
@@ -165,64 +162,71 @@ impl<'tcx> FunctionCoverage<'tcx> {
         ZeroExpressions(zero_expressions)
     }
 
+    pub(crate) fn into_finished(self) -> FunctionCoverage<'tcx> {
+        let zero_expressions = self.identify_zero_expressions();
+        let FunctionCoverageCollector { function_coverage_info, is_used, counters_seen, .. } = self;
+
+        FunctionCoverage { function_coverage_info, is_used, counters_seen, zero_expressions }
+    }
+}
+
+pub(crate) struct FunctionCoverage<'tcx> {
+    function_coverage_info: &'tcx FunctionCoverageInfo,
+    is_used: bool,
+
+    counters_seen: BitSet<CounterId>,
+    zero_expressions: ZeroExpressions,
+}
+
+impl<'tcx> FunctionCoverage<'tcx> {
+    /// Returns true for a used (called) function, and false for an unused function.
+    pub(crate) fn is_used(&self) -> bool {
+        self.is_used
+    }
+
     /// Return the source hash, generated from the HIR node structure, and used to indicate whether
     /// or not the source code structure changed between different compilations.
     pub fn source_hash(&self) -> u64 {
         if self.is_used { self.function_coverage_info.function_source_hash } else { 0 }
     }
 
-    /// Generate an array of CounterExpressions, and an iterator over all `Counter`s and their
-    /// associated `Regions` (from which the LLVM-specific `CoverageMapGenerator` will create
-    /// `CounterMappingRegion`s.
-    pub fn get_expressions_and_counter_regions(
-        &self,
-    ) -> (Vec<CounterExpression>, impl Iterator<Item = (Counter, &CodeRegion)>) {
-        let zero_expressions = self.identify_zero_expressions();
-
-        let counter_expressions = self.counter_expressions(&zero_expressions);
-        // Expression IDs are indices into `self.expressions`, and on the LLVM
-        // side they will be treated as indices into `counter_expressions`, so
-        // the two vectors should correspond 1:1.
-        assert_eq!(self.function_coverage_info.expressions.len(), counter_expressions.len());
-
-        let counter_regions = self.counter_regions(zero_expressions);
-
-        (counter_expressions, counter_regions)
+    /// Returns an iterator over all filenames used by this function's mappings.
+    pub(crate) fn all_file_names(&self) -> impl Iterator<Item = Symbol> + Captures<'_> {
+        self.function_coverage_info.mappings.iter().map(|mapping| mapping.code_region.file_name)
     }
 
     /// Convert this function's coverage expression data into a form that can be
     /// passed through FFI to LLVM.
-    fn counter_expressions(&self, zero_expressions: &ZeroExpressions) -> Vec<CounterExpression> {
+    pub(crate) fn counter_expressions(
+        &self,
+    ) -> impl Iterator<Item = CounterExpression> + ExactSizeIterator + Captures<'_> {
         // We know that LLVM will optimize out any unused expressions before
         // producing the final coverage map, so there's no need to do the same
         // thing on the Rust side unless we're confident we can do much better.
         // (See `CounterExpressionsMinimizer` in `CoverageMappingWriter.cpp`.)
 
         let counter_from_operand = |operand: CovTerm| match operand {
-            CovTerm::Expression(id) if zero_expressions.contains(id) => Counter::ZERO,
+            CovTerm::Expression(id) if self.zero_expressions.contains(id) => Counter::ZERO,
             _ => Counter::from_term(operand),
         };
 
-        self.function_coverage_info
-            .expressions
-            .iter()
-            .map(|&Expression { lhs, op, rhs }| CounterExpression {
+        self.function_coverage_info.expressions.iter().map(move |&Expression { lhs, op, rhs }| {
+            CounterExpression {
                 lhs: counter_from_operand(lhs),
                 kind: match op {
                     Op::Add => ExprKind::Add,
                     Op::Subtract => ExprKind::Subtract,
                 },
                 rhs: counter_from_operand(rhs),
-            })
-            .collect::<Vec<_>>()
+            }
+        })
     }
 
     /// Converts this function's coverage mappings into an intermediate form
     /// that will be used by `mapgen` when preparing for FFI.
-    fn counter_regions(
+    pub(crate) fn counter_regions(
         &self,
-        zero_expressions: ZeroExpressions,
-    ) -> impl Iterator<Item = (Counter, &CodeRegion)> {
+    ) -> impl Iterator<Item = (Counter, &CodeRegion)> + ExactSizeIterator {
         // Historically, mappings were stored directly in counter/expression
         // statements in MIR, and MIR optimizations would sometimes remove them.
         // That's mostly no longer true, so now we detect cases where that would
@@ -230,7 +234,7 @@ impl<'tcx> FunctionCoverage<'tcx> {
         let counter_for_term = move |term: CovTerm| {
             let force_to_zero = match term {
                 CovTerm::Counter(id) => !self.counters_seen.contains(id),
-                CovTerm::Expression(id) => zero_expressions.contains(id),
+                CovTerm::Expression(id) => self.zero_expressions.contains(id),
                 CovTerm::Zero => false,
             };
             if force_to_zero { Counter::ZERO } else { Counter::from_term(term) }

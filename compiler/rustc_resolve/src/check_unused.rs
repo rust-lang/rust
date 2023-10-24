@@ -59,7 +59,6 @@ struct UnusedImportCheckVisitor<'a, 'b, 'tcx> {
     base_use_tree: Option<&'a ast::UseTree>,
     base_id: ast::NodeId,
     item_span: Span,
-    base_use_is_pub: bool,
 }
 
 struct ExternCrateToLint {
@@ -146,7 +145,6 @@ impl<'a, 'b, 'tcx> Visitor<'a> for UnusedImportCheckVisitor<'a, 'b, 'tcx> {
             // because this means that they were generated in some fashion by the
             // compiler and we don't need to consider them.
             ast::ItemKind::Use(..) if item.span.is_dummy() => return,
-            ast::ItemKind::Use(..) => self.base_use_is_pub = item.vis.kind.is_pub(),
             ast::ItemKind::ExternCrate(orig_name) => {
                 self.extern_crate_items.push(ExternCrateToLint {
                     id: item.id,
@@ -173,7 +171,7 @@ impl<'a, 'b, 'tcx> Visitor<'a> for UnusedImportCheckVisitor<'a, 'b, 'tcx> {
             self.base_use_tree = Some(use_tree);
         }
 
-        if self.base_use_is_pub {
+        if self.r.effective_visibilities.is_exported(self.r.local_def_id(id)) {
             self.check_import_as_underscore(use_tree, id);
             return;
         }
@@ -332,7 +330,6 @@ impl Resolver<'_, '_> {
             base_use_tree: None,
             base_id: ast::DUMMY_NODE_ID,
             item_span: DUMMY_SP,
-            base_use_is_pub: false,
         };
         visit::walk_crate(&mut visitor, krate);
 

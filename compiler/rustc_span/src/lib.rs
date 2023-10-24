@@ -2247,7 +2247,7 @@ where
 
 /// Useful type to use with `Result<>` indicate that an error has already
 /// been reported to the user, so no need to continue checking.
-#[derive(Clone, Copy, Debug, Encodable, Decodable, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[derive(HashStable_Generic)]
 pub struct ErrorGuaranteed(());
 
@@ -2257,5 +2257,22 @@ impl ErrorGuaranteed {
     #[deprecated = "`Session::delay_span_bug` should be preferred over this function"]
     pub fn unchecked_claim_error_was_emitted() -> Self {
         ErrorGuaranteed(())
+    }
+}
+
+impl<E: rustc_serialize::Encoder> Encodable<E> for ErrorGuaranteed {
+    #[inline]
+    fn encode(&self, _e: &mut E) {
+        panic!(
+            "should never serialize an `ErrorGuaranteed`, as we do not write metadata or incremental caches in case errors occurred"
+        )
+    }
+}
+impl<D: rustc_serialize::Decoder> Decodable<D> for ErrorGuaranteed {
+    #[inline]
+    fn decode(_d: &mut D) -> ErrorGuaranteed {
+        panic!(
+            "`ErrorGuaranteed` should never have been serialized to metadata or incremental caches"
+        )
     }
 }

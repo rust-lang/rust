@@ -1074,17 +1074,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         instance: ty::Instance<'tcx>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::Provenance>> {
         let gid = GlobalId { instance, promoted: None };
-        // For statics we pick `ParamEnv::reveal_all`, because statics don't have generics
-        // and thus don't care about the parameter environment. While we could just use
-        // `self.param_env`, that would mean we invoke the query to evaluate the static
-        // with different parameter environments, thus causing the static to be evaluated
-        // multiple times.
-        let param_env = if self.tcx.is_static(gid.instance.def_id()) {
-            ty::ParamEnv::reveal_all()
+        let val = if self.tcx.is_static(gid.instance.def_id()) {
+            let alloc_id = self.tcx.reserve_and_set_static_alloc(gid.instance.def_id());
+
+            let ty = instance.ty(self.tcx.tcx, self.param_env);
+            mir::ConstAlloc { alloc_id, ty }
         } else {
-            self.param_env
+            self.ctfe_query(|tcx| tcx.eval_to_allocation_raw(self.param_env.and(gid)))?
         };
-        let val = self.ctfe_query(|tcx| tcx.eval_to_allocation_raw(param_env.and(gid)))?;
         self.raw_const_to_mplace(val)
     }
 

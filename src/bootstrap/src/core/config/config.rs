@@ -21,7 +21,6 @@ use std::str::FromStr;
 use crate::core::build_steps::compile::CODEGEN_BACKEND_PREFIX;
 use crate::core::config::flags::{Color, Flags, Warnings};
 use crate::utils::cache::{Interned, INTERNER};
-use crate::utils::cc_detect::{ndk_compiler, Language};
 use crate::utils::channel::{self, GitInfo};
 use crate::utils::helpers::{exe, output, t};
 use build_helper::exit;
@@ -142,6 +141,7 @@ pub struct Config {
     pub color: Color,
     pub patch_binaries_for_nix: Option<bool>,
     pub stage0_metadata: Stage0Metadata,
+    pub android_ndk: Option<PathBuf>,
 
     pub stdout_is_tty: bool,
     pub stderr_is_tty: bool,
@@ -521,7 +521,6 @@ pub struct Target {
     pub ranlib: Option<PathBuf>,
     pub default_linker: Option<PathBuf>,
     pub linker: Option<PathBuf>,
-    pub ndk: Option<PathBuf>,
     pub sanitizers: Option<bool>,
     pub profiler: Option<StringOrBool>,
     pub rpath: Option<bool>,
@@ -799,6 +798,7 @@ define_config! {
         patch_binaries_for_nix: Option<bool> = "patch-binaries-for-nix",
         // NOTE: only parsed by bootstrap.py, `--feature build-metrics` enables metrics unconditionally
         metrics: Option<bool> = "metrics",
+        android_ndk: Option<PathBuf> = "android-ndk",
     }
 }
 
@@ -1039,7 +1039,6 @@ define_config! {
         llvm_has_rust_patches: Option<bool> = "llvm-has-rust-patches",
         llvm_filecheck: Option<String> = "llvm-filecheck",
         llvm_libunwind: Option<String> = "llvm-libunwind",
-        android_ndk: Option<String> = "android-ndk",
         sanitizers: Option<bool> = "sanitizers",
         profiler: Option<StringOrBool> = "profiler",
         rpath: Option<bool> = "rpath",
@@ -1320,6 +1319,7 @@ impl Config {
         config.python = build.python.map(PathBuf::from);
         config.reuse = build.reuse.map(PathBuf::from);
         config.submodules = build.submodules;
+        config.android_ndk = build.android_ndk;
         set(&mut config.low_priority, build.low_priority);
         set(&mut config.compiler_docs, build.compiler_docs);
         set(&mut config.library_docs_private_items, build.library_docs_private_items);
@@ -1600,18 +1600,11 @@ impl Config {
                     .llvm_libunwind
                     .as_ref()
                     .map(|v| v.parse().expect("failed to parse rust.llvm-libunwind"));
-                if let Some(ref s) = cfg.android_ndk {
-                    target.ndk = Some(config.src.join(s));
-                }
                 if let Some(s) = cfg.no_std {
                     target.no_std = s;
                 }
-                target.cc = cfg.cc.map(PathBuf::from).or_else(|| {
-                    target.ndk.as_ref().map(|ndk| ndk_compiler(Language::C, &triple, ndk))
-                });
-                target.cxx = cfg.cxx.map(PathBuf::from).or_else(|| {
-                    target.ndk.as_ref().map(|ndk| ndk_compiler(Language::CPlusPlus, &triple, ndk))
-                });
+                target.cc = cfg.cc.map(PathBuf::from);
+                target.cxx = cfg.cxx.map(PathBuf::from);
                 target.ar = cfg.ar.map(PathBuf::from);
                 target.ranlib = cfg.ranlib.map(PathBuf::from);
                 target.linker = cfg.linker.map(PathBuf::from);

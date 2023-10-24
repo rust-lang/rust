@@ -22,8 +22,8 @@ where
     type T = Either<Left::T, Right::T>;
     type TRef<'a> = Either<&'a Left::T, &'a Right::T>
     where
-        <Left as HasChildrenOf>::T: 'a,
-        <Right as HasChildrenOf>::T: 'a;
+        <Left as HasChildrenOf>::T: 'a, //~ ERROR impl has stricter requirements than trait
+        <Right as HasChildrenOf>::T: 'a; //~ ERROR impl has stricter requirements than trait
 
     fn ref_children<'a>(&'a self) -> Vec<Self::TRef<'a>> {
         todo!()

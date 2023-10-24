@@ -53,7 +53,6 @@ pub mod visit;
 
 pub use self::ast::*;
 pub use self::ast_traits::{AstDeref, AstNodeWrapper, HasAttrs, HasNodeId, HasSpan, HasTokens};
-pub use self::format::*;
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 

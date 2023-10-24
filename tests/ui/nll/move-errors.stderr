@@ -186,7 +186,7 @@ help: consider borrowing the pattern binding
 LL |         F(s, ref mut t) => (),
    |              +++
 
-error[E0507]: cannot move out of `x` as enum variant `Err` which is behind a shared reference
+error[E0507]: cannot move out of `x` as enum variant `Ok` which is behind a shared reference
   --> $DIR/move-errors.rs:110:11
    |
 LL |     match *x {

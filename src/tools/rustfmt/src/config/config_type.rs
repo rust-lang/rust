@@ -500,18 +500,16 @@ where
         // Stable with an unstable option
         (false, false, _) => {
             eprintln!(
-                "Warning: can't set `{} = {:?}`, unstable features are only \
-                       available in nightly channel.",
-                option_name, option_value
+                "Warning: can't set `{option_name} = {option_value:?}`, unstable features are only \
+                       available in nightly channel."
             );
             false
         }
         // Stable with a stable option, but an unstable variant
         (false, true, false) => {
             eprintln!(
-                "Warning: can't set `{} = {:?}`, unstable variants are only \
-                       available in nightly channel.",
-                option_name, option_value
+                "Warning: can't set `{option_name} = {option_value:?}`, unstable variants are only \
+                       available in nightly channel."
             );
             false
         }

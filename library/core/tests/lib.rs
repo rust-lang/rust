@@ -120,8 +120,6 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 #![deny(fuzzy_provenance_casts)]
 
-extern crate test;
-
 mod alloc;
 mod any;
 mod array;

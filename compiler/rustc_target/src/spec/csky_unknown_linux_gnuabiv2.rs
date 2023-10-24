@@ -12,7 +12,7 @@ pub fn target() -> Target {
         options: TargetOptions {
             abi: "abiv2".into(),
             features: "+2e3,+3e7,+7e10,+cache,+dsp1e2,+dspe60,+e1,+e2,+edsp,+elrw,+hard-tp,+high-registers,+hwdiv,+mp,+mp1e2,+nvic,+trust".into(),
-            late_link_args_static: TargetOptions::link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-l:libatomic.a"]),
+            late_link_args: TargetOptions::link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-l:libatomic.a"]),
             max_atomic_width: Some(32),
             ..super::linux_gnu_base::opts()
         },

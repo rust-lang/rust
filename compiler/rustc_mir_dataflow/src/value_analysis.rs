@@ -463,7 +463,19 @@ impl<V: Clone> Clone for State<V> {
     }
 }
 
-impl<V: Clone + HasTop + HasBottom> State<V> {
+impl<V: Clone> State<V> {
+    pub fn new(init: V, map: &Map) -> State<V> {
+        let values = IndexVec::from_elem_n(init, map.value_count);
+        State(StateData::Reachable(values))
+    }
+
+    pub fn all(&self, f: impl Fn(&V) -> bool) -> bool {
+        match self.0 {
+            StateData::Unreachable => true,
+            StateData::Reachable(ref values) => values.iter().all(f),
+        }
+    }
+
     pub fn is_reachable(&self) -> bool {
         matches!(&self.0, StateData::Reachable(_))
     }
@@ -472,7 +484,10 @@ impl<V: Clone + HasTop + HasBottom> State<V> {
         self.0 = StateData::Unreachable;
     }
 
-    pub fn flood_all(&mut self) {
+    pub fn flood_all(&mut self)
+    where
+        V: HasTop,
+    {
         self.flood_all_with(V::TOP)
     }
 
@@ -481,26 +496,50 @@ impl<V: Clone + HasTop + HasBottom> State<V> {
         values.raw.fill(value);
     }
 
+    /// Assign `value` to all places that are contained in `place` or may alias one.
     pub fn flood_with(&mut self, place: PlaceRef<'_>, map: &Map, value: V) {
-        let StateData::Reachable(values) = &mut self.0 else { return };
-        map.for_each_aliasing_place(place, None, &mut |vi| {
-            values[vi] = value.clone();
-        });
+        self.flood_with_tail_elem(place, None, map, value)
     }
 
-    pub fn flood(&mut self, place: PlaceRef<'_>, map: &Map) {
+    /// Assign `TOP` to all places that are contained in `place` or may alias one.
+    pub fn flood(&mut self, place: PlaceRef<'_>, map: &Map)
+    where
+        V: HasTop,
+    {
         self.flood_with(place, map, V::TOP)
     }
 
+    /// Assign `value` to the discriminant of `place` and all places that may alias it.
     pub fn flood_discr_with(&mut self, place: PlaceRef<'_>, map: &Map, value: V) {
-        let StateData::Reachable(values) = &mut self.0 else { return };
-        map.for_each_aliasing_place(place, Some(TrackElem::Discriminant), &mut |vi| {
-            values[vi] = value.clone();
-        });
+        self.flood_with_tail_elem(place, Some(TrackElem::Discriminant), map, value)
     }
 
-    pub fn flood_discr(&mut self, place: PlaceRef<'_>, map: &Map) {
+    /// Assign `TOP` to the discriminant of `place` and all places that may alias it.
+    pub fn flood_discr(&mut self, place: PlaceRef<'_>, map: &Map)
+    where
+        V: HasTop,
+    {
         self.flood_discr_with(place, map, V::TOP)
+    }
+
+    /// This method is the most general version of the `flood_*` method.
+    ///
+    /// Assign `value` on the given place and all places that may alias it. In particular, when
+    /// the given place has a variant downcast, we invoke the function on all the other variants.
+    ///
+    /// `tail_elem` allows to support discriminants that are not a place in MIR, but that we track
+    /// as such.
+    pub fn flood_with_tail_elem(
+        &mut self,
+        place: PlaceRef<'_>,
+        tail_elem: Option<TrackElem>,
+        map: &Map,
+        value: V,
+    ) {
+        let StateData::Reachable(values) = &mut self.0 else { return };
+        map.for_each_aliasing_place(place, tail_elem, &mut |vi| {
+            values[vi] = value.clone();
+        });
     }
 
     /// Low-level method that assigns to a place.
@@ -553,7 +592,10 @@ impl<V: Clone + HasTop + HasBottom> State<V> {
     }
 
     /// Helper method to interpret `target = result`.
-    pub fn assign(&mut self, target: PlaceRef<'_>, result: ValueOrPlace<V>, map: &Map) {
+    pub fn assign(&mut self, target: PlaceRef<'_>, result: ValueOrPlace<V>, map: &Map)
+    where
+        V: HasTop,
+    {
         self.flood(target, map);
         if let Some(target) = map.find(target) {
             self.insert_idx(target, result, map);
@@ -561,36 +603,93 @@ impl<V: Clone + HasTop + HasBottom> State<V> {
     }
 
     /// Helper method for assignments to a discriminant.
-    pub fn assign_discr(&mut self, target: PlaceRef<'_>, result: ValueOrPlace<V>, map: &Map) {
+    pub fn assign_discr(&mut self, target: PlaceRef<'_>, result: ValueOrPlace<V>, map: &Map)
+    where
+        V: HasTop,
+    {
         self.flood_discr(target, map);
         if let Some(target) = map.find_discr(target) {
             self.insert_idx(target, result, map);
         }
     }
 
-    /// Retrieve the value stored for a place, or ⊤ if it is not tracked.
-    pub fn get(&self, place: PlaceRef<'_>, map: &Map) -> V {
-        map.find(place).map(|place| self.get_idx(place, map)).unwrap_or(V::TOP)
+    /// Retrieve the value stored for a place, or `None` if it is not tracked.
+    pub fn try_get(&self, place: PlaceRef<'_>, map: &Map) -> Option<V> {
+        let place = map.find(place)?;
+        self.try_get_idx(place, map)
     }
 
-    /// Retrieve the value stored for a place, or ⊤ if it is not tracked.
-    pub fn get_discr(&self, place: PlaceRef<'_>, map: &Map) -> V {
-        match map.find_discr(place) {
-            Some(place) => self.get_idx(place, map),
-            None => V::TOP,
+    /// Retrieve the discriminant stored for a place, or `None` if it is not tracked.
+    pub fn try_get_discr(&self, place: PlaceRef<'_>, map: &Map) -> Option<V> {
+        let place = map.find_discr(place)?;
+        self.try_get_idx(place, map)
+    }
+
+    /// Retrieve the slice length stored for a place, or `None` if it is not tracked.
+    pub fn try_get_len(&self, place: PlaceRef<'_>, map: &Map) -> Option<V> {
+        let place = map.find_len(place)?;
+        self.try_get_idx(place, map)
+    }
+
+    /// Retrieve the value stored for a place index, or `None` if it is not tracked.
+    pub fn try_get_idx(&self, place: PlaceIndex, map: &Map) -> Option<V> {
+        match &self.0 {
+            StateData::Reachable(values) => {
+                map.places[place].value_index.map(|v| values[v].clone())
+            }
+            StateData::Unreachable => None,
         }
     }
 
     /// Retrieve the value stored for a place, or ⊤ if it is not tracked.
-    pub fn get_len(&self, place: PlaceRef<'_>, map: &Map) -> V {
-        match map.find_len(place) {
-            Some(place) => self.get_idx(place, map),
-            None => V::TOP,
+    ///
+    /// This method returns ⊥ if the place is tracked and the state is unreachable.
+    pub fn get(&self, place: PlaceRef<'_>, map: &Map) -> V
+    where
+        V: HasBottom + HasTop,
+    {
+        match &self.0 {
+            StateData::Reachable(_) => self.try_get(place, map).unwrap_or(V::TOP),
+            // Because this is unreachable, we can return any value we want.
+            StateData::Unreachable => V::BOTTOM,
+        }
+    }
+
+    /// Retrieve the value stored for a place, or ⊤ if it is not tracked.
+    ///
+    /// This method returns ⊥ the current state is unreachable.
+    pub fn get_discr(&self, place: PlaceRef<'_>, map: &Map) -> V
+    where
+        V: HasBottom + HasTop,
+    {
+        match &self.0 {
+            StateData::Reachable(_) => self.try_get_discr(place, map).unwrap_or(V::TOP),
+            // Because this is unreachable, we can return any value we want.
+            StateData::Unreachable => V::BOTTOM,
+        }
+    }
+
+    /// Retrieve the value stored for a place, or ⊤ if it is not tracked.
+    ///
+    /// This method returns ⊥ the current state is unreachable.
+    pub fn get_len(&self, place: PlaceRef<'_>, map: &Map) -> V
+    where
+        V: HasBottom + HasTop,
+    {
+        match &self.0 {
+            StateData::Reachable(_) => self.try_get_len(place, map).unwrap_or(V::TOP),
+            // Because this is unreachable, we can return any value we want.
+            StateData::Unreachable => V::BOTTOM,
         }
     }
 
     /// Retrieve the value stored for a place index, or ⊤ if it is not tracked.
-    pub fn get_idx(&self, place: PlaceIndex, map: &Map) -> V {
+    ///
+    /// This method returns ⊥ the current state is unreachable.
+    pub fn get_idx(&self, place: PlaceIndex, map: &Map) -> V
+    where
+        V: HasBottom + HasTop,
+    {
         match &self.0 {
             StateData::Reachable(values) => {
                 map.places[place].value_index.map(|v| values[v].clone()).unwrap_or(V::TOP)
