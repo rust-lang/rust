@@ -1,5 +1,3 @@
-#![allow(incomplete_features)]
-
 use std::fmt::Display;
 use std::ops::Deref;
 

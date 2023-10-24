@@ -1,5 +1,3 @@
-#![allow(incomplete_features)]
-
 use std::ops::Deref;
 
 pub trait Foo {

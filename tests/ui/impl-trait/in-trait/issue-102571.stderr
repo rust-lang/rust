@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/issue-102571.rs:11:9
+  --> $DIR/issue-102571.rs:9:9
    |
 LL |     let () = t.bar();
    |         ^^   ------- this expression has type `impl Deref<Target = impl std::fmt::Display + ?Sized>`
