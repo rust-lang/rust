@@ -1889,37 +1889,14 @@ fn add_linked_symbol_object(
         return;
     };
 
-    // NOTE(nbdd0121): MSVC will hang if the input object file contains no sections,
-    // so add an empty section.
     if file.format() == object::BinaryFormat::Coff {
+        // NOTE(nbdd0121): MSVC will hang if the input object file contains no sections,
+        // so add an empty section.
         file.add_section(Vec::new(), ".text".into(), object::SectionKind::Text);
 
         // We handle the name decoration of COFF targets in `symbol_export.rs`, so disable the
         // default mangler in `object` crate.
         file.set_mangling(object::write::Mangling::None);
-
-        // Add feature flags to the object file. On MSVC this is optional but LLD will complain if
-        // not present.
-        let mut feature = 0;
-
-        if file.architecture() == object::Architecture::I386 {
-            // Indicate that all SEH handlers are registered in .sxdata section.
-            // We don't have generate any code, so we don't need .sxdata section but LLD still
-            // expects us to set this bit (see #96498).
-            // Reference: https://docs.microsoft.com/en-us/windows/win32/debug/pe-format
-            feature |= 1;
-        }
-
-        file.add_symbol(object::write::Symbol {
-            name: "@feat.00".into(),
-            value: feature,
-            size: 0,
-            kind: object::SymbolKind::Data,
-            scope: object::SymbolScope::Compilation,
-            weak: false,
-            section: object::write::SymbolSection::Absolute,
-            flags: object::SymbolFlags::None,
-        });
     }
 
     for (sym, kind) in symbols.iter() {

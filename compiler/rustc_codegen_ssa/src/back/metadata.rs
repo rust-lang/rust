@@ -228,6 +228,35 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
     if sess.target.is_like_osx {
         file.set_macho_build_version(macho_object_build_version_for_target(&sess.target))
     }
+    if binary_format == BinaryFormat::Coff {
+        // Disable the default mangler to avoid mangling the special "@feat.00" symbol name.
+        let original_mangling = file.mangling();
+        file.set_mangling(object::write::Mangling::None);
+
+        let mut feature = 0;
+
+        if file.architecture() == object::Architecture::I386 {
+            // When linking with /SAFESEH on x86, lld requires that all linker inputs be marked as
+            // safe exception handling compatible. Metadata files masquerade as regular COFF
+            // objects and are treated as linker inputs, despite containing no actual code. Thus,
+            // they still need to be marked as safe exception handling compatible. See #96498.
+            // Reference: https://docs.microsoft.com/en-us/windows/win32/debug/pe-format
+            feature |= 1;
+        }
+
+        file.add_symbol(object::write::Symbol {
+            name: "@feat.00".into(),
+            value: feature,
+            size: 0,
+            kind: object::SymbolKind::Data,
+            scope: object::SymbolScope::Compilation,
+            weak: false,
+            section: object::write::SymbolSection::Absolute,
+            flags: object::SymbolFlags::None,
+        });
+
+        file.set_mangling(original_mangling);
+    }
     let e_flags = match architecture {
         Architecture::Mips => {
             let arch = match sess.target.options.cpu.as_ref() {
