@@ -167,7 +167,7 @@ pub fn run(tcx: TyCtxt<'_>, f: impl FnOnce()) {
         def_ids: IndexMap::default(),
         alloc_ids: IndexMap::default(),
         spans: IndexMap::default(),
-        types: vec![],
+        types: IndexMap::default(),
         instances: IndexMap::default(),
         constants: IndexMap::default(),
     }));

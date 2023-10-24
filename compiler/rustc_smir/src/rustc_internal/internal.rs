@@ -46,7 +46,7 @@ impl<'tcx> RustcInternal<'tcx> for Region {
 impl<'tcx> RustcInternal<'tcx> for Ty {
     type T = InternalTy<'tcx>;
     fn internal(&self, tables: &mut Tables<'tcx>) -> Self::T {
-        tables.types[self.0]
+        tables.types[*self]
     }
 }
 

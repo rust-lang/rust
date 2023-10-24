@@ -148,7 +148,7 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
 
     fn ty_kind(&self, ty: stable_mir::ty::Ty) -> TyKind {
         let mut tables = self.0.borrow_mut();
-        tables.types[ty.0].kind().stable(&mut *tables)
+        tables.types[ty].kind().stable(&mut *tables)
     }
 
     fn generics_of(&self, def_id: stable_mir::DefId) -> stable_mir::ty::Generics {
@@ -252,19 +252,14 @@ pub struct Tables<'tcx> {
     pub(crate) def_ids: IndexMap<DefId, stable_mir::DefId>,
     pub(crate) alloc_ids: IndexMap<AllocId, stable_mir::AllocId>,
     pub(crate) spans: IndexMap<rustc_span::Span, Span>,
-    pub(crate) types: Vec<Ty<'tcx>>,
+    pub(crate) types: IndexMap<Ty<'tcx>, stable_mir::ty::Ty>,
     pub(crate) instances: IndexMap<ty::Instance<'tcx>, InstanceDef>,
     pub(crate) constants: IndexMap<mir::Const<'tcx>, ConstId>,
 }
 
 impl<'tcx> Tables<'tcx> {
     fn intern_ty(&mut self, ty: Ty<'tcx>) -> stable_mir::ty::Ty {
-        if let Some(id) = self.types.iter().position(|t| *t == ty) {
-            return stable_mir::ty::Ty(id);
-        }
-        let id = self.types.len();
-        self.types.push(ty);
-        stable_mir::ty::Ty(id)
+        self.types.create_or_fetch(ty)
     }
 
     fn intern_const(&mut self, constant: mir::Const<'tcx>) -> ConstId {

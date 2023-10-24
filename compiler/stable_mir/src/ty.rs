@@ -6,7 +6,7 @@ use super::{
 use crate::{Filename, Opaque};
 use std::fmt::{self, Debug, Formatter};
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Eq, PartialEq, Hash)]
 pub struct Ty(pub usize);
 
 impl Debug for Ty {
@@ -51,15 +51,6 @@ impl Const {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ConstId(pub usize);
-
-impl IndexedVal for ConstId {
-    fn to_val(index: usize) -> Self {
-        ConstId(index)
-    }
-    fn to_index(&self) -> usize {
-        self.0
-    }
-}
 
 type Ident = Opaque;
 
@@ -134,15 +125,6 @@ pub struct LineInfo {
     pub start_col: usize,
     pub end_line: usize,
     pub end_col: usize,
-}
-
-impl IndexedVal for Span {
-    fn to_val(index: usize) -> Self {
-        Span(index)
-    }
-    fn to_index(&self) -> usize {
-        self.0
-    }
 }
 
 #[derive(Clone, Debug)]
@@ -631,3 +613,20 @@ pub trait IndexedVal {
 
     fn to_index(&self) -> usize;
 }
+
+macro_rules! index_impl {
+    ($name:ident) => {
+        impl IndexedVal for $name {
+            fn to_val(index: usize) -> Self {
+                $name(index)
+            }
+            fn to_index(&self) -> usize {
+                self.0
+            }
+        }
+    };
+}
+
+index_impl!(ConstId);
+index_impl!(Ty);
+index_impl!(Span);
