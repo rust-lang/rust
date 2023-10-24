@@ -715,7 +715,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             body,
             fn_decl_span: self.lower_span(span),
             fn_arg_span: None,
-            movability: Some(hir::Movability::Static),
+            movability: Some(Movability::Movable),
             constness: hir::Constness::NotConst,
         }))
     }
