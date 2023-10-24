@@ -1,0 +1,13 @@
+// run-rustfix
+#![allow(dead_code)]
+use std::sync::Arc;
+struct S {
+    long_name: (),
+    foo: (),
+}
+fn main() {
+    let x = Arc::new(S { long_name: (), foo: () });
+    let _ = x.long_name; //~ ERROR no field `longname`
+    let y = S { long_name: (), foo: () };
+    let _ = y.long_name; //~ ERROR no field `longname`
+}

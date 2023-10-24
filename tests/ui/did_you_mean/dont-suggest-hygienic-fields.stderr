@@ -13,13 +13,13 @@ error[E0609]: no field `field` on type `Compound`
   --> $DIR/dont-suggest-hygienic-fields.rs:24:16
    |
 LL |     let _ = ty.field;
-   |                ^^^^^ unknown field
+   |                ^^^^^
 
 error[E0609]: no field `fieeld` on type `Compound`
   --> $DIR/dont-suggest-hygienic-fields.rs:25:16
    |
 LL |     let _ = ty.fieeld;
-   |                ^^^^^^ unknown field
+   |                ^^^^^^
 
 error[E0026]: struct `Compound` does not have a field named `field`
   --> $DIR/dont-suggest-hygienic-fields.rs:27:20
@@ -42,7 +42,7 @@ error[E0609]: no field `0` on type `Component`
   --> $DIR/dont-suggest-hygienic-fields.rs:34:16
    |
 LL |     let _ = ty.0;
-   |                ^ unknown field
+   |                ^
 
 error: aborting due to 6 previous errors
 

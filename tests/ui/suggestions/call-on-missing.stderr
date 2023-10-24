@@ -35,7 +35,7 @@ error[E0609]: no field `i` on type `Box<dyn Fn() -> Foo>`
   --> $DIR/call-on-missing.rs:26:14
    |
 LL |     callable.i;
-   |              ^ unknown field
+   |              ^
    |
 help: use parentheses to call this trait object
    |

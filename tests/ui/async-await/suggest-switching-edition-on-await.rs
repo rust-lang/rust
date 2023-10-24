@@ -8,7 +8,6 @@ fn await_on_struct_missing() {
     let x = S;
     x.await;
     //~^ ERROR no field `await` on type
-    //~| NOTE unknown field
     //~| NOTE to `.await` a `Future`, switch to Rust 2018
     //~| HELP pass `--edition 2021` to `rustc`
     //~| NOTE for more on editions, read https://doc.rust-lang.org/edition-guide
@@ -30,7 +29,6 @@ fn await_on_struct_similar() {
 fn await_on_63533(x: Pin<&mut dyn Future<Output = ()>>) {
     x.await;
     //~^ ERROR no field `await` on type
-    //~| NOTE unknown field
     //~| NOTE to `.await` a `Future`, switch to Rust 2018
     //~| HELP pass `--edition 2021` to `rustc`
     //~| NOTE for more on editions, read https://doc.rust-lang.org/edition-guide

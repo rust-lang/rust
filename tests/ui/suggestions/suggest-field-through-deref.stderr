@@ -1,0 +1,15 @@
+error[E0609]: no field `longname` on type `Arc<S>`
+  --> $DIR/suggest-field-through-deref.rs:10:15
+   |
+LL |     let _ = x.longname;
+   |               ^^^^^^^^ help: a field with a similar name exists: `long_name`
+
+error[E0609]: no field `longname` on type `S`
+  --> $DIR/suggest-field-through-deref.rs:12:15
+   |
+LL |     let _ = y.longname;
+   |               ^^^^^^^^ help: a field with a similar name exists: `long_name`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0609`.
