@@ -1,11 +1,11 @@
 error[E0038]: the trait `Foo` cannot be made into an object
-  --> $DIR/object-safety.rs:16:33
+  --> $DIR/object-safety.rs:14:33
    |
 LL |     let i = Box::new(42_u32) as Box<dyn Foo>;
    |                                 ^^^^^^^^^^^^ `Foo` cannot be made into an object
    |
 note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
-  --> $DIR/object-safety.rs:6:22
+  --> $DIR/object-safety.rs:4:22
    |
 LL | trait Foo {
    |       --- this trait cannot be made into an object...
@@ -14,13 +14,13 @@ LL |     fn baz(&self) -> impl Debug;
    = help: consider moving `baz` to another trait
 
 error[E0038]: the trait `Foo` cannot be made into an object
-  --> $DIR/object-safety.rs:19:15
+  --> $DIR/object-safety.rs:17:15
    |
 LL |     let s = i.baz();
    |               ^^^ `Foo` cannot be made into an object
    |
 note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
-  --> $DIR/object-safety.rs:6:22
+  --> $DIR/object-safety.rs:4:22
    |
 LL | trait Foo {
    |       --- this trait cannot be made into an object...
@@ -29,13 +29,13 @@ LL |     fn baz(&self) -> impl Debug;
    = help: consider moving `baz` to another trait
 
 error[E0038]: the trait `Foo` cannot be made into an object
-  --> $DIR/object-safety.rs:19:13
+  --> $DIR/object-safety.rs:17:13
    |
 LL |     let s = i.baz();
    |             ^^^^^^^ `Foo` cannot be made into an object
    |
 note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
-  --> $DIR/object-safety.rs:6:22
+  --> $DIR/object-safety.rs:4:22
    |
 LL | trait Foo {
    |       --- this trait cannot be made into an object...
@@ -44,13 +44,13 @@ LL |     fn baz(&self) -> impl Debug;
    = help: consider moving `baz` to another trait
 
 error[E0038]: the trait `Foo` cannot be made into an object
-  --> $DIR/object-safety.rs:16:13
+  --> $DIR/object-safety.rs:14:13
    |
 LL |     let i = Box::new(42_u32) as Box<dyn Foo>;
    |             ^^^^^^^^^^^^^^^^ `Foo` cannot be made into an object
    |
 note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
-  --> $DIR/object-safety.rs:6:22
+  --> $DIR/object-safety.rs:4:22
    |
 LL | trait Foo {
    |       --- this trait cannot be made into an object...

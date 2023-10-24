@@ -1,7 +1,5 @@
 // edition: 2021
 
-#![allow(incomplete_features)]
-
 trait MyTrait<T> {
     async fn foo_recursive(&self, n: usize) -> T;
 }

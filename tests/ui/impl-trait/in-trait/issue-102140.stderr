@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `&dyn MyTrait: MyTrait` is not satisfied
-  --> $DIR/issue-102140.rs:22:22
+  --> $DIR/issue-102140.rs:20:22
    |
 LL |         MyTrait::foo(&self)
    |         ------------ ^^^^^ the trait `MyTrait` is not implemented for `&dyn MyTrait`
@@ -13,7 +13,7 @@ LL +         MyTrait::foo(self)
    |
 
 error[E0277]: the trait bound `&dyn MyTrait: MyTrait` is not satisfied
-  --> $DIR/issue-102140.rs:22:9
+  --> $DIR/issue-102140.rs:20:9
    |
 LL |         MyTrait::foo(&self)
    |         ^^^^^^^^^^^^^^^^^^^ the trait `MyTrait` is not implemented for `&dyn MyTrait`
@@ -21,7 +21,7 @@ LL |         MyTrait::foo(&self)
    = help: the trait `MyTrait` is implemented for `Outer`
 
 error[E0277]: the trait bound `&dyn MyTrait: MyTrait` is not satisfied
-  --> $DIR/issue-102140.rs:22:9
+  --> $DIR/issue-102140.rs:20:9
    |
 LL |         MyTrait::foo(&self)
    |         ^^^^^^^^^^^^ the trait `MyTrait` is not implemented for `&dyn MyTrait`
