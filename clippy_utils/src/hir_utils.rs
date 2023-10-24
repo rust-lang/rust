@@ -346,6 +346,12 @@ impl HirEqInterExpr<'_, '_, '_> {
             (&ExprKind::OffsetOf(l_container, l_fields), &ExprKind::OffsetOf(r_container, r_fields)) => {
                 self.eq_ty(l_container, r_container) && over(l_fields, r_fields, |l, r| l.name == r.name)
             },
+            (&ExprKind::ConstBlock(_), _)
+            | (&ExprKind::Closure(_), _)
+            | (&ExprKind::Become(_), _)
+            | (&ExprKind::InlineAsm(_), _)
+            | (&ExprKind::Yield(_, _), _)
+            | (&ExprKind::Err(_), _) => false,
             _ => false,
         };
         (is_eq && (!self.should_ignore(left) || !self.should_ignore(right)))
