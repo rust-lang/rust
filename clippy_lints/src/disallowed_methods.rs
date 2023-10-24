@@ -1,12 +1,10 @@
+use clippy_config::types::DisallowedPath;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::{fn_def_id, get_parent_expr, path_def_id};
-
 use rustc_hir::def_id::DefIdMap;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-
-use crate::utils::conf;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -59,12 +57,12 @@ declare_clippy_lint! {
 
 #[derive(Clone, Debug)]
 pub struct DisallowedMethods {
-    conf_disallowed: Vec<conf::DisallowedPath>,
+    conf_disallowed: Vec<DisallowedPath>,
     disallowed: DefIdMap<usize>,
 }
 
 impl DisallowedMethods {
-    pub fn new(conf_disallowed: Vec<conf::DisallowedPath>) -> Self {
+    pub fn new(conf_disallowed: Vec<DisallowedPath>) -> Self {
         Self {
             conf_disallowed,
             disallowed: DefIdMap::default(),

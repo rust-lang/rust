@@ -28,6 +28,7 @@ fn dogfood_clippy() {
         "clippy_dev",
         "clippy_lints",
         "clippy_utils",
+        "clippy_config",
         "lintcheck",
         "rustc_tools_util",
     ] {
@@ -56,7 +57,10 @@ fn run_metadata_collection_lint() {
 
     // Run collection as is
     std::env::set_var("ENABLE_METADATA_COLLECTION", "1");
-    run_clippy_for_package("clippy_lints", &["-A", "unfulfilled_lint_expectations"]);
+    assert!(run_clippy_for_package(
+        "clippy_lints",
+        &["-A", "unfulfilled_lint_expectations"]
+    ));
 
     // Check if cargo caching got in the way
     if let Ok(file) = File::open(metadata_output_path) {
@@ -79,9 +83,13 @@ fn run_metadata_collection_lint() {
     .unwrap();
 
     // Running the collection again
-    run_clippy_for_package("clippy_lints", &["-A", "unfulfilled_lint_expectations"]);
+    assert!(run_clippy_for_package(
+        "clippy_lints",
+        &["-A", "unfulfilled_lint_expectations"]
+    ));
 }
 
+#[must_use]
 fn run_clippy_for_package(project: &str, args: &[&str]) -> bool {
     let root_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
 

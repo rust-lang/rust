@@ -1,6 +1,6 @@
+use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::eager_or_lazy::switch_to_eager_eval;
-use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{contains_return, higher, is_else_clause, is_res_lang_ctor, path_res, peel_blocks};

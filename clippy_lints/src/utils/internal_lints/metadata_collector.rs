@@ -9,7 +9,7 @@
 
 use crate::renamed_lints::RENAMED_LINTS;
 use crate::utils::internal_lints::lint_without_lint_pass::{extract_clippy_version_value, is_lint_ref_type};
-use crate::utils::{collect_configs, ClippyConfiguration};
+use clippy_config::{get_configuration_metadata, ClippyConfiguration};
 
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::ty::{match_type, walk_ptrs_ty_depth};
@@ -155,7 +155,7 @@ impl MetadataCollector {
         Self {
             lints: BinaryHeap::<LintMetadata>::default(),
             applicability_info: FxHashMap::<String, ApplicabilityInfo>::default(),
-            config: collect_configs(),
+            config: get_configuration_metadata(),
             clippy_project_root: std::env::current_dir()
                 .expect("failed to get current dir")
                 .ancestors()
@@ -525,16 +525,6 @@ impl Serialize for ApplicabilityInfo {
             s.serialize_field("applicability", APPLICABILITY_UNRESOLVED_STR)?;
         }
         s.end()
-    }
-}
-
-impl fmt::Display for ClippyConfiguration {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(
-            f,
-            "* `{}`: `{}`(defaults to `{}`): {}",
-            self.name, self.config_type, self.default, self.doc
-        )
     }
 }
 
