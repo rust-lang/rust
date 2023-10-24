@@ -19,7 +19,12 @@ ENV TARGETS=$TARGETS,x86_64-linux-android
 ENV RUST_CONFIGURE_ARGS \
       --enable-extended \
       --enable-profiler \
-      --android-ndk=/android/ndk/ \
+      --arm-linux-androideabi-ndk=/android/ndk/toolchains/llvm/prebuilt/linux-x86_64/ \
+      --armv7-linux-androideabi-ndk=/android/ndk/toolchains/llvm/prebuilt/linux-x86_64/ \
+      --thumbv7neon-linux-androideabi-ndk=/android/ndk/toolchains/llvm/prebuilt/linux-x86_64/ \
+      --i686-linux-android-ndk=/android/ndk/toolchains/llvm/prebuilt/linux-x86_64/ \
+      --aarch64-linux-android-ndk=/android/ndk/toolchains/llvm/prebuilt/linux-x86_64/ \
+      --x86_64-linux-android-ndk=/android/ndk/toolchains/llvm/prebuilt/linux-x86_64/ \
       --disable-docs
 
 ENV SCRIPT python3 ../x.py dist --host='' --target $TARGETS
