@@ -11,7 +11,7 @@ trait Default {
 }
 
 impl<T> Default for T {
-   default type Id = T; //~ ERROR type annotations needed
+   default type Id = T;
 }
 
 fn test<T: Default<Id = U>, U>() {}

@@ -2162,45 +2162,140 @@ pub(super) fn check_type_bounds<'tcx>(
     impl_ty: ty::AssocItem,
     impl_trait_ref: ty::TraitRef<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
+    let param_env = param_env_with_gat_bounds(tcx, trait_ty, impl_ty, impl_trait_ref);
+    debug!(?param_env);
+
+    let container_id = impl_ty.container_id(tcx);
+    let impl_ty_def_id = impl_ty.def_id.expect_local();
+    let impl_ty_args = GenericArgs::identity_for_item(tcx, impl_ty.def_id);
+    let rebased_args = impl_ty_args.rebase_onto(tcx, container_id, impl_trait_ref.args);
+
+    let infcx = tcx.infer_ctxt().build();
+    let ocx = ObligationCtxt::new(&infcx);
+
+    // A synthetic impl Trait for RPITIT desugaring has no HIR, which we currently use to get the
+    // span for an impl's associated type. Instead, for these, use the def_span for the synthesized
+    // associated type.
+    let impl_ty_span = if impl_ty.is_impl_trait_in_trait() {
+        tcx.def_span(impl_ty_def_id)
+    } else {
+        match tcx.hir().get_by_def_id(impl_ty_def_id) {
+            hir::Node::TraitItem(hir::TraitItem {
+                kind: hir::TraitItemKind::Type(_, Some(ty)),
+                ..
+            }) => ty.span,
+            hir::Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Type(ty), .. }) => ty.span,
+            _ => bug!(),
+        }
+    };
+    let assumed_wf_types = ocx.assumed_wf_types_and_report_errors(param_env, impl_ty_def_id)?;
+
+    let normalize_cause = ObligationCause::new(
+        impl_ty_span,
+        impl_ty_def_id,
+        ObligationCauseCode::CheckAssociatedTypeBounds {
+            impl_item_def_id: impl_ty.def_id.expect_local(),
+            trait_item_def_id: trait_ty.def_id,
+        },
+    );
+    let mk_cause = |span: Span| {
+        let code = if span.is_dummy() {
+            traits::ItemObligation(trait_ty.def_id)
+        } else {
+            traits::BindingObligation(trait_ty.def_id, span)
+        };
+        ObligationCause::new(impl_ty_span, impl_ty_def_id, code)
+    };
+
+    let obligations: Vec<_> = tcx
+        .explicit_item_bounds(trait_ty.def_id)
+        .iter_instantiated_copied(tcx, rebased_args)
+        .map(|(concrete_ty_bound, span)| {
+            debug!("check_type_bounds: concrete_ty_bound = {:?}", concrete_ty_bound);
+            traits::Obligation::new(tcx, mk_cause(span), param_env, concrete_ty_bound)
+        })
+        .collect();
+    debug!("check_type_bounds: item_bounds={:?}", obligations);
+
+    for mut obligation in util::elaborate(tcx, obligations) {
+        let normalized_predicate = ocx.normalize(&normalize_cause, param_env, obligation.predicate);
+        debug!("compare_projection_bounds: normalized predicate = {:?}", normalized_predicate);
+        obligation.predicate = normalized_predicate;
+
+        ocx.register_obligation(obligation);
+    }
+    // Check that all obligations are satisfied by the implementation's
+    // version.
+    let errors = ocx.select_all_or_error();
+    if !errors.is_empty() {
+        let reported = infcx.err_ctxt().report_fulfillment_errors(errors);
+        return Err(reported);
+    }
+
+    // Finally, resolve all regions. This catches wily misuses of
+    // lifetime parameters.
+    let implied_bounds = infcx.implied_bounds_tys(param_env, impl_ty_def_id, assumed_wf_types);
+    let outlives_env = OutlivesEnvironment::with_bounds(param_env, implied_bounds);
+    ocx.resolve_regions_and_report_errors(impl_ty_def_id, &outlives_env)
+}
+
+/// Install projection predicates that allow GATs to project to their own
+/// definition types. This is not allowed in general in cases of default
+/// associated types in trait definitions, or when specialization is involved,
+/// but is needed when checking these definition types actually satisfy the
+/// trait bounds of the GAT.
+///
+/// # How it works
+///
+/// ```ignore (example)
+/// impl<A, B> Foo<u32> for (A, B) {
+///     type Bar<C> = Wrapper<A, B, C>
+/// }
+/// ```
+///
+/// - `impl_trait_ref` would be `<(A, B) as Foo<u32>>`
+/// - `normalize_impl_ty_args` would be `[A, B, ^0.0]` (`^0.0` here is the bound var with db 0 and index 0)
+/// - `normalize_impl_ty` would be `Wrapper<A, B, ^0.0>`
+/// - `rebased_args` would be `[(A, B), u32, ^0.0]`, combining the args from
+///    the *trait* with the generic associated type parameters (as bound vars).
+///
+/// A note regarding the use of bound vars here:
+/// Imagine as an example
+/// ```
+/// trait Family {
+///     type Member<C: Eq>;
+/// }
+///
+/// impl Family for VecFamily {
+///     type Member<C: Eq> = i32;
+/// }
+/// ```
+/// Here, we would generate
+/// ```ignore (pseudo-rust)
+/// forall<C> { Normalize(<VecFamily as Family>::Member<C> => i32) }
+/// ```
+///
+/// when we really would like to generate
+/// ```ignore (pseudo-rust)
+/// forall<C> { Normalize(<VecFamily as Family>::Member<C> => i32) :- Implemented(C: Eq) }
+/// ```
+///
+/// But, this is probably fine, because although the first clause can be used with types `C` that
+/// do not implement `Eq`, for it to cause some kind of problem, there would have to be a
+/// `VecFamily::Member<X>` for some type `X` where `!(X: Eq)`, that appears in the value of type
+/// `Member<C: Eq> = ....` That type would fail a well-formedness check that we ought to be doing
+/// elsewhere, which would check that any `<T as Family>::Member<X>` meets the bounds declared in
+/// the trait (notably, that `X: Eq` and `T: Family`).
+fn param_env_with_gat_bounds<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    trait_ty: ty::AssocItem,
+    impl_ty: ty::AssocItem,
+    impl_trait_ref: ty::TraitRef<'tcx>,
+) -> ty::ParamEnv<'tcx> {
     let param_env = tcx.param_env(impl_ty.def_id);
     let container_id = impl_ty.container_id(tcx);
-    // Given
-    //
-    // impl<A, B> Foo<u32> for (A, B) {
-    //     type Bar<C> = Wrapper<A, B, C>
-    // }
-    //
-    // - `impl_trait_ref` would be `<(A, B) as Foo<u32>>`
-    // - `normalize_impl_ty_args` would be `[A, B, ^0.0]` (`^0.0` here is the bound var with db 0 and index 0)
-    // - `normalize_impl_ty` would be `Wrapper<A, B, ^0.0>`
-    // - `rebased_args` would be `[(A, B), u32, ^0.0]`, combining the args from
-    //    the *trait* with the generic associated type parameters (as bound vars).
-    //
-    // A note regarding the use of bound vars here:
-    // Imagine as an example
-    // ```
-    // trait Family {
-    //     type Member<C: Eq>;
-    // }
-    //
-    // impl Family for VecFamily {
-    //     type Member<C: Eq> = i32;
-    // }
-    // ```
-    // Here, we would generate
-    // ```notrust
-    // forall<C> { Normalize(<VecFamily as Family>::Member<C> => i32) }
-    // ```
-    // when we really would like to generate
-    // ```notrust
-    // forall<C> { Normalize(<VecFamily as Family>::Member<C> => i32) :- Implemented(C: Eq) }
-    // ```
-    // But, this is probably fine, because although the first clause can be used with types C that
-    // do not implement Eq, for it to cause some kind of problem, there would have to be a
-    // VecFamily::Member<X> for some type X where !(X: Eq), that appears in the value of type
-    // Member<C: Eq> = .... That type would fail a well-formedness check that we ought to be doing
-    // elsewhere, which would check that any <T as Family>::Member<X> meets the bounds declared in
-    // the trait (notably, that X: Eq and T: Family).
+    let mut predicates = param_env.caller_bounds().to_vec();
+
     let mut bound_vars: smallvec::SmallVec<[ty::BoundVariableKind; 8]> =
         smallvec::SmallVec::with_capacity(tcx.generics_of(impl_ty.def_id).params.len());
     // Extend the impl's identity args with late-bound GAT vars
@@ -2257,105 +2352,30 @@ pub(super) fn check_type_bounds<'tcx>(
     let normalize_impl_ty = tcx.type_of(impl_ty.def_id).instantiate(tcx, normalize_impl_ty_args);
     let rebased_args = normalize_impl_ty_args.rebase_onto(tcx, container_id, impl_trait_ref.args);
     let bound_vars = tcx.mk_bound_variable_kinds(&bound_vars);
-    let normalize_param_env = {
-        let mut predicates = param_env.caller_bounds().iter().collect::<Vec<_>>();
-        match normalize_impl_ty.kind() {
-            ty::Alias(ty::Projection, proj)
-                if proj.def_id == trait_ty.def_id && proj.args == rebased_args =>
-            {
-                // Don't include this predicate if the projected type is
-                // exactly the same as the projection. This can occur in
-                // (somewhat dubious) code like this:
-                //
-                // impl<T> X for T where T: X { type Y = <T as X>::Y; }
-            }
-            _ => predicates.push(
-                ty::Binder::bind_with_vars(
-                    ty::ProjectionPredicate {
-                        projection_ty: ty::AliasTy::new(tcx, trait_ty.def_id, rebased_args),
-                        term: normalize_impl_ty.into(),
-                    },
-                    bound_vars,
-                )
-                .to_predicate(tcx),
-            ),
-        };
-        ty::ParamEnv::new(tcx.mk_clauses(&predicates), Reveal::UserFacing)
-    };
-    debug!(?normalize_param_env);
 
-    let impl_ty_def_id = impl_ty.def_id.expect_local();
-    let impl_ty_args = GenericArgs::identity_for_item(tcx, impl_ty.def_id);
-    let rebased_args = impl_ty_args.rebase_onto(tcx, container_id, impl_trait_ref.args);
-
-    let infcx = tcx.infer_ctxt().build();
-    let ocx = ObligationCtxt::new(&infcx);
-
-    // A synthetic impl Trait for RPITIT desugaring has no HIR, which we currently use to get the
-    // span for an impl's associated type. Instead, for these, use the def_span for the synthesized
-    // associated type.
-    let impl_ty_span = if impl_ty.is_impl_trait_in_trait() {
-        tcx.def_span(impl_ty_def_id)
-    } else {
-        match tcx.hir().get_by_def_id(impl_ty_def_id) {
-            hir::Node::TraitItem(hir::TraitItem {
-                kind: hir::TraitItemKind::Type(_, Some(ty)),
-                ..
-            }) => ty.span,
-            hir::Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Type(ty), .. }) => ty.span,
-            _ => bug!(),
+    match normalize_impl_ty.kind() {
+        ty::Alias(ty::Projection, proj)
+            if proj.def_id == trait_ty.def_id && proj.args == rebased_args =>
+        {
+            // Don't include this predicate if the projected type is
+            // exactly the same as the projection. This can occur in
+            // (somewhat dubious) code like this:
+            //
+            // impl<T> X for T where T: X { type Y = <T as X>::Y; }
         }
-    };
-    let assumed_wf_types = ocx.assumed_wf_types_and_report_errors(param_env, impl_ty_def_id)?;
-
-    let normalize_cause = ObligationCause::new(
-        impl_ty_span,
-        impl_ty_def_id,
-        ObligationCauseCode::CheckAssociatedTypeBounds {
-            impl_item_def_id: impl_ty.def_id.expect_local(),
-            trait_item_def_id: trait_ty.def_id,
-        },
-    );
-    let mk_cause = |span: Span| {
-        let code = if span.is_dummy() {
-            traits::ItemObligation(trait_ty.def_id)
-        } else {
-            traits::BindingObligation(trait_ty.def_id, span)
-        };
-        ObligationCause::new(impl_ty_span, impl_ty_def_id, code)
+        _ => predicates.push(
+            ty::Binder::bind_with_vars(
+                ty::ProjectionPredicate {
+                    projection_ty: ty::AliasTy::new(tcx, trait_ty.def_id, rebased_args),
+                    term: normalize_impl_ty.into(),
+                },
+                bound_vars,
+            )
+            .to_predicate(tcx),
+        ),
     };
 
-    let obligations: Vec<_> = tcx
-        .explicit_item_bounds(trait_ty.def_id)
-        .iter_instantiated_copied(tcx, rebased_args)
-        .map(|(concrete_ty_bound, span)| {
-            debug!("check_type_bounds: concrete_ty_bound = {:?}", concrete_ty_bound);
-            traits::Obligation::new(tcx, mk_cause(span), param_env, concrete_ty_bound)
-        })
-        .collect();
-    debug!("check_type_bounds: item_bounds={:?}", obligations);
-
-    for mut obligation in util::elaborate(tcx, obligations) {
-        let normalized_predicate =
-            ocx.normalize(&normalize_cause, normalize_param_env, obligation.predicate);
-        debug!("compare_projection_bounds: normalized predicate = {:?}", normalized_predicate);
-        obligation.predicate = normalized_predicate;
-
-        ocx.register_obligation(obligation);
-    }
-    // Check that all obligations are satisfied by the implementation's
-    // version.
-    let errors = ocx.select_all_or_error();
-    if !errors.is_empty() {
-        let reported = infcx.err_ctxt().report_fulfillment_errors(errors);
-        return Err(reported);
-    }
-
-    // Finally, resolve all regions. This catches wily misuses of
-    // lifetime parameters.
-    let implied_bounds = infcx.implied_bounds_tys(param_env, impl_ty_def_id, assumed_wf_types);
-    let outlives_env = OutlivesEnvironment::with_bounds(param_env, implied_bounds);
-    ocx.resolve_regions_and_report_errors(impl_ty_def_id, &outlives_env)
+    ty::ParamEnv::new(tcx.mk_clauses(&predicates), Reveal::UserFacing)
 }
 
 fn assoc_item_kind_str(impl_item: &ty::AssocItem) -> &'static str {
