@@ -142,7 +142,7 @@ scoped_thread_local! (static TLV: Cell<*const ()>);
 
 pub(crate) fn init<'tcx>(tables: &TablesWrapper<'tcx>, f: impl FnOnce()) {
     assert!(!TLV.is_set());
-    let ptr: *const () = &tables as *const &_ as _;
+    let ptr = tables as *const _ as *const ();
     TLV.set(&Cell::new(ptr), || {
         f();
     });
@@ -155,8 +155,8 @@ pub(crate) fn with_tables<'tcx, R>(f: impl FnOnce(&mut Tables<'tcx>) -> R) -> R 
     TLV.with(|tlv| {
         let ptr = tlv.get();
         assert!(!ptr.is_null());
-        let wrapper = unsafe { *(ptr as *const &TablesWrapper<'tcx>) };
-        let mut tables = wrapper.0.borrow_mut();
+        let wrapper = ptr as *const TablesWrapper<'tcx>;
+        let mut tables = unsafe { (*wrapper).0.borrow_mut() };
         f(&mut *tables)
     })
 }
