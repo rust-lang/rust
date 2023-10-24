@@ -24,6 +24,9 @@ use std::path::Path;
 
 use crate::walk::{filter_dirs, walk};
 
+#[cfg(test)]
+mod tests;
+
 fn indentation(line: &str) -> usize {
     line.find(|c| c != ' ').unwrap_or(0)
 }
@@ -38,6 +41,7 @@ const END_MARKER: &str = "tidy-alphabetical-end";
 fn check_section<'a>(
     file: impl Display,
     lines: impl Iterator<Item = (usize, &'a str)>,
+    err: &mut dyn FnMut(&str) -> std::io::Result<()>,
     bad: &mut bool,
 ) {
     let mut prev_line = String::new();
@@ -50,7 +54,12 @@ fn check_section<'a>(
         }
 
         if line.contains(START_MARKER) {
-            tidy_error!(bad, "{file}:{} found `{START_MARKER}` expecting `{END_MARKER}`", idx + 1);
+            tidy_error_ext!(
+                err,
+                bad,
+                "{file}:{} found `{START_MARKER}` expecting `{END_MARKER}`",
+                idx + 1
+            );
             return;
         }
 
@@ -93,32 +102,44 @@ fn check_section<'a>(
         let prev_line_trimmed_lowercase = prev_line.trim_start_matches(' ').to_lowercase();
 
         if trimmed_line.to_lowercase() < prev_line_trimmed_lowercase {
-            tidy_error!(bad, "{file}:{}: line not in alphabetical order", idx + 1);
+            tidy_error_ext!(err, bad, "{file}:{}: line not in alphabetical order", idx + 1);
         }
 
         prev_line = line;
     }
 
-    tidy_error!(bad, "{file}: reached end of file expecting `{END_MARKER}`")
+    tidy_error_ext!(err, bad, "{file}: reached end of file expecting `{END_MARKER}`")
+}
+
+fn check_lines<'a>(
+    file: &impl Display,
+    mut lines: impl Iterator<Item = (usize, &'a str)>,
+    err: &mut dyn FnMut(&str) -> std::io::Result<()>,
+    bad: &mut bool,
+) {
+    while let Some((idx, line)) = lines.next() {
+        if line.contains(END_MARKER) {
+            tidy_error_ext!(
+                err,
+                bad,
+                "{file}:{} found `{END_MARKER}` expecting `{START_MARKER}`",
+                idx + 1
+            )
+        }
+
+        if line.contains(START_MARKER) {
+            check_section(file, &mut lines, err, bad);
+        }
+    }
 }
 
 pub fn check(path: &Path, bad: &mut bool) {
-    walk(path, |path, _is_dir| filter_dirs(path), &mut |entry, contents| {
+    let skip =
+        |path: &_, _is_dir| filter_dirs(path) || path.ends_with("tidy/src/alphabetical/tests.rs");
+
+    walk(path, skip, &mut |entry, contents| {
         let file = &entry.path().display();
-
-        let mut lines = contents.lines().enumerate();
-        while let Some((idx, line)) = lines.next() {
-            if line.contains(END_MARKER) {
-                tidy_error!(
-                    bad,
-                    "{file}:{} found `{END_MARKER}` expecting `{START_MARKER}`",
-                    idx + 1
-                )
-            }
-
-            if line.contains(START_MARKER) {
-                check_section(file, &mut lines, bad);
-            }
-        }
+        let lines = contents.lines().enumerate();
+        check_lines(file, lines, &mut crate::tidy_error, bad)
     });
 }
