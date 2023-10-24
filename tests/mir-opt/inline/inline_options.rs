@@ -1,4 +1,3 @@
-// skip-filecheck
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 // Checks that inlining threshold can be controlled with
 // inline-mir-threshold and inline-hint-threshold options.
@@ -8,7 +7,10 @@
 
 // EMIT_MIR inline_options.main.Inline.after.mir
 fn main() {
+    // CHECK-LABEL: fn main(
+    // CHECK-NOT: (inlined not_inlined)
     not_inlined();
+    // CHECK: (inlined inlined::<u32>)
     inlined::<u32>();
 }
 

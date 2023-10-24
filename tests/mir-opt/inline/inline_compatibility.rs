@@ -1,4 +1,3 @@
-// skip-filecheck
 // Checks that only functions with compatible attributes are inlined.
 //
 // only-x86_64
@@ -12,22 +11,30 @@
 // EMIT_MIR inline_compatibility.inlined_target_feature.Inline.diff
 #[target_feature(enable = "sse2")]
 pub unsafe fn inlined_target_feature() {
+    // CHECK-LABEL: fn inlined_target_feature(
+    // CHECK: (inlined target_feature)
     target_feature();
 }
 
 // EMIT_MIR inline_compatibility.not_inlined_target_feature.Inline.diff
 pub unsafe fn not_inlined_target_feature() {
+    // CHECK-LABEL: fn not_inlined_target_feature(
+    // CHECK-NOT: (inlined target_feature)
     target_feature();
 }
 
 // EMIT_MIR inline_compatibility.inlined_no_sanitize.Inline.diff
 #[no_sanitize(address)]
 pub unsafe fn inlined_no_sanitize() {
+    // CHECK-LABEL: fn inlined_no_sanitize(
+    // CHECK: (inlined no_sanitize)
     no_sanitize();
 }
 
 // EMIT_MIR inline_compatibility.not_inlined_no_sanitize.Inline.diff
 pub unsafe fn not_inlined_no_sanitize() {
+    // CHECK-LABEL: fn not_inlined_no_sanitize(
+    // CHECK-NOT: (inlined no_sanitize)
     no_sanitize();
 }
 
@@ -41,6 +48,8 @@ pub unsafe fn no_sanitize() {}
 
 // EMIT_MIR inline_compatibility.not_inlined_c_variadic.Inline.diff
 pub unsafe fn not_inlined_c_variadic() {
+    // CHECK-LABEL: fn not_inlined_c_variadic(
+    // CHECK-NOT: (inlined sum)
     let s = sum(4u32, 4u32, 30u32, 200u32, 1000u32);
 }
 
