@@ -1,5 +1,5 @@
 use crate::infer::InferCtxt;
-use crate::traits::{ObligationCause, ObligationCtxt};
+use crate::traits::{DefiningAnchor, ObligationCause, ObligationCtxt};
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_infer::infer::resolve::OpportunisticRegionResolver;
 use rustc_infer::infer::InferOk;
@@ -66,7 +66,7 @@ impl<'a, 'tcx: 'a> InferCtxtExt<'a, 'tcx> for InferCtxt<'tcx> {
 
         let mut canonical_var_values = OriginalQueryValues::default();
         let canonical_ty = self.canonicalize_query_keep_static(
-            ty::ClassicInput::new(param_env, self.defining_use_anchor, ty),
+            ty::ClassicInput::new(param_env, DefiningAnchor::Error, ty),
             &mut canonical_var_values,
         );
         let Ok(canonical_result) = self.tcx.implied_outlives_bounds(canonical_ty) else {

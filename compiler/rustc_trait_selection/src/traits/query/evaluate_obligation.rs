@@ -1,4 +1,4 @@
-use rustc_infer::traits::{TraitEngine, TraitEngineExt};
+use rustc_infer::traits::{DefiningAnchor, TraitEngine, TraitEngineExt};
 use rustc_middle::ty;
 
 use crate::infer::canonical::OriginalQueryValues;
@@ -64,8 +64,6 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         &self,
         obligation: &PredicateObligation<'tcx>,
     ) -> Result<EvaluationResult, OverflowError> {
-        let mut _orig_values = OriginalQueryValues::default();
-
         let param_env = obligation.param_env;
 
         if self.next_trait_solver() {
@@ -88,11 +86,20 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
             })
         } else {
             assert!(!self.intercrate);
-            let c_pred = self.canonicalize_query_keep_static(
-                ty::ClassicInput::new(param_env, self.defining_use_anchor, obligation.predicate),
-                &mut _orig_values,
-            );
-            self.tcx.at(obligation.cause.span()).evaluate_obligation(c_pred)
+            let mut anchor = DefiningAnchor::Bubble;
+            loop {
+                let mut _orig_values = OriginalQueryValues::default();
+                let c_pred = self.canonicalize_query_keep_static(
+                    ty::ClassicInput::new(param_env, anchor, obligation.predicate),
+                    &mut _orig_values,
+                );
+                let res = self.tcx.at(obligation.cause.span()).evaluate_obligation(c_pred)?;
+                if res == EvaluationResult::EvaluatedToAmbig && anchor != self.defining_use_anchor {
+                    anchor = self.defining_use_anchor;
+                    continue;
+                }
+                break Ok(res);
+            }
         }
     }
 

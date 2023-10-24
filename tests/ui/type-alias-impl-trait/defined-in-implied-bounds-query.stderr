@@ -1,0 +1,61 @@
+error[E0271]: type mismatch resolving `<Tait1 as Id>::Assoc == Tait2`
+  --> $DIR/defined-in-implied-bounds-query.rs:49:12
+   |
+LL |     pub type Tait1 = impl Clone;
+   |                      ---------- the expected opaque type
+...
+LL |     type Tait2 = impl Sized;
+   |                  ---------- the found opaque type
+...
+LL |         _: EqualToTait1Lt<Tait2, Z1>,
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^ type mismatch resolving `<Tait1 as Id>::Assoc == Tait2`
+   |
+note: expected this to be `Tait1`
+  --> $DIR/defined-in-implied-bounds-query.rs:16:33
+   |
+LL | impl<X> Id for X { type Assoc = X; }
+   |                                 ^
+   = note: expected opaque type `Tait1`
+              found opaque type `Tait2`
+   = note: distinct uses of `impl Trait` result in different opaque types
+note: required for `(Tait1, Tait2, Z1)` to implement `Equate`
+  --> $DIR/defined-in-implied-bounds-query.rs:20:15
+   |
+LL | impl<X, Y, Z> Equate for (X, Y, Z)
+   |               ^^^^^^     ^^^^^^^^^
+LL | where
+LL |     X: Id<Assoc = Y>,
+   |           --------- unsatisfied trait bound introduced here
+
+error[E0271]: type mismatch resolving `<Tait2 as Id>::Assoc == Tait1`
+  --> $DIR/defined-in-implied-bounds-query.rs:51:12
+   |
+LL |     pub type Tait1 = impl Clone;
+   |                      ---------- the found opaque type
+...
+LL |     type Tait2 = impl Sized;
+   |                  ---------- the expected opaque type
+...
+LL |         _: EqualToTait1Rt<Tait2, Z2>,
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^ type mismatch resolving `<Tait2 as Id>::Assoc == Tait1`
+   |
+note: expected this to be `Tait2`
+  --> $DIR/defined-in-implied-bounds-query.rs:16:33
+   |
+LL | impl<X> Id for X { type Assoc = X; }
+   |                                 ^
+   = note: expected opaque type `Tait2`
+              found opaque type `Tait1`
+   = note: distinct uses of `impl Trait` result in different opaque types
+note: required for `(Tait2, Tait1, Z2)` to implement `Equate`
+  --> $DIR/defined-in-implied-bounds-query.rs:20:15
+   |
+LL | impl<X, Y, Z> Equate for (X, Y, Z)
+   |               ^^^^^^     ^^^^^^^^^
+LL | where
+LL |     X: Id<Assoc = Y>,
+   |           --------- unsatisfied trait bound introduced here
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0271`.
