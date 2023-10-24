@@ -1369,6 +1369,7 @@ symbols! {
         rustc_evaluate_where_clauses,
         rustc_expected_cgu_reuse,
         rustc_has_incoherent_inherent_impls,
+        rustc_hidden_type_of_opaques,
         rustc_host,
         rustc_if_this_changed,
         rustc_inherit_overflow_checks,

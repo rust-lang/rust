@@ -14,14 +14,11 @@
 //! At present, however, we do run collection across all items in the
 //! crate as a kind of pass. This should eventually be factored away.
 
-use crate::astconv::AstConv;
-use crate::check::intrinsic::intrinsic_operation_unsafety;
-use crate::errors;
-use hir::def::DefKind;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{Applicability, DiagnosticBuilder, ErrorGuaranteed, StashKey};
 use rustc_hir as hir;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{GenericParamKind, Node};
@@ -39,6 +36,11 @@ use rustc_trait_selection::traits::error_reporting::suggestions::NextTypeParamNa
 use rustc_trait_selection::traits::ObligationCtxt;
 use std::iter;
 use std::ops::Bound;
+
+use crate::astconv::AstConv;
+use crate::check::intrinsic::intrinsic_operation_unsafety;
+use crate::errors;
+pub use type_of::test_opaque_hidden_types;
 
 mod generics_of;
 mod item_bounds;

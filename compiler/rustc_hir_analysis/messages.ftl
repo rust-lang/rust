@@ -339,6 +339,8 @@ hir_analysis_transparent_non_zero_sized_enum = the variant of a transparent {$de
     .label = needs at most one field with non-trivial size or alignment, but has {$field_count}
     .labels = this field has non-zero size or requires alignment
 
+hir_analysis_type_of = {$type_of}
+
 hir_analysis_typeof_reserved_keyword_used =
     `typeof` is a reserved keyword but unimplemented
     .suggestion = consider replacing `typeof(...)` with an actual type
