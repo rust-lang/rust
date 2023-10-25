@@ -29,7 +29,7 @@ pub enum CoroutineState<Y, R> {
 
 /// The trait implemented by builtin coroutine types.
 ///
-/// Coroutines, also commonly referred to as coroutines, are currently an
+/// Coroutines are currently an
 /// experimental language feature in Rust. Added in [RFC 2033] coroutines are
 /// currently intended to primarily provide a building block for async/await
 /// syntax but will likely extend to also providing an ergonomic definition for
