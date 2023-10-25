@@ -1,51 +1,71 @@
-// skip-filecheck
 // Checks that only functions with compatible attributes are inlined.
-//
 // only-x86_64
-// EMIT_MIR_FOR_EACH_PANIC_STRATEGY
+// compile-flags: -Cpanic=abort
 
 #![crate_type = "lib"]
 #![feature(no_sanitize)]
 #![feature(target_feature_11)]
 #![feature(c_variadic)]
 
-// EMIT_MIR inline_compatibility.inlined_target_feature.Inline.diff
-#[target_feature(enable = "sse2")]
-pub unsafe fn inlined_target_feature() {
-    target_feature();
-}
-
-// EMIT_MIR inline_compatibility.not_inlined_target_feature.Inline.diff
-pub unsafe fn not_inlined_target_feature() {
-    target_feature();
-}
-
-// EMIT_MIR inline_compatibility.inlined_no_sanitize.Inline.diff
-#[no_sanitize(address)]
-pub unsafe fn inlined_no_sanitize() {
-    no_sanitize();
-}
-
-// EMIT_MIR inline_compatibility.not_inlined_no_sanitize.Inline.diff
-pub unsafe fn not_inlined_no_sanitize() {
-    no_sanitize();
-}
-
 #[inline]
 #[target_feature(enable = "sse2")]
-pub unsafe fn target_feature() {}
+unsafe fn sse2() {}
+
+#[inline]
+fn nop() {}
+
+// CHECK-LABEL: fn f0()
+// CHECK:       bb0: {
+// CHECK-NEXT:  return;
+#[target_feature(enable = "sse2")]
+pub unsafe fn f0() {
+    sse2();
+}
+
+// CHECK-LABEL: fn f1()
+// CHECK:       bb0: {
+// CHECK-NEXT:  sse2()
+pub unsafe fn f1() {
+    sse2();
+}
+
+// CHECK-LABEL: fn f2()
+// CHECK:       bb0: {
+// CHECK-NEXT:  nop()
+#[target_feature(enable = "avx")]
+pub unsafe fn f2() {
+    nop();
+}
 
 #[inline]
 #[no_sanitize(address)]
 pub unsafe fn no_sanitize() {}
 
-// EMIT_MIR inline_compatibility.not_inlined_c_variadic.Inline.diff
-pub unsafe fn not_inlined_c_variadic() {
-    let s = sum(4u32, 4u32, 30u32, 200u32, 1000u32);
+// CHECK-LABEL: fn inlined_no_sanitize()
+// CHECK:       bb0: {
+// CHECK-NEXT:  return;
+#[no_sanitize(address)]
+pub unsafe fn inlined_no_sanitize() {
+    no_sanitize();
 }
 
-#[no_mangle]
+// CHECK-LABEL: fn not_inlined_no_sanitize()
+// CHECK:       bb0: {
+// CHECK-NEXT:  no_sanitize()
+pub unsafe fn not_inlined_no_sanitize() {
+    no_sanitize();
+}
+
+// CHECK-LABEL: fn not_inlined_c_variadic()
+// CHECK:       bb0: {
+// CHECK-NEXT:  StorageLive(_1)
+// CHECK-NEXT:  _1 = sum
+pub unsafe fn not_inlined_c_variadic() {
+    let _ = sum(4u32, 4u32, 30u32, 200u32, 1000u32);
+}
+
 #[inline(always)]
+#[no_mangle]
 unsafe extern "C" fn sum(n: u32, mut vs: ...) -> u32 {
     let mut s = 0;
     let mut i = 0;

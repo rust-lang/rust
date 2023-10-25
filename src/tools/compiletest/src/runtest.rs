@@ -3999,10 +3999,10 @@ impl<'test> TestCx<'test> {
         let passes = std::mem::take(&mut test_info.passes);
 
         let proc_res = self.compile_test_with_passes(should_run, Emit::Mir, passes);
-        self.check_mir_dump(test_info);
         if !proc_res.status.success() {
             self.fatal_proc_rec("compilation failed!", &proc_res);
         }
+        self.check_mir_dump(test_info);
 
         if let WillExecute::Yes = should_run {
             let proc_res = self.exec_compiled_test();

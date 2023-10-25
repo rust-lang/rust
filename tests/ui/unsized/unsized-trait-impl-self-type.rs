@@ -9,6 +9,7 @@ struct S5<Y>(Y);
 
 impl<X: ?Sized> T3<X> for S5<X> {
     //~^ ERROR the size for values of type
+    //~| ERROR not all trait items implemented
 }
 
 fn main() { }

@@ -6,5 +6,12 @@ LL | pub struct T<S: Simd>([S::Lane; S::SIZE]);
    |
    = help: try adding a `where` bound using this expression: `where [(); S::SIZE]:`
 
-error: aborting due to previous error
+error[E0077]: SIMD vector element type should be a primitive scalar (integer/float/pointer) type
+  --> $DIR/array-trait.rs:23:1
+   |
+LL | pub struct T<S: Simd>([S::Lane; S::SIZE]);
+   | ^^^^^^^^^^^^^^^^^^^^^
 
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0077`.
