@@ -60,6 +60,7 @@ enum Value {
     SameAsName,
     String(LitStr),
     Env(LitStr),
+    Unsupported(Expr),
 }
 
 impl Parse for Symbol {
@@ -88,13 +89,7 @@ impl Parse for Value {
             }
             _ => {}
         }
-        Err(syn::Error::new_spanned(
-            expr,
-            concat!(
-                "unsupported expression for symbol value; implement support for this in ",
-                file!(),
-            ),
-        ))
+        Ok(Value::Unsupported(expr))
     }
 }
 
@@ -223,7 +218,17 @@ fn symbols_with_errors(input: TokenStream) -> (TokenStream, Vec<syn::Error>) {
         let value = match &symbol.value {
             Value::SameAsName => name.to_string(),
             Value::String(lit) => lit.value(),
-            Value::Env(_) => continue,
+            Value::Env(_) => continue, // in another loop below
+            Value::Unsupported(expr) => {
+                errors.list.push(syn::Error::new_spanned(
+                    expr,
+                    concat!(
+                        "unsupported expression for symbol value; implement support for this in ",
+                        file!(),
+                    ),
+                ));
+                continue;
+            }
         };
         let idx = entries.insert(symbol.name.span(), &value, &mut errors);
 
@@ -249,7 +254,7 @@ fn symbols_with_errors(input: TokenStream) -> (TokenStream, Vec<syn::Error>) {
     for symbol in &input.symbols {
         let env_var = match &symbol.value {
             Value::Env(lit) => lit,
-            _ => continue,
+            Value::SameAsName | Value::String(_) | Value::Unsupported(_) => continue,
         };
 
         let value = match proc_macro::tracked_env::var(env_var.value()) {
