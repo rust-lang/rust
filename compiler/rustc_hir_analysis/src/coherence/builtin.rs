@@ -165,7 +165,8 @@ fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: LocalDef
     use rustc_type_ir::TyKind::*;
     match (source.kind(), target.kind()) {
         (&Ref(r_a, _, mutbl_a), Ref(r_b, _, mutbl_b))
-            if infcx.at(&cause, param_env).eq(DefineOpaqueTypes::No, r_a, *r_b).is_ok()
+            // FIXME: No tests currently validate the behavior with DefineOpaqueTypes::Yes
+            if infcx.at(&cause, param_env).eq(DefineOpaqueTypes::Yes, r_a, *r_b).is_ok()
                 && mutbl_a == *mutbl_b => {}
         (&RawPtr(tm_a), &RawPtr(tm_b)) if tm_a.mutbl == tm_b.mutbl => (),
         (&Adt(def_a, args_a), &Adt(def_b, args_b)) if def_a.is_struct() && def_b.is_struct() => {
@@ -204,7 +205,8 @@ fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: LocalDef
                     }
 
                     if let Ok(ok) =
-                        infcx.at(&cause, param_env).eq(DefineOpaqueTypes::No, ty_a, ty_b)
+                        // FIXME: No tests currently validate the behavior with DefineOpaqueTypes::Yes
+                        infcx.at(&cause, param_env).eq(DefineOpaqueTypes::Yes, ty_a, ty_b)
                     {
                         if ok.obligations.is_empty() {
                             tcx.sess.emit_err(errors::DispatchFromDynZST {
