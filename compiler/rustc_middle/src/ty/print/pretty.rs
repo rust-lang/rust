@@ -1194,7 +1194,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         None
     }
 
-    fn const_infer_name(&self, _: ty::ConstVid<'tcx>) -> Option<Symbol> {
+    fn const_infer_name(&self, _: ty::ConstVid) -> Option<Symbol> {
         None
     }
 
@@ -1742,7 +1742,7 @@ pub struct FmtPrinterData<'a, 'tcx> {
     pub region_highlight_mode: RegionHighlightMode<'tcx>,
 
     pub ty_infer_name_resolver: Option<Box<dyn Fn(ty::TyVid) -> Option<Symbol> + 'a>>,
-    pub const_infer_name_resolver: Option<Box<dyn Fn(ty::ConstVid<'tcx>) -> Option<Symbol> + 'a>>,
+    pub const_infer_name_resolver: Option<Box<dyn Fn(ty::ConstVid) -> Option<Symbol> + 'a>>,
 }
 
 impl<'a, 'tcx> Deref for FmtPrinter<'a, 'tcx> {
@@ -2082,7 +2082,7 @@ impl<'tcx> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx> {
         self.printed_type_count = 0;
     }
 
-    fn const_infer_name(&self, id: ty::ConstVid<'tcx>) -> Option<Symbol> {
+    fn const_infer_name(&self, id: ty::ConstVid) -> Option<Symbol> {
         self.0.const_infer_name_resolver.as_ref().and_then(|func| func(id))
     }
 

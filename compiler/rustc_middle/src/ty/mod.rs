@@ -1084,19 +1084,19 @@ impl ParamTerm {
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
-pub enum TermVid<'tcx> {
+pub enum TermVid {
     Ty(ty::TyVid),
-    Const(ty::ConstVid<'tcx>),
+    Const(ty::ConstVid),
 }
 
-impl From<ty::TyVid> for TermVid<'_> {
+impl From<ty::TyVid> for TermVid {
     fn from(value: ty::TyVid) -> Self {
         TermVid::Ty(value)
     }
 }
 
-impl<'tcx> From<ty::ConstVid<'tcx>> for TermVid<'tcx> {
-    fn from(value: ty::ConstVid<'tcx>) -> Self {
+impl From<ty::ConstVid> for TermVid {
+    fn from(value: ty::ConstVid) -> Self {
         TermVid::Const(value)
     }
 }

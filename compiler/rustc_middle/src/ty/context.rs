@@ -100,7 +100,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type PolyFnSig = PolyFnSig<'tcx>;
     type AllocId = crate::mir::interpret::AllocId;
     type Const = ty::Const<'tcx>;
-    type InferConst = ty::InferConst<'tcx>;
+    type InferConst = ty::InferConst;
     type AliasConst = ty::UnevaluatedConst<'tcx>;
     type PlaceholderConst = ty::PlaceholderConst<'tcx>;
     type ParamConst = ty::ParamConst;

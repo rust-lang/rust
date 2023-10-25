@@ -17,7 +17,7 @@ pub(super) fn generalize<'tcx, D: GeneralizerDelegate<'tcx>, T: Into<Term<'tcx>>
     infcx: &InferCtxt<'tcx>,
     delegate: &mut D,
     term: T,
-    for_vid: impl Into<ty::TermVid<'tcx>>,
+    for_vid: impl Into<ty::TermVid>,
     ambient_variance: ty::Variance,
 ) -> RelateResult<'tcx, Generalization<T>> {
     let (for_universe, root_vid) = match for_vid.into() {
@@ -27,7 +27,7 @@ pub(super) fn generalize<'tcx, D: GeneralizerDelegate<'tcx>, T: Into<Term<'tcx>>
         ),
         ty::TermVid::Const(ct_vid) => (
             infcx.probe_const_var(ct_vid).unwrap_err(),
-            ty::TermVid::Const(infcx.inner.borrow_mut().const_unification_table().find(ct_vid)),
+            ty::TermVid::Const(infcx.inner.borrow_mut().const_unification_table().find(ct_vid).vid),
         ),
     };
 
@@ -127,7 +127,7 @@ struct Generalizer<'me, 'tcx, D> {
     /// The vid of the type variable that is in the process of being
     /// instantiated. If we find this within the value we are folding,
     /// that means we would have created a cyclic value.
-    root_vid: ty::TermVid<'tcx>,
+    root_vid: ty::TermVid,
 
     /// The universe of the type variable that is in the process of being
     /// instantiated. If we find anything that this universe cannot name,
@@ -376,7 +376,7 @@ where
                 // `vid` are related and we'd be inferring an infinitely
                 // deep const.
                 if ty::TermVid::Const(
-                    self.infcx.inner.borrow_mut().const_unification_table().find(vid),
+                    self.infcx.inner.borrow_mut().const_unification_table().find(vid).vid,
                 ) == self.root_vid
                 {
                     return Err(self.cyclic_term_error());
@@ -394,10 +394,14 @@ where
                         if self.for_universe.can_name(universe) {
                             Ok(c)
                         } else {
-                            let new_var_id = variable_table.new_key(ConstVarValue {
-                                origin: var_value.origin,
-                                val: ConstVariableValue::Unknown { universe: self.for_universe },
-                            });
+                            let new_var_id = variable_table
+                                .new_key(ConstVarValue {
+                                    origin: var_value.origin,
+                                    val: ConstVariableValue::Unknown {
+                                        universe: self.for_universe,
+                                    },
+                                })
+                                .vid;
                             Ok(ty::Const::new_var(self.tcx(), new_var_id, c.ty()))
                         }
                     }
