@@ -1567,7 +1567,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
             cmd.arg("--coverage-dump-path").arg(coverage_dump);
         }
 
-        if mode == "run-make" || mode == "run-coverage" {
+        if mode == "run-coverage" {
             let rust_demangler = builder
                 .ensure(tool::RustDemangler {
                     compiler,
