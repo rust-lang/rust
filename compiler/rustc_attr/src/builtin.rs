@@ -24,8 +24,10 @@ use crate::session_diagnostics::{self, IncorrectReprFormatGenericCause};
 /// For more, see [this pull request](https://github.com/rust-lang/rust/pull/100591).
 pub const VERSION_PLACEHOLDER: &str = "CURRENT_RUSTC_VERSION";
 
+pub const CURRENT_RUSTC_VERSION: &str = env!("CFG_RELEASE");
+
 pub fn rust_version_symbol() -> Symbol {
-    Symbol::intern(env!("CFG_RELEASE"))
+    Symbol::intern(CURRENT_RUSTC_VERSION)
 }
 
 pub fn is_builtin_attr(attr: &Attribute) -> bool {
@@ -629,7 +631,7 @@ pub fn eval_condition(
                 sess.emit_warning(session_diagnostics::UnknownVersionLiteral { span: *span });
                 return false;
             };
-            let rustc_version = parse_version(env!("CFG_RELEASE"), true).unwrap();
+            let rustc_version = parse_version(CURRENT_RUSTC_VERSION, true).unwrap();
 
             // See https://github.com/rust-lang/rust/issues/64796#issuecomment-640851454 for details
             if sess.assume_incomplete_release {
