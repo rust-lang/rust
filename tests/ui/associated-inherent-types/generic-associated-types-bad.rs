@@ -14,6 +14,7 @@ impl Ty {
 
 #[cfg(item)]
 const _: Ty::Pr<String> = String::new(); //[item]~ the trait bound `String: Copy` is not satisfied
+//[item]~^ the trait bound `String: Copy` is not satisfied
 
 fn main() {
     #[cfg(local)]
