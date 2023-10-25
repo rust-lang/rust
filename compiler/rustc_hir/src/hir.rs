@@ -246,6 +246,8 @@ impl<'hir> PathSegment<'hir> {
 pub struct ConstArg {
     pub value: AnonConst,
     pub span: Span,
+    /// Indicates whether this comes from a `~const` desugaring.
+    pub is_desugared_from_effects: bool,
 }
 
 #[derive(Clone, Copy, Debug, HashStable_Generic)]
@@ -400,7 +402,14 @@ impl<'hir> GenericArgs<'hir> {
     /// This function returns the number of type and const generic params.
     /// It should only be used for diagnostics.
     pub fn num_generic_params(&self) -> usize {
-        self.args.iter().filter(|arg| !matches!(arg, GenericArg::Lifetime(_))).count()
+        self.args
+            .iter()
+            .filter(|arg| match arg {
+                GenericArg::Lifetime(_)
+                | GenericArg::Const(ConstArg { is_desugared_from_effects: true, .. }) => false,
+                _ => true,
+            })
+            .count()
     }
 
     /// The span encompassing the text inside the surrounding brackets.

@@ -1217,7 +1217,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                     hir_id: this.lower_node_id(node_id),
                                     body: this.lower_const_body(path_expr.span, Some(&path_expr)),
                                 });
-                                return GenericArg::Const(ConstArg { value: ct, span });
+                                return GenericArg::Const(ConstArg {
+                                    value: ct,
+                                    span,
+                                    is_desugared_from_effects: false,
+                                });
                             }
                         }
                     }
@@ -1228,6 +1232,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             ast::GenericArg::Const(ct) => GenericArg::Const(ConstArg {
                 value: self.lower_anon_const(&ct),
                 span: self.lower_span(ct.value.span),
+                is_desugared_from_effects: false,
             }),
         }
     }
@@ -2525,6 +2530,7 @@ impl<'hir> GenericArgsCtor<'hir> {
         self.args.push(hir::GenericArg::Const(hir::ConstArg {
             value: hir::AnonConst { def_id, hir_id, body },
             span,
+            is_desugared_from_effects: true,
         }))
     }
 
