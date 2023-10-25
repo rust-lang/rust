@@ -26,7 +26,7 @@ use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use std::collections::HashMap;
 use syn::parse::{Parse, ParseStream, Result};
-use syn::{braced, punctuated::Punctuated, Expr, Ident, Lit, LitStr, Token};
+use syn::{braced, punctuated::Punctuated, Expr, Ident, Lit, LitStr, Macro, Token};
 
 #[cfg(test)]
 mod tests;
@@ -59,7 +59,7 @@ struct Symbol {
 enum Value {
     SameAsName,
     String(LitStr),
-    Env(LitStr),
+    Env(LitStr, Macro),
     Unsupported(Expr),
 }
 
@@ -84,7 +84,7 @@ impl Parse for Value {
             }
             Expr::Macro(expr) => {
                 if expr.mac.path.is_ident("env") && let Ok(lit) = expr.mac.parse_body() {
-                    return Ok(Value::Env(lit));
+                    return Ok(Value::Env(lit, expr.mac.clone()));
                 }
             }
             _ => {}
@@ -218,7 +218,7 @@ fn symbols_with_errors(input: TokenStream) -> (TokenStream, Vec<syn::Error>) {
         let value = match &symbol.value {
             Value::SameAsName => name.to_string(),
             Value::String(lit) => lit.value(),
-            Value::Env(_) => continue, // in another loop below
+            Value::Env(..) => continue, // in another loop below
             Value::Unsupported(expr) => {
                 errors.list.push(syn::Error::new_spanned(
                     expr,
@@ -252,15 +252,15 @@ fn symbols_with_errors(input: TokenStream) -> (TokenStream, Vec<syn::Error>) {
     // Symbols whose value comes from an environment variable. It's allowed for
     // these to have the same value as another symbol.
     for symbol in &input.symbols {
-        let env_var = match &symbol.value {
-            Value::Env(lit) => lit,
+        let (env_var, expr) = match &symbol.value {
+            Value::Env(lit, expr) => (lit, expr),
             Value::SameAsName | Value::String(_) | Value::Unsupported(_) => continue,
         };
 
         let value = match proc_macro::tracked_env::var(env_var.value()) {
             Ok(value) => value,
             Err(err) => {
-                errors.error(symbol.name.span(), err.to_string());
+                errors.list.push(syn::Error::new_spanned(expr, err));
                 continue;
             }
         };
