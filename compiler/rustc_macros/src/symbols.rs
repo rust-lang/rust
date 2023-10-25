@@ -59,10 +59,8 @@ struct Symbol {
 impl Parse for Symbol {
     fn parse(input: ParseStream<'_>) -> Result<Self> {
         let name = input.parse()?;
-        let value = match input.parse::<Token![:]>() {
-            Ok(_) => Some(input.parse()?),
-            Err(_) => None,
-        };
+        let colon_token: Option<Token![:]> = input.parse()?;
+        let value = if colon_token.is_some() { Some(input.parse()?) } else { None };
 
         Ok(Symbol { name, value })
     }
