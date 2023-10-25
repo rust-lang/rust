@@ -307,7 +307,7 @@ impl<I: Interner> fmt::Debug for RegionKind<I> {
 }
 
 // This is manually implemented because a derive would require `I: Encodable`
-impl<I: Interner, E: TyEncoder> Encodable<E> for RegionKind<I>
+impl<I: Interner, E: TyEncoder<I = I>> Encodable<E> for RegionKind<I>
 where
     I::EarlyBoundRegion: Encodable<E>,
     I::BoundRegion: Encodable<E>,

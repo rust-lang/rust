@@ -6,7 +6,7 @@ pub mod tls;
 
 use crate::arena::Arena;
 use crate::dep_graph::{DepGraph, DepKindStruct};
-use crate::infer::canonical::CanonicalVarInfo;
+use crate::infer::canonical::{CanonicalVarInfo, CanonicalVarInfos};
 use crate::lint::struct_lint_level;
 use crate::metadata::ModChild;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrs;
@@ -88,6 +88,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
 
     type Binder<T> = Binder<'tcx, T>;
     type TypeAndMut = TypeAndMut<'tcx>;
+    type CanonicalVars = CanonicalVarInfos<'tcx>;
 
     type Ty = Ty<'tcx>;
     type Tys = &'tcx List<Ty<'tcx>>;

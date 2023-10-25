@@ -449,7 +449,6 @@ TrivialTypeTraversalImpls! {
     crate::ty::IntVarValue,
     crate::ty::adjustment::PointerCoercion,
     crate::ty::RegionVid,
-    crate::ty::UniverseIndex,
     crate::ty::Variance,
     ::rustc_span::Span,
     ::rustc_span::symbol::Ident,

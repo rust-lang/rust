@@ -26,6 +26,7 @@ pub mod visit;
 
 #[macro_use]
 mod macros;
+mod canonical;
 mod const_kind;
 mod debug;
 mod flags;
@@ -33,6 +34,7 @@ mod interner;
 mod predicate_kind;
 mod region_kind;
 
+pub use canonical::*;
 pub use codec::*;
 pub use const_kind::*;
 pub use debug::{DebugWithInfcx, InferCtxtLike, WithInfcx};
