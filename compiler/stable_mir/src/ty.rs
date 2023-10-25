@@ -6,7 +6,7 @@ use super::{
 use crate::{Filename, Opaque};
 use std::fmt::{self, Debug, Formatter};
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Eq, PartialEq, Hash)]
 pub struct Ty(pub usize);
 
 impl Debug for Ty {
@@ -21,17 +21,36 @@ impl Ty {
     }
 }
 
-impl From<TyKind> for Ty {
-    fn from(value: TyKind) -> Self {
-        with(|context| context.mk_ty(value))
+/// Represents a constant in MIR or from the Type system.
+#[derive(Clone, Debug)]
+pub struct Const {
+    /// The constant kind.
+    kind: ConstantKind,
+    /// The constant type.
+    ty: Ty,
+    /// Used for internal tracking of the internal constant.
+    pub id: ConstId,
+}
+
+impl Const {
+    /// Build a constant. Note that this should only be used by the compiler.
+    pub fn new(kind: ConstantKind, ty: Ty, id: ConstId) -> Const {
+        Const { kind, ty, id }
+    }
+
+    /// Retrieve the constant kind.
+    pub fn kind(&self) -> &ConstantKind {
+        &self.kind
+    }
+
+    /// Get the constant type.
+    pub fn ty(&self) -> Ty {
+        self.ty
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct Const {
-    pub literal: ConstantKind,
-    pub ty: Ty,
-}
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ConstId(pub usize);
 
 type Ident = Opaque;
 
@@ -106,15 +125,6 @@ pub struct LineInfo {
     pub start_col: usize,
     pub end_line: usize,
     pub end_col: usize,
-}
-
-impl IndexedVal for Span {
-    fn to_val(index: usize) -> Self {
-        Span(index)
-    }
-    fn to_index(&self) -> usize {
-        self.0
-    }
 }
 
 #[derive(Clone, Debug)]
@@ -603,3 +613,20 @@ pub trait IndexedVal {
 
     fn to_index(&self) -> usize;
 }
+
+macro_rules! index_impl {
+    ($name:ident) => {
+        impl IndexedVal for $name {
+            fn to_val(index: usize) -> Self {
+                $name(index)
+            }
+            fn to_index(&self) -> usize {
+                self.0
+            }
+        }
+    };
+}
+
+index_impl!(ConstId);
+index_impl!(Ty);
+index_impl!(Span);

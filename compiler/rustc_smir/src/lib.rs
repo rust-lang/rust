@@ -13,6 +13,7 @@
 #![cfg_attr(not(bootstrap), doc(rust_logo))]
 #![cfg_attr(not(bootstrap), feature(rustdoc_internals))]
 #![cfg_attr(not(bootstrap), allow(internal_features))]
+#![allow(rustc::usage_of_ty_tykind)]
 
 pub mod rustc_internal;
 

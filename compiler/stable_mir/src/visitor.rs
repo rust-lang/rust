@@ -47,12 +47,12 @@ impl Visitable for Const {
         visitor.visit_const(self)
     }
     fn super_visit<V: Visitor>(&self, visitor: &mut V) -> ControlFlow<V::Break> {
-        match &self.literal {
+        match &self.kind() {
             super::ty::ConstantKind::Allocated(alloc) => alloc.visit(visitor)?,
             super::ty::ConstantKind::Unevaluated(uv) => uv.visit(visitor)?,
             super::ty::ConstantKind::Param(_) => {}
         }
-        self.ty.visit(visitor)
+        self.ty().visit(visitor)
     }
 }
 

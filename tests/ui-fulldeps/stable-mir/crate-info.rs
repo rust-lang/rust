@@ -22,8 +22,8 @@ extern crate stable_mir;
 use rustc_hir::def::DefKind;
 use rustc_middle::ty::TyCtxt;
 use rustc_smir::rustc_internal;
-
-use stable_mir::fold::Foldable;
+use stable_mir::mir::mono::Instance;
+use stable_mir::ty::{RigidTy, TyKind};
 use std::assert_matches::assert_matches;
 use std::io::Write;
 use std::ops::ControlFlow;
@@ -119,40 +119,18 @@ fn test_stable_mir(_tcx: TyCtxt<'_>) -> ControlFlow<()> {
     }
 
     let monomorphic = get_item(&items, (DefKind::Fn, "monomorphic")).unwrap();
-    for block in monomorphic.body().blocks {
+    let instance = Instance::try_from(monomorphic.clone()).unwrap();
+    for block in instance.body().blocks {
         match &block.terminator.kind {
-            stable_mir::mir::TerminatorKind::Call { func, .. } => match func {
-                stable_mir::mir::Operand::Constant(c) => match &c.literal.literal {
-                    stable_mir::ty::ConstantKind::Allocated(alloc) => {
-                        assert!(alloc.bytes.is_empty());
-                        match c.literal.ty.kind() {
-                            stable_mir::ty::TyKind::RigidTy(stable_mir::ty::RigidTy::FnDef(
-                                def,
-                                mut args,
-                            )) => {
-                                let func = def.body();
-                                match func.locals[1].ty
-                                    .fold(&mut args)
-                                    .continue_value()
-                                    .unwrap()
-                                    .kind()
-                                {
-                                    stable_mir::ty::TyKind::RigidTy(
-                                        stable_mir::ty::RigidTy::Uint(_),
-                                    ) => {}
-                                    stable_mir::ty::TyKind::RigidTy(
-                                        stable_mir::ty::RigidTy::Tuple(_),
-                                    ) => {}
-                                    other => panic!("{other:?}"),
-                                }
-                            }
-                            other => panic!("{other:?}"),
-                        }
-                    }
+            stable_mir::mir::TerminatorKind::Call { func, .. } => {
+                let TyKind::RigidTy(ty) = func.ty(&body.locals).kind() else { unreachable!() };
+                let RigidTy::FnDef(def, args) = ty else { unreachable!() };
+                let next_func = Instance::resolve(def, &args).unwrap();
+                match next_func.body().locals[1].ty.kind() {
+                    TyKind::RigidTy(RigidTy::Uint(_)) | TyKind::RigidTy(RigidTy::Tuple(_)) => {}
                     other => panic!("{other:?}"),
-                },
-                other => panic!("{other:?}"),
-            },
+                }
+            }
             stable_mir::mir::TerminatorKind::Return => {}
             other => panic!("{other:?}"),
         }
