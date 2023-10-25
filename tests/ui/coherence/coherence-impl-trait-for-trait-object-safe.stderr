@@ -13,6 +13,15 @@ LL | trait NotObjectSafe { fn eq(&self, other: Self); }
    |       this trait cannot be made into an object...
    = help: consider moving `eq` to another trait
 
-error: aborting due to previous error
+error[E0046]: not all trait items implemented, missing: `eq`
+  --> $DIR/coherence-impl-trait-for-trait-object-safe.rs:7:1
+   |
+LL | trait NotObjectSafe { fn eq(&self, other: Self); }
+   |                       -------------------------- `eq` from trait
+LL | impl NotObjectSafe for dyn NotObjectSafe { }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `eq` in implementation
 
-For more information about this error, try `rustc --explain E0038`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0038, E0046.
+For more information about an error, try `rustc --explain E0038`.

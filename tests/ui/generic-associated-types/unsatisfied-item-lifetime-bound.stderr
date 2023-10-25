@@ -12,44 +12,64 @@ LL | #![warn(unused_lifetimes)]
    |         ^^^^^^^^^^^^^^^^
 
 error[E0478]: lifetime bound not satisfied
-  --> $DIR/unsatisfied-item-lifetime-bound.rs:13:8
+  --> $DIR/unsatisfied-item-lifetime-bound.rs:14:8
    |
 LL |     f: <T as X>::Y<'a>,
    |        ^^^^^^^^^^^^^^^
    |
 note: lifetime parameter instantiated with the lifetime `'a` as defined here
-  --> $DIR/unsatisfied-item-lifetime-bound.rs:12:10
+  --> $DIR/unsatisfied-item-lifetime-bound.rs:13:10
    |
 LL | struct B<'a, T: for<'r> X<Y<'r> = &'r ()>> {
    |          ^^
    = note: but lifetime parameter must outlive the static lifetime
 
 error[E0478]: lifetime bound not satisfied
-  --> $DIR/unsatisfied-item-lifetime-bound.rs:18:8
+  --> $DIR/unsatisfied-item-lifetime-bound.rs:19:8
    |
 LL |     f: <T as X>::Y<'a>,
    |        ^^^^^^^^^^^^^^^
    |
 note: lifetime parameter instantiated with the lifetime `'a` as defined here
-  --> $DIR/unsatisfied-item-lifetime-bound.rs:17:10
+  --> $DIR/unsatisfied-item-lifetime-bound.rs:18:10
    |
 LL | struct C<'a, T: X> {
    |          ^^
    = note: but lifetime parameter must outlive the static lifetime
 
 error[E0478]: lifetime bound not satisfied
-  --> $DIR/unsatisfied-item-lifetime-bound.rs:23:8
+  --> $DIR/unsatisfied-item-lifetime-bound.rs:24:8
    |
 LL |     f: <() as X>::Y<'a>,
    |        ^^^^^^^^^^^^^^^^
    |
 note: lifetime parameter instantiated with the lifetime `'a` as defined here
-  --> $DIR/unsatisfied-item-lifetime-bound.rs:22:10
+  --> $DIR/unsatisfied-item-lifetime-bound.rs:23:10
    |
 LL | struct D<'a> {
    |          ^^
    = note: but lifetime parameter must outlive the static lifetime
 
-error: aborting due to 3 previous errors; 1 warning emitted
+error[E0478]: lifetime bound not satisfied
+  --> $DIR/unsatisfied-item-lifetime-bound.rs:9:18
+   |
+LL |     type Y<'a: 'static>;
+   |     ------------------- definition of `Y` from trait
+...
+LL |     type Y<'a> = &'a ();
+   |                  ^^^^^^
+   |
+note: lifetime parameter instantiated with the lifetime `'a` as defined here
+  --> $DIR/unsatisfied-item-lifetime-bound.rs:9:12
+   |
+LL |     type Y<'a> = &'a ();
+   |            ^^
+   = note: but lifetime parameter must outlive the static lifetime
+help: copy the `where` clause predicates from the trait
+   |
+LL |     type Y<'a> = &'a () where 'a: 'static;
+   |                         +++++++++++++++++
+
+error: aborting due to 4 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0478`.

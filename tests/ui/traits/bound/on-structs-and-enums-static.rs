@@ -8,7 +8,7 @@ struct Foo<T:Trait> {
 
 static X: Foo<usize> = Foo {
 //~^ ERROR E0277
-    x: 1,
+    x: 1, //~ ERROR: E0277
 };
 
 fn main() {

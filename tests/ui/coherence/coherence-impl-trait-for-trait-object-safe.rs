@@ -6,5 +6,6 @@
 trait NotObjectSafe { fn eq(&self, other: Self); }
 impl NotObjectSafe for dyn NotObjectSafe { }
 //~^ ERROR E0038
+//~| ERROR E0046
 
 fn main() { }

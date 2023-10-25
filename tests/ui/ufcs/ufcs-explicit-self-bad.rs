@@ -36,6 +36,7 @@ impl<'a, T> SomeTrait for &'a Bar<T> {
     fn dummy1(self: &&'a Bar<T>) { }
     fn dummy2(self: &Bar<T>) {} //~ ERROR mismatched `self` parameter type
     //~^ ERROR mismatched `self` parameter type
+    //~| ERROR has an incompatible type for trait
     fn dummy3(self: &&Bar<T>) {}
     //~^ ERROR mismatched `self` parameter type
     //~| expected reference `&'a Bar<T>`

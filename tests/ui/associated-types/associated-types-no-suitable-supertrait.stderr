@@ -21,6 +21,18 @@ help: consider further restricting `Self`
 LL |     fn uhoh<U:Get>(&self, foo: U, bar: <Self as Get>::Value) where Self: Get {}
    |                                                              +++++++++++++++
 
-error: aborting due to 2 previous errors
+error[E0277]: the trait bound `(T, U): Get` is not satisfied
+  --> $DIR/associated-types-no-suitable-supertrait.rs:22:5
+   |
+LL |     fn uhoh<U:Get>(&self, foo: U, bar: <(T, U) as Get>::Value) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Get` is not implemented for `(T, U)`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/associated-types-no-suitable-supertrait.rs:12:1
+   |
+LL | trait Get {
+   | ^^^^^^^^^
+
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0277`.
