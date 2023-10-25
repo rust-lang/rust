@@ -291,6 +291,9 @@ pub mod assert_matches {
     pub use crate::macros::{assert_matches, debug_assert_matches};
 }
 
+#[unstable(feature = "cfg_match", issue = "115585")]
+pub use crate::macros::cfg_match;
+
 #[macro_use]
 mod internal_macros;
 
