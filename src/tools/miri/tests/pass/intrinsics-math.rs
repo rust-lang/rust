@@ -125,9 +125,8 @@ pub fn main() {
 
     assert_approx_eq!(5.0f32.gamma(), 24.0);
     assert_approx_eq!(5.0f64.gamma(), 24.0);
-    // These fail even on the host, precision seems to be terrible.
-    //assert_approx_eq!(-0.5f32.gamma(), -2.0 * f32::consts::PI.sqrt());
-    //assert_approx_eq!(-0.5f64.gamma(), -2.0 * f64::consts::PI.sqrt());
+    assert_approx_eq!((-0.5f32).gamma(), (-2.0) * f32::consts::PI.sqrt());
+    assert_approx_eq!((-0.5f64).gamma(), (-2.0) * f64::consts::PI.sqrt());
 
     assert_eq!(2.0f32.ln_gamma(), (0.0, 1));
     assert_eq!(2.0f64.ln_gamma(), (0.0, 1));
