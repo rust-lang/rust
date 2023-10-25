@@ -51,13 +51,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             "macos" => {
                 absolute_clocks = vec![this.eval_libc_i32("CLOCK_REALTIME")];
                 relative_clocks = vec![this.eval_libc_i32("CLOCK_MONOTONIC")];
-                // Some clocks only seem to exist in the aarch64 version of the target.
-                if this.tcx.sess.target.arch == "aarch64" {
-                    // `CLOCK_UPTIME_RAW` supposed to not increment while the system is asleep... but
-                    // that's not really something a program running inside Miri can tell, anyway.
-                    // We need to support it because std uses it.
-                    relative_clocks.push(this.eval_libc_i32("CLOCK_UPTIME_RAW"));
-                }
+                // `CLOCK_UPTIME_RAW` supposed to not increment while the system is asleep... but
+                // that's not really something a program running inside Miri can tell, anyway.
+                // We need to support it because std uses it.
+                relative_clocks.push(this.eval_libc_i32("CLOCK_UPTIME_RAW"));
             }
             target => throw_unsup_format!("`clock_gettime` is not supported on target OS {target}"),
         }
@@ -68,7 +65,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         } else if relative_clocks.contains(&clk_id) {
             this.machine.clock.now().duration_since(this.machine.clock.anchor())
         } else {
-            // Unsupported clock.
             let einval = this.eval_libc("EINVAL");
             this.set_last_error(einval)?;
             return Ok(Scalar::from_i32(-1));
