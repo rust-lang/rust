@@ -1,8 +1,8 @@
-error[E0658]: `#[doc(notable_trait)]` is experimental
+error[E0658]: `#[doc(notable)]` is experimental
   --> $DIR/feature-gate-doc_notable_trait.rs:1:1
    |
-LL | #[doc(notable_trait)]
-   | ^^^^^^^^^^^^^^^^^^^^^
+LL | #[doc(notable)]
+   | ^^^^^^^^^^^^^^^
    |
    = note: see issue #45040 <https://github.com/rust-lang/rust/issues/45040> for more information
    = help: add `#![feature(doc_notable_trait)]` to the crate attributes to enable

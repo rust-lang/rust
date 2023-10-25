@@ -1,4 +1,4 @@
-#[doc(notable_trait)] //~ ERROR: `#[doc(notable_trait)]` is experimental
+#[doc(notable)] //~ ERROR: `#[doc(notable)]` is experimental
 trait SomeTrait {}
 
 fn main() {}

@@ -748,6 +748,7 @@ fn buffer_capacity_required(mut file: &File) -> Option<usize> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(bootstrap), doc(notable))]
 impl Read for &File {
     #[inline]
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
@@ -784,6 +785,7 @@ impl Read for &File {
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(bootstrap), doc(notable))]
 impl Write for &File {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.inner.write(buf)
@@ -811,6 +813,7 @@ impl Seek for &File {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(bootstrap), doc(notable))]
 impl Read for File {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         (&*self).read(buf)
@@ -833,6 +836,7 @@ impl Read for File {
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(bootstrap), doc(notable))]
 impl Write for File {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         (&*self).write(buf)
@@ -857,6 +861,7 @@ impl Seek for File {
 }
 
 #[stable(feature = "io_traits_arc", since = "1.73.0")]
+#[cfg_attr(not(bootstrap), doc(notable))]
 impl Read for Arc<File> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         (&**self).read(buf)
@@ -879,6 +884,7 @@ impl Read for Arc<File> {
     }
 }
 #[stable(feature = "io_traits_arc", since = "1.73.0")]
+#[cfg_attr(not(bootstrap), doc(notable))]
 impl Write for Arc<File> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         (&**self).write(buf)

@@ -3,6 +3,7 @@ pub(crate) mod item_type;
 pub(crate) mod renderer;
 
 use rustc_hir::def_id::DefId;
+use rustc_span::sym;
 
 pub(crate) use renderer::{run_format, FormatRenderer};
 
@@ -36,6 +37,10 @@ impl Impl {
             clean::ImplItem(ref impl_) => impl_,
             _ => panic!("non-impl item found in impl"),
         }
+    }
+
+    pub(crate) fn is_notable(&self) -> bool {
+        self.impl_item.attrs.has_doc_flag(sym::notable)
     }
 
     pub(crate) fn trait_did(&self) -> Option<DefId> {

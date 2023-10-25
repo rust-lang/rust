@@ -1208,9 +1208,9 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    /// Determines whether an item is annotated with `doc(notable_trait)`.
-    query is_doc_notable_trait(def_id: DefId) -> bool {
-        desc { |tcx| "checking whether `{}` is `doc(notable_trait)`", tcx.def_path_str(def_id) }
+    /// Determines whether an item is annotated with `doc(notable)`.
+    query is_doc_notable(def_id: DefId) -> bool {
+        desc { |tcx| "checking whether `{}` is `doc(notable)`", tcx.def_path_str(def_id) }
     }
 
     /// Returns the attributes on the item at `def_id`.

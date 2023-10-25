@@ -11,7 +11,7 @@ impl<T> Box<T> {
     }
 }
 
-#[doc(notable_trait)]
+#[doc(notable)]
 pub trait FakeIterator {}
 
 impl<I: FakeIterator> FakeIterator for Box<I> {}

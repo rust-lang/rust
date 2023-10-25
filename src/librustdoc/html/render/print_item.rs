@@ -20,10 +20,10 @@ use std::rc::Rc;
 use super::type_layout::document_type_layout;
 use super::{
     collect_paths_for_type, document, ensure_trailing_slash, get_filtered_impls_for_reference,
-    item_ty_to_section, notable_traits_button, notable_traits_json, render_all_impls,
-    render_assoc_item, render_assoc_items, render_attributes_in_code, render_attributes_in_pre,
-    render_impl, render_rightside, render_stability_since_raw,
-    render_stability_since_raw_with_extra, AssocItemLink, Context, ImplRenderingParameters,
+    item_ty_to_section, notables_button, notables_json, render_all_impls, render_assoc_item,
+    render_assoc_items, render_attributes_in_code, render_attributes_in_pre, render_impl,
+    render_rightside, render_stability_since_raw, render_stability_since_raw_with_extra,
+    AssocItemLink, Context, ImplRenderingParameters,
 };
 use crate::clean;
 use crate::config::ModuleSorting;
@@ -292,13 +292,13 @@ pub(super) fn print_item(
     }
 
     // Render notable-traits.js used for all methods in this module.
-    if !cx.types_with_notable_traits.is_empty() {
+    if !cx.types_with_notables.is_empty() {
         write!(
             buf,
             r#"<script type="text/json" id="notable-traits-data">{}</script>"#,
-            notable_traits_json(cx.types_with_notable_traits.iter(), cx)
+            notables_json(cx.types_with_notables.iter(), cx)
         );
-        cx.types_with_notable_traits.clear();
+        cx.types_with_notables.clear();
     }
 }
 
@@ -650,14 +650,14 @@ fn item_function(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, f: &cle
         + name.as_str().len()
         + generics_len;
 
-    let notable_traits = notable_traits_button(&f.decl.output, cx);
+    let notables = notables_button(&f.decl.output, cx);
 
     wrap_item(w, |w| {
         w.reserve(header_len);
         write!(
             w,
             "{attrs}{vis}{constness}{asyncness}{unsafety}{abi}fn \
-                {name}{generics}{decl}{notable_traits}{where_clause}",
+                {name}{generics}{decl}{notables}{where_clause}",
             attrs = render_attributes_in_pre(it, "", cx),
             vis = visibility,
             constness = constness,
@@ -668,7 +668,7 @@ fn item_function(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, f: &cle
             generics = f.generics.print(cx),
             where_clause = print_where_clause(&f.generics, cx, 0, Ending::Newline),
             decl = f.decl.full_print(header_len, 0, cx),
-            notable_traits = notable_traits.unwrap_or_default(),
+            notables = notables.unwrap_or_default(),
         );
     });
     write!(w, "{}", document(cx, it, None, HeadingOffset::H2));

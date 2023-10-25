@@ -614,6 +614,7 @@ impl TcpStream {
 // `AsRawSocket`/`IntoRawSocket`/`FromRawSocket` on Windows.
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(bootstrap), doc(notable))]
 impl Read for TcpStream {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.0.read(buf)
@@ -633,6 +634,7 @@ impl Read for TcpStream {
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(bootstrap), doc(notable))]
 impl Write for TcpStream {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.0.write(buf)
@@ -653,6 +655,7 @@ impl Write for TcpStream {
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(bootstrap), doc(notable))]
 impl Read for &TcpStream {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.0.read(buf)
@@ -672,6 +675,7 @@ impl Read for &TcpStream {
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(bootstrap), doc(notable))]
 impl Write for &TcpStream {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.0.write(buf)

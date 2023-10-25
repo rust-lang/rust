@@ -835,10 +835,10 @@ function preLoadCss(cssUrl) {
      */
     function showTooltip(e) {
         const notable_ty = e.getAttribute("data-notable-ty");
-        if (!window.NOTABLE_TRAITS && notable_ty) {
+        if (!window.notableS && notable_ty) {
             const data = document.getElementById("notable-traits-data");
             if (data) {
-                window.NOTABLE_TRAITS = JSON.parse(data.innerText);
+                window.notableS = JSON.parse(data.innerText);
             } else {
                 throw new Error("showTooltip() called with notable without any notable traits!");
             }
@@ -853,7 +853,7 @@ function preLoadCss(cssUrl) {
         const wrapper = document.createElement("div");
         if (notable_ty) {
             wrapper.innerHTML = "<div class=\"content\">" +
-                window.NOTABLE_TRAITS[notable_ty] + "</div>";
+                window.notableS[notable_ty] + "</div>";
         } else {
             // Replace any `title` attribute with `data-title` to avoid double tooltips.
             if (e.getAttribute("title") !== null) {

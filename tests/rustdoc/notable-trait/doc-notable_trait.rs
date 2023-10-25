@@ -6,7 +6,7 @@ pub struct Wrapper<T> {
 
 impl<T: SomeTrait> SomeTrait for Wrapper<T> {}
 
-#[doc(notable_trait)]
+#[doc(notable)]
 pub trait SomeTrait {
     // @has doc_notable_trait/trait.SomeTrait.html
     // @has - '//a[@class="tooltip"]/@data-notable-ty' 'Wrapper<Self>'

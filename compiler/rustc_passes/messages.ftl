@@ -252,10 +252,16 @@ passes_doc_test_unknown_include =
     unknown `doc` attribute `{$path}`
     .suggestion = use `doc = include_str!` instead
 
+passes_doc_test_unknown_notable_trait =
+    unknown `doc` attribute `{$path}`
+    .note = `doc(notable_trait)` was renamed to `doc(notable)`
+    .suggestion = use `notable` instead
+    .no_op_note = `doc(notable_trait)` is now a no-op
+
 passes_doc_test_unknown_spotlight =
     unknown `doc` attribute `{$path}`
-    .note = `doc(spotlight)` was renamed to `doc(notable_trait)`
-    .suggestion = use `notable_trait` instead
+    .note = `doc(spotlight)` was renamed to `doc(notable)`
+    .suggestion = use `notable` instead
     .no_op_note = `doc(spotlight)` is now a no-op
 
 passes_duplicate_diagnostic_item_in_crate =

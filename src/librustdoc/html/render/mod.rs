@@ -863,7 +863,7 @@ fn assoc_method(
         + name.as_str().len()
         + generics_len;
 
-    let notable_traits = notable_traits_button(&d.output, cx);
+    let notables = notables_button(&d.output, cx);
 
     let (indent, indent_str, end_newline) = if parent == ItemType::Trait {
         header_len += 4;
@@ -878,7 +878,7 @@ fn assoc_method(
     write!(
         w,
         "{indent}{vis}{defaultness}{constness}{asyncness}{unsafety}{abi}fn \
-         <a{href} class=\"fn\">{name}</a>{generics}{decl}{notable_traits}{where_clause}",
+         <a{href} class=\"fn\">{name}</a>{generics}{decl}{notables}{where_clause}",
         indent = indent_str,
         vis = vis,
         defaultness = defaultness,
@@ -890,7 +890,7 @@ fn assoc_method(
         name = name,
         generics = g.print(cx),
         decl = d.full_print(header_len, indent, cx),
-        notable_traits = notable_traits.unwrap_or_default(),
+        notables = notables.unwrap_or_default(),
         where_clause = print_where_clause(g, cx, indent, end_newline),
     );
 }
@@ -1313,8 +1313,8 @@ fn should_render_item(item: &clean::Item, deref_mut_: bool, tcx: TyCtxt<'_>) -> 
     }
 }
 
-pub(crate) fn notable_traits_button(ty: &clean::Type, cx: &mut Context<'_>) -> Option<String> {
-    let mut has_notable_trait = false;
+pub(crate) fn notables_button(ty: &clean::Type, cx: &mut Context<'_>) -> Option<String> {
+    let mut has_notable = false;
 
     if ty.is_unit() {
         // Very common fast path.
@@ -1344,16 +1344,17 @@ pub(crate) fn notable_traits_button(ty: &clean::Type, cx: &mut Context<'_>) -> O
             if let Some(trait_) = &impl_.trait_ {
                 let trait_did = trait_.def_id();
 
-                if cx.cache().traits.get(&trait_did).map_or(false, |t| t.is_notable_trait(cx.tcx()))
+                if cx.cache().traits.get(&trait_did).map_or(false, |t| t.is_notable(cx.tcx()))
+                    || i.is_notable()
                 {
-                    has_notable_trait = true;
+                    has_notable = true;
                 }
             }
         }
     }
 
-    if has_notable_trait {
-        cx.types_with_notable_traits.insert(ty.clone());
+    if has_notable {
+        cx.types_with_notables.insert(ty.clone());
         Some(format!(
             " <a href=\"#\" class=\"tooltip\" data-notable-ty=\"{ty}\">ⓘ</a>",
             ty = Escape(&format!("{:#}", ty.print(cx))),
@@ -1363,12 +1364,12 @@ pub(crate) fn notable_traits_button(ty: &clean::Type, cx: &mut Context<'_>) -> O
     }
 }
 
-fn notable_traits_decl(ty: &clean::Type, cx: &Context<'_>) -> (String, String) {
+fn notables_decl(ty: &clean::Type, cx: &Context<'_>) -> (String, String) {
     let mut out = Buffer::html();
 
-    let did = ty.def_id(cx.cache()).expect("notable_traits_button already checked this");
+    let did = ty.def_id(cx.cache()).expect("notables_button already checked this");
 
-    let impls = cx.cache().impls.get(&did).expect("notable_traits_button already checked this");
+    let impls = cx.cache().impls.get(&did).expect("notables_button already checked this");
 
     for i in impls {
         let impl_ = i.inner_impl();
@@ -1380,7 +1381,7 @@ fn notable_traits_decl(ty: &clean::Type, cx: &Context<'_>) -> (String, String) {
         if let Some(trait_) = &impl_.trait_ {
             let trait_did = trait_.def_id();
 
-            if cx.cache().traits.get(&trait_did).map_or(false, |t| t.is_notable_trait(cx.tcx())) {
+            if cx.cache().traits.get(&trait_did).map_or(false, |t| t.is_notable(cx.tcx())) {
                 if out.is_empty() {
                     write!(
                         &mut out,
@@ -1424,11 +1425,11 @@ fn notable_traits_decl(ty: &clean::Type, cx: &Context<'_>) -> (String, String) {
     (format!("{:#}", ty.print(cx)), out.into_inner())
 }
 
-pub(crate) fn notable_traits_json<'a>(
+pub(crate) fn notables_json<'a>(
     tys: impl Iterator<Item = &'a clean::Type>,
     cx: &Context<'_>,
 ) -> String {
-    let mut mp: Vec<(String, String)> = tys.map(|ty| notable_traits_decl(ty, cx)).collect();
+    let mut mp: Vec<(String, String)> = tys.map(|ty| notables_decl(ty, cx)).collect();
     mp.sort_by(|(name1, _html1), (name2, _html2)| name1.cmp(name2));
     struct NotableTraitsMap(Vec<(String, String)>);
     impl Serialize for NotableTraitsMap {

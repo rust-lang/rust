@@ -319,12 +319,22 @@ pub struct DocTestUnknownAny {
 }
 
 #[derive(LintDiagnostic)]
+#[diag(passes_doc_test_unknown_notable_trait)]
+#[note]
+#[note(passes_no_op_note)]
+pub struct DocTestUnknownNotableTrait {
+    pub path: String,
+    #[suggestion(style = "short", applicability = "machine-applicable", code = "notable")]
+    pub span: Span,
+}
+
+#[derive(LintDiagnostic)]
 #[diag(passes_doc_test_unknown_spotlight)]
 #[note]
 #[note(passes_no_op_note)]
 pub struct DocTestUnknownSpotlight {
     pub path: String,
-    #[suggestion(style = "short", applicability = "machine-applicable", code = "notable_trait")]
+    #[suggestion(style = "short", applicability = "machine-applicable", code = "notable")]
     pub span: Span,
 }
 

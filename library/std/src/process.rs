@@ -266,6 +266,7 @@ pub struct ChildStdin {
 // `AsRawHandle`/`IntoRawHandle`/`FromRawHandle` on Windows.
 
 #[stable(feature = "process", since = "1.0.0")]
+#[cfg_attr(not(bootstrap), doc(notable))]
 impl Write for ChildStdin {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         (&*self).write(buf)
@@ -286,6 +287,7 @@ impl Write for ChildStdin {
 }
 
 #[stable(feature = "write_mt", since = "1.48.0")]
+#[cfg_attr(not(bootstrap), doc(notable))]
 impl Write for &ChildStdin {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.inner.write(buf)
@@ -352,6 +354,7 @@ pub struct ChildStdout {
 // `AsRawHandle`/`IntoRawHandle`/`FromRawHandle` on Windows.
 
 #[stable(feature = "process", since = "1.0.0")]
+#[cfg_attr(not(bootstrap), doc(notable))]
 impl Read for ChildStdout {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.inner.read(buf)
@@ -422,6 +425,7 @@ pub struct ChildStderr {
 // `AsRawHandle`/`IntoRawHandle`/`FromRawHandle` on Windows.
 
 #[stable(feature = "process", since = "1.0.0")]
+#[cfg_attr(not(bootstrap), doc(notable))]
 impl Read for ChildStderr {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.inner.read(buf)
