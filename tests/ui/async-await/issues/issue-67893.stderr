@@ -13,7 +13,7 @@ LL | pub async fn run() {
    |
    = help: within `impl Future<Output = ()>`, the trait `Send` is not implemented for `MutexGuard<'_, ()>`
    = note: required because it captures the following types: `Arc<Mutex<()>>`, `MutexGuard<'_, ()>`, `impl Future<Output = ()>`
-note: required because it's used within this `async fn` body
+note: required because it's used within this `async` fn body
   --> $DIR/auxiliary/issue_67893.rs:9:20
    |
 LL |   pub async fn run() {

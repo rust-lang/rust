@@ -883,13 +883,13 @@ impl<'tcx> Stable<'tcx> for mir::AggregateKind<'tcx> {
 impl<'tcx> Stable<'tcx> for rustc_hir::CoroutineKind {
     type T = stable_mir::mir::CoroutineKind;
     fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
-        use rustc_hir::{AsyncCoroutineKind, CoroutineKind};
+        use rustc_hir::{CoroutineKind, CoroutineSource};
         match self {
             CoroutineKind::Async(async_gen) => {
                 let async_gen = match async_gen {
-                    AsyncCoroutineKind::Block => stable_mir::mir::AsyncCoroutineKind::Block,
-                    AsyncCoroutineKind::Closure => stable_mir::mir::AsyncCoroutineKind::Closure,
-                    AsyncCoroutineKind::Fn => stable_mir::mir::AsyncCoroutineKind::Fn,
+                    CoroutineSource::Block => stable_mir::mir::CoroutineSource::Block,
+                    CoroutineSource::Closure => stable_mir::mir::CoroutineSource::Closure,
+                    CoroutineSource::Fn => stable_mir::mir::CoroutineSource::Fn,
                 };
                 stable_mir::mir::CoroutineKind::Async(async_gen)
             }
