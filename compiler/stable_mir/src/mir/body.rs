@@ -25,7 +25,7 @@ impl Body {
     /// because the `arg_count` and `locals` fields are private.
     pub fn new(blocks: Vec<BasicBlock>, locals: LocalDecls, arg_count: usize) -> Self {
         // If locals doesn't contain enough entries, it can lead to panics in
-        // `ret_local`, `arg_locals`, and `internal_locals`.
+        // `ret_local`, `arg_locals`, and `inner_locals`.
         assert!(
             locals.len() > arg_count,
             "A Body must contain at least a local for the return value and each of the function's arguments"
@@ -43,16 +43,16 @@ impl Body {
         &self.locals[1..self.arg_count + 1]
     }
 
-    /// Internal locals for this function. These are the locals that are
+    /// Inner locals for this function. These are the locals that are
     /// neither the return local nor the argument locals.
-    pub fn internal_locals(&self) -> &[LocalDecl] {
+    pub fn inner_locals(&self) -> &[LocalDecl] {
         &self.locals[self.arg_count + 1..]
     }
 
     /// Convenience function to get all the locals in this function.
     ///
     /// Locals are typically accessed via the more specific methods `ret_local`,
-    /// `arg_locals`, and `internal_locals`.
+    /// `arg_locals`, and `inner_locals`.
     pub fn locals(&self) -> &[LocalDecl] {
         &self.locals
     }
