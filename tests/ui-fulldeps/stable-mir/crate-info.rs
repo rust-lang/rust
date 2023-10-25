@@ -140,6 +140,29 @@ fn test_stable_mir(_tcx: TyCtxt<'_>) -> ControlFlow<()> {
     // Ensure we don't panic trying to get the body of a constant.
     foo_const.body();
 
+    let locals_fn = get_item(&items, (DefKind::Fn, "locals")).unwrap();
+    let body = locals_fn.body();
+    assert_eq!(body.locals().len(), 4);
+    assert_matches!(
+        body.ret_local().ty.kind(),
+        stable_mir::ty::TyKind::RigidTy(stable_mir::ty::RigidTy::Char)
+    );
+    assert_eq!(body.arg_locals().len(), 2);
+    assert_matches!(
+        body.arg_locals()[0].ty.kind(),
+        stable_mir::ty::TyKind::RigidTy(stable_mir::ty::RigidTy::Int(stable_mir::ty::IntTy::I32))
+    );
+    assert_matches!(
+        body.arg_locals()[1].ty.kind(),
+        stable_mir::ty::TyKind::RigidTy(stable_mir::ty::RigidTy::Uint(stable_mir::ty::UintTy::U64))
+    );
+    assert_eq!(body.inner_locals().len(), 1);
+    // If conditions have an extra inner local to hold their results
+    assert_matches!(
+        body.inner_locals()[0].ty.kind(),
+        stable_mir::ty::TyKind::RigidTy(stable_mir::ty::RigidTy::Bool)
+    );
+
     ControlFlow::Continue(())
 }
 
@@ -211,6 +234,14 @@ fn generate_input(path: &str) -> std::io::Result<()> {
 
     pub fn assert(x: i32) -> i32 {{
         x + 1
+    }}
+
+    pub fn locals(a: i32, _: u64) -> char {{
+        if a > 5 {{
+            'a'
+        }} else {{
+            'b'
+        }}
     }}"#
     )?;
     Ok(())
