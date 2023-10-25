@@ -5,25 +5,6 @@ use rustc_span::source_map::Spanned;
 use crate::lints::{PrecedenceDiag, PrecedenceUnarySuggestion, PrecedenceUnwarySuggestion};
 use crate::{EarlyContext, EarlyLintPass, LintContext};
 
-// List of functions `f(x)` where `f(-x)=-f(x)` so the
-// precedence doens't matter.
-const ALLOWED_ODD_FUNCTIONS: [&str; 14] = [
-    "asin",
-    "asinh",
-    "atan",
-    "atanh",
-    "cbrt",
-    "fract",
-    "round",
-    "signum",
-    "sin",
-    "sinh",
-    "tan",
-    "tanh",
-    "to_degrees",
-    "to_radians",
-];
-
 declare_lint! {
     /// The `ambiguous_precedence` lint checks for operations where
     /// precedence may be unclear and suggests adding parentheses.
@@ -86,19 +67,15 @@ impl EarlyLintPass for Precedence {
             );
         }
 
-        if let ExprKind::Unary(UnOp::Neg, operand) = &expr.kind {
+        if let ExprKind::Unary(UnOp::Neg, operand) = &expr.kind
+            && let ExprKind::MethodCall(..) = operand.kind
+        {
             let mut arg = operand;
-
-            let mut all_odd = true;
-            while let ExprKind::MethodCall(box MethodCall { seg, receiver, .. }) = &arg.kind {
-                let seg_str = seg.ident.name.as_str();
-                all_odd &=
-                    ALLOWED_ODD_FUNCTIONS.iter().any(|odd_function| **odd_function == *seg_str);
+            while let ExprKind::MethodCall(box MethodCall { receiver, .. }) = &arg.kind {
                 arg = receiver;
             }
 
-            if !all_odd
-                && let ExprKind::Lit(lit) = &arg.kind
+            if let ExprKind::Lit(lit) = &arg.kind
                 && let LitKind::Integer | LitKind::Float = &lit.kind
                 && !arg.span.from_expansion()
             {

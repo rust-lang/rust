@@ -22,6 +22,22 @@ fn main() {
     //~^ WARN unary minus has lower precedence than method call
     let _ = -1f32.abs();
     //~^ WARN unary minus has lower precedence than method call
+    let _ = -1f64.asin();
+    //~^ WARN unary minus has lower precedence than method call
+    let _ = -1f64.asinh();
+    //~^ WARN unary minus has lower precedence than method call
+    let _ = -1f64.tan();
+    //~^ WARN unary minus has lower precedence than method call
+    let _ = -1f64.tanh();
+    //~^ WARN unary minus has lower precedence than method call
+    let _ = -1.0_f64.cos().cos();
+    //~^ WARN unary minus has lower precedence than method call
+    let _ = -1.0_f64.cos().sin();
+    //~^ WARN unary minus has lower precedence than method call
+    let _ = -1.0_f64.sin().cos();
+    //~^ WARN unary minus has lower precedence than method call
+    let _ = -1f64.sin().sin();
+    //~^ WARN unary minus has lower precedence than method call
 
     // These should not trigger an error
     let _ = (-1i32).abs();
@@ -30,31 +46,4 @@ fn main() {
     let _ = -(1f32).abs();
     let _ = -(1i32.abs());
     let _ = -(1f32.abs());
-
-    // Odd functions should not trigger an error
-    let _ = -1f64.asin();
-    let _ = -1f64.asinh();
-    let _ = -1f64.atan();
-    let _ = -1f64.atanh();
-    let _ = -1f64.cbrt();
-    let _ = -1f64.fract();
-    let _ = -1f64.round();
-    let _ = -1f64.signum();
-    let _ = -1f64.sin();
-    let _ = -1f64.sinh();
-    let _ = -1f64.tan();
-    let _ = -1f64.tanh();
-    let _ = -1f64.to_degrees();
-    let _ = -1f64.to_radians();
-
-    // Chains containing any non-odd function should trigger (issue clippy#5924)
-    let _ = -1.0_f64.cos().cos();
-    //~^ WARN unary minus has lower precedence than method call
-    let _ = -1.0_f64.cos().sin();
-    //~^ WARN unary minus has lower precedence than method call
-    let _ = -1.0_f64.sin().cos();
-    //~^ WARN unary minus has lower precedence than method call
-
-    // Chains of odd functions shouldn't trigger
-    let _ = -1f64.sin().sin();
 }
