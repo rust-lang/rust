@@ -96,6 +96,7 @@ pub fn features() -> impl Iterator<Item = (&'static str, bool)> {
             target_arch = "powerpc64",
             target_arch = "mips",
             target_arch = "mips64",
+            target_arch = "loongarch64",
         ))] {
             (0_u8..Feature::_last as u8).map(|discriminant: u8| {
                 #[allow(bindings_with_variant_name)] // RISC-V has Feature::f

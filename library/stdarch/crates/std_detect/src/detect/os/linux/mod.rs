@@ -54,6 +54,9 @@ cfg_if::cfg_if! {
     } else if #[cfg(any(target_arch = "powerpc", target_arch = "powerpc64"))] {
         mod powerpc;
         pub(crate) use self::powerpc::detect_features;
+    } else if #[cfg(target_arch = "loongarch64")] {
+        mod loongarch;
+        pub(crate) use self::loongarch::detect_features;
     } else {
         use crate::detect::cache;
         /// Performs run-time feature detection.

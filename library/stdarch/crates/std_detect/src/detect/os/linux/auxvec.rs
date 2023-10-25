@@ -129,7 +129,8 @@ pub(crate) fn auxv() -> Result<AuxVec, ()> {
             target_arch = "riscv32",
             target_arch = "riscv64",
             target_arch = "mips",
-            target_arch = "mips64"
+            target_arch = "mips64",
+            target_arch = "loongarch64",
         ))]
         {
             let hwcap = unsafe { libc::getauxval(AT_HWCAP as libc::c_ulong) as usize };
@@ -225,6 +226,7 @@ fn auxv_from_buf(buf: &[usize]) -> Result<AuxVec, ()> {
         target_arch = "riscv64",
         target_arch = "mips",
         target_arch = "mips64",
+        target_arch = "loongarch64",
     ))]
     {
         for el in buf.chunks(2) {

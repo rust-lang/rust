@@ -19,6 +19,8 @@ mod powerpc64;
 mod mips;
 #[macro_use]
 mod mips64;
+#[macro_use]
+mod loongarch;
 
 cfg_if! {
     if #[cfg(any(target_arch = "x86", target_arch = "x86_64"))] {
@@ -45,6 +47,9 @@ cfg_if! {
     } else if #[cfg(target_arch = "mips64")] {
         #[unstable(feature = "stdarch_mips_feature_detection", issue = "111188")]
         pub use mips64::*;
+    } else if #[cfg(target_arch = "loongarch64")] {
+        #[unstable(feature = "stdarch_loongarch_feature_detection", issue = "117425")]
+        pub use loongarch::*;
     } else {
         // Unimplemented architecture:
         #[doc(hidden)]

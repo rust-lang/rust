@@ -53,7 +53,7 @@ crate from working on applications in which `std` is not available.
   [`cupid`](https://crates.io/crates/cupid) crate.
 
 * Linux/Android:
-  * `arm{32, 64}`, `mips{32,64}{,el}`, `powerpc{32,64}{,le}`, `riscv{32,64}`: `std_detect`
+  * `arm{32, 64}`, `mips{32,64}{,el}`, `powerpc{32,64}{,le}`, `riscv{32,64}`, `loongarch64`: `std_detect`
     supports these on Linux by querying ELF auxiliary vectors (using `getauxval`
     when available), and if that fails, by querying `/proc/cpuinfo`.
   * `arm64`: partial support for doing run-time feature detection by directly
