@@ -166,4 +166,4 @@ These steps will do the following just as before:
 
 1. Build an instrumented binary from the source code.
 2. Run the instrumented binary to gather PGO profiles.
-3. Use the instrumentation results from the last step to create an optimized binary.
+3. Use the gathered PGO profiles from the last step to build an optimized binary.
