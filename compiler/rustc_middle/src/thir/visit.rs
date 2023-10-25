@@ -233,16 +233,17 @@ pub fn walk_pat<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, pat: &Pat<'
             }
         }
         Constant { value: _ } => {}
+        InlineConstant { def: _, subpattern } => visitor.visit_pat(subpattern),
         Range(_) => {}
         Slice { prefix, slice, suffix } | Array { prefix, slice, suffix } => {
             for subpattern in prefix.iter() {
-                visitor.visit_pat(&subpattern);
+                visitor.visit_pat(subpattern);
             }
             if let Some(pat) = slice {
-                visitor.visit_pat(&pat);
+                visitor.visit_pat(pat);
             }
             for subpattern in suffix.iter() {
-                visitor.visit_pat(&subpattern);
+                visitor.visit_pat(subpattern);
             }
         }
         Or { pats } => {

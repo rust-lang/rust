@@ -204,6 +204,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 Err(match_pair)
             }
 
+            PatKind::InlineConstant { subpattern: ref pattern, def: _ } => {
+                candidate.match_pairs.push(MatchPair::new(match_pair.place, pattern, self));
+
+                Ok(())
+            }
+
             PatKind::Range(box PatRange { lo, hi, end }) => {
                 let (range, bias) = match *lo.ty().kind() {
                     ty::Char => {
@@ -229,8 +235,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     // correct the comparison. This is achieved by XORing with a bias (see
                     // pattern/_match.rs for another pertinent example of this pattern).
                     //
-                    // Also, for performance, it's important to only do the second `try_to_bits` if
-                    // necessary.
+                    // Also, for performance, it's important to only do the second
+                    // `try_to_bits` if necessary.
                     let lo = lo.try_to_bits(sz).unwrap() ^ bias;
                     if lo <= min {
                         let hi = hi.try_to_bits(sz).unwrap() ^ bias;

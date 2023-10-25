@@ -73,6 +73,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             PatKind::Or { .. } => bug!("or-patterns should have already been handled"),
 
             PatKind::AscribeUserType { .. }
+            | PatKind::InlineConstant { .. }
             | PatKind::Array { .. }
             | PatKind::Wild
             | PatKind::Binding { .. }
@@ -111,6 +112,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | PatKind::Or { .. }
             | PatKind::Binding { .. }
             | PatKind::AscribeUserType { .. }
+            | PatKind::InlineConstant { .. }
             | PatKind::Leaf { .. }
             | PatKind::Deref { .. }
             | PatKind::Error(_) => {

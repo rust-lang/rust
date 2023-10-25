@@ -53,10 +53,7 @@ pub(crate) fn closure_saved_names_of_captured_variables<'tcx>(
 }
 
 /// Construct the MIR for a given `DefId`.
-fn mir_build(tcx: TyCtxt<'_>, def: LocalDefId) -> Body<'_> {
-    // Ensure unsafeck and abstract const building is ran before we steal the THIR.
-    tcx.ensure_with_value()
-        .thir_check_unsafety(tcx.typeck_root_def_id(def.to_def_id()).expect_local());
+fn mir_build<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> Body<'tcx> {
     tcx.ensure_with_value().thir_abstract_const(def);
     if let Err(e) = tcx.check_match(def) {
         return construct_error(tcx, def, e);
@@ -65,20 +62,27 @@ fn mir_build(tcx: TyCtxt<'_>, def: LocalDefId) -> Body<'_> {
     let body = match tcx.thir_body(def) {
         Err(error_reported) => construct_error(tcx, def, error_reported),
         Ok((thir, expr)) => {
-            // We ran all queries that depended on THIR at the beginning
-            // of `mir_build`, so now we can steal it
-            let thir = thir.steal();
+            let build_mir = |thir: &Thir<'tcx>| match thir.body_type {
+                thir::BodyTy::Fn(fn_sig) => construct_fn(tcx, def, thir, expr, fn_sig),
+                thir::BodyTy::Const(ty) => construct_const(tcx, def, thir, expr, ty),
+            };
 
-            tcx.ensure().check_match(def);
             // this must run before MIR dump, because
             // "not all control paths return a value" is reported here.
             //
             // maybe move the check to a MIR pass?
             tcx.ensure().check_liveness(def);
 
-            match thir.body_type {
-                thir::BodyTy::Fn(fn_sig) => construct_fn(tcx, def, &thir, expr, fn_sig),
-                thir::BodyTy::Const(ty) => construct_const(tcx, def, &thir, expr, ty),
+            if tcx.sess.opts.unstable_opts.thir_unsafeck {
+                // Don't steal here if THIR unsafeck is being used. Instead
+                // steal in unsafeck. This is so that pattern inline constants
+                // can be evaluated as part of building the THIR of the parent
+                // function without a cycle.
+                build_mir(&thir.borrow())
+            } else {
+                // We ran all queries that depended on THIR at the beginning
+                // of `mir_build`, so now we can steal it
+                build_mir(&thir.steal())
             }
         }
     };
