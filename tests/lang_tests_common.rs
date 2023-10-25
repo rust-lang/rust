@@ -1,8 +1,8 @@
 //! The common code for `tests/lang_tests_*.rs`
 use std::{
     env::{self, current_dir},
-    path::PathBuf,
-    process::{self, Command},
+    path::{Path, PathBuf},
+    process::Command,
 };
 
 use lang_tester::LangTester;
@@ -23,9 +23,29 @@ pub fn main_inner(profile: Profile) {
     let gcc_path = include_str!("../gcc_path");
     let gcc_path = gcc_path.trim();
     env::set_var("LD_LIBRARY_PATH", gcc_path);
+
+    fn rust_filter(filename: &Path) -> bool {
+        filename.extension().expect("extension").to_str().expect("to_str") == "rs"
+    }
+
+    #[cfg(feature="master")]
+    fn filter(filename: &Path) -> bool {
+        rust_filter(filename)
+    }
+
+    #[cfg(not(feature="master"))]
+    fn filter(filename: &Path) -> bool {
+        if let Some(filename) = filename.to_str() {
+            if filename.ends_with("gep.rs") {
+                return false;
+            }
+        }
+        rust_filter(filename)
+    }
+
     LangTester::new()
         .test_dir("tests/run")
-        .test_file_filter(|path| path.extension().expect("extension").to_str().expect("to_str") == "rs")
+        .test_file_filter(filter)
         .test_extract(|source| {
             let lines =
                 source.lines()

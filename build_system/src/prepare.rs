@@ -4,7 +4,7 @@ use crate::utils::{cargo_install, git_clone, run_command, run_command_with_outpu
 use std::fs;
 use std::path::Path;
 
-fn prepare_libcore(sysroot_path: &Path, cross_compile: bool) -> Result<(), String> {
+fn prepare_libcore(sysroot_path: &Path, libgccjit12_patches: bool, cross_compile: bool) -> Result<(), String> {
     let rustc_path = match get_rustc_path() {
         Some(path) => path,
         None => return Err("`rustc` path not found".to_string()),
@@ -93,6 +93,16 @@ fn prepare_libcore(sysroot_path: &Path, cross_compile: bool) -> Result<(), Strin
             Ok(())
         })?;
     }
+    if libgccjit12_patches {
+        walk_dir(
+            "patches/libgccjit12",
+            |_| Ok(()),
+            |file_path: &Path| {
+                patches.push(file_path.to_path_buf());
+                Ok(())
+            },
+        )?;
+    }
     patches.sort();
     for file_path in patches {
         println!("[GIT] apply `{}`", file_path.display());
@@ -164,17 +174,20 @@ where
 struct PrepareArg {
     cross_compile: bool,
     only_libcore: bool,
+    libgccjit12_patches: bool,
 }
 
 impl PrepareArg {
     fn new() -> Result<Option<Self>, String> {
         let mut only_libcore = false;
         let mut cross_compile = false;
+        let mut libgccjit12_patches = false;
 
         for arg in std::env::args().skip(2) {
             match arg.as_str() {
                 "--only-libcore" => only_libcore = true,
                 "--cross" => cross_compile = true,
+                "--libgccjit12-patches" => libgccjit12_patches = true,
                 "--help" => {
                     Self::usage();
                     return Ok(None);
@@ -185,6 +198,7 @@ impl PrepareArg {
         Ok(Some(Self {
             cross_compile,
             only_libcore,
+            libgccjit12_patches,
         }))
     }
 
@@ -193,9 +207,10 @@ impl PrepareArg {
             r#"
 `prepare` command help:
 
-    --only-libcore  : Only setup libcore and don't clone other repositories
-    --cross         : Apply the patches needed to do cross-compilation
-    --help          : Show this help
+    --only-libcore           : Only setup libcore and don't clone other repositories
+    --cross                  : Apply the patches needed to do cross-compilation
+    --libgccjit12-patches    : Apply patches needed for libgccjit12
+    --help                   : Show this help
 "#
         )
     }
@@ -207,7 +222,7 @@ pub fn run() -> Result<(), String> {
         None => return Ok(()),
     };
     let sysroot_path = Path::new("build_sysroot");
-    prepare_libcore(sysroot_path, args.cross_compile)?;
+    prepare_libcore(sysroot_path, args.libgccjit12_patches, args.cross_compile)?;
 
     if !args.only_libcore {
         cargo_install("hyperfine")?;
