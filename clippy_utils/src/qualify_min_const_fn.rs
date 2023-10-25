@@ -5,7 +5,7 @@
 
 use crate::msrvs::Msrv;
 use hir::LangItem;
-use rustc_attr::{rust_version_symbol, Since};
+use rustc_attr::{Since, CURRENT_RUSTC_VERSION};
 use rustc_const_eval::transform::check_consts::ConstCx;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -380,10 +380,9 @@ fn is_const_fn(tcx: TyCtxt<'_>, def_id: DefId, msrv: &Msrv) -> bool {
                     Since::Current => {
                         // HACK(nilstrieb): CURRENT_RUSTC_VERSION can return versions like 1.66.0-dev.
                         // `rustc-semver` doesn't accept the `-dev` version number so we have to strip it off.
-                        let current_rustc_version = rust_version_symbol();
-                        let short_version = current_rustc_version.as_str().split('-').next().unwrap();
+                        let short_version = CURRENT_RUSTC_VERSION.split('-').next().unwrap();
                         RustcVersion::parse(short_version).unwrap_or_else(|err| {
-                            panic!("`rustc_attr::StabilityLevel::Stable::since` is ill-formatted: `{current_rustc_version}`, {err:?}")
+                            panic!("`rustc_attr::StabilityLevel::Stable::since` is ill-formatted: `{CURRENT_RUSTC_VERSION}`, {err:?}")
                         })
                     },
                     Since::Err => return false,
