@@ -169,14 +169,6 @@ impl StoreBufferAlloc {
         Self { store_buffers: RefCell::new(RangeObjectMap::new()) }
     }
 
-    /// Checks if the range imperfectly overlaps with existing buffers
-    /// Used to determine if mixed-size atomic accesses
-    fn is_overlapping(&self, range: AllocRange) -> bool {
-        let buffers = self.store_buffers.borrow();
-        let access_type = buffers.access_type(range);
-        matches!(access_type, AccessType::ImperfectlyOverlapping(_))
-    }
-
     /// When a non-atomic access happens on a location that has been atomically accessed
     /// before without data race, we can determine that the non-atomic access fully happens
     /// after all the prior atomic accesses so the location no longer needs to exhibit
@@ -190,6 +182,8 @@ impl StoreBufferAlloc {
                     buffers.remove_from_pos(pos);
                 }
                 AccessType::ImperfectlyOverlapping(pos_range) => {
+                    // We rely on the data-race check making sure this is synchronized.
+                    // Therefore we can forget about the old data here.
                     buffers.remove_pos_range(pos_range);
                 }
                 AccessType::Empty(_) => {
@@ -215,7 +209,7 @@ impl StoreBufferAlloc {
                 pos
             }
             AccessType::ImperfectlyOverlapping(pos_range) => {
-                // Once we reach here we would've already checked that this access is not racy
+                // Once we reach here we would've already checked that this access is not racy.
                 let mut buffers = self.store_buffers.borrow_mut();
                 buffers.remove_pos_range(pos_range.clone());
                 buffers.insert_at_pos(pos_range.start, range, StoreBuffer::new(init));
@@ -240,6 +234,7 @@ impl StoreBufferAlloc {
                 pos
             }
             AccessType::ImperfectlyOverlapping(pos_range) => {
+                // Once we reach here we would've already checked that this access is not racy.
                 buffers.remove_pos_range(pos_range.clone());
                 buffers.insert_at_pos(pos_range.start, range, StoreBuffer::new(init));
                 pos_range.start
@@ -473,37 +468,6 @@ impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 
 pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
     crate::MiriInterpCxExt<'mir, 'tcx>
 {
-    // If weak memory emulation is enabled, check if this atomic op imperfectly overlaps with a previous
-    // atomic read or write. If it does, then we require it to be ordered (non-racy) with all previous atomic
-    // accesses on all the bytes in range
-    fn validate_overlapping_atomic(
-        &self,
-        place: &MPlaceTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx> {
-        let this = self.eval_context_ref();
-        let (alloc_id, base_offset, ..) = this.ptr_get_alloc_id(place.ptr())?;
-        if let crate::AllocExtra {
-            weak_memory: Some(alloc_buffers),
-            data_race: Some(alloc_clocks),
-            ..
-        } = this.get_alloc_extra(alloc_id)?
-        {
-            let range = alloc_range(base_offset, place.layout.size);
-            if alloc_buffers.is_overlapping(range)
-                && !alloc_clocks.race_free_with_atomic(
-                    range,
-                    this.machine.data_race.as_ref().unwrap(),
-                    &this.machine.threads,
-                )
-            {
-                throw_unsup_format!(
-                    "racy imperfectly overlapping atomic access is not possible in the C++20 memory model, and not supported by Miri's weak memory emulation"
-                );
-            }
-        }
-        Ok(())
-    }
-
     fn buffered_atomic_rmw(
         &mut self,
         new_val: Scalar<Provenance>,

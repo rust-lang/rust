@@ -62,6 +62,23 @@ fn panic_named() {
         .unwrap_err();
 }
 
+// This is not a data race!
+fn shared_readonly() {
+    use std::sync::Arc;
+
+    let x = Arc::new(42i32);
+    let h = thread::spawn({
+        let x = Arc::clone(&x);
+        move || {
+            assert_eq!(*x, 42);
+        }
+    });
+
+    assert_eq!(*x, 42);
+
+    h.join().unwrap();
+}
+
 fn main() {
     create_and_detach();
     create_and_join();
@@ -71,6 +88,7 @@ fn main() {
     create_nested_and_join();
     create_move_in();
     create_move_out();
+    shared_readonly();
     panic();
     panic_named();
 }

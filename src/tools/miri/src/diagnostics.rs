@@ -43,9 +43,10 @@ pub enum TerminationInfo {
         span: SpanData,
     },
     DataRace {
+        involves_non_atomic: bool,
+        ptr: Pointer,
         op1: RacingOp,
         op2: RacingOp,
-        ptr: Pointer,
     },
 }
 
@@ -74,11 +75,15 @@ impl fmt::Display for TerminationInfo {
                 write!(f, "multiple definitions of symbol `{link_name}`"),
             SymbolShimClashing { link_name, .. } =>
                 write!(f, "found `{link_name}` symbol definition that clashes with a built-in shim",),
-            DataRace { ptr, op1, op2 } =>
+            DataRace { involves_non_atomic, ptr, op1, op2 } =>
                 write!(
                     f,
-                    "Data race detected between (1) {} on {} and (2) {} on {} at {ptr:?}. (2) just happened here",
-                    op1.action, op1.thread_info, op2.action, op2.thread_info
+                    "{} detected between (1) {} on {} and (2) {} on {} at {ptr:?}. (2) just happened here",
+                    if *involves_non_atomic { "Data race" } else { "Race condition" },
+                    op1.action,
+                    op1.thread_info,
+                    op2.action,
+                    op2.thread_info
                 ),
         }
     }
