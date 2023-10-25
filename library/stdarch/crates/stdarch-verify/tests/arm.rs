@@ -27,6 +27,8 @@ static U16: Type = Type::PrimUnsigned(16);
 static U32: Type = Type::PrimUnsigned(32);
 static U64: Type = Type::PrimUnsigned(64);
 static U8: Type = Type::PrimUnsigned(8);
+static BOOL: Type = Type::PrimBool;
+static VOID: Type = Type::Void;
 static NEVER: Type = Type::Never;
 static GENERICT: Type = Type::GenericParam("T");
 static GENERICU: Type = Type::GenericParam("U");
@@ -151,19 +153,70 @@ static U8X8X2: Type = Type::U(8, 8, 2);
 static U8X8X3: Type = Type::U(8, 8, 3);
 static U8X8X4: Type = Type::U(8, 8, 4);
 
+static SVBOOL: Type = Type::Pred;
+static SVF32: Type = Type::SVF(32, 1);
+static SVF32X2: Type = Type::SVF(32, 2);
+static SVF32X3: Type = Type::SVF(32, 3);
+static SVF32X4: Type = Type::SVF(32, 4);
+static SVF64: Type = Type::SVF(64, 1);
+static SVF64X2: Type = Type::SVF(64, 2);
+static SVF64X3: Type = Type::SVF(64, 3);
+static SVF64X4: Type = Type::SVF(64, 4);
+static SVI8: Type = Type::SVI(8, 1);
+static SVI8X2: Type = Type::SVI(8, 2);
+static SVI8X3: Type = Type::SVI(8, 3);
+static SVI8X4: Type = Type::SVI(8, 4);
+static SVI16: Type = Type::SVI(16, 1);
+static SVI16X2: Type = Type::SVI(16, 2);
+static SVI16X3: Type = Type::SVI(16, 3);
+static SVI16X4: Type = Type::SVI(16, 4);
+static SVI32: Type = Type::SVI(32, 1);
+static SVI32X2: Type = Type::SVI(32, 2);
+static SVI32X3: Type = Type::SVI(32, 3);
+static SVI32X4: Type = Type::SVI(32, 4);
+static SVI64: Type = Type::SVI(64, 1);
+static SVI64X2: Type = Type::SVI(64, 2);
+static SVI64X3: Type = Type::SVI(64, 3);
+static SVI64X4: Type = Type::SVI(64, 4);
+static SVU8: Type = Type::SVU(8, 1);
+static SVU8X2: Type = Type::SVU(8, 2);
+static SVU8X3: Type = Type::SVU(8, 3);
+static SVU8X4: Type = Type::SVU(8, 4);
+static SVU16: Type = Type::SVU(16, 1);
+static SVU16X2: Type = Type::SVU(16, 2);
+static SVU16X3: Type = Type::SVU(16, 3);
+static SVU16X4: Type = Type::SVU(16, 4);
+static SVU32: Type = Type::SVU(32, 1);
+static SVU32X2: Type = Type::SVU(32, 2);
+static SVU32X3: Type = Type::SVU(32, 3);
+static SVU32X4: Type = Type::SVU(32, 4);
+static SVU64: Type = Type::SVU(64, 1);
+static SVU64X2: Type = Type::SVU(64, 2);
+static SVU64X3: Type = Type::SVU(64, 3);
+static SVU64X4: Type = Type::SVU(64, 4);
+static SVPRFOP: Type = Type::Enum("svprfop");
+static SVPATTERN: Type = Type::Enum("svpattern");
+
 #[derive(Debug, Copy, Clone, PartialEq)]
 enum Type {
+    Void,
+    PrimBool,
     PrimFloat(u8),
     PrimSigned(u8),
     PrimUnsigned(u8),
     PrimPoly(u8),
     MutPtr(&'static Type),
     ConstPtr(&'static Type),
+    Enum(&'static str),
     GenericParam(&'static str),
     I(u8, u8, u8),
     U(u8, u8, u8),
     P(u8, u8, u8),
     F(u8, u8, u8),
+    Pred,
+    SVI(u8, u8),
+    SVU(u8, u8),
+    SVF(u8, u8),
     Never,
 }
 
@@ -182,6 +235,7 @@ fn verify_all_signatures() {
 
     let mut all_valid = true;
     for rust in FUNCTIONS {
+        // Most SVE intrinsics just rely on the intrinsics test tool for validation
         if !rust.has_test {
             let skip = [
                 "vaddq_s64",
@@ -407,18 +461,16 @@ fn verify_all_signatures() {
                 "__clrex",
                 "__dbg",
             ];
-            if !skip.contains(&rust.name) {
-                println!(
-                    "missing run-time test named `test_{}` for `{}`",
-                    {
-                        let mut id = rust.name;
-                        while id.starts_with('_') {
-                            id = &id[1..];
-                        }
-                        id
-                    },
-                    rust.name
-                );
+            if !skip.contains(&rust.name)
+                // Most run-time tests are handled by the intrinsic-test tool, except for
+                // load/stores (which have generated tests)
+                && (!rust.name.starts_with("sv") || rust.name.starts_with("svld")
+                    || rust.name.starts_with("svst"))
+                // The load/store test generator can't handle these cases yet
+                && (!rust.name.contains("_u32base_") || rust.name.contains("index") || rust.name.contains("offset"))
+                && !(rust.name.starts_with("svldff1") && rust.name.contains("gather"))
+            {
+                println!("missing run-time test for `{}`", rust.name);
                 all_valid = false;
             }
         }
@@ -493,12 +545,21 @@ fn matches(rust: &Function, arm: &Intrinsic) -> Result<(), String> {
     let mut nconst = 0;
     let iter = rust.arguments.iter().zip(&arm.arguments).enumerate();
     for (i, (rust_ty, (arm, arm_const))) in iter {
-        if *rust_ty != arm {
-            bail!("mismatched arguments: {rust_ty:?} != {arm:?}")
+        match (*rust_ty, arm) {
+            // SVE uses generic type parameters to handle void pointers
+            (Type::ConstPtr(Type::GenericParam("T")), Type::ConstPtr(Type::Void)) => (),
+            // SVE const generics use i32 over u64 for usability reasons
+            (Type::PrimSigned(32), Type::PrimUnsigned(64)) if rust.required_const.contains(&i) => {
+                ()
+            }
+            // svset doesn't have its const argument last as we assumed when building the Function
+            _ if rust.name.starts_with("svset") => (),
+            (x, y) if x == y => (),
+            _ => bail!("mismatched arguments: {rust_ty:?} != {arm:?}"),
         }
         if *arm_const {
             nconst += 1;
-            if !rust.required_const.contains(&i) {
+            if !rust.required_const.contains(&i) && !rust.name.starts_with("svset") {
                 bail!("argument const mismatch");
             }
         }
@@ -507,7 +568,7 @@ fn matches(rust: &Function, arm: &Intrinsic) -> Result<(), String> {
         bail!("wrong number of const arguments");
     }
 
-    if rust.instrs.is_empty() {
+    if rust.instrs.is_empty() && arm.instruction != "" {
         bail!(
             "instruction not listed for `{}`, but arm lists {:?}",
             rust.name,
@@ -546,7 +607,7 @@ fn matches(rust: &Function, arm: &Intrinsic) -> Result<(), String> {
     Ok(())
 }
 
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq)]
 struct Intrinsic {
     name: String,
     ret: Option<Type>,
@@ -561,7 +622,7 @@ struct JsonIntrinsic {
     arguments: Vec<String>,
     return_type: ReturnType,
     #[serde(default)]
-    instructions: Vec<Vec<String>>,
+    instructions: Option<Vec<Vec<String>>>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -578,8 +639,8 @@ fn parse_intrinsics(intrinsics: Vec<JsonIntrinsic>) -> HashMap<String, Intrinsic
     ret
 }
 
-fn parse_intrinsic(mut intr: JsonIntrinsic) -> Intrinsic {
-    let name = intr.name;
+fn parse_intrinsic(intr: JsonIntrinsic) -> Intrinsic {
+    let name = intr.name.replace('[', "").replace(']', "");
     let ret = if intr.return_type.value == "void" {
         None
     } else {
@@ -588,18 +649,24 @@ fn parse_intrinsic(mut intr: JsonIntrinsic) -> Intrinsic {
 
     // This ignores multiple instructions and different optional sequences for now to mimic
     // the old HTML scraping behaviour
-    let instruction = intr.instructions.swap_remove(0).swap_remove(0);
+    let instruction = intr
+        .instructions
+        .map_or(String::new(), |mut i| i.swap_remove(0).swap_remove(0));
 
     let arguments = intr
         .arguments
         .iter()
         .map(|s| {
-            let (ty, konst) = match s.strip_prefix("const") {
-                Some(stripped) => (stripped.trim_start(), true),
-                None => (s.as_str(), false),
+            let ty = if let Some(i) = s.find('*') {
+                &s[..i + 1]
+            } else {
+                s.rsplit_once(' ').unwrap().0.trim_start_matches("const ")
             };
-            let ty = ty.rsplit_once(' ').unwrap().0;
-            (parse_ty(ty), konst)
+            let ty = parse_ty(ty);
+            let konst = s.contains("const") && !matches!(ty, Type::ConstPtr(_))
+                || s.starts_with("enum")
+                || s.rsplit_once(" ").unwrap().1.starts_with("imm");
+            (ty, konst)
         })
         .collect::<Vec<_>>();
 
@@ -612,18 +679,26 @@ fn parse_intrinsic(mut intr: JsonIntrinsic) -> Intrinsic {
 }
 
 fn parse_ty(s: &str) -> Type {
-    let suffix = " const *";
-    if let Some(base) = s.strip_suffix(suffix) {
-        Type::ConstPtr(parse_ty_base(base))
-    } else if let Some(base) = s.strip_suffix(" *") {
-        Type::MutPtr(parse_ty_base(base))
+    if let Some(ty) = s.strip_suffix("*") {
+        let ty = ty.trim();
+        if let Some(ty) = ty.strip_prefix("const") {
+            // SVE intrinsics are west-const (const int8_t *)
+            Type::ConstPtr(parse_ty_base(ty))
+        } else if let Some(ty) = ty.strip_suffix("const") {
+            // Neon intrinsics are east-const (int8_t const *)
+            Type::ConstPtr(parse_ty_base(ty))
+        } else {
+            Type::MutPtr(parse_ty_base(ty))
+        }
     } else {
         *parse_ty_base(s)
     }
 }
 
 fn parse_ty_base(s: &str) -> &'static Type {
-    match s {
+    match s.trim() {
+        "bool" => &BOOL,
+        "void" => &VOID,
         "float16_t" => &F16,
         "float16x4_t" => &F16X4,
         "float16x4x2_t" => &F16X4X2,
@@ -753,6 +828,49 @@ fn parse_ty_base(s: &str) -> &'static Type {
         "uint8x8x2_t" => &U8X8X2,
         "uint8x8x3_t" => &U8X8X3,
         "uint8x8x4_t" => &U8X8X4,
+        "svbool_t" => &SVBOOL,
+        "svfloat32_t" => &SVF32,
+        "svfloat32x2_t" => &SVF32X2,
+        "svfloat32x3_t" => &SVF32X3,
+        "svfloat32x4_t" => &SVF32X4,
+        "svfloat64_t" => &SVF64,
+        "svfloat64x2_t" => &SVF64X2,
+        "svfloat64x3_t" => &SVF64X3,
+        "svfloat64x4_t" => &SVF64X4,
+        "svint8_t" => &SVI8,
+        "svint8x2_t" => &SVI8X2,
+        "svint8x3_t" => &SVI8X3,
+        "svint8x4_t" => &SVI8X4,
+        "svint16_t" => &SVI16,
+        "svint16x2_t" => &SVI16X2,
+        "svint16x3_t" => &SVI16X3,
+        "svint16x4_t" => &SVI16X4,
+        "svint32_t" => &SVI32,
+        "svint32x2_t" => &SVI32X2,
+        "svint32x3_t" => &SVI32X3,
+        "svint32x4_t" => &SVI32X4,
+        "svint64_t" => &SVI64,
+        "svint64x2_t" => &SVI64X2,
+        "svint64x3_t" => &SVI64X3,
+        "svint64x4_t" => &SVI64X4,
+        "svuint8_t" => &SVU8,
+        "svuint8x2_t" => &SVU8X2,
+        "svuint8x3_t" => &SVU8X3,
+        "svuint8x4_t" => &SVU8X4,
+        "svuint16_t" => &SVU16,
+        "svuint16x2_t" => &SVU16X2,
+        "svuint16x3_t" => &SVU16X3,
+        "svuint16x4_t" => &SVU16X4,
+        "svuint32_t" => &SVU32,
+        "svuint32x2_t" => &SVU32X2,
+        "svuint32x3_t" => &SVU32X3,
+        "svuint32x4_t" => &SVU32X4,
+        "svuint64_t" => &SVU64,
+        "svuint64x2_t" => &SVU64X2,
+        "svuint64x3_t" => &SVU64X3,
+        "svuint64x4_t" => &SVU64X4,
+        "enum svprfop" => &SVPRFOP,
+        "enum svpattern" => &SVPATTERN,
 
         _ => panic!("failed to parse json type {s:?}"),
     }

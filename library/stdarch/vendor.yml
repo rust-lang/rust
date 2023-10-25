@@ -1,2 +1,3 @@
-- crates/stdarch-verify/arm-intrinsics.html
 - crates/stdarch-verify/x86-intel.xml
+- crates/stdarch-verify/mips-msa.h
+- intrinsics_data/arm_intrinsics.json

@@ -45,7 +45,9 @@ fn functions(input: TokenStream, dirs: &[&str]) -> TokenStream {
     for &mut (ref mut file, ref path) in &mut files {
         for mut item in file.items.drain(..) {
             match item {
-                syn::Item::Fn(f) => functions.push((f, path)),
+                syn::Item::Fn(f) => {
+                    functions.push((f, path));
+                }
                 syn::Item::Mod(ref mut m) => {
                     if let Some(ref mut m) = m.content {
                         for i in m.1.drain(..) {
@@ -71,12 +73,9 @@ fn functions(input: TokenStream, dirs: &[&str]) -> TokenStream {
     assert!(!tests.is_empty());
 
     functions.retain(|(f, _)| {
-        if let syn::Visibility::Public(_) = f.vis {
-            if f.sig.unsafety.is_some() {
-                return true;
-            }
-        }
-        false
+        matches!(f.vis, syn::Visibility::Public(_))
+            // Many SVE intrinsics are safe
+            && (f.sig.unsafety.is_some() || f.sig.ident.to_string().starts_with("sv"))
     });
     assert!(!functions.is_empty());
 
@@ -99,7 +98,7 @@ fn functions(input: TokenStream, dirs: &[&str]) -> TokenStream {
             for generic in f.sig.generics.params.iter() {
                 match *generic {
                     syn::GenericParam::Const(ref c) => const_arguments.push(to_type(&c.ty)),
-                    syn::GenericParam::Type(ref _t) => (),
+                    syn::GenericParam::Type(_) => (),
                     _ => panic!("invalid generic argument on {name}"),
                 };
             }
@@ -118,25 +117,31 @@ fn functions(input: TokenStream, dirs: &[&str]) -> TokenStream {
             };
 
             let required_const = find_required_const("rustc_args_required_const", &f.attrs);
-            let mut legacy_const_generics =
+            let mut const_generics_indices =
                 find_required_const("rustc_legacy_const_generics", &f.attrs);
-            if !required_const.is_empty() && !legacy_const_generics.is_empty() {
+            if !required_const.is_empty() && !const_generics_indices.is_empty() {
                 panic!(
                     "Can't have both #[rustc_args_required_const] and \
                      #[rustc_legacy_const_generics]"
                 );
             }
 
+            // Newer intrinsics don't have legacy support - assume they belong at the end of the argument list
+            if required_const.is_empty() && const_generics_indices.is_empty() {
+                const_generics_indices =
+                    (arguments.len()..(arguments.len() + const_arguments.len())).collect();
+            }
+
             // The list of required consts, used to verify the arguments, comes from either the
             // `rustc_args_required_const` or the `rustc_legacy_const_generics` attribute.
             let required_const = if required_const.is_empty() {
-                legacy_const_generics.clone()
+                const_generics_indices.clone()
             } else {
                 required_const
             };
 
-            legacy_const_generics.sort();
-            for (idx, ty) in legacy_const_generics
+            const_generics_indices.sort();
+            for (idx, ty) in const_generics_indices
                 .into_iter()
                 .zip(const_arguments.into_iter())
             {
@@ -145,12 +150,12 @@ fn functions(input: TokenStream, dirs: &[&str]) -> TokenStream {
 
             // strip leading underscore from fn name when building a test
             // _mm_foo -> mm_foo such that the test name is test_mm_foo.
-            let test_name_string = format!("{name}");
-            let mut test_name_id = test_name_string.as_str();
-            while test_name_id.starts_with('_') {
-                test_name_id = &test_name_id[1..];
-            }
-            let has_test = tests.contains(&format!("test_{test_name_id}"));
+            let test_name = name.to_string();
+            let test_name_id = test_name.trim_start_matches('_');
+            let has_test = tests.contains(&format!("test_{test_name_id}"))
+                // SVE load/store tests
+                || tests.iter().any(|t| t.starts_with(&format!("test_{test_name_id}"))
+                                        || t.ends_with(&format!("_with_{test_name_id}")));
 
             let doc = find_doc(&f.attrs);
 
@@ -221,8 +226,53 @@ fn to_type(t: &syn::Type) -> proc_macro2::TokenStream {
             "p16" => quote! { &P16 },
             "Ordering" => quote! { &ORDERING },
             "CpuidResult" => quote! { &CPUID },
+            "T" => quote! { &GENERICT },
 
             // arm ...
+            "svbool_t" => quote! { &SVBOOL },
+            "svint8_t" => quote! { &SVI8 },
+            "svint8x2_t" => quote! { &SVI8X2 },
+            "svint8x3_t" => quote! { &SVI8X3 },
+            "svint8x4_t" => quote! { &SVI8X4 },
+            "svint16_t" => quote! { &SVI16 },
+            "svint16x2_t" => quote! { &SVI16X2 },
+            "svint16x3_t" => quote! { &SVI16X3 },
+            "svint16x4_t" => quote! { &SVI16X4 },
+            "svint32_t" => quote! { &SVI32 },
+            "svint32x2_t" => quote! { &SVI32X2 },
+            "svint32x3_t" => quote! { &SVI32X3 },
+            "svint32x4_t" => quote! { &SVI32X4 },
+            "svint64_t" => quote! { &SVI64 },
+            "svint64x2_t" => quote! { &SVI64X2 },
+            "svint64x3_t" => quote! { &SVI64X3 },
+            "svint64x4_t" => quote! { &SVI64X4 },
+            "svuint8_t" => quote! { &SVU8 },
+            "svuint8x2_t" => quote! { &SVU8X2 },
+            "svuint8x3_t" => quote! { &SVU8X3 },
+            "svuint8x4_t" => quote! { &SVU8X4 },
+            "svuint16_t" => quote! { &SVU16 },
+            "svuint16x2_t" => quote! { &SVU16X2 },
+            "svuint16x3_t" => quote! { &SVU16X3 },
+            "svuint16x4_t" => quote! { &SVU16X4 },
+            "svuint32_t" => quote! { &SVU32 },
+            "svuint32x2_t" => quote! { &SVU32X2 },
+            "svuint32x3_t" => quote! { &SVU32X3 },
+            "svuint32x4_t" => quote! { &SVU32X4 },
+            "svuint64_t" => quote! { &SVU64 },
+            "svuint64x2_t" => quote! { &SVU64X2 },
+            "svuint64x3_t" => quote! { &SVU64X3 },
+            "svuint64x4_t" => quote! { &SVU64X4 },
+            "svfloat32_t" => quote! { &SVF32 },
+            "svfloat32x2_t" => quote! { &SVF32X2 },
+            "svfloat32x3_t" => quote! { &SVF32X3 },
+            "svfloat32x4_t" => quote! { &SVF32X4 },
+            "svfloat64_t" => quote! { &SVF64 },
+            "svfloat64x2_t" => quote! { &SVF64X2 },
+            "svfloat64x3_t" => quote! { &SVF64X3 },
+            "svfloat64x4_t" => quote! { &SVF64X4 },
+            "svprfop" => quote! { &SVPRFOP },
+            "svpattern" => quote! { &SVPATTERN },
+
             "int8x4_t" => quote! { &I8X4 },
             "int8x8_t" => quote! { &I8X8 },
             "int8x8x2_t" => quote! { &I8X8X2 },
