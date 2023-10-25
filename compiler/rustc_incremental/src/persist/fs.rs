@@ -53,7 +53,7 @@
 //! ## Synchronization
 //!
 //! There is some synchronization needed in order for the compiler to be able to
-//! determine whether a given private session directory is not in used any more.
+//! determine whether a given private session directory is not in use any more.
 //! This is done by creating a lock file for each session directory and
 //! locking it while the directory is still being used. Since file locks have
 //! operating system support, we can rely on the lock being released if the
