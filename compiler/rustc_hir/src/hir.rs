@@ -1568,7 +1568,7 @@ impl CoroutineSource {
         match self {
             CoroutineSource::Block => "`async` block",
             CoroutineSource::Closure => "`async` closure body",
-            CoroutineSource::Fn => "`async fn` body",
+            CoroutineSource::Fn => "`async` fn body",
         }
     }
 }
