@@ -182,13 +182,10 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
     }
 
     tcx.sess.track_errors(|| {
-        tcx.sess.time("impl_wf_inference", || {
-            tcx.hir().for_each_module(|module| tcx.ensure().check_mod_impl_wf(module))
-        });
-    })?;
-
-    tcx.sess.track_errors(|| {
         tcx.sess.time("coherence_checking", || {
+            // Check impls constrain their parameters
+            tcx.hir().for_each_module(|module| tcx.ensure().check_mod_impl_wf(module));
+
             for &trait_def_id in tcx.all_local_trait_impls(()).keys() {
                 tcx.ensure().coherent_trait(trait_def_id);
             }
