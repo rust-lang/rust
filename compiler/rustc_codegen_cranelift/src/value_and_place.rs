@@ -132,18 +132,11 @@ impl<'tcx> CValue<'tcx> {
                 (ptr.get_addr(fx), vtable)
             }
             CValueInner::ByValPair(data, vtable) => {
-                let stack_slot = fx.bcx.create_sized_stack_slot(StackSlotData {
-                    kind: StackSlotKind::ExplicitSlot,
-                    // FIXME Don't force the size to a multiple of 16 bytes once Cranelift gets a way to
-                    // specify stack slot alignment.
-                    size: (u32::try_from(fx.target_config.pointer_type().bytes()).unwrap() + 15)
-                        / 16
-                        * 16,
-                });
-                let data_ptr = Pointer::stack_slot(stack_slot);
-                let mut flags = MemFlags::new();
-                flags.set_notrap();
-                data_ptr.store(fx, data, flags);
+                let data_ptr = fx.create_stack_slot(
+                    u32::try_from(fx.target_config.pointer_type().bytes()).unwrap(),
+                    u32::try_from(fx.target_config.pointer_type().bytes()).unwrap(),
+                );
+                data_ptr.store(fx, data, MemFlags::trusted());
 
                 (data_ptr.get_addr(fx), vtable)
             }
@@ -372,13 +365,11 @@ impl<'tcx> CPlace<'tcx> {
                 .fatal(format!("values of type {} are too big to store on the stack", layout.ty));
         }
 
-        let stack_slot = fx.bcx.create_sized_stack_slot(StackSlotData {
-            kind: StackSlotKind::ExplicitSlot,
-            // FIXME Don't force the size to a multiple of 16 bytes once Cranelift gets a way to
-            // specify stack slot alignment.
-            size: (u32::try_from(layout.size.bytes()).unwrap() + 15) / 16 * 16,
-        });
-        CPlace { inner: CPlaceInner::Addr(Pointer::stack_slot(stack_slot), None), layout }
+        let stack_slot = fx.create_stack_slot(
+            u32::try_from(layout.size.bytes()).unwrap(),
+            u32::try_from(layout.align.pref.bytes()).unwrap(),
+        );
+        CPlace { inner: CPlaceInner::Addr(stack_slot, None), layout }
     }
 
     pub(crate) fn new_var(
@@ -543,13 +534,7 @@ impl<'tcx> CPlace<'tcx> {
                 _ if src_ty.is_vector() && dst_ty.is_vector() => codegen_bitcast(fx, dst_ty, data),
                 _ if src_ty.is_vector() || dst_ty.is_vector() => {
                     // FIXME(bytecodealliance/wasmtime#6104) do something more efficient for transmutes between vectors and integers.
-                    let stack_slot = fx.bcx.create_sized_stack_slot(StackSlotData {
-                        kind: StackSlotKind::ExplicitSlot,
-                        // FIXME Don't force the size to a multiple of 16 bytes once Cranelift gets a way to
-                        // specify stack slot alignment.
-                        size: (src_ty.bytes() + 15) / 16 * 16,
-                    });
-                    let ptr = Pointer::stack_slot(stack_slot);
+                    let ptr = fx.create_stack_slot(src_ty.bytes(), src_ty.bytes());
                     ptr.store(fx, data, MemFlags::trusted());
                     ptr.load(fx, dst_ty, MemFlags::trusted())
                 }

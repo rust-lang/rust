@@ -27,6 +27,7 @@ use rustc_middle::ty::{
     self, AdtDef, CanonicalUserTypeAnnotation, GenericArg, GenericArgsRef, Region, Ty, TyCtxt,
     TypeVisitableExt, UserType,
 };
+use rustc_span::def_id::LocalDefId;
 use rustc_span::{ErrorGuaranteed, Span, Symbol};
 use rustc_target::abi::{FieldIdx, Integer};
 
@@ -88,15 +89,21 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     fn lower_pattern_range_endpoint(
         &mut self,
         expr: Option<&'tcx hir::Expr<'tcx>>,
-    ) -> Result<(Option<mir::Const<'tcx>>, Option<Ascription<'tcx>>), ErrorGuaranteed> {
+    ) -> Result<
+        (Option<mir::Const<'tcx>>, Option<Ascription<'tcx>>, Option<LocalDefId>),
+        ErrorGuaranteed,
+    > {
         match expr {
-            None => Ok((None, None)),
+            None => Ok((None, None, None)),
             Some(expr) => {
-                let (kind, ascr) = match self.lower_lit(expr) {
-                    PatKind::AscribeUserType { ascription, subpattern: box Pat { kind, .. } } => {
-                        (kind, Some(ascription))
+                let (kind, ascr, inline_const) = match self.lower_lit(expr) {
+                    PatKind::InlineConstant { subpattern, def } => {
+                        (subpattern.kind, None, Some(def))
                     }
-                    kind => (kind, None),
+                    PatKind::AscribeUserType { ascription, subpattern: box Pat { kind, .. } } => {
+                        (kind, Some(ascription), None)
+                    }
+                    kind => (kind, None, None),
                 };
                 let value = if let PatKind::Constant { value } = kind {
                     value
@@ -106,7 +113,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     );
                     return Err(self.tcx.sess.delay_span_bug(expr.span, msg));
                 };
-                Ok((Some(value), ascr))
+                Ok((Some(value), ascr, inline_const))
             }
         }
     }
@@ -177,8 +184,8 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             return Err(self.tcx.sess.delay_span_bug(span, msg));
         }
 
-        let (lo, lo_ascr) = self.lower_pattern_range_endpoint(lo_expr)?;
-        let (hi, hi_ascr) = self.lower_pattern_range_endpoint(hi_expr)?;
+        let (lo, lo_ascr, lo_inline) = self.lower_pattern_range_endpoint(lo_expr)?;
+        let (hi, hi_ascr, hi_inline) = self.lower_pattern_range_endpoint(hi_expr)?;
 
         let lo = lo.unwrap_or_else(|| {
             // Unwrap is ok because the type is known to be numeric.
@@ -235,6 +242,12 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     ascription,
                     subpattern: Box::new(Pat { span, ty, kind }),
                 };
+            }
+        }
+        for inline_const in [lo_inline, hi_inline] {
+            if let Some(def) = inline_const {
+                kind =
+                    PatKind::InlineConstant { def, subpattern: Box::new(Pat { span, ty, kind }) };
             }
         }
         Ok(kind)
@@ -599,11 +612,9 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         // const eval path below.
         // FIXME: investigate the performance impact of removing this.
         let lit_input = match expr.kind {
-            hir::ExprKind::Lit(ref lit) => Some(LitToConstInput { lit: &lit.node, ty, neg: false }),
-            hir::ExprKind::Unary(hir::UnOp::Neg, ref expr) => match expr.kind {
-                hir::ExprKind::Lit(ref lit) => {
-                    Some(LitToConstInput { lit: &lit.node, ty, neg: true })
-                }
+            hir::ExprKind::Lit(lit) => Some(LitToConstInput { lit: &lit.node, ty, neg: false }),
+            hir::ExprKind::Unary(hir::UnOp::Neg, expr) => match expr.kind {
+                hir::ExprKind::Lit(lit) => Some(LitToConstInput { lit: &lit.node, ty, neg: true }),
                 _ => None,
             },
             _ => None,
@@ -633,13 +644,13 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         if let Ok(Some(valtree)) =
             self.tcx.const_eval_resolve_for_typeck(self.param_env, ct, Some(span))
         {
-            self.const_to_pat(
+            let subpattern = self.const_to_pat(
                 Const::Ty(ty::Const::new_value(self.tcx, valtree, ty)),
                 id,
                 span,
                 None,
-            )
-            .kind
+            );
+            PatKind::InlineConstant { subpattern, def: def_id }
         } else {
             // If that fails, convert it to an opaque constant pattern.
             match tcx.const_eval_resolve(self.param_env, uneval, Some(span)) {
@@ -822,6 +833,9 @@ impl<'tcx> PatternFoldable<'tcx> for PatKind<'tcx> {
                 PatKind::Deref { subpattern: subpattern.fold_with(folder) }
             }
             PatKind::Constant { value } => PatKind::Constant { value },
+            PatKind::InlineConstant { def, subpattern: ref pattern } => {
+                PatKind::InlineConstant { def, subpattern: pattern.fold_with(folder) }
+            }
             PatKind::Range(ref range) => PatKind::Range(range.clone()),
             PatKind::Slice { ref prefix, ref slice, ref suffix } => PatKind::Slice {
                 prefix: prefix.fold_with(folder),

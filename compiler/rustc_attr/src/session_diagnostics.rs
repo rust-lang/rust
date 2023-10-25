@@ -371,6 +371,13 @@ pub(crate) struct ExpectsFeatures {
 }
 
 #[derive(Diagnostic)]
+#[diag(attr_invalid_since)]
+pub(crate) struct InvalidSince {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(attr_soft_no_args)]
 pub(crate) struct SoftNoArgs {
     #[primary_span]

@@ -54,7 +54,7 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{ExpnId, ExpnKind, Span};
 use rustc_target::abi::{Align, FieldIdx, Integer, IntegerType, VariantIdx};
 pub use rustc_target::abi::{ReprFlags, ReprOptions};
-pub use rustc_type_ir::{DebugWithInfcx, InferCtxtLike, OptWithInfcx};
+pub use rustc_type_ir::{DebugWithInfcx, InferCtxtLike, WithInfcx};
 pub use vtable::*;
 
 use std::fmt::Debug;
@@ -1084,19 +1084,19 @@ impl ParamTerm {
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
-pub enum TermVid<'tcx> {
+pub enum TermVid {
     Ty(ty::TyVid),
-    Const(ty::ConstVid<'tcx>),
+    Const(ty::ConstVid),
 }
 
-impl From<ty::TyVid> for TermVid<'_> {
+impl From<ty::TyVid> for TermVid {
     fn from(value: ty::TyVid) -> Self {
         TermVid::Ty(value)
     }
 }
 
-impl<'tcx> From<ty::ConstVid<'tcx>> for TermVid<'tcx> {
-    fn from(value: ty::ConstVid<'tcx>) -> Self {
+impl From<ty::ConstVid> for TermVid {
+    fn from(value: ty::ConstVid) -> Self {
         TermVid::Const(value)
     }
 }

@@ -224,12 +224,20 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'_, 'tcx> {
         let kind = match *r {
             ty::ReLateBound(..) => return r,
 
-            ty::ReStatic => match self.canonicalize_mode {
+            // We may encounter `ReStatic` in item signatures or the hidden type
+            // of an opaque. `ReErased` should only be encountered in the hidden
+            // type of an opaque for regions that are ignored for the purposes of
+            // captures.
+            //
+            // FIXME: We should investigate the perf implications of not uniquifying
+            // `ReErased`. We may be able to short-circuit registering region
+            // obligations if we encounter a `ReErased` on one side, for example.
+            ty::ReStatic | ty::ReErased => match self.canonicalize_mode {
                 CanonicalizeMode::Input => CanonicalVarKind::Region(ty::UniverseIndex::ROOT),
                 CanonicalizeMode::Response { .. } => return r,
             },
 
-            ty::ReErased | ty::ReFree(_) | ty::ReEarlyBound(_) => match self.canonicalize_mode {
+            ty::ReFree(_) | ty::ReEarlyBound(_) => match self.canonicalize_mode {
                 CanonicalizeMode::Input => CanonicalVarKind::Region(ty::UniverseIndex::ROOT),
                 CanonicalizeMode::Response { .. } => bug!("unexpected region in response: {r:?}"),
             },

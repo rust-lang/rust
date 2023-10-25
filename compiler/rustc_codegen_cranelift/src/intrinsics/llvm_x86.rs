@@ -310,6 +310,143 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
             let val = CValue::by_val_pair(cb_out, c, layout);
             ret.write_cvalue(fx, val);
         }
+        "llvm.x86.sse2.pavg.b" | "llvm.x86.sse2.pavg.w" => {
+            intrinsic_args!(fx, args => (a, b); intrinsic);
+
+            // FIXME use vector instructions when possible
+            simd_pair_for_each_lane(
+                fx,
+                a,
+                b,
+                ret,
+                &|fx, _lane_ty, _res_lane_ty, a_lane, b_lane| {
+                    // (a + b + 1) >> 1
+                    let lane_ty = fx.bcx.func.dfg.value_type(a_lane);
+                    let a_lane = fx.bcx.ins().uextend(lane_ty.double_width().unwrap(), a_lane);
+                    let b_lane = fx.bcx.ins().uextend(lane_ty.double_width().unwrap(), b_lane);
+                    let sum = fx.bcx.ins().iadd(a_lane, b_lane);
+                    let num_plus_one = fx.bcx.ins().iadd_imm(sum, 1);
+                    let res = fx.bcx.ins().ushr_imm(num_plus_one, 1);
+                    fx.bcx.ins().ireduce(lane_ty, res)
+                },
+            );
+        }
+        "llvm.x86.sse2.psra.w" => {
+            intrinsic_args!(fx, args => (a, count); intrinsic);
+
+            let count_lane = count.force_stack(fx).0.load(fx, types::I64, MemFlags::trusted());
+            let lane_ty = fx.clif_type(a.layout().ty.simd_size_and_type(fx.tcx).1).unwrap();
+            let max_count = fx.bcx.ins().iconst(types::I64, i64::from(lane_ty.bits() - 1));
+            let saturated_count = fx.bcx.ins().umin(count_lane, max_count);
+
+            // FIXME use vector instructions when possible
+            simd_for_each_lane(fx, a, ret, &|fx, _lane_ty, _res_lane_ty, a_lane| {
+                fx.bcx.ins().sshr(a_lane, saturated_count)
+            });
+        }
+        "llvm.x86.sse2.psad.bw" => {
+            intrinsic_args!(fx, args => (a, b); intrinsic);
+
+            assert_eq!(a.layout(), b.layout());
+            let layout = a.layout();
+
+            let (lane_count, lane_ty) = layout.ty.simd_size_and_type(fx.tcx);
+            let (ret_lane_count, ret_lane_ty) = ret.layout().ty.simd_size_and_type(fx.tcx);
+            assert_eq!(lane_ty, fx.tcx.types.u8);
+            assert_eq!(ret_lane_ty, fx.tcx.types.u64);
+            assert_eq!(lane_count, ret_lane_count * 8);
+
+            let ret_lane_layout = fx.layout_of(fx.tcx.types.u64);
+            for out_lane_idx in 0..lane_count / 8 {
+                let mut lane_diff_acc = fx.bcx.ins().iconst(types::I64, 0);
+
+                for lane_idx in out_lane_idx * 8..out_lane_idx * 8 + 1 {
+                    let a_lane = a.value_lane(fx, lane_idx).load_scalar(fx);
+                    let b_lane = b.value_lane(fx, lane_idx).load_scalar(fx);
+
+                    let lane_diff = fx.bcx.ins().isub(a_lane, b_lane);
+                    let abs_lane_diff = fx.bcx.ins().iabs(lane_diff);
+                    let abs_lane_diff = fx.bcx.ins().uextend(types::I64, abs_lane_diff);
+                    lane_diff_acc = fx.bcx.ins().iadd(lane_diff_acc, abs_lane_diff);
+                }
+
+                let res_lane = CValue::by_val(lane_diff_acc, ret_lane_layout);
+
+                ret.place_lane(fx, out_lane_idx).write_cvalue(fx, res_lane);
+            }
+        }
+        "llvm.x86.ssse3.pmadd.ub.sw.128" => {
+            intrinsic_args!(fx, args => (a, b); intrinsic);
+
+            let (lane_count, lane_ty) = a.layout().ty.simd_size_and_type(fx.tcx);
+            let (ret_lane_count, ret_lane_ty) = ret.layout().ty.simd_size_and_type(fx.tcx);
+            assert_eq!(lane_ty, fx.tcx.types.u8);
+            assert_eq!(ret_lane_ty, fx.tcx.types.i16);
+            assert_eq!(lane_count, ret_lane_count * 2);
+
+            let ret_lane_layout = fx.layout_of(fx.tcx.types.i16);
+            for out_lane_idx in 0..lane_count / 2 {
+                let a_lane0 = a.value_lane(fx, out_lane_idx * 2).load_scalar(fx);
+                let a_lane0 = fx.bcx.ins().uextend(types::I16, a_lane0);
+                let b_lane0 = b.value_lane(fx, out_lane_idx * 2).load_scalar(fx);
+                let b_lane0 = fx.bcx.ins().sextend(types::I16, b_lane0);
+
+                let a_lane1 = a.value_lane(fx, out_lane_idx * 2 + 1).load_scalar(fx);
+                let a_lane1 = fx.bcx.ins().uextend(types::I16, a_lane1);
+                let b_lane1 = b.value_lane(fx, out_lane_idx * 2 + 1).load_scalar(fx);
+                let b_lane1 = fx.bcx.ins().sextend(types::I16, b_lane1);
+
+                let mul0: Value = fx.bcx.ins().imul(a_lane0, b_lane0);
+                let mul1 = fx.bcx.ins().imul(a_lane1, b_lane1);
+
+                let (val, has_overflow) = fx.bcx.ins().sadd_overflow(mul0, mul1);
+
+                let rhs_ge_zero = fx.bcx.ins().icmp_imm(IntCC::SignedGreaterThanOrEqual, mul1, 0);
+
+                let min = fx.bcx.ins().iconst(types::I16, i64::from(i16::MIN as u16));
+                let max = fx.bcx.ins().iconst(types::I16, i64::from(i16::MAX as u16));
+
+                let sat_val = fx.bcx.ins().select(rhs_ge_zero, max, min);
+                let res_lane = fx.bcx.ins().select(has_overflow, sat_val, val);
+
+                let res_lane = CValue::by_val(res_lane, ret_lane_layout);
+
+                ret.place_lane(fx, out_lane_idx).write_cvalue(fx, res_lane);
+            }
+        }
+        "llvm.x86.sse2.pmadd.wd" => {
+            intrinsic_args!(fx, args => (a, b); intrinsic);
+
+            assert_eq!(a.layout(), b.layout());
+            let layout = a.layout();
+
+            let (lane_count, lane_ty) = layout.ty.simd_size_and_type(fx.tcx);
+            let (ret_lane_count, ret_lane_ty) = ret.layout().ty.simd_size_and_type(fx.tcx);
+            assert_eq!(lane_ty, fx.tcx.types.i16);
+            assert_eq!(ret_lane_ty, fx.tcx.types.i32);
+            assert_eq!(lane_count, ret_lane_count * 2);
+
+            let ret_lane_layout = fx.layout_of(fx.tcx.types.i32);
+            for out_lane_idx in 0..lane_count / 2 {
+                let a_lane0 = a.value_lane(fx, out_lane_idx * 2).load_scalar(fx);
+                let a_lane0 = fx.bcx.ins().uextend(types::I32, a_lane0);
+                let b_lane0 = b.value_lane(fx, out_lane_idx * 2).load_scalar(fx);
+                let b_lane0 = fx.bcx.ins().sextend(types::I32, b_lane0);
+
+                let a_lane1 = a.value_lane(fx, out_lane_idx * 2 + 1).load_scalar(fx);
+                let a_lane1 = fx.bcx.ins().uextend(types::I32, a_lane1);
+                let b_lane1 = b.value_lane(fx, out_lane_idx * 2 + 1).load_scalar(fx);
+                let b_lane1 = fx.bcx.ins().sextend(types::I32, b_lane1);
+
+                let mul0: Value = fx.bcx.ins().imul(a_lane0, b_lane0);
+                let mul1 = fx.bcx.ins().imul(a_lane1, b_lane1);
+
+                let res_lane = fx.bcx.ins().iadd(mul0, mul1);
+                let res_lane = CValue::by_val(res_lane, ret_lane_layout);
+
+                ret.place_lane(fx, out_lane_idx).write_cvalue(fx, res_lane);
+            }
+        }
         _ => {
             fx.tcx
                 .sess

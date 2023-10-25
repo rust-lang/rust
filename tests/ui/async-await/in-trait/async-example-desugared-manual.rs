@@ -1,7 +1,5 @@
 // edition: 2021
 
-#![allow(incomplete_features)]
-
 use std::future::Future;
 use std::task::Poll;
 

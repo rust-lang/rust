@@ -2505,9 +2505,12 @@ Windows.Win32.System.Threading.CREATE_SEPARATE_WOW_VDM
 Windows.Win32.System.Threading.CREATE_SHARED_WOW_VDM
 Windows.Win32.System.Threading.CREATE_SUSPENDED
 Windows.Win32.System.Threading.CREATE_UNICODE_ENVIRONMENT
+Windows.Win32.System.Threading.CREATE_WAITABLE_TIMER_HIGH_RESOLUTION
+Windows.Win32.System.Threading.CREATE_WAITABLE_TIMER_MANUAL_RESET
 Windows.Win32.System.Threading.CreateEventW
 Windows.Win32.System.Threading.CreateProcessW
 Windows.Win32.System.Threading.CreateThread
+Windows.Win32.System.Threading.CreateWaitableTimerExW
 Windows.Win32.System.Threading.DEBUG_ONLY_THIS_PROCESS
 Windows.Win32.System.Threading.DEBUG_PROCESS
 Windows.Win32.System.Threading.DeleteProcThreadAttributeList
@@ -2544,6 +2547,7 @@ Windows.Win32.System.Threading.REALTIME_PRIORITY_CLASS
 Windows.Win32.System.Threading.ReleaseSRWLockExclusive
 Windows.Win32.System.Threading.ReleaseSRWLockShared
 Windows.Win32.System.Threading.SetThreadStackGuarantee
+Windows.Win32.System.Threading.SetWaitableTimer
 Windows.Win32.System.Threading.Sleep
 Windows.Win32.System.Threading.SleepConditionVariableSRW
 Windows.Win32.System.Threading.SleepEx
@@ -2570,6 +2574,8 @@ Windows.Win32.System.Threading.TerminateProcess
 Windows.Win32.System.Threading.THREAD_CREATE_RUN_IMMEDIATELY
 Windows.Win32.System.Threading.THREAD_CREATE_SUSPENDED
 Windows.Win32.System.Threading.THREAD_CREATION_FLAGS
+Windows.Win32.System.Threading.TIMER_ALL_ACCESS
+Windows.Win32.System.Threading.TIMER_MODIFY_STATE
 Windows.Win32.System.Threading.TLS_OUT_OF_INDEXES
 Windows.Win32.System.Threading.TlsAlloc
 Windows.Win32.System.Threading.TlsFree

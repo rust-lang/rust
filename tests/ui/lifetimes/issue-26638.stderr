@@ -44,6 +44,10 @@ LL | fn parse_type(iter: Box<dyn Iterator<Item=&str>+'static>) -> &str { iter.ne
    |
    = note: expected reference `&str`
                    found enum `Option<&str>`
+help: consider using `Option::expect` to unwrap the `Option<&str>` value, panicking if the value is an `Option::None`
+   |
+LL | fn parse_type(iter: Box<dyn Iterator<Item=&str>+'static>) -> &str { iter.next().expect("REASON") }
+   |                                                                                +++++++++++++++++
 
 error[E0061]: this function takes 1 argument but 0 arguments were supplied
   --> $DIR/issue-26638.rs:5:47

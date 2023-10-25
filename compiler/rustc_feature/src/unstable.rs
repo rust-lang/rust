@@ -288,6 +288,7 @@ declare_features! (
     (unstable, csky_target_feature, "1.73.0", Some(44839), None),
     (unstable, ermsb_target_feature, "1.49.0", Some(44839), None),
     (unstable, hexagon_target_feature, "1.27.0", Some(44839), None),
+    (unstable, loongarch_target_feature, "1.73.0", Some(44839), None),
     (unstable, mips_target_feature, "1.27.0", Some(44839), None),
     (unstable, powerpc_target_feature, "1.27.0", Some(44839), None),
     (unstable, riscv_target_feature, "1.45.0", Some(44839), None),

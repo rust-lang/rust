@@ -1,5 +1,3 @@
-#![allow(incomplete_features)]
-
 struct S;
 
 trait Foo {

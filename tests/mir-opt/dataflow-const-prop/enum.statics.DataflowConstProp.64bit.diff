@@ -44,7 +44,8 @@
           StorageLive(_1);
           StorageLive(_2);
           _2 = const {ALLOC1: &E};
-          _1 = (*_2);
+-         _1 = (*_2);
++         _1 = const E::V1(0_i32);
           StorageDead(_2);
           StorageLive(_3);
 -         _4 = discriminant(_1);
@@ -110,6 +111,10 @@
           StorageDead(_1);
           return;
       }
++ }
++ 
++ ALLOC3 (size: 8, align: 4) {
++     00 00 00 00 00 00 00 00                         │ ........
   }
   
   ALLOC2 (static: RC, size: 8, align: 8) {

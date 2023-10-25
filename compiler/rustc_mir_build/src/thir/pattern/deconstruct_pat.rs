@@ -1326,7 +1326,8 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
         let ctor;
         let fields;
         match &pat.kind {
-            PatKind::AscribeUserType { subpattern, .. } => return mkpat(subpattern),
+            PatKind::AscribeUserType { subpattern, .. }
+            | PatKind::InlineConstant { subpattern, .. } => return mkpat(subpattern),
             PatKind::Binding { subpattern: Some(subpat), .. } => return mkpat(subpat),
             PatKind::Binding { subpattern: None, .. } | PatKind::Wild => {
                 ctor = Wildcard;
