@@ -136,26 +136,29 @@ const QUERY_CACHE_FILENAME: &str = "query-cache.bin";
 const INT_ENCODE_BASE: usize = base_n::CASE_INSENSITIVE;
 
 /// Returns the path to a session's dependency graph.
-pub fn dep_graph_path(sess: &Session) -> PathBuf {
+pub(crate) fn dep_graph_path(sess: &Session) -> PathBuf {
     in_incr_comp_dir_sess(sess, DEP_GRAPH_FILENAME)
 }
+
 /// Returns the path to a session's staging dependency graph.
 ///
 /// On the difference between dep-graph and staging dep-graph,
 /// see `build_dep_graph`.
-pub fn staging_dep_graph_path(sess: &Session) -> PathBuf {
+pub(crate) fn staging_dep_graph_path(sess: &Session) -> PathBuf {
     in_incr_comp_dir_sess(sess, STAGING_DEP_GRAPH_FILENAME)
 }
-pub fn work_products_path(sess: &Session) -> PathBuf {
+
+pub(crate) fn work_products_path(sess: &Session) -> PathBuf {
     in_incr_comp_dir_sess(sess, WORK_PRODUCTS_FILENAME)
 }
+
 /// Returns the path to a session's query cache.
 pub fn query_cache_path(sess: &Session) -> PathBuf {
     in_incr_comp_dir_sess(sess, QUERY_CACHE_FILENAME)
 }
 
 /// Locks a given session directory.
-pub fn lock_file_path(session_dir: &Path) -> PathBuf {
+fn lock_file_path(session_dir: &Path) -> PathBuf {
     let crate_dir = session_dir.parent().unwrap();
 
     let directory_name = session_dir.file_name().unwrap().to_string_lossy();
@@ -373,7 +376,7 @@ pub fn finalize_session_directory(sess: &Session, svh: Option<Svh>) {
     let _ = garbage_collect_session_directories(sess);
 }
 
-pub fn delete_all_session_dir_contents(sess: &Session) -> io::Result<()> {
+pub(crate) fn delete_all_session_dir_contents(sess: &Session) -> io::Result<()> {
     let sess_dir_iterator = sess.incr_comp_session_dir().read_dir()?;
     for entry in sess_dir_iterator {
         let entry = entry?;
