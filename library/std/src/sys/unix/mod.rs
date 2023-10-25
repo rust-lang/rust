@@ -415,7 +415,6 @@ cfg_if::cfg_if! {
     } else if #[cfg(any(target_os = "ios", target_os = "tvos", target_os = "watchos"))] {
         #[link(name = "System")]
         #[link(name = "objc")]
-        #[link(name = "Security", kind = "framework")]
         #[link(name = "Foundation", kind = "framework")]
         extern "C" {}
     } else if #[cfg(target_os = "fuchsia")] {

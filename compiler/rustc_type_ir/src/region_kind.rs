@@ -5,8 +5,8 @@ use std::fmt;
 use std::hash;
 
 use crate::{
-    DebruijnIndex, DebugWithInfcx, HashStableContext, InferCtxtLike, Interner, OptWithInfcx,
-    TyDecoder, TyEncoder,
+    DebruijnIndex, DebugWithInfcx, HashStableContext, InferCtxtLike, Interner, TyDecoder,
+    TyEncoder, WithInfcx,
 };
 
 use self::RegionKind::*;
@@ -274,8 +274,8 @@ impl<I: Interner> hash::Hash for RegionKind<I> {
 }
 
 impl<I: Interner> DebugWithInfcx<I> for RegionKind<I> {
-    fn fmt<InfCtx: InferCtxtLike<I>>(
-        this: OptWithInfcx<'_, I, InfCtx, &Self>,
+    fn fmt<Infcx: InferCtxtLike<Interner = I>>(
+        this: WithInfcx<'_, Infcx, &Self>,
         f: &mut core::fmt::Formatter<'_>,
     ) -> core::fmt::Result {
         match this.data {
@@ -301,7 +301,7 @@ impl<I: Interner> DebugWithInfcx<I> for RegionKind<I> {
 }
 impl<I: Interner> fmt::Debug for RegionKind<I> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        OptWithInfcx::new_no_ctx(self).fmt(f)
+        WithInfcx::with_no_infcx(self).fmt(f)
     }
 }
 

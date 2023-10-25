@@ -21,7 +21,7 @@ error: module has missing stability attribute
 LL | / #![feature(staged_api, never_type, rust_cold_cc)]
 LL | |
 LL | |
-LL | | #[stable(feature = "a", since = "1")]
+LL | | #[stable(feature = "a", since = "3.3.3")]
 ...  |
 LL | |
 LL | | fn main() {}

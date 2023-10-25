@@ -320,7 +320,7 @@ impl<'tcx> InferCtxt<'tcx> {
     #[instrument(level = "debug", skip(self))]
     fn unify_const_variable(
         &self,
-        target_vid: ty::ConstVid<'tcx>,
+        target_vid: ty::ConstVid,
         ct: ty::Const<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> RelateResult<'tcx, ty::Const<'tcx>> {
@@ -381,7 +381,7 @@ impl<'tcx> InferCtxt<'tcx> {
     fn unify_effect_variable(
         &self,
         vid_is_expected: bool,
-        vid: ty::EffectVid<'tcx>,
+        vid: ty::EffectVid,
         val: EffectVarValue<'tcx>,
     ) -> RelateResult<'tcx, ty::Const<'tcx>> {
         self.inner

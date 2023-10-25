@@ -33,7 +33,7 @@
             ]
         },
         {
-            "sysroot_src": "./download/sysroot/sysroot_src/library",
+            "sysroot_src": "./build/stdlib/library",
             "crates": [
                 {
                     "root_module": "./example/std_example.rs",

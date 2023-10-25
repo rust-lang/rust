@@ -6,7 +6,7 @@
 //! match those defined by C, so that code that interacts with C will
 //! refer to the correct types.
 
-#![stable(feature = "", since = "1.30.0")]
+#![stable(feature = "core_ffi", since = "1.30.0")]
 #![allow(non_camel_case_types)]
 
 use crate::fmt;

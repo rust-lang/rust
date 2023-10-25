@@ -29,7 +29,6 @@ use std::assert_matches::debug_assert_matches;
 use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::fmt;
-use std::marker::PhantomData;
 use std::ops::{ControlFlow, Deref, Range};
 use ty::util::IntTypeExt;
 
@@ -683,8 +682,8 @@ pub enum ExistentialPredicate<'tcx> {
 }
 
 impl<'tcx> DebugWithInfcx<TyCtxt<'tcx>> for ExistentialPredicate<'tcx> {
-    fn fmt<InfCtx: rustc_type_ir::InferCtxtLike<TyCtxt<'tcx>>>(
-        this: rustc_type_ir::OptWithInfcx<'_, TyCtxt<'tcx>, InfCtx, &Self>,
+    fn fmt<Infcx: rustc_type_ir::InferCtxtLike<Interner = TyCtxt<'tcx>>>(
+        this: rustc_type_ir::WithInfcx<'_, Infcx, &Self>,
         f: &mut core::fmt::Formatter<'_>,
     ) -> core::fmt::Result {
         fmt::Debug::fmt(&this.data, f)
@@ -1583,26 +1582,22 @@ impl fmt::Debug for EarlyBoundRegion {
     }
 }
 
-/// A **`const`** **v**ariable **ID**.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[derive(HashStable, TyEncodable, TyDecodable)]
-pub struct ConstVid<'tcx> {
-    pub index: u32,
-    pub phantom: PhantomData<&'tcx ()>,
+rustc_index::newtype_index! {
+    /// A **`const`** **v**ariable **ID**.
+    #[debug_format = "?{}c"]
+    pub struct ConstVid {}
 }
 
-/// An **effect** **v**ariable **ID**.
-///
-/// Handling effect infer variables happens separately from const infer variables
-/// because we do not want to reuse any of the const infer machinery. If we try to
-/// relate an effect variable with a normal one, we would ICE, which can catch bugs
-/// where we are not correctly using the effect var for an effect param. Fallback
-/// is also implemented on top of having separate effect and normal const variables.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[derive(TyEncodable, TyDecodable)]
-pub struct EffectVid<'tcx> {
-    pub index: u32,
-    pub phantom: PhantomData<&'tcx ()>,
+rustc_index::newtype_index! {
+    /// An **effect** **v**ariable **ID**.
+    ///
+    /// Handling effect infer variables happens separately from const infer variables
+    /// because we do not want to reuse any of the const infer machinery. If we try to
+    /// relate an effect variable with a normal one, we would ICE, which can catch bugs
+    /// where we are not correctly using the effect var for an effect param. Fallback
+    /// is also implemented on top of having separate effect and normal const variables.
+    #[debug_format = "?{}e"]
+    pub struct EffectVid {}
 }
 
 rustc_index::newtype_index! {

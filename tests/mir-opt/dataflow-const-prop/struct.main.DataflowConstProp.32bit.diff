@@ -7,13 +7,24 @@
       let mut _3: i32;
       let mut _5: i32;
       let mut _6: i32;
-      let mut _11: BigStruct;
-      let mut _16: &&BigStruct;
-      let mut _17: &BigStruct;
-      let mut _18: &BigStruct;
-      let mut _19: &BigStruct;
-      let mut _20: &BigStruct;
-      let mut _21: &BigStruct;
+      let mut _10: SmallStruct;
+      let mut _14: &&SmallStruct;
+      let mut _16: f32;
+      let mut _17: std::option::Option<S>;
+      let mut _18: &[f32];
+      let mut _22: BigStruct;
+      let mut _26: &&BigStruct;
+      let mut _28: f32;
+      let mut _29: std::option::Option<S>;
+      let mut _30: &[f32];
+      let mut _31: &SmallStruct;
+      let mut _32: &SmallStruct;
+      let mut _33: &SmallStruct;
+      let mut _34: &SmallStruct;
+      let mut _35: &BigStruct;
+      let mut _36: &BigStruct;
+      let mut _37: &BigStruct;
+      let mut _38: &BigStruct;
       scope 1 {
           debug s => _1;
           let _2: i32;
@@ -22,24 +33,44 @@
               let _4: i32;
               scope 3 {
                   debug b => _4;
-                  let _7: S;
-                  let _8: u8;
-                  let _9: f32;
-                  let _10: S;
+                  let _7: f32;
+                  let _8: std::option::Option<S>;
+                  let _9: &[f32];
                   scope 4 {
                       debug a => _7;
                       debug b => _8;
                       debug c => _9;
-                      debug d => _10;
-                      let _12: S;
-                      let _13: u8;
-                      let _14: f32;
-                      let _15: S;
+                      let _11: f32;
+                      let _12: std::option::Option<S>;
+                      let _13: &[f32];
                       scope 5 {
-                          debug a => _12;
-                          debug b => _13;
-                          debug c => _14;
-                          debug d => _15;
+                          debug a => _11;
+                          debug b => _12;
+                          debug c => _13;
+                          let _15: SmallStruct;
+                          scope 6 {
+                              debug ss => _15;
+                              let _19: f32;
+                              let _20: std::option::Option<S>;
+                              let _21: &[f32];
+                              scope 7 {
+                                  debug a => _19;
+                                  debug b => _20;
+                                  debug c => _21;
+                                  let _23: f32;
+                                  let _24: std::option::Option<S>;
+                                  let _25: &[f32];
+                                  scope 8 {
+                                      debug a => _23;
+                                      debug b => _24;
+                                      debug c => _25;
+                                      let _27: BigStruct;
+                                      scope 9 {
+                                          debug bs => _27;
+                                      }
+                                  }
+                              }
+                          }
                       }
                   }
               }
@@ -48,7 +79,8 @@
   
       bb0: {
           StorageLive(_1);
-          _1 = S(const 1_i32);
+-         _1 = S(const 1_i32);
++         _1 = const S(1_i32);
           StorageLive(_2);
           StorageLive(_3);
 -         _3 = (_1.0: i32);
@@ -68,47 +100,95 @@
 +         _4 = const 6_i32;
           StorageDead(_6);
           StorageDead(_5);
-          StorageLive(_11);
-          _11 = const _;
-          StorageLive(_7);
--         _7 = (_11.0: S);
-+         _7 = const S(1_i32);
-          StorageLive(_8);
--         _8 = (_11.1: u8);
-+         _8 = const 5_u8;
-          StorageLive(_9);
--         _9 = (_11.2: f32);
-+         _9 = const 7f32;
           StorageLive(_10);
--         _10 = (_11.3: S);
-+         _10 = const S(13_i32);
-          StorageDead(_11);
-          StorageLive(_16);
-          _16 = const {ALLOC1: &&BigStruct};
-          _17 = deref_copy (*_16);
-          StorageLive(_12);
-          _18 = deref_copy (*_16);
--         _12 = ((*_18).0: S);
-+         _12 = const S(1_i32);
-          StorageLive(_13);
-          _19 = deref_copy (*_16);
--         _13 = ((*_19).1: u8);
-+         _13 = const 5_u8;
+          _10 = const _;
+          StorageLive(_7);
+-         _7 = (_10.0: f32);
++         _7 = const 4f32;
+          StorageLive(_8);
+-         _8 = (_10.1: std::option::Option<S>);
++         _8 = const Option::<S>::Some(S(1_i32));
+          StorageLive(_9);
+          _9 = (_10.2: &[f32]);
+          StorageDead(_10);
           StorageLive(_14);
-          _20 = deref_copy (*_16);
--         _14 = ((*_20).2: f32);
-+         _14 = const 7f32;
-          StorageLive(_15);
-          _21 = deref_copy (*_16);
--         _15 = ((*_21).3: S);
-+         _15 = const S(13_i32);
-          StorageDead(_16);
-          _0 = const ();
-          StorageDead(_15);
+          _14 = const {ALLOC4: &&SmallStruct};
+          _31 = deref_copy (*_14);
+          StorageLive(_11);
+          _32 = deref_copy (*_14);
+-         _11 = ((*_32).0: f32);
++         _11 = const 9f32;
+          StorageLive(_12);
+          _33 = deref_copy (*_14);
+          _12 = ((*_33).1: std::option::Option<S>);
+          StorageLive(_13);
+          _34 = deref_copy (*_14);
+          _13 = ((*_34).2: &[f32]);
           StorageDead(_14);
+          StorageLive(_15);
+          StorageLive(_16);
+-         _16 = _11;
++         _16 = const 9f32;
+          StorageLive(_17);
+          _17 = _12;
+          StorageLive(_18);
+          _18 = _13;
+-         _15 = SmallStruct(move _16, move _17, move _18);
++         _15 = SmallStruct(const 9f32, move _17, move _18);
+          StorageDead(_18);
+          StorageDead(_17);
+          StorageDead(_16);
+          StorageLive(_22);
+          _22 = const _;
+          StorageLive(_19);
+-         _19 = (_22.0: f32);
++         _19 = const 25f32;
+          StorageLive(_20);
+          _20 = (_22.1: std::option::Option<S>);
+          StorageLive(_21);
+          _21 = (_22.2: &[f32]);
+          StorageDead(_22);
+          StorageLive(_26);
+          _26 = const {ALLOC5: &&BigStruct};
+          _35 = deref_copy (*_26);
+          StorageLive(_23);
+          _36 = deref_copy (*_26);
+-         _23 = ((*_36).0: f32);
++         _23 = const 82f32;
+          StorageLive(_24);
+          _37 = deref_copy (*_26);
+-         _24 = ((*_37).1: std::option::Option<S>);
++         _24 = const Option::<S>::Some(S(35_i32));
+          StorageLive(_25);
+          _38 = deref_copy (*_26);
+          _25 = ((*_38).2: &[f32]);
+          StorageDead(_26);
+          StorageLive(_27);
+          StorageLive(_28);
+-         _28 = _23;
++         _28 = const 82f32;
+          StorageLive(_29);
+-         _29 = _24;
++         _29 = const Option::<S>::Some(S(35_i32));
+          StorageLive(_30);
+          _30 = _25;
+-         _27 = BigStruct(move _28, move _29, move _30);
++         _27 = BigStruct(const 82f32, const Option::<S>::Some(S(35_i32)), move _30);
+          StorageDead(_30);
+          StorageDead(_29);
+          StorageDead(_28);
+          _0 = const ();
+          StorageDead(_27);
+          StorageDead(_25);
+          StorageDead(_24);
+          StorageDead(_23);
+          StorageDead(_21);
+          StorageDead(_20);
+          StorageDead(_19);
+          StorageDead(_15);
           StorageDead(_13);
           StorageDead(_12);
-          StorageDead(_10);
+          StorageDead(_11);
           StorageDead(_9);
           StorageDead(_8);
           StorageDead(_7);
@@ -117,13 +197,51 @@
           StorageDead(_1);
           return;
       }
++ }
++ 
++ ALLOC6 (size: 8, align: 4) {
++     01 00 00 00 23 00 00 00                         │ ....#...
++ }
++ 
++ ALLOC7 (size: 8, align: 4) {
++     01 00 00 00 23 00 00 00                         │ ....#...
++ }
++ 
++ ALLOC8 (size: 8, align: 4) {
++     01 00 00 00 23 00 00 00                         │ ....#...
++ }
++ 
++ ALLOC9 (size: 8, align: 4) {
++     01 00 00 00 01 00 00 00                         │ ........
++ }
++ 
++ ALLOC10 (size: 4, align: 4) {
++     01 00 00 00                                     │ ....
   }
   
-  ALLOC1 (static: STAT, size: 4, align: 4) {
+  ALLOC5 (static: BIG_STAT, size: 4, align: 4) {
       ╾ALLOC0╼                                     │ ╾──╼
   }
   
-  ALLOC0 (size: 16, align: 4) {
-      01 00 00 00 00 00 e0 40 0d 00 00 00 05 __ __ __ │ .......@.....░░░
+  ALLOC0 (size: 20, align: 4) {
+      0x00 │ 01 00 00 00 23 00 00 00 ╾ALLOC1╼ 02 00 00 00 │ ....#...╾──╼....
+      0x10 │ 00 00 a4 42                                     │ ...B
+  }
+  
+  ALLOC1 (size: 8, align: 4) {
+      00 00 34 42 00 00 90 42                         │ ..4B...B
+  }
+  
+  ALLOC4 (static: SMALL_STAT, size: 4, align: 4) {
+      ╾ALLOC2╼                                     │ ╾──╼
+  }
+  
+  ALLOC2 (size: 20, align: 4) {
+      0x00 │ 00 00 00 00 __ __ __ __ ╾ALLOC3╼ 01 00 00 00 │ ....░░░░╾──╼....
+      0x10 │ 00 00 10 41                                     │ ...A
+  }
+  
+  ALLOC3 (size: 4, align: 4) {
+      00 00 50 41                                     │ ..PA
   }
   

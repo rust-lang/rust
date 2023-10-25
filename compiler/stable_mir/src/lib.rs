@@ -175,17 +175,17 @@ pub fn trait_impl(trait_impl: &ImplDef) -> ImplTrait {
 }
 
 pub trait Context {
-    fn entry_fn(&mut self) -> Option<CrateItem>;
+    fn entry_fn(&self) -> Option<CrateItem>;
     /// Retrieve all items of the local crate that have a MIR associated with them.
-    fn all_local_items(&mut self) -> CrateItems;
-    fn mir_body(&mut self, item: DefId) -> mir::Body;
-    fn all_trait_decls(&mut self) -> TraitDecls;
-    fn trait_decl(&mut self, trait_def: &TraitDef) -> TraitDecl;
-    fn all_trait_impls(&mut self) -> ImplTraitDecls;
-    fn trait_impl(&mut self, trait_impl: &ImplDef) -> ImplTrait;
-    fn generics_of(&mut self, def_id: DefId) -> Generics;
-    fn predicates_of(&mut self, def_id: DefId) -> GenericPredicates;
-    fn explicit_predicates_of(&mut self, def_id: DefId) -> GenericPredicates;
+    fn all_local_items(&self) -> CrateItems;
+    fn mir_body(&self, item: DefId) -> mir::Body;
+    fn all_trait_decls(&self) -> TraitDecls;
+    fn trait_decl(&self, trait_def: &TraitDef) -> TraitDecl;
+    fn all_trait_impls(&self) -> ImplTraitDecls;
+    fn trait_impl(&self, trait_impl: &ImplDef) -> ImplTrait;
+    fn generics_of(&self, def_id: DefId) -> Generics;
+    fn predicates_of(&self, def_id: DefId) -> GenericPredicates;
+    fn explicit_predicates_of(&self, def_id: DefId) -> GenericPredicates;
     /// Get information about the local crate.
     fn local_crate(&self) -> Crate;
     /// Retrieve a list of all external crates.
@@ -207,61 +207,58 @@ pub trait Context {
     fn get_lines(&self, span: &Span) -> LineInfo;
 
     /// Returns the `kind` of given `DefId`
-    fn def_kind(&mut self, def_id: DefId) -> DefKind;
+    fn def_kind(&self, def_id: DefId) -> DefKind;
 
     /// `Span` of an item
-    fn span_of_an_item(&mut self, def_id: DefId) -> Span;
+    fn span_of_an_item(&self, def_id: DefId) -> Span;
 
     /// Obtain the representation of a type.
-    fn ty_kind(&mut self, ty: Ty) -> TyKind;
+    fn ty_kind(&self, ty: Ty) -> TyKind;
 
     /// Create a new `Ty` from scratch without information from rustc.
-    fn mk_ty(&mut self, kind: TyKind) -> Ty;
+    fn mk_ty(&self, kind: TyKind) -> Ty;
 
     /// Get the body of an Instance.
     /// FIXME: Monomorphize the body.
-    fn instance_body(&mut self, instance: InstanceDef) -> Body;
+    fn instance_body(&self, instance: InstanceDef) -> Body;
 
     /// Get the instance type with generic substitutions applied and lifetimes erased.
-    fn instance_ty(&mut self, instance: InstanceDef) -> Ty;
+    fn instance_ty(&self, instance: InstanceDef) -> Ty;
 
     /// Get the instance.
-    fn instance_def_id(&mut self, instance: InstanceDef) -> DefId;
+    fn instance_def_id(&self, instance: InstanceDef) -> DefId;
 
     /// Convert a non-generic crate item into an instance.
     /// This function will panic if the item is generic.
-    fn mono_instance(&mut self, item: CrateItem) -> Instance;
+    fn mono_instance(&self, item: CrateItem) -> Instance;
 
     /// Item requires monomorphization.
     fn requires_monomorphization(&self, def_id: DefId) -> bool;
 
     /// Resolve an instance from the given function definition and generic arguments.
-    fn resolve_instance(&mut self, def: FnDef, args: &GenericArgs) -> Option<Instance>;
+    fn resolve_instance(&self, def: FnDef, args: &GenericArgs) -> Option<Instance>;
 }
 
 // A thread local variable that stores a pointer to the tables mapping between TyCtxt
 // datastructures and stable MIR datastructures
-scoped_thread_local! (static TLV: Cell<*mut ()>);
+scoped_thread_local! (static TLV: Cell<*const ()>);
 
-pub fn run(mut context: impl Context, f: impl FnOnce()) {
+pub fn run(context: &dyn Context, f: impl FnOnce()) {
     assert!(!TLV.is_set());
-    fn g<'a>(mut context: &mut (dyn Context + 'a), f: impl FnOnce()) {
-        let ptr: *mut () = &mut context as *mut &mut _ as _;
-        TLV.set(&Cell::new(ptr), || {
-            f();
-        });
-    }
-    g(&mut context, f);
+    let ptr: *const () = &context as *const &_ as _;
+    TLV.set(&Cell::new(ptr), || {
+        f();
+    });
 }
 
 /// Loads the current context and calls a function with it.
 /// Do not nest these, as that will ICE.
-pub fn with<R>(f: impl FnOnce(&mut dyn Context) -> R) -> R {
+pub fn with<R>(f: impl FnOnce(&dyn Context) -> R) -> R {
     assert!(TLV.is_set());
     TLV.with(|tlv| {
         let ptr = tlv.get();
         assert!(!ptr.is_null());
-        f(unsafe { *(ptr as *mut &mut dyn Context) })
+        f(unsafe { *(ptr as *const &dyn Context) })
     })
 }
 

@@ -8,7 +8,7 @@ If not please open an issue.
 ## Building and testing
 
 ```bash
-$ git clone https://github.com/bjorn3/rustc_codegen_cranelift
+$ git clone https://github.com/rust-lang/rustc_codegen_cranelift
 $ cd rustc_codegen_cranelift
 $ ./y.sh prepare
 $ ./y.sh build
@@ -29,7 +29,7 @@ Extract the `dist` directory in the archive anywhere you want.
 If you want to use `cargo clif build` instead of having to specify the full path to the `cargo-clif` executable, you can add the `bin` subdirectory of the extracted `dist` directory to your `PATH`.
 (tutorial [for Windows](https://stackoverflow.com/a/44272417), and [for Linux/MacOS](https://unix.stackexchange.com/questions/26047/how-to-correctly-add-a-path-to-path/26059#26059)).
 
-[releases]: https://github.com/bjorn3/rustc_codegen_cranelift/releases/tag/dev
+[releases]: https://github.com/rust-lang/rustc_codegen_cranelift/releases/tag/dev
 
 ## Usage
 
@@ -78,7 +78,7 @@ configuration options.
 
 * Inline assembly ([no cranelift support](https://github.com/bytecodealliance/wasmtime/issues/1041))
     * On UNIX there is support for invoking an external assembler for `global_asm!` and `asm!`.
-* SIMD ([tracked here](https://github.com/bjorn3/rustc_codegen_cranelift/issues/171), `std::simd` fully works, `std::arch` is partially supported)
+* SIMD ([tracked here](https://github.com/rust-lang/rustc_codegen_cranelift/issues/171), `std::simd` fully works, `std::arch` is partially supported)
 * Unwinding on panics ([no cranelift support](https://github.com/bytecodealliance/wasmtime/issues/1677), `-Cpanic=abort` is enabled by default)
 
 ## License

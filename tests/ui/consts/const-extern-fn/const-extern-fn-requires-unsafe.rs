@@ -11,4 +11,5 @@ fn main() {
     //[thir]~^^ call to unsafe function `foo` is unsafe and requires unsafe function or block
     foo();
     //[mir]~^ ERROR call to unsafe function is unsafe and requires unsafe function or block
+    //[thir]~^^ ERROR call to unsafe function `foo` is unsafe and requires unsafe function or block
 }

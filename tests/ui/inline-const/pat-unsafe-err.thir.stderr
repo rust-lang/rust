@@ -1,0 +1,19 @@
+error[E0133]: call to unsafe function `require_unsafe` is unsafe and requires unsafe function or block
+  --> $DIR/pat-unsafe-err.rs:15:13
+   |
+LL |             require_unsafe();
+   |             ^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+
+error[E0133]: call to unsafe function `require_unsafe` is unsafe and requires unsafe function or block
+  --> $DIR/pat-unsafe-err.rs:22:13
+   |
+LL |             require_unsafe()
+   |             ^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0133`.

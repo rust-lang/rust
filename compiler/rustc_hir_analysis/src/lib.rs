@@ -214,6 +214,10 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
         tcx.hir().for_each_module(|module| tcx.ensure().check_mod_item_types(module))
     });
 
+    if tcx.features().rustc_attrs {
+        tcx.sess.track_errors(|| collect::test_opaque_hidden_types(tcx))?;
+    }
+
     // Freeze definitions as we don't add new ones at this point. This improves performance by
     // allowing lock-free access to them.
     tcx.untracked().definitions.freeze();

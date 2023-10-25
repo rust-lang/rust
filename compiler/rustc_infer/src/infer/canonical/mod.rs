@@ -152,7 +152,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 )
                 .into(),
             CanonicalVarKind::Effect => {
-                let vid = self.inner.borrow_mut().effect_unification_table().new_key(None);
+                let vid = self.inner.borrow_mut().effect_unification_table().new_key(None).vid;
                 ty::Const::new_infer(self.tcx, ty::InferConst::EffectVar(vid), self.tcx.types.bool)
                     .into()
             }

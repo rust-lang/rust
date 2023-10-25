@@ -2,8 +2,6 @@
 // known-bug: #102682
 // edition: 2021
 
-#![allow(incomplete_features)]
-
 trait MyTrait<T, U> {
     async fn foo(&self) -> &(T, U);
 }

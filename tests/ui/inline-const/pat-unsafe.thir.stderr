@@ -1,0 +1,26 @@
+warning: unnecessary `unsafe` block
+  --> $DIR/pat-unsafe.rs:19:17
+   |
+LL |     unsafe {
+   |     ------ because it's nested under this `unsafe` block
+...
+LL |                 unsafe {}
+   |                 ^^^^^^ unnecessary `unsafe` block
+   |
+note: the lint level is defined here
+  --> $DIR/pat-unsafe.rs:7:9
+   |
+LL | #![warn(unused_unsafe)]
+   |         ^^^^^^^^^^^^^
+
+warning: unnecessary `unsafe` block
+  --> $DIR/pat-unsafe.rs:26:17
+   |
+LL |     unsafe {
+   |     ------ because it's nested under this `unsafe` block
+...
+LL |                 unsafe {}
+   |                 ^^^^^^ unnecessary `unsafe` block
+
+warning: 2 warnings emitted
+

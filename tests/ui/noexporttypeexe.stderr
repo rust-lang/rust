@@ -8,6 +8,10 @@ LL |   let x: isize = noexporttypelib::foo();
    |
    = note: expected type `isize`
               found enum `Option<isize>`
+help: consider using `Option::expect` to unwrap the `Option<isize>` value, panicking if the value is an `Option::None`
+   |
+LL |   let x: isize = noexporttypelib::foo().expect("REASON");
+   |                                        +++++++++++++++++
 
 error: aborting due to previous error
 

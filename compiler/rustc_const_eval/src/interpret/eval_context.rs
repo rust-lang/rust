@@ -1010,7 +1010,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // Just make this an efficient immediate.
             // Note that not calling `layout_of` here does have one real consequence:
             // if the type is too big, we'll only notice this when the local is actually initialized,
-            // which is a bit too late -- we should ideally notice this alreayd here, when the memory
+            // which is a bit too late -- we should ideally notice this already here, when the memory
             // is conceptually allocated. But given how rare that error is and that this is a hot function,
             // we accept this downside for now.
             Operand::Immediate(Immediate::Uninit)

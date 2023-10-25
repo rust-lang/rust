@@ -878,13 +878,7 @@ fn call_inline_asm<'tcx>(
     inputs: Vec<(Size, Value)>,
     outputs: Vec<(Size, CPlace<'tcx>)>,
 ) {
-    let stack_slot = fx.bcx.func.create_sized_stack_slot(StackSlotData {
-        kind: StackSlotKind::ExplicitSlot,
-        size: u32::try_from(slot_size.bytes()).unwrap(),
-    });
-    if fx.clif_comments.enabled() {
-        fx.add_comment(stack_slot, "inline asm scratch slot");
-    }
+    let stack_slot = fx.create_stack_slot(u32::try_from(slot_size.bytes()).unwrap(), 16);
 
     let inline_asm_func = fx
         .module
@@ -904,15 +898,23 @@ fn call_inline_asm<'tcx>(
     }
 
     for (offset, value) in inputs {
-        fx.bcx.ins().stack_store(value, stack_slot, i32::try_from(offset.bytes()).unwrap());
+        stack_slot.offset(fx, i32::try_from(offset.bytes()).unwrap().into()).store(
+            fx,
+            value,
+            MemFlags::trusted(),
+        );
     }
 
-    let stack_slot_addr = fx.bcx.ins().stack_addr(fx.pointer_type, stack_slot, 0);
+    let stack_slot_addr = stack_slot.get_addr(fx);
     fx.bcx.ins().call(inline_asm_func, &[stack_slot_addr]);
 
     for (offset, place) in outputs {
         let ty = fx.clif_type(place.layout().ty).unwrap();
-        let value = fx.bcx.ins().stack_load(ty, stack_slot, i32::try_from(offset.bytes()).unwrap());
+        let value = stack_slot.offset(fx, i32::try_from(offset.bytes()).unwrap().into()).load(
+            fx,
+            ty,
+            MemFlags::trusted(),
+        );
         place.write_cvalue(fx, CValue::by_val(value, place.layout()));
     }
 }

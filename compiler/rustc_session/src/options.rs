@@ -389,7 +389,7 @@ mod desc {
     pub const parse_mir_spanview: &str = "`statement` (default), `terminator`, or `block`";
     pub const parse_dump_mono_stats: &str = "`markdown` (default) or `json`";
     pub const parse_instrument_coverage: &str =
-        "`all` (default), `except-unused-generics`, `except-unused-functions`, or `off`";
+        "`all` (default), `branch`, `except-unused-generics`, `except-unused-functions`, or `off`";
     pub const parse_instrument_xray: &str = "either a boolean (`yes`, `no`, `on`, `off`, etc), or a comma separated list of settings: `always` or `never` (mutually exclusive), `ignore-loops`, `instruction-threshold=N`, `skip-entry`, `skip-exit`";
     pub const parse_unpretty: &str = "`string` or `string=string`";
     pub const parse_treat_err_as_bug: &str = "either no value or a non-negative number";
@@ -931,6 +931,7 @@ mod parse {
 
         *slot = Some(match v {
             "all" => InstrumentCoverage::All,
+            "branch" => InstrumentCoverage::Branch,
             "except-unused-generics" | "except_unused_generics" => {
                 InstrumentCoverage::ExceptUnusedGenerics
             }
@@ -1356,6 +1357,7 @@ options! {
         reports (note, the compiler build config must include `profiler = true`); \
         implies `-C symbol-mangling-version=v0`. Optional values are:
         `=all` (implicit value)
+        `=branch`
         `=except-unused-generics`
         `=except-unused-functions`
         `=off` (default)"),
@@ -1597,6 +1599,7 @@ options! {
         reports (note, the compiler build config must include `profiler = true`); \
         implies `-C symbol-mangling-version=v0`. Optional values are:
         `=all` (implicit value)
+        `=branch`
         `=except-unused-generics`
         `=except-unused-functions`
         `=off` (default)"),
