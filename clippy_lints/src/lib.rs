@@ -513,7 +513,9 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     // all the internal lints
     #[cfg(feature = "internal")]
     {
-        store.register_early_pass(|| Box::new(utils::internal_lints::clippy_lints_internal::ClippyLintsInternal));
+        store.register_early_pass(|| {
+            Box::new(utils::internal_lints::unsorted_clippy_utils_paths::UnsortedClippyUtilsPaths)
+        });
         store.register_early_pass(|| Box::new(utils::internal_lints::produce_ice::ProduceIce));
         store.register_late_pass(|_| Box::new(utils::internal_lints::collapsible_calls::CollapsibleCalls));
         store.register_late_pass(|_| {
