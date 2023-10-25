@@ -10,9 +10,15 @@ target | std | host | notes
 `csky-unknown-linux-gnuabiv2hf` | ✓ |  | C-SKY abiv2 Linux, hardfloat (little endian)
 
 Reference:
-https://c-sky.github.io/
 
-https://gitlab.com/c-sky/
+- [CSKY ABI Manual](https://occ-oss-prod.oss-cn-hangzhou.aliyuncs.com/resource//1695027452256/T-HEAD_800_Series_ABI_Standards_Manual.pdf)
+- [csky-linux-gnuabiv2-toolchain](https://occ-oss-prod.oss-cn-hangzhou.aliyuncs.com/resource/1356021/1619528643136/csky-linux-gnuabiv2-tools-x86_64-glibc-linux-4.9.56-20210423.tar.gz)
+- [csky-linux-gnuabiv2-qemu](https://occ-oss-prod.oss-cn-hangzhou.aliyuncs.com/resource//1689324918932/xuantie-qemu-x86_64-Ubuntu-18.04-20230714-0202.tar.gz)
+
+other links:
+
+- https://c-sky.github.io/
+- https://gitlab.com/c-sky/
 
 ## Target maintainers
 
