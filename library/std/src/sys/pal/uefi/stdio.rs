@@ -4,8 +4,6 @@ use crate::mem::MaybeUninit;
 use crate::os::uefi;
 use crate::ptr::NonNull;
 
-const MAX_BUFFER_SIZE: usize = 8192;
-
 pub struct Stdin {
     pending: Option<char>,
 }
@@ -111,19 +109,14 @@ fn write(
     protocol: *mut r_efi::protocols::simple_text_output::Protocol,
     buf: &[u8],
 ) -> io::Result<usize> {
-    let mut utf16 = [0; MAX_BUFFER_SIZE / 2];
-
     // Get valid UTF-8 buffer
     let utf8 = match crate::str::from_utf8(buf) {
         Ok(x) => x,
         Err(e) => unsafe { crate::str::from_utf8_unchecked(&buf[..e.valid_up_to()]) },
     };
-    // Clip UTF-8 buffer to max UTF-16 buffer we support
-    let utf8 = &utf8[..utf8.floor_char_boundary(utf16.len() - 1)];
 
-    for (i, ch) in utf8.encode_utf16().enumerate() {
-        utf16[i] = ch;
-    }
+    let mut utf16: Vec<u16> = utf8.encode_utf16().collect();
+    utf16.push(0);
 
     unsafe { simple_text_output(protocol, &mut utf16) }?;
 
