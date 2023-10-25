@@ -126,6 +126,32 @@ struct Preinterned {
     span_of_name: Span,
 }
 
+struct Entries {
+    map: HashMap<String, Preinterned>,
+}
+
+impl Entries {
+    fn with_capacity(capacity: usize) -> Self {
+        Entries { map: HashMap::with_capacity(capacity) }
+    }
+
+    fn insert(&mut self, span: Span, str: &str, errors: &mut Errors) -> u32 {
+        if let Some(prev) = self.map.get(str) {
+            errors.error(span, format!("Symbol `{str}` is duplicated"));
+            errors.error(prev.span_of_name, "location of previous definition".to_string());
+            prev.idx
+        } else {
+            let idx = self.len();
+            self.map.insert(str.to_string(), Preinterned { idx, span_of_name: span });
+            idx
+        }
+    }
+
+    fn len(&self) -> u32 {
+        u32::try_from(self.map.len()).expect("way too many symbols")
+    }
+}
+
 fn symbols_with_errors(input: TokenStream) -> (TokenStream, Vec<syn::Error>) {
     let mut errors = Errors::default();
 
@@ -142,22 +168,8 @@ fn symbols_with_errors(input: TokenStream) -> (TokenStream, Vec<syn::Error>) {
     let mut keyword_stream = quote! {};
     let mut symbols_stream = quote! {};
     let mut prefill_stream = quote! {};
-    let mut entries = HashMap::<String, Preinterned>::with_capacity(
-        input.keywords.len() + input.symbols.len() + 10,
-    );
+    let mut entries = Entries::with_capacity(input.keywords.len() + input.symbols.len() + 10);
     let mut prev_key: Option<(Span, String)> = None;
-
-    let mut insert = |span: Span, str: &str, errors: &mut Errors| -> u32 {
-        if let Some(prev) = entries.get(str) {
-            errors.error(span, format!("Symbol `{str}` is duplicated"));
-            errors.error(prev.span_of_name, "location of previous definition".to_string());
-            prev.idx
-        } else {
-            let idx = u32::try_from(entries.len()).expect("way too many symbols");
-            entries.insert(str.to_string(), Preinterned { idx, span_of_name: span });
-            idx
-        }
-    };
 
     let mut check_order = |span: Span, str: &str, errors: &mut Errors| {
         if let Some((prev_span, ref prev_str)) = prev_key {
@@ -174,7 +186,7 @@ fn symbols_with_errors(input: TokenStream) -> (TokenStream, Vec<syn::Error>) {
         let name = &keyword.name;
         let value = &keyword.value;
         let value_string = value.value();
-        let idx = insert(keyword.name.span(), &value_string, &mut errors);
+        let idx = entries.insert(keyword.name.span(), &value_string, &mut errors);
         prefill_stream.extend(quote! {
             #value,
         });
@@ -190,7 +202,7 @@ fn symbols_with_errors(input: TokenStream) -> (TokenStream, Vec<syn::Error>) {
             Value::SameAsName => name.to_string(),
             Value::String(lit) => lit.value(),
         };
-        let idx = insert(symbol.name.span(), &value, &mut errors);
+        let idx = entries.insert(symbol.name.span(), &value, &mut errors);
         check_order(symbol.name.span(), &name.to_string(), &mut errors);
 
         prefill_stream.extend(quote! {
@@ -204,14 +216,14 @@ fn symbols_with_errors(input: TokenStream) -> (TokenStream, Vec<syn::Error>) {
     // Generate symbols for the strings "0", "1", ..., "9".
     for n in 0..10 {
         let n = n.to_string();
-        insert(Span::call_site(), &n, &mut errors);
+        entries.insert(Span::call_site(), &n, &mut errors);
         prefill_stream.extend(quote! {
             #n,
         });
     }
 
-    let symbol_digits_base = entries["0"].idx;
-    let preinterned_symbols_count = u32::try_from(entries.len()).expect("way too many symbols");
+    let symbol_digits_base = entries.map["0"].idx;
+    let preinterned_symbols_count = entries.len();
     let output = quote! {
         const SYMBOL_DIGITS_BASE: u32 = #symbol_digits_base;
         const PREINTERNED_SYMBOLS_COUNT: u32 = #preinterned_symbols_count;
