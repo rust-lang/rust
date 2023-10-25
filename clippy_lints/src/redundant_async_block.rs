@@ -5,7 +5,7 @@ use clippy_utils::peel_blocks;
 use clippy_utils::source::{snippet, walk_span_to_context};
 use clippy_utils::visitors::for_each_expr;
 use rustc_errors::Applicability;
-use rustc_hir::{AsyncCoroutineKind, Closure, CoroutineKind, Expr, ExprKind, MatchSource};
+use rustc_hir::{CoroutineSource, Closure, CoroutineKind, Expr, ExprKind, MatchSource};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::UpvarCapture;
@@ -71,7 +71,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantAsyncBlock {
 fn desugar_async_block<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
     if let ExprKind::Closure(Closure { body, def_id, .. }) = expr.kind &&
         let body = cx.tcx.hir().body(*body) &&
-        matches!(body.coroutine_kind, Some(CoroutineKind::Async(AsyncCoroutineKind::Block)))
+        matches!(body.coroutine_kind, Some(CoroutineKind::Async(CoroutineSource::Block)))
     {
         cx
             .typeck_results()
