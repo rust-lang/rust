@@ -18,6 +18,7 @@ pub trait Interner: Sized {
 
     type Binder<T>;
     type TypeAndMut: Clone + Debug + Hash + Ord;
+    type CanonicalVars: Clone + Debug + Hash + Eq;
 
     // Kinds of tys
     type Ty: Clone + DebugWithInfcx<Self> + Hash + Ord;

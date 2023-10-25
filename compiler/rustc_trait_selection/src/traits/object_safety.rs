@@ -97,6 +97,10 @@ fn check_is_object_safe(tcx: TyCtxt<'_>, trait_def_id: DefId) -> bool {
 /// object. Note that object-safe traits can have some
 /// non-vtable-safe methods, so long as they require `Self: Sized` or
 /// otherwise ensure that they cannot be used when `Self = Trait`.
+///
+/// [`MethodViolationCode::WhereClauseReferencesSelf`] is considered object safe due to backwards
+/// compatibility, see <https://github.com/rust-lang/rust/issues/51443> and
+/// [`WHERE_CLAUSES_OBJECT_SAFETY`].
 pub fn is_vtable_safe_method(tcx: TyCtxt<'_>, trait_def_id: DefId, method: ty::AssocItem) -> bool {
     debug_assert!(tcx.generics_of(trait_def_id).has_self);
     debug!("is_vtable_safe_method({:?}, {:?})", trait_def_id, method);
@@ -105,10 +109,9 @@ pub fn is_vtable_safe_method(tcx: TyCtxt<'_>, trait_def_id: DefId, method: ty::A
         return false;
     }
 
-    match virtual_call_violation_for_method(tcx, trait_def_id, method) {
-        None | Some(MethodViolationCode::WhereClauseReferencesSelf) => true,
-        Some(_) => false,
-    }
+    virtual_call_violations_for_method(tcx, trait_def_id, method)
+        .iter()
+        .all(|v| matches!(v, MethodViolationCode::WhereClauseReferencesSelf))
 }
 
 fn object_safety_violations_for_trait(
@@ -119,7 +122,7 @@ fn object_safety_violations_for_trait(
     let mut violations: Vec<_> = tcx
         .associated_items(trait_def_id)
         .in_definition_order()
-        .filter_map(|&item| object_safety_violation_for_assoc_item(tcx, trait_def_id, item))
+        .flat_map(|&item| object_safety_violations_for_assoc_item(tcx, trait_def_id, item))
         .collect();
 
     // Check the trait itself.
@@ -357,49 +360,52 @@ fn generics_require_sized_self(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 
 /// Returns `Some(_)` if this item makes the containing trait not object safe.
 #[instrument(level = "debug", skip(tcx), ret)]
-fn object_safety_violation_for_assoc_item(
+fn object_safety_violations_for_assoc_item(
     tcx: TyCtxt<'_>,
     trait_def_id: DefId,
     item: ty::AssocItem,
-) -> Option<ObjectSafetyViolation> {
+) -> Vec<ObjectSafetyViolation> {
     // Any item that has a `Self : Sized` requisite is otherwise
     // exempt from the regulations.
     if tcx.generics_require_sized_self(item.def_id) {
-        return None;
+        return Vec::new();
     }
 
     match item.kind {
         // Associated consts are never object safe, as they can't have `where` bounds yet at all,
         // and associated const bounds in trait objects aren't a thing yet either.
         ty::AssocKind::Const => {
-            Some(ObjectSafetyViolation::AssocConst(item.name, item.ident(tcx).span))
+            vec![ObjectSafetyViolation::AssocConst(item.name, item.ident(tcx).span)]
         }
-        ty::AssocKind::Fn => virtual_call_violation_for_method(tcx, trait_def_id, item).map(|v| {
-            let node = tcx.hir().get_if_local(item.def_id);
-            // Get an accurate span depending on the violation.
-            let span = match (&v, node) {
-                (MethodViolationCode::ReferencesSelfInput(Some(span)), _) => *span,
-                (MethodViolationCode::UndispatchableReceiver(Some(span)), _) => *span,
-                (MethodViolationCode::ReferencesImplTraitInTrait(span), _) => *span,
-                (MethodViolationCode::ReferencesSelfOutput, Some(node)) => {
-                    node.fn_decl().map_or(item.ident(tcx).span, |decl| decl.output.span())
-                }
-                _ => item.ident(tcx).span,
-            };
+        ty::AssocKind::Fn => virtual_call_violations_for_method(tcx, trait_def_id, item)
+            .into_iter()
+            .map(|v| {
+                let node = tcx.hir().get_if_local(item.def_id);
+                // Get an accurate span depending on the violation.
+                let span = match (&v, node) {
+                    (MethodViolationCode::ReferencesSelfInput(Some(span)), _) => *span,
+                    (MethodViolationCode::UndispatchableReceiver(Some(span)), _) => *span,
+                    (MethodViolationCode::ReferencesImplTraitInTrait(span), _) => *span,
+                    (MethodViolationCode::ReferencesSelfOutput, Some(node)) => {
+                        node.fn_decl().map_or(item.ident(tcx).span, |decl| decl.output.span())
+                    }
+                    _ => item.ident(tcx).span,
+                };
 
-            ObjectSafetyViolation::Method(item.name, v, span)
-        }),
+                ObjectSafetyViolation::Method(item.name, v, span)
+            })
+            .collect(),
         // Associated types can only be object safe if they have `Self: Sized` bounds.
         ty::AssocKind::Type => {
             if !tcx.features().generic_associated_types_extended
                 && !tcx.generics_of(item.def_id).params.is_empty()
                 && !item.is_impl_trait_in_trait()
             {
-                Some(ObjectSafetyViolation::GAT(item.name, item.ident(tcx).span))
+                vec![ObjectSafetyViolation::GAT(item.name, item.ident(tcx).span)]
             } else {
                 // We will permit associated types if they are explicitly mentioned in the trait object.
                 // We can't check this here, as here we only check if it is guaranteed to not be possible.
-                None
+                Vec::new()
             }
         }
     }
@@ -409,11 +415,11 @@ fn object_safety_violation_for_assoc_item(
 /// object; this does not necessarily imply that the enclosing trait
 /// is not object safe, because the method might have a where clause
 /// `Self:Sized`.
-fn virtual_call_violation_for_method<'tcx>(
+fn virtual_call_violations_for_method<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_def_id: DefId,
     method: ty::AssocItem,
-) -> Option<MethodViolationCode> {
+) -> Vec<MethodViolationCode> {
     let sig = tcx.fn_sig(method.def_id).instantiate_identity();
 
     // The method's first parameter must be named `self`
@@ -438,8 +444,13 @@ fn virtual_call_violation_for_method<'tcx>(
         } else {
             None
         };
-        return Some(MethodViolationCode::StaticMethod(sugg));
+
+        // Not having `self` parameter messes up the later checks,
+        // so we need to return instead of pushing
+        return vec![MethodViolationCode::StaticMethod(sugg)];
     }
+
+    let mut errors = Vec::new();
 
     for (i, &input_ty) in sig.skip_binder().inputs().iter().enumerate().skip(1) {
         if contains_illegal_self_type_reference(tcx, trait_def_id, sig.rebind(input_ty)) {
@@ -452,20 +463,20 @@ fn virtual_call_violation_for_method<'tcx>(
             } else {
                 None
             };
-            return Some(MethodViolationCode::ReferencesSelfInput(span));
+            errors.push(MethodViolationCode::ReferencesSelfInput(span));
         }
     }
     if contains_illegal_self_type_reference(tcx, trait_def_id, sig.output()) {
-        return Some(MethodViolationCode::ReferencesSelfOutput);
+        errors.push(MethodViolationCode::ReferencesSelfOutput);
     }
     if let Some(code) = contains_illegal_impl_trait_in_trait(tcx, method.def_id, sig.output()) {
-        return Some(code);
+        errors.push(code);
     }
 
     // We can't monomorphize things like `fn foo<A>(...)`.
     let own_counts = tcx.generics_of(method.def_id).own_counts();
-    if own_counts.types + own_counts.consts != 0 {
-        return Some(MethodViolationCode::Generic);
+    if own_counts.types > 0 || own_counts.consts > 0 {
+        errors.push(MethodViolationCode::Generic);
     }
 
     let receiver_ty = tcx.liberate_late_bound_regions(method.def_id, sig.input(0));
@@ -485,7 +496,7 @@ fn virtual_call_violation_for_method<'tcx>(
             } else {
                 None
             };
-            return Some(MethodViolationCode::UndispatchableReceiver(span));
+            errors.push(MethodViolationCode::UndispatchableReceiver(span));
         } else {
             // Do sanity check to make sure the receiver actually has the layout of a pointer.
 
@@ -593,10 +604,10 @@ fn virtual_call_violation_for_method<'tcx>(
 
         contains_illegal_self_type_reference(tcx, trait_def_id, pred)
     }) {
-        return Some(MethodViolationCode::WhereClauseReferencesSelf);
+        errors.push(MethodViolationCode::WhereClauseReferencesSelf);
     }
 
-    None
+    errors
 }
 
 /// Performs a type substitution to produce the version of `receiver_ty` when `Self = self_ty`.
@@ -709,7 +720,6 @@ fn object_ty_for_trait<'tcx>(
 // FIXME(mikeyhew) when unsized receivers are implemented as part of unsized rvalues, add this
 // fallback query: `Receiver: Unsize<Receiver[Self => U]>` to support receivers like
 // `self: Wrapper<Self>`.
-#[allow(dead_code)]
 fn receiver_is_dispatchable<'tcx>(
     tcx: TyCtxt<'tcx>,
     method: ty::AssocItem,

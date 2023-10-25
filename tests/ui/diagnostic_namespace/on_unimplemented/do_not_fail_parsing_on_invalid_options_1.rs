@@ -23,9 +23,15 @@ trait Boom {}
 //~^WARN malformed `on_unimplemented` attribute
 trait Doom {}
 
+#[diagnostic::on_unimplemented]
+//~^WARN missing options for `on_unimplemented` attribute
+//~|WARN missing options for `on_unimplemented` attribute
+trait Whatever {}
+
 fn take_foo(_: impl Foo) {}
 fn take_baz(_: impl Baz) {}
 fn take_boom(_: impl Boom) {}
+fn take_whatever(_: impl Whatever) {}
 
 fn main() {
     take_foo(1_i32);
@@ -34,4 +40,6 @@ fn main() {
     //~^ERROR Boom
     take_boom(1_i32);
     //~^ERROR Boom
+    take_whatever(1_i32);
+    //~^ERROR the trait bound `i32: Whatever` is not satisfied
 }

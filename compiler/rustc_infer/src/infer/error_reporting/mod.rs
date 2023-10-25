@@ -1584,14 +1584,13 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 target: &str,
                 types: &FxIndexMap<TyCategory, FxIndexSet<Span>>,
             ) {
-                for (key, values) in types.iter() {
+                for (kind, values) in types.iter() {
                     let count = values.len();
-                    let kind = key.descr();
                     for &sp in values {
                         err.span_label(
                             sp,
                             format!(
-                                "{}{} {}{}",
+                                "{}{} {:#}{}",
                                 if count == 1 { "the " } else { "one of the " },
                                 target,
                                 kind,
@@ -2952,17 +2951,19 @@ pub enum TyCategory {
     Foreign,
 }
 
-impl TyCategory {
-    fn descr(&self) -> &'static str {
+impl fmt::Display for TyCategory {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Closure => "closure",
-            Self::Opaque => "opaque type",
-            Self::OpaqueFuture => "future",
-            Self::Coroutine(gk) => gk.descr(),
-            Self::Foreign => "foreign type",
+            Self::Closure => "closure".fmt(f),
+            Self::Opaque => "opaque type".fmt(f),
+            Self::OpaqueFuture => "future".fmt(f),
+            Self::Coroutine(gk) => gk.fmt(f),
+            Self::Foreign => "foreign type".fmt(f),
         }
     }
+}
 
+impl TyCategory {
     pub fn from_ty(tcx: TyCtxt<'_>, ty: Ty<'_>) -> Option<(Self, DefId)> {
         match *ty.kind() {
             ty::Closure(def_id, _) => Some((Self::Closure, def_id)),

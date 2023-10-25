@@ -26,7 +26,7 @@ use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::visit::{TypeVisitable, TypeVisitableExt};
 use rustc_middle::ty::{
-    self, AdtKind, CanonicalUserType, GenericParamDefKind, Ty, TyCtxt, UserType,
+    self, AdtKind, CanonicalUserType, GenericParamDefKind, IsIdentity, Ty, TyCtxt, UserType,
 };
 use rustc_middle::ty::{GenericArgKind, GenericArgsRef, UserArgs, UserSelfTy};
 use rustc_session::lint;
@@ -207,6 +207,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         debug!("fcx {}", self.tag());
 
+        // FIXME: is_identity being on `UserType` and not `Canonical<UserType>` is awkward
         if !canonical_user_type_annotation.is_identity() {
             self.typeck_results
                 .borrow_mut()

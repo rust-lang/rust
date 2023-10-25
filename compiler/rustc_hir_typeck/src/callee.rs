@@ -305,7 +305,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ) = (parent_node, callee_node)
         {
             let fn_decl_span = if hir.body(body).coroutine_kind
-                == Some(hir::CoroutineKind::Async(hir::AsyncCoroutineKind::Closure))
+                == Some(hir::CoroutineKind::Async(hir::CoroutineSource::Closure))
             {
                 // Actually need to unwrap one more layer of HIR to get to
                 // the _real_ closure...

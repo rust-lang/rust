@@ -682,9 +682,9 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                 };
                 let mir_description = match hir.body(body).coroutine_kind {
                     Some(hir::CoroutineKind::Async(gen)) => match gen {
-                        hir::AsyncCoroutineKind::Block => " of async block",
-                        hir::AsyncCoroutineKind::Closure => " of async closure",
-                        hir::AsyncCoroutineKind::Fn => {
+                        hir::CoroutineSource::Block => " of async block",
+                        hir::CoroutineSource::Closure => " of async closure",
+                        hir::CoroutineSource::Fn => {
                             let parent_item =
                                 hir.get_by_def_id(hir.get_parent_item(mir_hir_id).def_id);
                             let output = &parent_item

@@ -129,6 +129,44 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         if self.missing_lifetimes() { "lifetime" } else { "generic" }
     }
 
+    /// Returns true if the generic type is a trait
+    /// and is being referred to from one of its trait impls
+    fn is_in_trait_impl(&self) -> bool {
+        if self.tcx.is_trait(self.def_id) {
+            // Here we check if the reference to the generic type
+            // is from the 'of_trait' field of the enclosing impl
+
+            let parent = self.tcx.hir().get_parent(self.path_segment.hir_id);
+            let parent_item = self
+                .tcx
+                .hir()
+                .get_by_def_id(self.tcx.hir().get_parent_item(self.path_segment.hir_id).def_id);
+
+            // Get the HIR id of the trait ref
+            let hir::Node::TraitRef(hir::TraitRef { hir_ref_id: trait_ref_id, .. }) = parent else {
+                return false;
+            };
+
+            // Get the HIR id of the 'of_trait' field of the impl
+            let hir::Node::Item(hir::Item {
+                kind:
+                    hir::ItemKind::Impl(hir::Impl {
+                        of_trait: Some(hir::TraitRef { hir_ref_id: id_in_of_trait, .. }),
+                        ..
+                    }),
+                ..
+            }) = parent_item
+            else {
+                return false;
+            };
+
+            // Check that trait is referred to from the of_trait field of impl
+            trait_ref_id == id_in_of_trait
+        } else {
+            false
+        }
+    }
+
     fn num_provided_args(&self) -> usize {
         if self.missing_lifetimes() {
             self.num_provided_lifetime_args()
@@ -955,20 +993,26 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         // If there is a single unbound associated type and a single excess generic param
         // suggest replacing the generic param with the associated type bound
         if provided_args_matches_unbound_traits && !unbound_types.is_empty() {
-            let unused_generics = &self.gen_args.args[self.num_expected_type_or_const_args()..];
-            let suggestions = iter::zip(unused_generics, &unbound_types)
-                .map(|(potential, name)| (potential.span().shrink_to_lo(), format!("{name} = ")))
-                .collect::<Vec<_>>();
+            // Don't suggest if we're in a trait impl as
+            // that would result in invalid syntax (fixes #116464)
+            if !self.is_in_trait_impl() {
+                let unused_generics = &self.gen_args.args[self.num_expected_type_or_const_args()..];
+                let suggestions = iter::zip(unused_generics, &unbound_types)
+                    .map(|(potential, name)| {
+                        (potential.span().shrink_to_lo(), format!("{name} = "))
+                    })
+                    .collect::<Vec<_>>();
 
-            if !suggestions.is_empty() {
-                err.multipart_suggestion_verbose(
-                    format!(
-                        "replace the generic bound{s} with the associated type{s}",
-                        s = pluralize!(unbound_types.len())
-                    ),
-                    suggestions,
-                    Applicability::MaybeIncorrect,
-                );
+                if !suggestions.is_empty() {
+                    err.multipart_suggestion_verbose(
+                        format!(
+                            "replace the generic bound{s} with the associated type{s}",
+                            s = pluralize!(unbound_types.len())
+                        ),
+                        suggestions,
+                        Applicability::MaybeIncorrect,
+                    );
+                }
             }
         } else if remove_entire_generics {
             let span = self

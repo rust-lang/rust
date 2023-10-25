@@ -622,7 +622,7 @@ impl<I: Interner> fmt::Debug for TyKind<I> {
 }
 
 // This is manually implemented because a derive would require `I: Encodable`
-impl<I: Interner, E: TyEncoder> Encodable<E> for TyKind<I>
+impl<I: Interner, E: TyEncoder<I = I>> Encodable<E> for TyKind<I>
 where
     I::ErrorGuaranteed: Encodable<E>,
     I::AdtDef: Encodable<E>,

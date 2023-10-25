@@ -188,7 +188,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     e.id,
                     None,
                     e.span,
-                    hir::AsyncCoroutineKind::Block,
+                    hir::CoroutineSource::Block,
                     |this| this.with_new_scopes(|this| this.lower_block_expr(block)),
                 ),
                 ExprKind::Await(expr, await_kw_span) => self.lower_expr_await(*await_kw_span, expr),
@@ -598,7 +598,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         closure_node_id: NodeId,
         ret_ty: Option<hir::FnRetTy<'hir>>,
         span: Span,
-        async_gen_kind: hir::AsyncCoroutineKind,
+        async_gen_kind: hir::CoroutineSource,
         body: impl FnOnce(&mut Self) -> hir::Expr<'hir>,
     ) -> hir::ExprKind<'hir> {
         let output = ret_ty.unwrap_or_else(|| hir::FnRetTy::DefaultReturn(self.lower_span(span)));
@@ -1005,7 +1005,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     inner_closure_id,
                     async_ret_ty,
                     body.span,
-                    hir::AsyncCoroutineKind::Closure,
+                    hir::CoroutineSource::Closure,
                     |this| this.with_new_scopes(|this| this.lower_expr_mut(body)),
                 );
                 let hir_id = this.lower_node_id(inner_closure_id);

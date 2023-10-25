@@ -28,6 +28,11 @@ trait_selection_invalid_on_clause_in_rustc_on_unimplemented = invalid `on`-claus
     .label = invalid on-clause here
 
 trait_selection_malformed_on_unimplemented_attr = malformed `on_unimplemented` attribute
+    .help = only `message`, `note` and `label` are allowed as options
+    .label = invalid option found here
+
+trait_selection_missing_options_for_on_unimplemented_attr = missing options for `on_unimplemented` attribute
+    .help = at least one of the `message`, `note` and `label` options are expected
 
 trait_selection_negative_positive_conflict = found both positive and negative implementation of trait `{$trait_desc}`{$self_desc ->
         [none] {""}

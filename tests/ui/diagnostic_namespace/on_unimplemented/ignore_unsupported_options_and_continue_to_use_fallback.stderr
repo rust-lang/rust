@@ -1,33 +1,23 @@
 warning: malformed `on_unimplemented` attribute
-  --> $DIR/ignore_unsupported_options_and_continue_to_use_fallback.rs:3:1
+  --> $DIR/ignore_unsupported_options_and_continue_to_use_fallback.rs:4:5
    |
-LL | / #[diagnostic::on_unimplemented(
-LL | |
-LL | |
-LL | |     if(Self = ()),
-...  |
-LL | |     note = "not used yet"
-LL | | )]
-   | |__^
+LL |     if(Self = "()"),
+   |     ^^^^^^^^^^^^^^^ invalid option found here
    |
+   = help: only `message`, `note` and `label` are allowed as options
    = note: `#[warn(unknown_or_malformed_diagnostic_attributes)]` on by default
 
 warning: malformed `on_unimplemented` attribute
-  --> $DIR/ignore_unsupported_options_and_continue_to_use_fallback.rs:3:1
+  --> $DIR/ignore_unsupported_options_and_continue_to_use_fallback.rs:4:5
    |
-LL | / #[diagnostic::on_unimplemented(
-LL | |
-LL | |
-LL | |     if(Self = ()),
-...  |
-LL | |     note = "not used yet"
-LL | | )]
-   | |__^
+LL |     if(Self = "()"),
+   |     ^^^^^^^^^^^^^^^ invalid option found here
    |
+   = help: only `message`, `note` and `label` are allowed as options
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error[E0277]: fallback!!
-  --> $DIR/ignore_unsupported_options_and_continue_to_use_fallback.rs:20:15
+error[E0277]: custom message
+  --> $DIR/ignore_unsupported_options_and_continue_to_use_fallback.rs:18:15
    |
 LL |     takes_foo(());
    |     --------- ^^ fallback label
@@ -35,14 +25,14 @@ LL |     takes_foo(());
    |     required by a bound introduced by this call
    |
    = help: the trait `Foo` is not implemented for `()`
-   = note: fallback note
+   = note: custom note
 help: this trait has no implementations, consider adding one
-  --> $DIR/ignore_unsupported_options_and_continue_to_use_fallback.rs:15:1
+  --> $DIR/ignore_unsupported_options_and_continue_to_use_fallback.rs:13:1
    |
 LL | trait Foo {}
    | ^^^^^^^^^
 note: required by a bound in `takes_foo`
-  --> $DIR/ignore_unsupported_options_and_continue_to_use_fallback.rs:17:22
+  --> $DIR/ignore_unsupported_options_and_continue_to_use_fallback.rs:15:22
    |
 LL | fn takes_foo(_: impl Foo) {}
    |                      ^^^ required by this bound in `takes_foo`
