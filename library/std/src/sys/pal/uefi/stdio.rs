@@ -6,43 +6,49 @@ use crate::ptr::NonNull;
 
 const MAX_BUFFER_SIZE: usize = 8192;
 
-pub struct Stdin;
+pub struct Stdin {
+    pending: Option<char>,
+}
+
 pub struct Stdout;
 pub struct Stderr;
 
 impl Stdin {
     pub const fn new() -> Stdin {
-        Stdin
+        Stdin { pending: None }
     }
 }
 
 impl io::Read for Stdin {
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+    fn read(&mut self, mut buf: &mut [u8]) -> io::Result<usize> {
         let st: NonNull<r_efi::efi::SystemTable> = uefi::env::system_table().cast();
         let stdin = unsafe { (*st.as_ptr()).con_in };
 
+        // Write any pending character
+        if let Some(ch) = self.pending {
+            if ch.len_utf8() > buf.len() {
+                return Ok(0);
+            }
+            ch.encode_utf8(buf);
+            buf = &mut buf[ch.len_utf8()..];
+            self.pending = None;
+        }
+
         // Try reading any pending data
-        let inp = match read_key_stroke(stdin) {
-            Ok(x) => x,
-            Err(e) if e == r_efi::efi::Status::NOT_READY => {
-                // Wait for keypress for new data
-                wait_stdin(stdin)?;
-                read_key_stroke(stdin).map_err(|x| io::Error::from_raw_os_error(x.as_usize()))?
-            }
-            Err(e) => {
-                return Err(io::Error::from_raw_os_error(e.as_usize()));
-            }
-        };
+        let inp = read(stdin)?;
 
         // Check if the key is printiable character
-        if inp.scan_code != 0x00 {
+        if inp == 0x00 {
             return Err(io::const_io_error!(io::ErrorKind::Interrupted, "Special Key Press"));
         }
 
-        // SAFETY: Iterator will have only 1 character since we are reading only 1 Key
-        // SAFETY: This character will always be UCS-2 and thus no surrogates.
-        let ch: char = char::decode_utf16([inp.unicode_char]).next().unwrap().unwrap();
+        // The option unwrap is safe since iterator will have 1 element.
+        let ch: char = char::decode_utf16([inp])
+            .next()
+            .unwrap()
+            .map_err(|_| io::const_io_error!(io::ErrorKind::InvalidInput, "Invalid Input"))?;
         if ch.len_utf8() > buf.len() {
+            self.pending = Some(ch);
             return Ok(0);
         }
 
@@ -93,8 +99,8 @@ impl io::Write for Stderr {
 // UCS-2 character should occupy 3 bytes at most in UTF-8
 pub const STDIN_BUF_SIZE: usize = 3;
 
-pub fn is_ebadf(_err: &io::Error) -> bool {
-    true
+pub fn is_ebadf(err: &io::Error) -> bool {
+    err.raw_os_error() == Some(r_efi::efi::Status::UNSUPPORTED.as_usize())
 }
 
 pub fn panic_output() -> Option<impl io::Write> {
@@ -130,6 +136,16 @@ unsafe fn simple_text_output(
 ) -> io::Result<()> {
     let res = unsafe { ((*protocol).output_string)(protocol, buf.as_mut_ptr()) };
     if res.is_error() { Err(io::Error::from_raw_os_error(res.as_usize())) } else { Ok(()) }
+}
+
+fn read(stdin: *mut r_efi::protocols::simple_text_input::Protocol) -> io::Result<u16> {
+    loop {
+        match read_key_stroke(stdin) {
+            Ok(x) => return Ok(x.unicode_char),
+            Err(e) if e == r_efi::efi::Status::NOT_READY => wait_stdin(stdin)?,
+            Err(e) => return Err(io::Error::from_raw_os_error(e.as_usize())),
+        }
+    }
 }
 
 fn wait_stdin(stdin: *mut r_efi::protocols::simple_text_input::Protocol) -> io::Result<()> {
