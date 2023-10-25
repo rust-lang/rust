@@ -53,11 +53,11 @@ LL |     priv_trait::mac!();
    |
    = note: this error originates in the macro `priv_trait::mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: trait `PrivTr` is private
+error: associated type `PrivTr::AssocTy` is private
   --> $DIR/associated-item-privacy-trait.rs:25:34
    |
 LL |         pub type InSignatureTy = <Pub as PrivTr>::AssocTy;
-   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^ private trait
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^ private associated type
 ...
 LL |     priv_trait::mac!();
    |     ------------------ in this macro invocation

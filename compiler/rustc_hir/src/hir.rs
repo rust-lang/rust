@@ -3781,6 +3781,7 @@ impl<'hir> Node<'hir> {
                 ItemKind::TyAlias(ty, _)
                 | ItemKind::Static(ty, _, _)
                 | ItemKind::Const(ty, _, _) => Some(ty),
+                ItemKind::Impl(impl_item) => Some(&impl_item.self_ty),
                 _ => None,
             },
             Node::TraitItem(it) => match it.kind {

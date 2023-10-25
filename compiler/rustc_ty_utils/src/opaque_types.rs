@@ -53,14 +53,10 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
 
     fn parent(&self) -> Option<LocalDefId> {
         match self.tcx.def_kind(self.item) {
-            DefKind::AnonConst | DefKind::InlineConst | DefKind::Fn | DefKind::TyAlias => None,
             DefKind::AssocFn | DefKind::AssocTy | DefKind::AssocConst => {
                 Some(self.tcx.local_parent(self.item))
             }
-            other => span_bug!(
-                self.tcx.def_span(self.item),
-                "unhandled item with opaque types: {other:?}"
-            ),
+            _ => None,
         }
     }
 
@@ -98,14 +94,6 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
         hir_id == scope
     }
 
-    fn collect_body_and_predicate_taits(&mut self) {
-        // Look at all where bounds.
-        self.tcx.predicates_of(self.item).instantiate_identity(self.tcx).visit_with(self);
-        // An item is allowed to constrain opaques declared within its own body (but not nested within
-        // nested functions).
-        self.collect_taits_declared_in_body();
-    }
-
     #[instrument(level = "trace", skip(self))]
     fn collect_taits_declared_in_body(&mut self) {
         let body = self.tcx.hir().body(self.tcx.hir().body_owned_by(self.item)).value;
@@ -129,6 +117,13 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
             }
         }
         TaitInBodyFinder { collector: self }.visit_expr(body);
+    }
+}
+
+impl<'tcx> super::sig_types::SpannedTypeVisitor<'tcx> for OpaqueTypeCollector<'tcx> {
+    fn visit(&mut self, span: Span, value: impl TypeVisitable<TyCtxt<'tcx>>) -> ControlFlow<!> {
+        self.visit_spanned(span, value);
+        ControlFlow::Continue(())
     }
 }
 
@@ -273,37 +268,20 @@ fn opaque_types_defined_by<'tcx>(tcx: TyCtxt<'tcx>, item: LocalDefId) -> &'tcx [
     let kind = tcx.def_kind(item);
     trace!(?kind);
     let mut collector = OpaqueTypeCollector::new(tcx, item);
+    super::sig_types::walk_types(tcx, item, &mut collector);
     match kind {
-        // Walk over the signature of the function-like to find the opaques.
-        DefKind::AssocFn | DefKind::Fn => {
-            let ty_sig = tcx.fn_sig(item).instantiate_identity();
-            let hir_sig = tcx.hir().get_by_def_id(item).fn_sig().unwrap();
-            // Walk over the inputs and outputs manually in order to get good spans for them.
-            collector.visit_spanned(hir_sig.decl.output.span(), ty_sig.output());
-            for (hir, ty) in hir_sig.decl.inputs.iter().zip(ty_sig.inputs().iter()) {
-                collector.visit_spanned(hir.span, ty.map_bound(|x| *x));
-            }
-            collector.collect_body_and_predicate_taits();
+        DefKind::AssocFn
+        | DefKind::Fn
+        | DefKind::Static(_)
+        | DefKind::Const
+        | DefKind::AssocConst
+        | DefKind::AnonConst => {
+            collector.collect_taits_declared_in_body();
         }
-        // Walk over the type of the item to find opaques.
-        DefKind::Static(_) | DefKind::Const | DefKind::AssocConst | DefKind::AnonConst => {
-            let span = match tcx.hir().get_by_def_id(item).ty() {
-                Some(ty) => ty.span,
-                _ => tcx.def_span(item),
-            };
-            collector.visit_spanned(span, tcx.type_of(item).instantiate_identity());
-            collector.collect_body_and_predicate_taits();
-        }
-        // We're also doing this for `AssocTy` for the wf checks in `check_opaque_meets_bounds`
-        DefKind::TyAlias | DefKind::AssocTy => {
-            tcx.type_of(item).instantiate_identity().visit_with(&mut collector);
-        }
-        DefKind::OpaqueTy => {
-            for (pred, span) in tcx.explicit_item_bounds(item).instantiate_identity_iter_copied() {
-                collector.visit_spanned(span, pred);
-            }
-        }
-        DefKind::Mod
+        DefKind::OpaqueTy
+        | DefKind::TyAlias
+        | DefKind::AssocTy
+        | DefKind::Mod
         | DefKind::Struct
         | DefKind::Union
         | DefKind::Enum
@@ -322,9 +300,10 @@ fn opaque_types_defined_by<'tcx>(tcx: TyCtxt<'tcx>, item: LocalDefId) -> &'tcx [
         | DefKind::LifetimeParam
         | DefKind::GlobalAsm
         | DefKind::Impl { .. } => {}
-        // Closures and coroutines are type checked with their parent, so there is no difference here.
+        // Closures and coroutines are type checked with their parent, so we need to allow all
+        // opaques from the closure signature *and* from the parent body.
         DefKind::Closure | DefKind::Coroutine | DefKind::InlineConst => {
-            return tcx.opaque_types_defined_by(tcx.local_parent(item));
+            collector.opaques.extend(tcx.opaque_types_defined_by(tcx.local_parent(item)));
         }
     }
     tcx.arena.alloc_from_iter(collector.opaques)
