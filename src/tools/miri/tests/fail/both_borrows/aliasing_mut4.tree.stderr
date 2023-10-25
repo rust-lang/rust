@@ -1,8 +1,8 @@
 error: Undefined Behavior: write access through <TAG> is forbidden
   --> RUSTLIB/core/src/mem/mod.rs:LL:CC
    |
-LL |         ptr::write(dest, src);
-   |         ^^^^^^^^^^^^^^^^^^^^^ write access through <TAG> is forbidden
+LL |         ptr::write(x, b);
+   |         ^^^^^^^^^^^^^^^^ write access through <TAG> is forbidden
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
    = help: the accessed tag <TAG> is foreign to the protected tag <TAG> (i.e., it is not a child)
@@ -19,6 +19,8 @@ help: the protected tag <TAG> was created here, in the initial state Frozen
 LL | pub fn safe(x: &i32, y: &mut Cell<i32>) {
    |             ^
    = note: BACKTRACE (of the first span):
+   = note: inside `std::mem::swap_simple::<i32>` at RUSTLIB/core/src/mem/mod.rs:LL:CC
+   = note: inside `std::mem::swap::<i32>` at RUSTLIB/core/src/mem/mod.rs:LL:CC
    = note: inside `std::mem::replace::<i32>` at RUSTLIB/core/src/mem/mod.rs:LL:CC
    = note: inside `std::cell::Cell::<i32>::replace` at RUSTLIB/core/src/cell.rs:LL:CC
    = note: inside `std::cell::Cell::<i32>::set` at RUSTLIB/core/src/cell.rs:LL:CC
