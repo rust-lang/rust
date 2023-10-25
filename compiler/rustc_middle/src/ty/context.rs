@@ -1841,7 +1841,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// does not compute the full elaborated super-predicates but just the set of def-ids. It is used
     /// to identify which traits may define a given associated type to help avoid cycle errors.
     /// Returns a `DefId` iterator.
-    fn super_traits_of(self, trait_def_id: DefId) -> impl Iterator<Item = DefId> + 'tcx {
+    pub fn super_traits_of(self, trait_def_id: DefId) -> impl Iterator<Item = DefId> + 'tcx {
         let mut set = FxHashSet::default();
         let mut stack = vec![trait_def_id];
 

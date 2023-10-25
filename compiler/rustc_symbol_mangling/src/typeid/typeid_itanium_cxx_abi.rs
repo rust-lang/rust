@@ -277,7 +277,9 @@ fn encode_region<'tcx>(region: Region<'tcx>, dict: &mut FxHashMap<DictKey<'tcx>,
             s.push('E');
             compress(dict, DictKey::Region(region), &mut s);
         }
-        // FIXME(@lcnr): Why is `ReEarlyParam` reachable here.
+        // This is possible becasuse trait objects created by new_dynamic_trait and
+        // new_dynamic_fn_trait are created with tcx.lifetimes.re_erased, and non Fn traits are
+        // transformed into their identities in transform_predicate.
         RegionKind::ReEarlyParam(..) | RegionKind::ReErased => {
             s.push_str("u6region");
             compress(dict, DictKey::Region(region), &mut s);
@@ -638,19 +640,6 @@ fn encode_ty<'tcx>(
         }
 
         // Function types
-        ty::FnDef(def_id, args)
-        | ty::Closure(def_id, args)
-        | ty::CoroutineClosure(def_id, args) => {
-            // u<length><name>[I<element-type1..element-typeN>E], where <element-type> is <subst>,
-            // as vendor extended type.
-            let mut s = String::new();
-            let name = encode_ty_name(tcx, *def_id);
-            let _ = write!(s, "u{}{}", name.len(), &name);
-            s.push_str(&encode_args(tcx, args, dict, options));
-            compress(dict, DictKey::Ty(ty, TyQ::None), &mut s);
-            typeid.push_str(&s);
-        }
-
         ty::Coroutine(def_id, args, ..) => {
             // u<length><name>[I<element-type1..element-typeN>E], where <element-type> is <subst>,
             // as vendor extended type.
@@ -720,6 +709,20 @@ fn encode_ty<'tcx>(
             typeid.push_str(&s);
         }
 
+        // Associated type projections
+        ty::Alias(_, alias_ty) => {
+            // u<length><name>[I<element-type1..element-typeN>E], where <element-type> is <subst>,
+            // as vendor extended type.
+            let mut s = String::new();
+            let name = encode_ty_name(tcx, alias_ty.def_id);
+            let _ = write!(s, "u{}{}", name.len(), &name);
+            s.push_str(&encode_args(tcx, alias_ty.args, dict, options));
+            compress(dict, DictKey::Ty(ty, TyQ::None), &mut s);
+            typeid.push_str(&s);
+        }
+
+        // This is possible because non Fn traits are transformed into their identities in
+        // transform_predicate.
         // Type parameters
         ty::Param(..) => {
             // u5param as vendor extended type
@@ -729,9 +732,11 @@ fn encode_ty<'tcx>(
         }
 
         // Unexpected types
-        ty::Alias(..)
-        | ty::Bound(..)
+        ty::Bound(..)
+        | ty::Closure(..)
         | ty::Error(..)
+        | ty::FnDef(..)
+        | ty::CoroutineClosure(..)
         | ty::CoroutineWitness(..)
         | ty::Infer(..)
         | ty::Placeholder(..) => {
@@ -742,24 +747,391 @@ fn encode_ty<'tcx>(
     typeid
 }
 
-/// Transforms predicates for being encoded and used in the substitution dictionary.
-fn transform_predicates<'tcx>(
+/// Returns the list of arguments if principal is an Fn trait or Fn subtrait.
+#[inline]
+fn fn_trait_args<'tcx>(
     tcx: TyCtxt<'tcx>,
     predicates: &List<ty::PolyExistentialPredicate<'tcx>>,
-) -> &'tcx List<ty::PolyExistentialPredicate<'tcx>> {
-    let predicates: Vec<ty::PolyExistentialPredicate<'tcx>> = predicates
-        .iter()
-        .filter_map(|predicate| match predicate.skip_binder() {
-            ty::ExistentialPredicate::Trait(trait_ref) => {
+) -> Option<&'tcx List<Ty<'tcx>>> {
+    if is_fn_trait(tcx, predicates) || is_fn_subtrait(tcx, predicates) {
+        if let Some(args) = principal_args(predicates)
+            && !args.is_empty()
+            && args[0].expect_ty().is_tuple()
+        {
+            return Some(args[0].expect_ty().tuple_fields());
+        }
+        if is_fn_subtrait(tcx, predicates) {
+            return Some(List::empty());
+        } else {
+            bug!("fn_trait_args: unexpected non-tuple arg `{:?}`", principal_args(predicates));
+        }
+    } else {
+        None
+    }
+}
+
+/// Returns the output if principal is an Fn trait or Fn subtrait.
+#[inline]
+fn fn_trait_output<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    predicates: &List<ty::PolyExistentialPredicate<'tcx>>,
+) -> Option<Ty<'tcx>> {
+    if is_fn_trait(tcx, predicates) || is_fn_subtrait(tcx, predicates) {
+        if let Some(projection) = predicates.projection_bounds().next()
+            && let Some(ty) = projection.skip_binder().term.ty()
+        {
+            return Some(ty);
+        }
+        if is_fn_subtrait(tcx, predicates) {
+            return Some(Ty::new_unit(tcx));
+        } else {
+            bug!(
+                "fn_trait_output: unexpected non-term projection `{:?}`",
+                predicates.projection_bounds().next()
+            );
+        }
+    } else {
+        None
+    }
+}
+
+/// Returns the signature if principal is an Fn trait or Fn subtrait.
+#[inline]
+fn fn_trait_sig<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    predicates: &List<ty::PolyExistentialPredicate<'tcx>>,
+) -> Option<FnSig<'tcx>> {
+    if is_fn_trait(tcx, predicates) || is_fn_subtrait(tcx, predicates) {
+        Some(tcx.mk_fn_sig(
+            fn_trait_args(tcx, predicates).unwrap(),
+            fn_trait_output(tcx, predicates).unwrap(),
+            false,
+            hir::Unsafety::Normal,
+            Abi::Rust,
+        ))
+    } else {
+        None
+    }
+}
+
+/// Returns true if the FnAbi is an unpacked "rust-call" FnAbi.
+#[inline]
+fn is_closure_call_fnabi<'tcx>(tcx: TyCtxt<'tcx>, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> bool {
+    if fn_abi.conv == Conv::Rust && !fn_abi.c_variadic && !fn_abi.args.is_empty() {
+        match fn_abi.args[0].layout.ty.kind() {
+            ty::RawPtr(ty, ..) | ty::Ref(_, ty, _) => {
+                if let ty::Closure(_, args) = ty.kind() {
+                    let fn_sig =
+                        tcx.signature_unclosure(args.as_closure().sig(), hir::Unsafety::Normal);
+                    return fn_sig
+                        .skip_binder()
+                        .inputs()
+                        .iter()
+                        .eq_by(&fn_abi.args[1..], |ty, arg| *ty == arg.layout.ty)
+                        && fn_sig.output().skip_binder() == fn_abi.ret.layout.ty;
+                }
+            }
+            _ => {}
+        }
+    }
+    false
+}
+
+/// Returns true if the FnAbi is a dynamic Fn trait FnAbi.
+#[inline]
+fn is_dynamic_fn_call_fnabi<'tcx>(tcx: TyCtxt<'tcx>, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> bool {
+    if fn_abi.conv == Conv::Rust
+        && !fn_abi.c_variadic
+        && !fn_abi.args.is_empty()
+        && let ty::Ref(_, ty0, _) = fn_abi.args[0].layout.ty.kind()
+        && let ty::Dynamic(predicates, ..) = ty0.kind()
+    {
+        if is_fn_trait(tcx, predicates) || is_fn_subtrait(tcx, predicates) {
+            return fn_trait_args(tcx, predicates)
+                .unwrap()
+                .iter()
+                .eq_by(&fn_abi.args[1..], |ty, arg| ty == arg.layout.ty)
+                && fn_trait_output(tcx, predicates).unwrap() == fn_abi.ret.layout.ty;
+        }
+    }
+    false
+}
+
+/// Returns true if the trait object is an Fn subtrait object.
+#[inline]
+fn is_dynamic_fn_subtrait<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
+    match ty.kind() {
+        ty::Dynamic(predicates, ..) => is_fn_subtrait(tcx, predicates),
+        _ => false,
+    }
+}
+
+/// Returns true if the trait object is an Fn trait object.
+#[inline]
+fn is_dynamic_fn_trait<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
+    match ty.kind() {
+        ty::Dynamic(predicates, ..) => is_fn_trait(tcx, predicates),
+        _ => false,
+    }
+}
+
+/// Returns true if principal is an Fn subtrait.
+#[inline]
+fn is_fn_subtrait<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    predicates: &List<ty::PolyExistentialPredicate<'tcx>>,
+) -> bool {
+    if let Some(principal) = predicates.principal() {
+        for def_id in tcx.super_traits_of(principal.skip_binder().def_id) {
+            if tcx.is_fn_trait(def_id) {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+/// Returns true if principal is an Fn trait.
+#[inline]
+fn is_fn_trait<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    predicates: &List<ty::PolyExistentialPredicate<'tcx>>,
+) -> bool {
+    if let Some(principal) = predicates.principal()
+        && tcx.is_fn_trait(principal.skip_binder().def_id)
+    {
+        true
+    } else {
+        false
+    }
+}
+
+/// Creates a trait object.
+#[inline]
+fn new_dynamic_trait<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: DefId,
+    args: GenericArgsRef<'tcx>,
+) -> Ty<'tcx> {
+    let predicate =
+        ty::ExistentialPredicate::Trait(ty::ExistentialTraitRef { def_id: def_id, args: args });
+    let predicates = tcx.mk_poly_existential_predicates(&[ty::Binder::dummy(predicate)]);
+    Ty::new_dynamic(tcx, predicates, tcx.lifetimes.re_erased, ty::Dyn)
+}
+
+/// Returns the principal list of arguments.
+#[inline]
+fn principal_args<'tcx>(
+    predicates: &List<ty::PolyExistentialPredicate<'tcx>>,
+) -> Option<&'tcx List<GenericArg<'tcx>>> {
+    predicates.principal().map(|trait_ref| trait_ref.skip_binder().args)
+}
+
+/// Transforms a closure FnAbi for being encoded and used in the substitution dictionary.
+fn transform_closure_fnabi<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+    _options: EncodeTyOptions,
+) -> FnAbi<'tcx, Ty<'tcx>> {
+    if !fn_abi.args.is_empty()
+        && let ty::Closure(_, args) = fn_abi.args[0].layout.ty.kind()
+    {
+        let fn_sig = tcx.signature_unclosure(args.as_closure().sig(), hir::Unsafety::Normal);
+        return tcx
+            .fn_abi_of_fn_ptr(ty::ParamEnv::empty().and((fn_sig, List::empty())))
+            .unwrap_or_else(|fn_abi_error| {
+                bug!("transform_fnabi: couldn't get fn_abi of fn_sig {:?}", fn_abi_error)
+            })
+            .clone();
+    } else if !fn_abi.args.is_empty() {
+        match fn_abi.args[0].layout.ty.kind() {
+            ty::RawPtr(ty, ..) | ty::Ref(_, ty, _) => {
+                if let ty::Closure(_, args) = ty.kind() {
+                    let fn_sig =
+                        tcx.signature_unclosure(args.as_closure().sig(), hir::Unsafety::Normal);
+                    return tcx
+                        .fn_abi_of_fn_ptr(ty::ParamEnv::empty().and((fn_sig, List::empty())))
+                        .unwrap_or_else(|fn_abi_error| {
+                            bug!(
+                                "transform_fnabi: couldn't get fn_abi of fn_sig {:?}",
+                                fn_abi_error
+                            )
+                        })
+                        .clone();
+                }
+            }
+            _ => {}
+        }
+    }
+
+    return fn_abi.clone();
+}
+
+/// Transforms a Fn trait FnAbi for being encoded and used in the substitution dictionary.
+fn transform_fn_trait_fnabi<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+    _options: EncodeTyOptions,
+) -> FnAbi<'tcx, Ty<'tcx>> {
+    if !fn_abi.args.is_empty() {
+        let fn_sig = ty::Binder::bind_with_vars(
+            tcx.mk_fn_sig(
+                fn_abi.args[1..].iter().map(|arg| arg.layout.ty),
+                fn_abi.ret.layout.ty,
+                false,
+                hir::Unsafety::Normal,
+                Abi::Rust,
+            ),
+            List::empty(),
+        );
+        return tcx
+            .fn_abi_of_fn_ptr(ty::ParamEnv::empty().and((fn_sig, List::empty())))
+            .unwrap_or_else(|fn_abi_error| {
+                bug!("transform_fnabi: couldn't get fn_abi of fn_sig {:?}", fn_abi_error)
+            })
+            .clone();
+    }
+    return fn_abi.clone();
+}
+
+/// Transforms an FnAbi for being encoded and used in the substitution dictionary.
+///
+/// typeid_for_fnabi is called at two locations, initially when declaring/defining functions and
+/// methods, which it has a lot more context/information (i.e., FnAbi and Instance), and later
+/// during code generation at call sites, which it has a lot less contex/information (i.e., an FnAbi
+/// only, and after type erasure).
+///
+/// In the first call (i.e., when declaring/defining functions and methods), it encodes a given
+/// FnAbi and Instance and assigns one or more type ids to a function or method (these type ids are
+/// used later used by the LowerTypeTests LLVM pass to aggregate functions/function pointers in
+/// groups derived by these type ids).
+///
+/// In the second call (i.e., during code generation), it encodes a given FnAbi (i.e., without an
+/// Instance, and after type erasure), and uses this type id to test if the given function/function
+/// pointer is member of the group derived from this type id. It means that in the first call
+/// typeid_for_fnabi (where it assign type ids), it can only include at most as much information
+/// that would be available during code generation at call sites, otherwise the type ids will not
+/// match.
+///
+/// For this, it:
+///
+/// * Replaces the concrete self of trait default implementations and trait implementations by a
+///   reference to a trait object (i.e., performs type erasure), similarly to what the compiler does
+///   during code generation at call sites, but uses the indentity of the trait that implements the
+///   method being declared/defined or called.
+/// * Adjusts the type ids of VTableShims to the type id expected in the call sites for the entry in
+///   the vtable (i.e., the signature of the closure passed as an argument to the shim).
+/// * Adjusts the type ids of ClosureOnceShims to the type id expected in the call sites for that
+///   entry in the vtable (i.e., the signature of the closure passed as an argument to the shim).
+///
+/// For compatibility between types, it uses their least common denominator and:
+///
+/// * Transforms closure FnAbis into funtion pointer FnAbis.
+/// * Transforms Fn trait and Fn subtrait FnAbis into function pointer FnAbis.
+///
+pub fn transform_fnabi<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+    options: EncodeTyOptions,
+    instance: Option<&Instance<'tcx>>,
+) -> FnAbi<'tcx, Ty<'tcx>> {
+    if let Some(instance) = instance {
+        match instance.def {
+            ty::InstanceDef::Item(..) => {
+                if let Some(impl_def_id) = tcx.impl_of_method(instance.def_id())
+                    && let Some(trait_ref) = tcx.impl_trait_ref(impl_def_id)
+                    && !fn_abi.args.is_empty()
+                    && fn_abi.args[0].layout.ty.is_ref()
+                {
+                    // Replace the concrete self by a reference to a trait object (i.e., perform
+                    // type erasure).
+                    let self_ty = if fn_abi.args[0].layout.ty.is_mutable_ptr() {
+                        Ty::new_mut_ref(
+                            tcx,
+                            tcx.lifetimes.re_erased,
+                            new_dynamic_trait(
+                                tcx,
+                                trait_ref.skip_binder().def_id,
+                                trait_ref.skip_binder().args,
+                            ),
+                        )
+                    } else {
+                        Ty::new_imm_ref(
+                            tcx,
+                            tcx.lifetimes.re_erased,
+                            new_dynamic_trait(
+                                tcx,
+                                trait_ref.skip_binder().def_id,
+                                trait_ref.skip_binder().args,
+                            ),
+                        )
+                    };
+                    let mut fn_abi = fn_abi.clone();
+                    // HACK(rcvalle): It is okay to not replace or update the entire ArgAbi here
+                    //   because the other fields are never used.
+                    fn_abi.args[0].layout.ty = self_ty;
+                    return fn_abi;
+                } else if tcx.is_closure_like(instance.def_id()) {
+                    // Transform closure declaration/definition FnAbis into function pointer FnAbis
+                    return transform_closure_fnabi(tcx, fn_abi, options);
+                }
+            }
+            ty::InstanceDef::VTableShim(..) | ty::InstanceDef::ClosureOnceShim { .. } => {
+                // Adjust the type ids of VTableShims and ClosureOnceShims
+                return transform_closure_fnabi(tcx, fn_abi, options);
+            }
+            _ => {}
+        }
+    } else {
+        if is_closure_call_fnabi(tcx, fn_abi) {
+            // Transform closure call FnAbis into function pointer FnAbis
+            return transform_closure_fnabi(tcx, fn_abi, options);
+        } else if is_dynamic_fn_call_fnabi(tcx, fn_abi) {
+            // Transform Fn trait call FnAbis into function pointer FnAbis
+            return transform_fn_trait_fnabi(tcx, fn_abi, options);
+        }
+    }
+    return fn_abi.clone();
+}
+
+/// Transforms a predicate for being encoded and used in the substitution dictionary.
+fn transform_predicate<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    predicate: ty::PolyExistentialPredicate<'tcx>,
+    _options: EncodeTyOptions,
+) -> Option<ty::PolyExistentialPredicate<'tcx>> {
+    match predicate.as_ref().skip_binder() {
+        ty::ExistentialPredicate::Trait(trait_ref) => {
+            if tcx.is_fn_trait(trait_ref.def_id) {
+                // Fn trait objects are transformed into function pointers in transform_ty
+                bug!("transform_predicate: unexpected Fn trait `{}`", trait_ref)
+            } else {
+                // Transform non Fn trait objects into their identities
                 let trait_ref = ty::TraitRef::identity(tcx, trait_ref.def_id);
                 Some(ty::Binder::dummy(ty::ExistentialPredicate::Trait(
                     ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref),
                 )))
             }
-            ty::ExistentialPredicate::Projection(..) => None,
-            ty::ExistentialPredicate::AutoTrait(..) => Some(predicate),
-        })
+        }
+        // Remove projections
+        ty::ExistentialPredicate::Projection(..) => None,
+        ty::ExistentialPredicate::AutoTrait(..) => Some(predicate),
+    }
+}
+
+/// Transforms predicates for being encoded and used in the substitution dictionary.
+fn transform_predicates<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    predicates: &List<ty::PolyExistentialPredicate<'tcx>>,
+    options: EncodeTyOptions,
+) -> &'tcx List<ty::PolyExistentialPredicate<'tcx>> {
+    let mut predicates: Vec<ty::PolyExistentialPredicate<'tcx>> = predicates
+        .iter()
+        .filter_map(|predicate| transform_predicate(tcx, predicate, options))
         .collect();
+
+    // Enforce predicates ordering when encoding
+    predicates.sort_by(|a, b| a.skip_binder().stable_cmp(tcx, &b.skip_binder()));
     tcx.mk_poly_existential_predicates(&predicates)
 }
 
@@ -777,15 +1149,31 @@ fn transform_args<'tcx>(
     tcx.mk_args_from_iter(args)
 }
 
-// Transforms a ty:Ty for being encoded and used in the substitution dictionary. It transforms all
-// c_void types into unit types unconditionally, generalizes pointers if
-// TransformTyOptions::GENERALIZE_POINTERS option is set, and normalizes integers if
-// TransformTyOptions::NORMALIZE_INTEGERS option is set.
+/// Transforms a ty:Ty for being encoded and used in the substitution dictionary.
+///
+/// * Transforms all c_void types into unit types.
+/// * Generalizes pointers if TransformTyOptions::GENERALIZE_POINTERS option is set.
+/// * Normalizes integers if TransformTyOptions::NORMALIZE_INTEGERS option is set.
+/// * Generalizes any repr(transparent) user-defined type that is either a pointer or reference, and
+///   either references itself or any other type that contains or references itself, to avoid a
+///   reference cycle.
+/// * Transforms repr(transparent) types without non-ZST field into ().
+/// * Transforms function items into function pointers.
+/// * Transforms closures into function pointers.
+/// * Transforms Fn trait objects into function pointers.
+/// * Transforms non Fn trait objects into their identities (in transform_predicate).
+///
 fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptions) -> Ty<'tcx> {
     let mut ty = ty;
 
     match ty.kind() {
-        ty::Float(..) | ty::Str | ty::Never | ty::Foreign(..) | ty::CoroutineWitness(..) => {}
+        ty::Alias(..)
+        | ty::Coroutine(..)
+        | ty::Float(..)
+        | ty::Str
+        | ty::Never
+        | ty::Foreign(..)
+        | ty::Param(..) => {}
 
         ty::Bool => {
             if options.contains(EncodeTyOptions::NORMALIZE_INTEGERS) {
@@ -899,34 +1287,43 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
             }
         }
 
-        ty::FnDef(def_id, args) => {
-            ty = Ty::new_fn_def(tcx, *def_id, transform_args(tcx, args, options));
+        ty::FnDef(def_id, ..) => {
+            // Transform function items into function pointers
+            let fn_sig = tcx.fn_sig(def_id).skip_binder();
+            let fn_ptr = Ty::new_fn_ptr(tcx, fn_sig);
+            // Transform fn_sig inputs and output
+            ty = transform_ty(tcx, fn_ptr, options);
         }
 
-        ty::Closure(def_id, args) => {
-            ty = Ty::new_closure(tcx, *def_id, transform_args(tcx, args, options));
-        }
-
-        ty::CoroutineClosure(def_id, args) => {
-            ty = Ty::new_coroutine_closure(tcx, *def_id, transform_args(tcx, args, options));
-        }
-
-        ty::Coroutine(def_id, args) => {
-            ty = Ty::new_coroutine(tcx, *def_id, transform_args(tcx, args, options));
+        ty::Closure(_, args) => {
+            // Transform closures into function pointers
+            let fn_sig = tcx.signature_unclosure(args.as_closure().sig(), hir::Unsafety::Normal);
+            let fn_ptr = Ty::new_fn_ptr(tcx, fn_sig);
+            // Transform fn_sig inputs and output
+            ty = transform_ty(tcx, fn_ptr, options);
         }
 
         ty::Ref(region, ty0, ..) => {
-            if options.contains(TransformTyOptions::GENERALIZE_POINTERS) {
-                if ty.is_mutable_ptr() {
-                    ty = Ty::new_mut_ref(tcx, tcx.lifetimes.re_static, Ty::new_unit(tcx));
-                } else {
-                    ty = Ty::new_imm_ref(tcx, tcx.lifetimes.re_static, Ty::new_unit(tcx));
-                }
+            // Remove references from function items, closures, Fn trait and Fn subtrait objects
+            if ty0.is_fn_def()
+                || ty0.is_closure()
+                || is_dynamic_fn_trait(tcx, *ty0)
+                || is_dynamic_fn_subtrait(tcx, *ty0)
+            {
+                ty = transform_ty(tcx, *ty0, options);
             } else {
-                if ty.is_mutable_ptr() {
-                    ty = Ty::new_mut_ref(tcx, *region, transform_ty(tcx, *ty0, options));
+                if options.contains(TransformTyOptions::GENERALIZE_POINTERS) {
+                    if ty.is_mutable_ptr() {
+                        ty = Ty::new_mut_ref(tcx, tcx.lifetimes.re_static, Ty::new_unit(tcx));
+                    } else {
+                        ty = Ty::new_imm_ref(tcx, tcx.lifetimes.re_static, Ty::new_unit(tcx));
+                    }
                 } else {
-                    ty = Ty::new_imm_ref(tcx, *region, transform_ty(tcx, *ty0, options));
+                    if ty.is_mutable_ptr() {
+                        ty = Ty::new_mut_ref(tcx, *region, transform_ty(tcx, *ty0, options));
+                    } else {
+                        ty = Ty::new_imm_ref(tcx, *region, transform_ty(tcx, *ty0, options));
+                    }
                 }
             }
         }
@@ -975,23 +1372,31 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
         }
 
         ty::Dynamic(predicates, _region, kind) => {
-            ty = Ty::new_dynamic(
-                tcx,
-                transform_predicates(tcx, predicates),
-                tcx.lifetimes.re_erased,
-                *kind,
-            );
+            if is_fn_trait(tcx, predicates) || is_fn_subtrait(tcx, predicates) {
+                // Transform Fn trait and subtrait objects into function pointers
+                let fn_sig = ty::Binder::bind_with_vars(
+                    fn_trait_sig(tcx, predicates).unwrap(),
+                    List::empty(),
+                );
+                let fn_ptr = Ty::new_fn_ptr(tcx, fn_sig);
+                // Transform fn_sig inputs and output
+                ty = transform_ty(tcx, fn_ptr, options);
+            } else {
+                ty = Ty::new_dynamic(
+                    tcx,
+                    transform_predicates(tcx, predicates, options),
+                    tcx.lifetimes.re_erased,
+                    *kind,
+                );
+            }
         }
 
-        ty::Alias(..) => {
-            ty = transform_ty(
-                tcx,
-                tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), ty),
-                options,
-            );
-        }
-
-        ty::Bound(..) | ty::Error(..) | ty::Infer(..) | ty::Param(..) | ty::Placeholder(..) => {
+        ty::Bound(..)
+        | ty::Error(..)
+        | ty::CoroutineClosure(..)
+        | ty::CoroutineWitness(..)
+        | ty::Infer(..)
+        | ty::Placeholder(..) => {
             bug!("transform_ty: unexpected `{:?}`", ty.kind());
         }
     }
@@ -1082,59 +1487,4 @@ pub fn typeid_for_fnabi<'tcx>(
     }
 
     typeid
-}
-
-/// Returns a type metadata identifier for the specified Instance using the Itanium C++ ABI with
-/// vendor extended type qualifiers and types for Rust types that are not used at the FFI boundary.
-pub fn typeid_for_instance<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    instance: &Instance<'tcx>,
-    options: TypeIdOptions,
-) -> String {
-    let fn_abi = tcx
-        .fn_abi_of_instance(tcx.param_env(instance.def_id()).and((*instance, ty::List::empty())))
-        .unwrap_or_else(|instance| {
-            bug!("typeid_for_instance: couldn't get fn_abi of instance {:?}", instance)
-        });
-
-    // If this instance is a method and self is a reference, get the impl it belongs to
-    let impl_def_id = tcx.impl_of_method(instance.def_id());
-    if impl_def_id.is_some() && !fn_abi.args.is_empty() && fn_abi.args[0].layout.ty.is_ref() {
-        // If this impl is not an inherent impl, get the trait it implements
-        if let Some(trait_ref) = tcx.impl_trait_ref(impl_def_id.unwrap()) {
-            // Transform the concrete self into a reference to a trait object
-            let existential_predicate = trait_ref.map_bound(|trait_ref| {
-                ty::ExistentialPredicate::Trait(ty::ExistentialTraitRef::erase_self_ty(
-                    tcx, trait_ref,
-                ))
-            });
-            let existential_predicates = tcx.mk_poly_existential_predicates(&[ty::Binder::dummy(
-                existential_predicate.skip_binder(),
-            )]);
-            // Is the concrete self mutable?
-            let self_ty = if fn_abi.args[0].layout.ty.is_mutable_ptr() {
-                Ty::new_mut_ref(
-                    tcx,
-                    tcx.lifetimes.re_erased,
-                    Ty::new_dynamic(tcx, existential_predicates, tcx.lifetimes.re_erased, ty::Dyn),
-                )
-            } else {
-                Ty::new_imm_ref(
-                    tcx,
-                    tcx.lifetimes.re_erased,
-                    Ty::new_dynamic(tcx, existential_predicates, tcx.lifetimes.re_erased, ty::Dyn),
-                )
-            };
-
-            // Replace the concrete self in an fn_abi clone by the reference to a trait object
-            let mut fn_abi = fn_abi.clone();
-            // HACK(rcvalle): It is okay to not replace or update the entire ArgAbi here because the
-            //   other fields are never used.
-            fn_abi.args[0].layout.ty = self_ty;
-
-            return typeid_for_fnabi(tcx, &fn_abi, options);
-        }
-    }
-
-    typeid_for_fnabi(tcx, fn_abi, options)
 }
