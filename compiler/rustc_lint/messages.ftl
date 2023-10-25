@@ -455,6 +455,12 @@ lint_path_statement_drop = path statement drops value
 
 lint_path_statement_no_effect = path statement with no effect
 
+lint_precedence_unary = unary minus has lower precedence than method call
+    .suggestion = consider adding parentheses to clarify your intent
+
+lint_precedence_unwary = operator precedence can trip the unwary
+    .suggestion = consider adding parentheses to clarify your intent
+
 lint_ptr_null_checks_fn_ptr = function pointers are not nullable, so checking them for null will always return false
     .help = wrap the function pointer inside an `Option` and use `Option::is_none` to check for null pointer value
     .label = expression has type `{$orig_ty}`

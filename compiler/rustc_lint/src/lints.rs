@@ -617,6 +617,52 @@ pub struct ExpectationNote {
     pub rationale: Symbol,
 }
 
+// precedence.rs
+#[derive(LintDiagnostic)]
+pub enum PrecedenceDiag {
+    #[diag(lint_precedence_unary)]
+    Unary {
+        #[subdiagnostic]
+        suggestion: PrecedenceUnarySuggestion,
+    },
+    #[diag(lint_precedence_unwary)]
+    Unwary {
+        #[subdiagnostic]
+        suggestion: PrecedenceUnwarySuggestion,
+    },
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(lint_suggestion, applicability = "machine-applicable")]
+pub struct PrecedenceUnarySuggestion {
+    #[suggestion_part(code = "(")]
+    pub start_span: Span,
+    #[suggestion_part(code = ")")]
+    pub end_span: Span,
+}
+
+#[derive(Subdiagnostic)]
+pub enum PrecedenceUnwarySuggestion {
+    #[multipart_suggestion(lint_suggestion, applicability = "machine-applicable")]
+    OneExpr {
+        #[suggestion_part(code = "(")]
+        start_span: Span,
+        #[suggestion_part(code = ")")]
+        end_span: Span,
+    },
+    #[multipart_suggestion(lint_suggestion, applicability = "machine-applicable")]
+    TwoExpr {
+        #[suggestion_part(code = "(")]
+        start_span: Span,
+        #[suggestion_part(code = ")")]
+        end_span: Span,
+        #[suggestion_part(code = "(")]
+        start2_span: Span,
+        #[suggestion_part(code = ")")]
+        end2_span: Span,
+    },
+}
+
 // ptr_nulls.rs
 #[derive(LintDiagnostic)]
 pub enum PtrNullChecksDiag<'a> {
