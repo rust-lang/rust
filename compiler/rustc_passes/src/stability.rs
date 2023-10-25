@@ -3,8 +3,8 @@
 
 use crate::errors;
 use rustc_attr::{
-    self as attr, rust_version_symbol, ConstStability, Since, Stability, StabilityLevel, Unstable,
-    UnstableReason, VERSION_PLACEHOLDER,
+    self as attr, ConstStability, Since, Stability, StabilityLevel, Unstable, UnstableReason,
+    VERSION_PLACEHOLDER,
 };
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_hir as hir;
@@ -1115,7 +1115,7 @@ fn unnecessary_stable_feature_lint(
     mut since: Symbol,
 ) {
     if since.as_str() == VERSION_PLACEHOLDER {
-        since = rust_version_symbol();
+        since = sym::env_CFG_RELEASE;
     }
     tcx.emit_spanned_lint(
         lint::builtin::STABLE_FEATURES,
