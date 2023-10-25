@@ -53,14 +53,20 @@ impl Parse for Keyword {
 
 struct Symbol {
     name: Ident,
-    value: Option<LitStr>,
+    value: Value,
+}
+
+enum Value {
+    SameAsName,
+    String(LitStr),
 }
 
 impl Parse for Symbol {
     fn parse(input: ParseStream<'_>) -> Result<Self> {
         let name = input.parse()?;
         let colon_token: Option<Token![:]> = input.parse()?;
-        let value = if colon_token.is_some() { Some(input.parse()?) } else { None };
+        let value =
+            if colon_token.is_some() { Value::String(input.parse()?) } else { Value::SameAsName };
 
         Ok(Symbol { name, value })
     }
@@ -168,8 +174,8 @@ fn symbols_with_errors(input: TokenStream) -> (TokenStream, Vec<syn::Error>) {
     for symbol in input.symbols.iter() {
         let name = &symbol.name;
         let value = match &symbol.value {
-            Some(value) => value.value(),
-            None => name.to_string(),
+            Value::SameAsName => name.to_string(),
+            Value::String(lit) => lit.value(),
         };
         check_dup(symbol.name.span(), &value, &mut errors);
         check_order(symbol.name.span(), &name.to_string(), &mut errors);
