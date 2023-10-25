@@ -19,6 +19,11 @@ declare_clippy_lint! {
     /// It's not bad, but having them is idiomatic and allows the type to be used in for loops directly
     /// (`for val in &iter {}`), without having to first call `iter()` or `iter_mut()`.
     ///
+    /// ### Limitations
+    /// This lint is restricted to exported types only, because it is aimed at guiding towards an
+    /// idiomatic, _public_ API.
+    /// Implementing the `IntoIterator` trait when it is not needed or used anywhere doesn't help or improve the code.
+    ///
     /// ### Example
     /// ```rust
     /// struct MySlice<'a>(&'a [u8]);
@@ -60,6 +65,12 @@ declare_clippy_lint! {
     /// It's not bad, but having them is idiomatic and allows the type to be used in iterator chains
     /// by just calling `.iter()`, instead of the more awkward `<&Type>::into_iter` or `(&val).into_iter()` syntax
     /// in case of ambiguity with another `IntoIterator` impl.
+    ///
+    /// ### Limitations
+    /// This lint is restricted to exported types only, because it is aimed at guiding towards an
+    /// idiomatic, _public_ API.
+    /// Adding an `iter` or `iter_mut` for private types when it is not needed or used doesn't improve code,
+    /// and in fact, is linted against by the `dead_code` lint.
     ///
     /// ### Example
     /// ```rust
