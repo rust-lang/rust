@@ -2162,7 +2162,7 @@ pub(super) fn check_type_bounds<'tcx>(
     impl_ty: ty::AssocItem,
     impl_trait_ref: ty::TraitRef<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
-    let param_env = param_env_with_gat_bounds(tcx, trait_ty, impl_ty, impl_trait_ref);
+    let param_env = param_env_with_gat_bounds(tcx, impl_ty, impl_trait_ref);
     debug!(?param_env);
 
     let container_id = impl_ty.container_id(tcx);
@@ -2288,7 +2288,6 @@ pub(super) fn check_type_bounds<'tcx>(
 /// the trait (notably, that `X: Eq` and `T: Family`).
 fn param_env_with_gat_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
-    trait_ty: ty::AssocItem,
     impl_ty: ty::AssocItem,
     impl_trait_ref: ty::TraitRef<'tcx>,
 ) -> ty::ParamEnv<'tcx> {
@@ -2296,84 +2295,111 @@ fn param_env_with_gat_bounds<'tcx>(
     let container_id = impl_ty.container_id(tcx);
     let mut predicates = param_env.caller_bounds().to_vec();
 
-    let mut bound_vars: smallvec::SmallVec<[ty::BoundVariableKind; 8]> =
-        smallvec::SmallVec::with_capacity(tcx.generics_of(impl_ty.def_id).params.len());
-    // Extend the impl's identity args with late-bound GAT vars
-    let normalize_impl_ty_args = ty::GenericArgs::identity_for_item(tcx, container_id).extend_to(
-        tcx,
-        impl_ty.def_id,
-        |param, _| match param.kind {
-            GenericParamDefKind::Type { .. } => {
-                let kind = ty::BoundTyKind::Param(param.def_id, param.name);
-                let bound_var = ty::BoundVariableKind::Ty(kind);
-                bound_vars.push(bound_var);
-                Ty::new_bound(
-                    tcx,
-                    ty::INNERMOST,
-                    ty::BoundTy { var: ty::BoundVar::from_usize(bound_vars.len() - 1), kind },
-                )
-                .into()
-            }
-            GenericParamDefKind::Lifetime => {
-                let kind = ty::BoundRegionKind::BrNamed(param.def_id, param.name);
-                let bound_var = ty::BoundVariableKind::Region(kind);
-                bound_vars.push(bound_var);
-                ty::Region::new_late_bound(
-                    tcx,
-                    ty::INNERMOST,
-                    ty::BoundRegion { var: ty::BoundVar::from_usize(bound_vars.len() - 1), kind },
-                )
-                .into()
-            }
-            GenericParamDefKind::Const { .. } => {
-                let bound_var = ty::BoundVariableKind::Const;
-                bound_vars.push(bound_var);
-                ty::Const::new_bound(
-                    tcx,
-                    ty::INNERMOST,
-                    ty::BoundVar::from_usize(bound_vars.len() - 1),
-                    tcx.type_of(param.def_id)
-                        .no_bound_vars()
-                        .expect("const parameter types cannot be generic"),
-                )
-                .into()
-            }
-        },
-    );
-    // When checking something like
-    //
-    // trait X { type Y: PartialEq<<Self as X>::Y> }
-    // impl X for T { default type Y = S; }
-    //
-    // We will have to prove the bound S: PartialEq<<T as X>::Y>. In this case
-    // we want <T as X>::Y to normalize to S. This is valid because we are
-    // checking the default value specifically here. Add this equality to the
-    // ParamEnv for normalization specifically.
-    let normalize_impl_ty = tcx.type_of(impl_ty.def_id).instantiate(tcx, normalize_impl_ty_args);
-    let rebased_args = normalize_impl_ty_args.rebase_onto(tcx, container_id, impl_trait_ref.args);
-    let bound_vars = tcx.mk_bound_variable_kinds(&bound_vars);
-
-    match normalize_impl_ty.kind() {
-        ty::Alias(ty::Projection, proj)
-            if proj.def_id == trait_ty.def_id && proj.args == rebased_args =>
-        {
-            // Don't include this predicate if the projected type is
-            // exactly the same as the projection. This can occur in
-            // (somewhat dubious) code like this:
-            //
-            // impl<T> X for T where T: X { type Y = <T as X>::Y; }
-        }
-        _ => predicates.push(
-            ty::Binder::bind_with_vars(
-                ty::ProjectionPredicate {
-                    projection_ty: ty::AliasTy::new(tcx, trait_ty.def_id, rebased_args),
-                    term: normalize_impl_ty.into(),
-                },
-                bound_vars,
-            )
-            .to_predicate(tcx),
-        ),
+    // for RPITITs, we should install predicates that allow us to project all
+    // of the RPITITs associated with the same body. This is because checking
+    // the item bounds of RPITITs often involves nested RPITITs having to prove
+    // bounds about themselves.
+    let impl_tys_to_install = match impl_ty.opt_rpitit_info {
+        None => vec![impl_ty],
+        Some(
+            ty::ImplTraitInTraitData::Impl { fn_def_id }
+            | ty::ImplTraitInTraitData::Trait { fn_def_id, .. },
+        ) => tcx
+            .associated_types_for_impl_traits_in_associated_fn(fn_def_id)
+            .iter()
+            .map(|def_id| tcx.associated_item(*def_id))
+            .collect(),
     };
+
+    for impl_ty in impl_tys_to_install {
+        let trait_ty = match impl_ty.container {
+            ty::AssocItemContainer::TraitContainer => impl_ty,
+            ty::AssocItemContainer::ImplContainer => {
+                tcx.associated_item(impl_ty.trait_item_def_id.unwrap())
+            }
+        };
+
+        let mut bound_vars: smallvec::SmallVec<[ty::BoundVariableKind; 8]> =
+            smallvec::SmallVec::with_capacity(tcx.generics_of(impl_ty.def_id).params.len());
+        // Extend the impl's identity args with late-bound GAT vars
+        let normalize_impl_ty_args = ty::GenericArgs::identity_for_item(tcx, container_id)
+            .extend_to(tcx, impl_ty.def_id, |param, _| match param.kind {
+                GenericParamDefKind::Type { .. } => {
+                    let kind = ty::BoundTyKind::Param(param.def_id, param.name);
+                    let bound_var = ty::BoundVariableKind::Ty(kind);
+                    bound_vars.push(bound_var);
+                    Ty::new_bound(
+                        tcx,
+                        ty::INNERMOST,
+                        ty::BoundTy { var: ty::BoundVar::from_usize(bound_vars.len() - 1), kind },
+                    )
+                    .into()
+                }
+                GenericParamDefKind::Lifetime => {
+                    let kind = ty::BoundRegionKind::BrNamed(param.def_id, param.name);
+                    let bound_var = ty::BoundVariableKind::Region(kind);
+                    bound_vars.push(bound_var);
+                    ty::Region::new_late_bound(
+                        tcx,
+                        ty::INNERMOST,
+                        ty::BoundRegion {
+                            var: ty::BoundVar::from_usize(bound_vars.len() - 1),
+                            kind,
+                        },
+                    )
+                    .into()
+                }
+                GenericParamDefKind::Const { .. } => {
+                    let bound_var = ty::BoundVariableKind::Const;
+                    bound_vars.push(bound_var);
+                    ty::Const::new_bound(
+                        tcx,
+                        ty::INNERMOST,
+                        ty::BoundVar::from_usize(bound_vars.len() - 1),
+                        tcx.type_of(param.def_id)
+                            .no_bound_vars()
+                            .expect("const parameter types cannot be generic"),
+                    )
+                    .into()
+                }
+            });
+        // When checking something like
+        //
+        // trait X { type Y: PartialEq<<Self as X>::Y> }
+        // impl X for T { default type Y = S; }
+        //
+        // We will have to prove the bound S: PartialEq<<T as X>::Y>. In this case
+        // we want <T as X>::Y to normalize to S. This is valid because we are
+        // checking the default value specifically here. Add this equality to the
+        // ParamEnv for normalization specifically.
+        let normalize_impl_ty =
+            tcx.type_of(impl_ty.def_id).instantiate(tcx, normalize_impl_ty_args);
+        let rebased_args =
+            normalize_impl_ty_args.rebase_onto(tcx, container_id, impl_trait_ref.args);
+        let bound_vars = tcx.mk_bound_variable_kinds(&bound_vars);
+
+        match normalize_impl_ty.kind() {
+            ty::Alias(ty::Projection, proj)
+                if proj.def_id == trait_ty.def_id && proj.args == rebased_args =>
+            {
+                // Don't include this predicate if the projected type is
+                // exactly the same as the projection. This can occur in
+                // (somewhat dubious) code like this:
+                //
+                // impl<T> X for T where T: X { type Y = <T as X>::Y; }
+            }
+            _ => predicates.push(
+                ty::Binder::bind_with_vars(
+                    ty::ProjectionPredicate {
+                        projection_ty: ty::AliasTy::new(tcx, trait_ty.def_id, rebased_args),
+                        term: normalize_impl_ty.into(),
+                    },
+                    bound_vars,
+                )
+                .to_predicate(tcx),
+            ),
+        };
+    }
 
     ty::ParamEnv::new(tcx.mk_clauses(&predicates), Reveal::UserFacing)
 }
