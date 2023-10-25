@@ -258,6 +258,12 @@ fn main() {
     {
         println!("cargo:rustc-link-lib=z");
     } else if target.contains("netbsd") {
+        // Building for i586 or i686, we need -latomic for 64-bit atomics
+        if target.starts_with("i586")
+           || target.starts_with("i686")
+        {
+            println!("cargo:rustc-link-lib=atomic");
+        }
         println!("cargo:rustc-link-lib=z");
         println!("cargo:rustc-link-lib=execinfo");
     }
