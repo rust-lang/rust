@@ -4,6 +4,7 @@
 #![feature(never_type)]
 #![feature(proc_macro_diagnostic)]
 #![feature(proc_macro_span)]
+#![feature(proc_macro_tracked_env)]
 #![allow(rustc::default_hash_types)]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]

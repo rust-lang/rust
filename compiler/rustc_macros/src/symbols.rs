@@ -26,7 +26,7 @@ use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use std::collections::HashMap;
 use syn::parse::{Parse, ParseStream, Result};
-use syn::{braced, punctuated::Punctuated, Ident, LitStr, Token};
+use syn::{braced, punctuated::Punctuated, Expr, Ident, Lit, LitStr, Token};
 
 #[cfg(test)]
 mod tests;
@@ -59,6 +59,7 @@ struct Symbol {
 enum Value {
     SameAsName,
     String(LitStr),
+    Env(LitStr),
 }
 
 impl Parse for Symbol {
@@ -73,8 +74,27 @@ impl Parse for Symbol {
 
 impl Parse for Value {
     fn parse(input: ParseStream<'_>) -> Result<Self> {
-        let lit: LitStr = input.parse()?;
-        Ok(Value::String(lit))
+        let expr: Expr = input.parse()?;
+        match &expr {
+            Expr::Lit(expr) => {
+                if let Lit::Str(lit) = &expr.lit {
+                    return Ok(Value::String(lit.clone()));
+                }
+            }
+            Expr::Macro(expr) => {
+                if expr.mac.path.is_ident("env") && let Ok(lit) = expr.mac.parse_body() {
+                    return Ok(Value::Env(lit));
+                }
+            }
+            _ => {}
+        }
+        Err(syn::Error::new_spanned(
+            expr,
+            concat!(
+                "unsupported expression for symbol value; implement support for this in ",
+                file!(),
+            ),
+        ))
     }
 }
 
@@ -198,12 +218,14 @@ fn symbols_with_errors(input: TokenStream) -> (TokenStream, Vec<syn::Error>) {
     // Generate the listed symbols.
     for symbol in input.symbols.iter() {
         let name = &symbol.name;
+        check_order(symbol.name.span(), &name.to_string(), &mut errors);
+
         let value = match &symbol.value {
             Value::SameAsName => name.to_string(),
             Value::String(lit) => lit.value(),
+            Value::Env(_) => continue,
         };
         let idx = entries.insert(symbol.name.span(), &value, &mut errors);
-        check_order(symbol.name.span(), &name.to_string(), &mut errors);
 
         prefill_stream.extend(quote! {
             #value,
@@ -219,6 +241,37 @@ fn symbols_with_errors(input: TokenStream) -> (TokenStream, Vec<syn::Error>) {
         entries.insert(Span::call_site(), &n, &mut errors);
         prefill_stream.extend(quote! {
             #n,
+        });
+    }
+
+    // Symbols whose value comes from an environment variable. It's allowed for
+    // these to have the same value as another symbol.
+    for symbol in &input.symbols {
+        let env_var = match &symbol.value {
+            Value::Env(lit) => lit,
+            _ => continue,
+        };
+
+        let value = match proc_macro::tracked_env::var(env_var.value()) {
+            Ok(value) => value,
+            Err(err) => {
+                errors.error(symbol.name.span(), err.to_string());
+                continue;
+            }
+        };
+
+        let idx = if let Some(prev) = entries.map.get(&value) {
+            prev.idx
+        } else {
+            prefill_stream.extend(quote! {
+                #value,
+            });
+            entries.insert(symbol.name.span(), &value, &mut errors)
+        };
+
+        let name = &symbol.name;
+        symbols_stream.extend(quote! {
+            pub const #name: Symbol = Symbol::new(#idx);
         });
     }
 
