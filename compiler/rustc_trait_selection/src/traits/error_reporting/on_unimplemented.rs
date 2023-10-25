@@ -1,5 +1,8 @@
 use super::{ObligationCauseCode, PredicateObligation};
 use crate::infer::error_reporting::TypeErrCtxt;
+use rustc_ast::AttrArgs;
+use rustc_ast::AttrArgsEq;
+use rustc_ast::AttrKind;
 use rustc_ast::{Attribute, MetaItem, NestedMetaItem};
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashMap;
@@ -342,7 +345,22 @@ pub enum AppendConstMessage {
 
 #[derive(LintDiagnostic)]
 #[diag(trait_selection_malformed_on_unimplemented_attr)]
-pub struct NoValueInOnUnimplementedLint;
+#[help]
+pub struct MalformedOnUnimplementedAttrLint {
+    #[label]
+    pub span: Span,
+}
+
+impl MalformedOnUnimplementedAttrLint {
+    fn new(span: Span) -> Self {
+        Self { span }
+    }
+}
+
+#[derive(LintDiagnostic)]
+#[diag(trait_selection_missing_options_for_on_unimplemented_attr)]
+#[help]
+pub struct MissingOptionsForOnUnimplementedAttr;
 
 impl<'tcx> OnUnimplementedDirective {
     fn parse(
@@ -453,7 +471,7 @@ impl<'tcx> OnUnimplementedDirective {
                     UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
                     tcx.hir().local_def_id_to_hir_id(item_def_id.expect_local()),
                     vec![item.span()],
-                    NoValueInOnUnimplementedLint,
+                    MalformedOnUnimplementedAttrLint::new(item.span()),
                 );
             } else {
                 // nothing found
@@ -530,21 +548,40 @@ impl<'tcx> OnUnimplementedDirective {
                     append_const_msg: None,
                 }))
             } else {
+                let item = attr.get_normal_item();
+                let report_span = match &item.args {
+                    AttrArgs::Empty => item.path.span,
+                    AttrArgs::Delimited(args) => args.dspan.entire(),
+                    AttrArgs::Eq(eq_span, AttrArgsEq::Ast(expr)) => eq_span.to(expr.span),
+                    AttrArgs::Eq(span, AttrArgsEq::Hir(expr)) => span.to(expr.span),
+                };
+
                 tcx.emit_spanned_lint(
                     UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
                     tcx.hir().local_def_id_to_hir_id(item_def_id.expect_local()),
-                    attr.span,
-                    NoValueInOnUnimplementedLint,
+                    report_span,
+                    MalformedOnUnimplementedAttrLint::new(report_span),
                 );
                 Ok(None)
             }
         } else if is_diagnostic_namespace_variant {
-            tcx.emit_spanned_lint(
-                UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                tcx.hir().local_def_id_to_hir_id(item_def_id.expect_local()),
-                attr.span,
-                NoValueInOnUnimplementedLint,
-            );
+            match &attr.kind {
+                AttrKind::Normal(p) if !matches!(p.item.args, AttrArgs::Empty) => {
+                    tcx.emit_spanned_lint(
+                        UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                        tcx.hir().local_def_id_to_hir_id(item_def_id.expect_local()),
+                        attr.span,
+                        MalformedOnUnimplementedAttrLint::new(attr.span),
+                    );
+                }
+                _ => tcx.emit_spanned_lint(
+                    UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                    tcx.hir().local_def_id_to_hir_id(item_def_id.expect_local()),
+                    attr.span,
+                    MissingOptionsForOnUnimplementedAttr,
+                ),
+            };
+
             Ok(None)
         } else {
             let reported =
