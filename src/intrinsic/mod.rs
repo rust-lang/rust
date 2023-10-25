@@ -4,7 +4,9 @@ mod simd;
 #[cfg(feature="master")]
 use std::iter;
 
-use gccjit::{ComparisonOp, Function, RValue, ToRValue, Type, UnaryOp, FunctionType};
+#[cfg(feature="master")]
+use gccjit::FunctionType;
+use gccjit::{ComparisonOp, Function, RValue, ToRValue, Type, UnaryOp};
 use rustc_codegen_ssa::MemFlags;
 use rustc_codegen_ssa::base::wants_msvc_seh;
 use rustc_codegen_ssa::common::IntPredicate;
@@ -143,11 +145,15 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
 
                 sym::volatile_load | sym::unaligned_volatile_load => {
                     let tp_ty = fn_args.type_at(0);
-                    let mut ptr = args[0].immediate();
-                    if let PassMode::Cast { cast: ty, .. } = &fn_abi.ret.mode {
-                        ptr = self.pointercast(ptr, self.type_ptr_to(ty.gcc_type(self)));
-                    }
-                    let load = self.volatile_load(ptr.get_type(), ptr);
+                    let ptr = args[0].immediate();
+                    let load =
+                        if let PassMode::Cast { cast: ty, pad_i32: _ } = &fn_abi.ret.mode {
+                            let gcc_ty = ty.gcc_type(self);
+                            self.volatile_load(gcc_ty, ptr)
+                        }
+                        else {
+                            self.volatile_load(self.layout_of(tp_ty).gcc_type(self), ptr)
+                        };
                     // TODO(antoyo): set alignment.
                     self.to_immediate(load, self.layout_of(tp_ty))
                 }
