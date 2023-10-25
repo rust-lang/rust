@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::{match_def_path, paths};
+use clippy_utils::{is_trait_method, match_def_path, paths};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::LateContext;
@@ -13,10 +13,11 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, recv: &'
 
     if let Some(did) = ty.ty_adt_def()
         && match_def_path(cx, did.did(), &paths::WAKER)
-        && let ExprKind::MethodCall(func, waker_ref, &[], _) = recv.kind
-        && func.ident.name == sym::clone
+        && let ExprKind::MethodCall(_, waker_ref, &[], _) = recv.kind
+        && is_trait_method(cx, recv, sym::Clone)
     {
         let mut applicability = Applicability::MachineApplicable;
+        let snippet = snippet_with_applicability(cx, waker_ref.span.source_callsite(), "..", &mut applicability);
 
         span_lint_and_sugg(
             cx,
@@ -24,10 +25,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, recv: &'
             expr.span,
             "cloning a `Waker` only to wake it",
             "replace with",
-            format!(
-                "{}.wake_by_ref()",
-                snippet_with_applicability(cx, waker_ref.span, "..", &mut applicability)
-            ),
+            format!("{snippet}.wake_by_ref()"),
             applicability,
         );
     }

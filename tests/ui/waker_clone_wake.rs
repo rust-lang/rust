@@ -5,18 +5,25 @@ impl Custom {
     pub fn wake(self) {}
 }
 
+macro_rules! mac {
+    ($cx:ident) => {
+        $cx.waker()
+    };
+}
+
 pub fn wake(cx: &mut std::task::Context) {
     cx.waker().clone().wake();
 
-    // We don't do that for now
+    mac!(cx).clone().wake();
+}
+
+pub fn no_lint(cx: &mut std::task::Context, c: &Custom) {
+    c.clone().wake();
+
     let w = cx.waker().clone();
     w.wake();
 
     cx.waker().clone().wake_by_ref();
-}
-
-pub fn no_lint(c: &Custom) {
-    c.clone().wake()
 }
 
 fn main() {}
