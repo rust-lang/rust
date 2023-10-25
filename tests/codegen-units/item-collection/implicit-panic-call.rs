@@ -1,5 +1,6 @@
 // rust-lang/rust#90405
 // Ensure implicit panic calls are collected
+//@ compile-flags: -Zcross-crate-inline-threshold=never
 
 #![feature(lang_items)]
 #![feature(no_core)]
