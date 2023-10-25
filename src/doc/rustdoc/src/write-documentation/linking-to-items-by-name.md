@@ -9,7 +9,7 @@ For example, in the following code all of the links will link to the rustdoc pag
 /// This struct is not [Bar]
 pub struct Foo1;
 
-/// This struct is also not [bar](Bar)
+/// This struct is also not [bar][Bar]
 pub struct Foo2;
 
 /// This struct is also not [bar][b]
@@ -40,7 +40,7 @@ trait implementations][#79682]. Rustdoc also supports linking to all primitives 
 [#79682]: https://github.com/rust-lang/rust/pull/79682
 
 You can also refer to items with generic parameters like `Vec<T>`. The link will
-resolve as if you had written ``[`Vec<T>`](Vec)``. Fully-qualified syntax (for example,
+resolve as if you had written ``[`Vec<T>`][Vec]``. Fully-qualified syntax (for example,
 `<Vec as IntoIterator>::into_iter()`) is [not yet supported][fqs-issue], however.
 
 [fqs-issue]: https://github.com/rust-lang/rust/issues/74563
@@ -78,10 +78,10 @@ their namespace, but can overlap with items in other namespaces. In case of ambi
 rustdoc will warn about the ambiguity and suggest a disambiguator.
 
 ```rust
-/// See also: [`Foo`](struct@Foo)
+/// See also: [`Foo`][struct@Foo]
 struct Bar;
 
-/// This is different from [`Foo`](fn@Foo)
+/// This is different from [`Foo`][fn@Foo]
 struct Foo {}
 
 fn Foo() {}
