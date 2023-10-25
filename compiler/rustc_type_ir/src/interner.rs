@@ -14,13 +14,9 @@ pub trait Interner: Sized {
         + Ord
         + IntoIterator<Item = Self::GenericArg>;
     type GenericArg: Clone + DebugWithInfcx<Self> + Hash + Ord;
+    type Term: Clone + Debug + Hash + Ord;
 
     type Binder<T>;
-
-    // Predicates
-    type Predicate;
-    type PredicateKind: Clone + Debug + Hash + PartialEq + Eq;
-
     type TypeAndMut: Clone + Debug + Hash + Ord;
 
     // Kinds of tys
@@ -55,6 +51,16 @@ pub trait Interner: Sized {
     type FreeRegion: Clone + Debug + Hash + Ord;
     type InferRegion: Clone + DebugWithInfcx<Self> + Hash + Ord;
     type PlaceholderRegion: Clone + Debug + Hash + Ord;
+
+    // Predicates
+    type Predicate: Clone + Debug + Hash + Eq;
+    type TraitPredicate: Clone + Debug + Hash + Eq;
+    type RegionOutlivesPredicate: Clone + Debug + Hash + Eq;
+    type TypeOutlivesPredicate: Clone + Debug + Hash + Eq;
+    type ProjectionPredicate: Clone + Debug + Hash + Eq;
+    type SubtypePredicate: Clone + Debug + Hash + Eq;
+    type CoercePredicate: Clone + Debug + Hash + Eq;
+    type ClosureKind: Clone + Debug + Hash + Eq;
 
     fn ty_and_mut_to_parts(ty_and_mut: Self::TypeAndMut) -> (Self::Ty, Mutability);
 }

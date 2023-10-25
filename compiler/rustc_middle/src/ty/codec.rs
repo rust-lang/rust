@@ -230,9 +230,9 @@ impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D>
                 assert!(pos >= SHORTHAND_OFFSET);
                 let shorthand = pos - SHORTHAND_OFFSET;
 
-                decoder.with_position(shorthand, ty::PredicateKind::decode)
+                decoder.with_position(shorthand, <ty::PredicateKind<'tcx> as Decodable<D>>::decode)
             } else {
-                ty::PredicateKind::decode(decoder)
+                <ty::PredicateKind<'tcx> as Decodable<D>>::decode(decoder)
             },
             bound_vars,
         )

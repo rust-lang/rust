@@ -1551,30 +1551,32 @@ impl<'tcx> Stable<'tcx> for ty::ClauseKind<'tcx> {
     type T = stable_mir::ty::ClauseKind;
 
     fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
-        use ty::ClauseKind::*;
+        use ty::ClauseKind;
         match *self {
-            Trait(trait_object) => stable_mir::ty::ClauseKind::Trait(trait_object.stable(tables)),
-            RegionOutlives(region_outlives) => {
+            ClauseKind::Trait(trait_object) => {
+                stable_mir::ty::ClauseKind::Trait(trait_object.stable(tables))
+            }
+            ClauseKind::RegionOutlives(region_outlives) => {
                 stable_mir::ty::ClauseKind::RegionOutlives(region_outlives.stable(tables))
             }
-            TypeOutlives(type_outlives) => {
+            ClauseKind::TypeOutlives(type_outlives) => {
                 let ty::OutlivesPredicate::<_, _>(a, b) = type_outlives;
                 stable_mir::ty::ClauseKind::TypeOutlives(stable_mir::ty::OutlivesPredicate(
                     tables.intern_ty(a),
                     b.stable(tables),
                 ))
             }
-            Projection(projection_predicate) => {
+            ClauseKind::Projection(projection_predicate) => {
                 stable_mir::ty::ClauseKind::Projection(projection_predicate.stable(tables))
             }
-            ConstArgHasType(const_, ty) => stable_mir::ty::ClauseKind::ConstArgHasType(
+            ClauseKind::ConstArgHasType(const_, ty) => stable_mir::ty::ClauseKind::ConstArgHasType(
                 const_.stable(tables),
                 tables.intern_ty(ty),
             ),
-            WellFormed(generic_arg) => {
+            ClauseKind::WellFormed(generic_arg) => {
                 stable_mir::ty::ClauseKind::WellFormed(generic_arg.unpack().stable(tables))
             }
-            ConstEvaluatable(const_) => {
+            ClauseKind::ConstEvaluatable(const_) => {
                 stable_mir::ty::ClauseKind::ConstEvaluatable(const_.stable(tables))
             }
         }

@@ -30,6 +30,7 @@ mod const_kind;
 mod debug;
 mod flags;
 mod interner;
+mod predicate_kind;
 mod region_kind;
 
 pub use codec::*;
@@ -37,6 +38,7 @@ pub use const_kind::*;
 pub use debug::{DebugWithInfcx, InferCtxtLike, WithInfcx};
 pub use flags::*;
 pub use interner::*;
+pub use predicate_kind::*;
 pub use region_kind::*;
 pub use ty_info::*;
 pub use ty_kind::*;

@@ -84,10 +84,11 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type AdtDef = ty::AdtDef<'tcx>;
     type GenericArgs = ty::GenericArgsRef<'tcx>;
     type GenericArg = ty::GenericArg<'tcx>;
+    type Term = ty::Term<'tcx>;
+
     type Binder<T> = Binder<'tcx, T>;
-    type Predicate = Predicate<'tcx>;
-    type PredicateKind = ty::PredicateKind<'tcx>;
     type TypeAndMut = TypeAndMut<'tcx>;
+
     type Ty = Ty<'tcx>;
     type Tys = &'tcx List<Ty<'tcx>>;
     type AliasTy = ty::AliasTy<'tcx>;
@@ -95,10 +96,12 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type BoundTy = ty::BoundTy;
     type PlaceholderTy = ty::PlaceholderType;
     type InferTy = InferTy;
+
     type ErrorGuaranteed = ErrorGuaranteed;
     type BoundExistentialPredicates = &'tcx List<PolyExistentialPredicate<'tcx>>;
     type PolyFnSig = PolyFnSig<'tcx>;
     type AllocId = crate::mir::interpret::AllocId;
+
     type Const = ty::Const<'tcx>;
     type InferConst = ty::InferConst;
     type AliasConst = ty::UnevaluatedConst<'tcx>;
@@ -107,12 +110,22 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type BoundConst = ty::BoundVar;
     type ValueConst = ty::ValTree<'tcx>;
     type ExprConst = ty::Expr<'tcx>;
+
     type Region = Region<'tcx>;
     type EarlyBoundRegion = ty::EarlyBoundRegion;
     type BoundRegion = ty::BoundRegion;
     type FreeRegion = ty::FreeRegion;
     type InferRegion = ty::RegionVid;
     type PlaceholderRegion = ty::PlaceholderRegion;
+
+    type Predicate = Predicate<'tcx>;
+    type TraitPredicate = ty::TraitPredicate<'tcx>;
+    type RegionOutlivesPredicate = ty::RegionOutlivesPredicate<'tcx>;
+    type TypeOutlivesPredicate = ty::TypeOutlivesPredicate<'tcx>;
+    type ProjectionPredicate = ty::ProjectionPredicate<'tcx>;
+    type SubtypePredicate = ty::SubtypePredicate<'tcx>;
+    type CoercePredicate = ty::CoercePredicate<'tcx>;
+    type ClosureKind = ty::ClosureKind;
 
     fn ty_and_mut_to_parts(
         TypeAndMut { ty, mutbl }: TypeAndMut<'tcx>,
