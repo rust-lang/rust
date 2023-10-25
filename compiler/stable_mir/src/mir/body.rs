@@ -7,12 +7,12 @@ use crate::{ty::Ty, Span};
 pub struct Body {
     pub blocks: Vec<BasicBlock>,
 
-    /// Declarations of locals.
+    // Declarations of locals within the function.
     //
     // The first local is the return value pointer, followed by `arg_count`
     // locals for the function arguments, followed by any user-declared
     // variables and temporaries.
-    pub locals: LocalDecls,
+    locals: LocalDecls,
 
     // The number of arguments this function takes.
     arg_count: usize,
@@ -22,12 +22,12 @@ impl Body {
     /// Constructs a `Body`.
     ///
     /// A constructor is required to build a `Body` from outside the crate
-    /// because the `arg_count` field is private.
+    /// because the `arg_count` and `locals` fields are private.
     pub fn new(blocks: Vec<BasicBlock>, locals: LocalDecls, arg_count: usize) -> Self {
         // If locals doesn't contain enough entries, it can lead to panics in
-        // `ret_local` and `arg_locals`.
+        // `ret_local`, `arg_locals`, and `internal_locals`.
         assert!(
-            locals.len() >= arg_count + 1,
+            locals.len() > arg_count,
             "A Body must contain at least a local for the return value and each of the function's arguments"
         );
         Self { blocks, locals, arg_count }
