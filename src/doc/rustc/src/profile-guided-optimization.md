@@ -156,9 +156,10 @@ it in their repository accessible from this link: https://github.com/Kobzol/carg
 For the sake of completeness, here are the corresponding steps using `cargo-pgo`:
 
 ```bash
-# Install the binary as usual: cargo install cargo-pgo
+# Install if you haven't already
+cargo install cargo-pgo
+
 cargo pgo build
-LLVM_PROFILE_FILE=./target/pgo-profiles/rustc-pgo_%m_%p.profraw ./target/x86_64-unknown-linux-gnu/release/myprogram
 cargo pgo optimize
 ```
 
