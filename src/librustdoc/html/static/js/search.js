@@ -2015,32 +2015,18 @@ function initSearch(rawSearchIndex) {
             if (unboxingDepth >= UNBOXING_LIMIT) {
                 return false;
             }
-            if (row.bindings.size === 0 && elem.bindings.size === 0) {
-                if (elem.id < 0 && mgens === null) {
-                    return row.id < 0 || checkIfInList(
-                        row.generics,
-                        elem,
-                        whereClause,
-                        mgens,
-                        unboxingDepth + 1,
-                    );
-                }
-                if (row.id > 0 && elem.id > 0 && elem.pathWithoutLast.length === 0 &&
-                    typePassesFilter(elem.typeFilter, row.ty) && elem.generics.length === 0 &&
-                    // special case
-                    elem.id !== typeNameIdOfArrayOrSlice && elem.id !== typeNameIdOfTupleOrUnit
-                    && elem.id !== typeNameIdOfHof
-                ) {
-                    return row.id === elem.id || checkIfInList(
-                        row.generics,
-                        elem,
-                        whereClause,
-                        mgens,
-                        unboxingDepth,
-                    );
-                }
+            if (row.id > 0 && elem.id > 0 && elem.pathWithoutLast.length === 0 &&
+                row.generics.length === 0 && elem.generics.length === 0 &&
+                row.bindings.size === 0 && elem.bindings.size === 0 &&
+                // special case
+                elem.id !== typeNameIdOfArrayOrSlice &&
+                elem.id !== typeNameIdOfHof &&
+                elem.id !== typeNameIdOfTupleOrUnit
+            ) {
+                return row.id === elem.id && typePassesFilter(elem.typeFilter, row.ty);
+            } else {
+                return unifyFunctionTypes([row], [elem], whereClause, mgens, null, unboxingDepth);
             }
-            return unifyFunctionTypes([row], [elem], whereClause, mgens, null, unboxingDepth);
         }
 
         /**
