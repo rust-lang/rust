@@ -74,7 +74,7 @@ pub async fn b_sink<const N: usize>(_: impl Trait<N>) {}
 
 // @has foo/fn.concrete.html '//pre[@class="rust item-decl"]' \
 //      'pub fn concrete() -> [u8; 22]'
-pub fn concrete() -> [u8; 3 + std::mem::size_of::<u64>() << 1] {
+pub fn concrete() -> [u8; (3 + std::mem::size_of::<u64>()) << 1] {
     Default::default()
 }
 
