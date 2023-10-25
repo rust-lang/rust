@@ -517,7 +517,7 @@ pub enum NullOp {
 }
 
 impl Operand {
-    pub fn ty(&self, locals: &LocalDecls) -> Ty {
+    pub fn ty(&self, locals: &[LocalDecl]) -> Ty {
         match self {
             Operand::Copy(place) | Operand::Move(place) => place.ty(locals),
             Operand::Constant(c) => c.ty(),
@@ -532,7 +532,7 @@ impl Constant {
 }
 
 impl Place {
-    pub fn ty(&self, locals: &LocalDecls) -> Ty {
+    pub fn ty(&self, locals: &[LocalDecl]) -> Ty {
         let _start_ty = locals[self.local].ty;
         todo!("Implement projection")
     }
