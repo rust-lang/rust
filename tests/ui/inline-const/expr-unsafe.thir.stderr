@@ -1,9 +1,6 @@
 warning: unnecessary `unsafe` block
   --> $DIR/expr-unsafe.rs:12:13
    |
-LL |     unsafe {
-   |     ------ because it's nested under this `unsafe` block
-...
 LL |             unsafe {}
    |             ^^^^^^ unnecessary `unsafe` block
    |
