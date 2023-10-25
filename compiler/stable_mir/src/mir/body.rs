@@ -33,14 +33,20 @@ impl Body {
         Self { blocks, locals, arg_count }
     }
 
-    /// Gets the function's return local.
+    /// Return local that holds this function's return value.
     pub fn ret_local(&self) -> &LocalDecl {
         &self.locals[0]
     }
 
-    /// Gets the locals in `self` that correspond to the function's arguments.
+    /// Locals in `self` that correspond to this function's arguments.
     pub fn arg_locals(&self) -> &[LocalDecl] {
         &self.locals[1..self.arg_count + 1]
+    }
+
+    /// Internal locals for this function. These are the locals that are
+    /// neither the return local nor the argument locals.
+    pub fn internal_locals(&self) -> &[LocalDecl] {
+        &self.locals[self.arg_count + 1..]
     }
 }
 
