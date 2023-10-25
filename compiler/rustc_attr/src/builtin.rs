@@ -25,8 +25,7 @@ use crate::session_diagnostics::{self, IncorrectReprFormatGenericCause};
 pub const VERSION_PLACEHOLDER: &str = "CURRENT_RUSTC_VERSION";
 
 pub fn rust_version_symbol() -> Symbol {
-    let version = option_env!("CFG_RELEASE").unwrap_or("<current>");
-    Symbol::intern(&version)
+    Symbol::intern(env!("CFG_RELEASE"))
 }
 
 pub fn is_builtin_attr(attr: &Attribute) -> bool {
