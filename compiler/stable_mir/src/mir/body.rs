@@ -8,14 +8,40 @@ pub struct Body {
     pub blocks: Vec<BasicBlock>,
 
     /// Declarations of locals.
-    ///
-    /// The first local is the return value pointer, followed by `arg_count`
-    /// locals for the function arguments, followed by any user-declared
-    /// variables and temporaries.
+    //
+    // The first local is the return value pointer, followed by `arg_count`
+    // locals for the function arguments, followed by any user-declared
+    // variables and temporaries.
     pub locals: LocalDecls,
 
-    /// The number of arguments this function takes.
-    pub arg_count: usize,
+    // The number of arguments this function takes.
+    arg_count: usize,
+}
+
+impl Body {
+    /// Constructs a `Body`.
+    ///
+    /// A constructor is required to build a `Body` from outside the crate
+    /// because the `arg_count` field is private.
+    pub fn new(blocks: Vec<BasicBlock>, locals: LocalDecls, arg_count: usize) -> Self {
+        // If locals doesn't contain enough entries, it can lead to panics in
+        // `ret_local` and `arg_locals`.
+        assert!(
+            locals.len() >= arg_count + 1,
+            "A Body must contain at least a local for the return value and each of the function's arguments"
+        );
+        Self { blocks, locals, arg_count }
+    }
+
+    /// Gets the function's return local.
+    pub fn ret_local(&self) -> &LocalDecl {
+        &self.locals[0]
+    }
+
+    /// Gets the locals in `self` that correspond to the function's arguments.
+    pub fn arg_locals(&self) -> &[LocalDecl] {
+        &self.locals[1..self.arg_count + 1]
+    }
 }
 
 type LocalDecls = Vec<LocalDecl>;
