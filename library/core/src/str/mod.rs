@@ -81,6 +81,7 @@ use iter::{MatchesInternal, SplitNInternal};
 #[cold]
 #[track_caller]
 #[rustc_allow_const_fn_unstable(const_eval_select)]
+#[cfg(not(feature = "panic_immediate_abort"))]
 const fn slice_error_fail(s: &str, begin: usize, end: usize) -> ! {
     // SAFETY: panics for both branches
     unsafe {
@@ -90,6 +91,11 @@ const fn slice_error_fail(s: &str, begin: usize, end: usize) -> ! {
             slice_error_fail_rt,
         )
     }
+}
+
+#[cfg(feature = "panic_immediate_abort")]
+const fn slice_error_fail(s: &str, begin: usize, end: usize) -> ! {
+    slice_error_fail_ct(s, begin, end)
 }
 
 #[track_caller]
