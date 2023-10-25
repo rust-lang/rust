@@ -438,10 +438,8 @@ impl<'tcx> Inliner<'tcx> {
             return Err("incompatible instruction set");
         }
 
-        for feature in &callee_attrs.target_features {
-            if !self.codegen_fn_attrs.target_features.contains(feature) {
-                return Err("incompatible target feature");
-            }
+        if callee_attrs.target_features != self.codegen_fn_attrs.target_features {
+            return Err("incompatible target features");
         }
 
         Ok(())
