@@ -2995,11 +2995,11 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 let sp = self.tcx.def_span(def_id);
 
                                 // Special-case this to say "async block" instead of `[static coroutine]`.
-                                let kind = tcx.coroutine_kind(def_id).unwrap().descr();
+                                let kind = tcx.coroutine_kind(def_id).unwrap();
                                 err.span_note(
                                     sp,
                                     with_forced_trimmed_paths!(format!(
-                                        "required because it's used within this {kind}",
+                                        "required because it's used within this {kind:#}",
                                     )),
                                 )
                             }

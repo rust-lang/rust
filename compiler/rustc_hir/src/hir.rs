@@ -1520,17 +1520,15 @@ pub enum CoroutineKind {
 impl fmt::Display for CoroutineKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            CoroutineKind::Async(k) => fmt::Display::fmt(k, f),
+            CoroutineKind::Async(k) => {
+                if f.alternate() {
+                    f.write_str("`async` ")?;
+                } else {
+                    f.write_str("async ")?
+                }
+                k.fmt(f)
+            }
             CoroutineKind::Coroutine => f.write_str("coroutine"),
-        }
-    }
-}
-
-impl CoroutineKind {
-    pub fn descr(&self) -> &'static str {
-        match self {
-            CoroutineKind::Async(ask) => ask.descr(),
-            CoroutineKind::Coroutine => "coroutine",
         }
     }
 }
@@ -1555,21 +1553,12 @@ pub enum CoroutineSource {
 
 impl fmt::Display for CoroutineSource {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(match self {
-            CoroutineSource::Block => "async block",
-            CoroutineSource::Closure => "async closure body",
-            CoroutineSource::Fn => "async fn body",
-        })
-    }
-}
-
-impl CoroutineSource {
-    pub fn descr(&self) -> &'static str {
         match self {
-            CoroutineSource::Block => "`async` block",
-            CoroutineSource::Closure => "`async` closure body",
-            CoroutineSource::Fn => "`async` fn body",
+            CoroutineSource::Block => "block",
+            CoroutineSource::Closure => "closure body",
+            CoroutineSource::Fn => "fn body",
         }
+        .fmt(f)
     }
 }
 
