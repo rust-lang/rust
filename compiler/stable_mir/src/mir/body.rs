@@ -48,6 +48,14 @@ impl Body {
     pub fn internal_locals(&self) -> &[LocalDecl] {
         &self.locals[self.arg_count + 1..]
     }
+
+    /// Convenience function to get all the locals in this function.
+    ///
+    /// Locals are typically accessed via the more specific methods `ret_local`,
+    /// `arg_locals`, and `internal_locals`.
+    pub fn locals(&self) -> &[LocalDecl] {
+        &self.locals
+    }
 }
 
 type LocalDecls = Vec<LocalDecl>;
