@@ -20,7 +20,7 @@ mod build;
 mod check_unsafety;
 mod errors;
 pub mod lints;
-pub mod thir;
+mod thir;
 
 use rustc_middle::query::Providers;
 
