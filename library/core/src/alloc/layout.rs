@@ -181,10 +181,14 @@ impl Layout {
     ///     - a [slice], then the length of the slice tail must be an initialized
     ///       integer, and the size of the *entire value*
     ///       (dynamic tail length + statically sized prefix) must fit in `isize`.
+    ///       The pointer address plus the size of the entire value must not
+    ///       overflow the address space.
     ///     - a [trait object], then the vtable part of the pointer must point
     ///       to a valid vtable for the type `T` acquired by an unsizing coercion,
     ///       and the size of the *entire value*
     ///       (dynamic tail length + statically sized prefix) must fit in `isize`.
+    ///       The pointer address plus the size of the entire value must not
+    ///       overflow the address space.
     ///     - an (unstable) [extern type], then this function is always safe to
     ///       call, but may panic or otherwise return the wrong value, as the
     ///       extern type's layout is not known. This is the same behavior as
