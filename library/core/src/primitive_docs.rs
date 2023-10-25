@@ -332,6 +332,10 @@ mod prim_never {}
 ///
 /// `char` is guaranteed to have the same size and alignment as `u32` on all
 /// platforms.
+/// ```
+/// use std::alloc::Layout;
+/// assert_eq!(Layout::new::<char>(), Layout::new::<u32>());
+/// ```
 ///
 /// [Unicode code point]: https://www.unicode.org/glossary/#code_point
 /// [Unicode scalar value]: https://www.unicode.org/glossary/#unicode_scalar_value
