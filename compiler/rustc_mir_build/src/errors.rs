@@ -392,11 +392,6 @@ pub enum UnusedUnsafeEnclosing {
         #[primary_span]
         span: Span,
     },
-    #[label(mir_build_unused_unsafe_enclosing_fn_label)]
-    Function {
-        #[primary_span]
-        span: Span,
-    },
 }
 
 pub(crate) struct NonExhaustivePatternsTypeNotEmpty<'p, 'tcx, 'm> {
