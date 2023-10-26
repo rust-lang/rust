@@ -35,7 +35,7 @@ pub struct StripUnconfigured<'a> {
     pub lint_node_id: NodeId,
 }
 
-pub fn features(sess: &Session, krate_attrs: &[Attribute]) -> Features {
+pub fn features(sess: &Session, krate_attrs: &[Attribute], crate_name: Symbol) -> Features {
     fn feature_list(attr: &Attribute) -> ThinVec<ast::NestedMetaItem> {
         if attr.has_name(sym::feature)
             && let Some(list) = attr.meta_item_list()
@@ -167,6 +167,15 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute]) -> Features {
             // If the declared feature is unstable, record it.
             if let Some(f) = UNSTABLE_FEATURES.iter().find(|f| name == f.feature.name) {
                 (f.set_enabled)(&mut features);
+                // When the ICE comes from core, alloc or std (approximation of the standard library), there's a chance
+                // that the person hitting the ICE may be using -Zbuild-std or similar with an untested target.
+                // The bug is probably in the standard library and not the compiler in that case, but that doesn't
+                // really matter - we want a bug report.
+                if features.internal(name)
+                    && ![sym::core, sym::alloc, sym::std].contains(&crate_name)
+                {
+                    sess.using_internal_features.store(true, std::sync::atomic::Ordering::Relaxed);
+                }
                 features.set_declared_lang_feature(name, mi.span(), None);
                 continue;
             }

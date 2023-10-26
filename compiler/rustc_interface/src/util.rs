@@ -26,7 +26,7 @@ use std::env::consts::{DLL_PREFIX, DLL_SUFFIX};
 use std::mem;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::OnceLock;
+use std::sync::{Arc, OnceLock};
 use std::thread;
 
 /// Function pointer type that constructs a new CodegenBackend.
@@ -71,6 +71,7 @@ pub fn create_session(
     >,
     descriptions: Registry,
     ice_file: Option<PathBuf>,
+    using_internal_features: Arc<AtomicBool>,
     expanded_args: Vec<String>,
 ) -> (Session, Box<dyn CodegenBackend>) {
     let codegen_backend = if let Some(make_codegen_backend) = make_codegen_backend {
@@ -114,6 +115,7 @@ pub fn create_session(
         target_override,
         rustc_version_str().unwrap_or("unknown"),
         ice_file,
+        using_internal_features,
         expanded_args,
     );
 

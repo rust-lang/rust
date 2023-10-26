@@ -60,7 +60,7 @@ use std::path::PathBuf;
 use std::process::{self, Command, Stdio};
 use std::str;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::OnceLock;
+use std::sync::{Arc, OnceLock};
 use std::time::{Instant, SystemTime};
 use time::OffsetDateTime;
 
@@ -223,11 +223,18 @@ pub struct RunCompiler<'a, 'b> {
     file_loader: Option<Box<dyn FileLoader + Send + Sync>>,
     make_codegen_backend:
         Option<Box<dyn FnOnce(&config::Options) -> Box<dyn CodegenBackend> + Send>>,
+    using_internal_features: Arc<std::sync::atomic::AtomicBool>,
 }
 
 impl<'a, 'b> RunCompiler<'a, 'b> {
     pub fn new(at_args: &'a [String], callbacks: &'b mut (dyn Callbacks + Send)) -> Self {
-        Self { at_args, callbacks, file_loader: None, make_codegen_backend: None }
+        Self {
+            at_args,
+            callbacks,
+            file_loader: None,
+            make_codegen_backend: None,
+            using_internal_features: Arc::default(),
+        }
     }
 
     /// Set a custom codegen backend.
@@ -259,9 +266,23 @@ impl<'a, 'b> RunCompiler<'a, 'b> {
         self
     }
 
+    /// Set the session-global flag that checks whether internal features have been used,
+    /// suppressing the message about submitting an issue in ICEs when enabled.
+    #[must_use]
+    pub fn set_using_internal_features(mut self, using_internal_features: Arc<AtomicBool>) -> Self {
+        self.using_internal_features = using_internal_features;
+        self
+    }
+
     /// Parse args and run the compiler.
     pub fn run(self) -> interface::Result<()> {
-        run_compiler(self.at_args, self.callbacks, self.file_loader, self.make_codegen_backend)
+        run_compiler(
+            self.at_args,
+            self.callbacks,
+            self.file_loader,
+            self.make_codegen_backend,
+            self.using_internal_features,
+        )
     }
 }
 
@@ -272,6 +293,7 @@ fn run_compiler(
     make_codegen_backend: Option<
         Box<dyn FnOnce(&config::Options) -> Box<dyn CodegenBackend> + Send>,
     >,
+    using_internal_features: Arc<std::sync::atomic::AtomicBool>,
 ) -> interface::Result<()> {
     let mut early_error_handler = EarlyErrorHandler::new(ErrorOutputType::default());
 
@@ -316,6 +338,7 @@ fn run_compiler(
         override_queries: None,
         make_codegen_backend,
         registry: diagnostics_registry(),
+        using_internal_features,
         expanded_args: args,
     };
 
@@ -1333,8 +1356,12 @@ fn ice_path() -> &'static Option<PathBuf> {
 /// If you have no extra info to report, pass the empty closure `|_| ()` as the argument to
 /// extra_info.
 ///
+/// Returns a flag that can be set to disable the note for submitting a bug. This can be passed to
+/// [`RunCompiler::set_using_internal_features`] to let macro expansion set it when encountering
+/// internal features.
+///
 /// A custom rustc driver can skip calling this to set up a custom ICE hook.
-pub fn install_ice_hook(bug_report_url: &'static str, extra_info: fn(&Handler)) {
+pub fn install_ice_hook(bug_report_url: &'static str, extra_info: fn(&Handler)) -> Arc<AtomicBool> {
     // If the user has not explicitly overridden "RUST_BACKTRACE", then produce
     // full backtraces. When a compiler ICE happens, we want to gather
     // as much information as possible to present in the issue opened
@@ -1345,6 +1372,8 @@ pub fn install_ice_hook(bug_report_url: &'static str, extra_info: fn(&Handler)) 
         std::env::set_var("RUST_BACKTRACE", "full");
     }
 
+    let using_internal_features = Arc::new(std::sync::atomic::AtomicBool::default());
+    let using_internal_features_hook = using_internal_features.clone();
     panic::update_hook(Box::new(
         move |default_hook: &(dyn Fn(&PanicInfo<'_>) + Send + Sync + 'static),
               info: &PanicInfo<'_>| {
@@ -1394,9 +1423,11 @@ pub fn install_ice_hook(bug_report_url: &'static str, extra_info: fn(&Handler)) 
             }
 
             // Print the ICE message
-            report_ice(info, bug_report_url, extra_info);
+            report_ice(info, bug_report_url, extra_info, &using_internal_features_hook);
         },
     ));
+
+    using_internal_features
 }
 
 /// Prints the ICE message, including query stack, but without backtrace.
@@ -1405,7 +1436,12 @@ pub fn install_ice_hook(bug_report_url: &'static str, extra_info: fn(&Handler)) 
 ///
 /// When `install_ice_hook` is called, this function will be called as the panic
 /// hook.
-fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str, extra_info: fn(&Handler)) {
+fn report_ice(
+    info: &panic::PanicInfo<'_>,
+    bug_report_url: &str,
+    extra_info: fn(&Handler),
+    using_internal_features: &AtomicBool,
+) {
     let fallback_bundle =
         rustc_errors::fallback_fluent_bundle(crate::DEFAULT_LOCALE_RESOURCES.to_vec(), false);
     let emitter = Box::new(rustc_errors::emitter::EmitterWriter::stderr(
@@ -1422,7 +1458,11 @@ fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str, extra_info: fn(
         handler.emit_err(session_diagnostics::Ice);
     }
 
-    handler.emit_note(session_diagnostics::IceBugReport { bug_report_url });
+    if using_internal_features.load(std::sync::atomic::Ordering::Relaxed) {
+        handler.emit_note(session_diagnostics::IceBugReportInternalFeature);
+    } else {
+        handler.emit_note(session_diagnostics::IceBugReport { bug_report_url });
+    }
 
     let version = util::version_str!().unwrap_or("unknown_version");
     let triple = config::host_triple();
@@ -1506,7 +1546,7 @@ pub fn main() -> ! {
     init_rustc_env_logger(&handler);
     signal_handler::install();
     let mut callbacks = TimePassesCallbacks::default();
-    install_ice_hook(DEFAULT_BUG_REPORT_URL, |_| ());
+    let using_internal_features = install_ice_hook(DEFAULT_BUG_REPORT_URL, |_| ());
     let exit_code = catch_with_exit_code(|| {
         let args = env::args_os()
             .enumerate()
@@ -1516,7 +1556,9 @@ pub fn main() -> ! {
                 })
             })
             .collect::<Vec<_>>();
-        RunCompiler::new(&args, &mut callbacks).run()
+        RunCompiler::new(&args, &mut callbacks)
+            .set_using_internal_features(using_internal_features)
+            .run()
     });
 
     if let Some(format) = callbacks.time_passes {
