@@ -364,12 +364,11 @@ impl<T> Trait<T> for X {
         };
         // Get the `DefId` for the type parameter corresponding to `A` in `<A as T>::Foo`.
         // This will also work for `impl Trait`.
-        let def_id = if let ty::Param(param_ty) = proj_ty.self_ty().kind() {
-            let generics = tcx.generics_of(body_owner_def_id);
-            generics.type_param(param_ty, tcx).def_id
-        } else {
+        let ty::Param(param_ty) = proj_ty.self_ty().kind() else {
             return false;
         };
+        let generics = tcx.generics_of(body_owner_def_id);
+        let def_id = generics.type_param(param_ty, tcx).def_id;
         let Some(def_id) = def_id.as_local() else {
             return false;
         };
@@ -389,6 +388,10 @@ impl<T> Trait<T> for X {
             ) {
                 return true;
             }
+        }
+        if (param_ty.index as usize) >= generics.parent_count {
+            // The param comes from the current item, do not look at the parent. (#117209)
+            return false;
         }
         // If associated item, look to constrain the params of the trait/impl.
         let hir_id = match item {
