@@ -1107,7 +1107,7 @@ impl<'tcx> Ty<'tcx> {
                 // This doesn't depend on regions, so try to minimize distinct
                 // query keys used.
                 // If normalization fails, we just use `query_ty`.
-                let param_env = tcx.erase_regions(param_env);
+                debug_assert!(!param_env.has_infer());
                 let query_ty = tcx
                     .try_normalize_erasing_regions(param_env, query_ty)
                     .unwrap_or_else(|_| tcx.erase_regions(query_ty));
