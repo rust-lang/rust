@@ -48,7 +48,7 @@ use std::str;
 use std::string::ToString;
 
 use askama::Template;
-use rustc_attr::{ConstStability, Deprecation, StabilityLevel, StableSince};
+use rustc_attr::{ConstStability, DeprecatedSince, Deprecation, StabilityLevel, StableSince};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def_id::{DefId, DefIdSet};
@@ -617,21 +617,18 @@ fn short_item_info(
 ) -> Vec<ShortItemInfo> {
     let mut extra_info = vec![];
 
-    if let Some(depr @ Deprecation { note, since, is_since_rustc_version: _, suggestion: _ }) =
-        item.deprecation(cx.tcx())
-    {
+    if let Some(depr @ Deprecation { note, since, suggestion: _ }) = item.deprecation(cx.tcx()) {
         // We display deprecation messages for #[deprecated], but only display
         // the future-deprecation messages for rustc versions.
         let mut message = if let Some(since) = since {
-            let since = since.as_str();
             if !stability::deprecation_in_effect(&depr) {
-                if since == "TBD" {
+                if let DeprecatedSince::Future = since {
                     String::from("Deprecating in a future Rust version")
                 } else {
-                    format!("Deprecating in {}", Escape(since))
+                    format!("Deprecating in {}", Escape(&since.to_string()))
                 }
             } else {
-                format!("Deprecated since {}", Escape(since))
+                format!("Deprecated since {}", Escape(&since.to_string()))
             }
         } else {
             String::from("Deprecated")

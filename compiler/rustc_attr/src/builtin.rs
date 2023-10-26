@@ -13,6 +13,7 @@ use rustc_session::parse::{feature_err, ParseSess};
 use rustc_session::{RustcVersion, Session};
 use rustc_span::hygiene::Transparency;
 use rustc_span::{symbol::sym, symbol::Symbol, Span};
+use std::fmt::{self, Display};
 use std::num::NonZeroU32;
 
 use crate::session_diagnostics::{self, IncorrectReprFormatGenericCause};
@@ -720,17 +721,37 @@ pub fn eval_condition(
 
 #[derive(Copy, Debug, Encodable, Decodable, Clone, HashStable_Generic)]
 pub struct Deprecation {
-    pub since: Option<Symbol>,
+    pub since: Option<DeprecatedSince>,
     /// The note to issue a reason.
     pub note: Option<Symbol>,
     /// A text snippet used to completely replace any use of the deprecated item in an expression.
     ///
     /// This is currently unstable.
     pub suggestion: Option<Symbol>,
+}
 
-    /// Whether to treat the since attribute as being a Rust version identifier
-    /// (rather than an opaque string).
-    pub is_since_rustc_version: bool,
+/// Release in which an API is deprecated.
+#[derive(Copy, Debug, Encodable, Decodable, Clone, HashStable_Generic)]
+pub enum DeprecatedSince {
+    RustcVersion(RustcVersion),
+    /// Deprecated in the future ("to be determined").
+    Future,
+    /// `feature(staged_api)` is off, or it's on but the deprecation version
+    /// cannot be parsed as a RustcVersion. In the latter case, an error has
+    /// already been emitted. In the former case, deprecation versions outside
+    /// the standard library are allowed to be arbitrary strings, for better or
+    /// worse.
+    Symbol(Symbol),
+}
+
+impl Display for DeprecatedSince {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            DeprecatedSince::RustcVersion(since) => Display::fmt(since, formatter),
+            DeprecatedSince::Future => formatter.write_str("TBD"),
+            DeprecatedSince::Symbol(since) => Display::fmt(since, formatter),
+        }
+    }
 }
 
 /// Finds the deprecation attribute. `None` if none exists.
@@ -839,22 +860,30 @@ pub fn find_deprecation(
             }
         }
 
-        if is_rustc {
-            if since.is_none() {
-                sess.emit_err(session_diagnostics::MissingSince { span: attr.span });
-                continue;
+        let since = if let Some(since) = since {
+            if since.as_str() == "TBD" {
+                Some(DeprecatedSince::Future)
+            } else if !is_rustc {
+                Some(DeprecatedSince::Symbol(since))
+            } else if let Some(version) = parse_version(since) {
+                Some(DeprecatedSince::RustcVersion(version))
+            } else {
+                sess.emit_err(session_diagnostics::InvalidSince { span: attr.span });
+                Some(DeprecatedSince::Symbol(since))
             }
+        } else if is_rustc {
+            sess.emit_err(session_diagnostics::MissingSince { span: attr.span });
+            continue;
+        } else {
+            None
+        };
 
-            if note.is_none() {
-                sess.emit_err(session_diagnostics::MissingNote { span: attr.span });
-                continue;
-            }
+        if is_rustc && note.is_none() {
+            sess.emit_err(session_diagnostics::MissingNote { span: attr.span });
+            continue;
         }
 
-        depr = Some((
-            Deprecation { since, note, suggestion, is_since_rustc_version: is_rustc },
-            attr.span,
-        ));
+        depr = Some((Deprecation { since, note, suggestion }, attr.span));
     }
 
     depr

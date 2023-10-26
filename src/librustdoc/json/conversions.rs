@@ -138,8 +138,7 @@ where
 }
 
 pub(crate) fn from_deprecation(deprecation: rustc_attr::Deprecation) -> Deprecation {
-    #[rustfmt::skip]
-    let rustc_attr::Deprecation { since, note, is_since_rustc_version: _, suggestion: _ } = deprecation;
+    let rustc_attr::Deprecation { since, note, suggestion: _ } = deprecation;
     Deprecation { since: since.map(|s| s.to_string()), note: note.map(|s| s.to_string()) }
 }
 

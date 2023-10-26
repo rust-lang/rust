@@ -64,9 +64,8 @@ fn multiple3() { }
 #[rustc_const_unstable(feature = "d", issue = "none")] //~ ERROR multiple stability levels
 pub const fn multiple4() { }
 
-#[stable(feature = "a", since = "1.0.0")] //~ ERROR invalid deprecation version found
-//~^ ERROR feature `a` is declared stable since 1.0.0
-#[deprecated(since = "invalid", note = "text")]
+#[stable(feature = "a", since = "1.0.0")] //~ ERROR feature `a` is declared stable since 1.0.0
+#[deprecated(since = "invalid", note = "text")] //~ ERROR 'since' must be a Rust version number, such as "1.31.0"
 fn invalid_deprecation_version() {}
 
 #[deprecated(since = "5.5.5", note = "text")]
