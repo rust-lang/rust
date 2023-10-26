@@ -2743,13 +2743,11 @@ pub fn build_session_options(
     // This is what prevents them from being used on stable compilers.
     match cg.instrument_coverage {
         // Stable values:
-        Some(InstrumentCoverage::All | InstrumentCoverage::Off) | None => {}
+        InstrumentCoverage::All | InstrumentCoverage::Off => {}
         // Unstable values:
-        Some(
-            InstrumentCoverage::Branch
-            | InstrumentCoverage::ExceptUnusedFunctions
-            | InstrumentCoverage::ExceptUnusedGenerics,
-        ) => {
+        InstrumentCoverage::Branch
+        | InstrumentCoverage::ExceptUnusedFunctions
+        | InstrumentCoverage::ExceptUnusedGenerics => {
             if !unstable_opts.unstable_options {
                 handler.early_error(
                     "`-C instrument-coverage=branch` and `-C instrument-coverage=except-*` \
@@ -2759,7 +2757,7 @@ pub fn build_session_options(
         }
     }
 
-    if cg.instrument_coverage.is_some() && cg.instrument_coverage != Some(InstrumentCoverage::Off) {
+    if cg.instrument_coverage != InstrumentCoverage::Off {
         if cg.profile_generate.enabled() || cg.profile_use.is_some() {
             handler.early_error(
                 "option `-C instrument-coverage` is not compatible with either `-C profile-use` \
