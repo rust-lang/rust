@@ -292,7 +292,7 @@ To send the changes to the rust repo:
 ```bash
 cd ../rust
 git pull origin master
-git checkbout -b subtree-update_cg_gcc_YYYY-MM-DD
+git checkout -b subtree-update_cg_gcc_YYYY-MM-DD
 PATH="$HOME/bin:$PATH" ~/bin/git-subtree pull --prefix=compiler/rustc_codegen_gcc/ https://github.com/rust-lang/rustc_codegen_gcc.git master
 git push
 ```

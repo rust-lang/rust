@@ -371,10 +371,10 @@ function test_rustc() {
 
     git checkout -- tests/ui/issues/auxiliary/issue-3136-a.rs # contains //~ERROR, but shouldn't be removed
 
-    rm -r tests/ui/{abi*,extern/,unsized-locals/,proc-macro/,threads-sendsync/,thinlto/,borrowck/,chalkify/bugs/,test*,consts/const-float-bits-reject-conv.rs,consts/issue-miri-1910.rs} || true
+    rm -r tests/ui/{abi*,extern/,unsized-locals/,proc-macro/,threads-sendsync/,borrowck/,test*,consts/issue-miri-1910.rs} || true
     rm tests/ui/mir/mir_heavy_promoted.rs # this test is oom-killed in the CI.
     # Tests generating errors.
-    rm tests/ui/consts/const-eval/nonnull_as_ref_ub.rs tests/ui/consts/issue-94675.rs
+    rm tests/ui/consts/issue-94675.rs
     for test in $(rg --files-with-matches "thread" tests/ui); do
       rm $test
     done
