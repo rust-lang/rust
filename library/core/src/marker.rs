@@ -621,7 +621,20 @@ impl<T: ?Sized> Copy for &T {}
         note = "if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock` or `std::sync::atomic::AtomicBool` instead",
     ),
     on(
-        _Self = "core::cell::Cell<T>",
+        all(
+            _Self = "core::cell::Cell<T>",
+            not(_Self = "core::cell::Cell<u8>"),
+            not(_Self = "core::cell::Cell<u16>"),
+            not(_Self = "core::cell::Cell<u32>"),
+            not(_Self = "core::cell::Cell<u64>"),
+            not(_Self = "core::cell::Cell<usize>"),
+            not(_Self = "core::cell::Cell<i8>"),
+            not(_Self = "core::cell::Cell<i16>"),
+            not(_Self = "core::cell::Cell<i32>"),
+            not(_Self = "core::cell::Cell<i64>"),
+            not(_Self = "core::cell::Cell<isize>"),
+            not(_Self = "core::cell::Cell<bool>")
+        ),
         note = "if you want to do aliasing and mutation between multiple threads, use `std::sync::RwLock`",
     ),
     on(
