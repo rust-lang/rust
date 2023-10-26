@@ -7,7 +7,7 @@ fn main() {
     let cond = std::env::args().len() > 1;
     generic_fn::<()>(cond);
     generic_fn::<&'static str>(!cond);
-    if false {
+    if std::hint::black_box(false) {
         generic_fn::<char>(cond);
     }
     generic_fn::<i32>(cond);

@@ -2481,9 +2481,9 @@ impl<'test> TestCx<'test> {
             RunCoverage => {
                 rustc.arg("-Cinstrument-coverage");
                 // Coverage reports are sometimes sensitive to optimizations,
-                // and the current snapshots assume no optimization unless
+                // and the current snapshots assume `opt-level=2` unless
                 // overridden by `compile-flags`.
-                rustc.arg("-Copt-level=0");
+                rustc.arg("-Copt-level=2");
             }
             RunPassValgrind | Pretty | DebugInfo | Codegen | Rustdoc | RustdocJson | RunMake
             | CodegenUnits | JsDocTest | Assembly => {
