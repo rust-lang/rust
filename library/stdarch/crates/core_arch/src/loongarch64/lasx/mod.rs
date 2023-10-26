@@ -1,0 +1,13 @@
+//! LoongArch64 LASX intrinsics
+
+#![allow(non_camel_case_types)]
+
+#[rustfmt::skip]
+mod types;
+
+#[rustfmt::skip]
+mod generated;
+
+#[rustfmt::skip]
+#[unstable(feature = "stdarch_loongarch", issue = "117427")]
+pub use self::generated::*;
