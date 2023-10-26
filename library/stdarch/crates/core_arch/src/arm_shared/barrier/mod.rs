@@ -16,6 +16,7 @@ mod cp15;
     target_feature = "v7",
     target_feature = "mclass"
 )))]
+#[unstable(feature = "stdarch_arm_barrier", issue = "117219")]
 pub use self::cp15::*;
 
 // Dedicated instructions

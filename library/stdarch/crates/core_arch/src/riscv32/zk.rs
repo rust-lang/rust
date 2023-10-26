@@ -65,6 +65,7 @@ extern "unadjusted" {
 // See #1464
 // #[cfg_attr(test, assert_instr(aes32esi, BS = 0))]
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub unsafe fn aes32esi<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
     static_assert!(BS < 4);
 
@@ -97,6 +98,7 @@ pub unsafe fn aes32esi<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
 // See #1464
 // #[cfg_attr(test, assert_instr(aes32esmi, BS = 0))]
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub unsafe fn aes32esmi<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
     static_assert!(BS < 4);
 
@@ -128,6 +130,7 @@ pub unsafe fn aes32esmi<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
 // See #1464
 // #[cfg_attr(test, assert_instr(aes32dsi, BS = 0))]
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub unsafe fn aes32dsi<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
     static_assert!(BS < 4);
 
@@ -160,6 +163,7 @@ pub unsafe fn aes32dsi<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
 // See #1464
 // #[cfg_attr(test, assert_instr(aes32dsmi, BS = 0))]
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub unsafe fn aes32dsmi<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
     static_assert!(BS < 4);
 
@@ -187,6 +191,7 @@ pub unsafe fn aes32dsmi<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
 // See #1464
 // #[cfg_attr(test, assert_instr(zip))]
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub unsafe fn zip(rs: u32) -> u32 {
     _zip(rs as i32) as u32
 }
@@ -209,6 +214,7 @@ pub unsafe fn zip(rs: u32) -> u32 {
 #[target_feature(enable = "zbkb")]
 #[cfg_attr(test, assert_instr(unzip))]
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub unsafe fn unzip(rs: u32) -> u32 {
     _unzip(rs as i32) as u32
 }
@@ -235,6 +241,7 @@ pub unsafe fn unzip(rs: u32) -> u32 {
 // See #1464
 // #[cfg_attr(test, assert_instr(sha512sig0h))]
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub unsafe fn sha512sig0h(rs1: u32, rs2: u32) -> u32 {
     _sha512sig0h(rs1 as i32, rs2 as i32) as u32
 }
@@ -261,6 +268,7 @@ pub unsafe fn sha512sig0h(rs1: u32, rs2: u32) -> u32 {
 // See #1464
 // #[cfg_attr(test, assert_instr(sha512sig0l))]
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub unsafe fn sha512sig0l(rs1: u32, rs2: u32) -> u32 {
     _sha512sig0l(rs1 as i32, rs2 as i32) as u32
 }
@@ -287,6 +295,7 @@ pub unsafe fn sha512sig0l(rs1: u32, rs2: u32) -> u32 {
 // See #1464
 // #[cfg_attr(test, assert_instr(sha512sig1h))]
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub unsafe fn sha512sig1h(rs1: u32, rs2: u32) -> u32 {
     _sha512sig1h(rs1 as i32, rs2 as i32) as u32
 }
@@ -312,6 +321,7 @@ pub unsafe fn sha512sig1h(rs1: u32, rs2: u32) -> u32 {
 #[target_feature(enable = "zknh")]
 #[cfg_attr(test, assert_instr(sha512sig1l))]
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub unsafe fn sha512sig1l(rs1: u32, rs2: u32) -> u32 {
     _sha512sig1l(rs1 as i32, rs2 as i32) as u32
 }
@@ -337,6 +347,7 @@ pub unsafe fn sha512sig1l(rs1: u32, rs2: u32) -> u32 {
 // See #1464
 // #[cfg_attr(test, assert_instr(sha512sum0r))]
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub unsafe fn sha512sum0r(rs1: u32, rs2: u32) -> u32 {
     _sha512sum0r(rs1 as i32, rs2 as i32) as u32
 }
@@ -362,6 +373,7 @@ pub unsafe fn sha512sum0r(rs1: u32, rs2: u32) -> u32 {
 // See #1464
 // #[cfg_attr(test, assert_instr(sha512sum1r))]
 #[inline]
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub unsafe fn sha512sum1r(rs1: u32, rs2: u32) -> u32 {
     _sha512sum1r(rs1 as i32, rs2 as i32) as u32
 }

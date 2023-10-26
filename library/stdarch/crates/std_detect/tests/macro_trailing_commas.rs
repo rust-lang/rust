@@ -1,4 +1,4 @@
-#![feature(stdarch_arm_feature_detection)]
+#![feature(stdarch_arm_feature_detection, stdarch_powerpc_feature_detection)]
 #![allow(clippy::unwrap_used, clippy::use_debug, clippy::print_stdout)]
 
 #[cfg(any(

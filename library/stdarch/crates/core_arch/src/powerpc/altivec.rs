@@ -551,6 +551,7 @@ mod sealed {
 
     impl_vec_lde! { vec_lde_f32 lvewx f32 }
 
+    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
     pub trait VectorXl {
         type Result;
         unsafe fn vec_xl(self, a: isize) -> Self::Result;
@@ -586,6 +587,7 @@ mod sealed {
                 r.assume_init()
             }
 
+            #[unstable(feature = "stdarch_powerpc", issue = "111145")]
             impl VectorXl for *const $ty {
                 type Result = t_t_l!($ty);
                 #[inline]
@@ -1303,12 +1305,14 @@ mod sealed {
         vec_perm(a, a, transmute(b))
     }
 
+    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
     pub trait VectorSplat {
         unsafe fn vec_splat<const IMM: u32>(self) -> Self;
     }
 
     macro_rules! impl_vec_splat {
         ($ty:ty, $fun:ident) => {
+            #[unstable(feature = "stdarch_powerpc", issue = "111145")]
             impl VectorSplat for $ty {
                 #[inline]
                 #[target_feature(enable = "altivec")]
@@ -1335,6 +1339,7 @@ mod sealed {
             #[inline]
             #[target_feature(enable = "altivec")]
             #[cfg_attr(test, assert_instr($instr, IMM5 = 1))]
+            #[unstable(feature = "stdarch_powerpc", issue = "111145")]
             pub unsafe fn $name<const IMM5: i8>() -> s_t_l!($r) {
                 static_assert_simm_bits!(IMM5, 5);
                 transmute($r::splat(IMM5 as $v))
@@ -2363,6 +2368,7 @@ mod sealed {
         vec_perm(a, b, mergel_perm)
     }
 
+    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
     pub trait VectorMergeh<Other> {
         type Result;
         unsafe fn vec_mergeh(self, b: Other) -> Self::Result;
@@ -2371,6 +2377,7 @@ mod sealed {
     impl_vec_trait! { [VectorMergeh vec_mergeh]+ 2b (vec_vmrghb, vec_vmrghh, vec_vmrghw) }
     impl_vec_trait! { [VectorMergeh vec_mergeh]+ vec_vmrghw (vector_float, vector_float) -> vector_float }
 
+    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
     pub trait VectorMergel<Other> {
         type Result;
         unsafe fn vec_mergel(self, b: Other) -> Self::Result;
@@ -2417,6 +2424,7 @@ mod sealed {
         transmute(vec_perm(a, b, pack_perm))
     }
 
+    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
     pub trait VectorPack<Other> {
         type Result;
         unsafe fn vec_pack(self, b: Other) -> Self::Result;
@@ -2498,6 +2506,7 @@ mod sealed {
         }
     }
 
+    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
     pub trait VectorPacks<Other> {
         type Result;
         unsafe fn vec_packs(self, b: Other) -> Self::Result;
@@ -2508,6 +2517,7 @@ mod sealed {
     impl_vec_trait! { [VectorPacks vec_packs] vec_vpkswss (vector_signed_int, vector_signed_int) -> vector_signed_short }
     impl_vec_trait! { [VectorPacks vec_packs] vec_vpkuwus (vector_unsigned_int, vector_unsigned_int) -> vector_unsigned_short }
 
+    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
     pub trait VectorPacksu<Other> {
         type Result;
         unsafe fn vec_packsu(self, b: Other) -> Self::Result;
@@ -2539,6 +2549,7 @@ mod sealed {
     impl_vec_unpack! { vec_vupkhsh (vector_signed_short) -> vector_signed_int [vupklsh, vupkhsh] }
     impl_vec_unpack! { vec_vupklsh (vector_signed_short) -> vector_signed_int [vupkhsh, vupklsh] }
 
+    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
     pub trait VectorUnpackh {
         type Result;
         unsafe fn vec_unpackh(self) -> Self::Result;
@@ -2549,6 +2560,7 @@ mod sealed {
     impl_vec_trait! { [VectorUnpackh vec_unpackh] vec_vupkhsh (vector_signed_short) -> vector_signed_int }
     impl_vec_trait! { [VectorUnpackh vec_unpackh]+ vec_vupkhsh (vector_bool_short) -> vector_bool_int }
 
+    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
     pub trait VectorUnpackl {
         type Result;
         unsafe fn vec_unpackl(self) -> Self::Result;
@@ -2563,6 +2575,7 @@ mod sealed {
 /// Vector Merge Low
 #[inline]
 #[target_feature(enable = "altivec")]
+#[unstable(feature = "stdarch_powerpc", issue = "111145")]
 pub unsafe fn vec_mergel<T, U>(a: T, b: U) -> <T as sealed::VectorMergel<U>>::Result
 where
     T: sealed::VectorMergel<U>,
@@ -2573,6 +2586,7 @@ where
 /// Vector Merge High
 #[inline]
 #[target_feature(enable = "altivec")]
+#[unstable(feature = "stdarch_powerpc", issue = "111145")]
 pub unsafe fn vec_mergeh<T, U>(a: T, b: U) -> <T as sealed::VectorMergeh<U>>::Result
 where
     T: sealed::VectorMergeh<U>,
@@ -2583,6 +2597,7 @@ where
 /// Vector Pack
 #[inline]
 #[target_feature(enable = "altivec")]
+#[unstable(feature = "stdarch_powerpc", issue = "111145")]
 pub unsafe fn vec_pack<T, U>(a: T, b: U) -> <T as sealed::VectorPack<U>>::Result
 where
     T: sealed::VectorPack<U>,
@@ -2593,6 +2608,7 @@ where
 /// Vector Pack Saturated
 #[inline]
 #[target_feature(enable = "altivec")]
+#[unstable(feature = "stdarch_powerpc", issue = "111145")]
 pub unsafe fn vec_packs<T, U>(a: T, b: U) -> <T as sealed::VectorPacks<U>>::Result
 where
     T: sealed::VectorPacks<U>,
@@ -2603,6 +2619,7 @@ where
 /// Vector Pack Saturated Unsigned
 #[inline]
 #[target_feature(enable = "altivec")]
+#[unstable(feature = "stdarch_powerpc", issue = "111145")]
 pub unsafe fn vec_packsu<T, U>(a: T, b: U) -> <T as sealed::VectorPacksu<U>>::Result
 where
     T: sealed::VectorPacksu<U>,
@@ -2613,6 +2630,7 @@ where
 /// Vector Unpack High
 #[inline]
 #[target_feature(enable = "altivec")]
+#[unstable(feature = "stdarch_powerpc", issue = "111145")]
 pub unsafe fn vec_unpackh<T>(a: T) -> <T as sealed::VectorUnpackh>::Result
 where
     T: sealed::VectorUnpackh,
@@ -2623,6 +2641,7 @@ where
 /// Vector Unpack Low
 #[inline]
 #[target_feature(enable = "altivec")]
+#[unstable(feature = "stdarch_powerpc", issue = "111145")]
 pub unsafe fn vec_unpackl<T>(a: T) -> <T as sealed::VectorUnpackl>::Result
 where
     T: sealed::VectorUnpackl,
@@ -2666,6 +2685,7 @@ where
 /// VSX Unaligned Load
 #[inline]
 #[target_feature(enable = "altivec")]
+#[unstable(feature = "stdarch_powerpc", issue = "111145")]
 pub unsafe fn vec_xl<T>(off: isize, p: T) -> <T as sealed::VectorXl>::Result
 where
     T: sealed::VectorXl,
@@ -2677,6 +2697,7 @@ where
 #[inline]
 #[target_feature(enable = "altivec")]
 #[cfg_attr(test, assert_instr(vlogefp))]
+#[unstable(feature = "stdarch_powerpc", issue = "111145")]
 pub unsafe fn vec_loge(a: vector_float) -> vector_float {
     vlogefp(a)
 }
@@ -2872,6 +2893,7 @@ where
 /// Vector Splat
 #[inline]
 #[target_feature(enable = "altivec")]
+#[unstable(feature = "stdarch_powerpc", issue = "111145")]
 pub unsafe fn vec_splat<T, const IMM: u32>(a: T) -> T
 where
     T: sealed::VectorSplat,
@@ -2945,6 +2967,7 @@ where
 #[inline]
 #[target_feature(enable = "altivec")]
 #[cfg_attr(test, assert_instr(mfvscr))]
+#[unstable(feature = "stdarch_powerpc", issue = "111145")]
 pub unsafe fn vec_mfvscr() -> vector_unsigned_short {
     mfvscr()
 }
@@ -3406,6 +3429,7 @@ mod endian {
     /// Vector permute.
     #[inline]
     #[target_feature(enable = "altivec")]
+    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
     pub unsafe fn vec_perm<T>(a: T, b: T, c: vector_unsigned_char) -> T
     where
         T: sealed::VectorPerm,
@@ -3416,6 +3440,7 @@ mod endian {
     /// Vector Sum Across Partial (1/2) Saturated
     #[inline]
     #[target_feature(enable = "altivec")]
+    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
     pub unsafe fn vec_sum2s(a: vector_signed_int, b: vector_signed_int) -> vector_signed_int {
         vsum2sws(a, b)
     }
@@ -3423,6 +3448,7 @@ mod endian {
     /// Vector Multiply Even
     #[inline]
     #[target_feature(enable = "altivec")]
+    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
     pub unsafe fn vec_mule<T, U>(a: T, b: T) -> U
     where
         T: sealed::VectorMule<U>,
@@ -3432,6 +3458,7 @@ mod endian {
     /// Vector Multiply Odd
     #[inline]
     #[target_feature(enable = "altivec")]
+    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
     pub unsafe fn vec_mulo<T, U>(a: T, b: T) -> U
     where
         T: sealed::VectorMulo<U>,

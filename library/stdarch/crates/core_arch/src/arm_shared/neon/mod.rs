@@ -8888,7 +8888,7 @@ pub unsafe fn vcombine_p16(low: poly16x4_t, high: poly16x4_t) -> poly16x8_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(test, assert_instr(nop))]
 #[cfg_attr(
-    target_arch = "aarch64",
+    not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
 )]
 #[cfg_attr(
@@ -8909,7 +8909,7 @@ pub unsafe fn vcombine_s8(low: int8x8_t, high: int8x8_t) -> int8x16_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(test, assert_instr(nop))]
 #[cfg_attr(
-    target_arch = "aarch64",
+    not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
 )]
 #[cfg_attr(
@@ -8926,7 +8926,7 @@ pub unsafe fn vcombine_s16(low: int16x4_t, high: int16x4_t) -> int16x8_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(test, assert_instr(nop))]
 #[cfg_attr(
-    target_arch = "aarch64",
+    not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
 )]
 #[cfg_attr(
@@ -8943,7 +8943,7 @@ pub unsafe fn vcombine_s32(low: int32x2_t, high: int32x2_t) -> int32x4_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(test, assert_instr(nop))]
 #[cfg_attr(
-    target_arch = "aarch64",
+    not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
 )]
 #[cfg_attr(
@@ -8960,7 +8960,7 @@ pub unsafe fn vcombine_s64(low: int64x1_t, high: int64x1_t) -> int64x2_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(test, assert_instr(nop))]
 #[cfg_attr(
-    target_arch = "aarch64",
+    not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
 )]
 #[cfg_attr(
@@ -8981,7 +8981,7 @@ pub unsafe fn vcombine_u8(low: uint8x8_t, high: uint8x8_t) -> uint8x16_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(test, assert_instr(nop))]
 #[cfg_attr(
-    target_arch = "aarch64",
+    not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
 )]
 #[cfg_attr(
@@ -8999,7 +8999,7 @@ pub unsafe fn vcombine_u16(low: uint16x4_t, high: uint16x4_t) -> uint16x8_t {
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(nop))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(mov))]
 #[cfg_attr(
-    target_arch = "aarch64",
+    not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
 )]
 #[cfg_attr(
@@ -9016,7 +9016,7 @@ pub unsafe fn vcombine_u32(low: uint32x2_t, high: uint32x2_t) -> uint32x4_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(test, assert_instr(nop))]
 #[cfg_attr(
-    target_arch = "aarch64",
+    not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
 )]
 #[cfg_attr(
@@ -9033,7 +9033,7 @@ pub unsafe fn vcombine_u64(low: uint64x1_t, high: uint64x1_t) -> uint64x2_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
 #[cfg_attr(test, assert_instr(nop))]
 #[cfg_attr(
-    target_arch = "aarch64",
+    not(target_arch = "arm"),
     stable(feature = "neon_intrinsics", since = "1.59.0")
 )]
 #[cfg_attr(

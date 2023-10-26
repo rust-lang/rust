@@ -3,6 +3,7 @@ use crate::arch::asm;
 
 mod zk;
 
+#[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 pub use zk::*;
 
 /// Loads virtual machine memory by unsigned word integer

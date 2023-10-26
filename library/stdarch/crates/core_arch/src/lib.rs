@@ -57,7 +57,10 @@
     test(attr(deny(warnings))),
     test(attr(allow(dead_code, deprecated, unused_variables, unused_mut)))
 )]
-#![cfg_attr(test, feature(stdarch_arm_feature_detection))]
+#![cfg_attr(
+    test,
+    feature(stdarch_arm_feature_detection, stdarch_powerpc_feature_detection)
+)]
 
 #[cfg(test)]
 #[macro_use]
