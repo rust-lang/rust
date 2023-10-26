@@ -26,10 +26,6 @@ pub const VERSION_PLACEHOLDER: &str = "CURRENT_RUSTC_VERSION";
 
 pub const CURRENT_RUSTC_VERSION: &str = env!("CFG_RELEASE");
 
-pub fn rust_version_symbol() -> Symbol {
-    Symbol::intern(CURRENT_RUSTC_VERSION)
-}
-
 pub fn is_builtin_attr(attr: &Attribute) -> bool {
     attr.is_doc_comment() || attr.ident().is_some_and(|ident| is_builtin_attr_name(ident.name))
 }
