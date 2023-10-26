@@ -11,7 +11,6 @@
 //! Group nowadays at <https://github.com/rustwasm>.
 
 use super::{wasm_base, Cc, LinkerFlavor, Target};
-use crate::spec::abi::Abi;
 
 pub fn target() -> Target {
     let mut options = wasm_base::options();
