@@ -1,7 +1,7 @@
-name: stdarch tests with sysroot compiled in release mode
+# TODO: refactor to avoid duplication with the ci.yml file.
+name: Failures
 
 on:
-  - push
   - pull_request
 
 permissions:
@@ -13,15 +13,22 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     strategy:
       fail-fast: false
       matrix:
-        cargo_runner: [
-          "sde -future -rtm_mode full --",
-          "",
-        ]
+        libgccjit_version:
+          - gcc: "libgccjit.so"
+            artifacts_branch: "master"
+          - gcc: "libgccjit_without_int128.so"
+            artifacts_branch: "master-without-128bit-integers"
+          - gcc: "libgccjit12.so"
+            artifacts_branch: "gcc12"
+            extra: "--no-default-features"
+            # FIXME(antoyo): we need to set GCC_EXEC_PREFIX so that the linker can find the linker plugin.
+            # Not sure why it's not found otherwise.
+            env_extra: "TEST_FLAGS='-Cpanic=abort -Zpanic-abort-tests' GCC_EXEC_PREFIX=/usr/lib/gcc/"
 
     steps:
     - uses: actions/checkout@v3
@@ -29,32 +36,28 @@ jobs:
     - name: Install packages
       run: sudo apt-get install ninja-build ripgrep
 
-    - name: Install Intel Software Development Emulator
-      if: ${{ matrix.cargo_runner }}
-      run: |
-          mkdir intel-sde
-          cd intel-sde
-          dir=sde-external-9.14.0-2022-10-25-lin
-          file=$dir.tar.xz
-          wget https://downloadmirror.intel.com/751535/$file
-          tar xvf $file
-          sudo mkdir /usr/share/intel-sde
-          sudo cp -r $dir/* /usr/share/intel-sde
-          sudo ln -s /usr/share/intel-sde/sde /usr/bin/sde
-          sudo ln -s /usr/share/intel-sde/sde64 /usr/bin/sde64
+    - name: Install libgccjit12
+      if: matrix.libgccjit_version.gcc == 'libgccjit12.so'
+      run: sudo apt-get install libgccjit-12-dev
+
+    - name: Setup path to libgccjit
+      if: matrix.libgccjit_version.gcc == 'libgccjit12.so'
+      run: echo /usr/lib/gcc/x86_64-linux-gnu/12 > gcc_path
 
     - name: Download artifact
+      if: matrix.libgccjit_version.gcc != 'libgccjit12.so'
       uses: dawidd6/action-download-artifact@v2
       with:
           workflow: main.yml
           name: gcc-13
           path: gcc-13
           repo: antoyo/gcc
-          branch: "master"
+          branch: ${{ matrix.libgccjit_version.artifacts_branch }}
           event: push
           search_artifacts: true # Because, instead, the action only check the last job ran and that won't work since we want multiple artifacts.
 
     - name: Setup path to libgccjit
+      if: matrix.libgccjit_version.gcc != 'libgccjit12.so'
       run: |
           sudo dpkg --force-overwrite -i gcc-13/gcc-13.deb
           echo /usr/lib/ > gcc_path
@@ -89,22 +92,25 @@ jobs:
         path: target
         key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('rust-toolchain') }}
 
-    - name: Build
-      run: |
-        ./y.sh prepare --only-libcore
-        ./y.sh build --release --release-sysroot
-        cargo test
+    #- name: Cache rust repository
+      #uses: actions/cache@v3
+      #id: cache-rust-repository
+      #with:
+        #path: rust
+        #key: ${{ runner.os }}-packages-${{ hashFiles('rust/.git/HEAD') }}
 
-    - name: Clean
-      if: ${{ !matrix.cargo_runner }}
-      run: |
-        ./clean_all.sh
-
-    - name: Prepare dependencies
+    - name: Git config
       run: |
         git config --global user.email "user@example.com"
         git config --global user.name "User"
-        ./y.sh prepare
+
+    - name: Prepare dependencies
+      if: matrix.libgccjit_version.gcc == 'libgccjit12.so'
+      run: ./y.sh prepare --libgccjit12-patches
+
+    - name: Prepare dependencies
+      if: matrix.libgccjit_version.gcc != 'libgccjit12.so'
+      run: ./y.sh prepare
 
     # Compile is a separate step, as the actions-rs/cargo action supports error annotations
     - name: Compile
@@ -113,20 +119,11 @@ jobs:
         command: build
         args: --release
 
+    - name: Add more failing tests because the sysroot is not compiled with LTO
+      run: cat failing-non-lto-tests.txt >> failing-ui-tests.txt
+
     - name: Run tests
-      if: ${{ !matrix.cargo_runner }}
+      id: tests
       run: |
-        ./test.sh --release --clean --release-sysroot --build-sysroot --mini-tests --std-tests --test-libcore
-
-    - name: Run stdarch tests
-      if: ${{ !matrix.cargo_runner }}
-      run: |
-        cd build_sysroot/sysroot_src/library/stdarch/
-        CHANNEL=release TARGET=x86_64-unknown-linux-gnu CG_RUSTFLAGS="-Ainternal_features" ../../../../cargo.sh test
-
-    - name: Run stdarch tests
-      if: ${{ matrix.cargo_runner }}
-      run: |
-        cd build_sysroot/sysroot_src/library/stdarch/
-        # FIXME: these tests fail when the sysroot is compiled with LTO because of a missing symbol in proc-macro.
-        STDARCH_TEST_EVERYTHING=1 CHANNEL=release CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER="${{ matrix.cargo_runner }}" TARGET=x86_64-unknown-linux-gnu CG_RUSTFLAGS="-Ainternal_features" ../../../../cargo.sh test -- --skip rtm --skip tbm --skip sse4a
+        ${{ matrix.libgccjit_version.env_extra }} ./test.sh --release --clean --build-sysroot --test-failing-rustc ${{ matrix.libgccjit_version.extra }} | tee output_log
+        rg --text "test result" output_log >> $GITHUB_STEP_SUMMARY

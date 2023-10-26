@@ -198,9 +198,16 @@ pub fn check_tied_features(sess: &Session, features: &FxHashMap<&str, bool>) -> 
     None
 }
 
+fn arch_to_gcc(name: &str) -> &str {
+    match name {
+        "M68020" => "68020",
+         _ => name,
+    }
+}
+
 fn handle_native(name: &str) -> &str {
     if name != "native" {
-        return name;
+        return arch_to_gcc(name);
     }
 
     #[cfg(feature="master")]

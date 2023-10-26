@@ -119,11 +119,11 @@ impl<'gcc, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     }
 
     fn type_f32(&self) -> Type<'gcc> {
-        self.context.new_type::<f32>()
+        self.float_type
     }
 
     fn type_f64(&self) -> Type<'gcc> {
-        self.context.new_type::<f64>()
+        self.double_type
     }
 
     fn type_func(&self, params: &[Type<'gcc>], return_type: Type<'gcc>) -> Type<'gcc> {
@@ -216,17 +216,17 @@ impl<'gcc, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         value.get_type()
     }
 
-    fn type_array(&self, ty: Type<'gcc>, len: u64) -> Type<'gcc> {
-        // TODO: remove this as well?
-        /*if let Some(struct_type) = ty.is_struct() {
+    #[cfg_attr(feature="master", allow(unused_mut))]
+    fn type_array(&self, ty: Type<'gcc>, mut len: u64) -> Type<'gcc> {
+        #[cfg(not(feature="master"))]
+        if let Some(struct_type) = ty.is_struct() {
             if struct_type.get_field_count() == 0 {
                 // NOTE: since gccjit only supports i32 for the array size and libcore's tests uses a
                 // size of usize::MAX in test_binary_search, we workaround this by setting the size to
                 // zero for ZSTs.
-                // FIXME(antoyo): fix gccjit API.
                 len = 0;
             }
-        }*/
+        }
 
         self.context.new_array_type(None, ty, len)
     }
