@@ -153,21 +153,6 @@ impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
             ty
         };
 
-        #[cfg(feature = "master")]
-        let apply_attrs = |ty: Type<'gcc>, attrs: &ArgAttributes| {
-            if cx.sess().opts.optimize != config::OptLevel::No
-                && attrs.regular.contains(rustc_target::abi::call::ArgAttribute::NoAlias)
-            {
-                ty.make_restrict()
-            } else {
-                ty
-            }
-        };
-        #[cfg(not(feature = "master"))]
-        let apply_attrs = |ty: Type<'gcc>, _attrs: &ArgAttributes| {
-            ty
-        };
-
         for arg in self.args.iter() {
             let arg_ty = match arg.mode {
                 PassMode::Ignore => continue,
