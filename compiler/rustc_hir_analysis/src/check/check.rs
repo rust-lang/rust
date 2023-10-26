@@ -8,7 +8,7 @@ use rustc_attr as attr;
 use rustc_errors::{ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind};
-use rustc_hir::def_id::LocalModDefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::Node;
 use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
 use rustc_infer::traits::{Obligation, TraitEngineExt as _};
@@ -440,7 +440,7 @@ fn check_static_linkage(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     }
 }
 
-fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
+pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     let _indenter = indenter();
     match tcx.def_kind(def_id) {
         DefKind::Static(..) => {
@@ -458,11 +458,7 @@ fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         DefKind::Fn => {} // entirely within check_item_body
         DefKind::Impl { of_trait } => {
             if of_trait && let Some(impl_trait_ref) = tcx.impl_trait_ref(def_id) {
-                check_impl_items_against_trait(
-                    tcx,
-                    def_id,
-                    impl_trait_ref.instantiate_identity(),
-                );
+                check_impl_items_against_trait(tcx, def_id, impl_trait_ref.instantiate_identity());
                 check_on_unimplemented(tcx, def_id);
             }
         }
@@ -1301,16 +1297,6 @@ pub(super) fn check_type_params_are_used<'tcx>(
                 .span_label(span, "unused type parameter")
                 .emit();
         }
-    }
-}
-
-pub(super) fn check_mod_item_types(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
-    let module = tcx.hir_module_items(module_def_id);
-    for id in module.items() {
-        check_item_type(tcx, id.owner_id.def_id);
-    }
-    if module_def_id == LocalModDefId::CRATE_DEF_ID {
-        super::entry::check_for_entry_fn(tcx);
     }
 }
 

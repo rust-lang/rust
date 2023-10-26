@@ -204,13 +204,9 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
         tcx.hir().try_par_for_each_module(|module| tcx.ensure().check_mod_type_wf(module))
     });
 
-    // NOTE: This is copy/pasted in librustdoc/core.rs and should be kept in sync.
-    tcx.sess.time("item_types_checking", || {
-        tcx.hir().for_each_module(|module| tcx.ensure().check_mod_item_types(module))
-    });
+    tcx.sess.time("entry_fn_checks", || tcx.ensure().check_for_entry_fn(()));
 
-    // HACK: `check_mod_type_wf` may spuriously emit errors due to `span_delayed_bug`, even if
-    // those errors only actually get emitted in `check_mod_item_types`.
+    // HACK: `check_for_entry_fn` wants to report its errors even if `check_mod_type_wf` has errored.
     errs?;
 
     if tcx.features().rustc_attrs {

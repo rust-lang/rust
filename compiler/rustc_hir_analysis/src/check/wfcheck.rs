@@ -172,7 +172,7 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
         item.name = ? tcx.def_path_str(def_id)
     );
 
-    match item.kind {
+    let res = match item.kind {
         // Right now we check that every default trait implementation
         // has an implementation of itself. Basically, a case like:
         //
@@ -271,7 +271,11 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
             }
         }
         _ => Ok(()),
-    }
+    };
+
+    crate::check::check::check_item_type(tcx, def_id);
+
+    res
 }
 
 fn check_foreign_item(tcx: TyCtxt<'_>, item: &hir::ForeignItem<'_>) -> Result<(), ErrorGuaranteed> {
