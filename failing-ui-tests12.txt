@@ -28,7 +28,7 @@ tests/ui/rfcs/rfc-1937-termination-trait/termination-trait-in-test.rs
 tests/ui/async-await/async-fn-size-moved-locals.rs
 tests/ui/async-await/async-fn-size-uninit-locals.rs
 tests/ui/cfg/cfg-panic.rs
-tests/ui/generator/size-moved-locals.rs
+tests/ui/coroutine/size-moved-locals.rs
 tests/ui/macros/rfc-2011-nicer-assert-messages/all-not-available-cases.rs
 tests/ui/simd/intrinsic/generic-gather-pass.rs
 tests/ui/simd/issue-85915-simd-ptrs.rs
