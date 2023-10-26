@@ -298,7 +298,7 @@ pub fn dtorck_constraint_for_ty_inner<'tcx>(
             // While we conservatively assume that all coroutines require drop
             // to avoid query cycles during MIR building, we can check the actual
             // witness during borrowck to avoid unnecessary liveness constraints.
-            if args.witness().needs_drop(tcx, param_env) {
+            if args.witness().needs_drop(tcx, tcx.erase_regions(param_env)) {
                 constraints.outlives.extend(args.upvar_tys().iter().map(ty::GenericArg::from));
                 constraints.outlives.push(args.resume_ty().into());
             }
