@@ -69,8 +69,10 @@ use crate::{core_arch::arm::dsp::int16x2_t, mem::transmute};
 
 types! {
     /// ARM-specific 32-bit wide vector of four packed `i8`.
+    #[unstable(feature = "stdarch_arm_dsp", issue = "117237")]
     pub struct int8x4_t(i8, i8, i8, i8);
     /// ARM-specific 32-bit wide vector of four packed `u8`.
+    #[unstable(feature = "stdarch_arm_dsp", issue = "117237")]
     pub struct uint8x4_t(u8, u8, u8, u8);
 }
 
@@ -161,6 +163,7 @@ extern "unadjusted" {
 /// res\[3\] = a\[3\] + b\[3\]
 #[inline]
 #[cfg_attr(test, assert_instr(qadd8))]
+#[unstable(feature = "stdarch_arm_dsp", issue = "117237")]
 pub unsafe fn __qadd8(a: int8x4_t, b: int8x4_t) -> int8x4_t {
     dsp_call!(arm_qadd8, a, b)
 }
@@ -175,6 +178,7 @@ pub unsafe fn __qadd8(a: int8x4_t, b: int8x4_t) -> int8x4_t {
 /// res\[3\] = a\[3\] - b\[3\]
 #[inline]
 #[cfg_attr(test, assert_instr(qsub8))]
+#[unstable(feature = "stdarch_arm_dsp", issue = "117237")]
 pub unsafe fn __qsub8(a: int8x4_t, b: int8x4_t) -> int8x4_t {
     dsp_call!(arm_qsub8, a, b)
 }
@@ -187,6 +191,7 @@ pub unsafe fn __qsub8(a: int8x4_t, b: int8x4_t) -> int8x4_t {
 /// res\[1\] = a\[1\] - b\[1\]
 #[inline]
 #[cfg_attr(test, assert_instr(qsub16))]
+#[unstable(feature = "stdarch_arm_dsp", issue = "117237")]
 pub unsafe fn __qsub16(a: int16x2_t, b: int16x2_t) -> int16x2_t {
     dsp_call!(arm_qsub16, a, b)
 }
@@ -199,6 +204,7 @@ pub unsafe fn __qsub16(a: int16x2_t, b: int16x2_t) -> int16x2_t {
 /// res\[1\] = a\[1\] + b\[1\]
 #[inline]
 #[cfg_attr(test, assert_instr(qadd16))]
+#[unstable(feature = "stdarch_arm_dsp", issue = "117237")]
 pub unsafe fn __qadd16(a: int16x2_t, b: int16x2_t) -> int16x2_t {
     dsp_call!(arm_qadd16, a, b)
 }
@@ -209,6 +215,7 @@ pub unsafe fn __qadd16(a: int16x2_t, b: int16x2_t) -> int16x2_t {
 /// res\[1\] = a\[1\] + b\[0\]
 #[inline]
 #[cfg_attr(test, assert_instr(qasx))]
+#[unstable(feature = "stdarch_arm_dsp", issue = "117237")]
 pub unsafe fn __qasx(a: int16x2_t, b: int16x2_t) -> int16x2_t {
     dsp_call!(arm_qasx, a, b)
 }
@@ -219,6 +226,7 @@ pub unsafe fn __qasx(a: int16x2_t, b: int16x2_t) -> int16x2_t {
 /// res\[1\] = a\[1\] - b\[0\]
 #[inline]
 #[cfg_attr(test, assert_instr(qsax))]
+#[unstable(feature = "stdarch_arm_dsp", issue = "117237")]
 pub unsafe fn __qsax(a: int16x2_t, b: int16x2_t) -> int16x2_t {
     dsp_call!(arm_qsax, a, b)
 }
@@ -231,6 +239,7 @@ pub unsafe fn __qsax(a: int16x2_t, b: int16x2_t) -> int16x2_t {
 /// and the GE bits of the APSR are set.
 #[inline]
 #[cfg_attr(test, assert_instr(sadd16))]
+#[unstable(feature = "stdarch_arm_dsp", issue = "117237")]
 pub unsafe fn __sadd16(a: int16x2_t, b: int16x2_t) -> int16x2_t {
     dsp_call!(arm_sadd16, a, b)
 }
@@ -245,6 +254,7 @@ pub unsafe fn __sadd16(a: int16x2_t, b: int16x2_t) -> int16x2_t {
 /// and the GE bits of the APSR are set.
 #[inline]
 #[cfg_attr(test, assert_instr(sadd8))]
+#[unstable(feature = "stdarch_arm_dsp", issue = "117237")]
 pub unsafe fn __sadd8(a: int8x4_t, b: int8x4_t) -> int8x4_t {
     dsp_call!(arm_sadd8, a, b)
 }
@@ -256,6 +266,7 @@ pub unsafe fn __sadd8(a: int8x4_t, b: int8x4_t) -> int8x4_t {
 /// res = a\[0\] * b\[0\] + a\[1\] * b\[1\] + c
 #[inline]
 #[cfg_attr(test, assert_instr(smlad))]
+#[unstable(feature = "stdarch_arm_dsp", issue = "117237")]
 pub unsafe fn __smlad(a: int16x2_t, b: int16x2_t, c: i32) -> i32 {
     arm_smlad(transmute(a), transmute(b), c)
 }
@@ -267,6 +278,7 @@ pub unsafe fn __smlad(a: int16x2_t, b: int16x2_t, c: i32) -> i32 {
 /// res = a\[0\] * b\[0\] - a\[1\] * b\[1\] + c
 #[inline]
 #[cfg_attr(test, assert_instr(smlsd))]
+#[unstable(feature = "stdarch_arm_dsp", issue = "117237")]
 pub unsafe fn __smlsd(a: int16x2_t, b: int16x2_t, c: i32) -> i32 {
     arm_smlsd(transmute(a), transmute(b), c)
 }
@@ -279,6 +291,7 @@ pub unsafe fn __smlsd(a: int16x2_t, b: int16x2_t, c: i32) -> i32 {
 /// and the GE bits of the APSR are set.
 #[inline]
 #[cfg_attr(test, assert_instr(sasx))]
+#[unstable(feature = "stdarch_arm_dsp", issue = "117237")]
 pub unsafe fn __sasx(a: int16x2_t, b: int16x2_t) -> int16x2_t {
     dsp_call!(arm_sasx, a, b)
 }
@@ -295,6 +308,7 @@ pub unsafe fn __sasx(a: int16x2_t, b: int16x2_t) -> int16x2_t {
 /// where GE are bits of APSR
 #[inline]
 #[cfg_attr(test, assert_instr(sel))]
+#[unstable(feature = "stdarch_arm_dsp", issue = "117237")]
 pub unsafe fn __sel(a: int8x4_t, b: int8x4_t) -> int8x4_t {
     dsp_call!(arm_sel, a, b)
 }
@@ -309,6 +323,7 @@ pub unsafe fn __sel(a: int8x4_t, b: int8x4_t) -> int8x4_t {
 /// res\[3\] = (a\[3\] + b\[3\]) / 2
 #[inline]
 #[cfg_attr(test, assert_instr(shadd8))]
+#[unstable(feature = "stdarch_arm_dsp", issue = "117237")]
 pub unsafe fn __shadd8(a: int8x4_t, b: int8x4_t) -> int8x4_t {
     dsp_call!(arm_shadd8, a, b)
 }
@@ -321,6 +336,7 @@ pub unsafe fn __shadd8(a: int8x4_t, b: int8x4_t) -> int8x4_t {
 /// res\[1\] = (a\[1\] + b\[1\]) / 2
 #[inline]
 #[cfg_attr(test, assert_instr(shadd16))]
+#[unstable(feature = "stdarch_arm_dsp", issue = "117237")]
 pub unsafe fn __shadd16(a: int16x2_t, b: int16x2_t) -> int16x2_t {
     dsp_call!(arm_shadd16, a, b)
 }
@@ -335,6 +351,7 @@ pub unsafe fn __shadd16(a: int16x2_t, b: int16x2_t) -> int16x2_t {
 /// res\[3\] = (a\[3\] - b\[3\]) / 2
 #[inline]
 #[cfg_attr(test, assert_instr(shsub8))]
+#[unstable(feature = "stdarch_arm_dsp", issue = "117237")]
 pub unsafe fn __shsub8(a: int8x4_t, b: int8x4_t) -> int8x4_t {
     dsp_call!(arm_shsub8, a, b)
 }
@@ -352,6 +369,7 @@ pub unsafe fn __shsub8(a: int8x4_t, b: int8x4_t) -> int8x4_t {
 /// The GE bits of the APSR are set.
 #[inline]
 #[cfg_attr(test, assert_instr(usub8))]
+#[unstable(feature = "stdarch_arm_dsp", issue = "117237")]
 pub unsafe fn __usub8(a: uint8x4_t, b: uint8x4_t) -> uint8x4_t {
     dsp_call!(arm_usub8, a, b)
 }
@@ -369,6 +387,7 @@ pub unsafe fn __usub8(a: uint8x4_t, b: uint8x4_t) -> uint8x4_t {
 /// The GE bits of the APSR are set.
 #[inline]
 #[cfg_attr(test, assert_instr(ssub8))]
+#[unstable(feature = "stdarch_arm_dsp", issue = "117237")]
 pub unsafe fn __ssub8(a: int8x4_t, b: int8x4_t) -> int8x4_t {
     dsp_call!(arm_ssub8, a, b)
 }
@@ -381,6 +400,7 @@ pub unsafe fn __ssub8(a: int8x4_t, b: int8x4_t) -> int8x4_t {
 /// res\[1\] = (a\[1\] - b\[1\]) / 2
 #[inline]
 #[cfg_attr(test, assert_instr(shsub16))]
+#[unstable(feature = "stdarch_arm_dsp", issue = "117237")]
 pub unsafe fn __shsub16(a: int16x2_t, b: int16x2_t) -> int16x2_t {
     dsp_call!(arm_shsub16, a, b)
 }
@@ -394,6 +414,7 @@ pub unsafe fn __shsub16(a: int16x2_t, b: int16x2_t) -> int16x2_t {
 /// and sets the Q flag if overflow occurs on the addition.
 #[inline]
 #[cfg_attr(test, assert_instr(smuad))]
+#[unstable(feature = "stdarch_arm_dsp", issue = "117237")]
 pub unsafe fn __smuad(a: int16x2_t, b: int16x2_t) -> i32 {
     arm_smuad(transmute(a), transmute(b))
 }
@@ -407,6 +428,7 @@ pub unsafe fn __smuad(a: int16x2_t, b: int16x2_t) -> i32 {
 /// and sets the Q flag if overflow occurs on the addition.
 #[inline]
 #[cfg_attr(test, assert_instr(smuadx))]
+#[unstable(feature = "stdarch_arm_dsp", issue = "117237")]
 pub unsafe fn __smuadx(a: int16x2_t, b: int16x2_t) -> i32 {
     arm_smuadx(transmute(a), transmute(b))
 }
@@ -420,6 +442,7 @@ pub unsafe fn __smuadx(a: int16x2_t, b: int16x2_t) -> i32 {
 /// and sets the Q flag if overflow occurs on the addition.
 #[inline]
 #[cfg_attr(test, assert_instr(smusd))]
+#[unstable(feature = "stdarch_arm_dsp", issue = "117237")]
 pub unsafe fn __smusd(a: int16x2_t, b: int16x2_t) -> i32 {
     arm_smusd(transmute(a), transmute(b))
 }
@@ -433,6 +456,7 @@ pub unsafe fn __smusd(a: int16x2_t, b: int16x2_t) -> i32 {
 /// and sets the Q flag if overflow occurs on the addition.
 #[inline]
 #[cfg_attr(test, assert_instr(smusdx))]
+#[unstable(feature = "stdarch_arm_dsp", issue = "117237")]
 pub unsafe fn __smusdx(a: int16x2_t, b: int16x2_t) -> i32 {
     arm_smusdx(transmute(a), transmute(b))
 }
@@ -445,6 +469,7 @@ pub unsafe fn __smusdx(a: int16x2_t, b: int16x2_t) -> i32 {
 ///          (a\[2\] - b\[2\]) + (a\[3\] - b\[3\])
 #[inline]
 #[cfg_attr(test, assert_instr(usad8))]
+#[unstable(feature = "stdarch_arm_dsp", issue = "117237")]
 pub unsafe fn __usad8(a: int8x4_t, b: int8x4_t) -> u32 {
     arm_usad8(transmute(a), transmute(b))
 }
@@ -457,6 +482,7 @@ pub unsafe fn __usad8(a: int8x4_t, b: int8x4_t) -> u32 {
 ///          (a\[2\] - b\[2\]) + (a\[3\] - b\[3\]) + c
 #[inline]
 #[cfg_attr(test, assert_instr(usad8))]
+#[unstable(feature = "stdarch_arm_dsp", issue = "117237")]
 pub unsafe fn __usada8(a: int8x4_t, b: int8x4_t, c: u32) -> u32 {
     __usad8(a, b) + c
 }

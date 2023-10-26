@@ -27,8 +27,10 @@ use crate::mem::transmute;
 
 types! {
     /// ARM-specific 32-bit wide vector of two packed `i16`.
+    #[unstable(feature = "stdarch_arm_dsp", issue = "117237")]
     pub struct int16x2_t(i16, i16);
     /// ARM-specific 32-bit wide vector of two packed `u16`.
+    #[unstable(feature = "stdarch_arm_dsp", issue = "117237")]
     pub struct uint16x2_t(u16, u16);
 }
 
@@ -82,6 +84,7 @@ extern "unadjusted" {
 /// where \[0\] is the lower 16 bits and \[1\] is the upper 16 bits.
 #[inline]
 #[cfg_attr(test, assert_instr(smulbb))]
+#[unstable(feature = "stdarch_arm_dsp", issue = "117237")]
 pub unsafe fn __smulbb(a: int16x2_t, b: int16x2_t) -> i32 {
     arm_smulbb(transmute(a), transmute(b))
 }
@@ -92,6 +95,7 @@ pub unsafe fn __smulbb(a: int16x2_t, b: int16x2_t) -> i32 {
 /// where \[0\] is the lower 16 bits and \[1\] is the upper 16 bits.
 #[inline]
 #[cfg_attr(test, assert_instr(smultb))]
+#[unstable(feature = "stdarch_arm_dsp", issue = "117237")]
 pub unsafe fn __smultb(a: int16x2_t, b: int16x2_t) -> i32 {
     arm_smultb(transmute(a), transmute(b))
 }
@@ -102,6 +106,7 @@ pub unsafe fn __smultb(a: int16x2_t, b: int16x2_t) -> i32 {
 /// where \[0\] is the lower 16 bits and \[1\] is the upper 16 bits.
 #[inline]
 #[cfg_attr(test, assert_instr(smulbt))]
+#[unstable(feature = "stdarch_arm_dsp", issue = "117237")]
 pub unsafe fn __smulbt(a: int16x2_t, b: int16x2_t) -> i32 {
     arm_smulbt(transmute(a), transmute(b))
 }
@@ -112,6 +117,7 @@ pub unsafe fn __smulbt(a: int16x2_t, b: int16x2_t) -> i32 {
 /// where \[0\] is the lower 16 bits and \[1\] is the upper 16 bits.
 #[inline]
 #[cfg_attr(test, assert_instr(smultt))]
+#[unstable(feature = "stdarch_arm_dsp", issue = "117237")]
 pub unsafe fn __smultt(a: int16x2_t, b: int16x2_t) -> i32 {
     arm_smultt(transmute(a), transmute(b))
 }
@@ -123,6 +129,7 @@ pub unsafe fn __smultt(a: int16x2_t, b: int16x2_t) -> i32 {
 /// Return the top 32 bits of the 48-bit product
 #[inline]
 #[cfg_attr(test, assert_instr(smulwb))]
+#[unstable(feature = "stdarch_arm_dsp", issue = "117237")]
 pub unsafe fn __smulwb(a: int16x2_t, b: i32) -> i32 {
     arm_smulwb(transmute(a), b)
 }
@@ -134,6 +141,7 @@ pub unsafe fn __smulwb(a: int16x2_t, b: i32) -> i32 {
 /// Return the top 32 bits of the 48-bit product
 #[inline]
 #[cfg_attr(test, assert_instr(smulwt))]
+#[unstable(feature = "stdarch_arm_dsp", issue = "117237")]
 pub unsafe fn __smulwt(a: int16x2_t, b: i32) -> i32 {
     arm_smulwt(transmute(a), b)
 }
@@ -144,6 +152,7 @@ pub unsafe fn __smulwt(a: int16x2_t, b: i32) -> i32 {
 /// Sets the Q flag if saturation occurs.
 #[inline]
 #[cfg_attr(test, assert_instr(qadd))]
+#[unstable(feature = "stdarch_arm_dsp", issue = "117237")]
 pub unsafe fn __qadd(a: i32, b: i32) -> i32 {
     arm_qadd(a, b)
 }
@@ -154,6 +163,7 @@ pub unsafe fn __qadd(a: i32, b: i32) -> i32 {
 /// Sets the Q flag if saturation occurs.
 #[inline]
 #[cfg_attr(test, assert_instr(qsub))]
+#[unstable(feature = "stdarch_arm_dsp", issue = "117237")]
 pub unsafe fn __qsub(a: i32, b: i32) -> i32 {
     arm_qsub(a, b)
 }
@@ -164,6 +174,7 @@ pub unsafe fn __qsub(a: i32, b: i32) -> i32 {
 /// Sets the Q flag if saturation occurs.
 #[inline]
 #[cfg_attr(test, assert_instr(qadd))]
+#[unstable(feature = "stdarch_arm_dsp", issue = "117237")]
 pub unsafe fn __qdbl(a: i32) -> i32 {
     arm_qadd(a, a)
 }
@@ -175,6 +186,7 @@ pub unsafe fn __qdbl(a: i32) -> i32 {
 /// Sets the Q flag if overflow occurs on the addition.
 #[inline]
 #[cfg_attr(test, assert_instr(smlabb))]
+#[unstable(feature = "stdarch_arm_dsp", issue = "117237")]
 pub unsafe fn __smlabb(a: int16x2_t, b: int16x2_t, c: i32) -> i32 {
     arm_smlabb(transmute(a), transmute(b), c)
 }
@@ -186,6 +198,7 @@ pub unsafe fn __smlabb(a: int16x2_t, b: int16x2_t, c: i32) -> i32 {
 /// Sets the Q flag if overflow occurs on the addition.
 #[inline]
 #[cfg_attr(test, assert_instr(smlabt))]
+#[unstable(feature = "stdarch_arm_dsp", issue = "117237")]
 pub unsafe fn __smlabt(a: int16x2_t, b: int16x2_t, c: i32) -> i32 {
     arm_smlabt(transmute(a), transmute(b), c)
 }
@@ -197,6 +210,7 @@ pub unsafe fn __smlabt(a: int16x2_t, b: int16x2_t, c: i32) -> i32 {
 /// Sets the Q flag if overflow occurs on the addition.
 #[inline]
 #[cfg_attr(test, assert_instr(smlatb))]
+#[unstable(feature = "stdarch_arm_dsp", issue = "117237")]
 pub unsafe fn __smlatb(a: int16x2_t, b: int16x2_t, c: i32) -> i32 {
     arm_smlatb(transmute(a), transmute(b), c)
 }
@@ -208,6 +222,7 @@ pub unsafe fn __smlatb(a: int16x2_t, b: int16x2_t, c: i32) -> i32 {
 /// Sets the Q flag if overflow occurs on the addition.
 #[inline]
 #[cfg_attr(test, assert_instr(smlatt))]
+#[unstable(feature = "stdarch_arm_dsp", issue = "117237")]
 pub unsafe fn __smlatt(a: int16x2_t, b: int16x2_t, c: i32) -> i32 {
     arm_smlatt(transmute(a), transmute(b), c)
 }
@@ -219,6 +234,7 @@ pub unsafe fn __smlatt(a: int16x2_t, b: int16x2_t, c: i32) -> i32 {
 /// Sets the Q flag if overflow occurs on the addition.
 #[inline]
 #[cfg_attr(test, assert_instr(smlawb))]
+#[unstable(feature = "stdarch_arm_dsp", issue = "117237")]
 pub unsafe fn __smlawb(a: i32, b: int16x2_t, c: i32) -> i32 {
     arm_smlawb(a, transmute(b), c)
 }
@@ -230,6 +246,7 @@ pub unsafe fn __smlawb(a: i32, b: int16x2_t, c: i32) -> i32 {
 /// Sets the Q flag if overflow occurs on the addition.
 #[inline]
 #[cfg_attr(test, assert_instr(smlawt))]
+#[unstable(feature = "stdarch_arm_dsp", issue = "117237")]
 pub unsafe fn __smlawt(a: i32, b: int16x2_t, c: i32) -> i32 {
     arm_smlawt(a, transmute(b), c)
 }

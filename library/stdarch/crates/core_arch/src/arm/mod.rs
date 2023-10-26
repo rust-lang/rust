@@ -25,7 +25,7 @@ pub use self::sat::*;
     all(target_feature = "mclass", target_feature = "dsp"),
     doc,
 ))]
-pub mod dsp;
+mod dsp;
 
 #[cfg(any(
     // >= v5TE but excludes v7-M
@@ -34,6 +34,7 @@ pub mod dsp;
     all(target_feature = "mclass", target_feature = "dsp"),
     doc,
 ))]
+#[unstable(feature = "stdarch_arm_dsp", issue = "117237")]
 pub use self::dsp::*;
 
 // Deprecated in ACLE 2.0 for the A profile but fully supported on the M and R profiles, says
@@ -54,8 +55,10 @@ mod simd32;
     all(target_feature = "mclass", target_feature = "dsp"),
     doc,
 ))]
+#[unstable(feature = "stdarch_arm_dsp", issue = "117237")]
 pub use self::simd32::*;
 
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub use crate::core_arch::arm_shared::*;
 
 #[cfg(test)]
@@ -67,4 +70,5 @@ use stdarch_test::assert_instr;
 pub(crate) mod neon;
 #[cfg(target_endian = "little")]
 #[cfg(any(target_feature = "v7", doc))]
+#[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
 pub use neon::*;

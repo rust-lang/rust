@@ -43,8 +43,9 @@ pub mod arch {
     /// See the [module documentation](../index.html) for more details.
     #[cfg(any(target_arch = "arm", doc))]
     #[doc(cfg(target_arch = "arm"))]
-    #[unstable(feature = "stdsimd", issue = "27731")]
+    #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
     pub mod arm {
+        #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
         pub use crate::core_arch::arm::*;
     }
 
