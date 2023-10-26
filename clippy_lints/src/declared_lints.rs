@@ -443,6 +443,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::methods::USELESS_ASREF_INFO,
     crate::methods::VEC_RESIZE_TO_ZERO_INFO,
     crate::methods::VERBOSE_FILE_READS_INFO,
+    crate::methods::WAKER_CLONE_WAKE_INFO,
     crate::methods::WRONG_SELF_CONVENTION_INFO,
     crate::methods::ZST_OFFSET_INFO,
     crate::min_ident_chars::MIN_IDENT_CHARS_INFO,
