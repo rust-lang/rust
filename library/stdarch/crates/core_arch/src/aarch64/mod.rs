@@ -22,6 +22,7 @@ mod crc;
 pub use self::crc::*;
 
 mod prefetch;
+#[unstable(feature = "stdarch_aarch64_prefetch", issue = "117217")]
 pub use self::prefetch::*;
 
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
