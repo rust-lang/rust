@@ -8740,6 +8740,10 @@ pub unsafe fn vpadalq_u32(a: uint64x2_t, b: uint32x4_t) -> uint64x2_t {
     target_arch = "arm",
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_i8mm", issue = "117223")
+)]
 pub unsafe fn vmmlaq_s32(a: int32x4_t, b: int8x16_t, c: int8x16_t) -> int32x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -8764,6 +8768,10 @@ pub unsafe fn vmmlaq_s32(a: int32x4_t, b: int8x16_t, c: int8x16_t) -> int32x4_t 
     target_arch = "arm",
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_i8mm", issue = "117223")
+)]
 pub unsafe fn vmmlaq_u32(a: uint32x4_t, b: uint8x16_t, c: uint8x16_t) -> uint32x4_t {
     #[allow(improper_ctypes)]
     extern "unadjusted" {
@@ -8787,6 +8795,10 @@ pub unsafe fn vmmlaq_u32(a: uint32x4_t, b: uint8x16_t, c: uint8x16_t) -> uint32x
 #[cfg_attr(
     target_arch = "arm",
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    unstable(feature = "stdarch_neon_i8mm", issue = "117223")
 )]
 pub unsafe fn vusmmlaq_s32(a: int32x4_t, b: uint8x16_t, c: int8x16_t) -> int32x4_t {
     #[allow(improper_ctypes)]

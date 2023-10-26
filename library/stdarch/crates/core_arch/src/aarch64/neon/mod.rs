@@ -3453,6 +3453,7 @@ pub unsafe fn vsriq_n_p64<const N: i32>(a: poly64x2_t, b: poly64x2_t) -> poly64x
 #[target_feature(enable = "neon,sm4")]
 #[cfg_attr(test, assert_instr(sm3tt1a, IMM2 = 0))]
 #[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_neon_sm4", issue = "117226")]
 pub unsafe fn vsm3tt1aq_u32<const IMM2: i32>(
     a: uint32x4_t,
     b: uint32x4_t,
@@ -3472,6 +3473,7 @@ pub unsafe fn vsm3tt1aq_u32<const IMM2: i32>(
 #[target_feature(enable = "neon,sm4")]
 #[cfg_attr(test, assert_instr(sm3tt1b, IMM2 = 0))]
 #[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_neon_sm4", issue = "117226")]
 pub unsafe fn vsm3tt1bq_u32<const IMM2: i32>(
     a: uint32x4_t,
     b: uint32x4_t,
@@ -3491,6 +3493,7 @@ pub unsafe fn vsm3tt1bq_u32<const IMM2: i32>(
 #[target_feature(enable = "neon,sm4")]
 #[cfg_attr(test, assert_instr(sm3tt2a, IMM2 = 0))]
 #[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_neon_sm4", issue = "117226")]
 pub unsafe fn vsm3tt2aq_u32<const IMM2: i32>(
     a: uint32x4_t,
     b: uint32x4_t,
@@ -3510,6 +3513,7 @@ pub unsafe fn vsm3tt2aq_u32<const IMM2: i32>(
 #[target_feature(enable = "neon,sm4")]
 #[cfg_attr(test, assert_instr(sm3tt2b, IMM2 = 0))]
 #[rustc_legacy_const_generics(3)]
+#[unstable(feature = "stdarch_neon_sm4", issue = "117226")]
 pub unsafe fn vsm3tt2bq_u32<const IMM2: i32>(
     a: uint32x4_t,
     b: uint32x4_t,
@@ -3529,6 +3533,7 @@ pub unsafe fn vsm3tt2bq_u32<const IMM2: i32>(
 #[target_feature(enable = "neon,sha3")]
 #[cfg_attr(test, assert_instr(xar, IMM6 = 0))]
 #[rustc_legacy_const_generics(2)]
+#[unstable(feature = "stdarch_neon_sha3", issue = "117225")]
 pub unsafe fn vxarq_u64<const IMM6: i32>(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
     static_assert_uimm_bits!(IMM6, 6);
     #[allow(improper_ctypes)]

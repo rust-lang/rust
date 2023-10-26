@@ -17708,6 +17708,7 @@ vst4q_lane_f32_(b.0, b.1, b.2, b.3, LANE as i64, a as _)
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vusdot))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(usdot))]
+#[cfg_attr(not(target_arch = "arm"), unstable(feature = "stdarch_neon_i8mm", issue = "117223"))]
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vusdot_s32(a: int32x2_t, b: uint8x8_t, c: int8x8_t) -> int32x2_t {
     #[allow(improper_ctypes)]
@@ -17727,6 +17728,7 @@ vusdot_s32_(a, b, c)
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vusdot))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(usdot))]
+#[cfg_attr(not(target_arch = "arm"), unstable(feature = "stdarch_neon_i8mm", issue = "117223"))]
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vusdotq_s32(a: int32x4_t, b: uint8x16_t, c: int8x16_t) -> int32x4_t {
     #[allow(improper_ctypes)]
@@ -17747,6 +17749,7 @@ vusdotq_s32_(a, b, c)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vusdot, LANE = 0))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(usdot, LANE = 0))]
 #[rustc_legacy_const_generics(3)]
+#[cfg_attr(not(target_arch = "arm"), unstable(feature = "stdarch_neon_i8mm", issue = "117223"))]
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vusdot_lane_s32<const LANE: i32>(a: int32x2_t, b: uint8x8_t, c: int8x8_t) -> int32x2_t {
     static_assert_uimm_bits!(LANE, 1);
@@ -17764,6 +17767,7 @@ pub unsafe fn vusdot_lane_s32<const LANE: i32>(a: int32x2_t, b: uint8x8_t, c: in
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vusdot, LANE = 0))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(usdot, LANE = 0))]
 #[rustc_legacy_const_generics(3)]
+#[cfg_attr(not(target_arch = "arm"), unstable(feature = "stdarch_neon_i8mm", issue = "117223"))]
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vusdotq_lane_s32<const LANE: i32>(a: int32x4_t, b: uint8x16_t, c: int8x8_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 1);
@@ -17781,6 +17785,7 @@ pub unsafe fn vusdotq_lane_s32<const LANE: i32>(a: int32x4_t, b: uint8x16_t, c: 
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vsudot, LANE = 0))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sudot, LANE = 0))]
 #[rustc_legacy_const_generics(3)]
+#[cfg_attr(not(target_arch = "arm"), unstable(feature = "stdarch_neon_i8mm", issue = "117223"))]
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsudot_lane_s32<const LANE: i32>(a: int32x2_t, b: int8x8_t, c: uint8x8_t) -> int32x2_t {
     static_assert_uimm_bits!(LANE, 1);
@@ -17798,6 +17803,7 @@ pub unsafe fn vsudot_lane_s32<const LANE: i32>(a: int32x2_t, b: int8x8_t, c: uin
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vsudot, LANE = 0))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sudot, LANE = 0))]
 #[rustc_legacy_const_generics(3)]
+#[cfg_attr(not(target_arch = "arm"), unstable(feature = "stdarch_neon_i8mm", issue = "117223"))]
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vsudotq_lane_s32<const LANE: i32>(a: int32x4_t, b: int8x16_t, c: uint8x8_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 1);
@@ -19910,6 +19916,7 @@ pub unsafe fn vsubl_u32(a: uint32x2_t, b: uint32x2_t) -> uint64x2_t {
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vsdot))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sdot))]
+#[cfg_attr(not(target_arch = "arm"), unstable(feature = "stdarch_neon_dotprod", issue = "117224"))]
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vdot_s32(a: int32x2_t, b: int8x8_t, c: int8x8_t) -> int32x2_t {
     #[allow(improper_ctypes)]
@@ -19929,6 +19936,7 @@ vdot_s32_(a, b, c)
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vsdot))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sdot))]
+#[cfg_attr(not(target_arch = "arm"), unstable(feature = "stdarch_neon_dotprod", issue = "117224"))]
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vdotq_s32(a: int32x4_t, b: int8x16_t, c: int8x16_t) -> int32x4_t {
     #[allow(improper_ctypes)]
@@ -19948,6 +19956,7 @@ vdotq_s32_(a, b, c)
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vudot))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(udot))]
+#[cfg_attr(not(target_arch = "arm"), unstable(feature = "stdarch_neon_dotprod", issue = "117224"))]
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vdot_u32(a: uint32x2_t, b: uint8x8_t, c: uint8x8_t) -> uint32x2_t {
     #[allow(improper_ctypes)]
@@ -19967,6 +19976,7 @@ vdot_u32_(a, b, c)
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vudot))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(udot))]
+#[cfg_attr(not(target_arch = "arm"), unstable(feature = "stdarch_neon_dotprod", issue = "117224"))]
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vdotq_u32(a: uint32x4_t, b: uint8x16_t, c: uint8x16_t) -> uint32x4_t {
     #[allow(improper_ctypes)]
@@ -19987,6 +19997,7 @@ vdotq_u32_(a, b, c)
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vsdot, LANE = 0))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sdot, LANE = 0))]
 #[rustc_legacy_const_generics(3)]
+#[cfg_attr(not(target_arch = "arm"), unstable(feature = "stdarch_neon_dotprod", issue = "117224"))]
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vdot_lane_s32<const LANE: i32>(a: int32x2_t, b: int8x8_t, c: int8x8_t) -> int32x2_t {
     static_assert_uimm_bits!(LANE, 1);
@@ -20004,6 +20015,7 @@ pub unsafe fn vdot_lane_s32<const LANE: i32>(a: int32x2_t, b: int8x8_t, c: int8x
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vsdot, LANE = 0))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(sdot, LANE = 0))]
 #[rustc_legacy_const_generics(3)]
+#[cfg_attr(not(target_arch = "arm"), unstable(feature = "stdarch_neon_dotprod", issue = "117224"))]
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vdotq_lane_s32<const LANE: i32>(a: int32x4_t, b: int8x16_t, c: int8x8_t) -> int32x4_t {
     static_assert_uimm_bits!(LANE, 1);
@@ -20021,6 +20033,7 @@ pub unsafe fn vdotq_lane_s32<const LANE: i32>(a: int32x4_t, b: int8x16_t, c: int
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vudot, LANE = 0))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(udot, LANE = 0))]
 #[rustc_legacy_const_generics(3)]
+#[cfg_attr(not(target_arch = "arm"), unstable(feature = "stdarch_neon_dotprod", issue = "117224"))]
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vdot_lane_u32<const LANE: i32>(a: uint32x2_t, b: uint8x8_t, c: uint8x8_t) -> uint32x2_t {
     static_assert_uimm_bits!(LANE, 1);
@@ -20038,6 +20051,7 @@ pub unsafe fn vdot_lane_u32<const LANE: i32>(a: uint32x2_t, b: uint8x8_t, c: uin
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr(vudot, LANE = 0))]
 #[cfg_attr(all(test, target_arch = "aarch64"), assert_instr(udot, LANE = 0))]
 #[rustc_legacy_const_generics(3)]
+#[cfg_attr(not(target_arch = "arm"), unstable(feature = "stdarch_neon_dotprod", issue = "117224"))]
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vdotq_lane_u32<const LANE: i32>(a: uint32x4_t, b: uint8x16_t, c: uint8x8_t) -> uint32x4_t {
     static_assert_uimm_bits!(LANE, 1);

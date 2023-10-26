@@ -516,6 +516,26 @@ impl TargetFeature {
         }
     }
 
+    /// A stability attribute for the intrinsic.
+    fn stability(&self, aarch64: bool) -> &str {
+        // 32-bit intrinsics are all unstable for now
+        if !aarch64 {
+            return "unstable(feature = \"stdarch_arm_neon_intrinsics\", issue = \"111800\")";
+        }
+        match *self {
+            Default | ArmV7 | Vfp4 | FPArmV8 | AES => {
+                "stable(feature = \"neon_intrinsics\", since = \"1.59.0\")"
+            }
+            FCMA => "unstable(feature = \"stdarch_neon_fcma\", issue = \"117222\")",
+            Dotprod => "unstable(feature = \"stdarch_neon_dotprod\", issue = \"117224\")",
+            I8MM => "unstable(feature = \"stdarch_neon_i8mm\", issue = \"117223\")",
+            SHA3 => "unstable(feature = \"stdarch_neon_sha3\", issue = \"117225\")",
+            RDM => "stable(feature = \"rdm_intrinsics\", since = \"1.62.0\")",
+            SM4 => "unstable(feature = \"stdarch_neon_sm4\", issue = \"117226\")",
+            FTTS => "unstable(feature = \"stdarch_neon_ftts\", issue = \"117227\")",
+        }
+    }
+
     /// A string for use with #[simd_test(...)] (or `is_arm_feature_detected!(...)`).
     fn as_simd_test_arg_arm(&self) -> &str {
         // TODO: Ideally, these would match the target_feature strings (as for AArch64).
@@ -1600,18 +1620,13 @@ fn gen_aarch64(
             }
         }
     };
-    let stable = match target {
-        Default | ArmV7 | Vfp4 | FPArmV8 | AES => {
-            String::from("\n#[stable(feature = \"neon_intrinsics\", since = \"1.59.0\")]")
-        }
-        RDM => String::from("\n#[stable(feature = \"rdm_intrinsics\", since = \"1.62.0\")]"),
-        _ => String::new(),
-    };
+    let stable = target.stability(true);
     let function = format!(
         r#"
 {function_doc}
 #[inline]{target_feature}
-#[cfg_attr(test, assert_instr({current_aarch64}{const_assert}))]{const_legacy}{stable}
+#[cfg_attr(test, assert_instr({current_aarch64}{const_assert}))]{const_legacy}
+#[{stable}]
 {fn_decl}{{
     {call_params}
 }}
@@ -2510,31 +2525,23 @@ fn gen_arm(
                 fn_decl, multi_calls, ext_c_aarch64, aarch64_params
             )
         };
-        let stable_aarch64 = match target {
-            Default | ArmV7 | Vfp4 | FPArmV8 | AES => {
-                String::from("\n#[stable(feature = \"neon_intrinsics\", since = \"1.59.0\")]")
-            }
-            RDM => String::from("\n#[stable(feature = \"rdm_intrinsics\", since = \"1.62.0\")]"),
-            _ => String::new(),
-        };
-        let stable_arm = match target {
-            _ => String::from(
-                "\n#[unstable(feature = \"stdarch_arm_neon_intrinsics\", issue = \"111800\")]",
-            ),
-        };
+        let stable_aarch64 = target.stability(true);
+        let stable_arm = target.stability(false);
         let function_doc = create_doc_string(current_comment, &name);
         format!(
             r#"
 {function_doc}
 #[inline]
 #[cfg(target_arch = "arm")]{target_feature_arm}
-#[cfg_attr(test, assert_instr({assert_arm}{const_assert}))]{const_legacy}{stable_arm}
+#[cfg_attr(test, assert_instr({assert_arm}{const_assert}))]{const_legacy}
+#[{stable_arm}]
 {call_arm}
 
 {function_doc}
 #[inline]
 #[cfg(not(target_arch = "arm"))]{target_feature_aarch64}
-#[cfg_attr(test, assert_instr({assert_aarch64}{const_assert}))]{const_legacy}{stable_aarch64}
+#[cfg_attr(test, assert_instr({assert_aarch64}{const_assert}))]{const_legacy}
+#[{stable_aarch64}]
 {call_aarch64}
 "#,
             target_feature_arm = target.to_target_feature_attr_arm(),
@@ -2575,22 +2582,16 @@ fn gen_arm(
                 String::new()
             }
         };
-        let stable_aarch64 = match target {
-            Default | ArmV7 | Vfp4 | FPArmV8 | AES => String::from("\n#[cfg_attr(not(target_arch = \"arm\"), stable(feature = \"neon_intrinsics\", since = \"1.59.0\"))]"),
-            RDM => String::from("\n#[cfg_attr(not(target_arch = \"arm\"), stable(feature = \"rdm_intrinsics\", since = \"1.62.0\"))]"),
-            _ => String::new(),
-        };
-        let stable_arm = match target {
-            _ => {
-                String::from("\n#[cfg_attr(target_arch = \"arm\", unstable(feature = \"stdarch_arm_neon_intrinsics\", issue = \"111800\"))]")
-            }
-        };
+        let stable_aarch64 = target.stability(true);
+        let stable_arm = target.stability(false);
         format!(
             r#"
 {function_doc}
 #[inline]{target_feature}
 #[cfg_attr(all(test, target_arch = "arm"), assert_instr({assert_arm}{const_assert}))]
-#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr({assert_aarch64}{const_assert}))]{const_legacy}{stable_aarch64}{stable_arm}
+#[cfg_attr(all(test, target_arch = "aarch64"), assert_instr({assert_aarch64}{const_assert}))]{const_legacy}
+#[cfg_attr(not(target_arch = "arm"), {stable_aarch64})]
+#[cfg_attr(target_arch = "arm", {stable_arm})]
 {call}
 "#,
             function_doc = create_doc_string(current_comment, &name),
