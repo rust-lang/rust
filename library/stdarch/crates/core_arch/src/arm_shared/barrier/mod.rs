@@ -26,6 +26,7 @@ pub use self::cp15::*;
 ))]
 macro_rules! dmb_dsb {
     ($A:ident) => {
+        #[unstable(feature = "stdarch_arm_barrier", issue = "117219")]
         impl super::super::sealed::Dmb for $A {
             #[inline(always)]
             unsafe fn __dmb(&self) {
@@ -33,6 +34,7 @@ macro_rules! dmb_dsb {
             }
         }
 
+        #[unstable(feature = "stdarch_arm_barrier", issue = "117219")]
         impl super::super::sealed::Dsb for $A {
             #[inline(always)]
             unsafe fn __dsb(&self) {
@@ -54,18 +56,21 @@ mod common;
     target_feature = "v7",
     target_feature = "mclass"
 ))]
+#[unstable(feature = "stdarch_arm_barrier", issue = "117219")]
 pub use self::common::*;
 
 #[cfg(any(target_arch = "aarch64", target_feature = "v7",))]
 mod not_mclass;
 
 #[cfg(any(target_arch = "aarch64", target_feature = "v7",))]
+#[unstable(feature = "stdarch_arm_barrier", issue = "117219")]
 pub use self::not_mclass::*;
 
 #[cfg(target_arch = "aarch64")]
 mod v8;
 
 #[cfg(target_arch = "aarch64")]
+#[unstable(feature = "stdarch_arm_barrier", issue = "117219")]
 pub use self::v8::*;
 
 /// Generates a DMB (data memory barrier) instruction or equivalent CP15 instruction.
@@ -79,6 +84,7 @@ pub use self::v8::*;
 ///
 /// The __dmb() intrinsic also acts as a compiler memory barrier of the appropriate type.
 #[inline(always)]
+#[unstable(feature = "stdarch_arm_barrier", issue = "117219")]
 pub unsafe fn __dmb<A>(arg: A)
 where
     A: super::sealed::Dmb,
@@ -94,6 +100,7 @@ where
 ///
 /// The __dsb() intrinsic also acts as a compiler memory barrier of the appropriate type.
 #[inline(always)]
+#[unstable(feature = "stdarch_arm_barrier", issue = "117219")]
 pub unsafe fn __dsb<A>(arg: A)
 where
     A: super::sealed::Dsb,
@@ -115,6 +122,7 @@ where
 /// The only supported argument for the __isb() intrinsic is 15, corresponding to the SY (full
 /// system) scope of the ISB instruction.
 #[inline(always)]
+#[unstable(feature = "stdarch_arm_barrier", issue = "117219")]
 pub unsafe fn __isb<A>(arg: A)
 where
     A: super::sealed::Isb,

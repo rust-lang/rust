@@ -53,7 +53,7 @@
 // 8, 7 and 6-M are supported via dedicated instructions like DMB. All other arches are supported
 // via CP15 instructions. See Section 10.1 of ACLE
 mod barrier;
-
+#[unstable(feature = "stdarch_arm_barrier", issue = "117219")]
 pub use self::barrier::*;
 
 mod hints;
@@ -102,39 +102,18 @@ pub use self::neon::*;
 pub(crate) mod test_support;
 
 mod sealed {
+    #[unstable(feature = "stdarch_arm_barrier", issue = "117219")]
     pub trait Dmb {
         unsafe fn __dmb(&self);
     }
 
+    #[unstable(feature = "stdarch_arm_barrier", issue = "117219")]
     pub trait Dsb {
         unsafe fn __dsb(&self);
     }
 
+    #[unstable(feature = "stdarch_arm_barrier", issue = "117219")]
     pub trait Isb {
         unsafe fn __isb(&self);
-    }
-
-    pub trait Rsr {
-        unsafe fn __rsr(&self) -> u32;
-    }
-
-    pub trait Rsr64 {
-        unsafe fn __rsr64(&self) -> u64;
-    }
-
-    pub trait Rsrp {
-        unsafe fn __rsrp(&self) -> *const u8;
-    }
-
-    pub trait Wsr {
-        unsafe fn __wsr(&self, value: u32);
-    }
-
-    pub trait Wsr64 {
-        unsafe fn __wsr64(&self, value: u64);
-    }
-
-    pub trait Wsrp {
-        unsafe fn __wsrp(&self, value: *const u8);
     }
 }
