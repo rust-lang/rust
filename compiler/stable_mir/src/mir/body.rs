@@ -40,7 +40,7 @@ impl Body {
 
     /// Locals in `self` that correspond to this function's arguments.
     pub fn arg_locals(&self) -> &[LocalDecl] {
-        &self.locals[1..self.arg_count + 1]
+        &self.locals[1..][..self.arg_count]
     }
 
     /// Inner locals for this function. These are the locals that are
