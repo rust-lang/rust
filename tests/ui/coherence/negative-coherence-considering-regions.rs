@@ -1,4 +1,5 @@
-// known-bug: unknown
+// revisions: any_lt static_lt
+//[static_lt] known-bug: unknown
 
 // This fails because we currently perform negative coherence in coherence mode.
 // This means that when looking for a negative predicate, we also assemble a
@@ -7,16 +8,22 @@
 // unconditionally and instead flounder.
 
 #![feature(negative_impls)]
-#![feature(rustc_attrs)]
 #![feature(with_negative_coherence)]
 
-#[rustc_strict_coherence]
 trait Foo {}
-impl<T> !Foo for &T where T: 'static {}
 
-#[rustc_strict_coherence]
+impl<T> !Foo for &'static T {}
+
 trait Bar {}
-impl<T: Foo> Bar for T {}
-impl<T> Bar for &T where T: 'static {}
+
+impl<T> Bar for T where T: Foo {}
+
+#[cfg(any_lt)]
+impl<T> Bar for &T {}
+//[any_lt]~^ ERROR conflicting implementations of trait `Bar` for type `&_`
+
+#[cfg(static_lt)]
+impl<T> Bar for &'static T {}
+
 
 fn main() {}
