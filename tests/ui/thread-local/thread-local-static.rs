@@ -1,7 +1,10 @@
 // edition:2018
+// revisions: mir thir
+//thir: -Zthir-unsafeck
 
 #![feature(thread_local)]
 #![feature(const_swap)]
+
 #[thread_local]
 static mut STATIC_VAR_2: [u32; 8] = [4; 8];
 const fn g(x: &mut [u32; 8]) {
