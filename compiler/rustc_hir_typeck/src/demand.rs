@@ -962,38 +962,29 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
     ) -> bool {
-        let ty::Adt(e, args_e) = expected.kind() else {
-            return false;
-        };
-        let ty::Adt(f, args_f) = found.kind() else {
-            return false;
-        };
-        if e.did() != f.did() {
-            return false;
-        }
-        if Some(e.did()) != self.tcx.get_diagnostic_item(sym::Result) {
-            return false;
-        }
         let map = self.tcx.hir();
-        if let Some(hir::Node::Expr(expr)) = map.find_parent(expr.hir_id)
-            && let hir::ExprKind::Ret(_) = expr.kind
-        {
-            // `return foo;`
-        } else if map.get_return_block(expr.hir_id).is_some() {
-            // Function's tail expression.
-        } else {
-            return false;
-        }
-        let e = args_e.type_at(1);
-        let f = args_f.type_at(1);
-        if self
-            .infcx
-            .type_implements_trait(
-                self.tcx.get_diagnostic_item(sym::Into).unwrap(),
-                [f, e],
-                self.param_env,
-            )
-            .must_apply_modulo_regions()
+        let returned = matches!(
+            map.find_parent(expr.hir_id),
+            Some(hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Ret(_), .. }))
+        ) || map.get_return_block(expr.hir_id).is_some();
+        if returned
+            && let ty::Adt(e, args_e) = expected.kind()
+            && let ty::Adt(f, args_f) = found.kind()
+            && e.did() == f.did()
+            && Some(e.did()) == self.tcx.get_diagnostic_item(sym::Result)
+            && let e_ok = args_e.type_at(0)
+            && let f_ok = args_f.type_at(0)
+            && self.infcx.can_eq(self.param_env, f_ok, e_ok)
+            && let e_err = args_e.type_at(1)
+            && let f_err = args_f.type_at(1)
+            && self
+                .infcx
+                .type_implements_trait(
+                    self.tcx.get_diagnostic_item(sym::Into).unwrap(),
+                    [f_err, e_err],
+                    self.param_env,
+                )
+                .must_apply_modulo_regions()
         {
             err.multipart_suggestion(
                 "use `?` to coerce and return an appropriate `Err`, and wrap the resulting value \

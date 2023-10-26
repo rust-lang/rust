@@ -713,6 +713,7 @@ symbols! {
         encode,
         end,
         env,
+        env_CFG_RELEASE: env!("CFG_RELEASE"),
         eprint_macro,
         eprintln_macro,
         eq,

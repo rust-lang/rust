@@ -3465,11 +3465,11 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         if let Some(Node::Expr(expr)) = hir.find(arg_hir_id)
             && let Some(typeck_results) = &self.typeck_results
         {
-            if let hir::Expr { kind: hir::ExprKind::Block(..), .. } = expr {
-                let expr = expr.peel_blocks();
-                let ty =
-                    typeck_results.expr_ty_adjusted_opt(expr).unwrap_or(Ty::new_misc_error(tcx));
-                let span = expr.span;
+            if let hir::Expr { kind: hir::ExprKind::Block(block, _), .. } = expr {
+                let inner_expr = expr.peel_blocks();
+                let ty = typeck_results.expr_ty_adjusted_opt(inner_expr)
+                    .unwrap_or(Ty::new_misc_error(tcx));
+                let span = inner_expr.span;
                 if Some(span) != err.span.primary_span() {
                     err.span_label(
                         span,
@@ -3480,6 +3480,49 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             format!("this tail expression is of type `{ty}`")
                         },
                     );
+                    if let ty::PredicateKind::Clause(clause) = failed_pred.kind().skip_binder()
+                        && let ty::ClauseKind::Trait(pred) = clause
+                        && [
+                            tcx.lang_items().fn_once_trait(),
+                            tcx.lang_items().fn_mut_trait(),
+                            tcx.lang_items().fn_trait(),
+                        ].contains(&Some(pred.def_id()))
+                    {
+                        if let [stmt, ..] = block.stmts
+                            && let hir::StmtKind::Semi(value) = stmt.kind
+                            && let hir::ExprKind::Closure(hir::Closure {
+                                body,
+                                fn_decl_span,
+                                ..
+                            }) = value.kind
+                            && let body = hir.body(*body)
+                            && !matches!(body.value.kind, hir::ExprKind::Block(..))
+                        {
+                            // Check if the failed predicate was an expectation of a closure type
+                            // and if there might have been a `{ |args|` typo instead of `|args| {`.
+                            err.multipart_suggestion(
+                                "you might have meant to open the closure body instead of placing \
+                                 a closure within a block",
+                                vec![
+                                    (expr.span.with_hi(value.span.lo()), String::new()),
+                                    (fn_decl_span.shrink_to_hi(), " {".to_string()),
+                                ],
+                                Applicability::MaybeIncorrect,
+                            );
+                        } else {
+                            // Maybe the bare block was meant to be a closure.
+                            err.span_suggestion_verbose(
+                                expr.span.shrink_to_lo(),
+                                "you might have meant to create the closure instead of a block",
+                                format!(
+                                    "|{}| ",
+                                    (0..pred.trait_ref.args.len() - 1).map(|_| "_")
+                                        .collect::<Vec<_>>()
+                                        .join(", ")),
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
+                    }
                 }
             }
 

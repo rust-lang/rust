@@ -3000,7 +3000,10 @@ impl Step for CodegenCranelift {
 
         let triple = run.target.triple;
         let target_supported = if triple.contains("linux") {
-            triple.contains("x86_64") || triple.contains("aarch64") || triple.contains("s390x")
+            triple.contains("x86_64")
+                || triple.contains("aarch64")
+                || triple.contains("s390x")
+                || triple.contains("riscv64gc")
         } else if triple.contains("darwin") || triple.contains("windows") {
             triple.contains("x86_64")
         } else {

@@ -2,496 +2,441 @@
 // edition:2021
 // compile-flags: --test
 
+#![allow(incomplete_features)]
 #![feature(async_closure)]
 #![feature(auto_traits)]
 #![feature(box_patterns)]
 #![feature(const_trait_impl)]
-#![feature(decl_macro)]
 #![feature(coroutines)]
+#![feature(decl_macro)]
+#![feature(explicit_tail_calls)]
 #![feature(more_qualified_paths)]
 #![feature(raw_ref_op)]
 #![feature(trait_alias)]
 #![feature(try_blocks)]
 #![feature(type_ascription)]
+#![feature(yeet_expr)]
 #![deny(unused_macros)]
 
-macro_rules! stringify_block {
-    ($block:block) => {
-        stringify!($block)
+// These macros force the use of AST pretty-printing by converting the input to
+// a particular fragment specifier.
+macro_rules! block { ($block:block) => { stringify!($block) }; }
+macro_rules! expr { ($expr:expr) => { stringify!($expr) }; }
+macro_rules! item { ($item:item) => { stringify!($item) }; }
+macro_rules! meta { ($meta:meta) => { stringify!($meta) }; }
+macro_rules! pat { ($pat:pat) => { stringify!($pat) }; }
+macro_rules! path { ($path:path) => { stringify!($path) }; }
+macro_rules! stmt { ($stmt:stmt) => { stringify!($stmt) }; }
+macro_rules! ty { ($ty:ty) => { stringify!($ty) }; }
+macro_rules! vis { ($vis:vis) => { stringify!($vis) }; }
+
+// Use this when AST pretty-printing and TokenStream pretty-printing give
+// the same result (which is preferable.)
+macro_rules! c1 {
+    ($frag:ident, [$($tt:tt)*], $s:literal) => {
+        assert_eq!($frag!($($tt)*), $s);
+        assert_eq!(stringify!($($tt)*), $s);
     };
 }
 
-macro_rules! stringify_expr {
-    ($expr:expr) => {
-        stringify!($expr)
-    };
-}
-
-macro_rules! stringify_item {
-    ($item:item) => {
-        stringify!($item)
-    };
-}
-
-macro_rules! stringify_meta {
-    ($meta:meta) => {
-        stringify!($meta)
-    };
-}
-
-macro_rules! stringify_pat {
-    ($pat:pat) => {
-        stringify!($pat)
-    };
-}
-
-macro_rules! stringify_path {
-    ($path:path) => {
-        stringify!($path)
-    };
-}
-
-macro_rules! stringify_stmt {
-    ($stmt:stmt) => {
-        stringify!($stmt)
-    };
-}
-
-macro_rules! stringify_ty {
-    ($ty:ty) => {
-        stringify!($ty)
-    };
-}
-
-macro_rules! stringify_vis {
-    ($vis:vis) => {
-        stringify!($vis)
+// Use this when AST pretty-printing and TokenStream pretty-printing give
+// different results.
+//
+// `c1` and `c2` could be in a single macro, but having them separate makes it
+// easy to find the cases where the two pretty-printing approaches give
+// different results.
+macro_rules! c2 {
+    ($frag:ident, [$($tt:tt)*], $s1:literal, $s2:literal) => {
+        assert_ne!($s1, $s2, "should use `c1!` instead");
+        assert_eq!($frag!($($tt)*), $s1);
+        assert_eq!(stringify!($($tt)*), $s2);
     };
 }
 
 #[test]
 fn test_block() {
-    assert_eq!(stringify_block!({}), "{}");
-    assert_eq!(stringify_block!({ true }), "{ true }");
-    assert_eq!(stringify_block!({ return }), "{ return }");
-    assert_eq!(
-        stringify_block!({
+    c1!(block, [ {} ], "{}");
+    c1!(block, [ { true } ], "{ true }");
+    c1!(block, [ { return } ], "{ return }");
+    c2!(block, [ {
             return;
-        }),
+        } ],
         "{ return; }",
+        "{ return ; }"
     );
-    assert_eq!(
-        stringify_block!({
+    c2!(block,
+        [ {
             let _;
             true
-        }),
+        } ],
         "{ let _; true }",
+        "{ let _ ; true }"
     );
 }
 
 #[test]
 fn test_expr() {
     // ExprKind::Array
-    assert_eq!(stringify_expr!([]), "[]");
-    assert_eq!(stringify_expr!([true]), "[true]");
-    assert_eq!(stringify_expr!([true,]), "[true]");
-    assert_eq!(stringify_expr!([true, true]), "[true, true]");
+    c1!(expr, [ [] ], "[]");
+    c1!(expr, [ [true] ], "[true]");
+    c2!(expr, [ [true,] ], "[true]", "[true,]");
+    c1!(expr, [ [true, true] ], "[true, true]");
+
+    // ExprKind::ConstBlock
+    // FIXME: todo
 
     // ExprKind::Call
-    assert_eq!(stringify_expr!(f()), "f()");
-    assert_eq!(stringify_expr!(f::<u8>()), "f::<u8>()");
-    assert_eq!(stringify_expr!(f::<1>()), "f::<1>()");
-    assert_eq!(stringify_expr!(f::<'a, u8, 1>()), "f::<'a, u8, 1>()");
-    assert_eq!(stringify_expr!(f(true)), "f(true)");
-    assert_eq!(stringify_expr!(f(true,)), "f(true)");
-    assert_eq!(stringify_expr!(()()), "()()");
+    c1!(expr, [ f() ], "f()");
+    c2!(expr, [ f::<u8>() ], "f::<u8>()", "f :: < u8 > ()");
+    c2!(expr, [ f::<1>() ], "f::<1>()", "f :: < 1 > ()");
+    c2!(expr, [ f::<'a, u8, 1>() ], "f::<'a, u8, 1>()", "f :: < 'a, u8, 1 > ()");
+    c1!(expr, [ f(true) ], "f(true)");
+    c2!(expr, [ f(true,) ], "f(true)", "f(true,)");
+    c2!(expr, [ ()() ], "()()", "() ()");
 
     // ExprKind::MethodCall
-    assert_eq!(stringify_expr!(x.f()), "x.f()");
-    assert_eq!(stringify_expr!(x.f::<u8>()), "x.f::<u8>()");
+    c1!(expr, [ x.f() ], "x.f()");
+    c2!(expr, [ x.f::<u8>() ], "x.f::<u8>()", "x.f :: < u8 > ()");
+    c2!(expr, [ x.collect::<Vec<_>>() ], "x.collect::<Vec<_>>()", "x.collect :: < Vec < _ >> ()");
 
     // ExprKind::Tup
-    assert_eq!(stringify_expr!(()), "()");
-    assert_eq!(stringify_expr!((true,)), "(true,)");
-    assert_eq!(stringify_expr!((true, false)), "(true, false)");
-    assert_eq!(stringify_expr!((true, false,)), "(true, false)");
+    c1!(expr, [ () ], "()");
+    c1!(expr, [ (true,) ], "(true,)");
+    c1!(expr, [ (true, false) ], "(true, false)");
+    c2!(expr, [ (true, false,) ], "(true, false)", "(true, false,)");
 
     // ExprKind::Binary
-    assert_eq!(stringify_expr!(true || false), "true || false");
-    assert_eq!(stringify_expr!(true || false && false), "true || false && false");
+    c1!(expr, [ true || false ], "true || false");
+    c1!(expr, [ true || false && false ], "true || false && false");
+    c1!(expr, [ a < 1 && 2 < b && c > 3 && 4 > d ], "a < 1 && 2 < b && c > 3 && 4 > d");
+    c2!(expr, [ a & b & !c ], "a & b & !c", "a & b &! c"); // FIXME
+    c2!(expr,
+        [ a + b * c - d + -1 * -2 - -3],
+        "a + b * c - d + -1 * -2 - -3",
+        "a + b * c - d + - 1 * - 2 - - 3"
+    );
 
     // ExprKind::Unary
-    assert_eq!(stringify_expr!(*expr), "*expr");
-    assert_eq!(stringify_expr!(!expr), "!expr");
-    assert_eq!(stringify_expr!(-expr), "-expr");
+    c2!(expr, [ *expr ], "*expr", "* expr");
+    c2!(expr, [ !expr ], "!expr", "! expr");
+    c2!(expr, [ -expr ], "-expr", "- expr");
 
     // ExprKind::Lit
-    assert_eq!(stringify_expr!('x'), "'x'");
-    assert_eq!(stringify_expr!(1_000_i8), "1_000_i8");
-    assert_eq!(stringify_expr!(1.00000000000000001), "1.00000000000000001");
+    c1!(expr, [ 'x' ], "'x'");
+    c1!(expr, [ 1_000_i8 ], "1_000_i8");
+    c1!(expr, [ 1.00000000000000001 ], "1.00000000000000001");
 
     // ExprKind::Cast
-    assert_eq!(stringify_expr!(expr as T), "expr as T");
-    assert_eq!(stringify_expr!(expr as T<u8>), "expr as T<u8>");
+    c1!(expr, [ expr as T ], "expr as T");
+    c2!(expr, [ expr as T<u8> ], "expr as T<u8>", "expr as T < u8 >");
 
-    // ExprKind::Type
-    // There is no syntax for type ascription.
+    // ExprKind::Type: there is no syntax for type ascription.
+
+    // ExprKind::Let
+    c1!(expr, [ if let Some(a) = b { c } else { d } ], "if let Some(a) = b { c } else { d }");
 
     // ExprKind::If
-    assert_eq!(stringify_expr!(if true {}), "if true {}");
-    assert_eq!(
-        stringify_expr!(if true {
-        } else {
-        }),
-        "if true {} else {}",
+    c1!(expr, [ if true {} ], "if true {}");
+    c2!(expr,
+        [ if ::std::blah() { } else { } ],
+        "if ::std::blah() {} else {}",
+        "if :: std :: blah() {} else {}"
     );
-    assert_eq!(
-        stringify_expr!(if let true = true {
-        } else {
-        }),
-        "if let true = true {} else {}",
-    );
-    assert_eq!(
-        stringify_expr!(if true {
+    c1!(expr, [ if let true = true {} else {} ], "if let true = true {} else {}");
+    c1!(expr,
+        [ if true {
         } else if false {
-        }),
-        "if true {} else if false {}",
+        } ],
+        "if true {} else if false {}"
     );
-    assert_eq!(
-        stringify_expr!(if true {
+    c1!(expr,
+        [ if true {
         } else if false {
         } else {
-        }),
-        "if true {} else if false {} else {}",
+        } ],
+        "if true {} else if false {} else {}"
     );
-    assert_eq!(
-        stringify_expr!(if true {
+    c2!(expr,
+        [ if true {
             return;
         } else if false {
             0
         } else {
             0
-        }),
+        } ],
         "if true { return; } else if false { 0 } else { 0 }",
+        "if true { return ; } else if false { 0 } else { 0 }"
     );
 
     // ExprKind::While
-    assert_eq!(stringify_expr!(while true {}), "while true {}");
-    assert_eq!(stringify_expr!('a: while true {}), "'a: while true {}");
-    assert_eq!(stringify_expr!(while let true = true {}), "while let true = true {}");
+    c1!(expr, [ while true {} ], "while true {}");
+    c2!(expr, [ 'a: while true {} ], "'a: while true {}", "'a : while true {}");
+    c1!(expr, [ while let true = true {} ], "while let true = true {}");
 
     // ExprKind::ForLoop
-    assert_eq!(stringify_expr!(for _ in x {}), "for _ in x {}");
-    assert_eq!(stringify_expr!('a: for _ in x {}), "'a: for _ in x {}");
+    c1!(expr, [ for _ in x {} ], "for _ in x {}");
+    c2!(expr, [ 'a: for _ in x {} ], "'a: for _ in x {}", "'a : for _ in x {}");
 
     // ExprKind::Loop
-    assert_eq!(stringify_expr!(loop {}), "loop {}");
-    assert_eq!(stringify_expr!('a: loop {}), "'a: loop {}");
+    c1!(expr, [ loop {} ], "loop {}");
+    c2!(expr, [ 'a: loop {} ], "'a: loop {}", "'a : loop {}");
 
     // ExprKind::Match
-    assert_eq!(stringify_expr!(match self {}), "match self {}");
-    assert_eq!(
-        stringify_expr!(match self {
+    c1!(expr, [ match self {} ], "match self {}");
+    c1!(expr,
+        [ match self {
             Ok => 1,
-        }),
-        "match self { Ok => 1, }",
+        } ],
+        "match self { Ok => 1, }"
     );
-    assert_eq!(
-        stringify_expr!(match self {
+    c1!(expr,
+        [ match self {
             Ok => 1,
             Err => 0,
-        }),
-        "match self { Ok => 1, Err => 0, }",
+        } ],
+        "match self { Ok => 1, Err => 0, }"
     );
 
     // ExprKind::Closure
-    assert_eq!(stringify_expr!(|| {}), "|| {}");
-    assert_eq!(stringify_expr!(|x| {}), "|x| {}");
-    assert_eq!(stringify_expr!(|x: u8| {}), "|x: u8| {}");
-    assert_eq!(stringify_expr!(|| ()), "|| ()");
-    assert_eq!(stringify_expr!(move || self), "move || self");
-    assert_eq!(stringify_expr!(async || self), "async || self");
-    assert_eq!(stringify_expr!(async move || self), "async move || self");
-    assert_eq!(stringify_expr!(static || self), "static || self");
-    assert_eq!(stringify_expr!(static move || self), "static move || self");
-    #[rustfmt::skip] // https://github.com/rust-lang/rustfmt/issues/5149
-    assert_eq!(
-        stringify_expr!(static async || self),
-        "static async || self",
-    );
-    #[rustfmt::skip] // https://github.com/rust-lang/rustfmt/issues/5149
-    assert_eq!(
-        stringify_expr!(static async move || self),
-        "static async move || self",
-    );
-    assert_eq!(stringify_expr!(|| -> u8 { self }), "|| -> u8 { self }");
-    assert_eq!(stringify_expr!(1 + || {}), "1 + (|| {})"); // ??
+    c1!(expr, [ || {} ], "|| {}");
+    c2!(expr, [ |x| {} ], "|x| {}", "| x | {}");
+    c2!(expr, [ |x: u8| {} ], "|x: u8| {}", "| x : u8 | {}");
+    c1!(expr, [ || () ], "|| ()");
+    c1!(expr, [ move || self ], "move || self");
+    c1!(expr, [ async || self ], "async || self");
+    c1!(expr, [ async move || self ], "async move || self");
+    c1!(expr, [ static || self ], "static || self");
+    c1!(expr, [ static move || self ], "static move || self");
+    c1!(expr, [ static async || self ], "static async || self");
+    c1!(expr, [ static async move || self ], "static async move || self");
+    c1!(expr, [ || -> u8 { self } ], "|| -> u8 { self }");
+    c2!(expr, [ 1 + || {} ], "1 + (|| {})", "1 + || {}"); // AST??
 
     // ExprKind::Block
-    assert_eq!(stringify_expr!({}), "{}");
-    assert_eq!(stringify_expr!(unsafe {}), "unsafe {}");
-    assert_eq!(stringify_expr!('a: {}), "'a: {}");
-    assert_eq!(
-        stringify_expr!(
-            #[attr]
-            {}
-        ),
-        "#[attr] {}",
-    );
-    assert_eq!(
-        stringify_expr!(
+    c1!(expr, [ {} ], "{}");
+    c1!(expr, [ unsafe {} ], "unsafe {}");
+    c2!(expr, [ 'a: {} ], "'a: {}", "'a : {}");
+    c1!(expr, [ #[attr] {} ], "#[attr] {}");
+    c2!(expr,
+        [
             {
                 #![attr]
             }
-        ),
+        ],
         "{\n\
         \x20   #![attr]\n\
         }",
+        "{ #! [attr] }"
     );
 
     // ExprKind::Async
-    assert_eq!(stringify_expr!(async {}), "async {}");
-    assert_eq!(stringify_expr!(async move {}), "async move {}");
+    c1!(expr, [ async {} ], "async {}");
+    c1!(expr, [ async move {} ], "async move {}");
 
     // ExprKind::Await
-    assert_eq!(stringify_expr!(expr.await), "expr.await");
+    c1!(expr, [ expr.await ], "expr.await");
 
     // ExprKind::TryBlock
-    assert_eq!(stringify_expr!(try {}), "try {}");
+    c1!(expr, [ try {} ], "try {}");
 
     // ExprKind::Assign
-    assert_eq!(stringify_expr!(expr = true), "expr = true");
+    c1!(expr, [ expr = true ], "expr = true");
 
     // ExprKind::AssignOp
-    assert_eq!(stringify_expr!(expr += true), "expr += true");
+    c1!(expr, [ expr += true ], "expr += true");
 
     // ExprKind::Field
-    assert_eq!(stringify_expr!(expr.field), "expr.field");
-    assert_eq!(stringify_expr!(expr.0), "expr.0");
+    c1!(expr, [ expr.field ], "expr.field");
+    c1!(expr, [ expr.0 ], "expr.0");
 
     // ExprKind::Index
-    assert_eq!(stringify_expr!(expr[true]), "expr[true]");
+    c2!(expr, [ expr[true] ], "expr[true]", "expr [true]");
 
     // ExprKind::Range
-    assert_eq!(stringify_expr!(..), "..");
-    assert_eq!(stringify_expr!(..hi), "..hi");
-    assert_eq!(stringify_expr!(lo..), "lo..");
-    assert_eq!(stringify_expr!(lo..hi), "lo..hi");
-    assert_eq!(stringify_expr!(..=hi), "..=hi");
-    assert_eq!(stringify_expr!(lo..=hi), "lo..=hi");
-    assert_eq!(stringify_expr!(-2..=-1), "-2..=-1");
+    c1!(expr, [ .. ], "..");
+    c2!(expr, [ ..hi ], "..hi", ".. hi");
+    c2!(expr, [ lo.. ], "lo..", "lo ..");
+    c2!(expr, [ lo..hi ], "lo..hi", "lo .. hi");
+    c2!(expr, [ ..=hi ], "..=hi", "..= hi");
+    c2!(expr, [ lo..=hi ], "lo..=hi", "lo ..= hi");
+    c2!(expr, [ -2..=-1 ], "-2..=-1", "- 2 ..= - 1");
+
+    // ExprKind::Underscore
+    // FIXME: todo
 
     // ExprKind::Path
-    assert_eq!(stringify_expr!(thing), "thing");
-    assert_eq!(stringify_expr!(m::thing), "m::thing");
-    assert_eq!(stringify_expr!(self::thing), "self::thing");
-    assert_eq!(stringify_expr!(crate::thing), "crate::thing");
-    assert_eq!(stringify_expr!(Self::thing), "Self::thing");
-    assert_eq!(stringify_expr!(<Self as T>::thing), "<Self as T>::thing");
-    assert_eq!(stringify_expr!(Self::<'static>), "Self::<'static>");
+    c1!(expr, [ thing ], "thing");
+    c2!(expr, [ m::thing ], "m::thing", "m :: thing");
+    c2!(expr, [ self::thing ], "self::thing", "self :: thing");
+    c2!(expr, [ crate::thing ], "crate::thing", "crate :: thing");
+    c2!(expr, [ Self::thing ], "Self::thing", "Self :: thing");
+    c2!(expr, [ <Self as T>::thing ], "<Self as T>::thing", "< Self as T > :: thing");
+    c2!(expr, [ Self::<'static> ], "Self::<'static>", "Self :: < 'static >");
 
     // ExprKind::AddrOf
-    assert_eq!(stringify_expr!(&expr), "&expr");
-    assert_eq!(stringify_expr!(&mut expr), "&mut expr");
-    assert_eq!(stringify_expr!(&raw const expr), "&raw const expr");
-    assert_eq!(stringify_expr!(&raw mut expr), "&raw mut expr");
+    c2!(expr, [ &expr ], "&expr", "& expr");
+    c2!(expr, [ &mut expr ], "&mut expr", "& mut expr");
+    c2!(expr, [ &raw const expr ], "&raw const expr", "& raw const expr");
+    c2!(expr, [ &raw mut expr ], "&raw mut expr", "& raw mut expr");
 
     // ExprKind::Break
-    assert_eq!(stringify_expr!(break), "break");
-    assert_eq!(stringify_expr!(break 'a), "break 'a");
-    assert_eq!(stringify_expr!(break true), "break true");
-    assert_eq!(stringify_expr!(break 'a true), "break 'a true");
+    c1!(expr, [ break ], "break");
+    c1!(expr, [ break 'a ], "break 'a");
+    c1!(expr, [ break true ], "break true");
+    c1!(expr, [ break 'a true ], "break 'a true");
 
     // ExprKind::Continue
-    assert_eq!(stringify_expr!(continue), "continue");
-    assert_eq!(stringify_expr!(continue 'a), "continue 'a");
+    c1!(expr, [ continue ], "continue");
+    c1!(expr, [ continue 'a ], "continue 'a");
 
     // ExprKind::Ret
-    assert_eq!(stringify_expr!(return), "return");
-    assert_eq!(stringify_expr!(return true), "return true");
+    c1!(expr, [ return ], "return");
+    c1!(expr, [ return true ], "return true");
+
+    // ExprKind::InlineAsm: untestable because this test works pre-expansion.
+
+    // ExprKind::OffsetOf: untestable because this test works pre-expansion.
 
     // ExprKind::MacCall
-    assert_eq!(stringify_expr!(mac!(...)), "mac!(...)");
-    assert_eq!(stringify_expr!(mac![...]), "mac![...]");
-    assert_eq!(stringify_expr!(mac! { ... }), "mac! { ... }");
+    c2!(expr, [ mac!(...) ], "mac!(...)", "mac! (...)");
+    c2!(expr, [ mac![...] ], "mac![...]", "mac! [...]");
+    c1!(expr, [ mac! { ... } ], "mac! { ... }");
 
     // ExprKind::Struct
-    assert_eq!(stringify_expr!(Struct {}), "Struct {}");
-    #[rustfmt::skip] // https://github.com/rust-lang/rustfmt/issues/5151
-    assert_eq!(stringify_expr!(<Struct as Trait>::Type {}), "<Struct as Trait>::Type {}");
-    assert_eq!(stringify_expr!(Struct { .. }), "Struct { .. }");
-    assert_eq!(stringify_expr!(Struct { ..base }), "Struct { ..base }");
-    assert_eq!(stringify_expr!(Struct { x }), "Struct { x }");
-    assert_eq!(stringify_expr!(Struct { x, .. }), "Struct { x, .. }");
-    assert_eq!(stringify_expr!(Struct { x, ..base }), "Struct { x, ..base }");
-    assert_eq!(stringify_expr!(Struct { x: true }), "Struct { x: true }");
-    assert_eq!(stringify_expr!(Struct { x: true, .. }), "Struct { x: true, .. }");
-    assert_eq!(stringify_expr!(Struct { x: true, ..base }), "Struct { x: true, ..base }");
+    c1!(expr, [ Struct {} ], "Struct {}");
+    c2!(expr,
+        [ <Struct as Trait>::Type {} ],
+        "<Struct as Trait>::Type {}",
+        "< Struct as Trait > :: Type {}"
+    );
+    c1!(expr, [ Struct { .. } ], "Struct { .. }");
+    c2!(expr, [ Struct { ..base } ], "Struct { ..base }", "Struct { .. base }");
+    c1!(expr, [ Struct { x } ], "Struct { x }");
+    c1!(expr, [ Struct { x, .. } ], "Struct { x, .. }");
+    c2!(expr, [ Struct { x, ..base } ], "Struct { x, ..base }", "Struct { x, .. base }");
+    c2!(expr, [ Struct { x: true } ], "Struct { x: true }", "Struct { x : true }");
+    c2!(expr, [ Struct { x: true, .. } ], "Struct { x: true, .. }", "Struct { x : true, .. }");
+    c2!(expr,
+        [ Struct { x: true, ..base } ],
+        "Struct { x: true, ..base }",
+        "Struct { x : true, .. base }"
+    );
 
     // ExprKind::Repeat
-    assert_eq!(stringify_expr!([(); 0]), "[(); 0]");
+    c2!(expr, [ [(); 0] ], "[(); 0]", "[() ; 0]");
 
     // ExprKind::Paren
-    assert_eq!(stringify_expr!((expr)), "(expr)");
+    c1!(expr, [ (expr) ], "(expr)");
 
     // ExprKind::Try
-    assert_eq!(stringify_expr!(expr?), "expr?");
+    c2!(expr, [ expr? ], "expr?", "expr ?");
 
     // ExprKind::Yield
-    assert_eq!(stringify_expr!(yield), "yield");
-    assert_eq!(stringify_expr!(yield true), "yield true");
+    c1!(expr, [ yield ], "yield");
+    c1!(expr, [ yield true ], "yield true");
+
+    // ExprKind::Yeet
+    c1!(expr, [ do yeet ], "do yeet");
+    c1!(expr, [ do yeet 0 ], "do yeet 0");
+
+    // ExprKind::Become
+    // FIXME: todo
+
+    // ExprKind::IncludedBytes
+    // FIXME: todo
+
+    // ExprKind::FormatArgs: untestable because this test works pre-expansion.
+
+    // ExprKind::Err: untestable.
 }
 
 #[test]
 fn test_item() {
     // ItemKind::ExternCrate
-    assert_eq!(
-        stringify_item!(
-            extern crate std;
-        ),
-        "extern crate std;",
-    );
-    assert_eq!(
-        stringify_item!(
-            pub extern crate self as std;
-        ),
+    c2!(item, [ extern crate std; ], "extern crate std;", "extern crate std ;");
+    c2!(item,
+        [ pub extern crate self as std; ],
         "pub extern crate self as std;",
+        "pub extern crate self as std ;"
     );
 
     // ItemKind::Use
-    assert_eq!(
-        stringify_item!(
-            pub use crate::{a, b::c};
-        ),
+    c2!(item,
+        [ pub use crate::{a, b::c}; ],
         "pub use crate::{a, b::c};",
+        "pub use crate :: { a, b :: c } ;"
     );
+    c2!(item, [ pub use A::*; ], "pub use A::*;", "pub use A :: * ;");
 
     // ItemKind::Static
-    assert_eq!(
-        stringify_item!(
-            pub static S: () = {};
-        ),
-        "pub static S: () = {};",
-    );
-    assert_eq!(
-        stringify_item!(
-            static mut S: () = {};
-        ),
-        "static mut S: () = {};",
-    );
-    assert_eq!(
-        stringify_item!(
-            static S: ();
-        ),
-        "static S: ();",
-    );
-    assert_eq!(
-        stringify_item!(
-            static mut S: ();
-        ),
-        "static mut S: ();",
-    );
+    c2!(item, [ pub static S: () = {}; ], "pub static S: () = {};", "pub static S : () = {} ;");
+    c2!(item, [ static mut S: () = {}; ], "static mut S: () = {};", "static mut S : () = {} ;");
+    c2!(item, [ static S: (); ], "static S: ();", "static S : () ;");
+    c2!(item, [ static mut S: (); ], "static mut S: ();", "static mut S : () ;");
 
     // ItemKind::Const
-    assert_eq!(
-        stringify_item!(
-            pub const S: () = {};
-        ),
-        "pub const S: () = {};",
-    );
-    assert_eq!(
-        stringify_item!(
-            const S: ();
-        ),
-        "const S: ();",
-    );
+    c2!(item, [ pub const S: () = {}; ], "pub const S: () = {};", "pub const S : () = {} ;");
+    c2!(item, [ const S: (); ], "const S: ();", "const S : () ;");
 
     // ItemKind::Fn
-    assert_eq!(
-        stringify_item!(
-            pub default const async unsafe extern "C" fn f() {}
-        ),
-        "pub default const async unsafe extern \"C\" fn f() {}",
+    c1!(item,
+        [ pub default const async unsafe extern "C" fn f() {} ],
+        "pub default const async unsafe extern \"C\" fn f() {}"
+    );
+    c2!(item,
+        [ fn g<T>(t: Vec<Vec<Vec<T>>>) {} ],
+        "fn g<T>(t: Vec<Vec<Vec<T>>>) {}",
+        "fn g < T > (t : Vec < Vec < Vec < T >> >) {}"
+    );
+    c2!(item,
+        [ fn h<'a>(t: &'a Vec<Cell<dyn D>>) {} ],
+        "fn h<'a>(t: &'a Vec<Cell<dyn D>>) {}",
+        "fn h < 'a > (t : & 'a Vec < Cell < dyn D >>) {}"
     );
 
     // ItemKind::Mod
-    assert_eq!(
-        stringify_item!(
-            pub mod m;
-        ),
-        "pub mod m;",
-    );
-    assert_eq!(
-        stringify_item!(
-            mod m {}
-        ),
-        "mod m {}",
-    );
-    assert_eq!(
-        stringify_item!(
-            unsafe mod m;
-        ),
-        "unsafe mod m;",
-    );
-    assert_eq!(
-        stringify_item!(
-            unsafe mod m {}
-        ),
-        "unsafe mod m {}",
-    );
+    c2!(item, [ pub mod m; ], "pub mod m;", "pub mod m ;");
+    c1!(item, [ mod m {} ], "mod m {}");
+    c2!(item, [ unsafe mod m; ], "unsafe mod m;", "unsafe mod m ;");
+    c1!(item, [ unsafe mod m {} ], "unsafe mod m {}");
 
     // ItemKind::ForeignMod
-    assert_eq!(
-        stringify_item!(
-            extern "C" {}
-        ),
-        "extern \"C\" {}",
+    c1!(item, [ extern "C" {} ], "extern \"C\" {}");
+    c2!(item,
+        [ pub extern "C" {} ],
+        "extern \"C\" {}", // ??
+        "pub extern \"C\" {}"
     );
-    #[rustfmt::skip]
-    assert_eq!(
-        stringify_item!(
-            pub extern "C" {}
-        ),
-        "extern \"C\" {}",
-    );
-    assert_eq!(
-        stringify_item!(
-            unsafe extern "C++" {}
-        ),
-        "unsafe extern \"C++\" {}",
-    );
+    c1!(item, [ unsafe extern "C++" {} ], "unsafe extern \"C++\" {}");
+
+    // ItemKind::GlobalAsm: untestable because this test works pre-expansion.
 
     // ItemKind::TyAlias
-    #[rustfmt::skip]
-    assert_eq!(
-        stringify_item!(
+    c2!(item,
+        [
             pub default type Type<'a>: Bound
             where
                 Self: 'a,
             = T;
-        ),
+        ],
         "pub default type Type<'a>: Bound where Self: 'a = T;",
+        "pub default type Type < 'a > : Bound where Self : 'a, = T ;"
     );
 
     // ItemKind::Enum
-    assert_eq!(
-        stringify_item!(
-            pub enum Void {}
-        ),
-        "pub enum Void {}",
-    );
-    assert_eq!(
-        stringify_item!(
+    c1!(item, [ pub enum Void {} ], "pub enum Void {}");
+    c1!(item,
+        [
             enum Empty {
                 Unit,
                 Tuple(),
                 Struct {},
             }
-        ),
-        "enum Empty { Unit, Tuple(), Struct {}, }",
+        ],
+        "enum Empty { Unit, Tuple(), Struct {}, }"
     );
-    assert_eq!(
-        stringify_item!(
+    c2!(item,
+        [
             enum Enum<T>
             where
                 T: 'a,
@@ -500,7 +445,7 @@ fn test_item() {
                 Tuple(T),
                 Struct { t: T },
             }
-        ),
+        ],
         "enum Enum<T> where T: 'a {\n\
         \x20   Unit,\n\
         \x20   Tuple(T),\n\
@@ -508,378 +453,349 @@ fn test_item() {
         \x20       t: T,\n\
         \x20   },\n\
         }",
+        "enum Enum < T > where T : 'a, { Unit, Tuple(T), Struct { t : T }, }"
     );
 
     // ItemKind::Struct
-    assert_eq!(
-        stringify_item!(
-            pub struct Unit;
-        ),
-        "pub struct Unit;",
-    );
-    assert_eq!(
-        stringify_item!(
-            struct Tuple();
-        ),
-        "struct Tuple();",
-    );
-    assert_eq!(
-        stringify_item!(
-            struct Tuple(T);
-        ),
-        "struct Tuple(T);",
-    );
-    assert_eq!(
-        stringify_item!(
-            struct Struct {}
-        ),
-        "struct Struct {}",
-    );
-    assert_eq!(
-        stringify_item!(
+    c2!(item, [ pub struct Unit; ], "pub struct Unit;", "pub struct Unit ;");
+    c2!(item, [ struct Tuple(); ], "struct Tuple();", "struct Tuple() ;");
+    c2!(item, [ struct Tuple(T); ], "struct Tuple(T);", "struct Tuple(T) ;");
+    c1!(item, [ struct Struct {} ], "struct Struct {}");
+    c2!(item,
+        [
             struct Struct<T>
             where
                 T: 'a,
             {
                 t: T,
             }
-        ),
+        ],
         "struct Struct<T> where T: 'a {\n\
         \x20   t: T,\n\
         }",
+        "struct Struct < T > where T : 'a, { t : T, }"
     );
 
     // ItemKind::Union
-    assert_eq!(
-        stringify_item!(
-            pub union Union {}
-        ),
-        "pub union Union {}",
-    );
-    assert_eq!(
-        stringify_item!(
+    c1!(item, [ pub union Union {} ], "pub union Union {}");
+    c2!(item,
+        [
             union Union<T> where T: 'a {
                 t: T,
             }
-        ),
+        ],
         "union Union<T> where T: 'a {\n\
         \x20   t: T,\n\
         }",
+        "union Union < T > where T : 'a { t : T, }"
     );
 
     // ItemKind::Trait
-    assert_eq!(
-        stringify_item!(
-            pub unsafe auto trait Send {}
-        ),
-        "pub unsafe auto trait Send {}",
-    );
-    assert_eq!(
-        stringify_item!(
+    c1!(item, [ pub unsafe auto trait Send {} ], "pub unsafe auto trait Send {}");
+    c2!(item,
+        [
             trait Trait<'a>: Sized
             where
                 Self: 'a,
             {
             }
-        ),
+        ],
         "trait Trait<'a>: Sized where Self: 'a {}",
+        "trait Trait < 'a > : Sized where Self : 'a, {}"
     );
 
     // ItemKind::TraitAlias
-    assert_eq!(
-        stringify_item!(
-            pub trait Trait<T> = Sized where T: 'a;
-        ),
+    c2!(item,
+        [ pub trait Trait<T> = Sized where T: 'a; ],
         "pub trait Trait<T> = Sized where T: 'a;",
+        "pub trait Trait < T > = Sized where T : 'a ;"
     );
 
     // ItemKind::Impl
-    assert_eq!(
-        stringify_item!(
-            pub impl Struct {}
-        ),
-        "pub impl Struct {}",
-    );
-    assert_eq!(
-        stringify_item!(
-            impl<T> Struct<T> {}
-        ),
-        "impl<T> Struct<T> {}",
-    );
-    assert_eq!(
-        stringify_item!(
-            pub impl Trait for Struct {}
-        ),
-        "pub impl Trait for Struct {}",
-    );
-    assert_eq!(
-        stringify_item!(
-            impl<T> const Trait for T {}
-        ),
+    c1!(item, [ pub impl Struct {} ], "pub impl Struct {}");
+    c2!(item, [ impl<T> Struct<T> {} ], "impl<T> Struct<T> {}", "impl < T > Struct < T > {}");
+    c1!(item, [ pub impl Trait for Struct {} ], "pub impl Trait for Struct {}");
+    c2!(item,
+        [ impl<T> const Trait for T {} ],
         "impl<T> const Trait for T {}",
+        "impl < T > const Trait for T {}"
     );
-    assert_eq!(
-        stringify_item!(
-            impl ~const Struct {}
-        ),
-        "impl ~const Struct {}",
-    );
+    c2!(item, [ impl ~const Struct {} ], "impl ~const Struct {}", "impl ~ const Struct {}");
 
     // ItemKind::MacCall
-    assert_eq!(stringify_item!(mac!(...);), "mac!(...);");
-    assert_eq!(stringify_item!(mac![...];), "mac![...];");
-    assert_eq!(stringify_item!(mac! { ... }), "mac! { ... }");
+    c2!(item, [ mac!(...); ], "mac!(...);", "mac! (...) ;");
+    c2!(item, [ mac![...]; ], "mac![...];", "mac! [...] ;");
+    c1!(item, [ mac! { ... } ], "mac! { ... }");
 
     // ItemKind::MacroDef
-    assert_eq!(
-        stringify_item!(
+    c1!(item,
+        [
             macro_rules! stringify {
                 () => {};
             }
-        ),
-        "macro_rules! stringify { () => {} ; }", // FIXME
+        ],
+        "macro_rules! stringify { () => {} ; }"
     );
-    assert_eq!(
-        stringify_item!(
-            pub macro stringify() {}
-        ),
-        "pub macro stringify { () => {} }",
+    c2!(item,
+        [ pub macro stringify() {} ],
+        "pub macro stringify { () => {} }", // ??
+        "pub macro stringify() {}"
     );
 }
 
 #[test]
 fn test_meta() {
-    assert_eq!(stringify_meta!(k), "k");
-    assert_eq!(stringify_meta!(k = "v"), "k = \"v\"");
-    assert_eq!(stringify_meta!(list(k1, k2 = "v")), "list(k1, k2 = \"v\")");
-    assert_eq!(stringify_meta!(serde::k), "serde::k");
+    c1!(meta, [ k ], "k");
+    c1!(meta, [ k = "v" ], "k = \"v\"");
+    c1!(meta, [ list(k1, k2 = "v") ], "list(k1, k2 = \"v\")");
+    c2!(meta, [ serde::k ], "serde::k", "serde :: k");
 }
 
 #[test]
 fn test_pat() {
     // PatKind::Wild
-    assert_eq!(stringify_pat!(_), "_");
+    c1!(pat, [ _ ], "_");
 
     // PatKind::Ident
-    assert_eq!(stringify_pat!(_x), "_x");
-    assert_eq!(stringify_pat!(ref _x), "ref _x");
-    assert_eq!(stringify_pat!(mut _x), "mut _x");
-    assert_eq!(stringify_pat!(ref mut _x), "ref mut _x");
-    assert_eq!(stringify_pat!(ref mut _x @ _), "ref mut _x @ _");
+    c1!(pat, [ _x ], "_x");
+    c1!(pat, [ ref _x ], "ref _x");
+    c1!(pat, [ mut _x ], "mut _x");
+    c1!(pat, [ ref mut _x ], "ref mut _x");
+    c1!(pat, [ ref mut _x @ _ ], "ref mut _x @ _");
 
     // PatKind::Struct
-    assert_eq!(stringify_pat!(Struct {}), "Struct {}");
-    assert_eq!(stringify_pat!(Struct::<u8> {}), "Struct::<u8> {}");
-    assert_eq!(stringify_pat!(Struct::<'static> {}), "Struct::<'static> {}");
-    assert_eq!(stringify_pat!(Struct { x }), "Struct { x }");
-    assert_eq!(stringify_pat!(Struct { x: _x }), "Struct { x: _x }");
-    assert_eq!(stringify_pat!(Struct { .. }), "Struct { .. }");
-    assert_eq!(stringify_pat!(Struct { x, .. }), "Struct { x, .. }");
-    assert_eq!(stringify_pat!(Struct { x: _x, .. }), "Struct { x: _x, .. }");
-    #[rustfmt::skip] // https://github.com/rust-lang/rustfmt/issues/5151
-    assert_eq!(
-        stringify_pat!(<Struct as Trait>::Type {}),
+    c1!(pat, [ Struct {} ], "Struct {}");
+    c2!(pat, [ Struct::<u8> {} ], "Struct::<u8> {}", "Struct :: < u8 > {}");
+    c2!(pat, [ Struct::<'static> {} ], "Struct::<'static> {}", "Struct :: < 'static > {}");
+    c1!(pat, [ Struct { x } ], "Struct { x }");
+    c2!(pat, [ Struct { x: _x } ], "Struct { x: _x }", "Struct { x : _x }");
+    c1!(pat, [ Struct { .. } ], "Struct { .. }");
+    c1!(pat, [ Struct { x, .. } ], "Struct { x, .. }");
+    c2!(pat, [ Struct { x: _x, .. } ], "Struct { x: _x, .. }", "Struct { x : _x, .. }");
+    c2!(pat,
+        [ <Struct as Trait>::Type {} ],
         "<Struct as Trait>::Type {}",
+        "< Struct as Trait > :: Type {}"
     );
 
     // PatKind::TupleStruct
-    assert_eq!(stringify_pat!(Tuple()), "Tuple()");
-    assert_eq!(stringify_pat!(Tuple::<u8>()), "Tuple::<u8>()");
-    assert_eq!(stringify_pat!(Tuple::<'static>()), "Tuple::<'static>()");
-    assert_eq!(stringify_pat!(Tuple(x)), "Tuple(x)");
-    assert_eq!(stringify_pat!(Tuple(..)), "Tuple(..)");
-    assert_eq!(stringify_pat!(Tuple(x, ..)), "Tuple(x, ..)");
-    assert_eq!(stringify_pat!(<Struct as Trait>::Type()), "<Struct as Trait>::Type()");
+    c1!(pat, [ Tuple() ], "Tuple()");
+    c2!(pat, [ Tuple::<u8>() ], "Tuple::<u8>()", "Tuple :: < u8 > ()");
+    c2!(pat, [ Tuple::<'static>() ], "Tuple::<'static>()", "Tuple :: < 'static > ()");
+    c1!(pat, [ Tuple(x) ], "Tuple(x)");
+    c1!(pat, [ Tuple(..) ], "Tuple(..)");
+    c1!(pat, [ Tuple(x, ..) ], "Tuple(x, ..)");
+    c2!(pat,
+        [ <Struct as Trait>::Type() ],
+        "<Struct as Trait>::Type()",
+        "< Struct as Trait > :: Type()"
+    );
 
     // PatKind::Or
-    assert_eq!(stringify_pat!(true | false), "true | false");
-    assert_eq!(stringify_pat!(| true), "true");
-    assert_eq!(stringify_pat!(|true| false), "true | false");
+    c1!(pat, [ true | false ], "true | false");
+    c2!(pat, [ | true ], "true", "| true");
+    c2!(pat, [ |true| false ], "true | false", "| true | false");
 
     // PatKind::Path
-    assert_eq!(stringify_pat!(crate::Path), "crate::Path");
-    assert_eq!(stringify_pat!(Path::<u8>), "Path::<u8>");
-    assert_eq!(stringify_pat!(Path::<'static>), "Path::<'static>");
-    assert_eq!(stringify_pat!(<Struct as Trait>::Type), "<Struct as Trait>::Type");
+    c2!(pat, [ crate::Path ], "crate::Path", "crate :: Path");
+    c2!(pat, [ Path::<u8> ], "Path::<u8>", "Path :: < u8 >");
+    c2!(pat, [ Path::<'static> ], "Path::<'static>", "Path :: < 'static >");
+    c2!(pat, [ <Struct as Trait>::Type ], "<Struct as Trait>::Type", "< Struct as Trait > :: Type");
 
     // PatKind::Tuple
-    assert_eq!(stringify_pat!(()), "()");
-    assert_eq!(stringify_pat!((true,)), "(true,)");
-    assert_eq!(stringify_pat!((true, false)), "(true, false)");
+    c1!(pat, [ () ], "()");
+    c1!(pat, [ (true,) ], "(true,)");
+    c1!(pat, [ (true, false) ], "(true, false)");
 
     // PatKind::Box
-    assert_eq!(stringify_pat!(box pat), "box pat");
+    c1!(pat, [ box pat ], "box pat");
 
     // PatKind::Ref
-    assert_eq!(stringify_pat!(&pat), "&pat");
-    assert_eq!(stringify_pat!(&mut pat), "&mut pat");
+    c2!(pat, [ &pat ], "&pat", "& pat");
+    c2!(pat, [ &mut pat ], "&mut pat", "& mut pat");
 
     // PatKind::Lit
-    assert_eq!(stringify_pat!(1_000_i8), "1_000_i8");
+    c1!(pat, [ 1_000_i8 ], "1_000_i8");
 
     // PatKind::Range
-    assert_eq!(stringify_pat!(..1), "..1");
-    assert_eq!(stringify_pat!(0..), "0..");
-    assert_eq!(stringify_pat!(0..1), "0..1");
-    assert_eq!(stringify_pat!(0..=1), "0..=1");
-    assert_eq!(stringify_pat!(-2..=-1), "-2..=-1");
+    c2!(pat, [ ..1 ], "..1", ".. 1");
+    c2!(pat, [ 0.. ], "0..", "0 ..");
+    c2!(pat, [ 0..1 ], "0..1", "0 .. 1");
+    c2!(pat, [ 0..=1 ], "0..=1", "0 ..= 1");
+    c2!(pat, [ -2..=-1 ], "-2..=-1", "- 2 ..= - 1");
 
     // PatKind::Slice
-    assert_eq!(stringify_pat!([]), "[]");
-    assert_eq!(stringify_pat!([true]), "[true]");
-    assert_eq!(stringify_pat!([true,]), "[true]");
-    assert_eq!(stringify_pat!([true, false]), "[true, false]");
+    c1!(pat, [ [] ], "[]");
+    c1!(pat, [ [true] ], "[true]");
+    c2!(pat, [ [true,] ], "[true]", "[true,]");
+    c1!(pat, [ [true, false] ], "[true, false]");
 
     // PatKind::Rest
-    assert_eq!(stringify_pat!(..), "..");
+    c1!(pat, [ .. ], "..");
 
     // PatKind::Paren
-    assert_eq!(stringify_pat!((pat)), "(pat)");
+    c1!(pat, [ (pat) ], "(pat)");
 
     // PatKind::MacCall
-    assert_eq!(stringify_pat!(mac!(...)), "mac!(...)");
-    assert_eq!(stringify_pat!(mac![...]), "mac![...]");
-    assert_eq!(stringify_pat!(mac! { ... }), "mac! { ... }");
+    c2!(pat, [ mac!(...) ], "mac!(...)", "mac! (...)");
+    c2!(pat, [ mac![...] ], "mac![...]", "mac! [...]");
+    c1!(pat, [ mac! { ... } ], "mac! { ... }");
 }
 
 #[test]
 fn test_path() {
-    assert_eq!(stringify_path!(thing), "thing");
-    assert_eq!(stringify_path!(m::thing), "m::thing");
-    assert_eq!(stringify_path!(self::thing), "self::thing");
-    assert_eq!(stringify_path!(crate::thing), "crate::thing");
-    assert_eq!(stringify_path!(Self::thing), "Self::thing");
-    assert_eq!(stringify_path!(Self<'static>), "Self<'static>");
-    assert_eq!(stringify_path!(Self::<'static>), "Self<'static>");
-    assert_eq!(stringify_path!(Self()), "Self()");
-    assert_eq!(stringify_path!(Self() -> ()), "Self() -> ()");
+    c1!(path, [ thing ], "thing");
+    c2!(path, [ m::thing ], "m::thing", "m :: thing");
+    c2!(path, [ self::thing ], "self::thing", "self :: thing");
+    c2!(path, [ crate::thing ], "crate::thing", "crate :: thing");
+    c2!(path, [ Self::thing ], "Self::thing", "Self :: thing");
+    c2!(path, [ Self<'static> ], "Self<'static>", "Self < 'static >");
+    c2!(path, [ Self::<'static> ], "Self<'static>", "Self :: < 'static >");
+    c1!(path, [ Self() ], "Self()");
+    c1!(path, [ Self() -> () ], "Self() -> ()");
 }
 
 #[test]
 fn test_stmt() {
     // StmtKind::Local
-    assert_eq!(stringify_stmt!(let _), "let _;");
-    assert_eq!(stringify_stmt!(let x = true), "let x = true;");
-    assert_eq!(stringify_stmt!(let x: bool = true), "let x: bool = true;");
-
-    // StmtKind::Item
-    assert_eq!(
-        stringify_stmt!(
-            struct S;
-        ),
-        "struct S;",
+    c2!(stmt, [ let _ ], "let _;", "let _");
+    c2!(stmt, [ let x = true ], "let x = true;", "let x = true");
+    c2!(stmt, [ let x: bool = true ], "let x: bool = true;", "let x : bool = true");
+    c2!(stmt, [ let (a, b) = (1, 2) ], "let (a, b) = (1, 2);", "let(a, b) = (1, 2)"); // FIXME
+    c2!(stmt,
+        [ let (a, b): (u32, u32) = (1, 2) ],
+        "let (a, b): (u32, u32) = (1, 2);",
+        "let(a, b) : (u32, u32) = (1, 2)"
     );
 
+    // StmtKind::Item
+    c2!(stmt, [ struct S; ], "struct S;", "struct S ;");
+    c1!(stmt, [ struct S {} ], "struct S {}");
+
     // StmtKind::Expr
-    assert_eq!(stringify_stmt!(loop {}), "loop {}");
+    c1!(stmt, [ loop {} ], "loop {}");
 
     // StmtKind::Semi
-    assert_eq!(stringify_stmt!(1 + 1), "1 + 1;");
+    c2!(stmt, [ 1 + 1 ], "1 + 1;", "1 + 1");
 
     // StmtKind::Empty
-    assert_eq!(stringify_stmt!(;), ";");
+    c1!(stmt, [ ; ], ";");
 
     // StmtKind::MacCall
-    assert_eq!(stringify_stmt!(mac!(...)), "mac!(...)");
-    assert_eq!(stringify_stmt!(mac![...]), "mac![...]");
-    assert_eq!(stringify_stmt!(mac! { ... }), "mac! { ... }");
+    c2!(stmt, [ mac!(...) ], "mac!(...)", "mac! (...)");
+    c2!(stmt, [ mac![...] ], "mac![...]", "mac! [...]");
+    c1!(stmt, [ mac! { ... } ], "mac! { ... }");
 }
 
 #[test]
 fn test_ty() {
     // TyKind::Slice
-    assert_eq!(stringify_ty!([T]), "[T]");
+    c1!(ty, [ [T] ], "[T]");
 
     // TyKind::Array
-    assert_eq!(stringify_ty!([T; 0]), "[T; 0]");
+    c2!(ty, [ [T; 0] ], "[T; 0]", "[T ; 0]");
 
     // TyKind::Ptr
-    assert_eq!(stringify_ty!(*const T), "*const T");
-    assert_eq!(stringify_ty!(*mut T), "*mut T");
+    c2!(ty, [ *const T ], "*const T", "* const T");
+    c2!(ty, [ *mut T ], "*mut T", "* mut T");
 
     // TyKind::Ref
-    assert_eq!(stringify_ty!(&T), "&T");
-    assert_eq!(stringify_ty!(&mut T), "&mut T");
-    assert_eq!(stringify_ty!(&'a T), "&'a T");
-    assert_eq!(stringify_ty!(&'a mut T), "&'a mut T");
+    c2!(ty, [ &T ], "&T", "& T");
+    c2!(ty, [ &mut T ], "&mut T", "& mut T");
+    c2!(ty, [ &'a T ], "&'a T", "& 'a T");
+    c2!(ty, [ &'a mut [T] ], "&'a mut [T]", "& 'a mut [T]");
+    c2!(ty, [ &A<B<C<D<E>>>> ], "&A<B<C<D<E>>>>", "& A < B < C < D < E >> >>");
 
     // TyKind::BareFn
-    assert_eq!(stringify_ty!(fn()), "fn()");
-    assert_eq!(stringify_ty!(fn() -> ()), "fn() -> ()");
-    assert_eq!(stringify_ty!(fn(u8)), "fn(u8)");
-    assert_eq!(stringify_ty!(fn(x: u8)), "fn(x: u8)");
-    #[rustfmt::skip]
-    assert_eq!(stringify_ty!(for<> fn()), "fn()");
-    assert_eq!(stringify_ty!(for<'a> fn()), "for<'a> fn()");
+    c1!(ty, [ fn() ], "fn()");
+    c1!(ty, [ fn() -> () ], "fn() -> ()");
+    c1!(ty, [ fn(u8) ], "fn(u8)");
+    c2!(ty, [ fn(x: u8) ], "fn(x: u8)", "fn(x : u8)");
+    c2!(ty, [ for<> fn() ], "fn()", "for < > fn()");
+    c2!(ty, [ for<'a> fn() ], "for<'a> fn()", "for < 'a > fn()");
 
     // TyKind::Never
-    assert_eq!(stringify_ty!(!), "!");
+    c1!(ty, [ ! ], "!");
 
     // TyKind::Tup
-    assert_eq!(stringify_ty!(()), "()");
-    assert_eq!(stringify_ty!((T,)), "(T,)");
-    assert_eq!(stringify_ty!((T, U)), "(T, U)");
+    c1!(ty, [ () ], "()");
+    c1!(ty, [ (T,) ], "(T,)");
+    c1!(ty, [ (T, U) ], "(T, U)");
+
+    // TyKind::AnonStruct: untestable in isolation.
+
+    // TyKind::AnonUnion: untestable in isolation.
 
     // TyKind::Path
-    assert_eq!(stringify_ty!(T), "T");
-    assert_eq!(stringify_ty!(Ref<'a>), "Ref<'a>");
-    assert_eq!(stringify_ty!(PhantomData<T>), "PhantomData<T>");
-    assert_eq!(stringify_ty!(PhantomData::<T>), "PhantomData<T>");
-    assert_eq!(stringify_ty!(Fn() -> !), "Fn() -> !");
-    assert_eq!(stringify_ty!(Fn(u8) -> !), "Fn(u8) -> !");
-    assert_eq!(stringify_ty!(<Struct as Trait>::Type), "<Struct as Trait>::Type");
+    c1!(ty, [ T ], "T");
+    c2!(ty, [ Ref<'a> ], "Ref<'a>", "Ref < 'a >");
+    c2!(ty, [ PhantomData<T> ], "PhantomData<T>", "PhantomData < T >");
+    c2!(ty, [ PhantomData::<T> ], "PhantomData<T>", "PhantomData :: < T >");
+    c2!(ty, [ Fn() -> ! ], "Fn() -> !", "Fn() ->!");
+    c2!(ty, [ Fn(u8) -> ! ], "Fn(u8) -> !", "Fn(u8) ->!"); // FIXME
+    c2!(ty, [ <Struct as Trait>::Type ], "<Struct as Trait>::Type", "< Struct as Trait > :: Type");
 
     // TyKind::TraitObject
-    assert_eq!(stringify_ty!(dyn Send), "dyn Send");
-    assert_eq!(stringify_ty!(dyn Send + 'a), "dyn Send + 'a");
-    assert_eq!(stringify_ty!(dyn 'a + Send), "dyn 'a + Send");
-    assert_eq!(stringify_ty!(dyn ?Sized), "dyn ?Sized");
-    assert_eq!(stringify_ty!(dyn ~const Clone), "dyn ~const Clone");
-    assert_eq!(stringify_ty!(dyn for<'a> Send), "dyn for<'a> Send");
+    c1!(ty, [ dyn Send ], "dyn Send");
+    c1!(ty, [ dyn Send + 'a ], "dyn Send + 'a");
+    c1!(ty, [ dyn 'a + Send ], "dyn 'a + Send");
+    c2!(ty, [ dyn ?Sized ], "dyn ?Sized", "dyn ? Sized");
+    c2!(ty, [ dyn ~const Clone ], "dyn ~const Clone", "dyn ~ const Clone");
+    c2!(ty, [ dyn for<'a> Send ], "dyn for<'a> Send", "dyn for < 'a > Send");
 
     // TyKind::ImplTrait
-    assert_eq!(stringify_ty!(impl Send), "impl Send");
-    assert_eq!(stringify_ty!(impl Send + 'a), "impl Send + 'a");
-    assert_eq!(stringify_ty!(impl 'a + Send), "impl 'a + Send");
-    assert_eq!(stringify_ty!(impl ?Sized), "impl ?Sized");
-    assert_eq!(stringify_ty!(impl ~const Clone), "impl ~const Clone");
-    assert_eq!(stringify_ty!(impl for<'a> Send), "impl for<'a> Send");
+    c1!(ty, [ impl Send ], "impl Send");
+    c1!(ty, [ impl Send + 'a ], "impl Send + 'a");
+    c1!(ty, [ impl 'a + Send ], "impl 'a + Send");
+    c2!(ty, [ impl ?Sized ], "impl ?Sized", "impl ? Sized");
+    c2!(ty, [ impl ~const Clone ], "impl ~const Clone", "impl ~ const Clone");
+    c2!(ty, [ impl for<'a> Send ], "impl for<'a> Send", "impl for < 'a > Send");
 
     // TyKind::Paren
-    assert_eq!(stringify_ty!((T)), "(T)");
+    c1!(ty, [ (T) ], "(T)");
+
+    // TyKind::Typeof: unused for now.
 
     // TyKind::Infer
-    assert_eq!(stringify_ty!(_), "_");
+    c1!(ty, [ _ ], "_");
+
+    // TyKind::ImplicitSelf: there is no syntax for this.
 
     // TyKind::MacCall
-    assert_eq!(stringify_ty!(mac!(...)), "mac!(...)");
-    assert_eq!(stringify_ty!(mac![...]), "mac![...]");
-    assert_eq!(stringify_ty!(mac! { ... }), "mac! { ... }");
+    c2!(ty, [ mac!(...) ], "mac!(...)", "mac! (...)");
+    c2!(ty, [ mac![...] ], "mac![...]", "mac! [...]");
+    c1!(ty, [ mac! { ... } ], "mac! { ... }");
+
+    // TyKind::Err: untestable.
+
+    // TyKind::CVarArgs
+    // FIXME: todo
 }
 
 #[test]
 fn test_vis() {
     // VisibilityKind::Public
-    assert_eq!(stringify_vis!(pub), "pub ");
+    c2!(vis, [ pub ], "pub ", "pub");
 
     // VisibilityKind::Restricted
-    assert_eq!(stringify_vis!(pub(crate)), "pub(crate) ");
-    assert_eq!(stringify_vis!(pub(self)), "pub(self) ");
-    assert_eq!(stringify_vis!(pub(super)), "pub(super) ");
-    assert_eq!(stringify_vis!(pub(in crate)), "pub(in crate) ");
-    assert_eq!(stringify_vis!(pub(in self)), "pub(in self) ");
-    assert_eq!(stringify_vis!(pub(in super)), "pub(in super) ");
-    assert_eq!(stringify_vis!(pub(in path::to)), "pub(in path::to) ");
-    assert_eq!(stringify_vis!(pub(in ::path::to)), "pub(in ::path::to) ");
-    assert_eq!(stringify_vis!(pub(in self::path::to)), "pub(in self::path::to) ");
-    assert_eq!(stringify_vis!(pub(in super::path::to)), "pub(in super::path::to) ");
+    c2!(vis, [ pub(crate) ], "pub(crate) ", "pub(crate)");
+    c2!(vis, [ pub(self) ], "pub(self) ", "pub(self)");
+    c2!(vis, [ pub(super) ], "pub(super) ", "pub(super)");
+    c2!(vis, [ pub(in crate) ], "pub(in crate) ", "pub(in crate)");
+    c2!(vis, [ pub(in self) ], "pub(in self) ", "pub(in self)");
+    c2!(vis, [ pub(in super) ], "pub(in super) ", "pub(in super)");
+    c2!(vis, [ pub(in path::to) ], "pub(in path::to) ", "pub(in path :: to)");
+    c2!(vis, [ pub(in ::path::to) ], "pub(in ::path::to) ", "pub(in :: path :: to)");
+    c2!(vis, [ pub(in self::path::to) ], "pub(in self::path::to) ", "pub(in self :: path :: to)");
+    c2!(vis,
+        [ pub(in super::path::to) ],
+        "pub(in super::path::to) ",
+        "pub(in super :: path :: to)"
+    );
 
     // VisibilityKind::Inherited
-    // Directly calling `stringify_vis!()` does not work.
-    macro_rules! stringify_inherited_vis {
-        ($vis:vis struct) => {
-            stringify_vis!($vis)
-        };
-    }
-    assert_eq!(stringify_inherited_vis!(struct), "");
+    // This one is different because directly calling `vis!` does not work.
+    macro_rules! inherited_vis { ($vis:vis struct) => { vis!($vis) }; }
+    assert_eq!(inherited_vis!(struct), "");
+    assert_eq!(stringify!(), "");
 }
