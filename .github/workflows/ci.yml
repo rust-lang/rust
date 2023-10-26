@@ -119,9 +119,6 @@ jobs:
     - name: Add more failing tests because the sysroot is not compiled with LTO
       run: cat failing-non-lto-tests.txt >> failing-ui-tests.txt
 
-    - name: Add more failing tests because the sysroot is not compiled with LTO
-      run: cat failing-non-lto-tests.txt >> failing-ui-tests.txt
-
     - name: Run tests
       run: |
         ./test.sh --release --clean --build-sysroot ${{ matrix.commands }}
