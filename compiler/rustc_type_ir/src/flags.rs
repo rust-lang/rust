@@ -113,7 +113,7 @@ bitflags! {
         /// Does this value have `InferConst::Fresh`?
         const HAS_CT_FRESH                = 1 << 22;
 
-        /// Does this have `Generator` or `GeneratorWitness`?
-        const HAS_TY_GENERATOR            = 1 << 23;
+        /// Does this have `Coroutine` or `CoroutineWitness`?
+        const HAS_TY_COROUTINE            = 1 << 23;
     }
 }
