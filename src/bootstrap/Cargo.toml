@@ -40,6 +40,7 @@ clap_complete = "4.4.3"
 cmake = "0.1.38"
 filetime = "0.2"
 hex = "0.4"
+home = "0.5.4"
 ignore = "0.4.10"
 libc = "0.2"
 object = { version = "0.32.0", default-features = false, features = ["archive", "coff", "read_core", "unaligned"] }
