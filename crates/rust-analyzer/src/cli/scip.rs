@@ -133,6 +133,10 @@ impl flags::Scip {
                             documentation: documentation.unwrap_or_default(),
                             relationships: Vec::new(),
                             special_fields: Default::default(),
+                            kind: Default::default(),
+                            display_name: String::new(),
+                            signature_documentation: Default::default(),
+                            enclosing_symbol: String::new(),
                         };
 
                         symbols.push(symbol_info)
@@ -147,6 +151,7 @@ impl flags::Scip {
                     syntax_kind: Default::default(),
                     diagnostics: Vec::new(),
                     special_fields: Default::default(),
+                    enclosing_range: Vec::new(),
                 });
             });
 
@@ -160,6 +165,7 @@ impl flags::Scip {
                 occurrences,
                 symbols,
                 special_fields: Default::default(),
+                text: String::new(),
             });
         }
 
