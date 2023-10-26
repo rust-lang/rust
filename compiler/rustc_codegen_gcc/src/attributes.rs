@@ -53,6 +53,9 @@ pub fn from_fn_attrs<'gcc, 'tcx>(
                 codegen_fn_attrs.inline
             };
         if let Some(attr) = inline_attr(cx, inline) {
+            if let FnAttribute::AlwaysInline = attr {
+                func.add_attribute(FnAttribute::Inline);
+            }
             func.add_attribute(attr);
         }
 
