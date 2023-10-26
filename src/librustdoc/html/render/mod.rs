@@ -48,7 +48,7 @@ use std::str;
 use std::string::ToString;
 
 use askama::Template;
-use rustc_attr::{ConstStability, Deprecation, StabilityLevel};
+use rustc_attr::{ConstStability, Deprecation, Since, StabilityLevel, CURRENT_RUSTC_VERSION};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def_id::{DefId, DefIdSet};
@@ -911,13 +911,17 @@ fn assoc_method(
 /// consequence of the above rules.
 fn render_stability_since_raw_with_extra(
     w: &mut Buffer,
-    ver: Option<Symbol>,
+    ver: Option<Since>,
     const_stability: Option<ConstStability>,
-    containing_ver: Option<Symbol>,
-    containing_const_ver: Option<Symbol>,
+    containing_ver: Option<Since>,
+    containing_const_ver: Option<Since>,
     extra_class: &str,
 ) -> bool {
-    let stable_version = ver.filter(|inner| !inner.is_empty() && Some(*inner) != containing_ver);
+    let stable_version = if ver != containing_ver && let Some(ver) = &ver {
+        since_to_string(ver)
+    } else {
+        None
+    };
 
     let mut title = String::new();
     let mut stability = String::new();
@@ -931,7 +935,8 @@ fn render_stability_since_raw_with_extra(
         Some(ConstStability { level: StabilityLevel::Stable { since, .. }, .. })
             if Some(since) != containing_const_ver =>
         {
-            Some((format!("const since {since}"), format!("const: {since}")))
+            since_to_string(&since)
+                .map(|since| (format!("const since {since}"), format!("const: {since}")))
         }
         Some(ConstStability { level: StabilityLevel::Unstable { issue, .. }, feature, .. }) => {
             let unstable = if let Some(n) = issue {
@@ -971,13 +976,21 @@ fn render_stability_since_raw_with_extra(
     !stability.is_empty()
 }
 
+fn since_to_string(since: &Since) -> Option<String> {
+    match since {
+        Since::Version(since) => Some(since.to_string()),
+        Since::Current => Some(CURRENT_RUSTC_VERSION.to_owned()),
+        Since::Err => None,
+    }
+}
+
 #[inline]
 fn render_stability_since_raw(
     w: &mut Buffer,
-    ver: Option<Symbol>,
+    ver: Option<Since>,
     const_stability: Option<ConstStability>,
-    containing_ver: Option<Symbol>,
-    containing_const_ver: Option<Symbol>,
+    containing_ver: Option<Since>,
+    containing_const_ver: Option<Since>,
 ) -> bool {
     render_stability_since_raw_with_extra(
         w,

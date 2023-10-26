@@ -3,7 +3,7 @@
 
 use crate::errors;
 use rustc_attr::{
-    self as attr, rust_version_symbol, ConstStability, Stability, StabilityLevel, Unstable,
+    self as attr, rust_version_symbol, ConstStability, Since, Stability, StabilityLevel, Unstable,
     UnstableReason, VERSION_PLACEHOLDER,
 };
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
@@ -226,37 +226,43 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
             if let (&Some(dep_since), &attr::Stable { since: stab_since, .. }) =
                 (&depr.as_ref().and_then(|(d, _)| d.since), &stab.level)
             {
-                // Explicit version of iter::order::lt to handle parse errors properly
-                for (dep_v, stab_v) in
-                    iter::zip(dep_since.as_str().split('.'), stab_since.as_str().split('.'))
-                {
-                    match stab_v.parse::<u64>() {
-                        Err(_) => {
-                            self.tcx.sess.emit_err(errors::InvalidStability { span, item_sp });
-                            break;
-                        }
-                        Ok(stab_vp) => match dep_v.parse::<u64>() {
-                            Ok(dep_vp) => match dep_vp.cmp(&stab_vp) {
-                                Ordering::Less => {
-                                    self.tcx.sess.emit_err(errors::CannotStabilizeDeprecated {
-                                        span,
-                                        item_sp,
-                                    });
+                match stab_since {
+                    Since::Current => {
+                        self.tcx.sess.emit_err(errors::CannotStabilizeDeprecated { span, item_sp });
+                    }
+                    Since::Version(stab_since) => {
+                        // Explicit version of iter::order::lt to handle parse errors properly
+                        for (dep_v, stab_v) in iter::zip(
+                            dep_since.as_str().split('.'),
+                            [stab_since.major, stab_since.minor, stab_since.patch],
+                        ) {
+                            match dep_v.parse::<u64>() {
+                                Ok(dep_vp) => match dep_vp.cmp(&u64::from(stab_v)) {
+                                    Ordering::Less => {
+                                        self.tcx.sess.emit_err(errors::CannotStabilizeDeprecated {
+                                            span,
+                                            item_sp,
+                                        });
+                                        break;
+                                    }
+                                    Ordering::Equal => continue,
+                                    Ordering::Greater => break,
+                                },
+                                Err(_) => {
+                                    if dep_v != "TBD" {
+                                        self.tcx.sess.emit_err(errors::InvalidDeprecationVersion {
+                                            span,
+                                            item_sp,
+                                        });
+                                    }
                                     break;
                                 }
-                                Ordering::Equal => continue,
-                                Ordering::Greater => break,
-                            },
-                            Err(_) => {
-                                if dep_v != "TBD" {
-                                    self.tcx.sess.emit_err(errors::InvalidDeprecationVersion {
-                                        span,
-                                        item_sp,
-                                    });
-                                }
-                                break;
                             }
-                        },
+                        }
+                    }
+                    Since::Err => {
+                        // An error already reported. Assume the unparseable stabilization
+                        // version is older than the deprecation version.
                     }
                 }
             }

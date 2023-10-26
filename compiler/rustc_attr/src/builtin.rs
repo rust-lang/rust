@@ -13,6 +13,7 @@ use rustc_session::parse::{feature_err, ParseSess};
 use rustc_session::Session;
 use rustc_span::hygiene::Transparency;
 use rustc_span::{symbol::sym, symbol::Symbol, Span};
+use std::fmt::{self, Display};
 use std::num::NonZeroU32;
 
 use crate::session_diagnostics::{self, IncorrectReprFormatGenericCause};
@@ -23,9 +24,10 @@ use crate::session_diagnostics::{self, IncorrectReprFormatGenericCause};
 /// For more, see [this pull request](https://github.com/rust-lang/rust/pull/100591).
 pub const VERSION_PLACEHOLDER: &str = "CURRENT_RUSTC_VERSION";
 
+pub const CURRENT_RUSTC_VERSION: &str = env!("CFG_RELEASE");
+
 pub fn rust_version_symbol() -> Symbol {
-    let version = option_env!("CFG_RELEASE").unwrap_or("<current>");
-    Symbol::intern(&version)
+    Symbol::intern(CURRENT_RUSTC_VERSION)
 }
 
 pub fn is_builtin_attr(attr: &Attribute) -> bool {
@@ -144,11 +146,22 @@ pub enum StabilityLevel {
     /// `#[stable]`
     Stable {
         /// Rust release which stabilized this feature.
-        since: Symbol,
+        since: Since,
         /// Is this item allowed to be referred to on stable, despite being contained in unstable
         /// modules?
         allowed_through_unstable_modules: bool,
     },
+}
+
+/// Rust release in which a feature is stabilized.
+#[derive(Encodable, Decodable, PartialEq, Copy, Clone, Debug, Eq, Hash)]
+#[derive(HashStable_Generic)]
+pub enum Since {
+    Version(Version),
+    /// Stabilized in the upcoming version, whatever number that is.
+    Current,
+    /// Failed to parse a stabilization version.
+    Err,
 }
 
 impl StabilityLevel {
@@ -372,22 +385,24 @@ fn parse_stability(sess: &Session, attr: &Attribute) -> Option<(Symbol, Stabilit
 
     let since = if let Some(since) = since {
         if since.as_str() == VERSION_PLACEHOLDER {
-            Ok(rust_version_symbol())
-        } else if parse_version(since.as_str(), false).is_some() {
-            Ok(since)
+            Since::Current
+        } else if let Some(version) = parse_version(since.as_str(), false) {
+            Since::Version(version)
         } else {
-            Err(sess.emit_err(session_diagnostics::InvalidSince { span: attr.span }))
+            sess.emit_err(session_diagnostics::InvalidSince { span: attr.span });
+            Since::Err
         }
     } else {
-        Err(sess.emit_err(session_diagnostics::MissingSince { span: attr.span }))
+        sess.emit_err(session_diagnostics::MissingSince { span: attr.span });
+        Since::Err
     };
 
-    match (feature, since) {
-        (Ok(feature), Ok(since)) => {
+    match feature {
+        Ok(feature) => {
             let level = StabilityLevel::Stable { since, allowed_through_unstable_modules: false };
             Some((feature, level))
         }
-        (Err(ErrorGuaranteed { .. }), _) | (_, Err(ErrorGuaranteed { .. })) => None,
+        Err(ErrorGuaranteed { .. }) => None,
     }
 }
 
@@ -556,11 +571,12 @@ fn gate_cfg(gated_cfg: &GatedCfg, cfg_span: Span, sess: &ParseSess, features: &F
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-struct Version {
-    major: u16,
-    minor: u16,
-    patch: u16,
+#[derive(Encodable, Decodable, Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(HashStable_Generic)]
+pub struct Version {
+    pub major: u16,
+    pub minor: u16,
+    pub patch: u16,
 }
 
 fn parse_version(s: &str, allow_appendix: bool) -> Option<Version> {
@@ -574,6 +590,12 @@ fn parse_version(s: &str, allow_appendix: bool) -> Option<Version> {
     let minor = digits.next()?.parse().ok()?;
     let patch = digits.next().unwrap_or("0").parse().ok()?;
     Some(Version { major, minor, patch })
+}
+
+impl Display for Version {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(formatter, "{}.{}.{}", self.major, self.minor, self.patch)
+    }
 }
 
 /// Evaluate a cfg-like condition (with `any` and `all`), using `eval` to
@@ -609,7 +631,7 @@ pub fn eval_condition(
                 sess.emit_warning(session_diagnostics::UnknownVersionLiteral { span: *span });
                 return false;
             };
-            let rustc_version = parse_version(env!("CFG_RELEASE"), true).unwrap();
+            let rustc_version = parse_version(CURRENT_RUSTC_VERSION, true).unwrap();
 
             // See https://github.com/rust-lang/rust/issues/64796#issuecomment-640851454 for details
             if sess.assume_incomplete_release {
