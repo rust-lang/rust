@@ -864,23 +864,18 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
 
         let result = self.probe_misc_candidate("coherence unknowable").enter(|ecx| {
             let trait_ref = goal.predicate.trait_ref(tcx);
-
             #[derive(Debug)]
-            enum FailureKind {
-                Overflow,
-                NoSolution(NoSolution),
-            }
+            struct Overflow;
             let lazily_normalize_ty = |ty| match ecx.try_normalize_ty(goal.param_env, ty) {
-                Ok(Some(ty)) => Ok(ty),
-                Ok(None) => Err(FailureKind::Overflow),
-                Err(e) => Err(FailureKind::NoSolution(e)),
+                Some(ty) => Ok(ty),
+                None => Err(Overflow),
             };
 
             match coherence::trait_ref_is_knowable(tcx, trait_ref, lazily_normalize_ty) {
-                Err(FailureKind::Overflow) => {
+                Err(Overflow) => {
                     ecx.evaluate_added_goals_and_make_canonical_response(Certainty::OVERFLOW)
                 }
-                Err(FailureKind::NoSolution(NoSolution)) | Ok(Ok(())) => Err(NoSolution),
+                Ok(Ok(())) => Err(NoSolution),
                 Ok(Err(_)) => {
                     ecx.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
                 }

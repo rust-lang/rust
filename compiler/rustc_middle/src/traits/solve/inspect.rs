@@ -122,6 +122,8 @@ pub enum ProbeStep<'tcx> {
     /// used whenever there are multiple candidates to prove the
     /// current goalby .
     NestedProbe(Probe<'tcx>),
+    CommitIfOkStart,
+    CommitIfOkSuccess,
 }
 
 /// What kind of probe we're in. In case the probe represents a candidate, or
@@ -142,6 +144,9 @@ pub enum ProbeKind<'tcx> {
     /// Used in the probe that wraps normalizing the non-self type for the unsize
     /// trait, which is also structurally matched on.
     UnsizeAssembly,
+    /// A call to `EvalCtxt::commit_if_ok` which failed, causing the work
+    /// to be discarded.
+    CommitIfOk,
     /// During upcasting from some source object to target object type, used to
     /// do a probe to find out what projection type(s) may be used to prove that
     /// the source type upholds all of the target type's object bounds.

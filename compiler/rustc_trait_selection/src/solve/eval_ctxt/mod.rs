@@ -34,6 +34,7 @@ use super::{search_graph::SearchGraph, Goal};
 pub use select::InferCtxtSelectExt;
 
 mod canonical;
+mod commit_if_ok;
 mod probe;
 mod select;
 

@@ -120,7 +120,6 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
         for step in &probe.steps {
             match step {
                 &inspect::ProbeStep::AddGoal(goal) => nested_goals.push(goal),
-                inspect::ProbeStep::EvaluateGoals(_) => (),
                 inspect::ProbeStep::NestedProbe(ref probe) => {
                     // Nested probes have to prove goals added in their parent
                     // but do not leak them, so we truncate the added goals
@@ -129,13 +128,17 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
                     self.candidates_recur(candidates, nested_goals, probe);
                     nested_goals.truncate(num_goals);
                 }
+                inspect::ProbeStep::EvaluateGoals(_)
+                | inspect::ProbeStep::CommitIfOkStart
+                | inspect::ProbeStep::CommitIfOkSuccess => (),
             }
         }
 
         match probe.kind {
             inspect::ProbeKind::NormalizedSelfTyAssembly
             | inspect::ProbeKind::UnsizeAssembly
-            | inspect::ProbeKind::UpcastProjectionCompatibility => (),
+            | inspect::ProbeKind::UpcastProjectionCompatibility
+            | inspect::ProbeKind::CommitIfOk => (),
             // We add a candidate for the root evaluation if there
             // is only one way to prove a given goal, e.g. for `WellFormed`.
             //

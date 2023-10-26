@@ -219,6 +219,8 @@ enum WipProbeStep<'tcx> {
     AddGoal(inspect::CanonicalState<'tcx, Goal<'tcx, ty::Predicate<'tcx>>>),
     EvaluateGoals(WipAddedGoalsEvaluation<'tcx>),
     NestedProbe(WipProbe<'tcx>),
+    CommitIfOkStart,
+    CommitIfOkSuccess,
 }
 
 impl<'tcx> WipProbeStep<'tcx> {
@@ -227,6 +229,8 @@ impl<'tcx> WipProbeStep<'tcx> {
             WipProbeStep::AddGoal(goal) => inspect::ProbeStep::AddGoal(goal),
             WipProbeStep::EvaluateGoals(eval) => inspect::ProbeStep::EvaluateGoals(eval.finalize()),
             WipProbeStep::NestedProbe(probe) => inspect::ProbeStep::NestedProbe(probe.finalize()),
+            WipProbeStep::CommitIfOkStart => inspect::ProbeStep::CommitIfOkStart,
+            WipProbeStep::CommitIfOkSuccess => inspect::ProbeStep::CommitIfOkSuccess,
         }
     }
 }
@@ -454,6 +458,29 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
                     }),
                     DebugSolver::Probe(probe),
                 ) => steps.push(WipProbeStep::NestedProbe(probe)),
+                _ => unreachable!(),
+            }
+        }
+    }
+
+    /// Used by `EvalCtxt::commit_if_ok` to flatten the work done inside
+    /// of the probe into the parent.
+    pub fn integrate_snapshot(&mut self, probe: ProofTreeBuilder<'tcx>) {
+        if let Some(this) = self.as_mut() {
+            match (this, *probe.state.unwrap()) {
+                (
+                    DebugSolver::Probe(WipProbe { steps, .. })
+                    | DebugSolver::GoalEvaluationStep(WipGoalEvaluationStep {
+                        evaluation: WipProbe { steps, .. },
+                        ..
+                    }),
+                    DebugSolver::Probe(probe),
+                ) => {
+                    steps.push(WipProbeStep::CommitIfOkStart);
+                    assert_eq!(probe.kind, None);
+                    steps.extend(probe.steps);
+                    steps.push(WipProbeStep::CommitIfOkSuccess);
+                }
                 _ => unreachable!(),
             }
         }
