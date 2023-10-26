@@ -2,23 +2,24 @@ use rustc_data_structures::fx::FxHashMap;
 
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
 use clippy_utils::paths;
-use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::ty::{is_type_diagnostic_item, match_type};
 use rustc_ast::ast::LitKind;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::LateContext;
+use rustc_middle::ty::Ty;
 use rustc_span::source_map::Spanned;
 use rustc_span::{sym, Span};
 
 use super::{NONSENSICAL_OPEN_OPTIONS, SUSPICIOUS_OPEN_OPTIONS};
 
+fn is_open_options(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
+    is_type_diagnostic_item(cx, ty, sym::FsOpenOptions) || match_type(cx, ty, &paths::TOKIO_IO_OPEN_OPTIONS)
+}
+
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>, recv: &'tcx Expr<'_>) {
     if let Some(method_id) = cx.typeck_results().type_dependent_def_id(e.hir_id)
         && let Some(impl_id) = cx.tcx.impl_of_method(method_id)
-        && (
-            is_type_diagnostic_item(cx, cx.tcx.type_of(impl_id).instantiate_identity(), sym::FsOpenOptions) ||
-            match_type(cx, cx.tcx.type_of(impl_id).instantiate_identity(), &paths::TOKIO_IO_OPEN_OPTIONS)
-        )
-
+        && is_open_options(cx, cx.tcx.type_of(impl_id).instantiate_identity())
     {
         let mut options = Vec::new();
         get_open_options(cx, recv, &mut options);
@@ -59,7 +60,7 @@ fn get_open_options(cx: &LateContext<'_>, argument: &Expr<'_>, options: &mut Vec
         let obj_ty = cx.typeck_results().expr_ty(receiver).peel_refs();
 
         // Only proceed if this is a call on some object of type std::fs::OpenOptions
-        if !arguments.is_empty() && (is_type_diagnostic_item(cx, obj_ty, sym::FsOpenOptions)) {
+        if !arguments.is_empty() && is_open_options(cx, obj_ty) {
             let argument_option = match arguments[0].kind {
                 ExprKind::Lit(span) => {
                     if let Spanned {
@@ -121,36 +122,39 @@ fn check_open_options(cx: &LateContext<'_>, settings: &[(OpenOption, Argument, S
     if let Some((Argument::Set(true), _)) = options.get(&OpenOption::Read)
         && let Some((Argument::Set(true), _)) = options.get(&OpenOption::Truncate)
         && let None | Some((Argument::Set(false), _)) = options.get(&OpenOption::Write)
-        {
-            span_lint(
-                cx,
-                NONSENSICAL_OPEN_OPTIONS,
-                span,
-                "file opened with `truncate` and `read`",
-            );
-        }
+    {
+        span_lint(
+            cx,
+            NONSENSICAL_OPEN_OPTIONS,
+            span,
+            "file opened with `truncate` and `read`",
+        );
+    }
 
     if let Some((Argument::Set(true), _)) = options.get(&OpenOption::Append)
         && let Some((Argument::Set(true), _)) = options.get(&OpenOption::Truncate)
-        {
-            span_lint(
-                cx,
-                NONSENSICAL_OPEN_OPTIONS,
-                span,
-                "file opened with `append` and `truncate`",
-            );
+    {
+        span_lint(
+            cx,
+            NONSENSICAL_OPEN_OPTIONS,
+            span,
+            "file opened with `append` and `truncate`",
+        );
     }
 
     if let Some((Argument::Set(true), create_span)) = options.get(&OpenOption::Create)
         && let None = options.get(&OpenOption::Truncate)
-        {
-            span_lint_and_help(
-                cx,
-                SUSPICIOUS_OPEN_OPTIONS,
-                *create_span,
-                "file opened with `create`, but `truncate` behavior not defined",
-                Some(span),
-                "if you intend to overwrite an existing file entirely, call `.truncate(true)`. if you instead know that you may want to keep some parts of the old file, call `.truncate(false)`"
-            );
+    {
+        span_lint_and_then(
+            cx,
+            SUSPICIOUS_OPEN_OPTIONS,
+            *create_span,
+            "file opened with `create`, but `truncate` behavior not defined",
+            |diag| {
+                diag
+                    .span_suggestion(create_span.shrink_to_hi(), "add", ".truncate(true)".to_string(), rustc_errors::Applicability::MaybeIncorrect)
+                    .help("if you intend to overwrite an existing file entirely, call `.truncate(true)`. if you instead know that you may want to keep some parts of the old file, call `.truncate(false)`");
+            },
+        );
     }
 }

@@ -1,5 +1,5 @@
 error: file opened with `truncate` and `read`
-  --> $DIR/open_options.rs:6:5
+  --> $DIR/open_options.rs:5:5
    |
 LL |     OpenOptions::new().read(true).truncate(true).open("foo.txt");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -8,66 +8,46 @@ LL |     OpenOptions::new().read(true).truncate(true).open("foo.txt");
    = help: to override `-D warnings` add `#[allow(clippy::nonsensical_open_options)]`
 
 error: file opened with `append` and `truncate`
-  --> $DIR/open_options.rs:9:5
+  --> $DIR/open_options.rs:8:5
    |
 LL |     OpenOptions::new().append(true).truncate(true).open("foo.txt");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: the method `read` is called more than once
-  --> $DIR/open_options.rs:12:35
+  --> $DIR/open_options.rs:11:35
    |
 LL |     OpenOptions::new().read(true).read(false).open("foo.txt");
    |                                   ^^^^^^^^^^^
 
 error: the method `create` is called more than once
-  --> $DIR/open_options.rs:14:37
+  --> $DIR/open_options.rs:16:10
    |
-LL |     OpenOptions::new().create(true).create(false).open("foo.txt");
-   |                                     ^^^^^^^^^^^^^
-
-error: file opened with `create`, but `truncate` behavior not defined
-  --> $DIR/open_options.rs:14:24
-   |
-LL |     OpenOptions::new().create(true).create(false).open("foo.txt");
-   |                        ^^^^^^^^^^^^
-   |
-help: if you intend to overwrite an existing file entirely, call `.truncate(true)`. if you instead know that you may want to keep some parts of the old file, call `.truncate(false)`
-  --> $DIR/open_options.rs:14:5
-   |
-LL |     OpenOptions::new().create(true).create(false).open("foo.txt");
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: `-D clippy::suspicious-open-options` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::suspicious_open_options)]`
+LL |         .create(false)
+   |          ^^^^^^^^^^^^^
 
 error: the method `write` is called more than once
-  --> $DIR/open_options.rs:16:36
+  --> $DIR/open_options.rs:19:36
    |
 LL |     OpenOptions::new().write(true).write(false).open("foo.txt");
    |                                    ^^^^^^^^^^^^
 
 error: the method `append` is called more than once
-  --> $DIR/open_options.rs:18:37
+  --> $DIR/open_options.rs:21:37
    |
 LL |     OpenOptions::new().append(true).append(false).open("foo.txt");
    |                                     ^^^^^^^^^^^^^
 
 error: the method `truncate` is called more than once
-  --> $DIR/open_options.rs:20:39
+  --> $DIR/open_options.rs:23:39
    |
 LL |     OpenOptions::new().truncate(true).truncate(false).open("foo.txt");
    |                                       ^^^^^^^^^^^^^^^
 
-error: file opened with `create`, but `truncate` behavior not defined
-  --> $DIR/open_options.rs:22:24
+error: the method `read` is called more than once
+  --> $DIR/open_options.rs:26:41
    |
-LL |     OpenOptions::new().create(true).open("foo.txt");
-   |                        ^^^^^^^^^^^^
-   |
-help: if you intend to overwrite an existing file entirely, call `.truncate(true)`. if you instead know that you may want to keep some parts of the old file, call `.truncate(false)`
-  --> $DIR/open_options.rs:22:5
-   |
-LL |     OpenOptions::new().create(true).open("foo.txt");
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     std::fs::File::options().read(true).read(false).open("foo.txt");
+   |                                         ^^^^^^^^^^^
 
-error: aborting due to 9 previous errors
+error: aborting due to 8 previous errors
 
