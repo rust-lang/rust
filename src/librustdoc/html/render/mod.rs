@@ -48,7 +48,7 @@ use std::str;
 use std::string::ToString;
 
 use askama::Template;
-use rustc_attr::{ConstStability, Deprecation, Since, StabilityLevel};
+use rustc_attr::{ConstStability, Deprecation, StabilityLevel, StableSince};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def_id::{DefId, DefIdSet};
@@ -912,10 +912,10 @@ fn assoc_method(
 /// consequence of the above rules.
 fn render_stability_since_raw_with_extra(
     w: &mut Buffer,
-    ver: Option<Since>,
+    ver: Option<StableSince>,
     const_stability: Option<ConstStability>,
-    containing_ver: Option<Since>,
-    containing_const_ver: Option<Since>,
+    containing_ver: Option<StableSince>,
+    containing_const_ver: Option<StableSince>,
     extra_class: &str,
 ) -> bool {
     let stable_version = if ver != containing_ver && let Some(ver) = &ver {
@@ -977,21 +977,21 @@ fn render_stability_since_raw_with_extra(
     !stability.is_empty()
 }
 
-fn since_to_string(since: &Since) -> Option<String> {
+fn since_to_string(since: &StableSince) -> Option<String> {
     match since {
-        Since::Version(since) => Some(since.to_string()),
-        Since::Current => Some(RustcVersion::CURRENT.to_string()),
-        Since::Err => None,
+        StableSince::Version(since) => Some(since.to_string()),
+        StableSince::Current => Some(RustcVersion::CURRENT.to_string()),
+        StableSince::Err => None,
     }
 }
 
 #[inline]
 fn render_stability_since_raw(
     w: &mut Buffer,
-    ver: Option<Since>,
+    ver: Option<StableSince>,
     const_stability: Option<ConstStability>,
-    containing_ver: Option<Since>,
-    containing_const_ver: Option<Since>,
+    containing_ver: Option<StableSince>,
+    containing_const_ver: Option<StableSince>,
 ) -> bool {
     render_stability_since_raw_with_extra(
         w,

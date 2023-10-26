@@ -139,7 +139,7 @@ pub enum StabilityLevel {
     /// `#[stable]`
     Stable {
         /// Rust release which stabilized this feature.
-        since: Since,
+        since: StableSince,
         /// Is this item allowed to be referred to on stable, despite being contained in unstable
         /// modules?
         allowed_through_unstable_modules: bool,
@@ -149,7 +149,7 @@ pub enum StabilityLevel {
 /// Rust release in which a feature is stabilized.
 #[derive(Encodable, Decodable, PartialEq, Copy, Clone, Debug, Eq, Hash)]
 #[derive(HashStable_Generic)]
-pub enum Since {
+pub enum StableSince {
     Version(RustcVersion),
     /// Stabilized in the upcoming version, whatever number that is.
     Current,
@@ -378,16 +378,16 @@ fn parse_stability(sess: &Session, attr: &Attribute) -> Option<(Symbol, Stabilit
 
     let since = if let Some(since) = since {
         if since.as_str() == VERSION_PLACEHOLDER {
-            Since::Current
+            StableSince::Current
         } else if let Some(version) = parse_version(since) {
-            Since::Version(version)
+            StableSince::Version(version)
         } else {
             sess.emit_err(session_diagnostics::InvalidSince { span: attr.span });
-            Since::Err
+            StableSince::Err
         }
     } else {
         sess.emit_err(session_diagnostics::MissingSince { span: attr.span });
-        Since::Err
+        StableSince::Err
     };
 
     match feature {

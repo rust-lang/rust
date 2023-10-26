@@ -3,7 +3,7 @@
 
 use crate::errors;
 use rustc_attr::{
-    self as attr, ConstStability, Since, Stability, StabilityLevel, Unstable, UnstableReason,
+    self as attr, ConstStability, Stability, StabilityLevel, StableSince, Unstable, UnstableReason,
     VERSION_PLACEHOLDER,
 };
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
@@ -227,10 +227,10 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
                 (&depr.as_ref().and_then(|(d, _)| d.since), &stab.level)
             {
                 match stab_since {
-                    Since::Current => {
+                    StableSince::Current => {
                         self.tcx.sess.emit_err(errors::CannotStabilizeDeprecated { span, item_sp });
                     }
-                    Since::Version(stab_since) => {
+                    StableSince::Version(stab_since) => {
                         // Explicit version of iter::order::lt to handle parse errors properly
                         for (dep_v, stab_v) in iter::zip(
                             dep_since.as_str().split('.'),
@@ -260,7 +260,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
                             }
                         }
                     }
-                    Since::Err => {
+                    StableSince::Err => {
                         // An error already reported. Assume the unparseable stabilization
                         // version is older than the deprecation version.
                     }
