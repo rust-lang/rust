@@ -27,6 +27,7 @@ use crate::core::config::flags::Subcommand;
 use crate::core::config::TargetSelection;
 use crate::utils;
 use crate::utils::cache::{Interned, INTERNER};
+use crate::utils::exec::BootstrapCommand;
 use crate::utils::helpers::{
     self, add_link_lib_path, dylib_path, dylib_path_var, output, t, up_to_date,
 };
@@ -808,8 +809,8 @@ impl Step for Clippy {
 
         let _guard = builder.msg_sysroot_tool(Kind::Test, compiler.stage, "clippy", host, host);
 
-        #[allow(deprecated)] // Clippy reports errors if it blessed the outputs
-        if builder.config.try_run(&mut cargo).is_ok() {
+        // Clippy reports errors if it blessed the outputs
+        if builder.run_cmd(BootstrapCommand::from(&mut cargo).allow_failure()) {
             // The tests succeeded; nothing to do.
             return;
         }
@@ -3094,7 +3095,7 @@ impl Step for CodegenCranelift {
             .arg("testsuite.extended_sysroot");
         cargo.args(builder.config.test_args());
 
-        #[allow(deprecated)]
-        builder.config.try_run(&mut cargo.into()).unwrap();
+        let mut cmd: Command = cargo.into();
+        builder.run_cmd(BootstrapCommand::from(&mut cmd).fail_fast());
     }
 }

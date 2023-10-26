@@ -8,6 +8,7 @@ use crate::core::build_steps::toolstate::ToolState;
 use crate::core::builder::{Builder, Cargo as CargoCommand, RunConfig, ShouldRun, Step};
 use crate::core::config::TargetSelection;
 use crate::utils::channel::GitInfo;
+use crate::utils::exec::BootstrapCommand;
 use crate::utils::helpers::{add_dylib_path, exe, t};
 use crate::Compiler;
 use crate::Mode;
@@ -108,8 +109,8 @@ impl Step for ToolBuild {
         );
 
         let mut cargo = Command::from(cargo);
-        #[allow(deprecated)] // we check this in `is_optional_tool` in a second
-        let is_expected = builder.config.try_run(&mut cargo).is_ok();
+        // we check this in `is_optional_tool` in a second
+        let is_expected = builder.run_cmd(BootstrapCommand::from(&mut cargo).allow_failure());
 
         builder.save_toolstate(
             tool,
