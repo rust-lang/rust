@@ -362,8 +362,13 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                         // currently use this mode so we have to allow it -- but we absolutely
                         // shouldn't let any more targets do that.
                         // (Also see <https://github.com/rust-lang/rust/issues/115666>.)
+                        //
+                        // The unstable api `PtxKernel` also uses Direct for now.
+                        // It needs to switch to something else before stabilization can happen.
+                        // (Tracking issue abi_ptx: https://github.com/rust-lang/rust/issues/38788)
                         assert!(
-                            matches!(&*cx.tcx.sess.target.arch, "wasm32" | "wasm64"),
+                            matches!(&*cx.tcx.sess.target.arch, "wasm32" | "wasm64")
+                                || self.conv == Conv::PtxKernel,
                             "`PassMode::Direct` for aggregates only allowed on wasm targets\nProblematic type: {:#?}",
                             arg.layout,
                         );
