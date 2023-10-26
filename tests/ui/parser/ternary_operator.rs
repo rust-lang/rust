@@ -49,6 +49,13 @@ fn c() { //~ NOTE this function should return `Result` or `Option` to accept `?`
     //~| NOTE in this expansion of desugaring of operator `?`
 }
 
+fn bad() {
+    // regression test for #117208
+    v ? return;
+    //~^ ERROR expected one of
+    //~| NOTE expected one of
+}
+
 fn main() { //~ NOTE this function should return `Result` or `Option` to accept `?`
     let x = 5 > 2 ? { let x = vec![]: Vec<u16>; x } : { false };
     //~^ ERROR Rust has no ternary operator

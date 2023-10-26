@@ -1454,13 +1454,11 @@ impl<'a> Parser<'a> {
                     }
                     Err(err) => {
                         err.cancel();
-                        self.restore_snapshot(snapshot);
                     }
                 };
             }
-        } else {
-            self.restore_snapshot(snapshot);
-        };
+        }
+        self.restore_snapshot(snapshot);
 
         false
     }
