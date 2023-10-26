@@ -11,6 +11,7 @@
 // LLVM says "instruction requires: armv6k"
 #[cfg(any(target_feature = "v6", target_arch = "aarch64", doc))]
 #[inline(always)]
+#[unstable(feature = "stdarch_arm_hints", issue = "117218")]
 pub unsafe fn __wfi() {
     hint(HINT_WFI);
 }
@@ -24,6 +25,7 @@ pub unsafe fn __wfi() {
 // LLVM says "instruction requires: armv6k"
 #[cfg(any(target_feature = "v6", target_arch = "aarch64", doc))]
 #[inline(always)]
+#[unstable(feature = "stdarch_arm_hints", issue = "117218")]
 pub unsafe fn __wfe() {
     hint(HINT_WFE);
 }
@@ -36,6 +38,7 @@ pub unsafe fn __wfe() {
 // LLVM says "instruction requires: armv6k"
 #[cfg(any(target_feature = "v6", target_arch = "aarch64", doc))]
 #[inline(always)]
+#[unstable(feature = "stdarch_arm_hints", issue = "117218")]
 pub unsafe fn __sev() {
     hint(HINT_SEV);
 }
@@ -52,6 +55,7 @@ pub unsafe fn __sev() {
     doc,
 ))]
 #[inline(always)]
+#[unstable(feature = "stdarch_arm_hints", issue = "117218")]
 pub unsafe fn __sevl() {
     hint(HINT_SEVL);
 }
@@ -65,6 +69,7 @@ pub unsafe fn __sevl() {
 // LLVM says "instruction requires: armv6k"
 #[cfg(any(target_feature = "v6", target_arch = "aarch64", doc))]
 #[inline(always)]
+#[unstable(feature = "stdarch_arm_hints", issue = "117218")]
 pub unsafe fn __yield() {
     hint(HINT_YIELD);
 }
@@ -76,6 +81,7 @@ pub unsafe fn __yield() {
 /// another instruction. It is not guaranteed that inserting this instruction
 /// will increase execution time.
 #[inline(always)]
+#[unstable(feature = "stdarch_arm_hints", issue = "117218")]
 pub unsafe fn __nop() {
     crate::arch::asm!("nop", options(nomem, nostack, preserves_flags));
 }

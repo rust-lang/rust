@@ -57,6 +57,7 @@ mod barrier;
 pub use self::barrier::*;
 
 mod hints;
+#[unstable(feature = "stdarch_arm_hints", issue = "117218")]
 pub use self::hints::*;
 
 mod crc;
