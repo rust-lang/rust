@@ -15,6 +15,7 @@ use stdarch_test::assert_instr;
 #[inline]
 #[target_feature(enable = "crc")]
 #[cfg_attr(test, assert_instr(crc32x))]
+#[unstable(feature = "stdarch_arm_crc32", issue = "117215")]
 pub unsafe fn __crc32d(crc: u32, data: u64) -> u32 {
     crc32x_(crc, data)
 }
@@ -25,6 +26,7 @@ pub unsafe fn __crc32d(crc: u32, data: u64) -> u32 {
 #[inline]
 #[target_feature(enable = "crc")]
 #[cfg_attr(test, assert_instr(crc32cx))]
+#[unstable(feature = "stdarch_arm_crc32", issue = "117215")]
 pub unsafe fn __crc32cd(crc: u32, data: u64) -> u32 {
     crc32cx_(crc, data)
 }

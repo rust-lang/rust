@@ -30,6 +30,7 @@ use stdarch_test::assert_instr;
 #[target_feature(enable = "crc")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(test, assert_instr(crc32b))]
+#[unstable(feature = "stdarch_arm_crc32", issue = "117215")]
 pub unsafe fn __crc32b(crc: u32, data: u8) -> u32 {
     crc32b_(crc, data as u32)
 }
@@ -41,6 +42,7 @@ pub unsafe fn __crc32b(crc: u32, data: u8) -> u32 {
 #[target_feature(enable = "crc")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(test, assert_instr(crc32h))]
+#[unstable(feature = "stdarch_arm_crc32", issue = "117215")]
 pub unsafe fn __crc32h(crc: u32, data: u16) -> u32 {
     crc32h_(crc, data as u32)
 }
@@ -52,6 +54,7 @@ pub unsafe fn __crc32h(crc: u32, data: u16) -> u32 {
 #[target_feature(enable = "crc")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(test, assert_instr(crc32w))]
+#[unstable(feature = "stdarch_arm_crc32", issue = "117215")]
 pub unsafe fn __crc32w(crc: u32, data: u32) -> u32 {
     crc32w_(crc, data)
 }
@@ -63,6 +66,7 @@ pub unsafe fn __crc32w(crc: u32, data: u32) -> u32 {
 #[target_feature(enable = "crc")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(test, assert_instr(crc32cb))]
+#[unstable(feature = "stdarch_arm_crc32", issue = "117215")]
 pub unsafe fn __crc32cb(crc: u32, data: u8) -> u32 {
     crc32cb_(crc, data as u32)
 }
@@ -74,6 +78,7 @@ pub unsafe fn __crc32cb(crc: u32, data: u8) -> u32 {
 #[target_feature(enable = "crc")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(test, assert_instr(crc32ch))]
+#[unstable(feature = "stdarch_arm_crc32", issue = "117215")]
 pub unsafe fn __crc32ch(crc: u32, data: u16) -> u32 {
     crc32ch_(crc, data as u32)
 }
@@ -85,6 +90,7 @@ pub unsafe fn __crc32ch(crc: u32, data: u16) -> u32 {
 #[target_feature(enable = "crc")]
 #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
 #[cfg_attr(test, assert_instr(crc32cw))]
+#[unstable(feature = "stdarch_arm_crc32", issue = "117215")]
 pub unsafe fn __crc32cw(crc: u32, data: u32) -> u32 {
     crc32cw_(crc, data)
 }

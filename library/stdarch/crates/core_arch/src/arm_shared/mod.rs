@@ -59,9 +59,8 @@ pub use self::barrier::*;
 mod hints;
 pub use self::hints::*;
 
-#[cfg(any(target_arch = "aarch64", target_feature = "v7", doc))]
 mod crc;
-#[cfg(any(target_arch = "aarch64", target_feature = "v7", doc))]
+#[unstable(feature = "stdarch_arm_crc32", issue = "117215")]
 pub use crc::*;
 
 // NEON intrinsics are currently broken on big-endian, so don't expose them. (#1484)

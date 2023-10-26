@@ -17,6 +17,7 @@ mod tme;
 pub use self::tme::*;
 
 mod crc;
+#[unstable(feature = "stdarch_arm_crc32", issue = "117215")]
 pub use self::crc::*;
 
 mod prefetch;
