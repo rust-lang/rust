@@ -1,4 +1,4 @@
-//! Code to save/load the dep-graph from files.
+//! Code to load the dep-graph from files.
 
 use crate::errors;
 use rustc_data_structures::memmap::Mmap;
