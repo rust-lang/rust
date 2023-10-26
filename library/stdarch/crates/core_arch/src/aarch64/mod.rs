@@ -14,6 +14,7 @@ mod neon;
 pub use self::neon::*;
 
 mod tme;
+#[unstable(feature = "stdarch_aarch64_tme", issue = "117216")]
 pub use self::tme::*;
 
 mod crc;

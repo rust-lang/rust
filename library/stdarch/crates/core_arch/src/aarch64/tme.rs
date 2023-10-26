@@ -29,39 +29,51 @@ extern "unadjusted" {
 }
 
 /// Transaction successfully started.
+#[unstable(feature = "stdarch_aarch64_tme", issue = "117216")]
 pub const _TMSTART_SUCCESS: u64 = 0x00_u64;
 
 /// Extraction mask for failure reason
+#[unstable(feature = "stdarch_aarch64_tme", issue = "117216")]
 pub const _TMFAILURE_REASON: u64 = 0x00007FFF_u64;
 
 /// Transaction retry is possible.
+#[unstable(feature = "stdarch_aarch64_tme", issue = "117216")]
 pub const _TMFAILURE_RTRY: u64 = 1 << 15;
 
 /// Transaction executed a TCANCEL instruction
+#[unstable(feature = "stdarch_aarch64_tme", issue = "117216")]
 pub const _TMFAILURE_CNCL: u64 = 1 << 16;
 
 /// Transaction aborted because a conflict occurred
+#[unstable(feature = "stdarch_aarch64_tme", issue = "117216")]
 pub const _TMFAILURE_MEM: u64 = 1 << 17;
 
 /// Fallback error type for any other reason
+#[unstable(feature = "stdarch_aarch64_tme", issue = "117216")]
 pub const _TMFAILURE_IMP: u64 = 1 << 18;
 
 /// Transaction aborted because a non-permissible operation was attempted
+#[unstable(feature = "stdarch_aarch64_tme", issue = "117216")]
 pub const _TMFAILURE_ERR: u64 = 1 << 19;
 
 /// Transaction aborted due to read or write set limit was exceeded
+#[unstable(feature = "stdarch_aarch64_tme", issue = "117216")]
 pub const _TMFAILURE_SIZE: u64 = 1 << 20;
 
 /// Transaction aborted due to transactional nesting level was exceeded
+#[unstable(feature = "stdarch_aarch64_tme", issue = "117216")]
 pub const _TMFAILURE_NEST: u64 = 1 << 21;
 
 /// Transaction aborted due to a debug trap.
+#[unstable(feature = "stdarch_aarch64_tme", issue = "117216")]
 pub const _TMFAILURE_DBG: u64 = 1 << 22;
 
 /// Transaction failed from interrupt
+#[unstable(feature = "stdarch_aarch64_tme", issue = "117216")]
 pub const _TMFAILURE_INT: u64 = 1 << 23;
 
 /// Indicates a TRIVIAL version of TM is available
+#[unstable(feature = "stdarch_aarch64_tme", issue = "117216")]
 pub const _TMFAILURE_TRIVIAL: u64 = 1 << 24;
 
 /// Starts a new transaction. When the transaction starts successfully the return value is 0.
@@ -72,6 +84,7 @@ pub const _TMFAILURE_TRIVIAL: u64 = 1 << 24;
 #[inline]
 #[target_feature(enable = "tme")]
 #[cfg_attr(test, assert_instr(tstart))]
+#[unstable(feature = "stdarch_aarch64_tme", issue = "117216")]
 pub unsafe fn __tstart() -> u64 {
     aarch64_tstart()
 }
@@ -84,6 +97,7 @@ pub unsafe fn __tstart() -> u64 {
 #[inline]
 #[target_feature(enable = "tme")]
 #[cfg_attr(test, assert_instr(tcommit))]
+#[unstable(feature = "stdarch_aarch64_tme", issue = "117216")]
 pub unsafe fn __tcommit() {
     aarch64_tcommit()
 }
@@ -95,6 +109,7 @@ pub unsafe fn __tcommit() {
 #[target_feature(enable = "tme")]
 #[cfg_attr(test, assert_instr(tcancel, IMM16 = 0x0))]
 #[rustc_legacy_const_generics(0)]
+#[unstable(feature = "stdarch_aarch64_tme", issue = "117216")]
 pub unsafe fn __tcancel<const IMM16: u64>() {
     static_assert!(IMM16 <= 65535);
     aarch64_tcancel(IMM16);
@@ -107,6 +122,7 @@ pub unsafe fn __tcancel<const IMM16: u64>() {
 #[inline]
 #[target_feature(enable = "tme")]
 #[cfg_attr(test, assert_instr(ttest))]
+#[unstable(feature = "stdarch_aarch64_tme", issue = "117216")]
 pub unsafe fn __ttest() -> u64 {
     aarch64_ttest()
 }
