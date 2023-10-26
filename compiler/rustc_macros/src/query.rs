@@ -97,6 +97,9 @@ struct QueryModifiers {
     /// A cycle error results in a delay_bug call
     cycle_delay_bug: Option<Ident>,
 
+    /// A cycle error results in a stashed cycle error that can be unstashed and canceled later
+    cycle_stash: Option<Ident>,
+
     /// Don't hash the result, instead just mark a query red if it runs
     no_hash: Option<Ident>,
 
@@ -127,6 +130,7 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
     let mut desc = None;
     let mut fatal_cycle = None;
     let mut cycle_delay_bug = None;
+    let mut cycle_stash = None;
     let mut no_hash = None;
     let mut anon = None;
     let mut eval_always = None;
@@ -181,6 +185,8 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
             try_insert!(fatal_cycle = modifier);
         } else if modifier == "cycle_delay_bug" {
             try_insert!(cycle_delay_bug = modifier);
+        } else if modifier == "cycle_stash" {
+            try_insert!(cycle_stash = modifier);
         } else if modifier == "no_hash" {
             try_insert!(no_hash = modifier);
         } else if modifier == "anon" {
@@ -208,6 +214,7 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
         desc,
         fatal_cycle,
         cycle_delay_bug,
+        cycle_stash,
         no_hash,
         anon,
         eval_always,
@@ -329,6 +336,7 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
             fatal_cycle,
             arena_cache,
             cycle_delay_bug,
+            cycle_stash,
             no_hash,
             anon,
             eval_always,

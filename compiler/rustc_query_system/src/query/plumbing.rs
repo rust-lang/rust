@@ -19,7 +19,7 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::Lock;
 #[cfg(parallel_compiler)]
 use rustc_data_structures::{outline, sync};
-use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed, FatalError};
+use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed, FatalError, StashKey};
 use rustc_span::{Span, DUMMY_SP};
 use std::cell::Cell;
 use std::collections::hash_map::Entry;
@@ -131,6 +131,17 @@ where
         }
         DelayBug => {
             let guar = error.delay_as_bug();
+            query.value_from_cycle_error(*qcx.dep_context(), &cycle_error.cycle, guar)
+        }
+        Stash => {
+            let guar = if let Some(root) = cycle_error.cycle.first()
+                && let Some(span) = root.query.span
+            {
+                error.stash(span, StashKey::Cycle);
+                qcx.dep_context().sess().delay_span_bug(span, "delayed cycle error")
+            } else {
+                error.emit()
+            };
             query.value_from_cycle_error(*qcx.dep_context(), &cycle_error.cycle, guar)
         }
     }

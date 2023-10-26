@@ -3071,6 +3071,13 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 );
             }
         };
+
+        if let Some(diag) =
+            self.tcx.sess.diagnostic().steal_diagnostic(self.tcx.def_span(def_id), StashKey::Cycle)
+        {
+            diag.cancel();
+        }
+
         err
     }
 
