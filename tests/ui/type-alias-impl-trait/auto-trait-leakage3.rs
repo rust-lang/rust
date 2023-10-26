@@ -14,7 +14,6 @@ mod m {
 
     pub fn bar() {
         is_send(foo());
-        //~^ ERROR: cannot check whether the hidden type of `auto_trait_leakage3[211d]::m::Foo::{opaque#0}
     }
 
     fn is_send<T: Send>(_: T) {}

@@ -3071,6 +3071,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 );
             }
         };
+        err.delay_as_bug();
         err
     }
 

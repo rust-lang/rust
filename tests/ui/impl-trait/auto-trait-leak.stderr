@@ -59,30 +59,6 @@ LL | fn cycle1() -> impl Clone {
    |                ^^^^^^^^^^
    = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
-error: cannot check whether the hidden type of opaque type satisfies auto traits
-  --> $DIR/auto-trait-leak.rs:20:10
-   |
-LL |     send(cycle1().clone());
-   |     ---- ^^^^^^^^^^^^^^^^
-   |     |
-   |     required by a bound introduced by this call
-   |
-note: opaque type is declared here
-  --> $DIR/auto-trait-leak.rs:11:16
-   |
-LL | fn cycle1() -> impl Clone {
-   |                ^^^^^^^^^^
-note: this item depends on auto traits of the hidden type, but may also be registering the hidden type. This is not supported right now. You can try moving the opaque type and the item that actually registers a hidden type into a new submodule
-  --> $DIR/auto-trait-leak.rs:19:4
-   |
-LL | fn cycle2() -> impl Clone {
-   |    ^^^^^^
-note: required by a bound in `send`
-  --> $DIR/auto-trait-leak.rs:4:12
-   |
-LL | fn send<T: Send>(_: T) {}
-   |            ^^^^ required by this bound in `send`
-
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0391`.

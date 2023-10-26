@@ -14,7 +14,6 @@ mod m {
 
     pub fn bar() {
         is_send(foo()); // Today: error
-        //~^ ERROR: cannot check whether the hidden type of `inference_cycle[4ecc]::m::Foo::{opaque#0}` satisfies auto traits
     }
 
     fn baz() -> Foo {
