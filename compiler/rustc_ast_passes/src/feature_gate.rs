@@ -177,29 +177,25 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         // Check unstable flavors of the `#[doc]` attribute.
         if attr.has_name(sym::doc) {
             for nested_meta in attr.meta_item_list().unwrap_or_default() {
-                macro_rules! gate_doc { ($($name:ident => $feature:ident)*) => {
-                    $(if nested_meta.has_name(sym::$name) {
-                        let msg = concat!("`#[doc(", stringify!($name), ")]` is experimental");
+                macro_rules! gate_doc { ($($s:literal { $($name:ident => $feature:ident)* })*) => {
+                    $($(if nested_meta.has_name(sym::$name) {
+                        let msg = concat!("`#[doc(", stringify!($name), ")]` is ", $s);
                         gate_feature_post!(self, $feature, attr.span, msg);
-                    })*
+                    })*)*
                 }}
 
                 gate_doc!(
-                    cfg => doc_cfg
-                    cfg_hide => doc_cfg_hide
-                    masked => doc_masked
-                    notable_trait => doc_notable_trait
+                    "experimental" {
+                        cfg => doc_cfg
+                        cfg_hide => doc_cfg_hide
+                        masked => doc_masked
+                        notable_trait => doc_notable_trait
+                    }
+                    "meant for internal use only" {
+                        keyword => rustdoc_internals
+                        fake_variadic => rustdoc_internals
+                    }
                 );
-
-                if nested_meta.has_name(sym::keyword) {
-                    let msg = "`#[doc(keyword)]` is meant for internal use only";
-                    gate_feature_post!(self, rustdoc_internals, attr.span, msg);
-                }
-
-                if nested_meta.has_name(sym::fake_variadic) {
-                    let msg = "`#[doc(fake_variadic)]` is meant for internal use only";
-                    gate_feature_post!(self, rustdoc_internals, attr.span, msg);
-                }
             }
         }
         if !attr.is_doc_comment()
