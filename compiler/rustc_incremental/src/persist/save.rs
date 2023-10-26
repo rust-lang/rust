@@ -1,3 +1,4 @@
+use crate::assert_dep_graph::assert_dep_graph;
 use crate::errors;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::join;
@@ -39,7 +40,7 @@ pub fn save_dep_graph(tcx: TyCtxt<'_>) {
         let dep_graph_path = dep_graph_path(sess);
         let staging_dep_graph_path = staging_dep_graph_path(sess);
 
-        sess.time("assert_dep_graph", || crate::assert_dep_graph(tcx));
+        sess.time("assert_dep_graph", || assert_dep_graph(tcx));
         sess.time("check_dirty_clean", || dirty_clean::check_dirty_clean_annotations(tcx));
 
         if sess.opts.unstable_opts.incremental_info {

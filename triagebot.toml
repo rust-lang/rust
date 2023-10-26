@@ -621,6 +621,7 @@ compiler-team = [
 compiler-team-contributors = [
     "@compiler-errors",
     "@jackh726",
+    "@TaKO8Ki",
     "@WaffleLapkin",
     "@b-naber",
 ]
@@ -667,6 +668,7 @@ diagnostics = [
     "@compiler-errors",
     "@davidtwco",
     "@oli-obk",
+    "@TaKO8Ki",
 ]
 parser = [
     "@compiler-errors",

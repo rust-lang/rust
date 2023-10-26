@@ -335,7 +335,7 @@ impl Resolver<'_, '_> {
 
         for unused in visitor.unused_imports.values() {
             let mut fixes = Vec::new();
-            let mut spans = match calc_unused_spans(unused, unused.use_tree, unused.use_tree_id) {
+            let spans = match calc_unused_spans(unused, unused.use_tree, unused.use_tree_id) {
                 UnusedSpanResult::Used => continue,
                 UnusedSpanResult::FlatUnused(span, remove) => {
                     fixes.push((remove, String::new()));
@@ -353,20 +353,19 @@ impl Resolver<'_, '_> {
                 }
             };
 
-            let len = spans.len();
-            spans.sort();
-            let ms = MultiSpan::from_spans(spans.clone());
-            let mut span_snippets = spans
+            let ms = MultiSpan::from_spans(spans);
+
+            let mut span_snippets = ms
+                .primary_spans()
                 .iter()
-                .filter_map(|s| match tcx.sess.source_map().span_to_snippet(*s) {
-                    Ok(s) => Some(format!("`{s}`")),
-                    _ => None,
-                })
+                .filter_map(|span| tcx.sess.source_map().span_to_snippet(*span).ok())
+                .map(|s| format!("`{s}`"))
                 .collect::<Vec<String>>();
             span_snippets.sort();
+
             let msg = format!(
                 "unused import{}{}",
-                pluralize!(len),
+                pluralize!(ms.primary_spans().len()),
                 if !span_snippets.is_empty() {
                     format!(": {}", span_snippets.join(", "))
                 } else {
@@ -376,7 +375,7 @@ impl Resolver<'_, '_> {
 
             let fix_msg = if fixes.len() == 1 && fixes[0].0 == unused.item_span {
                 "remove the whole `use` item"
-            } else if spans.len() > 1 {
+            } else if ms.primary_spans().len() > 1 {
                 "remove the unused imports"
             } else {
                 "remove the unused import"

@@ -29,7 +29,7 @@ const CRATE_NAME: &str = "input";
 fn test_translation(_tcx: TyCtxt<'_>) -> ControlFlow<()> {
     let main_fn = stable_mir::entry_fn().unwrap();
     let body = main_fn.body();
-    let orig_ty = body.locals[0].ty;
+    let orig_ty = body.locals()[0].ty;
     let rustc_ty = rustc_internal::internal(&orig_ty);
     assert!(rustc_ty.is_unit());
     ControlFlow::Continue(())
