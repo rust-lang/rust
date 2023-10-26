@@ -10,51 +10,35 @@ use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_target::spec::abi;
 use thin_vec::ThinVec;
-use tracing::debug;
 
 use crate::errors;
 
 macro_rules! gate_feature_fn {
-    ($visitor: expr, $has_feature: expr, $span: expr, $name: expr, $explain: expr, $help: expr) => {{
-        let (visitor, has_feature, span, name, explain, help) =
-            (&*$visitor, $has_feature, $span, $name, $explain, $help);
-        let has_feature: bool = has_feature(visitor.features);
-        debug!("gate_feature(feature = {:?}, span = {:?}); has? {}", name, span, has_feature);
-        if !has_feature && !span.allows_unstable($name) {
-            feature_err(&visitor.sess.parse_sess, name, span, explain).help(help).emit();
+    ($visitor:expr, $has_feature:expr, $span:expr, $name:expr, $explain:expr, $help:expr) => {{
+        if !$has_feature($visitor.features) && !$span.allows_unstable($name) {
+            feature_err(&$visitor.sess.parse_sess, $name, $span, $explain).help($help).emit();
         }
     }};
-    ($visitor: expr, $has_feature: expr, $span: expr, $name: expr, $explain: expr) => {{
-        let (visitor, has_feature, span, name, explain) =
-            (&*$visitor, $has_feature, $span, $name, $explain);
-        let has_feature: bool = has_feature(visitor.features);
-        debug!("gate_feature(feature = {:?}, span = {:?}); has? {}", name, span, has_feature);
-        if !has_feature && !span.allows_unstable($name) {
-            feature_err(&visitor.sess.parse_sess, name, span, explain).emit();
+    ($visitor:expr, $has_feature:expr, $span:expr, $name:expr, $explain:expr) => {{
+        if !$has_feature($visitor.features) && !$span.allows_unstable($name) {
+            feature_err(&$visitor.sess.parse_sess, $name, $span, $explain).emit();
         }
     }};
-    (future_incompatible; $visitor: expr, $has_feature: expr, $span: expr, $name: expr, $explain: expr) => {{
-        let (visitor, has_feature, span, name, explain) =
-            (&*$visitor, $has_feature, $span, $name, $explain);
-        let has_feature: bool = has_feature(visitor.features);
-        debug!(
-            "gate_feature(feature = {:?}, span = {:?}); has? {} (future_incompatible)",
-            name, span, has_feature
-        );
-        if !has_feature && !span.allows_unstable($name) {
-            feature_warn(&visitor.sess.parse_sess, name, span, explain);
+    (future_incompatible; $visitor:expr, $has_feature:expr, $span:expr, $name:expr, $explain:expr) => {{
+        if !$has_feature($visitor.features) && !$span.allows_unstable($name) {
+            feature_warn(&$visitor.sess.parse_sess, $name, $span, $explain);
         }
     }};
 }
 
 macro_rules! gate_feature_post {
-    ($visitor: expr, $feature: ident, $span: expr, $explain: expr, $help: expr) => {
-        gate_feature_fn!($visitor, |x: &Features| x.$feature, $span, sym::$feature, $explain, $help)
+    ($visitor:expr, $feature:ident, $span:expr, $explain:expr, $help:expr) => {
+        gate_feature_fn!($visitor, |x:&Features| x.$feature, $span, sym::$feature, $explain, $help)
     };
-    ($visitor: expr, $feature: ident, $span: expr, $explain: expr) => {
-        gate_feature_fn!($visitor, |x: &Features| x.$feature, $span, sym::$feature, $explain)
+    ($visitor:expr, $feature:ident, $span:expr, $explain:expr) => {
+        gate_feature_fn!($visitor, |x:&Features| x.$feature, $span, sym::$feature, $explain)
     };
-    (future_incompatible; $visitor: expr, $feature: ident, $span: expr, $explain: expr) => {
+    (future_incompatible; $visitor:expr, $feature:ident, $span:expr, $explain:expr) => {
         gate_feature_fn!(future_incompatible; $visitor, |x: &Features| x.$feature, $span, sym::$feature, $explain)
     };
 }
