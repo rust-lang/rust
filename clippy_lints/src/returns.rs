@@ -1,5 +1,6 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then, span_lint_hir_and_then};
 use clippy_utils::source::{snippet_opt, snippet_with_context};
+use clippy_utils::sugg::has_enclosing_paren;
 use clippy_utils::visitors::{for_each_expr_with_closures, Descend};
 use clippy_utils::{fn_def_id, is_from_proc_macro, path_to_local_id, span_find_starting_semi};
 use core::ops::ControlFlow;
@@ -213,6 +214,9 @@ impl<'tcx> LateLintPass<'tcx> for Return {
 
                         if let Some(mut snippet) = snippet_opt(cx, initexpr.span) {
                             if !cx.typeck_results().expr_adjustments(retexpr).is_empty() {
+                                if !has_enclosing_paren(&snippet) {
+                                    snippet = format!("({snippet})");
+                                }
                                 snippet.push_str(" as _");
                             }
                             err.multipart_suggestion(
