@@ -287,9 +287,8 @@ impl<'tcx> Stable<'tcx> for mir::Body<'tcx> {
     type T = stable_mir::mir::Body;
 
     fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
-        stable_mir::mir::Body {
-            blocks: self
-                .basic_blocks
+        stable_mir::mir::Body::new(
+            self.basic_blocks
                 .iter()
                 .map(|block| stable_mir::mir::BasicBlock {
                     terminator: block.terminator().stable(tables),
@@ -300,15 +299,15 @@ impl<'tcx> Stable<'tcx> for mir::Body<'tcx> {
                         .collect(),
                 })
                 .collect(),
-            locals: self
-                .local_decls
+            self.local_decls
                 .iter()
                 .map(|decl| stable_mir::mir::LocalDecl {
                     ty: decl.ty.stable(tables),
                     span: decl.source_info.span.stable(tables),
                 })
                 .collect(),
-        }
+            self.arg_count,
+        )
     }
 }
 
