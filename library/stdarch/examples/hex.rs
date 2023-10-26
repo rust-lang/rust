@@ -12,7 +12,7 @@
 //!
 //! and you should see `746573740a` get printed out.
 
-#![feature(stdsimd, wasm_target_feature)]
+#![feature(wasm_target_feature)]
 #![cfg_attr(test, feature(test))]
 #![allow(
     clippy::unwrap_used,

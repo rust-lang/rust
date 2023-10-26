@@ -1,4 +1,4 @@
-#![feature(stdsimd)]
+#![feature(stdarch_internal, stdarch_arm_feature_detection)]
 #![allow(clippy::unwrap_used, clippy::use_debug, clippy::print_stdout)]
 #![cfg(any(
     target_arch = "arm",

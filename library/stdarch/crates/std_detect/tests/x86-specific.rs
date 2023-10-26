@@ -1,4 +1,3 @@
-#![feature(stdsimd)]
 #![cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 
 extern crate cupid;

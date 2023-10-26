@@ -7,8 +7,6 @@ The `core::arch` module implements architecture-dependent intrinsics (e.g. SIMD)
 
 `core::arch` is available as part of `libcore` and it is re-exported by
 `libstd`. Prefer using it via `core::arch` or `std::arch` than via this crate.
-Unstable features are often available in nightly Rust via the
-`feature(stdsimd)`.
 
 Using `core::arch` via this crate requires nightly Rust, and it can (and does)
 break often. The only cases in which you should consider using it via this crate

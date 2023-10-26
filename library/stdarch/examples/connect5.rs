@@ -28,7 +28,7 @@
 //! You should see a game self-playing. In the end of the game, it shows the average time for
 //! each move.
 
-#![feature(stdsimd, avx512_target_feature)]
+#![feature(avx512_target_feature, stdarch_x86_avx512)]
 #![feature(stmt_expr_attributes)]
 
 use rand::seq::SliceRandom;

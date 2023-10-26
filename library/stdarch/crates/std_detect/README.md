@@ -9,7 +9,7 @@ supports certain features, like SIMD instructions.
 
 `std::detect` APIs are available as part of `libstd`. Prefer using it via the
 standard library than through this crate. Unstable features of `std::detect` are
-available on nightly Rust behind the `feature(stdsimd)` feature-gate.
+available on nightly Rust behind various feature-gates.
 
 If you need run-time feature detection in `#[no_std]` environments, Rust `core`
 library cannot help you. By design, Rust `core` is platform independent, but

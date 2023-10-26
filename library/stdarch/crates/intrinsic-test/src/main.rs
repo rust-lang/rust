@@ -166,7 +166,6 @@ fn generate_rust_program(notices: &str, intrinsic: &Intrinsic, a32: bool) -> Str
     format!(
         r#"{notices}#![feature(simd_ffi)]
 #![feature(link_llvm_intrinsics)]
-#![feature(stdsimd)]
 #![allow(overflowing_literals)]
 #![allow(non_upper_case_globals)]
 use core_arch::arch::{target_arch}::*;

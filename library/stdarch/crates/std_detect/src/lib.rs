@@ -20,6 +20,8 @@
 #![cfg_attr(test, allow(unused_imports))]
 #![no_std]
 #![allow(internal_features)]
+// Temporary hack: needed to build against toolchains from before the mass feature renaming.
+#![feature(stdsimd)]
 
 #[cfg(test)]
 #[macro_use]
