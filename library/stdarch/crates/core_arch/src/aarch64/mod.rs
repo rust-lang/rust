@@ -10,6 +10,7 @@
 #[cfg(target_endian = "little")]
 mod neon;
 #[cfg(target_endian = "little")]
+#[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub use self::neon::*;
 
 mod tme;
@@ -21,6 +22,7 @@ pub use self::crc::*;
 mod prefetch;
 pub use self::prefetch::*;
 
+#[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub use super::arm_shared::*;
 
 #[cfg(test)]

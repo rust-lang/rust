@@ -5,6 +5,7 @@
 #[rustfmt::skip]
 mod generated;
 #[rustfmt::skip]
+#[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub use self::generated::*;
 
 // FIXME: replace neon with asimd
