@@ -7,7 +7,9 @@ use std::convert::TryFrom;
 use gccjit::{ComparisonOp, FunctionType, RValue, ToRValue, Type, UnaryOp, BinaryOp};
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
 use rustc_codegen_ssa::traits::{BackendTypes, BaseTypeMethods, BuilderMethods, OverflowOp};
-use rustc_middle::ty::Ty;
+use rustc_middle::ty::{ParamEnv, Ty};
+use rustc_target::abi::{Endian, call::{ArgAbi, ArgAttributes, Conv, FnAbi, PassMode}};
+use rustc_target::spec;
 
 use crate::builder::ToGccComp;
 use crate::{builder::Builder, common::{SignType, TypeReflection}, context::CodegenCx};
@@ -37,11 +39,10 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         }
         else {
             let element_type = typ.dyncast_array().expect("element type");
-            let values = [
+            self.from_low_high_rvalues(typ,
                 self.cx.context.new_unary_op(None, UnaryOp::BitwiseNegate, element_type, self.low(a)),
                 self.cx.context.new_unary_op(None, UnaryOp::BitwiseNegate, element_type, self.high(a)),
-            ];
-            self.cx.context.new_array_constructor(None, typ, &values)
+            )
         }
     }
 
@@ -100,7 +101,6 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             let condition = self.gcc_icmp(IntPredicate::IntNE, self.gcc_and(b, sixty_four), zero);
             self.llbb().end_with_conditional(None, condition, then_block, else_block);
 
-            // TODO(antoyo): take endianness into account.
             let shift_value = self.gcc_sub(b, sixty_four);
             let high = self.high(a);
             let sign =
@@ -110,11 +110,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                 else {
                     zero
                 };
-            let values = [
-                high >> shift_value,
-                sign,
-            ];
-            let array_value = self.context.new_array_constructor(None, a_type, &values);
+            let array_value = self.from_low_high_rvalues(a_type, high >> shift_value, sign);
             then_block.add_assignment(None, result, array_value);
             then_block.end_with_jump(None, after_block);
 
@@ -130,11 +126,10 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             let casted_low = self.context.new_cast(None, self.low(a), unsigned_type);
             let shifted_low = casted_low >> self.context.new_cast(None, b, unsigned_type);
             let shifted_low = self.context.new_cast(None, shifted_low, native_int_type);
-            let values = [
+            let array_value = self.from_low_high_rvalues(a_type,
                 (high << shift_value) | shifted_low,
                 high >> b,
-            ];
-            let array_value = self.context.new_array_constructor(None, a_type, &values);
+            );
             actual_else_block.add_assignment(None, result, array_value);
             actual_else_block.end_with_jump(None, after_block);
 
@@ -314,18 +309,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                                         _ => unreachable!(),
                                     },
                             };
-                        let a_type = lhs.get_type();
-                        let b_type = rhs.get_type();
-                        let param_a = self.context.new_parameter(None, a_type, "a");
-                        let param_b = self.context.new_parameter(None, b_type, "b");
-                        let result_field = self.context.new_field(None, a_type, "result");
-                        let overflow_field = self.context.new_field(None, self.bool_type, "overflow");
-                        let return_type = self.context.new_struct_type(None, "result_overflow", &[result_field, overflow_field]);
-                        let func = self.context.new_function(None, FunctionType::Extern, return_type.as_type(), &[param_a, param_b], func_name, false);
-                        let result = self.context.new_call(None, func, &[lhs, rhs]);
-                        let overflow = result.access_field(None, overflow_field);
-                        let int_result = result.access_field(None, result_field);
-                        return (int_result, overflow);
+                        return self.operation_with_overflow(func_name, lhs, rhs);
                     },
                     _ => {
                         match oop {
@@ -348,6 +332,54 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             .get_address(None);
         let overflow = self.overflow_call(intrinsic, &[lhs, rhs, res], None);
         (res.dereference(None).to_rvalue(), overflow)
+    }
+
+    pub fn operation_with_overflow(&self, func_name: &str, lhs: RValue<'gcc>, rhs: RValue<'gcc>) -> (RValue<'gcc>, RValue<'gcc>) {
+        let a_type = lhs.get_type();
+        let b_type = rhs.get_type();
+        let param_a = self.context.new_parameter(None, a_type, "a");
+        let param_b = self.context.new_parameter(None, b_type, "b");
+        let result_field = self.context.new_field(None, a_type, "result");
+        let overflow_field = self.context.new_field(None, self.bool_type, "overflow");
+
+        let ret_ty = Ty::new_tup(self.tcx, &[self.tcx.types.i128, self.tcx.types.bool]);
+        let layout = self.tcx.layout_of(ParamEnv::reveal_all().and(ret_ty)).unwrap();
+
+        let arg_abi = ArgAbi {
+            layout,
+            mode: PassMode::Direct(ArgAttributes::new()),
+        };
+        let mut fn_abi = FnAbi {
+            args: vec![arg_abi.clone(), arg_abi.clone()].into_boxed_slice(),
+            ret: arg_abi,
+            c_variadic: false,
+            fixed_count: 2,
+            conv: Conv::C,
+            can_unwind: false,
+        };
+        fn_abi.adjust_for_foreign_abi(self.cx, spec::abi::Abi::C {
+            unwind: false,
+        }).unwrap();
+
+        let indirect = matches!(fn_abi.ret.mode, PassMode::Indirect { .. });
+
+        let return_type = self.context.new_struct_type(None, "result_overflow", &[result_field, overflow_field]);
+        let result =
+            if indirect {
+                let return_value = self.current_func().new_local(None, return_type.as_type(), "return_value");
+                let return_param_type = return_type.as_type().make_pointer();
+                let return_param = self.context.new_parameter(None, return_param_type, "return_value");
+                let func = self.context.new_function(None, FunctionType::Extern, self.type_void(), &[return_param, param_a, param_b], func_name, false);
+                self.llbb().add_eval(None, self.context.new_call(None, func, &[return_value.get_address(None), lhs, rhs]));
+                return_value.to_rvalue()
+            }
+            else {
+                let func = self.context.new_function(None, FunctionType::Extern, return_type.as_type(), &[param_a, param_b], func_name, false);
+                self.context.new_call(None, func, &[lhs, rhs])
+            };
+        let overflow = result.access_field(None, overflow_field);
+        let int_result = result.access_field(None, result_field);
+        return (int_result, overflow);
     }
 
     pub fn gcc_icmp(&mut self, op: IntPredicate, mut lhs: RValue<'gcc>, mut rhs: RValue<'gcc>) -> RValue<'gcc> {
@@ -415,6 +447,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                     IntPredicate::IntNE => {
                         return self.context.new_comparison(None, ComparisonOp::NotEquals, cmp, self.context.new_rvalue_one(self.int_type));
                     },
+                    // TODO(antoyo): cast to u128 for unsigned comparison. See below.
                     IntPredicate::IntUGT => (ComparisonOp::Equals, 2),
                     IntPredicate::IntUGE => (ComparisonOp::GreaterThanEquals, 1),
                     IntPredicate::IntULT => (ComparisonOp::Equals, 0),
@@ -444,6 +477,18 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                     rhs = self.context.new_cast(None, rhs, a_type);
                 }
             }
+            match op {
+                IntPredicate::IntUGT | IntPredicate::IntUGE | IntPredicate::IntULT | IntPredicate::IntULE => {
+                    if !a_type.is_vector() {
+                        let unsigned_type = a_type.to_unsigned(&self.cx);
+                        lhs = self.context.new_cast(None, lhs, unsigned_type);
+                        rhs = self.context.new_cast(None, rhs, unsigned_type);
+                    }
+                },
+                // TODO(antoyo): we probably need to handle signed comparison for unsigned
+                // integers.
+                _ => (),
+            }
             self.context.new_comparison(None, op.to_gcc_comparison(), lhs, rhs)
         }
     }
@@ -455,11 +500,10 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             a ^ b
         }
         else {
-            let values = [
+            self.from_low_high_rvalues(a_type,
                 self.low(a) ^ self.low(b),
                 self.high(a) ^ self.high(b),
-            ];
-            self.context.new_array_constructor(None, a_type, &values)
+            )
         }
     }
 
@@ -505,12 +549,10 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             let condition = self.gcc_icmp(IntPredicate::IntNE, self.gcc_and(b, sixty_four), zero);
             self.llbb().end_with_conditional(None, condition, then_block, else_block);
 
-            // TODO(antoyo): take endianness into account.
-            let values = [
+            let array_value = self.from_low_high_rvalues(a_type,
                 zero,
                 self.low(a) << (b - sixty_four),
-            ];
-            let array_value = self.context.new_array_constructor(None, a_type, &values);
+            );
             then_block.add_assignment(None, result, array_value);
             then_block.end_with_jump(None, after_block);
 
@@ -521,16 +563,16 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             b0_block.end_with_jump(None, after_block);
 
             // NOTE: cast low to its unsigned type in order to perform a logical right shift.
+            // TODO(antoyo): adjust this ^ comment.
             let unsigned_type = native_int_type.to_unsigned(&self.cx);
             let casted_low = self.context.new_cast(None, self.low(a), unsigned_type);
             let shift_value = self.context.new_cast(None, sixty_four - b, unsigned_type);
             let high_low = self.context.new_cast(None, casted_low >> shift_value, native_int_type);
-            let values = [
+
+            let array_value = self.from_low_high_rvalues(a_type,
                 self.low(a) << b,
                 (self.high(a) << b) | high_low,
-            ];
-
-            let array_value = self.context.new_array_constructor(None, a_type, &values);
+            );
             actual_else_block.add_assignment(None, result, array_value);
             actual_else_block.end_with_jump(None, after_block);
 
@@ -546,16 +588,16 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         let arg_type = arg.get_type();
         if !self.is_native_int_type(arg_type) {
             let native_int_type = arg_type.dyncast_array().expect("get element type");
-            let lsb = self.context.new_array_access(None, arg, self.context.new_rvalue_from_int(self.int_type, 0)).to_rvalue();
+            let lsb = self.low(arg);
             let swapped_lsb = self.gcc_bswap(lsb, width / 2);
             let swapped_lsb = self.context.new_cast(None, swapped_lsb, native_int_type);
-            let msb = self.context.new_array_access(None, arg, self.context.new_rvalue_from_int(self.int_type, 1)).to_rvalue();
+            let msb = self.high(arg);
             let swapped_msb = self.gcc_bswap(msb, width / 2);
             let swapped_msb = self.context.new_cast(None, swapped_msb, native_int_type);
 
             // NOTE: we also need to swap the two elements here, in addition to swapping inside
             // the elements themselves like done above.
-            return self.context.new_array_constructor(None, arg_type, &[swapped_msb, swapped_lsb]);
+            return self.from_low_high_rvalues(arg_type, swapped_msb, swapped_lsb);
         }
 
         // TODO(antoyo): check if it's faster to use string literals and a
@@ -659,11 +701,10 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         else {
             assert!(!a_native && !b_native, "both types should either be native or non-native for or operation");
             let native_int_type = a_type.dyncast_array().expect("get element type");
-            let values = [
+            self.from_low_high_rvalues(a_type,
                 self.context.new_binary_op(None, operation, native_int_type, self.low(a), self.low(b)),
                 self.context.new_binary_op(None, operation, native_int_type, self.high(a), self.high(b)),
-            ];
-            self.context.new_array_constructor(None, a_type, &values)
+            )
         }
     }
 
@@ -687,11 +728,10 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             let zero = self.context.new_rvalue_zero(value_type);
             let is_negative = self.context.new_comparison(None, ComparisonOp::LessThan, value, zero);
             let is_negative = self.gcc_int_cast(is_negative, dest_element_type);
-            let values = [
+            self.from_low_high_rvalues(dest_typ,
                 self.context.new_cast(None, value, dest_element_type),
                 self.context.new_unary_op(None, UnaryOp::Minus, dest_element_type, is_negative),
-            ];
-            self.context.new_array_constructor(None, dest_typ, &values)
+            )
         }
         else {
             // Since u128 and i128 are the only types that can be unsupported, we know the type of
@@ -769,20 +809,47 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     }
 
     fn high(&self, value: RValue<'gcc>) -> RValue<'gcc> {
-        self.context.new_array_access(None, value, self.context.new_rvalue_from_int(self.int_type, 1))
+        let index =
+            match self.sess().target.options.endian {
+                Endian::Little => 1,
+                Endian::Big => 0,
+            };
+        self.context.new_array_access(None, value, self.context.new_rvalue_from_int(self.int_type, index))
             .to_rvalue()
     }
 
     fn low(&self, value: RValue<'gcc>) -> RValue<'gcc> {
-        self.context.new_array_access(None, value, self.context.new_rvalue_from_int(self.int_type, 0))
+        let index =
+            match self.sess().target.options.endian {
+                Endian::Little => 0,
+                Endian::Big => 1,
+            };
+        self.context.new_array_access(None, value, self.context.new_rvalue_from_int(self.int_type, index))
             .to_rvalue()
     }
 
+    fn from_low_high_rvalues(&self, typ: Type<'gcc>, low: RValue<'gcc>, high: RValue<'gcc>) -> RValue<'gcc> {
+        let (first, last) =
+            match self.sess().target.options.endian {
+                Endian::Little => (low, high),
+                Endian::Big => (high, low),
+            };
+
+        let values = [first, last];
+        self.context.new_array_constructor(None, typ, &values)
+    }
+
     fn from_low_high(&self, typ: Type<'gcc>, low: i64, high: i64) -> RValue<'gcc> {
+        let (first, last) =
+            match self.sess().target.options.endian {
+                Endian::Little => (low, high),
+                Endian::Big => (high, low),
+            };
+
         let native_int_type = typ.dyncast_array().expect("get element type");
         let values = [
-            self.context.new_rvalue_from_long(native_int_type, low),
-            self.context.new_rvalue_from_long(native_int_type, high),
+            self.context.new_rvalue_from_long(native_int_type, first),
+            self.context.new_rvalue_from_long(native_int_type, last),
         ];
         self.context.new_array_constructor(None, typ, &values)
     }

@@ -432,15 +432,21 @@ pub fn ignore_arg_cast(func_name: &str, index: usize, args_len: usize) -> bool {
 
 #[cfg(not(feature="master"))]
 pub fn intrinsic<'gcc, 'tcx>(name: &str, cx: &CodegenCx<'gcc, 'tcx>) -> Function<'gcc> {
-    match name {
-        "llvm.x86.xgetbv" | "llvm.x86.sse2.pause" => {
-            let gcc_name = "__builtin_trap";
-            let func = cx.context.get_builtin_function(gcc_name);
-            cx.functions.borrow_mut().insert(gcc_name.to_string(), func);
-            return func;
-        },
-        _ => unimplemented!("unsupported LLVM intrinsic {}", name),
-    }
+    let gcc_name =
+        match name {
+            "llvm.x86.sse2.pause" => {
+                // NOTE: pause is only a hint, so we use a dummy built-in because target built-ins
+                // are not supported in libgccjit 12.
+                "__builtin_inff"
+            },
+            "llvm.x86.xgetbv" => {
+                "__builtin_trap"
+            },
+            _ => unimplemented!("unsupported LLVM intrinsic {}", name),
+        };
+    let func = cx.context.get_builtin_function(gcc_name);
+    cx.functions.borrow_mut().insert(gcc_name.to_string(), func);
+    return func;
 }
 
 #[cfg(feature="master")]

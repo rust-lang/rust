@@ -151,7 +151,11 @@ function clean() {
 
 function mini_tests() {
     echo "[BUILD] mini_core"
-    $RUSTC example/mini_core.rs --crate-name mini_core --crate-type lib,dylib --target $TARGET_TRIPLE
+    crate_types="lib,dylib"
+    if [[ "$HOST_TRIPLE" != "$TARGET_TRIPLE" ]]; then
+        crate_types="lib"
+    fi
+    $RUSTC example/mini_core.rs --crate-name mini_core --crate-type $crate_types --target $TARGET_TRIPLE
 
     echo "[BUILD] example"
     $RUSTC example/example.rs --crate-type lib --target $TARGET_TRIPLE
@@ -166,6 +170,23 @@ function build_sysroot() {
     time ./build_sysroot/build_sysroot.sh $sysroot_channel
 }
 
+# TODO(GuillaumeGomez): when rewriting in Rust, refactor with the code in tests/lang_tests_common.rs if possible.
+function run_in_vm() {
+    vm_parent_dir=${CG_GCC_VM_DIR:-$(pwd)}
+    vm_dir=vm
+    exe=$1
+    exe_filename=$(basename $exe)
+    vm_home_dir=$vm_parent_dir/$vm_dir/home
+    vm_exe_path=$vm_home_dir/$exe_filename
+    inside_vm_exe_path=/home/$exe_filename
+    sudo cp $exe $vm_exe_path
+
+    shift
+    pushd $vm_parent_dir
+    sudo chroot $vm_dir qemu-m68k-static $inside_vm_exe_path $@
+    popd
+}
+
 function std_tests() {
     echo "[AOT] arbitrary_self_types_pointers_and_wrappers"
     $RUSTC example/arbitrary_self_types_pointers_and_wrappers.rs --crate-name arbitrary_self_types_pointers_and_wrappers --crate-type bin --target $TARGET_TRIPLE
@@ -174,9 +195,12 @@ function std_tests() {
     echo "[AOT] alloc_system"
     $RUSTC example/alloc_system.rs --crate-type lib --target "$TARGET_TRIPLE"
 
-    echo "[AOT] alloc_example"
-    $RUSTC example/alloc_example.rs --crate-type bin --target $TARGET_TRIPLE
-    $RUN_WRAPPER ./target/out/alloc_example
+    # FIXME: doesn't work on m68k.
+    if [[ "$HOST_TRIPLE" == "$TARGET_TRIPLE" ]]; then
+        echo "[AOT] alloc_example"
+        $RUSTC example/alloc_example.rs --crate-type bin --target $TARGET_TRIPLE
+        $RUN_WRAPPER ./target/out/alloc_example
+    fi
 
     echo "[AOT] dst_field_align"
     # FIXME(antoyo): Re-add -Zmir-opt-level=2 once rust-lang/rust#67529 is fixed.
@@ -225,7 +249,7 @@ verbose-tests = true
 [build]
 cargo = "$(rustup which cargo)"
 local-rebuild = true
-rustc = "$HOME/.rustup/toolchains/$rust_toolchain-$TARGET_TRIPLE/bin/rustc"
+rustc = "$HOME/.rustup/toolchains/$rust_toolchain-$HOST_TRIPLE/bin/rustc"
 
 [target.x86_64-unknown-linux-gnu]
 llvm-filecheck = "`which FileCheck-10 || which FileCheck-11 || which FileCheck-12 || which FileCheck-13 || which FileCheck-14`"
@@ -393,7 +417,7 @@ function test_rustc() {
     fi
 
     echo "[TEST] rustc test suite"
-    COMPILETEST_FORCE_STAGE0=1 ./x.py test --run always --stage 0 tests/ui/ --rustc-args "$RUSTC_ARGS"
+    COMPILETEST_FORCE_STAGE0=1 ./x.py test --run always --stage 0 tests/ui/ --rustc-args "$RUSTC_ARGS" # --target $TARGET_TRIPLE
 }
 
 function test_failing_rustc() {

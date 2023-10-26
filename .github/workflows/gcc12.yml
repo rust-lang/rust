@@ -1,4 +1,4 @@
-name: CI with sysroot compiled in release mode
+name: CI libgccjit 12
 
 on:
   - push
@@ -10,15 +10,27 @@ permissions:
 env:
   # Enable backtraces for easier debugging
   RUST_BACKTRACE: 1
+  TEST_FLAGS: "-Cpanic=abort -Zpanic-abort-tests"
+  # FIXME(antoyo): we need to set GCC_EXEC_PREFIX so that the linker can find the linker plugin.
+  # Not sure why it's not found otherwise.
+  GCC_EXEC_PREFIX: /usr/lib/gcc/
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     strategy:
       fail-fast: false
       matrix:
         commands: [
+          "--mini-tests",
+          "--std-tests",
+          # FIXME: re-enable asm tests when GCC can emit in the right syntax.
+          # "--asm-tests",
+          "--test-libcore",
+          "--extended-rand-tests",
+          "--extended-regex-example-tests",
+          "--extended-regex-tests",
           "--test-successful-rustc --nb-parts 2 --current-part 0",
           "--test-successful-rustc --nb-parts 2 --current-part 1",
         ]
@@ -27,23 +39,11 @@ jobs:
     - uses: actions/checkout@v3
 
     - name: Install packages
-      run: sudo apt-get install ninja-build ripgrep
-
-    - name: Download artifact
-      uses: dawidd6/action-download-artifact@v2
-      with:
-          workflow: main.yml
-          name: gcc-13
-          path: gcc-13
-          repo: antoyo/gcc
-          branch: "master"
-          event: push
-          search_artifacts: true # Because, instead, the action only check the last job ran and that won't work since we want multiple artifacts.
+      # `llvm-14-tools` is needed to install the `FileCheck` binary which is used for asm tests.
+      run: sudo apt-get install ninja-build ripgrep llvm-14-tools libgccjit-12-dev
 
     - name: Setup path to libgccjit
-      run: |
-          sudo dpkg --force-overwrite -i gcc-13/gcc-13.deb
-          echo /usr/lib/ > gcc_path
+      run: echo /usr/lib/gcc/x86_64-linux-gnu/12 > gcc_path
 
     - name: Set env
       run: |
@@ -75,20 +75,27 @@ jobs:
         path: target
         key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('rust-toolchain') }}
 
+    #- name: Cache rust repository
+      ## We only clone the rust repository for rustc tests
+      #if: ${{ contains(matrix.commands, 'rustc') }}
+      #uses: actions/cache@v3
+      #id: cache-rust-repository
+      #with:
+        #path: rust
+        #key: ${{ runner.os }}-packages-${{ hashFiles('rust/.git/HEAD') }}
+
     - name: Build
       run: |
-        ./y.sh prepare --only-libcore
-        EMBED_LTO_BITCODE=1 ./y.sh build --release --release-sysroot
-        cargo test
+        ./y.sh prepare --only-libcore --libgccjit12-patches
+        ./y.sh build --no-default-features --sysroot-panic-abort
+        cargo test --no-default-features
         ./clean_all.sh
 
     - name: Prepare dependencies
       run: |
         git config --global user.email "user@example.com"
         git config --global user.name "User"
-        ./y.sh prepare
-        # FIXME(antoyo): we cannot enable LTO for stdarch tests currently because of some failing LTO tests using proc-macros.
-        echo -n 'lto = "fat"' >> build_sysroot/Cargo.toml
+        ./y.sh prepare --libgccjit12-patches
 
     # Compile is a separate step, as the actions-rs/cargo action supports error annotations
     - name: Compile
@@ -97,9 +104,12 @@ jobs:
         command: build
         args: --release
 
-    - name: Add more failing tests because of undefined symbol errors (FIXME)
-      run: cat failing-lto-tests.txt >> failing-ui-tests.txt
+    - name: Add more failing tests for GCC 12
+      run: cat failing-ui-tests12.txt >> failing-ui-tests.txt
+
+    - name: Add more failing tests because the sysroot is not compiled with LTO
+      run: cat failing-non-lto-tests.txt >> failing-ui-tests.txt
 
     - name: Run tests
       run: |
-        EMBED_LTO_BITCODE=1 ./test.sh --release --clean --release-sysroot --build-sysroot ${{ matrix.commands }}
+        ./test.sh --release --clean --build-sysroot ${{ matrix.commands }} --no-default-features

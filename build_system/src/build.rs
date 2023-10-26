@@ -1,6 +1,6 @@
-use crate::config::set_config;
+use crate::config::{set_config, ConfigInfo};
 use crate::utils::{
-    get_gcc_path, run_command, run_command_with_env, run_command_with_output_and_env, walk_dir,
+    get_gcc_path, run_command, run_command_with_output_and_env, walk_dir,
 };
 use std::collections::HashMap;
 use std::ffi::OsStr;
@@ -11,7 +11,8 @@ use std::path::Path;
 struct BuildArg {
     codegen_release_channel: bool,
     sysroot_release_channel: bool,
-    features: Vec<String>,
+    sysroot_panic_abort: bool,
+    flags: Vec<String>,
     gcc_path: String,
 }
 
@@ -30,12 +31,15 @@ impl BuildArg {
                 "--release" => build_arg.codegen_release_channel = true,
                 "--release-sysroot" => build_arg.sysroot_release_channel = true,
                 "--no-default-features" => {
-                    build_arg.features.push("--no-default-features".to_string());
+                    build_arg.flags.push("--no-default-features".to_string());
                 }
+                "--sysroot-panic-abort" => {
+                    build_arg.sysroot_panic_abort = true;
+                },
                 "--features" => {
                     if let Some(arg) = args.next() {
-                        build_arg.features.push("--features".to_string());
-                        build_arg.features.push(arg.as_str().into());
+                        build_arg.flags.push("--features".to_string());
+                        build_arg.flags.push(arg.as_str().into());
                     } else {
                         return Err(
                             "Expected a value after `--features`, found nothing".to_string()
@@ -45,6 +49,24 @@ impl BuildArg {
                 "--help" => {
                     Self::usage();
                     return Ok(None);
+                }
+                "--target-triple" => {
+                    if args.next().is_some() {
+                        // Handled in config.rs.
+                    } else {
+                        return Err(
+                            "Expected a value after `--target-triple`, found nothing".to_string()
+                        );
+                    }
+                }
+                "--target" => {
+                    if args.next().is_some() {
+                        // Handled in config.rs.
+                    } else {
+                        return Err(
+                            "Expected a value after `--target`, found nothing".to_string()
+                        );
+                    }
                 }
                 arg => return Err(format!("Unknown argument `{}`", arg)),
             }
@@ -59,8 +81,10 @@ impl BuildArg {
 
     --release              : Build codegen in release mode
     --release-sysroot      : Build sysroot in release mode
+    --sysroot-panic-abort  : Build the sysroot without unwinding support.
     --no-default-features  : Add `--no-default-features` flag
     --features [arg]       : Add a new feature [arg]
+    --target-triple [arg]  : Set the target triple to [arg]
     --help                 : Show this help
 "#
         )
@@ -69,8 +93,8 @@ impl BuildArg {
 
 fn build_sysroot(
     env: &mut HashMap<String, String>,
-    release_mode: bool,
-    target_triple: &str,
+    args: &BuildArg,
+    config: &ConfigInfo,
 ) -> Result<(), String> {
     std::env::set_current_dir("build_sysroot")
         .map_err(|error| format!("Failed to go to `build_sysroot` directory: {:?}", error))?;
@@ -119,21 +143,24 @@ fn build_sysroot(
     let _ = fs::remove_dir_all("sysroot");
 
     // Builds libs
-    let channel = if release_mode {
-        let rustflags = env
-            .get("RUSTFLAGS")
-            .cloned()
-            .unwrap_or_default();
-        env.insert(
-            "RUSTFLAGS".to_string(),
-            format!("{} -Zmir-opt-level=3", rustflags),
-        );
+    let mut rustflags = env
+        .get("RUSTFLAGS")
+        .cloned()
+        .unwrap_or_default();
+    if args.sysroot_panic_abort {
+        rustflags.push_str(" -Cpanic=abort -Zpanic-abort-tests");
+    }
+    env.insert(
+        "RUSTFLAGS".to_string(),
+        format!("{} -Zmir-opt-level=3", rustflags),
+    );
+    let channel = if args.sysroot_release_channel {
         run_command_with_output_and_env(
             &[
                 &"cargo",
                 &"build",
                 &"--target",
-                &target_triple,
+                &config.target,
                 &"--release",
             ],
             None,
@@ -146,9 +173,7 @@ fn build_sysroot(
                 &"cargo",
                 &"build",
                 &"--target",
-                &target_triple,
-                &"--features",
-                &"compiler_builtins/c",
+                &config.target,
             ],
             None,
             Some(env),
@@ -157,14 +182,14 @@ fn build_sysroot(
     };
 
     // Copy files to sysroot
-    let sysroot_path = format!("sysroot/lib/rustlib/{}/lib/", target_triple);
+    let sysroot_path = format!("sysroot/lib/rustlib/{}/lib/", config.target_triple);
     fs::create_dir_all(&sysroot_path)
         .map_err(|error| format!("Failed to create directory `{}`: {:?}", sysroot_path, error))?;
     let copier = |dir_to_copy: &Path| {
         run_command(&[&"cp", &"-r", &dir_to_copy, &sysroot_path], None).map(|_| ())
     };
     walk_dir(
-        &format!("target/{}/{}/deps", target_triple, channel),
+        &format!("target/{}/{}/deps", config.target_triple, channel),
         copier,
         copier,
     )?;
@@ -175,16 +200,6 @@ fn build_sysroot(
 fn build_codegen(args: &BuildArg) -> Result<(), String> {
     let mut env = HashMap::new();
 
-    let current_dir =
-        std::env::current_dir().map_err(|error| format!("`current_dir` failed: {:?}", error))?;
-    if let Ok(rt_root) = std::env::var("RUST_COMPILER_RT_ROOT") {
-        env.insert("RUST_COMPILER_RT_ROOT".to_string(), rt_root);
-    } else {
-        env.insert(
-            "RUST_COMPILER_RT_ROOT".to_string(),
-            format!("{}", current_dir.join("llvm/compiler-rt").display()),
-        );
-    }
     env.insert("LD_LIBRARY_PATH".to_string(), args.gcc_path.clone());
     env.insert("LIBRARY_PATH".to_string(), args.gcc_path.clone());
 
@@ -196,11 +211,11 @@ fn build_codegen(args: &BuildArg) -> Result<(), String> {
     } else {
         env.insert("CHANNEL".to_string(), "debug".to_string());
     }
-    let ref_features = args.features.iter().map(|s| s.as_str()).collect::<Vec<_>>();
-    for feature in &ref_features {
-        command.push(feature);
+    let flags = args.flags.iter().map(|s| s.as_str()).collect::<Vec<_>>();
+    for flag in &flags {
+        command.push(flag);
     }
-    run_command_with_env(&command, None, Some(&env))?;
+    run_command_with_output_and_env(&command, None, Some(&env))?;
 
     let config = set_config(&mut env, &[], Some(&args.gcc_path))?;
 
@@ -217,8 +232,8 @@ fn build_codegen(args: &BuildArg) -> Result<(), String> {
     println!("[BUILD] sysroot");
     build_sysroot(
         &mut env,
-        args.sysroot_release_channel,
-        &config.target_triple,
+        args,
+        &config,
     )?;
     Ok(())
 }

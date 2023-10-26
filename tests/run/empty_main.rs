@@ -35,6 +35,6 @@ pub(crate) unsafe auto trait Freeze {}
  */
 
 #[start]
-fn main(mut argc: isize, _argv: *const *const u8) -> isize {
+fn main(_argc: isize, _argv: *const *const u8) -> isize {
     0
 }
