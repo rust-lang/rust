@@ -67,7 +67,8 @@ impl EarlyLintPass for Precedence {
             );
         }
 
-        if let ExprKind::Unary(UnOp::Neg, operand) = &expr.kind
+        if let ExprKind::Unary(unop, operand) = &expr.kind
+            && matches!(unop, UnOp::Neg)
             && let ExprKind::MethodCall(..) = operand.kind
         {
             let mut arg = operand;
@@ -83,6 +84,7 @@ impl EarlyLintPass for Precedence {
                     AMBIGUOUS_PRECEDENCE,
                     expr.span,
                     PrecedenceDiag::Unary {
+                        op: UnOp::to_string(*unop),
                         suggestion: PrecedenceUnarySuggestion {
                             start_span: operand.span.shrink_to_lo(),
                             end_span: operand.span.shrink_to_hi(),

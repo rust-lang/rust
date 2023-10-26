@@ -455,7 +455,7 @@ lint_path_statement_drop = path statement drops value
 
 lint_path_statement_no_effect = path statement with no effect
 
-lint_precedence_unary = unary minus has lower precedence than method call
+lint_precedence_unary = unary operator `{$op}` has lower precedence than method call
     .suggestion = consider adding parentheses to clarify your intent
 
 lint_precedence_unwary = operator precedence can trip the unwary

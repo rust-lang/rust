@@ -622,6 +622,7 @@ pub struct ExpectationNote {
 pub enum PrecedenceDiag {
     #[diag(lint_precedence_unary)]
     Unary {
+        op: &'static str,
         #[subdiagnostic]
         suggestion: PrecedenceUnarySuggestion,
     },
