@@ -1,6 +1,6 @@
 use crate::sync::atomic::{AtomicUsize, Ordering};
 use crate::sync::mpsc::channel;
-use crate::sync::{Arc, Condvar, MappedMutexGuard, Mutex, MutexGuard};
+use crate::sync::{Arc, Condvar, MappedMutexGuard, Mutex, MutexGuard, TryLockError};
 use crate::thread;
 
 struct Packet<T>(Arc<(Mutex<T>, Condvar)>);
@@ -263,4 +263,65 @@ fn test_mapping_mapped_guard() {
     guard[0] = 42;
     drop(guard);
     assert_eq!(*lock.get_mut().unwrap(), [0, 42, 0, 0]);
+}
+
+#[test]
+fn panic_while_mapping_unlocked_poison() {
+    let lock = Mutex::new(());
+
+    let _ = crate::panic::catch_unwind(|| {
+        let guard = lock.lock().unwrap();
+        let _guard = MutexGuard::map::<(), _>(guard, |_| panic!());
+    });
+
+    match lock.try_lock() {
+        Ok(_) => panic!("panicking in a MutexGuard::map closure should poison the Mutex"),
+        Err(TryLockError::WouldBlock) => {
+            panic!("panicking in a MutexGuard::map closure should unlock the mutex")
+        }
+        Err(TryLockError::Poisoned(_)) => {}
+    }
+
+    let _ = crate::panic::catch_unwind(|| {
+        let guard = lock.lock().unwrap();
+        let _guard = MutexGuard::try_map::<(), _>(guard, |_| panic!());
+    });
+
+    match lock.try_lock() {
+        Ok(_) => panic!("panicking in a MutexGuard::try_map closure should poison the Mutex"),
+        Err(TryLockError::WouldBlock) => {
+            panic!("panicking in a MutexGuard::try_map closure should unlock the mutex")
+        }
+        Err(TryLockError::Poisoned(_)) => {}
+    }
+
+    let _ = crate::panic::catch_unwind(|| {
+        let guard = lock.lock().unwrap();
+        let guard = MutexGuard::map::<(), _>(guard, |val| val);
+        let _guard = MappedMutexGuard::map::<(), _>(guard, |_| panic!());
+    });
+
+    match lock.try_lock() {
+        Ok(_) => panic!("panicking in a MappedMutexGuard::map closure should poison the Mutex"),
+        Err(TryLockError::WouldBlock) => {
+            panic!("panicking in a MappedMutexGuard::map closure should unlock the mutex")
+        }
+        Err(TryLockError::Poisoned(_)) => {}
+    }
+
+    let _ = crate::panic::catch_unwind(|| {
+        let guard = lock.lock().unwrap();
+        let guard = MutexGuard::map::<(), _>(guard, |val| val);
+        let _guard = MappedMutexGuard::try_map::<(), _>(guard, |_| panic!());
+    });
+
+    match lock.try_lock() {
+        Ok(_) => panic!("panicking in a MappedMutexGuard::try_map closure should poison the Mutex"),
+        Err(TryLockError::WouldBlock) => {
+            panic!("panicking in a MappedMutexGuard::try_map closure should unlock the mutex")
+        }
+        Err(TryLockError::Poisoned(_)) => {}
+    }
+
+    drop(lock);
 }

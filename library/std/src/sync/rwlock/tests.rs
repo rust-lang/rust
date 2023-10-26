@@ -360,3 +360,139 @@ fn test_mapping_mapped_guard() {
     drop(guard);
     assert_eq!(*lock.get_mut().unwrap(), [0, 42, 0, 0]);
 }
+
+#[test]
+fn panic_while_mapping_read_unlocked_no_poison() {
+    let lock = RwLock::new(());
+
+    let _ = crate::panic::catch_unwind(|| {
+        let guard = lock.read().unwrap();
+        let _guard = RwLockReadGuard::map::<(), _>(guard, |_| panic!());
+    });
+
+    match lock.try_write() {
+        Ok(_) => {}
+        Err(TryLockError::WouldBlock) => {
+            panic!("panicking in a RwLockReadGuard::map closure should release the read lock")
+        }
+        Err(TryLockError::Poisoned(_)) => {
+            panic!("panicking in a RwLockReadGuard::map closure should not poison the RwLock")
+        }
+    }
+
+    let _ = crate::panic::catch_unwind(|| {
+        let guard = lock.read().unwrap();
+        let _guard = RwLockReadGuard::try_map::<(), _>(guard, |_| panic!());
+    });
+
+    match lock.try_write() {
+        Ok(_) => {}
+        Err(TryLockError::WouldBlock) => {
+            panic!("panicking in a RwLockReadGuard::try_map closure should release the read lock")
+        }
+        Err(TryLockError::Poisoned(_)) => {
+            panic!("panicking in a RwLockReadGuard::try_map closure should not poison the RwLock")
+        }
+    }
+
+    let _ = crate::panic::catch_unwind(|| {
+        let guard = lock.read().unwrap();
+        let guard = RwLockReadGuard::map::<(), _>(guard, |val| val);
+        let _guard = MappedRwLockReadGuard::map::<(), _>(guard, |_| panic!());
+    });
+
+    match lock.try_write() {
+        Ok(_) => {}
+        Err(TryLockError::WouldBlock) => {
+            panic!("panicking in a MappedRwLockReadGuard::map closure should release the read lock")
+        }
+        Err(TryLockError::Poisoned(_)) => {
+            panic!("panicking in a MappedRwLockReadGuard::map closure should not poison the RwLock")
+        }
+    }
+
+    let _ = crate::panic::catch_unwind(|| {
+        let guard = lock.read().unwrap();
+        let guard = RwLockReadGuard::map::<(), _>(guard, |val| val);
+        let _guard = MappedRwLockReadGuard::try_map::<(), _>(guard, |_| panic!());
+    });
+
+    match lock.try_write() {
+        Ok(_) => {}
+        Err(TryLockError::WouldBlock) => panic!(
+            "panicking in a MappedRwLockReadGuard::try_map closure should release the read lock"
+        ),
+        Err(TryLockError::Poisoned(_)) => panic!(
+            "panicking in a MappedRwLockReadGuard::try_map closure should not poison the RwLock"
+        ),
+    }
+
+    drop(lock);
+}
+
+#[test]
+fn panic_while_mapping_write_unlocked_poison() {
+    let lock = RwLock::new(());
+
+    let _ = crate::panic::catch_unwind(|| {
+        let guard = lock.write().unwrap();
+        let _guard = RwLockWriteGuard::map::<(), _>(guard, |_| panic!());
+    });
+
+    match lock.try_write() {
+        Ok(_) => panic!("panicking in a RwLockWriteGuard::map closure should poison the RwLock"),
+        Err(TryLockError::WouldBlock) => {
+            panic!("panicking in a RwLockWriteGuard::map closure should release the write lock")
+        }
+        Err(TryLockError::Poisoned(_)) => {}
+    }
+
+    let _ = crate::panic::catch_unwind(|| {
+        let guard = lock.write().unwrap();
+        let _guard = RwLockWriteGuard::try_map::<(), _>(guard, |_| panic!());
+    });
+
+    match lock.try_write() {
+        Ok(_) => {
+            panic!("panicking in a RwLockWriteGuard::try_map closure should poison the RwLock")
+        }
+        Err(TryLockError::WouldBlock) => {
+            panic!("panicking in a RwLockWriteGuard::try_map closure should release the write lock")
+        }
+        Err(TryLockError::Poisoned(_)) => {}
+    }
+
+    let _ = crate::panic::catch_unwind(|| {
+        let guard = lock.write().unwrap();
+        let guard = RwLockWriteGuard::map::<(), _>(guard, |val| val);
+        let _guard = MappedRwLockWriteGuard::map::<(), _>(guard, |_| panic!());
+    });
+
+    match lock.try_write() {
+        Ok(_) => {
+            panic!("panicking in a MappedRwLockWriteGuard::map closure should poison the RwLock")
+        }
+        Err(TryLockError::WouldBlock) => panic!(
+            "panicking in a MappedRwLockWriteGuard::map closure should release the write lock"
+        ),
+        Err(TryLockError::Poisoned(_)) => {}
+    }
+
+    let _ = crate::panic::catch_unwind(|| {
+        let guard = lock.write().unwrap();
+        let guard = RwLockWriteGuard::map::<(), _>(guard, |val| val);
+        let _guard = MappedRwLockWriteGuard::try_map::<(), _>(guard, |_| panic!());
+    });
+
+    match lock.try_write() {
+        Ok(_) => panic!(
+            "panicking in a MappedRwLockWriteGuard::try_map closure should poison the RwLock"
+        ),
+        Err(TryLockError::WouldBlock) => panic!(
+            "panicking in a MappedRwLockWriteGuard::try_map closure should release the write lock"
+        ),
+        Err(TryLockError::Poisoned(_)) => {}
+    }
+
+    drop(lock);
+}

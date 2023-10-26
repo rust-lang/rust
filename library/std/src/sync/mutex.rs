@@ -612,10 +612,14 @@ impl<'a, T: ?Sized> MutexGuard<'a, T> {
         F: FnOnce(&mut T) -> &mut U,
         U: ?Sized,
     {
-        let mut orig = ManuallyDrop::new(orig);
-        let value = NonNull::from(f(&mut *orig));
+        // SAFETY: the conditions of `MutedGuard::new` were satisfied when the original guard
+        // was created, and have been upheld throughout `map` and/or `try_map`.
+        // The signature of the closure guarantees that it will not "leak" the lifetime of the reference
+        // passed to it. If the closure panics, the guard will be dropped.
+        let data = NonNull::from(f(unsafe { &mut *orig.lock.data.get() }));
+        let orig = ManuallyDrop::new(orig);
         MappedMutexGuard {
-            data: value,
+            data,
             inner: &orig.lock.inner,
             poison_flag: &orig.lock.poison,
             poison: orig.poison.clone(),
@@ -639,16 +643,23 @@ impl<'a, T: ?Sized> MutexGuard<'a, T> {
         F: FnOnce(&mut T) -> Option<&mut U>,
         U: ?Sized,
     {
-        let mut orig = ManuallyDrop::new(orig);
-        match f(&mut *orig).map(NonNull::from) {
-            Some(value) => Ok(MappedMutexGuard {
-                data: value,
-                inner: &orig.lock.inner,
-                poison_flag: &orig.lock.poison,
-                poison: orig.poison.clone(),
-                _variance: PhantomData,
-            }),
-            None => Err(ManuallyDrop::into_inner(orig)),
+        // SAFETY: the conditions of `MutexGuard::new` were satisfied when the original guard
+        // was created, and have been upheld throughout `map` and/or `try_map`.
+        // The signature of the closure guarantees that it will not "leak" the lifetime of the reference
+        // passed to it. If the closure panics, the guard will be dropped.
+        match f(unsafe { &mut *orig.lock.data.get() }) {
+            Some(data) => {
+                let data = NonNull::from(data);
+                let orig = ManuallyDrop::new(orig);
+                Ok(MappedMutexGuard {
+                    data,
+                    inner: &orig.lock.inner,
+                    poison_flag: &orig.lock.poison,
+                    poison: orig.poison.clone(),
+                    _variance: PhantomData,
+                })
+            }
+            None => Err(orig),
         }
     }
 }
@@ -704,15 +715,19 @@ impl<'a, T: ?Sized> MappedMutexGuard<'a, T> {
     /// `MappedMutexGuard::map(...)`. A method would interfere with methods of the
     /// same name on the contents of the `MutexGuard` used through `Deref`.
     #[unstable(feature = "mapped_lock_guards", issue = "117108")]
-    pub fn map<U, F>(orig: Self, f: F) -> MappedMutexGuard<'a, U>
+    pub fn map<U, F>(mut orig: Self, f: F) -> MappedMutexGuard<'a, U>
     where
         F: FnOnce(&mut T) -> &mut U,
         U: ?Sized,
     {
-        let mut orig = ManuallyDrop::new(orig);
-        let value = NonNull::from(f(&mut *orig));
+        // SAFETY: the conditions of `MutedGuard::new` were satisfied when the original guard
+        // was created, and have been upheld throughout `map` and/or `try_map`.
+        // The signature of the closure guarantees that it will not "leak" the lifetime of the reference
+        // passed to it. If the closure panics, the guard will be dropped.
+        let data = NonNull::from(f(unsafe { orig.data.as_mut() }));
+        let orig = ManuallyDrop::new(orig);
         MappedMutexGuard {
-            data: value,
+            data,
             inner: orig.inner,
             poison_flag: orig.poison_flag,
             poison: orig.poison.clone(),
@@ -731,21 +746,28 @@ impl<'a, T: ?Sized> MappedMutexGuard<'a, T> {
     /// same name on the contents of the `MutexGuard` used through `Deref`.
     #[doc(alias = "filter_map")]
     #[unstable(feature = "mapped_lock_guards", issue = "117108")]
-    pub fn try_map<U, F>(orig: Self, f: F) -> Result<MappedMutexGuard<'a, U>, Self>
+    pub fn try_map<U, F>(mut orig: Self, f: F) -> Result<MappedMutexGuard<'a, U>, Self>
     where
         F: FnOnce(&mut T) -> Option<&mut U>,
         U: ?Sized,
     {
-        let mut orig = ManuallyDrop::new(orig);
-        match f(&mut *orig).map(NonNull::from) {
-            Some(value) => Ok(MappedMutexGuard {
-                data: value,
-                inner: orig.inner,
-                poison_flag: orig.poison_flag,
-                poison: orig.poison.clone(),
-                _variance: PhantomData,
-            }),
-            None => Err(ManuallyDrop::into_inner(orig)),
+        // SAFETY: the conditions of `MutedGuard::new` were satisfied when the original guard
+        // was created, and have been upheld throughout `map` and/or `try_map`.
+        // The signature of the closure guarantees that it will not "leak" the lifetime of the reference
+        // passed to it. If the closure panics, the guard will be dropped.
+        match f(unsafe { orig.data.as_mut() }) {
+            Some(data) => {
+                let data = NonNull::from(data);
+                let orig = ManuallyDrop::new(orig);
+                Ok(MappedMutexGuard {
+                    data,
+                    inner: orig.inner,
+                    poison_flag: orig.poison_flag,
+                    poison: orig.poison.clone(),
+                    _variance: PhantomData,
+                })
+            }
+            None => Err(orig),
         }
     }
 }
