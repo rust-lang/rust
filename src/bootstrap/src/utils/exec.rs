@@ -7,6 +7,8 @@ pub enum BehaviorOnFailure {
     Exit,
     /// Delay failure until the end of bootstrap invocation.
     DelayFail,
+    /// Ignore the failure, the command can fail in an expected way.
+    Ignore,
 }
 
 /// How should the output of the command be handled.
@@ -33,9 +35,15 @@ impl<'a> BootstrapCommand<'a> {
     pub fn delay_failure(self) -> Self {
         Self { failure_behavior: BehaviorOnFailure::DelayFail, ..self }
     }
+
     pub fn fail_fast(self) -> Self {
         Self { failure_behavior: BehaviorOnFailure::Exit, ..self }
     }
+
+    pub fn allow_failure(self) -> Self {
+        Self { failure_behavior: BehaviorOnFailure::Ignore, ..self }
+    }
+
     pub fn output_mode(self, output_mode: OutputMode) -> Self {
         Self { output_mode, ..self }
     }

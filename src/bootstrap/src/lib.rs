@@ -581,9 +581,12 @@ impl Build {
         // Save any local changes, but avoid running `git stash pop` if there are none (since it will exit with an error).
         // diff-index reports the modifications through the exit status
         let has_local_modifications = !self.run_cmd(
-            Command::new("git")
-                .args(&["diff-index", "--quiet", "HEAD"])
-                .current_dir(&absolute_path),
+            BootstrapCommand::from(
+                Command::new("git")
+                    .args(&["diff-index", "--quiet", "HEAD"])
+                    .current_dir(&absolute_path),
+            )
+            .allow_failure(),
         );
         if has_local_modifications {
             self.run(Command::new("git").args(&["stash", "push"]).current_dir(&absolute_path));
@@ -1009,6 +1012,7 @@ impl Build {
                     BehaviorOnFailure::Exit => {
                         exit!(1);
                     }
+                    BehaviorOnFailure::Ignore => {}
                 }
                 false
             }

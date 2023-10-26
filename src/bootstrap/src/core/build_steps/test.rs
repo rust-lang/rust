@@ -810,7 +810,7 @@ impl Step for Clippy {
         let _guard = builder.msg_sysroot_tool(Kind::Test, compiler.stage, "clippy", host, host);
 
         // Clippy reports errors if it blessed the outputs
-        if builder.run_cmd(&mut cargo) {
+        if builder.run_cmd(BootstrapCommand::from(&mut cargo).allow_failure()) {
             // The tests succeeded; nothing to do.
             return;
         }
