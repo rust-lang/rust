@@ -1,6 +1,3 @@
-// revisions: mir thir
-// [thir]compile-flags: -Z thir-unsafeck
-
 union Foo {
     bar: i8,
     zst: (),
@@ -29,9 +26,9 @@ pub fn main() {
     match foo {
         Foo { bar: _a } => {}, //~ ERROR access to union field is unsafe
     }
-    match foo { //[mir]~ ERROR access to union field is unsafe
+    match foo { //~ ERROR access to union field is unsafe
         Foo {
-            pizza: Pizza { //[thir]~ ERROR access to union field is unsafe
+            pizza: Pizza {
                 topping: Some(PizzaTopping::Cheese) | Some(PizzaTopping::Pineapple) | None
             }
         } => {},
@@ -39,10 +36,10 @@ pub fn main() {
 
     // MIR unsafeck incorrectly thinks that no unsafe block is needed to do these
     match foo {
-        Foo { zst: () } => {}, //[thir]~ ERROR access to union field is unsafe
+        Foo { zst: () } => {},
     }
     match foo {
-        Foo { pizza: Pizza { .. } } => {}, //[thir]~ ERROR access to union field is unsafe
+        Foo { pizza: Pizza { .. } } => {},
     }
 
     // binding to wildcard is okay

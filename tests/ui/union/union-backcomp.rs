@@ -1,6 +1,4 @@
 // run-pass
-// revisions: mirunsafeck thirunsafeck
-// [thirunsafeck]compile-flags: -Z thir-unsafeck
 
 #![allow(path_statements)]
 #![allow(dead_code)]

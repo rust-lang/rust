@@ -1,6 +1,4 @@
 // run-pass
-// revisions: mir thir
-// [thir]compile-flags: -Z thir-unsafeck
 
 #[derive(Copy, Clone)]
 #[allow(dead_code)]
@@ -32,13 +30,13 @@ fn main() {
     };
 
     let u = Foo { bar: 9 };
-    unsafe { //[mir]~ WARNING unnecessary `unsafe` block
+    unsafe { //~ WARNING unnecessary `unsafe` block
         match u {
             Foo { baz: Pie { .. } } => {},
         };
     }
     let u = Foo { bar: 10 };
-    unsafe { //[mir]~ WARNING unnecessary `unsafe` block
+    unsafe { //~ WARNING unnecessary `unsafe` block
         match u {
             Foo { baz: Pie { slices: _, size: _ } } => {},
         };

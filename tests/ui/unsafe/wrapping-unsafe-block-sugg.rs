@@ -1,7 +1,5 @@
 // run-rustfix
 // aux-build:external_unsafe_macro.rs
-// revisions: mir thir
-// [thir]compile-flags: -Zthir-unsafeck
 
 #![deny(unsafe_op_in_unsafe_fn)] //~ NOTE
 #![crate_name = "wrapping_unsafe_block_sugg"]
@@ -12,13 +10,11 @@ unsafe fn unsf() {}
 
 pub unsafe fn foo() {
     //~^ NOTE an unsafe function restricts its caller, but its body is safe by default
-    unsf(); //[mir]~ ERROR call to unsafe function is unsafe
-     //[thir]~^ ERROR call to unsafe function `unsf` is unsafe
-    //~^^ NOTE
+    unsf(); //~ ERROR call to unsafe function is unsafe
+    //~^ NOTE
     //~| NOTE
-    unsf(); //[mir]~ ERROR call to unsafe function is unsafe
-    //[thir]~^ ERROR call to unsafe function `unsf` is unsafe
-    //~^^ NOTE
+    unsf(); //~ ERROR call to unsafe function is unsafe
+    //~^ NOTE
     //~| NOTE
 }
 
@@ -44,12 +40,10 @@ pub unsafe fn baz() -> i32 {
 }
 
 macro_rules! unsafe_macro { () => (unsf()) }
-//[mir]~^ ERROR call to unsafe function is unsafe
-//[thir]~^^ ERROR call to unsafe function `unsf` is unsafe
+//~^ ERROR call to unsafe function is unsafe
 //~| NOTE
 //~| NOTE
-//[mir]~| ERROR call to unsafe function is unsafe
-//[thir]~| ERROR call to unsafe function `unsf` is unsafe
+//~| ERROR call to unsafe function is unsafe
 //~| NOTE
 //~| NOTE
 

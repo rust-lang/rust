@@ -8,8 +8,6 @@
 
 // check-pass
 // only-x86_64
-// revisions: mir thir
-// [thir]compile-flags: -Z thir-unsafeck
 
 #![feature(target_feature_11)]
 
