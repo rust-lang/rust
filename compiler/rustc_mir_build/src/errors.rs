@@ -29,6 +29,8 @@ pub struct UnsafeOpInUnsafeFnCallToUnsafeFunctionRequiresUnsafe<'a> {
     #[label]
     pub span: Span,
     pub function: &'a str,
+    #[subdiagnostic]
+    pub unsafe_not_inherited_note: Option<UnsafeNotInheritedLintNote>,
 }
 
 #[derive(LintDiagnostic)]
@@ -37,6 +39,8 @@ pub struct UnsafeOpInUnsafeFnCallToUnsafeFunctionRequiresUnsafe<'a> {
 pub struct UnsafeOpInUnsafeFnCallToUnsafeFunctionRequiresUnsafeNameless {
     #[label]
     pub span: Span,
+    #[subdiagnostic]
+    pub unsafe_not_inherited_note: Option<UnsafeNotInheritedLintNote>,
 }
 
 #[derive(LintDiagnostic)]
@@ -45,6 +49,8 @@ pub struct UnsafeOpInUnsafeFnCallToUnsafeFunctionRequiresUnsafeNameless {
 pub struct UnsafeOpInUnsafeFnUseOfInlineAssemblyRequiresUnsafe {
     #[label]
     pub span: Span,
+    #[subdiagnostic]
+    pub unsafe_not_inherited_note: Option<UnsafeNotInheritedLintNote>,
 }
 
 #[derive(LintDiagnostic)]
@@ -53,6 +59,8 @@ pub struct UnsafeOpInUnsafeFnUseOfInlineAssemblyRequiresUnsafe {
 pub struct UnsafeOpInUnsafeFnInitializingTypeWithRequiresUnsafe {
     #[label]
     pub span: Span,
+    #[subdiagnostic]
+    pub unsafe_not_inherited_note: Option<UnsafeNotInheritedLintNote>,
 }
 
 #[derive(LintDiagnostic)]
@@ -61,6 +69,8 @@ pub struct UnsafeOpInUnsafeFnInitializingTypeWithRequiresUnsafe {
 pub struct UnsafeOpInUnsafeFnUseOfMutableStaticRequiresUnsafe {
     #[label]
     pub span: Span,
+    #[subdiagnostic]
+    pub unsafe_not_inherited_note: Option<UnsafeNotInheritedLintNote>,
 }
 
 #[derive(LintDiagnostic)]
@@ -69,6 +79,8 @@ pub struct UnsafeOpInUnsafeFnUseOfMutableStaticRequiresUnsafe {
 pub struct UnsafeOpInUnsafeFnUseOfExternStaticRequiresUnsafe {
     #[label]
     pub span: Span,
+    #[subdiagnostic]
+    pub unsafe_not_inherited_note: Option<UnsafeNotInheritedLintNote>,
 }
 
 #[derive(LintDiagnostic)]
@@ -77,6 +89,8 @@ pub struct UnsafeOpInUnsafeFnUseOfExternStaticRequiresUnsafe {
 pub struct UnsafeOpInUnsafeFnDerefOfRawPointerRequiresUnsafe {
     #[label]
     pub span: Span,
+    #[subdiagnostic]
+    pub unsafe_not_inherited_note: Option<UnsafeNotInheritedLintNote>,
 }
 
 #[derive(LintDiagnostic)]
@@ -85,6 +99,8 @@ pub struct UnsafeOpInUnsafeFnDerefOfRawPointerRequiresUnsafe {
 pub struct UnsafeOpInUnsafeFnAccessToUnionFieldRequiresUnsafe {
     #[label]
     pub span: Span,
+    #[subdiagnostic]
+    pub unsafe_not_inherited_note: Option<UnsafeNotInheritedLintNote>,
 }
 
 #[derive(LintDiagnostic)]
@@ -93,6 +109,8 @@ pub struct UnsafeOpInUnsafeFnAccessToUnionFieldRequiresUnsafe {
 pub struct UnsafeOpInUnsafeFnMutationOfLayoutConstrainedFieldRequiresUnsafe {
     #[label]
     pub span: Span,
+    #[subdiagnostic]
+    pub unsafe_not_inherited_note: Option<UnsafeNotInheritedLintNote>,
 }
 
 #[derive(LintDiagnostic)]
@@ -100,6 +118,8 @@ pub struct UnsafeOpInUnsafeFnMutationOfLayoutConstrainedFieldRequiresUnsafe {
 pub struct UnsafeOpInUnsafeFnBorrowOfLayoutConstrainedFieldRequiresUnsafe {
     #[label]
     pub span: Span,
+    #[subdiagnostic]
+    pub unsafe_not_inherited_note: Option<UnsafeNotInheritedLintNote>,
 }
 
 #[derive(LintDiagnostic)]
@@ -109,6 +129,8 @@ pub struct UnsafeOpInUnsafeFnCallToFunctionWithRequiresUnsafe<'a> {
     #[label]
     pub span: Span,
     pub function: &'a str,
+    #[subdiagnostic]
+    pub unsafe_not_inherited_note: Option<UnsafeNotInheritedLintNote>,
 }
 
 #[derive(Diagnostic)]
@@ -374,6 +396,27 @@ pub struct CallToFunctionWithRequiresUnsafeUnsafeOpInUnsafeFnAllowed<'a> {
 pub struct UnsafeNotInheritedNote {
     #[primary_span]
     pub span: Span,
+}
+
+pub struct UnsafeNotInheritedLintNote {
+    pub signature_span: Span,
+    pub body_span: Span,
+}
+
+impl AddToDiagnostic for UnsafeNotInheritedLintNote {
+    fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, _: F)
+    where
+        F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
+    {
+        diag.span_note(self.signature_span, fluent::mir_build_unsafe_fn_safe_body);
+        let body_start = self.body_span.shrink_to_lo();
+        let body_end = self.body_span.shrink_to_hi();
+        diag.tool_only_multipart_suggestion(
+            fluent::mir_build_wrap_suggestion,
+            vec![(body_start, "{ unsafe ".into()), (body_end, "}".into())],
+            Applicability::MaybeIncorrect,
+        );
+    }
 }
 
 #[derive(LintDiagnostic)]

@@ -320,6 +320,7 @@ mir_build_unreachable_pattern = unreachable pattern
     .label = unreachable pattern
     .catchall_label = matches any value
 
+mir_build_unsafe_fn_safe_body = an unsafe function restricts its caller, but its body is safe by default
 mir_build_unsafe_not_inherited = items do not inherit unsafety from separate enclosing items
 
 mir_build_unsafe_op_in_unsafe_fn_borrow_of_layout_constrained_field_requires_unsafe =
@@ -386,3 +387,5 @@ mir_build_unused_unsafe = unnecessary `unsafe` block
 mir_build_unused_unsafe_enclosing_block_label = because it's nested under this `unsafe` block
 
 mir_build_variant_defined_here = not covered
+
+mir_build_wrap_suggestion = consider wrapping the function body in an unsafe block
