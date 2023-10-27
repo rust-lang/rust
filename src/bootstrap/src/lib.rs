@@ -1849,10 +1849,19 @@ fn envify(s: &str) -> String {
 }
 
 pub fn find_recent_config_change_ids(current_id: usize) -> Vec<usize> {
-    let index = CONFIG_CHANGE_HISTORY
-        .iter()
-        .position(|&id| id == current_id)
-        .expect(&format!("Value `{}` was not found in `CONFIG_CHANGE_HISTORY`.", current_id));
+    if !CONFIG_CHANGE_HISTORY.contains(&current_id) {
+        // If the current change-id is greater than the most recent one,
+        // return an empty list; otherwise, return the full list.
+        if let Some(max_id) = CONFIG_CHANGE_HISTORY.iter().max() {
+            if &current_id > max_id {
+                return Vec::new();
+            }
+        }
+
+        return CONFIG_CHANGE_HISTORY.to_vec();
+    }
+
+    let index = CONFIG_CHANGE_HISTORY.iter().position(|&id| id == current_id).unwrap();
 
     CONFIG_CHANGE_HISTORY
         .iter()
