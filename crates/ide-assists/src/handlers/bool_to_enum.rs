@@ -20,7 +20,10 @@ use syntax::{
 };
 use text_edit::TextRange;
 
-use crate::assist_context::{AssistContext, Assists};
+use crate::{
+    assist_context::{AssistContext, Assists},
+    utils,
+};
 
 // Assist: bool_to_enum
 //
@@ -238,7 +241,7 @@ fn replace_usages(
                     cov_mark::hit!(replaces_record_expr);
 
                     let enum_expr = bool_expr_to_enum_expr(initializer);
-                    replace_record_field_expr(ctx, edit, record_field, enum_expr);
+                    utils::replace_record_field_expr(ctx, edit, record_field, enum_expr);
                 } else if let Some(pat) = find_record_pat_field_usage(&name) {
                     match pat {
                         ast::Pat::IdentPat(ident_pat) => {
@@ -281,7 +284,7 @@ fn replace_usages(
                             |record_field| record_field.expr().map(|expr| (record_field, expr)),
                         )
                     {
-                        replace_record_field_expr(
+                        utils::replace_record_field_expr(
                             ctx,
                             edit,
                             record_field,
@@ -307,24 +310,6 @@ fn replace_usages(
                 }
             },
         )
-    }
-}
-
-/// Replaces the record expression, handling field shorthands.
-fn replace_record_field_expr(
-    ctx: &AssistContext<'_>,
-    edit: &mut SourceChangeBuilder,
-    record_field: ast::RecordExprField,
-    initializer: ast::Expr,
-) {
-    if let Some(ast::Expr::PathExpr(path_expr)) = record_field.expr() {
-        // replace field shorthand
-        let file_range = ctx.sema.original_range(path_expr.syntax());
-        edit.insert(file_range.range.end(), format!(": {}", initializer.syntax().text()))
-    } else if let Some(expr) = record_field.expr() {
-        // just replace expr
-        let file_range = ctx.sema.original_range(expr.syntax());
-        edit.replace(file_range.range, initializer.syntax().text());
     }
 }
 
