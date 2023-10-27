@@ -11,11 +11,15 @@ error: `derive` attribute cannot be used at crate level
    |
 LL | #![derive(Debug, PartialEq, Eq)] // should be an outer attribute!
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | struct DerivedOn;
+   |        --------- the inner attribute doesn't annotate this struct
    |
 help: perhaps you meant to use an outer attribute
    |
-LL | #[derive(Debug, PartialEq, Eq)] // should be an outer attribute!
-   | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL - #![derive(Debug, PartialEq, Eq)] // should be an outer attribute!
+LL + #[derive(Debug, PartialEq, Eq)] // should be an outer attribute!
+   |
 
 error: aborting due to 2 previous errors
 
