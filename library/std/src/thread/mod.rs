@@ -546,6 +546,8 @@ impl Builder {
         }
 
         let main = Box::new(main);
+        // SAFETY: dynamic size and alignment of the Box remain the same. See below for why the
+        // lifetime change is justified.
         #[cfg(bootstrap)]
         let main =
             unsafe { mem::transmute::<Box<dyn FnOnce() + 'a>, Box<dyn FnOnce() + 'static>>(main) };

@@ -1,0 +1,79 @@
+error[E0601]: `main` function not found in crate `do_not_ice_on_note_and_explain`
+  --> $DIR/do-not-ice-on-note_and_explain.rs:2:37
+   |
+LL | impl<B>A<B>{fn d(){fn d(){Self(1)}}}
+   |                                     ^ consider adding a `main` function to `$DIR/do-not-ice-on-note_and_explain.rs`
+
+error[E0277]: the size for values of type `B` cannot be known at compilation time
+  --> $DIR/do-not-ice-on-note_and_explain.rs:2:32
+   |
+LL | impl<B>A<B>{fn d(){fn d(){Self(1)}}}
+   |      -                    ---- ^ doesn't have a size known at compile-time
+   |      |                    |
+   |      |                    required by a bound introduced by this call
+   |      this type parameter needs to be `Sized`
+   |
+note: required by a bound in `A`
+  --> $DIR/do-not-ice-on-note_and_explain.rs:1:10
+   |
+LL | struct A<B>(B);
+   |          ^ required by this bound in `A`
+
+error[E0308]: mismatched types
+  --> $DIR/do-not-ice-on-note_and_explain.rs:2:32
+   |
+LL | impl<B>A<B>{fn d(){fn d(){Self(1)}}}
+   |                           ---- ^ expected type parameter `B`, found integer
+   |                           |
+   |                           arguments to this function are incorrect
+   |
+   = note: expected type parameter `B`
+                        found type `{integer}`
+note: tuple struct defined here
+  --> $DIR/do-not-ice-on-note_and_explain.rs:1:8
+   |
+LL | struct A<B>(B);
+   |        ^
+
+error[E0308]: mismatched types
+  --> $DIR/do-not-ice-on-note_and_explain.rs:2:27
+   |
+LL | impl<B>A<B>{fn d(){fn d(){Self(1)}}}
+   |                           ^^^^^^^ expected `()`, found `A<B>`
+   |
+   = note: expected unit type `()`
+                 found struct `A<B>`
+help: consider using a semicolon here
+   |
+LL | impl<B>A<B>{fn d(){fn d(){Self(1);}}}
+   |                                  +
+help: try adding a return type
+   |
+LL | impl<B>A<B>{fn d(){fn d() -> A<B>{Self(1)}}}
+   |                           +++++++
+
+error[E0277]: the size for values of type `B` cannot be known at compilation time
+  --> $DIR/do-not-ice-on-note_and_explain.rs:2:27
+   |
+LL | impl<B>A<B>{fn d(){fn d(){Self(1)}}}
+   |      -                    ^^^^^^^ doesn't have a size known at compile-time
+   |      |
+   |      this type parameter needs to be `Sized`
+   |
+note: required by a bound in `A`
+  --> $DIR/do-not-ice-on-note_and_explain.rs:1:10
+   |
+LL | struct A<B>(B);
+   |          ^ required by this bound in `A`
+help: you could relax the implicit `Sized` bound on `B` if it were used through indirection like `&B` or `Box<B>`
+  --> $DIR/do-not-ice-on-note_and_explain.rs:1:10
+   |
+LL | struct A<B>(B);
+   |          ^  - ...if indirection were used here: `Box<B>`
+   |          |
+   |          this could be changed to `B: ?Sized`...
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0277, E0308, E0601.
+For more information about an error, try `rustc --explain E0277`.
