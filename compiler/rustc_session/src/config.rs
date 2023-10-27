@@ -9,7 +9,7 @@ use crate::utils::{CanonicalizedPath, NativeLib, NativeLibKind};
 use crate::{lint, HashStableContext};
 use crate::{EarlyErrorHandler, Session};
 
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_data_structures::stable_hasher::{StableOrd, ToStableHashKey};
 use rustc_target::abi::Align;
 use rustc_target::spec::LinkSelfContainedComponents;
@@ -1361,7 +1361,10 @@ fn default_configuration(sess: &Session) -> Cfg<Symbol> {
 /// crate, used to drive conditional compilation. `T` is always `String` or
 /// `Symbol`. Strings are used temporarily very early on. Once the the main
 /// symbol interner is running, they are converted to symbols.
-pub type Cfg<T> = FxHashSet<(T, Option<T>)>;
+///
+/// An `FxIndexSet` is used to ensure deterministic ordering of error messages
+/// relating to `--cfg`.
+pub type Cfg<T> = FxIndexSet<(T, Option<T>)>;
 
 /// The parsed `--check-cfg` options. The `<T>` structure is similar to `Cfg`.
 pub struct CheckCfg<T> {
