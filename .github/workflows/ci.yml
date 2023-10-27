@@ -62,6 +62,10 @@ jobs:
             env:
               ENABLE_GCC_CODEGEN: "1"
             os: ubuntu-20.04-16core-64gb
+          - name: x86_64-gnu-llvm-18
+            env:
+              RUST_BACKTRACE: 1
+            os: ubuntu-20.04-8core-32gb
           - name: x86_64-gnu-tools
             os: ubuntu-20.04-16core-64gb
             env: {}
