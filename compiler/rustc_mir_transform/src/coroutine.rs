@@ -249,6 +249,47 @@ struct TransformVisitor<'tcx> {
 }
 
 impl<'tcx> TransformVisitor<'tcx> {
+    fn insert_none_ret_block(&self, body: &mut Body<'tcx>) -> BasicBlock {
+        let block = BasicBlock::new(body.basic_blocks.len());
+
+        let source_info = SourceInfo::outermost(body.span);
+
+        let (kind, idx) = self.coroutine_state_adt_and_variant_idx(true);
+        assert_eq!(self.state_adt_ref.variant(idx).fields.len(), 0);
+        let statements = vec![Statement {
+            kind: StatementKind::Assign(Box::new((
+                Place::return_place(),
+                Rvalue::Aggregate(Box::new(kind), IndexVec::new()),
+            ))),
+            source_info,
+        }];
+
+        body.basic_blocks_mut().push(BasicBlockData {
+            statements,
+            terminator: Some(Terminator { source_info, kind: TerminatorKind::Return }),
+            is_cleanup: false,
+        });
+
+        block
+    }
+
+    fn coroutine_state_adt_and_variant_idx(
+        &self,
+        is_return: bool,
+    ) -> (AggregateKind<'tcx>, VariantIdx) {
+        let idx = VariantIdx::new(match (is_return, self.coroutine_kind) {
+            (true, hir::CoroutineKind::Coroutine) => 1, // CoroutineState::Complete
+            (false, hir::CoroutineKind::Coroutine) => 0, // CoroutineState::Yielded
+            (true, hir::CoroutineKind::Async(_)) => 0,  // Poll::Ready
+            (false, hir::CoroutineKind::Async(_)) => 1, // Poll::Pending
+            (true, hir::CoroutineKind::Gen(_)) => 0,    // Option::None
+            (false, hir::CoroutineKind::Gen(_)) => 1,   // Option::Some
+        });
+
+        let kind = AggregateKind::Adt(self.state_adt_ref.did(), idx, self.state_args, None, None);
+        (kind, idx)
+    }
+
     // Make a `CoroutineState` or `Poll` variant assignment.
     //
     // `core::ops::CoroutineState` only has single element tuple variants,
@@ -261,16 +302,7 @@ impl<'tcx> TransformVisitor<'tcx> {
         is_return: bool,
         statements: &mut Vec<Statement<'tcx>>,
     ) {
-        let idx = VariantIdx::new(match (is_return, self.coroutine_kind) {
-            (true, hir::CoroutineKind::Coroutine) => 1, // CoroutineState::Complete
-            (false, hir::CoroutineKind::Coroutine) => 0, // CoroutineState::Yielded
-            (true, hir::CoroutineKind::Async(_)) => 0,  // Poll::Ready
-            (false, hir::CoroutineKind::Async(_)) => 1, // Poll::Pending
-            (true, hir::CoroutineKind::Gen(_)) => 0,    // Option::None
-            (false, hir::CoroutineKind::Gen(_)) => 1,   // Option::Some
-        });
-
-        let kind = AggregateKind::Adt(self.state_adt_ref.did(), idx, self.state_args, None, None);
+        let (kind, idx) = self.coroutine_state_adt_and_variant_idx(is_return);
 
         match self.coroutine_kind {
             // `Poll::Pending`
@@ -1285,10 +1317,13 @@ fn create_coroutine_resume_function<'tcx>(
     }
 
     if can_return {
-        cases.insert(
-            1,
-            (RETURNED, insert_panic_block(tcx, body, ResumedAfterReturn(coroutine_kind))),
-        );
+        let block = match coroutine_kind {
+            CoroutineKind::Async(_) | CoroutineKind::Coroutine => {
+                insert_panic_block(tcx, body, ResumedAfterReturn(coroutine_kind))
+            }
+            CoroutineKind::Gen(_) => transform.insert_none_ret_block(body),
+        };
+        cases.insert(1, (RETURNED, block));
     }
 
     insert_switch(body, cases, &transform, TerminatorKind::Unreachable);

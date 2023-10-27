@@ -243,8 +243,9 @@ impl<O> AssertKind<O> {
             DivisionByZero(_) => middle_assert_divide_by_zero,
             RemainderByZero(_) => middle_assert_remainder_by_zero,
             ResumedAfterReturn(CoroutineKind::Async(_)) => middle_assert_async_resume_after_return,
-            // FIXME(gen_blocks): custom error message for `gen` blocks
-            ResumedAfterReturn(CoroutineKind::Gen(_)) => middle_assert_async_resume_after_return,
+            ResumedAfterReturn(CoroutineKind::Gen(_)) => {
+                bug!("gen blocks can be resumed after they return and will keep returning `None`")
+            }
             ResumedAfterReturn(CoroutineKind::Coroutine) => {
                 middle_assert_coroutine_resume_after_return
             }

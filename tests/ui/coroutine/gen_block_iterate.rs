@@ -25,6 +25,8 @@ fn main() {
     assert_eq!(iter.next(), Some(4));
     assert_eq!(iter.next(), Some(5));
     assert_eq!(iter.next(), None);
+    // `gen` blocks are fused
+    assert_eq!(iter.next(), None);
 
     let mut iter = moved();
     assert_eq!(iter.next(), Some(42));
