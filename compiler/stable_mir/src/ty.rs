@@ -444,6 +444,9 @@ pub enum ConstantKind {
     Allocated(Allocation),
     Unevaluated(UnevaluatedConst),
     Param(ParamConst),
+    /// Store ZST constants.
+    /// We have to special handle these constants since its type might be generic.
+    ZeroSized,
 }
 
 #[derive(Clone, Debug)]

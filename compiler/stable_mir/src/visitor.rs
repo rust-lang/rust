@@ -50,7 +50,7 @@ impl Visitable for Const {
         match &self.kind() {
             super::ty::ConstantKind::Allocated(alloc) => alloc.visit(visitor)?,
             super::ty::ConstantKind::Unevaluated(uv) => uv.visit(visitor)?,
-            super::ty::ConstantKind::Param(_) => {}
+            super::ty::ConstantKind::Param(_) | super::ty::ConstantKind::ZeroSized => {}
         }
         self.ty().visit(visitor)
     }
