@@ -39,18 +39,10 @@ use std::sync::Arc;
 
 type CfgSpecs = FxHashSet<(String, Option<String>)>;
 
-fn build_session_options_and_crate_config(
-    handler: &mut EarlyErrorHandler,
-    matches: getopts::Matches,
-) -> (Options, CfgSpecs) {
-    let sessopts = build_session_options(handler, &matches);
-    let cfg = parse_cfgspecs(handler, matches.opt_strs("cfg"));
-    (sessopts, cfg)
-}
-
 fn mk_session(handler: &mut EarlyErrorHandler, matches: getopts::Matches) -> (Session, CfgSpecs) {
     let registry = registry::Registry::new(&[]);
-    let (sessopts, cfg) = build_session_options_and_crate_config(handler, matches);
+    let sessopts = build_session_options(handler, &matches);
+    let cfg = parse_cfgspecs(handler, matches.opt_strs("cfg"));
     let temps_dir = sessopts.unstable_opts.temps_dir.as_deref().map(PathBuf::from);
     let io = CompilerIO {
         input: Input::Str { name: FileName::Custom(String::new()), input: String::new() },
@@ -880,6 +872,6 @@ fn test_edition_parsing() {
     let mut handler = EarlyErrorHandler::new(ErrorOutputType::default());
 
     let matches = optgroups().parse(&["--edition=2018".to_string()]).unwrap();
-    let (sessopts, _) = build_session_options_and_crate_config(&mut handler, matches);
+    let sessopts = build_session_options(&mut handler, &matches);
     assert!(sessopts.edition == Edition::Edition2018)
 }
