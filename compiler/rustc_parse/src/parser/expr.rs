@@ -2432,6 +2432,7 @@ impl<'a> Parser<'a> {
             }
         } else {
             let attrs = self.parse_outer_attributes()?; // For recovery.
+            let maybe_fatarrow = self.token.clone();
             let block = if self.check(&token::OpenDelim(Delimiter::Brace)) {
                 self.parse_block()?
             } else {
@@ -2456,6 +2457,15 @@ impl<'a> Parser<'a> {
                                 "you likely meant to continue parsing the let-chain starting here",
                             );
                         } else {
+                            // Look for usages of '=>' where '>=' might be intended
+                            if maybe_fatarrow.kind == token::FatArrow {
+                                err.span_suggestion(
+                                    maybe_fatarrow.span,
+                                    "you might have meant to write a \"greater than or equal to\" comparison",
+                                    ">=",
+                                    Applicability::MaybeIncorrect,
+                                );
+                            }
                             err.span_note(
                                 cond_span,
                                 "the `if` expression is missing a block after this condition",
