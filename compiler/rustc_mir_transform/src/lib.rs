@@ -20,6 +20,7 @@ extern crate tracing;
 #[macro_use]
 extern crate rustc_middle;
 
+use hir::ConstContext;
 use required_consts::RequiredConstsVisitor;
 use rustc_const_eval::util;
 use rustc_data_structures::fx::FxIndexSet;
@@ -251,8 +252,13 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def: LocalDefId) -> ConstQualifs {
     let const_kind = tcx.hir().body_const_context(def);
 
     // No need to const-check a non-const `fn`.
-    if const_kind.is_none() {
-        return Default::default();
+    match const_kind {
+        Some(ConstContext::Const { .. } | ConstContext::Static(_))
+        | Some(ConstContext::ConstFn) => {}
+        None => span_bug!(
+            tcx.def_span(def),
+            "`mir_const_qualif` should only be called on const fns and const items"
+        ),
     }
 
     // N.B., this `borrow()` is guaranteed to be valid (i.e., the value
@@ -317,7 +323,21 @@ fn mir_promoted(
     // Ensure that we compute the `mir_const_qualif` for constants at
     // this point, before we steal the mir-const result.
     // Also this means promotion can rely on all const checks having been done.
-    let const_qualifs = tcx.mir_const_qualif(def);
+
+    let const_qualifs = match tcx.def_kind(def) {
+        DefKind::Fn | DefKind::AssocFn | DefKind::Closure
+            if tcx.constness(def) == hir::Constness::Const
+                || tcx.is_const_default_method(def.to_def_id()) =>
+        {
+            tcx.mir_const_qualif(def)
+        }
+        DefKind::AssocConst
+        | DefKind::Const
+        | DefKind::Static(_)
+        | DefKind::InlineConst
+        | DefKind::AnonConst => tcx.mir_const_qualif(def),
+        _ => ConstQualifs::default(),
+    };
     let mut body = tcx.mir_const(def).steal();
     if let Some(error_reported) = const_qualifs.tainted_by_errors {
         body.tainted_by_errors = Some(error_reported);
