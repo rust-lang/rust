@@ -437,10 +437,10 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                     format!(" in `{t}`"),
                                     format!("within `{t}`, "),
                                     s.map(|s| (format!("within this `{t}`"), s)),
-                                    file.and_then(|file| Some(format!(
+                                    file.map(|file| format!(
                                         "the full trait has been written to '{}'",
                                         file.display(),
-                                    )))
+                                    ))
                                 )
                             })
                             .unwrap_or_default();
