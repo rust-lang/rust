@@ -365,7 +365,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                         //
                         // The unstable abi `PtxKernel` also uses Direct for now.
                         // It needs to switch to something else before stabilization can happen.
-                        // (Tracking issue abi_ptx: https://github.com/rust-lang/rust/issues/38788)
+                        // (See issue: https://github.com/rust-lang/rust/issues/117271)
                         assert!(
                             matches!(&*cx.tcx.sess.target.arch, "wasm32" | "wasm64")
                                 || self.conv == Conv::PtxKernel,
