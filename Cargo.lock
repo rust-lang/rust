@@ -1014,7 +1014,7 @@ dependencies = [
 [[package]]
 name = "derivative"
 version = "2.2.0"
-source = "git+https://github.com/compiler-errors/rust-derivative.git?branch=fast-discriminant#fd1434ceff14441827f68505bc7f13e6d4eec6da"
+source = "git+https://github.com/compiler-errors/rust-derivative.git?rev=fe4c30f#fe4c30f5cf55185d452c453a3b003dd924a880f3"
 dependencies = [
  "proc-macro2",
  "quote",
