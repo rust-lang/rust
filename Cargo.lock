@@ -4692,6 +4692,7 @@ dependencies = [
  "arrayvec",
  "askama",
  "expect-test",
+ "indexmap 2.0.0",
  "itertools",
  "minifier",
  "once_cell",

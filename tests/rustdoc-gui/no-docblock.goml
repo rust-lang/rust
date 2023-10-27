@@ -1,6 +1,6 @@
 // This test checks that there are margins applied to methods with no docblocks.
 
-// We need to disable this check because `implementors/test_docs/trait.TraitWithNoDocblock.js`
+// We need to disable this check because `trait.impl/test_docs/trait.TraitWithNoDocblock.js`
 // doesn't exist.
 fail-on-request-error: false
 

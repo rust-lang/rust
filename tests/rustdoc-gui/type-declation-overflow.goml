@@ -2,7 +2,7 @@
 // This test ensures that the items declaration content overflow is handled inside the <pre> directly.
 
 // We need to disable this check because
-// `implementors/test_docs/trait.ALongNameBecauseItHelpsTestingTheCurrentProblem.js`
+// `trait.impl/test_docs/trait.ALongNameBecauseItHelpsTestingTheCurrentProblem.js`
 // doesn't exist.
 fail-on-request-error: false
 
