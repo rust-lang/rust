@@ -4,9 +4,8 @@
 // check-pass
 // revisions: values cfg
 // compile-flags: --cfg=feature="rand" -Z unstable-options
-// compile-flags: --check-cfg=cfg(values,cfg)
-// [values]compile-flags: --check-cfg=values(feature,"serde","full")
-// [cfg]compile-flags: --check-cfg=cfg(feature,values("serde","full"))
+// [values]compile-flags: --check-cfg=values(feature,"serde","full") --check-cfg=names(values,cfg)
+// [cfg]compile-flags: --check-cfg=cfg(feature,values("serde","full")) --check-cfg=cfg(values,cfg)
 
 #[cfg(feature = "sedre")]
 //~^ WARNING unexpected `cfg` condition value
