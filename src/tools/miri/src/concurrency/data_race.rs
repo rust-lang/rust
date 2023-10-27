@@ -248,6 +248,13 @@ impl AccessType {
             AccessType::NaRead | AccessType::NaWrite(_) => false,
         }
     }
+
+    fn is_read(self) -> bool {
+        match self {
+            AccessType::AtomicLoad | AccessType::NaRead => true,
+            AccessType::NaWrite(_) | AccessType::AtomicStore | AccessType::AtomicRmw => false,
+        }
+    }
 }
 
 /// Memory Cell vector clock metadata
@@ -872,9 +879,8 @@ impl VClockAlloc {
     ) -> InterpResult<'tcx> {
         let (current_index, current_clocks) = global.current_thread_state(thread_mgr);
         let mut other_size = None; // if `Some`, this was a size-mismatch race
-        let mut involves_non_atomic = true;
         let write_clock;
-        let (other_action, other_thread, other_clock) =
+        let (other_access, other_thread, other_clock) =
             // First check the atomic-nonatomic cases. If it looks like multiple
             // cases apply, this one should take precedence, else it might look like
             // we are reporting races between two non-atomic reads.
@@ -898,7 +904,6 @@ impl VClockAlloc {
             } else if access.is_atomic() && let Some(atomic) = mem_clocks.atomic() && atomic.size != access_size {
                 // This is only a race if we are not synchronized with all atomic accesses, so find
                 // the one we are not synchronized with.
-                involves_non_atomic = false;
                 other_size = Some(atomic.size);
                 if let Some(idx) = Self::find_gt_index(&atomic.write_vector, &current_clocks.clock)
                     {
@@ -919,27 +924,36 @@ impl VClockAlloc {
         // Load elaborated thread information about the racing thread actions.
         let current_thread_info = global.print_thread_metadata(thread_mgr, current_index);
         let other_thread_info = global.print_thread_metadata(thread_mgr, other_thread);
+        let involves_non_atomic = !access.is_atomic() || !other_access.is_atomic();
 
         // Throw the data-race detection.
+        let extra = if other_size.is_some() {
+            assert!(!involves_non_atomic);
+            Some("overlapping unsynchronized atomic accesses must use the same access size")
+        } else if access.is_read() && other_access.is_read() {
+            assert!(involves_non_atomic);
+            Some(
+                "overlapping atomic and non-atomic accesses must be synchronized, even if both are read-only",
+            )
+        } else {
+            None
+        };
         Err(err_machine_stop!(TerminationInfo::DataRace {
             involves_non_atomic,
+            extra,
             ptr: ptr_dbg,
             op1: RacingOp {
                 action: if let Some(other_size) = other_size {
-                    format!("{}-byte {}", other_size.bytes(), other_action.description())
+                    format!("{}-byte {}", other_size.bytes(), other_access.description())
                 } else {
-                    other_action.description().to_owned()
+                    other_access.description().to_owned()
                 },
                 thread_info: other_thread_info,
                 span: other_clock.as_slice()[other_thread.index()].span_data(),
             },
             op2: RacingOp {
                 action: if other_size.is_some() {
-                    format!(
-                        "{}-byte (different-size) {}",
-                        access_size.bytes(),
-                        access.description()
-                    )
+                    format!("{}-byte {}", access_size.bytes(), access.description())
                 } else {
                     access.description().to_owned()
                 },
