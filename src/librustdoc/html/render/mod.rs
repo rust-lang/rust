@@ -48,13 +48,14 @@ use std::str;
 use std::string::ToString;
 
 use askama::Template;
-use rustc_attr::{ConstStability, Deprecation, Since, StabilityLevel, CURRENT_RUSTC_VERSION};
+use rustc_attr::{ConstStability, Deprecation, Since, StabilityLevel};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_hir::Mutability;
 use rustc_middle::middle::stability;
 use rustc_middle::ty::{self, TyCtxt};
+use rustc_session::RustcVersion;
 use rustc_span::{
     symbol::{sym, Symbol},
     BytePos, FileName, RealFileName,
@@ -979,7 +980,7 @@ fn render_stability_since_raw_with_extra(
 fn since_to_string(since: &Since) -> Option<String> {
     match since {
         Since::Version(since) => Some(since.to_string()),
-        Since::Current => Some(CURRENT_RUSTC_VERSION.to_owned()),
+        Since::Current => Some(RustcVersion::CURRENT.to_string()),
         Since::Err => None,
     }
 }
