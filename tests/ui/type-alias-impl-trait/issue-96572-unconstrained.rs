@@ -26,11 +26,9 @@ fn upvar() {
 fn enum_upvar() {
     type T = impl Copy;
     let foo: T = Some((1u32, 2u32));
-    let x = move || {
-        match foo {
-            None => (),
-            Some((a, b)) => (),
-        }
+    let x = move || match foo {
+        None => (),
+        Some((a, b)) => (),
     };
 }
 
@@ -63,6 +61,19 @@ mod only_pattern {
             None => {}
         }
     }
+
+    type V = impl Copy;
+
+    fn baz(baz: Option<V>) {
+        match baz {
+            _ => {}
+            Some((mut x, mut y)) => {
+                x = 42;
+                y = "foo";
+            }
+            None => {}
+        }
+    }
 }
 
 mod only_pattern_rpit {
@@ -71,11 +82,7 @@ mod only_pattern_rpit {
         let (mut x, mut y) = foo(false);
         x = 42;
         y = "foo";
-        if b {
-            panic!()
-        } else {
-            foo(true)
-        }
+        if b { panic!() } else { foo(true) }
     }
 
     fn bar(b: bool) -> Option<impl Copy> {
