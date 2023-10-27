@@ -307,7 +307,9 @@
 
 use self::ArmType::*;
 use self::Usefulness::*;
-use super::deconstruct_pat::{Constructor, ConstructorSet, DeconstructedPat, WitnessPat};
+use super::deconstruct_pat::{
+    Constructor, ConstructorSet, DeconstructedPat, SplitConstructorSet, WitnessPat,
+};
 use crate::errors::{NonExhaustiveOmittedPattern, Uncovered};
 
 use rustc_data_structures::captures::Captures;
@@ -875,22 +877,84 @@ fn is_useful<'p, 'tcx>(
     ret
 }
 
+/// A column of patterns in the matrix, where a column is the intuitive notion of "subpatterns that
+/// inspect the same subvalue".
+/// This is used to traverse patterns column-by-column for lints. Despite similarities with
+/// `is_useful`, this is a different traversal. Notably this is linear in the depth of patterns,
+/// whereas `is_useful` is worst-case exponential (exhaustiveness is NP-complete).
+#[derive(Debug)]
+struct PatternColumn<'p, 'tcx> {
+    patterns: Vec<&'p DeconstructedPat<'p, 'tcx>>,
+}
+
+impl<'p, 'tcx> PatternColumn<'p, 'tcx> {
+    fn new(patterns: Vec<&'p DeconstructedPat<'p, 'tcx>>) -> Self {
+        Self { patterns }
+    }
+
+    fn is_empty(&self) -> bool {
+        self.patterns.is_empty()
+    }
+    fn head_ty(&self) -> Option<Ty<'tcx>> {
+        self.patterns.get(0).map(|p| p.ty())
+    }
+
+    fn analyze_ctors(&self, pcx: &PatCtxt<'_, 'p, 'tcx>) -> SplitConstructorSet<'tcx> {
+        let column_ctors = self.patterns.iter().map(|p| p.ctor());
+        ConstructorSet::for_ty(pcx.cx, pcx.ty).split(pcx, column_ctors)
+    }
+
+    /// Does specialization: given a constructor, this takes the patterns from the column that match
+    /// the constructor, and outputs their fields.
+    /// This returns one column per field of the constructor. The normally all have the same length
+    /// (the number of patterns in `self` that matched `ctor`), except that we expand or-patterns
+    /// which may change the lengths.
+    fn specialize(&self, pcx: &PatCtxt<'_, 'p, 'tcx>, ctor: &Constructor<'tcx>) -> Vec<Self> {
+        let arity = ctor.arity(pcx);
+        if arity == 0 {
+            return Vec::new();
+        }
+
+        // We specialize the column by `ctor`. This gives us `arity`-many columns of patterns. These
+        // columns may have different lengths in the presence of or-patterns (this is why we can't
+        // reuse `Matrix`).
+        let mut specialized_columns: Vec<_> =
+            (0..arity).map(|_| Self { patterns: Vec::new() }).collect();
+        let relevant_patterns =
+            self.patterns.iter().filter(|pat| ctor.is_covered_by(pcx, pat.ctor()));
+        for pat in relevant_patterns {
+            let specialized = pat.specialize(pcx, &ctor);
+            for (subpat, column) in specialized.iter().zip(&mut specialized_columns) {
+                if subpat.is_or_pat() {
+                    column.patterns.extend(subpat.iter_fields())
+                } else {
+                    column.patterns.push(subpat)
+                }
+            }
+        }
+
+        assert!(
+            !specialized_columns[0].is_empty(),
+            "ctor {ctor:?} was listed as present but isn't;
+            there is an inconsistency between `Constructor::is_covered_by` and `ConstructorSet::split`"
+        );
+        specialized_columns
+    }
+}
+
 /// Traverse the patterns to collect any variants of a non_exhaustive enum that fail to be mentioned
-/// in a given column. This traverses patterns column-by-column, where a column is the intuitive
-/// notion of "subpatterns that inspect the same subvalue".
-/// Despite similarities with `is_useful`, this traversal is different. Notably this is linear in the
-/// depth of patterns, whereas `is_useful` is worst-case exponential (exhaustiveness is NP-complete).
+/// in a given column.
+#[instrument(level = "debug", skip(cx), ret)]
 fn collect_nonexhaustive_missing_variants<'p, 'tcx>(
     cx: &MatchCheckCtxt<'p, 'tcx>,
-    column: &[&DeconstructedPat<'p, 'tcx>],
+    column: &PatternColumn<'p, 'tcx>,
 ) -> Vec<WitnessPat<'tcx>> {
-    if column.is_empty() {
+    let Some(ty) = column.head_ty() else {
         return Vec::new();
-    }
-    let ty = column[0].ty();
+    };
     let pcx = &PatCtxt { cx, ty, span: DUMMY_SP, is_top_level: false };
 
-    let set = ConstructorSet::for_ty(pcx.cx, pcx.ty).split(pcx, column.iter().map(|p| p.ctor()));
+    let set = column.analyze_ctors(pcx);
     if set.present.is_empty() {
         // We can't consistently handle the case where no constructors are present (since this would
         // require digging deep through any type in case there's a non_exhaustive enum somewhere),
@@ -911,35 +975,11 @@ fn collect_nonexhaustive_missing_variants<'p, 'tcx>(
 
     // Recurse into the fields.
     for ctor in set.present {
-        let arity = ctor.arity(pcx);
-        if arity == 0 {
-            continue;
-        }
-
-        // We specialize the column by `ctor`. This gives us `arity`-many columns of patterns. These
-        // columns may have different lengths in the presence of or-patterns (this is why we can't
-        // reuse `Matrix`).
-        let mut specialized_columns: Vec<Vec<_>> = (0..arity).map(|_| Vec::new()).collect();
-        let relevant_patterns = column.iter().filter(|pat| ctor.is_covered_by(pcx, pat.ctor()));
-        for pat in relevant_patterns {
-            let specialized = pat.specialize(pcx, &ctor);
-            for (subpat, sub_column) in specialized.iter().zip(&mut specialized_columns) {
-                if subpat.is_or_pat() {
-                    sub_column.extend(subpat.iter_fields())
-                } else {
-                    sub_column.push(subpat)
-                }
-            }
-        }
-        debug_assert!(
-            !specialized_columns[0].is_empty(),
-            "ctor {ctor:?} was listed as present but isn't"
-        );
-
+        let specialized_columns = column.specialize(pcx, &ctor);
         let wild_pat = WitnessPat::wild_from_ctor(pcx, ctor);
         for (i, col_i) in specialized_columns.iter().enumerate() {
             // Compute witnesses for each column.
-            let wits_for_col_i = collect_nonexhaustive_missing_variants(cx, col_i.as_slice());
+            let wits_for_col_i = collect_nonexhaustive_missing_variants(cx, col_i);
             // For each witness, we build a new pattern in the shape of `ctor(_, _, wit, _, _)`,
             // adding enough wildcards to match `arity`.
             for wit in wits_for_col_i {
@@ -1032,6 +1072,7 @@ pub(crate) fn compute_match_usefulness<'p, 'tcx>(
         )
     {
         let pat_column = arms.iter().flat_map(|arm| arm.pat.flatten_or_pat()).collect::<Vec<_>>();
+        let pat_column = PatternColumn::new(pat_column);
         let witnesses = collect_nonexhaustive_missing_variants(cx, &pat_column);
 
         if !witnesses.is_empty() {
