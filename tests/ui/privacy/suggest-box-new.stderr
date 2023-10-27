@@ -1,0 +1,20 @@
+error[E0423]: cannot initialize a tuple struct which contains private fields
+  --> $DIR/suggest-box-new.rs:9:19
+   |
+LL |         wtf: Some(Box(U {
+   |                   ^^^
+   |
+note: constructor is not visible here due to private fields
+  --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
+   |
+   = note: private field
+   |
+   = note: private field
+help: you might have meant to use the `new` associated function
+   |
+LL |         wtf: Some(Box::new(U {
+   |                      +++++
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0423`.
