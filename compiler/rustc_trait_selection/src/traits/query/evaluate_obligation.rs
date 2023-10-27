@@ -86,7 +86,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
             })
         } else {
             assert!(!self.intercrate);
-            let mut anchor = DefiningAnchor::Bubble;
+            let anchor = DefiningAnchor::Bubble;
             loop {
                 let mut _orig_values = OriginalQueryValues::default();
                 let c_pred = self.canonicalize_query_keep_static(
@@ -94,10 +94,6 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
                     &mut _orig_values,
                 );
                 let res = self.tcx.at(obligation.cause.span()).evaluate_obligation(c_pred)?;
-                if res == EvaluationResult::EvaluatedToAmbig && anchor != self.defining_use_anchor {
-                    anchor = self.defining_use_anchor;
-                    continue;
-                }
                 break Ok(res);
             }
         }
