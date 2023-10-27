@@ -32,6 +32,12 @@
 //~^ ERROR attribute should be applied to function or closure
 mod inline {
     //~^ NOTE not a function or closure
+    //~| NOTE the inner attribute doesn't annotate this module
+    //~| NOTE the inner attribute doesn't annotate this module
+    //~| NOTE the inner attribute doesn't annotate this module
+    //~| NOTE the inner attribute doesn't annotate this module
+    //~| NOTE the inner attribute doesn't annotate this module
+    //~| NOTE the inner attribute doesn't annotate this module
 
     mod inner { #![inline] }
     //~^ ERROR attribute should be applied to function or closure
