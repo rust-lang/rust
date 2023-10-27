@@ -174,10 +174,13 @@ impl<'tcx> ConstValue<'tcx> {
     }
 
     /// Check if a constant may contain provenance information. This is used by MIR opts.
+    /// Can return `true` even if there is no provenance.
     pub fn may_have_provenance(&self, tcx: TyCtxt<'tcx>, size: Size) -> bool {
         match *self {
             ConstValue::ZeroSized | ConstValue::Scalar(Scalar::Int(_)) => return false,
             ConstValue::Scalar(Scalar::Ptr(..)) => return true,
+            // It's hard to find out the part of the allocation we point to;
+            // just conservatively check everything.
             ConstValue::Slice { data, meta: _ } => !data.inner().provenance().ptrs().is_empty(),
             ConstValue::Indirect { alloc_id, offset } => !tcx
                 .global_alloc(alloc_id)
@@ -504,10 +507,10 @@ impl<'tcx> Const<'tcx> {
     /// Return true if any evaluation of this constant always returns the same value,
     /// taking into account even pointer identity tests.
     pub fn is_deterministic(&self) -> bool {
-        // Some constants may contain pointers. We need to preserve the provenance of these
-        // pointers, but not all constants guarantee this:
-        // - valtrees purposefully do not;
-        // - ConstValue::Slice does not either.
+        // Some constants may generate fresh allocations for pointers they contain,
+        // so using the same constant twice can yield two different results:
+        // - valtrees purposefully generate new allocations
+        // - ConstValue::Slice also generate new allocations
         match self {
             Const::Ty(c) => match c.kind() {
                 ty::ConstKind::Param(..) => true,

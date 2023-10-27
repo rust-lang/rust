@@ -917,6 +917,7 @@ fn op_to_prop_const<'tcx>(
 
         // Do not try interning a value that contains provenance.
         // Due to https://github.com/rust-lang/rust/issues/79738, doing so could lead to bugs.
+        // FIXME: remove this hack once that issue is fixed.
         let alloc_ref = ecx.get_ptr_alloc(mplace.ptr(), size).ok()??;
         if alloc_ref.has_provenance() {
             return None;
@@ -928,6 +929,8 @@ fn op_to_prop_const<'tcx>(
         if matches!(ecx.tcx.global_alloc(alloc_id), GlobalAlloc::Memory(_)) {
             // `alloc_id` may point to a static. Codegen will choke on an `Indirect` with anything
             // by `GlobalAlloc::Memory`, so do fall through to copying if needed.
+            // FIXME: find a way to treat this more uniformly
+            // (probably by fixing codegen)
             return Some(ConstValue::Indirect { alloc_id, offset });
         }
     }
@@ -939,7 +942,7 @@ fn op_to_prop_const<'tcx>(
 
     // Check that we do not leak a pointer.
     // Those pointers may lose part of their identity in codegen.
-    // See https://github.com/rust-lang/rust/issues/79738.
+    // FIXME: remove this hack once https://github.com/rust-lang/rust/issues/79738 is fixed.
     if ecx.tcx.global_alloc(alloc_id).unwrap_memory().inner().provenance().ptrs().is_empty() {
         return Some(value);
     }
@@ -969,7 +972,7 @@ impl<'tcx> VnState<'_, 'tcx> {
 
         // Check that we do not leak a pointer.
         // Those pointers may lose part of their identity in codegen.
-        // See https://github.com/rust-lang/rust/issues/79738.
+        // FIXME: remove this hack once https://github.com/rust-lang/rust/issues/79738 is fixed.
         assert!(!value.may_have_provenance(self.tcx, op.layout.size));
 
         let const_ = Const::Val(value, op.layout.ty);
