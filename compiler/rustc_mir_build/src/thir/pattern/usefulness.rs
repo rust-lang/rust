@@ -883,7 +883,22 @@ impl<'p, 'tcx> PatternColumn<'p, 'tcx> {
         self.patterns.is_empty()
     }
     fn head_ty(&self) -> Option<Ty<'tcx>> {
-        self.patterns.get(0).map(|p| p.ty())
+        if self.patterns.len() == 0 {
+            return None;
+        }
+        // If the type is opaque and it is revealed anywhere in the column, we take the revealed
+        // version. Otherwise we could encounter constructors for the revealed type and crash.
+        let is_opaque = |ty: Ty<'tcx>| matches!(ty.kind(), ty::Alias(ty::Opaque, ..));
+        let first_ty = self.patterns[0].ty();
+        if is_opaque(first_ty) {
+            for pat in &self.patterns {
+                let ty = pat.ty();
+                if !is_opaque(ty) {
+                    return Some(ty);
+                }
+            }
+        }
+        Some(first_ty)
     }
 
     fn analyze_ctors(&self, pcx: &PatCtxt<'_, 'p, 'tcx>) -> SplitConstructorSet<'tcx> {
