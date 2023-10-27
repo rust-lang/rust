@@ -62,6 +62,7 @@ struct ConfigBuilder {
     llvm_version: Option<String>,
     git_hash: bool,
     system_llvm: bool,
+    profiler_support: bool,
 }
 
 impl ConfigBuilder {
@@ -97,6 +98,11 @@ impl ConfigBuilder {
 
     fn system_llvm(&mut self, s: bool) -> &mut Self {
         self.system_llvm = s;
+        self
+    }
+
+    fn profiler_support(&mut self, s: bool) -> &mut Self {
+        self.profiler_support = s;
         self
     }
 
@@ -141,6 +147,9 @@ impl ConfigBuilder {
         }
         if self.system_llvm {
             args.push("--system-llvm".to_owned());
+        }
+        if self.profiler_support {
+            args.push("--profiler-support".to_owned());
         }
 
         args.push("--rustc-path".to_string());
@@ -338,6 +347,15 @@ fn sanitizers() {
     assert!(check_ignore(&config, "// needs-sanitizer-leak"));
     assert!(check_ignore(&config, "// needs-sanitizer-memory"));
     assert!(check_ignore(&config, "// needs-sanitizer-thread"));
+}
+
+#[test]
+fn profiler_support() {
+    let config: Config = cfg().profiler_support(false).build();
+    assert!(check_ignore(&config, "// needs-profiler-support"));
+
+    let config: Config = cfg().profiler_support(true).build();
+    assert!(!check_ignore(&config, "// needs-profiler-support"));
 }
 
 #[test]
