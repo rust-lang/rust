@@ -166,6 +166,14 @@ fn generate_rust_program(notices: &str, intrinsic: &Intrinsic, a32: bool) -> Str
     format!(
         r#"{notices}#![feature(simd_ffi)]
 #![feature(link_llvm_intrinsics)]
+#![cfg_attr(target_arch = "arm", feature(stdarch_arm_neon_intrinsics))]
+#![feature(stdarch_arm_crc32)]
+#![cfg_attr(target_arch = "aarch64", feature(stdarch_neon_fcma))]
+#![cfg_attr(target_arch = "aarch64", feature(stdarch_neon_dotprod))]
+#![cfg_attr(target_arch = "aarch64", feature(stdarch_neon_i8mm))]
+#![cfg_attr(target_arch = "aarch64", feature(stdarch_neon_sha3))]
+#![cfg_attr(target_arch = "aarch64", feature(stdarch_neon_sm4))]
+#![cfg_attr(target_arch = "aarch64", feature(stdarch_neon_ftts))]
 #![allow(overflowing_literals)]
 #![allow(non_upper_case_globals)]
 use core_arch::arch::{target_arch}::*;

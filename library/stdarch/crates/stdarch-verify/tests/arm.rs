@@ -1,8 +1,9 @@
+#![allow(unused)]
+
 use std::collections::HashMap;
 
 use serde::Deserialize;
 
-#[allow(unused)]
 struct Function {
     name: &'static str,
     arguments: &'static [&'static Type],

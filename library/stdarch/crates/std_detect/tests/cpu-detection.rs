@@ -1,19 +1,20 @@
-#![feature(
-    stdarch_internal,
-    stdarch_arm_feature_detection,
-    stdarch_powerpc_feature_detection
-)]
+#![feature(stdarch_internal)]
+#![cfg_attr(target_arch = "arm", feature(stdarch_arm_feature_detection))]
+#![cfg_attr(target_arch = "powerpc", feature(stdarch_powerpc_feature_detection))]
+#![cfg_attr(target_arch = "powerpc64", feature(stdarch_powerpc_feature_detection))]
 #![allow(clippy::unwrap_used, clippy::use_debug, clippy::print_stdout)]
-#![cfg(any(
-    target_arch = "arm",
-    target_arch = "aarch64",
-    target_arch = "x86",
-    target_arch = "x86_64",
-    target_arch = "powerpc",
-    target_arch = "powerpc64"
-))]
 
-#[macro_use]
+#[cfg_attr(
+    any(
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "x86",
+        target_arch = "x86_64",
+        target_arch = "powerpc",
+        target_arch = "powerpc64"
+    ),
+    macro_use
+)]
 extern crate std_detect;
 
 #[test]

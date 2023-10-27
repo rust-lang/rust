@@ -21,6 +21,8 @@
 #![no_std]
 #![allow(internal_features)]
 // Temporary hack: needed to build against toolchains from before the mass feature renaming.
+// Remove this as soon as the stdarch submodule is updated on nightly.
+#![allow(stable_features)]
 #![feature(stdsimd)]
 
 #[cfg(test)]
