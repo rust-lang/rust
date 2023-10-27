@@ -270,6 +270,9 @@ parse_fn_ptr_with_generics = function pointer types may not have generic paramet
         *[false] a
     } `for` parameter list
 
+parse_fn_trait_missing_paren = `Fn` bounds require arguments in parentheses
+    .add_paren = add the missing parentheses
+
 parse_forgot_paren = perhaps you forgot parentheses?
 
 parse_found_expr_would_be_stmt = expected expression, found `{$token}`
