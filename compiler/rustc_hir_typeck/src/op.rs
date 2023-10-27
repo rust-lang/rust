@@ -379,6 +379,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         (err, output_def_id)
                     }
                 };
+                if self.tcx.sess.source_map().is_multiline(lhs_expr.span.between(rhs_expr.span))
+                    && let IsAssign::No = is_assign
+                    && let hir::BinOpKind::Mul = op.node
+                    && rhs_expr.is_syntactic_place_expr()
+                {
+                    //      v missing semicolon here
+                    // foo()
+                    // *bar = baz;
+                    // (#80446).
+                    err.span_suggestion_verbose(
+                        lhs_expr.span.shrink_to_hi(),
+                        "you might have meant to write a semicolon here",
+                        ";".to_string(),
+                        Applicability::MaybeIncorrect,
+                    );
+                }
 
                 let suggest_deref_binop =
                     |err: &mut DiagnosticBuilder<'_, _>, lhs_deref_ty: Ty<'tcx>| {
