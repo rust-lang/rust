@@ -197,6 +197,9 @@ macro_rules! handle_cycle_error {
     ([(fatal_cycle) $($rest:tt)*]) => {{
         rustc_query_system::HandleCycleError::Fatal
     }};
+    ([(cycle_stash) $($rest:tt)*]) => {{
+        rustc_query_system::HandleCycleError::Stash
+    }};
     ([(cycle_delay_bug) $($rest:tt)*]) => {{
         rustc_query_system::HandleCycleError::DelayBug
     }};
