@@ -92,7 +92,7 @@ pub(crate) fn run(options: RustdocOptions) -> Result<(), ErrorGuaranteed> {
     cfgs.push("doctest".to_owned());
     let config = interface::Config {
         opts: sessopts,
-        crate_cfg: interface::parse_cfgspecs(&early_error_handler, cfgs),
+        crate_cfg: interface::parse_cfg(&early_error_handler, cfgs),
         crate_check_cfg: interface::parse_check_cfg(
             &early_error_handler,
             options.check_cfgs.clone(),

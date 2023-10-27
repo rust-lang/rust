@@ -15,7 +15,9 @@ use rustc_middle::{bug, ty};
 use rustc_parse::maybe_new_parser_from_source_str;
 use rustc_query_impl::QueryCtxt;
 use rustc_query_system::query::print_query_stack;
-use rustc_session::config::{self, CheckCfg, ExpectedValues, Input, OutFileName, OutputFilenames};
+use rustc_session::config::{
+    self, Cfg, CheckCfg, ExpectedValues, Input, OutFileName, OutputFilenames,
+};
 use rustc_session::parse::ParseSess;
 use rustc_session::CompilerIO;
 use rustc_session::Session;
@@ -61,14 +63,13 @@ impl Compiler {
     }
 }
 
-/// Converts strings provided as `--cfg [cfgspec]` into a `crate_cfg`.
-pub fn parse_cfgspecs(
-    handler: &EarlyErrorHandler,
-    cfgspecs: Vec<String>,
-) -> FxHashSet<(String, Option<String>)> {
+/// Converts strings provided as `--cfg [cfgspec]` into a `Cfg`.
+pub fn parse_cfg(handler: &EarlyErrorHandler, cfgs: Vec<String>) -> Cfg<String> {
+    // This creates a short-lived `SessionGlobals`, containing an interner. The
+    // parsed values are converted from symbols to strings before exiting
+    // because the symbols are meaningless once the interner is gone.
     rustc_span::create_default_session_if_not_set_then(move |_| {
-        cfgspecs
-            .into_iter()
+        cfgs.into_iter()
             .map(|s| {
                 let sess = ParseSess::with_silent_emitter(Some(format!(
                     "this error occurred on the command line: `--cfg={s}`"
@@ -121,12 +122,14 @@ pub fn parse_cfgspecs(
                     error!(r#"expected `key` or `key="value"`"#);
                 }
             })
-            .collect::<FxHashSet<_>>()
+            .collect::<Cfg<String>>()
     })
 }
 
 /// Converts strings provided as `--check-cfg [specs]` into a `CheckCfg`.
-pub fn parse_check_cfg(handler: &EarlyErrorHandler, specs: Vec<String>) -> CheckCfg {
+pub fn parse_check_cfg(handler: &EarlyErrorHandler, specs: Vec<String>) -> CheckCfg<String> {
+    // The comment about `SessionGlobals` and symbols in `parse_cfg` above
+    // applies here too.
     rustc_span::create_default_session_if_not_set_then(move |_| {
         // If any --check-cfg is passed then exhaustive_values and exhaustive_names
         // are enabled by default.
@@ -374,8 +377,8 @@ pub struct Config {
     pub opts: config::Options,
 
     /// cfg! configuration in addition to the default ones
-    pub crate_cfg: FxHashSet<(String, Option<String>)>,
-    pub crate_check_cfg: CheckCfg,
+    pub crate_cfg: Cfg<String>,
+    pub crate_check_cfg: CheckCfg<String>,
 
     pub input: Input,
     pub output_dir: Option<PathBuf>,
