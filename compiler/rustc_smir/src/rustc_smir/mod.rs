@@ -1283,11 +1283,15 @@ impl<'tcx> Stable<'tcx> for ty::Const<'tcx> {
         let kind = match self.kind() {
             ty::Value(val) => {
                 let const_val = tables.tcx.valtree_to_const_val((self.ty(), val));
-                stable_mir::ty::ConstantKind::Allocated(alloc::new_allocation(
-                    self.ty(),
-                    const_val,
-                    tables,
-                ))
+                if matches!(const_val, mir::ConstValue::ZeroSized) {
+                    ConstantKind::ZeroSized
+                } else {
+                    stable_mir::ty::ConstantKind::Allocated(alloc::new_allocation(
+                        self.ty(),
+                        const_val,
+                        tables,
+                    ))
+                }
             }
             ty::ParamCt(param) => stable_mir::ty::ConstantKind::Param(param.stable(tables)),
             ty::ErrorCt(_) => unreachable!(),
@@ -1400,6 +1404,11 @@ impl<'tcx> Stable<'tcx> for rustc_middle::mir::Const<'tcx> {
                 let ty = ty.stable(tables);
                 let id = tables.intern_const(*self);
                 Const::new(kind, ty, id)
+            }
+            mir::Const::Val(val, ty) if matches!(val, mir::ConstValue::ZeroSized) => {
+                let ty = ty.stable(tables);
+                let id = tables.intern_const(*self);
+                Const::new(ConstantKind::ZeroSized, ty, id)
             }
             mir::Const::Val(val, ty) => {
                 let kind = ConstantKind::Allocated(alloc::new_allocation(ty, val, tables));

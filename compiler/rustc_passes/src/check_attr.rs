@@ -2534,10 +2534,30 @@ fn check_invalid_crate_level_attr(tcx: TyCtxt<'_>, attrs: &[Attribute]) {
         if attr.style == AttrStyle::Inner {
             for attr_to_check in ATTRS_TO_CHECK {
                 if attr.has_name(*attr_to_check) {
+                    let item = tcx
+                        .hir()
+                        .items()
+                        .map(|id| tcx.hir().item(id))
+                        .find(|item| !item.span.is_dummy()) // Skip prelude `use`s
+                        .map(|item| errors::ItemFollowingInnerAttr {
+                            span: item.ident.span,
+                            kind: item.kind.descr(),
+                        });
                     tcx.sess.emit_err(errors::InvalidAttrAtCrateLevel {
                         span: attr.span,
-                        snippet: tcx.sess.source_map().span_to_snippet(attr.span).ok(),
+                        sugg_span: tcx
+                            .sess
+                            .source_map()
+                            .span_to_snippet(attr.span)
+                            .ok()
+                            .filter(|src| src.starts_with("#!["))
+                            .map(|_| {
+                                attr.span
+                                    .with_lo(attr.span.lo() + BytePos(1))
+                                    .with_hi(attr.span.lo() + BytePos(2))
+                            }),
                         name: *attr_to_check,
+                        item,
                     });
                 }
             }

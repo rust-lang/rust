@@ -393,6 +393,9 @@ passes_invalid_attr_at_crate_level =
     `{$name}` attribute cannot be used at crate level
     .suggestion = perhaps you meant to use an outer attribute
 
+passes_invalid_attr_at_crate_level_item =
+    the inner attribute doesn't annotate this {$kind}
+
 passes_invalid_deprecation_version =
     invalid deprecation version found
     .label = invalid deprecation version

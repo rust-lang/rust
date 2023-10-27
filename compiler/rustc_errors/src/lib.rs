@@ -508,6 +508,8 @@ pub enum StashKey {
     TraitMissingMethod,
     OpaqueHiddenTypeMismatch,
     MaybeForgetReturn,
+    /// Query cycle detected, stashing in favor of a better error.
+    Cycle,
 }
 
 fn default_track_diagnostic(d: &mut Diagnostic, f: &mut dyn FnMut(&mut Diagnostic)) {
