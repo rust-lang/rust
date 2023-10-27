@@ -1,13 +1,10 @@
-use crate::spec::{Cc, Lld, LinkerFlavor, StackProbeType, Target, TargetOptions};
+use crate::spec::{Cc, LinkerFlavor, Lld, StackProbeType, Target, TargetOptions};
 
 pub fn target() -> Target {
     let mut base = super::netbsd_base::opts();
     base.cpu = "pentium".into();
     base.max_atomic_width = Some(64);
-    base.pre_link_args
-        .entry(LinkerFlavor::Gnu(Cc::Yes, Lld::No))
-        .or_default()
-        .push("-m32".into());
+    base.pre_link_args.entry(LinkerFlavor::Gnu(Cc::Yes, Lld::No)).or_default().push("-m32".into());
     base.stack_probes = StackProbeType::Call;
 
     Target {
