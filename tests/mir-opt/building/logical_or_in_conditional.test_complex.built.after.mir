@@ -23,7 +23,7 @@ fn test_complex() -> () {
     }
 
     bb1: {
-        FakeRead(ForMatchedPlace(None), _2);
+        PlaceMention(_2);
         _3 = discriminant(_2);
         switchInt(move _3) -> [0: bb2, otherwise: bb3];
     }
@@ -151,7 +151,7 @@ fn test_complex() -> () {
     }
 
     bb25: {
-        FakeRead(ForMatchedPlace(None), _12);
+        PlaceMention(_12);
         _13 = discriminant(_12);
         switchInt(move _13) -> [1: bb27, otherwise: bb26];
     }

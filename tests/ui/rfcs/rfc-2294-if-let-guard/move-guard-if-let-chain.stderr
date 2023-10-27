@@ -1,5 +1,5 @@
 error[E0382]: use of moved value: `x`
-  --> $DIR/move-guard-if-let-chain.rs:12:27
+  --> $DIR/move-guard-if-let-chain.rs:12:23
    |
 LL |     let x: Box<_> = Box::new(1);
    |         - move occurs because `x` has type `Box<i32>`, which does not implement the `Copy` trait
@@ -7,7 +7,7 @@ LL |     let x: Box<_> = Box::new(1);
 LL |         (1, 2) if let y = x && c => (),
    |                       - value moved here
 LL |         (1, 2) if let z = x => (),
-   |                           ^ value used here after move
+   |                       ^ value used here after move
    |
 help: borrow this binding in the pattern to avoid moving the value
    |
@@ -15,7 +15,7 @@ LL |         (1, 2) if let ref y = x && c => (),
    |                       +++
 
 error[E0382]: use of moved value: `x`
-  --> $DIR/move-guard-if-let-chain.rs:36:27
+  --> $DIR/move-guard-if-let-chain.rs:36:23
    |
 LL |     let x: Box<_> = Box::new(1);
    |         - move occurs because `x` has type `Box<i32>`, which does not implement the `Copy` trait
@@ -23,7 +23,7 @@ LL |     let x: Box<_> = Box::new(1);
 LL |         (1, _) if let y = x && c => (),
    |                       - value moved here
 LL |         (_, 2) if let z = x => (),
-   |                           ^ value used here after move
+   |                       ^ value used here after move
    |
 help: borrow this binding in the pattern to avoid moving the value
    |
@@ -31,15 +31,13 @@ LL |         (1, _) if let ref y = x && c => (),
    |                       +++
 
 error[E0382]: use of moved value: `x`
-  --> $DIR/move-guard-if-let-chain.rs:59:36
+  --> $DIR/move-guard-if-let-chain.rs:59:32
    |
 LL |     let x: Box<_> = Box::new(1);
    |         - move occurs because `x` has type `Box<i32>`, which does not implement the `Copy` trait
 ...
 LL |         (1, _) | (_, 2) if let y = x && c => (),
-   |                                -   ^ value used here after move
-   |                                |
-   |                                value moved here
+   |                                ^ value used here after move
    |
 help: borrow this binding in the pattern to avoid moving the value
    |

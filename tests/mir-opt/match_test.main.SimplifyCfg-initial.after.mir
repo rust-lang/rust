@@ -26,7 +26,7 @@ fn main() -> () {
         _2 = const true;
         FakeRead(ForLet(None), _2);
         StorageLive(_3);
-        FakeRead(ForMatchedPlace(None), _1);
+        PlaceMention(_1);
         _6 = Le(const 0_i32, _1);
         switchInt(move _6) -> [0: bb4, otherwise: bb1];
     }

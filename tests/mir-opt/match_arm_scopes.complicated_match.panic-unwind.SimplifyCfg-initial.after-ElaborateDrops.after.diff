@@ -31,7 +31,7 @@
       }
   
       bb0: {
--         FakeRead(ForMatchedPlace(None), _2);
+          PlaceMention(_2);
 -         switchInt((_2.0: bool)) -> [0: bb1, otherwise: bb2];
 +         switchInt((_2.0: bool)) -> [0: bb5, otherwise: bb1];
       }

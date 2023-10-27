@@ -4,6 +4,7 @@
   fn unreachable_box() -> ! {
       let mut _0: !;
       let _1: std::boxed::Box<Never>;
+      let mut _2: *const Never;
       scope 1 {
           debug x => _1;
       }
@@ -14,6 +15,7 @@
           StorageLive(_1);
 -         _1 = const 1_usize as std::boxed::Box<Never> (Transmute);
 +         _1 = const Box::<Never>(Unique::<Never> {{ pointer: NonNull::<Never> {{ pointer: {0x1 as *const Never} }}, _marker: PhantomData::<Never> }}, std::alloc::Global);
+          _2 = (((_1.0: std::ptr::Unique<Never>).0: std::ptr::NonNull<Never>).0: *const Never);
           unreachable;
       }
   }

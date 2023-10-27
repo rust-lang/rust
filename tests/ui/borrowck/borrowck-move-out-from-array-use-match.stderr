@@ -43,14 +43,14 @@ help: borrow this binding in the pattern to avoid moving the value
 LL |         [_, _, (ref _x, _)] => {}
    |                 +++
 
-error[E0382]: use of partially moved value: `a`
-  --> $DIR/borrowck-move-out-from-array-use-match.rs:44:11
+error[E0382]: borrow of partially moved value: `a`
+  --> $DIR/borrowck-move-out-from-array-use-match.rs:45:10
    |
 LL |         [_x, _, _] => {}
    |          -- value partially moved here
-LL |     }
-LL |     match a {
-   |           ^ value used here after partial move
+...
+LL |         [ref _y @ .., _, _] => {}
+   |          ^^^^^^ value borrowed here after partial move
    |
    = note: partial move occurs because `a[..]` has type `(String, String)`, which does not implement the `Copy` trait
 help: borrow this binding in the pattern to avoid moving the value
@@ -58,14 +58,14 @@ help: borrow this binding in the pattern to avoid moving the value
 LL |         [ref _x, _, _] => {}
    |          +++
 
-error[E0382]: use of partially moved value: `a`
-  --> $DIR/borrowck-move-out-from-array-use-match.rs:55:11
+error[E0382]: borrow of partially moved value: `a`
+  --> $DIR/borrowck-move-out-from-array-use-match.rs:56:16
    |
 LL |         [.., _x] => {}
    |              -- value partially moved here
-LL |     }
-LL |     match a {
-   |           ^ value used here after partial move
+...
+LL |         [_, _, ref _y @ ..] => {}
+   |                ^^^^^^ value borrowed here after partial move
    |
    = note: partial move occurs because `a[..]` has type `(String, String)`, which does not implement the `Copy` trait
 help: borrow this binding in the pattern to avoid moving the value
@@ -73,14 +73,14 @@ help: borrow this binding in the pattern to avoid moving the value
 LL |         [.., ref _x] => {}
    |              +++
 
-error[E0382]: use of partially moved value: `a`
-  --> $DIR/borrowck-move-out-from-array-use-match.rs:66:11
+error[E0382]: borrow of partially moved value: `a`
+  --> $DIR/borrowck-move-out-from-array-use-match.rs:67:10
    |
 LL |         [(_x, _), _, _] => {}
    |           -- value partially moved here
-LL |     }
-LL |     match a {
-   |           ^ value used here after partial move
+...
+LL |         [ref _y @ .., _, _] => {}
+   |          ^^^^^^ value borrowed here after partial move
    |
    = note: partial move occurs because `a[..].0` has type `String`, which does not implement the `Copy` trait
 help: borrow this binding in the pattern to avoid moving the value
@@ -88,14 +88,14 @@ help: borrow this binding in the pattern to avoid moving the value
 LL |         [(ref _x, _), _, _] => {}
    |           +++
 
-error[E0382]: use of partially moved value: `a`
-  --> $DIR/borrowck-move-out-from-array-use-match.rs:77:11
+error[E0382]: borrow of partially moved value: `a`
+  --> $DIR/borrowck-move-out-from-array-use-match.rs:78:16
    |
 LL |         [.., (_x, _)] => {}
    |               -- value partially moved here
-LL |     }
-LL |     match a {
-   |           ^ value used here after partial move
+...
+LL |         [_, _, ref _y @ ..] => {}
+   |                ^^^^^^ value borrowed here after partial move
    |
    = note: partial move occurs because `a[..].0` has type `String`, which does not implement the `Copy` trait
 help: borrow this binding in the pattern to avoid moving the value
@@ -133,14 +133,14 @@ help: borrow this binding in the pattern to avoid moving the value
 LL |         [_, _, ref _y @ ..] => {}
    |                +++
 
-error[E0382]: use of partially moved value: `a`
-  --> $DIR/borrowck-move-out-from-array-use-match.rs:110:11
+error[E0382]: borrow of partially moved value: `a`
+  --> $DIR/borrowck-move-out-from-array-use-match.rs:111:13
    |
 LL |         [x @ .., _] => {}
    |          - value partially moved here
-LL |     }
-LL |     match a {
-   |           ^ value used here after partial move
+...
+LL |         [_, ref _y @ ..] => {}
+   |             ^^^^^^ value borrowed here after partial move
    |
    = note: partial move occurs because `a[..]` has type `(String, String)`, which does not implement the `Copy` trait
 help: borrow this binding in the pattern to avoid moving the value
