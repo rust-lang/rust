@@ -20,6 +20,7 @@ use rustc_target::abi::{call::FnAbi, HasDataLayout, PointeeInfo, Size, TargetDat
 use rustc_target::spec::{HasTargetSpec, Target, TlsModel};
 
 use crate::callee::get_fn;
+use crate::common::SignType;
 
 #[derive(Clone)]
 pub struct FuncSig<'gcc> {
@@ -129,29 +130,57 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     pub fn new(context: &'gcc Context<'gcc>, codegen_unit: &'tcx CodegenUnit<'tcx>, tcx: TyCtxt<'tcx>, supports_128bit_integers: bool) -> Self {
         let check_overflow = tcx.sess.overflow_checks();
 
-        let i8_type = context.new_c_type(CType::Int8t);
-        let i16_type = context.new_c_type(CType::Int16t);
-        let i32_type = context.new_c_type(CType::Int32t);
-        let i64_type = context.new_c_type(CType::Int64t);
-        let u8_type = context.new_c_type(CType::UInt8t);
-        let u16_type = context.new_c_type(CType::UInt16t);
-        let u32_type = context.new_c_type(CType::UInt32t);
-        let u64_type = context.new_c_type(CType::UInt64t);
+        let create_type = |ctype, rust_type| {
+            let layout = tcx.layout_of(ParamEnv::reveal_all().and(rust_type)).unwrap();
+            let align = layout.align.abi.bytes();
+            #[cfg(feature="master")]
+            {
+                context.new_c_type(ctype).get_aligned(align)
+            }
+            #[cfg(not(feature="master"))]
+            {
+                // Since libgccjit 12 doesn't contain the fix to compare aligned integer types,
+                // only align u128 and i128.
+                if layout.ty.int_size_and_signed(tcx).0.bytes() == 16 {
+                    context.new_c_type(ctype).get_aligned(align)
+                }
+                else {
+                    context.new_c_type(ctype)
+                }
+            }
+        };
+
+        let i8_type = create_type(CType::Int8t, tcx.types.i8);
+        let i16_type = create_type(CType::Int16t, tcx.types.i16);
+        let i32_type = create_type(CType::Int32t, tcx.types.i32);
+        let i64_type = create_type(CType::Int64t, tcx.types.i64);
+        let u8_type = create_type(CType::UInt8t, tcx.types.u8);
+        let u16_type = create_type(CType::UInt16t, tcx.types.u16);
+        let u32_type = create_type(CType::UInt32t, tcx.types.u32);
+        let u64_type = create_type(CType::UInt64t, tcx.types.u64);
 
         let (i128_type, u128_type) =
             if supports_128bit_integers {
-                let i128_type = context.new_c_type(CType::Int128t).get_aligned(8); // TODO(antoyo): should the alignment be hard-coded?;
-                let u128_type = context.new_c_type(CType::UInt128t).get_aligned(8); // TODO(antoyo): should the alignment be hard-coded?;
+                let i128_type = create_type(CType::Int128t, tcx.types.i128);
+                let u128_type = create_type(CType::UInt128t, tcx.types.u128);
                 (i128_type, u128_type)
             }
             else {
-                let i128_type = context.new_array_type(None, i64_type, 2);
-                let u128_type = context.new_array_type(None, u64_type, 2);
+                /*let layout = tcx.layout_of(ParamEnv::reveal_all().and(tcx.types.i128)).unwrap();
+                let i128_align = layout.align.abi.bytes();
+                let layout = tcx.layout_of(ParamEnv::reveal_all().and(tcx.types.u128)).unwrap();
+                let u128_align = layout.align.abi.bytes();*/
+
+                // TODO(antoyo): re-enable the alignment when libgccjit fixed the issue in
+                // gcc_jit_context_new_array_constructor (it should not use reinterpret_cast).
+                let i128_type = context.new_array_type(None, i64_type, 2)/*.get_aligned(i128_align)*/;
+                let u128_type = context.new_array_type(None, u64_type, 2)/*.get_aligned(u128_align)*/;
                 (i128_type, u128_type)
             };
 
         let tls_model = to_gcc_tls_mode(tcx.sess.tls_model());
 
+        // TODO(antoyo): set alignment on those types as well.
         let float_type = context.new_type::<f32>();
         let double_type = context.new_type::<f64>();
 
@@ -167,13 +196,9 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         let ulonglong_type = context.new_c_type(CType::ULongLong);
         let sizet_type = context.new_c_type(CType::SizeT);
 
-        let isize_type = context.new_c_type(CType::LongLong);
-        let usize_type = context.new_c_type(CType::ULongLong);
+        let usize_type = sizet_type;
+        let isize_type = usize_type;
         let bool_type = context.new_type::<bool>();
-
-        // TODO(antoyo): only have those assertions on x86_64.
-        assert_eq!(isize_type.get_size(), i64_type.get_size());
-        assert_eq!(usize_type.get_size(), u64_type.get_size());
 
         let mut functions = FxHashMap::default();
         let builtins = [
@@ -192,7 +217,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             functions.insert(builtin.to_string(), context.get_builtin_function(builtin));
         }
 
-        Self {
+        let mut cx = Self {
             check_overflow,
             codegen_unit,
             context,
@@ -254,7 +279,10 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             pointee_infos: Default::default(),
             structs_as_pointer: Default::default(),
             cleanup_blocks: Default::default(),
-        }
+        };
+        // TODO(antoyo): instead of doing this, add SsizeT to libgccjit.
+        cx.isize_type = usize_type.to_signed(&cx);
+        cx
     }
 
     pub fn rvalue_as_function(&self, value: RValue<'gcc>) -> Function<'gcc> {

@@ -751,9 +751,8 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         loaded_value.to_rvalue()
     }
 
-    fn volatile_load(&mut self, _ty: Type<'gcc>, ptr: RValue<'gcc>) -> RValue<'gcc> {
-        // TODO(antoyo): use ty.
-        let ptr = self.context.new_cast(None, ptr, ptr.get_type().make_volatile());
+    fn volatile_load(&mut self, ty: Type<'gcc>, ptr: RValue<'gcc>) -> RValue<'gcc> {
+        let ptr = self.context.new_cast(None, ptr, ty.make_volatile().make_pointer());
         ptr.dereference(None).to_rvalue()
     }
 

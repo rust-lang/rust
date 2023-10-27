@@ -5,6 +5,7 @@ mod build;
 mod config;
 mod prepare;
 mod rustc_info;
+mod test;
 mod utils;
 
 macro_rules! arg_error {
@@ -23,6 +24,7 @@ Available commands for build_system:
 
     prepare  : Run prepare command
     build    : Run build command
+    test     : Run test command
     --help   : Show this message"
     );
 }
@@ -30,6 +32,7 @@ Available commands for build_system:
 pub enum Command {
     Prepare,
     Build,
+    Test,
 }
 
 fn main() {
@@ -40,6 +43,7 @@ fn main() {
     let command = match env::args().nth(1).as_deref() {
         Some("prepare") => Command::Prepare,
         Some("build") => Command::Build,
+        Some("test") => Command::Test,
         Some("--help") => {
             usage();
             process::exit(0);
@@ -55,6 +59,7 @@ fn main() {
     if let Err(e) = match command {
         Command::Prepare => prepare::run(),
         Command::Build => build::run(),
+        Command::Test => test::run(),
     } {
         eprintln!("Command failed to run: {e:?}");
         process::exit(1);
