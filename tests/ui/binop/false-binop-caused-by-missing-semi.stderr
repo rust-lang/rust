@@ -1,18 +1,5 @@
-error[E0369]: cannot multiply `()` by `&mut {integer}`
-  --> $DIR/false-binop-caused-by-missing-semi.rs:6:5
-   |
-LL |     foo()
-   |     ----- ()
-LL |     *x = 0;
-   |     ^- &mut {integer}
-   |
-help: you might have meant to write a semicolon here
-   |
-LL |     foo();
-   |          +
-
 error[E0070]: invalid left-hand side of assignment
-  --> $DIR/false-binop-caused-by-missing-semi.rs:6:8
+  --> $DIR/false-binop-caused-by-missing-semi.rs:7:8
    |
 LL | /     foo()
 LL | |     *x = 0;
@@ -25,7 +12,6 @@ help: you might have meant to write a semicolon here
 LL |     foo();
    |          +
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
-Some errors have detailed explanations: E0070, E0369.
-For more information about an error, try `rustc --explain E0070`.
+For more information about this error, try `rustc --explain E0070`.

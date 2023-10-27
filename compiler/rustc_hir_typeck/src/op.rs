@@ -379,21 +379,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         (err, output_def_id)
                     }
                 };
-                if self.tcx.sess.source_map().is_multiline(lhs_expr.span.between(rhs_expr.span))
-                    && let IsAssign::No = is_assign
-                    && let hir::BinOpKind::Mul = op.node
-                    && rhs_expr.is_syntactic_place_expr()
+                if self.check_for_missing_semi(expr, &mut err)
+                    && let hir::Node::Expr(expr) = self.tcx.hir().get_parent(expr.hir_id)
+                    && let hir::ExprKind::Assign(..) = expr.kind
                 {
-                    //      v missing semicolon here
-                    // foo()
-                    // *bar = baz;
-                    // (#80446).
-                    err.span_suggestion_verbose(
-                        lhs_expr.span.shrink_to_hi(),
-                        "you might have meant to write a semicolon here",
-                        ";".to_string(),
-                        Applicability::MaybeIncorrect,
-                    );
+                    // We defer to the later error produced by `check_lhs_assignable`.
+                    err.delay_as_bug();
                 }
 
                 let suggest_deref_binop =

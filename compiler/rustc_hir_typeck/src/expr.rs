@@ -961,7 +961,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Check if the expression that could not be assigned to was a typoed expression that
-    fn check_for_missing_semi(&self, expr: &'tcx hir::Expr<'tcx>, err: &mut Diagnostic) {
+    pub fn check_for_missing_semi(
+        &self,
+        expr: &'tcx hir::Expr<'tcx>,
+        err: &mut DiagnosticBuilder<'_, ErrorGuaranteed>,
+    ) -> bool {
         if let hir::ExprKind::Binary(binop, lhs, rhs) = expr.kind
             && let hir::BinOpKind::Mul = binop.node
             && self.tcx.sess.source_map().is_multiline(lhs.span.between(rhs.span))
@@ -977,7 +981,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ";".to_string(),
                 Applicability::MachineApplicable,
             );
+            return true;
         }
+        false
     }
 
     // Check if an expression `original_expr_id` comes from the condition of a while loop,
