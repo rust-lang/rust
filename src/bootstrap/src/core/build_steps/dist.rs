@@ -1624,7 +1624,9 @@ impl Step for Extended {
                     prepare(tool);
                 }
             }
-            prepare("rustc-codegen-cranelift");
+            if builder.config.rust_codegen_backends.contains(&INTERNER.intern_str("cranelift")) {
+                prepare("rustc-codegen-cranelift");
+            }
             // create an 'uninstall' package
             builder.install(&etc.join("pkg/postinstall"), &pkg.join("uninstall"), 0o755);
             pkgbuild("uninstall");

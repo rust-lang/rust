@@ -84,8 +84,6 @@ if [ "$DIST_SRC" = "" ]; then
   RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --disable-dist-src"
 fi
 
-RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.codegen-backends=llvm,cranelift"
-
 # Always set the release channel for bootstrap; this is normally not important (i.e., only dist
 # builds would seem to matter) but in practice bootstrap wants to know whether we're targeting
 # master, beta, or stable with a build to determine whether to run some checks (notably toolstate).
@@ -107,6 +105,7 @@ if [ "$DEPLOY$DEPLOY_ALT" = "1" ]; then
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.verify-llvm-ir"
   fi
 
+  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.codegen-backends=${CODEGEN_BACKENDS:-llvm}"
 else
   # We almost always want debug assertions enabled, but sometimes this takes too
   # long for too little benefit, so we just turn them off.
@@ -126,6 +125,9 @@ else
   fi
 
   RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.verify-llvm-ir"
+
+  # Test the Cranelift backend in CI. Bootstrap knows which targets to run tests on.
+  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.codegen-backends=llvm,cranelift"
 
   # We enable this for non-dist builders, since those aren't trying to produce
   # fresh binaries. We currently don't entirely support distributing a fresh

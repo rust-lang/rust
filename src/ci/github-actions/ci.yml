@@ -359,6 +359,8 @@ jobs:
             <<: *job-linux-8c
 
           - name: dist-aarch64-linux
+            env:
+              CODEGEN_BACKENDS: llvm,cranelift
             <<: *job-linux-8c
 
           - name: dist-android
@@ -411,14 +413,19 @@ jobs:
 
           - &dist-x86_64-linux
             name: dist-x86_64-linux
+            env:
+              CODEGEN_BACKENDS: llvm,cranelift
             <<: *job-linux-16c
 
           - name: dist-x86_64-linux-alt
             env:
               IMAGE: dist-x86_64-linux
+              CODEGEN_BACKENDS: llvm,cranelift
             <<: *job-linux-16c
 
           - name: dist-x86_64-musl
+            env:
+              CODEGEN_BACKENDS: llvm,cranelift
             <<: *job-linux-8c
 
           - name: dist-x86_64-netbsd
@@ -501,6 +508,7 @@ jobs:
               NO_DEBUG_ASSERTIONS: 1
               NO_OVERFLOW_CHECKS: 1
               DIST_REQUIRE_ALL_TOOLS: 1
+              CODEGEN_BACKENDS: llvm,cranelift
             <<: *job-macos-xl
 
           - name: dist-apple-various
@@ -697,6 +705,8 @@ jobs:
         include:
           - &dist-x86_64-linux
             name: dist-x86_64-linux
+            env:
+              CODEGEN_BACKENDS: llvm,cranelift
             <<: *job-linux-16c
 
   master:
