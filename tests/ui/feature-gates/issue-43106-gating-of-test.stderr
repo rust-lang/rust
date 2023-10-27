@@ -11,10 +11,14 @@ error: `test` attribute cannot be used at crate level
    |
 LL | #![test                    = "4200"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | fn main() {}
+   |    ---- the inner attribute doesn't annotate this function
    |
 help: perhaps you meant to use an outer attribute
    |
-LL | #[test                    = "4200"]
+LL - #![test                    = "4200"]
+LL + #[test                    = "4200"]
    |
 
 error: aborting due to 2 previous errors

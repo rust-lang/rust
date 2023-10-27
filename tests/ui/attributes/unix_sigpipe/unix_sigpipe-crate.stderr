@@ -3,11 +3,15 @@ error: `unix_sigpipe` attribute cannot be used at crate level
    |
 LL | #![unix_sigpipe = "inherit"]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | fn main() {}
+   |    ---- the inner attribute doesn't annotate this function
    |
 help: perhaps you meant to use an outer attribute
    |
-LL | #[unix_sigpipe = "inherit"]
-   | ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL - #![unix_sigpipe = "inherit"]
+LL + #[unix_sigpipe = "inherit"]
+   |
 
 error: aborting due to previous error
 
