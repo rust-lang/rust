@@ -98,6 +98,8 @@ pub trait TypeErrCtxtExt<'tcx> {
         error: &SelectionError<'tcx>,
     );
 
+    fn fn_arg_obligation(&self, obligation: &PredicateObligation<'tcx>) -> bool;
+
     fn report_const_param_not_wf(
         &self,
         ty: Ty<'tcx>,
@@ -157,12 +159,6 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 predicate: error.obligation.predicate,
                 index: Some(index),
             });
-
-            self.reported_trait_errors
-                .borrow_mut()
-                .entry(span)
-                .or_default()
-                .push(error.obligation.predicate);
         }
 
         // We do this in 2 passes because we want to display errors in order, though
@@ -200,6 +196,18 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             for (error, suppressed) in iter::zip(&errors, &is_suppressed) {
                 if !suppressed && error.obligation.cause.span.from_expansion() == from_expansion {
                     self.report_fulfillment_error(error);
+                    // We want to ignore desugarings here: spans are equivalent even
+                    // if one is the result of a desugaring and the other is not.
+                    let mut span = error.obligation.cause.span;
+                    let expn_data = span.ctxt().outer_expn_data();
+                    if let ExpnKind::Desugaring(_) = expn_data.kind {
+                        span = expn_data.call_site;
+                    }
+                    self.reported_trait_errors
+                        .borrow_mut()
+                        .entry(span)
+                        .or_default()
+                        .push(error.obligation.predicate);
                 }
             }
         }
@@ -410,6 +418,11 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         if self.tcx.sess.has_errors().is_some()
                             && trait_predicate.references_error()
                         {
+                            return;
+                        }
+                        if self.fn_arg_obligation(&obligation) {
+                            // Silence redundant errors on binding acccess that are already
+                            // reported on the binding definition (#56607).
                             return;
                         }
                         let trait_ref = trait_predicate.to_poly_trait_ref();
@@ -906,6 +919,26 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         self.note_obligation_cause(&mut err, &obligation);
         self.point_at_returns_when_relevant(&mut err, &obligation);
         err.emit();
+    }
+
+    fn fn_arg_obligation(&self, obligation: &PredicateObligation<'tcx>) -> bool {
+        if let ObligationCauseCode::FunctionArgumentObligation {
+            arg_hir_id,
+            ..
+        } = obligation.cause.code()
+            && let Some(Node::Expr(arg)) = self.tcx.hir().find(*arg_hir_id)
+            && let arg = arg.peel_borrows()
+            && let hir::ExprKind::Path(hir::QPath::Resolved(
+                None,
+                hir::Path { res: hir::def::Res::Local(hir_id), .. },
+            )) = arg.kind
+            && let Some(Node::Pat(pat)) = self.tcx.hir().find(*hir_id)
+            && let Some(preds) = self.reported_trait_errors.borrow().get(&pat.span)
+            && preds.contains(&obligation.predicate)
+        {
+            return true;
+        }
+        false
     }
 
     fn report_const_param_not_wf(
