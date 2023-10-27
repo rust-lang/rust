@@ -12,8 +12,7 @@ itertools = "0.10.1"
 rustc-semver = "1.1"
 
 [features]
-deny-warnings = []
-internal = []
+deny-warnings = ["clippy_config/deny-warnings"]
 
 [package.metadata.rust-analyzer]
 # This crate uses #[feature(rustc_private)]
