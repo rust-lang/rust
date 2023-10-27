@@ -139,7 +139,7 @@ fn do_mumble_frotz() {}
 
 ```bash
 # This turns on checking for feature values, but not for condition names.
-rustc --check-cfg 'configure(feature, values("zapping", "lasers"))' \
+rustc --check-cfg 'cfg(feature, values("zapping", "lasers"))' \
       --check-cfg 'cfg(any())' \
       --cfg 'feature="zapping"' -Z unstable-options
 ```
