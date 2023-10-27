@@ -16,7 +16,7 @@ use rustc_parse::maybe_new_parser_from_source_str;
 use rustc_query_impl::QueryCtxt;
 use rustc_query_system::query::print_query_stack;
 use rustc_session::config::{self, CheckCfg, ExpectedValues, Input, OutFileName, OutputFilenames};
-use rustc_session::parse::{CrateConfig, ParseSess};
+use rustc_session::parse::ParseSess;
 use rustc_session::CompilerIO;
 use rustc_session::Session;
 use rustc_session::{lint, EarlyErrorHandler};
@@ -67,7 +67,7 @@ pub fn parse_cfgspecs(
     cfgspecs: Vec<String>,
 ) -> FxHashSet<(String, Option<String>)> {
     rustc_span::create_default_session_if_not_set_then(move |_| {
-        let cfg = cfgspecs
+        cfgspecs
             .into_iter()
             .map(|s| {
                 let sess = ParseSess::with_silent_emitter(Some(format!(
@@ -97,7 +97,10 @@ pub fn parse_cfgspecs(
                                 }
                                 MetaItemKind::NameValue(..) | MetaItemKind::Word => {
                                     let ident = meta_item.ident().expect("multi-segment cfg key");
-                                    return (ident.name, meta_item.value_str());
+                                    return (
+                                        ident.name.to_string(),
+                                        meta_item.value_str().map(|sym| sym.to_string()),
+                                    );
                                 }
                             }
                         }
@@ -118,8 +121,7 @@ pub fn parse_cfgspecs(
                     error!(r#"expected `key` or `key="value"`"#);
                 }
             })
-            .collect::<CrateConfig>();
-        cfg.into_iter().map(|(a, b)| (a.to_string(), b.map(|b| b.to_string()))).collect()
+            .collect::<FxHashSet<_>>()
     })
 }
 
