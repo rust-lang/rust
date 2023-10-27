@@ -169,8 +169,8 @@ fn replace_bool_expr(edit: &mut SourceChangeBuilder, expr: ast::Expr) {
 
 /// Converts an expression of type `bool` to one of the new enum type.
 fn bool_expr_to_enum_expr(expr: ast::Expr) -> ast::Expr {
-    let true_expr = make::expr_path(make::path_from_text("Bool::True")).clone_for_update();
-    let false_expr = make::expr_path(make::path_from_text("Bool::False")).clone_for_update();
+    let true_expr = make::expr_path(make::path_from_text("Bool::True"));
+    let false_expr = make::expr_path(make::path_from_text("Bool::False"));
 
     if let ast::Expr::Literal(literal) = &expr {
         match literal.kind() {
@@ -184,7 +184,6 @@ fn bool_expr_to_enum_expr(expr: ast::Expr) -> ast::Expr {
             make::tail_only_block_expr(true_expr),
             Some(ast::ElseBranch::Block(make::tail_only_block_expr(false_expr))),
         )
-        .clone_for_update()
     }
 }
 
@@ -239,7 +238,7 @@ fn replace_usages(
                     cov_mark::hit!(replaces_record_expr);
 
                     let enum_expr = bool_expr_to_enum_expr(initializer);
-                    replace_record_field_expr(edit, record_field, enum_expr);
+                    replace_record_field_expr(ctx, edit, record_field, enum_expr);
                 } else if let Some(pat) = find_record_pat_field_usage(&name) {
                     match pat {
                         ast::Pat::IdentPat(ident_pat) => {
@@ -283,6 +282,7 @@ fn replace_usages(
                         )
                     {
                         replace_record_field_expr(
+                            ctx,
                             edit,
                             record_field,
                             make::expr_bin_op(
@@ -312,19 +312,19 @@ fn replace_usages(
 
 /// Replaces the record expression, handling field shorthands.
 fn replace_record_field_expr(
+    ctx: &AssistContext<'_>,
     edit: &mut SourceChangeBuilder,
     record_field: ast::RecordExprField,
     initializer: ast::Expr,
 ) {
     if let Some(ast::Expr::PathExpr(path_expr)) = record_field.expr() {
         // replace field shorthand
-        edit.insert(
-            path_expr.syntax().text_range().end(),
-            format!(": {}", initializer.syntax().text()),
-        )
+        let file_range = ctx.sema.original_range(path_expr.syntax());
+        edit.insert(file_range.range.end(), format!(": {}", initializer.syntax().text()))
     } else if let Some(expr) = record_field.expr() {
         // just replace expr
-        edit.replace_ast(expr, initializer);
+        let file_range = ctx.sema.original_range(expr.syntax());
+        edit.replace(file_range.range, initializer.syntax().text());
     }
 }
 
@@ -833,6 +833,48 @@ enum Bool { True, False }
 fn main() {
     let foo = Bool::True;
     let s = Foo { foo: foo == Bool::True };
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn local_var_init_struct_usage_in_macro() {
+        check_assist(
+            bool_to_enum,
+            r#"
+struct Struct {
+    boolean: bool,
+}
+
+macro_rules! identity {
+    ($body:expr) => {
+        $body
+    }
+}
+
+fn new() -> Struct {
+    let $0boolean = true;
+    identity![Struct { boolean }]
+}
+"#,
+            r#"
+struct Struct {
+    boolean: bool,
+}
+
+macro_rules! identity {
+    ($body:expr) => {
+        $body
+    }
+}
+
+#[derive(PartialEq, Eq)]
+enum Bool { True, False }
+
+fn new() -> Struct {
+    let boolean = Bool::True;
+    identity![Struct { boolean: boolean == Bool::True }]
 }
 "#,
         )
@@ -1354,6 +1396,46 @@ fn main() {
     let foo = Foo { bool: Bool::True };
 
     (foo.bool == Bool::True).then(|| 2);
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn field_in_macro() {
+        check_assist(
+            bool_to_enum,
+            r#"
+struct Struct {
+    $0boolean: bool,
+}
+
+fn boolean(x: Struct) {
+    let Struct { boolean } = x;
+}
+
+macro_rules! identity { ($body:expr) => { $body } }
+
+fn new() -> Struct {
+    identity!(Struct { boolean: true })
+}
+"#,
+            r#"
+#[derive(PartialEq, Eq)]
+enum Bool { True, False }
+
+struct Struct {
+    boolean: Bool,
+}
+
+fn boolean(x: Struct) {
+    let Struct { boolean } = x;
+}
+
+macro_rules! identity { ($body:expr) => { $body } }
+
+fn new() -> Struct {
+    identity!(Struct { boolean: Bool::True })
 }
 "#,
         )
