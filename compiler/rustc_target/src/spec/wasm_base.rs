@@ -1,4 +1,4 @@
-use super::crt_objects::LinkSelfContainedDefault;
+use super::LinkSelfContainedDefault;
 use super::{cvs, Cc, LinkerFlavor, PanicStrategy, RelocModel, TargetOptions, TlsModel};
 
 pub fn options() -> TargetOptions {

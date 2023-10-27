@@ -72,8 +72,8 @@
 //! best we can with this target. Don't start relying on too much here unless
 //! you know what you're getting in to!
 
-use super::crt_objects::{self, LinkSelfContainedDefault};
-use super::{wasm_base, Cc, LinkerFlavor, Target};
+use super::{crt_objects, wasm_base};
+use super::{Cc, LinkSelfContainedDefault, LinkerFlavor, Target};
 
 pub fn target() -> Target {
     let mut options = wasm_base::options();
