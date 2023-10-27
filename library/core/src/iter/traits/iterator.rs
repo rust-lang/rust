@@ -2142,7 +2142,7 @@ pub trait Iterator {
     /// passed collection. The collection is then returned, so the call chain
     /// can be continued.
     ///
-    /// This is useful when you already have a collection and wants to add
+    /// This is useful when you already have a collection and want to add
     /// the iterator items to it.
     ///
     /// This method is a convenience method to call [Extend::extend](trait.Extend.html),
