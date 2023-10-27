@@ -405,13 +405,12 @@ fn find_record_expr_usage(
     let record_field = ast::RecordExprField::for_field_name(name_ref)?;
     let initializer = record_field.expr()?;
 
-    if let Definition::Field(expected_field) = target_definition {
-        if got_field != expected_field {
-            return None;
+    match target_definition {
+        Definition::Field(expected_field) if got_field == expected_field => {
+            Some((record_field, initializer))
         }
+        _ => None,
     }
-
-    Some((record_field, initializer))
 }
 
 fn find_record_pat_field_usage(name: &ast::NameLike) -> Option<ast::Pat> {
@@ -795,6 +794,36 @@ fn main() {
             r#"
 fn main() {
     let ($0foo, bar) = (true, false);
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn local_var_init_struct_usage() {
+        check_assist(
+            bool_to_enum,
+            r#"
+struct Foo {
+    foo: bool,
+}
+
+fn main() {
+    let $0foo = true;
+    let s = Foo { foo };
+}
+"#,
+            r#"
+struct Foo {
+    foo: bool,
+}
+
+#[derive(PartialEq, Eq)]
+enum Bool { True, False }
+
+fn main() {
+    let foo = Bool::True;
+    let s = Foo { foo: foo == Bool::True };
 }
 "#,
         )
