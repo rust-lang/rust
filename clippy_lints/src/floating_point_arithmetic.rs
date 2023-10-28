@@ -323,9 +323,9 @@ fn check_powi(cx: &LateContext<'_>, expr: &Expr<'_>, receiver: &Expr<'_>, args: 
                     let maybe_neg_sugg = |expr, hir_id| {
                         let sugg = Sugg::hir(cx, expr, "..");
                         if matches!(op, BinOpKind::Sub) && hir_id == rhs.hir_id {
-                            format!("-{}", sugg.maybe_par())
+                            -sugg
                         } else {
-                            sugg.to_string()
+                            sugg
                         }
                     };
 
@@ -470,25 +470,13 @@ fn check_mul_add(cx: &LateContext<'_>, expr: &Expr<'_>) {
 
         let maybe_neg_sugg = |expr| {
             let sugg = Sugg::hir(cx, expr, "..");
-            if let BinOpKind::Sub = op {
-                format!("-{sugg}")
-            } else {
-                sugg.to_string()
-            }
+            if let BinOpKind::Sub = op { -sugg } else { sugg }
         };
 
         let (recv, arg1, arg2) = if let Some((inner_lhs, inner_rhs)) = is_float_mul_expr(cx, lhs) {
-            (
-                inner_lhs,
-                Sugg::hir(cx, inner_rhs, "..").to_string(),
-                maybe_neg_sugg(rhs),
-            )
+            (inner_lhs, Sugg::hir(cx, inner_rhs, ".."), maybe_neg_sugg(rhs))
         } else if let Some((inner_lhs, inner_rhs)) = is_float_mul_expr(cx, rhs) {
-            (
-                inner_lhs,
-                maybe_neg_sugg(inner_rhs),
-                Sugg::hir(cx, lhs, "..").to_string(),
-            )
+            (inner_lhs, maybe_neg_sugg(inner_rhs), Sugg::hir(cx, lhs, ".."))
         } else {
             return;
         };
