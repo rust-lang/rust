@@ -4,6 +4,7 @@ use rustc_middle::mir;
 use rustc_middle::mir::interpret::PointerArithmetic;
 use rustc_middle::ty::layout::{FnAbiOf, TyAndLayout};
 use rustc_middle::ty::{self, TyCtxt};
+use rustc_span::Span;
 use std::borrow::Borrow;
 use std::hash::Hash;
 use std::ops::ControlFlow;
@@ -181,6 +182,24 @@ impl interpret::MayLeak for ! {
 }
 
 impl<'mir, 'tcx: 'mir> CompileTimeEvalContext<'mir, 'tcx> {
+    fn location_triple_for_span(&self, span: Span) -> (Symbol, u32, u32) {
+        let topmost = span.ctxt().outer_expn().expansion_cause().unwrap_or(span);
+        let caller = self.tcx.sess.source_map().lookup_char_pos(topmost.lo());
+
+        use rustc_session::{config::RemapPathScopeComponents, RemapFileNameExt};
+        (
+            Symbol::intern(
+                &caller
+                    .file
+                    .name
+                    .for_scope(&self.tcx.sess, RemapPathScopeComponents::DIAGNOSTICS)
+                    .to_string_lossy(),
+            ),
+            u32::try_from(caller.line).unwrap(),
+            u32::try_from(caller.col_display).unwrap().checked_add(1).unwrap(),
+        )
+    }
+
     /// "Intercept" a function call, because we have something special to do for it.
     /// All `#[rustc_do_not_const_check]` functions should be hooked here.
     /// If this returns `Some` function, which may be `instance` or a different function with

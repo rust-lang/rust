@@ -595,6 +595,68 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
     }
 
+    /// Walks up the callstack from the intrinsic's callsite, searching for the first callsite in a
+    /// frame which is not `#[track_caller]`. This is the fancy version of `cur_span`.
+    pub(crate) fn find_closest_untracked_caller_location(&self) -> Span {
+        for frame in self.stack().iter().rev() {
+            debug!("find_closest_untracked_caller_location: checking frame {:?}", frame.instance);
+
+            // Assert that the frame we look at is actually executing code currently
+            // (`loc` is `Right` when we are unwinding and the frame does not require cleanup).
+            let loc = frame.loc.left().unwrap();
+
+            // This could be a non-`Call` terminator (such as `Drop`), or not a terminator at all
+            // (such as `box`). Use the normal span by default.
+            let mut source_info = *frame.body.source_info(loc);
+
+            // If this is a `Call` terminator, use the `fn_span` instead.
+            let block = &frame.body.basic_blocks[loc.block];
+            if loc.statement_index == block.statements.len() {
+                debug!(
+                    "find_closest_untracked_caller_location: got terminator {:?} ({:?})",
+                    block.terminator(),
+                    block.terminator().kind,
+                );
+                if let mir::TerminatorKind::Call { fn_span, .. } = block.terminator().kind {
+                    source_info.span = fn_span;
+                }
+            }
+
+            // Note: this must be kept in sync with get_caller_location from cg_ssa.
+
+            // Walk up the `SourceScope`s, in case some of them are from MIR inlining.
+            // If so, the starting `source_info.span` is in the innermost inlined
+            // function, and will be replaced with outer callsite spans as long
+            // as the inlined functions were `#[track_caller]`.
+            loop {
+                let scope_data = &frame.body.source_scopes[source_info.scope];
+
+                if let Some((callee, callsite_span)) = scope_data.inlined {
+                    // Stop inside the most nested non-`#[track_caller]` function,
+                    // before ever reaching its caller (which is irrelevant).
+                    if !callee.def.requires_caller_location(*self.tcx) {
+                        return source_info.span;
+                    }
+                    source_info.span = callsite_span;
+                }
+
+                // Skip past all of the parents with `inlined: None`.
+                match scope_data.inlined_parent_scope {
+                    Some(parent) => source_info.scope = parent,
+                    None => break,
+                }
+            }
+
+            // Stop inside the most nested non-`#[track_caller]` function,
+            // before ever reaching its caller (which is irrelevant).
+            if !frame.instance.def.requires_caller_location(*self.tcx) {
+                return source_info.span;
+            }
+        }
+
+        span_bug!(self.cur_span(), "no non-`#[track_caller]` frame found")
+    }
+
     #[inline(always)]
     pub fn layout_of_local(
         &self,
