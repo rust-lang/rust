@@ -2623,46 +2623,6 @@ where
     }
 }
 
-macro_rules! forward_display_to_print {
-    ($($ty:ty),+) => {
-        // Some of the $ty arguments may not actually use 'tcx
-        $(#[allow(unused_lifetimes)] impl<'tcx> fmt::Display for $ty {
-            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                ty::tls::with(|tcx| {
-                    let mut cx = FmtPrinter::new(tcx, Namespace::TypeNS);
-                    tcx.lift(*self)
-                        .expect("could not lift for printing")
-                        .print(&mut cx)?;
-                    f.write_str(&cx.into_buffer())?;
-                    Ok(())
-                })
-            }
-        })+
-    };
-}
-
-macro_rules! define_print_and_forward_display {
-    (($self:ident, $cx:ident): $($ty:ty $print:block)+) => {
-        define_print!(($self, $cx): $($ty $print)*);
-        forward_display_to_print!($($ty),+);
-    };
-}
-
-macro_rules! define_print {
-    (($self:ident, $cx:ident): $($ty:ty $print:block)+) => {
-        $(impl<'tcx, P: PrettyPrinter<'tcx>> Print<'tcx, P> for $ty {
-            fn print(&$self, $cx: &mut P) -> Result<(), PrintError> {
-                #[allow(unused_mut)]
-                let mut $cx = $cx;
-                define_scoped_cx!($cx);
-                let _: () = $print;
-                #[allow(unreachable_code)]
-                Ok(())
-            }
-        })+
-    };
-}
-
 /// Wrapper type for `ty::TraitRef` which opts-in to pretty printing only
 /// the trait path. That is, it will print `Trait<U>` instead of
 /// `<T as Trait<U>>`.
@@ -2735,6 +2695,46 @@ impl<'tcx> ty::PolyTraitPredicate<'tcx> {
 #[derive(Debug, Copy, Clone, Lift)]
 pub struct PrintClosureAsImpl<'tcx> {
     pub closure: ty::ClosureArgs<'tcx>,
+}
+
+macro_rules! forward_display_to_print {
+    ($($ty:ty),+) => {
+        // Some of the $ty arguments may not actually use 'tcx
+        $(#[allow(unused_lifetimes)] impl<'tcx> fmt::Display for $ty {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                ty::tls::with(|tcx| {
+                    let mut cx = FmtPrinter::new(tcx, Namespace::TypeNS);
+                    tcx.lift(*self)
+                        .expect("could not lift for printing")
+                        .print(&mut cx)?;
+                    f.write_str(&cx.into_buffer())?;
+                    Ok(())
+                })
+            }
+        })+
+    };
+}
+
+macro_rules! define_print {
+    (($self:ident, $cx:ident): $($ty:ty $print:block)+) => {
+        $(impl<'tcx, P: PrettyPrinter<'tcx>> Print<'tcx, P> for $ty {
+            fn print(&$self, $cx: &mut P) -> Result<(), PrintError> {
+                #[allow(unused_mut)]
+                let mut $cx = $cx;
+                define_scoped_cx!($cx);
+                let _: () = $print;
+                #[allow(unreachable_code)]
+                Ok(())
+            }
+        })+
+    };
+}
+
+macro_rules! define_print_and_forward_display {
+    (($self:ident, $cx:ident): $($ty:ty $print:block)+) => {
+        define_print!(($self, $cx): $($ty $print)*);
+        forward_display_to_print!($($ty),+);
+    };
 }
 
 forward_display_to_print! {
