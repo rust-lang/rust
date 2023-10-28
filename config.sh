@@ -25,7 +25,7 @@ else
     exit 1
 fi
 
-HOST_TRIPLE=$(rustc -vV | grep host | cut -d: -f2 | tr -d " ")
+HOST_TRIPLE=$($RUSTC -vV | grep host | cut -d: -f2 | tr -d " ")
 # TODO: remove $OVERWRITE_TARGET_TRIPLE when config.sh is removed.
 TARGET_TRIPLE="${OVERWRITE_TARGET_TRIPLE:-$HOST_TRIPLE}"
 
