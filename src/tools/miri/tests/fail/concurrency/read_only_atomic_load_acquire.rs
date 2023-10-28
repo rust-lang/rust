@@ -9,5 +9,5 @@ fn main() {
     let x = unsafe { &*x };
     // Some targets can implement atomic loads via compare_exchange, so we cannot allow them on
     // read-only memory.
-    x.load(Ordering::Relaxed); //~ERROR: atomic operations cannot be performed on read-only memory
+    x.load(Ordering::Acquire); //~ERROR: cannot be performed on read-only memory
 }
