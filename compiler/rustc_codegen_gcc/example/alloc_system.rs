@@ -9,6 +9,7 @@
 // add fast paths for low alignment values.
 #[cfg(any(target_arch = "x86",
               target_arch = "arm",
+              target_arch = "m68k",
               target_arch = "mips",
               target_arch = "mips32r6",
               target_arch = "powerpc",

@@ -6,7 +6,7 @@ use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
 use rustc_target::abi::call::FnAbi;
 
-use crate::abi::FnAbiGccExt;
+use crate::abi::{FnAbiGcc, FnAbiGccExt};
 use crate::context::CodegenCx;
 use crate::intrinsic::llvm;
 
@@ -80,9 +80,20 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     }
 
     pub fn declare_fn(&self, name: &str, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> Function<'gcc> {
-        let (return_type, params, variadic, on_stack_param_indices) = fn_abi.gcc_type(self);
-        let func = declare_raw_fn(self, name, () /*fn_abi.llvm_cconv()*/, return_type, &params, variadic);
+        let FnAbiGcc {
+            return_type,
+            arguments_type,
+            is_c_variadic,
+            on_stack_param_indices,
+            #[cfg(feature="master")]
+            fn_attributes,
+        } = fn_abi.gcc_type(self);
+        let func = declare_raw_fn(self, name, () /*fn_abi.llvm_cconv()*/, return_type, &arguments_type, is_c_variadic);
         self.on_stack_function_params.borrow_mut().insert(func, on_stack_param_indices);
+        #[cfg(feature="master")]
+        for fn_attr in fn_attributes {
+            func.add_attribute(fn_attr);
+        }
         func
     }
 

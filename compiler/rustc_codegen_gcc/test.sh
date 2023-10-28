@@ -5,16 +5,6 @@
 set -e
 #set -x
 
-if [ -f ./gcc_path ]; then
-    export GCC_PATH=$(cat gcc_path)
-else
-    echo 'Please put the path to your custom build of libgccjit in the file `gcc_path`, see Readme.md for details'
-    exit 1
-fi
-
-export LD_LIBRARY_PATH="$GCC_PATH"
-export LIBRARY_PATH="$GCC_PATH"
-
 flags=
 gcc_master_branch=1
 channel="debug"
@@ -22,12 +12,18 @@ funcs=()
 build_only=0
 nb_parts=0
 current_part=0
+use_system_gcc=0
+use_backend=0
+cargo_target_dir=""
+
+export CHANNEL='debug'
 
 while [[ $# -gt 0 ]]; do
     case $1 in
         --release)
             codegen_channel=release
             channel="release"
+            export CHANNEL='release'
             shift
             ;;
         --release-sysroot)
@@ -111,6 +107,22 @@ while [[ $# -gt 0 ]]; do
             build_only=1
             shift
             ;;
+        "--use-system-gcc")
+            use_system_gcc=1
+            shift
+            ;;
+        "--use-backend")
+            use_backend=1
+            shift
+            export BUILTIN_BACKEND=$1
+            shift
+            ;;
+        "--out-dir")
+            shift
+            export CARGO_TARGET_DIR=$1
+            cargo_target_dir=$1
+            shift
+            ;;
         "--nb-parts")
             shift
             nb_parts=$1
@@ -128,13 +140,25 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-if [[ $channel == "release" ]]; then
-    export CHANNEL='release'
-    CARGO_INCREMENTAL=1 cargo rustc --release $flags
+if [ -f ./gcc_path ]; then
+    export GCC_PATH=$(cat gcc_path)
+elif (( $use_system_gcc == 1 )); then
+    echo 'Using system GCC'
 else
-    echo $LD_LIBRARY_PATH
-    export CHANNEL='debug'
-    cargo rustc $flags
+    echo 'Please put the path to your custom build of libgccjit in the file `gcc_path`, see Readme.md for details'
+    exit 1
+fi
+
+export LD_LIBRARY_PATH="$GCC_PATH"
+export LIBRARY_PATH="$GCC_PATH"
+
+if [[ $use_backend == 0 ]]; then
+    if [[ $channel == "release" ]]; then
+        CARGO_INCREMENTAL=1 cargo rustc --release $flags
+    else
+        echo $LD_LIBRARY_PATH
+        cargo rustc $flags
+    fi
 fi
 
 if (( $build_only == 1 )); then
@@ -145,20 +169,26 @@ fi
 source config.sh
 
 function clean() {
-    rm -r target/out || true
-    mkdir -p target/out/gccjit
+    rm -r $cargo_target_dir || true
+    mkdir -p $cargo_target_dir/gccjit
 }
 
 function mini_tests() {
     echo "[BUILD] mini_core"
-    $RUSTC example/mini_core.rs --crate-name mini_core --crate-type lib,dylib --target $TARGET_TRIPLE
+    crate_types="lib,dylib"
+
+    if [[ "$HOST_TRIPLE" != "$TARGET_TRIPLE" ]]; then
+        crate_types="lib"
+    fi
+
+    $RUST_CMD example/mini_core.rs --crate-name mini_core --crate-type $crate_types --target $TARGET_TRIPLE
 
     echo "[BUILD] example"
-    $RUSTC example/example.rs --crate-type lib --target $TARGET_TRIPLE
+    $RUST_CMD example/example.rs --crate-type lib --target $TARGET_TRIPLE
 
     echo "[AOT] mini_core_hello_world"
-    $RUSTC example/mini_core_hello_world.rs --crate-name mini_core_hello_world --crate-type bin -g --target $TARGET_TRIPLE
-    $RUN_WRAPPER ./target/out/mini_core_hello_world abc bcd
+    $RUST_CMD example/mini_core_hello_world.rs --crate-name mini_core_hello_world --crate-type bin -g --target $TARGET_TRIPLE
+    $RUN_WRAPPER $cargo_target_dir/mini_core_hello_world abc bcd
 }
 
 function build_sysroot() {
@@ -166,41 +196,61 @@ function build_sysroot() {
     time ./build_sysroot/build_sysroot.sh $sysroot_channel
 }
 
+# TODO(GuillaumeGomez): when rewriting in Rust, refactor with the code in tests/lang_tests_common.rs if possible.
+function run_in_vm() {
+    vm_parent_dir=${CG_GCC_VM_DIR:-$(pwd)}
+    vm_dir=vm
+    exe=$1
+    exe_filename=$(basename $exe)
+    vm_home_dir=$vm_parent_dir/$vm_dir/home
+    vm_exe_path=$vm_home_dir/$exe_filename
+    inside_vm_exe_path=/home/$exe_filename
+    sudo cp $exe $vm_exe_path
+
+    shift
+    pushd $vm_parent_dir
+    sudo chroot $vm_dir qemu-m68k-static $inside_vm_exe_path $@
+    popd
+}
+
 function std_tests() {
     echo "[AOT] arbitrary_self_types_pointers_and_wrappers"
-    $RUSTC example/arbitrary_self_types_pointers_and_wrappers.rs --crate-name arbitrary_self_types_pointers_and_wrappers --crate-type bin --target $TARGET_TRIPLE
-    $RUN_WRAPPER ./target/out/arbitrary_self_types_pointers_and_wrappers
+    $RUST_CMD example/arbitrary_self_types_pointers_and_wrappers.rs --crate-name arbitrary_self_types_pointers_and_wrappers --crate-type bin --target $TARGET_TRIPLE
+    $RUN_WRAPPER $cargo_target_dir/arbitrary_self_types_pointers_and_wrappers
 
     echo "[AOT] alloc_system"
-    $RUSTC example/alloc_system.rs --crate-type lib --target "$TARGET_TRIPLE"
+    $RUST_CMD example/alloc_system.rs --crate-type lib --target "$TARGET_TRIPLE"
 
-    echo "[AOT] alloc_example"
-    $RUSTC example/alloc_example.rs --crate-type bin --target $TARGET_TRIPLE
-    $RUN_WRAPPER ./target/out/alloc_example
+    # FIXME: doesn't work on m68k.
+    if [[ "$HOST_TRIPLE" == "$TARGET_TRIPLE" ]]; then
+        echo "[AOT] alloc_example"
+        $RUST_CMD example/alloc_example.rs --crate-type bin --target $TARGET_TRIPLE
+        $RUN_WRAPPER $cargo_target_dir/alloc_example
+    fi
 
     echo "[AOT] dst_field_align"
     # FIXME(antoyo): Re-add -Zmir-opt-level=2 once rust-lang/rust#67529 is fixed.
-    $RUSTC example/dst-field-align.rs --crate-name dst_field_align --crate-type bin --target $TARGET_TRIPLE
-    $RUN_WRAPPER ./target/out/dst_field_align || (echo $?; false)
+    $RUST_CMD example/dst-field-align.rs --crate-name dst_field_align --crate-type bin --target $TARGET_TRIPLE
+    $RUN_WRAPPER $cargo_target_dir/dst_field_align || (echo $?; false)
 
     echo "[AOT] std_example"
     std_flags="--cfg feature=\"master\""
     if (( $gcc_master_branch == 0 )); then
         std_flags=""
     fi
-    $RUSTC example/std_example.rs --crate-type bin --target $TARGET_TRIPLE $std_flags
-    $RUN_WRAPPER ./target/out/std_example --target $TARGET_TRIPLE
+    $RUST_CMD example/std_example.rs --crate-type bin --target $TARGET_TRIPLE $std_flags
+    $RUN_WRAPPER $cargo_target_dir/std_example --target $TARGET_TRIPLE
 
     echo "[AOT] subslice-patterns-const-eval"
-    $RUSTC example/subslice-patterns-const-eval.rs --crate-type bin $TEST_FLAGS --target $TARGET_TRIPLE
-    $RUN_WRAPPER ./target/out/subslice-patterns-const-eval
+    $RUST_CMD example/subslice-patterns-const-eval.rs --crate-type bin $TEST_FLAGS --target $TARGET_TRIPLE
+    $RUN_WRAPPER $cargo_target_dir/subslice-patterns-const-eval
 
     echo "[AOT] track-caller-attribute"
-    $RUSTC example/track-caller-attribute.rs --crate-type bin $TEST_FLAGS --target $TARGET_TRIPLE
-    $RUN_WRAPPER ./target/out/track-caller-attribute
+    $RUST_CMD example/track-caller-attribute.rs --crate-type bin $TEST_FLAGS --target $TARGET_TRIPLE
+    $RUN_WRAPPER $cargo_target_dir/track-caller-attribute
 
     echo "[BUILD] mod_bench"
-    $RUSTC example/mod_bench.rs --crate-type bin --target $TARGET_TRIPLE
+    $RUST_CMD example/mod_bench.rs --crate-type bin --target $TARGET_TRIPLE
 }
 
 function setup_rustc() {
@@ -209,7 +259,7 @@ function setup_rustc() {
     git clone https://github.com/rust-lang/rust.git || true
     cd rust
     git fetch
-    git checkout $(rustc -V | cut -d' ' -f3 | tr -d '(')
+    git checkout $($RUSTC -V | cut -d' ' -f3 | tr -d '(')
     export RUSTFLAGS=
 
     rm config.toml || true
@@ -225,7 +275,7 @@ verbose-tests = true
 [build]
 cargo = "$(rustup which cargo)"
 local-rebuild = true
-rustc = "$HOME/.rustup/toolchains/$rust_toolchain-$TARGET_TRIPLE/bin/rustc"
+rustc = "$HOME/.rustup/toolchains/$rust_toolchain-$HOST_TRIPLE/bin/rustc"
 
 [target.x86_64-unknown-linux-gnu]
 llvm-filecheck = "`which FileCheck-10 || which FileCheck-11 || which FileCheck-12 || which FileCheck-13 || which FileCheck-14`"
@@ -234,8 +284,8 @@ llvm-filecheck = "`which FileCheck-10 || which FileCheck-11 || which FileCheck-1
 download-ci-llvm = false
 EOF
 
-    rustc -V | cut -d' ' -f3 | tr -d '('
-    git checkout $(rustc -V | cut -d' ' -f3 | tr -d '(') tests
+    $RUSTC -V | cut -d' ' -f3 | tr -d '('
+    git checkout $($RUSTC -V | cut -d' ' -f3 | tr -d '(') tests
 }
 
 function asm_tests() {
@@ -262,17 +312,17 @@ function test_libcore() {
 #echo "[BENCH COMPILE] mod_bench"
 
 #COMPILE_MOD_BENCH_INLINE="$RUSTC example/mod_bench.rs --crate-type bin -Zmir-opt-level=3 -O --crate-name mod_bench_inline"
-#COMPILE_MOD_BENCH_LLVM_0="rustc example/mod_bench.rs --crate-type bin -Copt-level=0 -o target/out/mod_bench_llvm_0 -Cpanic=abort"
-#COMPILE_MOD_BENCH_LLVM_1="rustc example/mod_bench.rs --crate-type bin -Copt-level=1 -o target/out/mod_bench_llvm_1 -Cpanic=abort"
-#COMPILE_MOD_BENCH_LLVM_2="rustc example/mod_bench.rs --crate-type bin -Copt-level=2 -o target/out/mod_bench_llvm_2 -Cpanic=abort"
-#COMPILE_MOD_BENCH_LLVM_3="rustc example/mod_bench.rs --crate-type bin -Copt-level=3 -o target/out/mod_bench_llvm_3 -Cpanic=abort"
+#COMPILE_MOD_BENCH_LLVM_0="rustc example/mod_bench.rs --crate-type bin -Copt-level=0 -o $cargo_target_dir/mod_bench_llvm_0 -Cpanic=abort"
+#COMPILE_MOD_BENCH_LLVM_1="rustc example/mod_bench.rs --crate-type bin -Copt-level=1 -o $cargo_target_dir/mod_bench_llvm_1 -Cpanic=abort"
+#COMPILE_MOD_BENCH_LLVM_2="rustc example/mod_bench.rs --crate-type bin -Copt-level=2 -o $cargo_target_dir/mod_bench_llvm_2 -Cpanic=abort"
+#COMPILE_MOD_BENCH_LLVM_3="rustc example/mod_bench.rs --crate-type bin -Copt-level=3 -o $cargo_target_dir/mod_bench_llvm_3 -Cpanic=abort"
 
 ## Use 100 runs, because a single compilations doesn't take more than ~150ms, so it isn't very slow
 #hyperfine --runs ${COMPILE_RUNS:-100} "$COMPILE_MOD_BENCH_INLINE" "$COMPILE_MOD_BENCH_LLVM_0" "$COMPILE_MOD_BENCH_LLVM_1" "$COMPILE_MOD_BENCH_LLVM_2" "$COMPILE_MOD_BENCH_LLVM_3"
 
 #echo
 #echo "[BENCH RUN] mod_bench"
-#hyperfine --runs ${RUN_RUNS:-10} ./target/out/mod_bench{,_inline} ./target/out/mod_bench_llvm_*
+#hyperfine --runs ${RUN_RUNS:-10} $cargo_target_dir/mod_bench{,_inline} $cargo_target_dir/mod_bench_llvm_*
 
 function extended_rand_tests() {
     if (( $gcc_master_branch == 0 )); then
@@ -347,10 +397,10 @@ function test_rustc() {
 
     git checkout -- tests/ui/issues/auxiliary/issue-3136-a.rs # contains //~ERROR, but shouldn't be removed
 
-    rm -r tests/ui/{abi*,extern/,unsized-locals/,proc-macro/,threads-sendsync/,thinlto/,borrowck/,chalkify/bugs/,test*,consts/const-float-bits-reject-conv.rs,consts/issue-miri-1910.rs} || true
+    rm -r tests/ui/{abi*,extern/,unsized-locals/,proc-macro/,threads-sendsync/,borrowck/,test*,consts/issue-miri-1910.rs} || true
     rm tests/ui/mir/mir_heavy_promoted.rs # this test is oom-killed in the CI.
     # Tests generating errors.
-    rm tests/ui/consts/const-eval/nonnull_as_ref_ub.rs tests/ui/consts/issue-94675.rs
+    rm tests/ui/consts/issue-94675.rs
     for test in $(rg --files-with-matches "thread" tests/ui); do
       rm $test
     done
@@ -393,7 +443,7 @@ function test_rustc() {
     fi
 
     echo "[TEST] rustc test suite"
-    COMPILETEST_FORCE_STAGE0=1 ./x.py test --run always --stage 0 tests/ui/ --rustc-args "$RUSTC_ARGS"
+    COMPILETEST_FORCE_STAGE0=1 ./x.py test --run always --stage 0 tests/ui/ --rustc-args "$RUSTC_ARGS" # --target $TARGET_TRIPLE
 }
 
 function test_failing_rustc() {

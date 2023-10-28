@@ -1,0 +1,32 @@
+From 7bcd24ec6d4a96121874cb1ae5a23ea274aeff34 Mon Sep 17 00:00:00 2001
+From: None <none@example.com>
+Date: Thu, 19 Oct 2023 13:12:51 -0400
+Subject: [PATCH] [core] Disable portable-simd test
+
+---
+ library/core/tests/lib.rs | 2 --
+ 1 file changed, 2 deletions(-)
+
+diff --git a/library/core/tests/lib.rs b/library/core/tests/lib.rs
+index 5814ed4..194ad4c 100644
+--- a/library/core/tests/lib.rs
++++ b/library/core/tests/lib.rs
+@@ -90,7 +90,6 @@
+ #![feature(unwrap_infallible)]
+ #![feature(pointer_byte_offsets)]
+ #![feature(pointer_is_aligned)]
+-#![feature(portable_simd)]
+ #![feature(ptr_metadata)]
+ #![feature(lazy_cell)]
+ #![feature(unsized_tuple_coercion)]
+@@ -157,7 +156,6 @@ mod pin;
+ mod pin_macro;
+ mod ptr;
+ mod result;
+-mod simd;
+ mod slice;
+ mod str;
+ mod str_lossy;
+-- 
+2.42.0
+

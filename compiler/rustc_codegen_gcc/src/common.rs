@@ -424,35 +424,35 @@ impl<'gcc, 'tcx> TypeReflection<'gcc, 'tcx> for Type<'gcc> {
     }
 
     fn is_i8(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool {
-        self.unqualified() == cx.i8_type
+        self.is_compatible_with(cx.i8_type)
     }
 
     fn is_u8(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool {
-        self.unqualified() == cx.u8_type
+        self.is_compatible_with(cx.u8_type)
     }
 
     fn is_i16(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool {
-        self.unqualified() == cx.i16_type
+        self.is_compatible_with(cx.i16_type)
     }
 
     fn is_u16(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool {
-        self.unqualified() == cx.u16_type
+        self.is_compatible_with(cx.u16_type)
     }
 
     fn is_i32(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool {
-        self.unqualified() == cx.i32_type
+        self.is_compatible_with(cx.i32_type)
     }
 
     fn is_u32(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool {
-        self.unqualified() == cx.u32_type
+        self.is_compatible_with(cx.u32_type)
     }
 
     fn is_i64(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool {
-        self.unqualified() == cx.i64_type
+        self.is_compatible_with(cx.i64_type)
     }
 
     fn is_u64(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool {
-        self.unqualified() == cx.u64_type
+        self.is_compatible_with(cx.u64_type)
     }
 
     fn is_i128(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool {
