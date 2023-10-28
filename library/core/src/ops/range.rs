@@ -115,6 +115,7 @@ impl<Idx: PartialOrd<Idx>> Range<Idx> {
     /// assert!(!(0.0..f32::NAN).contains(&0.5));
     /// assert!(!(f32::NAN..1.0).contains(&0.5));
     /// ```
+    #[inline]
     #[stable(feature = "range_contains", since = "1.35.0")]
     pub fn contains<U>(&self, item: &U) -> bool
     where
@@ -141,6 +142,7 @@ impl<Idx: PartialOrd<Idx>> Range<Idx> {
     /// assert!( (3.0..f32::NAN).is_empty());
     /// assert!( (f32::NAN..5.0).is_empty());
     /// ```
+    #[inline]
     #[stable(feature = "range_is_empty", since = "1.47.0")]
     pub fn is_empty(&self) -> bool {
         !(self.start < self.end)
@@ -213,6 +215,7 @@ impl<Idx: PartialOrd<Idx>> RangeFrom<Idx> {
     /// assert!(!(0.0..).contains(&f32::NAN));
     /// assert!(!(f32::NAN..).contains(&0.5));
     /// ```
+    #[inline]
     #[stable(feature = "range_contains", since = "1.35.0")]
     pub fn contains<U>(&self, item: &U) -> bool
     where
@@ -294,6 +297,7 @@ impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
     /// assert!(!(..1.0).contains(&f32::NAN));
     /// assert!(!(..f32::NAN).contains(&0.5));
     /// ```
+    #[inline]
     #[stable(feature = "range_contains", since = "1.35.0")]
     pub fn contains<U>(&self, item: &U) -> bool
     where
@@ -500,6 +504,7 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
     /// // Precise field values are unspecified here
     /// assert!(!r.contains(&3) && !r.contains(&5));
     /// ```
+    #[inline]
     #[stable(feature = "range_contains", since = "1.35.0")]
     pub fn contains<U>(&self, item: &U) -> bool
     where
@@ -613,6 +618,7 @@ impl<Idx: PartialOrd<Idx>> RangeToInclusive<Idx> {
     /// assert!(!(..=1.0).contains(&f32::NAN));
     /// assert!(!(..=f32::NAN).contains(&0.5));
     /// ```
+    #[inline]
     #[stable(feature = "range_contains", since = "1.35.0")]
     pub fn contains<U>(&self, item: &U) -> bool
     where
@@ -808,6 +814,7 @@ pub trait RangeBounds<T: ?Sized> {
     /// assert!(!(0.0..1.0).contains(&f32::NAN));
     /// assert!(!(0.0..f32::NAN).contains(&0.5));
     /// assert!(!(f32::NAN..1.0).contains(&0.5));
+    #[inline]
     #[stable(feature = "range_contains", since = "1.35.0")]
     fn contains<U>(&self, item: &U) -> bool
     where
