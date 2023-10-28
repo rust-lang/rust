@@ -53,14 +53,13 @@ use smallvec::{smallvec, SmallVec};
 use rustc_apfloat::ieee::{DoubleS, IeeeFloat, SingleS};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_hir::{HirId, RangeEnd};
+use rustc_hir::RangeEnd;
 use rustc_index::Idx;
 use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::mir;
 use rustc_middle::thir::{FieldPat, Pat, PatKind, PatRange};
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{self, Ty, TyCtxt, VariantDef};
-use rustc_session::lint;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{FieldIdx, Integer, VariantIdx, FIRST_VARIANT};
 
@@ -68,7 +67,6 @@ use self::Constructor::*;
 use self::SliceKind::*;
 
 use super::usefulness::{MatchCheckCtxt, PatCtxt};
-use crate::errors::{Overlap, OverlappingRangeEndpoints};
 
 /// Recursively expand this pattern into its subpatterns. Only useful for or-patterns.
 fn expand_or_pat<'p, 'tcx>(pat: &'p Pat<'tcx>) -> Vec<&'p Pat<'tcx>> {
@@ -111,15 +109,15 @@ pub(crate) struct IntRange {
 
 impl IntRange {
     #[inline]
-    fn is_integral(ty: Ty<'_>) -> bool {
+    pub(super) fn is_integral(ty: Ty<'_>) -> bool {
         matches!(ty.kind(), ty::Char | ty::Int(_) | ty::Uint(_) | ty::Bool)
     }
 
-    fn is_singleton(&self) -> bool {
+    pub(super) fn is_singleton(&self) -> bool {
         self.range.start() == self.range.end()
     }
 
-    fn boundaries(&self) -> (u128, u128) {
+    pub(super) fn boundaries(&self) -> (u128, u128) {
         (*self.range.start(), *self.range.end())
     }
 
@@ -175,23 +173,6 @@ impl IntRange {
         } else {
             None
         }
-    }
-
-    fn suspicious_intersection(&self, other: &Self) -> bool {
-        // `false` in the following cases:
-        // 1     ----      // 1  ----------   // 1 ----        // 1       ----
-        // 2  ----------   // 2     ----      // 2       ----  // 2 ----
-        //
-        // The following are currently `false`, but could be `true` in the future (#64007):
-        // 1 ---------       // 1     ---------
-        // 2     ----------  // 2 ----------
-        //
-        // `true` in the following cases:
-        // 1 -------          // 1       -------
-        // 2       --------   // 2 -------
-        let (lo, hi) = self.boundaries();
-        let (other_lo, other_hi) = other.boundaries();
-        (lo == other_hi || hi == other_lo) && !self.is_singleton() && !other.is_singleton()
     }
 
     /// Partition a range of integers into disjoint subranges. This does constructor splitting for
@@ -293,7 +274,7 @@ impl IntRange {
     }
 
     /// Only used for displaying the range.
-    fn to_pat<'tcx>(&self, tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Pat<'tcx> {
+    pub(super) fn to_pat<'tcx>(&self, tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Pat<'tcx> {
         let (lo, hi) = self.boundaries();
 
         let bias = IntRange::signed_bias(tcx, ty);
@@ -314,51 +295,6 @@ impl IntRange {
         };
 
         Pat { ty, span: DUMMY_SP, kind }
-    }
-
-    /// Lint on likely incorrect range patterns (#63987)
-    pub(super) fn lint_overlapping_range_endpoints<'a, 'p: 'a, 'tcx: 'a>(
-        &self,
-        pcx: &PatCtxt<'_, 'p, 'tcx>,
-        pats: impl Iterator<Item = &'a DeconstructedPat<'p, 'tcx>>,
-        column_count: usize,
-        lint_root: HirId,
-    ) {
-        if self.is_singleton() {
-            return;
-        }
-
-        if column_count != 1 {
-            // FIXME: for now, only check for overlapping ranges on simple range
-            // patterns. Otherwise with the current logic the following is detected
-            // as overlapping:
-            // ```
-            // match (0u8, true) {
-            //   (0 ..= 125, false) => {}
-            //   (125 ..= 255, true) => {}
-            //   _ => {}
-            // }
-            // ```
-            return;
-        }
-
-        let overlap: Vec<_> = pats
-            .filter_map(|pat| Some((pat.ctor().as_int_range()?, pat.span())))
-            .filter(|(range, _)| self.suspicious_intersection(range))
-            .map(|(range, span)| Overlap {
-                range: self.intersection(&range).unwrap().to_pat(pcx.cx.tcx, pcx.ty),
-                span,
-            })
-            .collect();
-
-        if !overlap.is_empty() {
-            pcx.cx.tcx.emit_spanned_lint(
-                lint::builtin::OVERLAPPING_RANGE_ENDPOINTS,
-                lint_root,
-                pcx.span,
-                OverlappingRangeEndpoints { overlap, range: pcx.span },
-            );
-        }
     }
 }
 
@@ -644,7 +580,7 @@ impl<'tcx> Constructor<'tcx> {
             _ => None,
         }
     }
-    fn as_int_range(&self) -> Option<&IntRange> {
+    pub(super) fn as_int_range(&self) -> Option<&IntRange> {
         match self {
             IntRange(range) => Some(range),
             _ => None,

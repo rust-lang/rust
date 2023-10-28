@@ -4,7 +4,7 @@ use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
-    AsyncCoroutineKind, Block, Body, Closure, CoroutineKind, Expr, ExprKind, FnDecl, FnRetTy, GenericArg, GenericBound,
+    CoroutineSource, Block, Body, Closure, CoroutineKind, Expr, ExprKind, FnDecl, FnRetTy, GenericArg, GenericBound,
     ImplItem, Item, ItemKind, LifetimeName, Node, Term, TraitRef, Ty, TyKind, TypeBindingKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
@@ -188,7 +188,7 @@ fn desugared_async_block<'tcx>(cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>)
             ..
         } = block_expr;
         let closure_body = cx.tcx.hir().body(body);
-        if closure_body.coroutine_kind == Some(CoroutineKind::Async(AsyncCoroutineKind::Block));
+        if closure_body.coroutine_kind == Some(CoroutineKind::Async(CoroutineSource::Block));
         then {
             return Some(closure_body);
         }

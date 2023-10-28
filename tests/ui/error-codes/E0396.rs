@@ -9,9 +9,11 @@ const unsafe fn unreachable() -> ! {
     const INFALLIBLE: *mut Infallible = &[] as *const [Infallible] as *const _ as _;
     match *INFALLIBLE {}
     //~^ ERROR dereferencing raw mutable pointers in constant functions is unstable
+    //~| ERROR dereferencing raw mutable pointers in constant functions is unstable
 
     const BAD: () = unsafe { match *INFALLIBLE {} };
     //~^ ERROR dereferencing raw mutable pointers in constants is unstable
+    //~| ERROR dereferencing raw mutable pointers in constants is unstable
 }
 
 fn main() {

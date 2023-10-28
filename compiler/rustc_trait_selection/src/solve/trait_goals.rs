@@ -22,6 +22,10 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         self.trait_ref
     }
 
+    fn polarity(self) -> ty::ImplPolarity {
+        self.polarity
+    }
+
     fn with_self_ty(self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> Self {
         self.with_self_ty(tcx, self_ty)
     }
@@ -238,14 +242,25 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
-        if goal.predicate.polarity != ty::ImplPolarity::Positive {
-            return Err(NoSolution);
-        }
-
-        if let ty::FnPtr(..) = goal.predicate.self_ty().kind() {
-            ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-        } else {
-            Err(NoSolution)
+        let self_ty = goal.predicate.self_ty();
+        match goal.predicate.polarity {
+            ty::ImplPolarity::Positive => {
+                if self_ty.is_fn_ptr() {
+                    ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                } else {
+                    Err(NoSolution)
+                }
+            }
+            ty::ImplPolarity::Negative => {
+                // If a type is rigid and not a fn ptr, then we know for certain
+                // that it does *not* implement `FnPtr`.
+                if !self_ty.is_fn_ptr() && self_ty.is_known_rigid() {
+                    ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                } else {
+                    Err(NoSolution)
+                }
+            }
+            ty::ImplPolarity::Reservation => bug!(),
         }
     }
 

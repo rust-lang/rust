@@ -1,9 +1,6 @@
 warning: unnecessary `unsafe` block
   --> $DIR/pat-unsafe.rs:19:17
    |
-LL |     unsafe {
-   |     ------ because it's nested under this `unsafe` block
-...
 LL |                 unsafe {}
    |                 ^^^^^^ unnecessary `unsafe` block
    |
@@ -16,9 +13,6 @@ LL | #![warn(unused_unsafe)]
 warning: unnecessary `unsafe` block
   --> $DIR/pat-unsafe.rs:26:17
    |
-LL |     unsafe {
-   |     ------ because it's nested under this `unsafe` block
-...
 LL |                 unsafe {}
    |                 ^^^^^^ unnecessary `unsafe` block
 

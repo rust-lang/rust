@@ -549,6 +549,7 @@ function preLoadCss(cssUrl) {
         }
     }
 
+    // <https://github.com/search?q=repo%3Arust-lang%2Frust+[RUSTDOCIMPL]+trait.impl&type=code>
     window.register_implementors = imp => {
         const implementors = document.getElementById("implementors-list");
         const synthetic_implementors = document.getElementById("synthetic-implementors-list");
@@ -615,7 +616,7 @@ function preLoadCss(cssUrl) {
                 onEachLazy(code.getElementsByTagName("a"), elem => {
                     const href = elem.getAttribute("href");
 
-                    if (href && !/^(?:[a-z+]+:)?\/\//.test(href)) {
+                    if (href && !href.startsWith("#") && !/^(?:[a-z+]+:)?\/\//.test(href)) {
                         elem.setAttribute("href", window.rootPath + href);
                     }
                 });
@@ -637,6 +638,216 @@ function preLoadCss(cssUrl) {
     };
     if (window.pending_implementors) {
         window.register_implementors(window.pending_implementors);
+    }
+
+    /**
+     * <https://github.com/search?q=repo%3Arust-lang%2Frust+[RUSTDOCIMPL]+type.impl&type=code>
+     *
+     * [RUSTDOCIMPL] type.impl
+     *
+     * This code inlines implementations into the type alias docs at runtime. It's done at
+     * runtime because some crates have many type aliases and many methods, and we don't want
+     * to generate *O*`(types*methods)` HTML text. The data inside is mostly HTML fragments,
+     * wrapped in JSON.
+     *
+     * - It only includes docs generated for the current crate. This function accepts an
+     *   object mapping crate names to the set of impls.
+     *
+     * - It filters down to the set of applicable impls. The Rust type checker is used to
+     *   tag each HTML blob with the set of type aliases that can actually use it, so the
+     *   JS only needs to consult the attached list of type aliases.
+     *
+     * - It renames the ID attributes, to avoid conflicting IDs in the resulting DOM.
+     *
+     * - It adds the necessary items to the sidebar. If it's an inherent impl, that means
+     *   adding methods, associated types, and associated constants. If it's a trait impl,
+     *   that means adding it to the trait impl sidebar list.
+     *
+     * - It adds the HTML block itself. If it's an inherent impl, it goes after the type
+     *   alias's own inherent impls. If it's a trait impl, it goes in the Trait
+     *   Implementations section.
+     *
+     * - After processing all of the impls, it sorts the sidebar items by name.
+     *
+     * @param {{[cratename: string]: Array<Array<string|0>>}} impl
+     */
+    window.register_type_impls = imp => {
+        if (!imp || !imp[window.currentCrate]) {
+            return;
+        }
+        window.pending_type_impls = null;
+        const idMap = new Map();
+
+        let implementations = document.getElementById("implementations-list");
+        let trait_implementations = document.getElementById("trait-implementations-list");
+        let trait_implementations_header = document.getElementById("trait-implementations");
+
+        // We want to include the current type alias's impls, and no others.
+        const script = document.querySelector("script[data-self-path]");
+        const selfPath = script ? script.getAttribute("data-self-path") : null;
+
+        // These sidebar blocks need filled in, too.
+        const mainContent = document.querySelector("#main-content");
+        const sidebarSection = document.querySelector(".sidebar section");
+        let methods = document.querySelector(".sidebar .block.method");
+        let associatedTypes = document.querySelector(".sidebar .block.associatedtype");
+        let associatedConstants = document.querySelector(".sidebar .block.associatedconstant");
+        let sidebarTraitList = document.querySelector(".sidebar .block.trait-implementation");
+
+        for (const impList of imp[window.currentCrate]) {
+            const types = impList.slice(2);
+            const text = impList[0];
+            const isTrait = impList[1] !== 0;
+            const traitName = impList[1];
+            if (types.indexOf(selfPath) === -1) {
+                continue;
+            }
+            let outputList = isTrait ? trait_implementations : implementations;
+            if (outputList === null) {
+                const outputListName = isTrait ? "Trait Implementations" : "Implementations";
+                const outputListId = isTrait ?
+                    "trait-implementations-list" :
+                    "implementations-list";
+                const outputListHeaderId = isTrait ? "trait-implementations" : "implementations";
+                const outputListHeader = document.createElement("h2");
+                outputListHeader.id = outputListHeaderId;
+                outputListHeader.innerText = outputListName;
+                outputList = document.createElement("div");
+                outputList.id = outputListId;
+                if (isTrait) {
+                    const link = document.createElement("a");
+                    link.href = `#${outputListHeaderId}`;
+                    link.innerText = "Trait Implementations";
+                    const h = document.createElement("h3");
+                    h.appendChild(link);
+                    trait_implementations = outputList;
+                    trait_implementations_header = outputListHeader;
+                    sidebarSection.appendChild(h);
+                    sidebarTraitList = document.createElement("ul");
+                    sidebarTraitList.className = "block trait-implementation";
+                    sidebarSection.appendChild(sidebarTraitList);
+                    mainContent.appendChild(outputListHeader);
+                    mainContent.appendChild(outputList);
+                } else {
+                    implementations = outputList;
+                    if (trait_implementations) {
+                        mainContent.insertBefore(outputListHeader, trait_implementations_header);
+                        mainContent.insertBefore(outputList, trait_implementations_header);
+                    } else {
+                        const mainContent = document.querySelector("#main-content");
+                        mainContent.appendChild(outputListHeader);
+                        mainContent.appendChild(outputList);
+                    }
+                }
+            }
+            const template = document.createElement("template");
+            template.innerHTML = text;
+
+            onEachLazy(template.content.querySelectorAll("a"), elem => {
+                const href = elem.getAttribute("href");
+
+                if (href && !href.startsWith("#") && !/^(?:[a-z+]+:)?\/\//.test(href)) {
+                    elem.setAttribute("href", window.rootPath + href);
+                }
+            });
+            onEachLazy(template.content.querySelectorAll("[id]"), el => {
+                let i = 0;
+                if (idMap.has(el.id)) {
+                    i = idMap.get(el.id);
+                } else if (document.getElementById(el.id)) {
+                    i = 1;
+                    while (document.getElementById(`${el.id}-${2 * i}`)) {
+                        i = 2 * i;
+                    }
+                    while (document.getElementById(`${el.id}-${i}`)) {
+                        i += 1;
+                    }
+                }
+                if (i !== 0) {
+                    const oldHref = `#${el.id}`;
+                    const newHref = `#${el.id}-${i}`;
+                    el.id = `${el.id}-${i}`;
+                    onEachLazy(template.content.querySelectorAll("a[href]"), link => {
+                        if (link.getAttribute("href") === oldHref) {
+                            link.href = newHref;
+                        }
+                    });
+                }
+                idMap.set(el.id, i + 1);
+            });
+            const templateAssocItems = template.content.querySelectorAll("section.tymethod, " +
+                "section.method, section.associatedtype, section.associatedconstant");
+            if (isTrait) {
+                const li = document.createElement("li");
+                const a = document.createElement("a");
+                a.href = `#${template.content.querySelector(".impl").id}`;
+                a.textContent = traitName;
+                li.appendChild(a);
+                sidebarTraitList.append(li);
+            } else {
+                onEachLazy(templateAssocItems, item => {
+                    let block = hasClass(item, "associatedtype") ? associatedTypes : (
+                        hasClass(item, "associatedconstant") ? associatedConstants : (
+                        methods));
+                    if (!block) {
+                        const blockTitle = hasClass(item, "associatedtype") ? "Associated Types" : (
+                            hasClass(item, "associatedconstant") ? "Associated Constants" : (
+                            "Methods"));
+                        const blockClass = hasClass(item, "associatedtype") ? "associatedtype" : (
+                            hasClass(item, "associatedconstant") ? "associatedconstant" : (
+                            "method"));
+                        const blockHeader = document.createElement("h3");
+                        const blockLink = document.createElement("a");
+                        blockLink.href = "#implementations";
+                        blockLink.innerText = blockTitle;
+                        blockHeader.appendChild(blockLink);
+                        block = document.createElement("ul");
+                        block.className = `block ${blockClass}`;
+                        const insertionReference = methods || sidebarTraitList;
+                        if (insertionReference) {
+                            const insertionReferenceH = insertionReference.previousElementSibling;
+                            sidebarSection.insertBefore(blockHeader, insertionReferenceH);
+                            sidebarSection.insertBefore(block, insertionReferenceH);
+                        } else {
+                            sidebarSection.appendChild(blockHeader);
+                            sidebarSection.appendChild(block);
+                        }
+                        if (hasClass(item, "associatedtype")) {
+                            associatedTypes = block;
+                        } else if (hasClass(item, "associatedconstant")) {
+                            associatedConstants = block;
+                        } else {
+                            methods = block;
+                        }
+                    }
+                    const li = document.createElement("li");
+                    const a = document.createElement("a");
+                    a.innerText = item.id.split("-")[0].split(".")[1];
+                    a.href = `#${item.id}`;
+                    li.appendChild(a);
+                    block.appendChild(li);
+                });
+            }
+            outputList.appendChild(template.content);
+        }
+
+        for (const list of [methods, associatedTypes, associatedConstants, sidebarTraitList]) {
+            if (!list) {
+                continue;
+            }
+            const newChildren = Array.prototype.slice.call(list.children);
+            newChildren.sort((a, b) => {
+                const aI = a.innerText;
+                const bI = b.innerText;
+                return aI < bI ? -1 :
+                    aI > bI ? 1 :
+                    0;
+            });
+            list.replaceChildren(...newChildren);
+        }
+    };
+    if (window.pending_type_impls) {
+        window.register_type_impls(window.pending_type_impls);
     }
 
     function addSidebarCrates() {

@@ -26,6 +26,8 @@ use crate::clean::{
 use crate::core::DocContext;
 use crate::formats::item_type::ItemType;
 
+use super::Item;
+
 /// Attempt to inline a definition into this AST.
 ///
 /// This function will fetch the definition specified, and if it is
@@ -83,7 +85,7 @@ pub(crate) fn try_inline(
         Res::Def(DefKind::TyAlias, did) => {
             record_extern_fqn(cx, did, ItemType::TypeAlias);
             build_impls(cx, did, attrs_without_docs, &mut ret);
-            clean::TypeAliasItem(build_type_alias(cx, did))
+            clean::TypeAliasItem(build_type_alias(cx, did, &mut ret))
         }
         Res::Def(DefKind::Enum, did) => {
             record_extern_fqn(cx, did, ItemType::Enum);
@@ -281,11 +283,15 @@ fn build_union(cx: &mut DocContext<'_>, did: DefId) -> clean::Union {
     clean::Union { generics, fields }
 }
 
-fn build_type_alias(cx: &mut DocContext<'_>, did: DefId) -> Box<clean::TypeAlias> {
+fn build_type_alias(
+    cx: &mut DocContext<'_>,
+    did: DefId,
+    ret: &mut Vec<Item>,
+) -> Box<clean::TypeAlias> {
     let predicates = cx.tcx.explicit_predicates_of(did);
     let ty = cx.tcx.type_of(did).instantiate_identity();
     let type_ = clean_middle_ty(ty::Binder::dummy(ty), cx, Some(did), None);
-    let inner_type = clean_ty_alias_inner_type(ty, cx);
+    let inner_type = clean_ty_alias_inner_type(ty, cx, ret);
 
     Box::new(clean::TypeAlias {
         type_,

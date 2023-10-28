@@ -4,7 +4,7 @@
 //! due to incomplete stable coverage.
 
 // Prefer importing stable_mir over internal rustc constructs to make this file more readable.
-use crate::rustc_smir::{MaybeStable, Tables};
+use crate::rustc_smir::Tables;
 use rustc_middle::ty::{self as rustc_ty, Ty as InternalTy};
 use stable_mir::ty::{Const, GenericArgKind, GenericArgs, Region, Ty};
 use stable_mir::DefId;
@@ -31,7 +31,7 @@ impl<'tcx> RustcInternal<'tcx> for GenericArgKind {
         match self {
             GenericArgKind::Lifetime(reg) => reg.internal(tables).into(),
             GenericArgKind::Type(ty) => ty.internal(tables).into(),
-            GenericArgKind::Const(cnst) => cnst.internal(tables).into(),
+            GenericArgKind::Const(cnst) => ty_const(cnst, tables).into(),
         }
     }
 }
@@ -46,16 +46,22 @@ impl<'tcx> RustcInternal<'tcx> for Region {
 impl<'tcx> RustcInternal<'tcx> for Ty {
     type T = InternalTy<'tcx>;
     fn internal(&self, tables: &mut Tables<'tcx>) -> Self::T {
-        match tables.types[self.0] {
-            MaybeStable::Stable(_) => todo!(),
-            MaybeStable::Rustc(ty) => ty,
+        tables.types[*self]
+    }
+}
+
+fn ty_const<'tcx>(constant: &Const, tables: &mut Tables<'tcx>) -> rustc_ty::Const<'tcx> {
+    match constant.internal(tables) {
+        rustc_middle::mir::Const::Ty(c) => c,
+        cnst => {
+            panic!("Trying to covert constant `{constant:?}` to type constant, but found {cnst:?}")
         }
     }
 }
 
 impl<'tcx> RustcInternal<'tcx> for Const {
-    type T = rustc_ty::Const<'tcx>;
-    fn internal(&self, _tables: &mut Tables<'tcx>) -> Self::T {
-        todo!()
+    type T = rustc_middle::mir::Const<'tcx>;
+    fn internal(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        tables.constants[self.id]
     }
 }

@@ -15,6 +15,7 @@ pub enum HandleCycleError {
     Error,
     Fatal,
     DelayBug,
+    Stash,
 }
 
 #[derive(Subdiagnostic)]

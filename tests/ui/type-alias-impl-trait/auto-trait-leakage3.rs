@@ -5,9 +5,6 @@
 
 mod m {
     pub type Foo = impl std::fmt::Debug;
-    //~^ ERROR: cycle detected when computing type of opaque `m::Foo::{opaque#0}` [E0391]
-    //~| ERROR: cycle detected when computing type of opaque `m::Foo::{opaque#0}` [E0391]
-
     pub fn foo() -> Foo {
         22_u32
     }

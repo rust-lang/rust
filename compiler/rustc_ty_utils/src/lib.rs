@@ -9,6 +9,7 @@
 #![cfg_attr(not(bootstrap), feature(rustdoc_internals))]
 #![cfg_attr(not(bootstrap), allow(internal_features))]
 #![feature(assert_matches)]
+#![feature(associated_type_defaults)]
 #![feature(iterator_try_collect)]
 #![feature(let_chains)]
 #![feature(if_let_guard)]
@@ -39,6 +40,7 @@ mod layout_sanity_check;
 mod needs_drop;
 mod opaque_types;
 pub mod representability;
+pub mod sig_types;
 mod structural_match;
 mod ty;
 

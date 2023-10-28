@@ -9,20 +9,18 @@ use crate::infer::InferOk;
 use crate::solve::inspect;
 use crate::solve::inspect::{InspectGoal, ProofTreeInferCtxtExt, ProofTreeVisitor};
 use crate::traits::engine::TraitEngineExt;
-use crate::traits::outlives_bounds::InferCtxtExt as _;
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
 use crate::traits::select::{IntercrateAmbiguityCause, TreatInductiveCycleAs};
 use crate::traits::structural_normalize::StructurallyNormalizeExt;
-use crate::traits::util::impl_subject_and_oblig;
 use crate::traits::NormalizeExt;
 use crate::traits::SkipLeakCheck;
 use crate::traits::{
-    self, Obligation, ObligationCause, ObligationCtxt, PredicateObligation, PredicateObligations,
+    Obligation, ObligationCause, ObligationCtxt, PredicateObligation, PredicateObligations,
     SelectionContext,
 };
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::Diagnostic;
-use rustc_hir::def_id::{DefId, CRATE_DEF_ID, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::{util, TraitEngine};
 use rustc_middle::traits::query::NoSolution;
@@ -32,12 +30,11 @@ use rustc_middle::traits::DefiningAnchor;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::visit::{TypeVisitable, TypeVisitableExt};
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitor};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor};
 use rustc_session::lint::builtin::COINDUCTIVE_OVERLAP_IN_COHERENCE;
 use rustc_span::symbol::sym;
 use rustc_span::DUMMY_SP;
 use std::fmt::Debug;
-use std::iter;
 use std::ops::ControlFlow;
 
 /// Whether we do the orphan check relative to this crate or
@@ -142,16 +139,13 @@ pub fn overlapping_impls(
     Some(overlap)
 }
 
-fn with_fresh_ty_vars<'cx, 'tcx>(
-    selcx: &mut SelectionContext<'cx, 'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-    impl_def_id: DefId,
-) -> ty::ImplHeader<'tcx> {
-    let tcx = selcx.tcx();
-    let impl_args = selcx.infcx.fresh_args_for_item(DUMMY_SP, impl_def_id);
+fn fresh_impl_header<'tcx>(infcx: &InferCtxt<'tcx>, impl_def_id: DefId) -> ty::ImplHeader<'tcx> {
+    let tcx = infcx.tcx;
+    let impl_args = infcx.fresh_args_for_item(DUMMY_SP, impl_def_id);
 
-    let header = ty::ImplHeader {
+    ty::ImplHeader {
         impl_def_id,
+        impl_args,
         self_ty: tcx.type_of(impl_def_id).instantiate(tcx, impl_args),
         trait_ref: tcx.impl_trait_ref(impl_def_id).map(|i| i.instantiate(tcx, impl_args)),
         predicates: tcx
@@ -160,10 +154,18 @@ fn with_fresh_ty_vars<'cx, 'tcx>(
             .iter()
             .map(|(c, _)| c.as_predicate())
             .collect(),
-    };
+    }
+}
+
+fn fresh_impl_header_normalized<'tcx>(
+    infcx: &InferCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    impl_def_id: DefId,
+) -> ty::ImplHeader<'tcx> {
+    let header = fresh_impl_header(infcx, impl_def_id);
 
     let InferOk { value: mut header, obligations } =
-        selcx.infcx.at(&ObligationCause::dummy(), param_env).normalize(header);
+        infcx.at(&ObligationCause::dummy(), param_env).normalize(header);
 
     header.predicates.extend(obligations.into_iter().map(|o| o.predicate));
     header
@@ -206,12 +208,13 @@ fn overlap<'tcx>(
     // empty environment.
     let param_env = ty::ParamEnv::empty();
 
-    let impl1_header = with_fresh_ty_vars(selcx, param_env, impl1_def_id);
-    let impl2_header = with_fresh_ty_vars(selcx, param_env, impl2_def_id);
+    let impl1_header = fresh_impl_header_normalized(selcx.infcx, param_env, impl1_def_id);
+    let impl2_header = fresh_impl_header_normalized(selcx.infcx, param_env, impl2_def_id);
 
     // Equate the headers to find their intersection (the general type, with infer vars,
     // that may apply both impls).
-    let mut obligations = equate_impl_headers(selcx.infcx, &impl1_header, &impl2_header)?;
+    let mut obligations =
+        equate_impl_headers(selcx.infcx, param_env, &impl1_header, &impl2_header)?;
     debug!("overlap: unification check succeeded");
 
     obligations.extend(
@@ -312,20 +315,22 @@ fn overlap<'tcx>(
 #[instrument(level = "debug", skip(infcx), ret)]
 fn equate_impl_headers<'tcx>(
     infcx: &InferCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
     impl1: &ty::ImplHeader<'tcx>,
     impl2: &ty::ImplHeader<'tcx>,
 ) -> Option<PredicateObligations<'tcx>> {
-    let result = match (impl1.trait_ref, impl2.trait_ref) {
-        (Some(impl1_ref), Some(impl2_ref)) => infcx
-            .at(&ObligationCause::dummy(), ty::ParamEnv::empty())
-            .eq(DefineOpaqueTypes::Yes, impl1_ref, impl2_ref),
-        (None, None) => infcx.at(&ObligationCause::dummy(), ty::ParamEnv::empty()).eq(
-            DefineOpaqueTypes::Yes,
-            impl1.self_ty,
-            impl2.self_ty,
-        ),
-        _ => bug!("mk_eq_impl_headers given mismatched impl kinds"),
-    };
+    let result =
+        match (impl1.trait_ref, impl2.trait_ref) {
+            (Some(impl1_ref), Some(impl2_ref)) => infcx
+                .at(&ObligationCause::dummy(), param_env)
+                .eq(DefineOpaqueTypes::Yes, impl1_ref, impl2_ref),
+            (None, None) => infcx.at(&ObligationCause::dummy(), param_env).eq(
+                DefineOpaqueTypes::Yes,
+                impl1.self_ty,
+                impl2.self_ty,
+            ),
+            _ => bug!("mk_eq_impl_headers given mismatched impl kinds"),
+        };
 
     result.map(|infer_ok| infer_ok.obligations).ok()
 }
@@ -391,107 +396,182 @@ fn impl_intersection_has_negative_obligation(
 ) -> bool {
     debug!("negative_impl(impl1_def_id={:?}, impl2_def_id={:?})", impl1_def_id, impl2_def_id);
 
-    // Create an infcx, taking the predicates of impl1 as assumptions:
-    let infcx = tcx.infer_ctxt().build();
-    // create a parameter environment corresponding to a (placeholder) instantiation of impl1
-    let impl_env = tcx.param_env(impl1_def_id);
-    let subject1 = match traits::fully_normalize(
-        &infcx,
-        ObligationCause::dummy(),
-        impl_env,
-        tcx.impl_subject(impl1_def_id).instantiate_identity(),
-    ) {
-        Ok(s) => s,
-        Err(err) => {
-            tcx.sess.delay_span_bug(
-                tcx.def_span(impl1_def_id),
-                format!("failed to fully normalize {impl1_def_id:?}: {err:?}"),
-            );
-            return false;
-        }
-    };
+    let ref infcx = tcx.infer_ctxt().intercrate(true).with_next_trait_solver(true).build();
+    let universe = infcx.universe();
 
-    // Attempt to prove that impl2 applies, given all of the above.
-    let selcx = &mut SelectionContext::new(&infcx);
-    let impl2_args = infcx.fresh_args_for_item(DUMMY_SP, impl2_def_id);
-    let (subject2, normalization_obligations) =
-        impl_subject_and_oblig(selcx, impl_env, impl2_def_id, impl2_args, |_, _| {
-            ObligationCause::dummy()
-        });
+    let impl1_header = fresh_impl_header(infcx, impl1_def_id);
+    let param_env =
+        ty::EarlyBinder::bind(tcx.param_env(impl1_def_id)).instantiate(tcx, impl1_header.impl_args);
 
-    // do the impls unify? If not, then it's not currently possible to prove any
-    // obligations about their intersection.
-    let Ok(InferOk { obligations: equate_obligations, .. }) =
-        infcx.at(&ObligationCause::dummy(), impl_env).eq(DefineOpaqueTypes::No, subject1, subject2)
+    let impl2_header = fresh_impl_header(infcx, impl2_def_id);
+
+    // Equate the headers to find their intersection (the general type, with infer vars,
+    // that may apply both impls).
+    let Some(_equate_obligations) =
+        equate_impl_headers(infcx, param_env, &impl1_header, &impl2_header)
     else {
-        debug!("explicit_disjoint: {:?} does not unify with {:?}", subject1, subject2);
         return false;
     };
 
-    for obligation in normalization_obligations.into_iter().chain(equate_obligations) {
-        if negative_impl_exists(&infcx, &obligation, impl1_def_id) {
-            debug!("overlap: obligation unsatisfiable {:?}", obligation);
-            return true;
-        }
-    }
+    plug_infer_with_placeholders(infcx, universe, (impl1_header.impl_args, impl2_header.impl_args));
 
-    false
+    util::elaborate(tcx, tcx.predicates_of(impl2_def_id).instantiate(tcx, impl2_header.impl_args))
+        .any(|(clause, _)| try_prove_negated_where_clause(infcx, clause, param_env))
 }
 
-/// Try to prove that a negative impl exist for the obligation or its supertraits.
-///
-/// If such a negative impl exists, then the obligation definitely must not hold
-/// due to coherence, even if it's not necessarily "knowable" in this crate. Any
-/// valid impl downstream would not be able to exist due to the overlapping
-/// negative impl.
-#[instrument(level = "debug", skip(infcx))]
-fn negative_impl_exists<'tcx>(
+fn plug_infer_with_placeholders<'tcx>(
     infcx: &InferCtxt<'tcx>,
-    o: &PredicateObligation<'tcx>,
-    body_def_id: DefId,
-) -> bool {
-    // Try to prove a negative obligation exists for super predicates
-    for pred in util::elaborate(infcx.tcx, iter::once(o.predicate)) {
-        if prove_negated_obligation(infcx.fork(), &o.with(infcx.tcx, pred), body_def_id) {
-            return true;
+    universe: ty::UniverseIndex,
+    value: impl TypeVisitable<TyCtxt<'tcx>>,
+) {
+    struct PlugInferWithPlaceholder<'a, 'tcx> {
+        infcx: &'a InferCtxt<'tcx>,
+        universe: ty::UniverseIndex,
+        var: ty::BoundVar,
+    }
+
+    impl<'tcx> PlugInferWithPlaceholder<'_, 'tcx> {
+        fn next_var(&mut self) -> ty::BoundVar {
+            let var = self.var;
+            self.var = self.var + 1;
+            var
         }
     }
 
-    false
+    impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for PlugInferWithPlaceholder<'_, 'tcx> {
+        fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+            let ty = self.infcx.shallow_resolve(ty);
+            if ty.is_ty_var() {
+                let Ok(InferOk { value: (), obligations }) =
+                    self.infcx.at(&ObligationCause::dummy(), ty::ParamEnv::empty()).eq(
+                        DefineOpaqueTypes::No,
+                        ty,
+                        Ty::new_placeholder(
+                            self.infcx.tcx,
+                            ty::Placeholder {
+                                universe: self.universe,
+                                bound: ty::BoundTy {
+                                    var: self.next_var(),
+                                    kind: ty::BoundTyKind::Anon,
+                                },
+                            },
+                        ),
+                    )
+                else {
+                    bug!()
+                };
+                assert_eq!(obligations, &[]);
+                ControlFlow::Continue(())
+            } else {
+                ty.super_visit_with(self)
+            }
+        }
+
+        fn visit_const(&mut self, ct: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
+            let ct = self.infcx.shallow_resolve(ct);
+            if ct.is_ct_infer() {
+                let Ok(InferOk { value: (), obligations }) =
+                    self.infcx.at(&ObligationCause::dummy(), ty::ParamEnv::empty()).eq(
+                        DefineOpaqueTypes::No,
+                        ct,
+                        ty::Const::new_placeholder(
+                            self.infcx.tcx,
+                            ty::Placeholder { universe: self.universe, bound: self.next_var() },
+                            ct.ty(),
+                        ),
+                    )
+                else {
+                    bug!()
+                };
+                assert_eq!(obligations, &[]);
+                ControlFlow::Continue(())
+            } else {
+                ct.super_visit_with(self)
+            }
+        }
+
+        fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
+            if let ty::ReVar(vid) = *r {
+                let r = self
+                    .infcx
+                    .inner
+                    .borrow_mut()
+                    .unwrap_region_constraints()
+                    .opportunistic_resolve_var(self.infcx.tcx, vid);
+                if r.is_var() {
+                    let Ok(InferOk { value: (), obligations }) =
+                        self.infcx.at(&ObligationCause::dummy(), ty::ParamEnv::empty()).eq(
+                            DefineOpaqueTypes::No,
+                            r,
+                            ty::Region::new_placeholder(
+                                self.infcx.tcx,
+                                ty::Placeholder {
+                                    universe: self.universe,
+                                    bound: ty::BoundRegion {
+                                        var: self.next_var(),
+                                        kind: ty::BoundRegionKind::BrAnon,
+                                    },
+                                },
+                            ),
+                        )
+                    else {
+                        bug!()
+                    };
+                    assert_eq!(obligations, &[]);
+                }
+            }
+            ControlFlow::Continue(())
+        }
+    }
+
+    value.visit_with(&mut PlugInferWithPlaceholder {
+        infcx,
+        universe,
+        var: ty::BoundVar::from_u32(0),
+    });
 }
 
-#[instrument(level = "debug", skip(infcx))]
-fn prove_negated_obligation<'tcx>(
-    infcx: InferCtxt<'tcx>,
-    o: &PredicateObligation<'tcx>,
-    body_def_id: DefId,
+fn try_prove_negated_where_clause<'tcx>(
+    root_infcx: &InferCtxt<'tcx>,
+    clause: ty::Clause<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
 ) -> bool {
-    let tcx = infcx.tcx;
-
-    let Some(o) = o.flip_polarity(tcx) else {
+    let Some(negative_predicate) = clause.as_predicate().flip_polarity(root_infcx.tcx) else {
         return false;
     };
 
-    let param_env = o.param_env;
-    let ocx = ObligationCtxt::new(&infcx);
-    ocx.register_obligation(o);
-    let errors = ocx.select_all_or_error();
+    // FIXME(with_negative_coherence): the infcx has region contraints from equating
+    // the impl headers as requirements. Given that the only region constraints we
+    // get are involving inference regions in the root, it shouldn't matter, but
+    // still sus.
+    //
+    // We probably should just throw away the region obligations registered up until
+    // now, or ideally use them as assumptions when proving the region obligations
+    // that we get from proving the negative predicate below.
+    let ref infcx = root_infcx.fork();
+    let ocx = ObligationCtxt::new(infcx);
+
+    ocx.register_obligation(Obligation::new(
+        infcx.tcx,
+        ObligationCause::dummy(),
+        param_env,
+        negative_predicate,
+    ));
+    if !ocx.select_all_or_error().is_empty() {
+        return false;
+    }
+
+    // FIXME: We could use the assumed_wf_types from both impls, I think,
+    // if that wasn't implemented just for LocalDefId, and we'd need to do
+    // the normalization ourselves since this is totally fallible...
+    let outlives_env = OutlivesEnvironment::new(param_env);
+
+    let errors = infcx.resolve_regions(&outlives_env);
     if !errors.is_empty() {
         return false;
     }
 
-    let body_def_id = body_def_id.as_local().unwrap_or(CRATE_DEF_ID);
-
-    let ocx = ObligationCtxt::new(&infcx);
-    let Ok(wf_tys) = ocx.assumed_wf_types(param_env, body_def_id) else {
-        return false;
-    };
-
-    let outlives_env = OutlivesEnvironment::with_bounds(
-        param_env,
-        infcx.implied_bounds_tys(param_env, body_def_id, wf_tys),
-    );
-    infcx.resolve_regions(&outlives_env).is_empty()
+    true
 }
 
 /// Returns whether all impls which would apply to the `trait_ref`
@@ -506,13 +586,6 @@ pub fn trait_ref_is_knowable<'tcx, E: Debug>(
     trait_ref: ty::TraitRef<'tcx>,
     mut lazily_normalize_ty: impl FnMut(Ty<'tcx>) -> Result<Ty<'tcx>, E>,
 ) -> Result<Result<(), Conflict>, E> {
-    if Some(trait_ref.def_id) == tcx.lang_items().fn_ptr_trait() {
-        // The only types implementing `FnPtr` are function pointers,
-        // so if there's no impl of `FnPtr` in the current crate,
-        // then such an impl will never be added in the future.
-        return Ok(Ok(()));
-    }
-
     if orphan_check_trait_ref(trait_ref, InCrate::Remote, &mut lazily_normalize_ty)?.is_ok() {
         // A downstream or cousin crate is allowed to implement some
         // substitution of this trait-ref.

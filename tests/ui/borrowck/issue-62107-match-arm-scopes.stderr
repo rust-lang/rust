@@ -1,10 +1,11 @@
 error[E0381]: used binding `e` isn't initialized
-  --> $DIR/issue-62107-match-arm-scopes.rs:3:11
+  --> $DIR/issue-62107-match-arm-scopes.rs:4:9
    |
 LL |     let e: i32;
    |         - binding declared here but left uninitialized
 LL |     match e {
-   |           ^ `e` used here but it isn't initialized
+LL |         ref u if true => {}
+   |         ^^^^^ `e` used here but it isn't initialized
    |
 help: consider assigning a value
    |

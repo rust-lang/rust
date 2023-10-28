@@ -110,6 +110,7 @@ pub(crate) fn run(options: RustdocOptions) -> Result<(), ErrorGuaranteed> {
         make_codegen_backend: None,
         registry: rustc_driver::diagnostics_registry(),
         ice_file: None,
+        using_internal_features: Arc::default(),
         expanded_args: options.expanded_args.clone(),
     };
 

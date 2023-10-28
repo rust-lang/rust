@@ -145,3 +145,26 @@ in Clang's documentation is therefore an interesting read for anyone who wants
 to use PGO with Rust.
 
 [clang-pgo]: https://clang.llvm.org/docs/UsersManual.html#profile-guided-optimization
+
+## Community Maintained Tools
+
+As an alternative to directly using the compiler for Profile-Guided Optimization,
+you may choose to go with `cargo-pgo`, which has an intuitive command-line API
+and saves you the trouble of doing all the manual work. You can read more about
+it in their repository accessible from this link: https://github.com/Kobzol/cargo-pgo
+
+For the sake of completeness, here are the corresponding steps using `cargo-pgo`:
+
+```bash
+# Install if you haven't already
+cargo install cargo-pgo
+
+cargo pgo build
+cargo pgo optimize
+```
+
+These steps will do the following just as before:
+
+1. Build an instrumented binary from the source code.
+2. Run the instrumented binary to gather PGO profiles.
+3. Use the gathered PGO profiles from the last step to build an optimized binary.

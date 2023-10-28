@@ -1066,6 +1066,8 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
         }
     }
 
+    // [RUSTDOCIMPL] trait.impl
+    //
     // Include implementors in crates that depend on the current crate.
     //
     // This is complicated by the way rustdoc is invoked, which is basically
@@ -1101,7 +1103,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
     // ```
     //
     // Basically, we want `C::Baz` and `A::Foo` to show the same set of
-    // impls, which is easier if they both treat `/implementors/A/trait.Foo.js`
+    // impls, which is easier if they both treat `/trait.impl/A/trait.Foo.js`
     // as the Single Source of Truth.
     //
     // We also want the `impl Baz for Quux` to be written to
@@ -1110,7 +1112,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
     // because that'll load faster, and it's better for SEO. And we don't want
     // the same impl to show up twice on the same page.
     //
-    // To make this work, the implementors JS file has a structure kinda
+    // To make this work, the trait.impl/A/trait.Foo.js JS file has a structure kinda
     // like this:
     //
     // ```js
@@ -1127,7 +1129,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
     // So C's HTML will have something like this:
     //
     // ```html
-    // <script src="/implementors/A/trait.Foo.js"
+    // <script src="/trait.impl/A/trait.Foo.js"
     //     data-ignore-extern-crates="A,B" async></script>
     // ```
     //
@@ -1137,7 +1139,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
     // [JSONP]: https://en.wikipedia.org/wiki/JSONP
     let mut js_src_path: UrlPartsBuilder = std::iter::repeat("..")
         .take(cx.current.len())
-        .chain(std::iter::once("implementors"))
+        .chain(std::iter::once("trait.impl"))
         .collect();
     if let Some(did) = it.item_id.as_def_id() &&
         let get_extern = { || cache.external_paths.get(&did).map(|s| &s.0) } &&
@@ -1319,6 +1321,102 @@ fn item_type_alias(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &c
     // we need #14072 to make sense of the generics.
     write!(w, "{}", render_assoc_items(cx, it, def_id, AssocItemRender::All));
     write!(w, "{}", document_type_layout(cx, def_id));
+
+    // [RUSTDOCIMPL] type.impl
+    //
+    // Include type definitions from the alias target type.
+    //
+    // Earlier versions of this code worked by having `render_assoc_items`
+    // include this data directly. That generates *O*`(types*impls)` of HTML
+    // text, and some real crates have a lot of types and impls.
+    //
+    // To create the same UX without generating half a gigabyte of HTML for a
+    // crate that only contains 20 megabytes of actual documentation[^115718],
+    // rustdoc stashes these type-alias-inlined docs in a [JSONP]
+    // "database-lite". The file itself is generated in `write_shared.rs`,
+    // and hooks into functions provided by `main.js`.
+    //
+    // The format of `trait.impl` and `type.impl` JS files are superficially
+    // similar. Each line, except the JSONP wrapper itself, belongs to a crate,
+    // and they are otherwise separate (rustdoc should be idempotent). The
+    // "meat" of the file is HTML strings, so the frontend code is very simple.
+    // Links are relative to the doc root, though, so the frontend needs to fix
+    // that up, and inlined docs can reuse these files.
+    //
+    // However, there are a few differences, caused by the sophisticated
+    // features that type aliases have. Consider this crate graph:
+    //
+    // ```text
+    //  ---------------------------------
+    //  | crate A: struct Foo<T>        |
+    //  |          type Bar = Foo<i32>  |
+    //  |          impl X for Foo<i8>   |
+    //  |          impl Y for Foo<i32>  |
+    //  ---------------------------------
+    //      |
+    //  ----------------------------------
+    //  | crate B: type Baz = A::Foo<i8> |
+    //  |          type Xyy = A::Foo<i8> |
+    //  |          impl Z for Xyy        |
+    //  ----------------------------------
+    // ```
+    //
+    // The type.impl/A/struct.Foo.js JS file has a structure kinda like this:
+    //
+    // ```js
+    // JSONP({
+    // "A": [["impl Y for Foo<i32>", "Y", "A::Bar"]],
+    // "B": [["impl X for Foo<i8>", "X", "B::Baz", "B::Xyy"], ["impl Z for Xyy", "Z", "B::Baz"]],
+    // });
+    // ```
+    //
+    // When the type.impl file is loaded, only the current crate's docs are
+    // actually used. The main reason to bundle them together is that there's
+    // enough duplication in them for DEFLATE to remove the redundancy.
+    //
+    // The contents of a crate are a list of impl blocks, themselves
+    // represented as lists. The first item in the sublist is the HTML block,
+    // the second item is the name of the trait (which goes in the sidebar),
+    // and all others are the names of type aliases that successfully match.
+    //
+    // This way:
+    //
+    // - There's no need to generate these files for types that have no aliases
+    //   in the current crate. If a dependent crate makes a type alias, it'll
+    //   take care of generating its own docs.
+    // - There's no need to reimplement parts of the type checker in
+    //   JavaScript. The Rust backend does the checking, and includes its
+    //   results in the file.
+    // - Docs defined directly on the type alias are dropped directly in the
+    //   HTML by `render_assoc_items`, and are accessible without JavaScript.
+    //   The JSONP file will not list impl items that are known to be part
+    //   of the main HTML file already.
+    //
+    // [JSONP]: https://en.wikipedia.org/wiki/JSONP
+    // [^115718]: https://github.com/rust-lang/rust/issues/115718
+    let cloned_shared = Rc::clone(&cx.shared);
+    let cache = &cloned_shared.cache;
+    if let Some(target_did) = t.type_.def_id(cache) &&
+        let get_extern = { || cache.external_paths.get(&target_did) } &&
+        let Some(&(ref target_fqp, target_type)) = cache.paths.get(&target_did).or_else(get_extern) &&
+        target_type.is_adt() && // primitives cannot be inlined
+        let Some(self_did) = it.item_id.as_def_id() &&
+        let get_local = { || cache.paths.get(&self_did).map(|(p, _)| p) } &&
+        let Some(self_fqp) = cache.exact_paths.get(&self_did).or_else(get_local)
+    {
+        let mut js_src_path: UrlPartsBuilder = std::iter::repeat("..")
+            .take(cx.current.len())
+            .chain(std::iter::once("type.impl"))
+            .collect();
+        js_src_path.extend(target_fqp[..target_fqp.len() - 1].iter().copied());
+        js_src_path.push_fmt(format_args!("{target_type}.{}.js", target_fqp.last().unwrap()));
+        let self_path = self_fqp.iter().map(Symbol::as_str).collect::<Vec<&str>>().join("::");
+        write!(
+            w,
+            "<script src=\"{src}\" data-self-path=\"{self_path}\" async></script>",
+            src = js_src_path.finish(),
+        );
+    }
 }
 
 fn item_union(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean::Union) {

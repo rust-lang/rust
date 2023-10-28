@@ -62,6 +62,7 @@ fn compile(code: String, output: PathBuf, sysroot: PathBuf) {
         override_queries: None,
         make_codegen_backend: None,
         registry: rustc_driver::diagnostics_registry(),
+        using_internal_features: std::sync::Arc::default(),
         expanded_args: Default::default(),
     };
 

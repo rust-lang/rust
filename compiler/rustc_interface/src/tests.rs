@@ -35,6 +35,7 @@ use rustc_target::spec::{RelroLevel, SanitizerSet, SplitDebuginfo, StackProtecto
 use std::collections::{BTreeMap, BTreeSet};
 use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 type CfgSpecs = FxHashSet<(String, Option<String>)>;
 
@@ -69,6 +70,7 @@ fn mk_session(handler: &mut EarlyErrorHandler, matches: getopts::Matches) -> (Se
         None,
         "",
         None,
+        Arc::default(),
         Default::default(),
     );
     (sess, cfg)
@@ -612,7 +614,7 @@ fn test_codegen_options_tracking_hash() {
     tracked!(force_frame_pointers, Some(false));
     tracked!(force_unwind_tables, Some(true));
     tracked!(inline_threshold, Some(0xf007ba11));
-    tracked!(instrument_coverage, Some(InstrumentCoverage::All));
+    tracked!(instrument_coverage, InstrumentCoverage::All);
     tracked!(link_dead_code, Some(true));
     tracked!(linker_plugin_lto, LinkerPluginLto::LinkerPluginAuto);
     tracked!(llvm_args, vec![String::from("1"), String::from("2")]);
@@ -789,7 +791,6 @@ fn test_unstable_options_tracking_hash() {
     tracked!(inline_mir, Some(true));
     tracked!(inline_mir_hint_threshold, Some(123));
     tracked!(inline_mir_threshold, Some(123));
-    tracked!(instrument_coverage, Some(InstrumentCoverage::All));
     tracked!(instrument_mcount, true);
     tracked!(instrument_xray, Some(InstrumentXRay::default()));
     tracked!(link_directives, false);

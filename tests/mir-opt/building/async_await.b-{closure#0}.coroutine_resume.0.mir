@@ -127,6 +127,7 @@ fn b::{closure#0}(_1: Pin<&mut {async fn body@$DIR/async_await.rs:15:18: 18:2}>,
 
     bb3: {
         StorageDead(_5);
+        PlaceMention(_4);
         nop;
         (((*(_1.0: &mut {async fn body@$DIR/async_await.rs:15:18: 18:2})) as variant#3).0: {async fn body@$DIR/async_await.rs:12:14: 12:16}) = move _4;
         goto -> bb4;
@@ -162,6 +163,7 @@ fn b::{closure#0}(_1: Pin<&mut {async fn body@$DIR/async_await.rs:15:18: 18:2}>,
     bb7: {
         StorageDead(_13);
         StorageDead(_10);
+        PlaceMention(_9);
         _16 = discriminant(_9);
         switchInt(move _16) -> [0: bb10, 1: bb8, otherwise: bb9];
     }
@@ -223,6 +225,7 @@ fn b::{closure#0}(_1: Pin<&mut {async fn body@$DIR/async_await.rs:15:18: 18:2}>,
 
     bb15: {
         StorageDead(_22);
+        PlaceMention(_21);
         nop;
         (((*(_1.0: &mut {async fn body@$DIR/async_await.rs:15:18: 18:2})) as variant#4).0: {async fn body@$DIR/async_await.rs:12:14: 12:16}) = move _21;
         goto -> bb16;
@@ -258,6 +261,7 @@ fn b::{closure#0}(_1: Pin<&mut {async fn body@$DIR/async_await.rs:15:18: 18:2}>,
     bb19: {
         StorageDead(_29);
         StorageDead(_26);
+        PlaceMention(_25);
         _32 = discriminant(_25);
         switchInt(move _32) -> [0: bb21, 1: bb20, otherwise: bb9];
     }

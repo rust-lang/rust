@@ -141,7 +141,6 @@
 #![feature(maybe_uninit_uninit_array)]
 #![feature(maybe_uninit_uninit_array_transpose)]
 #![feature(pattern)]
-#![feature(pointer_byte_offsets)]
 #![feature(ptr_addr_eq)]
 #![feature(ptr_internals)]
 #![feature(ptr_metadata)]

@@ -14,8 +14,9 @@ LL | #![test]
    |
 help: perhaps you meant to use an outer attribute
    |
-LL | #[test]
-   | ~~~~~~~
+LL - #![test]
+LL + #[test]
+   |
 
 error: aborting due to 2 previous errors
 

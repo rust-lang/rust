@@ -27,6 +27,7 @@ use crate::core::config::flags::Subcommand;
 use crate::core::config::TargetSelection;
 use crate::utils;
 use crate::utils::cache::{Interned, INTERNER};
+use crate::utils::exec::BootstrapCommand;
 use crate::utils::helpers::{
     self, add_link_lib_path, dylib_path, dylib_path_var, output, t, up_to_date,
 };
@@ -629,7 +630,7 @@ impl Step for Miri {
             SourceType::InTree,
             &[],
         );
-        let _guard = builder.msg_sysroot_tool(Kind::Test, compiler.stage, "miri", host, host);
+        let _guard = builder.msg_sysroot_tool(Kind::Test, compiler.stage, "miri", host, target);
 
         cargo.add_rustc_lib_path(builder, compiler);
 
@@ -808,8 +809,8 @@ impl Step for Clippy {
 
         let _guard = builder.msg_sysroot_tool(Kind::Test, compiler.stage, "clippy", host, host);
 
-        #[allow(deprecated)] // Clippy reports errors if it blessed the outputs
-        if builder.config.try_run(&mut cargo).is_ok() {
+        // Clippy reports errors if it blessed the outputs
+        if builder.run_cmd(BootstrapCommand::from(&mut cargo).allow_failure()) {
             // The tests succeeded; nothing to do.
             return;
         }
@@ -1566,10 +1567,12 @@ note: if you're sure you want to do this, please open an issue as to why. In the
             cmd.arg("--coverage-dump-path").arg(coverage_dump);
         }
 
-        if mode == "run-make" || mode == "run-coverage" {
+        if mode == "run-coverage" {
+            // The demangler doesn't need the current compiler, so we can avoid
+            // unnecessary rebuilds by using the bootstrap compiler instead.
             let rust_demangler = builder
                 .ensure(tool::RustDemangler {
-                    compiler,
+                    compiler: compiler.with_stage(0),
                     target: compiler.host,
                     extra_features: Vec::new(),
                 })
@@ -2999,7 +3002,10 @@ impl Step for CodegenCranelift {
 
         let triple = run.target.triple;
         let target_supported = if triple.contains("linux") {
-            triple.contains("x86_64") || triple.contains("aarch64") || triple.contains("s390x")
+            triple.contains("x86_64")
+                || triple.contains("aarch64")
+                || triple.contains("s390x")
+                || triple.contains("riscv64gc")
         } else if triple.contains("darwin") || triple.contains("windows") {
             triple.contains("x86_64")
         } else {
@@ -3094,7 +3100,7 @@ impl Step for CodegenCranelift {
             .arg("testsuite.extended_sysroot");
         cargo.args(builder.config.test_args());
 
-        #[allow(deprecated)]
-        builder.config.try_run(&mut cargo.into()).unwrap();
+        let mut cmd: Command = cargo.into();
+        builder.run_cmd(BootstrapCommand::from(&mut cmd).fail_fast());
     }
 }

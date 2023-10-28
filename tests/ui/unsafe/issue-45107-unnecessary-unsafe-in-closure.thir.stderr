@@ -16,9 +16,9 @@ LL | #[deny(unused_unsafe)]
 error: unnecessary `unsafe` block
   --> $DIR/issue-45107-unnecessary-unsafe-in-closure.rs:12:38
    |
-LL |     unsafe {
-   |     ------ because it's nested under this `unsafe` block
-...
+LL |             unsafe {
+   |             ------ because it's nested under this `unsafe` block
+LL |                 v.set_len(24);
 LL |                 |w: &mut Vec<u32>| { unsafe {
    |                                      ^^^^^^ unnecessary `unsafe` block
 

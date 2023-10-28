@@ -393,6 +393,9 @@ passes_invalid_attr_at_crate_level =
     `{$name}` attribute cannot be used at crate level
     .suggestion = perhaps you meant to use an outer attribute
 
+passes_invalid_attr_at_crate_level_item =
+    the inner attribute doesn't annotate this {$kind}
+
 passes_invalid_deprecation_version =
     invalid deprecation version found
     .label = invalid deprecation version
@@ -401,11 +404,6 @@ passes_invalid_deprecation_version =
 passes_invalid_macro_export_arguments = `{$name}` isn't a valid `#[macro_export]` argument
 
 passes_invalid_macro_export_arguments_too_many_items = `#[macro_export]` can only take 1 or 0 arguments
-
-passes_invalid_stability =
-    invalid stability version found
-    .label = invalid stability version
-    .item = the stability attribute annotates this item
 
 passes_lang_item_fn_with_target_feature =
     `{$name}` language item function is not allowed to have `#[target_feature]`

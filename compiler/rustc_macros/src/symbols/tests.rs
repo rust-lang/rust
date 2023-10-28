@@ -27,7 +27,7 @@ fn test_symbols() {
 
     let body_tokens = m.mac.tokens.clone();
 
-    test_symbols_macro(body_tokens, &[]);
+    test_symbols_macro(body_tokens, &["proc_macro::tracked_env is not available in unit test"]);
 }
 
 fn test_symbols_macro(input: TokenStream, expected_errors: &[&str]) {

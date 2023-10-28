@@ -1,0 +1,12 @@
+error[E0046]: not all trait items implemented, missing: `ASSOC`
+  --> $DIR/type_mismatch.rs:8:1
+   |
+LL |     const ASSOC: usize;
+   |     ------------------ `ASSOC` from trait
+...
+LL | impl<const N: u64> Q for [u8; N] {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `ASSOC` in implementation
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0046`.

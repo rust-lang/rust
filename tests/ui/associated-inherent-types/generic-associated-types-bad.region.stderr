@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/generic-associated-types-bad.rs:25:12
+  --> $DIR/generic-associated-types-bad.rs:26:12
    |
 LL | fn user<'a>() {
    |         -- lifetime `'a` defined here

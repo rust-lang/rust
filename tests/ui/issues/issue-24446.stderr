@@ -15,6 +15,39 @@ LL |     static foo: dyn Fn() -> u32 = || -> u32 {
    |
    = help: the trait `Sized` is not implemented for `(dyn Fn() -> u32 + 'static)`
 
-error: aborting due to 2 previous errors
+error[E0277]: the size for values of type `(dyn Fn() -> u32 + 'static)` cannot be known at compilation time
+  --> $DIR/issue-24446.rs:2:35
+   |
+LL |       static foo: dyn Fn() -> u32 = || -> u32 {
+   |  ___________________________________^
+LL | |
+LL | |
+LL | |
+LL | |
+LL | |         0
+LL | |     };
+   | |_____^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn Fn() -> u32 + 'static)`
+   = note: constant expressions must have a statically known size
 
-For more information about this error, try `rustc --explain E0277`.
+error[E0308]: mismatched types
+  --> $DIR/issue-24446.rs:2:35
+   |
+LL |       static foo: dyn Fn() -> u32 = || -> u32 {
+   |  ___________________________________^
+LL | |
+LL | |
+LL | |
+LL | |
+LL | |         0
+LL | |     };
+   | |_____^ expected `dyn Fn`, found closure
+   |
+   = note: expected trait object `(dyn Fn() -> u32 + 'static)`
+                   found closure `{closure@$DIR/issue-24446.rs:2:35: 2:44}`
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0277, E0308.
+For more information about an error, try `rustc --explain E0277`.

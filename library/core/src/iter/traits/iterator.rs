@@ -69,6 +69,7 @@ fn _assert_is_object_safe(_: &dyn Iterator<Item = ()>) {}
     message = "`{Self}` is not an iterator"
 )]
 #[doc(notable_trait)]
+#[cfg_attr(not(bootstrap), lang = "iterator")]
 #[rustc_diagnostic_item = "Iterator"]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 pub trait Iterator {
@@ -2141,7 +2142,7 @@ pub trait Iterator {
     /// passed collection. The collection is then returned, so the call chain
     /// can be continued.
     ///
-    /// This is useful when you already have a collection and wants to add
+    /// This is useful when you already have a collection and want to add
     /// the iterator items to it.
     ///
     /// This method is a convenience method to call [Extend::extend](trait.Extend.html),

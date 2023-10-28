@@ -1,8 +1,9 @@
+// check-pass
 // Issue #53114: NLL's borrow check had some deviations from the old borrow
 // checker, and both had some deviations from our ideal state. This test
 // captures the behavior of how `_` bindings are handled with respect to how we
 // flag expressions that are meant to request unsafe blocks.
-#![allow(irrefutable_let_patterns)]
+#![allow(irrefutable_let_patterns, dropping_references)]
 struct M;
 
 fn let_wild_gets_moved_expr() {
@@ -19,29 +20,23 @@ fn let_wild_gets_moved_expr() {
 fn match_moved_expr_to_wild() {
     let m = M;
     drop(m);
-    match m { _ => { } } // #53114: should eventually be accepted too
-    //~^ ERROR [E0382]
+    match m { _ => { } } // #53114: accepted too
 
     let mm = (M, M); // variation on above with `_` in substructure
     match mm { (_x, _) => { } }
     match mm { (_, _y) => { } }
-    //~^ ERROR [E0382]
     match mm { (_, _) => { } }
-    //~^ ERROR [E0382]
 }
 
 fn if_let_moved_expr_to_wild() {
     let m = M;
     drop(m);
-    if let _ = m { } // #53114: should eventually be accepted too
-    //~^ ERROR [E0382]
+    if let _ = m { } // #53114: accepted too
 
     let mm = (M, M); // variation on above with `_` in substructure
     if let (_x, _) = mm { }
     if let (_, _y) = mm { }
-    //~^ ERROR [E0382]
     if let (_, _) = mm { }
-    //~^ ERROR [E0382]
 }
 
 fn let_wild_gets_borrowed_expr() {

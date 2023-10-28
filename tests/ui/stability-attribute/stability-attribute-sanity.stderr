@@ -101,19 +101,13 @@ LL | #[stable(feature = "e", since = "b")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0544]: multiple stability levels
-  --> $DIR/stability-attribute-sanity.rs:65:1
+  --> $DIR/stability-attribute-sanity.rs:64:1
    |
 LL | #[rustc_const_unstable(feature = "d", issue = "none")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0549]: deprecated attribute must be paired with either stable or unstable attribute
-  --> $DIR/stability-attribute-sanity.rs:62:1
-   |
-LL | #[deprecated(since = "b", note = "text")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
 error: invalid deprecation version found
-  --> $DIR/stability-attribute-sanity.rs:68:1
+  --> $DIR/stability-attribute-sanity.rs:67:1
    |
 LL | #[stable(feature = "a", since = "1.0.0")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid deprecation version
@@ -122,24 +116,18 @@ LL | fn invalid_deprecation_version() {}
    | ----------------------------------- the stability attribute annotates this item
 
 error[E0549]: deprecated attribute must be paired with either stable or unstable attribute
-  --> $DIR/stability-attribute-sanity.rs:73:1
+  --> $DIR/stability-attribute-sanity.rs:72:1
    |
 LL | #[deprecated(since = "a", note = "text")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: function has missing stability attribute
-  --> $DIR/stability-attribute-sanity.rs:66:1
-   |
-LL | pub const fn multiple4() { }
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
 error[E0711]: feature `a` is declared stable since 1.0.0, but was previously declared stable since 4.4.4
-  --> $DIR/stability-attribute-sanity.rs:68:1
+  --> $DIR/stability-attribute-sanity.rs:67:1
    |
 LL | #[stable(feature = "a", since = "1.0.0")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 22 previous errors
+error: aborting due to 20 previous errors
 
 Some errors have detailed explanations: E0539, E0541, E0542, E0543, E0544, E0546, E0547, E0549, E0711.
 For more information about an error, try `rustc --explain E0539`.

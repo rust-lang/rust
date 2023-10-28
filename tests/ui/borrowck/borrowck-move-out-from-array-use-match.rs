@@ -42,8 +42,8 @@ fn move_out_by_const_index_and_subslice() {
         [_x, _, _] => {}
     }
     match a {
-        //~^ ERROR [E0382]
         [ref _y @ .., _, _] => {}
+        //~^ ERROR [E0382]
     }
 }
 
@@ -53,8 +53,8 @@ fn move_out_by_const_index_end_and_subslice() {
         [.., _x] => {}
     }
     match a {
-        //~^ ERROR [E0382]
         [_, _, ref _y @ ..] => {}
+        //~^ ERROR [E0382]
     }
 }
 
@@ -64,8 +64,8 @@ fn move_out_by_const_index_field_and_subslice() {
         [(_x, _), _, _] => {}
     }
     match a {
-        //~^ ERROR [E0382]
         [ref _y @ .., _, _] => {}
+        //~^ ERROR [E0382]
     }
 }
 
@@ -75,8 +75,8 @@ fn move_out_by_const_index_end_field_and_subslice() {
         [.., (_x, _)] => {}
     }
     match a {
-        //~^ ERROR [E0382]
         [_, _, ref _y @ ..] => {}
+        //~^ ERROR [E0382]
     }
 }
 
@@ -108,8 +108,8 @@ fn move_out_by_subslice_and_subslice() {
         [x @ .., _] => {}
     }
     match a {
-        //~^ ERROR [E0382]
         [_, ref _y @ ..] => {}
+        //~^ ERROR [E0382]
     }
 }
 

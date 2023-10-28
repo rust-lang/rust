@@ -40,11 +40,9 @@
 //! but not gcc's. As a result rustc cannot link with C++ static libraries (#36710)
 //! when linking in self-contained mode.
 
-use crate::json::{Json, ToJson};
 use crate::spec::LinkOutputKind;
 use std::borrow::Cow;
 use std::collections::BTreeMap;
-use std::str::FromStr;
 
 pub type CrtObjects = BTreeMap<LinkOutputKind, Vec<Cow<'static, str>>>;
 
@@ -122,40 +120,4 @@ pub(super) fn pre_wasi_self_contained() -> CrtObjects {
 
 pub(super) fn post_wasi_self_contained() -> CrtObjects {
     new(&[])
-}
-
-/// Which logic to use to determine whether to use self-contained linking mode
-/// if `-Clink-self-contained` is not specified explicitly.
-#[derive(Clone, Copy, PartialEq, Hash, Debug)]
-pub enum LinkSelfContainedDefault {
-    False,
-    True,
-    Musl,
-    Mingw,
-}
-
-impl FromStr for LinkSelfContainedDefault {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<LinkSelfContainedDefault, ()> {
-        Ok(match s {
-            "false" => LinkSelfContainedDefault::False,
-            "true" | "wasm" => LinkSelfContainedDefault::True,
-            "musl" => LinkSelfContainedDefault::Musl,
-            "mingw" => LinkSelfContainedDefault::Mingw,
-            _ => return Err(()),
-        })
-    }
-}
-
-impl ToJson for LinkSelfContainedDefault {
-    fn to_json(&self) -> Json {
-        match *self {
-            LinkSelfContainedDefault::False => "false",
-            LinkSelfContainedDefault::True => "true",
-            LinkSelfContainedDefault::Musl => "musl",
-            LinkSelfContainedDefault::Mingw => "mingw",
-        }
-        .to_json()
-    }
 }

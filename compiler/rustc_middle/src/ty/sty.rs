@@ -32,10 +32,12 @@ use std::fmt;
 use std::ops::{ControlFlow, Deref, Range};
 use ty::util::IntTypeExt;
 
+use rustc_type_ir::ClauseKind as IrClauseKind;
 use rustc_type_ir::CollectAndApply;
 use rustc_type_ir::ConstKind as IrConstKind;
 use rustc_type_ir::DebugWithInfcx;
 use rustc_type_ir::DynKind;
+use rustc_type_ir::PredicateKind as IrPredicateKind;
 use rustc_type_ir::RegionKind as IrRegionKind;
 use rustc_type_ir::TyKind as IrTyKind;
 use rustc_type_ir::TyKind::*;
@@ -47,6 +49,8 @@ use super::GenericParamDefKind;
 pub type TyKind<'tcx> = IrTyKind<TyCtxt<'tcx>>;
 pub type RegionKind<'tcx> = IrRegionKind<TyCtxt<'tcx>>;
 pub type ConstKind<'tcx> = IrConstKind<TyCtxt<'tcx>>;
+pub type PredicateKind<'tcx> = IrPredicateKind<TyCtxt<'tcx>>;
+pub type ClauseKind<'tcx> = IrClauseKind<TyCtxt<'tcx>>;
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, TyEncodable, TyDecodable)]
 #[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]

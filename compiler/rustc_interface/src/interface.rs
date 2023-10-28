@@ -24,6 +24,7 @@ use rustc_span::source_map::{FileLoader, FileName};
 use rustc_span::symbol::sym;
 use std::path::PathBuf;
 use std::result;
+use std::sync::Arc;
 
 pub type Result<T> = result::Result<T, ErrorGuaranteed>;
 
@@ -410,6 +411,12 @@ pub struct Config {
     /// Registry of diagnostics codes.
     pub registry: Registry,
 
+    /// The inner atomic value is set to true when a feature marked as `internal` is
+    /// enabled. Makes it so that "please report a bug" is hidden, as ICEs with
+    /// internal features are wontfix, and they are usually the cause of the ICEs.
+    /// None signifies that this is not tracked.
+    pub using_internal_features: Arc<std::sync::atomic::AtomicBool>,
+
     /// All commandline args used to invoke the compiler, with @file args fully expanded.
     /// This will only be used within debug info, e.g. in the pdb file on windows
     /// This is mainly useful for other tools that reads that debuginfo to figure out
@@ -453,6 +460,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
                 config.make_codegen_backend,
                 registry.clone(),
                 config.ice_file,
+                config.using_internal_features,
                 config.expanded_args,
             );
 
