@@ -149,7 +149,6 @@ impl<D: Deps> DepGraph<D> {
             DepNode { kind: D::DEP_KIND_RED, hash: Fingerprint::ZERO.into() },
             EdgesVec::new(),
             None,
-            false,
         );
         assert_eq!(red_node_index, DepNodeIndex::FOREVER_RED_NODE);
         match red_node_prev_index_and_color {
@@ -373,8 +372,6 @@ impl<D: Deps> DepGraphData<D> {
         let current_fingerprint =
             hash_result.map(|f| dcx.with_stable_hashing_context(|mut hcx| f(&mut hcx, &result)));
 
-        let print_status = cfg!(debug_assertions) && dcx.sess().opts.unstable_opts.dep_tasks;
-
         // Intern the new `DepNode`.
         let (dep_node_index, prev_and_color) = self.current.intern_node(
             dcx.profiler(),
@@ -382,7 +379,6 @@ impl<D: Deps> DepGraphData<D> {
             key,
             edges,
             current_fingerprint,
-            print_status,
         );
 
         hashing_timer.finish_with_query_invocation_id(dep_node_index.into());
@@ -589,8 +585,6 @@ impl<D: Deps> DepGraph<D> {
                 cx.with_stable_hashing_context(|mut hcx| hash_result(&mut hcx, result))
             });
 
-            let print_status = cfg!(debug_assertions) && cx.sess().opts.unstable_opts.dep_tasks;
-
             // Intern the new `DepNode` with the dependencies up-to-now.
             let (dep_node_index, prev_and_color) = data.current.intern_node(
                 cx.profiler(),
@@ -598,7 +592,6 @@ impl<D: Deps> DepGraph<D> {
                 node,
                 edges,
                 current_fingerprint,
-                print_status,
             );
 
             hashing_timer.finish_with_query_invocation_id(dep_node_index.into());
@@ -1219,20 +1212,13 @@ impl<D: Deps> CurrentDepGraph<D> {
         key: DepNode,
         edges: EdgesVec,
         fingerprint: Option<Fingerprint>,
-        print_status: bool,
     ) -> (DepNodeIndex, Option<(SerializedDepNodeIndex, DepNodeColor)>) {
-        let print_status = cfg!(debug_assertions) && print_status;
-
         // Get timer for profiling `DepNode` interning
         let _node_intern_timer =
             self.node_intern_event_id.map(|eid| profiler.generic_activity_with_event_id(eid));
 
         if let Some(prev_index) = prev_graph.node_to_index_opt(&key) {
-            let get_dep_node_index = |color, fingerprint| {
-                if print_status {
-                    eprintln!("[task::{color:}] {key:?}");
-                }
-
+            let get_dep_node_index = |fingerprint| {
                 let mut prev_index_to_index = self.prev_index_to_index.lock();
 
                 let dep_node_index = match prev_index_to_index[prev_index] {
@@ -1256,12 +1242,12 @@ impl<D: Deps> CurrentDepGraph<D> {
                 if fingerprint == prev_graph.fingerprint_by_index(prev_index) {
                     // This is a green node: it existed in the previous compilation,
                     // its query was re-executed, and it has the same result as before.
-                    let dep_node_index = get_dep_node_index("green", fingerprint);
+                    let dep_node_index = get_dep_node_index(fingerprint);
                     (dep_node_index, Some((prev_index, DepNodeColor::Green(dep_node_index))))
                 } else {
                     // This is a red node: it existed in the previous compilation, its query
                     // was re-executed, but it has a different result from before.
-                    let dep_node_index = get_dep_node_index("red", fingerprint);
+                    let dep_node_index = get_dep_node_index(fingerprint);
                     (dep_node_index, Some((prev_index, DepNodeColor::Red)))
                 }
             } else {
@@ -1269,14 +1255,10 @@ impl<D: Deps> CurrentDepGraph<D> {
                 // session, its query was re-executed, but it doesn't compute a result hash
                 // (i.e. it represents a `no_hash` query), so we have no way of determining
                 // whether or not the result was the same as before.
-                let dep_node_index = get_dep_node_index("unknown", Fingerprint::ZERO);
+                let dep_node_index = get_dep_node_index(Fingerprint::ZERO);
                 (dep_node_index, Some((prev_index, DepNodeColor::Red)))
             }
         } else {
-            if print_status {
-                eprintln!("[task::new] {key:?}");
-            }
-
             let fingerprint = fingerprint.unwrap_or(Fingerprint::ZERO);
 
             // This is a new node: it didn't exist in the previous compilation session.
