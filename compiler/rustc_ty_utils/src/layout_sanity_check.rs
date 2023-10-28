@@ -19,6 +19,9 @@ pub(super) fn sanity_check_layout<'tcx>(
     if layout.size.bytes() % layout.align.abi.bytes() != 0 {
         bug!("size is not a multiple of align, in the following layout:\n{layout:#?}");
     }
+    if layout.size.bytes() >= cx.tcx.data_layout.obj_size_bound() {
+        bug!("size is too large, in the following layout:\n{layout:#?}");
+    }
 
     if !cfg!(debug_assertions) {
         // Stop here, the rest is kind of expensive.
