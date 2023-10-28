@@ -53,7 +53,6 @@ macro_rules! p {
 }
 macro_rules! define_scoped_cx {
     ($cx:ident) => {
-        #[allow(unused_macros)]
         macro_rules! scoped_cx {
             () => {
                 $cx
@@ -408,8 +407,6 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         def_id: DefId,
         callers: &mut Vec<DefId>,
     ) -> Result<bool, PrintError> {
-        define_scoped_cx!(self);
-
         debug!("try_print_visible_def_path: def_id={:?}", def_id);
 
         // If `def_id` is a direct or injected extern crate, return the
@@ -1868,8 +1865,6 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
         def_id: DefId,
         args: &'tcx [GenericArg<'tcx>],
     ) -> Result<(), PrintError> {
-        define_scoped_cx!(self);
-
         if args.is_empty() {
             match self.try_print_trimmed_def_path(def_id)? {
                 true => return Ok(()),
@@ -2400,8 +2395,6 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
         let do_continue = |cx: &mut Self, cont: Symbol| {
             let _ = write!(cx, "{cont}");
         };
-
-        define_scoped_cx!(self);
 
         let possible_names = ('a'..='z').rev().map(|s| Symbol::intern(&format!("'{s}")));
 
