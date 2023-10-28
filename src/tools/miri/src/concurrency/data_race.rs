@@ -52,7 +52,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::mir;
 use rustc_span::Span;
-use rustc_target::abi::{Align, Size};
+use rustc_target::abi::{Align, HasDataLayout, Size};
 
 use crate::diagnostics::RacingOp;
 use crate::*;
@@ -192,6 +192,13 @@ struct AtomicMemoryCellClocks {
     /// We use this to detect non-synchronized mixed-size accesses. Since all accesses must be
     /// aligned to their size, this is sufficient to detect imperfectly overlapping accesses.
     size: Size,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+enum AtomicAccessType {
+    Load(AtomicReadOrd),
+    Store,
+    Rmw,
 }
 
 /// Type of write operation: allocating memory
@@ -526,7 +533,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
         atomic: AtomicReadOrd,
     ) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_ref();
-        this.atomic_access_check(place)?;
+        this.atomic_access_check(place, AtomicAccessType::Load(atomic))?;
         // This will read from the last store in the modification order of this location. In case
         // weak memory emulation is enabled, this may not be the store we will pick to actually read from and return.
         // This is fine with StackedBorrow and race checks because they don't concern metadata on
@@ -546,7 +553,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
         atomic: AtomicWriteOrd,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        this.atomic_access_check(dest)?;
+        this.atomic_access_check(dest, AtomicAccessType::Store)?;
 
         this.allow_data_races_mut(move |this| this.write_scalar(val, dest))?;
         this.validate_atomic_store(dest, atomic)?;
@@ -568,7 +575,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
         atomic: AtomicRwOrd,
     ) -> InterpResult<'tcx, ImmTy<'tcx, Provenance>> {
         let this = self.eval_context_mut();
-        this.atomic_access_check(place)?;
+        this.atomic_access_check(place, AtomicAccessType::Rmw)?;
 
         let old = this.allow_data_races_mut(|this| this.read_immediate(place))?;
 
@@ -592,7 +599,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
         atomic: AtomicRwOrd,
     ) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_mut();
-        this.atomic_access_check(place)?;
+        this.atomic_access_check(place, AtomicAccessType::Rmw)?;
 
         let old = this.allow_data_races_mut(|this| this.read_scalar(place))?;
         this.allow_data_races_mut(|this| this.write_scalar(new, place))?;
@@ -613,7 +620,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
         atomic: AtomicRwOrd,
     ) -> InterpResult<'tcx, ImmTy<'tcx, Provenance>> {
         let this = self.eval_context_mut();
-        this.atomic_access_check(place)?;
+        this.atomic_access_check(place, AtomicAccessType::Rmw)?;
 
         let old = this.allow_data_races_mut(|this| this.read_immediate(place))?;
         let lt = this.wrapping_binary_op(mir::BinOp::Lt, &old, &rhs)?.to_scalar().to_bool()?;
@@ -652,7 +659,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, Immediate<Provenance>> {
         use rand::Rng as _;
         let this = self.eval_context_mut();
-        this.atomic_access_check(place)?;
+        this.atomic_access_check(place, AtomicAccessType::Rmw)?;
 
         // Failure ordering cannot be stronger than success ordering, therefore first attempt
         // to read with the failure ordering and if successful then try again with the success
@@ -1062,7 +1069,11 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
     }
 
     /// Checks that an atomic access is legal at the given place.
-    fn atomic_access_check(&self, place: &MPlaceTy<'tcx, Provenance>) -> InterpResult<'tcx> {
+    fn atomic_access_check(
+        &self,
+        place: &MPlaceTy<'tcx, Provenance>,
+        access_type: AtomicAccessType,
+    ) -> InterpResult<'tcx> {
         let this = self.eval_context_ref();
         // Check alignment requirements. Atomics must always be aligned to their size,
         // even if the type they wrap would be less aligned (e.g. AtomicU64 on 32bit must
@@ -1080,15 +1091,34 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
             .ptr_try_get_alloc_id(place.ptr())
             .expect("there are no zero-sized atomic accesses");
         if this.get_alloc_mutability(alloc_id)? == Mutability::Not {
-            // FIXME: make this prettier, once these messages have separate title/span/help messages.
-            throw_ub_format!(
-                "atomic operations cannot be performed on read-only memory\n\
-                many platforms require atomic read-modify-write instructions to be performed on writeable memory, even if the operation fails \
-                (and is hence nominally read-only)\n\
-                some platforms implement (some) atomic loads via compare-exchange, which means they do not work on read-only memory; \
-                it is possible that we could have an exception permitting this for specific kinds of loads\n\
-                please report an issue at <https://github.com/rust-lang/miri/issues> if this is a problem for you"
-            );
+            // See if this is fine.
+            match access_type {
+                AtomicAccessType::Rmw | AtomicAccessType::Store => {
+                    throw_ub_format!(
+                        "atomic store and read-modify-write operations cannot be performed on read-only memory\n\
+                        see <https://doc.rust-lang.org/nightly/std/sync/atomic/index.html#atomic-accesses-to-read-only-memory> for more information"
+                    );
+                }
+                AtomicAccessType::Load(_)
+                    if place.layout.size > this.tcx.data_layout().pointer_size() =>
+                {
+                    throw_ub_format!(
+                        "large atomic load operations cannot be performed on read-only memory\n\
+                        these operations often have to be implemented using read-modify-write operations, which require writeable memory\n\
+                        see <https://doc.rust-lang.org/nightly/std/sync/atomic/index.html#atomic-accesses-to-read-only-memory> for more information"
+                    );
+                }
+                AtomicAccessType::Load(o) if o != AtomicReadOrd::Relaxed => {
+                    throw_ub_format!(
+                        "non-relaxed atomic load operations cannot be performed on read-only memory\n\
+                        these operations sometimes have to be implemented using read-modify-write operations, which require writeable memory\n\
+                        see <https://doc.rust-lang.org/nightly/std/sync/atomic/index.html#atomic-accesses-to-read-only-memory> for more information"
+                    );
+                }
+                _ => {
+                    // Large relaxed loads are fine!
+                }
+            }
         }
         Ok(())
     }
