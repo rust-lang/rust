@@ -1,4 +1,4 @@
-The tests in `./status-quo` were copied from `tests/run-coverage` in order to
+Many of these tests were copied from `tests/run-coverage` in order to
 capture the current behavior of the instrumentor on non-trivial programs.
 The actual mappings have not been closely inspected.
 
