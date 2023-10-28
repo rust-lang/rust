@@ -426,14 +426,18 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             return;
                         }
                         let trait_ref = trait_predicate.to_poly_trait_ref();
-
-                        let (post_message, pre_message, type_def) = self
+                        let (post_message, pre_message, type_def, file_note) = self
                             .get_parent_trait_ref(obligation.cause.code())
                             .map(|(t, s)| {
+                                let (t, file) = self.tcx.short_ty_string(t);
                                 (
                                     format!(" in `{t}`"),
                                     format!("within `{t}`, "),
                                     s.map(|s| (format!("within this `{t}`"), s)),
+                                    file.map(|file| format!(
+                                        "the full trait has been written to '{}'",
+                                        file.display(),
+                                    ))
                                 )
                             })
                             .unwrap_or_default();
@@ -541,6 +545,8 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             err.emit();
                             return;
                         }
+
+                        file_note.map(|note| err.note(note));
                         if let Some(s) = label {
                             // If it has a custom `#[rustc_on_unimplemented]`
                             // error message, let's display it as the label!
@@ -1094,7 +1100,7 @@ pub(super) trait InferCtxtPrivExt<'tcx> {
     fn get_parent_trait_ref(
         &self,
         code: &ObligationCauseCode<'tcx>,
-    ) -> Option<(String, Option<Span>)>;
+    ) -> Option<(Ty<'tcx>, Option<Span>)>;
 
     /// If the `Self` type of the unsatisfied trait `trait_ref` implements a trait
     /// with the same path as `trait_ref`, a help message about
@@ -1943,7 +1949,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     fn get_parent_trait_ref(
         &self,
         code: &ObligationCauseCode<'tcx>,
-    ) -> Option<(String, Option<Span>)> {
+    ) -> Option<(Ty<'tcx>, Option<Span>)> {
         match code {
             ObligationCauseCode::BuiltinDerivedObligation(data) => {
                 let parent_trait_ref = self.resolve_vars_if_possible(data.parent_trait_pred);
@@ -1953,7 +1959,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         let ty = parent_trait_ref.skip_binder().self_ty();
                         let span = TyCategory::from_ty(self.tcx, ty)
                             .map(|(_, def_id)| self.tcx.def_span(def_id));
-                        Some((ty.to_string(), span))
+                        Some((ty, span))
                     }
                 }
             }
