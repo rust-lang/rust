@@ -53,7 +53,8 @@ ENV RUST_CONFIGURE_ARGS \
       --build=x86_64-unknown-linux-gnu \
       --llvm-root=/usr/lib/llvm-15 \
       --enable-llvm-link-shared \
-      --set rust.thin-lto-import-instr-limit=10
+      --set rust.thin-lto-import-instr-limit=10 \
+      --enable-new-symbol-mangling
 
 COPY host-x86_64/x86_64-gnu-llvm-15/script.sh /tmp/
 

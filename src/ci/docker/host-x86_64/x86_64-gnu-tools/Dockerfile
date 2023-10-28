@@ -87,7 +87,8 @@ RUN npm install -g browser-ui-test@$(head -n 1 /tmp/browser-ui-test.version) --u
 
 ENV RUST_CONFIGURE_ARGS \
   --build=x86_64-unknown-linux-gnu \
-  --save-toolstates=/tmp/toolstate/toolstates.json
+  --save-toolstates=/tmp/toolstate/toolstates.json \
+  --enable-new-symbol-mangling
 
 ENV HOST_TARGET x86_64-unknown-linux-gnu
 
