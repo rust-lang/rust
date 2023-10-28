@@ -3121,16 +3121,8 @@ impl Step for CodegenGCC {
         }
 
         let triple = run.target.triple;
-        let target_supported = if triple.contains("linux") {
-            triple.contains("x86_64")
-                || triple.contains("aarch64")
-                || triple.contains("s390x")
-                || triple.contains("riscv64gc")
-        } else if triple.contains("darwin") || triple.contains("windows") {
-            triple.contains("x86_64")
-        } else {
-            false
-        };
+        let target_supported =
+            if triple.contains("linux") { triple.contains("x86_64") } else { false };
         if !target_supported {
             builder.info("target not supported by rustc_codegen_gcc. skipping");
             return;
