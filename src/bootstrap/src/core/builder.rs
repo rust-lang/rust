@@ -737,6 +737,7 @@ impl<'a> Builder<'a> {
                 test::Debuginfo,
                 test::UiFullDeps,
                 test::CodegenCranelift,
+                test::CodegenGCC,
                 test::Rustdoc,
                 test::RunCoverageRustdoc,
                 test::Pretty,
