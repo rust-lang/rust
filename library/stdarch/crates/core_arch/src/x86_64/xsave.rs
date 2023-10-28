@@ -177,6 +177,7 @@ mod tests {
     }
 
     #[simd_test(enable = "xsave")]
+    #[cfg_attr(miri, ignore)] // Register saving/restoring is not supported in Miri
     unsafe fn xsave64() {
         let m = 0xFFFFFFFFFFFFFFFF_u64; //< all registers
         let mut a = XsaveArea::new();
@@ -189,6 +190,7 @@ mod tests {
     }
 
     #[simd_test(enable = "xsave,xsaveopt")]
+    #[cfg_attr(miri, ignore)] // Register saving/restoring is not supported in Miri
     unsafe fn xsaveopt64() {
         let m = 0xFFFFFFFFFFFFFFFF_u64; //< all registers
         let mut a = XsaveArea::new();
@@ -201,6 +203,7 @@ mod tests {
     }
 
     #[simd_test(enable = "xsave,xsavec")]
+    #[cfg_attr(miri, ignore)] // Register saving/restoring is not supported in Miri
     unsafe fn xsavec64() {
         let m = 0xFFFFFFFFFFFFFFFF_u64; //< all registers
         let mut a = XsaveArea::new();
@@ -213,6 +216,7 @@ mod tests {
     }
 
     #[simd_test(enable = "xsave,xsaves")]
+    #[cfg_attr(miri, ignore)] // Register saving/restoring is not supported in Miri
     unsafe fn xsaves64() {
         let m = 0xFFFFFFFFFFFFFFFF_u64; //< all registers
         let mut a = XsaveArea::new();

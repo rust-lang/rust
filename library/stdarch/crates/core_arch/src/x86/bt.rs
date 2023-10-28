@@ -91,6 +91,7 @@ mod tests {
     use crate::core_arch::x86::*;
 
     #[test]
+    #[cfg_attr(miri, ignore)] // Uses inline assembly
     fn test_bittest() {
         unsafe {
             let a = 0b0101_0000i32;
@@ -100,6 +101,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)] // Uses inline assembly
     fn test_bittestandset() {
         unsafe {
             let mut a = 0b0101_0000i32;
@@ -111,6 +113,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)] // Uses inline assembly
     fn test_bittestandreset() {
         unsafe {
             let mut a = 0b0101_0000i32;
@@ -122,6 +125,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)] // Uses inline assembly
     fn test_bittestandcomplement() {
         unsafe {
             let mut a = 0b0101_0000i32;

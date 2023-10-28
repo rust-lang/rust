@@ -211,6 +211,7 @@ mod tests {
     // FIXME: https://github.com/rust-lang/stdarch/issues/209
     /*
     #[simd_test(enable = "xsave")]
+    #[cfg_attr(miri, ignore)] // Register saving/restoring is not supported in Miri
     unsafe fn xsave() {
         let m = 0xFFFFFFFFFFFFFFFF_u64; //< all registers
         let mut a = XsaveArea::new();
@@ -224,6 +225,7 @@ mod tests {
     */
 
     #[simd_test(enable = "xsave")]
+    #[cfg_attr(miri, ignore)] // Register saving/restoring is not supported in Miri
     unsafe fn xgetbv_xsetbv() {
         let xcr_n: u32 = _XCR_XFEATURE_ENABLED_MASK;
 
@@ -239,6 +241,7 @@ mod tests {
     // FIXME: https://github.com/rust-lang/stdarch/issues/209
     /*
     #[simd_test(enable = "xsave,xsaveopt")]
+    #[cfg_attr(miri, ignore)] // Register saving/restoring is not supported in Miri
     unsafe fn xsaveopt() {
         let m = 0xFFFFFFFFFFFFFFFF_u64; //< all registers
         let mut a = XsaveArea::new();
@@ -254,6 +257,7 @@ mod tests {
     // FIXME: this looks like a bug in Intel's SDE:
     #[cfg(not(stdarch_intel_sde))]
     #[simd_test(enable = "xsave,xsavec")]
+    #[cfg_attr(miri, ignore)] // Register saving/restoring is not supported in Miri
     unsafe fn xsavec() {
         let m = 0xFFFFFFFFFFFFFFFF_u64; //< all registers
         let mut a = XsaveArea::new();

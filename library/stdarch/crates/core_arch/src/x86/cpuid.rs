@@ -185,6 +185,7 @@ mod tests {
     use crate::core_arch::x86::*;
 
     #[test]
+    #[cfg_attr(miri, ignore)] // Uses inline assembly
     fn test_always_has_cpuid() {
         // all currently-tested targets have the instruction
         // FIXME: add targets without `cpuid` to CI
@@ -192,6 +193,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)] // Uses inline assembly
     fn test_has_cpuid_idempotent() {
         assert_eq!(cpuid::has_cpuid(), cpuid::has_cpuid());
     }

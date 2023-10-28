@@ -71,6 +71,7 @@ mod tests {
     use crate::core_arch::x86::*;
 
     #[test]
+    #[cfg_attr(miri, ignore)] // Uses inline assembly
     #[allow(deprecated)]
     fn test_eflags() {
         unsafe {
