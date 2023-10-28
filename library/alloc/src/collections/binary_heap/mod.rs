@@ -434,8 +434,9 @@ impl<T: Ord> BinaryHeap<T> {
     /// heap.push(4);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_binary_heap_constructor", issue = "112353")]
     #[must_use]
-    pub fn new() -> BinaryHeap<T> {
+    pub const fn new() -> BinaryHeap<T> {
         BinaryHeap { data: vec![] }
     }
 
@@ -477,8 +478,9 @@ impl<T: Ord, A: Allocator> BinaryHeap<T, A> {
     /// heap.push(4);
     /// ```
     #[unstable(feature = "allocator_api", issue = "32838")]
+    #[rustc_const_unstable(feature = "const_binary_heap_constructor", issue = "112353")]
     #[must_use]
-    pub fn new_in(alloc: A) -> BinaryHeap<T, A> {
+    pub const fn new_in(alloc: A) -> BinaryHeap<T, A> {
         BinaryHeap { data: Vec::new_in(alloc) }
     }
 
