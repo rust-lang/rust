@@ -16,7 +16,7 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_session::lint::builtin::{DEPRECATED, DEPRECATED_IN_FUTURE, SOFT_UNSTABLE};
 use rustc_session::lint::{BuiltinLintDiagnostics, Level, Lint, LintBuffer};
 use rustc_session::parse::feature_err_issue;
-use rustc_session::Session;
+use rustc_session::{RustcVersion, Session};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 use std::num::NonZeroU32;
@@ -129,11 +129,6 @@ pub fn deprecation_in_effect(depr: &Deprecation) -> bool {
     let is_since_rustc_version = depr.is_since_rustc_version;
     let since = depr.since.as_ref().map(Symbol::as_str);
 
-    fn parse_version(ver: &str) -> Vec<u32> {
-        // We ignore non-integer components of the version (e.g., "nightly").
-        ver.split(|c| c == '.' || c == '-').flat_map(|s| s.parse()).collect()
-    }
-
     if !is_since_rustc_version {
         // The `since` field doesn't have semantic purpose without `#![staged_api]`.
         return true;
@@ -144,16 +139,18 @@ pub fn deprecation_in_effect(depr: &Deprecation) -> bool {
             return false;
         }
 
-        if let Some(rustc) = option_env!("CFG_RELEASE") {
-            let since: Vec<u32> = parse_version(&since);
-            let rustc: Vec<u32> = parse_version(rustc);
-            // We simply treat invalid `since` attributes as relating to a previous
-            // Rust version, thus always displaying the warning.
-            if since.len() != 3 {
-                return true;
-            }
-            return since <= rustc;
+        // We ignore non-integer components of the version (e.g., "nightly").
+        let since: Vec<u16> =
+            since.split(|c| c == '.' || c == '-').flat_map(|s| s.parse()).collect();
+
+        // We simply treat invalid `since` attributes as relating to a previous
+        // Rust version, thus always displaying the warning.
+        if since.len() != 3 {
+            return true;
         }
+
+        let rustc = RustcVersion::CURRENT;
+        return since.as_slice() <= &[rustc.major, rustc.minor, rustc.patch];
     };
 
     // Assume deprecation is in effect if "since" field is missing

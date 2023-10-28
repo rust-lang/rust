@@ -5,7 +5,7 @@
 
 use crate::msrvs::Msrv;
 use hir::LangItem;
-use rustc_attr::{Since, CURRENT_RUSTC_VERSION};
+use rustc_attr::Since;
 use rustc_const_eval::transform::check_consts::ConstCx;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -372,23 +372,16 @@ fn is_const_fn(tcx: TyCtxt<'_>, def_id: DefId, msrv: &Msrv) -> bool {
                 // as a part of an unimplemented MSRV check https://github.com/rust-lang/rust/issues/65262.
 
                 let const_stab_rust_version = match since {
-                    Since::Version(version) => RustcVersion::new(
-                        u32::from(version.major),
-                        u32::from(version.minor),
-                        u32::from(version.patch),
-                    ),
-                    Since::Current => {
-                        // HACK(nilstrieb): CURRENT_RUSTC_VERSION can return versions like 1.66.0-dev.
-                        // `rustc-semver` doesn't accept the `-dev` version number so we have to strip it off.
-                        let short_version = CURRENT_RUSTC_VERSION.split('-').next().unwrap();
-                        RustcVersion::parse(short_version).unwrap_or_else(|err| {
-                            panic!("`rustc_attr::StabilityLevel::Stable::since` is ill-formatted: `{CURRENT_RUSTC_VERSION}`, {err:?}")
-                        })
-                    },
+                    Since::Version(version) => version,
+                    Since::Current => rustc_session::RustcVersion::CURRENT,
                     Since::Err => return false,
                 };
 
-                msrv.meets(const_stab_rust_version)
+                msrv.meets(RustcVersion::new(
+                    u32::from(const_stab_rust_version.major),
+                    u32::from(const_stab_rust_version.minor),
+                    u32::from(const_stab_rust_version.patch),
+                ))
             } else {
                 // Unstable const fn with the feature enabled.
                 msrv.current().is_none()
