@@ -29,7 +29,8 @@ use crate::utils;
 use crate::utils::cache::{Interned, INTERNER};
 use crate::utils::exec::BootstrapCommand;
 use crate::utils::helpers::{
-    self, add_link_lib_path, dylib_path, dylib_path_var, output, t, up_to_date,
+    self, add_link_lib_path, dylib_path, dylib_path_var, output, t,
+    target_supports_cranelift_backend, up_to_date,
 };
 use crate::utils::render_tests::{add_flags_and_try_run_tests, try_run_tests};
 use crate::{envify, CLang, DocTests, GitRepo, Mode};
@@ -3000,18 +3001,7 @@ impl Step for CodegenCranelift {
             return;
         }
 
-        let triple = run.target.triple;
-        let target_supported = if triple.contains("linux") {
-            triple.contains("x86_64")
-                || triple.contains("aarch64")
-                || triple.contains("s390x")
-                || triple.contains("riscv64gc")
-        } else if triple.contains("darwin") || triple.contains("windows") {
-            triple.contains("x86_64")
-        } else {
-            false
-        };
-        if !target_supported {
+        if !target_supports_cranelift_backend(run.target) {
             builder.info("target not supported by rustc_codegen_cranelift. skipping");
             return;
         }

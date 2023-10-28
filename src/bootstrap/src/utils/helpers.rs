@@ -183,6 +183,19 @@ pub fn use_host_linker(target: TargetSelection) -> bool {
         || target.contains("switch"))
 }
 
+pub fn target_supports_cranelift_backend(target: TargetSelection) -> bool {
+    if target.contains("linux") {
+        target.contains("x86_64")
+            || target.contains("aarch64")
+            || target.contains("s390x")
+            || target.contains("riscv64gc")
+    } else if target.contains("darwin") || target.contains("windows") {
+        target.contains("x86_64")
+    } else {
+        false
+    }
+}
+
 pub fn is_valid_test_suite_arg<'a, P: AsRef<Path>>(
     path: &'a Path,
     suite_path: P,

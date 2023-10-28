@@ -13,6 +13,7 @@ use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::core::config::{Config, TargetSelection};
 use crate::utils::helpers::t;
 use crate::utils::tarball::GeneratedTarball;
+use crate::INTERNER;
 use crate::{Compiler, Kind};
 
 #[cfg(target_os = "illumos")]
@@ -280,6 +281,19 @@ install!((self, builder, _config),
             compiler: builder.compiler(builder.top_stage, self.target),
         });
         install_sh(builder, "rustc", self.compiler.stage, Some(self.target), &tarball);
+    };
+    RustcCodegenCranelift, alias = "rustc-codegen-cranelift", Self::should_build(_config), only_hosts: true, {
+        if let Some(tarball) = builder.ensure(dist::CodegenBackend {
+            compiler: self.compiler,
+            backend: INTERNER.intern_str("cranelift"),
+        }) {
+            install_sh(builder, "rustc-codegen-cranelift", self.compiler.stage, Some(self.target), &tarball);
+        } else {
+            builder.info(
+                &format!("skipping Install CodegenBackend(\"cranelift\") stage{} ({})",
+                         self.compiler.stage, self.target),
+            );
+        }
     };
 );
 

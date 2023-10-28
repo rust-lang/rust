@@ -57,6 +57,7 @@ pkg_type! {
     LlvmTools = "llvm-tools"; preview = true,
     Miri = "miri"; preview = true,
     JsonDocs = "rust-docs-json"; preview = true,
+    RustcCodegenCranelift = "rustc-codegen-cranelift"; preview = true,
 }
 
 impl PkgType {
@@ -80,6 +81,7 @@ impl PkgType {
             PkgType::Rustfmt => false,
             PkgType::LlvmTools => false,
             PkgType::Miri => false,
+            PkgType::RustcCodegenCranelift => false,
 
             PkgType::Rust => true,
             PkgType::RustStd => true,
@@ -106,6 +108,7 @@ impl PkgType {
             ReproducibleArtifacts => HOSTS,
             RustcDocs => HOSTS,
             Cargo => HOSTS,
+            RustcCodegenCranelift => HOSTS,
             RustMingw => MINGW,
             RustStd => TARGETS,
             HtmlDocs => HOSTS,

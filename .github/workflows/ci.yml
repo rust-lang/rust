@@ -193,8 +193,9 @@ jobs:
             os: ubuntu-20.04-8core-32gb
             env: {}
           - name: dist-aarch64-linux
+            env:
+              CODEGEN_BACKENDS: "llvm,cranelift"
             os: ubuntu-20.04-8core-32gb
-            env: {}
           - name: dist-android
             os: ubuntu-20.04-8core-32gb
             env: {}
@@ -244,15 +245,18 @@ jobs:
             os: ubuntu-20.04-8core-32gb
             env: {}
           - name: dist-x86_64-linux
+            env:
+              CODEGEN_BACKENDS: "llvm,cranelift"
             os: ubuntu-20.04-16core-64gb
-            env: {}
           - name: dist-x86_64-linux-alt
             env:
               IMAGE: dist-x86_64-linux
+              CODEGEN_BACKENDS: "llvm,cranelift"
             os: ubuntu-20.04-16core-64gb
           - name: dist-x86_64-musl
+            env:
+              CODEGEN_BACKENDS: "llvm,cranelift"
             os: ubuntu-20.04-8core-32gb
-            env: {}
           - name: dist-x86_64-netbsd
             os: ubuntu-20.04-8core-32gb
             env: {}
@@ -316,6 +320,7 @@ jobs:
               NO_DEBUG_ASSERTIONS: 1
               NO_OVERFLOW_CHECKS: 1
               DIST_REQUIRE_ALL_TOOLS: 1
+              CODEGEN_BACKENDS: "llvm,cranelift"
             os: macos-13
           - name: dist-apple-various
             env:
@@ -554,8 +559,9 @@ jobs:
       matrix:
         include:
           - name: dist-x86_64-linux
+            env:
+              CODEGEN_BACKENDS: "llvm,cranelift"
             os: ubuntu-20.04-16core-64gb
-            env: {}
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     steps:
