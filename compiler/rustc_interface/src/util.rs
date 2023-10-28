@@ -3,18 +3,17 @@ use info;
 use libloading::Library;
 use rustc_ast as ast;
 use rustc_codegen_ssa::traits::CodegenBackend;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::FxHashMap;
 #[cfg(parallel_compiler)]
 use rustc_data_structures::sync;
 use rustc_errors::registry::Registry;
 use rustc_parse::validate_attr;
 use rustc_session as session;
-use rustc_session::config::CheckCfg;
-use rustc_session::config::{self, CrateType};
-use rustc_session::config::{OutFileName, OutputFilenames, OutputTypes};
+use rustc_session::config::{
+    self, Cfg, CheckCfg, CrateType, OutFileName, OutputFilenames, OutputTypes,
+};
 use rustc_session::filesearch::sysroot_candidates;
 use rustc_session::lint::{self, BuiltinLintDiagnostics, LintBuffer};
-use rustc_session::parse::CrateConfig;
 use rustc_session::{filesearch, output, Session};
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::edition::Edition;
@@ -38,7 +37,7 @@ pub type MakeBackendFn = fn() -> Box<dyn CodegenBackend>;
 /// This is performed by checking whether a set of permitted features
 /// is available on the target machine, by querying the codegen backend.
 pub fn add_configuration(
-    cfg: &mut CrateConfig,
+    cfg: &mut Cfg<Symbol>,
     sess: &mut Session,
     codegen_backend: &dyn CodegenBackend,
 ) {
@@ -60,8 +59,8 @@ pub fn add_configuration(
 pub fn create_session(
     handler: &EarlyErrorHandler,
     sopts: config::Options,
-    cfg: FxHashSet<(String, Option<String>)>,
-    check_cfg: CheckCfg,
+    cfg: Cfg<String>,
+    check_cfg: CheckCfg<String>,
     locale_resources: &'static [&'static str],
     file_loader: Option<Box<dyn FileLoader + Send + Sync + 'static>>,
     io: CompilerIO,
@@ -121,12 +120,13 @@ pub fn create_session(
 
     codegen_backend.init(&sess);
 
-    let mut cfg = config::build_configuration(&sess, config::to_crate_config(cfg));
+    let mut cfg = config::build_configuration(&sess, cfg);
     add_configuration(&mut cfg, &mut sess, &*codegen_backend);
 
-    let mut check_cfg = config::to_crate_check_config(check_cfg);
+    let mut check_cfg = check_cfg.intern();
     check_cfg.fill_well_known(&sess.target);
 
+    // These configs use symbols, rather than strings.
     sess.parse_sess.config = cfg;
     sess.parse_sess.check_config = check_cfg;
 
