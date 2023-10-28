@@ -54,7 +54,7 @@ impl<'a> From<&'a mut Command> for BootstrapCommand<'a> {
         Self {
             command,
             failure_behavior: BehaviorOnFailure::Exit,
-            output_mode: OutputMode::SuppressOnSuccess,
+            output_mode: OutputMode::PrintAll,
         }
     }
 }
