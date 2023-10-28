@@ -1,6 +1,6 @@
 use crate::errors::{FailedWritingFile, RustcErrorFatal, RustcErrorUnexpectedAnnotation};
 use crate::interface::{Compiler, Result};
-use crate::{passes, util};
+use crate::{errors, passes, util};
 
 use rustc_ast as ast;
 use rustc_codegen_ssa::traits::CodegenBackend;
@@ -15,6 +15,7 @@ use rustc_metadata::creader::CStore;
 use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepGraph;
 use rustc_middle::ty::{GlobalCtxt, TyCtxt};
+use rustc_serialize::opaque::FileEncodeResult;
 use rustc_session::config::{self, CrateType, OutputFilenames, OutputType};
 use rustc_session::cstore::Untracked;
 use rustc_session::output::find_crate_name;
@@ -100,6 +101,10 @@ impl<'tcx> Queries<'tcx> {
             pre_configure: Default::default(),
             gcx: Default::default(),
         }
+    }
+
+    pub fn finish(&self) -> FileEncodeResult {
+        if let Some(gcx) = self.gcx_cell.get() { gcx.finish() } else { Ok(0) }
     }
 
     pub fn parse(&self) -> Result<QueryResult<'_, ast::Crate>> {
@@ -317,6 +322,9 @@ impl Compiler {
         // The timer's lifetime spans the dropping of `queries`, which contains
         // the global context.
         _timer = Some(self.sess.timer("free_global_ctxt"));
+        if let Err((path, error)) = queries.finish() {
+            self.sess.emit_err(errors::FailedWritingFile { path: &path, error });
+        }
 
         ret
     }

@@ -80,8 +80,8 @@ where
             );
             debug!("save: data written to disk successfully");
         }
-        Err(err) => {
-            sess.emit_err(errors::WriteNew { name, path: path_buf, err });
+        Err((path, err)) => {
+            sess.emit_err(errors::WriteNew { name, path, err });
         }
     }
 }
