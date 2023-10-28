@@ -19,4 +19,4 @@ rustc_index = { path = "../rustc_index" }
 [dependencies.object]
 version = "0.32.0"
 default-features = false
-features = ["elf"]
+features = ["elf", "macho"]
