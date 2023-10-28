@@ -22,32 +22,6 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
         let unprefixed_name = link_name.as_str().strip_prefix("llvm.x86.sse3.").unwrap();
 
         match unprefixed_name {
-            // Used to implement the _mm_addsub_ps and _mm_addsub_pd functions.
-            // Alternatingly add and subtract floating point (f32 or f64) from
-            // `left` and `right`
-            "addsub.ps" | "addsub.pd" => {
-                let [left, right] =
-                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-
-                let (left, left_len) = this.operand_to_simd(left)?;
-                let (right, right_len) = this.operand_to_simd(right)?;
-                let (dest, dest_len) = this.place_to_simd(dest)?;
-
-                assert_eq!(dest_len, left_len);
-                assert_eq!(dest_len, right_len);
-
-                for i in 0..dest_len {
-                    let left = this.read_immediate(&this.project_index(&left, i)?)?;
-                    let right = this.read_immediate(&this.project_index(&right, i)?)?;
-                    let dest = this.project_index(&dest, i)?;
-
-                    // Even elements are subtracted and odd elements are added.
-                    let op = if i % 2 == 0 { mir::BinOp::Sub } else { mir::BinOp::Add };
-                    let res = this.wrapping_binary_op(op, &left, &right)?;
-
-                    this.write_immediate(*res, &dest)?;
-                }
-            }
             // Used to implement the _mm_h{add,sub}_p{s,d} functions.
             // Horizontally add/subtract adjacent floating point values
             // in `left` and `right`.
