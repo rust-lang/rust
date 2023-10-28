@@ -288,6 +288,7 @@ docker \
   --env DIST_TRY_BUILD \
   --env PR_CI_JOB \
   --env OBJDIR_ON_HOST="$objdir" \
+  --env CODEGEN_BACKENDS \
   --init \
   --rm \
   rust-ci \
