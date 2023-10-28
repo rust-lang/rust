@@ -1492,9 +1492,6 @@ options! {
     dep_info_omit_d_target: bool = (false, parse_bool, [TRACKED],
         "in dep-info output, omit targets for tracking dependencies of the dep-info files \
         themselves (default: no)"),
-    dep_tasks: bool = (false, parse_bool, [UNTRACKED],
-        "print tasks that execute and the color their dep node gets (requires debug build) \
-        (default: no)"),
     dont_buffer_diagnostics: bool = (false, parse_bool, [UNTRACKED],
         "emit diagnostics rather than buffering (breaks NLL error downgrading, sorting) \
         (default: no)"),

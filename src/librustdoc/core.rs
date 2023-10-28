@@ -255,7 +255,7 @@ pub(crate) fn create_config(
 
     interface::Config {
         opts: sessopts,
-        crate_cfg: interface::parse_cfgspecs(handler, cfgs),
+        crate_cfg: interface::parse_cfg(handler, cfgs),
         crate_check_cfg: interface::parse_check_cfg(handler, check_cfgs),
         input,
         output_file: None,

@@ -3129,6 +3129,16 @@ impl ::core::clone::Clone for FILETIME {
 pub type FILE_ACCESS_RIGHTS = u32;
 pub const FILE_ADD_FILE: FILE_ACCESS_RIGHTS = 2u32;
 pub const FILE_ADD_SUBDIRECTORY: FILE_ACCESS_RIGHTS = 4u32;
+#[repr(C)]
+pub struct FILE_ALLOCATION_INFO {
+    pub AllocationSize: i64,
+}
+impl ::core::marker::Copy for FILE_ALLOCATION_INFO {}
+impl ::core::clone::Clone for FILE_ALLOCATION_INFO {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
 pub const FILE_ALL_ACCESS: FILE_ACCESS_RIGHTS = 2032127u32;
 pub const FILE_APPEND_DATA: FILE_ACCESS_RIGHTS = 4u32;
 pub const FILE_ATTRIBUTE_ARCHIVE: FILE_FLAGS_AND_ATTRIBUTES = 32u32;
@@ -3270,6 +3280,16 @@ impl ::core::clone::Clone for FILE_ID_BOTH_DIR_INFO {
     }
 }
 pub type FILE_INFO_BY_HANDLE_CLASS = i32;
+#[repr(C)]
+pub struct FILE_IO_PRIORITY_HINT_INFO {
+    pub PriorityHint: PRIORITY_HINT,
+}
+impl ::core::marker::Copy for FILE_IO_PRIORITY_HINT_INFO {}
+impl ::core::clone::Clone for FILE_IO_PRIORITY_HINT_INFO {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
 pub const FILE_LIST_DIRECTORY: FILE_ACCESS_RIGHTS = 1u32;
 pub const FILE_NAME_NORMALIZED: GETFINALPATHNAMEBYHANDLE_FLAGS = 0u32;
 pub const FILE_NAME_OPENED: GETFINALPATHNAMEBYHANDLE_FLAGS = 8u32;
@@ -3775,6 +3795,7 @@ pub const PIPE_SERVER_END: NAMED_PIPE_MODE = 1u32;
 pub const PIPE_TYPE_BYTE: NAMED_PIPE_MODE = 0u32;
 pub const PIPE_TYPE_MESSAGE: NAMED_PIPE_MODE = 4u32;
 pub const PIPE_WAIT: NAMED_PIPE_MODE = 0u32;
+pub type PRIORITY_HINT = i32;
 pub type PROCESSOR_ARCHITECTURE = u16;
 pub type PROCESS_CREATION_FLAGS = u32;
 #[repr(C)]

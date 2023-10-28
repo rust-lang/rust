@@ -27,6 +27,6 @@ pub use StabilityLevel::*;
 
 pub use rustc_ast::attr::*;
 
-pub(crate) use rustc_ast::HashStableContext;
+pub(crate) use rustc_session::HashStableContext;
 
 fluent_messages! { "../messages.ftl" }

@@ -317,7 +317,7 @@ fn run_compiler(
         return Ok(());
     }
 
-    let cfg = interface::parse_cfgspecs(&early_error_handler, matches.opt_strs("cfg"));
+    let cfg = interface::parse_cfg(&early_error_handler, matches.opt_strs("cfg"));
     let check_cfg = interface::parse_check_cfg(&early_error_handler, matches.opt_strs("check-cfg"));
     let (odir, ofile) = make_output(&matches);
     let mut config = interface::Config {

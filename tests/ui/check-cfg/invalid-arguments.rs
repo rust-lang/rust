@@ -6,7 +6,7 @@
 // revisions: multiple_values_any not_empty_any not_empty_values_any
 // revisions: values_any_missing_values values_any_before_ident ident_in_values_1
 // revisions: ident_in_values_2 unknown_meta_item_1 unknown_meta_item_2 unknown_meta_item_3
-// revisions: mixed_values_any mixed_any giberich
+// revisions: mixed_values_any mixed_any any_values giberich unterminated
 //
 // compile-flags: -Z unstable-options
 // [anything_else]compile-flags: --check-cfg=anything_else(...)
@@ -29,6 +29,8 @@
 // [unknown_meta_item_3]compile-flags: --check-cfg=cfg(foo,values(test()))
 // [mixed_values_any]compile-flags: --check-cfg=cfg(foo,values("bar",any()))
 // [mixed_any]compile-flags: --check-cfg=cfg(any(),values(any()))
+// [any_values]compile-flags: --check-cfg=cfg(any(),values())
 // [giberich]compile-flags: --check-cfg=cfg(...)
+// [unterminated]compile-flags: --check-cfg=cfg(
 
 fn main() {}

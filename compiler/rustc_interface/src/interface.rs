@@ -15,8 +15,10 @@ use rustc_middle::{bug, ty};
 use rustc_parse::maybe_new_parser_from_source_str;
 use rustc_query_impl::QueryCtxt;
 use rustc_query_system::query::print_query_stack;
-use rustc_session::config::{self, CheckCfg, ExpectedValues, Input, OutFileName, OutputFilenames};
-use rustc_session::parse::{CrateConfig, ParseSess};
+use rustc_session::config::{
+    self, Cfg, CheckCfg, ExpectedValues, Input, OutFileName, OutputFilenames,
+};
+use rustc_session::parse::ParseSess;
 use rustc_session::CompilerIO;
 use rustc_session::Session;
 use rustc_session::{lint, EarlyErrorHandler};
@@ -61,14 +63,13 @@ impl Compiler {
     }
 }
 
-/// Converts strings provided as `--cfg [cfgspec]` into a `crate_cfg`.
-pub fn parse_cfgspecs(
-    handler: &EarlyErrorHandler,
-    cfgspecs: Vec<String>,
-) -> FxHashSet<(String, Option<String>)> {
+/// Converts strings provided as `--cfg [cfgspec]` into a `Cfg`.
+pub fn parse_cfg(handler: &EarlyErrorHandler, cfgs: Vec<String>) -> Cfg<String> {
+    // This creates a short-lived `SessionGlobals`, containing an interner. The
+    // parsed values are converted from symbols to strings before exiting
+    // because the symbols are meaningless once the interner is gone.
     rustc_span::create_default_session_if_not_set_then(move |_| {
-        let cfg = cfgspecs
-            .into_iter()
+        cfgs.into_iter()
             .map(|s| {
                 let sess = ParseSess::with_silent_emitter(Some(format!(
                     "this error occurred on the command line: `--cfg={s}`"
@@ -97,7 +98,10 @@ pub fn parse_cfgspecs(
                                 }
                                 MetaItemKind::NameValue(..) | MetaItemKind::Word => {
                                     let ident = meta_item.ident().expect("multi-segment cfg key");
-                                    return (ident.name, meta_item.value_str());
+                                    return (
+                                        ident.name.to_string(),
+                                        meta_item.value_str().map(|sym| sym.to_string()),
+                                    );
                                 }
                             }
                         }
@@ -118,13 +122,14 @@ pub fn parse_cfgspecs(
                     error!(r#"expected `key` or `key="value"`"#);
                 }
             })
-            .collect::<CrateConfig>();
-        cfg.into_iter().map(|(a, b)| (a.to_string(), b.map(|b| b.to_string()))).collect()
+            .collect::<Cfg<String>>()
     })
 }
 
 /// Converts strings provided as `--check-cfg [specs]` into a `CheckCfg`.
-pub fn parse_check_cfg(handler: &EarlyErrorHandler, specs: Vec<String>) -> CheckCfg {
+pub fn parse_check_cfg(handler: &EarlyErrorHandler, specs: Vec<String>) -> CheckCfg<String> {
+    // The comment about `SessionGlobals` and symbols in `parse_cfg` above
+    // applies here too.
     rustc_span::create_default_session_if_not_set_then(move |_| {
         // If any --check-cfg is passed then exhaustive_values and exhaustive_names
         // are enabled by default.
@@ -140,7 +145,7 @@ pub fn parse_check_cfg(handler: &EarlyErrorHandler, specs: Vec<String>) -> Check
             let filename = FileName::cfg_spec_source_code(&s);
 
             macro_rules! error {
-                ($reason: expr) => {
+                ($reason:expr) => {
                     handler.early_error(format!(
                         concat!("invalid `--check-cfg` argument: `{}` (", $reason, ")"),
                         s
@@ -148,217 +153,202 @@ pub fn parse_check_cfg(handler: &EarlyErrorHandler, specs: Vec<String>) -> Check
                 };
             }
 
-            let expected_error =
-                || error!("expected `cfg(name, values(\"value1\", \"value2\", ... \"valueN\"))`");
+            let expected_error = || -> ! {
+                error!("expected `cfg(name, values(\"value1\", \"value2\", ... \"valueN\"))`")
+            };
 
-            match maybe_new_parser_from_source_str(&sess, filename, s.to_string()) {
-                Ok(mut parser) => match parser.parse_meta_item() {
-                    Ok(meta_item) if parser.token == token::Eof => {
-                        if let Some(args) = meta_item.meta_item_list() {
-                            if meta_item.has_name(sym::names) {
-                                // defaults are flipped for the old syntax
-                                if old_syntax == None {
-                                    check_cfg.exhaustive_names = false;
-                                    check_cfg.exhaustive_values = false;
-                                }
-                                old_syntax = Some(true);
+            let Ok(mut parser) = maybe_new_parser_from_source_str(&sess, filename, s.to_string())
+            else {
+                expected_error();
+            };
 
-                                check_cfg.exhaustive_names = true;
-                                for arg in args {
-                                    if arg.is_word() && arg.ident().is_some() {
-                                        let ident = arg.ident().expect("multi-segment cfg key");
-                                        check_cfg
-                                            .expecteds
-                                            .entry(ident.name.to_string())
-                                            .or_insert(ExpectedValues::Any);
-                                    } else {
-                                        error!("`names()` arguments must be simple identifiers");
-                                    }
-                                }
-                            } else if meta_item.has_name(sym::values) {
-                                // defaults are flipped for the old syntax
-                                if old_syntax == None {
-                                    check_cfg.exhaustive_names = false;
-                                    check_cfg.exhaustive_values = false;
-                                }
-                                old_syntax = Some(true);
-
-                                if let Some((name, values)) = args.split_first() {
-                                    if name.is_word() && name.ident().is_some() {
-                                        let ident = name.ident().expect("multi-segment cfg key");
-                                        let expected_values = check_cfg
-                                            .expecteds
-                                            .entry(ident.name.to_string())
-                                            .and_modify(|expected_values| match expected_values {
-                                                ExpectedValues::Some(_) => {}
-                                                ExpectedValues::Any => {
-                                                    // handle the case where names(...) was done
-                                                    // before values by changing to a list
-                                                    *expected_values =
-                                                        ExpectedValues::Some(FxHashSet::default());
-                                                }
-                                            })
-                                            .or_insert_with(|| {
-                                                ExpectedValues::Some(FxHashSet::default())
-                                            });
-
-                                        let ExpectedValues::Some(expected_values) = expected_values
-                                        else {
-                                            bug!("`expected_values` should be a list a values")
-                                        };
-
-                                        for val in values {
-                                            if let Some(LitKind::Str(s, _)) =
-                                                val.lit().map(|lit| &lit.kind)
-                                            {
-                                                expected_values.insert(Some(s.to_string()));
-                                            } else {
-                                                error!(
-                                                    "`values()` arguments must be string literals"
-                                                );
-                                            }
-                                        }
-
-                                        if values.is_empty() {
-                                            expected_values.insert(None);
-                                        }
-                                    } else {
-                                        error!(
-                                            "`values()` first argument must be a simple identifier"
-                                        );
-                                    }
-                                } else if args.is_empty() {
-                                    check_cfg.exhaustive_values = true;
-                                } else {
-                                    expected_error();
-                                }
-                            } else if meta_item.has_name(sym::cfg) {
-                                old_syntax = Some(false);
-
-                                let mut names = Vec::new();
-                                let mut values: FxHashSet<_> = Default::default();
-
-                                let mut any_specified = false;
-                                let mut values_specified = false;
-                                let mut values_any_specified = false;
-
-                                for arg in args {
-                                    if arg.is_word() && let Some(ident) = arg.ident() {
-                                        if values_specified {
-                                            error!("`cfg()` names cannot be after values");
-                                        }
-                                        names.push(ident);
-                                    } else if arg.has_name(sym::any)
-                                        && let Some(args) = arg.meta_item_list()
-                                    {
-                                        if any_specified {
-                                            error!("`any()` cannot be specified multiple times");
-                                        }
-                                        any_specified = true;
-                                        if !args.is_empty() {
-                                            error!("`any()` must be empty");
-                                        }
-                                    } else if arg.has_name(sym::values)
-                                        && let Some(args) = arg.meta_item_list()
-                                    {
-                                        if names.is_empty() {
-                                            error!(
-                                                "`values()` cannot be specified before the names"
-                                            );
-                                        } else if values_specified {
-                                            error!(
-                                                "`values()` cannot be specified multiple times"
-                                            );
-                                        }
-                                        values_specified = true;
-
-                                        for arg in args {
-                                            if let Some(LitKind::Str(s, _)) =
-                                                arg.lit().map(|lit| &lit.kind)
-                                            {
-                                                values.insert(Some(s.to_string()));
-                                            } else if arg.has_name(sym::any)
-                                                && let Some(args) = arg.meta_item_list()
-                                            {
-                                                if values_any_specified {
-                                                    error!(
-                                                        "`any()` in `values()` cannot be specified multiple times"
-                                                    );
-                                                }
-                                                values_any_specified = true;
-                                                if !args.is_empty() {
-                                                    error!("`any()` must be empty");
-                                                }
-                                            } else {
-                                                error!(
-                                                    "`values()` arguments must be string literals or `any()`"
-                                                );
-                                            }
-                                        }
-                                    } else {
-                                        error!(
-                                            "`cfg()` arguments must be simple identifiers, `any()` or `values(...)`"
-                                        );
-                                    }
-                                }
-
-                                if values.is_empty() && !values_any_specified && !any_specified {
-                                    values.insert(None);
-                                } else if !values.is_empty() && values_any_specified {
-                                    error!(
-                                        "`values()` arguments cannot specify string literals and `any()` at the same time"
-                                    );
-                                }
-
-                                if any_specified {
-                                    if !names.is_empty()
-                                        || !values.is_empty()
-                                        || values_any_specified
-                                    {
-                                        error!("`cfg(any())` can only be provided in isolation");
-                                    }
-
-                                    check_cfg.exhaustive_names = false;
-                                } else {
-                                    for name in names {
-                                        check_cfg
-                                            .expecteds
-                                            .entry(name.to_string())
-                                            .and_modify(|v| match v {
-                                                ExpectedValues::Some(v)
-                                                    if !values_any_specified =>
-                                                {
-                                                    v.extend(values.clone())
-                                                }
-                                                ExpectedValues::Some(_) => *v = ExpectedValues::Any,
-                                                ExpectedValues::Any => {}
-                                            })
-                                            .or_insert_with(|| {
-                                                if values_any_specified {
-                                                    ExpectedValues::Any
-                                                } else {
-                                                    ExpectedValues::Some(values.clone())
-                                                }
-                                            });
-                                    }
-                                }
-                            } else {
-                                expected_error();
-                            }
-                        } else {
-                            expected_error();
-                        }
-                    }
-                    Ok(..) => expected_error(),
-                    Err(err) => {
-                        err.cancel();
-                        expected_error();
-                    }
-                },
-                Err(errs) => {
-                    drop(errs);
+            let meta_item = match parser.parse_meta_item() {
+                Ok(meta_item) if parser.token == token::Eof => meta_item,
+                Ok(..) => expected_error(),
+                Err(err) => {
+                    err.cancel();
                     expected_error();
                 }
+            };
+
+            let Some(args) = meta_item.meta_item_list() else {
+                expected_error();
+            };
+
+            if meta_item.has_name(sym::names) {
+                // defaults are flipped for the old syntax
+                if old_syntax == None {
+                    check_cfg.exhaustive_names = false;
+                    check_cfg.exhaustive_values = false;
+                }
+                old_syntax = Some(true);
+
+                check_cfg.exhaustive_names = true;
+                for arg in args {
+                    if arg.is_word() && arg.ident().is_some() {
+                        let ident = arg.ident().expect("multi-segment cfg key");
+                        check_cfg
+                            .expecteds
+                            .entry(ident.name.to_string())
+                            .or_insert(ExpectedValues::Any);
+                    } else {
+                        error!("`names()` arguments must be simple identifiers");
+                    }
+                }
+            } else if meta_item.has_name(sym::values) {
+                // defaults are flipped for the old syntax
+                if old_syntax == None {
+                    check_cfg.exhaustive_names = false;
+                    check_cfg.exhaustive_values = false;
+                }
+                old_syntax = Some(true);
+
+                if let Some((name, values)) = args.split_first() {
+                    if name.is_word() && name.ident().is_some() {
+                        let ident = name.ident().expect("multi-segment cfg key");
+                        let expected_values = check_cfg
+                            .expecteds
+                            .entry(ident.name.to_string())
+                            .and_modify(|expected_values| match expected_values {
+                                ExpectedValues::Some(_) => {}
+                                ExpectedValues::Any => {
+                                    // handle the case where names(...) was done
+                                    // before values by changing to a list
+                                    *expected_values = ExpectedValues::Some(FxHashSet::default());
+                                }
+                            })
+                            .or_insert_with(|| ExpectedValues::Some(FxHashSet::default()));
+
+                        let ExpectedValues::Some(expected_values) = expected_values else {
+                            bug!("`expected_values` should be a list a values")
+                        };
+
+                        for val in values {
+                            if let Some(LitKind::Str(s, _)) = val.lit().map(|lit| &lit.kind) {
+                                expected_values.insert(Some(s.to_string()));
+                            } else {
+                                error!("`values()` arguments must be string literals");
+                            }
+                        }
+
+                        if values.is_empty() {
+                            expected_values.insert(None);
+                        }
+                    } else {
+                        error!("`values()` first argument must be a simple identifier");
+                    }
+                } else if args.is_empty() {
+                    check_cfg.exhaustive_values = true;
+                } else {
+                    expected_error();
+                }
+            } else if meta_item.has_name(sym::cfg) {
+                old_syntax = Some(false);
+
+                let mut names = Vec::new();
+                let mut values: FxHashSet<_> = Default::default();
+
+                let mut any_specified = false;
+                let mut values_specified = false;
+                let mut values_any_specified = false;
+
+                for arg in args {
+                    if arg.is_word() && let Some(ident) = arg.ident() {
+                        if values_specified {
+                            error!("`cfg()` names cannot be after values");
+                        }
+                        names.push(ident);
+                    } else if arg.has_name(sym::any)
+                        && let Some(args) = arg.meta_item_list()
+                    {
+                        if any_specified {
+                            error!("`any()` cannot be specified multiple times");
+                        }
+                        any_specified = true;
+                        if !args.is_empty() {
+                            error!("`any()` must be empty");
+                        }
+                    } else if arg.has_name(sym::values)
+                        && let Some(args) = arg.meta_item_list()
+                    {
+                        if names.is_empty() {
+                            error!("`values()` cannot be specified before the names");
+                        } else if values_specified {
+                            error!("`values()` cannot be specified multiple times");
+                        }
+                        values_specified = true;
+
+                        for arg in args {
+                            if let Some(LitKind::Str(s, _)) =
+                                arg.lit().map(|lit| &lit.kind)
+                            {
+                                values.insert(Some(s.to_string()));
+                            } else if arg.has_name(sym::any)
+                                && let Some(args) = arg.meta_item_list()
+                            {
+                                if values_any_specified {
+                                    error!(
+                                        "`any()` in `values()` cannot be specified multiple times"
+                                    );
+                                }
+                                values_any_specified = true;
+                                if !args.is_empty() {
+                                    error!("`any()` must be empty");
+                                }
+                            } else {
+                                error!(
+                                    "`values()` arguments must be string literals or `any()`"
+                                );
+                            }
+                        }
+                    } else {
+                        error!(
+                            "`cfg()` arguments must be simple identifiers, `any()` or `values(...)`"
+                        );
+                    }
+                }
+
+                if values.is_empty() && !values_any_specified && !any_specified {
+                    values.insert(None);
+                } else if !values.is_empty() && values_any_specified {
+                    error!(
+                        "`values()` arguments cannot specify string literals and `any()` at the same time"
+                    );
+                }
+
+                if any_specified {
+                    if names.is_empty()
+                        && values.is_empty()
+                        && !values_specified
+                        && !values_any_specified
+                    {
+                        check_cfg.exhaustive_names = false;
+                    } else {
+                        error!("`cfg(any())` can only be provided in isolation");
+                    }
+                } else {
+                    for name in names {
+                        check_cfg
+                            .expecteds
+                            .entry(name.to_string())
+                            .and_modify(|v| match v {
+                                ExpectedValues::Some(v) if !values_any_specified => {
+                                    v.extend(values.clone())
+                                }
+                                ExpectedValues::Some(_) => *v = ExpectedValues::Any,
+                                ExpectedValues::Any => {}
+                            })
+                            .or_insert_with(|| {
+                                if values_any_specified {
+                                    ExpectedValues::Any
+                                } else {
+                                    ExpectedValues::Some(values.clone())
+                                }
+                            });
+                    }
+                }
+            } else {
+                expected_error();
             }
         }
 
@@ -372,8 +362,8 @@ pub struct Config {
     pub opts: config::Options,
 
     /// cfg! configuration in addition to the default ones
-    pub crate_cfg: FxHashSet<(String, Option<String>)>,
-    pub crate_check_cfg: CheckCfg,
+    pub crate_cfg: Cfg<String>,
+    pub crate_check_cfg: CheckCfg<String>,
 
     pub input: Input,
     pub output_dir: Option<PathBuf>,
