@@ -351,6 +351,32 @@ fn main() {
     }
 
     #[test]
+    fn test_extract_var_unit_expr_without_select_not_applicable() {
+        check_assist_not_applicable(
+            extract_variable,
+            r#"
+fn foo() {}
+fn main() {
+    foo()$0;
+}
+"#,
+        );
+
+        check_assist_not_applicable(
+            extract_variable,
+            r#"
+fn foo() {
+    let mut i = 3;
+    if i >= 0 {
+        i += 1;
+    } else {
+        i -= 1;
+    }$0
+}"#,
+        );
+    }
+
+    #[test]
     fn test_extract_var_simple() {
         check_assist(
             extract_variable,
