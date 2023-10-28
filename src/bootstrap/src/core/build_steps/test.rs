@@ -3063,6 +3063,7 @@ impl Step for CodegenCranelift {
         // FIXME handle vendoring for source tarballs before removing the --skip-test below
         let download_dir = builder.out.join("cg_clif_download");
 
+        // Uncomment the `prepare` command below once vendoring is implemented.
         /*
         let mut prepare_cargo = build_cargo();
         prepare_cargo.arg("--").arg("prepare").arg("--download-dir").arg(&download_dir);
@@ -3194,6 +3195,7 @@ impl Step for CodegenGCC {
         ));
         let _time = helpers::timeit(&builder);
 
+        // Uncomment the `prepare` command below once vendoring is implemented.
         /*
         let mut prepare_cargo = build_cargo();
         prepare_cargo.arg("--").arg("prepare");
