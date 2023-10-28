@@ -2719,11 +2719,8 @@ macro_rules! define_print {
     (($self:ident, $cx:ident): $($ty:ty $print:block)+) => {
         $(impl<'tcx, P: PrettyPrinter<'tcx>> Print<'tcx, P> for $ty {
             fn print(&$self, $cx: &mut P) -> Result<(), PrintError> {
-                #[allow(unused_mut)]
-                let mut $cx = $cx;
                 define_scoped_cx!($cx);
                 let _: () = $print;
-                #[allow(unreachable_code)]
                 Ok(())
             }
         })+

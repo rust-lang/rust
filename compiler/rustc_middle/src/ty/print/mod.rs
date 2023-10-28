@@ -12,8 +12,6 @@ pub use self::pretty::*;
 
 pub type PrintError = std::fmt::Error;
 
-// FIXME(eddyb) false positive, the lifetime parameters are used with `P:  Printer<...>`.
-#[allow(unused_lifetimes)]
 pub trait Print<'tcx, P> {
     fn print(&self, cx: &mut P) -> Result<(), PrintError>;
 }
