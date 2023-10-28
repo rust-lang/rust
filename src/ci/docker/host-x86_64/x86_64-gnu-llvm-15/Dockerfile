@@ -24,6 +24,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   xz-utils \
   nodejs \
   mingw-w64 \
+  libgccjit-12-dev \
   && rm -rf /var/lib/apt/lists/*
 
 # Install powershell (universal package) so we can test x.ps1 on Linux
@@ -33,6 +34,9 @@ RUN curl -sL "https://github.com/PowerShell/PowerShell/releases/download/v7.3.1/
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
+
+# Make `libgccjit.so` accessible.
+RUN ln -s /usr/lib/gcc/x86_64-linux-gnu/12/libgccjit.so /usr/lib/x86_64-linux-gnu/libgccjit.so
 
 # We are disabling CI LLVM since this builder is intentionally using a host
 # LLVM, rather than the typical src/llvm-project LLVM.
