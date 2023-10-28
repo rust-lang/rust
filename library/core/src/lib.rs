@@ -26,7 +26,8 @@
 //!   assumptions about their semantics: For `memcpy`, `memmove`, `memset`, `memcmp`, and `bcmp`, if
 //!   the `n` parameter is 0, the function is assumed to not be UB. Furthermore, for `memcpy`, if
 //!   source and target pointer are equal, the function is assumed to not be UB.
-//!   (Note that these are [standard assumptions](https://reviews.llvm.org/D86993) among compilers.)
+//!   (Note that these are standard assumptions among compilers:
+//!   [clang](https://reviews.llvm.org/D86993) and [GCC](https://gcc.gnu.org/bugzilla/show_bug.cgi?id=32667) do the same.)
 //!   These functions are often provided by the system libc, but can also be provided by the
 //!   [compiler-builtins crate](https://crates.io/crates/compiler_builtins).
 //!   Note that the library does not guarantee that it will always make these assumptions, so Rust
