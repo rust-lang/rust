@@ -622,35 +622,17 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 }
             }
 
-            // Note: this must be kept in sync with get_caller_location from cg_ssa.
-
-            // Walk up the `SourceScope`s, in case some of them are from MIR inlining.
-            // If so, the starting `source_info.span` is in the innermost inlined
-            // function, and will be replaced with outer callsite spans as long
-            // as the inlined functions were `#[track_caller]`.
-            loop {
-                let scope_data = &frame.body.source_scopes[source_info.scope];
-
-                if let Some((callee, callsite_span)) = scope_data.inlined {
-                    // Stop inside the most nested non-`#[track_caller]` function,
-                    // before ever reaching its caller (which is irrelevant).
-                    if !callee.def.requires_caller_location(*self.tcx) {
-                        return source_info.span;
-                    }
-                    source_info.span = callsite_span;
-                }
-
-                // Skip past all of the parents with `inlined: None`.
-                match scope_data.inlined_parent_scope {
-                    Some(parent) => source_info.scope = parent,
-                    None => break,
-                }
-            }
-
-            // Stop inside the most nested non-`#[track_caller]` function,
-            // before ever reaching its caller (which is irrelevant).
-            if !frame.instance.def.requires_caller_location(*self.tcx) {
-                return source_info.span;
+            let caller_location = if frame.instance.def.requires_caller_location(*self.tcx) {
+                // We use `Err(())` as indication that we should continue up the call stack since
+                // this is a `#[track_caller]` function.
+                Some(Err(()))
+            } else {
+                None
+            };
+            if let Ok(span) =
+                frame.body.caller_location_span(source_info, caller_location, *self.tcx, Ok)
+            {
+                return span;
             }
         }
 
