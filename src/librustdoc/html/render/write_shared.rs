@@ -5,18 +5,28 @@ use std::io::{self, BufReader};
 use std::path::{Component, Path};
 use std::rc::{Rc, Weak};
 
+use indexmap::IndexMap;
 use itertools::Itertools;
 use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
+use rustc_span::def_id::DefId;
+use rustc_span::Symbol;
 use serde::ser::SerializeSeq;
 use serde::{Serialize, Serializer};
 
 use super::{collect_paths_for_type, ensure_trailing_slash, Context};
-use crate::clean::Crate;
+use crate::clean::{Crate, Item, ItemId, ItemKind};
 use crate::config::{EmitType, RenderOptions};
 use crate::docfs::PathError;
 use crate::error::Error;
+use crate::formats::cache::Cache;
+use crate::formats::item_type::ItemType;
+use crate::formats::{Impl, RenderMode};
+use crate::html::format::Buffer;
+use crate::html::render::{AssocItemLink, ImplRenderingParameters};
 use crate::html::{layout, static_files};
+use crate::visit::DocVisitor;
 use crate::{try_err, try_none};
 
 /// Rustdoc writes out two kinds of shared files:
@@ -361,9 +371,264 @@ if (typeof exports !== 'undefined') {exports.searchIndex = searchIndex};
         }
     }
 
+    let cloned_shared = Rc::clone(&cx.shared);
+    let cache = &cloned_shared.cache;
+
+    // Collect the list of aliased types and their aliases.
+    // <https://github.com/search?q=repo%3Arust-lang%2Frust+[RUSTDOCIMPL]+type.impl&type=code>
+    //
+    // The clean AST has type aliases that point at their types, but
+    // this visitor works to reverse that: `aliased_types` is a map
+    // from target to the aliases that reference it, and each one
+    // will generate one file.
+    struct TypeImplCollector<'cx, 'cache> {
+        // Map from DefId-of-aliased-type to its data.
+        aliased_types: IndexMap<DefId, AliasedType<'cache>>,
+        visited_aliases: FxHashSet<DefId>,
+        cache: &'cache Cache,
+        cx: &'cache mut Context<'cx>,
+    }
+    // Data for an aliased type.
+    //
+    // In the final file, the format will be roughly:
+    //
+    // ```json
+    // // type.impl/CRATE/TYPENAME.js
+    // JSONP(
+    // "CRATE": [
+    //   ["IMPL1 HTML", "ALIAS1", "ALIAS2", ...],
+    //   ["IMPL2 HTML", "ALIAS3", "ALIAS4", ...],
+    //    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ struct AliasedType
+    //   ...
+    // ]
+    // )
+    // ```
+    struct AliasedType<'cache> {
+        // This is used to generate the actual filename of this aliased type.
+        target_fqp: &'cache [Symbol],
+        target_type: ItemType,
+        // This is the data stored inside the file.
+        // ItemId is used to deduplicate impls.
+        impl_: IndexMap<ItemId, AliasedTypeImpl<'cache>>,
+    }
+    // The `impl_` contains data that's used to figure out if an alias will work,
+    // and to generate the HTML at the end.
+    //
+    // The `type_aliases` list is built up with each type alias that matches.
+    struct AliasedTypeImpl<'cache> {
+        impl_: &'cache Impl,
+        type_aliases: Vec<(&'cache [Symbol], Item)>,
+    }
+    impl<'cx, 'cache> DocVisitor for TypeImplCollector<'cx, 'cache> {
+        fn visit_item(&mut self, it: &Item) {
+            self.visit_item_recur(it);
+            let cache = self.cache;
+            let ItemKind::TypeAliasItem(ref t) = *it.kind else { return };
+            let Some(self_did) = it.item_id.as_def_id() else { return };
+            if !self.visited_aliases.insert(self_did) {
+                return;
+            }
+            let Some(target_did) = t.type_.def_id(cache) else { return };
+            let get_extern = { || cache.external_paths.get(&target_did) };
+            let Some(&(ref target_fqp, target_type)) =
+                cache.paths.get(&target_did).or_else(get_extern)
+            else {
+                return;
+            };
+            let aliased_type = self.aliased_types.entry(target_did).or_insert_with(|| {
+                let impl_ = cache
+                    .impls
+                    .get(&target_did)
+                    .map(|v| &v[..])
+                    .unwrap_or_default()
+                    .iter()
+                    .map(|impl_| {
+                        (
+                            impl_.impl_item.item_id,
+                            AliasedTypeImpl { impl_, type_aliases: Vec::new() },
+                        )
+                    })
+                    .collect();
+                AliasedType { target_fqp: &target_fqp[..], target_type, impl_ }
+            });
+            let get_local = { || cache.paths.get(&self_did).map(|(p, _)| p) };
+            let Some(self_fqp) = cache.exact_paths.get(&self_did).or_else(get_local) else {
+                return;
+            };
+            let aliased_ty = self.cx.tcx().type_of(self_did).skip_binder();
+            // Exclude impls that are directly on this type. They're already in the HTML.
+            // Some inlining scenarios can cause there to be two versions of the same
+            // impl: one on the type alias and one on the underlying target type.
+            let mut seen_impls: FxHashSet<ItemId> = cache
+                .impls
+                .get(&self_did)
+                .map(|s| &s[..])
+                .unwrap_or_default()
+                .iter()
+                .map(|i| i.impl_item.item_id)
+                .collect();
+            for (impl_item_id, aliased_type_impl) in &mut aliased_type.impl_ {
+                // Only include this impl if it actually unifies with this alias.
+                // Synthetic impls are not included; those are also included in the HTML.
+                //
+                // FIXME(lazy_type_alias): Once the feature is complete or stable, rewrite this
+                // to use type unification.
+                // Be aware of `tests/rustdoc/type-alias/deeply-nested-112515.rs` which might regress.
+                let Some(impl_did) = impl_item_id.as_def_id() else { continue };
+                let for_ty = self.cx.tcx().type_of(impl_did).skip_binder();
+                let reject_cx =
+                    DeepRejectCtxt { treat_obligation_params: TreatParams::AsCandidateKey };
+                if !reject_cx.types_may_unify(aliased_ty, for_ty) {
+                    continue;
+                }
+                // Avoid duplicates
+                if !seen_impls.insert(*impl_item_id) {
+                    continue;
+                }
+                // This impl was not found in the set of rejected impls
+                aliased_type_impl.type_aliases.push((&self_fqp[..], it.clone()));
+            }
+        }
+    }
+    let mut type_impl_collector = TypeImplCollector {
+        aliased_types: IndexMap::default(),
+        visited_aliases: FxHashSet::default(),
+        cache,
+        cx,
+    };
+    DocVisitor::visit_crate(&mut type_impl_collector, &krate);
+    // Final serialized form of the alias impl
+    struct AliasSerializableImpl {
+        text: String,
+        trait_: Option<String>,
+        aliases: Vec<String>,
+    }
+    impl Serialize for AliasSerializableImpl {
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: Serializer,
+        {
+            let mut seq = serializer.serialize_seq(None)?;
+            seq.serialize_element(&self.text)?;
+            if let Some(trait_) = &self.trait_ {
+                seq.serialize_element(trait_)?;
+            } else {
+                seq.serialize_element(&0)?;
+            }
+            for type_ in &self.aliases {
+                seq.serialize_element(type_)?;
+            }
+            seq.end()
+        }
+    }
+    let cx = type_impl_collector.cx;
+    let dst = cx.dst.join("type.impl");
+    let aliased_types = type_impl_collector.aliased_types;
+    for aliased_type in aliased_types.values() {
+        let impls = aliased_type
+            .impl_
+            .values()
+            .flat_map(|AliasedTypeImpl { impl_, type_aliases }| {
+                let mut ret = Vec::new();
+                let trait_ = impl_
+                    .inner_impl()
+                    .trait_
+                    .as_ref()
+                    .map(|trait_| format!("{:#}", trait_.print(cx)));
+                // render_impl will filter out "impossible-to-call" methods
+                // to make that functionality work here, it needs to be called with
+                // each type alias, and if it gives a different result, split the impl
+                for &(type_alias_fqp, ref type_alias_item) in type_aliases {
+                    let mut buf = Buffer::html();
+                    cx.id_map = Default::default();
+                    cx.deref_id_map = Default::default();
+                    let target_did = impl_
+                        .inner_impl()
+                        .trait_
+                        .as_ref()
+                        .map(|trait_| trait_.def_id())
+                        .or_else(|| impl_.inner_impl().for_.def_id(cache));
+                    let provided_methods;
+                    let assoc_link = if let Some(target_did) = target_did {
+                        provided_methods = impl_.inner_impl().provided_trait_methods(cx.tcx());
+                        AssocItemLink::GotoSource(ItemId::DefId(target_did), &provided_methods)
+                    } else {
+                        AssocItemLink::Anchor(None)
+                    };
+                    super::render_impl(
+                        &mut buf,
+                        cx,
+                        *impl_,
+                        &type_alias_item,
+                        assoc_link,
+                        RenderMode::Normal,
+                        None,
+                        &[],
+                        ImplRenderingParameters {
+                            show_def_docs: true,
+                            show_default_items: true,
+                            show_non_assoc_items: true,
+                            toggle_open_by_default: true,
+                        },
+                    );
+                    let text = buf.into_inner();
+                    let type_alias_fqp = (*type_alias_fqp).iter().join("::");
+                    if Some(&text) == ret.last().map(|s: &AliasSerializableImpl| &s.text) {
+                        ret.last_mut()
+                            .expect("already established that ret.last() is Some()")
+                            .aliases
+                            .push(type_alias_fqp);
+                    } else {
+                        ret.push(AliasSerializableImpl {
+                            text,
+                            trait_: trait_.clone(),
+                            aliases: vec![type_alias_fqp],
+                        })
+                    }
+                }
+                ret
+            })
+            .collect::<Vec<_>>();
+        let impls = format!(
+            r#""{}":{}"#,
+            krate.name(cx.tcx()),
+            serde_json::to_string(&impls).expect("failed serde conversion"),
+        );
+
+        let mut mydst = dst.clone();
+        for part in &aliased_type.target_fqp[..aliased_type.target_fqp.len() - 1] {
+            mydst.push(part.to_string());
+        }
+        cx.shared.ensure_dir(&mydst)?;
+        let aliased_item_type = aliased_type.target_type;
+        mydst.push(&format!(
+            "{aliased_item_type}.{}.js",
+            aliased_type.target_fqp[aliased_type.target_fqp.len() - 1]
+        ));
+
+        let (mut all_impls, _) = try_err!(collect(&mydst, krate.name(cx.tcx()).as_str()), &mydst);
+        all_impls.push(impls);
+        // Sort the implementors by crate so the file will be generated
+        // identically even with rustdoc running in parallel.
+        all_impls.sort();
+
+        let mut v = String::from("(function() {var type_impls = {\n");
+        v.push_str(&all_impls.join(",\n"));
+        v.push_str("\n};");
+        v.push_str(
+            "if (window.register_type_impls) {\
+                 window.register_type_impls(type_impls);\
+             } else {\
+                 window.pending_type_impls = type_impls;\
+             }",
+        );
+        v.push_str("})()");
+        cx.shared.fs.write(mydst, v)?;
+    }
+
     // Update the list of all implementors for traits
-    let dst = cx.dst.join("implementors");
-    let cache = cx.cache();
+    // <https://github.com/search?q=repo%3Arust-lang%2Frust+[RUSTDOCIMPL]+trait.impl&type=code>
+    let dst = cx.dst.join("trait.impl");
     for (&did, imps) in &cache.implementors {
         // Private modules can leak through to this phase of rustdoc, which
         // could contain implementations for otherwise private types. In some

@@ -26,7 +26,7 @@ fn full_tested_match2() -> () {
         StorageLive(_1);
         StorageLive(_2);
         _2 = Option::<i32>::Some(const 42_i32);
-        FakeRead(ForMatchedPlace(None), _2);
+        PlaceMention(_2);
         _3 = discriminant(_2);
         switchInt(move _3) -> [0: bb1, 1: bb2, otherwise: bb4];
     }
@@ -51,6 +51,7 @@ fn full_tested_match2() -> () {
     }
 
     bb4: {
+        FakeRead(ForMatchedPlace(None), _2);
         unreachable;
     }
 

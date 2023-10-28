@@ -8,7 +8,7 @@ use rustc_infer::infer::InferCtxt;
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::traits::query::OutlivesBound;
 use rustc_middle::ty::{self, RegionVid, Ty};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::{ErrorGuaranteed, Span, DUMMY_SP};
 use rustc_trait_selection::traits::query::type_op::{self, TypeOp};
 use std::rc::Rc;
 use type_op::TypeOpOutput;
@@ -318,7 +318,8 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
             .param_env
             .and(type_op::implied_outlives_bounds::ImpliedOutlivesBounds { ty })
             .fully_perform(self.infcx, DUMMY_SP)
-            .unwrap_or_else(|_| bug!("failed to compute implied bounds {:?}", ty));
+            .map_err(|_: ErrorGuaranteed| debug!("failed to compute implied bounds {:?}", ty))
+            .ok()?;
         debug!(?bounds, ?constraints);
         self.add_outlives_bounds(bounds);
         constraints

@@ -60,10 +60,9 @@ fn multiple3() { }
 #[stable(feature = "e", since = "b")] //~ ERROR 'since' must be a Rust version number, such as "1.31.0"
 #[deprecated(since = "b", note = "text")]
 #[deprecated(since = "b", note = "text")] //~ ERROR multiple `deprecated` attributes
-//~^ ERROR deprecated attribute must be paired with either stable or unstable attribute
 #[rustc_const_unstable(feature = "c", issue = "none")]
 #[rustc_const_unstable(feature = "d", issue = "none")] //~ ERROR multiple stability levels
-pub const fn multiple4() { } //~ ERROR function has missing stability attribute
+pub const fn multiple4() { }
 
 #[stable(feature = "a", since = "1.0.0")] //~ ERROR invalid deprecation version found
 //~^ ERROR feature `a` is declared stable since 1.0.0

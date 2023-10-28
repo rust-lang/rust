@@ -42,8 +42,8 @@ fn move_out_by_const_index_and_subslice() {
         [_x, _, _] => {}
     }
     match a {
-        //~^ ERROR use of partially moved value
         [_y @ .., _, _] => {}
+        //~^ ERROR use of partially moved value
     }
 }
 
@@ -53,8 +53,8 @@ fn move_out_by_const_index_end_and_subslice() {
         [.., _x] => {}
     }
     match a {
-        //~^ ERROR use of partially moved value
         [_, _, _y @ ..] => {}
+        //~^ ERROR use of partially moved value
     }
 }
 
@@ -64,8 +64,8 @@ fn move_out_by_const_index_field_and_subslice() {
         [(_x, _), _, _] => {}
     }
     match a {
-        //~^ ERROR use of partially moved value
         [_y @ .., _, _] => {}
+        //~^ ERROR use of partially moved value
     }
 }
 
@@ -75,8 +75,8 @@ fn move_out_by_const_index_end_field_and_subslice() {
         [.., (_x, _)] => {}
     }
     match a {
-        //~^ ERROR use of partially moved value
         [_, _, _y @ ..] => {}
+        //~^ ERROR use of partially moved value
     }
 }
 
@@ -108,8 +108,8 @@ fn move_out_by_subslice_and_subslice() {
         [x @ .., _] => {}
     }
     match a {
-        //~^ ERROR use of partially moved value
         [_, _y @ ..] => {}
+        //~^ ERROR use of partially moved value
     }
 }
 

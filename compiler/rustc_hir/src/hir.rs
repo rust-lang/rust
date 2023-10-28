@@ -246,6 +246,8 @@ impl<'hir> PathSegment<'hir> {
 pub struct ConstArg {
     pub value: AnonConst,
     pub span: Span,
+    /// Indicates whether this comes from a `~const` desugaring.
+    pub is_desugared_from_effects: bool,
 }
 
 #[derive(Clone, Copy, Debug, HashStable_Generic)]
@@ -400,7 +402,14 @@ impl<'hir> GenericArgs<'hir> {
     /// This function returns the number of type and const generic params.
     /// It should only be used for diagnostics.
     pub fn num_generic_params(&self) -> usize {
-        self.args.iter().filter(|arg| !matches!(arg, GenericArg::Lifetime(_))).count()
+        self.args
+            .iter()
+            .filter(|arg| match arg {
+                GenericArg::Lifetime(_)
+                | GenericArg::Const(ConstArg { is_desugared_from_effects: true, .. }) => false,
+                _ => true,
+            })
+            .count()
     }
 
     /// The span encompassing the text inside the surrounding brackets.
@@ -1511,7 +1520,7 @@ impl<'hir> Body<'hir> {
 #[derive(HashStable_Generic, Encodable, Decodable)]
 pub enum CoroutineKind {
     /// An explicit `async` block or the body of an async function.
-    Async(AsyncCoroutineKind),
+    Async(CoroutineSource),
 
     /// A coroutine literal created via a `yield` inside a closure.
     Coroutine,
@@ -1520,56 +1529,45 @@ pub enum CoroutineKind {
 impl fmt::Display for CoroutineKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            CoroutineKind::Async(k) => fmt::Display::fmt(k, f),
+            CoroutineKind::Async(k) => {
+                if f.alternate() {
+                    f.write_str("`async` ")?;
+                } else {
+                    f.write_str("async ")?
+                }
+                k.fmt(f)
+            }
             CoroutineKind::Coroutine => f.write_str("coroutine"),
         }
     }
 }
 
-impl CoroutineKind {
-    pub fn descr(&self) -> &'static str {
-        match self {
-            CoroutineKind::Async(ask) => ask.descr(),
-            CoroutineKind::Coroutine => "coroutine",
-        }
-    }
-}
-
-/// In the case of a coroutine created as part of an async construct,
-/// which kind of async construct caused it to be created?
+/// In the case of a coroutine created as part of an async/gen construct,
+/// which kind of async/gen construct caused it to be created?
 ///
 /// This helps error messages but is also used to drive coercions in
 /// type-checking (see #60424).
 #[derive(Clone, PartialEq, Eq, Hash, Debug, Copy)]
 #[derive(HashStable_Generic, Encodable, Decodable)]
-pub enum AsyncCoroutineKind {
-    /// An explicit `async` block written by the user.
+pub enum CoroutineSource {
+    /// An explicit `async`/`gen` block written by the user.
     Block,
 
-    /// An explicit `async` closure written by the user.
+    /// An explicit `async`/`gen` closure written by the user.
     Closure,
 
-    /// The `async` block generated as the body of an async function.
+    /// The `async`/`gen` block generated as the body of an async/gen function.
     Fn,
 }
 
-impl fmt::Display for AsyncCoroutineKind {
+impl fmt::Display for CoroutineSource {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(match self {
-            AsyncCoroutineKind::Block => "async block",
-            AsyncCoroutineKind::Closure => "async closure body",
-            AsyncCoroutineKind::Fn => "async fn body",
-        })
-    }
-}
-
-impl AsyncCoroutineKind {
-    pub fn descr(&self) -> &'static str {
         match self {
-            AsyncCoroutineKind::Block => "`async` block",
-            AsyncCoroutineKind::Closure => "`async` closure body",
-            AsyncCoroutineKind::Fn => "`async fn` body",
+            CoroutineSource::Block => "block",
+            CoroutineSource::Closure => "closure body",
+            CoroutineSource::Fn => "fn body",
         }
+        .fmt(f)
     }
 }
 
@@ -3781,6 +3779,7 @@ impl<'hir> Node<'hir> {
                 ItemKind::TyAlias(ty, _)
                 | ItemKind::Static(ty, _, _)
                 | ItemKind::Const(ty, _, _) => Some(ty),
+                ItemKind::Impl(impl_item) => Some(&impl_item.self_ty),
                 _ => None,
             },
             Node::TraitItem(it) => match it.kind {

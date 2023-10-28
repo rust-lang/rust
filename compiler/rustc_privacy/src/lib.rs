@@ -210,22 +210,7 @@ where
                     }
                 }
             }
-            ty::Alias(ty::Weak, alias) => {
-                self.def_id_visitor.visit_def_id(alias.def_id, "type alias", &ty);
-            }
-            ty::Alias(ty::Projection, proj) => {
-                if V::SKIP_ASSOC_TYS {
-                    // Visitors searching for minimal visibility/reachability want to
-                    // conservatively approximate associated types like `<Type as Trait>::Alias`
-                    // as visible/reachable even if both `Type` and `Trait` are private.
-                    // Ideally, associated types should be substituted in the same way as
-                    // free type aliases, but this isn't done yet.
-                    return ControlFlow::Continue(());
-                }
-                // This will also visit args if necessary, so we don't need to recurse.
-                return self.visit_projection_ty(proj);
-            }
-            ty::Alias(ty::Inherent, data) => {
+            ty::Alias(kind @ (ty::Inherent | ty::Weak | ty::Projection), data) => {
                 if V::SKIP_ASSOC_TYS {
                     // Visitors searching for minimal visibility/reachability want to
                     // conservatively approximate associated types like `Type::Alias`
@@ -235,9 +220,14 @@ where
                     return ControlFlow::Continue(());
                 }
 
+                let kind = match kind {
+                    ty::Inherent | ty::Projection => "associated type",
+                    ty::Weak => "type alias",
+                    ty::Opaque => unreachable!(),
+                };
                 self.def_id_visitor.visit_def_id(
                     data.def_id,
-                    "associated type",
+                    kind,
                     &LazyDefPathStr { def_id: data.def_id, tcx },
                 )?;
 

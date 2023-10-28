@@ -5,7 +5,6 @@
 #![cfg_attr(not(bootstrap), doc(rust_logo))]
 #![cfg_attr(not(bootstrap), feature(rustdoc_internals))]
 #![cfg_attr(not(bootstrap), allow(internal_features))]
-#![feature(never_type)]
 #![recursion_limit = "256"]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
@@ -19,15 +18,11 @@ mod assert_dep_graph;
 mod errors;
 mod persist;
 
-use assert_dep_graph::assert_dep_graph;
 pub use persist::copy_cgu_workproduct_to_incr_comp_cache_dir;
-pub use persist::delete_workproduct_files;
 pub use persist::finalize_session_directory;
-pub use persist::garbage_collect_session_directories;
 pub use persist::in_incr_comp_dir;
 pub use persist::in_incr_comp_dir_sess;
 pub use persist::load_query_result_cache;
-pub use persist::prepare_session_directory;
 pub use persist::save_dep_graph;
 pub use persist::save_work_product_index;
 pub use persist::setup_dep_graph;

@@ -7,7 +7,7 @@ LL | const CONST_0: dyn Debug + Sync = *(&0 as &(dyn Debug + Sync));
    = help: the trait `Sized` is not implemented for `(dyn Debug + Sync + 'static)`
 
 error[E0277]: the size for values of type `str` cannot be known at compilation time
-  --> $DIR/const-unsized.rs:6:18
+  --> $DIR/const-unsized.rs:7:18
    |
 LL | const CONST_FOO: str = *"foo";
    |                  ^^^ doesn't have a size known at compile-time
@@ -15,7 +15,7 @@ LL | const CONST_FOO: str = *"foo";
    = help: the trait `Sized` is not implemented for `str`
 
 error[E0277]: the size for values of type `(dyn Debug + Sync + 'static)` cannot be known at compilation time
-  --> $DIR/const-unsized.rs:9:18
+  --> $DIR/const-unsized.rs:11:18
    |
 LL | static STATIC_1: dyn Debug + Sync = *(&1 as &(dyn Debug + Sync));
    |                  ^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
@@ -23,13 +23,49 @@ LL | static STATIC_1: dyn Debug + Sync = *(&1 as &(dyn Debug + Sync));
    = help: the trait `Sized` is not implemented for `(dyn Debug + Sync + 'static)`
 
 error[E0277]: the size for values of type `str` cannot be known at compilation time
-  --> $DIR/const-unsized.rs:12:20
+  --> $DIR/const-unsized.rs:15:20
    |
 LL | static STATIC_BAR: str = *"bar";
    |                    ^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `str`
 
-error: aborting due to 4 previous errors
+error[E0277]: the size for values of type `(dyn Debug + Sync + 'static)` cannot be known at compilation time
+  --> $DIR/const-unsized.rs:3:35
+   |
+LL | const CONST_0: dyn Debug + Sync = *(&0 as &(dyn Debug + Sync));
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn Debug + Sync + 'static)`
+   = note: constant expressions must have a statically known size
+
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/const-unsized.rs:7:24
+   |
+LL | const CONST_FOO: str = *"foo";
+   |                        ^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `str`
+   = note: constant expressions must have a statically known size
+
+error[E0277]: the size for values of type `(dyn Debug + Sync + 'static)` cannot be known at compilation time
+  --> $DIR/const-unsized.rs:11:37
+   |
+LL | static STATIC_1: dyn Debug + Sync = *(&1 as &(dyn Debug + Sync));
+   |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn Debug + Sync + 'static)`
+   = note: constant expressions must have a statically known size
+
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/const-unsized.rs:15:26
+   |
+LL | static STATIC_BAR: str = *"bar";
+   |                          ^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `str`
+   = note: constant expressions must have a statically known size
+
+error: aborting due to 8 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

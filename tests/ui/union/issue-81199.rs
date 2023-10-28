@@ -4,6 +4,7 @@ union PtrRepr<T: ?Sized> {
     mut_ptr: *mut T,
     components: PtrComponents<T>,
     //~^ ERROR the trait bound
+    //~| ERROR field must implement `Copy`
 }
 
 #[repr(C)]

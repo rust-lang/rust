@@ -134,7 +134,7 @@ impl FlagComputation {
                 if should_remove_further_specializable {
                     self.flags -= TypeFlags::STILL_FURTHER_SPECIALIZABLE;
                 }
-                self.add_flags(TypeFlags::HAS_TY_GENERATOR);
+                self.add_flags(TypeFlags::HAS_TY_COROUTINE);
             }
 
             &ty::Closure(_, args) => {

@@ -2739,32 +2739,25 @@ pub fn build_session_options(
         _ => {}
     }
 
-    // Handle both `-Z instrument-coverage` and `-C instrument-coverage`; the latter takes
-    // precedence.
-    match (cg.instrument_coverage, unstable_opts.instrument_coverage) {
-        (Some(ic_c), Some(ic_z)) if ic_c != ic_z => {
-            handler.early_error(
-                "incompatible values passed for `-C instrument-coverage` \
-                and `-Z instrument-coverage`",
-            );
+    // Check for unstable values of `-C instrument-coverage`.
+    // This is what prevents them from being used on stable compilers.
+    match cg.instrument_coverage {
+        // Stable values:
+        InstrumentCoverage::All | InstrumentCoverage::Off => {}
+        // Unstable values:
+        InstrumentCoverage::Branch
+        | InstrumentCoverage::ExceptUnusedFunctions
+        | InstrumentCoverage::ExceptUnusedGenerics => {
+            if !unstable_opts.unstable_options {
+                handler.early_error(
+                    "`-C instrument-coverage=branch` and `-C instrument-coverage=except-*` \
+                    require `-Z unstable-options`",
+                );
+            }
         }
-        (Some(InstrumentCoverage::Off | InstrumentCoverage::All), _) => {}
-        (Some(_), _) if !unstable_opts.unstable_options => {
-            handler.early_error(
-                "`-C instrument-coverage=branch` and `-C instrument-coverage=except-*` \
-                require `-Z unstable-options`",
-            );
-        }
-        (None, None) => {}
-        (None, ic) => {
-            handler
-                .early_warn("`-Z instrument-coverage` is deprecated; use `-C instrument-coverage`");
-            cg.instrument_coverage = ic;
-        }
-        _ => {}
     }
 
-    if cg.instrument_coverage.is_some() && cg.instrument_coverage != Some(InstrumentCoverage::Off) {
+    if cg.instrument_coverage != InstrumentCoverage::Off {
         if cg.profile_generate.enabled() || cg.profile_use.is_some() {
             handler.early_error(
                 "option `-C instrument-coverage` is not compatible with either `-C profile-use` \

@@ -1,4 +1,5 @@
-use crate::spec::crt_objects::{self, LinkSelfContainedDefault};
+use crate::spec::crt_objects;
+use crate::spec::LinkSelfContainedDefault;
 use crate::spec::{cvs, Cc, DebuginfoKind, LinkerFlavor, Lld, SplitDebuginfo, TargetOptions};
 use std::borrow::Cow;
 
@@ -90,7 +91,7 @@ pub fn opts() -> TargetOptions {
         post_link_objects: crt_objects::post_mingw(),
         pre_link_objects_self_contained: crt_objects::pre_mingw_self_contained(),
         post_link_objects_self_contained: crt_objects::post_mingw_self_contained(),
-        link_self_contained: LinkSelfContainedDefault::Mingw,
+        link_self_contained: LinkSelfContainedDefault::InferredForMingw,
         late_link_args,
         late_link_args_dynamic,
         late_link_args_static,

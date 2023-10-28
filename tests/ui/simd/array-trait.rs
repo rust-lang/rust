@@ -22,6 +22,7 @@ impl Simd for i32x4 {
 #[derive(Copy, Clone)]
 pub struct T<S: Simd>([S::Lane; S::SIZE]);
 //~^ ERROR unconstrained generic constant
+//~| ERROR SIMD vector element type should be a primitive scalar
 
 extern "platform-intrinsic" {
     fn simd_insert<T, E>(x: T, idx: u32, y: E) -> T;

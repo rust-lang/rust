@@ -13,3 +13,5 @@ trait Project {
 #[proc_macro]
 pub fn uwu() -> <() as Project>::Assoc {}
 //~^ ERROR the trait bound `(): Project` is not satisfied
+//~| ERROR the trait bound `(): Project` is not satisfied
+//~| ERROR function is expected to take 1 argument, but it takes 0 arguments

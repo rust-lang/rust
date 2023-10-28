@@ -32,7 +32,6 @@ use self::ty::{
 extern crate scoped_tls;
 
 pub mod error;
-pub mod fold;
 pub mod mir;
 pub mod ty;
 pub mod visitor;
@@ -214,9 +213,6 @@ pub trait Context {
 
     /// Obtain the representation of a type.
     fn ty_kind(&self, ty: Ty) -> TyKind;
-
-    /// Create a new `Ty` from scratch without information from rustc.
-    fn mk_ty(&self, kind: TyKind) -> Ty;
 
     /// Get the body of an Instance.
     /// FIXME: Monomorphize the body.

@@ -622,7 +622,7 @@ impl<I: Interner> fmt::Debug for TyKind<I> {
 }
 
 // This is manually implemented because a derive would require `I: Encodable`
-impl<I: Interner, E: TyEncoder> Encodable<E> for TyKind<I>
+impl<I: Interner, E: TyEncoder<I = I>> Encodable<E> for TyKind<I>
 where
     I::ErrorGuaranteed: Encodable<E>,
     I::AdtDef: Encodable<E>,
@@ -640,7 +640,6 @@ where
     I::BoundTy: Encodable<E>,
     I::PlaceholderTy: Encodable<E>,
     I::InferTy: Encodable<E>,
-    I::PredicateKind: Encodable<E>,
     I::AllocId: Encodable<E>,
 {
     fn encode(&self, e: &mut E) {
@@ -753,7 +752,6 @@ where
     I::BoundTy: Decodable<D>,
     I::PlaceholderTy: Decodable<D>,
     I::InferTy: Decodable<D>,
-    I::PredicateKind: Decodable<D>,
     I::AllocId: Decodable<D>,
 {
     fn decode(d: &mut D) -> Self {
@@ -817,11 +815,7 @@ where
     I::ErrorGuaranteed: HashStable<CTX>,
 {
     #[inline]
-    fn hash_stable(
-        &self,
-        __hcx: &mut CTX,
-        __hasher: &mut rustc_data_structures::stable_hasher::StableHasher,
-    ) {
+    fn hash_stable(&self, __hcx: &mut CTX, __hasher: &mut StableHasher) {
         std::mem::discriminant(self).hash_stable(__hcx, __hasher);
         match self {
             Bool => {}

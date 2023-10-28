@@ -1,7 +1,7 @@
 // revisions: no_flag with_flag
 // [no_flag] check-pass
 // [with_flag] compile-flags: -Zextra-const-ub-checks
-#![feature(never_type, pointer_byte_offsets)]
+#![feature(never_type)]
 
 use std::mem::transmute;
 use std::ptr::addr_of;

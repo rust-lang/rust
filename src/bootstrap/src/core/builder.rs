@@ -2,7 +2,7 @@ use std::any::{type_name, Any};
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeSet;
 use std::env;
-use std::ffi::OsStr;
+use std::ffi::{OsStr, OsString};
 use std::fmt::{Debug, Write};
 use std::fs::{self, File};
 use std::hash::Hash;
@@ -1401,19 +1401,28 @@ impl<'a> Builder<'a> {
             rustflags.arg("-Zunstable-options");
         }
 
-        // Enable cfg checking of cargo features for everything but std and also enable cfg
-        // checking of names and values.
+        // #[cfg(bootstrap)]
+        let use_new_check_cfg_syntax = self.local_rebuild;
+
+        // Enable compile-time checking of `cfg` names, values and Cargo `features`.
         //
         // Note: `std`, `alloc` and `core` imports some dependencies by #[path] (like
         // backtrace, core_simd, std_float, ...), those dependencies have their own
         // features but cargo isn't involved in the #[path] process and so cannot pass the
         // complete list of features, so for that reason we don't enable checking of
         // features for std crates.
-        cargo.arg(if mode != Mode::Std {
-            "-Zcheck-cfg=names,values,output,features"
+        if use_new_check_cfg_syntax {
+            cargo.arg("-Zcheck-cfg");
+            if mode == Mode::Std {
+                rustflags.arg("--check-cfg=cfg(feature,values(any()))");
+            }
         } else {
-            "-Zcheck-cfg=names,values,output"
-        });
+            cargo.arg(if mode != Mode::Std {
+                "-Zcheck-cfg=names,values,output,features"
+            } else {
+                "-Zcheck-cfg=names,values,output"
+            });
+        }
 
         // Add extra cfg not defined in/by rustc
         //
@@ -1433,7 +1442,12 @@ impl<'a> Builder<'a> {
                         .collect::<String>(),
                     None => String::new(),
                 };
-                rustflags.arg(&format!("--check-cfg=values({name}{values})"));
+                if use_new_check_cfg_syntax {
+                    let values = values.strip_prefix(",").unwrap_or(&values); // remove the first `,`
+                    rustflags.arg(&format!("--check-cfg=cfg({name},values({values}))"));
+                } else {
+                    rustflags.arg(&format!("--check-cfg=values({name}{values})"));
+                }
             }
         }
 
@@ -1449,7 +1463,11 @@ impl<'a> Builder<'a> {
         // We also declare that the flag is expected, which we need to do to not
         // get warnings about it being unexpected.
         hostflags.arg("-Zunstable-options");
-        hostflags.arg("--check-cfg=values(bootstrap)");
+        if use_new_check_cfg_syntax {
+            hostflags.arg("--check-cfg=cfg(bootstrap)");
+        } else {
+            hostflags.arg("--check-cfg=values(bootstrap)");
+        }
 
         // FIXME: It might be better to use the same value for both `RUSTFLAGS` and `RUSTDOCFLAGS`,
         // but this breaks CI. At the very least, stage0 `rustdoc` needs `--cfg bootstrap`. See
@@ -1765,6 +1783,20 @@ impl<'a> Builder<'a> {
             // `rustc` needs to know the virtual `/rustc/$hash` we're mapping to,
             // in order to opportunistically reverse it later.
             cargo.env("CFG_VIRTUAL_RUST_SOURCE_BASE_DIR", map_to);
+        }
+
+        if self.config.rust_remap_debuginfo {
+            // FIXME: handle vendored sources
+            let registry_src = t!(home::cargo_home()).join("registry").join("src");
+            let mut env_var = OsString::new();
+            for entry in t!(std::fs::read_dir(registry_src)) {
+                if !env_var.is_empty() {
+                    env_var.push("\t");
+                }
+                env_var.push(t!(entry).path());
+                env_var.push("=/rust/deps");
+            }
+            cargo.env("RUSTC_CARGO_REGISTRY_SRC_TO_REMAP", env_var);
         }
 
         // Enable usage of unstable features

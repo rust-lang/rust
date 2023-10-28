@@ -191,11 +191,16 @@ impl<'tcx> Cx<'tcx> {
                 source: self.mirror_expr(source),
                 cast: PointerCoercion::ArrayToPointer,
             }
-        } else {
-            // check whether this is casting an enum variant discriminant
-            // to prevent cycles, we refer to the discriminant initializer
+        } else if let hir::ExprKind::Path(ref qpath) = source.kind
+           && let res = self.typeck_results().qpath_res(qpath, source.hir_id)
+           && let ty = self.typeck_results().node_type(source.hir_id)
+           && let ty::Adt(adt_def, args) = ty.kind()
+           && let Res::Def(DefKind::Ctor(CtorOf::Variant, CtorKind::Const), variant_ctor_id) = res
+        {
+            // Check whether this is casting an enum variant discriminant.
+            // To prevent cycles, we refer to the discriminant initializer,
             // which is always an integer and thus doesn't need to know the
-            // enum's layout (or its tag type) to compute it during const eval
+            // enum's layout (or its tag type) to compute it during const eval.
             // Example:
             // enum Foo {
             //     A,
@@ -203,21 +208,6 @@ impl<'tcx> Cx<'tcx> {
             // }
             // The correct solution would be to add symbolic computations to miri,
             // so we wouldn't have to compute and store the actual value
-
-            let hir::ExprKind::Path(ref qpath) = source.kind else {
-                return ExprKind::Cast { source: self.mirror_expr(source) };
-            };
-
-            let res = self.typeck_results().qpath_res(qpath, source.hir_id);
-            let ty = self.typeck_results().node_type(source.hir_id);
-            let ty::Adt(adt_def, args) = ty.kind() else {
-                return ExprKind::Cast { source: self.mirror_expr(source) };
-            };
-
-            let Res::Def(DefKind::Ctor(CtorOf::Variant, CtorKind::Const), variant_ctor_id) = res
-            else {
-                return ExprKind::Cast { source: self.mirror_expr(source) };
-            };
 
             let idx = adt_def.variant_index_with_ctor_id(variant_ctor_id);
             let (discr_did, discr_offset) = adt_def.discriminant_def_for_variant(idx);
@@ -255,6 +245,10 @@ impl<'tcx> Cx<'tcx> {
             };
 
             ExprKind::Cast { source }
+        } else {
+            // Default to `ExprKind::Cast` for all explicit casts.
+            // MIR building then picks the right MIR casts based on the types.
+            ExprKind::Cast { source: self.mirror_expr(source) }
         }
     }
 

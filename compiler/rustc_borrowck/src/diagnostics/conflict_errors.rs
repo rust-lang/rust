@@ -8,7 +8,7 @@ use rustc_errors::{
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{walk_block, walk_expr, Visitor};
-use rustc_hir::{AsyncCoroutineKind, CoroutineKind, LangItem};
+use rustc_hir::{CoroutineKind, CoroutineSource, LangItem};
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::hir::nested_filter::OnlyBodies;
 use rustc_middle::mir::tcx::PlaceTy;
@@ -2506,8 +2506,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let kind = match use_span.coroutine_kind() {
             Some(coroutine_kind) => match coroutine_kind {
                 CoroutineKind::Async(async_kind) => match async_kind {
-                    AsyncCoroutineKind::Block => "async block",
-                    AsyncCoroutineKind::Closure => "async closure",
+                    CoroutineSource::Block => "async block",
+                    CoroutineSource::Closure => "async closure",
                     _ => bug!("async block/closure expected, but async function found."),
                 },
                 CoroutineKind::Coroutine => "coroutine",

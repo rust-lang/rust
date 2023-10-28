@@ -10,8 +10,8 @@ use rustc_hir::def::Res;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{
-    AsyncCoroutineKind, CoroutineKind, Expr, ExprKind, GenericBound, HirId, Node, Path, QPath,
-    Stmt, StmtKind, TyKind, WherePredicate,
+    CoroutineKind, CoroutineSource, Expr, ExprKind, GenericBound, HirId, Node, Path, QPath, Stmt,
+    StmtKind, TyKind, WherePredicate,
 };
 use rustc_hir_analysis::astconv::AstConv;
 use rustc_infer::traits::{self, StatementAsExpression};
@@ -536,7 +536,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ty::Coroutine(def_id, ..)
                     if matches!(
                         self.tcx.coroutine_kind(def_id),
-                        Some(CoroutineKind::Async(AsyncCoroutineKind::Closure))
+                        Some(CoroutineKind::Async(CoroutineSource::Closure))
                     ) =>
                 {
                     errors::SuggestBoxing::AsyncBody
@@ -1747,19 +1747,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
     ) -> bool {
-        let ty::Adt(adt, args) = found.kind() else { return false };
+        let ty::Adt(adt, args) = found.kind() else {
+            return false;
+        };
         let ret_ty_matches = |diagnostic_item| {
-            if let Some(ret_ty) = self
-                    .ret_coercion
-                    .as_ref()
-                    .map(|c| self.resolve_vars_if_possible(c.borrow().expected_ty()))
-                    && let ty::Adt(kind, _) = ret_ty.kind()
-                    && self.tcx.get_diagnostic_item(diagnostic_item) == Some(kind.did())
-                {
-                    true
-                } else {
-                    false
-                }
+            let Some(sig) = self.body_fn_sig() else {
+                return false;
+            };
+            let ty::Adt(kind, _) = sig.output().kind() else {
+                return false;
+            };
+            self.tcx.is_diagnostic_item(diagnostic_item, kind.did())
         };
 
         // don't suggest anything like `Ok(ok_val).unwrap()` , `Some(some_val).unwrap()`,

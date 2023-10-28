@@ -1,66 +1,5 @@
-error[E0391]: cycle detected when computing type of opaque `cycle1::{opaque#0}`
-  --> $DIR/auto-trait-leak.rs:11:16
-   |
-LL | fn cycle1() -> impl Clone {
-   |                ^^^^^^^^^^
-   |
-note: ...which requires type-checking `cycle1`...
-  --> $DIR/auto-trait-leak.rs:14:5
-   |
-LL |     send(cycle2().clone());
-   |     ^^^^
-   = note: ...which requires evaluating trait selection obligation `cycle2::{opaque#0}: core::marker::Send`...
-note: ...which requires computing type of opaque `cycle2::{opaque#0}`...
-  --> $DIR/auto-trait-leak.rs:19:16
-   |
-LL | fn cycle2() -> impl Clone {
-   |                ^^^^^^^^^^
-note: ...which requires type-checking `cycle2`...
-  --> $DIR/auto-trait-leak.rs:20:5
-   |
-LL |     send(cycle1().clone());
-   |     ^^^^
-   = note: ...which requires evaluating trait selection obligation `cycle1::{opaque#0}: core::marker::Send`...
-   = note: ...which again requires computing type of opaque `cycle1::{opaque#0}`, completing the cycle
-note: cycle used when computing type of `cycle1::{opaque#0}`
-  --> $DIR/auto-trait-leak.rs:11:16
-   |
-LL | fn cycle1() -> impl Clone {
-   |                ^^^^^^^^^^
-   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
-
-error[E0391]: cycle detected when computing type of opaque `cycle1::{opaque#0}`
-  --> $DIR/auto-trait-leak.rs:11:16
-   |
-LL | fn cycle1() -> impl Clone {
-   |                ^^^^^^^^^^
-   |
-note: ...which requires type-checking `cycle1`...
-  --> $DIR/auto-trait-leak.rs:14:5
-   |
-LL |     send(cycle2().clone());
-   |     ^^^^
-   = note: ...which requires evaluating trait selection obligation `cycle2::{opaque#0}: core::marker::Send`...
-note: ...which requires computing type of opaque `cycle2::{opaque#0}`...
-  --> $DIR/auto-trait-leak.rs:19:16
-   |
-LL | fn cycle2() -> impl Clone {
-   |                ^^^^^^^^^^
-note: ...which requires type-checking `cycle2`...
-  --> $DIR/auto-trait-leak.rs:19:1
-   |
-LL | fn cycle2() -> impl Clone {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: ...which again requires computing type of opaque `cycle1::{opaque#0}`, completing the cycle
-note: cycle used when computing type of `cycle1::{opaque#0}`
-  --> $DIR/auto-trait-leak.rs:11:16
-   |
-LL | fn cycle1() -> impl Clone {
-   |                ^^^^^^^^^^
-   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
-
 error: cannot check whether the hidden type of opaque type satisfies auto traits
-  --> $DIR/auto-trait-leak.rs:20:10
+  --> $DIR/auto-trait-leak.rs:18:10
    |
 LL |     send(cycle1().clone());
    |     ---- ^^^^^^^^^^^^^^^^
@@ -73,7 +12,7 @@ note: opaque type is declared here
 LL | fn cycle1() -> impl Clone {
    |                ^^^^^^^^^^
 note: this item depends on auto traits of the hidden type, but may also be registering the hidden type. This is not supported right now. You can try moving the opaque type and the item that actually registers a hidden type into a new submodule
-  --> $DIR/auto-trait-leak.rs:19:4
+  --> $DIR/auto-trait-leak.rs:17:4
    |
 LL | fn cycle2() -> impl Clone {
    |    ^^^^^^
@@ -83,6 +22,5 @@ note: required by a bound in `send`
 LL | fn send<T: Send>(_: T) {}
    |            ^^^^ required by this bound in `send`
 
-error: aborting due to 3 previous errors
+error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0391`.

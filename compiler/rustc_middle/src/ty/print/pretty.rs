@@ -2650,6 +2650,13 @@ macro_rules! forward_display_to_print {
 
 macro_rules! define_print_and_forward_display {
     (($self:ident, $cx:ident): $($ty:ty $print:block)+) => {
+        define_print!(($self, $cx): $($ty $print)*);
+        forward_display_to_print!($($ty),+);
+    };
+}
+
+macro_rules! define_print {
+    (($self:ident, $cx:ident): $($ty:ty $print:block)+) => {
         $(impl<'tcx, P: PrettyPrinter<'tcx>> Print<'tcx, P> for $ty {
             fn print(&$self, $cx: &mut P) -> Result<(), PrintError> {
                 #[allow(unused_mut)]
@@ -2660,8 +2667,6 @@ macro_rules! define_print_and_forward_display {
                 Ok(())
             }
         })+
-
-        forward_display_to_print!($($ty),+);
     };
 }
 
@@ -2757,6 +2762,51 @@ forward_display_to_print! {
     ty::Binder<'tcx, ty::ProjectionPredicate<'tcx>>,
     ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>,
     ty::OutlivesPredicate<ty::Region<'tcx>, ty::Region<'tcx>>
+}
+
+define_print! {
+    (self, cx):
+
+    ty::ClauseKind<'tcx> {
+        match *self {
+            ty::ClauseKind::Trait(ref data) => {
+                p!(print(data))
+            }
+            ty::ClauseKind::RegionOutlives(predicate) => p!(print(predicate)),
+            ty::ClauseKind::TypeOutlives(predicate) => p!(print(predicate)),
+            ty::ClauseKind::Projection(predicate) => p!(print(predicate)),
+            ty::ClauseKind::ConstArgHasType(ct, ty) => {
+                p!("the constant `", print(ct), "` has type `", print(ty), "`")
+            },
+            ty::ClauseKind::WellFormed(arg) => p!(print(arg), " well-formed"),
+            ty::ClauseKind::ConstEvaluatable(ct) => {
+                p!("the constant `", print(ct), "` can be evaluated")
+            }
+        }
+    }
+
+    ty::PredicateKind<'tcx> {
+        match *self {
+            ty::PredicateKind::Clause(data) => {
+                p!(print(data))
+            }
+            ty::PredicateKind::Subtype(predicate) => p!(print(predicate)),
+            ty::PredicateKind::Coerce(predicate) => p!(print(predicate)),
+            ty::PredicateKind::ObjectSafe(trait_def_id) => {
+                p!("the trait `", print_def_path(trait_def_id, &[]), "` is object-safe")
+            }
+            ty::PredicateKind::ClosureKind(closure_def_id, _closure_args, kind) => p!(
+                "the closure `",
+                print_value_path(closure_def_id, &[]),
+                write("` implements the trait `{}`", kind)
+            ),
+            ty::PredicateKind::ConstEquate(c1, c2) => {
+                p!("the constant `", print(c1), "` equals `", print(c2), "`")
+            }
+            ty::PredicateKind::Ambiguous => p!("ambiguous"),
+            ty::PredicateKind::AliasRelate(t1, t2, dir) => p!(print(t1), write(" {} ", dir), print(t2)),
+        }
+    }
 }
 
 define_print_and_forward_display! {
@@ -2887,53 +2937,11 @@ define_print_and_forward_display! {
     }
 
     ty::Predicate<'tcx> {
-        let binder = self.kind();
-        p!(print(binder))
+        p!(print(self.kind()))
     }
 
     ty::Clause<'tcx> {
         p!(print(self.kind()))
-    }
-
-    ty::ClauseKind<'tcx> {
-        match *self {
-            ty::ClauseKind::Trait(ref data) => {
-                p!(print(data))
-            }
-            ty::ClauseKind::RegionOutlives(predicate) => p!(print(predicate)),
-            ty::ClauseKind::TypeOutlives(predicate) => p!(print(predicate)),
-            ty::ClauseKind::Projection(predicate) => p!(print(predicate)),
-            ty::ClauseKind::ConstArgHasType(ct, ty) => {
-                p!("the constant `", print(ct), "` has type `", print(ty), "`")
-            },
-            ty::ClauseKind::WellFormed(arg) => p!(print(arg), " well-formed"),
-            ty::ClauseKind::ConstEvaluatable(ct) => {
-                p!("the constant `", print(ct), "` can be evaluated")
-            }
-        }
-    }
-
-    ty::PredicateKind<'tcx> {
-        match *self {
-            ty::PredicateKind::Clause(data) => {
-                p!(print(data))
-            }
-            ty::PredicateKind::Subtype(predicate) => p!(print(predicate)),
-            ty::PredicateKind::Coerce(predicate) => p!(print(predicate)),
-            ty::PredicateKind::ObjectSafe(trait_def_id) => {
-                p!("the trait `", print_def_path(trait_def_id, &[]), "` is object-safe")
-            }
-            ty::PredicateKind::ClosureKind(closure_def_id, _closure_args, kind) => p!(
-                "the closure `",
-                print_value_path(closure_def_id, &[]),
-                write("` implements the trait `{}`", kind)
-            ),
-            ty::PredicateKind::ConstEquate(c1, c2) => {
-                p!("the constant `", print(c1), "` equals `", print(c2), "`")
-            }
-            ty::PredicateKind::Ambiguous => p!("ambiguous"),
-            ty::PredicateKind::AliasRelate(t1, t2, dir) => p!(print(t1), write(" {} ", dir), print(t2)),
-        }
     }
 
     GenericArg<'tcx> {

@@ -24,10 +24,11 @@ pub fn run_tests(env: &Environment) -> anyhow::Result<()> {
     let host_triple = env.host_triple();
     let version = find_dist_version(&dist_dir)?;
 
-    // Extract rustc, libstd and src archives to create the optimized sysroot
+    // Extract rustc, libstd, cargo and src archives to create the optimized sysroot
     let rustc_dir = extract_dist_dir(&format!("rustc-{version}-{host_triple}"))?.join("rustc");
     let libstd_dir = extract_dist_dir(&format!("rust-std-{version}-{host_triple}"))?
         .join(format!("rust-std-{host_triple}"));
+    let cargo_dir = extract_dist_dir(&format!("cargo-{version}-{host_triple}"))?.join("cargo");
     let extracted_src_dir = extract_dist_dir(&format!("rust-src-{version}"))?.join("rust-src");
 
     // We need to manually copy libstd to the extracted rustc sysroot
@@ -46,6 +47,8 @@ pub fn run_tests(env: &Environment) -> anyhow::Result<()> {
 
     let rustc_path = rustc_dir.join("bin").join(format!("rustc{}", executable_extension()));
     assert!(rustc_path.is_file());
+    let cargo_path = cargo_dir.join("bin").join(format!("cargo{}", executable_extension()));
+    assert!(cargo_path.is_file());
 
     // Specify path to a LLVM config so that LLVM is not rebuilt.
     // It doesn't really matter which LLVM config we choose, because no sysroot will be compiled.
@@ -62,11 +65,13 @@ change-id = 115898
 
 [build]
 rustc = "{rustc}"
+cargo = "{cargo}"
 
 [target.{host_triple}]
 llvm-config = "{llvm_config}"
 "#,
         rustc = rustc_path.to_string().replace('\\', "/"),
+        cargo = cargo_path.to_string().replace('\\', "/"),
         llvm_config = llvm_config.to_string().replace('\\', "/")
     );
     log::info!("Using following `config.toml` for running tests:\n{config_content}");

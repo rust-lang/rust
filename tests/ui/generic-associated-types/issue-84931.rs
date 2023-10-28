@@ -12,7 +12,8 @@ struct StreamingSliceIter<'a, T> {
 
 impl<'b, T: 'b> StreamingIter for StreamingSliceIter<'b, T> {
     type Item<'a> = &'a mut T;
-    //~^ the parameter type
+    //~^ ERROR: the parameter type
+    //~| ERROR: does not fulfill the required lifetime
     fn next(&mut self) -> Option<&mut T> {
         loop {}
     }

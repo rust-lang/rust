@@ -81,7 +81,7 @@ fn main() -> () {
         _2 = (move _3, move _5);
         StorageDead(_5);
         StorageDead(_3);
-        FakeRead(ForMatchedPlace(None), _2);
+        PlaceMention(_2);
         StorageLive(_8);
         _8 = (_2.0: &&[u8]);
         StorageLive(_9);
@@ -180,7 +180,7 @@ fn main() -> () {
         _23 = (move _24, move _26);
         StorageDead(_26);
         StorageDead(_24);
-        FakeRead(ForMatchedPlace(None), _23);
+        PlaceMention(_23);
         StorageLive(_28);
         _28 = (_23.0: &&[u8]);
         StorageLive(_29);

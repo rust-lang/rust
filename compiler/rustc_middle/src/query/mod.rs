@@ -251,6 +251,7 @@ rustc_queries! {
             "computing type of opaque `{path}`",
             path = tcx.def_path_str(key),
         }
+        cycle_stash
     }
 
     query type_alias_is_lazy(key: DefId) -> bool {
@@ -341,7 +342,7 @@ rustc_queries! {
 
     query opaque_types_defined_by(
         key: LocalDefId
-    ) -> &'tcx [LocalDefId] {
+    ) -> &'tcx ty::List<LocalDefId> {
         desc {
             |tcx| "computing the opaque types defined by `{}`",
             tcx.def_path_str(key.to_def_id())

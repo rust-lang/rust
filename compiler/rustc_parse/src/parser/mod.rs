@@ -159,8 +159,9 @@ pub struct Parser<'a> {
     /// appropriately.
     ///
     /// See the comments in the `parse_path_segment` function for more details.
-    unmatched_angle_bracket_count: u32,
-    max_angle_bracket_count: u32,
+    unmatched_angle_bracket_count: u16,
+    max_angle_bracket_count: u16,
+    angle_bracket_nesting: u16,
 
     last_unexpected_token_span: Option<Span>,
     /// If present, this `Parser` is not parsing Rust code but rather a macro call.
@@ -394,6 +395,7 @@ impl<'a> Parser<'a> {
             break_last_token: false,
             unmatched_angle_bracket_count: 0,
             max_angle_bracket_count: 0,
+            angle_bracket_nesting: 0,
             last_unexpected_token_span: None,
             subparser_name,
             capture_state: CaptureState {

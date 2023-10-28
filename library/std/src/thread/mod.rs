@@ -545,6 +545,15 @@ impl Builder {
             scope_data.increment_num_running_threads();
         }
 
+        let main = Box::new(main);
+        // SAFETY: dynamic size and alignment of the Box remain the same. See below for why the
+        // lifetime change is justified.
+        #[cfg(bootstrap)]
+        let main =
+            unsafe { mem::transmute::<Box<dyn FnOnce() + 'a>, Box<dyn FnOnce() + 'static>>(main) };
+        #[cfg(not(bootstrap))]
+        let main = unsafe { Box::from_raw(Box::into_raw(main) as *mut (dyn FnOnce() + 'static)) };
+
         Ok(JoinInner {
             // SAFETY:
             //
@@ -559,14 +568,7 @@ impl Builder {
             // Similarly, the `sys` implementation must guarantee that no references to the closure
             // exist after the thread has terminated, which is signaled by `Thread::join`
             // returning.
-            native: unsafe {
-                imp::Thread::new(
-                    stack_size,
-                    mem::transmute::<Box<dyn FnOnce() + 'a>, Box<dyn FnOnce() + 'static>>(
-                        Box::new(main),
-                    ),
-                )?
-            },
+            native: unsafe { imp::Thread::new(stack_size, main)? },
             thread: my_thread,
             packet: my_packet,
         })

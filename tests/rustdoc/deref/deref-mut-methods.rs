@@ -9,7 +9,7 @@ impl Foo {
 }
 
 // @has foo/struct.Bar.html
-// @has - '//*[@class="sidebar-elems"]//*[@class="block"]//a[@href="#method.foo"]' 'foo'
+// @has - '//*[@class="sidebar-elems"]//*[@class="block deref-methods"]//a[@href="#method.foo"]' 'foo'
 pub struct Bar {
     foo: Foo,
 }

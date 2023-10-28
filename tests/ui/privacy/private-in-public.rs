@@ -104,8 +104,8 @@ mod aliases_pub {
 
     // This should be OK, but associated type aliases are not substituted yet
     pub fn f3(arg: <Priv as PrivTr>::Assoc) {}
-    //~^ WARNING trait `aliases_pub::PrivTr` is more private than the item `aliases_pub::f3`
-    //~| WARNING type `aliases_pub::Priv` is more private than the item `aliases_pub::f3`
+    //~^ WARNING type `aliases_pub::Priv` is more private than the item `aliases_pub::f3`
+    //~| WARNING associated type `aliases_pub::PrivTr::Assoc` is more private than the item `aliases_pub::f3`
 
     impl PrivUseAlias {
         pub fn f(arg: Priv) {}
@@ -133,8 +133,8 @@ mod aliases_priv {
     pub fn f1(arg: PrivUseAlias) {} //~ WARNING type `Priv1` is more private than the item `aliases_priv::f1`
     pub fn f2(arg: PrivAlias) {} //~ WARNING type `Priv2` is more private than the item `aliases_priv::f2`
     pub fn f3(arg: <Priv as PrivTr>::Assoc) {}
-    //~^ WARNING trait `aliases_priv::PrivTr` is more private than the item `aliases_priv::f3`
-    //~| WARNING type `aliases_priv::Priv` is more private than the item `aliases_priv::f3`
+    //~^ WARNING type `aliases_priv::Priv` is more private than the item `aliases_priv::f3`
+    //~| WARNING associated type `aliases_priv::PrivTr::Assoc` is more private than the item `aliases_priv::f3`
 }
 
 mod aliases_params {

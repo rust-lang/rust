@@ -6,7 +6,7 @@ pub mod tls;
 
 use crate::arena::Arena;
 use crate::dep_graph::{DepGraph, DepKindStruct};
-use crate::infer::canonical::CanonicalVarInfo;
+use crate::infer::canonical::{CanonicalVarInfo, CanonicalVarInfos};
 use crate::lint::struct_lint_level;
 use crate::metadata::ModChild;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrs;
@@ -84,10 +84,12 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type AdtDef = ty::AdtDef<'tcx>;
     type GenericArgs = ty::GenericArgsRef<'tcx>;
     type GenericArg = ty::GenericArg<'tcx>;
+    type Term = ty::Term<'tcx>;
+
     type Binder<T> = Binder<'tcx, T>;
-    type Predicate = Predicate<'tcx>;
-    type PredicateKind = ty::PredicateKind<'tcx>;
     type TypeAndMut = TypeAndMut<'tcx>;
+    type CanonicalVars = CanonicalVarInfos<'tcx>;
+
     type Ty = Ty<'tcx>;
     type Tys = &'tcx List<Ty<'tcx>>;
     type AliasTy = ty::AliasTy<'tcx>;
@@ -95,10 +97,12 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type BoundTy = ty::BoundTy;
     type PlaceholderTy = ty::PlaceholderType;
     type InferTy = InferTy;
+
     type ErrorGuaranteed = ErrorGuaranteed;
     type BoundExistentialPredicates = &'tcx List<PolyExistentialPredicate<'tcx>>;
     type PolyFnSig = PolyFnSig<'tcx>;
     type AllocId = crate::mir::interpret::AllocId;
+
     type Const = ty::Const<'tcx>;
     type InferConst = ty::InferConst;
     type AliasConst = ty::UnevaluatedConst<'tcx>;
@@ -107,12 +111,22 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type BoundConst = ty::BoundVar;
     type ValueConst = ty::ValTree<'tcx>;
     type ExprConst = ty::Expr<'tcx>;
+
     type Region = Region<'tcx>;
     type EarlyBoundRegion = ty::EarlyBoundRegion;
     type BoundRegion = ty::BoundRegion;
     type FreeRegion = ty::FreeRegion;
     type InferRegion = ty::RegionVid;
     type PlaceholderRegion = ty::PlaceholderRegion;
+
+    type Predicate = Predicate<'tcx>;
+    type TraitPredicate = ty::TraitPredicate<'tcx>;
+    type RegionOutlivesPredicate = ty::RegionOutlivesPredicate<'tcx>;
+    type TypeOutlivesPredicate = ty::TypeOutlivesPredicate<'tcx>;
+    type ProjectionPredicate = ty::ProjectionPredicate<'tcx>;
+    type SubtypePredicate = ty::SubtypePredicate<'tcx>;
+    type CoercePredicate = ty::CoercePredicate<'tcx>;
+    type ClosureKind = ty::ClosureKind;
 
     fn ty_and_mut_to_parts(
         TypeAndMut { ty, mutbl }: TypeAndMut<'tcx>,
@@ -148,6 +162,7 @@ pub struct CtxtInterners<'tcx> {
     external_constraints: InternedSet<'tcx, ExternalConstraintsData<'tcx>>,
     predefined_opaques_in_body: InternedSet<'tcx, PredefinedOpaquesData<'tcx>>,
     fields: InternedSet<'tcx, List<FieldIdx>>,
+    local_def_ids: InternedSet<'tcx, List<LocalDefId>>,
 }
 
 impl<'tcx> CtxtInterners<'tcx> {
@@ -173,6 +188,7 @@ impl<'tcx> CtxtInterners<'tcx> {
             external_constraints: Default::default(),
             predefined_opaques_in_body: Default::default(),
             fields: Default::default(),
+            local_def_ids: Default::default(),
         }
     }
 
@@ -1559,6 +1575,7 @@ slice_interners!(
     place_elems: pub mk_place_elems(PlaceElem<'tcx>),
     bound_variable_kinds: pub mk_bound_variable_kinds(ty::BoundVariableKind),
     fields: pub mk_fields(FieldIdx),
+    local_def_ids: intern_local_def_ids(LocalDefId),
 );
 
 impl<'tcx> TyCtxt<'tcx> {
@@ -1786,6 +1803,13 @@ impl<'tcx> TyCtxt<'tcx> {
         // re-interning permutations, in which case that would be asserted
         // here.
         self.intern_clauses(clauses)
+    }
+
+    pub fn mk_local_def_ids(self, clauses: &[LocalDefId]) -> &'tcx List<LocalDefId> {
+        // FIXME consider asking the input slice to be sorted to avoid
+        // re-interning permutations, in which case that would be asserted
+        // here.
+        self.intern_local_def_ids(clauses)
     }
 
     pub fn mk_const_list_from_iter<I, T>(self, iter: I) -> T::Output

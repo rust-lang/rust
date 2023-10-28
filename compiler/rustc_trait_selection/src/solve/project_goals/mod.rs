@@ -101,6 +101,10 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
         self.projection_ty.trait_ref(tcx)
     }
 
+    fn polarity(self) -> ty::ImplPolarity {
+        ty::ImplPolarity::Positive
+    }
+
     fn with_self_ty(self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> Self {
         self.with_self_ty(tcx, self_ty)
     }

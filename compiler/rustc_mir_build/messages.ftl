@@ -379,6 +379,5 @@ mir_build_unused_unsafe = unnecessary `unsafe` block
     .label = unnecessary `unsafe` block
 
 mir_build_unused_unsafe_enclosing_block_label = because it's nested under this `unsafe` block
-mir_build_unused_unsafe_enclosing_fn_label = because it's nested under this `unsafe` fn
 
 mir_build_variant_defined_here = not covered

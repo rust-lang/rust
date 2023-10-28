@@ -53,7 +53,7 @@
 //! ## Synchronization
 //!
 //! There is some synchronization needed in order for the compiler to be able to
-//! determine whether a given private session directory is not in used any more.
+//! determine whether a given private session directory is not in use any more.
 //! This is done by creating a lock file for each session directory and
 //! locking it while the directory is still being used. Since file locks have
 //! operating system support, we can rely on the lock being released if the
@@ -136,26 +136,29 @@ const QUERY_CACHE_FILENAME: &str = "query-cache.bin";
 const INT_ENCODE_BASE: usize = base_n::CASE_INSENSITIVE;
 
 /// Returns the path to a session's dependency graph.
-pub fn dep_graph_path(sess: &Session) -> PathBuf {
+pub(crate) fn dep_graph_path(sess: &Session) -> PathBuf {
     in_incr_comp_dir_sess(sess, DEP_GRAPH_FILENAME)
 }
+
 /// Returns the path to a session's staging dependency graph.
 ///
 /// On the difference between dep-graph and staging dep-graph,
 /// see `build_dep_graph`.
-pub fn staging_dep_graph_path(sess: &Session) -> PathBuf {
+pub(crate) fn staging_dep_graph_path(sess: &Session) -> PathBuf {
     in_incr_comp_dir_sess(sess, STAGING_DEP_GRAPH_FILENAME)
 }
-pub fn work_products_path(sess: &Session) -> PathBuf {
+
+pub(crate) fn work_products_path(sess: &Session) -> PathBuf {
     in_incr_comp_dir_sess(sess, WORK_PRODUCTS_FILENAME)
 }
+
 /// Returns the path to a session's query cache.
 pub fn query_cache_path(sess: &Session) -> PathBuf {
     in_incr_comp_dir_sess(sess, QUERY_CACHE_FILENAME)
 }
 
 /// Locks a given session directory.
-pub fn lock_file_path(session_dir: &Path) -> PathBuf {
+fn lock_file_path(session_dir: &Path) -> PathBuf {
     let crate_dir = session_dir.parent().unwrap();
 
     let directory_name = session_dir.file_name().unwrap().to_string_lossy();
@@ -202,7 +205,7 @@ pub fn in_incr_comp_dir(incr_comp_session_dir: &Path, file_name: &str) -> PathBu
 /// The garbage collection will take care of it.
 ///
 /// [`rustc_interface::queries::dep_graph`]: ../../rustc_interface/struct.Queries.html#structfield.dep_graph
-pub fn prepare_session_directory(
+pub(crate) fn prepare_session_directory(
     sess: &Session,
     crate_name: Symbol,
     stable_crate_id: StableCrateId,
@@ -373,7 +376,7 @@ pub fn finalize_session_directory(sess: &Session, svh: Option<Svh>) {
     let _ = garbage_collect_session_directories(sess);
 }
 
-pub fn delete_all_session_dir_contents(sess: &Session) -> io::Result<()> {
+pub(crate) fn delete_all_session_dir_contents(sess: &Session) -> io::Result<()> {
     let sess_dir_iterator = sess.incr_comp_session_dir().read_dir()?;
     for entry in sess_dir_iterator {
         let entry = entry?;
@@ -621,7 +624,7 @@ fn is_old_enough_to_be_collected(timestamp: SystemTime) -> bool {
 }
 
 /// Runs garbage collection for the current session.
-pub fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
+pub(crate) fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
     debug!("garbage_collect_session_directories() - begin");
 
     let session_directory = sess.incr_comp_session_dir();

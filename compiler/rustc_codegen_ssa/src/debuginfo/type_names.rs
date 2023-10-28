@@ -15,7 +15,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stable_hasher::{Hash64, HashStable, StableHasher};
 use rustc_hir::def_id::DefId;
 use rustc_hir::definitions::{DefPathData, DefPathDataName, DisambiguatedDefPathData};
-use rustc_hir::{AsyncCoroutineKind, CoroutineKind, Mutability};
+use rustc_hir::{CoroutineKind, CoroutineSource, Mutability};
 use rustc_middle::ty::layout::{IntegerExt, TyAndLayout};
 use rustc_middle::ty::{self, ExistentialProjection, ParamEnv, Ty, TyCtxt};
 use rustc_middle::ty::{GenericArgKind, GenericArgsRef};
@@ -560,9 +560,9 @@ pub fn push_item_name(tcx: TyCtxt<'_>, def_id: DefId, qualified: bool, output: &
 
 fn coroutine_kind_label(coroutine_kind: Option<CoroutineKind>) -> &'static str {
     match coroutine_kind {
-        Some(CoroutineKind::Async(AsyncCoroutineKind::Block)) => "async_block",
-        Some(CoroutineKind::Async(AsyncCoroutineKind::Closure)) => "async_closure",
-        Some(CoroutineKind::Async(AsyncCoroutineKind::Fn)) => "async_fn",
+        Some(CoroutineKind::Async(CoroutineSource::Block)) => "async_block",
+        Some(CoroutineKind::Async(CoroutineSource::Closure)) => "async_closure",
+        Some(CoroutineKind::Async(CoroutineSource::Fn)) => "async_fn",
         Some(CoroutineKind::Coroutine) => "coroutine",
         None => "closure",
     }

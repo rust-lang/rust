@@ -26,7 +26,7 @@ impl Drop for NotSend {
 impl !Send for NotSend {}
 
 async fn foo() {
-    //~^ NOTE used within this `async fn` body
+    //~^ NOTE used within this `async` fn body
     //~| NOTE within this `impl Future
     let mut x = (NotSend {},);
     drop(x.0);

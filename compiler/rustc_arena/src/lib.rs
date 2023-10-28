@@ -18,7 +18,6 @@
 #![feature(new_uninit)]
 #![feature(maybe_uninit_slice)]
 #![feature(decl_macro)]
-#![feature(pointer_byte_offsets)]
 #![feature(rustc_attrs)]
 #![cfg_attr(test, feature(test))]
 #![feature(strict_provenance)]

@@ -50,8 +50,8 @@ pub(crate) struct Cache {
     /// Unlike 'paths', this mapping ignores any renames that occur
     /// due to 'use' statements.
     ///
-    /// This map is used when writing out the special 'implementors'
-    /// javascript file. By using the exact path that the type
+    /// This map is used when writing out the `impl.trait` and `impl.type`
+    /// javascript files. By using the exact path that the type
     /// is declared with, we ensure that each path will be identical
     /// to the path used if the corresponding type is inlined. By
     /// doing this, we can detect duplicate impls on a trait page, and only display

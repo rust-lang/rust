@@ -791,7 +791,7 @@ impl u8 {
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
     pub const fn is_ascii_alphanumeric(&self) -> bool {
-        matches!(*self, b'0'..=b'9' | b'A'..=b'Z' | b'a'..=b'z')
+        matches!(*self, b'0'..=b'9') | matches!(*self, b'A'..=b'Z') | matches!(*self, b'a'..=b'z')
     }
 
     /// Checks if the value is an ASCII decimal digit:
@@ -894,7 +894,7 @@ impl u8 {
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
     pub const fn is_ascii_hexdigit(&self) -> bool {
-        matches!(*self, b'0'..=b'9' | b'A'..=b'F' | b'a'..=b'f')
+        matches!(*self, b'0'..=b'9') | matches!(*self, b'A'..=b'F') | matches!(*self, b'a'..=b'f')
     }
 
     /// Checks if the value is an ASCII punctuation character:
@@ -932,7 +932,10 @@ impl u8 {
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
     pub const fn is_ascii_punctuation(&self) -> bool {
-        matches!(*self, b'!'..=b'/' | b':'..=b'@' | b'['..=b'`' | b'{'..=b'~')
+        matches!(*self, b'!'..=b'/')
+            | matches!(*self, b':'..=b'@')
+            | matches!(*self, b'['..=b'`')
+            | matches!(*self, b'{'..=b'~')
     }
 
     /// Checks if the value is an ASCII graphic character:

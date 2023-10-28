@@ -660,9 +660,21 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         } else {
             match self.try_coercion_cast(fcx) {
                 Ok(()) => {
-                    self.trivial_cast_lint(fcx);
-                    debug!(" -> CoercionCast");
-                    fcx.typeck_results.borrow_mut().set_coercion_cast(self.expr.hir_id.local_id);
+                    if self.expr_ty.is_unsafe_ptr() && self.cast_ty.is_unsafe_ptr() {
+                        // When casting a raw pointer to another raw pointer, we cannot convert the cast into
+                        // a coercion because the pointee types might only differ in regions, which HIR typeck
+                        // cannot distinguish. This would cause us to erroneously discard a cast which will
+                        // lead to a borrowck error like #113257.
+                        // We still did a coercion above to unify inference variables for `ptr as _` casts.
+                        // This does cause us to miss some trivial casts in the trival cast lint.
+                        debug!(" -> PointerCast");
+                    } else {
+                        self.trivial_cast_lint(fcx);
+                        debug!(" -> CoercionCast");
+                        fcx.typeck_results
+                            .borrow_mut()
+                            .set_coercion_cast(self.expr.hir_id.local_id);
+                    }
                 }
                 Err(_) => {
                     match self.do_check(fcx) {

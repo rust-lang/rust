@@ -22,7 +22,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::is_range_literal;
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{AsyncCoroutineKind, CoroutineKind, Node};
+use rustc_hir::{CoroutineKind, CoroutineSource, Node};
 use rustc_hir::{Expr, HirId};
 use rustc_infer::infer::error_reporting::TypeErrCtxt;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
@@ -2410,7 +2410,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 .and_then(|coroutine_did| {
                     Some(match self.tcx.coroutine_kind(coroutine_did).unwrap() {
                         CoroutineKind::Coroutine => format!("coroutine is not {trait_name}"),
-                        CoroutineKind::Async(AsyncCoroutineKind::Fn) => self
+                        CoroutineKind::Async(CoroutineSource::Fn) => self
                             .tcx
                             .parent(coroutine_did)
                             .as_local()
@@ -2419,10 +2419,10 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             .map(|name| {
                                 format!("future returned by `{name}` is not {trait_name}")
                             })?,
-                        CoroutineKind::Async(AsyncCoroutineKind::Block) => {
+                        CoroutineKind::Async(CoroutineSource::Block) => {
                             format!("future created by async block is not {trait_name}")
                         }
-                        CoroutineKind::Async(AsyncCoroutineKind::Closure) => {
+                        CoroutineKind::Async(CoroutineSource::Closure) => {
                             format!("future created by async closure is not {trait_name}")
                         }
                     })
@@ -2995,11 +2995,11 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 let sp = self.tcx.def_span(def_id);
 
                                 // Special-case this to say "async block" instead of `[static coroutine]`.
-                                let kind = tcx.coroutine_kind(def_id).unwrap().descr();
+                                let kind = tcx.coroutine_kind(def_id).unwrap();
                                 err.span_note(
                                     sp,
                                     with_forced_trimmed_paths!(format!(
-                                        "required because it's used within this {kind}",
+                                        "required because it's used within this {kind:#}",
                                     )),
                                 )
                             }
@@ -3465,11 +3465,11 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         if let Some(Node::Expr(expr)) = hir.find(arg_hir_id)
             && let Some(typeck_results) = &self.typeck_results
         {
-            if let hir::Expr { kind: hir::ExprKind::Block(..), .. } = expr {
-                let expr = expr.peel_blocks();
-                let ty =
-                    typeck_results.expr_ty_adjusted_opt(expr).unwrap_or(Ty::new_misc_error(tcx));
-                let span = expr.span;
+            if let hir::Expr { kind: hir::ExprKind::Block(block, _), .. } = expr {
+                let inner_expr = expr.peel_blocks();
+                let ty = typeck_results.expr_ty_adjusted_opt(inner_expr)
+                    .unwrap_or(Ty::new_misc_error(tcx));
+                let span = inner_expr.span;
                 if Some(span) != err.span.primary_span() {
                     err.span_label(
                         span,
@@ -3480,6 +3480,49 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             format!("this tail expression is of type `{ty}`")
                         },
                     );
+                    if let ty::PredicateKind::Clause(clause) = failed_pred.kind().skip_binder()
+                        && let ty::ClauseKind::Trait(pred) = clause
+                        && [
+                            tcx.lang_items().fn_once_trait(),
+                            tcx.lang_items().fn_mut_trait(),
+                            tcx.lang_items().fn_trait(),
+                        ].contains(&Some(pred.def_id()))
+                    {
+                        if let [stmt, ..] = block.stmts
+                            && let hir::StmtKind::Semi(value) = stmt.kind
+                            && let hir::ExprKind::Closure(hir::Closure {
+                                body,
+                                fn_decl_span,
+                                ..
+                            }) = value.kind
+                            && let body = hir.body(*body)
+                            && !matches!(body.value.kind, hir::ExprKind::Block(..))
+                        {
+                            // Check if the failed predicate was an expectation of a closure type
+                            // and if there might have been a `{ |args|` typo instead of `|args| {`.
+                            err.multipart_suggestion(
+                                "you might have meant to open the closure body instead of placing \
+                                 a closure within a block",
+                                vec![
+                                    (expr.span.with_hi(value.span.lo()), String::new()),
+                                    (fn_decl_span.shrink_to_hi(), " {".to_string()),
+                                ],
+                                Applicability::MaybeIncorrect,
+                            );
+                        } else {
+                            // Maybe the bare block was meant to be a closure.
+                            err.span_suggestion_verbose(
+                                expr.span.shrink_to_lo(),
+                                "you might have meant to create the closure instead of a block",
+                                format!(
+                                    "|{}| ",
+                                    (0..pred.trait_ref.args.len() - 1).map(|_| "_")
+                                        .collect::<Vec<_>>()
+                                        .join(", ")),
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
+                    }
                 }
             }
 

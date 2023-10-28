@@ -1,0 +1,59 @@
+error[E0107]: function takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/no-explicit-const-params-cross-crate.rs:14:5
+   |
+LL |     foo::<false>();
+   |     ^^^--------- help: remove these generics
+   |     |
+   |     expected 0 generic arguments
+   |
+note: function defined here, with 0 generic parameters
+  --> $DIR/auxiliary/cross-crate.rs:3:14
+   |
+LL | pub const fn foo() {}
+   |              ^^^
+
+error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/no-explicit-const-params-cross-crate.rs:16:12
+   |
+LL |     <() as Bar<false>>::bar();
+   |            ^^^------- help: remove these generics
+   |            |
+   |            expected 0 generic arguments
+   |
+note: trait defined here, with 0 generic parameters
+  --> $DIR/auxiliary/cross-crate.rs:6:11
+   |
+LL | pub trait Bar {
+   |           ^^^
+
+error[E0107]: function takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/no-explicit-const-params-cross-crate.rs:7:5
+   |
+LL |     foo::<true>();
+   |     ^^^-------- help: remove these generics
+   |     |
+   |     expected 0 generic arguments
+   |
+note: function defined here, with 0 generic parameters
+  --> $DIR/auxiliary/cross-crate.rs:3:14
+   |
+LL | pub const fn foo() {}
+   |              ^^^
+
+error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/no-explicit-const-params-cross-crate.rs:9:12
+   |
+LL |     <() as Bar<true>>::bar();
+   |            ^^^------ help: remove these generics
+   |            |
+   |            expected 0 generic arguments
+   |
+note: trait defined here, with 0 generic parameters
+  --> $DIR/auxiliary/cross-crate.rs:6:11
+   |
+LL | pub trait Bar {
+   |           ^^^
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0107`.
