@@ -558,8 +558,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
         this.buffered_atomic_write(val, dest, atomic, val)
     }
 
-    /// Perform an atomic operation on a memory location.
-    fn atomic_op_immediate(
+    /// Perform an atomic RMW operation on a memory location.
+    fn atomic_rmw_op_immediate(
         &mut self,
         place: &MPlaceTy<'tcx, Provenance>,
         rhs: &ImmTy<'tcx, Provenance>,
