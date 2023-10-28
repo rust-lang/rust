@@ -20,9 +20,9 @@ declare_clippy_lint! {
     /// (`for val in &iter {}`), without having to first call `iter()` or `iter_mut()`.
     ///
     /// ### Limitations
-    /// This lint is restricted to exported types only, because it is aimed at guiding towards an
-    /// idiomatic, _public_ API.
-    /// Implementing the `IntoIterator` trait when it is not needed or used anywhere doesn't help or improve the code.
+    /// This lint focuses on providing an idiomatic API. Therefore, it will only
+    /// lint on types which are accessible outside of the crate. For internal types,
+    /// the `IntoIterator` trait can be implemented on demand if it is actually needed.
     ///
     /// ### Example
     /// ```rust
@@ -67,10 +67,12 @@ declare_clippy_lint! {
     /// in case of ambiguity with another `IntoIterator` impl.
     ///
     /// ### Limitations
-    /// This lint is restricted to exported types only, because it is aimed at guiding towards an
-    /// idiomatic, _public_ API.
-    /// Adding an `iter` or `iter_mut` for private types when it is not needed or used doesn't improve code,
-    /// and in fact, is linted against by the `dead_code` lint.
+    /// This lint focuses on providing an idiomatic API. Therefore, it will only
+    /// lint on types which are accessible outside of the crate. For internal types,
+    /// these methods can be added on demand if they are actually needed. Otherwise,
+    /// it would trigger the [`dead_code`] lint for the unused method.
+    ///
+    /// [`dead_code`]: https://doc.rust-lang.org/rustc/lints/listing/warn-by-default.html#dead-code
     ///
     /// ### Example
     /// ```rust
