@@ -258,6 +258,12 @@ fn main() {
     {
         println!("cargo:rustc-link-lib=z");
     } else if target.contains("netbsd") {
+        // On NetBSD/i386, gcc and g++ is built for i486 (to maximize backward compat)
+        // However, LLVM insists on using 64-bit atomics.
+        // This gives rise to a need to link rust itself with -latomic for these targets
+        if target.starts_with("i586") || target.starts_with("i686") {
+            println!("cargo:rustc-link-lib=atomic");
+        }
         println!("cargo:rustc-link-lib=z");
         println!("cargo:rustc-link-lib=execinfo");
     }
