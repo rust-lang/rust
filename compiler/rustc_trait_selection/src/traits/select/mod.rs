@@ -1015,6 +1015,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
                 ty::PredicateKind::Ambiguous => Ok(EvaluatedToAmbig),
                 ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, ty)) => {
+                    // FIXME(DefineOpaqueTypes): no test exercizes using `DefineOpaqueTypes::Yes`
+                    // below.
                     match self.infcx.at(&obligation.cause, obligation.param_env).eq(
                         DefineOpaqueTypes::No,
                         ct.ty(),
