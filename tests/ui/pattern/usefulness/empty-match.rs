@@ -47,9 +47,19 @@ enum NonEmptyEnum2 {
     //~| NOTE not covered
 }
 enum NonEmptyEnum5 {
+    V1, V2, V3, V4, V5,
     //~^ NOTE `NonEmptyEnum5` defined here
     //~| NOTE `NonEmptyEnum5` defined here
-    V1, V2, V3, V4, V5,
+    //~| NOTE not covered
+    //~| NOTE not covered
+    //~| NOTE not covered
+    //~| NOTE not covered
+    //~| NOTE not covered
+    //~| NOTE not covered
+    //~| NOTE not covered
+    //~| NOTE not covered
+    //~| NOTE not covered
+    //~| NOTE not covered
 }
 
 fn empty_enum(x: EmptyEnum) {

@@ -107,6 +107,9 @@ LL |     match Some(A) {
    |
 note: `Option<Enum>` defined here
   --> $SRC_DIR/core/src/option.rs:LL:COL
+  ::: $SRC_DIR/core/src/option.rs:LL:COL
+   |
+   = note: not covered
    = note: the matched value is of type `Option<Enum>`
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown, or multiple match arms
    |

@@ -1033,10 +1033,8 @@ fn adt_defined_here<'p, 'tcx>(
     let ty = ty.peel_refs();
     if let ty::Adt(def, _) = ty.kind() {
         let mut spans = vec![];
-        if witnesses.len() < 5 {
-            for sp in maybe_point_at_variant(cx, *def, witnesses.iter()) {
-                spans.push(sp);
-            }
+        for sp in maybe_point_at_variant(cx, *def, witnesses.iter().take(5)) {
+            spans.push(sp);
         }
         let def_span = cx
             .tcx
