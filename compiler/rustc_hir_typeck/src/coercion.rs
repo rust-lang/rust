@@ -1139,6 +1139,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // Don't reify if the function types have a LUB, i.e., they
                         // are the same function and their parameters have a LUB.
                         match self.commit_if_ok(|_| {
+                            // FIXME(DefineOpaqueTypes): no test exercizes using
+                            // `DefineOpaqueTypes::Yes` below.
                             self.at(cause, self.param_env).lub(
                                 DefineOpaqueTypes::No,
                                 prev_ty,
