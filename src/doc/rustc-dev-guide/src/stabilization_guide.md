@@ -109,7 +109,7 @@ to stabilize, something like (this example is taken from
 
 ```rust,ignore
 // pub(restricted) visibilities (RFC 1422)
-(active, pub_restricted, "CURRENT_RUSTC_VERSION", Some(32409)),
+(unstable, pub_restricted, "CURRENT_RUSTC_VERSION", Some(32409)),
 ```
 
 The above line should be moved down to the area for "accepted"

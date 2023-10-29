@@ -20,12 +20,12 @@ See ["Stability in code"][adding] in the "Implementing new features" section for
 
 To remove a feature gate, follow these steps:
 
-1. Remove the feature gate declaration in `rustc_feature/src/active.rs`.
+1. Remove the feature gate declaration in `rustc_feature/src/unstable.rs`.
    It will look like this:
 
    ```rust,ignore
    /// description of feature
-   (active, $feature_name, "$version", Some($tracking_issue_number), $edition)
+   (unstable, $feature_name, "$version", Some($tracking_issue_number), $edition)
    ```
 
 2. Add a modified version of the feature gate declaration that you just
@@ -45,12 +45,12 @@ To remove a feature gate, follow these steps:
 To rename a feature gate, follow these steps (the first two are the same steps
 to follow when [removing a feature gate][removing]):
 
-1. Remove the old feature gate declaration in `rustc_feature/src/active.rs`.
+1. Remove the old feature gate declaration in `rustc_feature/src/unstable.rs`.
    It will look like this:
 
    ```rust,ignore
    /// description of feature
-   (active, $old_feature_name, "$version", Some($tracking_issue_number), $edition)
+   (unstable, $old_feature_name, "$version", Some($tracking_issue_number), $edition)
    ```
 
 2. Add a modified version of the old feature gate declaration that you just
@@ -64,12 +64,12 @@ to follow when [removing a feature gate][removing]):
    ```
 
 3. Add a feature gate declaration with the new name to
-   `rustc_feature/src/active.rs`. It should look very similar to the old
+   `rustc_feature/src/unstable.rs`. It should look very similar to the old
    declaration:
 
    ```rust,ignore
    /// description of feature
-   (active, $new_feature_name, "$version", Some($tracking_issue_number), $edition)
+   (unstable, $new_feature_name, "$version", Some($tracking_issue_number), $edition)
    ```
 
 

@@ -123,12 +123,12 @@ a new unstable feature:
 
 1. Add the feature name to `rustc_span/src/symbol.rs` in the `Symbols {...}` block.
 
-1. Add a feature gate declaration to `rustc_feature/src/active.rs` in the active
+1. Add a feature gate declaration to `rustc_feature/src/unstable.rs` in the unstable
    `declare_features` block.
 
    ```rust ignore
    /// description of feature
-   (active, $feature_name, "CURRENT_RUSTC_VERSION", Some($tracking_issue_number), $edition)
+   (unstable, $feature_name, "CURRENT_RUSTC_VERSION", Some($tracking_issue_number), $edition)
    ```
 
    where `$edition` has the type `Option<Edition>`, and is typically just `None`. If you haven't yet
@@ -140,7 +140,7 @@ a new unstable feature:
 
    ```rust ignore
    /// Allows defining identifiers beyond ASCII.
-   (active, non_ascii_idents, "CURRENT_RUSTC_VERSION", Some(55467), None),
+   (unstable, non_ascii_idents, "CURRENT_RUSTC_VERSION", Some(55467), None),
    ```
 
    Features can be marked as incomplete, and trigger the warn-by-default [`incomplete_features`
