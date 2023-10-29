@@ -1,0 +1,13 @@
+error[E0700]: hidden type for `impl Trait + 'static` captures lifetime that does not appear in bounds
+  --> $DIR/opaque-type-param.rs:7:5
+   |
+LL | fn foo<'a>(s: &'a str) -> impl Trait + 'static {
+   |        --                 -------------------- opaque type defined here
+   |        |
+   |        hidden type `impl Trait + 'static` captures the lifetime `'a` as defined here
+LL |     bar(s)
+   |     ^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0700`.

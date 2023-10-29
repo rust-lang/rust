@@ -9,6 +9,7 @@ use rustc_middle::ty;
 
 pub mod components;
 pub mod env;
+pub mod for_liveness;
 pub mod obligations;
 pub mod test_type_match;
 pub mod verify;
