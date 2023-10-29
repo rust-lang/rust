@@ -1745,6 +1745,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             if let Some(_) = remaining_fields.remove(&ident) {
                                 let target_ty = self.field_ty(base_expr.span, f, args);
                                 let cause = self.misc(base_expr.span);
+                                // FIXME(DefineOpaqueTypes): no test exercizes using
+                                // `DefineOpaqueTypes::Yes` below.
                                 match self.at(&cause, self.param_env).sup(
                                     DefineOpaqueTypes::No,
                                     target_ty,
