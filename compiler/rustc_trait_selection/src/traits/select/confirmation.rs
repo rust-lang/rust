@@ -1130,6 +1130,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         if unsizing_params.contains(i as u32) { args_b[i] } else { k }
                     }));
                 let new_struct = Ty::new_adt(tcx, def, args);
+                // FIXME(DefineOpaqueTypes): no test exercizes using `DefineOpaqueTypes::Yes` below.
                 let InferOk { obligations, .. } = self
                     .infcx
                     .at(&obligation.cause, obligation.param_env)
