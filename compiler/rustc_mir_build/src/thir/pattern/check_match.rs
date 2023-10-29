@@ -58,7 +58,7 @@ fn create_e0004(
     struct_span_err!(sess, sp, E0004, "{}", &error_message)
 }
 
-#[derive(PartialEq)]
+#[derive(Copy, Clone, PartialEq)]
 enum RefutableFlag {
     Irrefutable,
     Refutable,
@@ -197,32 +197,36 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
         self.let_source = old_let_source;
     }
 
-    fn with_lint_level(&mut self, new_lint_level: LintLevel, f: impl FnOnce(&mut Self)) {
+    fn with_lint_level<T>(
+        &mut self,
+        new_lint_level: LintLevel,
+        f: impl FnOnce(&mut Self) -> T,
+    ) -> T {
         if let LintLevel::Explicit(hir_id) = new_lint_level {
             let old_lint_level = self.lint_level;
             self.lint_level = hir_id;
-            f(self);
+            let ret = f(self);
             self.lint_level = old_lint_level;
+            ret
         } else {
-            f(self);
+            f(self)
         }
-    }
-
-    fn check_patterns(&self, pat: &Pat<'tcx>, rf: RefutableFlag) {
-        pat.walk_always(|pat| check_borrow_conflicts_in_at_patterns(self, pat));
-        check_for_bindings_named_same_as_variants(self, pat, rf);
     }
 
     fn lower_pattern(
         &mut self,
         cx: &MatchCheckCtxt<'p, 'tcx>,
-        pattern: &Pat<'tcx>,
+        pat: &Pat<'tcx>,
     ) -> Result<&'p DeconstructedPat<'p, 'tcx>, ErrorGuaranteed> {
-        if let Err(err) = pattern.pat_error_reported() {
+        if let Err(err) = pat.pat_error_reported() {
             self.error = Err(err);
             Err(err)
         } else {
-            Ok(cx.pattern_arena.alloc(DeconstructedPat::from_pat(cx, pattern)))
+            // Check the pattern for some things unrelated to exhaustiveness.
+            let refutable = if cx.refutable { Refutable } else { Irrefutable };
+            pat.walk_always(|pat| check_borrow_conflicts_in_at_patterns(self, pat));
+            pat.walk_always(|pat| check_for_bindings_named_same_as_variants(self, pat, refutable));
+            Ok(cx.pattern_arena.alloc(DeconstructedPat::from_pat(cx, pat)))
         }
     }
 
@@ -241,7 +245,6 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
         if let LetSource::None = source {
             return;
         }
-        self.check_patterns(pat, Refutable);
         let mut cx = self.new_cx(self.lint_level, true);
         let Ok(tpat) = self.lower_pattern(&cx, pat) else { return };
         self.check_let_reachability(&mut cx, self.lint_level, source, tpat, span);
@@ -258,18 +261,18 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
 
         let mut tarms = Vec::with_capacity(arms.len());
         for &arm in arms {
-            // Check the arm for some things unrelated to exhaustiveness.
             let arm = &self.thir.arms[arm];
-            self.with_lint_level(arm.lint_level, |this| {
-                this.check_patterns(&arm.pattern, Refutable);
+            let got_error = self.with_lint_level(arm.lint_level, |this| {
+                let Ok(pat) = this.lower_pattern(&mut cx, &arm.pattern) else {
+                    return true;
+                };
+                let arm = MatchArm { pat, hir_id: this.lint_level, has_guard: arm.guard.is_some() };
+                tarms.push(arm);
+                false
             });
-            let hir_id = match arm.lint_level {
-                LintLevel::Explicit(hir_id) => hir_id,
-                LintLevel::Inherited => self.lint_level,
-            };
-            let Ok(pat) = self.lower_pattern(&mut cx, &arm.pattern) else { return };
-            let arm = MatchArm { pat, hir_id, has_guard: arm.guard.is_some() };
-            tarms.push(arm);
+            if got_error {
+                return;
+            }
         }
 
         let scrut = &self.thir[scrut];
@@ -458,7 +461,6 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
         let witnesses = report.non_exhaustiveness_witnesses;
         if witnesses.is_empty() {
             // The pattern is irrefutable.
-            self.check_patterns(pat, Irrefutable);
             return;
         }
 
@@ -659,43 +661,41 @@ fn check_for_bindings_named_same_as_variants(
     pat: &Pat<'_>,
     rf: RefutableFlag,
 ) {
-    pat.walk_always(|p| {
-        if let PatKind::Binding {
-            name,
-            mode: BindingMode::ByValue,
-            mutability: Mutability::Not,
-            subpattern: None,
-            ty,
-            ..
-        } = p.kind
-            && let ty::Adt(edef, _) = ty.peel_refs().kind()
-            && edef.is_enum()
-            && edef
-                .variants()
-                .iter()
-                .any(|variant| variant.name == name && variant.ctor_kind() == Some(CtorKind::Const))
-        {
-            let variant_count = edef.variants().len();
-            let ty_path = with_no_trimmed_paths!(cx.tcx.def_path_str(edef.did()));
-            cx.tcx.emit_spanned_lint(
-                BINDINGS_WITH_VARIANT_NAME,
-                cx.lint_level,
-                p.span,
-                BindingsWithVariantName {
-                    // If this is an irrefutable pattern, and there's > 1 variant,
-                    // then we can't actually match on this. Applying the below
-                    // suggestion would produce code that breaks on `check_irrefutable`.
-                    suggestion: if rf == Refutable || variant_count == 1 {
-                        Some(p.span)
-                    } else {
-                        None
-                    },
-                    ty_path,
-                    name,
+    if let PatKind::Binding {
+        name,
+        mode: BindingMode::ByValue,
+        mutability: Mutability::Not,
+        subpattern: None,
+        ty,
+        ..
+    } = pat.kind
+        && let ty::Adt(edef, _) = ty.peel_refs().kind()
+        && edef.is_enum()
+        && edef
+            .variants()
+            .iter()
+            .any(|variant| variant.name == name && variant.ctor_kind() == Some(CtorKind::Const))
+    {
+        let variant_count = edef.variants().len();
+        let ty_path = with_no_trimmed_paths!(cx.tcx.def_path_str(edef.did()));
+        cx.tcx.emit_spanned_lint(
+            BINDINGS_WITH_VARIANT_NAME,
+            cx.lint_level,
+            pat.span,
+            BindingsWithVariantName {
+                // If this is an irrefutable pattern, and there's > 1 variant,
+                // then we can't actually match on this. Applying the below
+                // suggestion would produce code that breaks on `check_irrefutable`.
+                suggestion: if rf == Refutable || variant_count == 1 {
+                    Some(pat.span)
+                } else {
+                    None
                 },
-            )
-        }
-    });
+                ty_path,
+                name,
+            },
+        )
+    }
 }
 
 fn irrefutable_let_patterns(
