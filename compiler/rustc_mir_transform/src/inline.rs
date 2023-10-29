@@ -439,6 +439,11 @@ impl<'tcx> Inliner<'tcx> {
         }
 
         if callee_attrs.target_features != self.codegen_fn_attrs.target_features {
+            // In general it is not correct to inline a callee with target features that are a
+            // subset of the caller. This is because the callee might contain calls, and the ABI of
+            // those calls depends on the target features of the surrounding function. By moving a
+            // `Call` terminator from one MIR body to another with more target features, we might
+            // change the ABI of that call!
             return Err("incompatible target features");
         }
 
