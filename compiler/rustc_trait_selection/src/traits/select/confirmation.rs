@@ -173,6 +173,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         );
 
         obligations.extend(self.infcx.commit_if_ok(|_| {
+            // FIXME(DefineOpaqueTypes): no test exercizes using `DefineOpaqueTypes::Yes` below.
             self.infcx
                 .at(&obligation.cause, obligation.param_env)
                 .sup(DefineOpaqueTypes::No, placeholder_trait_predicate, candidate)
