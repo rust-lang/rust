@@ -596,11 +596,7 @@ pub(crate) struct MatchCheckCtxt<'p, 'tcx> {
 
 impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
     pub(super) fn is_uninhabited(&self, ty: Ty<'tcx>) -> bool {
-        if self.tcx.features().exhaustive_patterns {
-            !ty.is_inhabited_from(self.tcx, self.module, self.param_env)
-        } else {
-            false
-        }
+        !ty.is_inhabited_from(self.tcx, self.module, self.param_env)
     }
 
     /// Returns whether the given type is an enum from another crate declared `#[non_exhaustive]`.
