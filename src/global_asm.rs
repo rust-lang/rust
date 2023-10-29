@@ -140,7 +140,7 @@ pub(crate) fn compile_global_asm(
     );
 
     // Assemble `global_asm`
-    if false {
+    if option_env!("CG_CLIF_FORCE_GNU_AS").is_some() {
         let mut child = Command::new(&config.assembler)
             .arg("-o")
             .arg(&global_asm_object_file)
@@ -164,6 +164,7 @@ pub(crate) fn compile_global_asm(
             .arg(&global_asm_object_file)
             .arg("-")
             .arg("-Abad_asm_style")
+            .arg("-Zcodegen-backend=llvm")
             .stdin(Stdio::piped())
             .spawn()
             .expect("Failed to spawn `as`.");
