@@ -1,14 +1,11 @@
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use std::fmt;
-use std::ops::ControlFlow;
 
-use crate::fold::{FallibleTypeFolder, TypeFoldable};
-use crate::visit::{TypeVisitable, TypeVisitor};
 use crate::{HashStableContext, Interner};
 
 /// A clause is something that can appear in where bounds or be inferred
 /// by implied bounds.
-#[derive(derivative::Derivative)]
+#[derive(derivative::Derivative, TypeFoldable, TypeVisitable)]
 #[derivative(Clone(bound = ""), Hash(bound = ""))]
 #[derive(TyEncodable, TyDecodable)]
 pub enum ClauseKind<I: Interner> {
@@ -106,60 +103,7 @@ where
     }
 }
 
-impl<I: Interner> TypeFoldable<I> for ClauseKind<I>
-where
-    I::Ty: TypeFoldable<I>,
-    I::Const: TypeFoldable<I>,
-    I::GenericArg: TypeFoldable<I>,
-    I::TraitPredicate: TypeFoldable<I>,
-    I::ProjectionPredicate: TypeFoldable<I>,
-    I::TypeOutlivesPredicate: TypeFoldable<I>,
-    I::RegionOutlivesPredicate: TypeFoldable<I>,
-{
-    fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<Self, F::Error> {
-        Ok(match self {
-            ClauseKind::Trait(p) => ClauseKind::Trait(p.try_fold_with(folder)?),
-            ClauseKind::RegionOutlives(p) => ClauseKind::RegionOutlives(p.try_fold_with(folder)?),
-            ClauseKind::TypeOutlives(p) => ClauseKind::TypeOutlives(p.try_fold_with(folder)?),
-            ClauseKind::Projection(p) => ClauseKind::Projection(p.try_fold_with(folder)?),
-            ClauseKind::ConstArgHasType(c, t) => {
-                ClauseKind::ConstArgHasType(c.try_fold_with(folder)?, t.try_fold_with(folder)?)
-            }
-            ClauseKind::WellFormed(p) => ClauseKind::WellFormed(p.try_fold_with(folder)?),
-            ClauseKind::ConstEvaluatable(p) => {
-                ClauseKind::ConstEvaluatable(p.try_fold_with(folder)?)
-            }
-        })
-    }
-}
-
-impl<I: Interner> TypeVisitable<I> for ClauseKind<I>
-where
-    I::Ty: TypeVisitable<I>,
-    I::Const: TypeVisitable<I>,
-    I::GenericArg: TypeVisitable<I>,
-    I::TraitPredicate: TypeVisitable<I>,
-    I::ProjectionPredicate: TypeVisitable<I>,
-    I::TypeOutlivesPredicate: TypeVisitable<I>,
-    I::RegionOutlivesPredicate: TypeVisitable<I>,
-{
-    fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
-        match self {
-            ClauseKind::Trait(p) => p.visit_with(visitor),
-            ClauseKind::RegionOutlives(p) => p.visit_with(visitor),
-            ClauseKind::TypeOutlives(p) => p.visit_with(visitor),
-            ClauseKind::Projection(p) => p.visit_with(visitor),
-            ClauseKind::ConstArgHasType(c, t) => {
-                c.visit_with(visitor)?;
-                t.visit_with(visitor)
-            }
-            ClauseKind::WellFormed(p) => p.visit_with(visitor),
-            ClauseKind::ConstEvaluatable(p) => p.visit_with(visitor),
-        }
-    }
-}
-
-#[derive(derivative::Derivative)]
+#[derive(derivative::Derivative, TypeFoldable, TypeVisitable)]
 #[derivative(Clone(bound = ""), Hash(bound = ""))]
 #[derive(TyEncodable, TyDecodable)]
 pub enum PredicateKind<I: Interner> {
@@ -284,77 +228,6 @@ where
                 t1.hash_stable(hcx, hasher);
                 t2.hash_stable(hcx, hasher);
                 r.hash_stable(hcx, hasher);
-            }
-        }
-    }
-}
-
-impl<I: Interner> TypeFoldable<I> for PredicateKind<I>
-where
-    I::DefId: TypeFoldable<I>,
-    I::Const: TypeFoldable<I>,
-    I::GenericArgs: TypeFoldable<I>,
-    I::Term: TypeFoldable<I>,
-    I::CoercePredicate: TypeFoldable<I>,
-    I::SubtypePredicate: TypeFoldable<I>,
-    I::ClosureKind: TypeFoldable<I>,
-    ClauseKind<I>: TypeFoldable<I>,
-{
-    fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<Self, F::Error> {
-        Ok(match self {
-            PredicateKind::Clause(c) => PredicateKind::Clause(c.try_fold_with(folder)?),
-            PredicateKind::ObjectSafe(d) => PredicateKind::ObjectSafe(d.try_fold_with(folder)?),
-            PredicateKind::ClosureKind(d, g, k) => PredicateKind::ClosureKind(
-                d.try_fold_with(folder)?,
-                g.try_fold_with(folder)?,
-                k.try_fold_with(folder)?,
-            ),
-            PredicateKind::Subtype(s) => PredicateKind::Subtype(s.try_fold_with(folder)?),
-            PredicateKind::Coerce(s) => PredicateKind::Coerce(s.try_fold_with(folder)?),
-            PredicateKind::ConstEquate(a, b) => {
-                PredicateKind::ConstEquate(a.try_fold_with(folder)?, b.try_fold_with(folder)?)
-            }
-            PredicateKind::Ambiguous => PredicateKind::Ambiguous,
-            PredicateKind::AliasRelate(a, b, d) => PredicateKind::AliasRelate(
-                a.try_fold_with(folder)?,
-                b.try_fold_with(folder)?,
-                d.try_fold_with(folder)?,
-            ),
-        })
-    }
-}
-
-impl<I: Interner> TypeVisitable<I> for PredicateKind<I>
-where
-    I::DefId: TypeVisitable<I>,
-    I::Const: TypeVisitable<I>,
-    I::GenericArgs: TypeVisitable<I>,
-    I::Term: TypeVisitable<I>,
-    I::CoercePredicate: TypeVisitable<I>,
-    I::SubtypePredicate: TypeVisitable<I>,
-    I::ClosureKind: TypeVisitable<I>,
-    ClauseKind<I>: TypeVisitable<I>,
-{
-    fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
-        match self {
-            PredicateKind::Clause(p) => p.visit_with(visitor),
-            PredicateKind::ObjectSafe(d) => d.visit_with(visitor),
-            PredicateKind::ClosureKind(d, g, k) => {
-                d.visit_with(visitor)?;
-                g.visit_with(visitor)?;
-                k.visit_with(visitor)
-            }
-            PredicateKind::Subtype(s) => s.visit_with(visitor),
-            PredicateKind::Coerce(s) => s.visit_with(visitor),
-            PredicateKind::ConstEquate(a, b) => {
-                a.visit_with(visitor)?;
-                b.visit_with(visitor)
-            }
-            PredicateKind::Ambiguous => ControlFlow::Continue(()),
-            PredicateKind::AliasRelate(a, b, d) => {
-                a.visit_with(visitor)?;
-                b.visit_with(visitor)?;
-                d.visit_with(visitor)
             }
         }
     }

@@ -1,17 +1,14 @@
 use std::fmt;
 use std::hash::Hash;
-use std::ops::ControlFlow;
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 
-use crate::fold::{FallibleTypeFolder, TypeFoldable};
-use crate::visit::{TypeVisitable, TypeVisitor};
 use crate::{HashStableContext, Interner, UniverseIndex};
 
 /// A "canonicalized" type `V` is one where all free inference
 /// variables have been rewritten to "canonical vars". These are
 /// numbered starting from 0 in order of first appearance.
-#[derive(derivative::Derivative)]
+#[derive(derivative::Derivative, TypeFoldable, TypeVisitable)]
 #[derivative(Clone(bound = "V: Clone"), Hash(bound = "V: Hash"))]
 #[derive(TyEncodable, TyDecodable)]
 pub struct Canonical<I: Interner, V> {
@@ -102,27 +99,3 @@ impl<I: Interner, V: fmt::Debug> fmt::Debug for Canonical<I, V> {
 }
 
 impl<I: Interner, V: Copy> Copy for Canonical<I, V> where I::CanonicalVars: Copy {}
-
-impl<I: Interner, V: TypeFoldable<I>> TypeFoldable<I> for Canonical<I, V>
-where
-    I::CanonicalVars: TypeFoldable<I>,
-{
-    fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<Self, F::Error> {
-        Ok(Canonical {
-            value: self.value.try_fold_with(folder)?,
-            max_universe: self.max_universe.try_fold_with(folder)?,
-            variables: self.variables.try_fold_with(folder)?,
-        })
-    }
-}
-
-impl<I: Interner, V: TypeVisitable<I>> TypeVisitable<I> for Canonical<I, V>
-where
-    I::CanonicalVars: TypeVisitable<I>,
-{
-    fn visit_with<F: TypeVisitor<I>>(&self, folder: &mut F) -> ControlFlow<F::BreakTy> {
-        self.value.visit_with(folder)?;
-        self.max_universe.visit_with(folder)?;
-        self.variables.visit_with(folder)
-    }
-}
