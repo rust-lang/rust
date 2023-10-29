@@ -15,6 +15,19 @@ impl<'a, T: Clone> From<&'a [T]> for Cow<'a, [T]> {
     }
 }
 
+#[stable(feature = "cow_from_array", since = "1.8.0")]
+impl<'a, const N: usize, T: Clone> From<&'a [T; N]> for Cow<'a, [T]> {
+    /// Creates a [`Borrowed`] variant of [`Cow`]
+    /// from a array.
+    ///
+    /// This conversion does not allocate or clone the data.
+    ///
+    /// [`Borrowed`]: crate::borrow::Cow::Borrowed
+    fn from(s: &'a [T; N]) -> Cow<'a, [T]> {
+        Cow::Borrowed(s)
+    }
+}
+
 #[stable(feature = "cow_from_vec", since = "1.8.0")]
 impl<'a, T: Clone> From<Vec<T>> for Cow<'a, [T]> {
     /// Creates an [`Owned`] variant of [`Cow`]
