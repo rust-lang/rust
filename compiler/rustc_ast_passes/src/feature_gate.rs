@@ -30,7 +30,7 @@ macro_rules! gate {
 }
 
 /// The unusual case, where the `has_feature` condition is non-standard.
-macro_rules! gate_complex {
+macro_rules! gate_alt {
     ($visitor:expr, $has_feature:expr, $name:expr, $span:expr, $explain:expr) => {{
         if !$has_feature && !$span.allows_unstable($name) {
             feature_err(&$visitor.sess.parse_sess, $name, $span, $explain).emit();
