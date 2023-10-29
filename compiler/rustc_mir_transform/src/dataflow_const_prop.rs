@@ -406,7 +406,8 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                 TrackElem::Variant(idx) => self.ecx.project_downcast(op, idx).ok(),
                 TrackElem::Discriminant => {
                     let variant = self.ecx.read_discriminant(op).ok()?;
-                    let discr_value = self.ecx.discriminant_for_variant(op.layout, variant).ok()?;
+                    let discr_value =
+                        self.ecx.discriminant_for_variant(op.layout.ty, variant).ok()?;
                     Some(discr_value.into())
                 }
                 TrackElem::DerefLen => {
@@ -507,7 +508,8 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
             return None;
         }
         let enum_ty_layout = self.tcx.layout_of(self.param_env.and(enum_ty)).ok()?;
-        let discr_value = self.ecx.discriminant_for_variant(enum_ty_layout, variant_index).ok()?;
+        let discr_value =
+            self.ecx.discriminant_for_variant(enum_ty_layout.ty, variant_index).ok()?;
         Some(discr_value.to_scalar())
     }
 
@@ -854,7 +856,7 @@ impl<'tcx> Visitor<'tcx> for OperandCollector<'tcx, '_, '_, '_> {
     }
 }
 
-struct DummyMachine;
+pub(crate) struct DummyMachine;
 
 impl<'mir, 'tcx: 'mir> rustc_const_eval::interpret::Machine<'mir, 'tcx> for DummyMachine {
     rustc_const_eval::interpret::compile_time_machine!(<'mir, 'tcx>);

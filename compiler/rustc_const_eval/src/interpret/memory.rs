@@ -1011,7 +1011,7 @@ impl<'tcx, 'a, Prov: Provenance, Extra, Bytes: AllocBytes> AllocRef<'a, 'tcx, Pr
     }
 
     /// Returns whether the allocation has provenance anywhere in the range of the `AllocRef`.
-    pub(crate) fn has_provenance(&self) -> bool {
+    pub fn has_provenance(&self) -> bool {
         !self.alloc.provenance().range_empty(self.range, &self.tcx)
     }
 }

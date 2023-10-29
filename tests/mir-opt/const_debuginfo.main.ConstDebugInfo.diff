@@ -4,12 +4,6 @@
   fn main() -> () {
       let mut _0: ();
       let _1: u8;
-      let mut _5: u8;
-      let mut _6: u8;
-      let mut _7: u8;
-      let mut _8: u8;
-      let mut _12: u32;
-      let mut _13: u32;
       scope 1 {
 -         debug x => _1;
 +         debug x => const 1_u8;
@@ -25,34 +19,34 @@
                   scope 4 {
 -                     debug sum => _4;
 +                     debug sum => const 6_u8;
-                      let _9: &str;
+                      let _5: &str;
                       scope 5 {
--                         debug s => _9;
+-                         debug s => _5;
 +                         debug s => const "hello, world!";
-                          let _14: bool;
-                          let _15: bool;
-                          let _16: u32;
+                          let _8: bool;
+                          let _9: bool;
+                          let _10: u32;
                           scope 6 {
--                             debug ((f: (bool, bool, u32)).0: bool) => _14;
--                             debug ((f: (bool, bool, u32)).1: bool) => _15;
--                             debug ((f: (bool, bool, u32)).2: u32) => _16;
+-                             debug ((f: (bool, bool, u32)).0: bool) => _8;
+-                             debug ((f: (bool, bool, u32)).1: bool) => _9;
+-                             debug ((f: (bool, bool, u32)).2: u32) => _10;
 +                             debug ((f: (bool, bool, u32)).0: bool) => const true;
 +                             debug ((f: (bool, bool, u32)).1: bool) => const false;
 +                             debug ((f: (bool, bool, u32)).2: u32) => const 123_u32;
-                              let _10: std::option::Option<u16>;
+                              let _6: std::option::Option<u16>;
                               scope 7 {
--                                 debug o => _10;
+-                                 debug o => _6;
 +                                 debug o => const Option::<u16>::Some(99_u16);
-                                  let _17: u32;
-                                  let _18: u32;
+                                  let _11: u32;
+                                  let _12: u32;
                                   scope 8 {
--                                     debug ((p: Point).0: u32) => _17;
--                                     debug ((p: Point).1: u32) => _18;
+-                                     debug ((p: Point).0: u32) => _11;
+-                                     debug ((p: Point).1: u32) => _12;
 +                                     debug ((p: Point).0: u32) => const 32_u32;
 +                                     debug ((p: Point).1: u32) => const 32_u32;
-                                      let _11: u32;
+                                      let _7: u32;
                                       scope 9 {
--                                         debug a => _11;
+-                                         debug a => _7;
 +                                         debug a => const 64_u32;
                                       }
                                   }
@@ -69,30 +63,27 @@
           _2 = const 2_u8;
           _3 = const 3_u8;
           StorageLive(_4);
-          StorageLive(_5);
-          _5 = const 3_u8;
           _4 = const 6_u8;
-          StorageDead(_5);
+          StorageLive(_5);
+          _5 = const "hello, world!";
+          StorageLive(_8);
           StorageLive(_9);
-          _9 = const "hello, world!";
-          StorageLive(_14);
-          StorageLive(_15);
-          StorageLive(_16);
-          _14 = const true;
-          _15 = const false;
-          _16 = const 123_u32;
           StorageLive(_10);
-          _10 = const Option::<u16>::Some(99_u16);
-          _17 = const 32_u32;
-          _18 = const 32_u32;
-          StorageLive(_11);
-          _11 = const 64_u32;
-          StorageDead(_11);
-          StorageDead(_10);
-          StorageDead(_14);
-          StorageDead(_15);
-          StorageDead(_16);
+          _8 = const true;
+          _9 = const false;
+          _10 = const 123_u32;
+          StorageLive(_6);
+          _6 = const Option::<u16>::Some(99_u16);
+          _11 = const 32_u32;
+          _12 = const 32_u32;
+          StorageLive(_7);
+          _7 = const 64_u32;
+          StorageDead(_7);
+          StorageDead(_6);
+          StorageDead(_8);
           StorageDead(_9);
+          StorageDead(_10);
+          StorageDead(_5);
           StorageDead(_4);
           return;
       }

@@ -2,6 +2,7 @@
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
 #![feature(box_patterns)]
+#![feature(cow_is_borrowed)]
 #![feature(decl_macro)]
 #![feature(is_sorted)]
 #![feature(let_chains)]
@@ -590,6 +591,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &separate_const_switch::SeparateConstSwitch,
             &const_prop::ConstProp,
             &gvn::GVN,
+            &simplify::SimplifyLocals::AfterGVN,
             &dataflow_const_prop::DataflowConstProp,
             &const_debuginfo::ConstDebugInfo,
             &o1(simplify_branches::SimplifyConstCondition::AfterConstProp),

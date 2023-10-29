@@ -1,0 +1,118 @@
+- // MIR for `fn_pointers` before GVN
++ // MIR for `fn_pointers` after GVN
+  
+  fn fn_pointers() -> () {
+      let mut _0: ();
+      let _1: fn(u8) -> u8;
+      let _2: ();
+      let mut _3: fn(u8) -> u8;
+      let _5: ();
+      let mut _6: fn(u8) -> u8;
+      let mut _9: {closure@$DIR/gvn.rs:591:19: 591:21};
+      let _10: ();
+      let mut _11: fn();
+      let mut _13: {closure@$DIR/gvn.rs:591:19: 591:21};
+      let _14: ();
+      let mut _15: fn();
+      scope 1 {
+          debug f => _1;
+          let _4: fn(u8) -> u8;
+          scope 2 {
+              debug g => _4;
+              let _7: {closure@$DIR/gvn.rs:591:19: 591:21};
+              scope 3 {
+                  debug closure => _7;
+                  let _8: fn();
+                  scope 4 {
+                      debug cf => _8;
+                      let _12: fn();
+                      scope 5 {
+                          debug cg => _12;
+                      }
+                  }
+              }
+          }
+      }
+  
+      bb0: {
+-         StorageLive(_1);
++         nop;
+          _1 = identity::<u8> as fn(u8) -> u8 (PointerCoercion(ReifyFnPointer));
+          StorageLive(_2);
+          StorageLive(_3);
+          _3 = _1;
+-         _2 = opaque::<fn(u8) -> u8>(move _3) -> [return: bb1, unwind unreachable];
++         _2 = opaque::<fn(u8) -> u8>(_1) -> [return: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+          StorageDead(_3);
+          StorageDead(_2);
+-         StorageLive(_4);
++         nop;
+          _4 = identity::<u8> as fn(u8) -> u8 (PointerCoercion(ReifyFnPointer));
+          StorageLive(_5);
+          StorageLive(_6);
+          _6 = _4;
+-         _5 = opaque::<fn(u8) -> u8>(move _6) -> [return: bb2, unwind unreachable];
++         _5 = opaque::<fn(u8) -> u8>(_4) -> [return: bb2, unwind unreachable];
+      }
+  
+      bb2: {
+          StorageDead(_6);
+          StorageDead(_5);
+-         StorageLive(_7);
+-         _7 = {closure@$DIR/gvn.rs:591:19: 591:21};
+-         StorageLive(_8);
++         nop;
++         _7 = const ZeroSized: {closure@$DIR/gvn.rs:591:19: 591:21};
++         nop;
+          StorageLive(_9);
+-         _9 = _7;
+-         _8 = move _9 as fn() (PointerCoercion(ClosureFnPointer(Normal)));
++         _9 = const ZeroSized: {closure@$DIR/gvn.rs:591:19: 591:21};
++         _8 = const ZeroSized: {closure@$DIR/gvn.rs:591:19: 591:21} as fn() (PointerCoercion(ClosureFnPointer(Normal)));
+          StorageDead(_9);
+          StorageLive(_10);
+          StorageLive(_11);
+          _11 = _8;
+-         _10 = opaque::<fn()>(move _11) -> [return: bb3, unwind unreachable];
++         _10 = opaque::<fn()>(_8) -> [return: bb3, unwind unreachable];
+      }
+  
+      bb3: {
+          StorageDead(_11);
+          StorageDead(_10);
+-         StorageLive(_12);
++         nop;
+          StorageLive(_13);
+-         _13 = _7;
+-         _12 = move _13 as fn() (PointerCoercion(ClosureFnPointer(Normal)));
++         _13 = const ZeroSized: {closure@$DIR/gvn.rs:591:19: 591:21};
++         _12 = const ZeroSized: {closure@$DIR/gvn.rs:591:19: 591:21} as fn() (PointerCoercion(ClosureFnPointer(Normal)));
+          StorageDead(_13);
+          StorageLive(_14);
+          StorageLive(_15);
+          _15 = _12;
+-         _14 = opaque::<fn()>(move _15) -> [return: bb4, unwind unreachable];
++         _14 = opaque::<fn()>(_12) -> [return: bb4, unwind unreachable];
+      }
+  
+      bb4: {
+          StorageDead(_15);
+          StorageDead(_14);
+          _0 = const ();
+-         StorageDead(_12);
+-         StorageDead(_8);
+-         StorageDead(_7);
+-         StorageDead(_4);
+-         StorageDead(_1);
++         nop;
++         nop;
++         nop;
++         nop;
++         nop;
+          return;
+      }
+  }
+  
