@@ -949,6 +949,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             }
                             (_, Unevaluated(_)) | (Unevaluated(_), _) => (),
                             (_, _) => {
+                                // FIXME(DefineOpaqueTypes): no test exercizes using
+                                // `DefineOpaqueTypes::Yes` below.
                                 if let Ok(InferOk { obligations, value: () }) = self
                                     .infcx
                                     .at(&obligation.cause, obligation.param_env)
