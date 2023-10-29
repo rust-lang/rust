@@ -1013,6 +1013,7 @@ impl<'tcx> InferCtxt<'tcx> {
             let ty::SubtypePredicate { a_is_expected, a, b } =
                 self.instantiate_binder_with_placeholders(predicate);
 
+            // FIXME(DefineOpaqueTypes): no test exercizes using `DefineOpaqueTypes::Yes` below.
             let ok =
                 self.at(cause, param_env).sub_exp(DefineOpaqueTypes::No, a_is_expected, a, b)?;
 
