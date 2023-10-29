@@ -86,6 +86,15 @@ impl Abi {
             _ => false,
         }
     }
+
+    /// Whether this ABI can in principle support unsized arguments.
+    /// There might be further restrictions such as nightly feature flags!
+    pub fn supports_unsized_args(self) -> bool {
+        match self {
+            Self::Rust | Self::RustCall | Self::RustIntrinsic | Self::PlatformIntrinsic => true,
+            _ => false,
+        }
+    }
 }
 
 #[derive(Copy, Clone)]

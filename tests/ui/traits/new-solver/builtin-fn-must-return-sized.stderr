@@ -11,6 +11,30 @@ note: required by a bound in `foo`
 LL | fn foo<F: Fn<T>, T: Tuple>(f: Option<F>, t: T) {
    |           ^^^^^ required by this bound in `foo`
 
-error: aborting due to previous error
+error: the type `fn() -> str` is not well-formed
+  --> $DIR/builtin-fn-must-return-sized.rs:15:11
+   |
+LL |     foo::<fn() -> str, _>(None, ());
+   |           ^^^^^^^^^^^
+
+error: the type `fn() -> str` is not well-formed
+  --> $DIR/builtin-fn-must-return-sized.rs:15:5
+   |
+LL |     foo::<fn() -> str, _>(None, ());
+   |     ^^^^^^^^^^^^^^^^^^^^^
+
+error: the type `Option<fn() -> str>` is not well-formed
+  --> $DIR/builtin-fn-must-return-sized.rs:15:27
+   |
+LL |     foo::<fn() -> str, _>(None, ());
+   |                           ^^^^
+
+error: the type `fn() -> str` is not well-formed
+  --> $DIR/builtin-fn-must-return-sized.rs:15:27
+   |
+LL |     foo::<fn() -> str, _>(None, ());
+   |                           ^^^^
+
+error: aborting due to 5 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

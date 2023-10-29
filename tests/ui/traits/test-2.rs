@@ -13,5 +13,6 @@ fn main() {
     (Box::new(10) as Box<dyn bar>).dup();
     //~^ ERROR E0038
     //~| ERROR E0038
-    //~| ERROR E0038
+    //~| ERROR cannot have an unboxed trait object
+    //~| ERROR trait `bar` cannot be made into an object
 }

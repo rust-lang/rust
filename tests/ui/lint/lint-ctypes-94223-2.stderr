@@ -1,0 +1,53 @@
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/lint-ctypes-94223-2.rs:7:15
+   |
+LL | pub fn bad(f: extern "C" fn([u8])) {}
+   |               ^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[u8]`
+   = note: all function arguments must have a statically known size
+   = help: unsized fn params are gated as an unstable feature
+
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/lint-ctypes-94223-2.rs:10:49
+   |
+LL | pub fn bad_twice(f: Result<extern "C" fn([u8]), extern "C" fn([u8])>) {}
+   |                                                 ^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[u8]`
+   = note: all function arguments must have a statically known size
+   = help: unsized fn params are gated as an unstable feature
+
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/lint-ctypes-94223-2.rs:13:18
+   |
+LL | struct BadStruct(extern "C" fn([u8]));
+   |                  ^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[u8]`
+   = note: all function arguments must have a statically known size
+   = help: unsized fn params are gated as an unstable feature
+
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/lint-ctypes-94223-2.rs:17:7
+   |
+LL |     A(extern "C" fn([u8])),
+   |       ^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[u8]`
+   = note: all function arguments must have a statically known size
+   = help: unsized fn params are gated as an unstable feature
+
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/lint-ctypes-94223-2.rs:22:7
+   |
+LL |     A(extern "C" fn([u8])),
+   |       ^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[u8]`
+   = note: all function arguments must have a statically known size
+   = help: unsized fn params are gated as an unstable feature
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

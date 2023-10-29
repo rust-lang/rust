@@ -727,9 +727,10 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                     self.out.extend(obligations);
                 }
 
-                ty::FnPtr(_) => {
-                    // let the loop iterate into the argument/return
-                    // types appearing in the fn signature
+                ty::FnPtr(fn_sig) => {
+                    // The loop iterates into the argument/return types appearing in the fn
+                    // signature, but we need to do some extra checks.
+                    self.compute_fn_sig_obligations(fn_sig)
                 }
 
                 ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => {
@@ -803,6 +804,22 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
             }
 
             debug!(?self.out);
+        }
+    }
+
+    /// Add the obligations for this signature to be well-formed to `out`.
+    fn compute_fn_sig_obligations(&mut self, sig: ty::PolyFnSig<'tcx>) {
+        // The return type must always be sized.
+        // FIXME(RalfJung): is skip_binder right? It's what the type walker used in `compute` also does.
+        self.require_sized(sig.skip_binder().output(), traits::SizedReturnType);
+        // For non-Rust ABIs, the argument type must always be sized.
+        // FIXME(RalfJung): we don't do the Rust ABI check here, since that depends on feature gates
+        // and it's not clear to me whether WF depending on feature gates (which can differ across
+        // crates) is possible or not.
+        if !sig.skip_binder().abi.supports_unsized_args() {
+            for &arg in sig.skip_binder().inputs() {
+                self.require_sized(arg, traits::SizedArgumentType(None));
+            }
         }
     }
 

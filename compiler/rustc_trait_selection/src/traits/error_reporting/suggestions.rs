@@ -1863,7 +1863,10 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             );
         }
 
-        let body = self.tcx.hir().body(self.tcx.hir().body_owned_by(obligation.cause.body_id));
+        let Some(body) = self.tcx.hir().maybe_body_owned_by(obligation.cause.body_id) else {
+            return false;
+        };
+        let body = self.tcx.hir().body(body);
 
         let mut visitor = ReturnsVisitor::default();
         visitor.visit_body(&body);
@@ -1922,15 +1925,19 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             // Point at all the `return`s in the function as they have failed trait bounds.
             let mut visitor = ReturnsVisitor::default();
             visitor.visit_body(&body);
-            let typeck_results = self.typeck_results.as_ref().unwrap();
-            for expr in &visitor.returns {
-                if let Some(returned_ty) = typeck_results.node_type_opt(expr.hir_id) {
-                    let ty = self.resolve_vars_if_possible(returned_ty);
-                    if ty.references_error() {
-                        // don't print out the [type error] here
-                        err.delay_as_bug();
-                    } else {
-                        err.span_label(expr.span, format!("this returned value is of type `{ty}`"));
+            if let Some(typeck_results) = self.typeck_results.as_ref() {
+                for expr in &visitor.returns {
+                    if let Some(returned_ty) = typeck_results.node_type_opt(expr.hir_id) {
+                        let ty = self.resolve_vars_if_possible(returned_ty);
+                        if ty.references_error() {
+                            // don't print out the [type error] here
+                            err.delay_as_bug();
+                        } else {
+                            err.span_label(
+                                expr.span,
+                                format!("this returned value is of type `{ty}`"),
+                            );
+                        }
                     }
                 }
             }

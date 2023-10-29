@@ -7,7 +7,7 @@ trait Foo {
 fn foo(f: Option<&dyn Foo>) {
     if let Some(f) = f {
         let _ = f.foo();
-        //~^ ERROR cannot move a value of type `[u8]`
+        //~^ ERROR cannot be known at compilation time
     }
 }
 

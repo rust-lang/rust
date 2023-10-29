@@ -1,25 +1,8 @@
 #![crate_type = "lib"]
 #![deny(improper_ctypes_definitions)]
 
-pub fn bad(f: extern "C" fn([u8])) {}
-//~^ ERROR `extern` fn uses type `[u8]`, which is not FFI-safe
-
-pub fn bad_twice(f: Result<extern "C" fn([u8]), extern "C" fn([u8])>) {}
-//~^ ERROR `extern` fn uses type `[u8]`, which is not FFI-safe
-//~^^ ERROR `extern` fn uses type `[u8]`, which is not FFI-safe
-
-struct BadStruct(extern "C" fn([u8]));
-//~^ ERROR `extern` fn uses type `[u8]`, which is not FFI-safe
-
-enum BadEnum {
-    A(extern "C" fn([u8])),
-    //~^ ERROR `extern` fn uses type `[u8]`, which is not FFI-safe
-}
-
-enum BadUnion {
-    A(extern "C" fn([u8])),
-    //~^ ERROR `extern` fn uses type `[u8]`, which is not FFI-safe
-}
+// Test is split in two files since some warnings arise during WF-checking
+// and some later, so we can't get them all in the same file.
 
 type Foo = extern "C" fn([u8]);
 //~^ ERROR `extern` fn uses type `[u8]`, which is not FFI-safe

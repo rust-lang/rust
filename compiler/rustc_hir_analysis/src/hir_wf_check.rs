@@ -13,6 +13,9 @@ pub fn provide(providers: &mut Providers) {
     *providers = Providers { diagnostic_hir_wf_check, ..*providers };
 }
 
+/// HIR-based well-formedness check, for diagnostics only.
+/// This is run after there was a WF error, to try get a better message pointing out what went wrong
+/// here.
 // Ideally, this would be in `rustc_trait_selection`, but we
 // need access to `ItemCtxt`
 fn diagnostic_hir_wf_check<'tcx>(

@@ -1,0 +1,15 @@
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/unsized-param-in-extern-c-decl-issue-115845.rs:4:31
+   |
+LL | pub extern "C" fn declare_bad(_x: str) {}
+   |                               ^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `str`
+help: function arguments must have a statically known size, borrowed types always have a known size
+   |
+LL | pub extern "C" fn declare_bad(_x: &str) {}
+   |                                   +
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

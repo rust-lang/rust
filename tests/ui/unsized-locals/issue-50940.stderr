@@ -1,12 +1,16 @@
 error[E0277]: the size for values of type `str` cannot be known at compilation time
-  --> $DIR/issue-50940.rs:3:5
+  --> $DIR/issue-50940.rs:3:10
    |
 LL |     A as fn(str) -> A<str>;
-   |     ^ doesn't have a size known at compile-time
+   |          ^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `Sized` is not implemented for `str`
-   = note: all function arguments must have a statically known size
-   = help: unsized fn params are gated as an unstable feature
+   = help: within `A<str>`, the trait `Sized` is not implemented for `str`
+note: required because it appears within the type `A<str>`
+  --> $DIR/issue-50940.rs:2:12
+   |
+LL |     struct A<X: ?Sized>(X);
+   |            ^
+   = note: the return type of a function must have a statically known size
 
 error: aborting due to previous error
 

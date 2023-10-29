@@ -307,19 +307,30 @@ mod arrays {
 }
 
 // Some tests with unsized types (not all wrappers are compatible with that).
+macro_rules! assert_abi_compatible_unsized {
+    ($name:ident, $t1:ty, $t2:ty) => {
+        mod $name {
+            use super::*;
+            // Declaring a `type` doesn't even check well-formedness, so we also declare a function.
+            fn check_wf(_x: $t1, _y: $t2) {}
+            // Can only test arguments and only the Rust ABI, since it's unsized.
+            #[rustc_abi(assert_eq)]
+            type TestRust = (fn($t1), fn($t2));
+        }
+    };
+}
 macro_rules! test_transparent_unsized {
     ($name:ident, $t:ty) => {
         mod $name {
             use super::*;
-            assert_abi_compatible!(wrap1, $t, Wrapper1<$t>);
-            assert_abi_compatible!(wrap1_reprc, ReprC1<$t>, ReprC1<Wrapper1<$t>>);
-            assert_abi_compatible!(wrap2, $t, Wrapper2<$t>);
-            assert_abi_compatible!(wrap2_reprc, ReprC1<$t>, ReprC1<Wrapper2<$t>>);
+            assert_abi_compatible_unsized!(wrap1, $t, Wrapper1<$t>);
+            assert_abi_compatible_unsized!(wrap1_reprc, ReprC1<$t>, ReprC1<Wrapper1<$t>>);
+            assert_abi_compatible_unsized!(wrap2, $t, Wrapper2<$t>);
+            assert_abi_compatible_unsized!(wrap2_reprc, ReprC1<$t>, ReprC1<Wrapper2<$t>>);
         }
     };
 }
 
-#[cfg(not(any(target_arch = "mips64", target_arch = "sparc64")))]
 mod unsized_ {
     use super::*;
     test_transparent_unsized!(str_, str);

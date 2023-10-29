@@ -1509,6 +1509,7 @@ fn check_fn_or_method<'tcx>(
         let has_implicit_self = hir_decl.implicit_self != hir::ImplicitSelfKind::None;
         let mut inputs = sig.inputs().iter().skip(if has_implicit_self { 1 } else { 0 });
         // Check that the argument is a tuple and is sized
+        // FIXME: move this to WF check? Currently it is duplicated here and in `confirm_builtin_call` in callee.rs.
         if let Some(ty) = inputs.next() {
             wfcx.register_bound(
                 ObligationCause::new(span, wfcx.body_def_id, ObligationCauseCode::RustCall),

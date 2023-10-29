@@ -1,4 +1,3 @@
-// run-rustfix
 #![allow(dead_code, unused_variables)]
 
 trait Get {
@@ -8,6 +7,7 @@ trait Get {
 
 fn foo<T:Get>(t: T) {
     let x = t.get(); //~ ERROR the size for values of type
+    //~| ERROR the size for values of type
 }
 
 fn main() {

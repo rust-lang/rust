@@ -97,7 +97,10 @@ pub(super) fn check_fn<'a, 'tcx>(
         fcx.check_pat_top(&param.pat, param_ty, ty_span, None, None);
 
         // Check that argument is Sized.
-        if !params_can_be_unsized {
+        // FIXME: can we share this (and the return type check below) with WF-checking on function
+        // signatures? However, here we have much better spans available than if we fire an
+        // obligation for our signature to be well-formed.
+        if !params_can_be_unsized || !fn_sig.abi.supports_unsized_args() {
             fcx.require_type_is_sized(
                 param_ty,
                 param.pat.span,

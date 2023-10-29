@@ -4,16 +4,20 @@ error[E0277]: the size for values of type `str` cannot be known at compilation t
 LL |     foo::<fn() -> str, _>(None, ());
    |           ^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: within `fn() -> str`, the trait `Sized` is not implemented for `str`
-   = note: required because it appears within the type `fn() -> str`
-note: required by a bound in `foo`
-  --> $DIR/unsized-ret.rs:5:11
+   = help: the trait `Sized` is not implemented for `str`
+   = note: the return type of a function must have a statically known size
+
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/unsized-ret.rs:10:27
    |
-LL | fn foo<F: Fn<T>, T:std::marker::Tuple>(f: Option<F>, t: T) {
-   |           ^^^^^ required by this bound in `foo`
+LL |     foo::<fn() -> str, _>(None, ());
+   |                           ^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `str`
+   = note: the return type of a function must have a statically known size
 
 error[E0277]: the size for values of type `(dyn std::fmt::Display + 'a)` cannot be known at compilation time
-  --> $DIR/unsized-ret.rs:13:11
+  --> $DIR/unsized-ret.rs:14:11
    |
 LL |     foo::<for<'a> fn(&'a ()) -> (dyn std::fmt::Display + 'a), _>(None, (&(),));
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
@@ -26,6 +30,6 @@ note: required by a bound in `foo`
 LL | fn foo<F: Fn<T>, T:std::marker::Tuple>(f: Option<F>, t: T) {
    |           ^^^^^ required by this bound in `foo`
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

@@ -1,13 +1,14 @@
-error[E0277]: the size for values of type `dyn ToString` cannot be known at compilation time
-  --> $DIR/issue-58355.rs:5:14
+error[E0746]: return type cannot have an unboxed trait object
+  --> $DIR/issue-58355.rs:3:22
    |
-LL |     x = Some(Box::new(callback));
-   |              ^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+LL | pub fn foo(callback: fn() -> dyn ToString) {
+   |                      ^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: within `fn() -> dyn ToString`, the trait `Sized` is not implemented for `dyn ToString`
-   = note: required because it appears within the type `fn() -> dyn ToString`
-   = note: required for the cast from `Box<fn() -> dyn ToString>` to `Box<dyn Fn() -> (dyn ToString + 'static)>`
+help: box the return type, and wrap all of the returned values in `Box::new`
+   |
+LL | pub fn foo(callback: Box<fn() -> dyn ToString>) {
+   |                      ++++                    +
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0277`.
+For more information about this error, try `rustc --explain E0746`.

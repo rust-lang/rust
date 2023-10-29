@@ -52,21 +52,21 @@ impl A for Box<dyn A> {
 
 fn main() {
     a::foo::<fn() -> dyn A>();         //~ ERROR E0277
-    a::bar::<fn() -> dyn A, _>();      //~ ERROR E0277
+    a::bar::<fn() -> dyn A, _>();      //~ ERROR cannot have an unboxed trait object
     a::baz::<fn() -> dyn A>();         //~ ERROR E0277
     a::foo::<fn() -> Box<dyn A>>();    //  ok
     a::bar::<fn() -> Box<dyn A>, _>(); //  ok
     a::baz::<fn() -> Box<dyn A>>();    //  ok
 
     b::foo::<fn() -> dyn A>();         //~ ERROR E0277
-    b::bar::<fn() -> dyn A, _>();      //~ ERROR E0277
+    b::bar::<fn() -> dyn A, _>();      //~ ERROR cannot have an unboxed trait object
     b::baz::<fn() -> dyn A>();         //~ ERROR E0277
     b::foo::<fn() -> Box<dyn A>>();    //  ok
     b::bar::<fn() -> Box<dyn A>, _>(); //  ok
     b::baz::<fn() -> Box<dyn A>>();    //  ok
 
     c::foo::<fn() -> dyn A>();         //~ ERROR E0277
-    c::bar::<fn() -> dyn A, _>();      //~ ERROR E0277
+    c::bar::<fn() -> dyn A, _>();      //~ ERROR cannot have an unboxed trait object
     c::baz::<fn() -> dyn A>();         //~ ERROR E0277
     c::foo::<fn() -> Box<dyn A>>();    //  ok
     c::bar::<fn() -> Box<dyn A>, _>(); //  ok

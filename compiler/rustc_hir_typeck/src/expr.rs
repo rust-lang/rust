@@ -503,6 +503,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.resolve_lang_item_path(lang_item, expr.span, expr.hir_id, hir_id).1
     }
 
+    /// Called for any way that a path is mentioned in an expression.
+    /// If the path is used in a function call, `args` has the arguments, otherwise it is empty.
     pub(crate) fn check_expr_path(
         &self,
         qpath: &'tcx hir::QPath<'tcx>,

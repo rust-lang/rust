@@ -458,6 +458,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
 
         if fn_sig.abi == abi::Abi::RustCall {
+            // FIXME: move this to WF check? Currently it is duplicated here and in `check_fn_or_method` in wfcheck.rs.
             let sp = arg_exprs.last().map_or(call_expr.span, |expr| expr.span);
             if let Some(ty) = fn_sig.inputs().last().copied() {
                 self.register_bound(
