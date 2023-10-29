@@ -152,6 +152,7 @@ target | std | notes
 `i586-pc-windows-msvc` | * | 32-bit Windows w/o SSE [^x86_32-floats-x87]
 `i586-unknown-linux-gnu` | ✓ | 32-bit Linux w/o SSE (kernel 3.2, glibc 2.17) [^x86_32-floats-x87]
 `i586-unknown-linux-musl` | ✓ | 32-bit Linux w/o SSE, MUSL [^x86_32-floats-x87]
+[`i586-unknown-netbsd`](platform-support/netbsd.md) |  ✓ | 32-bit x86, restricted to Pentium
 [`i686-linux-android`](platform-support/android.md) | ✓ | 32-bit x86 Android [^x86_32-floats-return-ABI]
 `i686-unknown-freebsd` | ✓ | 32-bit FreeBSD [^x86_32-floats-return-ABI]
 `i686-unknown-linux-musl` | ✓ | 32-bit Linux with MUSL [^x86_32-floats-return-ABI]
