@@ -482,8 +482,11 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    /// Reject C-variadic type unless the function is foreign,
-    /// or free and `unsafe extern "C"` semantically.
+    /// Reject invalid C-variadic types.
+    ///
+    /// C-variadics must be:
+    /// - Non-const
+    /// - Either foreign, or free and `unsafe extern "C"` semantically
     fn check_c_variadic_type(&self, fk: FnKind<'a>) {
         let variadic_spans: Vec<_> = fk
             .decl()
@@ -495,6 +498,18 @@ impl<'a> AstValidator<'a> {
 
         if variadic_spans.is_empty() {
             return;
+        }
+
+        if let Some(header) = fk.header() {
+            if let Const::Yes(const_span) = header.constness {
+                let mut spans = variadic_spans.clone();
+                spans.push(const_span);
+                self.err_handler().emit_err(errors::ConstAndCVariadic {
+                    spans,
+                    const_span,
+                    variadic_spans: variadic_spans.clone(),
+                });
+            }
         }
 
         match (fk.ctxt(), fk.header()) {

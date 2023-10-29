@@ -584,6 +584,17 @@ pub struct ConstAndAsync {
 }
 
 #[derive(Diagnostic)]
+#[diag(ast_passes_const_and_c_variadic)]
+pub struct ConstAndCVariadic {
+    #[primary_span]
+    pub spans: Vec<Span>,
+    #[label(ast_passes_const)]
+    pub const_span: Span,
+    #[label(ast_passes_variadic)]
+    pub variadic_spans: Vec<Span>,
+}
+
+#[derive(Diagnostic)]
 #[diag(ast_passes_pattern_in_foreign, code = "E0130")]
 pub struct PatternInForeign {
     #[primary_span]
