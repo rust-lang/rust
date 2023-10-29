@@ -81,6 +81,9 @@ struct MatchVisitor<'a, 'p, 'tcx> {
     lint_level: HirId,
     let_source: LetSource,
     pattern_arena: &'p TypedArena<DeconstructedPat<'p, 'tcx>>,
+    /// Tracks if we encountered an error while checking this body. That the first function to
+    /// report it stores it here. Some functions return `Result` to allow callers to short-circuit
+    /// on error, but callers don't need to store it here again.
     error: Result<(), ErrorGuaranteed>,
 }
 
@@ -211,11 +214,16 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
     }
 
     fn lower_pattern(
-        &self,
-        cx: &mut MatchCheckCtxt<'p, 'tcx>,
+        &mut self,
+        cx: &MatchCheckCtxt<'p, 'tcx>,
         pattern: &Pat<'tcx>,
-    ) -> &'p DeconstructedPat<'p, 'tcx> {
-        cx.pattern_arena.alloc(DeconstructedPat::from_pat(cx, &pattern))
+    ) -> Result<&'p DeconstructedPat<'p, 'tcx>, ErrorGuaranteed> {
+        if let Err(err) = pattern.pat_error_reported() {
+            self.error = Err(err);
+            Err(err)
+        } else {
+            Ok(cx.pattern_arena.alloc(DeconstructedPat::from_pat(cx, pattern)))
+        }
     }
 
     fn new_cx(&self, hir_id: HirId, refutable: bool) -> MatchCheckCtxt<'p, 'tcx> {
@@ -233,13 +241,9 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
         if let LetSource::None = source {
             return;
         }
-        if let Err(err) = pat.pat_error_reported() {
-            self.error = Err(err);
-            return;
-        }
         self.check_patterns(pat, Refutable);
         let mut cx = self.new_cx(self.lint_level, true);
-        let tpat = self.lower_pattern(&mut cx, pat);
+        let Ok(tpat) = self.lower_pattern(&cx, pat) else { return };
         self.check_let_reachability(&mut cx, self.lint_level, source, tpat, span);
     }
 
@@ -252,30 +256,21 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
     ) {
         let mut cx = self.new_cx(self.lint_level, true);
 
+        let mut tarms = Vec::with_capacity(arms.len());
         for &arm in arms {
             // Check the arm for some things unrelated to exhaustiveness.
             let arm = &self.thir.arms[arm];
             self.with_lint_level(arm.lint_level, |this| {
                 this.check_patterns(&arm.pattern, Refutable);
             });
-            if let Err(err) = arm.pattern.pat_error_reported() {
-                self.error = Err(err);
-                return;
-            }
+            let hir_id = match arm.lint_level {
+                LintLevel::Explicit(hir_id) => hir_id,
+                LintLevel::Inherited => self.lint_level,
+            };
+            let Ok(pat) = self.lower_pattern(&mut cx, &arm.pattern) else { return };
+            let arm = MatchArm { pat, hir_id, has_guard: arm.guard.is_some() };
+            tarms.push(arm);
         }
-
-        let tarms: Vec<_> = arms
-            .iter()
-            .map(|&arm| {
-                let arm = &self.thir.arms[arm];
-                let hir_id = match arm.lint_level {
-                    LintLevel::Explicit(hir_id) => hir_id,
-                    LintLevel::Inherited => self.lint_level,
-                };
-                let pat = self.lower_pattern(&mut cx, &arm.pattern);
-                MatchArm { pat, hir_id, has_guard: arm.guard.is_some() }
-            })
-            .collect();
 
         let scrut = &self.thir[scrut];
         let scrut_ty = scrut.ty;
@@ -340,7 +335,7 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
         // and record chain members that aren't let exprs.
         let mut chain_refutabilities = Vec::new();
 
-        let mut error = Ok(());
+        let mut got_lowering_error = false;
         let mut next_expr = Some(expr);
         while let Some(mut expr) = next_expr {
             while let ExprKind::Scope { value, lint_level, .. } = expr.kind {
@@ -368,14 +363,13 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
             }
             let value = match expr.kind {
                 ExprKind::Let { box ref pat, expr: _ } => {
-                    if let Err(err) = pat.pat_error_reported() {
-                        error = Err(err);
-                        None
-                    } else {
-                        let mut ncx = self.new_cx(expr_lint_level, true);
-                        let tpat = self.lower_pattern(&mut ncx, pat);
+                    let mut ncx = self.new_cx(expr_lint_level, true);
+                    if let Ok(tpat) = self.lower_pattern(&mut ncx, pat) {
                         let refutable = !is_let_irrefutable(&mut ncx, expr_lint_level, tpat);
                         Some((expr.span, refutable))
+                    } else {
+                        got_lowering_error = true;
+                        None
                     }
                 }
                 _ => None,
@@ -385,8 +379,7 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
         debug!(?chain_refutabilities);
         chain_refutabilities.reverse();
 
-        if error.is_err() {
-            self.error = error;
+        if got_lowering_error {
             return;
         }
 
@@ -452,15 +445,9 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
 
     #[instrument(level = "trace", skip(self))]
     fn check_irrefutable(&mut self, pat: &Pat<'tcx>, origin: &str, sp: Option<Span>) {
-        // If we got errors while lowering, don't emit anything more.
-        if let Err(err) = pat.pat_error_reported() {
-            self.error = Err(err);
-            return;
-        }
-
         let mut cx = self.new_cx(self.lint_level, false);
 
-        let pattern = self.lower_pattern(&mut cx, pat);
+        let Ok(pattern) = self.lower_pattern(&mut cx, pat) else { return };
         let pattern_ty = pattern.ty();
         let arm = MatchArm { pat: pattern, hir_id: self.lint_level, has_guard: false };
         let report =
