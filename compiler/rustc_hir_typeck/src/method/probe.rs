@@ -1455,6 +1455,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 CandidateSource::Trait(candidate.item.container_id(self.tcx))
             }
             TraitCandidate(trait_ref) => self.probe(|_| {
+                // FIXME(DefineOpaqueTypes): no test exercizes using `DefineOpaqueTypes::Yes` below.
                 let _ = self.at(&ObligationCause::dummy(), self.param_env).sup(
                     DefineOpaqueTypes::No,
                     candidate.xform_self_ty,
