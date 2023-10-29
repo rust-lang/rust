@@ -516,7 +516,6 @@ impl<'a> fmt::Display for Display<'a> {
                     (sym::target_arch, Some(arch)) => match arch.as_str() {
                         "aarch64" => "AArch64",
                         "arm" => "ARM",
-                        "asmjs" => "JavaScript",
                         "loongarch64" => "LoongArch LA64",
                         "m68k" => "M68k",
                         "csky" => "CSKY",
