@@ -2354,6 +2354,7 @@ fn confirm_param_env_candidate<'cx, 'tcx>(
 
     debug!(?cache_projection, ?obligation_projection);
 
+    // FIXME(DefineOpaqueTypes): no test exercizes using `DefineOpaqueTypes::Yes` below.
     match infcx.at(cause, param_env).eq(
         DefineOpaqueTypes::No,
         cache_projection,
