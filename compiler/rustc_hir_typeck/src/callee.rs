@@ -799,6 +799,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let param = callee_args.const_at(host_effect_index);
         let cause = self.misc(span);
+        // FIXME(DefineOpaqueTypes): no test exercizes using `DefineOpaqueTypes::Yes` below.
         match self.at(&cause, self.param_env).eq(infer::DefineOpaqueTypes::No, effect, param) {
             Ok(infer::InferOk { obligations, value: () }) => {
                 self.register_predicates(obligations);
