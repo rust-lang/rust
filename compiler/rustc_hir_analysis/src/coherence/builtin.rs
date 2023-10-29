@@ -409,6 +409,8 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: LocalDefId) -> Coe
                     // we may have to evaluate constraint
                     // expressions in the course of execution.)
                     // See e.g., #41936.
+                    // FIXME(DefineOpaqueTypes): no test exercizes using `DefineOpaqueTypes::Yes`
+                    // below.
                     if let Ok(ok) = infcx.at(&cause, param_env).eq(DefineOpaqueTypes::No, a, b) {
                         if ok.obligations.is_empty() {
                             return None;
