@@ -45,16 +45,18 @@ pub(crate) fn codegen_inline_asm<'tcx>(
 ) {
     // FIXME add .eh_frame unwind info directives
 
+    // Used by panic_abort on Windows, but uses a syntax which only happens to work with
+    // asm!() by accident and breaks with the GNU assembler as well as global_asm!() for
+    // the LLVM backend.
+    if template[0] == InlineAsmTemplatePiece::String("int $$0x29".to_string()) {
+        fx.bcx.ins().trap(TrapCode::User(1));
+        return;
+    }
+
     if !asm_supported(fx.tcx) {
         if template.is_empty() {
             let destination_block = fx.get_block(destination.unwrap());
             fx.bcx.ins().jump(destination_block, &[]);
-            return;
-        }
-
-        // Used by panic_abort
-        if template[0] == InlineAsmTemplatePiece::String("int $$0x29".to_string()) {
-            fx.bcx.ins().trap(TrapCode::User(1));
             return;
         }
 
