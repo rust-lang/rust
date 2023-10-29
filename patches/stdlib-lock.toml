@@ -41,22 +41,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "56fc6cf8dc8c4158eed8649f9b8b0ea1518eb62b544fe9490d66fa0b349eafe9"
 
 [[package]]
-name = "auxv"
-version = "0.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e50430f9beb8effb02399fa81c76eeaa26b05e4f03b09285cad8d079c1af5a3d"
-dependencies = [
- "byteorder",
- "gcc",
-]
-
-[[package]]
-name = "byteorder"
-version = "1.4.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "14c189c53d098945499cdfa7ecc63567cf3886b3332b312a5b4585d8d3a6a610"
-
-[[package]]
 name = "cc"
 version = "1.0.79"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -388,7 +372,6 @@ dependencies = [
 name = "std_detect"
 version = "0.1.5"
 dependencies = [
- "auxv",
  "cfg-if",
  "compiler_builtins",
  "cupid",
