@@ -56,7 +56,7 @@ fn create_e0004(
     struct_span_err!(sess, sp, E0004, "{}", &error_message)
 }
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 enum RefutableFlag {
     Irrefutable,
     Refutable,
@@ -151,18 +151,22 @@ impl<'thir, 'tcx> Visitor<'thir, 'tcx> for MatchVisitor<'thir, '_, 'tcx> {
                 };
                 self.check_match(scrutinee, arms, source, ex.span);
             }
-            ExprKind::Let { box ref pat, expr } if !matches!(self.let_source, LetSource::None) => {
+            ExprKind::Let { box ref pat, expr } => {
                 self.check_let(pat, Some(expr), ex.span);
             }
             ExprKind::LogicalOp { op: LogicalOp::And, .. }
                 if !matches!(self.let_source, LetSource::None) =>
             {
-                self.check_let_chain(ex);
+                let mut chain_refutabilities = Vec::new();
+                let Ok(()) = self.visit_land(ex, &mut chain_refutabilities) else { return };
+                // If at least one of the operands is a `let ... = ...`.
+                if chain_refutabilities.iter().any(|x| x.is_some()) {
+                    self.check_let_chain(chain_refutabilities, ex.span);
+                }
+                return;
             }
             _ => {}
         };
-        // If we got e.g. `let pat1 = x1 && let pat2 = x2` above, we will now traverse the two
-        // `let`s. In order not to check them twice we set `LetSource::None`.
         self.with_let_source(LetSource::None, |this| visit::walk_expr(this, ex));
     }
 
@@ -212,6 +216,58 @@ impl<'thir, 'p, 'tcx> MatchVisitor<'thir, 'p, 'tcx> {
         }
     }
 
+    /// Visit a nested chain of `&&`. Used for if-let chains. This must call `visit_expr` on the
+    /// subexpressions we are not handling ourselves.
+    fn visit_land(
+        &mut self,
+        ex: &Expr<'tcx>,
+        accumulator: &mut Vec<Option<(Span, RefutableFlag)>>,
+    ) -> Result<(), ErrorGuaranteed> {
+        match ex.kind {
+            ExprKind::Scope { value, lint_level, .. } => self.with_lint_level(lint_level, |this| {
+                this.visit_land(&this.thir[value], accumulator)
+            }),
+            ExprKind::LogicalOp { op: LogicalOp::And, lhs, rhs } => {
+                // We recurse into the lhs only, because `&&` chains associate to the left.
+                let res_lhs = self.visit_land(&self.thir[lhs], accumulator);
+                let res_rhs = self.visit_land_rhs(&self.thir[rhs])?;
+                accumulator.push(res_rhs);
+                res_lhs
+            }
+            _ => {
+                let res = self.visit_land_rhs(ex)?;
+                accumulator.push(res);
+                Ok(())
+            }
+        }
+    }
+
+    /// Visit the right-hand-side of a `&&`. Used for if-let chains. Returns `Some` if the
+    /// expression was ultimately a `let ... = ...`, and `None` if it was a normal boolean
+    /// expression. This must call `visit_expr` on the subexpressions we are not handling ourselves.
+    fn visit_land_rhs(
+        &mut self,
+        ex: &Expr<'tcx>,
+    ) -> Result<Option<(Span, RefutableFlag)>, ErrorGuaranteed> {
+        match ex.kind {
+            ExprKind::Scope { value, lint_level, .. } => {
+                self.with_lint_level(lint_level, |this| this.visit_land_rhs(&this.thir[value]))
+            }
+            ExprKind::Let { box ref pat, expr } => {
+                self.with_let_source(LetSource::None, |this| {
+                    this.visit_expr(&this.thir()[expr]);
+                });
+                Ok(Some((ex.span, self.is_let_irrefutable(pat)?)))
+            }
+            _ => {
+                self.with_let_source(LetSource::None, |this| {
+                    this.visit_expr(ex);
+                });
+                Ok(None)
+            }
+        }
+    }
+
     fn lower_pattern(
         &mut self,
         cx: &MatchCheckCtxt<'p, 'tcx>,
@@ -249,8 +305,8 @@ impl<'thir, 'p, 'tcx> MatchVisitor<'thir, 'p, 'tcx> {
         if let LetSource::PlainLet = self.let_source {
             self.check_binding_is_irrefutable(pat, "local binding", Some(span))
         } else {
-            let Ok(irrefutable) = self.is_let_irrefutable(pat) else { return };
-            if irrefutable {
+            let Ok(refutability) = self.is_let_irrefutable(pat) else { return };
+            if matches!(refutability, Irrefutable) {
                 report_irrefutable_let_patterns(
                     self.tcx,
                     self.lint_level,
@@ -321,81 +377,27 @@ impl<'thir, 'p, 'tcx> MatchVisitor<'thir, 'p, 'tcx> {
     }
 
     #[instrument(level = "trace", skip(self))]
-    fn check_let_chain(&mut self, expr: &Expr<'tcx>) {
+    fn check_let_chain(
+        &mut self,
+        chain_refutabilities: Vec<Option<(Span, RefutableFlag)>>,
+        whole_chain_span: Span,
+    ) {
         assert!(self.let_source != LetSource::None);
-        let top_expr_span = expr.span;
 
-        // Lint level enclosing `next_expr`.
-        let mut next_expr_lint_level = self.lint_level;
-
-        // Obtain the refutabilities of all exprs in the chain,
-        // and record chain members that aren't let exprs.
-        let mut chain_refutabilities = Vec::new();
-
-        let mut got_error = false;
-        let mut next_expr = Some(expr);
-        while let Some(mut expr) = next_expr {
-            while let ExprKind::Scope { value, lint_level, .. } = expr.kind {
-                if let LintLevel::Explicit(hir_id) = lint_level {
-                    next_expr_lint_level = hir_id
-                }
-                expr = &self.thir[value];
-            }
-            if let ExprKind::LogicalOp { op: LogicalOp::And, lhs, rhs } = expr.kind {
-                expr = &self.thir[rhs];
-                // Let chains recurse on the left, so we recurse into the lhs.
-                next_expr = Some(&self.thir[lhs]);
-            } else {
-                next_expr = None;
-            }
-
-            // Lint level enclosing `expr`.
-            let mut expr_lint_level = next_expr_lint_level;
-            // Fast-forward through scopes.
-            while let ExprKind::Scope { value, lint_level, .. } = expr.kind {
-                if let LintLevel::Explicit(hir_id) = lint_level {
-                    expr_lint_level = hir_id
-                }
-                expr = &self.thir[value];
-            }
-            let value = match expr.kind {
-                ExprKind::Let { box ref pat, expr: _ } => {
-                    self.with_lint_level(LintLevel::Explicit(expr_lint_level), |this| {
-                        match this.is_let_irrefutable(pat) {
-                            Ok(irrefutable) => Some((expr.span, !irrefutable)),
-                            Err(_) => {
-                                got_error = true;
-                                None
-                            }
-                        }
-                    })
-                }
-                _ => None,
-            };
-            chain_refutabilities.push(value);
-        }
-        debug!(?chain_refutabilities);
-        chain_refutabilities.reverse();
-
-        if got_error {
-            return;
-        }
-
-        // Emit the actual warnings.
-        if chain_refutabilities.iter().all(|r| matches!(*r, Some((_, false)))) {
+        if chain_refutabilities.iter().all(|r| matches!(*r, Some((_, Irrefutable)))) {
             // The entire chain is made up of irrefutable `let` statements
             report_irrefutable_let_patterns(
                 self.tcx,
                 self.lint_level,
                 self.let_source,
                 chain_refutabilities.len(),
-                top_expr_span,
+                whole_chain_span,
             );
             return;
         }
 
         if let Some(until) =
-            chain_refutabilities.iter().position(|r| !matches!(*r, Some((_, false))))
+            chain_refutabilities.iter().position(|r| !matches!(*r, Some((_, Irrefutable))))
             && until > 0
         {
             // The chain has a non-zero prefix of irrefutable `let` statements.
@@ -423,7 +425,7 @@ impl<'thir, 'p, 'tcx> MatchVisitor<'thir, 'p, 'tcx> {
         }
 
         if let Some(from) =
-            chain_refutabilities.iter().rposition(|r| !matches!(*r, Some((_, false))))
+            chain_refutabilities.iter().rposition(|r| !matches!(*r, Some((_, Irrefutable))))
             && from != (chain_refutabilities.len() - 1)
         {
             // The chain has a non-empty suffix of irrefutable `let` statements
@@ -453,14 +455,14 @@ impl<'thir, 'p, 'tcx> MatchVisitor<'thir, 'p, 'tcx> {
         Ok((cx, report))
     }
 
-    fn is_let_irrefutable(&mut self, pat: &Pat<'tcx>) -> Result<bool, ErrorGuaranteed> {
+    fn is_let_irrefutable(&mut self, pat: &Pat<'tcx>) -> Result<RefutableFlag, ErrorGuaranteed> {
         let (cx, report) = self.analyze_binding(pat, Refutable)?;
-        // Report if the pattern is unreachable, which can only occur when the type is
-        // uninhabited. This also reports unreachable sub-patterns.
+        // Report if the pattern is unreachable, which can only occur when the type is uninhabited.
+        // This also reports unreachable sub-patterns.
         report_arm_reachability(&cx, &report);
-        // If the list of witnesses is empty, the match is exhaustive,
-        // i.e. the `if let` pattern is irrefutable.
-        Ok(report.non_exhaustiveness_witnesses.is_empty())
+        // If the list of witnesses is empty, the match is exhaustive, i.e. the `if let` pattern is
+        // irrefutable.
+        Ok(if report.non_exhaustiveness_witnesses.is_empty() { Irrefutable } else { Refutable })
     }
 
     #[instrument(level = "trace", skip(self))]
