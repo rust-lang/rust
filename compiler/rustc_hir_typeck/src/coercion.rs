@@ -1193,6 +1193,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             // The signature must match.
             let (a_sig, b_sig) = self.normalize(new.span, (a_sig, b_sig));
+            // FIXME(DefineOpaqueTypes): no test exercizes using `DefineOpaqueTypes::Yes` below.
             let sig = self
                 .at(cause, self.param_env)
                 .trace(prev_ty, new_ty)
