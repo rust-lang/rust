@@ -804,6 +804,8 @@ impl<'tcx> AutoTraitFinder<'tcx> {
 
                     match (evaluate(c1), evaluate(c2)) {
                         (Ok(c1), Ok(c2)) => {
+                            // FIXME(DefineOpaqueTypes): no test exercizes using
+                            // `DefineOpaqueTypes::Yes` below.
                             match selcx.infcx.at(&obligation.cause, obligation.param_env).eq(DefineOpaqueTypes::No,c1, c2)
                             {
                                 Ok(_) => (),
