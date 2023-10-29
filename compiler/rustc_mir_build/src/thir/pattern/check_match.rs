@@ -830,12 +830,7 @@ fn report_non_exhaustive_match<'p, 'tcx>(
     if let Some(AdtDefinedHere { adt_def_span, ty, variants }) =
         report_adt_defined_here(cx.tcx, scrut_ty, &witnesses, true)
     {
-        let mut multi_span = if variants.is_empty() {
-            MultiSpan::from_span(adt_def_span)
-        } else {
-            MultiSpan::from_spans(variants.iter().map(|Variant { span }| *span).collect())
-        };
-
+        let mut multi_span = MultiSpan::from_span(adt_def_span);
         multi_span.push_span_label(adt_def_span, "");
         for Variant { span } in variants {
             multi_span.push_span_label(span, "not covered");
