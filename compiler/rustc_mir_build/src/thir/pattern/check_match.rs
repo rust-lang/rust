@@ -9,9 +9,7 @@ use rustc_arena::TypedArena;
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_errors::{
-    struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, MultiSpan,
-};
+use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::*;
 use rustc_hir::def_id::LocalDefId;
@@ -507,17 +505,7 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
             });
         };
 
-        let adt_defined_here = try {
-            let ty = pattern_ty.peel_refs();
-            let ty::Adt(def, _) = ty.kind() else { None? };
-            let adt_def_span = cx.tcx.hir().get_if_local(def.did())?.ident()?.span;
-            let mut variants = vec![];
-
-            for span in maybe_point_at_variant(&cx, *def, witnesses.iter().take(5)) {
-                variants.push(Variant { span });
-            }
-            AdtDefinedHere { adt_def_span, ty, variants }
-        };
+        let adt_defined_here = report_adt_defined_here(self.tcx, pattern_ty, &witnesses, false);
 
         // Emit an extra note if the first uncovered witness would be uninhabited
         // if we disregard visibility.
@@ -842,7 +830,22 @@ fn non_exhaustive_match<'p, 'tcx>(
         };
     };
 
-    adt_defined_here(cx, &mut err, scrut_ty, &witnesses);
+    // Point at the definition of non-covered `enum` variants.
+    if let Some(AdtDefinedHere { adt_def_span, ty, variants }) =
+        report_adt_defined_here(cx.tcx, scrut_ty, &witnesses, true)
+    {
+        let mut multi_span = if variants.is_empty() {
+            MultiSpan::from_span(adt_def_span)
+        } else {
+            MultiSpan::from_spans(variants.iter().map(|Variant { span }| *span).collect())
+        };
+
+        multi_span.push_span_label(adt_def_span, "");
+        for Variant { span } in variants {
+            multi_span.push_span_label(span, "not covered");
+        }
+        err.span_note(multi_span, format!("`{ty}` defined here"));
+    }
     err.note(format!("the matched value is of type `{}`", scrut_ty));
 
     if !is_empty_match {
@@ -1023,39 +1026,33 @@ fn collect_non_exhaustive_tys<'tcx>(
         .for_each(|field_pat| collect_non_exhaustive_tys(tcx, field_pat, non_exhaustive_tys))
 }
 
-/// Point at the definition of non-covered `enum` variants.
-fn adt_defined_here<'p, 'tcx>(
-    cx: &MatchCheckCtxt<'p, 'tcx>,
-    err: &mut Diagnostic,
+fn report_adt_defined_here<'tcx>(
+    tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
     witnesses: &[WitnessPat<'tcx>],
-) {
+    point_at_non_local_ty: bool,
+) -> Option<AdtDefinedHere<'tcx>> {
     let ty = ty.peel_refs();
-    if let ty::Adt(def, _) = ty.kind() {
-        let mut spans = vec![];
-        for sp in maybe_point_at_variant(cx, *def, witnesses.iter().take(5)) {
-            spans.push(sp);
-        }
-        let def_span = cx
-            .tcx
-            .hir()
-            .get_if_local(def.did())
-            .and_then(|node| node.ident())
-            .map(|ident| ident.span)
-            .unwrap_or_else(|| cx.tcx.def_span(def.did()));
-        let mut span: MultiSpan =
-            if spans.is_empty() { def_span.into() } else { spans.clone().into() };
+    let ty::Adt(def, _) = ty.kind() else {
+        return None;
+    };
+    let adt_def_span =
+        tcx.hir().get_if_local(def.did()).and_then(|node| node.ident()).map(|ident| ident.span);
+    let adt_def_span = if point_at_non_local_ty {
+        adt_def_span.unwrap_or_else(|| tcx.def_span(def.did()))
+    } else {
+        adt_def_span?
+    };
 
-        span.push_span_label(def_span, "");
-        for pat in spans {
-            span.push_span_label(pat, "not covered");
-        }
-        err.span_note(span, format!("`{ty}` defined here"));
+    let mut variants = vec![];
+    for span in maybe_point_at_variant(tcx, *def, witnesses.iter().take(5)) {
+        variants.push(Variant { span });
     }
+    Some(AdtDefinedHere { adt_def_span, ty, variants })
 }
 
-fn maybe_point_at_variant<'a, 'p: 'a, 'tcx: 'a>(
-    cx: &MatchCheckCtxt<'p, 'tcx>,
+fn maybe_point_at_variant<'a, 'tcx: 'a>(
+    tcx: TyCtxt<'tcx>,
     def: AdtDef<'tcx>,
     patterns: impl Iterator<Item = &'a WitnessPat<'tcx>>,
 ) -> Vec<Span> {
@@ -1068,7 +1065,7 @@ fn maybe_point_at_variant<'a, 'p: 'a, 'tcx: 'a>(
             {
                 continue;
             }
-            let sp = def.variant(*variant_index).ident(cx.tcx).span;
+            let sp = def.variant(*variant_index).ident(tcx).span;
             if covered.contains(&sp) {
                 // Don't point at variants that have already been covered due to other patterns to avoid
                 // visual clutter.
@@ -1076,7 +1073,7 @@ fn maybe_point_at_variant<'a, 'p: 'a, 'tcx: 'a>(
             }
             covered.push(sp);
         }
-        covered.extend(maybe_point_at_variant(cx, def, pattern.iter_fields()));
+        covered.extend(maybe_point_at_variant(tcx, def, pattern.iter_fields()));
     }
     covered
 }
