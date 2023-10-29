@@ -35,9 +35,9 @@ smallvec = "1.8.1"
 
 [features]
 # Enable features not ready to be enabled when compiling as part of rustc
-unstable-features = ["jit", "inline_asm"]
+unstable-features = ["jit", "inline_asm_sym"]
 jit = ["cranelift-jit", "libloading"]
-inline_asm = []
+inline_asm_sym = []
 
 [package.metadata.rust-analyzer]
 rustc_private = true
