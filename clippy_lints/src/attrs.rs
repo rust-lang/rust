@@ -409,7 +409,7 @@ declare_clippy_lint! {
     ///
     /// ### Why is this bad?
     /// Misspelling `feature` as `features` can be sometimes hard to spot. It
-    /// may cause conditional compilation not work quitely.
+    /// may cause conditional compilation not work quietly.
     ///
     /// ### Example
     /// ```no_run

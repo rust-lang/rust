@@ -29,7 +29,7 @@ declare_clippy_lint! {
     #[clippy::version = "1.73.0"]
     pub RESERVE_AFTER_INITIALIZATION,
     complexity,
-    "`reserve` called immediatly after `Vec` creation"
+    "`reserve` called immediately after `Vec` creation"
 }
 impl_lint_pass!(ReserveAfterInitialization => [RESERVE_AFTER_INITIALIZATION]);
 
