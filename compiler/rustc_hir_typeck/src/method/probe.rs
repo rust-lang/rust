@@ -1693,6 +1693,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 }
 
                 debug!("comparing return_ty {:?} with xform ret ty {:?}", return_ty, xform_ret_ty);
+                // FIXME(DefineOpaqueTypes): no test exercizes using `DefineOpaqueTypes::Yes` below.
                 if let ProbeResult::Match = result
                     && self
                         .at(&ObligationCause::dummy(), self.param_env)
