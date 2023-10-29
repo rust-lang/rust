@@ -207,6 +207,7 @@ hir_analysis_missing_trait_item_unstable = not all trait items implemented, miss
     .note = default implementation of `{$missing_item_name}` is unstable
     .some_note = use of unstable library feature '{$feature}': {$reason}
     .none_note = use of unstable library feature '{$feature}'
+    .note = if you are on an old compiler version you may need to update your compiler
 
 hir_analysis_missing_type_params =
     the type {$parameterCount ->
