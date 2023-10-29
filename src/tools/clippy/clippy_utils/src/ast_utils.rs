@@ -211,7 +211,7 @@ pub fn eq_expr(l: &Expr, r: &Expr) -> bool {
                 && eq_fn_decl(lf, rf)
                 && eq_expr(le, re)
         },
-        (Async(lc, lb), Async(rc, rb)) => lc == rc && eq_block(lb, rb),
+        (Gen(lc, lb, lk), Gen(rc, rb, rk)) => lc == rc && eq_block(lb, rb) && lk == rk,
         (Range(lf, lt, ll), Range(rf, rt, rl)) => ll == rl && eq_expr_opt(lf, rf) && eq_expr_opt(lt, rt),
         (AddrOf(lbk, lm, le), AddrOf(rbk, rm, re)) => lbk == rbk && lm == rm && eq_expr(le, re),
         (Path(lq, lp), Path(rq, rp)) => both(lq, rq, eq_qself) && eq_path(lp, rp),

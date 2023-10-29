@@ -1,0 +1,11 @@
+error[E0626]: borrow may still be in use when `gen` block yields
+  --> $DIR/self_referential_gen_block.rs:9:21
+   |
+LL |             let z = &y;
+   |                     ^^
+LL |             yield 43;
+   |             -------- possible yield occurs here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0626`.

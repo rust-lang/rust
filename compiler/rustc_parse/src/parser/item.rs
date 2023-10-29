@@ -2297,9 +2297,9 @@ impl<'a> Parser<'a> {
         // `pub` is added in case users got confused with the ordering like `async pub fn`,
         // only if it wasn't preceded by `default` as `default pub` is invalid.
         let quals: &[Symbol] = if check_pub {
-            &[kw::Pub, kw::Const, kw::Async, kw::Unsafe, kw::Extern]
+            &[kw::Pub, kw::Gen, kw::Const, kw::Async, kw::Unsafe, kw::Extern]
         } else {
-            &[kw::Const, kw::Async, kw::Unsafe, kw::Extern]
+            &[kw::Gen, kw::Const, kw::Async, kw::Unsafe, kw::Extern]
         };
         self.check_keyword_case(kw::Fn, case) // Definitely an `fn`.
             // `$qual fn` or `$qual $qual`:
@@ -2353,6 +2353,9 @@ impl<'a> Parser<'a> {
         let async_start_sp = self.token.span;
         let asyncness = self.parse_asyncness(case);
 
+        let _gen_start_sp = self.token.span;
+        let genness = self.parse_genness(case);
+
         let unsafe_start_sp = self.token.span;
         let unsafety = self.parse_unsafety(case);
 
@@ -2366,6 +2369,10 @@ impl<'a> Parser<'a> {
                     help: errors::HelpUseLatestEdition::new(),
                 });
             }
+        }
+
+        if let Gen::Yes { span, .. } = genness {
+            self.sess.emit_err(errors::GenBlock { span });
         }
 
         if !self.eat_keyword_case(kw::Fn, case) {

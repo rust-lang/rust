@@ -879,18 +879,28 @@ impl<'tcx> Stable<'tcx> for mir::AggregateKind<'tcx> {
     }
 }
 
+impl<'tcx> Stable<'tcx> for rustc_hir::CoroutineSource {
+    type T = stable_mir::mir::CoroutineSource;
+    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
+        use rustc_hir::CoroutineSource;
+        match self {
+            CoroutineSource::Block => stable_mir::mir::CoroutineSource::Block,
+            CoroutineSource::Closure => stable_mir::mir::CoroutineSource::Closure,
+            CoroutineSource::Fn => stable_mir::mir::CoroutineSource::Fn,
+        }
+    }
+}
+
 impl<'tcx> Stable<'tcx> for rustc_hir::CoroutineKind {
     type T = stable_mir::mir::CoroutineKind;
-    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
-        use rustc_hir::{CoroutineKind, CoroutineSource};
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        use rustc_hir::CoroutineKind;
         match self {
-            CoroutineKind::Async(async_gen) => {
-                let async_gen = match async_gen {
-                    CoroutineSource::Block => stable_mir::mir::CoroutineSource::Block,
-                    CoroutineSource::Closure => stable_mir::mir::CoroutineSource::Closure,
-                    CoroutineSource::Fn => stable_mir::mir::CoroutineSource::Fn,
-                };
-                stable_mir::mir::CoroutineKind::Async(async_gen)
+            CoroutineKind::Async(source) => {
+                stable_mir::mir::CoroutineKind::Async(source.stable(tables))
+            }
+            CoroutineKind::Gen(source) => {
+                stable_mir::mir::CoroutineKind::Gen(source.stable(tables))
             }
             CoroutineKind::Coroutine => stable_mir::mir::CoroutineKind::Coroutine,
         }

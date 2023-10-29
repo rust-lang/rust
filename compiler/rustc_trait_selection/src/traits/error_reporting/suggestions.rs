@@ -2425,6 +2425,21 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         CoroutineKind::Async(CoroutineSource::Closure) => {
                             format!("future created by async closure is not {trait_name}")
                         }
+                        CoroutineKind::Gen(CoroutineSource::Fn) => self
+                            .tcx
+                            .parent(coroutine_did)
+                            .as_local()
+                            .map(|parent_did| hir.local_def_id_to_hir_id(parent_did))
+                            .and_then(|parent_hir_id| hir.opt_name(parent_hir_id))
+                            .map(|name| {
+                                format!("iterator returned by `{name}` is not {trait_name}")
+                            })?,
+                        CoroutineKind::Gen(CoroutineSource::Block) => {
+                            format!("iterator created by gen block is not {trait_name}")
+                        }
+                        CoroutineKind::Gen(CoroutineSource::Closure) => {
+                            format!("iterator created by gen closure is not {trait_name}")
+                        }
                     })
                 })
                 .unwrap_or_else(|| format!("{future_or_coroutine} is not {trait_name}"));
@@ -2931,7 +2946,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             }
             ObligationCauseCode::SizedCoroutineInterior(coroutine_def_id) => {
                 let what = match self.tcx.coroutine_kind(coroutine_def_id) {
-                    None | Some(hir::CoroutineKind::Coroutine) => "yield",
+                    None | Some(hir::CoroutineKind::Coroutine) | Some(hir::CoroutineKind::Gen(_)) => "yield",
                     Some(hir::CoroutineKind::Async(..)) => "await",
                 };
                 err.note(format!(

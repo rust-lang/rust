@@ -782,6 +782,17 @@ impl<'tcx> TyCtxt<'tcx> {
         matches!(self.coroutine_kind(def_id), Some(hir::CoroutineKind::Async(_)))
     }
 
+    /// Returns `true` if the node pointed to by `def_id` is a general coroutine that implements `Coroutine`.
+    /// This means it is neither an `async` or `gen` construct.
+    pub fn is_general_coroutine(self, def_id: DefId) -> bool {
+        matches!(self.coroutine_kind(def_id), Some(hir::CoroutineKind::Coroutine))
+    }
+
+    /// Returns `true` if the node pointed to by `def_id` is a coroutine for a gen construct.
+    pub fn coroutine_is_gen(self, def_id: DefId) -> bool {
+        matches!(self.coroutine_kind(def_id), Some(hir::CoroutineKind::Gen(_)))
+    }
+
     pub fn stability(self) -> &'tcx stability::Index {
         self.stability_index(())
     }

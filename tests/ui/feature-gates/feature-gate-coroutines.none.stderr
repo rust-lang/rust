@@ -1,0 +1,66 @@
+error[E0658]: yield syntax is experimental
+  --> $DIR/feature-gate-coroutines.rs:5:5
+   |
+LL |     yield true;
+   |     ^^^^^^^^^^
+   |
+   = note: see issue #43122 <https://github.com/rust-lang/rust/issues/43122> for more information
+   = help: add `#![feature(coroutines)]` to the crate attributes to enable
+
+error[E0658]: yield syntax is experimental
+  --> $DIR/feature-gate-coroutines.rs:9:16
+   |
+LL |     let _ = || yield true;
+   |                ^^^^^^^^^^
+   |
+   = note: see issue #43122 <https://github.com/rust-lang/rust/issues/43122> for more information
+   = help: add `#![feature(coroutines)]` to the crate attributes to enable
+
+error[E0658]: yield syntax is experimental
+  --> $DIR/feature-gate-coroutines.rs:16:5
+   |
+LL |     yield;
+   |     ^^^^^
+   |
+   = note: see issue #43122 <https://github.com/rust-lang/rust/issues/43122> for more information
+   = help: add `#![feature(coroutines)]` to the crate attributes to enable
+
+error[E0658]: yield syntax is experimental
+  --> $DIR/feature-gate-coroutines.rs:17:5
+   |
+LL |     yield 0;
+   |     ^^^^^^^
+   |
+   = note: see issue #43122 <https://github.com/rust-lang/rust/issues/43122> for more information
+   = help: add `#![feature(coroutines)]` to the crate attributes to enable
+
+error[E0658]: yield syntax is experimental
+  --> $DIR/feature-gate-coroutines.rs:5:5
+   |
+LL |     yield true;
+   |     ^^^^^^^^^^
+   |
+   = note: see issue #43122 <https://github.com/rust-lang/rust/issues/43122> for more information
+   = help: add `#![feature(coroutines)]` to the crate attributes to enable
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0658]: yield syntax is experimental
+  --> $DIR/feature-gate-coroutines.rs:9:16
+   |
+LL |     let _ = || yield true;
+   |                ^^^^^^^^^^
+   |
+   = note: see issue #43122 <https://github.com/rust-lang/rust/issues/43122> for more information
+   = help: add `#![feature(coroutines)]` to the crate attributes to enable
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0627]: yield expression outside of coroutine literal
+  --> $DIR/feature-gate-coroutines.rs:5:5
+   |
+LL |     yield true;
+   |     ^^^^^^^^^^
+
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0627, E0658.
+For more information about an error, try `rustc --explain E0627`.

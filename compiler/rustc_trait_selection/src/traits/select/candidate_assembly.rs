@@ -113,6 +113,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     self.assemble_coroutine_candidates(obligation, &mut candidates);
                 } else if lang_items.future_trait() == Some(def_id) {
                     self.assemble_future_candidates(obligation, &mut candidates);
+                } else if lang_items.iterator_trait() == Some(def_id) {
+                    self.assemble_iterator_candidates(obligation, &mut candidates);
                 }
 
                 self.assemble_closure_candidates(obligation, &mut candidates);
@@ -210,9 +212,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // type/region parameters.
         let self_ty = obligation.self_ty().skip_binder();
         match self_ty.kind() {
-            // async constructs get lowered to a special kind of coroutine that
+            // `async`/`gen` constructs get lowered to a special kind of coroutine that
             // should *not* `impl Coroutine`.
-            ty::Coroutine(did, ..) if !self.tcx().coroutine_is_async(*did) => {
+            ty::Coroutine(did, ..) if self.tcx().is_general_coroutine(*did) => {
                 debug!(?self_ty, ?obligation, "assemble_coroutine_candidates",);
 
                 candidates.vec.push(CoroutineCandidate);
@@ -238,6 +240,23 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 debug!(?self_ty, ?obligation, "assemble_future_candidates",);
 
                 candidates.vec.push(FutureCandidate);
+            }
+        }
+    }
+
+    fn assemble_iterator_candidates(
+        &mut self,
+        obligation: &PolyTraitObligation<'tcx>,
+        candidates: &mut SelectionCandidateSet<'tcx>,
+    ) {
+        let self_ty = obligation.self_ty().skip_binder();
+        if let ty::Coroutine(did, ..) = self_ty.kind() {
+            // gen constructs get lowered to a special kind of coroutine that
+            // should directly `impl Iterator`.
+            if self.tcx().coroutine_is_gen(*did) {
+                debug!(?self_ty, ?obligation, "assemble_iterator_candidates",);
+
+                candidates.vec.push(IteratorCandidate);
             }
         }
     }

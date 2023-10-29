@@ -201,7 +201,15 @@ pub(super) trait GoalKind<'tcx>:
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx>;
 
-    /// A coroutine (that doesn't come from an `async` desugaring) is known to
+    /// A coroutine (that comes from a `gen` desugaring) is known to implement
+    /// `Iterator<Item = O>`, where `O` is given by the generator's yield type
+    /// that was computed during type-checking.
+    fn consider_builtin_iterator_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx>;
+
+    /// A coroutine (that doesn't come from an `async` or `gen` desugaring) is known to
     /// implement `Coroutine<R, Yield = Y, Return = O>`, given the resume, yield,
     /// and return types of the coroutine computed during type-checking.
     fn consider_builtin_coroutine_candidate(
@@ -554,6 +562,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             G::consider_builtin_pointee_candidate(self, goal)
         } else if lang_items.future_trait() == Some(trait_def_id) {
             G::consider_builtin_future_candidate(self, goal)
+        } else if lang_items.iterator_trait() == Some(trait_def_id) {
+            G::consider_builtin_iterator_candidate(self, goal)
         } else if lang_items.gen_trait() == Some(trait_def_id) {
             G::consider_builtin_coroutine_candidate(self, goal)
         } else if lang_items.discriminant_kind_trait() == Some(trait_def_id) {

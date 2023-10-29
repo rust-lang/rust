@@ -749,6 +749,7 @@ impl<'tcx> TyCtxt<'tcx> {
             DefKind::Coroutine => match self.coroutine_kind(def_id).unwrap() {
                 rustc_hir::CoroutineKind::Async(..) => "async closure",
                 rustc_hir::CoroutineKind::Coroutine => "coroutine",
+                rustc_hir::CoroutineKind::Gen(..) => "gen closure",
             },
             _ => def_kind.descr(def_id),
         }
@@ -766,6 +767,7 @@ impl<'tcx> TyCtxt<'tcx> {
             DefKind::Coroutine => match self.coroutine_kind(def_id).unwrap() {
                 rustc_hir::CoroutineKind::Async(..) => "an",
                 rustc_hir::CoroutineKind::Coroutine => "a",
+                rustc_hir::CoroutineKind::Gen(..) => "a",
             },
             _ => def_kind.article(),
         }

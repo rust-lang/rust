@@ -1653,6 +1653,9 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             hir::CoroutineKind::Async(hir::CoroutineSource::Block) => "an async block",
             hir::CoroutineKind::Async(hir::CoroutineSource::Fn) => "an async function",
             hir::CoroutineKind::Async(hir::CoroutineSource::Closure) => "an async closure",
+            hir::CoroutineKind::Gen(hir::CoroutineSource::Block) => "a gen block",
+            hir::CoroutineKind::Gen(hir::CoroutineSource::Fn) => "a gen function",
+            hir::CoroutineKind::Gen(hir::CoroutineSource::Closure) => "a gen closure",
         })
     }
 
