@@ -586,7 +586,11 @@ impl Build {
                     .args(&["diff-index", "--quiet", "HEAD"])
                     .current_dir(&absolute_path),
             )
-            .allow_failure(),
+            .allow_failure()
+            .output_mode(match self.is_verbose() {
+                true => OutputMode::PrintAll,
+                false => OutputMode::PrintOutput,
+            }),
         );
         if has_local_modifications {
             self.run(Command::new("git").args(&["stash", "push"]).current_dir(&absolute_path));
