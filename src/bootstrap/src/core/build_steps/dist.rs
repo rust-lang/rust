@@ -1305,6 +1305,10 @@ impl Step for CodegenBackend {
             return None;
         }
 
+        if !builder.config.rust_codegen_backends.contains(&self.backend) {
+            return None;
+        }
+
         if self.backend == "cranelift" {
             if !target_supports_cranelift_backend(self.compiler.host) {
                 builder.info("target not supported by rustc_codegen_cranelift. skipping");
@@ -1343,12 +1347,15 @@ impl Step for CodegenBackend {
         let backends_dst = PathBuf::from("lib").join(&backends_rel);
 
         let backend_name = format!("rustc_codegen_{}", backend);
+        let mut found_backend = false;
         for backend in fs::read_dir(&backends_src).unwrap() {
             let file_name = backend.unwrap().file_name();
             if file_name.to_str().unwrap().contains(&backend_name) {
                 tarball.add_file(backends_src.join(file_name), &backends_dst, 0o644);
+                found_backend = true;
             }
         }
+        assert!(found_backend);
 
         Some(tarball.generate())
     }
