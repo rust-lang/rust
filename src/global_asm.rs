@@ -134,20 +134,66 @@ pub(crate) fn compile_global_asm(
         .join("\n");
     global_asm.push('\n');
 
-    let output_object_file = config.output_filenames.temp_path(OutputType::Object, Some(cgu_name));
+    let global_asm_object_file = add_file_stem_postfix(
+        config.output_filenames.temp_path(OutputType::Object, Some(cgu_name)),
+        ".asm",
+    );
 
     // Assemble `global_asm`
-    let global_asm_object_file = add_file_stem_postfix(output_object_file, ".asm");
-    let mut child = Command::new(&config.assembler)
-        .arg("-o")
-        .arg(&global_asm_object_file)
-        .stdin(Stdio::piped())
-        .spawn()
-        .expect("Failed to spawn `as`.");
-    child.stdin.take().unwrap().write_all(global_asm.as_bytes()).unwrap();
-    let status = child.wait().expect("Failed to wait for `as`.");
-    if !status.success() {
-        return Err(format!("Failed to assemble `{}`", global_asm));
+    if false {
+        let mut child = Command::new(&config.assembler)
+            .arg("-o")
+            .arg(&global_asm_object_file)
+            .stdin(Stdio::piped())
+            .spawn()
+            .expect("Failed to spawn `as`.");
+        child.stdin.take().unwrap().write_all(global_asm.as_bytes()).unwrap();
+        let status = child.wait().expect("Failed to wait for `as`.");
+        if !status.success() {
+            return Err(format!("Failed to assemble `{}`", global_asm));
+        }
+    } else {
+        let mut child = Command::new(std::env::current_exe().unwrap())
+            .arg("--target")
+            .arg(&config.target)
+            .arg("--crate-type")
+            .arg("staticlib")
+            .arg("--emit")
+            .arg("obj")
+            .arg("-o")
+            .arg(&global_asm_object_file)
+            .arg("-")
+            .arg("-Abad_asm_style")
+            .stdin(Stdio::piped())
+            .spawn()
+            .expect("Failed to spawn `as`.");
+        let mut stdin = child.stdin.take().unwrap();
+        stdin
+            .write_all(
+                br####"
+                #![feature(decl_macro, no_core, rustc_attrs)]
+                #![allow(internal_features)]
+                #![no_core]
+                #[rustc_builtin_macro]
+                #[rustc_macro_transparency = "semitransparent"]
+                macro global_asm() { /* compiler built-in */ }
+                global_asm!(r###"
+                "####,
+            )
+            .unwrap();
+        stdin.write_all(global_asm.as_bytes()).unwrap();
+        stdin
+            .write_all(
+                br####"
+                "###);
+                "####,
+            )
+            .unwrap();
+        std::mem::drop(stdin);
+        let status = child.wait().expect("Failed to wait for `as`.");
+        if !status.success() {
+            return Err(format!("Failed to assemble `{}`", global_asm));
+        }
     }
 
     Ok(Some(global_asm_object_file))
