@@ -91,6 +91,10 @@ pub use core::prelude::v1::cfg_eval;
 )]
 pub use core::prelude::v1::type_ascribe;
 
+#[unstable(feature = "cfg_match", issue = "115585")]
+#[cfg(not(bootstrap))]
+pub use core::prelude::v1::cfg_match;
+
 // The file so far is equivalent to core/src/prelude/v1.rs. It is duplicated
 // rather than glob imported because we want docs to show these re-exports as
 // pointing to within `std`.

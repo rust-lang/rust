@@ -478,6 +478,7 @@ make_MacEager! {
     trait_items: SmallVec<[P<ast::AssocItem>; 1]>,
     foreign_items: SmallVec<[P<ast::ForeignItem>; 1]>,
     stmts: SmallVec<[ast::Stmt; 1]>,
+    token_stream: P<TokenStream>,
     ty: P<ast::Ty>,
 }
 

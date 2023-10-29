@@ -34,6 +34,7 @@ mod assert;
 mod cfg;
 mod cfg_accessible;
 mod cfg_eval;
+mod cfg_match;
 mod compile_error;
 mod concat;
 mod concat_bytes;
@@ -78,6 +79,7 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
         asm: asm::expand_asm,
         assert: assert::expand_assert,
         cfg: cfg::expand_cfg,
+        cfg_match: cfg_match::expand_cfg_match,
         column: source_util::expand_column,
         compile_error: compile_error::expand_compile_error,
         concat: concat::expand_concat,
@@ -119,8 +121,8 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
 
     register_derive! {
         Clone: clone::expand_deriving_clone,
-        Copy: bounds::expand_deriving_copy,
         ConstParamTy: bounds::expand_deriving_const_param_ty,
+        Copy: bounds::expand_deriving_copy,
         Debug: debug::expand_deriving_debug,
         Default: default::expand_deriving_default,
         Eq: eq::expand_deriving_eq,

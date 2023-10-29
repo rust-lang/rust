@@ -1,0 +1,29 @@
+#![feature(prelude_import)]
+#![no_std]
+// check-pass
+// compile-flags: -Z unpretty=expanded
+
+#![feature(cfg_match)]
+#[prelude_import]
+use ::std::prelude::rust_2015::*;
+#[macro_use]
+extern crate std;
+
+trait Trait {
+    fn impl_fn(&self);
+}
+struct Struct;
+impl Trait for Struct {
+    #[cfg(all(not(any(feature = "blah"))))]
+    fn impl_fn(&self) {}
+}
+
+#[cfg(all(unix, not(any())))]
+fn item() {}
+
+fn statement() {
+    #[cfg(all(unix, not(any())))]
+    fn statement() {}
+}
+
+pub fn main() {}
