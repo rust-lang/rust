@@ -933,6 +933,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 let fty = self.instantiate_binder_with_fresh_vars(self.span, infer::FnCall, fty);
 
                 if let Some(self_ty) = self_ty {
+                    // FIXME(DefineOpaqueTypes): no test exercizes using `DefineOpaqueTypes::Yes`
+                    // below.
                     if self
                         .at(&ObligationCause::dummy(), self.param_env)
                         .sup(DefineOpaqueTypes::No, fty.inputs()[0], self_ty)
