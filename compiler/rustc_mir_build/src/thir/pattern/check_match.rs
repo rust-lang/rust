@@ -572,6 +572,111 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
     }
 }
 
+/// Check if a by-value binding is by-value. That is, check if the binding's type is not `Copy`.
+/// Check that there are no borrow or move conflicts in `binding @ subpat` patterns.
+///
+/// For example, this would reject:
+/// - `ref x @ Some(ref mut y)`,
+/// - `ref mut x @ Some(ref y)`,
+/// - `ref mut x @ Some(ref mut y)`,
+/// - `ref mut? x @ Some(y)`, and
+/// - `x @ Some(ref mut? y)`.
+///
+/// This analysis is *not* subsumed by NLL.
+fn check_borrow_conflicts_in_at_patterns<'tcx>(cx: &MatchVisitor<'_, '_, 'tcx>, pat: &Pat<'tcx>) {
+    // Extract `sub` in `binding @ sub`.
+    let PatKind::Binding { name, mode, ty, subpattern: Some(box ref sub), .. } = pat.kind else {
+        return;
+    };
+
+    let is_binding_by_move = |ty: Ty<'tcx>| !ty.is_copy_modulo_regions(cx.tcx, cx.param_env);
+
+    let sess = cx.tcx.sess;
+
+    // Get the binding move, extract the mutability if by-ref.
+    let mut_outer = match mode {
+        BindingMode::ByValue if is_binding_by_move(ty) => {
+            // We have `x @ pat` where `x` is by-move. Reject all borrows in `pat`.
+            let mut conflicts_ref = Vec::new();
+            sub.each_binding(|_, mode, _, span| match mode {
+                BindingMode::ByValue => {}
+                BindingMode::ByRef(_) => conflicts_ref.push(span),
+            });
+            if !conflicts_ref.is_empty() {
+                sess.emit_err(BorrowOfMovedValue {
+                    binding_span: pat.span,
+                    conflicts_ref,
+                    name,
+                    ty,
+                    suggest_borrowing: Some(pat.span.shrink_to_lo()),
+                });
+            }
+            return;
+        }
+        BindingMode::ByValue => return,
+        BindingMode::ByRef(m) => m.mutability(),
+    };
+
+    // We now have `ref $mut_outer binding @ sub` (semantically).
+    // Recurse into each binding in `sub` and find mutability or move conflicts.
+    let mut conflicts_move = Vec::new();
+    let mut conflicts_mut_mut = Vec::new();
+    let mut conflicts_mut_ref = Vec::new();
+    sub.each_binding(|name, mode, ty, span| {
+        match mode {
+            BindingMode::ByRef(mut_inner) => match (mut_outer, mut_inner.mutability()) {
+                // Both sides are `ref`.
+                (Mutability::Not, Mutability::Not) => {}
+                // 2x `ref mut`.
+                (Mutability::Mut, Mutability::Mut) => {
+                    conflicts_mut_mut.push(Conflict::Mut { span, name })
+                }
+                (Mutability::Not, Mutability::Mut) => {
+                    conflicts_mut_ref.push(Conflict::Mut { span, name })
+                }
+                (Mutability::Mut, Mutability::Not) => {
+                    conflicts_mut_ref.push(Conflict::Ref { span, name })
+                }
+            },
+            BindingMode::ByValue if is_binding_by_move(ty) => {
+                conflicts_move.push(Conflict::Moved { span, name }) // `ref mut?` + by-move conflict.
+            }
+            BindingMode::ByValue => {} // `ref mut?` + by-copy is fine.
+        }
+    });
+
+    let report_mut_mut = !conflicts_mut_mut.is_empty();
+    let report_mut_ref = !conflicts_mut_ref.is_empty();
+    let report_move_conflict = !conflicts_move.is_empty();
+
+    let mut occurrences = match mut_outer {
+        Mutability::Mut => vec![Conflict::Mut { span: pat.span, name }],
+        Mutability::Not => vec![Conflict::Ref { span: pat.span, name }],
+    };
+    occurrences.extend(conflicts_mut_mut);
+    occurrences.extend(conflicts_mut_ref);
+    occurrences.extend(conflicts_move);
+
+    // Report errors if any.
+    if report_mut_mut {
+        // Report mutability conflicts for e.g. `ref mut x @ Some(ref mut y)`.
+        sess.emit_err(MultipleMutBorrows { span: pat.span, occurrences });
+    } else if report_mut_ref {
+        // Report mutability conflicts for e.g. `ref x @ Some(ref mut y)` or the converse.
+        match mut_outer {
+            Mutability::Mut => {
+                sess.emit_err(AlreadyMutBorrowed { span: pat.span, occurrences });
+            }
+            Mutability::Not => {
+                sess.emit_err(AlreadyBorrowed { span: pat.span, occurrences });
+            }
+        };
+    } else if report_move_conflict {
+        // Report by-ref and by-move conflicts, e.g. `ref x @ y`.
+        sess.emit_err(MovedWhileBorrowed { span: pat.span, occurrences });
+    }
+}
+
 fn check_for_bindings_named_same_as_variants(
     cx: &MatchVisitor<'_, '_, '_>,
     pat: &Pat<'_>,
@@ -614,25 +719,6 @@ fn check_for_bindings_named_same_as_variants(
             )
         }
     });
-}
-
-/// Checks for common cases of "catchall" patterns that may not be intended as such.
-fn pat_is_catchall(pat: &DeconstructedPat<'_, '_>) -> bool {
-    use Constructor::*;
-    match pat.ctor() {
-        Wildcard => true,
-        Single => pat.iter_fields().all(|pat| pat_is_catchall(pat)),
-        _ => false,
-    }
-}
-
-fn unreachable_pattern(tcx: TyCtxt<'_>, span: Span, id: HirId, catchall: Option<Span>) {
-    tcx.emit_spanned_lint(
-        UNREACHABLE_PATTERNS,
-        id,
-        span,
-        UnreachablePattern { span: if catchall.is_some() { Some(span) } else { None }, catchall },
-    );
 }
 
 fn irrefutable_let_patterns(
@@ -680,11 +766,23 @@ fn report_arm_reachability<'p, 'tcx>(
     cx: &MatchCheckCtxt<'p, 'tcx>,
     report: &UsefulnessReport<'p, 'tcx>,
 ) {
+    let report_unreachable_pattern = |span, hir_id, catchall: Option<Span>| {
+        cx.tcx.emit_spanned_lint(
+            UNREACHABLE_PATTERNS,
+            hir_id,
+            span,
+            UnreachablePattern {
+                span: if catchall.is_some() { Some(span) } else { None },
+                catchall,
+            },
+        );
+    };
+
     use Reachability::*;
     let mut catchall = None;
     for (arm, is_useful) in report.arm_usefulness.iter() {
         match is_useful {
-            Unreachable => unreachable_pattern(cx.tcx, arm.pat.span(), arm.hir_id, catchall),
+            Unreachable => report_unreachable_pattern(arm.pat.span(), arm.hir_id, catchall),
             Reachable(unreachables) if unreachables.is_empty() => {}
             // The arm is reachable, but contains unreachable subpatterns (from or-patterns).
             Reachable(unreachables) => {
@@ -692,7 +790,7 @@ fn report_arm_reachability<'p, 'tcx>(
                 // Emit lints in the order in which they occur in the file.
                 unreachables.sort_unstable();
                 for span in unreachables {
-                    unreachable_pattern(cx.tcx, span, arm.hir_id, None);
+                    report_unreachable_pattern(span, arm.hir_id, None);
                 }
             }
         }
@@ -702,22 +800,14 @@ fn report_arm_reachability<'p, 'tcx>(
     }
 }
 
-fn collect_non_exhaustive_tys<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    pat: &WitnessPat<'tcx>,
-    non_exhaustive_tys: &mut FxHashSet<Ty<'tcx>>,
-) {
-    if matches!(pat.ctor(), Constructor::NonExhaustive) {
-        non_exhaustive_tys.insert(pat.ty());
+/// Checks for common cases of "catchall" patterns that may not be intended as such.
+fn pat_is_catchall(pat: &DeconstructedPat<'_, '_>) -> bool {
+    use Constructor::*;
+    match pat.ctor() {
+        Wildcard => true,
+        Single => pat.iter_fields().all(|pat| pat_is_catchall(pat)),
+        _ => false,
     }
-    if let Constructor::IntRange(range) = pat.ctor() {
-        if range.is_beyond_boundaries(pat.ty(), tcx) {
-            // The range denotes the values before `isize::MIN` or the values after `usize::MAX`/`isize::MAX`.
-            non_exhaustive_tys.insert(pat.ty());
-        }
-    }
-    pat.iter_fields()
-        .for_each(|field_pat| collect_non_exhaustive_tys(tcx, field_pat, non_exhaustive_tys))
 }
 
 /// Report that a match is not exhaustive.
@@ -755,7 +845,14 @@ fn non_exhaustive_match<'p, 'tcx>(
             sp,
             format!("non-exhaustive patterns: {joined_patterns} not covered"),
         );
-        err.span_label(sp, pattern_not_covered_label(&witnesses, &joined_patterns));
+        err.span_label(
+            sp,
+            format!(
+                "pattern{} {} not covered",
+                rustc_errors::pluralize!(witnesses.len()),
+                joined_patterns
+            ),
+        );
         patterns_len = witnesses.len();
         pattern = if witnesses.len() < 4 {
             witnesses
@@ -910,7 +1007,7 @@ fn non_exhaustive_match<'p, 'tcx>(
     err.emit()
 }
 
-pub(crate) fn joined_uncovered_patterns<'p, 'tcx>(
+fn joined_uncovered_patterns<'p, 'tcx>(
     cx: &MatchCheckCtxt<'p, 'tcx>,
     witnesses: &[WitnessPat<'tcx>],
 ) -> String {
@@ -931,11 +1028,22 @@ pub(crate) fn joined_uncovered_patterns<'p, 'tcx>(
     }
 }
 
-pub(crate) fn pattern_not_covered_label(
-    witnesses: &[WitnessPat<'_>],
-    joined_patterns: &str,
-) -> String {
-    format!("pattern{} {} not covered", rustc_errors::pluralize!(witnesses.len()), joined_patterns)
+fn collect_non_exhaustive_tys<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    pat: &WitnessPat<'tcx>,
+    non_exhaustive_tys: &mut FxHashSet<Ty<'tcx>>,
+) {
+    if matches!(pat.ctor(), Constructor::NonExhaustive) {
+        non_exhaustive_tys.insert(pat.ty());
+    }
+    if let Constructor::IntRange(range) = pat.ctor() {
+        if range.is_beyond_boundaries(pat.ty(), tcx) {
+            // The range denotes the values before `isize::MIN` or the values after `usize::MAX`/`isize::MAX`.
+            non_exhaustive_tys.insert(pat.ty());
+        }
+    }
+    pat.iter_fields()
+        .for_each(|field_pat| collect_non_exhaustive_tys(tcx, field_pat, non_exhaustive_tys))
 }
 
 /// Point at the definition of non-covered `enum` variants.
@@ -996,109 +1104,4 @@ fn maybe_point_at_variant<'a, 'p: 'a, 'tcx: 'a>(
         covered.extend(maybe_point_at_variant(cx, def, pattern.iter_fields()));
     }
     covered
-}
-
-/// Check if a by-value binding is by-value. That is, check if the binding's type is not `Copy`.
-/// Check that there are no borrow or move conflicts in `binding @ subpat` patterns.
-///
-/// For example, this would reject:
-/// - `ref x @ Some(ref mut y)`,
-/// - `ref mut x @ Some(ref y)`,
-/// - `ref mut x @ Some(ref mut y)`,
-/// - `ref mut? x @ Some(y)`, and
-/// - `x @ Some(ref mut? y)`.
-///
-/// This analysis is *not* subsumed by NLL.
-fn check_borrow_conflicts_in_at_patterns<'tcx>(cx: &MatchVisitor<'_, '_, 'tcx>, pat: &Pat<'tcx>) {
-    // Extract `sub` in `binding @ sub`.
-    let PatKind::Binding { name, mode, ty, subpattern: Some(box ref sub), .. } = pat.kind else {
-        return;
-    };
-
-    let is_binding_by_move = |ty: Ty<'tcx>| !ty.is_copy_modulo_regions(cx.tcx, cx.param_env);
-
-    let sess = cx.tcx.sess;
-
-    // Get the binding move, extract the mutability if by-ref.
-    let mut_outer = match mode {
-        BindingMode::ByValue if is_binding_by_move(ty) => {
-            // We have `x @ pat` where `x` is by-move. Reject all borrows in `pat`.
-            let mut conflicts_ref = Vec::new();
-            sub.each_binding(|_, mode, _, span| match mode {
-                BindingMode::ByValue => {}
-                BindingMode::ByRef(_) => conflicts_ref.push(span),
-            });
-            if !conflicts_ref.is_empty() {
-                sess.emit_err(BorrowOfMovedValue {
-                    binding_span: pat.span,
-                    conflicts_ref,
-                    name,
-                    ty,
-                    suggest_borrowing: Some(pat.span.shrink_to_lo()),
-                });
-            }
-            return;
-        }
-        BindingMode::ByValue => return,
-        BindingMode::ByRef(m) => m.mutability(),
-    };
-
-    // We now have `ref $mut_outer binding @ sub` (semantically).
-    // Recurse into each binding in `sub` and find mutability or move conflicts.
-    let mut conflicts_move = Vec::new();
-    let mut conflicts_mut_mut = Vec::new();
-    let mut conflicts_mut_ref = Vec::new();
-    sub.each_binding(|name, mode, ty, span| {
-        match mode {
-            BindingMode::ByRef(mut_inner) => match (mut_outer, mut_inner.mutability()) {
-                // Both sides are `ref`.
-                (Mutability::Not, Mutability::Not) => {}
-                // 2x `ref mut`.
-                (Mutability::Mut, Mutability::Mut) => {
-                    conflicts_mut_mut.push(Conflict::Mut { span, name })
-                }
-                (Mutability::Not, Mutability::Mut) => {
-                    conflicts_mut_ref.push(Conflict::Mut { span, name })
-                }
-                (Mutability::Mut, Mutability::Not) => {
-                    conflicts_mut_ref.push(Conflict::Ref { span, name })
-                }
-            },
-            BindingMode::ByValue if is_binding_by_move(ty) => {
-                conflicts_move.push(Conflict::Moved { span, name }) // `ref mut?` + by-move conflict.
-            }
-            BindingMode::ByValue => {} // `ref mut?` + by-copy is fine.
-        }
-    });
-
-    let report_mut_mut = !conflicts_mut_mut.is_empty();
-    let report_mut_ref = !conflicts_mut_ref.is_empty();
-    let report_move_conflict = !conflicts_move.is_empty();
-
-    let mut occurrences = match mut_outer {
-        Mutability::Mut => vec![Conflict::Mut { span: pat.span, name }],
-        Mutability::Not => vec![Conflict::Ref { span: pat.span, name }],
-    };
-    occurrences.extend(conflicts_mut_mut);
-    occurrences.extend(conflicts_mut_ref);
-    occurrences.extend(conflicts_move);
-
-    // Report errors if any.
-    if report_mut_mut {
-        // Report mutability conflicts for e.g. `ref mut x @ Some(ref mut y)`.
-        sess.emit_err(MultipleMutBorrows { span: pat.span, occurrences });
-    } else if report_mut_ref {
-        // Report mutability conflicts for e.g. `ref x @ Some(ref mut y)` or the converse.
-        match mut_outer {
-            Mutability::Mut => {
-                sess.emit_err(AlreadyMutBorrowed { span: pat.span, occurrences });
-            }
-            Mutability::Not => {
-                sess.emit_err(AlreadyBorrowed { span: pat.span, occurrences });
-            }
-        };
-    } else if report_move_conflict {
-        // Report by-ref and by-move conflicts, e.g. `ref x @ y`.
-        sess.emit_err(MovedWhileBorrowed { span: pat.span, occurrences });
-    }
 }
