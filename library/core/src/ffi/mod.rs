@@ -241,7 +241,6 @@ impl fmt::Debug for c_void {
     ),
     all(target_arch = "aarch64", any(target_os = "macos", target_os = "ios", target_os = "tvos")),
     target_family = "wasm",
-    target_arch = "asmjs",
     target_os = "uefi",
     windows,
 ))]
@@ -270,7 +269,6 @@ pub struct VaListImpl<'f> {
     ),
     all(target_arch = "aarch64", any(target_os = "macos", target_os = "ios", target_os = "tvos")),
     target_family = "wasm",
-    target_arch = "asmjs",
     target_os = "uefi",
     windows,
 ))]
@@ -395,7 +393,6 @@ pub struct VaList<'a, 'f: 'a> {
             any(target_os = "macos", target_os = "ios", target_os = "tvos")
         ),
         target_family = "wasm",
-        target_arch = "asmjs",
         target_os = "uefi",
         windows,
     ))]
@@ -413,7 +410,6 @@ pub struct VaList<'a, 'f: 'a> {
             not(any(target_os = "macos", target_os = "ios", target_os = "tvos"))
         ),
         not(target_family = "wasm"),
-        not(target_arch = "asmjs"),
         not(target_os = "uefi"),
         not(windows),
     ))]
@@ -431,7 +427,6 @@ pub struct VaList<'a, 'f: 'a> {
     ),
     all(target_arch = "aarch64", any(target_os = "macos", target_os = "ios", target_os = "tvos")),
     target_family = "wasm",
-    target_arch = "asmjs",
     target_os = "uefi",
     windows,
 ))]
@@ -461,7 +456,6 @@ impl<'f> VaListImpl<'f> {
         not(any(target_os = "macos", target_os = "ios", target_os = "tvos"))
     ),
     not(target_family = "wasm"),
-    not(target_arch = "asmjs"),
     not(target_os = "uefi"),
     not(windows),
 ))]
