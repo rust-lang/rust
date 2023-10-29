@@ -365,6 +365,11 @@
 #![feature(panic_unwind)]
 // tidy-alphabetical-end
 //
+// Library features (std_detect):
+// tidy-alphabetical-start
+#![feature(stdarch_internal)]
+// tidy-alphabetical-end
+//
 // Only for re-exporting:
 // tidy-alphabetical-start
 #![feature(assert_matches)]
