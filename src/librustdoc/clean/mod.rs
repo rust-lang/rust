@@ -498,7 +498,7 @@ fn clean_generic_param_def<'tcx>(
 ) -> GenericParamDef {
     let (name, kind) = match def.kind {
         ty::GenericParamDefKind::Lifetime => {
-            (def.name, GenericParamDefKind::Lifetime { outlives: vec![] })
+            (def.name, GenericParamDefKind::Lifetime { outlives: ThinVec::new() })
         }
         ty::GenericParamDefKind::Type { has_default, synthetic, .. } => {
             let default = if has_default {
@@ -515,7 +515,7 @@ fn clean_generic_param_def<'tcx>(
                 def.name,
                 GenericParamDefKind::Type {
                     did: def.def_id,
-                    bounds: vec![], // These are filled in from the where-clauses.
+                    bounds: ThinVec::new(), // These are filled in from the where-clauses.
                     default: default.map(Box::new),
                     synthetic,
                 },
@@ -567,7 +567,7 @@ fn clean_generic_param<'tcx>(
                     })
                     .collect()
             } else {
-                Vec::new()
+                ThinVec::new()
             };
             (param.name.ident().name, GenericParamDefKind::Lifetime { outlives })
         }
@@ -580,7 +580,7 @@ fn clean_generic_param<'tcx>(
                     .filter_map(|x| clean_generic_bound(x, cx))
                     .collect()
             } else {
-                Vec::new()
+                ThinVec::new()
             };
             (
                 param.name.ident().name,
@@ -636,7 +636,7 @@ pub(crate) fn clean_generics<'tcx>(
             match param.kind {
                 GenericParamDefKind::Lifetime { .. } => unreachable!(),
                 GenericParamDefKind::Type { did, ref bounds, .. } => {
-                    cx.impl_trait_bounds.insert(did.into(), bounds.clone());
+                    cx.impl_trait_bounds.insert(did.into(), bounds.to_vec());
                 }
                 GenericParamDefKind::Const { .. } => unreachable!(),
             }
@@ -3146,7 +3146,7 @@ fn clean_bound_vars<'tcx>(
                 name,
                 kind: GenericParamDefKind::Type {
                     did,
-                    bounds: Vec::new(),
+                    bounds: ThinVec::new(),
                     default: None,
                     synthetic: false,
                 },
