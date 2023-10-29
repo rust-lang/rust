@@ -647,15 +647,13 @@ fn test_traverse_coverage_with_loops() {
 fn test_make_bcb_counters() {
     rustc_span::create_default_session_globals_then(|| {
         let mir_body = goto_switchint();
-        let mut basic_coverage_blocks = graph::CoverageGraph::from_mir(&mir_body);
+        let basic_coverage_blocks = graph::CoverageGraph::from_mir(&mir_body);
         // Historically this test would use `spans` internals to set up fake
         // coverage spans for BCBs 1 and 2. Now we skip that step and just tell
         // BCB counter construction that those BCBs have spans.
         let bcb_has_coverage_spans = |bcb: BasicCoverageBlock| (1..=2).contains(&bcb.as_usize());
         let mut coverage_counters = counters::CoverageCounters::new(&basic_coverage_blocks);
-        coverage_counters
-            .make_bcb_counters(&mut basic_coverage_blocks, bcb_has_coverage_spans)
-            .expect("should be Ok");
+        coverage_counters.make_bcb_counters(&basic_coverage_blocks, bcb_has_coverage_spans);
         assert_eq!(coverage_counters.num_expressions(), 0);
 
         let_bcb!(1);
