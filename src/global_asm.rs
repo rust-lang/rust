@@ -46,6 +46,13 @@ pub(crate) fn codegen_global_asm_item(tcx: TyCtxt<'_>, global_asm: &mut String, 
                             global_asm.push_str(&string);
                         }
                         InlineAsmOperand::SymFn { anon_const } => {
+                            if cfg!(not(feature = "inline_asm_sym")) {
+                                tcx.sess.span_err(
+                                    item.span,
+                                    "asm! and global_asm! sym operands are not yet supported",
+                                );
+                            }
+
                             let ty = tcx.typeck_body(anon_const.body).node_type(anon_const.hir_id);
                             let instance = match ty.kind() {
                                 &ty::FnDef(def_id, args) => Instance::new(def_id, args),
@@ -57,6 +64,13 @@ pub(crate) fn codegen_global_asm_item(tcx: TyCtxt<'_>, global_asm: &mut String, 
                             global_asm.push_str(symbol.name);
                         }
                         InlineAsmOperand::SymStatic { path: _, def_id } => {
+                            if cfg!(not(feature = "inline_asm_sym")) {
+                                tcx.sess.span_err(
+                                    item.span,
+                                    "asm! and global_asm! sym operands are not yet supported",
+                                );
+                            }
+
                             let instance = Instance::mono(tcx, def_id).polymorphize(tcx);
                             let symbol = tcx.symbol_name(instance);
                             global_asm.push_str(symbol.name);
@@ -81,22 +95,23 @@ pub(crate) fn codegen_global_asm_item(tcx: TyCtxt<'_>, global_asm: &mut String, 
     }
 }
 
-pub(crate) fn asm_supported(tcx: TyCtxt<'_>) -> bool {
-    cfg!(feature = "inline_asm") && !tcx.sess.target.is_like_windows
-}
-
 #[derive(Debug)]
 pub(crate) struct GlobalAsmConfig {
-    asm_enabled: bool,
     assembler: PathBuf,
+    target: String,
     pub(crate) output_filenames: Arc<OutputFilenames>,
 }
 
 impl GlobalAsmConfig {
     pub(crate) fn new(tcx: TyCtxt<'_>) -> Self {
         GlobalAsmConfig {
-            asm_enabled: asm_supported(tcx),
             assembler: crate::toolchain::get_toolchain_binary(tcx.sess, "as"),
+            target: match &tcx.sess.opts.target_triple {
+                rustc_target::spec::TargetTriple::TargetTriple(triple) => triple.clone(),
+                rustc_target::spec::TargetTriple::TargetJson { path_for_rustdoc, .. } => {
+                    path_for_rustdoc.to_str().unwrap().to_owned()
+                }
+            },
             output_filenames: tcx.output_filenames(()).clone(),
         }
     }
@@ -109,21 +124,6 @@ pub(crate) fn compile_global_asm(
 ) -> Result<Option<PathBuf>, String> {
     if global_asm.is_empty() {
         return Ok(None);
-    }
-
-    if !config.asm_enabled {
-        if global_asm.contains("__rust_probestack") {
-            return Ok(None);
-        }
-
-        if cfg!(not(feature = "inline_asm")) {
-            return Err(
-                "asm! and global_asm! support is disabled while compiling rustc_codegen_cranelift"
-                    .to_owned(),
-            );
-        } else {
-            return Err("asm! and global_asm! are not yet supported on Windows".to_owned());
-        }
     }
 
     // Remove all LLVM style comments
