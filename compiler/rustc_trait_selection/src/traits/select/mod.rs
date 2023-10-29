@@ -2539,6 +2539,8 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 // Check that a_ty's supertrait (upcast_principal) is compatible
                 // with the target (b_ty).
                 ty::ExistentialPredicate::Trait(target_principal) => {
+                    // FIXME(DefineOpaqueTypes): no test exercizes using `DefineOpaqueTypes::Yes`
+                    // below.
                     nested.extend(
                         self.infcx
                             .at(&obligation.cause, obligation.param_env)
