@@ -49,11 +49,9 @@ impl X {
     //~| ERROR C-variadic function must be declared with at least one named argument
     fn i_f3(..., x: isize, ...) {}
     //~^ ERROR only foreign or `unsafe extern "C"` functions may be C-variadic
-    //~| ERROR only foreign or `unsafe extern "C"` functions may be C-variadic
     //~| ERROR `...` must be the last argument of a C-variadic function
     fn i_f4(..., x: isize, ...) {}
     //~^ ERROR only foreign or `unsafe extern "C"` functions may be C-variadic
-    //~| ERROR only foreign or `unsafe extern "C"` functions may be C-variadic
     //~| ERROR `...` must be the last argument of a C-variadic function
 }
 

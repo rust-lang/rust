@@ -271,7 +271,7 @@ pub struct ExternItemAscii {
 #[diag(ast_passes_bad_c_variadic)]
 pub struct BadCVariadic {
     #[primary_span]
-    pub span: Span,
+    pub span: Vec<Span>,
 }
 
 #[derive(Diagnostic)]
