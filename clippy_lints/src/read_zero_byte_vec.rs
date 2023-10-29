@@ -42,7 +42,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.63.0"]
     pub READ_ZERO_BYTE_VEC,
-    correctness,
+    nursery,
     "checks for reads into a zero-length `Vec`"
 }
 declare_lint_pass!(ReadZeroByteVec => [READ_ZERO_BYTE_VEC]);
