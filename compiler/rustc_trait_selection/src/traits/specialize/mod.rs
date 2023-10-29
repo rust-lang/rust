@@ -221,6 +221,7 @@ fn fulfill_implication<'tcx>(
         util::impl_subject_and_oblig(selcx, param_env, target_impl, target_args, error_cause);
 
     // do the impls unify? If not, no specialization.
+    // FIXME(DefineOpaqueTypes): no test exercizes using `DefineOpaqueTypes::Yes` below.
     let Ok(InferOk { obligations: more_obligations, .. }) = infcx
         .at(&ObligationCause::dummy(), param_env)
         .eq(DefineOpaqueTypes::No, source_trait, target_trait)
