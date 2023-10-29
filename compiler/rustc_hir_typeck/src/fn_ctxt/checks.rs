@@ -300,6 +300,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             // 3. Check if the formal type is a supertype of the checked one
             //    and register any such obligations for future type checks
+            // FIXME(DefineOpaqueTypes): no test exercizes using `DefineOpaqueTypes::Yes` below.
             let supertype_error = self.at(&self.misc(provided_arg.span), self.param_env).sup(
                 DefineOpaqueTypes::No,
                 formal_input_ty,
