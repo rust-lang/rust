@@ -150,8 +150,8 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for MatchVisitor<'a, '_, 'tcx> {
             ExprKind::Let { box ref pat, expr } => {
                 self.check_let(pat, expr, self.let_source, ex.span);
             }
-            ExprKind::LogicalOp { op: LogicalOp::And, lhs, rhs } => {
-                self.check_let_chain(self.let_source, ex.span, lhs, rhs);
+            ExprKind::LogicalOp { op: LogicalOp::And, .. } => {
+                self.check_let_chain(self.let_source, ex);
             }
             _ => {}
         };
@@ -326,71 +326,61 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
     }
 
     #[instrument(level = "trace", skip(self))]
-    fn check_let_chain(
-        &mut self,
-        let_source: LetSource,
-        top_expr_span: Span,
-        mut lhs: ExprId,
-        rhs: ExprId,
-    ) {
+    fn check_let_chain(&mut self, let_source: LetSource, expr: &Expr<'tcx>) {
         if let LetSource::None = let_source {
             return;
         }
 
-        // Lint level enclosing the next `lhs`.
-        let mut cur_lint_level = self.lint_level;
+        let top_expr_span = expr.span;
+
+        // Lint level enclosing `next_expr`.
+        let mut next_expr_lint_level = self.lint_level;
 
         // Obtain the refutabilities of all exprs in the chain,
         // and record chain members that aren't let exprs.
         let mut chain_refutabilities = Vec::new();
 
         let mut error = Ok(());
-        let mut add = |expr: ExprId, mut local_lint_level| {
-            // `local_lint_level` is the lint level enclosing the pattern inside `expr`.
-            let mut expr = &self.thir[expr];
-            debug!(?expr, ?local_lint_level, "add");
-            // Fast-forward through scopes.
+        let mut next_expr = Some(expr);
+        while let Some(mut expr) = next_expr {
             while let ExprKind::Scope { value, lint_level, .. } = expr.kind {
                 if let LintLevel::Explicit(hir_id) = lint_level {
-                    local_lint_level = hir_id
+                    next_expr_lint_level = hir_id
                 }
                 expr = &self.thir[value];
             }
-            debug!(?expr, ?local_lint_level, "after scopes");
-            match expr.kind {
+            if let ExprKind::LogicalOp { op: LogicalOp::And, lhs, rhs } = expr.kind {
+                expr = &self.thir[rhs];
+                // Let chains recurse on the left, so we recurse into the lhs.
+                next_expr = Some(&self.thir[lhs]);
+            } else {
+                next_expr = None;
+            }
+
+            // Lint level enclosing `expr`.
+            let mut expr_lint_level = next_expr_lint_level;
+            // Fast-forward through scopes.
+            while let ExprKind::Scope { value, lint_level, .. } = expr.kind {
+                if let LintLevel::Explicit(hir_id) = lint_level {
+                    expr_lint_level = hir_id
+                }
+                expr = &self.thir[value];
+            }
+            let value = match expr.kind {
                 ExprKind::Let { box ref pat, expr: _ } => {
                     if let Err(err) = pat.pat_error_reported() {
                         error = Err(err);
-                        return None;
+                        None
+                    } else {
+                        let mut ncx = self.new_cx(expr_lint_level, true);
+                        let tpat = self.lower_pattern(&mut ncx, pat);
+                        let refutable = !is_let_irrefutable(&mut ncx, expr_lint_level, tpat);
+                        Some((expr.span, refutable))
                     }
-                    let mut ncx = self.new_cx(local_lint_level, true);
-                    let tpat = self.lower_pattern(&mut ncx, pat);
-                    let refutable = !is_let_irrefutable(&mut ncx, local_lint_level, tpat);
-                    Some((expr.span, refutable))
                 }
                 _ => None,
-            }
-        };
-
-        // Let chains recurse on the left, so we start by adding the rightmost.
-        chain_refutabilities.push(add(rhs, cur_lint_level));
-
-        loop {
-            while let ExprKind::Scope { value, lint_level, .. } = self.thir[lhs].kind {
-                if let LintLevel::Explicit(hir_id) = lint_level {
-                    cur_lint_level = hir_id
-                }
-                lhs = value;
-            }
-            if let ExprKind::LogicalOp { op: LogicalOp::And, lhs: new_lhs, rhs: expr } =
-                self.thir[lhs].kind
-            {
-                chain_refutabilities.push(add(expr, cur_lint_level));
-                lhs = new_lhs;
-            } else {
-                chain_refutabilities.push(add(lhs, cur_lint_level));
-                break;
-            }
+            };
+            chain_refutabilities.push(value);
         }
         debug!(?chain_refutabilities);
         chain_refutabilities.reverse();
