@@ -1716,6 +1716,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 trait_bound,
             )
         });
+        // FIXME(DefineOpaqueTypes): no test exercizes using `DefineOpaqueTypes::Yes` below.
         self.infcx
             .at(&obligation.cause, obligation.param_env)
             .sup(DefineOpaqueTypes::No, ty::Binder::dummy(placeholder_trait_ref), trait_bound)
