@@ -344,15 +344,8 @@ impl<'a> MakeBcbCounters<'a> {
         Ok(())
     }
 
-    fn get_or_make_counter_operand(&mut self, bcb: BasicCoverageBlock) -> Result<CovTerm, Error> {
-        self.recursive_get_or_make_counter_operand(bcb)
-    }
-
     #[instrument(level = "debug", skip(self))]
-    fn recursive_get_or_make_counter_operand(
-        &mut self,
-        bcb: BasicCoverageBlock,
-    ) -> Result<CovTerm, Error> {
+    fn get_or_make_counter_operand(&mut self, bcb: BasicCoverageBlock) -> Result<CovTerm, Error> {
         // If the BCB already has a counter, return it.
         if let Some(counter_kind) = &self.coverage_counters.bcb_counters[bcb] {
             debug!("{bcb:?} already has a counter: {counter_kind:?}");
@@ -384,11 +377,10 @@ impl<'a> MakeBcbCounters<'a> {
         let mut predecessors = self.bcb_predecessors(bcb).to_owned().into_iter();
         debug!("{bcb:?} has multiple incoming edges and will need a sum-up expression");
         let first_edge_counter_operand =
-            self.recursive_get_or_make_edge_counter_operand(predecessors.next().unwrap(), bcb)?;
+            self.get_or_make_edge_counter_operand(predecessors.next().unwrap(), bcb)?;
         let mut some_sumup_edge_counter_operand = None;
         for predecessor in predecessors {
-            let edge_counter_operand =
-                self.recursive_get_or_make_edge_counter_operand(predecessor, bcb)?;
+            let edge_counter_operand = self.get_or_make_edge_counter_operand(predecessor, bcb)?;
             if let Some(sumup_edge_counter_operand) =
                 some_sumup_edge_counter_operand.replace(edge_counter_operand)
             {
@@ -411,16 +403,8 @@ impl<'a> MakeBcbCounters<'a> {
         self.coverage_counters.set_bcb_counter(bcb, counter_kind)
     }
 
-    fn get_or_make_edge_counter_operand(
-        &mut self,
-        from_bcb: BasicCoverageBlock,
-        to_bcb: BasicCoverageBlock,
-    ) -> Result<CovTerm, Error> {
-        self.recursive_get_or_make_edge_counter_operand(from_bcb, to_bcb)
-    }
-
     #[instrument(level = "debug", skip(self))]
-    fn recursive_get_or_make_edge_counter_operand(
+    fn get_or_make_edge_counter_operand(
         &mut self,
         from_bcb: BasicCoverageBlock,
         to_bcb: BasicCoverageBlock,
@@ -429,7 +413,7 @@ impl<'a> MakeBcbCounters<'a> {
         // counter is unnecessary. Just get or make a counter for the source BCB.
         let successors = self.bcb_successors(from_bcb).iter();
         if successors.len() == 1 {
-            return self.recursive_get_or_make_counter_operand(from_bcb);
+            return self.get_or_make_counter_operand(from_bcb);
         }
 
         // If the edge already has a counter, return it.
