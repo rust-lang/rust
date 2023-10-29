@@ -1164,6 +1164,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // last element is equal to the target.
                 let new_tuple =
                     Ty::new_tup_from_iter(tcx, a_mid.iter().copied().chain(iter::once(b_last)));
+                // FIXME(DefineOpaqueTypes): no test exercizes using `DefineOpaqueTypes::Yes` below.
                 let InferOk { mut obligations, .. } = self
                     .infcx
                     .at(&obligation.cause, obligation.param_env)
