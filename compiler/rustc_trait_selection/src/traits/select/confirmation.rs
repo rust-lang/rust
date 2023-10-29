@@ -1012,6 +1012,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                 // Require that the traits involved in this upcast are **equal**;
                 // only the **lifetime bound** is changed.
+                // FIXME(DefineOpaqueTypes): no test exercizes using `DefineOpaqueTypes::Yes` below.
                 let InferOk { mut obligations, .. } = self
                     .infcx
                     .at(&obligation.cause, obligation.param_env)
