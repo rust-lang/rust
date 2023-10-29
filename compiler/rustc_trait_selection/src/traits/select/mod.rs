@@ -2579,6 +2579,8 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                     if matching_projections.next().is_some() {
                         return Ok(None);
                     }
+                    // FIXME(DefineOpaqueTypes): no test exercizes using `DefineOpaqueTypes::Yes`
+                    // below.
                     nested.extend(
                         self.infcx
                             .at(&obligation.cause, obligation.param_env)
