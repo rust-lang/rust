@@ -374,8 +374,9 @@ impl<'a> MakeBcbCounters<'a> {
         // counters and/or expressions of its incoming edges. This will recursively get or create
         // counters for those incoming edges first, then call `make_expression()` to sum them up,
         // with additional intermediate expressions as needed.
+        let _sumup_debug_span = debug_span!("(preparing sum-up expression)").entered();
+
         let mut predecessors = self.bcb_predecessors(bcb).to_owned().into_iter();
-        debug!("{bcb:?} has multiple incoming edges and will need a sum-up expression");
         let first_edge_counter_operand =
             self.get_or_make_edge_counter_operand(predecessors.next().unwrap(), bcb)?;
         let mut some_sumup_edge_counter_operand = None;
@@ -399,6 +400,8 @@ impl<'a> MakeBcbCounters<'a> {
             Op::Add,
             some_sumup_edge_counter_operand.unwrap(),
         );
+        drop(_sumup_debug_span);
+
         debug!("{bcb:?} gets a new counter (sum of predecessor counters): {counter_kind:?}");
         self.coverage_counters.set_bcb_counter(bcb, counter_kind)
     }
