@@ -162,7 +162,7 @@ pub struct Evaluator<'a> {
     not_special_fn_cache: RefCell<FxHashSet<FunctionId>>,
     mir_or_dyn_index_cache: RefCell<FxHashMap<(FunctionId, Substitution), MirOrDynIndex>>,
     /// Constantly dropping and creating `Locals` is very costly. We store
-    /// old locals that we normaly want to drop here, to reuse their allocations
+    /// old locals that we normally want to drop here, to reuse their allocations
     /// later.
     unused_locals_store: RefCell<FxHashMap<DefWithBodyId, Vec<Locals>>>,
     cached_ptr_size: usize,
@@ -2299,7 +2299,7 @@ impl Evaluator<'_> {
         match self.get_mir_or_dyn_index(def, generic_args.clone(), locals, span)? {
             MirOrDynIndex::Dyn(self_ty_idx) => {
                 // In the layout of current possible receiver, which at the moment of writing this code is one of
-                // `&T`, `&mut T`, `Box<T>`, `Rc<T>`, `Arc<T>`, and `Pin<P>` where `P` is one of possible recievers,
+                // `&T`, `&mut T`, `Box<T>`, `Rc<T>`, `Arc<T>`, and `Pin<P>` where `P` is one of possible receivers,
                 // the vtable is exactly in the `[ptr_size..2*ptr_size]` bytes. So we can use it without branching on
                 // the type.
                 let first_arg = arg_bytes.clone().next().unwrap();
