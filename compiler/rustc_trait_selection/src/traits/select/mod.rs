@@ -933,6 +933,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             (Unevaluated(a), Unevaluated(b))
                                 if a.def == b.def && tcx.def_kind(a.def) == DefKind::AssocConst =>
                             {
+                                // FIXME(DefineOpaqueTypes): no test exercizes using
+                                // `DefineOpaqueTypes::Yes` below.
                                 if let Ok(InferOk { obligations, value: () }) = self
                                     .infcx
                                     .at(&obligation.cause, obligation.param_env)
