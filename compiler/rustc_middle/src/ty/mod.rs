@@ -1527,7 +1527,7 @@ impl<'tcx> OpaqueHiddenType<'tcx> {
 /// regions/types/consts within the same universe simply have an unknown relationship to one
 /// another.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
-#[derive(HashStable, TyEncodable, TyDecodable)]
+#[derive(HashStable, TyEncodable, TyDecodable, TypeFoldable, TypeVisitable)]
 pub struct Placeholder<T> {
     pub universe: UniverseIndex,
     pub bound: T,

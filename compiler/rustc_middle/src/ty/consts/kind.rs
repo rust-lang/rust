@@ -80,6 +80,10 @@ static_assert_size!(super::ConstKind<'_>, 32);
 
 /// An inference variable for a const, for use in const generics.
 #[derive(Copy, Clone, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable, Hash)]
+#[derive(TypeFoldable, TypeVisitable)]
+#[skip_traversal(
+    but_impl_despite_trivial_because = "traversed generically in `rustc_type_ir::ConstKind<TyCtxt>`"
+)]
 pub enum InferConst {
     /// Infer the value of the const.
     Var(ty::ConstVid),

@@ -17,6 +17,7 @@ use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 ///
 /// `ValTree` does not have this problem with representation, as it only contains integers or
 /// lists of (nested) `ValTree`.
+#[derive(TypeFoldable, TypeVisitable)]
 pub enum ValTree<'tcx> {
     /// integers, `bool`, `char` are represented as scalars.
     /// See the `ScalarInt` documentation for how `ScalarInt` guarantees that equal values

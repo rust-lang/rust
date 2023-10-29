@@ -7,7 +7,7 @@ use crate::{DebruijnIndex, DebugWithInfcx, HashStableContext, InferCtxtLike, Int
 use self::ConstKind::*;
 
 /// Represents a constant in Rust.
-#[derive(derivative::Derivative)]
+#[derive(derivative::Derivative, TypeFoldable, TypeVisitable)]
 #[derivative(
     Clone(bound = ""),
     PartialOrd(bound = ""),
