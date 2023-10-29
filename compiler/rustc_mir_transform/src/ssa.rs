@@ -40,7 +40,8 @@ impl SsaLocals {
         let dominators = body.basic_blocks.dominators();
 
         let direct_uses = IndexVec::from_elem(0, &body.local_decls);
-        let mut visitor = SsaVisitor { assignments, assignment_order, dominators, direct_uses };
+        let mut visitor =
+            SsaVisitor { body, assignments, assignment_order, dominators, direct_uses };
 
         for local in body.args_iter() {
             visitor.assignments[local] = Set1::One(DefLocation::Argument);
@@ -110,7 +111,7 @@ impl SsaLocals {
         body: &'a Body<'tcx>,
     ) -> impl Iterator<Item = (Local, &'a Rvalue<'tcx>, Location)> + 'a {
         self.assignment_order.iter().filter_map(|&local| {
-            if let Set1::One(DefLocation::Body(loc)) = self.assignments[local] {
+            if let Set1::One(DefLocation::Assignment(loc)) = self.assignments[local] {
                 let stmt = body.stmt_at(loc).left()?;
                 // `loc` must point to a direct assignment to `local`.
                 let Some((target, rvalue)) = stmt.kind.as_assign() else { bug!() };
@@ -134,21 +135,21 @@ impl SsaLocals {
                     AssignedValue::Arg,
                     Location { block: START_BLOCK, statement_index: 0 },
                 ),
-                Set1::One(DefLocation::Body(loc)) => {
+                Set1::One(DefLocation::Assignment(loc)) => {
                     let bb = &mut basic_blocks[loc.block];
-                    let value = if loc.statement_index < bb.statements.len() {
-                        // `loc` must point to a direct assignment to `local`.
-                        let stmt = &mut bb.statements[loc.statement_index];
-                        let StatementKind::Assign(box (target, ref mut rvalue)) = stmt.kind else {
-                            bug!()
-                        };
-                        assert_eq!(target.as_local(), Some(local));
-                        AssignedValue::Rvalue(rvalue)
-                    } else {
-                        let term = bb.terminator_mut();
-                        AssignedValue::Terminator(&mut term.kind)
+                    // `loc` must point to a direct assignment to `local`.
+                    let stmt = &mut bb.statements[loc.statement_index];
+                    let StatementKind::Assign(box (target, ref mut rvalue)) = stmt.kind else {
+                        bug!()
                     };
-                    f(local, value, loc)
+                    assert_eq!(target.as_local(), Some(local));
+                    f(local, AssignedValue::Rvalue(rvalue), loc)
+                }
+                Set1::One(DefLocation::CallReturn { call, .. }) => {
+                    let bb = &mut basic_blocks[call];
+                    let loc = Location { block: call, statement_index: bb.statements.len() };
+                    let term = bb.terminator_mut();
+                    f(local, AssignedValue::Terminator(&mut term.kind), loc)
                 }
                 _ => {}
             }
@@ -201,14 +202,15 @@ impl SsaLocals {
     }
 }
 
-struct SsaVisitor<'a> {
+struct SsaVisitor<'tcx, 'a> {
+    body: &'a Body<'tcx>,
     dominators: &'a Dominators<BasicBlock>,
     assignments: IndexVec<Local, Set1<DefLocation>>,
     assignment_order: Vec<Local>,
     direct_uses: IndexVec<Local, u32>,
 }
 
-impl SsaVisitor<'_> {
+impl SsaVisitor<'_, '_> {
     fn check_dominates(&mut self, local: Local, loc: Location) {
         let set = &mut self.assignments[local];
         let assign_dominates = match *set {
@@ -224,7 +226,7 @@ impl SsaVisitor<'_> {
     }
 }
 
-impl<'tcx> Visitor<'tcx> for SsaVisitor<'_> {
+impl<'tcx> Visitor<'tcx> for SsaVisitor<'tcx, '_> {
     fn visit_local(&mut self, local: Local, ctxt: PlaceContext, loc: Location) {
         match ctxt {
             PlaceContext::MutatingUse(MutatingUseContext::Projection)
@@ -250,9 +252,18 @@ impl<'tcx> Visitor<'tcx> for SsaVisitor<'_> {
 
     fn visit_place(&mut self, place: &Place<'tcx>, ctxt: PlaceContext, loc: Location) {
         let location = match ctxt {
-            PlaceContext::MutatingUse(
-                MutatingUseContext::Store | MutatingUseContext::Call | MutatingUseContext::Yield,
-            ) => Some(DefLocation::Body(loc)),
+            PlaceContext::MutatingUse(MutatingUseContext::Store) => {
+                Some(DefLocation::Assignment(loc))
+            }
+            PlaceContext::MutatingUse(MutatingUseContext::Call) => {
+                let call = loc.block;
+                let TerminatorKind::Call { target, .. } =
+                    self.body.basic_blocks[call].terminator().kind
+                else {
+                    bug!()
+                };
+                Some(DefLocation::CallReturn { call, target })
+            }
             _ => None,
         };
         if let Some(location) = location
@@ -359,7 +370,7 @@ impl StorageLiveLocals {
             for (statement_index, statement) in bbdata.statements.iter().enumerate() {
                 if let StatementKind::StorageLive(local) = statement.kind {
                     storage_live[local]
-                        .insert(DefLocation::Body(Location { block, statement_index }));
+                        .insert(DefLocation::Assignment(Location { block, statement_index }));
                 }
             }
         }
