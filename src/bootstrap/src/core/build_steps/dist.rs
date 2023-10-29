@@ -1298,6 +1298,10 @@ impl Step for CodegenBackend {
     }
 
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
+        if builder.config.dry_run() {
+            return None;
+        }
+
         // This prevents rustc_codegen_cranelift from being built for "dist"
         // or "install" on the stable/beta channels. It is not yet stable and
         // should not be included.
