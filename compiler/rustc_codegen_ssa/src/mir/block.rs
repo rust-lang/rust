@@ -573,7 +573,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         mergeable_succ: bool,
     ) -> MergingSucc {
         let span = terminator.source_info.span;
-        let cond = self.codegen_operand(bx, cond).immediate();
+        let mut cond = self.codegen_operand(bx, cond).immediate();
         let mut const_cond = bx.const_to_opt_u128(cond, false).map(|c| c == 1);
 
         // This case can currently arise only from functions marked
@@ -589,8 +589,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             return helper.funclet_br(self, bx, target, mergeable_succ);
         }
 
-        // Pass the condition through llvm.expect for branch hinting.
-        let cond = bx.expect(cond, expected);
+        // Give the backend a branch hint that hitting the assertion is unlikely,
+        // but only when optimizations are enabled.
+        if bx.tcx().sess.opts.optimize != OptLevel::No {
+            cond = bx.expect(cond, expected);
+        }
 
         // Create the failure block and the conditional branch to it.
         let lltarget = helper.llbb_with_cleanup(self, target);
