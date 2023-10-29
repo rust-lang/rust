@@ -110,12 +110,12 @@ impl<'tcx> LateLintPass<'tcx> for FromOverInto {
     extract_msrv_attr!(LateContext);
 }
 
-/// Finds the occurences of `Self` and `self`
+/// Finds the occurrences of `Self` and `self`
 struct SelfFinder<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
-    /// Occurences of `Self`
+    /// Occurrences of `Self`
     upper: Vec<Span>,
-    /// Occurences of `self`
+    /// Occurrences of `self`
     lower: Vec<Span>,
     /// If any of the `self`/`Self` usages were from an expansion, or the body contained a binding
     /// already named `val`
