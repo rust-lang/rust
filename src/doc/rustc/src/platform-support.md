@@ -148,7 +148,6 @@ target | std | notes
 `armv7a-none-eabi` | * | Bare ARMv7-A
 `armv7r-none-eabi` | * | Bare ARMv7-R
 `armv7r-none-eabihf` | * | Bare ARMv7-R, hardfloat
-`asmjs-unknown-emscripten` | ✓ | asm.js via Emscripten
 `i586-pc-windows-msvc` | * | 32-bit Windows w/o SSE [^x86_32-floats-x87]
 `i586-unknown-linux-gnu` | ✓ | 32-bit Linux w/o SSE (kernel 3.2, glibc 2.17) [^x86_32-floats-x87]
 `i586-unknown-linux-musl` | ✓ | 32-bit Linux w/o SSE, MUSL [^x86_32-floats-x87]
