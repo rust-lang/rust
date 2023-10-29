@@ -204,6 +204,8 @@ fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: LocalDef
                         }
                     }
 
+                    // FIXME(DefineOpaqueTypes): no test exercizes using `DefineOpaqueTypes::Yes`
+                    // below.
                     if let Ok(ok) =
                         infcx.at(&cause, param_env).eq(DefineOpaqueTypes::No, ty_a, ty_b)
                     {
