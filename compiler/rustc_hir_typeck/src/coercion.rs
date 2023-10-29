@@ -1301,6 +1301,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     Err(e)
                 } else {
                     self.commit_if_ok(|_| {
+                        // FIXME(DefineOpaqueTypes): no test exercizes using
+                        // `DefineOpaqueTypes::Yes` below.
                         self.at(cause, self.param_env).lub(DefineOpaqueTypes::No, prev_ty, new_ty)
                     })
                     .map(|ok| self.register_infer_ok_obligations(ok))
