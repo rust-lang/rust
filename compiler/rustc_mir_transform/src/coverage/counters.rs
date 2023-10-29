@@ -53,7 +53,7 @@ pub(super) struct CoverageCounters {
     /// edge between two BCBs.
     bcb_edge_counters: FxHashMap<(BasicCoverageBlock, BasicCoverageBlock), BcbCounter>,
     /// Tracks which BCBs have a counter associated with some incoming edge.
-    /// Only used by debug assertions, to verify that BCBs with incoming edge
+    /// Only used by assertions, to verify that BCBs with incoming edge
     /// counters do not have their own physical counters (expressions are allowed).
     bcb_has_incoming_edge_counters: BitSet<BasicCoverageBlock>,
     /// Table of expression data, associating each expression ID with its
@@ -116,13 +116,14 @@ impl CoverageCounters {
         bcb: BasicCoverageBlock,
         counter_kind: BcbCounter,
     ) -> Result<CovTerm, Error> {
-        debug_assert!(
+        assert!(
             // If the BCB has an edge counter (to be injected into a new `BasicBlock`), it can also
             // have an expression (to be injected into an existing `BasicBlock` represented by this
             // `BasicCoverageBlock`).
             counter_kind.is_expression() || !self.bcb_has_incoming_edge_counters.contains(bcb),
             "attempt to add a `Counter` to a BCB target with existing incoming edge counters"
         );
+
         let term = counter_kind.as_term();
         if let Some(replaced) = self.bcb_counters[bcb].replace(counter_kind) {
             Error::from_string(format!(
@@ -140,17 +141,16 @@ impl CoverageCounters {
         to_bcb: BasicCoverageBlock,
         counter_kind: BcbCounter,
     ) -> Result<CovTerm, Error> {
-        if level_enabled!(tracing::Level::DEBUG) {
-            // If the BCB has an edge counter (to be injected into a new `BasicBlock`), it can also
-            // have an expression (to be injected into an existing `BasicBlock` represented by this
-            // `BasicCoverageBlock`).
-            if self.bcb_counter(to_bcb).is_some_and(|c| !c.is_expression()) {
-                return Error::from_string(format!(
-                    "attempt to add an incoming edge counter from {from_bcb:?} when the target BCB already \
-                    has a `Counter`"
-                ));
-            }
+        // If the BCB has an edge counter (to be injected into a new `BasicBlock`), it can also
+        // have an expression (to be injected into an existing `BasicBlock` represented by this
+        // `BasicCoverageBlock`).
+        if let Some(node_counter) = self.bcb_counter(to_bcb) && !node_counter.is_expression() {
+            return Error::from_string(format!(
+                "attempt to add an incoming edge counter from {from_bcb:?} \
+                when the target BCB already has {node_counter:?}"
+            ));
         }
+
         self.bcb_has_incoming_edge_counters.insert(to_bcb);
         let term = counter_kind.as_term();
         if let Some(replaced) = self.bcb_edge_counters.insert((from_bcb, to_bcb), counter_kind) {
