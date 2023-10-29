@@ -30,10 +30,23 @@ macro_rules! gate {
 }
 
 /// The unusual case, where the `has_feature` condition is non-standard.
-macro_rules! gate_alt {
+macro_rules! gate_complex {
     ($visitor:expr, $has_feature:expr, $name:expr, $span:expr, $explain:expr) => {{
         if !$has_feature && !$span.allows_unstable($name) {
             feature_err(&$visitor.sess.parse_sess, $name, $span, $explain).emit();
+        }
+    }};
+}
+
+/// The case involving a multispan.
+macro_rules! gate_multi {
+    ($visitor:expr, $feature:ident, $spans:expr, $explain:expr) => {{
+        if !$visitor.features.$feature {
+            let spans: Vec<_> =
+                $spans.filter(|span| !span.allows_unstable(sym::$feature)).collect();
+            if !spans.is_empty() {
+                feature_err(&$visitor.sess.parse_sess, sym::$feature, spans, $explain).emit();
+            }
         }
     }};
 }
@@ -141,23 +154,16 @@ impl<'a> PostExpansionVisitor<'a> {
     fn check_late_bound_lifetime_defs(&self, params: &[ast::GenericParam]) {
         // Check only lifetime parameters are present and that the lifetime
         // parameters that are present have no bounds.
-        let non_lt_param_spans: Vec<_> = params
-            .iter()
-            .filter_map(|param| match param.kind {
-                ast::GenericParamKind::Lifetime { .. } => None,
-                _ => Some(param.ident.span),
-            })
-            .collect();
-        // FIXME: gate_feature_post doesn't really handle multispans...
-        if !non_lt_param_spans.is_empty() && !self.features.non_lifetime_binders {
-            feature_err(
-                &self.sess.parse_sess,
-                sym::non_lifetime_binders,
-                non_lt_param_spans,
-                crate::fluent_generated::ast_passes_forbidden_non_lifetime_param,
-            )
-            .emit();
-        }
+        let non_lt_param_spans = params.iter().filter_map(|param| match param.kind {
+            ast::GenericParamKind::Lifetime { .. } => None,
+            _ => Some(param.ident.span),
+        });
+        gate_multi!(
+            &self,
+            non_lifetime_binders,
+            non_lt_param_spans,
+            crate::fluent_generated::ast_passes_forbidden_non_lifetime_param
+        );
         for param in params {
             if !param.bounds.is_empty() {
                 let spans: Vec<_> = param.bounds.iter().map(|b| b.span()).collect();
