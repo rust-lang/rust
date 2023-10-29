@@ -46,6 +46,13 @@ pub(crate) fn codegen_global_asm_item(tcx: TyCtxt<'_>, global_asm: &mut String, 
                             global_asm.push_str(&string);
                         }
                         InlineAsmOperand::SymFn { anon_const } => {
+                            if cfg!(not(feature = "inline_asm_sym")) {
+                                tcx.sess.span_err(
+                                    item.span,
+                                    "asm! and global_asm! sym operands are not yet supported",
+                                );
+                            }
+
                             let ty = tcx.typeck_body(anon_const.body).node_type(anon_const.hir_id);
                             let instance = match ty.kind() {
                                 &ty::FnDef(def_id, args) => Instance::new(def_id, args),
@@ -57,6 +64,13 @@ pub(crate) fn codegen_global_asm_item(tcx: TyCtxt<'_>, global_asm: &mut String, 
                             global_asm.push_str(symbol.name);
                         }
                         InlineAsmOperand::SymStatic { path: _, def_id } => {
+                            if cfg!(not(feature = "inline_asm_sym")) {
+                                tcx.sess.span_err(
+                                    item.span,
+                                    "asm! and global_asm! sym operands are not yet supported",
+                                );
+                            }
+
                             let instance = Instance::mono(tcx, def_id).polymorphize(tcx);
                             let symbol = tcx.symbol_name(instance);
                             global_asm.push_str(symbol.name);
@@ -81,22 +95,23 @@ pub(crate) fn codegen_global_asm_item(tcx: TyCtxt<'_>, global_asm: &mut String, 
     }
 }
 
-pub(crate) fn asm_supported(tcx: TyCtxt<'_>) -> bool {
-    cfg!(feature = "inline_asm") && !tcx.sess.target.is_like_windows
-}
-
 #[derive(Debug)]
 pub(crate) struct GlobalAsmConfig {
-    asm_enabled: bool,
     assembler: PathBuf,
+    target: String,
     pub(crate) output_filenames: Arc<OutputFilenames>,
 }
 
 impl GlobalAsmConfig {
     pub(crate) fn new(tcx: TyCtxt<'_>) -> Self {
         GlobalAsmConfig {
-            asm_enabled: asm_supported(tcx),
             assembler: crate::toolchain::get_toolchain_binary(tcx.sess, "as"),
+            target: match &tcx.sess.opts.target_triple {
+                rustc_target::spec::TargetTriple::TargetTriple(triple) => triple.clone(),
+                rustc_target::spec::TargetTriple::TargetJson { path_for_rustdoc, .. } => {
+                    path_for_rustdoc.to_str().unwrap().to_owned()
+                }
+            },
             output_filenames: tcx.output_filenames(()).clone(),
         }
     }
@@ -111,21 +126,6 @@ pub(crate) fn compile_global_asm(
         return Ok(None);
     }
 
-    if !config.asm_enabled {
-        if global_asm.contains("__rust_probestack") {
-            return Ok(None);
-        }
-
-        if cfg!(not(feature = "inline_asm")) {
-            return Err(
-                "asm! and global_asm! support is disabled while compiling rustc_codegen_cranelift"
-                    .to_owned(),
-            );
-        } else {
-            return Err("asm! and global_asm! are not yet supported on Windows".to_owned());
-        }
-    }
-
     // Remove all LLVM style comments
     let mut global_asm = global_asm
         .lines()
@@ -134,20 +134,67 @@ pub(crate) fn compile_global_asm(
         .join("\n");
     global_asm.push('\n');
 
-    let output_object_file = config.output_filenames.temp_path(OutputType::Object, Some(cgu_name));
+    let global_asm_object_file = add_file_stem_postfix(
+        config.output_filenames.temp_path(OutputType::Object, Some(cgu_name)),
+        ".asm",
+    );
 
     // Assemble `global_asm`
-    let global_asm_object_file = add_file_stem_postfix(output_object_file, ".asm");
-    let mut child = Command::new(&config.assembler)
-        .arg("-o")
-        .arg(&global_asm_object_file)
-        .stdin(Stdio::piped())
-        .spawn()
-        .expect("Failed to spawn `as`.");
-    child.stdin.take().unwrap().write_all(global_asm.as_bytes()).unwrap();
-    let status = child.wait().expect("Failed to wait for `as`.");
-    if !status.success() {
-        return Err(format!("Failed to assemble `{}`", global_asm));
+    if option_env!("CG_CLIF_FORCE_GNU_AS").is_some() {
+        let mut child = Command::new(&config.assembler)
+            .arg("-o")
+            .arg(&global_asm_object_file)
+            .stdin(Stdio::piped())
+            .spawn()
+            .expect("Failed to spawn `as`.");
+        child.stdin.take().unwrap().write_all(global_asm.as_bytes()).unwrap();
+        let status = child.wait().expect("Failed to wait for `as`.");
+        if !status.success() {
+            return Err(format!("Failed to assemble `{}`", global_asm));
+        }
+    } else {
+        let mut child = Command::new(std::env::current_exe().unwrap())
+            .arg("--target")
+            .arg(&config.target)
+            .arg("--crate-type")
+            .arg("staticlib")
+            .arg("--emit")
+            .arg("obj")
+            .arg("-o")
+            .arg(&global_asm_object_file)
+            .arg("-")
+            .arg("-Abad_asm_style")
+            .arg("-Zcodegen-backend=llvm")
+            .stdin(Stdio::piped())
+            .spawn()
+            .expect("Failed to spawn `as`.");
+        let mut stdin = child.stdin.take().unwrap();
+        stdin
+            .write_all(
+                br####"
+                #![feature(decl_macro, no_core, rustc_attrs)]
+                #![allow(internal_features)]
+                #![no_core]
+                #[rustc_builtin_macro]
+                #[rustc_macro_transparency = "semitransparent"]
+                macro global_asm() { /* compiler built-in */ }
+                global_asm!(r###"
+                "####,
+            )
+            .unwrap();
+        stdin.write_all(global_asm.as_bytes()).unwrap();
+        stdin
+            .write_all(
+                br####"
+                "###);
+                "####,
+            )
+            .unwrap();
+        std::mem::drop(stdin);
+        let status = child.wait().expect("Failed to wait for `as`.");
+        if !status.success() {
+            return Err(format!("Failed to assemble `{}`", global_asm));
+        }
     }
 
     Ok(Some(global_asm_object_file))
