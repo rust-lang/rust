@@ -145,7 +145,7 @@ pub(crate) fn move_bounds_to_generic_parameters(generics: &mut clean::Generics) 
                 ..
             }) = generics.params.iter_mut().find(|param| &param.name == arg)
         {
-            param_bounds.append(bounds);
+            param_bounds.extend(bounds.drain(..));
         } else if let WherePredicate::RegionPredicate { lifetime: Lifetime(arg), bounds } = &mut pred
             && let Some(GenericParamDef {
                 kind: GenericParamDefKind::Lifetime { outlives: param_bounds },
