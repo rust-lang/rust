@@ -1081,6 +1081,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             // `[T; n]` -> `[T]`
             (&ty::Array(a, _), &ty::Slice(b)) => {
+                // FIXME(DefineOpaqueTypes): no test exercizes using `DefineOpaqueTypes::Yes` below.
                 let InferOk { obligations, .. } = self
                     .infcx
                     .at(&obligation.cause, obligation.param_env)
