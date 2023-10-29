@@ -376,7 +376,7 @@ impl<'tcx> UnsafetyChecker<'_, 'tcx> {
 }
 
 pub(crate) fn provide(providers: &mut Providers) {
-    *providers = Providers { unsafety_check_result, ..*providers };
+    query_provider!(providers, provide(unsafety_check_result) = unsafety_check_result);
 }
 
 /// Context information for [`UnusedUnsafeVisitor`] traversal,

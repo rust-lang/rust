@@ -10,30 +10,33 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
 
 pub fn provide(providers: &mut Providers) {
-    providers.upvars_mentioned = |tcx, def_id| {
-        if !tcx.is_closure(def_id) {
-            return None;
+    query_provider!(
+        providers,
+        provide(upvars_mentioned) = |tcx, def_id| {
+            if !tcx.is_closure(def_id) {
+                return None;
+            }
+
+            let local_def_id = def_id.expect_local();
+            let body = tcx.hir().body(tcx.hir().maybe_body_owned_by(local_def_id)?);
+
+            let mut local_collector = LocalCollector::default();
+            local_collector.visit_body(body);
+
+            let mut capture_collector = CaptureCollector {
+                tcx,
+                locals: &local_collector.locals,
+                upvars: FxIndexMap::default(),
+            };
+            capture_collector.visit_body(body);
+
+            if !capture_collector.upvars.is_empty() {
+                Some(tcx.arena.alloc(capture_collector.upvars))
+            } else {
+                None
+            }
         }
-
-        let local_def_id = def_id.expect_local();
-        let body = tcx.hir().body(tcx.hir().maybe_body_owned_by(local_def_id)?);
-
-        let mut local_collector = LocalCollector::default();
-        local_collector.visit_body(body);
-
-        let mut capture_collector = CaptureCollector {
-            tcx,
-            locals: &local_collector.locals,
-            upvars: FxIndexMap::default(),
-        };
-        capture_collector.visit_body(body);
-
-        if !capture_collector.upvars.is_empty() {
-            Some(tcx.arena.alloc(capture_collector.upvars))
-        } else {
-            None
-        }
-    };
+    );
 }
 
 #[derive(Default)]

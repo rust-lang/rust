@@ -12,13 +12,13 @@ use rustc_trait_selection::traits::{
 };
 use std::sync::atomic::Ordering;
 
-pub(crate) fn provide(p: &mut Providers) {
-    *p = Providers {
-        normalize_projection_ty,
-        normalize_weak_ty,
-        normalize_inherent_projection_ty,
-        ..*p
-    };
+pub(crate) fn provide(providers: &mut Providers) {
+    query_provider!(
+        providers,
+        provide(normalize_projection_ty) = normalize_projection_ty,
+        provide(normalize_weak_ty) = normalize_weak_ty,
+        provide(normalize_inherent_projection_ty) = normalize_inherent_projection_ty,
+    );
 }
 
 fn normalize_projection_ty<'tcx>(

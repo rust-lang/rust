@@ -7,8 +7,8 @@ use rustc_trait_selection::traits::{
     EvaluationResult, Obligation, ObligationCause, OverflowError, SelectionContext, TraitQueryMode,
 };
 
-pub(crate) fn provide(p: &mut Providers) {
-    *p = Providers { evaluate_obligation, ..*p };
+pub(crate) fn provide(providers: &mut Providers) {
+    query_provider!(providers, provide(evaluate_obligation) = evaluate_obligation);
 }
 
 fn evaluate_obligation<'tcx>(

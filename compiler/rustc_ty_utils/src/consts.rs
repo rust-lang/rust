@@ -429,5 +429,9 @@ pub fn thir_abstract_const(
 }
 
 pub fn provide(providers: &mut Providers) {
-    *providers = Providers { destructure_const, thir_abstract_const, ..*providers };
+    query_provider!(
+        providers,
+        provide(destructure_const) = destructure_const,
+        provide(thir_abstract_const) = thir_abstract_const,
+    );
 }

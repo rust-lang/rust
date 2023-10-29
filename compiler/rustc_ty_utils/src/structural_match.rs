@@ -40,5 +40,5 @@ fn has_structural_eq_impls<'tcx>(tcx: TyCtxt<'tcx>, adt_ty: Ty<'tcx>) -> bool {
 }
 
 pub fn provide(providers: &mut Providers) {
-    providers.has_structural_eq_impls = has_structural_eq_impls;
+    query_provider!(providers, provide(has_structural_eq_impls) = has_structural_eq_impls);
 }

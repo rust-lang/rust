@@ -131,7 +131,7 @@ pub fn symbol_name_for_instance_in_crate<'tcx>(
 }
 
 pub fn provide(providers: &mut Providers) {
-    *providers = Providers { symbol_name: symbol_name_provider, ..*providers };
+    query_provider!(providers, provide(symbol_name) = symbol_name_provider);
 }
 
 // The `symbol_name` query provides the symbol name for calling a given

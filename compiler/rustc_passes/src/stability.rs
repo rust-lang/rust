@@ -693,16 +693,17 @@ fn check_mod_unstable_api_usage(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
 }
 
 pub(crate) fn provide(providers: &mut Providers) {
-    *providers = Providers {
-        check_mod_unstable_api_usage,
-        stability_index,
-        stability_implications: |tcx, _| tcx.stability().implications.clone(),
-        lookup_stability: |tcx, id| tcx.stability().local_stability(id),
-        lookup_const_stability: |tcx, id| tcx.stability().local_const_stability(id),
-        lookup_default_body_stability: |tcx, id| tcx.stability().local_default_body_stability(id),
-        lookup_deprecation_entry: |tcx, id| tcx.stability().local_deprecation_entry(id),
-        ..*providers
-    };
+    query_provider!(
+        providers,
+        provide(check_mod_unstable_api_usage) = check_mod_unstable_api_usage,
+        provide(stability_index) = stability_index,
+        provide(stability_implications) = |tcx, _| tcx.stability().implications.clone(),
+        provide(lookup_stability) = |tcx, id| tcx.stability().local_stability(id),
+        provide(lookup_const_stability) = |tcx, id| tcx.stability().local_const_stability(id),
+        provide(lookup_default_body_stability) =
+            |tcx, id| tcx.stability().local_default_body_stability(id),
+        provide(lookup_deprecation_entry) = |tcx, id| tcx.stability().local_deprecation_entry(id),
+    );
 }
 
 struct Checker<'tcx> {

@@ -356,14 +356,14 @@ fn unsizing_params_for_adt<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> BitSet<u32
 }
 
 pub fn provide(providers: &mut Providers) {
-    *providers = Providers {
-        asyncness,
-        adt_sized_constraint,
-        param_env,
-        param_env_reveal_all_normalized,
-        issue33140_self_ty,
-        defaultness,
-        unsizing_params_for_adt,
-        ..*providers
-    };
+    query_provider!(
+        providers,
+        provide(asyncness) = asyncness,
+        provide(adt_sized_constraint) = adt_sized_constraint,
+        provide(param_env) = param_env,
+        provide(param_env_reveal_all_normalized) = param_env_reveal_all_normalized,
+        provide(issue33140_self_ty) = issue33140_self_ty,
+        provide(defaultness) = defaultness,
+        provide(unsizing_params_for_adt) = unsizing_params_for_adt,
+    );
 }

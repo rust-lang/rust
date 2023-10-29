@@ -116,7 +116,7 @@ impl<'tcx> TyCtxtConsts<'tcx> {
 }
 
 pub fn provide(providers: &mut Providers) {
-    *providers = Providers { mir_borrowck, ..*providers };
+    query_provider!(providers, provide(mir_borrowck) = mir_borrowck);
 }
 
 fn mir_borrowck(tcx: TyCtxt<'_>, def: LocalDefId) -> &BorrowCheckResult<'_> {

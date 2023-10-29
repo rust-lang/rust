@@ -94,5 +94,9 @@ fn is_promotable_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 }
 
 pub fn provide(providers: &mut Providers) {
-    *providers = Providers { constness, is_promotable_const_fn, ..*providers };
+    query_provider!(
+        providers,
+        provide(constness) = constness,
+        provide(is_promotable_const_fn) = is_promotable_const_fn
+    );
 }

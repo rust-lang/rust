@@ -8,7 +8,10 @@ use rustc_middle::ty::{self, TyCtxt};
 
 /// A `query` provider for retrieving coverage information injected into MIR.
 pub(crate) fn provide(providers: &mut Providers) {
-    providers.coverage_ids_info = |tcx, def_id| coverage_ids_info(tcx, def_id);
+    query_provider!(
+        providers,
+        provide(coverage_ids_info) = |tcx, def_id| coverage_ids_info(tcx, def_id)
+    );
 }
 
 /// Query implementation for `coverage_ids_info`.

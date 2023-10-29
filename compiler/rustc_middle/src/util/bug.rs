@@ -1,5 +1,6 @@
 // These functions are used by macro expansion for bug! and span_bug!
 
+use crate::query_provider;
 use crate::ty::{tls, TyCtxt};
 use rustc_errors::MultiSpan;
 use rustc_span::Span;
@@ -49,5 +50,5 @@ pub fn trigger_delay_span_bug(tcx: TyCtxt<'_>, key: rustc_hir::def_id::DefId) {
 }
 
 pub fn provide(providers: &mut crate::query::Providers) {
-    *providers = crate::query::Providers { trigger_delay_span_bug, ..*providers };
+    query_provider!(providers, provide(trigger_delay_span_bug) = trigger_delay_span_bug);
 }

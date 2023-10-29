@@ -9,15 +9,16 @@ use rustc_middle::ty::{self, GenericArgs, ImplTraitInTraitData, Ty, TyCtxt};
 use rustc_span::symbol::kw;
 
 pub fn provide(providers: &mut Providers) {
-    *providers = Providers {
-        associated_item,
-        associated_item_def_ids,
-        associated_items,
-        associated_types_for_impl_traits_in_associated_fn,
-        associated_type_for_impl_trait_in_trait,
-        impl_item_implementor_ids,
-        ..*providers
-    };
+    query_provider!(
+        providers,
+        provide(associated_item) = associated_item,
+        provide(associated_item_def_ids) = associated_item_def_ids,
+        provide(associated_items) = associated_items,
+        provide(associated_types_for_impl_traits_in_associated_fn) =
+            associated_types_for_impl_traits_in_associated_fn,
+        provide(associated_type_for_impl_trait_in_trait) = associated_type_for_impl_trait_in_trait,
+        provide(impl_item_implementor_ids) = impl_item_implementor_ids,
+    );
 }
 
 fn associated_item_def_ids(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &[DefId] {

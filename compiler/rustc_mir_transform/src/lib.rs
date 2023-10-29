@@ -128,23 +128,23 @@ pub fn provide(providers: &mut Providers) {
     ffi_unwind_calls::provide(providers);
     shim::provide(providers);
     cross_crate_inline::provide(providers);
-    *providers = Providers {
-        mir_keys,
-        mir_const,
-        mir_const_qualif,
-        mir_promoted,
-        mir_drops_elaborated_and_const_checked,
-        mir_for_ctfe,
-        mir_coroutine_witnesses: coroutine::mir_coroutine_witnesses,
-        optimized_mir,
-        is_mir_available,
-        is_ctfe_mir_available: |tcx, did| is_mir_available(tcx, did),
-        mir_callgraph_reachable: inline::cycle::mir_callgraph_reachable,
-        mir_inliner_callees: inline::cycle::mir_inliner_callees,
-        promoted_mir,
-        deduced_param_attrs: deduce_param_attrs::deduced_param_attrs,
-        ..*providers
-    };
+    query_provider!(
+        providers,
+        provide(mir_keys) = mir_keys,
+        provide(mir_const) = mir_const,
+        provide(mir_const_qualif) = mir_const_qualif,
+        provide(mir_promoted) = mir_promoted,
+        provide(mir_drops_elaborated_and_const_checked) = mir_drops_elaborated_and_const_checked,
+        provide(mir_for_ctfe) = mir_for_ctfe,
+        provide(optimized_mir) = optimized_mir,
+        provide(is_mir_available) = is_mir_available,
+        provide(promoted_mir) = promoted_mir,
+        provide(mir_coroutine_witnesses) = coroutine::mir_coroutine_witnesses,
+        provide(is_ctfe_mir_available) = |tcx, did| is_mir_available(tcx, did),
+        provide(mir_callgraph_reachable) = inline::cycle::mir_callgraph_reachable,
+        provide(mir_inliner_callees) = inline::cycle::mir_inliner_callees,
+        provide(deduced_param_attrs) = deduce_param_attrs::deduced_param_attrs,
+    );
 }
 
 fn remap_mir_for_const_eval_select<'tcx>(

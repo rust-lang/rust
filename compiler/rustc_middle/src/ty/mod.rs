@@ -23,9 +23,9 @@ use crate::middle::privacy::EffectiveVisibilities;
 use crate::mir::{Body, CoroutineLayout};
 use crate::query::Providers;
 use crate::traits::{self, Reveal};
-use crate::ty;
 use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::util::Discr;
+use crate::{query_provider, ty};
 pub use adt::*;
 pub use assoc::*;
 pub use generic_args::*;
@@ -2571,13 +2571,13 @@ pub fn provide(providers: &mut Providers) {
     print::provide(providers);
     super::util::bug::provide(providers);
     super::middle::provide(providers);
-    *providers = Providers {
-        trait_impls_of: trait_def::trait_impls_of_provider,
-        incoherent_impls: trait_def::incoherent_impls_provider,
-        const_param_default: consts::const_param_default,
-        vtable_allocation: vtable::vtable_allocation_provider,
-        ..*providers
-    };
+    query_provider!(
+        providers,
+        provide(trait_impls_of) = trait_def::trait_impls_of_provider,
+        provide(incoherent_impls) = trait_def::incoherent_impls_provider,
+        provide(const_param_default) = consts::const_param_default,
+        provide(vtable_allocation) = vtable::vtable_allocation_provider,
+    );
 }
 
 /// A map for the local crate mapping each type to a vector of its

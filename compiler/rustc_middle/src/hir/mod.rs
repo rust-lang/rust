@@ -7,6 +7,7 @@ pub mod nested_filter;
 pub mod place;
 
 use crate::query::Providers;
+use crate::query_provider;
 use crate::ty::{EarlyBinder, ImplSubject, TyCtxt};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{try_par_for_each_in, DynSend, DynSync};
@@ -146,67 +147,75 @@ impl<'tcx> TyCtxt<'tcx> {
 }
 
 pub fn provide(providers: &mut Providers) {
-    providers.hir_crate_items = map::hir_crate_items;
-    providers.crate_hash = map::crate_hash;
-    providers.hir_module_items = map::hir_module_items;
-    providers.hir_owner = |tcx, id| {
-        let owner = tcx.hir_crate(()).owners.get(id.def_id)?.as_owner()?;
-        let node = owner.node();
-        Some(Owner { node })
-    };
-    providers.opt_local_def_id_to_hir_id = |tcx, id| {
-        let owner = tcx.hir_crate(()).owners[id].map(|_| ());
-        Some(match owner {
-            MaybeOwner::Owner(_) => HirId::make_owner(id),
-            MaybeOwner::Phantom => bug!("No HirId for {:?}", id),
-            MaybeOwner::NonOwner(hir_id) => hir_id,
-        })
-    };
-    providers.hir_owner_nodes = |tcx, id| tcx.hir_crate(()).owners[id.def_id].map(|i| &i.nodes);
-    providers.hir_owner_parent = |tcx, id| {
-        // Accessing the local_parent is ok since its value is hashed as part of `id`'s DefPathHash.
-        tcx.opt_local_parent(id.def_id).map_or(CRATE_HIR_ID, |parent| {
-            let mut parent_hir_id = tcx.hir().local_def_id_to_hir_id(parent);
-            parent_hir_id.local_id =
-                tcx.hir_crate(()).owners[parent_hir_id.owner.def_id].unwrap().parenting[&id.def_id];
-            parent_hir_id
-        })
-    };
-    providers.hir_attrs = |tcx, id| {
-        tcx.hir_crate(()).owners[id.def_id].as_owner().map_or(AttributeMap::EMPTY, |o| &o.attrs)
-    };
-    providers.def_span = |tcx, def_id| {
-        let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
-        tcx.hir().opt_span(hir_id).unwrap_or(DUMMY_SP)
-    };
-    providers.def_ident_span = |tcx, def_id| {
-        let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
-        tcx.hir().opt_ident_span(hir_id)
-    };
-    providers.fn_arg_names = |tcx, def_id| {
-        let hir = tcx.hir();
-        let hir_id = hir.local_def_id_to_hir_id(def_id);
-        if let Some(body_id) = hir.maybe_body_owned_by(def_id) {
-            tcx.arena.alloc_from_iter(hir.body_param_names(body_id))
-        } else if let Node::TraitItem(&TraitItem {
-            kind: TraitItemKind::Fn(_, TraitFn::Required(idents)),
-            ..
-        })
-        | Node::ForeignItem(&ForeignItem {
-            kind: ForeignItemKind::Fn(_, idents, _),
-            ..
-        }) = hir.get(hir_id)
-        {
-            idents
-        } else {
-            span_bug!(hir.span(hir_id), "fn_arg_names: unexpected item {:?}", def_id);
-        }
-    };
-    providers.opt_def_kind = |tcx, def_id| tcx.hir().opt_def_kind(def_id);
-    providers.all_local_trait_impls = |tcx, ()| &tcx.resolutions(()).trait_impls;
-    providers.expn_that_defined =
-        |tcx, id| tcx.resolutions(()).expn_that_defined.get(&id).copied().unwrap_or(ExpnId::root());
-    providers.in_scope_traits_map = |tcx, id| {
-        tcx.hir_crate(()).owners[id.def_id].as_owner().map(|owner_info| &owner_info.trait_map)
-    };
+    query_provider!(
+        providers,
+        provide(hir_crate_items) = map::hir_crate_items,
+        provide(crate_hash) = map::crate_hash,
+        provide(hir_module_items) = map::hir_module_items,
+        provide(hir_owner) = |tcx, id| {
+            let owner = tcx.hir_crate(()).owners.get(id.def_id)?.as_owner()?;
+            let node = owner.node();
+            Some(Owner { node })
+        },
+        provide(opt_local_def_id_to_hir_id) = |tcx, id| {
+            let owner = tcx.hir_crate(()).owners[id].map(|_| ());
+            Some(match owner {
+                MaybeOwner::Owner(_) => HirId::make_owner(id),
+                MaybeOwner::Phantom => bug!("No HirId for {:?}", id),
+                MaybeOwner::NonOwner(hir_id) => hir_id,
+            })
+        },
+        provide(hir_owner_nodes) = |tcx, id| tcx.hir_crate(()).owners[id.def_id].map(|i| &i.nodes),
+        provide(hir_owner_parent) = |tcx, id| {
+            // Accessing the local_parent is ok since its value is hashed as part of `id`'s DefPathHash.
+            tcx.opt_local_parent(id.def_id).map_or(CRATE_HIR_ID, |parent| {
+                let mut parent_hir_id = tcx.hir().local_def_id_to_hir_id(parent);
+                parent_hir_id.local_id = tcx.hir_crate(()).owners[parent_hir_id.owner.def_id]
+                    .unwrap()
+                    .parenting[&id.def_id];
+                parent_hir_id
+            })
+        },
+        provide(hir_attrs) = |tcx, id| {
+            tcx.hir_crate(()).owners[id.def_id].as_owner().map_or(AttributeMap::EMPTY, |o| &o.attrs)
+        },
+        provide(def_span) = |tcx, def_id| {
+            let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+            tcx.hir().opt_span(hir_id).unwrap_or(DUMMY_SP)
+        },
+        provide(def_ident_span) = |tcx, def_id| {
+            let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+            tcx.hir().opt_ident_span(hir_id)
+        },
+        provide(fn_arg_names) = |tcx, def_id| {
+            let hir = tcx.hir();
+            let hir_id = hir.local_def_id_to_hir_id(def_id);
+            if let Some(body_id) = hir.maybe_body_owned_by(def_id) {
+                tcx.arena.alloc_from_iter(hir.body_param_names(body_id))
+            } else if let Node::TraitItem(&TraitItem {
+                kind: TraitItemKind::Fn(_, TraitFn::Required(idents)),
+                ..
+            })
+            | Node::ForeignItem(&ForeignItem {
+                kind: ForeignItemKind::Fn(_, idents, _),
+                ..
+            }) = hir.get(hir_id)
+            {
+                idents
+            } else {
+                span_bug!(hir.span(hir_id), "fn_arg_names: unexpected item {:?}", def_id);
+            }
+        },
+        provide(opt_def_kind) = |tcx, def_id| tcx.hir().opt_def_kind(def_id),
+        provide(all_local_trait_impls) = |tcx, ()| &tcx.resolutions(()).trait_impls,
+        provide(expn_that_defined) = |tcx, id| tcx
+            .resolutions(())
+            .expn_that_defined
+            .get(&id)
+            .copied()
+            .unwrap_or(ExpnId::root()),
+        provide(in_scope_traits_map) = |tcx, id| {
+            tcx.hir_crate(()).owners[id.def_id].as_owner().map(|owner_info| &owner_info.trait_map)
+        },
+    );
 }

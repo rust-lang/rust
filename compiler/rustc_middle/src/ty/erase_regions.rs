@@ -1,9 +1,10 @@
 use crate::query::Providers;
+use crate::query_provider;
 use crate::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use crate::ty::{self, Ty, TyCtxt, TypeFlags, TypeVisitableExt};
 
 pub(super) fn provide(providers: &mut Providers) {
-    *providers = Providers { erase_regions_ty, ..*providers };
+    query_provider!(providers, provide(erase_regions_ty) = erase_regions_ty,);
 }
 
 fn erase_regions_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {

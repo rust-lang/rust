@@ -16,18 +16,18 @@ use rustc_trait_selection::traits::query::type_op::subtype::Subtype;
 use rustc_trait_selection::traits::{Normalized, Obligation, ObligationCause, ObligationCtxt};
 use std::fmt;
 
-pub(crate) fn provide(p: &mut Providers) {
-    *p = Providers {
-        type_op_ascribe_user_type,
-        type_op_eq,
-        type_op_prove_predicate,
-        type_op_subtype,
-        type_op_normalize_ty,
-        type_op_normalize_clause,
-        type_op_normalize_fn_sig,
-        type_op_normalize_poly_fn_sig,
-        ..*p
-    };
+pub(crate) fn provide(providers: &mut Providers) {
+    query_provider!(
+        providers,
+        provide(type_op_ascribe_user_type) = type_op_ascribe_user_type,
+        provide(type_op_eq) = type_op_eq,
+        provide(type_op_prove_predicate) = type_op_prove_predicate,
+        provide(type_op_subtype) = type_op_subtype,
+        provide(type_op_normalize_ty) = type_op_normalize_ty,
+        provide(type_op_normalize_clause) = type_op_normalize_clause,
+        provide(type_op_normalize_fn_sig) = type_op_normalize_fn_sig,
+        provide(type_op_normalize_poly_fn_sig) = type_op_normalize_poly_fn_sig,
+    );
 }
 
 fn type_op_ascribe_user_type<'tcx>(

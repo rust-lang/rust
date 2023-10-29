@@ -1916,5 +1916,9 @@ fn error_392(
 }
 
 pub fn provide(providers: &mut Providers) {
-    *providers = Providers { check_mod_type_wf, check_well_formed, ..*providers };
+    query_provider!(
+        providers,
+        provide(check_mod_type_wf) = check_mod_type_wf,
+        provide(check_well_formed) = check_well_formed
+    );
 }

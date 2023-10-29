@@ -200,6 +200,25 @@ where
     }
 }
 
+#[derive(Clone, Copy)]
+pub struct QueryProviderWrapper<T> {
+    /// Stores the inner provider. Do not access this field directly, instead use
+    /// the [`query_provider`](`crate::query::query_provider`) macro inside rustc
+    /// and the [`QueryProviderWrapper::override_provider`]
+    /// method to override queries in a custom driver.
+    pub do_not_access_directly_use_the_query_providers_macro_instead: T,
+}
+
+impl<T> QueryProviderWrapper<T> {
+    pub fn get(self) -> T {
+        self.do_not_access_directly_use_the_query_providers_macro_instead
+    }
+
+    pub fn override_provider(&mut self, f: T) {
+        self.do_not_access_directly_use_the_query_providers_macro_instead = f;
+    }
+}
+
 macro_rules! query_ensure {
     ([]$($args:tt)*) => {
         query_ensure($($args)*)
@@ -459,10 +478,10 @@ macro_rules! define_callbacks {
         }
 
         pub struct Providers {
-            $(pub $name: for<'tcx> fn(
+            $(pub $name: crate::query::plumbing::QueryProviderWrapper<for<'tcx> fn(
                 TyCtxt<'tcx>,
                 queries::$name::LocalKey<'tcx>,
-            ) -> queries::$name::ProvidedValue<'tcx>,)*
+            ) -> queries::$name::ProvidedValue<'tcx>>,)*
         }
 
         pub struct ExternProviders {
@@ -472,15 +491,19 @@ macro_rules! define_callbacks {
         impl Default for Providers {
             fn default() -> Self {
                 Providers {
-                    $($name: |_, key| bug!(
-                        "`tcx.{}({:?})` is not supported for this key;\n\
-                        hint: Queries can be either made to the local crate, or the external crate. \
-                        This error means you tried to use it for one that's not supported.\n\
-                        If that's not the case, {} was likely never assigned to a provider function.\n",
-                        stringify!($name),
-                        key,
-                        stringify!($name),
-                    ),)*
+                    $(
+                        $name: crate::query::plumbing::QueryProviderWrapper {
+                            do_not_access_directly_use_the_query_providers_macro_instead: |_, key| bug!(
+                                "`tcx.{}({:?})` is not supported for this key;\n\
+                                hint: Queries can be either made to the local crate, or the external crate. \
+                                This error means you tried to use it for one that's not supported.\n\
+                                If that's not the case, {} was likely never assigned to a provider function.\n",
+                                stringify!($name),
+                                key,
+                                stringify!($name),
+                            ),
+                        },
+                    )*
                 }
             }
         }

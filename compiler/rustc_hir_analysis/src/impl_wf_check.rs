@@ -65,7 +65,7 @@ fn check_mod_impl_wf(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
 }
 
 pub fn provide(providers: &mut Providers) {
-    *providers = Providers { check_mod_impl_wf, ..*providers };
+    query_provider!(providers, provide(check_mod_impl_wf) = check_mod_impl_wf);
 }
 
 fn enforce_impl_params_are_constrained(tcx: TyCtxt<'_>, impl_def_id: LocalDefId) {

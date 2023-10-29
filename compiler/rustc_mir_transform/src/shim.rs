@@ -23,7 +23,7 @@ use rustc_middle::mir::patch::MirPatch;
 use rustc_mir_dataflow::elaborate_drops::{self, DropElaborator, DropFlagMode, DropStyle};
 
 pub fn provide(providers: &mut Providers) {
-    providers.mir_shims = make_shim;
+    query_provider!(providers, provide(mir_shims) = make_shim);
 }
 
 fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'tcx> {

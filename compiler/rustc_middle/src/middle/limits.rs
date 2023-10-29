@@ -8,9 +8,9 @@
 //! this via an attribute on the crate like `#![recursion_limit="22"]`. This pass
 //! just peeks and looks for that attribute.
 
-use crate::bug;
 use crate::error::LimitInvalid;
 use crate::query::Providers;
+use crate::{bug, query_provider};
 use rustc_ast::Attribute;
 use rustc_session::Session;
 use rustc_session::{Limit, Limits};
@@ -19,21 +19,24 @@ use rustc_span::symbol::{sym, Symbol};
 use std::num::IntErrorKind;
 
 pub fn provide(providers: &mut Providers) {
-    providers.limits = |tcx, ()| Limits {
-        recursion_limit: get_recursion_limit(tcx.hir().krate_attrs(), tcx.sess),
-        move_size_limit: get_limit(
-            tcx.hir().krate_attrs(),
-            tcx.sess,
-            sym::move_size_limit,
-            tcx.sess.opts.unstable_opts.move_size_limit.unwrap_or(0),
-        ),
-        type_length_limit: get_limit(
-            tcx.hir().krate_attrs(),
-            tcx.sess,
-            sym::type_length_limit,
-            1048576,
-        ),
-    }
+    query_provider!(
+        providers,
+        provide(limits) = |tcx, ()| Limits {
+            recursion_limit: get_recursion_limit(tcx.hir().krate_attrs(), tcx.sess),
+            move_size_limit: get_limit(
+                tcx.hir().krate_attrs(),
+                tcx.sess,
+                sym::move_size_limit,
+                tcx.sess.opts.unstable_opts.move_size_limit.unwrap_or(0),
+            ),
+            type_length_limit: get_limit(
+                tcx.hir().krate_attrs(),
+                tcx.sess,
+                sym::type_length_limit,
+                1048576,
+            ),
+        }
+    );
 }
 
 pub fn get_recursion_limit(krate_attrs: &[Attribute], sess: &Session) -> Limit {

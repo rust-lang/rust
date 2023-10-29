@@ -7,8 +7,12 @@ use rustc_middle::ty::{self, Representability, Ty, TyCtxt};
 use rustc_span::def_id::LocalDefId;
 
 pub fn provide(providers: &mut Providers) {
-    *providers =
-        Providers { representability, representability_adt_ty, params_in_repr, ..*providers };
+    query_provider!(
+        providers,
+        provide(representability) = representability,
+        provide(representability_adt_ty) = representability_adt_ty,
+        provide(params_in_repr) = params_in_repr,
+    );
 }
 
 macro_rules! rtry {

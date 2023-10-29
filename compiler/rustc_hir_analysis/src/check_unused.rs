@@ -6,7 +6,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::lint;
 
 pub fn provide(providers: &mut Providers) {
-    *providers = Providers { check_unused_traits, ..*providers };
+    query_provider!(providers, provide(check_unused_traits) = check_unused_traits,);
 }
 
 fn check_unused_traits(tcx: TyCtxt<'_>, (): ()) {

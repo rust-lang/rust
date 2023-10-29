@@ -449,11 +449,11 @@ fn has_expected_num_generic_args(tcx: TyCtxt<'_>, trait_did: DefId, expected: us
 
 pub fn provide(providers: &mut Providers) {
     method::provide(providers);
-    *providers = Providers {
-        typeck,
-        diagnostic_only_typeck,
-        has_typeck_results,
-        used_trait_imports,
-        ..*providers
-    };
+    query_provider!(
+        providers,
+        provide(typeck) = typeck,
+        provide(diagnostic_only_typeck) = diagnostic_only_typeck,
+        provide(has_typeck_results) = has_typeck_results,
+        provide(used_trait_imports) = used_trait_imports,
+    );
 }

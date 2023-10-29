@@ -387,11 +387,13 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
     // FIXME(#44234) - almost all of these queries have no sub-queries and
     // therefore no actual inputs, they're just reading tables calculated in
     // resolve! Does this work? Unsure! That's what the issue is about
-    providers.queries = rustc_middle::query::Providers {
-        allocator_kind: |tcx, ()| CStore::from_tcx(tcx).allocator_kind(),
-        alloc_error_handler_kind: |tcx, ()| CStore::from_tcx(tcx).alloc_error_handler_kind(),
-        is_private_dep: |_tcx, LocalCrate| false,
-        native_library: |tcx, id| {
+    query_provider!(
+        providers.queries,
+        provide(allocator_kind) = |tcx, ()| CStore::from_tcx(tcx).allocator_kind(),
+        provide(alloc_error_handler_kind) =
+            |tcx, ()| CStore::from_tcx(tcx).alloc_error_handler_kind(),
+        provide(is_private_dep) = |_tcx, LocalCrate| false,
+        provide(native_library) = |tcx, id| {
             tcx.native_libraries(id.krate)
                 .iter()
                 .filter(|lib| native_libs::relevant_lib(&tcx.sess, lib))
@@ -406,14 +408,13 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
                         .contains(&id)
                 })
         },
-        native_libraries: native_libs::collect,
-        foreign_modules: foreign_modules::collect,
-
+        provide(native_libraries) = native_libs::collect,
+        provide(foreign_modules) = foreign_modules::collect,
         // Returns a map from a sufficiently visible external item (i.e., an
         // external item that is visible from at least one local module) to a
         // sufficiently visible parent (considering modules that re-export the
         // external item to be parents).
-        visible_parent_map: |tcx, ()| {
+        provide(visible_parent_map) = |tcx, ()| {
             use std::collections::hash_map::Entry;
             use std::collections::vec_deque::VecDeque;
 
@@ -501,22 +502,22 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
 
             visible_parent_map
         },
-
-        dependency_formats: |tcx, ()| Lrc::new(crate::dependency_format::calculate(tcx)),
-        has_global_allocator: |tcx, LocalCrate| CStore::from_tcx(tcx).has_global_allocator(),
-        has_alloc_error_handler: |tcx, LocalCrate| CStore::from_tcx(tcx).has_alloc_error_handler(),
-        postorder_cnums: |tcx, ()| {
+        provide(dependency_formats) = |tcx, ()| Lrc::new(crate::dependency_format::calculate(tcx)),
+        provide(has_global_allocator) =
+            |tcx, LocalCrate| CStore::from_tcx(tcx).has_global_allocator(),
+        provide(has_alloc_error_handler) =
+            |tcx, LocalCrate| CStore::from_tcx(tcx).has_alloc_error_handler(),
+        provide(postorder_cnums) = |tcx, ()| {
             tcx.arena
                 .alloc_slice(&CStore::from_tcx(tcx).crate_dependencies_in_postorder(LOCAL_CRATE))
         },
-        crates: |tcx, ()| {
+        provide(crates) = |tcx, ()| {
             // The list of loaded crates is now frozen in query cache,
             // so make sure cstore is not mutably accessed from here on.
             tcx.untracked().cstore.freeze();
             tcx.arena.alloc_from_iter(CStore::from_tcx(tcx).iter_crate_data().map(|(cnum, _)| cnum))
         },
-        ..providers.queries
-    };
+    );
     provide_extern(&mut providers.extern_queries);
 }
 

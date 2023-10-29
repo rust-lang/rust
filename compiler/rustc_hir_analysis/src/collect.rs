@@ -57,32 +57,33 @@ fn collect_mod_item_types(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
 
 pub fn provide(providers: &mut Providers) {
     resolve_bound_vars::provide(providers);
-    *providers = Providers {
-        type_of: type_of::type_of,
-        type_of_opaque: type_of::type_of_opaque,
-        type_alias_is_lazy: type_of::type_alias_is_lazy,
-        item_bounds: item_bounds::item_bounds,
-        explicit_item_bounds: item_bounds::explicit_item_bounds,
-        generics_of: generics_of::generics_of,
-        predicates_of: predicates_of::predicates_of,
-        predicates_defined_on,
-        explicit_predicates_of: predicates_of::explicit_predicates_of,
-        super_predicates_of: predicates_of::super_predicates_of,
-        implied_predicates_of: predicates_of::implied_predicates_of,
-        super_predicates_that_define_assoc_item:
+    query_provider!(
+        providers,
+        provide(type_of) = type_of::type_of,
+        provide(type_of_opaque) = type_of::type_of_opaque,
+        provide(type_alias_is_lazy) = type_of::type_alias_is_lazy,
+        provide(item_bounds) = item_bounds::item_bounds,
+        provide(explicit_item_bounds) = item_bounds::explicit_item_bounds,
+        provide(generics_of) = generics_of::generics_of,
+        provide(predicates_of) = predicates_of::predicates_of,
+        provide(predicates_defined_on) = predicates_defined_on,
+        provide(explicit_predicates_of) = predicates_of::explicit_predicates_of,
+        provide(super_predicates_of) = predicates_of::super_predicates_of,
+        provide(implied_predicates_of) = predicates_of::implied_predicates_of,
+        provide(super_predicates_that_define_assoc_item) =
             predicates_of::super_predicates_that_define_assoc_item,
-        trait_explicit_predicates_and_bounds: predicates_of::trait_explicit_predicates_and_bounds,
-        type_param_predicates: predicates_of::type_param_predicates,
-        trait_def,
-        adt_def,
-        fn_sig,
-        impl_trait_ref,
-        impl_polarity,
-        coroutine_kind,
-        collect_mod_item_types,
-        is_type_alias_impl_trait,
-        ..*providers
-    };
+        provide(trait_explicit_predicates_and_bounds) =
+            predicates_of::trait_explicit_predicates_and_bounds,
+        provide(type_param_predicates) = predicates_of::type_param_predicates,
+        provide(trait_def) = trait_def,
+        provide(adt_def) = adt_def,
+        provide(fn_sig) = fn_sig,
+        provide(impl_trait_ref) = impl_trait_ref,
+        provide(impl_polarity) = impl_polarity,
+        provide(coroutine_kind) = coroutine_kind,
+        provide(collect_mod_item_types) = collect_mod_item_types,
+        provide(is_type_alias_impl_trait) = is_type_alias_impl_trait,
+    );
 }
 
 ///////////////////////////////////////////////////////////////////////////

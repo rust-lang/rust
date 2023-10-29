@@ -44,6 +44,7 @@
 //! is visible.
 
 use crate::query::Providers;
+use crate::query_provider;
 use crate::ty::context::TyCtxt;
 use crate::ty::{self, DefId, Ty, VariantDef, Visibility};
 
@@ -54,7 +55,11 @@ pub mod inhabited_predicate;
 pub use inhabited_predicate::InhabitedPredicate;
 
 pub(crate) fn provide(providers: &mut Providers) {
-    *providers = Providers { inhabited_predicate_adt, inhabited_predicate_type, ..*providers };
+    query_provider!(
+        providers,
+        provide(inhabited_predicate_adt) = inhabited_predicate_adt,
+        provide(inhabited_predicate_type) = inhabited_predicate_type,
+    );
 }
 
 /// Returns an `InhabitedPredicate` that is generic over type parameters and

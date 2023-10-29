@@ -92,6 +92,9 @@ fn all_diagnostic_items(tcx: TyCtxt<'_>, (): ()) -> DiagnosticItems {
 }
 
 pub fn provide(providers: &mut Providers) {
-    providers.diagnostic_items = diagnostic_items;
-    providers.all_diagnostic_items = all_diagnostic_items;
+    query_provider!(
+        providers,
+        provide(diagnostic_items) = diagnostic_items,
+        provide(all_diagnostic_items) = all_diagnostic_items,
+    );
 }

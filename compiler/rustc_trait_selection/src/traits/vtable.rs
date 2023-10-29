@@ -399,10 +399,11 @@ pub(crate) fn count_own_vtable_entries<'tcx>(
 }
 
 pub(super) fn provide(providers: &mut Providers) {
-    *providers = Providers {
-        own_existential_vtable_entries,
-        vtable_entries,
-        vtable_trait_upcasting_coercion_new_vptr_slot,
-        ..*providers
-    };
+    query_provider!(
+        providers,
+        provide(own_existential_vtable_entries) = own_existential_vtable_entries,
+        provide(vtable_entries) = vtable_entries,
+        provide(vtable_trait_upcasting_coercion_new_vptr_slot) =
+            vtable_trait_upcasting_coercion_new_vptr_slot,
+    );
 }

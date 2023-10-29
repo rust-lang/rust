@@ -30,13 +30,16 @@ use rustc_fluent_macro::fluent_messages;
 fluent_messages! { "../messages.ftl" }
 
 pub fn provide(providers: &mut Providers) {
-    providers.check_match = thir::pattern::check_match;
-    providers.lit_to_const = thir::constant::lit_to_const;
-    providers.mir_built = build::mir_built;
-    providers.closure_saved_names_of_captured_variables =
-        build::closure_saved_names_of_captured_variables;
-    providers.thir_check_unsafety = check_unsafety::thir_check_unsafety;
-    providers.thir_body = thir::cx::thir_body;
-    providers.thir_tree = thir::print::thir_tree;
-    providers.thir_flat = thir::print::thir_flat;
+    query_provider!(
+        providers,
+        provide(check_match) = thir::pattern::check_match,
+        provide(lit_to_const) = thir::constant::lit_to_const,
+        provide(mir_built) = build::mir_built,
+        provide(closure_saved_names_of_captured_variables) =
+            build::closure_saved_names_of_captured_variables,
+        provide(thir_check_unsafety) = check_unsafety::thir_check_unsafety,
+        provide(thir_body) = thir::cx::thir_body,
+        provide(thir_tree) = thir::print::thir_tree,
+        provide(thir_flat) = thir::print::thir_flat,
+    );
 }

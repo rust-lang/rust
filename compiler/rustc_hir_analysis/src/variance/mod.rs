@@ -28,7 +28,11 @@ pub mod test;
 mod xform;
 
 pub fn provide(providers: &mut Providers) {
-    *providers = Providers { variances_of, crate_variances, ..*providers };
+    query_provider!(
+        providers,
+        provide(variances_of) = variances_of,
+        provide(crate_variances) = crate_variances
+    );
 }
 
 fn crate_variances(tcx: TyCtxt<'_>, (): ()) -> CrateVariancesMap<'_> {

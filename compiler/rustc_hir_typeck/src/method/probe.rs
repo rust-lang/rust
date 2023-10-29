@@ -505,7 +505,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 }
 
 pub fn provide(providers: &mut Providers) {
-    providers.method_autoderef_steps = method_autoderef_steps;
+    query_provider!(providers, provide(method_autoderef_steps) = method_autoderef_steps);
 }
 
 fn method_autoderef_steps<'tcx>(

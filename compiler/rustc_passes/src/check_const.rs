@@ -61,7 +61,7 @@ fn check_mod_const_bodies(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
 }
 
 pub(crate) fn provide(providers: &mut Providers) {
-    *providers = Providers { check_mod_const_bodies, ..*providers };
+    query_provider!(providers, provide(check_mod_const_bodies) = check_mod_const_bodies);
 }
 
 #[derive(Copy, Clone)]

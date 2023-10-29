@@ -1045,6 +1045,9 @@ fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalModDefId) {
 }
 
 pub(crate) fn provide(providers: &mut Providers) {
-    *providers =
-        Providers { live_symbols_and_ignored_derived_traits, check_mod_deathness, ..*providers };
+    query_provider!(
+        providers,
+        provide(live_symbols_and_ignored_derived_traits) = live_symbols_and_ignored_derived_traits,
+        provide(check_mod_deathness) = check_mod_deathness
+    );
 }

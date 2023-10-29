@@ -6,9 +6,10 @@ use rustc_trait_selection::traits::query::normalize::QueryNormalizeExt;
 use rustc_trait_selection::traits::{Normalized, ObligationCause};
 use std::sync::atomic::Ordering;
 
-pub(crate) fn provide(p: &mut Providers) {
-    *p = Providers {
-        try_normalize_generic_arg_after_erasing_regions: |tcx, goal| {
+pub(crate) fn provide(providers: &mut Providers) {
+    query_provider!(
+        providers,
+        provide(try_normalize_generic_arg_after_erasing_regions) = |tcx, goal| {
             debug!("try_normalize_generic_arg_after_erasing_regions(goal={:#?}", goal);
 
             tcx.sess
@@ -17,9 +18,8 @@ pub(crate) fn provide(p: &mut Providers) {
                 .fetch_add(1, Ordering::Relaxed);
 
             try_normalize_after_erasing_regions(tcx, goal)
-        },
-        ..*p
-    };
+        }
+    );
 }
 
 fn try_normalize_after_erasing_regions<'tcx, T: TypeFoldable<TyCtxt<'tcx>> + PartialEq + Copy>(

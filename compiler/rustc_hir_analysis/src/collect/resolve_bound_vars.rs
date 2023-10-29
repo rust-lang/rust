@@ -230,16 +230,15 @@ impl<'a> fmt::Debug for TruncatedScopeDebug<'a> {
 type ScopeRef<'a> = &'a Scope<'a>;
 
 pub(crate) fn provide(providers: &mut Providers) {
-    *providers = Providers {
-        resolve_bound_vars,
-
-        named_variable_map: |tcx, id| tcx.resolve_bound_vars(id).defs.get(&id),
-        is_late_bound_map,
-        object_lifetime_default,
-        late_bound_vars_map: |tcx, id| tcx.resolve_bound_vars(id).late_bound_vars.get(&id),
-
-        ..*providers
-    };
+    query_provider!(
+        providers,
+        provide(resolve_bound_vars) = resolve_bound_vars,
+        provide(named_variable_map) = |tcx, id| tcx.resolve_bound_vars(id).defs.get(&id),
+        provide(is_late_bound_map) = is_late_bound_map,
+        provide(object_lifetime_default) = object_lifetime_default,
+        provide(late_bound_vars_map) =
+            |tcx, id| tcx.resolve_bound_vars(id).late_bound_vars.get(&id),
+    );
 }
 
 /// Computes the `ResolveBoundVars` map that contains data for an entire `Item`.

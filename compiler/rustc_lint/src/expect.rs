@@ -7,7 +7,7 @@ use rustc_span::symbol::sym;
 use rustc_span::Symbol;
 
 pub(crate) fn provide(providers: &mut Providers) {
-    *providers = Providers { check_expectations, ..*providers };
+    query_provider!(providers, provide(check_expectations) = check_expectations);
 }
 
 fn check_expectations(tcx: TyCtxt<'_>, tool_filter: Option<Symbol>) {

@@ -23,12 +23,15 @@ pub use type_op::type_op_prove_predicate_with_cause;
 
 use rustc_middle::query::Providers;
 
-pub fn provide(p: &mut Providers) {
-    dropck_outlives::provide(p);
-    evaluate_obligation::provide(p);
-    implied_outlives_bounds::provide(p);
-    normalize_projection_ty::provide(p);
-    normalize_erasing_regions::provide(p);
-    type_op::provide(p);
-    p.codegen_select_candidate = codegen::codegen_select_candidate;
+pub fn provide(providers: &mut Providers) {
+    dropck_outlives::provide(providers);
+    evaluate_obligation::provide(providers);
+    implied_outlives_bounds::provide(providers);
+    normalize_projection_ty::provide(providers);
+    normalize_erasing_regions::provide(providers);
+    type_op::provide(providers);
+    query_provider!(
+        providers,
+        provide(codegen_select_candidate) = codegen::codegen_select_candidate
+    );
 }

@@ -26,7 +26,6 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId, CRATE_DEF_ID};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{AssocItemKind, ForeignItemKind, ItemId, Node, PatKind};
-use rustc_middle::bug;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::privacy::{EffectiveVisibilities, EffectiveVisibility, Level};
 use rustc_middle::query::Providers;
@@ -34,6 +33,7 @@ use rustc_middle::span_bug;
 use rustc_middle::ty::GenericArgs;
 use rustc_middle::ty::{self, Const, GenericParamDefKind};
 use rustc_middle::ty::{TraitRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor};
+use rustc_middle::{bug, query_provider};
 use rustc_session::lint;
 use rustc_span::hygiene::Transparency;
 use rustc_span::symbol::{kw, sym, Ident};
@@ -1805,13 +1805,13 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'tcx, '_> {
 }
 
 pub fn provide(providers: &mut Providers) {
-    *providers = Providers {
-        visibility,
-        effective_visibilities,
-        check_private_in_public,
-        check_mod_privacy,
-        ..*providers
-    };
+    query_provider!(
+        providers,
+        provide(visibility) = visibility,
+        provide(effective_visibilities) = effective_visibilities,
+        provide(check_private_in_public) = check_private_in_public,
+        provide(check_mod_privacy) = check_mod_privacy,
+    );
 }
 
 fn visibility(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Visibility<DefId> {

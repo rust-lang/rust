@@ -44,7 +44,7 @@ fn check_mod_loops(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
 }
 
 pub(crate) fn provide(providers: &mut Providers) {
-    *providers = Providers { check_mod_loops, ..*providers };
+    query_provider!(providers, provide(check_mod_loops) = check_mod_loops);
 }
 
 impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {

@@ -101,5 +101,5 @@ fn debugger_visualizers(tcx: TyCtxt<'_>, _: LocalCrate) -> Vec<DebuggerVisualize
 }
 
 pub fn provide(providers: &mut Providers) {
-    providers.debugger_visualizers = debugger_visualizers;
+    query_provider!(providers, provide(debugger_visualizers) = debugger_visualizers);
 }

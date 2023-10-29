@@ -514,8 +514,9 @@ pub fn check_target_feature_trait_unsafe(tcx: TyCtxt<'_>, id: LocalDefId, attr_s
 }
 
 pub(crate) fn provide(providers: &mut Providers) {
-    *providers = Providers {
-        supported_target_features: |tcx, cnum| {
+    query_provider!(
+        providers,
+        provide(supported_target_features) = |tcx, cnum| {
             assert_eq!(cnum, LOCAL_CRATE);
             if tcx.sess.opts.actually_rustdoc {
                 // rustdoc needs to be able to document functions that use all the features, so
@@ -528,7 +529,6 @@ pub(crate) fn provide(providers: &mut Providers) {
                     .collect()
             }
         },
-        asm_target_features,
-        ..*providers
-    }
+        provide(asm_target_features) = asm_target_features,
+    );
 }

@@ -108,15 +108,16 @@ use self::region::region_scope_tree;
 
 pub fn provide(providers: &mut Providers) {
     wfcheck::provide(providers);
-    *providers = Providers {
-        adt_destructor,
-        check_mod_item_types,
-        region_scope_tree,
-        collect_return_position_impl_trait_in_trait_tys,
-        compare_impl_const: compare_impl_item::compare_impl_const_raw,
-        check_coroutine_obligations: check::check_coroutine_obligations,
-        ..*providers
-    };
+    query_provider!(
+        providers,
+        provide(adt_destructor) = adt_destructor,
+        provide(check_mod_item_types) = check_mod_item_types,
+        provide(region_scope_tree) = region_scope_tree,
+        provide(collect_return_position_impl_trait_in_trait_tys) =
+            collect_return_position_impl_trait_in_trait_tys,
+        provide(compare_impl_const) = compare_impl_item::compare_impl_const_raw,
+        provide(check_coroutine_obligations) = check::check_coroutine_obligations,
+    );
 }
 
 fn adt_destructor(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::Destructor> {

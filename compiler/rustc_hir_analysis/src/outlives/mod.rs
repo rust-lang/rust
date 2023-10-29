@@ -14,7 +14,11 @@ pub mod test;
 mod utils;
 
 pub fn provide(providers: &mut Providers) {
-    *providers = Providers { inferred_outlives_of, inferred_outlives_crate, ..*providers };
+    query_provider!(
+        providers,
+        provide(inferred_outlives_of) = inferred_outlives_of,
+        provide(inferred_outlives_crate) = inferred_outlives_crate,
+    );
 }
 
 fn inferred_outlives_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[(ty::Clause<'_>, Span)] {

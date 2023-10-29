@@ -1,6 +1,7 @@
 use rustc_ast::attr;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::query::Providers;
+use rustc_middle::query_provider;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::sym;
 
@@ -18,5 +19,5 @@ fn proc_macro_decls_static(tcx: TyCtxt<'_>, (): ()) -> Option<LocalDefId> {
 }
 
 pub(crate) fn provide(providers: &mut Providers) {
-    *providers = Providers { proc_macro_decls_static, ..*providers };
+    query_provider!(providers, provide(proc_macro_decls_static) = proc_macro_decls_static);
 }

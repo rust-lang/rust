@@ -10,7 +10,7 @@ use rustc_span::def_id::LocalDefId;
 use rustc_trait_selection::traits::{self, ObligationCtxt};
 
 pub fn provide(providers: &mut Providers) {
-    *providers = Providers { diagnostic_hir_wf_check, ..*providers };
+    query_provider!(providers, provide(diagnostic_hir_wf_check) = diagnostic_hir_wf_check);
 }
 
 // Ideally, this would be in `rustc_trait_selection`, but we

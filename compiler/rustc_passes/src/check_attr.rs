@@ -2588,7 +2588,7 @@ fn check_mod_attrs(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
 }
 
 pub(crate) fn provide(providers: &mut Providers) {
-    *providers = Providers { check_mod_attrs, ..*providers };
+    query_provider!(providers, provide(check_mod_attrs) = check_mod_attrs);
 }
 
 fn check_duplicates(

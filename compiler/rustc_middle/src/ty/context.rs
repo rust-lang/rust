@@ -19,7 +19,6 @@ use crate::query::LocalCrate;
 use crate::query::Providers;
 use crate::query::{IntoQueryParam, TyCtxtAt};
 use crate::thir::Thir;
-use crate::traits;
 use crate::traits::solve;
 use crate::traits::solve::{
     ExternalConstraints, ExternalConstraintsData, PredefinedOpaques, PredefinedOpaquesData,
@@ -31,6 +30,7 @@ use crate::ty::{
     TyVid, TypeAndMut, Visibility,
 };
 use crate::ty::{GenericArg, GenericArgs, GenericArgsRef};
+use crate::{query_provider, traits};
 use rustc_ast::{self as ast, attr};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -2181,23 +2181,24 @@ pub struct DeducedParamAttrs {
 }
 
 pub fn provide(providers: &mut Providers) {
-    providers.maybe_unused_trait_imports =
-        |tcx, ()| &tcx.resolutions(()).maybe_unused_trait_imports;
-    providers.names_imported_by_glob_use = |tcx, id| {
-        tcx.arena.alloc(UnordSet::from(
+    query_provider!(
+        providers,
+        provide(maybe_unused_trait_imports) =
+            |tcx, ()| &tcx.resolutions(()).maybe_unused_trait_imports,
+        provide(names_imported_by_glob_use) = |tcx, id| tcx.arena.alloc(UnordSet::from(
             tcx.resolutions(()).glob_map.get(&id).cloned().unwrap_or_default(),
-        ))
-    };
-
-    providers.extern_mod_stmt_cnum =
-        |tcx, id| tcx.resolutions(()).extern_crate_map.get(&id).cloned();
-    providers.is_panic_runtime =
-        |tcx, LocalCrate| attr::contains_name(tcx.hir().krate_attrs(), sym::panic_runtime);
-    providers.is_compiler_builtins =
-        |tcx, LocalCrate| attr::contains_name(tcx.hir().krate_attrs(), sym::compiler_builtins);
-    providers.has_panic_handler = |tcx, LocalCrate| {
-        // We want to check if the panic handler was defined in this crate
-        tcx.lang_items().panic_impl().is_some_and(|did| did.is_local())
-    };
-    providers.source_span = |tcx, def_id| tcx.untracked.source_span.get(def_id).unwrap_or(DUMMY_SP);
+        )),
+        provide(extern_mod_stmt_cnum) =
+            |tcx, id| tcx.resolutions(()).extern_crate_map.get(&id).cloned(),
+        provide(is_panic_runtime) =
+            |tcx, LocalCrate| attr::contains_name(tcx.hir().krate_attrs(), sym::panic_runtime),
+        provide(is_compiler_builtins) =
+            |tcx, LocalCrate| attr::contains_name(tcx.hir().krate_attrs(), sym::panic_runtime),
+        provide(has_panic_handler) = |tcx, LocalCrate| {
+            // We want to check if the panic handler was defined in this crate
+            tcx.lang_items().panic_impl().is_some_and(|did| did.is_local())
+        },
+        provide(source_span) =
+            |tcx, def_id| tcx.untracked.source_span.get(def_id).unwrap_or(DUMMY_SP),
+    );
 }

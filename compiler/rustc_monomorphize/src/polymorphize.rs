@@ -24,7 +24,7 @@ use crate::errors::UnusedGenericParamsHint;
 
 /// Provide implementations of queries relating to polymorphization analysis.
 pub fn provide(providers: &mut Providers) {
-    providers.unused_generic_params = unused_generic_params;
+    query_provider!(providers, provide(unused_generic_params) = unused_generic_params);
 }
 
 /// Determine which generic parameters are used by the instance.

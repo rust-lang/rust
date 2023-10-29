@@ -18,6 +18,7 @@ use rustc_lint::{unerased_lint_store, BufferedEarlyLint, EarlyCheckNode, LintSto
 use rustc_metadata::creader::CStore;
 use rustc_middle::arena::Arena;
 use rustc_middle::dep_graph::DepGraph;
+use rustc_middle::query_provider;
 use rustc_middle::ty::{self, GlobalCtxt, RegisteredTools, TyCtxt};
 use rustc_middle::util::Providers;
 use rustc_mir_build as mir_build;
@@ -647,11 +648,14 @@ fn output_filenames(tcx: TyCtxt<'_>, (): ()) -> Arc<OutputFilenames> {
 
 pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     let providers = &mut Providers::default();
-    providers.analysis = analysis;
-    providers.hir_crate = rustc_ast_lowering::lower_to_hir;
-    providers.output_filenames = output_filenames;
-    providers.resolver_for_lowering = resolver_for_lowering;
-    providers.early_lint_checks = early_lint_checks;
+    query_provider!(
+        providers,
+        provide(analysis) = analysis,
+        provide(hir_crate) = rustc_ast_lowering::lower_to_hir,
+        provide(output_filenames) = output_filenames,
+        provide(resolver_for_lowering) = resolver_for_lowering,
+        provide(early_lint_checks) = early_lint_checks,
+    );
     proc_macro_decls::provide(providers);
     rustc_const_eval::provide(providers);
     rustc_middle::hir::provide(providers);

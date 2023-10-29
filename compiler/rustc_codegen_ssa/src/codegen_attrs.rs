@@ -698,5 +698,9 @@ fn check_link_name_xor_ordinal(
 }
 
 pub fn provide(providers: &mut Providers) {
-    *providers = Providers { codegen_fn_attrs, should_inherit_track_caller, ..*providers };
+    query_provider!(
+        providers,
+        provide(codegen_fn_attrs) = codegen_fn_attrs,
+        provide(should_inherit_track_caller) = should_inherit_track_caller,
+    );
 }

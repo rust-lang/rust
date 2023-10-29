@@ -2277,19 +2277,20 @@ fn encode_metadata_impl(tcx: TyCtxt<'_>, path: &Path) {
 }
 
 pub fn provide(providers: &mut Providers) {
-    *providers = Providers {
-        doc_link_resolutions: |tcx, def_id| {
+    query_provider!(
+        providers,
+        provide(doc_link_resolutions) = |tcx, def_id| {
             tcx.resolutions(())
                 .doc_link_resolutions
                 .get(&def_id)
                 .unwrap_or_else(|| span_bug!(tcx.def_span(def_id), "no resolutions for a doc link"))
         },
-        doc_link_traits_in_scope: |tcx, def_id| {
+        provide(doc_link_traits_in_scope) = |tcx, def_id| {
             tcx.resolutions(()).doc_link_traits_in_scope.get(&def_id).unwrap_or_else(|| {
                 span_bug!(tcx.def_span(def_id), "no traits in scope for a doc link")
             })
         },
-        traits: |tcx, LocalCrate| {
+        provide(traits) = |tcx, LocalCrate| {
             let mut traits = Vec::new();
             for id in tcx.hir().items() {
                 if matches!(tcx.def_kind(id.owner_id), DefKind::Trait | DefKind::TraitAlias) {
@@ -2301,7 +2302,7 @@ pub fn provide(providers: &mut Providers) {
             traits.sort_by_cached_key(|&def_id| tcx.def_path_hash(def_id));
             tcx.arena.alloc_slice(&traits)
         },
-        trait_impls_in_crate: |tcx, LocalCrate| {
+        provide(trait_impls_in_crate) = |tcx, LocalCrate| {
             let mut trait_impls = Vec::new();
             for id in tcx.hir().items() {
                 if matches!(tcx.def_kind(id.owner_id), DefKind::Impl { .. })
@@ -2315,9 +2316,7 @@ pub fn provide(providers: &mut Providers) {
             trait_impls.sort_by_cached_key(|&def_id| tcx.def_path_hash(def_id));
             tcx.arena.alloc_slice(&trait_impls)
         },
-
-        ..*providers
-    }
+    );
 }
 
 /// Build a textual representation of an unevaluated constant expression.

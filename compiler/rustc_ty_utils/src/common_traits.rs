@@ -34,5 +34,11 @@ fn is_item_raw<'tcx>(
 }
 
 pub(crate) fn provide(providers: &mut Providers) {
-    *providers = Providers { is_copy_raw, is_sized_raw, is_freeze_raw, is_unpin_raw, ..*providers };
+    query_provider!(
+        providers,
+        provide(is_copy_raw) = is_copy_raw,
+        provide(is_sized_raw) = is_sized_raw,
+        provide(is_freeze_raw) = is_freeze_raw,
+        provide(is_unpin_raw) = is_unpin_raw,
+    );
 }

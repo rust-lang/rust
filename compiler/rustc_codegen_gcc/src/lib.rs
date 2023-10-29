@@ -208,8 +208,9 @@ impl CodegenBackend for GccCodegenBackend {
     }
 
     fn provide(&self, providers: &mut Providers) {
-        providers.global_backend_features =
+        providers.global_backend_features.override_provider(
             |tcx, ()| gcc_util::global_gcc_features(tcx.sess, true)
+        );
     }
 
     fn codegen_crate<'tcx>(&self, tcx: TyCtxt<'tcx>, metadata: EncodedMetadata, need_metadata_module: bool) -> Box<dyn Any> {

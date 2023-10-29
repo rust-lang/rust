@@ -167,5 +167,9 @@ fn required_panic_strategy(tcx: TyCtxt<'_>, _: LocalCrate) -> Option<PanicStrate
 }
 
 pub(crate) fn provide(providers: &mut Providers) {
-    *providers = Providers { has_ffi_unwind_calls, required_panic_strategy, ..*providers };
+    query_provider!(
+        providers,
+        provide(has_ffi_unwind_calls) = has_ffi_unwind_calls,
+        provide(required_panic_strategy) = required_panic_strategy
+    );
 }

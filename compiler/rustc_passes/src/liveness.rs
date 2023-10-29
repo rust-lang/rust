@@ -180,7 +180,7 @@ fn check_liveness(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 }
 
 pub fn provide(providers: &mut Providers) {
-    *providers = Providers { check_liveness, ..*providers };
+    query_provider!(providers, provide(check_liveness) = check_liveness);
 }
 
 // ______________________________________________________________________

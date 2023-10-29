@@ -2,6 +2,7 @@
 
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::query::Providers;
+use crate::query_provider;
 use crate::ty::layout::IntegerExt;
 use crate::ty::{
     self, FallibleTypeFolder, ToPredicate, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
@@ -1445,11 +1446,11 @@ pub fn is_intrinsic(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
 }
 
 pub fn provide(providers: &mut Providers) {
-    *providers = Providers {
-        reveal_opaque_types_in_bounds,
-        is_doc_hidden,
-        is_doc_notable_trait,
-        is_intrinsic,
-        ..*providers
-    }
+    query_provider!(
+        providers,
+        provide(reveal_opaque_types_in_bounds) = reveal_opaque_types_in_bounds,
+        provide(is_doc_hidden) = is_doc_hidden,
+        provide(is_doc_notable_trait) = is_doc_notable_trait,
+        provide(is_intrinsic) = is_intrinsic,
+    );
 }

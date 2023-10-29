@@ -2200,3 +2200,16 @@ rustc_queries! {
 
 rustc_query_append! { define_callbacks! }
 rustc_feedable_queries! { define_feedable! }
+
+#[macro_export]
+macro_rules! query_provider {
+    ($providers:expr, $( provide($name:ident) = $provider:expr ),* $(,)?) => {
+        $(
+            $providers.$name = $crate::query::plumbing::QueryProviderWrapper {
+                do_not_access_directly_use_the_query_providers_macro_instead: $provider,
+            };
+        )*
+    };
+}
+
+pub use query_provider;

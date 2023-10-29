@@ -12,7 +12,10 @@ use crate::lints::{BuiltinClashingExtern, BuiltinClashingExternSub};
 use crate::{types, LintVec};
 
 pub(crate) fn provide(providers: &mut Providers) {
-    *providers = Providers { clashing_extern_declarations, ..*providers };
+    query_provider!(
+        providers,
+        provide(clashing_extern_declarations) = clashing_extern_declarations
+    );
 }
 
 pub(crate) fn get_lints() -> LintVec {

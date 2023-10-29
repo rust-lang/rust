@@ -55,9 +55,9 @@ use rustc_metadata::creader::{CStore, CrateLoader};
 use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::query::Providers;
-use rustc_middle::span_bug;
 use rustc_middle::ty::{self, MainDefinition, RegisteredTools, TyCtxt};
 use rustc_middle::ty::{ResolverGlobalCtxt, ResolverOutputs};
+use rustc_middle::{query_provider, span_bug};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::lint::LintBuffer;
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind, SyntaxContext, Transparency};
@@ -2155,5 +2155,5 @@ impl Finalize {
 }
 
 pub fn provide(providers: &mut Providers) {
-    providers.registered_tools = macros::registered_tools;
+    query_provider!(providers, provide(registered_tools) = macros::registered_tools);
 }

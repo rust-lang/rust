@@ -1140,7 +1140,11 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
 }
 
 pub(crate) fn provide(providers: &mut Providers) {
-    *providers = Providers { shallow_lint_levels_on, lint_expectations, ..*providers };
+    query_provider!(
+        providers,
+        provide(shallow_lint_levels_on) = shallow_lint_levels_on,
+        provide(lint_expectations) = lint_expectations
+    );
 }
 
 pub fn parse_lint_and_tool_name(lint_name: &str) -> (Option<Symbol>, &str) {

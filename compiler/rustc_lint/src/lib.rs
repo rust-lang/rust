@@ -142,7 +142,7 @@ pub fn provide(providers: &mut Providers) {
     levels::provide(providers);
     expect::provide(providers);
     foreign_modules::provide(providers);
-    *providers = Providers { lint_mod, ..*providers };
+    query_provider!(providers, provide(lint_mod) = lint_mod);
 }
 
 fn lint_mod(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {

@@ -129,7 +129,7 @@ impl rustc_driver::Callbacks for MiriBeRustCompilerCalls {
             config.override_queries = Some(|_, local_providers| {
                 // `exported_symbols` and `reachable_non_generics` provided by rustc always returns
                 // an empty result if `tcx.sess.opts.output_types.should_codegen()` is false.
-                local_providers.exported_symbols = |tcx, LocalCrate| {
+                local_providers.exported_symbols.override_provider(|tcx, LocalCrate| {
                     let reachable_set = tcx.with_stable_hashing_context(|hcx| {
                         tcx.reachable_set(()).to_sorted(&hcx, true)
                     });
@@ -168,7 +168,7 @@ impl rustc_driver::Callbacks for MiriBeRustCompilerCalls {
                             ))
                         }),
                     )
-                }
+                });
             });
         }
     }

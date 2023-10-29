@@ -385,5 +385,5 @@ fn reachable_set(tcx: TyCtxt<'_>, (): ()) -> LocalDefIdSet {
 }
 
 pub fn provide(providers: &mut Providers) {
-    *providers = Providers { reachable_set, ..*providers };
+    query_provider!(providers, provide(reachable_set) = reachable_set);
 }

@@ -349,11 +349,11 @@ fn adt_significant_drop_tys(
 }
 
 pub(crate) fn provide(providers: &mut Providers) {
-    *providers = Providers {
-        needs_drop_raw,
-        has_significant_drop_raw,
-        adt_drop_tys,
-        adt_significant_drop_tys,
-        ..*providers
-    };
+    query_provider!(
+        providers,
+        provide(needs_drop_raw) = needs_drop_raw,
+        provide(has_significant_drop_raw) = has_significant_drop_raw,
+        provide(adt_drop_tys) = adt_drop_tys,
+        provide(adt_significant_drop_tys) = adt_significant_drop_tys,
+    );
 }

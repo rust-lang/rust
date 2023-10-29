@@ -200,5 +200,5 @@ fn no_main_err(tcx: TyCtxt<'_>, visitor: &EntryContext<'_>) {
 }
 
 pub fn provide(providers: &mut Providers) {
-    *providers = Providers { entry_fn, ..*providers };
+    query_provider!(providers, provide(entry_fn) = entry_fn);
 }

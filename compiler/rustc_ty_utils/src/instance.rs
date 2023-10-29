@@ -316,5 +316,5 @@ fn resolve_associated_item<'tcx>(
 }
 
 pub fn provide(providers: &mut Providers) {
-    *providers = Providers { resolve_instance, ..*providers };
+    query_provider!(providers, provide(resolve_instance) = resolve_instance);
 }

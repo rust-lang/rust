@@ -963,41 +963,44 @@ impl CrateInfo {
 }
 
 pub fn provide(providers: &mut Providers) {
-    providers.backend_optimization_level = |tcx, cratenum| {
-        let for_speed = match tcx.sess.opts.optimize {
-            // If globally no optimisation is done, #[optimize] has no effect.
-            //
-            // This is done because if we ended up "upgrading" to `-O2` here, we’d populate the
-            // pass manager and it is likely that some module-wide passes (such as inliner or
-            // cross-function constant propagation) would ignore the `optnone` annotation we put
-            // on the functions, thus necessarily involving these functions into optimisations.
-            config::OptLevel::No => return config::OptLevel::No,
-            // If globally optimise-speed is already specified, just use that level.
-            config::OptLevel::Less => return config::OptLevel::Less,
-            config::OptLevel::Default => return config::OptLevel::Default,
-            config::OptLevel::Aggressive => return config::OptLevel::Aggressive,
-            // If globally optimize-for-size has been requested, use -O2 instead (if optimize(size)
-            // are present).
-            config::OptLevel::Size => config::OptLevel::Default,
-            config::OptLevel::SizeMin => config::OptLevel::Default,
-        };
+    query_provider!(
+        providers,
+        provide(backend_optimization_level) = |tcx, cratenum| {
+            let for_speed = match tcx.sess.opts.optimize {
+                // If globally no optimisation is done, #[optimize] has no effect.
+                //
+                // This is done because if we ended up "upgrading" to `-O2` here, we’d populate the
+                // pass manager and it is likely that some module-wide passes (such as inliner or
+                // cross-function constant propagation) would ignore the `optnone` annotation we put
+                // on the functions, thus necessarily involving these functions into optimisations.
+                config::OptLevel::No => return config::OptLevel::No,
+                // If globally optimise-speed is already specified, just use that level.
+                config::OptLevel::Less => return config::OptLevel::Less,
+                config::OptLevel::Default => return config::OptLevel::Default,
+                config::OptLevel::Aggressive => return config::OptLevel::Aggressive,
+                // If globally optimize-for-size has been requested, use -O2 instead (if optimize(size)
+                // are present).
+                config::OptLevel::Size => config::OptLevel::Default,
+                config::OptLevel::SizeMin => config::OptLevel::Default,
+            };
 
-        let (defids, _) = tcx.collect_and_partition_mono_items(cratenum);
+            let (defids, _) = tcx.collect_and_partition_mono_items(cratenum);
 
-        let any_for_speed = defids.items().any(|id| {
-            let CodegenFnAttrs { optimize, .. } = tcx.codegen_fn_attrs(*id);
-            match optimize {
-                attr::OptimizeAttr::None | attr::OptimizeAttr::Size => false,
-                attr::OptimizeAttr::Speed => true,
+            let any_for_speed = defids.items().any(|id| {
+                let CodegenFnAttrs { optimize, .. } = tcx.codegen_fn_attrs(*id);
+                match optimize {
+                    attr::OptimizeAttr::None | attr::OptimizeAttr::Size => false,
+                    attr::OptimizeAttr::Speed => true,
+                }
+            });
+
+            if any_for_speed {
+                return for_speed;
             }
-        });
 
-        if any_for_speed {
-            return for_speed;
-        }
-
-        tcx.sess.opts.optimize
-    };
+            tcx.sess.opts.optimize
+        },
+    );
 }
 
 pub fn determine_cgu_reuse<'tcx>(tcx: TyCtxt<'tcx>, cgu: &CodegenUnit<'tcx>) -> CguReuse {

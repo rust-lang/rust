@@ -1,7 +1,7 @@
 use crate::hir::place::{
     Place as HirPlace, PlaceBase as HirPlaceBase, ProjectionKind as HirProjectionKind,
 };
-use crate::{mir, ty};
+use crate::{mir, query_provider, ty};
 
 use std::fmt::Write;
 
@@ -476,5 +476,5 @@ impl BorrowKind {
 }
 
 pub fn provide(providers: &mut Providers) {
-    *providers = Providers { closure_typeinfo, ..*providers }
+    query_provider!(providers, provide(closure_typeinfo) = closure_typeinfo,);
 }

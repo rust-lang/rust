@@ -11,8 +11,8 @@ use rustc_trait_selection::infer::InferCtxtBuilderExt;
 use rustc_trait_selection::traits::query::type_op::implied_outlives_bounds::compute_implied_outlives_bounds_inner;
 use rustc_trait_selection::traits::query::{CanonicalTyGoal, NoSolution};
 
-pub(crate) fn provide(p: &mut Providers) {
-    *p = Providers { implied_outlives_bounds, ..*p };
+pub(crate) fn provide(providers: &mut Providers) {
+    query_provider!(providers, provide(implied_outlives_bounds) = implied_outlives_bounds);
 }
 
 fn implied_outlives_bounds<'tcx>(

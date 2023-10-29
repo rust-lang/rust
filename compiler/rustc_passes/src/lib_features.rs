@@ -150,5 +150,5 @@ fn lib_features(tcx: TyCtxt<'_>, (): ()) -> LibFeatures {
 }
 
 pub fn provide(providers: &mut Providers) {
-    providers.lib_features = lib_features;
+    query_provider!(providers, provide(lib_features) = lib_features);
 }

@@ -20,7 +20,7 @@ use crate::errors::{
 };
 
 pub(crate) fn provide(providers: &mut Providers) {
-    *providers = Providers { check_mod_naked_functions, ..*providers };
+    query_provider!(providers, provide(check_mod_naked_functions) = check_mod_naked_functions);
 }
 
 fn check_mod_naked_functions(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
