@@ -82,12 +82,7 @@ pub fn walk_types<'tcx, V: SpannedTypeVisitor<'tcx>>(
             for (pred, span) in tcx.predicates_of(item).instantiate_identity(tcx) {
                 visitor.visit(span, pred)?;
             }}
-        DefKind::Trait => {
-            for (pred, span) in tcx.predicates_of(item).instantiate_identity(tcx) {
-                visitor.visit(span, pred)?;
-            }
-        }
-        DefKind::TraitAlias => {
+        DefKind::TraitAlias | DefKind::Trait => {
             for (pred, span) in tcx.predicates_of(item).instantiate_identity(tcx) {
                 visitor.visit(span, pred)?;
             }
