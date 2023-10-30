@@ -564,7 +564,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             G::consider_builtin_future_candidate(self, goal)
         } else if lang_items.iterator_trait() == Some(trait_def_id) {
             G::consider_builtin_iterator_candidate(self, goal)
-        } else if lang_items.gen_trait() == Some(trait_def_id) {
+        } else if lang_items.coroutine_trait() == Some(trait_def_id) {
             G::consider_builtin_coroutine_candidate(self, goal)
         } else if lang_items.discriminant_kind_trait() == Some(trait_def_id) {
             G::consider_builtin_discriminant_kind_candidate(self, goal)

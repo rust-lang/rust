@@ -1798,7 +1798,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                 let self_ty = selcx.infcx.shallow_resolve(obligation.predicate.self_ty());
 
                 let lang_items = selcx.tcx().lang_items();
-                if [lang_items.gen_trait(), lang_items.future_trait(), lang_items.iterator_trait()].contains(&Some(trait_ref.def_id))
+                if [lang_items.coroutine_trait(), lang_items.future_trait(), lang_items.iterator_trait()].contains(&Some(trait_ref.def_id))
                     || selcx.tcx().fn_trait_kind_from_def_id(trait_ref.def_id).is_some()
                 {
                     true
@@ -2011,7 +2011,7 @@ fn confirm_select_candidate<'cx, 'tcx>(
         ImplSource::Builtin(BuiltinImplSource::Misc, data) => {
             let trait_def_id = obligation.predicate.trait_def_id(selcx.tcx());
             let lang_items = selcx.tcx().lang_items();
-            if lang_items.gen_trait() == Some(trait_def_id) {
+            if lang_items.coroutine_trait() == Some(trait_def_id) {
                 confirm_coroutine_candidate(selcx, obligation, data)
             } else if lang_items.future_trait() == Some(trait_def_id) {
                 confirm_future_candidate(selcx, obligation, data)
@@ -2051,26 +2051,26 @@ fn confirm_coroutine_candidate<'cx, 'tcx>(
     else {
         unreachable!()
     };
-    let gen_sig = args.as_coroutine().poly_sig();
-    let Normalized { value: gen_sig, obligations } = normalize_with_depth(
+    let coroutine_sig = args.as_coroutine().poly_sig();
+    let Normalized { value: coroutine_sig, obligations } = normalize_with_depth(
         selcx,
         obligation.param_env,
         obligation.cause.clone(),
         obligation.recursion_depth + 1,
-        gen_sig,
+        coroutine_sig,
     );
 
-    debug!(?obligation, ?gen_sig, ?obligations, "confirm_coroutine_candidate");
+    debug!(?obligation, ?coroutine_sig, ?obligations, "confirm_coroutine_candidate");
 
     let tcx = selcx.tcx();
 
-    let gen_def_id = tcx.require_lang_item(LangItem::Coroutine, None);
+    let coroutine_def_id = tcx.require_lang_item(LangItem::Coroutine, None);
 
     let predicate = super::util::coroutine_trait_ref_and_outputs(
         tcx,
-        gen_def_id,
+        coroutine_def_id,
         obligation.predicate.self_ty(),
-        gen_sig,
+        coroutine_sig,
     )
     .map_bound(|(trait_ref, yield_ty, return_ty)| {
         let name = tcx.associated_item(obligation.predicate.def_id).name;
@@ -2103,16 +2103,16 @@ fn confirm_future_candidate<'cx, 'tcx>(
     else {
         unreachable!()
     };
-    let gen_sig = args.as_coroutine().poly_sig();
-    let Normalized { value: gen_sig, obligations } = normalize_with_depth(
+    let coroutine_sig = args.as_coroutine().poly_sig();
+    let Normalized { value: coroutine_sig, obligations } = normalize_with_depth(
         selcx,
         obligation.param_env,
         obligation.cause.clone(),
         obligation.recursion_depth + 1,
-        gen_sig,
+        coroutine_sig,
     );
 
-    debug!(?obligation, ?gen_sig, ?obligations, "confirm_future_candidate");
+    debug!(?obligation, ?coroutine_sig, ?obligations, "confirm_future_candidate");
 
     let tcx = selcx.tcx();
     let fut_def_id = tcx.require_lang_item(LangItem::Future, None);
@@ -2121,7 +2121,7 @@ fn confirm_future_candidate<'cx, 'tcx>(
         tcx,
         fut_def_id,
         obligation.predicate.self_ty(),
-        gen_sig,
+        coroutine_sig,
     )
     .map_bound(|(trait_ref, return_ty)| {
         debug_assert_eq!(tcx.associated_item(obligation.predicate.def_id).name, sym::Output);
@@ -2156,7 +2156,7 @@ fn confirm_iterator_candidate<'cx, 'tcx>(
         gen_sig,
     );
 
-    debug!(?obligation, ?gen_sig, ?obligations, "confirm_future_candidate");
+    debug!(?obligation, ?gen_sig, ?obligations, "confirm_iterator_candidate");
 
     let tcx = selcx.tcx();
     let iter_def_id = tcx.require_lang_item(LangItem::Iterator, None);

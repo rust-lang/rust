@@ -69,8 +69,8 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> Body<'
         ty::InstanceDef::DropGlue(def_id, ty) => {
             // FIXME(#91576): Drop shims for coroutines aren't subject to the MIR passes at the end
             // of this function. Is this intentional?
-            if let Some(ty::Coroutine(gen_def_id, args, _)) = ty.map(Ty::kind) {
-                let body = tcx.optimized_mir(*gen_def_id).coroutine_drop().unwrap();
+            if let Some(ty::Coroutine(coroutine_def_id, args, _)) = ty.map(Ty::kind) {
+                let body = tcx.optimized_mir(*coroutine_def_id).coroutine_drop().unwrap();
                 let mut body = EarlyBinder::bind(body.clone()).instantiate(tcx, args);
                 debug!("make_shim({:?}) = {:?}", instance, body);
 
@@ -392,8 +392,8 @@ fn build_clone_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'tcx>) -
         _ if is_copy => builder.copy_shim(),
         ty::Closure(_, args) => builder.tuple_like_shim(dest, src, args.as_closure().upvar_tys()),
         ty::Tuple(..) => builder.tuple_like_shim(dest, src, self_ty.tuple_fields()),
-        ty::Coroutine(gen_def_id, args, hir::Movability::Movable) => {
-            builder.coroutine_shim(dest, src, *gen_def_id, args.as_coroutine())
+        ty::Coroutine(coroutine_def_id, args, hir::Movability::Movable) => {
+            builder.coroutine_shim(dest, src, *coroutine_def_id, args.as_coroutine())
         }
         _ => bug!("clone shim for `{:?}` which is not `Copy` and is not an aggregate", self_ty),
     };
@@ -597,7 +597,7 @@ impl<'tcx> CloneShimBuilder<'tcx> {
         &mut self,
         dest: Place<'tcx>,
         src: Place<'tcx>,
-        gen_def_id: DefId,
+        coroutine_def_id: DefId,
         args: CoroutineArgs<'tcx>,
     ) {
         self.block(vec![], TerminatorKind::Goto { target: self.block_index_offset(3) }, false);
@@ -607,8 +607,8 @@ impl<'tcx> CloneShimBuilder<'tcx> {
         let unwind = self.clone_fields(dest, src, switch, unwind, args.upvar_tys());
         let target = self.block(vec![], TerminatorKind::Return, false);
         let unreachable = self.block(vec![], TerminatorKind::Unreachable, false);
-        let mut cases = Vec::with_capacity(args.state_tys(gen_def_id, self.tcx).count());
-        for (index, state_tys) in args.state_tys(gen_def_id, self.tcx).enumerate() {
+        let mut cases = Vec::with_capacity(args.state_tys(coroutine_def_id, self.tcx).count());
+        for (index, state_tys) in args.state_tys(coroutine_def_id, self.tcx).enumerate() {
             let variant_index = VariantIdx::new(index);
             let dest = self.tcx.mk_place_downcast_unnamed(dest, variant_index);
             let src = self.tcx.mk_place_downcast_unnamed(src, variant_index);
