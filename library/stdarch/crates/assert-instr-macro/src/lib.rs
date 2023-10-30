@@ -61,9 +61,7 @@ pub fn assert_instr(
     }
 
     let instr_str = instr
-        .replace('.', "_")
-        .replace('/', "_")
-        .replace(':', "_")
+        .replace(['.', '/', ':'], "_")
         .replace(char::is_whitespace, "");
     let assert_name = syn::Ident::new(&format!("assert_{name}_{instr_str}"), name.span());
     // These name has to be unique enough for us to find it in the disassembly later on:
