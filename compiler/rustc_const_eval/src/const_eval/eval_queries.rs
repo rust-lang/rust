@@ -90,7 +90,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
 /// that inform us about the generic bounds of the constant. E.g., using an associated constant
 /// of a function's generic parameter will require knowledge about the bounds on the generic
 /// parameter. These bounds are passed to `mk_eval_cx` via the `ParamEnv` argument.
-pub(super) fn mk_eval_cx<'mir, 'tcx>(
+pub(crate) fn mk_eval_cx<'mir, 'tcx>(
     tcx: TyCtxt<'tcx>,
     root_span: Span,
     param_env: ty::ParamEnv<'tcx>,
