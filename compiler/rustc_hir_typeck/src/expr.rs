@@ -625,10 +625,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 };
 
-                // If the loop context is not a `loop { }`, then break with
-                // a value is illegal, and `opt_coerce_to` will be `None`.
-                // Just set expectation to error in that case.
-                let coerce_to = opt_coerce_to.unwrap_or_else(|| Ty::new_misc_error(tcx));
+                let coerce_to = match opt_coerce_to {
+                    Some(c) => c,
+                    None => {
+                        // If the loop context is not a `loop { }`, then break with
+                        // a value is illegal, and `opt_coerce_to` will be `None`.
+                        // Return error in that case (#114529).
+                        return Ty::new_misc_error(tcx);
+                    }
+                };
 
                 // Recurse without `enclosing_breakables` borrowed.
                 e_ty = self.check_expr_with_hint(e, coerce_to);

@@ -26,6 +26,7 @@ LL |     takes_foo(());
    |
    = help: the trait `Foo` is not implemented for `()`
    = note: custom note
+   = note: fallback note
 help: this trait has no implementations, consider adding one
   --> $DIR/ignore_unsupported_options_and_continue_to_use_fallback.rs:13:1
    |

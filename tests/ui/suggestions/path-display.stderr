@@ -5,6 +5,7 @@ LL |     println!("{}", path);
    |                    ^^^^ `Path` cannot be formatted with the default formatter; call `.display()` on it
    |
    = help: the trait `std::fmt::Display` is not implemented for `Path`
+   = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
    = note: call `.display()` or `.to_string_lossy()` to safely print paths, as they may contain non-Unicode data
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -15,6 +16,7 @@ LL |     println!("{}", path);
    |                    ^^^^ `PathBuf` cannot be formatted with the default formatter; call `.display()` on it
    |
    = help: the trait `std::fmt::Display` is not implemented for `PathBuf`
+   = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
    = note: call `.display()` or `.to_string_lossy()` to safely print paths, as they may contain non-Unicode data
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 

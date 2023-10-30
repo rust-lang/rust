@@ -502,13 +502,13 @@ impl<'a> State<'a> {
                 self.word(";");
                 self.end(); // end the outer cbox
             }
-            hir::ItemKind::Fn(ref sig, param_names, body) => {
+            hir::ItemKind::Fn(ref sig, generics, body) => {
                 self.head("");
                 self.print_fn(
                     sig.decl,
                     sig.header,
                     Some(item.ident.name),
-                    param_names,
+                    generics,
                     &[],
                     Some(body),
                 );
@@ -1948,11 +1948,10 @@ impl<'a> State<'a> {
         self.print_generic_params(generics.params);
 
         self.popen();
-        let mut i = 0;
         // Make sure we aren't supplied *both* `arg_names` and `body_id`.
         assert!(arg_names.is_empty() || body_id.is_none());
-        self.commasep(Inconsistent, decl.inputs, |s, ty| {
-            s.ibox(INDENT_UNIT);
+        let mut i = 0;
+        let mut print_arg = |s: &mut Self| {
             if let Some(arg_name) = arg_names.get(i) {
                 s.word(arg_name.to_string());
                 s.word(":");
@@ -1963,11 +1962,17 @@ impl<'a> State<'a> {
                 s.space();
             }
             i += 1;
+        };
+        self.commasep(Inconsistent, decl.inputs, |s, ty| {
+            s.ibox(INDENT_UNIT);
+            print_arg(s);
             s.print_type(ty);
-            s.end()
+            s.end();
         });
         if decl.c_variadic {
-            self.word(", ...");
+            self.word(", ");
+            print_arg(self);
+            self.word("...");
         }
         self.pclose();
 
