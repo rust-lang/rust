@@ -271,9 +271,7 @@ impl HirEqInterExpr<'_, '_, '_> {
             (&ExprKind::AddrOf(lb, l_mut, le), &ExprKind::AddrOf(rb, r_mut, re)) => {
                 lb == rb && l_mut == r_mut && self.eq_expr(le, re)
             },
-            (&ExprKind::Continue(li), &ExprKind::Continue(ri)) => {
-                both(&li.label, &ri.label, |l, r| l.ident.name == r.ident.name)
-            },
+            (&ExprKind::Array(l), &ExprKind::Array(r)) => self.eq_exprs(l, r),
             (&ExprKind::Assign(ll, lr, _), &ExprKind::Assign(rl, rr, _)) => {
                 self.inner.allow_side_effects && self.eq_expr(ll, rl) && self.eq_expr(lr, rr)
             },
@@ -297,6 +295,10 @@ impl HirEqInterExpr<'_, '_, '_> {
             (&ExprKind::Cast(lx, lt), &ExprKind::Cast(rx, rt)) | (&ExprKind::Type(lx, lt), &ExprKind::Type(rx, rt)) => {
                 self.eq_expr(lx, rx) && self.eq_ty(lt, rt)
             },
+            (&ExprKind::Continue(li), &ExprKind::Continue(ri)) => {
+                both(&li.label, &ri.label, |l, r| l.ident.name == r.ident.name)
+            },
+            (&ExprKind::DropTemps(le), &ExprKind::DropTemps(re)) => self.eq_expr(le, re),
             (&ExprKind::Field(l_f_exp, ref l_f_ident), &ExprKind::Field(r_f_exp, ref r_f_ident)) => {
                 l_f_ident.name == r_f_ident.name && self.eq_expr(l_f_exp, r_f_exp)
             },
@@ -329,11 +331,14 @@ impl HirEqInterExpr<'_, '_, '_> {
                     && self.eq_expr(l_receiver, r_receiver)
                     && self.eq_exprs(l_args, r_args)
             },
+            (&ExprKind::OffsetOf(l_container, l_fields), &ExprKind::OffsetOf(r_container, r_fields)) => {
+                self.eq_ty(l_container, r_container) && over(l_fields, r_fields, |l, r| l.name == r.name)
+            },
+            (ExprKind::Path(l), ExprKind::Path(r)) => self.eq_qpath(l, r),
             (&ExprKind::Repeat(le, ll), &ExprKind::Repeat(re, rl)) => {
                 self.eq_expr(le, re) && self.eq_array_length(ll, rl)
             },
             (ExprKind::Ret(l), ExprKind::Ret(r)) => both(l, r, |l, r| self.eq_expr(l, r)),
-            (ExprKind::Path(l), ExprKind::Path(r)) => self.eq_qpath(l, r),
             (&ExprKind::Struct(l_path, lf, ref lo), &ExprKind::Struct(r_path, rf, ref ro)) => {
                 self.eq_qpath(l_path, r_path)
                     && both(lo, ro, |l, r| self.eq_expr(l, r))
@@ -341,11 +346,6 @@ impl HirEqInterExpr<'_, '_, '_> {
             },
             (&ExprKind::Tup(l_tup), &ExprKind::Tup(r_tup)) => self.eq_exprs(l_tup, r_tup),
             (&ExprKind::Unary(l_op, le), &ExprKind::Unary(r_op, re)) => l_op == r_op && self.eq_expr(le, re),
-            (&ExprKind::Array(l), &ExprKind::Array(r)) => self.eq_exprs(l, r),
-            (&ExprKind::DropTemps(le), &ExprKind::DropTemps(re)) => self.eq_expr(le, re),
-            (&ExprKind::OffsetOf(l_container, l_fields), &ExprKind::OffsetOf(r_container, r_fields)) => {
-                self.eq_ty(l_container, r_container) && over(l_fields, r_fields, |l, r| l.name == r.name)
-            },
             (
                 // Else branches for branches above, grouped as per `match_same_arms`.
                 | &ExprKind::AddrOf(..)
