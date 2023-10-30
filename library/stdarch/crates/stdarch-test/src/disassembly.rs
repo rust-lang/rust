@@ -126,7 +126,7 @@ fn parse(output: &str) -> HashSet<Function> {
         let symbol = normalize(header);
         eprintln!("normalized symbol: {symbol}");
         let mut instructions = Vec::new();
-        while let Some(instruction) = lines.next() {
+        for instruction in lines.by_ref() {
             if instruction.ends_with(':') {
                 cached_header = Some(instruction);
                 break;
