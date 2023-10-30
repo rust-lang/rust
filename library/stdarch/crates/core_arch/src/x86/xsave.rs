@@ -180,7 +180,7 @@ mod tests {
             XsaveArea { data: [0; 2560] }
         }
         fn ptr(&mut self) -> *mut u8 {
-            &mut self.data[0] as *mut _ as *mut u8
+            self.data.as_mut_ptr()
         }
     }
 

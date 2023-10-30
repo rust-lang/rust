@@ -3881,7 +3881,7 @@ mod tests {
     unsafe fn test_mm_store_si128() {
         let a = _mm_set1_epi8(9);
         let mut r = _mm_set1_epi8(0);
-        _mm_store_si128(&mut r as *mut _ as *mut __m128i, a);
+        _mm_store_si128(&mut r, a);
         assert_eq_m128i(r, a);
     }
 
@@ -3889,7 +3889,7 @@ mod tests {
     unsafe fn test_mm_storeu_si128() {
         let a = _mm_set1_epi8(9);
         let mut r = _mm_set1_epi8(0);
-        _mm_storeu_si128(&mut r as *mut _ as *mut __m128i, a);
+        _mm_storeu_si128(&mut r, a);
         assert_eq_m128i(r, a);
     }
 
@@ -3897,7 +3897,7 @@ mod tests {
     unsafe fn test_mm_storel_epi64() {
         let a = _mm_setr_epi64x(2, 9);
         let mut r = _mm_set1_epi8(0);
-        _mm_storel_epi64(&mut r as *mut _ as *mut __m128i, a);
+        _mm_storel_epi64(&mut r, a);
         assert_eq_m128i(r, _mm_setr_epi64x(2, 0));
     }
 

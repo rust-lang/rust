@@ -18376,7 +18376,7 @@ mod tests {
         let a: __mmask64 =
             0b11111111_00000000_11111111_00000000_11111111_00000000_11111111_00000000;
         let mut r = 0;
-        _store_mask64(&mut r as *mut _ as *mut u64, a);
+        _store_mask64(&mut r, a);
         assert_eq!(r, a);
     }
 
@@ -18384,7 +18384,7 @@ mod tests {
     unsafe fn test_store_mask32() {
         let a: __mmask32 = 0b11111111_00000000_11111111_00000000;
         let mut r = 0;
-        _store_mask32(&mut r as *mut _ as *mut u32, a);
+        _store_mask32(&mut r, a);
         assert_eq!(r, a);
     }
 

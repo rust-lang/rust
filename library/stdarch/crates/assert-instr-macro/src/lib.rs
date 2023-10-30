@@ -89,7 +89,7 @@ pub fn assert_instr(
             syn::Pat::Ident(ref i) => &i.ident,
             _ => panic!("must have bare arguments"),
         };
-        if let Some(&(_, ref tokens)) = invoc.args.iter().find(|a| *ident == a.0) {
+        if let Some((_, tokens)) = invoc.args.iter().find(|a| *ident == a.0) {
             input_vals.push(quote! { #tokens });
         } else {
             inputs.push(capture);
@@ -104,7 +104,7 @@ pub fn assert_instr(
                 v.clone().into_token_stream()
             ),
         };
-        if let Some(&(_, ref tokens)) = invoc.args.iter().find(|a| c.ident == a.0) {
+        if let Some((_, tokens)) = invoc.args.iter().find(|a| c.ident == a.0) {
             const_vals.push(quote! { #tokens });
         } else {
             panic!("const generics must have a value for tests");

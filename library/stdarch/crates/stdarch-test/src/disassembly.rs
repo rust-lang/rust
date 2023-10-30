@@ -24,7 +24,7 @@ fn normalize(mut symbol: &str) -> String {
 
     // Remove Rust paths
     if let Some(last_colon) = symbol.rfind(':') {
-        symbol = (&symbol[last_colon + 1..]).to_string();
+        symbol = symbol[last_colon + 1..].to_string();
     }
 
     // Normalize to no leading underscore to handle platforms that may
@@ -34,7 +34,7 @@ fn normalize(mut symbol: &str) -> String {
     }
     // Windows/x86 has a suffix such as @@4.
     if let Some(idx) = symbol.find("@@") {
-        symbol = (&symbol[..idx]).to_string();
+        symbol = symbol[..idx].to_string();
     }
     symbol
 }
