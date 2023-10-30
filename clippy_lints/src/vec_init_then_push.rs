@@ -33,10 +33,12 @@ declare_clippy_lint! {
     /// ```no_run
     /// let mut v = Vec::new();
     /// v.push(0);
+    /// v.push(1);
+    /// v.push(2);
     /// ```
     /// Use instead:
     /// ```no_run
-    /// let v = vec![0];
+    /// let v = vec![0, 1, 2];
     /// ```
     #[clippy::version = "1.51.0"]
     pub VEC_INIT_THEN_PUSH,
