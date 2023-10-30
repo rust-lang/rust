@@ -196,14 +196,8 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
             }
         }
 
-        if let Some((
-            rustc_attr::Deprecation { since: DeprecatedSince::RustcVersion(_), .. },
-            span,
-        )) = &depr
-        {
-            if stab.is_none() {
-                self.tcx.sess.emit_err(errors::DeprecatedAttribute { span: *span });
-            }
+        if let Some((depr, span)) = &depr && depr.is_since_rustc_version() && stab.is_none() {
+            self.tcx.sess.emit_err(errors::DeprecatedAttribute { span: *span });
         }
 
         if let Some((body_stab, _span)) = body_stab {

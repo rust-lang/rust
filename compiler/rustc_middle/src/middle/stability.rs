@@ -349,7 +349,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 // With #![staged_api], we want to emit down the whole
                 // hierarchy.
                 let depr_attr = &depr_entry.attr;
-                if !skip || matches!(depr_attr.since, DeprecatedSince::RustcVersion(_)) {
+                if !skip || depr_attr.is_since_rustc_version() {
                     // Calculating message for lint involves calling `self.def_path_str`.
                     // Which by default to calculate visible path will invoke expensive `visible_parent_map` query.
                     // So we skip message calculation altogether, if lint is allowed.

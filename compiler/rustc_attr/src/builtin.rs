@@ -759,6 +759,10 @@ impl Deprecation {
             DeprecatedSince::Unspecified | DeprecatedSince::Err => true,
         }
     }
+
+    pub fn is_since_rustc_version(&self) -> bool {
+        matches!(self.since, DeprecatedSince::RustcVersion(_))
+    }
 }
 
 /// Finds the deprecation attribute. `None` if none exists.
