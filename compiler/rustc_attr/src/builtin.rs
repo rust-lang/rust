@@ -737,7 +737,7 @@ pub enum DeprecatedSince {
     Future,
     /// `feature(staged_api)` is off. Deprecation versions outside the standard
     /// library are allowed to be arbitrary strings, for better or worse.
-    Symbol(Symbol),
+    NonStandard(Symbol),
     /// Deprecation version is unspecified but optional.
     Unspecified,
     /// Failed to parse a deprecation version, or the deprecation version is
@@ -754,7 +754,7 @@ impl Deprecation {
             DeprecatedSince::RustcVersion(since) => since <= RustcVersion::CURRENT,
             DeprecatedSince::Future => false,
             // The `since` field doesn't have semantic purpose without `#![staged_api]`.
-            DeprecatedSince::Symbol(_) => true,
+            DeprecatedSince::NonStandard(_) => true,
             // Assume deprecation is in effect if "since" field is absent or invalid.
             DeprecatedSince::Unspecified | DeprecatedSince::Err => true,
         }
@@ -871,7 +871,7 @@ pub fn find_deprecation(
             if since.as_str() == "TBD" {
                 DeprecatedSince::Future
             } else if !is_rustc {
-                DeprecatedSince::Symbol(since)
+                DeprecatedSince::NonStandard(since)
             } else if let Some(version) = parse_version(since) {
                 DeprecatedSince::RustcVersion(version)
             } else {

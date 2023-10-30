@@ -628,7 +628,7 @@ fn short_item_info(
                 }
             }
             DeprecatedSince::Future => String::from("Deprecating in a future Rust version"),
-            DeprecatedSince::Symbol(since) => {
+            DeprecatedSince::NonStandard(since) => {
                 format!("Deprecated since {}", Escape(since.as_str()))
             }
             DeprecatedSince::Unspecified | DeprecatedSince::Err => String::from("Deprecated"),

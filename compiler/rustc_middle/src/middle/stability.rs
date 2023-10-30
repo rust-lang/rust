@@ -162,7 +162,9 @@ fn deprecation_message(
             DeprecatedSince::Future => {
                 format!("use of {kind} `{path}` that will be deprecated in a future Rust version")
             }
-            DeprecatedSince::Symbol(_) | DeprecatedSince::Unspecified | DeprecatedSince::Err => {
+            DeprecatedSince::NonStandard(_)
+            | DeprecatedSince::Unspecified
+            | DeprecatedSince::Err => {
                 unreachable!("this deprecation is always in effect; {since:?}")
             }
         }

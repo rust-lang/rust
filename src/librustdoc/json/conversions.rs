@@ -143,7 +143,7 @@ pub(crate) fn from_deprecation(deprecation: rustc_attr::Deprecation) -> Deprecat
     let since = match since {
         DeprecatedSince::RustcVersion(version) => Some(version.to_string()),
         DeprecatedSince::Future => Some("TBD".to_owned()),
-        DeprecatedSince::Symbol(since) => Some(since.to_string()),
+        DeprecatedSince::NonStandard(since) => Some(since.to_string()),
         DeprecatedSince::Unspecified | DeprecatedSince::Err => None,
     };
     Deprecation { since, note: note.map(|s| s.to_string()) }
