@@ -12,7 +12,7 @@ use crate::{TyDecoder, TyEncoder};
 /// A clause is something that can appear in where bounds or be inferred
 /// by implied bounds.
 #[derive(derivative::Derivative)]
-#[derivative(Clone(bound = ""), Hash(bound = ""))]
+#[derivative(Clone(bound = ""), Hash(bound = ""), PartialEq(bound = ""), Eq(bound = ""))]
 pub enum ClauseKind<I: Interner> {
     /// Corresponds to `where Foo: Bar<A, B, C>`. `Foo` here would be
     /// the `Self` type of the trait reference and `A`, `B`, and `C`
@@ -51,23 +51,6 @@ where
     I::RegionOutlivesPredicate: Copy,
 {
 }
-
-impl<I: Interner> PartialEq for ClauseKind<I> {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Self::Trait(l0), Self::Trait(r0)) => l0 == r0,
-            (Self::RegionOutlives(l0), Self::RegionOutlives(r0)) => l0 == r0,
-            (Self::TypeOutlives(l0), Self::TypeOutlives(r0)) => l0 == r0,
-            (Self::Projection(l0), Self::Projection(r0)) => l0 == r0,
-            (Self::ConstArgHasType(l0, l1), Self::ConstArgHasType(r0, r1)) => l0 == r0 && l1 == r1,
-            (Self::WellFormed(l0), Self::WellFormed(r0)) => l0 == r0,
-            (Self::ConstEvaluatable(l0), Self::ConstEvaluatable(r0)) => l0 == r0,
-            _ => false,
-        }
-    }
-}
-
-impl<I: Interner> Eq for ClauseKind<I> {}
 
 fn clause_kind_discriminant<I: Interner>(value: &ClauseKind<I>) -> usize {
     match value {
@@ -219,7 +202,7 @@ where
 }
 
 #[derive(derivative::Derivative)]
-#[derivative(Clone(bound = ""), Hash(bound = ""))]
+#[derivative(Clone(bound = ""), Hash(bound = ""), PartialEq(bound = ""), Eq(bound = ""))]
 pub enum PredicateKind<I: Interner> {
     /// Prove a clause
     Clause(ClauseKind<I>),
@@ -275,27 +258,6 @@ where
     ClauseKind<I>: Copy,
 {
 }
-
-impl<I: Interner> PartialEq for PredicateKind<I> {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Self::Clause(l0), Self::Clause(r0)) => l0 == r0,
-            (Self::ObjectSafe(l0), Self::ObjectSafe(r0)) => l0 == r0,
-            (Self::ClosureKind(l0, l1, l2), Self::ClosureKind(r0, r1, r2)) => {
-                l0 == r0 && l1 == r1 && l2 == r2
-            }
-            (Self::Subtype(l0), Self::Subtype(r0)) => l0 == r0,
-            (Self::Coerce(l0), Self::Coerce(r0)) => l0 == r0,
-            (Self::ConstEquate(l0, l1), Self::ConstEquate(r0, r1)) => l0 == r0 && l1 == r1,
-            (Self::AliasRelate(l0, l1, l2), Self::AliasRelate(r0, r1, r2)) => {
-                l0 == r0 && l1 == r1 && l2 == r2
-            }
-            _ => core::mem::discriminant(self) == core::mem::discriminant(other),
-        }
-    }
-}
-
-impl<I: Interner> Eq for PredicateKind<I> {}
 
 fn predicate_kind_discriminant<I: Interner>(value: &PredicateKind<I>) -> usize {
     match value {

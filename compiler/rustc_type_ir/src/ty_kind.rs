@@ -120,7 +120,9 @@ pub enum AliasKind {
     PartialOrd = "feature_allow_slow_enum",
     Ord(bound = ""),
     Ord = "feature_allow_slow_enum",
-    Hash(bound = "")
+    Hash(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = "")
 )]
 pub enum TyKind<I: Interner> {
     /// The primitive boolean type. Written as `bool`.
@@ -331,58 +333,6 @@ const fn tykind_discriminant<I: Interner>(value: &TyKind<I>) -> usize {
         Error(_) => 25,
     }
 }
-
-// This is manually implemented because a derive would require `I: PartialEq`
-impl<I: Interner> PartialEq for TyKind<I> {
-    #[inline]
-    fn eq(&self, other: &TyKind<I>) -> bool {
-        // You might expect this `match` to be preceded with this:
-        //
-        //   tykind_discriminant(self) == tykind_discriminant(other) &&
-        //
-        // but the data patterns in practice are such that a comparison
-        // succeeds 99%+ of the time, and it's faster to omit it.
-        match (self, other) {
-            (Int(a_i), Int(b_i)) => a_i == b_i,
-            (Uint(a_u), Uint(b_u)) => a_u == b_u,
-            (Float(a_f), Float(b_f)) => a_f == b_f,
-            (Adt(a_d, a_s), Adt(b_d, b_s)) => a_d == b_d && a_s == b_s,
-            (Foreign(a_d), Foreign(b_d)) => a_d == b_d,
-            (Array(a_t, a_c), Array(b_t, b_c)) => a_t == b_t && a_c == b_c,
-            (Slice(a_t), Slice(b_t)) => a_t == b_t,
-            (RawPtr(a_t), RawPtr(b_t)) => a_t == b_t,
-            (Ref(a_r, a_t, a_m), Ref(b_r, b_t, b_m)) => a_r == b_r && a_t == b_t && a_m == b_m,
-            (FnDef(a_d, a_s), FnDef(b_d, b_s)) => a_d == b_d && a_s == b_s,
-            (FnPtr(a_s), FnPtr(b_s)) => a_s == b_s,
-            (Dynamic(a_p, a_r, a_repr), Dynamic(b_p, b_r, b_repr)) => {
-                a_p == b_p && a_r == b_r && a_repr == b_repr
-            }
-            (Closure(a_d, a_s), Closure(b_d, b_s)) => a_d == b_d && a_s == b_s,
-            (Coroutine(a_d, a_s, a_m), Coroutine(b_d, b_s, b_m)) => {
-                a_d == b_d && a_s == b_s && a_m == b_m
-            }
-            (CoroutineWitness(a_d, a_s), CoroutineWitness(b_d, b_s)) => a_d == b_d && a_s == b_s,
-            (Tuple(a_t), Tuple(b_t)) => a_t == b_t,
-            (Alias(a_i, a_p), Alias(b_i, b_p)) => a_i == b_i && a_p == b_p,
-            (Param(a_p), Param(b_p)) => a_p == b_p,
-            (Bound(a_d, a_b), Bound(b_d, b_b)) => a_d == b_d && a_b == b_b,
-            (Placeholder(a_p), Placeholder(b_p)) => a_p == b_p,
-            (Infer(a_t), Infer(b_t)) => a_t == b_t,
-            (Error(a_e), Error(b_e)) => a_e == b_e,
-            (Bool, Bool) | (Char, Char) | (Str, Str) | (Never, Never) => true,
-            _ => {
-                debug_assert!(
-                    tykind_discriminant(self) != tykind_discriminant(other),
-                    "This branch must be unreachable, maybe the match is missing an arm? self = self = {self:?}, other = {other:?}"
-                );
-                false
-            }
-        }
-    }
-}
-
-// This is manually implemented because a derive would require `I: Eq`
-impl<I: Interner> Eq for TyKind<I> {}
 
 impl<I: Interner> DebugWithInfcx<I> for TyKind<I> {
     fn fmt<Infcx: InferCtxtLike<Interner = I>>(

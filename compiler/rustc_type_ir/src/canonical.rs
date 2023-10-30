@@ -14,7 +14,12 @@ use crate::{HashStableContext, Interner, TyEncoder, UniverseIndex};
 /// variables have been rewritten to "canonical vars". These are
 /// numbered starting from 0 in order of first appearance.
 #[derive(derivative::Derivative)]
-#[derivative(Clone(bound = "V: Clone"), Hash(bound = "V: Hash"))]
+#[derivative(
+    Clone(bound = "V: Clone"),
+    Hash(bound = "V: Hash"),
+    PartialEq(bound = "V: PartialEq"),
+    Eq(bound = "V: Eq")
+)]
 pub struct Canonical<I: Interner, V> {
     pub value: V,
     pub max_universe: UniverseIndex,
@@ -69,16 +74,6 @@ where
         self.value.hash_stable(hcx, hasher);
         self.max_universe.hash_stable(hcx, hasher);
         self.variables.hash_stable(hcx, hasher);
-    }
-}
-
-impl<I: Interner, V: Eq> Eq for Canonical<I, V> {}
-
-impl<I: Interner, V: PartialEq> PartialEq for Canonical<I, V> {
-    fn eq(&self, other: &Self) -> bool {
-        self.value == other.value
-            && self.max_universe == other.max_universe
-            && self.variables == other.variables
     }
 }
 

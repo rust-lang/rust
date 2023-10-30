@@ -123,7 +123,9 @@ use self::RegionKind::*;
     PartialOrd = "feature_allow_slow_enum",
     Ord(bound = ""),
     Ord = "feature_allow_slow_enum",
-    Hash(bound = "")
+    Hash(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = "")
 )]
 pub enum RegionKind<I: Interner> {
     /// Region bound in a type or fn declaration which will be
@@ -184,34 +186,6 @@ where
     I::ErrorGuaranteed: Copy,
 {
 }
-
-// This is manually implemented because a derive would require `I: PartialEq`
-impl<I: Interner> PartialEq for RegionKind<I> {
-    #[inline]
-    fn eq(&self, other: &RegionKind<I>) -> bool {
-        regionkind_discriminant(self) == regionkind_discriminant(other)
-            && match (self, other) {
-                (ReEarlyBound(a_r), ReEarlyBound(b_r)) => a_r == b_r,
-                (ReLateBound(a_d, a_r), ReLateBound(b_d, b_r)) => a_d == b_d && a_r == b_r,
-                (ReFree(a_r), ReFree(b_r)) => a_r == b_r,
-                (ReStatic, ReStatic) => true,
-                (ReVar(a_r), ReVar(b_r)) => a_r == b_r,
-                (RePlaceholder(a_r), RePlaceholder(b_r)) => a_r == b_r,
-                (ReErased, ReErased) => true,
-                (ReError(_), ReError(_)) => true,
-                _ => {
-                    debug_assert!(
-                        false,
-                        "This branch must be unreachable, maybe the match is missing an arm? self = {self:?}, other = {other:?}"
-                    );
-                    true
-                }
-            }
-    }
-}
-
-// This is manually implemented because a derive would require `I: Eq`
-impl<I: Interner> Eq for RegionKind<I> {}
 
 impl<I: Interner> DebugWithInfcx<I> for RegionKind<I> {
     fn fmt<Infcx: InferCtxtLike<Interner = I>>(

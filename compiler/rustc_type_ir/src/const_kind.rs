@@ -18,7 +18,9 @@ use self::ConstKind::*;
     PartialOrd = "feature_allow_slow_enum",
     Ord(bound = ""),
     Ord = "feature_allow_slow_enum",
-    Hash(bound = "")
+    Hash(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = "")
 )]
 pub enum ConstKind<I: Interner> {
     /// A const generic parameter.
@@ -152,24 +154,6 @@ where
         }
     }
 }
-
-impl<I: Interner> PartialEq for ConstKind<I> {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Param(l0), Param(r0)) => l0 == r0,
-            (Infer(l0), Infer(r0)) => l0 == r0,
-            (Bound(l0, l1), Bound(r0, r1)) => l0 == r0 && l1 == r1,
-            (Placeholder(l0), Placeholder(r0)) => l0 == r0,
-            (Unevaluated(l0), Unevaluated(r0)) => l0 == r0,
-            (Value(l0), Value(r0)) => l0 == r0,
-            (Error(l0), Error(r0)) => l0 == r0,
-            (Expr(l0), Expr(r0)) => l0 == r0,
-            _ => false,
-        }
-    }
-}
-
-impl<I: Interner> Eq for ConstKind<I> {}
 
 impl<I: Interner> fmt::Debug for ConstKind<I> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
