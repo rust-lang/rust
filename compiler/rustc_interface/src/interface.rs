@@ -164,34 +164,31 @@ pub(crate) fn parse_check_cfg(handler: &EarlyErrorHandler, specs: Vec<String>) -
             expected_error();
         };
 
-        if meta_item.has_name(sym::names) {
+        let mut set_old_syntax = || {
             // defaults are flipped for the old syntax
             if old_syntax == None {
                 check_cfg.exhaustive_names = false;
                 check_cfg.exhaustive_values = false;
             }
             old_syntax = Some(true);
+        };
+
+        if meta_item.has_name(sym::names) {
+            set_old_syntax();
 
             check_cfg.exhaustive_names = true;
             for arg in args {
-                if arg.is_word() && arg.ident().is_some() {
-                    let ident = arg.ident().expect("multi-segment cfg key");
+                if arg.is_word() && let Some(ident) = arg.ident() {
                     check_cfg.expecteds.entry(ident.name).or_insert(ExpectedValues::Any);
                 } else {
                     error!("`names()` arguments must be simple identifiers");
                 }
             }
         } else if meta_item.has_name(sym::values) {
-            // defaults are flipped for the old syntax
-            if old_syntax == None {
-                check_cfg.exhaustive_names = false;
-                check_cfg.exhaustive_values = false;
-            }
-            old_syntax = Some(true);
+            set_old_syntax();
 
             if let Some((name, values)) = args.split_first() {
-                if name.is_word() && name.ident().is_some() {
-                    let ident = name.ident().expect("multi-segment cfg key");
+                if name.is_word() && let Some(ident) = name.ident() {
                     let expected_values = check_cfg
                         .expecteds
                         .entry(ident.name)
@@ -244,9 +241,7 @@ pub(crate) fn parse_check_cfg(handler: &EarlyErrorHandler, specs: Vec<String>) -
                         error!("`cfg()` names cannot be after values");
                     }
                     names.push(ident);
-                } else if arg.has_name(sym::any)
-                    && let Some(args) = arg.meta_item_list()
-                {
+                } else if arg.has_name(sym::any) && let Some(args) = arg.meta_item_list() {
                     if any_specified {
                         error!("`any()` cannot be specified multiple times");
                     }
@@ -254,9 +249,7 @@ pub(crate) fn parse_check_cfg(handler: &EarlyErrorHandler, specs: Vec<String>) -
                     if !args.is_empty() {
                         error!("`any()` must be empty");
                     }
-                } else if arg.has_name(sym::values)
-                    && let Some(args) = arg.meta_item_list()
-                {
+                } else if arg.has_name(sym::values) && let Some(args) = arg.meta_item_list() {
                     if names.is_empty() {
                         error!("`values()` cannot be specified before the names");
                     } else if values_specified {
@@ -267,22 +260,16 @@ pub(crate) fn parse_check_cfg(handler: &EarlyErrorHandler, specs: Vec<String>) -
                     for arg in args {
                         if let Some(LitKind::Str(s, _)) = arg.lit().map(|lit| &lit.kind) {
                             values.insert(Some(*s));
-                        } else if arg.has_name(sym::any)
-                            && let Some(args) = arg.meta_item_list()
-                        {
+                        } else if arg.has_name(sym::any) && let Some(args) = arg.meta_item_list() {
                             if values_any_specified {
-                                error!(
-                                    "`any()` in `values()` cannot be specified multiple times"
-                                );
+                                error!("`any()` in `values()` cannot be specified multiple times");
                             }
                             values_any_specified = true;
                             if !args.is_empty() {
                                 error!("`any()` must be empty");
                             }
                         } else {
-                            error!(
-                                "`values()` arguments must be string literals or `any()`"
-                            );
+                            error!("`values()` arguments must be string literals or `any()`");
                         }
                     }
                 } else {
