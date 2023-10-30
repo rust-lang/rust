@@ -3,6 +3,7 @@ use crate::errors::{
     AssocTypeBindingNotAllowed, ManualImplementation, MissingTypeParams,
     ParenthesizedFnTraitExpansion,
 };
+use crate::traits::error_reporting::report_object_safety_error;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{pluralize, struct_span_err, Applicability, Diagnostic, ErrorGuaranteed};
 use rustc_hir as hir;
@@ -13,6 +14,7 @@ use rustc_session::parse::feature_err;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::{Span, Symbol, DUMMY_SP};
+use rustc_trait_selection::traits::object_safety_violations_for_assoc_item;
 
 use std::collections::BTreeSet;
 
@@ -520,23 +522,32 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 (span, def_ids.into_iter().map(|did| tcx.associated_item(did)).collect())
             })
             .collect();
-        let mut names = vec![];
+        let mut names: FxHashMap<String, Vec<Symbol>> = Default::default();
+        let mut names_len = 0;
 
         // Account for things like `dyn Foo + 'a`, like in tests `issue-22434.rs` and
         // `issue-22560.rs`.
         let mut trait_bound_spans: Vec<Span> = vec![];
+        let mut object_safety_violations = false;
         for (span, items) in &associated_types {
             if !items.is_empty() {
                 trait_bound_spans.push(*span);
             }
             for assoc_item in items {
                 let trait_def_id = assoc_item.container_id(tcx);
-                names.push(format!(
-                    "`{}` (from trait `{}`)",
-                    assoc_item.name,
-                    tcx.def_path_str(trait_def_id),
-                ));
+                names.entry(tcx.def_path_str(trait_def_id)).or_default().push(assoc_item.name);
+                names_len += 1;
+
+                let violations =
+                    object_safety_violations_for_assoc_item(tcx, trait_def_id, *assoc_item);
+                if !violations.is_empty() {
+                    report_object_safety_error(tcx, *span, trait_def_id, &violations).emit();
+                    object_safety_violations = true;
+                }
             }
+        }
+        if object_safety_violations {
+            return;
         }
         if let ([], [bound]) = (&potential_assoc_types[..], &trait_bounds) {
             match bound.trait_ref.path.segments {
@@ -573,15 +584,35 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 _ => {}
             }
         }
+
+        let mut names = names
+            .into_iter()
+            .map(|(trait_, mut assocs)| {
+                assocs.sort();
+                format!(
+                    "{} in `{trait_}`",
+                    match &assocs[..] {
+                        [] => String::new(),
+                        [only] => format!("`{only}`"),
+                        [assocs @ .., last] => format!(
+                            "{} and `{last}`",
+                            assocs.iter().map(|a| format!("`{a}`")).collect::<Vec<_>>().join(", ")
+                        ),
+                    }
+                )
+            })
+            .collect::<Vec<String>>();
         names.sort();
+        let names = names.join(", ");
+
         trait_bound_spans.sort();
         let mut err = struct_span_err!(
             tcx.sess,
             trait_bound_spans,
             E0191,
             "the value of the associated type{} {} must be specified",
-            pluralize!(names.len()),
-            names.join(", "),
+            pluralize!(names_len),
+            names,
         );
         let mut suggestions = vec![];
         let mut types_count = 0;

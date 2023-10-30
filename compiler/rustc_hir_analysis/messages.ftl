@@ -404,7 +404,7 @@ hir_analysis_unused_associated_type_bounds =
     .suggestion = remove this bound
 
 hir_analysis_value_of_associated_struct_already_specified =
-    the value of the associated type `{$item_name}` (from trait `{$def_path}`) is already specified
+    the value of the associated type `{$item_name}` in trait `{$def_path}` is already specified
     .label = re-bound here
     .previous_bound_label = `{$item_name}` bound here first
 

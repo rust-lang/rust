@@ -9,7 +9,7 @@ LL | type Foo<Rhs> = dyn Add<Rhs> + Sub<Rhs> + X<Rhs> + Y<Rhs>;
    = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: Add<Rhs> + Sub<Rhs> + X<Rhs> + Y<Rhs> {}`
    = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
-error[E0191]: the value of the associated types `A` (from trait `Y`), `Output` (from trait `Add`), `Output` (from trait `Mul`), `Output` (from trait `Sub`) must be specified
+error[E0191]: the value of the associated types `A` in `Y`, `Output` in `Add`, `Output` in `Mul`, `Output` in `Sub` must be specified
   --> $DIR/missing-associated-types.rs:12:21
    |
 LL |     type A;
@@ -38,7 +38,7 @@ LL | type Bar<Rhs> = dyn Add<Rhs> + Sub<Rhs> + X<Rhs> + Z<Rhs>;
    = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: Add<Rhs> + Sub<Rhs> + X<Rhs> + Z<Rhs> {}`
    = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
-error[E0191]: the value of the associated types `A` (from trait `Z`), `B` (from trait `Z`), `Output` (from trait `Add`), `Output` (from trait `Div`), `Output` (from trait `Div`), `Output` (from trait `Mul`), `Output` (from trait `Sub`) must be specified
+error[E0191]: the value of the associated types `A` and `B` in `Z`, `Output` and `Output` in `Div`, `Output` in `Add`, `Output` in `Mul`, `Output` in `Sub` must be specified
   --> $DIR/missing-associated-types.rs:15:21
    |
 LL |     type A;
@@ -74,7 +74,7 @@ LL | type Baz<Rhs> = dyn Add<Rhs> + Sub<Rhs> + Y<Rhs>;
    = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: Add<Rhs> + Sub<Rhs> + Y<Rhs> {}`
    = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
-error[E0191]: the value of the associated types `A` (from trait `Y`), `Output` (from trait `Add`), `Output` (from trait `Sub`) must be specified
+error[E0191]: the value of the associated types `A` in `Y`, `Output` in `Add`, `Output` in `Sub` must be specified
   --> $DIR/missing-associated-types.rs:18:21
    |
 LL |     type A;
@@ -102,7 +102,7 @@ LL | type Bat<Rhs> = dyn Add<Rhs> + Sub<Rhs> + Fine<Rhs>;
    = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: Add<Rhs> + Sub<Rhs> + Fine<Rhs> {}`
    = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
-error[E0191]: the value of the associated types `Output` (from trait `Add`), `Output` (from trait `Sub`) must be specified
+error[E0191]: the value of the associated types `Output` in `Add`, `Output` in `Sub` must be specified
   --> $DIR/missing-associated-types.rs:21:21
    |
 LL | type Bat<Rhs> = dyn Add<Rhs> + Sub<Rhs> + Fine<Rhs>;
@@ -115,7 +115,7 @@ help: specify the associated types
 LL | type Bat<Rhs> = dyn Add<Rhs, Output = Type> + Sub<Rhs, Output = Type> + Fine<Rhs>;
    |                     ~~~~~~~~~~~~~~~~~~~~~~~   ~~~~~~~~~~~~~~~~~~~~~~~
 
-error[E0191]: the value of the associated types `Output` (from trait `Div`), `Output` (from trait `Mul`) must be specified
+error[E0191]: the value of the associated types `Output` in `Div`, `Output` in `Mul` must be specified
   --> $DIR/missing-associated-types.rs:24:21
    |
 LL | type Bal<Rhs> = dyn X<Rhs>;

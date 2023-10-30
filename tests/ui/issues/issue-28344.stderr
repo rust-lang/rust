@@ -12,7 +12,7 @@ help: use `dyn`
 LL |     let x: u8 = <dyn BitXor>::bitor(0 as u8, 0 as u8);
    |                 ++++       +
 
-error[E0191]: the value of the associated type `Output` (from trait `BitXor`) must be specified
+error[E0191]: the value of the associated type `Output` in `BitXor` must be specified
   --> $DIR/issue-28344.rs:4:17
    |
 LL |     let x: u8 = BitXor::bitor(0 as u8, 0 as u8);
@@ -40,7 +40,7 @@ help: use `dyn`
 LL |     let g = <dyn BitXor>::bitor;
    |             ++++       +
 
-error[E0191]: the value of the associated type `Output` (from trait `BitXor`) must be specified
+error[E0191]: the value of the associated type `Output` in `BitXor` must be specified
   --> $DIR/issue-28344.rs:10:13
    |
 LL |     let g = BitXor::bitor;
