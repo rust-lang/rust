@@ -406,7 +406,7 @@ fn side_opp(sd: Side) -> Side {
 
 fn pos_is_winner(pos: &Pos) -> bool {
     let current_side = side_opp(pos.p_turn);
-    check_pattern5(&pos, current_side)
+    check_pattern5(pos, current_side)
 }
 
 fn pos_is_draw(pos: &Pos) -> bool {
@@ -506,20 +506,20 @@ fn search(pos: &Pos, alpha: i32, beta: i32, depth: i32, _ply: i32) -> i32 {
     {
         if is_x86_feature_detected!("avx512bw") {
             unsafe {
-                if pos_is_winner_avx512(&pos) {
+                if pos_is_winner_avx512(pos) {
                     return -EVAL_INF + _ply;
                 }
 
-                if pos_is_draw_avx512(&pos) {
+                if pos_is_draw_avx512(pos) {
                     return 0;
                 }
             }
         } else {
-            if pos_is_winner(&pos) {
+            if pos_is_winner(pos) {
                 return -EVAL_INF + _ply;
             }
 
-            if pos_is_draw(&pos) {
+            if pos_is_draw(pos) {
                 return 0;
             }
         }
@@ -527,17 +527,17 @@ fn search(pos: &Pos, alpha: i32, beta: i32, depth: i32, _ply: i32) -> i32 {
 
     #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
     {
-        if pos_is_winner(&pos) {
+        if pos_is_winner(pos) {
             return -EVAL_INF + _ply;
         }
 
-        if pos_is_draw(&pos) {
+        if pos_is_draw(pos) {
             return 0;
         }
     }
 
     if depth == 0 {
-        return eval(&pos, _ply);
+        return eval(pos, _ply);
     }
 
     let p_move_new: [Move; (FILE_SIZE * RANK_SIZE) as usize] =
@@ -551,7 +551,7 @@ fn search(pos: &Pos, alpha: i32, beta: i32, depth: i32, _ply: i32) -> i32 {
     let mut bm: Move = MOVE_NONE;
     let mut bs: i32 = SCORE_NONE;
 
-    gen_moves(&mut list, &pos);
+    gen_moves(&mut list, pos);
 
     // move loop
 
@@ -600,12 +600,12 @@ fn eval(pos: &Pos, _ply: i32) -> i32 {
     {
         if is_x86_feature_detected!("avx512bw") {
             unsafe {
-                if check_patternlive4_avx512(&pos, def) {
+                if check_patternlive4_avx512(pos, def) {
                     return -4096;
                 }
             }
         } else {
-            if check_patternlive4(&pos, def) {
+            if check_patternlive4(pos, def) {
                 return -4096;
             }
         }
@@ -613,7 +613,7 @@ fn eval(pos: &Pos, _ply: i32) -> i32 {
 
     #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
     {
-        if check_patternlive4(&pos, def) {
+        if check_patternlive4(pos, def) {
             return -4096;
         }
     }
@@ -623,12 +623,12 @@ fn eval(pos: &Pos, _ply: i32) -> i32 {
     {
         if is_x86_feature_detected!("avx512bw") {
             unsafe {
-                if check_patternlive4_avx512(&pos, atk) {
+                if check_patternlive4_avx512(pos, atk) {
                     return 2560;
                 }
             }
         } else {
-            if check_patternlive4(&pos, atk) {
+            if check_patternlive4(pos, atk) {
                 return 2560;
             }
         }
@@ -636,7 +636,7 @@ fn eval(pos: &Pos, _ply: i32) -> i32 {
 
     #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
     {
-        if check_patternlive4(&pos, atk) {
+        if check_patternlive4(pos, atk) {
             return 2560;
         }
     }
@@ -646,12 +646,12 @@ fn eval(pos: &Pos, _ply: i32) -> i32 {
     {
         if is_x86_feature_detected!("avx512bw") {
             unsafe {
-                if check_patterndead4_avx512(&pos, atk) > 0 {
+                if check_patterndead4_avx512(pos, atk) > 0 {
                     return 2560;
                 }
             }
         } else {
-            if check_patterndead4(&pos, atk) > 0 {
+            if check_patterndead4(pos, atk) > 0 {
                 return 2560;
             }
         }
@@ -659,7 +659,7 @@ fn eval(pos: &Pos, _ply: i32) -> i32 {
 
     #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
     {
-        if check_patterndead4(&pos, atk) > 0 {
+        if check_patterndead4(pos, atk) > 0 {
             return 2560;
         }
     }
@@ -668,8 +668,8 @@ fn eval(pos: &Pos, _ply: i32) -> i32 {
     {
         if is_x86_feature_detected!("avx512bw") {
             unsafe {
-                let n_c4: i32 = check_patterndead4_avx512(&pos, def);
-                let n_c3: i32 = check_patternlive3_avx512(&pos, def);
+                let n_c4: i32 = check_patterndead4_avx512(pos, def);
+                let n_c3: i32 = check_patternlive3_avx512(pos, def);
 
                 // check if opp has 2 dead4 which will win playing next move
                 if n_c4 > 1 {
@@ -681,7 +681,7 @@ fn eval(pos: &Pos, _ply: i32) -> i32 {
                     return -2048;
                 }
 
-                if check_patternlive3_avx512(&pos, atk) > 1 {
+                if check_patternlive3_avx512(pos, atk) > 1 {
                     return 2560;
                 }
 
@@ -691,8 +691,8 @@ fn eval(pos: &Pos, _ply: i32) -> i32 {
                 }
             }
         } else {
-            let n_c4: i32 = check_patterndead4(&pos, def);
-            let n_c3: i32 = check_patternlive3(&pos, def);
+            let n_c4: i32 = check_patterndead4(pos, def);
+            let n_c3: i32 = check_patternlive3(pos, def);
 
             // check if opp has 2 dead4 which will win playing next move
             if n_c4 > 1 {
@@ -705,7 +705,7 @@ fn eval(pos: &Pos, _ply: i32) -> i32 {
             }
 
             // check if self has 2 live3 which will win playing the next two move
-            if check_patternlive3(&pos, atk) > 1 {
+            if check_patternlive3(pos, atk) > 1 {
                 return 2560;
             }
 
@@ -718,8 +718,8 @@ fn eval(pos: &Pos, _ply: i32) -> i32 {
 
     #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
     {
-        let n_c4: i32 = check_patterndead4(&pos, def);
-        let n_c3: i32 = check_patternlive3(&pos, def);
+        let n_c4: i32 = check_patterndead4(pos, def);
+        let n_c3: i32 = check_patternlive3(pos, def);
 
         // check if opp has 2 dead4 which will win playing next move
         if n_c4 > 1 {
@@ -732,7 +732,7 @@ fn eval(pos: &Pos, _ply: i32) -> i32 {
         }
 
         // check if self has 2 live3 which will win playing the next two move
-        if check_patternlive3(&pos, atk) > 1 {
+        if check_patternlive3(pos, atk) > 1 {
             return 2560;
         }
 

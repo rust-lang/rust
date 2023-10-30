@@ -163,7 +163,7 @@ impl std::convert::TryFrom<&'static str> for MsaIntrinsic {
             let mut arg_tys = Vec::new();
 
             let last_parentheses = line.find(')')?;
-            for arg in (&line[first_parentheses + 1..last_parentheses]).split(',') {
+            for arg in line[first_parentheses + 1..last_parentheses].split(',') {
                 let arg = arg.trim();
                 arg_tys.push(MsaTy::from(arg));
             }

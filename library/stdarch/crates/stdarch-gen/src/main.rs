@@ -1638,15 +1638,15 @@ fn gen_aarch64(
         Fntype::Normal => gen_test(
             &name,
             in_t,
-            &out_t,
+            out_t,
             current_tests,
             [type_len(in_t[0]), type_len(in_t[1]), type_len(in_t[2])],
             type_len(out_t),
             para_num,
             target.to_simd_test_attr_aarch64(),
         ),
-        Fntype::Load => gen_load_test(&name, in_t, &out_t, current_tests, type_len(out_t)),
-        Fntype::Store => gen_store_test(&name, in_t, &out_t, current_tests, type_len(in_t[1])),
+        Fntype::Load => gen_load_test(&name, in_t, out_t, current_tests, type_len(out_t)),
+        Fntype::Store => gen_store_test(&name, in_t, out_t, current_tests, type_len(in_t[1])),
     };
     (function, test)
 }
@@ -2524,7 +2524,7 @@ fn gen_arm(
 "#,
             target_feature_arm = target.to_target_feature_attr_arm(),
             target_feature_aarch64 = target.to_target_feature_attr_aarch64(),
-            assert_arm = expand_intrinsic(&current_arm, in_t[1]),
+            assert_arm = expand_intrinsic(current_arm, in_t[1]),
             assert_aarch64 = expand_intrinsic(&current_aarch64, in_t[1]),
         )
     } else {
@@ -2573,7 +2573,7 @@ fn gen_arm(
 {call}
 "#,
             function_doc = create_doc_string(current_comment, &name),
-            assert_arm = expand_intrinsic(&current_arm, in_t[1]),
+            assert_arm = expand_intrinsic(current_arm, in_t[1]),
             assert_aarch64 = expand_intrinsic(&current_aarch64, in_t[1]),
             target_feature = target.to_target_feature_attr_shared(),
         )
@@ -2582,15 +2582,15 @@ fn gen_arm(
         Fntype::Normal => gen_test(
             &name,
             in_t,
-            &out_t,
+            out_t,
             current_tests,
             [type_len(in_t[0]), type_len(in_t[1]), type_len(in_t[2])],
             type_len(out_t),
             para_num,
             target.to_simd_test_attr_shared(),
         ),
-        Fntype::Load => gen_load_test(&name, in_t, &out_t, current_tests, type_len(out_t)),
-        Fntype::Store => gen_store_test(&name, in_t, &out_t, current_tests, type_len(in_t[1])),
+        Fntype::Load => gen_load_test(&name, in_t, out_t, current_tests, type_len(out_t)),
+        Fntype::Store => gen_store_test(&name, in_t, out_t, current_tests, type_len(in_t[1])),
     };
     (function, test)
 }
@@ -3085,11 +3085,11 @@ fn get_call(
         } else if fn_format[1] == "outsigned" {
             fn_name.push_str(type_to_suffix(&type_to_signed(&String::from(out_t))));
         } else if fn_format[1] == "outsignednox" {
-            fn_name.push_str(&type_to_suffix(&type_to_sub_type(&type_to_signed(
+            fn_name.push_str(type_to_suffix(&type_to_sub_type(&type_to_signed(
                 &String::from(out_t),
             ))));
         } else if fn_format[1] == "in1signednox" {
-            fn_name.push_str(&type_to_suffix(&type_to_sub_type(&type_to_signed(
+            fn_name.push_str(type_to_suffix(&type_to_sub_type(&type_to_signed(
                 &String::from(in_t[1]),
             ))));
         } else if fn_format[1] == "outsigneddupnox" {
@@ -3451,7 +3451,7 @@ mod test {
                         &const_aarch64,
                         &constn,
                         &in_t,
-                        &out_t,
+                        out_t,
                         &current_tests,
                         suffix,
                         para_num,
@@ -3473,7 +3473,7 @@ mod test {
                         &const_aarch64,
                         &constn,
                         &in_t,
-                        &out_t,
+                        out_t,
                         &current_tests,
                         suffix,
                         para_num,

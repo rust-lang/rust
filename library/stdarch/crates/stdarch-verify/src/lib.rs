@@ -536,7 +536,7 @@ struct RustcArgsRequiredConst {
 
 impl syn::parse::Parse for RustcArgsRequiredConst {
     fn parse(input: syn::parse::ParseStream<'_>) -> syn::Result<Self> {
-        let list = syn::punctuated::Punctuated::<syn::LitInt, Token![,]>::parse_terminated(&input)?;
+        let list = syn::punctuated::Punctuated::<syn::LitInt, Token![,]>::parse_terminated(input)?;
         Ok(Self {
             args: list
                 .into_iter()
