@@ -1244,6 +1244,7 @@ impl<'v> RootCollector<'_, 'v> {
     /// monomorphized copy of the start lang item based on
     /// the return type of `main`. This is not needed when
     /// the user writes their own `start` manually.
+    /// TODO: remove annotations after automatic differentation pass
     fn push_extra_entry_roots(&mut self) {
         let Some((main_def_id, EntryFnType::Main { .. })) = self.entry_fn else {
             return;

@@ -1,9 +1,68 @@
-# The Rust Programming Language
+# The Rust Programming Language +Enzyme
 
 [![Rust Community](https://img.shields.io/badge/Rust_Community%20-Join_us-brightgreen?style=plastic&logo=rust)](https://www.rust-lang.org/community)
 
 This is the main source code repository for [Rust]. It contains the compiler,
-standard library, and documentation.
+standard library, and documentation. It is modified to use Enzyme for AutoDiff.
+
+Please configure this fork using the following command:
+
+```
+mkdir build
+cd build
+../configure --enable-llvm-link-shared --enable-llvm-plugins --enable-llvm-enzyme --release-channel=nightly --enable-llvm-assertions --enable-clang --enable-lld --enable-option-checking --enable-ninja --disable-docs
+```
+
+Afterwards you can build rustc using:
+```
+../x.py build --stage 1 library/std library/proc_macro library/test tools/rustdoc
+```
+
+Afterwards rustc toolchain link will allow you to use it through cargo:
+```
+rustup toolchain link enzyme `pwd`/build/`rustup target list --installed`/stage1
+rustup toolchain install nightly # enables -Z unstable-options
+```
+
+You can then look at examples in the `library/autodiff/examples/*` folder and run them with
+
+```bash
+# rosenbrock forward iteration
+cargo +enzyme run --example rosenbrock_fwd_iter --release
+
+# or all of them
+cargo +enzyme test --examples
+```
+
+## Enzyme Config
+To help with debugging, Enzyme can be configured using environment variables.
+```bash
+export ENZYME_PRINT_TA=1
+export ENZYME_PRINT_AA=1
+export ENZYME_PRINT=1
+export ENZYME_PRINT_MOD=1
+export ENZYME_PRINT_MOD_AFTER=1
+```
+The first three will print TypeAnalysis, ActivityAnalysis and the llvm-ir on a function basis, respectively.
+The last two variables will print the whole module directly before and after Enzyme differented the functions. 
+
+When experimenting with flags please make sure that EnzymeStrictAliasing=0
+is not changed, since it is required for Enzyme to handle enums correctly.
+
+## Bug reporting
+Bugs are pretty much expected at this point of the development process.
+In order to help us please minimize the Rust code as far as possible.
+This tool might be a nicer helper: https://github.com/Nilstrieb/cargo-minimize
+If you have some knowledge of LLVM-IR we also greatly appreciate it if you could help
+us by compiling your minimized Rust code to LLVM-IR and reducing it further.
+
+The only exception to this strategy is error based on "Can not deduce type of X",
+where reducing your example will make it harder for us to understand the origin of the bug.
+In this case please just try to inline all dependencies into a single crate or even file,
+without deleting used code.
+
+
+
 
 [Rust]: https://www.rust-lang.org/
 

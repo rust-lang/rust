@@ -1,0 +1,23 @@
+error: active return for forward mode
+ --> tests/ui/invalid_return.rs:3:28
+  |
+3 | #[autodiff(d_sin, Forward, Active)]
+  |                            ^^^^^^
+  |
+  = help: `#[autodiff]` return should be Const, Duplicated or DuplicatedNoNeed in forward mode
+
+error: duplicated return for reverse mode
+ --> tests/ui/invalid_return.rs:6:28
+  |
+6 | #[autodiff(d_sin, Reverse, Duplicated)]
+  |                            ^^^^^^^^^^
+  |
+  = help: `#[autodiff]` return should be Const or Active in reverse mode
+
+error: duplicated return for reverse mode
+ --> tests/ui/invalid_return.rs:9:28
+  |
+9 | #[autodiff(d_sin, Reverse, DuplicatedNoNeed)]
+  |                            ^^^^^^^^^^^^^^^^
+  |
+  = help: `#[autodiff]` return should be Const or Active in reverse mode

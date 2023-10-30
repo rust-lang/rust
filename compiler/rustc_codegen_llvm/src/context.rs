@@ -624,6 +624,10 @@ impl<'ll, 'tcx> MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             None
         }
     }
+
+    fn create_autodiff(&self) -> Vec<Self::Function> {
+        return vec![];
+    }
 }
 
 impl<'ll> CodegenCx<'ll, '_> {

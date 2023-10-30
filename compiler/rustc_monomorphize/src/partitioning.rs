@@ -1282,12 +1282,12 @@ pub fn provide(providers: &mut Providers) {
     providers.collect_and_partition_mono_items = collect_and_partition_mono_items;
 
     providers.is_codegened_item = |tcx, def_id| {
-        let (all_mono_items, _) = tcx.collect_and_partition_mono_items(());
+        let (all_mono_items, _, _) = tcx.collect_and_partition_mono_items(());
         all_mono_items.contains(&def_id)
     };
 
     providers.codegen_unit = |tcx, name| {
-        let (_, all) = tcx.collect_and_partition_mono_items(());
+        let (_, _, all) = tcx.collect_and_partition_mono_items(());
         all.iter()
             .find(|cgu| cgu.name() == name)
             .unwrap_or_else(|| panic!("failed to find cgu with name {name:?}"))

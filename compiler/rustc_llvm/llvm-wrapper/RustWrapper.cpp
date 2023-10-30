@@ -96,6 +96,11 @@ extern "C" char *LLVMRustGetLastError(void) {
   return Ret;
 }
 
+extern "C" LLVMTypeRef LLVMRustGetFunctionType(LLVMValueRef Fn) {
+    auto Ftype = unwrap<Function>(Fn)->getFunctionType();
+    return wrap(Ftype);
+}
+
 extern "C" void LLVMRustSetLastError(const char *Err) {
   free((void *)LastError);
   LastError = strdup(Err);

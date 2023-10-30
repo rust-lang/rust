@@ -176,6 +176,8 @@ pub struct ResolverGlobalCtxt {
     /// Mapping from ident span to path span for paths that don't exist as written, but that
     /// exist under `std`. For example, wrote `str::from_utf8` instead of `std::str::from_utf8`.
     pub confused_type_with_std_module: FxHashMap<Span, Span>,
+    /// Mapping of autodiff function IDs
+    pub autodiff_map: FxHashMap<LocalDefId, LocalDefId>,
     pub doc_link_resolutions: FxHashMap<LocalDefId, DocLinkResMap>,
     pub doc_link_traits_in_scope: FxHashMap<LocalDefId, Vec<DefId>>,
     pub all_macro_rules: FxHashMap<Symbol, Res<ast::NodeId>>,

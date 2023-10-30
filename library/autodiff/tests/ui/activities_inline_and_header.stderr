@@ -1,0 +1,7 @@
+error: inline activity
+ --> tests/ui/activities_inline_and_header.rs:4:18
+  |
+4 | fn sin(#[active] x: f32) -> f32;
+  |                  ^^^^^^
+  |
+  = help: `#[autodiff]` should have activities either specified in header or as inline attributes

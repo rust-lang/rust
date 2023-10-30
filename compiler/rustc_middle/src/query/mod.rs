@@ -10,6 +10,7 @@ use crate::dep_graph;
 use crate::infer::canonical::{self, Canonical};
 use crate::lint::LintExpectation;
 use crate::metadata::ModChild;
+use crate::middle::autodiff_attrs::{AutoDiffAttrs, AutoDiffItem};
 use crate::middle::codegen_fn_attrs::CodegenFnAttrs;
 use crate::middle::debugger_visualizer::DebuggerVisualizerFile;
 use crate::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
@@ -1229,6 +1230,13 @@ rustc_queries! {
         separate_provide_extern
     }
 
+    /// The list autodiff extern functions in current crate
+    query autodiff_attrs(def_id: DefId) -> &'tcx AutoDiffAttrs {
+        desc { |tcx| "computing autodiff attributes of `{}`", tcx.def_path_str(def_id) }
+        arena_cache
+        cache_on_disk_if { def_id.is_local() }
+    }
+
     query asm_target_features(def_id: DefId) -> &'tcx FxIndexSet<Symbol> {
         desc { |tcx| "computing target features for inline asm of `{}`", tcx.def_path_str(def_id) }
     }
@@ -1878,7 +1886,7 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    query collect_and_partition_mono_items(_: ()) -> (&'tcx DefIdSet, &'tcx [CodegenUnit<'tcx>]) {
+    query collect_and_partition_mono_items(_: ()) -> (&'tcx DefIdSet, &'tcx [AutoDiffItem], &'tcx [CodegenUnit<'tcx>]) {
         eval_always
         desc { "collect_and_partition_mono_items" }
     }

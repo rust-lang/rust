@@ -142,6 +142,9 @@ change-id = 116998
 # Whether or not to specify `-DLLVM_TEMPORARILY_ALLOW_OLD_TOOLCHAIN=YES`
 #allow-old-toolchain = false
 
+# Whether to build enzyme
+#enzyme = false
+
 # Whether to include the Polly optimizer.
 #polly = false
 

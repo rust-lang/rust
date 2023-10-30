@@ -25,6 +25,7 @@ use rustc_codegen_ssa::base::maybe_create_entry_wrapper;
 use rustc_codegen_ssa::mono_item::MonoItemExt;
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{ModuleCodegen, ModuleKind};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_middle::dep_graph;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
@@ -82,9 +83,10 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol) -> (ModuleCodegen
                 recorder.record_arg(cgu.size_estimate().to_string());
             });
         // Instantiate monomorphizations without filling out definitions yet...
-        let llvm_module = ModuleLlvm::new(tcx, cgu_name.as_str());
-        {
+        let mut llvm_module = ModuleLlvm::new(tcx, cgu_name.as_str());
+        let typetrees = {
             let cx = CodegenCx::new(tcx, cgu, &llvm_module);
+
             let mono_items = cx.codegen_unit.items_in_deterministic_order(cx.tcx);
             for &(mono_item, data) in &mono_items {
                 mono_item.predefine::<Builder<'_, '_, '_>>(&cx, data.linkage, data.visibility);
@@ -132,7 +134,11 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol) -> (ModuleCodegen
             if cx.sess().opts.debuginfo != DebugInfo::None {
                 cx.debuginfo_finalize();
             }
-        }
+
+            FxHashMap::default()
+        };
+
+        llvm_module.typetrees = typetrees;
 
         ModuleCodegen {
             name: cgu_name.to_string(),

@@ -1,0 +1,15 @@
+error: this URL is not a hyperlink
+  --> $DIR/diagnostic-width.rs:4:41
+   |
+LL | ... a http://link.com
+   |       ^^^^^^^^^^^^^^^ help: use an automatic link instead: `<http://link.com>`
+   |
+note: the lint level is defined here
+  --> $DIR/diagnostic-width.rs:2:9
+   |
+LL | ...ny(rustdoc::bare_url...
+   |       ^^^^^^^^^^^^^^^^^^
+   = note: bare URLs are not automatically turned into clickable links
+
+error: aborting due to previous error
+

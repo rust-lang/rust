@@ -1,0 +1,7 @@
+error: active argument in forward mode
+ --> tests/ui/active_in_forward_mode.rs:3:12
+  |
+3 | #[autodiff(d_sin, Forward, DuplicatedNoNeed, Active)]
+  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = help: `#[autodiff]` forward mode should be either Const, Duplicated

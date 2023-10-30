@@ -1,0 +1,28 @@
+[package]
+name = "autodiff"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+
+[profile.release]
+lto = "fat"
+
+[profile.dev]
+lto = "fat"
+
+[lib]
+name = "autodiff"
+proc-macro = true
+
+[dependencies]
+quote = "1.0"
+proc-macro2 = "1"
+proc-macro-error = "1"
+syn = { version = "1", features = ["extra-traits", "full", "visit", "visit-mut"]}
+
+[dev-dependencies]
+macrotest = "1"
+trybuild = "1"
+ndarray = "0.15"

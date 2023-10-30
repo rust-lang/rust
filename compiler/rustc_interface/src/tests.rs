@@ -767,6 +767,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(debug_macros, true);
     tracked!(dep_info_omit_d_target, true);
     tracked!(dual_proc_macros, true);
+    tracked!(enzyme_print_activity, false);
     tracked!(dwarf_version, Some(5));
     tracked!(emit_thin_lto, false);
     tracked!(export_executable_symbols, true);

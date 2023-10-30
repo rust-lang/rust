@@ -30,6 +30,7 @@ use back::owned_target_machine::OwnedTargetMachine;
 use back::write::{create_informational_target_machine, create_target_machine};
 
 use errors::ParseTargetMachineConfig;
+use llvm::TypeTree;
 pub use llvm_util::target_features;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_codegen_ssa::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule};
@@ -44,6 +45,8 @@ use rustc_errors::{DiagnosticMessage, ErrorGuaranteed, FatalError, Handler, Subd
 use rustc_fluent_macro::fluent_messages;
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
+use rustc_middle::middle::autodiff_attrs::AutoDiffItem;
+use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::util::Providers;
 use rustc_session::config::{OptLevel, OutputFilenames, PrintKind, PrintRequest};
@@ -77,6 +80,7 @@ mod debuginfo;
 mod declare;
 mod errors;
 mod intrinsic;
+mod typetree;
 
 // The following is a workaround that replaces `pub mod llvm;` and that fixes issue 53912.
 #[path = "llvm/mod.rs"]
@@ -172,6 +176,8 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     type TargetMachineError = crate::errors::LlvmError<'static>;
     type ThinData = back::lto::ThinData;
     type ThinBuffer = back::lto::ThinBuffer;
+    type TypeTree = DiffTypeTree;
+
     fn print_pass_timings(&self) {
         unsafe {
             let mut size = 0;
@@ -253,6 +259,20 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     }
     fn serialize_module(module: ModuleCodegen<Self::Module>) -> (String, Self::ModuleBuffer) {
         (module.name, back::lto::ModuleBuffer::new(module.module_llvm.llmod()))
+    }
+    /// Generate autodiff rules
+    fn autodiff(
+        cgcx: &CodegenContext<Self>,
+        module: &ModuleCodegen<Self::Module>,
+        diff_fncs: Vec<AutoDiffItem>,
+        typetrees: FxHashMap<String, Self::TypeTree>,
+        config: &ModuleConfig,
+    ) -> Result<(), FatalError> {
+        unsafe { back::write::differentiate(module, cgcx, diff_fncs, typetrees, config) }
+    }
+
+    fn typetrees(module: &mut Self::Module) -> FxHashMap<String, Self::TypeTree> {
+        module.typetrees.drain().collect()
     }
 }
 
@@ -404,12 +424,20 @@ impl CodegenBackend for LlvmCodegenBackend {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct DiffTypeTree {
+    pub ret_tt: TypeTree,
+    pub input_tt: Vec<TypeTree>,
+}
+
+#[allow(dead_code)]
 pub struct ModuleLlvm {
     llcx: &'static mut llvm::Context,
     llmod_raw: *const llvm::Module,
 
     // independent from llcx and llmod_raw, resources get disposed by drop impl
     tm: OwnedTargetMachine,
+    typetrees: FxHashMap<String, DiffTypeTree>,
 }
 
 unsafe impl Send for ModuleLlvm {}
@@ -420,7 +448,12 @@ impl ModuleLlvm {
         unsafe {
             let llcx = llvm::LLVMRustContextCreate(tcx.sess.fewer_names());
             let llmod_raw = context::create_module(tcx, llcx, mod_name) as *const _;
-            ModuleLlvm { llmod_raw, llcx, tm: create_target_machine(tcx, mod_name) }
+            ModuleLlvm {
+                llmod_raw,
+                llcx,
+                tm: create_target_machine(tcx, mod_name),
+                typetrees: Default::default(),
+            }
         }
     }
 
@@ -428,7 +461,12 @@ impl ModuleLlvm {
         unsafe {
             let llcx = llvm::LLVMRustContextCreate(tcx.sess.fewer_names());
             let llmod_raw = context::create_module(tcx, llcx, mod_name) as *const _;
-            ModuleLlvm { llmod_raw, llcx, tm: create_informational_target_machine(tcx.sess) }
+            ModuleLlvm {
+                llmod_raw,
+                llcx,
+                tm: create_informational_target_machine(tcx.sess),
+                typetrees: Default::default(),
+            }
         }
     }
 
@@ -449,7 +487,7 @@ impl ModuleLlvm {
                 }
             };
 
-            Ok(ModuleLlvm { llmod_raw, llcx, tm })
+            Ok(ModuleLlvm { llmod_raw, llcx, tm, typetrees: Default::default() })
         }
     }
 

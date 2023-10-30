@@ -70,6 +70,7 @@ v("llvm-libunwind", "rust.llvm-libunwind", "use LLVM libunwind")
 # channel, etc.
 o("optimize-llvm", "llvm.optimize", "build optimized LLVM")
 o("llvm-assertions", "llvm.assertions", "build LLVM with assertions")
+o("llvm-enzyme", "llvm.enzyme", "build LLVM with Enzyme")
 o("llvm-plugins", "llvm.plugins", "build LLVM with plugin interface")
 o("debug-assertions", "rust.debug-assertions", "build with debugging assertions")
 o("debug-assertions-std", "rust.debug-assertions-std", "build the standard library with debugging assertions")

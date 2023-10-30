@@ -353,6 +353,13 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ungated!(used, Normal, template!(Word, List: "compiler|linker"), WarnFollowing, @only_local: true),
     ungated!(link_ordinal, Normal, template!(List: "ordinal"), ErrorPreceding),
 
+    // Autodiff
+    ungated!(
+        autodiff_into, Normal,
+        template!(Word, List: r#""...""#),
+        DuplicatesOk,
+    ),
+
     // Limits:
     ungated!(recursion_limit, CrateLevel, template!(NameValueStr: "N"), FutureWarnFollowing),
     ungated!(type_length_limit, CrateLevel, template!(NameValueStr: "N"), FutureWarnFollowing),

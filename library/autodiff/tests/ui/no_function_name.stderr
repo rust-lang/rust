@@ -1,0 +1,8 @@
+error: please specify the autodiff function
+ --> tests/ui/no_function_name.rs:3:1
+  |
+3 | #[autodiff]
+  | ^^^^^^^^^^^
+  |
+  = help: `#[autodiff]` needs a function name for primal or adjoint
+  = note: this error originates in the attribute macro `autodiff` (in Nightly builds, run with -Z macro-backtrace for more info)
