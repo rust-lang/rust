@@ -3,7 +3,6 @@ use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_serialize::{Decodable, Decoder, Encodable};
 use std::cmp::Ordering;
 use std::fmt;
-use std::hash;
 
 use crate::{
     DebruijnIndex, DebugWithInfcx, HashStableContext, InferCtxtLike, Interner, TyDecoder,
@@ -118,6 +117,8 @@ use self::RegionKind::*;
 /// [1]: https://smallcultfollowing.com/babysteps/blog/2013/10/29/intermingled-parameter-lists/
 /// [2]: https://smallcultfollowing.com/babysteps/blog/2013/11/04/intermingled-parameter-lists/
 /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/hrtb.html
+#[derive(derivative::Derivative)]
+#[derivative(Hash(bound = ""))]
 pub enum RegionKind<I: Interner> {
     /// Region bound in a type or fn declaration which will be
     /// substituted 'early' -- that is, at the same time when type
@@ -251,26 +252,6 @@ impl<I: Interner> Ord for RegionKind<I> {
                 }
             }
         })
-    }
-}
-
-// This is manually implemented because a derive would require `I: Hash`
-impl<I: Interner> hash::Hash for RegionKind<I> {
-    fn hash<H: hash::Hasher>(&self, state: &mut H) -> () {
-        regionkind_discriminant(self).hash(state);
-        match self {
-            ReEarlyBound(r) => r.hash(state),
-            ReLateBound(d, r) => {
-                d.hash(state);
-                r.hash(state)
-            }
-            ReFree(r) => r.hash(state),
-            ReStatic => (),
-            ReVar(r) => r.hash(state),
-            RePlaceholder(r) => r.hash(state),
-            ReErased => (),
-            ReError(_) => (),
-        }
     }
 }
 

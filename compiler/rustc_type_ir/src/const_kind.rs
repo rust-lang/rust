@@ -3,7 +3,6 @@ use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_serialize::{Decodable, Decoder, Encodable};
 use std::cmp::Ordering;
 use std::fmt;
-use std::hash;
 
 use crate::{
     DebruijnIndex, DebugWithInfcx, HashStableContext, InferCtxtLike, Interner, TyDecoder,
@@ -13,7 +12,8 @@ use crate::{
 use self::ConstKind::*;
 
 /// Represents a constant in Rust.
-// #[derive(derive_more::From)]
+#[derive(derivative::Derivative)]
+#[derivative(Hash(bound = ""))]
 pub enum ConstKind<I: Interner> {
     /// A const generic parameter.
     Param(I::ParamConst),
@@ -54,25 +54,6 @@ const fn const_kind_discriminant<I: Interner>(value: &ConstKind<I>) -> usize {
         Value(_) => 5,
         Error(_) => 6,
         Expr(_) => 7,
-    }
-}
-
-impl<I: Interner> hash::Hash for ConstKind<I> {
-    fn hash<H: hash::Hasher>(&self, state: &mut H) {
-        const_kind_discriminant(self).hash(state);
-        match self {
-            Param(p) => p.hash(state),
-            Infer(i) => i.hash(state),
-            Bound(d, b) => {
-                d.hash(state);
-                b.hash(state);
-            }
-            Placeholder(p) => p.hash(state),
-            Unevaluated(u) => u.hash(state),
-            Value(v) => v.hash(state),
-            Error(e) => e.hash(state),
-            Expr(e) => e.hash(state),
-        }
     }
 }
 

@@ -4,8 +4,8 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::unify::{EqUnifyValue, UnifyKey};
 use rustc_serialize::{Decodable, Decoder, Encodable};
 use std::cmp::Ordering;
+use std::fmt;
 use std::mem::discriminant;
-use std::{fmt, hash};
 
 use crate::HashStableContext;
 use crate::Interner;
@@ -114,6 +114,8 @@ pub enum AliasKind {
 /// Types written by the user start out as `hir::TyKind` and get
 /// converted to this representation using `AstConv::ast_ty_to_ty`.
 #[rustc_diagnostic_item = "IrTyKind"]
+#[derive(derivative::Derivative)]
+#[derivative(Hash(bound = ""))]
 pub enum TyKind<I: Interner> {
     /// The primitive boolean type. Written as `bool`.
     Bool,
@@ -468,71 +470,6 @@ impl<I: Interner> Ord for TyKind<I> {
     }
 }
 
-// This is manually implemented because a derive would require `I: Hash`
-impl<I: Interner> hash::Hash for TyKind<I> {
-    fn hash<__H: hash::Hasher>(&self, state: &mut __H) -> () {
-        tykind_discriminant(self).hash(state);
-        match self {
-            Int(i) => i.hash(state),
-            Uint(u) => u.hash(state),
-            Float(f) => f.hash(state),
-            Adt(d, s) => {
-                d.hash(state);
-                s.hash(state)
-            }
-            Foreign(d) => d.hash(state),
-            Array(t, c) => {
-                t.hash(state);
-                c.hash(state)
-            }
-            Slice(t) => t.hash(state),
-            RawPtr(t) => t.hash(state),
-            Ref(r, t, m) => {
-                r.hash(state);
-                t.hash(state);
-                m.hash(state)
-            }
-            FnDef(d, s) => {
-                d.hash(state);
-                s.hash(state)
-            }
-            FnPtr(s) => s.hash(state),
-            Dynamic(p, r, repr) => {
-                p.hash(state);
-                r.hash(state);
-                repr.hash(state)
-            }
-            Closure(d, s) => {
-                d.hash(state);
-                s.hash(state)
-            }
-            Coroutine(d, s, m) => {
-                d.hash(state);
-                s.hash(state);
-                m.hash(state)
-            }
-            CoroutineWitness(d, s) => {
-                d.hash(state);
-                s.hash(state);
-            }
-            Tuple(t) => t.hash(state),
-            Alias(i, p) => {
-                i.hash(state);
-                p.hash(state);
-            }
-            Param(p) => p.hash(state),
-            Bound(d, b) => {
-                d.hash(state);
-                b.hash(state)
-            }
-            Placeholder(p) => p.hash(state),
-            Infer(t) => t.hash(state),
-            Error(e) => e.hash(state),
-            Bool | Char | Str | Never => (),
-        }
-    }
-}
-
 impl<I: Interner> DebugWithInfcx<I> for TyKind<I> {
     fn fmt<Infcx: InferCtxtLike<Interner = I>>(
         this: WithInfcx<'_, Infcx, &Self>,
@@ -614,6 +551,7 @@ impl<I: Interner> DebugWithInfcx<I> for TyKind<I> {
         }
     }
 }
+
 // This is manually implemented because a derive would require `I: Debug`
 impl<I: Interner> fmt::Debug for TyKind<I> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
