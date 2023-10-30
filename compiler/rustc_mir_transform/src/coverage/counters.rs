@@ -228,9 +228,7 @@ impl<'a> MakeBcbCounters<'a> {
                 debug!("{:?} has at least one coverage span. Get or make its counter", bcb);
                 let branching_counter_operand = self.get_or_make_counter_operand(bcb);
 
-                if self.bcb_needs_branch_counters(bcb) {
-                    self.make_branch_counters(&traversal, bcb, branching_counter_operand);
-                }
+                self.make_branch_counters(&traversal, bcb, branching_counter_operand);
             } else {
                 debug!(
                     "{:?} does not have any coverage spans. A counter will only be added if \
@@ -254,6 +252,15 @@ impl<'a> MakeBcbCounters<'a> {
         branching_counter_operand: CovTerm,
     ) {
         let branches = self.bcb_branches(from_bcb);
+
+        // If this node doesn't have multiple out-edges, or all of its out-edges
+        // already have counters, then we don't need to create edge counters.
+        let needs_branch_counters =
+            branches.len() > 1 && branches.iter().any(|branch| self.branch_has_no_counter(branch));
+        if !needs_branch_counters {
+            return;
+        }
+
         debug!(
             "{from_bcb:?} has some branch(es) without counters:\n  {}",
             branches
@@ -508,12 +515,6 @@ impl<'a> MakeBcbCounters<'a> {
             .iter()
             .map(|&to_bcb| BcbBranch::from_to(from_bcb, to_bcb, self.basic_coverage_blocks))
             .collect::<Vec<_>>()
-    }
-
-    fn bcb_needs_branch_counters(&self, bcb: BasicCoverageBlock) -> bool {
-        let branch_needs_a_counter = |branch: &BcbBranch| self.branch_has_no_counter(branch);
-        let branches = self.bcb_branches(bcb);
-        branches.len() > 1 && branches.iter().any(branch_needs_a_counter)
     }
 
     fn branch_has_no_counter(&self, branch: &BcbBranch) -> bool {
