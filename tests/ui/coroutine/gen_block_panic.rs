@@ -1,5 +1,6 @@
 //compile-flags: --edition 2024 -Zunstable-options
 // run-pass
+// needs-unwind
 #![feature(gen_blocks)]
 
 fn main() {
