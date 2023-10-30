@@ -287,6 +287,7 @@ target | std | host | notes
 `mips64el-unknown-linux-muslabi64` | ✓ |  | MIPS64 (little endian) Linux, N64 ABI, musl libc
 `mipsel-unknown-linux-gnu` | ✓ | ✓ | MIPS (little endian) Linux (kernel 4.4, glibc 2.23)
 `mipsel-unknown-linux-musl` | ✓ |  | MIPS (little endian) Linux with musl libc
+[`mipsel-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | 32-bit MIPS (LE), requires mips32 cpu support
 `mipsel-sony-psp` | * |  | MIPS (LE) Sony PlayStation Portable (PSP)
 [`mipsel-sony-psx`](platform-support/mipsel-sony-psx.md) | * |  | MIPS (LE) Sony PlayStation 1 (PSX)
 `mipsel-unknown-linux-uclibc` | ✓ |  | MIPS (LE) Linux with uClibc
