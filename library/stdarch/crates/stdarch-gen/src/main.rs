@@ -2981,6 +2981,7 @@ fn get_call(
             param_str.push_str(&sub_call);
         } else if s.contains(':') {
             let re_params: Vec<_> = s.split(':').map(|v| v.to_string()).collect();
+            #[allow(clippy::if_same_then_else)]
             if re_params[1] == "" {
                 re = Some((re_params[0].clone(), in_t[1].to_string()));
             } else if re_params[1] == "in_t" {
