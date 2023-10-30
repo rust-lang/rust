@@ -12,6 +12,7 @@ LL | trait Foo {
 LL |     fn baz(&self) -> impl Debug;
    |                      ^^^^^^^^^^ ...because method `baz` references an `impl Trait` type in its return type
    = help: consider moving `baz` to another trait
+   = help: only type `u32` implements the trait, consider using it directly instead
 
 error[E0038]: the trait `Foo` cannot be made into an object
   --> $DIR/object-safety.rs:17:15
@@ -27,6 +28,7 @@ LL | trait Foo {
 LL |     fn baz(&self) -> impl Debug;
    |                      ^^^^^^^^^^ ...because method `baz` references an `impl Trait` type in its return type
    = help: consider moving `baz` to another trait
+   = help: only type `u32` implements the trait, consider using it directly instead
 
 error[E0038]: the trait `Foo` cannot be made into an object
   --> $DIR/object-safety.rs:17:13
@@ -42,6 +44,7 @@ LL | trait Foo {
 LL |     fn baz(&self) -> impl Debug;
    |                      ^^^^^^^^^^ ...because method `baz` references an `impl Trait` type in its return type
    = help: consider moving `baz` to another trait
+   = help: only type `u32` implements the trait, consider using it directly instead
 
 error[E0038]: the trait `Foo` cannot be made into an object
   --> $DIR/object-safety.rs:14:13
@@ -57,6 +60,7 @@ LL | trait Foo {
 LL |     fn baz(&self) -> impl Debug;
    |                      ^^^^^^^^^^ ...because method `baz` references an `impl Trait` type in its return type
    = help: consider moving `baz` to another trait
+   = help: only type `u32` implements the trait, consider using it directly instead
    = note: required for the cast from `Box<u32>` to `Box<dyn Foo>`
 
 error: aborting due to 4 previous errors

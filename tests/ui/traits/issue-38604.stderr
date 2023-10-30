@@ -11,6 +11,7 @@ LL | trait Foo where u32: Q<Self> {
    |       ---            ^^^^^^^ ...because it uses `Self` as a type parameter
    |       |
    |       this trait cannot be made into an object...
+   = help: only type `()` implements the trait, consider using it directly instead
 
 error[E0038]: the trait `Foo` cannot be made into an object
   --> $DIR/issue-38604.rs:15:9
@@ -25,6 +26,7 @@ LL | trait Foo where u32: Q<Self> {
    |       ---            ^^^^^^^ ...because it uses `Self` as a type parameter
    |       |
    |       this trait cannot be made into an object...
+   = help: only type `()` implements the trait, consider using it directly instead
    = note: required for the cast from `Box<()>` to `Box<dyn Foo>`
 
 error: aborting due to 2 previous errors

@@ -1449,47 +1449,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     fn get_caller_location(
         &mut self,
         bx: &mut Bx,
-        mut source_info: mir::SourceInfo,
+        source_info: mir::SourceInfo,
     ) -> OperandRef<'tcx, Bx::Value> {
-        let tcx = bx.tcx();
-
-        let mut span_to_caller_location = |span: Span| {
-            use rustc_session::RemapFileNameExt;
-            let topmost = span.ctxt().outer_expn().expansion_cause().unwrap_or(span);
-            let caller = tcx.sess.source_map().lookup_char_pos(topmost.lo());
-            let const_loc = tcx.const_caller_location((
-                Symbol::intern(&caller.file.name.for_codegen(self.cx.sess()).to_string_lossy()),
-                caller.line as u32,
-                caller.col_display as u32 + 1,
-            ));
+        self.mir.caller_location_span(source_info, self.caller_location, bx.tcx(), |span: Span| {
+            let const_loc = bx.tcx().span_as_caller_location(span);
             OperandRef::from_const(bx, const_loc, bx.tcx().caller_location_ty())
-        };
-
-        // Walk up the `SourceScope`s, in case some of them are from MIR inlining.
-        // If so, the starting `source_info.span` is in the innermost inlined
-        // function, and will be replaced with outer callsite spans as long
-        // as the inlined functions were `#[track_caller]`.
-        loop {
-            let scope_data = &self.mir.source_scopes[source_info.scope];
-
-            if let Some((callee, callsite_span)) = scope_data.inlined {
-                // Stop inside the most nested non-`#[track_caller]` function,
-                // before ever reaching its caller (which is irrelevant).
-                if !callee.def.requires_caller_location(tcx) {
-                    return span_to_caller_location(source_info.span);
-                }
-                source_info.span = callsite_span;
-            }
-
-            // Skip past all of the parents with `inlined: None`.
-            match scope_data.inlined_parent_scope {
-                Some(parent) => source_info.scope = parent,
-                None => break,
-            }
-        }
-
-        // No inlined `SourceScope`s, or all of them were `#[track_caller]`.
-        self.caller_location.unwrap_or_else(|| span_to_caller_location(source_info.span))
+        })
     }
 
     fn get_personality_slot(&mut self, bx: &mut Bx) -> PlaceRef<'tcx, Bx::Value> {

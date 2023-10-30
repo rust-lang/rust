@@ -4,6 +4,7 @@ version = "0.0.0"
 edition = "2021"
 
 [dependencies]
+# tidy-alphabetical-start
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_hir = { path = "../rustc_hir" }
 rustc_middle = { path = "../rustc_middle" }
@@ -12,5 +13,4 @@ rustc_target = { path = "../rustc_target" }
 scoped-tls = "1.0"
 stable_mir = {path = "../stable_mir" }
 tracing = "0.1"
-
-[features]
+# tidy-alphabetical-end

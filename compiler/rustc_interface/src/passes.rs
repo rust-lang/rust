@@ -392,34 +392,16 @@ fn generated_output_paths(
     out_filenames
 }
 
-// Runs `f` on every output file path and returns the first non-None result, or None if `f`
-// returns None for every file path.
-fn check_output<F, T>(output_paths: &[PathBuf], f: F) -> Option<T>
-where
-    F: Fn(&PathBuf) -> Option<T>,
-{
-    for output_path in output_paths {
-        if let Some(result) = f(output_path) {
-            return Some(result);
-        }
-    }
-    None
-}
-
 fn output_contains_path(output_paths: &[PathBuf], input_path: &Path) -> bool {
     let input_path = try_canonicalize(input_path).ok();
     if input_path.is_none() {
         return false;
     }
-    let check = |output_path: &PathBuf| {
-        if try_canonicalize(output_path).ok() == input_path { Some(()) } else { None }
-    };
-    check_output(output_paths, check).is_some()
+    output_paths.iter().any(|output_path| try_canonicalize(output_path).ok() == input_path)
 }
 
-fn output_conflicts_with_dir(output_paths: &[PathBuf]) -> Option<PathBuf> {
-    let check = |output_path: &PathBuf| output_path.is_dir().then(|| output_path.clone());
-    check_output(output_paths, check)
+fn output_conflicts_with_dir(output_paths: &[PathBuf]) -> Option<&PathBuf> {
+    output_paths.iter().find(|output_path| output_path.is_dir())
 }
 
 fn escape_dep_filename(filename: &str) -> String {
@@ -602,9 +584,7 @@ fn output_filenames(tcx: TyCtxt<'_>, (): ()) -> Arc<OutputFilenames> {
     let (_, krate) = &*tcx.resolver_for_lowering(()).borrow();
     let crate_name = tcx.crate_name(LOCAL_CRATE);
 
-    // FIXME: rustdoc passes &[] instead of &krate.attrs here
     let outputs = util::build_output_filenames(&krate.attrs, sess);
-
     let output_paths =
         generated_output_paths(tcx, &outputs, sess.io.output_file.is_some(), crate_name);
 
@@ -882,16 +862,18 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
 
             let trait_ref = ty::Binder::dummy(ty::TraitRef::identity(tcx, tr));
 
-            // A slightly edited version of the code in `rustc_trait_selection::traits::vtable::vtable_entries`,
-            // that works without self type and just counts number of entries.
+            // A slightly edited version of the code in
+            // `rustc_trait_selection::traits::vtable::vtable_entries`, that works without self
+            // type and just counts number of entries.
             //
-            // Note that this is technically wrong, for traits which have associated types in supertraits:
+            // Note that this is technically wrong, for traits which have associated types in
+            // supertraits:
             //
             //   trait A: AsRef<Self::T> + AsRef<()> { type T; }
             //
-            // Without self type we can't normalize `Self::T`, so we can't know if `AsRef<Self::T>` and
-            // `AsRef<()>` are the same trait, thus we assume that those are different, and potentially
-            // over-estimate how many vtable entries there are.
+            // Without self type we can't normalize `Self::T`, so we can't know if `AsRef<Self::T>`
+            // and `AsRef<()>` are the same trait, thus we assume that those are different, and
+            // potentially over-estimate how many vtable entries there are.
             //
             // Similarly this is wrong for traits that have methods with possibly-impossible bounds.
             // For example:
@@ -918,10 +900,10 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
                         let own_existential_entries =
                             tcx.own_existential_vtable_entries(trait_ref.def_id());
 
-                        // The original code here ignores the method if its predicates are impossible.
-                        // We can't really do that as, for example, all not trivial bounds on generic
-                        // parameters are impossible (since we don't know the parameters...),
-                        // see the comment above.
+                        // The original code here ignores the method if its predicates are
+                        // impossible. We can't really do that as, for example, all not trivial
+                        // bounds on generic parameters are impossible (since we don't know the
+                        // parameters...), see the comment above.
                         entries_ignoring_upcasting += own_existential_entries.len();
 
                         if emit_vptr {

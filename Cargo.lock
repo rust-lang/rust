@@ -4412,7 +4412,6 @@ version = "0.0.0"
 dependencies = [
  "field-offset",
  "measureme",
- "memoffset",
  "rustc-rayon-core",
  "rustc_data_structures",
  "rustc_errors",

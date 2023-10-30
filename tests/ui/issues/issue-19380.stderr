@@ -11,6 +11,7 @@ LL | trait Qiz {
    |       --- this trait cannot be made into an object...
 LL |   fn qiz();
    |      ^^^ ...because associated function `qiz` has no `self` parameter
+   = help: only type `Foo` implements the trait, consider using it directly instead
 help: consider turning `qiz` into a method by giving it a `&self` argument
    |
 LL |   fn qiz(&self);
@@ -33,6 +34,7 @@ LL | trait Qiz {
    |       --- this trait cannot be made into an object...
 LL |   fn qiz();
    |      ^^^ ...because associated function `qiz` has no `self` parameter
+   = help: only type `Foo` implements the trait, consider using it directly instead
    = note: required for the cast from `&Foo` to `&'static (dyn Qiz + 'static)`
 help: consider turning `qiz` into a method by giving it a `&self` argument
    |

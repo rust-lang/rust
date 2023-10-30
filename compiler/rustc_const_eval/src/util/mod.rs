@@ -1,6 +1,7 @@
 use rustc_middle::mir;
 
 mod alignment;
+pub(crate) mod caller_location;
 mod check_validity_requirement;
 mod compare_types;
 mod type_name;

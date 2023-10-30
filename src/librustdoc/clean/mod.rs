@@ -475,8 +475,9 @@ fn projection_to_path_segment<'tcx>(
     ty: ty::Binder<'tcx, ty::AliasTy<'tcx>>,
     cx: &mut DocContext<'tcx>,
 ) -> PathSegment {
-    let item = cx.tcx.associated_item(ty.skip_binder().def_id);
-    let generics = cx.tcx.generics_of(ty.skip_binder().def_id);
+    let def_id = ty.skip_binder().def_id;
+    let item = cx.tcx.associated_item(def_id);
+    let generics = cx.tcx.generics_of(def_id);
     PathSegment {
         name: item.name,
         args: GenericArgs::AngleBracketed {
@@ -484,7 +485,7 @@ fn projection_to_path_segment<'tcx>(
                 cx,
                 ty.map_bound(|ty| &ty.args[generics.parent_count..]),
                 false,
-                None,
+                def_id,
             )
             .into(),
             bindings: Default::default(),
@@ -2200,18 +2201,19 @@ pub(crate) fn clean_middle_ty<'tcx>(
         }
 
         ty::Alias(ty::Inherent, alias_ty) => {
+            let def_id = alias_ty.def_id;
             let alias_ty = bound_ty.rebind(alias_ty);
             let self_type = clean_middle_ty(alias_ty.map_bound(|ty| ty.self_ty()), cx, None, None);
 
             Type::QPath(Box::new(QPathData {
                 assoc: PathSegment {
-                    name: cx.tcx.associated_item(alias_ty.skip_binder().def_id).name,
+                    name: cx.tcx.associated_item(def_id).name,
                     args: GenericArgs::AngleBracketed {
                         args: ty_args_to_args(
                             cx,
                             alias_ty.map_bound(|ty| ty.args.as_slice()),
                             true,
-                            None,
+                            def_id,
                         )
                         .into(),
                         bindings: Default::default(),
