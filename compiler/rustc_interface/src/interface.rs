@@ -18,10 +18,9 @@ use rustc_query_system::query::print_query_stack;
 use rustc_session::config::{
     self, Cfg, CheckCfg, ExpectedValues, Input, OutFileName, OutputFilenames,
 };
+use rustc_session::filesearch::sysroot_candidates;
 use rustc_session::parse::ParseSess;
-use rustc_session::CompilerIO;
-use rustc_session::Session;
-use rustc_session::{lint, EarlyErrorHandler};
+use rustc_session::{lint, CompilerIO, EarlyErrorHandler, Session};
 use rustc_span::source_map::{FileLoader, FileName};
 use rustc_span::symbol::sym;
 use std::path::PathBuf;
@@ -398,31 +397,70 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
         || {
             crate::callbacks::setup_callbacks();
 
-            let registry = &config.registry;
-
             let handler = EarlyErrorHandler::new(config.opts.error_format);
 
+            let codegen_backend = if let Some(make_codegen_backend) = config.make_codegen_backend {
+                make_codegen_backend(&config.opts)
+            } else {
+                util::get_codegen_backend(
+                    &handler,
+                    &config.opts.maybe_sysroot,
+                    config.opts.unstable_opts.codegen_backend.as_deref(),
+                )
+            };
+
             let temps_dir = config.opts.unstable_opts.temps_dir.as_deref().map(PathBuf::from);
-            let (mut sess, codegen_backend) = util::create_session(
+
+            let bundle = match rustc_errors::fluent_bundle(
+                config.opts.maybe_sysroot.clone(),
+                sysroot_candidates().to_vec(),
+                config.opts.unstable_opts.translate_lang.clone(),
+                config.opts.unstable_opts.translate_additional_ftl.as_deref(),
+                config.opts.unstable_opts.translate_directionality_markers,
+            ) {
+                Ok(bundle) => bundle,
+                Err(e) => {
+                    handler.early_error(format!("failed to load fluent bundle: {e}"));
+                }
+            };
+
+            let mut locale_resources = Vec::from(config.locale_resources);
+            locale_resources.push(codegen_backend.locale_resource());
+
+            // target_override is documented to be called before init(), so this is okay
+            let target_override = codegen_backend.target_override(&config.opts);
+
+            let mut sess = rustc_session::build_session(
                 &handler,
                 config.opts,
-                parse_cfg(&handler, config.crate_cfg),
-                parse_check_cfg(&handler, config.crate_check_cfg),
-                config.locale_resources,
-                config.file_loader,
                 CompilerIO {
                     input: config.input,
                     output_dir: config.output_dir,
                     output_file: config.output_file,
                     temps_dir,
                 },
+                bundle,
+                config.registry.clone(),
+                locale_resources,
                 config.lint_caps,
-                config.make_codegen_backend,
-                registry.clone(),
+                config.file_loader,
+                target_override,
+                util::rustc_version_str().unwrap_or("unknown"),
                 config.ice_file,
                 config.using_internal_features,
                 config.expanded_args,
             );
+
+            codegen_backend.init(&sess);
+
+            let cfg = parse_cfg(&handler, config.crate_cfg);
+            let mut cfg = config::build_configuration(&sess, cfg);
+            util::add_configuration(&mut cfg, &mut sess, &*codegen_backend);
+            sess.parse_sess.config = cfg;
+
+            let mut check_cfg = parse_check_cfg(&handler, config.crate_check_cfg);
+            check_cfg.fill_well_known(&sess.target);
+            sess.parse_sess.check_config = check_cfg;
 
             if let Some(parse_sess_created) = config.parse_sess_created {
                 parse_sess_created(&mut sess.parse_sess);
@@ -444,7 +482,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
             rustc_span::set_source_map(compiler.sess.parse_sess.clone_source_map(), move || {
                 let r = {
                     let _sess_abort_error = defer(|| {
-                        compiler.sess.finish_diagnostics(registry);
+                        compiler.sess.finish_diagnostics(&config.registry);
                     });
 
                     f(&compiler)
