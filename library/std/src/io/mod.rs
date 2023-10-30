@@ -1978,7 +1978,7 @@ pub trait Seek {
     ///     Ok(())
     /// }
     /// ```
-    #[unstable(feature = "seek_seek_relative", issue = "none")]
+    #[unstable(feature = "seek_seek_relative", issue = "117374")]
     fn seek_relative(&mut self, offset: i64) -> Result<()> {
         self.seek(SeekFrom::Current(offset))?;
         Ok(())
