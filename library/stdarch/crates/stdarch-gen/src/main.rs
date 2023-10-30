@@ -52,7 +52,7 @@ const FLOAT_TYPES_64: [&str; 2] = [
 ];
 
 fn type_len(t: &str) -> usize {
-    let s: Vec<_> = t.split("x").collect();
+    let s: Vec<_> = t.split('x').collect();
     if s.len() == 2 {
         match &s[1][0..2] {
             "1_" => 1,
@@ -333,15 +333,15 @@ fn type_to_noq_n_suffix(t: &str) -> &str {
 fn type_to_lane_suffixes<'a>(out_t: &'a str, in_t: &'a str, re_to_out: bool) -> String {
     let mut str = String::new();
     let suf = type_to_suffix(out_t);
-    if !suf.starts_with("_") {
+    if !suf.starts_with('_') {
         str.push_str(&suf[0..1]);
     }
     str.push_str("_lane");
     if !re_to_out {
         str.push_str(type_to_suffix(in_t));
     } else {
-        if type_to_suffix(in_t).starts_with("q") {
-            str.push_str("q");
+        if type_to_suffix(in_t).starts_with('q') {
+            str.push('q');
         };
         let suf2 = type_to_noq_suffix(out_t);
         str.push_str(suf2);
@@ -352,7 +352,7 @@ fn type_to_lane_suffixes<'a>(out_t: &'a str, in_t: &'a str, re_to_out: bool) -> 
 fn type_to_rot_suffix(c_name: &str, suf: &str) -> String {
     let ns: Vec<_> = c_name.split('_').collect();
     assert_eq!(ns.len(), 2);
-    if let Some(suf) = suf.strip_prefix("q") {
+    if let Some(suf) = suf.strip_prefix('q') {
         format!("{}q_{}{}", ns[0], ns[1], suf)
     } else {
         format!("{c_name}{suf}")
@@ -377,10 +377,10 @@ fn type_to_unsigned(t: &str) -> String {
 fn type_to_double_suffixes<'a>(out_t: &'a str, in_t: &'a str) -> String {
     let mut str = String::new();
     let suf = type_to_suffix(in_t);
-    if suf.starts_with("q") && type_to_suffix(out_t).starts_with("q") {
-        str.push_str("q");
+    if suf.starts_with('q') && type_to_suffix(out_t).starts_with('q') {
+        str.push('q');
     }
-    if !suf.starts_with("_") && !suf.starts_with("q") {
+    if !suf.starts_with('_') && !suf.starts_with('q') {
         str.push_str(&suf[0..1]);
     }
     str.push_str(type_to_noq_suffix(out_t));
@@ -391,10 +391,10 @@ fn type_to_double_suffixes<'a>(out_t: &'a str, in_t: &'a str) -> String {
 fn type_to_double_n_suffixes<'a>(out_t: &'a str, in_t: &'a str) -> String {
     let mut str = String::new();
     let suf = type_to_suffix(in_t);
-    if suf.starts_with("q") && type_to_suffix(out_t).starts_with("q") {
-        str.push_str("q");
+    if suf.starts_with('q') && type_to_suffix(out_t).starts_with('q') {
+        str.push('q');
     }
-    if !suf.starts_with("_") && !suf.starts_with("q") {
+    if !suf.starts_with('_') && !suf.starts_with('q') {
         str.push_str(&suf[0..1]);
     }
     str.push_str("_n");
@@ -579,8 +579,8 @@ impl TargetFeature {
 
     /// Generate target_feature attributes for a test that will compile for both "arm" and "aarch64".
     fn to_target_feature_attr_shared(&self) -> Lines {
-        let arm = self.as_target_feature_arg_arm().split(",");
-        let aarch64 = self.as_target_feature_arg_aarch64().split(",");
+        let arm = self.as_target_feature_arg_arm().split(',');
+        let aarch64 = self.as_target_feature_arg_aarch64().split(',');
 
         // Combine common features into an unconditional `target_feature` annotation, but guard
         // others behind `cfg_attr`.
@@ -1170,7 +1170,7 @@ fn map_val<'v>(t: &str, v: &'v str) -> &'v str {
 
 fn type_to_ext(t: &str, v: bool, r: bool, pi8: bool) -> String {
     if !t.contains('x') {
-        return t.replace("u", "i");
+        return t.replace('u', "i");
     }
     let native = type_to_native_type(t);
     let sub_ext = match type_sub_len(t) {
@@ -1185,7 +1185,7 @@ fn type_to_ext(t: &str, v: bool, r: bool, pi8: bool) -> String {
     };
     let sub_type = match &native[0..1] {
         "i" | "f" => native,
-        "u" => native.replace("u", "i"),
+        "u" => native.replace('u', "i"),
         _ => panic!("unknown type: {t}"),
     };
     let ext = format!(
@@ -1222,7 +1222,7 @@ fn is_vldx(name: &str) -> bool {
     let s: Vec<_> = name.split('_').collect();
     &name[0..3] == "vld"
         && name[3..4].parse::<i32>().unwrap() > 1
-        && (s.last().unwrap().starts_with("s") || s.last().unwrap().starts_with("f"))
+        && (s.last().unwrap().starts_with('s') || s.last().unwrap().starts_with('f'))
 }
 
 fn is_vstx(name: &str) -> bool {
@@ -1230,7 +1230,7 @@ fn is_vstx(name: &str) -> bool {
     s.len() == 2
         && &name[0..3] == "vst"
         && name[3..4].parse::<i32>().unwrap() > 1
-        && (s[1].starts_with("s") || s[1].starts_with("f"))
+        && (s[1].starts_with('s') || s[1].starts_with('f'))
 }
 
 fn create_doc_string(comment_string: &str, fn_name: &str) -> String {
@@ -1358,7 +1358,7 @@ fn gen_aarch64(
     ];
     let mut ext_c = String::new();
     if let Some(mut link_aarch64) = link_aarch64.clone() {
-        if link_aarch64.contains(":") {
+        if link_aarch64.contains(':') {
             let links: Vec<_> = link_aarch64.split(':').map(|v| v.to_string()).collect();
             assert_eq!(links.len(), 5);
             link_aarch64 = links[0].to_string();
@@ -1461,7 +1461,7 @@ fn gen_aarch64(
         );
     };
     let const_declare = if let Some(constn) = constn {
-        if constn.contains(":") {
+        if constn.contains(':') {
             let constns: Vec<_> = constn.split(':').map(|v| v.to_string()).collect();
             assert_eq!(constns.len(), 2);
             format!(r#"<const {}: i32, const {}: i32>"#, constns[0], constns[1])
@@ -1492,7 +1492,7 @@ fn gen_aarch64(
         String::new()
     };
     let const_assert = if let Some(constn) = constn {
-        if constn.contains(":") {
+        if constn.contains(':') {
             let constns: Vec<_> = constn.split(':').map(|v| v.to_string()).collect();
             let const_test = current_tests[0].3.as_ref().unwrap();
             let const_tests: Vec<_> = const_test.split(':').map(|v| v.to_string()).collect();
@@ -1516,7 +1516,7 @@ fn gen_aarch64(
         String::new()
     };
     let const_legacy = if let Some(constn) = constn {
-        if constn.contains(":") {
+        if constn.contains(':') {
             format!(
                 "\n#[rustc_legacy_const_generics({}, {})]",
                 para_num - 1,
@@ -1839,7 +1839,7 @@ fn gen_test(
         let c: Vec<String> = c.iter().take(len_in[2]).cloned().collect();
         let e: Vec<String> = e.iter().take(len_out).cloned().collect();
         let const_value = if let Some(constn) = n {
-            if constn.contains(":") {
+            if constn.contains(':') {
                 let constns: Vec<_> = constn.split(':').map(|v| v.to_string()).collect();
                 format!(
                     r#"::<{}, {}>"#,
@@ -2046,7 +2046,7 @@ fn gen_arm(
         out_t.to_string(),
     ];
     if let (Some(mut link_arm), Some(mut link_aarch64)) = (link_arm.clone(), link_aarch64.clone()) {
-        if link_arm.contains(":") {
+        if link_arm.contains(':') {
             let links: Vec<_> = link_arm.split(':').map(|v| v.to_string()).collect();
             assert_eq!(links.len(), 5);
             link_arm = links[0].to_string();
@@ -2057,7 +2057,7 @@ fn gen_arm(
                 links[4].clone(),
             ];
         }
-        if link_aarch64.contains(":") {
+        if link_aarch64.contains(':') {
             let links: Vec<_> = link_aarch64.split(':').map(|v| v.to_string()).collect();
             assert_eq!(links.len(), 5);
             link_aarch64 = links[0].to_string();
@@ -2129,7 +2129,7 @@ fn gen_arm(
                     };
                     (format!("ptr: {ptr_type}, {inputs}, n: i32, size: i32"), out)
                 } else {
-                    let (_, const_type) = if const_arm.contains(":") {
+                    let (_, const_type) = if const_arm.contains(':') {
                         let consts: Vec<_> =
                             const_arm.split(':').map(|v| v.trim().to_string()).collect();
                         (consts[0].clone(), consts[1].clone())
@@ -3142,8 +3142,8 @@ fn get_call(
         if fn_format[2] == "ext" {
             fn_name.push_str("_");
         } else if fn_format[2] == "noext" {
-        } else if fn_format[2].starts_with("<") {
-            assert!(fn_format[2].ends_with(">"));
+        } else if fn_format[2].starts_with('<') {
+            assert!(fn_format[2].ends_with('>'));
             let types: Vec<_> = fn_format[2][1..fn_format[2].len() - 1]
                 .split(' ')
                 .map(|v| v.to_string())
@@ -3172,7 +3172,7 @@ fn get_call(
             r#"let {}: {} = {}({});"#,
             re_name, re_type, fn_name, param_str
         )
-    } else if fn_name.starts_with("*") {
+    } else if fn_name.starts_with('*') {
         format!(r#"{fn_name} = {param_str};"#)
     } else {
         format!(r#"{fn_name}({param_str})"#)

@@ -694,7 +694,7 @@ fn equate(
     // const float* foo => float const*
     if intel.starts_with("const") && intel.ends_with('*') {
         intel = intel.replace("const ", "");
-        intel = intel.replace("*", " const*");
+        intel = intel.replace('*', " const*");
     }
     if etype == "IMM" {
         // The _bittest intrinsics claim to only accept immediates but actually

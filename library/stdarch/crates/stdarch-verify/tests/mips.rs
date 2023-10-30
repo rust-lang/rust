@@ -345,8 +345,8 @@ fn matches(rust: &Function, mips: &MsaIntrinsic) -> Result<(), String> {
 
     if !rust.instrs.is_empty() {
         // Normalize slightly to get rid of assembler differences
-        let actual = rust.instrs[0].replace(".", "_");
-        let expected = mips.instruction.replace(".", "_");
+        let actual = rust.instrs[0].replace('.', "_");
+        let expected = mips.instruction.replace('.', "_");
         if actual != expected {
             bail!(
                 "wrong instruction: \"{}\" != \"{}\"",
