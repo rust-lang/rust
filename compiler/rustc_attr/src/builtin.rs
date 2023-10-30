@@ -876,10 +876,10 @@ pub fn find_deprecation(
                 sess.emit_err(session_diagnostics::InvalidSince { span: attr.span });
                 Some(DeprecatedSince::Err)
             }
-        } else if is_rustc {
-            sess.emit_err(session_diagnostics::MissingSince { span: attr.span });
-            continue;
         } else {
+            if is_rustc {
+                sess.emit_err(session_diagnostics::MissingSince { span: attr.span });
+            }
             None
         };
 
