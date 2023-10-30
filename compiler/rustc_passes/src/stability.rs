@@ -197,7 +197,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
         }
 
         if let Some((
-            rustc_attr::Deprecation { since: Some(DeprecatedSince::RustcVersion(_)), .. },
+            rustc_attr::Deprecation { since: DeprecatedSince::RustcVersion(_), .. },
             span,
         )) = &depr
         {
@@ -228,7 +228,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
             if let (
                 &Some(DeprecatedSince::RustcVersion(dep_since)),
                 &attr::Stable { since: stab_since, .. },
-            ) = (&depr.as_ref().and_then(|(d, _)| d.since), &stab.level)
+            ) = (&depr.as_ref().map(|(d, _)| d.since), &stab.level)
             {
                 match stab_since {
                     StableSince::Current => {

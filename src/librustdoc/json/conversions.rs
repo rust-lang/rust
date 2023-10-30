@@ -141,10 +141,10 @@ where
 pub(crate) fn from_deprecation(deprecation: rustc_attr::Deprecation) -> Deprecation {
     let rustc_attr::Deprecation { since, note, suggestion: _ } = deprecation;
     let since = match since {
-        Some(DeprecatedSince::RustcVersion(version)) => Some(version.to_string()),
-        Some(DeprecatedSince::Future) => Some("TBD".to_owned()),
-        Some(DeprecatedSince::Symbol(since)) => Some(since.to_string()),
-        Some(DeprecatedSince::Err) | None => None,
+        DeprecatedSince::RustcVersion(version) => Some(version.to_string()),
+        DeprecatedSince::Future => Some("TBD".to_owned()),
+        DeprecatedSince::Symbol(since) => Some(since.to_string()),
+        DeprecatedSince::Unspecified | DeprecatedSince::Err => None,
     };
     Deprecation { since, note: note.map(|s| s.to_string()) }
 }

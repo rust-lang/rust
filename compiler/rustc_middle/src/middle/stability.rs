@@ -147,7 +147,7 @@ fn deprecation_lint(is_in_effect: bool) -> &'static Lint {
 
 fn deprecation_message(
     is_in_effect: bool,
-    since: Option<DeprecatedSince>,
+    since: DeprecatedSince,
     note: Option<Symbol>,
     kind: &str,
     path: &str,
@@ -156,13 +156,13 @@ fn deprecation_message(
         format!("use of deprecated {kind} `{path}`")
     } else {
         match since {
-            Some(DeprecatedSince::RustcVersion(version)) => format!(
+            DeprecatedSince::RustcVersion(version) => format!(
                 "use of {kind} `{path}` that will be deprecated in future version {version}"
             ),
-            Some(DeprecatedSince::Future) => {
+            DeprecatedSince::Future => {
                 format!("use of {kind} `{path}` that will be deprecated in a future Rust version")
             }
-            Some(DeprecatedSince::Symbol(_)) | Some(DeprecatedSince::Err) | None => {
+            DeprecatedSince::Symbol(_) | DeprecatedSince::Unspecified | DeprecatedSince::Err => {
                 unreachable!("this deprecation is always in effect; {since:?}")
             }
         }
@@ -347,7 +347,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 // With #![staged_api], we want to emit down the whole
                 // hierarchy.
                 let depr_attr = &depr_entry.attr;
-                if !skip || matches!(depr_attr.since, Some(DeprecatedSince::RustcVersion(_))) {
+                if !skip || matches!(depr_attr.since, DeprecatedSince::RustcVersion(_)) {
                     // Calculating message for lint involves calling `self.def_path_str`.
                     // Which by default to calculate visible path will invoke expensive `visible_parent_map` query.
                     // So we skip message calculation altogether, if lint is allowed.

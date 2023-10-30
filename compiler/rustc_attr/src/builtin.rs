@@ -720,7 +720,7 @@ pub fn eval_condition(
 
 #[derive(Copy, Debug, Encodable, Decodable, Clone, HashStable_Generic)]
 pub struct Deprecation {
-    pub since: Option<DeprecatedSince>,
+    pub since: DeprecatedSince,
     /// The note to issue a reason.
     pub note: Option<Symbol>,
     /// A text snippet used to completely replace any use of the deprecated item in an expression.
@@ -738,8 +738,10 @@ pub enum DeprecatedSince {
     /// `feature(staged_api)` is off. Deprecation versions outside the standard
     /// library are allowed to be arbitrary strings, for better or worse.
     Symbol(Symbol),
-    /// Failed to parse a deprecation version. An error has already been
-    /// emitted.
+    /// Deprecation version is unspecified but optional.
+    Unspecified,
+    /// Failed to parse a deprecation version, or the deprecation version is
+    /// unspecified and required. An error has already been emitted.
     Err,
 }
 
@@ -749,12 +751,12 @@ impl Deprecation {
     /// version).
     pub fn is_in_effect(&self) -> bool {
         match self.since {
-            Some(DeprecatedSince::RustcVersion(since)) => since <= RustcVersion::CURRENT,
-            Some(DeprecatedSince::Future) => false,
+            DeprecatedSince::RustcVersion(since) => since <= RustcVersion::CURRENT,
+            DeprecatedSince::Future => false,
             // The `since` field doesn't have semantic purpose without `#![staged_api]`.
-            Some(DeprecatedSince::Symbol(_)) => true,
+            DeprecatedSince::Symbol(_) => true,
             // Assume deprecation is in effect if "since" field is absent or invalid.
-            None | Some(DeprecatedSince::Err) => true,
+            DeprecatedSince::Unspecified | DeprecatedSince::Err => true,
         }
     }
 }
@@ -867,20 +869,20 @@ pub fn find_deprecation(
 
         let since = if let Some(since) = since {
             if since.as_str() == "TBD" {
-                Some(DeprecatedSince::Future)
+                DeprecatedSince::Future
             } else if !is_rustc {
-                Some(DeprecatedSince::Symbol(since))
+                DeprecatedSince::Symbol(since)
             } else if let Some(version) = parse_version(since) {
-                Some(DeprecatedSince::RustcVersion(version))
+                DeprecatedSince::RustcVersion(version)
             } else {
                 sess.emit_err(session_diagnostics::InvalidSince { span: attr.span });
-                Some(DeprecatedSince::Err)
+                DeprecatedSince::Err
             }
+        } else if is_rustc {
+            sess.emit_err(session_diagnostics::MissingSince { span: attr.span });
+            DeprecatedSince::Err
         } else {
-            if is_rustc {
-                sess.emit_err(session_diagnostics::MissingSince { span: attr.span });
-            }
-            None
+            DeprecatedSince::Unspecified
         };
 
         if is_rustc && note.is_none() {
