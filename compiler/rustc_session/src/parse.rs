@@ -188,8 +188,8 @@ pub fn add_feature_diagnostics_for_issue(
 pub struct ParseSess {
     pub span_diagnostic: Handler,
     pub unstable_features: UnstableFeatures,
-    pub config: Cfg<Symbol>,
-    pub check_config: CheckCfg<Symbol>,
+    pub config: Cfg,
+    pub check_config: CheckCfg,
     pub edition: Edition,
     /// Places where raw identifiers were used. This is used to avoid complaining about idents
     /// clashing with keywords in new editions.

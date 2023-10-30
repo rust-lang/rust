@@ -36,11 +36,7 @@ pub type MakeBackendFn = fn() -> Box<dyn CodegenBackend>;
 ///
 /// This is performed by checking whether a set of permitted features
 /// is available on the target machine, by querying the codegen backend.
-pub fn add_configuration(
-    cfg: &mut Cfg<Symbol>,
-    sess: &mut Session,
-    codegen_backend: &dyn CodegenBackend,
-) {
+pub fn add_configuration(cfg: &mut Cfg, sess: &mut Session, codegen_backend: &dyn CodegenBackend) {
     let tf = sym::target_feature;
 
     let unstable_target_features = codegen_backend.target_features(sess, true);
@@ -59,8 +55,8 @@ pub fn add_configuration(
 pub fn create_session(
     handler: &EarlyErrorHandler,
     sopts: config::Options,
-    cfg: Cfg<String>,
-    check_cfg: CheckCfg<String>,
+    cfg: Cfg,
+    mut check_cfg: CheckCfg,
     locale_resources: &'static [&'static str],
     file_loader: Option<Box<dyn FileLoader + Send + Sync + 'static>>,
     io: CompilerIO,
@@ -123,7 +119,6 @@ pub fn create_session(
     let mut cfg = config::build_configuration(&sess, cfg);
     add_configuration(&mut cfg, &mut sess, &*codegen_backend);
 
-    let mut check_cfg = check_cfg.intern();
     check_cfg.fill_well_known(&sess.target);
 
     // These configs use symbols, rather than strings.
@@ -487,21 +482,6 @@ fn categorize_crate_type(s: Symbol) -> Option<CrateType> {
 }
 
 pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<CrateType> {
-    // Unconditionally collect crate types from attributes to make them used
-    let attr_types: Vec<CrateType> = attrs
-        .iter()
-        .filter_map(|a| {
-            if a.has_name(sym::crate_type) {
-                match a.value_str() {
-                    Some(s) => categorize_crate_type(s),
-                    _ => None,
-                }
-            } else {
-                None
-            }
-        })
-        .collect();
-
     // If we're generating a test executable, then ignore all other output
     // styles at all other locations
     if session.opts.test {
@@ -515,6 +495,13 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<C
     #[allow(rustc::bad_opt_access)]
     let mut base = session.opts.crate_types.clone();
     if base.is_empty() {
+        let attr_types = attrs.iter().filter_map(|a| {
+            if a.has_name(sym::crate_type) && let Some(s) = a.value_str() {
+                categorize_crate_type(s)
+            } else {
+                None
+            }
+        });
         base.extend(attr_types);
         if base.is_empty() {
             base.push(output::default_output_for_target(session));
