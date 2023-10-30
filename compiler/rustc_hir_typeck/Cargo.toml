@@ -3,28 +3,28 @@ name = "rustc_hir_typeck"
 version = "0.0.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
-smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
-tracing = "0.1"
+# tidy-alphabetical-start
 rustc_ast = { path = "../rustc_ast" }
 rustc_attr = { path = "../rustc_attr" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_errors = { path = "../rustc_errors" }
-rustc_graphviz = { path = "../rustc_graphviz" }
 rustc_fluent_macro = { path = "../rustc_fluent_macro" }
-rustc_index = { path = "../rustc_index" }
-rustc_infer = { path = "../rustc_infer" }
+rustc_graphviz = { path = "../rustc_graphviz" }
 rustc_hir = { path = "../rustc_hir" }
 rustc_hir_analysis = { path = "../rustc_hir_analysis" }
 rustc_hir_pretty = { path = "../rustc_hir_pretty" }
+rustc_index = { path = "../rustc_index" }
+rustc_infer = { path = "../rustc_infer" }
 rustc_lint = { path = "../rustc_lint" }
-rustc_middle = { path = "../rustc_middle" }
 rustc_macros = { path = "../rustc_macros" }
+rustc_middle = { path = "../rustc_middle" }
 rustc_serialize = { path = "../rustc_serialize" }
 rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
 rustc_target = { path = "../rustc_target" }
 rustc_trait_selection = { path = "../rustc_trait_selection" }
 rustc_type_ir = { path = "../rustc_type_ir" }
+smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
+tracing = "0.1"
+# tidy-alphabetical-end

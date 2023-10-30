@@ -3,8 +3,8 @@ name = "rustc_feature"
 version = "0.0.0"
 edition = "2021"
 
-[lib]
-
 [dependencies]
+# tidy-alphabetical-start
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_span = { path = "../rustc_span" }
+# tidy-alphabetical-end

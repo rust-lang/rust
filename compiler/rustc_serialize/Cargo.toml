@@ -4,10 +4,14 @@ version = "0.0.0"
 edition = "2021"
 
 [dependencies]
+# tidy-alphabetical-start
 indexmap = "2.0.0"
 smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
 thin-vec = "0.2.12"
+# tidy-alphabetical-end
 
 [dev-dependencies]
+# tidy-alphabetical-start
 rustc_macros = { path = "../rustc_macros" }
 tempfile = "3.2"
+# tidy-alphabetical-end

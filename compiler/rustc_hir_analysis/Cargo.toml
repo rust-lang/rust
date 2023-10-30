@@ -8,23 +8,25 @@ test = false
 doctest = false
 
 [dependencies]
+# tidy-alphabetical-start
 rustc_arena = { path = "../rustc_arena" }
-rustc_macros = { path = "../rustc_macros" }
-rustc_middle = { path = "../rustc_middle" }
+rustc_ast = { path = "../rustc_ast" }
 rustc_attr = { path = "../rustc_attr" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_errors = { path = "../rustc_errors" }
-rustc_hir = { path = "../rustc_hir" }
+rustc_feature = { path = "../rustc_feature" }
 rustc_fluent_macro = { path = "../rustc_fluent_macro" }
-rustc_target = { path = "../rustc_target" }
-rustc_session = { path = "../rustc_session" }
-smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
-rustc_ast = { path = "../rustc_ast" }
-rustc_span = { path = "../rustc_span" }
+rustc_hir = { path = "../rustc_hir" }
 rustc_index = { path = "../rustc_index" }
 rustc_infer = { path = "../rustc_infer" }
-rustc_trait_selection = { path = "../rustc_trait_selection" }
 rustc_lint_defs = { path = "../rustc_lint_defs" }
+rustc_macros = { path = "../rustc_macros" }
+rustc_middle = { path = "../rustc_middle" }
+rustc_session = { path = "../rustc_session" }
+rustc_span = { path = "../rustc_span" }
+rustc_target = { path = "../rustc_target" }
+rustc_trait_selection = { path = "../rustc_trait_selection" }
 rustc_type_ir = { path = "../rustc_type_ir" }
-rustc_feature = { path = "../rustc_feature" }
+smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
 tracing = "0.1"
+# tidy-alphabetical-end

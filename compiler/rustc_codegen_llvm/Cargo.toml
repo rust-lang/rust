@@ -7,18 +7,15 @@ edition = "2021"
 test = false
 
 [dependencies]
+# tidy-alphabetical-start
 bitflags = "1.0"
 cstr = "0.2"
 itertools = "0.10.5"
 libc = "0.2"
 measureme = "10.0.0"
-object = { version = "0.32.0", default-features = false, features = [
-    "std",
-    "read",
-] }
-tracing = "0.1"
-rustc_middle = { path = "../rustc_middle" }
+object = { version = "0.32.0", default-features = false, features = ["std", "read"] }
 rustc-demangle = "0.1.21"
+rustc_ast = { path = "../rustc_ast" }
 rustc_attr = { path = "../rustc_attr" }
 rustc_codegen_ssa = { path = "../rustc_codegen_ssa" }
 rustc_data_structures = { path = "../rustc_data_structures" }
@@ -30,12 +27,14 @@ rustc_index = { path = "../rustc_index" }
 rustc_llvm = { path = "../rustc_llvm" }
 rustc_macros = { path = "../rustc_macros" }
 rustc_metadata = { path = "../rustc_metadata" }
+rustc_middle = { path = "../rustc_middle" }
 rustc_query_system = { path = "../rustc_query_system" }
 rustc_session = { path = "../rustc_session" }
+rustc_span = { path = "../rustc_span" }
 rustc_symbol_mangling = { path = "../rustc_symbol_mangling" }
 rustc_target = { path = "../rustc_target" }
-smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
-rustc_ast = { path = "../rustc_ast" }
-rustc_span = { path = "../rustc_span" }
 serde = { version = "1", features = [ "derive" ]}
 serde_json = "1"
+smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
+tracing = "0.1"
+# tidy-alphabetical-end
