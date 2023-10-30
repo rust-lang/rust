@@ -1525,16 +1525,6 @@ pub struct CannotStabilizeDeprecated {
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_invalid_deprecation_version)]
-pub struct InvalidDeprecationVersion {
-    #[primary_span]
-    #[label]
-    pub span: Span,
-    #[label(passes_item)]
-    pub item_sp: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(passes_missing_stability_attr)]
 pub struct MissingStabilityAttr<'a> {
     #[primary_span]
