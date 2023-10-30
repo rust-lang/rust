@@ -595,6 +595,50 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
     }
 
+    /// Walks up the callstack from the intrinsic's callsite, searching for the first callsite in a
+    /// frame which is not `#[track_caller]`. This is the fancy version of `cur_span`.
+    pub(crate) fn find_closest_untracked_caller_location(&self) -> Span {
+        for frame in self.stack().iter().rev() {
+            debug!("find_closest_untracked_caller_location: checking frame {:?}", frame.instance);
+
+            // Assert that the frame we look at is actually executing code currently
+            // (`loc` is `Right` when we are unwinding and the frame does not require cleanup).
+            let loc = frame.loc.left().unwrap();
+
+            // This could be a non-`Call` terminator (such as `Drop`), or not a terminator at all
+            // (such as `box`). Use the normal span by default.
+            let mut source_info = *frame.body.source_info(loc);
+
+            // If this is a `Call` terminator, use the `fn_span` instead.
+            let block = &frame.body.basic_blocks[loc.block];
+            if loc.statement_index == block.statements.len() {
+                debug!(
+                    "find_closest_untracked_caller_location: got terminator {:?} ({:?})",
+                    block.terminator(),
+                    block.terminator().kind,
+                );
+                if let mir::TerminatorKind::Call { fn_span, .. } = block.terminator().kind {
+                    source_info.span = fn_span;
+                }
+            }
+
+            let caller_location = if frame.instance.def.requires_caller_location(*self.tcx) {
+                // We use `Err(())` as indication that we should continue up the call stack since
+                // this is a `#[track_caller]` function.
+                Some(Err(()))
+            } else {
+                None
+            };
+            if let Ok(span) =
+                frame.body.caller_location_span(source_info, caller_location, *self.tcx, Ok)
+            {
+                return span;
+            }
+        }
+
+        span_bug!(self.cur_span(), "no non-`#[track_caller]` frame found")
+    }
+
     #[inline(always)]
     pub fn layout_of_local(
         &self,
