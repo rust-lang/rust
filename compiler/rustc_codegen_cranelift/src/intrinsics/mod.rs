@@ -12,7 +12,6 @@ macro_rules! intrinsic_args {
     }
 }
 
-mod cpuid;
 mod llvm;
 mod llvm_aarch64;
 mod llvm_x86;
@@ -25,7 +24,6 @@ use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 use rustc_middle::ty::GenericArgsRef;
 use rustc_span::symbol::{kw, sym, Symbol};
 
-pub(crate) use self::cpuid::codegen_cpuid_call;
 pub(crate) use self::llvm::codegen_llvm_intrinsic_call;
 use crate::prelude::*;
 
