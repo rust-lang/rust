@@ -482,21 +482,6 @@ fn categorize_crate_type(s: Symbol) -> Option<CrateType> {
 }
 
 pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<CrateType> {
-    // Unconditionally collect crate types from attributes to make them used
-    let attr_types: Vec<CrateType> = attrs
-        .iter()
-        .filter_map(|a| {
-            if a.has_name(sym::crate_type) {
-                match a.value_str() {
-                    Some(s) => categorize_crate_type(s),
-                    _ => None,
-                }
-            } else {
-                None
-            }
-        })
-        .collect();
-
     // If we're generating a test executable, then ignore all other output
     // styles at all other locations
     if session.opts.test {
@@ -510,6 +495,13 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<C
     #[allow(rustc::bad_opt_access)]
     let mut base = session.opts.crate_types.clone();
     if base.is_empty() {
+        let attr_types = attrs.iter().filter_map(|a| {
+            if a.has_name(sym::crate_type) && let Some(s) = a.value_str() {
+                categorize_crate_type(s)
+            } else {
+                None
+            }
+        });
         base.extend(attr_types);
         if base.is_empty() {
             base.push(output::default_output_for_target(session));
