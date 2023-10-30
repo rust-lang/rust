@@ -3,15 +3,15 @@
 use std::ptr;
 
 fn main() {
-    dangling_deref_match();
-    union_uninhabited_match();
+    dangling_match();
+    invalid_match();
     dangling_let();
     invalid_let();
     dangling_let_type_annotation();
     invalid_let_type_annotation();
 }
 
-fn dangling_deref_match() {
+fn dangling_match() {
     let p = {
         let b = Box::new(42);
         &*b as *const i32
@@ -23,20 +23,15 @@ fn dangling_deref_match() {
     }
 }
 
-fn union_uninhabited_match() {
-    #[derive(Copy, Clone)]
-    enum Void {}
+fn invalid_match() {
     union Uninit<T: Copy> {
         value: T,
         uninit: (),
     }
     unsafe {
-        let x: Uninit<Void> = Uninit { uninit: () };
+        let x: Uninit<bool> = Uninit { uninit: () };
         match x.value {
-            // rustc warns about un unreachable pattern,
-            // but is wrong in unsafe code.
-            #[allow(unreachable_patterns)]
-            _ => println!("hi from the void!"),
+            _ => {}
         }
     }
 }
