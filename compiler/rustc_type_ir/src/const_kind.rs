@@ -2,7 +2,6 @@ use rustc_data_structures::stable_hasher::HashStable;
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_serialize::{Decodable, Decoder, Encodable};
 use std::fmt;
-use std::hash;
 
 use crate::{
     DebruijnIndex, DebugWithInfcx, HashStableContext, InferCtxtLike, Interner, TyDecoder,
@@ -18,7 +17,8 @@ use self::ConstKind::*;
     PartialOrd(bound = ""),
     PartialOrd = "feature_allow_slow_enum",
     Ord(bound = ""),
-    Ord = "feature_allow_slow_enum"
+    Ord = "feature_allow_slow_enum",
+    Hash(bound = "")
 )]
 pub enum ConstKind<I: Interner> {
     /// A const generic parameter.
@@ -60,25 +60,6 @@ const fn const_kind_discriminant<I: Interner>(value: &ConstKind<I>) -> usize {
         Value(_) => 5,
         Error(_) => 6,
         Expr(_) => 7,
-    }
-}
-
-impl<I: Interner> hash::Hash for ConstKind<I> {
-    fn hash<H: hash::Hasher>(&self, state: &mut H) {
-        const_kind_discriminant(self).hash(state);
-        match self {
-            Param(p) => p.hash(state),
-            Infer(i) => i.hash(state),
-            Bound(d, b) => {
-                d.hash(state);
-                b.hash(state);
-            }
-            Placeholder(p) => p.hash(state),
-            Unevaluated(u) => u.hash(state),
-            Value(v) => v.hash(state),
-            Error(e) => e.hash(state),
-            Expr(e) => e.hash(state),
-        }
     }
 }
 

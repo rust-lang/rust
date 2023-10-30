@@ -2,7 +2,6 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_serialize::Decoder;
 use rustc_serialize::{Decodable, Encodable};
 use std::fmt;
-use std::hash;
 use std::ops::ControlFlow;
 
 use crate::fold::{FallibleTypeFolder, TypeFoldable};
@@ -13,7 +12,7 @@ use crate::{TyDecoder, TyEncoder};
 /// A clause is something that can appear in where bounds or be inferred
 /// by implied bounds.
 #[derive(derivative::Derivative)]
-#[derivative(Clone(bound = ""))]
+#[derivative(Clone(bound = ""), Hash(bound = ""))]
 pub enum ClauseKind<I: Interner> {
     /// Corresponds to `where Foo: Bar<A, B, C>`. `Foo` here would be
     /// the `Self` type of the trait reference and `A`, `B`, and `C`
@@ -79,24 +78,6 @@ fn clause_kind_discriminant<I: Interner>(value: &ClauseKind<I>) -> usize {
         ClauseKind::ConstArgHasType(_, _) => 4,
         ClauseKind::WellFormed(_) => 5,
         ClauseKind::ConstEvaluatable(_) => 6,
-    }
-}
-
-impl<I: Interner> hash::Hash for ClauseKind<I> {
-    fn hash<H: hash::Hasher>(&self, state: &mut H) {
-        clause_kind_discriminant(self).hash(state);
-        match self {
-            ClauseKind::Trait(p) => p.hash(state),
-            ClauseKind::RegionOutlives(p) => p.hash(state),
-            ClauseKind::TypeOutlives(p) => p.hash(state),
-            ClauseKind::Projection(p) => p.hash(state),
-            ClauseKind::ConstArgHasType(c, t) => {
-                c.hash(state);
-                t.hash(state);
-            }
-            ClauseKind::WellFormed(t) => t.hash(state),
-            ClauseKind::ConstEvaluatable(c) => c.hash(state),
-        }
     }
 }
 
@@ -238,7 +219,7 @@ where
 }
 
 #[derive(derivative::Derivative)]
-#[derivative(Clone(bound = ""))]
+#[derivative(Clone(bound = ""), Hash(bound = ""))]
 pub enum PredicateKind<I: Interner> {
     /// Prove a clause
     Clause(ClauseKind<I>),
@@ -326,33 +307,6 @@ fn predicate_kind_discriminant<I: Interner>(value: &PredicateKind<I>) -> usize {
         PredicateKind::ConstEquate(_, _) => 5,
         PredicateKind::Ambiguous => 6,
         PredicateKind::AliasRelate(_, _, _) => 7,
-    }
-}
-
-impl<I: Interner> hash::Hash for PredicateKind<I> {
-    fn hash<H: hash::Hasher>(&self, state: &mut H) {
-        predicate_kind_discriminant(self).hash(state);
-        match self {
-            PredicateKind::Clause(p) => p.hash(state),
-            PredicateKind::ObjectSafe(d) => d.hash(state),
-            PredicateKind::ClosureKind(d, g, k) => {
-                d.hash(state);
-                g.hash(state);
-                k.hash(state);
-            }
-            PredicateKind::Subtype(p) => p.hash(state),
-            PredicateKind::Coerce(p) => p.hash(state),
-            PredicateKind::ConstEquate(c1, c2) => {
-                c1.hash(state);
-                c2.hash(state);
-            }
-            PredicateKind::Ambiguous => {}
-            PredicateKind::AliasRelate(t1, t2, r) => {
-                t1.hash(state);
-                t2.hash(state);
-                r.hash(state);
-            }
-        }
     }
 }
 

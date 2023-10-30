@@ -2,7 +2,6 @@ use rustc_data_structures::stable_hasher::HashStable;
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_serialize::{Decodable, Decoder, Encodable};
 use std::fmt;
-use std::hash;
 
 use crate::{
     DebruijnIndex, DebugWithInfcx, HashStableContext, InferCtxtLike, Interner, TyDecoder,
@@ -123,7 +122,8 @@ use self::RegionKind::*;
     PartialOrd(bound = ""),
     PartialOrd = "feature_allow_slow_enum",
     Ord(bound = ""),
-    Ord = "feature_allow_slow_enum"
+    Ord = "feature_allow_slow_enum",
+    Hash(bound = "")
 )]
 pub enum RegionKind<I: Interner> {
     /// Region bound in a type or fn declaration which will be
@@ -212,26 +212,6 @@ impl<I: Interner> PartialEq for RegionKind<I> {
 
 // This is manually implemented because a derive would require `I: Eq`
 impl<I: Interner> Eq for RegionKind<I> {}
-
-// This is manually implemented because a derive would require `I: Hash`
-impl<I: Interner> hash::Hash for RegionKind<I> {
-    fn hash<H: hash::Hasher>(&self, state: &mut H) -> () {
-        regionkind_discriminant(self).hash(state);
-        match self {
-            ReEarlyBound(r) => r.hash(state),
-            ReLateBound(d, r) => {
-                d.hash(state);
-                r.hash(state)
-            }
-            ReFree(r) => r.hash(state),
-            ReStatic => (),
-            ReVar(r) => r.hash(state),
-            RePlaceholder(r) => r.hash(state),
-            ReErased => (),
-            ReError(_) => (),
-        }
-    }
-}
 
 impl<I: Interner> DebugWithInfcx<I> for RegionKind<I> {
     fn fmt<Infcx: InferCtxtLike<Interner = I>>(
