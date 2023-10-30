@@ -35,7 +35,7 @@ test = false
 [dependencies]
 build_helper = { path = "../tools/build_helper" }
 cc = "1.0.69"
-clap = { version = "4.2.4", default-features = false, features = ["std", "usage", "help", "derive", "error-context"] }
+clap = { version = "4.4.7", default-features = false, features = ["std", "usage", "help", "derive", "error-context"] }
 clap_complete = "4.4.3"
 cmake = "0.1.38"
 filetime = "0.2"
@@ -64,13 +64,13 @@ sysinfo = { version = "0.26.0", optional = true }
 
 # Solaris doesn't support flock() and thus fd-lock is not option now
 [target.'cfg(not(target_os = "solaris"))'.dependencies]
-fd-lock = "3.0.8"
+fd-lock = "3.0.13"
 
 [target.'cfg(windows)'.dependencies.junction]
 version = "1.0.0"
 
 [target.'cfg(windows)'.dependencies.windows]
-version = "0.46.0"
+version = "0.51.1"
 features = [
     "Win32_Foundation",
     "Win32_Security",

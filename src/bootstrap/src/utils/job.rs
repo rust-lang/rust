@@ -89,8 +89,7 @@ mod for_windows {
             JobObjectExtendedLimitInformation,
             &info as *const _ as *const c_void,
             mem::size_of_val(&info) as u32,
-        )
-        .ok();
+        );
         assert!(r.is_ok(), "{}", io::Error::last_os_error());
 
         // Assign our process to this job object. Note that if this fails, one very
@@ -102,9 +101,9 @@ mod for_windows {
         // Also note that nested jobs (why this might fail) are supported in recent
         // versions of Windows, but the version of Windows that our bots are running
         // at least don't support nested job objects.
-        let r = AssignProcessToJobObject(job, GetCurrentProcess()).ok();
+        let r = AssignProcessToJobObject(job, GetCurrentProcess());
         if r.is_err() {
-            CloseHandle(job);
+            CloseHandle(job).ok();
             return;
         }
 
@@ -131,7 +130,7 @@ mod for_windows {
                 // it might be better to improve the experience of the second case
                 // when users have interrupted the parent process and we haven't finish
                 // duplicating the handle yet. We just need close the job object if that occurs.
-                CloseHandle(job);
+                CloseHandle(job).ok();
                 return;
             }
         };
@@ -145,8 +144,7 @@ mod for_windows {
             0,
             false,
             DUPLICATE_SAME_ACCESS,
-        )
-        .ok();
+        );
 
         // If this failed, well at least we tried! An example of DuplicateHandle
         // failing in the past has been when the wrong python2 package spawned this
@@ -155,7 +153,7 @@ mod for_windows {
         // mode" here is that we only clean everything up when the build system
         // dies, not when the python parent does, so not too bad.
         if r.is_err() {
-            CloseHandle(job);
+            CloseHandle(job).ok();
         }
     }
 }
