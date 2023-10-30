@@ -24,6 +24,7 @@ use rustc_session::Session;
 use rustc_session::{lint, EarlyErrorHandler};
 use rustc_span::source_map::{FileLoader, FileName};
 use rustc_span::symbol::sym;
+use rustc_span::Symbol;
 use std::path::PathBuf;
 use std::result;
 use std::sync::Arc;
@@ -64,7 +65,7 @@ impl Compiler {
 }
 
 /// Converts strings provided as `--cfg [cfgspec]` into a `Cfg`.
-pub(crate) fn parse_cfg(handler: &EarlyErrorHandler, cfgs: Vec<String>) -> Cfg<String> {
+pub(crate) fn parse_cfg(handler: &EarlyErrorHandler, cfgs: Vec<String>) -> Cfg<Symbol> {
     cfgs.into_iter()
         .map(|s| {
             let sess = ParseSess::with_silent_emitter(Some(format!(
@@ -94,10 +95,7 @@ pub(crate) fn parse_cfg(handler: &EarlyErrorHandler, cfgs: Vec<String>) -> Cfg<S
                             }
                             MetaItemKind::NameValue(..) | MetaItemKind::Word => {
                                 let ident = meta_item.ident().expect("multi-segment cfg key");
-                                return (
-                                    ident.name.to_string(),
-                                    meta_item.value_str().map(|sym| sym.to_string()),
-                                );
+                                return (ident.name, meta_item.value_str());
                             }
                         }
                     }
@@ -118,11 +116,11 @@ pub(crate) fn parse_cfg(handler: &EarlyErrorHandler, cfgs: Vec<String>) -> Cfg<S
                 error!(r#"expected `key` or `key="value"`"#);
             }
         })
-        .collect::<Cfg<String>>()
+        .collect::<Cfg<Symbol>>()
 }
 
 /// Converts strings provided as `--check-cfg [specs]` into a `CheckCfg`.
-pub(crate) fn parse_check_cfg(handler: &EarlyErrorHandler, specs: Vec<String>) -> CheckCfg<String> {
+pub(crate) fn parse_check_cfg(handler: &EarlyErrorHandler, specs: Vec<String>) -> CheckCfg<Symbol> {
     // If any --check-cfg is passed then exhaustive_values and exhaustive_names
     // are enabled by default.
     let exhaustive_names = !specs.is_empty();
@@ -179,10 +177,7 @@ pub(crate) fn parse_check_cfg(handler: &EarlyErrorHandler, specs: Vec<String>) -
             for arg in args {
                 if arg.is_word() && arg.ident().is_some() {
                     let ident = arg.ident().expect("multi-segment cfg key");
-                    check_cfg
-                        .expecteds
-                        .entry(ident.name.to_string())
-                        .or_insert(ExpectedValues::Any);
+                    check_cfg.expecteds.entry(ident.name).or_insert(ExpectedValues::Any);
                 } else {
                     error!("`names()` arguments must be simple identifiers");
                 }
@@ -200,7 +195,7 @@ pub(crate) fn parse_check_cfg(handler: &EarlyErrorHandler, specs: Vec<String>) -
                     let ident = name.ident().expect("multi-segment cfg key");
                     let expected_values = check_cfg
                         .expecteds
-                        .entry(ident.name.to_string())
+                        .entry(ident.name)
                         .and_modify(|expected_values| match expected_values {
                             ExpectedValues::Some(_) => {}
                             ExpectedValues::Any => {
@@ -217,7 +212,7 @@ pub(crate) fn parse_check_cfg(handler: &EarlyErrorHandler, specs: Vec<String>) -
 
                     for val in values {
                         if let Some(LitKind::Str(s, _)) = val.lit().map(|lit| &lit.kind) {
-                            expected_values.insert(Some(s.to_string()));
+                            expected_values.insert(Some(*s));
                         } else {
                             error!("`values()` arguments must be string literals");
                         }
@@ -271,10 +266,8 @@ pub(crate) fn parse_check_cfg(handler: &EarlyErrorHandler, specs: Vec<String>) -
                     values_specified = true;
 
                     for arg in args {
-                        if let Some(LitKind::Str(s, _)) =
-                            arg.lit().map(|lit| &lit.kind)
-                        {
-                            values.insert(Some(s.to_string()));
+                        if let Some(LitKind::Str(s, _)) = arg.lit().map(|lit| &lit.kind) {
+                            values.insert(Some(*s));
                         } else if arg.has_name(sym::any)
                             && let Some(args) = arg.meta_item_list()
                         {
@@ -322,7 +315,7 @@ pub(crate) fn parse_check_cfg(handler: &EarlyErrorHandler, specs: Vec<String>) -
                 for name in names {
                     check_cfg
                         .expecteds
-                        .entry(name.to_string())
+                        .entry(name.name)
                         .and_modify(|v| match v {
                             ExpectedValues::Some(v) if !values_any_specified => {
                                 v.extend(values.clone())

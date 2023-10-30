@@ -1386,30 +1386,6 @@ impl<T> Default for CheckCfg<T> {
     }
 }
 
-impl CheckCfg<String> {
-    pub fn intern(self) -> CheckCfg<Symbol> {
-        CheckCfg {
-            exhaustive_names: self.exhaustive_names,
-            exhaustive_values: self.exhaustive_values,
-            expecteds: self
-                .expecteds
-                .into_iter()
-                .map(|(name, values)| {
-                    (
-                        Symbol::intern(&name),
-                        match values {
-                            ExpectedValues::Some(values) => ExpectedValues::Some(
-                                values.into_iter().map(|b| b.map(|b| Symbol::intern(&b))).collect(),
-                            ),
-                            ExpectedValues::Any => ExpectedValues::Any,
-                        },
-                    )
-                })
-                .collect(),
-        }
-    }
-}
-
 pub enum ExpectedValues<T> {
     Some(FxHashSet<Option<T>>),
     Any,
@@ -1582,13 +1558,7 @@ impl CheckCfg<Symbol> {
     }
 }
 
-pub fn build_configuration(sess: &Session, user_cfg: Cfg<String>) -> Cfg<Symbol> {
-    // We can now intern these strings.
-    let mut user_cfg: Cfg<Symbol> = user_cfg
-        .into_iter()
-        .map(|(a, b)| (Symbol::intern(&a), b.map(|b| Symbol::intern(&b))))
-        .collect();
-
+pub fn build_configuration(sess: &Session, mut user_cfg: Cfg<Symbol>) -> Cfg<Symbol> {
     // Combine the configuration requested by the session (command line) with
     // some default and generated configuration items.
     let default_cfg = default_configuration(sess);

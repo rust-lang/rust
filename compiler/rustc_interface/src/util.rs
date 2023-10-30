@@ -59,8 +59,8 @@ pub fn add_configuration(
 pub fn create_session(
     handler: &EarlyErrorHandler,
     sopts: config::Options,
-    cfg: Cfg<String>,
-    check_cfg: CheckCfg<String>,
+    cfg: Cfg<Symbol>,
+    mut check_cfg: CheckCfg<Symbol>,
     locale_resources: &'static [&'static str],
     file_loader: Option<Box<dyn FileLoader + Send + Sync + 'static>>,
     io: CompilerIO,
@@ -123,7 +123,6 @@ pub fn create_session(
     let mut cfg = config::build_configuration(&sess, cfg);
     add_configuration(&mut cfg, &mut sess, &*codegen_backend);
 
-    let mut check_cfg = check_cfg.intern();
     check_cfg.fill_well_known(&sess.target);
 
     // These configs use symbols, rather than strings.
