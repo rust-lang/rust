@@ -25,7 +25,7 @@ fn all() {
 }
 
 #[test]
-#[cfg(all(target_arch = "arm", any(target_os = "freebsd"),))]
+#[cfg(all(target_arch = "arm", target_os = "freebsd"))]
 fn arm_freebsd() {
     println!("neon: {}", is_arm_feature_detected!("neon"));
     println!("pmull: {}", is_arm_feature_detected!("pmull"));
@@ -35,7 +35,7 @@ fn arm_freebsd() {
 }
 
 #[test]
-#[cfg(all(target_arch = "arm", any(target_os = "linux", target_os = "android"),))]
+#[cfg(all(target_arch = "arm", any(target_os = "linux", target_os = "android")))]
 fn arm_linux() {
     println!("neon: {}", is_arm_feature_detected!("neon"));
     println!("pmull: {}", is_arm_feature_detected!("pmull"));
