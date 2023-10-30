@@ -1,7 +1,6 @@
 #![allow(non_camel_case_types)]
 #![allow(non_upper_case_globals)]
 
-use rustc_codegen_ssa::coverageinfo::map as coverage_map;
 use rustc_middle::middle::autodiff_attrs::DiffActivity;
 
 use super::debuginfo::{

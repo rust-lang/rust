@@ -409,7 +409,7 @@ fn add_unused_functions(cx: &CodegenCx<'_, '_>) {
 /// All items participating in code generation together with (instrumented)
 /// items inlined into them.
 fn codegenned_and_inlined_items(tcx: TyCtxt<'_>) -> DefIdSet {
-    let (items, cgus) = tcx.collect_and_partition_mono_items(());
+    let (items, _, cgus) = tcx.collect_and_partition_mono_items(());
     let mut visited = DefIdSet::default();
     let mut result = items.clone();
 

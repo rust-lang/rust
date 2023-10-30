@@ -16,7 +16,7 @@ use crate::type_::Type;
 use crate::typetree::to_enzyme_typetree;
 use crate::LlvmCodegenBackend;
 use crate::ModuleLlvm;
-use crate::{base, DiffTypeTree};
+use crate::DiffTypeTree;
 use llvm::{
     enzyme_rust_forward_diff, enzyme_rust_reverse_diff, BasicBlock, CreateEnzymeLogic,
     CreateTypeAnalysis, EnzymeLogicRef, EnzymeTypeAnalysisRef, LLVMAddFunction,
