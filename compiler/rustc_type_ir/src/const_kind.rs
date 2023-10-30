@@ -1,7 +1,6 @@
 use rustc_data_structures::stable_hasher::HashStable;
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_serialize::{Decodable, Decoder, Encodable};
-use std::cmp::Ordering;
 use std::fmt;
 use std::hash;
 
@@ -14,7 +13,13 @@ use self::ConstKind::*;
 
 /// Represents a constant in Rust.
 #[derive(derivative::Derivative)]
-#[derivative(Clone(bound = ""))]
+#[derivative(
+    Clone(bound = ""),
+    PartialOrd(bound = ""),
+    PartialOrd = "feature_allow_slow_enum",
+    Ord(bound = ""),
+    Ord = "feature_allow_slow_enum"
+)]
 pub enum ConstKind<I: Interner> {
     /// A const generic parameter.
     Param(I::ParamConst),
@@ -164,33 +169,6 @@ where
             Error(er) => e.emit_enum_variant(disc, |e| er.encode(e)),
             Expr(ex) => e.emit_enum_variant(disc, |e| ex.encode(e)),
         }
-    }
-}
-
-impl<I: Interner> PartialOrd for ConstKind<I> {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl<I: Interner> Ord for ConstKind<I> {
-    fn cmp(&self, other: &Self) -> Ordering {
-        const_kind_discriminant(self)
-            .cmp(&const_kind_discriminant(other))
-            .then_with(|| match (self, other) {
-                (Param(p1), Param(p2)) => p1.cmp(p2),
-                (Infer(i1), Infer(i2)) => i1.cmp(i2),
-                (Bound(d1, b1), Bound(d2, b2)) => d1.cmp(d2).then_with(|| b1.cmp(b2)),
-                (Placeholder(p1), Placeholder(p2)) => p1.cmp(p2),
-                (Unevaluated(u1), Unevaluated(u2)) => u1.cmp(u2),
-                (Value(v1), Value(v2)) => v1.cmp(v2),
-                (Error(e1), Error(e2)) => e1.cmp(e2),
-                (Expr(e1), Expr(e2)) => e1.cmp(e2),
-                _ => {
-                    debug_assert!(false, "This branch must be unreachable, maybe the match is missing an arm? self = {self:?}, other = {other:?}");
-                    Ordering::Equal
-                }
-            })
     }
 }
 
