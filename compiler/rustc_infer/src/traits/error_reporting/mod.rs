@@ -5,7 +5,8 @@ use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{struct_span_err, DiagnosticBuilder, ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::print::with_no_trimmed_paths;
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::Span;
 use std::fmt;
 use std::iter;
@@ -108,5 +109,66 @@ pub fn report_object_safety_error<'tcx>(
             violation.solution(&mut err);
         }
     }
+
+    let impls_of = tcx.trait_impls_of(trait_def_id);
+    let impls = if impls_of.blanket_impls().is_empty() {
+        impls_of
+            .non_blanket_impls()
+            .values()
+            .flatten()
+            .filter(|def_id| {
+                !matches!(tcx.type_of(*def_id).instantiate_identity().kind(), ty::Dynamic(..))
+            })
+            .collect::<Vec<_>>()
+    } else {
+        vec![]
+    };
+    let externally_visible = if !impls.is_empty()
+        && let Some(def_id) = trait_def_id.as_local()
+        && tcx.effective_visibilities(()).is_exported(def_id)
+    {
+        true
+    } else {
+        false
+    };
+    match &impls[..] {
+        [] => {}
+        _ if impls.len() > 9 => {}
+        [only] if externally_visible => {
+            err.help(with_no_trimmed_paths!(format!(
+                "only type `{}` is seen to implement the trait in this crate, consider using it \
+                 directly instead",
+                tcx.type_of(*only).instantiate_identity(),
+            )));
+        }
+        [only] => {
+            err.help(with_no_trimmed_paths!(format!(
+                "only type `{}` implements the trait, consider using it directly instead",
+                tcx.type_of(*only).instantiate_identity(),
+            )));
+        }
+        impls => {
+            let types = impls
+                .iter()
+                .map(|t| {
+                    with_no_trimmed_paths!(format!("  {}", tcx.type_of(*t).instantiate_identity(),))
+                })
+                .collect::<Vec<_>>();
+            err.help(format!(
+                "the following types implement the trait, consider defining an enum where each \
+                 variant holds one of these types, implementing `{}` for this new enum and using \
+                 it instead:\n{}",
+                trait_str,
+                types.join("\n"),
+            ));
+        }
+    }
+    if externally_visible {
+        err.note(format!(
+            "`{trait_str}` can be implemented in other crates; if you want to support your users \
+             passing their own types here, you can't refer to a specific type",
+        ));
+    }
+
     err
 }

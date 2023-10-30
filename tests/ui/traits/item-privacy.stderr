@@ -143,6 +143,7 @@ LL |         const C: u8 = 0;
    = help: consider moving `C` to another trait
    = help: consider moving `A` to another trait
    = help: consider moving `B` to another trait
+   = help: only type `S` implements the trait, consider using it directly instead
 
 error[E0223]: ambiguous associated type
   --> $DIR/item-privacy.rs:115:12

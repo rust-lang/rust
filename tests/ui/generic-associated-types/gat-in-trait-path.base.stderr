@@ -12,6 +12,9 @@ LL | trait Foo {
 LL |     type A<'a> where Self: 'a;
    |          ^ ...because it contains the generic associated type `A`
    = help: consider moving `A` to another trait
+   = help: the following types implement the trait, consider defining an enum where each variant holds one of these types, implementing `Foo` for this new enum and using it instead:
+             Fooy
+             Fooer<T>
 
 error: aborting due to previous error
 
