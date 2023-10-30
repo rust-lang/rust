@@ -2,28 +2,18 @@
 use crate::interface::parse_cfg;
 use rustc_data_structures::profiling::TimePassesFormat;
 use rustc_errors::{emitter::HumanReadableErrorType, registry, ColorConfig};
-use rustc_session::config::rustc_optgroups;
-use rustc_session::config::Cfg;
-use rustc_session::config::DebugInfo;
-use rustc_session::config::Input;
-use rustc_session::config::InstrumentXRay;
-use rustc_session::config::LinkSelfContained;
-use rustc_session::config::Polonius;
-use rustc_session::config::TraitSolver;
-use rustc_session::config::{build_configuration, build_session_options};
 use rustc_session::config::{
-    BranchProtection, Externs, OomStrategy, OutFileName, OutputType, OutputTypes, PAuthKey, PacRet,
-    ProcMacroExecutionStrategy, SymbolManglingVersion, WasiExecModel,
+    build_configuration, build_session_options, rustc_optgroups, BranchProtection, CFGuard, Cfg,
+    DebugInfo, DumpMonoStatsFormat, ErrorOutputType, ExternEntry, ExternLocation, Externs, Input,
+    InstrumentCoverage, InstrumentXRay, LinkSelfContained, LinkerPluginLto, LocationDetail, LtoCli,
+    MirSpanview, OomStrategy, Options, OutFileName, OutputType, OutputTypes, PAuthKey, PacRet,
+    Passes, Polonius, ProcMacroExecutionStrategy, Strip, SwitchWithOptPath, SymbolManglingVersion,
+    TraitSolver, WasiExecModel,
 };
-use rustc_session::config::{CFGuard, ExternEntry, LinkerPluginLto, LtoCli, SwitchWithOptPath};
-use rustc_session::config::{DumpMonoStatsFormat, MirSpanview};
-use rustc_session::config::{ErrorOutputType, ExternLocation, LocationDetail, Options, Strip};
-use rustc_session::config::{InstrumentCoverage, Passes};
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
 use rustc_session::utils::{CanonicalizedPath, NativeLib, NativeLibKind};
-use rustc_session::{build_session, getopts, Session};
-use rustc_session::{CompilerIO, EarlyErrorHandler};
+use rustc_session::{build_session, getopts, CompilerIO, EarlyErrorHandler, Session};
 use rustc_span::edition::{Edition, DEFAULT_EDITION};
 use rustc_span::symbol::sym;
 use rustc_span::{FileName, SourceFileHashAlgorithm};
