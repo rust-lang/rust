@@ -84,6 +84,14 @@ fn main() {
     _a = (0); //~ ERROR unnecessary parentheses around assigned value
     _a += (1); //~ ERROR unnecessary parentheses around assigned value
 
+    let(mut _a) = 3; //~ ERROR unnecessary parentheses around pattern
+    let (mut _a) = 3; //~ ERROR unnecessary parentheses around pattern
+    let( mut _a) = 3; //~ ERROR unnecessary parentheses around pattern
+
+    let(_a) = 3; //~ ERROR unnecessary parentheses around pattern
+    let (_a) = 3; //~ ERROR unnecessary parentheses around pattern
+    let( _a) = 3; //~ ERROR unnecessary parentheses around pattern
+
     let _a = baz!(3, 4);
     let _b = baz!(3);
 }
