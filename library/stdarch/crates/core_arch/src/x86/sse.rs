@@ -2928,8 +2928,7 @@ mod tests {
             (NAN, i32::MIN),
             (2147483500.1, 2147483520),
         ];
-        for i in 0..inputs.len() {
-            let (xi, e) = inputs[i];
+        for (i, &(xi, e)) in inputs.iter().enumerate() {
             let x = _mm_setr_ps(xi, 1.0, 3.0, 4.0);
             let r = _mm_cvttss_si32(x);
             assert_eq!(
@@ -2949,8 +2948,7 @@ mod tests {
             (-322223333, -322223330.0),
         ];
 
-        for i in 0..inputs.len() {
-            let (x, f) = inputs[i];
+        for &(x, f) in inputs.iter() {
             let a = _mm_setr_ps(5.0, 6.0, 7.0, 8.0);
             let r = _mm_cvtsi32_ss(a, x);
             let e = _mm_setr_ps(f, 6.0, 7.0, 8.0);
@@ -3330,7 +3328,7 @@ mod tests {
         assert_eq_m128(r, exp);
 
         let underflow = _MM_GET_EXCEPTION_STATE() & _MM_EXCEPT_UNDERFLOW != 0;
-        assert_eq!(underflow, true);
+        assert!(underflow);
     }
 
     #[simd_test(enable = "sse")]

@@ -47792,10 +47792,7 @@ mod tests {
 
     #[simd_test(enable = "avx512f")]
     unsafe fn test_mm512_i32gather_ps() {
-        let mut arr = [0f32; 256];
-        for i in 0..256 {
-            arr[i] = i as f32;
-        }
+        let arr: [f32; 256] = core::array::from_fn(|i| i as f32);
         // A multiplier of 4 is word-addressing
         #[rustfmt::skip]
         let index = _mm512_setr_epi32(0, 16, 32, 48, 64, 80, 96, 112,
@@ -47808,10 +47805,7 @@ mod tests {
 
     #[simd_test(enable = "avx512f")]
     unsafe fn test_mm512_mask_i32gather_ps() {
-        let mut arr = [0f32; 256];
-        for i in 0..256 {
-            arr[i] = i as f32;
-        }
+        let arr: [f32; 256] = core::array::from_fn(|i| i as f32);
         let src = _mm512_set1_ps(2.);
         let mask = 0b10101010_10101010;
         #[rustfmt::skip]
@@ -47826,10 +47820,7 @@ mod tests {
 
     #[simd_test(enable = "avx512f")]
     unsafe fn test_mm512_i32gather_epi32() {
-        let mut arr = [0i32; 256];
-        for i in 0..256 {
-            arr[i] = i as i32;
-        }
+        let arr: [i32; 256] = core::array::from_fn(|i| i as i32);
         // A multiplier of 4 is word-addressing
         #[rustfmt::skip]
         let index = _mm512_setr_epi32(0, 16, 32, 48, 64, 80, 96, 112,
@@ -47842,10 +47833,7 @@ mod tests {
 
     #[simd_test(enable = "avx512f")]
     unsafe fn test_mm512_mask_i32gather_epi32() {
-        let mut arr = [0i32; 256];
-        for i in 0..256 {
-            arr[i] = i as i32;
-        }
+        let arr: [i32; 256] = core::array::from_fn(|i| i as i32);
         let src = _mm512_set1_epi32(2);
         let mask = 0b10101010_10101010;
         let index = _mm512_setr_epi32(

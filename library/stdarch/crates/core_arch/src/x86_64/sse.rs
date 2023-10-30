@@ -86,8 +86,7 @@ mod tests {
             (2147483500.1, 2147483520),
             (9.223371e18, 9223370937343148032),
         ];
-        for i in 0..inputs.len() {
-            let (xi, e) = inputs[i];
+        for (i, &(xi, e)) in inputs.iter().enumerate() {
             let x = _mm_setr_ps(xi, 1.0, 3.0, 4.0);
             let r = _mm_cvtss_si64(x);
             assert_eq!(
@@ -114,8 +113,7 @@ mod tests {
             (9.223371e18, 9223370937343148032),
             (9.223372e18, i64::MIN),
         ];
-        for i in 0..inputs.len() {
-            let (xi, e) = inputs[i];
+        for (i, &(xi, e)) in inputs.iter().enumerate() {
             let x = _mm_setr_ps(xi, 1.0, 3.0, 4.0);
             let r = _mm_cvttss_si64(x);
             assert_eq!(
@@ -137,8 +135,7 @@ mod tests {
             (-9223372036854775808, -9.223372e18),
         ];
 
-        for i in 0..inputs.len() {
-            let (x, f) = inputs[i];
+        for &(x, f) in inputs {
             let a = _mm_setr_ps(5.0, 6.0, 7.0, 8.0);
             let r = _mm_cvtsi64_ss(a, x);
             let e = _mm_setr_ps(f, 6.0, 7.0, 8.0);

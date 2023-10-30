@@ -7293,10 +7293,7 @@ mod tests {
 
     #[simd_test(enable = "avx512f")]
     unsafe fn test_mm512_i32gather_pd() {
-        let mut arr = [0f64; 128];
-        for i in 0..128 {
-            arr[i] = i as f64;
-        }
+        let arr: [f64; 128] = core::array::from_fn(|i| i as f64);
         // A multiplier of 8 is word-addressing
         let index = _mm256_setr_epi32(0, 16, 32, 48, 64, 80, 96, 112);
         let r = _mm512_i32gather_pd::<8>(index, arr.as_ptr() as *const u8);
@@ -7305,10 +7302,7 @@ mod tests {
 
     #[simd_test(enable = "avx512f")]
     unsafe fn test_mm512_mask_i32gather_pd() {
-        let mut arr = [0f64; 128];
-        for i in 0..128 {
-            arr[i] = i as f64;
-        }
+        let arr: [f64; 128] = core::array::from_fn(|i| i as f64);
         let src = _mm512_set1_pd(2.);
         let mask = 0b10101010;
         let index = _mm256_setr_epi32(0, 16, 32, 48, 64, 80, 96, 112);
@@ -7319,10 +7313,7 @@ mod tests {
 
     #[simd_test(enable = "avx512f")]
     unsafe fn test_mm512_i64gather_pd() {
-        let mut arr = [0f64; 128];
-        for i in 0..128 {
-            arr[i] = i as f64;
-        }
+        let arr: [f64; 128] = core::array::from_fn(|i| i as f64);
         // A multiplier of 8 is word-addressing
         let index = _mm512_setr_epi64(0, 16, 32, 48, 64, 80, 96, 112);
         let r = _mm512_i64gather_pd::<8>(index, arr.as_ptr() as *const u8);
@@ -7331,10 +7322,7 @@ mod tests {
 
     #[simd_test(enable = "avx512f")]
     unsafe fn test_mm512_mask_i64gather_pd() {
-        let mut arr = [0f64; 128];
-        for i in 0..128 {
-            arr[i] = i as f64;
-        }
+        let arr: [f64; 128] = core::array::from_fn(|i| i as f64);
         let src = _mm512_set1_pd(2.);
         let mask = 0b10101010;
         let index = _mm512_setr_epi64(0, 16, 32, 48, 64, 80, 96, 112);
@@ -7345,10 +7333,7 @@ mod tests {
 
     #[simd_test(enable = "avx512f")]
     unsafe fn test_mm512_i64gather_ps() {
-        let mut arr = [0f32; 128];
-        for i in 0..128 {
-            arr[i] = i as f32;
-        }
+        let arr: [f32; 128] = core::array::from_fn(|i| i as f32);
         // A multiplier of 4 is word-addressing
         #[rustfmt::skip]
         let index = _mm512_setr_epi64(0, 16, 32, 48, 64, 80, 96, 112);
@@ -7358,10 +7343,7 @@ mod tests {
 
     #[simd_test(enable = "avx512f")]
     unsafe fn test_mm512_mask_i64gather_ps() {
-        let mut arr = [0f32; 128];
-        for i in 0..128 {
-            arr[i] = i as f32;
-        }
+        let arr: [f32; 128] = core::array::from_fn(|i| i as f32);
         let src = _mm256_set1_ps(2.);
         let mask = 0b10101010;
         #[rustfmt::skip]
