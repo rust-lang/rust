@@ -1,6 +1,6 @@
-use crate::ty::{AdtDef, ClosureDef, Const, CoroutineDef, GenericArgs, Movability, Region};
+use crate::ty::{AdtDef, ClosureDef, Const, CoroutineDef, GenericArgs, Movability, Region, Ty};
 use crate::Opaque;
-use crate::{ty::Ty, Span};
+use crate::Span;
 
 /// The SMIR representation of a single function.
 #[derive(Clone, Debug)]
@@ -12,10 +12,10 @@ pub struct Body {
     // The first local is the return value pointer, followed by `arg_count`
     // locals for the function arguments, followed by any user-declared
     // variables and temporaries.
-    locals: LocalDecls,
+    pub(super) locals: LocalDecls,
 
     // The number of arguments this function takes.
-    arg_count: usize,
+    pub(super) arg_count: usize,
 }
 
 impl Body {
@@ -35,7 +35,7 @@ impl Body {
 
     /// Return local that holds this function's return value.
     pub fn ret_local(&self) -> &LocalDecl {
-        &self.locals[0]
+        &self.locals[RETURN_LOCAL]
     }
 
     /// Locals in `self` that correspond to this function's arguments.
@@ -60,7 +60,7 @@ impl Body {
 
 type LocalDecls = Vec<LocalDecl>;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct LocalDecl {
     pub ty: Ty,
     pub span: Span,
@@ -72,13 +72,13 @@ pub struct BasicBlock {
     pub terminator: Terminator,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Terminator {
     pub kind: TerminatorKind,
     pub span: Span,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum TerminatorKind {
     Goto {
         target: usize,
@@ -122,7 +122,7 @@ pub enum TerminatorKind {
     },
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct InlineAsmOperand {
     pub in_value: Option<Operand>,
     pub out_place: Option<Place>,
@@ -131,7 +131,7 @@ pub struct InlineAsmOperand {
     pub raw_rpr: String,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum UnwindAction {
     Continue,
     Unreachable,
@@ -139,7 +139,7 @@ pub enum UnwindAction {
     Cleanup(usize),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum AssertMessage {
     BoundsCheck { len: Operand, index: Operand },
     Overflow(BinOp, Operand, Operand),
@@ -151,7 +151,7 @@ pub enum AssertMessage {
     MisalignedPointerDereference { required: Operand, found: Operand },
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum BinOp {
     Add,
     AddUnchecked,
@@ -177,20 +177,20 @@ pub enum BinOp {
     Offset,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum UnOp {
     Not,
     Neg,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum CoroutineKind {
     Async(CoroutineSource),
     Coroutine,
     Gen(CoroutineSource),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum CoroutineSource {
     Block,
     Closure,
@@ -204,7 +204,7 @@ pub(crate) type LocalDefId = Opaque;
 pub(crate) type Coverage = Opaque;
 
 /// The FakeReadCause describes the type of pattern why a FakeRead statement exists.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum FakeReadCause {
     ForMatchGuard,
     ForMatchedPlace(LocalDefId),
@@ -214,7 +214,7 @@ pub enum FakeReadCause {
 }
 
 /// Describes what kind of retag is to be performed
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub enum RetagKind {
     FnEntry,
     TwoPhase,
@@ -222,7 +222,7 @@ pub enum RetagKind {
     Default,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub enum Variance {
     Covariant,
     Invariant,
@@ -230,26 +230,26 @@ pub enum Variance {
     Bivariant,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CopyNonOverlapping {
     pub src: Operand,
     pub dst: Operand,
     pub count: Operand,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum NonDivergingIntrinsic {
     Assume(Operand),
     CopyNonOverlapping(CopyNonOverlapping),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Statement {
     pub kind: StatementKind,
     pub span: Span,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum StatementKind {
     Assign(Place, Rvalue),
     FakeRead(FakeReadCause, Place),
@@ -266,7 +266,7 @@ pub enum StatementKind {
     Nop,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Rvalue {
     /// Creates a pointer with the indicated mutability to the place.
     ///
@@ -378,7 +378,7 @@ pub enum Rvalue {
     Use(Operand),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum AggregateKind {
     Array(Ty),
     Tuple,
@@ -387,27 +387,29 @@ pub enum AggregateKind {
     Coroutine(CoroutineDef, GenericArgs, Movability),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Operand {
     Copy(Place),
     Move(Place),
     Constant(Constant),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Place {
     pub local: Local,
     /// projection out of a place (access a field, deref a pointer, etc)
     pub projection: String,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct UserTypeProjection {
     pub base: UserTypeAnnotationIndex,
     pub projection: String,
 }
 
 pub type Local = usize;
+
+pub const RETURN_LOCAL: Local = 0;
 
 type FieldIdx = usize;
 
@@ -416,20 +418,20 @@ pub type VariantIdx = usize;
 
 type UserTypeAnnotationIndex = usize;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Constant {
     pub span: Span,
     pub user_ty: Option<UserTypeAnnotationIndex>,
     pub literal: Const,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SwitchTarget {
     pub value: u128,
     pub target: usize,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum BorrowKind {
     /// Data must be immutable and is aliasable.
     Shared,
@@ -446,26 +448,26 @@ pub enum BorrowKind {
     },
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum MutBorrowKind {
     Default,
     TwoPhaseBorrow,
     ClosureCapture,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Mutability {
     Not,
     Mut,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Safety {
     Unsafe,
     Normal,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum PointerCoercion {
     /// Go from a fn-item type to a fn-pointer type.
     ReifyFnPointer,
@@ -492,7 +494,7 @@ pub enum PointerCoercion {
     Unsize,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum CastKind {
     PointerExposeAddress,
     PointerFromExposedAddress,
@@ -507,7 +509,7 @@ pub enum CastKind {
     Transmute,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum NullOp {
     /// Returns the size of a value of that type.
     SizeOf,
