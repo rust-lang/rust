@@ -247,7 +247,7 @@ impl HirEqInterExpr<'_, '_, '_> {
         res
     }
 
-    #[expect(clippy::similar_names)]
+    #[expect(clippy::similar_names, clippy::too_many_lines)]
     pub fn eq_expr(&mut self, left: &Expr<'_>, right: &Expr<'_>) -> bool {
         if !self.check_ctxt(left.span.ctxt(), right.span.ctxt()) {
             return false;
@@ -346,13 +346,53 @@ impl HirEqInterExpr<'_, '_, '_> {
             (&ExprKind::OffsetOf(l_container, l_fields), &ExprKind::OffsetOf(r_container, r_fields)) => {
                 self.eq_ty(l_container, r_container) && over(l_fields, r_fields, |l, r| l.name == r.name)
             },
-            (&ExprKind::ConstBlock(_), _)
-            | (&ExprKind::Closure(_), _)
-            | (&ExprKind::Become(_), _)
-            | (&ExprKind::InlineAsm(_), _)
-            | (&ExprKind::Yield(_, _), _)
-            | (&ExprKind::Err(_), _) => false,
-            _ => false,
+            (
+                // Else branches for branches above, grouped as per `match_same_arms`.
+                | &ExprKind::AddrOf(..)
+                | &ExprKind::Array(..)
+                | &ExprKind::Assign(..)
+                | &ExprKind::AssignOp(..)
+                | &ExprKind::Binary(..)
+                | &ExprKind::Become(..)
+                | &ExprKind::Block(..)
+                | &ExprKind::Break(..)
+                | &ExprKind::Call(..)
+                | &ExprKind::Cast(..)
+                | &ExprKind::ConstBlock(..)
+                | &ExprKind::Continue(..)
+                | &ExprKind::DropTemps(..)
+                | &ExprKind::Field(..)
+                | &ExprKind::Index(..)
+                | &ExprKind::If(..)
+                | &ExprKind::Let(..)
+                | &ExprKind::Lit(..)
+                | &ExprKind::Loop(..)
+                | &ExprKind::Match(..)
+                | &ExprKind::MethodCall(..)
+                | &ExprKind::OffsetOf(..)
+                | &ExprKind::Path(..)
+                | &ExprKind::Repeat(..)
+                | &ExprKind::Ret(..)
+                | &ExprKind::Struct(..)
+                | &ExprKind::Tup(..)
+                | &ExprKind::Type(..)
+                | &ExprKind::Unary(..)
+                | &ExprKind::Yield(..)
+
+                // --- Special cases that do not have a positive branch.
+
+                // `Err` represents an invalid expression, so let's never assume that
+                // an invalid expressions is equal to anything.
+                | &ExprKind::Err(..)
+
+                // For the time being, we always consider that two closures are unequal.
+                // This behavior may change in the future.
+                | &ExprKind::Closure(..)
+                // For the time being, we always consider that two instances of InlineAsm are different.
+                // This behavior may change in the future.
+                | &ExprKind::InlineAsm(_)
+                , _
+            ) => false,
         };
         (is_eq && (!self.should_ignore(left) || !self.should_ignore(right)))
             || self.inner.expr_fallback.as_mut().map_or(false, |f| f(left, right))
