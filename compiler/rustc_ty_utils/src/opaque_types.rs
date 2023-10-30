@@ -121,6 +121,7 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
 }
 
 impl<'tcx> super::sig_types::SpannedTypeVisitor<'tcx> for OpaqueTypeCollector<'tcx> {
+    #[instrument(skip(self), ret, level = "trace")]
     fn visit(&mut self, span: Span, value: impl TypeVisitable<TyCtxt<'tcx>>) -> ControlFlow<!> {
         self.visit_spanned(span, value);
         ControlFlow::Continue(())

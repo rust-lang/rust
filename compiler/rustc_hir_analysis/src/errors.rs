@@ -96,7 +96,7 @@ pub struct CopyImplOnTypeWithDtor {
 #[diag(hir_analysis_multiple_relaxed_default_bounds, code = "E0203")]
 pub struct MultipleRelaxedDefaultBounds {
     #[primary_span]
-    pub span: Span,
+    pub spans: Vec<Span>,
 }
 
 #[derive(Diagnostic)]

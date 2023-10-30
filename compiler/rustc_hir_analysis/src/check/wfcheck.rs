@@ -94,7 +94,7 @@ pub(super) fn enter_wf_checking_ctxt<'tcx, F>(
     f: F,
 ) -> Result<(), ErrorGuaranteed>
 where
-    F: for<'a> FnOnce(&WfCheckingCtxt<'a, 'tcx>),
+    F: for<'a> FnOnce(&WfCheckingCtxt<'a, 'tcx>) -> Result<(), ErrorGuaranteed>,
 {
     let param_env = tcx.param_env(body_def_id);
     let infcx = &tcx.infer_ctxt().build();
@@ -105,7 +105,7 @@ where
     if !tcx.features().trivial_bounds {
         wfcx.check_false_global_bounds()
     }
-    f(&mut wfcx);
+    f(&mut wfcx)?;
 
     let assumed_wf_types = wfcx.ocx.assumed_wf_types_and_report_errors(param_env, body_def_id)?;
 
@@ -875,6 +875,7 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) -> Result<(), 
                         ty,
                         trait_def_id,
                     );
+                    Ok(())
                 })
             } else {
                 let mut diag = match ty.kind() {
@@ -961,6 +962,7 @@ fn check_associated_item(
                 let ty = tcx.type_of(item.def_id).instantiate_identity();
                 let ty = wfcx.normalize(span, Some(WellFormedLoc::Ty(item_id)), ty);
                 wfcx.register_wf_obligation(span, loc, ty.into());
+                Ok(())
             }
             ty::AssocKind::Fn => {
                 let sig = tcx.fn_sig(item.def_id).instantiate_identity();
@@ -972,7 +974,7 @@ fn check_associated_item(
                     hir_sig.decl,
                     item.def_id.expect_local(),
                 );
-                check_method_receiver(wfcx, hir_sig, item, self_ty);
+                check_method_receiver(wfcx, hir_sig, item, self_ty)
             }
             ty::AssocKind::Type => {
                 if let ty::AssocItemContainer::TraitContainer = item.container {
@@ -983,6 +985,7 @@ fn check_associated_item(
                     let ty = wfcx.normalize(span, Some(WellFormedLoc::Ty(item_id)), ty);
                     wfcx.register_wf_obligation(span, loc, ty.into());
                 }
+                Ok(())
             }
         }
     })
@@ -1097,6 +1100,7 @@ fn check_type_defn<'tcx>(
         }
 
         check_where_clauses(wfcx, item.span, item.owner_id.def_id);
+        Ok(())
     })
 }
 
@@ -1121,7 +1125,8 @@ fn check_trait(tcx: TyCtxt<'_>, item: &hir::Item<'_>) -> Result<(), ErrorGuarant
     }
 
     let res = enter_wf_checking_ctxt(tcx, item.span, def_id, |wfcx| {
-        check_where_clauses(wfcx, item.span, def_id)
+        check_where_clauses(wfcx, item.span, def_id);
+        Ok(())
     });
 
     // Only check traits, don't check trait aliases
@@ -1164,6 +1169,7 @@ fn check_item_fn(
     enter_wf_checking_ctxt(tcx, span, def_id, |wfcx| {
         let sig = tcx.fn_sig(def_id).instantiate_identity();
         check_fn_or_method(wfcx, ident.span, sig, decl, def_id);
+        Ok(())
     })
 }
 
@@ -1218,6 +1224,7 @@ fn check_item_type(
                 tcx.require_lang_item(LangItem::Sync, Some(ty_span)),
             );
         }
+        Ok(())
     })
 }
 
@@ -1276,6 +1283,7 @@ fn check_impl<'tcx>(
         }
 
         check_where_clauses(wfcx, item.span, item.owner_id.def_id);
+        Ok(())
     })
 }
 
@@ -1548,11 +1556,11 @@ fn check_method_receiver<'tcx>(
     fn_sig: &hir::FnSig<'_>,
     method: ty::AssocItem,
     self_ty: Ty<'tcx>,
-) {
+) -> Result<(), ErrorGuaranteed> {
     let tcx = wfcx.tcx();
 
     if !method.fn_has_self_parameter {
-        return;
+        return Ok(());
     }
 
     let span = fn_sig.decl.inputs[0].span;
@@ -1571,11 +1579,11 @@ fn check_method_receiver<'tcx>(
     if tcx.features().arbitrary_self_types {
         if !receiver_is_valid(wfcx, span, receiver_ty, self_ty, true) {
             // Report error; `arbitrary_self_types` was enabled.
-            e0307(tcx, span, receiver_ty);
+            return Err(e0307(tcx, span, receiver_ty));
         }
     } else {
         if !receiver_is_valid(wfcx, span, receiver_ty, self_ty, false) {
-            if receiver_is_valid(wfcx, span, receiver_ty, self_ty, true) {
+            return Err(if receiver_is_valid(wfcx, span, receiver_ty, self_ty, true) {
                 // Report error; would have worked with `arbitrary_self_types`.
                 feature_err(
                     &tcx.sess.parse_sess,
@@ -1587,16 +1595,17 @@ fn check_method_receiver<'tcx>(
                     ),
                 )
                 .help(HELP_FOR_SELF_TYPE)
-                .emit();
+                .emit()
             } else {
                 // Report error; would not have worked with `arbitrary_self_types`.
-                e0307(tcx, span, receiver_ty);
-            }
+                e0307(tcx, span, receiver_ty)
+            });
         }
     }
+    Ok(())
 }
 
-fn e0307(tcx: TyCtxt<'_>, span: Span, receiver_ty: Ty<'_>) {
+fn e0307(tcx: TyCtxt<'_>, span: Span, receiver_ty: Ty<'_>) -> ErrorGuaranteed {
     struct_span_err!(
         tcx.sess.diagnostic(),
         span,
@@ -1605,7 +1614,7 @@ fn e0307(tcx: TyCtxt<'_>, span: Span, receiver_ty: Ty<'_>) {
     )
     .note("type of `self` must be `Self` or a type that dereferences to it")
     .help(HELP_FOR_SELF_TYPE)
-    .emit();
+    .emit()
 }
 
 /// Returns whether `receiver_ty` would be considered a valid receiver type for `self_ty`. If

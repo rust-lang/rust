@@ -1,6 +1,6 @@
-struct Foo<T: ?Hash> { }
+struct Foo<T: ?Hash> {}
 //~^ ERROR expected trait, found derive macro `Hash`
 //~^^ ERROR parameter `T` is never used
-//~^^^ WARN default bound relaxed for a type parameter, but this does nothing
+//~^^^ WARN relaxing a default bound only does something for `?Sized`
 
-fn main() { }
+fn main() {}
