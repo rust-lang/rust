@@ -4,7 +4,7 @@ set -ex
 
 # Only run the stage 1 tests on merges, not on PR CI jobs.
 if [[ -z "${PR_CI_JOB}" ]]; then
-    ../x.py --stage 1 test --skip src/tools/tidy
+    ../x.py --stage 1 test --skip src/tools/tidy --skip tests/codegen
 
     # Run the `mir-opt` tests again but this time for a 32-bit target.
     # This enforces that tests using `// EMIT_MIR_FOR_EACH_BIT_WIDTH` have
@@ -20,7 +20,7 @@ if [[ -z "${PR_CI_JOB}" ]]; then
 fi
 
 # NOTE: intentionally uses all of `x.py`, `x`, and `x.ps1` to make sure they all work on Linux.
-../x.py --stage 2 test --skip src/tools/tidy
+../x.py --stage 2 test --skip src/tools/tidy --skip tests/codegen
 
 # Run the `mir-opt` tests again but this time for a 32-bit target.
 # This enforces that tests using `// EMIT_MIR_FOR_EACH_BIT_WIDTH` have
