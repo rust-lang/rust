@@ -2245,7 +2245,7 @@ pub unsafe fn _mm_maskz_shrdi_epi32<const IMM8: i32>(
 pub unsafe fn _mm512_shrdi_epi16<const IMM8: i32>(a: __m512i, b: __m512i) -> __m512i {
     static_assert_uimm_bits!(IMM8, 8);
     let imm8 = IMM8 as i16;
-    assert!(imm8 >= 0 && imm8 <= 255);
+    assert!(matches!(imm8, 0..=255));
     transmute(vpshrdvw(
         a.as_i16x32(),
         b.as_i16x32(),
@@ -2269,7 +2269,7 @@ pub unsafe fn _mm512_mask_shrdi_epi16<const IMM8: i32>(
 ) -> __m512i {
     static_assert_uimm_bits!(IMM8, 8);
     let imm8 = IMM8 as i16;
-    assert!(imm8 >= 0 && imm8 <= 255);
+    assert!(matches!(imm8, 0..=255));
     let shf: i16x32 = vpshrdvw(
         a.as_i16x32(),
         b.as_i16x32(),
@@ -2293,7 +2293,7 @@ pub unsafe fn _mm512_maskz_shrdi_epi16<const IMM8: i32>(
 ) -> __m512i {
     static_assert_uimm_bits!(IMM8, 8);
     let imm8 = IMM8 as i16;
-    assert!(imm8 >= 0 && imm8 <= 255);
+    assert!(matches!(imm8, 0..=255));
     let shf: i16x32 = vpshrdvw(
         a.as_i16x32(),
         b.as_i16x32(),
@@ -2314,7 +2314,7 @@ pub unsafe fn _mm512_maskz_shrdi_epi16<const IMM8: i32>(
 pub unsafe fn _mm256_shrdi_epi16<const IMM8: i32>(a: __m256i, b: __m256i) -> __m256i {
     static_assert_uimm_bits!(IMM8, 8);
     let imm8 = IMM8 as i16;
-    assert!(imm8 >= 0 && imm8 <= 255);
+    assert!(matches!(imm8, 0..=255));
     transmute(vpshrdvw256(
         a.as_i16x16(),
         b.as_i16x16(),
@@ -2338,7 +2338,7 @@ pub unsafe fn _mm256_mask_shrdi_epi16<const IMM8: i32>(
 ) -> __m256i {
     static_assert_uimm_bits!(IMM8, 8);
     let imm8 = IMM8 as i16;
-    assert!(imm8 >= 0 && imm8 <= 255);
+    assert!(matches!(imm8, 0..=255));
     let shf: i16x16 = vpshrdvw256(
         a.as_i16x16(),
         b.as_i16x16(),
