@@ -341,7 +341,7 @@ impl<'a> MakeBcbCounters<'a> {
         // A BCB with only one incoming edge gets a simple `Counter` (via `make_counter()`).
         // Also, a BCB that loops back to itself gets a simple `Counter`. This may indicate the
         // program results in a tight infinite loop, but it should still compile.
-        let one_path_to_target = self.bcb_has_one_path_to_target(bcb);
+        let one_path_to_target = !self.basic_coverage_blocks.bcb_has_multiple_in_edges(bcb);
         if one_path_to_target || self.bcb_predecessors(bcb).contains(&bcb) {
             let counter_kind = self.coverage_counters.make_counter();
             if one_path_to_target {
@@ -509,12 +509,5 @@ impl<'a> MakeBcbCounters<'a> {
         } else {
             self.coverage_counters.bcb_counters[to_bcb].as_ref()
         }
-    }
-
-    /// Returns true if the BasicCoverageBlock has zero or one incoming edge. (If zero, it should be
-    /// the entry point for the function.)
-    #[inline]
-    fn bcb_has_one_path_to_target(&self, bcb: BasicCoverageBlock) -> bool {
-        self.bcb_predecessors(bcb).len() <= 1
     }
 }

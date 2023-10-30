@@ -199,6 +199,20 @@ impl CoverageGraph {
     pub fn cmp_in_dominator_order(&self, a: BasicCoverageBlock, b: BasicCoverageBlock) -> Ordering {
         self.dominators.as_ref().unwrap().cmp_in_dominator_order(a, b)
     }
+
+    /// Returns true if the given node has 2 or more in-edges, i.e. 2 or more
+    /// predecessors.
+    ///
+    /// This property is interesting to code that assigns counters to nodes and
+    /// edges, because if a node _doesn't_ have multiple in-edges, then there's
+    /// no benefit in having a separate counter for its in-edge, because it
+    /// would have the same value as the node's own counter.
+    ///
+    /// FIXME: That assumption might not be true for [`TerminatorKind::Yield`]?
+    #[inline(always)]
+    pub(super) fn bcb_has_multiple_in_edges(&self, bcb: BasicCoverageBlock) -> bool {
+        self.predecessors[bcb].len() > 1
+    }
 }
 
 impl Index<BasicCoverageBlock> for CoverageGraph {
@@ -335,7 +349,7 @@ impl BcbBranch {
         to_bcb: BasicCoverageBlock,
         basic_coverage_blocks: &CoverageGraph,
     ) -> Self {
-        let edge_from_bcb = if basic_coverage_blocks.predecessors[to_bcb].len() > 1 {
+        let edge_from_bcb = if basic_coverage_blocks.bcb_has_multiple_in_edges(from_bcb) {
             Some(from_bcb)
         } else {
             None
