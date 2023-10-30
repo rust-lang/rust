@@ -392,34 +392,16 @@ fn generated_output_paths(
     out_filenames
 }
 
-// Runs `f` on every output file path and returns the first non-None result, or None if `f`
-// returns None for every file path.
-fn check_output<F, T>(output_paths: &[PathBuf], f: F) -> Option<T>
-where
-    F: Fn(&PathBuf) -> Option<T>,
-{
-    for output_path in output_paths {
-        if let Some(result) = f(output_path) {
-            return Some(result);
-        }
-    }
-    None
-}
-
 fn output_contains_path(output_paths: &[PathBuf], input_path: &Path) -> bool {
     let input_path = try_canonicalize(input_path).ok();
     if input_path.is_none() {
         return false;
     }
-    let check = |output_path: &PathBuf| {
-        if try_canonicalize(output_path).ok() == input_path { Some(()) } else { None }
-    };
-    check_output(output_paths, check).is_some()
+    output_paths.iter().any(|output_path| try_canonicalize(output_path).ok() == input_path)
 }
 
-fn output_conflicts_with_dir(output_paths: &[PathBuf]) -> Option<PathBuf> {
-    let check = |output_path: &PathBuf| output_path.is_dir().then(|| output_path.clone());
-    check_output(output_paths, check)
+fn output_conflicts_with_dir(output_paths: &[PathBuf]) -> Option<&PathBuf> {
+    output_paths.iter().find(|output_path| output_path.is_dir())
 }
 
 fn escape_dep_filename(filename: &str) -> String {
