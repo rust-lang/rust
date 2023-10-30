@@ -12,8 +12,6 @@ use rustc_middle::mir::coverage::*;
 
 use std::fmt::{self, Debug};
 
-const NESTED_INDENT: &str = "    ";
-
 /// The coverage counter or counter expression associated with a particular
 /// BCB node or BCB edge.
 #[derive(Clone)]
@@ -346,23 +344,11 @@ impl<'a> MakeBcbCounters<'a> {
         Ok(())
     }
 
+    #[instrument(level = "debug", skip(self))]
     fn get_or_make_counter_operand(&mut self, bcb: BasicCoverageBlock) -> Result<CovTerm, Error> {
-        self.recursive_get_or_make_counter_operand(bcb, 1)
-    }
-
-    fn recursive_get_or_make_counter_operand(
-        &mut self,
-        bcb: BasicCoverageBlock,
-        debug_indent_level: usize,
-    ) -> Result<CovTerm, Error> {
         // If the BCB already has a counter, return it.
         if let Some(counter_kind) = &self.coverage_counters.bcb_counters[bcb] {
-            debug!(
-                "{}{:?} already has a counter: {:?}",
-                NESTED_INDENT.repeat(debug_indent_level),
-                bcb,
-                counter_kind,
-            );
+            debug!("{bcb:?} already has a counter: {counter_kind:?}");
             return Ok(counter_kind.as_term());
         }
 
@@ -373,20 +359,12 @@ impl<'a> MakeBcbCounters<'a> {
         if one_path_to_target || self.bcb_predecessors(bcb).contains(&bcb) {
             let counter_kind = self.coverage_counters.make_counter();
             if one_path_to_target {
-                debug!(
-                    "{}{:?} gets a new counter: {:?}",
-                    NESTED_INDENT.repeat(debug_indent_level),
-                    bcb,
-                    counter_kind,
-                );
+                debug!("{bcb:?} gets a new counter: {counter_kind:?}");
             } else {
                 debug!(
-                    "{}{:?} has itself as its own predecessor. It can't be part of its own \
-                    Expression sum, so it will get its own new counter: {:?}. (Note, the compiled \
-                    code will generate an infinite loop.)",
-                    NESTED_INDENT.repeat(debug_indent_level),
-                    bcb,
-                    counter_kind,
+                    "{bcb:?} has itself as its own predecessor. It can't be part of its own \
+                    Expression sum, so it will get its own new counter: {counter_kind:?}. \
+                    (Note, the compiled code will generate an infinite loop.)",
                 );
             }
             return self.coverage_counters.set_bcb_counter(bcb, counter_kind);
@@ -396,24 +374,14 @@ impl<'a> MakeBcbCounters<'a> {
         // counters and/or expressions of its incoming edges. This will recursively get or create
         // counters for those incoming edges first, then call `make_expression()` to sum them up,
         // with additional intermediate expressions as needed.
+        let _sumup_debug_span = debug_span!("(preparing sum-up expression)").entered();
+
         let mut predecessors = self.bcb_predecessors(bcb).to_owned().into_iter();
-        debug!(
-            "{}{:?} has multiple incoming edges and will get an expression that sums them up...",
-            NESTED_INDENT.repeat(debug_indent_level),
-            bcb,
-        );
-        let first_edge_counter_operand = self.recursive_get_or_make_edge_counter_operand(
-            predecessors.next().unwrap(),
-            bcb,
-            debug_indent_level + 1,
-        )?;
+        let first_edge_counter_operand =
+            self.get_or_make_edge_counter_operand(predecessors.next().unwrap(), bcb)?;
         let mut some_sumup_edge_counter_operand = None;
         for predecessor in predecessors {
-            let edge_counter_operand = self.recursive_get_or_make_edge_counter_operand(
-                predecessor,
-                bcb,
-                debug_indent_level + 1,
-            )?;
+            let edge_counter_operand = self.get_or_make_edge_counter_operand(predecessor, bcb)?;
             if let Some(sumup_edge_counter_operand) =
                 some_sumup_edge_counter_operand.replace(edge_counter_operand)
             {
@@ -422,11 +390,7 @@ impl<'a> MakeBcbCounters<'a> {
                     Op::Add,
                     edge_counter_operand,
                 );
-                debug!(
-                    "{}new intermediate expression: {:?}",
-                    NESTED_INDENT.repeat(debug_indent_level),
-                    intermediate_expression
-                );
+                debug!("new intermediate expression: {intermediate_expression:?}");
                 let intermediate_expression_operand = intermediate_expression.as_term();
                 some_sumup_edge_counter_operand.replace(intermediate_expression_operand);
             }
@@ -436,59 +400,36 @@ impl<'a> MakeBcbCounters<'a> {
             Op::Add,
             some_sumup_edge_counter_operand.unwrap(),
         );
-        debug!(
-            "{}{:?} gets a new counter (sum of predecessor counters): {:?}",
-            NESTED_INDENT.repeat(debug_indent_level),
-            bcb,
-            counter_kind
-        );
+        drop(_sumup_debug_span);
+
+        debug!("{bcb:?} gets a new counter (sum of predecessor counters): {counter_kind:?}");
         self.coverage_counters.set_bcb_counter(bcb, counter_kind)
     }
 
+    #[instrument(level = "debug", skip(self))]
     fn get_or_make_edge_counter_operand(
         &mut self,
         from_bcb: BasicCoverageBlock,
         to_bcb: BasicCoverageBlock,
     ) -> Result<CovTerm, Error> {
-        self.recursive_get_or_make_edge_counter_operand(from_bcb, to_bcb, 1)
-    }
-
-    fn recursive_get_or_make_edge_counter_operand(
-        &mut self,
-        from_bcb: BasicCoverageBlock,
-        to_bcb: BasicCoverageBlock,
-        debug_indent_level: usize,
-    ) -> Result<CovTerm, Error> {
         // If the source BCB has only one successor (assumed to be the given target), an edge
         // counter is unnecessary. Just get or make a counter for the source BCB.
         let successors = self.bcb_successors(from_bcb).iter();
         if successors.len() == 1 {
-            return self.recursive_get_or_make_counter_operand(from_bcb, debug_indent_level + 1);
+            return self.get_or_make_counter_operand(from_bcb);
         }
 
         // If the edge already has a counter, return it.
         if let Some(counter_kind) =
             self.coverage_counters.bcb_edge_counters.get(&(from_bcb, to_bcb))
         {
-            debug!(
-                "{}Edge {:?}->{:?} already has a counter: {:?}",
-                NESTED_INDENT.repeat(debug_indent_level),
-                from_bcb,
-                to_bcb,
-                counter_kind
-            );
+            debug!("Edge {from_bcb:?}->{to_bcb:?} already has a counter: {counter_kind:?}");
             return Ok(counter_kind.as_term());
         }
 
         // Make a new counter to count this edge.
         let counter_kind = self.coverage_counters.make_counter();
-        debug!(
-            "{}Edge {:?}->{:?} gets a new counter: {:?}",
-            NESTED_INDENT.repeat(debug_indent_level),
-            from_bcb,
-            to_bcb,
-            counter_kind
-        );
+        debug!("Edge {from_bcb:?}->{to_bcb:?} gets a new counter: {counter_kind:?}");
         self.coverage_counters.set_bcb_edge_counter(from_bcb, to_bcb, counter_kind)
     }
 
