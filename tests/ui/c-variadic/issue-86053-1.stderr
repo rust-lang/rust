@@ -50,13 +50,7 @@ error: only foreign or `unsafe extern "C"` functions may be C-variadic
   --> $DIR/issue-86053-1.rs:11:12
    |
 LL |     self , ... ,   self ,   self , ... ) where F : FnOnce ( & 'a & 'b usize ) {
-   |            ^^^
-
-error: only foreign or `unsafe extern "C"` functions may be C-variadic
-  --> $DIR/issue-86053-1.rs:11:36
-   |
-LL |     self , ... ,   self ,   self , ... ) where F : FnOnce ( & 'a & 'b usize ) {
-   |                                    ^^^
+   |            ^^^                     ^^^
 
 error[E0412]: cannot find type `F` in this scope
   --> $DIR/issue-86053-1.rs:11:48
@@ -76,6 +70,6 @@ help: you might be missing a type parameter
 LL | fn ordering4 < 'a , 'b, F     > ( a :            ,   self , self ,   self ,
    |                       +++
 
-error: aborting due to 11 previous errors
+error: aborting due to 10 previous errors
 
 For more information about this error, try `rustc --explain E0412`.
