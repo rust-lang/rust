@@ -21,7 +21,7 @@ macro_rules! static_assert_uimm_bits {
         #[allow(unused_comparisons)]
         {
             static_assert!(
-                0 <= $imm && $imm <= (1 << $bits) - 1,
+                0 <= $imm && $imm < (1 << $bits),
                 concat!(
                     stringify!($imm),
                     " doesn't fit in ",
@@ -37,7 +37,7 @@ macro_rules! static_assert_uimm_bits {
 macro_rules! static_assert_simm_bits {
     ($imm:ident, $bits:expr) => {
         static_assert!(
-            (-1 << ($bits - 1)) - 1 <= $imm && $imm <= (1 << ($bits - 1)) - 1,
+            (-1 << ($bits - 1)) - 1 <= $imm && $imm < (1 << ($bits - 1)),
             concat!(
                 stringify!($imm),
                 " doesn't fit in ",
