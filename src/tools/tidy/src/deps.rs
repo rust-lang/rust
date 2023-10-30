@@ -142,6 +142,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "darling_core",
     "darling_macro",
     "datafrog",
+    "derivative",
     "derive_more",
     "derive_setters",
     "digest",

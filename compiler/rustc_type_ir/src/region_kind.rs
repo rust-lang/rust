@@ -1,7 +1,6 @@
 use rustc_data_structures::stable_hasher::HashStable;
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_serialize::{Decodable, Decoder, Encodable};
-use std::cmp::Ordering;
 use std::fmt;
 use std::hash;
 
@@ -118,6 +117,13 @@ use self::RegionKind::*;
 /// [1]: https://smallcultfollowing.com/babysteps/blog/2013/10/29/intermingled-parameter-lists/
 /// [2]: https://smallcultfollowing.com/babysteps/blog/2013/11/04/intermingled-parameter-lists/
 /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/hrtb.html
+#[derive(derivative::Derivative)]
+#[derivative(
+    PartialOrd(bound = ""),
+    PartialOrd = "feature_allow_slow_enum",
+    Ord(bound = ""),
+    Ord = "feature_allow_slow_enum"
+)]
 pub enum RegionKind<I: Interner> {
     /// Region bound in a type or fn declaration which will be
     /// substituted 'early' -- that is, at the same time when type
@@ -221,38 +227,6 @@ impl<I: Interner> PartialEq for RegionKind<I> {
 
 // This is manually implemented because a derive would require `I: Eq`
 impl<I: Interner> Eq for RegionKind<I> {}
-
-// This is manually implemented because a derive would require `I: PartialOrd`
-impl<I: Interner> PartialOrd for RegionKind<I> {
-    #[inline]
-    fn partial_cmp(&self, other: &RegionKind<I>) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-// This is manually implemented because a derive would require `I: Ord`
-impl<I: Interner> Ord for RegionKind<I> {
-    #[inline]
-    fn cmp(&self, other: &RegionKind<I>) -> Ordering {
-        regionkind_discriminant(self).cmp(&regionkind_discriminant(other)).then_with(|| {
-            match (self, other) {
-                (ReEarlyBound(a_r), ReEarlyBound(b_r)) => a_r.cmp(b_r),
-                (ReLateBound(a_d, a_r), ReLateBound(b_d, b_r)) => {
-                    a_d.cmp(b_d).then_with(|| a_r.cmp(b_r))
-                }
-                (ReFree(a_r), ReFree(b_r)) => a_r.cmp(b_r),
-                (ReStatic, ReStatic) => Ordering::Equal,
-                (ReVar(a_r), ReVar(b_r)) => a_r.cmp(b_r),
-                (RePlaceholder(a_r), RePlaceholder(b_r)) => a_r.cmp(b_r),
-                (ReErased, ReErased) => Ordering::Equal,
-                _ => {
-                    debug_assert!(false, "This branch must be unreachable, maybe the match is missing an arm? self = self = {self:?}, other = {other:?}");
-                    Ordering::Equal
-                }
-            }
-        })
-    }
-}
 
 // This is manually implemented because a derive would require `I: Hash`
 impl<I: Interner> hash::Hash for RegionKind<I> {
