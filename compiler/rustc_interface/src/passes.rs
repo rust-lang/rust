@@ -880,16 +880,18 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
 
             let trait_ref = ty::Binder::dummy(ty::TraitRef::identity(tcx, tr));
 
-            // A slightly edited version of the code in `rustc_trait_selection::traits::vtable::vtable_entries`,
-            // that works without self type and just counts number of entries.
+            // A slightly edited version of the code in
+            // `rustc_trait_selection::traits::vtable::vtable_entries`, that works without self
+            // type and just counts number of entries.
             //
-            // Note that this is technically wrong, for traits which have associated types in supertraits:
+            // Note that this is technically wrong, for traits which have associated types in
+            // supertraits:
             //
             //   trait A: AsRef<Self::T> + AsRef<()> { type T; }
             //
-            // Without self type we can't normalize `Self::T`, so we can't know if `AsRef<Self::T>` and
-            // `AsRef<()>` are the same trait, thus we assume that those are different, and potentially
-            // over-estimate how many vtable entries there are.
+            // Without self type we can't normalize `Self::T`, so we can't know if `AsRef<Self::T>`
+            // and `AsRef<()>` are the same trait, thus we assume that those are different, and
+            // potentially over-estimate how many vtable entries there are.
             //
             // Similarly this is wrong for traits that have methods with possibly-impossible bounds.
             // For example:
@@ -916,10 +918,10 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
                         let own_existential_entries =
                             tcx.own_existential_vtable_entries(trait_ref.def_id());
 
-                        // The original code here ignores the method if its predicates are impossible.
-                        // We can't really do that as, for example, all not trivial bounds on generic
-                        // parameters are impossible (since we don't know the parameters...),
-                        // see the comment above.
+                        // The original code here ignores the method if its predicates are
+                        // impossible. We can't really do that as, for example, all not trivial
+                        // bounds on generic parameters are impossible (since we don't know the
+                        // parameters...), see the comment above.
                         entries_ignoring_upcasting += own_existential_entries.len();
 
                         if emit_vptr {
