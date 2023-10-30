@@ -75,7 +75,6 @@ pub use check::check_abi;
 
 use std::num::NonZeroU32;
 
-use entry::check_for_entry_fn;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::ErrorGuaranteed;
 use rustc_errors::{pluralize, struct_span_err, Diagnostic, DiagnosticBuilder};
@@ -110,7 +109,6 @@ pub fn provide(providers: &mut Providers) {
     wfcheck::provide(providers);
     *providers = Providers {
         adt_destructor,
-        check_for_entry_fn,
         region_scope_tree,
         collect_return_position_impl_trait_in_trait_tys,
         compare_impl_const: compare_impl_item::compare_impl_const_raw,

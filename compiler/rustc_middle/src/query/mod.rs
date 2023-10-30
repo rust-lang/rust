@@ -938,10 +938,6 @@ rustc_queries! {
         desc { |tcx| "checking naked functions in {}", describe_as_module(key, tcx) }
     }
 
-    query check_for_entry_fn(key: ()) -> () {
-        desc { |_tcx| "checking entry functions" }
-    }
-
     query check_mod_privacy(key: LocalModDefId) -> () {
         desc { |tcx| "checking privacy in {}", describe_as_module(key.to_local_def_id(), tcx) }
     }

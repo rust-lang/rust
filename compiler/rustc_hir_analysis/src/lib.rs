@@ -200,14 +200,9 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
         })?;
     }
 
-    let errs = tcx.sess.time("wf_checking", || {
+    tcx.sess.time("wf_checking", || {
         tcx.hir().try_par_for_each_module(|module| tcx.ensure().check_mod_type_wf(module))
-    });
-
-    tcx.sess.time("entry_fn_checks", || tcx.ensure().check_for_entry_fn(()));
-
-    // HACK: `check_for_entry_fn` wants to report its errors even if `check_mod_type_wf` has errored.
-    errs?;
+    })?;
 
     if tcx.features().rustc_attrs {
         tcx.sess.track_errors(|| collect::test_opaque_hidden_types(tcx))?;

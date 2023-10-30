@@ -1913,7 +1913,11 @@ fn check_mod_type_wf(tcx: TyCtxt<'_>, module: LocalModDefId) -> Result<(), Error
     let mut res = items.par_items(|item| tcx.ensure().check_well_formed(item.owner_id));
     res = res.and(items.par_impl_items(|item| tcx.ensure().check_well_formed(item.owner_id)));
     res = res.and(items.par_trait_items(|item| tcx.ensure().check_well_formed(item.owner_id)));
-    res.and(items.par_foreign_items(|item| tcx.ensure().check_well_formed(item.owner_id)))
+    res = res.and(items.par_foreign_items(|item| tcx.ensure().check_well_formed(item.owner_id)));
+    if module == LocalModDefId::CRATE_DEF_ID {
+        super::entry::check_for_entry_fn(tcx);
+    }
+    res
 }
 
 fn error_392(tcx: TyCtxt<'_>, span: Span, param_name: Symbol) -> DiagnosticBuilder<'_> {
