@@ -4,7 +4,7 @@
 use std::ops::ControlFlow;
 
 use rustc_hir::{def::DefKind, def_id::LocalDefId};
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
 use rustc_type_ir::visit::TypeVisitable;
 
@@ -25,24 +25,9 @@ pub fn walk_types<'tcx, V: SpannedTypeVisitor<'tcx>>(
     let kind = tcx.def_kind(item);
     trace!(?kind);
     match kind {
-        DefKind::Coroutine => {
-            match tcx.type_of(item).instantiate_identity().kind() {
-                ty::Coroutine(_, args, _) => visitor.visit(tcx.def_span(item), args.as_coroutine().sig())?,
-                _ => bug!(),
-            }
-            for (pred, span) in tcx.predicates_of(item).instantiate_identity(tcx) {
-                visitor.visit(span, pred)?;
-            }
-        }
-        // Walk over the signature of the function-like
-        DefKind::Closure | DefKind::AssocFn | DefKind::Fn => {
-            let ty_sig = match kind {
-                DefKind::Closure => match tcx.type_of(item).instantiate_identity().kind() {
-                    ty::Closure(_, args) => args.as_closure().sig(),
-                    _ => bug!(),
-                },
-                _ => tcx.fn_sig(item).instantiate_identity(),
-            };
+        // Walk over the signature of the function
+        DefKind::AssocFn | DefKind::Fn => {
+            let ty_sig = tcx.fn_sig(item).instantiate_identity();
             let hir_sig = tcx.hir().get_by_def_id(item).fn_decl().unwrap();
             // Walk over the inputs and outputs manually in order to get good spans for them.
             visitor.visit(hir_sig.output.span(), ty_sig.output());
@@ -79,8 +64,10 @@ pub fn walk_types<'tcx, V: SpannedTypeVisitor<'tcx>>(
                 visitor.visit(span, pred)?;
             }
         }
-        // Does not have a syntactical signature
-        DefKind::InlineConst => {}
+        // These are not part of a public API, they can only appear as hidden types, and there
+        // the interesting parts are solely in the signature of the containing item's opaque type
+        // or dyn type.
+        DefKind::InlineConst | DefKind::Closure | DefKind::Coroutine => {}
         DefKind::Impl { of_trait } => {
             if of_trait {
                 let span = tcx.hir().get_by_def_id(item).expect_item().expect_impl().of_trait.unwrap().path.span;

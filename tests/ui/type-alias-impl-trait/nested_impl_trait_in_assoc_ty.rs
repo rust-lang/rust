@@ -1,4 +1,11 @@
+//! This test checks that we do not walk types in async blocks for
+//! determining the opaque types that appear in a signature. async blocks,
+//! all other coroutines and closures are always private and not part of
+//! a signature. They become part of a signature via `dyn Trait` or `impl Trait`,
+//! which is something that we process abstractly without looking at its hidden
+//! types.
 // edition: 2021
+// check-pass
 
 #![feature(impl_trait_in_assoc_type)]
 
