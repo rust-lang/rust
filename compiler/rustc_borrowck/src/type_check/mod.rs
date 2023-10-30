@@ -1640,7 +1640,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
             TerminatorKind::UnwindTerminate(_) => {
                 if !is_cleanup {
-                    span_mirbug!(self, block_data, "abort on non-cleanup block!")
+                    span_mirbug!(self, block_data, "terminate on non-cleanup block!")
                 }
             }
             TerminatorKind::Return => {
