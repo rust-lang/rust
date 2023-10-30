@@ -1672,7 +1672,7 @@ fn gen_load_test(
     for (a, b, _, n, e) in current_tests {
         let a: Vec<String> = a.iter().take(type_len + 1).cloned().collect();
         let e: Vec<String> = e.iter().take(type_len).cloned().collect();
-        let has_b = b.len() > 0;
+        let has_b = !b.is_empty();
         let has_n = n.is_some();
         let mut input = String::from("[");
         for i in 0..type_len + 1 {
@@ -2714,7 +2714,7 @@ fn get_call(
     aarch64: bool,
 ) -> String {
     let params: Vec<_> = in_str.split(',').map(|v| v.trim().to_string()).collect();
-    assert!(params.len() > 0);
+    assert!(!params.is_empty());
     let mut fn_name = params[0].clone();
     if fn_name == "a" {
         return String::from("a");
@@ -3428,13 +3428,13 @@ mod test {
                 } else {
                     panic!("Bad spec: {line}")
                 }
-                if b.len() == 0 {
+                if b.is_empty() {
                     if matches!(fn_type, Fntype::Store) {
                         para_num = 2;
                     } else {
                         para_num = 1;
                     }
-                } else if c.len() != 0 {
+                } else if !c.is_empty() {
                     para_num = 3;
                 }
                 let current_name = current_name.clone().unwrap();
