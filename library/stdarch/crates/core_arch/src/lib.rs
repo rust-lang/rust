@@ -38,6 +38,7 @@
 #![cfg_attr(test, feature(test, abi_vectorcall))]
 #![deny(clippy::missing_inline_in_public_items)]
 #![allow(
+    clippy::identity_op,
     clippy::inline_always,
     clippy::too_many_arguments,
     clippy::cast_sign_loss,
@@ -45,10 +46,13 @@
     clippy::cast_possible_wrap,
     clippy::cast_possible_truncation,
     clippy::cast_precision_loss,
-    clippy::shadow_reuse,
     clippy::cognitive_complexity,
+    clippy::many_single_char_names,
+    clippy::missing_safety_doc,
+    clippy::shadow_reuse,
     clippy::similar_names,
-    clippy::many_single_char_names
+    clippy::unusual_byte_groupings,
+    clippy::wrong_self_convention
 )]
 #![cfg_attr(test, allow(unused_imports))]
 #![no_std]
