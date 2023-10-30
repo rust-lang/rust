@@ -13,7 +13,6 @@ use rustc_session::parse::{feature_err, ParseSess};
 use rustc_session::{RustcVersion, Session};
 use rustc_span::hygiene::Transparency;
 use rustc_span::{symbol::sym, symbol::Symbol, Span};
-use std::fmt::{self, Display};
 use std::num::NonZeroU32;
 
 use crate::session_diagnostics::{self, IncorrectReprFormatGenericCause};
@@ -736,12 +735,12 @@ pub enum DeprecatedSince {
     RustcVersion(RustcVersion),
     /// Deprecated in the future ("to be determined").
     Future,
-    /// `feature(staged_api)` is off, or it's on but the deprecation version
-    /// cannot be parsed as a RustcVersion. In the latter case, an error has
-    /// already been emitted. In the former case, deprecation versions outside
-    /// the standard library are allowed to be arbitrary strings, for better or
-    /// worse.
+    /// `feature(staged_api)` is off. Deprecation versions outside the standard
+    /// library are allowed to be arbitrary strings, for better or worse.
     Symbol(Symbol),
+    /// Failed to parse a deprecation version. An error has already been
+    /// emitted.
+    Err,
 }
 
 impl Deprecation {
@@ -754,18 +753,8 @@ impl Deprecation {
             Some(DeprecatedSince::Future) => false,
             // The `since` field doesn't have semantic purpose without `#![staged_api]`.
             Some(DeprecatedSince::Symbol(_)) => true,
-            // Assume deprecation is in effect if "since" field is missing.
-            None => true,
-        }
-    }
-}
-
-impl Display for DeprecatedSince {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            DeprecatedSince::RustcVersion(since) => Display::fmt(since, formatter),
-            DeprecatedSince::Future => formatter.write_str("TBD"),
-            DeprecatedSince::Symbol(since) => Display::fmt(since, formatter),
+            // Assume deprecation is in effect if "since" field is absent or invalid.
+            None | Some(DeprecatedSince::Err) => true,
         }
     }
 }
@@ -885,7 +874,7 @@ pub fn find_deprecation(
                 Some(DeprecatedSince::RustcVersion(version))
             } else {
                 sess.emit_err(session_diagnostics::InvalidSince { span: attr.span });
-                Some(DeprecatedSince::Symbol(since))
+                Some(DeprecatedSince::Err)
             }
         } else if is_rustc {
             sess.emit_err(session_diagnostics::MissingSince { span: attr.span });

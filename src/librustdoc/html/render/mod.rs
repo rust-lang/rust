@@ -619,18 +619,19 @@ fn short_item_info(
     if let Some(depr @ Deprecation { note, since, suggestion: _ }) = item.deprecation(cx.tcx()) {
         // We display deprecation messages for #[deprecated], but only display
         // the future-deprecation messages for rustc versions.
-        let mut message = if let Some(since) = since {
-            if !depr.is_in_effect() {
-                if let DeprecatedSince::Future = since {
-                    String::from("Deprecating in a future Rust version")
+        let mut message = match since {
+            Some(DeprecatedSince::RustcVersion(version)) => {
+                if depr.is_in_effect() {
+                    format!("Deprecated since {version}")
                 } else {
-                    format!("Deprecating in {}", Escape(&since.to_string()))
+                    format!("Deprecating in {version}")
                 }
-            } else {
-                format!("Deprecated since {}", Escape(&since.to_string()))
             }
-        } else {
-            String::from("Deprecated")
+            Some(DeprecatedSince::Future) => String::from("Deprecating in a future Rust version"),
+            Some(DeprecatedSince::Symbol(since)) => {
+                format!("Deprecated since {}", Escape(since.as_str()))
+            }
+            Some(DeprecatedSince::Err) | None => String::from("Deprecated"),
         };
 
         if let Some(note) = note {

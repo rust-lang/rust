@@ -155,15 +155,16 @@ fn deprecation_message(
     let message = if is_in_effect {
         format!("use of deprecated {kind} `{path}`")
     } else {
-        if let Some(DeprecatedSince::Future) = since {
-            format!("use of {kind} `{path}` that will be deprecated in a future Rust version")
-        } else {
-            format!(
-                "use of {} `{}` that will be deprecated in future version {}",
-                kind,
-                path,
-                since.unwrap()
-            )
+        match since {
+            Some(DeprecatedSince::RustcVersion(version)) => format!(
+                "use of {kind} `{path}` that will be deprecated in future version {version}"
+            ),
+            Some(DeprecatedSince::Future) => {
+                format!("use of {kind} `{path}` that will be deprecated in a future Rust version")
+            }
+            Some(DeprecatedSince::Symbol(_)) | Some(DeprecatedSince::Err) | None => {
+                unreachable!("this deprecation is always in effect; {since:?}")
+            }
         }
     };
 
