@@ -602,9 +602,7 @@ fn output_filenames(tcx: TyCtxt<'_>, (): ()) -> Arc<OutputFilenames> {
     let (_, krate) = &*tcx.resolver_for_lowering(()).borrow();
     let crate_name = tcx.crate_name(LOCAL_CRATE);
 
-    // FIXME: rustdoc passes &[] instead of &krate.attrs here
     let outputs = util::build_output_filenames(&krate.attrs, sess);
-
     let output_paths =
         generated_output_paths(tcx, &outputs, sess.io.output_file.is_some(), crate_name);
 
