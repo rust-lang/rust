@@ -2372,7 +2372,7 @@ impl<'a> Parser<'a> {
         }
 
         if let Gen::Yes { span, .. } = genness {
-            self.sess.emit_err(errors::GenBlock { span });
+            self.sess.emit_err(errors::GenFn { span });
         }
 
         if !self.eat_keyword_case(kw::Fn, case) {

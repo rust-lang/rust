@@ -3,6 +3,6 @@
 
 gen fn foo() {}
 //[none]~^ ERROR: expected one of `#`, `async`, `const`, `default`, `extern`, `fn`, `pub`, `unsafe`, or `use`, found `gen`
-//[e2024]~^^ ERROR: `gen` blocks are not yet implemented
+//[e2024]~^^ ERROR: `gen` functions are not yet implemented
 
 fn main() {}
