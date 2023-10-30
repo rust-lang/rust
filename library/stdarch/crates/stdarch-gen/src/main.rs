@@ -352,8 +352,8 @@ fn type_to_lane_suffixes<'a>(out_t: &'a str, in_t: &'a str, re_to_out: bool) -> 
 fn type_to_rot_suffix(c_name: &str, suf: &str) -> String {
     let ns: Vec<_> = c_name.split('_').collect();
     assert_eq!(ns.len(), 2);
-    if suf.starts_with("q") {
-        format!("{}q_{}{}", ns[0], ns[1], &suf[1..])
+    if let Some(suf) = suf.strip_prefix("q") {
+        format!("{}q_{}{}", ns[0], ns[1], suf)
     } else {
         format!("{c_name}{suf}")
     }
@@ -3298,18 +3298,18 @@ mod test {
             fn_type = Fntype::Normal;
             separate = false;
         } else if line.starts_with("//") {
-        } else if line.starts_with("name = ") {
-            current_name = Some(String::from(&line[7..]));
-        } else if line.starts_with("fn = ") {
-            current_fn = Some(String::from(&line[5..]));
-        } else if line.starts_with("multi_fn = ") {
-            multi_fn.push(String::from(&line[11..]));
-        } else if line.starts_with("constn = ") {
-            constn = Some(String::from(&line[9..]));
-        } else if line.starts_with("arm = ") {
-            current_arm = Some(String::from(&line[6..]));
-        } else if line.starts_with("aarch64 = ") {
-            current_aarch64 = Some(String::from(&line[10..]));
+        } else if let Some(line) = line.strip_prefix("name = ") {
+            current_name = Some(String::from(line));
+        } else if let Some(line) = line.strip_prefix("fn = ") {
+            current_fn = Some(String::from(line));
+        } else if let Some(line) = line.strip_prefix("multi_fn = ") {
+            multi_fn.push(String::from(line));
+        } else if let Some(line) = line.strip_prefix("constn = ") {
+            constn = Some(String::from(line));
+        } else if let Some(line) = line.strip_prefix("arm = ") {
+            current_arm = Some(String::from(line));
+        } else if let Some(line) = line.strip_prefix("aarch64 = ") {
+            current_aarch64 = Some(String::from(line));
         } else if line.starts_with("double-suffixes") {
             suffix = Double;
         } else if line.starts_with("no-q") {
@@ -3348,35 +3348,35 @@ mod test {
             suffix = Rot;
         } else if line.starts_with("rot-lane-suffixes") {
             suffix = RotLane;
-        } else if line.starts_with("a = ") {
-            a = line[4..].split(',').map(|v| v.trim().to_string()).collect();
-        } else if line.starts_with("b = ") {
-            b = line[4..].split(',').map(|v| v.trim().to_string()).collect();
-        } else if line.starts_with("c = ") {
-            c = line[4..].split(',').map(|v| v.trim().to_string()).collect();
-        } else if line.starts_with("n = ") {
-            n = Some(String::from(&line[4..]));
-        } else if line.starts_with("fixed = ") {
-            fixed = line[8..].split(',').map(|v| v.trim().to_string()).collect();
-        } else if line.starts_with("validate ") {
-            let e = line[9..].split(',').map(|v| v.trim().to_string()).collect();
+        } else if let Some(line) = line.strip_prefix("a = ") {
+            a = line.split(',').map(|v| v.trim().to_string()).collect();
+        } else if let Some(line) = line.strip_prefix("b = ") {
+            b = line.split(',').map(|v| v.trim().to_string()).collect();
+        } else if let Some(line) = line.strip_prefix("c = ") {
+            c = line.split(',').map(|v| v.trim().to_string()).collect();
+        } else if let Some(line) = line.strip_prefix("n = ") {
+            n = Some(String::from(line));
+        } else if let Some(line) = line.strip_prefix("fixed = ") {
+            fixed = line.split(',').map(|v| v.trim().to_string()).collect();
+        } else if let Some(line) = line.strip_prefix("validate ") {
+            let e = line.split(',').map(|v| v.trim().to_string()).collect();
             current_tests.push((a.clone(), b.clone(), c.clone(), n.clone(), e));
-        } else if line.starts_with("link-aarch64 = ") {
-            link_aarch64 = Some(String::from(&line[15..]));
-        } else if line.starts_with("const-aarch64 = ") {
-            const_aarch64 = Some(String::from(&line[16..]));
-        } else if line.starts_with("link-arm = ") {
-            link_arm = Some(String::from(&line[11..]));
-        } else if line.starts_with("const-arm = ") {
-            const_arm = Some(String::from(&line[12..]));
+        } else if let Some(line) = line.strip_prefix("link-aarch64 = ") {
+            link_aarch64 = Some(String::from(line));
+        } else if let Some(line) = line.strip_prefix("const-aarch64 = ") {
+            const_aarch64 = Some(String::from(line));
+        } else if let Some(line) = line.strip_prefix("link-arm = ") {
+            link_arm = Some(String::from(line));
+        } else if let Some(line) = line.strip_prefix("const-arm = ") {
+            const_arm = Some(String::from(line));
         } else if line.starts_with("load_fn") {
             fn_type = Fntype::Load;
         } else if line.starts_with("store_fn") {
             fn_type = Fntype::Store;
         } else if line.starts_with("arm-aarch64-separate") {
             separate = true;
-        } else if line.starts_with("target = ") {
-            target = match Some(String::from(&line[9..])) {
+        } else if let Some(line) = line.strip_prefix("target = ") {
+            target = match Some(String::from(line)) {
                 Some(input) => match input.as_str() {
                     "v7" => ArmV7,
                     "vfp4" => Vfp4,
@@ -3393,8 +3393,7 @@ mod test {
                 },
                 _ => Default,
             }
-        } else if line.starts_with("generate ") {
-            let line = &line[9..];
+        } else if let Some(line) = line.strip_prefix("generate ") {
             let types: Vec<String> = line
                 .split(',')
                 .map(|v| v.trim().to_string())
