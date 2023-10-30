@@ -1529,8 +1529,6 @@ options! {
     dump_solver_proof_tree: DumpSolverProofTree = (DumpSolverProofTree::Never, parse_dump_solver_proof_tree, [UNTRACKED],
         "dump a proof tree for every goal evaluated by the new trait solver. If the flag is specified without any options after it
         then it defaults to `always`. If the flag is not specified at all it defaults to `on-request`."),
-    dump_solver_proof_tree_use_cache: Option<bool> = (None, parse_opt_bool, [UNTRACKED],
-        "determines whether dumped proof trees use the global cache"),
     dwarf_version: Option<u32> = (None, parse_opt_number, [TRACKED],
         "version of DWARF debug information to emit (default: 2 or 4, depending on platform)"),
     dylib_lto: bool = (false, parse_bool, [UNTRACKED],
