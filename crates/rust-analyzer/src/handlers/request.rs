@@ -2000,7 +2000,7 @@ fn run_rustfmt(
             let workspace = CargoTargetSpec::for_file(&snap, file_id)?;
             let mut cmd = match workspace {
                 Some(spec) => {
-                    // approach: if the command name contains a path seperator, join it with the workspace root.
+                    // approach: if the command name contains a path separator, join it with the workspace root.
                     // however, if the path is absolute, joining will result in the absolute path being preserved.
                     // as a fallback, rely on $PATH-based discovery.
                     let cmd_path =
