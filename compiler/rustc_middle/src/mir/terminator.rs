@@ -250,8 +250,7 @@ impl<O> AssertKind<O> {
                 middle_assert_coroutine_resume_after_return
             }
             ResumedAfterPanic(CoroutineKind::Async(_)) => middle_assert_async_resume_after_panic,
-            // FIXME(gen_blocks): custom error message for `gen` blocks
-            ResumedAfterPanic(CoroutineKind::Gen(_)) => middle_assert_async_resume_after_panic,
+            ResumedAfterPanic(CoroutineKind::Gen(_)) => middle_assert_gen_resume_after_panic,
             ResumedAfterPanic(CoroutineKind::Coroutine) => {
                 middle_assert_coroutine_resume_after_panic
             }
