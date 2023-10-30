@@ -6,11 +6,11 @@
 
 // Check that these function definitions only emit warnings, not errors
 fn arg<T: ?Send>(_: T) {}
-//~^ warning: default bound relaxed for a type parameter, but this does nothing
+//~^ warning: relaxing a default bound only does something for `?Sized`
 fn ref_arg<T: ?Send>(_: &T) {}
-//~^ warning: default bound relaxed for a type parameter, but this does nothing
+//~^ warning: relaxing a default bound only does something for `?Sized`
 fn ret() -> impl Iterator<Item = ()> + ?Send { std::iter::empty() }
-//~^ warning: default bound relaxed for a type parameter, but this does nothing
+//~^ warning: relaxing a default bound only does something for `?Sized`
 
 // Check that there's no `?Sized` relaxation!
 fn main() {

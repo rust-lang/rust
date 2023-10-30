@@ -1,7 +1,7 @@
 error[E0404]: expected trait, found derive macro `Hash`
   --> $DIR/issue-37534.rs:1:16
    |
-LL | struct Foo<T: ?Hash> { }
+LL | struct Foo<T: ?Hash> {}
    |                ^^^^ not a trait
    |
 help: consider importing this trait instead
@@ -9,16 +9,16 @@ help: consider importing this trait instead
 LL + use std::hash::Hash;
    |
 
-warning: default bound relaxed for a type parameter, but this does nothing because the given bound is not a default; only `?Sized` is supported
-  --> $DIR/issue-37534.rs:1:12
+warning: relaxing a default bound only does something for `?Sized`; all other traits are not bound by default
+  --> $DIR/issue-37534.rs:1:15
    |
-LL | struct Foo<T: ?Hash> { }
-   |            ^
+LL | struct Foo<T: ?Hash> {}
+   |               ^^^^^
 
 error[E0392]: parameter `T` is never used
   --> $DIR/issue-37534.rs:1:12
    |
-LL | struct Foo<T: ?Hash> { }
+LL | struct Foo<T: ?Hash> {}
    |            ^ unused parameter
    |
    = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
