@@ -785,7 +785,7 @@ impl<'tcx> TerminatorKind<'tcx> {
             CoroutineDrop => write!(fmt, "coroutine_drop"),
             UnwindResume => write!(fmt, "resume"),
             UnwindTerminate(reason) => {
-                write!(fmt, "abort({})", reason.as_short_str())
+                write!(fmt, "terminate({})", reason.as_short_str())
             }
             Yield { value, resume_arg, .. } => write!(fmt, "{resume_arg:?} = yield({value:?})"),
             Unreachable => write!(fmt, "unreachable"),
