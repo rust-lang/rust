@@ -931,7 +931,7 @@ impl<'p, 'tcx> PatternColumn<'p, 'tcx> {
             let specialized = pat.specialize(pcx, &ctor);
             for (subpat, column) in specialized.iter().zip(&mut specialized_columns) {
                 if subpat.is_or_pat() {
-                    column.patterns.extend(subpat.iter_fields())
+                    column.patterns.extend(subpat.flatten_or_pat())
                 } else {
                     column.patterns.push(subpat)
                 }
