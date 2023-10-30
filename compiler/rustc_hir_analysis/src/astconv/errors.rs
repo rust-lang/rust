@@ -585,9 +585,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
         }
 
-        let names = names
+        let mut names = names
             .into_iter()
-            .map(|(trait_, assocs)| {
+            .map(|(trait_, mut assocs)| {
+                assocs.sort();
                 format!(
                     "{} in `{trait_}`",
                     match &assocs[..] {
@@ -600,8 +601,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     }
                 )
             })
-            .collect::<Vec<String>>()
-            .join(", ");
+            .collect::<Vec<String>>();
+        names.sort();
+        let names = names.join(", ");
 
         trait_bound_spans.sort();
         let mut err = struct_span_err!(
