@@ -46,7 +46,7 @@ pub fn walk_types<'tcx, V: SpannedTypeVisitor<'tcx>>(
                 Some(ty) => ty.span,
                 _ => tcx.def_span(item),
             };
-            visitor.visit(span,  tcx.type_of(item).instantiate_identity());
+            visitor.visit(span, tcx.type_of(item).instantiate_identity());
             for (pred, span) in tcx.predicates_of(item).instantiate_identity(tcx) {
                 visitor.visit(span, pred)?;
             }
@@ -59,7 +59,7 @@ pub fn walk_types<'tcx, V: SpannedTypeVisitor<'tcx>>(
         // Look at field types
         DefKind::Struct | DefKind::Union | DefKind::Enum => {
             let span = tcx.def_ident_span(item).unwrap();
-            visitor.visit(span,  tcx.type_of(item).instantiate_identity());
+            visitor.visit(span, tcx.type_of(item).instantiate_identity());
             for (pred, span) in tcx.predicates_of(item).instantiate_identity(tcx) {
                 visitor.visit(span, pred)?;
             }
@@ -81,7 +81,8 @@ pub fn walk_types<'tcx, V: SpannedTypeVisitor<'tcx>>(
             visitor.visit(span, tcx.type_of(item).instantiate_identity());
             for (pred, span) in tcx.predicates_of(item).instantiate_identity(tcx) {
                 visitor.visit(span, pred)?;
-            }}
+            }
+        }
         DefKind::TraitAlias | DefKind::Trait => {
             for (pred, span) in tcx.predicates_of(item).instantiate_identity(tcx) {
                 visitor.visit(span, pred)?;
