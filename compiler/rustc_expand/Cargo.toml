@@ -8,9 +8,10 @@ build = false
 doctest = false
 
 [dependencies]
+# tidy-alphabetical-start
 crossbeam-channel = "0.5.0"
-rustc_ast_passes = { path = "../rustc_ast_passes" }
 rustc_ast = { path = "../rustc_ast" }
+rustc_ast_passes = { path = "../rustc_ast_passes" }
 rustc_ast_pretty = { path = "../rustc_ast_pretty" }
 rustc_attr = { path = "../rustc_attr" }
 rustc_data_structures = { path = "../rustc_data_structures" }
@@ -25,6 +26,7 @@ rustc_serialize = { path = "../rustc_serialize" }
 rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
 smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
+termcolor = "1.2"
 thin-vec = "0.2.12"
 tracing = "0.1"
-termcolor = "1.2"
+# tidy-alphabetical-end

@@ -3,35 +3,31 @@ name = "rustc_data_structures"
 version = "0.0.0"
 edition = "2021"
 
-[lib]
-
 [dependencies]
+# tidy-alphabetical-start
 arrayvec = { version = "0.7", default-features = false }
 bitflags = "1.2.1"
+elsa = "=1.7.1"
 ena = "0.14.2"
 indexmap = { version = "2.0.0" }
+itertools = "0.10.1"
 jobserver_crate = { version = "0.1.13", package = "jobserver" }
 libc = "0.2"
 measureme = "10.0.0"
-rustc-rayon-core = { version = "0.5.0", optional = true }
+rustc-hash = "1.1.0"
 rustc-rayon = { version = "0.5.0", optional = true }
+rustc-rayon-core = { version = "0.5.0", optional = true }
 rustc_arena = { path = "../rustc_arena" }
 rustc_graphviz = { path = "../rustc_graphviz" }
-rustc-hash = "1.1.0"
 rustc_index = { path = "../rustc_index", package = "rustc_index" }
 rustc_macros = { path = "../rustc_macros" }
 rustc_serialize = { path = "../rustc_serialize" }
-smallvec = { version = "1.8.1", features = [
-    "const_generics",
-    "union",
-    "may_dangle",
-] }
+smallvec = { version = "1.8.1", features = ["const_generics", "union", "may_dangle"] }
 stacker = "0.1.15"
 tempfile = "3.2"
 thin-vec = "0.2.12"
 tracing = "0.1"
-elsa = "=1.7.1"
-itertools = "0.10.1"
+# tidy-alphabetical-end
 
 [dependencies.parking_lot]
 version = "0.12"
@@ -47,7 +43,11 @@ features = [
 ]
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+# tidy-alphabetical-start
 memmap2 = "0.2.1"
+# tidy-alphabetical-end
 
 [features]
+# tidy-alphabetical-start
 rustc_use_parallel_compiler = ["indexmap/rustc-rayon", "rustc-rayon", "rustc-rayon-core"]
+# tidy-alphabetical-end

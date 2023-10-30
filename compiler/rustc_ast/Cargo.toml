@@ -3,9 +3,8 @@ name = "rustc_ast"
 version = "0.0.0"
 edition = "2021"
 
-[lib]
-
 [dependencies]
+# tidy-alphabetical-start
 bitflags = "1.2.1"
 memchr = "2.5.0"
 rustc_data_structures = { path = "../rustc_data_structures" }
@@ -14,8 +13,9 @@ rustc_lexer = { path = "../rustc_lexer" }
 rustc_macros = { path = "../rustc_macros" }
 rustc_serialize = { path = "../rustc_serialize" }
 rustc_span = { path = "../rustc_span" }
-# depends on Mutability and Movability, which could be uplifted into a common crate.
+# For Mutability and Movability, which could be uplifted into a common crate.
 rustc_type_ir = { path = "../rustc_type_ir" }
 smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
 thin-vec = "0.2.12"
 tracing = "0.1"
+# tidy-alphabetical-end

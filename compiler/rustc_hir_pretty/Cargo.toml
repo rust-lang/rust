@@ -3,11 +3,11 @@ name = "rustc_hir_pretty"
 version = "0.0.0"
 edition = "2021"
 
-[lib]
-
 [dependencies]
+# tidy-alphabetical-start
+rustc_ast = { path = "../rustc_ast" }
 rustc_ast_pretty = { path = "../rustc_ast_pretty" }
 rustc_hir = { path = "../rustc_hir" }
-rustc_target = { path = "../rustc_target" }
 rustc_span = { path = "../rustc_span" }
-rustc_ast = { path = "../rustc_ast" }
+rustc_target = { path = "../rustc_target" }
+# tidy-alphabetical-end

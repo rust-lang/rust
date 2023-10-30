@@ -4,43 +4,46 @@ version = "0.0.0"
 edition = "2021"
 
 [dependencies]
+# tidy-alphabetical-start
 ar_archive_writer = "0.1.5"
 bitflags = "1.2.1"
 cc = "1.0.69"
 itertools = "0.10.1"
-tracing = "0.1"
 jobserver = "0.1.22"
-tempfile = "3.2"
-thorin-dwp = "0.7"
 pathdiff = "0.2.0"
-serde_json = "1.0.59"
-smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
 regex = "1.4"
-thin-vec = "0.2.12"
-
-rustc_serialize = { path = "../rustc_serialize" }
 rustc_arena = { path = "../rustc_arena" }
 rustc_ast = { path = "../rustc_ast" }
-rustc_span = { path = "../rustc_span" }
-rustc_middle = { path = "../rustc_middle" }
-rustc_type_ir = { path = "../rustc_type_ir" }
 rustc_attr = { path = "../rustc_attr" }
-rustc_fluent_macro = { path = "../rustc_fluent_macro" }
-rustc_symbol_mangling = { path = "../rustc_symbol_mangling" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_errors = { path = "../rustc_errors" }
+rustc_fluent_macro = { path = "../rustc_fluent_macro" }
 rustc_fs_util = { path = "../rustc_fs_util" }
 rustc_hir = { path = "../rustc_hir" }
 rustc_incremental = { path = "../rustc_incremental" }
 rustc_index = { path = "../rustc_index" }
 rustc_macros = { path = "../rustc_macros" }
 rustc_metadata = { path = "../rustc_metadata" }
+rustc_middle = { path = "../rustc_middle" }
 rustc_query_system = { path = "../rustc_query_system" }
-rustc_target = { path = "../rustc_target" }
+rustc_serialize = { path = "../rustc_serialize" }
 rustc_session = { path = "../rustc_session" }
+rustc_span = { path = "../rustc_span" }
+rustc_symbol_mangling = { path = "../rustc_symbol_mangling" }
+rustc_target = { path = "../rustc_target" }
+rustc_type_ir = { path = "../rustc_type_ir" }
+serde_json = "1.0.59"
+smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
+tempfile = "3.2"
+thin-vec = "0.2.12"
+thorin-dwp = "0.7"
+tracing = "0.1"
+# tidy-alphabetical-end
 
 [target.'cfg(unix)'.dependencies]
+# tidy-alphabetical-start
 libc = "0.2.50"
+# tidy-alphabetical-end
 
 [dependencies.object]
 version = "0.32.0"
