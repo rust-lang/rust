@@ -211,16 +211,6 @@ impl<'tcx> ConstToPat<'tcx> {
                 } else if !self.saw_const_match_lint.get() {
                     if let Some(mir_structural_match_violation) = mir_structural_match_violation {
                         match non_sm_ty.kind() {
-                            ty::RawPtr(pointee)
-                                if pointee.ty.is_sized(self.tcx(), self.param_env) => {}
-                            ty::FnPtr(..) | ty::RawPtr(..) => {
-                                self.tcx().emit_spanned_lint(
-                                    lint::builtin::POINTER_STRUCTURAL_MATCH,
-                                    self.id,
-                                    self.span,
-                                    PointerPattern,
-                                );
-                            }
                             ty::Adt(..) if mir_structural_match_violation => {
                                 self.tcx().emit_spanned_lint(
                                     lint::builtin::INDIRECT_STRUCTURAL_MATCH,
