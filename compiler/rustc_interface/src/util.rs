@@ -36,11 +36,7 @@ pub type MakeBackendFn = fn() -> Box<dyn CodegenBackend>;
 ///
 /// This is performed by checking whether a set of permitted features
 /// is available on the target machine, by querying the codegen backend.
-pub fn add_configuration(
-    cfg: &mut Cfg<Symbol>,
-    sess: &mut Session,
-    codegen_backend: &dyn CodegenBackend,
-) {
+pub fn add_configuration(cfg: &mut Cfg, sess: &mut Session, codegen_backend: &dyn CodegenBackend) {
     let tf = sym::target_feature;
 
     let unstable_target_features = codegen_backend.target_features(sess, true);
@@ -59,8 +55,8 @@ pub fn add_configuration(
 pub fn create_session(
     handler: &EarlyErrorHandler,
     sopts: config::Options,
-    cfg: Cfg<Symbol>,
-    mut check_cfg: CheckCfg<Symbol>,
+    cfg: Cfg,
+    mut check_cfg: CheckCfg,
     locale_resources: &'static [&'static str],
     file_loader: Option<Box<dyn FileLoader + Send + Sync + 'static>>,
     io: CompilerIO,

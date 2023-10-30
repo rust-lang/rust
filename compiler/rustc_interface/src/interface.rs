@@ -24,7 +24,6 @@ use rustc_session::Session;
 use rustc_session::{lint, EarlyErrorHandler};
 use rustc_span::source_map::{FileLoader, FileName};
 use rustc_span::symbol::sym;
-use rustc_span::Symbol;
 use std::path::PathBuf;
 use std::result;
 use std::sync::Arc;
@@ -65,7 +64,7 @@ impl Compiler {
 }
 
 /// Converts strings provided as `--cfg [cfgspec]` into a `Cfg`.
-pub(crate) fn parse_cfg(handler: &EarlyErrorHandler, cfgs: Vec<String>) -> Cfg<Symbol> {
+pub(crate) fn parse_cfg(handler: &EarlyErrorHandler, cfgs: Vec<String>) -> Cfg {
     cfgs.into_iter()
         .map(|s| {
             let sess = ParseSess::with_silent_emitter(Some(format!(
@@ -116,11 +115,11 @@ pub(crate) fn parse_cfg(handler: &EarlyErrorHandler, cfgs: Vec<String>) -> Cfg<S
                 error!(r#"expected `key` or `key="value"`"#);
             }
         })
-        .collect::<Cfg<Symbol>>()
+        .collect::<Cfg>()
 }
 
 /// Converts strings provided as `--check-cfg [specs]` into a `CheckCfg`.
-pub(crate) fn parse_check_cfg(handler: &EarlyErrorHandler, specs: Vec<String>) -> CheckCfg<Symbol> {
+pub(crate) fn parse_check_cfg(handler: &EarlyErrorHandler, specs: Vec<String>) -> CheckCfg {
     // If any --check-cfg is passed then exhaustive_values and exhaustive_names
     // are enabled by default.
     let exhaustive_names = !specs.is_empty();

@@ -26,8 +26,7 @@ use rustc_session::{build_session, getopts, Session};
 use rustc_session::{CompilerIO, EarlyErrorHandler};
 use rustc_span::edition::{Edition, DEFAULT_EDITION};
 use rustc_span::symbol::sym;
-use rustc_span::SourceFileHashAlgorithm;
-use rustc_span::{FileName, Symbol};
+use rustc_span::{FileName, SourceFileHashAlgorithm};
 use rustc_target::spec::{CodeModel, LinkerFlavorCli, MergeFunctions, PanicStrategy, RelocModel};
 use rustc_target::spec::{RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, TlsModel};
 use std::collections::{BTreeMap, BTreeSet};
@@ -35,10 +34,7 @@ use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-fn mk_session(
-    handler: &mut EarlyErrorHandler,
-    matches: getopts::Matches,
-) -> (Session, Cfg<Symbol>) {
+fn mk_session(handler: &mut EarlyErrorHandler, matches: getopts::Matches) -> (Session, Cfg) {
     let registry = registry::Registry::new(&[]);
     let sessopts = build_session_options(handler, &matches);
     let cfg = parse_cfg(handler, matches.opt_strs("cfg"));
