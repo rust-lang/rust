@@ -250,13 +250,12 @@ impl<'a> MakeBcbCounters<'a> {
     fn make_branch_counters(
         &mut self,
         traversal: &TraverseCoverageGraphWithLoops<'_>,
-        branching_bcb: BasicCoverageBlock,
+        from_bcb: BasicCoverageBlock,
         branching_counter_operand: CovTerm,
     ) {
-        let branches = self.bcb_branches(branching_bcb);
+        let branches = self.bcb_branches(from_bcb);
         debug!(
-            "{:?} has some branch(es) without counters:\n  {}",
-            branching_bcb,
+            "{from_bcb:?} has some branch(es) without counters:\n  {}",
             branches
                 .iter()
                 .map(|branch| { format!("{:?}: {:?}", branch, self.branch_counter(branch)) })
@@ -281,14 +280,13 @@ impl<'a> MakeBcbCounters<'a> {
             if branch != expression_branch {
                 let branch_counter_operand = if branch.is_only_path_to_target() {
                     debug!(
-                        "  {:?} has only one incoming edge (from {:?}), so adding a \
-                        counter",
-                        branch, branching_bcb
+                        "  {branch:?} has only one incoming edge (from {from_bcb:?}), \
+                        so adding a counter",
                     );
                     self.get_or_make_counter_operand(branch.target_bcb)
                 } else {
                     debug!("  {:?} has multiple incoming edges, so adding an edge counter", branch);
-                    self.get_or_make_edge_counter_operand(branching_bcb, branch.target_bcb)
+                    self.get_or_make_edge_counter_operand(from_bcb, branch.target_bcb)
                 };
                 if let Some(sumup_counter_operand) =
                     some_sumup_counter_operand.replace(branch_counter_operand)
@@ -325,7 +323,7 @@ impl<'a> MakeBcbCounters<'a> {
         if expression_branch.is_only_path_to_target() {
             self.coverage_counters.set_bcb_counter(bcb, expression);
         } else {
-            self.coverage_counters.set_bcb_edge_counter(branching_bcb, bcb, expression);
+            self.coverage_counters.set_bcb_edge_counter(from_bcb, bcb, expression);
         }
     }
 
