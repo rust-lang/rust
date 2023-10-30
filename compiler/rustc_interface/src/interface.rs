@@ -64,7 +64,7 @@ impl Compiler {
 }
 
 /// Converts strings provided as `--cfg [cfgspec]` into a `Cfg`.
-pub fn parse_cfg(handler: &EarlyErrorHandler, cfgs: Vec<String>) -> Cfg<String> {
+pub(crate) fn parse_cfg(handler: &EarlyErrorHandler, cfgs: Vec<String>) -> Cfg<String> {
     cfgs.into_iter()
         .map(|s| {
             let sess = ParseSess::with_silent_emitter(Some(format!(
@@ -122,7 +122,7 @@ pub fn parse_cfg(handler: &EarlyErrorHandler, cfgs: Vec<String>) -> Cfg<String> 
 }
 
 /// Converts strings provided as `--check-cfg [specs]` into a `CheckCfg`.
-pub fn parse_check_cfg(handler: &EarlyErrorHandler, specs: Vec<String>) -> CheckCfg<String> {
+pub(crate) fn parse_check_cfg(handler: &EarlyErrorHandler, specs: Vec<String>) -> CheckCfg<String> {
     // If any --check-cfg is passed then exhaustive_values and exhaustive_names
     // are enabled by default.
     let exhaustive_names = !specs.is_empty();
