@@ -744,6 +744,22 @@ pub enum DeprecatedSince {
     Symbol(Symbol),
 }
 
+impl Deprecation {
+    /// Whether an item marked with #[deprecated(since = "X")] is currently
+    /// deprecated (i.e., whether X is not greater than the current rustc
+    /// version).
+    pub fn is_in_effect(&self) -> bool {
+        match self.since {
+            Some(DeprecatedSince::RustcVersion(since)) => since <= RustcVersion::CURRENT,
+            Some(DeprecatedSince::Future) => false,
+            // The `since` field doesn't have semantic purpose without `#![staged_api]`.
+            Some(DeprecatedSince::Symbol(_)) => true,
+            // Assume deprecation is in effect if "since" field is missing.
+            None => true,
+        }
+    }
+}
+
 impl Display for DeprecatedSince {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {

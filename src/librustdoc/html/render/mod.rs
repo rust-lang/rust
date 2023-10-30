@@ -53,7 +53,6 @@ use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_hir::Mutability;
-use rustc_middle::middle::stability;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::RustcVersion;
 use rustc_span::{
@@ -621,7 +620,7 @@ fn short_item_info(
         // We display deprecation messages for #[deprecated], but only display
         // the future-deprecation messages for rustc versions.
         let mut message = if let Some(since) = since {
-            if !stability::deprecation_in_effect(&depr) {
+            if !depr.is_in_effect() {
                 if let DeprecatedSince::Future = since {
                     String::from("Deprecating in a future Rust version")
                 } else {

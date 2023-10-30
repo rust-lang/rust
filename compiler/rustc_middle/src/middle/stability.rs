@@ -18,7 +18,7 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_session::lint::builtin::{DEPRECATED, DEPRECATED_IN_FUTURE, SOFT_UNSTABLE};
 use rustc_session::lint::{BuiltinLintDiagnostics, Level, Lint, LintBuffer};
 use rustc_session::parse::feature_err_issue;
-use rustc_session::{RustcVersion, Session};
+use rustc_session::Session;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 use std::num::NonZeroU32;
@@ -125,19 +125,6 @@ pub fn report_unstable(
     }
 }
 
-/// Checks whether an item marked with `deprecated(since="X")` is currently
-/// deprecated (i.e., whether X is not greater than the current rustc version).
-pub fn deprecation_in_effect(depr: &Deprecation) -> bool {
-    match depr.since {
-        Some(DeprecatedSince::RustcVersion(since)) => since <= RustcVersion::CURRENT,
-        Some(DeprecatedSince::Future) => false,
-        // The `since` field doesn't have semantic purpose without `#![staged_api]`.
-        Some(DeprecatedSince::Symbol(_)) => true,
-        // Assume deprecation is in effect if "since" field is missing.
-        None => true,
-    }
-}
-
 pub fn deprecation_suggestion(
     diag: &mut Diagnostic,
     kind: &str,
@@ -191,7 +178,7 @@ pub fn deprecation_message_and_lint(
     kind: &str,
     path: &str,
 ) -> (String, &'static Lint) {
-    let is_in_effect = deprecation_in_effect(depr);
+    let is_in_effect = depr.is_in_effect();
     (
         deprecation_message(is_in_effect, depr.since, depr.note, kind, path),
         deprecation_lint(is_in_effect),
@@ -363,7 +350,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     // Calculating message for lint involves calling `self.def_path_str`.
                     // Which by default to calculate visible path will invoke expensive `visible_parent_map` query.
                     // So we skip message calculation altogether, if lint is allowed.
-                    let is_in_effect = deprecation_in_effect(depr_attr);
+                    let is_in_effect = depr_attr.is_in_effect();
                     let lint = deprecation_lint(is_in_effect);
                     if self.lint_level_at_node(lint, id).0 != Level::Allow {
                         let def_path = with_no_trimmed_paths!(self.def_path_str(def_id));

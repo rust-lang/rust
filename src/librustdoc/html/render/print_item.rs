@@ -6,7 +6,6 @@ use rustc_hir as hir;
 use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::DefId;
 use rustc_index::IndexVec;
-use rustc_middle::middle::stability;
 use rustc_middle::query::Key;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::hygiene::MacroKind;
@@ -591,11 +590,7 @@ fn extra_info_tags<'a, 'tcx: 'a>(
 
         // The trailing space after each tag is to space it properly against the rest of the docs.
         if let Some(depr) = &item.deprecation(tcx) {
-            let message = if stability::deprecation_in_effect(depr) {
-                "Deprecated"
-            } else {
-                "Deprecation planned"
-            };
+            let message = if depr.is_in_effect() { "Deprecated" } else { "Deprecation planned" };
             write!(f, "{}", tag_html("deprecated", "", message))?;
         }
 
