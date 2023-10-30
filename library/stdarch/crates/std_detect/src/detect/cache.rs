@@ -29,15 +29,10 @@ const fn unset_bit(x: u64, bit: u32) -> u64 {
 const CACHE_CAPACITY: u32 = 62;
 
 /// This type is used to initialize the cache
-#[derive(Copy, Clone)]
+// The derived `Default` implementation will initialize the field to zero,
+// which is what we want.
+#[derive(Copy, Clone, Default)]
 pub(crate) struct Initializer(u64);
-
-#[allow(clippy::use_self)]
-impl Default for Initializer {
-    fn default() -> Self {
-        Initializer(0)
-    }
-}
 
 // NOTE: the `debug_assert!` would catch that we do not add more Features than
 // the one fitting our cache.
