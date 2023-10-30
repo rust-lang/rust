@@ -778,12 +778,15 @@ passes_unused_var_maybe_capture_ref = unused variable: `{$name}`
 passes_unused_var_remove_field = unused variable: `{$name}`
 passes_unused_var_remove_field_suggestion = try removing the field
 
+passes_unused_variable_args_in_macro = `{$name}` is captured in macro and introduced a unused variable
+
 passes_unused_variable_try_ignore = unused variable: `{$name}`
     .suggestion = try ignoring the field
 
 passes_unused_variable_try_prefix = unused variable: `{$name}`
     .label = unused variable
     .suggestion = if this is intentional, prefix it with an underscore
+
 
 passes_used_compiler_linker =
     `used(compiler)` and `used(linker)` can't be used together

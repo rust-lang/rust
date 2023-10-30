@@ -1580,7 +1580,6 @@ impl<'tcx> Liveness<'_, 'tcx> {
         opt_body: Option<&hir::Body<'_>>,
     ) {
         let first_hir_id = hir_ids_and_spans[0].0;
-
         if let Some(name) = self.should_warn(var).filter(|name| name != "self") {
             // annoying: for parameters in funcs like `fn(x: i32)
             // {ret}`, there is only one node, so asking about
@@ -1652,11 +1651,29 @@ impl<'tcx> Liveness<'_, 'tcx> {
                         },
                     );
                 } else {
+                    // #117284, when `pat_span` and `ident_span` have different contexts
+                    // we can't provide a good suggestion, instead we pointed out the spans from macro
+                    let from_macro = non_shorthands
+                        .iter()
+                        .find(|(_, pat_span, ident_span)| {
+                            pat_span.ctxt() != ident_span.ctxt() && pat_span.from_expansion()
+                        })
+                        .map(|(_, pat_span, _)| *pat_span);
                     let non_shorthands = non_shorthands
                         .into_iter()
                         .map(|(_, _, ident_span)| ident_span)
                         .collect::<Vec<_>>();
+
                     let suggestions = self.string_interp_suggestions(&name, opt_body);
+                    let sugg = if let Some(span) = from_macro {
+                        errors::UnusedVariableSugg::NoSugg { span, name: name.clone() }
+                    } else {
+                        errors::UnusedVariableSugg::TryPrefixSugg {
+                            spans: non_shorthands,
+                            name: name.clone(),
+                        }
+                    };
+
                     self.ir.tcx.emit_spanned_lint(
                         lint::builtin::UNUSED_VARIABLES,
                         first_hir_id,
@@ -1666,10 +1683,8 @@ impl<'tcx> Liveness<'_, 'tcx> {
                             .collect::<Vec<_>>(),
                         errors::UnusedVariableTryPrefix {
                             label: if !suggestions.is_empty() { Some(pat.span) } else { None },
-                            sugg: errors::UnusedVariableTryPrefixSugg {
-                                spans: non_shorthands,
-                                name,
-                            },
+                            name,
+                            sugg,
                             string_interp: suggestions,
                         },
                     );
