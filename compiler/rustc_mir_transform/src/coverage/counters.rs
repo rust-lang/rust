@@ -226,9 +226,7 @@ impl<'a> MakeBcbCounters<'a> {
         while let Some(bcb) = traversal.next() {
             if bcb_has_coverage_spans(bcb) {
                 debug!("{:?} has at least one coverage span. Get or make its counter", bcb);
-                let branching_counter_operand = self.get_or_make_counter_operand(bcb);
-
-                self.make_branch_counters(&traversal, bcb, branching_counter_operand);
+                self.make_node_and_branch_counters(&traversal, bcb);
             } else {
                 debug!(
                     "{:?} does not have any coverage spans. A counter will only be added if \
@@ -245,12 +243,15 @@ impl<'a> MakeBcbCounters<'a> {
         );
     }
 
-    fn make_branch_counters(
+    fn make_node_and_branch_counters(
         &mut self,
         traversal: &TraverseCoverageGraphWithLoops<'_>,
         from_bcb: BasicCoverageBlock,
-        branching_counter_operand: CovTerm,
     ) {
+        // First, ensure that this node has a counter of some kind.
+        // We might also use its term later to compute one of the branch counters.
+        let from_bcb_operand = self.get_or_make_counter_operand(from_bcb);
+
         let branches = self.bcb_branches(from_bcb);
 
         // If this node doesn't have multiple out-edges, or all of its out-edges
@@ -321,7 +322,7 @@ impl<'a> MakeBcbCounters<'a> {
             self.bcb_predecessors(expression_branch.target_bcb),
         );
         let expression = self.coverage_counters.make_expression(
-            branching_counter_operand,
+            from_bcb_operand,
             Op::Subtract,
             sumup_counter_operand,
         );
