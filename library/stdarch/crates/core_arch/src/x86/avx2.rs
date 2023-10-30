@@ -4211,16 +4211,16 @@ mod tests {
 
     #[simd_test(enable = "avx2")]
     unsafe fn test_mm_broadcastsd_pd() {
-        let a = _mm_setr_pd(6.28, 3.14);
+        let a = _mm_setr_pd(6.88, 3.44);
         let res = _mm_broadcastsd_pd(a);
-        assert_eq_m128d(res, _mm_set1_pd(6.28f64));
+        assert_eq_m128d(res, _mm_set1_pd(6.88));
     }
 
     #[simd_test(enable = "avx2")]
     unsafe fn test_mm256_broadcastsd_pd() {
-        let a = _mm_setr_pd(6.28, 3.14);
+        let a = _mm_setr_pd(6.88, 3.44);
         let res = _mm256_broadcastsd_pd(a);
-        assert_eq_m256d(res, _mm256_set1_pd(6.28f64));
+        assert_eq_m256d(res, _mm256_set1_pd(6.88f64));
     }
 
     #[simd_test(enable = "avx2")]
@@ -4238,16 +4238,16 @@ mod tests {
 
     #[simd_test(enable = "avx2")]
     unsafe fn test_mm_broadcastss_ps() {
-        let a = _mm_setr_ps(6.28, 3.14, 0.0, 0.0);
+        let a = _mm_setr_ps(6.88, 3.44, 0.0, 0.0);
         let res = _mm_broadcastss_ps(a);
-        assert_eq_m128(res, _mm_set1_ps(6.28f32));
+        assert_eq_m128(res, _mm_set1_ps(6.88));
     }
 
     #[simd_test(enable = "avx2")]
     unsafe fn test_mm256_broadcastss_ps() {
-        let a = _mm_setr_ps(6.28, 3.14, 0.0, 0.0);
+        let a = _mm_setr_ps(6.88, 3.44, 0.0, 0.0);
         let res = _mm256_broadcastss_ps(a);
-        assert_eq_m256(res, _mm256_set1_ps(6.28f32));
+        assert_eq_m256(res, _mm256_set1_ps(6.88));
     }
 
     #[simd_test(enable = "avx2")]
