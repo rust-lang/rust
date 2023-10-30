@@ -3,6 +3,7 @@ use std::fmt::{self, Debug, Display, Formatter};
 use rustc_hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir};
+use rustc_session::RemapFileNameExt;
 use rustc_span::Span;
 use rustc_target::abi::{HasDataLayout, Size};
 
@@ -577,5 +578,22 @@ impl<'tcx> Display for Const<'tcx> {
                 Ok(())
             }
         }
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////
+/// Const-related utilities
+
+impl<'tcx> TyCtxt<'tcx> {
+    pub fn span_as_caller_location(self, span: Span) -> ConstValue<'tcx> {
+        let topmost = span.ctxt().outer_expn().expansion_cause().unwrap_or(span);
+        let caller = self.sess.source_map().lookup_char_pos(topmost.lo());
+        self.const_caller_location((
+            rustc_span::symbol::Symbol::intern(
+                &caller.file.name.for_codegen(&self.sess).to_string_lossy(),
+            ),
+            caller.line as u32,
+            caller.col_display as u32 + 1,
+        ))
     }
 }

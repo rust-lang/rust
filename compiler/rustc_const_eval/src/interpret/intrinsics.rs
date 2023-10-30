@@ -22,8 +22,6 @@ use super::{
 
 use crate::fluent_generated as fluent;
 
-mod caller_location;
-
 fn numeric_intrinsic<Prov>(name: Symbol, bits: u128, kind: Primitive) -> Scalar<Prov> {
     let size = match kind {
         Primitive::Int(integer, _) => integer.size(),
@@ -130,8 +128,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         match intrinsic_name {
             sym::caller_location => {
                 let span = self.find_closest_untracked_caller_location();
-                let location = self.alloc_caller_location_for_span(span);
-                self.write_immediate(location.to_ref(self), dest)?;
+                let val = self.tcx.span_as_caller_location(span);
+                let val =
+                    self.const_val_to_op(val, self.tcx.caller_location_ty(), Some(dest.layout))?;
+                self.copy_op(&val, dest, /* allow_transmute */ false)?;
             }
 
             sym::min_align_of_val | sym::size_of_val => {
