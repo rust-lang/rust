@@ -118,6 +118,8 @@ use self::RegionKind::*;
 /// [1]: https://smallcultfollowing.com/babysteps/blog/2013/10/29/intermingled-parameter-lists/
 /// [2]: https://smallcultfollowing.com/babysteps/blog/2013/11/04/intermingled-parameter-lists/
 /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/hrtb.html
+#[derive(derivative::Derivative)]
+#[derivative(Clone(bound = ""))]
 pub enum RegionKind<I: Interner> {
     /// Region bound in a type or fn declaration which will be
     /// substituted 'early' -- that is, at the same time when type
@@ -176,22 +178,6 @@ where
     I::PlaceholderRegion: Copy,
     I::ErrorGuaranteed: Copy,
 {
-}
-
-// This is manually implemented because a derive would require `I: Clone`
-impl<I: Interner> Clone for RegionKind<I> {
-    fn clone(&self) -> Self {
-        match self {
-            ReEarlyBound(r) => ReEarlyBound(r.clone()),
-            ReLateBound(d, r) => ReLateBound(*d, r.clone()),
-            ReFree(r) => ReFree(r.clone()),
-            ReStatic => ReStatic,
-            ReVar(r) => ReVar(r.clone()),
-            RePlaceholder(r) => RePlaceholder(r.clone()),
-            ReErased => ReErased,
-            ReError(r) => ReError(r.clone()),
-        }
-    }
 }
 
 // This is manually implemented because a derive would require `I: PartialEq`

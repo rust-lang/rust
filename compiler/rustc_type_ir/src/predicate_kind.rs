@@ -12,6 +12,8 @@ use crate::{TyDecoder, TyEncoder};
 
 /// A clause is something that can appear in where bounds or be inferred
 /// by implied bounds.
+#[derive(derivative::Derivative)]
+#[derivative(Clone(bound = ""))]
 pub enum ClauseKind<I: Interner> {
     /// Corresponds to `where Foo: Bar<A, B, C>`. `Foo` here would be
     /// the `Self` type of the trait reference and `A`, `B`, and `C`
@@ -37,20 +39,6 @@ pub enum ClauseKind<I: Interner> {
 
     /// Constant initializer must evaluate successfully.
     ConstEvaluatable(I::Const),
-}
-
-impl<I: Interner> Clone for ClauseKind<I> {
-    fn clone(&self) -> Self {
-        match self {
-            Self::Trait(arg0) => Self::Trait(arg0.clone()),
-            Self::RegionOutlives(arg0) => Self::RegionOutlives(arg0.clone()),
-            Self::TypeOutlives(arg0) => Self::TypeOutlives(arg0.clone()),
-            Self::Projection(arg0) => Self::Projection(arg0.clone()),
-            Self::ConstArgHasType(arg0, arg1) => Self::ConstArgHasType(arg0.clone(), arg1.clone()),
-            Self::WellFormed(arg0) => Self::WellFormed(arg0.clone()),
-            Self::ConstEvaluatable(arg0) => Self::ConstEvaluatable(arg0.clone()),
-        }
-    }
 }
 
 impl<I: Interner> Copy for ClauseKind<I>
@@ -249,6 +237,8 @@ where
     }
 }
 
+#[derive(derivative::Derivative)]
+#[derivative(Clone(bound = ""))]
 pub enum PredicateKind<I: Interner> {
     /// Prove a clause
     Clause(ClauseKind<I>),
@@ -303,25 +293,6 @@ where
     I::ClosureKind: Copy,
     ClauseKind<I>: Copy,
 {
-}
-
-impl<I: Interner> Clone for PredicateKind<I> {
-    fn clone(&self) -> Self {
-        match self {
-            Self::Clause(arg0) => Self::Clause(arg0.clone()),
-            Self::ObjectSafe(arg0) => Self::ObjectSafe(arg0.clone()),
-            Self::ClosureKind(arg0, arg1, arg2) => {
-                Self::ClosureKind(arg0.clone(), arg1.clone(), arg2.clone())
-            }
-            Self::Subtype(arg0) => Self::Subtype(arg0.clone()),
-            Self::Coerce(arg0) => Self::Coerce(arg0.clone()),
-            Self::ConstEquate(arg0, arg1) => Self::ConstEquate(arg0.clone(), arg1.clone()),
-            Self::Ambiguous => Self::Ambiguous,
-            Self::AliasRelate(arg0, arg1, arg2) => {
-                Self::AliasRelate(arg0.clone(), arg1.clone(), arg2.clone())
-            }
-        }
-    }
 }
 
 impl<I: Interner> PartialEq for PredicateKind<I> {

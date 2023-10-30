@@ -13,6 +13,8 @@ use crate::{HashStableContext, Interner, TyEncoder, UniverseIndex};
 /// A "canonicalized" type `V` is one where all free inference
 /// variables have been rewritten to "canonical vars". These are
 /// numbered starting from 0 in order of first appearance.
+#[derive(derivative::Derivative)]
+#[derivative(Clone(bound = "V: Clone"))]
 pub struct Canonical<I: Interner, V> {
     pub value: V,
     pub max_universe: UniverseIndex,
@@ -105,16 +107,6 @@ impl<I: Interner, V: fmt::Debug> fmt::Debug for Canonical<I, V> {
             .field("max_universe", &self.max_universe)
             .field("variables", &self.variables)
             .finish()
-    }
-}
-
-impl<I: Interner, V: Clone> Clone for Canonical<I, V> {
-    fn clone(&self) -> Self {
-        Canonical {
-            value: self.value.clone(),
-            max_universe: self.max_universe.clone(),
-            variables: self.variables.clone(),
-        }
     }
 }
 

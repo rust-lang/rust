@@ -13,7 +13,8 @@ use crate::{
 use self::ConstKind::*;
 
 /// Represents a constant in Rust.
-// #[derive(derive_more::From)]
+#[derive(derivative::Derivative)]
+#[derivative(Clone(bound = ""))]
 pub enum ConstKind<I: Interner> {
     /// A const generic parameter.
     Param(I::ParamConst),
@@ -210,21 +211,6 @@ impl<I: Interner> PartialEq for ConstKind<I> {
 }
 
 impl<I: Interner> Eq for ConstKind<I> {}
-
-impl<I: Interner> Clone for ConstKind<I> {
-    fn clone(&self) -> Self {
-        match self {
-            Param(arg0) => Param(arg0.clone()),
-            Infer(arg0) => Infer(arg0.clone()),
-            Bound(arg0, arg1) => Bound(arg0.clone(), arg1.clone()),
-            Placeholder(arg0) => Placeholder(arg0.clone()),
-            Unevaluated(arg0) => Unevaluated(arg0.clone()),
-            Value(arg0) => Value(arg0.clone()),
-            Error(arg0) => Error(arg0.clone()),
-            Expr(arg0) => Expr(arg0.clone()),
-        }
-    }
-}
 
 impl<I: Interner> fmt::Debug for ConstKind<I> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

@@ -114,6 +114,8 @@ pub enum AliasKind {
 /// Types written by the user start out as `hir::TyKind` and get
 /// converted to this representation using `AstConv::ast_ty_to_ty`.
 #[rustc_diagnostic_item = "IrTyKind"]
+#[derive(derivative::Derivative)]
+#[derivative(Clone(bound = ""))]
 pub enum TyKind<I: Interner> {
     /// The primitive boolean type. Written as `bool`.
     Bool,
@@ -321,40 +323,6 @@ const fn tykind_discriminant<I: Interner>(value: &TyKind<I>) -> usize {
         Placeholder(_) => 23,
         Infer(_) => 24,
         Error(_) => 25,
-    }
-}
-
-// This is manually implemented because a derive would require `I: Clone`
-impl<I: Interner> Clone for TyKind<I> {
-    fn clone(&self) -> Self {
-        match self {
-            Bool => Bool,
-            Char => Char,
-            Int(i) => Int(*i),
-            Uint(u) => Uint(*u),
-            Float(f) => Float(*f),
-            Adt(d, s) => Adt(d.clone(), s.clone()),
-            Foreign(d) => Foreign(d.clone()),
-            Str => Str,
-            Array(t, c) => Array(t.clone(), c.clone()),
-            Slice(t) => Slice(t.clone()),
-            RawPtr(p) => RawPtr(p.clone()),
-            Ref(r, t, m) => Ref(r.clone(), t.clone(), m.clone()),
-            FnDef(d, s) => FnDef(d.clone(), s.clone()),
-            FnPtr(s) => FnPtr(s.clone()),
-            Dynamic(p, r, repr) => Dynamic(p.clone(), r.clone(), *repr),
-            Closure(d, s) => Closure(d.clone(), s.clone()),
-            Coroutine(d, s, m) => Coroutine(d.clone(), s.clone(), m.clone()),
-            CoroutineWitness(d, s) => CoroutineWitness(d.clone(), s.clone()),
-            Never => Never,
-            Tuple(t) => Tuple(t.clone()),
-            Alias(k, p) => Alias(*k, p.clone()),
-            Param(p) => Param(p.clone()),
-            Bound(d, b) => Bound(*d, b.clone()),
-            Placeholder(p) => Placeholder(p.clone()),
-            Infer(t) => Infer(t.clone()),
-            Error(e) => Error(e.clone()),
-        }
     }
 }
 
@@ -614,6 +582,7 @@ impl<I: Interner> DebugWithInfcx<I> for TyKind<I> {
         }
     }
 }
+
 // This is manually implemented because a derive would require `I: Debug`
 impl<I: Interner> fmt::Debug for TyKind<I> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
