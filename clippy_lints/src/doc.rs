@@ -756,11 +756,12 @@ fn check_text(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, text: &str
 }
 
 fn check_word(cx: &LateContext<'_>, word: &str, span: Span) {
-    /// Checks if a string is camel-case, i.e., contains at least two uppercase
-    /// letters (`Clippy` is ok) and one lower-case letter (`NASA` is ok).
+    /// Checks if a string is upper-camel-case, i.e., starts with an uppercase and
+    /// contains at least two uppercase letters (`Clippy` is ok) and one lower-case
+    /// letter (`NASA` is ok).
     /// Plurals are also excluded (`IDs` is ok).
     fn is_camel_case(s: &str) -> bool {
-        if s.starts_with(|c: char| c.is_ascii_digit()) {
+        if s.starts_with(|c: char| c.is_ascii_digit() | c.is_ascii_lowercase()) {
             return false;
         }
 
