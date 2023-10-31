@@ -150,14 +150,14 @@ impl MetadataExt for Metadata {
 }
 
 /// OS-specific extensions to [`fs::FileTimes`].
-#[unstable(feature = "file_set_times", issue = "98245")]
+#[stable(feature = "file_set_times", since = "CURRENT_RUSTC_VERSION")]
 pub trait FileTimesExt: Sealed {
     /// Set the creation time of a file.
-    #[unstable(feature = "file_set_times", issue = "98245")]
+    #[stable(feature = "file_set_times", since = "CURRENT_RUSTC_VERSION")]
     fn set_created(self, t: SystemTime) -> Self;
 }
 
-#[unstable(feature = "file_set_times", issue = "98245")]
+#[stable(feature = "file_set_times", since = "CURRENT_RUSTC_VERSION")]
 impl FileTimesExt for fs::FileTimes {
     fn set_created(mut self, t: SystemTime) -> Self {
         self.as_inner_mut().set_created(t.into_inner());
