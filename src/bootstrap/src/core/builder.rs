@@ -28,6 +28,7 @@ pub use crate::Compiler;
 // - use std::lazy for `Lazy`
 // - use std::cell for `OnceCell`
 // Once they get stabilized and reach beta.
+use build_helper::ci::CiEnv;
 use clap::ValueEnum;
 use once_cell::sync::{Lazy, OnceCell};
 
@@ -1273,7 +1274,12 @@ impl<'a> Builder<'a> {
             self.clear_if_dirty(&out_dir, &backend);
         }
 
-        if cmd == "doc" || cmd == "rustdoc" {
+        if cmd == "doc"
+            || cmd == "rustdoc"
+            // FIXME: We shouldn't need to check this.
+            // ref https://github.com/rust-lang/rust/issues/117430#issuecomment-1788160523
+            && !CiEnv::is_ci()
+        {
             let my_out = match mode {
                 // This is the intended out directory for compiler documentation.
                 Mode::Rustc | Mode::ToolRustc => self.compiler_doc_out(target),
