@@ -11,4 +11,5 @@ const NONE<T = ()>: Option<T> = None::<T>; //~ ERROR defaults for type parameter
 
 fn main() {
     let _ = NONE;
+    //~^ ERROR type annotations needed
 }
