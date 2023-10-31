@@ -7671,7 +7671,7 @@ pub unsafe fn vst2q_s64(a: *mut i64, b: int64x2x2_t) {
 #[cfg_attr(test, assert_instr(st2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vst2q_u64(a: *mut u64, b: uint64x2x2_t) {
-    transmute(vst2q_s64(transmute(a), transmute(b)))
+    vst2q_s64(transmute(a), transmute(b))
 }
 
 /// Store multiple 2-element structures from two registers
@@ -7682,7 +7682,7 @@ pub unsafe fn vst2q_u64(a: *mut u64, b: uint64x2x2_t) {
 #[cfg_attr(test, assert_instr(st2))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vst2q_p64(a: *mut p64, b: poly64x2x2_t) {
-    transmute(vst2q_s64(transmute(a), transmute(b)))
+    vst2q_s64(transmute(a), transmute(b))
 }
 
 /// Store multiple 2-element structures from two registers
@@ -7781,7 +7781,7 @@ pub unsafe fn vst2q_lane_s64<const LANE: i32>(a: *mut i64, b: int64x2x2_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vst2q_lane_u8<const LANE: i32>(a: *mut u8, b: uint8x16x2_t) {
     static_assert_uimm_bits!(LANE, 4);
-    transmute(vst2q_lane_s8::<LANE>(transmute(a), transmute(b)))
+    vst2q_lane_s8::<LANE>(transmute(a), transmute(b))
 }
 
 /// Store multiple 2-element structures from two registers
@@ -7794,7 +7794,7 @@ pub unsafe fn vst2q_lane_u8<const LANE: i32>(a: *mut u8, b: uint8x16x2_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vst2_lane_u64<const LANE: i32>(a: *mut u64, b: uint64x1x2_t) {
     static_assert!(LANE == 0);
-    transmute(vst2_lane_s64::<LANE>(transmute(a), transmute(b)))
+    vst2_lane_s64::<LANE>(transmute(a), transmute(b))
 }
 
 /// Store multiple 2-element structures from two registers
@@ -7807,7 +7807,7 @@ pub unsafe fn vst2_lane_u64<const LANE: i32>(a: *mut u64, b: uint64x1x2_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vst2q_lane_u64<const LANE: i32>(a: *mut u64, b: uint64x2x2_t) {
     static_assert_uimm_bits!(LANE, 1);
-    transmute(vst2q_lane_s64::<LANE>(transmute(a), transmute(b)))
+    vst2q_lane_s64::<LANE>(transmute(a), transmute(b))
 }
 
 /// Store multiple 2-element structures from two registers
@@ -7820,7 +7820,7 @@ pub unsafe fn vst2q_lane_u64<const LANE: i32>(a: *mut u64, b: uint64x2x2_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vst2q_lane_p8<const LANE: i32>(a: *mut p8, b: poly8x16x2_t) {
     static_assert_uimm_bits!(LANE, 4);
-    transmute(vst2q_lane_s8::<LANE>(transmute(a), transmute(b)))
+    vst2q_lane_s8::<LANE>(transmute(a), transmute(b))
 }
 
 /// Store multiple 2-element structures from two registers
@@ -7833,7 +7833,7 @@ pub unsafe fn vst2q_lane_p8<const LANE: i32>(a: *mut p8, b: poly8x16x2_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vst2_lane_p64<const LANE: i32>(a: *mut p64, b: poly64x1x2_t) {
     static_assert!(LANE == 0);
-    transmute(vst2_lane_s64::<LANE>(transmute(a), transmute(b)))
+    vst2_lane_s64::<LANE>(transmute(a), transmute(b))
 }
 
 /// Store multiple 2-element structures from two registers
@@ -7846,7 +7846,7 @@ pub unsafe fn vst2_lane_p64<const LANE: i32>(a: *mut p64, b: poly64x1x2_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vst2q_lane_p64<const LANE: i32>(a: *mut p64, b: poly64x2x2_t) {
     static_assert_uimm_bits!(LANE, 1);
-    transmute(vst2q_lane_s64::<LANE>(transmute(a), transmute(b)))
+    vst2q_lane_s64::<LANE>(transmute(a), transmute(b))
 }
 
 /// Store multiple 2-element structures from two registers
@@ -7909,7 +7909,7 @@ pub unsafe fn vst3q_s64(a: *mut i64, b: int64x2x3_t) {
 #[cfg_attr(test, assert_instr(st3))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vst3q_u64(a: *mut u64, b: uint64x2x3_t) {
-    transmute(vst3q_s64(transmute(a), transmute(b)))
+    vst3q_s64(transmute(a), transmute(b))
 }
 
 /// Store multiple 3-element structures from three registers
@@ -7920,7 +7920,7 @@ pub unsafe fn vst3q_u64(a: *mut u64, b: uint64x2x3_t) {
 #[cfg_attr(test, assert_instr(st3))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vst3q_p64(a: *mut p64, b: poly64x2x3_t) {
-    transmute(vst3q_s64(transmute(a), transmute(b)))
+    vst3q_s64(transmute(a), transmute(b))
 }
 
 /// Store multiple 3-element structures from three registers
@@ -8019,7 +8019,7 @@ pub unsafe fn vst3q_lane_s64<const LANE: i32>(a: *mut i64, b: int64x2x3_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vst3q_lane_u8<const LANE: i32>(a: *mut u8, b: uint8x16x3_t) {
     static_assert_uimm_bits!(LANE, 4);
-    transmute(vst3q_lane_s8::<LANE>(transmute(a), transmute(b)))
+    vst3q_lane_s8::<LANE>(transmute(a), transmute(b))
 }
 
 /// Store multiple 3-element structures from three registers
@@ -8032,7 +8032,7 @@ pub unsafe fn vst3q_lane_u8<const LANE: i32>(a: *mut u8, b: uint8x16x3_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vst3_lane_u64<const LANE: i32>(a: *mut u64, b: uint64x1x3_t) {
     static_assert!(LANE == 0);
-    transmute(vst3_lane_s64::<LANE>(transmute(a), transmute(b)))
+    vst3_lane_s64::<LANE>(transmute(a), transmute(b))
 }
 
 /// Store multiple 3-element structures from three registers
@@ -8045,7 +8045,7 @@ pub unsafe fn vst3_lane_u64<const LANE: i32>(a: *mut u64, b: uint64x1x3_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vst3q_lane_u64<const LANE: i32>(a: *mut u64, b: uint64x2x3_t) {
     static_assert_uimm_bits!(LANE, 1);
-    transmute(vst3q_lane_s64::<LANE>(transmute(a), transmute(b)))
+    vst3q_lane_s64::<LANE>(transmute(a), transmute(b))
 }
 
 /// Store multiple 3-element structures from three registers
@@ -8058,7 +8058,7 @@ pub unsafe fn vst3q_lane_u64<const LANE: i32>(a: *mut u64, b: uint64x2x3_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vst3q_lane_p8<const LANE: i32>(a: *mut p8, b: poly8x16x3_t) {
     static_assert_uimm_bits!(LANE, 4);
-    transmute(vst3q_lane_s8::<LANE>(transmute(a), transmute(b)))
+    vst3q_lane_s8::<LANE>(transmute(a), transmute(b))
 }
 
 /// Store multiple 3-element structures from three registers
@@ -8071,7 +8071,7 @@ pub unsafe fn vst3q_lane_p8<const LANE: i32>(a: *mut p8, b: poly8x16x3_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vst3_lane_p64<const LANE: i32>(a: *mut p64, b: poly64x1x3_t) {
     static_assert!(LANE == 0);
-    transmute(vst3_lane_s64::<LANE>(transmute(a), transmute(b)))
+    vst3_lane_s64::<LANE>(transmute(a), transmute(b))
 }
 
 /// Store multiple 3-element structures from three registers
@@ -8084,7 +8084,7 @@ pub unsafe fn vst3_lane_p64<const LANE: i32>(a: *mut p64, b: poly64x1x3_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vst3q_lane_p64<const LANE: i32>(a: *mut p64, b: poly64x2x3_t) {
     static_assert_uimm_bits!(LANE, 1);
-    transmute(vst3q_lane_s64::<LANE>(transmute(a), transmute(b)))
+    vst3q_lane_s64::<LANE>(transmute(a), transmute(b))
 }
 
 /// Store multiple 3-element structures from three registers
@@ -8147,7 +8147,7 @@ pub unsafe fn vst4q_s64(a: *mut i64, b: int64x2x4_t) {
 #[cfg_attr(test, assert_instr(st4))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vst4q_u64(a: *mut u64, b: uint64x2x4_t) {
-    transmute(vst4q_s64(transmute(a), transmute(b)))
+    vst4q_s64(transmute(a), transmute(b))
 }
 
 /// Store multiple 4-element structures from four registers
@@ -8158,7 +8158,7 @@ pub unsafe fn vst4q_u64(a: *mut u64, b: uint64x2x4_t) {
 #[cfg_attr(test, assert_instr(st4))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vst4q_p64(a: *mut p64, b: poly64x2x4_t) {
-    transmute(vst4q_s64(transmute(a), transmute(b)))
+    vst4q_s64(transmute(a), transmute(b))
 }
 
 /// Store multiple 4-element structures from four registers
@@ -8257,7 +8257,7 @@ pub unsafe fn vst4q_lane_s64<const LANE: i32>(a: *mut i64, b: int64x2x4_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vst4q_lane_u8<const LANE: i32>(a: *mut u8, b: uint8x16x4_t) {
     static_assert_uimm_bits!(LANE, 4);
-    transmute(vst4q_lane_s8::<LANE>(transmute(a), transmute(b)))
+    vst4q_lane_s8::<LANE>(transmute(a), transmute(b))
 }
 
 /// Store multiple 4-element structures from four registers
@@ -8270,7 +8270,7 @@ pub unsafe fn vst4q_lane_u8<const LANE: i32>(a: *mut u8, b: uint8x16x4_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vst4_lane_u64<const LANE: i32>(a: *mut u64, b: uint64x1x4_t) {
     static_assert!(LANE == 0);
-    transmute(vst4_lane_s64::<LANE>(transmute(a), transmute(b)))
+    vst4_lane_s64::<LANE>(transmute(a), transmute(b))
 }
 
 /// Store multiple 4-element structures from four registers
@@ -8283,7 +8283,7 @@ pub unsafe fn vst4_lane_u64<const LANE: i32>(a: *mut u64, b: uint64x1x4_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vst4q_lane_u64<const LANE: i32>(a: *mut u64, b: uint64x2x4_t) {
     static_assert_uimm_bits!(LANE, 1);
-    transmute(vst4q_lane_s64::<LANE>(transmute(a), transmute(b)))
+    vst4q_lane_s64::<LANE>(transmute(a), transmute(b))
 }
 
 /// Store multiple 4-element structures from four registers
@@ -8296,7 +8296,7 @@ pub unsafe fn vst4q_lane_u64<const LANE: i32>(a: *mut u64, b: uint64x2x4_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vst4q_lane_p8<const LANE: i32>(a: *mut p8, b: poly8x16x4_t) {
     static_assert_uimm_bits!(LANE, 4);
-    transmute(vst4q_lane_s8::<LANE>(transmute(a), transmute(b)))
+    vst4q_lane_s8::<LANE>(transmute(a), transmute(b))
 }
 
 /// Store multiple 4-element structures from four registers
@@ -8309,7 +8309,7 @@ pub unsafe fn vst4q_lane_p8<const LANE: i32>(a: *mut p8, b: poly8x16x4_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vst4_lane_p64<const LANE: i32>(a: *mut p64, b: poly64x1x4_t) {
     static_assert!(LANE == 0);
-    transmute(vst4_lane_s64::<LANE>(transmute(a), transmute(b)))
+    vst4_lane_s64::<LANE>(transmute(a), transmute(b))
 }
 
 /// Store multiple 4-element structures from four registers
@@ -8322,7 +8322,7 @@ pub unsafe fn vst4_lane_p64<const LANE: i32>(a: *mut p64, b: poly64x1x4_t) {
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub unsafe fn vst4q_lane_p64<const LANE: i32>(a: *mut p64, b: poly64x2x4_t) {
     static_assert_uimm_bits!(LANE, 1);
-    transmute(vst4q_lane_s64::<LANE>(transmute(a), transmute(b)))
+    vst4q_lane_s64::<LANE>(transmute(a), transmute(b))
 }
 
 /// Store multiple 4-element structures from four registers

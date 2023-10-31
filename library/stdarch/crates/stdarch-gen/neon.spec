@@ -890,7 +890,7 @@ generate int*_t
 
 /// Count leading sign bits
 name = vcls
-multi_fn = transmute, {vcls-signed-noext, {transmute, a}}
+multi_fn = vcls-signed-noext, {transmute, a}
 a = MIN, MAX, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, MAX
 validate BITS_M1, BITS_M1, BITS_M1, BITS_M1, BITS_M1, BITS_M1, BITS_M1, BITS_M1, BITS_M1, BITS_M1, BITS_M1, BITS_M1, BITS_M1, BITS_M1, BITS_M1, BITS_M1
 
@@ -3119,7 +3119,7 @@ generate *mut i64:int64x1x2_t:void
 
 /// Store multiple 2-element structures from two registers
 name = vst2
-multi_fn = transmute, {vst2-in1signednox-noext, transmute(a), transmute(b)}
+multi_fn = vst2-in1signednox-noext, transmute(a), transmute(b)
 in1-nox
 a = 0, 1, 2, 2, 3, 2, 3, 4, 5, 2, 3, 4, 5, 6, 7, 8, 9, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17
 validate 1, 2, 2, 3, 2, 4, 3, 5, 2, 6, 3, 7, 4, 8, 5, 9, 2, 10, 3, 11, 4, 12, 5, 13, 6, 14, 7, 15, 8, 16, 9, 17
@@ -3186,7 +3186,7 @@ name = vst2
 in1-lane-nox
 constn = LANE
 multi_fn = static_assert_imm-in_exp_len-LANE
-multi_fn = transmute, {vst2-in1signedlanenox-::<LANE>, transmute(a), transmute(b)}
+multi_fn = vst2-in1signedlanenox-::<LANE>, transmute(a), transmute(b)
 a = 0, 1, 2, 2, 3, 2, 3, 4, 5, 2, 3, 4, 5, 6, 7, 8, 9, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17
 n = 0
 validate 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
@@ -3246,7 +3246,7 @@ generate *mut i64:int64x1x3_t:void
 
 /// Store multiple 3-element structures from three registers
 name = vst3
-multi_fn = transmute, {vst3-in1signednox-noext, transmute(a), transmute(b)}
+multi_fn = vst3-in1signednox-noext, transmute(a), transmute(b)
 in1-nox
 a = 0, 1, 2, 2, 4, 2, 4, 7, 8, 2, 4, 7, 8, 13, 14, 15, 16, 2, 4, 7, 8, 13, 14, 15, 16, 25, 26, 27, 28, 29, 30, 31, 32, 2, 4, 7, 8, 13, 14, 15, 16, 41, 42, 43, 44, 45, 46, 47, 48
 validate 1, 2, 2, 2, 4, 4, 2, 7, 7, 4, 8, 8, 2, 13, 13, 4, 14, 14, 7, 15, 15, 8, 16, 16, 2, 25, 41, 4, 26, 42, 7, 27, 43, 8, 28, 44, 13, 29, 45, 14, 30, 46, 15, 31, 47, 16, 32, 48
@@ -3313,7 +3313,7 @@ name = vst3
 in1-lane-nox
 constn = LANE
 multi_fn = static_assert_imm-in_exp_len-LANE
-multi_fn = transmute, {vst3-in1signedlanenox-::<LANE>, transmute(a), transmute(b)}
+multi_fn = vst3-in1signedlanenox-::<LANE>, transmute(a), transmute(b)
 a = 0, 1, 2, 2, 4, 2, 4, 7, 8, 2, 4, 7, 8, 13, 14, 15, 16, 2, 4, 7, 8, 13, 14, 15, 16, 25, 26, 27, 28, 29, 30, 31, 32, 2, 4, 7, 8, 13, 14, 15, 16, 41, 42, 43, 44, 45, 46, 47, 48
 n = 0
 validate 1, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
@@ -3373,7 +3373,7 @@ generate *mut i64:int64x1x4_t:void
 
 /// Store multiple 4-element structures from four registers
 name = vst4
-multi_fn = transmute, {vst4-in1signednox-noext, transmute(a), transmute(b)}
+multi_fn = vst4-in1signednox-noext, transmute(a), transmute(b)
 in1-nox
 a = 0, 1, 2, 2, 6, 2, 6, 6, 8, 2, 6, 6, 8, 6, 8, 8, 16, 2, 6, 6, 8, 6, 8, 8, 16, 6, 8, 8, 16, 8, 16, 16, 32, 2, 6, 6, 8, 6, 8, 8, 16, 6, 8, 43, 44, 8, 16, 44, 48, 6, 8, 8, 16, 8, 16, 16, 32, 8, 16, 44, 48, 16, 32, 48, 64
 validate 1, 2, 2, 6, 2, 6, 6, 8, 2, 6, 6, 8, 6, 8, 8, 16, 2, 6, 6, 8, 6, 8, 8, 16, 6, 8, 8, 16, 8, 16, 16, 32, 2, 6, 6, 8, 6, 8, 8, 16, 6, 8, 43, 44, 8, 16, 44, 48, 6, 8, 8, 16, 8, 16, 16, 32, 8, 16, 44, 48, 16, 32, 48, 64
@@ -3440,7 +3440,7 @@ name = vst4
 in1-lane-nox
 constn = LANE
 multi_fn = static_assert_imm-in_exp_len-LANE
-multi_fn = transmute, {vst4-in1signedlanenox-::<LANE>, transmute(a), transmute(b)}
+multi_fn = vst4-in1signedlanenox-::<LANE>, transmute(a), transmute(b)
 a = 0, 1, 2, 2, 6, 2, 6, 6, 8, 2, 6, 6, 8, 6, 8, 8, 16, 2, 6, 6, 8, 6, 8, 8, 16, 6, 8, 8, 16, 8, 16, 16, 32, 2, 6, 6, 8, 6, 8, 8, 16, 6, 8, 43, 44, 8, 16, 44, 48, 6, 8, 8, 16, 8, 16, 16, 32, 8, 16, 44, 48, 16, 32, 48, 64
 n = 0
 validate 1, 2, 2, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0

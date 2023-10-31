@@ -2471,7 +2471,7 @@ vclsq_s32_(a)
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcls_u8(a: uint8x8_t) -> int8x8_t {
-    transmute(vcls_s8(transmute(a)))
+    vcls_s8(transmute(a))
 }
 
 /// Count leading sign bits
@@ -2485,7 +2485,7 @@ pub unsafe fn vcls_u8(a: uint8x8_t) -> int8x8_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vclsq_u8(a: uint8x16_t) -> int8x16_t {
-    transmute(vclsq_s8(transmute(a)))
+    vclsq_s8(transmute(a))
 }
 
 /// Count leading sign bits
@@ -2499,7 +2499,7 @@ pub unsafe fn vclsq_u8(a: uint8x16_t) -> int8x16_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcls_u16(a: uint16x4_t) -> int16x4_t {
-    transmute(vcls_s16(transmute(a)))
+    vcls_s16(transmute(a))
 }
 
 /// Count leading sign bits
@@ -2513,7 +2513,7 @@ pub unsafe fn vcls_u16(a: uint16x4_t) -> int16x4_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vclsq_u16(a: uint16x8_t) -> int16x8_t {
-    transmute(vclsq_s16(transmute(a)))
+    vclsq_s16(transmute(a))
 }
 
 /// Count leading sign bits
@@ -2527,7 +2527,7 @@ pub unsafe fn vclsq_u16(a: uint16x8_t) -> int16x8_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vcls_u32(a: uint32x2_t) -> int32x2_t {
-    transmute(vcls_s32(transmute(a)))
+    vcls_s32(transmute(a))
 }
 
 /// Count leading sign bits
@@ -2541,7 +2541,7 @@ pub unsafe fn vcls_u32(a: uint32x2_t) -> int32x2_t {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vclsq_u32(a: uint32x4_t) -> int32x4_t {
-    transmute(vclsq_s32(transmute(a)))
+    vclsq_s32(transmute(a))
 }
 
 /// Count leading zero bits
@@ -15345,7 +15345,7 @@ vst2_s64_(b.0, b.1, a as _)
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst2_u8(a: *mut u8, b: uint8x8x2_t) {
-    transmute(vst2_s8(transmute(a), transmute(b)))
+    vst2_s8(transmute(a), transmute(b))
 }
 
 /// Store multiple 2-element structures from two registers
@@ -15359,7 +15359,7 @@ pub unsafe fn vst2_u8(a: *mut u8, b: uint8x8x2_t) {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst2_u16(a: *mut u16, b: uint16x4x2_t) {
-    transmute(vst2_s16(transmute(a), transmute(b)))
+    vst2_s16(transmute(a), transmute(b))
 }
 
 /// Store multiple 2-element structures from two registers
@@ -15373,7 +15373,7 @@ pub unsafe fn vst2_u16(a: *mut u16, b: uint16x4x2_t) {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst2_u32(a: *mut u32, b: uint32x2x2_t) {
-    transmute(vst2_s32(transmute(a), transmute(b)))
+    vst2_s32(transmute(a), transmute(b))
 }
 
 /// Store multiple 2-element structures from two registers
@@ -15387,7 +15387,7 @@ pub unsafe fn vst2_u32(a: *mut u32, b: uint32x2x2_t) {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst2q_u8(a: *mut u8, b: uint8x16x2_t) {
-    transmute(vst2q_s8(transmute(a), transmute(b)))
+    vst2q_s8(transmute(a), transmute(b))
 }
 
 /// Store multiple 2-element structures from two registers
@@ -15401,7 +15401,7 @@ pub unsafe fn vst2q_u8(a: *mut u8, b: uint8x16x2_t) {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst2q_u16(a: *mut u16, b: uint16x8x2_t) {
-    transmute(vst2q_s16(transmute(a), transmute(b)))
+    vst2q_s16(transmute(a), transmute(b))
 }
 
 /// Store multiple 2-element structures from two registers
@@ -15415,7 +15415,7 @@ pub unsafe fn vst2q_u16(a: *mut u16, b: uint16x8x2_t) {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst2q_u32(a: *mut u32, b: uint32x4x2_t) {
-    transmute(vst2q_s32(transmute(a), transmute(b)))
+    vst2q_s32(transmute(a), transmute(b))
 }
 
 /// Store multiple 2-element structures from two registers
@@ -15429,7 +15429,7 @@ pub unsafe fn vst2q_u32(a: *mut u32, b: uint32x4x2_t) {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst2_p8(a: *mut p8, b: poly8x8x2_t) {
-    transmute(vst2_s8(transmute(a), transmute(b)))
+    vst2_s8(transmute(a), transmute(b))
 }
 
 /// Store multiple 2-element structures from two registers
@@ -15443,7 +15443,7 @@ pub unsafe fn vst2_p8(a: *mut p8, b: poly8x8x2_t) {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst2_p16(a: *mut p16, b: poly16x4x2_t) {
-    transmute(vst2_s16(transmute(a), transmute(b)))
+    vst2_s16(transmute(a), transmute(b))
 }
 
 /// Store multiple 2-element structures from two registers
@@ -15457,7 +15457,7 @@ pub unsafe fn vst2_p16(a: *mut p16, b: poly16x4x2_t) {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst2q_p8(a: *mut p8, b: poly8x16x2_t) {
-    transmute(vst2q_s8(transmute(a), transmute(b)))
+    vst2q_s8(transmute(a), transmute(b))
 }
 
 /// Store multiple 2-element structures from two registers
@@ -15471,7 +15471,7 @@ pub unsafe fn vst2q_p8(a: *mut p8, b: poly8x16x2_t) {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst2q_p16(a: *mut p16, b: poly16x8x2_t) {
-    transmute(vst2q_s16(transmute(a), transmute(b)))
+    vst2q_s16(transmute(a), transmute(b))
 }
 
 /// Store multiple 2-element structures from two registers
@@ -15485,7 +15485,7 @@ pub unsafe fn vst2q_p16(a: *mut p16, b: poly16x8x2_t) {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst2_u64(a: *mut u64, b: uint64x1x2_t) {
-    transmute(vst2_s64(transmute(a), transmute(b)))
+    vst2_s64(transmute(a), transmute(b))
 }
 
 /// Store multiple 2-element structures from two registers
@@ -15499,7 +15499,7 @@ pub unsafe fn vst2_u64(a: *mut u64, b: uint64x1x2_t) {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst2_p64(a: *mut p64, b: poly64x1x2_t) {
-    transmute(vst2_s64(transmute(a), transmute(b)))
+    vst2_s64(transmute(a), transmute(b))
 }
 
 /// Store multiple 2-element structures from two registers
@@ -15773,7 +15773,7 @@ vst2q_lane_s32_(b.0, b.1, LANE as i64, a as _)
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst2_lane_u8<const LANE: i32>(a: *mut u8, b: uint8x8x2_t) {
     static_assert_uimm_bits!(LANE, 3);
-    transmute(vst2_lane_s8::<LANE>(transmute(a), transmute(b)))
+    vst2_lane_s8::<LANE>(transmute(a), transmute(b))
 }
 
 /// Store multiple 2-element structures from two registers
@@ -15789,7 +15789,7 @@ pub unsafe fn vst2_lane_u8<const LANE: i32>(a: *mut u8, b: uint8x8x2_t) {
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst2_lane_u16<const LANE: i32>(a: *mut u16, b: uint16x4x2_t) {
     static_assert_uimm_bits!(LANE, 2);
-    transmute(vst2_lane_s16::<LANE>(transmute(a), transmute(b)))
+    vst2_lane_s16::<LANE>(transmute(a), transmute(b))
 }
 
 /// Store multiple 2-element structures from two registers
@@ -15805,7 +15805,7 @@ pub unsafe fn vst2_lane_u16<const LANE: i32>(a: *mut u16, b: uint16x4x2_t) {
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst2_lane_u32<const LANE: i32>(a: *mut u32, b: uint32x2x2_t) {
     static_assert_uimm_bits!(LANE, 1);
-    transmute(vst2_lane_s32::<LANE>(transmute(a), transmute(b)))
+    vst2_lane_s32::<LANE>(transmute(a), transmute(b))
 }
 
 /// Store multiple 2-element structures from two registers
@@ -15821,7 +15821,7 @@ pub unsafe fn vst2_lane_u32<const LANE: i32>(a: *mut u32, b: uint32x2x2_t) {
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst2q_lane_u16<const LANE: i32>(a: *mut u16, b: uint16x8x2_t) {
     static_assert_uimm_bits!(LANE, 3);
-    transmute(vst2q_lane_s16::<LANE>(transmute(a), transmute(b)))
+    vst2q_lane_s16::<LANE>(transmute(a), transmute(b))
 }
 
 /// Store multiple 2-element structures from two registers
@@ -15837,7 +15837,7 @@ pub unsafe fn vst2q_lane_u16<const LANE: i32>(a: *mut u16, b: uint16x8x2_t) {
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst2q_lane_u32<const LANE: i32>(a: *mut u32, b: uint32x4x2_t) {
     static_assert_uimm_bits!(LANE, 2);
-    transmute(vst2q_lane_s32::<LANE>(transmute(a), transmute(b)))
+    vst2q_lane_s32::<LANE>(transmute(a), transmute(b))
 }
 
 /// Store multiple 2-element structures from two registers
@@ -15853,7 +15853,7 @@ pub unsafe fn vst2q_lane_u32<const LANE: i32>(a: *mut u32, b: uint32x4x2_t) {
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst2_lane_p8<const LANE: i32>(a: *mut p8, b: poly8x8x2_t) {
     static_assert_uimm_bits!(LANE, 3);
-    transmute(vst2_lane_s8::<LANE>(transmute(a), transmute(b)))
+    vst2_lane_s8::<LANE>(transmute(a), transmute(b))
 }
 
 /// Store multiple 2-element structures from two registers
@@ -15869,7 +15869,7 @@ pub unsafe fn vst2_lane_p8<const LANE: i32>(a: *mut p8, b: poly8x8x2_t) {
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst2_lane_p16<const LANE: i32>(a: *mut p16, b: poly16x4x2_t) {
     static_assert_uimm_bits!(LANE, 2);
-    transmute(vst2_lane_s16::<LANE>(transmute(a), transmute(b)))
+    vst2_lane_s16::<LANE>(transmute(a), transmute(b))
 }
 
 /// Store multiple 2-element structures from two registers
@@ -15885,7 +15885,7 @@ pub unsafe fn vst2_lane_p16<const LANE: i32>(a: *mut p16, b: poly16x4x2_t) {
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst2q_lane_p16<const LANE: i32>(a: *mut p16, b: poly16x8x2_t) {
     static_assert_uimm_bits!(LANE, 3);
-    transmute(vst2q_lane_s16::<LANE>(transmute(a), transmute(b)))
+    vst2q_lane_s16::<LANE>(transmute(a), transmute(b))
 }
 
 /// Store multiple 2-element structures from two registers
@@ -16213,7 +16213,7 @@ vst3_s64_(b.0, b.1, b.2, a as _)
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst3_u8(a: *mut u8, b: uint8x8x3_t) {
-    transmute(vst3_s8(transmute(a), transmute(b)))
+    vst3_s8(transmute(a), transmute(b))
 }
 
 /// Store multiple 3-element structures from three registers
@@ -16227,7 +16227,7 @@ pub unsafe fn vst3_u8(a: *mut u8, b: uint8x8x3_t) {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst3_u16(a: *mut u16, b: uint16x4x3_t) {
-    transmute(vst3_s16(transmute(a), transmute(b)))
+    vst3_s16(transmute(a), transmute(b))
 }
 
 /// Store multiple 3-element structures from three registers
@@ -16241,7 +16241,7 @@ pub unsafe fn vst3_u16(a: *mut u16, b: uint16x4x3_t) {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst3_u32(a: *mut u32, b: uint32x2x3_t) {
-    transmute(vst3_s32(transmute(a), transmute(b)))
+    vst3_s32(transmute(a), transmute(b))
 }
 
 /// Store multiple 3-element structures from three registers
@@ -16255,7 +16255,7 @@ pub unsafe fn vst3_u32(a: *mut u32, b: uint32x2x3_t) {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst3q_u8(a: *mut u8, b: uint8x16x3_t) {
-    transmute(vst3q_s8(transmute(a), transmute(b)))
+    vst3q_s8(transmute(a), transmute(b))
 }
 
 /// Store multiple 3-element structures from three registers
@@ -16269,7 +16269,7 @@ pub unsafe fn vst3q_u8(a: *mut u8, b: uint8x16x3_t) {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst3q_u16(a: *mut u16, b: uint16x8x3_t) {
-    transmute(vst3q_s16(transmute(a), transmute(b)))
+    vst3q_s16(transmute(a), transmute(b))
 }
 
 /// Store multiple 3-element structures from three registers
@@ -16283,7 +16283,7 @@ pub unsafe fn vst3q_u16(a: *mut u16, b: uint16x8x3_t) {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst3q_u32(a: *mut u32, b: uint32x4x3_t) {
-    transmute(vst3q_s32(transmute(a), transmute(b)))
+    vst3q_s32(transmute(a), transmute(b))
 }
 
 /// Store multiple 3-element structures from three registers
@@ -16297,7 +16297,7 @@ pub unsafe fn vst3q_u32(a: *mut u32, b: uint32x4x3_t) {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst3_p8(a: *mut p8, b: poly8x8x3_t) {
-    transmute(vst3_s8(transmute(a), transmute(b)))
+    vst3_s8(transmute(a), transmute(b))
 }
 
 /// Store multiple 3-element structures from three registers
@@ -16311,7 +16311,7 @@ pub unsafe fn vst3_p8(a: *mut p8, b: poly8x8x3_t) {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst3_p16(a: *mut p16, b: poly16x4x3_t) {
-    transmute(vst3_s16(transmute(a), transmute(b)))
+    vst3_s16(transmute(a), transmute(b))
 }
 
 /// Store multiple 3-element structures from three registers
@@ -16325,7 +16325,7 @@ pub unsafe fn vst3_p16(a: *mut p16, b: poly16x4x3_t) {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst3q_p8(a: *mut p8, b: poly8x16x3_t) {
-    transmute(vst3q_s8(transmute(a), transmute(b)))
+    vst3q_s8(transmute(a), transmute(b))
 }
 
 /// Store multiple 3-element structures from three registers
@@ -16339,7 +16339,7 @@ pub unsafe fn vst3q_p8(a: *mut p8, b: poly8x16x3_t) {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst3q_p16(a: *mut p16, b: poly16x8x3_t) {
-    transmute(vst3q_s16(transmute(a), transmute(b)))
+    vst3q_s16(transmute(a), transmute(b))
 }
 
 /// Store multiple 3-element structures from three registers
@@ -16353,7 +16353,7 @@ pub unsafe fn vst3q_p16(a: *mut p16, b: poly16x8x3_t) {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst3_u64(a: *mut u64, b: uint64x1x3_t) {
-    transmute(vst3_s64(transmute(a), transmute(b)))
+    vst3_s64(transmute(a), transmute(b))
 }
 
 /// Store multiple 3-element structures from three registers
@@ -16367,7 +16367,7 @@ pub unsafe fn vst3_u64(a: *mut u64, b: uint64x1x3_t) {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst3_p64(a: *mut p64, b: poly64x1x3_t) {
-    transmute(vst3_s64(transmute(a), transmute(b)))
+    vst3_s64(transmute(a), transmute(b))
 }
 
 /// Store multiple 3-element structures from three registers
@@ -16641,7 +16641,7 @@ vst3q_lane_s32_(b.0, b.1, b.2, LANE as i64, a as _)
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst3_lane_u8<const LANE: i32>(a: *mut u8, b: uint8x8x3_t) {
     static_assert_uimm_bits!(LANE, 3);
-    transmute(vst3_lane_s8::<LANE>(transmute(a), transmute(b)))
+    vst3_lane_s8::<LANE>(transmute(a), transmute(b))
 }
 
 /// Store multiple 3-element structures from three registers
@@ -16657,7 +16657,7 @@ pub unsafe fn vst3_lane_u8<const LANE: i32>(a: *mut u8, b: uint8x8x3_t) {
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst3_lane_u16<const LANE: i32>(a: *mut u16, b: uint16x4x3_t) {
     static_assert_uimm_bits!(LANE, 2);
-    transmute(vst3_lane_s16::<LANE>(transmute(a), transmute(b)))
+    vst3_lane_s16::<LANE>(transmute(a), transmute(b))
 }
 
 /// Store multiple 3-element structures from three registers
@@ -16673,7 +16673,7 @@ pub unsafe fn vst3_lane_u16<const LANE: i32>(a: *mut u16, b: uint16x4x3_t) {
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst3_lane_u32<const LANE: i32>(a: *mut u32, b: uint32x2x3_t) {
     static_assert_uimm_bits!(LANE, 1);
-    transmute(vst3_lane_s32::<LANE>(transmute(a), transmute(b)))
+    vst3_lane_s32::<LANE>(transmute(a), transmute(b))
 }
 
 /// Store multiple 3-element structures from three registers
@@ -16689,7 +16689,7 @@ pub unsafe fn vst3_lane_u32<const LANE: i32>(a: *mut u32, b: uint32x2x3_t) {
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst3q_lane_u16<const LANE: i32>(a: *mut u16, b: uint16x8x3_t) {
     static_assert_uimm_bits!(LANE, 3);
-    transmute(vst3q_lane_s16::<LANE>(transmute(a), transmute(b)))
+    vst3q_lane_s16::<LANE>(transmute(a), transmute(b))
 }
 
 /// Store multiple 3-element structures from three registers
@@ -16705,7 +16705,7 @@ pub unsafe fn vst3q_lane_u16<const LANE: i32>(a: *mut u16, b: uint16x8x3_t) {
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst3q_lane_u32<const LANE: i32>(a: *mut u32, b: uint32x4x3_t) {
     static_assert_uimm_bits!(LANE, 2);
-    transmute(vst3q_lane_s32::<LANE>(transmute(a), transmute(b)))
+    vst3q_lane_s32::<LANE>(transmute(a), transmute(b))
 }
 
 /// Store multiple 3-element structures from three registers
@@ -16721,7 +16721,7 @@ pub unsafe fn vst3q_lane_u32<const LANE: i32>(a: *mut u32, b: uint32x4x3_t) {
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst3_lane_p8<const LANE: i32>(a: *mut p8, b: poly8x8x3_t) {
     static_assert_uimm_bits!(LANE, 3);
-    transmute(vst3_lane_s8::<LANE>(transmute(a), transmute(b)))
+    vst3_lane_s8::<LANE>(transmute(a), transmute(b))
 }
 
 /// Store multiple 3-element structures from three registers
@@ -16737,7 +16737,7 @@ pub unsafe fn vst3_lane_p8<const LANE: i32>(a: *mut p8, b: poly8x8x3_t) {
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst3_lane_p16<const LANE: i32>(a: *mut p16, b: poly16x4x3_t) {
     static_assert_uimm_bits!(LANE, 2);
-    transmute(vst3_lane_s16::<LANE>(transmute(a), transmute(b)))
+    vst3_lane_s16::<LANE>(transmute(a), transmute(b))
 }
 
 /// Store multiple 3-element structures from three registers
@@ -16753,7 +16753,7 @@ pub unsafe fn vst3_lane_p16<const LANE: i32>(a: *mut p16, b: poly16x4x3_t) {
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst3q_lane_p16<const LANE: i32>(a: *mut p16, b: poly16x8x3_t) {
     static_assert_uimm_bits!(LANE, 3);
-    transmute(vst3q_lane_s16::<LANE>(transmute(a), transmute(b)))
+    vst3q_lane_s16::<LANE>(transmute(a), transmute(b))
 }
 
 /// Store multiple 3-element structures from three registers
@@ -17081,7 +17081,7 @@ vst4_s64_(b.0, b.1, b.2, b.3, a as _)
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst4_u8(a: *mut u8, b: uint8x8x4_t) {
-    transmute(vst4_s8(transmute(a), transmute(b)))
+    vst4_s8(transmute(a), transmute(b))
 }
 
 /// Store multiple 4-element structures from four registers
@@ -17095,7 +17095,7 @@ pub unsafe fn vst4_u8(a: *mut u8, b: uint8x8x4_t) {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst4_u16(a: *mut u16, b: uint16x4x4_t) {
-    transmute(vst4_s16(transmute(a), transmute(b)))
+    vst4_s16(transmute(a), transmute(b))
 }
 
 /// Store multiple 4-element structures from four registers
@@ -17109,7 +17109,7 @@ pub unsafe fn vst4_u16(a: *mut u16, b: uint16x4x4_t) {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst4_u32(a: *mut u32, b: uint32x2x4_t) {
-    transmute(vst4_s32(transmute(a), transmute(b)))
+    vst4_s32(transmute(a), transmute(b))
 }
 
 /// Store multiple 4-element structures from four registers
@@ -17123,7 +17123,7 @@ pub unsafe fn vst4_u32(a: *mut u32, b: uint32x2x4_t) {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst4q_u8(a: *mut u8, b: uint8x16x4_t) {
-    transmute(vst4q_s8(transmute(a), transmute(b)))
+    vst4q_s8(transmute(a), transmute(b))
 }
 
 /// Store multiple 4-element structures from four registers
@@ -17137,7 +17137,7 @@ pub unsafe fn vst4q_u8(a: *mut u8, b: uint8x16x4_t) {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst4q_u16(a: *mut u16, b: uint16x8x4_t) {
-    transmute(vst4q_s16(transmute(a), transmute(b)))
+    vst4q_s16(transmute(a), transmute(b))
 }
 
 /// Store multiple 4-element structures from four registers
@@ -17151,7 +17151,7 @@ pub unsafe fn vst4q_u16(a: *mut u16, b: uint16x8x4_t) {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst4q_u32(a: *mut u32, b: uint32x4x4_t) {
-    transmute(vst4q_s32(transmute(a), transmute(b)))
+    vst4q_s32(transmute(a), transmute(b))
 }
 
 /// Store multiple 4-element structures from four registers
@@ -17165,7 +17165,7 @@ pub unsafe fn vst4q_u32(a: *mut u32, b: uint32x4x4_t) {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst4_p8(a: *mut p8, b: poly8x8x4_t) {
-    transmute(vst4_s8(transmute(a), transmute(b)))
+    vst4_s8(transmute(a), transmute(b))
 }
 
 /// Store multiple 4-element structures from four registers
@@ -17179,7 +17179,7 @@ pub unsafe fn vst4_p8(a: *mut p8, b: poly8x8x4_t) {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst4_p16(a: *mut p16, b: poly16x4x4_t) {
-    transmute(vst4_s16(transmute(a), transmute(b)))
+    vst4_s16(transmute(a), transmute(b))
 }
 
 /// Store multiple 4-element structures from four registers
@@ -17193,7 +17193,7 @@ pub unsafe fn vst4_p16(a: *mut p16, b: poly16x4x4_t) {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst4q_p8(a: *mut p8, b: poly8x16x4_t) {
-    transmute(vst4q_s8(transmute(a), transmute(b)))
+    vst4q_s8(transmute(a), transmute(b))
 }
 
 /// Store multiple 4-element structures from four registers
@@ -17207,7 +17207,7 @@ pub unsafe fn vst4q_p8(a: *mut p8, b: poly8x16x4_t) {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst4q_p16(a: *mut p16, b: poly16x8x4_t) {
-    transmute(vst4q_s16(transmute(a), transmute(b)))
+    vst4q_s16(transmute(a), transmute(b))
 }
 
 /// Store multiple 4-element structures from four registers
@@ -17221,7 +17221,7 @@ pub unsafe fn vst4q_p16(a: *mut p16, b: poly16x8x4_t) {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst4_u64(a: *mut u64, b: uint64x1x4_t) {
-    transmute(vst4_s64(transmute(a), transmute(b)))
+    vst4_s64(transmute(a), transmute(b))
 }
 
 /// Store multiple 4-element structures from four registers
@@ -17235,7 +17235,7 @@ pub unsafe fn vst4_u64(a: *mut u64, b: uint64x1x4_t) {
 #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst4_p64(a: *mut p64, b: poly64x1x4_t) {
-    transmute(vst4_s64(transmute(a), transmute(b)))
+    vst4_s64(transmute(a), transmute(b))
 }
 
 /// Store multiple 4-element structures from four registers
@@ -17509,7 +17509,7 @@ vst4q_lane_s32_(b.0, b.1, b.2, b.3, LANE as i64, a as _)
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst4_lane_u8<const LANE: i32>(a: *mut u8, b: uint8x8x4_t) {
     static_assert_uimm_bits!(LANE, 3);
-    transmute(vst4_lane_s8::<LANE>(transmute(a), transmute(b)))
+    vst4_lane_s8::<LANE>(transmute(a), transmute(b))
 }
 
 /// Store multiple 4-element structures from four registers
@@ -17525,7 +17525,7 @@ pub unsafe fn vst4_lane_u8<const LANE: i32>(a: *mut u8, b: uint8x8x4_t) {
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst4_lane_u16<const LANE: i32>(a: *mut u16, b: uint16x4x4_t) {
     static_assert_uimm_bits!(LANE, 2);
-    transmute(vst4_lane_s16::<LANE>(transmute(a), transmute(b)))
+    vst4_lane_s16::<LANE>(transmute(a), transmute(b))
 }
 
 /// Store multiple 4-element structures from four registers
@@ -17541,7 +17541,7 @@ pub unsafe fn vst4_lane_u16<const LANE: i32>(a: *mut u16, b: uint16x4x4_t) {
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst4_lane_u32<const LANE: i32>(a: *mut u32, b: uint32x2x4_t) {
     static_assert_uimm_bits!(LANE, 1);
-    transmute(vst4_lane_s32::<LANE>(transmute(a), transmute(b)))
+    vst4_lane_s32::<LANE>(transmute(a), transmute(b))
 }
 
 /// Store multiple 4-element structures from four registers
@@ -17557,7 +17557,7 @@ pub unsafe fn vst4_lane_u32<const LANE: i32>(a: *mut u32, b: uint32x2x4_t) {
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst4q_lane_u16<const LANE: i32>(a: *mut u16, b: uint16x8x4_t) {
     static_assert_uimm_bits!(LANE, 3);
-    transmute(vst4q_lane_s16::<LANE>(transmute(a), transmute(b)))
+    vst4q_lane_s16::<LANE>(transmute(a), transmute(b))
 }
 
 /// Store multiple 4-element structures from four registers
@@ -17573,7 +17573,7 @@ pub unsafe fn vst4q_lane_u16<const LANE: i32>(a: *mut u16, b: uint16x8x4_t) {
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst4q_lane_u32<const LANE: i32>(a: *mut u32, b: uint32x4x4_t) {
     static_assert_uimm_bits!(LANE, 2);
-    transmute(vst4q_lane_s32::<LANE>(transmute(a), transmute(b)))
+    vst4q_lane_s32::<LANE>(transmute(a), transmute(b))
 }
 
 /// Store multiple 4-element structures from four registers
@@ -17589,7 +17589,7 @@ pub unsafe fn vst4q_lane_u32<const LANE: i32>(a: *mut u32, b: uint32x4x4_t) {
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst4_lane_p8<const LANE: i32>(a: *mut p8, b: poly8x8x4_t) {
     static_assert_uimm_bits!(LANE, 3);
-    transmute(vst4_lane_s8::<LANE>(transmute(a), transmute(b)))
+    vst4_lane_s8::<LANE>(transmute(a), transmute(b))
 }
 
 /// Store multiple 4-element structures from four registers
@@ -17605,7 +17605,7 @@ pub unsafe fn vst4_lane_p8<const LANE: i32>(a: *mut p8, b: poly8x8x4_t) {
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst4_lane_p16<const LANE: i32>(a: *mut p16, b: poly16x4x4_t) {
     static_assert_uimm_bits!(LANE, 2);
-    transmute(vst4_lane_s16::<LANE>(transmute(a), transmute(b)))
+    vst4_lane_s16::<LANE>(transmute(a), transmute(b))
 }
 
 /// Store multiple 4-element structures from four registers
@@ -17621,7 +17621,7 @@ pub unsafe fn vst4_lane_p16<const LANE: i32>(a: *mut p16, b: poly16x4x4_t) {
 #[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
 pub unsafe fn vst4q_lane_p16<const LANE: i32>(a: *mut p16, b: poly16x8x4_t) {
     static_assert_uimm_bits!(LANE, 3);
-    transmute(vst4q_lane_s16::<LANE>(transmute(a), transmute(b)))
+    vst4q_lane_s16::<LANE>(transmute(a), transmute(b))
 }
 
 /// Store multiple 4-element structures from four registers

@@ -4980,10 +4980,7 @@ pub unsafe fn vbsl_s64(a: uint64x1_t, b: int64x1_t, c: int64x1_t) -> int64x1_t {
 )]
 pub unsafe fn vbsl_u8(a: uint8x8_t, b: uint8x8_t, c: uint8x8_t) -> uint8x8_t {
     let not = int8x8_t(-1, -1, -1, -1, -1, -1, -1, -1);
-    transmute(simd_or(
-        simd_and(a, transmute(b)),
-        simd_and(simd_xor(a, transmute(not)), transmute(c)),
-    ))
+    simd_or(simd_and(a, b), simd_and(simd_xor(a, transmute(not)), c))
 }
 
 /// Bitwise Select.
@@ -5002,10 +4999,7 @@ pub unsafe fn vbsl_u8(a: uint8x8_t, b: uint8x8_t, c: uint8x8_t) -> uint8x8_t {
 )]
 pub unsafe fn vbsl_u16(a: uint16x4_t, b: uint16x4_t, c: uint16x4_t) -> uint16x4_t {
     let not = int16x4_t(-1, -1, -1, -1);
-    transmute(simd_or(
-        simd_and(a, transmute(b)),
-        simd_and(simd_xor(a, transmute(not)), transmute(c)),
-    ))
+    simd_or(simd_and(a, b), simd_and(simd_xor(a, transmute(not)), c))
 }
 
 /// Bitwise Select.
@@ -5024,10 +5018,7 @@ pub unsafe fn vbsl_u16(a: uint16x4_t, b: uint16x4_t, c: uint16x4_t) -> uint16x4_
 )]
 pub unsafe fn vbsl_u32(a: uint32x2_t, b: uint32x2_t, c: uint32x2_t) -> uint32x2_t {
     let not = int32x2_t(-1, -1);
-    transmute(simd_or(
-        simd_and(a, transmute(b)),
-        simd_and(simd_xor(a, transmute(not)), transmute(c)),
-    ))
+    simd_or(simd_and(a, b), simd_and(simd_xor(a, transmute(not)), c))
 }
 
 /// Bitwise Select.
@@ -5046,10 +5037,7 @@ pub unsafe fn vbsl_u32(a: uint32x2_t, b: uint32x2_t, c: uint32x2_t) -> uint32x2_
 )]
 pub unsafe fn vbsl_u64(a: uint64x1_t, b: uint64x1_t, c: uint64x1_t) -> uint64x1_t {
     let not = int64x1_t(-1);
-    transmute(simd_or(
-        simd_and(a, transmute(b)),
-        simd_and(simd_xor(a, transmute(not)), transmute(c)),
-    ))
+    simd_or(simd_and(a, b), simd_and(simd_xor(a, transmute(not)), c))
 }
 
 /// Bitwise Select.
@@ -5226,10 +5214,7 @@ pub unsafe fn vbslq_u8(a: uint8x16_t, b: uint8x16_t, c: uint8x16_t) -> uint8x16_
     let not = int8x16_t(
         -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
     );
-    transmute(simd_or(
-        simd_and(a, transmute(b)),
-        simd_and(simd_xor(a, transmute(not)), transmute(c)),
-    ))
+    simd_or(simd_and(a, b), simd_and(simd_xor(a, transmute(not)), c))
 }
 
 /// Bitwise Select. (128-bit)
@@ -5248,10 +5233,7 @@ pub unsafe fn vbslq_u8(a: uint8x16_t, b: uint8x16_t, c: uint8x16_t) -> uint8x16_
 )]
 pub unsafe fn vbslq_u16(a: uint16x8_t, b: uint16x8_t, c: uint16x8_t) -> uint16x8_t {
     let not = int16x8_t(-1, -1, -1, -1, -1, -1, -1, -1);
-    transmute(simd_or(
-        simd_and(a, transmute(b)),
-        simd_and(simd_xor(a, transmute(not)), transmute(c)),
-    ))
+    simd_or(simd_and(a, b), simd_and(simd_xor(a, transmute(not)), c))
 }
 
 /// Bitwise Select. (128-bit)
@@ -5270,10 +5252,7 @@ pub unsafe fn vbslq_u16(a: uint16x8_t, b: uint16x8_t, c: uint16x8_t) -> uint16x8
 )]
 pub unsafe fn vbslq_u32(a: uint32x4_t, b: uint32x4_t, c: uint32x4_t) -> uint32x4_t {
     let not = int32x4_t(-1, -1, -1, -1);
-    transmute(simd_or(
-        simd_and(a, transmute(b)),
-        simd_and(simd_xor(a, transmute(not)), transmute(c)),
-    ))
+    simd_or(simd_and(a, b), simd_and(simd_xor(a, transmute(not)), c))
 }
 
 /// Bitwise Select. (128-bit)
@@ -5292,10 +5271,7 @@ pub unsafe fn vbslq_u32(a: uint32x4_t, b: uint32x4_t, c: uint32x4_t) -> uint32x4
 )]
 pub unsafe fn vbslq_u64(a: uint64x2_t, b: uint64x2_t, c: uint64x2_t) -> uint64x2_t {
     let not = int64x2_t(-1, -1);
-    transmute(simd_or(
-        simd_and(a, transmute(b)),
-        simd_and(simd_xor(a, transmute(not)), transmute(c)),
-    ))
+    simd_or(simd_and(a, b), simd_and(simd_xor(a, transmute(not)), c))
 }
 
 /// Bitwise Select. (128-bit)
