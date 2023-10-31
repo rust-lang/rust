@@ -188,11 +188,7 @@ pub(crate) fn type_check<'mir, 'tcx>(
         &mut borrowck_context,
     );
 
-    // FIXME(-Ztrait-solver=next): A bit dubious that we're only registering
-    // predefined opaques in the typeck root.
-    if infcx.next_trait_solver() && !infcx.tcx.is_typeck_child(body.source.def_id()) {
-        checker.register_predefined_opaques_in_new_solver();
-    }
+    checker.check_user_type_annotations();
 
     let mut verifier = TypeVerifier::new(&mut checker, promoted);
     verifier.visit_body(&body);
@@ -1021,7 +1017,13 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             borrowck_context,
             reported_errors: Default::default(),
         };
-        checker.check_user_type_annotations();
+
+        // FIXME(-Ztrait-solver=next): A bit dubious that we're only registering
+        // predefined opaques in the typeck root.
+        if infcx.next_trait_solver() && !infcx.tcx.is_typeck_child(body.source.def_id()) {
+            checker.register_predefined_opaques_in_new_solver();
+        }
+
         checker
     }
 
