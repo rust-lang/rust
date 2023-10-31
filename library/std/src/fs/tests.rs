@@ -1709,6 +1709,48 @@ fn test_file_times() {
 }
 
 #[test]
+#[cfg(any(target_os = "macos", target_os = "ios", target_os = "tvos", target_os = "watchos"))]
+fn test_file_times_pre_epoch_with_nanos() {
+    #[cfg(target_os = "ios")]
+    use crate::os::ios::fs::FileTimesExt;
+    #[cfg(target_os = "macos")]
+    use crate::os::macos::fs::FileTimesExt;
+    #[cfg(target_os = "tvos")]
+    use crate::os::tvos::fs::FileTimesExt;
+    #[cfg(target_os = "watchos")]
+    use crate::os::watchos::fs::FileTimesExt;
+
+    let tmp = tmpdir();
+    let file = File::create(tmp.join("foo")).unwrap();
+
+    for (accessed, modified, created) in [
+        // The first round is to set filetimes to something we know works, but this time
+        // it's validated with nanoseconds as well which probe the numeric boundary.
+        (
+            SystemTime::UNIX_EPOCH + Duration::new(12345, 1),
+            SystemTime::UNIX_EPOCH + Duration::new(54321, 100_000_000),
+            SystemTime::UNIX_EPOCH + Duration::new(32123, 999_999_999),
+        ),
+        // The second rounds uses pre-epoch dates along with nanoseconds that probe
+        // the numeric boundary.
+        (
+            SystemTime::UNIX_EPOCH - Duration::new(1, 1),
+            SystemTime::UNIX_EPOCH - Duration::new(60, 100_000_000),
+            SystemTime::UNIX_EPOCH - Duration::new(3600, 999_999_999),
+        ),
+    ] {
+        let mut times = FileTimes::new();
+        times = times.set_accessed(accessed).set_modified(modified).set_created(created);
+        file.set_times(times).unwrap();
+
+        let metadata = file.metadata().unwrap();
+        assert_eq!(metadata.accessed().unwrap(), accessed);
+        assert_eq!(metadata.modified().unwrap(), modified);
+        assert_eq!(metadata.created().unwrap(), created);
+    }
+}
+
+#[test]
 #[cfg(windows)]
 fn windows_unix_socket_exists() {
     use crate::sys::{c, net};
