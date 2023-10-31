@@ -5,6 +5,8 @@
 #![deny(rustc::diagnostic_outside_of_impl)]
 #![feature(associated_type_bounds)]
 #![feature(box_patterns)]
+#![feature(if_let_guard)]
+#![feature(let_chains)]
 #![feature(with_negative_coherence)]
 #![recursion_limit = "256"]
 

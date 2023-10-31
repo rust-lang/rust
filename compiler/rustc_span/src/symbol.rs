@@ -302,6 +302,7 @@ symbols! {
         Saturating,
         Send,
         SeqCst,
+        Sized,
         SliceIndex,
         SliceIter,
         Some,

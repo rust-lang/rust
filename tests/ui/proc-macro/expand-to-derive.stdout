@@ -1,7 +1,7 @@
 PRINT-DERIVE INPUT (DISPLAY): struct Foo
 {
-    field :
-    [bool ; { #[rustc_dummy] struct Inner { other_inner_field : u8, } 0 }]
+    field:
+    [bool; { #[rustc_dummy] struct Inner { other_inner_field: u8, } 0 }]
 }
 PRINT-DERIVE INPUT (DEBUG): TokenStream [
     Ident {

@@ -32,13 +32,13 @@ macro_rules! produce_it
     */ {
     () =>
     {
-        meta_macro :: print_def_site! ($crate :: dummy! ()) ;
+        meta_macro::print_def_site!($crate::dummy!());
         // `print_def_site!` will respan the `$crate` identifier
         // with `Span::def_site()`. This should cause it to resolve
         // relative to `meta_macro`, *not* `make_macro` (despite
         // the fact that `print_def_site` is produced by a
         // `macro_rules!` macro in `make_macro`).
-    } ;
+    };
 }
 
 fn main /* 0#0 */() { ; }

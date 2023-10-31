@@ -146,47 +146,142 @@ pub fn print_crate<'a>(
     s.s.eof()
 }
 
-/// Should two consecutive tokens be printed with a space between them?
+fn is_punct(tt: &TokenTree) -> bool {
+    matches!(tt, TokenTree::Token(tok, _) if tok.is_punct())
+}
+
+/// Should two consecutive token trees be printed with a space between them?
+///
+/// NOTE: should always be false if both token trees are punctuation, so that
+/// any old proc macro that parses pretty-printed code won't glue together
+/// tokens that shouldn't be glued.
 ///
 /// Note: some old proc macros parse pretty-printed output, so changes here can
 /// break old code. For example:
 /// - #63896: `#[allow(unused,` must be printed rather than `#[allow(unused ,`
 /// - #73345: `#[allow(unused)] must be printed rather than `# [allow(unused)]
 ///
-fn space_between(tt1: &TokenTree, tt2: &TokenTree) -> bool {
+fn space_between(prev: Option<&TokenTree>, tt1: &TokenTree, tt2: &TokenTree) -> bool {
     use token::*;
     use Delimiter::*;
     use TokenTree::Delimited as Del;
     use TokenTree::Token as Tok;
 
-    // Each match arm has one or more examples in comments. The default is to
-    // insert space between adjacent tokens, except for the cases listed in
-    // this match.
+    // Each match arm has one or more examples in comments.
     match (tt1, tt2) {
         // No space after line doc comments.
         (Tok(Token { kind: DocComment(CommentKind::Line, ..), .. }, _), _) => false,
 
-        // `.` + ANYTHING: `x.y`, `tup.0`
-        // `$` + ANYTHING: `$e`
-        (Tok(Token { kind: Dot | Dollar, .. }, _), _) => false,
+        // `.` + NON-PUNCT: `x.y`, `tup.0`
+        // `$` + NON-PUNCT: `$e`
+        (Tok(Token { kind: Dot | Dollar, .. }, _), tt2) if !is_punct(tt2) => false,
 
-        // ANYTHING + `,`: `foo,`
-        // ANYTHING + `.`: `x.y`, `tup.0`
-        // ANYTHING + `!`: `foo! { ... }`
-        //
-        // FIXME: Incorrect cases:
-        // - Logical not: `x =! y`, `if! x { f(); }`
-        // - Never type: `Fn() ->!`
-        (_, Tok(Token { kind: Comma | Dot | Not, .. }, _)) => false,
+        // NON-PUNCT + `,`: `foo,`
+        // NON-PUNCT + `;`: `x = 3;`, `[T; 3]`
+        // NON-PUNCT + `.`: `x.y`, `tup.0`
+        // NON-PUNCT + `:`: `'a: loop { ... }`, `x: u8`, `where T: U`,
+        //     `<Self as T>::x`, `Trait<'a>: Sized`, `X<Y<Z>>: Send`,
+        //     `let (a, b): (u32, u32);`
+        (tt1, Tok(Token { kind: Comma | Semi | Dot | Colon, .. }, _)) if !is_punct(tt1) => false,
 
-        // IDENT + `(`: `f(3)`
-        //
-        // FIXME: Incorrect cases:
-        // - Let: `let(a, b) = (1, 2)`
-        (Tok(Token { kind: Ident(..), .. }, _), Del(_, Parenthesis, _)) => false,
+        // ANYTHING-BUT-`,`|`:`|`mut`|`<` + `[`: `<expr>[1]`, `vec![]`, `#[attr]`,
+        //     `#![attr]`, but not `data: [T; 0]`, `f(a, [])`, `&mut [T]`,
+        //     `NonNull< [T] >`
+        (Tok(Token { kind: Comma | Colon | Lt, .. }, _), Del(_, Bracket, _)) => true,
+        (Tok(Token { kind: Ident(sym, is_raw), .. }, _), Del(_, Bracket, _))
+            if *sym == kw::Mut && !is_raw =>
+        {
+            true
+        }
+        (Tok(_, _), Del(_, Bracket, _)) => false,
 
-        // `#` + `[`: `#[attr]`
-        (Tok(Token { kind: Pound, .. }, _), Del(_, Bracket, _)) => false,
+        // IDENT|`fn`|`Self`|`pub` + `(`: `f(3)`, `fn(x: u8)`, `Self()`, `pub(crate)`,
+        //      but `let (a, b) = (1, 2)` needs a space after the `let`
+        (Tok(Token { kind: Ident(sym, is_raw), span }, _), Del(_, Parenthesis, _))
+            if !Ident::new(*sym, *span).is_reserved()
+                || *sym == kw::Fn
+                || *sym == kw::SelfUpper
+                || *sym == kw::Pub
+                || *is_raw =>
+        {
+            false
+        }
+
+        // IDENT|`self`|`Self`|`$crate`|`crate`|`super` + `::`: `x::y`,
+        //     `Self::a`, `$crate::x`, `crate::x`, `super::x`, but
+        //     `if ::a::b() { ... }` needs a space after the `if`.
+        (Tok(Token { kind: Ident(sym, is_raw), span }, _), Tok(Token { kind: ModSep, .. }, _))
+            if !Ident::new(*sym, *span).is_reserved()
+                || sym.is_path_segment_keyword()
+                || *is_raw =>
+        {
+            false
+        }
+
+        // `::` + IDENT: `foo::bar`
+        // `::` + `{`: `use a::{b, c}`
+        (
+            Tok(Token { kind: ModSep, .. }, _),
+            Tok(Token { kind: Ident(..), .. }, _) | Del(_, Brace, _),
+        ) => false,
+
+        // `impl` + `<`: `impl<T> Foo<T> { ... }`
+        // `for` + `<`: `for<'a> fn()`
+        (Tok(Token { kind: Ident(sym, is_raw), .. }, _), Tok(Token { kind: Lt, .. }, _))
+            if (*sym == kw::Impl || *sym == kw::For) && !is_raw =>
+        {
+            false
+        }
+
+        // `fn` + IDENT + `<`: `fn f<T>(t: T) { ... }`
+        (Tok(Token { kind: Ident(..), .. }, _), Tok(Token { kind: Lt, .. }, _))
+            if let Some(prev) = prev
+                && let Tok(Token { kind: Ident(sym, is_raw), .. }, _) = prev
+                && *sym == kw::Fn
+                && !is_raw =>
+            {
+                false
+            }
+
+        // `>` + `(`: `f::<u8>()`
+        // `>>` + `(`: `collect::<Vec<_>>()`
+        (Tok(Token { kind: Gt | BinOp(Shr), .. }, _), Del(_, Parenthesis, _)) => false,
+
+        // IDENT + `!`: `println!()`, but `if !x { ... }` needs a space after the `if`
+        (Tok(Token { kind: Ident(sym, is_raw), span }, _), Tok(Token { kind: Not, .. }, _))
+            if !Ident::new(*sym, *span).is_reserved() || *is_raw =>
+        {
+            false
+        }
+
+        // ANYTHING-BUT-`macro_rules` + `!` + NON-PUNCT-OR-BRACE: `foo!()`, `vec![]`,
+        //     `if !cond { ... }`, but not `macro_rules! m { ... }`
+        (Tok(Token { kind: Not, .. }, _), tt2) if is_punct(tt2) => true,
+        (Tok(Token { kind: Not, .. }, _), Del(_, Brace, _)) => true,
+        (Tok(Token { kind: Not, .. }, _), _) =>
+            if let Some(prev) = prev
+                && let Tok(Token { kind: Ident(sym, is_raw), .. }, _) = prev
+                && *sym == sym::macro_rules
+                && !is_raw
+            {
+                true
+            } else {
+                false
+            }
+
+        // `~` + `const`: `impl ~const Clone`
+        (Tok(Token { kind: Tilde, .. }, _), Tok(Token { kind: Ident(sym, is_raw), .. }, _))
+            if *sym == kw::Const && !is_raw =>
+        {
+            false
+        }
+
+        // `?` + `Sized`: `dyn ?Sized`
+        (Tok(Token { kind: Question, .. }, _), Tok(Token { kind: Ident(sym, is_raw), .. }, _))
+            if *sym == sym::Sized && !is_raw =>
+        {
+            false
+        }
 
         _ => true,
     }
@@ -583,14 +678,19 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
     }
 
     fn print_tts(&mut self, tts: &TokenStream, convert_dollar_crate: bool) {
+        let mut prev = None;
         let mut iter = tts.trees().peekable();
         while let Some(tt) = iter.next() {
             self.print_tt(tt, convert_dollar_crate);
             if let Some(next) = iter.peek() {
-                if space_between(tt, next) {
+                if space_between(prev, tt, next) {
                     self.space();
+                } else {
+                    // There must be a space between two punctuation tokens.
+                    assert!(!is_punct(tt) || !is_punct(next));
                 }
             }
+            prev = Some(tt);
         }
     }
 
