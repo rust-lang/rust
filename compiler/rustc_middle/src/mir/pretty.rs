@@ -1713,7 +1713,7 @@ fn pretty_print_const_value_tcx<'tcx>(
         (_, ty::Array(..) | ty::Tuple(..) | ty::Adt(..)) if !ty.has_non_region_param() => {
             let ct = tcx.lift(ct).unwrap();
             let ty = tcx.lift(ty).unwrap();
-            if let Some(contents) = tcx.try_destructure_mir_constant_for_diagnostics(ct, ty) {
+            if let Some(contents) = tcx.try_destructure_mir_constant_for_user_output(ct, ty) {
                 let fields: Vec<(ConstValue<'_>, Ty<'_>)> = contents.fields.to_vec();
                 match *ty.kind() {
                     ty::Array(..) => {
