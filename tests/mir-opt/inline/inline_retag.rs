@@ -6,7 +6,7 @@ fn main() {
     println!("{}", bar());
 }
 
-// EMIT_MIR inline_retag.bar.Inline.diff
+// EMIT_MIR inline_retag.bar.Inline.after.mir
 fn bar() -> bool {
     // CHECK-LABEL: fn bar(
     // CHECK: (inlined foo)
