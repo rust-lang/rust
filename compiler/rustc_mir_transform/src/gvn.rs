@@ -865,6 +865,12 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             }
         }
 
+        let fields: Option<Vec<_>> = fields
+            .iter_mut()
+            .map(|op| self.simplify_operand(op, location).or_else(|| self.new_opaque()))
+            .collect();
+        let fields = fields?;
+
         let (ty, variant_index) = match *kind {
             AggregateKind::Array(..) => {
                 assert!(!fields.is_empty());
@@ -883,12 +889,6 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             // Do not track unions.
             AggregateKind::Adt(_, _, _, _, Some(_)) => return None,
         };
-
-        let fields: Option<Vec<_>> = fields
-            .iter_mut()
-            .map(|op| self.simplify_operand(op, location).or_else(|| self.new_opaque()))
-            .collect();
-        let fields = fields?;
 
         if let AggregateTy::Array = ty
             && fields.len() > 4
