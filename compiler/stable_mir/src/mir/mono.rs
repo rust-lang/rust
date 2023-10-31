@@ -42,6 +42,10 @@ impl Instance {
         with(|context| context.instance_ty(self.def))
     }
 
+    pub fn mangled_name(&self) -> String {
+        with(|context| context.instance_mangled_name(self.def))
+    }
+
     /// Resolve an instance starting from a function definition and generic arguments.
     pub fn resolve(def: FnDef, args: &GenericArgs) -> Result<Instance, crate::Error> {
         with(|context| {

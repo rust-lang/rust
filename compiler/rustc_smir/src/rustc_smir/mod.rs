@@ -216,6 +216,12 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         tables.create_def_id(def_id)
     }
 
+    fn instance_mangled_name(&self, def: InstanceDef) -> String {
+        let tables = self.0.borrow_mut();
+        let instance = tables.instances[def];
+        tables.tcx.symbol_name(instance).name.to_string()
+    }
+
     fn mono_instance(&self, item: stable_mir::CrateItem) -> stable_mir::mir::mono::Instance {
         let mut tables = self.0.borrow_mut();
         let def_id = tables[item.0];
