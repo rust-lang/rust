@@ -2314,7 +2314,6 @@ fn confirm_param_env_candidate<'cx, 'tcx>(
     ) {
         Ok(InferOk { value: _, obligations }) => {
             nested_obligations.extend(obligations);
-            assoc_ty_own_obligations(selcx, obligation, &mut nested_obligations);
             // FIXME(associated_const_equality): Handle consts here as well? Maybe this progress type should just take
             // a term instead.
             Progress { term: cache_entry.term, obligations: nested_obligations }
@@ -2337,7 +2336,7 @@ fn confirm_impl_candidate<'cx, 'tcx>(
 ) -> Progress<'tcx> {
     let tcx = selcx.tcx();
 
-    let ImplSourceUserDefinedData { impl_def_id, args, mut nested } = impl_impl_source;
+    let ImplSourceUserDefinedData { impl_def_id, args, nested } = impl_impl_source;
     let assoc_item_id = obligation.predicate.def_id;
     let trait_def_id = tcx.trait_id_of_impl(impl_def_id).unwrap();
 
@@ -2384,59 +2383,7 @@ fn confirm_impl_candidate<'cx, 'tcx>(
         );
         Progress { term: err.into(), obligations: nested }
     } else {
-        assoc_ty_own_obligations(selcx, obligation, &mut nested);
         Progress { term: term.instantiate(tcx, args), obligations: nested }
-    }
-}
-
-// Get obligations corresponding to the predicates from the where-clause of the
-// associated type itself.
-fn assoc_ty_own_obligations<'cx, 'tcx>(
-    selcx: &mut SelectionContext<'cx, 'tcx>,
-    obligation: &ProjectionTyObligation<'tcx>,
-    nested: &mut Vec<PredicateObligation<'tcx>>,
-) {
-    let tcx = selcx.tcx();
-    let predicates = tcx
-        .predicates_of(obligation.predicate.def_id)
-        .instantiate_own(tcx, obligation.predicate.args);
-    for (predicate, span) in predicates {
-        let normalized = normalize_with_depth_to(
-            selcx,
-            obligation.param_env,
-            obligation.cause.clone(),
-            obligation.recursion_depth + 1,
-            predicate,
-            nested,
-        );
-
-        let nested_cause = if matches!(
-            obligation.cause.code(),
-            super::CompareImplItemObligation { .. }
-                | super::CheckAssociatedTypeBounds { .. }
-                | super::AscribeUserTypeProvePredicate(..)
-        ) {
-            obligation.cause.clone()
-        } else if span.is_dummy() {
-            ObligationCause::new(
-                obligation.cause.span,
-                obligation.cause.body_id,
-                super::ItemObligation(obligation.predicate.def_id),
-            )
-        } else {
-            ObligationCause::new(
-                obligation.cause.span,
-                obligation.cause.body_id,
-                super::BindingObligation(obligation.predicate.def_id, span),
-            )
-        };
-        nested.push(Obligation::with_depth(
-            tcx,
-            nested_cause,
-            obligation.recursion_depth + 1,
-            obligation.param_env,
-            normalized,
-        ));
     }
 }
 
