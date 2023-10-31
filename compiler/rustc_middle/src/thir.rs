@@ -25,7 +25,6 @@ use rustc_middle::ty::{
 };
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{sym, ErrorGuaranteed, Span, Symbol, DUMMY_SP};
-use rustc_span::{sym, Span, Symbol, DUMMY_SP};
 use rustc_target::abi::{FieldIdx, VariantIdx};
 use rustc_target::asm::InlineAsmRegOrRegClass;
 use std::fmt;

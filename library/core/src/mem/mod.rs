@@ -1329,6 +1329,7 @@ impl<T> SizedTypeProperties for T {}
 ///
 /// assert_eq!(mem::offset_of!(NestedA, b.0), 0);
 ///
+/// # #[cfg(not(bootstrap))]
 /// assert_eq!(mem::offset_of!(Option<&u8>, Some.0), 0);
 /// ```
 #[unstable(feature = "offset_of", issue = "106655")]
