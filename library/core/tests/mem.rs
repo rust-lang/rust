@@ -308,21 +308,226 @@ fn uninit_write_slice_cloned_mid_panic() {
     }
 }
 
+#[derive(Clone)]
+struct DropBomb;
+
+impl Drop for DropBomb {
+    fn drop(&mut self) {
+        panic!("dropped a bomb! kaboom")
+    }
+}
+
 #[test]
 fn uninit_write_slice_cloned_no_drop() {
-    #[derive(Clone)]
-    struct Bomb;
+    let mut dst = [MaybeUninit::uninit()];
+    let src = [DropBomb];
 
-    impl Drop for Bomb {
-        fn drop(&mut self) {
-            panic!("dropped a bomb! kaboom")
+    MaybeUninit::write_slice_cloned(&mut dst, &src);
+
+    forget(src);
+}
+
+#[test]
+fn uninit_fill() {
+    let mut dst = [MaybeUninit::new(255); 64];
+    let expect = [0; 64];
+
+    assert_eq!(MaybeUninit::fill(&mut dst, 0), &expect);
+}
+
+#[test]
+fn uninit_fill_mut() {
+    let mut dst = [MaybeUninit::new(255); 64];
+    let expect = [0; 64];
+
+    let init: &mut [u8] = MaybeUninit::fill_mut(&mut dst, 0);
+    assert_eq!(init, &expect);
+}
+
+#[test]
+fn uninit_fill_cloned() {
+    let mut dst = [MaybeUninit::new(255); 64];
+    let expect = [0; 64];
+
+    assert_eq!(MaybeUninit::fill_cloned(&mut dst, &0), &expect);
+}
+
+struct IncrementUntilPanic {
+    limit: usize,
+    rc: Rc<()>,
+}
+
+impl Clone for IncrementUntilPanic {
+    fn clone(&self) -> Self {
+        if Rc::strong_count(&self.rc) >= self.limit {
+            panic!("expected panic on clone");
+        }
+        Self {
+            limit: self.limit,
+            rc: self.rc.clone(),
+        }
+    }
+}
+
+#[test]
+#[cfg(panic = "unwind")]
+fn uninit_fill_cloned_mid_panic() {
+    use std::panic;
+
+    let rc = Rc::new(());
+
+    let mut dst = [
+        MaybeUninit::uninit(),
+        MaybeUninit::uninit(),
+        MaybeUninit::uninit(),
+    ];
+
+    let src = IncrementUntilPanic { limit: 3, rc: rc.clone() };
+    let err = panic::catch_unwind(panic::AssertUnwindSafe(|| {
+        MaybeUninit::fill_cloned(&mut dst, &src);
+    }));
+
+    drop(src);
+
+    match err {
+        Ok(_) => unreachable!(),
+        Err(payload) => {
+            payload
+                .downcast::<&'static str>()
+                .and_then(|s| if *s == "expected panic on clone" { Ok(s) } else { Err(s) })
+                .unwrap_or_else(|p| panic::resume_unwind(p));
+
+            assert_eq!(Rc::strong_count(&rc), 1)
+        }
+    }
+}
+
+#[test]
+#[cfg(panic = "unwind")]
+fn uninit_fill_cloned_no_drop() {
+    let mut dst = [MaybeUninit::uninit()];
+    let src = DropBomb;
+
+    MaybeUninit::fill_cloned(&mut dst, &src);
+
+    forget(src);
+}
+
+#[test]
+fn uninit_fill_with() {
+    let mut dst = [MaybeUninit::new(255); 64];
+    let expect = [0; 64];
+
+    assert_eq!(MaybeUninit::fill_with(&mut dst, || 0), &expect);
+}
+
+#[test]
+#[cfg(panic = "unwind")]
+fn uninit_fill_with_mid_panic() {
+    use std::panic;
+
+    let rc = Rc::new(());
+
+    let mut dst = [
+        MaybeUninit::uninit(),
+        MaybeUninit::uninit(),
+        MaybeUninit::uninit(),
+    ];
+
+    let src = IncrementUntilPanic { limit: 3, rc: rc.clone() };
+    let err = panic::catch_unwind(panic::AssertUnwindSafe(|| {
+        MaybeUninit::fill_with(&mut dst, || src.clone());
+    }));
+
+    drop(src);
+
+    match err {
+        Ok(_) => unreachable!(),
+        Err(payload) => {
+            payload
+                .downcast::<&'static str>()
+                .and_then(|s| if *s == "expected panic on clone" { Ok(s) } else { Err(s) })
+                .unwrap_or_else(|p| panic::resume_unwind(p));
+
+            assert_eq!(Rc::strong_count(&rc), 1)
+        }
+    }
+}
+
+#[test]
+#[cfg(panic = "unwind")]
+fn uninit_fill_with_no_drop() {
+    let mut dst = [MaybeUninit::uninit()];
+    let src = DropBomb;
+
+    MaybeUninit::fill_with(&mut dst, || src.clone());
+
+    forget(src);
+}
+
+#[test]
+fn uninit_fill_from() {
+    let mut dst = [MaybeUninit::new(255); 64];
+    let src = [0; 64];
+
+    assert_eq!(MaybeUninit::fill_from(&mut dst, src.into_iter()), &src);
+}
+
+#[test]
+#[cfg(panic = "unwind")]
+fn uninit_fill_from_mid_panic() {
+    use std::panic;
+
+    struct IterUntilPanic {
+        limit: usize,
+        rc: Rc<()>,
+    }
+
+    impl Iterator for IterUntilPanic {
+        type Item = Rc<()>;
+        fn next(&mut self) -> Option<Self::Item> {
+            if Rc::strong_count(&self.rc) >= self.limit {
+                panic!("expected panic on next");
+            }
+            Some(self.rc.clone())
         }
     }
 
-    let mut dst = [MaybeUninit::uninit()];
-    let src = [Bomb];
+    let rc = Rc::new(());
 
-    MaybeUninit::write_slice_cloned(&mut dst, &src);
+    let mut dst = [
+        MaybeUninit::uninit(),
+        MaybeUninit::uninit(),
+        MaybeUninit::uninit(),
+        MaybeUninit::uninit(),
+    ];
+
+    let src = IterUntilPanic { limit: 3, rc: rc.clone() };
+
+    let err = panic::catch_unwind(panic::AssertUnwindSafe(|| {
+        MaybeUninit::fill_from(&mut dst, src);
+    }));
+
+    match err {
+        Ok(_) => unreachable!(),
+        Err(payload) => {
+            payload
+                .downcast::<&'static str>()
+                .and_then(|s| if *s == "expected panic on next" { Ok(s) } else { Err(s) })
+                .unwrap_or_else(|p| panic::resume_unwind(p));
+
+            assert_eq!(Rc::strong_count(&rc), 1)
+        }
+    }
+}
+
+#[test]
+#[cfg(panic = "unwind")]
+fn uninit_fill_from_no_drop() {
+    let mut dst = [MaybeUninit::uninit()];
+    let src = [DropBomb];
+
+    MaybeUninit::fill_from(&mut dst, src.iter());
 
     forget(src);
 }

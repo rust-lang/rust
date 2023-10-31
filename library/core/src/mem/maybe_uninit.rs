@@ -1123,22 +1123,6 @@ impl<T> MaybeUninit<T> {
         // unlike copy_from_slice this does not call clone_from_slice on the slice
         // this is because `MaybeUninit<T: Clone>` does not implement Clone.
 
-        struct Guard<'a, T> {
-            slice: &'a mut [MaybeUninit<T>],
-            initialized: usize,
-        }
-
-        impl<'a, T> Drop for Guard<'a, T> {
-            fn drop(&mut self) {
-                let initialized_part = &mut self.slice[..self.initialized];
-                // SAFETY: this raw slice will contain only initialized objects
-                // that's why, it is allowed to drop it.
-                unsafe {
-                    crate::ptr::drop_in_place(MaybeUninit::slice_assume_init_mut(initialized_part));
-                }
-            }
-        }
-
         assert_eq!(this.len(), src.len(), "destination and source slices have different lengths");
         // NOTE: We need to explicitly slice them to the same length
         // for bounds checking to be elided, and the optimizer will
@@ -1147,7 +1131,7 @@ impl<T> MaybeUninit<T> {
         let src = &src[..len];
 
         // guard is needed b/c panic might happen during a clone
-        let mut guard = Guard { slice: this, initialized: 0 };
+        let mut guard = CloneGuard { slice: this, initialized: 0 };
 
         for i in 0..len {
             guard.slice[i].write(src[i].clone());
@@ -1158,6 +1142,202 @@ impl<T> MaybeUninit<T> {
 
         // SAFETY: Valid elements have just been written into `this` so it is initialized
         unsafe { MaybeUninit::slice_assume_init_mut(this) }
+    }
+
+    /// Fills `this` with elements by copying `value`, returning a reference to
+    /// the now initialized contents of `this`.
+    ///
+    /// This is similar to [`slice::fill`] but is restricted to `Copy` values.
+    /// Use [`MaybeUninit::fill_cloned`] to initialize from a `Clone` value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(maybe_uninit_fill)]
+    /// use std::mem::MaybeUninit;
+    ///
+    /// let mut dst = [MaybeUninit::uninit(); 5];
+    /// let init = MaybeUninit::fill(&mut dst, 0u8);
+    ///
+    /// assert_eq!(init, &[0, 0, 0, 0, 0]);
+    /// ```
+    #[doc(alias = "memset")]
+    #[unstable(feature = "maybe_uninit_fill", issue = "117428")]
+    pub fn fill<'a>(this: &'a mut [MaybeUninit<T>], value: T) -> &'a [T]
+    where
+        T: Copy,
+    {
+        this.fill(MaybeUninit::new(value));
+        // SAFETY: Valid elements have just been copied into `this` so it is initialized
+        unsafe { MaybeUninit::slice_assume_init_ref(this) }
+    }
+
+    /// Fills `this` with elements by copying `value`, returning a mutable
+    /// reference to the now initialized contents of `this`.
+    ///
+    /// This is similar to [`slice::fill`] but is restricted to `Copy` values.
+    /// Use [`MaybeUninit::fill_cloned`] to initialize from a `Clone` value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(maybe_uninit_fill)]
+    /// use std::mem::MaybeUninit;
+    ///
+    /// let mut dst = [MaybeUninit::uninit(); 5];
+    /// let init = MaybeUninit::fill_mut(&mut dst, 0u8);
+    /// init[4] = 123;
+    ///
+    /// assert_eq!(init, &[0, 0, 0, 0, 123]);
+    /// ```
+    #[unstable(feature = "maybe_uninit_fill", issue = "117428")]
+    pub fn fill_mut<'a>(this: &'a mut [MaybeUninit<T>], value: T) -> &'a mut [T]
+    where
+        T: Copy,
+    {
+        this.fill(MaybeUninit::new(value));
+        // SAFETY: Valid elements have just been copied into `this` so it is initialized
+        unsafe { MaybeUninit::slice_assume_init_mut(this) }
+    }
+
+    /// Fills `this` with elements by cloning `value`, returning a reference to
+    /// the now initialized contents of `this`. Any already  initialized elements
+    /// will not be dropped.
+    ///
+    /// This is similar to [`slice::fill`] but does not drop existing elements.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if the implementation of `Clone` panics.
+    ///
+    /// If there is a panic, the already initialized elements will be dropped.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(maybe_uninit_fill)]
+    /// use std::mem::MaybeUninit;
+    ///
+    /// let mut dst = [
+    ///    MaybeUninit::uninit(),
+    ///    MaybeUninit::uninit(),
+    ///    MaybeUninit::uninit(),
+    /// ];
+    /// let msg = String::from("hello");
+    /// let init = MaybeUninit::fill_cloned(&mut dst, &msg);
+    ///
+    /// assert_eq!(init, &["hello", "hello", "hello"]);
+    /// ```
+    #[unstable(feature = "maybe_uninit_fill", issue = "117428")]
+    pub fn fill_cloned<'a>(this: &'a mut [MaybeUninit<T>], value: &T) -> &'a [T]
+    where
+        T: Clone,
+    {
+        let len = this.len();
+
+        // guard is needed b/c panic might happen during a clone
+        let mut guard = CloneGuard { slice: this, initialized: 0 };
+
+        for i in 0..len {
+            guard.slice[i].write(value.clone());
+            guard.initialized += 1;
+        }
+
+        super::forget(guard);
+
+        // SAFETY: Valid elements have just been written into `this` so it is initialized
+        unsafe { MaybeUninit::slice_assume_init_ref(this) }
+    }
+
+    /// Fills `this` with elements returned by calling a closure repeatedly,
+    /// returning a reference to the now initialized contents of `this`. Any
+    /// already initialized elements will not be dropped.
+    ///
+    /// This is similar to [`slice::fill_with`] but does not drop existing
+    /// elements.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if the closure panics.
+    ///
+    /// If there is a panic, the already initialized elements will be dropped.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(maybe_uninit_fill)]
+    /// use std::mem::MaybeUninit;
+    ///
+    /// let mut dst = [MaybeUninit::uninit(); 5];
+    /// let mut next = 0;
+    /// let init = MaybeUninit::fill_with(&mut dst, || { next += 1; next });
+    ///
+    /// assert_eq!(init, &[1, 2, 3, 4, 5]);
+    /// ```
+    #[unstable(feature = "maybe_uninit_fill", issue = "117428")]
+    pub fn fill_with<'a, F>(this: &'a mut [MaybeUninit<T>], mut f: F) -> &'a [T]
+    where
+        F: FnMut() -> T,
+    {
+        let len = this.len();
+        let mut guard = CloneGuard { slice: this, initialized: 0 };
+
+        for i in 0..len {
+            guard.slice[i].write(f());
+            guard.initialized += 1;
+        }
+
+        super::forget(guard);
+
+        // SAFETY: Valid elements have just been written into `this` so it is initialized
+        unsafe { MaybeUninit::slice_assume_init_ref(this) }
+    }
+
+    /// Fills `this` with the contents of an iterator, returning a reference to
+    /// the now initialized contents of `this`. Any already  initialized elements
+    /// will not be dropped.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if the iterator panics.
+    ///
+    /// If there is a panic, the already initialized elements will be dropped.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(maybe_uninit_fill)]
+    /// use std::mem::MaybeUninit;
+    ///
+    /// let mut dst = [MaybeUninit::uninit(); 5];
+    /// let mut iter = [1, 2, 3].into_iter().cycle();
+    /// let init = MaybeUninit::fill_from(&mut dst, iter);
+    ///
+    /// assert_eq!(init, &[1, 2, 3, 1, 2]);
+    /// ```
+    #[unstable(feature = "maybe_uninit_fill", issue = "117428")]
+    pub fn fill_from<'a, I>(this: &'a mut [MaybeUninit<T>], mut iter: I) -> &'a [T]
+    where
+        I: Iterator<Item = T>,
+    {
+        let len = this.len();
+        let mut guard = CloneGuard { slice: this, initialized: 0 };
+
+        for i in 0..len {
+            match iter.next() {
+                Some(value) => {
+                    guard.slice[i].write(value);
+                    guard.initialized += 1;
+                }
+                None => break,
+            }
+        }
+
+        let init_len = guard.initialized;
+        super::forget(guard);
+
+        // SAFETY: Valid elements have just been written into `this` so it is initialized
+        unsafe { MaybeUninit::slice_assume_init_ref(&mut this[..init_len]) }
     }
 
     /// Returns the contents of this `MaybeUninit` as a slice of potentially uninitialized bytes.
@@ -1311,5 +1491,21 @@ impl<T, const N: usize> [MaybeUninit<T>; N] {
     pub const fn transpose(self) -> MaybeUninit<[T; N]> {
         // SAFETY: T and MaybeUninit<T> have the same layout
         unsafe { intrinsics::transmute_unchecked(self) }
+    }
+}
+
+struct CloneGuard<'a, T> {
+    slice: &'a mut [MaybeUninit<T>],
+    initialized: usize,
+}
+
+impl<'a, T> Drop for CloneGuard<'a, T> {
+    fn drop(&mut self) {
+        let initialized_part = &mut self.slice[..self.initialized];
+        // SAFETY: this raw slice will contain only initialized objects
+        // that's why, it is allowed to drop it.
+        unsafe {
+            crate::ptr::drop_in_place(MaybeUninit::slice_assume_init_mut(initialized_part));
+        }
     }
 }
