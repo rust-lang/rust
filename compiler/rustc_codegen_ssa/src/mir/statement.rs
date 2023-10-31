@@ -2,6 +2,7 @@ use rustc_middle::mir::{self, NonDivergingIntrinsic};
 use rustc_middle::span_bug;
 use rustc_session::config::OptLevel;
 
+use super::pointers_to_check;
 use super::FunctionCx;
 use super::LocalRef;
 use crate::traits::*;
@@ -10,6 +11,36 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     #[instrument(level = "debug", skip(self, bx))]
     pub fn codegen_statement(&mut self, bx: &mut Bx, statement: &mir::Statement<'tcx>) {
         self.set_debug_loc(bx, statement.source_info);
+
+        let required_align_of = |local| {
+            // Since Deref projections must come first and only once, the pointer for an indirect place
+            // is the Local that the Place is based on.
+            let pointer_ty = self.mir.local_decls[local].ty;
+            let pointer_ty = self.monomorphize(pointer_ty);
+
+            // We only want to check places based on unsafe pointers
+            if !pointer_ty.is_unsafe_ptr() {
+                return None;
+            }
+
+            let pointee_ty =
+                pointer_ty.builtin_deref(true).expect("no builtin_deref for an unsafe pointer");
+            let pointee_layout = bx.layout_of(pointee_ty);
+
+            Some(pointee_layout.layout.align.abi.bytes())
+        };
+
+        if bx.tcx().may_insert_alignment_checks() {
+            for (pointer, required_alignment) in pointers_to_check(statement, required_align_of) {
+                let pointer = mir::Operand::Copy(pointer.into());
+                self.codegen_alignment_check(
+                    bx,
+                    pointer,
+                    required_alignment,
+                    statement.source_info,
+                );
+            }
+        }
         match statement.kind {
             mir::StatementKind::Assign(box (ref place, ref rvalue)) => {
                 if let Some(index) = place.as_local() {

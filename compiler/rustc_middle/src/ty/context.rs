@@ -2677,6 +2677,24 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn impl_polarity(self, def_id: impl IntoQueryParam<DefId>) -> ty::ImplPolarity {
         self.impl_trait_header(def_id).map_or(ty::ImplPolarity::Positive, |h| h.polarity)
     }
+
+    /// Whether a codegen backend may emit alignment checks for pointers when they are
+    /// read or written through. If this returns true, the backend might emit such checks. If this
+    /// returns false, the backend must not emit such checks.
+    pub fn may_insert_alignment_checks(self) -> bool {
+        // Alignment checks are panics. If for whatever reason we do not have a panic
+        // implementation, those new panics cause otherwise-valid code to not compile.
+        if self.lang_items().get(LangItem::PanicImpl).is_none() {
+            return false;
+        }
+
+        // FIXME(#112480) MSVC and rustc disagree on minimum stack alignment on x86 Windows.
+        if self.sess.target.llvm_target == "i686-pc-windows-msvc" {
+            return false;
+        }
+
+        self.sess.ub_checks()
+    }
 }
 
 /// Parameter attributes that can only be determined by examining the body of a function instead

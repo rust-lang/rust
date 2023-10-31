@@ -857,9 +857,6 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                 mir::AssertKind::BoundsCheck { .. } => {
                     push_mono_lang_item(self, LangItem::PanicBoundsCheck);
                 }
-                mir::AssertKind::MisalignedPointerDereference { .. } => {
-                    push_mono_lang_item(self, LangItem::PanicMisalignedPointerDereference);
-                }
                 _ => {
                     push_mono_lang_item(self, msg.panic_function());
                 }

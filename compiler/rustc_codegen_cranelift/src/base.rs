@@ -5,6 +5,7 @@ use cranelift_codegen::CodegenError;
 use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext};
 use cranelift_module::ModuleError;
 use rustc_ast::InlineAsmOptions;
+use rustc_codegen_ssa::mir::pointers_to_check;
 use rustc_index::IndexVec;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::layout::FnAbiOf;
@@ -370,18 +371,6 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                             Some(source_info.span),
                         );
                     }
-                    AssertKind::MisalignedPointerDereference { ref required, ref found } => {
-                        let required = codegen_operand(fx, required).load_scalar(fx);
-                        let found = codegen_operand(fx, found).load_scalar(fx);
-                        let location = fx.get_caller_location(source_info).load_scalar(fx);
-
-                        codegen_panic_inner(
-                            fx,
-                            rustc_hir::LangItem::PanicMisalignedPointerDereference,
-                            &[required, found, location],
-                            Some(source_info.span),
-                        );
-                    }
                     _ => {
                         let location = fx.get_caller_location(source_info).load_scalar(fx);
 
@@ -524,6 +513,49 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
     }
 }
 
+fn codegen_alignment_check<'tcx>(
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
+    pointer: mir::Operand<'tcx>,
+    required_alignment: u64,
+    source_info: mir::SourceInfo,
+) {
+    // Compute the alignment mask
+    let required_alignment = required_alignment as i64;
+    let mask = fx.bcx.ins().iconst(fx.pointer_type, required_alignment - 1);
+    let required = fx.bcx.ins().iconst(fx.pointer_type, required_alignment);
+
+    // And the pointer with the mask
+    let pointer = codegen_operand(fx, &pointer);
+    let pointer = match pointer.layout().abi {
+        Abi::Scalar(_) => pointer.load_scalar(fx),
+        Abi::ScalarPair(..) => pointer.load_scalar_pair(fx).0,
+        _ => unreachable!(),
+    };
+    let masked = fx.bcx.ins().band(pointer, mask);
+
+    // Branch on whether the masked value is zero
+    let is_zero = fx.bcx.ins().icmp_imm(IntCC::Equal, masked, 0);
+
+    // Create destination blocks, branching on is_zero
+    let panic = fx.bcx.create_block();
+    let success = fx.bcx.create_block();
+    fx.bcx.ins().brif(is_zero, success, &[], panic, &[]);
+
+    // Switch to the failure block and codegen a call to the panic intrinsic
+    fx.bcx.switch_to_block(panic);
+    let location = fx.get_caller_location(source_info).load_scalar(fx);
+    codegen_panic_inner(
+        fx,
+        rustc_hir::LangItem::PanicMisalignedPointerDereference,
+        &[required, pointer, location],
+        Some(source_info.span),
+    );
+
+    // Continue codegen in the success block
+    fx.bcx.switch_to_block(success);
+    fx.bcx.ins().nop();
+}
+
 fn codegen_stmt<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     #[allow(unused_variables)] cur_block: Block,
@@ -542,6 +574,27 @@ fn codegen_stmt<'tcx>(
                     fx.add_comment(inst, format!("{:?}", stmt));
                 });
             }
+        }
+    }
+
+    let required_align_of = |pointer| {
+        let pointer_ty = fx.mir.local_decls[pointer].ty;
+        let pointer_ty = fx.monomorphize(pointer_ty);
+        if !pointer_ty.is_unsafe_ptr() {
+            return None;
+        }
+
+        let pointee_ty =
+            pointer_ty.builtin_deref(true).expect("no builtin_deref for an unsafe pointer");
+        let pointee_layout = fx.layout_of(pointee_ty);
+
+        Some(pointee_layout.align.abi.bytes() as u64)
+    };
+
+    if fx.tcx.may_insert_alignment_checks() {
+        for (pointer, required_alignment) in pointers_to_check(stmt, required_align_of) {
+            let pointer = mir::Operand::Copy(pointer.into());
+            codegen_alignment_check(fx, pointer, required_alignment, stmt.source_info);
         }
     }
 

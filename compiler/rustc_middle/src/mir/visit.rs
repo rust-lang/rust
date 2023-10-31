@@ -627,10 +627,6 @@ macro_rules! make_mir_visitor {
                     ResumedAfterReturn(_) | ResumedAfterPanic(_) => {
                         // Nothing to visit
                     }
-                    MisalignedPointerDereference { required, found } => {
-                        self.visit_operand(required, location);
-                        self.visit_operand(found, location);
-                    }
                 }
             }
 

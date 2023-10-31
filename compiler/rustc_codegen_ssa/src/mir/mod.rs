@@ -22,12 +22,14 @@ mod intrinsic;
 mod locals;
 pub mod operand;
 pub mod place;
+mod pointer_alignment_check;
 mod rvalue;
 mod statement;
 
 use self::debuginfo::{FunctionDebugContext, PerLocalVarDebugInfo};
 use self::operand::{OperandRef, OperandValue};
 use self::place::PlaceRef;
+pub use self::pointer_alignment_check::pointers_to_check;
 
 // Used for tracking the state of generated basic blocks.
 enum CachedLlbb<T> {

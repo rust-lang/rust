@@ -278,7 +278,7 @@ fn panic_bounds_check(index: usize, len: usize) -> ! {
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[track_caller]
 #[lang = "panic_misaligned_pointer_dereference"] // needed by codegen for panic on misaligned pointer deref
-#[rustc_nounwind] // `CheckAlignment` MIR pass requires this function to never unwind
+#[rustc_nounwind] // codegen requires this function to never unwind
 fn panic_misaligned_pointer_dereference(required: usize, found: usize) -> ! {
     if cfg!(feature = "panic_immediate_abort") {
         super::intrinsics::abort()

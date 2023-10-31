@@ -288,6 +288,7 @@ fn pretty_assert_message<W: Write>(writer: &mut W, msg: &AssertMessage) -> io::R
                 "\"attempt to calculate the remainder of `{{}}` with a divisor of zero\", {pretty_op}"
             )
         }
+        #[allow(deprecated)]
         AssertMessage::MisalignedPointerDereference { required, found } => {
             let pretty_required = pretty_operand(required);
             let pretty_found = pretty_operand(found);
