@@ -495,14 +495,6 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                     }
                 }
             }
-            ExprKind::Let { expr: expr_id, .. } => {
-                let let_expr = &self.thir[expr_id];
-                if let ty::Adt(adt_def, _) = let_expr.ty.kind()
-                    && adt_def.is_union()
-                {
-                    self.requires_unsafe(expr.span, AccessToUnionField);
-                }
-            }
             _ => {}
         }
         visit::walk_expr(self, expr);
