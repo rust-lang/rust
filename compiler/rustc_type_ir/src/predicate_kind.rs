@@ -12,7 +12,12 @@ use crate::{TyDecoder, TyEncoder};
 /// A clause is something that can appear in where bounds or be inferred
 /// by implied bounds.
 #[derive(derivative::Derivative)]
-#[derivative(Clone(bound = ""), Hash(bound = ""), PartialEq(bound = ""), Eq(bound = ""))]
+#[derivative(
+    Clone(bound = ""),
+    Hash(bound = ""),
+    PartialEq(skip_discriminant = "true", bound = ""),
+    Eq(bound = "")
+)]
 pub enum ClauseKind<I: Interner> {
     /// Corresponds to `where Foo: Bar<A, B, C>`. `Foo` here would be
     /// the `Self` type of the trait reference and `A`, `B`, and `C`
@@ -202,7 +207,12 @@ where
 }
 
 #[derive(derivative::Derivative)]
-#[derivative(Clone(bound = ""), Hash(bound = ""), PartialEq(bound = ""), Eq(bound = ""))]
+#[derivative(
+    Clone(bound = ""),
+    Hash(bound = ""),
+    PartialEq(skip_discriminant = "true", bound = ""),
+    Eq(bound = "")
+)]
 pub enum PredicateKind<I: Interner> {
     /// Prove a clause
     Clause(ClauseKind<I>),

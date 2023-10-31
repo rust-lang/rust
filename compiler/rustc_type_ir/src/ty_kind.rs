@@ -121,7 +121,7 @@ pub enum AliasKind {
     Ord(bound = ""),
     Ord = "feature_allow_slow_enum",
     Hash(bound = ""),
-    PartialEq(bound = ""),
+    PartialEq(skip_discriminant = "true", bound = ""),
     Eq(bound = "")
 )]
 pub enum TyKind<I: Interner> {
