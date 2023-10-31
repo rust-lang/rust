@@ -1,5 +1,5 @@
 use std::fmt;
-use std::hash;
+use std::hash::Hash;
 use std::ops::ControlFlow;
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -13,6 +13,8 @@ use crate::{HashStableContext, Interner, TyEncoder, UniverseIndex};
 /// A "canonicalized" type `V` is one where all free inference
 /// variables have been rewritten to "canonical vars". These are
 /// numbered starting from 0 in order of first appearance.
+#[derive(derivative::Derivative)]
+#[derivative(Clone(bound = "V: Clone"), Hash(bound = "V: Hash"))]
 pub struct Canonical<I: Interner, V> {
     pub value: V,
     pub max_universe: UniverseIndex,
@@ -59,14 +61,6 @@ impl<I: Interner, V> Canonical<I, V> {
     }
 }
 
-impl<I: Interner, V: hash::Hash> hash::Hash for Canonical<I, V> {
-    fn hash<H: hash::Hasher>(&self, state: &mut H) {
-        self.value.hash(state);
-        self.max_universe.hash(state);
-        self.variables.hash(state);
-    }
-}
-
 impl<CTX: HashStableContext, I: Interner, V: HashStable<CTX>> HashStable<CTX> for Canonical<I, V>
 where
     I::CanonicalVars: HashStable<CTX>,
@@ -105,16 +99,6 @@ impl<I: Interner, V: fmt::Debug> fmt::Debug for Canonical<I, V> {
             .field("max_universe", &self.max_universe)
             .field("variables", &self.variables)
             .finish()
-    }
-}
-
-impl<I: Interner, V: Clone> Clone for Canonical<I, V> {
-    fn clone(&self) -> Self {
-        Canonical {
-            value: self.value.clone(),
-            max_universe: self.max_universe.clone(),
-            variables: self.variables.clone(),
-        }
     }
 }
 
