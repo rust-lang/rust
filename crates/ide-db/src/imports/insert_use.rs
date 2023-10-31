@@ -9,7 +9,7 @@ use syntax::{
     algo,
     ast::{
         self, edit_in_place::Removable, make, AstNode, HasAttrs, HasModuleItem, HasVisibility,
-        PathSegmentKind, Rename, UseTree,
+        PathSegmentKind, UseTree,
     },
     ted, Direction, NodeOrToken, SyntaxKind, SyntaxNode,
 };
@@ -163,16 +163,12 @@ pub fn insert_use(scope: &ImportScope, path: ast::Path, cfg: &InsertUseConfig) {
 pub fn insert_use_as_alias(scope: &ImportScope, path: ast::Path, cfg: &InsertUseConfig) {
     let text: &str = "use foo as _";
     let parse = syntax::SourceFile::parse(text);
-    let node = match parse.tree().syntax().descendants().find_map(UseTree::cast) {
-        Some(it) => it,
-        None => {
-            panic!(
-                "Failed to make ast node `{}` from text {}",
-                std::any::type_name::<Rename>(),
-                text
-            )
-        }
-    };
+    let node = parse
+        .tree()
+        .syntax()
+        .descendants()
+        .find_map(UseTree::cast)
+        .expect("Failed to make ast node `Rename`");
     let alias = node.rename();
 
     insert_use_with_alias_option(scope, path, cfg, alias);
@@ -202,11 +198,8 @@ fn insert_use_with_alias_option(
         };
     }
 
-    let use_item = if alias.is_some() {
-        make::use_(None, make::use_tree(path.clone(), None, alias, false)).clone_for_update()
-    } else {
-        make::use_(None, make::use_tree(path.clone(), None, None, false)).clone_for_update()
-    };
+    let use_item =
+        make::use_(None, make::use_tree(path.clone(), None, alias, false)).clone_for_update();
 
     // merge into existing imports if possible
     if let Some(mb) = mb {
