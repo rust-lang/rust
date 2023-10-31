@@ -15,10 +15,11 @@
           StorageLive(_1);
 -         StorageLive(_2);
 -         _2 = const 1_usize as &mut Never (Transmute);
+-         _1 = &mut (*_2);
+-         StorageDead(_2);
 +         nop;
 +         _2 = const {0x1 as &mut Never};
-          _1 = &mut (*_2);
--         StorageDead(_2);
++         _1 = const {0x1 as &mut Never};
 +         nop;
           unreachable;
       }

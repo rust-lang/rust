@@ -1015,23 +1015,32 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, 'tcx> {
     }
 
     fn visit_statement(&mut self, stmt: &mut Statement<'tcx>, location: Location) {
-        if let StatementKind::Assign(box (_, ref mut rvalue)) = stmt.kind
+        if let StatementKind::Assign(box (ref mut lhs, ref mut rvalue)) = stmt.kind {
+            self.simplify_place_projection(lhs, location);
+
             // Do not try to simplify a constant, it's already in canonical shape.
-            && !matches!(rvalue, Rvalue::Use(Operand::Constant(_)))
-        {
-            if let Some(value) = self.simplify_rvalue(rvalue, location) {
-                if let Some(const_) = self.try_as_constant(value) {
-                    *rvalue = Rvalue::Use(Operand::Constant(Box::new(const_)));
-                } else if let Some(local) = self.try_as_local(value, location)
-                    && *rvalue != Rvalue::Use(Operand::Move(local.into()))
-                {
-                    *rvalue = Rvalue::Use(Operand::Copy(local.into()));
-                    self.reused_locals.insert(local);
-                }
+            if matches!(rvalue, Rvalue::Use(Operand::Constant(_))) {
+                return;
             }
-        } else {
-            self.super_statement(stmt, location);
+
+            let value = lhs
+                .as_local()
+                .and_then(|local| self.locals[local])
+                .or_else(|| self.simplify_rvalue(rvalue, location));
+            let Some(value) = value else { return };
+
+            if let Some(const_) = self.try_as_constant(value) {
+                *rvalue = Rvalue::Use(Operand::Constant(Box::new(const_)));
+            } else if let Some(local) = self.try_as_local(value, location)
+                && *rvalue != Rvalue::Use(Operand::Move(local.into()))
+            {
+                *rvalue = Rvalue::Use(Operand::Copy(local.into()));
+                self.reused_locals.insert(local);
+            }
+
+            return;
         }
+        self.super_statement(stmt, location);
     }
 }
 
