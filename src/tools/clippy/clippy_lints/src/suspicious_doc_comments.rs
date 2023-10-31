@@ -1,6 +1,7 @@
 use clippy_utils::diagnostics::{multispan_sugg_with_applicability, span_lint_and_then};
 use if_chain::if_chain;
-use rustc_ast::{token::CommentKind, AttrKind, AttrStyle, Attribute, Item};
+use rustc_ast::token::CommentKind;
+use rustc_ast::{AttrKind, AttrStyle, Attribute, Item};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};

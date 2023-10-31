@@ -2,7 +2,7 @@ error[E0277]: the size for values of type `A` cannot be known at compilation tim
   --> $DIR/issue-88287.rs:34:9
    |
 LL | type SearchFutureTy<'f, A, B: 'f>
-   |                         - this type parameter needs to be `std::marker::Sized`
+   |                         - this type parameter needs to be `Sized`
 ...
 LL |         async move { todo!() }
    |         ^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time

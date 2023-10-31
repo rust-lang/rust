@@ -4,6 +4,7 @@ version = "0.0.0"
 edition = "2021"
 
 [workspace]
+resolver = "1"
 
 [dependencies]
 r-efi = "4.1.0"

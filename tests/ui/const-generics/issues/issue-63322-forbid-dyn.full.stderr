@@ -1,8 +1,10 @@
-error[E0741]: `(dyn A + 'static)` must be annotated with `#[derive(PartialEq, Eq)]` to be used as the type of a const parameter
+error[E0741]: `&'static (dyn A + 'static)` can't be used as a const parameter type
   --> $DIR/issue-63322-forbid-dyn.rs:9:18
    |
 LL | fn test<const T: &'static dyn A>() {
    |                  ^^^^^^^^^^^^^^
+   |
+   = note: `(dyn A + 'static)` must implement `ConstParamTy`, but it does not
 
 error: aborting due to previous error
 

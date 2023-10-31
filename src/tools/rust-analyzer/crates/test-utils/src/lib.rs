@@ -27,7 +27,7 @@ pub use rustc_hash::FxHashMap;
 
 pub use crate::{
     assert_linear::AssertLinear,
-    fixture::{Fixture, MiniCore},
+    fixture::{Fixture, FixtureWithProjectMeta, MiniCore},
 };
 
 pub const CURSOR_MARKER: &str = "$0";
@@ -95,7 +95,7 @@ fn try_extract_range(text: &str) -> Option<(TextRange, String)> {
     Some((TextRange::new(start, end), text))
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum RangeOrOffset {
     Range(TextRange),
     Offset(TextSize),

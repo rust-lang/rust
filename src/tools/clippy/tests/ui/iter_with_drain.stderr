@@ -2,7 +2,7 @@ error: `drain(..)` used on a `Vec`
   --> $DIR/iter_with_drain.rs:11:34
    |
 LL |     let mut a: BinaryHeap<_> = a.drain(..).collect();
-   |                                  ^^^^^^^^^ help: try this: `into_iter()`
+   |                                  ^^^^^^^^^ help: try: `into_iter()`
    |
    = note: `-D clippy::iter-with-drain` implied by `-D warnings`
 
@@ -10,31 +10,31 @@ error: `drain(..)` used on a `VecDeque`
   --> $DIR/iter_with_drain.rs:14:27
    |
 LL |     let mut a: Vec<_> = a.drain(..).collect();
-   |                           ^^^^^^^^^ help: try this: `into_iter()`
+   |                           ^^^^^^^^^ help: try: `into_iter()`
 
 error: `drain(..)` used on a `Vec`
   --> $DIR/iter_with_drain.rs:15:34
    |
 LL |     let mut a: HashMap<_, _> = a.drain(..).map(|x| (x.clone(), x)).collect();
-   |                                  ^^^^^^^^^ help: try this: `into_iter()`
+   |                                  ^^^^^^^^^ help: try: `into_iter()`
 
 error: `drain(..)` used on a `Vec`
   --> $DIR/iter_with_drain.rs:21:34
    |
 LL |     let mut a: BinaryHeap<_> = a.drain(0..).collect();
-   |                                  ^^^^^^^^^^ help: try this: `into_iter()`
+   |                                  ^^^^^^^^^^ help: try: `into_iter()`
 
 error: `drain(..)` used on a `VecDeque`
   --> $DIR/iter_with_drain.rs:24:27
    |
 LL |     let mut a: Vec<_> = a.drain(..a.len()).collect();
-   |                           ^^^^^^^^^^^^^^^^ help: try this: `into_iter()`
+   |                           ^^^^^^^^^^^^^^^^ help: try: `into_iter()`
 
 error: `drain(..)` used on a `Vec`
   --> $DIR/iter_with_drain.rs:25:34
    |
 LL |     let mut a: HashMap<_, _> = a.drain(0..a.len()).map(|x| (x.clone(), x)).collect();
-   |                                  ^^^^^^^^^^^^^^^^^ help: try this: `into_iter()`
+   |                                  ^^^^^^^^^^^^^^^^^ help: try: `into_iter()`
 
 error: aborting due to 6 previous errors
 

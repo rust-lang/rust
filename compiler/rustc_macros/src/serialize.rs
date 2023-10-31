@@ -43,7 +43,7 @@ fn decodable_body(
     let ty_name = s.ast().ident.to_string();
     let decode_body = match s.variants() {
         [] => {
-            let message = format!("`{}` has no variants to decode", ty_name);
+            let message = format!("`{ty_name}` has no variants to decode");
             quote! {
                 panic!(#message)
             }
@@ -59,14 +59,14 @@ fn decodable_body(
                 })
                 .collect();
             let message = format!(
-                "invalid enum variant tag while decoding `{}`, expected 0..{}",
+                "invalid enum variant tag while decoding `{}`, expected 0..{}, actual {{}}",
                 ty_name,
                 variants.len()
             );
             quote! {
                 match ::rustc_serialize::Decoder::read_usize(__decoder) {
                     #match_inner
-                    _ => panic!(#message),
+                    n => panic!(#message, n),
                 }
             }
         }

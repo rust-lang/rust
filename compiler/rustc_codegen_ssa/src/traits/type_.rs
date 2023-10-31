@@ -26,8 +26,8 @@ pub trait BaseTypeMethods<'tcx>: Backend<'tcx> {
     fn type_func(&self, args: &[Self::Type], ret: Self::Type) -> Self::Type;
     fn type_struct(&self, els: &[Self::Type], packed: bool) -> Self::Type;
     fn type_kind(&self, ty: Self::Type) -> TypeKind;
-    fn type_ptr_to(&self, ty: Self::Type) -> Self::Type;
-    fn type_ptr_to_ext(&self, ty: Self::Type, address_space: AddressSpace) -> Self::Type;
+    fn type_ptr(&self) -> Self::Type;
+    fn type_ptr_ext(&self, address_space: AddressSpace) -> Self::Type;
     fn element_type(&self, ty: Self::Type) -> Self::Type;
 
     /// Returns the number of elements in `self` if it is a LLVM vector type.
@@ -42,14 +42,6 @@ pub trait BaseTypeMethods<'tcx>: Backend<'tcx> {
 }
 
 pub trait DerivedTypeMethods<'tcx>: BaseTypeMethods<'tcx> + MiscMethods<'tcx> {
-    fn type_i8p(&self) -> Self::Type {
-        self.type_i8p_ext(AddressSpace::DATA)
-    }
-
-    fn type_i8p_ext(&self, address_space: AddressSpace) -> Self::Type {
-        self.type_ptr_to_ext(self.type_i8(), address_space)
-    }
-
     fn type_int(&self) -> Self::Type {
         match &self.sess().target.c_int_width[..] {
             "16" => self.type_i16(),
@@ -126,6 +118,28 @@ pub trait LayoutTypeMethods<'tcx>: Backend<'tcx> {
         index: usize,
         immediate: bool,
     ) -> Self::Type;
+
+    /// A type that can be used in a [`super::BuilderMethods::load`] +
+    /// [`super::BuilderMethods::store`] pair to implement a *typed* copy,
+    /// such as a MIR `*_0 = *_1`.
+    ///
+    /// It's always legal to return `None` here, as the provided impl does,
+    /// in which case callers should use [`super::BuilderMethods::memcpy`]
+    /// instead of the `load`+`store` pair.
+    ///
+    /// This can be helpful for things like arrays, where the LLVM backend type
+    /// `[3 x i16]` optimizes to three separate loads and stores, but it can
+    /// instead be copied via an `i48` that stays as the single `load`+`store`.
+    /// (As of 2023-05 LLVM cannot necessarily optimize away a `memcpy` in these
+    /// cases, due to `poison` handling, but in codegen we have more information
+    /// about the type invariants, so can emit something better instead.)
+    ///
+    /// This *should* return `None` for particularly-large types, where leaving
+    /// the `memcpy` may well be important to avoid code size explosion.
+    fn scalar_copy_backend_type(&self, layout: TyAndLayout<'tcx>) -> Option<Self::Type> {
+        let _ = layout;
+        None
+    }
 }
 
 // For backends that support CFI using type membership (i.e., testing whether a given pointer is

@@ -1,4 +1,6 @@
-use crate::tests::{matches_codepattern, string_to_stream, with_error_checking_parse};
+use crate::tests::{
+    matches_codepattern, string_to_stream, with_error_checking_parse, with_expected_parse_error,
+};
 
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Token};
@@ -51,11 +53,15 @@ fn string_to_item(source_str: String) -> Option<P<ast::Item>> {
     with_error_checking_parse(source_str, &sess(), |p| p.parse_item(ForceCollect::No))
 }
 
-#[should_panic]
 #[test]
 fn bad_path_expr_1() {
+    // This should trigger error: expected identifier, found keyword `return`
     create_default_session_globals_then(|| {
-        string_to_expr("::abc::def::return".to_string());
+        with_expected_parse_error(
+            "::abc::def::return",
+            "expected identifier, found keyword `return`",
+            |p| p.parse_expr(),
+        );
     })
 }
 
@@ -63,9 +69,8 @@ fn bad_path_expr_1() {
 #[test]
 fn string_to_tts_macro() {
     create_default_session_globals_then(|| {
-        let tts: Vec<_> =
-            string_to_stream("macro_rules! zip (($a)=>($a))".to_string()).into_trees().collect();
-        let tts: &[TokenTree] = &tts[..];
+        let stream = string_to_stream("macro_rules! zip (($a)=>($a))".to_string());
+        let tts = &stream.trees().collect::<Vec<_>>()[..];
 
         match tts {
             [
@@ -294,9 +299,7 @@ fn ttdelim_span() {
         .unwrap();
 
         let ast::ExprKind::MacCall(mac) = &expr.kind else { panic!("not a macro") };
-        let tts: Vec<_> = mac.args.tokens.clone().into_trees().collect();
-
-        let span = tts.iter().rev().next().unwrap().span();
+        let span = mac.args.tokens.trees().last().unwrap().span();
 
         match sess.source_map().span_to_snippet(span) {
             Ok(s) => assert_eq!(&s[..], "{ body }"),

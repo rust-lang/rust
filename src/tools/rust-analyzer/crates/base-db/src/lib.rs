@@ -6,18 +6,19 @@ mod input;
 mod change;
 pub mod fixture;
 
-use std::{panic, sync::Arc};
+use std::panic;
 
-use stdx::hash::NoHashHashSet;
+use rustc_hash::FxHashSet;
 use syntax::{ast, Parse, SourceFile, TextRange, TextSize};
+use triomphe::Arc;
 
 pub use crate::{
     change::Change,
     input::{
         CrateData, CrateDisplayName, CrateGraph, CrateId, CrateName, CrateOrigin, Dependency,
         Edition, Env, LangCrateOrigin, ProcMacro, ProcMacroExpander, ProcMacroExpansionError,
-        ProcMacroId, ProcMacroKind, ProcMacroLoadResult, SourceRoot, SourceRootId,
-        TargetLayoutLoadResult,
+        ProcMacroId, ProcMacroKind, ProcMacroLoadResult, ProcMacroPaths, ProcMacros,
+        ReleaseChannel, SourceRoot, SourceRootId, TargetLayoutLoadResult,
     },
 };
 pub use salsa::{self, Cancelled};
@@ -53,13 +54,13 @@ pub struct FileRange {
     pub range: TextRange,
 }
 
-pub const DEFAULT_LRU_CAP: usize = 128;
+pub const DEFAULT_PARSE_LRU_CAP: usize = 128;
 
 pub trait FileLoader {
     /// Text of the file.
-    fn file_text(&self, file_id: FileId) -> Arc<String>;
+    fn file_text(&self, file_id: FileId) -> Arc<str>;
     fn resolve_path(&self, path: AnchoredPath<'_>) -> Option<FileId>;
-    fn relevant_crates(&self, file_id: FileId) -> Arc<NoHashHashSet<CrateId>>;
+    fn relevant_crates(&self, file_id: FileId) -> Arc<FxHashSet<CrateId>>;
 }
 
 /// Database which stores all significant input facts: source code and project
@@ -73,6 +74,10 @@ pub trait SourceDatabase: FileLoader + std::fmt::Debug {
     /// The crate graph.
     #[salsa::input]
     fn crate_graph(&self) -> Arc<CrateGraph>;
+
+    /// The crate graph.
+    #[salsa::input]
+    fn proc_macros(&self) -> Arc<ProcMacros>;
 }
 
 fn parse_query(db: &dyn SourceDatabase, file_id: FileId) -> Parse<ast::SourceFile> {
@@ -86,7 +91,7 @@ fn parse_query(db: &dyn SourceDatabase, file_id: FileId) -> Parse<ast::SourceFil
 #[salsa::query_group(SourceDatabaseExtStorage)]
 pub trait SourceDatabaseExt: SourceDatabase {
     #[salsa::input]
-    fn file_text(&self, file_id: FileId) -> Arc<String>;
+    fn file_text(&self, file_id: FileId) -> Arc<str>;
     /// Path to a file, relative to the root of its source root.
     /// Source root of the file.
     #[salsa::input]
@@ -95,10 +100,10 @@ pub trait SourceDatabaseExt: SourceDatabase {
     #[salsa::input]
     fn source_root(&self, id: SourceRootId) -> Arc<SourceRoot>;
 
-    fn source_root_crates(&self, id: SourceRootId) -> Arc<NoHashHashSet<CrateId>>;
+    fn source_root_crates(&self, id: SourceRootId) -> Arc<FxHashSet<CrateId>>;
 }
 
-fn source_root_crates(db: &dyn SourceDatabaseExt, id: SourceRootId) -> Arc<NoHashHashSet<CrateId>> {
+fn source_root_crates(db: &dyn SourceDatabaseExt, id: SourceRootId) -> Arc<FxHashSet<CrateId>> {
     let graph = db.crate_graph();
     let res = graph
         .iter()
@@ -114,7 +119,7 @@ fn source_root_crates(db: &dyn SourceDatabaseExt, id: SourceRootId) -> Arc<NoHas
 pub struct FileLoaderDelegate<T>(pub T);
 
 impl<T: SourceDatabaseExt> FileLoader for FileLoaderDelegate<&'_ T> {
-    fn file_text(&self, file_id: FileId) -> Arc<String> {
+    fn file_text(&self, file_id: FileId) -> Arc<str> {
         SourceDatabaseExt::file_text(self.0, file_id)
     }
     fn resolve_path(&self, path: AnchoredPath<'_>) -> Option<FileId> {
@@ -124,7 +129,7 @@ impl<T: SourceDatabaseExt> FileLoader for FileLoaderDelegate<&'_ T> {
         source_root.resolve_path(path)
     }
 
-    fn relevant_crates(&self, file_id: FileId) -> Arc<NoHashHashSet<CrateId>> {
+    fn relevant_crates(&self, file_id: FileId) -> Arc<FxHashSet<CrateId>> {
         let _p = profile::span("relevant_crates");
         let source_root = self.0.file_source_root(file_id);
         self.0.source_root_crates(source_root)

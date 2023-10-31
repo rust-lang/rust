@@ -3,23 +3,23 @@
 
 pub(crate) type Cause = String;
 
-pub(crate) struct OpQueue<Output> {
-    op_requested: Option<Cause>,
+pub(crate) struct OpQueue<Args = (), Output = ()> {
+    op_requested: Option<(Cause, Args)>,
     op_in_progress: bool,
     last_op_result: Output,
 }
 
-impl<Output: Default> Default for OpQueue<Output> {
+impl<Args, Output: Default> Default for OpQueue<Args, Output> {
     fn default() -> Self {
         Self { op_requested: None, op_in_progress: false, last_op_result: Default::default() }
     }
 }
 
-impl<Output> OpQueue<Output> {
-    pub(crate) fn request_op(&mut self, reason: Cause) {
-        self.op_requested = Some(reason);
+impl<Args, Output> OpQueue<Args, Output> {
+    pub(crate) fn request_op(&mut self, reason: Cause, args: Args) {
+        self.op_requested = Some((reason, args));
     }
-    pub(crate) fn should_start_op(&mut self) -> Option<Cause> {
+    pub(crate) fn should_start_op(&mut self) -> Option<(Cause, Args)> {
         if self.op_in_progress {
             return None;
         }

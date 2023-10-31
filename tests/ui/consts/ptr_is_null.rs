@@ -2,6 +2,7 @@
 // check-pass
 
 #![feature(const_ptr_is_null)]
+#![allow(useless_ptr_null_checks)]
 
 const FOO: &usize = &42;
 

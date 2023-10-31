@@ -1,0 +1,33 @@
+- // MIR for `main` before SimplifyConstCondition-after-const-prop
++ // MIR for `main` after SimplifyConstCondition-after-const-prop
+  
+  fn main() -> () {
+      let mut _0: ();
+      let mut _1: bool;
+      let _2: ();
+  
+      bb0: {
+          StorageLive(_1);
+          _1 = const false;
+-         switchInt(const false) -> [0: bb3, otherwise: bb1];
++         goto -> bb3;
+      }
+  
+      bb1: {
+          _2 = noop() -> [return: bb2, unwind unreachable];
+      }
+  
+      bb2: {
+          goto -> bb4;
+      }
+  
+      bb3: {
+          goto -> bb4;
+      }
+  
+      bb4: {
+          StorageDead(_1);
+          return;
+      }
+  }
+  

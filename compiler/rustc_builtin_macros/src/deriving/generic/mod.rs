@@ -1134,9 +1134,14 @@ impl<'a> MethodDef<'a> {
         trait_: &TraitDef<'b>,
         enum_def: &'b EnumDef,
         type_ident: Ident,
-        selflike_args: ThinVec<P<Expr>>,
+        mut selflike_args: ThinVec<P<Expr>>,
         nonselflike_args: &[P<Expr>],
     ) -> BlockOrExpr {
+        assert!(
+            !selflike_args.is_empty(),
+            "static methods must use `expand_static_enum_method_body`",
+        );
+
         let span = trait_.span;
         let variants = &enum_def.variants;
 
@@ -1144,10 +1149,15 @@ impl<'a> MethodDef<'a> {
         let unify_fieldless_variants =
             self.fieldless_variants_strategy == FieldlessVariantsStrategy::Unify;
 
-        // There is no sensible code to be generated for *any* deriving on a
-        // zero-variant enum. So we just generate a failing expression.
+        // For zero-variant enum, this function body is unreachable. Generate
+        // `match *self {}`. This produces machine code identical to `unsafe {
+        // core::intrinsics::unreachable() }` while being safe and stable.
         if variants.is_empty() {
-            return BlockOrExpr(ThinVec::new(), Some(deriving::call_unreachable(cx, span)));
+            selflike_args.truncate(1);
+            let match_arg = cx.expr_deref(span, selflike_args.pop().unwrap());
+            let match_arms = ThinVec::new();
+            let expr = cx.expr_match(span, match_arg, match_arms);
+            return BlockOrExpr(ThinVec::new(), Some(expr));
         }
 
         let prefixes = iter::once("__self".to_string())
@@ -1156,7 +1166,7 @@ impl<'a> MethodDef<'a> {
                     .iter()
                     .enumerate()
                     .skip(1)
-                    .map(|(arg_count, _selflike_arg)| format!("__arg{}", arg_count)),
+                    .map(|(arg_count, _selflike_arg)| format!("__arg{arg_count}")),
             )
             .collect::<Vec<String>>();
 
@@ -1171,7 +1181,7 @@ impl<'a> MethodDef<'a> {
         let get_tag_pieces = |cx: &ExtCtxt<'_>| {
             let tag_idents: Vec<_> = prefixes
                 .iter()
-                .map(|name| Ident::from_str_and_span(&format!("{}_tag", name), span))
+                .map(|name| Ident::from_str_and_span(&format!("{name}_tag"), span))
                 .collect();
 
             let mut tag_exprs: Vec<_> = tag_idents
@@ -1511,7 +1521,7 @@ impl<'a> TraitDef<'a> {
     }
 
     fn mk_pattern_ident(&self, prefix: &str, i: usize) -> Ident {
-        Ident::from_str_and_span(&format!("{}_{}", prefix, i), self.span)
+        Ident::from_str_and_span(&format!("{prefix}_{i}"), self.span)
     }
 
     fn create_struct_pattern_fields(
@@ -1592,8 +1602,7 @@ impl<'a> TraitDef<'a> {
                                 sp,
                                 ast::CRATE_NODE_ID,
                                 format!(
-                                    "{} slice in a packed struct that derives a built-in trait",
-                                    ty
+                                    "{ty} slice in a packed struct that derives a built-in trait"
                                 ),
                                 rustc_lint_defs::BuiltinLintDiagnostics::ByteSliceInPackedStructWithDerive
                             );

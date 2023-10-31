@@ -14,3 +14,5 @@ pub trait TraitCat {}
 pub trait TraitDog {}
 
 pub fn gamma<T: TraitCat + TraitDog>(t: [T; 32]) {}
+
+pub fn epsilon<T: TraitCat + TraitDog>(t: &[T]) {}

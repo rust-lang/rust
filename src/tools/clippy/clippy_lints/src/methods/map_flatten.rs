@@ -6,7 +6,8 @@ use rustc_errors::Applicability;
 use rustc_hir::Expr;
 use rustc_lint::LateContext;
 use rustc_middle::ty;
-use rustc_span::{symbol::sym, Span};
+use rustc_span::symbol::sym;
+use rustc_span::Span;
 
 use super::MAP_FLATTEN;
 
@@ -59,7 +60,7 @@ fn is_map_to_option(cx: &LateContext<'_>, map_arg: &Expr<'_>) -> bool {
     match map_closure_ty.kind() {
         ty::Closure(_, _) | ty::FnDef(_, _) | ty::FnPtr(_) => {
             let map_closure_sig = match map_closure_ty.kind() {
-                ty::Closure(_, substs) => substs.as_closure().sig(),
+                ty::Closure(_, args) => args.as_closure().sig(),
                 _ => map_closure_ty.fn_sig(cx.tcx),
             };
             let map_closure_return_ty = cx.tcx.erase_late_bound_regions(map_closure_sig.output());

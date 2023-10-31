@@ -2,9 +2,8 @@ error[E0507]: cannot move out of an `Rc`
   --> $DIR/borrowck-move-out-of-overloaded-auto-deref.rs:4:14
    |
 LL |     let _x = Rc::new(vec![1, 2]).into_iter();
-   |              ^^^^^^^^^^^^^^^^^^^^-----------
-   |              |                   |
-   |              |                   value moved due to this method call
+   |              ^^^^^^^^^^^^^^^^^^^ ----------- value moved due to this method call
+   |              |
    |              move occurs because value has type `Vec<i32>`, which does not implement the `Copy` trait
    |
 note: `into_iter` takes ownership of the receiver `self`, which moves value
@@ -12,7 +11,7 @@ note: `into_iter` takes ownership of the receiver `self`, which moves value
 help: you can `clone` the value and consume it, but this might not be your desired behavior
    |
 LL |     let _x = Rc::new(vec![1, 2]).clone().into_iter();
-   |                                  ++++++++
+   |                                 ++++++++
 
 error: aborting due to previous error
 

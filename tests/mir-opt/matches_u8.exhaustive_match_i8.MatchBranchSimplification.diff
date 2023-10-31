@@ -2,31 +2,31 @@
 + // MIR for `exhaustive_match_i8` after MatchBranchSimplification
   
   fn exhaustive_match_i8(_1: E) -> i8 {
-      debug e => _1;                       // in scope 0 at $DIR/matches_u8.rs:+0:28: +0:29
-      let mut _0: i8;                      // return place in scope 0 at $DIR/matches_u8.rs:+0:37: +0:39
-      let mut _2: isize;                   // in scope 0 at $DIR/matches_u8.rs:+2:9: +2:13
+      debug e => _1;
+      let mut _0: i8;
+      let mut _2: isize;
   
       bb0: {
-          _2 = discriminant(_1);           // scope 0 at $DIR/matches_u8.rs:+1:11: +1:12
-          switchInt(move _2) -> [0: bb3, 1: bb1, otherwise: bb2]; // scope 0 at $DIR/matches_u8.rs:+1:5: +1:12
+          _2 = discriminant(_1);
+          switchInt(move _2) -> [0: bb3, 1: bb1, otherwise: bb2];
       }
   
       bb1: {
-          _0 = const 1_i8;                 // scope 0 at $DIR/matches_u8.rs:+3:17: +3:18
-          goto -> bb4;                     // scope 0 at $DIR/matches_u8.rs:+3:17: +3:18
+          _0 = const 1_i8;
+          goto -> bb4;
       }
   
       bb2: {
-          unreachable;                     // scope 0 at $DIR/matches_u8.rs:+1:11: +1:12
+          unreachable;
       }
   
       bb3: {
-          _0 = const 0_i8;                 // scope 0 at $DIR/matches_u8.rs:+2:17: +2:18
-          goto -> bb4;                     // scope 0 at $DIR/matches_u8.rs:+2:17: +2:18
+          _0 = const 0_i8;
+          goto -> bb4;
       }
   
       bb4: {
-          return;                          // scope 0 at $DIR/matches_u8.rs:+5:2: +5:2
+          return;
       }
   }
   

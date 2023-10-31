@@ -2,7 +2,7 @@ error[E0596]: cannot borrow `*x` as mutable, as it is behind a `&` reference
   --> $DIR/borrowck-object-mutability.rs:8:5
    |
 LL |     x.borrowed_mut();
-   |     ^^^^^^^^^^^^^^^^ `x` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+   |     ^ `x` is a `&` reference, so the data it refers to cannot be borrowed as mutable
    |
 help: consider changing this to be a mutable reference
    |
@@ -13,7 +13,7 @@ error[E0596]: cannot borrow `*x` as mutable, as `x` is not declared as mutable
   --> $DIR/borrowck-object-mutability.rs:18:5
    |
 LL |     x.borrowed_mut();
-   |     ^^^^^^^^^^^^^^^^ cannot borrow as mutable
+   |     ^ cannot borrow as mutable
    |
 help: consider changing this to be mutable
    |

@@ -1,6 +1,6 @@
 // unit-test: Derefer
 // EMIT_MIR derefer_terminator_test.main.Derefer.diff
-// ignore-wasm32
+// EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 
 fn main() {
     let b = foo();

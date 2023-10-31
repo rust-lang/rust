@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 tracing = "0.1"
+itertools = "0.10.1"
 rustc_middle = { path = "../rustc_middle" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_errors = { path = "../rustc_errors" }

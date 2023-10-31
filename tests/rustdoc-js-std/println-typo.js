@@ -1,9 +1,9 @@
 // exact-check
 
-const QUERY = 'prinltn';
 const FILTER_CRATE = 'std';
 
 const EXPECTED = {
+    'query': 'prinltn',
     'others': [
         { 'path': 'std', 'name': 'println' },
         { 'path': 'std', 'name': 'print' },

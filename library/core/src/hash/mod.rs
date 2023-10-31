@@ -674,8 +674,6 @@ pub trait BuildHasher {
     /// # Example
     ///
     /// ```
-    /// #![feature(build_hasher_simple_hash_one)]
-    ///
     /// use std::cmp::{max, min};
     /// use std::hash::{BuildHasher, Hash, Hasher};
     /// struct OrderAmbivalentPair<T: Ord>(T, T);
@@ -697,7 +695,7 @@ pub trait BuildHasher {
     ///     bh.hash_one(&OrderAmbivalentPair(2, 10))
     /// );
     /// ```
-    #[unstable(feature = "build_hasher_simple_hash_one", issue = "86161")]
+    #[stable(feature = "build_hasher_simple_hash_one", since = "1.71.0")]
     fn hash_one<T: Hash>(&self, x: T) -> u64
     where
         Self: Sized,

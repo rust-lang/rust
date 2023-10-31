@@ -35,7 +35,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, cond: &'tcx Expr<'_>, body: &'
         if let ExprKind::Block(Block { stmts: [], expr: None, ..}, _) = body.kind;
         if let ExprKind::MethodCall(method, callee, ..) = unpack_cond(cond).kind;
         if [sym::load, sym::compare_exchange, sym::compare_exchange_weak].contains(&method.ident.name);
-        if let ty::Adt(def, _substs) = cx.typeck_results().expr_ty(callee).kind();
+        if let ty::Adt(def, _args) = cx.typeck_results().expr_ty(callee).kind();
         if cx.tcx.is_diagnostic_item(sym::AtomicBool, def.did());
         then {
             span_lint_and_sugg(
@@ -43,7 +43,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, cond: &'tcx Expr<'_>, body: &'
                 MISSING_SPIN_LOOP,
                 body.span,
                 "busy-waiting loop should at least have a spin loop hint",
-                "try this",
+                "try",
                 (if is_no_std_crate(cx) {
                     "{ core::hint::spin_loop() }"
                 } else {

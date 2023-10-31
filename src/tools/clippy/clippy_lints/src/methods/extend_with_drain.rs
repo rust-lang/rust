@@ -31,7 +31,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, arg:
                 EXTEND_WITH_DRAIN,
                 expr.span,
                 "use of `extend` instead of `append` for adding the full range of a second vector",
-                "try this",
+                "try",
                 format!(
                     "{}.append({}{})",
                     snippet_with_applicability(cx, recv.span, "..", &mut applicability),

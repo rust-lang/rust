@@ -28,7 +28,7 @@ pub fn rust_version_symbol() -> Symbol {
 }
 
 pub fn is_builtin_attr(attr: &Attribute) -> bool {
-    attr.is_doc_comment() || attr.ident().filter(|ident| is_builtin_attr_name(ident.name)).is_some()
+    attr.is_doc_comment() || attr.ident().is_some_and(|ident| is_builtin_attr_name(ident.name))
 }
 
 enum AttrError {
@@ -800,18 +800,15 @@ pub struct Deprecation {
 }
 
 /// Finds the deprecation attribute. `None` if none exists.
-pub fn find_deprecation(sess: &Session, attrs: &[Attribute]) -> Option<(Deprecation, Span)> {
-    find_deprecation_generic(sess, attrs.iter())
-}
-
-fn find_deprecation_generic<'a, I>(sess: &Session, attrs_iter: I) -> Option<(Deprecation, Span)>
-where
-    I: Iterator<Item = &'a Attribute>,
-{
+pub fn find_deprecation(
+    sess: &Session,
+    features: &Features,
+    attrs: &[Attribute],
+) -> Option<(Deprecation, Span)> {
     let mut depr: Option<(Deprecation, Span)> = None;
-    let is_rustc = sess.features_untracked().staged_api;
+    let is_rustc = features.staged_api;
 
-    'outer: for attr in attrs_iter {
+    'outer: for attr in attrs {
         if !attr.has_name(sym::deprecated) {
             continue;
         }
@@ -872,7 +869,7 @@ where
                                 }
                             }
                             sym::suggestion => {
-                                if !sess.features_untracked().deprecated_suggestion {
+                                if !features.deprecated_suggestion {
                                     sess.emit_err(session_diagnostics::DeprecatedItemSuggestion {
                                         span: mi.span,
                                         is_nightly: sess.is_nightly_build().then_some(()),
@@ -890,7 +887,7 @@ where
                                     meta.span(),
                                     AttrError::UnknownMetaItem(
                                         pprust::path_to_string(&mi.path),
-                                        if sess.features_untracked().deprecated_suggestion {
+                                        if features.deprecated_suggestion {
                                             &["since", "note", "suggestion"]
                                         } else {
                                             &["since", "note"]
@@ -1216,4 +1213,21 @@ pub fn parse_alignment(node: &ast::LitKind) -> Result<u32, &'static str> {
     } else {
         Err("not an unsuffixed integer")
     }
+}
+
+/// Read the content of a `rustc_confusables` attribute, and return the list of candidate names.
+pub fn parse_confusables(attr: &Attribute) -> Option<Vec<Symbol>> {
+    let meta = attr.meta()?;
+    let MetaItem { kind: MetaItemKind::List(ref metas), .. } = meta else { return None };
+
+    let mut candidates = Vec::new();
+
+    for meta in metas {
+        let NestedMetaItem::Lit(meta_lit) = meta else {
+            return None;
+        };
+        candidates.push(meta_lit.symbol);
+    }
+
+    return Some(candidates);
 }

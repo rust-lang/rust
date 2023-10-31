@@ -94,6 +94,7 @@ macro_rules! impl_integer {
             }
 
             #[inline]
+            #[track_caller]
             fn simd_clamp(self, min: Self, max: Self) -> Self {
                 assert!(
                     min.simd_le(max).all(),
@@ -200,6 +201,7 @@ macro_rules! impl_mask {
             }
 
             #[inline]
+            #[track_caller]
             fn simd_clamp(self, min: Self, max: Self) -> Self {
                 assert!(
                     min.simd_le(max).all(),
@@ -254,6 +256,7 @@ where
     }
 
     #[inline]
+    #[track_caller]
     fn simd_clamp(self, min: Self, max: Self) -> Self {
         assert!(
             min.simd_le(max).all(),
@@ -303,6 +306,7 @@ where
     }
 
     #[inline]
+    #[track_caller]
     fn simd_clamp(self, min: Self, max: Self) -> Self {
         assert!(
             min.simd_le(max).all(),

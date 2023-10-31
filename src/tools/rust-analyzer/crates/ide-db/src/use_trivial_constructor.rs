@@ -1,9 +1,9 @@
-//! Functionality for generating trivial contructors
+//! Functionality for generating trivial constructors
 
 use hir::StructKind;
 use syntax::ast;
 
-/// given a type return the trivial contructor (if one exists)
+/// given a type return the trivial constructor (if one exists)
 pub fn use_trivial_constructor(
     db: &crate::RootDatabase,
     path: ast::Path,

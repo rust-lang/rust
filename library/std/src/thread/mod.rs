@@ -152,9 +152,8 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 #![deny(unsafe_op_in_unsafe_fn)]
-// Under `test`, `__FastLocalKeyInner` seems unused.
+#![cfg_attr(all(target_os = "wasi", target_vendor = "wasmer"), allow(unused_imports))]
 #![cfg_attr(test, allow(dead_code))]
-
 #[cfg(all(test, not(target_os = "emscripten")))]
 mod tests;
 
@@ -191,11 +190,11 @@ pub use scoped::{scope, Scope, ScopedJoinHandle};
 ////////////////////////////////////////////////////////////////////////////////
 
 #[macro_use]
-mod local;
+pub(crate) mod local;
 
 cfg_if::cfg_if! {
     if #[cfg(test)] {
-        // Avoid duplicating the global state assoicated with thread-locals between this crate and
+        // Avoid duplicating the global state associated with thread-locals between this crate and
         // realstd. Miri relies on this.
         pub use realstd::thread::{local_impl, AccessError, LocalKey};
     } else {
@@ -206,7 +205,7 @@ cfg_if::cfg_if! {
         #[doc(hidden)]
         #[unstable(feature = "thread_local_internals", issue = "none")]
         pub mod local_impl {
-            pub use crate::sys::common::thread_local::{thread_local_inner, Key};
+            pub use crate::sys::common::thread_local::{thread_local_inner, Key, abort_on_dtor_unwind};
         }
     }
 }
@@ -262,9 +261,9 @@ cfg_if::cfg_if! {
 #[derive(Debug)]
 pub struct Builder {
     // A name for the thread-to-be, for identification in panic messages
-    name: Option<String>,
+    pub(crate) name: Option<String>,
     // The size of the stack for the spawned thread in bytes
-    stack_size: Option<usize>,
+    pub(crate) stack_size: Option<usize>,
 }
 
 impl Builder {
@@ -387,6 +386,46 @@ impl Builder {
         T: Send + 'static,
     {
         unsafe { self.spawn_unchecked(f) }
+    }
+
+    /// Spawns a new reactor by taking ownership of the `Builder`, and returns an
+    /// [`io::Result`].
+    ///
+    /// The spawned reactor may outlive the caller (unless the caller thread
+    /// is the main thread; the whole process is terminated when the main
+    /// thread finishes).
+    ///
+    /// # Errors
+    ///
+    /// Unlike the [`spawn`] free function, this method yields an
+    /// [`io::Result`] to capture any failure to create the thread at
+    /// the OS level.
+    ///
+    /// [`io::Result`]: crate::io::Result
+    ///
+    /// # Panics
+    ///
+    /// Panics if a reactor name was set and it contained null bytes.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::thread;
+    ///
+    /// let builder = thread::Builder::new();
+    ///
+    /// builder.reactor(|| {
+    ///     // reactor code
+    /// }).unwrap();
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn reactor<F>(self, f: F) -> io::Result<()>
+    where
+        F: Fn(),
+        F: Send + Sync + 'static,
+    {
+        unsafe { imp::Thread::new_reactor(f)? };
+        Ok(())
     }
 
     /// Spawns a new thread without any lifetime restrictions by taking ownership
@@ -528,6 +567,7 @@ impl Builder {
             let try_result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
                 crate::sys_common::backtrace::__rust_begin_short_backtrace(f)
             }));
+
             // SAFETY: `their_packet` as been built just above and moved by the
             // closure (it is an Arc<...>) and `my_packet` will be stored in the
             // same `JoinInner` as this closure meaning the mutation will be
@@ -684,6 +724,89 @@ where
     T: Send + 'static,
 {
     Builder::new().spawn(f).expect("failed to spawn thread")
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Free functions
+////////////////////////////////////////////////////////////////////////////////
+
+/// Spawns a new reactor
+///
+/// This call will create a reactor using default parameters of [`Builder`], if you
+/// want to specify the stack size or the name of the reactor, use this API
+/// instead.
+///
+/// As you can see in the signature of `reactor` there are two constraints on
+/// the closure given to `reactor`, let's explain them:
+///
+/// - The `'static` constraint means that the closure must have a lifetime of the
+///   whole program execution. The reason for this is that reactors will be
+///   continuously invoked by outside of the program until it exists
+///
+///   Indeed if the reactor, can outlive their caller, we need to make sure that
+///   they will be valid afterwards, thus is until the end of the program, hence
+///   he `'static` lifetime.
+/// - The [`Send`] constraint is because the closure will need to be passed
+///   *by value* from the thread where it is spawned to the new thread. Its
+///   return value will need to be passed from the new thread to the thread
+///   where it is `join`ed.
+///   As a reminder, the [`Send`] marker trait expresses that it is safe to be
+///   passed from thread to thread. [`Sync`] expresses that it is safe to have a
+///   reference be passed from thread to thread.
+///
+/// # Panics
+///
+/// Panics if the OS fails to create a thread; use [`Builder::reactor`]
+/// to recover from such errors.
+///
+/// # Examples
+///
+/// Creating a thread.
+///
+/// ```
+/// use std::thread;
+///
+/// thread::reactor(|| {
+///     // reactor code
+/// });
+/// ```
+///
+/// As mentioned in the module documentation, reactors are usually made to
+/// communicate using [`channels`], here is how it usually looks.
+///
+/// This example also shows how to use `move`, in order to give ownership
+/// of values to a reactor.
+///
+/// ```
+/// use std::thread;
+/// use std::sync::{Arc, Mutex};
+/// use std::sync::mpsc::channel;
+///
+/// let (tx, rx) = channel();
+/// let tx = Arc::new(Mutex::new(tx));
+///
+/// let sender = thread::reactor(move || {
+///     tx.lock().unwrap().send("Hello, thread".to_owned())
+///         .expect("Unable to send on channel");
+/// });
+///
+/// let receiver = thread::thread(move || {
+///     let value = rx.recv().expect("Unable to receive from channel");
+///     println!("{value}");
+/// });
+///
+/// receiver.join().expect("The receiver thread has panicked");
+/// ```
+///
+/// [`channels`]: crate::sync::mpsc
+/// [`Err`]: crate::result::Result::Err
+#[stable(feature = "rust1", since = "1.0.0")]
+pub fn reactor<F>(f: F)
+where
+    F: Fn(),
+    F: Send + Sync + 'static,
+{
+    Builder::new().reactor(f).expect("failed to spawn reactor")
 }
 
 /// Gets a handle to the thread that invokes it.
@@ -889,7 +1012,7 @@ impl Drop for PanicGuard {
 /// it is guaranteed that this function will not panic (it may abort the
 /// process if the implementation encounters some rare errors).
 ///
-/// # park and unpark
+/// # `park` and `unpark`
 ///
 /// Every thread is equipped with some basic low-level blocking support, via the
 /// [`thread::park`][`park`] function and [`thread::Thread::unpark`][`unpark`]
@@ -910,14 +1033,6 @@ impl Drop for PanicGuard {
 ///   if it wasn't already. Because the token is initially absent, [`unpark`]
 ///   followed by [`park`] will result in the second call returning immediately.
 ///
-/// In other words, each [`Thread`] acts a bit like a spinlock that can be
-/// locked and unlocked using `park` and `unpark`.
-///
-/// Notice that being unblocked does not imply any synchronization with someone
-/// that unparked this thread, it could also be spurious.
-/// For example, it would be a valid, but inefficient, implementation to make both [`park`] and
-/// [`unpark`] return immediately without doing anything.
-///
 /// The API is typically used by acquiring a handle to the current thread,
 /// placing that handle in a shared data structure so that other threads can
 /// find it, and then `park`ing in a loop. When some desired condition is met, another
@@ -930,6 +1045,23 @@ impl Drop for PanicGuard {
 ///   blocking/signaling.
 ///
 /// * It can be implemented very efficiently on many platforms.
+///
+/// # Memory Ordering
+///
+/// Calls to `park` _synchronize-with_ calls to `unpark`, meaning that memory
+/// operations performed before a call to `unpark` are made visible to the thread that
+/// consumes the token and returns from `park`. Note that all `park` and `unpark`
+/// operations for a given thread form a total order and `park` synchronizes-with
+/// _all_ prior `unpark` operations.
+///
+/// In atomic ordering terms, `unpark` performs a `Release` operation and `park`
+/// performs the corresponding `Acquire` operation. Calls to `unpark` for the same
+/// thread form a [release sequence].
+///
+/// Note that being unblocked does not imply a call was made to `unpark`, because
+/// wakeups can also be spurious. For example, a valid, but inefficient,
+/// implementation could have `park` and `unpark` return immediately without doing anything,
+/// making *all* wakeups spurious.
 ///
 /// # Examples
 ///
@@ -944,7 +1076,7 @@ impl Drop for PanicGuard {
 /// let parked_thread = thread::spawn(move || {
 ///     // We want to wait until the flag is set. We *could* just spin, but using
 ///     // park/unpark is more efficient.
-///     while !flag2.load(Ordering::Acquire) {
+///     while !flag2.load(Ordering::Relaxed) {
 ///         println!("Parking thread");
 ///         thread::park();
 ///         // We *could* get here spuriously, i.e., way before the 10ms below are over!
@@ -961,7 +1093,7 @@ impl Drop for PanicGuard {
 /// // There is no race condition here, if `unpark`
 /// // happens first, `park` will return immediately.
 /// // Hence there is no risk of a deadlock.
-/// flag.store(true, Ordering::Release);
+/// flag.store(true, Ordering::Relaxed);
 /// println!("Unpark the thread");
 /// parked_thread.thread().unpark();
 ///
@@ -970,6 +1102,7 @@ impl Drop for PanicGuard {
 ///
 /// [`unpark`]: Thread::unpark
 /// [`thread::park_timeout`]: park_timeout
+/// [release sequence]: https://en.cppreference.com/w/cpp/atomic/memory_order#Release_sequence
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn park() {
     let guard = PanicGuard;
@@ -1145,14 +1278,14 @@ impl ThreadId {
 ////////////////////////////////////////////////////////////////////////////////
 
 /// The internal representation of a `Thread` handle
-struct Inner {
+pub(crate) struct Inner {
     name: Option<CString>, // Guaranteed to be UTF-8
     id: ThreadId,
     parker: Parker,
 }
 
 impl Inner {
-    fn parker(self: Pin<&Self>) -> Pin<&Parker> {
+    pub(crate) fn parker(self: Pin<&Self>) -> Pin<&Parker> {
         unsafe { Pin::map_unchecked(self, |inner| &inner.parker) }
     }
 }
@@ -1301,7 +1434,7 @@ impl Thread {
         self.cname().map(|s| unsafe { str::from_utf8_unchecked(s.to_bytes()) })
     }
 
-    fn cname(&self) -> Option<&CStr> {
+    pub(crate) fn cname(&self) -> Option<&CStr> {
         self.inner.name.as_deref()
     }
 }
@@ -1372,7 +1505,7 @@ pub type Result<T> = crate::result::Result<T, Box<dyn Any + Send + 'static>>;
 //
 // An Arc to the packet is stored into a `JoinInner` which in turns is placed
 // in `JoinHandle`.
-struct Packet<'scope, T> {
+pub(crate) struct Packet<'scope, T> {
     scope: Option<Arc<scoped::ScopeData>>,
     result: UnsafeCell<Option<Result<T>>>,
     _marker: PhantomData<Option<&'scope scoped::ScopeData>>,
@@ -1417,14 +1550,14 @@ impl<'scope, T> Drop for Packet<'scope, T> {
 }
 
 /// Inner representation for JoinHandle
-struct JoinInner<'scope, T> {
-    native: imp::Thread,
-    thread: Thread,
-    packet: Arc<Packet<'scope, T>>,
+pub(crate) struct JoinInner<'scope, T> {
+    pub(crate) native: imp::Thread,
+    pub(crate) thread: Thread,
+    pub(crate) packet: Arc<Packet<'scope, T>>,
 }
 
 impl<'scope, T> JoinInner<'scope, T> {
-    fn join(mut self) -> Result<T> {
+    pub(crate) fn join(mut self) -> Result<T> {
         self.native.join();
         Arc::get_mut(&mut self.packet).unwrap().result.get_mut().take().unwrap()
     }
@@ -1493,7 +1626,7 @@ impl<'scope, T> JoinInner<'scope, T> {
 /// [`thread::Builder::spawn`]: Builder::spawn
 /// [`thread::spawn`]: spawn
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct JoinHandle<T>(JoinInner<'static, T>);
+pub struct JoinHandle<T>(pub(crate) JoinInner<'static, T>);
 
 #[stable(feature = "joinhandle_impl_send_sync", since = "1.29.0")]
 unsafe impl<T> Send for JoinHandle<T> {}
@@ -1596,7 +1729,7 @@ impl<T> fmt::Debug for JoinHandle<T> {
     }
 }
 
-fn _assert_sync_and_send() {
+pub(crate) fn _assert_sync_and_send() {
     fn _assert_both<T: Send + Sync>() {}
     _assert_both::<JoinHandle<()>>();
     _assert_both::<Thread>();

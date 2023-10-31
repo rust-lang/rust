@@ -1,0 +1,31 @@
+// run-rustfix
+
+use std::fmt::Debug;
+use std::marker::PhantomData;
+use std::convert::{self, TryFrom};
+
+#[allow(unused)]
+struct Codec<EncodeLine, DecodeLine> {
+    phantom_decode: PhantomData<DecodeLine>,
+    phantom_encode: PhantomData<EncodeLine>,
+}
+
+pub enum ParseError {}
+
+impl<EncodeLine, DecodeLine> Codec<EncodeLine, DecodeLine> where
+    DecodeLine: Debug + convert::TryFrom<String>,
+    <DecodeLine as convert::TryFrom<String>>::Error: ParseError,
+    //~^ ERROR expected trait, found enum `ParseError`
+    //~| HELP constrain the associated type to `ParseError`
+{
+}
+
+impl<EncodeLine, DecodeLine> Codec<EncodeLine, DecodeLine> where
+    DecodeLine: Debug + TryFrom<String>,
+    <DecodeLine as TryFrom<String>>::Error: ParseError,
+    //~^ ERROR expected trait, found enum `ParseError`
+    //~| HELP constrain the associated type to `ParseError`
+{
+}
+
+fn main() {}

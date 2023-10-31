@@ -23,7 +23,7 @@ fn test_html_highlighting() {
         let html = {
             let mut out = Buffer::new();
             write_code(&mut out, src, None, None);
-            format!("{}<pre><code>{}</code></pre>\n", STYLE, out.into_inner())
+            format!("{STYLE}<pre><code>{}</code></pre>\n", out.into_inner())
         };
         expect_file!["fixtures/sample.html"].assert_eq(&html);
     });

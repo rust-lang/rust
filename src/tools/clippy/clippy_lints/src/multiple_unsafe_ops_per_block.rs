@@ -1,12 +1,8 @@
-use clippy_utils::{
-    diagnostics::span_lint_and_then,
-    visitors::{for_each_expr_with_closures, Descend, Visitable},
-};
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::visitors::{for_each_expr_with_closures, Descend, Visitable};
 use core::ops::ControlFlow::Continue;
-use hir::{
-    def::{DefKind, Res},
-    BlockCheckMode, ExprKind, QPath, UnOp, Unsafety,
-};
+use hir::def::{DefKind, Res};
+use hir::{BlockCheckMode, ExprKind, QPath, UnOp, Unsafety};
 use rustc_ast::Mutability;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
@@ -138,7 +134,7 @@ fn collect_unsafe_exprs<'tcx>(
                     .type_dependent_def_id(expr.hir_id)
                     .map(|def_id| cx.tcx.fn_sig(def_id))
                 {
-                    if sig.0.unsafety() == Unsafety::Unsafe {
+                    if sig.skip_binder().unsafety() == Unsafety::Unsafe {
                         unsafe_ops.push(("unsafe method call occurs here", expr.span));
                     }
                 }

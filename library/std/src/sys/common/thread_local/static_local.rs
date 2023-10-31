@@ -43,10 +43,6 @@ pub macro thread_local_inner {
                 static __KEY: $crate::thread::local_impl::Key<$t> =
                     $crate::thread::local_impl::Key::new();
 
-                // FIXME: remove the #[allow(...)] marker when macros don't
-                // raise warning for missing/extraneous unsafe blocks anymore.
-                // See https://github.com/rust-lang/rust/issues/74838.
-                #[allow(unused_unsafe)]
                 unsafe {
                     __KEY.get(move || {
                         if let $crate::option::Option::Some(init) = init {

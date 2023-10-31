@@ -1,10 +1,9 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher::VecArgs;
-use clippy_utils::last_path_segment;
 use clippy_utils::macros::root_macro_call_first_node;
-use clippy_utils::paths;
 use clippy_utils::source::{indent_of, snippet};
 use clippy_utils::ty::match_type;
+use clippy_utils::{last_path_segment, paths};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, QPath, TyKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -50,9 +49,15 @@ declare_lint_pass!(RcCloneInVecInit => [RC_CLONE_IN_VEC_INIT]);
 
 impl LateLintPass<'_> for RcCloneInVecInit {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
-        let Some(macro_call) = root_macro_call_first_node(cx, expr) else { return; };
-        let Some(VecArgs::Repeat(elem, len)) = VecArgs::hir(cx, expr) else { return; };
-        let Some((symbol, func_span)) = ref_init(cx, elem) else { return; };
+        let Some(macro_call) = root_macro_call_first_node(cx, expr) else {
+            return;
+        };
+        let Some(VecArgs::Repeat(elem, len)) = VecArgs::hir(cx, expr) else {
+            return;
+        };
+        let Some((symbol, func_span)) = ref_init(cx, elem) else {
+            return;
+        };
 
         emit_lint(cx, symbol, macro_call.span, elem, len, func_span);
     }

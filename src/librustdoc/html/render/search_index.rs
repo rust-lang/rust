@@ -7,7 +7,7 @@ use rustc_span::symbol::Symbol;
 use serde::ser::{Serialize, SerializeStruct, Serializer};
 
 use crate::clean;
-use crate::clean::types::{FnRetTy, Function, Generics, ItemId, Type, WherePredicate};
+use crate::clean::types::{Function, Generics, ItemId, Type, WherePredicate};
 use crate::formats::cache::{Cache, OrphanImplItem};
 use crate::formats::item_type::ItemType;
 use crate::html::format::join_with_double_colon;
@@ -28,9 +28,7 @@ pub(crate) fn build_index<'tcx>(
     // has since been learned.
     for &OrphanImplItem { parent, ref item, ref impl_generics } in &cache.orphan_impl_items {
         if let Some((fqp, _)) = cache.paths.get(&parent) {
-            let desc = item
-                .doc_value()
-                .map_or_else(String::new, |s| short_markdown_summary(&s, &item.link_names(cache)));
+            let desc = short_markdown_summary(&item.doc_value(), &item.link_names(cache));
             cache.search_index.push(IndexItem {
                 ty: item.type_(),
                 name: item.name.unwrap(),
@@ -45,10 +43,8 @@ pub(crate) fn build_index<'tcx>(
         }
     }
 
-    let crate_doc = krate
-        .module
-        .doc_value()
-        .map_or_else(String::new, |s| short_markdown_summary(&s, &krate.module.link_names(cache)));
+    let crate_doc =
+        short_markdown_summary(&krate.module.doc_value(), &krate.module.link_names(cache));
 
     // Aliases added through `#[doc(alias = "...")]`. Since a few items can have the same alias,
     // we need the alias element to have an array of items.
@@ -660,22 +656,9 @@ fn get_fn_inputs_and_outputs<'tcx>(
     }
 
     let mut ret_types = Vec::new();
-    match decl.output {
-        FnRetTy::Return(ref return_type) => {
-            add_generics_and_bounds_as_types(
-                self_,
-                generics,
-                return_type,
-                tcx,
-                0,
-                &mut ret_types,
-                cache,
-            );
-            if ret_types.is_empty() {
-                ret_types.push(get_index_type(return_type, vec![]));
-            }
-        }
-        _ => {}
-    };
+    add_generics_and_bounds_as_types(self_, generics, &decl.output, tcx, 0, &mut ret_types, cache);
+    if ret_types.is_empty() {
+        ret_types.push(get_index_type(&decl.output, vec![]));
+    }
     (all_types, ret_types)
 }

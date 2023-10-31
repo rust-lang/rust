@@ -1,12 +1,12 @@
 mod notes;
 
 use crate::flags;
-use anyhow::{anyhow, bail, Result};
+use anyhow::bail;
 use std::env;
 use xshell::{cmd, Shell};
 
 impl flags::PublishReleaseNotes {
-    pub(crate) fn run(self, sh: &Shell) -> Result<()> {
+    pub(crate) fn run(self, sh: &Shell) -> anyhow::Result<()> {
         let asciidoc = sh.read_file(&self.changelog)?;
         let mut markdown = notes::convert_asciidoc_to_markdown(std::io::Cursor::new(&asciidoc))?;
         let file_name = check_file_name(self.changelog)?;
@@ -24,11 +24,11 @@ impl flags::PublishReleaseNotes {
     }
 }
 
-fn check_file_name<P: AsRef<std::path::Path>>(path: P) -> Result<String> {
+fn check_file_name<P: AsRef<std::path::Path>>(path: P) -> anyhow::Result<String> {
     let file_name = path
         .as_ref()
         .file_name()
-        .ok_or_else(|| anyhow!("file name is not specified as `changelog`"))?
+        .ok_or_else(|| anyhow::format_err!("file name is not specified as `changelog`"))?
         .to_string_lossy();
 
     let mut chars = file_name.chars();
@@ -61,7 +61,7 @@ fn create_original_changelog_url(file_name: &str) -> String {
     format!("https://rust-analyzer.github.io/thisweek/{year}/{month}/{day}/{stem}.html")
 }
 
-fn update_release(sh: &Shell, tag_name: &str, release_notes: &str) -> Result<()> {
+fn update_release(sh: &Shell, tag_name: &str, release_notes: &str) -> anyhow::Result<()> {
     let token = match env::var("GITHUB_TOKEN") {
         Ok(token) => token,
         Err(_) => bail!("Please obtain a personal access token from https://github.com/settings/tokens and set the `GITHUB_TOKEN` environment variable."),
@@ -79,6 +79,7 @@ fn update_release(sh: &Shell, tag_name: &str, release_notes: &str) -> Result<()>
     let release_id = cmd!(sh, "jq .id").stdin(release_json).read()?;
 
     let mut patch = String::new();
+    // note: the GitHub API doesn't update the target commit if the tag already exists
     write_json::object(&mut patch)
         .string("tag_name", tag_name)
         .string("target_commitish", "master")

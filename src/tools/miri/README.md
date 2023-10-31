@@ -53,7 +53,7 @@ behavior** in your program, and cannot run all programs:
   positives here, so if your program runs fine in Miri right now that is by no
   means a guarantee that it is UB-free when these questions get answered.
 
-    In particular, Miri does currently not check that references point to valid data.
+    In particular, Miri does not check that references point to valid data.
 * If the program relies on unspecified details of how data is laid out, it will
   still run fine in Miri -- but might break (including causing UB) on different
   compiler versions or different platforms.
@@ -74,12 +74,19 @@ behavior** in your program, and cannot run all programs:
   unobservable by compiled programs running on real hardware when `SeqCst` fences are used, and it
   cannot produce all behaviors possibly observable on real hardware.
 
+Moreover, Miri fundamentally cannot tell you whether your code is *sound*. [Soundness] is the property
+of never causing undefined behavior when invoked from arbitrary safe code, even in combination with
+other sound code. In contrast, Miri can just tell you if *a particular way of interacting with your
+code* (e.g., a test suite) causes any undefined behavior. It is up to you to ensure sufficient
+coverage.
+
 [rust]: https://www.rust-lang.org/
 [mir]: https://github.com/rust-lang/rfcs/blob/master/text/1211-mir.md
 [`unreachable_unchecked`]: https://doc.rust-lang.org/stable/std/hint/fn.unreachable_unchecked.html
 [`copy_nonoverlapping`]: https://doc.rust-lang.org/stable/std/ptr/fn.copy_nonoverlapping.html
 [Stacked Borrows]: https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md
 [Tree Borrows]: https://perso.crans.org/vanille/treebor/
+[Soundness]: https://rust-lang.github.io/unsafe-code-guidelines/glossary.html#soundness-of-code--of-a-library
 
 
 ## Using Miri
@@ -400,15 +407,11 @@ to Miri failing to detect cases of undefined behavior in a program.
   application instead of raising an error within the context of Miri (and halting
   execution). Note that code might not expect these operations to ever panic, so
   this flag can lead to strange (mis)behavior.
-* `-Zmiri-retag-fields` changes Stacked Borrows retagging to recurse into *all* fields.
-  This means that references in fields of structs/enums/tuples/arrays/... are retagged,
-  and in particular, they are protected when passed as function arguments.
-  (The default is to recurse only in cases where rustc would actually emit a `noalias` attribute.)
-* `-Zmiri-retag-fields=<all|none|scalar>` controls when Stacked Borrows retagging recurses into
-  fields. `all` means it always recurses (like `-Zmiri-retag-fields`), `none` means it never
-  recurses, `scalar` (the default) means it only recurses for types where we would also emit
-  `noalias` annotations in the generated LLVM IR (types passed as individual scalars or pairs of
-  scalars). Setting this to `none` is **unsound**.
+* `-Zmiri-retag-fields[=<all|none|scalar>]` controls when Stacked Borrows retagging recurses into
+  fields. `all` means it always recurses (the default, and equivalent to `-Zmiri-retag-fields`
+  without an explicit value), `none` means it never recurses, `scalar` means it only recurses for
+  types where we would also emit `noalias` annotations in the generated LLVM IR (types passed as
+  individual scalars or pairs of scalars). Setting this to `none` is **unsound**.
 * `-Zmiri-tag-gc=<blocks>` configures how often the pointer tag garbage collector runs. The default
   is to search for and remove unreachable tags once every `10000` basic blocks. Setting this to
   `0` disables the garbage collector, which causes some programs to have explosive memory usage
@@ -435,6 +438,9 @@ to Miri failing to detect cases of undefined behavior in a program.
   so with this flag.
 * `-Zmiri-force-page-size=<num>` overrides the default page size for an architecture, in multiples of 1k.
   `4` is default for most targets. This value should always be a power of 2 and nonzero.
+* `-Zmiri-unique-is-unique` performs additional aliasing checks for `core::ptr::Unique` to ensure
+  that it could theoretically be considered `noalias`. This flag is experimental and has
+  an effect only when used with `-Zmiri-tree-borrows`.
 
 [function ABI]: https://doc.rust-lang.org/reference/items/functions.html#extern-function-qualifier
 
@@ -476,7 +482,7 @@ Moreover, Miri recognizes some environment variables:
   purpose.
 * `MIRI_NO_STD` (recognized by `cargo miri` and the test suite) makes sure that the target's
   sysroot is built without libstd. This allows testing and running no_std programs.
-* `MIRI_BLESS` (recognized by the test suite and `cargo-miri-test/run-test.py`): overwrite all
+* `RUSTC_BLESS` (recognized by the test suite and `cargo-miri-test/run-test.py`): overwrite all
   `stderr` and `stdout` files instead of checking whether the output matches.
 * `MIRI_SKIP_UI_CHECKS` (recognized by the test suite): don't check whether the
   `stderr` or `stdout` files match the actual output.
@@ -575,6 +581,7 @@ Definite bugs found:
 * [`crossbeam-epoch` calling `assume_init` on a partly-initialized `MaybeUninit`](https://github.com/crossbeam-rs/crossbeam/pull/779)
 * [`integer-encoding` dereferencing a misaligned pointer](https://github.com/dermesser/integer-encoding-rs/pull/23)
 * [`rkyv` constructing a `Box<[u8]>` from an overaligned allocation](https://github.com/rkyv/rkyv/commit/a9417193a34757e12e24263178be8b2eebb72456)
+* [Data race in `arc-swap`](https://github.com/vorner/arc-swap/issues/76)
 * [Data race in `thread::scope`](https://github.com/rust-lang/rust/issues/98498)
 * [`regex` incorrectly handling unaligned `Vec<u8>` buffers](https://www.reddit.com/r/rust/comments/vq3mmu/comment/ienc7t0?context=3)
 * [Incorrect use of `compare_exchange_weak` in `once_cell`](https://github.com/matklad/once_cell/issues/186)

@@ -61,6 +61,7 @@ impl f64 {
     /// assert_eq!(f.ceil(), 4.0);
     /// assert_eq!(g.ceil(), 4.0);
     /// ```
+    #[doc(alias = "ceiling")]
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -135,6 +136,7 @@ impl f64 {
     /// assert_eq!(g.trunc(), 3.0);
     /// assert_eq!(h.trunc(), -3.0);
     /// ```
+    #[doc(alias = "truncate")]
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -321,6 +323,7 @@ impl f64 {
     /// // limitation due to round-off error
     /// assert!((-f64::EPSILON).rem_euclid(3.0) != 0.0);
     /// ```
+    #[doc(alias = "modulo", alias = "mod")]
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[inline]
@@ -456,7 +459,7 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn ln(self) -> f64 {
-        self.log_wrapper(|n| unsafe { intrinsics::logf64(n) })
+        crate::sys::log_wrapper(self, |n| unsafe { intrinsics::logf64(n) })
     }
 
     /// Returns the logarithm of the number with respect to an arbitrary base.
@@ -500,12 +503,7 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn log2(self) -> f64 {
-        self.log_wrapper(|n| {
-            #[cfg(target_os = "android")]
-            return crate::sys::android::log2f64(n);
-            #[cfg(not(target_os = "android"))]
-            return unsafe { intrinsics::log2f64(n) };
-        })
+        crate::sys::log_wrapper(self, crate::sys::log2f64)
     }
 
     /// Returns the base 10 logarithm of the number.
@@ -525,12 +523,12 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn log10(self) -> f64 {
-        self.log_wrapper(|n| unsafe { intrinsics::log10f64(n) })
+        crate::sys::log_wrapper(self, |n| unsafe { intrinsics::log10f64(n) })
     }
 
     /// The positive difference of two numbers.
     ///
-    /// * If `self <= other`: `0:0`
+    /// * If `self <= other`: `0.0`
     /// * Else: `self - other`
     ///
     /// # Examples
@@ -677,6 +675,7 @@ impl f64 {
     ///
     /// assert!(abs_difference < 1e-10);
     /// ```
+    #[doc(alias = "arcsin")]
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -699,6 +698,7 @@ impl f64 {
     ///
     /// assert!(abs_difference < 1e-10);
     /// ```
+    #[doc(alias = "arccos")]
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -720,6 +720,7 @@ impl f64 {
     ///
     /// assert!(abs_difference < 1e-10);
     /// ```
+    #[doc(alias = "arctan")]
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -777,6 +778,7 @@ impl f64 {
     /// assert!(abs_difference_0 < 1e-10);
     /// assert!(abs_difference_1 < 1e-10);
     /// ```
+    #[doc(alias = "sincos")]
     #[rustc_allow_incoherent_impl]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -909,6 +911,7 @@ impl f64 {
     ///
     /// assert!(abs_difference < 1.0e-10);
     /// ```
+    #[doc(alias = "arcsinh")]
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -931,6 +934,7 @@ impl f64 {
     ///
     /// assert!(abs_difference < 1.0e-10);
     /// ```
+    #[doc(alias = "arccosh")]
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -955,6 +959,7 @@ impl f64 {
     ///
     /// assert!(abs_difference < 1.0e-10);
     /// ```
+    #[doc(alias = "arctanh")]
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -963,27 +968,45 @@ impl f64 {
         0.5 * ((2.0 * self) / (1.0 - self)).ln_1p()
     }
 
-    // Solaris/Illumos requires a wrapper around log, log2, and log10 functions
-    // because of their non-standard behavior (e.g., log(-n) returns -Inf instead
-    // of expected NaN).
+    /// Gamma function.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(float_gamma)]
+    /// let x = 5.0f64;
+    ///
+    /// let abs_difference = (x.gamma() - 24.0).abs();
+    ///
+    /// assert!(abs_difference <= f64::EPSILON);
+    /// ```
     #[rustc_allow_incoherent_impl]
-    fn log_wrapper<F: Fn(f64) -> f64>(self, log_fn: F) -> f64 {
-        if !cfg!(any(target_os = "solaris", target_os = "illumos")) {
-            log_fn(self)
-        } else if self.is_finite() {
-            if self > 0.0 {
-                log_fn(self)
-            } else if self == 0.0 {
-                Self::NEG_INFINITY // log(0) = -Inf
-            } else {
-                Self::NAN // log(-n) = NaN
-            }
-        } else if self.is_nan() {
-            self // log(NaN) = NaN
-        } else if self > 0.0 {
-            self // log(Inf) = Inf
-        } else {
-            Self::NAN // log(-Inf) = NaN
-        }
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    #[unstable(feature = "float_gamma", issue = "99842")]
+    #[inline]
+    pub fn gamma(self) -> f64 {
+        unsafe { cmath::tgamma(self) }
+    }
+
+    /// Returns the natural logarithm of the gamma function.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(float_gamma)]
+    /// let x = 2.0f64;
+    ///
+    /// let abs_difference = (x.ln_gamma().0 - 0.0).abs();
+    ///
+    /// assert!(abs_difference <= f64::EPSILON);
+    /// ```
+    #[rustc_allow_incoherent_impl]
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    #[unstable(feature = "float_gamma", issue = "99842")]
+    #[inline]
+    pub fn ln_gamma(self) -> (f64, i32) {
+        let mut signgamp: i32 = 0;
+        let x = unsafe { cmath::lgamma_r(self, &mut signgamp) };
+        (x, signgamp)
     }
 }

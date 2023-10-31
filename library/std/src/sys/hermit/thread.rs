@@ -1,6 +1,5 @@
 #![allow(dead_code)]
 
-use super::unsupported;
 use crate::ffi::CStr;
 use crate::io;
 use crate::mem;
@@ -60,6 +59,11 @@ impl Thread {
         Thread::new_with_coreid(stack, p, -1 /* = no specific core */)
     }
 
+    pub unsafe fn new_reactor<F>(p: F) -> io::Result<Thread>
+    where F: Fn() + Send + Sync + 'static {
+        unsupported()
+    }
+
     #[inline]
     pub fn yield_now() {
         unsafe {
@@ -99,7 +103,7 @@ impl Thread {
 }
 
 pub fn available_parallelism() -> io::Result<NonZeroUsize> {
-    unsupported()
+    unsafe { Ok(NonZeroUsize::new_unchecked(abi::get_processor_count())) }
 }
 
 pub mod guard {

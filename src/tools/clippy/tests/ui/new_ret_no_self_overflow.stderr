@@ -1,0 +1,9 @@
+error[E0275]: overflow evaluating the requirement `<i32 as std::ops::Add>::Output == issue10041::X`
+  --> $DIR/new_ret_no_self_overflow.rs:20:25
+   |
+LL |         pub fn new() -> X {
+   |                         ^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0275`.

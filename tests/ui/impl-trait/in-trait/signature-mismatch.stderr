@@ -1,0 +1,61 @@
+error: return type captures more lifetimes than trait definition
+  --> $DIR/signature-mismatch.rs:34:47
+   |
+LL |     fn async_fn<'a>(&self, buff: &'a [u8]) -> impl Future<Output = Vec<u8>> + 'a {
+   |                 -- this lifetime was captured ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: hidden type must only reference lifetimes captured by this impl trait
+  --> $DIR/signature-mismatch.rs:15:40
+   |
+LL |     fn async_fn(&self, buff: &[u8]) -> impl Future<Output = Vec<u8>>;
+   |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: hidden type inferred to be `impl Future<Output = Vec<u8>> + 'a`
+
+error: return type captures more lifetimes than trait definition
+  --> $DIR/signature-mismatch.rs:39:57
+   |
+LL |     fn async_fn_early<'a: 'a>(&self, buff: &'a [u8]) -> impl Future<Output = Vec<u8>> + 'a {
+   |                       -- this lifetime was captured     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: hidden type must only reference lifetimes captured by this impl trait
+  --> $DIR/signature-mismatch.rs:16:57
+   |
+LL |     fn async_fn_early<'a: 'a>(&self, buff: &'a [u8]) -> impl Future<Output = Vec<u8>>;
+   |                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: hidden type inferred to be `impl Future<Output = Vec<u8>> + 'a`
+
+error: return type captures more lifetimes than trait definition
+  --> $DIR/signature-mismatch.rs:47:10
+   |
+LL |     fn async_fn_multiple<'a, 'b>(
+   |                              -- this lifetime was captured
+...
+LL |     ) -> impl Future<Output = Vec<u8>> + Captures2<'a, 'b> {
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: hidden type must only reference lifetimes captured by this impl trait
+  --> $DIR/signature-mismatch.rs:18:12
+   |
+LL |         -> impl Future<Output = Vec<u8>> + Captures<'a>;
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: hidden type inferred to be `impl Future<Output = Vec<u8>> + Captures2<'a, 'b>`
+
+error[E0309]: the parameter type `T` may not live long enough
+  --> $DIR/signature-mismatch.rs:56:10
+   |
+LL |     ) -> impl Future<Output = Vec<u8>> {
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ...so that the type `impl Future<Output = Vec<u8>>` will meet its required lifetime bounds...
+   |
+note: ...that is required by this bound
+  --> $DIR/signature-mismatch.rs:23:42
+   |
+LL |     ) -> impl Future<Output = Vec<u8>> + 'a;
+   |                                          ^^
+help: consider adding an explicit lifetime bound...
+   |
+LL |     fn async_fn_reduce_outlive<'a, 'b, T: 'a>(
+   |                                         ++++
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0309`.

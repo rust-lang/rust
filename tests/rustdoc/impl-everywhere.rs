@@ -25,6 +25,6 @@ pub fn foo_foo() -> impl Foo + Foo2 {
     Bar
 }
 
-// @has foo/fn.foo_foo_foo.html '//section[@id="main-content"]//pre' "x: &'x impl Foo + Foo2"
+// @has foo/fn.foo_foo_foo.html '//section[@id="main-content"]//pre' "x: &'x (impl Foo + Foo2)"
 pub fn foo_foo_foo<'x>(_x: &'x (impl Foo + Foo2)) {
 }

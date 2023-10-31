@@ -6,6 +6,12 @@ use std::env;
 use std::path::Path;
 
 fn main() {
+    println!("cargo:rerun-if-env-changed=LLVM_PROFILER_RT_LIB");
+    if let Ok(rt) = env::var("LLVM_PROFILER_RT_LIB") {
+        println!("cargo:rustc-link-lib=static:+verbatim={rt}");
+        return;
+    }
+
     let target = env::var("TARGET").expect("TARGET was not set");
     let cfg = &mut cc::Build::new();
 

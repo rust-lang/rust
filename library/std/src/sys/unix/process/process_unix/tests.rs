@@ -60,3 +60,28 @@ fn test_command_fork_no_unwind() {
             || signal == libc::SIGSEGV
     );
 }
+
+#[test]
+#[cfg(target_os = "linux")]
+fn test_command_pidfd() {
+    use crate::os::fd::RawFd;
+    use crate::os::linux::process::{ChildExt, CommandExt};
+    use crate::process::Command;
+
+    let our_pid = crate::process::id();
+    let pidfd = unsafe { libc::syscall(libc::SYS_pidfd_open, our_pid, 0) };
+    let pidfd_open_available = if pidfd >= 0 {
+        unsafe { libc::close(pidfd as RawFd) };
+        true
+    } else {
+        false
+    };
+
+    // always exercise creation attempts
+    let child = Command::new("echo").create_pidfd(true).spawn().unwrap();
+
+    // but only check if we know that the kernel supports pidfds
+    if pidfd_open_available {
+        assert!(child.pidfd().is_ok())
+    }
+}

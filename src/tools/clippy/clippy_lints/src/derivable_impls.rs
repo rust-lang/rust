@@ -3,12 +3,13 @@ use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::indent_of;
 use clippy_utils::{is_default_equivalent, peel_blocks};
 use rustc_errors::Applicability;
+use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::{
-    def::{CtorKind, CtorOf, DefKind, Res},
-    Body, Expr, ExprKind, GenericArg, Impl, ImplItemKind, Item, ItemKind, Node, PathSegment, QPath, Ty, TyKind,
+    self as hir, Body, Expr, ExprKind, GenericArg, Impl, ImplItemKind, Item, ItemKind, Node, PathSegment, QPath, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::{Adt, AdtDef, SubstsRef};
+use rustc_middle::ty::adjustment::{Adjust, PointerCoercion};
+use rustc_middle::ty::{self, Adt, AdtDef, GenericArgsRef, Ty, TypeckResults};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::sym;
 
@@ -75,31 +76,55 @@ fn is_path_self(e: &Expr<'_>) -> bool {
     }
 }
 
+fn contains_trait_object(ty: Ty<'_>) -> bool {
+    match ty.kind() {
+        ty::Ref(_, ty, _) => contains_trait_object(*ty),
+        ty::Adt(def, args) => def.is_box() && args[0].as_type().map_or(false, contains_trait_object),
+        ty::Dynamic(..) => true,
+        _ => false,
+    }
+}
+
 fn check_struct<'tcx>(
     cx: &LateContext<'tcx>,
     item: &'tcx Item<'_>,
-    self_ty: &Ty<'_>,
+    self_ty: &hir::Ty<'_>,
     func_expr: &Expr<'_>,
     adt_def: AdtDef<'_>,
-    substs: SubstsRef<'_>,
+    ty_args: GenericArgsRef<'_>,
+    typeck_results: &'tcx TypeckResults<'tcx>,
 ) {
     if let TyKind::Path(QPath::Resolved(_, p)) = self_ty.kind {
         if let Some(PathSegment { args, .. }) = p.segments.last() {
             let args = args.map(|a| a.args).unwrap_or(&[]);
 
-            // substs contains the generic parameters of the type declaration, while args contains the arguments
-            // used at instantiation time. If both len are not equal, it means that some parameters were not
-            // provided (which means that the default values were used); in this case we will not risk
-            // suggesting too broad a rewrite. We won't either if any argument is a type or a const.
-            if substs.len() != args.len() || args.iter().any(|arg| !matches!(arg, GenericArg::Lifetime(_))) {
+            // ty_args contains the generic parameters of the type declaration, while args contains the
+            // arguments used at instantiation time. If both len are not equal, it means that some
+            // parameters were not provided (which means that the default values were used); in this
+            // case we will not risk suggesting too broad a rewrite. We won't either if any argument
+            // is a type or a const.
+            if ty_args.len() != args.len() || args.iter().any(|arg| !matches!(arg, GenericArg::Lifetime(_))) {
                 return;
             }
         }
     }
+
+    // the default() call might unsize coerce to a trait object (e.g. Box<T> to Box<dyn Trait>),
+    // which would not be the same if derived (see #10158).
+    // this closure checks both if the expr is equivalent to a `default()` call and does not
+    // have such coercions.
+    let is_default_without_adjusts = |expr| {
+        is_default_equivalent(cx, expr)
+            && typeck_results.expr_adjustments(expr).iter().all(|adj| {
+                !matches!(adj.kind, Adjust::Pointer(PointerCoercion::Unsize)
+                    if contains_trait_object(adj.target))
+            })
+    };
+
     let should_emit = match peel_blocks(func_expr).kind {
-        ExprKind::Tup(fields) => fields.iter().all(|e| is_default_equivalent(cx, e)),
-        ExprKind::Call(callee, args) if is_path_self(callee) => args.iter().all(|e| is_default_equivalent(cx, e)),
-        ExprKind::Struct(_, fields, _) => fields.iter().all(|ef| is_default_equivalent(cx, ef.expr)),
+        ExprKind::Tup(fields) => fields.iter().all(is_default_without_adjusts),
+        ExprKind::Call(callee, args) if is_path_self(callee) => args.iter().all(is_default_without_adjusts),
+        ExprKind::Struct(_, fields, _) => fields.iter().all(|ef| is_default_without_adjusts(ef.expr)),
         _ => false,
     };
 
@@ -189,7 +214,7 @@ impl<'tcx> LateLintPass<'tcx> for DerivableImpls {
             if let Some(Node::ImplItem(impl_item)) = cx.tcx.hir().find(impl_item_hir);
             if let ImplItemKind::Fn(_, b) = &impl_item.kind;
             if let Body { value: func_expr, .. } = cx.tcx.hir().body(*b);
-            if let &Adt(adt_def, substs) = cx.tcx.type_of(item.owner_id).subst_identity().kind();
+            if let &Adt(adt_def, args) = cx.tcx.type_of(item.owner_id).instantiate_identity().kind();
             if let attrs = cx.tcx.hir().attrs(item.hir_id());
             if !attrs.iter().any(|attr| attr.doc_str().is_some());
             if let child_attrs = cx.tcx.hir().attrs(impl_item_hir);
@@ -197,7 +222,7 @@ impl<'tcx> LateLintPass<'tcx> for DerivableImpls {
 
             then {
                 if adt_def.is_struct() {
-                    check_struct(cx, item, self_ty, func_expr, adt_def, substs);
+                    check_struct(cx, item, self_ty, func_expr, adt_def, args, cx.tcx.typeck_body(*b));
                 } else if adt_def.is_enum() && self.msrv.meets(msrvs::DEFAULT_ENUM_ATTRIBUTE) {
                     check_enum(cx, item, func_expr, adt_def);
                 }

@@ -2,7 +2,7 @@ fn main() {
     match "foo".to_string() {
         ['f', 'o', ..] => {}
         //~^ ERROR expected an array or slice, found `String`
-        _ => { }
+        _ => {}
     };
 
     // Note that this one works with default binding modes.
@@ -15,7 +15,7 @@ fn main() {
     };
 
     match [0, 1, 2] {
-        [0] => {}, //~ ERROR pattern requires
+        [0] => {} //~ ERROR pattern requires
 
         [0, 1, x @ ..] => {
             let a: [_; 1] = x;
@@ -23,14 +23,15 @@ fn main() {
         [0, 1, 2, 3, x @ ..] => {} //~ ERROR pattern requires
     };
 
-    match does_not_exist { //~ ERROR cannot find value `does_not_exist` in this scope
-        [] => {}
+    match does_not_exist {
+        //~^ ERROR cannot find value `does_not_exist` in this scope
+        [] => {} // ERROR cannot find value `does_not_exist` in this scope
     };
 }
 
 fn another_fn_to_avoid_suppression() {
-    match Default::default()
-    {
-        [] => {}  //~ ERROR type annotations needed
+    match Default::default() {
+        [] => {}
+        //~^ ERROR type annotations needed
     };
 }

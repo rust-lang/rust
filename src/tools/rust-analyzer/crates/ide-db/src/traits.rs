@@ -38,15 +38,15 @@ pub fn get_missing_assoc_items(
     for item in imp.items(sema.db) {
         match item {
             hir::AssocItem::Function(it) => {
-                impl_fns_consts.insert(it.name(sema.db).to_string());
+                impl_fns_consts.insert(it.name(sema.db).display(sema.db).to_string());
             }
             hir::AssocItem::Const(it) => {
                 if let Some(name) = it.name(sema.db) {
-                    impl_fns_consts.insert(name.to_string());
+                    impl_fns_consts.insert(name.display(sema.db).to_string());
                 }
             }
             hir::AssocItem::TypeAlias(it) => {
-                impl_type.insert(it.name(sema.db).to_string());
+                impl_type.insert(it.name(sema.db).display(sema.db).to_string());
             }
         }
     }
@@ -57,12 +57,14 @@ pub fn get_missing_assoc_items(
             .into_iter()
             .filter(|i| match i {
                 hir::AssocItem::Function(f) => {
-                    !impl_fns_consts.contains(&f.name(sema.db).to_string())
+                    !impl_fns_consts.contains(&f.name(sema.db).display(sema.db).to_string())
                 }
-                hir::AssocItem::TypeAlias(t) => !impl_type.contains(&t.name(sema.db).to_string()),
+                hir::AssocItem::TypeAlias(t) => {
+                    !impl_type.contains(&t.name(sema.db).display(sema.db).to_string())
+                }
                 hir::AssocItem::Const(c) => c
                     .name(sema.db)
-                    .map(|n| !impl_fns_consts.contains(&n.to_string()))
+                    .map(|n| !impl_fns_consts.contains(&n.display(sema.db).to_string()))
                     .unwrap_or_default(),
             })
             .collect()
@@ -137,7 +139,7 @@ mod tests {
             sema.find_node_at_offset_with_descend(file.syntax(), position.offset).unwrap();
         let trait_ = crate::traits::resolve_target_trait(&sema, &impl_block);
         let actual = match trait_ {
-            Some(trait_) => trait_.name(&db).to_string(),
+            Some(trait_) => trait_.name(&db).display(&db).to_string(),
             None => String::new(),
         };
         expect.assert_eq(&actual);
@@ -152,7 +154,7 @@ mod tests {
         let items = crate::traits::get_missing_assoc_items(&sema, &impl_block);
         let actual = items
             .into_iter()
-            .map(|item| item.name(&db).unwrap().to_string())
+            .map(|item| item.name(&db).unwrap().display(&db).to_string())
             .collect::<Vec<_>>()
             .join("\n");
         expect.assert_eq(&actual);

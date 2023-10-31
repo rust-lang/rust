@@ -280,6 +280,7 @@ impl Write for ChildStdin {
         io::Write::is_write_vectored(&&*self)
     }
 
+    #[inline]
     fn flush(&mut self) -> io::Result<()> {
         (&*self).flush()
     }
@@ -299,6 +300,7 @@ impl Write for &ChildStdin {
         self.inner.is_write_vectored()
     }
 
+    #[inline]
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
     }
@@ -557,6 +559,14 @@ impl Command {
     /// `PATH` environment variable on the Command,
     /// but this has some implementation limitations on Windows
     /// (see issue #37519).
+    ///
+    /// # Platform-specific behavior
+    ///
+    /// Note on Windows: For executable files with the .exe extension,
+    /// it can be omitted when specifying the program for this Command.
+    /// However, if the file has a different extension,
+    /// a filename including the extension needs to be provided,
+    /// otherwise the file won't be found.
     ///
     /// # Examples
     ///
@@ -1524,6 +1534,15 @@ impl From<fs::File> for Stdio {
 #[stable(feature = "process", since = "1.0.0")]
 pub struct ExitStatus(imp::ExitStatus);
 
+/// The default value is one which indicates successful completion.
+#[stable(feature = "process-exitcode-default", since = "1.73.0")]
+impl Default for ExitStatus {
+    fn default() -> Self {
+        // Ideally this would be done by ExitCode::default().into() but that is complicated.
+        ExitStatus::from_inner(imp::ExitStatus::default())
+    }
+}
+
 /// Allows extension traits within `std`.
 #[unstable(feature = "sealed", issue = "none")]
 impl crate::sealed::Sealed for ExitStatus {}
@@ -1904,8 +1923,8 @@ impl FromInner<imp::ExitCode> for ExitCode {
 }
 
 impl Child {
-    /// Forces the child process to exit. If the child has already exited, an [`InvalidInput`]
-    /// error is returned.
+    /// Forces the child process to exit. If the child has already exited, `Ok(())`
+    /// is returned.
     ///
     /// The mapping to [`ErrorKind`]s is not part of the compatibility contract of the function.
     ///
@@ -1920,7 +1939,7 @@ impl Child {
     ///
     /// let mut command = Command::new("yes");
     /// if let Ok(mut child) = command.spawn() {
-    ///     child.kill().expect("command wasn't running");
+    ///     child.kill().expect("command couldn't be killed");
     /// } else {
     ///     println!("yes command didn't start");
     /// }

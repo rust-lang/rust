@@ -13,26 +13,26 @@ use std::mem;
 use std::sync::LazyLock;
 
 pub(super) fn visit_item(cx: &DocContext<'_>, item: &Item) {
-    let Some(hir_id) = DocContext::as_local_hir_id(cx.tcx, item.item_id)
-        else {
-            // If non-local, no need to check anything.
-            return;
-        };
-    let dox = item.attrs.collapsed_doc_value().unwrap_or_default();
+    let Some(hir_id) = DocContext::as_local_hir_id(cx.tcx, item.item_id) else {
+        // If non-local, no need to check anything.
+        return;
+    };
+    let dox = item.doc_value();
     if !dox.is_empty() {
-        let report_diag = |cx: &DocContext<'_>, msg: &str, url: &str, range: Range<usize>| {
-            let sp = source_span_for_markdown_range(cx.tcx, &dox, &range, &item.attrs)
-                .unwrap_or_else(|| item.attr_span(cx.tcx));
-            cx.tcx.struct_span_lint_hir(crate::lint::BARE_URLS, hir_id, sp, msg, |lint| {
-                lint.note("bare URLs are not automatically turned into clickable links")
-                    .span_suggestion(
-                        sp,
-                        "use an automatic link instead",
-                        format!("<{}>", url),
-                        Applicability::MachineApplicable,
-                    )
-            });
-        };
+        let report_diag =
+            |cx: &DocContext<'_>, msg: &'static str, url: &str, range: Range<usize>| {
+                let sp = source_span_for_markdown_range(cx.tcx, &dox, &range, &item.attrs)
+                    .unwrap_or_else(|| item.attr_span(cx.tcx));
+                cx.tcx.struct_span_lint_hir(crate::lint::BARE_URLS, hir_id, sp, msg, |lint| {
+                    lint.note("bare URLs are not automatically turned into clickable links")
+                        .span_suggestion(
+                            sp,
+                            "use an automatic link instead",
+                            format!("<{url}>"),
+                            Applicability::MachineApplicable,
+                        )
+                });
+            };
 
         let mut p = Parser::new_ext(&dox, main_body_opts()).into_offset_iter();
 
@@ -72,9 +72,9 @@ fn find_raw_urls(
     cx: &DocContext<'_>,
     text: &str,
     range: Range<usize>,
-    f: &impl Fn(&DocContext<'_>, &str, &str, Range<usize>),
+    f: &impl Fn(&DocContext<'_>, &'static str, &str, Range<usize>),
 ) {
-    trace!("looking for raw urls in {}", text);
+    trace!("looking for raw urls in {text}");
     // For now, we only check "full" URLs (meaning, starting with "http://" or "https://").
     for match_ in URL_REGEX.find_iter(text) {
         let url = match_.as_str();

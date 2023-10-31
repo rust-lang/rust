@@ -1,5 +1,6 @@
 #![allow(
     dead_code,
+    clippy::needless_if,
     clippy::similar_names,
     clippy::single_match,
     clippy::toplevel_ref_arg,

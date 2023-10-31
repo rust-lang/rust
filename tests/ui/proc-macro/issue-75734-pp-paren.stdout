@@ -118,17 +118,17 @@ PRINT-BANG INPUT (DEBUG): TokenStream [
                 span: $DIR/issue-75734-pp-paren.rs:25:16: 25:17 (#0),
             },
         ],
-        span: $DIR/issue-75734-pp-paren.rs:17:21: 17:25 (#7),
+        span: $DIR/issue-75734-pp-paren.rs:17:21: 17:25 (#6),
     },
     Punct {
         ch: '*',
         spacing: Alone,
-        span: $DIR/issue-75734-pp-paren.rs:17:26: 17:27 (#7),
+        span: $DIR/issue-75734-pp-paren.rs:17:26: 17:27 (#6),
     },
     Literal {
         kind: Integer,
         symbol: "2",
         suffix: None,
-        span: $DIR/issue-75734-pp-paren.rs:17:28: 17:29 (#7),
+        span: $DIR/issue-75734-pp-paren.rs:17:28: 17:29 (#6),
     },
 ]

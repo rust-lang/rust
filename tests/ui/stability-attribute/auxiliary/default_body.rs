@@ -11,6 +11,10 @@ pub trait JustTrait {
     #[rustc_default_body_unstable(feature = "fun_default_body", issue = "none")]
     #[stable(feature = "stable_feature", since = "1.0.0")]
     fn fun() {}
+
+    #[rustc_default_body_unstable(feature = "fun_default_body", issue = "none", reason = "reason")]
+    #[stable(feature = "stable_feature", since = "1.0.0")]
+    fn fun2() {}
 }
 
 #[rustc_must_implement_one_of(eq, neq)]

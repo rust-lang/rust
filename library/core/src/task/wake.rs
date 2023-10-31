@@ -2,6 +2,7 @@
 
 use crate::fmt;
 use crate::marker::{PhantomData, Unpin};
+use crate::ptr;
 
 /// A `RawWaker` allows the implementor of a task executor to create a [`Waker`]
 /// which provides customized wakeup behavior.
@@ -320,6 +321,45 @@ impl Waker {
     #[rustc_const_unstable(feature = "const_waker", issue = "102012")]
     pub const unsafe fn from_raw(waker: RawWaker) -> Waker {
         Waker { waker }
+    }
+
+    /// Creates a new `Waker` that does nothing when `wake` is called.
+    ///
+    /// This is mostly useful for writing tests that need a [`Context`] to poll
+    /// some futures, but are not expecting those futures to wake the waker or
+    /// do not need to do anything specific if it happens.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(noop_waker)]
+    ///
+    /// use std::future::Future;
+    /// use std::task;
+    ///
+    /// let waker = task::Waker::noop();
+    /// let mut cx = task::Context::from_waker(&waker);
+    ///
+    /// let mut future = Box::pin(async { 10 });
+    /// assert_eq!(future.as_mut().poll(&mut cx), task::Poll::Ready(10));
+    /// ```
+    #[inline]
+    #[must_use]
+    #[unstable(feature = "noop_waker", issue = "98286")]
+    pub const fn noop() -> Waker {
+        const VTABLE: RawWakerVTable = RawWakerVTable::new(
+            // Cloning just returns a new no-op raw waker
+            |_| RAW,
+            // `wake` does nothing
+            |_| {},
+            // `wake_by_ref` does nothing
+            |_| {},
+            // Dropping does nothing as we don't allocate anything
+            |_| {},
+        );
+        const RAW: RawWaker = RawWaker::new(ptr::null(), &VTABLE);
+
+        Waker { waker: RAW }
     }
 
     /// Get a reference to the underlying [`RawWaker`].

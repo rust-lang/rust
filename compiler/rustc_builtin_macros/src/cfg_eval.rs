@@ -31,10 +31,11 @@ pub(crate) fn expand(
 
 pub(crate) fn cfg_eval(
     sess: &Session,
-    features: Option<&Features>,
+    features: &Features,
     annotatable: Annotatable,
     lint_node_id: NodeId,
 ) -> Annotatable {
+    let features = Some(features);
     CfgEval { cfg: &mut StripUnconfigured { sess, features, config_tokens: true, lint_node_id } }
         .configure_annotatable(annotatable)
         // Since the item itself has already been configured by the `InvocationCollector`,

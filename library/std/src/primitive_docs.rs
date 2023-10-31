@@ -308,7 +308,7 @@ mod prim_never {}
 ///
 /// ```no_run
 /// // Undefined behaviour
-/// unsafe { char::from_u32_unchecked(0x110000) };
+/// let _ = unsafe { char::from_u32_unchecked(0x110000) };
 /// ```
 ///
 /// USVs are also the exact set of values that may be encoded in UTF-8. Because

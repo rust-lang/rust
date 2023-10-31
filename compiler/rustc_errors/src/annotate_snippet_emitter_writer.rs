@@ -157,10 +157,8 @@ impl AnnotateSnippetEmitterWriter {
             {
                 annotated_files.swap(0, pos);
             }
-            // owned: line source, line index, annotations
-            type Owned = (String, usize, Vec<crate::snippet::Annotation>);
-            let filename = source_map.filename_for_diagnostics(&primary_lo.file.name);
-            let origin = filename.to_string_lossy();
+            // owned: file name, line source, line index, annotations
+            type Owned = (String, String, usize, Vec<crate::snippet::Annotation>);
             let annotated_files: Vec<Owned> = annotated_files
                 .into_iter()
                 .flat_map(|annotated_file| {
@@ -169,7 +167,15 @@ impl AnnotateSnippetEmitterWriter {
                         .lines
                         .into_iter()
                         .map(|line| {
-                            (source_string(file.clone(), &line), line.line_index, line.annotations)
+                            // Ensure the source file is present before we try
+                            // to load a string from it.
+                            source_map.ensure_source_file_source_present(file.clone());
+                            (
+                                format!("{}", source_map.filename_for_diagnostics(&file.name)),
+                                source_string(file.clone(), &line),
+                                line.line_index,
+                                line.annotations,
+                            )
                         })
                         .collect::<Vec<Owned>>()
                 })
@@ -192,11 +198,11 @@ impl AnnotateSnippetEmitterWriter {
                 },
                 slices: annotated_files
                     .iter()
-                    .map(|(source, line_index, annotations)| {
+                    .map(|(file_name, source, line_index, annotations)| {
                         Slice {
                             source,
                             line_start: *line_index,
-                            origin: Some(&origin),
+                            origin: Some(&file_name),
                             // FIXME(#59346): Not really sure when `fold` should be true or false
                             fold: false,
                             annotations: annotations

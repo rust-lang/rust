@@ -1,47 +1,53 @@
 error[E0570]: `"ptx-kernel"` is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:26:1
+  --> $DIR/unsupported.rs:30:1
    |
 LL | extern "ptx-kernel" fn ptx() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0570]: `"amdgpu-kernel"` is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:28:1
+  --> $DIR/unsupported.rs:32:1
    |
 LL | extern "amdgpu-kernel" fn amdgpu() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0570]: `"wasm"` is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:30:1
+  --> $DIR/unsupported.rs:34:1
    |
 LL | extern "wasm" fn wasm() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0570]: `"aapcs"` is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:32:1
+  --> $DIR/unsupported.rs:36:1
    |
 LL | extern "aapcs" fn aapcs() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0570]: `"msp430-interrupt"` is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:36:1
+  --> $DIR/unsupported.rs:42:1
    |
 LL | extern "msp430-interrupt" fn msp430() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0570]: `"avr-interrupt"` is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:38:1
+  --> $DIR/unsupported.rs:44:1
    |
 LL | extern "avr-interrupt" fn avr() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+error[E0570]: `"riscv-interrupt-m"` is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:46:1
+   |
+LL | extern "riscv-interrupt-m" fn riscv() {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 error[E0570]: `"thiscall"` is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:43:1
+  --> $DIR/unsupported.rs:56:1
    |
 LL | extern "thiscall" fn thiscall() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 warning: use of calling convention not supported on this target
-  --> $DIR/unsupported.rs:47:1
+  --> $DIR/unsupported.rs:62:1
    |
 LL | extern "stdcall" fn stdcall() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -50,6 +56,6 @@ LL | extern "stdcall" fn stdcall() {}
    = note: for more information, see issue #87678 <https://github.com/rust-lang/rust/issues/87678>
    = note: `#[warn(unsupported_calling_conventions)]` on by default
 
-error: aborting due to 7 previous errors; 1 warning emitted
+error: aborting due to 8 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0570`.

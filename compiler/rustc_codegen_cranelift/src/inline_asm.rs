@@ -254,12 +254,12 @@ pub(crate) fn codegen_inline_asm<'tcx>(
             }
             InlineAsmOperand::SymFn { ref value } => {
                 let literal = fx.monomorphize(value.literal);
-                if let ty::FnDef(def_id, substs) = *literal.ty().kind() {
+                if let ty::FnDef(def_id, args) = *literal.ty().kind() {
                     let instance = ty::Instance::resolve_for_fn_ptr(
                         fx.tcx,
                         ty::ParamEnv::reveal_all(),
                         def_id,
-                        substs,
+                        args,
                     )
                     .unwrap();
                     let symbol = fx.tcx.symbol_name(instance);

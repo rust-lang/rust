@@ -957,6 +957,7 @@ fn readlink_not_symlink() {
 }
 
 #[test]
+#[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating hardlinks
 fn links_work() {
     let tmpdir = tmpdir();
     let input = tmpdir.join("in.txt");
@@ -1453,6 +1454,7 @@ fn metadata_access_times() {
 
 /// Test creating hard links to symlinks.
 #[test]
+#[cfg_attr(target_os = "android", ignore)] // Android SELinux rules prevent creating hardlinks
 fn symlink_hard_link() {
     let tmpdir = tmpdir();
     if !got_symlink_permission(&tmpdir) {
@@ -1640,6 +1642,10 @@ fn test_file_times() {
     use crate::os::ios::fs::FileTimesExt;
     #[cfg(target_os = "macos")]
     use crate::os::macos::fs::FileTimesExt;
+    #[cfg(target_os = "tvos")]
+    use crate::os::tvos::fs::FileTimesExt;
+    #[cfg(target_os = "tvos")]
+    use crate::os::tvos::fs::FileTimesExt;
     #[cfg(target_os = "watchos")]
     use crate::os::watchos::fs::FileTimesExt;
     #[cfg(windows)]
@@ -1651,9 +1657,21 @@ fn test_file_times() {
     let accessed = SystemTime::UNIX_EPOCH + Duration::from_secs(12345);
     let modified = SystemTime::UNIX_EPOCH + Duration::from_secs(54321);
     times = times.set_accessed(accessed).set_modified(modified);
-    #[cfg(any(windows, target_os = "macos", target_os = "ios", target_os = "watchos"))]
+    #[cfg(any(
+        windows,
+        target_os = "macos",
+        target_os = "ios",
+        target_os = "watchos",
+        target_os = "tvos",
+    ))]
     let created = SystemTime::UNIX_EPOCH + Duration::from_secs(32123);
-    #[cfg(any(windows, target_os = "macos", target_os = "ios", target_os = "watchos"))]
+    #[cfg(any(
+        windows,
+        target_os = "macos",
+        target_os = "ios",
+        target_os = "watchos",
+        target_os = "tvos",
+    ))]
     {
         times = times.set_created(created);
     }
@@ -1678,7 +1696,13 @@ fn test_file_times() {
     let metadata = file.metadata().unwrap();
     assert_eq!(metadata.accessed().unwrap(), accessed);
     assert_eq!(metadata.modified().unwrap(), modified);
-    #[cfg(any(windows, target_os = "macos", target_os = "ios", target_os = "watchos"))]
+    #[cfg(any(
+        windows,
+        target_os = "macos",
+        target_os = "ios",
+        target_os = "watchos",
+        target_os = "tvos",
+    ))]
     {
         assert_eq!(metadata.created().unwrap(), created);
     }

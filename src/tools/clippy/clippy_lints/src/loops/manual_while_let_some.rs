@@ -1,9 +1,6 @@
-use clippy_utils::{
-    diagnostics::{multispan_sugg_with_applicability, span_lint_and_then},
-    match_def_path, paths,
-    source::snippet,
-    SpanlessEq,
-};
+use clippy_utils::diagnostics::{multispan_sugg_with_applicability, span_lint_and_then};
+use clippy_utils::source::snippet;
+use clippy_utils::{match_def_path, paths, SpanlessEq};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, Pat, Stmt, StmtKind, UnOp};
 use rustc_lint::LateContext;

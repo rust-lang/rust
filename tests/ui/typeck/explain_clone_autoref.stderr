@@ -18,6 +18,219 @@ LL + #[derive(Clone)]
 LL | struct NotClone;
    |
 
-error: aborting due to previous error
+error[E0308]: mismatched types
+  --> $DIR/explain_clone_autoref.rs:16:24
+   |
+LL |     let nc: NotClone = nc.clone();
+   |             --------   ^^^^^^^^^^ expected `NotClone`, found `&NotClone`
+   |             |
+   |             expected due to this
+   |
+note: `NotClone` does not implement `Clone`, so `&NotClone` was cloned instead
+  --> $DIR/explain_clone_autoref.rs:16:24
+   |
+LL |     let nc: NotClone = nc.clone();
+   |                        ^^
+help: consider annotating `NotClone` with `#[derive(Clone)]`
+   |
+LL + #[derive(Clone)]
+LL | struct NotClone;
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/explain_clone_autoref.rs:28:5
+   |
+LL | fn clone_thing3(nc: &NotClone) -> NotClone {
+   |                                   -------- expected `NotClone` because of return type
+...
+LL |     nc
+   |     ^^ expected `NotClone`, found `&NotClone`
+   |
+note: `NotClone` does not implement `Clone`, so `&NotClone` was cloned instead
+  --> $DIR/explain_clone_autoref.rs:26:14
+   |
+LL |     let nc = nc.clone();
+   |              ^^
+help: consider annotating `NotClone` with `#[derive(Clone)]`
+   |
+LL + #[derive(Clone)]
+LL | struct NotClone;
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/explain_clone_autoref.rs:38:5
+   |
+LL | fn clone_thing4(nc: &NotClone) -> NotClone {
+   |                                   -------- expected `NotClone` because of return type
+...
+LL |     nc2
+   |     ^^^ expected `NotClone`, found `&NotClone`
+   |
+note: `NotClone` does not implement `Clone`, so `&NotClone` was cloned instead
+  --> $DIR/explain_clone_autoref.rs:35:14
+   |
+LL |     let nc = nc.clone();
+   |              ^^
+help: consider annotating `NotClone` with `#[derive(Clone)]`
+   |
+LL + #[derive(Clone)]
+LL | struct NotClone;
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/explain_clone_autoref.rs:57:5
+   |
+LL | fn clone_thing5(nc: &NotClone) -> NotClone {
+   |                                   -------- expected `NotClone` because of return type
+...
+LL |     nc3
+   |     ^^^ expected `NotClone`, found `&NotClone`
+   |
+note: `NotClone` does not implement `Clone`, so `&NotClone` was cloned instead
+  --> $DIR/explain_clone_autoref.rs:52:14
+   |
+LL |     let nc = nc.clone();
+   |              ^^
+help: consider annotating `NotClone` with `#[derive(Clone)]`
+   |
+LL + #[derive(Clone)]
+LL | struct NotClone;
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/explain_clone_autoref.rs:67:5
+   |
+LL | fn clone_thing6(nc: &NotClone) -> NotClone {
+   |                                   -------- expected `NotClone` because of return type
+...
+LL |     ret
+   |     ^^^ expected `NotClone`, found `&NotClone`
+   |
+note: `NotClone` does not implement `Clone`, so `&NotClone` was cloned instead
+  --> $DIR/explain_clone_autoref.rs:64:21
+   |
+LL |     let (ret, _) = (nc.clone(), 1);
+   |                     ^^
+help: consider annotating `NotClone` with `#[derive(Clone)]`
+   |
+LL + #[derive(Clone)]
+LL | struct NotClone;
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/explain_clone_autoref.rs:76:5
+   |
+LL | fn clone_thing7(nc: Vec<&NotClone>) -> NotClone {
+   |                                        -------- expected `NotClone` because of return type
+...
+LL |     ret
+   |     ^^^ expected `NotClone`, found `&NotClone`
+   |
+note: `NotClone` does not implement `Clone`, so `&NotClone` was cloned instead
+  --> $DIR/explain_clone_autoref.rs:74:15
+   |
+LL |     let ret = nc[0].clone();
+   |               ^^^^^
+help: consider annotating `NotClone` with `#[derive(Clone)]`
+   |
+LL + #[derive(Clone)]
+LL | struct NotClone;
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/explain_clone_autoref.rs:88:5
+   |
+LL | fn clone_thing8(nc: &NotClone) -> NotClone {
+   |                                   -------- expected `NotClone` because of return type
+...
+LL |     ret
+   |     ^^^ expected `NotClone`, found `&NotClone`
+   |
+note: `NotClone` does not implement `Clone`, so `&NotClone` was cloned instead
+  --> $DIR/explain_clone_autoref.rs:84:17
+   |
+LL |         let a = nc.clone();
+   |                 ^^
+help: consider annotating `NotClone` with `#[derive(Clone)]`
+   |
+LL + #[derive(Clone)]
+LL | struct NotClone;
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/explain_clone_autoref.rs:98:5
+   |
+LL | fn clone_thing9(nc: &NotClone) -> NotClone {
+   |                                   -------- expected `NotClone` because of return type
+...
+LL |     ret
+   |     ^^^ expected `NotClone`, found `&NotClone`
+   |
+note: `NotClone` does not implement `Clone`, so `&NotClone` was cloned instead
+  --> $DIR/explain_clone_autoref.rs:95:17
+   |
+LL |     let cl = || nc.clone();
+   |                 ^^
+help: consider annotating `NotClone` with `#[derive(Clone)]`
+   |
+LL + #[derive(Clone)]
+LL | struct NotClone;
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/explain_clone_autoref.rs:110:6
+   |
+LL |     (a, b)
+   |      ^ expected `NotClone`, found `&NotClone`
+   |
+note: `NotClone` does not implement `Clone`, so `&NotClone` was cloned instead
+  --> $DIR/explain_clone_autoref.rs:105:17
+   |
+LL |         let a = nc.clone();
+   |                 ^^
+help: consider annotating `NotClone` with `#[derive(Clone)]`
+   |
+LL + #[derive(Clone)]
+LL | struct NotClone;
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/explain_clone_autoref.rs:110:9
+   |
+LL |     (a, b)
+   |         ^ expected `NotClone`, found `&NotClone`
+   |
+note: `NotClone` does not implement `Clone`, so `&NotClone` was cloned instead
+  --> $DIR/explain_clone_autoref.rs:107:13
+   |
+LL |         (a, nc.clone())
+   |             ^^
+help: consider annotating `NotClone` with `#[derive(Clone)]`
+   |
+LL + #[derive(Clone)]
+LL | struct NotClone;
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/explain_clone_autoref.rs:126:5
+   |
+LL | fn clone_thing11(nc: &NotClone) -> NotClone {
+   |                                    -------- expected `NotClone` because of return type
+...
+LL |     a
+   |     ^ expected `NotClone`, found `&NotClone`
+   |
+note: `NotClone` does not implement `Clone`, so `&NotClone` was cloned instead
+  --> $DIR/explain_clone_autoref.rs:121:17
+   |
+LL |         let a = nc.clone();
+   |                 ^^
+help: consider annotating `NotClone` with `#[derive(Clone)]`
+   |
+LL + #[derive(Clone)]
+LL | struct NotClone;
+   |
+
+error: aborting due to 12 previous errors
 
 For more information about this error, try `rustc --explain E0308`.

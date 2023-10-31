@@ -1,4 +1,5 @@
-use clippy_utils::{diagnostics::span_lint_and_sugg, ty::is_type_lang_item};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::ty::is_type_lang_item;
 use clippy_utils::{match_def_path, paths};
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;

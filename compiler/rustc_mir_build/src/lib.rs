@@ -19,7 +19,7 @@ extern crate rustc_middle;
 mod build;
 mod check_unsafety;
 mod errors;
-mod lints;
+pub mod lints;
 pub mod thir;
 
 use rustc_middle::query::Providers;
@@ -32,8 +32,9 @@ fluent_messages! { "../messages.ftl" }
 pub fn provide(providers: &mut Providers) {
     providers.check_match = thir::pattern::check_match;
     providers.lit_to_const = thir::constant::lit_to_const;
-    providers.lit_to_mir_constant = build::lit_to_mir_constant;
     providers.mir_built = build::mir_built;
+    providers.closure_saved_names_of_captured_variables =
+        build::closure_saved_names_of_captured_variables;
     providers.thir_check_unsafety = check_unsafety::thir_check_unsafety;
     providers.thir_body = thir::cx::thir_body;
     providers.thir_tree = thir::print::thir_tree;

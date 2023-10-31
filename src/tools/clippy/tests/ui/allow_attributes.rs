@@ -1,9 +1,12 @@
 //@run-rustfix
+//@aux-build:proc_macros.rs:proc-macro
 #![allow(unused)]
 #![warn(clippy::allow_attributes)]
 #![feature(lint_reasons)]
+#![no_main]
 
-fn main() {}
+extern crate proc_macros;
+use proc_macros::{external, with_span};
 
 // Using clippy::needless_borrow just as a placeholder, it isn't relevant.
 
@@ -19,6 +22,21 @@ struct T4;
 // `panic = "unwind"` should always be true
 #[cfg_attr(panic = "unwind", allow(dead_code))]
 struct CfgT;
+
+fn ignore_external() {
+    external! {
+        #[allow(clippy::needless_borrow)] // Should not lint
+        fn a() {}
+    }
+}
+
+fn ignore_proc_macro() {
+    with_span! {
+        span
+        #[allow(clippy::needless_borrow)] // Should not lint
+        fn a() {}
+    }
+}
 
 fn ignore_inner_attr() {
     #![allow(unused)] // Should not lint

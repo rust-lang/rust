@@ -62,7 +62,7 @@ error: invalid format string: expected `'}'`, found `'\'`
   --> $DIR/format-string-error.rs:19:23
    |
 LL |     let _ = format!("{\}");
-   |                      -^ expected `}` in format string
+   |                      -^ expected `'}'` in format string
    |                      |
    |                      because of this opening brace
    |

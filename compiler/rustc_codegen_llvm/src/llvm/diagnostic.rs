@@ -9,7 +9,7 @@ use libc::c_uint;
 use super::{DiagnosticInfo, SMDiagnostic};
 use rustc_span::InnerSpan;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum OptimizationDiagnosticKind {
     OptimizationRemark,
     OptimizationMissed,

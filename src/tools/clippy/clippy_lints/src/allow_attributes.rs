@@ -1,5 +1,6 @@
-use ast::AttrStyle;
+use ast::{AttrStyle, Attribute};
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::is_from_proc_macro;
 use rustc_ast as ast;
 use rustc_errors::Applicability;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -40,7 +41,7 @@ declare_clippy_lint! {
     ///     a.len()
     /// }
     /// ```
-    #[clippy::version = "1.69.0"]
+    #[clippy::version = "1.70.0"]
     pub ALLOW_ATTRIBUTES,
     restriction,
     "`#[allow]` will not trigger if a warning isn't found. `#[expect]` triggers if there are no warnings."
@@ -50,13 +51,14 @@ declare_lint_pass!(AllowAttribute => [ALLOW_ATTRIBUTES]);
 
 impl LateLintPass<'_> for AllowAttribute {
     // Separate each crate's features.
-    fn check_attribute(&mut self, cx: &LateContext<'_>, attr: &ast::Attribute) {
+    fn check_attribute<'cx>(&mut self, cx: &LateContext<'cx>, attr: &'cx Attribute) {
         if_chain! {
             if !in_external_macro(cx.sess(), attr.span);
             if cx.tcx.features().lint_reasons;
             if let AttrStyle::Outer = attr.style;
             if let Some(ident) = attr.ident();
             if ident.name == rustc_span::symbol::sym::allow;
+            if !is_from_proc_macro(cx, &attr);
             then {
                 span_lint_and_sugg(
                     cx,

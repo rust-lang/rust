@@ -29,6 +29,7 @@ pub enum HlTag {
     Comment,
     EscapeSequence,
     FormatSpecifier,
+    InvalidEscapeSequence,
     Keyword,
     NumericLiteral,
     Operator(HlOperator),
@@ -49,7 +50,7 @@ pub enum HlMod {
     Associated = 0,
     /// Used with keywords like `async` and `await`.
     Async,
-    /// Used to differentiate individual elements within attributes.
+    /// Used to differentiate individual elements within attribute calls.
     Attribute,
     /// Callable item or value.
     Callable,
@@ -72,6 +73,8 @@ pub enum HlMod {
     IntraDocLink,
     /// Used for items from other crates.
     Library,
+    /// Used to differentiate individual elements within macro calls.
+    Macro,
     /// Mutable binding.
     Mutable,
     /// Used for public items.
@@ -164,6 +167,7 @@ impl HlTag {
             HlTag::CharLiteral => "char_literal",
             HlTag::Comment => "comment",
             HlTag::EscapeSequence => "escape_sequence",
+            HlTag::InvalidEscapeSequence => "invalid_escape_sequence",
             HlTag::FormatSpecifier => "format_specifier",
             HlTag::Keyword => "keyword",
             HlTag::Punctuation(punct) => match punct {
@@ -200,7 +204,7 @@ impl fmt::Display for HlTag {
 }
 
 impl HlMod {
-    const ALL: &'static [HlMod; 19] = &[
+    const ALL: &'static [HlMod; HlMod::Unsafe as usize + 1] = &[
         HlMod::Associated,
         HlMod::Async,
         HlMod::Attribute,
@@ -214,6 +218,7 @@ impl HlMod {
         HlMod::Injected,
         HlMod::IntraDocLink,
         HlMod::Library,
+        HlMod::Macro,
         HlMod::Mutable,
         HlMod::Public,
         HlMod::Reference,
@@ -237,6 +242,7 @@ impl HlMod {
             HlMod::Injected => "injected",
             HlMod::IntraDocLink => "intra_doc_link",
             HlMod::Library => "library",
+            HlMod::Macro => "macro",
             HlMod::Mutable => "mutable",
             HlMod::Public => "public",
             HlMod::Reference => "reference",

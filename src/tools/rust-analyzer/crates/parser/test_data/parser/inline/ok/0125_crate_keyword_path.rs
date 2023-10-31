@@ -1,1 +1,0 @@
-fn foo() { crate::foo(); }

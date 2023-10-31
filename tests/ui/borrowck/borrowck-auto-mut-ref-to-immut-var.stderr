@@ -2,7 +2,7 @@ error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
   --> $DIR/borrowck-auto-mut-ref-to-immut-var.rs:15:5
    |
 LL |     x.printme();
-   |     ^^^^^^^^^^^ cannot borrow as mutable
+   |     ^ cannot borrow as mutable
    |
 help: consider changing this to be mutable
    |

@@ -2,50 +2,50 @@
 + // MIR for `f` after ConstGoto
   
   fn f() -> u64 {
-      let mut _0: u64;                     // return place in scope 0 at $DIR/const_goto_const_eval_fail.rs:+0:44: +0:47
-      let mut _1: bool;                    // in scope 0 at $DIR/const_goto_const_eval_fail.rs:+1:11: +6:6
-      let mut _2: i32;                     // in scope 0 at $DIR/const_goto_const_eval_fail.rs:+2:15: +2:16
+      let mut _0: u64;
+      let mut _1: bool;
+      let mut _2: i32;
   
       bb0: {
-          StorageLive(_1);                 // scope 0 at $DIR/const_goto_const_eval_fail.rs:+1:11: +6:6
-          StorageLive(_2);                 // scope 0 at $DIR/const_goto_const_eval_fail.rs:+2:15: +2:16
-          _2 = const A;                    // scope 0 at $DIR/const_goto_const_eval_fail.rs:+2:15: +2:16
-          switchInt(_2) -> [1: bb2, 2: bb2, 3: bb2, otherwise: bb1]; // scope 0 at $DIR/const_goto_const_eval_fail.rs:+2:9: +2:16
+          StorageLive(_1);
+          StorageLive(_2);
+          _2 = const A;
+          switchInt(_2) -> [1: bb2, 2: bb2, 3: bb2, otherwise: bb1];
       }
   
       bb1: {
-          _1 = const true;                 // scope 0 at $DIR/const_goto_const_eval_fail.rs:+4:18: +4:22
-          goto -> bb3;                     // scope 0 at $DIR/const_goto_const_eval_fail.rs:+4:18: +4:22
+          _1 = const true;
+          goto -> bb3;
       }
   
       bb2: {
-          _1 = const B;                    // scope 0 at $DIR/const_goto_const_eval_fail.rs:+3:26: +3:27
--         goto -> bb3;                     // scope 0 at $DIR/const_goto_const_eval_fail.rs:+3:26: +3:27
-+         switchInt(_1) -> [0: bb4, otherwise: bb3]; // scope 0 at $DIR/const_goto_const_eval_fail.rs:+1:5: +6:6
+          _1 = const B;
+-         goto -> bb3;
++         switchInt(_1) -> [0: bb4, otherwise: bb3];
       }
   
       bb3: {
--         switchInt(_1) -> [0: bb5, otherwise: bb4]; // scope 0 at $DIR/const_goto_const_eval_fail.rs:+1:5: +6:6
+-         switchInt(_1) -> [0: bb5, otherwise: bb4];
 -     }
 - 
 -     bb4: {
-          _0 = const 2_u64;                // scope 0 at $DIR/const_goto_const_eval_fail.rs:+8:17: +8:18
--         goto -> bb6;                     // scope 0 at $DIR/const_goto_const_eval_fail.rs:+8:17: +8:18
-+         goto -> bb5;                     // scope 0 at $DIR/const_goto_const_eval_fail.rs:+8:17: +8:18
+          _0 = const 2_u64;
+-         goto -> bb6;
++         goto -> bb5;
       }
   
 -     bb5: {
 +     bb4: {
-          _0 = const 1_u64;                // scope 0 at $DIR/const_goto_const_eval_fail.rs:+7:18: +7:19
--         goto -> bb6;                     // scope 0 at $DIR/const_goto_const_eval_fail.rs:+7:18: +7:19
-+         goto -> bb5;                     // scope 0 at $DIR/const_goto_const_eval_fail.rs:+7:18: +7:19
+          _0 = const 1_u64;
+-         goto -> bb6;
++         goto -> bb5;
       }
   
 -     bb6: {
 +     bb5: {
-          StorageDead(_2);                 // scope 0 at $DIR/const_goto_const_eval_fail.rs:+10:1: +10:2
-          StorageDead(_1);                 // scope 0 at $DIR/const_goto_const_eval_fail.rs:+10:1: +10:2
-          return;                          // scope 0 at $DIR/const_goto_const_eval_fail.rs:+10:2: +10:2
+          StorageDead(_2);
+          StorageDead(_1);
+          return;
       }
   }
   

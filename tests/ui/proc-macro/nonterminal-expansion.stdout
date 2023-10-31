@@ -3,12 +3,12 @@ PRINT-ATTR_ARGS RE-COLLECTED (DISPLAY): a, line! (), b
 PRINT-ATTR_ARGS INPUT (DEBUG): TokenStream [
     Ident {
         ident: "a",
-        span: $DIR/nonterminal-expansion.rs:13:27: 13:28 (#4),
+        span: $DIR/nonterminal-expansion.rs:13:27: 13:28 (#3),
     },
     Punct {
         ch: ',',
         spacing: Alone,
-        span: $DIR/nonterminal-expansion.rs:13:28: 13:29 (#4),
+        span: $DIR/nonterminal-expansion.rs:13:28: 13:29 (#3),
     },
     Group {
         delimiter: None,
@@ -28,15 +28,15 @@ PRINT-ATTR_ARGS INPUT (DEBUG): TokenStream [
                 span: $DIR/nonterminal-expansion.rs:19:24: 19:26 (#0),
             },
         ],
-        span: $DIR/nonterminal-expansion.rs:13:30: 13:35 (#4),
+        span: $DIR/nonterminal-expansion.rs:13:30: 13:35 (#3),
     },
     Punct {
         ch: ',',
         spacing: Alone,
-        span: $DIR/nonterminal-expansion.rs:13:35: 13:36 (#4),
+        span: $DIR/nonterminal-expansion.rs:13:35: 13:36 (#3),
     },
     Ident {
         ident: "b",
-        span: $DIR/nonterminal-expansion.rs:13:37: 13:38 (#4),
+        span: $DIR/nonterminal-expansion.rs:13:37: 13:38 (#3),
     },
 ]

@@ -1,0 +1,22 @@
+error[E0277]: the trait bound `String: From<()>` is not satisfied
+  --> $DIR/trailing-where-clause.rs:12:12
+   |
+LL |     let _: Alias<()>;
+   |            ^^^^^^^^^ the trait `From<()>` is not implemented for `String`
+   |
+   = help: the following other types implement trait `From<T>`:
+             <String as From<char>>
+             <String as From<Box<str>>>
+             <String as From<Cow<'a, str>>>
+             <String as From<&str>>
+             <String as From<&mut str>>
+             <String as From<&String>>
+note: required by a bound on the type alias `Alias`
+  --> $DIR/trailing-where-clause.rs:8:13
+   |
+LL |     String: From<T>;
+   |             ^^^^^^^ required by this bound
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

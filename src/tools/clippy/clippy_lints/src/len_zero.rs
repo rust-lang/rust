@@ -1,22 +1,22 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::snippet_with_context;
-use clippy_utils::{get_item_name, get_parent_as_impl, is_lint_allowed, peel_ref_operators, sugg::Sugg};
+use clippy_utils::sugg::Sugg;
+use clippy_utils::{get_item_name, get_parent_as_impl, is_lint_allowed, peel_ref_operators};
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
-use rustc_hir::def_id::DefIdSet;
+use rustc_hir::def::Res;
+use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_hir::{
-    def::Res, def_id::DefId, lang_items::LangItem, AssocItemKind, BinOpKind, Expr, ExprKind, FnRetTy, GenericArg,
-    GenericBound, ImplItem, ImplItemKind, ImplicitSelfKind, Item, ItemKind, Mutability, Node, PathSegment, PrimTy,
-    QPath, TraitItemRef, TyKind, TypeBindingKind,
+    AssocItemKind, BinOpKind, Expr, ExprKind, FnRetTy, GenericArg, GenericBound, ImplItem, ImplItemKind,
+    ImplicitSelfKind, Item, ItemKind, LangItem, Mutability, Node, PatKind, PathSegment, PrimTy, QPath, TraitItemRef,
+    TyKind, TypeBindingKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, AssocKind, FnSig, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::{
-    source_map::{Span, Spanned, Symbol},
-    symbol::sym,
-};
+use rustc_span::source_map::{Span, Spanned, Symbol};
+use rustc_span::symbol::sym;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -145,7 +145,10 @@ impl<'tcx> LateLintPass<'tcx> for LenZero {
             if let Some(local_id) = ty_id.as_local();
             let ty_hir_id = cx.tcx.hir().local_def_id_to_hir_id(local_id);
             if !is_lint_allowed(cx, LEN_WITHOUT_IS_EMPTY, ty_hir_id);
-            if let Some(output) = parse_len_output(cx, cx.tcx.fn_sig(item.owner_id).subst_identity().skip_binder());
+            if let Some(output) = parse_len_output(
+                cx,
+                cx.tcx.fn_sig(item.owner_id).instantiate_identity().skip_binder()
+            );
             then {
                 let (name, kind) = match cx.tcx.hir().find(ty_hir_id) {
                     Some(Node::ForeignItem(x)) => (x.ident.name, "extern type"),
@@ -165,6 +168,31 @@ impl<'tcx> LateLintPass<'tcx> for LenZero {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if expr.span.from_expansion() {
             return;
+        }
+
+        if let ExprKind::Let(lt) = expr.kind
+            && has_is_empty(cx, lt.init)
+            && match lt.pat.kind {
+                PatKind::Slice([], None, []) => true,
+                PatKind::Lit(lit) if is_empty_string(lit) => true,
+                _ => false,
+            }
+        {
+            let mut applicability = Applicability::MachineApplicable;
+
+            let lit1 = peel_ref_operators(cx, lt.init);
+            let lit_str =
+                Sugg::hir_with_context(cx, lit1, lt.span.ctxt(), "_", &mut applicability).maybe_par();
+
+            span_lint_and_sugg(
+                cx,
+                COMPARISON_TO_EMPTY,
+                lt.span,
+                "comparison to empty slice using `if let`",
+                "using `is_empty` is clearer and more explicit",
+                format!("{lit_str}.is_empty()"),
+                applicability,
+            );
         }
 
         if let ExprKind::Binary(Spanned { node: cmp, .. }, left, right) = expr.kind {
@@ -425,7 +453,7 @@ fn check_for_is_empty(
             if !(is_empty.fn_has_self_parameter
                 && check_is_empty_sig(
                     cx,
-                    cx.tcx.fn_sig(is_empty.def_id).subst_identity().skip_binder(),
+                    cx.tcx.fn_sig(is_empty.def_id).instantiate_identity().skip_binder(),
                     self_kind,
                     output,
                 )) =>

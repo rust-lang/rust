@@ -51,7 +51,7 @@
 #![cfg(not(test))]
 // To run core tests without x.py without ending up with two copies of core, Miri needs to be
 // able to "empty" this crate. See <https://github.com/rust-lang/miri-test-libstd/issues/4>.
-// rustc itself never sets the feature, so this line has no affect there.
+// rustc itself never sets the feature, so this line has no effect there.
 #![cfg(any(not(feature = "miri-test-libstd"), test, doctest))]
 #![stable(feature = "core", since = "1.6.0")]
 #![doc(
@@ -96,6 +96,9 @@
 #![allow(explicit_outlives_requirements)]
 #![allow(incomplete_features)]
 #![warn(multiple_supertrait_upcastable)]
+#![cfg_attr(not(bootstrap), allow(internal_features))]
+// Do not check link redundancy on bootstraping phase
+#![cfg_attr(not(bootstrap), allow(rustdoc::redundant_explicit_links))]
 //
 // Library features:
 // tidy-alphabetical-start
@@ -113,7 +116,6 @@
 #![feature(const_caller_location)]
 #![feature(const_cell_into_inner)]
 #![feature(const_char_from_u32_unchecked)]
-#![feature(const_cstr_methods)]
 #![feature(const_discriminant)]
 #![feature(const_eval_select)]
 #![feature(const_exact_div)]
@@ -166,6 +168,7 @@
 #![feature(duration_consts_float)]
 #![feature(internal_impls_macro)]
 #![feature(ip)]
+#![feature(ip_bits)]
 #![feature(is_ascii_octdigit)]
 #![feature(maybe_uninit_uninit_array)]
 #![feature(ptr_alignment_type)]
@@ -399,7 +402,8 @@ pub mod primitive;
     missing_debug_implementations,
     dead_code,
     unused_imports,
-    unsafe_op_in_unsafe_fn
+    unsafe_op_in_unsafe_fn,
+    ambiguous_glob_reexports
 )]
 #[allow(rustdoc::bare_urls)]
 // FIXME: This annotation should be moved into rust-lang/stdarch after clashing_extern_declarations is
@@ -418,7 +422,7 @@ pub mod arch;
 // set up in such a way that directly pulling it here works such that the
 // crate uses this crate as its core.
 #[path = "../../portable-simd/crates/core_simd/src/mod.rs"]
-#[allow(missing_debug_implementations, dead_code, unsafe_op_in_unsafe_fn, unused_unsafe)]
+#[allow(missing_debug_implementations, dead_code, unsafe_op_in_unsafe_fn)]
 #[allow(rustdoc::bare_urls)]
 #[unstable(feature = "portable_simd", issue = "86656")]
 mod core_simd;

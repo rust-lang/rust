@@ -18,9 +18,9 @@ use rustc_index::IndexVec;
 use rustc_middle::middle::region;
 use rustc_middle::mir::interpret::AllocId;
 use rustc_middle::mir::{self, BinOp, BorrowKind, FakeReadCause, Mutability, UnOp};
-use rustc_middle::ty::adjustment::PointerCast;
-use rustc_middle::ty::subst::SubstsRef;
-use rustc_middle::ty::{self, AdtDef, FnSig, List, Ty, UpvarSubsts};
+use rustc_middle::ty::adjustment::PointerCoercion;
+use rustc_middle::ty::GenericArgsRef;
+use rustc_middle::ty::{self, AdtDef, FnSig, List, Ty, UpvarArgs};
 use rustc_middle::ty::{CanonicalUserType, CanonicalUserTypeAnnotation};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{sym, Span, Symbol, DUMMY_SP};
@@ -150,9 +150,9 @@ pub struct AdtExpr<'tcx> {
     pub adt_def: AdtDef<'tcx>,
     /// The variant of the ADT.
     pub variant_index: VariantIdx,
-    pub substs: SubstsRef<'tcx>,
+    pub args: GenericArgsRef<'tcx>,
 
-    /// Optional user-given substs: for something like `let x =
+    /// Optional user-given args: for something like `let x =
     /// Bar::<T> { ... }`.
     pub user_ty: UserTy<'tcx>,
 
@@ -164,7 +164,7 @@ pub struct AdtExpr<'tcx> {
 #[derive(Clone, Debug, HashStable)]
 pub struct ClosureExpr<'tcx> {
     pub closure_id: LocalDefId,
-    pub substs: UpvarSubsts<'tcx>,
+    pub args: UpvarArgs<'tcx>,
     pub upvars: Box<[ExprId]>,
     pub movability: Option<hir::Movability>,
     pub fake_reads: Vec<(ExprId, FakeReadCause, hir::HirId)>,
@@ -329,9 +329,10 @@ pub enum ExprKind<'tcx> {
     NeverToAny {
         source: ExprId,
     },
-    /// A pointer cast. More information can be found in [`PointerCast`].
-    Pointer {
-        cast: PointerCast,
+    /// A pointer coercion. More information can be found in [`PointerCoercion`].
+    /// Pointer casts that cannot be done by coercions are represented by [`ExprKind::Cast`].
+    PointerCoercion {
+        cast: PointerCoercion,
         source: ExprId,
     },
     /// A `loop` expression.
@@ -345,6 +346,7 @@ pub enum ExprKind<'tcx> {
     /// A `match` expression.
     Match {
         scrutinee: ExprId,
+        scrutinee_hir_id: hir::HirId,
         arms: Box<[ArmId]>,
     },
     /// A block.
@@ -410,10 +412,14 @@ pub enum ExprKind<'tcx> {
     Return {
         value: Option<ExprId>,
     },
+    /// A `become` expression.
+    Become {
+        value: ExprId,
+    },
     /// An inline `const` block, e.g. `const {}`.
     ConstBlock {
         did: DefId,
-        substs: SubstsRef<'tcx>,
+        args: GenericArgsRef<'tcx>,
     },
     /// An array literal constructed from one repeated element, e.g. `[1; 5]`.
     Repeat {
@@ -461,7 +467,7 @@ pub enum ExprKind<'tcx> {
     /// Associated constants and named constants
     NamedConst {
         def_id: DefId,
-        substs: SubstsRef<'tcx>,
+        args: GenericArgsRef<'tcx>,
         user_ty: UserTy<'tcx>,
     },
     ConstParam {
@@ -654,7 +660,7 @@ impl<'tcx> Pat<'tcx> {
 
 impl<'tcx> IntoDiagnosticArg for Pat<'tcx> {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
-        format!("{}", self).into_diagnostic_arg()
+        format!("{self}").into_diagnostic_arg()
     }
 }
 
@@ -709,7 +715,7 @@ pub enum PatKind<'tcx> {
     /// multiple variants.
     Variant {
         adt_def: AdtDef<'tcx>,
-        substs: SubstsRef<'tcx>,
+        args: GenericArgsRef<'tcx>,
         variant_index: VariantIdx,
         subpatterns: Vec<FieldPat<'tcx>>,
     },
@@ -784,7 +790,7 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
 
         match self.kind {
             PatKind::Wild => write!(f, "_"),
-            PatKind::AscribeUserType { ref subpattern, .. } => write!(f, "{}: _", subpattern),
+            PatKind::AscribeUserType { ref subpattern, .. } => write!(f, "{subpattern}: _"),
             PatKind::Binding { mutability, name, mode, ref subpattern, .. } => {
                 let is_mut = match mode {
                     BindingMode::ByValue => mutability == Mutability::Mut,
@@ -796,9 +802,9 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
                 if is_mut {
                     write!(f, "mut ")?;
                 }
-                write!(f, "{}", name)?;
+                write!(f, "{name}")?;
                 if let Some(ref subpattern) = *subpattern {
-                    write!(f, " @ {}", subpattern)?;
+                    write!(f, " @ {subpattern}")?;
                 }
                 Ok(())
             }
@@ -828,7 +834,7 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
                 };
 
                 if let Some((variant, name)) = &variant_and_name {
-                    write!(f, "{}", name)?;
+                    write!(f, "{name}")?;
 
                     // Only for Adt we can have `S {...}`,
                     // which we handle separately here.
@@ -888,13 +894,13 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
                     }
                     _ => bug!("{} is a bad Deref pattern type", self.ty),
                 }
-                write!(f, "{}", subpattern)
+                write!(f, "{subpattern}")
             }
-            PatKind::Constant { value } => write!(f, "{}", value),
+            PatKind::Constant { value } => write!(f, "{value}"),
             PatKind::Range(box PatRange { lo, hi, end }) => {
-                write!(f, "{}", lo)?;
-                write!(f, "{}", end)?;
-                write!(f, "{}", hi)
+                write!(f, "{lo}")?;
+                write!(f, "{end}")?;
+                write!(f, "{hi}")
             }
             PatKind::Slice { ref prefix, ref slice, ref suffix }
             | PatKind::Array { ref prefix, ref slice, ref suffix } => {
@@ -906,7 +912,7 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
                     write!(f, "{}", start_or_comma())?;
                     match slice.kind {
                         PatKind::Wild => {}
-                        _ => write!(f, "{}", slice)?,
+                        _ => write!(f, "{slice}")?,
                     }
                     write!(f, "..")?;
                 }

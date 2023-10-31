@@ -94,7 +94,7 @@ impl EarlyLintPass for DerefAddrOf {
                         DEREF_ADDROF,
                         e.span,
                         "immediately dereferencing a reference",
-                        "try this",
+                        "try",
                         sugg.to_string(),
                         applicability,
                     );

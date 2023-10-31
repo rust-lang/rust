@@ -56,8 +56,6 @@ pub(crate) fn ssr_assists(
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-
     use expect_test::expect;
     use ide_assists::{Assist, AssistResolveStrategy};
     use ide_db::{
@@ -65,6 +63,7 @@ mod tests {
         symbol_index::SymbolsDatabase,
         FxHashSet, RootDatabase,
     };
+    use triomphe::Arc;
 
     use super::ssr_assists;
 
@@ -127,14 +126,17 @@ mod tests {
                         source_file_edits: {
                             FileId(
                                 0,
-                            ): TextEdit {
-                                indels: [
-                                    Indel {
-                                        insert: "3",
-                                        delete: 33..34,
-                                    },
-                                ],
-                            },
+                            ): (
+                                TextEdit {
+                                    indels: [
+                                        Indel {
+                                            insert: "3",
+                                            delete: 33..34,
+                                        },
+                                    ],
+                                },
+                                None,
+                            ),
                         },
                         file_system_edits: [],
                         is_snippet: false,
@@ -164,24 +166,30 @@ mod tests {
                         source_file_edits: {
                             FileId(
                                 0,
-                            ): TextEdit {
-                                indels: [
-                                    Indel {
-                                        insert: "3",
-                                        delete: 33..34,
-                                    },
-                                ],
-                            },
+                            ): (
+                                TextEdit {
+                                    indels: [
+                                        Indel {
+                                            insert: "3",
+                                            delete: 33..34,
+                                        },
+                                    ],
+                                },
+                                None,
+                            ),
                             FileId(
                                 1,
-                            ): TextEdit {
-                                indels: [
-                                    Indel {
-                                        insert: "3",
-                                        delete: 11..12,
-                                    },
-                                ],
-                            },
+                            ): (
+                                TextEdit {
+                                    indels: [
+                                        Indel {
+                                            insert: "3",
+                                            delete: 11..12,
+                                        },
+                                    ],
+                                },
+                                None,
+                            ),
                         },
                         file_system_edits: [],
                         is_snippet: false,

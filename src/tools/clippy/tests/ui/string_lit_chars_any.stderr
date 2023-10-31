@@ -1,0 +1,58 @@
+error: usage of `.chars().any(...)` to check if a char matches any from a string literal
+  --> $DIR/string_lit_chars_any.rs:19:5
+   |
+LL |     "//.+*?()|[]{}^$#&-~".chars().any(|x| x == c);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::string-lit-chars-any` implied by `-D warnings`
+help: use `matches!(...)` instead
+   |
+LL |     matches!(c, '//' | '.' | '+' | '*' | '?' | '(' | ')' | '|' | '[' | ']' | '{' | '}' | '^' | '$' | '#' | '&' | '-' | '~');
+   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+error: usage of `.chars().any(...)` to check if a char matches any from a string literal
+  --> $DIR/string_lit_chars_any.rs:20:5
+   |
+LL |     r#"/.+*?()|[]{}^$#&-~"#.chars().any(|x| x == c);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `matches!(...)` instead
+   |
+LL |     matches!(c, '//' | '.' | '+' | '*' | '?' | '(' | ')' | '|' | '[' | ']' | '{' | '}' | '^' | '$' | '#' | '&' | '-' | '~');
+   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+error: usage of `.chars().any(...)` to check if a char matches any from a string literal
+  --> $DIR/string_lit_chars_any.rs:21:5
+   |
+LL |     "//.+*?()|[]{}^$#&-~".chars().any(|x| c == x);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `matches!(...)` instead
+   |
+LL |     matches!(c, '//' | '.' | '+' | '*' | '?' | '(' | ')' | '|' | '[' | ']' | '{' | '}' | '^' | '$' | '#' | '&' | '-' | '~');
+   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+error: usage of `.chars().any(...)` to check if a char matches any from a string literal
+  --> $DIR/string_lit_chars_any.rs:22:5
+   |
+LL |     r#"/.+*?()|[]{}^$#&-~"#.chars().any(|x| c == x);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `matches!(...)` instead
+   |
+LL |     matches!(c, '//' | '.' | '+' | '*' | '?' | '(' | ')' | '|' | '[' | ']' | '{' | '}' | '^' | '$' | '#' | '&' | '-' | '~');
+   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+error: usage of `.chars().any(...)` to check if a char matches any from a string literal
+  --> $DIR/string_lit_chars_any.rs:24:5
+   |
+LL |     "//.+*?()|[]{}^$#&-~".chars().any(|x| { x == c });
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `matches!(...)` instead
+   |
+LL |     matches!(c, '//' | '.' | '+' | '*' | '?' | '(' | ')' | '|' | '[' | ']' | '{' | '}' | '^' | '$' | '#' | '&' | '-' | '~');
+   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+error: aborting due to 5 previous errors
+

@@ -24,6 +24,7 @@ use wildcard_imports_helper::inner::inner_for_self_import::*;
 use wildcard_imports_helper::*;
 
 use std::io::prelude::*;
+use wildcard_imports_helper::extern_prelude::v1::*;
 use wildcard_imports_helper::prelude::v1::*;
 
 struct ReadFoo;
@@ -81,6 +82,7 @@ fn main() {
     let _ = inner_struct_mod::C;
     let _ = ExternA;
     let _ = PreludeModAnywhere;
+    let _ = ExternPreludeModAnywhere;
 
     double_struct_import_test!();
     double_struct_import_test!();
@@ -110,6 +112,7 @@ mod in_fn_test {
     }
 
     fn test_inner_nested() {
+        #[rustfmt::skip]
         use self::{inner::*, inner2::*};
 
         inner_foo();
@@ -210,7 +213,7 @@ mod super_imports {
     }
 
     mod use_explicit_should_be_replaced {
-        use super_imports::*;
+        use crate::super_imports::*;
 
         fn with_explicit() {
             let _ = foofoo();

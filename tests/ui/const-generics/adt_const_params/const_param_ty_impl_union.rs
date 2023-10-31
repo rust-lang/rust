@@ -14,6 +14,7 @@ impl Eq for Union {}
 impl std::marker::StructuralEq for Union {}
 
 impl std::marker::ConstParamTy for Union {}
+//~^ ERROR the type `Union` does not `#[derive(PartialEq)]`
 
 #[derive(std::marker::ConstParamTy)]
 //~^ ERROR this trait cannot be derived for unions

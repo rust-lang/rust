@@ -227,3 +227,22 @@ fn f(a: impl Foo<i8, Assoc<i16> = i32>) {
         "#,
     );
 }
+
+#[test]
+fn fn_def_is_shown_as_fn_ptr() {
+    check_types_source_code(
+        r#"
+fn foo(_: i32) -> i64 { 42 }
+struct S<T>(T);
+enum E { A(usize) }
+fn test() {
+    let f = foo;
+      //^ fn(i32) -> i64
+    let f = S::<i8>;
+      //^ fn(i8) -> S<i8>
+    let f = E::A;
+      //^ fn(usize) -> E
+}
+"#,
+    );
+}

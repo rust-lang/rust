@@ -1,9 +1,0 @@
-error[E0080]: evaluation of constant value failed
-  --> $DIR/intrinsic-raw_eq-const-padding.rs:5:5
-   |
-LL |     std::intrinsics::raw_eq(&(1_u8, 2_u16), &(1_u8, 2_u16))
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ reading memory at alloc3[0x0..0x4], but memory is uninitialized at [0x1..0x2], and this operation requires initialized memory
-
-error: aborting due to previous error
-
-For more information about this error, try `rustc --explain E0080`.

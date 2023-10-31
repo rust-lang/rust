@@ -10,7 +10,7 @@ pub static FOO: () = {
     if false {
         // This bad constant is only used in dead code in a static initializer... and yet we still
         // must make sure that the build fails.
-        let _ = PrintName::<i32>::VOID; //~ constant
+        PrintName::<i32>::VOID; //~ constant
     }
 };
 

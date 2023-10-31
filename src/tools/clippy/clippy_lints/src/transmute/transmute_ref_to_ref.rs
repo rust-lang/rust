@@ -64,8 +64,8 @@ pub(super) fn check<'tcx>(
                             };
                             let ty_to_and_mut = ty::TypeAndMut { ty: *ty_to, mutbl: *to_mutbl };
                             let sugg_paren = arg
-                                .as_ty(cx.tcx.mk_ptr(ty_from_and_mut))
-                                .as_ty(cx.tcx.mk_ptr(ty_to_and_mut));
+                                .as_ty(Ty::new_ptr(cx.tcx,ty_from_and_mut))
+                                .as_ty(Ty::new_ptr(cx.tcx,ty_to_and_mut));
                             let sugg = if *to_mutbl == Mutability::Mut {
                                 sugg_paren.mut_addr_deref()
                             } else {

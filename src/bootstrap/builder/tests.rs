@@ -1,5 +1,6 @@
 use super::*;
 use crate::config::{Config, DryRun, TargetSelection};
+use crate::doc::DocumentationFormat;
 use std::thread;
 
 fn configure(cmd: &str, host: &[&str], target: &[&str]) -> Config {
@@ -66,6 +67,20 @@ macro_rules! std {
     };
 }
 
+macro_rules! doc_std {
+    ($host:ident => $target:ident, stage = $stage:literal) => {{
+        let config = configure("doc", &["A"], &["A"]);
+        let build = Build::new(config);
+        let builder = Builder::new(&build);
+        doc::Std::new(
+            $stage,
+            TargetSelection::from_user(stringify!($target)),
+            &builder,
+            DocumentationFormat::HTML,
+        )
+    }};
+}
+
 macro_rules! rustc {
     ($host:ident => $target:ident, stage = $stage:literal) => {
         compile::Rustc::new(
@@ -90,23 +105,21 @@ fn test_invalid() {
 
 #[test]
 fn test_intersection() {
-    let set = PathSet::Set(
-        ["library/core", "library/alloc", "library/std"].into_iter().map(TaskPath::parse).collect(),
-    );
+    let set = |paths: &[&str]| {
+        PathSet::Set(paths.into_iter().map(|p| TaskPath { path: p.into(), kind: None }).collect())
+    };
+    let library_set = set(&["library/core", "library/alloc", "library/std"]);
     let mut command_paths =
         vec![Path::new("library/core"), Path::new("library/alloc"), Path::new("library/stdarch")];
-    let subset = set.intersection_removing_matches(&mut command_paths, None);
-    assert_eq!(
-        subset,
-        PathSet::Set(["library/core", "library/alloc"].into_iter().map(TaskPath::parse).collect())
-    );
+    let subset = library_set.intersection_removing_matches(&mut command_paths, Kind::Build);
+    assert_eq!(subset, set(&["library/core", "library/alloc"]),);
     assert_eq!(command_paths, vec![Path::new("library/stdarch")]);
 }
 
 #[test]
 fn test_exclude() {
     let mut config = configure("test", &["A"], &["A"]);
-    config.exclude = vec![TaskPath::parse("src/tools/tidy")];
+    config.skip = vec!["src/tools/tidy".into()];
     let cache = run_build(&[], config);
 
     // Ensure we have really excluded tidy
@@ -118,21 +131,16 @@ fn test_exclude() {
 
 #[test]
 fn test_exclude_kind() {
-    let path = PathBuf::from("src/tools/cargotest");
-    let exclude = TaskPath::parse("test::src/tools/cargotest");
-    assert_eq!(exclude, TaskPath { kind: Some(Kind::Test), path: path.clone() });
+    let path = PathBuf::from("compiler/rustc_data_structures");
 
     let mut config = configure("test", &["A"], &["A"]);
-    // Ensure our test is valid, and `test::Cargotest` would be run without the exclude.
-    assert!(run_build(&[path.clone()], config.clone()).contains::<test::Cargotest>());
-    // Ensure tests for cargotest are skipped.
-    config.exclude = vec![exclude.clone()];
-    assert!(!run_build(&[path.clone()], config).contains::<test::Cargotest>());
-
-    // Ensure builds for cargotest are not skipped.
-    let mut config = configure("build", &["A"], &["A"]);
-    config.exclude = vec![exclude];
-    assert!(run_build(&[path], config).contains::<tool::CargoTest>());
+    // Ensure our test is valid, and `test::Rustc` would be run without the exclude.
+    assert!(run_build(&[], config.clone()).contains::<test::CrateLibrustc>());
+    // Ensure tests for rustc are skipped.
+    config.skip = vec![path.clone()];
+    assert!(!run_build(&[], config.clone()).contains::<test::CrateLibrustc>());
+    // Ensure builds for rustc are not skipped.
+    assert!(run_build(&[], config).contains::<compile::Rustc>());
 }
 
 /// Ensure that if someone passes both a single crate and `library`, all library crates get built.
@@ -144,6 +152,9 @@ fn alias_and_path_for_library() {
         first(cache.all::<compile::Std>()),
         &[std!(A => A, stage = 0), std!(A => A, stage = 1)]
     );
+
+    let mut cache = run_build(&["library".into(), "core".into()], configure("doc", &["A"], &["A"]));
+    assert_eq!(first(cache.all::<doc::Std>()), &[doc_std!(A => A, stage = 0)]);
 }
 
 #[test]
@@ -576,6 +587,7 @@ mod dist {
             run: None,
             only_modified: false,
             skip: vec![],
+            extra_checks: None,
         };
 
         let build = Build::new(config);
@@ -647,6 +659,7 @@ mod dist {
             pass: None,
             run: None,
             only_modified: false,
+            extra_checks: None,
         };
         // Make sure rustfmt binary not being found isn't an error.
         config.channel = "beta".to_string();

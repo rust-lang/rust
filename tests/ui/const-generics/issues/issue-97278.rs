@@ -9,6 +9,6 @@ enum Bar {
 }
 
 fn test<const BAR: Bar>() {}
-//~^ ERROR `Arc<i32>` must be annotated with `#[derive(PartialEq, Eq)]`
+//~^ ERROR  `Bar` must implement `ConstParamTy` to be used as the type of a const generic parameter
 
 fn main() {}

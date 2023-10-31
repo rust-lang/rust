@@ -6,10 +6,10 @@
 
 use std::future::{Future, Ready};
 async fn read() {
-    let _ = connect(&()).await;
+    connect(&()).await;
 }
 async fn connect<A: ToSocketAddr>(addr: A) {
-    let _ = addr.to_socket_addr().await;
+    addr.to_socket_addr().await;
 }
 pub trait ToSocketAddr {
     type Future: Future<Output = ()>;

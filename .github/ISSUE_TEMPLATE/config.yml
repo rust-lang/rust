@@ -6,3 +6,6 @@ contact_links:
   - name: Feature Request
     url: https://internals.rust-lang.org/
     about: Please discuss language feature requests on the internals forum.
+  - name: Clippy Bug
+    url: https://github.com/rust-lang/rust-clippy/issues/new/choose
+    about: Please report Clippy bugs such as false positives in the Clippy repo.

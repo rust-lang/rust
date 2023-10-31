@@ -1,22 +1,17 @@
 // compile-flags: -Ztrait-solver=next
 
-// check-pass
-// (should not pass, should be turned into a coherence-only test)
-
-// check that a `alias-eq(<?0 as TraitB>::Assoc, <T as TraitB>::Assoc)` goal fails.
-
-// FIXME(deferred_projection_equality): add a test that this is true during coherence
+// check that a `alias-eq(<?a as TraitB>::Assoc, <?b as TraitB>::Assoc)` goal fails
+// during coherence. We must not incorrectly constrain `?a` and `?b` to be
+// equal.
 
 trait TraitB {
     type Assoc;
 }
 
-fn needs_a<T: TraitB>() -> T::Assoc {
-    unimplemented!()
-}
+trait Overlaps<T> {}
 
-fn bar<T: TraitB>() {
-    let _: <_ as TraitB>::Assoc = needs_a::<T>();
-}
+impl<T: TraitB> Overlaps<Box<T>> for <T as TraitB>::Assoc {}
+impl<U: TraitB> Overlaps<U> for <U as TraitB>::Assoc {}
+//~^ ERROR conflicting implementations of trait
 
 fn main() {}

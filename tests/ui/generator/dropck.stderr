@@ -5,7 +5,7 @@ LL |     let (mut gen, cell);
    |                   ---- binding `cell` declared here
 LL |     cell = Box::new(RefCell::new(0));
 LL |     let ref_ = Box::leak(Box::new(Some(cell.borrow_mut())));
-   |                                        ^^^^^^^^^^^^^^^^^ borrowed value does not live long enough
+   |                                        ^^^^ borrowed value does not live long enough
 ...
 LL | }
    | -

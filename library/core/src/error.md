@@ -93,7 +93,8 @@ information that is already communicated by the source error being
 unwrapped:
 
 ```text
-thread 'main' panicked at 'env variable `IMPORTANT_PATH` is not set: NotPresent', src/main.rs:4:6
+thread 'main' panicked at src/main.rs:4:6:
+env variable `IMPORTANT_PATH` is not set: NotPresent
 ```
 
 In this example we end up mentioning that an env variable is not set,
@@ -109,7 +110,8 @@ prevent the source error, we end up introducing new information that is
 independent from our source error.
 
 ```text
-thread 'main' panicked at 'env variable `IMPORTANT_PATH` should be set by `wrapper_script.sh`: NotPresent', src/main.rs:4:6
+thread 'main' panicked at src/main.rs:4:6:
+env variable `IMPORTANT_PATH` should be set by `wrapper_script.sh`: NotPresent
 ```
 
 In this example we are communicating not only the name of the

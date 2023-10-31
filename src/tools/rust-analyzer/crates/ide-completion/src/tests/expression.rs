@@ -1,16 +1,11 @@
 //! Completion tests for expressions.
 use expect_test::{expect, Expect};
 
-use crate::tests::{check_edit, completion_list, BASE_ITEMS_FIXTURE};
+use crate::tests::{check_edit, check_empty, completion_list, BASE_ITEMS_FIXTURE};
 
 fn check(ra_fixture: &str, expect: Expect) {
     let actual = completion_list(&format!("{BASE_ITEMS_FIXTURE}{ra_fixture}"));
     expect.assert_eq(&actual)
-}
-
-fn check_empty(ra_fixture: &str, expect: Expect) {
-    let actual = completion_list(ra_fixture);
-    expect.assert_eq(&actual);
 }
 
 #[test]
@@ -672,7 +667,7 @@ fn main() {
 }
 
 #[test]
-fn varaiant_with_struct() {
+fn variant_with_struct() {
     check_empty(
         r#"
 pub struct YoloVariant {
@@ -967,6 +962,108 @@ fn foo() { if foo {} el$0 { let x = 92; } }
             kw crate::
             kw else
             kw else if
+            kw enum
+            kw extern
+            kw false
+            kw fn
+            kw for
+            kw if
+            kw if let
+            kw impl
+            kw let
+            kw loop
+            kw match
+            kw mod
+            kw return
+            kw self::
+            kw static
+            kw struct
+            kw trait
+            kw true
+            kw type
+            kw union
+            kw unsafe
+            kw use
+            kw while
+            kw while let
+            sn macro_rules
+            sn pd
+            sn ppd
+        "#]],
+    );
+}
+
+#[test]
+fn expr_no_unstable_item_on_stable() {
+    check_empty(
+        r#"
+//- /main.rs crate:main deps:std
+use std::*;
+fn main() {
+    $0
+}
+//- /std.rs crate:std
+#[unstable]
+pub struct UnstableThisShouldNotBeListed;
+"#,
+        expect![[r#"
+            fn main()      fn()
+            md std
+            bt u32
+            kw const
+            kw crate::
+            kw enum
+            kw extern
+            kw false
+            kw fn
+            kw for
+            kw if
+            kw if let
+            kw impl
+            kw let
+            kw loop
+            kw match
+            kw mod
+            kw return
+            kw self::
+            kw static
+            kw struct
+            kw trait
+            kw true
+            kw type
+            kw union
+            kw unsafe
+            kw use
+            kw while
+            kw while let
+            sn macro_rules
+            sn pd
+            sn ppd
+        "#]],
+    );
+}
+
+#[test]
+fn expr_unstable_item_on_nightly() {
+    check_empty(
+        r#"
+//- toolchain:nightly
+//- /main.rs crate:main deps:std
+use std::*;
+fn main() {
+    $0
+}
+//- /std.rs crate:std
+#[unstable]
+pub struct UnstableButWeAreOnNightlyAnyway;
+"#,
+        expect![[r#"
+            fn main()                 fn()
+            md std
+            st UnstableButWeAreOnNightlyAnyway
+            bt u32
+            kw const
+            kw crate::
             kw enum
             kw extern
             kw false

@@ -27,7 +27,7 @@ pub(crate) fn emit_unescape_error(
         lit, span_with_quotes, mode, range, error
     );
     let last_char = || {
-        let c = lit[range.clone()].chars().rev().next().unwrap();
+        let c = lit[range.clone()].chars().next_back().unwrap();
         let span = span.with_lo(span.hi() - BytePos(c.len_utf8() as u32));
         (c, span)
     };
@@ -80,20 +80,14 @@ pub(crate) fn emit_unescape_error(
             let sugg = sugg.unwrap_or_else(|| {
                 let prefix = mode.prefix_noraw();
                 let mut escaped = String::with_capacity(lit.len());
-                let mut chrs = lit.chars().peekable();
-                while let Some(first) = chrs.next() {
-                    match (first, chrs.peek()) {
-                        ('\\', Some('"')) => {
-                            escaped.push('\\');
-                            escaped.push('"');
-                            chrs.next();
-                        }
-                        ('"', _) => {
-                            escaped.push('\\');
-                            escaped.push('"')
-                        }
-                        (c, _) => escaped.push(c),
-                    };
+                let mut in_escape = false;
+                for c in lit.chars() {
+                    match c {
+                        '\\' => in_escape = !in_escape,
+                        '"' if !in_escape => escaped.push('\\'),
+                        _ => in_escape = false,
+                    }
+                    escaped.push(c);
                 }
                 let sugg = format!("{prefix}\"{escaped}\"");
                 MoreThanOneCharSugg::Quotes {
@@ -135,7 +129,7 @@ pub(crate) fn emit_unescape_error(
                 "unknown character escape"
             };
             let ec = escaped_char(c);
-            let mut diag = handler.struct_span_err(span, format!("{}: `{}`", label, ec));
+            let mut diag = handler.struct_span_err(span, format!("{label}: `{ec}`"));
             diag.span_label(span, label);
             if c == '{' || c == '}' && matches!(mode, Mode::Str | Mode::RawStr) {
                 diag.help(
@@ -151,14 +145,14 @@ pub(crate) fn emit_unescape_error(
                     diag.span_suggestion(
                         span_with_quotes,
                         "if you meant to write a literal backslash (perhaps escaping in a regular expression), consider a raw string literal",
-                        format!("r\"{}\"", lit),
+                        format!("r\"{lit}\""),
                         Applicability::MaybeIncorrect,
                     );
                 }
 
                 diag.help(
                     "for more information, visit \
-                     <https://static.rust-lang.org/doc/master/reference.html#literals>",
+                     <https://doc.rust-lang.org/reference/tokens.html#literals>",
                 );
             }
             diag.emit();
@@ -180,21 +174,20 @@ pub(crate) fn emit_unescape_error(
                 Mode::RawByteStr => "raw byte string literal",
                 _ => panic!("non-is_byte literal paired with NonAsciiCharInByte"),
             };
-            let mut err = handler.struct_span_err(span, format!("non-ASCII character in {}", desc));
+            let mut err = handler.struct_span_err(span, format!("non-ASCII character in {desc}"));
             let postfix = if unicode_width::UnicodeWidthChar::width(c).unwrap_or(1) == 0 {
-                format!(" but is {:?}", c)
+                format!(" but is {c:?}")
             } else {
                 String::new()
             };
-            err.span_label(span, format!("must be ASCII{}", postfix));
+            err.span_label(span, format!("must be ASCII{postfix}"));
             // Note: the \\xHH suggestions are not given for raw byte string
             // literals, because they are araw and so cannot use any escapes.
             if (c as u32) <= 0xFF && mode != Mode::RawByteStr {
                 err.span_suggestion(
                     span,
                     format!(
-                        "if you meant to use the unicode code point for {:?}, use a \\xHH escape",
-                        c
+                        "if you meant to use the unicode code point for {c:?}, use a \\xHH escape"
                     ),
                     format!("\\x{:X}", c as u32),
                     Applicability::MaybeIncorrect,
@@ -206,7 +199,7 @@ pub(crate) fn emit_unescape_error(
                 utf8.push(c);
                 err.span_suggestion(
                     span,
-                    format!("if you meant to use the UTF-8 encoding of {:?}, use \\xHH escapes", c),
+                    format!("if you meant to use the UTF-8 encoding of {c:?}, use \\xHH escapes"),
                     utf8.as_bytes()
                         .iter()
                         .map(|b: &u8| format!("\\x{:X}", *b))

@@ -1,5 +1,5 @@
 warning: trait aliases are experimental
-  --> $DIR/cfg-false-feature.rs:14:1
+  --> $DIR/cfg-false-feature.rs:12:1
    |
 LL | trait A = Clone;
    | ^^^^^^^^^^^^^^^^
@@ -9,19 +9,8 @@ LL | trait A = Clone;
    = warning: unstable syntax can change at any point in the future, causing a hard error!
    = note: for more information, see issue #65860 <https://github.com/rust-lang/rust/issues/65860>
 
-warning: `macro` is experimental
-  --> $DIR/cfg-false-feature.rs:11:1
-   |
-LL | macro mac() {}
-   | ^^^^^^^^^^^^^^
-   |
-   = note: see issue #39412 <https://github.com/rust-lang/rust/issues/39412> for more information
-   = help: add `#![feature(decl_macro)]` to the crate attributes to enable
-   = warning: unstable syntax can change at any point in the future, causing a hard error!
-   = note: for more information, see issue #65860 <https://github.com/rust-lang/rust/issues/65860>
-
 warning: box pattern syntax is experimental
-  --> $DIR/cfg-false-feature.rs:18:9
+  --> $DIR/cfg-false-feature.rs:16:9
    |
 LL |     let box _ = Box::new(0);
    |         ^^^^^
@@ -31,5 +20,5 @@ LL |     let box _ = Box::new(0);
    = warning: unstable syntax can change at any point in the future, causing a hard error!
    = note: for more information, see issue #65860 <https://github.com/rust-lang/rust/issues/65860>
 
-warning: 3 warnings emitted
+warning: 2 warnings emitted
 

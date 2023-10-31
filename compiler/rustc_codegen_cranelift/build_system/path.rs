@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::PathBuf;
 
-use super::utils::remove_dir_if_exists;
+use crate::utils::remove_dir_if_exists;
 
 #[derive(Debug, Clone)]
 pub(crate) struct Dirs {
@@ -9,6 +9,7 @@ pub(crate) struct Dirs {
     pub(crate) download_dir: PathBuf,
     pub(crate) build_dir: PathBuf,
     pub(crate) dist_dir: PathBuf,
+    pub(crate) frozen: bool,
 }
 
 #[doc(hidden)]

@@ -1,6 +1,6 @@
 //@run-rustfix
 #![warn(clippy::manual_async_fn)]
-#![allow(unused)]
+#![allow(clippy::needless_pub_self, unused)]
 
 use std::future::Future;
 

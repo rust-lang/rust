@@ -104,7 +104,7 @@ You should install cmake, or set `download-ci-llvm = true` in the
 than building it.
 "
             );
-            crate::detail_exit(1);
+            crate::exit!(1);
         }
     }
 
@@ -188,7 +188,7 @@ than building it.
         // Externally configured LLVM requires FileCheck to exist
         let filecheck = build.llvm_filecheck(build.build);
         if !filecheck.starts_with(&build.out) && !filecheck.exists() && build.config.codegen_tests {
-            panic!("FileCheck executable {:?} does not exist", filecheck);
+            panic!("FileCheck executable {filecheck:?} does not exist");
         }
     }
 
@@ -206,7 +206,7 @@ than building it.
         }
 
         // Make sure musl-root is valid
-        if target.contains("musl") {
+        if target.contains("musl") && !target.contains("unikraft") {
             // If this is a native target (host is also musl) and no musl-root is given,
             // fall back to the system toolchain in /usr before giving up
             if build.musl_root(*target).is_none() && build.config.build == *target {

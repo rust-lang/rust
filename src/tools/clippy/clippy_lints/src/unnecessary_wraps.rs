@@ -1,6 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet;
-use clippy_utils::{contains_return, is_res_lang_ctor, path_res, return_ty, visitors::find_all_ret_expressions};
+use clippy_utils::visitors::find_all_ret_expressions;
+use clippy_utils::{contains_return, is_res_lang_ctor, path_res, return_ty};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
@@ -163,7 +164,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
             span_lint_and_then(cx, UNNECESSARY_WRAPS, span, lint_msg.as_str(), |diag| {
                 diag.span_suggestion(
                     fn_decl.output.span(),
-                    return_type_sugg_msg.as_str(),
+                    return_type_sugg_msg,
                     return_type_sugg,
                     Applicability::MaybeIncorrect,
                 );

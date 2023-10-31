@@ -187,10 +187,6 @@ impl<T: Idx> MeetSemiLattice for ChunkedBitSet<T> {
 pub struct Dual<T>(pub T);
 
 impl<T: Idx> BitSetExt<T> for Dual<BitSet<T>> {
-    fn domain_size(&self) -> usize {
-        self.0.domain_size()
-    }
-
     fn contains(&self, elem: T) -> bool {
         self.0.contains(elem)
     }
@@ -275,4 +271,94 @@ impl<T> HasBottom for FlatSet<T> {
 
 impl<T> HasTop for FlatSet<T> {
     const TOP: Self = Self::Top;
+}
+
+/// Extend a lattice with a bottom value to represent an unreachable execution.
+///
+/// The only useful action on an unreachable state is joining it with a reachable one to make it
+/// reachable. All other actions, gen/kill for instance, are no-ops.
+#[derive(PartialEq, Eq, Debug)]
+pub enum MaybeReachable<T> {
+    Unreachable,
+    Reachable(T),
+}
+
+impl<T> MaybeReachable<T> {
+    pub fn is_reachable(&self) -> bool {
+        matches!(self, MaybeReachable::Reachable(_))
+    }
+}
+
+impl<T> HasBottom for MaybeReachable<T> {
+    const BOTTOM: Self = MaybeReachable::Unreachable;
+}
+
+impl<T: HasTop> HasTop for MaybeReachable<T> {
+    const TOP: Self = MaybeReachable::Reachable(T::TOP);
+}
+
+impl<S> MaybeReachable<S> {
+    /// Return whether the current state contains the given element. If the state is unreachable,
+    /// it does no contain anything.
+    pub fn contains<T>(&self, elem: T) -> bool
+    where
+        S: BitSetExt<T>,
+    {
+        match self {
+            MaybeReachable::Unreachable => false,
+            MaybeReachable::Reachable(set) => set.contains(elem),
+        }
+    }
+}
+
+impl<T, S: BitSetExt<T>> BitSetExt<T> for MaybeReachable<S> {
+    fn contains(&self, elem: T) -> bool {
+        self.contains(elem)
+    }
+
+    fn union(&mut self, other: &HybridBitSet<T>) {
+        match self {
+            MaybeReachable::Unreachable => {}
+            MaybeReachable::Reachable(set) => set.union(other),
+        }
+    }
+
+    fn subtract(&mut self, other: &HybridBitSet<T>) {
+        match self {
+            MaybeReachable::Unreachable => {}
+            MaybeReachable::Reachable(set) => set.subtract(other),
+        }
+    }
+}
+
+impl<V: Clone> Clone for MaybeReachable<V> {
+    fn clone(&self) -> Self {
+        match self {
+            MaybeReachable::Reachable(x) => MaybeReachable::Reachable(x.clone()),
+            MaybeReachable::Unreachable => MaybeReachable::Unreachable,
+        }
+    }
+
+    fn clone_from(&mut self, source: &Self) {
+        match (&mut *self, source) {
+            (MaybeReachable::Reachable(x), MaybeReachable::Reachable(y)) => {
+                x.clone_from(&y);
+            }
+            _ => *self = source.clone(),
+        }
+    }
+}
+
+impl<T: JoinSemiLattice + Clone> JoinSemiLattice for MaybeReachable<T> {
+    fn join(&mut self, other: &Self) -> bool {
+        // Unreachable acts as a bottom.
+        match (&mut *self, &other) {
+            (_, MaybeReachable::Unreachable) => false,
+            (MaybeReachable::Unreachable, _) => {
+                *self = other.clone();
+                true
+            }
+            (MaybeReachable::Reachable(this), MaybeReachable::Reachable(other)) => this.join(other),
+        }
+    }
 }

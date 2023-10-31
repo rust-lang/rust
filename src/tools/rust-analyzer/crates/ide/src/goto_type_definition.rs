@@ -10,7 +10,7 @@ use crate::{FilePosition, NavigationTarget, RangeInfo, TryToNav};
 // |===
 // | Editor  | Action Name
 //
-// | VS Code | **Go to Type Definition*
+// | VS Code | **Go to Type Definition**
 // |===
 //
 // image::https://user-images.githubusercontent.com/48062697/113020657-b560f500-917a-11eb-9007-0f809733a338.gif[]
@@ -38,32 +38,41 @@ pub(crate) fn goto_type_definition(
     };
     let range = token.text_range();
     sema.descend_into_macros(token)
-        .iter()
+        .into_iter()
         .filter_map(|token| {
-            let ty = sema.token_ancestors_with_macros(token.clone()).find_map(|node| {
-                let ty = match_ast! {
-                    match node {
-                        ast::Expr(it) => sema.type_of_expr(&it)?.original,
-                        ast::Pat(it) => sema.type_of_pat(&it)?.original,
-                        ast::SelfParam(it) => sema.type_of_self(&it)?,
-                        ast::Type(it) => sema.resolve_type(&it)?,
-                        ast::RecordField(it) => sema.to_def(&it).map(|d| d.ty(db.upcast()))?,
-                        // can't match on RecordExprField directly as `ast::Expr` will match an iteration too early otherwise
-                        ast::NameRef(it) => {
-                            if let Some(record_field) = ast::RecordExprField::for_name_ref(&it) {
-                                let (_, _, ty) = sema.resolve_record_field(&record_field)?;
-                                ty
-                            } else {
-                                let record_field = ast::RecordPatField::for_field_name_ref(&it)?;
-                                sema.resolve_record_pat_field(&record_field)?.1
-                            }
-                        },
-                        _ => return None,
-                    }
-                };
+            let ty = sema
+                .token_ancestors_with_macros(token)
+                // When `token` is within a macro call, we can't determine its type. Don't continue
+                // this traversal because otherwise we'll end up returning the type of *that* macro
+                // call, which is not what we want in general.
+                //
+                // Macro calls always wrap `TokenTree`s, so it's sufficient and efficient to test
+                // if the current node is a `TokenTree`.
+                .take_while(|node| !ast::TokenTree::can_cast(node.kind()))
+                .find_map(|node| {
+                    let ty = match_ast! {
+                        match node {
+                            ast::Expr(it) => sema.type_of_expr(&it)?.original,
+                            ast::Pat(it) => sema.type_of_pat(&it)?.original,
+                            ast::SelfParam(it) => sema.type_of_self(&it)?,
+                            ast::Type(it) => sema.resolve_type(&it)?,
+                            ast::RecordField(it) => sema.to_def(&it)?.ty(db.upcast()),
+                            // can't match on RecordExprField directly as `ast::Expr` will match an iteration too early otherwise
+                            ast::NameRef(it) => {
+                                if let Some(record_field) = ast::RecordExprField::for_name_ref(&it) {
+                                    let (_, _, ty) = sema.resolve_record_field(&record_field)?;
+                                    ty
+                                } else {
+                                    let record_field = ast::RecordPatField::for_field_name_ref(&it)?;
+                                    sema.resolve_record_pat_field(&record_field)?.1
+                                }
+                            },
+                            _ => return None,
+                        }
+                    };
 
-                Some(ty)
-            });
+                    Some(ty)
+                });
             ty
         })
         .for_each(|ty| {
@@ -94,7 +103,7 @@ mod tests {
     fn check(ra_fixture: &str) {
         let (analysis, position, expected) = fixture::annotations(ra_fixture);
         let navs = analysis.goto_type_definition(position).unwrap().unwrap().info;
-        assert_ne!(navs.len(), 0);
+        assert!(!navs.is_empty(), "navigation is empty");
 
         let cmp = |&FileRange { file_id, range }: &_| (file_id, range.start());
         let navs = navs
@@ -104,7 +113,7 @@ mod tests {
             .collect::<Vec<_>>();
         let expected = expected
             .into_iter()
-            .map(|(FileRange { file_id, range }, _)| FileRange { file_id, range })
+            .map(|(file_range, _)| file_range)
             .sorted_by_key(cmp)
             .collect::<Vec<_>>();
         assert_eq!(expected, navs);
@@ -193,6 +202,32 @@ struct Foo {}
      //^^^
 id! {
     fn bar() { let f$0 = Foo {}; }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn dont_collect_type_from_token_in_macro_call() {
+        check(
+            r#"
+struct DontCollectMe;
+struct S;
+     //^
+
+macro_rules! inner {
+    ($t:tt) => { DontCollectMe }
+}
+macro_rules! m {
+    ($t:ident) => {
+        match $t {
+            _ => inner!($t);
+        }
+    }
+}
+
+fn test() {
+    m!($0S);
 }
 "#,
         );

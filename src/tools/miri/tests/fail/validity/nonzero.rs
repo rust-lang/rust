@@ -1,5 +1,3 @@
-// gets masked by optimizations
-//@compile-flags: -Zmir-opt-level=0
 #![feature(rustc_attrs)]
 #![allow(unused_attributes)]
 

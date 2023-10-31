@@ -439,7 +439,7 @@ fn doctest_convert_match_to_let_else() {
         r#####"
 //- minicore: option
 fn foo(opt: Option<()>) {
-    let val = $0match opt {
+    let val$0 = match opt {
         Some(it) => it,
         None => return,
     };
@@ -489,6 +489,31 @@ impl Point {
     pub fn y(&self) -> f32 {
         self.1
     }
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_convert_nested_function_to_closure() {
+    check_doc_test(
+        "convert_nested_function_to_closure",
+        r#####"
+fn main() {
+    fn fo$0o(label: &str, number: u64) {
+        println!("{}: {}", label, number);
+    }
+
+    foo("Bar", 100);
+}
+"#####,
+        r#####"
+fn main() {
+    let foo = |label: &str, number: u64| {
+        println!("{}: {}", label, number);
+    };
+
+    foo("Bar", 100);
 }
 "#####,
     )
@@ -927,6 +952,7 @@ fn doctest_generate_default_from_new() {
     check_doc_test(
         "generate_default_from_new",
         r#####"
+//- minicore: default
 struct Example { _inner: () }
 
 impl Example {
@@ -984,6 +1010,69 @@ struct Person {
 impl Person {
     $0fn age(&self) -> u8 {
         self.age.age()
+    }
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_generate_delegate_trait() {
+    check_doc_test(
+        "generate_delegate_trait",
+        r#####"
+trait SomeTrait {
+    type T;
+    fn fn_(arg: u32) -> u32;
+    fn method_(&mut self) -> bool;
+}
+struct A;
+impl SomeTrait for A {
+    type T = u32;
+
+    fn fn_(arg: u32) -> u32 {
+        42
+    }
+
+    fn method_(&mut self) -> bool {
+        false
+    }
+}
+struct B {
+    a$0: A,
+}
+"#####,
+        r#####"
+trait SomeTrait {
+    type T;
+    fn fn_(arg: u32) -> u32;
+    fn method_(&mut self) -> bool;
+}
+struct A;
+impl SomeTrait for A {
+    type T = u32;
+
+    fn fn_(arg: u32) -> u32 {
+        42
+    }
+
+    fn method_(&mut self) -> bool {
+        false
+    }
+}
+struct B {
+    a: A,
+}
+
+impl SomeTrait for B {
+    type T = <A as SomeTrait>::T;
+
+    fn fn_(arg: u32) -> u32 {
+        <A as SomeTrait>::fn_(arg)
+    }
+
+    fn method_(&mut self) -> bool {
+        <A as SomeTrait>::method_( &mut self.a )
     }
 }
 "#####,
@@ -1404,9 +1493,65 @@ struct Person {
 }
 
 impl Person {
-    fn set_name(&mut self, name: String) {
+    fn $0set_name(&mut self, name: String) {
         self.name = name;
     }
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_generate_trait_from_impl() {
+    check_doc_test(
+        "generate_trait_from_impl",
+        r#####"
+struct Foo<const N: usize>([i32; N]);
+
+macro_rules! const_maker {
+    ($t:ty, $v:tt) => {
+        const CONST: $t = $v;
+    };
+}
+
+impl<const N: usize> Fo$0o<N> {
+    // Used as an associated constant.
+    const CONST_ASSOC: usize = N * 4;
+
+    fn create() -> Option<()> {
+        Some(())
+    }
+
+    const_maker! {i32, 7}
+}
+"#####,
+        r#####"
+struct Foo<const N: usize>([i32; N]);
+
+macro_rules! const_maker {
+    ($t:ty, $v:tt) => {
+        const CONST: $t = $v;
+    };
+}
+
+trait ${0:TraitName}<const N: usize> {
+    // Used as an associated constant.
+    const CONST_ASSOC: usize = N * 4;
+
+    fn create() -> Option<()>;
+
+    const_maker! {i32, 7}
+}
+
+impl<const N: usize> ${0:TraitName}<N> for Foo<N> {
+    // Used as an associated constant.
+    const CONST_ASSOC: usize = N * 4;
+
+    fn create() -> Option<()> {
+        Some(())
+    }
+
+    const_maker! {i32, 7}
 }
 "#####,
     )
@@ -1449,6 +1594,27 @@ fn foo(name: Option<&str>) {
             Some(val) => val,
             None => panic!("called `Option::unwrap()` on a `None` value"),
         };
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_inline_const_as_literal() {
+    check_doc_test(
+        "inline_const_as_literal",
+        r#####"
+const STRING: &str = "Hello, World!";
+
+fn something() -> &'static str {
+    STRING$0
+}
+"#####,
+        r#####"
+const STRING: &str = "Hello, World!";
+
+fn something() -> &'static str {
+    "Hello, World!"
 }
 "#####,
     )
@@ -1596,7 +1762,7 @@ fn doctest_introduce_named_generic() {
 fn foo(bar: $0impl Bar) {}
 "#####,
         r#####"
-fn foo<B: Bar>(bar: B) {}
+fn foo<$0B: Bar>(bar: B) {}
 "#####,
     )
 }
@@ -2069,6 +2235,24 @@ fn main() {
 }
 
 #[test]
+fn doctest_remove_unused_imports() {
+    check_doc_test(
+        "remove_unused_imports",
+        r#####"
+struct X();
+mod foo {
+    use super::X$0;
+}
+"#####,
+        r#####"
+struct X();
+mod foo {
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_remove_unused_param() {
     check_doc_test(
         "remove_unused_param",
@@ -2116,7 +2300,7 @@ trait Foo {
 }
 
 struct Bar;
-$0impl Foo for Bar {
+$0impl Foo for Bar$0 {
     const B: u8 = 17;
     fn c() {}
     type A = String;
@@ -2314,6 +2498,19 @@ fn handle(action: Action) {
 }
 
 #[test]
+fn doctest_replace_named_generic_with_impl() {
+    check_doc_test(
+        "replace_named_generic_with_impl",
+        r#####"
+fn new<P$0: AsRef<Path>>(location: P) -> Self {}
+"#####,
+        r#####"
+fn new(location: impl AsRef<Path>) -> Self {}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_replace_qualified_name_with_use() {
     check_doc_test(
         "replace_qualified_name_with_use",
@@ -2352,7 +2549,7 @@ fn doctest_replace_try_expr_with_match() {
     check_doc_test(
         "replace_try_expr_with_match",
         r#####"
-//- minicore:option
+//- minicore: try, option
 fn handle() {
     let pat = Some(true)$0?;
 }

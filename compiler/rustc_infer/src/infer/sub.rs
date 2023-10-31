@@ -118,7 +118,7 @@ impl<'tcx> TypeRelation<'tcx> for Sub<'_, '_, 'tcx> {
 
             (&ty::Error(e), _) | (_, &ty::Error(e)) => {
                 infcx.set_tainted_by_errors(e);
-                Ok(self.tcx().ty_error(e))
+                Ok(Ty::new_error(self.tcx(), e))
             }
 
             (
@@ -132,7 +132,7 @@ impl<'tcx> TypeRelation<'tcx> for Sub<'_, '_, 'tcx> {
             | (_, &ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }))
                 if self.fields.define_opaque_types == DefineOpaqueTypes::Yes
                     && def_id.is_local()
-                    && !self.tcx().trait_solver_next() =>
+                    && !self.fields.infcx.next_trait_solver() =>
             {
                 self.fields.obligations.extend(
                     infcx

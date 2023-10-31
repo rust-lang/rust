@@ -14,7 +14,7 @@ use tt::token_id::Subtree;
 /// The result of calculating fixes for a syntax node -- a bunch of changes
 /// (appending to and replacing nodes), the information that is needed to
 /// reverse those changes afterwards, and a token map.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub(crate) struct SyntaxFixups {
     pub(crate) append: FxHashMap<SyntaxElement, Vec<SyntheticToken>>,
     pub(crate) replace: FxHashMap<SyntaxElement, Vec<SyntheticToken>>,
@@ -24,9 +24,9 @@ pub(crate) struct SyntaxFixups {
 }
 
 /// This is the information needed to reverse the fixups.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Default, PartialEq, Eq)]
 pub struct SyntaxFixupUndoInfo {
-    original: Vec<Subtree>,
+    original: Box<[Subtree]>,
 }
 
 const EMPTY_ID: SyntheticTokenId = SyntheticTokenId(!0);
@@ -272,7 +272,7 @@ pub(crate) fn fixup_syntax(node: &SyntaxNode) -> SyntaxFixups {
         replace,
         token_map,
         next_id,
-        undo_info: SyntaxFixupUndoInfo { original },
+        undo_info: SyntaxFixupUndoInfo { original: original.into_boxed_slice() },
     }
 }
 
@@ -472,13 +472,13 @@ fn foo () {match __ra_fixup {}}
         check(
             r#"
 fn foo() {
-    match x {
+    match it {
 
     }
 }
 "#,
             expect![[r#"
-fn foo () {match x {}}
+fn foo () {match it {}}
 "#]],
         )
     }
@@ -547,11 +547,11 @@ fn foo () {a . __ra_fixup ; bar () ;}
         check(
             r#"
 fn foo() {
-    let x = a
+    let it = a
 }
 "#,
             expect![[r#"
-fn foo () {let x = a ;}
+fn foo () {let it = a ;}
 "#]],
         )
     }
@@ -561,11 +561,11 @@ fn foo () {let x = a ;}
         check(
             r#"
 fn foo() {
-    let x = a.
+    let it = a.
 }
 "#,
             expect![[r#"
-fn foo () {let x = a . __ra_fixup ;}
+fn foo () {let it = a . __ra_fixup ;}
 "#]],
         )
     }

@@ -495,8 +495,7 @@ pub trait Into<T>: Sized {
 /// By converting underlying error types to our own custom error type that encapsulates the
 /// underlying error type, we can return a single error type without losing information on the
 /// underlying cause. The '?' operator automatically converts the underlying error type to our
-/// custom error type by calling `Into<CliError>::into` which is automatically provided when
-/// implementing `From`. The compiler then infers which implementation of `Into` should be used.
+/// custom error type with `From::from`.
 ///
 /// ```
 /// use std::fs;
@@ -533,7 +532,7 @@ pub trait Into<T>: Sized {
 #[rustc_diagnostic_item = "From"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented(on(
-    all(_Self = "&str", T = "std::string::String"),
+    all(_Self = "&str", any(T = "alloc::string::String", T = "std::string::String")),
     note = "to coerce a `{T}` into a `{Self}`, use `&*` as a prefix",
 ))]
 pub trait From<T>: Sized {

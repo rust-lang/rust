@@ -8,10 +8,10 @@ LL |     Foo::<i32>::bar(&1i8);
    |
    = help: the following other types implement trait `Foo<B>`:
              <i8 as Foo<bool>>
+             <i8 as Foo<u8>>
              <i8 as Foo<u16>>
              <i8 as Foo<u32>>
              <i8 as Foo<u64>>
-             <i8 as Foo<u8>>
 
 error[E0277]: the trait bound `u8: Foo<i32>` is not satisfied
   --> $DIR/issue-39802-show-5-trait-impls.rs:25:21
@@ -38,10 +38,10 @@ LL |     Foo::<i32>::bar(&true);
    = help: the following other types implement trait `Foo<B>`:
              <bool as Foo<bool>>
              <bool as Foo<i8>>
+             <bool as Foo<u8>>
              <bool as Foo<u16>>
              <bool as Foo<u32>>
              <bool as Foo<u64>>
-             <bool as Foo<u8>>
 
 error: aborting due to 3 previous errors
 

@@ -20,20 +20,20 @@ call-function: (
     "check-colors",
     {
         "theme": "ayu",
-        "error_background": "rgb(79, 76, 76)",
+        "error_background": "#4f4c4c",
     },
 )
 call-function: (
     "check-colors",
     {
         "theme": "dark",
-        "error_background": "rgb(72, 72, 72)",
+        "error_background": "#484848",
     },
 )
 call-function: (
     "check-colors",
     {
         "theme": "light",
-        "error_background": "rgb(208, 204, 204)",
+        "error_background": "#d0cccc",
     },
 )

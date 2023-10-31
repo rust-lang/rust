@@ -395,7 +395,7 @@ fn resolve_exe<'a>(
     // Test if the file name has the `exe` extension.
     // This does a case-insensitive `ends_with`.
     let has_exe_suffix = if exe_path.len() >= EXE_SUFFIX.len() {
-        exe_path.bytes()[exe_path.len() - EXE_SUFFIX.len()..]
+        exe_path.as_os_str_bytes()[exe_path.len() - EXE_SUFFIX.len()..]
             .eq_ignore_ascii_case(EXE_SUFFIX.as_bytes())
     } else {
         false
@@ -425,7 +425,7 @@ fn resolve_exe<'a>(
         // From the `CreateProcessW` docs:
         // > If the file name does not contain an extension, .exe is appended.
         // Note that this rule only applies when searching paths.
-        let has_extension = exe_path.bytes().contains(&b'.');
+        let has_extension = exe_path.as_os_str_bytes().contains(&b'.');
 
         // Search the directories given by `search_paths`.
         let result = search_paths(parent_paths, child_paths, |mut path| {
@@ -595,7 +595,16 @@ pub struct Process {
 
 impl Process {
     pub fn kill(&mut self) -> io::Result<()> {
-        cvt(unsafe { c::TerminateProcess(self.handle.as_raw_handle(), 1) })?;
+        let result = unsafe { c::TerminateProcess(self.handle.as_raw_handle(), 1) };
+        if result == c::FALSE {
+            let error = unsafe { c::GetLastError() };
+            // TerminateProcess returns ERROR_ACCESS_DENIED if the process has already been
+            // terminated (by us, or for any other reason). So check if the process was actually
+            // terminated, and if so, do not return an error.
+            if error != c::ERROR_ACCESS_DENIED || self.try_wait().is_err() {
+                return Err(crate::io::Error::from_raw_os_error(error as i32));
+            }
+        }
         Ok(())
     }
 
@@ -643,7 +652,7 @@ impl Process {
     }
 }
 
-#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug, Default)]
 pub struct ExitStatus(c::DWORD);
 
 impl ExitStatus {

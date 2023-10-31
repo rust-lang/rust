@@ -4,7 +4,7 @@ note: no external requirements
 LL |     expect_sig(|a, b| b); // ought to return `a`
    |                ^^^^^^
    |
-   = note: defining type: test::{closure#0} with closure substs [
+   = note: defining type: test::{closure#0} with closure args [
                i16,
                for<Region(BrAnon(None)), Region(BrAnon(None))> extern "rust-call" fn((&ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon(None) }) i32, &ReLateBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrAnon(None) }) i32)) -> &ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon(None) }) i32,
                (),

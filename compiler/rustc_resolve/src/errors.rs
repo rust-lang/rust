@@ -330,6 +330,7 @@ pub(crate) struct ParamInTyOfConstParam {
     pub(crate) param_kind: Option<ParamKindInTyOfConstParam>,
 }
 
+#[derive(Debug)]
 #[derive(Subdiagnostic)]
 pub(crate) enum ParamKindInTyOfConstParam {
     #[note(resolve_type_param_in_ty_of_const_param)]
@@ -365,6 +366,7 @@ pub(crate) struct ParamInNonTrivialAnonConst {
 #[help(resolve_param_in_non_trivial_anon_const_help)]
 pub(crate) struct ParamInNonTrivialAnonConstHelp;
 
+#[derive(Debug)]
 #[derive(Subdiagnostic)]
 pub(crate) enum ParamKindInNonTrivialAnonConst {
     #[note(resolve_type_param_in_non_trivial_anon_const)]
@@ -562,6 +564,7 @@ pub(crate) struct CfgAccessibleUnsure {
     pub(crate) span: Span,
 }
 
+#[derive(Debug)]
 #[derive(Diagnostic)]
 #[diag(resolve_param_in_enum_discriminant)]
 pub(crate) struct ParamInEnumDiscriminant {
@@ -573,6 +576,7 @@ pub(crate) struct ParamInEnumDiscriminant {
     pub(crate) param_kind: ParamKindInEnumDiscriminant,
 }
 
+#[derive(Debug)]
 #[derive(Subdiagnostic)]
 pub(crate) enum ParamKindInEnumDiscriminant {
     #[note(resolve_type_param_in_enum_discriminant)]
@@ -581,4 +585,145 @@ pub(crate) enum ParamKindInEnumDiscriminant {
     Const,
     #[note(resolve_lifetime_param_in_enum_discriminant)]
     Lifetime,
+}
+
+#[derive(Subdiagnostic)]
+#[label(resolve_change_import_binding)]
+pub(crate) struct ChangeImportBinding {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    resolve_change_import_binding,
+    code = "{suggestion}",
+    applicability = "maybe-incorrect"
+)]
+pub(crate) struct ChangeImportBindingSuggestion {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) suggestion: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_imports_cannot_refer_to)]
+pub(crate) struct ImportsCannotReferTo<'a> {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) what: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_cannot_find_ident_in_this_scope)]
+pub(crate) struct CannotFindIdentInThisScope<'a> {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) expected: &'a str,
+    pub(crate) ident: Ident,
+}
+
+#[derive(Subdiagnostic)]
+#[note(resolve_explicit_unsafe_traits)]
+pub(crate) struct ExplicitUnsafeTraits {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) ident: Ident,
+}
+
+#[derive(Subdiagnostic)]
+#[help(resolve_added_macro_use)]
+pub(crate) struct AddedMacroUse;
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    resolve_consider_adding_a_derive,
+    code = "{suggestion}",
+    applicability = "maybe-incorrect"
+)]
+pub(crate) struct ConsiderAddingADerive {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) suggestion: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_cannot_determine_import_resolution)]
+pub(crate) struct CannotDetermineImportResolution {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_cannot_be_reexported_private, code = "E0364")]
+pub(crate) struct CannotBeReexportedPrivate {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) ident: Ident,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_cannot_be_reexported_crate_public, code = "E0364")]
+pub(crate) struct CannotBeReexportedCratePublic {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) ident: Ident,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_cannot_be_reexported_private, code = "E0365")]
+#[note(resolve_consider_declaring_with_pub)]
+pub(crate) struct CannotBeReexportedPrivateNS {
+    #[primary_span]
+    #[label(resolve_reexport_of_private)]
+    pub(crate) span: Span,
+    pub(crate) ident: Ident,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_cannot_be_reexported_crate_public, code = "E0365")]
+#[note(resolve_consider_declaring_with_pub)]
+pub(crate) struct CannotBeReexportedCratePublicNS {
+    #[primary_span]
+    #[label(resolve_reexport_of_crate_public)]
+    pub(crate) span: Span,
+    pub(crate) ident: Ident,
+}
+
+#[derive(Subdiagnostic)]
+#[help(resolve_consider_adding_macro_export)]
+pub(crate) struct ConsiderAddingMacroExport {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[note(resolve_consider_marking_as_pub)]
+pub(crate) struct ConsiderMarkingAsPub {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) ident: Ident,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_cannot_glob_import_possible_crates)]
+pub(crate) struct CannotGlobImportAllCrates {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_items_in_traits_are_not_importable)]
+pub(crate) struct ItemsInTraitsAreNotImportable {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(resolve_is_not_directly_importable, code = "E0253")]
+pub(crate) struct IsNotDirectlyImportable {
+    #[primary_span]
+    #[label]
+    pub(crate) span: Span,
+    pub(crate) target: Ident,
 }

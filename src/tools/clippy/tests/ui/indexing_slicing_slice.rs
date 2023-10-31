@@ -2,7 +2,7 @@
 // We also check the out_of_bounds_indexing lint here, because it lints similar things and
 // we want to avoid false positives.
 #![warn(clippy::out_of_bounds_indexing)]
-#![allow(clippy::no_effect, clippy::unnecessary_operation)]
+#![allow(clippy::no_effect, clippy::unnecessary_operation, clippy::useless_vec)]
 
 fn main() {
     let x = [1, 2, 3, 4];

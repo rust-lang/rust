@@ -1,8 +1,7 @@
 //! Registering limits:
 //! * recursion_limit,
-//! * move_size_limit,
-//! * type_length_limit, and
-//! * const_eval_limit
+//! * move_size_limit, and
+//! * type_length_limit
 //!
 //! There are various parts of the compiler that must impose arbitrary limits
 //! on how deeply they recurse to prevent stack overflow. Users can override
@@ -33,12 +32,6 @@ pub fn provide(providers: &mut Providers) {
             tcx.sess,
             sym::type_length_limit,
             1048576,
-        ),
-        const_eval_limit: get_limit(
-            tcx.hir().krate_attrs(),
-            tcx.sess,
-            sym::const_eval_limit,
-            2_000_000,
         ),
     }
 }

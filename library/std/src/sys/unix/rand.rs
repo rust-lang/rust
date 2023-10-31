@@ -14,9 +14,9 @@ pub fn hashmap_random_keys() -> (u64, u64) {
     unix,
     not(target_os = "macos"),
     not(target_os = "ios"),
+    not(target_os = "tvos"),
     not(target_os = "watchos"),
     not(target_os = "openbsd"),
-    not(target_os = "freebsd"),
     not(target_os = "netbsd"),
     not(target_os = "fuchsia"),
     not(target_os = "redox"),
@@ -67,11 +67,25 @@ mod imp {
         unsafe { libc::getrandom(buf.as_mut_ptr().cast(), buf.len(), 0) }
     }
 
+    #[cfg(target_os = "freebsd")]
+    fn getrandom(buf: &mut [u8]) -> libc::ssize_t {
+        // FIXME: using the above when libary std's libc is updated
+        extern "C" {
+            fn getrandom(
+                buffer: *mut libc::c_void,
+                length: libc::size_t,
+                flags: libc::c_uint,
+            ) -> libc::ssize_t;
+        }
+        unsafe { getrandom(buf.as_mut_ptr().cast(), buf.len(), 0) }
+    }
+
     #[cfg(not(any(
         target_os = "linux",
         target_os = "android",
         target_os = "espidf",
-        target_os = "horizon"
+        target_os = "horizon",
+        target_os = "freebsd"
     )))]
     fn getrandom_fill_bytes(_buf: &mut [u8]) -> bool {
         false
@@ -81,7 +95,8 @@ mod imp {
         target_os = "linux",
         target_os = "android",
         target_os = "espidf",
-        target_os = "horizon"
+        target_os = "horizon",
+        target_os = "freebsd"
     ))]
     fn getrandom_fill_bytes(v: &mut [u8]) -> bool {
         use crate::sync::atomic::{AtomicBool, Ordering};
@@ -198,7 +213,7 @@ mod imp {
 // once per thread in `hashmap_random_keys`. Therefore `SecRandomCopyBytes` is
 // only used on iOS where direct access to `/dev/urandom` is blocked by the
 // sandbox.
-#[cfg(any(target_os = "ios", target_os = "watchos"))]
+#[cfg(any(target_os = "ios", target_os = "tvos", target_os = "watchos"))]
 mod imp {
     use crate::io;
     use crate::ptr;
@@ -221,7 +236,7 @@ mod imp {
     }
 }
 
-#[cfg(any(target_os = "freebsd", target_os = "netbsd"))]
+#[cfg(target_os = "netbsd")]
 mod imp {
     use crate::ptr;
 

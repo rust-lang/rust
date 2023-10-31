@@ -28,8 +28,12 @@ pub(crate) fn strip_private(mut krate: clean::Crate, cx: &mut DocContext<'_>) ->
             is_json_output,
             tcx: cx.tcx,
         };
-        krate =
-            ImportStripper { tcx: cx.tcx, is_json_output }.fold_crate(stripper.fold_crate(krate));
+        krate = ImportStripper {
+            tcx: cx.tcx,
+            is_json_output,
+            document_hidden: cx.render_options.document_hidden,
+        }
+        .fold_crate(stripper.fold_crate(krate));
     }
 
     // strip all impls referencing private items
@@ -39,6 +43,7 @@ pub(crate) fn strip_private(mut krate: clean::Crate, cx: &mut DocContext<'_>) ->
         cache: &cx.cache,
         is_json_output,
         document_private: cx.render_options.document_private,
+        document_hidden: cx.render_options.document_hidden,
     };
     stripper.fold_crate(krate)
 }

@@ -1,0 +1,10 @@
+error: expected associated type, found associated constant
+  --> $DIR/consts.rs:3:29
+   |
+LL | pub fn accept(_: impl Trait<K: Copy>) {}
+   |                             ^
+   |
+   = note: trait bounds not allowed on associated constant
+
+error: aborting due to previous error
+

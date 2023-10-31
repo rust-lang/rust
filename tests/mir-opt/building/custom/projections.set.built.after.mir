@@ -1,10 +1,10 @@
 // MIR for `set` after built
 
 fn set(_1: &mut Option<i32>) -> () {
-    let mut _0: ();                      // return place in scope 0 at $DIR/projections.rs:+0:31: +0:31
+    let mut _0: ();
 
     bb0: {
-        (((*_1) as variant#1).0: i32) = const 10_i32; // scope 0 at $DIR/projections.rs:+2:9: +2:48
-        return;                          // scope 0 at $DIR/projections.rs:+3:9: +3:17
+        (((*_1) as variant#1).0: i32) = const 10_i32;
+        return;
     }
 }

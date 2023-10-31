@@ -1,4 +1,5 @@
 // run-pass
+// edition: 2021
 
 #![feature(c_str_literals)]
 

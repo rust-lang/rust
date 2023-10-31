@@ -12,11 +12,8 @@ mod process;
 mod version;
 
 use paths::AbsPathBuf;
-use std::{
-    ffi::OsStr,
-    fmt, io,
-    sync::{Arc, Mutex},
-};
+use std::{fmt, io, sync::Mutex};
+use triomphe::Arc;
 
 use serde::{Deserialize, Serialize};
 
@@ -54,18 +51,8 @@ pub struct MacroDylib {
 }
 
 impl MacroDylib {
-    // FIXME: this is buggy due to TOCTOU, we should check the version in the
-    // macro process instead.
-    pub fn new(path: AbsPathBuf) -> io::Result<MacroDylib> {
-        let _p = profile::span("MacroDylib::new");
-
-        let info = version::read_dylib_info(&path)?;
-        if info.version.0 < 1 || info.version.1 < 47 {
-            let msg = format!("proc-macro {} built by {info:#?} is not supported by rust-analyzer, please update your Rust version.", path.display());
-            return Err(io::Error::new(io::ErrorKind::InvalidData, msg));
-        }
-
-        Ok(MacroDylib { path })
+    pub fn new(path: AbsPathBuf) -> MacroDylib {
+        MacroDylib { path }
     }
 }
 
@@ -113,11 +100,8 @@ pub struct MacroPanic {
 
 impl ProcMacroServer {
     /// Spawns an external process as the proc macro server and returns a client connected to it.
-    pub fn spawn(
-        process_path: AbsPathBuf,
-        args: impl IntoIterator<Item = impl AsRef<OsStr>> + Clone,
-    ) -> io::Result<ProcMacroServer> {
-        let process = ProcMacroProcessSrv::run(process_path, args)?;
+    pub fn spawn(process_path: AbsPathBuf) -> io::Result<ProcMacroServer> {
+        let process = ProcMacroProcessSrv::run(process_path)?;
         Ok(ProcMacroServer { process: Arc::new(Mutex::new(process)) })
     }
 
@@ -156,15 +140,16 @@ impl ProcMacro {
         attr: Option<&tt::Subtree>,
         env: Vec<(String, String)>,
     ) -> Result<Result<tt::Subtree, PanicMessage>, ServerError> {
+        let version = self.process.lock().unwrap_or_else(|e| e.into_inner()).version();
         let current_dir = env
             .iter()
             .find(|(name, _)| name == "CARGO_MANIFEST_DIR")
             .map(|(_, value)| value.clone());
 
         let task = ExpandMacro {
-            macro_body: FlatTree::new(subtree),
+            macro_body: FlatTree::new(subtree, version),
             macro_name: self.name.to_string(),
-            attributes: attr.map(FlatTree::new),
+            attributes: attr.map(|subtree| FlatTree::new(subtree, version)),
             lib: self.dylib_path.to_path_buf().into(),
             env,
             current_dir,
@@ -173,7 +158,9 @@ impl ProcMacro {
         let request = msg::Request::ExpandMacro(task);
         let response = self.process.lock().unwrap_or_else(|e| e.into_inner()).send_task(request)?;
         match response {
-            msg::Response::ExpandMacro(it) => Ok(it.map(FlatTree::to_subtree)),
+            msg::Response::ExpandMacro(it) => {
+                Ok(it.map(|tree| FlatTree::to_subtree(tree, version)))
+            }
             msg::Response::ListMacros(..) | msg::Response::ApiVersionCheck(..) => {
                 Err(ServerError { message: "unexpected response".to_string(), io: None })
             }

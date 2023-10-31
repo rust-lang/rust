@@ -5,12 +5,12 @@ PRINT-BANG DEEP-RE-COLLECTED (DISPLAY): foo! { #[fake_attr] mod bar { #! [doc = 
 PRINT-BANG INPUT (DEBUG): TokenStream [
     Ident {
         ident: "foo",
-        span: $DIR/issue-78675-captured-inner-attrs.rs:20:9: 20:12 (#4),
+        span: $DIR/issue-78675-captured-inner-attrs.rs:20:9: 20:12 (#3),
     },
     Punct {
         ch: '!',
         spacing: Alone,
-        span: $DIR/issue-78675-captured-inner-attrs.rs:20:12: 20:13 (#4),
+        span: $DIR/issue-78675-captured-inner-attrs.rs:20:12: 20:13 (#3),
     },
     Group {
         delimiter: Brace,
@@ -18,17 +18,17 @@ PRINT-BANG INPUT (DEBUG): TokenStream [
             Punct {
                 ch: '#',
                 spacing: Alone,
-                span: $DIR/issue-78675-captured-inner-attrs.rs:21:13: 21:14 (#4),
+                span: $DIR/issue-78675-captured-inner-attrs.rs:21:13: 21:14 (#3),
             },
             Group {
                 delimiter: Bracket,
                 stream: TokenStream [
                     Ident {
                         ident: "fake_attr",
-                        span: $DIR/issue-78675-captured-inner-attrs.rs:21:15: 21:24 (#4),
+                        span: $DIR/issue-78675-captured-inner-attrs.rs:21:15: 21:24 (#3),
                     },
                 ],
-                span: $DIR/issue-78675-captured-inner-attrs.rs:21:14: 21:25 (#4),
+                span: $DIR/issue-78675-captured-inner-attrs.rs:21:14: 21:25 (#3),
             },
             Group {
                 delimiter: None,
@@ -79,9 +79,9 @@ PRINT-BANG INPUT (DEBUG): TokenStream [
                         span: $DIR/issue-78675-captured-inner-attrs.rs:27:13: 29:6 (#0),
                     },
                 ],
-                span: $DIR/issue-78675-captured-inner-attrs.rs:22:13: 22:18 (#4),
+                span: $DIR/issue-78675-captured-inner-attrs.rs:22:13: 22:18 (#3),
             },
         ],
-        span: $DIR/issue-78675-captured-inner-attrs.rs:20:14: 23:10 (#4),
+        span: $DIR/issue-78675-captured-inner-attrs.rs:20:14: 23:10 (#3),
     },
 ]

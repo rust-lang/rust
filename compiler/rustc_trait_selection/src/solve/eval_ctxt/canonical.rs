@@ -1,26 +1,30 @@
-/// Canonicalization is used to separate some goal from its context,
-/// throwing away unnecessary information in the process.
-///
-/// This is necessary to cache goals containing inference variables
-/// and placeholders without restricting them to the current `InferCtxt`.
-///
-/// Canonicalization is fairly involved, for more details see the relevant
-/// section of the [rustc-dev-guide][c].
-///
-/// [c]: https://rustc-dev-guide.rust-lang.org/solve/canonicalization.html
+//! Canonicalization is used to separate some goal from its context,
+//! throwing away unnecessary information in the process.
+//!
+//! This is necessary to cache goals containing inference variables
+//! and placeholders without restricting them to the current `InferCtxt`.
+//!
+//! Canonicalization is fairly involved, for more details see the relevant
+//! section of the [rustc-dev-guide][c].
+//!
+//! [c]: https://rustc-dev-guide.rust-lang.org/solve/canonicalization.html
 use super::{CanonicalInput, Certainty, EvalCtxt, Goal};
 use crate::solve::canonicalize::{CanonicalizeMode, Canonicalizer};
-use crate::solve::{CanonicalResponse, QueryResult, Response};
+use crate::solve::{response_no_constraints_raw, CanonicalResponse, QueryResult, Response};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_index::IndexVec;
 use rustc_infer::infer::canonical::query_response::make_query_region_constraints;
 use rustc_infer::infer::canonical::CanonicalVarValues;
 use rustc_infer::infer::canonical::{CanonicalExt, QueryRegionConstraints};
-use rustc_infer::infer::InferOk;
+use rustc_infer::infer::InferCtxt;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::{
-    ExternalConstraints, ExternalConstraintsData, MaybeCause, PredefinedOpaquesData, QueryInput,
+    ExternalConstraintsData, MaybeCause, PredefinedOpaquesData, QueryInput,
 };
-use rustc_middle::ty::{self, BoundVar, GenericArgKind, Ty};
+use rustc_middle::ty::{
+    self, BoundVar, GenericArgKind, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    TypeVisitableExt,
+};
 use rustc_span::DUMMY_SP;
 use std::iter;
 use std::ops::Deref;
@@ -28,10 +32,14 @@ use std::ops::Deref;
 impl<'tcx> EvalCtxt<'_, 'tcx> {
     /// Canonicalizes the goal remembering the original values
     /// for each bound variable.
-    pub(super) fn canonicalize_goal(
+    pub(super) fn canonicalize_goal<T: TypeFoldable<TyCtxt<'tcx>>>(
         &self,
-        goal: Goal<'tcx, ty::Predicate<'tcx>>,
-    ) -> (Vec<ty::GenericArg<'tcx>>, CanonicalInput<'tcx>) {
+        goal: Goal<'tcx, T>,
+    ) -> (Vec<ty::GenericArg<'tcx>>, CanonicalInput<'tcx, T>) {
+        let opaque_types = self.infcx.clone_opaque_types_for_query_response();
+        let (goal, opaque_types) =
+            (goal, opaque_types).fold_with(&mut EagerResolver { infcx: self.infcx });
+
         let mut orig_values = Default::default();
         let canonical_goal = Canonicalizer::canonicalize(
             self.infcx,
@@ -40,11 +48,9 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             QueryInput {
                 goal,
                 anchor: self.infcx.defining_use_anchor,
-                predefined_opaques_in_body: self.tcx().mk_predefined_opaques_in_body(
-                    PredefinedOpaquesData {
-                        opaque_types: self.infcx.clone_opaque_types_for_query_response(),
-                    },
-                ),
+                predefined_opaques_in_body: self
+                    .tcx()
+                    .mk_predefined_opaques_in_body(PredefinedOpaquesData { opaque_types }),
             },
         );
         (orig_values, canonical_goal)
@@ -70,34 +76,43 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         );
 
         let certainty = certainty.unify_with(goals_certainty);
+        if let Certainty::OVERFLOW = certainty {
+            // If we have overflow, it's probable that we're substituting a type
+            // into itself infinitely and any partial substitutions in the query
+            // response are probably not useful anyways, so just return an empty
+            // query response.
+            //
+            // This may prevent us from potentially useful inference, e.g.
+            // 2 candidates, one ambiguous and one overflow, which both
+            // have the same inference constraints.
+            //
+            // Changing this to retain some constraints in the future
+            // won't be a breaking change, so this is good enough for now.
+            return Ok(self.make_ambiguous_response_no_constraints(MaybeCause::Overflow));
+        }
 
-        let response = match certainty {
-            Certainty::Yes | Certainty::Maybe(MaybeCause::Ambiguity) => {
-                let external_constraints = self.compute_external_query_constraints()?;
-                Response { var_values: self.var_values, external_constraints, certainty }
-            }
-            Certainty::Maybe(MaybeCause::Overflow) => {
-                // If we have overflow, it's probable that we're substituting a type
-                // into itself infinitely and any partial substitutions in the query
-                // response are probably not useful anyways, so just return an empty
-                // query response.
-                //
-                // This may prevent us from potentially useful inference, e.g.
-                // 2 candidates, one ambiguous and one overflow, which both
-                // have the same inference constraints.
-                //
-                // Changing this to retain some constraints in the future
-                // won't be a breaking change, so this is good enough for now.
-                return Ok(self.make_ambiguous_response_no_constraints(MaybeCause::Overflow));
-            }
-        };
+        let var_values = self.var_values;
+        let external_constraints = self.compute_external_query_constraints()?;
+
+        let (var_values, mut external_constraints) =
+            (var_values, external_constraints).fold_with(&mut EagerResolver { infcx: self.infcx });
+        // Remove any trivial region constraints once we've resolved regions
+        external_constraints
+            .region_constraints
+            .outlives
+            .retain(|(outlives, _)| outlives.0.as_region().map_or(true, |re| re != outlives.1));
 
         let canonical = Canonicalizer::canonicalize(
             self.infcx,
             CanonicalizeMode::Response { max_input_universe: self.max_input_universe },
             &mut Default::default(),
-            response,
+            Response {
+                var_values,
+                certainty,
+                external_constraints: self.tcx().mk_external_constraints(external_constraints),
+            },
         );
+
         Ok(canonical)
     }
 
@@ -109,38 +124,36 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         &self,
         maybe_cause: MaybeCause,
     ) -> CanonicalResponse<'tcx> {
-        let unconstrained_response = Response {
-            var_values: CanonicalVarValues {
-                var_values: self.tcx().mk_substs_from_iter(self.var_values.var_values.iter().map(
-                    |arg| -> ty::GenericArg<'tcx> {
-                        match arg.unpack() {
-                            GenericArgKind::Lifetime(_) => self.next_region_infer().into(),
-                            GenericArgKind::Type(_) => self.next_ty_infer().into(),
-                            GenericArgKind::Const(ct) => self.next_const_infer(ct.ty()).into(),
-                        }
-                    },
-                )),
-            },
-            external_constraints: self
-                .tcx()
-                .mk_external_constraints(ExternalConstraintsData::default()),
-            certainty: Certainty::Maybe(maybe_cause),
-        };
-
-        Canonicalizer::canonicalize(
-            self.infcx,
-            CanonicalizeMode::Response { max_input_universe: self.max_input_universe },
-            &mut Default::default(),
-            unconstrained_response,
+        response_no_constraints_raw(
+            self.tcx(),
+            self.max_input_universe,
+            self.variables,
+            Certainty::Maybe(maybe_cause),
         )
     }
 
+    /// Computes the region constraints and *new* opaque types registered when
+    /// proving a goal.
+    ///
+    /// If an opaque was already constrained before proving this goal, then the
+    /// external constraints do not need to record that opaque, since if it is
+    /// further constrained by inference, that will be passed back in the var
+    /// values.
     #[instrument(level = "debug", skip(self), ret)]
-    fn compute_external_query_constraints(&self) -> Result<ExternalConstraints<'tcx>, NoSolution> {
+    fn compute_external_query_constraints(
+        &self,
+    ) -> Result<ExternalConstraintsData<'tcx>, NoSolution> {
+        // We only check for leaks from universes which were entered inside
+        // of the query.
+        self.infcx.leak_check(self.max_input_universe, None).map_err(|e| {
+            debug!(?e, "failed the leak check");
+            NoSolution
+        })?;
+
         // Cannot use `take_registered_region_obligations` as we may compute the response
         // inside of a `probe` whenever we have multiple choices inside of the solver.
         let region_obligations = self.infcx.inner.borrow().region_obligations().to_owned();
-        let region_constraints = self.infcx.with_region_constraints(|region_constraints| {
+        let mut region_constraints = self.infcx.with_region_constraints(|region_constraints| {
             make_query_region_constraints(
                 self.tcx(),
                 region_obligations
@@ -150,15 +163,16 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             )
         });
 
+        let mut seen = FxHashSet::default();
+        region_constraints.outlives.retain(|outlives| seen.insert(*outlives));
+
         let mut opaque_types = self.infcx.clone_opaque_types_for_query_response();
         // Only return opaque type keys for newly-defined opaques
         opaque_types.retain(|(a, _)| {
             self.predefined_opaques_in_body.opaque_types.iter().all(|(pa, _)| pa != a)
         });
 
-        Ok(self
-            .tcx()
-            .mk_external_constraints(ExternalConstraintsData { region_constraints, opaque_types }))
+        Ok(ExternalConstraintsData { region_constraints, opaque_types })
     }
 
     /// After calling a canonical query, we apply the constraints returned
@@ -201,7 +215,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         // created inside of the query directly instead of returning them to the
         // caller.
         let prev_universe = self.infcx.universe();
-        let universes_created_in_query = response.max_universe.index() + 1;
+        let universes_created_in_query = response.max_universe.index();
         for _ in 0..universes_created_in_query {
             self.infcx.create_next_universe();
         }
@@ -240,7 +254,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             }
         }
 
-        let var_values = self.tcx().mk_substs_from_iter(response.variables.iter().enumerate().map(
+        let var_values = self.tcx().mk_args_from_iter(response.variables.iter().enumerate().map(
             |(index, info)| {
                 if info.universe() != ty::UniverseIndex::ROOT {
                     // A variable from inside a binder of the query. While ideally these shouldn't
@@ -310,13 +324,71 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         opaque_types: &[(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)],
     ) -> Result<(), NoSolution> {
-        for &(a, b) in opaque_types {
-            let InferOk { value: (), obligations } =
-                self.infcx.register_hidden_type_in_new_solver(a, param_env, b)?;
-            // It's sound to drop these obligations, since the normalizes-to goal
-            // is responsible for proving these obligations.
-            let _ = obligations;
+        for &(key, ty) in opaque_types {
+            self.insert_hidden_type(key, param_env, ty)?;
         }
         Ok(())
+    }
+}
+
+/// Resolves ty, region, and const vars to their inferred values or their root vars.
+struct EagerResolver<'a, 'tcx> {
+    infcx: &'a InferCtxt<'tcx>,
+}
+
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for EagerResolver<'_, 'tcx> {
+    fn interner(&self) -> TyCtxt<'tcx> {
+        self.infcx.tcx
+    }
+
+    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+        match *t.kind() {
+            ty::Infer(ty::TyVar(vid)) => match self.infcx.probe_ty_var(vid) {
+                Ok(t) => t.fold_with(self),
+                Err(_) => Ty::new_var(self.infcx.tcx, self.infcx.root_var(vid)),
+            },
+            ty::Infer(ty::IntVar(vid)) => self.infcx.opportunistic_resolve_int_var(vid),
+            ty::Infer(ty::FloatVar(vid)) => self.infcx.opportunistic_resolve_float_var(vid),
+            _ => {
+                if t.has_infer() {
+                    t.super_fold_with(self)
+                } else {
+                    t
+                }
+            }
+        }
+    }
+
+    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
+        match *r {
+            ty::ReVar(vid) => self
+                .infcx
+                .inner
+                .borrow_mut()
+                .unwrap_region_constraints()
+                .opportunistic_resolve_var(self.infcx.tcx, vid),
+            _ => r,
+        }
+    }
+
+    fn fold_const(&mut self, c: ty::Const<'tcx>) -> ty::Const<'tcx> {
+        match c.kind() {
+            ty::ConstKind::Infer(ty::InferConst::Var(vid)) => {
+                // FIXME: we need to fold the ty too, I think.
+                match self.infcx.probe_const_var(vid) {
+                    Ok(c) => c.fold_with(self),
+                    Err(_) => {
+                        ty::Const::new_var(self.infcx.tcx, self.infcx.root_const_var(vid), c.ty())
+                    }
+                }
+            }
+            _ => {
+                if c.has_infer() {
+                    c.super_fold_with(self)
+                } else {
+                    c
+                }
+            }
+        }
     }
 }

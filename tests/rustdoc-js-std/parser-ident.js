@@ -1,14 +1,6 @@
-const QUERY = [
-    "R<!>",
-    "!",
-    "a!",
-    "a!::b",
-    "!::b",
-    "a!::b!",
-];
-
 const PARSED = [
     {
+        query: "R<!>",
         elems: [{
             name: "r",
             fullPath: ["r"],
@@ -16,11 +8,12 @@ const PARSED = [
             pathLast: "r",
             generics: [
                 {
-                    name: "!",
-                    fullPath: ["!"],
+                    name: "never",
+                    fullPath: ["never"],
                     pathWithoutLast: [],
-                    pathLast: "!",
+                    pathLast: "never",
                     generics: [],
+                    typeFilter: 15,
                 },
             ],
             typeFilter: -1,
@@ -32,13 +25,14 @@ const PARSED = [
         error: null,
     },
     {
+        query: "!",
         elems: [{
-            name: "!",
-            fullPath: ["!"],
+            name: "never",
+            fullPath: ["never"],
             pathWithoutLast: [],
-            pathLast: "!",
+            pathLast: "never",
             generics: [],
-            typeFilter: -1,
+            typeFilter: 15,
         }],
         foundElems: 1,
         original: "!",
@@ -47,6 +41,7 @@ const PARSED = [
         error: null,
     },
     {
+        query: "a!",
         elems: [{
             name: "a",
             fullPath: ["a"],
@@ -62,6 +57,7 @@ const PARSED = [
         error: null,
     },
     {
+        query: "a!::b",
         elems: [],
         foundElems: 0,
         original: "a!::b",
@@ -70,10 +66,20 @@ const PARSED = [
         error: "Cannot have associated items in macros",
     },
     {
+        query: "!<T>",
+        elems: [],
+        foundElems: 0,
+        original: "!<T>",
+        returned: [],
+        userQuery: "!<t>",
+        error: "Never type `!` does not accept generic parameters",
+    },
+    {
+        query: "!::b",
         elems: [{
             name: "!::b",
-            fullPath: ["!", "b"],
-            pathWithoutLast: ["!"],
+            fullPath: ["never", "b"],
+            pathWithoutLast: ["never"],
             pathLast: "b",
             generics: [],
             typeFilter: -1,
@@ -85,6 +91,59 @@ const PARSED = [
         error: null,
     },
     {
+        query: "b::!",
+        elems: [],
+        foundElems: 0,
+        original: "b::!",
+        returned: [],
+        userQuery: "b::!",
+        error: "Never type `!` is not associated item",
+    },
+    {
+        query: "!::!",
+        elems: [],
+        foundElems: 0,
+        original: "!::!",
+        returned: [],
+        userQuery: "!::!",
+        error: "Never type `!` is not associated item",
+    },
+    {
+        query: "b::!::c",
+        elems: [],
+        foundElems: 0,
+        original: "b::!::c",
+        returned: [],
+        userQuery: "b::!::c",
+        error: "Never type `!` is not associated item",
+    },
+    {
+        query: "!::b<T>",
+        elems: [{
+            name: "!::b",
+            fullPath: ["never", "b"],
+            pathWithoutLast: ["never"],
+            pathLast: "b",
+            generics: [
+                {
+                    name: "t",
+                    fullPath: ["t"],
+                    pathWithoutLast: [],
+                    pathLast: "t",
+                    generics: [],
+                    typeFilter: -1,
+                }
+            ],
+            typeFilter: -1,
+        }],
+        foundElems: 1,
+        original: "!::b<T>",
+        returned: [],
+        userQuery: "!::b<t>",
+        error: null,
+    },
+    {
+        query: "a!::b!",
         elems: [],
         foundElems: 0,
         original: "a!::b!",

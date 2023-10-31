@@ -139,7 +139,7 @@ error: function cannot return without recursing
 LL |     fn index(&self, x: usize) -> &Baz {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot return without recursing
 LL |         &self[x]
-   |          ------- recursive call site
+   |              --- recursive call site
    |
    = help: a `loop` may express intention better if this is on purpose
 

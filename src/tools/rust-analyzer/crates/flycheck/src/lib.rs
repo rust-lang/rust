@@ -77,7 +77,7 @@ impl fmt::Display for FlycheckConfig {
 pub struct FlycheckHandle {
     // XXX: drop order is significant
     sender: Sender<StateChange>,
-    _thread: jod_thread::JoinHandle,
+    _thread: stdx::thread::JoinHandle,
     id: usize,
 }
 
@@ -90,7 +90,7 @@ impl FlycheckHandle {
     ) -> FlycheckHandle {
         let actor = FlycheckActor::new(id, sender, config, workspace_root);
         let (sender, receiver) = unbounded::<StateChange>();
-        let thread = jod_thread::Builder::new()
+        let thread = stdx::thread::Builder::new(stdx::thread::ThreadIntent::Worker)
             .name("Flycheck".to_owned())
             .spawn(move || actor.run(receiver))
             .expect("failed to spawn thread");
@@ -395,7 +395,7 @@ struct CargoHandle {
     /// The handle to the actual cargo process. As we cannot cancel directly from with
     /// a read syscall dropping and therefore terminating the process is our best option.
     child: JodGroupChild,
-    thread: jod_thread::JoinHandle<io::Result<(bool, String)>>,
+    thread: stdx::thread::JoinHandle<io::Result<(bool, String)>>,
     receiver: Receiver<CargoMessage>,
 }
 
@@ -409,7 +409,7 @@ impl CargoHandle {
 
         let (sender, receiver) = unbounded();
         let actor = CargoActor::new(sender, stdout, stderr);
-        let thread = jod_thread::Builder::new()
+        let thread = stdx::thread::Builder::new(stdx::thread::ThreadIntent::Worker)
             .name("CargoHandle".to_owned())
             .spawn(move || actor.run())
             .expect("failed to spawn thread");
@@ -485,7 +485,7 @@ impl CargoActor {
 
             error.push_str(line);
             error.push('\n');
-            return false;
+            false
         };
         let output = streaming_output(
             self.stdout,

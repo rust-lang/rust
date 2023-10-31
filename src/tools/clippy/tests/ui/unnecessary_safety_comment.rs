@@ -1,5 +1,5 @@
 #![warn(clippy::undocumented_unsafe_blocks, clippy::unnecessary_safety_comment)]
-#![allow(clippy::let_unit_value, clippy::missing_safety_doc)]
+#![allow(clippy::let_unit_value, clippy::missing_safety_doc, clippy::needless_if)]
 
 mod unsafe_items_invalid_comment {
     // SAFETY:

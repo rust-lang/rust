@@ -1,0 +1,10 @@
+error: unconstrained generic constant
+  --> $DIR/evaluatable-bounds.rs:16:5
+   |
+LL |     const ARRAY: [i32; Self::LEN];
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: try adding a `where` bound using this expression: `where [(); Self::LEN]:`
+
+error: aborting due to previous error
+

@@ -7,6 +7,7 @@ use std::fmt;
 use std::path::Path;
 use std::process;
 
+use either::Either;
 use rand::rngs::StdRng;
 use rand::SeedableRng;
 
@@ -24,7 +25,7 @@ use rustc_middle::{
     },
 };
 use rustc_span::def_id::{CrateNum, DefId};
-use rustc_span::Symbol;
+use rustc_span::{Span, SpanData, Symbol};
 use rustc_target::abi::{Align, Size};
 use rustc_target::spec::abi::Abi;
 
@@ -112,6 +113,8 @@ pub enum MiriMemoryKind {
     /// Memory for thread-local statics.
     /// This memory may leak.
     Tls,
+    /// Memory mapped directly by the program
+    Mmap,
 }
 
 impl From<MiriMemoryKind> for MemoryKind<MiriMemoryKind> {
@@ -127,7 +130,20 @@ impl MayLeak for MiriMemoryKind {
         use self::MiriMemoryKind::*;
         match self {
             Rust | Miri | C | WinHeap | Runtime => false,
-            Machine | Global | ExternStatic | Tls => true,
+            Machine | Global | ExternStatic | Tls | Mmap => true,
+        }
+    }
+}
+
+impl MiriMemoryKind {
+    /// Whether we have a useful allocation span for an allocation of this kind.
+    fn should_save_allocation_span(self) -> bool {
+        use self::MiriMemoryKind::*;
+        match self {
+            // Heap allocations are fine since the `Allocation` is created immediately.
+            Rust | Miri | C | WinHeap | Mmap => true,
+            // Everything else is unclear, let's not show potentially confusing spans.
+            Machine | Global | ExternStatic | Tls | Runtime => false,
         }
     }
 }
@@ -145,6 +161,7 @@ impl fmt::Display for MiriMemoryKind {
             Global => write!(f, "global (static or const)"),
             ExternStatic => write!(f, "extern static"),
             Tls => write!(f, "thread-local static"),
+            Mmap => write!(f, "mmap"),
         }
     }
 }
@@ -308,12 +325,14 @@ pub struct PrimitiveLayouts<'tcx> {
 }
 
 impl<'mir, 'tcx: 'mir> PrimitiveLayouts<'tcx> {
-    fn new(layout_cx: LayoutCx<'tcx, TyCtxt<'tcx>>) -> Result<Self, LayoutError<'tcx>> {
+    fn new(layout_cx: LayoutCx<'tcx, TyCtxt<'tcx>>) -> Result<Self, &'tcx LayoutError<'tcx>> {
         let tcx = layout_cx.tcx;
-        let mut_raw_ptr = tcx.mk_ptr(TypeAndMut { ty: tcx.types.unit, mutbl: Mutability::Mut });
-        let const_raw_ptr = tcx.mk_ptr(TypeAndMut { ty: tcx.types.unit, mutbl: Mutability::Not });
+        let mut_raw_ptr =
+            Ty::new_ptr(tcx, TypeAndMut { ty: tcx.types.unit, mutbl: Mutability::Mut });
+        let const_raw_ptr =
+            Ty::new_ptr(tcx, TypeAndMut { ty: tcx.types.unit, mutbl: Mutability::Not });
         Ok(Self {
-            unit: layout_cx.layout_of(tcx.mk_unit())?,
+            unit: layout_cx.layout_of(Ty::new_unit(tcx))?,
             i8: layout_cx.layout_of(tcx.types.i8)?,
             i16: layout_cx.layout_of(tcx.types.i16)?,
             i32: layout_cx.layout_of(tcx.types.i32)?,
@@ -421,7 +440,7 @@ pub struct MiriMachine<'mir, 'tcx> {
     /// the emulated program.
     profiler: Option<measureme::Profiler>,
     /// Used with `profiler` to cache the `StringId`s for event names
-    /// uesd with `measureme`.
+    /// used with `measureme`.
     string_cache: FxHashMap<String, measureme::StringId>,
 
     /// Cache of `Instance` exported under the given `Symbol` name.
@@ -491,6 +510,10 @@ pub struct MiriMachine<'mir, 'tcx> {
 
     /// Whether to collect a backtrace when each allocation is created, just in case it leaks.
     pub(crate) collect_leak_backtraces: bool,
+
+    /// The spans we will use to report where an allocation was created and deallocated in
+    /// diagnostics.
+    pub(crate) allocation_spans: RefCell<FxHashMap<AllocId, (Span, Option<Span>)>>,
 }
 
 impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
@@ -510,7 +533,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
             let pid = process::id();
             // We adopt the same naming scheme for the profiler output that rustc uses. In rustc,
             // the PID is padded so that the nondeterministic value of the PID does not spread
-            // nondeterminisim to the allocator. In Miri we are not aiming for such performance
+            // nondeterminism to the allocator. In Miri we are not aiming for such performance
             // control, we just pad for consistency with rustc.
             let filename = format!("{crate_name}-{pid:07}");
             let path = Path::new(out).join(filename);
@@ -528,7 +551,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
             let target = &tcx.sess.target;
             match target.arch.as_ref() {
                 "wasm32" | "wasm64" => 64 * 1024, // https://webassembly.github.io/spec/core/exec/runtime.html#memory-instances
-                "aarch64" =>
+                "aarch64" => {
                     if target.options.vendor.as_ref() == "apple" {
                         // No "definitive" source, but see:
                         // https://www.wwdcnotes.com/notes/wwdc20/10214/
@@ -536,7 +559,8 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
                         16 * 1024
                     } else {
                         4 * 1024
-                    },
+                    }
+                }
                 _ => 4 * 1024,
             }
         };
@@ -614,6 +638,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
             stack_addr,
             stack_size,
             collect_leak_backtraces: config.collect_leak_backtraces,
+            allocation_spans: RefCell::new(FxHashMap::default()),
         }
     }
 
@@ -644,20 +669,24 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
         val: ImmTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx> {
         let place = this.allocate(val.layout, MiriMemoryKind::ExternStatic.into())?;
-        this.write_immediate(*val, &place.into())?;
+        this.write_immediate(*val, &place)?;
         Self::add_extern_static(this, name, place.ptr);
         Ok(())
     }
 
     /// Sets up the "extern statics" for this machine.
     fn init_extern_statics(this: &mut MiriInterpCx<'mir, 'tcx>) -> InterpResult<'tcx> {
+        // "__rust_no_alloc_shim_is_unstable"
+        let val = ImmTy::from_int(0, this.machine.layouts.u8);
+        Self::alloc_extern_static(this, "__rust_no_alloc_shim_is_unstable", val)?;
+
         match this.tcx.sess.target.os.as_ref() {
             "linux" => {
                 // "environ"
                 Self::add_extern_static(
                     this,
                     "environ",
-                    this.machine.env_vars.environ.unwrap().ptr,
+                    this.machine.env_vars.environ.as_ref().unwrap().ptr,
                 );
                 // A couple zero-initialized pointer-sized extern statics.
                 // Most of them are for weak symbols, which we all set to null (indicating that the
@@ -674,7 +703,7 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
                 Self::add_extern_static(
                     this,
                     "environ",
-                    this.machine.env_vars.environ.unwrap().ptr,
+                    this.machine.env_vars.environ.as_ref().unwrap().ptr,
                 );
             }
             "android" => {
@@ -721,6 +750,30 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
         // the profiler, it is not possible to interpret the profile data and all measureme tools
         // will panic when given the file.
         drop(self.profiler.take());
+    }
+
+    pub(crate) fn round_up_to_multiple_of_page_size(&self, length: u64) -> Option<u64> {
+        #[allow(clippy::arithmetic_side_effects)] // page size is nonzero
+        (length.checked_add(self.page_size - 1)? / self.page_size).checked_mul(self.page_size)
+    }
+
+    pub(crate) fn page_align(&self) -> Align {
+        Align::from_bytes(self.page_size).unwrap()
+    }
+
+    pub(crate) fn allocated_span(&self, alloc_id: AllocId) -> Option<SpanData> {
+        self.allocation_spans
+            .borrow()
+            .get(&alloc_id)
+            .map(|(allocated, _deallocated)| allocated.data())
+    }
+
+    pub(crate) fn deallocated_span(&self, alloc_id: AllocId) -> Option<SpanData> {
+        self.allocation_spans
+            .borrow()
+            .get(&alloc_id)
+            .and_then(|(_allocated, deallocated)| *deallocated)
+            .map(Span::data)
     }
 }
 
@@ -771,6 +824,7 @@ impl VisitTags for MiriMachine<'_, '_> {
             stack_addr: _,
             stack_size: _,
             collect_leak_backtraces: _,
+            allocation_spans: _,
         } = self;
 
         threads.visit_tags(visit);
@@ -874,7 +928,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         ecx: &mut MiriInterpCx<'mir, 'tcx>,
         instance: ty::Instance<'tcx>,
         abi: Abi,
-        args: &[OpTy<'tcx, Provenance>],
+        args: &[FnArg<'tcx, Provenance>],
         dest: &PlaceTy<'tcx, Provenance>,
         ret: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
@@ -887,12 +941,13 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         ecx: &mut MiriInterpCx<'mir, 'tcx>,
         fn_val: Dlsym,
         abi: Abi,
-        args: &[OpTy<'tcx, Provenance>],
+        args: &[FnArg<'tcx, Provenance>],
         dest: &PlaceTy<'tcx, Provenance>,
         ret: Option<mir::BasicBlock>,
         _unwind: mir::UnwindAction,
     ) -> InterpResult<'tcx> {
-        ecx.call_dlsym(fn_val, abi, args, dest, ret)
+        let args = ecx.copy_fn_args(args)?; // FIXME: Should `InPlace` arguments be reset to uninit?
+        ecx.call_dlsym(fn_val, abi, &args, dest, ret)
     }
 
     #[inline(always)]
@@ -951,7 +1006,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
                 panic!("extern_statics cannot contain wildcards")
             };
             let (shim_size, shim_align, _kind) = ecx.get_alloc_info(alloc_id);
-            let def_ty = ecx.tcx.type_of(def_id).subst_identity();
+            let def_ty = ecx.tcx.type_of(def_id).instantiate_identity();
             let extern_decl_layout = ecx.tcx.layout_of(ty::ParamEnv::empty().and(def_ty)).unwrap();
             if extern_decl_layout.size != shim_size || extern_decl_layout.align.abi != shim_align {
                 throw_unsup_format!(
@@ -1030,6 +1085,14 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
             },
             |ptr| ecx.global_base_pointer(ptr),
         )?;
+
+        if matches!(kind, MemoryKind::Machine(kind) if kind.should_save_allocation_span()) {
+            ecx.machine
+                .allocation_spans
+                .borrow_mut()
+                .insert(id, (ecx.machine.current_span(), None));
+        }
+
         Ok(Cow::Owned(alloc))
     }
 
@@ -1160,6 +1223,10 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
         if let Some(borrow_tracker) = &mut alloc_extra.borrow_tracker {
             borrow_tracker.before_memory_deallocation(alloc_id, prove_extra, range, machine)?;
         }
+        if let Some((_, deallocated_at)) = machine.allocation_spans.borrow_mut().get_mut(&alloc_id)
+        {
+            *deallocated_at = Some(machine.current_span());
+        }
         Ok(())
     }
 
@@ -1184,6 +1251,26 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
     ) -> InterpResult<'tcx> {
         if ecx.machine.borrow_tracker.is_some() {
             ecx.retag_place_contents(kind, place)?;
+        }
+        Ok(())
+    }
+
+    fn protect_in_place_function_argument(
+        ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        place: &PlaceTy<'tcx, Provenance>,
+    ) -> InterpResult<'tcx> {
+        // We do need to write `uninit` so that even after the call ends, the former contents of
+        // this place cannot be observed any more.
+        ecx.write_uninit(place)?;
+        // If we have a borrow tracker, we also have it set up protection so that all reads *and
+        // writes* during this call are insta-UB.
+        if ecx.machine.borrow_tracker.is_some() {
+            // Have to do `to_op` first because a `Place::Local` doesn't imply the local doesn't have an address.
+            if let Either::Left(place) = ecx.place_to_op(place)?.as_mplace_or_imm() {
+                ecx.protect_place(&place)?;
+            } else {
+                // Locals that don't have their address taken are as protected as they can ever be.
+            }
         }
         Ok(())
     }
@@ -1270,8 +1357,17 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
             let stack_len = ecx.active_thread_stack().len();
             ecx.active_thread_mut().set_top_user_relevant_frame(stack_len - 1);
         }
-        if ecx.machine.borrow_tracker.is_some() {
-            ecx.retag_return_place()?;
+        Ok(())
+    }
+
+    fn before_stack_pop(
+        ecx: &InterpCx<'mir, 'tcx, Self>,
+        frame: &Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>,
+    ) -> InterpResult<'tcx> {
+        // We want this *before* the return value copy, because the return place itself is protected
+        // until we do `end_call` here.
+        if let Some(borrow_tracker) = &ecx.machine.borrow_tracker {
+            borrow_tracker.borrow_mut().end_call(&frame.extra);
         }
         Ok(())
     }
@@ -1290,9 +1386,6 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
             ecx.active_thread_mut().recompute_top_user_relevant_frame();
         }
         let timing = frame.extra.timing.take();
-        if let Some(borrow_tracker) = &ecx.machine.borrow_tracker {
-            borrow_tracker.borrow_mut().end_call(&frame.extra);
-        }
         let res = ecx.handle_stack_pop_unwind(frame.extra, unwinding);
         if let Some(profiler) = ecx.machine.profiler.as_ref() {
             profiler.finish_recording_interval_event(timing.unwrap());

@@ -1,0 +1,19 @@
+error[E0603]: module `b` is private
+  --> $DIR/re-exported-trait.rs:11:9
+   |
+LL | impl a::b::Trait for S {}
+   |         ^ private module
+   |
+note: the module `b` is defined here
+  --> $DIR/re-exported-trait.rs:5:5
+   |
+LL |     mod b {
+   |     ^^^^^
+help: consider importing this trait through its public re-export instead
+   |
+LL | impl a::Trait for S {}
+   |      ~~~~~~~~
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0603`.

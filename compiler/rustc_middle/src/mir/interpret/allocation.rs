@@ -18,9 +18,9 @@ use rustc_span::DUMMY_SP;
 use rustc_target::abi::{Align, HasDataLayout, Size};
 
 use super::{
-    read_target_uint, write_target_uint, AllocId, InterpError, InterpResult, Pointer, Provenance,
-    ResourceExhaustionInfo, Scalar, ScalarSizeMismatch, UndefinedBehaviorInfo, UninitBytesAccess,
-    UnsupportedOpInfo,
+    read_target_uint, write_target_uint, AllocId, BadBytesAccess, InterpError, InterpResult,
+    Pointer, PointerArithmetic, Provenance, ResourceExhaustionInfo, Scalar, ScalarSizeMismatch,
+    UndefinedBehaviorInfo, UnsupportedOpInfo,
 };
 use crate::ty;
 use init_mask::*;
@@ -173,13 +173,13 @@ pub enum AllocError {
     /// A scalar had the wrong size.
     ScalarSizeMismatch(ScalarSizeMismatch),
     /// Encountered a pointer where we needed raw bytes.
-    ReadPointerAsBytes,
+    ReadPointerAsInt(Option<BadBytesAccess>),
     /// Partially overwriting a pointer.
-    PartialPointerOverwrite(Size),
+    OverwritePartialPointer(Size),
     /// Partially copying a pointer.
-    PartialPointerCopy(Size),
+    ReadPartialPointer(Size),
     /// Using uninitialized data where it is not allowed.
-    InvalidUninitBytes(Option<UninitBytesAccess>),
+    InvalidUninitBytes(Option<BadBytesAccess>),
 }
 pub type AllocResult<T = ()> = Result<T, AllocError>;
 
@@ -196,12 +196,14 @@ impl AllocError {
             ScalarSizeMismatch(s) => {
                 InterpError::UndefinedBehavior(UndefinedBehaviorInfo::ScalarSizeMismatch(s))
             }
-            ReadPointerAsBytes => InterpError::Unsupported(UnsupportedOpInfo::ReadPointerAsBytes),
-            PartialPointerOverwrite(offset) => InterpError::Unsupported(
-                UnsupportedOpInfo::PartialPointerOverwrite(Pointer::new(alloc_id, offset)),
+            ReadPointerAsInt(info) => InterpError::Unsupported(
+                UnsupportedOpInfo::ReadPointerAsInt(info.map(|b| (alloc_id, b))),
             ),
-            PartialPointerCopy(offset) => InterpError::Unsupported(
-                UnsupportedOpInfo::PartialPointerCopy(Pointer::new(alloc_id, offset)),
+            OverwritePartialPointer(offset) => InterpError::Unsupported(
+                UnsupportedOpInfo::OverwritePartialPointer(Pointer::new(alloc_id, offset)),
+            ),
+            ReadPartialPointer(offset) => InterpError::Unsupported(
+                UnsupportedOpInfo::ReadPartialPointer(Pointer::new(alloc_id, offset)),
             ),
             InvalidUninitBytes(info) => InterpError::UndefinedBehavior(
                 UndefinedBehaviorInfo::InvalidUninitBytes(info.map(|b| (alloc_id, b))),
@@ -296,25 +298,13 @@ impl<Prov: Provenance, Bytes: AllocBytes> Allocation<Prov, (), Bytes> {
         Allocation::from_bytes(slice, Align::ONE, Mutability::Not)
     }
 
-    /// Try to create an Allocation of `size` bytes, failing if there is not enough memory
-    /// available to the compiler to do so.
-    ///
-    /// If `panic_on_fail` is true, this will never return `Err`.
-    pub fn uninit<'tcx>(size: Size, align: Align, panic_on_fail: bool) -> InterpResult<'tcx, Self> {
-        let bytes = Bytes::zeroed(size, align).ok_or_else(|| {
-            // This results in an error that can happen non-deterministically, since the memory
-            // available to the compiler can change between runs. Normally queries are always
-            // deterministic. However, we can be non-deterministic here because all uses of const
-            // evaluation (including ConstProp!) will make compilation fail (via hard error
-            // or ICE) upon encountering a `MemoryExhausted` error.
-            if panic_on_fail {
-                panic!("Allocation::uninit called with panic_on_fail had allocation failure")
-            }
-            ty::tls::with(|tcx| {
-                tcx.sess.delay_span_bug(DUMMY_SP, "exhausted memory during interpretation")
-            });
-            InterpError::ResourceExhaustion(ResourceExhaustionInfo::MemoryExhausted)
-        })?;
+    fn uninit_inner<R>(size: Size, align: Align, fail: impl FnOnce() -> R) -> Result<Self, R> {
+        // This results in an error that can happen non-deterministically, since the memory
+        // available to the compiler can change between runs. Normally queries are always
+        // deterministic. However, we can be non-deterministic here because all uses of const
+        // evaluation (including ConstProp!) will make compilation fail (via hard error
+        // or ICE) upon encountering a `MemoryExhausted` error.
+        let bytes = Bytes::zeroed(size, align).ok_or_else(fail)?;
 
         Ok(Allocation {
             bytes,
@@ -324,6 +314,31 @@ impl<Prov: Provenance, Bytes: AllocBytes> Allocation<Prov, (), Bytes> {
             mutability: Mutability::Mut,
             extra: (),
         })
+    }
+
+    /// Try to create an Allocation of `size` bytes, failing if there is not enough memory
+    /// available to the compiler to do so.
+    pub fn try_uninit<'tcx>(size: Size, align: Align) -> InterpResult<'tcx, Self> {
+        Self::uninit_inner(size, align, || {
+            ty::tls::with(|tcx| {
+                tcx.sess.delay_span_bug(DUMMY_SP, "exhausted memory during interpretation")
+            });
+            InterpError::ResourceExhaustion(ResourceExhaustionInfo::MemoryExhausted).into()
+        })
+    }
+
+    /// Try to create an Allocation of `size` bytes, panics if there is not enough memory
+    /// available to the compiler to do so.
+    ///
+    /// Example use case: To obtain an Allocation filled with specific data,
+    /// first call this function and then call write_scalar to fill in the right data.
+    pub fn uninit(size: Size, align: Align) -> Self {
+        match Self::uninit_inner(size, align, || {
+            panic!("Allocation::uninit called with panic_on_fail had allocation failure");
+        }) {
+            Ok(x) => x,
+            Err(x) => x,
+        }
     }
 }
 
@@ -423,14 +438,26 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
         range: AllocRange,
     ) -> AllocResult<&[u8]> {
         self.init_mask.is_range_initialized(range).map_err(|uninit_range| {
-            AllocError::InvalidUninitBytes(Some(UninitBytesAccess {
+            AllocError::InvalidUninitBytes(Some(BadBytesAccess {
                 access: range,
-                uninit: uninit_range,
+                bad: uninit_range,
             }))
         })?;
         if !Prov::OFFSET_IS_ADDR {
             if !self.provenance.range_empty(range, cx) {
-                return Err(AllocError::ReadPointerAsBytes);
+                // Find the provenance.
+                let (offset, _prov) = self
+                    .provenance
+                    .range_get_ptrs(range, cx)
+                    .first()
+                    .copied()
+                    .expect("there must be provenance somewhere here");
+                let start = offset.max(range.start); // the pointer might begin before `range`!
+                let end = (offset + cx.pointer_size()).min(range.end()); // the pointer might end after `range`!
+                return Err(AllocError::ReadPointerAsInt(Some(BadBytesAccess {
+                    access: range,
+                    bad: AllocRange::from(start..end),
+                })));
             }
         }
         Ok(self.get_bytes_unchecked(range))
@@ -526,23 +553,25 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
                 // Now use this provenance.
                 let ptr = Pointer::new(prov, Size::from_bytes(bits));
                 return Ok(Scalar::from_maybe_pointer(ptr, cx));
+            } else {
+                // Without OFFSET_IS_ADDR, the only remaining case we can handle is total absence of
+                // provenance.
+                if self.provenance.range_empty(range, cx) {
+                    return Ok(Scalar::from_uint(bits, range.size));
+                }
+                // Else we have mixed provenance, that doesn't work.
+                return Err(AllocError::ReadPartialPointer(range.start));
             }
         } else {
             // We are *not* reading a pointer.
-            // If we can just ignore provenance, do exactly that.
-            if Prov::OFFSET_IS_ADDR {
+            // If we can just ignore provenance or there is none, that's easy.
+            if Prov::OFFSET_IS_ADDR || self.provenance.range_empty(range, cx) {
                 // We just strip provenance.
                 return Ok(Scalar::from_uint(bits, range.size));
             }
+            // There is some provenance and we don't have OFFSET_IS_ADDR. This doesn't work.
+            return Err(AllocError::ReadPointerAsInt(None));
         }
-
-        // Fallback path for when we cannot treat provenance bytewise or ignore it.
-        assert!(!Prov::OFFSET_IS_ADDR);
-        if !self.provenance.range_empty(range, cx) {
-            return Err(AllocError::ReadPointerAsBytes);
-        }
-        // There is no provenance, we can just return the bits.
-        Ok(Scalar::from_uint(bits, range.size))
     }
 
     /// Writes a *non-ZST* scalar.
@@ -561,7 +590,7 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
         assert!(self.mutability == Mutability::Mut);
 
         // `to_bits_or_ptr_internal` is the right method because we just want to store this data
-        // as-is into memory.
+        // as-is into memory. This also double-checks that `val.size()` matches `range.size`.
         let (bytes, provenance) = match val.to_bits_or_ptr_internal(range.size)? {
             Right(ptr) => {
                 let (provenance, offset) = ptr.into_parts();

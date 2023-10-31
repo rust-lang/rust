@@ -2,7 +2,7 @@ error[E0596]: cannot borrow `self` as mutable, as it is not declared as mutable
   --> $DIR/issue-93078.rs:11:9
    |
 LL |         self.modify();
-   |         ^^^^^^^^^^^^^ cannot borrow as mutable
+   |         ^^^^ cannot borrow as mutable
    |
    = note: as `Self` may be unsized, this call attempts to take `&mut &mut self`
    = note: however, `&mut self` expands to `self: &mut Self`, therefore `self` cannot be borrowed mutably

@@ -8,24 +8,41 @@ use crate::io::{
     self, BorrowedCursor, BufRead, IoSlice, IoSliceMut, Read, Seek, SeekFrom, SizeHint, Write,
 };
 
-/// A reader which is always at EOF.
+/// `Empty` ignores any data written via [`Write`], and will always be empty
+/// (returning zero bytes) when read via [`Read`].
 ///
-/// This struct is generally created by calling [`empty()`]. Please see
-/// the documentation of [`empty()`] for more details.
+/// This struct is generally created by calling [`empty()`]. Please
+/// see the documentation of [`empty()`] for more details.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[non_exhaustive]
-#[derive(Copy, Clone, Default)]
+#[derive(Copy, Clone, Debug, Default)]
 pub struct Empty;
 
-/// Constructs a new handle to an empty reader.
+/// Creates a value that is always at EOF for reads, and ignores all data written.
 ///
-/// All reads from the returned reader will return <code>[Ok]\(0)</code>.
+/// All calls to [`write`] on the returned instance will return [`Ok(buf.len())`]
+/// and the contents of the buffer will not be inspected.
+///
+/// All calls to [`read`] from the returned reader will return [`Ok(0)`].
+///
+/// [`Ok(buf.len())`]: Ok
+/// [`Ok(0)`]: Ok
+///
+/// [`write`]: Write::write
+/// [`read`]: Read::read
 ///
 /// # Examples
 ///
-/// A slightly sad example of not reading anything into a buffer:
+/// ```rust
+/// use std::io::{self, Write};
 ///
+/// let buffer = vec![1, 2, 3, 5, 8];
+/// let num_bytes = io::empty().write(&buffer).unwrap();
+/// assert_eq!(num_bytes, 5);
 /// ```
+///
+///
+/// ```rust
 /// use std::io::{self, Read};
 ///
 /// let mut buffer = String::new();
@@ -76,17 +93,58 @@ impl Seek for Empty {
     }
 }
 
-#[stable(feature = "std_debug", since = "1.16.0")]
-impl fmt::Debug for Empty {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Empty").finish_non_exhaustive()
-    }
-}
-
 impl SizeHint for Empty {
     #[inline]
     fn upper_bound(&self) -> Option<usize> {
         Some(0)
+    }
+}
+
+#[stable(feature = "empty_write", since = "1.73.0")]
+impl Write for Empty {
+    #[inline]
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        Ok(buf.len())
+    }
+
+    #[inline]
+    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        let total_len = bufs.iter().map(|b| b.len()).sum();
+        Ok(total_len)
+    }
+
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        true
+    }
+
+    #[inline]
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
+    }
+}
+
+#[stable(feature = "empty_write", since = "1.73.0")]
+impl Write for &Empty {
+    #[inline]
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        Ok(buf.len())
+    }
+
+    #[inline]
+    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        let total_len = bufs.iter().map(|b| b.len()).sum();
+        Ok(total_len)
+    }
+
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        true
+    }
+
+    #[inline]
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
     }
 }
 
@@ -182,19 +240,20 @@ impl fmt::Debug for Repeat {
 
 /// A writer which will move data into the void.
 ///
-/// This struct is generally created by calling [`sink`]. Please
+/// This struct is generally created by calling [`sink()`]. Please
 /// see the documentation of [`sink()`] for more details.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[non_exhaustive]
-#[derive(Copy, Clone, Default)]
+#[derive(Copy, Clone, Debug, Default)]
 pub struct Sink;
 
 /// Creates an instance of a writer which will successfully consume all data.
 ///
-/// All calls to [`write`] on the returned instance will return `Ok(buf.len())`
+/// All calls to [`write`] on the returned instance will return [`Ok(buf.len())`]
 /// and the contents of the buffer will not be inspected.
 ///
 /// [`write`]: Write::write
+/// [`Ok(buf.len())`]: Ok
 ///
 /// # Examples
 ///
@@ -257,12 +316,5 @@ impl Write for &Sink {
     #[inline]
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
-    }
-}
-
-#[stable(feature = "std_debug", since = "1.16.0")]
-impl fmt::Debug for Sink {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Sink").finish_non_exhaustive()
     }
 }

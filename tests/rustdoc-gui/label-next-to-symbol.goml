@@ -10,11 +10,11 @@ assert: (".stab.portability")
 // make sure that deprecated and portability have the right colors
 assert-css: (
     ".item-table .item-name .stab.deprecated",
-    { "background-color": "rgb(255, 245, 214)" },
+    { "background-color": "#fff5d6" },
 )
 assert-css: (
     ".item-table .item-name .stab.portability",
-    { "background-color": "rgb(255, 245, 214)" },
+    { "background-color": "#fff5d6" },
 )
 
 // table like view
@@ -36,7 +36,6 @@ compare-elements-position: (
     "//*[@class='desc docblock-short'][text()='a thing with a label']",
     ("y"),
 )
-
 
 // Mobile view
 set-window-size: (600, 600)
@@ -62,5 +61,16 @@ compare-elements-position-false: (
 compare-elements-position-false: (
     ".item-name .stab.deprecated",
     "//*[@class='desc docblock-short'][text()='a thing with a label']",
+    ("y"),
+)
+
+// Ensure it doesn't expand.
+set-window-size: (800, 800)
+go-to: "file://" + |DOC_PATH| + "/test_docs/cfgs/index.html"
+// This part of the tags should not be on the same line as the beginning since the width
+// is too small for that.
+compare-elements-position-false: (
+    "//*[@class='stab portability']/code[text()='appservice-api-c']",
+    "//*[@class='stab portability']/code[text()='server']",
     ("y"),
 )

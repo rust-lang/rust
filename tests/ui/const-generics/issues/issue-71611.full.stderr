@@ -6,13 +6,6 @@ LL | fn func<A, const F: fn(inner: A)>(outer: A) {
    |
    = note: type parameters may not be used in the type of const parameters
 
-error[E0741]: using function pointers as const generic parameters is forbidden
-  --> $DIR/issue-71611.rs:5:21
-   |
-LL | fn func<A, const F: fn(inner: A)>(outer: A) {
-   |                     ^^^^^^^^^^^^
+error: aborting due to previous error
 
-error: aborting due to 2 previous errors
-
-Some errors have detailed explanations: E0741, E0770.
-For more information about an error, try `rustc --explain E0741`.
+For more information about this error, try `rustc --explain E0770`.

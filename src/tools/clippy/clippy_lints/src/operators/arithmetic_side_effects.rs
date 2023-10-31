@@ -1,26 +1,20 @@
 use super::ARITHMETIC_SIDE_EFFECTS;
-use clippy_utils::is_from_proc_macro;
-use clippy_utils::{
-    consts::{constant, constant_simple, Constant},
-    diagnostics::span_lint,
-    is_lint_allowed, peel_hir_expr_refs, peel_hir_expr_unary,
-};
-use rustc_ast as ast;
+use clippy_utils::consts::{constant, constant_simple, Constant};
+use clippy_utils::diagnostics::span_lint;
+use clippy_utils::{expr_or_init, is_from_proc_macro, is_lint_allowed, peel_hir_expr_refs, peel_hir_expr_unary};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::Ty;
 use rustc_session::impl_lint_pass;
-use rustc_span::{
-    source_map::{Span, Spanned},
-    Symbol,
-};
+use rustc_span::source_map::{Span, Spanned};
+use rustc_span::Symbol;
+use {rustc_ast as ast, rustc_hir as hir};
 
 const HARD_CODED_ALLOWED_BINARY: &[[&str; 2]] = &[
     ["f32", "f32"],
     ["f64", "f64"],
-    ["std::num::Saturating", "std::num::Saturating"],
-    ["std::num::Wrapping", "std::num::Wrapping"],
+    ["std::num::Saturating", "*"],
+    ["std::num::Wrapping", "*"],
     ["std::string::String", "str"],
 ];
 const HARD_CODED_ALLOWED_UNARY: &[&str] = &["f32", "f64", "std::num::Saturating", "std::num::Wrapping"];
@@ -144,8 +138,10 @@ impl ArithmeticSideEffects {
         ) {
             return;
         };
-        let (actual_lhs, lhs_ref_counter) = peel_hir_expr_refs(lhs);
-        let (actual_rhs, rhs_ref_counter) = peel_hir_expr_refs(rhs);
+        let (mut actual_lhs, lhs_ref_counter) = peel_hir_expr_refs(lhs);
+        let (mut actual_rhs, rhs_ref_counter) = peel_hir_expr_refs(rhs);
+        actual_lhs = expr_or_init(cx, actual_lhs);
+        actual_rhs = expr_or_init(cx, actual_rhs);
         let lhs_ty = cx.typeck_results().expr_ty(actual_lhs).peel_refs();
         let rhs_ty = cx.typeck_results().expr_ty(actual_rhs).peel_refs();
         if self.has_allowed_binary(lhs_ty, rhs_ty) {
@@ -200,7 +196,9 @@ impl ArithmeticSideEffects {
         ps: &hir::PathSegment<'tcx>,
         receiver: &hir::Expr<'tcx>,
     ) {
-        let Some(arg) = args.first() else { return; };
+        let Some(arg) = args.first() else {
+            return;
+        };
         if constant_simple(cx, cx.typeck_results(), receiver).is_some() {
             return;
         }
@@ -225,7 +223,9 @@ impl ArithmeticSideEffects {
         un_expr: &hir::Expr<'tcx>,
         un_op: hir::UnOp,
     ) {
-        let hir::UnOp::Neg = un_op else { return; };
+        let hir::UnOp::Neg = un_op else {
+            return;
+        };
         if constant(cx, cx.typeck_results(), un_expr).is_some() {
             return;
         }

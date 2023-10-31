@@ -1,6 +1,6 @@
 use crate::simd::{
-    intrinsics, LaneCount, Mask, MaskElement, SimdCast, SimdCastPtr, SimdConstPtr, SimdMutPtr,
-    SimdPartialOrd, SupportedLaneCount, Swizzle,
+    intrinsics, LaneCount, Mask, MaskElement, SimdConstPtr, SimdMutPtr, SimdPartialOrd,
+    SupportedLaneCount, Swizzle,
 };
 use core::convert::{TryFrom, TryInto};
 
@@ -122,6 +122,7 @@ where
     /// let v = u32x4::splat(0);
     /// assert_eq!(v.lanes(), 4);
     /// ```
+    #[inline]
     pub const fn lanes(&self) -> usize {
         Self::LANES
     }
@@ -136,6 +137,7 @@ where
     /// let v = u32x4::splat(8);
     /// assert_eq!(v.as_array(), &[8, 8, 8, 8]);
     /// ```
+    #[inline]
     pub fn splat(value: T) -> Self {
         // This is preferred over `[value; N]`, since it's explicitly a splat:
         // https://github.com/rust-lang/rust/issues/97804
@@ -156,6 +158,7 @@ where
     /// let v: u64x4 = Simd::from_array([0, 1, 2, 3]);
     /// assert_eq!(v.as_array(), &[0, 1, 2, 3]);
     /// ```
+    #[inline]
     pub const fn as_array(&self) -> &[T; N] {
         // SAFETY: `Simd<T, N>` is just an overaligned `[T; N]` with
         // potential padding at the end, so pointer casting to a
@@ -167,6 +170,7 @@ where
     }
 
     /// Returns a mutable array reference containing the entire SIMD vector.
+    #[inline]
     pub fn as_mut_array(&mut self) -> &mut [T; N] {
         // SAFETY: `Simd<T, N>` is just an overaligned `[T; N]` with
         // potential padding at the end, so pointer casting to a
@@ -184,6 +188,7 @@ where
     ///
     /// # Safety
     /// Reading `ptr` must be safe, as if by `<*const [T; N]>::read_unaligned`.
+    #[inline]
     const unsafe fn load(ptr: *const [T; N]) -> Self {
         // There are potentially simpler ways to write this function, but this should result in
         // LLVM `load <N x T>`
@@ -204,6 +209,7 @@ where
     ///
     /// # Safety
     /// Writing to `ptr` must be safe, as if by `<*mut [T; N]>::write_unaligned`.
+    #[inline]
     const unsafe fn store(self, ptr: *mut [T; N]) {
         // There are potentially simpler ways to write this function, but this should result in
         // LLVM `store <N x T>`
@@ -216,6 +222,7 @@ where
     }
 
     /// Converts an array to a SIMD vector.
+    #[inline]
     pub const fn from_array(array: [T; N]) -> Self {
         // SAFETY: `&array` is safe to read.
         //
@@ -228,6 +235,7 @@ where
     }
 
     /// Converts a SIMD vector to an array.
+    #[inline]
     pub const fn to_array(self) -> [T; N] {
         let mut tmp = core::mem::MaybeUninit::uninit();
         // SAFETY: writing to `tmp` is safe and initializes it.
@@ -259,6 +267,8 @@ where
     /// assert_eq!(v.as_array(), &[1, 2, 3, 4]);
     /// ```
     #[must_use]
+    #[inline]
+    #[track_caller]
     pub const fn from_slice(slice: &[T]) -> Self {
         assert!(
             slice.len() >= Self::LANES,
@@ -287,6 +297,8 @@ where
     /// v.copy_to_slice(&mut dest);
     /// assert_eq!(&dest, &[1, 2, 3, 4, 0, 0]);
     /// ```
+    #[inline]
+    #[track_caller]
     pub fn copy_to_slice(self, slice: &mut [T]) {
         assert!(
             slice.len() >= Self::LANES,
@@ -295,76 +307,6 @@ where
         // SAFETY: We just checked that the slice contains
         // at least `N` elements.
         unsafe { self.store(slice.as_mut_ptr().cast()) }
-    }
-
-    /// Performs elementwise conversion of a SIMD vector's elements to another SIMD-valid type.
-    ///
-    /// This follows the semantics of Rust's `as` conversion for casting integers between
-    /// signed and unsigned (interpreting integers as 2s complement, so `-1` to `U::MAX` and
-    /// `1 << (U::BITS -1)` becoming `I::MIN` ), and from floats to integers (truncating,
-    /// or saturating at the limits) for each element.
-    ///
-    /// # Examples
-    /// ```
-    /// # #![feature(portable_simd)]
-    /// # use core::simd::Simd;
-    /// let floats: Simd<f32, 4> = Simd::from_array([1.9, -4.5, f32::INFINITY, f32::NAN]);
-    /// let ints = floats.cast::<i32>();
-    /// assert_eq!(ints, Simd::from_array([1, -4, i32::MAX, 0]));
-    ///
-    /// // Formally equivalent, but `Simd::cast` can optimize better.
-    /// assert_eq!(ints, Simd::from_array(floats.to_array().map(|x| x as i32)));
-    ///
-    /// // The float conversion does not round-trip.
-    /// let floats_again = ints.cast();
-    /// assert_ne!(floats, floats_again);
-    /// assert_eq!(floats_again, Simd::from_array([1.0, -4.0, 2147483647.0, 0.0]));
-    /// ```
-    #[must_use]
-    #[inline]
-    pub fn cast<U: SimdCast>(self) -> Simd<U, N>
-    where
-        T: SimdCast,
-    {
-        // Safety: supported types are guaranteed by SimdCast
-        unsafe { intrinsics::simd_as(self) }
-    }
-
-    /// Casts a vector of pointers to another pointer type.
-    #[must_use]
-    #[inline]
-    pub fn cast_ptr<U>(self) -> Simd<U, N>
-    where
-        T: SimdCastPtr<U>,
-        U: SimdElement,
-    {
-        // Safety: supported types are guaranteed by SimdCastPtr
-        unsafe { intrinsics::simd_cast_ptr(self) }
-    }
-
-    /// Rounds toward zero and converts to the same-width integer type, assuming that
-    /// the value is finite and fits in that type.
-    ///
-    /// # Safety
-    /// The value must:
-    ///
-    /// * Not be NaN
-    /// * Not be infinite
-    /// * Be representable in the return type, after truncating off its fractional part
-    ///
-    /// If these requirements are infeasible or costly, consider using the safe function [cast],
-    /// which saturates on conversion.
-    ///
-    /// [cast]: Simd::cast
-    #[inline]
-    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-    pub unsafe fn to_int_unchecked<I>(self) -> Simd<I, N>
-    where
-        T: core::convert::FloatToInt<I> + SimdCast,
-        I: SimdCast,
-    {
-        // Safety: supported types are guaranteed by SimdCast, the caller is responsible for the extra invariants
-        unsafe { intrinsics::simd_cast(self) }
     }
 
     /// Reads from potentially discontiguous indices in `slice` to construct a SIMD vector.
@@ -717,6 +659,7 @@ where
     LaneCount<N>: SupportedLaneCount,
     T: SimdElement,
 {
+    #[inline]
     fn clone(&self) -> Self {
         *self
     }
@@ -861,6 +804,7 @@ where
     LaneCount<N>: SupportedLaneCount,
     T: SimdElement,
 {
+    #[inline]
     fn from(array: [T; N]) -> Self {
         Self::from_array(array)
     }
@@ -871,6 +815,7 @@ where
     LaneCount<N>: SupportedLaneCount,
     T: SimdElement,
 {
+    #[inline]
     fn from(vector: Simd<T, N>) -> Self {
         vector.to_array()
     }
@@ -883,6 +828,7 @@ where
 {
     type Error = core::array::TryFromSliceError;
 
+    #[inline]
     fn try_from(slice: &[T]) -> Result<Self, core::array::TryFromSliceError> {
         Ok(Self::from_array(slice.try_into()?))
     }
@@ -895,6 +841,7 @@ where
 {
     type Error = core::array::TryFromSliceError;
 
+    #[inline]
     fn try_from(slice: &mut [T]) -> Result<Self, core::array::TryFromSliceError> {
         Ok(Self::from_array(slice.try_into()?))
     }

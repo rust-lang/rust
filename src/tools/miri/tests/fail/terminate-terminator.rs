@@ -1,4 +1,4 @@
-//@compile-flags: -Zmir-opt-level=3
+//@compile-flags: -Zmir-opt-level=3 -Zinline-mir-hint-threshold=1000
 // Enable MIR inlining to ensure that `TerminatorKind::Terminate` is generated
 // instead of just `UnwindAction::Terminate`.
 
@@ -12,13 +12,13 @@ impl Drop for Foo {
 
 #[inline(always)]
 fn has_cleanup() {
+    //~^ ERROR: panic in a function that cannot unwind
     let _f = Foo;
     panic!();
 }
 
 extern "C" fn panic_abort() {
     has_cleanup();
-    //~^ ERROR: panic in a function that cannot unwind
 }
 
 fn main() {

@@ -1,0 +1,52 @@
+- // MIR for `unwrap_unchecked` before Inline
++ // MIR for `unwrap_unchecked` after Inline
+  
+  fn unwrap_unchecked(_1: Option<T>) -> T {
+      debug slf => _1;
+      let mut _0: T;
+      let mut _2: std::option::Option<T>;
++     scope 1 (inlined #[track_caller] Option::<T>::unwrap_unchecked) {
++         debug self => _2;
++         let mut _3: &std::option::Option<T>;
++         let mut _4: isize;
++         scope 2 {
++             debug val => _0;
++         }
++         scope 3 {
++             scope 5 (inlined unreachable_unchecked) {
++                 scope 6 {
++                     scope 7 (inlined unreachable_unchecked::runtime) {
++                     }
++                 }
++             }
++         }
++         scope 4 (inlined Option::<T>::is_some) {
++             debug self => _3;
++         }
++     }
+  
+      bb0: {
+          StorageLive(_2);
+          _2 = move _1;
+-         _0 = Option::<T>::unwrap_unchecked(move _2) -> [return: bb1, unwind: bb2];
++         StorageLive(_3);
++         _4 = discriminant(_2);
++         switchInt(move _4) -> [1: bb2, otherwise: bb1];
+      }
+  
+      bb1: {
+-         StorageDead(_2);
+-         return;
++         unreachable;
+      }
+  
+-     bb2 (cleanup): {
+-         resume;
++     bb2: {
++         _0 = move ((_2 as Some).0: T);
++         StorageDead(_3);
++         StorageDead(_2);
++         return;
+      }
+  }
+  

@@ -7,13 +7,10 @@ trim_trailing_whitespace = true
 end_of_line = lf
 insert_final_newline = true
 indent_style = space
-
-[*.{rs,toml}]
 indent_size = 4
 
-[*.ts]
-indent_size = 4
-[*.js]
-indent_size = 4
-[*.json]
-indent_size = 4
+[*.md]
+indent_size = 2
+
+[*.{yml, yaml}]
+indent_size = 2

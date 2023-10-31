@@ -2,7 +2,7 @@ error: overly complex generic constant
   --> $DIR/issue-67375.rs:7:17
    |
 LL |     inner: [(); { [|_: &T| {}; 0].len() }],
-   |                 ^^---------------------^^
+   |                 ^^---------------^^^^^^^^
    |                   |
    |                   pointer casts are not allowed in generic constants
    |

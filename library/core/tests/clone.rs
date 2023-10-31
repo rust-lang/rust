@@ -1,5 +1,5 @@
 #[test]
-#[cfg_attr(not(bootstrap), allow(suspicious_double_ref_op))]
+#[allow(suspicious_double_ref_op)]
 fn test_borrowed_clone() {
     let x = 5;
     let y: &i32 = &x;

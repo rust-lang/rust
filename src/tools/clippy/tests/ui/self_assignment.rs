@@ -1,4 +1,5 @@
 #![warn(clippy::self_assignment)]
+#![allow(clippy::useless_vec, clippy::needless_pass_by_ref_mut)]
 
 pub struct S<'a> {
     a: i32,
@@ -13,7 +14,7 @@ pub fn positives(mut a: usize, b: &mut u32, mut s: S) {
     *b = *b;
     s = s;
     s.a = s.a;
-    s.b[10] = s.b[5 + 5];
+    s.b[9] = s.b[5 + 4];
     s.c[0][1] = s.c[0][1];
     s.b[a] = s.b[a];
     *s.e = *s.e;

@@ -6,7 +6,8 @@
 
 fn reify_as() -> Thunk<impl FnOnce(Continuation) -> Continuation> {
     Thunk::new(|mut cont| {
-        cont.reify_as(); //~ ERROR type annotations needed
+        //~^ ERROR type annotations needed
+        cont.reify_as();
         cont
     })
 }
@@ -15,7 +16,8 @@ type Tait = impl FnOnce(Continuation) -> Continuation;
 
 fn reify_as_tait() -> Thunk<Tait> {
     Thunk::new(|mut cont| {
-        cont.reify_as(); //~ ERROR type annotations needed
+        //~^ ERROR type annotations needed
+        cont.reify_as();
         cont
     })
 }

@@ -37,15 +37,15 @@ define-function: (
 )
 call-function: ("check-colors", {
     "theme": "ayu",
-    "color": "rgb(92, 103, 115)",
+    "color": "#5c6773",
 })
 call-function: ("check-colors", {
     "theme": "dark",
-    "color": "rgb(59, 145, 226)",
+    "color": "#3b91e2",
 })
 call-function: ("check-colors", {
     "theme": "light",
-    "color": "rgb(198, 126, 45)",
+    "color": "#c67e2d",
 })
 
 // The first code block has two lines so let's check its `<pre>` elements lists both of them.

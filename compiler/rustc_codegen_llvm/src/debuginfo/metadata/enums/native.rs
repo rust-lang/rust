@@ -57,7 +57,7 @@ pub(super) fn build_enum_type_di_node<'ll, 'tcx>(
     let enum_type = unique_type_id.expect_ty();
     let &ty::Adt(enum_adt_def, _) = enum_type.kind() else {
         bug!("build_enum_type_di_node() called with non-enum type: `{:?}`", enum_type)
-        };
+    };
 
     let containing_scope = get_namespace_for_item(cx, enum_adt_def.did());
     let enum_type_and_layout = cx.layout_of(enum_type);
@@ -132,9 +132,9 @@ pub(super) fn build_generator_di_node<'ll, 'tcx>(
     unique_type_id: UniqueTypeId<'tcx>,
 ) -> DINodeCreationResult<'ll> {
     let generator_type = unique_type_id.expect_ty();
-    let &ty::Generator(generator_def_id, _, _ ) = generator_type.kind() else {
+    let &ty::Generator(generator_def_id, _, _) = generator_type.kind() else {
         bug!("build_generator_di_node() called with non-generator type: `{:?}`", generator_type)
-        };
+    };
 
     let containing_scope = get_namespace_for_item(cx, generator_def_id);
     let generator_type_and_layout = cx.layout_of(generator_type);
@@ -155,10 +155,12 @@ pub(super) fn build_generator_di_node<'ll, 'tcx>(
             DIFlags::FlagZero,
         ),
         |cx, generator_type_di_node| {
-            let (generator_layout, state_specific_upvar_names) =
-                cx.tcx.generator_layout_and_saved_local_names(generator_def_id);
+            let generator_layout =
+                cx.tcx.optimized_mir(generator_def_id).generator_layout().unwrap();
 
-            let Variants::Multiple { tag_encoding: TagEncoding::Direct, ref variants, .. } = generator_type_and_layout.variants else {
+            let Variants::Multiple { tag_encoding: TagEncoding::Direct, ref variants, .. } =
+                generator_type_and_layout.variants
+            else {
                 bug!(
                     "Encountered generator with non-direct-tag layout: {:?}",
                     generator_type_and_layout
@@ -173,7 +175,7 @@ pub(super) fn build_generator_di_node<'ll, 'tcx>(
                 .indices()
                 .map(|variant_index| {
                     // FIXME: This is problematic because just a number is not a valid identifier.
-                    //        GeneratorSubsts::variant_name(variant_index), would be consistent
+                    //        GeneratorArgs::variant_name(variant_index), would be consistent
                     //        with enums?
                     let variant_name = format!("{}", variant_index.as_usize()).into();
 
@@ -195,7 +197,6 @@ pub(super) fn build_generator_di_node<'ll, 'tcx>(
                                 generator_type_and_layout,
                                 generator_type_di_node,
                                 generator_layout,
-                                &state_specific_upvar_names,
                                 &common_upvar_names,
                             ),
                         source_info,
@@ -412,13 +413,7 @@ fn build_enum_variant_member_di_node<'ll, 'tcx>(
             enum_type_and_layout.size.bits(),
             enum_type_and_layout.align.abi.bits() as u32,
             Size::ZERO.bits(),
-            discr_value.opt_single_val().map(|value| {
-                // NOTE(eddyb) do *NOT* remove this assert, until
-                // we pass the full 128-bit value to LLVM, otherwise
-                // truncation will be silent and remain undetected.
-                assert_eq!(value as u64 as u128, value);
-                cx.const_u64(value as u64)
-            }),
+            discr_value.opt_single_val().map(|value| cx.const_u128(value)),
             DIFlags::FlagZero,
             variant_member_info.variant_struct_type_di_node,
         )

@@ -1,22 +1,19 @@
 // MIR for `f_unit` after PreCodegen
 
 fn f_unit() -> () {
-    let mut _0: ();                      // return place in scope 0 at $DIR/intrinsics.rs:+0:17: +0:17
-    scope 1 (inlined f_dispatch::<()>) { // at $DIR/intrinsics.rs:13:5: 13:19
-        debug t => const ();             // in scope 1 at $DIR/intrinsics.rs:23:22: 23:23
-        let _1: ();                      // in scope 1 at $DIR/intrinsics.rs:25:9: 25:17
-        scope 2 (inlined std::mem::size_of::<()>) { // at $DIR/intrinsics.rs:24:8: 24:32
+    let mut _0: ();
+    scope 1 (inlined f_dispatch::<()>) {
+        debug t => const ();
+        let _1: ();
+        scope 2 (inlined std::mem::size_of::<()>) {
         }
     }
 
     bb0: {
-        _1 = f_zst::<()>(const ()) -> [return: bb1, unwind unreachable]; // scope 1 at $DIR/intrinsics.rs:25:9: 25:17
-                                         // mir::Constant
-                                         // + span: $DIR/intrinsics.rs:25:9: 25:14
-                                         // + literal: Const { ty: fn(()) {f_zst::<()>}, val: Value(<ZST>) }
+        _1 = f_zst::<()>(const ()) -> [return: bb1, unwind unreachable];
     }
 
     bb1: {
-        return;                          // scope 0 at $DIR/intrinsics.rs:+2:2: +2:2
+        return;
     }
 }

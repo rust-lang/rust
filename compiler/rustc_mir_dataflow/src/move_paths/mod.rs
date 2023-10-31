@@ -1,4 +1,5 @@
 use crate::move_paths::builder::MoveDat;
+use crate::un_derefer::UnDerefer;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::mir::*;
@@ -175,7 +176,7 @@ pub struct MoveData<'tcx> {
     /// particular path being moved.)
     pub loc_map: LocationMap<SmallVec<[MoveOutIndex; 4]>>,
     pub path_map: IndexVec<MovePathIndex, SmallVec<[MoveOutIndex; 4]>>,
-    pub rev_lookup: MovePathLookup,
+    pub rev_lookup: MovePathLookup<'tcx>,
     pub inits: IndexVec<InitIndex, Init>,
     /// Each Location `l` is mapped to the Inits that are effects
     /// of executing the code at `l`.
@@ -289,7 +290,7 @@ impl Init {
 
 /// Tables mapping from a place to its MovePathIndex.
 #[derive(Debug)]
-pub struct MovePathLookup {
+pub struct MovePathLookup<'tcx> {
     locals: IndexVec<Local, MovePathIndex>,
 
     /// projections are made from a base-place and a projection
@@ -299,6 +300,8 @@ pub struct MovePathLookup {
     /// base-place). For the remaining lookup, we map the projection
     /// elem to the associated MovePathIndex.
     projections: FxHashMap<(MovePathIndex, AbstractElem), MovePathIndex>,
+
+    un_derefer: UnDerefer<'tcx>,
 }
 
 mod builder;
@@ -309,15 +312,15 @@ pub enum LookupResult {
     Parent(Option<MovePathIndex>),
 }
 
-impl MovePathLookup {
+impl<'tcx> MovePathLookup<'tcx> {
     // Unlike the builder `fn move_path_for` below, this lookup
     // alternative will *not* create a MovePath on the fly for an
     // unknown place, but will rather return the nearest available
     // parent.
-    pub fn find(&self, place: PlaceRef<'_>) -> LookupResult {
-        let mut result = self.locals[place.local];
+    pub fn find(&self, place: PlaceRef<'tcx>) -> LookupResult {
+        let mut result = self.find_local(place.local);
 
-        for elem in place.projection.iter() {
+        for (_, elem) in self.un_derefer.iter_projections(place) {
             if let Some(&subpath) = self.projections.get(&(result, elem.lift())) {
                 result = subpath;
             } else {
@@ -328,6 +331,7 @@ impl MovePathLookup {
         LookupResult::Exact(result)
     }
 
+    #[inline]
     pub fn find_local(&self, local: Local) -> MovePathIndex {
         self.locals[local]
     }

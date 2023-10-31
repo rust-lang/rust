@@ -1,0 +1,16 @@
+error[E0015]: cannot call non-const operator in constant functions
+  --> $DIR/generic-bound.rs:25:5
+   |
+LL |     arg + arg
+   |     ^^^^^^^^^
+   |
+note: impl defined here, but it is not `const`
+  --> $DIR/generic-bound.rs:16:1
+   |
+LL | impl<T> const std::ops::Add for S<T> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0015`.

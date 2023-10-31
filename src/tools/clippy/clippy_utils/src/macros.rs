@@ -9,7 +9,7 @@ use rustc_hir::{self as hir, Expr, ExprKind, HirId, Node, QPath};
 use rustc_lint::LateContext;
 use rustc_span::def_id::DefId;
 use rustc_span::hygiene::{self, MacroKind, SyntaxContext};
-use rustc_span::{sym, BytePos, ExpnData, ExpnId, ExpnKind, Span, Symbol};
+use rustc_span::{sym, BytePos, ExpnData, ExpnId, ExpnKind, Span, SpanData, Symbol};
 use std::cell::RefCell;
 use std::ops::ControlFlow;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -192,7 +192,9 @@ pub fn first_node_in_macro(cx: &LateContext<'_>, node: &impl HirNode) -> Option<
 
 /// Is `def_id` of `std::panic`, `core::panic` or any inner implementation macros
 pub fn is_panic(cx: &LateContext<'_>, def_id: DefId) -> bool {
-    let Some(name) = cx.tcx.get_diagnostic_name(def_id) else { return false };
+    let Some(name) = cx.tcx.get_diagnostic_name(def_id) else {
+        return false;
+    };
     matches!(
         name,
         sym::core_panic_macro
@@ -205,7 +207,9 @@ pub fn is_panic(cx: &LateContext<'_>, def_id: DefId) -> bool {
 
 /// Is `def_id` of `assert!` or `debug_assert!`
 pub fn is_assert_macro(cx: &LateContext<'_>, def_id: DefId) -> bool {
-    let Some(name) = cx.tcx.get_diagnostic_name(def_id) else { return false };
+    let Some(name) = cx.tcx.get_diagnostic_name(def_id) else {
+        return false;
+    };
     matches!(name, sym::assert_macro | sym::debug_assert_macro)
 }
 
@@ -223,13 +227,19 @@ pub enum PanicExpn<'a> {
 
 impl<'a> PanicExpn<'a> {
     pub fn parse(expr: &'a Expr<'a>) -> Option<Self> {
-        let ExprKind::Call(callee, [arg, rest @ ..]) = &expr.kind else { return None };
-        let ExprKind::Path(QPath::Resolved(_, path)) = &callee.kind else { return None };
+        let ExprKind::Call(callee, [arg, rest @ ..]) = &expr.kind else {
+            return None;
+        };
+        let ExprKind::Path(QPath::Resolved(_, path)) = &callee.kind else {
+            return None;
+        };
         let result = match path.segments.last().unwrap().ident.as_str() {
             "panic" if arg.span.ctxt() == expr.span.ctxt() => Self::Empty,
             "panic" | "panic_str" => Self::Str(arg),
             "panic_display" => {
-                let ExprKind::AddrOf(_, _, e) = &arg.kind else { return None };
+                let ExprKind::AddrOf(_, _, e) = &arg.kind else {
+                    return None;
+                };
                 Self::Display(e)
             },
             "panic_fmt" => Self::Format(arg),
@@ -415,8 +425,18 @@ pub fn find_format_arg_expr<'hir, 'ast>(
     start: &'hir Expr<'hir>,
     target: &'ast FormatArgument,
 ) -> Result<&'hir rustc_hir::Expr<'hir>, &'ast rustc_ast::Expr> {
+    let SpanData {
+        lo,
+        hi,
+        ctxt,
+        parent: _,
+    } = target.expr.span.data();
+
     for_each_expr(start, |expr| {
-        if expr.span == target.expr.span {
+        // When incremental compilation is enabled spans gain a parent during AST to HIR lowering,
+        // since we're comparing an AST span to a HIR one we need to ignore the parent field
+        let data = expr.span.data();
+        if data.lo == lo && data.hi == hi && data.ctxt == ctxt {
             ControlFlow::Break(expr)
         } else {
             ControlFlow::Continue(())

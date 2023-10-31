@@ -58,7 +58,7 @@ fn check<'tcx>(
             MANUAL_MAP,
             expr.span,
             "manual implementation of `Option::map`",
-            "try this",
+            "try",
             if sugg_info.needs_brackets {
                 format!(
                     "{{ {}{}.map({}) }}",

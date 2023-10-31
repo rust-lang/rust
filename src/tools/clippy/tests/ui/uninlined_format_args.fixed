@@ -1,8 +1,13 @@
-//@aux-build:proc_macros.rs
+//@aux-build:proc_macros.rs:proc-macro
 //@run-rustfix
 #![warn(clippy::uninlined_format_args)]
 #![allow(named_arguments_used_positionally, unused)]
-#![allow(clippy::eq_op, clippy::format_in_format_args, clippy::print_literal)]
+#![allow(
+    clippy::eq_op,
+    clippy::format_in_format_args,
+    clippy::print_literal,
+    clippy::unnecessary_literal_unwrap
+)]
 
 extern crate proc_macros;
 use proc_macros::with_span;

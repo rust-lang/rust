@@ -12,7 +12,7 @@
 use rustc_arena::DroplessArena;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{LocalDefId, LocalDefIdMap};
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 use std::fmt;
 
 use self::VarianceTerm::*;
@@ -32,8 +32,8 @@ pub enum VarianceTerm<'a> {
 impl<'a> fmt::Debug for VarianceTerm<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            ConstantTerm(c1) => write!(f, "{:?}", c1),
-            TransformTerm(v1, v2) => write!(f, "({:?} \u{00D7} {:?})", v1, v2),
+            ConstantTerm(c1) => write!(f, "{c1:?}"),
+            TransformTerm(v1, v2) => write!(f, "({v1:?} \u{00D7} {v2:?})"),
             InferredTerm(id) => write!(f, "[{}]", {
                 let InferredIndex(i) = id;
                 i
@@ -97,6 +97,11 @@ pub fn determine_parameters_to_be_inferred<'a, 'tcx>(
                 }
             }
             DefKind::Fn | DefKind::AssocFn => terms_cx.add_inferreds_for_item(def_id),
+            DefKind::TyAlias { lazy }
+                if lazy || tcx.type_of(def_id).instantiate_identity().has_opaque_types() =>
+            {
+                terms_cx.add_inferreds_for_item(def_id)
+            }
             _ => {}
         }
     }

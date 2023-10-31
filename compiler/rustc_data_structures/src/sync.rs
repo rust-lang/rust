@@ -139,9 +139,14 @@ cfg_if! {
 
         impl Atomic<bool> {
             pub fn fetch_or(&self, val: bool, _: Ordering) -> bool {
-                let result = self.0.get() | val;
-                self.0.set(val);
-                result
+                let old = self.0.get();
+                self.0.set(val | old);
+                old
+            }
+            pub fn fetch_and(&self, val: bool, _: Ordering) -> bool {
+                let old = self.0.get();
+                self.0.set(val & old);
+                old
             }
         }
 

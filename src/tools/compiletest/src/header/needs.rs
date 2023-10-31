@@ -71,6 +71,11 @@ pub(super) fn handle_needs(
             ignore_reason: "ignored on targets without shadow call stacks",
         },
         Need {
+            name: "needs-sanitizer-safestack",
+            condition: cache.sanitizer_safestack,
+            ignore_reason: "ignored on targets without SafeStack support",
+        },
+        Need {
             name: "needs-run-enabled",
             condition: config.run_enabled(),
             ignore_reason: "ignored when running the resulting test binaries is disabled",
@@ -82,7 +87,7 @@ pub(super) fn handle_needs(
         },
         Need {
             name: "needs-profiler-support",
-            condition: std::env::var_os("RUSTC_PROFILER_SUPPORT").is_some(),
+            condition: cache.profiler_support,
             ignore_reason: "ignored when profiler support is disabled",
         },
         Need {
@@ -124,6 +129,11 @@ pub(super) fn handle_needs(
             name: "needs-git-hash",
             condition: config.git_hash,
             ignore_reason: "ignored when git hashes have been omitted for building",
+        },
+        Need {
+            name: "needs-dynamic-linking",
+            condition: config.target_cfg().dynamic_linking,
+            ignore_reason: "ignored on targets without dynamic linking",
         },
     ];
 
@@ -184,6 +194,8 @@ pub(super) struct CachedNeedsConditions {
     sanitizer_hwaddress: bool,
     sanitizer_memtag: bool,
     sanitizer_shadow_call_stack: bool,
+    sanitizer_safestack: bool,
+    profiler_support: bool,
     xray: bool,
     rust_lld: bool,
     i686_dlltool: bool,
@@ -220,6 +232,8 @@ impl CachedNeedsConditions {
             sanitizer_hwaddress: util::HWASAN_SUPPORTED_TARGETS.contains(target),
             sanitizer_memtag: util::MEMTAG_SUPPORTED_TARGETS.contains(target),
             sanitizer_shadow_call_stack: util::SHADOWCALLSTACK_SUPPORTED_TARGETS.contains(target),
+            sanitizer_safestack: util::SAFESTACK_SUPPORTED_TARGETS.contains(target),
+            profiler_support: std::env::var_os("RUSTC_PROFILER_SUPPORT").is_some(),
             xray: util::XRAY_SUPPORTED_TARGETS.contains(target),
 
             // For tests using the `needs-rust-lld` directive (e.g. for `-Zgcc-ld=lld`), we need to find

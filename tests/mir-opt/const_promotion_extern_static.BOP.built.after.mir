@@ -1,17 +1,17 @@
 // MIR for `BOP` after built
 
 static BOP: &i32 = {
-    let mut _0: &i32;                    // return place in scope 0 at $DIR/const_promotion_extern_static.rs:+0:13: +0:17
-    let _1: &i32;                        // in scope 0 at $DIR/const_promotion_extern_static.rs:+0:20: +0:23
-    let _2: i32;                         // in scope 0 at $DIR/const_promotion_extern_static.rs:+0:21: +0:23
+    let mut _0: &i32;
+    let _1: &i32;
+    let _2: i32;
 
     bb0: {
-        StorageLive(_1);                 // scope 0 at $DIR/const_promotion_extern_static.rs:+0:20: +0:23
-        StorageLive(_2);                 // scope 0 at $DIR/const_promotion_extern_static.rs:+0:21: +0:23
-        _2 = const 13_i32;               // scope 0 at $DIR/const_promotion_extern_static.rs:+0:21: +0:23
-        _1 = &_2;                        // scope 0 at $DIR/const_promotion_extern_static.rs:+0:20: +0:23
-        _0 = &(*_1);                     // scope 0 at $DIR/const_promotion_extern_static.rs:+0:20: +0:23
-        StorageDead(_1);                 // scope 0 at $DIR/const_promotion_extern_static.rs:+0:22: +0:23
-        return;                          // scope 0 at $DIR/const_promotion_extern_static.rs:+0:1: +0:24
+        StorageLive(_1);
+        StorageLive(_2);
+        _2 = const 13_i32;
+        _1 = &_2;
+        _0 = &(*_1);
+        StorageDead(_1);
+        return;
     }
 }

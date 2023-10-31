@@ -1,3 +1,4 @@
+#![allow(clippy::useless_vec)]
 #[warn(clippy::iterator_step_by_zero)]
 fn main() {
     let _ = vec!["A", "B", "B"].iter().step_by(0);

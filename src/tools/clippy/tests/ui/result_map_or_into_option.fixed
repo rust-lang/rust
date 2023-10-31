@@ -15,5 +15,5 @@ fn main() {
     // A non-Some `f` closure where the argument is not used as the
     // return should not emit the lint
     let opt: Result<u32, &str> = Ok(1);
-    opt.map_or(None, |_x| Some(1));
+    _ = opt.map_or(None, |_x| Some(1));
 }

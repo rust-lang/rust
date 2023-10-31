@@ -174,3 +174,15 @@ fn rustfmt_emits_error_on_line_overflow_true() {
         "line formatted, but exceeded maximum width (maximum: 100 (see `max_width` option)"
     ))
 }
+
+#[test]
+#[allow(non_snake_case)]
+fn dont_emit_ICE() {
+    let files = ["tests/target/issue_5728.rs", "tests/target/issue_5729.rs"];
+
+    for file in files {
+        let args = [file];
+        let (_stdout, stderr) = rustfmt(&args);
+        assert!(!stderr.contains("thread 'main' panicked"));
+    }
+}

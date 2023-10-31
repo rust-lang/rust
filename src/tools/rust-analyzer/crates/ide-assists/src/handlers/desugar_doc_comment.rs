@@ -27,7 +27,9 @@ use crate::{
 pub(crate) fn desugar_doc_comment(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let comment = ctx.find_token_at_offset::<ast::Comment>()?;
     // Only allow doc comments
-    let Some(placement) = comment.kind().doc else { return None; };
+    let Some(placement) = comment.kind().doc else {
+        return None;
+    };
 
     // Only allow comments which are alone on their line
     if let Some(prev) = comment.syntax().prev_token() {

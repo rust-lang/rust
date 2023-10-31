@@ -47,7 +47,7 @@ fn check_install_precondition(force_override: bool) -> bool {
         }
     } else {
         match fs::create_dir(vs_dir_path) {
-            Ok(_) => {
+            Ok(()) => {
                 println!("info: created `{VSCODE_DIR}` directory for clippy");
             },
             Err(err) => {

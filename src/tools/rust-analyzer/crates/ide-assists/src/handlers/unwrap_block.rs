@@ -51,15 +51,11 @@ pub(crate) fn unwrap_block(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
         let replaced = match list.syntax().last_child() {
             Some(last) => {
                 let stmts: Vec<ast::Stmt> = list.statements().collect();
-                let initializer = ast::Expr::cast(last.clone())?;
+                let initializer = ast::Expr::cast(last)?;
                 let let_stmt = make::let_stmt(pattern, ty, Some(initializer));
                 if stmts.len() > 0 {
                     let block = make::block_expr(stmts, None);
-                    format!(
-                        "{}\n    {}",
-                        update_expr_string(block.to_string()),
-                        let_stmt.to_string()
-                    )
+                    format!("{}\n    {}", update_expr_string(block.to_string()), let_stmt)
                 } else {
                     let_stmt.to_string()
                 }

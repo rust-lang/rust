@@ -27,8 +27,7 @@ mod m3 {
     fn f() {
         macro_rules! legacy_macro { () => () }
 
-        // Legacy macro imports create ambiguities with other names in the same namespace.
-        use legacy_macro as _; //~ ERROR `legacy_macro` is ambiguous
+        use legacy_macro as _; // OK
     }
 }
 

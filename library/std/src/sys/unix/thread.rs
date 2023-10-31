@@ -1,9 +1,11 @@
+#![cfg_attr(target_vendor = "wasmer", allow(dead_code))]
 use crate::cmp;
 use crate::ffi::CStr;
 use crate::io;
 use crate::mem;
 use crate::num::NonZeroUsize;
 use crate::ptr;
+use crate::sync::Arc;
 use crate::sys::{os, stack_overflow};
 use crate::time::Duration;
 
@@ -111,6 +113,43 @@ impl Thread {
         }
     }
 
+    pub unsafe fn new_reactor<F>(p: F) -> io::Result<Thread>
+    where F: Fn() + Send + Sync + 'static {
+        let p = Arc::new(p);
+        let p = Arc::into_raw(p);
+        let mut native: libc::pthread_t = mem::zeroed();
+        let mut attr: libc::pthread_attr_t = mem::zeroed();
+        assert_eq!(libc::pthread_attr_init(&mut attr), 0);
+
+        let ret = libc::pthread_create(&mut native, &attr, reactor_start, p as *mut _);
+        // Note: if the thread creation fails and this assert fails, then p will
+        // be leaked. However, an alternative design could cause double-free
+        // which is clearly worse.
+        assert_eq!(libc::pthread_attr_destroy(&mut attr), 0);
+
+        return if ret != 0 {
+            // The thread failed to start and as a result p was not consumed. Therefore, it is
+            // safe to reconstruct the box so that it gets deallocated.
+            drop(Arc::from_raw(p));
+            Err(io::Error::from_raw_os_error(ret))
+        } else {
+            Ok(Thread { id: native })
+        };
+
+        extern "C" fn reactor_start(main: *mut libc::c_void) -> *mut libc::c_void {
+            unsafe {
+                // Next, set up our stack overflow handler which may get triggered if we run
+                // out of stack.
+                let _handler = stack_overflow::Handler::new();
+                // Finally, let's run some code.
+                let f = Arc::from_raw(main as *mut Arc<dyn Fn()>);
+                f();
+                crate::mem::forget(f);
+            }
+            ptr::null_mut()
+        }
+    }
+
     pub fn yield_now() {
         let ret = unsafe { libc::sched_yield() };
         debug_assert_eq!(ret, 0);
@@ -150,7 +189,7 @@ impl Thread {
         }
     }
 
-    #[cfg(any(target_os = "macos", target_os = "ios", target_os = "watchos"))]
+    #[cfg(any(target_os = "macos", target_os = "ios", target_os = "tvos", target_os = "watchos"))]
     pub fn set_name(name: &CStr) {
         unsafe {
             let name = truncate_cstr::<{ libc::MAXTHREADNAMESIZE }>(name);
@@ -212,6 +251,7 @@ impl Thread {
         target_env = "newlib",
         target_os = "l4re",
         target_os = "emscripten",
+        target_os = "wasi",
         target_os = "redox",
         target_os = "vxworks"
     ))]
@@ -284,7 +324,13 @@ impl Drop for Thread {
     }
 }
 
-#[cfg(any(target_os = "linux", target_os = "macos", target_os = "ios", target_os = "watchos"))]
+#[cfg(any(
+    target_os = "linux",
+    target_os = "macos",
+    target_os = "ios",
+    target_os = "tvos",
+    target_os = "watchos",
+))]
 fn truncate_cstr<const MAX_WITH_NUL: usize>(cstr: &CStr) -> [libc::c_char; MAX_WITH_NUL] {
     let mut result = [0; MAX_WITH_NUL];
     for (src, dst) in cstr.to_bytes().iter().zip(&mut result[..MAX_WITH_NUL - 1]) {
@@ -298,8 +344,10 @@ pub fn available_parallelism() -> io::Result<NonZeroUsize> {
         if #[cfg(any(
             target_os = "android",
             target_os = "emscripten",
+            target_os = "wasi",
             target_os = "fuchsia",
             target_os = "ios",
+            target_os = "tvos",
             target_os = "linux",
             target_os = "macos",
             target_os = "solaris",
@@ -340,6 +388,29 @@ pub fn available_parallelism() -> io::Result<NonZeroUsize> {
                         let count = libc::CPU_COUNT(&set) as usize;
                         if count > 0 {
                             return Ok(NonZeroUsize::new_unchecked(count));
+                        }
+                    }
+                }
+            }
+
+            #[cfg(target_os = "netbsd")]
+            {
+                unsafe {
+                    let set = libc::_cpuset_create();
+                    if !set.is_null() {
+                        let mut count: usize = 0;
+                        if libc::pthread_getaffinity_np(libc::pthread_self(), libc::_cpuset_size(set), set) == 0 {
+                            for i in 0..u64::MAX {
+                                match libc::_cpuset_isset(i, set) {
+                                    -1 => break,
+                                    0 => continue,
+                                    _ => count = count + 1,
+                                }
+                            }
+                        }
+                        libc::_cpuset_destroy(set);
+                        if let Some(count) = NonZeroUsize::new(count) {
+                            return Ok(count);
                         }
                     }
                 }

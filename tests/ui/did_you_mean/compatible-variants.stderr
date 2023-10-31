@@ -61,6 +61,8 @@ LL +     Some(())
 error[E0308]: `?` operator has incompatible types
   --> $DIR/compatible-variants.rs:35:5
    |
+LL | fn d() -> Option<()> {
+   |           ---------- expected `Option<()>` because of return type
 LL |     c()?
    |     ^^^^ expected `Option<()>`, found `()`
    |

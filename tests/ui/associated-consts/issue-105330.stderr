@@ -39,6 +39,12 @@ error[E0562]: `impl Trait` only allowed in function and inherent method return t
 LL | impl TraitWAssocConst for impl Demo {
    |                           ^^^^^^^^^
 
+error[E0131]: `main` function is not allowed to have generic parameters
+  --> $DIR/issue-105330.rs:17:8
+   |
+LL | fn main<A: TraitWAssocConst<A=32>>() {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^ `main` cannot have generic parameters
+
 error[E0277]: the trait bound `Demo: TraitWAssocConst` is not satisfied
   --> $DIR/issue-105330.rs:12:11
    |
@@ -100,12 +106,6 @@ note: required by a bound in `foo`
    |
 LL | fn foo<A: TraitWAssocConst<A=32>>() {
    |                            ^^^^ required by this bound in `foo`
-
-error[E0131]: `main` function is not allowed to have generic parameters
-  --> $DIR/issue-105330.rs:17:8
-   |
-LL | fn main<A: TraitWAssocConst<A=32>>() {
-   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^ `main` cannot have generic parameters
 
 error: aborting due to 11 previous errors
 

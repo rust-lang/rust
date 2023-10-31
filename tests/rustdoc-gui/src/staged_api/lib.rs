@@ -1,4 +1,5 @@
 #![feature(staged_api)]
+#![allow(internal_features)]
 #![stable(feature = "some_feature", since = "1.3.5")]
 
 #[stable(feature = "some_feature", since = "1.3.5")]

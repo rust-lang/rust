@@ -1,0 +1,9 @@
+error[E0423]: expected value, found macro `vec`
+  --> $DIR/iter_next_loop.rs:6:14
+   |
+LL |     for _ in vec.iter().next() {}
+   |              ^^^ not a value
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0423`.

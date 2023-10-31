@@ -6,7 +6,8 @@ use rustc_ast::ExprPrecedence;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, Node};
 use rustc_lint::LateContext;
-use rustc_middle::ty::{cast::CastKind, Ty};
+use rustc_middle::ty::cast::CastKind;
+use rustc_middle::ty::Ty;
 
 /// Checks for `transmutes_expressible_as_ptr_casts` lint.
 /// Returns `true` if it's triggered, otherwise returns `false`.

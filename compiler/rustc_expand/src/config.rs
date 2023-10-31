@@ -197,9 +197,11 @@ pub fn pre_configure_attrs(sess: &Session, attrs: &[Attribute]) -> ast::AttrVec 
         config_tokens: false,
         lint_node_id: ast::CRATE_NODE_ID,
     };
-    let attrs: ast::AttrVec =
-        attrs.iter().flat_map(|attr| strip_unconfigured.process_cfg_attr(attr)).collect();
-    if strip_unconfigured.in_cfg(&attrs) { attrs } else { ast::AttrVec::new() }
+    attrs
+        .iter()
+        .flat_map(|attr| strip_unconfigured.process_cfg_attr(attr))
+        .take_while(|attr| !is_cfg(attr) || strip_unconfigured.cfg_true(attr).0)
+        .collect()
 }
 
 #[macro_export]
@@ -311,9 +313,10 @@ impl<'a> StripUnconfigured<'a> {
     /// the attribute is incorrect.
     pub(crate) fn expand_cfg_attr(&self, attr: &Attribute, recursive: bool) -> Vec<Attribute> {
         let Some((cfg_predicate, expanded_attrs)) =
-            rustc_parse::parse_cfg_attr(attr, &self.sess.parse_sess) else {
-                return vec![];
-            };
+            rustc_parse::parse_cfg_attr(attr, &self.sess.parse_sess)
+        else {
+            return vec![];
+        };
 
         // Lint on zero attributes in source.
         if expanded_attrs.is_empty() {
@@ -362,17 +365,21 @@ impl<'a> StripUnconfigured<'a> {
 
         // Use the `#` in `#[cfg_attr(pred, attr)]` as the `#` token
         // for `attr` when we expand it to `#[attr]`
-        let mut orig_trees = orig_tokens.into_trees();
-        let TokenTree::Token(pound_token @ Token { kind: TokenKind::Pound, .. }, _) = orig_trees.next().unwrap() else {
-            panic!("Bad tokens for attribute {:?}", attr);
+        let mut orig_trees = orig_tokens.trees();
+        let TokenTree::Token(pound_token @ Token { kind: TokenKind::Pound, .. }, _) =
+            orig_trees.next().unwrap().clone()
+        else {
+            panic!("Bad tokens for attribute {attr:?}");
         };
         let pound_span = pound_token.span;
 
         let mut trees = vec![AttrTokenTree::Token(pound_token, Spacing::Alone)];
         if attr.style == AttrStyle::Inner {
             // For inner attributes, we do the same thing for the `!` in `#![some_attr]`
-            let TokenTree::Token(bang_token @ Token { kind: TokenKind::Not, .. }, _) = orig_trees.next().unwrap() else {
-                panic!("Bad tokens for attribute {:?}", attr);
+            let TokenTree::Token(bang_token @ Token { kind: TokenKind::Not, .. }, _) =
+                orig_trees.next().unwrap().clone()
+            else {
+                panic!("Bad tokens for attribute {attr:?}");
             };
             trees.push(AttrTokenTree::Token(bang_token, Spacing::Alone));
         }
@@ -383,7 +390,7 @@ impl<'a> StripUnconfigured<'a> {
             Delimiter::Bracket,
             item.tokens
                 .as_ref()
-                .unwrap_or_else(|| panic!("Missing tokens for {:?}", item))
+                .unwrap_or_else(|| panic!("Missing tokens for {item:?}"))
                 .to_attr_token_stream(),
         );
         trees.push(bracket_group);
@@ -416,26 +423,34 @@ impl<'a> StripUnconfigured<'a> {
 
     /// Determines if a node with the given attributes should be included in this configuration.
     fn in_cfg(&self, attrs: &[Attribute]) -> bool {
-        attrs.iter().all(|attr| !is_cfg(attr) || self.cfg_true(attr))
+        attrs.iter().all(|attr| !is_cfg(attr) || self.cfg_true(attr).0)
     }
 
-    pub(crate) fn cfg_true(&self, attr: &Attribute) -> bool {
+    pub(crate) fn cfg_true(&self, attr: &Attribute) -> (bool, Option<MetaItem>) {
         let meta_item = match validate_attr::parse_meta(&self.sess.parse_sess, attr) {
             Ok(meta_item) => meta_item,
             Err(mut err) => {
                 err.emit();
-                return true;
+                return (true, None);
             }
         };
-        parse_cfg(&meta_item, &self.sess).map_or(true, |meta_item| {
-            attr::cfg_matches(&meta_item, &self.sess.parse_sess, self.lint_node_id, self.features)
-        })
+        (
+            parse_cfg(&meta_item, &self.sess).map_or(true, |meta_item| {
+                attr::cfg_matches(
+                    &meta_item,
+                    &self.sess.parse_sess,
+                    self.lint_node_id,
+                    self.features,
+                )
+            }),
+            Some(meta_item),
+        )
     }
 
     /// If attributes are not allowed on expressions, emit an error for `attr`
     #[instrument(level = "trace", skip(self))]
     pub(crate) fn maybe_emit_expr_attr_err(&self, attr: &Attribute) {
-        if !self.features.map_or(true, |features| features.stmt_expr_attributes) {
+        if self.features.is_some_and(|features| !features.stmt_expr_attributes) {
             let mut err = feature_err(
                 &self.sess.parse_sess,
                 sym::stmt_expr_attributes,

@@ -10,7 +10,7 @@ use rustc_span::symbol::sym;
 /// Returns `true` if it's triggered, otherwise returns `false`.
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>, from_ty: Ty<'tcx>, to_ty: Ty<'tcx>) -> bool {
     match (&from_ty.kind(), &to_ty.kind()) {
-        (ty::Adt(from_adt, from_substs), ty::Adt(to_adt, to_substs)) => {
+        (ty::Adt(from_adt, from_args), ty::Adt(to_adt, to_args)) => {
             if from_adt.did() != to_adt.did() {
                 return false;
             }
@@ -28,9 +28,9 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>, from_ty: Ty
             ) {
                 return false;
             }
-            if from_substs
+            if from_args
                 .types()
-                .zip(to_substs.types())
+                .zip(to_args.types())
                 .any(|(from_ty, to_ty)| is_layout_incompatible(cx, from_ty, to_ty))
             {
                 span_lint(

@@ -1,0 +1,27 @@
+error[E0658]: return type notation is experimental
+  --> $DIR/feature-gate-return_type_notation.rs:17:17
+   |
+LL | fn foo<T: Trait<m(): Send>>() {}
+   |                 ^^^^^^^^^
+   |
+   = note: see issue #109417 <https://github.com/rust-lang/rust/issues/109417> for more information
+   = help: add `#![feature(return_type_notation)]` to the crate attributes to enable
+
+error: parenthesized generic arguments cannot be used in associated type constraints
+  --> $DIR/feature-gate-return_type_notation.rs:17:17
+   |
+LL | fn foo<T: Trait<m(): Send>>() {}
+   |                 ^--
+   |                  |
+   |                  help: remove these parentheses
+
+error[E0220]: associated type `m` not found for `Trait`
+  --> $DIR/feature-gate-return_type_notation.rs:17:17
+   |
+LL | fn foo<T: Trait<m(): Send>>() {}
+   |                 ^ associated type `m` not found
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0220, E0658.
+For more information about an error, try `rustc --explain E0220`.

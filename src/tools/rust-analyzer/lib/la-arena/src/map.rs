@@ -1,3 +1,4 @@
+use std::iter::Enumerate;
 use std::marker::PhantomData;
 
 use crate::Idx;
@@ -72,17 +73,17 @@ impl<T, V> ArenaMap<Idx<T>, V> {
     }
 
     /// Returns an iterator over the values in the map.
-    pub fn values(&self) -> impl Iterator<Item = &V> {
+    pub fn values(&self) -> impl Iterator<Item = &V> + DoubleEndedIterator {
         self.v.iter().filter_map(|o| o.as_ref())
     }
 
     /// Returns an iterator over mutable references to the values in the map.
-    pub fn values_mut(&mut self) -> impl Iterator<Item = &mut V> {
+    pub fn values_mut(&mut self) -> impl Iterator<Item = &mut V> + DoubleEndedIterator {
         self.v.iter_mut().filter_map(|o| o.as_mut())
     }
 
     /// Returns an iterator over the arena indexes and values in the map.
-    pub fn iter(&self) -> impl Iterator<Item = (Idx<T>, &V)> {
+    pub fn iter(&self) -> impl Iterator<Item = (Idx<T>, &V)> + DoubleEndedIterator {
         self.v.iter().enumerate().filter_map(|(idx, o)| Some((Self::from_idx(idx), o.as_ref()?)))
     }
 
@@ -92,12 +93,6 @@ impl<T, V> ArenaMap<Idx<T>, V> {
             .iter_mut()
             .enumerate()
             .filter_map(|(idx, o)| Some((Self::from_idx(idx), o.as_mut()?)))
-    }
-
-    /// Returns an iterator over the arena indexes and values in the map.
-    // FIXME: Implement `IntoIterator` trait.
-    pub fn into_iter(self) -> impl Iterator<Item = (Idx<T>, V)> {
-        self.v.into_iter().enumerate().filter_map(|(idx, o)| Some((Self::from_idx(idx), o?)))
     }
 
     /// Gets the given key's corresponding entry in the map for in-place manipulation.
@@ -151,6 +146,63 @@ impl<T, V> FromIterator<(Idx<V>, T)> for ArenaMap<Idx<V>, T> {
         let mut this = Self::new();
         this.extend(iter);
         this
+    }
+}
+
+pub struct ArenaMapIter<IDX, V> {
+    iter: Enumerate<std::vec::IntoIter<Option<V>>>,
+    _ty: PhantomData<IDX>,
+}
+
+impl<T, V> IntoIterator for ArenaMap<Idx<T>, V> {
+    type Item = (Idx<T>, V);
+
+    type IntoIter = ArenaMapIter<Idx<T>, V>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        let iter = self.v.into_iter().enumerate();
+        Self::IntoIter { iter, _ty: PhantomData }
+    }
+}
+
+impl<T, V> ArenaMapIter<Idx<T>, V> {
+    fn mapper((idx, o): (usize, Option<V>)) -> Option<(Idx<T>, V)> {
+        Some((ArenaMap::<Idx<T>, V>::from_idx(idx), o?))
+    }
+}
+
+impl<T, V> Iterator for ArenaMapIter<Idx<T>, V> {
+    type Item = (Idx<T>, V);
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        for next in self.iter.by_ref() {
+            match Self::mapper(next) {
+                Some(r) => return Some(r),
+                None => continue,
+            }
+        }
+
+        None
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.iter.size_hint()
+    }
+}
+
+impl<T, V> DoubleEndedIterator for ArenaMapIter<Idx<T>, V> {
+    #[inline]
+    fn next_back(&mut self) -> Option<Self::Item> {
+        while let Some(next_back) = self.iter.next_back() {
+            match Self::mapper(next_back) {
+                Some(r) => return Some(r),
+                None => continue,
+            }
+        }
+
+        None
     }
 }
 

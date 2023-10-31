@@ -63,7 +63,7 @@
 //! `is_cleanup` above.
 
 use crate::mir::*;
-use crate::ty::subst::SubstsRef;
+use crate::ty::GenericArgsRef;
 use crate::ty::{self, CanonicalUserTypeAnnotation, Ty};
 use rustc_span::Span;
 
@@ -245,12 +245,12 @@ macro_rules! make_mir_visitor {
                 self.super_region(region);
             }
 
-            fn visit_substs(
+            fn visit_args(
                 &mut self,
-                substs: & $($mutability)? SubstsRef<'tcx>,
+                args: & $($mutability)? GenericArgsRef<'tcx>,
                 _: Location,
             ) {
-                self.super_substs(substs);
+                self.super_args(args);
             }
 
             fn visit_local_decl(
@@ -335,7 +335,7 @@ macro_rules! make_mir_visitor {
 
                     self.visit_span($(& $mutability)? *callsite_span);
 
-                    let ty::Instance { def: callee_def, substs: callee_substs } = callee;
+                    let ty::Instance { def: callee_def, args: callee_args } = callee;
                     match callee_def {
                         ty::InstanceDef::Item(_def_id) => {}
 
@@ -355,7 +355,7 @@ macro_rules! make_mir_visitor {
                             self.visit_ty($(& $mutability)? *ty, TyContext::Location(location));
                         }
                     }
-                    self.visit_substs(callee_substs, location);
+                    self.visit_args(callee_args, location);
                 }
                 if let Some(inlined_parent_scope) = inlined_parent_scope {
                     self.visit_source_scope($(& $mutability)? *inlined_parent_scope);
@@ -504,6 +504,7 @@ macro_rules! make_mir_visitor {
                         place,
                         target: _,
                         unwind: _,
+                        replace: _,
                     } => {
                         self.visit_place(
                             place,
@@ -518,7 +519,7 @@ macro_rules! make_mir_visitor {
                         destination,
                         target: _,
                         unwind: _,
-                        from_hir_call: _,
+                        call_source: _,
                         fn_span: _
                     } => {
                         self.visit_operand(func, location);
@@ -649,9 +650,6 @@ macro_rules! make_mir_visitor {
                             BorrowKind::Shallow => PlaceContext::NonMutatingUse(
                                 NonMutatingUseContext::ShallowBorrow
                             ),
-                            BorrowKind::Unique => PlaceContext::NonMutatingUse(
-                                NonMutatingUseContext::UniqueBorrow
-                            ),
                             BorrowKind::Mut { .. } =>
                                 PlaceContext::MutatingUse(MutatingUseContext::Borrow),
                         };
@@ -723,24 +721,24 @@ macro_rules! make_mir_visitor {
                             AggregateKind::Adt(
                                 _adt_def,
                                 _variant_index,
-                                substs,
-                                _user_substs,
+                                args,
+                                _user_args,
                                 _active_field_index
                             ) => {
-                                self.visit_substs(substs, location);
+                                self.visit_args(args, location);
                             }
                             AggregateKind::Closure(
                                 _,
-                                closure_substs
+                                closure_args
                             ) => {
-                                self.visit_substs(closure_substs, location);
+                                self.visit_args(closure_args, location);
                             }
                             AggregateKind::Generator(
                                 _,
-                                generator_substs,
+                                generator_args,
                                 _movability,
                             ) => {
-                                self.visit_substs(generator_substs, location);
+                                self.visit_args(generator_args, location);
                             }
                         }
 
@@ -842,7 +840,6 @@ macro_rules! make_mir_visitor {
                     source_info,
                     value,
                     argument_index: _,
-                    references: _,
                 } = var_debug_info;
 
                 self.visit_source_info(source_info);
@@ -935,7 +932,7 @@ macro_rules! make_mir_visitor {
             fn super_region(&mut self, _region: $(& $mutability)? ty::Region<'tcx>) {
             }
 
-            fn super_substs(&mut self, _substs: & $($mutability)? SubstsRef<'tcx>) {
+            fn super_args(&mut self, _args: & $($mutability)? GenericArgsRef<'tcx>) {
             }
 
             // Convenience methods
@@ -1135,13 +1132,12 @@ macro_rules! visit_place_fns {
 
         fn visit_projection_elem(
             &mut self,
-            local: Local,
-            proj_base: &[PlaceElem<'tcx>],
+            place_ref: PlaceRef<'tcx>,
             elem: PlaceElem<'tcx>,
             context: PlaceContext,
             location: Location,
         ) {
-            self.super_projection_elem(local, proj_base, elem, context, location);
+            self.super_projection_elem(place_ref, elem, context, location);
         }
 
         fn super_place(&mut self, place: &Place<'tcx>, context: PlaceContext, location: Location) {
@@ -1170,15 +1166,13 @@ macro_rules! visit_place_fns {
             location: Location,
         ) {
             for (base, elem) in place_ref.iter_projections().rev() {
-                let base_proj = base.projection;
-                self.visit_projection_elem(place_ref.local, base_proj, elem, context, location);
+                self.visit_projection_elem(base, elem, context, location);
             }
         }
 
         fn super_projection_elem(
             &mut self,
-            _local: Local,
-            _proj_base: &[PlaceElem<'tcx>],
+            _place_ref: PlaceRef<'tcx>,
             elem: PlaceElem<'tcx>,
             _context: PlaceContext,
             location: Location,
@@ -1264,8 +1258,6 @@ pub enum NonMutatingUseContext {
     SharedBorrow,
     /// Shallow borrow.
     ShallowBorrow,
-    /// Unique borrow.
-    UniqueBorrow,
     /// AddressOf for *const pointer.
     AddressOf,
     /// PlaceMention statement.
@@ -1344,9 +1336,7 @@ impl PlaceContext {
         matches!(
             self,
             PlaceContext::NonMutatingUse(
-                NonMutatingUseContext::SharedBorrow
-                    | NonMutatingUseContext::ShallowBorrow
-                    | NonMutatingUseContext::UniqueBorrow
+                NonMutatingUseContext::SharedBorrow | NonMutatingUseContext::ShallowBorrow
             ) | PlaceContext::MutatingUse(MutatingUseContext::Borrow)
         )
     }

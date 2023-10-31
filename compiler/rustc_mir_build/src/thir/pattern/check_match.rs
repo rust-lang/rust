@@ -90,35 +90,34 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for MatchVisitor<'a, '_, 'tcx> {
 
     #[instrument(level = "trace", skip(self))]
     fn visit_arm(&mut self, arm: &Arm<'tcx>) {
-        match arm.guard {
-            Some(Guard::If(expr)) => {
-                self.with_let_source(LetSource::IfLetGuard, |this| {
-                    this.visit_expr(&this.thir[expr])
-                });
+        self.with_lint_level(arm.lint_level, |this| {
+            match arm.guard {
+                Some(Guard::If(expr)) => {
+                    this.with_let_source(LetSource::IfLetGuard, |this| {
+                        this.visit_expr(&this.thir[expr])
+                    });
+                }
+                Some(Guard::IfLet(ref pat, expr)) => {
+                    this.with_let_source(LetSource::IfLetGuard, |this| {
+                        this.check_let(pat, expr, LetSource::IfLetGuard, pat.span);
+                        this.visit_pat(pat);
+                        this.visit_expr(&this.thir[expr]);
+                    });
+                }
+                None => {}
             }
-            Some(Guard::IfLet(ref pat, expr)) => {
-                self.with_let_source(LetSource::IfLetGuard, |this| {
-                    this.check_let(pat, expr, LetSource::IfLetGuard, pat.span);
-                    this.visit_pat(pat);
-                    this.visit_expr(&this.thir[expr]);
-                });
-            }
-            None => {}
-        }
-        self.visit_pat(&arm.pattern);
-        self.visit_expr(&self.thir[arm.body]);
+            this.visit_pat(&arm.pattern);
+            this.visit_expr(&self.thir[arm.body]);
+        });
     }
 
     #[instrument(level = "trace", skip(self))]
     fn visit_expr(&mut self, ex: &Expr<'tcx>) {
         match ex.kind {
             ExprKind::Scope { value, lint_level, .. } => {
-                let old_lint_level = self.lint_level;
-                if let LintLevel::Explicit(hir_id) = lint_level {
-                    self.lint_level = hir_id;
-                }
-                self.visit_expr(&self.thir[value]);
-                self.lint_level = old_lint_level;
+                self.with_lint_level(lint_level, |this| {
+                    this.visit_expr(&this.thir[value]);
+                });
                 return;
             }
             ExprKind::If { cond, then, else_opt, if_then_scope: _ } => {
@@ -136,10 +135,12 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for MatchVisitor<'a, '_, 'tcx> {
                 });
                 return;
             }
-            ExprKind::Match { scrutinee, box ref arms } => {
+            ExprKind::Match { scrutinee, scrutinee_hir_id, box ref arms } => {
                 let source = match ex.span.desugaring_kind() {
                     Some(DesugaringKind::ForLoop) => hir::MatchSource::ForLoopDesugar,
-                    Some(DesugaringKind::QuestionMark) => hir::MatchSource::TryDesugar,
+                    Some(DesugaringKind::QuestionMark) => {
+                        hir::MatchSource::TryDesugar(scrutinee_hir_id)
+                    }
                     Some(DesugaringKind::Await) => hir::MatchSource::AwaitDesugar,
                     _ => hir::MatchSource::Normal,
                 };
@@ -190,6 +191,17 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
         self.let_source = old_let_source;
     }
 
+    fn with_lint_level(&mut self, new_lint_level: LintLevel, f: impl FnOnce(&mut Self)) {
+        if let LintLevel::Explicit(hir_id) = new_lint_level {
+            let old_lint_level = self.lint_level;
+            self.lint_level = hir_id;
+            f(self);
+            self.lint_level = old_lint_level;
+        } else {
+            f(self);
+        }
+    }
+
     fn check_patterns(&self, pat: &Pat<'tcx>, rf: RefutableFlag) {
         pat.walk_always(|pat| check_borrow_conflicts_in_at_patterns(self, pat));
         check_for_bindings_named_same_as_variants(self, pat, rf);
@@ -236,7 +248,9 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
         for &arm in arms {
             // Check the arm for some things unrelated to exhaustiveness.
             let arm = &self.thir.arms[arm];
-            self.check_patterns(&arm.pattern, Refutable);
+            self.with_lint_level(arm.lint_level, |this| {
+                this.check_patterns(&arm.pattern, Refutable);
+            });
         }
 
         let tarms: Vec<_> = arms
@@ -265,7 +279,7 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
             | hir::MatchSource::FormatArgs => report_arm_reachability(&cx, &report),
             // Unreachable patterns in try and await expressions occur when one of
             // the arms are an uninhabited type. Which is OK.
-            hir::MatchSource::AwaitDesugar | hir::MatchSource::TryDesugar => {}
+            hir::MatchSource::AwaitDesugar | hir::MatchSource::TryDesugar(_) => {}
         }
 
         // Check if the match is exhaustive.
@@ -431,7 +445,12 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
         let mut let_suggestion = None;
         let mut misc_suggestion = None;
         let mut interpreted_as_const = None;
-        if let PatKind::Constant { .. } = pat.kind
+
+        if let PatKind::Constant { .. }
+            | PatKind::AscribeUserType {
+                subpattern: box Pat { kind: PatKind::Constant { .. }, .. },
+                ..
+              } = pat.kind
             && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(pat.span)
         {
             // If the pattern to match is an integer literal:
@@ -479,17 +498,17 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
             AdtDefinedHere { adt_def_span, ty, variants }
         };
 
-        // Emit an extra note if the first uncovered witness is
-        // visibly uninhabited anywhere in the current crate.
+        // Emit an extra note if the first uncovered witness would be uninhabited
+        // if we disregard visibility.
         let witness_1_is_privately_uninhabited =
             if cx.tcx.features().exhaustive_patterns
                 && let Some(witness_1) = witnesses.get(0)
-                && let ty::Adt(adt, substs) = witness_1.ty().kind()
+                && let ty::Adt(adt, args) = witness_1.ty().kind()
                 && adt.is_enum()
                 && let Constructor::Variant(variant_index) = witness_1.ctor()
             {
                 let variant = adt.variant(*variant_index);
-                let inhabited = variant.inhabited_predicate(cx.tcx, *adt).subst(cx.tcx, substs);
+                let inhabited = variant.inhabited_predicate(cx.tcx, *adt).instantiate(cx.tcx, args);
                 assert!(inhabited.apply(cx.tcx, cx.param_env, cx.module));
                 !inhabited.apply_ignore_module(cx.tcx, cx.param_env)
             } else {
@@ -674,7 +693,7 @@ fn non_exhaustive_match<'p, 'tcx>(
         err = create_e0004(
             cx.tcx.sess,
             sp,
-            format!("non-exhaustive patterns: {} not covered", joined_patterns),
+            format!("non-exhaustive patterns: {joined_patterns} not covered"),
         );
         err.span_label(sp, pattern_not_covered_label(&witnesses, &joined_patterns));
         patterns_len = witnesses.len();
@@ -704,15 +723,13 @@ fn non_exhaustive_match<'p, 'tcx>(
         && matches!(witnesses[0].ctor(), Constructor::NonExhaustive)
     {
         err.note(format!(
-            "`{}` does not have a fixed maximum value, so a wildcard `_` is necessary to match \
+            "`{scrut_ty}` does not have a fixed maximum value, so a wildcard `_` is necessary to match \
              exhaustively",
-            scrut_ty,
         ));
         if cx.tcx.sess.is_nightly_build() {
             err.help(format!(
                 "add `#![feature(precise_pointer_size_matching)]` to the crate attributes to \
-                 enable precise `{}` matching",
-                scrut_ty,
+                 enable precise `{scrut_ty}` matching",
             ));
         }
     }
@@ -728,18 +745,13 @@ fn non_exhaustive_match<'p, 'tcx>(
         [] if sp.eq_ctxt(expr_span) => {
             // Get the span for the empty match body `{}`.
             let (indentation, more) = if let Some(snippet) = sm.indentation_before(sp) {
-                (format!("\n{}", snippet), "    ")
+                (format!("\n{snippet}"), "    ")
             } else {
                 (" ".to_string(), "")
             };
             suggestion = Some((
                 sp.shrink_to_hi().with_hi(expr_span.hi()),
-                format!(
-                    " {{{indentation}{more}{pattern} => todo!(),{indentation}}}",
-                    indentation = indentation,
-                    more = more,
-                    pattern = pattern,
-                ),
+                format!(" {{{indentation}{more}{pattern} => todo!(),{indentation}}}",),
             ));
         }
         [only] => {
@@ -748,7 +760,7 @@ fn non_exhaustive_match<'p, 'tcx>(
                 && let Ok(with_trailing) = sm.span_extend_while(only.span, |c| c.is_whitespace() || c == ',')
                 && sm.is_multiline(with_trailing)
             {
-                (format!("\n{}", snippet), true)
+                (format!("\n{snippet}"), true)
             } else {
                 (" ".to_string(), false)
             };
@@ -763,7 +775,7 @@ fn non_exhaustive_match<'p, 'tcx>(
             };
             suggestion = Some((
                 only.span.shrink_to_hi(),
-                format!("{}{}{} => todo!()", comma, pre_indentation, pattern),
+                format!("{comma}{pre_indentation}{pattern} => todo!()"),
             ));
         }
         [.., prev, last] => {
@@ -786,7 +798,7 @@ fn non_exhaustive_match<'p, 'tcx>(
                 if let Some(spacing) = spacing {
                     suggestion = Some((
                         last.span.shrink_to_hi(),
-                        format!("{}{}{} => todo!()", comma, spacing, pattern),
+                        format!("{comma}{spacing}{pattern} => todo!()"),
                     ));
                 }
             }
@@ -813,6 +825,11 @@ fn non_exhaustive_match<'p, 'tcx>(
             _ => " or multiple match arms",
         },
     );
+
+    let all_arms_have_guards = arms.iter().all(|arm_id| thir[*arm_id].guard.is_some());
+    if !is_empty_match && all_arms_have_guards {
+        err.subdiagnostic(NonExhaustiveMatchAllArmsGuarded);
+    }
     if let Some((span, sugg)) = suggestion {
         err.span_suggestion_verbose(span, msg, sugg, Applicability::HasPlaceholders);
     } else {
@@ -878,7 +895,7 @@ fn adt_defined_here<'p, 'tcx>(
         for pat in spans {
             span.push_span_label(pat, "not covered");
         }
-        err.span_note(span, format!("`{}` defined here", ty));
+        err.span_note(span, format!("`{ty}` defined here"));
     }
 }
 
@@ -920,7 +937,9 @@ fn maybe_point_at_variant<'a, 'p: 'a, 'tcx: 'a>(
 /// This analysis is *not* subsumed by NLL.
 fn check_borrow_conflicts_in_at_patterns<'tcx>(cx: &MatchVisitor<'_, '_, 'tcx>, pat: &Pat<'tcx>) {
     // Extract `sub` in `binding @ sub`.
-    let PatKind::Binding { name, mode, ty, subpattern: Some(box ref sub), .. } = pat.kind else { return };
+    let PatKind::Binding { name, mode, ty, subpattern: Some(box ref sub), .. } = pat.kind else {
+        return;
+    };
 
     let is_binding_by_move = |ty: Ty<'tcx>| !ty.is_copy_modulo_regions(cx.tcx, cx.param_env);
 

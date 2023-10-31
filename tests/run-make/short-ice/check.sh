@@ -1,5 +1,5 @@
 #!/bin/sh
-
+export RUSTC_ICE=0
 RUST_BACKTRACE=1 $RUSTC src/lib.rs -Z treat-err-as-bug=1 1>$TMPDIR/rust-test-1.log 2>&1
 RUST_BACKTRACE=full $RUSTC src/lib.rs -Z treat-err-as-bug=1 1>$TMPDIR/rust-test-2.log 2>&1
 
@@ -28,8 +28,8 @@ echo "rustc_query_count_full: $rustc_query_count_full"
 ## and marks are in pairs.
 if [ $short -lt $full ] &&
     [ $begin_count -eq $end_count ] &&
-    [ $(($rustc_query_count + 10)) -lt $rustc_query_count_full ] &&
-    [ $rustc_query_count_full -gt 10 ]; then
+    [ $(($rustc_query_count + 5)) -lt $rustc_query_count_full ] &&
+    [ $rustc_query_count_full -gt 5 ]; then
     exit 0
 else
     exit 1

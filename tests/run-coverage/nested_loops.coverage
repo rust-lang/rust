@@ -1,0 +1,26 @@
+   LL|      1|fn main() {
+   LL|      1|    let is_true = std::env::args().len() == 1;
+   LL|      1|    let mut countdown = 10;
+   LL|       |
+   LL|      1|    'outer: while countdown > 0 {
+   LL|      1|        let mut a = 100;
+   LL|      1|        let mut b = 100;
+   LL|      3|        for _ in 0..50 {
+   LL|      3|            if a < 30 {
+   LL|      0|                break;
+   LL|      3|            }
+   LL|      3|            a -= 5;
+   LL|      3|            b -= 5;
+   LL|      3|            if b < 90 {
+   LL|      1|                a -= 10;
+   LL|      1|                if is_true {
+   LL|      1|                    break 'outer;
+   LL|      0|                } else {
+   LL|      0|                    a -= 2;
+   LL|      0|                }
+   LL|      2|            }
+   LL|       |        }
+   LL|      0|        countdown -= 1;
+   LL|       |    }
+   LL|      1|}
+

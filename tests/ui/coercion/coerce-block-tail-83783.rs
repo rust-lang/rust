@@ -1,4 +1,4 @@
-// check-fail
+// run-rustfix
 // edition:2018
 fn _consume_reference<T: ?Sized>(_: &T) {}
 

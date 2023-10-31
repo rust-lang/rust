@@ -45,7 +45,6 @@ pub enum TypeError<'tcx> {
 
     RegionsDoesNotOutlive(Region<'tcx>, Region<'tcx>),
     RegionsInsufficientlyPolymorphic(BoundRegionKind, Region<'tcx>),
-    RegionsOverlyPolymorphic(BoundRegionKind, Region<'tcx>),
     RegionsPlaceholderMismatch,
 
     Sorts(ExpectedFound<Ty<'tcx>>),
@@ -74,7 +73,6 @@ impl TypeError<'_> {
         match self {
             TypeError::RegionsDoesNotOutlive(_, _)
             | TypeError::RegionsInsufficientlyPolymorphic(_, _)
-            | TypeError::RegionsOverlyPolymorphic(_, _)
             | TypeError::RegionsPlaceholderMismatch => true,
             _ => false,
         }
@@ -92,16 +90,11 @@ impl<'tcx> TypeError<'tcx> {
             // A naive approach to making sure that we're not reporting silly errors such as:
             // (expected closure, found closure).
             if expected == found {
-                format!("expected {}, found a different {}", expected, found)
+                format!("expected {expected}, found a different {found}")
             } else {
-                format!("expected {}, found {}", expected, found)
+                format!("expected {expected}, found {found}")
             }
         }
-
-        let br_string = |br: ty::BoundRegionKind| match br {
-            ty::BrNamed(_, name) => format!(" {}", name),
-            _ => String::new(),
-        };
 
         match self {
             CyclicTy(_) => "cyclic type of infinite size".into(),
@@ -138,17 +131,12 @@ impl<'tcx> TypeError<'tcx> {
             )
             .into(),
             ArgCount => "incorrect number of function parameters".into(),
-            FieldMisMatch(adt, field) => format!("field type mismatch: {}.{}", adt, field).into(),
+            FieldMisMatch(adt, field) => format!("field type mismatch: {adt}.{field}").into(),
             RegionsDoesNotOutlive(..) => "lifetime mismatch".into(),
             // Actually naming the region here is a bit confusing because context is lacking
             RegionsInsufficientlyPolymorphic(..) => {
                 "one type is more general than the other".into()
             }
-            RegionsOverlyPolymorphic(br, _) => format!(
-                "expected concrete lifetime, found bound lifetime parameter{}",
-                br_string(br)
-            )
-            .into(),
             RegionsPlaceholderMismatch => "one type is more general than the other".into(),
             ArgumentSorts(values, _) | Sorts(values) => {
                 let expected = values.expected.sort_string(tcx);
@@ -176,7 +164,7 @@ impl<'tcx> TypeError<'tcx> {
                     ty::IntVarValue::IntType(ty) => ty.name_str(),
                     ty::IntVarValue::UintType(ty) => ty.name_str(),
                 };
-                format!("expected `{}`, found `{}`", expected, found).into()
+                format!("expected `{expected}`, found `{found}`").into()
             }
             FloatMismatch(ref values) => format!(
                 "expected `{}`, found `{}`",
@@ -228,7 +216,6 @@ impl<'tcx> TypeError<'tcx> {
             | FieldMisMatch(..)
             | RegionsDoesNotOutlive(..)
             | RegionsInsufficientlyPolymorphic(..)
-            | RegionsOverlyPolymorphic(..)
             | RegionsPlaceholderMismatch
             | Traits(_)
             | ProjectionMismatched(_)
@@ -313,6 +300,7 @@ impl<'tcx> Ty<'tcx> {
             ty::Placeholder(..) => "higher-ranked type".into(),
             ty::Bound(..) => "bound type variable".into(),
             ty::Alias(ty::Projection | ty::Inherent, _) => "associated type".into(),
+            ty::Alias(ty::Weak, _) => "type alias".into(),
             ty::Param(_) => "type parameter".into(),
             ty::Alias(ty::Opaque, ..) => "opaque type".into(),
         }
@@ -351,12 +339,17 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn short_ty_string(self, ty: Ty<'tcx>) -> (String, Option<PathBuf>) {
-        let width = self.sess.diagnostic_width();
-        let length_limit = width.saturating_sub(30);
         let regular = FmtPrinter::new(self, hir::def::Namespace::TypeNS)
             .pretty_print_type(ty)
             .expect("could not write to `String`")
             .into_buffer();
+
+        if !self.sess.opts.unstable_opts.write_long_types_to_disk {
+            return (regular, None);
+        }
+
+        let width = self.sess.diagnostic_width();
+        let length_limit = width.saturating_sub(30);
         if regular.len() <= width {
             return (regular, None);
         }

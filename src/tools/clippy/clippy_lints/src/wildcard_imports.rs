@@ -3,10 +3,8 @@ use clippy_utils::is_test_module_or_function;
 use clippy_utils::source::{snippet, snippet_with_applicability};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::{
-    def::{DefKind, Res},
-    Item, ItemKind, PathSegment, UseKind,
-};
+use rustc_hir::def::{DefKind, Res};
+use rustc_hir::{Item, ItemKind, PathSegment, UseKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
@@ -65,8 +63,9 @@ declare_clippy_lint! {
     /// This can lead to confusing error messages at best and to unexpected behavior at worst.
     ///
     /// ### Exceptions
-    /// Wildcard imports are allowed from modules named `prelude`. Many crates (including the standard library)
-    /// provide modules named "prelude" specifically designed for wildcard import.
+    /// Wildcard imports are allowed from modules that their name contains `prelude`. Many crates
+    /// (including the standard library) provide modules named "prelude" specifically designed
+    /// for wildcard import.
     ///
     /// `use super::*` is allowed in test modules. This is defined as any module with "test" in the name.
     ///
@@ -159,7 +158,7 @@ impl LateLintPass<'_> for WildcardImports {
                     )
                 };
 
-                let mut imports = used_imports.items().map(ToString::to_string).into_sorted_stable_ord(false);
+                let mut imports = used_imports.items().map(ToString::to_string).into_sorted_stable_ord();
                 let imports_string = if imports.len() == 1 {
                     imports.pop().unwrap()
                 } else if braced_glob {
@@ -212,7 +211,9 @@ impl WildcardImports {
 // Allow "...prelude::..::*" imports.
 // Many crates have a prelude, and it is imported as a glob by design.
 fn is_prelude_import(segments: &[PathSegment<'_>]) -> bool {
-    segments.iter().any(|ps| ps.ident.name == sym::prelude)
+    segments
+        .iter()
+        .any(|ps| ps.ident.name.as_str().contains(sym::prelude.as_str()))
 }
 
 // Allow "super::*" imports in tests.

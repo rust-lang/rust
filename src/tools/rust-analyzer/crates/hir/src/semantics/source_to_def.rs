@@ -14,7 +14,7 @@
 //! expression, an item definition.
 //!
 //! Knowing only the syntax gives us relatively little info. For example,
-//! looking at the syntax of the function we can realise that it is a part of an
+//! looking at the syntax of the function we can realize that it is a part of an
 //! `impl` block, but we won't be able to tell what trait function the current
 //! function overrides, and whether it does that correctly. For that, we need to
 //! go from [`ast::Fn`] to [`crate::Function`], and that's exactly what this
@@ -88,12 +88,14 @@
 use base_db::FileId;
 use hir_def::{
     child_by_source::ChildBySource,
-    dyn_map::DynMap,
-    expr::{BindingId, LabelId},
-    keys::{self, Key},
-    AdtId, ConstId, ConstParamId, DefWithBodyId, EnumId, EnumVariantId, FieldId, FunctionId,
-    GenericDefId, GenericParamId, ImplId, LifetimeParamId, MacroId, ModuleId, StaticId, StructId,
-    TraitAliasId, TraitId, TypeAliasId, TypeParamId, UnionId, VariantId,
+    dyn_map::{
+        keys::{self, Key},
+        DynMap,
+    },
+    hir::{BindingId, LabelId},
+    AdtId, ConstId, ConstParamId, DefWithBodyId, EnumId, EnumVariantId, ExternCrateId, FieldId,
+    FunctionId, GenericDefId, GenericParamId, ImplId, LifetimeParamId, MacroId, ModuleId, StaticId,
+    StructId, TraitAliasId, TraitId, TypeAliasId, TypeParamId, UnionId, UseId, VariantId,
 };
 use hir_expand::{attrs::AttrId, name::AsName, HirFileId, MacroCallId};
 use rustc_hash::FxHashMap;
@@ -201,6 +203,16 @@ impl SourceToDefCtx<'_, '_> {
     ) -> Option<EnumVariantId> {
         self.to_def(src, keys::VARIANT)
     }
+    pub(super) fn extern_crate_to_def(
+        &mut self,
+        src: InFile<ast::ExternCrate>,
+    ) -> Option<ExternCrateId> {
+        self.to_def(src, keys::EXTERN_CRATE)
+    }
+    #[allow(dead_code)]
+    pub(super) fn use_to_def(&mut self, src: InFile<ast::Use>) -> Option<UseId> {
+        self.to_def(src, keys::USE)
+    }
     pub(super) fn adt_to_def(
         &mut self,
         InFile { file_id, value }: InFile<ast::Adt>,
@@ -296,7 +308,7 @@ impl SourceToDefCtx<'_, '_> {
     pub(super) fn type_param_to_def(&mut self, src: InFile<ast::TypeParam>) -> Option<TypeParamId> {
         let container: ChildContainer = self.find_generic_param_container(src.syntax())?.into();
         let dyn_map = self.cache_for(container, src.file_id);
-        dyn_map[keys::TYPE_PARAM].get(&src.value).copied().map(|x| TypeParamId::from_unchecked(x))
+        dyn_map[keys::TYPE_PARAM].get(&src.value).copied().map(|it| TypeParamId::from_unchecked(it))
     }
 
     pub(super) fn lifetime_param_to_def(
@@ -314,7 +326,10 @@ impl SourceToDefCtx<'_, '_> {
     ) -> Option<ConstParamId> {
         let container: ChildContainer = self.find_generic_param_container(src.syntax())?.into();
         let dyn_map = self.cache_for(container, src.file_id);
-        dyn_map[keys::CONST_PARAM].get(&src.value).copied().map(|x| ConstParamId::from_unchecked(x))
+        dyn_map[keys::CONST_PARAM]
+            .get(&src.value)
+            .copied()
+            .map(|it| ConstParamId::from_unchecked(it))
     }
 
     pub(super) fn generic_param_to_def(

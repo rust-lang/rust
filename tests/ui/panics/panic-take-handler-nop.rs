@@ -1,5 +1,6 @@
 // run-fail
-// error-pattern:thread 'main' panicked at 'foobar'
+// error-pattern:thread 'main' panicked
+// error-pattern:foobar
 // ignore-emscripten no processes
 
 use std::panic;

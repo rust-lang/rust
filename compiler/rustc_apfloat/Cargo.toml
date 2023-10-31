@@ -1,8 +1,0 @@
-[package]
-name = "rustc_apfloat"
-version = "0.0.0"
-edition = "2021"
-
-[dependencies]
-bitflags = "1.2.1"
-smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }

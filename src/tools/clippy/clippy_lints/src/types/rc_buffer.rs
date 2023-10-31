@@ -2,7 +2,8 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::{path_def_id, qpath_generic_tys};
 use rustc_errors::Applicability;
-use rustc_hir::{self as hir, def_id::DefId, QPath, TyKind};
+use rustc_hir::def_id::DefId;
+use rustc_hir::{self as hir, QPath, TyKind};
 use rustc_lint::LateContext;
 use rustc_span::symbol::sym;
 
@@ -22,7 +23,9 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
                 app,
             );
         } else {
-            let Some(ty) = qpath_generic_tys(qpath).next() else { return false };
+            let Some(ty) = qpath_generic_tys(qpath).next() else {
+                return false;
+            };
             let Some(id) = path_def_id(cx, ty) else { return false };
             if !cx.tcx.is_diagnostic_item(sym::Vec, id) {
                 return false;

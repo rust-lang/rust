@@ -72,7 +72,7 @@ macro_rules! check_reg { ($func:ident, $ty:ty, $reg:tt, $mov:literal) => {
 
 // mips32-LABEL: sym_static_32:
 // mips32: #APP
-// mips32: lw $3, %got(extern_static)
+// mips32: lw $3, %got(extern_static)($gp)
 // mips32: #NO_APP
 #[cfg(mips32)]
 #[no_mangle]
@@ -82,7 +82,7 @@ pub unsafe fn sym_static_32() {
 
 // mips32-LABEL: sym_fn_32:
 // mips32: #APP
-// mips32: lw $3, %got(extern_func)
+// mips32: lw $3, %got(extern_func)($gp)
 // mips32: #NO_APP
 #[cfg(mips32)]
 #[no_mangle]
@@ -92,7 +92,9 @@ pub unsafe fn sym_fn_32() {
 
 // mips64-LABEL: sym_static_64:
 // mips64: #APP
-// mips64: ld $3, %got_disp(extern_static)
+// mips64: lui    $3, %got_hi(extern_static)
+// mips64: daddu  $3, $3, $gp
+// mips64: ld     $3, %got_lo(extern_static)($3)
 // mips64: #NO_APP
 #[cfg(mips64)]
 #[no_mangle]
@@ -102,7 +104,9 @@ pub unsafe fn sym_static_64() {
 
 // mips64-LABEL: sym_fn_64:
 // mips64: #APP
-// mips64: ld $3, %got_disp(extern_func)
+// mips64: lui    $3, %got_hi(extern_func)
+// mips64: daddu  $3, $3, $gp
+// mips64: ld     $3, %got_lo(extern_func)($3)
 // mips64: #NO_APP
 #[cfg(mips64)]
 #[no_mangle]

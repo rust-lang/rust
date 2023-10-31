@@ -34,6 +34,7 @@ note: cycle used when computing type of `S`
    |
 LL | struct S<const S: (), const S: S = { S }>;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error[E0391]: cycle detected when computing type of `S`
   --> $DIR/issue-103790.rs:4:1
@@ -58,6 +59,7 @@ LL | | struct S<const S: (), const S: S = { S }>;
 LL | |
 LL | | fn main() {}
    | |____________^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error: aborting due to 4 previous errors
 

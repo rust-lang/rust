@@ -14,7 +14,6 @@ trait Trait {
 
 impl Trait for bool {
     fn a<T: Bound>(&self, _: T) {}
-    //^~ This gets rejected but should be accepted
     fn b<T>(&self, _: T) where T: Bound {}
     fn c<T: Bound>(&self, _: T) {}
     fn d<T>(&self, _: T) where T: Bound {}

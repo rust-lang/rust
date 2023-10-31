@@ -5,7 +5,8 @@
     clippy::redundant_closure,
     clippy::ref_option_ref,
     clippy::equatable_if_let,
-    clippy::let_unit_value
+    clippy::let_unit_value,
+    clippy::redundant_locals
 )]
 
 fn bad1(string: Option<&str>) -> (bool, &str) {
@@ -248,4 +249,26 @@ fn issue9742() -> Option<&'static str> {
         Some(name) if name.starts_with("foo") => Some(name.trim()),
         _ => None,
     }
+}
+
+mod issue10729 {
+    #![allow(clippy::unit_arg, dead_code)]
+
+    pub fn reproduce(initial: &Option<String>) {
+        // 👇 needs `.as_ref()` because initial is an `&Option<_>`
+        match initial {
+            Some(value) => do_something(value),
+            None => {},
+        }
+    }
+
+    pub fn reproduce2(initial: &mut Option<String>) {
+        match initial {
+            Some(value) => do_something2(value),
+            None => {},
+        }
+    }
+
+    fn do_something(_value: &str) {}
+    fn do_something2(_value: &mut str) {}
 }

@@ -32,7 +32,7 @@ Askama templates support quite sophisticated control flow. To keep our templates
 simple and understandable, we use only a subset: `if` and `for`. In particular
 we avoid [assignments in the template logic][assignments] and [Askama
 macros][macros]. This also may make things easier if we switch to a different
-Jinja-style template system, like Askama, in the future.
+Jinja-style template system in the future.
 
 [assignments]: https://djc.github.io/askama/template_syntax.html#assignments
 [macros]: https://djc.github.io/askama/template_syntax.html#macros

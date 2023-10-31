@@ -148,7 +148,7 @@ impl<'a, 'tcx> Visitor<'tcx> for SameItemPushVisitor<'a, 'tcx> {
     }
 
     fn visit_block(&mut self, b: &'tcx Block<'_>) {
-        for stmt in b.stmts.iter() {
+        for stmt in b.stmts {
             self.visit_stmt(stmt);
         }
     }

@@ -1,5 +1,5 @@
 error: `IceEnum` is forbidden as the type of a const generic parameter
-  --> $DIR/issue-74255.rs:14:31
+  --> $DIR/issue-74255.rs:18:31
    |
 LL |     fn ice_struct_fn<const I: IceEnum>() {}
    |                               ^^^^^^^

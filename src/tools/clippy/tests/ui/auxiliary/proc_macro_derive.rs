@@ -1,7 +1,3 @@
-//@compile-flags: --emit=link
-//@no-prefer-dynamic
-
-#![crate_type = "proc-macro"]
 #![feature(repr128, proc_macro_quote)]
 #![allow(incomplete_features)]
 #![allow(clippy::field_reassign_with_default)]
@@ -90,70 +86,58 @@ pub fn extra_lifetime(_input: TokenStream) -> TokenStream {
 #[allow(unused)]
 #[proc_macro_derive(ArithmeticDerive)]
 pub fn arithmetic_derive(_: TokenStream) -> TokenStream {
-    <TokenStream as FromIterator<TokenTree>>::from_iter(
-        [
-            Ident::new("fn", Span::call_site()).into(),
-            Ident::new("_foo", Span::call_site()).into(),
-            Group::new(Delimiter::Parenthesis, TokenStream::new()).into(),
-            Group::new(
-                Delimiter::Brace,
-                <TokenStream as FromIterator<TokenTree>>::from_iter(
-                    [
-                        Ident::new("let", Span::call_site()).into(),
-                        Ident::new("mut", Span::call_site()).into(),
-                        Ident::new("_n", Span::call_site()).into(),
-                        Punct::new('=', Spacing::Alone).into(),
-                        Literal::i32_unsuffixed(9).into(),
-                        Punct::new(';', Spacing::Alone).into(),
-                        Ident::new("_n", Span::call_site()).into(),
-                        Punct::new('=', Spacing::Alone).into(),
-                        Literal::i32_unsuffixed(9).into(),
-                        Punct::new('/', Spacing::Alone).into(),
-                        Literal::i32_unsuffixed(2).into(),
-                        Punct::new(';', Spacing::Alone).into(),
-                        Ident::new("_n", Span::call_site()).into(),
-                        Punct::new('=', Spacing::Alone).into(),
-                        Punct::new('-', Spacing::Alone).into(),
-                        Ident::new("_n", Span::call_site()).into(),
-                        Punct::new(';', Spacing::Alone).into(),
-                    ]
-                    .into_iter(),
-                ),
-            )
-            .into(),
-        ]
-        .into_iter(),
-    )
+    <TokenStream as FromIterator<TokenTree>>::from_iter([
+        Ident::new("fn", Span::call_site()).into(),
+        Ident::new("_foo", Span::call_site()).into(),
+        Group::new(Delimiter::Parenthesis, TokenStream::new()).into(),
+        Group::new(
+            Delimiter::Brace,
+            <TokenStream as FromIterator<TokenTree>>::from_iter([
+                Ident::new("let", Span::call_site()).into(),
+                Ident::new("mut", Span::call_site()).into(),
+                Ident::new("_n", Span::call_site()).into(),
+                Punct::new('=', Spacing::Alone).into(),
+                Literal::i32_unsuffixed(9).into(),
+                Punct::new(';', Spacing::Alone).into(),
+                Ident::new("_n", Span::call_site()).into(),
+                Punct::new('=', Spacing::Alone).into(),
+                Literal::i32_unsuffixed(9).into(),
+                Punct::new('/', Spacing::Alone).into(),
+                Literal::i32_unsuffixed(2).into(),
+                Punct::new(';', Spacing::Alone).into(),
+                Ident::new("_n", Span::call_site()).into(),
+                Punct::new('=', Spacing::Alone).into(),
+                Punct::new('-', Spacing::Alone).into(),
+                Ident::new("_n", Span::call_site()).into(),
+                Punct::new(';', Spacing::Alone).into(),
+            ]),
+        )
+        .into(),
+    ])
 }
 
 #[allow(unused)]
 #[proc_macro_derive(ShadowDerive)]
 pub fn shadow_derive(_: TokenStream) -> TokenStream {
-    <TokenStream as FromIterator<TokenTree>>::from_iter(
-        [
-            Ident::new("fn", Span::call_site()).into(),
-            Ident::new("_foo", Span::call_site()).into(),
-            Group::new(Delimiter::Parenthesis, TokenStream::new()).into(),
-            Group::new(
-                Delimiter::Brace,
-                <TokenStream as FromIterator<TokenTree>>::from_iter(
-                    [
-                        Ident::new("let", Span::call_site()).into(),
-                        Ident::new("_x", Span::call_site()).into(),
-                        Punct::new('=', Spacing::Alone).into(),
-                        Literal::i32_unsuffixed(2).into(),
-                        Punct::new(';', Spacing::Alone).into(),
-                        Ident::new("let", Span::call_site()).into(),
-                        Ident::new("_x", Span::call_site()).into(),
-                        Punct::new('=', Spacing::Alone).into(),
-                        Ident::new("_x", Span::call_site()).into(),
-                        Punct::new(';', Spacing::Alone).into(),
-                    ]
-                    .into_iter(),
-                ),
-            )
-            .into(),
-        ]
-        .into_iter(),
-    )
+    <TokenStream as FromIterator<TokenTree>>::from_iter([
+        Ident::new("fn", Span::call_site()).into(),
+        Ident::new("_foo", Span::call_site()).into(),
+        Group::new(Delimiter::Parenthesis, TokenStream::new()).into(),
+        Group::new(
+            Delimiter::Brace,
+            <TokenStream as FromIterator<TokenTree>>::from_iter([
+                Ident::new("let", Span::call_site()).into(),
+                Ident::new("_x", Span::call_site()).into(),
+                Punct::new('=', Spacing::Alone).into(),
+                Literal::i32_unsuffixed(2).into(),
+                Punct::new(';', Spacing::Alone).into(),
+                Ident::new("let", Span::call_site()).into(),
+                Ident::new("_x", Span::call_site()).into(),
+                Punct::new('=', Spacing::Alone).into(),
+                Ident::new("_x", Span::call_site()).into(),
+                Punct::new(';', Spacing::Alone).into(),
+            ]),
+        )
+        .into(),
+    ])
 }

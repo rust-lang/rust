@@ -1,6 +1,6 @@
 use rustc_hir::LangItem;
-use rustc_middle::ty::subst::GenericArg;
 use rustc_middle::ty::AssocKind;
+use rustc_middle::ty::GenericArg;
 use rustc_session::config::{sigpipe, EntryFnType};
 use rustc_span::symbol::Ident;
 
@@ -119,7 +119,7 @@ pub(crate) fn maybe_create_entry_wrapper(
                     tcx,
                     ParamEnv::reveal_all(),
                     report.def_id,
-                    tcx.mk_substs(&[GenericArg::from(main_ret_ty)]),
+                    tcx.mk_args(&[GenericArg::from(main_ret_ty)]),
                 )
                 .unwrap()
                 .unwrap()
@@ -146,7 +146,7 @@ pub(crate) fn maybe_create_entry_wrapper(
                     tcx,
                     ParamEnv::reveal_all(),
                     start_def_id,
-                    tcx.mk_substs(&[main_ret_ty.into()]),
+                    tcx.mk_args(&[main_ret_ty.into()]),
                 )
                 .unwrap()
                 .unwrap()

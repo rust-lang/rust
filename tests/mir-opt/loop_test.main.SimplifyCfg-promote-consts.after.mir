@@ -1,52 +1,52 @@
 // MIR for `main` after SimplifyCfg-promote-consts
 
 fn main() -> () {
-    let mut _0: ();                      // return place in scope 0 at $DIR/loop_test.rs:+0:11: +0:11
-    let _1: ();                          // in scope 0 at $DIR/loop_test.rs:+4:5: +6:6
-    let mut _2: bool;                    // in scope 0 at $DIR/loop_test.rs:+4:8: +4:12
-    let mut _3: !;                       // in scope 0 at $DIR/loop_test.rs:+4:13: +6:6
-    let mut _4: !;                       // in scope 0 at $DIR/loop_test.rs:+7:5: +10:6
-    let mut _5: ();                      // in scope 0 at $DIR/loop_test.rs:+0:1: +11:2
-    let _6: i32;                         // in scope 0 at $DIR/loop_test.rs:+8:13: +8:14
+    let mut _0: ();
+    let _1: ();
+    let mut _2: bool;
+    let mut _3: !;
+    let mut _4: !;
+    let mut _5: ();
+    let _6: i32;
     scope 1 {
-        debug x => _6;                   // in scope 1 at $DIR/loop_test.rs:+8:13: +8:14
+        debug x => _6;
     }
 
     bb0: {
-        StorageLive(_1);                 // scope 0 at $DIR/loop_test.rs:+4:5: +6:6
-        StorageLive(_2);                 // scope 0 at $DIR/loop_test.rs:+4:8: +4:12
-        _2 = const true;                 // scope 0 at $DIR/loop_test.rs:+4:8: +4:12
-        switchInt(move _2) -> [0: bb2, otherwise: bb1]; // scope 0 at $DIR/loop_test.rs:+4:8: +4:12
+        StorageLive(_1);
+        StorageLive(_2);
+        _2 = const true;
+        switchInt(move _2) -> [0: bb2, otherwise: bb1];
     }
 
     bb1: {
-        _0 = const ();                   // scope 0 at $DIR/loop_test.rs:+5:9: +5:15
-        StorageDead(_2);                 // scope 0 at $DIR/loop_test.rs:+6:5: +6:6
-        StorageDead(_1);                 // scope 0 at $DIR/loop_test.rs:+6:5: +6:6
-        return;                          // scope 0 at $DIR/loop_test.rs:+11:2: +11:2
+        _0 = const ();
+        StorageDead(_2);
+        StorageDead(_1);
+        return;
     }
 
     bb2: {
-        _1 = const ();                   // scope 0 at $DIR/loop_test.rs:+6:6: +6:6
-        StorageDead(_2);                 // scope 0 at $DIR/loop_test.rs:+6:5: +6:6
-        StorageDead(_1);                 // scope 0 at $DIR/loop_test.rs:+6:5: +6:6
-        StorageLive(_4);                 // scope 0 at $DIR/loop_test.rs:+7:5: +10:6
-        goto -> bb3;                     // scope 0 at $DIR/loop_test.rs:+7:5: +10:6
+        _1 = const ();
+        StorageDead(_2);
+        StorageDead(_1);
+        StorageLive(_4);
+        goto -> bb3;
     }
 
     bb3: {
-        falseUnwind -> [real: bb4, unwind: bb5]; // scope 0 at $DIR/loop_test.rs:+7:5: +10:6
+        falseUnwind -> [real: bb4, unwind: bb5];
     }
 
     bb4: {
-        StorageLive(_6);                 // scope 0 at $DIR/loop_test.rs:+8:13: +8:14
-        _6 = const 1_i32;                // scope 0 at $DIR/loop_test.rs:+8:17: +8:18
-        FakeRead(ForLet(None), _6);      // scope 0 at $DIR/loop_test.rs:+8:13: +8:14
-        StorageDead(_6);                 // scope 0 at $DIR/loop_test.rs:+10:5: +10:6
-        goto -> bb3;                     // scope 0 at no-location
+        StorageLive(_6);
+        _6 = const 1_i32;
+        FakeRead(ForLet(None), _6);
+        StorageDead(_6);
+        goto -> bb3;
     }
 
     bb5 (cleanup): {
-        resume;                          // scope 0 at $DIR/loop_test.rs:+0:1: +11:2
+        resume;
     }
 }

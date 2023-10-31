@@ -5,7 +5,7 @@ LL |         Some(ref x) => x,
    |              ^^^^^
    |
    = note: `-D clippy::ref-binding-to-reference` implied by `-D warnings`
-help: try this
+help: try
    |
 LL |         Some(x) => &x,
    |              ~     ~~
@@ -16,7 +16,7 @@ error: this pattern creates a reference to a reference
 LL |         Some(ref x) => {
    |              ^^^^^
    |
-help: try this
+help: try
    |
 LL ~         Some(x) => {
 LL |             f1(x);
@@ -30,7 +30,7 @@ error: this pattern creates a reference to a reference
 LL |         Some(ref x) => m2!(x),
    |              ^^^^^
    |
-help: try this
+help: try
    |
 LL |         Some(x) => m2!(&x),
    |              ~         ~~
@@ -41,7 +41,7 @@ error: this pattern creates a reference to a reference
 LL |     let _ = |&ref x: &&String| {
    |               ^^^^^
    |
-help: try this
+help: try
    |
 LL ~     let _ = |&x: &&String| {
 LL ~         let _: &&String = &x;
@@ -53,7 +53,7 @@ error: this pattern creates a reference to a reference
 LL | fn f2<'a>(&ref x: &&'a String) -> &'a String {
    |            ^^^^^
    |
-help: try this
+help: try
    |
 LL ~ fn f2<'a>(&x: &&'a String) -> &'a String {
 LL ~     let _: &&String = &x;
@@ -66,7 +66,7 @@ error: this pattern creates a reference to a reference
 LL |     fn f(&ref x: &&String) {
    |           ^^^^^
    |
-help: try this
+help: try
    |
 LL ~     fn f(&x: &&String) {
 LL ~         let _: &&String = &x;
@@ -78,7 +78,7 @@ error: this pattern creates a reference to a reference
 LL |     fn f(&ref x: &&String) {
    |           ^^^^^
    |
-help: try this
+help: try
    |
 LL ~     fn f(&x: &&String) {
 LL ~         let _: &&String = &x;

@@ -25,7 +25,7 @@ fn shadow_mod() {
 
 fn shadow_prelude() {
     // Extern prelude shadows standard library prelude
-    let x = Vec::new(0f32, ()); // OK
+    let x: () = Vec::new(0f32, ()); // OK
 }
 
 fn main() {}

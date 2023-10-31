@@ -196,7 +196,7 @@ fn add_func_to_accumulator(
         let mut func = function_template.to_string(ctx.config.snippet_cap);
         if let Some(name) = adt_name {
             // FIXME: adt may have generic params.
-            func = format!("\n{indent}impl {name} {{\n{func}\n{indent}}}");
+            func = format!("\n{indent}impl {} {{\n{func}\n{indent}}}", name.display(ctx.db()));
         }
         builder.edit_file(file);
         match ctx.config.snippet_cap {
@@ -291,12 +291,9 @@ impl FunctionBuilder {
         let await_expr = call.syntax().parent().and_then(ast::AwaitExpr::cast);
         let is_async = await_expr.is_some();
 
-        let (ret_type, should_focus_return_type) = make_return_type(
-            ctx,
-            &ast::Expr::CallExpr(call.clone()),
-            target_module,
-            &mut necessary_generic_params,
-        );
+        let expr_for_ret_ty = await_expr.map_or_else(|| call.clone().into(), |it| it.into());
+        let (ret_type, should_focus_return_type) =
+            make_return_type(ctx, &expr_for_ret_ty, target_module, &mut necessary_generic_params);
 
         let (generic_param_list, where_clause) =
             fn_generic_params(ctx, necessary_generic_params, &target)?;
@@ -338,12 +335,9 @@ impl FunctionBuilder {
         let await_expr = call.syntax().parent().and_then(ast::AwaitExpr::cast);
         let is_async = await_expr.is_some();
 
-        let (ret_type, should_focus_return_type) = make_return_type(
-            ctx,
-            &ast::Expr::MethodCallExpr(call.clone()),
-            target_module,
-            &mut necessary_generic_params,
-        );
+        let expr_for_ret_ty = await_expr.map_or_else(|| call.clone().into(), |it| it.into());
+        let (ret_type, should_focus_return_type) =
+            make_return_type(ctx, &expr_for_ret_ty, target_module, &mut necessary_generic_params);
 
         let (generic_param_list, where_clause) =
             fn_generic_params(ctx, necessary_generic_params, &target)?;
@@ -378,6 +372,8 @@ impl FunctionBuilder {
             fn_body,
             self.ret_type,
             self.is_async,
+            false, // FIXME : const and unsafe are not handled yet.
+            false,
         );
         let leading_ws;
         let trailing_ws;
@@ -427,18 +423,18 @@ impl FunctionBuilder {
 /// user can change the `todo!` function body.
 fn make_return_type(
     ctx: &AssistContext<'_>,
-    call: &ast::Expr,
+    expr: &ast::Expr,
     target_module: Module,
     necessary_generic_params: &mut FxHashSet<hir::GenericParam>,
 ) -> (Option<ast::RetType>, bool) {
     let (ret_ty, should_focus_return_type) = {
-        match ctx.sema.type_of_expr(call).map(TypeInfo::original) {
+        match ctx.sema.type_of_expr(expr).map(TypeInfo::original) {
             Some(ty) if ty.is_unknown() => (Some(make::ty_placeholder()), true),
             None => (Some(make::ty_placeholder()), true),
             Some(ty) if ty.is_unit() => (None, false),
             Some(ty) => {
                 necessary_generic_params.extend(ty.generic_params(ctx.db()));
-                let rendered = ty.display_source_code(ctx.db(), target_module.into());
+                let rendered = ty.display_source_code(ctx.db(), target_module.into(), true);
                 match rendered {
                     Ok(rendered) => (Some(make::ty(&rendered)), false),
                     Err(_) => (Some(make::ty_placeholder()), true),
@@ -627,7 +623,9 @@ fn fn_generic_params(
 fn params_and_where_preds_in_scope(
     ctx: &AssistContext<'_>,
 ) -> (Vec<ast::GenericParam>, Vec<ast::WherePred>) {
-    let Some(body) = containing_body(ctx) else { return Default::default(); };
+    let Some(body) = containing_body(ctx) else {
+        return Default::default();
+    };
 
     let mut generic_params = Vec::new();
     let mut where_clauses = Vec::new();
@@ -893,14 +891,14 @@ fn filter_bounds_in_scope(
     let target_impl = target.parent().ancestors().find_map(ast::Impl::cast)?;
     let target_impl = ctx.sema.to_def(&target_impl)?;
     // It's sufficient to test only the first element of `generic_params` because of the order of
-    // insertion (see `relevant_parmas_and_where_clauses()`).
+    // insertion (see `params_and_where_preds_in_scope()`).
     let def = generic_params.first()?.self_ty_param.parent();
     if def != hir::GenericDef::Impl(target_impl) {
         return None;
     }
 
     // Now we know every element that belongs to an impl would be in scope at `target`, we can
-    // filter them out just by lookint at their parent.
+    // filter them out just by looking at their parent.
     generic_params.retain(|it| !matches!(it.self_ty_param.parent(), hir::GenericDef::Impl(_)));
     where_preds.retain(|it| {
         it.node.syntax().parent().and_then(|it| it.parent()).and_then(ast::Impl::cast).is_none()
@@ -992,9 +990,9 @@ fn fn_arg_type(
             let famous_defs = &FamousDefs(&ctx.sema, ctx.sema.scope(fn_arg.syntax())?.krate());
             convert_reference_type(ty.strip_references(), ctx.db(), famous_defs)
                 .map(|conversion| conversion.convert_type(ctx.db()))
-                .or_else(|| ty.display_source_code(ctx.db(), target_module.into()).ok())
+                .or_else(|| ty.display_source_code(ctx.db(), target_module.into(), true).ok())
         } else {
-            ty.display_source_code(ctx.db(), target_module.into()).ok()
+            ty.display_source_code(ctx.db(), target_module.into(), true).ok()
         }
     }
 
@@ -1087,7 +1085,7 @@ fn calculate_necessary_visibility(
     }
 }
 
-// This is never intended to be used as a generic graph strucuture. If there's ever another need of
+// This is never intended to be used as a generic graph structure. If there's ever another need of
 // graph algorithm, consider adding a library for that (and replace the following).
 /// Minimally implemented directed graph structure represented by adjacency list.
 struct Graph {
@@ -1880,7 +1878,6 @@ where
 
     #[test]
     fn add_function_with_fn_arg() {
-        // FIXME: The argument in `bar` is wrong.
         check_assist(
             generate_function,
             r"
@@ -1901,7 +1898,7 @@ fn foo() {
     bar(Baz::new);
 }
 
-fn bar(new: fn) ${0:-> _} {
+fn bar(new: fn() -> Baz) ${0:-> _} {
     todo!()
 }
 ",
@@ -1910,7 +1907,6 @@ fn bar(new: fn) ${0:-> _} {
 
     #[test]
     fn add_function_with_closure_arg() {
-        // FIXME: The argument in `bar` is wrong.
         check_assist(
             generate_function,
             r"
@@ -1925,7 +1921,7 @@ fn foo() {
     bar(closure)
 }
 
-fn bar(closure: _) {
+fn bar(closure: impl Fn(i64) -> i64) {
     ${0:todo!()}
 }
 ",
@@ -2267,13 +2263,13 @@ impl Foo {
         check_assist(
             generate_function,
             r"
-fn foo() {
-    $0bar(42).await();
+async fn foo() {
+    $0bar(42).await;
 }
 ",
             r"
-fn foo() {
-    bar(42).await();
+async fn foo() {
+    bar(42).await;
 }
 
 async fn bar(arg: i32) ${0:-> _} {
@@ -2281,6 +2277,28 @@ async fn bar(arg: i32) ${0:-> _} {
 }
 ",
         )
+    }
+
+    #[test]
+    fn return_type_for_async_fn() {
+        check_assist(
+            generate_function,
+            r"
+//- minicore: result
+async fn foo() {
+    if Err(()) = $0bar(42).await {}
+}
+",
+            r"
+async fn foo() {
+    if Err(()) = bar(42).await {}
+}
+
+async fn bar(arg: i32) -> Result<_, ()> {
+    ${0:todo!()}
+}
+",
+        );
     }
 
     #[test]
@@ -2381,7 +2399,7 @@ mod s {
     }
 
     #[test]
-    fn create_method_with_cursor_anywhere_on_call_expresion() {
+    fn create_method_with_cursor_anywhere_on_call_expression() {
         check_assist(
             generate_function,
             r"
@@ -2396,6 +2414,31 @@ impl S {
     }
 }
 fn foo() {S.bar();}
+",
+        )
+    }
+
+    #[test]
+    fn create_async_method() {
+        check_assist(
+            generate_function,
+            r"
+//- minicore: result
+struct S;
+async fn foo() {
+    if let Err(()) = S.$0bar(42).await {}
+}
+",
+            r"
+struct S;
+impl S {
+    async fn bar(&self, arg: i32) -> Result<_, ()> {
+        ${0:todo!()}
+    }
+}
+async fn foo() {
+    if let Err(()) = S.bar(42).await {}
+}
 ",
         )
     }
@@ -2416,6 +2459,31 @@ impl S {
     }
 }
 fn foo() {S::bar();}
+",
+        )
+    }
+
+    #[test]
+    fn create_async_static_method() {
+        check_assist(
+            generate_function,
+            r"
+//- minicore: result
+struct S;
+async fn foo() {
+    if let Err(()) = S::$0bar(42).await {}
+}
+",
+            r"
+struct S;
+impl S {
+    async fn bar(arg: i32) -> Result<_, ()> {
+        ${0:todo!()}
+    }
+}
+async fn foo() {
+    if let Err(()) = S::bar(42).await {}
+}
 ",
         )
     }
@@ -2488,7 +2556,7 @@ fn foo() {s::S::bar();}
     }
 
     #[test]
-    fn create_static_method_with_cursor_anywhere_on_call_expresion() {
+    fn create_static_method_with_cursor_anywhere_on_call_expression() {
         check_assist(
             generate_function,
             r"

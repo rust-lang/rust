@@ -3,7 +3,7 @@
 //! The .stderr output of this test should be empty. Otherwise it's a bug somewhere.
 
 //@aux-build:helper.rs
-//@aux-build:../../auxiliary/proc_macros.rs
+//@aux-build:../auxiliary/proc_macros.rs:proc-macro
 
 #![warn(clippy::missing_const_for_fn)]
 #![feature(start)]
@@ -13,7 +13,7 @@ extern crate proc_macros;
 
 use proc_macros::with_span;
 
-struct Game;
+struct Game; // You just lost.
 
 // This should not be linted because it's already const
 const fn already_const() -> i32 {
@@ -44,7 +44,6 @@ static Y: u32 = 0;
 // refer to a static variable
 fn get_y() -> u32 {
     Y
-    //~^ ERROR E0013
 }
 
 // Don't lint entrypoint functions
@@ -125,4 +124,44 @@ mod const_fn_stabilized_after_msrv {
 with_span! {
     span
     fn dont_check_in_proc_macro() {}
+}
+
+// Do not lint `String` has `Vec<u8>`, which cannot be dropped in const contexts
+fn a(this: String) {}
+
+enum A {
+    F(String),
+    N,
+}
+
+// Same here.
+fn b(this: A) {}
+
+// Minimized version of `a`.
+fn c(this: Vec<u16>) {}
+
+struct F(A);
+
+// Do not lint
+fn f(this: F) {}
+
+// Do not lint
+fn g<T>(this: T) {}
+
+struct Issue10617(String);
+
+impl Issue10617 {
+    // Do not lint
+    pub fn name(self) -> String {
+        self.0
+    }
+}
+
+union U {
+    f: u32,
+}
+
+// Do not lint because accessing union fields from const functions is unstable
+fn h(u: U) -> u32 {
+    unsafe { u.f }
 }

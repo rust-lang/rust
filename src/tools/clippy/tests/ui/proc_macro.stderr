@@ -1,5 +1,5 @@
 error: approximate value of `f{32, 64}::consts::PI` found
-  --> $DIR/proc_macro.rs:10:14
+  --> $DIR/proc_macro.rs:9:14
    |
 LL |     let _x = 3.14;
    |              ^^^^

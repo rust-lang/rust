@@ -10,11 +10,10 @@ use core::ffi::NonZero_c_int;
 #[cfg(target_os = "linux")]
 use crate::os::linux::process::PidFd;
 
-#[cfg(target_os = "linux")]
-use crate::sys::weak::raw_syscall;
-
 #[cfg(any(
     target_os = "macos",
+    target_os = "watchos",
+    target_os = "tvos",
     target_os = "freebsd",
     all(target_os = "linux", target_env = "gnu"),
     all(target_os = "linux", target_env = "musl"),
@@ -28,15 +27,38 @@ use libc::RTP_ID as pid_t;
 #[cfg(not(target_os = "vxworks"))]
 use libc::{c_int, pid_t};
 
-#[cfg(not(any(target_os = "vxworks", target_os = "l4re")))]
+#[cfg(not(any(
+    target_os = "vxworks",
+    target_os = "l4re",
+    target_os = "tvos",
+    target_os = "watchos",
+)))]
 use libc::{gid_t, uid_t};
 
 cfg_if::cfg_if! {
     if #[cfg(all(target_os = "nto", target_env = "nto71"))] {
         use crate::thread;
         use libc::{c_char, posix_spawn_file_actions_t, posix_spawnattr_t};
-        // arbitrary number of tries:
-        const MAX_FORKSPAWN_TRIES: u32 = 4;
+        use crate::time::Duration;
+        use crate::sync::LazyLock;
+        // Get smallest amount of time we can sleep.
+        // Return a common value if it cannot be determined.
+        fn get_clock_resolution() -> Duration {
+            static MIN_DELAY: LazyLock<Duration, fn() -> Duration> = LazyLock::new(|| {
+                let mut mindelay = libc::timespec { tv_sec: 0, tv_nsec: 0 };
+                if unsafe { libc::clock_getres(libc::CLOCK_MONOTONIC, &mut mindelay) } == 0
+                {
+                    Duration::from_nanos(mindelay.tv_nsec as u64)
+                } else {
+                    Duration::from_millis(1)
+                }
+            });
+            *MIN_DELAY
+        }
+        // Arbitrary minimum sleep duration for retrying fork/spawn
+        const MIN_FORKSPAWN_SLEEP: Duration = Duration::from_nanos(1);
+        // Maximum duration of sleeping before giving up and returning an error
+        const MAX_FORKSPAWN_SLEEP: Duration = Duration::from_millis(1000);
     }
 }
 
@@ -67,6 +89,10 @@ impl Command {
             return Ok((ret, ours));
         }
 
+        #[cfg(target_os = "linux")]
+        let (input, output) = sys::net::Socket::new_pair(libc::AF_UNIX, libc::SOCK_SEQPACKET)?;
+
+        #[cfg(not(target_os = "linux"))]
         let (input, output) = sys::pipe::anon_pipe()?;
 
         // Whatever happens after the fork is almost for sure going to touch or
@@ -80,12 +106,16 @@ impl Command {
         // The child calls `mem::forget` to leak the lock, which is crucial because
         // releasing a lock is not async-signal-safe.
         let env_lock = sys::os::env_read_lock();
-        let (pid, pidfd) = unsafe { self.do_fork()? };
+        let pid = unsafe { self.do_fork()? };
 
         if pid == 0 {
             crate::panic::always_abort();
             mem::forget(env_lock); // avoid non-async-signal-safe unlocking
             drop(input);
+            #[cfg(target_os = "linux")]
+            if self.get_create_pidfd() {
+                self.send_pidfd(&output);
+            }
             let Err(err) = unsafe { self.do_exec(theirs, envp.as_ref()) };
             let errno = err.raw_os_error().unwrap_or(libc::EINVAL) as u32;
             let errno = errno.to_be_bytes();
@@ -108,6 +138,12 @@ impl Command {
 
         drop(env_lock);
         drop(output);
+
+        #[cfg(target_os = "linux")]
+        let pidfd = if self.get_create_pidfd() { self.recv_pidfd(&input) } else { -1 };
+
+        #[cfg(not(target_os = "linux"))]
+        let pidfd = -1;
 
         // Safety: We obtained the pidfd from calling `clone3` with
         // `CLONE_PIDFD` so it's valid an otherwise unowned.
@@ -136,6 +172,7 @@ impl Command {
                 }
                 Ok(..) => {
                     // pipe I/O up to PIPE_BUF bytes should be atomic
+                    // similarly SOCK_SEQPACKET messages should arrive whole
                     assert!(p.wait().is_ok(), "wait() should either return Ok or panic");
                     panic!("short read on the CLOEXEC pipe")
                 }
@@ -148,11 +185,32 @@ impl Command {
         crate::sys_common::process::wait_with_output(proc, pipes)
     }
 
+    // WatchOS and TVOS headers mark the `fork`/`exec*` functions with
+    // `__WATCHOS_PROHIBITED __TVOS_PROHIBITED`, and indicate that the
+    // `posix_spawn*` functions should be used instead. It isn't entirely clear
+    // what `PROHIBITED` means here (e.g. if calls to these functions are
+    // allowed to exist in dead code), but it sounds bad, so we go out of our
+    // way to avoid that all-together.
+    #[cfg(any(target_os = "tvos", target_os = "watchos"))]
+    const ERR_APPLE_TV_WATCH_NO_FORK_EXEC: Error = io::const_io_error!(
+        ErrorKind::Unsupported,
+        "`fork`+`exec`-based process spawning is not supported on this target",
+    );
+
+    #[cfg(any(target_os = "tvos", target_os = "watchos"))]
+    unsafe fn do_fork(&mut self) -> Result<pid_t, io::Error> {
+        return Err(Self::ERR_APPLE_TV_WATCH_NO_FORK_EXEC);
+    }
+
     // Attempts to fork the process. If successful, returns Ok((0, -1))
     // in the child, and Ok((child_pid, -1)) in the parent.
-    #[cfg(not(any(target_os = "linux", all(target_os = "nto", target_env = "nto71"))))]
-    unsafe fn do_fork(&mut self) -> Result<(pid_t, pid_t), io::Error> {
-        cvt(libc::fork()).map(|res| (res, -1))
+    #[cfg(not(any(
+        target_os = "watchos",
+        target_os = "tvos",
+        all(target_os = "nto", target_env = "nto71"),
+    )))]
+    unsafe fn do_fork(&mut self) -> Result<pid_t, io::Error> {
+        cvt(libc::fork())
     }
 
     // On QNX Neutrino, fork can fail with EBADF in case "another thread might have opened
@@ -160,99 +218,32 @@ impl Command {
     // Documentation says "... or try calling fork() again". This is what we do here.
     // See also https://www.qnx.com/developers/docs/7.1/#com.qnx.doc.neutrino.lib_ref/topic/f/fork.html
     #[cfg(all(target_os = "nto", target_env = "nto71"))]
-    unsafe fn do_fork(&mut self) -> Result<(pid_t, pid_t), io::Error> {
+    unsafe fn do_fork(&mut self) -> Result<pid_t, io::Error> {
         use crate::sys::os::errno;
 
-        let mut tries_left = MAX_FORKSPAWN_TRIES;
+        let mut delay = MIN_FORKSPAWN_SLEEP;
+
         loop {
             let r = libc::fork();
-            if r == -1 as libc::pid_t && tries_left > 0 && errno() as libc::c_int == libc::EBADF {
-                thread::yield_now();
-                tries_left -= 1;
+            if r == -1 as libc::pid_t && errno() as libc::c_int == libc::EBADF {
+                if delay < get_clock_resolution() {
+                    // We cannot sleep this short (it would be longer).
+                    // Yield instead.
+                    thread::yield_now();
+                } else if delay < MAX_FORKSPAWN_SLEEP {
+                    thread::sleep(delay);
+                } else {
+                    return Err(io::const_io_error!(
+                        ErrorKind::WouldBlock,
+                        "forking returned EBADF too often",
+                    ));
+                }
+                delay *= 2;
+                continue;
             } else {
-                return cvt(r).map(|res| (res, -1));
+                return cvt(r);
             }
         }
-    }
-
-    // Attempts to fork the process. If successful, returns Ok((0, -1))
-    // in the child, and Ok((child_pid, child_pidfd)) in the parent.
-    #[cfg(target_os = "linux")]
-    unsafe fn do_fork(&mut self) -> Result<(pid_t, pid_t), io::Error> {
-        use crate::sync::atomic::{AtomicBool, Ordering};
-
-        static HAS_CLONE3: AtomicBool = AtomicBool::new(true);
-        const CLONE_PIDFD: u64 = 0x00001000;
-
-        #[repr(C)]
-        struct clone_args {
-            flags: u64,
-            pidfd: u64,
-            child_tid: u64,
-            parent_tid: u64,
-            exit_signal: u64,
-            stack: u64,
-            stack_size: u64,
-            tls: u64,
-            set_tid: u64,
-            set_tid_size: u64,
-            cgroup: u64,
-        }
-
-        raw_syscall! {
-            fn clone3(cl_args: *mut clone_args, len: libc::size_t) -> libc::c_long
-        }
-
-        // Bypassing libc for `clone3` can make further libc calls unsafe,
-        // so we use it sparingly for now. See #89522 for details.
-        // Some tools (e.g. sandboxing tools) may also expect `fork`
-        // rather than `clone3`.
-        let want_clone3_pidfd = self.get_create_pidfd();
-
-        // If we fail to create a pidfd for any reason, this will
-        // stay as -1, which indicates an error.
-        let mut pidfd: pid_t = -1;
-
-        // Attempt to use the `clone3` syscall, which supports more arguments
-        // (in particular, the ability to create a pidfd). If this fails,
-        // we will fall through this block to a call to `fork()`
-        if want_clone3_pidfd && HAS_CLONE3.load(Ordering::Relaxed) {
-            let mut args = clone_args {
-                flags: CLONE_PIDFD,
-                pidfd: &mut pidfd as *mut pid_t as u64,
-                child_tid: 0,
-                parent_tid: 0,
-                exit_signal: libc::SIGCHLD as u64,
-                stack: 0,
-                stack_size: 0,
-                tls: 0,
-                set_tid: 0,
-                set_tid_size: 0,
-                cgroup: 0,
-            };
-
-            let args_ptr = &mut args as *mut clone_args;
-            let args_size = crate::mem::size_of::<clone_args>();
-
-            let res = cvt(clone3(args_ptr, args_size));
-            match res {
-                Ok(n) => return Ok((n as pid_t, pidfd)),
-                Err(e) => match e.raw_os_error() {
-                    // Multiple threads can race to execute this store,
-                    // but that's fine - that just means that multiple threads
-                    // will have tried and failed to execute the same syscall,
-                    // with no other side effects.
-                    Some(libc::ENOSYS) => HAS_CLONE3.store(false, Ordering::Relaxed),
-                    // Fallback to fork if `EPERM` is returned. (e.g. blocked by seccomp)
-                    Some(libc::EPERM) => {}
-                    _ => return Err(e),
-                },
-            }
-        }
-
-        // Generally, we just call `fork`. If we get here after wanting `clone3`,
-        // then the syscall does not exist or we do not have permission to call it.
-        cvt(libc::fork()).map(|res| (res, pidfd))
     }
 
     pub fn exec(&mut self, default: Stdio) -> io::Error {
@@ -308,6 +299,7 @@ impl Command {
     // allocation). Instead we just close it manually. This will never
     // have the drop glue anyway because this code never returns (the
     // child will either exec() or invoke libc::exit)
+    #[cfg(not(any(target_os = "tvos", target_os = "watchos")))]
     unsafe fn do_exec(
         &mut self,
         stdio: ChildPipes,
@@ -414,8 +406,19 @@ impl Command {
         Err(io::Error::last_os_error())
     }
 
+    #[cfg(any(target_os = "tvos", target_os = "watchos"))]
+    unsafe fn do_exec(
+        &mut self,
+        _stdio: ChildPipes,
+        _maybe_envp: Option<&CStringArray>,
+    ) -> Result<!, io::Error> {
+        return Err(Self::ERR_APPLE_TV_WATCH_NO_FORK_EXEC);
+    }
+
     #[cfg(not(any(
         target_os = "macos",
+        target_os = "tvos",
+        target_os = "watchos",
         target_os = "freebsd",
         all(target_os = "linux", target_env = "gnu"),
         all(target_os = "linux", target_env = "musl"),
@@ -433,6 +436,9 @@ impl Command {
     // directly.
     #[cfg(any(
         target_os = "macos",
+        // FIXME: `target_os = "ios"`?
+        target_os = "tvos",
+        target_os = "watchos",
         target_os = "freebsd",
         all(target_os = "linux", target_env = "gnu"),
         all(target_os = "linux", target_env = "musl"),
@@ -480,17 +486,28 @@ impl Command {
             attrp: *const posix_spawnattr_t,
             argv: *const *mut c_char,
             envp: *const *mut c_char,
-        ) -> i32 {
-            let mut tries_left = MAX_FORKSPAWN_TRIES;
+        ) -> io::Result<i32> {
+            let mut delay = MIN_FORKSPAWN_SLEEP;
             loop {
                 match libc::posix_spawnp(pid, file, file_actions, attrp, argv, envp) {
-                    libc::EBADF if tries_left > 0 => {
-                        thread::yield_now();
-                        tries_left -= 1;
+                    libc::EBADF => {
+                        if delay < get_clock_resolution() {
+                            // We cannot sleep this short (it would be longer).
+                            // Yield instead.
+                            thread::yield_now();
+                        } else if delay < MAX_FORKSPAWN_SLEEP {
+                            thread::sleep(delay);
+                        } else {
+                            return Err(io::const_io_error!(
+                                ErrorKind::WouldBlock,
+                                "posix_spawnp returned EBADF too often",
+                            ));
+                        }
+                        delay *= 2;
                         continue;
                     }
                     r => {
-                        return r;
+                        return Ok(r);
                     }
                 }
             }
@@ -508,7 +525,7 @@ impl Command {
         }
         let addchdir = match self.get_cwd() {
             Some(cwd) => {
-                if cfg!(target_os = "macos") {
+                if cfg!(any(target_os = "macos", target_os = "tvos", target_os = "watchos")) {
                     // There is a bug in macOS where a relative executable
                     // path like "../myprogram" will cause `posix_spawn` to
                     // successfully launch the program, but erroneously return
@@ -620,15 +637,130 @@ impl Command {
             let spawn_fn = libc::posix_spawnp;
             #[cfg(target_os = "nto")]
             let spawn_fn = retrying_libc_posix_spawnp;
-            cvt_nz(spawn_fn(
+
+            let spawn_res = spawn_fn(
                 &mut p.pid,
                 self.get_program_cstr().as_ptr(),
                 file_actions.0.as_ptr(),
                 attrs.0.as_ptr(),
                 self.get_argv().as_ptr() as *const _,
                 envp as *const _,
-            ))?;
+            );
+
+            #[cfg(target_os = "nto")]
+            let spawn_res = spawn_res?;
+
+            cvt_nz(spawn_res)?;
             Ok(Some(p))
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    fn send_pidfd(&self, sock: &crate::sys::net::Socket) {
+        use crate::io::IoSlice;
+        use crate::os::fd::RawFd;
+        use crate::sys::cvt_r;
+        use libc::{CMSG_DATA, CMSG_FIRSTHDR, CMSG_LEN, CMSG_SPACE, SCM_RIGHTS, SOL_SOCKET};
+
+        unsafe {
+            let child_pid = libc::getpid();
+            // pidfd_open sets CLOEXEC by default
+            let pidfd = libc::syscall(libc::SYS_pidfd_open, child_pid, 0);
+
+            let fds: [c_int; 1] = [pidfd as RawFd];
+
+            const SCM_MSG_LEN: usize = mem::size_of::<[c_int; 1]>();
+
+            #[repr(C)]
+            union Cmsg {
+                buf: [u8; unsafe { CMSG_SPACE(SCM_MSG_LEN as u32) as usize }],
+                _align: libc::cmsghdr,
+            }
+
+            let mut cmsg: Cmsg = mem::zeroed();
+
+            // 0-length message to send through the socket so we can pass along the fd
+            let mut iov = [IoSlice::new(b"")];
+            let mut msg: libc::msghdr = mem::zeroed();
+
+            msg.msg_iov = &mut iov as *mut _ as *mut _;
+            msg.msg_iovlen = 1;
+            msg.msg_controllen = mem::size_of_val(&cmsg.buf) as _;
+            msg.msg_control = &mut cmsg.buf as *mut _ as *mut _;
+
+            // only attach cmsg if we successfully acquired the pidfd
+            if pidfd >= 0 {
+                let hdr = CMSG_FIRSTHDR(&mut msg as *mut _ as *mut _);
+                (*hdr).cmsg_level = SOL_SOCKET;
+                (*hdr).cmsg_type = SCM_RIGHTS;
+                (*hdr).cmsg_len = CMSG_LEN(SCM_MSG_LEN as _) as _;
+                let data = CMSG_DATA(hdr);
+                crate::ptr::copy_nonoverlapping(
+                    fds.as_ptr().cast::<u8>(),
+                    data as *mut _,
+                    SCM_MSG_LEN,
+                );
+            }
+
+            // we send the 0-length message even if we failed to acquire the pidfd
+            // so we get a consistent SEQPACKET order
+            match cvt_r(|| libc::sendmsg(sock.as_raw(), &msg, 0)) {
+                Ok(0) => {}
+                _ => rtabort!("failed to communicate with parent process"),
+            }
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    fn recv_pidfd(&self, sock: &crate::sys::net::Socket) -> pid_t {
+        use crate::io::IoSliceMut;
+        use crate::sys::cvt_r;
+
+        use libc::{CMSG_DATA, CMSG_FIRSTHDR, CMSG_LEN, CMSG_SPACE, SCM_RIGHTS, SOL_SOCKET};
+
+        unsafe {
+            const SCM_MSG_LEN: usize = mem::size_of::<[c_int; 1]>();
+
+            #[repr(C)]
+            union Cmsg {
+                _buf: [u8; unsafe { CMSG_SPACE(SCM_MSG_LEN as u32) as usize }],
+                _align: libc::cmsghdr,
+            }
+            let mut cmsg: Cmsg = mem::zeroed();
+            // 0-length read to get the fd
+            let mut iov = [IoSliceMut::new(&mut [])];
+
+            let mut msg: libc::msghdr = mem::zeroed();
+
+            msg.msg_iov = &mut iov as *mut _ as *mut _;
+            msg.msg_iovlen = 1;
+            msg.msg_controllen = mem::size_of::<Cmsg>() as _;
+            msg.msg_control = &mut cmsg as *mut _ as *mut _;
+
+            match cvt_r(|| libc::recvmsg(sock.as_raw(), &mut msg, 0)) {
+                Err(_) => return -1,
+                Ok(_) => {}
+            }
+
+            let hdr = CMSG_FIRSTHDR(&mut msg as *mut _ as *mut _);
+            if hdr.is_null()
+                || (*hdr).cmsg_level != SOL_SOCKET
+                || (*hdr).cmsg_type != SCM_RIGHTS
+                || (*hdr).cmsg_len != CMSG_LEN(SCM_MSG_LEN as _) as _
+            {
+                return -1;
+            }
+            let data = CMSG_DATA(hdr);
+
+            let mut fds = [-1 as c_int];
+
+            crate::ptr::copy_nonoverlapping(
+                data as *const _,
+                fds.as_mut_ptr().cast::<u8>(),
+                SCM_MSG_LEN,
+            );
+
+            fds[0]
         }
     }
 }
@@ -671,12 +803,9 @@ impl Process {
     pub fn kill(&mut self) -> io::Result<()> {
         // If we've already waited on this process then the pid can be recycled
         // and used for another process, and we probably shouldn't be killing
-        // random processes, so just return an error.
+        // random processes, so return Ok because the process has exited already.
         if self.status.is_some() {
-            Err(io::const_io_error!(
-                ErrorKind::InvalidInput,
-                "invalid argument: can't kill an exited process",
-            ))
+            Ok(())
         } else {
             cvt(unsafe { libc::kill(self.pid, libc::SIGKILL) }).map(drop)
         }
@@ -712,7 +841,7 @@ impl Process {
 //
 // This is not actually an "exit status" in Unix terminology.  Rather, it is a "wait status".
 // See the discussion in comments and doc comments for `std::process::ExitStatus`.
-#[derive(PartialEq, Eq, Clone, Copy)]
+#[derive(PartialEq, Eq, Clone, Copy, Default)]
 pub struct ExitStatus(c_int);
 
 impl fmt::Debug for ExitStatus {
@@ -788,31 +917,47 @@ fn signal_string(signal: i32) -> &'static str {
         libc::SIGILL => " (SIGILL)",
         libc::SIGTRAP => " (SIGTRAP)",
         libc::SIGABRT => " (SIGABRT)",
+        #[cfg(not(target_os = "l4re"))]
         libc::SIGBUS => " (SIGBUS)",
         libc::SIGFPE => " (SIGFPE)",
         libc::SIGKILL => " (SIGKILL)",
+        #[cfg(not(target_os = "l4re"))]
         libc::SIGUSR1 => " (SIGUSR1)",
         libc::SIGSEGV => " (SIGSEGV)",
+        #[cfg(not(target_os = "l4re"))]
         libc::SIGUSR2 => " (SIGUSR2)",
         libc::SIGPIPE => " (SIGPIPE)",
         libc::SIGALRM => " (SIGALRM)",
         libc::SIGTERM => " (SIGTERM)",
+        #[cfg(not(target_os = "l4re"))]
         libc::SIGCHLD => " (SIGCHLD)",
+        #[cfg(not(target_os = "l4re"))]
         libc::SIGCONT => " (SIGCONT)",
+        #[cfg(not(target_os = "l4re"))]
         libc::SIGSTOP => " (SIGSTOP)",
+        #[cfg(not(target_os = "l4re"))]
         libc::SIGTSTP => " (SIGTSTP)",
+        #[cfg(not(target_os = "l4re"))]
         libc::SIGTTIN => " (SIGTTIN)",
+        #[cfg(not(target_os = "l4re"))]
         libc::SIGTTOU => " (SIGTTOU)",
+        #[cfg(not(target_os = "l4re"))]
         libc::SIGURG => " (SIGURG)",
+        #[cfg(not(target_os = "l4re"))]
         libc::SIGXCPU => " (SIGXCPU)",
+        #[cfg(not(target_os = "l4re"))]
         libc::SIGXFSZ => " (SIGXFSZ)",
+        #[cfg(not(target_os = "l4re"))]
         libc::SIGVTALRM => " (SIGVTALRM)",
+        #[cfg(not(target_os = "l4re"))]
         libc::SIGPROF => " (SIGPROF)",
+        #[cfg(not(target_os = "l4re"))]
         libc::SIGWINCH => " (SIGWINCH)",
-        #[cfg(not(target_os = "haiku"))]
+        #[cfg(not(any(target_os = "haiku", target_os = "l4re")))]
         libc::SIGIO => " (SIGIO)",
         #[cfg(target_os = "haiku")]
         libc::SIGPOLL => " (SIGPOLL)",
+        #[cfg(not(target_os = "l4re"))]
         libc::SIGSYS => " (SIGSYS)",
         // For information on Linux signals, run `man 7 signal`
         #[cfg(all(

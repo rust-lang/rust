@@ -15,7 +15,7 @@ struct Struct {
 fn main() {
     let mut s = Struct { x: 10, y: 10, s: String::new() };
 
-    let mut c = {
+    let mut c = || {
         s.x += 10;
         s.y += 42;
         s.s = String::from("new");

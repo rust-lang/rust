@@ -1,5 +1,9 @@
 #![allow(unused_braces, unused_variables, dead_code)]
-#![allow(clippy::collapsible_else_if, clippy::let_unit_value)]
+#![allow(
+    clippy::collapsible_else_if,
+    clippy::let_unit_value,
+    clippy::redundant_at_rest_pattern
+)]
 #![warn(clippy::manual_let_else)]
 // Ensure that we don't conflict with match -> if let lints
 #![warn(clippy::single_match_else, clippy::single_match)]
@@ -68,7 +72,12 @@ fn fire() {
     let f = Variant::Bar(1);
 
     let _value = match f {
-        Variant::Bar(_) | Variant::Baz(_) => (),
+        Variant::Bar(v) | Variant::Baz(v) => v,
+        _ => return,
+    };
+
+    let _value = match Some(build_enum()) {
+        Some(Variant::Bar(v) | Variant::Baz(v)) => v,
         _ => return,
     };
 

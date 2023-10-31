@@ -1,23 +1,39 @@
 error: `allow` attribute without specifying a reason
-  --> $DIR/allow_attributes_without_reason.rs:5:1
+  --> $DIR/allow_attributes_without_reason.rs:4:1
    |
-LL | #[allow(dead_code)]
-   | ^^^^^^^^^^^^^^^^^^^
+LL | #![allow(unfulfilled_lint_expectations)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: try adding a reason at the end with `, reason = ".."`
 note: the lint level is defined here
-  --> $DIR/allow_attributes_without_reason.rs:2:9
+  --> $DIR/allow_attributes_without_reason.rs:3:9
    |
 LL | #![deny(clippy::allow_attributes_without_reason)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `allow` attribute without specifying a reason
-  --> $DIR/allow_attributes_without_reason.rs:6:1
+  --> $DIR/allow_attributes_without_reason.rs:10:1
+   |
+LL | #[allow(dead_code)]
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: try adding a reason at the end with `, reason = ".."`
+
+error: `allow` attribute without specifying a reason
+  --> $DIR/allow_attributes_without_reason.rs:11:1
    |
 LL | #[allow(dead_code, deprecated)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: try adding a reason at the end with `, reason = ".."`
 
-error: aborting due to 2 previous errors
+error: `expect` attribute without specifying a reason
+  --> $DIR/allow_attributes_without_reason.rs:12:1
+   |
+LL | #[expect(dead_code)]
+   | ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: try adding a reason at the end with `, reason = ".."`
+
+error: aborting due to 4 previous errors
 

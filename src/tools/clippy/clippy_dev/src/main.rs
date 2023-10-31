@@ -3,15 +3,16 @@
 #![warn(rust_2018_idioms, unused_lifetimes)]
 
 use clap::{Arg, ArgAction, ArgMatches, Command};
-use clippy_dev::{bless, dogfood, fmt, lint, new_lint, serve, setup, update_lints};
+use clippy_dev::{dogfood, fmt, lint, new_lint, serve, setup, update_lints};
 use indoc::indoc;
+use std::convert::Infallible;
 
 fn main() {
     let matches = get_clap_config();
 
     match matches.subcommand() {
-        Some(("bless", matches)) => {
-            bless::bless(matches.get_flag("ignore-timestamp"));
+        Some(("bless", _)) => {
+            eprintln!("use `cargo bless` to automatically replace `.stderr` and `.fixed` files as tests are being run");
         },
         Some(("dogfood", matches)) => {
             dogfood::dogfood(
@@ -34,13 +35,13 @@ fn main() {
         },
         Some(("new_lint", matches)) => {
             match new_lint::create(
-                matches.get_one::<String>("pass"),
+                matches.get_one::<String>("pass").unwrap(),
                 matches.get_one::<String>("name"),
                 matches.get_one::<String>("category").map(String::as_str),
                 matches.get_one::<String>("type").map(String::as_str),
                 matches.get_flag("msrv"),
             ) {
-                Ok(_) => update_lints::update(update_lints::UpdateMode::Change),
+                Ok(()) => update_lints::update(update_lints::UpdateMode::Change),
                 Err(e) => eprintln!("Unable to create lint: {e}"),
             }
         },
@@ -175,12 +176,13 @@ fn get_clap_config() -> ArgMatches {
                         .help("Specify whether the lint runs during the early or late pass")
                         .value_parser(["early", "late"])
                         .conflicts_with("type")
-                        .required_unless_present("type"),
+                        .default_value("late"),
                     Arg::new("name")
                         .short('n')
                         .long("name")
                         .help("Name of the new lint in snake case, ex: fn_too_long")
-                        .required(true),
+                        .required(true)
+                        .value_parser(|name: &str| Ok::<_, Infallible>(name.replace('-', "_"))),
                     Arg::new("category")
                         .short('c')
                         .long("category")

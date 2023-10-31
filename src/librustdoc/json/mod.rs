@@ -139,7 +139,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
     fn item(&mut self, item: clean::Item) -> Result<(), Error> {
         let item_type = item.type_();
         let item_name = item.name;
-        trace!("rendering {} {:?}", item_type, item_name);
+        trace!("rendering {item_type} {item_name:?}");
 
         // Flatten items that recursively store other items. We include orphaned items from
         // stripped modules and etc that are otherwise reachable.
@@ -203,11 +203,11 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
                 if !can_be_ignored {
                     assert_eq!(old_item, new_item);
                 }
-                trace!("replaced {:?}\nwith {:?}", old_item, new_item);
+                trace!("replaced {old_item:?}\nwith {new_item:?}");
             }
         }
 
-        trace!("done rendering {} {:?}", item_type, item_name);
+        trace!("done rendering {item_type} {item_name:?}");
         Ok(())
     }
 

@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+#![allow(dead_code, clippy::needless_pass_by_ref_mut)]
 #![warn(clippy::unused_io_amount)]
 
 extern crate futures;

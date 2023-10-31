@@ -1,9 +1,11 @@
 use clippy_utils::diagnostics::span_lint_and_help;
+use rustc_hir::def::Res;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{def::Res, HirId, Path, PathSegment};
+use rustc_hir::{HirId, Path, PathSegment};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::{sym, symbol::kw, Span};
+use rustc_span::symbol::kw;
+use rustc_span::{sym, Span};
 
 declare_clippy_lint! {
     /// ### What it does

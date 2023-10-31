@@ -1,4 +1,4 @@
-// We check the background color on the jump to definition links in the source code page.
+// We check the background color on the jump to definition links in the src code page.
 go-to: "file://" + |DOC_PATH| + "/src/link_to_definition/lib.rs.html"
 
 define-function: (
@@ -10,7 +10,7 @@ define-function: (
         // We reload the page so the local storage settings are being used.
         reload:
         assert-css: (
-            "body.source .example-wrap pre.rust a",
+            "body.src .example-wrap pre.rust a",
             {"background-color": |background_color|},
             ALL,
         )

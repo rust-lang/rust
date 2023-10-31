@@ -5,7 +5,7 @@ use ide_db::{base_db::FileId, source_change::SourceChange};
 use syntax::{ast, match_ast, AstNode, SyntaxNode};
 use text_edit::TextEdit;
 
-use crate::{fix, Diagnostic, Severity};
+use crate::{fix, Diagnostic, DiagnosticCode};
 
 pub(crate) fn field_shorthand(acc: &mut Vec<Diagnostic>, file_id: FileId, node: &SyntaxNode) {
     match_ast! {
@@ -46,14 +46,17 @@ fn check_expr_field_shorthand(
 
         let field_range = record_field.syntax().text_range();
         acc.push(
-            Diagnostic::new("use-field-shorthand", "Shorthand struct initialization", field_range)
-                .severity(Severity::WeakWarning)
-                .with_fixes(Some(vec![fix(
-                    "use_expr_field_shorthand",
-                    "Use struct shorthand initialization",
-                    SourceChange::from_text_edit(file_id, edit),
-                    field_range,
-                )])),
+            Diagnostic::new(
+                DiagnosticCode::Clippy("redundant_field_names"),
+                "Shorthand struct initialization",
+                field_range,
+            )
+            .with_fixes(Some(vec![fix(
+                "use_expr_field_shorthand",
+                "Use struct shorthand initialization",
+                SourceChange::from_text_edit(file_id, edit),
+                field_range,
+            )])),
         );
     }
 }
@@ -87,14 +90,17 @@ fn check_pat_field_shorthand(
 
         let field_range = record_pat_field.syntax().text_range();
         acc.push(
-            Diagnostic::new("use-field-shorthand", "Shorthand struct pattern", field_range)
-                .severity(Severity::WeakWarning)
-                .with_fixes(Some(vec![fix(
-                    "use_pat_field_shorthand",
-                    "Use struct field shorthand",
-                    SourceChange::from_text_edit(file_id, edit),
-                    field_range,
-                )])),
+            Diagnostic::new(
+                DiagnosticCode::Clippy("redundant_field_names"),
+                "Shorthand struct pattern",
+                field_range,
+            )
+            .with_fixes(Some(vec![fix(
+                "use_pat_field_shorthand",
+                "Use struct field shorthand",
+                SourceChange::from_text_edit(file_id, edit),
+                field_range,
+            )])),
         );
     }
 }

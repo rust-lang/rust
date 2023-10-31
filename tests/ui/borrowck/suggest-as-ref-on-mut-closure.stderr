@@ -2,9 +2,8 @@ error[E0507]: cannot move out of `*cb` which is behind a mutable reference
   --> $DIR/suggest-as-ref-on-mut-closure.rs:7:5
    |
 LL |     cb.map(|cb| cb());
-   |     ^^^--------------
-   |     |  |
-   |     |  `*cb` moved due to this method call
+   |     ^^ -------------- `*cb` moved due to this method call
+   |     |
    |     help: consider calling `.as_ref()` or `.as_mut()` to borrow the type's contents
    |     move occurs because `*cb` has type `Option<&mut dyn FnMut()>`, which does not implement the `Copy` trait
    |

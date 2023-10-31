@@ -96,26 +96,22 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let loc_ty = self
             .tcx
             .type_of(self.tcx.require_lang_item(LangItem::PanicLocation, None))
-            .subst(*self.tcx, self.tcx.mk_substs(&[self.tcx.lifetimes.re_erased.into()]));
+            .instantiate(*self.tcx, self.tcx.mk_args(&[self.tcx.lifetimes.re_erased.into()]));
         let loc_layout = self.layout_of(loc_ty).unwrap();
         let location = self.allocate(loc_layout, MemoryKind::CallerLocation).unwrap();
 
         // Initialize fields.
-        self.write_immediate(file.to_ref(self), &self.mplace_field(&location, 0).unwrap().into())
+        self.write_immediate(file.to_ref(self), &self.project_field(&location, 0).unwrap())
             .expect("writing to memory we just allocated cannot fail");
-        self.write_scalar(line, &self.mplace_field(&location, 1).unwrap().into())
+        self.write_scalar(line, &self.project_field(&location, 1).unwrap())
             .expect("writing to memory we just allocated cannot fail");
-        self.write_scalar(col, &self.mplace_field(&location, 2).unwrap().into())
+        self.write_scalar(col, &self.project_field(&location, 2).unwrap())
             .expect("writing to memory we just allocated cannot fail");
 
         location
     }
 
-    pub(crate) fn location_triple_for_span(&self, mut span: Span) -> (Symbol, u32, u32) {
-        // Remove `Inlined` marks as they pollute `expansion_cause`.
-        while span.is_inlined() {
-            span.remove_mark();
-        }
+    pub(crate) fn location_triple_for_span(&self, span: Span) -> (Symbol, u32, u32) {
         let topmost = span.ctxt().outer_expn().expansion_cause().unwrap_or(span);
         let caller = self.tcx.sess.source_map().lookup_char_pos(topmost.lo());
         (

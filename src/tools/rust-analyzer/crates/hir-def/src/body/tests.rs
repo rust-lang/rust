@@ -3,12 +3,12 @@ mod block;
 use base_db::{fixture::WithFixture, SourceDatabase};
 use expect_test::Expect;
 
-use crate::ModuleDefId;
+use crate::{test_db::TestDB, ModuleDefId};
 
 use super::*;
 
 fn lower(ra_fixture: &str) -> Arc<Body> {
-    let db = crate::test_db::TestDB::with_files(ra_fixture);
+    let db = TestDB::with_files(ra_fixture);
 
     let krate = db.crate_graph().iter().next().unwrap();
     let def_map = db.crate_def_map(krate);
@@ -25,15 +25,15 @@ fn lower(ra_fixture: &str) -> Arc<Body> {
     db.body(fn_def.unwrap().into())
 }
 
-fn block_def_map_at(ra_fixture: &str) -> String {
-    let (db, position) = crate::test_db::TestDB::with_position(ra_fixture);
+fn def_map_at(ra_fixture: &str) -> String {
+    let (db, position) = TestDB::with_position(ra_fixture);
 
     let module = db.module_at_position(position);
     module.def_map(&db).dump(&db)
 }
 
 fn check_block_scopes_at(ra_fixture: &str, expect: Expect) {
-    let (db, position) = crate::test_db::TestDB::with_position(ra_fixture);
+    let (db, position) = TestDB::with_position(ra_fixture);
 
     let module = db.module_at_position(position);
     let actual = module.def_map(&db).dump_block_scopes(&db);
@@ -41,7 +41,7 @@ fn check_block_scopes_at(ra_fixture: &str, expect: Expect) {
 }
 
 fn check_at(ra_fixture: &str, expect: Expect) {
-    let actual = block_def_map_at(ra_fixture);
+    let actual = def_map_at(ra_fixture);
     expect.assert_eq(&actual);
 }
 

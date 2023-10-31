@@ -200,6 +200,7 @@ To do so, the `#[doc(keyword = "...")]` attribute is used. Example:
 
 ```rust
 #![feature(rustdoc_internals)]
+#![allow(internal_features)]
 
 /// Some documentation about the keyword.
 #[doc(keyword = "keyword")]
@@ -309,6 +310,8 @@ some consideration for their stability, and names that end in a number). Giving 
 the source.
 
 ### `--show-type-layout`: add a section to each type's docs describing its memory layout
+
+* Tracking issue: [#113248](https://github.com/rust-lang/rust/issues/113248)
 
 Using this flag looks like this:
 

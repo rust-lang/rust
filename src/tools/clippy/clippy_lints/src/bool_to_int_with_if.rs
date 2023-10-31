@@ -4,7 +4,9 @@ use rustc_hir::{Block, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
-use clippy_utils::{diagnostics::span_lint_and_then, in_constant, is_else_clause, is_integer_literal, sugg::Sugg};
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::sugg::Sugg;
+use clippy_utils::{in_constant, is_else_clause, is_integer_literal};
 use rustc_errors::Applicability;
 
 declare_clippy_lint! {

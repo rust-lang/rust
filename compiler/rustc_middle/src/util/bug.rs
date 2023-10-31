@@ -29,7 +29,7 @@ fn opt_span_bug_fmt<S: Into<MultiSpan>>(
     location: &Location<'_>,
 ) -> ! {
     tls::with_opt(move |tcx| {
-        let msg = format!("{}: {}", location, args);
+        let msg = format!("{location}: {args}");
         match (tcx, span) {
             (Some(tcx), Some(span)) => tcx.sess.diagnostic().span_bug(span, msg),
             (Some(tcx), None) => tcx.sess.diagnostic().bug(msg),

@@ -13,7 +13,7 @@ doctest = false
 
 [dependencies]
 drop_bomb = "0.1.5"
-rustc_lexer = { version = "727.0.0", package = "rustc-ap-rustc_lexer" }
+rustc_lexer.workspace = true
 
 limit.workspace = true
 

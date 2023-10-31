@@ -41,7 +41,7 @@ pub struct MatchBranchSimplification;
 
 impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() >= 3
+        sess.mir_opt_level() >= 1
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -51,7 +51,7 @@ impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
         let bbs = body.basic_blocks.as_mut();
         let mut should_cleanup = false;
         'outer: for bb_idx in bbs.indices() {
-            if !tcx.consider_optimizing(|| format!("MatchBranchSimplification {:?} ", def_id)) {
+            if !tcx.consider_optimizing(|| format!("MatchBranchSimplification {def_id:?} ")) {
                 continue;
             }
 
@@ -62,7 +62,12 @@ impl<'tcx> MirPass<'tcx> for MatchBranchSimplification {
                     ..
                 } if targets.iter().len() == 1 => {
                     let (value, target) = targets.iter().next().unwrap();
-                    if target == targets.otherwise() {
+                    // We require that this block and the two possible target blocks all be
+                    // distinct.
+                    if target == targets.otherwise()
+                        || bb_idx == target
+                        || bb_idx == targets.otherwise()
+                    {
                         continue;
                     }
                     (discr, value, target, targets.otherwise())

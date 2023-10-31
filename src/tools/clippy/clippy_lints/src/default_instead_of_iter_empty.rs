@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::last_path_segment;
 use clippy_utils::source::snippet_with_context;
-use clippy_utils::{match_def_path, paths};
+use clippy_utils::{last_path_segment, match_def_path, paths};
 use rustc_errors::Applicability;
 use rustc_hir::{def, Expr, ExprKind, GenericArg, QPath, TyKind};
 use rustc_lint::{LateContext, LateLintPass};

@@ -1,4 +1,5 @@
-// check-pass
+// FIXME(inherent_associated_types): This should be `check-pass`
+// known-bug: #108491
 // compile-flags: --crate-type=lib
 
 #![feature(inherent_associated_types)]
@@ -16,7 +17,6 @@
 #![deny(type_alias_bounds)]
 
 pub type Alias<T: Bound> = (Source<T>::Assoc,);
-
 
 pub struct Source<T>(T);
 pub trait Bound {}

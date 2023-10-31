@@ -154,7 +154,7 @@ macro_rules! println {
 ///
 /// Panics if writing to `io::stderr` fails.
 ///
-/// Writing to non-blocking stdout can cause an error, which will lead
+/// Writing to non-blocking stderr can cause an error, which will lead
 /// this macro to panic.
 ///
 /// # Examples
@@ -189,7 +189,7 @@ macro_rules! eprint {
 ///
 /// Panics if writing to `io::stderr` fails.
 ///
-/// Writing to non-blocking stdout can cause an error, which will lead
+/// Writing to non-blocking stderr can cause an error, which will lead
 /// this macro to panic.
 ///
 /// # Examples

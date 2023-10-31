@@ -14,7 +14,8 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::str;
 
-use clap::{AppSettings, CommandFactory, Parser};
+use cargo_metadata::Edition;
+use clap::{CommandFactory, Parser};
 
 #[path = "test/mod.rs"]
 #[cfg(test)]
@@ -22,7 +23,7 @@ mod cargo_fmt_tests;
 
 #[derive(Parser)]
 #[clap(
-    global_setting(AppSettings::NoAutoVersion),
+    disable_version_flag = true,
     bin_name = "cargo fmt",
     about = "This utility formats all bin and lib files of \
              the current crate using rustfmt."
@@ -45,7 +46,7 @@ pub struct Opts {
         short = 'p',
         long = "package",
         value_name = "package",
-        multiple_values = true
+        num_args = 1..
     )]
     packages: Vec<String>,
 
@@ -270,7 +271,7 @@ pub struct Target {
     /// A kind of target (e.g., lib, bin, example, ...).
     kind: String,
     /// Rust edition for this target.
-    edition: String,
+    edition: Edition,
 }
 
 impl Target {
@@ -281,7 +282,7 @@ impl Target {
         Target {
             path: canonicalized,
             kind: target.kind[0].clone(),
-            edition: target.edition.clone(),
+            edition: target.edition,
         }
     }
 }
@@ -506,7 +507,7 @@ fn run_rustfmt(
         let mut command = rustfmt_command()
             .stdout(stdout)
             .args(files)
-            .args(&["--edition", edition])
+            .args(&["--edition", edition.as_str()])
             .args(fmt_args)
             .spawn()
             .map_err(|e| match e.kind() {

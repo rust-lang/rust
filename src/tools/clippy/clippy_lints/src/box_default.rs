@@ -1,12 +1,10 @@
-use clippy_utils::{
-    diagnostics::span_lint_and_sugg, get_parent_node, is_default_equivalent, macros::macro_backtrace, match_path,
-    path_def_id, paths, ty::expr_sig,
-};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::macros::macro_backtrace;
+use clippy_utils::ty::expr_sig;
+use clippy_utils::{get_parent_node, is_default_equivalent, match_path, path_def_id, paths};
 use rustc_errors::Applicability;
-use rustc_hir::{
-    intravisit::{walk_ty, Visitor},
-    Block, Expr, ExprKind, Local, Node, QPath, TyKind,
-};
+use rustc_hir::intravisit::{walk_ty, Visitor};
+use rustc_hir::{Block, Expr, ExprKind, Local, Node, QPath, TyKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::print::with_forced_trimmed_paths;

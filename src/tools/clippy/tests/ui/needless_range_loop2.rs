@@ -1,4 +1,5 @@
 #![warn(clippy::needless_range_loop)]
+#![allow(clippy::useless_vec)]
 
 fn calc_idx(i: usize) -> usize {
     (i + i + 20) % 4

@@ -76,17 +76,13 @@ fn snippet_equal_to_token(tcx: TyCtxt<'_>, matcher: &TokenTree) -> Option<String
         };
 
     // Reparse a single token tree.
-    let mut reparsed_trees = match parser.parse_all_token_trees() {
-        Ok(reparsed_trees) => reparsed_trees,
-        Err(diagnostic) => {
-            diagnostic.cancel();
-            return None;
-        }
-    };
-    if reparsed_trees.len() != 1 {
+    if parser.token == token::Eof {
         return None;
     }
-    let reparsed_tree = reparsed_trees.pop().unwrap();
+    let reparsed_tree = parser.parse_token_tree();
+    if parser.token != token::Eof {
+        return None;
+    }
 
     // Compare against the original tree.
     if reparsed_tree.eq_unspanned(matcher) { Some(snippet) } else { None }

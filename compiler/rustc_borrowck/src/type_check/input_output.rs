@@ -124,21 +124,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         // Return types are a bit more complex. They may contain opaque `impl Trait` types.
         let mir_output_ty = body.local_decls[RETURN_PLACE].ty;
         let output_span = body.local_decls[RETURN_PLACE].source_info.span;
-        if let Err(terr) = self.eq_types(
-            normalized_output_ty,
-            mir_output_ty,
-            Locations::All(output_span),
-            ConstraintCategory::BoringNoLocation,
-        ) {
-            span_mirbug!(
-                self,
-                Location::START,
-                "equate_inputs_and_outputs: `{:?}=={:?}` failed with `{:?}`",
-                normalized_output_ty,
-                mir_output_ty,
-                terr
-            );
-        };
+        self.equate_normalized_input_or_output(normalized_output_ty, mir_output_ty, output_span);
     }
 
     #[instrument(skip(self), level = "debug")]

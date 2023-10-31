@@ -1,5 +1,6 @@
-// should find the bug even without validation and stacked borrows, but gets masked by optimizations
-//@compile-flags: -Zmiri-disable-validation -Zmiri-disable-stacked-borrows -Zmir-opt-level=0 -Cdebug-assertions=no
+// should find the bug even without, but gets masked by optimizations
+//@compile-flags: -Zmiri-disable-stacked-borrows -Cdebug-assertions=no
+//@normalize-stderr-test: "but found [0-9]+" -> "but found $$ALIGN"
 
 #[repr(align(256))]
 #[derive(Debug)]
@@ -19,6 +20,6 @@ fn main() {
             (&mut ptr as *mut _ as *mut *const u8).write(&buf as *const _ as *const u8);
         }
         // Re-borrow that. This should be UB.
-        let _ptr = &*ptr; //~ERROR: alignment 256 is required
+        let _ptr = &*ptr; //~ERROR: required 256 byte alignment
     }
 }

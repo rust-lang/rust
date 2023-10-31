@@ -264,7 +264,7 @@ impl LiteralDigitGrouping {
                     return;
                 }
 
-                if Self::is_literal_uuid_formatted(&mut num_lit) {
+                if Self::is_literal_uuid_formatted(&num_lit) {
                     return;
                 }
 
@@ -376,7 +376,7 @@ impl LiteralDigitGrouping {
     ///
     /// Returns `true` if the radix is hexadecimal, and the groups match the
     /// UUID format of 8-4-4-4-12.
-    fn is_literal_uuid_formatted(num_lit: &mut NumericLiteral<'_>) -> bool {
+    fn is_literal_uuid_formatted(num_lit: &NumericLiteral<'_>) -> bool {
         if num_lit.radix != Radix::Hexadecimal {
             return false;
         }

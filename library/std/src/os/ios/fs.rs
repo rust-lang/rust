@@ -6,7 +6,7 @@ use crate::sys_common::{AsInner, AsInnerMut, IntoInner};
 use crate::time::SystemTime;
 
 #[allow(deprecated)]
-use crate::os::ios::raw;
+use super::raw;
 
 /// OS-specific extensions to [`fs::Metadata`].
 ///

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-rm -rf target/ download/ build/ dist/ y.bin y.bin.dSYM y.exe y.pdb
+rm -rf target/ build_system/target download/ build/ dist/ y.bin y.bin.dSYM y.exe y.pdb
 
 # Kept for now in case someone updates their checkout of cg_clif before running clean_all.sh
 # FIXME remove at some point in the future

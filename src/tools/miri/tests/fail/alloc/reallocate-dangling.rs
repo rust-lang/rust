@@ -1,6 +1,6 @@
 use std::alloc::{alloc, dealloc, realloc, Layout};
 
-//@error-in-other-file: dereferenced after this allocation got freed
+//@error-in-other-file: has been freed
 
 fn main() {
     unsafe {

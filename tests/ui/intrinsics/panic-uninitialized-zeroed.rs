@@ -391,7 +391,7 @@ fn main() {
         let _val = mem::zeroed::<ZeroIsValid>();
         let _val = mem::uninitialized::<MaybeUninit<bool>>();
         let _val = mem::uninitialized::<[!; 0]>();
-        let _val = mem::uninitialized::<()>();
+        let _val: () = mem::uninitialized::<()>();
         let _val = mem::uninitialized::<ZeroSized>();
     }
 }

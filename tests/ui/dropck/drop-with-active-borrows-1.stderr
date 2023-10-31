@@ -4,7 +4,7 @@ error[E0505]: cannot move out of `a` because it is borrowed
 LL |     let a = "".to_string();
    |         - binding `a` declared here
 LL |     let b: Vec<&str> = a.lines().collect();
-   |                        --------- borrow of `a` occurs here
+   |                        - borrow of `a` occurs here
 LL |     drop(a);
    |          ^ move out of `a` occurs here
 LL |     for s in &b {

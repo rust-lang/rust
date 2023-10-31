@@ -1,0 +1,15 @@
+error[E0053]: method `drop` has an incompatible type for trait
+  --> $DIR/issue-112036.rs:4:13
+   |
+LL |     fn drop(self) {}
+   |             ^^^^
+   |             |
+   |             expected `&mut Foo`, found `Foo`
+   |             help: change the self-receiver type to match the trait: `&mut self`
+   |
+   = note: expected signature `fn(&mut Foo)`
+              found signature `fn(Foo)`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0053`.

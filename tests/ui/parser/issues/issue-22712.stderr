@@ -1,8 +1,13 @@
-error: expected one of `:`, `;`, `=`, `@`, or `|`, found `<`
+error: generic args in patterns require the turbofish syntax
   --> $DIR/issue-22712.rs:6:12
    |
 LL |     let Foo<Vec<u8>>
-   |            ^ expected one of `:`, `;`, `=`, `@`, or `|`
+   |            ^
+   |
+help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
+   |
+LL |     let Foo::<Vec<u8>>
+   |            ++
 
 error: aborting due to previous error
 

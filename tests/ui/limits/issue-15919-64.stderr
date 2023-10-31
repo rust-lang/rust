@@ -1,5 +1,5 @@
 error: values of the type `[usize; usize::MAX]` are too big for the current architecture
-  --> $DIR/issue-15919-64.rs:9:9
+  --> $DIR/issue-15919-64.rs:5:9
    |
 LL |     let x = [0usize; 0xffff_ffff_ffff_ffff];
    |         ^

@@ -4,7 +4,7 @@ error[E0277]: the size for values of type `T` cannot be known at compilation tim
 LL | fn f<T: ?Sized>(t: T) {}
    |      -          ^ doesn't have a size known at compile-time
    |      |
-   |      this type parameter needs to be `std::marker::Sized`
+   |      this type parameter needs to be `Sized`
    |
    = help: unsized fn params are gated as an unstable feature
 help: consider removing the `?Sized` bound to make the type parameter `Sized`

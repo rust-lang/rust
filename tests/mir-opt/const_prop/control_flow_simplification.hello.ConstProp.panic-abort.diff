@@ -1,0 +1,26 @@
+- // MIR for `hello` before ConstProp
++ // MIR for `hello` after ConstProp
+  
+  fn hello() -> () {
+      let mut _0: ();
+      let mut _1: bool;
+      let mut _2: !;
+  
+      bb0: {
+          StorageLive(_1);
+-         _1 = const _;
+-         switchInt(move _1) -> [0: bb2, otherwise: bb1];
++         _1 = const false;
++         switchInt(const false) -> [0: bb2, otherwise: bb1];
+      }
+  
+      bb1: {
+          _2 = begin_panic::<&str>(const "explicit panic") -> unwind unreachable;
+      }
+  
+      bb2: {
+          StorageDead(_1);
+          return;
+      }
+  }
+  

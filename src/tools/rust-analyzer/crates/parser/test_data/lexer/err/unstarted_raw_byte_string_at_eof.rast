@@ -1,1 +1,1 @@
-BYTE_STRING "br##" error: Missing `"` symbol after `#` symbols to begin the raw byte string literal
+BYTE_STRING "br##" error: Invalid raw string literal

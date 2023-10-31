@@ -1,11 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::paths;
 use clippy_utils::ty::match_type;
-use rustc_ast as ast;
 use rustc_errors::{Applicability, Diagnostic};
-use rustc_hir as hir;
 use rustc_lint::LateContext;
 use rustc_span::Span;
+use {rustc_ast as ast, rustc_hir as hir};
 
 use super::SUSPICIOUS_COMMAND_ARG_SPACE;
 

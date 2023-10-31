@@ -944,7 +944,7 @@ fn test_raw_entry() {
     }
 }
 
-mod test_drain_filter {
+mod test_extract_if {
     use super::*;
 
     use crate::panic::{catch_unwind, AssertUnwindSafe};
@@ -968,7 +968,7 @@ mod test_drain_filter {
     #[test]
     fn empty() {
         let mut map: HashMap<i32, i32> = HashMap::new();
-        map.drain_filter(|_, _| unreachable!("there's nothing to decide on"));
+        map.extract_if(|_, _| unreachable!("there's nothing to decide on")).for_each(drop);
         assert!(map.is_empty());
     }
 
@@ -976,7 +976,7 @@ mod test_drain_filter {
     fn consuming_nothing() {
         let pairs = (0..3).map(|i| (i, i));
         let mut map: HashMap<_, _> = pairs.collect();
-        assert!(map.drain_filter(|_, _| false).eq_sorted(crate::iter::empty()));
+        assert!(map.extract_if(|_, _| false).eq_sorted(crate::iter::empty()));
         assert_eq!(map.len(), 3);
     }
 
@@ -984,7 +984,7 @@ mod test_drain_filter {
     fn consuming_all() {
         let pairs = (0..3).map(|i| (i, i));
         let mut map: HashMap<_, _> = pairs.clone().collect();
-        assert!(map.drain_filter(|_, _| true).eq_sorted(pairs));
+        assert!(map.extract_if(|_, _| true).eq_sorted(pairs));
         assert!(map.is_empty());
     }
 
@@ -993,7 +993,7 @@ mod test_drain_filter {
         let pairs = (0..3).map(|i| (i, i));
         let mut map: HashMap<_, _> = pairs.collect();
         assert!(
-            map.drain_filter(|_, v| {
+            map.extract_if(|_, v| {
                 *v += 6;
                 false
             })
@@ -1008,7 +1008,7 @@ mod test_drain_filter {
         let pairs = (0..3).map(|i| (i, i));
         let mut map: HashMap<_, _> = pairs.collect();
         assert!(
-            map.drain_filter(|_, v| {
+            map.extract_if(|_, v| {
                 *v += 6;
                 true
             })
@@ -1034,14 +1034,15 @@ mod test_drain_filter {
         let mut map = (0..3).map(|i| (i, D)).collect::<HashMap<_, _>>();
 
         catch_unwind(move || {
-            drop(map.drain_filter(|_, _| {
+            map.extract_if(|_, _| {
                 PREDS.fetch_add(1, Ordering::SeqCst);
                 true
-            }))
+            })
+            .for_each(drop)
         })
         .unwrap_err();
 
-        assert_eq!(PREDS.load(Ordering::SeqCst), 3);
+        assert_eq!(PREDS.load(Ordering::SeqCst), 2);
         assert_eq!(DROPS.load(Ordering::SeqCst), 3);
     }
 
@@ -1060,10 +1061,11 @@ mod test_drain_filter {
         let mut map = (0..3).map(|i| (i, D)).collect::<HashMap<_, _>>();
 
         catch_unwind(AssertUnwindSafe(|| {
-            drop(map.drain_filter(|_, _| match PREDS.fetch_add(1, Ordering::SeqCst) {
+            map.extract_if(|_, _| match PREDS.fetch_add(1, Ordering::SeqCst) {
                 0 => true,
                 _ => panic!(),
-            }))
+            })
+            .for_each(drop)
         }))
         .unwrap_err();
 
@@ -1088,7 +1090,7 @@ mod test_drain_filter {
         let mut map = (0..3).map(|i| (i, D)).collect::<HashMap<_, _>>();
 
         {
-            let mut it = map.drain_filter(|_, _| match PREDS.fetch_add(1, Ordering::SeqCst) {
+            let mut it = map.extract_if(|_, _| match PREDS.fetch_add(1, Ordering::SeqCst) {
                 0 => true,
                 _ => panic!(),
             });

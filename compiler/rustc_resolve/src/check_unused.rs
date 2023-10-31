@@ -362,7 +362,7 @@ impl Resolver<'_, '_> {
             let mut span_snippets = spans
                 .iter()
                 .filter_map(|s| match tcx.sess.source_map().span_to_snippet(*s) {
-                    Ok(s) => Some(format!("`{}`", s)),
+                    Ok(s) => Some(format!("`{s}`")),
                     _ => None,
                 })
                 .collect::<Vec<String>>();
@@ -440,7 +440,7 @@ impl Resolver<'_, '_> {
 
             // If we are not in Rust 2018 edition, then we don't make any further
             // suggestions.
-            if !tcx.sess.rust_2018() {
+            if !tcx.sess.at_least_rust_2018() {
                 continue;
             }
 

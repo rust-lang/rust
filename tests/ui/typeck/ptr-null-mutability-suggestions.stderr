@@ -1,0 +1,21 @@
+error[E0308]: mismatched types
+  --> $DIR/ptr-null-mutability-suggestions.rs:9:24
+   |
+LL |     expecting_null_mut(ptr::null());
+   |     ------------------ ^^^^^^^^^^^
+   |     |                  |
+   |     |                  types differ in mutability
+   |     |                  help: consider using `core::ptr::null_mut` instead: `core::ptr::null_mut()`
+   |     arguments to this function are incorrect
+   |
+   = note: expected raw pointer `*mut u8`
+              found raw pointer `*const _`
+note: function defined here
+  --> $DIR/ptr-null-mutability-suggestions.rs:6:4
+   |
+LL | fn expecting_null_mut(_: *mut u8) {}
+   |    ^^^^^^^^^^^^^^^^^^ ----------
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

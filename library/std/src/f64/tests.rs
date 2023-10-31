@@ -636,6 +636,38 @@ fn test_atanh() {
 }
 
 #[test]
+fn test_gamma() {
+    // precision can differ between platforms
+    assert_approx_eq!(1.0f64.gamma(), 1.0f64);
+    assert_approx_eq!(2.0f64.gamma(), 1.0f64);
+    assert_approx_eq!(3.0f64.gamma(), 2.0f64);
+    assert_approx_eq!(4.0f64.gamma(), 6.0f64);
+    assert_approx_eq!(5.0f64.gamma(), 24.0f64);
+    assert_approx_eq!(0.5f64.gamma(), consts::PI.sqrt());
+    assert_approx_eq!((-0.5f64).gamma(), -2.0 * consts::PI.sqrt());
+    assert_eq!(0.0f64.gamma(), f64::INFINITY);
+    assert_eq!((-0.0f64).gamma(), f64::NEG_INFINITY);
+    assert!((-1.0f64).gamma().is_nan());
+    assert!((-2.0f64).gamma().is_nan());
+    assert!(f64::NAN.gamma().is_nan());
+    assert!(f64::NEG_INFINITY.gamma().is_nan());
+    assert_eq!(f64::INFINITY.gamma(), f64::INFINITY);
+    assert_eq!(171.71f64.gamma(), f64::INFINITY);
+}
+
+#[test]
+fn test_ln_gamma() {
+    assert_approx_eq!(1.0f64.ln_gamma().0, 0.0f64);
+    assert_eq!(1.0f64.ln_gamma().1, 1);
+    assert_approx_eq!(2.0f64.ln_gamma().0, 0.0f64);
+    assert_eq!(2.0f64.ln_gamma().1, 1);
+    assert_approx_eq!(3.0f64.ln_gamma().0, 2.0f64.ln());
+    assert_eq!(3.0f64.ln_gamma().1, 1);
+    assert_approx_eq!((-0.5f64).ln_gamma().0, (2.0 * consts::PI.sqrt()).ln());
+    assert_eq!((-0.5f64).ln_gamma().1, -1);
+}
+
+#[test]
 fn test_real_consts() {
     use super::consts;
     let pi: f64 = consts::PI;

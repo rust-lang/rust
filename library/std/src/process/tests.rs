@@ -582,3 +582,18 @@ fn run_canonical_bat_script() {
     assert!(output.status.success());
     assert_eq!(String::from_utf8_lossy(&output.stdout).trim(), "Hello, fellow Rustaceans!");
 }
+
+#[test]
+fn terminate_exited_process() {
+    let mut cmd = if cfg!(target_os = "android") {
+        let mut p = shell_cmd();
+        p.args(&["-c", "true"]);
+        p
+    } else {
+        known_command()
+    };
+    let mut p = cmd.stdout(Stdio::null()).spawn().unwrap();
+    p.wait().unwrap();
+    assert!(p.kill().is_ok());
+    assert!(p.kill().is_ok());
+}

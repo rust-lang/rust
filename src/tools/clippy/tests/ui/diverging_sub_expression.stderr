@@ -1,5 +1,5 @@
 error: sub-expression diverges
-  --> $DIR/diverging_sub_expression.rs:19:10
+  --> $DIR/diverging_sub_expression.rs:20:10
    |
 LL |     b || diverge();
    |          ^^^^^^^^^
@@ -7,34 +7,66 @@ LL |     b || diverge();
    = note: `-D clippy::diverging-sub-expression` implied by `-D warnings`
 
 error: sub-expression diverges
-  --> $DIR/diverging_sub_expression.rs:20:10
+  --> $DIR/diverging_sub_expression.rs:21:10
    |
 LL |     b || A.foo();
    |          ^^^^^^^
 
 error: sub-expression diverges
-  --> $DIR/diverging_sub_expression.rs:29:26
+  --> $DIR/diverging_sub_expression.rs:31:26
    |
 LL |             6 => true || return,
    |                          ^^^^^^
 
 error: sub-expression diverges
-  --> $DIR/diverging_sub_expression.rs:30:26
+  --> $DIR/diverging_sub_expression.rs:32:26
    |
 LL |             7 => true || continue,
    |                          ^^^^^^^^
 
 error: sub-expression diverges
-  --> $DIR/diverging_sub_expression.rs:33:26
+  --> $DIR/diverging_sub_expression.rs:35:26
    |
 LL |             3 => true || diverge(),
    |                          ^^^^^^^^^
 
 error: sub-expression diverges
-  --> $DIR/diverging_sub_expression.rs:38:26
+  --> $DIR/diverging_sub_expression.rs:38:30
+   |
+LL |                 _ => true || panic!("boo"),
+   |                              ^^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `$crate::panic::panic_2021` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: sub-expression diverges
+  --> $DIR/diverging_sub_expression.rs:41:29
+   |
+LL |             15 => true || { return; },
+   |                             ^^^^^^
+
+error: sub-expression diverges
+  --> $DIR/diverging_sub_expression.rs:42:30
+   |
+LL |             16 => false || { return; },
+   |                              ^^^^^^
+
+error: sub-expression diverges
+  --> $DIR/diverging_sub_expression.rs:44:29
+   |
+LL |             17 => true || { return },
+   |                             ^^^^^^
+
+error: sub-expression diverges
+  --> $DIR/diverging_sub_expression.rs:45:30
+   |
+LL |             18 => false || { return },
+   |                              ^^^^^^
+
+error: sub-expression diverges
+  --> $DIR/diverging_sub_expression.rs:54:26
    |
 LL |             _ => true || break,
    |                          ^^^^^
 
-error: aborting due to 6 previous errors
+error: aborting due to 11 previous errors
 

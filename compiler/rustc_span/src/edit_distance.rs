@@ -238,8 +238,9 @@ fn find_best_match_for_name_impl(
 }
 
 fn find_match_by_sorted_words(iter_names: &[Symbol], lookup: &str) -> Option<Symbol> {
+    let lookup_sorted_by_words = sort_by_words(lookup);
     iter_names.iter().fold(None, |result, candidate| {
-        if sort_by_words(candidate.as_str()) == sort_by_words(lookup) {
+        if sort_by_words(candidate.as_str()) == lookup_sorted_by_words {
             Some(*candidate)
         } else {
             result
@@ -247,9 +248,9 @@ fn find_match_by_sorted_words(iter_names: &[Symbol], lookup: &str) -> Option<Sym
     })
 }
 
-fn sort_by_words(name: &str) -> String {
+fn sort_by_words(name: &str) -> Vec<&str> {
     let mut split_words: Vec<&str> = name.split('_').collect();
     // We are sorting primitive &strs and can use unstable sort here.
     split_words.sort_unstable();
-    split_words.join("_")
+    split_words
 }

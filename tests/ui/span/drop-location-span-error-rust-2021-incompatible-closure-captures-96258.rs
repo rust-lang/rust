@@ -1,4 +1,4 @@
-// compile-flags -Wrust-2021-incompatible-closure-captures
+#![warn(rust_2021_incompatible_closure_captures)]
 
 fn main() {}
 
@@ -9,7 +9,7 @@ impl Numberer {
     //~^ ERROR `async fn` is not permitted in Rust 2015
         interval: Duration,
         //~^ ERROR cannot find type `Duration` in this scope
-    ) -> Numberer {
+    ) -> Numberer { //~WARN: changes to closure capture in Rust 2021
         Numberer {}
     }
 }

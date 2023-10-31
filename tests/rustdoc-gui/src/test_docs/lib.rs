@@ -3,6 +3,7 @@
 #![doc(html_playground_url="https://play.rust-lang.org/")]
 
 #![crate_name = "test_docs"]
+#![allow(internal_features)]
 #![feature(rustdoc_internals)]
 #![feature(doc_cfg)]
 #![feature(associated_type_defaults)]
@@ -485,4 +486,34 @@ pub mod search_results {
         () => {};
     }
 
+}
+
+pub mod fields {
+    pub struct Struct {
+        pub a: u8,
+        pub b: u32,
+    }
+    pub union Union {
+        pub a: u8,
+        pub b: u32,
+    }
+    pub enum Enum {
+        A {
+            a: u8,
+            b: u32,
+        },
+        B {
+            a: u8,
+            b: u32,
+        },
+    }
+}
+
+pub mod cfgs {
+    #[doc(cfg(all(
+        any(not(feature = "appservice-api-c"), not(feature = "appservice-api-s")),
+        any(not(feature = "client"), not(feature = "server")),
+    )))]
+    /// Some docs.
+    pub mod cfgs {}
 }

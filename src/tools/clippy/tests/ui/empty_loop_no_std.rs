@@ -1,5 +1,5 @@
 //@compile-flags: -Clink-arg=-nostartfiles
-//@ignore-macos
+//@ignore-target-apple
 
 #![warn(clippy::empty_loop)]
 #![feature(lang_items, start, libc)]

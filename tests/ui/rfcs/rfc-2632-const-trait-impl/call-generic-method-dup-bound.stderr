@@ -1,0 +1,14 @@
+error: ~const can only be applied to `#[const_trait]` traits
+  --> $DIR/call-generic-method-dup-bound.rs:18:44
+   |
+LL | const fn equals_self<T: PartialEq + ~const PartialEq>(t: &T) -> bool {
+   |                                            ^^^^^^^^^
+
+error: ~const can only be applied to `#[const_trait]` traits
+  --> $DIR/call-generic-method-dup-bound.rs:25:37
+   |
+LL | const fn equals_self2<T: A + ~const PartialEq>(t: &T) -> bool {
+   |                                     ^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

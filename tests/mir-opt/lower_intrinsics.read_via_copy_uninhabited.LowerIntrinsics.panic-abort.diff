@@ -1,0 +1,18 @@
+- // MIR for `read_via_copy_uninhabited` before LowerIntrinsics
++ // MIR for `read_via_copy_uninhabited` after LowerIntrinsics
+  
+  fn read_via_copy_uninhabited(_1: &Never) -> Never {
+      debug r => _1;
+      let mut _0: Never;
+      let mut _2: *const Never;
+      scope 1 {
+      }
+  
+      bb0: {
+          StorageLive(_2);
+          _2 = &raw const (*_1);
+-         _0 = read_via_copy::<Never>(move _2) -> unwind unreachable;
++         unreachable;
+      }
+  }
+  

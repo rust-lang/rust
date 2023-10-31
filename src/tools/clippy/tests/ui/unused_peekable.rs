@@ -1,8 +1,7 @@
 #![warn(clippy::unused_peekable)]
 #![allow(clippy::no_effect)]
 
-use std::iter::Empty;
-use std::iter::Peekable;
+use std::iter::{Empty, Peekable};
 
 fn main() {
     invalid();

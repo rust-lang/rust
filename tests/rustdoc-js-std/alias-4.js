@@ -1,6 +1,5 @@
-const QUERY = '<';
-
 const EXPECTED = {
+    'query': '<',
     'others': [
         { 'name': 'Ord' },
     ],

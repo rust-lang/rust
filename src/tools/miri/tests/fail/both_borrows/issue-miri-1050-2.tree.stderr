@@ -1,0 +1,21 @@
+error: Undefined Behavior: out-of-bounds pointer use: 0x4[noalloc] is a dangling pointer (it has no provenance)
+  --> RUSTLIB/alloc/src/boxed.rs:LL:CC
+   |
+LL |         Box(unsafe { Unique::new_unchecked(raw) }, alloc)
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ out-of-bounds pointer use: 0x4[noalloc] is a dangling pointer (it has no provenance)
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: BACKTRACE:
+   = note: inside `std::boxed::Box::<i32>::from_raw_in` at RUSTLIB/alloc/src/boxed.rs:LL:CC
+   = note: inside `std::boxed::Box::<i32>::from_raw` at RUSTLIB/alloc/src/boxed.rs:LL:CC
+note: inside `main`
+  --> $DIR/issue-miri-1050-2.rs:LL:CC
+   |
+LL |         drop(Box::from_raw(ptr.as_ptr()));
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

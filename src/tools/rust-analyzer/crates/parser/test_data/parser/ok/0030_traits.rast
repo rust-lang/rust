@@ -51,8 +51,9 @@ SOURCE_FILE
                       IDENT "i32"
               SEMICOLON ";"
               WHITESPACE " "
-              LITERAL
-                INT_NUMBER "1"
+              CONST_ARG
+                LITERAL
+                  INT_NUMBER "1"
               R_BRACK "]"
           R_PAREN ")"
         SEMICOLON ";"

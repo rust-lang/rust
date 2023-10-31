@@ -2,7 +2,7 @@ error[E0277]: the size for values of type `W` cannot be known at compilation tim
   --> $DIR/unsized-enum2.rs:23:8
    |
 LL | enum E<W: ?Sized, X: ?Sized, Y: ?Sized, Z: ?Sized> {
-   |        - this type parameter needs to be `std::marker::Sized`
+   |        - this type parameter needs to be `Sized`
 LL |     // parameter
 LL |     VA(W),
    |        ^ doesn't have a size known at compile-time
@@ -27,7 +27,7 @@ error[E0277]: the size for values of type `X` cannot be known at compilation tim
   --> $DIR/unsized-enum2.rs:25:11
    |
 LL | enum E<W: ?Sized, X: ?Sized, Y: ?Sized, Z: ?Sized> {
-   |                   - this type parameter needs to be `std::marker::Sized`
+   |                   - this type parameter needs to be `Sized`
 ...
 LL |     VB{x: X},
    |           ^ doesn't have a size known at compile-time
@@ -52,7 +52,7 @@ error[E0277]: the size for values of type `Y` cannot be known at compilation tim
   --> $DIR/unsized-enum2.rs:27:15
    |
 LL | enum E<W: ?Sized, X: ?Sized, Y: ?Sized, Z: ?Sized> {
-   |                              - this type parameter needs to be `std::marker::Sized`
+   |                              - this type parameter needs to be `Sized`
 ...
 LL |     VC(isize, Y),
    |               ^ doesn't have a size known at compile-time
@@ -77,7 +77,7 @@ error[E0277]: the size for values of type `Z` cannot be known at compilation tim
   --> $DIR/unsized-enum2.rs:29:21
    |
 LL | enum E<W: ?Sized, X: ?Sized, Y: ?Sized, Z: ?Sized> {
-   |                                         - this type parameter needs to be `std::marker::Sized`
+   |                                         - this type parameter needs to be `Sized`
 ...
 LL |     VD{u: isize, x: Z},
    |                     ^ doesn't have a size known at compile-time

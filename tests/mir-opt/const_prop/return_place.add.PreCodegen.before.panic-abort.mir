@@ -1,0 +1,16 @@
+// MIR for `add` before PreCodegen
+
+fn add() -> u32 {
+    let mut _0: u32;
+    let mut _1: (u32, bool);
+
+    bb0: {
+        _1 = const (4_u32, false);
+        assert(!const false, "attempt to compute `{} + {}`, which would overflow", const 2_u32, const 2_u32) -> [success: bb1, unwind unreachable];
+    }
+
+    bb1: {
+        _0 = const 4_u32;
+        return;
+    }
+}

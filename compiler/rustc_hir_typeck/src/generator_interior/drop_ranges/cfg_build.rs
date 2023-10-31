@@ -6,7 +6,7 @@ use hir::{
     intravisit::{self, Visitor},
     Body, Expr, ExprKind, Guard, HirId, LoopIdError,
 };
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_hir as hir;
 use rustc_index::IndexVec;
 use rustc_infer::infer::InferCtxt;
@@ -28,7 +28,7 @@ pub(super) fn build_control_flow_graph<'tcx>(
     consumed_borrowed_places: ConsumedAndBorrowedPlaces,
     body: &'tcx Body<'tcx>,
     num_exprs: usize,
-) -> (DropRangesBuilder, FxHashSet<HirId>) {
+) -> (DropRangesBuilder, UnordSet<HirId>) {
     let mut drop_range_visitor = DropRangeVisitor::new(
         infcx,
         typeck_results,
@@ -214,6 +214,7 @@ impl<'a, 'tcx> DropRangeVisitor<'a, 'tcx> {
             | ExprKind::Break(..)
             | ExprKind::Continue(..)
             | ExprKind::Ret(..)
+            | ExprKind::Become(..)
             | ExprKind::InlineAsm(..)
             | ExprKind::OffsetOf(..)
             | ExprKind::Struct(..)
@@ -270,6 +271,7 @@ impl<'a, 'tcx> DropRangeVisitor<'a, 'tcx> {
                 | hir::Node::Variant(..)
                 | hir::Node::Field(..)
                 | hir::Node::AnonConst(..)
+                | hir::Node::ConstBlock(..)
                 | hir::Node::Stmt(..)
                 | hir::Node::PathSegment(..)
                 | hir::Node::Ty(..)
@@ -441,14 +443,16 @@ impl<'a, 'tcx> Visitor<'tcx> for DropRangeVisitor<'a, 'tcx> {
                 // We add an edge to the hir_id of the expression/block we are breaking out of, and
                 // then in process_deferred_edges we will map this hir_id to its PostOrderId, which
                 // will refer to the end of the block due to the post order traversal.
-                self.find_target_expression_from_destination(destination).map_or((), |target| {
+                if let Ok(target) = self.find_target_expression_from_destination(destination) {
                     self.drop_ranges.add_control_edge_hir_id(self.expr_index, target)
-                });
+                }
 
                 if let Some(value) = value {
                     self.visit_expr(value);
                 }
             }
+
+            ExprKind::Become(_call) => bug!("encountered a tail-call inside a generator"),
 
             ExprKind::Call(f, args) => {
                 self.visit_expr(f);
@@ -524,7 +528,7 @@ impl DropRangesBuilder {
         hir: Map<'_>,
         num_exprs: usize,
     ) -> Self {
-        let mut tracked_value_map = FxHashMap::<_, TrackedValueIndex>::default();
+        let mut tracked_value_map = UnordMap::<_, TrackedValueIndex>::default();
         let mut next = <_>::from(0u32);
         for value in tracked_values {
             for_each_consumable(hir, value, |value| {

@@ -34,7 +34,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr
             STRING_EXTEND_CHARS,
             expr.span,
             "calling `.extend(_.chars())`",
-            "try this",
+            "try",
             format!(
                 "{}.push_str({ref_str}{})",
                 snippet_with_applicability(cx, recv.span, "..", &mut applicability),

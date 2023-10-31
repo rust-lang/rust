@@ -4,11 +4,10 @@ error[E0637]: `&` without an explicit lifetime name cannot be used here
 LL | fn should_error<T>() where T : Into<&u32> {}
    |                                     ^ explicit lifetime name needed here
    |
-help: consider introducing a higher-ranked lifetime here with `for<'a>`
-  --> $DIR/issue-65285-incorrect-explicit-lifetime-name-needed.rs:5:32
+help: consider introducing a higher-ranked lifetime here
    |
-LL | fn should_error<T>() where T : Into<&u32> {}
-   |                                ^
+LL | fn should_error<T>() where T : for<'a> Into<&'a u32> {}
+   |                                +++++++       ++
 
 error[E0106]: missing lifetime specifier
   --> $DIR/issue-65285-incorrect-explicit-lifetime-name-needed.rs:9:20

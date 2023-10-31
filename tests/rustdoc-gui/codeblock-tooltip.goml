@@ -40,6 +40,7 @@ define-function: (
             "background-color": |background|,
             "border-color": |border|,
         })
+        click: ".docblock .example-wrap.compile_fail .tooltip"
 
         // should_panic block
         assert-css: (
@@ -71,6 +72,7 @@ define-function: (
             "background-color": |background|,
             "border-color": |border|,
         })
+        click: ".docblock .example-wrap.should_panic .tooltip"
 
         // ignore block
         assert-css: (

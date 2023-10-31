@@ -304,4 +304,25 @@ impl Default for OtherGenericType {
     }
 }
 
+mod issue10158 {
+    pub trait T {}
+
+    #[derive(Default)]
+    pub struct S {}
+    impl T for S {}
+
+    pub struct Outer {
+        pub inner: Box<dyn T>,
+    }
+
+    impl Default for Outer {
+        fn default() -> Self {
+            Outer {
+                // Box::<S>::default() adjusts to Box<dyn T>
+                inner: Box::<S>::default(),
+            }
+        }
+    }
+}
+
 fn main() {}

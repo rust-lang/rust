@@ -4,17 +4,18 @@ use super::{
     TokenExpectType, TokenType,
 };
 use crate::errors::{
-    AmbiguousPlus, AttributeOnParamType, BadQPathStage2, BadTypePlus, BadTypePlusSub, ColonAsSemi,
-    ComparisonOperatorsCannotBeChained, ComparisonOperatorsCannotBeChainedSugg,
-    ConstGenericWithoutBraces, ConstGenericWithoutBracesSugg, DocCommentDoesNotDocumentAnything,
-    DocCommentOnParamType, DoubleColonInBound, ExpectedIdentifier, ExpectedSemi, ExpectedSemiSugg,
+    AmbiguousPlus, AsyncMoveBlockIn2015, AttributeOnParamType, BadQPathStage2, BadTypePlus,
+    BadTypePlusSub, ColonAsSemi, ComparisonOperatorsCannotBeChained,
+    ComparisonOperatorsCannotBeChainedSugg, ConstGenericWithoutBraces,
+    ConstGenericWithoutBracesSugg, DocCommentDoesNotDocumentAnything, DocCommentOnParamType,
+    DoubleColonInBound, ExpectedIdentifier, ExpectedSemi, ExpectedSemiSugg,
     GenericParamsWithoutAngleBrackets, GenericParamsWithoutAngleBracketsSugg,
     HelpIdentifierStartsWithNumber, InInTypo, IncorrectAwait, IncorrectSemicolon,
     IncorrectUseOfAwait, ParenthesesInForHead, ParenthesesInForHeadSugg,
     PatternMethodParamWithoutBody, QuestionMarkInType, QuestionMarkInTypeSugg, SelfParamNotFirst,
     StructLiteralBodyWithoutPath, StructLiteralBodyWithoutPathSugg, StructLiteralNeedingParens,
     StructLiteralNeedingParensSugg, SuggAddMissingLetStmt, SuggEscapeIdentifier, SuggRemoveComma,
-    UnexpectedConstInGenericParam, UnexpectedConstParamDeclaration,
+    TernaryOperator, UnexpectedConstInGenericParam, UnexpectedConstParamDeclaration,
     UnexpectedConstParamDeclarationSugg, UnmatchedAngleBrackets, UseEqInstead,
 };
 
@@ -247,7 +248,7 @@ impl<'a> Parser<'a> {
         self.sess.span_diagnostic.struct_span_err(sp, m)
     }
 
-    pub fn span_bug<S: Into<MultiSpan>>(&self, sp: S, m: impl Into<DiagnosticMessage>) -> ! {
+    pub fn span_bug<S: Into<MultiSpan>>(&self, sp: S, m: impl Into<String>) -> ! {
         self.sess.span_diagnostic.span_bug(sp, m)
     }
 
@@ -500,6 +501,10 @@ impl<'a> Parser<'a> {
 
         // Special-case "expected `;`" errors
         if expected.contains(&TokenType::Token(token::Semi)) {
+            if self.prev_token == token::Question && self.maybe_recover_from_ternary_operator() {
+                return Ok(true);
+            }
+
             if self.token.span == DUMMY_SP || self.prev_token.span == DUMMY_SP {
                 // Likely inside a macro, can't provide meaningful suggestions.
             } else if !sm.is_multiline(self.prev_token.span.until(self.token.span)) {
@@ -569,6 +574,12 @@ impl<'a> Parser<'a> {
             return Err(self.sess.create_err(UseEqInstead { span: self.token.span }));
         }
 
+        if self.token.is_keyword(kw::Move) && self.prev_token.is_keyword(kw::Async) {
+            // The 2015 edition is in use because parsing of `async move` has failed.
+            let span = self.prev_token.span.to(self.token.span);
+            return Err(self.sess.create_err(AsyncMoveBlockIn2015 { span }));
+        }
+
         let expect = tokens_to_string(&expected);
         let actual = super::token_descr(&self.token);
         let (msg_exp, (label_sp, label_exp)) = if expected.len() > 1 {
@@ -603,6 +614,22 @@ impl<'a> Parser<'a> {
                     Applicability::MachineApplicable,
                 );
             }
+        }
+
+        if let TokenKind::Ident(prev, _) = &self.prev_token.kind
+          && let TokenKind::Ident(cur, _) = &self.token.kind
+        {
+                let concat = Symbol::intern(&format!("{prev}{cur}"));
+                let ident = Ident::new(concat, DUMMY_SP);
+                if ident.is_used_keyword() || ident.is_reserved() || ident.is_raw_guess() {
+                    let span = self.prev_token.span.to(self.token.span);
+                    err.span_suggestion_verbose(
+                        span,
+                        format!("consider removing the space to spell keyword `{concat}`"),
+                        concat,
+                        Applicability::MachineApplicable,
+                    );
+                }
         }
 
         // `pub` may be used for an item or `pub(crate)`
@@ -751,13 +778,24 @@ impl<'a> Parser<'a> {
                     tail.could_be_bare_literal = true;
                     if maybe_struct_name.is_ident() && can_be_struct_literal {
                         // Account for `if Example { a: one(), }.is_pos() {}`.
-                        Err(self.sess.create_err(StructLiteralNeedingParens {
-                            span: maybe_struct_name.span.to(expr.span),
-                            sugg: StructLiteralNeedingParensSugg {
-                                before: maybe_struct_name.span.shrink_to_lo(),
-                                after: expr.span.shrink_to_hi(),
-                            },
-                        }))
+                        // expand `before` so that we take care of module path such as:
+                        // `foo::Bar { ... } `
+                        // we expect to suggest `(foo::Bar { ... })` instead of `foo::(Bar { ... })`
+                        let sm = self.sess.source_map();
+                        let before = maybe_struct_name.span.shrink_to_lo();
+                        if let Ok(extend_before) = sm.span_extend_prev_while(before, |t| {
+                            t.is_alphanumeric() || t == ':' || t == '_'
+                        }) {
+                            Err(self.sess.create_err(StructLiteralNeedingParens {
+                                span: maybe_struct_name.span.to(expr.span),
+                                sugg: StructLiteralNeedingParensSugg {
+                                    before: extend_before.shrink_to_lo(),
+                                    after: expr.span.shrink_to_hi(),
+                                },
+                            }))
+                        } else {
+                            return None;
+                        }
                     } else {
                         self.sess.emit_err(StructLiteralBodyWithoutPath {
                             span: expr.span,
@@ -1303,6 +1341,45 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// Rust has no ternary operator (`cond ? then : else`). Parse it and try
+    /// to recover from it if `then` and `else` are valid expressions. Returns
+    /// whether it was a ternary operator.
+    pub(super) fn maybe_recover_from_ternary_operator(&mut self) -> bool {
+        if self.prev_token != token::Question {
+            return false;
+        }
+
+        let lo = self.prev_token.span.lo();
+        let snapshot = self.create_snapshot_for_diagnostic();
+
+        if match self.parse_expr() {
+            Ok(_) => true,
+            Err(err) => {
+                err.cancel();
+                // The colon can sometimes be mistaken for type
+                // ascription. Catch when this happens and continue.
+                self.token == token::Colon
+            }
+        } {
+            if self.eat_noexpect(&token::Colon) {
+                match self.parse_expr() {
+                    Ok(_) => {
+                        self.sess.emit_err(TernaryOperator { span: self.token.span.with_lo(lo) });
+                        return true;
+                    }
+                    Err(err) => {
+                        err.cancel();
+                        self.restore_snapshot(snapshot);
+                    }
+                };
+            }
+        } else {
+            self.restore_snapshot(snapshot);
+        };
+
+        false
+    }
+
     pub(super) fn maybe_recover_from_bad_type_plus(&mut self, ty: &Ty) -> PResult<'a, ()> {
         // Do not add `+` to expected tokens.
         if !self.token.is_like_plus() {
@@ -1407,8 +1484,9 @@ impl<'a> Parser<'a> {
                 self.inc_dec_standalone_suggest(kind, spans).emit_verbose(&mut err)
             }
             IsStandalone::Subexpr => {
-                let Ok(base_src) = self.span_to_snippet(base.span)
-                else { return help_base_case(err, base) };
+                let Ok(base_src) = self.span_to_snippet(base.span) else {
+                    return help_base_case(err, base);
+                };
                 match kind.fixity {
                     UnaryFixity::Pre => {
                         self.prefix_inc_dec_suggest(base_src, kind, spans).emit(&mut err)
@@ -1639,13 +1717,7 @@ impl<'a> Parser<'a> {
             self.recover_await_prefix(await_sp)?
         };
         let sp = self.error_on_incorrect_await(lo, hi, &expr, is_question);
-        let kind = match expr.kind {
-            // Avoid knock-down errors as we don't know whether to interpret this as `foo().await?`
-            // or `foo()?.await` (the very reason we went with postfix syntax 😅).
-            ExprKind::Try(_) => ExprKind::Err,
-            _ => ExprKind::Await(expr, await_sp),
-        };
-        let expr = self.mk_expr(lo.to(sp), kind);
+        let expr = self.mk_expr(lo.to(sp), ExprKind::Err);
         self.maybe_recover_from_bad_qpath(expr)
     }
 
@@ -2029,7 +2101,7 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn recover_arg_parse(&mut self) -> PResult<'a, (P<ast::Pat>, P<ast::Ty>)> {
-        let pat = self.parse_pat_no_top_alt(Some(Expected::ArgumentName))?;
+        let pat = self.parse_pat_no_top_alt(Some(Expected::ArgumentName), None)?;
         self.expect(&token::Colon)?;
         let ty = self.parse_ty()?;
 
@@ -2083,7 +2155,7 @@ impl<'a> Parser<'a> {
             }
             _ => (
                 self.token.span,
-                format!("expected expression, found {}", super::token_descr(&self.token),),
+                format!("expected expression, found {}", super::token_descr(&self.token)),
             ),
         };
         let mut err = self.struct_span_err(span, msg);
@@ -2437,7 +2509,7 @@ impl<'a> Parser<'a> {
                 // Skip the `:`.
                 snapshot_pat.bump();
                 snapshot_type.bump();
-                match snapshot_pat.parse_pat_no_top_alt(expected) {
+                match snapshot_pat.parse_pat_no_top_alt(expected, None) {
                     Err(inner_err) => {
                         inner_err.cancel();
                     }
@@ -2563,6 +2635,7 @@ impl<'a> Parser<'a> {
     pub(crate) fn maybe_recover_unexpected_comma(
         &mut self,
         lo: Span,
+        is_mac_invoc: bool,
         rt: CommaRecoveryMode,
     ) -> PResult<'a, ()> {
         if self.token != token::Comma {
@@ -2583,24 +2656,28 @@ impl<'a> Parser<'a> {
         let seq_span = lo.to(self.prev_token.span);
         let mut err = self.struct_span_err(comma_span, "unexpected `,` in pattern");
         if let Ok(seq_snippet) = self.span_to_snippet(seq_span) {
-            err.multipart_suggestion(
-                format!(
-                    "try adding parentheses to match on a tuple{}",
-                    if let CommaRecoveryMode::LikelyTuple = rt { "" } else { "..." },
-                ),
-                vec![
-                    (seq_span.shrink_to_lo(), "(".to_string()),
-                    (seq_span.shrink_to_hi(), ")".to_string()),
-                ],
-                Applicability::MachineApplicable,
-            );
-            if let CommaRecoveryMode::EitherTupleOrPipe = rt {
-                err.span_suggestion(
-                    seq_span,
-                    "...or a vertical bar to match on multiple alternatives",
-                    seq_snippet.replace(',', " |"),
+            if is_mac_invoc {
+                err.note(fluent::parse_macro_expands_to_match_arm);
+            } else {
+                err.multipart_suggestion(
+                    format!(
+                        "try adding parentheses to match on a tuple{}",
+                        if let CommaRecoveryMode::LikelyTuple = rt { "" } else { "..." },
+                    ),
+                    vec![
+                        (seq_span.shrink_to_lo(), "(".to_string()),
+                        (seq_span.shrink_to_hi(), ")".to_string()),
+                    ],
                     Applicability::MachineApplicable,
                 );
+                if let CommaRecoveryMode::EitherTupleOrPipe = rt {
+                    err.span_suggestion(
+                        seq_span,
+                        "...or a vertical bar to match on multiple alternatives",
+                        seq_snippet.replace(',', " |"),
+                        Applicability::MachineApplicable,
+                    );
+                }
             }
         }
         Err(err)
@@ -2701,7 +2778,7 @@ impl<'a> Parser<'a> {
     /// sequence of patterns until `)` is reached.
     fn skip_pat_list(&mut self) -> PResult<'a, ()> {
         while !self.check(&token::CloseDelim(Delimiter::Parenthesis)) {
-            self.parse_pat_no_top_alt(None)?;
+            self.parse_pat_no_top_alt(None, None)?;
             if !self.eat(&token::Comma) {
                 return Ok(());
             }

@@ -21,7 +21,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // }
 //
 // struct Bar;
-// $0impl Foo for Bar {
+// $0impl Foo for Bar$0 {
 //     const B: u8 = 17;
 //     fn c() {}
 //     type A = String;
@@ -45,6 +45,16 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 pub(crate) fn reorder_impl_items(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let impl_ast = ctx.find_node_at_offset::<ast::Impl>()?;
     let items = impl_ast.assoc_item_list()?;
+
+    // restrict the range
+    // if cursor is in assoc_items, abort
+    let assoc_range = items.syntax().text_range();
+    let cursor_position = ctx.offset();
+    if assoc_range.contains_inclusive(cursor_position) {
+        cov_mark::hit!(not_applicable_editing_assoc_items);
+        return None;
+    }
+
     let assoc_items = items.assoc_items().collect::<Vec<_>>();
 
     let path = impl_ast
@@ -104,7 +114,7 @@ fn compute_item_ranks(
             .iter()
             .flat_map(|i| i.name(ctx.db()))
             .enumerate()
-            .map(|(idx, name)| (name.to_string(), idx))
+            .map(|(idx, name)| (name.display(ctx.db()).to_string(), idx))
             .collect(),
     )
 }
@@ -264,9 +274,9 @@ trait Bar {
 }
 
 struct Foo;
-impl Bar for Foo {
+$0impl Bar for Foo {
     type Fooo = ();
-    type Foo = ();$0
+    type Foo = ();
 }"#,
             r#"
 trait Bar {
@@ -279,6 +289,31 @@ impl Bar for Foo {
     type Foo = ();
     type Fooo = ();
 }"#,
+        )
+    }
+
+    #[test]
+    fn not_applicable_editing_assoc_items() {
+        cov_mark::check!(not_applicable_editing_assoc_items);
+        check_assist_not_applicable(
+            reorder_impl_items,
+            r#"
+trait Bar {
+    type T;
+    const C: ();
+    fn a() {}
+    fn z() {}
+    fn b() {}
+}
+struct Foo;
+impl Bar for Foo {
+    type T = ();$0
+    const C: () = ();
+    fn z() {}
+    fn a() {}
+    fn b() {}
+}
+        "#,
         )
     }
 }

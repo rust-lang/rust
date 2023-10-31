@@ -13,5 +13,10 @@ pub(crate) const STRIP_PRIV_IMPORTS: Pass = Pass {
 
 pub(crate) fn strip_priv_imports(krate: clean::Crate, cx: &mut DocContext<'_>) -> clean::Crate {
     let is_json_output = cx.output_format.is_json() && !cx.show_coverage;
-    ImportStripper { tcx: cx.tcx, is_json_output }.fold_crate(krate)
+    ImportStripper {
+        tcx: cx.tcx,
+        is_json_output,
+        document_hidden: cx.render_options.document_hidden,
+    }
+    .fold_crate(krate)
 }

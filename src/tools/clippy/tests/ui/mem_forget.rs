@@ -19,5 +19,8 @@ fn main() {
     let eight: Vec<i32> = vec![8];
     forgetSomething(eight);
 
+    let string = String::new();
+    std::mem::forget(string);
+
     std::mem::forget(7);
 }

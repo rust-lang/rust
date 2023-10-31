@@ -313,7 +313,6 @@ impl<T: 'static> LocalKey<Cell<T>> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(local_key_cell_methods)]
     /// use std::cell::Cell;
     ///
     /// thread_local! {
@@ -326,7 +325,7 @@ impl<T: 'static> LocalKey<Cell<T>> {
     ///
     /// assert_eq!(X.get(), 123);
     /// ```
-    #[unstable(feature = "local_key_cell_methods", issue = "92122")]
+    #[stable(feature = "local_key_cell_methods", since = "1.73.0")]
     pub fn set(&'static self, value: T) {
         self.initialize_with(Cell::new(value), |value, cell| {
             if let Some(value) = value {
@@ -351,7 +350,6 @@ impl<T: 'static> LocalKey<Cell<T>> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(local_key_cell_methods)]
     /// use std::cell::Cell;
     ///
     /// thread_local! {
@@ -360,7 +358,7 @@ impl<T: 'static> LocalKey<Cell<T>> {
     ///
     /// assert_eq!(X.get(), 1);
     /// ```
-    #[unstable(feature = "local_key_cell_methods", issue = "92122")]
+    #[stable(feature = "local_key_cell_methods", since = "1.73.0")]
     pub fn get(&'static self) -> T
     where
         T: Copy,
@@ -381,7 +379,6 @@ impl<T: 'static> LocalKey<Cell<T>> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(local_key_cell_methods)]
     /// use std::cell::Cell;
     ///
     /// thread_local! {
@@ -391,7 +388,7 @@ impl<T: 'static> LocalKey<Cell<T>> {
     /// assert_eq!(X.take(), Some(1));
     /// assert_eq!(X.take(), None);
     /// ```
-    #[unstable(feature = "local_key_cell_methods", issue = "92122")]
+    #[stable(feature = "local_key_cell_methods", since = "1.73.0")]
     pub fn take(&'static self) -> T
     where
         T: Default,
@@ -412,7 +409,6 @@ impl<T: 'static> LocalKey<Cell<T>> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(local_key_cell_methods)]
     /// use std::cell::Cell;
     ///
     /// thread_local! {
@@ -422,7 +418,7 @@ impl<T: 'static> LocalKey<Cell<T>> {
     /// assert_eq!(X.replace(2), 1);
     /// assert_eq!(X.replace(3), 2);
     /// ```
-    #[unstable(feature = "local_key_cell_methods", issue = "92122")]
+    #[stable(feature = "local_key_cell_methods", since = "1.73.0")]
     pub fn replace(&'static self, value: T) -> T {
         self.with(|cell| cell.replace(value))
     }
@@ -444,7 +440,6 @@ impl<T: 'static> LocalKey<RefCell<T>> {
     /// # Example
     ///
     /// ```
-    /// #![feature(local_key_cell_methods)]
     /// use std::cell::RefCell;
     ///
     /// thread_local! {
@@ -453,7 +448,7 @@ impl<T: 'static> LocalKey<RefCell<T>> {
     ///
     /// X.with_borrow(|v| assert!(v.is_empty()));
     /// ```
-    #[unstable(feature = "local_key_cell_methods", issue = "92122")]
+    #[stable(feature = "local_key_cell_methods", since = "1.73.0")]
     pub fn with_borrow<F, R>(&'static self, f: F) -> R
     where
         F: FnOnce(&T) -> R,
@@ -476,7 +471,6 @@ impl<T: 'static> LocalKey<RefCell<T>> {
     /// # Example
     ///
     /// ```
-    /// #![feature(local_key_cell_methods)]
     /// use std::cell::RefCell;
     ///
     /// thread_local! {
@@ -487,7 +481,7 @@ impl<T: 'static> LocalKey<RefCell<T>> {
     ///
     /// X.with_borrow(|v| assert_eq!(*v, vec![1]));
     /// ```
-    #[unstable(feature = "local_key_cell_methods", issue = "92122")]
+    #[stable(feature = "local_key_cell_methods", since = "1.73.0")]
     pub fn with_borrow_mut<F, R>(&'static self, f: F) -> R
     where
         F: FnOnce(&mut T) -> R,
@@ -511,7 +505,6 @@ impl<T: 'static> LocalKey<RefCell<T>> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(local_key_cell_methods)]
     /// use std::cell::RefCell;
     ///
     /// thread_local! {
@@ -524,7 +517,7 @@ impl<T: 'static> LocalKey<RefCell<T>> {
     ///
     /// X.with_borrow(|v| assert_eq!(*v, vec![1, 2, 3]));
     /// ```
-    #[unstable(feature = "local_key_cell_methods", issue = "92122")]
+    #[stable(feature = "local_key_cell_methods", since = "1.73.0")]
     pub fn set(&'static self, value: T) {
         self.initialize_with(RefCell::new(value), |value, cell| {
             if let Some(value) = value {
@@ -551,7 +544,6 @@ impl<T: 'static> LocalKey<RefCell<T>> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(local_key_cell_methods)]
     /// use std::cell::RefCell;
     ///
     /// thread_local! {
@@ -566,7 +558,7 @@ impl<T: 'static> LocalKey<RefCell<T>> {
     ///
     /// X.with_borrow(|v| assert!(v.is_empty()));
     /// ```
-    #[unstable(feature = "local_key_cell_methods", issue = "92122")]
+    #[stable(feature = "local_key_cell_methods", since = "1.73.0")]
     pub fn take(&'static self) -> T
     where
         T: Default,
@@ -586,7 +578,6 @@ impl<T: 'static> LocalKey<RefCell<T>> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(local_key_cell_methods)]
     /// use std::cell::RefCell;
     ///
     /// thread_local! {
@@ -598,7 +589,7 @@ impl<T: 'static> LocalKey<RefCell<T>> {
     ///
     /// X.with_borrow(|v| assert_eq!(*v, vec![1, 2, 3]));
     /// ```
-    #[unstable(feature = "local_key_cell_methods", issue = "92122")]
+    #[stable(feature = "local_key_cell_methods", since = "1.73.0")]
     pub fn replace(&'static self, value: T) -> T {
         self.with(|cell| cell.replace(value))
     }

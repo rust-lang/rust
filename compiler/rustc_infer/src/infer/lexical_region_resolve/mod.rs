@@ -347,7 +347,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                     // name the placeholder, then the placeholder is
                     // larger; otherwise, the only ancestor is `'static`.
                     Err(placeholder) if empty_ui.can_name(placeholder.universe) => {
-                        self.tcx().mk_re_placeholder(placeholder)
+                        ty::Region::new_placeholder(self.tcx(), placeholder)
                     }
                     Err(_) => self.tcx().lifetimes.re_static,
                 };
@@ -837,9 +837,8 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
             self.var_infos[node_idx].origin.span(),
             format!(
                 "collect_error_for_expanding_node() could not find \
-                 error for var {:?} in universe {:?}, lower_bounds={:#?}, \
-                 upper_bounds={:#?}",
-                node_idx, node_universe, lower_bounds, upper_bounds
+                 error for var {node_idx:?} in universe {node_universe:?}, lower_bounds={lower_bounds:#?}, \
+                 upper_bounds={upper_bounds:#?}"
             ),
         );
     }
@@ -943,6 +942,10 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         generic_ty: Ty<'tcx>,
         min: ty::Region<'tcx>,
     ) -> bool {
+        if let ty::ReError(_) = *min {
+            return true;
+        }
+
         match bound {
             VerifyBound::IfEq(verify_if_eq_b) => {
                 let verify_if_eq_b = var_values.normalize(self.region_rels.tcx, *verify_if_eq_b);

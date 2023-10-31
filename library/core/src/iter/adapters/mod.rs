@@ -16,6 +16,7 @@ mod inspect;
 mod intersperse;
 mod map;
 mod map_while;
+mod map_windows;
 mod peekable;
 mod rev;
 mod scan;
@@ -56,6 +57,9 @@ pub use self::intersperse::{Intersperse, IntersperseWith};
 
 #[stable(feature = "iter_map_while", since = "1.57.0")]
 pub use self::map_while::MapWhile;
+
+#[unstable(feature = "iter_map_windows", reason = "recently added", issue = "87155")]
+pub use self::map_windows::MapWindows;
 
 #[unstable(feature = "trusted_random_access", issue = "none")]
 pub use self::zip::TrustedRandomAccess;

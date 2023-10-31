@@ -1,14 +1,30 @@
 error: allocating a local array larger than 512000 bytes
-  --> $DIR/large_stack_arrays.rs:23:9
+  --> $DIR/large_stack_arrays.rs:29:14
+   |
+LL |     let _x = [build(); 3];
+   |              ^^^^^^^^^^^^
+   |
+   = help: consider allocating on the heap with `vec![build(); 3].into_boxed_slice()`
+   = note: `-D clippy::large-stack-arrays` implied by `-D warnings`
+
+error: allocating a local array larger than 512000 bytes
+  --> $DIR/large_stack_arrays.rs:31:14
+   |
+LL |     let _y = [build(), build(), build()];
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider allocating on the heap with `vec![build(), build(), build()].into_boxed_slice()`
+
+error: allocating a local array larger than 512000 bytes
+  --> $DIR/large_stack_arrays.rs:36:9
    |
 LL |         [0u32; 20_000_000],
    |         ^^^^^^^^^^^^^^^^^^
    |
    = help: consider allocating on the heap with `vec![0u32; 20_000_000].into_boxed_slice()`
-   = note: `-D clippy::large-stack-arrays` implied by `-D warnings`
 
 error: allocating a local array larger than 512000 bytes
-  --> $DIR/large_stack_arrays.rs:24:9
+  --> $DIR/large_stack_arrays.rs:37:9
    |
 LL |         [S { data: [0; 32] }; 5000],
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -16,7 +32,7 @@ LL |         [S { data: [0; 32] }; 5000],
    = help: consider allocating on the heap with `vec![S { data: [0; 32] }; 5000].into_boxed_slice()`
 
 error: allocating a local array larger than 512000 bytes
-  --> $DIR/large_stack_arrays.rs:25:9
+  --> $DIR/large_stack_arrays.rs:38:9
    |
 LL |         [Some(""); 20_000_000],
    |         ^^^^^^^^^^^^^^^^^^^^^^
@@ -24,7 +40,7 @@ LL |         [Some(""); 20_000_000],
    = help: consider allocating on the heap with `vec![Some(""); 20_000_000].into_boxed_slice()`
 
 error: allocating a local array larger than 512000 bytes
-  --> $DIR/large_stack_arrays.rs:26:9
+  --> $DIR/large_stack_arrays.rs:39:9
    |
 LL |         [E::T(0); 5000],
    |         ^^^^^^^^^^^^^^^
@@ -32,12 +48,12 @@ LL |         [E::T(0); 5000],
    = help: consider allocating on the heap with `vec![E::T(0); 5000].into_boxed_slice()`
 
 error: allocating a local array larger than 512000 bytes
-  --> $DIR/large_stack_arrays.rs:27:9
+  --> $DIR/large_stack_arrays.rs:40:9
    |
 LL |         [0u8; usize::MAX],
    |         ^^^^^^^^^^^^^^^^^
    |
    = help: consider allocating on the heap with `vec![0u8; usize::MAX].into_boxed_slice()`
 
-error: aborting due to 5 previous errors
+error: aborting due to 7 previous errors
 

@@ -48,5 +48,5 @@ const Y: () = {
 };
 
 fn main() {
-    let _y = Y;
+    Y;
 }

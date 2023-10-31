@@ -1,0 +1,10 @@
+error: ~const can only be applied to `#[const_trait]` traits
+  --> $DIR/derive-const-with-params.rs:6:16
+   |
+LL | #[derive_const(PartialEq)]
+   |                ^^^^^^^^^
+   |
+   = note: this error originates in the derive macro `PartialEq` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to previous error
+

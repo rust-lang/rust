@@ -132,7 +132,7 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
         acc.add_group(
             &group_label,
             AssistId("auto_import", AssistKind::QuickFix),
-            format!("Import `{import_path}`"),
+            format!("Import `{}`", import_path.display(ctx.db())),
             range,
             |builder| {
                 let scope = match scope.clone() {
@@ -203,7 +203,7 @@ fn relevance_score(
         // get the distance between the imported path and the current module
         // (prefer items that are more local)
         Some((item_module, current_module)) => {
-            score -= module_distance_hueristic(db, current_module, &item_module) as i32;
+            score -= module_distance_heuristic(db, current_module, &item_module) as i32;
         }
 
         // could not find relevant modules, so just use the length of the path as an estimate
@@ -214,7 +214,7 @@ fn relevance_score(
 }
 
 /// A heuristic that gives a higher score to modules that are more separated.
-fn module_distance_hueristic(db: &dyn HirDatabase, current: &Module, item: &Module) -> usize {
+fn module_distance_heuristic(db: &dyn HirDatabase, current: &Module, item: &Module) -> usize {
     // get the path starting from the item to the respective crate roots
     let mut current_path = current.path_to_root(db);
     let mut item_path = item.path_to_root(db);

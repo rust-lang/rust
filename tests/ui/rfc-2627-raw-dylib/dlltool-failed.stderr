@@ -1,5 +1,0 @@
-error: Dlltool could not create import library: 
-       $DLLTOOL: Syntax error in def file $DEF_FILE:1
-
-error: aborting due to previous error
-

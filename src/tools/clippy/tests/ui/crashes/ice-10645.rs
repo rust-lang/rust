@@ -1,4 +1,4 @@
-// compile-flags: --cap-lints=warn
+//@compile-flags: --cap-lints=warn
 // https://github.com/rust-lang/rust-clippy/issues/10645
 
 #![warn(clippy::future_not_send)]

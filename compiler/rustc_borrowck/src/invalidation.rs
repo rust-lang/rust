@@ -112,11 +112,13 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
             TerminatorKind::SwitchInt { discr, targets: _ } => {
                 self.consume_operand(location, discr);
             }
-            TerminatorKind::Drop { place: drop_place, target: _, unwind: _ } => {
+            TerminatorKind::Drop { place: drop_place, target: _, unwind: _, replace } => {
+                let write_kind =
+                    if *replace { WriteKind::Replace } else { WriteKind::StorageDeadOrDrop };
                 self.access_place(
                     location,
                     *drop_place,
-                    (AccessDepth::Drop, Write(WriteKind::StorageDeadOrDrop)),
+                    (AccessDepth::Drop, Write(write_kind)),
                     LocalMutationIsAllowed::Yes,
                 );
             }
@@ -126,7 +128,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx> {
                 destination,
                 target: _,
                 unwind: _,
-                from_hir_call: _,
+                call_source: _,
                 fn_span: _,
             } => {
                 self.consume_operand(location, func);
@@ -253,7 +255,7 @@ impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
                         (Shallow(Some(ArtificialField::ShallowBorrow)), Read(ReadKind::Borrow(bk)))
                     }
                     BorrowKind::Shared => (Deep, Read(ReadKind::Borrow(bk))),
-                    BorrowKind::Unique | BorrowKind::Mut { .. } => {
+                    BorrowKind::Mut { .. } => {
                         let wk = WriteKind::MutableBorrow(bk);
                         if allow_two_phase_borrow(bk) {
                             (Deep, Reservation(wk))
@@ -271,7 +273,7 @@ impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
                     Mutability::Mut => (
                         Deep,
                         Write(WriteKind::MutableBorrow(BorrowKind::Mut {
-                            allow_two_phase_borrow: false,
+                            kind: mir::MutBorrowKind::Default,
                         })),
                     ),
                     Mutability::Not => (Deep, Read(ReadKind::Borrow(BorrowKind::Shared))),
@@ -351,7 +353,6 @@ impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
         let tcx = self.tcx;
         let body = self.body;
         let borrow_set = self.borrow_set;
-        let indices = self.borrow_set.indices();
         each_borrow_involving_path(
             self,
             tcx,
@@ -359,7 +360,7 @@ impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
             location,
             (sd, place),
             borrow_set,
-            indices,
+            |_| true,
             |this, borrow_index, borrow| {
                 match (rw, borrow.kind) {
                     // Obviously an activation is compatible with its own
@@ -374,14 +375,11 @@ impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
                     }
 
                     (Read(_), BorrowKind::Shallow | BorrowKind::Shared)
-                    | (
-                        Read(ReadKind::Borrow(BorrowKind::Shallow)),
-                        BorrowKind::Unique | BorrowKind::Mut { .. },
-                    ) => {
+                    | (Read(ReadKind::Borrow(BorrowKind::Shallow)), BorrowKind::Mut { .. }) => {
                         // Reads don't invalidate shared or shallow borrows
                     }
 
-                    (Read(_), BorrowKind::Unique | BorrowKind::Mut { .. }) => {
+                    (Read(_), BorrowKind::Mut { .. }) => {
                         // Reading from mere reservations of mutable-borrows is OK.
                         if !is_active(&this.dominators, borrow, location) {
                             // If the borrow isn't active yet, reads don't invalidate it
@@ -423,7 +421,7 @@ impl<'cx, 'tcx> InvalidationGenerator<'cx, 'tcx> {
             // only mutable borrows should be 2-phase
             assert!(match borrow.kind {
                 BorrowKind::Shared | BorrowKind::Shallow => false,
-                BorrowKind::Unique | BorrowKind::Mut { .. } => true,
+                BorrowKind::Mut { .. } => true,
             });
 
             self.access_place(

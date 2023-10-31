@@ -5,7 +5,7 @@ pub fn target() -> Target {
     let mut base = super::linux_gnu_base::opts();
     base.endian = Endian::Big;
     base.cpu = "v9".into();
-    base.max_atomic_width = Some(64);
+    base.max_atomic_width = Some(32);
     base.add_pre_link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-mv8plus"]);
 
     Target {

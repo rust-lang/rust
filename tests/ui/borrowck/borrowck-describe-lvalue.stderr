@@ -45,7 +45,7 @@ error[E0503]: cannot use `f.x` because it was mutably borrowed
   --> $DIR/borrowck-describe-lvalue.rs:37:9
    |
 LL |         let x = f.x();
-   |                 ----- `f` is borrowed here
+   |                 - `f` is borrowed here
 LL |         f.x;
    |         ^^^ use of borrowed `f`
 LL |         drop(x);
@@ -55,7 +55,7 @@ error[E0503]: cannot use `g.0` because it was mutably borrowed
   --> $DIR/borrowck-describe-lvalue.rs:44:9
    |
 LL |         let x = g.x();
-   |                 ----- `g` is borrowed here
+   |                 - `g` is borrowed here
 LL |         g.0;
    |         ^^^ use of borrowed `g`
 LL |         drop(x);
@@ -75,7 +75,7 @@ error[E0503]: cannot use `e.0` because it was mutably borrowed
   --> $DIR/borrowck-describe-lvalue.rs:59:20
    |
 LL |         let x = e.x();
-   |                 ----- `e` is borrowed here
+   |                 - `e` is borrowed here
 LL |         match e {
 LL |             Baz::X(value) => value
    |                    ^^^^^ use of borrowed `e`
@@ -97,7 +97,7 @@ error[E0503]: cannot use `f.x` because it was mutably borrowed
   --> $DIR/borrowck-describe-lvalue.rs:74:9
    |
 LL |         let x = f.x();
-   |                 ----- `*f` is borrowed here
+   |                 - `*f` is borrowed here
 LL |         f.x;
    |         ^^^ use of borrowed `*f`
 LL |         drop(x);
@@ -107,7 +107,7 @@ error[E0503]: cannot use `g.0` because it was mutably borrowed
   --> $DIR/borrowck-describe-lvalue.rs:81:9
    |
 LL |         let x = g.x();
-   |                 ----- `*g` is borrowed here
+   |                 - `*g` is borrowed here
 LL |         g.0;
    |         ^^^ use of borrowed `*g`
 LL |         drop(x);
@@ -127,7 +127,7 @@ error[E0503]: cannot use `e.0` because it was mutably borrowed
   --> $DIR/borrowck-describe-lvalue.rs:96:20
    |
 LL |         let x = e.x();
-   |                 ----- `*e` is borrowed here
+   |                 - `*e` is borrowed here
 LL |         match *e {
 LL |             Baz::X(value) => value
    |                    ^^^^^ use of borrowed `*e`

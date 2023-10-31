@@ -426,7 +426,7 @@ fn multiple_storage() {
             // As there are multiple `StorageLive` statements for `x`, we cannot know if this `z`'s
             // pointer address is the address of `x`, so do nothing.
             let y = *z;
-            Call(RET, retblock, opaque(y))
+            Call(RET = opaque(y), retblock)
         }
 
         retblock = {
@@ -452,7 +452,7 @@ fn dominate_storage() {
         }
         bb1 = {
             let c = *r;
-            Call(RET, bb2, opaque(c))
+            Call(RET = opaque(c), bb2)
         }
         bb2 = {
             StorageDead(x);
@@ -486,18 +486,18 @@ fn maybe_dead(m: bool) {
         bb1 = {
             StorageDead(x);
             StorageDead(y);
-            Call(RET, bb2, opaque(u))
+            Call(RET = opaque(u), bb2)
         }
         bb2 = {
             // As `x` may be `StorageDead`, `a` may be dangling, so we do nothing.
             let z = *a;
-            Call(RET, bb3, opaque(z))
+            Call(RET = opaque(z), bb3)
         }
         bb3 = {
             // As `y` may be `StorageDead`, `b` may be dangling, so we do nothing.
             // This implies that we also do not substitute `b` in `bb0`.
             let t = *b;
-            Call(RET, retblock, opaque(t))
+            Call(RET = opaque(t), retblock)
         }
         retblock = {
             Return()

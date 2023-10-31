@@ -1,4 +1,5 @@
-use clippy_utils::{diagnostics::span_lint, is_test_module_or_function};
+use clippy_utils::diagnostics::span_lint;
+use clippy_utils::is_test_module_or_function;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::{Item, Pat, PatKind};
 use rustc_lint::{LateContext, LateLintPass};

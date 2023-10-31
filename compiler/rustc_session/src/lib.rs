@@ -10,6 +10,7 @@
 #![allow(rustc::potential_query_instability)]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
+#![cfg_attr(not(bootstrap), allow(internal_features))]
 
 #[macro_use]
 extern crate rustc_macros;
@@ -27,7 +28,7 @@ pub use lint::{declare_lint, declare_lint_pass, declare_tool_lint, impl_lint_pas
 pub use rustc_lint_defs as lint;
 pub mod parse;
 
-mod code_stats;
+pub mod code_stats;
 #[macro_use]
 pub mod config;
 pub mod cstore;

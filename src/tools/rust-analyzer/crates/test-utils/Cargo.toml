@@ -14,7 +14,7 @@ doctest = false
 [dependencies]
 # Avoid adding deps here, this crate is widely used in tests it should compile fast!
 dissimilar = "1.0.4"
-text-size = "1.1.0"
+text-size.workspace = true
 rustc-hash = "1.1.0"
 
 stdx.workspace = true

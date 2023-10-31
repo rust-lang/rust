@@ -14,8 +14,7 @@ Adapted from Daniel Lemire's fast_float ``table_generation.py``,
 available here: <https://github.com/fastfloat/fast_float/blob/main/script/table_generation.py>.
 """
 from __future__ import print_function
-from math import ceil, floor, log, log2
-from fractions import Fraction
+from math import ceil, floor, log
 from collections import deque
 
 HEADER = """
@@ -97,7 +96,6 @@ def print_proper_powers(min_exp, max_exp, bias):
     print('#[rustfmt::skip]')
     typ = '[(u64, u64); N_POWERS_OF_FIVE]'
     print('pub static POWER_OF_FIVE_128: {} = ['.format(typ))
-    lo_mask = (1 << 64) - 1
     for c, exp in powers:
         hi = '0x{:x}'.format(c // (1 << 64))
         lo = '0x{:x}'.format(c % (1 << 64))

@@ -1,6 +1,3 @@
-// [next] compile-flags: -Zlower-impl-trait-in-trait-to-assoc-ty
-// revisions: current next
-
 // FIXME(compiler-errors): I'm not exactly sure if this is expected to pass or not.
 // But we fixed an ICE anyways.
 

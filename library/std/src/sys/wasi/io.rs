@@ -31,7 +31,7 @@ impl<'a> IoSlice<'a> {
 
     #[inline]
     pub fn as_slice(&self) -> &[u8] {
-        unsafe { slice::from_raw_parts(self.vec.buf as *const u8, self.vec.buf_len) }
+        unsafe { slice::from_raw_parts(self.vec.buf as *const u8, self.vec.buf_len as usize) }
     }
 }
 

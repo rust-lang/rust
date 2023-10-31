@@ -398,7 +398,7 @@ pub(crate) enum CaptureReasonSuggest<'tcx> {
     #[suggestion(
         borrowck_suggest_create_freash_reborrow,
         applicability = "maybe-incorrect",
-        code = "as_mut().",
+        code = ".as_mut()",
         style = "verbose"
     )]
     FreshReborrow {

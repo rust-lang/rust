@@ -12,7 +12,7 @@ note: `into_iter` takes ownership of the receiver `self`, which moves `val.0`
 help: you can `clone` the value and consume it, but this might not be your desired behavior
    |
 LL |     val.0.clone().into_iter().next();
-   |           ++++++++
+   |          ++++++++
 
 error[E0382]: use of moved value: `foo`
   --> $DIR/move-fn-self-receiver.rs:34:5
@@ -78,7 +78,7 @@ error[E0505]: cannot move out of `mut_foo` because it is borrowed
 LL |     let mut mut_foo = Foo;
    |         ----------- binding `mut_foo` declared here
 LL |     let ret = mut_foo.use_mut_self();
-   |               ---------------------- borrow of `mut_foo` occurs here
+   |               ------- borrow of `mut_foo` occurs here
 LL |     mut_foo;
    |     ^^^^^^^ move out of `mut_foo` occurs here
 LL |     ret;
@@ -102,7 +102,7 @@ LL |     fn use_rc_self(self: Rc<Self>) {}
 help: you can `clone` the value and consume it, but this might not be your desired behavior
    |
 LL |     rc_foo.clone().use_rc_self();
-   |            ++++++++
+   |           ++++++++
 
 error[E0382]: use of moved value: `foo_add`
   --> $DIR/move-fn-self-receiver.rs:59:5
@@ -145,7 +145,7 @@ LL |     explicit_into_iter;
 help: you can `clone` the value and consume it, but this might not be your desired behavior
    |
 LL |     for _val in explicit_into_iter.clone().into_iter() {}
-   |                                    ++++++++
+   |                                   ++++++++
 
 error[E0382]: use of moved value: `container`
   --> $DIR/move-fn-self-receiver.rs:71:5

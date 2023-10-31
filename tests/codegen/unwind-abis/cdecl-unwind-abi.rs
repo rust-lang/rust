@@ -1,4 +1,5 @@
 // compile-flags: -C opt-level=0
+// needs-unwind
 
 // Test that `nounwind` attributes are correctly applied to exported `cdecl` and
 // `cdecl-unwind` extern functions. `cdecl-unwind` functions MUST NOT have this attribute. We

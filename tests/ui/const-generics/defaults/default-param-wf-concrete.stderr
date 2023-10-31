@@ -1,9 +1,0 @@
-error[E0080]: evaluation of constant value failed
-  --> $DIR/default-param-wf-concrete.rs:1:28
-   |
-LL | struct Foo<const N: u8 = { 255 + 1 }>;
-   |                            ^^^^^^^ attempt to compute `u8::MAX + 1_u8`, which would overflow
-
-error: aborting due to previous error
-
-For more information about this error, try `rustc --explain E0080`.

@@ -1,10 +1,10 @@
 // MIR for `float_to_int` after built
 
 fn float_to_int(_1: f32) -> i32 {
-    let mut _0: i32;                     // return place in scope 0 at $DIR/as_cast.rs:+0:28: +0:31
+    let mut _0: i32;
 
     bb0: {
-        _0 = _1 as i32 (FloatToInt);     // scope 0 at $DIR/as_cast.rs:+3:13: +3:27
-        return;                          // scope 0 at $DIR/as_cast.rs:+4:13: +4:21
+        _0 = _1 as i32 (FloatToInt);
+        return;
     }
 }

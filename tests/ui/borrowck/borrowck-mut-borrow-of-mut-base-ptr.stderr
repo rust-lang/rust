@@ -7,7 +7,7 @@ LL |     let mut t2 = &mut t0;
    |                  ^^^^^^^ mutable borrow occurs here
 LL |     **t2 += 1;              // Mutates `*t0`
 LL |     p.use_ref();
-   |     ----------- immutable borrow later used here
+   |     - immutable borrow later used here
 
 error[E0499]: cannot borrow `t0` as mutable more than once at a time
   --> $DIR/borrowck-mut-borrow-of-mut-base-ptr.rs:19:18
@@ -18,7 +18,7 @@ LL |     let mut t2 = &mut t0;
    |                  ^^^^^^^ second mutable borrow occurs here
 LL |     **t2 += 1;                  // Mutates `*t0` but not through `*p`
 LL |     p.use_mut();
-   |     ----------- first borrow later used here
+   |     - first borrow later used here
 
 error: aborting due to 2 previous errors
 

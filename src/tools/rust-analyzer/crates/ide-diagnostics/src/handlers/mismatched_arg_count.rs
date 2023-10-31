@@ -3,7 +3,7 @@ use syntax::{
     AstNode, TextRange,
 };
 
-use crate::{adjusted_display_range, Diagnostic, DiagnosticsContext};
+use crate::{adjusted_display_range, Diagnostic, DiagnosticCode, DiagnosticsContext};
 
 // Diagnostic: mismatched-arg-count
 //
@@ -14,7 +14,7 @@ pub(crate) fn mismatched_arg_count(
 ) -> Diagnostic {
     let s = if d.expected == 1 { "" } else { "s" };
     let message = format!("expected {} argument{s}, found {}", d.expected, d.found);
-    Diagnostic::new("mismatched-arg-count", message, invalid_args_range(ctx, d))
+    Diagnostic::new(DiagnosticCode::RustcHardError("E0107"), message, invalid_args_range(ctx, d))
 }
 
 fn invalid_args_range(ctx: &DiagnosticsContext<'_>, d: &hir::MismatchedArgCount) -> TextRange {

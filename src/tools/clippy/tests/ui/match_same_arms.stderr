@@ -8,7 +8,7 @@ LL |         Abc::A => 0,
 note: `_` wildcard arm here
   --> $DIR/match_same_arms.rs:13:9
    |
-LL |         _ => 0, //~ ERROR match arms have same body
+LL |         _ => 0,
    |         ^^^^^^
    = note: `-D clippy::match-same-arms` implied by `-D warnings`
 
@@ -24,13 +24,13 @@ LL |         (1, .., 3) => 42,
 note: other arm here
   --> $DIR/match_same_arms.rs:18:9
    |
-LL |         (.., 3) => 42, //~ ERROR match arms have same body
+LL |         (.., 3) => 42,
    |         ^^^^^^^^^^^^^
 
 error: this match arm has an identical body to another arm
   --> $DIR/match_same_arms.rs:24:9
    |
-LL |         51 => 1, //~ ERROR match arms have same body
+LL |         51 => 1,
    |         --^^^^^
    |         |
    |         help: try merging the arm patterns: `51 | 42`
@@ -54,13 +54,13 @@ LL |         41 => 2,
 note: other arm here
   --> $DIR/match_same_arms.rs:26:9
    |
-LL |         52 => 2, //~ ERROR match arms have same body
+LL |         52 => 2,
    |         ^^^^^^^
 
 error: this match arm has an identical body to another arm
   --> $DIR/match_same_arms.rs:32:9
    |
-LL |         2 => 2, //~ ERROR 2nd matched arms have same body
+LL |         2 => 2,
    |         -^^^^^
    |         |
    |         help: try merging the arm patterns: `2 | 1`
@@ -73,9 +73,9 @@ LL |         1 => 2,
    |         ^^^^^^
 
 error: this match arm has an identical body to another arm
-  --> $DIR/match_same_arms.rs:33:9
+  --> $DIR/match_same_arms.rs:34:9
    |
-LL |         3 => 2, //~ ERROR 3rd matched arms have same body
+LL |         3 => 2,
    |         -^^^^^
    |         |
    |         help: try merging the arm patterns: `3 | 1`
@@ -90,20 +90,20 @@ LL |         1 => 2,
 error: this match arm has an identical body to another arm
   --> $DIR/match_same_arms.rs:32:9
    |
-LL |         2 => 2, //~ ERROR 2nd matched arms have same body
+LL |         2 => 2,
    |         -^^^^^
    |         |
    |         help: try merging the arm patterns: `2 | 3`
    |
    = help: or try changing either arm body
 note: other arm here
-  --> $DIR/match_same_arms.rs:33:9
+  --> $DIR/match_same_arms.rs:34:9
    |
-LL |         3 => 2, //~ ERROR 3rd matched arms have same body
+LL |         3 => 2,
    |         ^^^^^^
 
 error: this match arm has an identical body to another arm
-  --> $DIR/match_same_arms.rs:50:17
+  --> $DIR/match_same_arms.rs:51:17
    |
 LL |                 CommandInfo::External { name, .. } => name.to_string(),
    |                 ----------------------------------^^^^^^^^^^^^^^^^^^^^
@@ -112,7 +112,7 @@ LL |                 CommandInfo::External { name, .. } => name.to_string(),
    |
    = help: or try changing either arm body
 note: other arm here
-  --> $DIR/match_same_arms.rs:49:17
+  --> $DIR/match_same_arms.rs:50:17
    |
 LL |                 CommandInfo::BuiltIn { name, .. } => name.to_string(),
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

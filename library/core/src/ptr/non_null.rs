@@ -367,13 +367,14 @@ impl<T: ?Sized> NonNull<T> {
     ///
     /// [the module documentation]: crate::ptr#safety
     #[stable(feature = "nonnull", since = "1.25.0")]
-    #[rustc_const_unstable(feature = "const_ptr_as_ref", issue = "91822")]
+    #[rustc_const_stable(feature = "const_nonnull_as_ref", since = "1.73.0")]
     #[must_use]
     #[inline(always)]
     pub const unsafe fn as_ref<'a>(&self) -> &'a T {
         // SAFETY: the caller must guarantee that `self` meets all the
         // requirements for a reference.
-        unsafe { &*self.as_ptr() }
+        // `cast_const` avoids a mutable raw pointer deref.
+        unsafe { &*self.as_ptr().cast_const() }
     }
 
     /// Returns a unique reference to the value. If the value may be uninitialized, [`as_uninit_mut`]
@@ -461,6 +462,30 @@ impl<T: ?Sized> NonNull<T> {
         // address space, which no legal objects are allowed to do.
         // And the caller promised the `delta` is sound to add.
         unsafe { NonNull { pointer: self.pointer.add(delta) } }
+    }
+
+    /// See [`pointer::sub`] for semantics and safety requirements.
+    #[inline]
+    pub(crate) const unsafe fn sub(self, delta: usize) -> Self
+    where
+        T: Sized,
+    {
+        // SAFETY: We require that the delta stays in-bounds of the object, and
+        // thus it cannot become null, as no legal objects can be allocated
+        // in such as way that the null address is part of them.
+        // And the caller promised the `delta` is sound to subtract.
+        unsafe { NonNull { pointer: self.pointer.sub(delta) } }
+    }
+
+    /// See [`pointer::sub_ptr`] for semantics and safety requirements.
+    #[inline]
+    pub(crate) const unsafe fn sub_ptr(self, subtrahend: Self) -> usize
+    where
+        T: Sized,
+    {
+        // SAFETY: The caller promised that this is safe to do, and
+        // the non-nullness is irrelevant to the operation.
+        unsafe { self.pointer.sub_ptr(subtrahend.pointer) }
     }
 }
 

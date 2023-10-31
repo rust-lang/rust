@@ -1,5 +1,5 @@
 #![warn(clippy::explicit_counter_loop)]
-#![allow(clippy::uninlined_format_args)]
+#![allow(clippy::uninlined_format_args, clippy::useless_vec)]
 
 fn main() {
     let mut vec = vec![1, 2, 3, 4];
@@ -22,6 +22,54 @@ fn main() {
     let mut _index = 0;
     for _v in vec {
         _index += 1;
+    }
+
+    let vec = [1, 2, 3, 4];
+    // Potential false positives
+    let mut _index = 0;
+    _index = 1;
+    for _v in &vec {
+        _index += 1
+    }
+
+    let mut _index = 0;
+    _index += 1;
+    for _v in &vec {
+        _index += 1
+    }
+
+    let mut _index = 0;
+    for _v in &vec {
+        _index = 1;
+        _index += 1
+    }
+
+    let mut _index = 0;
+    for _v in &vec {
+        let mut _index = 0;
+        _index += 1
+    }
+
+    let mut _index = 0;
+    for _v in &vec {
+        _index += 1;
+        _index = 0;
+    }
+
+    let mut _index = 0;
+    if true {
+        _index = 1
+    };
+    for _v in &vec {
+        _index += 1
+    }
+
+    let mut _index = 1;
+    if false {
+        _index = 0
+    };
+    for _v in &vec {
+        _index += 1
     }
 }
 

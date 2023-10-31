@@ -74,7 +74,7 @@ pub struct FrameState {
 
 impl VisitTags for FrameState {
     fn visit_tags(&self, _visit: &mut dyn FnMut(BorTag)) {
-        // `protected_tags` are fine to GC.
+        // `protected_tags` are already recorded by `GlobalStateInner`.
     }
 }
 
@@ -103,12 +103,17 @@ pub struct GlobalStateInner {
     pub tracked_call_ids: FxHashSet<CallId>,
     /// Whether to recurse into datatypes when searching for pointers to retag.
     pub retag_fields: RetagFields,
+    /// Whether `core::ptr::Unique` gets special (`Box`-like) handling.
+    pub unique_is_unique: bool,
 }
 
 impl VisitTags for GlobalStateInner {
-    fn visit_tags(&self, _visit: &mut dyn FnMut(BorTag)) {
-        // The only candidate is base_ptr_tags, and that does not need visiting since we don't ever
-        // GC the bottommost tag.
+    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
+        for &tag in self.protected_tags.keys() {
+            visit(tag);
+        }
+        // The only other candidate is base_ptr_tags, and that does not need visiting since we don't ever
+        // GC the bottommost/root tag.
     }
 }
 
@@ -170,6 +175,7 @@ impl GlobalStateInner {
         tracked_pointer_tags: FxHashSet<BorTag>,
         tracked_call_ids: FxHashSet<CallId>,
         retag_fields: RetagFields,
+        unique_is_unique: bool,
     ) -> Self {
         GlobalStateInner {
             borrow_tracker_method,
@@ -180,6 +186,7 @@ impl GlobalStateInner {
             tracked_pointer_tags,
             tracked_call_ids,
             retag_fields,
+            unique_is_unique,
         }
     }
 
@@ -244,6 +251,7 @@ impl BorrowTrackerMethod {
             config.tracked_pointer_tags.clone(),
             config.tracked_call_ids.clone(),
             config.retag_fields,
+            config.unique_is_unique,
         ))
     }
 }
@@ -297,12 +305,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
     }
 
-    fn retag_return_place(&mut self) -> InterpResult<'tcx> {
+    fn protect_place(&mut self, place: &MPlaceTy<'tcx, Provenance>) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let method = this.machine.borrow_tracker.as_ref().unwrap().borrow().borrow_tracker_method;
         match method {
-            BorrowTrackerMethod::StackedBorrows => this.sb_retag_return_place(),
-            BorrowTrackerMethod::TreeBorrows => this.tb_retag_return_place(),
+            BorrowTrackerMethod::StackedBorrows => this.sb_protect_place(place),
+            BorrowTrackerMethod::TreeBorrows => this.tb_protect_place(place),
         }
     }
 
@@ -405,7 +413,7 @@ impl AllocState {
         alloc_id: AllocId,
         prov_extra: ProvenanceExtra,
         range: AllocRange,
-        machine: &mut MiriMachine<'_, 'tcx>,
+        machine: &MiriMachine<'_, 'tcx>,
     ) -> InterpResult<'tcx> {
         match self {
             AllocState::StackedBorrows(sb) =>
@@ -426,7 +434,7 @@ impl AllocState {
         alloc_id: AllocId,
         prov_extra: ProvenanceExtra,
         range: AllocRange,
-        machine: &mut MiriMachine<'_, 'tcx>,
+        machine: &MiriMachine<'_, 'tcx>,
     ) -> InterpResult<'tcx> {
         match self {
             AllocState::StackedBorrows(sb) =>

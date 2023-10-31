@@ -5,7 +5,9 @@ use clippy_utils::ty::is_copy;
 use rustc_errors::Applicability;
 use rustc_hir::{BindingAnnotation, ByRef, Expr, ExprKind, MatchSource, Node, PatKind, QPath};
 use rustc_lint::LateContext;
-use rustc_middle::ty::{self, adjustment::Adjust, print::with_forced_trimmed_paths};
+use rustc_middle::ty::adjustment::Adjust;
+use rustc_middle::ty::print::with_forced_trimmed_paths;
+use rustc_middle::ty::{self};
 use rustc_span::symbol::{sym, Symbol};
 
 use super::CLONE_ON_COPY;
@@ -62,7 +64,7 @@ pub(super) fn check(
                     ExprKind::Path(QPath::LangItem(rustc_hir::LangItem::TryTraitBranch, _, _))
                 ),
                 ExprKind::MethodCall(_, self_arg, ..) if expr.hir_id == self_arg.hir_id => true,
-                ExprKind::Match(_, _, MatchSource::TryDesugar | MatchSource::AwaitDesugar)
+                ExprKind::Match(_, _, MatchSource::TryDesugar(_) | MatchSource::AwaitDesugar)
                 | ExprKind::Field(..)
                 | ExprKind::Index(..) => true,
                 _ => false,

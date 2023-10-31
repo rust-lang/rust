@@ -1,5 +1,5 @@
 error[E0658]: `async` blocks are not allowed in constants
-  --> $DIR/issue-78722.rs:13:20
+  --> $DIR/issue-78722.rs:12:20
    |
 LL |         let f: F = async { 1 };
    |                    ^^^^^^^^^^^
@@ -7,8 +7,8 @@ LL |         let f: F = async { 1 };
    = note: see issue #85368 <https://github.com/rust-lang/rust/issues/85368> for more information
    = help: add `#![feature(const_async_blocks)]` to the crate attributes to enable
 
-error[E0271]: expected `[async block@$DIR/issue-78722.rs:11:13: 11:21]` to be a future that resolves to `u8`, but it resolves to `()`
-  --> $DIR/issue-78722.rs:9:30
+error[E0271]: expected `[async block@$DIR/issue-78722.rs:10:13: 10:21]` to be a future that resolves to `u8`, but it resolves to `()`
+  --> $DIR/issue-78722.rs:8:30
    |
 LL |         fn concrete_use() -> F {
    |                              ^ expected `()`, found `u8`

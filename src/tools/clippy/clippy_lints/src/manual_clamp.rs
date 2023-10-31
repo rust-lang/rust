@@ -4,21 +4,19 @@ use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::visitors::is_const_evaluatable;
-use clippy_utils::MaybePath;
 use clippy_utils::{
     eq_expr_value, in_constant, is_diag_trait_item, is_trait_method, path_res, path_to_local_id, peel_blocks,
-    peel_blocks_with_stmt,
+    peel_blocks_with_stmt, MaybePath,
 };
 use itertools::Itertools;
-use rustc_errors::Applicability;
-use rustc_errors::Diagnostic;
-use rustc_hir::{
-    def::Res, Arm, BinOpKind, Block, Expr, ExprKind, Guard, HirId, PatKind, PathSegment, PrimTy, QPath, StmtKind,
-};
+use rustc_errors::{Applicability, Diagnostic};
+use rustc_hir::def::Res;
+use rustc_hir::{Arm, BinOpKind, Block, Expr, ExprKind, Guard, HirId, PatKind, PathSegment, PrimTy, QPath, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::Ty;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::{symbol::sym, Span};
+use rustc_span::symbol::sym;
+use rustc_span::Span;
 use std::ops::Deref;
 
 declare_clippy_lint! {

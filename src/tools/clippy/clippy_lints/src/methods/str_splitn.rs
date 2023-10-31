@@ -55,7 +55,7 @@ fn lint_needless(cx: &LateContext<'_>, method_name: &str, expr: &Expr<'_>, self_
         NEEDLESS_SPLITN,
         expr.span,
         &format!("unnecessary use of `{r}splitn`"),
-        "try this",
+        "try",
         format!(
             "{}.{r}split({})",
             snippet_with_context(cx, self_arg.span, expr.span.ctxt(), "..", &mut app).0,
@@ -110,7 +110,7 @@ fn check_manual_split_once(
         IterUsageKind::Nth(_) => return,
     };
 
-    span_lint_and_sugg(cx, MANUAL_SPLIT_ONCE, usage.span, msg, "try this", sugg, app);
+    span_lint_and_sugg(cx, MANUAL_SPLIT_ONCE, usage.span, msg, "try", sugg, app);
 }
 
 /// checks for
@@ -236,7 +236,7 @@ fn indirect_usage<'tcx>(
             !matches!(
                 node,
                 Node::Expr(Expr {
-                    kind: ExprKind::Match(.., MatchSource::TryDesugar),
+                    kind: ExprKind::Match(.., MatchSource::TryDesugar(_)),
                     ..
                 })
             )
@@ -289,7 +289,7 @@ fn parse_iter_usage<'tcx>(
 ) -> Option<IterUsage> {
     let (kind, span) = match iter.next() {
         Some((_, Node::Expr(e))) if e.span.ctxt() == ctxt => {
-            let ExprKind::MethodCall(name, _, [args @ ..], _) = e.kind else {
+            let ExprKind::MethodCall(name, _, args, _) = e.kind else {
                 return None;
             };
             let did = cx.typeck_results().type_dependent_def_id(e.hir_id)?;

@@ -38,8 +38,9 @@ impl<'a, 'tcx> CfgPropagator<'a, 'tcx> {
             _ => return,
         };
 
-        let Some(def_id) = item.item_id.as_def_id().and_then(|def_id| def_id.as_local())
-            else { return };
+        let Some(def_id) = item.item_id.as_def_id().and_then(|def_id| def_id.as_local()) else {
+            return;
+        };
 
         if check_parent {
             let expected_parent = self.cx.tcx.opt_local_parent(def_id);

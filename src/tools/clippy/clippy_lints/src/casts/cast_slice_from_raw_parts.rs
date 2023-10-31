@@ -4,7 +4,8 @@ use clippy_utils::source::snippet_with_context;
 use clippy_utils::{match_def_path, paths};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::{def_id::DefId, Expr, ExprKind};
+use rustc_hir::def_id::DefId;
+use rustc_hir::{Expr, ExprKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, Ty};
 

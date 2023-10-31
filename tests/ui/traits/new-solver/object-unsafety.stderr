@@ -14,6 +14,65 @@ help: consider introducing a `where` clause, but there might be an alternative b
 LL | pub fn copy_any<T>(t: &T) -> T where dyn Setup<From = T>: Setup {
    |                                ++++++++++++++++++++++++++++++++
 
-error: aborting due to previous error
+error: the type `&<dyn Setup<From = T> as Setup>::From` is not well-formed
+  --> $DIR/object-unsafety.rs:12:31
+   |
+LL |     copy::<dyn Setup<From=T>>(t)
+   |                               ^
 
-For more information about this error, try `rustc --explain E0277`.
+error[E0308]: mismatched types
+  --> $DIR/object-unsafety.rs:12:31
+   |
+LL |     copy::<dyn Setup<From=T>>(t)
+   |     ------------------------- ^ types differ
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected reference `&<dyn Setup<From = T> as Setup>::From`
+              found reference `&T`
+note: function defined here
+  --> $DIR/object-unsafety.rs:7:4
+   |
+LL | fn copy<U: Setup + ?Sized>(from: &U::From) -> U::From {
+   |    ^^^^                    --------------
+
+error[E0308]: mismatched types
+  --> $DIR/object-unsafety.rs:12:5
+   |
+LL | pub fn copy_any<T>(t: &T) -> T {
+   |                 -            - expected `T` because of return type
+   |                 |
+   |                 this type parameter
+LL |     copy::<dyn Setup<From=T>>(t)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ types differ
+   |
+   = note: expected type parameter `T`
+             found associated type `<dyn Setup<From = T> as Setup>::From`
+   = note: you might be missing a type parameter or trait bound
+
+error: the type `<dyn Setup<From = T> as Setup>::From` is not well-formed
+  --> $DIR/object-unsafety.rs:12:5
+   |
+LL |     copy::<dyn Setup<From=T>>(t)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the size for values of type `<dyn Setup<From = T> as Setup>::From` cannot be known at compilation time
+  --> $DIR/object-unsafety.rs:12:5
+   |
+LL |     copy::<dyn Setup<From=T>>(t)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^---
+   |     |
+   |     doesn't have a size known at compile-time
+   |     this returned value is of type `<dyn Setup<From = T> as Setup>::From`
+   |
+   = help: the trait `Sized` is not implemented for `<dyn Setup<From = T> as Setup>::From`
+   = note: the return type of a function must have a statically known size
+help: consider further restricting the associated type
+   |
+LL | pub fn copy_any<T>(t: &T) -> T where <dyn Setup<From = T> as Setup>::From: Sized {
+   |                                +++++++++++++++++++++++++++++++++++++++++++++++++
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0277, E0308.
+For more information about an error, try `rustc --explain E0277`.

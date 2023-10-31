@@ -60,6 +60,8 @@ unsafe fn _print_fmt(fmt: &mut fmt::Formatter<'_>, print_fmt: PrintFmt) -> fmt::
     bt_fmt.add_context()?;
     let mut idx = 0;
     let mut res = Ok(());
+    let mut omitted_count: usize = 0;
+    let mut first_omit = true;
     // Start immediately if we're not using a short backtrace.
     let mut start = print_fmt != PrintFmt::Short;
     backtrace_rs::trace_unsynchronized(|frame| {
@@ -85,10 +87,27 @@ unsafe fn _print_fmt(fmt: &mut fmt::Formatter<'_>, print_fmt: PrintFmt) -> fmt::
                         start = true;
                         return;
                     }
+                    if !start {
+                        omitted_count += 1;
+                    }
                 }
             }
 
             if start {
+                if omitted_count > 0 {
+                    debug_assert!(print_fmt == PrintFmt::Short);
+                    // only print the message between the middle of frames
+                    if !first_omit {
+                        let _ = writeln!(
+                            bt_fmt.formatter(),
+                            "      [... omitted {} frame{} ...]",
+                            omitted_count,
+                            if omitted_count > 1 { "s" } else { "" }
+                        );
+                    }
+                    first_omit = false;
+                    omitted_count = 0;
+                }
                 res = bt_fmt.frame().symbol(frame, symbol);
             }
         });

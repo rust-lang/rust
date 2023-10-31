@@ -27,6 +27,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync;
 use rustc_errors::{add_elided_lifetime_in_path_suggestion, DiagnosticBuilder, DiagnosticMessage};
 use rustc_errors::{Applicability, DecorateLint, MultiSpan, SuggestionStyle};
+use rustc_feature::Features;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::{CrateNum, DefId};
@@ -35,7 +36,7 @@ use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::middle::stability;
 use rustc_middle::ty::layout::{LayoutError, LayoutOfHelpers, TyAndLayout};
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{self, print::Printer, subst::GenericArg, RegisteredTools, Ty, TyCtxt};
+use rustc_middle::ty::{self, print::Printer, GenericArg, RegisteredTools, Ty, TyCtxt};
 use rustc_session::config::ExpectedValues;
 use rustc_session::lint::{BuiltinLintDiagnostics, LintExpectationId};
 use rustc_session::lint::{FutureIncompatibleInfo, Level, Lint, LintBuffer, LintId};
@@ -411,7 +412,7 @@ impl LintStore {
         }
 
         let complete_name = if let Some(tool_name) = tool_name {
-            format!("{}::{}", tool_name, lint_name)
+            format!("{tool_name}::{lint_name}")
         } else {
             lint_name.to_string()
         };
@@ -424,7 +425,7 @@ impl LintStore {
                         // 1. The tool is currently running, so this lint really doesn't exist.
                         // FIXME: should this handle tools that never register a lint, like rustfmt?
                         debug!("lints={:?}", self.by_name.keys().collect::<Vec<_>>());
-                        let tool_prefix = format!("{}::", tool_name);
+                        let tool_prefix = format!("{tool_name}::");
                         return if self.by_name.keys().any(|lint| lint.starts_with(&tool_prefix)) {
                             self.no_lint_suggestion(&complete_name)
                         } else {
@@ -445,11 +446,11 @@ impl LintStore {
         }
         match self.by_name.get(&complete_name) {
             Some(Renamed(new_name, _)) => CheckLintNameResult::Warning(
-                format!("lint `{}` has been renamed to `{}`", complete_name, new_name),
+                format!("lint `{complete_name}` has been renamed to `{new_name}`"),
                 Some(new_name.to_owned()),
             ),
             Some(Removed(reason)) => CheckLintNameResult::Warning(
-                format!("lint `{}` has been removed: {}", complete_name, reason),
+                format!("lint `{complete_name}` has been removed: {reason}"),
                 None,
             ),
             None => match self.lint_groups.get(&*complete_name) {
@@ -503,7 +504,7 @@ impl LintStore {
         lint_name: &str,
         tool_name: &str,
     ) -> CheckLintNameResult<'_> {
-        let complete_name = format!("{}::{}", tool_name, lint_name);
+        let complete_name = format!("{tool_name}::{lint_name}");
         match self.by_name.get(&complete_name) {
             None => match self.lint_groups.get(&*complete_name) {
                 // Now we are sure, that this lint exists nowhere
@@ -618,12 +619,10 @@ pub trait LintContext: Sized {
                         _ => ("", "s"),
                     };
                     db.span_label(span, format!(
-                        "this comment contains {}invisible unicode text flow control codepoint{}",
-                        an,
-                        s,
+                        "this comment contains {an}invisible unicode text flow control codepoint{s}",
                     ));
                     for (c, span) in &spans {
-                        db.span_label(*span, format!("{:?}", c));
+                        db.span_label(*span, format!("{c:?}"));
                     }
                     db.note(
                         "these kind of unicode codepoints change the way text flows on \
@@ -648,7 +647,7 @@ pub trait LintContext: Sized {
                             let opt_colon =
                                 if s.trim_start().starts_with("::") { "" } else { "::" };
 
-                            (format!("crate{}{}", opt_colon, s), Applicability::MachineApplicable)
+                            (format!("crate{opt_colon}{s}"), Applicability::MachineApplicable)
                         }
                         Err(_) => ("crate::<path>".to_string(), Applicability::HasPlaceholders),
                     };
@@ -704,7 +703,7 @@ pub trait LintContext: Sized {
                         let introduced = if is_imported { "imported" } else { "defined" };
                         db.span_label(
                             span,
-                            format!("the item `{}` is already {} here", ident, introduced),
+                            format!("the item `{ident}` is already {introduced} here"),
                         );
                     }
                 }
@@ -908,7 +907,7 @@ pub trait LintContext: Sized {
                 BuiltinLintDiagnostics::NamedArgumentUsedPositionally{ position_sp_to_replace, position_sp_for_msg, named_arg_sp, named_arg_name, is_formatting_arg} => {
                     db.span_label(named_arg_sp, "this named argument is referred to by position in formatting string");
                     if let Some(positional_arg_for_msg) = position_sp_for_msg {
-                        let msg = format!("this formatting argument uses named argument `{}` by position", named_arg_name);
+                        let msg = format!("this formatting argument uses named argument `{named_arg_name}` by position");
                         db.span_label(positional_arg_for_msg, msg);
                     }
 
@@ -948,9 +947,24 @@ pub trait LintContext: Sized {
                         Applicability::MachineApplicable,
                     );
                 }
+                BuiltinLintDiagnostics::AmbiguousGlobImports { diag } => {
+                    rustc_errors::report_ambiguity_error(db, diag);
+                }
                 BuiltinLintDiagnostics::AmbiguousGlobReexports { name, namespace, first_reexport_span, duplicate_reexport_span } => {
-                    db.span_label(first_reexport_span, format!("the name `{}` in the {} namespace is first re-exported here", name, namespace));
-                    db.span_label(duplicate_reexport_span, format!("but the name `{}` in the {} namespace is also re-exported here", name, namespace));
+                    db.span_label(first_reexport_span, format!("the name `{name}` in the {namespace} namespace is first re-exported here"));
+                    db.span_label(duplicate_reexport_span, format!("but the name `{name}` in the {namespace} namespace is also re-exported here"));
+                }
+                BuiltinLintDiagnostics::HiddenGlobReexports { name, namespace, glob_reexport_span, private_item_span } => {
+                    db.span_note(glob_reexport_span, format!("the name `{name}` in the {namespace} namespace is supposed to be publicly re-exported here"));
+                    db.span_note(private_item_span, "but the private item here shadows it".to_owned());
+                }
+                BuiltinLintDiagnostics::UnusedQualifications { removal_span } => {
+                    db.span_suggestion_verbose(
+                        removal_span,
+                        "remove the unnecessary path segments",
+                        "",
+                        Applicability::MachineApplicable
+                    );
                 }
             }
             // Rewrap `db`, and pass control to the user.
@@ -1058,6 +1072,7 @@ pub trait LintContext: Sized {
 impl<'a> EarlyContext<'a> {
     pub(crate) fn new(
         sess: &'a Session,
+        features: &'a Features,
         warn_about_weird_lints: bool,
         lint_store: &'a LintStore,
         registered_tools: &'a RegisteredTools,
@@ -1066,6 +1081,7 @@ impl<'a> EarlyContext<'a> {
         EarlyContext {
             builder: LintLevelsBuilder::new(
                 sess,
+                features,
                 warn_about_weird_lints,
                 lint_store,
                 registered_tools,
@@ -1261,16 +1277,16 @@ impl<'tcx> LateContext<'tcx> {
                 trait_ref: Option<ty::TraitRef<'tcx>>,
             ) -> Result<Self::Path, Self::Error> {
                 if trait_ref.is_none() {
-                    if let ty::Adt(def, substs) = self_ty.kind() {
-                        return self.print_def_path(def.did(), substs);
+                    if let ty::Adt(def, args) = self_ty.kind() {
+                        return self.print_def_path(def.did(), args);
                     }
                 }
 
                 // This shouldn't ever be needed, but just in case:
                 with_no_trimmed_paths!({
                     Ok(vec![match trait_ref {
-                        Some(trait_ref) => Symbol::intern(&format!("{:?}", trait_ref)),
-                        None => Symbol::intern(&format!("<{}>", self_ty)),
+                        Some(trait_ref) => Symbol::intern(&format!("{trait_ref:?}")),
+                        None => Symbol::intern(&format!("<{self_ty}>")),
                     }])
                 })
             }
@@ -1294,7 +1310,7 @@ impl<'tcx> LateContext<'tcx> {
                         )))
                     }
                     None => {
-                        with_no_trimmed_paths!(Symbol::intern(&format!("<impl {}>", self_ty)))
+                        with_no_trimmed_paths!(Symbol::intern(&format!("<impl {self_ty}>")))
                     }
                 });
 
@@ -1341,7 +1357,7 @@ impl<'tcx> LateContext<'tcx> {
         tcx.associated_items(trait_id)
             .find_by_name_and_kind(tcx, Ident::from_str(name), ty::AssocKind::Type, trait_id)
             .and_then(|assoc| {
-                let proj = tcx.mk_projection(assoc.def_id, [self_ty]);
+                let proj = Ty::new_projection(tcx, assoc.def_id, [self_ty]);
                 tcx.try_normalize_erasing_regions(self.param_env, proj).ok()
             })
     }

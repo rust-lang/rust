@@ -1,0 +1,9 @@
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const_fn_target_feature.rs:10:24
+   |
+LL | const B: () = unsafe { avx2_fn() };
+   |                        ^^^^^^^^^ calling a function that requires unavailable target features: avx2
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0080`.

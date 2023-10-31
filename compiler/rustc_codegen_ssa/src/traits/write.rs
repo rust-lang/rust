@@ -1,5 +1,5 @@
 use crate::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule};
-use crate::back::write::{CodegenContext, FatLTOInput, ModuleConfig};
+use crate::back::write::{CodegenContext, FatLtoInput, ModuleConfig};
 use crate::{CompiledModule, ModuleCodegen};
 
 use rustc_errors::{FatalError, Handler};
@@ -23,7 +23,7 @@ pub trait WriteBackendMethods: 'static + Sized + Clone {
     /// for further optimization.
     fn run_fat_lto(
         cgcx: &CodegenContext<Self>,
-        modules: Vec<FatLTOInput<Self>>,
+        modules: Vec<FatLtoInput<Self>>,
         cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
     ) -> Result<LtoModuleCodegen<Self>, FatalError>;
     /// Performs thin LTO by performing necessary global analysis and returning two
@@ -35,6 +35,7 @@ pub trait WriteBackendMethods: 'static + Sized + Clone {
         cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
     ) -> Result<(Vec<LtoModuleCodegen<Self>>, Vec<WorkProduct>), FatalError>;
     fn print_pass_timings(&self);
+    fn print_statistics(&self);
     unsafe fn optimize(
         cgcx: &CodegenContext<Self>,
         diag_handler: &Handler,

@@ -3,7 +3,7 @@
 // run-pass
 // needs-unwind Asserting on contents of error message
 
-#![feature(core_intrinsics, generic_assert, generic_assert_internals)]
+#![feature(core_intrinsics, generic_assert)]
 
 extern crate common;
 

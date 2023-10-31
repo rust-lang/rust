@@ -1,4 +1,4 @@
-use crate::{Diagnostic, DiagnosticsContext};
+use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext};
 
 // Diagnostic: unresolved-import
 //
@@ -8,10 +8,11 @@ pub(crate) fn unresolved_import(
     ctx: &DiagnosticsContext<'_>,
     d: &hir::UnresolvedImport,
 ) -> Diagnostic {
-    Diagnostic::new(
-        "unresolved-import",
+    Diagnostic::new_with_syntax_node_ptr(
+        ctx,
+        DiagnosticCode::RustcHardError("E0432"),
         "unresolved import",
-        ctx.sema.diagnostics_display_range(d.decl.clone().map(|it| it.into())).range,
+        d.decl.clone().map(|it| it.into()),
     )
     // This currently results in false positives in the following cases:
     // - `cfg_if!`-generated code in libstd (we don't load the sysroot correctly)

@@ -93,7 +93,17 @@ fn parse_count<'sess>(
     span: Span,
 ) -> PResult<'sess, MetaVarExpr> {
     let ident = parse_ident(iter, sess, span)?;
-    let depth = if try_eat_comma(iter) { Some(parse_depth(iter, sess, span)?) } else { None };
+    let depth = if try_eat_comma(iter) {
+        if iter.look_ahead(0).is_none() {
+            return Err(sess.span_diagnostic.struct_span_err(
+                span,
+                "`count` followed by a comma must have an associated index indicating its depth",
+            ));
+        }
+        Some(parse_depth(iter, sess, span)?)
+    } else {
+        None
+    };
     Ok(MetaVarExpr::Count(ident, depth))
 }
 
@@ -104,13 +114,10 @@ fn parse_depth<'sess>(
     span: Span,
 ) -> PResult<'sess, usize> {
     let Some(tt) = iter.next() else { return Ok(0) };
-    let TokenTree::Token(token::Token {
-        kind: token::TokenKind::Literal(lit), ..
-    }, _) = tt else {
-        return Err(sess.span_diagnostic.struct_span_err(
-            span,
-            "meta-variable expression depth must be a literal"
-        ));
+    let TokenTree::Token(token::Token { kind: token::TokenKind::Literal(lit), .. }, _) = tt else {
+        return Err(sess
+            .span_diagnostic
+            .struct_span_err(span, "meta-variable expression depth must be a literal"));
     };
     if let Ok(lit_kind) = LitKind::from_token_lit(*lit)
         && let LitKind::Int(n_u128, LitIntType::Unsuffixed) = lit_kind

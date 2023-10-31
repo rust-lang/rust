@@ -1,0 +1,22 @@
+[package]
+authors = ["Miri Team"]
+description = "Helpers for miri maintenance"
+license = "MIT OR Apache-2.0"
+name = "miri-script"
+repository = "https://github.com/rust-lang/miri"
+version = "0.1.0"
+default-run = "miri-script"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+which = "4.4"
+walkdir = "2.3"
+itertools = "0.10"
+path_macro = "1.0"
+shell-words = "1.1"
+anyhow = "1.0"
+xshell = "0.2"
+rustc_version = "0.4"
+dunce = "1.0.4"

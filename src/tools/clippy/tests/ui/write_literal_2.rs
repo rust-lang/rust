@@ -1,5 +1,5 @@
 #![allow(unused_must_use)]
-#![warn(clippy::write_literal)]
+#![warn(clippy::needless_raw_strings, clippy::write_literal)]
 
 use std::io::Write;
 

@@ -8,7 +8,7 @@ LL |     (t, t)
    |      |
    |      value moved here
    |
-help: consider cloning the value if the performance cost is acceptable
+help: clone the value to increment its reference count
    |
 LL |     (t.clone(), t)
    |       ++++++++

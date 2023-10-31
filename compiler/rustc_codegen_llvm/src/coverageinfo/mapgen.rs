@@ -1,10 +1,9 @@
 use crate::common::CodegenCx;
 use crate::coverageinfo;
+use crate::coverageinfo::ffi::{Counter, CounterExpression, CounterMappingRegion};
 use crate::llvm;
 
-use llvm::coverageinfo::CounterMappingRegion;
-use rustc_codegen_ssa::coverageinfo::map::{Counter, CounterExpression};
-use rustc_codegen_ssa::traits::{ConstMethods, CoverageInfoMethods};
+use rustc_codegen_ssa::traits::ConstMethods;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
@@ -13,8 +12,7 @@ use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::coverage::CodeRegion;
 use rustc_middle::ty::TyCtxt;
-
-use std::ffi::CString;
+use rustc_span::Symbol;
 
 /// Generates and exports the Coverage Map.
 ///
@@ -63,7 +61,7 @@ pub fn finalize(cx: &CodegenCx<'_, '_>) {
     let mut function_data = Vec::new();
     for (instance, function_coverage) in function_coverage_map {
         debug!("Generate function coverage for {}, {:?}", cx.codegen_unit.name(), instance);
-        let mangled_function_name = tcx.symbol_name(instance).to_string();
+        let mangled_function_name = tcx.symbol_name(instance).name;
         let source_hash = function_coverage.source_hash();
         let is_used = function_coverage.is_used();
         let (expressions, counter_regions) =
@@ -90,19 +88,24 @@ pub fn finalize(cx: &CodegenCx<'_, '_>) {
 
     // Encode all filenames referenced by counters/expressions in this module
     let filenames_buffer = llvm::build_byte_buffer(|filenames_buffer| {
-        coverageinfo::write_filenames_section_to_buffer(&mapgen.filenames, filenames_buffer);
+        coverageinfo::write_filenames_section_to_buffer(
+            mapgen.filenames.iter().map(Symbol::as_str),
+            filenames_buffer,
+        );
     });
 
     let filenames_size = filenames_buffer.len();
     let filenames_val = cx.const_bytes(&filenames_buffer);
-    let filenames_ref = coverageinfo::hash_bytes(filenames_buffer);
+    let filenames_ref = coverageinfo::hash_bytes(&filenames_buffer);
 
     // Generate the LLVM IR representation of the coverage map and store it in a well-known global
     let cov_data_val = mapgen.generate_coverage_map(cx, version, filenames_size, filenames_val);
 
+    let covfun_section_name = coverageinfo::covfun_section_name(cx);
     for (mangled_function_name, source_hash, is_used, coverage_mapping_buffer) in function_data {
         save_function_record(
             cx,
+            &covfun_section_name,
             mangled_function_name,
             source_hash,
             filenames_ref,
@@ -116,7 +119,7 @@ pub fn finalize(cx: &CodegenCx<'_, '_>) {
 }
 
 struct CoverageMapGenerator {
-    filenames: FxIndexSet<CString>,
+    filenames: FxIndexSet<Symbol>,
 }
 
 impl CoverageMapGenerator {
@@ -127,11 +130,10 @@ impl CoverageMapGenerator {
         // Since rustc generates coverage maps with relative paths, the
         // compilation directory can be combined with the relative paths
         // to get absolute paths, if needed.
-        let working_dir =
-            tcx.sess.opts.working_dir.remapped_path_if_available().to_string_lossy().to_string();
-        let c_filename =
-            CString::new(working_dir).expect("null error converting filename to C string");
-        filenames.insert(c_filename);
+        let working_dir = Symbol::intern(
+            &tcx.sess.opts.working_dir.remapped_path_if_available().to_string_lossy(),
+        );
+        filenames.insert(working_dir);
         Self { filenames }
     }
 
@@ -169,10 +171,8 @@ impl CoverageMapGenerator {
                     current_file_id += 1;
                 }
                 current_file_name = Some(file_name);
-                let c_filename = CString::new(file_name.to_string())
-                    .expect("null error converting filename to C string");
-                debug!("  file_id: {} = '{:?}'", current_file_id, c_filename);
-                let (filenames_index, _) = self.filenames.insert_full(c_filename);
+                debug!("  file_id: {} = '{:?}'", current_file_id, file_name);
+                let (filenames_index, _) = self.filenames.insert_full(file_name);
                 virtual_file_mapping.push(filenames_index as u32);
             }
             debug!("Adding counter {:?} to map for {:?}", counter, region);
@@ -228,7 +228,8 @@ impl CoverageMapGenerator {
 /// specific, well-known section and name.
 fn save_function_record(
     cx: &CodegenCx<'_, '_>,
-    mangled_function_name: String,
+    covfun_section_name: &str,
+    mangled_function_name: &str,
     source_hash: u64,
     filenames_ref: u64,
     coverage_mapping_buffer: Vec<u8>,
@@ -238,7 +239,7 @@ fn save_function_record(
     let coverage_mapping_size = coverage_mapping_buffer.len();
     let coverage_mapping_val = cx.const_bytes(&coverage_mapping_buffer);
 
-    let func_name_hash = coverageinfo::hash_str(&mangled_function_name);
+    let func_name_hash = coverageinfo::hash_bytes(mangled_function_name.as_bytes());
     let func_name_hash_val = cx.const_u64(func_name_hash);
     let coverage_mapping_size_val = cx.const_u32(coverage_mapping_size as u32);
     let source_hash_val = cx.const_u64(source_hash);
@@ -254,7 +255,13 @@ fn save_function_record(
         /*packed=*/ true,
     );
 
-    coverageinfo::save_func_record_to_mod(cx, func_name_hash, func_record_val, is_used);
+    coverageinfo::save_func_record_to_mod(
+        cx,
+        covfun_section_name,
+        func_name_hash,
+        func_record_val,
+        is_used,
+    );
 }
 
 /// When finalizing the coverage map, `FunctionCoverage` only has the `CodeRegion`s and counters for

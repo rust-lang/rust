@@ -1,6 +1,5 @@
-const QUERY = 'macro:print';
-
 const EXPECTED = {
+    'query': 'macro:print',
     'others': [
         { 'path': 'std', 'name': 'print' },
         { 'path': 'std', 'name': 'println' },

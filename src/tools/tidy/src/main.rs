@@ -16,6 +16,12 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread::{self, scope, ScopedJoinHandle};
 
 fn main() {
+    // Running Cargo will read the libstd Cargo.toml
+    // which uses the unstable `public-dependency` feature.
+    //
+    // `setenv` might not be thread safe, so run it before using multiple threads.
+    env::set_var("RUSTC_BOOTSTRAP", "1");
+
     let root_path: PathBuf = env::args_os().nth(1).expect("need path to root of repo").into();
     let cargo: PathBuf = env::args_os().nth(2).expect("need path to cargo").into();
     let output_directory: PathBuf =
@@ -31,9 +37,14 @@ fn main() {
     let librustdoc_path = src_path.join("librustdoc");
 
     let args: Vec<String> = env::args().skip(1).collect();
-
-    let verbose = args.iter().any(|s| *s == "--verbose");
-    let bless = args.iter().any(|s| *s == "--bless");
+    let (cfg_args, pos_args) = match args.iter().position(|arg| arg == "--") {
+        Some(pos) => (&args[..pos], &args[pos + 1..]),
+        None => (&args[..], [].as_slice()),
+    };
+    let verbose = cfg_args.iter().any(|s| *s == "--verbose");
+    let bless = cfg_args.iter().any(|s| *s == "--bless");
+    let extra_checks =
+        cfg_args.iter().find(|s| s.starts_with("--extra-checks=")).map(String::as_str);
 
     let bad = std::sync::Arc::new(AtomicBool::new(false));
 
@@ -96,6 +107,7 @@ fn main() {
 
         // Checks that only make sense for the compiler.
         check!(error_codes, &root_path, &[&compiler_path, &librustdoc_path], verbose);
+        check!(fluent_alphabetical, &compiler_path, bless);
 
         // Checks that only make sense for the std libs.
         check!(pal, &library_path);
@@ -143,6 +155,8 @@ fn main() {
             r
         };
         check!(unstable_book, &src_path, collected);
+
+        check!(ext_tool_checks, &root_path, &output_directory, bless, extra_checks, pos_args);
     });
 
     if bad.load(Ordering::Relaxed) {

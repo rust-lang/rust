@@ -1,0 +1,14 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-113354.rs:3:24
+   |
+LL |     let _ = || { while Some(_) = Some(1) { } };
+   |                        ^^^^^^^^^^^^^^^^^ expected `bool`, found `()`
+   |
+help: consider adding `let`
+   |
+LL |     let _ = || { while let Some(_) = Some(1) { } };
+   |                        +++
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

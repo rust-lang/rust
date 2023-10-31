@@ -5,6 +5,7 @@ LL |     needs_bar::<T>();
    |     ^^^^^^^^^^^^^^
    |
    = note: cannot satisfy `T: Bar`
+   = help: the trait `Bar` is implemented for `T`
 note: required by a bound in `needs_bar`
   --> $DIR/two-projection-param-candidates-are-ambiguous.rs:23:17
    |

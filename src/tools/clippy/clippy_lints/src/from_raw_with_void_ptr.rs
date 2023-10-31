@@ -4,8 +4,7 @@ use clippy_utils::{match_def_path, path_def_id, paths};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Expr, ExprKind, QPath};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::RawPtr;
-use rustc_middle::ty::TypeAndMut;
+use rustc_middle::ty::{RawPtr, TypeAndMut};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::sym;
 

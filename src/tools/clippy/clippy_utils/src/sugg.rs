@@ -147,6 +147,7 @@ impl<'a> Sugg<'a> {
             | hir::ExprKind::Path(..)
             | hir::ExprKind::Repeat(..)
             | hir::ExprKind::Ret(..)
+            | hir::ExprKind::Become(..)
             | hir::ExprKind::Struct(..)
             | hir::ExprKind::Tup(..)
             | hir::ExprKind::Err(_) => Sugg::NonParen(get_snippet(expr.span)),
@@ -211,6 +212,7 @@ impl<'a> Sugg<'a> {
             | ast::ExprKind::Path(..)
             | ast::ExprKind::Repeat(..)
             | ast::ExprKind::Ret(..)
+            | ast::ExprKind::Become(..)
             | ast::ExprKind::Yeet(..)
             | ast::ExprKind::FormatArgs(..)
             | ast::ExprKind::Struct(..)
@@ -393,7 +395,7 @@ fn binop_to_string(op: AssocOp, lhs: &str, rhs: &str) -> String {
     }
 }
 
-/// Return `true` if `sugg` is enclosed in parenthesis.
+/// Returns `true` if `sugg` is enclosed in parenthesis.
 pub fn has_enclosing_paren(sugg: impl AsRef<str>) -> bool {
     let mut chars = sugg.as_ref().chars();
     if chars.next() == Some('(') {
@@ -741,7 +743,7 @@ impl<T: LintContext> DiagnosticExt<T> for rustc_errors::Diagnostic {
         if let Some(indent) = indentation(cx, item) {
             let span = item.with_hi(item.lo());
 
-            self.span_suggestion(span, msg, format!("{attr}\n{indent}"), applicability);
+            self.span_suggestion(span, msg.to_string(), format!("{attr}\n{indent}"), applicability);
         }
     }
 
@@ -762,7 +764,7 @@ impl<T: LintContext> DiagnosticExt<T> for rustc_errors::Diagnostic {
                 })
                 .collect::<String>();
 
-            self.span_suggestion(span, msg, format!("{new_item}\n{indent}"), applicability);
+            self.span_suggestion(span, msg.to_string(), format!("{new_item}\n{indent}"), applicability);
         }
     }
 
@@ -779,7 +781,7 @@ impl<T: LintContext> DiagnosticExt<T> for rustc_errors::Diagnostic {
             }
         }
 
-        self.span_suggestion(remove_span, msg, "", applicability);
+        self.span_suggestion(remove_span, msg.to_string(), "", applicability);
     }
 }
 
@@ -875,7 +877,7 @@ impl<'tcx> DerefDelegate<'_, 'tcx> {
                     .cx
                     .typeck_results()
                     .type_dependent_def_id(parent_expr.hir_id)
-                    .map(|did| self.cx.tcx.fn_sig(did).subst_identity().skip_binder())
+                    .map(|did| self.cx.tcx.fn_sig(did).instantiate_identity().skip_binder())
                 {
                     std::iter::once(receiver)
                         .chain(call_args.iter())
@@ -942,7 +944,7 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
                         },
                         // item is used in a call
                         // i.e.: `Call`: `|x| please(x)` or `MethodCall`: `|x| [1, 2, 3].contains(x)`
-                        ExprKind::Call(_, [call_args @ ..]) | ExprKind::MethodCall(_, _, [call_args @ ..], _) => {
+                        ExprKind::Call(_, call_args) | ExprKind::MethodCall(_, _, call_args, _) => {
                             let expr = self.cx.tcx.hir().expect_expr(cmt.hir_id);
                             let arg_ty_kind = self.cx.typeck_results().expr_ty(expr).kind();
 
@@ -1008,7 +1010,9 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
                             projections_handled = true;
                         },
                         // note: unable to trigger `Subslice` kind in tests
-                        ProjectionKind::Subslice => (),
+                        ProjectionKind::Subslice |
+                        // Doesn't have surface syntax. Only occurs in patterns.
+                        ProjectionKind::OpaqueCast => (),
                         ProjectionKind::Deref => {
                             // Explicit derefs are typically handled later on, but
                             // some items do not need explicit deref, such as array accesses,

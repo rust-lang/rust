@@ -184,7 +184,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             }
             // Error with the pattern
             LookupResult::Exact(_) => {
-                let LookupResult::Parent(Some(mpi)) = self.move_data.rev_lookup.find(move_from.as_ref()) else {
+                let LookupResult::Parent(Some(mpi)) =
+                    self.move_data.rev_lookup.find(move_from.as_ref())
+                else {
                     // move_from should be a projection from match_place.
                     unreachable!("Probably not unreachable...");
                 };
@@ -322,10 +324,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             ty::Array(..) | ty::Slice(..) => {
                 self.cannot_move_out_of_interior_noncopy(span, ty, None)
             }
-            ty::Closure(def_id, closure_substs)
+            ty::Closure(def_id, closure_args)
                 if def_id.as_local() == Some(self.mir_def_id()) && upvar_field.is_some() =>
             {
-                let closure_kind_ty = closure_substs.as_closure().kind_ty();
+                let closure_kind_ty = closure_args.as_closure().kind_ty();
                 let closure_kind = match closure_kind_ty.to_opt_closure_kind() {
                     Some(kind @ (ty::ClosureKind::Fn | ty::ClosureKind::FnMut)) => kind,
                     Some(ty::ClosureKind::FnOnce) => {
@@ -494,8 +496,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             if let LocalInfo::User(BindingForm::Var(VarBindingForm { pat_span, .. })) =
                 *bind_to.local_info()
             {
-                let Ok(pat_snippet) =
-                    self.infcx.tcx.sess.source_map().span_to_snippet(pat_span) else { continue; };
+                let Ok(pat_snippet) = self.infcx.tcx.sess.source_map().span_to_snippet(pat_span)
+                else {
+                    continue;
+                };
                 let Some(stripped) = pat_snippet.strip_prefix('&') else {
                     suggestions.push((
                         bind_to.source_info.span.shrink_to_lo(),

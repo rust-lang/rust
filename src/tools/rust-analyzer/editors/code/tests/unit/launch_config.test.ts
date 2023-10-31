@@ -1,6 +1,6 @@
 import * as assert from "assert";
 import { Cargo } from "../../src/toolchain";
-import { Context } from ".";
+import type { Context } from ".";
 
 export async function getTests(ctx: Context) {
     await ctx.suite("Launch configuration/Lens", (suite) => {

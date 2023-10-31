@@ -1,3 +1,6 @@
+use hir::Semantics;
+use ide_db::RootDatabase;
+use stdx::format_to;
 use syntax::ast::{self, AstNode};
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
@@ -24,6 +27,7 @@ pub(crate) fn convert_two_arm_bool_match_to_matches_macro(
     acc: &mut Assists,
     ctx: &AssistContext<'_>,
 ) -> Option<()> {
+    use ArmBodyExpression::*;
     let match_expr = ctx.find_node_at_offset::<ast::MatchExpr>()?;
     let match_arm_list = match_expr.match_arm_list()?;
     let mut arms = match_arm_list.arms();
@@ -33,21 +37,20 @@ pub(crate) fn convert_two_arm_bool_match_to_matches_macro(
         cov_mark::hit!(non_two_arm_match);
         return None;
     }
-    let first_arm_expr = first_arm.expr();
-    let second_arm_expr = second_arm.expr();
+    let first_arm_expr = first_arm.expr()?;
+    let second_arm_expr = second_arm.expr()?;
+    let first_arm_body = is_bool_literal_expr(&ctx.sema, &first_arm_expr)?;
+    let second_arm_body = is_bool_literal_expr(&ctx.sema, &second_arm_expr)?;
 
-    let invert_matches = if is_bool_literal_expr(&first_arm_expr, true)
-        && is_bool_literal_expr(&second_arm_expr, false)
-    {
-        false
-    } else if is_bool_literal_expr(&first_arm_expr, false)
-        && is_bool_literal_expr(&second_arm_expr, true)
-    {
-        true
-    } else {
+    if !matches!(
+        (&first_arm_body, &second_arm_body),
+        (Literal(true), Literal(false))
+            | (Literal(false), Literal(true))
+            | (Expression(_), Literal(false))
+    ) {
         cov_mark::hit!(non_invert_bool_literal_arms);
         return None;
-    };
+    }
 
     let target_range = ctx.sema.original_range(match_expr.syntax()).range;
     let expr = match_expr.expr()?;
@@ -59,28 +62,55 @@ pub(crate) fn convert_two_arm_bool_match_to_matches_macro(
         |builder| {
             let mut arm_str = String::new();
             if let Some(pat) = &first_arm.pat() {
-                arm_str += &pat.to_string();
+                format_to!(arm_str, "{pat}");
             }
             if let Some(guard) = &first_arm.guard() {
                 arm_str += &format!(" {guard}");
             }
-            if invert_matches {
-                builder.replace(target_range, format!("!matches!({expr}, {arm_str})"));
-            } else {
-                builder.replace(target_range, format!("matches!({expr}, {arm_str})"));
-            }
+
+            let replace_with = match (first_arm_body, second_arm_body) {
+                (Literal(true), Literal(false)) => {
+                    format!("matches!({expr}, {arm_str})")
+                }
+                (Literal(false), Literal(true)) => {
+                    format!("!matches!({expr}, {arm_str})")
+                }
+                (Expression(body_expr), Literal(false)) => {
+                    arm_str.push_str(match &first_arm.guard() {
+                        Some(_) => " && ",
+                        _ => " if ",
+                    });
+                    format!("matches!({expr}, {arm_str}{body_expr})")
+                }
+                _ => {
+                    unreachable!()
+                }
+            };
+            builder.replace(target_range, replace_with);
         },
     )
 }
 
-fn is_bool_literal_expr(expr: &Option<ast::Expr>, expect_bool: bool) -> bool {
-    if let Some(ast::Expr::Literal(lit)) = expr {
+enum ArmBodyExpression {
+    Literal(bool),
+    Expression(ast::Expr),
+}
+
+fn is_bool_literal_expr(
+    sema: &Semantics<'_, RootDatabase>,
+    expr: &ast::Expr,
+) -> Option<ArmBodyExpression> {
+    if let ast::Expr::Literal(lit) = expr {
         if let ast::LiteralKind::Bool(b) = lit.kind() {
-            return b == expect_bool;
+            return Some(ArmBodyExpression::Literal(b));
         }
     }
 
-    return false;
+    if !sema.type_of_expr(expr)?.original.is_bool() {
+        return None;
+    }
+
+    Some(ArmBodyExpression::Expression(expr.clone()))
 }
 
 #[cfg(test)]
@@ -121,21 +151,6 @@ fn foo(a: Option<u32>) -> bool {
         );
     }
 
-    #[test]
-    fn not_applicable_non_bool_literal_arms() {
-        cov_mark::check!(non_invert_bool_literal_arms);
-        check_assist_not_applicable(
-            convert_two_arm_bool_match_to_matches_macro,
-            r#"
-fn foo(a: Option<u32>) -> bool {
-    match a$0 {
-        Some(val) => val == 3,
-        _ => false
-    }
-}
-        "#,
-        );
-    }
     #[test]
     fn not_applicable_both_false_arms() {
         cov_mark::check!(non_invert_bool_literal_arms);
@@ -289,6 +304,42 @@ fn main() {
         E::X => true,
         _ => false,
     }",
+        );
+    }
+
+    #[test]
+    fn convert_non_literal_bool() {
+        check_assist(
+            convert_two_arm_bool_match_to_matches_macro,
+            r#"
+fn main() {
+    match 0$0 {
+        a @ 0..15 => a == 0,
+        _ => false,
+    }
+}
+"#,
+            r#"
+fn main() {
+    matches!(0, a @ 0..15 if a == 0)
+}
+"#,
+        );
+        check_assist(
+            convert_two_arm_bool_match_to_matches_macro,
+            r#"
+fn main() {
+    match 0$0 {
+        a @ 0..15 if thing() => a == 0,
+        _ => false,
+    }
+}
+"#,
+            r#"
+fn main() {
+    matches!(0, a @ 0..15 if thing() && a == 0)
+}
+"#,
         );
     }
 }

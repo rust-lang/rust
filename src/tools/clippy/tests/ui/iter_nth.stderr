@@ -1,5 +1,5 @@
-error: called `.iter().nth()` on a Vec
-  --> $DIR/iter_nth.rs:33:23
+error: called `.iter().nth()` on a `Vec`
+  --> $DIR/iter_nth.rs:34:23
    |
 LL |         let bad_vec = some_vec.iter().nth(3);
    |                       ^^^^^^^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL |         let bad_vec = some_vec.iter().nth(3);
    = note: `-D clippy::iter-nth` implied by `-D warnings`
 
 error: called `.iter().nth()` on a slice
-  --> $DIR/iter_nth.rs:34:26
+  --> $DIR/iter_nth.rs:35:26
    |
 LL |         let bad_slice = &some_vec[..].iter().nth(3);
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -16,23 +16,23 @@ LL |         let bad_slice = &some_vec[..].iter().nth(3);
    = help: calling `.get()` is both faster and more readable
 
 error: called `.iter().nth()` on a slice
-  --> $DIR/iter_nth.rs:35:31
+  --> $DIR/iter_nth.rs:36:31
    |
 LL |         let bad_boxed_slice = boxed_slice.iter().nth(3);
    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: calling `.get()` is both faster and more readable
 
-error: called `.iter().nth()` on a VecDeque
-  --> $DIR/iter_nth.rs:36:29
+error: called `.iter().nth()` on a `VecDeque`
+  --> $DIR/iter_nth.rs:37:29
    |
 LL |         let bad_vec_deque = some_vec_deque.iter().nth(3);
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: calling `.get()` is both faster and more readable
 
-error: called `.iter_mut().nth()` on a Vec
-  --> $DIR/iter_nth.rs:41:23
+error: called `.iter_mut().nth()` on a `Vec`
+  --> $DIR/iter_nth.rs:42:23
    |
 LL |         let bad_vec = some_vec.iter_mut().nth(3);
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -40,15 +40,15 @@ LL |         let bad_vec = some_vec.iter_mut().nth(3);
    = help: calling `.get_mut()` is both faster and more readable
 
 error: called `.iter_mut().nth()` on a slice
-  --> $DIR/iter_nth.rs:44:26
+  --> $DIR/iter_nth.rs:45:26
    |
 LL |         let bad_slice = &some_vec[..].iter_mut().nth(3);
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: calling `.get_mut()` is both faster and more readable
 
-error: called `.iter_mut().nth()` on a VecDeque
-  --> $DIR/iter_nth.rs:47:29
+error: called `.iter_mut().nth()` on a `VecDeque`
+  --> $DIR/iter_nth.rs:48:29
    |
 LL |         let bad_vec_deque = some_vec_deque.iter_mut().nth(3);
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

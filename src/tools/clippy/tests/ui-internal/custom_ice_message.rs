@@ -3,7 +3,7 @@
 //@normalize-stderr-test: "produce_ice.rs:\d*:\d*" -> "produce_ice.rs"
 //@normalize-stderr-test: "', .*clippy_lints" -> "', clippy_lints"
 //@normalize-stderr-test: "'rustc'" -> "'<unnamed>'"
-//@normalize-stderr-test: "running on .*" -> "running on <target>"
+//@normalize-stderr-test: "rustc 1\.\d+.* running on .*" -> "rustc <version> running on <target>"
 //@normalize-stderr-test: "(?ms)query stack during panic:\n.*end of query stack\n" -> ""
 
 #![deny(clippy::internal)]

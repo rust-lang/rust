@@ -4,6 +4,7 @@
 //
 // needs-sanitizer-support
 // needs-sanitizer-address
+// ignore-cross-compile
 //
 // no-prefer-dynamic
 // revisions: opt0 opt1

@@ -16,7 +16,7 @@ LL |     fn foo(self: Pin<&mut Self>) {}
 help: consider reborrowing the `Pin` instead of moving it
    |
 LL |     foo.as_mut().foo();
-   |         +++++++++
+   |        +++++++++
 
 error: aborting due to previous error
 

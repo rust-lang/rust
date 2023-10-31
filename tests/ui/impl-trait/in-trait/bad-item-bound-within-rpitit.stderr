@@ -1,0 +1,17 @@
+error[E0276]: impl has stricter requirements than trait
+  --> $DIR/bad-item-bound-within-rpitit.rs:16:13
+   |
+LL |     type Item<'a>
+   |     ------------- definition of `Item` from trait
+...
+LL |         'b: 'a;
+   |             ^^ impl has extra requirement `'b: 'a`
+   |
+help: copy the `where` clause predicates from the trait
+   |
+LL |     where Self: 'b;
+   |     ~~~~~~~~~~~~~~
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0276`.

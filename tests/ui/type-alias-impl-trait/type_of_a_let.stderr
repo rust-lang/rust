@@ -9,14 +9,14 @@ LL |     same_type((x, y));
    |                ^ value used here after move
 
 error[E0382]: use of moved value: `y`
-  --> $DIR/type_of_a_let.rs:17:5
+  --> $DIR/type_of_a_let.rs:17:6
    |
 LL |     let y: Foo = x;
    |         - move occurs because `y` has type `Foo`, which does not implement the `Copy` trait
 LL |     same_type((x, y));
    |                   - value moved here
-LL |     y
-   |     ^ value used here after move
+LL |     (y, todo!())
+   |      ^ value used here after move
 
 error: aborting due to 2 previous errors
 

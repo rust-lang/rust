@@ -368,7 +368,6 @@ impl Checker {
             return;
         }
         // Search for intra-doc links that rustdoc didn't warn about
-        // FIXME(#77199, 77200) Rustdoc should just warn about these directly.
         // NOTE: only looks at one line at a time; in practice this should find most links
         for (i, line) in source.lines().enumerate() {
             for broken_link in BROKEN_INTRA_DOC_LINK.captures_iter(line) {

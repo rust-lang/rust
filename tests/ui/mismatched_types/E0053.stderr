@@ -22,7 +22,7 @@ LL |     fn bar(&mut self) { }
    |            ^^^^^^^^^
    |            |
    |            types differ in mutability
-   |            help: change the self-receiver type to match the trait: `self: &Bar`
+   |            help: change the self-receiver type to match the trait: `&self`
    |
 note: type in trait
   --> $DIR/E0053.rs:3:12

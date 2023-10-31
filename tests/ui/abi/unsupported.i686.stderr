@@ -1,39 +1,45 @@
 error[E0570]: `"ptx-kernel"` is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:26:1
+  --> $DIR/unsupported.rs:30:1
    |
 LL | extern "ptx-kernel" fn ptx() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0570]: `"amdgpu-kernel"` is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:28:1
+  --> $DIR/unsupported.rs:32:1
    |
 LL | extern "amdgpu-kernel" fn amdgpu() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0570]: `"wasm"` is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:30:1
+  --> $DIR/unsupported.rs:34:1
    |
 LL | extern "wasm" fn wasm() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0570]: `"aapcs"` is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:32:1
+  --> $DIR/unsupported.rs:36:1
    |
 LL | extern "aapcs" fn aapcs() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0570]: `"msp430-interrupt"` is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:36:1
+  --> $DIR/unsupported.rs:42:1
    |
 LL | extern "msp430-interrupt" fn msp430() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0570]: `"avr-interrupt"` is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:38:1
+  --> $DIR/unsupported.rs:44:1
    |
 LL | extern "avr-interrupt" fn avr() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 6 previous errors
+error[E0570]: `"riscv-interrupt-m"` is not a supported ABI for the current target
+  --> $DIR/unsupported.rs:46:1
+   |
+LL | extern "riscv-interrupt-m" fn riscv() {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 7 previous errors
 
 For more information about this error, try `rustc --explain E0570`.

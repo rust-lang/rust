@@ -1,8 +1,14 @@
-error[E0741]: `C` must be annotated with `#[derive(PartialEq, Eq)]` to be used as the type of a const parameter
-  --> $DIR/forbid-non-structural_match-types.rs:11:19
+error[E0741]: `C` must implement `ConstParamTy` to be used as the type of a const generic parameter
+  --> $DIR/forbid-non-structural_match-types.rs:13:19
    |
 LL | struct D<const X: C>;
-   |                   ^ `C` doesn't derive both `PartialEq` and `Eq`
+   |                   ^
+   |
+help: add `#[derive(ConstParamTy, PartialEq, Eq)]` to the struct
+   |
+LL + #[derive(ConstParamTy, PartialEq, Eq)]
+LL | struct C;
+   |
 
 error: aborting due to previous error
 

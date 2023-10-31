@@ -1,6 +1,5 @@
 const fn foo() { (||{})() }
 //~^ ERROR cannot call non-const closure
-//~| ERROR the trait bound
 
 const fn bad(input: fn()) {
     input()

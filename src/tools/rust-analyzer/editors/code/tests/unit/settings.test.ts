@@ -1,5 +1,5 @@
 import * as assert from "assert";
-import { Context } from ".";
+import type { Context } from ".";
 import { substituteVariablesInEnv } from "../../src/config";
 
 export async function getTests(ctx: Context) {
@@ -39,6 +39,7 @@ export async function getTests(ctx: Context) {
         });
 
         suite.addTest("Should support external variables", async () => {
+            process.env["TEST_VARIABLE"] = "test";
             const envJson = {
                 USING_EXTERNAL_VAR: "${env:TEST_VARIABLE} test ${env:TEST_VARIABLE}",
             };
@@ -48,6 +49,7 @@ export async function getTests(ctx: Context) {
 
             const actualEnv = await substituteVariablesInEnv(envJson);
             assert.deepStrictEqual(actualEnv, expectedEnv);
+            delete process.env["TEST_VARIABLE"];
         });
 
         suite.addTest("should support VSCode variables", async () => {
@@ -55,7 +57,7 @@ export async function getTests(ctx: Context) {
                 USING_VSCODE_VAR: "${workspaceFolderBasename}",
             };
             const actualEnv = await substituteVariablesInEnv(envJson);
-            assert.deepStrictEqual(actualEnv.USING_VSCODE_VAR, "code");
+            assert.deepStrictEqual(actualEnv["USING_VSCODE_VAR"], "code");
         });
     });
 }

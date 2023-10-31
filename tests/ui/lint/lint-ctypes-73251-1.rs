@@ -1,13 +1,13 @@
 #![feature(type_alias_impl_trait)]
 #![deny(improper_ctypes)]
 
-pub trait Baz {}
+trait Baz {}
 
 impl Baz for u32 {}
 
 type Qux = impl Baz;
 
-pub trait Foo {
+trait Foo {
     type Assoc;
 }
 
@@ -20,7 +20,7 @@ fn assign() -> Qux {
 }
 
 extern "C" {
-    pub fn lint_me() -> <u32 as Foo>::Assoc; //~ ERROR: uses type `Qux`
+    fn lint_me() -> <u32 as Foo>::Assoc; //~ ERROR: uses type `Qux`
 }
 
 fn main() {}

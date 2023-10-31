@@ -5,7 +5,7 @@ LL |     let slice = &mut data;
    |                 --------- first mutable borrow occurs here
 LL |     capitalize(slice);
 LL |     data.push('d');
-   |     ^^^^^^^^^^^^^^ second mutable borrow occurs here
+   |     ^^^^ second mutable borrow occurs here
 ...
 LL |     capitalize(slice);
    |                ----- first borrow later used here
@@ -17,7 +17,7 @@ LL |     let slice = &mut data;
    |                 --------- first mutable borrow occurs here
 ...
 LL |     data.push('e');
-   |     ^^^^^^^^^^^^^^ second mutable borrow occurs here
+   |     ^^^^ second mutable borrow occurs here
 ...
 LL |     capitalize(slice);
    |                ----- first borrow later used here
@@ -29,7 +29,7 @@ LL |     let slice = &mut data;
    |                 --------- first mutable borrow occurs here
 ...
 LL |     data.push('f');
-   |     ^^^^^^^^^^^^^^ second mutable borrow occurs here
+   |     ^^^^ second mutable borrow occurs here
 LL |
 LL |     capitalize(slice);
    |                ----- first borrow later used here

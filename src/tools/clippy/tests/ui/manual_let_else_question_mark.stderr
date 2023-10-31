@@ -1,0 +1,55 @@
+error: this `let...else` may be rewritten with the `?` operator
+  --> $DIR/manual_let_else_question_mark.rs:30:5
+   |
+LL |     let Some(v) = g() else { return None };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `let v = g()?;`
+   |
+   = note: `-D clippy::question-mark` implied by `-D warnings`
+
+error: this `let...else` may be rewritten with the `?` operator
+  --> $DIR/manual_let_else_question_mark.rs:36:5
+   |
+LL |     let Some((v, w)) = g() else { return None };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `let (v, w) = g()?;`
+
+error: this block may be rewritten with the `?` operator
+  --> $DIR/manual_let_else_question_mark.rs:39:13
+   |
+LL |     let v = if let Some(v_some) = g() { v_some } else { return None };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `g()?`
+
+error: this could be rewritten as `let...else`
+  --> $DIR/manual_let_else_question_mark.rs:43:5
+   |
+LL | /     let v = if let Some(v_some) = g() {
+LL | |         v_some
+LL | |     } else {
+LL | |         return Some(());
+LL | |     };
+   | |______^
+   |
+   = note: `-D clippy::manual-let-else` implied by `-D warnings`
+help: consider writing
+   |
+LL ~     let Some(v) = g() else {
+LL +         return Some(());
+LL +     };
+   |
+
+error: this could be rewritten as `let...else`
+  --> $DIR/manual_let_else_question_mark.rs:54:9
+   |
+LL | /         let v = match g() {
+LL | |             Some(v_some) => v_some,
+LL | |             _ => return None,
+LL | |         };
+   | |__________^ help: consider writing: `let Some(v) = g() else { return None };`
+
+error: this could be rewritten as `let...else`
+  --> $DIR/manual_let_else_question_mark.rs:64:9
+   |
+LL |         let v = if let Some(v_some) = g() { v_some } else { return None };
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider writing: `let Some(v) = g() else { return None };`
+
+error: aborting due to 6 previous errors
+

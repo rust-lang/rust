@@ -97,6 +97,10 @@ impl<'tcx> ConstValue<'tcx> {
         ConstValue::Scalar(Scalar::from_u64(i))
     }
 
+    pub fn from_u128(i: u128) -> Self {
+        ConstValue::Scalar(Scalar::from_u128(i))
+    }
+
     pub fn from_target_usize(i: u64, cx: &impl HasDataLayout) -> Self {
         ConstValue::Scalar(Scalar::from_target_usize(i, cx))
     }
@@ -131,8 +135,8 @@ static_assert_size!(Scalar, 24);
 impl<Prov: Provenance> fmt::Debug for Scalar<Prov> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Scalar::Ptr(ptr, _size) => write!(f, "{:?}", ptr),
-            Scalar::Int(int) => write!(f, "{:?}", int),
+            Scalar::Ptr(ptr, _size) => write!(f, "{ptr:?}"),
+            Scalar::Int(int) => write!(f, "{int:?}"),
         }
     }
 }
@@ -140,8 +144,8 @@ impl<Prov: Provenance> fmt::Debug for Scalar<Prov> {
 impl<Prov: Provenance> fmt::Display for Scalar<Prov> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Scalar::Ptr(ptr, _size) => write!(f, "pointer to {:?}", ptr),
-            Scalar::Int(int) => write!(f, "{}", int),
+            Scalar::Ptr(ptr, _size) => write!(f, "pointer to {ptr:?}"),
+            Scalar::Int(int) => write!(f, "{int}"),
         }
     }
 }
@@ -149,8 +153,8 @@ impl<Prov: Provenance> fmt::Display for Scalar<Prov> {
 impl<Prov: Provenance> fmt::LowerHex for Scalar<Prov> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Scalar::Ptr(ptr, _size) => write!(f, "pointer to {:?}", ptr),
-            Scalar::Int(int) => write!(f, "{:#x}", int),
+            Scalar::Ptr(ptr, _size) => write!(f, "pointer to {ptr:?}"),
+            Scalar::Int(int) => write!(f, "{int:#x}"),
         }
     }
 }
@@ -241,6 +245,11 @@ impl<Prov> Scalar<Prov> {
     }
 
     #[inline]
+    pub fn from_u128(i: u128) -> Self {
+        Scalar::Int(i.into())
+    }
+
+    #[inline]
     pub fn from_target_usize(i: u64, cx: &impl HasDataLayout) -> Self {
         Self::from_uint(i, cx.data_layout().pointer_size)
     }
@@ -311,6 +320,14 @@ impl<Prov> Scalar<Prov> {
             }
         })
     }
+
+    #[inline]
+    pub fn size(self) -> Size {
+        match self {
+            Scalar::Int(int) => int.size(),
+            Scalar::Ptr(_ptr, sz) => Size::from_bytes(sz),
+        }
+    }
 }
 
 impl<'tcx, Prov: Provenance> Scalar<Prov> {
@@ -361,21 +378,23 @@ impl<'tcx, Prov: Provenance> Scalar<Prov> {
     #[inline]
     pub fn to_bits(self, target_size: Size) -> InterpResult<'tcx, u128> {
         assert_ne!(target_size.bytes(), 0, "you should never look at the bits of a ZST");
-        self.try_to_int().map_err(|_| err_unsup!(ReadPointerAsBytes))?.to_bits(target_size).map_err(
-            |size| {
+        self.try_to_int()
+            .map_err(|_| err_unsup!(ReadPointerAsInt(None)))?
+            .to_bits(target_size)
+            .map_err(|size| {
                 err_ub!(ScalarSizeMismatch(ScalarSizeMismatch {
                     target_size: target_size.bytes(),
                     data_size: size.bytes(),
                 }))
                 .into()
-            },
-        )
+            })
     }
 
     #[inline(always)]
     #[cfg_attr(debug_assertions, track_caller)] // only in debug builds due to perf (see #98980)
     pub fn assert_bits(self, target_size: Size) -> u128 {
-        self.to_bits(target_size).unwrap()
+        self.to_bits(target_size)
+            .unwrap_or_else(|_| panic!("assertion failed: {self:?} fits {target_size:?}"))
     }
 
     pub fn to_bool(self) -> InterpResult<'tcx, bool> {

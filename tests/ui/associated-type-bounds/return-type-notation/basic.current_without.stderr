@@ -1,0 +1,29 @@
+warning: the feature `return_type_notation` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/basic.rs:8:12
+   |
+LL | #![feature(return_type_notation, async_fn_in_trait)]
+   |            ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #109417 <https://github.com/rust-lang/rust/issues/109417> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error: future cannot be sent between threads safely
+  --> $DIR/basic.rs:26:13
+   |
+LL |     is_send(foo::<T>());
+   |             ^^^^^^^^^^ future returned by `foo` is not `Send`
+   |
+   = help: within `impl Future<Output = Result<(), ()>>`, the trait `Send` is not implemented for `impl Future<Output = Result<(), ()>>`
+note: future is not `Send` as it awaits another future which is not `Send`
+  --> $DIR/basic.rs:16:5
+   |
+LL |     T::method().await?;
+   |     ^^^^^^^^^^^ await occurs here on type `impl Future<Output = Result<(), ()>>`, which is not `Send`
+note: required by a bound in `is_send`
+  --> $DIR/basic.rs:20:20
+   |
+LL | fn is_send(_: impl Send) {}
+   |                    ^^^^ required by this bound in `is_send`
+
+error: aborting due to previous error; 1 warning emitted
+

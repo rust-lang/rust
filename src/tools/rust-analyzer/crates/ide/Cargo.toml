@@ -23,6 +23,8 @@ pulldown-cmark = { version = "0.9.1", default-features = false }
 url = "2.3.1"
 dot = "0.1.4"
 smallvec.workspace = true
+triomphe.workspace = true
+nohash-hasher.workspace = true
 
 # local deps
 cfg.workspace = true

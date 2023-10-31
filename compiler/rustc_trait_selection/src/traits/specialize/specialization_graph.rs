@@ -180,7 +180,7 @@ impl<'tcx> ChildrenExt<'tcx> for Children {
             if le && !ge {
                 debug!(
                     "descending as child of TraitRef {:?}",
-                    tcx.impl_trait_ref(possible_sibling).unwrap().subst_identity()
+                    tcx.impl_trait_ref(possible_sibling).unwrap().instantiate_identity()
                 );
 
                 // The impl specializes `possible_sibling`.
@@ -188,7 +188,7 @@ impl<'tcx> ChildrenExt<'tcx> for Children {
             } else if ge && !le {
                 debug!(
                     "placing as parent of TraitRef {:?}",
-                    tcx.impl_trait_ref(possible_sibling).unwrap().subst_identity()
+                    tcx.impl_trait_ref(possible_sibling).unwrap().instantiate_identity()
                 );
 
                 replace_children.push(possible_sibling);

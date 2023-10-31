@@ -101,21 +101,26 @@ pub fn used_exactly_once(mir: &rustc_middle::mir::Body<'_>, local: rustc_middle:
 
 /// Returns the `mir::Body` containing the node associated with `hir_id`.
 #[allow(clippy::module_name_repetitions)]
-pub fn enclosing_mir(tcx: TyCtxt<'_>, hir_id: HirId) -> &Body<'_> {
+pub fn enclosing_mir(tcx: TyCtxt<'_>, hir_id: HirId) -> Option<&Body<'_>> {
     let body_owner_local_def_id = tcx.hir().enclosing_body_owner(hir_id);
-    tcx.optimized_mir(body_owner_local_def_id.to_def_id())
+    if tcx.hir().body_owner_kind(body_owner_local_def_id).is_fn_or_closure() {
+        Some(tcx.optimized_mir(body_owner_local_def_id.to_def_id()))
+    } else {
+        None
+    }
 }
 
 /// Tries to determine the `Local` corresponding to `expr`, if any.
 /// This function is expensive and should be used sparingly.
 pub fn expr_local(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> Option<Local> {
-    let mir = enclosing_mir(tcx, expr.hir_id);
-    mir.local_decls.iter_enumerated().find_map(|(local, local_decl)| {
-        if local_decl.source_info.span == expr.span {
-            Some(local)
-        } else {
-            None
-        }
+    enclosing_mir(tcx, expr.hir_id).and_then(|mir| {
+        mir.local_decls.iter_enumerated().find_map(|(local, local_decl)| {
+            if local_decl.source_info.span == expr.span {
+                Some(local)
+            } else {
+                None
+            }
+        })
     })
 }
 

@@ -3,8 +3,9 @@
 
 // This test is for targets with 32bit c_int only.
 // ignore-msp430
+// ignore-avr
 
 fn main() {
 }
 
-// CHECK: define{{( hidden)?}} i32 @main(i32{{( %0)?}}, {{i8\*\*|ptr}}{{( %1)?}})
+// CHECK: define{{( hidden)?}} i32 @main(i32{{( %0)?}}, ptr{{( %1)?}})

@@ -9,7 +9,7 @@ note: the lint level is defined here
    |
 LL | #![deny(clippy::bind_instead_of_map)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: try this
+help: try
    |
 LL |     let _ = Some("42").map(|s| if s.len() < 42 { 0 } else { s.len() });
    |                        ~~~                       ~          ~~~~~~~
@@ -20,7 +20,7 @@ error: using `Result.and_then(|x| Ok(y))`, which is more succinctly expressed as
 LL |     let _ = Ok::<_, ()>("42").and_then(|s| if s.len() < 42 { Ok(0) } else { Ok(s.len()) });
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: try this
+help: try
    |
 LL |     let _ = Ok::<_, ()>("42").map(|s| if s.len() < 42 { 0 } else { s.len() });
    |                               ~~~                       ~          ~~~~~~~
@@ -31,7 +31,7 @@ error: using `Result.or_else(|x| Err(y))`, which is more succinctly expressed as
 LL |     let _ = Err::<(), _>("42").or_else(|s| if s.len() < 42 { Err(s.len() + 20) } else { Err(s.len()) });
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: try this
+help: try
    |
 LL |     let _ = Err::<(), _>("42").map_err(|s| if s.len() < 42 { s.len() + 20 } else { s.len() });
    |                                ~~~~~~~                       ~~~~~~~~~~~~          ~~~~~~~
@@ -48,7 +48,7 @@ LL | |         }
 LL | |     });
    | |______^
    |
-help: try this
+help: try
    |
 LL ~     Some("42").map(|s| {
 LL |         if {
@@ -82,7 +82,7 @@ error: using `Option.and_then(|x| Some(y))`, which is more succinctly expressed 
 LL |     let _ = Some("").and_then(|s| if s.len() == 20 { Some(m!()) } else { Some(Some(20)) });
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: try this
+help: try
    |
 LL |     let _ = Some("").map(|s| if s.len() == 20 { m!() } else { Some(20) });
    |                      ~~~                        ~~~~          ~~~~~~~~

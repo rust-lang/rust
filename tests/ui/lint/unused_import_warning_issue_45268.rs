@@ -31,15 +31,15 @@ use test::B;        // This is used by the test2::func() through import of super
 mod test2 {
     use super::*;
     pub fn func() {
-        let _ = <()>::a();
-        let _ = ().b();
+        <()>::a();
+        ().b();
         test3::inner_func();
     }
     mod test3 {
         use super::*;
         pub fn inner_func() {
-            let _ = <()>::a();
-            let _ = ().b();
+            <()>::a();
+            ().b();
         }
     }
 }

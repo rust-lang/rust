@@ -138,8 +138,6 @@ pub trait FromIterator<A>: Sized {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// let five_fives = std::iter::repeat(5).take(5);
     ///
@@ -255,8 +253,6 @@ pub trait IntoIterator {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// let v = [1, 2, 3];
     /// let mut iter = v.into_iter();
@@ -362,8 +358,6 @@ pub trait Extend<A> {
     /// [trait-level]: Extend
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// // You can extend a String with some chars:

@@ -91,7 +91,7 @@ impl Once {
     /// return).
     ///
     /// If the given closure recursively invokes `call_once` on the same [`Once`]
-    /// instance the exact behavior is not specified, allowed outcomes are
+    /// instance, the exact behavior is not specified: allowed outcomes are
     /// a panic or a deadlock.
     ///
     /// # Examples

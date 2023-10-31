@@ -176,9 +176,7 @@ pub fn dominators<G: ControlFlowGraph>(graph: &G) -> Dominators<G::Node> {
             //
             // ...this may be the case if a MirPass modifies the CFG to remove
             // or rearrange certain blocks/edges.
-            let Some(v) = real_to_pre_order[v] else {
-                continue
-            };
+            let Some(v) = real_to_pre_order[v] else { continue };
 
             // eval returns a vertex x from which semi[x] is minimum among
             // vertices semi[v] +> x *> v.

@@ -19,7 +19,7 @@ pub(super) fn check(cx: &LateContext<'_>, e: &hir::Expr<'_>, recv: &hir::Expr<'_
     if_chain! {
         if let Some(method_id) = cx.typeck_results().type_dependent_def_id(e.hir_id);
         if cx.tcx.impl_of_method(method_id)
-            .map_or(false, |id| is_type_diagnostic_item(cx, cx.tcx.type_of(id).subst_identity(), sym::Option))
+            .map_or(false, |id| is_type_diagnostic_item(cx, cx.tcx.type_of(id).instantiate_identity(), sym::Option))
             || is_diag_trait_item(cx, method_id, sym::Iterator);
         if let hir::ExprKind::Closure(&hir::Closure{ body, .. }) = arg.kind;
         then {

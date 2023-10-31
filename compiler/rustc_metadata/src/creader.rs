@@ -4,7 +4,7 @@ use crate::errors;
 use crate::locator::{CrateError, CrateLocator, CratePaths};
 use crate::rmeta::{CrateDep, CrateMetadata, CrateNumMap, CrateRoot, MetadataBlob};
 
-use rustc_ast::expand::allocator::AllocatorKind;
+use rustc_ast::expand::allocator::{alloc_error_handler_name, global_fn_name, AllocatorKind};
 use rustc_ast::{self as ast, *};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::svh::Svh;
@@ -15,12 +15,12 @@ use rustc_hir::definitions::Definitions;
 use rustc_index::IndexVec;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{self, CrateType, ExternLocation};
-use rustc_session::cstore::ExternCrateSource;
-use rustc_session::cstore::{CrateDepKind, CrateSource, ExternCrate};
+use rustc_session::cstore::{
+    CrateDepKind, CrateSource, ExternCrate, ExternCrateSource, MetadataLoaderDyn,
+};
 use rustc_session::lint;
 use rustc_session::output::validate_crate_name;
 use rustc_session::search_paths::PathKind;
-use rustc_session::Session;
 use rustc_span::edition::Edition;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
@@ -34,6 +34,8 @@ use std::time::Duration;
 use std::{cmp, env, iter};
 
 pub struct CStore {
+    metadata_loader: Box<MetadataLoaderDyn>,
+
     metas: IndexVec<CrateNum, Option<Box<CrateMetadata>>>,
     injected_panic_runtime: Option<CrateNum>,
     /// This crate needs an allocator and either provides it itself, or finds it in a dependency.
@@ -262,10 +264,14 @@ impl CStore {
         }
     }
 
-    pub fn new(sess: &Session) -> CStore {
+    pub fn new(
+        metadata_loader: Box<MetadataLoaderDyn>,
+        local_stable_crate_id: StableCrateId,
+    ) -> CStore {
         let mut stable_crate_ids = StableCrateIdMap::default();
-        stable_crate_ids.insert(sess.local_stable_crate_id(), LOCAL_CRATE);
+        stable_crate_ids.insert(local_stable_crate_id, LOCAL_CRATE);
         CStore {
+            metadata_loader,
             // We add an empty entry for LOCAL_CRATE (which maps to zero) in
             // order to make array indices in `metas` match with the
             // corresponding `CrateNum`. This first entry will always remain
@@ -365,6 +371,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         lib: Library,
         dep_kind: CrateDepKind,
         name: Symbol,
+        private_dep: Option<bool>,
     ) -> Result<CrateNum, CrateError> {
         let _prof_timer = self.sess.prof.generic_activity("metadata_register_crate");
 
@@ -372,8 +379,13 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         let crate_root = metadata.get_root();
         let host_hash = host_lib.as_ref().map(|lib| lib.metadata.get_root().hash());
 
-        let private_dep =
-            self.sess.opts.externs.get(name.as_str()).is_some_and(|e| e.is_private_dep);
+        let private_dep = self
+            .sess
+            .opts
+            .externs
+            .get(name.as_str())
+            .map_or(private_dep.unwrap_or(false), |e| e.is_private_dep)
+            && private_dep.unwrap_or(true);
 
         // Claim this crate number and cache it
         let cnum = self.cstore.intern_stable_crate_id(&crate_root)?;
@@ -518,25 +530,28 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         if !name.as_str().is_ascii() {
             return Err(CrateError::NonAsciiName(name));
         }
-        let (root, hash, host_hash, extra_filename, path_kind) = match dep {
+        let (root, hash, host_hash, extra_filename, path_kind, private_dep) = match dep {
             Some((root, dep)) => (
                 Some(root),
                 Some(dep.hash),
                 dep.host_hash,
                 Some(&dep.extra_filename[..]),
                 PathKind::Dependency,
+                Some(dep.is_private),
             ),
-            None => (None, None, None, None, PathKind::Crate),
+            None => (None, None, None, None, PathKind::Crate, None),
         };
         let result = if let Some(cnum) = self.existing_match(name, hash, path_kind) {
             (LoadResult::Previous(cnum), None)
         } else {
             info!("falling back to a load");
-            let metadata_loader = self.tcx.metadata_loader(()).borrow();
             let mut locator = CrateLocator::new(
                 self.sess,
-                &**metadata_loader,
+                &*self.cstore.metadata_loader,
                 name,
+                // The all loop is because `--crate-type=rlib --crate-type=rlib` is
+                // legal and produces both inside this type.
+                self.tcx.crate_types().iter().all(|c| *c == CrateType::Rlib),
                 hash,
                 extra_filename,
                 false, // is_host
@@ -562,10 +577,13 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
                     dep_kind = CrateDepKind::MacrosOnly;
                 }
                 data.update_dep_kind(|data_dep_kind| cmp::max(data_dep_kind, dep_kind));
+                if let Some(private_dep) = private_dep {
+                    data.update_and_private_dep(private_dep);
+                }
                 Ok(cnum)
             }
             (LoadResult::Loaded(library), host_library) => {
-                self.register_crate(host_library, root, library, dep_kind, name)
+                self.register_crate(host_library, root, library, dep_kind, name, private_dep)
             }
             _ => panic!(),
         }
@@ -677,7 +695,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
     fn inject_panic_runtime(&mut self, krate: &ast::Crate) {
         // If we're only compiling an rlib, then there's no need to select a
         // panic runtime, so we just skip this section entirely.
-        let any_non_rlib = self.sess.crate_types().iter().any(|ct| *ct != CrateType::Rlib);
+        let any_non_rlib = self.tcx.crate_types().iter().any(|ct| *ct != CrateType::Rlib);
         if !any_non_rlib {
             info!("panic runtime injection skipped, only generating rlib");
             return;
@@ -731,7 +749,9 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         };
         info!("panic runtime not found -- loading {}", name);
 
-        let Some(cnum) = self.resolve_crate(name, DUMMY_SP, CrateDepKind::Implicit) else { return; };
+        let Some(cnum) = self.resolve_crate(name, DUMMY_SP, CrateDepKind::Implicit) else {
+            return;
+        };
         let data = self.cstore.get_crate_data(cnum);
 
         // Sanity check the loaded crate to ensure it is indeed a panic runtime
@@ -764,7 +784,9 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
             self.sess.emit_err(errors::ProfilerBuiltinsNeedsCore);
         }
 
-        let Some(cnum) = self.resolve_crate(name, DUMMY_SP, CrateDepKind::Implicit) else { return; };
+        let Some(cnum) = self.resolve_crate(name, DUMMY_SP, CrateDepKind::Implicit) else {
+            return;
+        };
         let data = self.cstore.get_crate_data(cnum);
 
         // Sanity check the loaded crate to ensure it is indeed a profiler runtime
@@ -802,7 +824,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         // At this point we've determined that we need an allocator. Let's see
         // if our compilation session actually needs an allocator based on what
         // we're emitting.
-        let all_rlib = self.sess.crate_types().iter().all(|ct| matches!(*ct, CrateType::Rlib));
+        let all_rlib = self.tcx.crate_types().iter().all(|ct| matches!(*ct, CrateType::Rlib));
         if all_rlib {
             return;
         }
@@ -1048,7 +1070,7 @@ fn global_allocator_spans(krate: &ast::Crate) -> Vec<Span> {
         }
     }
 
-    let name = Symbol::intern(&AllocatorKind::Global.fn_name(sym::alloc));
+    let name = Symbol::intern(&global_fn_name(sym::alloc));
     let mut f = Finder { name, spans: Vec::new() };
     visit::walk_crate(&mut f, krate);
     f.spans
@@ -1070,7 +1092,7 @@ fn alloc_error_handler_spans(krate: &ast::Crate) -> Vec<Span> {
         }
     }
 
-    let name = Symbol::intern(&AllocatorKind::Global.fn_name(sym::oom));
+    let name = Symbol::intern(alloc_error_handler_name(AllocatorKind::Global));
     let mut f = Finder { name, spans: Vec::new() };
     visit::walk_crate(&mut f, krate);
     f.spans

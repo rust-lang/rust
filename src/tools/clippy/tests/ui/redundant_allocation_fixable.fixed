@@ -16,9 +16,7 @@ pub enum MyEnum {
 }
 
 mod outer_box {
-    use crate::MyEnum;
-    use crate::MyStruct;
-    use crate::SubT;
+    use crate::{MyEnum, MyStruct, SubT};
     use std::boxed::Box;
     use std::rc::Rc;
     use std::sync::Arc;
@@ -35,9 +33,7 @@ mod outer_box {
 }
 
 mod outer_rc {
-    use crate::MyEnum;
-    use crate::MyStruct;
-    use crate::SubT;
+    use crate::{MyEnum, MyStruct, SubT};
     use std::boxed::Box;
     use std::rc::Rc;
     use std::sync::Arc;
@@ -54,9 +50,7 @@ mod outer_rc {
 }
 
 mod outer_arc {
-    use crate::MyEnum;
-    use crate::MyStruct;
-    use crate::SubT;
+    use crate::{MyEnum, MyStruct, SubT};
     use std::boxed::Box;
     use std::rc::Rc;
     use std::sync::Arc;

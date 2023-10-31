@@ -1,0 +1,22 @@
+- // MIR for `transmute_to_box_uninhabited` before LowerIntrinsics
++ // MIR for `transmute_to_box_uninhabited` after LowerIntrinsics
+  
+  fn transmute_to_box_uninhabited() -> ! {
+      let mut _0: !;
+      let _1: std::boxed::Box<Never>;
+      scope 1 {
+          debug x => _1;
+      }
+  
+      bb0: {
+          StorageLive(_1);
+-         _1 = transmute::<usize, Box<Never>>(const 1_usize) -> [return: bb1, unwind unreachable];
++         _1 = const 1_usize as std::boxed::Box<Never> (Transmute);
++         goto -> bb1;
+      }
+  
+      bb1: {
+          unreachable;
+      }
+  }
+  

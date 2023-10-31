@@ -309,7 +309,7 @@ impl<'a> Tarball<'a> {
         let mut cmd = self.builder.tool_cmd(crate::tool::Tool::RustInstaller);
 
         let package_name = self.package_name();
-        self.builder.info(&format!("Dist {}", package_name));
+        self.builder.info(&format!("Dist {package_name}"));
         let _time = crate::util::timeit(self.builder);
 
         build_cli(&self, &mut cmd);
@@ -344,7 +344,7 @@ impl<'a> Tarball<'a> {
             .unwrap_or("gz");
 
         GeneratedTarball {
-            path: crate::dist::distdir(self.builder).join(format!("{}.tar.{}", package_name, ext)),
+            path: crate::dist::distdir(self.builder).join(format!("{package_name}.tar.{ext}")),
             decompressed_output,
             work: self.temp_dir,
         }

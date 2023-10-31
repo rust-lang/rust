@@ -22,7 +22,7 @@
 /// Types express that they can be borrowed as some type `T` by implementing
 /// `Borrow<T>`, providing a reference to a `T` in the trait’s
 /// [`borrow`] method. A type is free to borrow as several different types.
-/// If it wishes to mutably borrow as the type – allowing the underlying data
+/// If it wishes to mutably borrow as the type, allowing the underlying data
 /// to be modified, it can additionally implement [`BorrowMut<T>`].
 ///
 /// Further, when providing implementations for additional traits, it needs

@@ -1,12 +1,12 @@
 // MIR for `copy_for_deref` after built
 
 fn copy_for_deref(_1: (&i32, i32)) -> i32 {
-    let mut _0: i32;                     // return place in scope 0 at $DIR/projections.rs:+0:38: +0:41
-    let mut _2: &i32;                    // in scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
+    let mut _0: i32;
+    let mut _2: &i32;
 
     bb0: {
-        _2 = deref_copy (_1.0: &i32);    // scope 0 at $DIR/projections.rs:+4:13: +4:37
-        _0 = (*_2);                      // scope 0 at $DIR/projections.rs:+5:13: +5:24
-        return;                          // scope 0 at $DIR/projections.rs:+6:13: +6:21
+        _2 = deref_copy (_1.0: &i32);
+        _0 = (*_2);
+        return;
     }
 }

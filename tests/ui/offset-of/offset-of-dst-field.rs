@@ -36,6 +36,8 @@ fn main() {
     offset_of!(Alpha, z); //~ ERROR the size for values of type
     offset_of!(Beta, z); //~ ERROR the size for values of type
     offset_of!(Gamma, z); //~ ERROR the size for values of type
+    offset_of!((u8, dyn Trait), 0); // ok
+    offset_of!((u8, dyn Trait), 1); //~ ERROR the size for values of type
 }
 
 fn delta() {

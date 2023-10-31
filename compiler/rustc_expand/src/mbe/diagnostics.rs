@@ -42,7 +42,8 @@ pub(super) fn failed_to_match_macro<'cx>(
         return result;
     }
 
-    let Some(BestFailure { token, msg: label, remaining_matcher, .. }) = tracker.best_failure else {
+    let Some(BestFailure { token, msg: label, remaining_matcher, .. }) = tracker.best_failure
+    else {
         return DummyResult::any(sp);
     };
 
@@ -170,7 +171,7 @@ impl<'a, 'cx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'a, 'cx, 
             }
             Error(err_sp, msg) => {
                 let span = err_sp.substitute_dummy(self.root_span);
-                self.cx.struct_span_err(span, msg.as_str()).emit();
+                self.cx.struct_span_err(span, msg.clone()).emit();
                 self.result = Some(DummyResult::any(span));
             }
             ErrorReported(_) => self.result = Some(DummyResult::any(self.root_span)),
@@ -222,7 +223,7 @@ pub(super) fn emit_frag_parse_err(
     {
         let msg = &e.message[0];
         e.message[0] = (
-            DiagnosticMessage::Str(format!(
+            DiagnosticMessage::from(format!(
                 "macro expansion ends with an incomplete expression: {}",
                 message.replace(", found `<eof>`", ""),
             )),
@@ -256,7 +257,7 @@ pub(super) fn emit_frag_parse_err(
                         e.span_suggestion_verbose(
                             site_span,
                             "surround the macro invocation with `{}` to interpret the expansion as a statement",
-                            format!("{{ {}; }}", snippet),
+                            format!("{{ {snippet}; }}"),
                             Applicability::MaybeIncorrect,
                         );
                     }
@@ -313,9 +314,9 @@ pub(super) fn annotate_doc_comment(err: &mut Diagnostic, sm: &SourceMap, span: S
 
 /// Generates an appropriate parsing failure message. For EOF, this is "unexpected end...". For
 /// other tokens, this is "unexpected token...".
-pub(super) fn parse_failure_msg(tok: &Token) -> String {
+pub(super) fn parse_failure_msg(tok: &Token) -> Cow<'static, str> {
     match tok.kind {
-        token::Eof => "unexpected end of macro invocation".to_string(),
-        _ => format!("no rules expected the token `{}`", pprust::token_to_string(tok),),
+        token::Eof => Cow::from("unexpected end of macro invocation"),
+        _ => Cow::from(format!("no rules expected the token `{}`", pprust::token_to_string(tok))),
     }
 }

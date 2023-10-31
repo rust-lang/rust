@@ -1,6 +1,6 @@
 use super::sealed::Sealed;
 use crate::simd::{
-    intrinsics, LaneCount, Mask, Simd, SimdElement, SimdPartialEq, SimdPartialOrd,
+    intrinsics, LaneCount, Mask, Simd, SimdCast, SimdElement, SimdPartialEq, SimdPartialOrd,
     SupportedLaneCount,
 };
 
@@ -14,6 +14,53 @@ pub trait SimdFloat: Copy + Sealed {
 
     /// Bit representation of this SIMD vector type.
     type Bits;
+
+    /// A SIMD vector with a different element type.
+    type Cast<T: SimdElement>;
+
+    /// Performs elementwise conversion of this vector's elements to another SIMD-valid type.
+    ///
+    /// This follows the semantics of Rust's `as` conversion for floats (truncating or saturating
+    /// at the limits) for each element.
+    ///
+    /// # Example
+    /// ```
+    /// # #![feature(portable_simd)]
+    /// # #[cfg(feature = "as_crate")] use core_simd::simd;
+    /// # #[cfg(not(feature = "as_crate"))] use core::simd;
+    /// # use simd::{SimdFloat, SimdInt, Simd};
+    /// let floats: Simd<f32, 4> = Simd::from_array([1.9, -4.5, f32::INFINITY, f32::NAN]);
+    /// let ints = floats.cast::<i32>();
+    /// assert_eq!(ints, Simd::from_array([1, -4, i32::MAX, 0]));
+    ///
+    /// // Formally equivalent, but `Simd::cast` can optimize better.
+    /// assert_eq!(ints, Simd::from_array(floats.to_array().map(|x| x as i32)));
+    ///
+    /// // The float conversion does not round-trip.
+    /// let floats_again = ints.cast();
+    /// assert_ne!(floats, floats_again);
+    /// assert_eq!(floats_again, Simd::from_array([1.0, -4.0, 2147483647.0, 0.0]));
+    /// ```
+    #[must_use]
+    fn cast<T: SimdCast>(self) -> Self::Cast<T>;
+
+    /// Rounds toward zero and converts to the same-width integer type, assuming that
+    /// the value is finite and fits in that type.
+    ///
+    /// # Safety
+    /// The value must:
+    ///
+    /// * Not be NaN
+    /// * Not be infinite
+    /// * Be representable in the return type, after truncating off its fractional part
+    ///
+    /// If these requirements are infeasible or costly, consider using the safe function [cast],
+    /// which saturates on conversion.
+    ///
+    /// [cast]: Simd::cast
+    unsafe fn to_int_unchecked<I: SimdCast>(self) -> Self::Cast<I>
+    where
+        Self::Scalar: core::convert::FloatToInt<I>;
 
     /// Raw transmutation to an unsigned integer vector type with the
     /// same size and number of lanes.
@@ -206,6 +253,24 @@ macro_rules! impl_trait {
             type Mask = Mask<<$mask_ty as SimdElement>::Mask, LANES>;
             type Scalar = $ty;
             type Bits = Simd<$bits_ty, LANES>;
+            type Cast<T: SimdElement> = Simd<T, LANES>;
+
+            #[inline]
+            fn cast<T: SimdCast>(self) -> Self::Cast<T>
+            {
+                // Safety: supported types are guaranteed by SimdCast
+                unsafe { intrinsics::simd_as(self) }
+            }
+
+            #[inline]
+            #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+            unsafe fn to_int_unchecked<I: SimdCast>(self) -> Self::Cast<I>
+            where
+                Self::Scalar: core::convert::FloatToInt<I>,
+            {
+                // Safety: supported types are guaranteed by SimdCast, the caller is responsible for the extra invariants
+                unsafe { intrinsics::simd_cast(self) }
+            }
 
             #[inline]
             fn to_bits(self) -> Simd<$bits_ty, LANES> {

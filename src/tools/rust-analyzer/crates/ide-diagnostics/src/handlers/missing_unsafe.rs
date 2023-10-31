@@ -4,16 +4,17 @@ use syntax::{ast, SyntaxNode};
 use syntax::{match_ast, AstNode};
 use text_edit::TextEdit;
 
-use crate::{fix, Diagnostic, DiagnosticsContext};
+use crate::{fix, Diagnostic, DiagnosticCode, DiagnosticsContext};
 
 // Diagnostic: missing-unsafe
 //
 // This diagnostic is triggered if an operation marked as `unsafe` is used outside of an `unsafe` function or block.
 pub(crate) fn missing_unsafe(ctx: &DiagnosticsContext<'_>, d: &hir::MissingUnsafe) -> Diagnostic {
-    Diagnostic::new(
-        "missing-unsafe",
+    Diagnostic::new_with_syntax_node_ptr(
+        ctx,
+        DiagnosticCode::RustcHardError("E0133"),
         "this operation is unsafe and requires an unsafe function or block",
-        ctx.sema.diagnostics_display_range(d.expr.clone().map(|it| it.into())).range,
+        d.expr.clone().map(|it| it.into()),
     )
     .with_fixes(fixes(ctx, d))
 }
@@ -24,7 +25,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingUnsafe) -> Option<Vec<Ass
         return None;
     }
 
-    let root = ctx.sema.db.parse_or_expand(d.expr.file_id)?;
+    let root = ctx.sema.db.parse_or_expand(d.expr.file_id);
     let expr = d.expr.value.to_node(&root);
 
     let node_to_add_unsafe_block = pick_best_node_to_add_unsafe_block(&expr)?;
@@ -142,6 +143,8 @@ fn main() {
     fn missing_unsafe_diagnostic_with_static_mut() {
         check_diagnostics(
             r#"
+//- minicore: copy
+
 struct Ty {
     a: u8,
 }
@@ -256,6 +259,7 @@ fn main() {
     fn add_unsafe_block_when_accessing_mutable_static() {
         check_fix(
             r#"
+//- minicore: copy
 struct Ty {
     a: u8,
 }
@@ -374,6 +378,7 @@ fn main() {
     fn unsafe_expr_as_right_hand_side_of_assignment() {
         check_fix(
             r#"
+//- minicore: copy
 static mut STATIC_MUT: u8 = 0;
 
 fn main() {
@@ -396,6 +401,7 @@ fn main() {
     fn unsafe_expr_in_binary_plus() {
         check_fix(
             r#"
+//- minicore: copy
 static mut STATIC_MUT: u8 = 0;
 
 fn main() {

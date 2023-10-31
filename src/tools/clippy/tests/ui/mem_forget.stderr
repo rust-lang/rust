@@ -4,6 +4,7 @@ error: usage of `mem::forget` on `Drop` type
 LL |     memstuff::forget(six);
    |     ^^^^^^^^^^^^^^^^^^^^^
    |
+   = note: argument has type `std::sync::Arc<i32>`
    = note: `-D clippy::mem-forget` implied by `-D warnings`
 
 error: usage of `mem::forget` on `Drop` type
@@ -11,12 +12,24 @@ error: usage of `mem::forget` on `Drop` type
    |
 LL |     std::mem::forget(seven);
    |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: argument has type `std::rc::Rc<i32>`
 
 error: usage of `mem::forget` on `Drop` type
   --> $DIR/mem_forget.rs:20:5
    |
 LL |     forgetSomething(eight);
    |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: argument has type `std::vec::Vec<i32>`
 
-error: aborting due to 3 previous errors
+error: usage of `mem::forget` on type with `Drop` fields
+  --> $DIR/mem_forget.rs:23:5
+   |
+LL |     std::mem::forget(string);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: argument has type `std::string::String`
+
+error: aborting due to 4 previous errors
 

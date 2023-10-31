@@ -18,6 +18,7 @@ fn main() {
         || target.contains("illumos")
         || target.contains("apple-darwin")
         || target.contains("apple-ios")
+        || target.contains("apple-tvos")
         || target.contains("apple-watchos")
         || target.contains("uwp")
         || target.contains("windows")
@@ -36,6 +37,8 @@ fn main() {
         || target.contains("nintendo-3ds")
         || target.contains("vita")
         || target.contains("nto")
+        // See src/bootstrap/synthetic_targets.rs
+        || env::var("RUSTC_BOOTSTRAP_SYNTHETIC_TARGET").is_ok()
     {
         // These platforms don't have any special requirements.
     } else {
@@ -46,7 +49,6 @@ fn main() {
         // - mipsel-sony-psp
         // - nvptx64-nvidia-cuda
         // - arch=avr
-        // - tvos (aarch64-apple-tvos, x86_64-apple-tvos)
         // - uefi (x86_64-unknown-uefi, i686-unknown-uefi)
         // - JSON targets
         // - Any new targets that have not been explicitly added above.

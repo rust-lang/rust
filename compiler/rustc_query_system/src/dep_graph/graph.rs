@@ -1,4 +1,3 @@
-use parking_lot::Mutex;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::profiling::{EventId, QueryInvocationId, SelfProfilerRef};
@@ -6,6 +5,7 @@ use rustc_data_structures::sharded::{self, Sharded};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{AtomicU32, AtomicU64, Lock, Lrc, Ordering};
+use rustc_data_structures::unord::UnordMap;
 use rustc_index::IndexVec;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use smallvec::{smallvec, SmallVec};
@@ -87,13 +87,13 @@ pub struct DepGraphData<K: DepKind> {
 
     colors: DepNodeColorMap,
 
-    processed_side_effects: Mutex<FxHashSet<DepNodeIndex>>,
+    processed_side_effects: Lock<FxHashSet<DepNodeIndex>>,
 
     /// When we load, there may be `.o` files, cached MIR, or other such
     /// things available to us. If we find that they are not dirty, we
     /// load the path to the file storing those work-products here into
     /// this map. We can later look for and extract that data.
-    previous_work_products: FxHashMap<WorkProductId, WorkProduct>,
+    previous_work_products: WorkProductMap,
 
     dep_node_debug: Lock<FxHashMap<DepNode<K>, String>>,
 
@@ -116,7 +116,7 @@ impl<K: DepKind> DepGraph<K> {
     pub fn new(
         profiler: &SelfProfilerRef,
         prev_graph: SerializedDepGraph<K>,
-        prev_work_products: FxHashMap<WorkProductId, WorkProduct>,
+        prev_work_products: WorkProductMap,
         encoder: FileEncoder,
         record_graph: bool,
         record_stats: bool,
@@ -556,7 +556,7 @@ impl<K: DepKind> DepGraph<K> {
                         result,
                         prev_index,
                         hash_result,
-                        |value| format!("{:?}", value),
+                        |value| format!("{value:?}"),
                     );
 
                     #[cfg(debug_assertions)]
@@ -688,7 +688,7 @@ impl<K: DepKind> DepGraph<K> {
 
     /// Access the map of work-products created during the cached run. Only
     /// used during saving of the dep-graph.
-    pub fn previous_work_products(&self) -> &FxHashMap<WorkProductId, WorkProduct> {
+    pub fn previous_work_products(&self) -> &WorkProductMap {
         &self.data.as_ref().unwrap().previous_work_products
     }
 
@@ -1048,8 +1048,10 @@ pub struct WorkProduct {
     ///
     /// By convention, file extensions are currently used as identifiers, i.e. the key "o" maps to
     /// the object file's path, and "dwo" to the dwarf object file's path.
-    pub saved_files: FxHashMap<String, String>,
+    pub saved_files: UnordMap<String, String>,
 }
+
+pub type WorkProductMap = UnordMap<WorkProductId, WorkProduct>;
 
 // Index type for `DepNodeData`'s edges.
 rustc_index::newtype_index! {
@@ -1432,7 +1434,7 @@ pub(crate) fn print_markframe_trace<K: DepKind>(
     let mut current = frame;
     while let Some(frame) = current {
         let node = data.previous.index_to_node(frame.index);
-        eprintln!("#{i} {:?}", node);
+        eprintln!("#{i} {node:?}");
         current = frame.parent;
         i += 1;
     }

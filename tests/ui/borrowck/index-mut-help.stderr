@@ -2,13 +2,10 @@ error[E0596]: cannot borrow data in an index of `HashMap<&str, String>` as mutab
   --> $DIR/index-mut-help.rs:10:5
    |
 LL |     map["peter"].clear();
-   |     ^^^^^^^^^^^^^^^^^^^^ cannot borrow as mutable
+   |     ^^^^^^^^^^^^ cannot borrow as mutable
    |
    = help: trait `IndexMut` is required to modify indexed content, but it is not implemented for `HashMap<&str, String>`
-help: to modify a `HashMap<&str, String>` use `.get_mut()`
-   |
-LL |     map.get_mut("peter").map(|val| val.clear());
-   |        ~~~~~~~~~       ~~~~~~~~~~~~~~~        +
+   = help: to modify a `HashMap<&str, String>`, use `.get_mut()`, `.insert()` or the entry API
 
 error[E0594]: cannot assign to data in an index of `HashMap<&str, String>`
   --> $DIR/index-mut-help.rs:11:5

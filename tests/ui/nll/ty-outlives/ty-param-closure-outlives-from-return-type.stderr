@@ -4,7 +4,7 @@ note: external requirements
 LL |     with_signature(x, |y| y)
    |                       ^^^
    |
-   = note: defining type: no_region::<'?1, T>::{closure#0} with closure substs [
+   = note: defining type: no_region::<'?1, T>::{closure#0} with closure args [
                i32,
                extern "rust-call" fn((std::boxed::Box<T>,)) -> std::boxed::Box<(dyn std::fmt::Debug + '?2)>,
                (),

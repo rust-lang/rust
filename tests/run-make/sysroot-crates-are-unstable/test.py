@@ -46,7 +46,7 @@ def check_lib(lib):
                                    '--target', os.environ['TARGET'],
                                    '--extern', '{}={}'.format(lib['name'], lib['path'])],
                                   to_input=('extern crate {};'.format(lib['name'])).encode('utf-8'))
-    if not 'use of unstable library feature' in '{}{}'.format(stdout, stderr):
+    if 'use of unstable library feature' not in '{}{}'.format(stdout, stderr):
         print('crate {} "{}" is not unstable'.format(lib['name'], lib['path']))
         print('{}{}'.format(stdout, stderr))
         print('')

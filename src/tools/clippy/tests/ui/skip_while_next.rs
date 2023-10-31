@@ -1,7 +1,7 @@
 //@aux-build:option_helpers.rs
 
 #![warn(clippy::skip_while_next)]
-#![allow(clippy::disallowed_names)]
+#![allow(clippy::disallowed_names, clippy::useless_vec)]
 
 extern crate option_helpers;
 use option_helpers::IteratorFalsePositives;

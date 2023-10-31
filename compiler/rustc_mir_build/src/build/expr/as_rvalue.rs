@@ -16,7 +16,7 @@ use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use rustc_middle::ty::cast::{mir_cast_kind, CastTy};
 use rustc_middle::ty::layout::IntegerExt;
-use rustc_middle::ty::{self, Ty, UpvarSubsts};
+use rustc_middle::ty::{self, Ty, UpvarArgs};
 use rustc_span::Span;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
@@ -162,7 +162,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     [],
                     expr_span,
                 );
-                let storage = this.temp(tcx.mk_mut_ptr(tcx.types.u8), expr_span);
+                let storage = this.temp(Ty::new_mut_ptr(tcx, tcx.types.u8), expr_span);
                 let success = this.cfg.start_new_block();
                 this.cfg.terminate(
                     block,
@@ -173,7 +173,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         destination: storage,
                         target: Some(success),
                         unwind: UnwindAction::Continue,
-                        from_hir_call: false,
+                        call_source: CallSource::Misc,
                         fn_span: expr_span,
                     },
                 );
@@ -300,7 +300,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let cast_kind = mir_cast_kind(ty, expr.ty);
                 block.and(Rvalue::Cast(cast_kind, source, expr.ty))
             }
-            ExprKind::Pointer { cast, source } => {
+            ExprKind::PointerCoercion { cast, source } => {
                 let source = unpack!(
                     block = this.as_operand(
                         block,
@@ -310,7 +310,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         NeedsTemporary::No
                     )
                 );
-                block.and(Rvalue::Cast(CastKind::Pointer(cast), source, expr.ty))
+                block.and(Rvalue::Cast(CastKind::PointerCoercion(cast), source, expr.ty))
             }
             ExprKind::Array { ref fields } => {
                 // (*) We would (maybe) be closer to codegen if we
@@ -382,7 +382,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
             ExprKind::Closure(box ClosureExpr {
                 closure_id,
-                substs,
+                args,
                 ref upvars,
                 movability,
                 ref fake_reads,
@@ -442,7 +442,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                 match upvar.kind {
                                     ExprKind::Borrow {
                                         borrow_kind:
-                                            BorrowKind::Mut { allow_two_phase_borrow: false },
+                                            BorrowKind::Mut { kind: MutBorrowKind::Default },
                                         arg,
                                     } => unpack!(
                                         block = this.limit_capture_mutability(
@@ -470,19 +470,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     })
                     .collect();
 
-                let result = match substs {
-                    UpvarSubsts::Generator(substs) => {
+                let result = match args {
+                    UpvarArgs::Generator(args) => {
                         // We implicitly set the discriminant to 0. See
                         // librustc_mir/transform/deaggregator.rs for details.
                         let movability = movability.unwrap();
-                        Box::new(AggregateKind::Generator(
-                            closure_id.to_def_id(),
-                            substs,
-                            movability,
-                        ))
+                        Box::new(AggregateKind::Generator(closure_id.to_def_id(), args, movability))
                     }
-                    UpvarSubsts::Closure(substs) => {
-                        Box::new(AggregateKind::Closure(closure_id.to_def_id(), substs))
+                    UpvarArgs::Closure(args) => {
+                        Box::new(AggregateKind::Closure(closure_id.to_def_id(), args))
                     }
                 };
                 block.and(Rvalue::Aggregate(result, operands))
@@ -532,6 +528,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::Break { .. }
             | ExprKind::Continue { .. }
             | ExprKind::Return { .. }
+            | ExprKind::Become { .. }
             | ExprKind::InlineAsm { .. }
             | ExprKind::PlaceTypeAscription { .. }
             | ExprKind::ValueTypeAscription { .. } => {
@@ -563,7 +560,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let bool_ty = self.tcx.types.bool;
         let rvalue = match op {
             BinOp::Add | BinOp::Sub | BinOp::Mul if self.check_overflow && ty.is_integral() => {
-                let result_tup = self.tcx.mk_tup(&[ty, bool_ty]);
+                let result_tup = Ty::new_tup(self.tcx, &[ty, bool_ty]);
                 let result_value = self.temp(result_tup, span);
 
                 self.cfg.push_assign(
@@ -597,7 +594,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let (unsigned_rhs, unsigned_ty) = match rhs_ty.kind() {
                     ty::Uint(_) => (rhs.to_copy(), rhs_ty),
                     ty::Int(int_width) => {
-                        let uint_ty = self.tcx.mk_mach_uint(int_width.to_unsigned());
+                        let uint_ty = Ty::new_uint(self.tcx, int_width.to_unsigned());
                         let rhs_temp = self.temp(uint_ty, span);
                         self.cfg.push_assign(
                             block,
@@ -725,6 +722,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         place: to_drop,
                         target: success,
                         unwind: UnwindAction::Continue,
+                        replace: false,
                     },
                 );
                 this.diverge_from(block);
@@ -776,8 +774,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         // Not in a closure
                         debug_assert!(
                             local == ty::CAPTURE_STRUCT_LOCAL,
-                            "Expected local to be Local(1), found {:?}",
-                            local
+                            "Expected local to be Local(1), found {local:?}"
                         );
                         // Not in a closure
                         debug_assert!(
@@ -794,8 +791,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         };
 
         let borrow_kind = match mutability {
-            Mutability::Not => BorrowKind::Unique,
-            Mutability::Mut => BorrowKind::Mut { allow_two_phase_borrow: false },
+            Mutability::Not => BorrowKind::Mut { kind: MutBorrowKind::ClosureCapture },
+            Mutability::Mut => BorrowKind::Mut { kind: MutBorrowKind::Default },
         };
 
         let arg_place = arg_place_builder.to_place(this);

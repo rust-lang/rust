@@ -7,7 +7,7 @@
 #![feature(generators)]
 
 fn main() {
-    let _ = foo();
+    foo();
 }
 
 fn foo() {

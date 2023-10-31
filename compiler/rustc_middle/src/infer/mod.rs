@@ -15,7 +15,7 @@ use rustc_span::Span;
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub struct MemberConstraint<'tcx> {
-    /// The `DefId` and substs of the opaque type causing this constraint.
+    /// The `DefId` and args of the opaque type causing this constraint.
     /// Used for error reporting.
     pub key: OpaqueTypeKey<'tcx>,
 

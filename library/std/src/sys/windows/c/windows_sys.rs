@@ -40,13 +40,6 @@ extern "system" {
 }
 #[link(name = "kernel32")]
 extern "system" {
-    pub fn AddVectoredExceptionHandler(
-        first: u32,
-        handler: PVECTORED_EXCEPTION_HANDLER,
-    ) -> *mut ::core::ffi::c_void;
-}
-#[link(name = "kernel32")]
-extern "system" {
     pub fn CancelIo(hfile: HANDLE) -> BOOL;
 }
 #[link(name = "kernel32")]
@@ -709,10 +702,6 @@ extern "system" {
         g: u32,
         dwflags: u32,
     ) -> SOCKET;
-}
-#[link(name = "ws2_32")]
-extern "system" {
-    pub fn WSAStartup(wversionrequested: u16, lpwsadata: *mut WSADATA) -> i32;
 }
 #[link(name = "ws2_32")]
 extern "system" {
@@ -3029,17 +3018,6 @@ pub const ERROR_XML_PARSE_ERROR: WIN32_ERROR = 1465u32;
 pub type EXCEPTION_DISPOSITION = i32;
 pub const EXCEPTION_MAXIMUM_PARAMETERS: u32 = 15u32;
 #[repr(C)]
-pub struct EXCEPTION_POINTERS {
-    pub ExceptionRecord: *mut EXCEPTION_RECORD,
-    pub ContextRecord: *mut CONTEXT,
-}
-impl ::core::marker::Copy for EXCEPTION_POINTERS {}
-impl ::core::clone::Clone for EXCEPTION_POINTERS {
-    fn clone(&self) -> Self {
-        *self
-    }
-}
-#[repr(C)]
 pub struct EXCEPTION_RECORD {
     pub ExceptionCode: NTSTATUS,
     pub ExceptionFlags: u32,
@@ -3748,9 +3726,6 @@ pub const PROFILE_SERVER: PROCESS_CREATION_FLAGS = 1073741824u32;
 pub const PROFILE_USER: PROCESS_CREATION_FLAGS = 268435456u32;
 pub const PROGRESS_CONTINUE: u32 = 0u32;
 pub type PSTR = *mut u8;
-pub type PVECTORED_EXCEPTION_HANDLER = ::core::option::Option<
-    unsafe extern "system" fn(exceptioninfo: *mut EXCEPTION_POINTERS) -> i32,
->;
 pub type PWSTR = *mut u16;
 pub const READ_CONTROL: FILE_ACCESS_RIGHTS = 131072u32;
 pub const REALTIME_PRIORITY_CLASS: PROCESS_CREATION_FLAGS = 256u32;
@@ -3888,6 +3863,7 @@ pub type STARTUPINFOW_FLAGS = u32;
 pub const STATUS_DELETE_PENDING: NTSTATUS = -1073741738i32;
 pub const STATUS_END_OF_FILE: NTSTATUS = -1073741807i32;
 pub const STATUS_INVALID_PARAMETER: NTSTATUS = -1073741811i32;
+pub const STATUS_NOT_IMPLEMENTED: NTSTATUS = -1073741822i32;
 pub const STATUS_PENDING: NTSTATUS = 259i32;
 pub const STATUS_SUCCESS: NTSTATUS = 0i32;
 pub const STD_ERROR_HANDLE: STD_HANDLE = 4294967284u32;

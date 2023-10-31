@@ -5,7 +5,7 @@ enum BtNode {
 
 fn main() {
     let y = match 10 {
-        Foo<T>::A(value) => value, //~ error: expected one of `=>`, `@`, `if`, or `|`, found `<`
+        Foo<T>::A(value) => value, //~ ERROR generic args in patterns require the turbofish syntax
         Foo<T>::B => 7,
     };
 }

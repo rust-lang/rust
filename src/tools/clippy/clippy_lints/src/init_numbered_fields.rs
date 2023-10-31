@@ -50,7 +50,7 @@ impl<'tcx> LateLintPass<'tcx> for NumberedFields {
                 && fields
                     .iter()
                     .all(|f| f.ident.as_str().as_bytes().iter().all(u8::is_ascii_digit))
-                && !matches!(cx.qpath_res(path, e.hir_id), Res::Def(DefKind::TyAlias, ..))
+                && !matches!(cx.qpath_res(path, e.hir_id), Res::Def(DefKind::TyAlias { .. }, ..))
             {
                 let expr_spans = fields
                     .iter()
@@ -71,7 +71,7 @@ impl<'tcx> LateLintPass<'tcx> for NumberedFields {
                     INIT_NUMBERED_FIELDS,
                     e.span,
                     "used a field initializer for a tuple struct",
-                    "try this instead",
+                    "try",
                     snippet,
                     appl,
                 );

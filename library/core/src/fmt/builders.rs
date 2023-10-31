@@ -518,7 +518,7 @@ impl<'a, 'b: 'a> DebugSet<'a, 'b> {
     ///     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
     ///         fmt.debug_set()
     ///            .entries(self.0.iter())
-    ///            .finish() // Ends the struct formatting.
+    ///            .finish() // Ends the set formatting.
     ///     }
     /// }
     ///
@@ -648,7 +648,7 @@ impl<'a, 'b: 'a> DebugList<'a, 'b> {
     ///     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
     ///         fmt.debug_list()
     ///            .entries(self.0.iter())
-    ///            .finish() // Ends the struct formatting.
+    ///            .finish() // Ends the list formatting.
     ///     }
     /// }
     ///
@@ -905,7 +905,7 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     ///     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
     ///         fmt.debug_map()
     ///            .entries(self.0.iter().map(|&(ref k, ref v)| (k, v)))
-    ///            .finish() // Ends the struct formatting.
+    ///            .finish() // Ends the map formatting.
     ///     }
     /// }
     ///

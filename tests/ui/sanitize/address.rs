@@ -1,11 +1,12 @@
 // needs-sanitizer-support
 // needs-sanitizer-address
+// ignore-cross-compile
 //
 // compile-flags: -Z sanitizer=address -O -g
 //
 // run-fail
 // error-pattern: AddressSanitizer: stack-buffer-overflow
-// error-pattern: 'xs' (line 13) <== Memory access at offset
+// error-pattern: 'xs' (line 14) <== Memory access at offset
 
 use std::hint::black_box;
 

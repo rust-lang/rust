@@ -148,8 +148,7 @@ impl<'tcx> InherentCollect<'tcx> {
                 if let ty::Ref(_, subty, _) = ty.kind() {
                     err.note(format!(
                         "you could also try moving the reference to \
-                            uses of `{}` (such as `self`) within the implementation",
-                        subty
+                            uses of `{subty}` (such as `self`) within the implementation"
                     ));
                 }
                 err.emit();
@@ -171,7 +170,7 @@ impl<'tcx> InherentCollect<'tcx> {
 
         let id = id.owner_id.def_id;
         let item_span = self.tcx.def_span(id);
-        let self_ty = self.tcx.type_of(id).subst_identity();
+        let self_ty = self.tcx.type_of(id).instantiate_identity();
         match *self_ty.kind() {
             ty::Adt(def, _) => self.check_def_id(id, self_ty, def.did()),
             ty::Foreign(did) => self.check_def_id(id, self_ty, did),

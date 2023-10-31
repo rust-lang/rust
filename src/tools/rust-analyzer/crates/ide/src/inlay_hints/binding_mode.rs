@@ -7,7 +7,7 @@ use ide_db::RootDatabase;
 
 use syntax::ast::{self, AstNode};
 
-use crate::{InlayHint, InlayHintsConfig, InlayKind};
+use crate::{InlayHint, InlayHintPosition, InlayHintsConfig, InlayKind};
 
 pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
@@ -49,7 +49,15 @@ pub(super) fn hints(
             (true, false) => "&",
             _ => return,
         };
-        acc.push(InlayHint { range, kind: InlayKind::BindingMode, label: r.to_string().into() });
+        acc.push(InlayHint {
+            range,
+            kind: InlayKind::BindingMode,
+            label: r.to_string().into(),
+            text_edit: None,
+            position: InlayHintPosition::Before,
+            pad_left: false,
+            pad_right: mut_reference,
+        });
     });
     match pat {
         ast::Pat::IdentPat(pat) if pat.ref_token().is_none() && pat.mut_token().is_none() => {
@@ -63,11 +71,21 @@ pub(super) fn hints(
                 range: pat.syntax().text_range(),
                 kind: InlayKind::BindingMode,
                 label: bm.to_string().into(),
+                text_edit: None,
+                position: InlayHintPosition::Before,
+                pad_left: false,
+                pad_right: true,
             });
         }
         ast::Pat::OrPat(pat) if !pattern_adjustments.is_empty() && outer_paren_pat.is_none() => {
-            acc.push(InlayHint::opening_paren(pat.syntax().text_range()));
-            acc.push(InlayHint::closing_paren(pat.syntax().text_range()));
+            acc.push(InlayHint::opening_paren_before(
+                InlayKind::BindingMode,
+                pat.syntax().text_range(),
+            ));
+            acc.push(InlayHint::closing_paren_after(
+                InlayKind::BindingMode,
+                pat.syntax().text_range(),
+            ));
         }
         _ => (),
     }
@@ -142,7 +160,6 @@ struct Struct {
     field: &'static str,
 }
 fn foo(s @ Struct { field, .. }: &Struct) {}
-     //^^^^^^^^^^^^^^^^^^^^^^^^ref
          //^^^^^^^^^^^^^^^^^^^^&
                   //^^^^^ref
 "#,

@@ -1,5 +1,5 @@
 error: this `if` can be part of the inner `if_chain!`
-  --> $DIR/if_chain_style.rs:9:5
+  --> $DIR/if_chain_style.rs:14:5
    |
 LL | /     if true {
 LL | |         let x = "";
@@ -11,14 +11,14 @@ LL | |     }
    | |_____^
    |
 help: this `let` statement can also be in the `if_chain!`
-  --> $DIR/if_chain_style.rs:10:9
+  --> $DIR/if_chain_style.rs:15:9
    |
 LL |         let x = "";
    |         ^^^^^^^^^^^
    = note: `-D clippy::if-chain-style` implied by `-D warnings`
 
 error: `if a && b;` should be `if a; if b;`
-  --> $DIR/if_chain_style.rs:19:12
+  --> $DIR/if_chain_style.rs:24:12
    |
 LL |           if true
    |  ____________^
@@ -27,25 +27,25 @@ LL | |             && false;
    | |____________________^
 
 error: `let` expression should be inside `then { .. }`
-  --> $DIR/if_chain_style.rs:24:9
+  --> $DIR/if_chain_style.rs:29:9
    |
 LL |         let x = "";
    |         ^^^^^^^^^^^
 
 error: this `if` can be part of the outer `if_chain!`
-  --> $DIR/if_chain_style.rs:35:13
+  --> $DIR/if_chain_style.rs:40:13
    |
 LL |             if true {}
    |             ^^^^^^^^^^
    |
 help: this `let` statement can also be in the `if_chain!`
-  --> $DIR/if_chain_style.rs:33:13
+  --> $DIR/if_chain_style.rs:38:13
    |
 LL |             let x = "";
    |             ^^^^^^^^^^^
 
 error: `if_chain!` only has one `if`
-  --> $DIR/if_chain_style.rs:29:5
+  --> $DIR/if_chain_style.rs:34:5
    |
 LL | /     if_chain! {
 LL | |         // single `if` condition
@@ -59,13 +59,13 @@ LL | |     }
    = note: this error originates in the macro `__if_chain` which comes from the expansion of the macro `if_chain` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: `let` expression should be above the `if_chain!`
-  --> $DIR/if_chain_style.rs:40:9
+  --> $DIR/if_chain_style.rs:45:9
    |
 LL |         let x = "";
    |         ^^^^^^^^^^^
 
 error: this `if_chain!` can be merged with the outer `if_chain!`
-  --> $DIR/if_chain_style.rs:46:13
+  --> $DIR/if_chain_style.rs:51:13
    |
 LL | /             if_chain! {
 LL | |                 if true;
@@ -75,7 +75,7 @@ LL | |             }
    | |_____________^
    |
 help: these `let` statements can also be in the `if_chain!`
-  --> $DIR/if_chain_style.rs:43:13
+  --> $DIR/if_chain_style.rs:48:13
    |
 LL | /             let x = "";
 LL | |             let x = "";

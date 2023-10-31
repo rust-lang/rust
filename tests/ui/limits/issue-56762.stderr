@@ -1,11 +1,11 @@
 error[E0080]: values of the type `[u8; 2305843009213693951]` are too big for the current architecture
-  --> $DIR/issue-56762.rs:19:1
+  --> $DIR/issue-56762.rs:16:1
    |
 LL | static MY_TOO_BIG_ARRAY_1: TooBigArray = TooBigArray::new();
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0080]: values of the type `[u8; 2305843009213693951]` are too big for the current architecture
-  --> $DIR/issue-56762.rs:21:1
+  --> $DIR/issue-56762.rs:18:1
    |
 LL | static MY_TOO_BIG_ARRAY_2: [u8; HUGE_SIZE] = [0x00; HUGE_SIZE];
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -219,7 +219,7 @@ mod tests {
     }
 
     #[test]
-    fn test_nagative_trait_bound() {
+    fn test_negative_trait_bound() {
         let txt = r#"impl !Unpin for Test {}"#;
         check(
             txt,

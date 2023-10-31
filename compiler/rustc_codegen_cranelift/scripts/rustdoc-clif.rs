@@ -19,23 +19,34 @@ fn main() {
     let mut args = vec![];
     args.push(OsString::from("-Cpanic=abort"));
     args.push(OsString::from("-Zpanic-abort-tests"));
-    let mut codegen_backend_arg = OsString::from("-Zcodegen-backend=");
-    codegen_backend_arg.push(cg_clif_dylib_path);
-    args.push(codegen_backend_arg);
-    if !passed_args.contains(&OsString::from("--sysroot")) {
+    if let Some(name) = option_env!("BUILTIN_BACKEND") {
+        args.push(OsString::from(format!("-Zcodegen-backend={name}")))
+    } else {
+        let mut codegen_backend_arg = OsString::from("-Zcodegen-backend=");
+        codegen_backend_arg.push(cg_clif_dylib_path);
+        args.push(codegen_backend_arg);
+    }
+    if !passed_args.iter().any(|arg| {
+        arg == "--sysroot" || arg.to_str().map(|s| s.starts_with("--sysroot=")) == Some(true)
+    }) {
         args.push(OsString::from("--sysroot"));
         args.push(OsString::from(sysroot.to_str().unwrap()));
     }
     args.extend(passed_args);
 
-    // Ensure that the right toolchain is used
-    env::set_var("RUSTUP_TOOLCHAIN", env!("TOOLCHAIN_NAME"));
+    let rustdoc = if let Some(rustdoc) = option_env!("RUSTDOC") {
+        rustdoc
+    } else {
+        // Ensure that the right toolchain is used
+        env::set_var("RUSTUP_TOOLCHAIN", option_env!("TOOLCHAIN_NAME").expect("TOOLCHAIN_NAME"));
+        "rustdoc"
+    };
 
     #[cfg(unix)]
-    panic!("Failed to spawn rustdoc: {}", Command::new("rustdoc").args(args).exec());
+    panic!("Failed to spawn rustdoc: {}", Command::new(rustdoc).args(args).exec());
 
     #[cfg(not(unix))]
     std::process::exit(
-        Command::new("rustdoc").args(args).spawn().unwrap().wait().unwrap().code().unwrap_or(1),
+        Command::new(rustdoc).args(args).spawn().unwrap().wait().unwrap().code().unwrap_or(1),
     );
 }

@@ -1,0 +1,53 @@
+error[E0599]: the function or associated item `default` exists for associated type `<T as Bop>::Bar`, but its trait bounds were not satisfied
+  --> $DIR/assoc_type_bounds_sized_used.rs:12:30
+   |
+LL |     let _ = <T as Bop>::Bar::default();
+   |                              ^^^^^^^ function or associated item cannot be called on `<T as Bop>::Bar` due to unsatisfied trait bounds
+   |
+   = note: the following trait bounds were not satisfied:
+           `T: Sized`
+           which is required by `<T as Bop>::Bar: Default`
+help: consider restricting the type parameter to satisfy the trait bound
+   |
+LL | fn bop<T: Bop + ?Sized>() where T: Sized {
+   |                           ++++++++++++++
+
+error[E0277]: the size for values of type `T` cannot be known at compilation time
+  --> $DIR/assoc_type_bounds_sized_used.rs:12:13
+   |
+LL | fn bop<T: Bop + ?Sized>() {
+   |        - this type parameter needs to be `Sized`
+LL |     let _ = <T as Bop>::Bar::default();
+   |             ^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+note: required by a bound in `Bop::Bar`
+  --> $DIR/assoc_type_bounds_sized_used.rs:8:15
+   |
+LL |     type Bar: Default
+   |          --- required by a bound in this associated type
+LL |     where
+LL |         Self: Sized;
+   |               ^^^^^ required by this bound in `Bop::Bar`
+help: consider removing the `?Sized` bound to make the type parameter `Sized`
+   |
+LL - fn bop<T: Bop + ?Sized>() {
+LL + fn bop<T: Bop>() {
+   |
+
+error[E0277]: the size for values of type `dyn Bop` cannot be known at compilation time
+  --> $DIR/assoc_type_bounds_sized_used.rs:18:11
+   |
+LL |     bop::<dyn Bop>();
+   |           ^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `dyn Bop`
+note: required by a bound in `bop`
+  --> $DIR/assoc_type_bounds_sized_used.rs:11:11
+   |
+LL | fn bop<T: Bop + ?Sized>() {
+   |           ^^^ required by this bound in `bop`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0277, E0599.
+For more information about an error, try `rustc --explain E0277`.

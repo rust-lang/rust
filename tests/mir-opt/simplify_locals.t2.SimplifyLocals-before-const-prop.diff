@@ -2,21 +2,21 @@
 + // MIR for `t2` after SimplifyLocals-before-const-prop
   
   fn t2() -> () {
-      let mut _0: ();                      // return place in scope 0 at $DIR/simplify_locals.rs:+0:9: +0:9
--     let _1: &mut u32;                    // in scope 0 at $DIR/simplify_locals.rs:+2:14: +2:20
--     let mut _2: *mut u32;                // in scope 0 at $DIR/simplify_locals.rs:+2:19: +2:20
+      let mut _0: ();
+-     let _1: &mut u32;
+-     let mut _2: *mut u32;
       scope 1 {
       }
   
       bb0: {
--         StorageLive(_1);                 // scope 0 at $DIR/simplify_locals.rs:+2:5: +2:22
--         StorageLive(_2);                 // scope 1 at $DIR/simplify_locals.rs:+2:19: +2:20
--         _2 = &/*tls*/ mut X;             // scope 1 at $DIR/simplify_locals.rs:+2:19: +2:20
--         _1 = &mut (*_2);                 // scope 1 at $DIR/simplify_locals.rs:+2:14: +2:20
--         StorageDead(_2);                 // scope 0 at $DIR/simplify_locals.rs:+2:22: +2:23
--         StorageDead(_1);                 // scope 0 at $DIR/simplify_locals.rs:+2:22: +2:23
-          _0 = const ();                   // scope 0 at $DIR/simplify_locals.rs:+0:9: +3:2
-          return;                          // scope 0 at $DIR/simplify_locals.rs:+3:2: +3:2
+-         StorageLive(_1);
+-         StorageLive(_2);
+-         _2 = &/*tls*/ mut X;
+-         _1 = &mut (*_2);
+-         StorageDead(_2);
+-         StorageDead(_1);
+          _0 = const ();
+          return;
       }
   }
   

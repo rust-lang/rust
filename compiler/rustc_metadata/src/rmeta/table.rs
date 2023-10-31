@@ -126,7 +126,8 @@ fixed_size_enum! {
         ( Enum                                     )
         ( Variant                                  )
         ( Trait                                    )
-        ( TyAlias                                  )
+        ( TyAlias { lazy: false }                  )
+        ( TyAlias { lazy: true }                   )
         ( ForeignTy                                )
         ( TraitAlias                               )
         ( AssocTy                                  )
@@ -142,7 +143,6 @@ fixed_size_enum! {
         ( AnonConst                                )
         ( InlineConst                              )
         ( OpaqueTy                                 )
-        ( ImplTraitPlaceholder                     )
         ( Field                                    )
         ( LifetimeParam                            )
         ( GlobalAsm                                )
@@ -324,7 +324,7 @@ impl<T> FixedSizeEncoding for Option<LazyValue<T>> {
 impl<T> LazyArray<T> {
     #[inline]
     fn write_to_bytes_impl(self, b: &mut [u8; 8]) {
-        let ([position_bytes, meta_bytes],[])= b.as_chunks_mut::<4>() else { panic!() };
+        let ([position_bytes, meta_bytes], []) = b.as_chunks_mut::<4>() else { panic!() };
 
         let position = self.position.get();
         let position: u32 = position.try_into().unwrap();
@@ -347,7 +347,7 @@ impl<T> FixedSizeEncoding for LazyArray<T> {
 
     #[inline]
     fn from_bytes(b: &[u8; 8]) -> Self {
-        let ([position_bytes, meta_bytes],[])= b.as_chunks::<4>() else { panic!() };
+        let ([position_bytes, meta_bytes], []) = b.as_chunks::<4>() else { panic!() };
         if *meta_bytes == [0; 4] {
             return Default::default();
         }
@@ -366,7 +366,7 @@ impl<T> FixedSizeEncoding for Option<LazyArray<T>> {
 
     #[inline]
     fn from_bytes(b: &[u8; 8]) -> Self {
-        let ([position_bytes, meta_bytes],[])= b.as_chunks::<4>() else { panic!() };
+        let ([position_bytes, meta_bytes], []) = b.as_chunks::<4>() else { panic!() };
         LazyArray::from_bytes_impl(position_bytes, meta_bytes)
     }
 
@@ -439,7 +439,7 @@ where
     /// Given the metadata, extract out the value at a particular index (if any).
     #[inline(never)]
     pub(super) fn get<'a, 'tcx, M: Metadata<'a, 'tcx>>(&self, metadata: M, i: I) -> T::Value<'tcx> {
-        debug!("LazyTable::lookup: index={:?} len={:?}", i, self.encoded_size);
+        trace!("LazyTable::lookup: index={:?} len={:?}", i, self.encoded_size);
 
         let start = self.position.get();
         let bytes = &metadata.blob()[start..start + self.encoded_size];

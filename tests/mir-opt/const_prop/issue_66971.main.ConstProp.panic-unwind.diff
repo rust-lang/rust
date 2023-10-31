@@ -1,0 +1,22 @@
+- // MIR for `main` before ConstProp
++ // MIR for `main` after ConstProp
+  
+  fn main() -> () {
+      let mut _0: ();
+      let _1: ();
+      let mut _2: ((), u8, u8);
+  
+      bb0: {
+          StorageLive(_2);
+-         _2 = (const (), const 0_u8, const 0_u8);
+-         _1 = encode(move _2) -> [return: bb1, unwind continue];
++         _2 = const ((), 0_u8, 0_u8);
++         _1 = encode(const ((), 0_u8, 0_u8)) -> [return: bb1, unwind continue];
+      }
+  
+      bb1: {
+          StorageDead(_2);
+          return;
+      }
+  }
+  

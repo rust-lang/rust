@@ -1,16 +1,15 @@
 //! See [`CargoWorkspace`].
 
-use std::iter;
 use std::path::PathBuf;
 use std::str::from_utf8;
 use std::{ops, process::Command};
 
-use anyhow::{Context, Result};
+use anyhow::Context;
 use base_db::Edition;
 use cargo_metadata::{CargoOpt, MetadataCommand};
 use la_arena::{Arena, Idx};
 use paths::{AbsPath, AbsPathBuf};
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 use serde::Deserialize;
 use serde_json::from_value;
 
@@ -32,6 +31,7 @@ pub struct CargoWorkspace {
     packages: Arena<PackageData>,
     targets: Arena<TargetData>,
     workspace_root: AbsPathBuf,
+    target_directory: AbsPathBuf,
 }
 
 impl ops::Index<Package> for CargoWorkspace {
@@ -55,20 +55,6 @@ pub enum RustLibSource {
     Path(AbsPathBuf),
     /// Try to automatically detect where the rustc source directory is.
     Discover,
-}
-
-/// Crates to disable `#[cfg(test)]` on.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum UnsetTestCrates {
-    None,
-    Only(Vec<String>),
-    All,
-}
-
-impl Default for UnsetTestCrates {
-    fn default() -> Self {
-        Self::None
-    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -99,8 +85,7 @@ pub struct CargoConfig {
     pub sysroot_src: Option<AbsPathBuf>,
     /// rustc private crate source
     pub rustc_source: Option<RustLibSource>,
-    /// crates to disable `#[cfg(test)]` on
-    pub unset_test_crates: UnsetTestCrates,
+    pub cfg_overrides: CfgOverrides,
     /// Invoke `cargo check` through the RUSTC_WRAPPER.
     pub wrap_rustc_in_build_scripts: bool,
     /// The command to run instead of `cargo check` for building build scripts.
@@ -111,27 +96,6 @@ pub struct CargoConfig {
     pub extra_env: FxHashMap<String, String>,
     pub invocation_strategy: InvocationStrategy,
     pub invocation_location: InvocationLocation,
-}
-
-impl CargoConfig {
-    pub fn cfg_overrides(&self) -> CfgOverrides {
-        match &self.unset_test_crates {
-            UnsetTestCrates::None => CfgOverrides::Selective(iter::empty().collect()),
-            UnsetTestCrates::Only(unset_test_crates) => CfgOverrides::Selective(
-                unset_test_crates
-                    .iter()
-                    .cloned()
-                    .zip(iter::repeat_with(|| {
-                        cfg::CfgDiff::new(Vec::new(), vec![cfg::CfgAtom::Flag("test".into())])
-                            .unwrap()
-                    }))
-                    .collect(),
-            ),
-            UnsetTestCrates::All => CfgOverrides::Wildcard(
-                cfg::CfgDiff::new(Vec::new(), vec![cfg::CfgAtom::Flag("test".into())]).unwrap(),
-            ),
-        }
-    }
 }
 
 pub type Package = Idx<PackageData>;
@@ -181,7 +145,7 @@ pub struct PackageDependency {
     pub kind: DepKind,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DepKind {
     /// Available to the library, binary, and dev targets in the package (but not the build script).
     Normal,
@@ -192,23 +156,20 @@ pub enum DepKind {
 }
 
 impl DepKind {
-    fn iter(list: &[cargo_metadata::DepKindInfo]) -> impl Iterator<Item = Self> + '_ {
-        let mut dep_kinds = Vec::new();
+    fn iter(list: &[cargo_metadata::DepKindInfo]) -> impl Iterator<Item = Self> {
+        let mut dep_kinds = [None; 3];
         if list.is_empty() {
-            dep_kinds.push(Self::Normal);
+            dep_kinds[0] = Some(Self::Normal);
         }
         for info in list {
-            let kind = match info.kind {
-                cargo_metadata::DependencyKind::Normal => Self::Normal,
-                cargo_metadata::DependencyKind::Development => Self::Dev,
-                cargo_metadata::DependencyKind::Build => Self::Build,
+            match info.kind {
+                cargo_metadata::DependencyKind::Normal => dep_kinds[0] = Some(Self::Normal),
+                cargo_metadata::DependencyKind::Development => dep_kinds[1] = Some(Self::Dev),
+                cargo_metadata::DependencyKind::Build => dep_kinds[2] = Some(Self::Build),
                 cargo_metadata::DependencyKind::Unknown => continue,
-            };
-            dep_kinds.push(kind);
+            }
         }
-        dep_kinds.sort_unstable();
-        dep_kinds.dedup();
-        dep_kinds.into_iter()
+        dep_kinds.into_iter().flatten()
     }
 }
 
@@ -272,7 +233,7 @@ impl CargoWorkspace {
         current_dir: &AbsPath,
         config: &CargoConfig,
         progress: &dyn Fn(String),
-    ) -> Result<cargo_metadata::Metadata> {
+    ) -> anyhow::Result<cargo_metadata::Metadata> {
         let targets = find_list_of_build_targets(config, cargo_toml);
 
         let mut meta = MetadataCommand::new();
@@ -293,13 +254,29 @@ impl CargoWorkspace {
         }
         meta.current_dir(current_dir.as_os_str());
 
-        if !targets.is_empty() {
-            let other_options: Vec<_> = targets
-                .into_iter()
-                .flat_map(|target| ["--filter-platform".to_string(), target])
-                .collect();
-            meta.other_options(other_options);
+        let mut other_options = vec![];
+        // cargo metadata only supports a subset of flags of what cargo usually accepts, and usually
+        // the only relevant flags for metadata here are unstable ones, so we pass those along
+        // but nothing else
+        let mut extra_args = config.extra_args.iter();
+        while let Some(arg) = extra_args.next() {
+            if arg == "-Z" {
+                if let Some(arg) = extra_args.next() {
+                    other_options.push("-Z".to_owned());
+                    other_options.push(arg.to_owned());
+                }
+            }
         }
+
+        if !targets.is_empty() {
+            other_options.append(
+                &mut targets
+                    .into_iter()
+                    .flat_map(|target| ["--filter-platform".to_owned().to_string(), target])
+                    .collect(),
+            );
+        }
+        meta.other_options(other_options);
 
         // FIXME: Fetching metadata is a slow process, as it might require
         // calling crates.io. We should be reporting progress here, but it's
@@ -411,7 +388,10 @@ impl CargoWorkspace {
         let workspace_root =
             AbsPathBuf::assert(PathBuf::from(meta.workspace_root.into_os_string()));
 
-        CargoWorkspace { packages, targets, workspace_root }
+        let target_directory =
+            AbsPathBuf::assert(PathBuf::from(meta.target_directory.into_os_string()));
+
+        CargoWorkspace { packages, targets, workspace_root, target_directory }
     }
 
     pub fn packages(&self) -> impl Iterator<Item = Package> + ExactSizeIterator + '_ {
@@ -427,6 +407,10 @@ impl CargoWorkspace {
 
     pub fn workspace_root(&self) -> &AbsPath {
         &self.workspace_root
+    }
+
+    pub fn target_directory(&self) -> &AbsPath {
+        &self.target_directory
     }
 
     pub fn package_flag(&self, package: &PackageData) -> String {
@@ -465,6 +449,21 @@ impl CargoWorkspace {
 
         // not in this workspace
         None
+    }
+
+    /// Returns the union of the features of all member crates in this workspace.
+    pub fn workspace_features(&self) -> FxHashSet<String> {
+        self.packages()
+            .filter_map(|package| {
+                let package = &self[package];
+                if package.is_member {
+                    Some(package.features.keys().cloned())
+                } else {
+                    None
+                }
+            })
+            .flatten()
+            .collect()
     }
 
     fn is_unique(&self, name: &str) -> bool {

@@ -9,6 +9,7 @@ LL |     *a = 5;
    |     ------ first borrow later used here
    |
    = help: consider using `.split_at_mut(position)` or similar method to obtain two mutable non-overlapping sub-slices
+   = help: consider using `.swap(index_1, index_2)` to swap elements at the specified indices
 
 error: aborting due to previous error
 

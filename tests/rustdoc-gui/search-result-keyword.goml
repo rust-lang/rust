@@ -5,9 +5,4 @@ write: (".search-input", "CookieMonster")
 press-key: 'Enter'
 // Waiting for the search results to appear...
 wait-for: "#search-tabs"
-// Note: The two next assert commands could be merged as one but readability would be
-// less good.
-//
-// Checking that the CSS is displaying " (keyword)" in italic.
-assert-text: (".result-name span.keyword > i", "(keyword)")
-assert-text: (".result-name span.keyword", "CookieMonster (keyword)")
+assert-text: (".result-keyword .result-name", "keyword CookieMonster")

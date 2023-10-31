@@ -11,6 +11,10 @@ note: required by a bound in `check`
    |
 LL | fn check(_: impl std::marker::ConstParamTy) {}
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `check`
+help: use parentheses to call this function
+   |
+LL |     check(main());
+   |               ++
 
 error[E0277]: `[closure@$DIR/const_param_ty_bad.rs:8:11: 8:13]` can't be used as a const parameter type
   --> $DIR/const_param_ty_bad.rs:8:11
@@ -25,6 +29,10 @@ note: required by a bound in `check`
    |
 LL | fn check(_: impl std::marker::ConstParamTy) {}
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `check`
+help: use parentheses to call this closure
+   |
+LL |     check(|| {}());
+   |                ++
 
 error[E0277]: `fn()` can't be used as a const parameter type
   --> $DIR/const_param_ty_bad.rs:9:11
@@ -39,6 +47,10 @@ note: required by a bound in `check`
    |
 LL | fn check(_: impl std::marker::ConstParamTy) {}
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `check`
+help: use parentheses to call this function pointer
+   |
+LL |     check(main as fn()());
+   |                       ++
 
 error[E0277]: `&mut ()` can't be used as a const parameter type
   --> $DIR/const_param_ty_bad.rs:10:11
@@ -48,11 +60,17 @@ LL |     check(&mut ());
    |     |
    |     required by a bound introduced by this call
    |
+   = note: `ConstParamTy` is implemented for `&()`, but not for `&mut ()`
 note: required by a bound in `check`
   --> $DIR/const_param_ty_bad.rs:4:18
    |
 LL | fn check(_: impl std::marker::ConstParamTy) {}
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `check`
+help: consider removing the leading `&`-reference
+   |
+LL -     check(&mut ());
+LL +     check(());
+   |
 
 error[E0277]: `*mut ()` can't be used as a const parameter type
   --> $DIR/const_param_ty_bad.rs:11:11
@@ -62,6 +80,7 @@ LL |     check(&mut () as *mut ());
    |     |
    |     required by a bound introduced by this call
    |
+   = help: the trait `ConstParamTy` is implemented for `()`
 note: required by a bound in `check`
   --> $DIR/const_param_ty_bad.rs:4:18
    |
@@ -76,6 +95,7 @@ LL |     check(&() as *const ());
    |     |
    |     required by a bound introduced by this call
    |
+   = help: the trait `ConstParamTy` is implemented for `()`
 note: required by a bound in `check`
   --> $DIR/const_param_ty_bad.rs:4:18
    |

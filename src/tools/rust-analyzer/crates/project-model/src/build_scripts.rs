@@ -14,9 +14,10 @@ use std::{
 };
 
 use cargo_metadata::{camino::Utf8Path, Message};
+use itertools::Itertools;
 use la_arena::ArenaMap;
 use paths::{AbsPath, AbsPathBuf};
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 use semver::Version;
 use serde::Deserialize;
 
@@ -56,7 +57,10 @@ impl BuildScriptOutput {
 }
 
 impl WorkspaceBuildScripts {
-    fn build_command(config: &CargoConfig) -> io::Result<Command> {
+    fn build_command(
+        config: &CargoConfig,
+        allowed_features: &FxHashSet<String>,
+    ) -> io::Result<Command> {
         let mut cmd = match config.run_build_script_command.as_deref() {
             Some([program, args @ ..]) => {
                 let mut cmd = Command::new(program);
@@ -88,7 +92,12 @@ impl WorkspaceBuildScripts {
                         }
                         if !features.is_empty() {
                             cmd.arg("--features");
-                            cmd.arg(features.join(" "));
+                            cmd.arg(
+                                features
+                                    .iter()
+                                    .filter(|&feat| allowed_features.contains(feat))
+                                    .join(","),
+                            );
                         }
                     }
                 }
@@ -127,13 +136,20 @@ impl WorkspaceBuildScripts {
         }
         .as_ref();
 
-        match Self::run_per_ws(Self::build_command(config)?, workspace, current_dir, progress) {
+        let allowed_features = workspace.workspace_features();
+
+        match Self::run_per_ws(
+            Self::build_command(config, &allowed_features)?,
+            workspace,
+            current_dir,
+            progress,
+        ) {
             Ok(WorkspaceBuildScripts { error: Some(error), .. })
                 if toolchain.as_ref().map_or(false, |it| *it >= RUST_1_62) =>
             {
                 // building build scripts failed, attempt to build with --keep-going so
                 // that we potentially get more build data
-                let mut cmd = Self::build_command(config)?;
+                let mut cmd = Self::build_command(config, &allowed_features)?;
                 cmd.args(["-Z", "unstable-options", "--keep-going"]).env("RUSTC_BOOTSTRAP", "1");
                 let mut res = Self::run_per_ws(cmd, workspace, current_dir, progress)?;
                 res.error = Some(error);
@@ -161,7 +177,7 @@ impl WorkspaceBuildScripts {
                 ))
             }
         };
-        let cmd = Self::build_command(config)?;
+        let cmd = Self::build_command(config, &Default::default())?;
         // NB: Cargo.toml could have been modified between `cargo metadata` and
         // `cargo check`. We shouldn't assume that package ids we see here are
         // exactly those from `config`.
@@ -209,9 +225,8 @@ impl WorkspaceBuildScripts {
                     let package_build_data = &mut res[idx].outputs[package];
                     if !package_build_data.is_unchanged() {
                         tracing::info!(
-                            "{}: {:?}",
-                            workspace[package].manifest.parent().display(),
-                            package_build_data,
+                            "{}: {package_build_data:?}",
+                            workspace[package].manifest.parent(),
                         );
                     }
                 }
@@ -254,9 +269,8 @@ impl WorkspaceBuildScripts {
                 let package_build_data = &outputs[package];
                 if !package_build_data.is_unchanged() {
                     tracing::info!(
-                        "{}: {:?}",
-                        workspace[package].manifest.parent().display(),
-                        package_build_data,
+                        "{}: {package_build_data:?}",
+                        workspace[package].manifest.parent(),
                     );
                 }
             }
@@ -408,14 +422,13 @@ impl WorkspaceBuildScripts {
 
             let target_libdir = AbsPathBuf::try_from(PathBuf::from(target_libdir))
                 .map_err(|_| anyhow::format_err!("target-libdir was not an absolute path"))?;
-            tracing::info!("Loading rustc proc-macro paths from {}", target_libdir.display());
+            tracing::info!("Loading rustc proc-macro paths from {target_libdir}");
 
             let proc_macro_dylibs: Vec<(String, AbsPathBuf)> = std::fs::read_dir(target_libdir)?
                 .filter_map(|entry| {
                     let dir_entry = entry.ok()?;
                     if dir_entry.file_type().ok()?.is_file() {
                         let path = dir_entry.path();
-                        tracing::info!("p{:?}", path);
                         let extension = path.extension()?;
                         if extension == std::env::consts::DLL_EXTENSION {
                             let name = path.file_stem()?.to_str()?.split_once('-')?.0.to_owned();
@@ -443,9 +456,8 @@ impl WorkspaceBuildScripts {
                     let package_build_data = &bs.outputs[package];
                     if !package_build_data.is_unchanged() {
                         tracing::info!(
-                            "{}: {:?}",
-                            rustc[package].manifest.parent().display(),
-                            package_build_data,
+                            "{}: {package_build_data:?}",
+                            rustc[package].manifest.parent(),
                         );
                     }
                 }

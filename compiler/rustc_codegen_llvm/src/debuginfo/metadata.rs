@@ -168,7 +168,7 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
     // a (fat) pointer. Make sure it is not called for e.g. `Box<T, NonZSTAllocator>`.
     debug_assert_eq!(
         cx.size_and_align_of(ptr_type),
-        cx.size_and_align_of(cx.tcx.mk_mut_ptr(pointee_type))
+        cx.size_and_align_of(Ty::new_mut_ptr(cx.tcx, pointee_type))
     );
 
     let pointee_type_di_node = type_di_node(cx, pointee_type);
@@ -184,9 +184,7 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
             debug_assert_eq!(
                 (data_layout.pointer_size, data_layout.pointer_align.abi),
                 cx.size_and_align_of(ptr_type),
-                "ptr_type={}, pointee_type={}",
-                ptr_type,
-                pointee_type,
+                "ptr_type={ptr_type}, pointee_type={pointee_type}",
             );
 
             let di_node = unsafe {
@@ -223,8 +221,11 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
                     //        at all and instead emit regular struct debuginfo for it. We just
                     //        need to make sure that we don't break existing debuginfo consumers
                     //        by doing that (at least not without a warning period).
-                    let layout_type =
-                        if ptr_type.is_box() { cx.tcx.mk_mut_ptr(pointee_type) } else { ptr_type };
+                    let layout_type = if ptr_type.is_box() {
+                        Ty::new_mut_ptr(cx.tcx, pointee_type)
+                    } else {
+                        ptr_type
+                    };
 
                     let layout = cx.layout_of(layout_type);
                     let addr_field = layout.field(cx, abi::FAT_PTR_ADDR);
@@ -430,7 +431,7 @@ pub fn type_di_node<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) -> &'ll D
         return existing_di_node;
     }
 
-    debug!("type_di_node: {:?}", t);
+    debug!("type_di_node: {:?} kind: {:?}", t, t.kind());
 
     let DINodeCreationResult { di_node, already_stored_in_typemap } = match *t.kind() {
         ty::Never | ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) => {
@@ -446,7 +447,7 @@ pub fn type_di_node<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) -> &'ll D
         }
         // Box<T, A> may have a non-ZST allocator A. In that case, we
         // cannot treat Box<T, A> as just an owned alias of `*mut T`.
-        ty::Adt(def, substs) if def.is_box() && cx.layout_of(substs.type_at(1)).is_zst() => {
+        ty::Adt(def, args) if def.is_box() && cx.layout_of(args.type_at(1)).is_zst() => {
             build_pointer_or_reference_di_node(cx, t, t.boxed_ty(), unique_type_id)
         }
         ty::FnDef(..) | ty::FnPtr(_) => build_subroutine_type_di_node(cx, unique_type_id),
@@ -518,7 +519,7 @@ fn recursion_marker_type_di_node<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) -> &'ll D
 fn hex_encode(data: &[u8]) -> String {
     let mut hex_string = String::with_capacity(data.len() * 2);
     for byte in data.iter() {
-        write!(&mut hex_string, "{:02x}", byte).unwrap();
+        write!(&mut hex_string, "{byte:02x}").unwrap();
     }
     hex_string
 }
@@ -736,7 +737,10 @@ fn build_foreign_type_di_node<'ll, 'tcx>(
     debug!("build_foreign_type_di_node: {:?}", t);
 
     let &ty::Foreign(def_id) = unique_type_id.expect_ty().kind() else {
-        bug!("build_foreign_type_di_node() called with unexpected type: {:?}", unique_type_id.expect_ty());
+        bug!(
+            "build_foreign_type_di_node() called with unexpected type: {:?}",
+            unique_type_id.expect_ty()
+        );
     };
 
     build_type_with_children(
@@ -760,7 +764,7 @@ fn build_param_type_di_node<'ll, 'tcx>(
     t: Ty<'tcx>,
 ) -> DINodeCreationResult<'ll> {
     debug!("build_param_type_di_node: {:?}", t);
-    let name = format!("{:?}", t);
+    let name = format!("{t:?}");
     DINodeCreationResult {
         di_node: unsafe {
             llvm::LLVMRustDIBuilderCreateBasicType(
@@ -808,7 +812,7 @@ pub fn build_compile_unit_di_node<'ll, 'tcx>(
     debug!("build_compile_unit_di_node: {:?}", name_in_debuginfo);
     let rustc_producer = format!("rustc version {}", tcx.sess.cfg_version);
     // FIXME(#41252) Remove "clang LLVM" if we can get GDB and LLVM to play nice.
-    let producer = format!("clang LLVM ({})", rustc_producer);
+    let producer = format!("clang LLVM ({rustc_producer})");
 
     let name_in_debuginfo = name_in_debuginfo.to_string_lossy();
     let work_dir = tcx.sess.opts.working_dir.to_string_lossy(FileNameDisplayPreference::Remapped);
@@ -880,21 +884,6 @@ pub fn build_compile_unit_di_node<'ll, 'tcx>(
 
             let llvm_gcov_ident = cstr!("llvm.gcov");
             llvm::LLVMAddNamedMetadataOperand(debug_context.llmod, llvm_gcov_ident.as_ptr(), val);
-        }
-
-        // Insert `llvm.ident` metadata on the wasm targets since that will
-        // get hooked up to the "producer" sections `processed-by` information.
-        if tcx.sess.target.is_like_wasm {
-            let name_metadata = llvm::LLVMMDStringInContext(
-                debug_context.llcontext,
-                rustc_producer.as_ptr().cast(),
-                rustc_producer.as_bytes().len() as c_uint,
-            );
-            llvm::LLVMAddNamedMetadataOperand(
-                debug_context.llmod,
-                cstr!("llvm.ident").as_ptr(),
-                llvm::LLVMMDNodeInContext(debug_context.llcontext, &name_metadata, 1),
-            );
         }
 
         return unit_metadata;
@@ -1001,14 +990,8 @@ fn build_upvar_field_di_nodes<'ll, 'tcx>(
     closure_or_generator_di_node: &'ll DIType,
 ) -> SmallVec<&'ll DIType> {
     let (&def_id, up_var_tys) = match closure_or_generator_ty.kind() {
-        ty::Generator(def_id, substs, _) => {
-            let upvar_tys: SmallVec<_> = substs.as_generator().prefix_tys().collect();
-            (def_id, upvar_tys)
-        }
-        ty::Closure(def_id, substs) => {
-            let upvar_tys: SmallVec<_> = substs.as_closure().upvar_tys().collect();
-            (def_id, upvar_tys)
-        }
+        ty::Generator(def_id, args, _) => (def_id, args.as_generator().prefix_tys()),
+        ty::Closure(def_id, args) => (def_id, args.as_closure().upvar_tys()),
         _ => {
             bug!(
                 "build_upvar_field_di_nodes() called with non-closure-or-generator-type: {:?}",
@@ -1018,9 +1001,7 @@ fn build_upvar_field_di_nodes<'ll, 'tcx>(
     };
 
     debug_assert!(
-        up_var_tys
-            .iter()
-            .all(|&t| t == cx.tcx.normalize_erasing_regions(ParamEnv::reveal_all(), t))
+        up_var_tys.iter().all(|t| t == cx.tcx.normalize_erasing_regions(ParamEnv::reveal_all(), t))
     );
 
     let capture_names = cx.tcx.closure_saved_names_of_captured_variables(def_id);
@@ -1034,7 +1015,7 @@ fn build_upvar_field_di_nodes<'ll, 'tcx>(
             build_field_di_node(
                 cx,
                 closure_or_generator_di_node,
-                capture_name,
+                capture_name.as_str(),
                 cx.size_and_align_of(up_var_ty),
                 layout.fields.offset(index),
                 DIFlags::FlagZero,
@@ -1096,7 +1077,7 @@ fn build_closure_env_di_node<'ll, 'tcx>(
     unique_type_id: UniqueTypeId<'tcx>,
 ) -> DINodeCreationResult<'ll> {
     let closure_env_type = unique_type_id.expect_ty();
-    let &ty::Closure(def_id, _substs) = closure_env_type.kind() else {
+    let &ty::Closure(def_id, _args) = closure_env_type.kind() else {
         bug!("build_closure_env_di_node() called with non-closure-type: {:?}", closure_env_type)
     };
     let containing_scope = get_namespace_for_item(cx, def_id);
@@ -1174,11 +1155,11 @@ fn build_generic_type_param_di_nodes<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     ty: Ty<'tcx>,
 ) -> SmallVec<&'ll DIType> {
-    if let ty::Adt(def, substs) = *ty.kind() {
-        if substs.types().next().is_some() {
+    if let ty::Adt(def, args) = *ty.kind() {
+        if args.types().next().is_some() {
             let generics = cx.tcx.generics_of(def.did());
             let names = get_parameter_names(cx, generics);
-            let template_params: SmallVec<_> = iter::zip(substs, names)
+            let template_params: SmallVec<_> = iter::zip(args, names)
                 .filter_map(|(kind, name)| {
                     kind.as_type().map(|ty| {
                         let actual_type =
@@ -1298,7 +1279,7 @@ fn build_vtable_type_di_node<'ll, 'tcx>(
 
     // All function pointers are described as opaque pointers. This could be improved in the future
     // by describing them as actual function pointers.
-    let void_pointer_ty = tcx.mk_imm_ptr(tcx.types.unit);
+    let void_pointer_ty = Ty::new_imm_ptr(tcx, tcx.types.unit);
     let void_pointer_type_di_node = type_di_node(cx, void_pointer_ty);
     let usize_di_node = type_di_node(cx, tcx.types.usize);
     let (pointer_size, pointer_align) = cx.size_and_align_of(void_pointer_ty);
@@ -1340,10 +1321,10 @@ fn build_vtable_type_di_node<'ll, 'tcx>(
                             // Note: This code does not try to give a proper name to each method
                             //       because their might be multiple methods with the same name
                             //       (coming from different traits).
-                            (format!("__method{}", index), void_pointer_type_di_node)
+                            (format!("__method{index}"), void_pointer_type_di_node)
                         }
                         ty::VtblEntry::TraitVPtr(_) => {
-                            (format!("__super_trait_ptr{}", index), void_pointer_type_di_node)
+                            (format!("__super_trait_ptr{index}"), void_pointer_type_di_node)
                         }
                         ty::VtblEntry::MetadataAlign => ("align".to_string(), usize_di_node),
                         ty::VtblEntry::MetadataSize => ("size".to_string(), usize_di_node),
@@ -1388,7 +1369,7 @@ fn vcall_visibility_metadata<'ll, 'tcx>(
     let trait_def_id = trait_ref_self.def_id();
     let trait_vis = cx.tcx.visibility(trait_def_id);
 
-    let cgus = cx.sess().codegen_units();
+    let cgus = cx.sess().codegen_units().as_usize();
     let single_cgu = cgus == 1;
 
     let lto = cx.sess().lto();
@@ -1513,5 +1494,5 @@ pub fn tuple_field_name(field_index: usize) -> Cow<'static, str> {
     TUPLE_FIELD_NAMES
         .get(field_index)
         .map(|s| Cow::from(*s))
-        .unwrap_or_else(|| Cow::from(format!("__{}", field_index)))
+        .unwrap_or_else(|| Cow::from(format!("__{field_index}")))
 }

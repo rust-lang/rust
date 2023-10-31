@@ -1,0 +1,41 @@
+// MIR for `unwrap_unchecked` after PreCodegen
+
+fn unwrap_unchecked(_1: Option<T>) -> T {
+    debug slf => _1;
+    let mut _0: T;
+    scope 1 (inlined #[track_caller] Option::<T>::unwrap_unchecked) {
+        debug self => _1;
+        let mut _2: isize;
+        let mut _3: &std::option::Option<T>;
+        scope 2 {
+            debug val => _0;
+        }
+        scope 3 {
+            scope 5 (inlined unreachable_unchecked) {
+                scope 6 {
+                    scope 7 (inlined unreachable_unchecked::runtime) {
+                    }
+                }
+            }
+        }
+        scope 4 (inlined Option::<T>::is_some) {
+            debug self => _3;
+        }
+    }
+
+    bb0: {
+        StorageLive(_3);
+        _2 = discriminant(_1);
+        switchInt(move _2) -> [1: bb1, otherwise: bb2];
+    }
+
+    bb1: {
+        _0 = move ((_1 as Some).0: T);
+        StorageDead(_3);
+        return;
+    }
+
+    bb2: {
+        unreachable;
+    }
+}

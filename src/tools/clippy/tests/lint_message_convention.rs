@@ -18,18 +18,20 @@ impl Message {
     fn new(path: PathBuf) -> Self {
         // we don't want the first letter after "error: ", "help: " ... to be capitalized
         // also no punctuation (except for "?" ?) at the end of a line
+        // Prefer "try" over "try this".
         static REGEX_SET: LazyLock<RegexSet> = LazyLock::new(|| {
             RegexSet::new([
-                r"error: [A-Z]",
-                r"help: [A-Z]",
-                r"warning: [A-Z]",
-                r"note: [A-Z]",
-                r"try this: [A-Z]",
-                r"error: .*[.!]$",
-                r"help: .*[.!]$",
-                r"warning: .*[.!]$",
-                r"note: .*[.!]$",
-                r"try this: .*[.!]$",
+                "error: [A-Z]",
+                "help: [A-Z]",
+                "warning: [A-Z]",
+                "note: [A-Z]",
+                "try: [A-Z]",
+                "error: .*[.!]$",
+                "help: .*[.!]$",
+                "warning: .*[.!]$",
+                "note: .*[.!]$",
+                "try: .*[.!]$",
+                "try this",
             ])
             .unwrap()
         });
@@ -39,11 +41,11 @@ impl Message {
         static EXCEPTIONS_SET: LazyLock<RegexSet> = LazyLock::new(|| {
             RegexSet::new([
                 r"\.\.\.$",
-                r".*C-like enum variant discriminant is not portable to 32-bit targets",
-                r".*Intel x86 assembly syntax used",
-                r".*AT&T x86 assembly syntax used",
-                r"note: Clippy version: .*",
-                r"the compiler unexpectedly panicked. this is a bug.",
+                ".*C-like enum variant discriminant is not portable to 32-bit targets",
+                ".*Intel x86 assembly syntax used",
+                ".*AT&T x86 assembly syntax used",
+                "note: Clippy version: .*",
+                "the compiler unexpectedly panicked. this is a bug.",
             ])
             .unwrap()
         });

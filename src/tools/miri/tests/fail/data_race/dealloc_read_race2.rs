@@ -32,7 +32,7 @@ pub fn main() {
             let ptr = ptr; // avoid field capturing
             // Also an error of the form: Data race detected between (1) Deallocate on thread `<unnamed>` and (2) Read on thread `<unnamed>`
             // but the invalid allocation is detected first.
-            *ptr.0 //~ ERROR: dereferenced after this allocation got freed
+            *ptr.0 //~ ERROR: has been freed
         });
 
         j1.join().unwrap();

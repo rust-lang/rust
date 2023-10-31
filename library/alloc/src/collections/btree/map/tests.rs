@@ -941,13 +941,13 @@ fn test_retain() {
     assert_eq!(map[&6], 60);
 }
 
-mod test_drain_filter {
+mod test_extract_if {
     use super::*;
 
     #[test]
     fn empty() {
         let mut map: BTreeMap<i32, i32> = BTreeMap::new();
-        map.drain_filter(|_, _| unreachable!("there's nothing to decide on"));
+        map.extract_if(|_, _| unreachable!("there's nothing to decide on")).for_each(drop);
         assert_eq!(map.height(), None);
         map.check();
     }
@@ -957,7 +957,7 @@ mod test_drain_filter {
     fn consumed_keeping_all() {
         let pairs = (0..3).map(|i| (i, i));
         let mut map = BTreeMap::from_iter(pairs);
-        assert!(map.drain_filter(|_, _| false).eq(iter::empty()));
+        assert!(map.extract_if(|_, _| false).eq(iter::empty()));
         map.check();
     }
 
@@ -966,7 +966,7 @@ mod test_drain_filter {
     fn consumed_removing_all() {
         let pairs = (0..3).map(|i| (i, i));
         let mut map = BTreeMap::from_iter(pairs.clone());
-        assert!(map.drain_filter(|_, _| true).eq(pairs));
+        assert!(map.extract_if(|_, _| true).eq(pairs));
         assert!(map.is_empty());
         map.check();
     }
@@ -977,7 +977,7 @@ mod test_drain_filter {
         let pairs = (0..3).map(|i| (i, i));
         let mut map = BTreeMap::from_iter(pairs);
         assert!(
-            map.drain_filter(|_, v| {
+            map.extract_if(|_, v| {
                 *v += 6;
                 false
             })
@@ -994,7 +994,7 @@ mod test_drain_filter {
         let pairs = (0..3).map(|i| (i, i));
         let mut map = BTreeMap::from_iter(pairs);
         assert!(
-            map.drain_filter(|_, v| {
+            map.extract_if(|_, v| {
                 *v += 6;
                 true
             })
@@ -1008,7 +1008,7 @@ mod test_drain_filter {
     fn underfull_keeping_all() {
         let pairs = (0..3).map(|i| (i, i));
         let mut map = BTreeMap::from_iter(pairs);
-        map.drain_filter(|_, _| false);
+        map.extract_if(|_, _| false).for_each(drop);
         assert!(map.keys().copied().eq(0..3));
         map.check();
     }
@@ -1018,7 +1018,7 @@ mod test_drain_filter {
         let pairs = (0..3).map(|i| (i, i));
         for doomed in 0..3 {
             let mut map = BTreeMap::from_iter(pairs.clone());
-            map.drain_filter(|i, _| *i == doomed);
+            map.extract_if(|i, _| *i == doomed).for_each(drop);
             assert_eq!(map.len(), 2);
             map.check();
         }
@@ -1029,7 +1029,7 @@ mod test_drain_filter {
         let pairs = (0..3).map(|i| (i, i));
         for sacred in 0..3 {
             let mut map = BTreeMap::from_iter(pairs.clone());
-            map.drain_filter(|i, _| *i != sacred);
+            map.extract_if(|i, _| *i != sacred).for_each(drop);
             assert!(map.keys().copied().eq(sacred..=sacred));
             map.check();
         }
@@ -1039,7 +1039,7 @@ mod test_drain_filter {
     fn underfull_removing_all() {
         let pairs = (0..3).map(|i| (i, i));
         let mut map = BTreeMap::from_iter(pairs);
-        map.drain_filter(|_, _| true);
+        map.extract_if(|_, _| true).for_each(drop);
         assert!(map.is_empty());
         map.check();
     }
@@ -1048,7 +1048,7 @@ mod test_drain_filter {
     fn height_0_keeping_all() {
         let pairs = (0..node::CAPACITY).map(|i| (i, i));
         let mut map = BTreeMap::from_iter(pairs);
-        map.drain_filter(|_, _| false);
+        map.extract_if(|_, _| false).for_each(drop);
         assert!(map.keys().copied().eq(0..node::CAPACITY));
         map.check();
     }
@@ -1058,7 +1058,7 @@ mod test_drain_filter {
         let pairs = (0..node::CAPACITY).map(|i| (i, i));
         for doomed in 0..node::CAPACITY {
             let mut map = BTreeMap::from_iter(pairs.clone());
-            map.drain_filter(|i, _| *i == doomed);
+            map.extract_if(|i, _| *i == doomed).for_each(drop);
             assert_eq!(map.len(), node::CAPACITY - 1);
             map.check();
         }
@@ -1069,7 +1069,7 @@ mod test_drain_filter {
         let pairs = (0..node::CAPACITY).map(|i| (i, i));
         for sacred in 0..node::CAPACITY {
             let mut map = BTreeMap::from_iter(pairs.clone());
-            map.drain_filter(|i, _| *i != sacred);
+            map.extract_if(|i, _| *i != sacred).for_each(drop);
             assert!(map.keys().copied().eq(sacred..=sacred));
             map.check();
         }
@@ -1079,7 +1079,7 @@ mod test_drain_filter {
     fn height_0_removing_all() {
         let pairs = (0..node::CAPACITY).map(|i| (i, i));
         let mut map = BTreeMap::from_iter(pairs);
-        map.drain_filter(|_, _| true);
+        map.extract_if(|_, _| true).for_each(drop);
         assert!(map.is_empty());
         map.check();
     }
@@ -1087,7 +1087,7 @@ mod test_drain_filter {
     #[test]
     fn height_0_keeping_half() {
         let mut map = BTreeMap::from_iter((0..16).map(|i| (i, i)));
-        assert_eq!(map.drain_filter(|i, _| *i % 2 == 0).count(), 8);
+        assert_eq!(map.extract_if(|i, _| *i % 2 == 0).count(), 8);
         assert_eq!(map.len(), 8);
         map.check();
     }
@@ -1096,7 +1096,7 @@ mod test_drain_filter {
     fn height_1_removing_all() {
         let pairs = (0..MIN_INSERTS_HEIGHT_1).map(|i| (i, i));
         let mut map = BTreeMap::from_iter(pairs);
-        map.drain_filter(|_, _| true);
+        map.extract_if(|_, _| true).for_each(drop);
         assert!(map.is_empty());
         map.check();
     }
@@ -1106,7 +1106,7 @@ mod test_drain_filter {
         let pairs = (0..MIN_INSERTS_HEIGHT_1).map(|i| (i, i));
         for doomed in 0..MIN_INSERTS_HEIGHT_1 {
             let mut map = BTreeMap::from_iter(pairs.clone());
-            map.drain_filter(|i, _| *i == doomed);
+            map.extract_if(|i, _| *i == doomed).for_each(drop);
             assert_eq!(map.len(), MIN_INSERTS_HEIGHT_1 - 1);
             map.check();
         }
@@ -1117,7 +1117,7 @@ mod test_drain_filter {
         let pairs = (0..MIN_INSERTS_HEIGHT_1).map(|i| (i, i));
         for sacred in 0..MIN_INSERTS_HEIGHT_1 {
             let mut map = BTreeMap::from_iter(pairs.clone());
-            map.drain_filter(|i, _| *i != sacred);
+            map.extract_if(|i, _| *i != sacred).for_each(drop);
             assert!(map.keys().copied().eq(sacred..=sacred));
             map.check();
         }
@@ -1128,7 +1128,7 @@ mod test_drain_filter {
         let pairs = (0..MIN_INSERTS_HEIGHT_2).map(|i| (i, i));
         for doomed in (0..MIN_INSERTS_HEIGHT_2).step_by(12) {
             let mut map = BTreeMap::from_iter(pairs.clone());
-            map.drain_filter(|i, _| *i == doomed);
+            map.extract_if(|i, _| *i == doomed).for_each(drop);
             assert_eq!(map.len(), MIN_INSERTS_HEIGHT_2 - 1);
             map.check();
         }
@@ -1139,7 +1139,7 @@ mod test_drain_filter {
         let pairs = (0..MIN_INSERTS_HEIGHT_2).map(|i| (i, i));
         for sacred in (0..MIN_INSERTS_HEIGHT_2).step_by(12) {
             let mut map = BTreeMap::from_iter(pairs.clone());
-            map.drain_filter(|i, _| *i != sacred);
+            map.extract_if(|i, _| *i != sacred).for_each(drop);
             assert!(map.keys().copied().eq(sacred..=sacred));
             map.check();
         }
@@ -1149,12 +1149,13 @@ mod test_drain_filter {
     fn height_2_removing_all() {
         let pairs = (0..MIN_INSERTS_HEIGHT_2).map(|i| (i, i));
         let mut map = BTreeMap::from_iter(pairs);
-        map.drain_filter(|_, _| true);
+        map.extract_if(|_, _| true).for_each(drop);
         assert!(map.is_empty());
         map.check();
     }
 
     #[test]
+    #[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
     fn drop_panic_leak() {
         let a = CrashTestDummy::new(0);
         let b = CrashTestDummy::new(1);
@@ -1164,7 +1165,8 @@ mod test_drain_filter {
         map.insert(b.spawn(Panic::InDrop), ());
         map.insert(c.spawn(Panic::Never), ());
 
-        catch_unwind(move || drop(map.drain_filter(|dummy, _| dummy.query(true)))).unwrap_err();
+        catch_unwind(move || map.extract_if(|dummy, _| dummy.query(true)).for_each(drop))
+            .unwrap_err();
 
         assert_eq!(a.queried(), 1);
         assert_eq!(b.queried(), 1);
@@ -1175,6 +1177,7 @@ mod test_drain_filter {
     }
 
     #[test]
+    #[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
     fn pred_panic_leak() {
         let a = CrashTestDummy::new(0);
         let b = CrashTestDummy::new(1);
@@ -1184,8 +1187,10 @@ mod test_drain_filter {
         map.insert(b.spawn(Panic::InQuery), ());
         map.insert(c.spawn(Panic::InQuery), ());
 
-        catch_unwind(AssertUnwindSafe(|| drop(map.drain_filter(|dummy, _| dummy.query(true)))))
-            .unwrap_err();
+        catch_unwind(AssertUnwindSafe(|| {
+            map.extract_if(|dummy, _| dummy.query(true)).for_each(drop)
+        }))
+        .unwrap_err();
 
         assert_eq!(a.queried(), 1);
         assert_eq!(b.queried(), 1);
@@ -1201,6 +1206,7 @@ mod test_drain_filter {
 
     // Same as above, but attempt to use the iterator again after the panic in the predicate
     #[test]
+    #[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
     fn pred_panic_reuse() {
         let a = CrashTestDummy::new(0);
         let b = CrashTestDummy::new(1);
@@ -1211,7 +1217,7 @@ mod test_drain_filter {
         map.insert(c.spawn(Panic::InQuery), ());
 
         {
-            let mut it = map.drain_filter(|dummy, _| dummy.query(true));
+            let mut it = map.extract_if(|dummy, _| dummy.query(true));
             catch_unwind(AssertUnwindSafe(|| while it.next().is_some() {})).unwrap_err();
             // Iterator behaviour after a panic is explicitly unspecified,
             // so this is just the current implementation:
@@ -1449,6 +1455,7 @@ fn test_clear() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_clear_drop_panic_leak() {
     let a = CrashTestDummy::new(0);
     let b = CrashTestDummy::new(1);
@@ -1540,11 +1547,13 @@ fn test_clone_panic_leak(size: usize) {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_clone_panic_leak_height_0() {
     test_clone_panic_leak(3)
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_clone_panic_leak_height_1() {
     test_clone_panic_leak(MIN_INSERTS_HEIGHT_1)
 }
@@ -1651,8 +1660,8 @@ fn assert_sync() {
         v.into_values()
     }
 
-    fn drain_filter<T: Sync + Ord>(v: &mut BTreeMap<T, T>) -> impl Sync + '_ {
-        v.drain_filter(|_, _| false)
+    fn extract_if<T: Sync + Ord>(v: &mut BTreeMap<T, T>) -> impl Sync + '_ {
+        v.extract_if(|_, _| false)
     }
 
     fn iter<T: Sync>(v: &BTreeMap<T, T>) -> impl Sync + '_ {
@@ -1720,8 +1729,8 @@ fn assert_send() {
         v.into_values()
     }
 
-    fn drain_filter<T: Send + Ord>(v: &mut BTreeMap<T, T>) -> impl Send + '_ {
-        v.drain_filter(|_, _| false)
+    fn extract_if<T: Send + Ord>(v: &mut BTreeMap<T, T>) -> impl Send + '_ {
+        v.extract_if(|_, _| false)
     }
 
     fn iter<T: Send + Sync>(v: &BTreeMap<T, T>) -> impl Send + '_ {
@@ -2099,6 +2108,7 @@ create_append_test!(test_append_239, 239);
 create_append_test!(test_append_1700, 1700);
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_append_drop_leak() {
     let a = CrashTestDummy::new(0);
     let b = CrashTestDummy::new(1);
@@ -2240,6 +2250,7 @@ fn test_split_off_large_random_sorted() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_into_iter_drop_leak_height_0() {
     let a = CrashTestDummy::new(0);
     let b = CrashTestDummy::new(1);
@@ -2263,6 +2274,7 @@ fn test_into_iter_drop_leak_height_0() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_into_iter_drop_leak_height_1() {
     let size = MIN_INSERTS_HEIGHT_1;
     for panic_point in vec![0, 1, size - 2, size - 1] {

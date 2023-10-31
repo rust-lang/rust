@@ -18,5 +18,5 @@ fn should_gracefully_handle_unknown_dst_field() {
     struct Context;
     #[repr(C)] struct Src;
     #[repr(C)] struct Dst(Missing); //~ cannot find type
-    assert::is_transmutable::<Src, Dst, Context>();
+    assert::is_transmutable::<Src, Dst, Context>(); //~ ERROR cannot be safely transmuted
 }

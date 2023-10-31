@@ -81,7 +81,7 @@ impl Foo {
 }
 
 #[proc_macros::input_replace(
-    fn suprise() {
+    fn surprise() {
         Foo.$0
     }
 )]
@@ -114,7 +114,7 @@ impl Foo {
 }
 
 #[proc_macros::input_replace(
-    fn suprise() {
+    fn surprise() {
         Foo.f$0
     }
 )]

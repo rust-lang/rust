@@ -56,18 +56,14 @@ impl Parker {
         self.init_tid();
 
         // Changes NOTIFIED to EMPTY and EMPTY to PARKED.
-        let mut state = self.state.fetch_sub(1, Acquire).wrapping_sub(1);
-        if state == PARKED {
+        let state = self.state.fetch_sub(1, Acquire);
+        if state == EMPTY {
             // Loop to guard against spurious wakeups.
-            while state == PARKED {
+            // The state must be reset with acquire ordering to ensure that all
+            // calls to `unpark` synchronize with this thread.
+            while self.state.compare_exchange(NOTIFIED, EMPTY, Acquire, Relaxed).is_err() {
                 park(self.state.as_ptr().addr());
-                state = self.state.load(Acquire);
             }
-
-            // Since the state change has already been observed with acquire
-            // ordering, the state can be reset with a relaxed store instead
-            // of a swap.
-            self.state.store(EMPTY, Relaxed);
         }
     }
 
@@ -78,8 +74,7 @@ impl Parker {
         if state == PARKED {
             park_timeout(dur, self.state.as_ptr().addr());
             // Swap to ensure that we observe all state changes with acquire
-            // ordering, even if the state has been changed after the timeout
-            // occurred.
+            // ordering.
             self.state.swap(EMPTY, Acquire);
         }
     }

@@ -9,7 +9,7 @@ LL | |     }
    | |_____^
    |
    = note: `-D clippy::map-entry` implied by `-D warnings`
-help: try this
+help: try
    |
 LL ~     match m.entry(k) {
 LL +         std::collections::hash_map::Entry::Vacant(e) => {
@@ -31,7 +31,7 @@ LL | |         m.insert(k, v2);
 LL | |     }
    | |_____^
    |
-help: try this
+help: try
    |
 LL ~     match m.entry(k) {
 LL +         std::collections::hash_map::Entry::Occupied(mut e) => {
@@ -53,7 +53,7 @@ LL | |         foo();
 LL | |     }
    | |_____^
    |
-help: try this
+help: try
    |
 LL ~     if let std::collections::hash_map::Entry::Vacant(e) = m.entry(k) {
 LL +         e.insert(v);
@@ -72,7 +72,7 @@ LL | |         m.insert(k, v);
 LL | |     }
    | |_____^
    |
-help: try this
+help: try
    |
 LL ~     if let std::collections::hash_map::Entry::Occupied(mut e) = m.entry(k) {
 LL +         e.insert(v);
@@ -91,7 +91,7 @@ LL | |         m.insert(k, v2);
 LL | |     }
    | |_____^
    |
-help: try this
+help: try
    |
 LL ~     match m.entry(k) {
 LL +         std::collections::hash_map::Entry::Vacant(e) => {
@@ -113,7 +113,7 @@ LL | |         m.insert(k, v)
 LL | |     };
    | |_____^
    |
-help: try this
+help: try
    |
 LL ~     match m.entry(k) {
 LL +         std::collections::hash_map::Entry::Occupied(mut e) => {
@@ -137,7 +137,7 @@ LL | |         None
 LL | |     };
    | |_____^
    |
-help: try this
+help: try
    |
 LL ~     if let std::collections::hash_map::Entry::Occupied(mut e) = m.entry(k) {
 LL +         foo();

@@ -1,0 +1,18 @@
+warning: the feature `return_type_notation` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/rtn-in-impl-signature.rs:1:12
+   |
+LL | #![feature(return_type_notation)]
+   |            ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #109417 <https://github.com/rust-lang/rust/issues/109417> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0229]: associated type bindings are not allowed here
+  --> $DIR/rtn-in-impl-signature.rs:10:17
+   |
+LL | impl Super1<'_, bar(): Send> for () {}
+   |                 ^^^^^^^^^^^ associated type not allowed here
+
+error: aborting due to previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0229`.

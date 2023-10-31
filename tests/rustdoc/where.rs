@@ -5,16 +5,20 @@ use std::io::Lines;
 pub trait MyTrait { fn dummy(&self) { } }
 
 // @has foo/struct.Alpha.html '//pre' "pub struct Alpha<A>(_) where A: MyTrait"
+// @snapshot alpha_trait_decl - '//*[@class="rust item-decl"]/code'
 pub struct Alpha<A>(A) where A: MyTrait;
 // @has foo/trait.Bravo.html '//pre' "pub trait Bravo<B>where B: MyTrait"
+// @snapshot bravo_trait_decl - '//*[@class="rust item-decl"]/code'
 pub trait Bravo<B> where B: MyTrait { fn get(&self, B: B); }
 // @has foo/fn.charlie.html '//pre' "pub fn charlie<C>()where C: MyTrait"
+// @snapshot charlie_fn_decl - '//*[@class="rust item-decl"]/code'
 pub fn charlie<C>() where C: MyTrait {}
 
 pub struct Delta<D>(D);
 
 // @has foo/struct.Delta.html '//*[@class="impl"]//h3[@class="code-header"]' \
 //          "impl<D> Delta<D>where D: MyTrait"
+// @snapshot SWhere_Echo_impl - '//*[@id="impl-Delta%3CD%3E"]/h3[@class="code-header"]'
 impl<D> Delta<D> where D: MyTrait {
     pub fn delta() {}
 }
@@ -65,4 +69,5 @@ impl<F> MyTrait for Foxtrot<F>where F: MyTrait {}
 
 // @has foo/type.Golf.html '//pre[@class="rust item-decl"]' \
 //          "type Golf<T>where T: Clone, = (T, T)"
+// @snapshot golf_type_alias_decl - '//*[@class="rust item-decl"]/code'
 pub type Golf<T> where T: Clone = (T, T);

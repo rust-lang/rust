@@ -20,6 +20,7 @@ note: cycle used when coherence checking all impls of trait `Trait`
    |
 LL | trait Trait<T> { type Assoc; }
    | ^^^^^^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error: aborting due to previous error; 1 warning emitted
 

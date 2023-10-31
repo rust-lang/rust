@@ -214,12 +214,14 @@ function setup_rustc() {
     rm config.toml || true
 
     cat > config.toml <<EOF
+changelog-seen = 2
+
 [rust]
 codegen-backends = []
 deny-warnings = false
 
 [build]
-cargo = "$(which cargo)"
+cargo = "$(rustup which cargo)"
 local-rebuild = true
 rustc = "$HOME/.rustup/toolchains/$rust_toolchain-$TARGET_TRIPLE/bin/rustc"
 
@@ -237,7 +239,7 @@ EOF
 function asm_tests() {
     setup_rustc
 
-    echo "[TEST] rustc test suite"
+    echo "[TEST] rustc asm test suite"
     RUSTC_ARGS="-Zpanic-abort-tests -Csymbol-mangling-version=v0 -Zcodegen-backend="$(pwd)"/../target/"$CHANNEL"/librustc_codegen_gcc."$dylib_ext" --sysroot "$(pwd)"/../build_sysroot/sysroot -Cpanic=abort"
     COMPILETEST_FORCE_STAGE0=1 ./x.py test --run always --stage 0 tests/assembly/asm --rustc-args "$RUSTC_ARGS"
 }
@@ -338,6 +340,8 @@ function test_rustc() {
     for test in $(rg -i --files-with-matches "//(\[\w+\])?~|// error-pattern:|// build-fail|// run-fail|-Cllvm-args" tests/ui); do
       rm $test
     done
+    rm tests/ui/consts/const_cmp_type_id.rs
+    rm tests/ui/consts/issue-73976-monomorphic.rs
 
     git checkout -- tests/ui/issues/auxiliary/issue-3136-a.rs # contains //~ERROR, but shouldn't be removed
 

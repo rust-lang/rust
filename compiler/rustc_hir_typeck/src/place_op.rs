@@ -6,7 +6,7 @@ use rustc_hir as hir;
 use rustc_hir_analysis::autoderef::Autoderef;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::InferOk;
-use rustc_middle::ty::adjustment::{Adjust, Adjustment, OverloadedDeref, PointerCast};
+use rustc_middle::ty::adjustment::{Adjust, Adjustment, OverloadedDeref, PointerCoercion};
 use rustc_middle::ty::adjustment::{AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc_middle::ty::{self, Ty};
 use rustc_span::symbol::{sym, Ident};
@@ -90,7 +90,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             );
         }
         let reported = err.emit();
-        Some((self.tcx.ty_error(reported), self.tcx.ty_error(reported)))
+        Some((Ty::new_error(self.tcx, reported), Ty::new_error(self.tcx, reported)))
     }
 
     /// To type-check `base_expr[index_expr]`, we progressively autoderef
@@ -107,7 +107,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         index_expr: &hir::Expr<'_>,
     ) -> Option<(/*index type*/ Ty<'tcx>, /*element type*/ Ty<'tcx>)> {
         let adjusted_ty =
-            self.structurally_resolved_type(autoderef.span(), autoderef.final_ty(false));
+            self.structurally_resolve_type(autoderef.span(), autoderef.final_ty(false));
         debug!(
             "try_index_step(expr={:?}, base_expr={:?}, adjusted_ty={:?}, \
              index_ty={:?})",
@@ -138,7 +138,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if unsize {
                 // We only unsize arrays here.
                 if let ty::Array(element_ty, _) = adjusted_ty.kind() {
-                    self_ty = self.tcx.mk_slice(*element_ty);
+                    self_ty = Ty::new_slice(self.tcx, *element_ty);
                 } else {
                     continue;
                 }
@@ -162,7 +162,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let ty::Ref(region, _, hir::Mutability::Not) = method.sig.inputs()[0].kind() {
                     adjustments.push(Adjustment {
                         kind: Adjust::Borrow(AutoBorrow::Ref(*region, AutoBorrowMutability::Not)),
-                        target: self.tcx.mk_ref(
+                        target: Ty::new_ref(
+                            self.tcx,
                             *region,
                             ty::TypeAndMut { mutbl: hir::Mutability::Not, ty: adjusted_ty },
                         ),
@@ -172,7 +173,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 if unsize {
                     adjustments.push(Adjustment {
-                        kind: Adjust::Pointer(PointerCast::Unsize),
+                        kind: Adjust::Pointer(PointerCoercion::Unsize),
                         target: method.sig.inputs()[0],
                     });
                 }
@@ -283,7 +284,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut exprs = vec![expr];
 
         while let hir::ExprKind::Field(ref expr, _)
-        | hir::ExprKind::Index(ref expr, _)
+        | hir::ExprKind::Index(ref expr, _, _)
         | hir::ExprKind::Unary(hir::UnOp::Deref, ref expr) = exprs.last().unwrap().kind
         {
             exprs.push(expr);
@@ -391,7 +392,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // We also could not use `expr_ty_adjusted` of index_expr because reborrowing
                 // during coercions can also cause type of index_expr to differ from `T`,
                 // which can potentially cause regionck failure (#74933).
-                Some(self.typeck_results.borrow().node_substs(expr.hir_id).type_at(1))
+                Some(self.typeck_results.borrow().node_args(expr.hir_id).type_at(1))
             }
         };
         let arg_tys = arg_ty.as_slice();
@@ -427,9 +428,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         allow_two_phase_borrow: AllowTwoPhase::No,
                     };
                     adjustment.kind = Adjust::Borrow(AutoBorrow::Ref(*region, mutbl));
-                    adjustment.target = self
-                        .tcx
-                        .mk_ref(*region, ty::TypeAndMut { ty: source, mutbl: mutbl.into() });
+                    adjustment.target = Ty::new_ref(
+                        self.tcx,
+                        *region,
+                        ty::TypeAndMut { ty: source, mutbl: mutbl.into() },
+                    );
                 }
                 source = adjustment.target;
             }
@@ -438,7 +441,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if let [
                 ..,
                 Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(..)), .. },
-                Adjustment { kind: Adjust::Pointer(PointerCast::Unsize), ref mut target },
+                Adjustment { kind: Adjust::Pointer(PointerCoercion::Unsize), ref mut target },
             ] = adjustments[..]
             {
                 *target = method.sig.inputs()[0];

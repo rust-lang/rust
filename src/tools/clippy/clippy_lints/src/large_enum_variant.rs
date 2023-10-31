@@ -1,10 +1,8 @@
 //! lint when there is a large size difference between variants on an enum
 
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::{
-    diagnostics::span_lint_and_then,
-    ty::{approx_ty_size, is_copy, AdtVariantInfo},
-};
+use clippy_utils::ty::{approx_ty_size, is_copy, AdtVariantInfo};
 use rustc_errors::Applicability;
 use rustc_hir::{Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -83,7 +81,7 @@ impl<'tcx> LateLintPass<'tcx> for LargeEnumVariant {
             return;
         }
         if let ItemKind::Enum(ref def, _) = item.kind {
-            let ty = cx.tcx.type_of(item.owner_id).subst_identity();
+            let ty = cx.tcx.type_of(item.owner_id).instantiate_identity();
             let Adt(adt, subst) = ty.kind() else {
                 panic!("already checked whether this is an enum")
             };
@@ -169,8 +167,8 @@ impl<'tcx> LateLintPass<'tcx> for LargeEnumVariant {
 }
 
 fn maybe_copy<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
-    if let Adt(_def, substs) = ty.kind()
-        && substs.types().next().is_some()
+    if let Adt(_def, args) = ty.kind()
+        && args.types().next().is_some()
         && let Some(copy_trait) = cx.tcx.lang_items().copy_trait()
     {
         return cx.tcx.non_blanket_impls_for_ty(copy_trait, ty).next().is_some();

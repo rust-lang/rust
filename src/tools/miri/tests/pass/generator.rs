@@ -13,7 +13,7 @@ use std::ptr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 fn basic() {
-    fn finish<T>(mut amt: usize, mut t: T) -> T::Return
+    fn finish<T>(mut amt: usize, self_referential: bool, mut t: T) -> T::Return
     where
         T: Generator<Yield = usize>,
     {
@@ -22,7 +22,10 @@ fn basic() {
         loop {
             let state = t.as_mut().resume(());
             // Test if the generator is valid (according to type invariants).
-            let _ = unsafe { ManuallyDrop::new(ptr::read(t.as_mut().get_unchecked_mut())) };
+            // For self-referential generators however this is UB!
+            if !self_referential {
+                let _ = unsafe { ManuallyDrop::new(ptr::read(t.as_mut().get_unchecked_mut())) };
+            }
             match state {
                 GeneratorState::Yielded(y) => {
                     amt -= y;
@@ -40,9 +43,9 @@ fn basic() {
         panic!()
     }
 
-    finish(1, || yield 1);
+    finish(1, false, || yield 1);
 
-    finish(3, || {
+    finish(3, false, || {
         let mut x = 0;
         yield 1;
         x += 1;
@@ -52,27 +55,27 @@ fn basic() {
         assert_eq!(x, 2);
     });
 
-    finish(7 * 8 / 2, || {
+    finish(7 * 8 / 2, false, || {
         for i in 0..8 {
             yield i;
         }
     });
 
-    finish(1, || {
+    finish(1, false, || {
         if true {
             yield 1;
         } else {
         }
     });
 
-    finish(1, || {
+    finish(1, false, || {
         if false {
         } else {
             yield 1;
         }
     });
 
-    finish(2, || {
+    finish(2, false, || {
         if {
             yield 1;
             false
@@ -83,9 +86,20 @@ fn basic() {
         yield 1;
     });
 
-    // also test a self-referential generator
+    // also test self-referential generators
     assert_eq!(
-        finish(5, || {
+        finish(5, true, static || {
+            let mut x = 5;
+            let y = &mut x;
+            *y = 5;
+            yield *y;
+            *y = 10;
+            x
+        }),
+        10
+    );
+    assert_eq!(
+        finish(5, true, || {
             let mut x = Box::new(5);
             let y = &mut *x;
             *y = 5;
@@ -97,7 +111,7 @@ fn basic() {
     );
 
     let b = true;
-    finish(1, || {
+    finish(1, false, || {
         yield 1;
         if b {
             return;
@@ -109,7 +123,7 @@ fn basic() {
         drop(x);
     });
 
-    finish(3, || {
+    finish(3, false, || {
         yield 1;
         #[allow(unreachable_code)]
         let _x: (String, !) = (String::new(), {

@@ -1,5 +1,5 @@
 error: this expression can be written more simply using `.retain()`
-  --> $DIR/manual_retain.rs:51:5
+  --> $DIR/manual_retain.rs:46:5
    |
 LL |     btree_map = btree_map.into_iter().filter(|(k, _)| k % 2 == 0).collect();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling `.retain()` instead: `btree_map.retain(|k, _| k % 2 == 0)`
@@ -7,13 +7,13 @@ LL |     btree_map = btree_map.into_iter().filter(|(k, _)| k % 2 == 0).collect()
    = note: `-D clippy::manual-retain` implied by `-D warnings`
 
 error: this expression can be written more simply using `.retain()`
-  --> $DIR/manual_retain.rs:52:5
+  --> $DIR/manual_retain.rs:47:5
    |
 LL |     btree_map = btree_map.into_iter().filter(|(_, v)| v % 2 == 0).collect();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling `.retain()` instead: `btree_map.retain(|_, &mut v| v % 2 == 0)`
 
 error: this expression can be written more simply using `.retain()`
-  --> $DIR/manual_retain.rs:53:5
+  --> $DIR/manual_retain.rs:48:5
    |
 LL | /     btree_map = btree_map
 LL | |         .into_iter()
@@ -22,37 +22,37 @@ LL | |         .collect();
    | |__________________^ help: consider calling `.retain()` instead: `btree_map.retain(|k, &mut v| (k % 2 == 0) && (v % 2 == 0))`
 
 error: this expression can be written more simply using `.retain()`
-  --> $DIR/manual_retain.rs:75:5
+  --> $DIR/manual_retain.rs:70:5
    |
 LL |     btree_set = btree_set.iter().filter(|&x| x % 2 == 0).copied().collect();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling `.retain()` instead: `btree_set.retain(|x| x % 2 == 0)`
 
 error: this expression can be written more simply using `.retain()`
-  --> $DIR/manual_retain.rs:76:5
+  --> $DIR/manual_retain.rs:71:5
    |
 LL |     btree_set = btree_set.iter().filter(|&x| x % 2 == 0).cloned().collect();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling `.retain()` instead: `btree_set.retain(|x| x % 2 == 0)`
 
 error: this expression can be written more simply using `.retain()`
-  --> $DIR/manual_retain.rs:77:5
+  --> $DIR/manual_retain.rs:72:5
    |
 LL |     btree_set = btree_set.into_iter().filter(|x| x % 2 == 0).collect();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling `.retain()` instead: `btree_set.retain(|x| x % 2 == 0)`
 
 error: this expression can be written more simply using `.retain()`
-  --> $DIR/manual_retain.rs:107:5
+  --> $DIR/manual_retain.rs:102:5
    |
 LL |     hash_map = hash_map.into_iter().filter(|(k, _)| k % 2 == 0).collect();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling `.retain()` instead: `hash_map.retain(|k, _| k % 2 == 0)`
 
 error: this expression can be written more simply using `.retain()`
-  --> $DIR/manual_retain.rs:108:5
+  --> $DIR/manual_retain.rs:103:5
    |
 LL |     hash_map = hash_map.into_iter().filter(|(_, v)| v % 2 == 0).collect();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling `.retain()` instead: `hash_map.retain(|_, &mut v| v % 2 == 0)`
 
 error: this expression can be written more simply using `.retain()`
-  --> $DIR/manual_retain.rs:109:5
+  --> $DIR/manual_retain.rs:104:5
    |
 LL | /     hash_map = hash_map
 LL | |         .into_iter()
@@ -61,61 +61,61 @@ LL | |         .collect();
    | |__________________^ help: consider calling `.retain()` instead: `hash_map.retain(|k, &mut v| (k % 2 == 0) && (v % 2 == 0))`
 
 error: this expression can be written more simply using `.retain()`
-  --> $DIR/manual_retain.rs:130:5
+  --> $DIR/manual_retain.rs:125:5
    |
 LL |     hash_set = hash_set.into_iter().filter(|x| x % 2 == 0).collect();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling `.retain()` instead: `hash_set.retain(|x| x % 2 == 0)`
 
 error: this expression can be written more simply using `.retain()`
-  --> $DIR/manual_retain.rs:131:5
+  --> $DIR/manual_retain.rs:126:5
    |
 LL |     hash_set = hash_set.iter().filter(|&x| x % 2 == 0).copied().collect();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling `.retain()` instead: `hash_set.retain(|x| x % 2 == 0)`
 
 error: this expression can be written more simply using `.retain()`
-  --> $DIR/manual_retain.rs:132:5
+  --> $DIR/manual_retain.rs:127:5
    |
 LL |     hash_set = hash_set.iter().filter(|&x| x % 2 == 0).cloned().collect();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling `.retain()` instead: `hash_set.retain(|x| x % 2 == 0)`
 
 error: this expression can be written more simply using `.retain()`
-  --> $DIR/manual_retain.rs:161:5
+  --> $DIR/manual_retain.rs:156:5
    |
 LL |     s = s.chars().filter(|&c| c != 'o').to_owned().collect();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling `.retain()` instead: `s.retain(|c| c != 'o')`
 
 error: this expression can be written more simply using `.retain()`
-  --> $DIR/manual_retain.rs:173:5
+  --> $DIR/manual_retain.rs:168:5
    |
 LL |     vec = vec.iter().filter(|&x| x % 2 == 0).copied().collect();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling `.retain()` instead: `vec.retain(|x| x % 2 == 0)`
 
 error: this expression can be written more simply using `.retain()`
-  --> $DIR/manual_retain.rs:174:5
+  --> $DIR/manual_retain.rs:169:5
    |
 LL |     vec = vec.iter().filter(|&x| x % 2 == 0).cloned().collect();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling `.retain()` instead: `vec.retain(|x| x % 2 == 0)`
 
 error: this expression can be written more simply using `.retain()`
-  --> $DIR/manual_retain.rs:175:5
+  --> $DIR/manual_retain.rs:170:5
    |
 LL |     vec = vec.into_iter().filter(|x| x % 2 == 0).collect();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling `.retain()` instead: `vec.retain(|x| x % 2 == 0)`
 
 error: this expression can be written more simply using `.retain()`
-  --> $DIR/manual_retain.rs:197:5
+  --> $DIR/manual_retain.rs:192:5
    |
 LL |     vec_deque = vec_deque.iter().filter(|&x| x % 2 == 0).copied().collect();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling `.retain()` instead: `vec_deque.retain(|x| x % 2 == 0)`
 
 error: this expression can be written more simply using `.retain()`
-  --> $DIR/manual_retain.rs:198:5
+  --> $DIR/manual_retain.rs:193:5
    |
 LL |     vec_deque = vec_deque.iter().filter(|&x| x % 2 == 0).cloned().collect();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling `.retain()` instead: `vec_deque.retain(|x| x % 2 == 0)`
 
 error: this expression can be written more simply using `.retain()`
-  --> $DIR/manual_retain.rs:199:5
+  --> $DIR/manual_retain.rs:194:5
    |
 LL |     vec_deque = vec_deque.into_iter().filter(|x| x % 2 == 0).collect();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling `.retain()` instead: `vec_deque.retain(|x| x % 2 == 0)`

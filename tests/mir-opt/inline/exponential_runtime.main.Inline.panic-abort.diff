@@ -1,0 +1,134 @@
+- // MIR for `main` before Inline
++ // MIR for `main` after Inline
+  
+  fn main() -> () {
+      let mut _0: ();
+      let _1: ();
++     scope 1 (inlined <() as G>::call) {
++         let _2: ();
++         let _3: ();
++         let _4: ();
++         scope 2 (inlined <() as F>::call) {
++             let _5: ();
++             let _6: ();
++             let _7: ();
++             scope 3 (inlined <() as E>::call) {
++                 let _8: ();
++                 let _9: ();
++                 let _10: ();
++                 scope 4 (inlined <() as D>::call) {
++                     let _11: ();
++                     let _12: ();
++                     let _13: ();
++                     scope 5 (inlined <() as C>::call) {
++                         let _14: ();
++                         let _15: ();
++                         let _16: ();
++                         scope 6 (inlined <() as B>::call) {
++                             let _17: ();
++                             let _18: ();
++                             let _19: ();
++                         }
++                     }
++                 }
++             }
++         }
++     }
+  
+      bb0: {
+          StorageLive(_1);
+-         _1 = <() as G>::call() -> [return: bb1, unwind unreachable];
++         StorageLive(_2);
++         StorageLive(_3);
++         StorageLive(_4);
++         StorageLive(_5);
++         StorageLive(_6);
++         StorageLive(_7);
++         StorageLive(_8);
++         StorageLive(_9);
++         StorageLive(_10);
++         StorageLive(_11);
++         StorageLive(_12);
++         StorageLive(_13);
++         StorageLive(_14);
++         StorageLive(_15);
++         StorageLive(_16);
++         StorageLive(_17);
++         StorageLive(_18);
++         StorageLive(_19);
++         _17 = <() as A>::call() -> [return: bb12, unwind unreachable];
+      }
+  
+      bb1: {
++         StorageDead(_4);
++         StorageDead(_3);
++         StorageDead(_2);
+          StorageDead(_1);
+          _0 = const ();
+          return;
++     }
++ 
++     bb2: {
++         StorageDead(_7);
++         StorageDead(_6);
++         StorageDead(_5);
++         _3 = <() as F>::call() -> [return: bb3, unwind unreachable];
++     }
++ 
++     bb3: {
++         _4 = <() as F>::call() -> [return: bb1, unwind unreachable];
++     }
++ 
++     bb4: {
++         StorageDead(_10);
++         StorageDead(_9);
++         StorageDead(_8);
++         _6 = <() as E>::call() -> [return: bb5, unwind unreachable];
++     }
++ 
++     bb5: {
++         _7 = <() as E>::call() -> [return: bb2, unwind unreachable];
++     }
++ 
++     bb6: {
++         StorageDead(_13);
++         StorageDead(_12);
++         StorageDead(_11);
++         _9 = <() as D>::call() -> [return: bb7, unwind unreachable];
++     }
++ 
++     bb7: {
++         _10 = <() as D>::call() -> [return: bb4, unwind unreachable];
++     }
++ 
++     bb8: {
++         StorageDead(_16);
++         StorageDead(_15);
++         StorageDead(_14);
++         _12 = <() as C>::call() -> [return: bb9, unwind unreachable];
++     }
++ 
++     bb9: {
++         _13 = <() as C>::call() -> [return: bb6, unwind unreachable];
++     }
++ 
++     bb10: {
++         StorageDead(_19);
++         StorageDead(_18);
++         StorageDead(_17);
++         _15 = <() as B>::call() -> [return: bb11, unwind unreachable];
++     }
++ 
++     bb11: {
++         _16 = <() as B>::call() -> [return: bb8, unwind unreachable];
++     }
++ 
++     bb12: {
++         _18 = <() as A>::call() -> [return: bb13, unwind unreachable];
++     }
++ 
++     bb13: {
++         _19 = <() as A>::call() -> [return: bb10, unwind unreachable];
+      }
+  }
+  

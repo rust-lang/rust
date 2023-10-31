@@ -7,6 +7,6 @@ import xml.etree.ElementTree as ET
 for line in sys.stdin:
     try:
         ET.fromstring(line)
-    except ET.ParseError as pe:
+    except ET.ParseError:
         print("Invalid xml: %r" % line)
         raise

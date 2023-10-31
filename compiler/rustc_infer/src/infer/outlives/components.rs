@@ -3,8 +3,8 @@
 // RFC for reference.
 
 use rustc_data_structures::sso::SsoHashSet;
-use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{GenericArg, GenericArgKind};
 use smallvec::{smallvec, SmallVec};
 
 #[derive(Debug)]
@@ -71,15 +71,15 @@ fn compute_components<'tcx>(
     // in the `subtys` iterator (e.g., when encountering a
     // projection).
     match *ty.kind() {
-            ty::FnDef(_, substs) => {
-                // HACK(eddyb) ignore lifetimes found shallowly in `substs`.
-                // This is inconsistent with `ty::Adt` (including all substs)
-                // and with `ty::Closure` (ignoring all substs other than
+            ty::FnDef(_, args) => {
+                // HACK(eddyb) ignore lifetimes found shallowly in `args`.
+                // This is inconsistent with `ty::Adt` (including all args)
+                // and with `ty::Closure` (ignoring all args other than
                 // upvars, of which a `ty::FnDef` doesn't have any), but
                 // consistent with previous (accidental) behavior.
                 // See https://github.com/rust-lang/rust/issues/70917
                 // for further background and discussion.
-                for child in substs {
+                for child in args {
                     match child.unpack() {
                         GenericArgKind::Type(ty) => {
                             compute_components(tcx, ty, out, visited);
@@ -97,14 +97,14 @@ fn compute_components<'tcx>(
                 compute_components(tcx, element, out, visited);
             }
 
-            ty::Closure(_, ref substs) => {
-                let tupled_ty = substs.as_closure().tupled_upvars_ty();
+            ty::Closure(_, ref args) => {
+                let tupled_ty = args.as_closure().tupled_upvars_ty();
                 compute_components(tcx, tupled_ty, out, visited);
             }
 
-            ty::Generator(_, ref substs, _) => {
+            ty::Generator(_, ref args, _) => {
                 // Same as the closure case
-                let tupled_ty = substs.as_generator().tupled_upvars_ty();
+                let tupled_ty = args.as_generator().tupled_upvars_ty();
                 compute_components(tcx, tupled_ty, out, visited);
 
                 // We ignore regions in the generator interior as we don't
@@ -189,7 +189,7 @@ fn compute_components<'tcx>(
         }
 }
 
-/// Collect [Component]s for *all* the substs of `parent`.
+/// Collect [Component]s for *all* the args of `parent`.
 ///
 /// This should not be used to get the components of `parent` itself.
 /// Use [push_outlives_components] instead.
@@ -201,7 +201,7 @@ pub(super) fn compute_alias_components_recursive<'tcx>(
 ) {
     let ty::Alias(kind, alias_ty) = alias_ty.kind() else { bug!() };
     let opt_variances = if *kind == ty::Opaque { tcx.variances_of(alias_ty.def_id) } else { &[] };
-    for (index, child) in alias_ty.substs.iter().enumerate() {
+    for (index, child) in alias_ty.args.iter().enumerate() {
         if opt_variances.get(index) == Some(&ty::Bivariant) {
             continue;
         }
@@ -225,7 +225,7 @@ pub(super) fn compute_alias_components_recursive<'tcx>(
     }
 }
 
-/// Collect [Component]s for *all* the substs of `parent`.
+/// Collect [Component]s for *all* the args of `parent`.
 ///
 /// This should not be used to get the components of `parent` itself.
 /// Use [push_outlives_components] instead.

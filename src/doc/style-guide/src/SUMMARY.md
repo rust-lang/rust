@@ -2,10 +2,12 @@
 
 [Introduction](README.md)
 
-- [Module-level items](items.md)
+- [Items](items.md)
 - [Statements](statements.md)
 - [Expressions](expressions.md)
-- [Types](types.md)
-- [Non-formatting conventions](advice.md)
+- [Types and Bounds](types.md)
+- [Other style advice](advice.md)
 - [`Cargo.toml` conventions](cargo.md)
-- [Principles used for deciding these guidelines](principles.md)
+- [Guiding principles and rationale](principles.md)
+- [Rust style editions](editions.md)
+- [Nightly-only syntax](nightly.md)

@@ -3,9 +3,9 @@ go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
 set-local-storage: {"rustdoc-use-system-theme": "false", "rustdoc-theme": "dark"}
 reload:
 
-store-value: (background_light, "rgb(255, 255, 255)")
-store-value: (background_dark, "rgb(53, 53, 53)")
-store-value: (background_ayu, "rgb(15, 20, 25)")
+store-value: (background_light, "white")
+store-value: (background_dark, "#353535")
+store-value: (background_ayu, "#0f1419")
 
 click: "#settings-menu"
 wait-for: "#theme-ayu"

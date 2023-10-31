@@ -223,8 +223,6 @@ impl str {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// let s = "this is a string";
     /// let boxed_str = s.to_owned().into_boxed_str();
@@ -487,8 +485,6 @@ impl str {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// let string = String::from("birthday gift");
     /// let boxed_str = string.clone().into_boxed_str();
@@ -602,8 +598,6 @@ impl str {
 ///
 /// # Examples
 ///
-/// Basic usage:
-///
 /// ```
 /// let smile_utf8 = Box::new([226, 152, 186]);
 /// let smile = unsafe { std::str::from_boxed_utf8_unchecked(smile_utf8) };
@@ -618,7 +612,7 @@ pub unsafe fn from_boxed_utf8_unchecked(v: Box<[u8]>) -> Box<str> {
 }
 
 /// Converts the bytes while the bytes are still ascii.
-/// For better average performance, this is happens in chunks of `2*size_of::<usize>()`.
+/// For better average performance, this happens in chunks of `2*size_of::<usize>()`.
 /// Returns a vec with the converted bytes.
 #[inline]
 #[cfg(not(test))]

@@ -23,6 +23,7 @@
 #![feature(round_char_boundary)]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
+#![cfg_attr(not(bootstrap), allow(internal_features))]
 
 #[macro_use]
 extern crate rustc_macros;
@@ -65,11 +66,11 @@ use rustc_data_structures::sync::{Lock, Lrc};
 
 use std::borrow::Cow;
 use std::cmp::{self, Ordering};
-use std::fmt;
 use std::hash::Hash;
 use std::ops::{Add, Range, Sub};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
+use std::{fmt, iter};
 
 use md5::Digest;
 use md5::Md5;
@@ -594,12 +595,6 @@ impl Span {
         matches!(outer_expn.kind, ExpnKind::Macro(..)) && outer_expn.collapse_debuginfo
     }
 
-    /// Returns `true` if this span comes from MIR inlining.
-    pub fn is_inlined(self) -> bool {
-        let outer_expn = self.ctxt().outer_expn_data();
-        matches!(outer_expn.kind, ExpnKind::Inlined)
-    }
-
     /// Returns `true` if `span` originates in a derive-macro's expansion.
     pub fn in_derive_expansion(self) -> bool {
         matches!(self.ctxt().outer_expn_data().kind, ExpnKind::Macro(MacroKind::Derive, _))
@@ -611,7 +606,7 @@ impl Span {
         // FIXME: If this span comes from a `derive` macro but it points at code the user wrote,
         // the callsite span and the span will be pointing at different places. It also means that
         // we can safely provide suggestions on this span.
-            || (matches!(self.ctxt().outer_expn_data().kind, ExpnKind::Macro(MacroKind::Derive, _))
+            || (self.in_derive_expansion()
                 && self.parent_callsite().map(|p| (p.lo(), p.hi())) != Some((self.lo(), self.hi())))
     }
 
@@ -691,6 +686,12 @@ impl Span {
     }
 
     /// Walk down the expansion ancestors to find a span that's contained within `outer`.
+    ///
+    /// The span returned by this method may have a different [`SyntaxContext`] as `outer`.
+    /// If you need to extend the span, use [`find_ancestor_inside_same_ctxt`] instead,
+    /// because joining spans with different syntax contexts can create unexpected results.
+    ///
+    /// [`find_ancestor_inside_same_ctxt`]: Self::find_ancestor_inside_same_ctxt
     pub fn find_ancestor_inside(mut self, outer: Span) -> Option<Span> {
         while !outer.contains(self) {
             self = self.parent_callsite()?;
@@ -698,11 +699,34 @@ impl Span {
         Some(self)
     }
 
-    /// Like `find_ancestor_inside`, but specifically for when spans might not
-    /// overlaps. Take care when using this, and prefer `find_ancestor_inside`
-    /// when you know that the spans are nested (modulo macro expansion).
+    /// Walk down the expansion ancestors to find a span with the same [`SyntaxContext`] as
+    /// `other`.
+    ///
+    /// Like [`find_ancestor_inside_same_ctxt`], but specifically for when spans might not
+    /// overlap. Take care when using this, and prefer [`find_ancestor_inside`] or
+    /// [`find_ancestor_inside_same_ctxt`] when you know that the spans are nested (modulo
+    /// macro expansion).
+    ///
+    /// [`find_ancestor_inside`]: Self::find_ancestor_inside
+    /// [`find_ancestor_inside_same_ctxt`]: Self::find_ancestor_inside_same_ctxt
     pub fn find_ancestor_in_same_ctxt(mut self, other: Span) -> Option<Span> {
-        while !Span::eq_ctxt(self, other) {
+        while !self.eq_ctxt(other) {
+            self = self.parent_callsite()?;
+        }
+        Some(self)
+    }
+
+    /// Walk down the expansion ancestors to find a span that's contained within `outer` and
+    /// has the same [`SyntaxContext`] as `outer`.
+    ///
+    /// This method is the combination of [`find_ancestor_inside`] and
+    /// [`find_ancestor_in_same_ctxt`] and should be preferred when extending the returned span.
+    /// If you do not need to modify the span, use [`find_ancestor_inside`] instead.
+    ///
+    /// [`find_ancestor_inside`]: Self::find_ancestor_inside
+    /// [`find_ancestor_in_same_ctxt`]: Self::find_ancestor_in_same_ctxt
+    pub fn find_ancestor_inside_same_ctxt(mut self, outer: Span) -> Option<Span> {
+        while !outer.contains(self) || !self.eq_ctxt(outer) {
             self = self.parent_callsite()?;
         }
         Some(self)
@@ -713,24 +737,28 @@ impl Span {
         self.ctxt().edition()
     }
 
+    /// Is this edition 2015?
     #[inline]
     pub fn is_rust_2015(self) -> bool {
         self.edition().is_rust_2015()
     }
 
+    /// Are we allowed to use features from the Rust 2018 edition?
     #[inline]
-    pub fn rust_2018(self) -> bool {
-        self.edition().rust_2018()
+    pub fn at_least_rust_2018(self) -> bool {
+        self.edition().at_least_rust_2018()
     }
 
+    /// Are we allowed to use features from the Rust 2021 edition?
     #[inline]
-    pub fn rust_2021(self) -> bool {
-        self.edition().rust_2021()
+    pub fn at_least_rust_2021(self) -> bool {
+        self.edition().at_least_rust_2021()
     }
 
+    /// Are we allowed to use features from the Rust 2024 edition?
     #[inline]
-    pub fn rust_2024(self) -> bool {
-        self.edition().rust_2024()
+    pub fn at_least_rust_2024(self) -> bool {
+        self.edition().at_least_rust_2024()
     }
 
     /// Returns the source callee.
@@ -739,12 +767,15 @@ impl Span {
     /// else returns the `ExpnData` for the macro definition
     /// corresponding to the source callsite.
     pub fn source_callee(self) -> Option<ExpnData> {
-        fn source_callee(expn_data: ExpnData) -> ExpnData {
-            let next_expn_data = expn_data.call_site.ctxt().outer_expn_data();
-            if !next_expn_data.is_root() { source_callee(next_expn_data) } else { expn_data }
-        }
         let expn_data = self.ctxt().outer_expn_data();
-        if !expn_data.is_root() { Some(source_callee(expn_data)) } else { None }
+
+        // Create an iterator of call site expansions
+        iter::successors(Some(expn_data), |expn_data| {
+            Some(expn_data.call_site.ctxt().outer_expn_data())
+        })
+        // Find the last expansion which is not root
+        .take_while(|expn_data| !expn_data.is_root())
+        .last()
     }
 
     /// Checks if a span is "internal" to a macro in which `#[unstable]`
@@ -783,7 +814,7 @@ impl Span {
 
     pub fn macro_backtrace(mut self) -> impl Iterator<Item = ExpnData> {
         let mut prev_span = DUMMY_SP;
-        std::iter::from_fn(move || {
+        iter::from_fn(move || {
             loop {
                 let expn_data = self.ctxt().outer_expn_data();
                 if expn_data.is_root() {
@@ -832,9 +863,9 @@ impl Span {
         // Return the macro span on its own to avoid weird diagnostic output. It is preferable to
         // have an incomplete span than a completely nonsensical one.
         if span_data.ctxt != end_data.ctxt {
-            if span_data.ctxt == SyntaxContext::root() {
+            if span_data.ctxt.is_root() {
                 return end;
-            } else if end_data.ctxt == SyntaxContext::root() {
+            } else if end_data.ctxt.is_root() {
                 return self;
             }
             // Both spans fall within a macro.
@@ -843,7 +874,7 @@ impl Span {
         Span::new(
             cmp::min(span_data.lo, end_data.lo),
             cmp::max(span_data.hi, end_data.hi),
-            if span_data.ctxt == SyntaxContext::root() { end_data.ctxt } else { span_data.ctxt },
+            if span_data.ctxt.is_root() { end_data.ctxt } else { span_data.ctxt },
             if span_data.parent == end_data.parent { span_data.parent } else { None },
         )
     }
@@ -861,7 +892,7 @@ impl Span {
         Span::new(
             span.hi,
             end.lo,
-            if end.ctxt == SyntaxContext::root() { end.ctxt } else { span.ctxt },
+            if end.ctxt.is_root() { end.ctxt } else { span.ctxt },
             if span.parent == end.parent { span.parent } else { None },
         )
     }
@@ -885,9 +916,9 @@ impl Span {
         // Return the macro span on its own to avoid weird diagnostic output. It is preferable to
         // have an incomplete span than a completely nonsensical one.
         if span_data.ctxt != end_data.ctxt {
-            if span_data.ctxt == SyntaxContext::root() {
+            if span_data.ctxt.is_root() {
                 return end;
-            } else if end_data.ctxt == SyntaxContext::root() {
+            } else if end_data.ctxt.is_root() {
                 return self;
             }
             // Both spans fall within a macro.
@@ -896,7 +927,7 @@ impl Span {
         Span::new(
             span_data.lo,
             end_data.lo,
-            if end_data.ctxt == SyntaxContext::root() { end_data.ctxt } else { span_data.ctxt },
+            if end_data.ctxt.is_root() { end_data.ctxt } else { span_data.ctxt },
             if span_data.parent == end_data.parent { span_data.parent } else { None },
         )
     }
@@ -2162,7 +2193,8 @@ where
         // If this is not an empty or invalid span, we want to hash the last
         // position that belongs to it, as opposed to hashing the first
         // position past it.
-        let Some((file, line_lo, col_lo, line_hi, col_hi)) = ctx.span_data_to_lines_and_cols(&span) else {
+        let Some((file, line_lo, col_lo, line_hi, col_hi)) = ctx.span_data_to_lines_and_cols(&span)
+        else {
             Hash::hash(&TAG_INVALID_SPAN, hasher);
             return;
         };

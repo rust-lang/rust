@@ -17,7 +17,7 @@ impl<T, S> Subj<(T, S)> {
 }
 
 fn main() {
-    type A = S<()>::P;
+    let _: S<()>::P;
 
     let _: Subj<(i32, i32)>::Un = 0i32; //~ ERROR mismatched types
 }

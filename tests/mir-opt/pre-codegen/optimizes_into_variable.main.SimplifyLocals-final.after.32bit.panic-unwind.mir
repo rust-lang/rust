@@ -1,0 +1,18 @@
+// MIR for `main` after SimplifyLocals-final
+
+fn main() -> () {
+    let mut _0: ();
+    scope 1 {
+        debug x => const 4_i32;
+        scope 2 {
+            debug y => const 3_i32;
+            scope 3 {
+                debug z => const 42_u32;
+            }
+        }
+    }
+
+    bb0: {
+        return;
+    }
+}

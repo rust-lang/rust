@@ -9,6 +9,6 @@ PRINT-BANG INPUT (DEBUG): TokenStream [
                 span: $DIR/issue-80760-empty-stmt.rs:25:17: 25:18 (#0),
             },
         ],
-        span: $DIR/issue-80760-empty-stmt.rs:13:21: 13:23 (#4),
+        span: $DIR/issue-80760-empty-stmt.rs:13:21: 13:23 (#3),
     },
 ]

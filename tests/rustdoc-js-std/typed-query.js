@@ -1,9 +1,9 @@
 // exact-check
 
-const QUERY = 'macro:print';
 const FILTER_CRATE = 'std';
 
 const EXPECTED = {
+    'query': 'macro:print',
     'others': [
         { 'path': 'std', 'name': 'print' },
         { 'path': 'std', 'name': 'println' },

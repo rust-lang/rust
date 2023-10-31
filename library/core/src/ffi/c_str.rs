@@ -20,10 +20,10 @@ use crate::str;
 /// in each pair are borrowed references; the latter are owned
 /// strings.
 ///
-/// Note that this structure is **not** `repr(C)` and is not recommended to be
-/// placed in the signatures of FFI functions. Instead, safe wrappers of FFI
-/// functions may leverage the unsafe [`CStr::from_ptr`] constructor to provide
-/// a safe interface to other consumers.
+/// Note that this structure does **not** have a guaranteed layout (the `repr(transparent)`
+/// notwithstanding) and is not recommended to be placed in the signatures of FFI functions.
+/// Instead, safe wrappers of FFI functions may leverage the unsafe [`CStr::from_ptr`] constructor
+/// to provide a safe interface to other consumers.
 ///
 /// [`CString`]: ../../std/ffi/struct.CString.html
 /// [`String`]: ../../std/string/struct.String.html
@@ -81,13 +81,13 @@ use crate::str;
 #[derive(Hash)]
 #[stable(feature = "core_c_str", since = "1.64.0")]
 #[rustc_has_incoherent_inherent_impls]
-#[cfg_attr(not(bootstrap), lang = "CStr")]
-// FIXME:
+#[lang = "CStr"]
 // `fn from` in `impl From<&CStr> for Box<CStr>` current implementation relies
 // on `CStr` being layout-compatible with `[u8]`.
-// When attribute privacy is implemented, `CStr` should be annotated as `#[repr(transparent)]`.
-// Anyway, `CStr` representation and layout are considered implementation detail, are
-// not documented and must not be relied upon.
+// However, `CStr` layout is considered an implementation detail and must not be relied upon. We
+// want `repr(transparent)` but we don't want it to show up in rustdoc, so we hide it under
+// `cfg(doc)`. This is an ad-hoc implementation of attribute privacy.
+#[cfg_attr(not(doc), repr(transparent))]
 pub struct CStr {
     // FIXME: this should not be represented with a DST slice but rather with
     //        just a raw `c_char` along with some form of marker to make
@@ -197,8 +197,8 @@ impl CStr {
     ///
     /// This function will wrap the provided `ptr` with a `CStr` wrapper, which
     /// allows inspection and interoperation of non-owned C strings. The total
-    /// size of the raw C string must be smaller than `isize::MAX` **bytes**
-    /// in memory due to calling the `slice::from_raw_parts` function.
+    /// size of the terminated buffer must be smaller than [`isize::MAX`] **bytes**
+    /// in memory (a restriction from [`slice::from_raw_parts`]).
     ///
     /// # Safety
     ///
@@ -241,7 +241,7 @@ impl CStr {
     /// ```
     ///
     /// ```
-    /// #![feature(const_cstr_methods)]
+    /// #![feature(const_cstr_from_ptr)]
     ///
     /// use std::ffi::{c_char, CStr};
     ///
@@ -253,10 +253,10 @@ impl CStr {
     /// ```
     ///
     /// [valid]: core::ptr#safety
-    #[inline]
+    #[inline] // inline is necessary for codegen to see strlen.
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_cstr_methods", issue = "101719")]
+    #[rustc_const_unstable(feature = "const_cstr_from_ptr", issue = "113219")]
     pub const unsafe fn from_ptr<'a>(ptr: *const c_char) -> &'a CStr {
         // SAFETY: The caller has provided a pointer that points to a valid C
         // string with a NUL terminator of size less than `isize::MAX`, whose
@@ -280,6 +280,8 @@ impl CStr {
                 len
             }
 
+            // `inline` is necessary for codegen to see strlen.
+            #[inline]
             fn strlen_rt(s: *const c_char) -> usize {
                 extern "C" {
                     /// Provided by libc or compiler_builtins.
@@ -295,11 +297,11 @@ impl CStr {
         }
     }
 
-    /// Creates a C string wrapper from a byte slice.
+    /// Creates a C string wrapper from a byte slice with any number of nuls.
     ///
     /// This method will create a `CStr` from any byte slice that contains at
-    /// least one nul byte. The caller does not need to know or specify where
-    /// the nul byte is located.
+    /// least one nul byte. Unlike with [`CStr::from_bytes_with_nul`], the caller
+    /// does not need to know where the nul byte is located.
     ///
     /// If the first byte is a nul character, this method will return an
     /// empty `CStr`. If multiple nul characters are present, the `CStr` will
@@ -341,7 +343,8 @@ impl CStr {
         }
     }
 
-    /// Creates a C string wrapper from a byte slice.
+    /// Creates a C string wrapper from a byte slice with exactly one nul
+    /// terminator.
     ///
     /// This function will cast the provided `bytes` to a `CStr`
     /// wrapper after ensuring that the byte slice is nul-terminated
@@ -377,7 +380,7 @@ impl CStr {
     /// assert!(cstr.is_err());
     /// ```
     #[stable(feature = "cstr_from_bytes", since = "1.10.0")]
-    #[rustc_const_unstable(feature = "const_cstr_methods", issue = "101719")]
+    #[rustc_const_stable(feature = "const_cstr_methods", since = "1.72.0")]
     pub const fn from_bytes_with_nul(bytes: &[u8]) -> Result<&Self, FromBytesWithNulError> {
         let nul_pos = memchr::memchr(0, bytes);
         match nul_pos {
@@ -531,8 +534,8 @@ impl CStr {
     /// # }
     /// ```
     #[inline]
-    #[stable(feature = "cstr_is_empty", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "cstr_is_empty", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "cstr_is_empty", since = "1.71.0")]
+    #[rustc_const_stable(feature = "cstr_is_empty", since = "1.71.0")]
     pub const fn is_empty(&self) -> bool {
         // SAFETY: We know there is at least one byte; for empty strings it
         // is the NUL terminator.
@@ -561,10 +564,12 @@ impl CStr {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn to_bytes(&self) -> &[u8] {
+    #[rustc_const_stable(feature = "const_cstr_methods", since = "1.72.0")]
+    pub const fn to_bytes(&self) -> &[u8] {
         let bytes = self.to_bytes_with_nul();
+        // FIXME(const-hack) replace with range index
         // SAFETY: to_bytes_with_nul returns slice with length at least 1
-        unsafe { bytes.get_unchecked(..bytes.len() - 1) }
+        unsafe { slice::from_raw_parts(bytes.as_ptr(), bytes.len() - 1) }
     }
 
     /// Converts this C string to a byte slice containing the trailing 0 byte.
@@ -588,7 +593,7 @@ impl CStr {
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_cstr_methods", issue = "101719")]
+    #[rustc_const_stable(feature = "const_cstr_methods", since = "1.72.0")]
     pub const fn to_bytes_with_nul(&self) -> &[u8] {
         // SAFETY: Transmuting a slice of `c_char`s to a slice of `u8`s
         // is safe on all supported targets.
@@ -612,7 +617,8 @@ impl CStr {
     /// assert_eq!(cstr.to_str(), Ok("foo"));
     /// ```
     #[stable(feature = "cstr_to_str", since = "1.4.0")]
-    pub fn to_str(&self) -> Result<&str, str::Utf8Error> {
+    #[rustc_const_stable(feature = "const_cstr_methods", since = "1.72.0")]
+    pub const fn to_str(&self) -> Result<&str, str::Utf8Error> {
         // N.B., when `CStr` is changed to perform the length check in `.to_bytes()`
         // instead of in `from_ptr()`, it may be worth considering if this should
         // be rewritten to do the UTF-8 check inline with the length calculation

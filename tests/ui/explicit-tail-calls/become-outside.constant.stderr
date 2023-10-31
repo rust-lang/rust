@@ -1,0 +1,9 @@
+error[E0572]: become statement outside of function body
+  --> $DIR/become-outside.rs:7:5
+   |
+LL |     become f();
+   |     ^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0572`.

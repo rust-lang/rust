@@ -1,5 +1,4 @@
 use rustc_infer::traits::{TraitEngine, TraitEngineExt};
-use rustc_middle::ty;
 
 use crate::infer::canonical::OriginalQueryValues;
 use crate::infer::InferCtxt;
@@ -66,21 +65,11 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
     ) -> Result<EvaluationResult, OverflowError> {
         let mut _orig_values = OriginalQueryValues::default();
 
-        let param_env = match obligation.predicate.kind().skip_binder() {
-            ty::PredicateKind::Clause(ty::Clause::Trait(pred)) => {
-                // we ignore the value set to it.
-                let mut _constness = pred.constness;
-                obligation
-                    .param_env
-                    .with_constness(_constness.and(obligation.param_env.constness()))
-            }
-            // constness has no effect on the given predicate.
-            _ => obligation.param_env.without_const(),
-        };
+        let param_env = obligation.param_env;
 
-        if self.tcx.trait_solver_next() {
+        if self.next_trait_solver() {
             self.probe(|snapshot| {
-                let mut fulfill_cx = crate::solve::FulfillmentCtxt::new();
+                let mut fulfill_cx = crate::solve::FulfillmentCtxt::new(self);
                 fulfill_cx.register_predicate_obligation(self, obligation.clone());
                 // True errors
                 // FIXME(-Ztrait-solver=next): Overflows are reported as ambig here, is that OK?
@@ -90,13 +79,14 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
                     Ok(EvaluationResult::EvaluatedToAmbig)
                 } else if self.opaque_types_added_in_snapshot(snapshot) {
                     Ok(EvaluationResult::EvaluatedToOkModuloOpaqueTypes)
-                } else if self.region_constraints_added_in_snapshot(snapshot).is_some() {
+                } else if self.region_constraints_added_in_snapshot(snapshot) {
                     Ok(EvaluationResult::EvaluatedToOkModuloRegions)
                 } else {
                     Ok(EvaluationResult::EvaluatedToOk)
                 }
             })
         } else {
+            assert!(!self.intercrate);
             let c_pred = self.canonicalize_query_keep_static(
                 param_env.and(obligation.predicate),
                 &mut _orig_values,

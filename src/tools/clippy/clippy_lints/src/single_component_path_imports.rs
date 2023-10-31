@@ -1,11 +1,14 @@
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg};
 use rustc_ast::node_id::{NodeId, NodeMap};
+use rustc_ast::ptr::P;
 use rustc_ast::visit::{walk_expr, Visitor};
-use rustc_ast::{ptr::P, Crate, Expr, ExprKind, Item, ItemKind, MacroDef, ModKind, Ty, TyKind, UseTreeKind};
+use rustc_ast::{Crate, Expr, ExprKind, Item, ItemKind, MacroDef, ModKind, Ty, TyKind, UseTreeKind};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::{edition::Edition, symbol::kw, Span, Symbol};
+use rustc_span::edition::Edition;
+use rustc_span::symbol::kw;
+use rustc_span::{Span, Symbol};
 
 declare_clippy_lint! {
     /// ### What it does

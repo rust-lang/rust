@@ -94,7 +94,7 @@ impl<'tcx> LateLintPass<'tcx> for DisallowedMethods {
             path_def_id(cx, expr)
         };
         let Some(def_id) = uncalled_path.or_else(|| fn_def_id(cx, expr)) else {
-            return
+            return;
         };
         let conf = match self.disallowed.get(&def_id) {
             Some(&index) => &self.conf_disallowed[index],

@@ -2,6 +2,7 @@
 
 use crate::ffi::{CStr, OsStr, OsString};
 use crate::fmt;
+#[allow(unused_imports)]
 use crate::os::wasi::ffi::OsStrExt;
 use crate::vec;
 
@@ -21,7 +22,7 @@ fn maybe_args() -> Option<Vec<OsString>> {
     unsafe {
         let (argc, buf_size) = wasi::args_sizes_get().ok()?;
         let mut argv = Vec::with_capacity(argc);
-        let mut buf = Vec::with_capacity(buf_size);
+        let mut buf = Vec::with_capacity(buf_size as usize);
         wasi::args_get(argv.as_mut_ptr(), buf.as_mut_ptr()).ok()?;
         argv.set_len(argc);
         let mut ret = Vec::with_capacity(argc);

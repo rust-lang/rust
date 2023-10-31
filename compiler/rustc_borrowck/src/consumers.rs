@@ -30,7 +30,7 @@ pub use super::{
 /// will be retrieved.
 #[derive(Debug, Copy, Clone)]
 pub enum ConsumerOptions {
-    /// Retrieve the [`Body`] along with the [`BorrowSet`](super::borrow_set::BorrowSet)
+    /// Retrieve the [`Body`] along with the [`BorrowSet`]
     /// and [`RegionInferenceContext`]. If you would like the body only, use
     /// [`TyCtxt::mir_promoted`].
     ///

@@ -437,7 +437,7 @@ impl<T: AsHandle> AsHandle for &mut T {
     }
 }
 
-#[stable(feature = "as_windows_ptrs", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "as_windows_ptrs", since = "1.71.0")]
 /// This impl allows implementing traits that require `AsHandle` on Arc.
 /// ```
 /// # #[cfg(windows)] mod group_cfg {
@@ -457,7 +457,7 @@ impl<T: AsHandle> AsHandle for crate::sync::Arc<T> {
     }
 }
 
-#[stable(feature = "as_windows_ptrs", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "as_windows_ptrs", since = "1.71.0")]
 impl<T: AsHandle> AsHandle for crate::rc::Rc<T> {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
@@ -465,7 +465,7 @@ impl<T: AsHandle> AsHandle for crate::rc::Rc<T> {
     }
 }
 
-#[stable(feature = "as_windows_ptrs", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "as_windows_ptrs", since = "1.71.0")]
 impl<T: AsHandle> AsHandle for Box<T> {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {

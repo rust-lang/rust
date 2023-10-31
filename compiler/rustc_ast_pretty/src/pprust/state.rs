@@ -150,6 +150,8 @@ pub fn print_crate<'a>(
 /// and also addresses some specific regressions described in #63896 and #73345.
 fn tt_prepend_space(tt: &TokenTree, prev: &TokenTree) -> bool {
     if let TokenTree::Token(token, _) = prev {
+        // No space after these tokens, e.g. `x.y`, `$e`
+        // (The carets point to `prev`.)       ^     ^
         if matches!(token.kind, token::Dot | token::Dollar) {
             return false;
         }
@@ -158,10 +160,19 @@ fn tt_prepend_space(tt: &TokenTree, prev: &TokenTree) -> bool {
         }
     }
     match tt {
+        // No space before these tokens, e.g. `foo,`, `println!`, `x.y`
+        // (The carets point to `token`.)         ^           ^     ^
+        //
+        // FIXME: having `Not` here works well for macro invocations like
+        // `println!()`, but is bad when `!` means "logical not" or "the never
+        // type", where the lack of space causes ugliness like this:
+        // `Fn() ->!`, `x =! y`, `if! x { f(); }`.
         TokenTree::Token(token, _) => !matches!(token.kind, token::Comma | token::Not | token::Dot),
+        // No space before parentheses if preceded by these tokens, e.g. `foo(...)`
         TokenTree::Delimited(_, Delimiter::Parenthesis, _) => {
             !matches!(prev, TokenTree::Token(Token { kind: token::Ident(..), .. }, _))
         }
+        // No space before brackets if preceded by these tokens, e.g. `#[...]`
         TokenTree::Delimited(_, Delimiter::Bracket, _) => {
             !matches!(prev, TokenTree::Token(Token { kind: token::Pound, .. }, _))
         }
@@ -476,7 +487,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                 Some(MacHeader::Path(&item.path)),
                 false,
                 None,
-                delim.to_token(),
+                *delim,
                 tokens,
                 true,
                 span,
@@ -640,7 +651,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             Some(MacHeader::Keyword(kw)),
             has_bang,
             Some(*ident),
-            macro_def.body.delim.to_token(),
+            macro_def.body.delim,
             &macro_def.body.tokens.clone(),
             true,
             sp,
@@ -822,6 +833,13 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
 
     fn bounds_to_string(&self, bounds: &[ast::GenericBound]) -> String {
         Self::to_string(|s| s.print_type_bounds(bounds))
+    }
+
+    fn where_bound_predicate_to_string(
+        &self,
+        where_bound_predicate: &ast::WhereBoundPredicate,
+    ) -> String {
+        Self::to_string(|s| s.print_where_bound_predicate(where_bound_predicate))
     }
 
     fn pat_to_string(&self, pat: &ast::Pat) -> String {
@@ -1233,7 +1251,7 @@ impl<'a> State<'a> {
             Some(MacHeader::Path(&m.path)),
             true,
             None,
-            m.args.delim.to_token(),
+            m.args.delim,
             &m.args.tokens.clone(),
             true,
             m.span(),

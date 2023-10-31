@@ -1,7 +1,7 @@
 use cfg::DnfExpr;
 use stdx::format_to;
 
-use crate::{Diagnostic, DiagnosticsContext, Severity};
+use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext, Severity};
 
 // Diagnostic: inactive-code
 //
@@ -27,13 +27,12 @@ pub(crate) fn inactive_code(
             format_to!(message, ": {}", inactive);
         }
     }
-
+    // FIXME: This shouldn't be a diagnostic
     let res = Diagnostic::new(
-        "inactive-code",
+        DiagnosticCode::Ra("inactive-code", Severity::WeakWarning),
         message,
         ctx.sema.diagnostics_display_range(d.node.clone()).range,
     )
-    .severity(Severity::WeakWarning)
     .with_unused(true);
     Some(res)
 }

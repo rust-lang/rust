@@ -103,7 +103,7 @@ impl<'tcx> LateLintPass<'tcx> for IndexingSlicing {
             return;
         }
 
-        if let ExprKind::Index(array, index) = &expr.kind {
+        if let ExprKind::Index(array, index, _) = &expr.kind {
             let note = "the suggestion might not be applicable in constant blocks";
             let ty = cx.typeck_results().expr_ty(array).peel_refs();
             if let Some(range) = higher::Range::hir(index) {

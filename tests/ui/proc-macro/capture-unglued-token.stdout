@@ -23,6 +23,6 @@ PRINT-BANG INPUT (DEBUG): TokenStream [
                 span: $DIR/capture-unglued-token.rs:19:30: 19:31 (#0),
             },
         ],
-        span: $DIR/capture-unglued-token.rs:15:42: 15:48 (#4),
+        span: $DIR/capture-unglued-token.rs:15:42: 15:48 (#3),
     },
 ]

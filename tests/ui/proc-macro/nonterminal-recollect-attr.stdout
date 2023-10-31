@@ -5,30 +5,30 @@ First recollected: TokenStream [
     },
     Ident {
         ident: "struct",
-        span: $DIR/nonterminal-recollect-attr.rs:14:12: 14:18 (#4),
+        span: $DIR/nonterminal-recollect-attr.rs:14:12: 14:18 (#3),
     },
     Ident {
         ident: "Foo",
-        span: $DIR/nonterminal-recollect-attr.rs:14:19: 14:22 (#4),
+        span: $DIR/nonterminal-recollect-attr.rs:14:19: 14:22 (#3),
     },
     Group {
         delimiter: Brace,
         stream: TokenStream [
             Ident {
                 ident: "field",
-                span: $DIR/nonterminal-recollect-attr.rs:15:13: 15:18 (#4),
+                span: $DIR/nonterminal-recollect-attr.rs:15:13: 15:18 (#3),
             },
             Punct {
                 ch: ':',
                 spacing: Alone,
-                span: $DIR/nonterminal-recollect-attr.rs:15:18: 15:19 (#4),
+                span: $DIR/nonterminal-recollect-attr.rs:15:18: 15:19 (#3),
             },
             Ident {
                 ident: "u8",
-                span: $DIR/nonterminal-recollect-attr.rs:15:20: 15:22 (#4),
+                span: $DIR/nonterminal-recollect-attr.rs:15:20: 15:22 (#3),
             },
         ],
-        span: $DIR/nonterminal-recollect-attr.rs:14:23: 16:10 (#4),
+        span: $DIR/nonterminal-recollect-attr.rs:14:23: 16:10 (#3),
     },
 ]
 Second recollected: TokenStream [
@@ -38,29 +38,29 @@ Second recollected: TokenStream [
     },
     Ident {
         ident: "struct",
-        span: $DIR/nonterminal-recollect-attr.rs:14:12: 14:18 (#4),
+        span: $DIR/nonterminal-recollect-attr.rs:14:12: 14:18 (#3),
     },
     Ident {
         ident: "Foo",
-        span: $DIR/nonterminal-recollect-attr.rs:14:19: 14:22 (#4),
+        span: $DIR/nonterminal-recollect-attr.rs:14:19: 14:22 (#3),
     },
     Group {
         delimiter: Brace,
         stream: TokenStream [
             Ident {
                 ident: "field",
-                span: $DIR/nonterminal-recollect-attr.rs:15:13: 15:18 (#4),
+                span: $DIR/nonterminal-recollect-attr.rs:15:13: 15:18 (#3),
             },
             Punct {
                 ch: ':',
                 spacing: Alone,
-                span: $DIR/nonterminal-recollect-attr.rs:15:18: 15:19 (#4),
+                span: $DIR/nonterminal-recollect-attr.rs:15:18: 15:19 (#3),
             },
             Ident {
                 ident: "u8",
-                span: $DIR/nonterminal-recollect-attr.rs:15:20: 15:22 (#4),
+                span: $DIR/nonterminal-recollect-attr.rs:15:20: 15:22 (#3),
             },
         ],
-        span: $DIR/nonterminal-recollect-attr.rs:14:23: 16:10 (#4),
+        span: $DIR/nonterminal-recollect-attr.rs:14:23: 16:10 (#3),
     },
 ]

@@ -9,7 +9,7 @@ rust_dir = os.path.dirname(os.path.abspath(__file__))
 rust_dir = os.path.dirname(rust_dir)
 rust_dir = os.path.dirname(rust_dir)
 sys.path.append(os.path.join(rust_dir, "src", "bootstrap"))
-import bootstrap
+import bootstrap # noqa: E402
 
 
 class Option(object):
@@ -45,7 +45,6 @@ o("llvm-static-stdcpp", "llvm.static-libstdcpp", "statically link to libstdc++ f
 o("llvm-link-shared", "llvm.link-shared", "prefer shared linking to LLVM (llvm-config --link-shared)")
 o("rpath", "rust.rpath", "build rpaths into rustc itself")
 o("codegen-tests", "rust.codegen-tests", "run the tests/codegen tests")
-o("option-checking", None, "complain about unrecognized options in this configure script")
 o("ninja", "llvm.ninja", "build LLVM using the Ninja generator (for MSVC, requires building in the correct environment)")
 o("locked-deps", "build.locked-deps", "force Cargo.lock to be up to date")
 o("vendor", "build.vendor", "enable usage of vendored Rust crates")
@@ -170,6 +169,9 @@ v("build", "build.build", "GNUs ./configure syntax LLVM build triple")
 v("host", None, "List of GNUs ./configure syntax LLVM host triples")
 v("target", None, "List of GNUs ./configure syntax LLVM target triples")
 
+# Options specific to this configure script
+o("option-checking", None, "complain about unrecognized options in this configure script")
+o("verbose-configure", None, "don't truncate options when printing them in this configure script")
 v("set", None, "set arbitrary key/value pairs in TOML configuration")
 
 
@@ -178,7 +180,7 @@ def p(msg):
 
 
 def err(msg):
-    print("configure: error: " + msg)
+    print("\nconfigure: ERROR: " + msg + "\n")
     sys.exit(1)
 
 def is_value_list(key):
@@ -210,6 +212,8 @@ if '--help' in sys.argv or '-h' in sys.argv:
     print('Also note that all options which take `--enable` can similarly')
     print('be passed with `--disable-foo` to forcibly disable the option')
     sys.exit(0)
+
+VERBOSE = False
 
 # Parse all command line arguments into one of these three lists, handling
 # boolean and value-based options separately
@@ -271,9 +275,12 @@ def parse_args(args):
         if len(need_value_args) > 0:
             err("Option '{0}' needs a value ({0}=val)".format(need_value_args[0]))
 
+    global VERBOSE
+    VERBOSE = 'verbose-configure' in known_args
+
     config = {}
 
-    set('build.configure-args', sys.argv[1:], config)
+    set('build.configure-args', args, config)
     apply_args(known_args, option_checking, config)
     return parse_example_config(known_args, config)
 
@@ -290,7 +297,7 @@ def set(key, value, config):
         value = [v for v in value if v]
 
     s = "{:20} := {}".format(key, value)
-    if len(s) < 70:
+    if len(s) < 70 or VERBOSE:
         p(s)
     else:
         p(s[:70] + " ...")
@@ -312,7 +319,7 @@ def apply_args(known_args, option_checking, config):
     for key in known_args:
         # The `set` option is special and can be passed a bunch of times
         if key == 'set':
-            for option, value in known_args[key]:
+            for _option, value in known_args[key]:
                 keyval = value.split('=', 1)
                 if len(keyval) == 1 or keyval[1] == "true":
                     value = True
@@ -371,7 +378,7 @@ def apply_args(known_args, option_checking, config):
             set('rust.lld', True, config)
             set('rust.llvm-tools', True, config)
             set('build.extended', True, config)
-        elif option.name == 'option-checking':
+        elif option.name in ['option-checking', 'verbose-configure']:
             # this was handled above
             pass
         elif option.name == 'dist-compression-formats':
@@ -393,8 +400,10 @@ def parse_example_config(known_args, config):
     targets = {}
     top_level_keys = []
 
-    for line in open(rust_dir + '/config.example.toml').read().split("\n"):
-        if cur_section == None:
+    with open(rust_dir + '/config.example.toml') as example_config:
+        example_lines = example_config.read().split("\n")
+    for line in example_lines:
+        if cur_section is None:
             if line.count('=') == 1:
                 top_level_key = line.split('=')[0]
                 top_level_key = top_level_key.strip(' #')
@@ -428,7 +437,7 @@ def parse_example_config(known_args, config):
         targets[target][0] = targets[target][0].replace("x86_64-unknown-linux-gnu", "'{}'".format(target) if "." in target else target)
 
     if 'profile' not in config:
-        set('profile', 'user', config)
+        set('profile', 'dist', config)
     configure_file(sections, top_level_keys, targets, config)
     return section_order, sections, targets
 
@@ -516,8 +525,8 @@ def write_uncommented(target, f):
         block.append(line)
         if len(line) == 0:
             if not is_comment:
-                for l in block:
-                    f.write(l + "\n")
+                for ln in block:
+                    f.write(ln + "\n")
             block = []
             is_comment = True
             continue
@@ -535,12 +544,21 @@ def write_config_toml(writer, section_order, targets, sections):
 
 def quit_if_file_exists(file):
     if os.path.isfile(file):
-        err("Existing '" + file + "' detected.")
+        msg = "Existing '{}' detected. Exiting".format(file)
+
+        # If the output object directory isn't empty, we can get these errors
+        host_objdir = os.environ.get("OBJDIR_ON_HOST")
+        if host_objdir is not None:
+            msg += "\nIs objdir '{}' clean?".format(host_objdir)
+
+        err(msg)
 
 if __name__ == "__main__":
     # If 'config.toml' already exists, exit the script at this point
     quit_if_file_exists('config.toml')
 
+    if "GITHUB_ACTIONS" in os.environ:
+        print("::group::Configure the build")
     p("processing command line")
     # Parse all known arguments into a configuration structure that reflects the
     # TOML we're going to write out
@@ -563,3 +581,5 @@ if __name__ == "__main__":
 
     p("")
     p("run `python {}/x.py --help`".format(rust_dir))
+    if "GITHUB_ACTIONS" in os.environ:
+        print("::endgroup::")

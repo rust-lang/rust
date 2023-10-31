@@ -1,20 +1,20 @@
 // MIR for `<impl at $DIR/issue_41697.rs:18:1: 18:23>::{constant#0}` after SimplifyCfg-promote-consts
 
 <impl at $DIR/issue_41697.rs:18:1: 18:23>::{constant#0}: usize = {
-    let mut _0: usize;                   // return place in scope 0 at $DIR/issue_41697.rs:+0:19: +0:22
-    let mut _1: (usize, bool);           // in scope 0 at $DIR/issue_41697.rs:+0:19: +0:22
+    let mut _0: usize;
+    let mut _1: (usize, bool);
 
     bb0: {
-        _1 = CheckedAdd(const 1_usize, const 1_usize); // scope 0 at $DIR/issue_41697.rs:+0:19: +0:22
-        assert(!move (_1.1: bool), "attempt to compute `{} + {}`, which would overflow", const 1_usize, const 1_usize) -> [success: bb1, unwind: bb2]; // scope 0 at $DIR/issue_41697.rs:+0:19: +0:22
+        _1 = CheckedAdd(const 1_usize, const 1_usize);
+        assert(!move (_1.1: bool), "attempt to compute `{} + {}`, which would overflow", const 1_usize, const 1_usize) -> [success: bb1, unwind: bb2];
     }
 
     bb1: {
-        _0 = move (_1.0: usize);         // scope 0 at $DIR/issue_41697.rs:+0:19: +0:22
-        return;                          // scope 0 at $DIR/issue_41697.rs:+0:19: +0:22
+        _0 = move (_1.0: usize);
+        return;
     }
 
     bb2 (cleanup): {
-        resume;                          // scope 0 at $DIR/issue_41697.rs:+0:19: +0:22
+        resume;
     }
 }

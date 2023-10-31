@@ -525,13 +525,13 @@ error[E0121]: the placeholder `_` is not allowed within types on item signatures
 LL |     type B = _;
    |              ^ not allowed in type signatures
 
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated constants
   --> $DIR/typeck_type_placeholder_item.rs:192:14
    |
 LL |     const C: _;
    |              ^ not allowed in type signatures
 
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated constants
   --> $DIR/typeck_type_placeholder_item.rs:194:14
    |
 LL |     const D: _ = 42;
@@ -642,13 +642,13 @@ error[E0121]: the placeholder `_` is not allowed within types on item signatures
 LL |     type B = _;
    |              ^ not allowed in type signatures
 
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated constants
   --> $DIR/typeck_type_placeholder_item.rs:205:14
    |
 LL |     const C: _;
    |              ^ not allowed in type signatures
 
-error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated constants
   --> $DIR/typeck_type_placeholder_item.rs:208:14
    |
 LL |     const D: _ = 42;

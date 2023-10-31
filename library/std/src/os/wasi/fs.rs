@@ -472,16 +472,16 @@ pub trait FileTypeExt {
 
 impl FileTypeExt for fs::FileType {
     fn is_block_device(&self) -> bool {
-        self.as_inner().bits() == wasi::FILETYPE_BLOCK_DEVICE
+        self.as_inner().bits().raw() == wasi::FILETYPE_BLOCK_DEVICE.raw()
     }
     fn is_char_device(&self) -> bool {
-        self.as_inner().bits() == wasi::FILETYPE_CHARACTER_DEVICE
+        self.as_inner().bits().raw() == wasi::FILETYPE_CHARACTER_DEVICE.raw()
     }
     fn is_socket_dgram(&self) -> bool {
-        self.as_inner().bits() == wasi::FILETYPE_SOCKET_DGRAM
+        self.as_inner().bits().raw() == wasi::FILETYPE_SOCKET_DGRAM.raw()
     }
     fn is_socket_stream(&self) -> bool {
-        self.as_inner().bits() == wasi::FILETYPE_SOCKET_STREAM
+        self.as_inner().bits().raw() == wasi::FILETYPE_SOCKET_STREAM.raw()
     }
 }
 

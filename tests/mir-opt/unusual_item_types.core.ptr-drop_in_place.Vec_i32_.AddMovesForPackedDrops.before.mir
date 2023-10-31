@@ -1,39 +1,36 @@
 // MIR for `std::ptr::drop_in_place` before AddMovesForPackedDrops
 
 fn std::ptr::drop_in_place(_1: *mut Vec<i32>) -> () {
-    let mut _0: ();                      // return place in scope 0 at $SRC_DIR/core/src/ptr/mod.rs:+0:1: +0:56
-    let mut _2: &mut std::vec::Vec<i32>; // in scope 0 at $SRC_DIR/core/src/ptr/mod.rs:+0:1: +0:56
-    let mut _3: ();                      // in scope 0 at $SRC_DIR/core/src/ptr/mod.rs:+0:1: +0:56
+    let mut _0: ();
+    let mut _2: &mut std::vec::Vec<i32>;
+    let mut _3: ();
 
     bb0: {
-        goto -> bb6;                     // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:+0:1: +0:56
+        goto -> bb6;
     }
 
     bb1: {
-        return;                          // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:+0:1: +0:56
+        return;
     }
 
     bb2 (cleanup): {
-        resume;                          // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:+0:1: +0:56
+        resume;
     }
 
     bb3: {
-        goto -> bb1;                     // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:+0:1: +0:56
+        goto -> bb1;
     }
 
     bb4 (cleanup): {
-        drop(((*_1).0: alloc::raw_vec::RawVec<i32>)) -> [return: bb2, unwind terminate]; // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:+0:1: +0:56
+        drop(((*_1).0: alloc::raw_vec::RawVec<i32>)) -> [return: bb2, unwind terminate];
     }
 
     bb5: {
-        drop(((*_1).0: alloc::raw_vec::RawVec<i32>)) -> [return: bb3, unwind: bb2]; // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:+0:1: +0:56
+        drop(((*_1).0: alloc::raw_vec::RawVec<i32>)) -> [return: bb3, unwind: bb2];
     }
 
     bb6: {
-        _2 = &mut (*_1);                 // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:+0:1: +0:56
-        _3 = <Vec<i32> as Drop>::drop(move _2) -> [return: bb5, unwind: bb4]; // scope 0 at $SRC_DIR/core/src/ptr/mod.rs:+0:1: +0:56
-                                         // mir::Constant
-                                         // + span: $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-                                         // + literal: Const { ty: for<'a> fn(&'a mut Vec<i32>) {<Vec<i32> as Drop>::drop}, val: Value(<ZST>) }
+        _2 = &mut (*_1);
+        _3 = <Vec<i32> as Drop>::drop(move _2) -> [return: bb5, unwind: bb4];
     }
 }

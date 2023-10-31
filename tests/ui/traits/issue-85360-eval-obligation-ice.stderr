@@ -1,4 +1,4 @@
-error: evaluate(Binder(TraitPredicate(<MaskedStorage<GenericComp<Pos>> as std::marker::Sized>, polarity:Positive), [])) = Ok(EvaluatedToOk)
+error: evaluate(Binder { value: TraitPredicate(<MaskedStorage<GenericComp<Pos>> as std::marker::Sized>, polarity:Positive), bound_vars: [] }) = Ok(EvaluatedToOk)
   --> $DIR/issue-85360-eval-obligation-ice.rs:9:5
    |
 LL |     test::<MaskedStorage<GenericComp<Pos>>>(make());
@@ -7,7 +7,7 @@ LL |     test::<MaskedStorage<GenericComp<Pos>>>(make());
 LL | fn test<T: Sized>(_: T) {}
    |         - predicate
 
-error: evaluate(Binder(TraitPredicate(<MaskedStorage<GenericComp<Pos>> as std::marker::Sized>, polarity:Positive), [])) = Ok(EvaluatedToOk)
+error: evaluate(Binder { value: TraitPredicate(<MaskedStorage<GenericComp<Pos>> as std::marker::Sized>, polarity:Positive), bound_vars: [] }) = Ok(EvaluatedToOk)
   --> $DIR/issue-85360-eval-obligation-ice.rs:9:5
    |
 LL |     test::<MaskedStorage<GenericComp<Pos>>>(make());
@@ -16,7 +16,7 @@ LL |     test::<MaskedStorage<GenericComp<Pos>>>(make());
 LL | fn test<T: Sized>(_: T) {}
    |            ----- predicate
 
-error: evaluate(Binder(TraitPredicate(<MaskedStorage<GenericComp2<Pos>> as std::marker::Sized>, polarity:Positive), [])) = Ok(EvaluatedToOkModuloRegions)
+error: evaluate(Binder { value: TraitPredicate(<MaskedStorage<GenericComp2<Pos>> as std::marker::Sized>, polarity:Positive), bound_vars: [] }) = Ok(EvaluatedToOkModuloRegions)
   --> $DIR/issue-85360-eval-obligation-ice.rs:13:5
    |
 LL |     test::<MaskedStorage<GenericComp2<Pos>>>(make());
@@ -25,7 +25,7 @@ LL |     test::<MaskedStorage<GenericComp2<Pos>>>(make());
 LL | fn test<T: Sized>(_: T) {}
    |         - predicate
 
-error: evaluate(Binder(TraitPredicate(<MaskedStorage<GenericComp2<Pos>> as std::marker::Sized>, polarity:Positive), [])) = Ok(EvaluatedToOkModuloRegions)
+error: evaluate(Binder { value: TraitPredicate(<MaskedStorage<GenericComp2<Pos>> as std::marker::Sized>, polarity:Positive), bound_vars: [] }) = Ok(EvaluatedToOkModuloRegions)
   --> $DIR/issue-85360-eval-obligation-ice.rs:13:5
    |
 LL |     test::<MaskedStorage<GenericComp2<Pos>>>(make());

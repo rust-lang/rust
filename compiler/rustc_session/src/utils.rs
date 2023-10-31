@@ -7,6 +7,7 @@ impl Session {
     pub fn timer(&self, what: &'static str) -> VerboseTimingGuard<'_> {
         self.prof.verbose_generic_activity(what)
     }
+    /// Used by `-Z self-profile`.
     pub fn time<R>(&self, what: &'static str, f: impl FnOnce() -> R) -> R {
         self.prof.verbose_generic_activity(what).run(f)
     }

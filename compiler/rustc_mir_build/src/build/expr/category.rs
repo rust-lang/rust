@@ -63,7 +63,7 @@ impl Category {
             | ExprKind::Binary { .. }
             | ExprKind::Box { .. }
             | ExprKind::Cast { .. }
-            | ExprKind::Pointer { .. }
+            | ExprKind::PointerCoercion { .. }
             | ExprKind::Repeat { .. }
             | ExprKind::Assign { .. }
             | ExprKind::AssignOp { .. }
@@ -82,7 +82,8 @@ impl Category {
             | ExprKind::Block { .. }
             | ExprKind::Break { .. }
             | ExprKind::Continue { .. }
-            | ExprKind::Return { .. } =>
+            | ExprKind::Return { .. }
+            | ExprKind::Become { .. } =>
             // FIXME(#27840) these probably want their own
             // category, like "nonterminating"
             {

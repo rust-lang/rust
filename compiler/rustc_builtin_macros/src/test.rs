@@ -3,12 +3,12 @@ use crate::errors;
 /// Ideally, this code would be in libtest but for efficiency and error messages it lives here.
 use crate::util::{check_builtin_macro_attribute, warn_on_duplicate_attribute};
 use rustc_ast::ptr::P;
-use rustc_ast::{self as ast, attr};
+use rustc_ast::{self as ast, attr, GenericParamKind};
 use rustc_ast_pretty::pprust;
 use rustc_errors::Applicability;
 use rustc_expand::base::*;
 use rustc_span::symbol::{sym, Ident, Symbol};
-use rustc_span::{FileNameDisplayPreference, Span};
+use rustc_span::{ErrorGuaranteed, FileNameDisplayPreference, Span};
 use std::iter;
 use thin_vec::{thin_vec, ThinVec};
 
@@ -122,23 +122,26 @@ pub fn expand_test_or_bench(
     let ast::ItemKind::Fn(fn_) = &item.kind else {
         not_testable_error(cx, attr_sp, Some(&item));
         return if is_stmt {
-            vec![Annotatable::Stmt(P(ast::Stmt {
-                id: ast::DUMMY_NODE_ID,
-                span: item.span,
-                kind: ast::StmtKind::Item(item),
-            }))]
+            vec![Annotatable::Stmt(P(cx.stmt_item(item.span, item)))]
         } else {
             vec![Annotatable::Item(item)]
         };
     };
 
-    // has_*_signature will report any errors in the type so compilation
+    // check_*_signature will report any errors in the type so compilation
     // will fail. We shouldn't try to expand in this case because the errors
     // would be spurious.
-    if (!is_bench && !has_test_signature(cx, &item))
-        || (is_bench && !has_bench_signature(cx, &item))
-    {
-        return vec![Annotatable::Item(item)];
+    let check_result = if is_bench {
+        check_bench_signature(cx, &item, &fn_)
+    } else {
+        check_test_signature(cx, &item, &fn_)
+    };
+    if check_result.is_err() {
+        return if is_stmt {
+            vec![Annotatable::Stmt(P(cx.stmt_item(item.span, item)))]
+        } else {
+            vec![Annotatable::Item(item)]
+        };
     }
 
     let sp = cx.with_def_site_ctxt(item.span);
@@ -252,6 +255,7 @@ pub fn expand_test_or_bench(
             ast::ItemKind::Const(
                 ast::ConstItem {
                     defaultness: ast::Defaultness::Final,
+                    generics: ast::Generics::default(),
                     ty: cx.ty(sp, ast::TyKind::Path(None, test_path("TestDescAndFn"))),
                     // test::TestDescAndFn {
                     expr: Some(
@@ -523,75 +527,57 @@ fn test_type(cx: &ExtCtxt<'_>) -> TestType {
     }
 }
 
-fn has_test_signature(cx: &ExtCtxt<'_>, i: &ast::Item) -> bool {
+fn check_test_signature(
+    cx: &ExtCtxt<'_>,
+    i: &ast::Item,
+    f: &ast::Fn,
+) -> Result<(), ErrorGuaranteed> {
     let has_should_panic_attr = attr::contains_name(&i.attrs, sym::should_panic);
     let sd = &cx.sess.parse_sess.span_diagnostic;
-    match &i.kind {
-        ast::ItemKind::Fn(box ast::Fn { sig, generics, .. }) => {
-            if let ast::Unsafe::Yes(span) = sig.header.unsafety {
-                sd.emit_err(errors::TestBadFn { span: i.span, cause: span, kind: "unsafe" });
-                return false;
-            }
-            if let ast::Async::Yes { span, .. } = sig.header.asyncness {
-                sd.emit_err(errors::TestBadFn { span: i.span, cause: span, kind: "async" });
-                return false;
-            }
 
-            // If the termination trait is active, the compiler will check that the output
-            // type implements the `Termination` trait as `libtest` enforces that.
-            let has_output = match &sig.decl.output {
-                ast::FnRetTy::Default(..) => false,
-                ast::FnRetTy::Ty(t) if t.kind.is_unit() => false,
-                _ => true,
-            };
-
-            if !sig.decl.inputs.is_empty() {
-                sd.span_err(i.span, "functions used as tests can not have any arguments");
-                return false;
-            }
-
-            match (has_output, has_should_panic_attr) {
-                (true, true) => {
-                    sd.span_err(i.span, "functions using `#[should_panic]` must return `()`");
-                    false
-                }
-                (true, false) => {
-                    if !generics.params.is_empty() {
-                        sd.span_err(
-                            i.span,
-                            "functions used as tests must have signature fn() -> ()",
-                        );
-                        false
-                    } else {
-                        true
-                    }
-                }
-                (false, _) => true,
-            }
-        }
-        _ => {
-            // should be unreachable because `is_test_fn_item` should catch all non-fn items
-            debug_assert!(false);
-            false
-        }
+    if let ast::Unsafe::Yes(span) = f.sig.header.unsafety {
+        return Err(sd.emit_err(errors::TestBadFn { span: i.span, cause: span, kind: "unsafe" }));
     }
-}
 
-fn has_bench_signature(cx: &ExtCtxt<'_>, i: &ast::Item) -> bool {
-    let has_sig = match &i.kind {
-        // N.B., inadequate check, but we're running
-        // well before resolve, can't get too deep.
-        ast::ItemKind::Fn(box ast::Fn { sig, .. }) => sig.decl.inputs.len() == 1,
-        _ => false,
+    if let ast::Async::Yes { span, .. } = f.sig.header.asyncness {
+        return Err(sd.emit_err(errors::TestBadFn { span: i.span, cause: span, kind: "async" }));
+    }
+
+    // If the termination trait is active, the compiler will check that the output
+    // type implements the `Termination` trait as `libtest` enforces that.
+    let has_output = match &f.sig.decl.output {
+        ast::FnRetTy::Default(..) => false,
+        ast::FnRetTy::Ty(t) if t.kind.is_unit() => false,
+        _ => true,
     };
 
-    if !has_sig {
-        cx.sess.parse_sess.span_diagnostic.span_err(
-            i.span,
-            "functions used as benches must have \
-            signature `fn(&mut Bencher) -> impl Termination`",
-        );
+    if !f.sig.decl.inputs.is_empty() {
+        return Err(sd.span_err(i.span, "functions used as tests can not have any arguments"));
     }
 
-    has_sig
+    if has_should_panic_attr && has_output {
+        return Err(sd.span_err(i.span, "functions using `#[should_panic]` must return `()`"));
+    }
+
+    if f.generics.params.iter().any(|param| !matches!(param.kind, GenericParamKind::Lifetime)) {
+        return Err(sd.span_err(
+            i.span,
+            "functions used as tests can not have any non-lifetime generic parameters",
+        ));
+    }
+
+    Ok(())
+}
+
+fn check_bench_signature(
+    cx: &ExtCtxt<'_>,
+    i: &ast::Item,
+    f: &ast::Fn,
+) -> Result<(), ErrorGuaranteed> {
+    // N.B., inadequate check, but we're running
+    // well before resolve, can't get too deep.
+    if f.sig.decl.inputs.len() != 1 {
+        return Err(cx.sess.parse_sess.span_diagnostic.emit_err(errors::BenchSig { span: i.span }));
+    }
+    Ok(())
 }

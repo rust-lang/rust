@@ -47,8 +47,7 @@ use rustc_target::abi::{FieldIdx, VariantIdx};
 
 use crate::lattice::{HasBottom, HasTop};
 use crate::{
-    fmt::DebugWithContext, Analysis, AnalysisDomain, CallReturnPlaces, JoinSemiLattice,
-    SwitchIntEdgeEffects,
+    fmt::DebugWithContext, Analysis, AnalysisDomain, JoinSemiLattice, SwitchIntEdgeEffects,
 };
 
 pub trait ValueAnalysis<'tcx> {
@@ -242,11 +241,19 @@ pub trait ValueAnalysis<'tcx> {
 
     /// The effect of a successful function call return should not be
     /// applied here, see [`Analysis::apply_terminator_effect`].
-    fn handle_terminator(&self, terminator: &Terminator<'tcx>, state: &mut State<Self::Value>) {
+    fn handle_terminator<'mir>(
+        &self,
+        terminator: &'mir Terminator<'tcx>,
+        state: &mut State<Self::Value>,
+    ) -> TerminatorEdges<'mir, 'tcx> {
         self.super_terminator(terminator, state)
     }
 
-    fn super_terminator(&self, terminator: &Terminator<'tcx>, state: &mut State<Self::Value>) {
+    fn super_terminator<'mir>(
+        &self,
+        terminator: &'mir Terminator<'tcx>,
+        state: &mut State<Self::Value>,
+    ) -> TerminatorEdges<'mir, 'tcx> {
         match &terminator.kind {
             TerminatorKind::Call { .. } | TerminatorKind::InlineAsm { .. } => {
                 // Effect is applied by `handle_call_return`.
@@ -258,8 +265,10 @@ pub trait ValueAnalysis<'tcx> {
                 // They would have an effect, but are not allowed in this phase.
                 bug!("encountered disallowed terminator");
             }
+            TerminatorKind::SwitchInt { discr, targets } => {
+                return self.handle_switch_int(discr, targets, state);
+            }
             TerminatorKind::Goto { .. }
-            | TerminatorKind::SwitchInt { .. }
             | TerminatorKind::Resume
             | TerminatorKind::Terminate
             | TerminatorKind::Return
@@ -271,6 +280,7 @@ pub trait ValueAnalysis<'tcx> {
                 // These terminators have no effect on the analysis.
             }
         }
+        terminator.edges()
     }
 
     fn handle_call_return(
@@ -291,19 +301,22 @@ pub trait ValueAnalysis<'tcx> {
         })
     }
 
-    fn handle_switch_int(
+    fn handle_switch_int<'mir>(
         &self,
-        discr: &Operand<'tcx>,
-        apply_edge_effects: &mut impl SwitchIntEdgeEffects<State<Self::Value>>,
-    ) {
-        self.super_switch_int(discr, apply_edge_effects)
+        discr: &'mir Operand<'tcx>,
+        targets: &'mir SwitchTargets,
+        state: &mut State<Self::Value>,
+    ) -> TerminatorEdges<'mir, 'tcx> {
+        self.super_switch_int(discr, targets, state)
     }
 
-    fn super_switch_int(
+    fn super_switch_int<'mir>(
         &self,
-        _discr: &Operand<'tcx>,
-        _apply_edge_effects: &mut impl SwitchIntEdgeEffects<State<Self::Value>>,
-    ) {
+        discr: &'mir Operand<'tcx>,
+        targets: &'mir SwitchTargets,
+        _state: &mut State<Self::Value>,
+    ) -> TerminatorEdges<'mir, 'tcx> {
+        TerminatorEdges::SwitchInt { discr, targets }
     }
 
     fn wrap(self) -> ValueAnalysisWrapper<Self>
@@ -343,7 +356,7 @@ where
     T: ValueAnalysis<'tcx>,
 {
     fn apply_statement_effect(
-        &self,
+        &mut self,
         state: &mut Self::Domain,
         statement: &Statement<'tcx>,
         _location: Location,
@@ -353,22 +366,24 @@ where
         }
     }
 
-    fn apply_terminator_effect(
-        &self,
+    fn apply_terminator_effect<'mir>(
+        &mut self,
         state: &mut Self::Domain,
-        terminator: &Terminator<'tcx>,
+        terminator: &'mir Terminator<'tcx>,
         _location: Location,
-    ) {
+    ) -> TerminatorEdges<'mir, 'tcx> {
         if state.is_reachable() {
-            self.0.handle_terminator(terminator, state);
+            self.0.handle_terminator(terminator, state)
+        } else {
+            TerminatorEdges::None
         }
     }
 
     fn apply_call_return_effect(
-        &self,
+        &mut self,
         state: &mut Self::Domain,
         _block: BasicBlock,
-        return_places: crate::CallReturnPlaces<'_, 'tcx>,
+        return_places: CallReturnPlaces<'_, 'tcx>,
     ) {
         if state.is_reachable() {
             self.0.handle_call_return(return_places, state)
@@ -376,13 +391,11 @@ where
     }
 
     fn apply_switch_int_edge_effects(
-        &self,
+        &mut self,
         _block: BasicBlock,
-        discr: &Operand<'tcx>,
-        apply_edge_effects: &mut impl SwitchIntEdgeEffects<Self::Domain>,
+        _discr: &Operand<'tcx>,
+        _apply_edge_effects: &mut impl SwitchIntEdgeEffects<Self::Domain>,
     ) {
-        // FIXME: Dataflow framework provides no access to current state here.
-        self.0.handle_switch_int(discr, apply_edge_effects)
     }
 }
 
@@ -839,7 +852,7 @@ impl Map {
         tail_elem: Option<TrackElem>,
         f: &mut impl FnMut(ValueIndex),
     ) {
-        if place.has_deref() {
+        if place.is_indirect_first_projection() {
             // We do not track indirect places.
             return;
         }
@@ -999,14 +1012,14 @@ pub fn iter_fields<'tcx>(
                 f(None, field.into(), ty);
             }
         }
-        ty::Adt(def, substs) => {
+        ty::Adt(def, args) => {
             if def.is_union() {
                 return;
             }
             for (v_index, v_def) in def.variants().iter_enumerated() {
                 let variant = if def.is_struct() { None } else { Some(v_index) };
                 for (f_index, f_def) in v_def.fields.iter().enumerate() {
-                    let field_ty = f_def.ty(tcx, substs);
+                    let field_ty = f_def.ty(tcx, args);
                     let field_ty = tcx
                         .try_normalize_erasing_regions(param_env, field_ty)
                         .unwrap_or_else(|_| tcx.erase_regions(field_ty));
@@ -1014,8 +1027,8 @@ pub fn iter_fields<'tcx>(
                 }
             }
         }
-        ty::Closure(_, substs) => {
-            iter_fields(substs.as_closure().tupled_upvars_ty(), tcx, param_env, f);
+        ty::Closure(_, args) => {
+            iter_fields(args.as_closure().tupled_upvars_ty(), tcx, param_env, f);
         }
         _ => (),
     }
@@ -1099,10 +1112,10 @@ fn debug_with_context_rec<V: Debug + Eq>(
         let info_elem = map.places[child].proj_elem.unwrap();
         let child_place_str = match info_elem {
             TrackElem::Discriminant => {
-                format!("discriminant({})", place_str)
+                format!("discriminant({place_str})")
             }
             TrackElem::Variant(idx) => {
-                format!("({} as {:?})", place_str, idx)
+                format!("({place_str} as {idx:?})")
             }
             TrackElem::Field(field) => {
                 if place_str.starts_with('*') {

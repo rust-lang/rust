@@ -299,7 +299,7 @@ impl Step for Llvm {
 
         let llvm_exp_targets = match builder.config.llvm_experimental_targets {
             Some(ref s) => s,
-            None => "AVR;M68k",
+            None => "AVR;M68k;CSKY",
         };
 
         let assertions = if builder.config.llvm_assertions { "ON" } else { "OFF" };
@@ -342,17 +342,11 @@ impl Step for Llvm {
         if let Some(path) = builder.config.llvm_profile_use.as_ref() {
             cfg.define("LLVM_PROFDATA_FILE", &path);
         }
-        if builder.config.llvm_bolt_profile_generate
-            || builder.config.llvm_bolt_profile_use.is_some()
-        {
-            // Relocations are required for BOLT to work.
-            ldflags.push_all("-Wl,-q");
-        }
 
         // Disable zstd to avoid a dependency on libzstd.so.
         cfg.define("LLVM_ENABLE_ZSTD", "OFF");
 
-        if target != "aarch64-apple-darwin" && !target.contains("windows") {
+        if !target.contains("windows") {
             cfg.define("LLVM_ENABLE_ZLIB", "ON");
         } else {
             cfg.define("LLVM_ENABLE_ZLIB", "OFF");
@@ -380,9 +374,12 @@ impl Step for Llvm {
             cfg.define("LLVM_LINK_LLVM_DYLIB", "ON");
         }
 
-        if target.starts_with("riscv") && !target.contains("freebsd") && !target.contains("openbsd")
+        if (target.starts_with("riscv") || target.starts_with("csky"))
+            && !target.contains("freebsd")
+            && !target.contains("openbsd")
+            && !target.contains("netbsd")
         {
-            // RISC-V GCC erroneously requires linking against
+            // RISC-V and CSKY GCC erroneously requires linking against
             // `libatomic` when using 1-byte and 2-byte C++
             // atomics but the LLVM build system check cannot
             // detect this. Therefore it is set manually here.
@@ -488,23 +485,48 @@ impl Step for Llvm {
 
         cfg.build();
 
+        // Helper to find the name of LLVM's shared library on darwin and linux.
+        let find_llvm_lib_name = |extension| {
+            let mut cmd = Command::new(&res.llvm_config);
+            let version = output(cmd.arg("--version"));
+            let major = version.split('.').next().unwrap();
+            let lib_name = match &llvm_version_suffix {
+                Some(version_suffix) => format!("libLLVM-{major}{version_suffix}.{extension}"),
+                None => format!("libLLVM-{major}.{extension}"),
+            };
+            lib_name
+        };
+
         // When building LLVM with LLVM_LINK_LLVM_DYLIB for macOS, an unversioned
         // libLLVM.dylib will be built. However, llvm-config will still look
         // for a versioned path like libLLVM-14.dylib. Manually create a symbolic
         // link to make llvm-config happy.
         if builder.llvm_link_shared() && target.contains("apple-darwin") {
-            let mut cmd = Command::new(&res.llvm_config);
-            let version = output(cmd.arg("--version"));
-            let major = version.split('.').next().unwrap();
-            let lib_name = match llvm_version_suffix {
-                Some(s) => format!("libLLVM-{}{}.dylib", major, s),
-                None => format!("libLLVM-{}.dylib", major),
-            };
-
+            let lib_name = find_llvm_lib_name("dylib");
             let lib_llvm = out_dir.join("build").join("lib").join(lib_name);
             if !lib_llvm.exists() {
                 t!(builder.symlink_file("libLLVM.dylib", &lib_llvm));
             }
+        }
+
+        // When building LLVM as a shared library on linux, it can contain unexpected debuginfo:
+        // some can come from the C++ standard library. Unless we're explicitly requesting LLVM to
+        // be built with debuginfo, strip it away after the fact, to make dist artifacts smaller.
+        if builder.llvm_link_shared()
+            && builder.config.llvm_optimize
+            && !builder.config.llvm_release_debuginfo
+        {
+            // Find the name of the LLVM shared library that we just built.
+            let lib_name = find_llvm_lib_name("so");
+
+            // If the shared library exists in LLVM's `/build/lib/` or `/lib/` folders, strip its
+            // debuginfo.
+            crate::compile::strip_debug(builder, target, &out_dir.join("lib").join(&lib_name));
+            crate::compile::strip_debug(
+                builder,
+                target,
+                &out_dir.join("build").join("lib").join(&lib_name),
+            );
         }
 
         t!(stamp.write());
@@ -522,11 +544,11 @@ fn check_llvm_version(builder: &Builder<'_>, llvm_config: &Path) {
     let version = output(cmd.arg("--version"));
     let mut parts = version.split('.').take(2).filter_map(|s| s.parse::<u32>().ok());
     if let (Some(major), Some(_minor)) = (parts.next(), parts.next()) {
-        if major >= 14 {
+        if major >= 15 {
             return;
         }
     }
-    panic!("\n\nbad LLVM version: {}, need >=14.0\n\n", version)
+    panic!("\n\nbad LLVM version: {version}, need >=15.0\n\n")
 }
 
 fn configure_cmake(
@@ -556,6 +578,8 @@ fn configure_cmake(
 
         if target.contains("netbsd") {
             cfg.define("CMAKE_SYSTEM_NAME", "NetBSD");
+        } else if target.contains("dragonfly") {
+            cfg.define("CMAKE_SYSTEM_NAME", "DragonFly");
         } else if target.contains("freebsd") {
             cfg.define("CMAKE_SYSTEM_NAME", "FreeBSD");
         } else if target.contains("windows") {
@@ -566,7 +590,12 @@ fn configure_cmake(
             cfg.define("CMAKE_SYSTEM_NAME", "SunOS");
         } else if target.contains("linux") {
             cfg.define("CMAKE_SYSTEM_NAME", "Linux");
+        } else {
+            builder.info(
+                "could not determine CMAKE_SYSTEM_NAME from the target `{target}`, build may fail",
+            );
         }
+
         // When cross-compiling we should also set CMAKE_SYSTEM_VERSION, but in
         // that case like CMake we cannot easily determine system version either.
         //
@@ -605,7 +634,7 @@ fn configure_cmake(
     }
 
     let (cc, cxx) = match builder.config.llvm_clang_cl {
-        Some(ref cl) => (cl.as_ref(), cl.as_ref()),
+        Some(ref cl) => (cl.into(), cl.into()),
         None => (builder.cc(target), builder.cxx(target).unwrap()),
     };
 
@@ -656,9 +685,9 @@ fn configure_cmake(
                     .define("CMAKE_CXX_COMPILER_LAUNCHER", ccache);
             }
         }
-        cfg.define("CMAKE_C_COMPILER", sanitize_cc(cc))
-            .define("CMAKE_CXX_COMPILER", sanitize_cc(cxx))
-            .define("CMAKE_ASM_COMPILER", sanitize_cc(cc));
+        cfg.define("CMAKE_C_COMPILER", sanitize_cc(&cc))
+            .define("CMAKE_CXX_COMPILER", sanitize_cc(&cxx))
+            .define("CMAKE_ASM_COMPILER", sanitize_cc(&cc));
     }
 
     cfg.build_arg("-j").build_arg(builder.jobs().to_string());
@@ -676,10 +705,10 @@ fn configure_cmake(
         }
     }
     if builder.config.llvm_clang_cl.is_some() {
-        cflags.push(&format!(" --target={}", target));
+        cflags.push(&format!(" --target={target}"));
     }
     for flag in extra_compiler_flags {
-        cflags.push(&format!(" {}", flag));
+        cflags.push(&format!(" {flag}"));
     }
     cfg.define("CMAKE_C_FLAGS", cflags);
     let mut cxxflags: OsString = builder.cflags(target, GitRepo::Llvm, CLang::Cxx).join(" ").into();
@@ -688,17 +717,17 @@ fn configure_cmake(
         cxxflags.push(s);
     }
     if builder.config.llvm_clang_cl.is_some() {
-        cxxflags.push(&format!(" --target={}", target));
+        cxxflags.push(&format!(" --target={target}"));
     }
     for flag in extra_compiler_flags {
-        cxxflags.push(&format!(" {}", flag));
+        cxxflags.push(&format!(" {flag}"));
     }
     cfg.define("CMAKE_CXX_FLAGS", cxxflags);
     if let Some(ar) = builder.ar(target) {
         if ar.is_absolute() {
             // LLVM build breaks if `CMAKE_AR` is a relative path, for some reason it
             // tries to resolve this path in the LLVM build directory.
-            cfg.define("CMAKE_AR", sanitize_cc(ar));
+            cfg.define("CMAKE_AR", sanitize_cc(&ar));
         }
     }
 
@@ -706,7 +735,7 @@ fn configure_cmake(
         if ranlib.is_absolute() {
             // LLVM build breaks if `CMAKE_RANLIB` is a relative path, for some reason it
             // tries to resolve this path in the LLVM build directory.
-            cfg.define("CMAKE_RANLIB", sanitize_cc(ranlib));
+            cfg.define("CMAKE_RANLIB", sanitize_cc(&ranlib));
         }
     }
 
@@ -762,7 +791,7 @@ fn configure_llvm(builder: &Builder<'_>, target: TargetSelection, cfg: &mut cmak
 fn get_var(var_base: &str, host: &str, target: &str) -> Option<OsString> {
     let kind = if host == target { "HOST" } else { "TARGET" };
     let target_u = target.replace("-", "_");
-    env::var_os(&format!("{}_{}", var_base, target))
+    env::var_os(&format!("{var_base}_{target}"))
         .or_else(|| env::var_os(&format!("{}_{}", var_base, target_u)))
         .or_else(|| env::var_os(&format!("{}_{}", kind, var_base)))
         .or_else(|| env::var_os(var_base))
@@ -832,6 +861,31 @@ impl Step for Lld {
                 let clang_rt_dir = get_clang_cl_resource_dir(clang_cl_path);
                 ldflags.push_all(&format!("/libpath:{}", clang_rt_dir.display()));
             }
+        }
+
+        // LLD is built as an LLVM tool, but is distributed outside of the `llvm-tools` component,
+        // which impacts where it expects to find LLVM's shared library. This causes #80703.
+        //
+        // LLD is distributed at "$root/lib/rustlib/$host/bin/rust-lld", but the `libLLVM-*.so` it
+        // needs is distributed at "$root/lib". The default rpath of "$ORIGIN/../lib" points at the
+        // lib path for LLVM tools, not the one for rust binaries.
+        //
+        // (The `llvm-tools` component copies the .so there for the other tools, and with that
+        // component installed, one can successfully invoke `rust-lld` directly without rustup's
+        // `LD_LIBRARY_PATH` overrides)
+        //
+        if builder.config.rpath_enabled(target)
+            && util::use_host_linker(target)
+            && builder.config.llvm_link_shared()
+            && target.contains("linux")
+        {
+            // So we inform LLD where it can find LLVM's libraries by adding an rpath entry to the
+            // expected parent `lib` directory.
+            //
+            // Be careful when changing this path, we need to ensure it's quoted or escaped:
+            // `$ORIGIN` would otherwise be expanded when the `LdFlags` are passed verbatim to
+            // cmake.
+            ldflags.push_all("-Wl,-rpath,'$ORIGIN/../../../'");
         }
 
         configure_cmake(builder, target, &mut cfg, true, ldflags, &[]);
@@ -1017,7 +1071,7 @@ fn supported_sanitizers(
         "x86_64-unknown-illumos" => common_libs("illumos", "x86_64", &["asan"]),
         "x86_64-pc-solaris" => common_libs("solaris", "x86_64", &["asan"]),
         "x86_64-unknown-linux-gnu" => {
-            common_libs("linux", "x86_64", &["asan", "lsan", "msan", "tsan"])
+            common_libs("linux", "x86_64", &["asan", "lsan", "msan", "safestack", "tsan"])
         }
         "x86_64-unknown-linux-musl" => {
             common_libs("linux", "x86_64", &["asan", "lsan", "msan", "tsan"])
@@ -1027,6 +1081,9 @@ fn supported_sanitizers(
         }
         "s390x-unknown-linux-musl" => {
             common_libs("linux", "s390x", &["asan", "lsan", "msan", "tsan"])
+        }
+        "x86_64-unknown-linux-ohos" => {
+            common_libs("linux", "x86_64", &["asan", "lsan", "msan", "tsan"])
         }
         _ => Vec::new(),
     }
@@ -1096,8 +1153,8 @@ impl Step for CrtBeginEnd {
             return out_dir;
         }
 
-        let crtbegin_src = builder.src.join("src/llvm-project/compiler-rt/lib/crt/crtbegin.c");
-        let crtend_src = builder.src.join("src/llvm-project/compiler-rt/lib/crt/crtend.c");
+        let crtbegin_src = builder.src.join("src/llvm-project/compiler-rt/lib/builtins/crtbegin.c");
+        let crtend_src = builder.src.join("src/llvm-project/compiler-rt/lib/builtins/crtend.c");
         if up_to_date(&crtbegin_src, &out_dir.join("crtbegin.o"))
             && up_to_date(&crtend_src, &out_dir.join("crtendS.o"))
         {

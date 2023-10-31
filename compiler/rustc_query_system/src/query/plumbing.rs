@@ -69,6 +69,8 @@ where
         make_query: fn(Qcx, K) -> QueryStackFrame<D>,
         jobs: &mut QueryMap<D>,
     ) -> Option<()> {
+        let mut active = Vec::new();
+
         #[cfg(parallel_compiler)]
         {
             // We use try_lock_shards here since we are called from the
@@ -77,8 +79,7 @@ where
             for shard in shards.iter() {
                 for (k, v) in shard.iter() {
                     if let QueryResult::Started(ref job) = *v {
-                        let query = make_query(qcx, *k);
-                        jobs.insert(job.id, QueryJobInfo { query, job: job.clone() });
+                        active.push((*k, job.clone()));
                     }
                 }
             }
@@ -91,10 +92,16 @@ where
             // really hurt much.)
             for (k, v) in self.active.try_lock()?.iter() {
                 if let QueryResult::Started(ref job) = *v {
-                    let query = make_query(qcx, *k);
-                    jobs.insert(job.id, QueryJobInfo { query, job: job.clone() });
+                    active.push((*k, job.clone()));
                 }
             }
+        }
+
+        // Call `make_query` while we're not holding a `self.active` lock as `make_query` may call
+        // queries leading to a deadlock.
+        for (key, job) in active {
+            let query = make_query(qcx, key);
+            jobs.insert(job.id, QueryJobInfo { query, job });
         }
 
         Some(())
@@ -119,18 +126,13 @@ where
 
 #[cold]
 #[inline(never)]
-fn mk_cycle<Q, Qcx>(
-    query: Q,
-    qcx: Qcx,
-    cycle_error: CycleError<Qcx::DepKind>,
-    handler: HandleCycleError,
-) -> Q::Value
+fn mk_cycle<Q, Qcx>(query: Q, qcx: Qcx, cycle_error: CycleError<Qcx::DepKind>) -> Q::Value
 where
     Q: QueryConfig<Qcx>,
     Qcx: QueryContext,
 {
     let error = report_cycle(qcx.dep_context().sess(), &cycle_error);
-    handle_cycle_error(query, qcx, &cycle_error, error, handler)
+    handle_cycle_error(query, qcx, &cycle_error, error)
 }
 
 fn handle_cycle_error<Q, Qcx>(
@@ -138,14 +140,13 @@ fn handle_cycle_error<Q, Qcx>(
     qcx: Qcx,
     cycle_error: &CycleError<Qcx::DepKind>,
     mut error: DiagnosticBuilder<'_, ErrorGuaranteed>,
-    handler: HandleCycleError,
 ) -> Q::Value
 where
     Q: QueryConfig<Qcx>,
     Qcx: QueryContext,
 {
     use HandleCycleError::*;
-    match handler {
+    match query.handle_cycle_error() {
         Error => {
             error.emit();
             query.value_from_cycle_error(*qcx.dep_context(), &cycle_error.cycle)
@@ -270,7 +271,7 @@ where
         &qcx.current_query_job(),
         span,
     );
-    (mk_cycle(query, qcx, error, query.handle_cycle_error()), None)
+    (mk_cycle(query, qcx, error), None)
 }
 
 #[inline(always)]
@@ -307,7 +308,7 @@ where
 
             (v, Some(index))
         }
-        Err(cycle) => (mk_cycle(query, qcx, cycle, query.handle_cycle_error()), None),
+        Err(cycle) => (mk_cycle(query, qcx, cycle), None),
     }
 }
 

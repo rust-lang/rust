@@ -37,6 +37,7 @@
 #![allow(rustc::potential_query_instability)]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
+#![cfg_attr(not(bootstrap), allow(internal_features))]
 #![deny(unsafe_op_in_unsafe_fn)]
 
 #[macro_use]
@@ -68,7 +69,6 @@ pub mod macros;
 pub mod obligation_forest;
 pub mod sip128;
 pub mod small_c_str;
-pub mod small_str;
 pub mod snapshot_map;
 pub mod svh;
 pub use ena::snapshot_vec;

@@ -54,7 +54,7 @@ fn lower_slice_len_call<'tcx>(
             args,
             destination,
             target: Some(bb),
-            from_hir_call: true,
+            call_source: CallSource::Normal,
             ..
         } => {
             // some heuristics for fast rejection

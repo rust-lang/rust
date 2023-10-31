@@ -3,7 +3,8 @@
 extern crate parking_lot;
 
 fn main() {
-    use parking_lot::{lock_api::RawMutex, Mutex, RwLock};
+    use parking_lot::lock_api::RawMutex;
+    use parking_lot::{Mutex, RwLock};
 
     let p_m: Mutex<()> = Mutex::const_new(RawMutex::INIT, ());
     let _ = p_m.lock();

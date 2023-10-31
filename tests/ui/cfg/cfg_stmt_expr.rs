@@ -81,7 +81,7 @@ fn main() {
     // check that lints work
 
     #[allow(non_snake_case)]
-    let FOOBAR = {
+    let FOOBAR: () = {
         fn SYLADEX() {}
     };
 

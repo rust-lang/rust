@@ -1,0 +1,111 @@
+- // MIR for `float_to_exponential_common` before ConstProp
++ // MIR for `float_to_exponential_common` after ConstProp
+  
+  fn float_to_exponential_common(_1: &mut Formatter<'_>, _2: &T, _3: bool) -> Result<(), std::fmt::Error> {
+      debug fmt => _1;
+      debug num => _2;
+      debug upper => _3;
+      let mut _0: std::result::Result<(), std::fmt::Error>;
+      let _4: bool;
+      let mut _5: &std::fmt::Formatter<'_>;
+      let mut _7: std::option::Option<usize>;
+      let mut _8: &std::fmt::Formatter<'_>;
+      let mut _9: isize;
+      let mut _11: &mut std::fmt::Formatter<'_>;
+      let mut _12: &T;
+      let mut _13: core::num::flt2dec::Sign;
+      let mut _14: u32;
+      let mut _15: u32;
+      let mut _16: usize;
+      let mut _17: bool;
+      let mut _18: &mut std::fmt::Formatter<'_>;
+      let mut _19: &T;
+      let mut _20: core::num::flt2dec::Sign;
+      let mut _21: bool;
+      scope 1 {
+          debug force_sign => _4;
+          let _6: core::num::flt2dec::Sign;
+          scope 2 {
+              debug sign => _6;
+              scope 3 {
+                  debug precision => _10;
+                  let _10: usize;
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_4);
+          StorageLive(_5);
+          _5 = &(*_1);
+          _4 = Formatter::<'_>::sign_plus(move _5) -> [return: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+          StorageDead(_5);
+          StorageLive(_6);
+          switchInt(_4) -> [0: bb3, otherwise: bb2];
+      }
+  
+      bb2: {
+-         _6 = MinusPlus;
++         _6 = const MinusPlus;
+          goto -> bb4;
+      }
+  
+      bb3: {
+-         _6 = Minus;
++         _6 = const Minus;
+          goto -> bb4;
+      }
+  
+      bb4: {
+          StorageLive(_7);
+          StorageLive(_8);
+          _8 = &(*_1);
+          _7 = Formatter::<'_>::precision(move _8) -> [return: bb5, unwind unreachable];
+      }
+  
+      bb5: {
+          StorageDead(_8);
+          _9 = discriminant(_7);
+          switchInt(move _9) -> [1: bb6, otherwise: bb8];
+      }
+  
+      bb6: {
+          _10 = ((_7 as Some).0: usize);
+          StorageLive(_13);
+          _13 = _6;
+          StorageLive(_14);
+          StorageLive(_15);
+          _15 = _10 as u32 (IntToInt);
+          _14 = Add(move _15, const 1_u32);
+          StorageDead(_15);
+          _0 = float_to_exponential_common_exact::<T>(_1, _2, move _13, move _14, _3) -> [return: bb7, unwind unreachable];
+      }
+  
+      bb7: {
+          StorageDead(_14);
+          StorageDead(_13);
+          goto -> bb10;
+      }
+  
+      bb8: {
+          StorageLive(_20);
+          _20 = _6;
+          _0 = float_to_exponential_common_shortest::<T>(_1, _2, move _20, _3) -> [return: bb9, unwind unreachable];
+      }
+  
+      bb9: {
+          StorageDead(_20);
+          goto -> bb10;
+      }
+  
+      bb10: {
+          StorageDead(_6);
+          StorageDead(_4);
+          StorageDead(_7);
+          return;
+      }
+  }
+  

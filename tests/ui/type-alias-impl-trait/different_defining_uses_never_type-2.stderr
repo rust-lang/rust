@@ -5,10 +5,10 @@ LL |             let y: Tait<'b> = 1i32;
    |                               ^^^^ expected `()`, got `i32`
    |
 note: previous use here
-  --> $DIR/different_defining_uses_never_type-2.rs:12:23
+  --> $DIR/different_defining_uses_never_type-2.rs:7:14
    |
-LL |     let x: Tait<'a> = ();
-   |                       ^^
+LL |         if { return } {
+   |              ^^^^^^
 
 error: aborting due to previous error
 

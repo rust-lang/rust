@@ -24,7 +24,8 @@ impl DebugContext<'_> {
             AdtId::UnionId(it) => self.0.union_data(it).name.clone(),
             AdtId::EnumId(it) => self.0.enum_data(it).name.clone(),
         };
-        name.fmt(f)
+        name.display(self.0.upcast()).fmt(f)?;
+        Ok(())
     }
 
     pub(crate) fn debug_trait_id(
@@ -34,7 +35,8 @@ impl DebugContext<'_> {
     ) -> Result<(), fmt::Error> {
         let trait_: hir_def::TraitId = from_chalk_trait_id(id);
         let trait_data = self.0.trait_data(trait_);
-        trait_data.name.fmt(f)
+        trait_data.name.display(self.0.upcast()).fmt(f)?;
+        Ok(())
     }
 
     pub(crate) fn debug_assoc_type_id(
@@ -49,7 +51,13 @@ impl DebugContext<'_> {
             _ => panic!("associated type not in trait"),
         };
         let trait_data = self.0.trait_data(trait_);
-        write!(fmt, "{}::{}", trait_data.name, type_alias_data.name)
+        write!(
+            fmt,
+            "{}::{}",
+            trait_data.name.display(self.0.upcast()),
+            type_alias_data.name.display(self.0.upcast())
+        )?;
+        Ok(())
     }
 
     pub(crate) fn debug_projection_ty(
@@ -67,7 +75,7 @@ impl DebugContext<'_> {
         let trait_ref = projection_ty.trait_ref(self.0);
         let trait_params = trait_ref.substitution.as_slice(Interner);
         let self_ty = trait_ref.self_type_parameter(Interner);
-        write!(fmt, "<{self_ty:?} as {trait_name}")?;
+        write!(fmt, "<{self_ty:?} as {}", trait_name.display(self.0.upcast()))?;
         if trait_params.len() > 1 {
             write!(
                 fmt,
@@ -75,7 +83,7 @@ impl DebugContext<'_> {
                 trait_params[1..].iter().format_with(", ", |x, f| f(&format_args!("{x:?}"))),
             )?;
         }
-        write!(fmt, ">::{}", type_alias_data.name)?;
+        write!(fmt, ">::{}", type_alias_data.name.display(self.0.upcast()))?;
 
         let proj_params_count = projection_ty.substitution.len(Interner) - trait_params.len();
         let proj_params = &projection_ty.substitution.as_slice(Interner)[..proj_params_count];
@@ -105,9 +113,9 @@ impl DebugContext<'_> {
             }
         };
         match def {
-            CallableDefId::FunctionId(_) => write!(fmt, "{{fn {name}}}"),
+            CallableDefId::FunctionId(_) => write!(fmt, "{{fn {}}}", name.display(self.0.upcast())),
             CallableDefId::StructId(_) | CallableDefId::EnumVariantId(_) => {
-                write!(fmt, "{{ctor {name}}}")
+                write!(fmt, "{{ctor {}}}", name.display(self.0.upcast()))
             }
         }
     }

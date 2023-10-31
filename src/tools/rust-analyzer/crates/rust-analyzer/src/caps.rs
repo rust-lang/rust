@@ -23,13 +23,14 @@ use crate::semantic_tokens;
 
 pub fn server_capabilities(config: &Config) -> ServerCapabilities {
     ServerCapabilities {
-        position_encoding: Some(match negotiated_encoding(config.caps()) {
-            PositionEncoding::Utf8 => PositionEncodingKind::UTF8,
+        position_encoding: match negotiated_encoding(config.caps()) {
+            PositionEncoding::Utf8 => Some(PositionEncodingKind::UTF8),
             PositionEncoding::Wide(wide) => match wide {
-                WideEncoding::Utf16 => PositionEncodingKind::UTF16,
-                WideEncoding::Utf32 => PositionEncodingKind::UTF32,
+                WideEncoding::Utf16 => Some(PositionEncodingKind::UTF16),
+                WideEncoding::Utf32 => Some(PositionEncodingKind::UTF32),
+                _ => None,
             },
-        }),
+        },
         text_document_sync: Some(TextDocumentSyncCapability::Options(TextDocumentSyncOptions {
             open_close: Some(true),
             change: Some(TextDocumentSyncKind::INCREMENTAL),

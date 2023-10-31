@@ -2,7 +2,9 @@ error[E0713]: borrow may still be in use when destructor runs
   --> $DIR/issue-53773.rs:41:22
    |
 LL |         members.push(child.raw);
-   |         -------------^^^^^^^^^- borrow later used here
+   |         -------      ^^^^^^^^^
+   |         |
+   |         borrow later used here
 LL |
 LL |     }
    |     - here, drop of `child` needs exclusive access to `*child.raw`, because the type `C<'_>` implements the `Drop` trait

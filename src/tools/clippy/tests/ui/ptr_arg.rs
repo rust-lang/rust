@@ -1,5 +1,11 @@
 #![feature(lint_reasons)]
-#![allow(unused, clippy::many_single_char_names, clippy::redundant_clone)]
+#![allow(
+    unused,
+    clippy::many_single_char_names,
+    clippy::needless_lifetimes,
+    clippy::redundant_clone,
+    clippy::needless_pass_by_ref_mut
+)]
 #![warn(clippy::ptr_arg)]
 
 use std::borrow::Cow;
@@ -234,4 +240,43 @@ fn dyn_trait(a: &mut Vec<u32>, b: &mut String, c: &mut PathBuf) {
     takes_dyn(a);
     takes_dyn(b);
     takes_dyn(c);
+}
+
+mod issue_9218 {
+    use std::borrow::Cow;
+
+    fn cow_non_elided_lifetime<'a>(input: &Cow<'a, str>) -> &'a str {
+        todo!()
+    }
+
+    // This one has an anonymous lifetime so it's not okay
+    fn cow_elided_lifetime<'a>(input: &'a Cow<str>) -> &'a str {
+        todo!()
+    }
+
+    // These two's return types don't use use 'a so it's not okay
+    fn cow_bad_ret_ty_1<'a>(input: &'a Cow<'a, str>) -> &'static str {
+        todo!()
+    }
+    fn cow_bad_ret_ty_2<'a, 'b>(input: &'a Cow<'a, str>) -> &'b str {
+        todo!()
+    }
+
+    // Inferred to be `&'a str`, afaik.
+    fn cow_good_ret_ty<'a>(input: &'a Cow<'a, str>) -> &str {
+        todo!()
+    }
+}
+
+mod issue_11181 {
+    extern "C" fn allowed(_v: &Vec<u32>) {}
+
+    struct S;
+    impl S {
+        extern "C" fn allowed(_v: &Vec<u32>) {}
+    }
+
+    trait T {
+        extern "C" fn allowed(_v: &Vec<u32>) {}
+    }
 }

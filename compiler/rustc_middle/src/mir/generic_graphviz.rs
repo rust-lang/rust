@@ -70,8 +70,8 @@ impl<
 
         writeln!(w, r#"    graph [{}];"#, graph_attrs.join(" "))?;
         let content_attrs_str = content_attrs.join(" ");
-        writeln!(w, r#"    node [{}];"#, content_attrs_str)?;
-        writeln!(w, r#"    edge [{}];"#, content_attrs_str)?;
+        writeln!(w, r#"    node [{content_attrs_str}];"#)?;
+        writeln!(w, r#"    edge [{content_attrs_str}];"#)?;
 
         // Graph label
         if let Some(graph_label) = &self.graph_label {
@@ -112,7 +112,7 @@ impl<
         //     (format!("{:?}", node), color)
         // };
         let color = if dark_mode { "dimgray" } else { "gray" };
-        let (blk, bgcolor) = (format!("{:?}", node), color);
+        let (blk, bgcolor) = (format!("{node:?}"), color);
         write!(
             w,
             r#"<tr><td bgcolor="{bgcolor}" {attrs} colspan="{colspan}">{blk}</td></tr>"#,
@@ -151,7 +151,7 @@ impl<
             } else {
                 "".to_owned()
             };
-            writeln!(w, r#"    {} -> {} [label=<{}>];"#, src, trg, escaped_edge_label)?;
+            writeln!(w, r#"    {src} -> {trg} [label=<{escaped_edge_label}>];"#)?;
         }
         Ok(())
     }
@@ -163,7 +163,7 @@ impl<
         W: Write,
     {
         let escaped_label = dot::escape_html(label);
-        writeln!(w, r#"    label=<<br/><br/>{}<br align="left"/><br/><br/><br/>>;"#, escaped_label)
+        writeln!(w, r#"    label=<<br/><br/>{escaped_label}<br align="left"/><br/><br/><br/>>;"#)
     }
 
     fn node(&self, node: G::Node) -> String {

@@ -1,0 +1,17 @@
+- // MIR for `size_of` before LowerIntrinsics
++ // MIR for `size_of` after LowerIntrinsics
+  
+  fn size_of() -> usize {
+      let mut _0: usize;
+  
+      bb0: {
+-         _0 = std::intrinsics::size_of::<T>() -> [return: bb1, unwind unreachable];
++         _0 = SizeOf(T);
++         goto -> bb1;
+      }
+  
+      bb1: {
+          return;
+      }
+  }
+  

@@ -4,7 +4,7 @@ macro_rules! foo {
     };
 }
 
-#[path = foo!()] //~ ERROR malformed `path` attribute
+#[path = foo!()] //~ ERROR: malformed `path` attribute
 mod abc {}
 
 fn main() {}

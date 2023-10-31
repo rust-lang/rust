@@ -29,52 +29,39 @@ click: "#help-button"
 assert-css: ("#help-button .popover", {"display": "none"})
 assert-css: ("#settings-menu .popover", {"display": "none"})
 
+define-function: (
+    "check-popover-colors",
+    (theme, border_color),
+    block {
+        set-local-storage: {
+            "rustdoc-theme": |theme|,
+            "rustdoc-use-system-theme": "false",
+        }
+        reload:
+
+        click: "#help-button"
+        assert-css: (
+            "#help-button .popover",
+            {"display": "block", "border-color": |border_color|},
+        )
+        compare-elements-css: ("#help-button .popover", "#help-button .top", ["border-color"])
+        compare-elements-css: ("#help-button .popover", "#help-button .bottom", ["border-color"])
+    }
+)
+
 // We check the borders color now:
-
-// Ayu theme
-set-local-storage: {
-    "rustdoc-theme": "ayu",
-    "rustdoc-use-system-theme": "false",
-}
-reload:
-
-click: "#help-button"
-assert-css: (
-    "#help-button .popover",
-    {"display": "block", "border-color": "rgb(92, 103, 115)"},
-)
-compare-elements-css: ("#help-button .popover", "#help-button .top", ["border-color"])
-compare-elements-css: ("#help-button .popover", "#help-button .bottom", ["border-color"])
-
-// Dark theme
-set-local-storage: {
-    "rustdoc-theme": "dark",
-    "rustdoc-use-system-theme": "false",
-}
-reload:
-
-click: "#help-button"
-assert-css: (
-    "#help-button .popover",
-    {"display": "block", "border-color": "rgb(224, 224, 224)"},
-)
-compare-elements-css: ("#help-button .popover", "#help-button .top", ["border-color"])
-compare-elements-css: ("#help-button .popover", "#help-button .bottom", ["border-color"])
-
-// Light theme
-set-local-storage: {
-    "rustdoc-theme": "light",
-    "rustdoc-use-system-theme": "false",
-}
-reload:
-
-click: "#help-button"
-assert-css: (
-    "#help-button .popover",
-    {"display": "block", "border-color": "rgb(224, 224, 224)"},
-)
-compare-elements-css: ("#help-button .popover", "#help-button .top", ["border-color"])
-compare-elements-css: ("#help-button .popover", "#help-button .bottom", ["border-color"])
+call-function: ("check-popover-colors", {
+    "theme": "ayu",
+    "border_color": "#5c6773",
+})
+call-function: ("check-popover-colors", {
+    "theme": "dark",
+    "border_color": "#e0e0e0",
+})
+call-function: ("check-popover-colors", {
+    "theme": "light",
+    "border_color": "#e0e0e0",
+})
 
 // Opening the mobile sidebar should close the settings popover.
 set-window-size: (650, 600)

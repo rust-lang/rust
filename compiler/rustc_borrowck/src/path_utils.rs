@@ -33,20 +33,24 @@ pub(super) fn each_borrow_involving_path<'tcx, F, I, S>(
     _location: Location,
     access_place: (AccessDepth, Place<'tcx>),
     borrow_set: &BorrowSet<'tcx>,
-    candidates: I,
+    is_candidate: I,
     mut op: F,
 ) where
     F: FnMut(&mut S, BorrowIndex, &BorrowData<'tcx>) -> Control,
-    I: Iterator<Item = BorrowIndex>,
+    I: Fn(BorrowIndex) -> bool,
 {
     let (access, place) = access_place;
 
-    // FIXME: analogous code in check_loans first maps `place` to
-    // its base_path.
+    // The number of candidates can be large, but borrows for different locals cannot conflict with
+    // each other, so we restrict the working set a priori.
+    let Some(borrows_for_place_base) = borrow_set.local_map.get(&place.local) else { return };
 
     // check for loan restricting path P being used. Accounts for
     // borrows of P, P.a.b, etc.
-    for i in candidates {
+    for &i in borrows_for_place_base {
+        if !is_candidate(i) {
+            continue;
+        }
         let borrowed = &borrow_set[i];
 
         if places_conflict::borrow_conflicts_with_place(

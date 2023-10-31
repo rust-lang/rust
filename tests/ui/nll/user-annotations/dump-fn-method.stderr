@@ -1,22 +1,22 @@
-error: user substs: UserSubsts { substs: [&ReStatic u32], user_self_ty: None }
+error: user args: UserArgs { args: [&ReStatic u32], user_self_ty: None }
   --> $DIR/dump-fn-method.rs:29:13
    |
 LL |     let x = foo::<&'static u32>;
    |             ^^^^^^^^^^^^^^^^^^^
 
-error: user substs: UserSubsts { substs: [^0, u32, ^1], user_self_ty: None }
+error: user args: UserArgs { args: [^0, u32, ^1], user_self_ty: None }
   --> $DIR/dump-fn-method.rs:35:13
    |
 LL |     let x = <_ as Bazoom<u32>>::method::<_>;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: user substs: UserSubsts { substs: [u8, &ReStatic u16, u32], user_self_ty: None }
+error: user args: UserArgs { args: [u8, &ReStatic u16, u32], user_self_ty: None }
   --> $DIR/dump-fn-method.rs:44:13
    |
 LL |     let x = <u8 as Bazoom<&'static u16>>::method::<u32>;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: user substs: UserSubsts { substs: [^0, ^1, u32], user_self_ty: None }
+error: user args: UserArgs { args: [^0, ^1, u32], user_self_ty: None }
   --> $DIR/dump-fn-method.rs:52:5
    |
 LL |     y.method::<u32>(44, 66);

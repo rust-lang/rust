@@ -1,4 +1,4 @@
-// ignore-wasm32 compiled with panic=abort by default
+// EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 #![crate_type = "lib"]
 #![feature(unchecked_math)]
 
@@ -14,5 +14,17 @@ pub unsafe fn unchecked_shl_unsigned_smaller(a: u16, b: u32) -> u16 {
 // EMIT_MIR unchecked_shifts.unchecked_shr_signed_smaller.Inline.diff
 // EMIT_MIR unchecked_shifts.unchecked_shr_signed_smaller.PreCodegen.after.mir
 pub unsafe fn unchecked_shr_signed_smaller(a: i16, b: u32) -> i16 {
+    a.unchecked_shr(b)
+}
+
+// EMIT_MIR unchecked_shifts.unchecked_shl_unsigned_bigger.Inline.diff
+// EMIT_MIR unchecked_shifts.unchecked_shl_unsigned_bigger.PreCodegen.after.mir
+pub unsafe fn unchecked_shl_unsigned_bigger(a: u64, b: u32) -> u64 {
+    a.unchecked_shl(b)
+}
+
+// EMIT_MIR unchecked_shifts.unchecked_shr_signed_bigger.Inline.diff
+// EMIT_MIR unchecked_shifts.unchecked_shr_signed_bigger.PreCodegen.after.mir
+pub unsafe fn unchecked_shr_signed_bigger(a: i64, b: u32) -> i64 {
     a.unchecked_shr(b)
 }

@@ -1,5 +1,4 @@
 use rustc_data_structures::undo_log::UndoLogs;
-use rustc_hir::OpaqueTyOrigin;
 use rustc_middle::ty::{self, OpaqueHiddenType, OpaqueTypeKey, Ty};
 use rustc_span::DUMMY_SP;
 
@@ -60,14 +59,13 @@ impl<'a, 'tcx> OpaqueTypeTable<'a, 'tcx> {
         &mut self,
         key: OpaqueTypeKey<'tcx>,
         hidden_type: OpaqueHiddenType<'tcx>,
-        origin: OpaqueTyOrigin,
     ) -> Option<Ty<'tcx>> {
         if let Some(decl) = self.storage.opaque_types.get_mut(&key) {
             let prev = std::mem::replace(&mut decl.hidden_type, hidden_type);
             self.undo_log.push(UndoLog::OpaqueTypes(key, Some(prev)));
             return Some(prev.ty);
         }
-        let decl = OpaqueTypeDecl { hidden_type, origin };
+        let decl = OpaqueTypeDecl { hidden_type };
         self.storage.opaque_types.insert(key, decl);
         self.undo_log.push(UndoLog::OpaqueTypes(key, None));
         None

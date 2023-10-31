@@ -1,9 +1,7 @@
-use clippy_utils::{
-    diagnostics::{span_lint, span_lint_and_sugg},
-    higher::{get_vec_init_kind, VecInitKind},
-    source::snippet,
-    visitors::for_each_expr,
-};
+use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg};
+use clippy_utils::higher::{get_vec_init_kind, VecInitKind};
+use clippy_utils::source::snippet;
+use clippy_utils::visitors::for_each_expr;
 use core::ops::ControlFlow;
 use hir::{Expr, ExprKind, Local, PatKind, PathSegment, QPath, StmtKind};
 use rustc_errors::Applicability;

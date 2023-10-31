@@ -1,9 +1,7 @@
 use super::REDUNDANT_PATTERN_MATCHING;
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::is_lint_allowed;
-use clippy_utils::is_wild;
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::span_contains_comment;
+use clippy_utils::{is_lint_allowed, is_wild, span_contains_comment};
 use rustc_ast::{Attribute, LitKind};
 use rustc_errors::Applicability;
 use rustc_hir::{Arm, BorrowKind, Expr, ExprKind, Guard, Pat, PatKind, QPath};
@@ -139,7 +137,7 @@ where
                 MATCH_LIKE_MATCHES_MACRO,
                 expr.span,
                 &format!("{} expression looks like `matches!` macro", if is_if_let { "if let .. else" } else { "match" }),
-                "try this",
+                "try",
                 format!(
                     "{}matches!({}, {pat_and_guard})",
                     if b0 { "" } else { "!" },

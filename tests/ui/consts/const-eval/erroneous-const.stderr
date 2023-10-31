@@ -5,10 +5,10 @@ LL |     const VOID: () = [()][2];
    |                      ^^^^^^^ index out of bounds: the length is 1 but the index is 2
 
 note: erroneous constant used
-  --> $DIR/erroneous-const.rs:13:17
+  --> $DIR/erroneous-const.rs:13:13
    |
-LL |         let _ = PrintName::<T>::VOID;
-   |                 ^^^^^^^^^^^^^^^^^^^^
+LL |             PrintName::<T>::VOID;
+   |             ^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

@@ -1,0 +1,42 @@
+error: calls to `std::mem::drop` with `std::mem::ManuallyDrop` instead of the inner value does nothing
+  --> $DIR/undropped_manually_drops.rs:10:5
+   |
+LL |     drop(std::mem::ManuallyDrop::new(S));
+   |     ^^^^^------------------------------^
+   |          |
+   |          argument has type `ManuallyDrop<S>`
+   |
+   = note: `#[deny(undropped_manually_drops)]` on by default
+help: use `std::mem::ManuallyDrop::into_inner` to get the inner value
+   |
+LL |     drop(std::mem::ManuallyDrop::into_inner(std::mem::ManuallyDrop::new(S)));
+   |          +++++++++++++++++++++++++++++++++++                              +
+
+error: calls to `std::mem::drop` with `std::mem::ManuallyDrop` instead of the inner value does nothing
+  --> $DIR/undropped_manually_drops.rs:11:5
+   |
+LL |     drop(manual1);
+   |     ^^^^^-------^
+   |          |
+   |          argument has type `ManuallyDrop<S>`
+   |
+help: use `std::mem::ManuallyDrop::into_inner` to get the inner value
+   |
+LL |     drop(std::mem::ManuallyDrop::into_inner(manual1));
+   |          +++++++++++++++++++++++++++++++++++       +
+
+error: calls to `std::mem::drop` with `std::mem::ManuallyDrop` instead of the inner value does nothing
+  --> $DIR/undropped_manually_drops.rs:12:5
+   |
+LL |     drop({ manual3 });
+   |     ^^^^^-----------^
+   |          |
+   |          argument has type `ManuallyDrop<S>`
+   |
+help: use `std::mem::ManuallyDrop::into_inner` to get the inner value
+   |
+LL |     drop(std::mem::ManuallyDrop::into_inner({ manual3 }));
+   |          +++++++++++++++++++++++++++++++++++           +
+
+error: aborting due to 3 previous errors
+

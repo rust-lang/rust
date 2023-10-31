@@ -94,7 +94,7 @@ changelog-seen = 2
 # the same format as above, but since these targets are experimental, they are
 # not built by default and the experimental Rust compilation targets that depend
 # on them will not work unless the user opts in to building them.
-#experimental-targets = "AVR;M68k"
+#experimental-targets = "AVR;M68k;CSKY"
 
 # Cap the number of parallel linker invocations when compiling LLVM.
 # This can be useful when building LLVM with debug info, which significantly
@@ -250,6 +250,13 @@ changelog-seen = 2
 # target when running tests, otherwise this can be omitted.
 #nodejs = "node"
 
+# The npm executable to use. Note that this is used for rustdoc-gui tests,
+# otherwise this can be omitted.
+#
+# Under Windows this should be `npm.cmd` or path to it (verified on nodejs v18.06), or
+# error will be emitted.
+#npm = "npm"
+
 # Python interpreter to use for various tasks throughout the build, notably
 # rustdoc tests, the lldb python interpreter, and some dist bits and pieces.
 #
@@ -393,10 +400,20 @@ changelog-seen = 2
 # =============================================================================
 [rust]
 
-# Whether or not to optimize the compiler and standard library.
+# Whether or not to optimize when compiling the compiler and standard library,
+# and what level of optimization to use.
 # WARNING: Building with optimize = false is NOT SUPPORTED. Due to bootstrapping,
 # building without optimizations takes much longer than optimizing. Further, some platforms
 # fail to build without this optimization (c.f. #65352).
+# The valid options are:
+# true - Enable optimizations.
+# false - Disable optimizations.
+# 0 - Disable optimizations.
+# 1 - Basic optimizations.
+# 2 - Some optimizations.
+# 3 - All optimizations.
+# "s" - Optimize for binary size.
+# "z" - Optimize for binary size, but also turn off loop vectorization.
 #optimize = true
 
 # Indicates that the build should be configured for debugging Rust. A
@@ -673,10 +690,6 @@ changelog-seen = 2
 # Build compiler with the optimization enabled and -Zvalidate-mir, currently only for `std`
 #validate-mir-opts = 3
 
-# Copy the linker, DLLs, and various libraries from MinGW into the rustc toolchain.
-# Only applies when the host or target is pc-windows-gnu.
-#include-mingw-linker = true
-
 # =============================================================================
 # Options for specific targets
 #
@@ -745,12 +758,14 @@ changelog-seen = 2
 # This option will override the same option under [build] section.
 #sanitizers = build.sanitizers (bool)
 
-# Build the profiler runtime for this target(required when compiling with options that depend
-# on this runtime, such as `-C profile-generate` or `-C instrument-coverage`).
+# When true, build the profiler runtime for this target (required when compiling
+# with options that depend on this runtime, such as `-C profile-generate` or
+# `-C instrument-coverage`). This may also be given a path to an existing build
+# of the profiling runtime library from LLVM's compiler-rt.
 # This option will override the same option under [build] section.
 #profiler = build.profiler (bool)
 
-# This option supports enable `rpath` in each target independently, 
+# This option supports enable `rpath` in each target independently,
 # and will override the same option under [rust] section. It only works on Unix platforms
 #rpath = rust.rpath (bool)
 
@@ -769,9 +784,10 @@ changelog-seen = 2
 # The full path to the musl libdir.
 #musl-libdir = musl-root/lib
 
-# The root location of the `wasm32-wasi` sysroot. Only used for the
-# `wasm32-wasi` target. If you are building wasm32-wasi target, make sure to
-# create a `[target.wasm32-wasi]` section and move this field there.
+# The root location of the `wasm32-unknown-wasi` and 'wasm64-unknown-wasi' sysroot. Only used for the
+# `wasi` target os. If you are building wasm32-wasi/wasm64-wasi target, make sure to
+# create a `[target.wasm32-unknown-wasi]`, `[target.wasm32-wasmer-wasi]` or '[target.wasm64-wasmer-wasi]'
+# section and move this field there.
 #wasi-root = <none> (path)
 
 # Used in testing for configuring where the QEMU images are located, you
@@ -827,3 +843,7 @@ changelog-seen = 2
 #
 # Available options: fast, balanced, best
 #compression-profile = "fast"
+
+# Copy the linker, DLLs, and various libraries from MinGW into the rustc toolchain.
+# Only applies when the host or target is pc-windows-gnu.
+#include-mingw-linker = true

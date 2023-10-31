@@ -1,8 +1,8 @@
 error: at least one trait must be specified
-  --> $DIR/generic_type_does_not_live_long_enough.rs:10:24
+  --> $DIR/generic_type_does_not_live_long_enough.rs:9:28
    |
-LL | type WrongGeneric<T> = impl 'static;
-   |                        ^^^^^^^^^^^^
+LL |     type WrongGeneric<T> = impl 'static;
+   |                            ^^^^^^^^^^^^
 
 error[E0792]: expected generic type parameter, found `&i32`
   --> $DIR/generic_type_does_not_live_long_enough.rs:6:18
@@ -10,19 +10,19 @@ error[E0792]: expected generic type parameter, found `&i32`
 LL |     let z: i32 = x;
    |                  ^
 ...
-LL | type WrongGeneric<T> = impl 'static;
-   |                   - this generic parameter must be used with a generic type parameter
+LL |     type WrongGeneric<T> = impl 'static;
+   |                       - this generic parameter must be used with a generic type parameter
 
 error[E0310]: the parameter type `T` may not live long enough
-  --> $DIR/generic_type_does_not_live_long_enough.rs:14:5
+  --> $DIR/generic_type_does_not_live_long_enough.rs:13:9
    |
-LL |     t
-   |     ^ ...so that the type `T` will meet its required lifetime bounds
+LL |         t
+   |         ^ ...so that the type `T` will meet its required lifetime bounds
    |
 help: consider adding an explicit lifetime bound...
    |
-LL | fn wrong_generic<T: 'static>(t: T) -> WrongGeneric<T> {
-   |                   +++++++++
+LL |     fn wrong_generic<T: 'static>(t: T) -> WrongGeneric<T> {
+   |                       +++++++++
 
 error: aborting due to 3 previous errors
 

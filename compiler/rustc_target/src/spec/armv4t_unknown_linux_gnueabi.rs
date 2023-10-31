@@ -12,6 +12,7 @@ pub fn target() -> Target {
             // Atomic operations provided by compiler-builtins
             max_atomic_width: Some(32),
             mcount: "\u{1}__gnu_mcount_nc".into(),
+            llvm_mcount_intrinsic: Some("llvm.arm.gnu.eabi.mcount".into()),
             has_thumb_interworking: true,
             ..super::linux_gnu_base::opts()
         },

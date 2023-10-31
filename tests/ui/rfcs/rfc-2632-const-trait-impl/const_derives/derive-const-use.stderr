@@ -1,0 +1,15 @@
+error[E0635]: unknown feature `const_cmp`
+  --> $DIR/derive-const-use.rs:2:30
+   |
+LL | #![feature(const_trait_impl, const_cmp, const_default_impls, derive_const)]
+   |                              ^^^^^^^^^
+
+error[E0635]: unknown feature `const_default_impls`
+  --> $DIR/derive-const-use.rs:2:41
+   |
+LL | #![feature(const_trait_impl, const_cmp, const_default_impls, derive_const)]
+   |                                         ^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0635`.

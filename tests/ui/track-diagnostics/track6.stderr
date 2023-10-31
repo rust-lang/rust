@@ -3,7 +3,7 @@ error[E0658]: specialization is unstable
    |
 LL |     default fn bar() {}
    |     ^^^^^^^^^^^^^^^^^^^
--Ztrack-diagnostics: created at $COMPILER_DIR/rustc_session/src/parse.rs:LL:CC
+-Ztrack-diagnostics: created at compiler/rustc_ast_passes/src/feature_gate.rs:LL:CC
    |
    = note: see issue #31844 <https://github.com/rust-lang/rust/issues/31844> for more information
    = help: add `#![feature(specialization)]` to the crate attributes to enable

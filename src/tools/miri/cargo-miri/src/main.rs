@@ -56,7 +56,7 @@ fn main() {
         return;
     }
 
-    // The way rustdoc invokes rustc is indistuingishable from the way cargo invokes rustdoc by the
+    // The way rustdoc invokes rustc is indistinguishable from the way cargo invokes rustdoc by the
     // arguments alone. `phase_cargo_rustdoc` sets this environment variable to let us disambiguate.
     if env::var_os("MIRI_CALLED_FROM_RUSTDOC").is_some() {
         // ...however, we then also see this variable when rustdoc invokes us as the testrunner!
@@ -80,7 +80,11 @@ fn main() {
     match first.as_str() {
         "miri" => phase_cargo_miri(args),
         "runner" => phase_runner(args, RunnerPhase::Cargo),
-        arg if arg == env::var("RUSTC").unwrap() => {
+        arg if arg == env::var("RUSTC").unwrap_or_else(|_| {
+            show_error!(
+                "`cargo-miri` called without RUSTC set; please only invoke this binary through `cargo miri`"
+            )
+        }) => {
             // If the first arg is equal to the RUSTC env variable (which should be set at this
             // point), then we need to behave as rustc. This is the somewhat counter-intuitive
             // behavior of having both RUSTC and RUSTC_WRAPPER set

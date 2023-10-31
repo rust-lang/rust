@@ -1,0 +1,83 @@
+// MIR for `main::{closure#0}` before StateTransform
+
+fn main::{closure#0}(_1: [generator@$DIR/generator_storage_dead_unwind.rs:22:16: 22:18], _2: ()) -> ()
+yields ()
+ {
+    let mut _0: ();
+    let _3: Foo;
+    let _5: ();
+    let mut _6: ();
+    let _7: ();
+    let mut _8: Foo;
+    let _9: ();
+    let mut _10: Bar;
+    scope 1 {
+        debug a => _3;
+        let _4: Bar;
+        scope 2 {
+            debug b => _4;
+        }
+    }
+
+    bb0: {
+        StorageLive(_3);
+        _3 = Foo(const 5_i32);
+        StorageLive(_4);
+        _4 = Bar(const 6_i32);
+        StorageLive(_5);
+        StorageLive(_6);
+        _6 = ();
+        _5 = yield(move _6) -> [resume: bb1, drop: bb6];
+    }
+
+    bb1: {
+        StorageDead(_6);
+        StorageDead(_5);
+        StorageLive(_7);
+        StorageLive(_8);
+        _8 = move _3;
+        _7 = take::<Foo>(move _8) -> [return: bb2, unwind unreachable];
+    }
+
+    bb2: {
+        StorageDead(_8);
+        StorageDead(_7);
+        StorageLive(_9);
+        StorageLive(_10);
+        _10 = move _4;
+        _9 = take::<Bar>(move _10) -> [return: bb3, unwind unreachable];
+    }
+
+    bb3: {
+        StorageDead(_10);
+        StorageDead(_9);
+        _0 = const ();
+        StorageDead(_4);
+        goto -> bb4;
+    }
+
+    bb4: {
+        StorageDead(_3);
+        drop(_1) -> [return: bb5, unwind unreachable];
+    }
+
+    bb5: {
+        return;
+    }
+
+    bb6: {
+        StorageDead(_6);
+        StorageDead(_5);
+        StorageDead(_4);
+        drop(_3) -> [return: bb7, unwind unreachable];
+    }
+
+    bb7: {
+        StorageDead(_3);
+        drop(_1) -> [return: bb8, unwind unreachable];
+    }
+
+    bb8: {
+        generator_drop;
+    }
+}

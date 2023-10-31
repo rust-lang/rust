@@ -122,20 +122,17 @@ fn main() {
 }
 ```
 
-Now we can run the test with `TESTNAME=foo_functions cargo uitest`, currently
+Now we can run the test with `TESTNAME=foo_functions cargo uibless`, currently
 this test is meaningless though.
 
 While we are working on implementing our lint, we can keep running the UI test.
-That allows us to check if the output is turning into what we want.
+That allows us to check if the output is turning into what we want by checking the
+`.stderr` file that gets updated on every test run.
 
-Once we are satisfied with the output, we need to run `cargo dev bless` to
-update the `.stderr` file for our lint. Please note that, we should run
-`TESTNAME=foo_functions cargo uitest` every time before running `cargo dev
-bless`. Running `TESTNAME=foo_functions cargo uitest` should pass then. When we
+Running `TESTNAME=foo_functions cargo uitest` should pass on its own. When we
 commit our lint, we need to commit the generated `.stderr` files, too. In
-general, you should only commit files changed by `cargo dev bless` for the
-specific lint you are creating/editing. Note that if the generated files are
-empty, they should be removed.
+general, you should only commit files changed by `cargo bless` for the
+specific lint you are creating/editing.
 
 > _Note:_ you can run multiple test files by specifying a comma separated list:
 > `TESTNAME=foo_functions,test2,test3`.
@@ -169,7 +166,7 @@ additionally run [rustfix] for that test. Rustfix will apply the suggestions
 from the lint to the code of the test file and compare that to the contents of a
 `.fixed` file.
 
-Use `cargo dev bless` to automatically generate the `.fixed` file after running
+Use `cargo bless` to automatically generate the `.fixed` file while running
 the tests.
 
 [rustfix]: https://github.com/rust-lang/rustfix
@@ -417,7 +414,7 @@ fn is_foo_fn(fn_kind: FnKind<'_>) -> bool {
 
 Now we should also run the full test suite with `cargo test`. At this point
 running `cargo test` should produce the expected output. Remember to run `cargo
-dev bless` to update the `.stderr` file.
+bless` to update the `.stderr` file.
 
 `cargo test` (as opposed to `cargo uitest`) will also ensure that our lint
 implementation is not violating any Clippy lints itself.
@@ -630,8 +627,14 @@ Before submitting your PR make sure you followed all the basic requirements:
 
 ## Adding configuration to a lint
 
-Clippy supports the configuration of lints values using a `clippy.toml` file in
-the workspace directory. Adding a configuration to a lint can be useful for
+Clippy supports the configuration of lints values using a `clippy.toml` file which is searched for in:
+
+1. The directory specified by the `CLIPPY_CONF_DIR` environment variable, or
+2. The directory specified by the
+[CARGO_MANIFEST_DIR](https://doc.rust-lang.org/cargo/reference/environment-variables.html) environment variable, or
+3. The current directory.
+
+Adding a configuration to a lint can be useful for
 thresholds or to constrain some behavior that can be seen as a false positive
 for some users. Adding a configuration is done in the following steps:
 

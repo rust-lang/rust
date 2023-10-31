@@ -1,0 +1,15 @@
+error[E0425]: cannot find function `post` in this scope
+  --> $DIR/issue-106929.rs:9:5
+   |
+LL |     post(c, ());
+   |     ^^^^ not found in this scope
+   |
+help: use the `.` operator to call the method `post` on `&Client`
+   |
+LL -     post(c, ());
+LL +     c.post(());
+   |
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0425`.

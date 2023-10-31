@@ -14,6 +14,10 @@ pub struct CheckAlignment;
 
 impl<'tcx> MirPass<'tcx> for CheckAlignment {
     fn is_enabled(&self, sess: &Session) -> bool {
+        // FIXME(#112480) MSVC and rustc disagree on minimum stack alignment on x86 Windows
+        if sess.target.llvm_target == "i686-pc-windows-msvc" {
+            return false;
+        }
         sess.opts.debug_assertions
     }
 
@@ -75,6 +79,14 @@ struct PointerFinder<'tcx, 'a> {
 }
 
 impl<'tcx, 'a> Visitor<'tcx> for PointerFinder<'tcx, 'a> {
+    fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
+        if let Rvalue::AddressOf(..) = rvalue {
+            // Ignore dereferences inside of an AddressOf
+            return;
+        }
+        self.super_rvalue(rvalue, location);
+    }
+
     fn visit_place(&mut self, place: &Place<'tcx>, context: PlaceContext, _location: Location) {
         if let PlaceContext::NonUse(_) = context {
             return;
@@ -143,7 +155,7 @@ fn insert_alignment_check<'tcx>(
     new_block: BasicBlock,
 ) {
     // Cast the pointer to a *const ()
-    let const_raw_ptr = tcx.mk_ptr(TypeAndMut { ty: tcx.types.unit, mutbl: Mutability::Not });
+    let const_raw_ptr = Ty::new_ptr(tcx, TypeAndMut { ty: tcx.types.unit, mutbl: Mutability::Not });
     let rvalue = Rvalue::Cast(CastKind::PtrToPtr, Operand::Copy(pointer), const_raw_ptr);
     let thin_ptr = local_decls.push(LocalDecl::with_source_info(const_raw_ptr, source_info)).into();
     block_data
@@ -228,7 +240,10 @@ fn insert_alignment_check<'tcx>(
                 required: Operand::Copy(alignment),
                 found: Operand::Copy(addr),
             }),
-            unwind: UnwindAction::Terminate,
+            // This calls panic_misaligned_pointer_dereference, which is #[rustc_nounwind].
+            // We never want to insert an unwind into unsafe code, because unwinding could
+            // make a failing UB check turn into much worse UB when we start unwinding.
+            unwind: UnwindAction::Unreachable,
         },
     });
 }

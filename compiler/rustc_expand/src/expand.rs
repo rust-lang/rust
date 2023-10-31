@@ -651,7 +651,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         ExpandResult::Ready(match invoc.kind {
             InvocationKind::Bang { mac, .. } => match ext {
                 SyntaxExtensionKind::Bang(expander) => {
-                    let Ok(tok_result) = expander.expand(self.cx, span, mac.args.tokens.clone()) else {
+                    let Ok(tok_result) = expander.expand(self.cx, span, mac.args.tokens.clone())
+                    else {
                         return ExpandResult::Ready(fragment_kind.dummy(span));
                     };
                     self.parse_ast_fragment(tok_result, fragment_kind, &mac.path, span)
@@ -704,7 +705,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         self.cx.emit_err(UnsupportedKeyValue { span });
                     }
                     let inner_tokens = attr_item.args.inner_tokens();
-                    let Ok(tok_result) = expander.expand(self.cx, span, inner_tokens, tokens) else {
+                    let Ok(tok_result) = expander.expand(self.cx, span, inner_tokens, tokens)
+                    else {
                         return ExpandResult::Ready(fragment_kind.dummy(span));
                     };
                     self.parse_ast_fragment(tok_result, fragment_kind, &attr_item.path, span)
@@ -794,14 +796,14 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             | Annotatable::FieldDef(..)
             | Annotatable::Variant(..) => panic!("unexpected annotatable"),
         };
-        if self.cx.ecfg.proc_macro_hygiene() {
+        if self.cx.ecfg.features.proc_macro_hygiene {
             return;
         }
         feature_err(
             &self.cx.sess.parse_sess,
             sym::proc_macro_hygiene,
             span,
-            format!("custom attributes cannot be applied to {}", kind),
+            format!("custom attributes cannot be applied to {kind}"),
         )
         .emit();
     }
@@ -832,7 +834,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             }
         }
 
-        if !self.cx.ecfg.proc_macro_hygiene() {
+        if !self.cx.ecfg.features.proc_macro_hygiene {
             annotatable
                 .visit_with(&mut GateProcMacroInput { parse_sess: &self.cx.sess.parse_sess });
         }
@@ -1039,8 +1041,19 @@ trait InvocationCollectorNode: HasAttrs + HasNodeId + Sized {
     ) -> Result<Self::OutputTy, Self> {
         Ok(noop_flat_map(node, collector))
     }
-    fn expand_cfg_false(&mut self, collector: &mut InvocationCollector<'_, '_>, span: Span) {
+    fn expand_cfg_false(
+        &mut self,
+        collector: &mut InvocationCollector<'_, '_>,
+        _pos: usize,
+        span: Span,
+    ) {
         collector.cx.emit_err(RemoveNodeNotSupported { span, descr: Self::descr() });
+    }
+
+    /// All of the names (items) declared by this node.
+    /// This is an approximation and should only be used for diagnostics.
+    fn declared_names(&self) -> Vec<Ident> {
+        vec![]
     }
 }
 
@@ -1076,9 +1089,7 @@ impl InvocationCollectorNode for P<ast::Item> {
 
         // Work around borrow checker not seeing through `P`'s deref.
         let (ident, span, mut attrs) = (node.ident, node.span, mem::take(&mut node.attrs));
-        let ItemKind::Mod(_, mod_kind) = &mut node.kind else {
-            unreachable!()
-        };
+        let ItemKind::Mod(_, mod_kind) = &mut node.kind else { unreachable!() };
 
         let ecx = &mut collector.cx;
         let (file_path, dir_path, dir_ownership) = match mod_kind {
@@ -1111,6 +1122,7 @@ impl InvocationCollectorNode for P<ast::Item> {
                 if let Some(lint_store) = ecx.lint_store {
                     lint_store.pre_expansion_lint(
                         ecx.sess,
+                        ecx.ecfg.features,
                         ecx.resolver.registered_tools(),
                         ecx.current_expansion.lint_node_id,
                         &attrs,
@@ -1147,6 +1159,27 @@ impl InvocationCollectorNode for P<ast::Item> {
         collector.cx.current_expansion.dir_ownership = orig_dir_ownership;
         collector.cx.current_expansion.module = orig_module;
         res
+    }
+    fn declared_names(&self) -> Vec<Ident> {
+        if let ItemKind::Use(ut) = &self.kind {
+            fn collect_use_tree_leaves(ut: &ast::UseTree, idents: &mut Vec<Ident>) {
+                match &ut.kind {
+                    ast::UseTreeKind::Glob => {}
+                    ast::UseTreeKind::Simple(_) => idents.push(ut.ident()),
+                    ast::UseTreeKind::Nested(nested) => {
+                        for (ut, _) in nested {
+                            collect_use_tree_leaves(&ut, idents);
+                        }
+                    }
+                }
+            }
+
+            let mut idents = Vec::new();
+            collect_use_tree_leaves(&ut, &mut idents);
+            return idents;
+        }
+
+        vec![self.ident]
     }
 }
 
@@ -1382,8 +1415,15 @@ impl InvocationCollectorNode for ast::Crate {
     fn noop_visit<V: MutVisitor>(&mut self, visitor: &mut V) {
         noop_visit_crate(self, visitor)
     }
-    fn expand_cfg_false(&mut self, collector: &mut InvocationCollector<'_, '_>, _span: Span) {
-        self.attrs.clear();
+    fn expand_cfg_false(
+        &mut self,
+        collector: &mut InvocationCollector<'_, '_>,
+        pos: usize,
+        _span: Span,
+    ) {
+        // Attributes above `cfg(FALSE)` are left in place, because we may want to configure
+        // some global crate properties even on fully unconfigured crates.
+        self.attrs.truncate(pos);
         // Standard prelude imports are left in the crate for backward compatibility.
         self.items.truncate(collector.cx.num_standard_library_imports);
     }
@@ -1541,7 +1581,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
     fn cfg(&self) -> StripUnconfigured<'_> {
         StripUnconfigured {
             sess: &self.cx.sess,
-            features: self.cx.ecfg.features,
+            features: Some(self.cx.ecfg.features),
             config_tokens: false,
             lint_node_id: self.cx.current_expansion.lint_node_id,
         }
@@ -1637,7 +1677,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
     // Detect use of feature-gated or invalid attributes on macro invocations
     // since they will not be detected after macro expansion.
     fn check_attributes(&self, attrs: &[ast::Attribute], call: &ast::MacCall) {
-        let features = self.cx.ecfg.features.unwrap();
+        let features = self.cx.ecfg.features;
         let mut attrs = attrs.iter().peekable();
         let mut span: Option<Span> = None;
         while let Some(attr) = attrs.next() {
@@ -1668,7 +1708,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                         &UNUSED_ATTRIBUTES,
                         attr.span,
                         self.cx.current_expansion.lint_node_id,
-                        format!("unused attribute `{}`", attr_name),
+                        format!("unused attribute `{attr_name}`"),
                         BuiltinLintDiagnostics::UnusedBuiltinAttribute {
                             attr_name,
                             macro_name: pprust::path_to_string(&call.path),
@@ -1685,8 +1725,8 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         node: &mut impl HasAttrs,
         attr: ast::Attribute,
         pos: usize,
-    ) -> bool {
-        let res = self.cfg().cfg_true(&attr);
+    ) -> (bool, Option<ast::MetaItem>) {
+        let (res, meta_item) = self.cfg().cfg_true(&attr);
         if res {
             // FIXME: `cfg(TRUE)` attributes do not currently remove themselves during expansion,
             // and some tools like rustdoc and clippy rely on that. Find a way to remove them
@@ -1694,7 +1734,8 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
             self.cx.expanded_inert_attrs.mark(&attr);
             node.visit_attrs(|attrs| attrs.insert(pos, attr));
         }
-        res
+
+        (res, meta_item)
     }
 
     fn expand_cfg_attr(&self, node: &mut impl HasAttrs, attr: &ast::Attribute, pos: usize) {
@@ -1715,8 +1756,19 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
             return match self.take_first_attr(&mut node) {
                 Some((attr, pos, derives)) => match attr.name_or_empty() {
                     sym::cfg => {
-                        if self.expand_cfg_true(&mut node, attr, pos) {
+                        let (res, meta_item) = self.expand_cfg_true(&mut node, attr, pos);
+                        if res {
                             continue;
+                        }
+
+                        if let Some(meta_item) = meta_item {
+                            for name in node.declared_names() {
+                                self.cx.resolver.append_stripped_cfg_item(
+                                    self.cx.current_expansion.lint_node_id,
+                                    name,
+                                    meta_item.clone(),
+                                )
+                            }
                         }
                         Default::default()
                     }
@@ -1761,11 +1813,11 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                 Some((attr, pos, derives)) => match attr.name_or_empty() {
                     sym::cfg => {
                         let span = attr.span;
-                        if self.expand_cfg_true(node, attr, pos) {
+                        if self.expand_cfg_true(node, attr, pos).0 {
                             continue;
                         }
 
-                        node.expand_cfg_false(self, span);
+                        node.expand_cfg_false(self, pos, span);
                         continue;
                     }
                     sym::cfg_attr => {
@@ -1925,7 +1977,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
 
 pub struct ExpansionConfig<'feat> {
     pub crate_name: String,
-    pub features: Option<&'feat Features>,
+    pub features: &'feat Features,
     pub recursion_limit: Limit,
     pub trace_mac: bool,
     /// If false, strip `#[test]` nodes
@@ -1936,20 +1988,16 @@ pub struct ExpansionConfig<'feat> {
     pub proc_macro_backtrace: bool,
 }
 
-impl<'feat> ExpansionConfig<'feat> {
-    pub fn default(crate_name: String) -> ExpansionConfig<'static> {
+impl ExpansionConfig<'_> {
+    pub fn default(crate_name: String, features: &Features) -> ExpansionConfig<'_> {
         ExpansionConfig {
             crate_name,
-            features: None,
+            features,
             recursion_limit: Limit::new(1024),
             trace_mac: false,
             should_test: false,
             span_debug: false,
             proc_macro_backtrace: false,
         }
-    }
-
-    fn proc_macro_hygiene(&self) -> bool {
-        self.features.is_some_and(|features| features.proc_macro_hygiene)
     }
 }

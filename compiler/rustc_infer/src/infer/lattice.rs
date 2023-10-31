@@ -113,7 +113,7 @@ where
         | (_, &ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }))
             if this.define_opaque_types() == DefineOpaqueTypes::Yes
                 && def_id.is_local()
-                && !this.tcx().trait_solver_next() =>
+                && !this.infcx().next_trait_solver() =>
         {
             this.register_obligations(
                 infcx

@@ -1,24 +1,6 @@
-// ignore-aarch64
-// ignore-arm
-// ignore-avr
-// ignore-bpf
-// ignore-bpf
-// ignore-hexagon
-// ignore-mips
-// ignore-mips64
-// ignore-msp430
-// ignore-powerpc64
-// ignore-powerpc
-// ignore-sparc
-// ignore-sparc64
-// ignore-s390x
-// ignore-thumb
-// ignore-nvptx64
-// ignore-spirv
-// ignore-wasm32
-// ignore-wasm64
-// ignore-emscripten
-// ignore-loongarch64
+// revisions: x32 x64
+//[x32] only-x86
+//[x64] only-x86_64
 // compile-flags: -C no-prepopulate-passes
 
 #![crate_type = "lib"]

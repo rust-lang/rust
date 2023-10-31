@@ -1,3 +1,4 @@
+use hir::TypeInfo;
 use stdx::format_to;
 use syntax::{
     ast::{self, AstNode},
@@ -46,21 +47,24 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
         .take_while(|it| ctx.selection_trimmed().contains_range(it.text_range()))
         .find_map(valid_target_expr)?;
 
-    if let Some(ty_info) = ctx.sema.type_of_expr(&to_extract) {
-        if ty_info.adjusted().is_unit() {
-            return None;
-        }
+    let ty = ctx.sema.type_of_expr(&to_extract).map(TypeInfo::adjusted);
+    if matches!(&ty, Some(ty_info) if ty_info.is_unit()) {
+        return None;
     }
 
-    let reference_modifier = match get_receiver_type(ctx, &to_extract) {
+    let parent = to_extract.syntax().parent().and_then(ast::Expr::cast);
+    let needs_adjust = parent
+        .as_ref()
+        .map_or(false, |it| matches!(it, ast::Expr::FieldExpr(_) | ast::Expr::MethodCallExpr(_)));
+
+    let reference_modifier = match ty.filter(|_| needs_adjust) {
         Some(receiver_type) if receiver_type.is_mutable_reference() => "&mut ",
         Some(receiver_type) if receiver_type.is_reference() => "&",
         _ => "",
     };
 
-    let parent_ref_expr = to_extract.syntax().parent().and_then(ast::RefExpr::cast);
-    let var_modifier = match parent_ref_expr {
-        Some(expr) if expr.mut_token().is_some() => "mut ",
+    let var_modifier = match parent {
+        Some(ast::Expr::RefExpr(expr)) if expr.mut_token().is_some() => "mut ",
         _ => "",
     };
 
@@ -161,22 +165,6 @@ fn valid_target_expr(node: SyntaxNode) -> Option<ast::Expr> {
             ast::BlockExpr::cast(node).filter(|it| it.is_standalone()).map(ast::Expr::from)
         }
         _ => ast::Expr::cast(node),
-    }
-}
-
-fn get_receiver_type(ctx: &AssistContext<'_>, expression: &ast::Expr) -> Option<hir::Type> {
-    let receiver = get_receiver(expression.clone())?;
-    Some(ctx.sema.type_of_expr(&receiver)?.original())
-}
-
-/// In the expression `a.b.c.x()`, find `a`
-fn get_receiver(expression: ast::Expr) -> Option<ast::Expr> {
-    match expression {
-        ast::Expr::FieldExpr(field) if field.expr().is_some() => {
-            let nested_expression = &field.expr()?;
-            get_receiver(nested_expression.to_owned())
-        }
-        _ => Some(expression),
     }
 }
 
@@ -944,12 +932,22 @@ struct S {
     vec: Vec<u8>
 }
 
+struct Vec<T>;
+impl<T> Vec<T> {
+    fn push(&mut self, _:usize) {}
+}
+
 fn foo(s: &mut S) {
     $0s.vec$0.push(0);
 }"#,
             r#"
 struct S {
     vec: Vec<u8>
+}
+
+struct Vec<T>;
+impl<T> Vec<T> {
+    fn push(&mut self, _:usize) {}
 }
 
 fn foo(s: &mut S) {
@@ -973,6 +971,10 @@ struct X {
 struct S {
     vec: Vec<u8>
 }
+struct Vec<T>;
+impl<T> Vec<T> {
+    fn push(&mut self, _:usize) {}
+}
 
 fn foo(f: &mut Y) {
     $0f.field.field.vec$0.push(0);
@@ -986,6 +988,10 @@ struct X {
 }
 struct S {
     vec: Vec<u8>
+}
+struct Vec<T>;
+impl<T> Vec<T> {
+    fn push(&mut self, _:usize) {}
 }
 
 fn foo(f: &mut Y) {
@@ -1123,7 +1129,7 @@ struct S {
 }
 
 fn foo(s: S) {
-    let $0x = s.sub;
+    let $0x = &s.sub;
     x.do_thing();
 }"#,
         );
@@ -1189,7 +1195,7 @@ impl X {
 
 fn foo() {
     let local = &mut S::new();
-    let $0x = &mut local.sub;
+    let $0x = &local.sub;
     x.do_thing();
 }"#,
         );

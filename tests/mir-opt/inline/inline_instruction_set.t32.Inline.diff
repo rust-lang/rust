@@ -2,57 +2,45 @@
 + // MIR for `t32` after Inline
   
   fn t32() -> () {
-      let mut _0: ();                      // return place in scope 0 at $DIR/inline_instruction_set.rs:+0:14: +0:14
-      let _1: ();                          // in scope 0 at $DIR/inline_instruction_set.rs:+1:5: +1:26
-      let _2: ();                          // in scope 0 at $DIR/inline_instruction_set.rs:+2:5: +2:26
-      let _3: ();                          // in scope 0 at $DIR/inline_instruction_set.rs:+3:5: +3:30
-      let _4: ();                          // in scope 0 at $DIR/inline_instruction_set.rs:+4:5: +4:41
-+     scope 1 (inlined instruction_set_t32) { // at $DIR/inline_instruction_set.rs:50:5: 50:26
+      let mut _0: ();
+      let _1: ();
+      let _2: ();
+      let _3: ();
+      let _4: ();
++     scope 1 (inlined instruction_set_t32) {
 +     }
-+     scope 2 (inlined instruction_set_default) { // at $DIR/inline_instruction_set.rs:51:5: 51:30
++     scope 2 (inlined instruction_set_default) {
 +     }
   
       bb0: {
-          StorageLive(_1);                 // scope 0 at $DIR/inline_instruction_set.rs:+1:5: +1:26
-          _1 = instruction_set_a32() -> [return: bb1, unwind unreachable]; // scope 0 at $DIR/inline_instruction_set.rs:+1:5: +1:26
-                                           // mir::Constant
-                                           // + span: $DIR/inline_instruction_set.rs:49:5: 49:24
-                                           // + literal: Const { ty: fn() {instruction_set_a32}, val: Value(<ZST>) }
+          StorageLive(_1);
+          _1 = instruction_set_a32() -> [return: bb1, unwind unreachable];
       }
   
       bb1: {
-          StorageDead(_1);                 // scope 0 at $DIR/inline_instruction_set.rs:+1:26: +1:27
-          StorageLive(_2);                 // scope 0 at $DIR/inline_instruction_set.rs:+2:5: +2:26
--         _2 = instruction_set_t32() -> [return: bb2, unwind unreachable]; // scope 0 at $DIR/inline_instruction_set.rs:+2:5: +2:26
--                                          // mir::Constant
--                                          // + span: $DIR/inline_instruction_set.rs:50:5: 50:24
--                                          // + literal: Const { ty: fn() {instruction_set_t32}, val: Value(<ZST>) }
+          StorageDead(_1);
+          StorageLive(_2);
+-         _2 = instruction_set_t32() -> [return: bb2, unwind unreachable];
 -     }
 - 
 -     bb2: {
-          StorageDead(_2);                 // scope 0 at $DIR/inline_instruction_set.rs:+2:26: +2:27
-          StorageLive(_3);                 // scope 0 at $DIR/inline_instruction_set.rs:+3:5: +3:30
--         _3 = instruction_set_default() -> [return: bb3, unwind unreachable]; // scope 0 at $DIR/inline_instruction_set.rs:+3:5: +3:30
--                                          // mir::Constant
--                                          // + span: $DIR/inline_instruction_set.rs:51:5: 51:28
--                                          // + literal: Const { ty: fn() {instruction_set_default}, val: Value(<ZST>) }
+          StorageDead(_2);
+          StorageLive(_3);
+-         _3 = instruction_set_default() -> [return: bb3, unwind unreachable];
 -     }
 - 
 -     bb3: {
-          StorageDead(_3);                 // scope 0 at $DIR/inline_instruction_set.rs:+3:30: +3:31
-          StorageLive(_4);                 // scope 0 at $DIR/inline_instruction_set.rs:+4:5: +4:41
--         _4 = inline_always_and_using_inline_asm() -> [return: bb4, unwind unreachable]; // scope 0 at $DIR/inline_instruction_set.rs:+4:5: +4:41
-+         _4 = inline_always_and_using_inline_asm() -> [return: bb2, unwind unreachable]; // scope 0 at $DIR/inline_instruction_set.rs:+4:5: +4:41
-                                           // mir::Constant
-                                           // + span: $DIR/inline_instruction_set.rs:52:5: 52:39
-                                           // + literal: Const { ty: fn() {inline_always_and_using_inline_asm}, val: Value(<ZST>) }
+          StorageDead(_3);
+          StorageLive(_4);
+-         _4 = inline_always_and_using_inline_asm() -> [return: bb4, unwind unreachable];
++         _4 = inline_always_and_using_inline_asm() -> [return: bb2, unwind unreachable];
       }
   
 -     bb4: {
 +     bb2: {
-          StorageDead(_4);                 // scope 0 at $DIR/inline_instruction_set.rs:+4:41: +4:42
-          _0 = const ();                   // scope 0 at $DIR/inline_instruction_set.rs:+0:14: +5:2
-          return;                          // scope 0 at $DIR/inline_instruction_set.rs:+5:2: +5:2
+          StorageDead(_4);
+          _0 = const ();
+          return;
       }
   }
   

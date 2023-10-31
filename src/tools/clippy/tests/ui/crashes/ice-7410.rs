@@ -1,11 +1,12 @@
 //@compile-flags: -Clink-arg=-nostartfiles
-//@ignore-macos
-//@ignore-windows
+//@ignore-target-apple
+//@ignore-target-windows
 
 #![feature(lang_items, start, libc)]
 #![no_std]
 #![allow(clippy::if_same_then_else)]
 #![allow(clippy::redundant_pattern_matching)]
+#![allow(clippy::needless_else)]
 
 use core::panic::PanicInfo;
 

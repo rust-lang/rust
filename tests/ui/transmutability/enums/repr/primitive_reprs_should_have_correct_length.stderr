@@ -90,7 +90,7 @@ error[E0277]: `u8` cannot be safely transmuted into `V0i16` in the defining scop
   --> $DIR/primitive_reprs_should_have_correct_length.rs:72:44
    |
 LL |         assert::is_transmutable::<Smaller, Current, Context>();
-   |                                            ^^^^^^^ At least one value of `u8` isn't a bit-valid value of `V0i16`
+   |                                            ^^^^^^^ The size of `u8` is smaller than the size of `V0i16`
    |
 note: required by a bound in `is_transmutable`
   --> $DIR/primitive_reprs_should_have_correct_length.rs:12:14
@@ -134,7 +134,7 @@ error[E0277]: `u8` cannot be safely transmuted into `V0u16` in the defining scop
   --> $DIR/primitive_reprs_should_have_correct_length.rs:80:44
    |
 LL |         assert::is_transmutable::<Smaller, Current, Context>();
-   |                                            ^^^^^^^ At least one value of `u8` isn't a bit-valid value of `V0u16`
+   |                                            ^^^^^^^ The size of `u8` is smaller than the size of `V0u16`
    |
 note: required by a bound in `is_transmutable`
   --> $DIR/primitive_reprs_should_have_correct_length.rs:12:14
@@ -178,7 +178,7 @@ error[E0277]: `u16` cannot be safely transmuted into `V0i32` in the defining sco
   --> $DIR/primitive_reprs_should_have_correct_length.rs:96:44
    |
 LL |         assert::is_transmutable::<Smaller, Current, Context>();
-   |                                            ^^^^^^^ At least one value of `u16` isn't a bit-valid value of `V0i32`
+   |                                            ^^^^^^^ The size of `u16` is smaller than the size of `V0i32`
    |
 note: required by a bound in `is_transmutable`
   --> $DIR/primitive_reprs_should_have_correct_length.rs:12:14
@@ -222,7 +222,7 @@ error[E0277]: `u16` cannot be safely transmuted into `V0u32` in the defining sco
   --> $DIR/primitive_reprs_should_have_correct_length.rs:104:44
    |
 LL |         assert::is_transmutable::<Smaller, Current, Context>();
-   |                                            ^^^^^^^ At least one value of `u16` isn't a bit-valid value of `V0u32`
+   |                                            ^^^^^^^ The size of `u16` is smaller than the size of `V0u32`
    |
 note: required by a bound in `is_transmutable`
   --> $DIR/primitive_reprs_should_have_correct_length.rs:12:14
@@ -266,7 +266,7 @@ error[E0277]: `u32` cannot be safely transmuted into `V0i64` in the defining sco
   --> $DIR/primitive_reprs_should_have_correct_length.rs:120:44
    |
 LL |         assert::is_transmutable::<Smaller, Current, Context>();
-   |                                            ^^^^^^^ At least one value of `u32` isn't a bit-valid value of `V0i64`
+   |                                            ^^^^^^^ The size of `u32` is smaller than the size of `V0i64`
    |
 note: required by a bound in `is_transmutable`
   --> $DIR/primitive_reprs_should_have_correct_length.rs:12:14
@@ -310,7 +310,7 @@ error[E0277]: `u32` cannot be safely transmuted into `V0u64` in the defining sco
   --> $DIR/primitive_reprs_should_have_correct_length.rs:128:44
    |
 LL |         assert::is_transmutable::<Smaller, Current, Context>();
-   |                                            ^^^^^^^ At least one value of `u32` isn't a bit-valid value of `V0u64`
+   |                                            ^^^^^^^ The size of `u32` is smaller than the size of `V0u64`
    |
 note: required by a bound in `is_transmutable`
   --> $DIR/primitive_reprs_should_have_correct_length.rs:12:14
@@ -354,7 +354,7 @@ error[E0277]: `u8` cannot be safely transmuted into `V0isize` in the defining sc
   --> $DIR/primitive_reprs_should_have_correct_length.rs:144:44
    |
 LL |         assert::is_transmutable::<Smaller, Current, Context>();
-   |                                            ^^^^^^^ At least one value of `u8` isn't a bit-valid value of `V0isize`
+   |                                            ^^^^^^^ The size of `u8` is smaller than the size of `V0isize`
    |
 note: required by a bound in `is_transmutable`
   --> $DIR/primitive_reprs_should_have_correct_length.rs:12:14
@@ -398,7 +398,7 @@ error[E0277]: `u8` cannot be safely transmuted into `V0usize` in the defining sc
   --> $DIR/primitive_reprs_should_have_correct_length.rs:152:44
    |
 LL |         assert::is_transmutable::<Smaller, Current, Context>();
-   |                                            ^^^^^^^ At least one value of `u8` isn't a bit-valid value of `V0usize`
+   |                                            ^^^^^^^ The size of `u8` is smaller than the size of `V0usize`
    |
 note: required by a bound in `is_transmutable`
   --> $DIR/primitive_reprs_should_have_correct_length.rs:12:14

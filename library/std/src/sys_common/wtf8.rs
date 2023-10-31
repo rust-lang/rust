@@ -182,6 +182,15 @@ impl Wtf8Buf {
         Wtf8Buf { bytes: Vec::with_capacity(capacity), is_known_utf8: true }
     }
 
+    /// Creates a WTF-8 string from a WTF-8 byte vec.
+    ///
+    /// Since the byte vec is not checked for valid WTF-8, this functions is
+    /// marked unsafe.
+    #[inline]
+    pub unsafe fn from_bytes_unchecked(value: Vec<u8>) -> Wtf8Buf {
+        Wtf8Buf { bytes: value, is_known_utf8: false }
+    }
+
     /// Creates a WTF-8 string from a UTF-8 `String`.
     ///
     /// This takes ownership of the `String` and does not copy.
@@ -402,6 +411,12 @@ impl Wtf8Buf {
         self.bytes.truncate(new_len)
     }
 
+    /// Consumes the WTF-8 string and tries to convert it to a vec of bytes.
+    #[inline]
+    pub fn into_bytes(self) -> Vec<u8> {
+        self.bytes
+    }
+
     /// Consumes the WTF-8 string and tries to convert it to UTF-8.
     ///
     /// This does not copy the data.
@@ -444,6 +459,7 @@ impl Wtf8Buf {
     /// Converts this `Wtf8Buf` into a boxed `Wtf8`.
     #[inline]
     pub fn into_box(self) -> Box<Wtf8> {
+        // SAFETY: relies on `Wtf8` being `repr(transparent)`.
         unsafe { mem::transmute(self.bytes.into_boxed_slice()) }
     }
 
@@ -496,6 +512,7 @@ impl Extend<CodePoint> for Wtf8Buf {
 /// Similar to `&str`, but can additionally contain surrogate code points
 /// if they’re not in a surrogate pair.
 #[derive(Eq, Ord, PartialEq, PartialOrd)]
+#[repr(transparent)]
 pub struct Wtf8 {
     bytes: [u8],
 }
@@ -570,7 +587,7 @@ impl Wtf8 {
     /// Since the byte slice is not checked for valid WTF-8, this functions is
     /// marked unsafe.
     #[inline]
-    unsafe fn from_bytes_unchecked(value: &[u8]) -> &Wtf8 {
+    pub unsafe fn from_bytes_unchecked(value: &[u8]) -> &Wtf8 {
         mem::transmute(value)
     }
 
@@ -614,19 +631,20 @@ impl Wtf8 {
         Wtf8CodePoints { bytes: self.bytes.iter() }
     }
 
+    /// Access raw bytes of WTF-8 data
+    #[inline]
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.bytes
+    }
+
     /// Tries to convert the string to UTF-8 and return a `&str` slice.
     ///
     /// Returns `None` if the string contains surrogates.
     ///
     /// This does not copy the data.
     #[inline]
-    pub fn as_str(&self) -> Option<&str> {
-        // Well-formed WTF-8 is also well-formed UTF-8
-        // if and only if it contains no surrogate.
-        match self.next_surrogate(0) {
-            None => Some(unsafe { str::from_utf8_unchecked(&self.bytes) }),
-            Some(_) => None,
-        }
+    pub fn as_str(&self) -> Result<&str, str::Utf8Error> {
+        str::from_utf8(&self.bytes)
     }
 
     /// Creates an owned `Wtf8Buf` from a borrowed `Wtf8`.

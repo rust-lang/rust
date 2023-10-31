@@ -2,7 +2,7 @@ error[E0381]: used binding `s` isn't initialized
   --> $DIR/const-generic-default-wont-borrowck.rs:2:26
    |
 LL |     let s: &'static str; s.len()
-   |         -                ^^^^^^^ `*s` used here but it isn't initialized
+   |         -                ^ `*s` used here but it isn't initialized
    |         |
    |         binding declared here but left uninitialized
    |

@@ -22,7 +22,7 @@ where
     Successors { next: first, succ }
 }
 
-/// An new iterator where each successive item is computed based on the preceding one.
+/// A new iterator where each successive item is computed based on the preceding one.
 ///
 /// This `struct` is created by the [`iter::successors()`] function.
 /// See its documentation for more.

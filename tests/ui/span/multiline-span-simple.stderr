@@ -6,10 +6,10 @@ LL |     foo(1 as u32 +
    |
    = help: the trait `Add<()>` is not implemented for `u32`
    = help: the following other types implement trait `Add<Rhs>`:
+             <u32 as Add>
+             <u32 as Add<&u32>>
              <&'a u32 as Add<u32>>
              <&u32 as Add<&u32>>
-             <u32 as Add<&u32>>
-             <u32 as Add>
 
 error: aborting due to previous error
 

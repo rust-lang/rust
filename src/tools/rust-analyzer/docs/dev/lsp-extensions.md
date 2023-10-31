@@ -1,5 +1,5 @@
 <!---
-lsp_ext.rs hash: 37f31ae648632897
+lsp_ext.rs hash: 149a5be3c5e469d1
 
 If you need to change the above hash to make the test pass, please check if you
 need to adjust this doc as well and ping this issue:
@@ -333,7 +333,7 @@ Moreover, it would be cool if editors didn't need to implement even basic langua
 
 ### Unresolved Question
 
-* Should we return a nested brace structure, to allow paredit-like actions of jump *out* of the current brace pair?
+* Should we return a nested brace structure, to allow [paredit](https://paredit.org/)-like actions of jump *out* of the current brace pair?
   This is how `SelectionRange` request works.
 * Alternatively, should we perhaps flag certain `SelectionRange`s as being brace pairs?
 
@@ -386,14 +386,26 @@ rust-analyzer supports only one `kind`, `"cargo"`. The `args` for `"cargo"` look
 
 ## Open External Documentation
 
-This request is sent from client to server to get a URL to documentation for the symbol under the cursor, if available.
+This request is sent from the client to the server to obtain web and local URL(s) for documentation related to the symbol under the cursor, if available.
 
-**Method** `experimental/externalDocs`
+**Method:** `experimental/externalDocs`
 
-**Request:**: `TextDocumentPositionParams`
+**Request:** `TextDocumentPositionParams`
 
-**Response** `string | null`
+**Response:** `string | null`
 
+## Local Documentation
+
+**Experimental Client Capability:** `{ "localDocs": boolean }`
+
+If this capability is set, the `Open External Documentation` request returned from the server will have the following structure:
+
+```typescript
+interface ExternalDocsResponse {
+    web?: string;
+    local?: string;
+}
+```
 
 ## Analyzer Status
 
@@ -421,6 +433,16 @@ Returns internal status message, mostly for debugging purposes.
 **Response:** `null`
 
 Reloads project information (that is, re-executes `cargo metadata`).
+
+## Rebuild proc-macros
+
+**Method:** `rust-analyzer/rebuildProcMacros`
+
+**Request:** `null`
+
+**Response:** `null`
+
+Rebuilds build scripts and proc-macros, and runs the build scripts to reseed the build data.
 
 ## Server Status
 
@@ -537,6 +559,18 @@ For debugging or when working on rust-analyzer itself.
 
 Returns a textual representation of the MIR of the function containing the cursor.
 For debugging or when working on rust-analyzer itself.
+
+## Interpret Function
+
+**Method:** `rust-analyzer/interpretFunction`
+
+**Request:** `TextDocumentPositionParams`
+
+**Response:** `string`
+
+Tries to evaluate the function using internal rust analyzer knowledge, without compiling
+the code. Currently evaluates the function under cursor, but will give a runnable in
+future. Highly experimental.
 
 ## View File Text
 
@@ -829,3 +863,71 @@ export interface Diagnostic {
         rendered?: string;
     };
 }
+```
+
+## Dependency Tree
+
+**Method:** `rust-analyzer/fetchDependencyList`
+
+**Request:**
+
+```typescript
+export interface FetchDependencyListParams {}
+```
+
+**Response:**
+```typescript
+export interface FetchDependencyListResult {
+    crates: {
+        name: string;
+        version: string;
+        path: string;
+    }[];
+}
+```
+Returns all crates from this workspace, so it can be used create a viewTree to help navigate the dependency tree.
+
+## View Recursive Memory Layout
+
+**Method:** `rust-analyzer/viewRecursiveMemoryLayout`
+
+**Request:** `TextDocumentPositionParams`
+
+**Response:**
+
+```typescript
+export interface RecursiveMemoryLayoutNode = {
+    /// Name of the item, or [ROOT], `.n` for tuples
+    item_name: string;
+    /// Full name of the type (type aliases are ignored)
+    typename: string;
+    /// Size of the type in bytes
+    size: number;
+    /// Alignment of the type in bytes
+    alignment: number;
+    /// Offset of the type relative to its parent (or 0 if its the root)
+    offset: number;
+    /// Index of the node's parent (or -1 if its the root)
+    parent_idx: number;
+    /// Index of the node's children (or -1 if it does not have children)
+    children_start: number;
+    /// Number of child nodes (unspecified it does not have children)
+    children_len: number;
+};
+
+export interface RecursiveMemoryLayout = {
+    nodes: RecursiveMemoryLayoutNode[];
+};
+```
+
+Returns a vector of nodes representing items in the datatype as a tree, `RecursiveMemoryLayout::nodes[0]` is the root node.
+
+If `RecursiveMemoryLayout::nodes::length == 0` we could not find a suitable type.
+
+Generic Types do not give anything because they are incomplete. Fully specified generic types do not give anything if they are selected directly but do work when a child of other types [this is consistent with other behavior](https://github.com/rust-lang/rust-analyzer/issues/15010).
+
+### Unresolved questions:
+
+- How should enums/unions be represented? currently they do not produce any children because they have multiple distinct sets of children.
+- Should niches be represented? currently they are not reported.
+- A visual representation of the memory layout is not specified, see the provided implementation for an example, however it may not translate well to terminal based editors or other such things.

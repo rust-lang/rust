@@ -1,0 +1,11 @@
+error[E0015]: cannot call non-const closure in constants
+  --> $DIR/issue-102985.rs:6:14
+   |
+LL |         n => n(),
+   |              ^^^
+   |
+   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0015`.

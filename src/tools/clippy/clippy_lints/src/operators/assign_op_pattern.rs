@@ -1,9 +1,8 @@
-use clippy_utils::binop_traits;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::visitors::for_each_expr;
-use clippy_utils::{eq_expr_value, trait_ref_of_method};
+use clippy_utils::{binop_traits, eq_expr_value, trait_ref_of_method};
 use core::ops::ControlFlow;
 use if_chain::if_chain;
 use rustc_errors::Applicability;

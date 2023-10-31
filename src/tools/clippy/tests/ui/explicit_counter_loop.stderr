@@ -25,31 +25,31 @@ LL |     for _v in vec {
    |     ^^^^^^^^^^^^^ help: consider using: `for (_index, _v) in vec.into_iter().enumerate()`
 
 error: the variable `count` is used as a loop counter
-  --> $DIR/explicit_counter_loop.rs:62:9
+  --> $DIR/explicit_counter_loop.rs:110:9
    |
 LL |         for ch in text.chars() {
    |         ^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `for (count, ch) in text.chars().enumerate()`
 
 error: the variable `count` is used as a loop counter
-  --> $DIR/explicit_counter_loop.rs:73:9
+  --> $DIR/explicit_counter_loop.rs:121:9
    |
 LL |         for ch in text.chars() {
    |         ^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `for (count, ch) in text.chars().enumerate()`
 
 error: the variable `count` is used as a loop counter
-  --> $DIR/explicit_counter_loop.rs:131:9
+  --> $DIR/explicit_counter_loop.rs:179:9
    |
 LL |         for _i in 3..10 {
    |         ^^^^^^^^^^^^^^^ help: consider using: `for (count, _i) in (3..10).enumerate()`
 
 error: the variable `idx_usize` is used as a loop counter
-  --> $DIR/explicit_counter_loop.rs:171:9
+  --> $DIR/explicit_counter_loop.rs:219:9
    |
 LL |         for _item in slice {
    |         ^^^^^^^^^^^^^^^^^^ help: consider using: `for (idx_usize, _item) in slice.iter().enumerate()`
 
 error: the variable `idx_u32` is used as a loop counter
-  --> $DIR/explicit_counter_loop.rs:183:9
+  --> $DIR/explicit_counter_loop.rs:231:9
    |
 LL |         for _item in slice {
    |         ^^^^^^^^^^^^^^^^^^ help: consider using: `for (idx_u32, _item) in (0_u32..).zip(slice.iter())`

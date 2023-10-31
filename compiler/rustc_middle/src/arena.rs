@@ -27,6 +27,11 @@ macro_rules! arena_types {
                     rustc_middle::mir::Promoted,
                     rustc_middle::mir::Body<'tcx>
                 >,
+            [decode] closure_debuginfo:
+                rustc_index::IndexVec<
+                    rustc_target::abi::FieldIdx,
+                    rustc_span::symbol::Symbol,
+                >,
             [decode] typeck_results: rustc_middle::ty::TypeckResults<'tcx>,
             [decode] borrowck_result:
                 rustc_middle::mir::BorrowCheckResult<'tcx>,
@@ -35,7 +40,6 @@ macro_rules! arena_types {
                 rustc_data_structures::sync::Lrc<rustc_ast::Crate>,
             )>,
             [] output_filenames: std::sync::Arc<rustc_session::config::OutputFilenames>,
-            [] metadata_loader: rustc_data_structures::steal::Steal<Box<rustc_session::cstore::MetadataLoaderDyn>>,
             [] crate_for_resolver: rustc_data_structures::steal::Steal<(rustc_ast::Crate, rustc_ast::AttrVec)>,
             [] resolutions: rustc_middle::ty::ResolverGlobalCtxt,
             [decode] unsafety_check_result: rustc_middle::mir::UnsafetyCheckResult,
@@ -78,9 +82,9 @@ macro_rules! arena_types {
                 rustc_middle::infer::canonical::Canonical<'tcx,
                     rustc_middle::infer::canonical::QueryResponse<'tcx, rustc_middle::ty::FnSig<'tcx>>
                 >,
-            [] type_op_normalize_predicate:
+            [] type_op_normalize_clause:
                 rustc_middle::infer::canonical::Canonical<'tcx,
-                    rustc_middle::infer::canonical::QueryResponse<'tcx, rustc_middle::ty::Predicate<'tcx>>
+                    rustc_middle::infer::canonical::QueryResponse<'tcx, rustc_middle::ty::Clause<'tcx>>
                 >,
             [] type_op_normalize_ty:
                 rustc_middle::infer::canonical::Canonical<'tcx,
@@ -124,7 +128,9 @@ macro_rules! arena_types {
             [] predefined_opaques_in_body: rustc_middle::traits::solve::PredefinedOpaquesData<'tcx>,
             [decode] doc_link_resolutions: rustc_hir::def::DocLinkResMap,
             [] closure_kind_origin: (rustc_span::Span, rustc_middle::hir::place::Place<'tcx>),
+            [] stripped_cfg_items: rustc_ast::expand::StrippedCfgItem,
             [] mod_child: rustc_middle::metadata::ModChild,
+            [] features: rustc_feature::Features,
         ]);
     )
 }

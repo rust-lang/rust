@@ -1,3 +1,5 @@
+#![allow(invalid_from_utf8)]
+
 use std::assert_matches::assert_matches;
 use std::borrow::Cow;
 use std::cmp::Ordering::{Equal, Greater, Less};
@@ -1737,6 +1739,28 @@ fn test_utf16_code_units() {
 }
 
 #[test]
+fn test_utf16_size_hint() {
+    assert_eq!("".encode_utf16().size_hint(), (0, Some(0)));
+    assert_eq!("123".encode_utf16().size_hint(), (1, Some(3)));
+    assert_eq!("1234".encode_utf16().size_hint(), (2, Some(4)));
+    assert_eq!("12345678".encode_utf16().size_hint(), (3, Some(8)));
+
+    fn hint_vec(src: &str) -> Vec<(usize, Option<usize>)> {
+        let mut it = src.encode_utf16();
+        let mut result = Vec::new();
+        result.push(it.size_hint());
+        while it.next().is_some() {
+            result.push(it.size_hint())
+        }
+        result
+    }
+
+    assert_eq!(hint_vec("12"), [(1, Some(2)), (1, Some(1)), (0, Some(0))]);
+    assert_eq!(hint_vec("\u{101234}"), [(2, Some(4)), (1, Some(1)), (0, Some(0))]);
+    assert_eq!(hint_vec("\u{101234}a"), [(2, Some(5)), (2, Some(2)), (1, Some(1)), (0, Some(0))]);
+}
+
+#[test]
 fn starts_with_in_unicode() {
     assert!(!"├── Cargo.toml".starts_with("# "));
 }
@@ -2414,10 +2438,7 @@ fn ceil_char_boundary() {
     check_many("🇯🇵", 0..=0, 0);
     check_many("🇯🇵", 1..=4, 4);
     check_many("🇯🇵", 5..=8, 8);
-}
 
-#[test]
-#[should_panic]
-fn ceil_char_boundary_above_len_panic() {
-    let _ = "x".ceil_char_boundary(2);
+    // above len
+    check_many("hello", 5..=10, 5);
 }

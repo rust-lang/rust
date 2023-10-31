@@ -1,13 +1,48 @@
 use crate::cell::UnsafeCell;
 use crate::ptr;
 use crate::sync::atomic::{
-    AtomicPtr, AtomicU32,
+    AtomicBool, AtomicPtr, AtomicU32,
     Ordering::{AcqRel, Acquire, Relaxed, Release},
 };
 use crate::sys::c;
 
 #[cfg(test)]
 mod tests;
+
+/// An optimization hint. The compiler is often smart enough to know if an atomic
+/// is never set and can remove dead code based on that fact.
+static HAS_DTORS: AtomicBool = AtomicBool::new(false);
+
+// Using a per-thread list avoids the problems in synchronizing global state.
+#[thread_local]
+#[cfg(target_thread_local)]
+static mut DESTRUCTORS: Vec<(*mut u8, unsafe extern "C" fn(*mut u8))> = Vec::new();
+
+// Ensure this can never be inlined because otherwise this may break in dylibs.
+// See #44391.
+#[inline(never)]
+#[cfg(target_thread_local)]
+pub unsafe fn register_keyless_dtor(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
+    DESTRUCTORS.push((t, dtor));
+    HAS_DTORS.store(true, Relaxed);
+}
+
+#[inline(never)] // See comment above
+#[cfg(target_thread_local)]
+/// Runs destructors. This should not be called until thread exit.
+unsafe fn run_keyless_dtors() {
+    // Drop all the destructors.
+    //
+    // Note: While this is potentially an infinite loop, it *should* be
+    // the case that this loop always terminates because we provide the
+    // guarantee that a TLS key cannot be set after it is flagged for
+    // destruction.
+    while let Some((ptr, dtor)) = DESTRUCTORS.pop() {
+        (dtor)(ptr);
+    }
+    // We're done so free the memory.
+    DESTRUCTORS = Vec::new();
+}
 
 type Key = c::DWORD;
 type Dtor = unsafe extern "C" fn(*mut u8);
@@ -156,6 +191,8 @@ static DTORS: AtomicPtr<StaticKey> = AtomicPtr::new(ptr::null_mut());
 /// Should only be called once per key, otherwise loops or breaks may occur in
 /// the linked list.
 unsafe fn register_dtor(key: &'static StaticKey) {
+    // Ensure this is never run when native thread locals are available.
+    assert_eq!(false, cfg!(target_thread_local));
     let this = <*const StaticKey>::cast_mut(key);
     // Use acquire ordering to pass along the changes done by the previously
     // registered keys when we store the new head with release ordering.
@@ -167,6 +204,7 @@ unsafe fn register_dtor(key: &'static StaticKey) {
             Err(new) => head = new,
         }
     }
+    HAS_DTORS.store(true, Release);
 }
 
 // -------------------------------------------------------------------------
@@ -240,10 +278,14 @@ pub static p_thread_callback: unsafe extern "system" fn(c::LPVOID, c::DWORD, c::
 
 #[allow(dead_code, unused_variables)]
 unsafe extern "system" fn on_tls_callback(h: c::LPVOID, dwReason: c::DWORD, pv: c::LPVOID) {
+    if !HAS_DTORS.load(Acquire) {
+        return;
+    }
     if dwReason == c::DLL_THREAD_DETACH || dwReason == c::DLL_PROCESS_DETACH {
+        #[cfg(not(target_thread_local))]
         run_dtors();
         #[cfg(target_thread_local)]
-        super::thread_local_dtor::run_keyless_dtors();
+        run_keyless_dtors();
     }
 
     // See comments above for what this is doing. Note that we don't need this

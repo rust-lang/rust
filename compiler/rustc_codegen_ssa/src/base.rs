@@ -13,7 +13,7 @@ use crate::mir::place::PlaceRef;
 use crate::traits::*;
 use crate::{CachedModuleCodegen, CompiledModule, CrateInfo, MemFlags, ModuleCodegen, ModuleKind};
 
-use rustc_ast::expand::allocator::AllocatorKind;
+use rustc_ast::expand::allocator::{global_fn_name, AllocatorKind, ALLOCATOR_METHODS};
 use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
@@ -38,6 +38,7 @@ use rustc_span::symbol::sym;
 use rustc_span::Symbol;
 use rustc_target::abi::{Align, FIRST_VARIANT};
 
+use std::cmp;
 use std::collections::BTreeSet;
 use std::time::{Duration, Instant};
 
@@ -164,48 +165,25 @@ pub fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 cx.tcx().vtable_trait_upcasting_coercion_new_vptr_slot((source, target));
 
             if let Some(entry_idx) = vptr_entry_idx {
-                let ptr_ty = cx.type_i8p();
+                let ptr_ty = cx.type_ptr();
                 let ptr_align = cx.tcx().data_layout.pointer_align.abi;
-                let vtable_ptr_ty = vtable_ptr_ty(cx, target, target_dyn_kind);
-                let llvtable = bx.pointercast(old_info, bx.type_ptr_to(ptr_ty));
                 let gep = bx.inbounds_gep(
                     ptr_ty,
-                    llvtable,
+                    old_info,
                     &[bx.const_usize(u64::try_from(entry_idx).unwrap())],
                 );
                 let new_vptr = bx.load(ptr_ty, gep, ptr_align);
                 bx.nonnull_metadata(new_vptr);
                 // VTable loads are invariant.
                 bx.set_invariant_load(new_vptr);
-                bx.pointercast(new_vptr, vtable_ptr_ty)
+                new_vptr
             } else {
                 old_info
             }
         }
-        (_, &ty::Dynamic(ref data, _, target_dyn_kind)) => {
-            let vtable_ptr_ty = vtable_ptr_ty(cx, target, target_dyn_kind);
-            cx.const_ptrcast(meth::get_vtable(cx, source, data.principal()), vtable_ptr_ty)
-        }
+        (_, &ty::Dynamic(ref data, _, _)) => meth::get_vtable(cx, source, data.principal()),
         _ => bug!("unsized_info: invalid unsizing {:?} -> {:?}", source, target),
     }
-}
-
-// Returns the vtable pointer type of a `dyn` or `dyn*` type
-fn vtable_ptr_ty<'tcx, Cx: CodegenMethods<'tcx>>(
-    cx: &Cx,
-    target: Ty<'tcx>,
-    kind: ty::DynKind,
-) -> <Cx as BackendTypes>::Type {
-    cx.scalar_pair_element_backend_type(
-        cx.layout_of(match kind {
-            // vtable is the second field of `*mut dyn Trait`
-            ty::Dyn => cx.tcx().mk_mut_ptr(target),
-            // vtable is the second field of `dyn* Trait`
-            ty::DynStar => target,
-        }),
-        1,
-        true,
-    )
 }
 
 /// Coerces `src` to `dst_ty`. `src_ty` must be a pointer.
@@ -221,8 +199,7 @@ pub fn unsize_ptr<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         (&ty::Ref(_, a, _), &ty::Ref(_, b, _) | &ty::RawPtr(ty::TypeAndMut { ty: b, .. }))
         | (&ty::RawPtr(ty::TypeAndMut { ty: a, .. }), &ty::RawPtr(ty::TypeAndMut { ty: b, .. })) => {
             assert_eq!(bx.cx().type_is_sized(a), old_info.is_none());
-            let ptr_ty = bx.cx().type_ptr_to(bx.cx().backend_type(bx.cx().layout_of(b)));
-            (bx.pointercast(src, ptr_ty), unsized_info(bx, a, b, old_info))
+            (src, unsized_info(bx, a, b, old_info))
         }
         (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) => {
             assert_eq!(def_a, def_b);
@@ -247,11 +224,7 @@ pub fn unsize_ptr<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 assert_eq!(result, None);
                 result = Some(unsize_ptr(bx, src, src_f.ty, dst_f.ty, old_info));
             }
-            let (lldata, llextra) = result.unwrap();
-            let lldata_ty = bx.cx().scalar_pair_element_backend_type(dst_layout, 0, true);
-            let llextra_ty = bx.cx().scalar_pair_element_backend_type(dst_layout, 1, true);
-            // HACK(eddyb) have to bitcast pointers until LLVM removes pointee types.
-            (bx.bitcast(lldata, lldata_ty), bx.bitcast(llextra, llextra_ty))
+            result.unwrap()
         }
         _ => bug!("unsize_ptr: called on bad types"),
     }
@@ -270,11 +243,9 @@ pub fn cast_to_dyn_star<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         matches!(dst_ty.kind(), ty::Dynamic(_, _, ty::DynStar)),
         "destination type must be a dyn*"
     );
-    // FIXME(dyn-star): We can remove this when all supported LLVMs use opaque ptrs only.
-    let unit_ptr = bx.cx().type_ptr_to(bx.cx().type_struct(&[], false));
     let src = match bx.cx().type_kind(bx.cx().backend_type(src_ty_and_layout)) {
-        TypeKind::Pointer => bx.pointercast(src, unit_ptr),
-        TypeKind::Integer => bx.inttoptr(src, unit_ptr),
+        TypeKind::Pointer => src,
+        TypeKind::Integer => bx.inttoptr(src, bx.type_ptr()),
         // FIXME(dyn-star): We probably have to do a bitcast first, then inttoptr.
         kind => bug!("unexpected TypeKind for left-hand side of `dyn*` cast: {kind:?}"),
     };
@@ -295,7 +266,7 @@ pub fn coerce_unsized_into<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             let (base, info) = match bx.load_operand(src).val {
                 OperandValue::Pair(base, info) => unsize_ptr(bx, base, src_ty, dst_ty, Some(info)),
                 OperandValue::Immediate(base) => unsize_ptr(bx, base, src_ty, dst_ty, None),
-                OperandValue::Ref(..) => bug!(),
+                OperandValue::Ref(..) | OperandValue::ZeroSized => bug!(),
             };
             OperandValue::Pair(base, info).store(bx, dst);
         }
@@ -357,6 +328,13 @@ pub fn cast_shift_expr_rhs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     }
 }
 
+// Returns `true` if this session's target will use native wasm
+// exceptions. This means that the VM does the unwinding for
+// us
+pub fn wants_wasm_eh(sess: &Session) -> bool {
+    sess.target.is_like_wasm && sess.target.os != "emscripten"
+}
+
 /// Returns `true` if this session's target will use SEH-based unwinding.
 ///
 /// This is only true for MSVC targets, and even then the 64-bit MSVC target
@@ -364,6 +342,13 @@ pub fn cast_shift_expr_rhs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 /// 64-bit MinGW) instead of "full SEH".
 pub fn wants_msvc_seh(sess: &Session) -> bool {
     sess.target.is_like_msvc
+}
+
+/// Returns `true` if this session's target requires the new exception
+/// handling LLVM IR instructions (catchpad / cleanuppad / ... instead
+/// of landingpad)
+pub fn wants_new_eh_instructions(sess: &Session) -> bool {
+    wants_wasm_eh(sess) || wants_msvc_seh(sess)
 }
 
 pub fn memcpy_ty<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
@@ -380,7 +365,14 @@ pub fn memcpy_ty<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         return;
     }
 
-    bx.memcpy(dst, dst_align, src, src_align, bx.cx().const_usize(size), flags);
+    if flags == MemFlags::empty()
+        && let Some(bty) = bx.cx().scalar_copy_backend_type(layout)
+    {
+        let temp = bx.load(bty, src, src_align);
+        bx.store(temp, dst, dst_align);
+    } else {
+        bx.memcpy(dst, dst_align, src, src_align, bx.cx().const_usize(size), flags);
+    }
 }
 
 pub fn codegen_instance<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
@@ -429,7 +421,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         // The entry function is either `int main(void)` or `int main(int argc, char **argv)`,
         // depending on whether the target needs `argc` and `argv` to be passed in.
         let llfty = if cx.sess().target.main_needs_argc_argv {
-            cx.type_func(&[cx.type_int(), cx.type_ptr_to(cx.type_i8p())], cx.type_int())
+            cx.type_func(&[cx.type_int(), cx.type_ptr()], cx.type_int())
         } else {
             cx.type_func(&[], cx.type_int())
         };
@@ -463,7 +455,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         bx.insert_reference_to_gdb_debug_scripts_section_global();
 
         let isize_ty = cx.type_isize();
-        let i8pp_ty = cx.type_ptr_to(cx.type_i8p());
+        let ptr_ty = cx.type_ptr();
         let (arg_argc, arg_argv) = get_argc_argv(cx, &mut bx);
 
         let (start_fn, start_ty, args) = if let EntryFnType::Main { sigpipe } = entry_type {
@@ -473,7 +465,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                     cx.tcx(),
                     ty::ParamEnv::reveal_all(),
                     start_def_id,
-                    cx.tcx().mk_substs(&[main_ret_ty.into()]),
+                    cx.tcx().mk_args(&[main_ret_ty.into()]),
                 )
                 .unwrap()
                 .unwrap(),
@@ -482,12 +474,11 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             let i8_ty = cx.type_i8();
             let arg_sigpipe = bx.const_u8(sigpipe);
 
-            let start_ty =
-                cx.type_func(&[cx.val_ty(rust_main), isize_ty, i8pp_ty, i8_ty], isize_ty);
+            let start_ty = cx.type_func(&[cx.val_ty(rust_main), isize_ty, ptr_ty, i8_ty], isize_ty);
             (start_fn, start_ty, vec![rust_main, arg_argc, arg_argv, arg_sigpipe])
         } else {
             debug!("using user-defined start fn");
-            let start_ty = cx.type_func(&[isize_ty, i8pp_ty], isize_ty);
+            let start_ty = cx.type_func(&[isize_ty, ptr_ty], isize_ty);
             (rust_main, start_ty, vec![arg_argc, arg_argv])
         };
 
@@ -514,7 +505,7 @@ fn get_argc_argv<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     } else {
         // The Rust start function doesn't need `argc` and `argv`, so just pass zeros.
         let arg_argc = bx.const_int(cx.type_int(), 0);
-        let arg_argv = bx.const_null(cx.type_ptr_to(cx.type_i8p()));
+        let arg_argv = bx.const_null(cx.type_ptr());
         (arg_argc, arg_argv)
     }
 }
@@ -568,7 +559,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
 ) -> OngoingCodegen<B> {
     // Skip crate items and just output metadata in -Z no-codegen mode.
     if tcx.sess.opts.unstable_opts.no_codegen || !tcx.sess.opts.output_types.should_codegen() {
-        let ongoing_codegen = start_async_codegen(backend, tcx, target_cpu, metadata, None, 1);
+        let ongoing_codegen = start_async_codegen(backend, tcx, target_cpu, metadata, None);
 
         ongoing_codegen.codegen_finished(tcx);
 
@@ -619,14 +610,8 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         })
     });
 
-    let ongoing_codegen = start_async_codegen(
-        backend.clone(),
-        tcx,
-        target_cpu,
-        metadata,
-        metadata_module,
-        codegen_units.len(),
-    );
+    let ongoing_codegen =
+        start_async_codegen(backend.clone(), tcx, target_cpu, metadata, metadata_module);
 
     // Codegen an allocator shim, if necessary.
     if let Some(kind) = allocator_kind_for_codegen(tcx) {
@@ -643,9 +628,16 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
             )
         });
 
-        ongoing_codegen.submit_pre_codegened_module_to_llvm(
-            tcx,
+        ongoing_codegen.wait_for_signal_to_codegen_item();
+        ongoing_codegen.check_for_errors(tcx.sess);
+
+        // These modules are generally cheap and won't throw off scheduling.
+        let cost = 0;
+        submit_codegened_module_to_llvm(
+            &backend,
+            &ongoing_codegen.coordinator.sender,
             ModuleCodegen { name: llmod_id, module_llvm, kind: ModuleKind::Allocator },
+            cost,
         );
     }
 
@@ -662,10 +654,10 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     // are large size variations, this can reduce memory usage significantly.
     let codegen_units: Vec<_> = {
         let mut sorted_cgus = codegen_units.iter().collect::<Vec<_>>();
-        sorted_cgus.sort_by_cached_key(|cgu| cgu.size_estimate());
+        sorted_cgus.sort_by_key(|cgu| cmp::Reverse(cgu.size_estimate()));
 
         let (first_half, second_half) = sorted_cgus.split_at(sorted_cgus.len() / 2);
-        second_half.iter().rev().interleave(first_half).copied().collect()
+        first_half.iter().interleave(second_half.iter().rev()).copied().collect()
     };
 
     // Calculate the CGU reuse
@@ -740,7 +732,6 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
                     module,
                     cost,
                 );
-                false
             }
             CguReuse::PreLto => {
                 submit_pre_lto_module_to_llvm(
@@ -752,7 +743,6 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
                         source: cgu.previous_work_product(tcx),
                     },
                 );
-                true
             }
             CguReuse::PostLto => {
                 submit_post_lto_module_to_llvm(
@@ -763,9 +753,8 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
                         source: cgu.previous_work_product(tcx),
                     },
                 );
-                true
             }
-        };
+        }
     }
 
     ongoing_codegen.codegen_finished(tcx);
@@ -790,18 +779,13 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
 
 impl CrateInfo {
     pub fn new(tcx: TyCtxt<'_>, target_cpu: String) -> CrateInfo {
-        let exported_symbols = tcx
-            .sess
-            .crate_types()
+        let crate_types = tcx.crate_types().to_vec();
+        let exported_symbols = crate_types
             .iter()
             .map(|&c| (c, crate::back::linker::exported_symbols(tcx, c)))
             .collect();
-        let linked_symbols = tcx
-            .sess
-            .crate_types()
-            .iter()
-            .map(|&c| (c, crate::back::linker::linked_symbols(tcx, c)))
-            .collect();
+        let linked_symbols =
+            crate_types.iter().map(|&c| (c, crate::back::linker::linked_symbols(tcx, c))).collect();
         let local_crate_name = tcx.crate_name(LOCAL_CRATE);
         let crate_attrs = tcx.hir().attrs(rustc_hir::CRATE_HIR_ID);
         let subsystem = attr::first_attr_value_str_by_name(crate_attrs, sym::windows_subsystem);
@@ -840,6 +824,7 @@ impl CrateInfo {
 
         let mut info = CrateInfo {
             target_cpu,
+            crate_types,
             exported_symbols,
             linked_symbols,
             local_crate_name,
@@ -909,11 +894,25 @@ impl CrateInfo {
                         missing_weak_lang_items
                             .iter()
                             .map(|item| (format!("{prefix}{item}"), SymbolExportKind::Text)),
-                    )
+                    );
+                    if tcx.allocator_kind(()).is_some() {
+                        // At least one crate needs a global allocator. This crate may be placed
+                        // after the crate that defines it in the linker order, in which case some
+                        // linkers return an error. By adding the global allocator shim methods to
+                        // the linked_symbols list, linking the generated symbols.o will ensure that
+                        // circular dependencies involving the global allocator don't lead to linker
+                        // errors.
+                        linked_symbols.extend(ALLOCATOR_METHODS.iter().map(|method| {
+                            (
+                                format!("{prefix}{}", global_fn_name(method.name).as_str()),
+                                SymbolExportKind::Text,
+                            )
+                        }));
+                    }
                 });
         }
 
-        let embed_visualizers = tcx.sess.crate_types().iter().any(|&crate_type| match crate_type {
+        let embed_visualizers = tcx.crate_types().iter().any(|&crate_type| match crate_type {
             CrateType::Executable | CrateType::Dylib | CrateType::Cdylib => {
                 // These are crate types for which we invoke the linker and can embed
                 // NatVis visualizers.
@@ -1010,7 +1009,7 @@ fn determine_cgu_reuse<'tcx>(tcx: TyCtxt<'tcx>, cgu: &CodegenUnit<'tcx>) -> CguR
         match compute_per_cgu_lto_type(
             &tcx.sess.lto(),
             &tcx.sess.opts,
-            &tcx.sess.crate_types(),
+            tcx.crate_types(),
             ModuleKind::Regular,
         ) {
             ComputedLtoType::No => CguReuse::PostLto,

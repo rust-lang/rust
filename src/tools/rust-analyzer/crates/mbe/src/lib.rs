@@ -19,6 +19,7 @@ mod benchmark;
 mod token_map;
 
 use ::tt::token_id as tt;
+use stdx::impl_from;
 
 use std::fmt;
 
@@ -27,13 +28,13 @@ use crate::{
     tt_iter::TtIter,
 };
 
-// FIXME: we probably should re-think  `token_tree_to_syntax_node` interfaces
 pub use self::tt::{Delimiter, DelimiterKind, Punct};
 pub use ::parser::TopEntryPoint;
 
 pub use crate::{
     syntax_bridge::{
-        parse_exprs_with_sep, parse_to_token_tree, syntax_node_to_token_tree,
+        parse_exprs_with_sep, parse_to_token_tree, syntax_node_to_token_map,
+        syntax_node_to_token_map_with_modifications, syntax_node_to_token_tree,
         syntax_node_to_token_tree_with_modifications, token_tree_to_syntax_node, SyntheticToken,
         SyntheticTokenId,
     },
@@ -69,7 +70,7 @@ impl fmt::Display for ParseError {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum ExpandError {
     BindingError(Box<Box<str>>),
     LeftoverTokens,
@@ -77,7 +78,10 @@ pub enum ExpandError {
     LimitExceeded,
     NoMatchingRule,
     UnexpectedToken,
+    CountError(CountError),
 }
+
+impl_from!(CountError for ExpandError);
 
 impl ExpandError {
     fn binding_error(e: impl Into<Box<str>>) -> ExpandError {
@@ -94,6 +98,23 @@ impl fmt::Display for ExpandError {
             ExpandError::ConversionError => f.write_str("could not convert tokens"),
             ExpandError::LimitExceeded => f.write_str("Expand exceed limit"),
             ExpandError::LeftoverTokens => f.write_str("leftover tokens"),
+            ExpandError::CountError(e) => e.fmt(f),
+        }
+    }
+}
+
+// FIXME: Showing these errors could be nicer.
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
+pub enum CountError {
+    OutOfBounds,
+    Misplaced,
+}
+
+impl fmt::Display for CountError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            CountError::OutOfBounds => f.write_str("${count} out of bounds"),
+            CountError::Misplaced => f.write_str("${count} misplaced"),
         }
     }
 }
@@ -104,9 +125,13 @@ impl fmt::Display for ExpandError {
 /// and `$()*` have special meaning (see `Var` and `Repeat` data structures)
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DeclarativeMacro {
-    rules: Vec<Rule>,
+    rules: Box<[Rule]>,
     /// Highest id of the token we have in TokenMap
     shift: Shift,
+    // This is used for correctly determining the behavior of the pat fragment
+    // FIXME: This should be tracked by hygiene of the fragment identifier!
+    is_2021: bool,
+    err: Option<Box<ParseError>>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -182,76 +207,116 @@ impl Shift {
     }
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Origin {
     Def,
     Call,
 }
 
 impl DeclarativeMacro {
+    pub fn from_err(err: ParseError, is_2021: bool) -> DeclarativeMacro {
+        DeclarativeMacro {
+            rules: Box::default(),
+            shift: Shift(0),
+            is_2021,
+            err: Some(Box::new(err)),
+        }
+    }
+
     /// The old, `macro_rules! m {}` flavor.
-    pub fn parse_macro_rules(tt: &tt::Subtree) -> Result<DeclarativeMacro, ParseError> {
+    pub fn parse_macro_rules(tt: &tt::Subtree, is_2021: bool) -> DeclarativeMacro {
         // Note: this parsing can be implemented using mbe machinery itself, by
         // matching against `$($lhs:tt => $rhs:tt);*` pattern, but implementing
         // manually seems easier.
         let mut src = TtIter::new(tt);
         let mut rules = Vec::new();
+        let mut err = None;
+
         while src.len() > 0 {
-            let rule = Rule::parse(&mut src, true)?;
+            let rule = match Rule::parse(&mut src, true) {
+                Ok(it) => it,
+                Err(e) => {
+                    err = Some(Box::new(e));
+                    break;
+                }
+            };
             rules.push(rule);
             if let Err(()) = src.expect_char(';') {
                 if src.len() > 0 {
-                    return Err(ParseError::expected("expected `;`"));
+                    err = Some(Box::new(ParseError::expected("expected `;`")));
                 }
                 break;
             }
         }
 
         for Rule { lhs, .. } in &rules {
-            validate(lhs)?;
+            if let Err(e) = validate(lhs) {
+                err = Some(Box::new(e));
+                break;
+            }
         }
 
-        Ok(DeclarativeMacro { rules, shift: Shift::new(tt) })
+        DeclarativeMacro { rules: rules.into_boxed_slice(), shift: Shift::new(tt), is_2021, err }
     }
 
     /// The new, unstable `macro m {}` flavor.
-    pub fn parse_macro2(tt: &tt::Subtree) -> Result<DeclarativeMacro, ParseError> {
+    pub fn parse_macro2(tt: &tt::Subtree, is_2021: bool) -> DeclarativeMacro {
         let mut src = TtIter::new(tt);
         let mut rules = Vec::new();
+        let mut err = None;
 
         if tt::DelimiterKind::Brace == tt.delimiter.kind {
             cov_mark::hit!(parse_macro_def_rules);
             while src.len() > 0 {
-                let rule = Rule::parse(&mut src, true)?;
+                let rule = match Rule::parse(&mut src, true) {
+                    Ok(it) => it,
+                    Err(e) => {
+                        err = Some(Box::new(e));
+                        break;
+                    }
+                };
                 rules.push(rule);
                 if let Err(()) = src.expect_any_char(&[';', ',']) {
                     if src.len() > 0 {
-                        return Err(ParseError::expected("expected `;` or `,` to delimit rules"));
+                        err = Some(Box::new(ParseError::expected(
+                            "expected `;` or `,` to delimit rules",
+                        )));
                     }
                     break;
                 }
             }
         } else {
             cov_mark::hit!(parse_macro_def_simple);
-            let rule = Rule::parse(&mut src, false)?;
-            if src.len() != 0 {
-                return Err(ParseError::expected("remaining tokens in macro def"));
+            match Rule::parse(&mut src, false) {
+                Ok(rule) => {
+                    if src.len() != 0 {
+                        err = Some(Box::new(ParseError::expected("remaining tokens in macro def")));
+                    }
+                    rules.push(rule);
+                }
+                Err(e) => {
+                    err = Some(Box::new(e));
+                }
             }
-            rules.push(rule);
         }
 
         for Rule { lhs, .. } in &rules {
-            validate(lhs)?;
+            if let Err(e) = validate(lhs) {
+                err = Some(Box::new(e));
+                break;
+            }
         }
 
-        Ok(DeclarativeMacro { rules, shift: Shift::new(tt) })
+        DeclarativeMacro { rules: rules.into_boxed_slice(), shift: Shift::new(tt), is_2021, err }
     }
 
-    pub fn expand(&self, tt: &tt::Subtree) -> ExpandResult<tt::Subtree> {
-        // apply shift
-        let mut tt = tt.clone();
+    pub fn expand(&self, mut tt: tt::Subtree) -> ExpandResult<tt::Subtree> {
         self.shift.shift_all(&mut tt);
-        expander::expand_rules(&self.rules, &tt)
+        expander::expand_rules(&self.rules, &tt, self.is_2021)
+    }
+
+    pub fn err(&self) -> Option<&ParseError> {
+        self.err.as_deref()
     }
 
     pub fn map_id_down(&self, id: tt::TokenId) -> tt::TokenId {
@@ -324,12 +389,12 @@ pub struct ValueResult<T, E> {
 }
 
 impl<T, E> ValueResult<T, E> {
-    pub fn ok(value: T) -> Self {
-        Self { value, err: None }
+    pub fn new(value: T, err: E) -> Self {
+        Self { value, err: Some(err) }
     }
 
-    pub fn with_err(value: T, err: E) -> Self {
-        Self { value, err: Some(err) }
+    pub fn ok(value: T) -> Self {
+        Self { value, err: None }
     }
 
     pub fn only_err(err: E) -> Self

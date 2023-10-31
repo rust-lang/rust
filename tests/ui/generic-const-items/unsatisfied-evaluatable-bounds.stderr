@@ -1,0 +1,9 @@
+error[E0080]: evaluation of `POSITIVE::<0>::{constant#0}` failed
+  --> $DIR/unsatisfied-evaluatable-bounds.rs:8:10
+   |
+LL |     [(); N - 1]:;
+   |          ^^^^^ attempt to compute `0_usize - 1_usize`, which would overflow
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0080`.

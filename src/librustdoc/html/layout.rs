@@ -55,6 +55,7 @@ struct PageLayout<'a> {
     sidebar: String,
     content: String,
     krate_with_trailing_slash: String,
+    rust_channel: &'static str,
     pub(crate) rustdoc_version: &'a str,
 }
 
@@ -82,6 +83,7 @@ pub(crate) fn render<T: Print, S: Print>(
         sidebar,
         content,
         krate_with_trailing_slash,
+        rust_channel: *crate::clean::utils::DOC_CHANNEL,
         rustdoc_version,
     }
     .render()

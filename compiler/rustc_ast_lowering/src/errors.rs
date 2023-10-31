@@ -31,7 +31,24 @@ pub struct InvalidAbi {
     pub abi: Symbol,
     pub command: String,
     #[subdiagnostic]
+    pub explain: Option<InvalidAbiReason>,
+    #[subdiagnostic]
     pub suggestion: Option<InvalidAbiSuggestion>,
+}
+
+pub struct InvalidAbiReason(pub &'static str);
+
+impl rustc_errors::AddToDiagnostic for InvalidAbiReason {
+    fn add_to_diagnostic_with<F>(self, diag: &mut rustc_errors::Diagnostic, _: F)
+    where
+        F: Fn(
+            &mut rustc_errors::Diagnostic,
+            rustc_errors::SubdiagnosticMessage,
+        ) -> rustc_errors::SubdiagnosticMessage,
+    {
+        #[allow(rustc::untranslatable_diagnostic)]
+        diag.note(self.0);
+    }
 }
 
 #[derive(Subdiagnostic)]

@@ -1,3 +1,13 @@
+error[E0408]: variable `c` is not bound in all patterns
+  --> $DIR/issue-39698.rs:10:9
+   |
+LL |         T::T1(a, d) | T::T2(d, b) | T::T3(c) | T::T4(a) => { println!("{:?}", a); }
+   |         ^^^^^^^^^^^   ^^^^^^^^^^^         -    ^^^^^^^^ pattern doesn't bind `c`
+   |         |             |                   |
+   |         |             |                   variable not in all patterns
+   |         |             pattern doesn't bind `c`
+   |         pattern doesn't bind `c`
+
 error[E0408]: variable `d` is not bound in all patterns
   --> $DIR/issue-39698.rs:10:37
    |
@@ -27,16 +37,6 @@ LL |         T::T1(a, d) | T::T2(d, b) | T::T3(c) | T::T4(a) => { println!("{:?}
    |         |                      |    pattern doesn't bind `b`
    |         |                      variable not in all patterns
    |         pattern doesn't bind `b`
-
-error[E0408]: variable `c` is not bound in all patterns
-  --> $DIR/issue-39698.rs:10:9
-   |
-LL |         T::T1(a, d) | T::T2(d, b) | T::T3(c) | T::T4(a) => { println!("{:?}", a); }
-   |         ^^^^^^^^^^^   ^^^^^^^^^^^         -    ^^^^^^^^ pattern doesn't bind `c`
-   |         |             |                   |
-   |         |             |                   variable not in all patterns
-   |         |             pattern doesn't bind `c`
-   |         pattern doesn't bind `c`
 
 error: aborting due to 4 previous errors
 

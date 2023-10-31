@@ -1,5 +1,4 @@
-// SPDX-License-Identifier: MIT OR Apache-2.0
-// SPDX-FileCopyrightText: The Rust Project Developers (see https://thanks.rust-lang.org)
+#![feature(float_gamma)]
 
 macro_rules! assert_approx_eq {
     ($a:expr, $b:expr) => {{
@@ -130,4 +129,20 @@ pub fn main() {
     );
     assert_approx_eq!(0.5f32.atanh(), 0.54930614433405484569762261846126285f32);
     assert_approx_eq!(0.5f64.atanh(), 0.54930614433405484569762261846126285f64);
+
+    assert_approx_eq!(5.0f32.gamma(), 24.0);
+    assert_approx_eq!(5.0f64.gamma(), 24.0);
+    // These fail even on the host, precision seems to be terrible.
+    //assert_approx_eq!(-0.5f32.gamma(), -2.0 * f32::consts::PI.sqrt());
+    //assert_approx_eq!(-0.5f64.gamma(), -2.0 * f64::consts::PI.sqrt());
+
+    assert_eq!(2.0f32.ln_gamma(), (0.0, 1));
+    assert_eq!(2.0f64.ln_gamma(), (0.0, 1));
+    // Gamma(-0.5) = -2*sqrt(π)
+    let (val, sign) = (-0.5f32).ln_gamma();
+    assert_approx_eq!(val, (2.0 * f32::consts::PI.sqrt()).ln());
+    assert_eq!(sign, -1);
+    let (val, sign) = (-0.5f64).ln_gamma();
+    assert_approx_eq!(val, (2.0 * f64::consts::PI.sqrt()).ln());
+    assert_eq!(sign, -1);
 }

@@ -336,7 +336,6 @@ fn default_alloc_error_hook(layout: Layout) {
         static __rust_alloc_error_handler_should_panic: u8;
     }
 
-    #[allow(unused_unsafe)]
     if unsafe { __rust_alloc_error_handler_should_panic != 0 } {
         panic!("memory allocation of {} bytes failed", layout.size());
     } else {

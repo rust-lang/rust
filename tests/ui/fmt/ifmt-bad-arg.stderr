@@ -178,7 +178,7 @@ error: invalid format string: expected `'}'`, found `'t'`
 LL | ninth number: {
    |               - because of this opening brace
 LL | tenth number: {}",
-   | ^ expected `}` in format string
+   | ^ expected `'}'` in format string
    |
    = note: if you intended to print `{`, you can escape it using `{{`
 

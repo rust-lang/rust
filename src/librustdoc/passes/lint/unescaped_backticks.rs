@@ -16,7 +16,7 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item) {
         return;
     };
 
-    let dox = item.attrs.collapsed_doc_value().unwrap_or_default();
+    let dox = item.doc_value();
     if dox.is_empty() {
         return;
     }
@@ -56,7 +56,7 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item) {
                 )
                 .unwrap_or_else(|| item.attr_span(tcx));
 
-                cx.tcx.struct_span_lint_hir(crate::lint::UNESCAPED_BACKTICKS, hir_id, span, "unescaped backtick", |lint| {
+                tcx.struct_span_lint_hir(crate::lint::UNESCAPED_BACKTICKS, hir_id, span, "unescaped backtick", |lint| {
                     let mut help_emitted = false;
 
                     match element.prev_code_guess {
@@ -373,7 +373,7 @@ fn suggest_insertion(
     lint: &mut DiagnosticBuilder<'_, ()>,
     insert_index: usize,
     suggestion: char,
-    message: &str,
+    message: &'static str,
 ) {
     /// Maximum bytes of context to show around the insertion.
     const CONTEXT_MAX_LEN: usize = 80;

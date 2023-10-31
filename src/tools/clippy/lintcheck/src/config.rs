@@ -1,5 +1,6 @@
 use clap::Parser;
-use std::{num::NonZeroUsize, path::PathBuf};
+use std::num::NonZeroUsize;
+use std::path::PathBuf;
 
 #[derive(Clone, Debug, Parser)]
 pub(crate) struct LintcheckConfig {

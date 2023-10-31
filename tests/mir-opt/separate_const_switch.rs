@@ -1,6 +1,8 @@
 #![feature(control_flow_enum)]
 #![feature(try_trait_v2)]
 
+// compile-flags: -Zunsound-mir-opts
+
 use std::ops::ControlFlow;
 
 // EMIT_MIR separate_const_switch.too_complex.SeparateConstSwitch.diff

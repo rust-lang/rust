@@ -7,7 +7,7 @@ edition = "2021"
 tracing = "0.1.28"
 tracing-subscriber = { version = "0.3.3", default-features = false, features = ["fmt", "env-filter", "smallvec", "parking_lot", "ansi"] }
 tracing-tree = "0.2.0"
-tracing-core = "0.1.28"
+tracing-core = "=0.1.30" # FIXME(Nilstrieb) tracing has a deadlock: https://github.com/tokio-rs/tracing/issues/2635
 
 [dev-dependencies]
 rustc_span = { path = "../rustc_span" }

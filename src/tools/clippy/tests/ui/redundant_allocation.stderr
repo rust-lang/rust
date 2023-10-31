@@ -1,5 +1,5 @@
 error: usage of `Box<Rc<T>>`
-  --> $DIR/redundant_allocation.rs:17:30
+  --> $DIR/redundant_allocation.rs:16:30
    |
 LL |     pub fn box_test6<T>(foo: Box<Rc<T>>) {}
    |                              ^^^^^^^^^^
@@ -9,7 +9,7 @@ LL |     pub fn box_test6<T>(foo: Box<Rc<T>>) {}
    = note: `-D clippy::redundant-allocation` implied by `-D warnings`
 
 error: usage of `Box<Arc<T>>`
-  --> $DIR/redundant_allocation.rs:19:30
+  --> $DIR/redundant_allocation.rs:18:30
    |
 LL |     pub fn box_test7<T>(foo: Box<Arc<T>>) {}
    |                              ^^^^^^^^^^^
@@ -18,7 +18,7 @@ LL |     pub fn box_test7<T>(foo: Box<Arc<T>>) {}
    = help: consider using just `Box<T>` or `Arc<T>`
 
 error: usage of `Box<Rc<SubT<usize>>>`
-  --> $DIR/redundant_allocation.rs:21:27
+  --> $DIR/redundant_allocation.rs:20:27
    |
 LL |     pub fn box_test8() -> Box<Rc<SubT<usize>>> {
    |                           ^^^^^^^^^^^^^^^^^^^^
@@ -27,7 +27,7 @@ LL |     pub fn box_test8() -> Box<Rc<SubT<usize>>> {
    = help: consider using just `Box<SubT<usize>>` or `Rc<SubT<usize>>`
 
 error: usage of `Box<Arc<T>>`
-  --> $DIR/redundant_allocation.rs:25:30
+  --> $DIR/redundant_allocation.rs:24:30
    |
 LL |     pub fn box_test9<T>(foo: Box<Arc<T>>) -> Box<Arc<SubT<T>>> {
    |                              ^^^^^^^^^^^
@@ -36,7 +36,7 @@ LL |     pub fn box_test9<T>(foo: Box<Arc<T>>) -> Box<Arc<SubT<T>>> {
    = help: consider using just `Box<T>` or `Arc<T>`
 
 error: usage of `Box<Arc<SubT<T>>>`
-  --> $DIR/redundant_allocation.rs:25:46
+  --> $DIR/redundant_allocation.rs:24:46
    |
 LL |     pub fn box_test9<T>(foo: Box<Arc<T>>) -> Box<Arc<SubT<T>>> {
    |                                              ^^^^^^^^^^^^^^^^^
@@ -45,7 +45,7 @@ LL |     pub fn box_test9<T>(foo: Box<Arc<T>>) -> Box<Arc<SubT<T>>> {
    = help: consider using just `Box<SubT<T>>` or `Arc<SubT<T>>`
 
 error: usage of `Rc<Box<bool>>`
-  --> $DIR/redundant_allocation.rs:37:24
+  --> $DIR/redundant_allocation.rs:35:24
    |
 LL |     pub fn rc_test5(a: Rc<Box<bool>>) {}
    |                        ^^^^^^^^^^^^^
@@ -54,7 +54,7 @@ LL |     pub fn rc_test5(a: Rc<Box<bool>>) {}
    = help: consider using just `Rc<bool>` or `Box<bool>`
 
 error: usage of `Rc<Arc<bool>>`
-  --> $DIR/redundant_allocation.rs:39:24
+  --> $DIR/redundant_allocation.rs:37:24
    |
 LL |     pub fn rc_test7(a: Rc<Arc<bool>>) {}
    |                        ^^^^^^^^^^^^^
@@ -63,7 +63,7 @@ LL |     pub fn rc_test7(a: Rc<Arc<bool>>) {}
    = help: consider using just `Rc<bool>` or `Arc<bool>`
 
 error: usage of `Rc<Box<SubT<usize>>>`
-  --> $DIR/redundant_allocation.rs:41:26
+  --> $DIR/redundant_allocation.rs:39:26
    |
 LL |     pub fn rc_test8() -> Rc<Box<SubT<usize>>> {
    |                          ^^^^^^^^^^^^^^^^^^^^
@@ -72,7 +72,7 @@ LL |     pub fn rc_test8() -> Rc<Box<SubT<usize>>> {
    = help: consider using just `Rc<SubT<usize>>` or `Box<SubT<usize>>`
 
 error: usage of `Rc<Arc<T>>`
-  --> $DIR/redundant_allocation.rs:45:29
+  --> $DIR/redundant_allocation.rs:43:29
    |
 LL |     pub fn rc_test9<T>(foo: Rc<Arc<T>>) -> Rc<Arc<SubT<T>>> {
    |                             ^^^^^^^^^^
@@ -81,7 +81,7 @@ LL |     pub fn rc_test9<T>(foo: Rc<Arc<T>>) -> Rc<Arc<SubT<T>>> {
    = help: consider using just `Rc<T>` or `Arc<T>`
 
 error: usage of `Rc<Arc<SubT<T>>>`
-  --> $DIR/redundant_allocation.rs:45:44
+  --> $DIR/redundant_allocation.rs:43:44
    |
 LL |     pub fn rc_test9<T>(foo: Rc<Arc<T>>) -> Rc<Arc<SubT<T>>> {
    |                                            ^^^^^^^^^^^^^^^^
@@ -90,7 +90,7 @@ LL |     pub fn rc_test9<T>(foo: Rc<Arc<T>>) -> Rc<Arc<SubT<T>>> {
    = help: consider using just `Rc<SubT<T>>` or `Arc<SubT<T>>`
 
 error: usage of `Arc<Box<bool>>`
-  --> $DIR/redundant_allocation.rs:57:25
+  --> $DIR/redundant_allocation.rs:54:25
    |
 LL |     pub fn arc_test5(a: Arc<Box<bool>>) {}
    |                         ^^^^^^^^^^^^^^
@@ -99,7 +99,7 @@ LL |     pub fn arc_test5(a: Arc<Box<bool>>) {}
    = help: consider using just `Arc<bool>` or `Box<bool>`
 
 error: usage of `Arc<Rc<bool>>`
-  --> $DIR/redundant_allocation.rs:59:25
+  --> $DIR/redundant_allocation.rs:56:25
    |
 LL |     pub fn arc_test6(a: Arc<Rc<bool>>) {}
    |                         ^^^^^^^^^^^^^
@@ -108,7 +108,7 @@ LL |     pub fn arc_test6(a: Arc<Rc<bool>>) {}
    = help: consider using just `Arc<bool>` or `Rc<bool>`
 
 error: usage of `Arc<Box<SubT<usize>>>`
-  --> $DIR/redundant_allocation.rs:61:27
+  --> $DIR/redundant_allocation.rs:58:27
    |
 LL |     pub fn arc_test8() -> Arc<Box<SubT<usize>>> {
    |                           ^^^^^^^^^^^^^^^^^^^^^
@@ -117,7 +117,7 @@ LL |     pub fn arc_test8() -> Arc<Box<SubT<usize>>> {
    = help: consider using just `Arc<SubT<usize>>` or `Box<SubT<usize>>`
 
 error: usage of `Arc<Rc<T>>`
-  --> $DIR/redundant_allocation.rs:65:30
+  --> $DIR/redundant_allocation.rs:62:30
    |
 LL |     pub fn arc_test9<T>(foo: Arc<Rc<T>>) -> Arc<Rc<SubT<T>>> {
    |                              ^^^^^^^^^^
@@ -126,7 +126,7 @@ LL |     pub fn arc_test9<T>(foo: Arc<Rc<T>>) -> Arc<Rc<SubT<T>>> {
    = help: consider using just `Arc<T>` or `Rc<T>`
 
 error: usage of `Arc<Rc<SubT<T>>>`
-  --> $DIR/redundant_allocation.rs:65:45
+  --> $DIR/redundant_allocation.rs:62:45
    |
 LL |     pub fn arc_test9<T>(foo: Arc<Rc<T>>) -> Arc<Rc<SubT<T>>> {
    |                                             ^^^^^^^^^^^^^^^^
@@ -135,7 +135,7 @@ LL |     pub fn arc_test9<T>(foo: Arc<Rc<T>>) -> Arc<Rc<SubT<T>>> {
    = help: consider using just `Arc<SubT<T>>` or `Rc<SubT<T>>`
 
 error: usage of `Rc<Box<Box<dyn T>>>`
-  --> $DIR/redundant_allocation.rs:87:27
+  --> $DIR/redundant_allocation.rs:84:27
    |
 LL |     pub fn test_rc_box(_: Rc<Box<Box<dyn T>>>) {}
    |                           ^^^^^^^^^^^^^^^^^^^
@@ -144,7 +144,7 @@ LL |     pub fn test_rc_box(_: Rc<Box<Box<dyn T>>>) {}
    = help: consider using just `Rc<Box<dyn T>>` or `Box<Box<dyn T>>`
 
 error: usage of `Rc<Box<Box<str>>>`
-  --> $DIR/redundant_allocation.rs:119:31
+  --> $DIR/redundant_allocation.rs:116:31
    |
 LL |     pub fn test_rc_box_str(_: Rc<Box<Box<str>>>) {}
    |                               ^^^^^^^^^^^^^^^^^
@@ -153,7 +153,7 @@ LL |     pub fn test_rc_box_str(_: Rc<Box<Box<str>>>) {}
    = help: consider using just `Rc<Box<str>>` or `Box<Box<str>>`
 
 error: usage of `Rc<Box<Box<[usize]>>>`
-  --> $DIR/redundant_allocation.rs:120:33
+  --> $DIR/redundant_allocation.rs:117:33
    |
 LL |     pub fn test_rc_box_slice(_: Rc<Box<Box<[usize]>>>) {}
    |                                 ^^^^^^^^^^^^^^^^^^^^^
@@ -162,7 +162,7 @@ LL |     pub fn test_rc_box_slice(_: Rc<Box<Box<[usize]>>>) {}
    = help: consider using just `Rc<Box<[usize]>>` or `Box<Box<[usize]>>`
 
 error: usage of `Rc<Box<Box<Path>>>`
-  --> $DIR/redundant_allocation.rs:121:32
+  --> $DIR/redundant_allocation.rs:118:32
    |
 LL |     pub fn test_rc_box_path(_: Rc<Box<Box<Path>>>) {}
    |                                ^^^^^^^^^^^^^^^^^^
@@ -171,7 +171,7 @@ LL |     pub fn test_rc_box_path(_: Rc<Box<Box<Path>>>) {}
    = help: consider using just `Rc<Box<Path>>` or `Box<Box<Path>>`
 
 error: usage of `Rc<Box<Box<DynSized>>>`
-  --> $DIR/redundant_allocation.rs:122:34
+  --> $DIR/redundant_allocation.rs:119:34
    |
 LL |     pub fn test_rc_box_custom(_: Rc<Box<Box<DynSized>>>) {}
    |                                  ^^^^^^^^^^^^^^^^^^^^^^

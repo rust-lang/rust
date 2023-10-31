@@ -2,7 +2,7 @@ error: wildcard match will also match any future added variants
   --> $DIR/wildcard_enum_match_arm.rs:40:9
    |
 LL |         _ => eprintln!("Not red"),
-   |         ^ help: try this: `Color::Green | Color::Blue | Color::Rgb(..) | Color::Cyan`
+   |         ^ help: try: `Color::Green | Color::Blue | Color::Rgb(..) | Color::Cyan`
    |
 note: the lint level is defined here
   --> $DIR/wildcard_enum_match_arm.rs:3:9
@@ -14,31 +14,31 @@ error: wildcard match will also match any future added variants
   --> $DIR/wildcard_enum_match_arm.rs:44:9
    |
 LL |         _not_red => eprintln!("Not red"),
-   |         ^^^^^^^^ help: try this: `_not_red @ Color::Green | _not_red @ Color::Blue | _not_red @ Color::Rgb(..) | _not_red @ Color::Cyan`
+   |         ^^^^^^^^ help: try: `_not_red @ Color::Green | _not_red @ Color::Blue | _not_red @ Color::Rgb(..) | _not_red @ Color::Cyan`
 
 error: wildcard match will also match any future added variants
   --> $DIR/wildcard_enum_match_arm.rs:48:9
    |
 LL |         not_red => format!("{:?}", not_red),
-   |         ^^^^^^^ help: try this: `not_red @ Color::Green | not_red @ Color::Blue | not_red @ Color::Rgb(..) | not_red @ Color::Cyan`
+   |         ^^^^^^^ help: try: `not_red @ Color::Green | not_red @ Color::Blue | not_red @ Color::Rgb(..) | not_red @ Color::Cyan`
 
 error: wildcard match will also match any future added variants
   --> $DIR/wildcard_enum_match_arm.rs:64:9
    |
 LL |         _ => "No red",
-   |         ^ help: try this: `Color::Red | Color::Green | Color::Blue | Color::Rgb(..) | Color::Cyan`
+   |         ^ help: try: `Color::Red | Color::Green | Color::Blue | Color::Rgb(..) | Color::Cyan`
 
 error: wildcard matches known variants and will also match future added variants
   --> $DIR/wildcard_enum_match_arm.rs:81:9
    |
 LL |         _ => {},
-   |         ^ help: try this: `ErrorKind::PermissionDenied | _`
+   |         ^ help: try: `ErrorKind::PermissionDenied | _`
 
 error: wildcard match will also match any future added variants
   --> $DIR/wildcard_enum_match_arm.rs:99:13
    |
 LL |             _ => (),
-   |             ^ help: try this: `Enum::B | Enum::__Private`
+   |             ^ help: try: `Enum::B | Enum::__Private`
 
 error: aborting due to 6 previous errors
 

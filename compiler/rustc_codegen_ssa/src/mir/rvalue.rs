@@ -11,7 +11,7 @@ use rustc_middle::mir;
 use rustc_middle::mir::Operand;
 use rustc_middle::ty::cast::{CastTy, IntTy};
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout};
-use rustc_middle::ty::{self, adjustment::PointerCast, Instance, Ty, TyCtxt};
+use rustc_middle::ty::{self, adjustment::PointerCoercion, Instance, Ty, TyCtxt};
 use rustc_session::config::OptLevel;
 use rustc_span::source_map::{Span, DUMMY_SP};
 use rustc_target::abi::{self, FIRST_VARIANT};
@@ -32,7 +32,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 cg_operand.val.store(bx, dest);
             }
 
-            mir::Rvalue::Cast(mir::CastKind::Pointer(PointerCast::Unsize), ref source, _) => {
+            mir::Rvalue::Cast(
+                mir::CastKind::PointerCoercion(PointerCoercion::Unsize),
+                ref source,
+                _,
+            ) => {
                 // The destination necessarily contains a fat pointer, so if
                 // it's a scalar pair, it's a fat pointer or newtype thereof.
                 if bx.cx().is_backend_scalar_pair(dest.layout) {
@@ -69,6 +73,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
                     OperandValue::Ref(_, Some(_), _) => {
                         bug!("unsized coercion on an unsized rvalue");
+                    }
+                    OperandValue::ZeroSized => {
+                        bug!("unsized coercion on a ZST rvalue");
                     }
                 }
             }
@@ -165,19 +172,17 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
 
         match src.val {
-            OperandValue::Ref(..) => {
+            OperandValue::Ref(..) | OperandValue::ZeroSized => {
                 span_bug!(
                     self.mir.span,
                     "Operand path should have handled transmute \
-                    from `Ref` {src:?} to place {dst:?}"
+                    from {src:?} to place {dst:?}"
                 );
             }
             OperandValue::Immediate(..) | OperandValue::Pair(..) => {
                 // When we have immediate(s), the alignment of the source is irrelevant,
                 // so we can store them using the destination's alignment.
-                let llty = bx.backend_type(src.layout);
-                let cast_ptr = bx.pointercast(dst.llval, bx.type_ptr_to(llty));
-                src.val.store(bx, PlaceRef::new_sized_aligned(cast_ptr, src.layout, dst.align));
+                src.val.store(bx, PlaceRef::new_sized_aligned(dst.llval, src.layout, dst.align));
             }
         }
     }
@@ -215,22 +220,25 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             OperandValue::Ref(ptr, meta, align) => {
                 debug_assert_eq!(meta, None);
                 debug_assert!(matches!(operand_kind, OperandValueKind::Ref));
-                let cast_bty = bx.backend_type(cast);
-                let cast_ptr = bx.pointercast(ptr, bx.type_ptr_to(cast_bty));
-                let fake_place = PlaceRef::new_sized_aligned(cast_ptr, cast, align);
+                let fake_place = PlaceRef::new_sized_aligned(ptr, cast, align);
                 Some(bx.load_operand(fake_place).val)
+            }
+            OperandValue::ZeroSized => {
+                let OperandValueKind::ZeroSized = operand_kind else {
+                    bug!("Found {operand_kind:?} for operand {operand:?}");
+                };
+                if let OperandValueKind::ZeroSized = cast_kind {
+                    Some(OperandValue::ZeroSized)
+                } else {
+                    None
+                }
             }
             OperandValue::Immediate(imm) => {
                 let OperandValueKind::Immediate(in_scalar) = operand_kind else {
                     bug!("Found {operand_kind:?} for operand {operand:?}");
                 };
-                if let OperandValueKind::Immediate(out_scalar) = cast_kind {
-                    match (in_scalar, out_scalar) {
-                        (ScalarOrZst::Zst, ScalarOrZst::Zst) => {
-                            Some(OperandRef::new_zst(bx, cast).val)
-                        }
-                        (ScalarOrZst::Scalar(in_scalar), ScalarOrZst::Scalar(out_scalar))
-                            if in_scalar.size(self.cx) == out_scalar.size(self.cx) =>
+                if let OperandValueKind::Immediate(out_scalar) = cast_kind
+                    && in_scalar.size(self.cx) == out_scalar.size(self.cx)
                         {
                             let operand_bty = bx.backend_type(operand.layout);
                             let cast_bty = bx.backend_type(cast);
@@ -242,9 +250,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 out_scalar,
                                 cast_bty,
                             )))
-                        }
-                        _ => None,
-                    }
                 } else {
                     None
                 }
@@ -388,8 +393,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     ) -> OperandRef<'tcx, Bx::Value> {
         assert!(
             self.rvalue_creates_operand(rvalue, DUMMY_SP),
-            "cannot codegen {:?} to operand",
-            rvalue,
+            "cannot codegen {rvalue:?} to operand",
         );
 
         match *rvalue {
@@ -406,14 +410,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         let lladdr = bx.ptrtoint(llptr, llcast_ty);
                         OperandValue::Immediate(lladdr)
                     }
-                    mir::CastKind::Pointer(PointerCast::ReifyFnPointer) => {
+                    mir::CastKind::PointerCoercion(PointerCoercion::ReifyFnPointer) => {
                         match *operand.layout.ty.kind() {
-                            ty::FnDef(def_id, substs) => {
+                            ty::FnDef(def_id, args) => {
                                 let instance = ty::Instance::resolve_for_fn_ptr(
                                     bx.tcx(),
                                     ty::ParamEnv::reveal_all(),
                                     def_id,
-                                    substs,
+                                    args,
                                 )
                                 .unwrap()
                                 .polymorphize(bx.cx().tcx());
@@ -422,13 +426,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             _ => bug!("{} cannot be reified to a fn ptr", operand.layout.ty),
                         }
                     }
-                    mir::CastKind::Pointer(PointerCast::ClosureFnPointer(_)) => {
+                    mir::CastKind::PointerCoercion(PointerCoercion::ClosureFnPointer(_)) => {
                         match *operand.layout.ty.kind() {
-                            ty::Closure(def_id, substs) => {
+                            ty::Closure(def_id, args) => {
                                 let instance = Instance::resolve_closure(
                                     bx.cx().tcx(),
                                     def_id,
-                                    substs,
+                                    args,
                                     ty::ClosureKind::FnOnce,
                                 )
                                 .expect("failed to normalize and resolve closure during codegen")
@@ -438,11 +442,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             _ => bug!("{} cannot be cast to a fn ptr", operand.layout.ty),
                         }
                     }
-                    mir::CastKind::Pointer(PointerCast::UnsafeFnPointer) => {
+                    mir::CastKind::PointerCoercion(PointerCoercion::UnsafeFnPointer) => {
                         // This is a no-op at the LLVM level.
                         operand.val
                     }
-                    mir::CastKind::Pointer(PointerCast::Unsize) => {
+                    mir::CastKind::PointerCoercion(PointerCoercion::Unsize) => {
                         assert!(bx.cx().is_backend_scalar_pair(cast));
                         let (lldata, llextra) = match operand.val {
                             OperandValue::Pair(lldata, llextra) => {
@@ -457,29 +461,24 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             OperandValue::Ref(..) => {
                                 bug!("by-ref operand {:?} in `codegen_rvalue_operand`", operand);
                             }
+                            OperandValue::ZeroSized => {
+                                bug!("zero-sized operand {:?} in `codegen_rvalue_operand`", operand);
+                            }
                         };
                         let (lldata, llextra) =
                             base::unsize_ptr(bx, lldata, operand.layout.ty, cast.ty, llextra);
                         OperandValue::Pair(lldata, llextra)
                     }
-                    mir::CastKind::Pointer(PointerCast::MutToConstPointer)
+                    mir::CastKind::PointerCoercion(PointerCoercion::MutToConstPointer)
                     | mir::CastKind::PtrToPtr
                         if bx.cx().is_backend_scalar_pair(operand.layout) =>
                     {
                         if let OperandValue::Pair(data_ptr, meta) = operand.val {
                             if bx.cx().is_backend_scalar_pair(cast) {
-                                let data_cast = bx.pointercast(
-                                    data_ptr,
-                                    bx.cx().scalar_pair_element_backend_type(cast, 0, true),
-                                );
-                                OperandValue::Pair(data_cast, meta)
+                                OperandValue::Pair(data_ptr, meta)
                             } else {
-                                // cast to thin-ptr
-                                // Cast of fat-ptr to thin-ptr is an extraction of data-ptr and
-                                // pointer-cast of that pointer to desired pointer type.
-                                let llcast_ty = bx.cx().immediate_backend_type(cast);
-                                let llval = bx.pointercast(data_ptr, llcast_ty);
-                                OperandValue::Immediate(llval)
+                                // Cast of fat-ptr to thin-ptr is an extraction of data-ptr.
+                                OperandValue::Immediate(data_ptr)
                             }
                         } else {
                             bug!("unexpected non-pair operand");
@@ -490,13 +489,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             OperandValue::Ref(_, _, _) => todo!(),
                             OperandValue::Immediate(v) => (v, None),
                             OperandValue::Pair(v, l) => (v, Some(l)),
+                            OperandValue::ZeroSized => bug!("ZST -- which is not PointerLike -- in DynStar"),
                         };
                         let (lldata, llextra) =
                             base::cast_to_dyn_star(bx, lldata, operand.layout, cast.ty, llextra);
                         OperandValue::Pair(lldata, llextra)
                     }
-                    mir::CastKind::Pointer(
-                        PointerCast::MutToConstPointer | PointerCast::ArrayToPointer,
+                    mir::CastKind::PointerCoercion(
+                        PointerCoercion::MutToConstPointer | PointerCoercion::ArrayToPointer,
                     )
                     | mir::CastKind::IntToInt
                     | mir::CastKind::FloatToInt
@@ -572,7 +572,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             mir::Rvalue::Ref(_, bk, place) => {
                 let mk_ref = move |tcx: TyCtxt<'tcx>, ty: Ty<'tcx>| {
-                    tcx.mk_ref(
+                    Ty::new_ref(
+                        tcx,
                         tcx.lifetimes.re_erased,
                         ty::TypeAndMut { ty, mutbl: bk.to_mutbl_lossy() },
                     )
@@ -583,7 +584,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::Rvalue::CopyForDeref(place) => self.codegen_operand(bx, &Operand::Copy(place)),
             mir::Rvalue::AddressOf(mutability, place) => {
                 let mk_ptr = move |tcx: TyCtxt<'tcx>, ty: Ty<'tcx>| {
-                    tcx.mk_ptr(ty::TypeAndMut { ty, mutbl: mutability })
+                    Ty::new_ptr(tcx, ty::TypeAndMut { ty, mutbl: mutability })
                 };
                 self.codegen_place_to_pointer(bx, place, mk_ptr)
             }
@@ -635,7 +636,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     lhs.layout.ty,
                 );
                 let val_ty = op.ty(bx.tcx(), lhs.layout.ty, rhs.layout.ty);
-                let operand_ty = bx.tcx().mk_tup(&[val_ty, bx.tcx().types.bool]);
+                let operand_ty = Ty::new_tup(bx.tcx(), &[val_ty, bx.tcx().types.bool]);
                 OperandRef { val: result, layout: bx.cx().layout_of(operand_ty) }
             }
 
@@ -668,11 +669,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             mir::Rvalue::NullaryOp(ref null_op, ty) => {
                 let ty = self.monomorphize(ty);
-                assert!(bx.cx().type_is_sized(ty));
                 let layout = bx.cx().layout_of(ty);
                 let val = match null_op {
-                    mir::NullOp::SizeOf => layout.size.bytes(),
-                    mir::NullOp::AlignOf => layout.align.abi.bytes(),
+                    mir::NullOp::SizeOf => {
+                        assert!(bx.cx().type_is_sized(ty));
+                        layout.size.bytes()
+                    }
+                    mir::NullOp::AlignOf => {
+                        assert!(bx.cx().type_is_sized(ty));
+                        layout.align.abi.bytes()
+                    }
                     mir::NullOp::OffsetOf(fields) => {
                         layout.offset_of_subfield(bx.cx(), fields.iter().map(|f| f.index())).bytes()
                     }
@@ -692,7 +698,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 {
                     let instance = ty::Instance {
                         def: ty::InstanceDef::ThreadLocalShim(def_id),
-                        substs: ty::InternalSubsts::empty(),
+                        args: ty::GenericArgs::empty(),
                     };
                     let fn_ptr = bx.get_fn_addr(instance);
                     let fn_abi = bx.fn_abi_of_instance(instance, ty::List::empty());
@@ -713,17 +719,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // According to `rvalue_creates_operand`, only ZST
                 // aggregate rvalues are allowed to be operands.
                 let ty = rvalue.ty(self.mir, self.cx.tcx());
-                OperandRef::new_zst(bx, self.cx.layout_of(self.monomorphize(ty)))
+                OperandRef::zero_sized(self.cx.layout_of(self.monomorphize(ty)))
             }
             mir::Rvalue::ShallowInitBox(ref operand, content_ty) => {
                 let operand = self.codegen_operand(bx, operand);
-                let lloperand = operand.immediate();
+                let val = operand.immediate();
 
                 let content_ty = self.monomorphize(content_ty);
-                let box_layout = bx.cx().layout_of(bx.tcx().mk_box(content_ty));
-                let llty_ptr = bx.cx().backend_type(box_layout);
+                let box_layout = bx.cx().layout_of(Ty::new_box(bx.tcx(), content_ty));
 
-                let val = bx.pointercast(lloperand, llty_ptr);
                 OperandRef { val: OperandValue::Immediate(val), layout: box_layout }
             }
         }
@@ -784,6 +788,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     bx.add(lhs, rhs)
                 }
             }
+            mir::BinOp::AddUnchecked => {
+                if is_signed {
+                    bx.unchecked_sadd(lhs, rhs)
+                } else {
+                    bx.unchecked_uadd(lhs, rhs)
+                }
+            }
             mir::BinOp::Sub => {
                 if is_float {
                     bx.fsub(lhs, rhs)
@@ -791,11 +802,25 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     bx.sub(lhs, rhs)
                 }
             }
+            mir::BinOp::SubUnchecked => {
+                if is_signed {
+                    bx.unchecked_ssub(lhs, rhs)
+                } else {
+                    bx.unchecked_usub(lhs, rhs)
+                }
+            }
             mir::BinOp::Mul => {
                 if is_float {
                     bx.fmul(lhs, rhs)
                 } else {
                     bx.mul(lhs, rhs)
+                }
+            }
+            mir::BinOp::MulUnchecked => {
+                if is_signed {
+                    bx.unchecked_smul(lhs, rhs)
+                } else {
+                    bx.unchecked_umul(lhs, rhs)
                 }
             }
             mir::BinOp::Div => {
@@ -834,8 +859,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     bx.inbounds_gep(llty, lhs, &[rhs])
                 }
             }
-            mir::BinOp::Shl => common::build_unchecked_lshift(bx, lhs, rhs),
-            mir::BinOp::Shr => common::build_unchecked_rshift(bx, input_ty, lhs, rhs),
+            mir::BinOp::Shl => common::build_masked_lshift(bx, lhs, rhs),
+            mir::BinOp::ShlUnchecked => {
+                let rhs = base::cast_shift_expr_rhs(bx, lhs, rhs);
+                bx.shl(lhs, rhs)
+            }
+            mir::BinOp::Shr => common::build_masked_rshift(bx, input_ty, lhs, rhs),
+            mir::BinOp::ShrUnchecked => {
+                let rhs = base::cast_shift_expr_rhs(bx, lhs, rhs);
+                if is_signed { bx.ashr(lhs, rhs) } else { bx.lshr(lhs, rhs) }
+            }
             mir::BinOp::Ne
             | mir::BinOp::Lt
             | mir::BinOp::Gt
@@ -931,6 +964,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     // Can always load from a pointer as needed
                     (OperandValueKind::Ref, _) => true,
 
+                    // ZST-to-ZST is the easiest thing ever
+                    (OperandValueKind::ZeroSized, OperandValueKind::ZeroSized) => true,
+
+                    // But if only one of them is a ZST the sizes can't match
+                    (OperandValueKind::ZeroSized, _) | (_, OperandValueKind::ZeroSized) => false,
+
                     // Need to generate an `alloc` to get a pointer from an immediate
                     (OperandValueKind::Immediate(..) | OperandValueKind::Pair(..), OperandValueKind::Ref) => false,
 
@@ -974,12 +1013,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
     /// Gets which variant of [`OperandValue`] is expected for a particular type.
     fn value_kind(&self, layout: TyAndLayout<'tcx>) -> OperandValueKind {
-        if self.cx.is_backend_immediate(layout) {
+        if layout.is_zst() {
+            OperandValueKind::ZeroSized
+        } else if self.cx.is_backend_immediate(layout) {
             debug_assert!(!self.cx.is_backend_scalar_pair(layout));
             OperandValueKind::Immediate(match layout.abi {
-                abi::Abi::Scalar(s) => ScalarOrZst::Scalar(s),
-                abi::Abi::Vector { element, .. } => ScalarOrZst::Scalar(element),
-                _ if layout.is_zst() => ScalarOrZst::Zst,
+                abi::Abi::Scalar(s) => s,
+                abi::Abi::Vector { element, .. } => element,
                 x => span_bug!(self.mir.span, "Couldn't translate {x:?} as backend immediate"),
             })
         } else if self.cx.is_backend_scalar_pair(layout) {
@@ -1002,21 +1042,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 #[derive(Debug, Copy, Clone)]
 enum OperandValueKind {
     Ref,
-    Immediate(ScalarOrZst),
+    Immediate(abi::Scalar),
     Pair(abi::Scalar, abi::Scalar),
-}
-
-#[derive(Debug, Copy, Clone)]
-enum ScalarOrZst {
-    Zst,
-    Scalar(abi::Scalar),
-}
-
-impl ScalarOrZst {
-    pub fn size(self, cx: &impl abi::HasDataLayout) -> abi::Size {
-        match self {
-            ScalarOrZst::Zst => abi::Size::ZERO,
-            ScalarOrZst::Scalar(s) => s.size(cx),
-        }
-    }
+    ZeroSized,
 }

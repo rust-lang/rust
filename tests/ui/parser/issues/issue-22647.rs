@@ -1,5 +1,5 @@
 fn main() {
-    let caller<F> = |f: F|  //~ ERROR expected one of `:`, `;`, `=`, `@`, or `|`, found `<`
+    let caller<F> = |f: F|  //~ ERROR generic args in patterns require the turbofish syntax
     where F: Fn() -> i32
     {
         let x = f();

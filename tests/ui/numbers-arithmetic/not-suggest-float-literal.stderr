@@ -6,10 +6,10 @@ LL |     x + 100.0
    |
    = help: the trait `Add<{float}>` is not implemented for `u8`
    = help: the following other types implement trait `Add<Rhs>`:
+             <u8 as Add>
+             <u8 as Add<&u8>>
              <&'a u8 as Add<u8>>
              <&u8 as Add<&u8>>
-             <u8 as Add<&u8>>
-             <u8 as Add>
 
 error[E0277]: cannot add `&str` to `f64`
   --> $DIR/not-suggest-float-literal.rs:6:7
@@ -19,10 +19,10 @@ LL |     x + "foo"
    |
    = help: the trait `Add<&str>` is not implemented for `f64`
    = help: the following other types implement trait `Add<Rhs>`:
+             <f64 as Add>
+             <f64 as Add<&f64>>
              <&'a f64 as Add<f64>>
              <&f64 as Add<&f64>>
-             <f64 as Add<&f64>>
-             <f64 as Add>
 
 error[E0277]: cannot add `{integer}` to `f64`
   --> $DIR/not-suggest-float-literal.rs:11:7
@@ -32,10 +32,10 @@ LL |     x + y
    |
    = help: the trait `Add<{integer}>` is not implemented for `f64`
    = help: the following other types implement trait `Add<Rhs>`:
+             <f64 as Add>
+             <f64 as Add<&f64>>
              <&'a f64 as Add<f64>>
              <&f64 as Add<&f64>>
-             <f64 as Add<&f64>>
-             <f64 as Add>
 
 error[E0277]: cannot subtract `{float}` from `u8`
   --> $DIR/not-suggest-float-literal.rs:15:7
@@ -45,10 +45,10 @@ LL |     x - 100.0
    |
    = help: the trait `Sub<{float}>` is not implemented for `u8`
    = help: the following other types implement trait `Sub<Rhs>`:
+             <u8 as Sub>
+             <u8 as Sub<&u8>>
              <&'a u8 as Sub<u8>>
              <&u8 as Sub<&u8>>
-             <u8 as Sub<&u8>>
-             <u8 as Sub>
 
 error[E0277]: cannot subtract `&str` from `f64`
   --> $DIR/not-suggest-float-literal.rs:19:7
@@ -58,10 +58,10 @@ LL |     x - "foo"
    |
    = help: the trait `Sub<&str>` is not implemented for `f64`
    = help: the following other types implement trait `Sub<Rhs>`:
+             <f64 as Sub>
+             <f64 as Sub<&f64>>
              <&'a f64 as Sub<f64>>
              <&f64 as Sub<&f64>>
-             <f64 as Sub<&f64>>
-             <f64 as Sub>
 
 error[E0277]: cannot subtract `{integer}` from `f64`
   --> $DIR/not-suggest-float-literal.rs:24:7
@@ -71,10 +71,10 @@ LL |     x - y
    |
    = help: the trait `Sub<{integer}>` is not implemented for `f64`
    = help: the following other types implement trait `Sub<Rhs>`:
+             <f64 as Sub>
+             <f64 as Sub<&f64>>
              <&'a f64 as Sub<f64>>
              <&f64 as Sub<&f64>>
-             <f64 as Sub<&f64>>
-             <f64 as Sub>
 
 error[E0277]: cannot multiply `u8` by `{float}`
   --> $DIR/not-suggest-float-literal.rs:28:7
@@ -84,10 +84,10 @@ LL |     x * 100.0
    |
    = help: the trait `Mul<{float}>` is not implemented for `u8`
    = help: the following other types implement trait `Mul<Rhs>`:
+             <u8 as Mul>
+             <u8 as Mul<&u8>>
              <&'a u8 as Mul<u8>>
              <&u8 as Mul<&u8>>
-             <u8 as Mul<&u8>>
-             <u8 as Mul>
 
 error[E0277]: cannot multiply `f64` by `&str`
   --> $DIR/not-suggest-float-literal.rs:32:7
@@ -97,10 +97,10 @@ LL |     x * "foo"
    |
    = help: the trait `Mul<&str>` is not implemented for `f64`
    = help: the following other types implement trait `Mul<Rhs>`:
+             <f64 as Mul>
+             <f64 as Mul<&f64>>
              <&'a f64 as Mul<f64>>
              <&f64 as Mul<&f64>>
-             <f64 as Mul<&f64>>
-             <f64 as Mul>
 
 error[E0277]: cannot multiply `f64` by `{integer}`
   --> $DIR/not-suggest-float-literal.rs:37:7
@@ -110,10 +110,10 @@ LL |     x * y
    |
    = help: the trait `Mul<{integer}>` is not implemented for `f64`
    = help: the following other types implement trait `Mul<Rhs>`:
+             <f64 as Mul>
+             <f64 as Mul<&f64>>
              <&'a f64 as Mul<f64>>
              <&f64 as Mul<&f64>>
-             <f64 as Mul<&f64>>
-             <f64 as Mul>
 
 error[E0277]: cannot divide `u8` by `{float}`
   --> $DIR/not-suggest-float-literal.rs:41:7
@@ -123,11 +123,11 @@ LL |     x / 100.0
    |
    = help: the trait `Div<{float}>` is not implemented for `u8`
    = help: the following other types implement trait `Div<Rhs>`:
+             <u8 as Div>
+             <u8 as Div<NonZeroU8>>
+             <u8 as Div<&u8>>
              <&'a u8 as Div<u8>>
              <&u8 as Div<&u8>>
-             <u8 as Div<&u8>>
-             <u8 as Div<NonZeroU8>>
-             <u8 as Div>
 
 error[E0277]: cannot divide `f64` by `&str`
   --> $DIR/not-suggest-float-literal.rs:45:7
@@ -137,10 +137,10 @@ LL |     x / "foo"
    |
    = help: the trait `Div<&str>` is not implemented for `f64`
    = help: the following other types implement trait `Div<Rhs>`:
+             <f64 as Div>
+             <f64 as Div<&f64>>
              <&'a f64 as Div<f64>>
              <&f64 as Div<&f64>>
-             <f64 as Div<&f64>>
-             <f64 as Div>
 
 error[E0277]: cannot divide `f64` by `{integer}`
   --> $DIR/not-suggest-float-literal.rs:50:7
@@ -150,10 +150,10 @@ LL |     x / y
    |
    = help: the trait `Div<{integer}>` is not implemented for `f64`
    = help: the following other types implement trait `Div<Rhs>`:
+             <f64 as Div>
+             <f64 as Div<&f64>>
              <&'a f64 as Div<f64>>
              <&f64 as Div<&f64>>
-             <f64 as Div<&f64>>
-             <f64 as Div>
 
 error: aborting due to 12 previous errors
 

@@ -2,7 +2,7 @@ error: busy-waiting loop should at least have a spin loop hint
   --> $DIR/missing_spin_loop.rs:11:37
    |
 LL |     while b.load(Ordering::Acquire) {}
-   |                                     ^^ help: try this: `{ std::hint::spin_loop() }`
+   |                                     ^^ help: try: `{ std::hint::spin_loop() }`
    |
    = note: `-D clippy::missing-spin-loop` implied by `-D warnings`
 
@@ -10,31 +10,31 @@ error: busy-waiting loop should at least have a spin loop hint
   --> $DIR/missing_spin_loop.rs:13:37
    |
 LL |     while !b.load(Ordering::SeqCst) {}
-   |                                     ^^ help: try this: `{ std::hint::spin_loop() }`
+   |                                     ^^ help: try: `{ std::hint::spin_loop() }`
 
 error: busy-waiting loop should at least have a spin loop hint
   --> $DIR/missing_spin_loop.rs:15:46
    |
 LL |     while b.load(Ordering::Acquire) == false {}
-   |                                              ^^ help: try this: `{ std::hint::spin_loop() }`
+   |                                              ^^ help: try: `{ std::hint::spin_loop() }`
 
 error: busy-waiting loop should at least have a spin loop hint
   --> $DIR/missing_spin_loop.rs:17:49
    |
 LL |     while { true == b.load(Ordering::Acquire) } {}
-   |                                                 ^^ help: try this: `{ std::hint::spin_loop() }`
+   |                                                 ^^ help: try: `{ std::hint::spin_loop() }`
 
 error: busy-waiting loop should at least have a spin loop hint
   --> $DIR/missing_spin_loop.rs:19:93
    |
 LL |     while b.compare_exchange(true, false, Ordering::Acquire, Ordering::Relaxed) != Ok(true) {}
-   |                                                                                             ^^ help: try this: `{ std::hint::spin_loop() }`
+   |                                                                                             ^^ help: try: `{ std::hint::spin_loop() }`
 
 error: busy-waiting loop should at least have a spin loop hint
   --> $DIR/missing_spin_loop.rs:21:94
    |
 LL |     while Ok(false) != b.compare_exchange(false, true, Ordering::Acquire, Ordering::Relaxed) {}
-   |                                                                                              ^^ help: try this: `{ std::hint::spin_loop() }`
+   |                                                                                              ^^ help: try: `{ std::hint::spin_loop() }`
 
 error: aborting due to 6 previous errors
 

@@ -3,7 +3,7 @@
 #![warn(clippy::pedantic)]
 // Should suggest lowercase
 #![allow(clippy::All)]
-#![warn(clippy::CMP_NAN)]
+#![warn(clippy::CMP_OWNED)]
 
 // Should suggest similar clippy lint name
 #[warn(clippy::if_not_els)]

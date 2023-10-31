@@ -2,45 +2,45 @@
 + // MIR for `fn0` after ConstProp
   
   fn fn0() -> bool {
-      let mut _0: bool;                    // return place in scope 0 at $DIR/address_of_pair.rs:+0:17: +0:21
-      let mut _1: !;                       // in scope 0 at $DIR/address_of_pair.rs:+0:22: +9:2
-      let mut _2: (i32, bool);             // in scope 0 at $DIR/address_of_pair.rs:+1:9: +1:17
-      let _4: ();                          // in scope 0 at $DIR/address_of_pair.rs:+4:5: +6:6
-      let mut _6: bool;                    // in scope 0 at $DIR/address_of_pair.rs:+7:16: +7:22
+      let mut _0: bool;
+      let mut _1: !;
+      let mut _2: (i32, bool);
+      let _4: ();
+      let mut _6: bool;
       scope 1 {
-          debug pair => _2;                // in scope 1 at $DIR/address_of_pair.rs:+1:9: +1:17
-          let _3: *mut bool;               // in scope 1 at $DIR/address_of_pair.rs:+2:9: +2:12
+          debug pair => _2;
+          let _3: *mut bool;
           scope 2 {
-              debug ptr => _3;             // in scope 2 at $DIR/address_of_pair.rs:+2:9: +2:12
-              let _5: bool;                // in scope 2 at $DIR/address_of_pair.rs:+7:9: +7:12
+              debug ptr => _3;
+              let _5: bool;
               scope 3 {
               }
               scope 4 {
-                  debug ret => _5;         // in scope 4 at $DIR/address_of_pair.rs:+7:9: +7:12
+                  debug ret => _5;
               }
           }
       }
   
       bb0: {
-          StorageLive(_2);                 // scope 0 at $DIR/address_of_pair.rs:+1:9: +1:17
-          _2 = (const 1_i32, const false); // scope 0 at $DIR/address_of_pair.rs:+1:20: +1:30
-          StorageLive(_3);                 // scope 1 at $DIR/address_of_pair.rs:+2:9: +2:12
-          _3 = &raw mut (_2.1: bool);      // scope 1 at $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-          _2 = (const 1_i32, const false); // scope 2 at $DIR/address_of_pair.rs:+3:5: +3:22
-          StorageLive(_4);                 // scope 2 at $DIR/address_of_pair.rs:+4:5: +6:6
-          (*_3) = const true;              // scope 3 at $DIR/address_of_pair.rs:+5:9: +5:20
-          _4 = const ();                   // scope 3 at $DIR/address_of_pair.rs:+4:5: +6:6
-          StorageDead(_4);                 // scope 2 at $DIR/address_of_pair.rs:+6:5: +6:6
-          StorageLive(_5);                 // scope 2 at $DIR/address_of_pair.rs:+7:9: +7:12
-          StorageLive(_6);                 // scope 2 at $DIR/address_of_pair.rs:+7:16: +7:22
-          _6 = (_2.1: bool);               // scope 2 at $DIR/address_of_pair.rs:+7:16: +7:22
-          _5 = Not(move _6);               // scope 2 at $DIR/address_of_pair.rs:+7:15: +7:22
-          StorageDead(_6);                 // scope 2 at $DIR/address_of_pair.rs:+7:21: +7:22
-          _0 = _5;                         // scope 4 at $DIR/address_of_pair.rs:+8:12: +8:15
-          StorageDead(_5);                 // scope 2 at $DIR/address_of_pair.rs:+9:1: +9:2
-          StorageDead(_3);                 // scope 1 at $DIR/address_of_pair.rs:+9:1: +9:2
-          StorageDead(_2);                 // scope 0 at $DIR/address_of_pair.rs:+9:1: +9:2
-          return;                          // scope 0 at $DIR/address_of_pair.rs:+9:2: +9:2
+          StorageLive(_2);
+          _2 = (const 1_i32, const false);
+          StorageLive(_3);
+          _3 = &raw mut (_2.1: bool);
+          _2 = (const 1_i32, const false);
+          StorageLive(_4);
+          (*_3) = const true;
+          _4 = const ();
+          StorageDead(_4);
+          StorageLive(_5);
+          StorageLive(_6);
+          _6 = (_2.1: bool);
+          _5 = Not(move _6);
+          StorageDead(_6);
+          _0 = _5;
+          StorageDead(_5);
+          StorageDead(_3);
+          StorageDead(_2);
+          return;
       }
   }
   

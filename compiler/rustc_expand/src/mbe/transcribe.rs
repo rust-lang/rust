@@ -182,9 +182,7 @@ pub(super) fn transcribe<'a>(
                     LockstepIterSize::Constraint(len, _) => {
                         // We do this to avoid an extra clone above. We know that this is a
                         // sequence already.
-                        let mbe::TokenTree::Sequence(sp, seq) = seq else {
-                            unreachable!()
-                        };
+                        let mbe::TokenTree::Sequence(sp, seq) = seq else { unreachable!() };
 
                         // Is the repetition empty?
                         if len == 0 {
@@ -222,16 +220,15 @@ pub(super) fn transcribe<'a>(
                         MatchedTokenTree(tt) => {
                             // `tt`s are emitted into the output stream directly as "raw tokens",
                             // without wrapping them into groups.
-                            let token = tt.clone();
-                            result.push(token);
+                            result.push(tt.clone());
                         }
                         MatchedNonterminal(nt) => {
                             // Other variables are emitted into the output stream as groups with
                             // `Delimiter::Invisible` to maintain parsing priorities.
                             // `Interpolated` is currently used for such groups in rustc parser.
                             marker.visit_span(&mut sp);
-                            let token = TokenTree::token_alone(token::Interpolated(nt.clone()), sp);
-                            result.push(token);
+                            result
+                                .push(TokenTree::token_alone(token::Interpolated(nt.clone()), sp));
                         }
                         MatchedSeq(..) => {
                             // We were unable to descend far enough. This is an error.
@@ -399,7 +396,9 @@ fn lockstep_iter_size(
         }
         TokenTree::MetaVarExpr(_, expr) => {
             let default_rslt = LockstepIterSize::Unconstrained;
-            let Some(ident) = expr.ident() else { return default_rslt; };
+            let Some(ident) = expr.ident() else {
+                return default_rslt;
+            };
             let name = MacroRulesNormalizedIdent::new(ident);
             match lookup_cur_matched(name, interpolations, repeats) {
                 Some(MatchedSeq(ads)) => {

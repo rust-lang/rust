@@ -5,7 +5,7 @@ use crate::value::Value;
 use rustc_codegen_ssa::mir::operand::OperandRef;
 use rustc_codegen_ssa::{
     common::IntPredicate,
-    traits::{BaseTypeMethods, BuilderMethods, ConstMethods, DerivedTypeMethods},
+    traits::{BaseTypeMethods, BuilderMethods, ConstMethods},
 };
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
 use rustc_middle::ty::Ty;
@@ -26,24 +26,18 @@ fn round_pointer_up_to_alignment<'ll>(
 fn emit_direct_ptr_va_arg<'ll, 'tcx>(
     bx: &mut Builder<'_, 'll, 'tcx>,
     list: OperandRef<'tcx, &'ll Value>,
-    llty: &'ll Type,
     size: Size,
     align: Align,
     slot_size: Align,
     allow_higher_align: bool,
 ) -> (&'ll Value, Align) {
-    let va_list_ty = bx.type_i8p();
-    let va_list_ptr_ty = bx.type_ptr_to(va_list_ty);
-    let va_list_addr = if list.layout.llvm_type(bx.cx) != va_list_ptr_ty {
-        bx.bitcast(list.immediate(), va_list_ptr_ty)
-    } else {
-        list.immediate()
-    };
+    let va_list_ty = bx.type_ptr();
+    let va_list_addr = list.immediate();
 
     let ptr = bx.load(va_list_ty, va_list_addr, bx.tcx().data_layout.pointer_align.abi);
 
     let (addr, addr_align) = if allow_higher_align && align > slot_size {
-        (round_pointer_up_to_alignment(bx, ptr, align, bx.cx().type_i8p()), align)
+        (round_pointer_up_to_alignment(bx, ptr, align, bx.type_ptr()), align)
     } else {
         (ptr, slot_size)
     };
@@ -56,9 +50,9 @@ fn emit_direct_ptr_va_arg<'ll, 'tcx>(
     if size.bytes() < slot_size.bytes() && bx.tcx().sess.target.endian == Endian::Big {
         let adjusted_size = bx.cx().const_i32((slot_size.bytes() - size.bytes()) as i32);
         let adjusted = bx.inbounds_gep(bx.type_i8(), addr, &[adjusted_size]);
-        (bx.bitcast(adjusted, bx.cx().type_ptr_to(llty)), addr_align)
+        (adjusted, addr_align)
     } else {
-        (bx.bitcast(addr, bx.cx().type_ptr_to(llty)), addr_align)
+        (addr, addr_align)
     }
 }
 
@@ -73,7 +67,7 @@ fn emit_ptr_va_arg<'ll, 'tcx>(
     let layout = bx.cx.layout_of(target_ty);
     let (llty, size, align) = if indirect {
         (
-            bx.cx.layout_of(bx.cx.tcx.mk_imm_ptr(target_ty)).llvm_type(bx.cx),
+            bx.cx.layout_of(Ty::new_imm_ptr(bx.cx.tcx, target_ty)).llvm_type(bx.cx),
             bx.cx.data_layout().pointer_size,
             bx.cx.data_layout().pointer_align,
         )
@@ -81,7 +75,7 @@ fn emit_ptr_va_arg<'ll, 'tcx>(
         (layout.llvm_type(bx.cx), layout.size, layout.align)
     };
     let (addr, addr_align) =
-        emit_direct_ptr_va_arg(bx, list, llty, size, align.abi, slot_size, allow_higher_align);
+        emit_direct_ptr_va_arg(bx, list, size, align.abi, slot_size, allow_higher_align);
     if indirect {
         let tmp_ret = bx.load(llty, addr, addr_align);
         bx.load(bx.cx.layout_of(target_ty).llvm_type(bx.cx), tmp_ret, align.abi)
@@ -146,7 +140,7 @@ fn emit_aapcs_va_arg<'ll, 'tcx>(
     bx.cond_br(use_stack, on_stack, in_reg);
 
     bx.switch_to_block(in_reg);
-    let top_type = bx.type_i8p();
+    let top_type = bx.type_ptr();
     let top = bx.struct_gep(va_list_ty, va_list_addr, reg_top_index);
     let top = bx.load(top_type, top, bx.tcx().data_layout.pointer_align.abi);
 
@@ -158,7 +152,6 @@ fn emit_aapcs_va_arg<'ll, 'tcx>(
         reg_addr = bx.gep(bx.type_i8(), reg_addr, &[offset]);
     }
     let reg_type = layout.llvm_type(bx);
-    let reg_addr = bx.bitcast(reg_addr, bx.cx.type_ptr_to(reg_type));
     let reg_value = bx.load(reg_type, reg_addr, layout.align.abi);
     bx.br(end);
 
@@ -218,7 +211,7 @@ fn emit_s390x_va_arg<'ll, 'tcx>(
     // Work out the address of the value in the register save area.
     let reg_ptr =
         bx.struct_gep(va_list_ty, va_list_addr, va_list_layout.llvm_field_index(bx.cx, 3));
-    let reg_ptr_v = bx.load(bx.type_i8p(), reg_ptr, bx.tcx().data_layout.pointer_align.abi);
+    let reg_ptr_v = bx.load(bx.type_ptr(), reg_ptr, bx.tcx().data_layout.pointer_align.abi);
     let scaled_reg_count = bx.mul(reg_count_v, bx.const_u64(8));
     let reg_off = bx.add(scaled_reg_count, bx.const_u64(reg_save_index * 8 + reg_padding));
     let reg_addr = bx.gep(bx.type_i8(), reg_ptr_v, &[reg_off]);
@@ -234,7 +227,7 @@ fn emit_s390x_va_arg<'ll, 'tcx>(
     // Work out the address of the value in the argument overflow area.
     let arg_ptr =
         bx.struct_gep(va_list_ty, va_list_addr, va_list_layout.llvm_field_index(bx.cx, 2));
-    let arg_ptr_v = bx.load(bx.type_i8p(), arg_ptr, bx.tcx().data_layout.pointer_align.abi);
+    let arg_ptr_v = bx.load(bx.type_ptr(), arg_ptr, bx.tcx().data_layout.pointer_align.abi);
     let arg_off = bx.const_u64(padding);
     let mem_addr = bx.gep(bx.type_i8(), arg_ptr_v, &[arg_off]);
 
@@ -246,14 +239,12 @@ fn emit_s390x_va_arg<'ll, 'tcx>(
 
     // Return the appropriate result.
     bx.switch_to_block(end);
-    let val_addr = bx.phi(bx.type_i8p(), &[reg_addr, mem_addr], &[in_reg, in_mem]);
+    let val_addr = bx.phi(bx.type_ptr(), &[reg_addr, mem_addr], &[in_reg, in_mem]);
     let val_type = layout.llvm_type(bx);
     let val_addr = if indirect {
-        let ptr_type = bx.cx.type_ptr_to(val_type);
-        let ptr_addr = bx.bitcast(val_addr, bx.cx.type_ptr_to(ptr_type));
-        bx.load(ptr_type, ptr_addr, bx.tcx().data_layout.pointer_align.abi)
+        bx.load(bx.cx.type_ptr(), val_addr, bx.tcx().data_layout.pointer_align.abi)
     } else {
-        bx.bitcast(val_addr, bx.cx.type_ptr_to(val_type))
+        val_addr
     };
     bx.load(val_type, val_addr, layout.align.abi)
 }

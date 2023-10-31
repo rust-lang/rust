@@ -14,7 +14,8 @@ for example:
 ./src/ci/docker/run.sh x86_64-gnu
 ```
 
-Images will output artifacts in an `obj` dir at the root of a repository.
+Images will output artifacts in an `obj` dir at the root of a repository. Note
+that the script will overwrite the contents of this directory.
 
 To match conditions in rusts CI, also set the environment variable `DEPLOY=1`, e.g.:
 ```
@@ -270,7 +271,7 @@ For targets: `loongarch64-unknown-linux-gnu`
 - Operating System > Linux kernel version = 5.19.16
 - Binary utilities > Version of binutils = 2.40
 - C-library > glibc version = 2.36
-- C compiler > gcc version = 12.2.0
+- C compiler > gcc version = 13.1.0
 - C compiler > C++ = ENABLE -- to cross compile LLVM
 
 ### `mips-linux-gnu.defconfig`

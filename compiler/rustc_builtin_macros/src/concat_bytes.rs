@@ -21,7 +21,7 @@ fn invalid_type_err(
         Ok(ast::LitKind::CStr(_, _)) => {
             // FIXME(c_str_literals): should concatenation of C string literals
             // include the null bytes in the end?
-            cx.span_err(span, "cannot concatenate C string literals");
+            cx.emit_err(errors::ConcatCStrLit { span: span });
         }
         Ok(ast::LitKind::Char(_)) => {
             let sugg =

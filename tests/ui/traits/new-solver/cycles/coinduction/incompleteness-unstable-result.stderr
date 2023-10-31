@@ -1,0 +1,16 @@
+error[E0277]: the trait bound `A<X>: Trait<_, _, _>` is not satisfied
+  --> $DIR/incompleteness-unstable-result.rs:63:19
+   |
+LL |     impls_trait::<A<X>, _, _, _>();
+   |                   ^^^^ the trait `Trait<_, _, _>` is not implemented for `A<X>`
+   |
+   = help: the trait `Trait<U, V, D>` is implemented for `A<T>`
+note: required by a bound in `impls_trait`
+  --> $DIR/incompleteness-unstable-result.rs:51:28
+   |
+LL | fn impls_trait<T: ?Sized + Trait<U, V, D>, U: ?Sized, V: ?Sized, D: ?Sized>() {}
+   |                            ^^^^^^^^^^^^^^ required by this bound in `impls_trait`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

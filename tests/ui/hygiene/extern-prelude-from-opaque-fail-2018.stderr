@@ -1,0 +1,53 @@
+error[E0432]: unresolved import `my_core`
+  --> $DIR/extern-prelude-from-opaque-fail-2018.rs:21:9
+   |
+LL |     use my_core;
+   |         ^^^^^^^ no external crate `my_core`
+
+error[E0432]: unresolved import `my_core`
+  --> $DIR/extern-prelude-from-opaque-fail-2018.rs:8:13
+   |
+LL |         use my_core;
+   |             ^^^^^^^ no external crate `my_core`
+...
+LL | a!();
+   | ---- in this macro invocation
+   |
+   = note: this error originates in the macro `a` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0433]: failed to resolve: use of undeclared crate or module `my_core`
+  --> $DIR/extern-prelude-from-opaque-fail-2018.rs:12:18
+   |
+LL |         fn f() { my_core::mem::drop(0); }
+   |                  ^^^^^^^ use of undeclared crate or module `my_core`
+...
+LL | a!();
+   | ---- in this macro invocation
+   |
+   = help: consider importing one of these items:
+           std::mem
+           core::mem
+   = note: this error originates in the macro `a` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0433]: failed to resolve: use of undeclared crate or module `my_core`
+  --> $DIR/extern-prelude-from-opaque-fail-2018.rs:25:14
+   |
+LL |     fn f() { my_core::mem::drop(0); }
+   |              ^^^^^^^ use of undeclared crate or module `my_core`
+   |
+help: consider importing one of these items
+   |
+LL +     use core::mem;
+   |
+LL +     use std::mem;
+   |
+help: if you import `mem`, refer to it directly
+   |
+LL -     fn f() { my_core::mem::drop(0); }
+LL +     fn f() { mem::drop(0); }
+   |
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0432, E0433.
+For more information about an error, try `rustc --explain E0432`.

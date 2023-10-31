@@ -28,6 +28,7 @@ fn may_contain_reference<'tcx>(ty: Ty<'tcx>, depth: u32, tcx: TyCtxt<'tcx>) -> b
         // References
         ty::Ref(..) => true,
         ty::Adt(..) if ty.is_box() => true,
+        ty::Adt(adt, _) if Some(adt.did()) == tcx.lang_items().ptr_unique() => true,
         // Compound types: recurse
         ty::Array(ty, _) | ty::Slice(ty) => {
             // This does not branch so we keep the depth the same.
@@ -59,7 +60,7 @@ impl<'tcx> MirPass<'tcx> for AddRetag {
         let basic_blocks = body.basic_blocks.as_mut();
         let local_decls = &body.local_decls;
         let needs_retag = |place: &Place<'tcx>| {
-            !place.has_deref() // we're not really interested in stores to "outside" locations, they are hard to keep track of anyway
+            !place.is_indirect_first_projection() // we're not really interested in stores to "outside" locations, they are hard to keep track of anyway
                 && may_contain_reference(place.ty(&*local_decls, tcx).ty, /*depth*/ 3, tcx)
                 && !local_decls[place.local].is_deref_temp()
         };

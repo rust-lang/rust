@@ -5,82 +5,82 @@
 | 1: user_ty: Canonical { value: Ty(std::option::Option<std::boxed::Box<u32>>), max_universe: U0, variables: [] }, span: $DIR/basic_assignment.rs:20:17: 20:33, inferred_ty: std::option::Option<std::boxed::Box<u32>>
 |
 fn main() -> () {
-    let mut _0: ();                      // return place in scope 0 at $DIR/basic_assignment.rs:+0:11: +0:11
-    let _1: bool;                        // in scope 0 at $DIR/basic_assignment.rs:+1:9: +1:17
-    let mut _3: bool;                    // in scope 0 at $DIR/basic_assignment.rs:+6:16: +6:24
-    let mut _6: std::option::Option<std::boxed::Box<u32>>; // in scope 0 at $DIR/basic_assignment.rs:+13:14: +13:20
+    let mut _0: ();
+    let _1: bool;
+    let mut _3: bool;
+    let mut _6: std::option::Option<std::boxed::Box<u32>>;
     scope 1 {
-        debug nodrop_x => _1;            // in scope 1 at $DIR/basic_assignment.rs:+1:9: +1:17
-        let _2: bool;                    // in scope 1 at $DIR/basic_assignment.rs:+2:9: +2:17
+        debug nodrop_x => _1;
+        let _2: bool;
         scope 2 {
-            debug nodrop_y => _2;        // in scope 2 at $DIR/basic_assignment.rs:+2:9: +2:17
-            let _4: std::option::Option<std::boxed::Box<u32>> as UserTypeProjection { base: UserType(0), projs: [] }; // in scope 2 at $DIR/basic_assignment.rs:+8:9: +8:15
+            debug nodrop_y => _2;
+            let _4: std::option::Option<std::boxed::Box<u32>> as UserTypeProjection { base: UserType(0), projs: [] };
             scope 3 {
-                debug drop_x => _4;      // in scope 3 at $DIR/basic_assignment.rs:+8:9: +8:15
-                let _5: std::option::Option<std::boxed::Box<u32>>; // in scope 3 at $DIR/basic_assignment.rs:+9:9: +9:15
+                debug drop_x => _4;
+                let _5: std::option::Option<std::boxed::Box<u32>>;
                 scope 4 {
-                    debug drop_y => _5;  // in scope 4 at $DIR/basic_assignment.rs:+9:9: +9:15
+                    debug drop_y => _5;
                 }
             }
         }
     }
 
     bb0: {
-        StorageLive(_1);                 // scope 0 at $DIR/basic_assignment.rs:+1:9: +1:17
-        _1 = const false;                // scope 0 at $DIR/basic_assignment.rs:+1:20: +1:25
-        FakeRead(ForLet(None), _1);      // scope 0 at $DIR/basic_assignment.rs:+1:9: +1:17
-        StorageLive(_2);                 // scope 1 at $DIR/basic_assignment.rs:+2:9: +2:17
-        StorageLive(_3);                 // scope 2 at $DIR/basic_assignment.rs:+6:16: +6:24
-        _3 = _1;                         // scope 2 at $DIR/basic_assignment.rs:+6:16: +6:24
-        _2 = move _3;                    // scope 2 at $DIR/basic_assignment.rs:+6:5: +6:24
-        StorageDead(_3);                 // scope 2 at $DIR/basic_assignment.rs:+6:23: +6:24
-        StorageLive(_4);                 // scope 2 at $DIR/basic_assignment.rs:+8:9: +8:15
-        _4 = Option::<Box<u32>>::None;   // scope 2 at $DIR/basic_assignment.rs:+8:36: +8:40
-        FakeRead(ForLet(None), _4);      // scope 2 at $DIR/basic_assignment.rs:+8:9: +8:15
-        AscribeUserType(_4, o, UserTypeProjection { base: UserType(1), projs: [] }); // scope 2 at $DIR/basic_assignment.rs:+8:17: +8:33
-        StorageLive(_5);                 // scope 3 at $DIR/basic_assignment.rs:+9:9: +9:15
-        StorageLive(_6);                 // scope 4 at $DIR/basic_assignment.rs:+13:14: +13:20
-        _6 = move _4;                    // scope 4 at $DIR/basic_assignment.rs:+13:14: +13:20
-        drop(_5) -> [return: bb1, unwind: bb2]; // scope 4 at $DIR/basic_assignment.rs:+13:5: +13:11
+        StorageLive(_1);
+        _1 = const false;
+        FakeRead(ForLet(None), _1);
+        StorageLive(_2);
+        StorageLive(_3);
+        _3 = _1;
+        _2 = move _3;
+        StorageDead(_3);
+        StorageLive(_4);
+        _4 = Option::<Box<u32>>::None;
+        FakeRead(ForLet(None), _4);
+        AscribeUserType(_4, o, UserTypeProjection { base: UserType(1), projs: [] });
+        StorageLive(_5);
+        StorageLive(_6);
+        _6 = move _4;
+        drop(_5) -> [return: bb1, unwind: bb2];
     }
 
     bb1: {
-        _5 = move _6;                    // scope 4 at $DIR/basic_assignment.rs:+13:5: +13:11
-        drop(_6) -> [return: bb3, unwind: bb6]; // scope 4 at $DIR/basic_assignment.rs:+13:19: +13:20
+        _5 = move _6;
+        drop(_6) -> [return: bb3, unwind: bb6];
     }
 
     bb2 (cleanup): {
-        _5 = move _6;                    // scope 4 at $DIR/basic_assignment.rs:+13:5: +13:11
-        drop(_6) -> [return: bb6, unwind terminate]; // scope 4 at $DIR/basic_assignment.rs:+13:19: +13:20
+        _5 = move _6;
+        drop(_6) -> [return: bb6, unwind terminate];
     }
 
     bb3: {
-        StorageDead(_6);                 // scope 4 at $DIR/basic_assignment.rs:+13:19: +13:20
-        _0 = const ();                   // scope 0 at $DIR/basic_assignment.rs:+0:11: +14:2
-        drop(_5) -> [return: bb4, unwind: bb7]; // scope 3 at $DIR/basic_assignment.rs:+14:1: +14:2
+        StorageDead(_6);
+        _0 = const ();
+        drop(_5) -> [return: bb4, unwind: bb7];
     }
 
     bb4: {
-        StorageDead(_5);                 // scope 3 at $DIR/basic_assignment.rs:+14:1: +14:2
-        drop(_4) -> [return: bb5, unwind: bb8]; // scope 2 at $DIR/basic_assignment.rs:+14:1: +14:2
+        StorageDead(_5);
+        drop(_4) -> [return: bb5, unwind: bb8];
     }
 
     bb5: {
-        StorageDead(_4);                 // scope 2 at $DIR/basic_assignment.rs:+14:1: +14:2
-        StorageDead(_2);                 // scope 1 at $DIR/basic_assignment.rs:+14:1: +14:2
-        StorageDead(_1);                 // scope 0 at $DIR/basic_assignment.rs:+14:1: +14:2
-        return;                          // scope 0 at $DIR/basic_assignment.rs:+14:2: +14:2
+        StorageDead(_4);
+        StorageDead(_2);
+        StorageDead(_1);
+        return;
     }
 
     bb6 (cleanup): {
-        drop(_5) -> [return: bb7, unwind terminate]; // scope 3 at $DIR/basic_assignment.rs:+14:1: +14:2
+        drop(_5) -> [return: bb7, unwind terminate];
     }
 
     bb7 (cleanup): {
-        drop(_4) -> [return: bb8, unwind terminate]; // scope 2 at $DIR/basic_assignment.rs:+14:1: +14:2
+        drop(_4) -> [return: bb8, unwind terminate];
     }
 
     bb8 (cleanup): {
-        resume;                          // scope 0 at $DIR/basic_assignment.rs:+0:1: +14:2
+        resume;
     }
 }

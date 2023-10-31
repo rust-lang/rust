@@ -1,5 +1,6 @@
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::{is_path_diagnostic_item, ty::is_uninit_value_valid_for_ty};
+use clippy_utils::is_path_diagnostic_item;
+use clippy_utils::ty::is_uninit_value_valid_for_ty;
 use if_chain::if_chain;
 use rustc_hir as hir;
 use rustc_lint::LateContext;

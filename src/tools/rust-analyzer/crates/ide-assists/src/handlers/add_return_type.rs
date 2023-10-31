@@ -22,7 +22,7 @@ pub(crate) fn add_return_type(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opt
     if ty.is_unit() {
         return None;
     }
-    let ty = ty.display_source_code(ctx.db(), module.into()).ok()?;
+    let ty = ty.display_source_code(ctx.db(), module.into(), true).ok()?;
 
     acc.add(
         AssistId("add_return_type", AssistKind::RefactorRewrite),
@@ -34,8 +34,8 @@ pub(crate) fn add_return_type(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opt
         |builder| {
             match builder_edit_pos {
                 InsertOrReplace::Insert(insert_pos, needs_whitespace) => {
-                    let preceeding_whitespace = if needs_whitespace { " " } else { "" };
-                    builder.insert(insert_pos, format!("{preceeding_whitespace}-> {ty} "))
+                    let preceding_whitespace = if needs_whitespace { " " } else { "" };
+                    builder.insert(insert_pos, format!("{preceding_whitespace}-> {ty} "))
                 }
                 InsertOrReplace::Replace(text_range) => {
                     builder.replace(text_range, format!("-> {ty}"))

@@ -130,7 +130,7 @@ pub fn dot_prod_simd_4(a: &[f32], b: &[f32]) -> f32 {
 }
 
 // This version allocates a single `XMM` register for accumulation, and the folds don't allocate on top of that.
-// Notice the the use of `mul_add`, which can do a multiply and an add operation ber iteration.
+// Notice the use of `mul_add`, which can do a multiply and an add operation ber iteration.
 pub fn dot_prod_simd_5(a: &[f32], b: &[f32]) -> f32 {
     a.array_chunks::<4>()
         .map(|&a| f32x4::from_array(a))

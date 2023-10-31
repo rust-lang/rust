@@ -1,0 +1,12 @@
+error[E0308]: mismatched types
+  --> $DIR/tilde_const_on_impl_bound.rs:14:9
+   |
+LL |         self.0.foo()
+   |         ^^^^^^^^^^^^ expected `host`, found `true`
+   |
+   = note: expected constant `host`
+              found constant `true`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

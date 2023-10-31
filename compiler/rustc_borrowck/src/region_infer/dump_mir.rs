@@ -52,7 +52,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         writeln!(out, "|")?;
         writeln!(out, "| Inference Constraints")?;
-        self.for_each_constraint(tcx, &mut |msg| writeln!(out, "| {}", msg))?;
+        self.for_each_constraint(tcx, &mut |msg| writeln!(out, "| {msg}"))?;
 
         Ok(())
     }
@@ -69,7 +69,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         for region in self.definitions.indices() {
             let value = self.liveness_constraints.region_value_str(region);
             if value != "{}" {
-                with_msg(&format!("{:?} live at {}", region, value))?;
+                with_msg(&format!("{region:?} live at {value}"))?;
             }
         }
 
@@ -81,12 +81,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 Locations::All(span) => {
                     ("All", tcx.sess.source_map().span_to_embeddable_string(*span))
                 }
-                Locations::Single(loc) => ("Single", format!("{:?}", loc)),
+                Locations::Single(loc) => ("Single", format!("{loc:?}")),
             };
-            with_msg(&format!(
-                "{:?}: {:?} due to {:?} at {}({}) ({:?}",
-                sup, sub, category, name, arg, span
-            ))?;
+            with_msg(&format!("{sup:?}: {sub:?} due to {category:?} at {name}({arg}) ({span:?}"))?;
         }
 
         Ok(())

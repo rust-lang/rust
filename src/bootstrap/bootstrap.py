@@ -97,7 +97,7 @@ def _download(path, url, probably_big, verbose, exception):
         print("downloading {}".format(url), file=sys.stderr)
 
     try:
-        if probably_big or verbose:
+        if (probably_big or verbose) and "GITHUB_ACTIONS" not in os.environ:
             option = "-#"
         else:
             option = "-s"
@@ -226,16 +226,13 @@ def format_build_time(duration):
 
 def default_build_triple(verbose):
     """Build triple as in LLVM"""
-    # If the user already has a host build triple with an existing `rustc`
-    # install, use their preference. This fixes most issues with Windows builds
-    # being detected as GNU instead of MSVC.
+    # If we're on Windows and have an existing `rustc` toolchain, use `rustc --version --verbose`
+    # to find our host target triple. This fixes an issue with Windows builds being detected
+    # as GNU instead of MSVC.
+    # Otherwise, detect it via `uname`
     default_encoding = sys.getdefaultencoding()
 
-    if sys.platform == 'darwin':
-        if verbose:
-            print("not using rustc detection as it is unreliable on macOS", file=sys.stderr)
-            print("falling back to auto-detect", file=sys.stderr)
-    else:
+    if platform_is_win32():
         try:
             version = subprocess.check_output(["rustc", "--version", "--verbose"],
                     stderr=subprocess.DEVNULL)
@@ -253,19 +250,17 @@ def default_build_triple(verbose):
                 print("falling back to auto-detect", file=sys.stderr)
 
     required = not platform_is_win32()
-    ostype = require(["uname", "-s"], exit=required)
-    cputype = require(['uname', '-m'], exit=required)
+    uname = require(["uname", "-smp"], exit=required)
 
     # If we do not have `uname`, assume Windows.
-    if ostype is None or cputype is None:
+    if uname is None:
         return 'x86_64-pc-windows-msvc'
 
-    ostype = ostype.decode(default_encoding)
-    cputype = cputype.decode(default_encoding)
+    kernel, cputype, processor = uname.decode(default_encoding).split(maxsplit=2)
 
     # The goal here is to come up with the same triple as LLVM would,
     # at least for the subset of platforms we're willing to target.
-    ostype_mapper = {
+    kerneltype_mapper = {
         'Darwin': 'apple-darwin',
         'DragonFly': 'unknown-dragonfly',
         'FreeBSD': 'unknown-freebsd',
@@ -275,17 +270,18 @@ def default_build_triple(verbose):
     }
 
     # Consider the direct transformation first and then the special cases
-    if ostype in ostype_mapper:
-        ostype = ostype_mapper[ostype]
-    elif ostype == 'Linux':
-        os_from_sp = subprocess.check_output(
-            ['uname', '-o']).strip().decode(default_encoding)
-        if os_from_sp == 'Android':
-            ostype = 'linux-android'
+    if kernel in kerneltype_mapper:
+        kernel = kerneltype_mapper[kernel]
+    elif kernel == 'Linux':
+        # Apple doesn't support `-o` so this can't be used in the combined
+        # uname invocation above
+        ostype = require(["uname", "-o"], exit=required).decode(default_encoding)
+        if ostype == 'Android':
+            kernel = 'linux-android'
         else:
-            ostype = 'unknown-linux-gnu'
-    elif ostype == 'SunOS':
-        ostype = 'pc-solaris'
+            kernel = 'unknown-linux-gnu'
+    elif kernel == 'SunOS':
+        kernel = 'pc-solaris'
         # On Solaris, uname -m will return a machine classification instead
         # of a cpu type, so uname -p is recommended instead.  However, the
         # output from that option is too generic for our purposes (it will
@@ -294,39 +290,40 @@ def default_build_triple(verbose):
         cputype = require(['isainfo', '-k']).decode(default_encoding)
         # sparc cpus have sun as a target vendor
         if 'sparc' in cputype:
-            ostype = 'sun-solaris'
-    elif ostype.startswith('MINGW'):
+            kernel = 'sun-solaris'
+    elif kernel.startswith('MINGW'):
         # msys' `uname` does not print gcc configuration, but prints msys
         # configuration. so we cannot believe `uname -m`:
         # msys1 is always i686 and msys2 is always x86_64.
         # instead, msys defines $MSYSTEM which is MINGW32 on i686 and
         # MINGW64 on x86_64.
-        ostype = 'pc-windows-gnu'
+        kernel = 'pc-windows-gnu'
         cputype = 'i686'
         if os.environ.get('MSYSTEM') == 'MINGW64':
             cputype = 'x86_64'
-    elif ostype.startswith('MSYS'):
-        ostype = 'pc-windows-gnu'
-    elif ostype.startswith('CYGWIN_NT'):
+    elif kernel.startswith('MSYS'):
+        kernel = 'pc-windows-gnu'
+    elif kernel.startswith('CYGWIN_NT'):
         cputype = 'i686'
-        if ostype.endswith('WOW64'):
+        if kernel.endswith('WOW64'):
             cputype = 'x86_64'
-        ostype = 'pc-windows-gnu'
-    elif sys.platform == 'win32':
+        kernel = 'pc-windows-gnu'
+    elif platform_is_win32():
         # Some Windows platforms might have a `uname` command that returns a
         # non-standard string (e.g. gnuwin32 tools returns `windows32`). In
         # these cases, fall back to using sys.platform.
         return 'x86_64-pc-windows-msvc'
     else:
-        err = "unknown OS type: {}".format(ostype)
+        err = "unknown OS type: {}".format(kernel)
         sys.exit(err)
 
-    if cputype in ['powerpc', 'riscv'] and ostype == 'unknown-freebsd':
+    if cputype in ['powerpc', 'riscv'] and kernel == 'unknown-freebsd':
         cputype = subprocess.check_output(
               ['uname', '-p']).strip().decode(default_encoding)
     cputype_mapper = {
         'BePC': 'i686',
         'aarch64': 'aarch64',
+        'aarch64eb': 'aarch64',
         'amd64': 'x86_64',
         'arm64': 'aarch64',
         'i386': 'i686',
@@ -335,6 +332,7 @@ def default_build_triple(verbose):
         'i786': 'i686',
         'loongarch64': 'loongarch64',
         'm68k': 'm68k',
+        'csky': 'csky',
         'powerpc': 'powerpc',
         'powerpc64': 'powerpc64',
         'powerpc64le': 'powerpc64le',
@@ -354,24 +352,23 @@ def default_build_triple(verbose):
         cputype = cputype_mapper[cputype]
     elif cputype in {'xscale', 'arm'}:
         cputype = 'arm'
-        if ostype == 'linux-android':
-            ostype = 'linux-androideabi'
-        elif ostype == 'unknown-freebsd':
-            cputype = subprocess.check_output(
-                ['uname', '-p']).strip().decode(default_encoding)
-            ostype = 'unknown-freebsd'
+        if kernel == 'linux-android':
+            kernel = 'linux-androideabi'
+        elif kernel == 'unknown-freebsd':
+            cputype = processor
+            kernel = 'unknown-freebsd'
     elif cputype == 'armv6l':
         cputype = 'arm'
-        if ostype == 'linux-android':
-            ostype = 'linux-androideabi'
+        if kernel == 'linux-android':
+            kernel = 'linux-androideabi'
         else:
-            ostype += 'eabihf'
+            kernel += 'eabihf'
     elif cputype in {'armv7l', 'armv8l'}:
         cputype = 'armv7'
-        if ostype == 'linux-android':
-            ostype = 'linux-androideabi'
+        if kernel == 'linux-android':
+            kernel = 'linux-androideabi'
         else:
-            ostype += 'eabihf'
+            kernel += 'eabihf'
     elif cputype == 'mips':
         if sys.byteorder == 'big':
             cputype = 'mips'
@@ -387,14 +384,14 @@ def default_build_triple(verbose):
         else:
             raise ValueError('unknown byteorder: {}'.format(sys.byteorder))
         # only the n64 ABI is supported, indicate it
-        ostype += 'abi64'
+        kernel += 'abi64'
     elif cputype == 'sparc' or cputype == 'sparcv9' or cputype == 'sparc64':
         pass
     else:
         err = "unknown cpu type: {}".format(cputype)
         sys.exit(err)
 
-    return "{}-{}".format(cputype, ostype)
+    return "{}-{}".format(cputype, kernel)
 
 
 @contextlib.contextmanager
@@ -463,23 +460,53 @@ def unpack_component(download_info):
         verbose=download_info.verbose,
     )
 
-class RustBuild(object):
-    """Provide all the methods required to build Rust"""
+class FakeArgs:
+    """Used for unit tests to avoid updating all call sites"""
     def __init__(self):
-        self.checksums_sha256 = {}
-        self.stage0_compiler = None
-        self.download_url = ''
         self.build = ''
         self.build_dir = ''
         self.clean = False
-        self.config_toml = ''
-        self.rust_root = ''
-        self.use_locked_deps = False
-        self.use_vendored_sources = False
         self.verbose = False
+        self.json_output = False
+        self.color = 'auto'
+        self.warnings = 'default'
+
+class RustBuild(object):
+    """Provide all the methods required to build Rust"""
+    def __init__(self, config_toml="", args=None):
+        if args is None:
+            args = FakeArgs()
         self.git_version = None
         self.nix_deps_dir = None
         self._should_fix_bins_and_dylibs = None
+        self.rust_root = os.path.abspath(os.path.join(__file__, '../../..'))
+
+        self.config_toml = config_toml
+
+        self.clean = args.clean
+        self.json_output = args.json_output
+        self.verbose = args.verbose
+        self.color = args.color
+        self.warnings = args.warnings
+
+        config_verbose_count = self.get_toml('verbose', 'build')
+        if config_verbose_count is not None:
+            self.verbose = max(self.verbose, int(config_verbose_count))
+
+        self.use_vendored_sources = self.get_toml('vendor', 'build') == 'true'
+        self.use_locked_deps = self.get_toml('locked-deps', 'build') == 'true'
+
+        build_dir = args.build_dir or self.get_toml('build-dir', 'build') or 'build'
+        self.build_dir = os.path.abspath(build_dir)
+
+        with open(os.path.join(self.rust_root, "src", "stage0.json")) as f:
+            data = json.load(f)
+        self.checksums_sha256 = data["checksums_sha256"]
+        self.stage0_compiler = Stage0Toolchain(data["compiler"])
+        self.download_url = os.getenv("RUSTUP_DIST_SERVER") or data["config"]["dist_server"]
+
+        self.build = args.build or self.build_triple()
+
 
     def download_toolchain(self):
         """Fetch the build system for Rust, written in Rust
@@ -625,7 +652,7 @@ class RustBuild(object):
             # The latter one does not exist on NixOS when using tmpfs as root.
             try:
                 with open("/etc/os-release", "r") as f:
-                    if not any(l.strip() in ("ID=nixos", "ID='nixos'", 'ID="nixos"') for l in f):
+                    if not any(ln.strip() in ("ID=nixos", "ID='nixos'", 'ID="nixos"') for ln in f):
                         return False
             except FileNotFoundError:
                 return False
@@ -709,9 +736,10 @@ class RustBuild(object):
         """Return the path for .rustc-stamp at the given stage
 
         >>> rb = RustBuild()
+        >>> rb.build = "host"
         >>> rb.build_dir = "build"
-        >>> rb.rustc_stamp() == os.path.join("build", "stage0", ".rustc-stamp")
-        True
+        >>> expected = os.path.join("build", "host", "stage0", ".rustc-stamp")
+        >>> assert rb.rustc_stamp() == expected, rb.rustc_stamp()
         """
         return os.path.join(self.bin_root(), '.rustc-stamp')
 
@@ -726,15 +754,9 @@ class RustBuild(object):
         """Return the binary root directory for the given stage
 
         >>> rb = RustBuild()
-        >>> rb.build_dir = "build"
-        >>> rb.bin_root() == os.path.join("build", "stage0")
-        True
-
-        When the 'build' property is given should be a nested directory:
-
         >>> rb.build = "devel"
-        >>> rb.bin_root() == os.path.join("build", "devel", "stage0")
-        True
+        >>> expected = os.path.abspath(os.path.join("build", "devel", "stage0"))
+        >>> assert rb.bin_root() == expected, rb.bin_root()
         """
         subdir = "stage0"
         return os.path.join(self.build_dir, self.build, subdir)
@@ -766,9 +788,12 @@ class RustBuild(object):
         >>> rb.get_toml("key1")
         'true'
         """
+        return RustBuild.get_toml_static(self.config_toml, key, section)
 
+    @staticmethod
+    def get_toml_static(config_toml, key, section=None):
         cur_section = None
-        for line in self.config_toml.splitlines():
+        for line in config_toml.splitlines():
             section_match = re.match(r'^\s*\[(.*)\]\s*$', line)
             if section_match is not None:
                 cur_section = section_match.group(1)
@@ -777,7 +802,7 @@ class RustBuild(object):
             if match is not None:
                 value = match.group(1)
                 if section is None or section == cur_section:
-                    return self.get_string(value) or value.strip()
+                    return RustBuild.get_string(value) or value.strip()
         return None
 
     def cargo(self):
@@ -840,13 +865,23 @@ class RustBuild(object):
         """
         return os.path.join(self.build_dir, "bootstrap", "debug", "bootstrap")
 
-    def build_bootstrap(self, color, verbose_count):
+    def build_bootstrap(self):
         """Build bootstrap"""
         env = os.environ.copy()
         if "GITHUB_ACTIONS" in env:
             print("::group::Building bootstrap")
         else:
             print("Building bootstrap", file=sys.stderr)
+
+        args = self.build_bootstrap_cmd(env)
+        # Run this from the source directory so cargo finds .cargo/config
+        run(args, env=env, verbose=self.verbose, cwd=self.rust_root)
+
+        if "GITHUB_ACTIONS" in env:
+            print("::endgroup::")
+
+    def build_bootstrap_cmd(self, env):
+        """For tests."""
         build_dir = os.path.join(self.build_dir, "bootstrap")
         if self.clean and os.path.exists(build_dir):
             shutil.rmtree(build_dir)
@@ -877,11 +912,12 @@ class RustBuild(object):
         }
         for var_name, toml_key in var_data.items():
             toml_val = self.get_toml(toml_key, build_section)
-            if toml_val != None:
+            if toml_val is not None:
                 env["{}_{}".format(var_name, host_triple_sanitized)] = toml_val
 
         # preserve existing RUSTFLAGS
         env.setdefault("RUSTFLAGS", "")
+
         target_features = []
         if self.get_toml("crt-static", build_section) == "true":
             target_features += ["+crt-static"]
@@ -893,7 +929,11 @@ class RustBuild(object):
         if target_linker is not None:
             env["RUSTFLAGS"] += " -C linker=" + target_linker
         env["RUSTFLAGS"] += " -Wrust_2018_idioms -Wunused_lifetimes"
-        if self.get_toml("deny-warnings", "rust") != "false":
+        if self.warnings == "default":
+            deny_warnings = self.get_toml("deny-warnings", "rust") != "false"
+        else:
+            deny_warnings = self.warnings == "deny"
+        if deny_warnings:
             env["RUSTFLAGS"] += " -Dwarnings"
 
         env["PATH"] = os.path.join(self.bin_root(), "bin") + \
@@ -903,7 +943,7 @@ class RustBuild(object):
                 self.cargo()))
         args = [self.cargo(), "build", "--manifest-path",
                 os.path.join(self.rust_root, "src/bootstrap/Cargo.toml")]
-        args.extend("--verbose" for _ in range(verbose_count))
+        args.extend("--verbose" for _ in range(self.verbose))
         if self.use_locked_deps:
             args.append("--locked")
         if self.use_vendored_sources:
@@ -913,16 +953,16 @@ class RustBuild(object):
             args.append("build-metrics")
         if self.json_output:
             args.append("--message-format=json")
-        if color == "always":
+        if self.color == "always":
             args.append("--color=always")
-        elif color == "never":
+        elif self.color == "never":
             args.append("--color=never")
+        try:
+            args += env["CARGOFLAGS"].split()
+        except KeyError:
+            pass
 
-        # Run this from the source directory so cargo finds .cargo/config
-        run(args, env=env, verbose=self.verbose, cwd=self.rust_root)
-
-        if "GITHUB_ACTIONS" in env:
-            print("::endgroup::")
+        return args
 
     def build_triple(self):
         """Build triple as in LLVM
@@ -972,7 +1012,7 @@ class RustBuild(object):
             if os.path.exists(cargo_dir):
                 shutil.rmtree(cargo_dir)
 
-def parse_args():
+def parse_args(args):
     """Parse the command line arguments that the python script needs."""
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument('-h', '--help', action='store_true')
@@ -982,18 +1022,14 @@ def parse_args():
     parser.add_argument('--color', choices=['always', 'never', 'auto'])
     parser.add_argument('--clean', action='store_true')
     parser.add_argument('--json-output', action='store_true')
+    parser.add_argument('--warnings', choices=['deny', 'warn', 'default'], default='default')
     parser.add_argument('-v', '--verbose', action='count', default=0)
 
-    return parser.parse_known_args(sys.argv)[0]
+    return parser.parse_known_args(args)[0]
 
 def bootstrap(args):
     """Configure, fetch, build and run the initial bootstrap"""
-    # Configure initial bootstrap
-    build = RustBuild()
-    build.rust_root = os.path.abspath(os.path.join(__file__, '../../..'))
-    build.verbose = args.verbose != 0
-    build.clean = args.clean
-    build.json_output = args.json_output
+    rust_root = os.path.abspath(os.path.join(__file__, '../../..'))
 
     # Read from `--config`, then `RUST_BOOTSTRAP_CONFIG`, then `./config.toml`,
     # then `config.toml` in the root directory.
@@ -1002,44 +1038,35 @@ def bootstrap(args):
     if using_default_path:
         toml_path = 'config.toml'
         if not os.path.exists(toml_path):
-            toml_path = os.path.join(build.rust_root, toml_path)
+            toml_path = os.path.join(rust_root, toml_path)
 
     # Give a hard error if `--config` or `RUST_BOOTSTRAP_CONFIG` are set to a missing path,
     # but not if `config.toml` hasn't been created.
     if not using_default_path or os.path.exists(toml_path):
         with open(toml_path) as config:
-            build.config_toml = config.read()
+            config_toml = config.read()
+    else:
+        config_toml = ''
 
-    profile = build.get_toml('profile')
+    profile = RustBuild.get_toml_static(config_toml, 'profile')
     if profile is not None:
-        include_file = 'config.{}.toml'.format(profile)
-        include_dir = os.path.join(build.rust_root, 'src', 'bootstrap', 'defaults')
+        # Allows creating alias for profile names, allowing
+        # profiles to be renamed while maintaining back compatibility
+        # Keep in sync with `profile_aliases` in config.rs
+        profile_aliases = {
+            "user": "dist"
+        }
+        include_file = 'config.{}.toml'.format(profile_aliases.get(profile) or profile)
+        include_dir = os.path.join(rust_root, 'src', 'bootstrap', 'defaults')
         include_path = os.path.join(include_dir, include_file)
-        # HACK: This works because `build.get_toml()` returns the first match it finds for a
+        # HACK: This works because `self.get_toml()` returns the first match it finds for a
         # specific key, so appending our defaults at the end allows the user to override them
         with open(include_path) as included_toml:
-            build.config_toml += os.linesep + included_toml.read()
+            config_toml += os.linesep + included_toml.read()
 
-    verbose_count = args.verbose
-    config_verbose_count = build.get_toml('verbose', 'build')
-    if config_verbose_count is not None:
-        verbose_count = max(args.verbose, int(config_verbose_count))
-
-    build.use_vendored_sources = build.get_toml('vendor', 'build') == 'true'
-    build.use_locked_deps = build.get_toml('locked-deps', 'build') == 'true'
-
+    # Configure initial bootstrap
+    build = RustBuild(config_toml, args)
     build.check_vendored_status()
-
-    build_dir = args.build_dir or build.get_toml('build-dir', 'build') or 'build'
-    build.build_dir = os.path.abspath(build_dir)
-
-    with open(os.path.join(build.rust_root, "src", "stage0.json")) as f:
-        data = json.load(f)
-    build.checksums_sha256 = data["checksums_sha256"]
-    build.stage0_compiler = Stage0Toolchain(data["compiler"])
-    build.download_url = os.getenv("RUSTUP_DIST_SERVER") or data["config"]["dist_server"]
-
-    build.build = args.build or build.build_triple()
 
     if not os.path.exists(build.build_dir):
         os.makedirs(build.build_dir)
@@ -1047,7 +1074,7 @@ def bootstrap(args):
     # Fetch/build the bootstrap
     build.download_toolchain()
     sys.stdout.flush()
-    build.build_bootstrap(args.color, verbose_count)
+    build.build_bootstrap()
     sys.stdout.flush()
 
     # Run the bootstrap
@@ -1067,7 +1094,7 @@ def main():
     if len(sys.argv) > 1 and sys.argv[1] == 'help':
         sys.argv[1] = '-h'
 
-    args = parse_args()
+    args = parse_args(sys.argv)
     help_triggered = args.help or len(sys.argv) == 1
 
     # If the user is asking for help, let them know that the whole download-and-build

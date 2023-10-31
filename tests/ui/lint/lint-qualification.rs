@@ -1,3 +1,4 @@
+// run-rustfix
 #![deny(unused_qualifications)]
 #![allow(deprecated)]
 

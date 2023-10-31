@@ -81,7 +81,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::ErrorGuaranteed;
 use rustc_lint_defs::pluralize;
-use rustc_parse::parser::{NtOrTt, Parser};
+use rustc_parse::parser::{ParseNtResult, Parser};
 use rustc_span::symbol::Ident;
 use rustc_span::symbol::MacroRulesNormalizedIdent;
 use rustc_span::Span;
@@ -156,7 +156,7 @@ impl Display for MatcherLoc {
             MatcherLoc::MetaVarDecl { bind, kind, .. } => {
                 write!(f, "meta-variable `${bind}")?;
                 if let Some(kind) = kind {
-                    write!(f, ":{}", kind)?;
+                    write!(f, ":{kind}")?;
                 }
                 write!(f, "`")?;
                 Ok(())
@@ -249,6 +249,7 @@ pub(super) fn compute_locs(matcher: &[TokenTree]) -> Vec<MatcherLoc> {
 }
 
 /// A single matcher position, representing the state of matching.
+#[derive(Debug)]
 struct MatcherPos {
     /// The index into `TtParser::locs`, which represents the "dot".
     idx: usize,
@@ -691,8 +692,8 @@ impl TtParser {
                             Ok(nt) => nt,
                         };
                         let m = match nt {
-                            NtOrTt::Nt(nt) => MatchedNonterminal(Lrc::new(nt)),
-                            NtOrTt::Tt(tt) => MatchedTokenTree(tt),
+                            ParseNtResult::Nt(nt) => MatchedNonterminal(Lrc::new(nt)),
+                            ParseNtResult::Tt(tt) => MatchedTokenTree(tt),
                         };
                         mp.push_match(next_metavar, seq_depth, m);
                         mp.idx += 1;
@@ -722,7 +723,7 @@ impl TtParser {
             .iter()
             .map(|mp| match &matcher[mp.idx] {
                 MatcherLoc::MetaVarDecl { bind, kind: Some(kind), .. } => {
-                    format!("{} ('{}')", kind, bind)
+                    format!("{kind} ('{bind}')")
                 }
                 _ => unreachable!(),
             })
@@ -735,8 +736,8 @@ impl TtParser {
                 "local ambiguity when calling macro `{}`: multiple parsing options: {}",
                 self.macro_name,
                 match self.next_mps.len() {
-                    0 => format!("built-in NTs {}.", nts),
-                    n => format!("built-in NTs {} or {n} other option{s}.", nts, s = pluralize!(n)),
+                    0 => format!("built-in NTs {nts}."),
+                    n => format!("built-in NTs {nts} or {n} other option{s}.", s = pluralize!(n)),
                 }
             ),
         )
@@ -756,7 +757,7 @@ impl TtParser {
                     match ret_val.entry(MacroRulesNormalizedIdent::new(bind)) {
                         Vacant(spot) => spot.insert(res.next().unwrap()),
                         Occupied(..) => {
-                            return Error(span, format!("duplicated bind name: {}", bind));
+                            return Error(span, format!("duplicated bind name: {bind}"));
                         }
                     };
                 } else {

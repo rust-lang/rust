@@ -63,6 +63,11 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
       uname -m >> $hash_key
 
       docker --version >> $hash_key
+
+      # Include cache version. Currently it is needed to bust Docker
+      # cache key after opting in into the old Docker build backend.
+      echo "1" >> $hash_key
+
       cksum=$(sha512sum $hash_key | \
         awk '{print $1}')
 
@@ -79,7 +84,7 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
       loaded_images=$(/usr/bin/timeout -k 720 600 docker load -i /tmp/rustci_docker_cache \
         | sed 's/.* sha/sha/')
       set -e
-      echo "Downloaded containers:\n$loaded_images"
+      printf "Downloaded containers:\n$loaded_images\n"
     fi
 
     dockerfile="$docker_dir/$image/Dockerfile"
@@ -89,12 +94,20 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
     else
         context="$script_dir"
     fi
+    echo "::group::Building docker image for $image"
+
+    # As of August 2023, Github Actions have updated Docker to 23.X,
+    # which uses the BuildKit by default. It currently throws aways all
+    # intermediate layers, which breaks our usage of S3 layer caching.
+    # Therefore we opt-in to the old build backend for now.
+    export DOCKER_BUILDKIT=0
     retry docker \
       build \
       --rm \
       -t rust-ci \
       -f "$dockerfile" \
       "$context"
+    echo "::endgroup::"
 
     if [ "$CI" != "" ]; then
       s3url="s3://$SCCACHE_BUCKET/docker/$cksum"
@@ -254,8 +267,6 @@ docker \
   --env DEPLOY \
   --env DEPLOY_ALT \
   --env CI \
-  --env TF_BUILD \
-  --env BUILD_SOURCEBRANCHNAME \
   --env GITHUB_ACTIONS \
   --env GITHUB_REF \
   --env TOOLSTATE_REPO_ACCESS_TOKEN \
@@ -264,6 +275,9 @@ docker \
   --env RUST_CI_OVERRIDE_RELEASE_CHANNEL \
   --env CI_JOB_NAME="${CI_JOB_NAME-$IMAGE}" \
   --env BASE_COMMIT="$BASE_COMMIT" \
+  --env DIST_TRY_BUILD \
+  --env PR_CI_JOB \
+  --env OBJDIR_ON_HOST="$objdir" \
   --init \
   --rm \
   rust-ci \

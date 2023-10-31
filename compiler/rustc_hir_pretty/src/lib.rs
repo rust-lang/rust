@@ -84,6 +84,7 @@ impl<'a> State<'a> {
             Node::ImplItem(a) => self.print_impl_item(a),
             Node::Variant(a) => self.print_variant(a),
             Node::AnonConst(a) => self.print_anon_const(a),
+            Node::ConstBlock(a) => self.print_inline_const(a),
             Node::Expr(a) => self.print_expr(a),
             Node::ExprField(a) => self.print_expr_field(&a),
             Node::Stmt(a) => self.print_stmt(a),
@@ -419,12 +420,13 @@ impl<'a> State<'a> {
     fn print_associated_const(
         &mut self,
         ident: Ident,
+        generics: &hir::Generics<'_>,
         ty: &hir::Ty<'_>,
         default: Option<hir::BodyId>,
     ) {
-        self.head("");
         self.word_space("const");
         self.print_ident(ident);
+        self.print_generic_params(generics.params);
         self.word_space(":");
         self.print_type(ty);
         if let Some(expr) = default {
@@ -432,6 +434,7 @@ impl<'a> State<'a> {
             self.word_space("=");
             self.ann.nested(self, Nested::Body(expr));
         }
+        self.print_where_clause(generics);
         self.word(";")
     }
 
@@ -531,9 +534,10 @@ impl<'a> State<'a> {
                 self.word(";");
                 self.end(); // end the outer cbox
             }
-            hir::ItemKind::Const(ty, expr) => {
+            hir::ItemKind::Const(ty, generics, expr) => {
                 self.head("const");
                 self.print_ident(item.ident);
+                self.print_generic_params(generics.params);
                 self.word_space(":");
                 self.print_type(ty);
                 self.space();
@@ -541,6 +545,7 @@ impl<'a> State<'a> {
 
                 self.word_space("=");
                 self.ann.nested(self, Nested::Body(expr));
+                self.print_where_clause(generics);
                 self.word(";");
                 self.end(); // end the outer cbox
             }
@@ -621,7 +626,6 @@ impl<'a> State<'a> {
                 unsafety,
                 polarity,
                 defaultness,
-                constness,
                 defaultness_span: _,
                 generics,
                 ref of_trait,
@@ -636,10 +640,6 @@ impl<'a> State<'a> {
                 if !generics.params.is_empty() {
                     self.print_generic_params(generics.params);
                     self.space();
-                }
-
-                if constness == hir::Constness::Const {
-                    self.word_nbsp("const");
                 }
 
                 if let hir::ImplPolarity::Negative(_) = polarity {
@@ -835,7 +835,7 @@ impl<'a> State<'a> {
         self.print_outer_attributes(self.attrs(ti.hir_id()));
         match ti.kind {
             hir::TraitItemKind::Const(ty, default) => {
-                self.print_associated_const(ti.ident, ty, default);
+                self.print_associated_const(ti.ident, ti.generics, ty, default);
             }
             hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Required(arg_names)) => {
                 self.print_method_sig(ti.ident, sig, ti.generics, arg_names, None);
@@ -864,7 +864,7 @@ impl<'a> State<'a> {
 
         match ii.kind {
             hir::ImplItemKind::Const(ty, expr) => {
-                self.print_associated_const(ii.ident, ty, Some(expr));
+                self.print_associated_const(ii.ident, ii.generics, ty, Some(expr));
             }
             hir::ImplItemKind::Fn(ref sig, body) => {
                 self.head("");
@@ -1095,10 +1095,10 @@ impl<'a> State<'a> {
         self.end()
     }
 
-    fn print_expr_anon_const(&mut self, anon_const: &hir::AnonConst) {
+    fn print_inline_const(&mut self, constant: &hir::ConstBlock) {
         self.ibox(INDENT_UNIT);
         self.word_space("const");
-        self.print_anon_const(anon_const);
+        self.ann.nested(self, Nested::Body(constant.body));
         self.end()
     }
 
@@ -1370,7 +1370,7 @@ impl<'a> State<'a> {
                 self.print_expr_vec(exprs);
             }
             hir::ExprKind::ConstBlock(ref anon_const) => {
-                self.print_expr_anon_const(anon_const);
+                self.print_inline_const(anon_const);
             }
             hir::ExprKind::Repeat(element, ref count) => {
                 self.print_expr_repeat(element, count);
@@ -1521,7 +1521,7 @@ impl<'a> State<'a> {
                 self.word(".");
                 self.print_ident(ident);
             }
-            hir::ExprKind::Index(expr, index) => {
+            hir::ExprKind::Index(expr, index, _) => {
                 self.print_expr_maybe_paren(expr, parser::PREC_POSTFIX);
                 self.word("[");
                 self.print_expr(index);
@@ -1552,6 +1552,11 @@ impl<'a> State<'a> {
                     self.word(" ");
                     self.print_expr_maybe_paren(expr, parser::PREC_JUMP);
                 }
+            }
+            hir::ExprKind::Become(result) => {
+                self.word("become");
+                self.word(" ");
+                self.print_expr_maybe_paren(result, parser::PREC_JUMP);
             }
             hir::ExprKind::InlineAsm(asm) => {
                 self.word("asm!");
@@ -2409,7 +2414,7 @@ fn contains_exterior_struct_lit(value: &hir::Expr<'_>) -> bool {
         | hir::ExprKind::Cast(x, _)
         | hir::ExprKind::Type(x, _)
         | hir::ExprKind::Field(x, _)
-        | hir::ExprKind::Index(x, _) => {
+        | hir::ExprKind::Index(x, _, _) => {
             // `&X { y: 1 }, X { y: 1 }.y`
             contains_exterior_struct_lit(x)
         }

@@ -17,6 +17,7 @@ via a declaration like
 
 ```rust
 #![feature(intrinsics)]
+#![allow(internal_features)]
 # fn main() {}
 
 extern "rust-intrinsic" {

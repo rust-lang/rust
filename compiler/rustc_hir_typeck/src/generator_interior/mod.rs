@@ -112,7 +112,7 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
                     self.fcx
                         .tcx
                         .sess
-                        .delay_span_bug(span, format!("Encountered var {:?}", unresolved_term));
+                        .delay_span_bug(span, format!("Encountered var {unresolved_term:?}"));
                 } else {
                     let note = format!(
                         "the type is part of the {} because of this {}",
@@ -122,7 +122,7 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
 
                     self.fcx
                         .need_type_info_err_in_generator(self.kind, span, unresolved_term)
-                        .span_note(yield_data.span, &*note)
+                        .span_note(yield_data.span, note)
                         .emit();
                 }
             } else {
@@ -269,7 +269,7 @@ pub fn resolve_interior<'a, 'tcx>(
                     },
                     _ => mk_bound_region(ty::BrAnon(None)),
                 };
-                let r = fcx.tcx.mk_re_late_bound(current_depth, br);
+                let r = ty::Region::new_late_bound(fcx.tcx, current_depth, br);
                 r
             });
             captured_tys.insert(ty).then(|| {
@@ -295,7 +295,11 @@ pub fn resolve_interior<'a, 'tcx>(
                     let var = ty::BoundVar::from_usize(bound_vars.len());
                     bound_vars.push(ty::BoundVariableKind::Region(kind));
                     counter += 1;
-                    fcx.tcx.mk_re_late_bound(ty::INNERMOST, ty::BoundRegion { var, kind })
+                    ty::Region::new_late_bound(
+                        fcx.tcx,
+                        ty::INNERMOST,
+                        ty::BoundRegion { var, kind },
+                    )
                 },
                 types: &mut |b| bug!("unexpected bound ty in binder: {b:?}"),
                 consts: &mut |b, ty| bug!("unexpected bound ct in binder: {b:?} {ty}"),
@@ -308,7 +312,8 @@ pub fn resolve_interior<'a, 'tcx>(
     // Extract type components to build the witness type.
     let type_list = fcx.tcx.mk_type_list_from_iter(type_causes.iter().map(|cause| cause.ty));
     let bound_vars = fcx.tcx.mk_bound_variable_kinds(&bound_vars);
-    let witness = fcx.tcx.mk_generator_witness(ty::Binder::bind_with_vars(type_list, bound_vars));
+    let witness =
+        Ty::new_generator_witness(fcx.tcx, ty::Binder::bind_with_vars(type_list, bound_vars));
 
     drop(typeck_results);
     // Store the generator types and spans into the typeck results for this generator.
@@ -357,7 +362,8 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
                             let ty =
                                 self.interior_visitor.fcx.typeck_results.borrow().node_type(id);
                             let tcx = self.interior_visitor.fcx.tcx;
-                            let ty = tcx.mk_ref(
+                            let ty = Ty::new_ref(
+                                tcx,
                                 // Use `ReErased` as `resolve_interior` is going to replace all the
                                 // regions anyway.
                                 tcx.lifetimes.re_erased,
@@ -573,7 +579,7 @@ fn check_must_not_suspend_ty<'tcx>(
             let mut has_emitted = false;
             for &(predicate, _) in fcx.tcx.explicit_item_bounds(def).skip_binder() {
                 // We only look at the `DefId`, so it is safe to skip the binder here.
-                if let ty::PredicateKind::Clause(ty::Clause::Trait(ref poly_trait_predicate)) =
+                if let ty::ClauseKind::Trait(ref poly_trait_predicate) =
                     predicate.kind().skip_binder()
                 {
                     let def_id = poly_trait_predicate.trait_ref.def_id;
@@ -686,7 +692,7 @@ fn check_must_not_suspend_def(
                 // Add optional reason note
                 if let Some(note) = attr.value_str() {
                     // FIXME(guswynn): consider formatting this better
-                    lint.span_note(data.source_span, note.as_str());
+                    lint.span_note(data.source_span, note.to_string());
                 }
 
                 // Add some quick suggestions on what to do

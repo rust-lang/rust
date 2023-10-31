@@ -3,7 +3,7 @@
 //! fn f(a: i32, b: i32) -> i32 { a + b }
 //! let _x /* i32 */= f(4, 4);
 //! ```
-use hir::{Semantics, TypeInfo};
+use hir::Semantics;
 use ide_db::{base_db::FileId, famous_defs::FamousDefs, RootDatabase};
 
 use itertools::Itertools;
@@ -12,9 +12,10 @@ use syntax::{
     match_ast,
 };
 
-use crate::{inlay_hints::closure_has_block_body, InlayHint, InlayHintsConfig, InlayKind};
-
-use super::label_of_ty;
+use crate::{
+    inlay_hints::{closure_has_block_body, label_of_ty, ty_to_text_edit},
+    InlayHint, InlayHintPosition, InlayHintsConfig, InlayKind,
+};
 
 pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
@@ -27,15 +28,45 @@ pub(super) fn hints(
         return None;
     }
 
+    let parent = pat.syntax().parent()?;
+    let type_ascriptable = match_ast! {
+        match parent {
+            ast::Param(it) => {
+                if it.ty().is_some() {
+                    return None;
+                }
+                Some(it.colon_token())
+            },
+            ast::LetStmt(it) => {
+                if config.hide_closure_initialization_hints {
+                    if let Some(ast::Expr::ClosureExpr(closure)) = it.initializer() {
+                        if closure_has_block_body(&closure) {
+                            return None;
+                        }
+                    }
+                }
+                if it.ty().is_some() {
+                    return None;
+                }
+                Some(it.colon_token())
+            },
+            _ => None
+        }
+    };
+
     let descended = sema.descend_node_into_attributes(pat.clone()).pop();
     let desc_pat = descended.as_ref().unwrap_or(pat);
-    let ty = sema.type_of_pat(&desc_pat.clone().into())?.original;
+    let ty = sema.type_of_binding_in_pat(desc_pat)?;
 
-    if should_not_display_type_hint(sema, config, pat, &ty) {
+    if ty.is_unknown() {
         return None;
     }
 
-    let label = label_of_ty(famous_defs, config, ty)?;
+    if sema.resolve_bind_pat_to_const(pat).is_some() {
+        return None;
+    }
+
+    let mut label = label_of_ty(famous_defs, config, &ty)?;
 
     if config.hide_named_constructor_hints
         && is_named_constructor(sema, pat, &label.to_string()).is_some()
@@ -43,67 +74,44 @@ pub(super) fn hints(
         return None;
     }
 
+    let text_edit = if let Some(colon_token) = &type_ascriptable {
+        ty_to_text_edit(
+            sema,
+            desc_pat.syntax(),
+            &ty,
+            colon_token
+                .as_ref()
+                .map_or_else(|| pat.syntax().text_range(), |t| t.text_range())
+                .end(),
+            if colon_token.is_some() { String::new() } else { String::from(": ") },
+        )
+    } else {
+        None
+    };
+
+    let render_colons = config.render_colons && !matches!(type_ascriptable, Some(Some(_)));
+    if render_colons {
+        label.prepend_str(": ");
+    }
+
+    let text_range = match pat.name() {
+        Some(name) => name.syntax().text_range(),
+        None => pat.syntax().text_range(),
+    };
     acc.push(InlayHint {
-        range: match pat.name() {
-            Some(name) => name.syntax().text_range(),
-            None => pat.syntax().text_range(),
+        range: match type_ascriptable {
+            Some(Some(t)) => text_range.cover(t.text_range()),
+            _ => text_range,
         },
         kind: InlayKind::Type,
         label,
+        text_edit,
+        position: InlayHintPosition::After,
+        pad_left: !render_colons,
+        pad_right: false,
     });
 
     Some(())
-}
-
-fn should_not_display_type_hint(
-    sema: &Semantics<'_, RootDatabase>,
-    config: &InlayHintsConfig,
-    bind_pat: &ast::IdentPat,
-    pat_ty: &hir::Type,
-) -> bool {
-    let db = sema.db;
-
-    if pat_ty.is_unknown() {
-        return true;
-    }
-
-    if sema.resolve_bind_pat_to_const(bind_pat).is_some() {
-        return true;
-    }
-
-    for node in bind_pat.syntax().ancestors() {
-        match_ast! {
-            match node {
-                ast::LetStmt(it) => {
-                    if config.hide_closure_initialization_hints {
-                        if let Some(ast::Expr::ClosureExpr(closure)) = it.initializer() {
-                            if closure_has_block_body(&closure) {
-                                return true;
-                            }
-                        }
-                    }
-                    return it.ty().is_some()
-                },
-                // FIXME: We might wanna show type hints in parameters for non-top level patterns as well
-                ast::Param(it) => return it.ty().is_some(),
-                ast::MatchArm(_) => return pat_is_enum_variant(db, bind_pat, pat_ty),
-                ast::LetExpr(_) => return pat_is_enum_variant(db, bind_pat, pat_ty),
-                ast::IfExpr(_) => return false,
-                ast::WhileExpr(_) => return false,
-                ast::ForExpr(it) => {
-                    // We *should* display hint only if user provided "in {expr}" and we know the type of expr (and it's not unit).
-                    // Type of expr should be iterable.
-                    return it.in_token().is_none() ||
-                        it.iterable()
-                            .and_then(|iterable_expr| sema.type_of_expr(&iterable_expr))
-                            .map(TypeInfo::original)
-                            .map_or(true, |iterable_ty| iterable_ty.is_unknown() || iterable_ty.is_unit())
-                },
-                _ => (),
-            }
-        }
-    }
-    false
 }
 
 fn is_named_constructor(
@@ -159,30 +167,20 @@ fn is_named_constructor(
     (ctor_name == ty_name).then_some(())
 }
 
-fn pat_is_enum_variant(db: &RootDatabase, bind_pat: &ast::IdentPat, pat_ty: &hir::Type) -> bool {
-    if let Some(hir::Adt::Enum(enum_data)) = pat_ty.as_adt() {
-        let pat_text = bind_pat.to_string();
-        enum_data
-            .variants(db)
-            .into_iter()
-            .map(|variant| variant.name(db).to_smol_str())
-            .any(|enum_name| enum_name == pat_text)
-    } else {
-        false
-    }
-}
-
 #[cfg(test)]
 mod tests {
     // This module also contains tests for super::closure_ret
 
+    use expect_test::expect;
+    use hir::ClosureStyle;
     use syntax::{TextRange, TextSize};
     use test_utils::extract_annotations;
 
-    use crate::{fixture, inlay_hints::InlayHintsConfig};
+    use crate::{fixture, inlay_hints::InlayHintsConfig, ClosureReturnTypeHints};
 
-    use crate::inlay_hints::tests::{check, check_with_config, DISABLED_CONFIG, TEST_CONFIG};
-    use crate::ClosureReturnTypeHints;
+    use crate::inlay_hints::tests::{
+        check, check_edit, check_no_edit, check_with_config, DISABLED_CONFIG, TEST_CONFIG,
+    };
 
     #[track_caller]
     fn check_types(ra_fixture: &str) {
@@ -235,7 +233,7 @@ fn main() {
     let zz_ref = &zz;
       //^^^^^^ &Test<i32>
     let test = || zz;
-      //^^^^ || -> Test<i32>
+      //^^^^ impl FnOnce() -> Test<i32>
 }"#,
         );
     }
@@ -528,24 +526,7 @@ fn main() {
 struct Test { a: Option<u32>, b: u8 }
 
 fn main() {
-    let test = Some(Test { a: Some(3), b: 1 });
-      //^^^^ Option<Test>
-    if let None = &test {};
-    if let test = &test {};
-         //^^^^ &Option<Test>
-    if let Some(test) = &test {};
-              //^^^^ &Test
-    if let Some(Test { a,             b }) = &test {};
-                     //^ &Option<u32> ^ &u8
-    if let Some(Test { a: x,             b: y }) = &test {};
-                        //^ &Option<u32>    ^ &u8
-    if let Some(Test { a: Some(x),  b: y }) = &test {};
-                             //^ &u32  ^ &u8
-    if let Some(Test { a: None,  b: y }) = &test {};
-                                  //^ &u8
-    if let Some(Test { b: y, .. }) = &test {};
-                        //^ &u8
-    if test == None {}
+
 }"#,
         );
     }
@@ -560,8 +541,8 @@ struct Test { a: Option<u32>, b: u8 }
 fn main() {
     let test = Some(Test { a: Some(3), b: 1 });
       //^^^^ Option<Test>
-    while let Some(Test { a: Some(x),  b: y }) = &test {};
-                                //^ &u32  ^ &u8
+    while let Some(Test { a: Some(x),    b: y }) = &test {};
+                                //^ &u32    ^ &u8
 }"#,
         );
     }
@@ -753,7 +734,7 @@ fn main() {
     let func = times2;
     //  ^^^^ fn times2(i32) -> i32
     let closure = |x: i32| x * 2;
-    //  ^^^^^^^ |i32| -> i32
+    //  ^^^^^^^ impl Fn(i32) -> i32
 }
 
 fn fallible() -> ControlFlow<()> {
@@ -811,49 +792,90 @@ fn fallible() -> ControlFlow<()> {
     }
 
     #[test]
-    fn closures() {
-        check(
+    fn closure_style() {
+        check_with_config(
+            InlayHintsConfig { type_hints: true, ..DISABLED_CONFIG },
             r#"
+//- minicore: fn
 fn main() {
-    let mut start = 0;
-          //^^^^^ i32
-    (0..2).for_each(|increment      | { start += increment; });
-                   //^^^^^^^^^ i32
-
-    let multiply =
-      //^^^^^^^^ |i32, i32| -> i32
-      | a,     b| a * b
-      //^ i32  ^ i32
-
-    ;
-
-    let _: i32 = multiply(1,  2);
-                        //^ a ^ b
-    let multiply_ref = &multiply;
-      //^^^^^^^^^^^^ &|i32, i32| -> i32
-
-    let return_42 = || 42;
-      //^^^^^^^^^ || -> i32
-      || { 42 };
-    //^^ i32
-}"#,
+    let x = || 2;
+      //^ impl Fn() -> i32
+    let y = |t: i32| x() + t;
+      //^ impl Fn(i32) -> i32
+    let mut t = 5;
+          //^ i32
+    let z = |k: i32| { t += k; };
+      //^ impl FnMut(i32)
+    let p = (y, z);
+      //^ (impl Fn(i32) -> i32, impl FnMut(i32))
+}
+            "#,
         );
-    }
-
-    #[test]
-    fn return_type_hints_for_closure_without_block() {
         check_with_config(
             InlayHintsConfig {
-                closure_return_type_hints: ClosureReturnTypeHints::Always,
+                type_hints: true,
+                closure_style: ClosureStyle::RANotation,
                 ..DISABLED_CONFIG
             },
             r#"
+//- minicore: fn
 fn main() {
-    let a = || { 0 };
-          //^^ i32
-    let b = || 0;
-          //^^ i32
-}"#,
+    let x = || 2;
+      //^ || -> i32
+    let y = |t: i32| x() + t;
+      //^ |i32| -> i32
+    let mut t = 5;
+          //^ i32
+    let z = |k: i32| { t += k; };
+      //^ |i32| -> ()
+    let p = (y, z);
+      //^ (|i32| -> i32, |i32| -> ())
+}
+            "#,
+        );
+        check_with_config(
+            InlayHintsConfig {
+                type_hints: true,
+                closure_style: ClosureStyle::ClosureWithId,
+                ..DISABLED_CONFIG
+            },
+            r#"
+//- minicore: fn
+fn main() {
+    let x = || 2;
+      //^ {closure#0}
+    let y = |t: i32| x() + t;
+      //^ {closure#1}
+    let mut t = 5;
+          //^ i32
+    let z = |k: i32| { t += k; };
+      //^ {closure#2}
+    let p = (y, z);
+      //^ ({closure#1}, {closure#2})
+}
+            "#,
+        );
+        check_with_config(
+            InlayHintsConfig {
+                type_hints: true,
+                closure_style: ClosureStyle::Hide,
+                ..DISABLED_CONFIG
+            },
+            r#"
+//- minicore: fn
+fn main() {
+    let x = || 2;
+      //^ …
+    let y = |t: i32| x() + t;
+      //^ …
+    let mut t = 5;
+          //^ i32
+    let z = |k: i32| { t += k; };
+      //^ …
+    let p = (y, z);
+      //^ (…, …)
+}
+            "#,
         );
     }
 
@@ -871,13 +893,13 @@ fn main() {
     let multiple_2 = |x: i32| { x * 2 };
 
     let multiple_2 = |x: i32| x * 2;
-    //  ^^^^^^^^^^ |i32| -> i32
+    //  ^^^^^^^^^^ impl Fn(i32) -> i32
 
     let (not) = (|x: bool| { !x });
-    //   ^^^ |bool| -> bool
+    //   ^^^ impl Fn(bool) -> bool
 
     let (is_zero, _b) = (|x: usize| { x == 0 }, false);
-    //   ^^^^^^^ |usize| -> bool
+    //   ^^^^^^^ impl Fn(usize) -> bool
     //            ^^ bool
 
     let plus_one = |x| { x + 1 };
@@ -921,6 +943,162 @@ fn main() {
     let c = Smol(Smol(0u32))
       //^ Smol<Smol<…>>
 }"#,
+        );
+    }
+
+    #[test]
+    fn edit_for_let_stmt() {
+        check_edit(
+            TEST_CONFIG,
+            r#"
+struct S<T>(T);
+fn test<F>(v: S<(S<i32>, S<()>)>, f: F) {
+    let a = v;
+    let S((b, c)) = v;
+    let a @ S((b, c)) = v;
+    let a = f;
+}
+"#,
+            expect![[r#"
+                struct S<T>(T);
+                fn test<F>(v: S<(S<i32>, S<()>)>, f: F) {
+                    let a: S<(S<i32>, S<()>)> = v;
+                    let S((b, c)) = v;
+                    let a @ S((b, c)): S<(S<i32>, S<()>)> = v;
+                    let a: F = f;
+                }
+            "#]],
+        );
+    }
+
+    #[test]
+    fn edit_for_closure_param() {
+        check_edit(
+            TEST_CONFIG,
+            r#"
+fn test<T>(t: T) {
+    let f = |a, b, c| {};
+    let result = f(42, "", t);
+}
+"#,
+            expect![[r#"
+                fn test<T>(t: T) {
+                    let f = |a: i32, b: &str, c: T| {};
+                    let result: () = f(42, "", t);
+                }
+            "#]],
+        );
+    }
+
+    #[test]
+    fn edit_for_closure_ret() {
+        check_edit(
+            TEST_CONFIG,
+            r#"
+struct S<T>(T);
+fn test() {
+    let f = || { 3 };
+    let f = |a: S<usize>| { S(a) };
+}
+"#,
+            expect![[r#"
+                struct S<T>(T);
+                fn test() {
+                    let f = || -> i32 { 3 };
+                    let f = |a: S<usize>| -> S<S<usize>> { S(a) };
+                }
+            "#]],
+        );
+    }
+
+    #[test]
+    fn edit_prefixes_paths() {
+        check_edit(
+            TEST_CONFIG,
+            r#"
+pub struct S<T>(T);
+mod middle {
+    pub struct S<T, U>(T, U);
+    pub fn make() -> S<inner::S<i64>, super::S<usize>> { loop {} }
+
+    mod inner {
+        pub struct S<T>(T);
+    }
+
+    fn test() {
+        let a = make();
+    }
+}
+"#,
+            expect![[r#"
+                pub struct S<T>(T);
+                mod middle {
+                    pub struct S<T, U>(T, U);
+                    pub fn make() -> S<inner::S<i64>, super::S<usize>> { loop {} }
+
+                    mod inner {
+                        pub struct S<T>(T);
+                    }
+
+                    fn test() {
+                        let a: S<inner::S<i64>, crate::S<usize>> = make();
+                    }
+                }
+            "#]],
+        );
+    }
+
+    #[test]
+    fn no_edit_for_top_pat_where_type_annotation_is_invalid() {
+        check_no_edit(
+            TEST_CONFIG,
+            r#"
+fn test() {
+    if let a = 42 {}
+    while let a = 42 {}
+    match 42 {
+        a => (),
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn no_edit_for_opaque_type() {
+        check_no_edit(
+            TEST_CONFIG,
+            r#"
+trait Trait {}
+struct S<T>(T);
+fn foo() -> impl Trait {}
+fn bar() -> S<impl Trait> {}
+fn test() {
+    let a = foo();
+    let a = bar();
+    let f = || { foo() };
+    let f = || { bar() };
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn no_edit_for_closure_return_without_body_block() {
+        // We can lift this limitation; see FIXME in closure_ret module.
+        let config = InlayHintsConfig {
+            closure_return_type_hints: ClosureReturnTypeHints::Always,
+            ..TEST_CONFIG
+        };
+        check_no_edit(
+            config,
+            r#"
+struct S<T>(T);
+fn test() {
+    let f = || 3;
+    let f = |a: S<usize>| S(a);
+}
+"#,
         );
     }
 }

@@ -1,21 +1,11 @@
 //! Comparison traits for `[T]`.
 
 use crate::cmp::{self, BytewiseEq, Ordering};
-use crate::ffi;
+use crate::intrinsics::compare_bytes;
 use crate::mem;
 
 use super::from_raw_parts;
 use super::memchr;
-
-extern "C" {
-    /// Calls implementation provided memcmp.
-    ///
-    /// Interprets the data as u8.
-    ///
-    /// Returns 0 for equal, < 0 for less than and > 0 for greater
-    /// than.
-    fn memcmp(s1: *const u8, s2: *const u8, n: usize) -> ffi::c_int;
-}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A, B> PartialEq<[B]> for [A]
@@ -74,7 +64,8 @@ where
     }
 }
 
-// Use memcmp for bytewise equality when the types allow
+// When each element can be compared byte-wise, we can compare all the bytes
+// from the whole size in one call to the intrinsics.
 impl<A, B> SlicePartialEq<B> for [A]
 where
     A: BytewiseEq<B>,
@@ -88,7 +79,7 @@ where
         // The two slices have been checked to have the same size above.
         unsafe {
             let size = mem::size_of_val(self);
-            memcmp(self.as_ptr() as *const u8, other.as_ptr() as *const u8, size) == 0
+            compare_bytes(self.as_ptr() as *const u8, other.as_ptr() as *const u8, size) == 0
         }
     }
 }
@@ -183,7 +174,7 @@ impl<A: Ord> SliceOrd for A {
     }
 }
 
-// memcmp compares a sequence of unsigned bytes lexicographically.
+// `compare_bytes` compares a sequence of unsigned bytes lexicographically.
 // this matches the order we want for [u8], but no others (not even [i8]).
 impl SliceOrd for u8 {
     #[inline]
@@ -195,7 +186,7 @@ impl SliceOrd for u8 {
         // SAFETY: `left` and `right` are references and are thus guaranteed to be valid.
         // We use the minimum of both lengths which guarantees that both regions are
         // valid for reads in that interval.
-        let mut order = unsafe { memcmp(left.as_ptr(), right.as_ptr(), len) as isize };
+        let mut order = unsafe { compare_bytes(left.as_ptr(), right.as_ptr(), len) as isize };
         if order == 0 {
             order = diff;
         }

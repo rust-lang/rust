@@ -2,27 +2,27 @@
 + // MIR for `invalid` after EnumSizeOpt
   
   fn invalid() -> InvalidIdxs {
-      let mut _0: InvalidIdxs;             // return place in scope 0 at $DIR/enum_opt.rs:+0:21: +0:32
-      let mut _1: InvalidIdxs;             // in scope 0 at $DIR/enum_opt.rs:+1:7: +1:12
-      let mut _2: InvalidIdxs;             // in scope 0 at $DIR/enum_opt.rs:+2:7: +2:36
-      let mut _3: [u64; 1024];             // in scope 0 at $DIR/enum_opt.rs:+2:26: +2:35
+      let mut _0: InvalidIdxs;
+      let mut _1: InvalidIdxs;
+      let mut _2: InvalidIdxs;
+      let mut _3: [u64; 1024];
       scope 1 {
-          debug a => _1;                   // in scope 1 at $DIR/enum_opt.rs:+1:7: +1:12
+          debug a => _1;
       }
   
       bb0: {
-          StorageLive(_1);                 // scope 0 at $DIR/enum_opt.rs:+1:7: +1:12
-          _1 = InvalidIdxs::A;             // scope 0 at $DIR/enum_opt.rs:+1:15: +1:29
-          StorageLive(_2);                 // scope 1 at $DIR/enum_opt.rs:+2:7: +2:36
-          StorageLive(_3);                 // scope 1 at $DIR/enum_opt.rs:+2:26: +2:35
-          _3 = [const 0_u64; 1024];        // scope 1 at $DIR/enum_opt.rs:+2:26: +2:35
-          _2 = InvalidIdxs::Large(move _3); // scope 1 at $DIR/enum_opt.rs:+2:7: +2:36
-          StorageDead(_3);                 // scope 1 at $DIR/enum_opt.rs:+2:35: +2:36
-          _1 = move _2;                    // scope 1 at $DIR/enum_opt.rs:+2:3: +2:36
-          StorageDead(_2);                 // scope 1 at $DIR/enum_opt.rs:+2:35: +2:36
-          _0 = move _1;                    // scope 1 at $DIR/enum_opt.rs:+3:3: +3:4
-          StorageDead(_1);                 // scope 0 at $DIR/enum_opt.rs:+4:1: +4:2
-          return;                          // scope 0 at $DIR/enum_opt.rs:+4:2: +4:2
+          StorageLive(_1);
+          _1 = InvalidIdxs::A;
+          StorageLive(_2);
+          StorageLive(_3);
+          _3 = [const 0_u64; 1024];
+          _2 = InvalidIdxs::Large(move _3);
+          StorageDead(_3);
+          _1 = move _2;
+          StorageDead(_2);
+          _0 = move _1;
+          StorageDead(_1);
+          return;
       }
   }
   

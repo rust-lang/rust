@@ -1,0 +1,18 @@
+// This test checks that fields are displayed as expected (one by line).
+go-to: "file://" + |DOC_PATH| + "/test_docs/fields/struct.Struct.html"
+store-position: ("#structfield\.a", {"y": a_y})
+store-position: ("#structfield\.b", {"y": b_y})
+assert: |a_y| < |b_y|
+
+go-to: "file://" + |DOC_PATH| + "/test_docs/fields/union.Union.html"
+store-position: ("#structfield\.a", {"y": a_y})
+store-position: ("#structfield\.b", {"y": b_y})
+assert: |a_y| < |b_y|
+
+go-to: "file://" + |DOC_PATH| + "/test_docs/fields/enum.Enum.html"
+store-position: ("#variant\.A\.field\.a", {"y": a_y})
+store-position: ("#variant\.A\.field\.b", {"y": b_y})
+assert: |a_y| < |b_y|
+store-position: ("#variant\.B\.field\.a", {"y": a_y})
+store-position: ("#variant\.B\.field\.b", {"y": b_y})
+assert: |a_y| < |b_y|

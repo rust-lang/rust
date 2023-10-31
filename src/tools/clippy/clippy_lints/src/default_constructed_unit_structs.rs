@@ -1,5 +1,7 @@
-use clippy_utils::{diagnostics::span_lint_and_sugg, match_def_path, paths};
-use hir::{def::Res, ExprKind};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::{is_ty_alias, match_def_path, paths};
+use hir::def::Res;
+use hir::ExprKind;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
@@ -8,7 +10,7 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Check for construction on unit struct using `default`.
+    /// Checks for construction on unit struct using `default`.
     ///
     /// ### Why is this bad?
     /// This adds code complexity and an unnecessary function call.
@@ -43,12 +45,23 @@ declare_clippy_lint! {
 }
 declare_lint_pass!(DefaultConstructedUnitStructs => [DEFAULT_CONSTRUCTED_UNIT_STRUCTS]);
 
+fn is_alias(ty: hir::Ty<'_>) -> bool {
+    if let hir::TyKind::Path(ref qpath) = ty.kind {
+        is_ty_alias(qpath)
+    } else {
+        false
+    }
+}
+
 impl LateLintPass<'_> for DefaultConstructedUnitStructs {
     fn check_expr<'tcx>(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>) {
         if_chain!(
             // make sure we have a call to `Default::default`
             if let hir::ExprKind::Call(fn_expr, &[]) = expr.kind;
-            if let ExprKind::Path(ref qpath@ hir::QPath::TypeRelative(_,_)) = fn_expr.kind;
+            if let ExprKind::Path(ref qpath @ hir::QPath::TypeRelative(base, _)) = fn_expr.kind;
+            // make sure this isn't a type alias:
+            // `<Foo as Bar>::Assoc` cannot be used as a constructor
+            if !is_alias(*base);
             if let Res::Def(_, def_id) = cx.qpath_res(qpath, fn_expr.hir_id);
             if match_def_path(cx, def_id, &paths::DEFAULT_TRAIT_METHOD);
             // make sure we have a struct with no fields (unit struct)

@@ -13,9 +13,8 @@ error[E0499]: cannot borrow `x` as mutable more than once at a time
   --> $DIR/closures-in-loops.rs:13:16
    |
 LL |         v.push(|| x = String::new());
-   |         -------^^-------------------
-   |         |      |  |
-   |         |      |  borrows occur due to use of `x` in closure
+   |         -      ^^ - borrows occur due to use of `x` in closure
+   |         |      |
    |         |      `x` was mutably borrowed here in the previous iteration of the loop
    |         first borrow used here, in later iteration of loop
 
@@ -23,9 +22,8 @@ error[E0524]: two closures require unique access to `x` at the same time
   --> $DIR/closures-in-loops.rs:20:16
    |
 LL |         v.push(|| *x = String::new());
-   |         -------^^--------------------
-   |         |      |  |
-   |         |      |  borrows occur due to use of `x` in closure
+   |         -      ^^ -- borrows occur due to use of `x` in closure
+   |         |      |
    |         |      closures are constructed here in different iterations of loop
    |         first borrow used here, in later iteration of loop
 

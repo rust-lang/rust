@@ -44,6 +44,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     | asm::InlineAsmArch::AArch64
                     | asm::InlineAsmArch::RiscV32
                     | asm::InlineAsmArch::RiscV64
+                    | asm::InlineAsmArch::LoongArch64
             );
             if !is_stable && !self.tcx.features().asm_experimental_arch {
                 feature_err(
@@ -206,6 +207,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                 &sym.path,
                                 ParamMode::Optional,
                                 &ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                                None,
                             );
                             hir::InlineAsmOperand::SymStatic { path, def_id }
                         } else {
@@ -351,7 +353,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                                     let idx2 = *o.get();
                                     let (ref op2, op_sp2) = operands[idx2];
-                                    let Some(asm::InlineAsmRegOrRegClass::Reg(reg2)) = op2.reg() else {
+                                    let Some(asm::InlineAsmRegOrRegClass::Reg(reg2)) = op2.reg()
+                                    else {
                                         unreachable!();
                                     };
 
@@ -367,7 +370,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                             assert!(!*late);
                                             let out_op_sp = if input { op_sp2 } else { op_sp };
                                             Some(out_op_sp)
-                                        },
+                                        }
                                         _ => None,
                                     };
 
@@ -376,7 +379,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                         op_span2: op_sp2,
                                         reg1_name: reg.name(),
                                         reg2_name: reg2.name(),
-                                        in_out
+                                        in_out,
                                     });
                                 }
                                 Entry::Vacant(v) => {

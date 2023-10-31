@@ -18,46 +18,46 @@
 | '?2: '?3 due to Assignment at Single(bb0[10]) ($DIR/storage_ranges.rs:6:17: 6:25 (#0)
 |
 fn main() -> () {
-    let mut _0: ();                      // return place in scope 0 at $DIR/storage_ranges.rs:+0:11: +0:11
-    let _1: i32;                         // in scope 0 at $DIR/storage_ranges.rs:+1:9: +1:10
-    let _2: ();                          // in scope 0 at $DIR/storage_ranges.rs:+2:5: +4:6
-    let _4: std::option::Option<i32>;    // in scope 0 at $DIR/storage_ranges.rs:+3:18: +3:25
-    let mut _5: i32;                     // in scope 0 at $DIR/storage_ranges.rs:+3:23: +3:24
+    let mut _0: ();
+    let _1: i32;
+    let _2: ();
+    let _4: std::option::Option<i32>;
+    let mut _5: i32;
     scope 1 {
-        debug a => _1;                   // in scope 1 at $DIR/storage_ranges.rs:+1:9: +1:10
-        let _3: &std::option::Option<i32>; // in scope 1 at $DIR/storage_ranges.rs:+3:13: +3:14
-        let _6: i32;                     // in scope 1 at $DIR/storage_ranges.rs:+5:9: +5:10
+        debug a => _1;
+        let _3: &std::option::Option<i32>;
+        let _6: i32;
         scope 2 {
-            debug b => _3;               // in scope 2 at $DIR/storage_ranges.rs:+3:13: +3:14
+            debug b => _3;
         }
         scope 3 {
-            debug c => _6;               // in scope 3 at $DIR/storage_ranges.rs:+5:9: +5:10
+            debug c => _6;
         }
     }
 
     bb0: {
-        StorageLive(_1);                 // scope 0 at $DIR/storage_ranges.rs:+1:9: +1:10
-        _1 = const 0_i32;                // scope 0 at $DIR/storage_ranges.rs:+1:13: +1:14
-        FakeRead(ForLet(None), _1);      // scope 0 at $DIR/storage_ranges.rs:+1:9: +1:10
-        StorageLive(_2);                 // scope 1 at $DIR/storage_ranges.rs:+2:5: +4:6
-        StorageLive(_3);                 // scope 1 at $DIR/storage_ranges.rs:+3:13: +3:14
-        StorageLive(_4);                 // scope 1 at $DIR/storage_ranges.rs:+3:18: +3:25
-        StorageLive(_5);                 // scope 1 at $DIR/storage_ranges.rs:+3:23: +3:24
-        _5 = _1;                         // scope 1 at $DIR/storage_ranges.rs:+3:23: +3:24
-        _4 = Option::<i32>::Some(move _5); // scope 1 at $DIR/storage_ranges.rs:+3:18: +3:25
-        StorageDead(_5);                 // scope 1 at $DIR/storage_ranges.rs:+3:24: +3:25
-        _3 = &_4;                        // scope 1 at $DIR/storage_ranges.rs:+3:17: +3:25
-        FakeRead(ForLet(None), _3);      // scope 1 at $DIR/storage_ranges.rs:+3:13: +3:14
-        _2 = const ();                   // scope 1 at $DIR/storage_ranges.rs:+2:5: +4:6
-        StorageDead(_4);                 // scope 1 at $DIR/storage_ranges.rs:+4:5: +4:6
-        StorageDead(_3);                 // scope 1 at $DIR/storage_ranges.rs:+4:5: +4:6
-        StorageDead(_2);                 // scope 1 at $DIR/storage_ranges.rs:+4:5: +4:6
-        StorageLive(_6);                 // scope 1 at $DIR/storage_ranges.rs:+5:9: +5:10
-        _6 = const 1_i32;                // scope 1 at $DIR/storage_ranges.rs:+5:13: +5:14
-        FakeRead(ForLet(None), _6);      // scope 1 at $DIR/storage_ranges.rs:+5:9: +5:10
-        _0 = const ();                   // scope 0 at $DIR/storage_ranges.rs:+0:11: +6:2
-        StorageDead(_6);                 // scope 1 at $DIR/storage_ranges.rs:+6:1: +6:2
-        StorageDead(_1);                 // scope 0 at $DIR/storage_ranges.rs:+6:1: +6:2
-        return;                          // scope 0 at $DIR/storage_ranges.rs:+6:2: +6:2
+        StorageLive(_1);
+        _1 = const 0_i32;
+        FakeRead(ForLet(None), _1);
+        StorageLive(_2);
+        StorageLive(_3);
+        StorageLive(_4);
+        StorageLive(_5);
+        _5 = _1;
+        _4 = Option::<i32>::Some(move _5);
+        StorageDead(_5);
+        _3 = &_4;
+        FakeRead(ForLet(None), _3);
+        _2 = const ();
+        StorageDead(_4);
+        StorageDead(_3);
+        StorageDead(_2);
+        StorageLive(_6);
+        _6 = const 1_i32;
+        FakeRead(ForLet(None), _6);
+        _0 = const ();
+        StorageDead(_6);
+        StorageDead(_1);
+        return;
     }
 }

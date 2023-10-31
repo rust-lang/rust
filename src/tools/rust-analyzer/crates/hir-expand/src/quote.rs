@@ -162,6 +162,12 @@ impl ToTokenTree for crate::tt::TokenTree {
     }
 }
 
+impl ToTokenTree for &crate::tt::TokenTree {
+    fn to_token(self) -> crate::tt::TokenTree {
+        self.clone()
+    }
+}
+
 impl ToTokenTree for crate::tt::Subtree {
     fn to_token(self) -> crate::tt::TokenTree {
         self.into()

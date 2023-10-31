@@ -1,0 +1,32 @@
+error: Undefined Behavior: write access through <TAG> is forbidden
+  --> $DIR/mut_exclusive_violation2.rs:LL:CC
+   |
+LL |         *raw1 = 3;
+   |         ^^^^^^^^^ write access through <TAG> is forbidden
+   |
+   = help: this indicates a potential bug in the program: it performed an invalid operation, but the Tree Borrows rules it violated are still experimental
+   = help: the accessed tag <TAG> is a child of the conflicting tag <TAG>
+   = help: the conflicting tag <TAG> has state Disabled which forbids this child write access
+help: the accessed tag <TAG> was created here
+  --> $DIR/mut_exclusive_violation2.rs:LL:CC
+   |
+LL |         let raw1 = ptr1.as_mut();
+   |                    ^^^^^^^^^^^^^
+help: the conflicting tag <TAG> was created here, in the initial state Reserved
+  --> $DIR/mut_exclusive_violation2.rs:LL:CC
+   |
+LL |         let raw1 = ptr1.as_mut();
+   |                    ^^^^^^^^^^^^^
+help: the conflicting tag <TAG> later transitioned to Disabled due to a foreign write access at offsets [0x0..0x4]
+  --> $DIR/mut_exclusive_violation2.rs:LL:CC
+   |
+LL |         *raw2 = 2;
+   |         ^^^^^^^^^
+   = help: this transition corresponds to a loss of read and write permissions
+   = note: BACKTRACE (of the first span):
+   = note: inside `main` at $DIR/mut_exclusive_violation2.rs:LL:CC
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

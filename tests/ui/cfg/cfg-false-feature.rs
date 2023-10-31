@@ -1,5 +1,4 @@
-// It is unclear which features should be in effect in a fully unconfigured crate (issue #104633).
-// Currently none on the features are in effect, so we get the feature gates reported.
+// Features above `cfg(FALSE)` are in effect in a fully unconfigured crate (issue #104633).
 
 // check-pass
 // compile-flags: --crate-type lib
@@ -8,8 +7,7 @@
 #![cfg(FALSE)]
 #![feature(box_syntax)]
 
-macro mac() {} //~ WARN `macro` is experimental
-               //~| WARN unstable syntax can change at any point in the future
+macro mac() {} // OK
 
 trait A = Clone; //~ WARN trait aliases are experimental
                  //~| WARN unstable syntax can change at any point in the future

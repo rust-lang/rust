@@ -34,7 +34,6 @@ use itertools::Itertools;
 use rustc_data_structures::graph::WithNumNodes;
 use rustc_data_structures::graph::WithSuccessors;
 use rustc_index::{Idx, IndexVec};
-use rustc_middle::mir::coverage::CoverageKind;
 use rustc_middle::mir::*;
 use rustc_middle::ty;
 use rustc_span::{self, BytePos, Pos, Span, DUMMY_SP};
@@ -140,7 +139,7 @@ impl<'tcx> MockBlocks<'tcx> {
                 destination: self.dummy_place.clone(),
                 target: Some(TEMP_BLOCK),
                 unwind: UnwindAction::Continue,
-                from_hir_call: false,
+                call_source: CallSource::Misc,
                 fn_span: DUMMY_SP,
             },
         )
@@ -675,17 +674,17 @@ fn test_make_bcb_counters() {
                 ));
             }
         }
-        let mut coverage_counters = counters::CoverageCounters::new(0);
-        let intermediate_expressions = coverage_counters
+        let mut coverage_counters = counters::CoverageCounters::new(&basic_coverage_blocks);
+        coverage_counters
             .make_bcb_counters(&mut basic_coverage_blocks, &coverage_spans)
             .expect("should be Ok");
-        assert_eq!(intermediate_expressions.len(), 0);
+        assert_eq!(coverage_counters.intermediate_expressions.len(), 0);
 
         let_bcb!(1);
         assert_eq!(
-            1, // coincidentally, bcb1 has a `Counter` with id = 1
-            match basic_coverage_blocks[bcb1].counter().expect("should have a counter") {
-                CoverageKind::Counter { id, .. } => id,
+            0, // bcb1 has a `Counter` with id = 0
+            match coverage_counters.bcb_counter(bcb1).expect("should have a counter") {
+                counters::BcbCounter::Counter { id, .. } => id,
                 _ => panic!("expected a Counter"),
             }
             .as_u32()
@@ -693,9 +692,9 @@ fn test_make_bcb_counters() {
 
         let_bcb!(2);
         assert_eq!(
-            2, // coincidentally, bcb2 has a `Counter` with id = 2
-            match basic_coverage_blocks[bcb2].counter().expect("should have a counter") {
-                CoverageKind::Counter { id, .. } => id,
+            1, // bcb2 has a `Counter` with id = 1
+            match coverage_counters.bcb_counter(bcb2).expect("should have a counter") {
+                counters::BcbCounter::Counter { id, .. } => id,
                 _ => panic!("expected a Counter"),
             }
             .as_u32()

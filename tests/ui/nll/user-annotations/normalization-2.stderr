@@ -147,7 +147,7 @@ LL | fn test_variants<'a, 'b, 'c>() {
    |                      -- lifetime `'b` defined here
 ...
 LL |     <Ty<'b>>::Tuple();
-   |     ^^^^^^^^^^^^^^^ requires that `'b` must outlive `'static`
+   |     ^^^^^^^^^^^^^^^^^ requires that `'b` must outlive `'static`
 
 error: lifetime may not live long enough
   --> $DIR/normalization-2.rs:93:5

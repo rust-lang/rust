@@ -163,7 +163,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     return fn_sig;
                 }
                 self.probe(|_| {
-                    let ocx = ObligationCtxt::new_in_snapshot(self);
+                    let ocx = ObligationCtxt::new(self);
                     let normalized_fn_sig =
                         ocx.normalize(&ObligationCause::dummy(), self.param_env, fn_sig);
                     if ocx.select_all_or_error().is_empty() {
@@ -188,6 +188,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn errors_reported_since_creation(&self) -> bool {
         self.tcx.sess.err_count() > self.err_count_on_creation
+    }
+
+    pub fn next_root_ty_var(&self, origin: TypeVariableOrigin) -> Ty<'tcx> {
+        Ty::new_var(self.tcx, self.next_ty_var_id_in_universe(origin, ty::UniverseIndex::ROOT))
     }
 }
 
@@ -222,9 +226,7 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
             predicates: tcx.arena.alloc_from_iter(
                 self.param_env.caller_bounds().iter().filter_map(|predicate| {
                     match predicate.kind().skip_binder() {
-                        ty::PredicateKind::Clause(ty::Clause::Trait(data))
-                            if data.self_ty().is_param(index) =>
-                        {
+                        ty::ClauseKind::Trait(data) if data.self_ty().is_param(index) => {
                             // HACK(eddyb) should get the original `Span`.
                             let span = tcx.def_span(def_id);
                             Some((predicate, span))
@@ -286,21 +288,23 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
             poly_trait_ref,
         );
 
-        let item_substs = self.astconv().create_substs_for_associated_item(
+        let item_args = self.astconv().create_args_for_associated_item(
             span,
             item_def_id,
             item_segment,
-            trait_ref.substs,
+            trait_ref.args,
         );
 
-        self.tcx().mk_projection(item_def_id, item_substs)
+        Ty::new_projection(self.tcx(), item_def_id, item_args)
     }
 
     fn probe_adt(&self, span: Span, ty: Ty<'tcx>) -> Option<ty::AdtDef<'tcx>> {
         match ty.kind() {
             ty::Adt(adt_def, _) => Some(*adt_def),
             // FIXME(#104767): Should we handle bound regions here?
-            ty::Alias(ty::Projection | ty::Inherent, _) if !ty.has_escaping_bound_vars() => {
+            ty::Alias(ty::Projection | ty::Inherent | ty::Weak, _)
+                if !ty.has_escaping_bound_vars() =>
+            {
                 self.normalize(span, ty).ty_adt_def()
             }
             _ => None,

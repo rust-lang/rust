@@ -228,7 +228,9 @@ error[E0603]: enum `Z` is private
   --> $DIR/privacy-enum-ctor.rs:61:22
    |
 LL |     let _: Z = m::n::Z::Fn;
-   |                      ^ private enum
+   |                      ^  -- tuple variant `Fn` is not publicly re-exported
+   |                      |
+   |                      private enum
    |
 note: the enum `Z` is defined here
   --> $DIR/privacy-enum-ctor.rs:11:9
@@ -252,7 +254,9 @@ error[E0603]: enum `Z` is private
   --> $DIR/privacy-enum-ctor.rs:68:22
    |
 LL |     let _: Z = m::n::Z::Unit {};
-   |                      ^ private enum
+   |                      ^  ---- variant `Unit` is not publicly re-exported
+   |                      |
+   |                      private enum
    |
 note: the enum `Z` is defined here
   --> $DIR/privacy-enum-ctor.rs:11:9

@@ -46,10 +46,7 @@ jobs:
         shell: bash
 
       - name: Build release binaries
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --release
+        run: cargo build --release
 
       - name: Build archive
         shell: bash

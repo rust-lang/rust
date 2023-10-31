@@ -69,7 +69,7 @@ impl CfgOptions {
     }
 
     pub fn get_cfg_keys(&self) -> impl Iterator<Item = &SmolStr> {
-        self.enabled.iter().map(|x| match x {
+        self.enabled.iter().map(|it| match it {
             CfgAtom::Flag(key) => key,
             CfgAtom::KeyValue { key, .. } => key,
         })
@@ -79,14 +79,14 @@ impl CfgOptions {
         &'a self,
         cfg_key: &'a str,
     ) -> impl Iterator<Item = &'a SmolStr> + 'a {
-        self.enabled.iter().filter_map(move |x| match x {
+        self.enabled.iter().filter_map(move |it| match it {
             CfgAtom::KeyValue { key, value } if cfg_key == key => Some(value),
             _ => None,
         })
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Default, Clone, Debug, PartialEq, Eq)]
 pub struct CfgDiff {
     // Invariants: No duplicates, no atom that's both in `enable` and `disable`.
     enable: Vec<CfgAtom>,

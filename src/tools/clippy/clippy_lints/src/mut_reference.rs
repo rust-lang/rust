@@ -37,6 +37,11 @@ declare_lint_pass!(UnnecessaryMutPassed => [UNNECESSARY_MUT_PASSED]);
 
 impl<'tcx> LateLintPass<'tcx> for UnnecessaryMutPassed {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
+        if e.span.from_expansion() {
+            // Issue #11268
+            return;
+        }
+
         match e.kind {
             ExprKind::Call(fn_expr, arguments) => {
                 if let ExprKind::Path(ref path) = fn_expr.kind {
@@ -51,8 +56,8 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryMutPassed {
             },
             ExprKind::MethodCall(path, receiver, arguments, _) => {
                 let def_id = cx.typeck_results().type_dependent_def_id(e.hir_id).unwrap();
-                let substs = cx.typeck_results().node_substs(e.hir_id);
-                let method_type = cx.tcx.type_of(def_id).subst(cx.tcx, substs);
+                let args = cx.typeck_results().node_args(e.hir_id);
+                let method_type = cx.tcx.type_of(def_id).instantiate(cx.tcx, args);
                 check_arguments(
                     cx,
                     std::iter::once(receiver).chain(arguments.iter()).collect(),

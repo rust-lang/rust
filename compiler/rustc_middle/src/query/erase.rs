@@ -55,6 +55,10 @@ impl<T> EraseType for &'_ ty::List<T> {
     type Result = [u8; size_of::<*const ()>()];
 }
 
+impl<I: rustc_index::Idx, T> EraseType for &'_ rustc_index::IndexSlice<I, T> {
+    type Result = [u8; size_of::<&'static rustc_index::IndexSlice<u32, ()>>()];
+}
+
 impl<T> EraseType for Result<&'_ T, traits::query::NoSolution> {
     type Result = [u8; size_of::<Result<&'static (), traits::query::NoSolution>>()];
 }
@@ -67,8 +71,8 @@ impl<T> EraseType for Result<&'_ T, traits::CodegenObligationError> {
     type Result = [u8; size_of::<Result<&'static (), traits::CodegenObligationError>>()];
 }
 
-impl<T> EraseType for Result<&'_ T, ty::layout::FnAbiError<'_>> {
-    type Result = [u8; size_of::<Result<&'static (), ty::layout::FnAbiError<'static>>>()];
+impl<T> EraseType for Result<&'_ T, &'_ ty::layout::FnAbiError<'_>> {
+    type Result = [u8; size_of::<Result<&'static (), &'static ty::layout::FnAbiError<'static>>>()];
 }
 
 impl<T> EraseType for Result<(&'_ T, rustc_middle::thir::ExprId), rustc_errors::ErrorGuaranteed> {
@@ -92,15 +96,17 @@ impl EraseType for Result<ty::GenericArg<'_>, traits::query::NoSolution> {
     type Result = [u8; size_of::<Result<ty::GenericArg<'static>, traits::query::NoSolution>>()];
 }
 
-impl EraseType for Result<bool, ty::layout::LayoutError<'_>> {
-    type Result = [u8; size_of::<Result<bool, ty::layout::LayoutError<'static>>>()];
+impl EraseType for Result<bool, &ty::layout::LayoutError<'_>> {
+    type Result = [u8; size_of::<Result<bool, &'static ty::layout::LayoutError<'static>>>()];
 }
 
-impl EraseType for Result<rustc_target::abi::TyAndLayout<'_, Ty<'_>>, ty::layout::LayoutError<'_>> {
+impl EraseType
+    for Result<rustc_target::abi::TyAndLayout<'_, Ty<'_>>, &ty::layout::LayoutError<'_>>
+{
     type Result = [u8; size_of::<
         Result<
             rustc_target::abi::TyAndLayout<'static, Ty<'static>>,
-            ty::layout::LayoutError<'static>,
+            &'static ty::layout::LayoutError<'static>,
         >,
     >()];
 }
@@ -229,6 +235,7 @@ trivial! {
     rustc_hir::def_id::DefId,
     rustc_hir::def_id::DefIndex,
     rustc_hir::def_id::LocalDefId,
+    rustc_hir::def_id::LocalModDefId,
     rustc_hir::def::DefKind,
     rustc_hir::Defaultness,
     rustc_hir::definitions::DefKey,
@@ -309,7 +316,6 @@ tcx_lifetime! {
     rustc_middle::mir::interpret::ConstValue,
     rustc_middle::mir::interpret::GlobalId,
     rustc_middle::mir::interpret::LitToConstInput,
-    rustc_middle::traits::ChalkEnvironmentAndGoal,
     rustc_middle::traits::query::MethodAutoderefStepsResult,
     rustc_middle::traits::query::type_op::AscribeUserType,
     rustc_middle::traits::query::type_op::Eq,
@@ -317,7 +323,7 @@ tcx_lifetime! {
     rustc_middle::traits::query::type_op::Subtype,
     rustc_middle::ty::AdtDef,
     rustc_middle::ty::AliasTy,
-    rustc_middle::ty::Clause,
+    rustc_middle::ty::ClauseKind,
     rustc_middle::ty::ClosureTypeInfo,
     rustc_middle::ty::Const,
     rustc_middle::ty::DestructuredConst,

@@ -122,6 +122,7 @@ mod handlers {
     mod convert_iter_for_each_to_for;
     mod convert_let_else_to_match;
     mod convert_match_to_let_else;
+    mod convert_nested_function_to_closure;
     mod convert_tuple_struct_to_named_struct;
     mod convert_named_struct_to_tuple_struct;
     mod convert_to_guarded_return;
@@ -144,6 +145,7 @@ mod handlers {
     mod generate_constant;
     mod generate_default_from_enum_variant;
     mod generate_default_from_new;
+    mod generate_delegate_trait;
     mod generate_deref;
     mod generate_derive;
     mod generate_documentation_template;
@@ -152,14 +154,15 @@ mod handlers {
     mod generate_enum_variant;
     mod generate_from_impl_for_enum;
     mod generate_function;
-    mod generate_getter;
+    mod generate_getter_or_setter;
     mod generate_impl;
     mod generate_is_empty_from_len;
     mod generate_new;
-    mod generate_setter;
     mod generate_delegate_methods;
+    mod generate_trait_from_impl;
     mod add_return_type;
     mod inline_call;
+    mod inline_const_as_literal;
     mod inline_local_variable;
     mod inline_macro;
     mod inline_type_alias;
@@ -181,6 +184,7 @@ mod handlers {
     mod raw_string;
     mod remove_dbg;
     mod remove_mut;
+    mod remove_unused_imports;
     mod remove_unused_param;
     mod remove_parentheses;
     mod reorder_fields;
@@ -192,6 +196,7 @@ mod handlers {
     mod replace_arith_op;
     mod introduce_named_generic;
     mod replace_let_with_if_let;
+    mod replace_named_generic_with_impl;
     mod replace_qualified_name_with_use;
     mod replace_string_with_char;
     mod replace_turbofish_with_explicit_type;
@@ -228,8 +233,9 @@ mod handlers {
             convert_iter_for_each_to_for::convert_iter_for_each_to_for,
             convert_iter_for_each_to_for::convert_for_loop_with_for_each,
             convert_let_else_to_match::convert_let_else_to_match,
-            convert_named_struct_to_tuple_struct::convert_named_struct_to_tuple_struct,
             convert_match_to_let_else::convert_match_to_let_else,
+            convert_named_struct_to_tuple_struct::convert_named_struct_to_tuple_struct,
+            convert_nested_function_to_closure::convert_nested_function_to_closure,
             convert_to_guarded_return::convert_to_guarded_return,
             convert_tuple_struct_to_named_struct::convert_tuple_struct_to_named_struct,
             convert_two_arm_bool_match_to_matches_macro::convert_two_arm_bool_match_to_matches_macro,
@@ -247,6 +253,7 @@ mod handlers {
             generate_constant::generate_constant,
             generate_default_from_enum_variant::generate_default_from_enum_variant,
             generate_default_from_new::generate_default_from_new,
+            generate_delegate_trait::generate_delegate_trait,
             generate_derive::generate_derive,
             generate_documentation_template::generate_documentation_template,
             generate_documentation_template::generate_doc_example,
@@ -260,8 +267,10 @@ mod handlers {
             generate_impl::generate_trait_impl,
             generate_is_empty_from_len::generate_is_empty_from_len,
             generate_new::generate_new,
+            generate_trait_from_impl::generate_trait_from_impl,
             inline_call::inline_call,
             inline_call::inline_into_callers,
+            inline_const_as_literal::inline_const_as_literal,
             inline_local_variable::inline_local_variable,
             inline_type_alias::inline_type_alias,
             inline_type_alias::inline_type_alias_uses,
@@ -286,6 +295,7 @@ mod handlers {
             raw_string::make_usual_string,
             raw_string::remove_hash,
             remove_mut::remove_mut,
+            remove_unused_imports::remove_unused_imports,
             remove_unused_param::remove_unused_param,
             remove_parentheses::remove_parentheses,
             reorder_fields::reorder_fields,
@@ -297,6 +307,7 @@ mod handlers {
             replace_let_with_if_let::replace_let_with_if_let,
             replace_method_eager_lazy::replace_with_eager_method,
             replace_method_eager_lazy::replace_with_lazy_method,
+            replace_named_generic_with_impl::replace_named_generic_with_impl,
             replace_turbofish_with_explicit_type::replace_turbofish_with_explicit_type,
             replace_qualified_name_with_use::replace_qualified_name_with_use,
             replace_arith_op::replace_arith_with_wrapping,
@@ -328,9 +339,9 @@ mod handlers {
             extract_function::extract_function,
             extract_module::extract_module,
             //
-            generate_getter::generate_getter,
-            generate_getter::generate_getter_mut,
-            generate_setter::generate_setter,
+            generate_getter_or_setter::generate_getter,
+            generate_getter_or_setter::generate_getter_mut,
+            generate_getter_or_setter::generate_setter,
             generate_delegate_methods::generate_delegate_methods,
             generate_deref::generate_deref,
             //

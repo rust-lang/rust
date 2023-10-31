@@ -1,4 +1,4 @@
-use crate::{Diagnostic, DiagnosticsContext};
+use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext};
 
 // Diagnostic: unresolved-macro-call
 //
@@ -12,8 +12,8 @@ pub(crate) fn unresolved_macro_call(
     let display_range = ctx.resolve_precise_location(&d.macro_call, d.precise_location);
     let bang = if d.is_bang { "!" } else { "" };
     Diagnostic::new(
-        "unresolved-macro-call",
-        format!("unresolved macro `{}{bang}`", d.path),
+        DiagnosticCode::RustcHardError("unresolved-macro-call"),
+        format!("unresolved macro `{}{bang}`", d.path.display(ctx.sema.db)),
         display_range,
     )
     .experimental()

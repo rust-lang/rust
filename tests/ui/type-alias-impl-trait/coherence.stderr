@@ -1,10 +1,10 @@
 error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
   --> $DIR/coherence.rs:14:1
    |
-LL | impl<T> foreign_crate::ForeignTrait for AliasOfForeignType<T> {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---------------------
-   | |                                       |
-   | |                                       type alias impl trait is treated as if it were foreign, because its hidden type could be from a foreign crate
+LL | impl foreign_crate::ForeignTrait for AliasOfForeignType<()> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^----------------------
+   | |                                    |
+   | |                                    `AliasOfForeignType<()>` is not defined in the current crate
    | impl doesn't use only types from inside the current crate
    |
    = note: define and implement a trait or new type instead

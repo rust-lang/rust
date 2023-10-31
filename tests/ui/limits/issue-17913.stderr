@@ -1,4 +1,5 @@
 error: values of the type `[&usize; usize::MAX]` are too big for the current architecture
+  --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
 
 error: aborting due to previous error
 

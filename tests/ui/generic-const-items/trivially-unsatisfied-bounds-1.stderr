@@ -1,0 +1,11 @@
+error[E0080]: evaluation of constant value failed
+  --> $DIR/trivially-unsatisfied-bounds-1.rs:7:1
+   |
+LL | / const UNUSED: () = ()
+LL | | where
+LL | |     String: Copy;
+   | |_________________^ entering unreachable code
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0080`.

@@ -32,7 +32,7 @@ pub(crate) fn format_string(
     let source_range = TextRange::new(brace_offset, cursor);
     ctx.locals.iter().for_each(|(name, _)| {
         CompletionItem::new(CompletionItemKind::Binding, source_range, name.to_smol_str())
-            .add_to(acc);
+            .add_to(acc, ctx.db);
     })
 }
 

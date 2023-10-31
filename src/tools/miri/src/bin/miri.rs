@@ -31,9 +31,9 @@ use rustc_middle::{
     query::{ExternProviders, LocalCrate},
     ty::TyCtxt,
 };
-use rustc_session::config::OptLevel;
-
-use rustc_session::{config::CrateType, search_paths::PathKind, CtfeBacktrace};
+use rustc_session::config::{CrateType, ErrorOutputType, OptLevel};
+use rustc_session::search_paths::PathKind;
+use rustc_session::{CtfeBacktrace, EarlyErrorHandler};
 
 use miri::{BacktraceStyle, BorrowTrackerMethod, ProvenanceMode, RetagFields};
 
@@ -59,6 +59,7 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
 
     fn after_analysis<'tcx>(
         &mut self,
+        handler: &EarlyErrorHandler,
         _: &rustc_interface::interface::Compiler,
         queries: &'tcx rustc_interface::Queries<'tcx>,
     ) -> Compilation {
@@ -67,8 +68,8 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
                 tcx.sess.fatal("miri cannot be run on programs that fail compilation");
             }
 
-            init_late_loggers(tcx);
-            if !tcx.sess.crate_types().contains(&CrateType::Executable) {
+            init_late_loggers(handler, tcx);
+            if !tcx.crate_types().contains(&CrateType::Executable) {
                 tcx.sess.fatal("miri only makes sense on bin crates");
             }
 
@@ -181,7 +182,7 @@ macro_rules! show_error {
     ($($tt:tt)*) => { show_error(&format_args!($($tt)*)) };
 }
 
-fn init_early_loggers() {
+fn init_early_loggers(handler: &EarlyErrorHandler) {
     // Note that our `extern crate log` is *not* the same as rustc's; as a result, we have to
     // initialize them both, and we always initialize `miri`'s first.
     let env = env_logger::Env::new().filter("MIRI_LOG").write_style("MIRI_LOG_STYLE");
@@ -195,11 +196,11 @@ fn init_early_loggers() {
     // later with our custom settings, and *not* log anything for what happens before
     // `miri` gets started.
     if env::var_os("RUSTC_LOG").is_some() {
-        rustc_driver::init_rustc_env_logger();
+        rustc_driver::init_rustc_env_logger(handler);
     }
 }
 
-fn init_late_loggers(tcx: TyCtxt<'_>) {
+fn init_late_loggers(handler: &EarlyErrorHandler, tcx: TyCtxt<'_>) {
     // We initialize loggers right before we start evaluation. We overwrite the `RUSTC_LOG`
     // env var if it is not set, control it based on `MIRI_LOG`.
     // (FIXME: use `var_os`, but then we need to manually concatenate instead of `format!`.)
@@ -218,7 +219,7 @@ fn init_late_loggers(tcx: TyCtxt<'_>) {
             } else {
                 env::set_var("RUSTC_LOG", &var);
             }
-            rustc_driver::init_rustc_env_logger();
+            rustc_driver::init_rustc_env_logger(handler);
         }
     }
 
@@ -284,6 +285,8 @@ fn parse_comma_list<T: FromStr>(input: &str) -> Result<Vec<T>, T::Err> {
 }
 
 fn main() {
+    let handler = EarlyErrorHandler::new(ErrorOutputType::default());
+
     // Snapshot a copy of the environment before `rustc` starts messing with it.
     // (`install_ice_hook` might change `RUST_BACKTRACE`.)
     let env_snapshot = env::vars_os().collect::<Vec<_>>();
@@ -292,7 +295,7 @@ fn main() {
     if let Some(crate_kind) = env::var_os("MIRI_BE_RUSTC") {
         // Earliest rustc setup.
         rustc_driver::install_ice_hook(rustc_driver::DEFAULT_BUG_REPORT_URL, |_| ());
-        rustc_driver::init_rustc_env_logger();
+        rustc_driver::init_rustc_env_logger(&handler);
 
         let target_crate = if crate_kind == "target" {
             true
@@ -314,7 +317,7 @@ fn main() {
     rustc_driver::install_ice_hook("https://github.com/rust-lang/miri/issues/new", |_| ());
 
     // Init loggers the Miri way.
-    init_early_loggers();
+    init_early_loggers(&handler);
 
     // Parse our arguments and split them across `rustc` and `miri`.
     let mut miri_config = miri::MiriConfig::default();
@@ -340,6 +343,8 @@ fn main() {
             miri_config.borrow_tracker = None;
         } else if arg == "-Zmiri-tree-borrows" {
             miri_config.borrow_tracker = Some(BorrowTrackerMethod::TreeBorrows);
+        } else if arg == "-Zmiri-unique-is-unique" {
+            miri_config.unique_is_unique = true;
         } else if arg == "-Zmiri-disable-data-race-detector" {
             miri_config.data_race_detector = false;
             miri_config.weak_memory_emulation = false;
@@ -556,6 +561,14 @@ fn main() {
             // Forward to rustc.
             rustc_args.push(arg);
         }
+    }
+    // `-Zmiri-unique-is-unique` should only be used with `-Zmiri-tree-borrows`
+    if miri_config.unique_is_unique
+        && !matches!(miri_config.borrow_tracker, Some(BorrowTrackerMethod::TreeBorrows))
+    {
+        show_error!(
+            "-Zmiri-unique-is-unique only has an effect when -Zmiri-tree-borrows is also used"
+        );
     }
 
     debug!("rustc arguments: {:?}", rustc_args);

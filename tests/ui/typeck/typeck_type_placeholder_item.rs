@@ -190,9 +190,9 @@ trait Qux {
     type B = _;
     //~^ ERROR the placeholder `_` is not allowed within types on item signatures for associated types
     const C: _;
-    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for constants
+    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for associated constants
     const D: _ = 42;
-    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for constants
+    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for associated constants
     // type E: _; // FIXME: make the parser propagate the existence of `B`
     type F: std::ops::Fn(_);
     //~^ ERROR the placeholder `_` is not allowed within types on item signatures for associated types
@@ -203,10 +203,10 @@ impl Qux for Struct {
     type B = _;
     //~^ ERROR the placeholder `_` is not allowed within types on item signatures for associated types
     const C: _;
-    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for constants
+    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for associated constants
     //~| ERROR associated constant in `impl` without body
     const D: _ = 42;
-    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for constants
+    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for associated constants
 }
 
 fn map<T>(_: fn() -> Option<&'static T>) -> Option<T> {

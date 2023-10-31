@@ -4,7 +4,7 @@ use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::{Float, FloatConvert};
 use rustc_middle::mir::interpret::{InterpResult, PointerArithmetic, Scalar};
 use rustc_middle::mir::CastKind;
-use rustc_middle::ty::adjustment::PointerCast;
+use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::layout::{IntegerExt, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, FloatTy, Ty, TypeAndMut};
 use rustc_target::abi::Integer;
@@ -14,6 +14,8 @@ use super::{
     util::ensure_monomorphic_enough, FnVal, ImmTy, Immediate, InterpCx, Machine, OpTy, PlaceTy,
 };
 
+use crate::fluent_generated as fluent;
+
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn cast(
         &mut self,
@@ -22,62 +24,63 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         cast_ty: Ty<'tcx>,
         dest: &PlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx> {
-        use rustc_middle::mir::CastKind::*;
         // FIXME: In which cases should we trigger UB when the source is uninit?
         match cast_kind {
-            Pointer(PointerCast::Unsize) => {
+            CastKind::PointerCoercion(PointerCoercion::Unsize) => {
                 let cast_ty = self.layout_of(cast_ty)?;
                 self.unsize_into(src, cast_ty, dest)?;
             }
 
-            PointerExposeAddress => {
+            CastKind::PointerExposeAddress => {
                 let src = self.read_immediate(src)?;
                 let res = self.pointer_expose_address_cast(&src, cast_ty)?;
                 self.write_immediate(res, dest)?;
             }
 
-            PointerFromExposedAddress => {
+            CastKind::PointerFromExposedAddress => {
                 let src = self.read_immediate(src)?;
                 let res = self.pointer_from_exposed_address_cast(&src, cast_ty)?;
                 self.write_immediate(res, dest)?;
             }
 
-            IntToInt | IntToFloat => {
+            CastKind::IntToInt | CastKind::IntToFloat => {
                 let src = self.read_immediate(src)?;
                 let res = self.int_to_int_or_float(&src, cast_ty)?;
                 self.write_immediate(res, dest)?;
             }
 
-            FloatToFloat | FloatToInt => {
+            CastKind::FloatToFloat | CastKind::FloatToInt => {
                 let src = self.read_immediate(src)?;
                 let res = self.float_to_float_or_int(&src, cast_ty)?;
                 self.write_immediate(res, dest)?;
             }
 
-            FnPtrToPtr | PtrToPtr => {
-                let src = self.read_immediate(&src)?;
+            CastKind::FnPtrToPtr | CastKind::PtrToPtr => {
+                let src = self.read_immediate(src)?;
                 let res = self.ptr_to_ptr(&src, cast_ty)?;
                 self.write_immediate(res, dest)?;
             }
 
-            Pointer(PointerCast::MutToConstPointer | PointerCast::ArrayToPointer) => {
+            CastKind::PointerCoercion(
+                PointerCoercion::MutToConstPointer | PointerCoercion::ArrayToPointer,
+            ) => {
                 // These are NOPs, but can be wide pointers.
                 let v = self.read_immediate(src)?;
                 self.write_immediate(*v, dest)?;
             }
 
-            Pointer(PointerCast::ReifyFnPointer) => {
+            CastKind::PointerCoercion(PointerCoercion::ReifyFnPointer) => {
                 // All reifications must be monomorphic, bail out otherwise.
                 ensure_monomorphic_enough(*self.tcx, src.layout.ty)?;
 
                 // The src operand does not matter, just its type
                 match *src.layout.ty.kind() {
-                    ty::FnDef(def_id, substs) => {
+                    ty::FnDef(def_id, args) => {
                         let instance = ty::Instance::resolve_for_fn_ptr(
                             *self.tcx,
                             self.param_env,
                             def_id,
-                            substs,
+                            args,
                         )
                         .ok_or_else(|| err_inval!(TooGeneric))?;
 
@@ -88,7 +91,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 }
             }
 
-            Pointer(PointerCast::UnsafeFnPointer) => {
+            CastKind::PointerCoercion(PointerCoercion::UnsafeFnPointer) => {
                 let src = self.read_immediate(src)?;
                 match cast_ty.kind() {
                     ty::FnPtr(_) => {
@@ -99,17 +102,17 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 }
             }
 
-            Pointer(PointerCast::ClosureFnPointer(_)) => {
+            CastKind::PointerCoercion(PointerCoercion::ClosureFnPointer(_)) => {
                 // All reifications must be monomorphic, bail out otherwise.
                 ensure_monomorphic_enough(*self.tcx, src.layout.ty)?;
 
                 // The src operand does not matter, just its type
                 match *src.layout.ty.kind() {
-                    ty::Closure(def_id, substs) => {
+                    ty::Closure(def_id, args) => {
                         let instance = ty::Instance::resolve_closure(
                             *self.tcx,
                             def_id,
-                            substs,
+                            args,
                             ty::ClosureKind::FnOnce,
                         )
                         .ok_or_else(|| err_inval!(TooGeneric))?;
@@ -120,7 +123,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 }
             }
 
-            DynStar => {
+            CastKind::DynStar => {
                 if let ty::Dynamic(data, _, ty::DynStar) = cast_ty.kind() {
                     // Initial cast from sized to dyn trait
                     let vtable = self.get_vtable_ptr(src.layout.ty, data.principal())?;
@@ -134,16 +137,20 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 }
             }
 
-            Transmute => {
+            CastKind::Transmute => {
                 assert!(src.layout.is_sized());
                 assert!(dest.layout.is_sized());
                 if src.layout.size != dest.layout.size {
-                    throw_ub_format!(
-                        "transmuting from {}-byte type to {}-byte type: `{}` -> `{}`",
-                        src.layout.size.bytes(),
-                        dest.layout.size.bytes(),
-                        src.layout.ty,
-                        dest.layout.ty,
+                    let src_bytes = src.layout.size.bytes();
+                    let dest_bytes = dest.layout.size.bytes();
+                    let src_ty = format!("{}", src.layout.ty);
+                    let dest_ty = format!("{}", dest.layout.ty);
+                    throw_ub_custom!(
+                        fluent::const_eval_invalid_transmute,
+                        src_bytes = src_bytes,
+                        dest_bytes = dest_bytes,
+                        src = src_ty,
+                        dest = dest_ty,
                     );
                 }
 
@@ -363,7 +370,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let old_vptr = old_vptr.to_pointer(self)?;
                 let (ty, old_trait) = self.get_ptr_vtable(old_vptr)?;
                 if old_trait != data_a.principal() {
-                    throw_ub_format!("upcast on a pointer whose vtable does not match its type");
+                    throw_ub_custom!(fluent::const_eval_upcast_mismatch);
                 }
                 let new_vptr = self.get_vtable_ptr(ty, data_b.principal())?;
                 self.write_immediate(Immediate::new_dyn_trait(old_data, new_vptr, self), dest)
@@ -413,8 +420,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     if cast_ty_field.is_zst() {
                         continue;
                     }
-                    let src_field = self.operand_field(src, i)?;
-                    let dst_field = self.place_field(dest, i)?;
+                    let src_field = self.project_field(src, i)?;
+                    let dst_field = self.project_field(dest, i)?;
                     if src_field.layout.ty == cast_ty_field.ty {
                         self.copy_op(&src_field, &dst_field, /*allow_transmute*/ false)?;
                     } else {

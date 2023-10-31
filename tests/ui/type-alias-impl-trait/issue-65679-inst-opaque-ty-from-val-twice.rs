@@ -11,7 +11,9 @@ type T = impl Sized;
 
 fn take(_: fn() -> T) {}
 
-fn main() {
+fn bop(_: T) {
     take(|| {});
     take(|| {});
 }
+
+fn main() {}

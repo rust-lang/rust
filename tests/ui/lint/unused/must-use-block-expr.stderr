@@ -1,0 +1,51 @@
+warning: unused return value of `foo` that must be used
+  --> $DIR/must-use-block-expr.rs:13:9
+   |
+LL |         foo();
+   |         ^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/must-use-block-expr.rs:4:9
+   |
+LL | #![warn(unused_must_use)]
+   |         ^^^^^^^^^^^^^^^
+help: use `let _ = ...` to ignore the resulting value
+   |
+LL |         let _ = foo();
+   |         +++++++
+
+warning: unused return value of `foo` that must be used
+  --> $DIR/must-use-block-expr.rs:20:9
+   |
+LL |         foo()
+   |         ^^^^^
+   |
+help: use `let _ = ...` to ignore the resulting value
+   |
+LL |         let _ = foo();
+   |         +++++++      +
+
+warning: unused arithmetic operation that must be used
+  --> $DIR/must-use-block-expr.rs:29:9
+   |
+LL |         1 + 2;
+   |         ^^^^^ the arithmetic operation produces a value
+   |
+help: use `let _ = ...` to ignore the resulting value
+   |
+LL |         let _ = 1 + 2;
+   |         +++++++
+
+warning: unused arithmetic operation that must be used
+  --> $DIR/must-use-block-expr.rs:33:9
+   |
+LL |         1 + 2
+   |         ^^^^^ the arithmetic operation produces a value
+   |
+help: use `let _ = ...` to ignore the resulting value
+   |
+LL |         let _ = 1 + 2;
+   |         +++++++      +
+
+warning: 4 warnings emitted
+

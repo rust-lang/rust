@@ -1,8 +1,10 @@
-error: untyped pointers are not allowed in constant
+error: unsupported untyped pointer in constant
   --> $DIR/raw_mutable_const.rs:5:1
    |
 LL | const MUTABLE_BEHIND_RAW: *mut i32 = &UnsafeCell::new(42) as *const _ as *mut _;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: memory only reachable via raw pointers is not supported
 
 warning: skipping const checks
    |

@@ -59,7 +59,7 @@
 //! [`borrow`](`RefCell::borrow`), and a mutable borrow (`&mut T`) can be obtained with
 //! [`borrow_mut`](`RefCell::borrow_mut`). When these functions are called, they first verify that
 //! Rust's borrow rules will be satisfied: any number of immutable borrows are allowed or a
-//! single immutable borrow is allowed, but never both. If a borrow is attempted that would violate
+//! single mutable borrow is allowed, but never both. If a borrow is attempted that would violate
 //! these rules, the thread will panic.
 //!
 //! The corresponding [`Sync`] version of `RefCell<T>` is [`RwLock<T>`].
@@ -1374,7 +1374,7 @@ impl Clone for BorrowRef<'_> {
         debug_assert!(is_reading(borrow));
         // Prevent the borrow counter from overflowing into
         // a writing borrow.
-        assert!(borrow != isize::MAX);
+        assert!(borrow != BorrowFlag::MAX);
         self.borrow.set(borrow + 1);
         BorrowRef { borrow: self.borrow }
     }
@@ -1756,7 +1756,7 @@ impl<'b> BorrowRefMut<'b> {
         let borrow = self.borrow.get();
         debug_assert!(is_writing(borrow));
         // Prevent the borrow counter from underflowing.
-        assert!(borrow != isize::MIN);
+        assert!(borrow != BorrowFlag::MIN);
         self.borrow.set(borrow - 1);
         BorrowRefMut { borrow: self.borrow }
     }
@@ -1893,7 +1893,8 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 /// on an _exclusive_ `UnsafeCell<T>`. Even though `T` and `UnsafeCell<T>` have the
 /// same memory layout, the following is not allowed and undefined behavior:
 ///
-/// ```rust,no_run
+#[cfg_attr(bootstrap, doc = "```rust,no_run")]
+#[cfg_attr(not(bootstrap), doc = "```rust,compile_fail")]
 /// # use std::cell::UnsafeCell;
 /// unsafe fn not_allowed<T>(ptr: &UnsafeCell<T>) -> &mut T {
 ///   let t = ptr as *const UnsafeCell<T> as *mut T;

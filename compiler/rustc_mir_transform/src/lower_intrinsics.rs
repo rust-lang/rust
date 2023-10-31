@@ -2,7 +2,7 @@
 
 use crate::{errors, MirPass};
 use rustc_middle::mir::*;
-use rustc_middle::ty::subst::SubstsRef;
+use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
@@ -19,7 +19,8 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                 &mut terminator.kind
             {
                 let func_ty = func.ty(local_decls, tcx);
-                let Some((intrinsic_name, substs)) = resolve_rust_intrinsic(tcx, func_ty) else {
+                let Some((intrinsic_name, generic_args)) = resolve_rust_intrinsic(tcx, func_ty)
+                else {
                     continue;
                 };
                 match intrinsic_name {
@@ -82,30 +83,45 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                         drop(args);
                         terminator.kind = TerminatorKind::Goto { target };
                     }
-                    sym::wrapping_add | sym::wrapping_sub | sym::wrapping_mul => {
-                        if let Some(target) = *target {
-                            let lhs;
-                            let rhs;
-                            {
-                                let mut args = args.drain(..);
-                                lhs = args.next().unwrap();
-                                rhs = args.next().unwrap();
-                            }
-                            let bin_op = match intrinsic_name {
-                                sym::wrapping_add => BinOp::Add,
-                                sym::wrapping_sub => BinOp::Sub,
-                                sym::wrapping_mul => BinOp::Mul,
-                                _ => bug!("unexpected intrinsic"),
-                            };
-                            block.statements.push(Statement {
-                                source_info: terminator.source_info,
-                                kind: StatementKind::Assign(Box::new((
-                                    *destination,
-                                    Rvalue::BinaryOp(bin_op, Box::new((lhs, rhs))),
-                                ))),
-                            });
-                            terminator.kind = TerminatorKind::Goto { target };
+                    sym::wrapping_add
+                    | sym::wrapping_sub
+                    | sym::wrapping_mul
+                    | sym::unchecked_add
+                    | sym::unchecked_sub
+                    | sym::unchecked_mul
+                    | sym::unchecked_div
+                    | sym::unchecked_rem
+                    | sym::unchecked_shl
+                    | sym::unchecked_shr => {
+                        let target = target.unwrap();
+                        let lhs;
+                        let rhs;
+                        {
+                            let mut args = args.drain(..);
+                            lhs = args.next().unwrap();
+                            rhs = args.next().unwrap();
                         }
+                        let bin_op = match intrinsic_name {
+                            sym::wrapping_add => BinOp::Add,
+                            sym::wrapping_sub => BinOp::Sub,
+                            sym::wrapping_mul => BinOp::Mul,
+                            sym::unchecked_add => BinOp::AddUnchecked,
+                            sym::unchecked_sub => BinOp::SubUnchecked,
+                            sym::unchecked_mul => BinOp::MulUnchecked,
+                            sym::unchecked_div => BinOp::Div,
+                            sym::unchecked_rem => BinOp::Rem,
+                            sym::unchecked_shl => BinOp::ShlUnchecked,
+                            sym::unchecked_shr => BinOp::ShrUnchecked,
+                            _ => bug!("unexpected intrinsic"),
+                        };
+                        block.statements.push(Statement {
+                            source_info: terminator.source_info,
+                            kind: StatementKind::Assign(Box::new((
+                                *destination,
+                                Rvalue::BinaryOp(bin_op, Box::new((lhs, rhs))),
+                            ))),
+                        });
+                        terminator.kind = TerminatorKind::Goto { target };
                     }
                     sym::add_with_overflow | sym::sub_with_overflow | sym::mul_with_overflow => {
                         if let Some(target) = *target {
@@ -134,7 +150,7 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                     }
                     sym::size_of | sym::min_align_of => {
                         if let Some(target) = *target {
-                            let tp_ty = substs.type_at(0);
+                            let tp_ty = generic_args.type_at(0);
                             let null_op = match intrinsic_name {
                                 sym::size_of => NullOp::SizeOf,
                                 sym::min_align_of => NullOp::AlignOf,
@@ -236,7 +252,9 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                         if let (Some(target), Some(arg)) = (*target, args[0].place()) {
                             let ty::RawPtr(ty::TypeAndMut { ty: dest_ty, .. }) =
                                 destination.ty(local_decls, tcx).ty.kind()
-                            else { bug!(); };
+                            else {
+                                bug!();
+                            };
 
                             block.statements.push(Statement {
                                 source_info: terminator.source_info,
@@ -287,7 +305,7 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                             terminator.kind = TerminatorKind::Unreachable;
                         }
                     }
-                    _ if intrinsic_name.as_str().starts_with("simd_shuffle") => {
+                    sym::simd_shuffle => {
                         validate_simd_shuffle(tcx, args, terminator.source_info.span);
                     }
                     _ => {}
@@ -300,10 +318,10 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
 fn resolve_rust_intrinsic<'tcx>(
     tcx: TyCtxt<'tcx>,
     func_ty: Ty<'tcx>,
-) -> Option<(Symbol, SubstsRef<'tcx>)> {
-    if let ty::FnDef(def_id, substs) = *func_ty.kind() {
+) -> Option<(Symbol, GenericArgsRef<'tcx>)> {
+    if let ty::FnDef(def_id, args) = *func_ty.kind() {
         if tcx.is_intrinsic(def_id) {
-            return Some((tcx.item_name(def_id), substs));
+            return Some((tcx.item_name(def_id), args));
         }
     }
     None

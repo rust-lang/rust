@@ -1,15 +1,15 @@
 // MIR for `array` after built
 
 fn array() -> [i32; 2] {
-    let mut _0: [i32; 2];                // return place in scope 0 at $DIR/aggregate_exprs.rs:+0:15: +0:23
-    let mut _1: [i32; 2];                // in scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
-    let mut _2: i32;                     // in scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
+    let mut _0: [i32; 2];
+    let mut _1: [i32; 2];
+    let mut _2: i32;
 
     bb0: {
-        _1 = [const 42_i32, const 43_i32]; // scope 0 at $DIR/aggregate_exprs.rs:+5:13: +5:25
-        _2 = const 1_i32;                // scope 0 at $DIR/aggregate_exprs.rs:+6:13: +6:20
-        _1 = [_2, const 2_i32];          // scope 0 at $DIR/aggregate_exprs.rs:+7:13: +7:25
-        _0 = move _1;                    // scope 0 at $DIR/aggregate_exprs.rs:+8:13: +8:26
-        return;                          // scope 0 at $DIR/aggregate_exprs.rs:+9:13: +9:21
+        _1 = [const 42_i32, const 43_i32];
+        _2 = const 1_i32;
+        _1 = [_2, const 2_i32];
+        _0 = move _1;
+        return;
     }
 }

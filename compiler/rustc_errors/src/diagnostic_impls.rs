@@ -1,3 +1,4 @@
+use crate::diagnostic::DiagnosticLocation;
 use crate::{fluent_generated as fluent, AddToDiagnostic};
 use crate::{DiagnosticArgValue, DiagnosticBuilder, Handler, IntoDiagnostic, IntoDiagnosticArg};
 use rustc_ast as ast;
@@ -10,6 +11,7 @@ use rustc_span::Span;
 use rustc_target::abi::TargetDataLayoutErrors;
 use rustc_target::spec::{PanicStrategy, SplitDebuginfo, StackProtector, TargetTriple};
 use rustc_type_ir as type_ir;
+use std::backtrace::Backtrace;
 use std::borrow::Cow;
 use std::fmt;
 use std::num::ParseIntError;
@@ -60,10 +62,8 @@ into_diagnostic_arg_using_display!(
     u8,
     i16,
     u16,
-    i32,
     u32,
     i64,
-    u64,
     i128,
     u128,
     std::io::Error,
@@ -80,6 +80,18 @@ into_diagnostic_arg_using_display!(
     ExitStatus,
 );
 
+impl IntoDiagnosticArg for i32 {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Number(self.into())
+    }
+}
+
+impl IntoDiagnosticArg for u64 {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Number(self.into())
+    }
+}
+
 impl IntoDiagnosticArg for bool {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
         if self {
@@ -92,7 +104,7 @@ impl IntoDiagnosticArg for bool {
 
 impl IntoDiagnosticArg for char {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
-        DiagnosticArgValue::Str(Cow::Owned(format!("{:?}", self)))
+        DiagnosticArgValue::Str(Cow::Owned(format!("{self:?}")))
     }
 }
 
@@ -134,7 +146,7 @@ impl IntoDiagnosticArg for PathBuf {
 
 impl IntoDiagnosticArg for usize {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
-        DiagnosticArgValue::Number(self)
+        DiagnosticArgValue::Number(self as i128)
     }
 }
 
@@ -147,10 +159,16 @@ impl IntoDiagnosticArg for PanicStrategy {
 impl IntoDiagnosticArg for hir::ConstContext {
     fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
         DiagnosticArgValue::Str(Cow::Borrowed(match self {
-            hir::ConstContext::ConstFn => "constant function",
+            hir::ConstContext::ConstFn => "const_fn",
             hir::ConstContext::Static(_) => "static",
-            hir::ConstContext::Const => "constant",
+            hir::ConstContext::Const => "const",
         }))
+    }
+}
+
+impl IntoDiagnosticArg for ast::Expr {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::Owned(pprust::expr_to_string(&self)))
     }
 }
 
@@ -254,7 +272,8 @@ impl IntoDiagnostic<'_, !> for TargetDataLayoutErrors<'_> {
             TargetDataLayoutErrors::InvalidAlignment { cause, err } => {
                 diag = handler.struct_fatal(fluent::errors_target_invalid_alignment);
                 diag.set_arg("cause", cause);
-                diag.set_arg("err", err);
+                diag.set_arg("err_kind", err.diag_ident());
+                diag.set_arg("align", err.align());
                 diag
             }
             TargetDataLayoutErrors::InconsistentTargetArchitecture { dl, target } => {
@@ -299,4 +318,63 @@ pub enum LabelKind {
     Note,
     Label,
     Help,
+}
+
+#[derive(Subdiagnostic)]
+#[label(errors_expected_lifetime_parameter)]
+pub struct ExpectedLifetimeParameter {
+    #[primary_span]
+    pub span: Span,
+    pub count: usize,
+}
+
+#[derive(Subdiagnostic)]
+#[note(errors_delayed_at_with_newline)]
+pub struct DelayedAtWithNewline {
+    #[primary_span]
+    pub span: Span,
+    pub emitted_at: DiagnosticLocation,
+    pub note: Backtrace,
+}
+#[derive(Subdiagnostic)]
+#[note(errors_delayed_at_without_newline)]
+pub struct DelayedAtWithoutNewline {
+    #[primary_span]
+    pub span: Span,
+    pub emitted_at: DiagnosticLocation,
+    pub note: Backtrace,
+}
+
+impl IntoDiagnosticArg for DiagnosticLocation {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::from(self.to_string()))
+    }
+}
+
+impl IntoDiagnosticArg for Backtrace {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::from(self.to_string()))
+    }
+}
+
+#[derive(Subdiagnostic)]
+#[note(errors_invalid_flushed_delayed_diagnostic_level)]
+pub struct InvalidFlushedDelayedDiagnosticLevel {
+    #[primary_span]
+    pub span: Span,
+    pub level: rustc_errors::Level,
+}
+impl IntoDiagnosticArg for rustc_errors::Level {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::from(self.to_string()))
+    }
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(errors_indicate_anonymous_lifetime, code = "{suggestion}", style = "verbose")]
+pub struct IndicateAnonymousLifetime {
+    #[primary_span]
+    pub span: Span,
+    pub count: usize,
+    pub suggestion: String,
 }

@@ -301,7 +301,7 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
                 self.print_expr(*source, depth_lvl + 2);
                 print_indented!(self, "}", depth_lvl);
             }
-            Pointer { cast, source } => {
+            PointerCoercion { cast, source } => {
                 print_indented!(self, "Pointer {", depth_lvl);
                 print_indented!(self, format!("cast: {:?}", cast), depth_lvl + 1);
                 print_indented!(self, "source:", depth_lvl + 1);
@@ -321,7 +321,7 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
                 print_indented!(self, format!("pat: {:?}", pat), depth_lvl + 1);
                 print_indented!(self, "}", depth_lvl);
             }
-            Match { scrutinee, arms } => {
+            Match { scrutinee, arms, .. } => {
                 print_indented!(self, "Match {", depth_lvl);
                 print_indented!(self, "scrutinee:", depth_lvl + 1);
                 self.print_expr(*scrutinee, depth_lvl + 2);
@@ -421,10 +421,16 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
 
                 print_indented!(self, "}", depth_lvl);
             }
-            ConstBlock { did, substs } => {
+            Become { value } => {
+                print_indented!(self, "Become {", depth_lvl);
+                print_indented!(self, "value:", depth_lvl + 1);
+                self.print_expr(*value, depth_lvl + 2);
+                print_indented!(self, "}", depth_lvl);
+            }
+            ConstBlock { did, args } => {
                 print_indented!(self, "ConstBlock {", depth_lvl);
                 print_indented!(self, format!("did: {:?}", did), depth_lvl + 1);
-                print_indented!(self, format!("substs: {:?}", substs), depth_lvl + 1);
+                print_indented!(self, format!("args: {:?}", args), depth_lvl + 1);
                 print_indented!(self, "}", depth_lvl);
             }
             Repeat { value, count } => {
@@ -493,11 +499,11 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
             ZstLiteral { user_ty } => {
                 print_indented!(self, format!("ZstLiteral(user_ty: {:?})", user_ty), depth_lvl);
             }
-            NamedConst { def_id, substs, user_ty } => {
+            NamedConst { def_id, args, user_ty } => {
                 print_indented!(self, "NamedConst {", depth_lvl);
                 print_indented!(self, format!("def_id: {:?}", def_id), depth_lvl + 1);
                 print_indented!(self, format!("user_ty: {:?}", user_ty), depth_lvl + 1);
-                print_indented!(self, format!("substs: {:?}", substs), depth_lvl + 1);
+                print_indented!(self, format!("args: {:?}", args), depth_lvl + 1);
                 print_indented!(self, "}", depth_lvl);
             }
             ConstParam { param, def_id } => {
@@ -554,7 +560,7 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
             format!("variant_index: {:?}", adt_expr.variant_index),
             depth_lvl + 1
         );
-        print_indented!(self, format!("substs: {:?}", adt_expr.substs), depth_lvl + 1);
+        print_indented!(self, format!("args: {:?}", adt_expr.args), depth_lvl + 1);
         print_indented!(self, format!("user_ty: {:?}", adt_expr.user_ty), depth_lvl + 1);
 
         for (i, field_expr) in adt_expr.fields.iter().enumerate() {
@@ -656,11 +662,11 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
 
                 print_indented!(self, "}", depth_lvl + 1);
             }
-            PatKind::Variant { adt_def, substs, variant_index, subpatterns } => {
+            PatKind::Variant { adt_def, args, variant_index, subpatterns } => {
                 print_indented!(self, "Variant {", depth_lvl + 1);
                 print_indented!(self, "adt_def: ", depth_lvl + 2);
                 self.print_adt_def(*adt_def, depth_lvl + 3);
-                print_indented!(self, format!("substs: {:?}", substs), depth_lvl + 2);
+                print_indented!(self, format!("args: {:?}", args), depth_lvl + 2);
                 print_indented!(self, format!("variant_index: {:?}", variant_index), depth_lvl + 2);
 
                 if subpatterns.len() > 0 {
@@ -778,11 +784,11 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
     }
 
     fn print_closure_expr(&mut self, expr: &ClosureExpr<'tcx>, depth_lvl: usize) {
-        let ClosureExpr { closure_id, substs, upvars, movability, fake_reads } = expr;
+        let ClosureExpr { closure_id, args, upvars, movability, fake_reads } = expr;
 
         print_indented!(self, "ClosureExpr {", depth_lvl);
         print_indented!(self, format!("closure_id: {:?}", closure_id), depth_lvl + 1);
-        print_indented!(self, format!("substs: {:?}", substs), depth_lvl + 1);
+        print_indented!(self, format!("args: {:?}", args), depth_lvl + 1);
 
         if upvars.len() > 0 {
             print_indented!(self, "upvars: [", depth_lvl + 1);

@@ -1,5 +1,6 @@
 // run-pass
 
+#![allow(improper_ctypes_definitions)]
 #![allow(non_camel_case_types)]
 #![allow(dead_code)]
 #![allow(unused_mut)]

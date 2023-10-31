@@ -47,13 +47,10 @@
 //! ```
 //!
 //! Metadata allows specifying all settings and variables
-//! that are available in a real rust project:
-//! - crate names via `crate:cratename`
-//! - dependencies via `deps:dep1,dep2`
-//! - configuration settings via `cfg:dbg=false,opt_level=2`
-//! - environment variables via `env:PATH=/bin,RUST_LOG=debug`
+//! that are available in a real rust project. See [`Fixture`]
+//! for the syntax.
 //!
-//! Example using all available metadata:
+//! Example using some available metadata:
 //! ```
 //! "
 //! //- /lib.rs crate:foo deps:bar,baz cfg:foo=a,bar=b env:OUTDIR=path/to,OTHER=foo
@@ -68,17 +65,74 @@ use stdx::trim_indent;
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Fixture {
+    /// Specifies the path for this file. It must start with "/".
     pub path: String,
-    pub text: String,
+    /// Defines a new crate and make this file its root module.
+    ///
+    /// Version and repository URL of the crate can optionally be specified; if
+    /// either one is specified, the other must also be specified.
+    ///
+    /// Syntax:
+    /// - `crate:my_awesome_lib`
+    /// - `crate:my_awesome_lib@0.0.1,https://example.com/repo.git`
     pub krate: Option<String>,
+    /// Specifies dependencies of this crate. This must be used with `crate` meta.
+    ///
+    /// Syntax: `deps:hir-def,ide-assists`
     pub deps: Vec<String>,
+    /// Limits crates in the extern prelude. The set of crate names must be a
+    /// subset of `deps`. This must be used with `crate` meta.
+    ///
+    /// If this is not specified, all the dependencies will be in the extern prelude.
+    ///
+    /// Syntax: `extern-prelude:hir-def,ide-assists`
     pub extern_prelude: Option<Vec<String>>,
-    pub cfg_atoms: Vec<String>,
-    pub cfg_key_values: Vec<(String, String)>,
+    /// Specifies configuration options to be enabled. Options may have associated
+    /// values.
+    ///
+    /// Syntax: `cfg:test,dbg=false,opt_level=2`
+    pub cfgs: Vec<(String, Option<String>)>,
+    /// Specifies the edition of this crate. This must be used with `crate` meta. If
+    /// this is not specified, ([`base_db::input::Edition::CURRENT`]) will be used.
+    /// This must be used with `crate` meta.
+    ///
+    /// Syntax: `edition:2021`
     pub edition: Option<String>,
+    /// Specifies environment variables.
+    ///
+    /// Syntax: `env:PATH=/bin,RUST_LOG=debug`
     pub env: FxHashMap<String, String>,
+    /// Introduces a new [source root](base_db::input::SourceRoot). This file **and
+    /// the following files** will belong the new source root. This must be used
+    /// with `crate` meta.
+    ///
+    /// Use this if you want to test something that uses `SourceRoot::is_library()`
+    /// to check editability.
+    ///
+    /// Note that files before the first fixture with `new_source_root` meta will
+    /// belong to an implicitly defined local source root.
+    ///
+    /// Syntax:
+    /// - `new_source_root:library`
+    /// - `new_source_root:local`
     pub introduce_new_source_root: Option<String>,
+    /// Explicitly declares this crate as a library outside current workspace. This
+    /// must be used with `crate` meta.
+    ///
+    /// This is implied if this file belongs to a library source root.
+    ///
+    /// Use this if you want to test something that checks if a crate is a workspace
+    /// member via [`CrateOrigin`](base_db::input::CrateOrigin).
+    ///
+    /// Syntax: `library`
+    pub library: bool,
+    /// Specifies LLVM data layout to be used.
+    ///
+    /// You probably don't want to manually specify this. See LLVM manual for the
+    /// syntax, if you must: https://llvm.org/docs/LangRef.html#data-layout
     pub target_data_layout: Option<String>,
+    /// Actual file contents. All meta comments are stripped.
+    pub text: String,
 }
 
 pub struct MiniCore {
@@ -86,7 +140,14 @@ pub struct MiniCore {
     valid_flags: Vec<String>,
 }
 
-impl Fixture {
+pub struct FixtureWithProjectMeta {
+    pub fixture: Vec<Fixture>,
+    pub mini_core: Option<MiniCore>,
+    pub proc_macro_names: Vec<String>,
+    pub toolchain: Option<String>,
+}
+
+impl FixtureWithProjectMeta {
     /// Parses text which looks like this:
     ///
     ///  ```not_rust
@@ -96,37 +157,41 @@ impl Fixture {
     ///  //- other meta
     ///  ```
     ///
-    /// Fixture can also start with a proc_macros and minicore declaration(in that order):
+    /// Fixture can also start with a proc_macros and minicore declaration (in that order):
     ///
     /// ```
+    /// //- toolchain: nightly
     /// //- proc_macros: identity
     /// //- minicore: sized
     /// ```
     ///
-    /// That will include predefined proc macros and a subset of `libcore` into the fixture, see
-    /// `minicore.rs` for what's available.
-    pub fn parse(ra_fixture: &str) -> (Option<MiniCore>, Vec<String>, Vec<Fixture>) {
+    /// That will set toolchain to nightly and include predefined proc macros and a subset of
+    /// `libcore` into the fixture, see `minicore.rs` for what's available. Note that toolchain
+    /// defaults to stable.
+    pub fn parse(ra_fixture: &str) -> Self {
         let fixture = trim_indent(ra_fixture);
         let mut fixture = fixture.as_str();
+        let mut toolchain = None;
         let mut mini_core = None;
         let mut res: Vec<Fixture> = Vec::new();
-        let mut test_proc_macros = vec![];
+        let mut proc_macro_names = vec![];
 
-        if fixture.starts_with("//- proc_macros:") {
-            let first_line = fixture.split_inclusive('\n').next().unwrap();
-            test_proc_macros = first_line
-                .strip_prefix("//- proc_macros:")
-                .unwrap()
-                .split(',')
-                .map(|it| it.trim().to_string())
-                .collect();
-            fixture = &fixture[first_line.len()..];
+        if let Some(meta) = fixture.strip_prefix("//- toolchain:") {
+            let (meta, remain) = meta.split_once('\n').unwrap();
+            toolchain = Some(meta.trim().to_string());
+            fixture = remain;
         }
 
-        if fixture.starts_with("//- minicore:") {
-            let first_line = fixture.split_inclusive('\n').next().unwrap();
-            mini_core = Some(MiniCore::parse(first_line));
-            fixture = &fixture[first_line.len()..];
+        if let Some(meta) = fixture.strip_prefix("//- proc_macros:") {
+            let (meta, remain) = meta.split_once('\n').unwrap();
+            proc_macro_names = meta.split(',').map(|it| it.trim().to_string()).collect();
+            fixture = remain;
+        }
+
+        if let Some(meta) = fixture.strip_prefix("//- minicore:") {
+            let (meta, remain) = meta.split_once('\n').unwrap();
+            mini_core = Some(MiniCore::parse(meta));
+            fixture = remain;
         }
 
         let default = if fixture.contains("//-") { None } else { Some("//- /main.rs") };
@@ -142,7 +207,7 @@ impl Fixture {
             }
 
             if line.starts_with("//-") {
-                let meta = Fixture::parse_meta_line(line);
+                let meta = Self::parse_meta_line(line);
                 res.push(meta);
             } else {
                 if line.starts_with("// ")
@@ -160,30 +225,35 @@ impl Fixture {
             }
         }
 
-        (mini_core, test_proc_macros, res)
+        Self { fixture: res, mini_core, proc_macro_names, toolchain }
     }
 
     //- /lib.rs crate:foo deps:bar,baz cfg:foo=a,bar=b env:OUTDIR=path/to,OTHER=foo
     fn parse_meta_line(meta: &str) -> Fixture {
         assert!(meta.starts_with("//-"));
         let meta = meta["//-".len()..].trim();
-        let components = meta.split_ascii_whitespace().collect::<Vec<_>>();
+        let mut components = meta.split_ascii_whitespace();
 
-        let path = components[0].to_string();
+        let path = components.next().expect("fixture meta must start with a path").to_string();
         assert!(path.starts_with('/'), "fixture path does not start with `/`: {path:?}");
 
         let mut krate = None;
         let mut deps = Vec::new();
         let mut extern_prelude = None;
         let mut edition = None;
-        let mut cfg_atoms = Vec::new();
-        let mut cfg_key_values = Vec::new();
+        let mut cfgs = Vec::new();
         let mut env = FxHashMap::default();
         let mut introduce_new_source_root = None;
+        let mut library = false;
         let mut target_data_layout = Some(
             "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128".to_string(),
         );
-        for component in components[1..].iter() {
+        for component in components {
+            if component == "library" {
+                library = true;
+                continue;
+            }
+
             let (key, value) =
                 component.split_once(':').unwrap_or_else(|| panic!("invalid meta line: {meta:?}"));
             match key {
@@ -201,8 +271,8 @@ impl Fixture {
                 "cfg" => {
                     for entry in value.split(',') {
                         match entry.split_once('=') {
-                            Some((k, v)) => cfg_key_values.push((k.to_string(), v.to_string())),
-                            None => cfg_atoms.push(entry.to_string()),
+                            Some((k, v)) => cfgs.push((k.to_string(), Some(v.to_string()))),
+                            None => cfgs.push((entry.to_string(), None)),
                         }
                     }
                 }
@@ -232,19 +302,28 @@ impl Fixture {
             krate,
             deps,
             extern_prelude,
-            cfg_atoms,
-            cfg_key_values,
+            cfgs,
             edition,
             env,
             introduce_new_source_root,
+            library,
             target_data_layout,
         }
     }
 }
 
 impl MiniCore {
+    const RAW_SOURCE: &str = include_str!("./minicore.rs");
+
     fn has_flag(&self, flag: &str) -> bool {
         self.activated_flags.iter().any(|it| it == flag)
+    }
+
+    pub fn from_flags<'a>(flags: impl IntoIterator<Item = &'a str>) -> Self {
+        MiniCore {
+            activated_flags: flags.into_iter().map(|x| x.to_owned()).collect(),
+            valid_flags: Vec::new(),
+        }
     }
 
     #[track_caller]
@@ -257,8 +336,7 @@ impl MiniCore {
     fn parse(line: &str) -> MiniCore {
         let mut res = MiniCore { activated_flags: Vec::new(), valid_flags: Vec::new() };
 
-        let line = line.strip_prefix("//- minicore:").unwrap().trim();
-        for entry in line.split(", ") {
+        for entry in line.trim().split(", ") {
             if res.has_flag(entry) {
                 panic!("duplicate minicore flag: {entry:?}");
             }
@@ -268,13 +346,21 @@ impl MiniCore {
         res
     }
 
+    pub fn available_flags() -> impl Iterator<Item = &'static str> {
+        let lines = MiniCore::RAW_SOURCE.split_inclusive('\n');
+        lines
+            .map_while(|x| x.strip_prefix("//!"))
+            .skip_while(|line| !line.contains("Available flags:"))
+            .skip(1)
+            .map(|x| x.split_once(':').unwrap().0.trim())
+    }
+
     /// Strips parts of minicore.rs which are flagged by inactive flags.
     ///
     /// This is probably over-engineered to support flags dependencies.
     pub fn source_code(mut self) -> String {
         let mut buf = String::new();
-        let raw_mini_core = include_str!("./minicore.rs");
-        let mut lines = raw_mini_core.split_inclusive('\n');
+        let mut lines = MiniCore::RAW_SOURCE.split_inclusive('\n');
 
         let mut implications = Vec::new();
 
@@ -360,6 +446,10 @@ impl MiniCore {
             }
         }
 
+        if !active_regions.is_empty() {
+            panic!("unclosed regions: {:?} Add an `endregion` comment", active_regions);
+        }
+
         for flag in &self.valid_flags {
             if !seen_regions.iter().any(|it| it == flag) {
                 panic!("unused minicore flag: {flag:?}");
@@ -372,7 +462,7 @@ impl MiniCore {
 #[test]
 #[should_panic]
 fn parse_fixture_checks_further_indented_metadata() {
-    Fixture::parse(
+    FixtureWithProjectMeta::parse(
         r"
         //- /lib.rs
           mod bar;
@@ -386,15 +476,18 @@ fn parse_fixture_checks_further_indented_metadata() {
 
 #[test]
 fn parse_fixture_gets_full_meta() {
-    let (mini_core, proc_macros, parsed) = Fixture::parse(
-        r#"
+    let FixtureWithProjectMeta { fixture: parsed, mini_core, proc_macro_names, toolchain } =
+        FixtureWithProjectMeta::parse(
+            r#"
+//- toolchain: nightly
 //- proc_macros: identity
 //- minicore: coerce_unsized
 //- /lib.rs crate:foo deps:bar,baz cfg:foo=a,bar=b,atom env:OUTDIR=path/to,OTHER=foo
 mod m;
 "#,
-    );
-    assert_eq!(proc_macros, vec!["identity".to_string()]);
+        );
+    assert_eq!(toolchain, Some("nightly".to_string()));
+    assert_eq!(proc_macro_names, vec!["identity".to_string()]);
     assert_eq!(mini_core.unwrap().activated_flags, vec!["coerce_unsized".to_string()]);
     assert_eq!(1, parsed.len());
 

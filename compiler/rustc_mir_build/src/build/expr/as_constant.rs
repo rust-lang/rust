@@ -52,7 +52,7 @@ pub fn as_constant_inner<'tcx>(
                 match lit_to_mir_constant(tcx, LitToConstInput { lit: &lit.node, ty, neg }) {
                     Ok(c) => c,
                     Err(LitToConstError::Reported(guar)) => {
-                        ConstantKind::Ty(tcx.const_error(ty, guar))
+                        ConstantKind::Ty(ty::Const::new_error(tcx, guar, ty))
                     }
                     Err(LitToConstError::TypeError) => {
                         bug!("encountered type error in `lit_to_mir_constant`")
@@ -75,22 +75,22 @@ pub fn as_constant_inner<'tcx>(
 
             Constant { span, user_ty, literal }
         }
-        ExprKind::NamedConst { def_id, substs, ref user_ty } => {
+        ExprKind::NamedConst { def_id, args, ref user_ty } => {
             let user_ty = user_ty.as_ref().and_then(push_cuta);
 
-            let uneval = mir::UnevaluatedConst::new(def_id, substs);
+            let uneval = mir::UnevaluatedConst::new(def_id, args);
             let literal = ConstantKind::Unevaluated(uneval, ty);
 
             Constant { user_ty, span, literal }
         }
         ExprKind::ConstParam { param, def_id: _ } => {
-            let const_param = tcx.mk_const(ty::ConstKind::Param(param), expr.ty);
+            let const_param = ty::Const::new_param(tcx, param, expr.ty);
             let literal = ConstantKind::Ty(const_param);
 
             Constant { user_ty: None, span, literal }
         }
-        ExprKind::ConstBlock { did: def_id, substs } => {
-            let uneval = mir::UnevaluatedConst::new(def_id, substs);
+        ExprKind::ConstBlock { did: def_id, args } => {
+            let uneval = mir::UnevaluatedConst::new(def_id, args);
             let literal = ConstantKind::Unevaluated(uneval, ty);
 
             Constant { user_ty: None, span, literal }
@@ -106,7 +106,7 @@ pub fn as_constant_inner<'tcx>(
 }
 
 #[instrument(skip(tcx, lit_input))]
-pub(crate) fn lit_to_mir_constant<'tcx>(
+fn lit_to_mir_constant<'tcx>(
     tcx: TyCtxt<'tcx>,
     lit_input: LitToConstInput<'tcx>,
 ) -> Result<ConstantKind<'tcx>, LitToConstError> {

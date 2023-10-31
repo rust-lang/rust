@@ -30,6 +30,9 @@ fn macos_link_environment_unmodified() {
     for target in all_macos_targets {
         // macOS targets should only remove information for cross-compiling, but never
         // for the host.
-        assert_eq!(target.link_env_remove, crate::spec::cvs!["IPHONEOS_DEPLOYMENT_TARGET"]);
+        assert_eq!(
+            target.link_env_remove,
+            crate::spec::cvs!["IPHONEOS_DEPLOYMENT_TARGET", "TVOS_DEPLOYMENT_TARGET"],
+        );
     }
 }

@@ -42,7 +42,7 @@ pub fn inline_enum_const() -> E<i8, i16> {
 #[no_mangle]
 pub fn low_align_const() -> E<i16, [i16; 3]> {
     // Check that low_align_const and high_align_const use the same constant
-    // CHECK: memcpy.{{.+}}({{i8\*|ptr}} align 2 %{{[0-9]+}}, {{i8\*|ptr}} align 2 {{.*}}[[LOW_HIGH]]{{.*}}, i{{(32|64)}} 8, i1 false)
+    // CHECK: memcpy.{{.+}}(ptr align 2 %_0, ptr align 2 {{.*}}[[LOW_HIGH]]{{.*}}, i{{(32|64)}} 8, i1 false)
     *&E::A(0)
 }
 
@@ -50,6 +50,6 @@ pub fn low_align_const() -> E<i16, [i16; 3]> {
 #[no_mangle]
 pub fn high_align_const() -> E<i16, i32> {
     // Check that low_align_const and high_align_const use the same constant
-    // CHECK: memcpy.{{.+}}({{i8\*|ptr}} align 4 %{{[0-9]+}}, {{i8\*|ptr}} align 4 {{.*}}[[LOW_HIGH]]{{.*}}, i{{(32|64)}} 8, i1 false)
+    // CHECK: memcpy.{{.+}}(ptr align 4 %_0, ptr align 4 {{.*}}[[LOW_HIGH]]{{.*}}, i{{(32|64)}} 8, i1 false)
     *&E::A(0)
 }

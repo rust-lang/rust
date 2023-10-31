@@ -13,7 +13,7 @@ use rustc_span::{sym, Span};
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usage of `panic!`, `unimplemented!`, `todo!`, `unreachable!` or assertions in a function of type result.
+    /// Checks for usage of `panic!` or assertions in a function of type result.
     ///
     /// ### Why is this bad?
     /// For some codebases, it is desirable for functions of type result to return an error instead of crashing. Hence panicking macros should be avoided.
@@ -37,7 +37,7 @@ declare_clippy_lint! {
     #[clippy::version = "1.48.0"]
     pub PANIC_IN_RESULT_FN,
     restriction,
-    "functions of type `Result<..>` that contain `panic!()`, `todo!()`, `unreachable()`, `unimplemented()` or assertion"
+    "functions of type `Result<..>` that contain `panic!()` or assertion"
 }
 
 declare_lint_pass!(PanicInResultFn  => [PANIC_IN_RESULT_FN]);
@@ -70,7 +70,7 @@ fn lint_impl_body<'tcx>(cx: &LateContext<'tcx>, impl_span: Span, body: &'tcx hir
         };
         if matches!(
             cx.tcx.item_name(macro_call.def_id).as_str(),
-            "unimplemented" | "unreachable" | "panic" | "todo" | "assert" | "assert_eq" | "assert_ne"
+            "panic" | "assert" | "assert_eq" | "assert_ne"
         ) {
             panics.push(macro_call.span);
             ControlFlow::Continue(Descend::No)
@@ -83,10 +83,10 @@ fn lint_impl_body<'tcx>(cx: &LateContext<'tcx>, impl_span: Span, body: &'tcx hir
             cx,
             PANIC_IN_RESULT_FN,
             impl_span,
-            "used `unimplemented!()`, `unreachable!()`, `todo!()`, `panic!()` or assertion in a function that returns `Result`",
+            "used `panic!()` or assertion in a function that returns `Result`",
             move |diag| {
                 diag.help(
-                    "`unimplemented!()`, `unreachable!()`, `todo!()`, `panic!()` or assertions should not be used in a function that returns `Result` as `Result` is expected to return an error instead of crashing",
+                    "`panic!()` or assertions should not be used in a function that returns `Result` as `Result` is expected to return an error instead of crashing",
                 );
                 diag.span_note(panics, "return Err() instead of panicking");
             },

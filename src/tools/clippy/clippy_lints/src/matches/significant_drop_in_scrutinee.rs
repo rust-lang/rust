@@ -6,8 +6,7 @@ use rustc_errors::{Applicability, Diagnostic};
 use rustc_hir::intravisit::{walk_expr, Visitor};
 use rustc_hir::{Arm, Expr, ExprKind, MatchSource};
 use rustc_lint::{LateContext, LintContext};
-use rustc_middle::ty::subst::GenericArgKind;
-use rustc_middle::ty::{Ty, TypeAndMut};
+use rustc_middle::ty::{GenericArgKind, Ty, TypeAndMut};
 use rustc_span::Span;
 
 use super::SIGNIFICANT_DROP_IN_SCRUTINEE;
@@ -140,7 +139,7 @@ impl<'a, 'tcx> SigDropChecker<'a, 'tcx> {
                     }
                 }
 
-                for generic_arg in b.iter() {
+                for generic_arg in *b {
                     if let GenericArgKind::Type(ty) = generic_arg.unpack() {
                         if self.has_sig_drop_attr(cx, ty) {
                             return true;
@@ -329,6 +328,7 @@ impl<'a, 'tcx> Visitor<'tcx> for SigDropHelper<'a, 'tcx> {
             ExprKind::Field(..) |
             ExprKind::Index(..) |
             ExprKind::Ret(..) |
+            ExprKind::Become(..) |
             ExprKind::Repeat(..) |
             ExprKind::Yield(..) => walk_expr(self, ex),
             ExprKind::AddrOf(_, _, _) |

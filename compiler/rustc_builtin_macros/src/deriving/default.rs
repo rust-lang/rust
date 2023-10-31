@@ -20,7 +20,6 @@ pub fn expand_deriving_default(
 ) {
     item.visit_with(&mut DetectNonVariantDefaultAttr { cx });
 
-    let attrs = thin_vec![cx.attr_word(sym::inline, span)];
     let trait_def = TraitDef {
         span,
         path: Path::new(vec![kw::Default, sym::Default]),
@@ -34,7 +33,7 @@ pub fn expand_deriving_default(
             explicit_self: false,
             nonself_args: Vec::new(),
             ret_ty: Self_,
-            attributes: attrs,
+            attributes: thin_vec![cx.attr_word(sym::inline, span)],
             fieldless_variants_strategy: FieldlessVariantsStrategy::Default,
             combine_substructure: combine_substructure(Box::new(|cx, trait_span, substr| {
                 match substr.fields {

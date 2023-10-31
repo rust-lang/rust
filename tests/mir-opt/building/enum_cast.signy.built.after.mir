@@ -1,26 +1,26 @@
 // MIR for `signy` after built
 
 fn signy(_1: SignedAroundZero) -> i16 {
-    debug x => _1;                       // in scope 0 at $DIR/enum_cast.rs:+0:10: +0:11
-    let mut _0: i16;                     // return place in scope 0 at $DIR/enum_cast.rs:+0:34: +0:37
-    let _2: SignedAroundZero;            // in scope 0 at $DIR/enum_cast.rs:+1:5: +1:6
-    let mut _3: i16;                     // in scope 0 at $DIR/enum_cast.rs:+1:5: +1:6
-    let mut _4: u16;                     // in scope 0 at $DIR/enum_cast.rs:+1:5: +1:13
-    let mut _5: bool;                    // in scope 0 at $DIR/enum_cast.rs:+1:5: +1:13
-    let mut _6: bool;                    // in scope 0 at $DIR/enum_cast.rs:+1:5: +1:13
-    let mut _7: bool;                    // in scope 0 at $DIR/enum_cast.rs:+1:5: +1:13
+    debug x => _1;
+    let mut _0: i16;
+    let _2: SignedAroundZero;
+    let mut _3: i16;
+    let mut _4: u16;
+    let mut _5: bool;
+    let mut _6: bool;
+    let mut _7: bool;
 
     bb0: {
-        StorageLive(_2);                 // scope 0 at $DIR/enum_cast.rs:+1:5: +1:6
-        _2 = move _1;                    // scope 0 at $DIR/enum_cast.rs:+1:5: +1:6
-        _3 = discriminant(_2);           // scope 0 at $DIR/enum_cast.rs:+1:5: +1:13
-        _4 = _3 as u16 (IntToInt);       // scope 0 at $DIR/enum_cast.rs:+1:5: +1:13
-        _5 = Ge(_4, const 65534_u16);    // scope 0 at $DIR/enum_cast.rs:+1:5: +1:13
-        _6 = Le(_4, const 2_u16);        // scope 0 at $DIR/enum_cast.rs:+1:5: +1:13
-        _7 = BitOr(move _5, move _6);    // scope 0 at $DIR/enum_cast.rs:+1:5: +1:13
-        assume(move _7);                 // scope 0 at $DIR/enum_cast.rs:+1:5: +1:13
-        _0 = move _3 as i16 (IntToInt);  // scope 0 at $DIR/enum_cast.rs:+1:5: +1:13
-        StorageDead(_2);                 // scope 0 at $DIR/enum_cast.rs:+1:12: +1:13
-        return;                          // scope 0 at $DIR/enum_cast.rs:+2:2: +2:2
+        StorageLive(_2);
+        _2 = move _1;
+        _3 = discriminant(_2);
+        _4 = _3 as u16 (IntToInt);
+        _5 = Ge(_4, const 65534_u16);
+        _6 = Le(_4, const 2_u16);
+        _7 = BitOr(move _5, move _6);
+        assume(move _7);
+        _0 = move _3 as i16 (IntToInt);
+        StorageDead(_2);
+        return;
     }
 }

@@ -1,4 +1,6 @@
+#![feature(inline_const)]
 #![allow(
+    clippy::eq_op,
     clippy::single_match,
     unused_assignments,
     unused_variables,
@@ -291,6 +293,42 @@ pub fn test24() {
                 None => break 'a,
                 Some(_) => break 'b,
             }
+        }
+    }
+}
+
+// Do not lint, we can evaluate `true` to always succeed thus can short-circuit before the `return`
+pub fn test25() {
+    loop {
+        'label: {
+            if const { true } {
+                break 'label;
+            }
+            return;
+        }
+    }
+}
+
+pub fn test26() {
+    loop {
+        'label: {
+            if 1 == 1 {
+                break 'label;
+            }
+            return;
+        }
+    }
+}
+
+pub fn test27() {
+    loop {
+        'label: {
+            let x = true;
+            // Lints because we cannot prove it's always `true`
+            if x {
+                break 'label;
+            }
+            return;
         }
     }
 }

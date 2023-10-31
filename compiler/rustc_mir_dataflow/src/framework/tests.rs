@@ -40,7 +40,7 @@ fn mock_body<'tcx>() -> mir::Body<'tcx> {
             destination: dummy_place.clone(),
             target: Some(mir::START_BLOCK),
             unwind: mir::UnwindAction::Continue,
-            from_hir_call: false,
+            call_source: mir::CallSource::Misc,
             fn_span: DUMMY_SP,
         },
     );
@@ -54,7 +54,7 @@ fn mock_body<'tcx>() -> mir::Body<'tcx> {
             destination: dummy_place.clone(),
             target: Some(mir::START_BLOCK),
             unwind: mir::UnwindAction::Continue,
-            from_hir_call: false,
+            call_source: mir::CallSource::Misc,
             fn_span: DUMMY_SP,
         },
     );
@@ -179,7 +179,7 @@ impl<'tcx, D: Direction> AnalysisDomain<'tcx> for MockAnalysis<'tcx, D> {
 
 impl<'tcx, D: Direction> Analysis<'tcx> for MockAnalysis<'tcx, D> {
     fn apply_statement_effect(
-        &self,
+        &mut self,
         state: &mut Self::Domain,
         _statement: &mir::Statement<'tcx>,
         location: Location,
@@ -189,7 +189,7 @@ impl<'tcx, D: Direction> Analysis<'tcx> for MockAnalysis<'tcx, D> {
     }
 
     fn apply_before_statement_effect(
-        &self,
+        &mut self,
         state: &mut Self::Domain,
         _statement: &mir::Statement<'tcx>,
         location: Location,
@@ -198,18 +198,19 @@ impl<'tcx, D: Direction> Analysis<'tcx> for MockAnalysis<'tcx, D> {
         assert!(state.insert(idx));
     }
 
-    fn apply_terminator_effect(
-        &self,
+    fn apply_terminator_effect<'mir>(
+        &mut self,
         state: &mut Self::Domain,
-        _terminator: &mir::Terminator<'tcx>,
+        terminator: &'mir mir::Terminator<'tcx>,
         location: Location,
-    ) {
+    ) -> TerminatorEdges<'mir, 'tcx> {
         let idx = self.effect(Effect::Primary.at_index(location.statement_index));
         assert!(state.insert(idx));
+        terminator.edges()
     }
 
     fn apply_before_terminator_effect(
-        &self,
+        &mut self,
         state: &mut Self::Domain,
         _terminator: &mir::Terminator<'tcx>,
         location: Location,
@@ -219,7 +220,7 @@ impl<'tcx, D: Direction> Analysis<'tcx> for MockAnalysis<'tcx, D> {
     }
 
     fn apply_call_return_effect(
-        &self,
+        &mut self,
         _state: &mut Self::Domain,
         _block: BasicBlock,
         _return_places: CallReturnPlaces<'_, 'tcx>,
@@ -266,7 +267,8 @@ fn test_cursor<D: Direction>(analysis: MockAnalysis<'_, D>) {
     let body = analysis.body;
 
     let mut cursor =
-        Results { entry_sets: analysis.mock_entry_sets(), analysis }.into_results_cursor(body);
+        Results { entry_sets: analysis.mock_entry_sets(), analysis, _marker: PhantomData }
+            .into_results_cursor(body);
 
     cursor.allow_unreachable();
 

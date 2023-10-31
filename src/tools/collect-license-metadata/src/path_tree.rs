@@ -155,7 +155,10 @@ impl Node<LicenseId> {
                         name: child_name,
                         children: child_children,
                         license: child_license,
-                    } = child else { continue };
+                    } = child
+                    else {
+                        continue;
+                    };
 
                     if child_license != license {
                         continue;

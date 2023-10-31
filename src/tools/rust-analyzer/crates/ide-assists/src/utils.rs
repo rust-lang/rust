@@ -3,14 +3,17 @@
 use std::ops;
 
 pub(crate) use gen_trait_fn_body::gen_trait_fn_body;
-use hir::{db::HirDatabase, HirDisplay, Semantics};
-use ide_db::{famous_defs::FamousDefs, path_transform::PathTransform, RootDatabase, SnippetCap};
+use hir::{db::HirDatabase, HasAttrs as HirHasAttrs, HirDisplay, InFile, Semantics};
+use ide_db::{
+    famous_defs::FamousDefs, path_transform::PathTransform,
+    syntax_helpers::insert_whitespace_into_node::insert_ws_into, RootDatabase, SnippetCap,
+};
 use stdx::format_to;
 use syntax::{
     ast::{
         self,
-        edit::{self, AstNodeEdit},
-        edit_in_place::{AttrsOwnerEdit, Removable},
+        edit::{AstNodeEdit, IndentLevel},
+        edit_in_place::{AttrsOwnerEdit, Indent, Removable},
         make, HasArgList, HasAttrs, HasGenericParams, HasName, HasTypeBounds, Whitespace,
     },
     ted, AstNode, AstToken, Direction, SourceFile,
@@ -81,6 +84,12 @@ pub fn test_related_attribute(fn_def: &ast::Fn) -> Option<ast::Attr> {
     })
 }
 
+#[derive(Clone, Copy, PartialEq)]
+pub enum IgnoreAssocItems {
+    DocHiddenAttrPresent,
+    No,
+}
+
 #[derive(Copy, Clone, PartialEq)]
 pub enum DefaultMethods {
     Only,
@@ -91,30 +100,26 @@ pub fn filter_assoc_items(
     sema: &Semantics<'_, RootDatabase>,
     items: &[hir::AssocItem],
     default_methods: DefaultMethods,
-) -> Vec<ast::AssocItem> {
-    fn has_def_name(item: &ast::AssocItem) -> bool {
-        match item {
-            ast::AssocItem::Fn(def) => def.name(),
-            ast::AssocItem::TypeAlias(def) => def.name(),
-            ast::AssocItem::Const(def) => def.name(),
-            ast::AssocItem::MacroCall(_) => None,
-        }
-        .is_some()
-    }
-
-    items
+    ignore_items: IgnoreAssocItems,
+) -> Vec<InFile<ast::AssocItem>> {
+    return items
         .iter()
+        .copied()
+        .filter(|assoc_item| {
+            !(ignore_items == IgnoreAssocItems::DocHiddenAttrPresent
+                && assoc_item.attrs(sema.db).has_doc_hidden())
+        })
         // Note: This throws away items with no source.
-        .filter_map(|&i| {
-            let item = match i {
-                hir::AssocItem::Function(i) => ast::AssocItem::Fn(sema.source(i)?.value),
-                hir::AssocItem::TypeAlias(i) => ast::AssocItem::TypeAlias(sema.source(i)?.value),
-                hir::AssocItem::Const(i) => ast::AssocItem::Const(sema.source(i)?.value),
+        .filter_map(|assoc_item| {
+            let item = match assoc_item {
+                hir::AssocItem::Function(it) => sema.source(it)?.map(ast::AssocItem::Fn),
+                hir::AssocItem::TypeAlias(it) => sema.source(it)?.map(ast::AssocItem::TypeAlias),
+                hir::AssocItem::Const(it) => sema.source(it)?.map(ast::AssocItem::Const),
             };
             Some(item)
         })
         .filter(has_def_name)
-        .filter(|it| match it {
+        .filter(|it| match &it.value {
             ast::AssocItem::Fn(def) => matches!(
                 (default_methods, def.body()),
                 (DefaultMethods::Only, Some(_)) | (DefaultMethods::No, None)
@@ -125,36 +130,67 @@ pub fn filter_assoc_items(
             ),
             _ => default_methods == DefaultMethods::No,
         })
-        .collect::<Vec<_>>()
+        .collect();
+
+    fn has_def_name(item: &InFile<ast::AssocItem>) -> bool {
+        match &item.value {
+            ast::AssocItem::Fn(def) => def.name(),
+            ast::AssocItem::TypeAlias(def) => def.name(),
+            ast::AssocItem::Const(def) => def.name(),
+            ast::AssocItem::MacroCall(_) => None,
+        }
+        .is_some()
+    }
 }
 
+/// Given `original_items` retrieved from the trait definition (usually by
+/// [`filter_assoc_items()`]), clones each item for update and applies path transformation to it,
+/// then inserts into `impl_`. Returns the modified `impl_` and the first associated item that got
+/// inserted.
 pub fn add_trait_assoc_items_to_impl(
     sema: &Semantics<'_, RootDatabase>,
-    items: Vec<ast::AssocItem>,
+    original_items: &[InFile<ast::AssocItem>],
     trait_: hir::Trait,
-    impl_: ast::Impl,
+    impl_: &ast::Impl,
     target_scope: hir::SemanticsScope<'_>,
-) -> (ast::Impl, ast::AssocItem) {
-    let source_scope = sema.scope_for_def(trait_);
+) -> ast::AssocItem {
+    let new_indent_level = IndentLevel::from_node(impl_.syntax()) + 1;
+    let items = original_items.into_iter().map(|InFile { file_id, value: original_item }| {
+        let cloned_item = {
+            if file_id.is_macro() {
+                if let Some(formatted) =
+                    ast::AssocItem::cast(insert_ws_into(original_item.syntax().clone()))
+                {
+                    return formatted;
+                } else {
+                    stdx::never!("formatted `AssocItem` could not be cast back to `AssocItem`");
+                }
+            }
+            original_item.clone_for_update()
+        };
 
-    let transform = PathTransform::trait_impl(&target_scope, &source_scope, trait_, impl_.clone());
-
-    let items = items.into_iter().map(|assoc_item| {
-        transform.apply(assoc_item.syntax());
-        assoc_item.remove_attrs_and_docs();
-        assoc_item
+        if let Some(source_scope) = sema.scope(original_item.syntax()) {
+            // FIXME: Paths in nested macros are not handled well. See
+            // `add_missing_impl_members::paths_in_nested_macro_should_get_transformed` test.
+            let transform =
+                PathTransform::trait_impl(&target_scope, &source_scope, trait_, impl_.clone());
+            transform.apply(cloned_item.syntax());
+        }
+        cloned_item.remove_attrs_and_docs();
+        cloned_item.reindent_to(new_indent_level);
+        cloned_item
     });
 
-    let res = impl_.clone_for_update();
-
-    let assoc_item_list = res.get_or_create_assoc_item_list();
+    let assoc_item_list = impl_.get_or_create_assoc_item_list();
     let mut first_item = None;
     for item in items {
         first_item.get_or_insert_with(|| item.clone());
         match &item {
             ast::AssocItem::Fn(fn_) if fn_.body().is_none() => {
-                let body = make::block_expr(None, Some(make::ext::expr_todo()))
-                    .indent(edit::IndentLevel(1));
+                let body = AstNodeEdit::indent(
+                    &make::block_expr(None, Some(make::ext::expr_todo())),
+                    new_indent_level,
+                );
                 ted::replace(fn_.get_or_create_body().syntax(), body.clone_for_update().syntax())
             }
             ast::AssocItem::TypeAlias(type_alias) => {
@@ -168,7 +204,7 @@ pub fn add_trait_assoc_items_to_impl(
         assoc_item_list.add_item(item)
     }
 
-    (res, first_item.unwrap())
+    first_item.unwrap()
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -338,7 +374,12 @@ fn calc_depth(pat: &ast::Pat, depth: usize) -> usize {
 
 /// `find_struct_impl` looks for impl of a struct, but this also has additional feature
 /// where it takes a list of function names and check if they exist inside impl_, if
-/// even one match is found, it returns None
+/// even one match is found, it returns None.
+///
+/// That means this function can have 3 potential return values:
+///  - `None`: an impl exists, but one of the function names within the impl matches one of the provided names.
+///  - `Some(None)`: no impl exists.
+///  - `Some(Some(_))`: an impl exists, with no matching function names.
 pub(crate) fn find_struct_impl(
     ctx: &AssistContext<'_>,
     adt: &ast::Adt,

@@ -17,11 +17,11 @@ begingroup "Building Miri"
 echo "Installing release version of Miri"
 export RUSTFLAGS="-D warnings"
 export CARGO_INCREMENTAL=0
-./miri install # implicitly locked
+export CARGO_EXTRA_FLAGS="--locked"
+./miri install
 
 # Prepare debug build for direct `./miri` invocations
 echo "Building debug version of Miri"
-export CARGO_EXTRA_FLAGS="--locked"
 ./miri check --no-default-features # make sure this can be built
 ./miri check --all-features # and this, too
 ./miri build --all-targets # the build that all the `./miri test` below will use
@@ -39,8 +39,11 @@ function run_tests {
   ## ui test suite
   ./miri test
   if [ -z "${MIRI_TEST_TARGET+exists}" ]; then
-    # Only for host architecture: tests with optimizations (`-O` is what cargo passes, but crank MIR
-    # optimizations up all the way, too).
+    # Host-only tests: running these on all targets is unlikely to catch more problems and would
+    # cost a lot of CI time.
+
+    # Tests with optimizations (`-O` is what cargo passes, but crank MIR optimizations up all the
+    # way, too).
     # Optimizations change diagnostics (mostly backtraces), so we don't check
     # them. Also error locations change so we don't run the failing tests.
     # We explicitly enable debug-assertions here, they are disabled by -O but we have tests
@@ -51,6 +54,9 @@ function run_tests {
     for FILE in tests/many-seeds/*.rs; do
       MIRI_SEEDS=64 CARGO_EXTRA_FLAGS="$CARGO_EXTRA_FLAGS -q" ./miri many-seeds ./miri run "$FILE"
     done
+
+    # Check that the benchmarks build and run, but without actually benchmarking.
+    HYPERFINE="bash -c" ./miri bench
   fi
 
   ## test-cargo-miri
@@ -74,13 +80,6 @@ function run_tests {
   # Clean up
   unset RUSTC MIRI
   rm -rf .cargo
-
-  # Ensure that our benchmarks all work, but only on Linux hosts.
-  if [ -z "${MIRI_TEST_TARGET+exists}" ] && [ "$HOST_TARGET" = x86_64-unknown-linux-gnu ] ; then
-    for BENCH in $(ls "bench-cargo-miri"); do
-      cargo miri run --manifest-path bench-cargo-miri/$BENCH/Cargo.toml
-    done
-  fi
 
   endgroup
 }

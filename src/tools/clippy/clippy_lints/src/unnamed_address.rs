@@ -96,10 +96,8 @@ impl LateLintPass<'_> for UnnamedAddress {
             if let ExprKind::Call(func, [ref _left, ref _right]) = expr.kind;
             if let ExprKind::Path(ref func_qpath) = func.kind;
             if let Some(def_id) = cx.qpath_res(func_qpath, func.hir_id).opt_def_id();
-            if match_def_path(cx, def_id, &paths::PTR_EQ) ||
-                match_def_path(cx, def_id, &paths::RC_PTR_EQ) ||
-                match_def_path(cx, def_id, &paths::ARC_PTR_EQ);
-            let ty_param = cx.typeck_results().node_substs(func.hir_id).type_at(0);
+            if match_def_path(cx, def_id, &paths::PTR_EQ);
+            let ty_param = cx.typeck_results().node_args(func.hir_id).type_at(0);
             if ty_param.is_trait();
             then {
                 span_lint_and_help(

@@ -1,6 +1,7 @@
 #![deny(rustdoc::unescaped_backticks)]
 #![allow(rustdoc::broken_intra_doc_links)]
 #![allow(rustdoc::invalid_html_tags)]
+#![allow(rustdoc::redundant_explicit_links)]
 
 ///
 pub fn empty() {}
@@ -339,4 +340,16 @@ id! {
     /// [`rebuild_interest_cache`][rebuild] is called after the value of the max
     /// level changes.
     pub mod tracing_macro {}
+}
+
+/// Regression test for <https://github.com/rust-lang/rust/issues/111117>
+pub mod trillium_server_common {
+    /// One-indexed, because the first CloneCounter is included. If you don't
+    /// want the original to count, construct a [``CloneCounterObserver`]
+    /// instead and use [`CloneCounterObserver::counter`] to increment.
+    //~^ ERROR unescaped backtick
+    pub struct CloneCounter;
+
+    /// This is used by the above.
+    pub struct CloneCounterObserver;
 }

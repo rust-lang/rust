@@ -4,8 +4,9 @@ use crate::edition_panic::use_panic_2021;
 use crate::errors;
 use rustc_ast::ptr::P;
 use rustc_ast::token;
+use rustc_ast::token::Delimiter;
 use rustc_ast::tokenstream::{DelimSpan, TokenStream};
-use rustc_ast::{DelimArgs, Expr, ExprKind, MacCall, MacDelimiter, Path, PathSegment, UnOp};
+use rustc_ast::{DelimArgs, Expr, ExprKind, MacCall, Path, PathSegment, UnOp};
 use rustc_ast_pretty::pprust;
 use rustc_errors::PResult;
 use rustc_expand::base::{DummyResult, ExtCtxt, MacEager, MacResult};
@@ -58,7 +59,7 @@ pub fn expand_assert<'cx>(
                 path: panic_path(),
                 args: P(DelimArgs {
                     dspan: DelimSpan::from_single(call_site_span),
-                    delim: MacDelimiter::Parenthesis,
+                    delim: Delimiter::Parenthesis,
                     tokens,
                 }),
             })),
@@ -68,7 +69,7 @@ pub fn expand_assert<'cx>(
     // If `generic_assert` is enabled, generates rich captured outputs
     //
     // FIXME(c410-f3r) See https://github.com/rust-lang/rust/issues/96949
-    else if let Some(features) = cx.ecfg.features && features.generic_assert {
+    else if cx.ecfg.features.generic_assert {
         context::Context::new(cx, call_site_span).build(cond_expr, panic_path())
     }
     // If `generic_assert` is not enabled, only outputs a literal "assertion failed: ..."

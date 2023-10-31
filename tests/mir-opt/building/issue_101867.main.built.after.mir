@@ -5,71 +5,65 @@
 | 1: user_ty: Canonical { value: Ty(std::option::Option<u8>), max_universe: U0, variables: [] }, span: $DIR/issue_101867.rs:3:12: 3:22, inferred_ty: std::option::Option<u8>
 |
 fn main() -> () {
-    let mut _0: ();                      // return place in scope 0 at $DIR/issue_101867.rs:+0:11: +0:11
-    let _1: std::option::Option<u8> as UserTypeProjection { base: UserType(0), projs: [] }; // in scope 0 at $DIR/issue_101867.rs:+1:9: +1:10
-    let mut _2: !;                       // in scope 0 at $DIR/issue_101867.rs:+2:26: +4:6
-    let _3: ();                          // in scope 0 at $SRC_DIR/std/src/panic.rs:LL:COL
-    let mut _4: !;                       // in scope 0 at $SRC_DIR/std/src/panic.rs:LL:COL
-    let mut _6: isize;                   // in scope 0 at $DIR/issue_101867.rs:+2:9: +2:16
+    let mut _0: ();
+    let _1: std::option::Option<u8> as UserTypeProjection { base: UserType(0), projs: [] };
+    let mut _2: !;
+    let _3: ();
+    let mut _4: !;
+    let mut _6: isize;
     scope 1 {
-        debug x => _1;                   // in scope 1 at $DIR/issue_101867.rs:+1:9: +1:10
-        let _5: u8;                      // in scope 1 at $DIR/issue_101867.rs:+2:14: +2:15
+        debug x => _1;
+        let _5: u8;
         scope 2 {
-            debug y => _5;               // in scope 2 at $DIR/issue_101867.rs:+2:14: +2:15
+            debug y => _5;
         }
     }
 
     bb0: {
-        StorageLive(_1);                 // scope 0 at $DIR/issue_101867.rs:+1:9: +1:10
-        _1 = Option::<u8>::Some(const 1_u8); // scope 0 at $DIR/issue_101867.rs:+1:25: +1:32
-        FakeRead(ForLet(None), _1);      // scope 0 at $DIR/issue_101867.rs:+1:9: +1:10
-        AscribeUserType(_1, o, UserTypeProjection { base: UserType(1), projs: [] }); // scope 0 at $DIR/issue_101867.rs:+1:12: +1:22
-        StorageLive(_5);                 // scope 1 at $DIR/issue_101867.rs:+2:14: +2:15
-        FakeRead(ForMatchedPlace(None), _1); // scope 1 at $DIR/issue_101867.rs:+2:19: +2:20
-        _6 = discriminant(_1);           // scope 1 at $DIR/issue_101867.rs:+2:19: +2:20
-        switchInt(move _6) -> [1: bb4, otherwise: bb3]; // scope 1 at $DIR/issue_101867.rs:+2:9: +2:16
+        StorageLive(_1);
+        _1 = Option::<u8>::Some(const 1_u8);
+        FakeRead(ForLet(None), _1);
+        AscribeUserType(_1, o, UserTypeProjection { base: UserType(1), projs: [] });
+        StorageLive(_5);
+        FakeRead(ForMatchedPlace(None), _1);
+        _6 = discriminant(_1);
+        switchInt(move _6) -> [1: bb4, otherwise: bb3];
     }
 
     bb1: {
-        StorageLive(_3);                 // scope 1 at $SRC_DIR/std/src/panic.rs:LL:COL
-        StorageLive(_4);                 // scope 1 at $SRC_DIR/std/src/panic.rs:LL:COL
-        _4 = begin_panic::<&str>(const "explicit panic") -> bb7; // scope 1 at $SRC_DIR/std/src/panic.rs:LL:COL
-                                         // mir::Constant
-                                         // + span: $SRC_DIR/std/src/panic.rs:LL:COL
-                                         // + literal: Const { ty: fn(&str) -> ! {begin_panic::<&str>}, val: Value(<ZST>) }
-                                         // mir::Constant
-                                         // + span: $SRC_DIR/std/src/panic.rs:LL:COL
-                                         // + literal: Const { ty: &str, val: Value(Slice(..)) }
+        StorageLive(_3);
+        StorageLive(_4);
+        _4 = begin_panic::<&str>(const "explicit panic") -> bb7;
     }
 
     bb2: {
-        StorageDead(_4);                 // scope 1 at $SRC_DIR/std/src/panic.rs:LL:COL
-        StorageDead(_3);                 // scope 1 at $DIR/issue_101867.rs:+3:16: +3:17
-        unreachable;                     // scope 1 at $DIR/issue_101867.rs:+2:26: +4:6
+        StorageDead(_4);
+        StorageDead(_3);
+        unreachable;
     }
 
     bb3: {
-        goto -> bb6;                     // scope 1 at $DIR/issue_101867.rs:+2:19: +2:20
+        goto -> bb6;
     }
 
     bb4: {
-        falseEdge -> [real: bb5, imaginary: bb3]; // scope 1 at $DIR/issue_101867.rs:+2:9: +2:16
+        falseEdge -> [real: bb5, imaginary: bb3];
     }
 
     bb5: {
-        _5 = ((_1 as Some).0: u8);       // scope 1 at $DIR/issue_101867.rs:+2:14: +2:15
-        _0 = const ();                   // scope 0 at $DIR/issue_101867.rs:+0:11: +5:2
-        StorageDead(_5);                 // scope 1 at $DIR/issue_101867.rs:+5:1: +5:2
-        StorageDead(_1);                 // scope 0 at $DIR/issue_101867.rs:+5:1: +5:2
-        return;                          // scope 0 at $DIR/issue_101867.rs:+5:2: +5:2
+        _5 = ((_1 as Some).0: u8);
+        _0 = const ();
+        StorageDead(_5);
+        StorageDead(_1);
+        return;
     }
 
     bb6: {
-        StorageDead(_5);                 // scope 1 at $DIR/issue_101867.rs:+5:1: +5:2
-        goto -> bb1;                     // scope 0 at $DIR/issue_101867.rs:+0:11: +5:2
+        StorageDead(_5);
+        goto -> bb1;
     }
 
     bb7 (cleanup): {
-        resume;                          // scope 0 at $DIR/issue_101867.rs:+0:1: +5:2
+        resume;
     }
 }

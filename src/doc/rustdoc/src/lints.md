@@ -412,3 +412,37 @@ help: if you meant to use a literal backtick, escape it
 
 warning: 1 warning emitted
 ```
+
+## `redundant_explicit_links`
+
+This lint is **warned by default**. It detects explicit links that are same
+as computed automatic links.
+This usually means the explicit links is removeable. For example:
+
+```rust
+#![warn(rustdoc::redundant_explicit_links)] // note: unnecessary - warns by default.
+
+/// add takes 2 [`usize`](usize) and performs addition
+/// on them, then returns result.
+pub fn add(left: usize, right: usize) -> usize {
+    left + right
+}
+```
+
+Which will give:
+
+```text
+error: redundant explicit rustdoc link
+  --> src/lib.rs:3:27
+   |
+3  | /// add takes 2 [`usize`](usize) and performs addition
+   |                           ^^^^^
+   |
+   = note: Explicit link does not affect the original link
+note: the lint level is defined here
+  --> src/lib.rs:1:9
+   |
+1  | #![deny(rustdoc::redundant_explicit_links)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: Remove explicit link instead
+```

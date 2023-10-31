@@ -23,6 +23,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         p: &Path,
         param_mode: ParamMode,
         itctx: &ImplTraitContext,
+        // constness of the impl/bound if this is a trait path
+        constness: Option<ast::Const>,
     ) -> hir::QPath<'hir> {
         let qself_position = qself.as_ref().map(|q| q.position);
         let qself = qself.as_ref().map(|q| self.lower_ty(&q.ty, itctx));
@@ -73,6 +75,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         param_mode,
                         parenthesized_generic_args,
                         itctx,
+                        // if this is the last segment, add constness to the trait path
+                        if i == proj_start - 1 { constness } else { None },
                     )
                 },
             )),
@@ -119,6 +123,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 param_mode,
                 ParenthesizedGenericArgs::Err,
                 itctx,
+                None,
             ));
             let qpath = hir::QPath::TypeRelative(ty, hir_segment);
 
@@ -159,6 +164,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     param_mode,
                     ParenthesizedGenericArgs::Err,
                     &ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                    None,
                 )
             })),
             span: self.lower_span(p.span),
@@ -172,8 +178,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         param_mode: ParamMode,
         parenthesized_generic_args: ParenthesizedGenericArgs,
         itctx: &ImplTraitContext,
+        constness: Option<ast::Const>,
     ) -> hir::PathSegment<'hir> {
-        debug!("path_span: {:?}, lower_path_segment(segment: {:?})", path_span, segment,);
+        debug!("path_span: {:?}, lower_path_segment(segment: {:?})", path_span, segment);
         let (mut generic_args, infer_args) = if let Some(generic_args) = segment.args.as_deref() {
             match generic_args {
                 GenericArgs::AngleBracketed(data) => {
@@ -230,6 +237,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 param_mode == ParamMode::Optional,
             )
         };
+
+        if let Some(constness) = constness {
+            generic_args.push_constness(self, constness);
+        }
 
         let has_lifetimes =
             generic_args.args.iter().any(|arg| matches!(arg, GenericArg::Lifetime(_)));

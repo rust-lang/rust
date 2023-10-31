@@ -127,5 +127,5 @@ fn write_graph_label<'tcx, W: std::fmt::Write>(
 }
 
 fn escape<T: Debug>(t: &T) -> String {
-    dot::escape_html(&format!("{:?}", t))
+    dot::escape_html(&format!("{t:?}"))
 }

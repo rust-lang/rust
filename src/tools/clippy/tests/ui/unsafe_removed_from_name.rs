@@ -8,9 +8,13 @@ use std::cell::UnsafeCell as TotallySafeCellAgain;
 
 // Shouldn't error
 use std::cell::RefCell as ProbablyNotUnsafe;
+
 use std::cell::RefCell as RefCellThatCantBeUnsafe;
+
 use std::cell::UnsafeCell as SuperDangerousUnsafeCell;
+
 use std::cell::UnsafeCell as Dangerunsafe;
+
 use std::cell::UnsafeCell as Bombsawayunsafe;
 
 mod mod_with_some_unsafe_things {
@@ -20,8 +24,12 @@ mod mod_with_some_unsafe_things {
 
 use mod_with_some_unsafe_things::Unsafe as LieAboutModSafety;
 
+// merged imports
+use mod_with_some_unsafe_things::{Unsafe as A, Unsafe as B};
+
 // Shouldn't error
 use mod_with_some_unsafe_things::Safe as IPromiseItsSafeThisTime;
+
 use mod_with_some_unsafe_things::Unsafe as SuperUnsafeModThing;
 
 #[allow(clippy::unsafe_removed_from_name)]

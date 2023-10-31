@@ -1,0 +1,15 @@
+error: item constrains opaque type that is not in its signature
+  --> $DIR/issue-70121.rs:17:24
+   |
+LL | pub fn kazusa<'a>() -> <&'a () as Tr>::Item {
+   |                        ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this item must mention the opaque type in its signature in order to be able to register hidden types
+note: this item must mention the opaque type in its signature in order to be able to register hidden types
+  --> $DIR/issue-70121.rs:17:8
+   |
+LL | pub fn kazusa<'a>() -> <&'a () as Tr>::Item {
+   |        ^^^^^^
+
+error: aborting due to previous error
+

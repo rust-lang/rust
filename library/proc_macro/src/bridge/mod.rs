@@ -8,7 +8,7 @@
 
 #![deny(unsafe_code)]
 
-use crate::{Delimiter, Level, LineColumn, Spacing};
+use crate::{Delimiter, Level, Spacing};
 use std::fmt;
 use std::hash::Hash;
 use std::marker;
@@ -95,10 +95,10 @@ macro_rules! with_api {
                 fn parent($self: $S::Span) -> Option<$S::Span>;
                 fn source($self: $S::Span) -> $S::Span;
                 fn byte_range($self: $S::Span) -> Range<usize>;
-                fn start($self: $S::Span) -> LineColumn;
-                fn end($self: $S::Span) -> LineColumn;
-                fn before($self: $S::Span) -> $S::Span;
-                fn after($self: $S::Span) -> $S::Span;
+                fn start($self: $S::Span) -> $S::Span;
+                fn end($self: $S::Span) -> $S::Span;
+                fn line($self: $S::Span) -> usize;
+                fn column($self: $S::Span) -> usize;
                 fn join($self: $S::Span, other: $S::Span) -> Option<$S::Span>;
                 fn subspan($self: $S::Span, start: Bound<usize>, end: Bound<usize>) -> Option<$S::Span>;
                 fn resolved_at($self: $S::Span, at: $S::Span) -> $S::Span;
@@ -299,7 +299,6 @@ mark_noop! {
     Delimiter,
     LitKind,
     Level,
-    LineColumn,
     Spacing,
 }
 
@@ -319,7 +318,6 @@ rpc_encode_decode!(
         Help,
     }
 );
-rpc_encode_decode!(struct LineColumn { line, column });
 rpc_encode_decode!(
     enum Spacing {
         Alone,

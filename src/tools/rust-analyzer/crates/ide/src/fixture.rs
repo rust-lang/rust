@@ -1,5 +1,4 @@
 //! Utilities for creating `Analysis` instances for tests.
-use hir::db::DefDatabase;
 use ide_db::base_db::fixture::ChangeFixture;
 use test_utils::{extract_annotations, RangeOrOffset};
 
@@ -9,7 +8,7 @@ use crate::{Analysis, AnalysisHost, FileId, FilePosition, FileRange};
 pub(crate) fn file(ra_fixture: &str) -> (Analysis, FileId) {
     let mut host = AnalysisHost::default();
     let change_fixture = ChangeFixture::parse(ra_fixture);
-    host.db.set_enable_proc_attr_macros(true);
+    host.db.enable_proc_attr_macros();
     host.db.apply_change(change_fixture.change);
     (host.analysis(), change_fixture.files[0])
 }
@@ -18,7 +17,7 @@ pub(crate) fn file(ra_fixture: &str) -> (Analysis, FileId) {
 pub(crate) fn position(ra_fixture: &str) -> (Analysis, FilePosition) {
     let mut host = AnalysisHost::default();
     let change_fixture = ChangeFixture::parse(ra_fixture);
-    host.db.set_enable_proc_attr_macros(true);
+    host.db.enable_proc_attr_macros();
     host.db.apply_change(change_fixture.change);
     let (file_id, range_or_offset) = change_fixture.file_position.expect("expected a marker ($0)");
     let offset = range_or_offset.expect_offset();
@@ -29,7 +28,7 @@ pub(crate) fn position(ra_fixture: &str) -> (Analysis, FilePosition) {
 pub(crate) fn range(ra_fixture: &str) -> (Analysis, FileRange) {
     let mut host = AnalysisHost::default();
     let change_fixture = ChangeFixture::parse(ra_fixture);
-    host.db.set_enable_proc_attr_macros(true);
+    host.db.enable_proc_attr_macros();
     host.db.apply_change(change_fixture.change);
     let (file_id, range_or_offset) = change_fixture.file_position.expect("expected a marker ($0)");
     let range = range_or_offset.expect_range();
@@ -40,7 +39,7 @@ pub(crate) fn range(ra_fixture: &str) -> (Analysis, FileRange) {
 pub(crate) fn range_or_position(ra_fixture: &str) -> (Analysis, FileId, RangeOrOffset) {
     let mut host = AnalysisHost::default();
     let change_fixture = ChangeFixture::parse(ra_fixture);
-    host.db.set_enable_proc_attr_macros(true);
+    host.db.enable_proc_attr_macros();
     host.db.apply_change(change_fixture.change);
     let (file_id, range_or_offset) = change_fixture.file_position.expect("expected a marker ($0)");
     (host.analysis(), file_id, range_or_offset)
@@ -50,7 +49,7 @@ pub(crate) fn range_or_position(ra_fixture: &str) -> (Analysis, FileId, RangeOrO
 pub(crate) fn annotations(ra_fixture: &str) -> (Analysis, FilePosition, Vec<(FileRange, String)>) {
     let mut host = AnalysisHost::default();
     let change_fixture = ChangeFixture::parse(ra_fixture);
-    host.db.set_enable_proc_attr_macros(true);
+    host.db.enable_proc_attr_macros();
     host.db.apply_change(change_fixture.change);
     let (file_id, range_or_offset) = change_fixture.file_position.expect("expected a marker ($0)");
     let offset = range_or_offset.expect_offset();
@@ -67,11 +66,11 @@ pub(crate) fn annotations(ra_fixture: &str) -> (Analysis, FilePosition, Vec<(Fil
     (host.analysis(), FilePosition { file_id, offset }, annotations)
 }
 
-/// Creates analysis from a multi-file fixture with annonations without $0
+/// Creates analysis from a multi-file fixture with annotations without $0
 pub(crate) fn annotations_without_marker(ra_fixture: &str) -> (Analysis, Vec<(FileRange, String)>) {
     let mut host = AnalysisHost::default();
     let change_fixture = ChangeFixture::parse(ra_fixture);
-    host.db.set_enable_proc_attr_macros(true);
+    host.db.enable_proc_attr_macros();
     host.db.apply_change(change_fixture.change);
 
     let annotations = change_fixture

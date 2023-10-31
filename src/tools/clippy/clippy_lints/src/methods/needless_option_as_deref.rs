@@ -17,7 +17,9 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, name
 
     if is_type_diagnostic_item(cx, outer_ty, sym::Option) && outer_ty == typeck.expr_ty(recv) {
         if name == "as_deref_mut" && recv.is_syntactic_place_expr() {
-            let Res::Local(binding_id) = path_res(cx, recv) else { return };
+            let Res::Local(binding_id) = path_res(cx, recv) else {
+                return;
+            };
 
             if local_used_after_expr(cx, binding_id, recv) {
                 return;
@@ -29,7 +31,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, name
             NEEDLESS_OPTION_AS_DEREF,
             expr.span,
             "derefed type is same as origin",
-            "try this",
+            "try",
             snippet_opt(cx, recv.span).unwrap(),
             Applicability::MachineApplicable,
         );

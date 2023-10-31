@@ -73,7 +73,7 @@ pub(super) fn write_shared(
         }
 
         let bytes = try_err!(fs::read(&entry.path), &entry.path);
-        let filename = format!("{}{}.{}", theme, cx.shared.resource_suffix, extension);
+        let filename = format!("{theme}{suffix}.{extension}", suffix = cx.shared.resource_suffix);
         cx.shared.fs.write(cx.dst.join(filename), bytes)?;
     }
 
@@ -112,7 +112,7 @@ pub(super) fn write_shared(
         let mut krates = Vec::new();
 
         if path.exists() {
-            let prefix = format!("\"{}\"", krate);
+            let prefix = format!("\"{krate}\"");
             for line in BufReader::new(File::open(path)?).lines() {
                 let line = line?;
                 if !line.starts_with('"') {
@@ -157,7 +157,7 @@ pub(super) fn write_shared(
         let mut krates = Vec::new();
 
         if path.exists() {
-            let prefix = format!("\"{}\"", krate);
+            let prefix = format!("\"{krate}\"");
             for line in BufReader::new(File::open(path)?).lines() {
                 let line = line?;
                 if !line.starts_with('"') {
@@ -213,10 +213,10 @@ pub(super) fn write_shared(
             let dirs = if subs.is_empty() && files.is_empty() {
                 String::new()
             } else {
-                format!(",[{}]", subs)
+                format!(",[{subs}]")
             };
             let files = files.join(",");
-            let files = if files.is_empty() { String::new() } else { format!(",[{}]", files) };
+            let files = if files.is_empty() { String::new() } else { format!(",[{files}]") };
             format!(
                 "[\"{name}\"{dirs}{files}]",
                 name = self.elem.to_str().expect("invalid osstring conversion"),
@@ -270,7 +270,7 @@ pub(super) fn write_shared(
             hierarchy.add_path(source);
         }
         let hierarchy = Rc::try_unwrap(hierarchy).unwrap();
-        let dst = cx.dst.join(&format!("source-files{}.js", cx.shared.resource_suffix));
+        let dst = cx.dst.join(&format!("src-files{}.js", cx.shared.resource_suffix));
         let make_sources = || {
             let (mut all_sources, _krates) =
                 try_err!(collect_json(&dst, krate.name(cx.tcx()).as_str()), &dst);
@@ -286,12 +286,12 @@ pub(super) fn write_shared(
                     .replace("\\\"", "\\\\\"")
             ));
             all_sources.sort();
-            let mut v = String::from("var sourcesIndex = JSON.parse('{\\\n");
+            let mut v = String::from("var srcIndex = JSON.parse('{\\\n");
             v.push_str(&all_sources.join(",\\\n"));
-            v.push_str("\\\n}');\ncreateSourceSidebar();\n");
+            v.push_str("\\\n}');\ncreateSrcSidebar();\n");
             Ok(v.into_bytes())
         };
-        write_invocation_specific("source-files.js", &make_sources)?;
+        write_invocation_specific("src-files.js", &make_sources)?;
     }
 
     // Update the search index and crate list.
@@ -319,8 +319,8 @@ if (typeof exports !== 'undefined') {exports.searchIndex = searchIndex};
     })?;
 
     write_invocation_specific("crates.js", &|| {
-        let krates = krates.iter().map(|k| format!("\"{}\"", k)).join(",");
-        Ok(format!("window.ALL_CRATES = [{}];", krates).into_bytes())
+        let krates = krates.iter().map(|k| format!("\"{k}\"")).join(",");
+        Ok(format!("window.ALL_CRATES = [{krates}];").into_bytes())
     })?;
 
     if options.enable_index_page {
@@ -349,9 +349,8 @@ if (typeof exports !== 'undefined') {exports.searchIndex = searchIndex};
                     .iter()
                     .map(|s| {
                         format!(
-                            "<li><a href=\"{}index.html\">{}</a></li>",
-                            ensure_trailing_slash(s),
-                            s
+                            "<li><a href=\"{trailing_slash}index.html\">{s}</a></li>",
+                            trailing_slash = ensure_trailing_slash(s),
                         )
                     })
                     .collect::<String>()
@@ -444,7 +443,7 @@ if (typeof exports !== 'undefined') {exports.searchIndex = searchIndex};
             mydst.push(part.to_string());
         }
         cx.shared.ensure_dir(&mydst)?;
-        mydst.push(&format!("{}.{}.js", remote_item_type, remote_path[remote_path.len() - 1]));
+        mydst.push(&format!("{remote_item_type}.{}.js", remote_path[remote_path.len() - 1]));
 
         let (mut all_implementors, _) =
             try_err!(collect(&mydst, krate.name(cx.tcx()).as_str()), &mydst);

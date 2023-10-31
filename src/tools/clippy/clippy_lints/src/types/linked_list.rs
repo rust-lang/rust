@@ -1,5 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_help;
-use rustc_hir::{self as hir, def_id::DefId};
+use rustc_hir::def_id::DefId;
+use rustc_hir::{self as hir};
 use rustc_lint::LateContext;
 use rustc_span::symbol::sym;
 

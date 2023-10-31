@@ -1,5 +1,6 @@
 //! Attributes injected into the crate root from command line using `-Z crate-attr`.
 
+use crate::errors;
 use rustc_ast::attr::mk_attr;
 use rustc_ast::token;
 use rustc_ast::{self as ast, AttrItem, AttrStyle};
@@ -24,7 +25,9 @@ pub fn inject(krate: &mut ast::Crate, parse_sess: &ParseSess, attrs: &[String]) 
         };
         let end_span = parser.token.span;
         if parser.token != token::Eof {
-            parse_sess.span_diagnostic.span_err(start_span.to(end_span), "invalid crate attribute");
+            parse_sess
+                .span_diagnostic
+                .emit_err(errors::InvalidCrateAttr { span: start_span.to(end_span) });
             continue;
         }
 

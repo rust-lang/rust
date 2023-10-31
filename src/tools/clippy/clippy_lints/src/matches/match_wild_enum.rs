@@ -143,7 +143,7 @@ pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
             MATCH_WILDCARD_FOR_SINGLE_VARIANTS,
             wildcard_span,
             "wildcard matches only a single variant and will also match any future added variants",
-            "try this",
+            "try",
             format_suggestion(x),
             Applicability::MaybeIncorrect,
         ),
@@ -161,7 +161,7 @@ pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
                 WILDCARD_ENUM_MATCH_ARM,
                 wildcard_span,
                 message,
-                "try this",
+                "try",
                 suggestions.join(" | "),
                 Applicability::MaybeIncorrect,
             );

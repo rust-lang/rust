@@ -2,7 +2,7 @@ error[E0603]: module `super_sekrit` is private
   --> $DIR/unreachable-variant.rs:6:21
    |
 LL |     let _x = other::super_sekrit::sooper_sekrit::baz;
-   |                     ^^^^^^^^^^^^ private module
+   |                     ^^^^^^^^^^^^ private module  --- unit variant `baz` is not publicly re-exported
    |
 note: the module `super_sekrit` is defined here
   --> $DIR/auxiliary/unreachable_variant.rs:1:1

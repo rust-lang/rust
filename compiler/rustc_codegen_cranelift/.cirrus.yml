@@ -1,16 +1,16 @@
 task:
   name: freebsd
   freebsd_instance:
-    image: freebsd-13-1-release-amd64
+    image: freebsd-13-2-release-amd64
   setup_rust_script:
-    - pkg install -y curl git bash
+    - pkg install -y git bash
     - curl https://sh.rustup.rs -sSf --output rustup.sh
     - sh rustup.sh --default-toolchain none -y --profile=minimal
   target_cache:
     folder: target
   prepare_script:
     - . $HOME/.cargo/env
-    - ./y.rs prepare
+    - ./y.sh prepare
   test_script:
     - . $HOME/.cargo/env
-    - ./y.rs test
+    - ./y.sh test

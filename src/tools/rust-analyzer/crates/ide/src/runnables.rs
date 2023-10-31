@@ -2,7 +2,7 @@ use std::fmt;
 
 use ast::HasName;
 use cfg::CfgExpr;
-use hir::{AsAssocItem, HasAttrs, HasSource, Semantics};
+use hir::{db::HirDatabase, AsAssocItem, HasAttrs, HasSource, Semantics};
 use ide_assists::utils::test_related_attribute;
 use ide_db::{
     base_db::{FilePosition, FileRange},
@@ -14,7 +14,7 @@ use ide_db::{
 use itertools::Itertools;
 use stdx::{always, format_to};
 use syntax::{
-    ast::{self, AstNode, HasAttrs as _},
+    ast::{self, AstNode},
     SmolStr, SyntaxNode,
 };
 
@@ -232,7 +232,7 @@ fn find_related_tests(
     for def in defs {
         let defs = def
             .usages(sema)
-            .set_scope(search_scope.clone())
+            .set_scope(search_scope.as_ref())
             .all()
             .references
             .into_values()
@@ -307,10 +307,9 @@ pub(crate) fn runnable_fn(
     sema: &Semantics<'_, RootDatabase>,
     def: hir::Function,
 ) -> Option<Runnable> {
-    let func = def.source(sema.db)?;
     let name = def.name(sema.db).to_smol_str();
 
-    let root = def.module(sema.db).krate().root_module(sema.db);
+    let root = def.module(sema.db).krate().root_module();
 
     let kind = if name == "main" && def.module(sema.db) == root {
         RunnableKind::Bin
@@ -323,10 +322,10 @@ pub(crate) fn runnable_fn(
             canonical_path.map(TestId::Path).unwrap_or(TestId::Name(name))
         };
 
-        if test_related_attribute(&func.value).is_some() {
-            let attr = TestAttr::from_fn(&func.value);
+        if def.is_test(sema.db) {
+            let attr = TestAttr::from_fn(sema.db, def);
             RunnableKind::Test { test_id: test_id(), attr }
-        } else if func.value.has_atom_attr("bench") {
+        } else if def.is_bench(sema.db) {
             RunnableKind::Bench { test_id: test_id() }
         } else {
             return None;
@@ -335,7 +334,7 @@ pub(crate) fn runnable_fn(
 
     let nav = NavigationTarget::from_named(
         sema.db,
-        func.as_ref().map(|it| it as &dyn ast::HasName),
+        def.source(sema.db)?.as_ref().map(|it| it as &dyn ast::HasName),
         SymbolKind::Function,
     );
     let cfg = def.attrs(sema.db).cfg();
@@ -349,8 +348,13 @@ pub(crate) fn runnable_mod(
     if !has_test_function_or_multiple_test_submodules(sema, &def) {
         return None;
     }
-    let path =
-        def.path_to_root(sema.db).into_iter().rev().filter_map(|it| it.name(sema.db)).join("::");
+    let path = def
+        .path_to_root(sema.db)
+        .into_iter()
+        .rev()
+        .filter_map(|it| it.name(sema.db))
+        .map(|it| it.display(sema.db).to_string())
+        .join("::");
 
     let attrs = def.attrs(sema.db);
     let cfg = attrs.cfg();
@@ -376,7 +380,7 @@ pub(crate) fn runnable_impl(
     } else {
         String::new()
     };
-    let mut test_id = format!("{adt_name}{params}");
+    let mut test_id = format!("{}{params}", adt_name.display(sema.db));
     test_id.retain(|c| c != ' ');
     let test_id = TestId::Path(test_id);
 
@@ -391,8 +395,13 @@ fn runnable_mod_outline_definition(
     if !has_test_function_or_multiple_test_submodules(sema, &def) {
         return None;
     }
-    let path =
-        def.path_to_root(sema.db).into_iter().rev().filter_map(|it| it.name(sema.db)).join("::");
+    let path = def
+        .path_to_root(sema.db)
+        .into_iter()
+        .rev()
+        .filter_map(|it| it.name(sema.db))
+        .map(|it| it.display(sema.db).to_string())
+        .join("::");
 
     let attrs = def.attrs(sema.db);
     let cfg = attrs.cfg();
@@ -430,7 +439,7 @@ fn module_def_doctest(db: &RootDatabase, def: Definition) -> Option<Runnable> {
         let mut path = String::new();
         def.canonical_module_path(db)?
             .flat_map(|it| it.name(db))
-            .for_each(|name| format_to!(path, "{}::", name));
+            .for_each(|name| format_to!(path, "{}::", name.display(db)));
         // This probably belongs to canonical_path?
         if let Some(assoc_item) = def.as_assoc_item(db) {
             if let hir::AssocItemContainer::Impl(imp) = assoc_item.container(db) {
@@ -438,17 +447,17 @@ fn module_def_doctest(db: &RootDatabase, def: Definition) -> Option<Runnable> {
                 if let Some(adt) = ty.as_adt() {
                     let name = adt.name(db);
                     let mut ty_args = ty.generic_parameters(db).peekable();
-                    format_to!(path, "{}", name);
+                    format_to!(path, "{}", name.display(db));
                     if ty_args.peek().is_some() {
                         format_to!(path, "<{}>", ty_args.format_with(",", |ty, cb| cb(&ty)));
                     }
-                    format_to!(path, "::{}", def_name);
+                    format_to!(path, "::{}", def_name.display(db));
                     path.retain(|c| c != ' ');
                     return Some(path);
                 }
             }
         }
-        format_to!(path, "{}", def_name);
+        format_to!(path, "{}", def_name.display(db));
         Some(path)
     })();
 
@@ -477,12 +486,8 @@ pub struct TestAttr {
 }
 
 impl TestAttr {
-    fn from_fn(fn_def: &ast::Fn) -> TestAttr {
-        let ignore = fn_def
-            .attrs()
-            .filter_map(|attr| attr.simple_name())
-            .any(|attribute_text| attribute_text == "ignore");
-        TestAttr { ignore }
+    fn from_fn(db: &dyn HirDatabase, fn_def: hir::Function) -> TestAttr {
+        TestAttr { ignore: fn_def.is_ignore(db) }
     }
 }
 
@@ -584,6 +589,9 @@ fn main() {}
 #[test]
 fn test_foo() {}
 
+#[::core::prelude::v1::test]
+fn test_full_path() {}
+
 #[test]
 #[ignore]
 fn test_foo() {}
@@ -595,7 +603,7 @@ mod not_a_root {
     fn main() {}
 }
 "#,
-            &[TestMod, Bin, Test, Test, Bench],
+            &[TestMod, Bin, Test, Test, Test, Bench],
             expect![[r#"
                 [
                     Runnable {
@@ -604,7 +612,7 @@ mod not_a_root {
                             file_id: FileId(
                                 0,
                             ),
-                            full_range: 0..137,
+                            full_range: 0..190,
                             name: "",
                             kind: Module,
                         },
@@ -654,8 +662,29 @@ mod not_a_root {
                             file_id: FileId(
                                 0,
                             ),
-                            full_range: 41..75,
-                            focus_range: 62..70,
+                            full_range: 41..92,
+                            focus_range: 73..87,
+                            name: "test_full_path",
+                            kind: Function,
+                        },
+                        kind: Test {
+                            test_id: Path(
+                                "test_full_path",
+                            ),
+                            attr: TestAttr {
+                                ignore: false,
+                            },
+                        },
+                        cfg: None,
+                    },
+                    Runnable {
+                        use_name_in_title: false,
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                0,
+                            ),
+                            full_range: 94..128,
+                            focus_range: 115..123,
                             name: "test_foo",
                             kind: Function,
                         },
@@ -675,8 +704,8 @@ mod not_a_root {
                             file_id: FileId(
                                 0,
                             ),
-                            full_range: 77..99,
-                            focus_range: 89..94,
+                            full_range: 130..152,
+                            focus_range: 142..147,
                             name: "bench",
                             kind: Function,
                         },
@@ -2232,14 +2261,14 @@ mod tests {
                             file_id: FileId(
                                 0,
                             ),
-                            full_range: 52..115,
-                            focus_range: 67..75,
-                            name: "foo_test",
+                            full_range: 121..185,
+                            focus_range: 136..145,
+                            name: "foo2_test",
                             kind: Function,
                         },
                         kind: Test {
                             test_id: Path(
-                                "tests::foo_test",
+                                "tests::foo2_test",
                             ),
                             attr: TestAttr {
                                 ignore: false,
@@ -2253,14 +2282,14 @@ mod tests {
                             file_id: FileId(
                                 0,
                             ),
-                            full_range: 121..185,
-                            focus_range: 136..145,
-                            name: "foo2_test",
+                            full_range: 52..115,
+                            focus_range: 67..75,
+                            name: "foo_test",
                             kind: Function,
                         },
                         kind: Test {
                             test_id: Path(
-                                "tests::foo2_test",
+                                "tests::foo_test",
                             ),
                             attr: TestAttr {
                                 ignore: false,
@@ -2579,6 +2608,7 @@ mod r#mod {
                             ),
                             full_range: 47..84,
                             name: "r#for",
+                            container_name: "r#mod",
                         },
                         kind: DocTest {
                             test_id: Path(
@@ -2595,6 +2625,7 @@ mod r#mod {
                             ),
                             full_range: 90..146,
                             name: "r#struct",
+                            container_name: "r#mod",
                         },
                         kind: DocTest {
                             test_id: Path(

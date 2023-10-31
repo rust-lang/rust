@@ -1,0 +1,57 @@
+error[E0658]: riscv-interrupt ABIs are experimental and subject to change
+  --> $DIR/feature-gate-abi-riscv-interrupt.rs:11:8
+   |
+LL | extern "riscv-interrupt-m" fn f() {}
+   |        ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #111889 <https://github.com/rust-lang/rust/issues/111889> for more information
+   = help: add `#![feature(abi_riscv_interrupt)]` to the crate attributes to enable
+
+error[E0658]: riscv-interrupt ABIs are experimental and subject to change
+  --> $DIR/feature-gate-abi-riscv-interrupt.rs:13:8
+   |
+LL | extern "riscv-interrupt-s" fn f_s() {}
+   |        ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #111889 <https://github.com/rust-lang/rust/issues/111889> for more information
+   = help: add `#![feature(abi_riscv_interrupt)]` to the crate attributes to enable
+
+error[E0658]: riscv-interrupt ABIs are experimental and subject to change
+  --> $DIR/feature-gate-abi-riscv-interrupt.rs:17:12
+   |
+LL |     extern "riscv-interrupt-m" fn m();
+   |            ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #111889 <https://github.com/rust-lang/rust/issues/111889> for more information
+   = help: add `#![feature(abi_riscv_interrupt)]` to the crate attributes to enable
+
+error[E0658]: riscv-interrupt ABIs are experimental and subject to change
+  --> $DIR/feature-gate-abi-riscv-interrupt.rs:23:12
+   |
+LL |     extern "riscv-interrupt-m" fn m() {}
+   |            ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #111889 <https://github.com/rust-lang/rust/issues/111889> for more information
+   = help: add `#![feature(abi_riscv_interrupt)]` to the crate attributes to enable
+
+error[E0658]: riscv-interrupt ABIs are experimental and subject to change
+  --> $DIR/feature-gate-abi-riscv-interrupt.rs:28:12
+   |
+LL |     extern "riscv-interrupt-m" fn im() {}
+   |            ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #111889 <https://github.com/rust-lang/rust/issues/111889> for more information
+   = help: add `#![feature(abi_riscv_interrupt)]` to the crate attributes to enable
+
+error[E0658]: riscv-interrupt ABIs are experimental and subject to change
+  --> $DIR/feature-gate-abi-riscv-interrupt.rs:32:18
+   |
+LL | type TA = extern "riscv-interrupt-m" fn();
+   |                  ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #111889 <https://github.com/rust-lang/rust/issues/111889> for more information
+   = help: add `#![feature(abi_riscv_interrupt)]` to the crate attributes to enable
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

@@ -1,0 +1,15 @@
+error: Undefined Behavior: out-of-bounds pointer use: 0x17[noalloc] is a dangling pointer (it has no provenance)
+  --> $DIR/memcpy_zero.rs:LL:CC
+   |
+LL |         libc::memcpy(to.cast(), from.cast(), 0);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ out-of-bounds pointer use: 0x17[noalloc] is a dangling pointer (it has no provenance)
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: BACKTRACE:
+   = note: inside `main` at $DIR/memcpy_zero.rs:LL:CC
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

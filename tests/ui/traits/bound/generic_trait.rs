@@ -24,7 +24,7 @@ impl connection_factory<my_connection> for my_connection_factory {
 
 pub fn main() {
     let factory = ();
-    let connection = factory.create();
+    let connection: () = factory.create();
     let result = connection.read();
     assert_eq!(result, 43);
 }

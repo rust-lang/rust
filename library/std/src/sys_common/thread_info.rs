@@ -1,5 +1,4 @@
 #![allow(dead_code)] // stack_guard isn't used right now on all platforms
-#![allow(unused_unsafe)] // thread_local with `const {}` triggers this liny
 
 use crate::cell::RefCell;
 use crate::sys::thread::guard::Guard;

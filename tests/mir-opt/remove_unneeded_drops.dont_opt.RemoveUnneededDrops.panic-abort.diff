@@ -1,0 +1,27 @@
+- // MIR for `dont_opt` before RemoveUnneededDrops
++ // MIR for `dont_opt` after RemoveUnneededDrops
+  
+  fn dont_opt(_1: Vec<bool>) -> () {
+      debug x => _1;
+      let mut _0: ();
+      let _2: ();
+      let mut _3: std::vec::Vec<bool>;
+      scope 1 (inlined std::mem::drop::<Vec<bool>>) {
+          debug _x => _3;
+      }
+  
+      bb0: {
+          nop;
+          StorageLive(_3);
+          _3 = move _1;
+          drop(_3) -> [return: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+          StorageDead(_3);
+          nop;
+          nop;
+          return;
+      }
+  }
+  

@@ -43,43 +43,25 @@ struct CoverageVisitor {
 }
 
 impl CoverageVisitor {
-    /// Updates `num_counters` to the maximum encountered zero-based counter_id plus 1. Note the
-    /// final computed number of counters should be the number of all `CoverageKind::Counter`
-    /// statements in the MIR *plus one* for the implicit `ZERO` counter.
+    /// Updates `num_counters` to the maximum encountered counter ID plus 1.
     #[inline(always)]
-    fn update_num_counters(&mut self, counter_id: u32) {
+    fn update_num_counters(&mut self, counter_id: CounterId) {
+        let counter_id = counter_id.as_u32();
         self.info.num_counters = std::cmp::max(self.info.num_counters, counter_id + 1);
     }
 
-    /// Computes an expression index for each expression ID, and updates `num_expressions` to the
-    /// maximum encountered index plus 1.
+    /// Updates `num_expressions` to the maximum encountered expression ID plus 1.
     #[inline(always)]
-    fn update_num_expressions(&mut self, expression_id: u32) {
-        let expression_index = u32::MAX - expression_id;
-        self.info.num_expressions = std::cmp::max(self.info.num_expressions, expression_index + 1);
+    fn update_num_expressions(&mut self, expression_id: ExpressionId) {
+        let expression_id = expression_id.as_u32();
+        self.info.num_expressions = std::cmp::max(self.info.num_expressions, expression_id + 1);
     }
 
-    fn update_from_expression_operand(&mut self, operand_id: u32) {
-        if operand_id >= self.info.num_counters {
-            let operand_as_expression_index = u32::MAX - operand_id;
-            if operand_as_expression_index >= self.info.num_expressions {
-                // The operand ID is outside the known range of counter IDs and also outside the
-                // known range of expression IDs. In either case, the result of a missing operand
-                // (if and when used in an expression) will be zero, so from a computation
-                // perspective, it doesn't matter whether it is interpreted as a counter or an
-                // expression.
-                //
-                // However, the `num_counters` and `num_expressions` query results are used to
-                // allocate arrays when generating the coverage map (during codegen), so choose
-                // the type that grows either `num_counters` or `num_expressions` the least.
-                if operand_id - self.info.num_counters
-                    < operand_as_expression_index - self.info.num_expressions
-                {
-                    self.update_num_counters(operand_id)
-                } else {
-                    self.update_num_expressions(operand_id)
-                }
-            }
+    fn update_from_expression_operand(&mut self, operand: Operand) {
+        match operand {
+            Operand::Counter(id) => self.update_num_counters(id),
+            Operand::Expression(id) => self.update_num_expressions(id),
+            Operand::Zero => {}
         }
     }
 
@@ -100,19 +82,15 @@ impl CoverageVisitor {
         if self.add_missing_operands {
             match coverage.kind {
                 CoverageKind::Expression { lhs, rhs, .. } => {
-                    self.update_from_expression_operand(u32::from(lhs));
-                    self.update_from_expression_operand(u32::from(rhs));
+                    self.update_from_expression_operand(lhs);
+                    self.update_from_expression_operand(rhs);
                 }
                 _ => {}
             }
         } else {
             match coverage.kind {
-                CoverageKind::Counter { id, .. } => {
-                    self.update_num_counters(u32::from(id));
-                }
-                CoverageKind::Expression { id, .. } => {
-                    self.update_num_expressions(u32::from(id));
-                }
+                CoverageKind::Counter { id, .. } => self.update_num_counters(id),
+                CoverageKind::Expression { id, .. } => self.update_num_expressions(id),
                 _ => {}
             }
         }
@@ -123,8 +101,7 @@ fn coverageinfo<'tcx>(tcx: TyCtxt<'tcx>, instance_def: ty::InstanceDef<'tcx>) ->
     let mir_body = tcx.instance_mir(instance_def);
 
     let mut coverage_visitor = CoverageVisitor {
-        // num_counters always has at least the `ZERO` counter.
-        info: CoverageInfo { num_counters: 1, num_expressions: 0 },
+        info: CoverageInfo { num_counters: 0, num_expressions: 0 },
         add_missing_operands: false,
     };
 

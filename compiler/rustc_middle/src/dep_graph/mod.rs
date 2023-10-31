@@ -8,7 +8,7 @@ mod dep_node;
 
 pub use rustc_query_system::dep_graph::{
     debug::DepNodeFilter, hash_result, DepContext, DepNodeColor, DepNodeIndex,
-    SerializedDepNodeIndex, WorkProduct, WorkProductId,
+    SerializedDepNodeIndex, WorkProduct, WorkProductId, WorkProductMap,
 };
 
 pub use dep_node::{label_strs, DepKind, DepNode, DepNodeExt};
@@ -35,7 +35,7 @@ impl rustc_query_system::dep_graph::DepKind for DepKind {
                 if let Some(def_id) = node.extract_def_id(tcx) {
                     write!(f, "{}", tcx.def_path_debug_str(def_id))?;
                 } else if let Some(ref s) = tcx.dep_graph.dep_node_debug_str(*node) {
-                    write!(f, "{}", s)?;
+                    write!(f, "{s}")?;
                 } else {
                     write!(f, "{}", node.hash)?;
                 }

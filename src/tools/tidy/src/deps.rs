@@ -38,13 +38,15 @@ const LICENSES: &[&str] = &[
 const EXCEPTIONS: &[(&str, &str)] = &[
     // tidy-alphabetical-start
     ("ar_archive_writer", "Apache-2.0 WITH LLVM-exception"), // rustc
-    ("codespan-reporting", "Apache-2.0"),                    // cxx via iana-time-zone-haiku via time, only on haiku
     ("colored", "MPL-2.0"),                                  // rustfmt
     ("dissimilar", "Apache-2.0"),                            // rustdoc, rustc_lexer (few tests) via expect-test, (dev deps)
+    ("encoding_rs", "(Apache-2.0 OR MIT) AND BSD-3-Clause"), // opt-dist
     ("fluent-langneg", "Apache-2.0"),                        // rustc (fluent translations)
     ("fortanix-sgx-abi", "MPL-2.0"),                         // libstd but only for `sgx` target. FIXME: this dependency violates the documentation comment above.
     ("instant", "BSD-3-Clause"),                             // rustc_driver/tracing-subscriber/parking_lot
     ("mdbook", "MPL-2.0"),                                   // mdbook
+    ("openssl", "Apache-2.0"),                               // opt-dist
+    ("rustc_apfloat", "Apache-2.0 WITH LLVM-exception"),     // rustc (license is the same as LLVM uses)
     ("ryu", "Apache-2.0 OR BSL-1.0"),                        // cargo/... (because of serde)
     ("self_cell", "Apache-2.0"),                             // rustc (fluent translations)
     ("snap", "BSD-3-Clause"),                                // rustc
@@ -55,7 +57,10 @@ const EXCEPTIONS_CARGO: &[(&str, &str)] = &[
     // tidy-alphabetical-start
     ("bitmaps", "MPL-2.0+"),
     ("bytesize", "Apache-2.0"),
-    ("dunce", "CC0-1.0 OR MIT-0"),
+    ("ciborium", "Apache-2.0"),
+    ("ciborium-io", "Apache-2.0"),
+    ("ciborium-ll", "Apache-2.0"),
+    ("dunce", "CC0-1.0 OR MIT-0 OR Apache-2.0"),
     ("fiat-crypto", "MIT OR Apache-2.0 OR BSD-1-Clause"),
     ("im-rc", "MPL-2.0+"),
     ("imara-diff", "Apache-2.0"),
@@ -77,6 +82,7 @@ const EXCEPTIONS_CRANELIFT: &[(&str, &str)] = &[
     ("cranelift-codegen", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-codegen-meta", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-codegen-shared", "Apache-2.0 WITH LLVM-exception"),
+    ("cranelift-control", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-entity", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-frontend", "Apache-2.0 WITH LLVM-exception"),
     ("cranelift-isle", "Apache-2.0 WITH LLVM-exception"),
@@ -99,18 +105,19 @@ const EXCEPTIONS_BOOTSTRAP: &[(&str, &str)] = &[
 /// these and all their dependencies *must not* be in the exception list.
 const RUNTIME_CRATES: &[&str] = &["std", "core", "alloc", "test", "panic_abort", "panic_unwind"];
 
+const PERMITTED_DEPS_LOCATION: &str = concat!(file!(), ":", line!());
+
 /// Crates rustc is allowed to depend on. Avoid adding to the list if possible.
 ///
 /// This list is here to provide a speed-bump to adding a new dependency to
 /// rustc. Please check with the compiler team before adding an entry.
 const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     // tidy-alphabetical-start
-    "addr2line",
     "adler",
     "ahash",
     "aho-corasick",
+    "allocator-api2", // FIXME: only appears in Cargo.lock due to https://github.com/rust-lang/cargo/issues/10801
     "annotate-snippets",
-    "ansi_term",
     "ar_archive_writer",
     "arrayvec",
     "atty",
@@ -120,10 +127,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "byteorder", // via ruzstd in object in thorin-dwp
     "cc",
     "cfg-if",
-    "chalk-derive",
-    "chalk-engine",
-    "chalk-ir",
-    "chalk-solve",
     "compiler_builtins",
     "convert_case", // dependency of derive_more
     "cpufeatures",
@@ -134,8 +137,12 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "crossbeam-utils",
     "crypto-common",
     "cstr",
+    "darling",
+    "darling_core",
+    "darling_macro",
     "datafrog",
     "derive_more",
+    "derive_setters",
     "digest",
     "displaydoc",
     "dissimilar",
@@ -143,15 +150,18 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "either",
     "elsa",
     "ena",
+    "equivalent",
+    "errno",
+    "errno-dragonfly",
     "expect-test",
     "fallible-iterator", // dependency of `thorin`
     "fastrand",
     "field-offset",
-    "fixedbitset",
     "flate2",
     "fluent-bundle",
     "fluent-langneg",
     "fluent-syntax",
+    "fnv",
     "fortanix-sgx-abi",
     "generic-array",
     "getopts",
@@ -165,16 +175,19 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "icu_provider",
     "icu_provider_adapters",
     "icu_provider_macros",
+    "ident_case",
     "indexmap",
     "instant",
     "intl-memoizer",
     "intl_pluralrules",
+    "io-lifetimes",
     "itertools",
     "itoa",
     "jobserver",
     "lazy_static",
     "libc",
     "libloading",
+    "linux-raw-sys",
     "litemap",
     "lock_api",
     "log",
@@ -185,15 +198,16 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "memmap2",
     "memoffset",
     "miniz_oxide",
+    "nu-ansi-term",
     "num_cpus",
     "object",
     "odht",
     "once_cell",
+    "overload",
     "parking_lot",
     "parking_lot_core",
     "pathdiff",
     "perf-event-open-sys",
-    "petgraph",
     "pin-project-lite",
     "polonius-engine",
     "ppv-lite86",
@@ -212,12 +226,13 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "regex",
     "regex-automata",
     "regex-syntax",
-    "remove_dir_all",
     "rustc-demangle",
     "rustc-hash",
     "rustc-rayon",
     "rustc-rayon-core",
+    "rustc_apfloat",
     "rustc_version",
+    "rustix",
     "ruzstd", // via object in thorin-dwp
     "ryu",
     "scoped-tls",
@@ -235,6 +250,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "stable_deref_trait",
     "stacker",
     "static_assertions",
+    "strsim",
     "syn",
     "synstructure",
     "tempfile",
@@ -242,9 +258,14 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "termize",
     "thin-vec",
     "thiserror",
+    "thiserror-core",
+    "thiserror-core-impl",
     "thiserror-impl",
     "thorin-dwp",
     "thread_local",
+    "time",
+    "time-core",
+    "time-macros",
     "tinystr",
     "tinyvec",
     "tinyvec_macros",
@@ -257,18 +278,14 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "twox-hash",
     "type-map",
     "typenum",
-    "unic-char-property",
-    "unic-char-range",
-    "unic-common",
-    "unic-emoji-char",
     "unic-langid",
     "unic-langid-impl",
     "unic-langid-macros",
     "unic-langid-macros-impl",
-    "unic-ucd-version",
     "unicase",
     "unicode-ident",
     "unicode-normalization",
+    "unicode-properties",
     "unicode-script",
     "unicode-security",
     "unicode-width",
@@ -281,6 +298,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "winapi-util",
     "winapi-x86_64-pc-windows-gnu",
     "windows",
+    "windows-sys",
     "windows-targets",
     "windows_aarch64_gnullvm",
     "windows_aarch64_msvc",
@@ -304,15 +322,16 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     // tidy-alphabetical-start
     "ahash",
     "anyhow",
+    "arbitrary",
     "autocfg",
     "bitflags",
     "bumpalo",
-    "byteorder",
     "cfg-if",
     "cranelift-bforest",
     "cranelift-codegen",
     "cranelift-codegen-meta",
     "cranelift-codegen-shared",
+    "cranelift-control",
     "cranelift-entity",
     "cranelift-frontend",
     "cranelift-isle",
@@ -321,8 +340,8 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "cranelift-native",
     "cranelift-object",
     "crc32fast",
+    "equivalent",
     "fallible-iterator",
-    "fxhash",
     "gimli",
     "hashbrown",
     "indexmap",
@@ -332,9 +351,9 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "mach",
     "memchr",
     "object",
-    "once_cell",
     "regalloc2",
     "region",
+    "rustc-hash",
     "slice-group-by",
     "smallvec",
     "stable_deref_trait",
@@ -345,6 +364,14 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "winapi-i686-pc-windows-gnu",
     "winapi-x86_64-pc-windows-gnu",
     "windows-sys",
+    "windows-targets",
+    "windows_aarch64_gnullvm",
+    "windows_aarch64_msvc",
+    "windows_i686_gnu",
+    "windows_i686_msvc",
+    "windows_x86_64_gnu",
+    "windows_x86_64_gnullvm",
+    "windows_x86_64_msvc",
     // tidy-alphabetical-end
 ];
 
@@ -487,6 +514,7 @@ fn check_permitted_dependencies(
     restricted_dependency_crates: &[&'static str],
     bad: &mut bool,
 ) {
+    let mut has_permitted_dep_error = false;
     let mut deps = HashSet::new();
     for to_check in restricted_dependency_crates {
         let to_check = pkg_from_name(metadata, to_check);
@@ -521,6 +549,7 @@ fn check_permitted_dependencies(
                 "could not find allowed package `{permitted}`\n\
                 Remove from PERMITTED_DEPENDENCIES list if it is no longer used.",
             );
+            has_permitted_dep_error = true;
         }
     }
 
@@ -533,8 +562,13 @@ fn check_permitted_dependencies(
         if dep.source.is_some() {
             if !permitted_dependencies.contains(dep.name.as_str()) {
                 tidy_error!(bad, "Dependency for {descr} not explicitly permitted: {}", dep.id);
+                has_permitted_dep_error = true;
             }
         }
+    }
+
+    if has_permitted_dep_error {
+        eprintln!("Go to `{PERMITTED_DEPS_LOCATION}` for the list.");
     }
 }
 

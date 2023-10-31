@@ -123,13 +123,12 @@ pub enum TypeVariableOriginKind {
     NormalizeProjectionType,
     TypeInference,
     OpaqueTypeInference(DefId),
-    TypeParameterDefinition(Symbol, Option<DefId>),
+    TypeParameterDefinition(Symbol, DefId),
 
-    /// One of the upvars or closure kind parameters in a `ClosureSubsts`
+    /// One of the upvars or closure kind parameters in a `ClosureArgs`
     /// (before it has been determined).
     // FIXME(eddyb) distinguish upvar inference variables from the rest.
     ClosureSynthetic,
-    SubstitutionPlaceholder,
     AutoDeref,
     AdjustmentType,
 

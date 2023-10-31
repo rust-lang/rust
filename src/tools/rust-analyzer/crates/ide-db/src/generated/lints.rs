@@ -931,22 +931,6 @@ $ cat $(find -name '*.s')
 "##,
     },
     Lint {
-        label: "abi_thiscall",
-        description: r##"# `abi_thiscall`
-
-The tracking issue for this feature is: [#42202]
-
-[#42202]: https://github.com/rust-lang/rust/issues/42202
-
-------------------------
-
-The MSVC ABI on x86 Windows uses the `thiscall` calling convention for C++
-instance methods by default; it is identical to the usual (C) calling
-convention on x86 Windows except that the first parameter of the method,
-the `this` pointer, is passed in the ECX register.
-"##,
-    },
-    Lint {
         label: "allocator_api",
         description: r##"# `allocator_api`
 
@@ -4230,7 +4214,7 @@ pub union GenericUnion<T: Copy> { // Unions with non-`Copy` fields are unstable.
 pub const THIS_IS_OKAY: GenericUnion<()> = GenericUnion { field: () };
 ```
 
-Like transarent `struct`s, a transparent `union` of type `U` has the same
+Like transparent `struct`s, a transparent `union` of type `U` has the same
 layout, size, and ABI as its single non-ZST field. If it is generic over a type
 `T`, and all its fields are ZSTs except for exactly one field of type `T`, then
 it has the same layout and ABI as `T` (even if `T` is a ZST when monomorphized).
@@ -6548,7 +6532,7 @@ subtracting elements in an Add impl."##,
     },
     Lint {
         label: "clippy::suspicious_assignment_formatting",
-        description: r##"Checks for use of the non-existent `=*`, `=!` and `=-`
+        description: r##"Checks for use of the nonexistent `=*`, `=!` and `=-`
 operators."##,
     },
     Lint {

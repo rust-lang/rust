@@ -1,6 +1,6 @@
 use super::callee::DeferredCallResolution;
 
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::HirIdMap;
@@ -30,7 +30,7 @@ pub struct Inherited<'tcx> {
 
     pub(super) typeck_results: RefCell<ty::TypeckResults<'tcx>>,
 
-    pub(super) locals: RefCell<HirIdMap<super::LocalTy<'tcx>>>,
+    pub(super) locals: RefCell<HirIdMap<Ty<'tcx>>>,
 
     pub(super) fulfillment_cx: RefCell<Box<dyn TraitEngine<'tcx>>>,
 
@@ -61,9 +61,9 @@ pub struct Inherited<'tcx> {
     /// Whenever we introduce an adjustment from `!` into a type variable,
     /// we record that type variable here. This is later used to inform
     /// fallback. See the `fallback` module for details.
-    pub(super) diverging_type_vars: RefCell<FxHashSet<Ty<'tcx>>>,
+    pub(super) diverging_type_vars: RefCell<UnordSet<Ty<'tcx>>>,
 
-    pub(super) infer_var_info: RefCell<FxHashMap<ty::TyVid, ty::InferVarInfo>>,
+    pub(super) infer_var_info: RefCell<UnordMap<ty::TyVid, ty::InferVarInfo>>,
 }
 
 impl<'tcx> Deref for Inherited<'tcx> {
@@ -80,14 +80,14 @@ impl<'tcx> Inherited<'tcx> {
         let infcx = tcx
             .infer_ctxt()
             .ignoring_regions()
-            .with_opaque_type_inference(DefiningAnchor::Bind(hir_owner.def_id))
+            .with_opaque_type_inference(DefiningAnchor::Bind(def_id))
             .build();
         let typeck_results = RefCell::new(ty::TypeckResults::new(hir_owner));
 
         Inherited {
             typeck_results,
+            fulfillment_cx: RefCell::new(<dyn TraitEngine<'_>>::new(&infcx)),
             infcx,
-            fulfillment_cx: RefCell::new(<dyn TraitEngine<'_>>::new(tcx)),
             locals: RefCell::new(Default::default()),
             deferred_sized_obligations: RefCell::new(Vec::new()),
             deferred_call_resolutions: RefCell::new(Default::default()),
@@ -129,7 +129,7 @@ impl<'tcx> Inherited<'tcx> {
         let infer_var_info = &mut self.infer_var_info.borrow_mut();
 
         // (*) binder skipped
-        if let ty::PredicateKind::Clause(ty::Clause::Trait(tpred)) = obligation.predicate.kind().skip_binder()
+        if let ty::PredicateKind::Clause(ty::ClauseKind::Trait(tpred)) = obligation.predicate.kind().skip_binder()
             && let Some(ty) = self.shallow_resolve(tpred.self_ty()).ty_vid().map(|t| self.root_var(t))
             && self.tcx.lang_items().sized_trait().is_some_and(|st| st != tpred.trait_ref.def_id)
         {
@@ -143,7 +143,7 @@ impl<'tcx> Inherited<'tcx> {
                     .kind()
                     .rebind(
                         // (*) binder moved here
-                        ty::PredicateKind::Clause(ty::Clause::Trait(tpred.with_self_ty(self.tcx, new_self_ty)))
+                        ty::PredicateKind::Clause(ty::ClauseKind::Trait(tpred.with_self_ty(self.tcx, new_self_ty)))
                     ),
             );
             // Don't report overflow errors. Otherwise equivalent to may_hold.
@@ -152,7 +152,7 @@ impl<'tcx> Inherited<'tcx> {
             }
         }
 
-        if let ty::PredicateKind::Clause(ty::Clause::Projection(predicate)) =
+        if let ty::PredicateKind::Clause(ty::ClauseKind::Projection(predicate)) =
             obligation.predicate.kind().skip_binder()
         {
             // If the projection predicate (Foo::Bar == X) has X as a non-TyVid,

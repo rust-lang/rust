@@ -3,7 +3,7 @@
 // error-pattern: aborting due to `-Z treat-err-as-bug=1`
 // error-pattern: [trigger_delay_span_bug] triggering a delay span bug
 // normalize-stderr-test "note: .*\n\n" -> ""
-// normalize-stderr-test "thread 'rustc' panicked.*\n" -> ""
+// normalize-stderr-test "thread 'rustc' panicked.*:\n.*\n" -> ""
 // rustc-env:RUST_BACKTRACE=0
 
 #![feature(rustc_attrs)]

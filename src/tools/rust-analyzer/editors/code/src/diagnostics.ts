@@ -1,7 +1,14 @@
 import * as anser from "anser";
 import * as vscode from "vscode";
-import { ProviderResult, Range, TextEditorDecorationType, ThemeColor, window } from "vscode";
-import { Ctx } from "./ctx";
+import {
+    type ProviderResult,
+    Range,
+    type TextEditorDecorationType,
+    ThemeColor,
+    window,
+} from "vscode";
+import type { Ctx } from "./ctx";
+import { unwrapUndefinable } from "./undefinable";
 
 export const URI_SCHEME = "rust-analyzer-diagnostics-view";
 
@@ -82,7 +89,7 @@ export class AnsiDecorationProvider implements vscode.Disposable {
     }
 
     private _getDecorations(
-        uri: vscode.Uri
+        uri: vscode.Uri,
     ): ProviderResult<[TextEditorDecorationType, Range[]][]> {
         const stringContents = getRenderedDiagnostic(this.ctx, uri);
         const lines = stringContents.split("\n");
@@ -110,7 +117,7 @@ export class AnsiDecorationProvider implements vscode.Disposable {
                     lineNumber,
                     offset - totalEscapeLength,
                     lineNumber,
-                    offset + content.length - totalEscapeLength
+                    offset + content.length - totalEscapeLength,
                 );
 
                 offset += content.length;
@@ -176,7 +183,7 @@ export class AnsiDecorationProvider implements vscode.Disposable {
 
     private static _convertColor(
         color?: string,
-        truecolor?: string
+        truecolor?: string,
     ): ThemeColor | string | undefined {
         if (!color) {
             return undefined;
@@ -195,7 +202,8 @@ export class AnsiDecorationProvider implements vscode.Disposable {
             // anser won't return both the RGB and the color name at the same time,
             // so just fake a single foreground control char with the palette number:
             const spans = anser.ansiToJson(`\x1b[38;5;${paletteColor}m`);
-            const rgb = spans[1].fg;
+            const span = unwrapUndefinable(spans[1]);
+            const rgb = span.fg;
 
             if (rgb) {
                 return `rgb(${rgb})`;

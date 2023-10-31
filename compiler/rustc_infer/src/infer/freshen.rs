@@ -11,7 +11,7 @@
 //!
 //! To handle closures, freshened types also have to contain the signature and kind of any
 //! closure in the local inference context, as otherwise the cache key might be invalidated.
-//! The way this is done is somewhat hacky - the closure signature is appended to the substs,
+//! The way this is done is somewhat hacky - the closure signature is appended to the args,
 //! as well as the closure kind "encoded" as a type. Also, special handling is needed when
 //! the closure signature contains a reference to the original closure.
 //!
@@ -95,7 +95,7 @@ impl<'a, 'tcx> TypeFreshener<'a, 'tcx> {
             Entry::Vacant(entry) => {
                 let index = self.const_freshen_count;
                 self.const_freshen_count += 1;
-                let ct = self.infcx.tcx.mk_const(freshener(index), ty);
+                let ct = ty::Const::new_infer(self.infcx.tcx, freshener(index), ty);
                 entry.insert(ct);
                 ct
             }
@@ -188,7 +188,7 @@ impl<'a, 'tcx> TypeFreshener<'a, 'tcx> {
         match v {
             ty::TyVar(v) => {
                 let opt_ty = self.infcx.inner.borrow_mut().type_variables().probe(v).known();
-                Some(self.freshen_ty(opt_ty, ty::TyVar(v), |n| self.infcx.tcx.mk_fresh_ty(n)))
+                Some(self.freshen_ty(opt_ty, ty::TyVar(v), |n| Ty::new_fresh(self.infcx.tcx, n)))
             }
 
             ty::IntVar(v) => Some(
@@ -200,7 +200,7 @@ impl<'a, 'tcx> TypeFreshener<'a, 'tcx> {
                         .probe_value(v)
                         .map(|v| v.to_type(self.infcx.tcx)),
                     ty::IntVar(v),
-                    |n| self.infcx.tcx.mk_fresh_int_ty(n),
+                    |n| Ty::new_fresh_int(self.infcx.tcx, n),
                 ),
             ),
 
@@ -213,7 +213,7 @@ impl<'a, 'tcx> TypeFreshener<'a, 'tcx> {
                         .probe_value(v)
                         .map(|v| v.to_type(self.infcx.tcx)),
                     ty::FloatVar(v),
-                    |n| self.infcx.tcx.mk_fresh_float_ty(n),
+                    |n| Ty::new_fresh_float(self.infcx.tcx, n),
                 ),
             ),
 

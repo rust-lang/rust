@@ -1,5 +1,3 @@
-// check-pass
-
 #![feature(type_alias_impl_trait)]
 
 type Foo = impl PartialEq<(Foo, i32)>;
@@ -13,6 +11,7 @@ impl PartialEq<(Bar, i32)> for Bar {
 }
 
 fn foo() -> Foo {
+    //~^ ERROR can't compare `Bar` with `(Foo, i32)`
     Bar
 }
 

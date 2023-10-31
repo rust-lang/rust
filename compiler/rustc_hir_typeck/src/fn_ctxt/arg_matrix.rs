@@ -1,7 +1,7 @@
-use std::cmp;
-
+use core::cmp::Ordering;
 use rustc_index::IndexVec;
 use rustc_middle::ty::error::TypeError;
+use std::cmp;
 
 rustc_index::newtype_index! {
     #[debug_format = "ExpectedIdx({})"]
@@ -34,14 +34,14 @@ enum Issue {
     Permutation(Vec<Option<usize>>),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub(crate) enum Compatibility<'tcx> {
     Compatible,
     Incompatible(Option<TypeError<'tcx>>),
 }
 
 /// Similar to `Issue`, but contains some extra information
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub(crate) enum Error<'tcx> {
     /// The provided argument is the invalid type for the expected input
     Invalid(ProvidedIdx, ExpectedIdx, Compatibility<'tcx>),
@@ -53,6 +53,34 @@ pub(crate) enum Error<'tcx> {
     Swap(ProvidedIdx, ProvidedIdx, ExpectedIdx, ExpectedIdx),
     /// Several arguments should be reordered
     Permutation(Vec<(ExpectedIdx, ProvidedIdx)>),
+}
+
+impl Ord for Error<'_> {
+    fn cmp(&self, other: &Self) -> Ordering {
+        let key = |error: &Error<'_>| -> usize {
+            match error {
+                Error::Invalid(..) => 0,
+                Error::Extra(_) => 1,
+                Error::Missing(_) => 2,
+                Error::Swap(..) => 3,
+                Error::Permutation(..) => 4,
+            }
+        };
+        match (self, other) {
+            (Error::Invalid(a, _, _), Error::Invalid(b, _, _)) => a.cmp(b),
+            (Error::Extra(a), Error::Extra(b)) => a.cmp(b),
+            (Error::Missing(a), Error::Missing(b)) => a.cmp(b),
+            (Error::Swap(a, b, ..), Error::Swap(c, d, ..)) => a.cmp(c).then(b.cmp(d)),
+            (Error::Permutation(a), Error::Permutation(b)) => a.cmp(b),
+            _ => key(self).cmp(&key(other)),
+        }
+    }
+}
+
+impl PartialOrd for Error<'_> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
 }
 
 pub(crate) struct ArgMatrix<'tcx> {
@@ -177,7 +205,7 @@ impl<'tcx> ArgMatrix<'tcx> {
                 // If an argument is unsatisfied, and the input in its position is useless
                 // then the most likely explanation is that we just got the types wrong
                 (true, true, true, true) => return Some(Issue::Invalid(i)),
-                // Otherwise, if an input is useless, then indicate that this is an extra argument
+                // Otherwise, if an input is useless then indicate that this is an extra input
                 (true, _, true, _) => return Some(Issue::Extra(i)),
                 // Otherwise, if an argument is unsatisfiable, indicate that it's missing
                 (_, true, _, true) => return Some(Issue::Missing(i)),
@@ -376,6 +404,9 @@ impl<'tcx> ArgMatrix<'tcx> {
             };
         }
 
+        // sort errors with same type by the order they appear in the source
+        // so that suggestion will be handled properly, see #112507
+        errors.sort();
         return (errors, matched_inputs);
     }
 }

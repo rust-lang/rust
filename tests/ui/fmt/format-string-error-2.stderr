@@ -10,7 +10,7 @@ error: invalid format string: expected `'}'`, found `'a'`
 LL |     format!("{
    |              - because of this opening brace
 LL |     a");
-   |     ^ expected `}` in format string
+   |     ^ expected `'}'` in format string
    |
    = note: if you intended to print `{`, you can escape it using `{{`
 
@@ -21,7 +21,7 @@ LL |     format!("{ \
    |              - because of this opening brace
 LL |                \
 LL |     b");
-   |     ^ expected `}` in format string
+   |     ^ expected `'}'` in format string
    |
    = note: if you intended to print `{`, you can escape it using `{{`
 
@@ -29,7 +29,7 @@ error: invalid format string: expected `'}'`, found `'\'`
   --> $DIR/format-string-error-2.rs:11:18
    |
 LL |     format!(r#"{ \
-   |                - ^ expected `}` in format string
+   |                - ^ expected `'}'` in format string
    |                |
    |                because of this opening brace
    |
@@ -39,7 +39,7 @@ error: invalid format string: expected `'}'`, found `'\'`
   --> $DIR/format-string-error-2.rs:15:18
    |
 LL |     format!(r#"{ \n
-   |                - ^ expected `}` in format string
+   |                - ^ expected `'}'` in format string
    |                |
    |                because of this opening brace
    |
@@ -52,7 +52,7 @@ LL |     format!("{ \n
    |              - because of this opening brace
 LL | \n
 LL |     e");
-   |     ^ expected `}` in format string
+   |     ^ expected `'}'` in format string
    |
    = note: if you intended to print `{`, you can escape it using `{{`
 
@@ -62,7 +62,7 @@ error: invalid format string: expected `'}'`, found `'a'`
 LL |     {
    |     - because of this opening brace
 LL |     a");
-   |     ^ expected `}` in format string
+   |     ^ expected `'}'` in format string
    |
    = note: if you intended to print `{`, you can escape it using `{{`
 
@@ -72,7 +72,7 @@ error: invalid format string: expected `'}'`, found `'a'`
 LL |     {
    |     - because of this opening brace
 LL |     a
-   |     ^ expected `}` in format string
+   |     ^ expected `'}'` in format string
    |
    = note: if you intended to print `{`, you can escape it using `{{`
 
@@ -83,7 +83,7 @@ LL |     { \
    |     - because of this opening brace
 LL |         \
 LL |     b");
-   |     ^ expected `}` in format string
+   |     ^ expected `'}'` in format string
    |
    = note: if you intended to print `{`, you can escape it using `{{`
 
@@ -94,7 +94,7 @@ LL |     { \
    |     - because of this opening brace
 LL |         \
 LL |     b \
-   |     ^ expected `}` in format string
+   |     ^ expected `'}'` in format string
    |
    = note: if you intended to print `{`, you can escape it using `{{`
 
@@ -102,7 +102,7 @@ error: invalid format string: expected `'}'`, found `'\'`
   --> $DIR/format-string-error-2.rs:45:8
    |
 LL | raw  { \
-   |      - ^ expected `}` in format string
+   |      - ^ expected `'}'` in format string
    |      |
    |      because of this opening brace
    |
@@ -112,7 +112,7 @@ error: invalid format string: expected `'}'`, found `'\'`
   --> $DIR/format-string-error-2.rs:50:8
    |
 LL | raw  { \n
-   |      - ^ expected `}` in format string
+   |      - ^ expected `'}'` in format string
    |      |
    |      because of this opening brace
    |
@@ -125,7 +125,7 @@ LL |   { \n
    |   - because of this opening brace
 LL | \n
 LL |     e");
-   |     ^ expected `}` in format string
+   |     ^ expected `'}'` in format string
    |
    = note: if you intended to print `{`, you can escape it using `{{`
 
@@ -135,7 +135,7 @@ error: invalid format string: expected `'}'`, found `'a'`
 LL |     {
    |     - because of this opening brace
 LL |     asdf}
-   |     ^ expected `}` in format string
+   |     ^ expected `'}'` in format string
    |
    = note: if you intended to print `{`, you can escape it using `{{`
 

@@ -2,9 +2,10 @@
 
 use crate::{errors, parse_in};
 
+use rustc_ast::token::Delimiter;
 use rustc_ast::tokenstream::DelimSpan;
 use rustc_ast::MetaItemKind;
-use rustc_ast::{self as ast, AttrArgs, AttrArgsEq, Attribute, DelimArgs, MacDelimiter, MetaItem};
+use rustc_ast::{self as ast, AttrArgs, AttrArgsEq, Attribute, DelimArgs, MetaItem};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{Applicability, FatalError, PResult};
 use rustc_feature::{AttributeTemplate, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
@@ -84,8 +85,8 @@ pub fn parse_meta<'a>(sess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Meta
     })
 }
 
-pub fn check_meta_bad_delim(sess: &ParseSess, span: DelimSpan, delim: MacDelimiter) {
-    if let ast::MacDelimiter::Parenthesis = delim {
+pub fn check_meta_bad_delim(sess: &ParseSess, span: DelimSpan, delim: Delimiter) {
+    if let Delimiter::Parenthesis = delim {
         return;
     }
     sess.emit_err(errors::MetaBadDelim {
@@ -94,8 +95,8 @@ pub fn check_meta_bad_delim(sess: &ParseSess, span: DelimSpan, delim: MacDelimit
     });
 }
 
-pub fn check_cfg_attr_bad_delim(sess: &ParseSess, span: DelimSpan, delim: MacDelimiter) {
-    if let ast::MacDelimiter::Parenthesis = delim {
+pub fn check_cfg_attr_bad_delim(sess: &ParseSess, span: DelimSpan, delim: Delimiter) {
+    if let Delimiter::Parenthesis = delim {
         return;
     }
     sess.emit_err(errors::CfgAttrBadDelim {
@@ -157,15 +158,15 @@ fn emit_malformed_attribute(
         matches!(name, sym::doc | sym::ignore | sym::inline | sym::link | sym::test | sym::bench)
     };
 
-    let error_msg = format!("malformed `{}` attribute input", name);
+    let error_msg = format!("malformed `{name}` attribute input");
     let mut msg = "attribute must be of the form ".to_owned();
     let mut suggestions = vec![];
     let mut first = true;
     let inner = if style == ast::AttrStyle::Inner { "!" } else { "" };
     if template.word {
         first = false;
-        let code = format!("#{}[{}]", inner, name);
-        msg.push_str(&format!("`{}`", &code));
+        let code = format!("#{inner}[{name}]");
+        msg.push_str(&format!("`{code}`"));
         suggestions.push(code);
     }
     if let Some(descr) = template.list {
@@ -173,16 +174,16 @@ fn emit_malformed_attribute(
             msg.push_str(" or ");
         }
         first = false;
-        let code = format!("#{}[{}({})]", inner, name, descr);
-        msg.push_str(&format!("`{}`", &code));
+        let code = format!("#{inner}[{name}({descr})]");
+        msg.push_str(&format!("`{code}`"));
         suggestions.push(code);
     }
     if let Some(descr) = template.name_value_str {
         if !first {
             msg.push_str(" or ");
         }
-        let code = format!("#{}[{} = \"{}\"]", inner, name, descr);
-        msg.push_str(&format!("`{}`", &code));
+        let code = format!("#{inner}[{name} = \"{descr}\"]");
+        msg.push_str(&format!("`{code}`"));
         suggestions.push(code);
     }
     if should_warn(name) {

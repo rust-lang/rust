@@ -1,6 +1,6 @@
 // Small test to ensure the "src-line-numbers" element is only present once on
 // the page.
 go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
-click: ".srclink"
+click: "a.src"
 wait-for: ".src-line-numbers"
 assert-count: (".src-line-numbers", 1)

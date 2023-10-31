@@ -1,7 +1,5 @@
-use std::collections::HashMap;
 use std::env;
 use std::ffi::OsString;
-use std::fmt::Write as _;
 use std::fs::File;
 use std::io::{self, BufWriter, Read, Write};
 use std::ops::Not;
@@ -82,7 +80,7 @@ pub enum MiriCommand {
 pub fn escape_for_toml(s: &str) -> String {
     // We want to surround this string in quotes `"`. So we first escape all quotes,
     // and also all backslashes (that are used to escape quotes).
-    let s = s.replace('\\', r#"\\"#).replace('"', r#"\""#);
+    let s = s.replace('\\', r"\\").replace('"', r#"\""#);
     format!("\"{s}\"")
 }
 
@@ -114,6 +112,11 @@ pub fn cargo() -> Command {
     Command::new(env::var_os("CARGO").unwrap_or_else(|| OsString::from("cargo")))
 }
 
+pub fn flagsplit(flags: &str) -> Vec<String> {
+    // This code is taken from `RUSTFLAGS` handling in cargo.
+    flags.split(' ').map(str::trim).filter(|s| !s.is_empty()).map(str::to_string).collect()
+}
+
 /// Execute the `Command`, where possible by replacing the current process with a new process
 /// described by the `Command`. Then exit this process with the exit code of the new process.
 pub fn exec(mut cmd: Command) -> ! {
@@ -130,7 +133,7 @@ pub fn exec(mut cmd: Command) -> ! {
     {
         use std::os::unix::process::CommandExt;
         let error = cmd.exec();
-        Err(error).expect("failed to run command")
+        panic!("failed to run command: {error}")
     }
 }
 
@@ -242,46 +245,10 @@ pub fn local_crates(metadata: &Metadata) -> String {
     local_crates
 }
 
-fn env_vars_from_cmd(cmd: &Command) -> Vec<(String, String)> {
-    let mut envs = HashMap::new();
-    for (key, value) in std::env::vars() {
-        envs.insert(key, value);
-    }
-    for (key, value) in cmd.get_envs() {
-        if let Some(value) = value {
-            envs.insert(key.to_string_lossy().to_string(), value.to_string_lossy().to_string());
-        } else {
-            envs.remove(&key.to_string_lossy().to_string());
-        }
-    }
-    let mut envs: Vec<_> = envs.into_iter().collect();
-    envs.sort();
-    envs
-}
-
 /// Debug-print a command that is going to be run.
 pub fn debug_cmd(prefix: &str, verbose: usize, cmd: &Command) {
     if verbose == 0 {
         return;
     }
-    // We only do a single `eprintln!` call to minimize concurrency interactions.
-    let mut out = prefix.to_string();
-    writeln!(out, " running command: env \\").unwrap();
-    if verbose > 1 {
-        // Print the full environment this will be called in.
-        for (key, value) in env_vars_from_cmd(cmd) {
-            writeln!(out, "{key}={value:?} \\").unwrap();
-        }
-    } else {
-        // Print only what has been changed for this `cmd`.
-        for (var, val) in cmd.get_envs() {
-            if let Some(val) = val {
-                writeln!(out, "{}={val:?} \\", var.to_string_lossy()).unwrap();
-            } else {
-                writeln!(out, "--unset={}", var.to_string_lossy()).unwrap();
-            }
-        }
-    }
-    write!(out, "{cmd:?}").unwrap();
-    eprintln!("{out}");
+    eprintln!("{prefix} running command: {cmd:?}");
 }

@@ -1,0 +1,43 @@
+- // MIR for `nrvo` before DestinationPropagation
++ // MIR for `nrvo` after DestinationPropagation
+  
+  fn nrvo(_1: for<'a> fn(&'a mut [u8; 1024])) -> [u8; 1024] {
+      debug init => _1;
+      let mut _0: [u8; 1024];
+      let mut _2: [u8; 1024];
+      let _3: ();
+      let mut _4: for<'a> fn(&'a mut [u8; 1024]);
+      let mut _5: &mut [u8; 1024];
+      let mut _6: &mut [u8; 1024];
+      scope 1 {
+          debug buf => _2;
+      }
+  
+      bb0: {
+          StorageLive(_2);
+          _2 = [const 0_u8; 1024];
+          StorageLive(_3);
+-         StorageLive(_4);
+-         _4 = _1;
++         nop;
++         nop;
+          StorageLive(_5);
+          StorageLive(_6);
+          _6 = &mut _2;
+          _5 = &mut (*_6);
+-         _3 = move _4(move _5) -> [return: bb1, unwind unreachable];
++         _3 = move _1(move _5) -> [return: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+          StorageDead(_5);
+-         StorageDead(_4);
++         nop;
+          StorageDead(_6);
+          StorageDead(_3);
+          _0 = _2;
+          StorageDead(_2);
+          return;
+      }
+  }
+  

@@ -13,10 +13,22 @@ LL | use std::cell::UnsafeCell as TotallySafeCellAgain;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: removed `unsafe` from the name of `Unsafe` in use as `LieAboutModSafety`
-  --> $DIR/unsafe_removed_from_name.rs:21:1
+  --> $DIR/unsafe_removed_from_name.rs:25:1
    |
 LL | use mod_with_some_unsafe_things::Unsafe as LieAboutModSafety;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 3 previous errors
+error: removed `unsafe` from the name of `Unsafe` in use as `A`
+  --> $DIR/unsafe_removed_from_name.rs:28:1
+   |
+LL | use mod_with_some_unsafe_things::{Unsafe as A, Unsafe as B};
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: removed `unsafe` from the name of `Unsafe` in use as `B`
+  --> $DIR/unsafe_removed_from_name.rs:28:1
+   |
+LL | use mod_with_some_unsafe_things::{Unsafe as A, Unsafe as B};
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
 

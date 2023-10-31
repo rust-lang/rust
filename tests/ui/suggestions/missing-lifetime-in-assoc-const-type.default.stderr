@@ -1,0 +1,57 @@
+error[E0106]: missing lifetime specifier
+  --> $DIR/missing-lifetime-in-assoc-const-type.rs:6:14
+   |
+LL |     const A: &str = "";
+   |              ^ expected named lifetime parameter
+   |
+help: consider introducing a named lifetime parameter
+   |
+LL ~ trait ZstAssert<'a>: Sized {
+LL ~     const A: &'a str = "";
+   |
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/missing-lifetime-in-assoc-const-type.rs:7:14
+   |
+LL |     const B: S = S { s: &() };
+   |              ^ expected named lifetime parameter
+   |
+help: consider introducing a named lifetime parameter
+   |
+LL ~ trait ZstAssert<'a>: Sized {
+LL |     const A: &str = "";
+LL ~     const B: S<'a> = S { s: &() };
+   |
+
+error[E0106]: missing lifetime specifier
+  --> $DIR/missing-lifetime-in-assoc-const-type.rs:8:15
+   |
+LL |     const C: &'_ str = "";
+   |               ^^ expected named lifetime parameter
+   |
+help: consider introducing a named lifetime parameter
+   |
+LL ~ trait ZstAssert<'a>: Sized {
+LL |     const A: &str = "";
+LL |     const B: S = S { s: &() };
+LL ~     const C: &'a str = "";
+   |
+
+error[E0106]: missing lifetime specifiers
+  --> $DIR/missing-lifetime-in-assoc-const-type.rs:9:14
+   |
+LL |     const D: T = T { a: &(), b: &() };
+   |              ^ expected 2 lifetime parameters
+   |
+help: consider introducing a named lifetime parameter
+   |
+LL ~ trait ZstAssert<'a>: Sized {
+LL |     const A: &str = "";
+LL |     const B: S = S { s: &() };
+LL |     const C: &'_ str = "";
+LL ~     const D: T<'a, 'a> = T { a: &(), b: &() };
+   |
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0106`.

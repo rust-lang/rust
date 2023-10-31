@@ -13,7 +13,7 @@ fn foo<T: 'static + Debug>(_: T) { }
 fn bar<'a>() {
     return;
 
-    let _x = foo::<Vec<_>>(Vec::<&'a u32>::new());
+    foo::<Vec<_>>(Vec::<&'a u32>::new());
 }
 
 fn main() {}

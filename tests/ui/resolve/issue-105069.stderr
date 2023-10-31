@@ -4,17 +4,19 @@ error[E0659]: `V` is ambiguous
 LL | use V;
    |     ^ ambiguous name
    |
-   = note: ambiguous because of multiple potential import sources
+   = note: ambiguous because of multiple glob imports of a name in the same module
 note: `V` could refer to the variant imported here
   --> $DIR/issue-105069.rs:1:5
    |
 LL | use self::A::*;
    |     ^^^^^^^^^^
+   = help: consider adding an explicit import of `V` to disambiguate
 note: `V` could also refer to the variant imported here
   --> $DIR/issue-105069.rs:3:5
    |
 LL | use self::B::*;
    |     ^^^^^^^^^^
+   = help: consider adding an explicit import of `V` to disambiguate
 
 error: aborting due to previous error
 

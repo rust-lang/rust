@@ -1,4 +1,5 @@
 use rustc_ast::ptr::P;
+use rustc_ast::token::Delimiter;
 use rustc_ast::tokenstream::{DelimSpan, TokenStream};
 use rustc_ast::*;
 use rustc_expand::base::*;
@@ -60,7 +61,7 @@ fn expand<'cx>(
                 },
                 args: P(DelimArgs {
                     dspan: DelimSpan::from_single(sp),
-                    delim: MacDelimiter::Parenthesis,
+                    delim: Delimiter::Parenthesis,
                     tokens: tts,
                 }),
             })),

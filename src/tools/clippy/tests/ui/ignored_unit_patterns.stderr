@@ -1,0 +1,28 @@
+error: matching over `()` is more explicit
+  --> $DIR/ignored_unit_patterns.rs:12:12
+   |
+LL |         Ok(_) => {},
+   |            ^ help: use `()` instead of `_`: `()`
+   |
+   = note: `-D clippy::ignored-unit-patterns` implied by `-D warnings`
+
+error: matching over `()` is more explicit
+  --> $DIR/ignored_unit_patterns.rs:13:13
+   |
+LL |         Err(_) => {},
+   |             ^ help: use `()` instead of `_`: `()`
+
+error: matching over `()` is more explicit
+  --> $DIR/ignored_unit_patterns.rs:15:15
+   |
+LL |     if let Ok(_) = foo() {}
+   |               ^ help: use `()` instead of `_`: `()`
+
+error: matching over `()` is more explicit
+  --> $DIR/ignored_unit_patterns.rs:16:28
+   |
+LL |     let _ = foo().map_err(|_| todo!());
+   |                            ^ help: use `()` instead of `_`: `()`
+
+error: aborting due to 4 previous errors
+

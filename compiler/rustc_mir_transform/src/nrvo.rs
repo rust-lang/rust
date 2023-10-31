@@ -45,7 +45,7 @@ impl<'tcx> MirPass<'tcx> for RenameReturnPlace {
             return;
         };
 
-        if !tcx.consider_optimizing(|| format!("RenameReturnPlace {:?}", def_id)) {
+        if !tcx.consider_optimizing(|| format!("RenameReturnPlace {def_id:?}")) {
             return;
         }
 

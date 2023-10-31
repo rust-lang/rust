@@ -1,6 +1,6 @@
 //@run-rustfix
 //@edition:2018
-//@aux-build:proc_macros.rs
+//@aux-build:proc_macros.rs:proc-macro
 
 #![feature(exclusive_range_pattern)]
 #![feature(stmt_expr_attributes)]

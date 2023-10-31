@@ -88,6 +88,83 @@ pub(crate) struct ConcatBytestr {
 }
 
 #[derive(Diagnostic)]
+#[diag(builtin_macros_concat_c_str_lit)]
+pub(crate) struct ConcatCStrLit {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_export_macro_rules)]
+pub(crate) struct ExportMacroRules {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_proc_macro)]
+pub(crate) struct ProcMacro {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_invalid_crate_attribute)]
+pub(crate) struct InvalidCrateAttr {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_non_abi)]
+pub(crate) struct NonABI {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_trace_macros)]
+pub(crate) struct TraceMacros {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_bench_sig)]
+pub(crate) struct BenchSig {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_test_arg_non_lifetime)]
+pub(crate) struct TestArgNonLifetime {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_should_panic)]
+pub(crate) struct ShouldPanic {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_test_args)]
+pub(crate) struct TestArgs {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_alloc_must_statics)]
+pub(crate) struct AllocMustStatics {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(builtin_macros_concat_bytes_invalid)]
 pub(crate) struct ConcatBytesInvalid {
     #[primary_span]
@@ -200,6 +277,10 @@ pub(crate) struct BadDeriveTarget {
     #[label(builtin_macros_label2)]
     pub(crate) item: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_tests_not_support)]
+pub(crate) struct TestsNotSupport {}
 
 #[derive(Diagnostic)]
 #[diag(builtin_macros_unexpected_lit, code = "E0777")]
@@ -359,43 +440,43 @@ pub(crate) struct EnvTakesArgs {
     pub(crate) span: Span,
 }
 
-//#[derive(Diagnostic)]
-//#[diag(builtin_macros_env_not_defined)]
-pub(crate) struct EnvNotDefined {
+pub(crate) struct EnvNotDefinedWithUserMessage {
     pub(crate) span: Span,
-    pub(crate) msg: Option<Symbol>,
-    pub(crate) var: Symbol,
-    pub(crate) help: Option<EnvNotDefinedHelp>,
+    pub(crate) msg_from_user: Symbol,
 }
 
-// Hand-written implementation to support custom user messages
-impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for EnvNotDefined {
+// Hand-written implementation to support custom user messages.
+impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for EnvNotDefinedWithUserMessage {
     #[track_caller]
     fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, G> {
-        let mut diag = if let Some(msg) = self.msg {
-            #[expect(
-                rustc::untranslatable_diagnostic,
-                reason = "cannot translate user-provided messages"
-            )]
-            handler.struct_diagnostic(msg.as_str())
-        } else {
-            handler.struct_diagnostic(crate::fluent_generated::builtin_macros_env_not_defined)
-        };
-        diag.set_arg("var", self.var);
+        #[expect(
+            rustc::untranslatable_diagnostic,
+            reason = "cannot translate user-provided messages"
+        )]
+        let mut diag = handler.struct_diagnostic(self.msg_from_user.to_string());
         diag.set_span(self.span);
-        if let Some(help) = self.help {
-            diag.subdiagnostic(help);
-        }
         diag
     }
 }
 
-#[derive(Subdiagnostic)]
-pub(crate) enum EnvNotDefinedHelp {
+#[derive(Diagnostic)]
+pub(crate) enum EnvNotDefined<'a> {
+    #[diag(builtin_macros_env_not_defined)]
     #[help(builtin_macros_cargo)]
-    CargoVar,
-    #[help(builtin_macros_other)]
-    Other,
+    CargoEnvVar {
+        #[primary_span]
+        span: Span,
+        var: Symbol,
+        var_expr: &'a rustc_ast::Expr,
+    },
+    #[diag(builtin_macros_env_not_defined)]
+    #[help(builtin_macros_custom)]
+    CustomEnvVar {
+        #[primary_span]
+        span: Span,
+        var: Symbol,
+        var_expr: &'a rustc_ast::Expr,
+    },
 }
 
 #[derive(Diagnostic)]
@@ -729,6 +810,13 @@ pub(crate) struct TestRunnerInvalid {
 #[derive(Diagnostic)]
 #[diag(builtin_macros_test_runner_nargs)]
 pub(crate) struct TestRunnerNargs {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_expected_register_class_or_explicit_register)]
+pub(crate) struct ExpectedRegisterClassOrExplicitRegister {
     #[primary_span]
     pub(crate) span: Span,
 }

@@ -39,7 +39,6 @@ const EXCEPTION_PATHS: &[&str] = &[
     "library/panic_unwind",
     "library/unwind",
     "library/rtstartup", // Not sure what to do about this. magic stuff for mingw
-    "library/term",      // Not sure how to make this crate portable, but test crate needs it.
     "library/test",      // Probably should defer to unstable `std::sys` APIs.
     // The `VaList` implementation must have platform specific code.
     // The Windows implementation of a `va_list` is always a character
@@ -53,13 +52,10 @@ const EXCEPTION_PATHS: &[&str] = &[
     // FIXME: platform-specific code should be moved to `sys`
     "library/std/src/io/copy.rs",
     "library/std/src/io/stdio.rs",
-    "library/std/src/f32.rs",
-    "library/std/src/f64.rs",
+    "library/std/src/lib.rs", // for miniz_oxide leaking docs, which itself workaround
     "library/std/src/path.rs",
     "library/std/src/sys_common", // Should only contain abstractions over platforms
     "library/std/src/net/test.rs", // Utility helpers for tests
-    "library/std/src/personality.rs",
-    "library/std/src/personality/",
 ];
 
 pub fn check(path: &Path, bad: &mut bool) {

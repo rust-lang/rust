@@ -1,5 +1,5 @@
 error: you seem to be trying to use `&Box<T>`. Consider using just `&T`
-  --> $DIR/borrow_box.rs:20:14
+  --> $DIR/borrow_box.rs:24:14
    |
 LL |     let foo: &Box<bool>;
    |              ^^^^^^^^^^ help: try: `&bool`
@@ -11,55 +11,55 @@ LL | #![deny(clippy::borrowed_box)]
    |         ^^^^^^^^^^^^^^^^^^^^
 
 error: you seem to be trying to use `&Box<T>`. Consider using just `&T`
-  --> $DIR/borrow_box.rs:24:10
+  --> $DIR/borrow_box.rs:28:10
    |
 LL |     foo: &'a Box<bool>,
    |          ^^^^^^^^^^^^^ help: try: `&'a bool`
 
 error: you seem to be trying to use `&Box<T>`. Consider using just `&T`
-  --> $DIR/borrow_box.rs:28:17
+  --> $DIR/borrow_box.rs:32:17
    |
 LL |     fn test4(a: &Box<bool>);
    |                 ^^^^^^^^^^ help: try: `&bool`
 
 error: you seem to be trying to use `&Box<T>`. Consider using just `&T`
-  --> $DIR/borrow_box.rs:94:25
+  --> $DIR/borrow_box.rs:98:25
    |
 LL | pub fn test14(_display: &Box<dyn Display>) {}
    |                         ^^^^^^^^^^^^^^^^^ help: try: `&dyn Display`
 
 error: you seem to be trying to use `&Box<T>`. Consider using just `&T`
-  --> $DIR/borrow_box.rs:95:25
+  --> $DIR/borrow_box.rs:99:25
    |
 LL | pub fn test15(_display: &Box<dyn Display + Send>) {}
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&(dyn Display + Send)`
 
 error: you seem to be trying to use `&Box<T>`. Consider using just `&T`
-  --> $DIR/borrow_box.rs:96:29
+  --> $DIR/borrow_box.rs:100:29
    |
 LL | pub fn test16<'a>(_display: &'a Box<dyn Display + 'a>) {}
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&'a (dyn Display + 'a)`
 
 error: you seem to be trying to use `&Box<T>`. Consider using just `&T`
-  --> $DIR/borrow_box.rs:98:25
+  --> $DIR/borrow_box.rs:102:25
    |
 LL | pub fn test17(_display: &Box<impl Display>) {}
    |                         ^^^^^^^^^^^^^^^^^^ help: try: `&impl Display`
 
 error: you seem to be trying to use `&Box<T>`. Consider using just `&T`
-  --> $DIR/borrow_box.rs:99:25
+  --> $DIR/borrow_box.rs:103:25
    |
 LL | pub fn test18(_display: &Box<impl Display + Send>) {}
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&(impl Display + Send)`
 
 error: you seem to be trying to use `&Box<T>`. Consider using just `&T`
-  --> $DIR/borrow_box.rs:100:29
+  --> $DIR/borrow_box.rs:104:29
    |
 LL | pub fn test19<'a>(_display: &'a Box<impl Display + 'a>) {}
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&'a (impl Display + 'a)`
 
 error: you seem to be trying to use `&Box<T>`. Consider using just `&T`
-  --> $DIR/borrow_box.rs:105:25
+  --> $DIR/borrow_box.rs:109:25
    |
 LL | pub fn test20(_display: &Box<(dyn Display + Send)>) {}
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&(dyn Display + Send)`

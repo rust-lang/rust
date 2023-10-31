@@ -6,7 +6,8 @@ use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::over;
 use rustc_ast::mut_visit::*;
 use rustc_ast::ptr::P;
-use rustc_ast::{self as ast, Mutability, Pat, PatKind, PatKind::*, DUMMY_NODE_ID};
+use rustc_ast::PatKind::*;
+use rustc_ast::{self as ast, Mutability, Pat, PatKind, DUMMY_NODE_ID};
 use rustc_ast_pretty::pprust;
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
@@ -162,9 +163,7 @@ fn unnest_or_patterns(pat: &mut P<Pat>) -> bool {
             noop_visit_pat(p, self);
 
             // Don't have an or-pattern? Just quit early on.
-            let Or(alternatives) = &mut p.kind else {
-                return
-            };
+            let Or(alternatives) = &mut p.kind else { return };
 
             // Collapse or-patterns directly nested in or-patterns.
             let mut idx = 0;

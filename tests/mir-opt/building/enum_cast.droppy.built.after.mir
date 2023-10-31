@@ -1,71 +1,71 @@
 // MIR for `droppy` after built
 
 fn droppy() -> () {
-    let mut _0: ();                      // return place in scope 0 at $DIR/enum_cast.rs:+0:13: +0:13
-    let _1: ();                          // in scope 0 at $DIR/enum_cast.rs:+1:5: +6:6
-    let _2: Droppy;                      // in scope 0 at $DIR/enum_cast.rs:+2:13: +2:14
-    let _4: Droppy;                      // in scope 0 at $DIR/enum_cast.rs:+5:17: +5:18
-    let mut _5: isize;                   // in scope 0 at $DIR/enum_cast.rs:+5:17: +5:18
-    let mut _6: u8;                      // in scope 0 at $DIR/enum_cast.rs:+5:17: +5:27
-    let mut _7: bool;                    // in scope 0 at $DIR/enum_cast.rs:+5:17: +5:27
-    let _8: Droppy;                      // in scope 0 at $DIR/enum_cast.rs:+7:9: +7:10
+    let mut _0: ();
+    let _1: ();
+    let _2: Droppy;
+    let _4: Droppy;
+    let mut _5: isize;
+    let mut _6: u8;
+    let mut _7: bool;
+    let _8: Droppy;
     scope 1 {
-        debug x => _2;                   // in scope 1 at $DIR/enum_cast.rs:+2:13: +2:14
+        debug x => _2;
         scope 2 {
-            debug y => _3;               // in scope 2 at $DIR/enum_cast.rs:+5:13: +5:14
+            debug y => _3;
         }
         scope 3 {
-            let _3: usize;               // in scope 3 at $DIR/enum_cast.rs:+5:13: +5:14
+            let _3: usize;
         }
     }
     scope 4 {
-        debug z => _8;                   // in scope 4 at $DIR/enum_cast.rs:+7:9: +7:10
+        debug z => _8;
     }
 
     bb0: {
-        StorageLive(_1);                 // scope 0 at $DIR/enum_cast.rs:+1:5: +6:6
-        StorageLive(_2);                 // scope 0 at $DIR/enum_cast.rs:+2:13: +2:14
-        _2 = Droppy::C;                  // scope 0 at $DIR/enum_cast.rs:+2:17: +2:26
-        FakeRead(ForLet(None), _2);      // scope 0 at $DIR/enum_cast.rs:+2:13: +2:14
-        StorageLive(_3);                 // scope 3 at $DIR/enum_cast.rs:+5:13: +5:14
-        StorageLive(_4);                 // scope 3 at $DIR/enum_cast.rs:+5:17: +5:18
-        _4 = move _2;                    // scope 3 at $DIR/enum_cast.rs:+5:17: +5:18
-        _5 = discriminant(_4);           // scope 3 at $DIR/enum_cast.rs:+5:17: +5:27
-        _6 = _5 as u8 (IntToInt);        // scope 3 at $DIR/enum_cast.rs:+5:17: +5:27
-        _7 = Le(_6, const 2_u8);         // scope 3 at $DIR/enum_cast.rs:+5:17: +5:27
-        assume(move _7);                 // scope 3 at $DIR/enum_cast.rs:+5:17: +5:27
-        _3 = move _5 as usize (IntToInt); // scope 3 at $DIR/enum_cast.rs:+5:17: +5:27
-        drop(_4) -> [return: bb1, unwind: bb4]; // scope 3 at $DIR/enum_cast.rs:+5:26: +5:27
+        StorageLive(_1);
+        StorageLive(_2);
+        _2 = Droppy::C;
+        FakeRead(ForLet(None), _2);
+        StorageLive(_3);
+        StorageLive(_4);
+        _4 = move _2;
+        _5 = discriminant(_4);
+        _6 = _5 as u8 (IntToInt);
+        _7 = Le(_6, const 2_u8);
+        assume(move _7);
+        _3 = move _5 as usize (IntToInt);
+        drop(_4) -> [return: bb1, unwind: bb4];
     }
 
     bb1: {
-        StorageDead(_4);                 // scope 3 at $DIR/enum_cast.rs:+5:26: +5:27
-        FakeRead(ForLet(None), _3);      // scope 3 at $DIR/enum_cast.rs:+5:13: +5:14
-        _1 = const ();                   // scope 0 at $DIR/enum_cast.rs:+1:5: +6:6
-        StorageDead(_3);                 // scope 1 at $DIR/enum_cast.rs:+6:5: +6:6
-        drop(_2) -> [return: bb2, unwind: bb5]; // scope 0 at $DIR/enum_cast.rs:+6:5: +6:6
+        StorageDead(_4);
+        FakeRead(ForLet(None), _3);
+        _1 = const ();
+        StorageDead(_3);
+        drop(_2) -> [return: bb2, unwind: bb5];
     }
 
     bb2: {
-        StorageDead(_2);                 // scope 0 at $DIR/enum_cast.rs:+6:5: +6:6
-        StorageDead(_1);                 // scope 0 at $DIR/enum_cast.rs:+6:5: +6:6
-        StorageLive(_8);                 // scope 0 at $DIR/enum_cast.rs:+7:9: +7:10
-        _8 = Droppy::B;                  // scope 0 at $DIR/enum_cast.rs:+7:13: +7:22
-        FakeRead(ForLet(None), _8);      // scope 0 at $DIR/enum_cast.rs:+7:9: +7:10
-        _0 = const ();                   // scope 0 at $DIR/enum_cast.rs:+0:13: +8:2
-        drop(_8) -> [return: bb3, unwind: bb5]; // scope 0 at $DIR/enum_cast.rs:+8:1: +8:2
+        StorageDead(_2);
+        StorageDead(_1);
+        StorageLive(_8);
+        _8 = Droppy::B;
+        FakeRead(ForLet(None), _8);
+        _0 = const ();
+        drop(_8) -> [return: bb3, unwind: bb5];
     }
 
     bb3: {
-        StorageDead(_8);                 // scope 0 at $DIR/enum_cast.rs:+8:1: +8:2
-        return;                          // scope 0 at $DIR/enum_cast.rs:+8:2: +8:2
+        StorageDead(_8);
+        return;
     }
 
     bb4 (cleanup): {
-        drop(_2) -> [return: bb5, unwind terminate]; // scope 0 at $DIR/enum_cast.rs:+6:5: +6:6
+        drop(_2) -> [return: bb5, unwind terminate];
     }
 
     bb5 (cleanup): {
-        resume;                          // scope 0 at $DIR/enum_cast.rs:+0:1: +8:2
+        resume;
     }
 }

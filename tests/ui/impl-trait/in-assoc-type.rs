@@ -1,3 +1,6 @@
+//! This test checks that we don't allow registering hidden types for
+//! opaque types from other impls.
+
 #![feature(impl_trait_in_assoc_type)]
 
 trait Foo<T> {

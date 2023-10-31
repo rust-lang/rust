@@ -13,10 +13,11 @@ use crate::{parser::MetaVarKind, tt, ExpandError, ExpandResult};
 pub(crate) fn expand_rules(
     rules: &[crate::Rule],
     input: &tt::Subtree,
+    is_2021: bool,
 ) -> ExpandResult<tt::Subtree> {
     let mut match_: Option<(matcher::Match, &crate::Rule)> = None;
     for rule in rules {
-        let new_match = matcher::match_(&rule.lhs, input);
+        let new_match = matcher::match_(&rule.lhs, input, is_2021);
 
         if new_match.err.is_none() {
             // If we find a rule that applies without errors, we're done.
@@ -45,7 +46,7 @@ pub(crate) fn expand_rules(
             transcriber::transcribe(&rule.rhs, &match_.bindings);
         ExpandResult { value, err: match_.err.or(transcribe_err) }
     } else {
-        ExpandResult::with_err(
+        ExpandResult::new(
             tt::Subtree { delimiter: tt::Delimiter::unspecified(), token_trees: vec![] },
             ExpandError::NoMatchingRule,
         )
@@ -122,4 +123,14 @@ enum Fragment {
     /// proc-macro delimiter=none. As we later discovered, "none" delimiters are
     /// tricky to handle in the parser, and rustc doesn't handle those either.
     Expr(tt::TokenTree),
+    /// There are roughly two types of paths: paths in expression context, where a
+    /// separator `::` between an identifier and its following generic argument list
+    /// is mandatory, and paths in type context, where `::` can be omitted.
+    ///
+    /// Unlike rustc, we need to transform the parsed fragments back into tokens
+    /// during transcription. When the matched path fragment is a type-context path
+    /// and is trasncribed as an expression-context path, verbatim transcription
+    /// would cause a syntax error. We need to fix it up just before transcribing;
+    /// see `transcriber::fix_up_and_push_path_tt()`.
+    Path(tt::TokenTree),
 }

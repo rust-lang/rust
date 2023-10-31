@@ -40,9 +40,9 @@ fn check_compare(cx: &LateContext<'_>, bit_op: &Expr<'_>, cmp_op: BinOpKind, cmp
         if op.node != BinOpKind::BitAnd && op.node != BinOpKind::BitOr {
             return;
         }
-        fetch_int_literal(cx, right)
-            .or_else(|| fetch_int_literal(cx, left))
-            .map_or((), |mask| check_bit_mask(cx, op.node, cmp_op, mask, cmp_value, span));
+        if let Some(mask) = fetch_int_literal(cx, right).or_else(|| fetch_int_literal(cx, left)) {
+            check_bit_mask(cx, op.node, cmp_op, mask, cmp_value, span);
+        }
     }
 }
 

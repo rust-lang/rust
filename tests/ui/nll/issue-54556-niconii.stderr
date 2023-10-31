@@ -5,7 +5,7 @@ LL |     let counter = Mutex;
    |         ------- binding `counter` declared here
 LL |
 LL |     if let Ok(_) = counter.lock() { }
-   |                    ^^^^^^^^^^^^^^
+   |                    ^^^^^^^-------
    |                    |
    |                    borrowed value does not live long enough
    |                    a temporary with access to the borrow is created here ...

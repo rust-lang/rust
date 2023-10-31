@@ -7,6 +7,7 @@
 // build-pass
 // force-host
 // no-prefer-dynamic
+// needs-dynamic-linking
 
 #![crate_type = "proc-macro"]
 

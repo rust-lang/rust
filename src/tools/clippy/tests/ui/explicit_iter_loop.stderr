@@ -1,0 +1,142 @@
+error: it is more concise to loop over references to containers instead of using explicit iteration methods
+  --> $DIR/explicit_iter_loop.rs:17:14
+   |
+LL |     for _ in vec.iter() {}
+   |              ^^^^^^^^^^ help: to write this more concisely, try: `&vec`
+   |
+note: the lint level is defined here
+  --> $DIR/explicit_iter_loop.rs:2:9
+   |
+LL | #![deny(clippy::explicit_iter_loop)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: it is more concise to loop over references to containers instead of using explicit iteration methods
+  --> $DIR/explicit_iter_loop.rs:18:14
+   |
+LL |     for _ in vec.iter_mut() {}
+   |              ^^^^^^^^^^^^^^ help: to write this more concisely, try: `&mut vec`
+
+error: it is more concise to loop over references to containers instead of using explicit iteration methods
+  --> $DIR/explicit_iter_loop.rs:21:14
+   |
+LL |     for _ in rvec.iter() {}
+   |              ^^^^^^^^^^^ help: to write this more concisely, try: `rvec`
+
+error: it is more concise to loop over references to containers instead of using explicit iteration methods
+  --> $DIR/explicit_iter_loop.rs:24:14
+   |
+LL |     for _ in rmvec.iter() {}
+   |              ^^^^^^^^^^^^ help: to write this more concisely, try: `&*rmvec`
+
+error: it is more concise to loop over references to containers instead of using explicit iteration methods
+  --> $DIR/explicit_iter_loop.rs:25:14
+   |
+LL |     for _ in rmvec.iter_mut() {}
+   |              ^^^^^^^^^^^^^^^^ help: to write this more concisely, try: `&mut *rmvec`
+
+error: it is more concise to loop over references to containers instead of using explicit iteration methods
+  --> $DIR/explicit_iter_loop.rs:30:14
+   |
+LL |     for _ in [1, 2, 3].iter() {}
+   |              ^^^^^^^^^^^^^^^^ help: to write this more concisely, try: `&[1, 2, 3]`
+
+error: it is more concise to loop over references to containers instead of using explicit iteration methods
+  --> $DIR/explicit_iter_loop.rs:32:14
+   |
+LL |     for _ in (&mut [1, 2, 3]).iter() {}
+   |              ^^^^^^^^^^^^^^^^^^^^^^^ help: to write this more concisely, try: `&*(&mut [1, 2, 3])`
+
+error: the method `iter` doesn't need a mutable reference
+  --> $DIR/explicit_iter_loop.rs:32:14
+   |
+LL |     for _ in (&mut [1, 2, 3]).iter() {}
+   |              ^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::unnecessary-mut-passed` implied by `-D warnings`
+
+error: it is more concise to loop over references to containers instead of using explicit iteration methods
+  --> $DIR/explicit_iter_loop.rs:34:14
+   |
+LL |     for _ in [0; 32].iter() {}
+   |              ^^^^^^^^^^^^^^ help: to write this more concisely, try: `&[0; 32]`
+
+error: it is more concise to loop over references to containers instead of using explicit iteration methods
+  --> $DIR/explicit_iter_loop.rs:35:14
+   |
+LL |     for _ in [0; 33].iter() {}
+   |              ^^^^^^^^^^^^^^ help: to write this more concisely, try: `&[0; 33]`
+
+error: it is more concise to loop over references to containers instead of using explicit iteration methods
+  --> $DIR/explicit_iter_loop.rs:38:14
+   |
+LL |     for _ in ll.iter() {}
+   |              ^^^^^^^^^ help: to write this more concisely, try: `&ll`
+
+error: it is more concise to loop over references to containers instead of using explicit iteration methods
+  --> $DIR/explicit_iter_loop.rs:40:14
+   |
+LL |     for _ in rll.iter() {}
+   |              ^^^^^^^^^^ help: to write this more concisely, try: `rll`
+
+error: it is more concise to loop over references to containers instead of using explicit iteration methods
+  --> $DIR/explicit_iter_loop.rs:43:14
+   |
+LL |     for _ in vd.iter() {}
+   |              ^^^^^^^^^ help: to write this more concisely, try: `&vd`
+
+error: it is more concise to loop over references to containers instead of using explicit iteration methods
+  --> $DIR/explicit_iter_loop.rs:45:14
+   |
+LL |     for _ in rvd.iter() {}
+   |              ^^^^^^^^^^ help: to write this more concisely, try: `rvd`
+
+error: it is more concise to loop over references to containers instead of using explicit iteration methods
+  --> $DIR/explicit_iter_loop.rs:48:14
+   |
+LL |     for _ in bh.iter() {}
+   |              ^^^^^^^^^ help: to write this more concisely, try: `&bh`
+
+error: it is more concise to loop over references to containers instead of using explicit iteration methods
+  --> $DIR/explicit_iter_loop.rs:51:14
+   |
+LL |     for _ in hm.iter() {}
+   |              ^^^^^^^^^ help: to write this more concisely, try: `&hm`
+
+error: it is more concise to loop over references to containers instead of using explicit iteration methods
+  --> $DIR/explicit_iter_loop.rs:54:14
+   |
+LL |     for _ in bt.iter() {}
+   |              ^^^^^^^^^ help: to write this more concisely, try: `&bt`
+
+error: it is more concise to loop over references to containers instead of using explicit iteration methods
+  --> $DIR/explicit_iter_loop.rs:57:14
+   |
+LL |     for _ in hs.iter() {}
+   |              ^^^^^^^^^ help: to write this more concisely, try: `&hs`
+
+error: it is more concise to loop over references to containers instead of using explicit iteration methods
+  --> $DIR/explicit_iter_loop.rs:60:14
+   |
+LL |     for _ in bs.iter() {}
+   |              ^^^^^^^^^ help: to write this more concisely, try: `&bs`
+
+error: it is more concise to loop over references to containers instead of using explicit iteration methods
+  --> $DIR/explicit_iter_loop.rs:149:14
+   |
+LL |     for _ in x.iter() {}
+   |              ^^^^^^^^ help: to write this more concisely, try: `&x`
+
+error: it is more concise to loop over references to containers instead of using explicit iteration methods
+  --> $DIR/explicit_iter_loop.rs:150:14
+   |
+LL |     for _ in x.iter_mut() {}
+   |              ^^^^^^^^^^^^ help: to write this more concisely, try: `&mut x`
+
+error: it is more concise to loop over references to containers instead of using explicit iteration methods
+  --> $DIR/explicit_iter_loop.rs:153:14
+   |
+LL |     for _ in r.iter() {}
+   |              ^^^^^^^^ help: to write this more concisely, try: `r`
+
+error: aborting due to 22 previous errors
+

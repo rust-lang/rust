@@ -1,5 +1,6 @@
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::Float;
+use rustc_errors::{DiagnosticArgValue, IntoDiagnosticArg};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_target::abi::Size;
 use std::fmt;
@@ -110,6 +111,14 @@ impl std::fmt::Debug for ConstInt {
                 Ok(())
             }
         }
+    }
+}
+
+impl IntoDiagnosticArg for ConstInt {
+    // FIXME this simply uses the Debug impl, but we could probably do better by converting both
+    // to an inherent method that returns `Cow`.
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(format!("{self:?}").into())
     }
 }
 
@@ -409,7 +418,7 @@ impl TryFrom<ScalarInt> for char {
 
     #[inline]
     fn try_from(int: ScalarInt) -> Result<Self, Self::Error> {
-        let Ok(bits) = int.to_bits(Size::from_bytes(std::mem::size_of::<char>())) else  {
+        let Ok(bits) = int.to_bits(Size::from_bytes(std::mem::size_of::<char>())) else {
             return Err(CharTryFromScalarInt);
         };
         match char::from_u32(bits.try_into().unwrap()) {
@@ -454,7 +463,7 @@ impl TryFrom<ScalarInt> for Double {
 impl fmt::Debug for ScalarInt {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Dispatch to LowerHex below.
-        write!(f, "0x{:x}", self)
+        write!(f, "0x{self:x}")
     }
 }
 

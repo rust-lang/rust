@@ -28,9 +28,9 @@ While the integer base ABI is implied by the machine field, the floating po
 
 ## Target maintainers
 
-- [ZHAI Xiaojuan](https://github.com/zhaixiaojuan) `zhaixiaojuan@loongson.cn`
 - [WANG Rui](https://github.com/heiher) `wangrui@loongson.cn`
 - [ZHAI Xiang](https://github.com/xiangzhai) `zhaixiang@loongson.cn`
+- [ZHAI Xiaojuan](https://github.com/zhaixiaojuan) `zhaixiaojuan@loongson.cn`
 - [WANG Xuerui](https://github.com/xen0n) `git@xen0n.name`
 
 ## Requirements
@@ -71,7 +71,7 @@ CXX_loongarch64_unknown_linux_gnu=/TOOLCHAIN_PATH/bin/loongarch64-unknown-linux-
 AR_loongarch64_unknown_linux_gnu=/TOOLCHAIN_PATH/bin/loongarch64-unknown-linux-gnu-gcc-ar \
 CARGO_TARGET_LOONGARCH64_UNKNOWN_LINUX_GNUN_LINKER=/TOOLCHAIN_PATH/bin/loongarch64-unknown-linux-gnu-gcc \
 # SET TARGET SYSTEM LIBRARY PATH
-CARGO_TARGET_LOONGARCH64_UNKNOWN_LINUX_GNUN_RUNNER="qemu-loongarch64 -L /TOOLCHAIN_PATH/TARGET_LIBRAY_PATH" \
+CARGO_TARGET_LOONGARCH64_UNKNOWN_LINUX_GNUN_RUNNER="qemu-loongarch64 -L /TOOLCHAIN_PATH/TARGET_LIBRARY_PATH" \
 cargo run --target loongarch64-unknown-linux-gnu --release
 ```
 Tested on x86 architecture, other architectures not tested.

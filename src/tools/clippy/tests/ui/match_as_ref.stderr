@@ -6,7 +6,7 @@ LL |       let borrowed: Option<&()> = match owned {
 LL | |         None => None,
 LL | |         Some(ref v) => Some(v),
 LL | |     };
-   | |_____^ help: try this: `owned.as_ref()`
+   | |_____^ help: try: `owned.as_ref()`
    |
    = note: `-D clippy::match-as-ref` implied by `-D warnings`
 
@@ -18,16 +18,16 @@ LL |       let borrow_mut: Option<&mut ()> = match mut_owned {
 LL | |         None => None,
 LL | |         Some(ref mut v) => Some(v),
 LL | |     };
-   | |_____^ help: try this: `mut_owned.as_mut()`
+   | |_____^ help: try: `mut_owned.as_mut()`
 
 error: use `as_ref()` instead
-  --> $DIR/match_as_ref.rs:30:13
+  --> $DIR/match_as_ref.rs:32:13
    |
 LL | /             match self.source {
 LL | |                 Some(ref s) => Some(s),
 LL | |                 None => None,
 LL | |             }
-   | |_____________^ help: try this: `self.source.as_ref().map(|x| x as _)`
+   | |_____________^ help: try: `self.source.as_ref().map(|x| x as _)`
 
 error: aborting due to 3 previous errors
 

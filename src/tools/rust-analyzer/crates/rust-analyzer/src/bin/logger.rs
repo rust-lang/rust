@@ -8,10 +8,11 @@ use std::{
     sync::Arc,
 };
 
-use rust_analyzer::Result;
+use anyhow::Context;
 use tracing::{level_filters::LevelFilter, Event, Subscriber};
 use tracing_log::NormalizeEvent;
 use tracing_subscriber::{
+    filter::Targets,
     fmt::{
         format::Writer, writer::BoxMakeWriter, FmtContext, FormatEvent, FormatFields,
         FormattedFields, MakeWriter,
@@ -19,81 +20,62 @@ use tracing_subscriber::{
     layer::SubscriberExt,
     registry::LookupSpan,
     util::SubscriberInitExt,
-    EnvFilter, Registry,
+    Registry,
 };
 use tracing_tree::HierarchicalLayer;
 
-pub(crate) struct Logger {
-    filter: EnvFilter,
-    file: Option<File>,
+pub(crate) struct LoggerConfig {
+    pub(crate) log_file: Option<File>,
+    pub(crate) filter: String,
+    pub(crate) chalk_filter: Option<String>,
 }
 
 struct MakeWriterStderr;
 
-impl<'a> MakeWriter<'a> for MakeWriterStderr {
+impl MakeWriter<'_> for MakeWriterStderr {
     type Writer = Stderr;
 
-    fn make_writer(&'a self) -> Self::Writer {
+    fn make_writer(&self) -> Self::Writer {
         io::stderr()
     }
 }
 
-impl Logger {
-    pub(crate) fn new(file: Option<File>, filter: Option<&str>) -> Logger {
-        let filter = filter.map_or(EnvFilter::default(), EnvFilter::new);
+impl LoggerConfig {
+    pub(crate) fn init(self) -> anyhow::Result<()> {
+        let mut filter: Targets = self
+            .filter
+            .parse()
+            .with_context(|| format!("invalid log filter: `{}`", self.filter))?;
 
-        Logger { filter, file }
-    }
+        let mut chalk_layer = None;
+        if let Some(chalk_filter) = self.chalk_filter {
+            let level: LevelFilter =
+                chalk_filter.parse().with_context(|| "invalid chalk log filter")?;
+            chalk_layer = Some(
+                HierarchicalLayer::default()
+                    .with_indent_lines(true)
+                    .with_ansi(false)
+                    .with_indent_amount(2)
+                    .with_writer(io::stderr),
+            );
+            filter = filter
+                .with_target("chalk_solve", level)
+                .with_target("chalk_ir", level)
+                .with_target("chalk_recursive", level);
+        };
 
-    pub(crate) fn install(self) -> Result<()> {
-        // The meaning of CHALK_DEBUG I suspected is to tell chalk crates
-        // (i.e. chalk-solve, chalk-ir, chalk-recursive) how to filter tracing
-        // logs. But now we can only have just one filter, which means we have to
-        // merge chalk filter to our main filter (from RA_LOG env).
-        //
-        // The acceptable syntax of CHALK_DEBUG is `target[span{field=value}]=level`.
-        // As the value should only affect chalk crates, we'd better manually
-        // specify the target. And for simplicity, CHALK_DEBUG only accept the value
-        // that specify level.
-        let chalk_level_dir = std::env::var("CHALK_DEBUG")
-            .map(|val| {
-                val.parse::<LevelFilter>().expect(
-                    "invalid CHALK_DEBUG value, expect right log level (like debug or trace)",
-                )
-            })
-            .ok();
-
-        let chalk_layer = HierarchicalLayer::default()
-            .with_indent_lines(true)
-            .with_ansi(false)
-            .with_indent_amount(2)
-            .with_writer(io::stderr);
-
-        let writer = match self.file {
+        let writer = match self.log_file {
             Some(file) => BoxMakeWriter::new(Arc::new(file)),
             None => BoxMakeWriter::new(io::stderr),
         };
         let ra_fmt_layer =
             tracing_subscriber::fmt::layer().event_format(LoggerFormatter).with_writer(writer);
 
-        match chalk_level_dir {
-            Some(val) => {
-                Registry::default()
-                    .with(
-                        self.filter
-                            .add_directive(format!("chalk_solve={val}").parse()?)
-                            .add_directive(format!("chalk_ir={val}").parse()?)
-                            .add_directive(format!("chalk_recursive={val}").parse()?),
-                    )
-                    .with(ra_fmt_layer)
-                    .with(chalk_layer)
-                    .init();
-            }
-            None => {
-                Registry::default().with(self.filter).with(ra_fmt_layer).init();
-            }
-        };
-
+        let registry = Registry::default().with(filter).with(ra_fmt_layer);
+        match chalk_layer {
+            Some(chalk_layer) => registry.with(chalk_layer).init(),
+            None => registry.init(),
+        }
         Ok(())
     }
 }

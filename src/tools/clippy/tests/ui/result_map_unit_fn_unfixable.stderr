@@ -4,7 +4,7 @@ error: called `map(f)` on an `Result` value where `f` is a closure that returns 
 LL |     x.field.map(|value| { do_nothing(value); do_nothing(value) });
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
    |     |
-   |     help: try this: `if let Ok(value) = x.field { ... }`
+   |     help: try: `if let Ok(value) = x.field { ... }`
    |
    = note: `-D clippy::result-map-unit-fn` implied by `-D warnings`
 
@@ -14,7 +14,7 @@ error: called `map(f)` on an `Result` value where `f` is a closure that returns 
 LL |     x.field.map(|value| if value > 0 { do_nothing(value); do_nothing(value) });
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
    |     |
-   |     help: try this: `if let Ok(value) = x.field { ... }`
+   |     help: try: `if let Ok(value) = x.field { ... }`
 
 error: called `map(f)` on an `Result` value where `f` is a closure that returns the unit type `()`
   --> $DIR/result_map_unit_fn_unfixable.rs:29:5
@@ -23,7 +23,7 @@ LL | //     x.field.map(|value| {
 LL | ||         do_nothing(value);
 LL | ||         do_nothing(value)
 LL | ||     });
-   | ||______^- help: try this: `if let Ok(value) = x.field { ... }`
+   | ||______^- help: try: `if let Ok(value) = x.field { ... }`
    |  |______|
    | 
 
@@ -33,7 +33,7 @@ error: called `map(f)` on an `Result` value where `f` is a closure that returns 
 LL |     x.field.map(|value| { do_nothing(value); do_nothing(value); });
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
    |     |
-   |     help: try this: `if let Ok(value) = x.field { ... }`
+   |     help: try: `if let Ok(value) = x.field { ... }`
 
 error: called `map(f)` on an `Result` value where `f` is a function that returns the unit type `()`
   --> $DIR/result_map_unit_fn_unfixable.rs:37:5
@@ -41,7 +41,7 @@ error: called `map(f)` on an `Result` value where `f` is a function that returns
 LL |     "12".parse::<i32>().map(diverge);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
    |     |
-   |     help: try this: `if let Ok(a) = "12".parse::<i32>() { diverge(a) }`
+   |     help: try: `if let Ok(a) = "12".parse::<i32>() { diverge(a) }`
 
 error: called `map(f)` on an `Result` value where `f` is a function that returns the unit type `()`
   --> $DIR/result_map_unit_fn_unfixable.rs:43:5
@@ -49,7 +49,7 @@ error: called `map(f)` on an `Result` value where `f` is a function that returns
 LL |     y.map(do_nothing);
    |     ^^^^^^^^^^^^^^^^^-
    |     |
-   |     help: try this: `if let Ok(_y) = y { do_nothing(_y) }`
+   |     help: try: `if let Ok(_y) = y { do_nothing(_y) }`
 
 error: aborting due to 6 previous errors
 

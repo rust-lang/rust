@@ -1,13 +1,15 @@
 #![feature(adt_const_params)]
 #![allow(incomplete_features)]
 
-#[derive(Debug, PartialEq, Eq)]
+use std::marker::ConstParamTy;
+
+#[derive(Debug, PartialEq, Eq, ConstParamTy)]
 struct Foo {
     value: i32,
     nested: &'static Bar<i32>,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, ConstParamTy)]
 struct Bar<T>(T);
 
 struct Test<const F: Foo>;

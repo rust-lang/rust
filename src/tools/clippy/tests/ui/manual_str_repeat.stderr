@@ -2,7 +2,7 @@ error: manual implementation of `str::repeat` using iterators
   --> $DIR/manual_str_repeat.rs:9:21
    |
 LL |     let _: String = std::iter::repeat("test").take(10).collect();
-   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `"test".repeat(10)`
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `"test".repeat(10)`
    |
    = note: `-D clippy::manual-str-repeat` implied by `-D warnings`
 
@@ -10,55 +10,55 @@ error: manual implementation of `str::repeat` using iterators
   --> $DIR/manual_str_repeat.rs:10:21
    |
 LL |     let _: String = std::iter::repeat('x').take(10).collect();
-   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `"x".repeat(10)`
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `"x".repeat(10)`
 
 error: manual implementation of `str::repeat` using iterators
   --> $DIR/manual_str_repeat.rs:11:21
    |
 LL |     let _: String = std::iter::repeat('/'').take(10).collect();
-   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `"'".repeat(10)`
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `"'".repeat(10)`
 
 error: manual implementation of `str::repeat` using iterators
   --> $DIR/manual_str_repeat.rs:12:21
    |
 LL |     let _: String = std::iter::repeat('"').take(10).collect();
-   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `"/"".repeat(10)`
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `"/"".repeat(10)`
 
 error: manual implementation of `str::repeat` using iterators
   --> $DIR/manual_str_repeat.rs:16:13
    |
 LL |     let _ = repeat(x).take(count + 2).collect::<String>();
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `x.repeat(count + 2)`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `x.repeat(count + 2)`
 
 error: manual implementation of `str::repeat` using iterators
   --> $DIR/manual_str_repeat.rs:25:21
    |
 LL |     let _: String = repeat(*x).take(count).collect();
-   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `(*x).repeat(count)`
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `(*x).repeat(count)`
 
 error: manual implementation of `str::repeat` using iterators
   --> $DIR/manual_str_repeat.rs:34:21
    |
 LL |     let _: String = repeat(x).take(count).collect();
-   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `x.repeat(count)`
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `x.repeat(count)`
 
 error: manual implementation of `str::repeat` using iterators
   --> $DIR/manual_str_repeat.rs:46:21
    |
 LL |     let _: String = repeat(Cow::Borrowed("test")).take(count).collect();
-   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `Cow::Borrowed("test").repeat(count)`
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Cow::Borrowed("test").repeat(count)`
 
 error: manual implementation of `str::repeat` using iterators
   --> $DIR/manual_str_repeat.rs:49:21
    |
 LL |     let _: String = repeat(x).take(count).collect();
-   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `x.repeat(count)`
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `x.repeat(count)`
 
 error: manual implementation of `str::repeat` using iterators
   --> $DIR/manual_str_repeat.rs:64:21
    |
 LL |     let _: String = std::iter::repeat("test").take(10).collect();
-   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `"test".repeat(10)`
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `"test".repeat(10)`
 
 error: aborting due to 10 previous errors
 

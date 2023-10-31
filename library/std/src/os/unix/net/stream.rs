@@ -11,6 +11,7 @@ use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, Owned
     target_os = "dragonfly",
     target_os = "freebsd",
     target_os = "ios",
+    target_os = "tvos",
     target_os = "macos",
     target_os = "watchos",
     target_os = "netbsd",
@@ -30,6 +31,7 @@ use crate::time::Duration;
     target_os = "dragonfly",
     target_os = "freebsd",
     target_os = "ios",
+    target_os = "tvos",
     target_os = "macos",
     target_os = "watchos",
     target_os = "netbsd",
@@ -238,6 +240,7 @@ impl UnixStream {
         target_os = "dragonfly",
         target_os = "freebsd",
         target_os = "ios",
+        target_os = "tvos",
         target_os = "macos",
         target_os = "watchos",
         target_os = "netbsd",
@@ -709,6 +712,7 @@ impl<'a> io::Write for &'a UnixStream {
         self.0.is_write_vectored()
     }
 
+    #[inline]
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
     }

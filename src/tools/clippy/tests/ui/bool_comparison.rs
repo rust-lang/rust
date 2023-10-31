@@ -1,6 +1,8 @@
 //@run-rustfix
 
+#![allow(clippy::needless_if)]
 #![warn(clippy::bool_comparison)]
+#![allow(clippy::incorrect_partial_ord_impl_on_ord_type)]
 
 fn main() {
     let x = true;

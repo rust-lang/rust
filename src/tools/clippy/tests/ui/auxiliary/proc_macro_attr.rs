@@ -1,7 +1,3 @@
-//@compile-flags: --emit=link
-//@no-prefer-dynamic
-
-#![crate_type = "proc-macro"]
 #![feature(repr128, proc_macro_hygiene, proc_macro_quote, box_patterns)]
 #![allow(incomplete_features)]
 #![allow(clippy::useless_conversion, clippy::uninlined_format_args)]
@@ -12,11 +8,11 @@ extern crate syn;
 
 use proc_macro::TokenStream;
 use quote::{quote, quote_spanned};
-use syn::parse_macro_input;
 use syn::spanned::Spanned;
 use syn::token::Star;
 use syn::{
-    parse_quote, FnArg, ImplItem, ItemImpl, ItemTrait, Lifetime, Pat, PatIdent, PatType, Signature, TraitItem, Type,
+    parse_macro_input, parse_quote, FnArg, ImplItem, ItemImpl, ItemTrait, Lifetime, Pat, PatIdent, PatType, Signature,
+    TraitItem, Type,
 };
 
 #[proc_macro_attribute]

@@ -1,6 +1,7 @@
 // Checks that only functions with compatible attributes are inlined.
 //
 // only-x86_64
+// EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 
 #![crate_type = "lib"]
 #![feature(no_sanitize)]

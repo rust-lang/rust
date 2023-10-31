@@ -23,7 +23,7 @@ LL |     arg: NotIntoDiagnosticArg,
    |
    = help: normalized in stderr
 note: required by a bound in `Diagnostic::set_arg`
-  --> $COMPILER_DIR/rustc_errors/src/diagnostic.rs:964:5
+  --> $COMPILER_DIR/rustc_errors/src/diagnostic.rs:960:5
 
 error: aborting due to 2 previous errors
 

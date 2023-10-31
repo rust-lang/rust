@@ -9,7 +9,7 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::lint;
 use rustc_span::symbol::{kw, Symbol};
-use rustc_span::Span;
+use rustc_span::{sym, Span};
 
 pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
     use rustc_hir::*;
@@ -50,7 +50,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                 // We do not allow generic parameters in anon consts if we are inside
                 // of a const parameter type, e.g. `struct Foo<const N: usize, const M: [u8; N]>` is not allowed.
                 None
-            } else if tcx.lazy_normalization() {
+            } else if tcx.features().generic_const_exprs {
                 let parent_node = tcx.hir().get_parent(hir_id);
                 if let Node::Variant(Variant { disr_expr: Some(constant), .. }) = parent_node
                     && constant.hir_id == hir_id
@@ -68,17 +68,17 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                     //        ^ parent_def_id
                     //
                     // then we only want to return generics for params to the left of `N`. If we don't do that we
-                    // end up with that const looking like: `ty::ConstKind::Unevaluated(def_id, substs: [N#0])`.
+                    // end up with that const looking like: `ty::ConstKind::Unevaluated(def_id, args: [N#0])`.
                     //
-                    // This causes ICEs (#86580) when building the substs for Foo in `fn foo() -> Foo { .. }` as
-                    // we substitute the defaults with the partially built substs when we build the substs. Subst'ing
-                    // the `N#0` on the unevaluated const indexes into the empty substs we're in the process of building.
+                    // This causes ICEs (#86580) when building the args for Foo in `fn foo() -> Foo { .. }` as
+                    // we substitute the defaults with the partially built args when we build the args. Subst'ing
+                    // the `N#0` on the unevaluated const indexes into the empty args we're in the process of building.
                     //
                     // We fix this by having this function return the parent's generics ourselves and truncating the
                     // generics to only include non-forward declared params (with the exception of the `Self` ty)
                     //
-                    // For the above code example that means we want `substs: []`
-                    // For the following struct def we want `substs: [N#0]` when generics_of is called on
+                    // For the above code example that means we want `args: []`
+                    // For the following struct def we want `args: [N#0]` when generics_of is called on
                     // the def id of the `{ N + 1 }` anon const
                     // struct Foo<const N: usize, const M: usize = { N + 1 }>;
                     //
@@ -93,7 +93,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
 
                     return ty::Generics {
                         // we set the parent of these generics to be our parent's parent so that we
-                        // dont end up with substs: [N, M, N] for the const default on a struct like this:
+                        // dont end up with args: [N, M, N] for the const default on a struct like this:
                         // struct Foo<const N: usize, const M: usize = { ... }>;
                         parent: generics.parent,
                         parent_count: generics.parent_count,
@@ -101,6 +101,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                         param_def_id_to_index,
                         has_self: generics.has_self,
                         has_late_bound_regions: generics.has_late_bound_regions,
+                        host_effect_index: None,
                     };
                 } else {
                     // HACK(eddyb) this provides the correct generics when
@@ -123,9 +124,6 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                     {
                         Some(parent_def_id.to_def_id())
                     }
-                    Node::Expr(&Expr { kind: ExprKind::ConstBlock(_), .. }) => {
-                        Some(tcx.typeck_root_def_id(def_id.to_def_id()))
-                    }
                     // Exclude `GlobalAsm` here which cannot have generics.
                     Node::Expr(&Expr { kind: ExprKind::InlineAsm(asm), .. })
                         if asm.operands.iter().any(|(op, _op_sp)| match op {
@@ -142,11 +140,12 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                 }
             }
         }
-        Node::Expr(&hir::Expr { kind: hir::ExprKind::Closure { .. }, .. }) => {
+        Node::ConstBlock(_)
+        | Node::Expr(&hir::Expr { kind: hir::ExprKind::Closure { .. }, .. }) => {
             Some(tcx.typeck_root_def_id(def_id.to_def_id()))
         }
         Node::Item(item) => match item.kind {
-            ItemKind::OpaqueTy(hir::OpaqueTy {
+            ItemKind::OpaqueTy(&hir::OpaqueTy {
                 origin:
                     hir::OpaqueTyOrigin::FnReturn(fn_def_id) | hir::OpaqueTyOrigin::AsyncFn(fn_def_id),
                 in_trait,
@@ -210,6 +209,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                 | ItemKind::Struct(..)
                 | ItemKind::OpaqueTy(..)
                 | ItemKind::Union(..) => (None, Defaults::Allowed),
+                ItemKind::Const(..) => (None, Defaults::Deny),
                 _ => (None, Defaults::FutureCompatDisallowed),
             }
         }
@@ -228,10 +228,12 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
     let has_self = opt_self.is_some();
     let mut parent_has_self = false;
     let mut own_start = has_self as u32;
+    let mut host_effect_index = None;
     let parent_count = parent_def_id.map_or(0, |def_id| {
         let generics = tcx.generics_of(def_id);
         assert!(!has_self);
         parent_has_self = generics.has_self;
+        host_effect_index = generics.host_effect_index;
         own_start = generics.count() as u32;
         generics.parent_count + generics.params.len()
     });
@@ -253,11 +255,11 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
 
     // Now create the real type and const parameters.
     let type_start = own_start - has_self as u32 + params.len() as u32;
-    let mut i = 0;
+    let mut i: u32 = 0;
     let mut next_index = || {
         let prev = i;
         i += 1;
-        prev as u32 + type_start
+        prev + type_start
     };
 
     const TYPE_DEFAULT_NOT_ALLOWED: &'static str = "defaults for type parameters are only allowed in \
@@ -297,7 +299,13 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
             })
         }
         GenericParamKind::Const { default, .. } => {
-            if !matches!(allow_defaults, Defaults::Allowed) && default.is_some() {
+            let is_host_param = tcx.has_attr(param.def_id, sym::rustc_host);
+
+            if !matches!(allow_defaults, Defaults::Allowed)
+                && default.is_some()
+                // `rustc_host` effect params are allowed to have defaults.
+                && !is_host_param
+            {
                 tcx.sess.span_err(
                     param.span,
                     "defaults for const parameters are only allowed in \
@@ -305,8 +313,18 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                 );
             }
 
+            let index = next_index();
+
+            if is_host_param {
+                if let Some(idx) = host_effect_index {
+                    bug!("parent also has host effect param? index: {idx}, def: {def_id:?}");
+                }
+
+                host_effect_index = Some(index as usize);
+            }
+
             Some(ty::GenericParamDef {
-                index: next_index(),
+                index,
                 name: param.name.ident().name,
                 def_id: param.def_id.to_def_id(),
                 pure_wrt_drop: param.pure_wrt_drop,
@@ -339,17 +357,14 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
     }
 
     // provide junk type parameter defs for const blocks.
-    if let Node::AnonConst(_) = node {
-        let parent_node = tcx.hir().get_parent(hir_id);
-        if let Node::Expr(&Expr { kind: ExprKind::ConstBlock(_), .. }) = parent_node {
-            params.push(ty::GenericParamDef {
-                index: next_index(),
-                name: Symbol::intern("<const_ty>"),
-                def_id: def_id.to_def_id(),
-                pure_wrt_drop: false,
-                kind: ty::GenericParamDefKind::Type { has_default: false, synthetic: false },
-            });
-        }
+    if let Node::ConstBlock(_) = node {
+        params.push(ty::GenericParamDef {
+            index: next_index(),
+            name: Symbol::intern("<const_ty>"),
+            def_id: def_id.to_def_id(),
+            pure_wrt_drop: false,
+            kind: ty::GenericParamDefKind::Type { has_default: false, synthetic: false },
+        });
     }
 
     let param_def_id_to_index = params.iter().map(|param| (param.def_id, param.index)).collect();
@@ -361,6 +376,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
         param_def_id_to_index,
         has_self: has_self || parent_has_self,
         has_late_bound_regions: has_late_bound_regions(tcx, node),
+        host_effect_index,
     }
 }
 

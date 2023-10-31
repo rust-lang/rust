@@ -13,7 +13,7 @@ press-key: "Escape"
 assert-css: ("#help-button .popover", {"display": "none"})
 // Checking doc collapse and expand.
 // It should be displaying a "-":
-assert-text: ("#toggle-all-docs", "[\u2212]")
+assert-text: ("#toggle-all-docs", "[−]")
 press-key: "-"
 wait-for-text: ("#toggle-all-docs", "[+]")
 assert-attribute: ("#toggle-all-docs", {"class": "will-expand"})
@@ -23,9 +23,9 @@ assert-text: ("#toggle-all-docs", "[+]")
 assert-attribute: ("#toggle-all-docs", {"class": "will-expand"})
 // Expanding now.
 press-key: "+"
-wait-for-text: ("#toggle-all-docs", "[\u2212]")
+wait-for-text: ("#toggle-all-docs", "[−]")
 assert-attribute: ("#toggle-all-docs", {"class": ""})
 // Pressing it again shouldn't do anything.
 press-key: "+"
-assert-text: ("#toggle-all-docs", "[\u2212]")
+assert-text: ("#toggle-all-docs", "[−]")
 assert-attribute: ("#toggle-all-docs", {"class": ""})

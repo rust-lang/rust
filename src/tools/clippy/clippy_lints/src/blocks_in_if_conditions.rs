@@ -1,9 +1,8 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg};
-use clippy_utils::get_parent_expr;
-use clippy_utils::higher;
 use clippy_utils::source::snippet_block_with_applicability;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::visitors::{for_each_expr, Descend};
+use clippy_utils::{get_parent_expr, higher};
 use core::ops::ControlFlow;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
@@ -85,8 +84,7 @@ impl<'tcx> LateLintPass<'tcx> for BlocksInIfConditions {
                             );
                         }
                     } else {
-                        let span =
-                            block.expr.as_ref().map_or_else(|| block.stmts[0].span, |e| e.span);
+                        let span = block.expr.as_ref().map_or_else(|| block.stmts[0].span, |e| e.span);
                         if span.from_expansion() || expr.span.from_expansion() {
                             return;
                         }

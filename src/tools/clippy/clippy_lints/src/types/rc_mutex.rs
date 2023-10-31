@@ -1,7 +1,8 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::{path_def_id, qpath_generic_tys};
 use if_chain::if_chain;
-use rustc_hir::{self as hir, def_id::DefId, QPath};
+use rustc_hir::def_id::DefId;
+use rustc_hir::{self as hir, QPath};
 use rustc_lint::LateContext;
 use rustc_span::symbol::sym;
 

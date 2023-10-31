@@ -86,7 +86,9 @@ fn contains_let(cond: &Expr<'_>) -> bool {
 }
 
 fn stmt_needs_ordered_drop(cx: &LateContext<'_>, stmt: &Stmt<'_>) -> bool {
-    let StmtKind::Local(local) = stmt.kind else { return false };
+    let StmtKind::Local(local) = stmt.kind else {
+        return false;
+    };
     !local.pat.walk_short(|pat| {
         if let PatKind::Binding(.., None) = pat.kind {
             !needs_ordered_drop(cx, cx.typeck_results().pat_ty(pat))

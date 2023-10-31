@@ -1,6 +1,5 @@
 // build-pass
 // compile-flags: -O
-// min-llvm-version: 14.0.5
 // needs-asm-support
 // only-x86_64
 // only-linux

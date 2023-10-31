@@ -1,0 +1,29 @@
+- // MIR for `call` before Inline
++ // MIR for `call` after Inline
+  
+  fn call(_1: Box<dyn FnMut<I, Output = ()>>, _2: I) -> () {
+      debug mock => _1;
+      debug input => _2;
+      let mut _0: ();
+      let mut _3: &mut std::boxed::Box<dyn std::ops::FnMut<I, Output = ()>>;
+      let mut _4: I;
+  
+      bb0: {
+          StorageLive(_3);
+          _3 = &mut _1;
+          StorageLive(_4);
+          _4 = move _2;
+          _0 = <Box<dyn FnMut<I, Output = ()>> as FnMut<I>>::call_mut(move _3, move _4) -> [return: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+          StorageDead(_4);
+          StorageDead(_3);
+          drop(_1) -> [return: bb2, unwind unreachable];
+      }
+  
+      bb2: {
+          return;
+      }
+  }
+  

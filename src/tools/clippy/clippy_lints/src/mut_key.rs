@@ -139,7 +139,7 @@ impl MutableKeyType {
     }
 
     fn check_sig(&self, cx: &LateContext<'_>, fn_def_id: LocalDefId, decl: &hir::FnDecl<'_>) {
-        let fn_sig = cx.tcx.fn_sig(fn_def_id).subst_identity();
+        let fn_sig = cx.tcx.fn_sig(fn_def_id).instantiate_identity();
         for (hir_ty, ty) in iter::zip(decl.inputs, fn_sig.inputs().skip_binder()) {
             self.check_ty_(cx, hir_ty.span, *ty);
         }
@@ -150,7 +150,7 @@ impl MutableKeyType {
     // generics (because the compiler cannot ensure immutability for unknown types).
     fn check_ty_<'tcx>(&self, cx: &LateContext<'tcx>, span: Span, ty: Ty<'tcx>) {
         let ty = ty.peel_refs();
-        if let Adt(def, substs) = ty.kind() {
+        if let Adt(def, args) = ty.kind() {
             let is_keyed_type = [sym::HashMap, sym::BTreeMap, sym::HashSet, sym::BTreeSet]
                 .iter()
                 .any(|diag_item| cx.tcx.is_diagnostic_item(*diag_item, def.did()));
@@ -158,7 +158,7 @@ impl MutableKeyType {
                 return;
             }
 
-            let subst_ty = substs.type_at(0);
+            let subst_ty = args.type_at(0);
             // Determines if a type contains interior mutability which would affect its implementation of
             // [`Hash`] or [`Ord`].
             if is_interior_mut_ty(cx, subst_ty)

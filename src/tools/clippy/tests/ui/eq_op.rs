@@ -1,5 +1,3 @@
-//@compile-flags: --test
-
 #![warn(clippy::eq_op)]
 #![allow(clippy::double_parens, clippy::identity_op, clippy::nonminimal_bool)]
 #![allow(clippy::suspicious_xor_used_as_pow)]
@@ -12,6 +10,8 @@ fn main() {
     let _ = false != false;
     let _ = 1.5 < 1.5;
     let _ = 1u64 >= 1u64;
+    let x = f32::NAN;
+    let _ = x != x;
 
     // casts, methods, parentheses
     let _ = (1u32 as u64) & (1u32 as u64);

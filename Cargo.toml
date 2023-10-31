@@ -1,4 +1,5 @@
 [workspace]
+resolver = "1"
 members = [
   "compiler/rustc",
   "library/std",
@@ -40,6 +41,8 @@ members = [
   "src/tools/generate-copyright",
   "src/tools/suggest-tests",
   "src/tools/generate-windows-sys",
+  "src/tools/rustdoc-gui-test",
+  "src/tools/opt-dist",
 ]
 
 exclude = [
@@ -101,6 +104,8 @@ miniz_oxide.debug = 0
 object.debug = 0
 
 [patch.crates-io]
+libc = { git = "https://github.com/wasix-org/libc.git", branch = "main" }
+
 # See comments in `library/rustc-std-workspace-core/README.md` for what's going on
 # here
 rustc-std-workspace-core = { path = 'library/rustc-std-workspace-core' }

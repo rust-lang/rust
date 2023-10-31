@@ -15,8 +15,7 @@ struct Foo<T: StreamingIterator + 'static> {
 
 // Users can bound parameters by the type constructed by that trait's associated type constructor
 // of a trait using HRTB. Both type equality bounds and trait bounds of this kind are valid:
-//FIXME(#44265): This next line should parse and be valid
-//fn foo<T: for<'a> StreamingIterator<Item<'a>=&'a [i32]>>(_iter: T) { /* ... */ }
+fn _bar<T: for<'a> StreamingIterator<Item<'a>=&'a [i32]>>(_iter: T) { /* ... */ }
 fn _foo<T>(_iter: T) where T: StreamingIterator, for<'a> T::Item<'a>: Display { /* ... */ }
 
 // Full example of enumerate iterator

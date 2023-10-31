@@ -1,0 +1,16 @@
+// MIR for `main` after AbortUnwindingCalls
+
+fn main() -> () {
+    let mut _0: ();
+    let mut _1: !;
+    let mut _2: ();
+    scope 1 {
+    }
+
+    bb0: {
+        StorageLive(_1);
+        StorageLive(_2);
+        _2 = ();
+        _1 = const_eval_select::<(), fn() -> ! {ow_ct}, fn() -> ! {ow_ct}, !>(move _2, ow_ct, ow_ct) -> unwind unreachable;
+    }
+}

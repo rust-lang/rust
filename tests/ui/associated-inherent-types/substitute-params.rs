@@ -15,8 +15,7 @@ impl<T> S<(T,)> {
 
 fn main() {
     // Regression test for issue #104240.
-    type A = S<()>::P;
-    let _: A = ();
+    let _: S<()>::P = ();
 
     // Regression test for issue #107468.
     let _: S<(i32,)>::Un = 0i32;

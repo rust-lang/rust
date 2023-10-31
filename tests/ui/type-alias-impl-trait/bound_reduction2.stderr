@@ -1,5 +1,17 @@
+error[E0792]: non-defining opaque type use in defining scope
+  --> $DIR/bound_reduction2.rs:15:46
+   |
+LL | fn foo_desugared<T: TraitWithAssoc>(_: T) -> Foo<T::Assoc> {
+   |                                              ^^^^^^^^^^^^^ argument `<T as TraitWithAssoc>::Assoc` is not a generic parameter
+   |
+note: for this opaque type
+  --> $DIR/bound_reduction2.rs:9:15
+   |
+LL | type Foo<V> = impl Trait<V>;
+   |               ^^^^^^^^^^^^^
+
 error[E0792]: expected generic type parameter, found `<T as TraitWithAssoc>::Assoc`
-  --> $DIR/bound_reduction2.rs:16:5
+  --> $DIR/bound_reduction2.rs:17:5
    |
 LL | type Foo<V> = impl Trait<V>;
    |          - this generic parameter must be used with a generic type parameter
@@ -7,6 +19,6 @@ LL | type Foo<V> = impl Trait<V>;
 LL |     ()
    |     ^^
 
-error: aborting due to previous error
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0792`.

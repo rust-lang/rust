@@ -164,17 +164,11 @@ export exclude_tests='
     --exclude tests/run-make-fulldeps'
 
 env $build_env \
-    ./x.py test -j 1 \
+    ./x.py test \
         $exclude_tests \
         --stage 1 \
         --target x86_64-pc-nto-qnx710
 ```
-
-Currently, only one thread can be used when testing due to limitations in `libc::fork` and `libc::posix_spawnp`.
-See [fork documentation](https://www.qnx.com/developers/docs/7.1/#com.qnx.doc.neutrino.lib_ref/topic/f/fork.html)
-(error section) for more information.
-This can be achieved by using the `-j 1` parameter in the `x.py` call.
-This issue is being researched and we will try to allow parallelism in the future.
 
 ## Building Rust programs
 

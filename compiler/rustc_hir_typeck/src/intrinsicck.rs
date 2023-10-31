@@ -11,7 +11,7 @@ use super::FnCtxt;
 /// If the type is `Option<T>`, it will return `T`, otherwise
 /// the type itself. Works on most `Option`-like types.
 fn unpack_option_like<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
-    let ty::Adt(def, substs) = *ty.kind() else { return ty };
+    let ty::Adt(def, args) = *ty.kind() else { return ty };
 
     if def.variants().len() == 2 && !def.repr().c() && def.repr().int.is_none() {
         let data_idx;
@@ -28,7 +28,7 @@ fn unpack_option_like<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
         }
 
         if def.variant(data_idx).fields.len() == 1 {
-            return def.variant(data_idx).single_field().ty(tcx, substs);
+            return def.variant(data_idx).single_field().ty(tcx, args);
         }
     }
 
@@ -81,9 +81,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         // Try to display a sensible error with as much information as possible.
-        let skeleton_string = |ty: Ty<'tcx>, sk| match sk {
-            Ok(SizeSkeleton::Known(size)) => format!("{} bits", size.bits()),
+        let skeleton_string = |ty: Ty<'tcx>, sk: Result<_, &_>| match sk {
             Ok(SizeSkeleton::Pointer { tail, .. }) => format!("pointer to `{tail}`"),
+            Ok(SizeSkeleton::Known(size)) => {
+                if let Some(v) = u128::from(size.bytes()).checked_mul(8) {
+                    format!("{v} bits")
+                } else {
+                    // `u128` should definitely be able to hold the size of different architectures
+                    // larger sizes should be reported as error `are too big for the current architecture`
+                    // otherwise we have a bug somewhere
+                    bug!("{:?} overflow for u128", size)
+                }
+            }
             Ok(SizeSkeleton::Generic(size)) => {
                 if let Some(size) = size.try_eval_target_usize(tcx, self.param_env) {
                     format!("{size} bytes")
@@ -92,7 +101,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
             Err(LayoutError::Unknown(bad)) => {
-                if bad == ty {
+                if *bad == ty {
                     "this type does not have a fixed size".to_owned()
                 } else {
                     format!("size can vary because of {bad}")
@@ -113,14 +122,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else {
             err.note(format!("source type: `{}` ({})", from, skeleton_string(from, sk_from)))
                 .note(format!("target type: `{}` ({})", to, skeleton_string(to, sk_to)));
-            let mut should_delay_as_bug = false;
-            if let Err(LayoutError::Unknown(bad_from)) = sk_from && bad_from.references_error() {
-                should_delay_as_bug = true;
-            }
-            if let Err(LayoutError::Unknown(bad_to)) = sk_to && bad_to.references_error() {
-                should_delay_as_bug = true;
-            }
-            if should_delay_as_bug {
+            if let Err(LayoutError::ReferencesError(_)) = sk_from {
+                err.delay_as_bug();
+            } else if let Err(LayoutError::ReferencesError(_)) = sk_to {
                 err.delay_as_bug();
             }
         }

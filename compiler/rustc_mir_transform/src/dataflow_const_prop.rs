@@ -10,8 +10,10 @@ use rustc_middle::mir::visit::{MutVisitor, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_mir_dataflow::value_analysis::{Map, State, TrackElem, ValueAnalysis, ValueOrPlace};
-use rustc_mir_dataflow::{lattice::FlatSet, Analysis, ResultsVisitor, SwitchIntEdgeEffects};
+use rustc_mir_dataflow::value_analysis::{
+    Map, State, TrackElem, ValueAnalysis, ValueAnalysisWrapper, ValueOrPlace,
+};
+use rustc_mir_dataflow::{lattice::FlatSet, Analysis, Results, ResultsVisitor};
 use rustc_span::DUMMY_SP;
 use rustc_target::abi::{Align, FieldIdx, VariantIdx};
 
@@ -52,11 +54,11 @@ impl<'tcx> MirPass<'tcx> for DataflowConstProp {
 
         // Perform the actual dataflow analysis.
         let analysis = ConstAnalysis::new(tcx, body, map);
-        let results = debug_span!("analyze")
+        let mut results = debug_span!("analyze")
             .in_scope(|| analysis.wrap().into_engine(tcx, body).iterate_to_fixpoint());
 
         // Collect results and patch the body afterwards.
-        let mut visitor = CollectAndPatch::new(tcx, &results.analysis.0.map);
+        let mut visitor = CollectAndPatch::new(tcx);
         debug_span!("collect").in_scope(|| results.visit_reachable_with(body, &mut visitor));
         debug_span!("patch").in_scope(|| visitor.visit_body(body));
     }
@@ -245,49 +247,27 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
             .unwrap_or(FlatSet::Top)
     }
 
-    fn handle_switch_int(
+    fn handle_switch_int<'mir>(
         &self,
-        discr: &Operand<'tcx>,
-        apply_edge_effects: &mut impl SwitchIntEdgeEffects<State<Self::Value>>,
-    ) {
-        // FIXME: The dataflow framework only provides the state if we call `apply()`, which makes
-        // this more inefficient than it has to be.
-        let mut discr_value = None;
-        let mut handled = false;
-        apply_edge_effects.apply(|state, target| {
-            let discr_value = match discr_value {
-                Some(value) => value,
-                None => {
-                    let value = match self.handle_operand(discr, state) {
-                        ValueOrPlace::Value(value) => value,
-                        ValueOrPlace::Place(place) => state.get_idx(place, self.map()),
-                    };
-                    let result = match value {
-                        FlatSet::Top => FlatSet::Top,
-                        FlatSet::Elem(ScalarTy(scalar, _)) => {
-                            let int = scalar.assert_int();
-                            FlatSet::Elem(int.assert_bits(int.size()))
-                        }
-                        FlatSet::Bottom => FlatSet::Bottom,
-                    };
-                    discr_value = Some(result);
-                    result
-                }
-            };
-
-            let FlatSet::Elem(choice) = discr_value else {
-                // Do nothing if we don't know which branch will be taken.
-                return
-            };
-
-            if target.value.map(|n| n == choice).unwrap_or(!handled) {
-                // Branch is taken. Has no effect on state.
-                handled = true;
-            } else {
-                // Branch is not taken.
-                state.mark_unreachable();
+        discr: &'mir Operand<'tcx>,
+        targets: &'mir SwitchTargets,
+        state: &mut State<Self::Value>,
+    ) -> TerminatorEdges<'mir, 'tcx> {
+        let value = match self.handle_operand(discr, state) {
+            ValueOrPlace::Value(value) => value,
+            ValueOrPlace::Place(place) => state.get_idx(place, self.map()),
+        };
+        match value {
+            // We are branching on uninitialized data, this is UB, treat it as unreachable.
+            // This allows the set of visited edges to grow monotonically with the lattice.
+            FlatSet::Bottom => TerminatorEdges::None,
+            FlatSet::Elem(ScalarTy(scalar, _)) => {
+                let int = scalar.assert_int();
+                let choice = int.assert_bits(int.size());
+                TerminatorEdges::Single(targets.target_for_value(choice))
             }
-        })
+            FlatSet::Top => TerminatorEdges::SwitchInt { discr, targets },
+        }
     }
 }
 
@@ -387,9 +367,8 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
     }
 }
 
-struct CollectAndPatch<'tcx, 'map> {
+struct CollectAndPatch<'tcx> {
     tcx: TyCtxt<'tcx>,
-    map: &'map Map,
 
     /// For a given MIR location, this stores the values of the operands used by that location. In
     /// particular, this is before the effect, such that the operands of `_1 = _1 + _2` are
@@ -400,9 +379,9 @@ struct CollectAndPatch<'tcx, 'map> {
     assignments: FxHashMap<Location, ScalarTy<'tcx>>,
 }
 
-impl<'tcx, 'map> CollectAndPatch<'tcx, 'map> {
-    fn new(tcx: TyCtxt<'tcx>, map: &'map Map) -> Self {
-        Self { tcx, map, before_effect: FxHashMap::default(), assignments: FxHashMap::default() }
+impl<'tcx> CollectAndPatch<'tcx> {
+    fn new(tcx: TyCtxt<'tcx>) -> Self {
+        Self { tcx, before_effect: FxHashMap::default(), assignments: FxHashMap::default() }
     }
 
     fn make_operand(&self, scalar: ScalarTy<'tcx>) -> Operand<'tcx> {
@@ -414,18 +393,23 @@ impl<'tcx, 'map> CollectAndPatch<'tcx, 'map> {
     }
 }
 
-impl<'mir, 'tcx, 'map> ResultsVisitor<'mir, 'tcx> for CollectAndPatch<'tcx, 'map> {
+impl<'mir, 'tcx>
+    ResultsVisitor<'mir, 'tcx, Results<'tcx, ValueAnalysisWrapper<ConstAnalysis<'_, 'tcx>>>>
+    for CollectAndPatch<'tcx>
+{
     type FlowState = State<FlatSet<ScalarTy<'tcx>>>;
 
     fn visit_statement_before_primary_effect(
         &mut self,
+        results: &Results<'tcx, ValueAnalysisWrapper<ConstAnalysis<'_, 'tcx>>>,
         state: &Self::FlowState,
         statement: &'mir Statement<'tcx>,
         location: Location,
     ) {
         match &statement.kind {
             StatementKind::Assign(box (_, rvalue)) => {
-                OperandCollector { state, visitor: self }.visit_rvalue(rvalue, location);
+                OperandCollector { state, visitor: self, map: &results.analysis.0.map }
+                    .visit_rvalue(rvalue, location);
             }
             _ => (),
         }
@@ -433,6 +417,7 @@ impl<'mir, 'tcx, 'map> ResultsVisitor<'mir, 'tcx> for CollectAndPatch<'tcx, 'map
 
     fn visit_statement_after_primary_effect(
         &mut self,
+        results: &Results<'tcx, ValueAnalysisWrapper<ConstAnalysis<'_, 'tcx>>>,
         state: &Self::FlowState,
         statement: &'mir Statement<'tcx>,
         location: Location,
@@ -441,30 +426,34 @@ impl<'mir, 'tcx, 'map> ResultsVisitor<'mir, 'tcx> for CollectAndPatch<'tcx, 'map
             StatementKind::Assign(box (_, Rvalue::Use(Operand::Constant(_)))) => {
                 // Don't overwrite the assignment if it already uses a constant (to keep the span).
             }
-            StatementKind::Assign(box (place, _)) => match state.get(place.as_ref(), self.map) {
-                FlatSet::Top => (),
-                FlatSet::Elem(value) => {
-                    self.assignments.insert(location, value);
+            StatementKind::Assign(box (place, _)) => {
+                match state.get(place.as_ref(), &results.analysis.0.map) {
+                    FlatSet::Top => (),
+                    FlatSet::Elem(value) => {
+                        self.assignments.insert(location, value);
+                    }
+                    FlatSet::Bottom => {
+                        // This assignment is either unreachable, or an uninitialized value is assigned.
+                    }
                 }
-                FlatSet::Bottom => {
-                    // This assignment is either unreachable, or an uninitialized value is assigned.
-                }
-            },
+            }
             _ => (),
         }
     }
 
     fn visit_terminator_before_primary_effect(
         &mut self,
+        results: &Results<'tcx, ValueAnalysisWrapper<ConstAnalysis<'_, 'tcx>>>,
         state: &Self::FlowState,
         terminator: &'mir Terminator<'tcx>,
         location: Location,
     ) {
-        OperandCollector { state, visitor: self }.visit_terminator(terminator, location);
+        OperandCollector { state, visitor: self, map: &results.analysis.0.map }
+            .visit_terminator(terminator, location);
     }
 }
 
-impl<'tcx, 'map> MutVisitor<'tcx> for CollectAndPatch<'tcx, 'map> {
+impl<'tcx> MutVisitor<'tcx> for CollectAndPatch<'tcx> {
     fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
         self.tcx
     }
@@ -496,14 +485,15 @@ impl<'tcx, 'map> MutVisitor<'tcx> for CollectAndPatch<'tcx, 'map> {
 
 struct OperandCollector<'tcx, 'map, 'a> {
     state: &'a State<FlatSet<ScalarTy<'tcx>>>,
-    visitor: &'a mut CollectAndPatch<'tcx, 'map>,
+    visitor: &'a mut CollectAndPatch<'tcx>,
+    map: &'map Map,
 }
 
 impl<'tcx, 'map, 'a> Visitor<'tcx> for OperandCollector<'tcx, 'map, 'a> {
     fn visit_operand(&mut self, operand: &Operand<'tcx>, location: Location) {
         match operand {
             Operand::Copy(place) | Operand::Move(place) => {
-                match self.state.get(place.as_ref(), self.visitor.map) {
+                match self.state.get(place.as_ref(), self.map) {
                     FlatSet::Top => (),
                     FlatSet::Elem(value) => {
                         self.visitor.before_effect.insert((location, *place), value);
@@ -518,7 +508,7 @@ impl<'tcx, 'map, 'a> Visitor<'tcx> for OperandCollector<'tcx, 'map, 'a> {
 
 struct DummyMachine;
 
-impl<'mir, 'tcx> rustc_const_eval::interpret::Machine<'mir, 'tcx> for DummyMachine {
+impl<'mir, 'tcx: 'mir> rustc_const_eval::interpret::Machine<'mir, 'tcx> for DummyMachine {
     rustc_const_eval::interpret::compile_time_machine!(<'mir, 'tcx>);
     type MemoryKind = !;
     const PANIC_ON_ALLOC_FAIL: bool = true;
@@ -543,7 +533,7 @@ impl<'mir, 'tcx> rustc_const_eval::interpret::Machine<'mir, 'tcx> for DummyMachi
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
         _instance: ty::Instance<'tcx>,
         _abi: rustc_target::spec::abi::Abi,
-        _args: &[rustc_const_eval::interpret::OpTy<'tcx, Self::Provenance>],
+        _args: &[rustc_const_eval::interpret::FnArg<'tcx, Self::Provenance>],
         _destination: &rustc_const_eval::interpret::PlaceTy<'tcx, Self::Provenance>,
         _target: Option<BasicBlock>,
         _unwind: UnwindAction,

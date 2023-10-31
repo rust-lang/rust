@@ -1,10 +1,24 @@
 //@run-rustfix
-//@aux-build:proc_macros.rs
+//@aux-build:proc_macros.rs:proc-macro
 
 #![warn(clippy::ptr_as_ptr)]
 
+#[macro_use]
 extern crate proc_macros;
-use proc_macros::{external, inline_macros};
+
+mod issue_11278_a {
+    #[derive(Debug)]
+    pub struct T<D: std::fmt::Debug + ?Sized> {
+        pub p: D,
+    }
+}
+
+mod issue_11278_b {
+    pub fn f(o: &mut super::issue_11278_a::T<dyn std::fmt::Debug>) -> super::issue_11278_a::T<String> {
+        // Retain `super`
+        *unsafe { Box::from_raw(Box::into_raw(Box::new(o)) as *mut super::issue_11278_a::T<String>) }
+    }
+}
 
 #[inline_macros]
 fn main() {

@@ -103,12 +103,20 @@ fromRust(LLVMRustCounterExprKind Kind) {
 }
 
 extern "C" void LLVMRustCoverageWriteFilenamesSectionToBuffer(
-    const char* const Filenames[],
+    const char *const Filenames[],
     size_t FilenamesLen,
+    const size_t *const Lengths,
+    size_t LengthsLen,
     RustStringRef BufferOut) {
+  if (FilenamesLen != LengthsLen) {
+    report_fatal_error(
+        "Mismatched lengths in LLVMRustCoverageWriteFilenamesSectionToBuffer");
+  }
+
   SmallVector<std::string,32> FilenameRefs;
+  FilenameRefs.reserve(FilenamesLen);
   for (size_t i = 0; i < FilenamesLen; i++) {
-    FilenameRefs.push_back(std::string(Filenames[i]));
+    FilenameRefs.emplace_back(Filenames[i], Lengths[i]);
   }
   auto FilenamesWriter =
       coverage::CoverageFilenamesSectionWriter(ArrayRef<std::string>(FilenameRefs));
@@ -153,19 +161,17 @@ extern "C" void LLVMRustCoverageWriteMappingToBuffer(
   CoverageMappingWriter.write(OS);
 }
 
-extern "C" LLVMValueRef LLVMRustCoverageCreatePGOFuncNameVar(LLVMValueRef F, const char *FuncName) {
-  StringRef FuncNameRef(FuncName);
+extern "C" LLVMValueRef LLVMRustCoverageCreatePGOFuncNameVar(
+    LLVMValueRef F,
+    const char *FuncName,
+    size_t FuncNameLen) {
+  StringRef FuncNameRef(FuncName, FuncNameLen);
   return wrap(createPGOFuncNameVar(*cast<Function>(unwrap(F)), FuncNameRef));
-}
-
-extern "C" uint64_t LLVMRustCoverageHashCString(const char *StrVal) {
-  StringRef StrRef(StrVal);
-  return IndexedInstrProf::ComputeHash(StrRef);
 }
 
 extern "C" uint64_t LLVMRustCoverageHashByteArray(
     const char *Bytes,
-    unsigned NumBytes) {
+    size_t NumBytes) {
   StringRef StrRef(Bytes, NumBytes);
   return IndexedInstrProf::ComputeHash(StrRef);
 }

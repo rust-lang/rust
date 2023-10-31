@@ -13,6 +13,7 @@ mod fuse;
 mod inspect;
 mod intersperse;
 mod map;
+mod map_windows;
 mod peekable;
 mod scan;
 mod skip;

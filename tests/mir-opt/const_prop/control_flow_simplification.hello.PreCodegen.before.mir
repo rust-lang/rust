@@ -1,9 +1,0 @@
-// MIR for `hello` before PreCodegen
-
-fn hello() -> () {
-    let mut _0: ();                      // return place in scope 0 at $DIR/control_flow_simplification.rs:+0:14: +0:14
-
-    bb0: {
-        return;                          // scope 0 at $DIR/control_flow_simplification.rs:+4:2: +4:2
-    }
-}

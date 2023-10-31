@@ -5,10 +5,25 @@
 #![allow(
     unused_must_use,
     clippy::needless_bool,
+    clippy::needless_if,
     clippy::match_like_matches_macro,
     clippy::equatable_if_let,
     clippy::if_same_then_else
 )]
+#![feature(let_chains, if_let_guard)]
+
+fn issue_11174<T>(boolean: bool, maybe_some: Option<T>) -> bool {
+    matches!(maybe_some, None if !boolean)
+}
+
+fn issue_11174_edge_cases<T>(boolean: bool, boolean2: bool, maybe_some: Option<T>) {
+    let _ = matches!(maybe_some, None if boolean || boolean2); // guard needs parentheses
+    let _ = match maybe_some { // can't use `matches!` here
+                               // because `expr` metavars in macros don't allow let exprs
+        None if let Some(x) = Some(0) && x > 5 => true,
+        _ => false
+    };
+}
 
 fn main() {
     if let None = None::<()> {}
@@ -56,6 +71,7 @@ fn main() {
 
     issue6067();
     issue10726();
+    issue10803();
 
     let _ = if let Some(_) = gen_opt() {
         1
@@ -133,4 +149,15 @@ fn issue10726() {
         Some(21) => true,
         _ => false,
     };
+}
+
+fn issue10803() {
+    let x = Some(42);
+
+    let _ = matches!(x, Some(_));
+
+    let _ = matches!(x, None);
+
+    // Don't lint
+    let _ = matches!(x, Some(16));
 }

@@ -13,6 +13,7 @@ use std::{env, mem, str};
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_metadata::find_native_static_library;
 use rustc_middle::middle::dependency_format::Linkage;
+use rustc_middle::middle::exported_symbols;
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo, SymbolExportKind};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{self, CrateType, DebugInfo, LinkerPluginLto, Lto, OptLevel, Strip};
@@ -309,7 +310,7 @@ impl<'a> GccLinker<'a> {
             self.linker_arg(&format!("-plugin-opt=sample-profile={}", path.display()));
         };
         self.linker_args(&[
-            &format!("-plugin-opt={}", opt_level),
+            &format!("-plugin-opt={opt_level}"),
             &format!("-plugin-opt=mcpu={}", self.target_cpu),
         ]);
     }
@@ -487,7 +488,7 @@ impl<'a> Linker for GccLinker<'a> {
 
     fn link_rust_dylib(&mut self, lib: &str, _path: &Path) {
         self.hint_dynamic();
-        self.cmd.arg(format!("-l{}", lib));
+        self.cmd.arg(format!("-l{lib}"));
     }
 
     fn link_framework(&mut self, framework: &str, as_needed: bool) {
@@ -659,8 +660,6 @@ impl<'a> Linker for GccLinker<'a> {
             return;
         }
 
-        // FIXME(#99978) hide #[no_mangle] symbols for proc-macros
-
         let is_windows = self.sess.target.is_like_windows;
         let path = tmpdir.join(if is_windows { "list.def" } else { "list" });
 
@@ -671,8 +670,8 @@ impl<'a> Linker for GccLinker<'a> {
             let res: io::Result<()> = try {
                 let mut f = BufWriter::new(File::create(&path)?);
                 for sym in symbols {
-                    debug!("  _{}", sym);
-                    writeln!(f, "_{}", sym)?;
+                    debug!("  _{sym}");
+                    writeln!(f, "_{sym}")?;
                 }
             };
             if let Err(error) = res {
@@ -686,8 +685,8 @@ impl<'a> Linker for GccLinker<'a> {
                 // because LD doesn't like when it's empty
                 writeln!(f, "EXPORTS")?;
                 for symbol in symbols {
-                    debug!("  _{}", symbol);
-                    writeln!(f, "  {}", symbol)?;
+                    debug!("  _{symbol}");
+                    writeln!(f, "  {symbol}")?;
                 }
             };
             if let Err(error) = res {
@@ -701,8 +700,8 @@ impl<'a> Linker for GccLinker<'a> {
                 if !symbols.is_empty() {
                     writeln!(f, "  global:")?;
                     for sym in symbols {
-                        debug!("    {};", sym);
-                        writeln!(f, "    {};", sym)?;
+                        debug!("    {sym};");
+                        writeln!(f, "    {sym};")?;
                     }
                 }
                 writeln!(f, "\n  local:\n    *;\n}};")?;
@@ -837,7 +836,7 @@ impl<'a> Linker for MsvcLinker<'a> {
         // `foo.lib` file if the dll doesn't actually export any symbols, so we
         // check to see if the file is there and just omit linking to it if it's
         // not present.
-        let name = format!("{}.dll.lib", lib);
+        let name = format!("{lib}.dll.lib");
         if path.join(&name).exists() {
             self.cmd.arg(name);
         }
@@ -977,8 +976,8 @@ impl<'a> Linker for MsvcLinker<'a> {
             writeln!(f, "LIBRARY")?;
             writeln!(f, "EXPORTS")?;
             for symbol in symbols {
-                debug!("  _{}", symbol);
-                writeln!(f, "  {}", symbol)?;
+                debug!("  _{symbol}");
+                writeln!(f, "  {symbol}")?;
             }
         };
         if let Err(error) = res {
@@ -992,7 +991,7 @@ impl<'a> Linker for MsvcLinker<'a> {
     fn subsystem(&mut self, subsystem: &str) {
         // Note that previous passes of the compiler validated this subsystem,
         // so we just blindly pass it to the linker.
-        self.cmd.arg(&format!("/SUBSYSTEM:{}", subsystem));
+        self.cmd.arg(&format!("/SUBSYSTEM:{subsystem}"));
 
         // Windows has two subsystems we're interested in right now, the console
         // and windows subsystems. These both implicitly have different entry
@@ -1147,7 +1146,7 @@ impl<'a> Linker for EmLinker<'a> {
             &symbols.iter().map(|sym| "_".to_owned() + sym).collect::<Vec<_>>(),
         )
         .unwrap();
-        debug!("{}", encoded);
+        debug!("{encoded}");
 
         arg.push(encoded);
 
@@ -1177,7 +1176,7 @@ impl<'a> WasmLd<'a> {
         //   the one linear memory as `shared`
         //
         // * `--max-memory=1G` - when specifying a shared memory this must also
-        //   be specified. We conservatively choose 1GB but users should be able
+        //   be specified. We conservatively choose 4GB but users should be able
         //   to override this with `-C link-arg`.
         //
         // * `--import-memory` - it doesn't make much sense for memory to be
@@ -1190,7 +1189,11 @@ impl<'a> WasmLd<'a> {
         //      symbols are how the TLS segments are initialized and configured.
         if sess.target_features.contains(&sym::atomics) {
             cmd.arg("--shared-memory");
-            cmd.arg("--max-memory=1073741824");
+            if sess.target.arch == "wasm64" {
+                cmd.arg("--max-memory=1099511627776");
+            } else {
+                cmd.arg("--max-memory=4294967296");
+            }            
             cmd.arg("--import-memory");
             if sess.target.os == "unknown" {
                 cmd.arg("--export=__wasm_init_tls");
@@ -1324,10 +1327,13 @@ impl<'a> Linker for WasmLd<'a> {
         // symbols explicitly passed via the `--export` flags above and hides all
         // others. Various bits and pieces of wasm32-unknown-unknown tooling use
         // this, so be sure these symbols make their way out of the linker as well.
-        if self.sess.target.os == "unknown" {
+        
+        // FIXME: evaluate if check
+        // if self.sess.target.os == "unknown" {
             self.cmd.arg("--export=__heap_base");
+            self.cmd.arg("--export=__stack_pointer");
             self.cmd.arg("--export=__data_end");
-        }
+        //}
     }
 
     fn subsystem(&mut self, _subsystem: &str) {}
@@ -1350,7 +1356,7 @@ impl<'a> Linker for L4Bender<'a> {
     }
     fn link_staticlib(&mut self, lib: &str, _verbatim: bool) {
         self.hint_static();
-        self.cmd.arg(format!("-PC{}", lib));
+        self.cmd.arg(format!("-PC{lib}"));
     }
     fn link_rlib(&mut self, lib: &Path) {
         self.hint_static();
@@ -1399,7 +1405,7 @@ impl<'a> Linker for L4Bender<'a> {
 
     fn link_whole_staticlib(&mut self, lib: &str, _verbatim: bool, _search_path: &[PathBuf]) {
         self.hint_static();
-        self.cmd.arg("--whole-archive").arg(format!("-l{}", lib));
+        self.cmd.arg("--whole-archive").arg(format!("-l{lib}"));
         self.cmd.arg("--no-whole-archive");
     }
 
@@ -1453,7 +1459,7 @@ impl<'a> Linker for L4Bender<'a> {
     }
 
     fn subsystem(&mut self, subsystem: &str) {
-        self.cmd.arg(&format!("--subsystem {}", subsystem));
+        self.cmd.arg(&format!("--subsystem {subsystem}"));
     }
 
     fn reset_per_library_state(&mut self) {
@@ -1518,12 +1524,12 @@ impl<'a> AixLinker<'a> {
 impl<'a> Linker for AixLinker<'a> {
     fn link_dylib(&mut self, lib: &str, _verbatim: bool, _as_needed: bool) {
         self.hint_dynamic();
-        self.cmd.arg(format!("-l{}", lib));
+        self.cmd.arg(format!("-l{lib}"));
     }
 
     fn link_staticlib(&mut self, lib: &str, _verbatim: bool) {
         self.hint_static();
-        self.cmd.arg(format!("-l{}", lib));
+        self.cmd.arg(format!("-l{lib}"));
     }
 
     fn link_rlib(&mut self, lib: &Path) {
@@ -1573,7 +1579,7 @@ impl<'a> Linker for AixLinker<'a> {
 
     fn link_rust_dylib(&mut self, lib: &str, _: &Path) {
         self.hint_dynamic();
-        self.cmd.arg(format!("-l{}", lib));
+        self.cmd.arg(format!("-l{lib}"));
     }
 
     fn link_framework(&mut self, _framework: &str, _as_needed: bool) {
@@ -1626,12 +1632,12 @@ impl<'a> Linker for AixLinker<'a> {
             let mut f = BufWriter::new(File::create(&path)?);
             // FIXME: use llvm-nm to generate export list.
             for symbol in symbols {
-                debug!("  _{}", symbol);
-                writeln!(f, "  {}", symbol)?;
+                debug!("  _{symbol}");
+                writeln!(f, "  {symbol}")?;
             }
         };
         if let Err(e) = res {
-            self.sess.fatal(format!("failed to write export file: {}", e));
+            self.sess.fatal(format!("failed to write export file: {e}"));
         }
         self.cmd.arg(format!("-bE:{}", path.to_str().unwrap()));
     }
@@ -1679,8 +1685,15 @@ pub(crate) fn exported_symbols(tcx: TyCtxt<'_>, crate_type: CrateType) -> Vec<St
         return exports.iter().map(ToString::to_string).collect();
     }
 
-    let mut symbols = Vec::new();
+    if let CrateType::ProcMacro = crate_type {
+        exported_symbols_for_proc_macro_crate(tcx)
+    } else {
+        exported_symbols_for_non_proc_macro(tcx, crate_type)
+    }
+}
 
+fn exported_symbols_for_non_proc_macro(tcx: TyCtxt<'_>, crate_type: CrateType) -> Vec<String> {
+    let mut symbols = Vec::new();
     let export_threshold = symbol_export::crates_export_threshold(&[crate_type]);
     for_each_exported_symbols_include_dep(tcx, crate_type, |symbol, info, cnum| {
         if info.level.is_below_threshold(export_threshold) {
@@ -1689,6 +1702,19 @@ pub(crate) fn exported_symbols(tcx: TyCtxt<'_>, crate_type: CrateType) -> Vec<St
     });
 
     symbols
+}
+
+fn exported_symbols_for_proc_macro_crate(tcx: TyCtxt<'_>) -> Vec<String> {
+    // `exported_symbols` will be empty when !should_codegen.
+    if !tcx.sess.opts.output_types.should_codegen() {
+        return Vec::new();
+    }
+
+    let stable_crate_id = tcx.stable_crate_id(LOCAL_CRATE);
+    let proc_macro_decls_name = tcx.sess.generate_proc_macro_decls_symbol(stable_crate_id);
+    let metadata_symbol_name = exported_symbols::metadata_symbol_name(tcx);
+
+    vec![proc_macro_decls_name, metadata_symbol_name]
 }
 
 pub(crate) fn linked_symbols(
@@ -1908,7 +1934,7 @@ impl<'a> Linker for BpfLinker<'a> {
         let res: io::Result<()> = try {
             let mut f = BufWriter::new(File::create(&path)?);
             for sym in symbols {
-                writeln!(f, "{}", sym)?;
+                writeln!(f, "{sym}")?;
             }
         };
         if let Err(error) = res {

@@ -1,14 +1,6 @@
-const QUERY = [
-    'A<B<C<D>,  E>',
-    'p<> u8',
-    '"p"<a>',
-    'p<u<x>>',
-    'p<u<x>, r>',
-    'p<u<x, r>>',
-];
-
 const PARSED = [
     {
+        query: 'A<B<C<D>,  E>',
         elems: [],
         foundElems: 0,
         original: 'A<B<C<D>,  E>',
@@ -17,6 +9,7 @@ const PARSED = [
         error: 'Unclosed `<`',
     },
     {
+        query: 'p<>,u8',
         elems: [
             {
                 name: "p",
@@ -36,12 +29,13 @@ const PARSED = [
             },
         ],
         foundElems: 2,
-        original: "p<> u8",
+        original: "p<>,u8",
         returned: [],
-        userQuery: "p<> u8",
+        userQuery: "p<>,u8",
         error: null,
     },
     {
+        query: '"p"<a>',
         elems: [
             {
                 name: "p",
@@ -67,6 +61,7 @@ const PARSED = [
         error: null,
     },
     {
+        query: 'p<u<x>>',
         elems: [
             {
                 name: "p",
@@ -100,6 +95,7 @@ const PARSED = [
         error: null,
     },
     {
+        query: 'p<u<x>, r>',
         elems: [
             {
                 name: "p",
@@ -140,6 +136,7 @@ const PARSED = [
         error: null,
     },
     {
+        query: 'p<u<x, r>>',
         elems: [
             {
                 name: "p",

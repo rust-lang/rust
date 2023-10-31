@@ -74,7 +74,7 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
             kind @ StmtKind::Let { pattern, .. } => {
                 return Err(ParseError {
                     span: pattern.span,
-                    item_description: format!("{:?}", kind),
+                    item_description: format!("{kind:?}"),
                     expected: "expression".to_string(),
                 });
             }
@@ -241,9 +241,7 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
             });
         }
 
-        let Some(trailing) = block.expr else {
-            return Err(self.expr_error(expr_id, "terminator"))
-        };
+        let Some(trailing) = block.expr else { return Err(self.expr_error(expr_id, "terminator")) };
         let span = self.thir[trailing].span;
         let terminator = self.parse_terminator(trailing)?;
         data.terminator = Some(Terminator {

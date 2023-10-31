@@ -1,0 +1,25 @@
+error[E0053]: method `foo` has an incompatible type for trait
+  --> $DIR/dont-project-to-specializable-projection.rs:14:35
+   |
+LL |     default async fn foo(_: T) -> &'static str {
+   |                                   ^^^^^^^^^^^^ expected associated type, found future
+   |
+note: type in trait
+  --> $DIR/dont-project-to-specializable-projection.rs:10:27
+   |
+LL |     async fn foo(_: T) -> &'static str;
+   |                           ^^^^^^^^^^^^
+   = note: expected signature `fn(_) -> impl Future<Output = &'static str>`
+              found signature `fn(_) -> impl Future<Output = &'static str>`
+
+error: async associated function in trait cannot be specialized
+  --> $DIR/dont-project-to-specializable-projection.rs:14:5
+   |
+LL |     default async fn foo(_: T) -> &'static str {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: specialization behaves in inconsistent and surprising ways with `#![feature(async_fn_in_trait)]`, and for now is disallowed
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0053`.

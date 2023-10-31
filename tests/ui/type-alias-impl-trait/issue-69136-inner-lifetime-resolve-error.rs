@@ -1,4 +1,6 @@
-// Regression test for #69136
+//! Regression test for #69136
+//! This test checks that the unknown lifetime `'a` doesn't cause
+//! ICEs after emitting the error.
 
 #![feature(type_alias_impl_trait)]
 
@@ -17,7 +19,6 @@ impl<T> WithAssoc<T> for () {
 type Return<A> = impl WithAssoc<A, AssocType = impl SomeTrait + 'a>;
 //~^ ERROR use of undeclared lifetime name `'a`
 
-fn my_fun() -> Return<()> {}
-//~^ ERROR expected generic type parameter, found `()`
+fn my_fun<T>() -> Return<T> {}
 
 fn main() {}

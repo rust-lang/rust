@@ -2,9 +2,8 @@ error[E0507]: cannot move out of dereference of `Ref<'_, TheDarkKnight>`
   --> $DIR/E0507.rs:12:5
    |
 LL |     x.borrow().nothing_is_true();
-   |     ^^^^^^^^^^^-----------------
-   |     |          |
-   |     |          value moved due to this method call
+   |     ^^^^^^^^^^ ----------------- value moved due to this method call
+   |     |
    |     move occurs because value has type `TheDarkKnight`, which does not implement the `Copy` trait
    |
 note: `TheDarkKnight::nothing_is_true` takes ownership of the receiver `self`, which moves value

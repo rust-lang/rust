@@ -1,4 +1,6 @@
-// run-pass
+// check-pass
+// revisions: current next
+//[next] compile-flags: -Ztrait-solver=next
 
 #![allow(non_upper_case_globals)]
 #![allow(dead_code)]

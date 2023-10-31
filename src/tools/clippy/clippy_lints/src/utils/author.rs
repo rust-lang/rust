@@ -526,7 +526,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 self.ident(field_name);
                 self.expr(object);
             },
-            ExprKind::Index(object, index) => {
+            ExprKind::Index(object, index, _) => {
                 bind!(self, object, index);
                 kind!("Index({object}, {index})");
                 self.expr(object);
@@ -558,6 +558,11 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 opt_bind!(self, value);
                 kind!("Ret({value})");
                 value.if_some(|e| self.expr(e));
+            },
+            ExprKind::Become(value) => {
+                bind!(self, value);
+                kind!("Become({value})");
+                self.expr(value);
             },
             ExprKind::InlineAsm(_) => {
                 kind!("InlineAsm(_)");

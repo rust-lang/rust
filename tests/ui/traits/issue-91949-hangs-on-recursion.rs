@@ -3,6 +3,7 @@
 // error-pattern: overflow evaluating the requirement `<std::iter::Empty<()> as Iterator>::Item == ()`
 // error-pattern: function cannot return without recursing
 // normalize-stderr-test: "long-type-\d+" -> "long-type-hash"
+// ignore-compare-mode-next-solver (hangs)
 
 // Regression test for #91949.
 // This hanged *forever* on 1.56, fixed by #90423.

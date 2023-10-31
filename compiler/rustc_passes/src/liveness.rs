@@ -463,6 +463,7 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
             | hir::ExprKind::Lit(_)
             | hir::ExprKind::ConstBlock(..)
             | hir::ExprKind::Ret(..)
+            | hir::ExprKind::Become(..)
             | hir::ExprKind::Block(..)
             | hir::ExprKind::Assign(..)
             | hir::ExprKind::AssignOp(..)
@@ -604,7 +605,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         for var_idx in 0..self.ir.var_kinds.len() {
             let var = Variable::from(var_idx);
             if test(var) {
-                write!(wr, " {:?}", var)?;
+                write!(wr, " {var:?}")?;
             }
         }
         Ok(())
@@ -746,7 +747,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
         let ty = self.typeck_results.node_type(hir_id);
         match ty.kind() {
-            ty::Closure(_def_id, substs) => match substs.as_closure().kind() {
+            ty::Closure(_def_id, args) => match args.as_closure().kind() {
                 ty::ClosureKind::Fn => {}
                 ty::ClosureKind::FnMut => {}
                 ty::ClosureKind::FnOnce => return succ,
@@ -967,6 +968,11 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 self.propagate_through_opt_expr(o_e.as_deref(), self.exit_ln)
             }
 
+            hir::ExprKind::Become(ref e) => {
+                // Ignore succ and subst exit_ln.
+                self.propagate_through_expr(e, self.exit_ln)
+            }
+
             hir::ExprKind::Break(label, ref opt_expr) => {
                 // Find which label this break jumps to
                 let target = match label.target_id {
@@ -1055,7 +1061,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 self.propagate_through_expr(&l, ln)
             }
 
-            hir::ExprKind::Index(ref l, ref r) | hir::ExprKind::Binary(_, ref l, ref r) => {
+            hir::ExprKind::Index(ref l, ref r, _) | hir::ExprKind::Binary(_, ref l, ref r) => {
                 let r_succ = self.propagate_through_expr(&r, succ);
                 self.propagate_through_expr(&l, r_succ)
             }
@@ -1099,7 +1105,6 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 }
 
                 // Then do a second pass for inputs
-                let mut succ = succ;
                 for (op, _op_sp) in asm.operands.iter().rev() {
                     match op {
                         hir::InlineAsmOperand::In { expr, .. } => {
@@ -1408,6 +1413,7 @@ fn check_expr<'tcx>(this: &mut Liveness<'_, 'tcx>, expr: &'tcx Expr<'tcx>) {
         | hir::ExprKind::DropTemps(..)
         | hir::ExprKind::Unary(..)
         | hir::ExprKind::Ret(..)
+        | hir::ExprKind::Become(..)
         | hir::ExprKind::Break(..)
         | hir::ExprKind::Continue(..)
         | hir::ExprKind::Lit(_)
@@ -1676,12 +1682,16 @@ impl<'tcx> Liveness<'_, 'tcx> {
         opt_body: Option<&hir::Body<'_>>,
     ) -> Vec<errors::UnusedVariableStringInterp> {
         let mut suggs = Vec::new();
-        let Some(opt_body) = opt_body else { return suggs; };
+        let Some(opt_body) = opt_body else {
+            return suggs;
+        };
         let mut visitor = CollectLitsVisitor { lit_exprs: vec![] };
         intravisit::walk_body(&mut visitor, opt_body);
         for lit_expr in visitor.lit_exprs {
             let hir::ExprKind::Lit(litx) = &lit_expr.kind else { continue };
-            let rustc_ast::LitKind::Str(syb, _) = litx.node else{ continue; };
+            let rustc_ast::LitKind::Str(syb, _) = litx.node else {
+                continue;
+            };
             let name_str: &str = syb.as_str();
             let name_pa = format!("{{{name}}}");
             if name_str.contains(&name_pa) {

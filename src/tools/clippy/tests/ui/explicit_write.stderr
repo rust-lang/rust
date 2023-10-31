@@ -2,7 +2,7 @@ error: use of `write!(stdout(), ...).unwrap()`
   --> $DIR/explicit_write.rs:24:9
    |
 LL |         write!(std::io::stdout(), "test").unwrap();
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `print!("test")`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `print!("test")`
    |
    = note: `-D clippy::explicit-write` implied by `-D warnings`
 
@@ -10,73 +10,73 @@ error: use of `write!(stderr(), ...).unwrap()`
   --> $DIR/explicit_write.rs:25:9
    |
 LL |         write!(std::io::stderr(), "test").unwrap();
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `eprint!("test")`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `eprint!("test")`
 
 error: use of `writeln!(stdout(), ...).unwrap()`
   --> $DIR/explicit_write.rs:26:9
    |
 LL |         writeln!(std::io::stdout(), "test").unwrap();
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `println!("test")`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `println!("test")`
 
 error: use of `writeln!(stderr(), ...).unwrap()`
   --> $DIR/explicit_write.rs:27:9
    |
 LL |         writeln!(std::io::stderr(), "test").unwrap();
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `eprintln!("test")`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `eprintln!("test")`
 
 error: use of `stdout().write_fmt(...).unwrap()`
   --> $DIR/explicit_write.rs:28:9
    |
 LL |         std::io::stdout().write_fmt(format_args!("test")).unwrap();
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `print!("test")`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `print!("test")`
 
 error: use of `stderr().write_fmt(...).unwrap()`
   --> $DIR/explicit_write.rs:29:9
    |
 LL |         std::io::stderr().write_fmt(format_args!("test")).unwrap();
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `eprint!("test")`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `eprint!("test")`
 
 error: use of `writeln!(stdout(), ...).unwrap()`
   --> $DIR/explicit_write.rs:32:9
    |
 LL |         writeln!(std::io::stdout(), "test/ntest").unwrap();
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `println!("test/ntest")`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `println!("test/ntest")`
 
 error: use of `writeln!(stderr(), ...).unwrap()`
   --> $DIR/explicit_write.rs:33:9
    |
 LL |         writeln!(std::io::stderr(), "test/ntest").unwrap();
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `eprintln!("test/ntest")`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `eprintln!("test/ntest")`
 
 error: use of `writeln!(stderr(), ...).unwrap()`
   --> $DIR/explicit_write.rs:36:9
    |
 LL |         writeln!(std::io::stderr(), "with {}", value).unwrap();
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `eprintln!("with {}", value)`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `eprintln!("with {}", value)`
 
 error: use of `writeln!(stderr(), ...).unwrap()`
   --> $DIR/explicit_write.rs:37:9
    |
 LL |         writeln!(std::io::stderr(), "with {} {}", 2, value).unwrap();
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `eprintln!("with {} {}", 2, value)`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `eprintln!("with {} {}", 2, value)`
 
 error: use of `writeln!(stderr(), ...).unwrap()`
   --> $DIR/explicit_write.rs:38:9
    |
 LL |         writeln!(std::io::stderr(), "with {value}").unwrap();
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `eprintln!("with {value}")`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `eprintln!("with {value}")`
 
 error: use of `writeln!(stderr(), ...).unwrap()`
   --> $DIR/explicit_write.rs:39:9
    |
 LL |         writeln!(std::io::stderr(), "macro arg {}", one!()).unwrap();
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `eprintln!("macro arg {}", one!())`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `eprintln!("macro arg {}", one!())`
 
 error: use of `writeln!(stderr(), ...).unwrap()`
   --> $DIR/explicit_write.rs:41:9
    |
 LL |         writeln!(std::io::stderr(), "{:w$}", value, w = width).unwrap();
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `eprintln!("{:w$}", value, w = width)`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `eprintln!("{:w$}", value, w = width)`
 
 error: aborting due to 13 previous errors
 

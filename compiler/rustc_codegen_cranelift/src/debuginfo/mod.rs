@@ -38,7 +38,7 @@ pub(crate) struct DebugContext {
 pub(crate) struct FunctionDebugContext {
     entry_id: UnitEntryId,
     function_source_loc: (FileId, u64, u64),
-    source_loc_set: indexmap::IndexSet<(FileId, u64, u64)>,
+    source_loc_set: IndexSet<(FileId, u64, u64)>,
 }
 
 impl DebugContext {

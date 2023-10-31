@@ -75,7 +75,7 @@ where
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s: &U = &*self;
-        f.write_fmt(format_args!("{:?}", s))
+        f.write_fmt(format_args!("{s:?}"))
     }
 }
 
@@ -236,7 +236,7 @@ impl Cache {
             .or_insert_with(|| Box::new(HashMap::<S, S::Output>::new()))
             .downcast_mut::<HashMap<S, S::Output>>()
             .expect("invalid type mapped");
-        assert!(!stepcache.contains_key(&step), "processing {:?} a second time", step);
+        assert!(!stepcache.contains_key(&step), "processing {step:?} a second time");
         stepcache.insert(step, value);
     }
 

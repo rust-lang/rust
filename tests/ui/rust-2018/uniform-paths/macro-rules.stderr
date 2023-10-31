@@ -10,26 +10,6 @@ help: consider adding a `#[macro_export]` to the macro in the imported module
 LL |     macro_rules! legacy_macro { () => () }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0659]: `legacy_macro` is ambiguous
-  --> $DIR/macro-rules.rs:31:13
-   |
-LL |         use legacy_macro as _;
-   |             ^^^^^^^^^^^^ ambiguous name
-   |
-   = note: ambiguous because of multiple potential import sources
-note: `legacy_macro` could refer to the macro defined here
-  --> $DIR/macro-rules.rs:28:9
-   |
-LL |         macro_rules! legacy_macro { () => () }
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: `legacy_macro` could also refer to the macro defined here
-  --> $DIR/macro-rules.rs:25:5
-   |
-LL |     macro legacy_macro() {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^
-   = help: use `self::legacy_macro` to refer to this macro unambiguously
+error: aborting due to previous error
 
-error: aborting due to 2 previous errors
-
-Some errors have detailed explanations: E0364, E0659.
-For more information about an error, try `rustc --explain E0364`.
+For more information about this error, try `rustc --explain E0364`.

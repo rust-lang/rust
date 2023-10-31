@@ -34,7 +34,7 @@ use rustc_middle::infer::unify_key::{ConstVarValue, ConstVariableValue};
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::relate::{RelateResult, TypeRelation};
-use rustc_middle::ty::{self, AliasKind, InferConst, ToPredicate, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, InferConst, ToPredicate, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::ty::{IntType, UintType};
 use rustc_span::DUMMY_SP;
 
@@ -103,17 +103,17 @@ impl<'tcx> InferCtxt<'tcx> {
 
             // We don't expect `TyVar` or `Fresh*` vars at this point with lazy norm.
             (
-                ty::Alias(AliasKind::Projection, _),
+                ty::Alias(..),
                 ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)),
             )
             | (
                 ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)),
-                ty::Alias(AliasKind::Projection, _),
-            ) if self.tcx.trait_solver_next() => {
+                ty::Alias(..),
+            ) if self.next_trait_solver() => {
                 bug!()
             }
 
-            (_, ty::Alias(..)) | (ty::Alias(..), _) if self.tcx.trait_solver_next() => {
+            (_, ty::Alias(..)) | (ty::Alias(..), _) if self.next_trait_solver() => {
                 relation.register_type_relate_obligation(a, b);
                 Ok(a)
             }
@@ -124,13 +124,10 @@ impl<'tcx> InferCtxt<'tcx> {
             }
 
             // During coherence, opaque types should be treated as *possibly*
-            // equal to each other, even if their generic params differ, as
-            // they could resolve to the same hidden type, even for different
-            // generic params.
-            (
-                &ty::Alias(ty::Opaque, ty::AliasTy { def_id: a_def_id, .. }),
-                &ty::Alias(ty::Opaque, ty::AliasTy { def_id: b_def_id, .. }),
-            ) if self.intercrate && a_def_id == b_def_id => {
+            // equal to any other type (except for possibly itself). This is an
+            // extremely heavy hammer, but can be relaxed in a fowards-compatible
+            // way later.
+            (&ty::Alias(ty::Opaque, _), _) | (_, &ty::Alias(ty::Opaque, _)) if self.intercrate => {
                 relation.register_predicates([ty::Binder::dummy(ty::PredicateKind::Ambiguous)]);
                 Ok(a)
             }
@@ -180,7 +177,7 @@ impl<'tcx> InferCtxt<'tcx> {
             self.tcx.check_tys_might_be_eq(canonical).map_err(|_| {
                 self.tcx.sess.delay_span_bug(
                     DUMMY_SP,
-                    format!("cannot relate consts of different types (a={:?}, b={:?})", a, b,),
+                    format!("cannot relate consts of different types (a={a:?}, b={b:?})",),
                 )
             })
         });
@@ -192,11 +189,11 @@ impl<'tcx> InferCtxt<'tcx> {
             // HACK: equating both sides with `[const error]` eagerly prevents us
             // from leaving unconstrained inference vars during things like impl
             // matching in the solver.
-            let a_error = self.tcx.const_error(a.ty(), guar);
+            let a_error = ty::Const::new_error(self.tcx, guar, a.ty());
             if let ty::ConstKind::Infer(InferConst::Var(vid)) = a.kind() {
                 return self.unify_const_variable(vid, a_error, relation.param_env());
             }
-            let b_error = self.tcx.const_error(b.ty(), guar);
+            let b_error = ty::Const::new_error(self.tcx, guar, b.ty());
             if let ty::ConstKind::Infer(InferConst::Var(vid)) = b.kind() {
                 return self.unify_const_variable(vid, b_error, relation.param_env());
             }
@@ -227,9 +224,20 @@ impl<'tcx> InferCtxt<'tcx> {
                 return self.unify_const_variable(vid, a, relation.param_env());
             }
             (ty::ConstKind::Unevaluated(..), _) | (_, ty::ConstKind::Unevaluated(..))
-                if self.tcx.lazy_normalization() =>
+                if self.tcx.features().generic_const_exprs || self.next_trait_solver() =>
             {
-                relation.register_const_equate_obligation(a, b);
+                let (a, b) = if relation.a_is_expected() { (a, b) } else { (b, a) };
+
+                relation.register_predicates([ty::Binder::dummy(if self.next_trait_solver() {
+                    ty::PredicateKind::AliasRelate(
+                        a.into(),
+                        b.into(),
+                        ty::AliasRelationDirection::Equate,
+                    )
+                } else {
+                    ty::PredicateKind::ConstEquate(a, b)
+                })]);
+
                 return Ok(b);
             }
             _ => {}
@@ -246,7 +254,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// in `ct` with `ct` itself.
     ///
     /// This is especially important as unevaluated consts use their parents generics.
-    /// They therefore often contain unused substs, making these errors far more likely.
+    /// They therefore often contain unused args, making these errors far more likely.
     ///
     /// A good example of this is the following:
     ///
@@ -264,12 +272,12 @@ impl<'tcx> InferCtxt<'tcx> {
     /// ```
     ///
     /// Here `3 + 4` ends up as `ConstKind::Unevaluated` which uses the generics
-    /// of `fn bind` (meaning that its substs contain `N`).
+    /// of `fn bind` (meaning that its args contain `N`).
     ///
     /// `bind(arr)` now infers that the type of `arr` must be `[u8; N]`.
     /// The assignment `arr = bind(arr)` now tries to equate `N` with `3 + 4`.
     ///
-    /// As `3 + 4` contains `N` in its substs, this must not succeed.
+    /// As `3 + 4` contains `N` in its args, this must not succeed.
     ///
     /// See `tests/ui/const-generics/occurs-check/` for more examples where this is relevant.
     #[instrument(level = "debug", skip(self))]
@@ -314,8 +322,8 @@ impl<'tcx> InferCtxt<'tcx> {
             .unify_var_value(vid, Some(val))
             .map_err(|e| int_unification_error(vid_is_expected, e))?;
         match val {
-            IntType(v) => Ok(self.tcx.mk_mach_int(v)),
-            UintType(v) => Ok(self.tcx.mk_mach_uint(v)),
+            IntType(v) => Ok(Ty::new_int(self.tcx, v)),
+            UintType(v) => Ok(Ty::new_uint(self.tcx, v)),
         }
     }
 
@@ -330,7 +338,7 @@ impl<'tcx> InferCtxt<'tcx> {
             .float_unification_table()
             .unify_var_value(vid, Some(ty::FloatVarValue(val)))
             .map_err(|e| float_unification_error(vid_is_expected, e))?;
-        Ok(self.tcx.mk_mach_float(val))
+        Ok(Ty::new_float(self.tcx, val))
     }
 }
 
@@ -406,7 +414,9 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
                 self.tcx(),
                 self.trace.cause.clone(),
                 self.param_env,
-                ty::Binder::dummy(ty::PredicateKind::WellFormed(b_ty.into())),
+                ty::Binder::dummy(ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(
+                    b_ty.into(),
+                ))),
             ));
         }
 
@@ -452,19 +462,6 @@ pub trait ObligationEmittingRelation<'tcx>: TypeRelation<'tcx> {
     /// a default obligation cause, [`ObligationEmittingRelation::register_obligations`] should
     /// be used if control over the obligation causes is required.
     fn register_predicates(&mut self, obligations: impl IntoIterator<Item: ToPredicate<'tcx>>);
-
-    /// Register an obligation that both constants must be equal to each other.
-    ///
-    /// If they aren't equal then the relation doesn't hold.
-    fn register_const_equate_obligation(&mut self, a: ty::Const<'tcx>, b: ty::Const<'tcx>) {
-        let (a, b) = if self.a_is_expected() { (a, b) } else { (b, a) };
-
-        self.register_predicates([ty::Binder::dummy(if self.tcx().trait_solver_next() {
-            ty::PredicateKind::AliasRelate(a.into(), b.into(), ty::AliasRelationDirection::Equate)
-        } else {
-            ty::PredicateKind::ConstEquate(a, b)
-        })]);
-    }
 
     /// Register an obligation that both types must be related to each other according to
     /// the [`ty::AliasRelationDirection`] given by [`ObligationEmittingRelation::alias_relate_direction`]

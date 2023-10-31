@@ -1,10 +1,11 @@
 //! Defines hir-level representation of visibility (e.g. `pub` and `pub(crate)`).
 
-use std::{iter, sync::Arc};
+use std::iter;
 
 use hir_expand::{hygiene::Hygiene, InFile};
 use la_arena::ArenaMap;
 use syntax::ast;
+use triomphe::Arc;
 
 use crate::{
     db::DefDatabase,

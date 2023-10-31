@@ -2,7 +2,7 @@ error[E0596]: cannot borrow `*a` as mutable, as it is behind a `&` reference
   --> $DIR/mut-arg-hint.rs:3:9
    |
 LL |         a.push_str("bar");
-   |         ^^^^^^^^^^^^^^^^^ `a` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+   |         ^ `a` is a `&` reference, so the data it refers to cannot be borrowed as mutable
    |
 help: consider changing this to be a mutable reference
    |
@@ -13,7 +13,7 @@ error[E0596]: cannot borrow `*a` as mutable, as it is behind a `&` reference
   --> $DIR/mut-arg-hint.rs:8:5
    |
 LL |     a.push_str("foo");
-   |     ^^^^^^^^^^^^^^^^^ `a` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+   |     ^ `a` is a `&` reference, so the data it refers to cannot be borrowed as mutable
    |
 help: consider changing this to be a mutable reference
    |
@@ -24,7 +24,7 @@ error[E0596]: cannot borrow `*a` as mutable, as it is behind a `&` reference
   --> $DIR/mut-arg-hint.rs:15:9
    |
 LL |         a.push_str("foo");
-   |         ^^^^^^^^^^^^^^^^^ `a` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+   |         ^ `a` is a `&` reference, so the data it refers to cannot be borrowed as mutable
    |
 help: consider changing this to be a mutable reference
    |

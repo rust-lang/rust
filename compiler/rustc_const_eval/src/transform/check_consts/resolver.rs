@@ -4,10 +4,12 @@
 
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::visit::Visitor;
-use rustc_middle::mir::{self, BasicBlock, Local, Location, Statement, StatementKind};
+use rustc_middle::mir::{
+    self, BasicBlock, CallReturnPlaces, Local, Location, Statement, StatementKind, TerminatorEdges,
+};
 use rustc_mir_dataflow::fmt::DebugWithContext;
 use rustc_mir_dataflow::JoinSemiLattice;
-use rustc_mir_dataflow::{Analysis, AnalysisDomain, CallReturnPlaces};
+use rustc_mir_dataflow::{Analysis, AnalysisDomain};
 
 use std::fmt;
 use std::marker::PhantomData;
@@ -103,7 +105,7 @@ where
     fn ref_allows_mutation(&self, kind: mir::BorrowKind, place: mir::Place<'tcx>) -> bool {
         match kind {
             mir::BorrowKind::Mut { .. } => true,
-            mir::BorrowKind::Shared | mir::BorrowKind::Shallow | mir::BorrowKind::Unique => {
+            mir::BorrowKind::Shared | mir::BorrowKind::Shallow => {
                 self.shared_borrow_allows_mutation(place)
             }
         }
@@ -337,7 +339,7 @@ where
     Q: Qualif,
 {
     fn apply_statement_effect(
-        &self,
+        &mut self,
         state: &mut Self::Domain,
         statement: &mir::Statement<'tcx>,
         location: Location,
@@ -345,17 +347,18 @@ where
         self.transfer_function(state).visit_statement(statement, location);
     }
 
-    fn apply_terminator_effect(
-        &self,
+    fn apply_terminator_effect<'mir>(
+        &mut self,
         state: &mut Self::Domain,
-        terminator: &mir::Terminator<'tcx>,
+        terminator: &'mir mir::Terminator<'tcx>,
         location: Location,
-    ) {
+    ) -> TerminatorEdges<'mir, 'tcx> {
         self.transfer_function(state).visit_terminator(terminator, location);
+        terminator.edges()
     }
 
     fn apply_call_return_effect(
-        &self,
+        &mut self,
         state: &mut Self::Domain,
         block: BasicBlock,
         return_places: CallReturnPlaces<'_, 'tcx>,

@@ -1,22 +1,22 @@
 // MIR for `arbitrary_let` after built
 
 fn arbitrary_let(_1: i32) -> i32 {
-    let mut _0: i32;                     // return place in scope 0 at $DIR/arbitrary_let.rs:+0:29: +0:32
-    let mut _2: i32;                     // in scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
-    let mut _3: i32;                     // in scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
+    let mut _0: i32;
+    let mut _2: i32;
+    let mut _3: i32;
 
     bb0: {
-        _2 = _1;                         // scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
-        goto -> bb2;                     // scope 0 at $DIR/arbitrary_let.rs:+4:13: +4:25
+        _2 = _1;
+        goto -> bb2;
     }
 
     bb1: {
-        _0 = _3;                         // scope 0 at $DIR/arbitrary_let.rs:+7:13: +7:20
-        return;                          // scope 0 at $DIR/arbitrary_let.rs:+8:13: +8:21
+        _0 = _3;
+        return;
     }
 
     bb2: {
-        _3 = _2;                         // scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
-        goto -> bb1;                     // scope 0 at $DIR/arbitrary_let.rs:+12:13: +12:24
+        _3 = _2;
+        goto -> bb1;
     }
 }

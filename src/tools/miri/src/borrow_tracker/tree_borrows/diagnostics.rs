@@ -12,16 +12,46 @@ use crate::borrow_tracker::tree_borrows::{
 use crate::borrow_tracker::{AccessKind, ProtectorKind};
 use crate::*;
 
+/// Cause of an access: either a real access or one
+/// inserted by Tree Borrows due to a reborrow or a deallocation.
+#[derive(Clone, Copy, Debug)]
+pub enum AccessCause {
+    Explicit(AccessKind),
+    Reborrow,
+    Dealloc,
+}
+
+impl fmt::Display for AccessCause {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Explicit(kind) => write!(f, "{kind}"),
+            Self::Reborrow => write!(f, "reborrow"),
+            Self::Dealloc => write!(f, "deallocation"),
+        }
+    }
+}
+
+impl AccessCause {
+    fn print_as_access(self, is_foreign: bool) -> String {
+        let rel = if is_foreign { "foreign" } else { "child" };
+        match self {
+            Self::Explicit(kind) => format!("{rel} {kind}"),
+            Self::Reborrow => format!("reborrow (acting as a {rel} read access)"),
+            Self::Dealloc => format!("deallocation (acting as a {rel} write access)"),
+        }
+    }
+}
+
 /// Complete data for an event:
 #[derive(Clone, Debug)]
 pub struct Event {
-    /// Transformation of permissions that occured because of this event
+    /// Transformation of permissions that occured because of this event.
     pub transition: PermTransition,
-    /// Kind of the access that triggered this event
-    pub access_kind: AccessKind,
-    /// Relative position of the tag to the one used for the access
+    /// Kind of the access that triggered this event.
+    pub access_cause: AccessCause,
+    /// Relative position of the tag to the one used for the access.
     pub is_foreign: bool,
-    /// User-visible range of the access
+    /// User-visible range of the access.
     pub access_range: AllocRange,
     /// The transition recorded by this event only occured on a subrange of
     /// `access_range`: a single access on `access_range` triggers several events,
@@ -36,7 +66,7 @@ pub struct Event {
     /// the `TbError`, which should satisfy
     /// `event.transition_range.contains(error.error_offset)`.
     pub transition_range: Range<u64>,
-    /// Line of code that triggered this event
+    /// Line of code that triggered this event.
     pub span: Span,
 }
 
@@ -83,8 +113,8 @@ impl HistoryData {
         self.events.push((Some(created.0.data()), msg_creation));
         for &Event {
             transition,
-            access_kind,
             is_foreign,
+            access_cause,
             access_range,
             span,
             transition_range: _,
@@ -92,8 +122,10 @@ impl HistoryData {
         {
             // NOTE: `transition_range` is explicitly absent from the error message, it has no significance
             // to the user. The meaningful one is `access_range`.
-            self.events.push((Some(span.data()), format!("{this} then transitioned {transition} due to a {rel} {access_kind} at offsets {access_range:?}", rel = if is_foreign { "foreign" } else { "child" })));
-            self.events.push((None, format!("this corresponds to {}", transition.summary())));
+            let access = access_cause.print_as_access(is_foreign);
+            self.events.push((Some(span.data()), format!("{this} later transitioned to {endpoint} due to a {access} at offsets {access_range:?}", endpoint = transition.endpoint())));
+            self.events
+                .push((None, format!("this transition corresponds to {}", transition.summary())));
         }
     }
 }
@@ -186,7 +218,7 @@ impl<'tcx> Tree {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy)]
 pub(super) enum TransitionError {
     /// This access is not allowed because some parent tag has insufficient permissions.
     /// For example, if a tag is `Frozen` and encounters a child write this will
@@ -195,10 +227,10 @@ pub(super) enum TransitionError {
     ChildAccessForbidden(Permission),
     /// A protector was triggered due to an invalid transition that loses
     /// too much permissions.
-    /// For example, if a protected tag goes from `Active` to `Frozen` due
-    /// to a foreign write this will produce a `ProtectedTransition(PermTransition(Active, Frozen))`.
+    /// For example, if a protected tag goes from `Active` to `Disabled` due
+    /// to a foreign write this will produce a `ProtectedDisabled(Active)`.
     /// This kind of error can only occur on foreign accesses.
-    ProtectedTransition(PermTransition),
+    ProtectedDisabled(Permission),
     /// Cannot deallocate because some tag in the allocation is strongly protected.
     /// This kind of error can only occur on deallocations.
     ProtectedDealloc,
@@ -212,12 +244,13 @@ impl History {
 
     /// Reconstruct the history relevant to `error_offset` by filtering
     /// only events whose range contains the offset we are interested in.
-    fn extract_relevant(&self, error_offset: u64) -> Self {
+    fn extract_relevant(&self, error_offset: u64, error_kind: TransitionError) -> Self {
         History {
             events: self
                 .events
                 .iter()
                 .filter(|e| e.transition_range.contains(&error_offset))
+                .filter(|e| e.transition.is_relevant(error_kind))
                 .cloned()
                 .collect::<Vec<_>>(),
             created: self.created,
@@ -237,9 +270,8 @@ pub(super) struct TbError<'node> {
     /// On accesses rejected due to insufficient permissions, this is the
     /// tag that lacked those permissions.
     pub conflicting_info: &'node NodeDebugInfo,
-    /// Whether this was a Read or Write access. This field is ignored
-    /// when the error was triggered by a deallocation.
-    pub access_kind: AccessKind,
+    // What kind of access caused this error (read, write, reborrow, deallocation)
+    pub access_cause: AccessCause,
     /// Which tag the access that caused this error was made through, i.e.
     /// which tag was used to read/write/deallocate.
     pub accessed_info: &'node NodeDebugInfo,
@@ -249,46 +281,43 @@ impl TbError<'_> {
     /// Produce a UB error.
     pub fn build<'tcx>(self) -> InterpError<'tcx> {
         use TransitionError::*;
-        let kind = self.access_kind;
+        let cause = self.access_cause;
         let accessed = self.accessed_info;
         let conflicting = self.conflicting_info;
         let accessed_is_conflicting = accessed.tag == conflicting.tag;
+        let title = format!("{cause} through {accessed} is forbidden");
         let (title, details, conflicting_tag_name) = match self.error_kind {
             ChildAccessForbidden(perm) => {
                 let conflicting_tag_name =
                     if accessed_is_conflicting { "accessed" } else { "conflicting" };
-                let title = format!("{kind} through {accessed} is forbidden");
                 let mut details = Vec::new();
                 if !accessed_is_conflicting {
                     details.push(format!(
                         "the accessed tag {accessed} is a child of the conflicting tag {conflicting}"
                     ));
                 }
+                let access = cause.print_as_access(/* is_foreign */ false);
                 details.push(format!(
-                    "the {conflicting_tag_name} tag {conflicting} has state {perm} which forbids child {kind}es"
+                    "the {conflicting_tag_name} tag {conflicting} has state {perm} which forbids this {access}"
                 ));
                 (title, details, conflicting_tag_name)
             }
-            ProtectedTransition(transition) => {
+            ProtectedDisabled(before_disabled) => {
                 let conflicting_tag_name = "protected";
-                let title = format!("{kind} through {accessed} is forbidden");
+                let access = cause.print_as_access(/* is_foreign */ true);
                 let details = vec![
                     format!(
                         "the accessed tag {accessed} is foreign to the {conflicting_tag_name} tag {conflicting} (i.e., it is not a child)"
                     ),
                     format!(
-                        "the access would cause the {conflicting_tag_name} tag {conflicting} to transition {transition}"
+                        "this {access} would cause the {conflicting_tag_name} tag {conflicting} (currently {before_disabled}) to become Disabled"
                     ),
-                    format!(
-                        "this is {loss}, which is not allowed for protected tags",
-                        loss = transition.summary(),
-                    ),
+                    format!("protected tags must never be Disabled"),
                 ];
                 (title, details, conflicting_tag_name)
             }
             ProtectedDealloc => {
                 let conflicting_tag_name = "strongly protected";
-                let title = format!("deallocation through {accessed} is forbidden");
                 let details = vec![
                     format!(
                         "the allocation of the accessed tag {accessed} also contains the {conflicting_tag_name} tag {conflicting}"
@@ -303,7 +332,7 @@ impl TbError<'_> {
             history.extend(self.accessed_info.history.forget(), "accessed", false);
         }
         history.extend(
-            self.conflicting_info.history.extract_relevant(self.error_offset),
+            self.conflicting_info.history.extract_relevant(self.error_offset, self.error_kind),
             conflicting_tag_name,
             true,
         );
@@ -538,9 +567,13 @@ impl DisplayRepr {
         extraction_aux(tree, tree.root, show_unnamed, &mut v);
         let Some(root) = v.pop() else {
             if show_unnamed {
-                unreachable!("This allocation contains no tags, not even a root. This should not happen.");
+                unreachable!(
+                    "This allocation contains no tags, not even a root. This should not happen."
+                );
             }
-            eprintln!("This allocation does not contain named tags. Use `miri_print_borrow_state(_, true)` to also print unnamed tags.");
+            eprintln!(
+                "This allocation does not contain named tags. Use `miri_print_borrow_state(_, true)` to also print unnamed tags."
+            );
             return None;
         };
         assert!(v.is_empty());

@@ -4,18 +4,11 @@ use std::str::FromStr;
 
 use std::path::PathBuf;
 
-use crate::{
-    builder::{Builder, Kind},
-    tool::Tool,
-};
+use clap::Parser;
 
-#[cfg(feature = "build-metrics")]
-pub fn suggest(builder: &Builder<'_>, run: bool) {
-    panic!("`x suggest` is not supported with `build-metrics`")
-}
+use crate::{builder::Builder, tool::Tool};
 
 /// Suggests a list of possible `x.py` commands to run based on modified files in branch.
-#[cfg(not(feature = "build-metrics"))]
 pub fn suggest(builder: &Builder<'_>, run: bool) {
     let suggestions =
         builder.tool_cmd(Tool::SuggestTests).output().expect("failed to run `suggest-tests` tool");
@@ -67,12 +60,13 @@ pub fn suggest(builder: &Builder<'_>, run: bool) {
 
     if run {
         for sug in suggestions {
-            let mut build = builder.build.clone();
-
-            let builder =
-                Builder::new_standalone(&mut build, Kind::parse(&sug.0).unwrap(), sug.2, sug.1);
-
-            builder.execute_cli()
+            let mut build: crate::Build = builder.build.clone();
+            build.config.paths = sug.2;
+            build.config.cmd = crate::flags::Flags::parse_from(["x.py", sug.0]).cmd;
+            if let Some(stage) = sug.1 {
+                build.config.stage = stage;
+            }
+            build.build();
         }
     } else {
         println!("help: consider using the `--run` flag to automatically run suggested tests");

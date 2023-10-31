@@ -23,7 +23,7 @@ pub(super) fn check_fn(
     }
 
     let Some(code_snippet) = snippet_opt(cx, body.value.span) else {
-        return
+        return;
     };
     let mut line_count: u64 = 0;
     let mut in_comment = false;

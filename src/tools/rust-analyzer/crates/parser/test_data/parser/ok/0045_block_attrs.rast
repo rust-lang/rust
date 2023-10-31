@@ -60,7 +60,7 @@ SOURCE_FILE
                         IDENT "doc"
                   TOKEN_TREE
                     L_PAREN "("
-                    STRING "\"Being validated is not affected by duplcates\""
+                    STRING "\"Being validated is not affected by duplicates\""
                     R_PAREN ")"
                 R_BRACK "]"
               WHITESPACE "\n        "

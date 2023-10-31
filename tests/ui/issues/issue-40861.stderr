@@ -1,8 +1,8 @@
 error[E0608]: cannot index into a value of type `()`
-  --> $DIR/issue-40861.rs:4:5
+  --> $DIR/issue-40861.rs:4:7
    |
 LL |     ()[f(&[1.0])];
-   |     ^^^^^^^^^^^^^
+   |       ^^^^^^^^^^^
    |
    = help: to access tuple elements, use tuple indexing syntax (e.g., `tuple.0`)
 

@@ -1675,6 +1675,14 @@ pub struct AnonConst {
     pub body: BodyId,
 }
 
+/// An inline constant expression `const { something }`.
+#[derive(Copy, Clone, Debug, HashStable_Generic)]
+pub struct ConstBlock {
+    pub hir_id: HirId,
+    pub def_id: LocalDefId,
+    pub body: BodyId,
+}
+
 /// An expression.
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct Expr<'hir> {
@@ -1711,6 +1719,7 @@ impl Expr<'_> {
             ExprKind::Break(..) => ExprPrecedence::Break,
             ExprKind::Continue(..) => ExprPrecedence::Continue,
             ExprKind::Ret(..) => ExprPrecedence::Ret,
+            ExprKind::Become(..) => ExprPrecedence::Become,
             ExprKind::InlineAsm(..) => ExprPrecedence::InlineAsm,
             ExprKind::OffsetOf(..) => ExprPrecedence::OffsetOf,
             ExprKind::Struct(..) => ExprPrecedence::Struct,
@@ -1745,7 +1754,7 @@ impl Expr<'_> {
 
             ExprKind::Unary(UnOp::Deref, _) => true,
 
-            ExprKind::Field(ref base, _) | ExprKind::Index(ref base, _) => {
+            ExprKind::Field(ref base, _) | ExprKind::Index(ref base, _, _) => {
                 allow_projections_from(base) || base.is_place_expr(allow_projections_from)
             }
 
@@ -1768,6 +1777,7 @@ impl Expr<'_> {
             | ExprKind::Break(..)
             | ExprKind::Continue(..)
             | ExprKind::Ret(..)
+            | ExprKind::Become(..)
             | ExprKind::Let(..)
             | ExprKind::Loop(..)
             | ExprKind::Assign(..)
@@ -1821,7 +1831,7 @@ impl Expr<'_> {
             ExprKind::Type(base, _)
             | ExprKind::Unary(_, base)
             | ExprKind::Field(base, _)
-            | ExprKind::Index(base, _)
+            | ExprKind::Index(base, _, _)
             | ExprKind::AddrOf(.., base)
             | ExprKind::Cast(base, _) => {
                 // This isn't exactly true for `Index` and all `Unary`, but we are using this
@@ -1833,7 +1843,7 @@ impl Expr<'_> {
                 .iter()
                 .map(|field| field.expr)
                 .chain(init.into_iter())
-                .all(|e| e.can_have_side_effects()),
+                .any(|e| e.can_have_side_effects()),
 
             ExprKind::Array(args)
             | ExprKind::Tup(args)
@@ -1847,7 +1857,7 @@ impl Expr<'_> {
                     ..
                 },
                 args,
-            ) => args.iter().all(|arg| arg.can_have_side_effects()),
+            ) => args.iter().any(|arg| arg.can_have_side_effects()),
             ExprKind::If(..)
             | ExprKind::Match(..)
             | ExprKind::MethodCall(..)
@@ -1858,6 +1868,7 @@ impl Expr<'_> {
             | ExprKind::Break(..)
             | ExprKind::Continue(..)
             | ExprKind::Ret(..)
+            | ExprKind::Become(..)
             | ExprKind::Let(..)
             | ExprKind::Loop(..)
             | ExprKind::Assign(..)
@@ -1922,7 +1933,7 @@ pub fn is_range_literal(expr: &Expr<'_>) -> bool {
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub enum ExprKind<'hir> {
     /// Allow anonymous constants from an inline `const` block
-    ConstBlock(AnonConst),
+    ConstBlock(ConstBlock),
     /// An array (e.g., `[a, b, c, d]`).
     Array(&'hir [Expr<'hir>]),
     /// A function call.
@@ -2004,7 +2015,9 @@ pub enum ExprKind<'hir> {
     /// Access of a named (e.g., `obj.foo`) or unnamed (e.g., `obj.0`) struct or tuple field.
     Field(&'hir Expr<'hir>, Ident),
     /// An indexing operation (`foo[2]`).
-    Index(&'hir Expr<'hir>, &'hir Expr<'hir>),
+    /// Similar to [`ExprKind::MethodCall`], the final `Span` represents the span of the brackets
+    /// and index.
+    Index(&'hir Expr<'hir>, &'hir Expr<'hir>, Span),
 
     /// Path to a definition, possibly containing lifetime or type parameters.
     Path(QPath<'hir>),
@@ -2017,6 +2030,8 @@ pub enum ExprKind<'hir> {
     Continue(Destination),
     /// A `return`, with an optional value to be returned.
     Ret(Option<&'hir Expr<'hir>>),
+    /// A `become`, with the value to be returned.
+    Become(&'hir Expr<'hir>),
 
     /// Inline assembly (from `asm!`), with its outputs and inputs.
     InlineAsm(&'hir InlineAsm<'hir>),
@@ -2133,7 +2148,7 @@ pub enum MatchSource {
     /// A desugared `for _ in _ { .. }` loop.
     ForLoopDesugar,
     /// A desugared `?` operator.
-    TryDesugar,
+    TryDesugar(HirId),
     /// A desugared `<expr>.await`.
     AwaitDesugar,
     /// A desugared `format_args!()`.
@@ -2147,7 +2162,7 @@ impl MatchSource {
         match self {
             Normal => "match",
             ForLoopDesugar => "for",
-            TryDesugar => "?",
+            TryDesugar(_) => "?",
             AwaitDesugar => ".await",
             FormatArgs => "format_args!()",
         }
@@ -2651,6 +2666,19 @@ pub struct OpaqueTy<'hir> {
     pub generics: &'hir Generics<'hir>,
     pub bounds: GenericBounds<'hir>,
     pub origin: OpaqueTyOrigin,
+    /// Return-position impl traits (and async futures) must "reify" any late-bound
+    /// lifetimes that are captured from the function signature they originate from.
+    ///
+    /// This is done by generating a new early-bound lifetime parameter local to the
+    /// opaque which is substituted in the function signature with the late-bound
+    /// lifetime.
+    ///
+    /// This mapping associated a captured lifetime (first parameter) with the new
+    /// early-bound lifetime that was generated for the opaque.
+    pub lifetime_mapping: &'hir [(&'hir Lifetime, LocalDefId)],
+    /// Whether the opaque is a return-position impl trait (or async future)
+    /// originating from a trait method. This makes it so that the opaque is
+    /// lowered as an associated type.
     pub in_trait: bool,
 }
 
@@ -2987,8 +3015,7 @@ pub struct FieldDef<'hir> {
 impl FieldDef<'_> {
     // Still necessary in couple of places
     pub fn is_positional(&self) -> bool {
-        let first = self.ident.as_str().as_bytes()[0];
-        (b'0'..=b'9').contains(&first)
+        self.ident.as_str().as_bytes()[0].is_ascii_digit()
     }
 }
 
@@ -3105,9 +3132,9 @@ impl<'hir> Item<'hir> {
     }
     /// Expect an [`ItemKind::Const`] or panic.
     #[track_caller]
-    pub fn expect_const(&self) -> (&'hir Ty<'hir>, BodyId) {
-        let ItemKind::Const(ty, body) = self.kind else { self.expect_failed("a constant") };
-        (ty, body)
+    pub fn expect_const(&self) -> (&'hir Ty<'hir>, &'hir Generics<'hir>, BodyId) {
+        let ItemKind::Const(ty, gen, body) = self.kind else { self.expect_failed("a constant") };
+        (ty, gen, body)
     }
     /// Expect an [`ItemKind::Fn`] or panic.
     #[track_caller]
@@ -3133,7 +3160,9 @@ impl<'hir> Item<'hir> {
     /// Expect an [`ItemKind::ForeignMod`] or panic.
     #[track_caller]
     pub fn expect_foreign_mod(&self) -> (Abi, &'hir [ForeignItemRef]) {
-        let ItemKind::ForeignMod { abi, items } = self.kind else { self.expect_failed("a foreign module") };
+        let ItemKind::ForeignMod { abi, items } = self.kind else {
+            self.expect_failed("a foreign module")
+        };
         (abi, items)
     }
 
@@ -3184,14 +3213,18 @@ impl<'hir> Item<'hir> {
     pub fn expect_trait(
         self,
     ) -> (IsAuto, Unsafety, &'hir Generics<'hir>, GenericBounds<'hir>, &'hir [TraitItemRef]) {
-        let ItemKind::Trait(is_auto, unsafety, gen, bounds, items) = self.kind else { self.expect_failed("a trait") };
+        let ItemKind::Trait(is_auto, unsafety, gen, bounds, items) = self.kind else {
+            self.expect_failed("a trait")
+        };
         (is_auto, unsafety, gen, bounds, items)
     }
 
     /// Expect an [`ItemKind::TraitAlias`] or panic.
     #[track_caller]
     pub fn expect_trait_alias(&self) -> (&'hir Generics<'hir>, GenericBounds<'hir>) {
-        let ItemKind::TraitAlias(gen, bounds) = self.kind else { self.expect_failed("a trait alias") };
+        let ItemKind::TraitAlias(gen, bounds) = self.kind else {
+            self.expect_failed("a trait alias")
+        };
         (gen, bounds)
     }
 
@@ -3288,7 +3321,7 @@ pub enum ItemKind<'hir> {
     /// A `static` item.
     Static(&'hir Ty<'hir>, Mutability, BodyId),
     /// A `const` item.
-    Const(&'hir Ty<'hir>, BodyId),
+    Const(&'hir Ty<'hir>, &'hir Generics<'hir>, BodyId),
     /// A function declaration.
     Fn(FnSig<'hir>, &'hir Generics<'hir>, BodyId),
     /// A MBE macro definition (`macro_rules!` or `macro`).
@@ -3302,7 +3335,7 @@ pub enum ItemKind<'hir> {
     /// A type alias, e.g., `type Foo = Bar<u8>`.
     TyAlias(&'hir Ty<'hir>, &'hir Generics<'hir>),
     /// An opaque `impl Trait` type alias, e.g., `type Foo = impl Bar;`.
-    OpaqueTy(OpaqueTy<'hir>),
+    OpaqueTy(&'hir OpaqueTy<'hir>),
     /// An enum definition, e.g., `enum Foo<A, B> {C<A>, D<B>}`.
     Enum(EnumDef<'hir>, &'hir Generics<'hir>),
     /// A struct definition, e.g., `struct Foo<A> {x: A}`.
@@ -3326,7 +3359,6 @@ pub struct Impl<'hir> {
     // We do not put a `Span` in `Defaultness` because it breaks foreign crate metadata
     // decoding as `Span`s cannot be decoded when a `Session` is not available.
     pub defaultness_span: Option<Span>,
-    pub constness: Constness,
     pub generics: &'hir Generics<'hir>,
 
     /// The trait being implemented, if any.
@@ -3341,6 +3373,7 @@ impl ItemKind<'_> {
         Some(match *self {
             ItemKind::Fn(_, ref generics, _)
             | ItemKind::TyAlias(_, ref generics)
+            | ItemKind::Const(_, ref generics, _)
             | ItemKind::OpaqueTy(OpaqueTy { ref generics, .. })
             | ItemKind::Enum(_, ref generics)
             | ItemKind::Struct(_, ref generics)
@@ -3536,7 +3569,9 @@ impl<'hir> OwnerNode<'hir> {
         match self {
             OwnerNode::Item(Item {
                 kind:
-                    ItemKind::Static(_, _, body) | ItemKind::Const(_, body) | ItemKind::Fn(_, _, body),
+                    ItemKind::Static(_, _, body)
+                    | ItemKind::Const(_, _, body)
+                    | ItemKind::Fn(_, _, body),
                 ..
             })
             | OwnerNode::TraitItem(TraitItem {
@@ -3641,6 +3676,7 @@ pub enum Node<'hir> {
     Variant(&'hir Variant<'hir>),
     Field(&'hir FieldDef<'hir>),
     AnonConst(&'hir AnonConst),
+    ConstBlock(&'hir ConstBlock),
     Expr(&'hir Expr<'hir>),
     ExprField(&'hir ExprField<'hir>),
     Stmt(&'hir Stmt<'hir>),
@@ -3695,6 +3731,7 @@ impl<'hir> Node<'hir> {
             Node::TypeBinding(b) => Some(b.ident),
             Node::Param(..)
             | Node::AnonConst(..)
+            | Node::ConstBlock(..)
             | Node::Expr(..)
             | Node::Stmt(..)
             | Node::Block(..)
@@ -3733,6 +3770,29 @@ impl<'hir> Node<'hir> {
         }
     }
 
+    /// Get the type for constants, assoc types, type aliases and statics.
+    pub fn ty(self) -> Option<&'hir Ty<'hir>> {
+        match self {
+            Node::Item(it) => match it.kind {
+                ItemKind::TyAlias(ty, _)
+                | ItemKind::Static(ty, _, _)
+                | ItemKind::Const(ty, _, _) => Some(ty),
+                _ => None,
+            },
+            Node::TraitItem(it) => match it.kind {
+                TraitItemKind::Const(ty, _) => Some(ty),
+                TraitItemKind::Type(_, ty) => ty,
+                _ => None,
+            },
+            Node::ImplItem(it) => match it.kind {
+                ImplItemKind::Const(ty, _) => Some(ty),
+                ImplItemKind::Type(ty) => Some(ty),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
     pub fn alias_ty(self) -> Option<&'hir Ty<'hir>> {
         match self {
             Node::Item(Item { kind: ItemKind::TyAlias(ty, ..), .. }) => Some(ty),
@@ -3744,7 +3804,9 @@ impl<'hir> Node<'hir> {
         match self {
             Node::Item(Item {
                 kind:
-                    ItemKind::Static(_, _, body) | ItemKind::Const(_, body) | ItemKind::Fn(_, _, body),
+                    ItemKind::Static(_, _, body)
+                    | ItemKind::Const(_, _, body)
+                    | ItemKind::Fn(_, _, body),
                 ..
             })
             | Node::TraitItem(TraitItem {
@@ -3758,7 +3820,7 @@ impl<'hir> Node<'hir> {
             })
             | Node::Expr(Expr {
                 kind:
-                    ExprKind::ConstBlock(AnonConst { body, .. })
+                    ExprKind::ConstBlock(ConstBlock { body, .. })
                     | ExprKind::Closure(Closure { body, .. })
                     | ExprKind::Repeat(_, ArrayLen::Body(AnonConst { body, .. })),
                 ..
@@ -3875,6 +3937,13 @@ impl<'hir> Node<'hir> {
     #[track_caller]
     pub fn expect_anon_const(self) -> &'hir AnonConst {
         let Node::AnonConst(this) = self else { self.expect_failed("an anonymous constant") };
+        this
+    }
+
+    /// Expect a [`Node::ConstBlock`] or panic.
+    #[track_caller]
+    pub fn expect_inline_const(self) -> &'hir ConstBlock {
+        let Node::ConstBlock(this) = self else { self.expect_failed("an inline constant") };
         this
     }
 

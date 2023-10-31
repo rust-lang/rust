@@ -15,7 +15,7 @@ use std::cell::Cell;
 
 use crate::rustc_smir::Tables;
 
-use self::ty::{Ty, TyKind};
+use self::ty::{ImplDef, ImplTrait, TraitDecl, TraitDef, Ty, TyKind};
 
 pub mod mir;
 pub mod ty;
@@ -31,6 +31,12 @@ pub type DefId = usize;
 
 /// A list of crate items.
 pub type CrateItems = Vec<CrateItem>;
+
+/// A list of trait decls.
+pub type TraitDecls = Vec<TraitDef>;
+
+/// A list of impl trait decls.
+pub type ImplTraitDecls = Vec<ImplDef>;
 
 /// Holds information about a crate.
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -79,11 +85,31 @@ pub fn all_local_items() -> CrateItems {
     with(|cx| cx.all_local_items())
 }
 
+pub fn all_trait_decls() -> TraitDecls {
+    with(|cx| cx.all_trait_decls())
+}
+
+pub fn trait_decl(trait_def: &TraitDef) -> TraitDecl {
+    with(|cx| cx.trait_decl(trait_def))
+}
+
+pub fn all_trait_impls() -> ImplTraitDecls {
+    with(|cx| cx.all_trait_impls())
+}
+
+pub fn trait_impl(trait_impl: &ImplDef) -> ImplTrait {
+    with(|cx| cx.trait_impl(trait_impl))
+}
+
 pub trait Context {
     fn entry_fn(&mut self) -> Option<CrateItem>;
     /// Retrieve all items of the local crate that have a MIR associated with them.
     fn all_local_items(&mut self) -> CrateItems;
     fn mir_body(&mut self, item: &CrateItem) -> mir::Body;
+    fn all_trait_decls(&mut self) -> TraitDecls;
+    fn trait_decl(&mut self, trait_def: &TraitDef) -> TraitDecl;
+    fn all_trait_impls(&mut self) -> ImplTraitDecls;
+    fn trait_impl(&mut self, trait_impl: &ImplDef) -> ImplTrait;
     /// Get information about the local crate.
     fn local_crate(&self) -> Crate;
     /// Retrieve a list of all external crates.
@@ -100,18 +126,17 @@ pub trait Context {
     fn rustc_tables(&mut self, f: &mut dyn FnMut(&mut Tables<'_>));
 }
 
-thread_local! {
-    /// A thread local variable that stores a pointer to the tables mapping between TyCtxt
-    /// datastructures and stable MIR datastructures.
-    static TLV: Cell<*mut ()> = const { Cell::new(std::ptr::null_mut()) };
-}
+// A thread local variable that stores a pointer to the tables mapping between TyCtxt
+// datastructures and stable MIR datastructures
+scoped_thread_local! (static TLV: Cell<*mut ()>);
 
 pub fn run(mut context: impl Context, f: impl FnOnce()) {
-    assert!(TLV.get().is_null());
+    assert!(!TLV.is_set());
     fn g<'a>(mut context: &mut (dyn Context + 'a), f: impl FnOnce()) {
-        TLV.set(&mut context as *mut &mut _ as _);
-        f();
-        TLV.replace(std::ptr::null_mut());
+        let ptr: *mut () = &mut context as *mut &mut _ as _;
+        TLV.set(&Cell::new(ptr), || {
+            f();
+        });
     }
     g(&mut context, f);
 }
@@ -119,9 +144,10 @@ pub fn run(mut context: impl Context, f: impl FnOnce()) {
 /// Loads the current context and calls a function with it.
 /// Do not nest these, as that will ICE.
 pub(crate) fn with<R>(f: impl FnOnce(&mut dyn Context) -> R) -> R {
-    let ptr = TLV.replace(std::ptr::null_mut()) as *mut &mut dyn Context;
-    assert!(!ptr.is_null());
-    let ret = f(unsafe { *ptr });
-    TLV.set(ptr as _);
-    ret
+    assert!(TLV.is_set());
+    TLV.with(|tlv| {
+        let ptr = tlv.get();
+        assert!(!ptr.is_null());
+        f(unsafe { *(ptr as *mut &mut dyn Context) })
+    })
 }

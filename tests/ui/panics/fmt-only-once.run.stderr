@@ -1,3 +1,4 @@
 fmt
-thread 'main' panicked at 'PrintOnFmt', $DIR/fmt-only-once.rs:20:5
+thread 'main' panicked at $DIR/fmt-only-once.rs:20:5:
+PrintOnFmt
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace

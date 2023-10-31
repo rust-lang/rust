@@ -41,8 +41,8 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             // all of the region highlighting machinery only deals with those.
             let guar = self.emit_err(
                 var_origin.span(),
-                self.cx.tcx.mk_fn_ptr(ty::Binder::dummy(expected)),
-                self.cx.tcx.mk_fn_ptr(ty::Binder::dummy(found)),
+                Ty::new_fn_ptr(self.cx.tcx,ty::Binder::dummy(expected)),
+                Ty::new_fn_ptr(self.cx.tcx,ty::Binder::dummy(found)),
                 *trait_item_def_id,
             );
             return Some(guar);

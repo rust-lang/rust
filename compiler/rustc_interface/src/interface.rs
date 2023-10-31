@@ -14,12 +14,11 @@ use rustc_middle::{bug, ty};
 use rustc_parse::maybe_new_parser_from_source_str;
 use rustc_query_impl::QueryCtxt;
 use rustc_query_system::query::print_query_stack;
-use rustc_session::config::{self, ErrorOutputType, Input, OutputFilenames};
-use rustc_session::config::{CheckCfg, ExpectedValues};
-use rustc_session::lint;
+use rustc_session::config::{self, CheckCfg, ExpectedValues, Input, OutFileName, OutputFilenames};
 use rustc_session::parse::{CrateConfig, ParseSess};
+use rustc_session::CompilerIO;
 use rustc_session::Session;
-use rustc_session::{early_error, CompilerIO};
+use rustc_session::{lint, EarlyErrorHandler};
 use rustc_span::source_map::{FileLoader, FileName};
 use rustc_span::symbol::sym;
 use std::path::PathBuf;
@@ -36,7 +35,7 @@ pub type Result<T> = result::Result<T, ErrorGuaranteed>;
 /// Created by passing [`Config`] to [`run_compiler`].
 pub struct Compiler {
     pub(crate) sess: Lrc<Session>,
-    codegen_backend: Lrc<Box<dyn CodegenBackend>>,
+    codegen_backend: Lrc<dyn CodegenBackend>,
     pub(crate) register_lints: Option<Box<dyn Fn(&Session, &mut LintStore) + Send + Sync>>,
     pub(crate) override_queries: Option<fn(&Session, &mut Providers, &mut ExternProviders)>,
 }
@@ -45,7 +44,7 @@ impl Compiler {
     pub fn session(&self) -> &Lrc<Session> {
         &self.sess
     }
-    pub fn codegen_backend(&self) -> &Lrc<Box<dyn CodegenBackend>> {
+    pub fn codegen_backend(&self) -> &Lrc<dyn CodegenBackend> {
         &self.codegen_backend
     }
     pub fn register_lints(&self) -> &Option<Box<dyn Fn(&Session, &mut LintStore) + Send + Sync>> {
@@ -60,13 +59,11 @@ impl Compiler {
     }
 }
 
-#[allow(rustc::bad_opt_access)]
-pub fn set_thread_safe_mode(sopts: &config::UnstableOptions) {
-    rustc_data_structures::sync::set_dyn_thread_safe_mode(sopts.threads > 1);
-}
-
 /// Converts strings provided as `--cfg [cfgspec]` into a `crate_cfg`.
-pub fn parse_cfgspecs(cfgspecs: Vec<String>) -> FxHashSet<(String, Option<String>)> {
+pub fn parse_cfgspecs(
+    handler: &EarlyErrorHandler,
+    cfgspecs: Vec<String>,
+) -> FxHashSet<(String, Option<String>)> {
     rustc_span::create_default_session_if_not_set_then(move |_| {
         let cfg = cfgspecs
             .into_iter()
@@ -78,10 +75,10 @@ pub fn parse_cfgspecs(cfgspecs: Vec<String>) -> FxHashSet<(String, Option<String
 
                 macro_rules! error {
                     ($reason: expr) => {
-                        early_error(
-                            ErrorOutputType::default(),
-                            format!(concat!("invalid `--cfg` argument: `{}` (", $reason, ")"), s),
-                        );
+                        handler.early_error(format!(
+                            concat!("invalid `--cfg` argument: `{}` (", $reason, ")"),
+                            s
+                        ));
                     };
                 }
 
@@ -125,7 +122,7 @@ pub fn parse_cfgspecs(cfgspecs: Vec<String>) -> FxHashSet<(String, Option<String
 }
 
 /// Converts strings provided as `--check-cfg [specs]` into a `CheckCfg`.
-pub fn parse_check_cfg(specs: Vec<String>) -> CheckCfg {
+pub fn parse_check_cfg(handler: &EarlyErrorHandler, specs: Vec<String>) -> CheckCfg {
     rustc_span::create_default_session_if_not_set_then(move |_| {
         let mut check_cfg = CheckCfg::default();
 
@@ -137,10 +134,10 @@ pub fn parse_check_cfg(specs: Vec<String>) -> CheckCfg {
 
             macro_rules! error {
                 ($reason: expr) => {
-                    early_error(
-                        ErrorOutputType::default(),
-                        format!(concat!("invalid `--check-cfg` argument: `{}` (", $reason, ")"), s),
-                    )
+                    handler.early_error(format!(
+                        concat!("invalid `--check-cfg` argument: `{}` (", $reason, ")"),
+                        s
+                    ))
                 };
             }
 
@@ -188,7 +185,8 @@ pub fn parse_check_cfg(specs: Vec<String>) -> CheckCfg {
                                                 ExpectedValues::Some(FxHashSet::default())
                                             });
 
-                                        let ExpectedValues::Some(expected_values) = expected_values else {
+                                        let ExpectedValues::Some(expected_values) = expected_values
+                                        else {
                                             bug!("`expected_values` should be a list a values")
                                         };
 
@@ -252,7 +250,8 @@ pub struct Config {
 
     pub input: Input,
     pub output_dir: Option<PathBuf>,
-    pub output_file: Option<PathBuf>,
+    pub output_file: Option<OutFileName>,
+    pub ice_file: Option<PathBuf>,
     pub file_loader: Option<Box<dyn FileLoader + Send + Sync>>,
     pub locale_resources: &'static [&'static str],
 
@@ -286,6 +285,10 @@ pub struct Config {
 #[allow(rustc::bad_opt_access)]
 pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Send) -> R {
     trace!("run_compiler");
+
+    // Set parallel mode before thread pool creation, which will create `Lock`s.
+    rustc_data_structures::sync::set_dyn_thread_safe_mode(config.opts.unstable_opts.threads > 1);
+
     util::run_in_thread_pool_with_globals(
         config.opts.edition,
         config.opts.unstable_opts.threads,
@@ -294,8 +297,11 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
 
             let registry = &config.registry;
 
+            let handler = EarlyErrorHandler::new(config.opts.error_format);
+
             let temps_dir = config.opts.unstable_opts.temps_dir.as_deref().map(PathBuf::from);
             let (mut sess, codegen_backend) = util::create_session(
+                &handler,
                 config.opts,
                 config.crate_cfg,
                 config.crate_check_cfg,
@@ -310,6 +316,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
                 config.lint_caps,
                 config.make_codegen_backend,
                 registry.clone(),
+                config.ice_file,
             );
 
             if let Some(parse_sess_created) = config.parse_sess_created {
@@ -318,7 +325,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
 
             let compiler = Compiler {
                 sess: Lrc::new(sess),
-                codegen_backend: Lrc::new(codegen_backend),
+                codegen_backend: Lrc::from(codegen_backend),
                 register_lints: config.register_lints,
                 override_queries: config.override_queries,
             };
@@ -333,6 +340,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
                 };
 
                 let prof = compiler.sess.prof.clone();
+
                 prof.generic_activity("drop_compiler").run(move || drop(compiler));
                 r
             })
@@ -340,7 +348,11 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
     )
 }
 
-pub fn try_print_query_stack(handler: &Handler, num_frames: Option<usize>) {
+pub fn try_print_query_stack(
+    handler: &Handler,
+    num_frames: Option<usize>,
+    file: Option<std::fs::File>,
+) {
     eprintln!("query stack during panic:");
 
     // Be careful relying on global state here: this code is called from
@@ -348,7 +360,13 @@ pub fn try_print_query_stack(handler: &Handler, num_frames: Option<usize>) {
     // state if it was responsible for triggering the panic.
     let i = ty::tls::with_context_opt(|icx| {
         if let Some(icx) = icx {
-            print_query_stack(QueryCtxt::new(icx.tcx), icx.query, handler, num_frames)
+            ty::print::with_no_queries!(print_query_stack(
+                QueryCtxt::new(icx.tcx),
+                icx.query,
+                handler,
+                num_frames,
+                file,
+            ))
         } else {
             0
         }

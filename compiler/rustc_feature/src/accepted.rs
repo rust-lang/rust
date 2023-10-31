@@ -53,6 +53,8 @@ declare_features! (
     /// Allows the sysV64 ABI to be specified on all platforms
     /// instead of just the platforms on which it is the C ABI.
     (accepted, abi_sysv64, "1.24.0", Some(36167), None),
+    /// Allows using the `thiscall` ABI.
+    (accepted, abi_thiscall, "1.73.0", None, None),
     /// Allows using ADX intrinsics from `core::arch::{x86, x86_64}`.
     (accepted, adx_target_feature, "1.61.0", Some(44839), None),
     /// Allows explicit discriminants on non-unit enum variants.
@@ -131,7 +133,7 @@ declare_features! (
     /// Allows `crate` in paths.
     (accepted, crate_in_paths, "1.30.0", Some(45477), None),
     /// Allows using `#[debugger_visualizer]` attribute.
-    (accepted, debugger_visualizer, "CURRENT_RUSTC_VERSION", Some(95939), None),
+    (accepted, debugger_visualizer, "1.71.0", Some(95939), None),
     /// Allows rustc to inject a default alloc_error_handler
     (accepted, default_alloc_error_handler, "1.68.0", Some(66741), None),
     /// Allows using assigning a default type to type parameters in algebraic data type definitions.
@@ -281,7 +283,7 @@ declare_features! (
     /// Allows use of the postfix `?` operator in expressions.
     (accepted, question_mark, "1.13.0", Some(31436), None),
     /// Allows the use of raw-dylibs (RFC 2627).
-    (accepted, raw_dylib, "CURRENT_RUSTC_VERSION", Some(58713), None),
+    (accepted, raw_dylib, "1.71.0", Some(58713), None),
     /// Allows keywords to be escaped for use as identifiers.
     (accepted, raw_identifiers, "1.30.0", Some(48589), None),
     /// Allows relaxing the coherence rules such that

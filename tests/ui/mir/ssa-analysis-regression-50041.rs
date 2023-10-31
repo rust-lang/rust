@@ -13,13 +13,10 @@ struct Unique<T: ?Sized>(NonNull<T>);
 pub struct Box<T: ?Sized>(Unique<T>);
 
 impl<T: ?Sized> Drop for Box<T> {
-    fn drop(&mut self) {}
-}
-
-#[lang = "box_free"]
-#[inline(always)]
-unsafe fn box_free<T: ?Sized>(ptr: Unique<T>) {
-    dealloc(ptr.0.0)
+    #[inline(always)]
+    fn drop(&mut self) {
+        dealloc(self.0.0.0)
+    }
 }
 
 #[inline(never)]

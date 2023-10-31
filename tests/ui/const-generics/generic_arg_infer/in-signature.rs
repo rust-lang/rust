@@ -33,15 +33,15 @@ static TY_STATIC_MIXED: Bar<_, _> = Bar::<i32, 3>(0);
 //~^ ERROR the placeholder `_` is not allowed within types on item signatures for static variables
 trait ArrAssocConst {
     const ARR: [u8; _];
-    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for constants
+    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for associated constants
 }
 trait TyAssocConst {
     const ARR: Bar<i32, _>;
-    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for constants
+    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for associated constants
 }
 trait TyAssocConstMixed {
     const ARR: Bar<_, _>;
-    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for constants
+    //~^ ERROR the placeholder `_` is not allowed within types on item signatures for associated constants
 }
 
 trait AssocTy {

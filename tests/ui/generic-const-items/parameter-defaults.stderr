@@ -1,0 +1,8 @@
+error: defaults for type parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
+  --> $DIR/parameter-defaults.rs:10:12
+   |
+LL | const NONE<T = ()>: Option<T> = None::<T>;
+   |            ^^^^^^
+
+error: aborting due to previous error
+

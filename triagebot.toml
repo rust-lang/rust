@@ -20,6 +20,7 @@ allow-unauthenticated = [
     "regression-*",
     "perf-*",
     "AsyncAwait-OnDeck",
+    "needs-triage",
 ]
 
 [glacier]
@@ -190,6 +191,7 @@ trigger_files = [
     "src/stage0.json",
     "src/tools/compiletest",
     "src/tools/tidy",
+    "src/tools/rustdoc-gui-test",
 ]
 
 [autolabel."T-infra"]
@@ -253,10 +255,16 @@ trigger_files = [
 [autolabel."S-waiting-on-review"]
 new_pr = true
 
+[autolabel."needs-triage"]
+new_issue = true
+exclude_labels = [
+    "C-tracking-issue"
+]
+
 [autolabel."WG-trait-system-refactor"]
 trigger_files = [
     "compiler/rustc_trait_selection/src/solve",
-    "compiler/rustc_middle/src/traits/solve.rs"
+    "compiler/rustc_middle/src/traits/solve"
 ]
 
 [notify-zulip."I-prioritize"]
@@ -309,14 +317,6 @@ changelog-path = "RELEASES.md"
 changelog-branch = "master"
 
 [shortcut]
-
-
-[mentions."compiler/rustc_apfloat"]
-message = """
-Changes rustc_apfloat. rustc_apfloat is currently in limbo and you almost \
-certainly don't want to change it (see #55993).
-"""
-cc = ["@eddyb"]
 
 [mentions."compiler/rustc_codegen_cranelift"]
 cc = ["@bjorn3"]
@@ -371,6 +371,14 @@ cc = ["@GuillaumeGomez"]
 message = "Some changes might have occurred in exhaustiveness checking"
 cc = ["@Nadrieril"]
 
+[mentions."library/portable-simd"]
+message = """
+Portable SIMD is developed in its own repository. If possible, consider \
+making this change to [rust-lang/portable-simd](https://github.com/rust-lang/portable-simd) \
+instead.
+"""
+cc = ["@calebzulawski", "@programmerjake"]
+
 [mentions."src/librustdoc/clean/types.rs"]
 cc = ["@camelid"]
 
@@ -378,12 +386,15 @@ cc = ["@camelid"]
 message = "Some changes occurred in HTML/CSS/JS."
 cc = [
     "@GuillaumeGomez",
-    "@Folyd",
     "@jsha",
 ]
 
 [mentions."src/librustdoc/html/static/css/themes"]
 message = "Some changes occurred in HTML/CSS themes."
+cc = ["@GuillaumeGomez"]
+
+[mentions."tests/rustdoc-gui/"]
+message = "Some changes occurred in GUI tests."
 cc = ["@GuillaumeGomez"]
 
 [mentions."src/librustdoc/html/static/css/themes/ayu.css"]
@@ -437,7 +448,7 @@ cc = ["@davidtwco", "@compiler-errors", "@JohnTitor", "@TaKO8Ki"]
 
 [mentions."compiler/rustc_smir"]
 message = "This PR changes Stable MIR"
-cc = ["@oli-obk", "@celinval"]
+cc = ["@oli-obk", "@celinval", "@spastorino"]
 
 [mentions."compiler/rustc_target/src/spec"]
 message = """
@@ -464,6 +475,9 @@ message = "This PR changes src/bootstrap/defaults/config.compiler.toml. If appro
 [mentions."src/bootstrap/defaults/config.codegen.toml"]
 message = "This PR changes src/bootstrap/defaults/config.codegen.toml. If appropriate, please also update `config.compiler.toml` so the defaults are in sync."
 
+[mentions."src/bootstrap/llvm.rs"]
+message = "This PR changes how LLVM is built. Consider updating src/bootstrap/download-ci-llvm-stamp."
+
 [mentions."tests/ui/deriving/deriving-all-codegen.stdout"]
 message = "Changes to the code generated for builtin derived traits."
 cc = ["@nnethercote"]
@@ -475,6 +489,7 @@ cc = ["@nnethercote"]
 [assign]
 warn_non_default_branch = true
 contributing_url = "https://rustc-dev-guide.rust-lang.org/getting-started.html"
+users_on_vacation = ["jyn514", "clubby789", "oli-obk"]
 
 [assign.adhoc_groups]
 compiler-team = [
@@ -486,11 +501,11 @@ compiler-team = [
 ]
 compiler-team-contributors = [
     "@compiler-errors",
-    "@eholk",
     "@jackh726",
     "@TaKO8Ki",
     "@WaffleLapkin",
     "@b-naber",
+    "@fee1-dead",
 ]
 compiler = [
     "compiler-team",
@@ -511,7 +526,6 @@ bootstrap = [
 ]
 infra-ci = [
     "@Mark-Simulacrum",
-    "@pietroalbini",
 ]
 rustdoc = [
     "@jsha",
@@ -560,6 +574,7 @@ types = [
     "@lcnr",
     "@oli-obk",
     "@spastorino",
+    "@BoxyUwU",
 ]
 borrowck = [
     "@davidtwco",
@@ -584,7 +599,6 @@ style-team = [
 "/Cargo.lock" =                              ["@Mark-Simulacrum"]
 "/Cargo.toml" =                              ["@Mark-Simulacrum"]
 "/compiler" =                                ["compiler"]
-"/compiler/rustc_apfloat" =                  ["@eddyb"]
 "/compiler/rustc_ast" =                      ["compiler", "parser"]
 "/compiler/rustc_ast_lowering" =             ["compiler", "ast_lowering"]
 "/compiler/rustc_hir_analysis" =             ["compiler", "types"]
@@ -640,3 +654,4 @@ style-team = [
 "/src/tools/rustdoc-themes" =                ["rustdoc"]
 "/src/tools/tidy" =                          ["bootstrap"]
 "/src/tools/x" =                             ["bootstrap"]
+"/src/tools/rustdoc-gui-test" =              ["bootstrap", "@ozkanonur"]

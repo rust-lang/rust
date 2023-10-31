@@ -166,7 +166,7 @@ impl Default for CompressionFormats {
 
 impl CompressionFormats {
     pub(crate) fn iter(&self) -> impl Iterator<Item = CompressionFormat> + '_ {
-        self.0.iter().map(|i| *i)
+        self.0.iter().copied()
     }
 }
 

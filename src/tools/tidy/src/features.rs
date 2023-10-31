@@ -160,10 +160,10 @@ pub fn check(
     for &(name, _) in gate_untested.iter() {
         println!("Expected a gate test for the feature '{name}'.");
         println!(
-            "Hint: create a failing test file named 'feature-gate-{}.rs'\
-                \n      in the 'ui' test suite, with its failures due to\
-                \n      missing usage of `#![feature({})]`.",
-            name, name
+            "Hint: create a failing test file named 'tests/ui/feature-gates/feature-gate-{}.rs',\
+                \n      with its failures due to missing usage of `#![feature({})]`.",
+            name.replace("_", "-"),
+            name
         );
         println!(
             "Hint: If you already have such a test and don't want to rename it,\
@@ -338,6 +338,7 @@ fn collect_lang_features_in(features: &mut Features, base: &Path, file: &str, ba
         let level = match parts.next().map(|l| l.trim().trim_start_matches('(')) {
             Some("active") => Status::Unstable,
             Some("incomplete") => Status::Unstable,
+            Some("internal") => Status::Unstable,
             Some("removed") => Status::Removed,
             Some("accepted") => Status::Stable,
             _ => continue,

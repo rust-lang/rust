@@ -1,4 +1,4 @@
-use rustc_ast::{ast, MetaItemKind, NestedMetaItem};
+use rustc_ast::{ast, attr, MetaItemKind, NestedMetaItem};
 use rustc_attr::{list_contains_name, InlineAttr, InstructionSetAttr, OptimizeAttr};
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
@@ -58,6 +58,14 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
     let mut codegen_fn_attrs = CodegenFnAttrs::new();
     if tcx.should_inherit_track_caller(did) {
         codegen_fn_attrs.flags |= CodegenFnAttrFlags::TRACK_CALLER;
+    }
+
+    // When `no_builtins` is applied at the crate level, we should add the
+    // `no-builtins` attribute to each function to ensure it takes effect in LTO.
+    let crate_attrs = tcx.hir().attrs(rustc_hir::CRATE_HIR_ID);
+    let no_builtins = attr::contains_name(crate_attrs, sym::no_builtins);
+    if no_builtins {
+        codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_BUILTINS;
     }
 
     let supported_target_features = tcx.supported_target_features(LOCAL_CRATE);
@@ -207,14 +215,19 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
             }
             sym::thread_local => codegen_fn_attrs.flags |= CodegenFnAttrFlags::THREAD_LOCAL,
             sym::track_caller => {
-                if !tcx.is_closure(did.to_def_id())
+                let is_closure = tcx.is_closure(did.to_def_id());
+
+                if !is_closure
                     && let Some(fn_sig) = fn_sig()
                     && fn_sig.skip_binder().abi() != abi::Abi::Rust
                 {
                     struct_span_err!(tcx.sess, attr.span, E0737, "`#[track_caller]` requires Rust ABI")
                         .emit();
                 }
-                if tcx.is_closure(did.to_def_id()) && !tcx.features().closure_track_caller {
+                if is_closure
+                    && !tcx.features().closure_track_caller
+                    && !attr.span.allows_unstable(sym::closure_track_caller)
+                {
                     feature_err(
                         &tcx.sess.parse_sess,
                         sym::closure_track_caller,
@@ -493,7 +506,22 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
     });
 
     // #73631: closures inherit `#[target_feature]` annotations
-    if tcx.features().target_feature_11 && tcx.is_closure(did.to_def_id()) {
+    //
+    // If this closure is marked `#[inline(always)]`, simply skip adding `#[target_feature]`.
+    //
+    // At this point, `unsafe` has already been checked and `#[target_feature]` only affects codegen.
+    // Emitting both `#[inline(always)]` and `#[target_feature]` can potentially result in an
+    // ICE, because LLVM errors when the function fails to be inlined due to a target feature
+    // mismatch.
+    //
+    // Using `#[inline(always)]` implies that this closure will most likely be inlined into
+    // its parent function, which effectively inherits the features anyway. Boxing this closure
+    // would result in this closure being compiled without the inherited target features, but this
+    // is probably a poor usage of `#[inline(always)]` and easily avoided by not using the attribute.
+    if tcx.features().target_feature_11
+        && tcx.is_closure(did.to_def_id())
+        && codegen_fn_attrs.inline != InlineAttr::Always
+    {
         let owner_id = tcx.parent(did.to_def_id());
         if tcx.def_kind(owner_id).has_codegen_attrs() {
             codegen_fn_attrs

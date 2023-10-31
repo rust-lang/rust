@@ -7,19 +7,19 @@
 ///
 /// For more information about LLVM CFI and cross-language LLVM CFI support for the Rust compiler,
 /// see design document in the tracking issue #89653.
-use core::fmt::Display;
 use rustc_data_structures::base_n;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::DiagnosticMessage;
 use rustc_hir as hir;
-use rustc_middle::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
+use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{
     self, Const, ExistentialPredicate, FloatTy, FnSig, Instance, IntTy, List, Region, RegionKind,
     TermKind, Ty, TyCtxt, UintTy,
 };
+use rustc_middle::ty::{GenericArg, GenericArgKind, GenericArgsRef};
 use rustc_span::def_id::DefId;
 use rustc_span::sym;
 use rustc_target::abi::call::{Conv, FnAbi};
+use rustc_target::abi::Integer;
 use rustc_target::spec::abi::Abi;
 use std::fmt::Write as _;
 
@@ -94,44 +94,54 @@ fn encode_const<'tcx>(
     dict: &mut FxHashMap<DictKey<'tcx>, usize>,
     options: EncodeTyOptions,
 ) -> String {
-    // L<element-type>[n]<element-value>E as literal argument
+    // L<element-type>[n][<element-value>]E as literal argument
     let mut s = String::from('L');
 
-    // Element type
-    s.push_str(&encode_ty(tcx, c.ty(), dict, options));
+    match c.kind() {
+        // Const parameters
+        ty::ConstKind::Param(..) => {
+            // L<element-type>E as literal argument
 
-    // The only allowed types of const parameters are bool, u8, u16, u32, u64, u128, usize i8, i16,
-    // i32, i64, i128, isize, and char. The bool value false is encoded as 0 and true as 1.
-    fn push_signed_value<T: Display + PartialOrd>(s: &mut String, value: T, zero: T) {
-        if value < zero {
-            s.push('n')
-        };
-        let _ = write!(s, "{value}");
-    }
+            // Element type
+            s.push_str(&encode_ty(tcx, c.ty(), dict, options));
+        }
 
-    fn push_unsigned_value<T: Display>(s: &mut String, value: T) {
-        let _ = write!(s, "{value}");
-    }
+        // Literal arguments
+        ty::ConstKind::Value(..) => {
+            // L<element-type>[n]<element-value>E as literal argument
 
-    if let Some(scalar_int) = c.kind().try_to_scalar_int() {
-        let signed = c.ty().is_signed();
-        match scalar_int.size().bits() {
-            8 if signed => push_signed_value(&mut s, scalar_int.try_to_i8().unwrap(), 0),
-            16 if signed => push_signed_value(&mut s, scalar_int.try_to_i16().unwrap(), 0),
-            32 if signed => push_signed_value(&mut s, scalar_int.try_to_i32().unwrap(), 0),
-            64 if signed => push_signed_value(&mut s, scalar_int.try_to_i64().unwrap(), 0),
-            128 if signed => push_signed_value(&mut s, scalar_int.try_to_i128().unwrap(), 0),
-            8 => push_unsigned_value(&mut s, scalar_int.try_to_u8().unwrap()),
-            16 => push_unsigned_value(&mut s, scalar_int.try_to_u16().unwrap()),
-            32 => push_unsigned_value(&mut s, scalar_int.try_to_u32().unwrap()),
-            64 => push_unsigned_value(&mut s, scalar_int.try_to_u64().unwrap()),
-            128 => push_unsigned_value(&mut s, scalar_int.try_to_u128().unwrap()),
-            _ => {
-                bug!("encode_const: unexpected size `{:?}`", scalar_int.size().bits());
+            // Element type
+            s.push_str(&encode_ty(tcx, c.ty(), dict, options));
+
+            // The only allowed types of const values are bool, u8, u16, u32,
+            // u64, u128, usize i8, i16, i32, i64, i128, isize, and char. The
+            // bool value false is encoded as 0 and true as 1.
+            match c.ty().kind() {
+                ty::Int(ity) => {
+                    let bits = c.eval_bits(tcx, ty::ParamEnv::reveal_all(), c.ty());
+                    let val = Integer::from_int_ty(&tcx, *ity).size().sign_extend(bits) as i128;
+                    if val < 0 {
+                        s.push('n');
+                    }
+                    let _ = write!(s, "{val}");
+                }
+                ty::Uint(_) => {
+                    let val = c.eval_bits(tcx, ty::ParamEnv::reveal_all(), c.ty());
+                    let _ = write!(s, "{val}");
+                }
+                ty::Bool => {
+                    let val = c.try_eval_bool(tcx, ty::ParamEnv::reveal_all()).unwrap();
+                    let _ = write!(s, "{val}");
+                }
+                _ => {
+                    bug!("encode_const: unexpected type `{:?}`", c.ty());
+                }
             }
-        };
-    } else {
-        bug!("encode_const: unexpected type `{:?}`", c.ty());
+        }
+
+        _ => {
+            bug!("encode_const: unexpected kind `{:?}`", c.kind());
+        }
     }
 
     // Close the "L..E" pair
@@ -213,12 +223,12 @@ fn encode_predicate<'tcx>(
         ty::ExistentialPredicate::Trait(trait_ref) => {
             let name = encode_ty_name(tcx, trait_ref.def_id);
             let _ = write!(s, "u{}{}", name.len(), &name);
-            s.push_str(&encode_substs(tcx, trait_ref.substs, dict, options));
+            s.push_str(&encode_args(tcx, trait_ref.args, dict, options));
         }
         ty::ExistentialPredicate::Projection(projection) => {
             let name = encode_ty_name(tcx, projection.def_id);
             let _ = write!(s, "u{}{}", name.len(), &name);
-            s.push_str(&encode_substs(tcx, projection.substs, dict, options));
+            s.push_str(&encode_args(tcx, projection.args, dict, options));
             match projection.term.unpack() {
                 TermKind::Ty(ty) => s.push_str(&encode_ty(tcx, ty, dict, options)),
                 TermKind::Const(c) => s.push_str(&encode_const(tcx, c, dict, options)),
@@ -287,21 +297,21 @@ fn encode_region<'tcx>(
     s
 }
 
-/// Encodes substs using the Itanium C++ ABI with vendor extended type qualifiers and types for Rust
+/// Encodes args using the Itanium C++ ABI with vendor extended type qualifiers and types for Rust
 /// types that are not used at the FFI boundary.
-fn encode_substs<'tcx>(
+fn encode_args<'tcx>(
     tcx: TyCtxt<'tcx>,
-    substs: SubstsRef<'tcx>,
+    args: GenericArgsRef<'tcx>,
     dict: &mut FxHashMap<DictKey<'tcx>, usize>,
     options: EncodeTyOptions,
 ) -> String {
     // [I<subst1..substN>E] as part of vendor extended type
     let mut s = String::new();
-    let substs: Vec<GenericArg<'_>> = substs.iter().collect();
-    if !substs.is_empty() {
+    let args: Vec<GenericArg<'_>> = args.iter().collect();
+    if !args.is_empty() {
         s.push('I');
-        for subst in substs {
-            match subst.unpack() {
+        for arg in args {
+            match arg.unpack() {
                 GenericArgKind::Lifetime(region) => {
                     s.push_str(&encode_region(tcx, region, dict, options));
                 }
@@ -401,7 +411,7 @@ fn encode_ty_name(tcx: TyCtxt<'_>, def_id: DefId) -> String {
         let _ = write!(s, "{}", name.len());
 
         // Prepend a '_' if name starts with a digit or '_'
-        if let Some(first) = name.as_bytes().get(0) {
+        if let Some(first) = name.as_bytes().first() {
             if first.is_ascii_digit() || *first == b'_' {
                 s.push('_');
             }
@@ -502,7 +512,14 @@ fn encode_ty<'tcx>(
         ty::Array(ty0, len) => {
             // A<array-length><element-type>
             let mut s = String::from("A");
-            let _ = write!(s, "{}", &len.kind().try_to_scalar().unwrap().to_u64().unwrap());
+            let _ = write!(
+                s,
+                "{}",
+                &len.try_to_scalar()
+                    .unwrap()
+                    .to_u64()
+                    .unwrap_or_else(|_| panic!("failed to convert length to u64"))
+            );
             s.push_str(&encode_ty(tcx, *ty0, dict, options));
             compress(dict, DictKey::Ty(ty, TyQ::None), &mut s);
             typeid.push_str(&s);
@@ -518,7 +535,7 @@ fn encode_ty<'tcx>(
         }
 
         // User-defined types
-        ty::Adt(adt_def, substs) => {
+        ty::Adt(adt_def, args) => {
             let mut s = String::new();
             let def_id = adt_def.did();
             if let Some(cfi_encoding) = tcx.get_attr(def_id, sym::cfi_encoding) {
@@ -534,10 +551,7 @@ fn encode_ty<'tcx>(
                         tcx.sess
                             .struct_span_err(
                                 cfi_encoding.span,
-                                DiagnosticMessage::Str(format!(
-                                    "invalid `cfi_encoding` for `{:?}`",
-                                    ty.kind()
-                                )),
+                                format!("invalid `cfi_encoding` for `{:?}`", ty.kind()),
                             )
                             .emit();
                     }
@@ -567,7 +581,7 @@ fn encode_ty<'tcx>(
                 // <subst>, as vendor extended type.
                 let name = encode_ty_name(tcx, def_id);
                 let _ = write!(s, "u{}{}", name.len(), &name);
-                s.push_str(&encode_substs(tcx, substs, dict, options));
+                s.push_str(&encode_args(tcx, args, dict, options));
                 compress(dict, DictKey::Ty(ty, TyQ::None), &mut s);
             }
             typeid.push_str(&s);
@@ -589,10 +603,7 @@ fn encode_ty<'tcx>(
                         tcx.sess
                             .struct_span_err(
                                 cfi_encoding.span,
-                                DiagnosticMessage::Str(format!(
-                                    "invalid `cfi_encoding` for `{:?}`",
-                                    ty.kind()
-                                )),
+                                format!("invalid `cfi_encoding` for `{:?}`", ty.kind()),
                             )
                             .emit();
                     }
@@ -608,15 +619,30 @@ fn encode_ty<'tcx>(
         }
 
         // Function types
-        ty::FnDef(def_id, substs)
-        | ty::Closure(def_id, substs)
-        | ty::Generator(def_id, substs, ..) => {
+        ty::FnDef(def_id, args) | ty::Closure(def_id, args) => {
             // u<length><name>[I<element-type1..element-typeN>E], where <element-type> is <subst>,
             // as vendor extended type.
             let mut s = String::new();
             let name = encode_ty_name(tcx, *def_id);
             let _ = write!(s, "u{}{}", name.len(), &name);
-            s.push_str(&encode_substs(tcx, substs, dict, options));
+            s.push_str(&encode_args(tcx, args, dict, options));
+            compress(dict, DictKey::Ty(ty, TyQ::None), &mut s);
+            typeid.push_str(&s);
+        }
+
+        ty::Generator(def_id, args, ..) => {
+            // u<length><name>[I<element-type1..element-typeN>E], where <element-type> is <subst>,
+            // as vendor extended type.
+            let mut s = String::new();
+            let name = encode_ty_name(tcx, *def_id);
+            let _ = write!(s, "u{}{}", name.len(), &name);
+            // Encode parent args only
+            s.push_str(&encode_args(
+                tcx,
+                tcx.mk_args(args.as_generator().parent_args()),
+                dict,
+                options,
+            ));
             compress(dict, DictKey::Ty(ty, TyQ::None), &mut s);
             typeid.push_str(&s);
         }
@@ -628,7 +654,7 @@ fn encode_ty<'tcx>(
             s.push_str("u3refI");
             s.push_str(&encode_ty(tcx, *ty0, dict, options));
             s.push('E');
-            compress(dict, DictKey::Ty(tcx.mk_imm_ref(*region, *ty0), TyQ::None), &mut s);
+            compress(dict, DictKey::Ty(Ty::new_imm_ref(tcx, *region, *ty0), TyQ::None), &mut s);
             if ty.is_mutable_ptr() {
                 s = format!("{}{}", "U3mut", &s);
                 compress(dict, DictKey::Ty(ty, TyQ::Mut), &mut s);
@@ -681,12 +707,12 @@ fn encode_ty<'tcx>(
         }
 
         // Unexpected types
-        ty::Bound(..)
+        ty::Alias(..)
+        | ty::Bound(..)
         | ty::Error(..)
         | ty::GeneratorWitness(..)
         | ty::GeneratorWitnessMIR(..)
         | ty::Infer(..)
-        | ty::Alias(..)
         | ty::Placeholder(..) => {
             bug!("encode_ty: unexpected `{:?}`", ty.kind());
         }
@@ -717,18 +743,18 @@ fn transform_predicates<'tcx>(
     tcx.mk_poly_existential_predicates(&predicates)
 }
 
-/// Transforms substs for being encoded and used in the substitution dictionary.
-fn transform_substs<'tcx>(
+/// Transforms args for being encoded and used in the substitution dictionary.
+fn transform_args<'tcx>(
     tcx: TyCtxt<'tcx>,
-    substs: SubstsRef<'tcx>,
+    args: GenericArgsRef<'tcx>,
     options: TransformTyOptions,
-) -> SubstsRef<'tcx> {
-    let substs = substs.iter().map(|subst| match subst.unpack() {
-        GenericArgKind::Type(ty) if ty.is_c_void(tcx) => tcx.mk_unit().into(),
+) -> GenericArgsRef<'tcx> {
+    let args = args.iter().map(|arg| match arg.unpack() {
+        GenericArgKind::Type(ty) if ty.is_c_void(tcx) => Ty::new_unit(tcx).into(),
         GenericArgKind::Type(ty) => transform_ty(tcx, ty, options).into(),
-        _ => subst,
+        _ => arg,
     });
-    tcx.mk_substs_from_iter(substs)
+    tcx.mk_args_from_iter(args)
 }
 
 // Transforms a ty:Ty for being encoded and used in the substitution dictionary. It transforms all
@@ -739,7 +765,12 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
     let mut ty = ty;
 
     match ty.kind() {
-        ty::Float(..) | ty::Char | ty::Str | ty::Never | ty::Foreign(..) => {}
+        ty::Float(..)
+        | ty::Char
+        | ty::Str
+        | ty::Never
+        | ty::Foreign(..)
+        | ty::GeneratorWitness(..) => {}
 
         ty::Bool => {
             if options.contains(EncodeTyOptions::NORMALIZE_INTEGERS) {
@@ -789,24 +820,25 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
         _ if ty.is_unit() => {}
 
         ty::Tuple(tys) => {
-            ty = tcx.mk_tup_from_iter(tys.iter().map(|ty| transform_ty(tcx, ty, options)));
+            ty = Ty::new_tup_from_iter(tcx, tys.iter().map(|ty| transform_ty(tcx, ty, options)));
         }
 
         ty::Array(ty0, len) => {
-            let len = len.kind().try_to_scalar().unwrap().to_u64().unwrap();
-            ty = tcx.mk_array(transform_ty(tcx, *ty0, options), len);
+            let len = len.eval_target_usize(tcx, ty::ParamEnv::reveal_all());
+
+            ty = Ty::new_array(tcx, transform_ty(tcx, *ty0, options), len);
         }
 
         ty::Slice(ty0) => {
-            ty = tcx.mk_slice(transform_ty(tcx, *ty0, options));
+            ty = Ty::new_slice(tcx, transform_ty(tcx, *ty0, options));
         }
 
-        ty::Adt(adt_def, substs) => {
+        ty::Adt(adt_def, args) => {
             if ty.is_c_void(tcx) {
-                ty = tcx.mk_unit();
+                ty = Ty::new_unit(tcx);
             } else if options.contains(TransformTyOptions::GENERALIZE_REPR_C) && adt_def.repr().c()
             {
-                ty = tcx.mk_adt(*adt_def, ty::List::empty());
+                ty = Ty::new_adt(tcx, *adt_def, ty::List::empty());
             } else if adt_def.repr().transparent() && adt_def.is_struct() {
                 // Don't transform repr(transparent) types with an user-defined CFI encoding to
                 // preserve the user-defined CFI encoding.
@@ -816,13 +848,13 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
                 let variant = adt_def.non_enum_variant();
                 let param_env = tcx.param_env(variant.def_id);
                 let field = variant.fields.iter().find(|field| {
-                    let ty = tcx.type_of(field.did).subst_identity();
+                    let ty = tcx.type_of(field.did).instantiate_identity();
                     let is_zst =
                         tcx.layout_of(param_env.and(ty)).is_ok_and(|layout| layout.is_zst());
                     !is_zst
                 });
                 if let Some(field) = field {
-                    let ty0 = tcx.type_of(field.did).subst(tcx, substs);
+                    let ty0 = tcx.type_of(field.did).instantiate(tcx, args);
                     // Generalize any repr(transparent) user-defined type that is either a pointer
                     // or reference, and either references itself or any other type that contains or
                     // references itself, to avoid a reference cycle.
@@ -837,37 +869,37 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
                     }
                 } else {
                     // Transform repr(transparent) types without non-ZST field into ()
-                    ty = tcx.mk_unit();
+                    ty = Ty::new_unit(tcx);
                 }
             } else {
-                ty = tcx.mk_adt(*adt_def, transform_substs(tcx, substs, options));
+                ty = Ty::new_adt(tcx, *adt_def, transform_args(tcx, args, options));
             }
         }
 
-        ty::FnDef(def_id, substs) => {
-            ty = tcx.mk_fn_def(*def_id, transform_substs(tcx, substs, options));
+        ty::FnDef(def_id, args) => {
+            ty = Ty::new_fn_def(tcx, *def_id, transform_args(tcx, args, options));
         }
 
-        ty::Closure(def_id, substs) => {
-            ty = tcx.mk_closure(*def_id, transform_substs(tcx, substs, options));
+        ty::Closure(def_id, args) => {
+            ty = Ty::new_closure(tcx, *def_id, transform_args(tcx, args, options));
         }
 
-        ty::Generator(def_id, substs, movability) => {
-            ty = tcx.mk_generator(*def_id, transform_substs(tcx, substs, options), *movability);
+        ty::Generator(def_id, args, movability) => {
+            ty = Ty::new_generator(tcx, *def_id, transform_args(tcx, args, options), *movability);
         }
 
         ty::Ref(region, ty0, ..) => {
             if options.contains(TransformTyOptions::GENERALIZE_POINTERS) {
                 if ty.is_mutable_ptr() {
-                    ty = tcx.mk_mut_ref(tcx.lifetimes.re_static, tcx.mk_unit());
+                    ty = Ty::new_mut_ref(tcx, tcx.lifetimes.re_static, Ty::new_unit(tcx));
                 } else {
-                    ty = tcx.mk_imm_ref(tcx.lifetimes.re_static, tcx.mk_unit());
+                    ty = Ty::new_imm_ref(tcx, tcx.lifetimes.re_static, Ty::new_unit(tcx));
                 }
             } else {
                 if ty.is_mutable_ptr() {
-                    ty = tcx.mk_mut_ref(*region, transform_ty(tcx, *ty0, options));
+                    ty = Ty::new_mut_ref(tcx, *region, transform_ty(tcx, *ty0, options));
                 } else {
-                    ty = tcx.mk_imm_ref(*region, transform_ty(tcx, *ty0, options));
+                    ty = Ty::new_imm_ref(tcx, *region, transform_ty(tcx, *ty0, options));
                 }
             }
         }
@@ -875,22 +907,22 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
         ty::RawPtr(tm) => {
             if options.contains(TransformTyOptions::GENERALIZE_POINTERS) {
                 if ty.is_mutable_ptr() {
-                    ty = tcx.mk_mut_ptr(tcx.mk_unit());
+                    ty = Ty::new_mut_ptr(tcx, Ty::new_unit(tcx));
                 } else {
-                    ty = tcx.mk_imm_ptr(tcx.mk_unit());
+                    ty = Ty::new_imm_ptr(tcx, Ty::new_unit(tcx));
                 }
             } else {
                 if ty.is_mutable_ptr() {
-                    ty = tcx.mk_mut_ptr(transform_ty(tcx, tm.ty, options));
+                    ty = Ty::new_mut_ptr(tcx, transform_ty(tcx, tm.ty, options));
                 } else {
-                    ty = tcx.mk_imm_ptr(transform_ty(tcx, tm.ty, options));
+                    ty = Ty::new_imm_ptr(tcx, transform_ty(tcx, tm.ty, options));
                 }
             }
         }
 
         ty::FnPtr(fn_sig) => {
             if options.contains(TransformTyOptions::GENERALIZE_POINTERS) {
-                ty = tcx.mk_imm_ptr(tcx.mk_unit());
+                ty = Ty::new_imm_ptr(tcx, Ty::new_unit(tcx));
             } else {
                 let parameters: Vec<Ty<'tcx>> = fn_sig
                     .skip_binder()
@@ -899,33 +931,43 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
                     .map(|ty| transform_ty(tcx, *ty, options))
                     .collect();
                 let output = transform_ty(tcx, fn_sig.skip_binder().output(), options);
-                ty = tcx.mk_fn_ptr(ty::Binder::bind_with_vars(
-                    tcx.mk_fn_sig(
-                        parameters,
-                        output,
-                        fn_sig.c_variadic(),
-                        fn_sig.unsafety(),
-                        fn_sig.abi(),
+                ty = Ty::new_fn_ptr(
+                    tcx,
+                    ty::Binder::bind_with_vars(
+                        tcx.mk_fn_sig(
+                            parameters,
+                            output,
+                            fn_sig.c_variadic(),
+                            fn_sig.unsafety(),
+                            fn_sig.abi(),
+                        ),
+                        fn_sig.bound_vars(),
                     ),
-                    fn_sig.bound_vars(),
-                ));
+                );
             }
         }
 
         ty::Dynamic(predicates, _region, kind) => {
-            ty = tcx.mk_dynamic(
+            ty = Ty::new_dynamic(
+                tcx,
                 transform_predicates(tcx, predicates, options),
                 tcx.lifetimes.re_erased,
                 *kind,
             );
         }
 
+        ty::Alias(..) => {
+            ty = transform_ty(
+                tcx,
+                tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), ty),
+                options,
+            );
+        }
+
         ty::Bound(..)
         | ty::Error(..)
-        | ty::GeneratorWitness(..)
         | ty::GeneratorWitnessMIR(..)
         | ty::Infer(..)
-        | ty::Alias(..)
         | ty::Param(..)
         | ty::Placeholder(..) => {
             bug!("transform_ty: unexpected `{:?}`", ty.kind());
@@ -1076,14 +1118,16 @@ pub fn typeid_for_instance<'tcx>(
             )]);
             // Is the concrete self mutable?
             let self_ty = if fn_abi.args[0].layout.ty.is_mutable_ptr() {
-                tcx.mk_mut_ref(
+                Ty::new_mut_ref(
+                    tcx,
                     tcx.lifetimes.re_erased,
-                    tcx.mk_dynamic(existential_predicates, tcx.lifetimes.re_erased, ty::Dyn),
+                    Ty::new_dynamic(tcx, existential_predicates, tcx.lifetimes.re_erased, ty::Dyn),
                 )
             } else {
-                tcx.mk_imm_ref(
+                Ty::new_imm_ref(
+                    tcx,
                     tcx.lifetimes.re_erased,
-                    tcx.mk_dynamic(existential_predicates, tcx.lifetimes.re_erased, ty::Dyn),
+                    Ty::new_dynamic(tcx, existential_predicates, tcx.lifetimes.re_erased, ty::Dyn),
                 )
             };
 

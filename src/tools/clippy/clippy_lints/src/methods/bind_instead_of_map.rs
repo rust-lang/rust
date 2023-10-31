@@ -1,7 +1,8 @@
 use super::{contains_return, BIND_INSTEAD_OF_MAP};
 use clippy_utils::diagnostics::{multispan_sugg_with_applicability, span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::peel_blocks;
 use clippy_utils::source::{snippet, snippet_with_context};
-use clippy_utils::{peel_blocks, visitors::find_all_ret_expressions};
+use clippy_utils::visitors::find_all_ret_expressions;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -87,7 +88,7 @@ pub(crate) trait BindInsteadOfMap {
                     BIND_INSTEAD_OF_MAP,
                     expr.span,
                     &msg,
-                    "try this",
+                    "try",
                     note,
                     app,
                 );
@@ -124,7 +125,7 @@ pub(crate) trait BindInsteadOfMap {
         span_lint_and_then(cx, BIND_INSTEAD_OF_MAP, expr.span, &msg, |diag| {
             multispan_sugg_with_applicability(
                 diag,
-                "try this",
+                "try",
                 Applicability::MachineApplicable,
                 std::iter::once((span, Self::GOOD_METHOD_NAME.into())).chain(
                     suggs

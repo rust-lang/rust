@@ -2,7 +2,7 @@ error[E0277]: `()` cannot be safely transmuted into `W<'_>` in the defining scop
   --> $DIR/region-infer.rs:20:5
    |
 LL |     test();
-   |     ^^^^ `W<'_>` does not have a well-specified layout
+   |     ^^^^ The size of `()` is smaller than the size of `W<'_>`
    |
 note: required by a bound in `test`
   --> $DIR/region-infer.rs:11:12

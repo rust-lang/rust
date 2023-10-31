@@ -5,39 +5,39 @@
 #[derive(Debug)]
 struct Foo;
 
-const VAR_ONE: &str = "Test constant #1"; // ERROR Consider removing 'static.
+const VAR_ONE: &str = "Test constant #1"; // ERROR: Consider removing 'static.
 
 const VAR_TWO: &str = "Test constant #2"; // This line should not raise a warning.
 
-const VAR_THREE: &[&str] = &["one", "two"]; // ERROR Consider removing 'static
+const VAR_THREE: &[&str] = &["one", "two"]; // ERROR: Consider removing 'static
 
-const VAR_FOUR: (&str, (&str, &str), &str) = ("on", ("th", "th"), "on"); // ERROR Consider removing 'static
+const VAR_FOUR: (&str, (&str, &str), &str) = ("on", ("th", "th"), "on"); // ERROR: Consider removing 'static
 
 const VAR_SIX: &u8 = &5;
 
 const VAR_HEIGHT: &Foo = &Foo {};
 
-const VAR_SLICE: &[u8] = b"Test constant #1"; // ERROR Consider removing 'static.
+const VAR_SLICE: &[u8] = b"Test constant #1"; // ERROR: Consider removing 'static.
 
-const VAR_TUPLE: &(u8, u8) = &(1, 2); // ERROR Consider removing 'static.
+const VAR_TUPLE: &(u8, u8) = &(1, 2); // ERROR: Consider removing 'static.
 
-const VAR_ARRAY: &[u8; 1] = b"T"; // ERROR Consider removing 'static.
+const VAR_ARRAY: &[u8; 1] = b"T"; // ERROR: Consider removing 'static.
 
-static STATIC_VAR_ONE: &str = "Test static #1"; // ERROR Consider removing 'static.
+static STATIC_VAR_ONE: &str = "Test static #1"; // ERROR: Consider removing 'static.
 
 static STATIC_VAR_TWO: &str = "Test static #2"; // This line should not raise a warning.
 
-static STATIC_VAR_THREE: &[&str] = &["one", "two"]; // ERROR Consider removing 'static
+static STATIC_VAR_THREE: &[&str] = &["one", "two"]; // ERROR: Consider removing 'static
 
 static STATIC_VAR_SIX: &u8 = &5;
 
 static STATIC_VAR_HEIGHT: &Foo = &Foo {};
 
-static STATIC_VAR_SLICE: &[u8] = b"Test static #3"; // ERROR Consider removing 'static.
+static STATIC_VAR_SLICE: &[u8] = b"Test static #3"; // ERROR: Consider removing 'static.
 
-static STATIC_VAR_TUPLE: &(u8, u8) = &(1, 2); // ERROR Consider removing 'static.
+static STATIC_VAR_TUPLE: &(u8, u8) = &(1, 2); // ERROR: Consider removing 'static.
 
-static STATIC_VAR_ARRAY: &[u8; 1] = b"T"; // ERROR Consider removing 'static.
+static STATIC_VAR_ARRAY: &[u8; 1] = b"T"; // ERROR: Consider removing 'static.
 
 static mut STATIC_MUT_SLICE: &mut [u32] = &mut [0];
 

@@ -48,7 +48,7 @@ impl<'tcx> PreDefineMethods<'tcx> for CodegenCx<'_, 'tcx> {
         visibility: Visibility,
         symbol_name: &str,
     ) {
-        assert!(!instance.substs.has_infer());
+        assert!(!instance.args.has_infer());
 
         let fn_abi = self.fn_abi_of_instance(instance, ty::List::empty());
         let lldecl = self.declare_fn(symbol_name, fn_abi, Some(instance));
@@ -111,7 +111,7 @@ impl CodegenCx<'_, '_> {
         }
 
         // Symbols from executables can't really be imported any further.
-        let all_exe = self.tcx.sess.crate_types().iter().all(|ty| *ty == CrateType::Executable);
+        let all_exe = self.tcx.crate_types().iter().all(|ty| *ty == CrateType::Executable);
         let is_declaration_for_linker =
             is_declaration || linkage == llvm::Linkage::AvailableExternallyLinkage;
         if all_exe && !is_declaration_for_linker {

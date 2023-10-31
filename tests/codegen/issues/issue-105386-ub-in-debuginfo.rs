@@ -1,5 +1,5 @@
-// compile-flags: --crate-type=lib -O -Cdebuginfo=2 -Cno-prepopulate-passes
-// min-llvm-version: 15.0 # this test uses opaque pointer notation
+// compile-flags: --crate-type=lib -O -Cdebuginfo=2 -Cno-prepopulate-passes -Zmir-enable-passes=-ScalarReplacementOfAggregates
+// MIR SROA will decompose the closure
 #![feature(stmt_expr_attributes)]
 
 pub struct S([usize; 8]);

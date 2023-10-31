@@ -1,5 +1,17 @@
+error[E0792]: non-defining opaque type use in defining scope
+  --> $DIR/generic_nondefining_use.rs:15:21
+   |
+LL | fn concrete_ty() -> OneTy<u32> {
+   |                     ^^^^^^^^^^ argument `u32` is not a generic parameter
+   |
+note: for this opaque type
+  --> $DIR/generic_nondefining_use.rs:7:17
+   |
+LL | type OneTy<T> = impl Debug;
+   |                 ^^^^^^^^^^
+
 error[E0792]: expected generic type parameter, found `u32`
-  --> $DIR/generic_nondefining_use.rs:16:5
+  --> $DIR/generic_nondefining_use.rs:17:5
    |
 LL | type OneTy<T> = impl Debug;
    |            - this generic parameter must be used with a generic type parameter
@@ -7,8 +19,20 @@ LL | type OneTy<T> = impl Debug;
 LL |     5u32
    |     ^^^^
 
+error[E0792]: non-defining opaque type use in defining scope
+  --> $DIR/generic_nondefining_use.rs:21:27
+   |
+LL | fn concrete_lifetime() -> OneLifetime<'static> {
+   |                           ^^^^^^^^^^^^^^^^^^^^ argument `'static` is not a generic parameter
+   |
+note: for this opaque type
+  --> $DIR/generic_nondefining_use.rs:9:24
+   |
+LL | type OneLifetime<'a> = impl Debug;
+   |                        ^^^^^^^^^^
+
 error[E0792]: expected generic lifetime parameter, found `'static`
-  --> $DIR/generic_nondefining_use.rs:21:5
+  --> $DIR/generic_nondefining_use.rs:23:5
    |
 LL | type OneLifetime<'a> = impl Debug;
    |                  -- cannot use static lifetime; use a bound lifetime instead or remove the lifetime parameter from the opaque type
@@ -16,8 +40,20 @@ LL | type OneLifetime<'a> = impl Debug;
 LL |     6u32
    |     ^^^^
 
+error[E0792]: non-defining opaque type use in defining scope
+  --> $DIR/generic_nondefining_use.rs:27:24
+   |
+LL | fn concrete_const() -> OneConst<{ 123 }> {
+   |                        ^^^^^^^^^^^^^^^^^ argument `123` is not a generic parameter
+   |
+note: for this opaque type
+  --> $DIR/generic_nondefining_use.rs:11:33
+   |
+LL | type OneConst<const X: usize> = impl Debug;
+   |                                 ^^^^^^^^^^
+
 error[E0792]: expected generic constant parameter, found `123`
-  --> $DIR/generic_nondefining_use.rs:26:5
+  --> $DIR/generic_nondefining_use.rs:29:5
    |
 LL | type OneConst<const X: usize> = impl Debug;
    |               -------------- this generic parameter must be used with a generic constant parameter
@@ -25,6 +61,6 @@ LL | type OneConst<const X: usize> = impl Debug;
 LL |     7u32
    |     ^^^^
 
-error: aborting due to 3 previous errors
+error: aborting due to 6 previous errors
 
 For more information about this error, try `rustc --explain E0792`.

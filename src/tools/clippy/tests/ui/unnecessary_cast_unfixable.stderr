@@ -1,0 +1,16 @@
+error: casting raw pointers to the same type and constness is unnecessary (`*const u8` -> `*const u8`)
+  --> $DIR/unnecessary_cast_unfixable.rs:4:13
+   |
+LL |     let _ = std::ptr::null() as *const u8;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::null()`
+   |
+   = note: `-D clippy::unnecessary-cast` implied by `-D warnings`
+
+error: casting raw pointers to the same type and constness is unnecessary (`*mut issue11113::Vtbl` -> `*mut issue11113::Vtbl`)
+  --> $DIR/unnecessary_cast_unfixable.rs:19:16
+   |
+LL |             ((*(*(self.object as *mut *mut _) as *mut Vtbl)).query)()
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `*(self.object as *mut *mut _)`
+
+error: aborting due to 2 previous errors
+

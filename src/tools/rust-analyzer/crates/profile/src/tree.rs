@@ -72,7 +72,7 @@ struct NodeIter<'a, T> {
     next: Option<Idx<T>>,
 }
 
-impl<'a, T> Iterator for NodeIter<'a, T> {
+impl<T> Iterator for NodeIter<'_, T> {
     type Item = Idx<T>;
 
     fn next(&mut self) -> Option<Idx<T>> {

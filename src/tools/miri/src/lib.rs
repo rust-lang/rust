@@ -1,4 +1,5 @@
 #![feature(rustc_private)]
+#![feature(float_gamma)]
 #![feature(map_try_insert)]
 #![feature(never_type)]
 #![feature(try_blocks)]
@@ -6,8 +7,10 @@
 #![feature(variant_count)]
 #![feature(yeet_expr)]
 #![feature(nonzero_ops)]
-#![feature(local_key_cell_methods)]
 #![feature(round_ties_even)]
+#![feature(os_str_bytes)]
+#![feature(lint_reasons)]
+#![feature(trait_upcasting)]
 // Configure clippy and other lints
 #![allow(
     clippy::collapsible_else_if,
@@ -17,6 +20,7 @@
     clippy::enum_variant_names,
     clippy::field_reassign_with_default,
     clippy::manual_map,
+    clippy::neg_cmp_op_on_partial_ord,
     clippy::new_without_default,
     clippy::single_match,
     clippy::useless_format,
@@ -41,14 +45,17 @@
 // Needed for rustdoc from bootstrap (with `-Znormalize-docs`).
 #![recursion_limit = "256"]
 
+extern crate either; // the one from rustc
+
 extern crate rustc_apfloat;
 extern crate rustc_ast;
-#[macro_use]
-extern crate rustc_middle;
 extern crate rustc_const_eval;
 extern crate rustc_data_structures;
+extern crate rustc_errors;
 extern crate rustc_hir;
 extern crate rustc_index;
+#[macro_use]
+extern crate rustc_middle;
 extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_target;

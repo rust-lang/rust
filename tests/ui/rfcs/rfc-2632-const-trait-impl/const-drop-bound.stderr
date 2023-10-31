@@ -1,0 +1,9 @@
+error[E0493]: destructor of `E` cannot be evaluated at compile-time
+  --> $DIR/const-drop-bound.rs:12:13
+   |
+LL |         Err(_e) => None,
+   |             ^^ the destructor for this type cannot be evaluated in constant functions
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0493`.

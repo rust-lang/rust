@@ -7,10 +7,11 @@
 mod logger;
 mod rustc_wrapper;
 
-use std::{env, fs, path::Path, process};
+use std::{env, fs, path::PathBuf, process};
 
+use anyhow::Context;
 use lsp_server::Connection;
-use rust_analyzer::{cli::flags, config::Config, from_json, Result};
+use rust_analyzer::{cli::flags, config::Config, from_json};
 use vfs::AbsPathBuf;
 
 #[cfg(all(feature = "mimalloc"))]
@@ -21,7 +22,7 @@ static ALLOC: mimalloc::MiMalloc = mimalloc::MiMalloc;
 #[global_allocator]
 static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
-fn main() {
+fn main() -> anyhow::Result<()> {
     if std::env::var("RA_RUSTC_WRAPPER").is_ok() {
         let mut args = std::env::args_os();
         let _me = args.next().unwrap();
@@ -37,14 +38,7 @@ fn main() {
     }
 
     let flags = flags::RustAnalyzer::from_env_or_exit();
-    if let Err(err) = try_main(flags) {
-        tracing::error!("Unexpected error: {}", err);
-        eprintln!("{err}");
-        process::exit(101);
-    }
-}
 
-fn try_main(flags: flags::RustAnalyzer) -> Result<()> {
     #[cfg(debug_assertions)]
     if flags.wait_dbg || env::var("RA_WAIT_DBG").is_ok() {
         #[allow(unused_mut)]
@@ -54,14 +48,8 @@ fn try_main(flags: flags::RustAnalyzer) -> Result<()> {
         }
     }
 
-    let mut log_file = flags.log_file.as_deref();
+    setup_logging(flags.log_file.clone())?;
 
-    let env_log_file = env::var("RA_LOG_FILE").ok();
-    if let Some(env_log_file) = env_log_file.as_deref() {
-        log_file = Some(Path::new(env_log_file));
-    }
-
-    setup_logging(log_file)?;
     let verbosity = flags.verbosity();
 
     match flags.subcommand {
@@ -74,10 +62,16 @@ fn try_main(flags: flags::RustAnalyzer) -> Result<()> {
                 println!("rust-analyzer {}", rust_analyzer::version());
                 return Ok(());
             }
-            with_extra_thread("LspServer", run_server)?;
-        }
-        flags::RustAnalyzerCmd::ProcMacro(flags::ProcMacro) => {
-            with_extra_thread("MacroExpander", || proc_macro_srv::cli::run().map_err(Into::into))?;
+
+            // rust-analyzer’s “main thread” is actually
+            // a secondary latency-sensitive thread with an increased stack size.
+            // We use this thread intent because any delay in the main loop
+            // will make actions like hitting enter in the editor slow.
+            with_extra_thread(
+                "LspServer",
+                stdx::thread::ThreadIntent::LatencySensitive,
+                run_server,
+            )?;
         }
         flags::RustAnalyzerCmd::Parse(cmd) => cmd.run()?,
         flags::RustAnalyzerCmd::Symbols(cmd) => cmd.run()?,
@@ -88,11 +82,12 @@ fn try_main(flags: flags::RustAnalyzer) -> Result<()> {
         flags::RustAnalyzerCmd::Search(cmd) => cmd.run()?,
         flags::RustAnalyzerCmd::Lsif(cmd) => cmd.run()?,
         flags::RustAnalyzerCmd::Scip(cmd) => cmd.run()?,
+        flags::RustAnalyzerCmd::RunTests(cmd) => cmd.run()?,
     }
     Ok(())
 }
 
-fn setup_logging(log_file: Option<&Path>) -> Result<()> {
+fn setup_logging(log_file_flag: Option<PathBuf>) -> anyhow::Result<()> {
     if cfg!(windows) {
         // This is required so that windows finds our pdb that is placed right beside the exe.
         // By default it doesn't look at the folder the exe resides in, only in the current working
@@ -105,23 +100,42 @@ fn setup_logging(log_file: Option<&Path>) -> Result<()> {
             }
         }
     }
+
     if env::var("RUST_BACKTRACE").is_err() {
         env::set_var("RUST_BACKTRACE", "short");
     }
 
+    let log_file = env::var("RA_LOG_FILE").ok().map(PathBuf::from).or(log_file_flag);
     let log_file = match log_file {
         Some(path) => {
             if let Some(parent) = path.parent() {
                 let _ = fs::create_dir_all(parent);
             }
-            Some(fs::File::create(path)?)
+            Some(
+                fs::File::create(&path)
+                    .with_context(|| format!("can't create log file at {}", path.display()))?,
+            )
         }
         None => None,
     };
-    let filter = env::var("RA_LOG").ok();
-    // deliberately enable all `error` logs if the user has not set RA_LOG, as there is usually useful
-    // information in there for debugging
-    logger::Logger::new(log_file, filter.as_deref().or(Some("error"))).install()?;
+
+    logger::LoggerConfig {
+        log_file,
+        // Deliberately enable all `error` logs if the user has not set RA_LOG, as there is usually
+        // useful information in there for debugging.
+        filter: env::var("RA_LOG").ok().unwrap_or_else(|| "error".to_string()),
+        // The meaning of CHALK_DEBUG I suspected is to tell chalk crates
+        // (i.e. chalk-solve, chalk-ir, chalk-recursive) how to filter tracing
+        // logs. But now we can only have just one filter, which means we have to
+        // merge chalk filter to our main filter (from RA_LOG env).
+        //
+        // The acceptable syntax of CHALK_DEBUG is `target[span{field=value}]=level`.
+        // As the value should only affect chalk crates, we'd better manually
+        // specify the target. And for simplicity, CHALK_DEBUG only accept the value
+        // that specify level.
+        chalk_filter: env::var("CHALK_DEBUG").ok(),
+    }
+    .init()?;
 
     profile::init();
 
@@ -135,29 +149,38 @@ const STACK_SIZE: usize = 1024 * 1024 * 8;
 /// space.
 fn with_extra_thread(
     thread_name: impl Into<String>,
-    f: impl FnOnce() -> Result<()> + Send + 'static,
-) -> Result<()> {
-    let handle =
-        std::thread::Builder::new().name(thread_name.into()).stack_size(STACK_SIZE).spawn(f)?;
-    match handle.join() {
-        Ok(res) => res,
-        Err(panic) => std::panic::resume_unwind(panic),
-    }
+    thread_intent: stdx::thread::ThreadIntent,
+    f: impl FnOnce() -> anyhow::Result<()> + Send + 'static,
+) -> anyhow::Result<()> {
+    let handle = stdx::thread::Builder::new(thread_intent)
+        .name(thread_name.into())
+        .stack_size(STACK_SIZE)
+        .spawn(f)?;
+
+    handle.join()?;
+
+    Ok(())
 }
 
-fn run_server() -> Result<()> {
+fn run_server() -> anyhow::Result<()> {
     tracing::info!("server version {} will start", rust_analyzer::version());
 
     let (connection, io_threads) = Connection::stdio();
 
     let (initialize_id, initialize_params) = connection.initialize_start()?;
     tracing::info!("InitializeParams: {}", initialize_params);
-    let initialize_params =
-        from_json::<lsp_types::InitializeParams>("InitializeParams", &initialize_params)?;
+    let lsp_types::InitializeParams {
+        root_uri,
+        capabilities,
+        workspace_folders,
+        initialization_options,
+        client_info,
+        ..
+    } = from_json::<lsp_types::InitializeParams>("InitializeParams", &initialize_params)?;
 
-    let root_path = match initialize_params
-        .root_uri
+    let root_path = match root_uri
         .and_then(|it| it.to_file_path().ok())
+        .map(patch_path_prefix)
         .and_then(|it| AbsPathBuf::try_from(it).ok())
     {
         Some(it) => it,
@@ -167,19 +190,19 @@ fn run_server() -> Result<()> {
         }
     };
 
-    let workspace_roots = initialize_params
-        .workspace_folders
+    let workspace_roots = workspace_folders
         .map(|workspaces| {
             workspaces
                 .into_iter()
                 .filter_map(|it| it.uri.to_file_path().ok())
+                .map(patch_path_prefix)
                 .filter_map(|it| AbsPathBuf::try_from(it).ok())
                 .collect::<Vec<_>>()
         })
         .filter(|workspaces| !workspaces.is_empty())
         .unwrap_or_else(|| vec![root_path.clone()]);
-    let mut config = Config::new(root_path, initialize_params.capabilities, workspace_roots);
-    if let Some(json) = initialize_params.initialization_options {
+    let mut config = Config::new(root_path, capabilities, workspace_roots);
+    if let Some(json) = initialization_options {
         if let Err(e) = config.update(json) {
             use lsp_types::{
                 notification::{Notification, ShowMessage},
@@ -208,7 +231,7 @@ fn run_server() -> Result<()> {
 
     connection.initialize_finish(initialize_id, initialize_result)?;
 
-    if let Some(client_info) = initialize_params.client_info {
+    if let Some(client_info) = client_info {
         tracing::info!("Client '{}' {}", client_info.name, client_info.version.unwrap_or_default());
     }
 
@@ -221,4 +244,43 @@ fn run_server() -> Result<()> {
     io_threads.join()?;
     tracing::info!("server did shut down");
     Ok(())
+}
+
+fn patch_path_prefix(path: PathBuf) -> PathBuf {
+    use std::path::{Component, Prefix};
+    if cfg!(windows) {
+        // VSCode might report paths with the file drive in lowercase, but this can mess
+        // with env vars set by tools and build scripts executed by r-a such that it invalidates
+        // cargo's compilations unnecessarily. https://github.com/rust-lang/rust-analyzer/issues/14683
+        // So we just uppercase the drive letter here unconditionally.
+        // (doing it conditionally is a pain because std::path::Prefix always reports uppercase letters on windows)
+        let mut comps = path.components();
+        match comps.next() {
+            Some(Component::Prefix(prefix)) => {
+                let prefix = match prefix.kind() {
+                    Prefix::Disk(d) => {
+                        format!("{}:", d.to_ascii_uppercase() as char)
+                    }
+                    Prefix::VerbatimDisk(d) => {
+                        format!(r"\\?\{}:", d.to_ascii_uppercase() as char)
+                    }
+                    _ => return path,
+                };
+                let mut path = PathBuf::new();
+                path.push(prefix);
+                path.extend(comps);
+                path
+            }
+            _ => path,
+        }
+    } else {
+        path
+    }
+}
+
+#[test]
+#[cfg(windows)]
+fn patch_path_prefix_works() {
+    assert_eq!(patch_path_prefix(r"c:\foo\bar".into()), PathBuf::from(r"C:\foo\bar"));
+    assert_eq!(patch_path_prefix(r"\\?\c:\foo\bar".into()), PathBuf::from(r"\\?\C:\foo\bar"));
 }

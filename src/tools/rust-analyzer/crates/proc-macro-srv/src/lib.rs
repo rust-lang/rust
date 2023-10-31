@@ -10,17 +10,16 @@
 //! * By **copying** the whole rustc `lib_proc_macro` code, we are able to build this with `stable`
 //!   rustc rather than `unstable`. (Although in general ABI compatibility is still an issue)…
 
+#![cfg(feature = "sysroot-abi")]
+#![feature(proc_macro_internals, proc_macro_diagnostic, proc_macro_span)]
 #![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]
-#![cfg_attr(
-    feature = "sysroot-abi",
-    feature(proc_macro_internals, proc_macro_diagnostic, proc_macro_span)
-)]
 #![allow(unreachable_pub)]
 
-mod dylib;
-mod abis;
+extern crate proc_macro;
 
-pub mod cli;
+mod dylib;
+mod server;
+mod proc_macros;
 
 use std::{
     collections::{hash_map::Entry, HashMap},
@@ -33,24 +32,27 @@ use std::{
 };
 
 use proc_macro_api::{
-    msg::{ExpandMacro, FlatTree, PanicMessage},
+    msg::{self, CURRENT_API_VERSION},
     ProcMacroKind,
 };
 
 use ::tt::token_id as tt;
 
+// see `build.rs`
+include!(concat!(env!("OUT_DIR"), "/rustc_version.rs"));
+
 #[derive(Default)]
-pub(crate) struct ProcMacroSrv {
+pub struct ProcMacroSrv {
     expanders: HashMap<(PathBuf, SystemTime), dylib::Expander>,
 }
 
 const EXPANDER_STACK_SIZE: usize = 8 * 1024 * 1024;
 
 impl ProcMacroSrv {
-    pub fn expand(&mut self, task: ExpandMacro) -> Result<FlatTree, PanicMessage> {
+    pub fn expand(&mut self, task: msg::ExpandMacro) -> Result<msg::FlatTree, msg::PanicMessage> {
         let expander = self.expander(task.lib.as_ref()).map_err(|err| {
             debug_assert!(false, "should list macros before asking to expand");
-            PanicMessage(format!("failed to load macro: {err}"))
+            msg::PanicMessage(format!("failed to load macro: {err}"))
         })?;
 
         let prev_env = EnvSnapshot::new();
@@ -68,8 +70,8 @@ impl ProcMacroSrv {
             None => None,
         };
 
-        let macro_body = task.macro_body.to_subtree();
-        let attributes = task.attributes.map(|it| it.to_subtree());
+        let macro_body = task.macro_body.to_subtree(CURRENT_API_VERSION);
+        let attributes = task.attributes.map(|it| it.to_subtree(CURRENT_API_VERSION));
         let result = thread::scope(|s| {
             let thread = thread::Builder::new()
                 .stack_size(EXPANDER_STACK_SIZE)
@@ -77,7 +79,7 @@ impl ProcMacroSrv {
                 .spawn_scoped(s, || {
                     expander
                         .expand(&task.macro_name, &macro_body, attributes.as_ref())
-                        .map(|it| FlatTree::new(&it))
+                        .map(|it| msg::FlatTree::new(&it, CURRENT_API_VERSION))
                 });
             let res = match thread {
                 Ok(handle) => handle.join(),
@@ -102,10 +104,10 @@ impl ProcMacroSrv {
             }
         }
 
-        result.map_err(PanicMessage)
+        result.map_err(msg::PanicMessage)
     }
 
-    pub(crate) fn list_macros(
+    pub fn list_macros(
         &mut self,
         dylib_path: &Path,
     ) -> Result<Vec<(String, ProcMacroKind)>, String> {
@@ -129,6 +131,16 @@ impl ProcMacroSrv {
     }
 }
 
+pub struct PanicMessage {
+    message: Option<String>,
+}
+
+impl PanicMessage {
+    pub fn as_str(&self) -> Option<String> {
+        self.message.clone()
+    }
+}
+
 struct EnvSnapshot {
     vars: HashMap<OsString, OsString>,
 }
@@ -138,10 +150,13 @@ impl EnvSnapshot {
         EnvSnapshot { vars: env::vars_os().collect() }
     }
 
-    fn rollback(self) {
-        let mut old_vars = self.vars;
+    fn rollback(self) {}
+}
+
+impl Drop for EnvSnapshot {
+    fn drop(&mut self) {
         for (name, value) in env::vars_os() {
-            let old_value = old_vars.remove(&name);
+            let old_value = self.vars.remove(&name);
             if old_value != Some(value) {
                 match old_value {
                     None => env::remove_var(name),
@@ -149,13 +164,13 @@ impl EnvSnapshot {
                 }
             }
         }
-        for (name, old_value) in old_vars {
+        for (name, old_value) in self.vars.drain() {
             env::set_var(name, old_value)
         }
     }
 }
 
-#[cfg(all(feature = "sysroot-abi", test))]
+#[cfg(test)]
 mod tests;
 
 #[cfg(test)]

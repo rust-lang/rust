@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::eq_expr_value;
 use clippy_utils::source::snippet_opt;
-use clippy_utils::sugg;
+use clippy_utils::{eq_expr_value, sugg};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;

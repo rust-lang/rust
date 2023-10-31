@@ -1,0 +1,41 @@
+   LL|       |#![allow(unused_assignments, unused_variables)]
+   LL|       |
+   LL|      1|fn main() {
+   LL|      1|    // Initialize test constants in a way that cannot be determined at compile time, to ensure
+   LL|      1|    // rustc and LLVM cannot optimize out statements (or coverage counters) downstream from
+   LL|      1|    // dependent conditions.
+   LL|      1|    let is_true = std::env::args().len() == 1;
+   LL|      1|
+   LL|      1|    let mut countdown = 0;
+   LL|      1|    if
+   LL|      1|        is_true
+   LL|      1|    {
+   LL|      1|        countdown
+   LL|      1|        =
+   LL|      1|            10
+   LL|      1|        ;
+   LL|      1|    }
+   LL|       |    else // Note coverage region difference without semicolon
+   LL|       |    {
+   LL|      0|        countdown
+   LL|      0|        =
+   LL|      0|            100
+   LL|       |    }
+   LL|       |
+   LL|       |    if
+   LL|      1|        is_true
+   LL|      1|    {
+   LL|      1|        countdown
+   LL|      1|        =
+   LL|      1|            10
+   LL|      1|        ;
+   LL|      1|    }
+   LL|       |    else
+   LL|      0|    {
+   LL|      0|        countdown
+   LL|      0|        =
+   LL|      0|            100
+   LL|      0|        ;
+   LL|      0|    }
+   LL|      1|}
+

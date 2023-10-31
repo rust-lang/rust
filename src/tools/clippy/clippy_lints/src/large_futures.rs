@@ -1,5 +1,6 @@
+use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
-use clippy_utils::{diagnostics::span_lint_and_sugg, ty::implements_trait};
+use clippy_utils::ty::implements_trait;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, LangItem, MatchSource, QPath};
 use rustc_lint::{LateContext, LateLintPass};
@@ -38,7 +39,7 @@ declare_clippy_lint! {
     ///     wait(fut).await;
     /// }
     /// ```
-    #[clippy::version = "1.68.0"]
+    #[clippy::version = "1.70.0"]
     pub LARGE_FUTURES,
     pedantic,
     "large future may lead to unexpected stack overflows"

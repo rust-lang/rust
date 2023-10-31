@@ -1,5 +1,13 @@
+error[E0493]: destructor of `Panic` cannot be evaluated at compile-time
+  --> $DIR/promoted_const_call.rs:11:30
+   |
+LL |     let _: &'static _ = &id(&Panic);
+   |                              ^^^^^ - value is dropped here
+   |                              |
+   |                              the destructor for this type cannot be evaluated in constants
+
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/promoted_const_call.rs:9:26
+  --> $DIR/promoted_const_call.rs:11:26
    |
 LL |     let _: &'static _ = &id(&Panic);
    |            ----------    ^^^^^^^^^^ creates a temporary value which is freed while still in use
@@ -10,7 +18,7 @@ LL | };
    | - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/promoted_const_call.rs:9:30
+  --> $DIR/promoted_const_call.rs:11:30
    |
 LL |     let _: &'static _ = &id(&Panic);
    |            ----------        ^^^^^ - temporary value is freed at the end of this statement
@@ -19,7 +27,7 @@ LL |     let _: &'static _ = &id(&Panic);
    |            type annotation requires that borrow lasts for `'static`
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/promoted_const_call.rs:15:26
+  --> $DIR/promoted_const_call.rs:17:26
    |
 LL |     let _: &'static _ = &id(&Panic);
    |            ----------    ^^^^^^^^^^ creates a temporary value which is freed while still in use
@@ -30,7 +38,7 @@ LL | }
    | - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/promoted_const_call.rs:15:30
+  --> $DIR/promoted_const_call.rs:17:30
    |
 LL |     let _: &'static _ = &id(&Panic);
    |            ----------        ^^^^^ - temporary value is freed at the end of this statement
@@ -39,7 +47,7 @@ LL |     let _: &'static _ = &id(&Panic);
    |            type annotation requires that borrow lasts for `'static`
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/promoted_const_call.rs:18:26
+  --> $DIR/promoted_const_call.rs:20:26
    |
 LL |     let _: &'static _ = &&(Panic, 0).1;
    |            ----------    ^^^^^^^^^^^^^ creates a temporary value which is freed while still in use
@@ -50,7 +58,7 @@ LL | }
    | - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/promoted_const_call.rs:18:27
+  --> $DIR/promoted_const_call.rs:20:27
    |
 LL |     let _: &'static _ = &&(Panic, 0).1;
    |            ----------     ^^^^^^^^^^ creates a temporary value which is freed while still in use
@@ -60,6 +68,7 @@ LL |     let _: &'static _ = &&(Panic, 0).1;
 LL | }
    | - temporary value is freed at the end of this statement
 
-error: aborting due to 6 previous errors
+error: aborting due to 7 previous errors
 
-For more information about this error, try `rustc --explain E0716`.
+Some errors have detailed explanations: E0493, E0716.
+For more information about an error, try `rustc --explain E0493`.

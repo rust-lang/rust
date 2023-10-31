@@ -1,8 +1,8 @@
 name: metrics
 on:
   push:
-   branches:
-   - master
+    branches:
+      - master
 
 env:
   CARGO_INCREMENTAL: 0
@@ -11,20 +11,135 @@ env:
   RUSTUP_MAX_RETRIES: 10
 
 jobs:
-  metrics:
+  setup_cargo:
     if: github.repository == 'rust-lang/rust-analyzer'
     runs-on: ubuntu-latest
+    steps:
+      - name: Install Rust toolchain
+        run: |
+          rustup update --no-self-update stable
+          rustup component add rustfmt rust-src
+          rustup default stable
+      - name: Cache cargo
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: ${{ runner.os }}-cargo-${{ github.sha }}
+
+  build_metrics:
+    runs-on: ubuntu-latest
+    needs: setup_cargo
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-    - name: Install Rust toolchain
-      run: |
-        rustup update --no-self-update stable
-        rustup component add rustfmt rust-src
+      - name: Restore cargo cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: ${{ runner.os }}-cargo-${{ github.sha }}
 
-    - name: Collect metrics
-      run: cargo xtask metrics
-      env:
-        METRICS_TOKEN: ${{ secrets.METRICS_TOKEN }}
+      - name: Collect build metrics
+        run: cargo xtask metrics build
+
+      - name: Cache target
+        uses: actions/cache@v3
+        with:
+          path: target/
+          key: ${{ runner.os }}-target-${{ github.sha }}
+
+      - name: Upload build metrics
+        uses: actions/upload-artifact@v3
+        with:
+          name: build-${{ github.sha }}
+          path: target/build.json
+          if-no-files-found: error
+
+  other_metrics:
+    strategy:
+      matrix:
+        names: [self, ripgrep, webrender, diesel]
+    runs-on: ubuntu-latest
+    needs: [setup_cargo, build_metrics]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Restore cargo cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: ${{ runner.os }}-cargo-${{ github.sha }}
+
+      - name: Restore target cache
+        uses: actions/cache@v3
+        with:
+          path: target/
+          key: ${{ runner.os }}-target-${{ github.sha }}
+
+      - name: Collect metrics
+        run: cargo xtask metrics ${{ matrix.names }}
+
+      - name: Upload metrics
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.names }}-${{ github.sha }}
+          path: target/${{ matrix.names }}.json
+          if-no-files-found: error
+
+  generate_final_metrics:
+    runs-on: ubuntu-latest
+    needs: [build_metrics, other_metrics]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Download build metrics
+        uses: actions/download-artifact@v3
+        with:
+          name: build-${{ github.sha }}
+
+      - name: Download self metrics
+        uses: actions/download-artifact@v3
+        with:
+          name: self-${{ github.sha }}
+
+      - name: Download ripgrep metrics
+        uses: actions/download-artifact@v3
+        with:
+          name: ripgrep-${{ github.sha }}
+
+      - name: Download webrender metrics
+        uses: actions/download-artifact@v3
+        with:
+          name: webrender-${{ github.sha }}
+
+      - name: Download diesel metrics
+        uses: actions/download-artifact@v3
+        with:
+          name: diesel-${{ github.sha }}
+
+      - name: Combine json
+        run: |
+          git clone --depth 1 https://$METRICS_TOKEN@github.com/rust-analyzer/metrics.git
+          jq -s ".[0] * .[1] * .[2] * .[3] * .[4]" build.json self.json ripgrep.json webrender.json diesel.json -c >> metrics/metrics.json
+          cd metrics
+          git add .
+          git -c user.name=Bot -c user.email=dummy@example.com commit --message 📈
+          git push origin master
+    env:
+      METRICS_TOKEN: ${{ secrets.METRICS_TOKEN }}

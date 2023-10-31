@@ -10,7 +10,7 @@ pub fn target() -> Target {
             abi: "abi64".into(),
             // NOTE(mips64r2) matches C toolchain
             cpu: "mips64r2".into(),
-            features: "+mips64r2".into(),
+            features: "+mips64r2,+xgot".into(),
             max_atomic_width: Some(64),
             mcount: "_mcount".into(),
 

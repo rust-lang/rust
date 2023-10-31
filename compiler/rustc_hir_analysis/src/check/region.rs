@@ -392,7 +392,7 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
         // Manually recurse over closures and inline consts, because they are the only
         // case of nested bodies that share the parent environment.
         hir::ExprKind::Closure(&hir::Closure { body, .. })
-        | hir::ExprKind::ConstBlock(hir::AnonConst { body, .. }) => {
+        | hir::ExprKind::ConstBlock(hir::ConstBlock { body, .. }) => {
             let body = visitor.tcx.hir().body(body);
             visitor.visit_body(body);
         }

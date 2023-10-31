@@ -31,7 +31,7 @@ impl<'gcc, 'tcx> PreDefineMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
 
     #[cfg_attr(not(feature="master"), allow(unused_variables))]
     fn predefine_fn(&self, instance: Instance<'tcx>, linkage: Linkage, visibility: Visibility, symbol_name: &str) {
-        assert!(!instance.substs.has_infer());
+        assert!(!instance.args.has_infer());
 
         let fn_abi = self.fn_abi_of_instance(instance, ty::List::empty());
         self.linkage.set(base::linkage_to_gcc(linkage));

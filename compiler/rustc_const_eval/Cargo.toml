@@ -8,7 +8,7 @@ edition = "2021"
 [dependencies]
 tracing = "0.1"
 either = "1"
-rustc_apfloat = { path = "../rustc_apfloat" }
+rustc_apfloat = "0.2.0"
 rustc_ast = { path = "../rustc_ast" }
 rustc_attr = { path = "../rustc_attr" }
 rustc_data_structures = { path = "../rustc_data_structures" }

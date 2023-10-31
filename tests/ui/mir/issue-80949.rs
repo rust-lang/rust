@@ -28,7 +28,7 @@ fn may_panic<X>(_: X) { }
 fn main() {
     let dyn_trait = make_dyn_trait(&());
     let storage = vec![()];
-    let _x = may_panic(());
+    may_panic(());
     let storage_ref = &storage;
     diff(dyn_trait, storage_ref);
 }

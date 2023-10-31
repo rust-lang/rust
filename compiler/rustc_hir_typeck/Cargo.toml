@@ -9,6 +9,7 @@ edition = "2021"
 smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
 tracing = "0.1"
 rustc_ast = { path = "../rustc_ast" }
+rustc_attr = { path = "../rustc_attr" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_errors = { path = "../rustc_errors" }
 rustc_graphviz = { path = "../rustc_graphviz" }

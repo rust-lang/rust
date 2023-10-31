@@ -3,9 +3,8 @@ use regex::bytes::Regex;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::{env, process::Command};
-use ui_test::status_emitter::StatusEmitter;
-use ui_test::CommandBuilder;
 use ui_test::{color_eyre::Result, Config, Match, Mode, OutputConflictHandling};
+use ui_test::{status_emitter, CommandBuilder};
 
 fn miri_path() -> PathBuf {
     PathBuf::from(option_env!("MIRI").unwrap_or(env!("CARGO_BIN_EXE_miri")))
@@ -51,18 +50,10 @@ fn test_config(target: &str, path: &str, mode: Mode, with_dependencies: bool) ->
     let mut program = CommandBuilder::rustc();
     program.program = miri_path();
 
-    let in_rustc_test_suite = option_env!("RUSTC_STAGE").is_some();
-
     // Add some flags we always want.
-    if in_rustc_test_suite {
-        // Less aggressive warnings to make the rustc toolstate management less painful.
-        // (We often get warnings when e.g. a feature gets stabilized or some lint gets added/improved.)
-        program.args.push("-Astable-features".into());
-        program.args.push("-Aunused".into());
-    } else {
-        program.args.push("-Dwarnings".into());
-        program.args.push("-Dunused".into());
-    }
+    program.args.push("-Dwarnings".into());
+    program.args.push("-Dunused".into());
+    program.args.push("-Ainternal_features".into());
     if let Ok(extra_flags) = env::var("MIRIFLAGS") {
         for flag in extra_flags.split_whitespace() {
             program.args.push(flag.into());
@@ -82,26 +73,26 @@ fn test_config(target: &str, path: &str, mode: Mode, with_dependencies: bool) ->
         program.args.push(flag);
     }
 
+    let bless = env::var_os("RUSTC_BLESS").is_some_and(|v| v != "0");
     let skip_ui_checks = env::var_os("MIRI_SKIP_UI_CHECKS").is_some();
 
-    let output_conflict_handling = match (env::var_os("MIRI_BLESS").is_some(), skip_ui_checks) {
-        (false, false) => OutputConflictHandling::Error,
+    let output_conflict_handling = match (bless, skip_ui_checks) {
+        (false, false) => OutputConflictHandling::Error("./miri test --bless".into()),
         (true, false) => OutputConflictHandling::Bless,
         (false, true) => OutputConflictHandling::Ignore,
-        (true, true) => panic!("cannot use MIRI_BLESS and MIRI_SKIP_UI_CHECKS at the same time"),
+        (true, true) => panic!("cannot use RUSTC_BLESS and MIRI_SKIP_UI_CHECKS at the same time"),
     };
 
     let mut config = Config {
         target: Some(target.to_owned()),
         stderr_filters: STDERR.clone(),
         stdout_filters: STDOUT.clone(),
-        root_dir: PathBuf::from(path),
         mode,
         program,
         output_conflict_handling,
-        quiet: false,
+        out_dir: PathBuf::from(std::env::var_os("CARGO_TARGET_DIR").unwrap()).join("ui"),
         edition: Some("2021".into()),
-        ..Config::default()
+        ..Config::rustc(path.into())
     };
 
     let use_std = env::var_os("MIRI_NO_STD").is_none();
@@ -122,39 +113,56 @@ fn test_config(target: &str, path: &str, mode: Mode, with_dependencies: bool) ->
 }
 
 fn run_tests(mode: Mode, path: &str, target: &str, with_dependencies: bool) -> Result<()> {
-    let mut config = test_config(target, path, mode, with_dependencies);
+    let config = test_config(target, path, mode, with_dependencies);
 
     // Handle command-line arguments.
     let mut after_dashdash = false;
-    config.path_filter.extend(std::env::args().skip(1).filter(|arg| {
-        if after_dashdash {
-            // Just propagate everything.
-            return true;
-        }
-        match &**arg {
-            "--quiet" => {
-                config.quiet = true;
-                false
+    let mut quiet = false;
+    let filters = std::env::args()
+        .skip(1)
+        .filter(|arg| {
+            if after_dashdash {
+                // Just propagate everything.
+                return true;
             }
-            "--" => {
-                after_dashdash = true;
-                false
+            match &**arg {
+                "--quiet" => {
+                    quiet = true;
+                    false
+                }
+                "--" => {
+                    after_dashdash = true;
+                    false
+                }
+                s if s.starts_with('-') => {
+                    panic!("unknown compiletest flag `{s}`");
+                }
+                _ => true,
             }
-            s if s.starts_with('-') => {
-                panic!("unknown compiletest flag `{s}`");
-            }
-            _ => true,
-        }
-    }));
-
+        })
+        .collect::<Vec<_>>();
     eprintln!("   Compiler: {}", config.program.display());
     ui_test::run_tests_generic(
         config,
         // The files we're actually interested in (all `.rs` files).
-        |path| path.extension().is_some_and(|ext| ext == "rs"),
+        |path| {
+            path.extension().is_some_and(|ext| ext == "rs")
+                && (filters.is_empty()
+                    || filters.iter().any(|f| path.display().to_string().contains(f)))
+        },
         // This could be used to overwrite the `Config` on a per-test basis.
         |_, _| None,
-        TextAndGha,
+        (
+            if quiet {
+                Box::<status_emitter::Quiet>::default()
+                    as Box<dyn status_emitter::StatusEmitter + Send>
+            } else {
+                Box::new(status_emitter::Text)
+            },
+            status_emitter::Gha::</* GHA Actions groups*/ false> {
+                name: format!("{mode:?} {path} ({target})"),
+            },
+        ),
     )
 }
 
@@ -184,6 +192,8 @@ regexes! {
     // erase borrow tags
     "<[0-9]+>"                       => "<TAG>",
     "<[0-9]+="                       => "<TAG=",
+    // normalize width of Tree Borrows diagnostic borders (which otherwise leak borrow tag info)
+    "(─{50})─+"                      => "$1",
     // erase whitespace that differs between platforms
     r" +at (.*\.rs)"                 => " at $1",
     // erase generics in backtraces
@@ -269,56 +279,13 @@ fn main() -> Result<()> {
 fn run_dep_mode(target: String, mut args: impl Iterator<Item = OsString>) -> Result<()> {
     let path = args.next().expect("./miri run-dep must be followed by a file name");
     let mut config = test_config(&target, "", Mode::Yolo, /* with dependencies */ true);
-    config.program.args.remove(0); // remove the `--error-format=json` argument
-    config.program.args.push("--color".into());
-    config.program.args.push("always".into());
-    let mut cmd = ui_test::test_command(config, Path::new(&path))?;
-    // Separate the arguments to the `cargo miri` invocation from
-    // the arguments to the interpreted prog
-    cmd.arg("--");
+    config.program.args.clear(); // We want to give the user full control over flags
+    config.build_dependencies_and_link_them()?;
+
+    let mut cmd = config.program.build(&config.out_dir);
+
+    cmd.arg(path);
+
     cmd.args(args);
-    println!("{cmd:?}");
     if cmd.spawn()?.wait()?.success() { Ok(()) } else { std::process::exit(1) }
-}
-
-/// This is a custom renderer for `ui_test` output that does not emit github actions
-/// `group`s, while still producing regular github actions messages on test failures.
-struct TextAndGha;
-impl StatusEmitter for TextAndGha {
-    fn failed_test<'a>(
-        &'a self,
-        revision: &'a str,
-        path: &'a Path,
-        cmd: &'a Command,
-        stderr: &'a [u8],
-    ) -> Box<dyn std::fmt::Debug + 'a> {
-        Box::new((
-            ui_test::status_emitter::Gha::<false>.failed_test(revision, path, cmd, stderr),
-            ui_test::status_emitter::Text.failed_test(revision, path, cmd, stderr),
-        ))
-    }
-
-    fn run_tests(&self, _config: &Config) -> Box<dyn ui_test::status_emitter::DuringTestRun> {
-        Box::new(TextAndGha)
-    }
-
-    fn finalize(
-        &self,
-        failures: usize,
-        succeeded: usize,
-        ignored: usize,
-        filtered: usize,
-    ) -> Box<dyn ui_test::status_emitter::Summary> {
-        Box::new((
-            ui_test::status_emitter::Gha::<false>.finalize(failures, succeeded, ignored, filtered),
-            ui_test::status_emitter::Text.finalize(failures, succeeded, ignored, filtered),
-        ))
-    }
-}
-
-impl ui_test::status_emitter::DuringTestRun for TextAndGha {
-    fn test_result(&mut self, path: &Path, revision: &str, result: &ui_test::TestResult) {
-        ui_test::status_emitter::Text.test_result(path, revision, result);
-        ui_test::status_emitter::Gha::<false>.test_result(path, revision, result);
-    }
 }

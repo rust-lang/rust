@@ -1,20 +1,17 @@
 // MIR for `FOO::promoted[0]` after SimplifyCfg-elaborate-drops
 
 promoted[0] in FOO: &[&i32; 1] = {
-    let mut _0: &[&i32; 1];              // return place in scope 0 at $DIR/const_promotion_extern_static.rs:+0:31: +0:55
-    let mut _1: [&i32; 1];               // in scope 0 at $DIR/const_promotion_extern_static.rs:+0:31: +0:46
-    let mut _2: &i32;                    // in scope 0 at $DIR/const_promotion_extern_static.rs:+0:32: +0:45
-    let mut _3: *const i32;              // in scope 0 at $DIR/const_promotion_extern_static.rs:+0:42: +0:43
+    let mut _0: &[&i32; 1];
+    let mut _1: [&i32; 1];
+    let mut _2: &i32;
+    let mut _3: *const i32;
 
     bb0: {
-        _3 = const {alloc3: *const i32}; // scope 0 at $DIR/const_promotion_extern_static.rs:+0:42: +0:43
-                                         // mir::Constant
-                                         // + span: $DIR/const_promotion_extern_static.rs:13:42: 13:43
-                                         // + literal: Const { ty: *const i32, val: Value(Scalar(alloc3)) }
-        _2 = &(*_3);                     // scope 0 at $DIR/const_promotion_extern_static.rs:+0:41: +0:43
-        _1 = [move _2];                  // scope 0 at $DIR/const_promotion_extern_static.rs:+0:31: +0:46
-        _0 = &_1;                        // scope 0 at $DIR/const_promotion_extern_static.rs:+0:31: +0:55
-        return;                          // scope 0 at $DIR/const_promotion_extern_static.rs:+0:31: +0:55
+        _3 = const {alloc3: *const i32};
+        _2 = &(*_3);
+        _1 = [move _2];
+        _0 = &_1;
+        return;
     }
 }
 

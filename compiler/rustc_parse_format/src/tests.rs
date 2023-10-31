@@ -9,6 +9,7 @@ fn same(fmt: &'static str, p: &[Piece<'static>]) {
 fn fmtdflt() -> FormatSpec<'static> {
     return FormatSpec {
         fill: None,
+        fill_span: None,
         align: AlignUnknown,
         sign: None,
         alternate: false,
@@ -128,6 +129,7 @@ fn format_type() {
             position_span: InnerSpan { start: 2, end: 3 },
             format: FormatSpec {
                 fill: None,
+                fill_span: None,
                 align: AlignUnknown,
                 sign: None,
                 alternate: false,
@@ -152,6 +154,7 @@ fn format_align_fill() {
             position_span: InnerSpan { start: 2, end: 3 },
             format: FormatSpec {
                 fill: None,
+                fill_span: None,
                 align: AlignRight,
                 sign: None,
                 alternate: false,
@@ -173,6 +176,7 @@ fn format_align_fill() {
             position_span: InnerSpan { start: 2, end: 3 },
             format: FormatSpec {
                 fill: Some('0'),
+                fill_span: Some(InnerSpan::new(4, 5)),
                 align: AlignLeft,
                 sign: None,
                 alternate: false,
@@ -194,6 +198,7 @@ fn format_align_fill() {
             position_span: InnerSpan { start: 2, end: 3 },
             format: FormatSpec {
                 fill: Some('*'),
+                fill_span: Some(InnerSpan::new(4, 5)),
                 align: AlignLeft,
                 sign: None,
                 alternate: false,
@@ -218,6 +223,7 @@ fn format_counts() {
             position_span: InnerSpan { start: 2, end: 2 },
             format: FormatSpec {
                 fill: None,
+                fill_span: None,
                 align: AlignUnknown,
                 sign: None,
                 alternate: false,
@@ -239,6 +245,7 @@ fn format_counts() {
             position_span: InnerSpan { start: 2, end: 2 },
             format: FormatSpec {
                 fill: None,
+                fill_span: None,
                 align: AlignUnknown,
                 sign: None,
                 alternate: false,
@@ -260,6 +267,7 @@ fn format_counts() {
             position_span: InnerSpan { start: 2, end: 3 },
             format: FormatSpec {
                 fill: None,
+                fill_span: None,
                 align: AlignUnknown,
                 sign: None,
                 alternate: false,
@@ -281,6 +289,7 @@ fn format_counts() {
             position_span: InnerSpan { start: 2, end: 2 },
             format: FormatSpec {
                 fill: None,
+                fill_span: None,
                 align: AlignUnknown,
                 sign: None,
                 alternate: false,
@@ -302,6 +311,7 @@ fn format_counts() {
             position_span: InnerSpan { start: 2, end: 2 },
             format: FormatSpec {
                 fill: None,
+                fill_span: None,
                 align: AlignUnknown,
                 sign: None,
                 alternate: false,
@@ -323,6 +333,7 @@ fn format_counts() {
             position_span: InnerSpan { start: 2, end: 2 },
             format: FormatSpec {
                 fill: None,
+                fill_span: None,
                 align: AlignUnknown,
                 sign: None,
                 alternate: false,
@@ -344,6 +355,7 @@ fn format_counts() {
             position_span: InnerSpan { start: 2, end: 2 },
             format: FormatSpec {
                 fill: None,
+                fill_span: None,
                 align: AlignUnknown,
                 sign: None,
                 alternate: false,
@@ -368,6 +380,7 @@ fn format_flags() {
             position_span: InnerSpan { start: 2, end: 2 },
             format: FormatSpec {
                 fill: None,
+                fill_span: None,
                 align: AlignUnknown,
                 sign: Some(Sign::Minus),
                 alternate: false,
@@ -389,6 +402,7 @@ fn format_flags() {
             position_span: InnerSpan { start: 2, end: 2 },
             format: FormatSpec {
                 fill: None,
+                fill_span: None,
                 align: AlignUnknown,
                 sign: Some(Sign::Plus),
                 alternate: true,
@@ -415,6 +429,7 @@ fn format_mixture() {
                 position_span: InnerSpan { start: 7, end: 8 },
                 format: FormatSpec {
                     fill: None,
+                    fill_span: None,
                     align: AlignUnknown,
                     sign: None,
                     alternate: false,

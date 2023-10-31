@@ -1,175 +1,169 @@
 // MIR for `main` after built
 
 fn main() -> () {
-    let mut _0: ();                      // return place in scope 0 at $DIR/match_false_edges.rs:+0:11: +0:11
-    let mut _1: i32;                     // in scope 0 at $DIR/match_false_edges.rs:+1:13: +6:6
-    let mut _2: std::option::Option<i32>; // in scope 0 at $DIR/match_false_edges.rs:+1:19: +1:26
-    let mut _3: isize;                   // in scope 0 at $DIR/match_false_edges.rs:+4:9: +4:16
-    let mut _4: isize;                   // in scope 0 at $DIR/match_false_edges.rs:+2:9: +2:17
-    let mut _5: &std::option::Option<i32>; // in scope 0 at $DIR/match_false_edges.rs:+1:19: +1:26
-    let _6: i32;                         // in scope 0 at $DIR/match_false_edges.rs:+2:14: +2:16
-    let _7: &i32;                        // in scope 0 at $DIR/match_false_edges.rs:+2:14: +2:16
-    let mut _8: bool;                    // in scope 0 at $DIR/match_false_edges.rs:+2:21: +2:28
-    let _9: std::option::Option<i32>;    // in scope 0 at $DIR/match_false_edges.rs:+3:9: +3:11
-    let _10: i32;                        // in scope 0 at $DIR/match_false_edges.rs:+4:14: +4:15
-    let _11: &i32;                       // in scope 0 at $DIR/match_false_edges.rs:+4:14: +4:15
-    let mut _12: bool;                   // in scope 0 at $DIR/match_false_edges.rs:+4:20: +4:29
-    let mut _13: i32;                    // in scope 0 at $DIR/match_false_edges.rs:+4:27: +4:28
-    let _14: std::option::Option<i32>;   // in scope 0 at $DIR/match_false_edges.rs:+5:9: +5:11
+    let mut _0: ();
+    let mut _1: i32;
+    let mut _2: std::option::Option<i32>;
+    let mut _3: isize;
+    let mut _4: isize;
+    let mut _5: &std::option::Option<i32>;
+    let _6: i32;
+    let _7: &i32;
+    let mut _8: bool;
+    let _9: std::option::Option<i32>;
+    let _10: i32;
+    let _11: &i32;
+    let mut _12: bool;
+    let mut _13: i32;
+    let _14: std::option::Option<i32>;
     scope 1 {
     }
     scope 2 {
-        debug _w => _6;                  // in scope 2 at $DIR/match_false_edges.rs:+2:14: +2:16
-        debug _w => _7;                  // in scope 2 at $DIR/match_false_edges.rs:+2:14: +2:16
+        debug _w => _6;
+        debug _w => _7;
     }
     scope 3 {
-        debug _x => _9;                  // in scope 3 at $DIR/match_false_edges.rs:+3:9: +3:11
+        debug _x => _9;
     }
     scope 4 {
-        debug y => _10;                  // in scope 4 at $DIR/match_false_edges.rs:+4:14: +4:15
-        debug y => _11;                  // in scope 4 at $DIR/match_false_edges.rs:+4:14: +4:15
+        debug y => _10;
+        debug y => _11;
     }
     scope 5 {
-        debug _z => _14;                 // in scope 5 at $DIR/match_false_edges.rs:+5:9: +5:11
+        debug _z => _14;
     }
 
     bb0: {
-        StorageLive(_1);                 // scope 0 at $DIR/match_false_edges.rs:+1:13: +6:6
-        StorageLive(_2);                 // scope 0 at $DIR/match_false_edges.rs:+1:19: +1:26
-        _2 = Option::<i32>::Some(const 1_i32); // scope 0 at $DIR/match_false_edges.rs:+1:19: +1:26
-        FakeRead(ForMatchedPlace(None), _2); // scope 0 at $DIR/match_false_edges.rs:+1:19: +1:26
-        _4 = discriminant(_2);           // scope 0 at $DIR/match_false_edges.rs:+1:19: +1:26
-        switchInt(move _4) -> [1: bb2, otherwise: bb1]; // scope 0 at $DIR/match_false_edges.rs:+1:13: +1:26
+        StorageLive(_1);
+        StorageLive(_2);
+        _2 = Option::<i32>::Some(const 1_i32);
+        FakeRead(ForMatchedPlace(None), _2);
+        _4 = discriminant(_2);
+        switchInt(move _4) -> [1: bb2, otherwise: bb1];
     }
 
     bb1: {
-        falseEdge -> [real: bb13, imaginary: bb6]; // scope 0 at $DIR/match_false_edges.rs:+3:9: +3:11
+        falseEdge -> [real: bb13, imaginary: bb6];
     }
 
     bb2: {
-        falseEdge -> [real: bb8, imaginary: bb1]; // scope 0 at $DIR/match_false_edges.rs:+2:9: +2:17
+        falseEdge -> [real: bb8, imaginary: bb1];
     }
 
     bb3: {
-        goto -> bb1;                     // scope 0 at $DIR/match_false_edges.rs:+1:13: +1:26
+        goto -> bb1;
     }
 
     bb4: {
-        _3 = discriminant(_2);           // scope 0 at $DIR/match_false_edges.rs:+1:19: +1:26
-        switchInt(move _3) -> [1: bb6, otherwise: bb5]; // scope 0 at $DIR/match_false_edges.rs:+1:13: +1:26
+        _3 = discriminant(_2);
+        switchInt(move _3) -> [1: bb6, otherwise: bb5];
     }
 
     bb5: {
-        StorageLive(_14);                // scope 0 at $DIR/match_false_edges.rs:+5:9: +5:11
-        _14 = _2;                        // scope 0 at $DIR/match_false_edges.rs:+5:9: +5:11
-        _1 = const 4_i32;                // scope 5 at $DIR/match_false_edges.rs:+5:15: +5:16
-        StorageDead(_14);                // scope 0 at $DIR/match_false_edges.rs:+5:15: +5:16
-        goto -> bb19;                    // scope 0 at $DIR/match_false_edges.rs:+5:15: +5:16
+        StorageLive(_14);
+        _14 = _2;
+        _1 = const 4_i32;
+        StorageDead(_14);
+        goto -> bb19;
     }
 
     bb6: {
-        falseEdge -> [real: bb14, imaginary: bb5]; // scope 0 at $DIR/match_false_edges.rs:+4:9: +4:16
+        falseEdge -> [real: bb14, imaginary: bb5];
     }
 
     bb7: {
-        goto -> bb5;                     // scope 0 at $DIR/match_false_edges.rs:+1:13: +1:26
+        goto -> bb5;
     }
 
     bb8: {
-        StorageLive(_7);                 // scope 0 at $DIR/match_false_edges.rs:+2:14: +2:16
-        _7 = &((_2 as Some).0: i32);     // scope 0 at $DIR/match_false_edges.rs:+2:14: +2:16
-        _5 = &shallow _2;                // scope 0 at $DIR/match_false_edges.rs:+1:19: +1:26
-        StorageLive(_8);                 // scope 0 at $DIR/match_false_edges.rs:+2:21: +2:28
-        _8 = guard() -> [return: bb9, unwind: bb20]; // scope 0 at $DIR/match_false_edges.rs:+2:21: +2:28
-                                         // mir::Constant
-                                         // + span: $DIR/match_false_edges.rs:34:21: 34:26
-                                         // + literal: Const { ty: fn() -> bool {guard}, val: Value(<ZST>) }
+        StorageLive(_7);
+        _7 = &((_2 as Some).0: i32);
+        _5 = &shallow _2;
+        StorageLive(_8);
+        _8 = guard() -> [return: bb9, unwind: bb20];
     }
 
     bb9: {
-        switchInt(move _8) -> [0: bb11, otherwise: bb10]; // scope 0 at $DIR/match_false_edges.rs:+2:21: +2:28
+        switchInt(move _8) -> [0: bb11, otherwise: bb10];
     }
 
     bb10: {
-        StorageDead(_8);                 // scope 0 at $DIR/match_false_edges.rs:+2:27: +2:28
-        FakeRead(ForMatchGuard, _5);     // scope 0 at $DIR/match_false_edges.rs:+2:27: +2:28
-        FakeRead(ForGuardBinding, _7);   // scope 0 at $DIR/match_false_edges.rs:+2:27: +2:28
-        StorageLive(_6);                 // scope 0 at $DIR/match_false_edges.rs:+2:14: +2:16
-        _6 = ((_2 as Some).0: i32);      // scope 0 at $DIR/match_false_edges.rs:+2:14: +2:16
-        _1 = const 1_i32;                // scope 2 at $DIR/match_false_edges.rs:+2:32: +2:33
-        StorageDead(_6);                 // scope 0 at $DIR/match_false_edges.rs:+2:32: +2:33
-        StorageDead(_7);                 // scope 0 at $DIR/match_false_edges.rs:+2:32: +2:33
-        goto -> bb19;                    // scope 0 at $DIR/match_false_edges.rs:+2:32: +2:33
+        StorageDead(_8);
+        FakeRead(ForMatchGuard, _5);
+        FakeRead(ForGuardBinding, _7);
+        StorageLive(_6);
+        _6 = ((_2 as Some).0: i32);
+        _1 = const 1_i32;
+        StorageDead(_6);
+        StorageDead(_7);
+        goto -> bb19;
     }
 
     bb11: {
-        goto -> bb12;                    // scope 0 at $DIR/match_false_edges.rs:+2:21: +2:28
+        goto -> bb12;
     }
 
     bb12: {
-        StorageDead(_8);                 // scope 0 at $DIR/match_false_edges.rs:+2:27: +2:28
-        StorageDead(_7);                 // scope 0 at $DIR/match_false_edges.rs:+2:32: +2:33
-        falseEdge -> [real: bb3, imaginary: bb1]; // scope 0 at $DIR/match_false_edges.rs:+2:21: +2:28
+        StorageDead(_8);
+        StorageDead(_7);
+        falseEdge -> [real: bb3, imaginary: bb1];
     }
 
     bb13: {
-        StorageLive(_9);                 // scope 0 at $DIR/match_false_edges.rs:+3:9: +3:11
-        _9 = _2;                         // scope 0 at $DIR/match_false_edges.rs:+3:9: +3:11
-        _1 = const 2_i32;                // scope 3 at $DIR/match_false_edges.rs:+3:15: +3:16
-        StorageDead(_9);                 // scope 0 at $DIR/match_false_edges.rs:+3:15: +3:16
-        goto -> bb19;                    // scope 0 at $DIR/match_false_edges.rs:+3:15: +3:16
+        StorageLive(_9);
+        _9 = _2;
+        _1 = const 2_i32;
+        StorageDead(_9);
+        goto -> bb19;
     }
 
     bb14: {
-        StorageLive(_11);                // scope 0 at $DIR/match_false_edges.rs:+4:14: +4:15
-        _11 = &((_2 as Some).0: i32);    // scope 0 at $DIR/match_false_edges.rs:+4:14: +4:15
-        _5 = &shallow _2;                // scope 0 at $DIR/match_false_edges.rs:+1:19: +1:26
-        StorageLive(_12);                // scope 0 at $DIR/match_false_edges.rs:+4:20: +4:29
-        StorageLive(_13);                // scope 0 at $DIR/match_false_edges.rs:+4:27: +4:28
-        _13 = (*_11);                    // scope 0 at $DIR/match_false_edges.rs:+4:27: +4:28
-        _12 = guard2(move _13) -> [return: bb15, unwind: bb20]; // scope 0 at $DIR/match_false_edges.rs:+4:20: +4:29
-                                         // mir::Constant
-                                         // + span: $DIR/match_false_edges.rs:36:20: 36:26
-                                         // + literal: Const { ty: fn(i32) -> bool {guard2}, val: Value(<ZST>) }
+        StorageLive(_11);
+        _11 = &((_2 as Some).0: i32);
+        _5 = &shallow _2;
+        StorageLive(_12);
+        StorageLive(_13);
+        _13 = (*_11);
+        _12 = guard2(move _13) -> [return: bb15, unwind: bb20];
     }
 
     bb15: {
-        switchInt(move _12) -> [0: bb17, otherwise: bb16]; // scope 0 at $DIR/match_false_edges.rs:+4:20: +4:29
+        switchInt(move _12) -> [0: bb17, otherwise: bb16];
     }
 
     bb16: {
-        StorageDead(_13);                // scope 0 at $DIR/match_false_edges.rs:+4:28: +4:29
-        StorageDead(_12);                // scope 0 at $DIR/match_false_edges.rs:+4:28: +4:29
-        FakeRead(ForMatchGuard, _5);     // scope 0 at $DIR/match_false_edges.rs:+4:28: +4:29
-        FakeRead(ForGuardBinding, _11);  // scope 0 at $DIR/match_false_edges.rs:+4:28: +4:29
-        StorageLive(_10);                // scope 0 at $DIR/match_false_edges.rs:+4:14: +4:15
-        _10 = ((_2 as Some).0: i32);     // scope 0 at $DIR/match_false_edges.rs:+4:14: +4:15
-        _1 = const 3_i32;                // scope 4 at $DIR/match_false_edges.rs:+4:33: +4:34
-        StorageDead(_10);                // scope 0 at $DIR/match_false_edges.rs:+4:33: +4:34
-        StorageDead(_11);                // scope 0 at $DIR/match_false_edges.rs:+4:33: +4:34
-        goto -> bb19;                    // scope 0 at $DIR/match_false_edges.rs:+4:33: +4:34
+        StorageDead(_13);
+        StorageDead(_12);
+        FakeRead(ForMatchGuard, _5);
+        FakeRead(ForGuardBinding, _11);
+        StorageLive(_10);
+        _10 = ((_2 as Some).0: i32);
+        _1 = const 3_i32;
+        StorageDead(_10);
+        StorageDead(_11);
+        goto -> bb19;
     }
 
     bb17: {
-        goto -> bb18;                    // scope 0 at $DIR/match_false_edges.rs:+4:20: +4:29
+        goto -> bb18;
     }
 
     bb18: {
-        StorageDead(_13);                // scope 0 at $DIR/match_false_edges.rs:+4:28: +4:29
-        StorageDead(_12);                // scope 0 at $DIR/match_false_edges.rs:+4:28: +4:29
-        StorageDead(_11);                // scope 0 at $DIR/match_false_edges.rs:+4:33: +4:34
-        falseEdge -> [real: bb7, imaginary: bb5]; // scope 0 at $DIR/match_false_edges.rs:+4:20: +4:29
+        StorageDead(_13);
+        StorageDead(_12);
+        StorageDead(_11);
+        falseEdge -> [real: bb7, imaginary: bb5];
     }
 
     bb19: {
-        PlaceMention(_1);                // scope 0 at $DIR/match_false_edges.rs:+1:13: +6:6
-        StorageDead(_2);                 // scope 0 at $DIR/match_false_edges.rs:+6:6: +6:7
-        StorageDead(_1);                 // scope 0 at $DIR/match_false_edges.rs:+6:6: +6:7
-        _0 = const ();                   // scope 0 at $DIR/match_false_edges.rs:+0:11: +7:2
-        return;                          // scope 0 at $DIR/match_false_edges.rs:+7:2: +7:2
+        PlaceMention(_1);
+        StorageDead(_2);
+        StorageDead(_1);
+        _0 = const ();
+        return;
     }
 
     bb20 (cleanup): {
-        resume;                          // scope 0 at $DIR/match_false_edges.rs:+0:1: +7:2
+        resume;
     }
 }

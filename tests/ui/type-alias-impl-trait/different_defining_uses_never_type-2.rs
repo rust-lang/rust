@@ -2,7 +2,7 @@
 
 type Tait<'a> = impl Sized + 'a;
 
-fn foo<'a, 'b>() {
+fn foo<'a, 'b>() -> Tait<'a> {
     if false {
         if { return } {
             let y: Tait<'b> = 1i32;
@@ -10,6 +10,7 @@ fn foo<'a, 'b>() {
         }
     }
     let x: Tait<'a> = ();
+    x
 }
 
 fn main() {}

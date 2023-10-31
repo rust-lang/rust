@@ -52,8 +52,13 @@ fn render(
 
     let (call, escaped_call) = match &func_kind {
         FuncKind::Method(_, Some(receiver)) => (
-            format!("{}.{}", receiver.unescaped(), name.unescaped()).into(),
-            format!("{receiver}.{name}").into(),
+            format!(
+                "{}.{}",
+                receiver.unescaped().display(ctx.db()),
+                name.unescaped().display(ctx.db())
+            )
+            .into(),
+            format!("{}.{}", receiver.display(ctx.db()), name.display(ctx.db())).into(),
         ),
         _ => (name.unescaped().to_smol_str(), name.to_smol_str()),
     };
@@ -147,6 +152,8 @@ fn render(
             }
         }
     }
+
+    item.doc_aliases(ctx.doc_aliases);
     item
 }
 

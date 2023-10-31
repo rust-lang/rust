@@ -1,4 +1,6 @@
-#[cfg(all(test, not(target_os = "emscripten")))]
+#![cfg_attr(target_os = "wasi", allow(unused, dead_code))]
+
+#[cfg(all(test, not(any(target_os = "emscripten", target_os = "wasi"))))]
 mod tests;
 
 use crate::os::unix::prelude::*;
@@ -63,7 +65,7 @@ cfg_if::cfg_if! {
 
             let bit = (signum - 1) as usize;
             if set.is_null() || bit >= (8 * size_of::<sigset_t>()) {
-                crate::sys::unix::os::set_errno(libc::EINVAL);
+                crate::sys::os::set_errno(libc::EINVAL);
                 return -1;
             }
             let raw = slice::from_raw_parts_mut(
@@ -164,9 +166,9 @@ pub enum ProgramKind {
 
 impl ProgramKind {
     fn new(program: &OsStr) -> Self {
-        if program.bytes().starts_with(b"/") {
+        if program.as_os_str_bytes().starts_with(b"/") {
             Self::Absolute
-        } else if program.bytes().contains(&b'/') {
+        } else if program.as_os_str_bytes().contains(&b'/') {
             // If the program has more than one component in it, it is a relative path.
             Self::Relative
         } else {

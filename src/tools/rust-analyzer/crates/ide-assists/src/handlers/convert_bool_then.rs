@@ -160,7 +160,7 @@ pub(crate) fn convert_bool_then_to_if(acc: &mut Assists, ctx: &AssistContext<'_>
     };
     // Verify this is `bool::then` that is being called.
     let func = ctx.sema.resolve_method_call(&mcall)?;
-    if func.name(ctx.sema.db).to_string() != "then" {
+    if func.name(ctx.sema.db).display(ctx.db()).to_string() != "then" {
         return None;
     }
     let assoc = func.as_assoc_item(ctx.sema.db)?;

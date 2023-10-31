@@ -16,8 +16,8 @@ LL |     x[..1i32];
    |
    = help: the trait `SliceIndex<[i32]>` is not implemented for `RangeTo<i32>`
    = help: the following other types implement trait `SliceIndex<T>`:
-             <RangeTo<usize> as SliceIndex<[T]>>
              <RangeTo<usize> as SliceIndex<str>>
+             <RangeTo<usize> as SliceIndex<[T]>>
    = note: required for `[i32]` to implement `Index<RangeTo<i32>>`
 
 error: aborting due to 2 previous errors

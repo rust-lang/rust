@@ -744,6 +744,21 @@ impl SourceMap {
         })
     }
 
+    /// Extends the given `Span` to previous character while the previous character matches the predicate
+    pub fn span_extend_prev_while(
+        &self,
+        span: Span,
+        f: impl Fn(char) -> bool,
+    ) -> Result<Span, SpanSnippetError> {
+        self.span_to_source(span, |s, start, _end| {
+            let n = s[..start]
+                .char_indices()
+                .rfind(|&(_, c)| !f(c))
+                .map_or(start, |(i, _)| start - i - 1);
+            Ok(span.with_lo(span.lo() - BytePos(n as u32)))
+        })
+    }
+
     /// Extends the given `Span` to just before the next occurrence of `c`.
     pub fn span_extend_to_next_char(&self, sp: Span, c: char, accept_newlines: bool) -> Span {
         if let Ok(next_source) = self.span_to_next_source(sp) {
@@ -958,24 +973,21 @@ impl SourceMap {
         Span::new(BytePos(start_of_next_point), end_of_next_point, sp.ctxt(), None)
     }
 
-    /// Returns a new span to check next none-whitespace character or some specified expected character
-    /// If `expect` is none, the first span of non-whitespace character is returned.
-    /// If `expect` presented, the first span of the character `expect` is returned
-    /// Otherwise, the span reached to limit is returned.
-    pub fn span_look_ahead(&self, span: Span, expect: Option<&str>, limit: Option<usize>) -> Span {
+    /// Check whether span is followed by some specified expected string in limit scope
+    pub fn span_look_ahead(&self, span: Span, expect: &str, limit: Option<usize>) -> Option<Span> {
         let mut sp = span;
         for _ in 0..limit.unwrap_or(100_usize) {
             sp = self.next_point(sp);
             if let Ok(ref snippet) = self.span_to_snippet(sp) {
-                if expect.is_some_and(|es| snippet == es) {
-                    break;
+                if snippet == expect {
+                    return Some(sp);
                 }
-                if expect.is_none() && snippet.chars().any(|c| !c.is_whitespace()) {
+                if snippet.chars().any(|c| !c.is_whitespace()) {
                     break;
                 }
             }
         }
-        sp
+        None
     }
 
     /// Finds the width of the character, either before or after the end of provided span,
@@ -1057,11 +1069,7 @@ impl SourceMap {
     /// This index is guaranteed to be valid for the lifetime of this `SourceMap`,
     /// since `source_files` is a `MonotonicVec`
     pub fn lookup_source_file_idx(&self, pos: BytePos) -> usize {
-        self.files
-            .borrow()
-            .source_files
-            .binary_search_by_key(&pos, |key| key.start_pos)
-            .unwrap_or_else(|p| p - 1)
+        self.files.borrow().source_files.partition_point(|x| x.start_pos <= pos) - 1
     }
 
     pub fn count_lines(&self) -> usize {

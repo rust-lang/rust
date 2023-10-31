@@ -1,0 +1,27 @@
+- // MIR for `opt_generic_copy` before RemoveUnneededDrops
++ // MIR for `opt_generic_copy` after RemoveUnneededDrops
+  
+  fn opt_generic_copy(_1: T) -> () {
+      debug x => _1;
+      let mut _0: ();
+      let _2: ();
+      let mut _3: T;
+      scope 1 (inlined std::mem::drop::<T>) {
+          debug _x => _3;
+      }
+  
+      bb0: {
+-         nop;
+          StorageLive(_3);
+          _3 = _1;
+-         drop(_3) -> [return: bb1, unwind unreachable];
+-     }
+- 
+-     bb1: {
+          StorageDead(_3);
+-         nop;
+-         nop;
+          return;
+      }
+  }
+  

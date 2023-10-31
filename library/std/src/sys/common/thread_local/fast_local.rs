@@ -33,20 +33,21 @@ pub macro thread_local_inner {
             // 1 == dtor registered, dtor not run
             // 2 == dtor registered and is running or has run
             #[thread_local]
-            static mut STATE: $crate::primitive::u8 = 0;
+            static STATE: $crate::cell::Cell<$crate::primitive::u8> = $crate::cell::Cell::new(0);
 
+            // Safety: Performs `drop_in_place(ptr as *mut $t)`, and requires
+            // all that comes with it.
             unsafe extern "C" fn destroy(ptr: *mut $crate::primitive::u8) {
-                let ptr = ptr as *mut $t;
-
-                unsafe {
-                    $crate::debug_assert_eq!(STATE, 1);
-                    STATE = 2;
-                    $crate::ptr::drop_in_place(ptr);
-                }
+                $crate::thread::local_impl::abort_on_dtor_unwind(|| {
+                    let old_state = STATE.replace(2);
+                    $crate::debug_assert_eq!(old_state, 1);
+                    // Safety: safety requirement is passed on to caller.
+                    unsafe { $crate::ptr::drop_in_place(ptr.cast::<$t>()); }
+                });
             }
 
             unsafe {
-                match STATE {
+                match STATE.get() {
                     // 0 == we haven't registered a destructor, so do
                     //   so now.
                     0 => {
@@ -54,7 +55,7 @@ pub macro thread_local_inner {
                             $crate::ptr::addr_of_mut!(VAL) as *mut $crate::primitive::u8,
                             destroy,
                         );
-                        STATE = 1;
+                        STATE.set(1);
                         $crate::option::Option::Some(&VAL)
                     }
                     // 1 == the destructor is registered and the value
@@ -86,10 +87,6 @@ pub macro thread_local_inner {
                 static __KEY: $crate::thread::local_impl::Key<$t> =
                     $crate::thread::local_impl::Key::<$t>::new();
 
-                // FIXME: remove the #[allow(...)] marker when macros don't
-                // raise warning for missing/extraneous unsafe blocks anymore.
-                // See https://github.com/rust-lang/rust/issues/74838.
-                #[allow(unused_unsafe)]
                 unsafe {
                     __KEY.get(move || {
                         if let $crate::option::Option::Some(init) = init {
@@ -148,7 +145,6 @@ impl<T> fmt::Debug for Key<T> {
         f.debug_struct("Key").finish_non_exhaustive()
     }
 }
-
 impl<T> Key<T> {
     pub const fn new() -> Key<T> {
         Key { inner: LazyKeyInner::new(), dtor_state: Cell::new(DtorState::Unregistered) }

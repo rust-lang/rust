@@ -1,5 +1,5 @@
 error: unnested or-patterns
-  --> $DIR/unnested_or_patterns.rs:12:12
+  --> $DIR/unnested_or_patterns.rs:18:12
    |
 LL |     if let box 0 | box 2 = Box::new(0) {}
    |            ^^^^^^^^^^^^^
@@ -11,7 +11,7 @@ LL |     if let box (0 | 2) = Box::new(0) {}
    |            ~~~~~~~~~~~
 
 error: unnested or-patterns
-  --> $DIR/unnested_or_patterns.rs:13:12
+  --> $DIR/unnested_or_patterns.rs:19:12
    |
 LL |     if let box ((0 | 1)) | box (2 | 3) | box 4 = Box::new(0) {}
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -22,7 +22,7 @@ LL |     if let box (0 | 1 | 2 | 3 | 4) = Box::new(0) {}
    |            ~~~~~~~~~~~~~~~~~~~~~~~
 
 error: unnested or-patterns
-  --> $DIR/unnested_or_patterns.rs:15:12
+  --> $DIR/unnested_or_patterns.rs:21:12
    |
 LL |     if let Some(1) | C0 | Some(2) = None {}
    |            ^^^^^^^^^^^^^^^^^^^^^^
@@ -33,7 +33,7 @@ LL |     if let Some(1 | 2) | C0 = None {}
    |            ~~~~~~~~~~~~~~~~
 
 error: unnested or-patterns
-  --> $DIR/unnested_or_patterns.rs:16:12
+  --> $DIR/unnested_or_patterns.rs:22:12
    |
 LL |     if let &mut 0 | &mut 2 = &mut 0 {}
    |            ^^^^^^^^^^^^^^^
@@ -44,7 +44,7 @@ LL |     if let &mut (0 | 2) = &mut 0 {}
    |            ~~~~~~~~~~~~
 
 error: unnested or-patterns
-  --> $DIR/unnested_or_patterns.rs:17:12
+  --> $DIR/unnested_or_patterns.rs:23:12
    |
 LL |     if let x @ 0 | x @ 2 = 0 {}
    |            ^^^^^^^^^^^^^
@@ -55,7 +55,7 @@ LL |     if let x @ (0 | 2) = 0 {}
    |            ~~~~~~~~~~~
 
 error: unnested or-patterns
-  --> $DIR/unnested_or_patterns.rs:18:12
+  --> $DIR/unnested_or_patterns.rs:24:12
    |
 LL |     if let (0, 1) | (0, 2) | (0, 3) = (0, 0) {}
    |            ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -66,7 +66,7 @@ LL |     if let (0, 1 | 2 | 3) = (0, 0) {}
    |            ~~~~~~~~~~~~~~
 
 error: unnested or-patterns
-  --> $DIR/unnested_or_patterns.rs:19:12
+  --> $DIR/unnested_or_patterns.rs:25:12
    |
 LL |     if let (1, 0) | (2, 0) | (3, 0) = (0, 0) {}
    |            ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -77,7 +77,7 @@ LL |     if let (1 | 2 | 3, 0) = (0, 0) {}
    |            ~~~~~~~~~~~~~~
 
 error: unnested or-patterns
-  --> $DIR/unnested_or_patterns.rs:20:12
+  --> $DIR/unnested_or_patterns.rs:26:12
    |
 LL |     if let (x, ..) | (x, 1) | (x, 2) = (0, 1) {}
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -88,7 +88,7 @@ LL |     if let (x, ..) | (x, 1 | 2) = (0, 1) {}
    |            ~~~~~~~~~~~~~~~~~~~~
 
 error: unnested or-patterns
-  --> $DIR/unnested_or_patterns.rs:21:12
+  --> $DIR/unnested_or_patterns.rs:27:12
    |
 LL |     if let [0] | [1] = [0] {}
    |            ^^^^^^^^^
@@ -99,7 +99,7 @@ LL |     if let [0 | 1] = [0] {}
    |            ~~~~~~~
 
 error: unnested or-patterns
-  --> $DIR/unnested_or_patterns.rs:22:12
+  --> $DIR/unnested_or_patterns.rs:28:12
    |
 LL |     if let [x, 0] | [x, 1] = [0, 1] {}
    |            ^^^^^^^^^^^^^^^
@@ -110,7 +110,7 @@ LL |     if let [x, 0 | 1] = [0, 1] {}
    |            ~~~~~~~~~~
 
 error: unnested or-patterns
-  --> $DIR/unnested_or_patterns.rs:23:12
+  --> $DIR/unnested_or_patterns.rs:29:12
    |
 LL |     if let [x, 0] | [x, 1] | [x, 2] = [0, 1] {}
    |            ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -121,7 +121,7 @@ LL |     if let [x, 0 | 1 | 2] = [0, 1] {}
    |            ~~~~~~~~~~~~~~
 
 error: unnested or-patterns
-  --> $DIR/unnested_or_patterns.rs:24:12
+  --> $DIR/unnested_or_patterns.rs:30:12
    |
 LL |     if let [x, ..] | [x, 1] | [x, 2] = [0, 1] {}
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -132,7 +132,7 @@ LL |     if let [x, ..] | [x, 1 | 2] = [0, 1] {}
    |            ~~~~~~~~~~~~~~~~~~~~
 
 error: unnested or-patterns
-  --> $DIR/unnested_or_patterns.rs:26:12
+  --> $DIR/unnested_or_patterns.rs:32:12
    |
 LL |     if let TS(0, x) | TS(1, x) = TS(0, 0) {}
    |            ^^^^^^^^^^^^^^^^^^^
@@ -143,7 +143,7 @@ LL |     if let TS(0 | 1, x) = TS(0, 0) {}
    |            ~~~~~~~~~~~~
 
 error: unnested or-patterns
-  --> $DIR/unnested_or_patterns.rs:27:12
+  --> $DIR/unnested_or_patterns.rs:33:12
    |
 LL |     if let TS(1, 0) | TS(2, 0) | TS(3, 0) = TS(0, 0) {}
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -154,7 +154,7 @@ LL |     if let TS(1 | 2 | 3, 0) = TS(0, 0) {}
    |            ~~~~~~~~~~~~~~~~
 
 error: unnested or-patterns
-  --> $DIR/unnested_or_patterns.rs:28:12
+  --> $DIR/unnested_or_patterns.rs:34:12
    |
 LL |     if let TS(x, ..) | TS(x, 1) | TS(x, 2) = TS(0, 0) {}
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -165,7 +165,7 @@ LL |     if let TS(x, ..) | TS(x, 1 | 2) = TS(0, 0) {}
    |            ~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: unnested or-patterns
-  --> $DIR/unnested_or_patterns.rs:33:12
+  --> $DIR/unnested_or_patterns.rs:39:12
    |
 LL |     if let S { x: 0, y } | S { y, x: 1 } = (S { x: 0, y: 1 }) {}
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -176,7 +176,7 @@ LL |     if let S { x: 0 | 1, y } = (S { x: 0, y: 1 }) {}
    |            ~~~~~~~~~~~~~~~~~
 
 error: unnested or-patterns
-  --> $DIR/unnested_or_patterns.rs:44:12
+  --> $DIR/unnested_or_patterns.rs:50:12
    |
 LL |     if let [1] | [53] = [0] {}
    |            ^^^^^^^^^^

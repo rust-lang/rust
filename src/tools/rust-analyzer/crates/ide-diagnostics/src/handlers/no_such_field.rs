@@ -6,22 +6,23 @@ use syntax::{
 };
 use text_edit::TextEdit;
 
-use crate::{fix, Assist, Diagnostic, DiagnosticsContext};
+use crate::{fix, Assist, Diagnostic, DiagnosticCode, DiagnosticsContext};
 
 // Diagnostic: no-such-field
 //
 // This diagnostic is triggered if created structure does not have field provided in record.
 pub(crate) fn no_such_field(ctx: &DiagnosticsContext<'_>, d: &hir::NoSuchField) -> Diagnostic {
-    Diagnostic::new(
-        "no-such-field",
+    Diagnostic::new_with_syntax_node_ptr(
+        ctx,
+        DiagnosticCode::RustcHardError("E0559"),
         "no such field",
-        ctx.sema.diagnostics_display_range(d.field.clone().map(|it| it.into())).range,
+        d.field.clone().map(|it| it.into()),
     )
     .with_fixes(fixes(ctx, d))
 }
 
 fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::NoSuchField) -> Option<Vec<Assist>> {
-    let root = ctx.sema.db.parse_or_expand(d.field.file_id)?;
+    let root = ctx.sema.db.parse_or_expand(d.field.file_id);
     missing_record_expr_field_fixes(
         &ctx.sema,
         d.field.file_id.original_file(ctx.sema.db),
@@ -69,7 +70,7 @@ fn missing_record_expr_field_fixes(
     let new_field = make::record_field(
         None,
         make::name(record_expr_field.field_name()?.ident_token()?.text()),
-        make::ty(&new_field_type.display_source_code(sema.db, module.into()).ok()?),
+        make::ty(&new_field_type.display_source_code(sema.db, module.into(), true).ok()?),
     );
 
     let last_field = record_fields.fields().last()?;

@@ -1,3 +1,6 @@
+// revisions: current next
+//[next] compile-flags: -Ztrait-solver=next
+
 trait A {
     type B<'b>;
     fn a() -> Self::B<'static>;

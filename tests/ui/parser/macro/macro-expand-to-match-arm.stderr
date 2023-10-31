@@ -1,0 +1,10 @@
+error: unexpected `,` in pattern
+  --> $DIR/macro-expand-to-match-arm.rs:11:25
+   |
+LL |         arm!(None => {}),
+   |                         ^
+   |
+   = note: macros cannot expand to match arms
+
+error: aborting due to previous error
+

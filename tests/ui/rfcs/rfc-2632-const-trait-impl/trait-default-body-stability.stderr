@@ -1,0 +1,29 @@
+error[E0015]: `?` cannot determine the branch of `T` in constant functions
+  --> $DIR/trait-default-body-stability.rs:44:9
+   |
+LL |         T?
+   |         ^^
+   |
+note: impl defined here, but it is not `const`
+  --> $DIR/trait-default-body-stability.rs:18:1
+   |
+LL | impl const Try for T {
+   | ^^^^^^^^^^^^^^^^^^^^
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+
+error[E0015]: `?` cannot convert from residual of `T` in constant functions
+  --> $DIR/trait-default-body-stability.rs:44:9
+   |
+LL |         T?
+   |         ^^
+   |
+note: impl defined here, but it is not `const`
+  --> $DIR/trait-default-body-stability.rs:33:1
+   |
+LL | impl const FromResidual for T {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0015`.

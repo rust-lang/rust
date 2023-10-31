@@ -18,6 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - `x.py fmt` now formats only files modified between the merge-base of HEAD and the last commit in the master branch of the rust-lang repository and the current working directory. To restore old behaviour, use `x.py fmt .`. The check mode is not affected by this change. [#105702](https://github.com/rust-lang/rust/pull/105702)
 - The `llvm.version-check` config option has been removed. Older versions were never supported. If you still need to support older versions (e.g. you are applying custom patches), patch `check_llvm_version` in bootstrap to change the minimum version. [#108619](https://github.com/rust-lang/rust/pull/108619)
 - The `rust.ignore-git` option has been renamed to `rust.omit-git-hash`. [#110059](https://github.com/rust-lang/rust/pull/110059)
+- `--exclude` no longer accepts a `Kind` as part of a Step; instead it uses the top-level Kind of the subcommand. If this matches how you were already using --exclude (e.g. `x test --exclude test::std`), simply remove the kind: `--exclude std`. If you were using a kind that did not match the top-level subcommand, please open an issue explaining why you wanted this feature.
 
 ### Non-breaking changes
 

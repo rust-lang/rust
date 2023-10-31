@@ -1,22 +1,22 @@
 error[E0432]: unresolved import `bar::foo`
-  --> $DIR/privacy2.rs:17:9
+  --> $DIR/privacy2.rs:19:9
    |
 LL |     use bar::foo;
    |         ^^^^^^^^ no `foo` in `bar`
 
 error[E0603]: function import `foo` is private
-  --> $DIR/privacy2.rs:23:20
+  --> $DIR/privacy2.rs:25:20
    |
 LL |     use bar::glob::foo;
    |                    ^^^ private function import
    |
 note: the function import `foo` is defined here...
-  --> $DIR/privacy2.rs:10:13
+  --> $DIR/privacy2.rs:12:13
    |
 LL |         use foo;
    |             ^^^
 note: ...and refers to the function `foo` which is defined here
-  --> $DIR/privacy2.rs:14:1
+  --> $DIR/privacy2.rs:16:1
    |
 LL | pub fn foo() {}
    | ^^^^^^^^^^^^ consider importing it directly

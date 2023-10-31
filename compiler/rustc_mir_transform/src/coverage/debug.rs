@@ -108,6 +108,7 @@
 //!         recursively, generating labels with nested operations, enclosed in parentheses
 //!         (for example: `bcb2 + (bcb0 - bcb1)`).
 
+use super::counters::{BcbCounter, CoverageCounters};
 use super::graph::{BasicCoverageBlock, BasicCoverageBlockData, CoverageGraph};
 use super::spans::CoverageSpan;
 
@@ -198,9 +199,9 @@ impl DebugOptions {
 
 fn bool_option_val(option: &str, some_strval: Option<&str>) -> bool {
     if let Some(val) = some_strval {
-        if vec!["yes", "y", "on", "true"].contains(&val) {
+        if ["yes", "y", "on", "true"].contains(&val) {
             true
-        } else if vec!["no", "n", "off", "false"].contains(&val) {
+        } else if ["no", "n", "off", "false"].contains(&val) {
             false
         } else {
             bug!(
@@ -246,11 +247,11 @@ impl Default for ExpressionFormat {
     }
 }
 
-/// If enabled, this struct maintains a map from `CoverageKind` IDs (as `ExpressionOperandId`) to
-/// the `CoverageKind` data and optional label (normally, the counter's associated
+/// If enabled, this struct maintains a map from `BcbCounter` IDs (as `Operand`) to
+/// the `BcbCounter` data and optional label (normally, the counter's associated
 /// `BasicCoverageBlock` format string, if any).
 ///
-/// Use `format_counter` to convert one of these `CoverageKind` counters to a debug output string,
+/// Use `format_counter` to convert one of these `BcbCounter` counters to a debug output string,
 /// as directed by the `DebugOptions`. This allows the format of counter labels in logs and dump
 /// files (including the `CoverageGraph` graphviz file) to be changed at runtime, via environment
 /// variable.
@@ -258,7 +259,7 @@ impl Default for ExpressionFormat {
 /// `DebugCounters` supports a recursive rendering of `Expression` counters, so they can be
 /// presented as nested expressions such as `(bcb3 - (bcb0 + bcb1))`.
 pub(super) struct DebugCounters {
-    some_counters: Option<FxHashMap<ExpressionOperandId, DebugCounter>>,
+    some_counters: Option<FxHashMap<Operand, DebugCounter>>,
 }
 
 impl DebugCounters {
@@ -275,43 +276,35 @@ impl DebugCounters {
         self.some_counters.is_some()
     }
 
-    pub fn add_counter(&mut self, counter_kind: &CoverageKind, some_block_label: Option<String>) {
+    pub fn add_counter(&mut self, counter_kind: &BcbCounter, some_block_label: Option<String>) {
         if let Some(counters) = &mut self.some_counters {
-            let id: ExpressionOperandId = match *counter_kind {
-                CoverageKind::Counter { id, .. } => id.into(),
-                CoverageKind::Expression { id, .. } => id.into(),
-                _ => bug!(
-                    "the given `CoverageKind` is not an counter or expression: {:?}",
-                    counter_kind
-                ),
-            };
+            let id = counter_kind.as_operand();
             counters
                 .try_insert(id, DebugCounter::new(counter_kind.clone(), some_block_label))
                 .expect("attempt to add the same counter_kind to DebugCounters more than once");
         }
     }
 
-    pub fn some_block_label(&self, operand: ExpressionOperandId) -> Option<&String> {
+    pub fn some_block_label(&self, operand: Operand) -> Option<&String> {
         self.some_counters.as_ref().and_then(|counters| {
             counters.get(&operand).and_then(|debug_counter| debug_counter.some_block_label.as_ref())
         })
     }
 
-    pub fn format_counter(&self, counter_kind: &CoverageKind) -> String {
+    pub fn format_counter(&self, counter_kind: &BcbCounter) -> String {
         match *counter_kind {
-            CoverageKind::Counter { .. } => {
+            BcbCounter::Counter { .. } => {
                 format!("Counter({})", self.format_counter_kind(counter_kind))
             }
-            CoverageKind::Expression { .. } => {
+            BcbCounter::Expression { .. } => {
                 format!("Expression({})", self.format_counter_kind(counter_kind))
             }
-            CoverageKind::Unreachable { .. } => "Unreachable".to_owned(),
         }
     }
 
-    fn format_counter_kind(&self, counter_kind: &CoverageKind) -> String {
+    fn format_counter_kind(&self, counter_kind: &BcbCounter) -> String {
         let counter_format = &debug_options().counter_format;
-        if let CoverageKind::Expression { id, lhs, op, rhs } = *counter_kind {
+        if let BcbCounter::Expression { id, lhs, op, rhs } = *counter_kind {
             if counter_format.operation {
                 return format!(
                     "{}{} {} {}",
@@ -330,35 +323,29 @@ impl DebugCounters {
             }
         }
 
-        let id: ExpressionOperandId = match *counter_kind {
-            CoverageKind::Counter { id, .. } => id.into(),
-            CoverageKind::Expression { id, .. } => id.into(),
-            _ => {
-                bug!("the given `CoverageKind` is not an counter or expression: {:?}", counter_kind)
-            }
-        };
+        let id = counter_kind.as_operand();
         if self.some_counters.is_some() && (counter_format.block || !counter_format.id) {
             let counters = self.some_counters.as_ref().unwrap();
             if let Some(DebugCounter { some_block_label: Some(block_label), .. }) =
                 counters.get(&id)
             {
                 return if counter_format.id {
-                    format!("{}#{}", block_label, id.index())
+                    format!("{}#{:?}", block_label, id)
                 } else {
                     block_label.to_string()
                 };
             }
         }
-        format!("#{}", id.index())
+        format!("#{:?}", id)
     }
 
-    fn format_operand(&self, operand: ExpressionOperandId) -> String {
-        if operand.index() == 0 {
+    fn format_operand(&self, operand: Operand) -> String {
+        if matches!(operand, Operand::Zero) {
             return String::from("0");
         }
         if let Some(counters) = &self.some_counters {
             if let Some(DebugCounter { counter_kind, some_block_label }) = counters.get(&operand) {
-                if let CoverageKind::Expression { .. } = counter_kind {
+                if let BcbCounter::Expression { .. } = counter_kind {
                     if let Some(label) = some_block_label && debug_options().counter_format.block {
                         return format!(
                             "{}:({})",
@@ -371,19 +358,19 @@ impl DebugCounters {
                 return self.format_counter_kind(counter_kind);
             }
         }
-        format!("#{}", operand.index())
+        format!("#{:?}", operand)
     }
 }
 
 /// A non-public support class to `DebugCounters`.
 #[derive(Debug)]
 struct DebugCounter {
-    counter_kind: CoverageKind,
+    counter_kind: BcbCounter,
     some_block_label: Option<String>,
 }
 
 impl DebugCounter {
-    fn new(counter_kind: CoverageKind, some_block_label: Option<String>) -> Self {
+    fn new(counter_kind: BcbCounter, some_block_label: Option<String>) -> Self {
         Self { counter_kind, some_block_label }
     }
 }
@@ -392,9 +379,9 @@ impl DebugCounter {
 /// a Graphviz (.dot file) representation of the `CoverageGraph`, for debugging purposes.
 pub(super) struct GraphvizData {
     some_bcb_to_coverage_spans_with_counters:
-        Option<FxHashMap<BasicCoverageBlock, Vec<(CoverageSpan, CoverageKind)>>>,
-    some_bcb_to_dependency_counters: Option<FxHashMap<BasicCoverageBlock, Vec<CoverageKind>>>,
-    some_edge_to_counter: Option<FxHashMap<(BasicCoverageBlock, BasicBlock), CoverageKind>>,
+        Option<FxHashMap<BasicCoverageBlock, Vec<(CoverageSpan, BcbCounter)>>>,
+    some_bcb_to_dependency_counters: Option<FxHashMap<BasicCoverageBlock, Vec<BcbCounter>>>,
+    some_edge_to_counter: Option<FxHashMap<(BasicCoverageBlock, BasicBlock), BcbCounter>>,
 }
 
 impl GraphvizData {
@@ -421,7 +408,7 @@ impl GraphvizData {
         &mut self,
         bcb: BasicCoverageBlock,
         coverage_span: &CoverageSpan,
-        counter_kind: &CoverageKind,
+        counter_kind: &BcbCounter,
     ) {
         if let Some(bcb_to_coverage_spans_with_counters) =
             self.some_bcb_to_coverage_spans_with_counters.as_mut()
@@ -436,7 +423,7 @@ impl GraphvizData {
     pub fn get_bcb_coverage_spans_with_counters(
         &self,
         bcb: BasicCoverageBlock,
-    ) -> Option<&[(CoverageSpan, CoverageKind)]> {
+    ) -> Option<&[(CoverageSpan, BcbCounter)]> {
         if let Some(bcb_to_coverage_spans_with_counters) =
             self.some_bcb_to_coverage_spans_with_counters.as_ref()
         {
@@ -449,7 +436,7 @@ impl GraphvizData {
     pub fn add_bcb_dependency_counter(
         &mut self,
         bcb: BasicCoverageBlock,
-        counter_kind: &CoverageKind,
+        counter_kind: &BcbCounter,
     ) {
         if let Some(bcb_to_dependency_counters) = self.some_bcb_to_dependency_counters.as_mut() {
             bcb_to_dependency_counters
@@ -459,7 +446,7 @@ impl GraphvizData {
         }
     }
 
-    pub fn get_bcb_dependency_counters(&self, bcb: BasicCoverageBlock) -> Option<&[CoverageKind]> {
+    pub fn get_bcb_dependency_counters(&self, bcb: BasicCoverageBlock) -> Option<&[BcbCounter]> {
         if let Some(bcb_to_dependency_counters) = self.some_bcb_to_dependency_counters.as_ref() {
             bcb_to_dependency_counters.get(&bcb).map(Deref::deref)
         } else {
@@ -471,7 +458,7 @@ impl GraphvizData {
         &mut self,
         from_bcb: BasicCoverageBlock,
         to_bb: BasicBlock,
-        counter_kind: &CoverageKind,
+        counter_kind: &BcbCounter,
     ) {
         if let Some(edge_to_counter) = self.some_edge_to_counter.as_mut() {
             edge_to_counter
@@ -484,7 +471,7 @@ impl GraphvizData {
         &self,
         from_bcb: BasicCoverageBlock,
         to_bb: BasicBlock,
-    ) -> Option<&CoverageKind> {
+    ) -> Option<&BcbCounter> {
         if let Some(edge_to_counter) = self.some_edge_to_counter.as_ref() {
             edge_to_counter.get(&(from_bcb, to_bb))
         } else {
@@ -498,10 +485,9 @@ impl GraphvizData {
 /// _not_ used are retained in the `unused_expressions` Vec, to be included in debug output (logs
 /// and/or a `CoverageGraph` graphviz output).
 pub(super) struct UsedExpressions {
-    some_used_expression_operands:
-        Option<FxHashMap<ExpressionOperandId, Vec<InjectedExpressionId>>>,
+    some_used_expression_operands: Option<FxHashMap<Operand, Vec<ExpressionId>>>,
     some_unused_expressions:
-        Option<Vec<(CoverageKind, Option<BasicCoverageBlock>, BasicCoverageBlock)>>,
+        Option<Vec<(BcbCounter, Option<BasicCoverageBlock>, BasicCoverageBlock)>>,
 }
 
 impl UsedExpressions {
@@ -519,18 +505,18 @@ impl UsedExpressions {
         self.some_used_expression_operands.is_some()
     }
 
-    pub fn add_expression_operands(&mut self, expression: &CoverageKind) {
+    pub fn add_expression_operands(&mut self, expression: &BcbCounter) {
         if let Some(used_expression_operands) = self.some_used_expression_operands.as_mut() {
-            if let CoverageKind::Expression { id, lhs, rhs, .. } = *expression {
+            if let BcbCounter::Expression { id, lhs, rhs, .. } = *expression {
                 used_expression_operands.entry(lhs).or_insert_with(Vec::new).push(id);
                 used_expression_operands.entry(rhs).or_insert_with(Vec::new).push(id);
             }
         }
     }
 
-    pub fn expression_is_used(&self, expression: &CoverageKind) -> bool {
+    pub fn expression_is_used(&self, expression: &BcbCounter) -> bool {
         if let Some(used_expression_operands) = self.some_used_expression_operands.as_ref() {
-            used_expression_operands.contains_key(&expression.as_operand_id())
+            used_expression_operands.contains_key(&expression.as_operand())
         } else {
             false
         }
@@ -538,12 +524,12 @@ impl UsedExpressions {
 
     pub fn add_unused_expression_if_not_found(
         &mut self,
-        expression: &CoverageKind,
+        expression: &BcbCounter,
         edge_from_bcb: Option<BasicCoverageBlock>,
         target_bcb: BasicCoverageBlock,
     ) {
         if let Some(used_expression_operands) = self.some_used_expression_operands.as_ref() {
-            if !used_expression_operands.contains_key(&expression.as_operand_id()) {
+            if !used_expression_operands.contains_key(&expression.as_operand()) {
                 self.some_unused_expressions.as_mut().unwrap().push((
                     expression.clone(),
                     edge_from_bcb,
@@ -553,11 +539,11 @@ impl UsedExpressions {
         }
     }
 
-    /// Return the list of unused counters (if any) as a tuple with the counter (`CoverageKind`),
+    /// Return the list of unused counters (if any) as a tuple with the counter (`BcbCounter`),
     /// optional `from_bcb` (if it was an edge counter), and `target_bcb`.
     pub fn get_unused_expressions(
         &self,
-    ) -> Vec<(CoverageKind, Option<BasicCoverageBlock>, BasicCoverageBlock)> {
+    ) -> Vec<(BcbCounter, Option<BasicCoverageBlock>, BasicCoverageBlock)> {
         if let Some(unused_expressions) = self.some_unused_expressions.as_ref() {
             unused_expressions.clone()
         } else {
@@ -573,7 +559,7 @@ impl UsedExpressions {
         bcb_counters_without_direct_coverage_spans: &[(
             Option<BasicCoverageBlock>,
             BasicCoverageBlock,
-            CoverageKind,
+            BcbCounter,
         )],
     ) {
         if self.is_enabled() {
@@ -643,7 +629,7 @@ pub(super) fn dump_coverage_spanview<'tcx>(
         .expect("Unexpected error creating MIR spanview HTML file");
     let crate_name = tcx.crate_name(def_id.krate);
     let item_name = tcx.def_path(def_id).to_filename_friendly_no_crate();
-    let title = format!("{}.{} - Coverage Spans", crate_name, item_name);
+    let title = format!("{crate_name}.{item_name} - Coverage Spans");
     spanview::write_document(tcx, body_span, span_viewables, &title, &mut file)
         .expect("Unexpected IO error dumping coverage spans as HTML");
 }
@@ -673,18 +659,21 @@ pub(super) fn dump_coverage_graphviz<'tcx>(
     mir_body: &mir::Body<'tcx>,
     pass_name: &str,
     basic_coverage_blocks: &CoverageGraph,
-    debug_counters: &DebugCounters,
+    coverage_counters: &CoverageCounters,
     graphviz_data: &GraphvizData,
-    intermediate_expressions: &[CoverageKind],
+    intermediate_expressions: &[BcbCounter],
     debug_used_expressions: &UsedExpressions,
 ) {
+    let debug_counters = &coverage_counters.debug_counters;
+
     let mir_source = mir_body.source;
     let def_id = mir_source.def_id();
     let node_content = |bcb| {
         bcb_to_string_sections(
             tcx,
             mir_body,
-            debug_counters,
+            coverage_counters,
+            bcb,
             &basic_coverage_blocks[bcb],
             graphviz_data.get_bcb_coverage_spans_with_counters(bcb),
             graphviz_data.get_bcb_dependency_counters(bcb),
@@ -750,12 +739,15 @@ pub(super) fn dump_coverage_graphviz<'tcx>(
 fn bcb_to_string_sections<'tcx>(
     tcx: TyCtxt<'tcx>,
     mir_body: &mir::Body<'tcx>,
-    debug_counters: &DebugCounters,
+    coverage_counters: &CoverageCounters,
+    bcb: BasicCoverageBlock,
     bcb_data: &BasicCoverageBlockData,
-    some_coverage_spans_with_counters: Option<&[(CoverageSpan, CoverageKind)]>,
-    some_dependency_counters: Option<&[CoverageKind]>,
-    some_intermediate_expressions: Option<&[CoverageKind]>,
+    some_coverage_spans_with_counters: Option<&[(CoverageSpan, BcbCounter)]>,
+    some_dependency_counters: Option<&[BcbCounter]>,
+    some_intermediate_expressions: Option<&[BcbCounter]>,
 ) -> Vec<String> {
+    let debug_counters = &coverage_counters.debug_counters;
+
     let len = bcb_data.basic_blocks.len();
     let mut sections = Vec::new();
     if let Some(collect_intermediate_expressions) = some_intermediate_expressions {
@@ -791,8 +783,8 @@ fn bcb_to_string_sections<'tcx>(
                 .join("  \n"),
         ));
     }
-    if let Some(counter_kind) = &bcb_data.counter_kind {
-        sections.push(format!("{:?}", counter_kind));
+    if let Some(counter_kind) = coverage_counters.bcb_counter(bcb) {
+        sections.push(format!("{counter_kind:?}"));
     }
     let non_term_blocks = bcb_data.basic_blocks[0..len - 1]
         .iter()

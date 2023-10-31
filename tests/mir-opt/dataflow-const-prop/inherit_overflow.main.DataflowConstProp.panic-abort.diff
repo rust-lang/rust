@@ -1,0 +1,39 @@
+- // MIR for `main` before DataflowConstProp
++ // MIR for `main` after DataflowConstProp
+  
+  fn main() -> () {
+      let mut _0: ();
+      let mut _1: u8;
+      let mut _2: u8;
+      let mut _3: u8;
+      scope 1 {
+      }
+      scope 2 (inlined <u8 as Add>::add) {
+          debug self => _2;
+          debug other => _3;
+          let mut _4: (u8, bool);
+      }
+  
+      bb0: {
+          StorageLive(_1);
+          StorageLive(_2);
+          _2 = const u8::MAX;
+          StorageLive(_3);
+          _3 = const 1_u8;
+-         _4 = CheckedAdd(_2, _3);
+-         assert(!move (_4.1: bool), "attempt to compute `{} + {}`, which would overflow", _2, _3) -> [success: bb1, unwind unreachable];
++         _4 = CheckedAdd(const u8::MAX, const 1_u8);
++         assert(!const true, "attempt to compute `{} + {}`, which would overflow", const u8::MAX, const 1_u8) -> [success: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+-         _1 = move (_4.0: u8);
++         _1 = const 0_u8;
+          StorageDead(_3);
+          StorageDead(_2);
+          StorageDead(_1);
+          _0 = const ();
+          return;
+      }
+  }
+  

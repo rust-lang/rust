@@ -1,8 +1,8 @@
 import * as assert from "assert";
 import { prepareEnv } from "../../src/run";
-import { RunnableEnvCfg } from "../../src/config";
-import { Context } from ".";
-import * as ra from "../../src/lsp_ext";
+import type { RunnableEnvCfg } from "../../src/config";
+import type { Context } from ".";
+import type * as ra from "../../src/lsp_ext";
 
 function makeRunnable(label: string): ra.Runnable {
     return {

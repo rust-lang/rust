@@ -86,7 +86,7 @@ pub(crate) fn qualify_path(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
         acc.add_group(
             &group_label,
             AssistId("qualify_path", AssistKind::QuickFix),
-            label(candidate, &import),
+            label(ctx.db(), candidate, &import),
             range,
             |builder| {
                 qualify_candidate.qualify(
@@ -186,7 +186,7 @@ fn find_trait_method(
     if let Some(hir::AssocItem::Function(method)) =
         trait_.items(db).into_iter().find(|item: &hir::AssocItem| {
             item.name(db)
-                .map(|name| name.to_string() == trait_method_name.to_string())
+                .map(|name| name.display(db).to_string() == trait_method_name.to_string())
                 .unwrap_or(false)
         })
     {
@@ -216,14 +216,14 @@ fn group_label(candidate: &ImportCandidate) -> GroupLabel {
     GroupLabel(format!("Qualify {name}"))
 }
 
-fn label(candidate: &ImportCandidate, import: &LocatedImport) -> String {
+fn label(db: &RootDatabase, candidate: &ImportCandidate, import: &LocatedImport) -> String {
     let import_path = &import.import_path;
 
     match candidate {
         ImportCandidate::Path(candidate) if candidate.qualifier.is_none() => {
-            format!("Qualify as `{import_path}`")
+            format!("Qualify as `{}`", import_path.display(db))
         }
-        _ => format!("Qualify with `{import_path}`"),
+        _ => format!("Qualify with `{}`", import_path.display(db)),
     }
 }
 

@@ -2,7 +2,7 @@
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
 #![feature(box_patterns)]
-#![feature(drain_filter)]
+#![feature(is_sorted)]
 #![feature(let_chains)]
 #![feature(map_try_insert)]
 #![feature(min_specialization)]
@@ -30,8 +30,8 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_index::IndexVec;
 use rustc_middle::mir::visit::Visitor as _;
 use rustc_middle::mir::{
-    traversal, AnalysisPhase, Body, ClearCrossCrate, ConstQualifs, Constant, LocalDecl, MirPass,
-    MirPhase, Operand, Place, ProjectionElem, Promoted, RuntimePhase, Rvalue, SourceInfo,
+    traversal, AnalysisPhase, Body, CallSource, ClearCrossCrate, ConstQualifs, Constant, LocalDecl,
+    MirPass, MirPhase, Operand, Place, ProjectionElem, Promoted, RuntimePhase, Rvalue, SourceInfo,
     Statement, StatementKind, TerminatorKind, START_BLOCK,
 };
 use rustc_middle::query::Providers;
@@ -75,7 +75,7 @@ mod errors;
 mod ffi_unwind_calls;
 mod function_item_references;
 mod generator;
-mod inline;
+pub mod inline;
 mod instsimplify;
 mod large_enums;
 mod lower_intrinsics;
@@ -84,6 +84,7 @@ mod match_branches;
 mod multiple_return_terminators;
 mod normalize_array_len;
 mod nrvo;
+mod prettify;
 mod ref_prop;
 mod remove_noop_landing_pads;
 mod remove_storage_markers;
@@ -188,7 +189,7 @@ fn remap_mir_for_const_eval_select<'tcx>(
                     };
                     method(place)
                 }).collect();
-                terminator.kind = TerminatorKind::Call { func, args: arguments, destination, target, unwind, from_hir_call: false, fn_span };
+                terminator.kind = TerminatorKind::Call { func, args: arguments, destination, target, unwind, call_source: CallSource::Misc, fn_span };
             }
             _ => {}
         }
@@ -337,38 +338,16 @@ fn inner_mir_for_ctfe(tcx: TyCtxt<'_>, def: LocalDefId) -> Body<'_> {
         return shim::build_adt_ctor(tcx, def.to_def_id());
     }
 
-    let context = tcx
-        .hir()
-        .body_const_context(def)
-        .expect("mir_for_ctfe should not be used for runtime functions");
-
-    let body = tcx.mir_drops_elaborated_and_const_checked(def).borrow().clone();
+    let body = tcx.mir_drops_elaborated_and_const_checked(def);
+    let body = match tcx.hir().body_const_context(def) {
+        // consts and statics do not have `optimized_mir`, so we can steal the body instead of
+        // cloning it.
+        Some(hir::ConstContext::Const | hir::ConstContext::Static(_)) => body.steal(),
+        Some(hir::ConstContext::ConstFn) => body.borrow().clone(),
+        None => bug!("`mir_for_ctfe` called on non-const {def:?}"),
+    };
 
     let mut body = remap_mir_for_const_eval_select(tcx, body, hir::Constness::Const);
-
-    match context {
-        // Do not const prop functions, either they get executed at runtime or exported to metadata,
-        // so we run const prop on them, or they don't, in which case we const evaluate some control
-        // flow paths of the function and any errors in those paths will get emitted as const eval
-        // errors.
-        hir::ConstContext::ConstFn => {}
-        // Static items always get evaluated, so we can just let const eval see if any erroneous
-        // control flow paths get executed.
-        hir::ConstContext::Static(_) => {}
-        // Associated constants get const prop run so we detect common failure situations in the
-        // crate that defined the constant.
-        // Technically we want to not run on regular const items, but oli-obk doesn't know how to
-        // conveniently detect that at this point without looking at the HIR.
-        hir::ConstContext::Const => {
-            pm::run_passes(
-                tcx,
-                &mut body,
-                &[&const_prop::ConstProp],
-                Some(MirPhase::Runtime(RuntimePhase::Optimized)),
-            );
-        }
-    }
-
     pm::run_passes(tcx, &mut body, &[&ctfe_limit::CtfeLimit], None);
 
     body
@@ -445,10 +424,16 @@ fn mir_drops_elaborated_and_const_checked(tcx: TyCtxt<'_>, def: LocalDefId) -> &
 
     run_analysis_to_runtime_passes(tcx, &mut body);
 
+    // Now that drop elaboration has been performed, we can check for
+    // unconditional drop recursion.
+    rustc_mir_build::lints::check_drop_recursion(tcx, &body);
+
     tcx.alloc_steal_mir(body)
 }
 
-fn run_analysis_to_runtime_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+// Made public such that `mir_drops_elaborated_and_const_checked` can be overridden
+// by custom rustc drivers, running all the steps by themselves.
+pub fn run_analysis_to_runtime_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     assert!(body.phase == MirPhase::Analysis(AnalysisPhase::Initial));
     let did = body.source.def_id();
 
@@ -552,15 +537,18 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &normalize_array_len::NormalizeArrayLen, // has to run after `slice::len` lowering
             &const_goto::ConstGoto,
             &remove_unneeded_drops::RemoveUnneededDrops,
+            &ref_prop::ReferencePropagation,
             &sroa::ScalarReplacementOfAggregates,
             &match_branches::MatchBranchSimplification,
             // inst combine is after MatchBranchSimplification to clean up Ne(_1, false)
             &multiple_return_terminators::MultipleReturnTerminators,
             &instsimplify::InstSimplify,
-            &separate_const_switch::SeparateConstSwitch,
             &simplify::SimplifyLocals::BeforeConstProp,
             &copy_prop::CopyProp,
-            &ref_prop::ReferencePropagation,
+            // Perform `SeparateConstSwitch` after SSA-based analyses, as cloning blocks may
+            // destroy the SSA property. It should still happen before const-propagation, so the
+            // latter pass will leverage the created opportunities.
+            &separate_const_switch::SeparateConstSwitch,
             &const_prop::ConstProp,
             &dataflow_const_prop::DataflowConstProp,
             //
@@ -581,6 +569,9 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &large_enums::EnumSizeOpt { discrepancy: 128 },
             // Some cleanup necessary at least for LLVM and potentially other codegen backends.
             &add_call_guards::CriticalCallEdges,
+            // Cleanup for human readability, off by default.
+            &prettify::ReorderBasicBlocks,
+            &prettify::ReorderLocals,
             // Dump the end result for testing and debugging purposes.
             &dump_mir::Marker("PreCodegen"),
         ],
@@ -608,7 +599,7 @@ fn inner_optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> Body<'_> {
         // computes and caches its result.
         Some(hir::ConstContext::ConstFn) => tcx.ensure_with_value().mir_for_ctfe(did),
         None => {}
-        Some(other) => panic!("do not use `optimized_mir` for constants: {:?}", other),
+        Some(other) => panic!("do not use `optimized_mir` for constants: {other:?}"),
     }
     debug!("about to call mir_drops_elaborated...");
     let body = tcx.mir_drops_elaborated_and_const_checked(did).steal();

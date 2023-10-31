@@ -98,15 +98,11 @@ impl<'tcx> Visitor<'tcx> for ReachableContext<'tcx> {
                 self.worklist.push(def_id);
             } else {
                 match res {
-                    // If this path leads to a constant, then we need to
-                    // recurse into the constant to continue finding
-                    // items that are reachable.
-                    Res::Def(DefKind::Const | DefKind::AssocConst, _) => {
+                    // Reachable constants and reachable statics can have their contents inlined
+                    // into other crates. Mark them as reachable and recurse into their body.
+                    Res::Def(DefKind::Const | DefKind::AssocConst | DefKind::Static(_), _) => {
                         self.worklist.push(def_id);
                     }
-
-                    // If this wasn't a static, then the destination is
-                    // surely reachable.
                     _ => {
                         self.reachable_symbols.insert(def_id);
                     }
@@ -236,7 +232,7 @@ impl<'tcx> ReachableContext<'tcx> {
                     // Reachable constants will be inlined into other crates
                     // unconditionally, so we need to make sure that their
                     // contents are also reachable.
-                    hir::ItemKind::Const(_, init) | hir::ItemKind::Static(_, _, init) => {
+                    hir::ItemKind::Const(_, _, init) | hir::ItemKind::Static(_, _, init) => {
                         self.visit_nested_body(init);
                     }
 
@@ -364,10 +360,10 @@ fn has_custom_linkage(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
 fn reachable_set(tcx: TyCtxt<'_>, (): ()) -> LocalDefIdSet {
     let effective_visibilities = &tcx.effective_visibilities(());
 
-    let any_library =
-        tcx.sess.crate_types().iter().any(|ty| {
-            *ty == CrateType::Rlib || *ty == CrateType::Dylib || *ty == CrateType::ProcMacro
-        });
+    let any_library = tcx
+        .crate_types()
+        .iter()
+        .any(|ty| *ty == CrateType::Rlib || *ty == CrateType::Dylib || *ty == CrateType::ProcMacro);
     let mut reachable_context = ReachableContext {
         tcx,
         maybe_typeck_results: None,

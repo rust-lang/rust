@@ -152,7 +152,10 @@ mod private_slice_index {
 #[rustc_on_unimplemented(
     on(T = "str", label = "string indices are ranges of `usize`",),
     on(
-        all(any(T = "str", T = "&str", T = "std::string::String"), _Self = "{integer}"),
+        all(
+            any(T = "str", T = "&str", T = "alloc::string::String", T = "std::string::String"),
+            _Self = "{integer}"
+        ),
         note = "you can use `.chars().nth()` or `.bytes().nth()`\n\
                 for more information, see chapter 8 in The Book: \
                 <https://doc.rust-lang.org/book/ch08-02-strings.html#indexing-into-strings>"
@@ -724,7 +727,7 @@ where
 }
 
 /// Convert pair of `ops::Bound`s into `ops::Range` without performing any bounds checking and (in debug) overflow checking
-fn into_range_unchecked(
+pub(crate) fn into_range_unchecked(
     len: usize,
     (start, end): (ops::Bound<usize>, ops::Bound<usize>),
 ) -> ops::Range<usize> {
@@ -744,7 +747,7 @@ fn into_range_unchecked(
 
 /// Convert pair of `ops::Bound`s into `ops::Range`.
 /// Returns `None` on overflowing indices.
-fn into_range(
+pub(crate) fn into_range(
     len: usize,
     (start, end): (ops::Bound<usize>, ops::Bound<usize>),
 ) -> Option<ops::Range<usize>> {
@@ -769,7 +772,7 @@ fn into_range(
 
 /// Convert pair of `ops::Bound`s into `ops::Range`.
 /// Panics on overflowing indices.
-fn into_slice_range(
+pub(crate) fn into_slice_range(
     len: usize,
     (start, end): (ops::Bound<usize>, ops::Bound<usize>),
 ) -> ops::Range<usize> {

@@ -2,29 +2,29 @@ use crate::util::*;
 use anyhow::{Context, Result};
 use std::io::Write;
 
-const TEMPLATE: &'static str = include_str!("../install-template.sh");
+const TEMPLATE: &str = include_str!("../install-template.sh");
 
 actor! {
     #[derive(Debug)]
     pub struct Scripter {
         /// The name of the product, for display
-        #[clap(value_name = "NAME")]
+        #[arg(value_name = "NAME")]
         product_name: String = "Product",
 
         /// The directory under lib/ where the manifest lives
-        #[clap(value_name = "DIR")]
+        #[arg(value_name = "DIR")]
         rel_manifest_dir: String = "manifestlib",
 
         /// The string to print after successful installation
-        #[clap(value_name = "MESSAGE")]
+        #[arg(value_name = "MESSAGE")]
         success_message: String = "Installed.",
 
         /// Places to look for legacy manifests to uninstall
-        #[clap(value_name = "DIRS")]
+        #[arg(value_name = "DIRS")]
         legacy_manifest_dirs: String = "",
 
         /// The name of the output script
-        #[clap(value_name = "FILE")]
+        #[arg(value_name = "FILE")]
         output_script: String = "install.sh",
     }
 }
@@ -32,22 +32,19 @@ actor! {
 impl Scripter {
     /// Generates the actual installer script
     pub fn run(self) -> Result<()> {
-        // Replace dashes in the success message with spaces (our arg handling botches spaces)
-        // TODO: still needed? Kept for compatibility for now.
+        // Replace dashes in the product name with spaces (our arg handling botches spaces)
+        // FIXME: still needed? Kept for compatibility for now.
         let product_name = self.product_name.replace('-', " ");
 
         // Replace dashes in the success message with spaces (our arg handling botches spaces)
-        // TODO: still needed? Kept for compatibility for now.
+        // FIXME: still needed? Kept for compatibility for now.
         let success_message = self.success_message.replace('-', " ");
 
         let script = TEMPLATE
             .replace("%%TEMPLATE_PRODUCT_NAME%%", &sh_quote(&product_name))
             .replace("%%TEMPLATE_REL_MANIFEST_DIR%%", &self.rel_manifest_dir)
             .replace("%%TEMPLATE_SUCCESS_MESSAGE%%", &sh_quote(&success_message))
-            .replace(
-                "%%TEMPLATE_LEGACY_MANIFEST_DIRS%%",
-                &sh_quote(&self.legacy_manifest_dirs),
-            )
+            .replace("%%TEMPLATE_LEGACY_MANIFEST_DIRS%%", &sh_quote(&self.legacy_manifest_dirs))
             .replace(
                 "%%TEMPLATE_RUST_INSTALLER_VERSION%%",
                 &sh_quote(&crate::RUST_INSTALLER_VERSION),

@@ -33,7 +33,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr
 /// Given a `Result<T, E>` type, return its error type (`E`).
 fn get_error_type<'a>(cx: &LateContext<'_>, ty: Ty<'a>) -> Option<Ty<'a>> {
     match ty.kind() {
-        ty::Adt(_, substs) if is_type_diagnostic_item(cx, ty, sym::Result) => substs.types().nth(1),
+        ty::Adt(_, args) if is_type_diagnostic_item(cx, ty, sym::Result) => args.types().nth(1),
         _ => None,
     }
 }

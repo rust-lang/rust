@@ -2,7 +2,7 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/ub-uninhabit.rs:16:35
    |
 LL | const BAD_BAD_BAD: Bar = unsafe { MaybeUninit { uninit: () }.init };
-   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered a value of uninhabited type Bar
+   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered a value of uninhabited type `Bar`
 
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/ub-uninhabit.rs:19:1
@@ -19,7 +19,7 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/ub-uninhabit.rs:22:42
    |
 LL | const BAD_BAD_ARRAY: [Bar; 1] = unsafe { MaybeUninit { uninit: () }.init };
-   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at [0]: encountered a value of uninhabited type Bar
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value at [0]: encountered a value of uninhabited type `Bar`
 
 error: aborting due to 3 previous errors
 

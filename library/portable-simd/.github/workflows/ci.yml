@@ -38,8 +38,9 @@ jobs:
           - i586-unknown-linux-gnu
           - aarch64-unknown-linux-gnu
           - armv7-unknown-linux-gnueabihf
-          - mips-unknown-linux-gnu
-          - mips64-unknown-linux-gnuabi64
+          # non-nightly since https://github.com/rust-lang/rust/pull/113274
+          # - mips-unknown-linux-gnu
+          # - mips64-unknown-linux-gnuabi64
           - powerpc-unknown-linux-gnu
           - powerpc64-unknown-linux-gnu
           - riscv64gc-unknown-linux-gnu
@@ -191,8 +192,8 @@ jobs:
           # Note: The issue above means neither of these mips targets will use
           # MSA (mips simd) but MIPS uses a nonstandard binary representation
           # for NaNs which makes it worth testing on despite that.
-          - mips-unknown-linux-gnu
-          - mips64-unknown-linux-gnuabi64
+          # - mips-unknown-linux-gnu
+          # - mips64-unknown-linux-gnuabi64
           - riscv64gc-unknown-linux-gnu
           # TODO this test works, but it appears to time out
           # - powerpc-unknown-linux-gnu

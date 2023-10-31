@@ -4,7 +4,8 @@
     unused,
     clippy::uninlined_format_args,
     clippy::unnecessary_mut_passed,
-    clippy::unnecessary_to_owned
+    clippy::unnecessary_to_owned,
+    clippy::unnecessary_literal_unwrap
 )]
 #![warn(clippy::needless_borrow)]
 
@@ -489,5 +490,17 @@ mod issue_9782_method_variant {
         let a: [u8; 100] = [0u8; 100];
 
         S.foo::<&[u8; 100]>(&a);
+    }
+}
+
+mod issue_10535 {
+    static SOME_STATIC: String = String::new();
+
+    static UNIT: () = compute(&SOME_STATIC);
+
+    pub const fn compute<T>(_: T)
+    where
+        T: Copy,
+    {
     }
 }

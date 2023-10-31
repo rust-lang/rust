@@ -1,0 +1,45 @@
+error[E0308]: mismatched types
+  --> $DIR/option-ref-advice.rs:6:18
+   |
+LL |     takes_option(&None);
+   |     ------------ ^^^^^ expected `Option<&String>`, found `&Option<_>`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note:   expected enum `Option<&String>`
+           found reference `&Option<_>`
+note: function defined here
+  --> $DIR/option-ref-advice.rs:3:4
+   |
+LL | fn takes_option(_arg: Option<&String>) {}
+   |    ^^^^^^^^^^^^ ---------------------
+help: consider removing the borrow
+   |
+LL -     takes_option(&None);
+LL +     takes_option(None);
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/option-ref-advice.rs:10:18
+   |
+LL |     takes_option(&res);
+   |     ------------ ^^^^ expected `Option<&String>`, found `&Option<String>`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note:   expected enum `Option<&String>`
+           found reference `&Option<String>`
+note: function defined here
+  --> $DIR/option-ref-advice.rs:3:4
+   |
+LL | fn takes_option(_arg: Option<&String>) {}
+   |    ^^^^^^^^^^^^ ---------------------
+help: try using `.as_ref()` to convert `&Option<String>` to `Option<&String>`
+   |
+LL -     takes_option(&res);
+LL +     takes_option(res.as_ref());
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

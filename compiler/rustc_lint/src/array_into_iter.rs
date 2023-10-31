@@ -81,7 +81,7 @@ impl<'tcx> LateLintPass<'tcx> for ArrayIntoIter {
             let adjustments = cx.typeck_results().expr_adjustments(receiver_arg);
 
             let Some(Adjustment { kind: Adjust::Borrow(_), target }) = adjustments.last() else {
-                return
+                return;
             };
 
             let types =

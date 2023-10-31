@@ -1,0 +1,10 @@
+error: `mod.rs` files are required, found `src/bad.rs`
+ --> src/bad.rs:1:1
+  |
+1 | pub mod inner;
+  | ^
+  |
+  = help: move `src/bad.rs` to `src/bad/mod.rs`
+  = note: `-D clippy::self-named-module-files` implied by `-D warnings`
+
+error: could not compile `fail-mod-remap` (bin "fail-mod-remap") due to previous error

@@ -32,12 +32,10 @@ case $1 in
 
         ./clean_all.sh
 
-        ./y.rs prepare
-
-        (cd download/sysroot && cargo update && cargo fetch && cp Cargo.lock ../../build_sysroot/)
+        ./y.sh prepare
         ;;
     "commit")
-        git add rust-toolchain build_sysroot/Cargo.lock
+        git add rust-toolchain
         git commit -m "Rustup to $(rustc -V)"
         ;;
     "push")

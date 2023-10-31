@@ -1,14 +1,19 @@
 error: unnecessary qualification
-  --> $DIR/lint-qualification.rs:10:5
+  --> $DIR/lint-qualification.rs:11:5
    |
 LL |     foo::bar();
    |     ^^^^^^^^
    |
 note: the lint level is defined here
-  --> $DIR/lint-qualification.rs:1:9
+  --> $DIR/lint-qualification.rs:2:9
    |
 LL | #![deny(unused_qualifications)]
    |         ^^^^^^^^^^^^^^^^^^^^^
+help: remove the unnecessary path segments
+   |
+LL -     foo::bar();
+LL +     bar();
+   |
 
 error: aborting due to previous error
 

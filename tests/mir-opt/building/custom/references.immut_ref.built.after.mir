@@ -1,13 +1,13 @@
 // MIR for `immut_ref` after built
 
 fn immut_ref(_1: &i32) -> &i32 {
-    let mut _0: &i32;                    // return place in scope 0 at $DIR/references.rs:+0:30: +0:34
-    let mut _2: *const i32;              // in scope 0 at $SRC_DIR/core/src/intrinsics/mir.rs:LL:COL
+    let mut _0: &i32;
+    let mut _2: *const i32;
 
     bb0: {
-        _2 = &raw const (*_1);           // scope 0 at $DIR/references.rs:+5:13: +5:29
-        _0 = &(*_2);                     // scope 0 at $DIR/references.rs:+6:13: +6:23
-        Retag(_0);                       // scope 0 at $DIR/references.rs:+7:13: +7:23
-        return;                          // scope 0 at $DIR/references.rs:+8:13: +8:21
+        _2 = &raw const (*_1);
+        _0 = &(*_2);
+        Retag(_0);
+        return;
     }
 }

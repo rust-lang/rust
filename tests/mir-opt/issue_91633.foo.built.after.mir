@@ -1,57 +1,54 @@
 // MIR for `foo` after built
 
 fn foo(_1: Box<[T]>) -> T {
-    debug it => _1;                      // in scope 0 at $DIR/issue_91633.rs:+0:19: +0:21
-    let mut _0: T;                       // return place in scope 0 at $DIR/issue_91633.rs:+0:36: +0:37
-    let _2: T;                           // in scope 0 at $DIR/issue_91633.rs:+2:10: +2:11
-    let mut _3: &T;                      // in scope 0 at $DIR/issue_91633.rs:+2:14: +2:27
-    let _4: usize;                       // in scope 0 at $DIR/issue_91633.rs:+2:17: +2:18
-    let mut _5: usize;                   // in scope 0 at $DIR/issue_91633.rs:+2:14: +2:19
-    let mut _6: bool;                    // in scope 0 at $DIR/issue_91633.rs:+2:14: +2:19
+    debug it => _1;
+    let mut _0: T;
+    let _2: T;
+    let mut _3: &T;
+    let _4: usize;
+    let mut _5: usize;
+    let mut _6: bool;
     scope 1 {
-        debug f => _2;                   // in scope 1 at $DIR/issue_91633.rs:+2:10: +2:11
+        debug f => _2;
     }
 
     bb0: {
-        StorageLive(_2);                 // scope 0 at $DIR/issue_91633.rs:+2:10: +2:11
-        StorageLive(_3);                 // scope 0 at $DIR/issue_91633.rs:+2:14: +2:27
-        StorageLive(_4);                 // scope 0 at $DIR/issue_91633.rs:+2:17: +2:18
-        _4 = const 0_usize;              // scope 0 at $DIR/issue_91633.rs:+2:17: +2:18
-        _5 = Len((*_1));                 // scope 0 at $DIR/issue_91633.rs:+2:14: +2:19
-        _6 = Lt(_4, _5);                 // scope 0 at $DIR/issue_91633.rs:+2:14: +2:19
-        assert(move _6, "index out of bounds: the length is {} but the index is {}", move _5, _4) -> [success: bb1, unwind: bb5]; // scope 0 at $DIR/issue_91633.rs:+2:14: +2:19
+        StorageLive(_2);
+        StorageLive(_3);
+        StorageLive(_4);
+        _4 = const 0_usize;
+        _5 = Len((*_1));
+        _6 = Lt(_4, _5);
+        assert(move _6, "index out of bounds: the length is {} but the index is {}", move _5, _4) -> [success: bb1, unwind: bb5];
     }
 
     bb1: {
-        _3 = &(*_1)[_4];                 // scope 0 at $DIR/issue_91633.rs:+2:14: +2:27
-        _2 = <T as Clone>::clone(move _3) -> [return: bb2, unwind: bb5]; // scope 0 at $DIR/issue_91633.rs:+2:14: +2:27
-                                         // mir::Constant
-                                         // + span: $DIR/issue_91633.rs:28:20: 28:25
-                                         // + literal: Const { ty: for<'a> fn(&'a T) -> T {<T as Clone>::clone}, val: Value(<ZST>) }
+        _3 = &(*_1)[_4];
+        _2 = <T as Clone>::clone(move _3) -> [return: bb2, unwind: bb5];
     }
 
     bb2: {
-        StorageDead(_3);                 // scope 0 at $DIR/issue_91633.rs:+2:26: +2:27
-        FakeRead(ForLet(None), _2);      // scope 0 at $DIR/issue_91633.rs:+2:10: +2:11
-        StorageDead(_4);                 // scope 0 at $DIR/issue_91633.rs:+2:27: +2:28
-        _0 = move _2;                    // scope 1 at $DIR/issue_91633.rs:+3:6: +3:7
-        drop(_2) -> [return: bb3, unwind: bb5]; // scope 0 at $DIR/issue_91633.rs:+4:2: +4:3
+        StorageDead(_3);
+        FakeRead(ForLet(None), _2);
+        StorageDead(_4);
+        _0 = move _2;
+        drop(_2) -> [return: bb3, unwind: bb5];
     }
 
     bb3: {
-        StorageDead(_2);                 // scope 0 at $DIR/issue_91633.rs:+4:2: +4:3
-        drop(_1) -> [return: bb4, unwind: bb6]; // scope 0 at $DIR/issue_91633.rs:+4:2: +4:3
+        StorageDead(_2);
+        drop(_1) -> [return: bb4, unwind: bb6];
     }
 
     bb4: {
-        return;                          // scope 0 at $DIR/issue_91633.rs:+4:3: +4:3
+        return;
     }
 
     bb5 (cleanup): {
-        drop(_1) -> [return: bb6, unwind terminate]; // scope 0 at $DIR/issue_91633.rs:+4:2: +4:3
+        drop(_1) -> [return: bb6, unwind terminate];
     }
 
     bb6 (cleanup): {
-        resume;                          // scope 0 at $DIR/issue_91633.rs:+0:1: +4:3
+        resume;
     }
 }

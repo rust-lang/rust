@@ -2,20 +2,20 @@
 + // MIR for `expose_addr` after SimplifyLocals-before-const-prop
   
   fn expose_addr(_1: *const usize) -> () {
-      debug p => _1;                       // in scope 0 at $DIR/simplify_locals.rs:+0:16: +0:17
-      let mut _0: ();                      // return place in scope 0 at $DIR/simplify_locals.rs:+0:33: +0:33
-      let _2: usize;                       // in scope 0 at $DIR/simplify_locals.rs:+2:5: +2:15
-      let mut _3: *const usize;            // in scope 0 at $DIR/simplify_locals.rs:+2:5: +2:6
+      debug p => _1;
+      let mut _0: ();
+      let _2: usize;
+      let mut _3: *const usize;
   
       bb0: {
-          StorageLive(_2);                 // scope 0 at $DIR/simplify_locals.rs:+2:5: +2:15
-          StorageLive(_3);                 // scope 0 at $DIR/simplify_locals.rs:+2:5: +2:6
-          _3 = _1;                         // scope 0 at $DIR/simplify_locals.rs:+2:5: +2:6
-          _2 = move _3 as usize (PointerExposeAddress); // scope 0 at $DIR/simplify_locals.rs:+2:5: +2:15
-          StorageDead(_3);                 // scope 0 at $DIR/simplify_locals.rs:+2:14: +2:15
-          StorageDead(_2);                 // scope 0 at $DIR/simplify_locals.rs:+2:15: +2:16
-          _0 = const ();                   // scope 0 at $DIR/simplify_locals.rs:+0:33: +3:2
-          return;                          // scope 0 at $DIR/simplify_locals.rs:+3:2: +3:2
+          StorageLive(_2);
+          StorageLive(_3);
+          _3 = _1;
+          _2 = move _3 as usize (PointerExposeAddress);
+          StorageDead(_3);
+          StorageDead(_2);
+          _0 = const ();
+          return;
       }
   }
   

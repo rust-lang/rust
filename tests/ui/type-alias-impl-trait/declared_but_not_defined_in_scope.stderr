@@ -19,6 +19,11 @@ LL |     ""
    |
    = note: expected opaque type `Boo`
                 found reference `&'static str`
+note: this item must have the opaque type in its signature in order to be able to register hidden types
+  --> $DIR/declared_but_not_defined_in_scope.rs:10:4
+   |
+LL | fn bomp() -> boo::Boo {
+   |    ^^^^
 
 error: aborting due to 2 previous errors
 

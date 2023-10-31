@@ -18,7 +18,7 @@ pub mod raw;
 #[cfg(all(
     doc,
     any(
-        all(target_arch = "wasm32", not(target_os = "wasi")),
+        all(target_family = "wasm", not(target_os = "wasi")),
         all(target_vendor = "fortanix", target_env = "sgx")
     )
 ))]
@@ -27,7 +27,7 @@ pub mod unix {}
 #[cfg(all(
     doc,
     any(
-        all(target_arch = "wasm32", not(target_os = "wasi")),
+        all(target_family = "wasm", not(target_os = "wasi")),
         all(target_vendor = "fortanix", target_env = "sgx")
     )
 ))]
@@ -36,7 +36,7 @@ pub mod linux {}
 #[cfg(all(
     doc,
     any(
-        all(target_arch = "wasm32", not(target_os = "wasi")),
+        all(target_family = "wasm", not(target_os = "wasi")),
         all(target_vendor = "fortanix", target_env = "sgx")
     )
 ))]
@@ -45,7 +45,7 @@ pub mod wasi {}
 #[cfg(all(
     doc,
     any(
-        all(target_arch = "wasm32", not(target_os = "wasi")),
+        all(target_family = "wasm", not(target_os = "wasi")),
         all(target_vendor = "fortanix", target_env = "sgx")
     )
 ))]
@@ -56,7 +56,7 @@ pub mod windows {}
 #[cfg(not(all(
     doc,
     any(
-        all(target_arch = "wasm32", not(target_os = "wasi")),
+        all(target_family = "wasm", not(target_os = "wasi")),
         all(target_vendor = "fortanix", target_env = "sgx")
     )
 )))]
@@ -67,29 +67,38 @@ pub mod unix;
 #[cfg(not(all(
     doc,
     any(
-        all(target_arch = "wasm32", not(target_os = "wasi")),
+        all(target_family = "wasm", not(target_os = "wasi")),
         all(target_vendor = "fortanix", target_env = "sgx")
     )
 )))]
 #[cfg(any(target_os = "linux", doc))]
 pub mod linux;
 
-// wasi
+// wasi (re-exported as unix when using 'wasmer' for compatibility)
 #[cfg(not(all(
     doc,
     any(
-        all(target_arch = "wasm32", not(target_os = "wasi")),
+        all(target_family = "wasm", not(target_os = "wasi")),
         all(target_vendor = "fortanix", target_env = "sgx")
     )
 )))]
-#[cfg(any(target_os = "wasi", doc))]
+#[cfg(any(all(target_os = "wasi", not(target_vendor = "wasmer")), doc))]
 pub mod wasi;
+#[cfg(any(all(target_os = "wasi", target_vendor = "wasmer")))]
+#[path = "wasix/mod.rs"]
+pub mod wasi;
+#[cfg(any(all(target_os = "wasi", target_vendor = "wasmer")))]
+#[stable(feature = "rust1", since = "1.0.0")]
+pub mod unix {
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub use super::wasi::*;
+}
 
 // windows
 #[cfg(not(all(
     doc,
     any(
-        all(target_arch = "wasm32", not(target_os = "wasi")),
+        all(target_family = "wasm", not(target_os = "wasi")),
         all(target_vendor = "fortanix", target_env = "sgx")
     )
 )))]
@@ -137,6 +146,9 @@ pub mod redox;
 pub mod solaris;
 #[cfg(target_os = "solid_asp3")]
 pub mod solid;
+#[cfg(target_os = "tvos")]
+#[path = "ios/mod.rs"]
+pub(crate) mod tvos;
 #[cfg(target_os = "vita")]
 pub mod vita;
 #[cfg(target_os = "vxworks")]

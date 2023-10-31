@@ -1,4 +1,4 @@
-//@ignore-windows
+//@ignore-target-windows
 //@run-rustfix
 #![warn(clippy::non_octal_unix_permissions)]
 use std::fs::{DirBuilder, File, OpenOptions, Permissions};

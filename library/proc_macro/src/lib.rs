@@ -24,7 +24,6 @@
 #![feature(staged_api)]
 #![feature(allow_internal_unstable)]
 #![feature(decl_macro)]
-#![feature(local_key_cell_methods)]
 #![feature(maybe_uninit_write_slice)]
 #![feature(negative_impls)]
 #![feature(new_uninit)]
@@ -33,6 +32,7 @@
 #![feature(min_specialization)]
 #![feature(strict_provenance)]
 #![recursion_limit = "256"]
+#![cfg_attr(not(bootstrap), allow(internal_features))]
 
 #[unstable(feature = "proc_macro_internals", issue = "27812")]
 #[doc(hidden)]
@@ -43,7 +43,6 @@ mod diagnostic;
 #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
 pub use diagnostic::{Diagnostic, Level, MultiSpan};
 
-use std::cmp::Ordering;
 use std::ops::{Range, RangeBounds};
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -178,6 +177,7 @@ impl FromStr for TokenStream {
 
 // N.B., the bridge only provides `to_string`, implement `fmt::Display`
 // based on it (the reverse of the usual relationship between the two).
+#[doc(hidden)]
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
 impl ToString for TokenStream {
     fn to_string(&self) -> String {
@@ -494,28 +494,32 @@ impl Span {
         self.0.byte_range()
     }
 
-    /// Gets the starting line/column in the source file for this span.
-    #[unstable(feature = "proc_macro_span", issue = "54725")]
-    pub fn start(&self) -> LineColumn {
-        self.0.start().add_1_to_column()
-    }
-
-    /// Gets the ending line/column in the source file for this span.
-    #[unstable(feature = "proc_macro_span", issue = "54725")]
-    pub fn end(&self) -> LineColumn {
-        self.0.end().add_1_to_column()
-    }
-
     /// Creates an empty span pointing to directly before this span.
-    #[unstable(feature = "proc_macro_span_shrink", issue = "87552")]
-    pub fn before(&self) -> Span {
-        Span(self.0.before())
+    #[unstable(feature = "proc_macro_span", issue = "54725")]
+    pub fn start(&self) -> Span {
+        Span(self.0.start())
     }
 
     /// Creates an empty span pointing to directly after this span.
-    #[unstable(feature = "proc_macro_span_shrink", issue = "87552")]
-    pub fn after(&self) -> Span {
-        Span(self.0.after())
+    #[unstable(feature = "proc_macro_span", issue = "54725")]
+    pub fn end(&self) -> Span {
+        Span(self.0.end())
+    }
+
+    /// The one-indexed line of the source file where the span starts.
+    ///
+    /// To obtain the line of the span's end, use `span.end().line()`.
+    #[unstable(feature = "proc_macro_span", issue = "54725")]
+    pub fn line(&self) -> usize {
+        self.0.line()
+    }
+
+    /// The one-indexed column of the source file where the span starts.
+    ///
+    /// To obtain the column of the span's end, use `span.end().column()`.
+    #[unstable(feature = "proc_macro_span", issue = "54725")]
+    pub fn column(&self) -> usize {
+        self.0.column()
     }
 
     /// Creates a new span encompassing `self` and `other`.
@@ -583,44 +587,6 @@ impl Span {
 impl fmt::Debug for Span {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)
-    }
-}
-
-/// A line-column pair representing the start or end of a `Span`.
-#[unstable(feature = "proc_macro_span", issue = "54725")]
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub struct LineColumn {
-    /// The 1-indexed line in the source file on which the span starts or ends (inclusive).
-    #[unstable(feature = "proc_macro_span", issue = "54725")]
-    pub line: usize,
-    /// The 1-indexed column (number of bytes in UTF-8 encoding) in the source
-    /// file on which the span starts or ends (inclusive).
-    #[unstable(feature = "proc_macro_span", issue = "54725")]
-    pub column: usize,
-}
-
-impl LineColumn {
-    fn add_1_to_column(self) -> Self {
-        LineColumn { line: self.line, column: self.column + 1 }
-    }
-}
-
-#[unstable(feature = "proc_macro_span", issue = "54725")]
-impl !Send for LineColumn {}
-#[unstable(feature = "proc_macro_span", issue = "54725")]
-impl !Sync for LineColumn {}
-
-#[unstable(feature = "proc_macro_span", issue = "54725")]
-impl Ord for LineColumn {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.line.cmp(&other.line).then(self.column.cmp(&other.column))
-    }
-}
-
-#[unstable(feature = "proc_macro_span", issue = "54725")]
-impl PartialOrd for LineColumn {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
     }
 }
 
@@ -773,6 +739,7 @@ impl From<Literal> for TokenTree {
 
 // N.B., the bridge only provides `to_string`, implement `fmt::Display`
 // based on it (the reverse of the usual relationship between the two).
+#[doc(hidden)]
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
 impl ToString for TokenTree {
     fn to_string(&self) -> String {
@@ -907,6 +874,7 @@ impl Group {
 
 // N.B., the bridge only provides `to_string`, implement `fmt::Display`
 // based on it (the reverse of the usual relationship between the two).
+#[doc(hidden)]
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
 impl ToString for Group {
     fn to_string(&self) -> String {
@@ -948,21 +916,34 @@ impl !Send for Punct {}
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl !Sync for Punct {}
 
-/// Describes whether a `Punct` is followed immediately by another `Punct` ([`Spacing::Joint`]) or
-/// by a different token or whitespace ([`Spacing::Alone`]).
+/// Indicates whether a `Punct` token can join with the following token
+/// to form a multi-character operator.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 pub enum Spacing {
-    /// A `Punct` is not immediately followed by another `Punct`.
-    /// E.g. `+` is `Alone` in `+ =`, `+ident` and `+()`.
-    #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
-    Alone,
-    /// A `Punct` is immediately followed by another `Punct`.
-    /// E.g. `+` is `Joint` in `+=` and `++`.
+    /// A `Punct` token can join with the following token to form a multi-character operator.
     ///
-    /// Additionally, single quote `'` can join with identifiers to form lifetimes: `'ident`.
+    /// In token streams constructed using proc macro interfaces `Joint` punctuation tokens can be
+    /// followed by any other tokens. \
+    /// However, in token streams parsed from source code compiler will only set spacing to `Joint`
+    /// in the following cases:
+    /// - A `Punct` is immediately followed by another `Punct` without a whitespace. \
+    ///   E.g. `+` is `Joint` in `+=` and `++`.
+    /// - A single quote `'` is immediately followed by an identifier without a whitespace. \
+    ///   E.g. `'` is `Joint` in `'lifetime`.
+    ///
+    /// This list may be extended in the future to enable more token combinations.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     Joint,
+    /// A `Punct` token cannot join with the following token to form a multi-character operator.
+    ///
+    /// `Alone` punctuation tokens can be followed by any other tokens. \
+    /// In token streams parsed from source code compiler will set spacing to `Alone` in all cases
+    /// not covered by the conditions for `Joint` above. \
+    /// E.g. `+` is `Alone` in `+ =`, `+ident` and `+()`.
+    /// In particular, token not followed by anything  will also be marked as `Alone`.
+    #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
+    Alone,
 }
 
 impl Punct {
@@ -994,10 +975,9 @@ impl Punct {
         self.0.ch as char
     }
 
-    /// Returns the spacing of this punctuation character, indicating whether it's immediately
-    /// followed by another `Punct` in the token stream, so they can potentially be combined into
-    /// a multi-character operator (`Joint`), or it's followed by some other token or whitespace
-    /// (`Alone`) so the operator has certainly ended.
+    /// Returns the spacing of this punctuation character, indicating whether it can be potentially
+    /// combined into a multi-character operator with the following token (`Joint`), or the operator
+    /// has certainly ended (`Alone`).
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn spacing(&self) -> Spacing {
         if self.0.joint { Spacing::Joint } else { Spacing::Alone }
@@ -1016,6 +996,7 @@ impl Punct {
     }
 }
 
+#[doc(hidden)]
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl ToString for Punct {
     fn to_string(&self) -> String {
@@ -1118,8 +1099,7 @@ impl Ident {
     }
 }
 
-/// Converts the identifier to a string that should be losslessly convertible
-/// back into the same identifier.
+#[doc(hidden)]
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl ToString for Ident {
     fn to_string(&self) -> String {
@@ -1458,6 +1438,7 @@ impl FromStr for Literal {
     }
 }
 
+#[doc(hidden)]
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl ToString for Literal {
     fn to_string(&self) -> String {

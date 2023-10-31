@@ -58,8 +58,8 @@ Example: `-l static:+whole-archive=mylib`.
 
 The kind of library and the modifiers can also be specified in a [`#[link]`
 attribute][link-attribute]. If the kind is not specified in the `link`
-attribute or on the command-line, it will link a dynamic library if available,
-otherwise it will use a static library. If the kind is specified on the
+attribute or on the command-line, it will link a dynamic library by default,
+except when building a static executable. If the kind is specified on the
 command-line, it will override the kind specified in a `link` attribute.
 
 The name used in a `link` attribute may be overridden using the form `-l
@@ -202,6 +202,12 @@ flag](codegen-options/index.md#extra-filename). The files are written to the
 current directory unless the [`--out-dir` flag](#option-out-dir) is used. Each
 emission type may also specify the output filename with the form `KIND=PATH`,
 which takes precedence over the `-o` flag.
+Specifying `-o -` or `--emit KIND=-` asks rustc to emit to stdout.
+Text output types (`asm`, `dep-info`, `llvm-ir` and `mir`) can be written to
+stdout despite it being a tty or not. This will result in an error if any
+binary output type is written to stdout that is a tty.
+This will also result in an error if multiple output types
+would be written to stdout, because they would be all mixed together.
 
 [LLVM bitcode]: https://llvm.org/docs/BitCodeFormat.html
 [LLVM IR]: https://llvm.org/docs/LangRef.html

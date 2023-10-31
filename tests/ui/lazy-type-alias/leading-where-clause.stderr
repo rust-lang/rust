@@ -1,0 +1,16 @@
+error: where clauses are not allowed before the type for type aliases
+  --> $DIR/leading-where-clause.rs:9:1
+   |
+LL | / where
+LL | |     String: From<T>,
+   | |____________________^
+   |
+   = note: see issue #89122 <https://github.com/rust-lang/rust/issues/89122> for more information
+help: move it to the end of the type declaration
+   |
+LL + 
+LL ~ = T where String: From<T>;
+   |
+
+error: aborting due to previous error
+

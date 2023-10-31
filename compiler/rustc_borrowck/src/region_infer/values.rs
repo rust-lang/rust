@@ -470,7 +470,7 @@ fn region_value_str(elements: impl IntoIterator<Item = RegionElement>) -> String
                 }
 
                 push_sep(&mut result);
-                result.push_str(&format!("{:?}", fr));
+                result.push_str(&format!("{fr:?}"));
             }
 
             RegionElement::PlaceholderRegion(placeholder) => {
@@ -481,7 +481,7 @@ fn region_value_str(elements: impl IntoIterator<Item = RegionElement>) -> String
                 }
 
                 push_sep(&mut result);
-                result.push_str(&format!("{:?}", placeholder));
+                result.push_str(&format!("{placeholder:?}"));
             }
         }
     }
@@ -497,7 +497,7 @@ fn region_value_str(elements: impl IntoIterator<Item = RegionElement>) -> String
 
     fn push_location_range(str: &mut String, location1: Location, location2: Location) {
         if location1 == location2 {
-            str.push_str(&format!("{:?}", location1));
+            str.push_str(&format!("{location1:?}"));
         } else {
             assert_eq!(location1.block, location2.block);
             str.push_str(&format!(

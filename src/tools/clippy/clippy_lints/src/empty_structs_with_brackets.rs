@@ -1,4 +1,5 @@
-use clippy_utils::{diagnostics::span_lint_and_then, source::snippet_opt};
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::source::snippet_opt;
 use rustc_ast::ast::{Item, ItemKind, VariantData};
 use rustc_errors::Applicability;
 use rustc_lexer::TokenKind;

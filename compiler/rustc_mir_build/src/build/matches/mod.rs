@@ -607,9 +607,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     // };
                     // ```
                     if let Some(place) = initializer.try_to_place(self) {
-                        let LocalInfo::User(BindingForm::Var(
-                            VarBindingForm { opt_match_place: Some((ref mut match_place, _)), .. },
-                        )) = **self.local_decls[local].local_info.as_mut().assert_crate_local() else {
+                        let LocalInfo::User(BindingForm::Var(VarBindingForm {
+                            opt_match_place: Some((ref mut match_place, _)),
+                            ..
+                        })) = **self.local_decls[local].local_info.as_mut().assert_crate_local()
+                        else {
                             bug!("Let binding to non-user variable.")
                         };
                         *match_place = Some(place);
@@ -804,7 +806,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
             }
 
-            PatKind::Variant { adt_def, substs: _, variant_index, ref subpatterns } => {
+            PatKind::Variant { adt_def, args: _, variant_index, ref subpatterns } => {
                 for subpattern in subpatterns {
                     let subpattern_user_ty =
                         pattern_user_ty.clone().variant(adt_def, variant_index, subpattern.field);
@@ -1625,9 +1627,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // at least the first candidate ought to be tested
         assert!(
             total_candidate_count > candidates.len(),
-            "{}, {:#?}",
-            total_candidate_count,
-            candidates
+            "{total_candidate_count}, {candidates:#?}"
         );
         debug!("tested_candidates: {}", total_candidate_count - candidates.len());
         debug!("untested_candidates: {}", candidates.len());
@@ -1751,7 +1751,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     projection: tcx.mk_place_elems(matched_place_ref.projection),
                 };
                 let fake_borrow_deref_ty = matched_place.ty(&self.local_decls, tcx).ty;
-                let fake_borrow_ty = tcx.mk_imm_ref(tcx.lifetimes.re_erased, fake_borrow_deref_ty);
+                let fake_borrow_ty =
+                    Ty::new_imm_ref(tcx, tcx.lifetimes.re_erased, fake_borrow_deref_ty);
                 let mut fake_borrow_temp = LocalDecl::new(fake_borrow_ty, temp_span);
                 fake_borrow_temp.internal = self.local_decls[matched_place.local].internal;
                 fake_borrow_temp.local_info = ClearCrossCrate::Set(Box::new(LocalInfo::FakeBorrow));
@@ -2241,7 +2242,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.var_debug_info.push(VarDebugInfo {
             name,
             source_info: debug_source_info,
-            references: 0,
             value: VarDebugInfoContents::Place(for_arm_body.into()),
             argument_index: None,
         });
@@ -2250,7 +2250,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // This variable isn't mutated but has a name, so has to be
                 // immutable to avoid the unused mut lint.
                 mutability: Mutability::Not,
-                ty: tcx.mk_imm_ref(tcx.lifetimes.re_erased, var_ty),
+                ty: Ty::new_imm_ref(tcx, tcx.lifetimes.re_erased, var_ty),
                 user_ty: None,
                 source_info,
                 internal: false,
@@ -2261,7 +2261,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.var_debug_info.push(VarDebugInfo {
                 name,
                 source_info: debug_source_info,
-                references: 0,
                 value: VarDebugInfoContents::Place(ref_for_guard.into()),
                 argument_index: None,
             });

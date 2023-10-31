@@ -12,29 +12,6 @@ body:
       description: What does this lint do?
     validations:
       required: true
-  - type: input
-    id: lint-name
-    attributes:
-      label: Lint Name
-      description: Please provide the lint name.
-  - type: dropdown
-    id: category
-    attributes:
-      label: Category
-      description: >
-        What category should this lint go into? If you're unsure you can select
-        multiple categories. You can find a category description in the
-        `README`.
-      multiple: true
-      options:
-        - correctness
-        - suspicious
-        - style
-        - complexity
-        - perf
-        - pedantic
-        - restriction
-        - cargo
   - type: textarea
     id: advantage
     attributes:

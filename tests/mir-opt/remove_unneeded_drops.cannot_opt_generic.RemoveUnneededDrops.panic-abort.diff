@@ -1,0 +1,27 @@
+- // MIR for `cannot_opt_generic` before RemoveUnneededDrops
++ // MIR for `cannot_opt_generic` after RemoveUnneededDrops
+  
+  fn cannot_opt_generic(_1: T) -> () {
+      debug x => _1;
+      let mut _0: ();
+      let _2: ();
+      let mut _3: T;
+      scope 1 (inlined std::mem::drop::<T>) {
+          debug _x => _3;
+      }
+  
+      bb0: {
+          nop;
+          StorageLive(_3);
+          _3 = move _1;
+          drop(_3) -> [return: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+          StorageDead(_3);
+          nop;
+          nop;
+          return;
+      }
+  }
+  

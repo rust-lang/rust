@@ -6,7 +6,6 @@ use std::io::BufReader;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use build_helper::ci::CiEnv;
 use tracing::*;
 
 use crate::common::{Config, Debugger, FailMode, Mode, PassMode};
@@ -161,7 +160,7 @@ pub struct TestProps {
     // customized normalization rules
     pub normalize_stdout: Vec<(String, String)>,
     pub normalize_stderr: Vec<(String, String)>,
-    pub failure_status: i32,
+    pub failure_status: Option<i32>,
     // For UI tests, allows compiler to exit with arbitrary failure status
     pub dont_check_failure_status: bool,
     // Whether or not `rustfix` should apply the `CodeSuggestion`s of this test and compile the
@@ -232,7 +231,7 @@ impl TestProps {
             aux_builds: vec![],
             aux_crates: vec![],
             revisions: vec![],
-            rustc_env: vec![],
+            rustc_env: vec![("RUSTC_ICE".to_string(), "0".to_string())],
             unset_rustc_env: vec![],
             exec_env: vec![],
             unset_exec_env: vec![],
@@ -257,7 +256,7 @@ impl TestProps {
             check_test_line_numbers_match: false,
             normalize_stdout: vec![],
             normalize_stderr: vec![],
-            failure_status: -1,
+            failure_status: None,
             dont_check_failure_status: false,
             run_rustfix: false,
             rustfix_only_machine_applicable: false,
@@ -298,13 +297,6 @@ impl TestProps {
     /// `//[foo]`), then the property is ignored unless `cfg` is
     /// `Some("foo")`.
     fn load_from(&mut self, testfile: &Path, cfg: Option<&str>, config: &Config) {
-        // In CI, we've sometimes encountered non-determinism related to truncating very long paths.
-        // Set a consistent (short) prefix to avoid issues, but only in CI to avoid regressing the
-        // contributor experience.
-        if CiEnv::is_ci() {
-            self.remap_src_base = config.mode == Mode::Ui && !config.suite.contains("rustdoc");
-        }
-
         let mut has_edition = false;
         if !testfile.is_dir() {
             let file = File::open(testfile).unwrap();
@@ -428,7 +420,7 @@ impl TestProps {
                     .parse_name_value_directive(ln, FAILURE_STATUS)
                     .and_then(|code| code.trim().parse::<i32>().ok())
                 {
-                    self.failure_status = code;
+                    self.failure_status = Some(code);
                 }
 
                 config.set_name_directive(
@@ -491,11 +483,8 @@ impl TestProps {
             });
         }
 
-        if self.failure_status == -1 {
-            self.failure_status = 1;
-        }
         if self.should_ice {
-            self.failure_status = 101;
+            self.failure_status = Some(101);
         }
 
         if config.mode == Mode::Incremental {
@@ -544,16 +533,15 @@ impl TestProps {
     }
 
     fn update_pass_mode(&mut self, ln: &str, revision: Option<&str>, config: &Config) {
-        let check_no_run = |s| {
-            if config.mode != Mode::Ui && config.mode != Mode::Incremental {
-                panic!("`{}` header is only supported in UI and incremental tests", s);
+        let check_no_run = |s| match (config.mode, s) {
+            (Mode::Ui, _) => (),
+            (Mode::Codegen, "build-pass") => (),
+            (Mode::Incremental, _) => {
+                if revision.is_some() && !self.revisions.iter().all(|r| r.starts_with("cfail")) {
+                    panic!("`{s}` header is only supported in `cfail` incremental tests")
+                }
             }
-            if config.mode == Mode::Incremental
-                && !revision.map_or(false, |r| r.starts_with("cfail"))
-                && !self.revisions.iter().all(|r| r.starts_with("cfail"))
-            {
-                panic!("`{}` header is only supported in `cfail` incremental tests", s);
-            }
+            (mode, _) => panic!("`{s}` header is not supported in `{mode}` tests"),
         };
         let pass_mode = if config.parse_name_directive(ln, "check-pass") {
             check_no_run("check-pass");
@@ -562,9 +550,7 @@ impl TestProps {
             check_no_run("build-pass");
             Some(PassMode::Build)
         } else if config.parse_name_directive(ln, "run-pass") {
-            if config.mode != Mode::Ui {
-                panic!("`run-pass` header is only supported in UI tests")
-            }
+            check_no_run("run-pass");
             Some(PassMode::Run)
         } else {
             None
@@ -591,21 +577,25 @@ impl TestProps {
     }
 }
 
+/// Extract a `(Option<line_config>, directive)` directive from a line if comment is present.
 pub fn line_directive<'line>(
     comment: &str,
     ln: &'line str,
 ) -> Option<(Option<&'line str>, &'line str)> {
+    let ln = ln.trim_start();
     if ln.starts_with(comment) {
         let ln = ln[comment.len()..].trim_start();
         if ln.starts_with('[') {
             // A comment like `//[foo]` is specific to revision `foo`
-            if let Some(close_brace) = ln.find(']') {
-                let lncfg = &ln[1..close_brace];
+            let Some(close_brace) = ln.find(']') else {
+                panic!(
+                    "malformed condition directive: expected `{}[foo]`, found `{}`",
+                    comment, ln
+                );
+            };
 
-                Some((Some(lncfg), ln[(close_brace + 1)..].trim_start()))
-            } else {
-                panic!("malformed condition directive: expected `{}[foo]`, found `{}`", comment, ln)
-            }
+            let lncfg = &ln[1..close_brace];
+            Some((Some(lncfg), ln[(close_brace + 1)..].trim_start()))
         } else {
             Some((None, ln))
         }
@@ -615,8 +605,23 @@ pub fn line_directive<'line>(
 }
 
 fn iter_header<R: Read>(testfile: &Path, rdr: R, it: &mut dyn FnMut(Option<&str>, &str, usize)) {
+    iter_header_extra(testfile, rdr, &[], it)
+}
+
+fn iter_header_extra(
+    testfile: &Path,
+    rdr: impl Read,
+    extra_directives: &[&str],
+    it: &mut dyn FnMut(Option<&str>, &str, usize),
+) {
     if testfile.is_dir() {
         return;
+    }
+
+    // Process any extra directives supplied by the caller (e.g. because they
+    // are implied by the test mode), with a dummy line number of 0.
+    for directive in extra_directives {
+        it(None, directive, 0);
     }
 
     let comment = if testfile.extension().map(|e| e == "rs") == Some(true) { "//" } else { "#" };
@@ -897,7 +902,27 @@ pub fn make_test_description<R: Read>(
     let mut ignore_message = None;
     let mut should_fail = false;
 
-    iter_header(path, src, &mut |revision, ln, line_number| {
+    let extra_directives: &[&str] = match config.mode {
+        // The run-coverage tests are treated as having these extra directives,
+        // without needing to specify them manually in every test file.
+        // (Some of the comments below have been copied over from
+        // `tests/run-make/coverage-reports/Makefile`, which no longer exists.)
+        Mode::RunCoverage => {
+            &[
+                "needs-profiler-support",
+                // FIXME(mati865): MinGW GCC miscompiles compiler-rt profiling library but with Clang it works
+                // properly. Since we only have GCC on the CI ignore the test for now.
+                "ignore-windows-gnu",
+                // FIXME(pietroalbini): this test currently does not work on cross-compiled
+                // targets because remote-test is not capable of sending back the *.profraw
+                // files generated by the LLVM instrumentation.
+                "ignore-cross-compile",
+            ]
+        }
+        _ => &[],
+    };
+
+    iter_header_extra(path, src, extra_directives, &mut |revision, ln, line_number| {
         if revision.is_some() && revision != cfg {
             return;
         }

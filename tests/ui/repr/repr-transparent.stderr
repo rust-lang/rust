@@ -20,13 +20,13 @@ error[E0691]: zero-sized field in transparent struct has alignment larger than 1
   --> $DIR/repr-transparent.rs:36:32
    |
 LL | struct NontrivialAlignZst(u32, [u16; 0]);
-   |                                ^^^^^^^^ has alignment larger than 1
+   |                                ^^^^^^^^ has alignment of 2, which is larger than 1
 
 error[E0691]: zero-sized field in transparent struct has alignment larger than 1
   --> $DIR/repr-transparent.rs:42:24
    |
 LL | struct GenericAlign<T>(ZstAlign32<T>, u32);
-   |                        ^^^^^^^^^^^^^ has alignment larger than 1
+   |                        ^^^^^^^^^^^^^ has alignment of 32, which is larger than 1
 
 error[E0084]: unsupported representation for zero-variant enum
   --> $DIR/repr-transparent.rs:44:1
@@ -66,13 +66,13 @@ error[E0691]: zero-sized field in transparent enum has alignment larger than 1
   --> $DIR/repr-transparent.rs:71:14
    |
 LL |     Foo(u32, [u16; 0]),
-   |              ^^^^^^^^ has alignment larger than 1
+   |              ^^^^^^^^ has alignment of 2, which is larger than 1
 
 error[E0691]: zero-sized field in transparent enum has alignment larger than 1
   --> $DIR/repr-transparent.rs:76:11
    |
 LL |     Foo { bar: ZstAlign32<T>, baz: u32 }
-   |           ^^^^^^^^^^^^^^^^^^ has alignment larger than 1
+   |           ^^^^^^^^^^^^^^^^^^ has alignment of 32, which is larger than 1
 
 error[E0690]: transparent union needs at most one non-zero-sized field, but has 2
   --> $DIR/repr-transparent.rs:85:1

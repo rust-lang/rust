@@ -70,7 +70,7 @@ pub(super) fn check<'tcx>(
                 if let hir::ExprKind::Path(ref p) = fun.kind {
                     match cx.qpath_res(p, fun.hir_id) {
                         hir::def::Res::Def(hir::def::DefKind::Fn | hir::def::DefKind::AssocFn, def_id) => matches!(
-                            cx.tcx.fn_sig(def_id).subst_identity().output().skip_binder().kind(),
+                            cx.tcx.fn_sig(def_id).instantiate_identity().output().skip_binder().kind(),
                             ty::Ref(re, ..) if re.is_static(),
                         ),
                         _ => false,
@@ -84,7 +84,7 @@ pub(super) fn check<'tcx>(
                     .type_dependent_def_id(arg.hir_id)
                     .map_or(false, |method_id| {
                         matches!(
-                            cx.tcx.fn_sig(method_id).subst_identity().output().skip_binder().kind(),
+                            cx.tcx.fn_sig(method_id).instantiate_identity().output().skip_binder().kind(),
                             ty::Ref(re, ..) if re.is_static()
                         )
                     })
@@ -144,7 +144,7 @@ pub(super) fn check<'tcx>(
                 EXPECT_FUN_CALL,
                 span_replace_word,
                 &format!("use of `{name}` followed by a function call"),
-                "try this",
+                "try",
                 format!("unwrap_or_else({closure_args} panic!({sugg}))"),
                 applicability,
             );
@@ -162,7 +162,7 @@ pub(super) fn check<'tcx>(
         EXPECT_FUN_CALL,
         span_replace_word,
         &format!("use of `{name}` followed by a function call"),
-        "try this",
+        "try",
         format!("unwrap_or_else({closure_args} {{ panic!(\"{{}}\", {arg_root_snippet}) }})"),
         applicability,
     );

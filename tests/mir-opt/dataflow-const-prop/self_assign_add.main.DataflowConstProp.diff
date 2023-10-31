@@ -2,22 +2,22 @@
 + // MIR for `main` after DataflowConstProp
   
   fn main() -> () {
-      let mut _0: ();                      // return place in scope 0 at $DIR/self_assign_add.rs:+0:11: +0:11
-      let mut _1: i32;                     // in scope 0 at $DIR/self_assign_add.rs:+1:9: +1:14
+      let mut _0: ();
+      let mut _1: i32;
       scope 1 {
-          debug a => _1;                   // in scope 1 at $DIR/self_assign_add.rs:+1:9: +1:14
+          debug a => _1;
       }
   
       bb0: {
-          StorageLive(_1);                 // scope 0 at $DIR/self_assign_add.rs:+1:9: +1:14
-          _1 = const 0_i32;                // scope 0 at $DIR/self_assign_add.rs:+1:17: +1:18
--         _1 = Add(_1, const 1_i32);       // scope 1 at $DIR/self_assign_add.rs:+2:5: +2:11
--         _1 = Add(_1, const 1_i32);       // scope 1 at $DIR/self_assign_add.rs:+3:5: +3:11
-+         _1 = const 1_i32;                // scope 1 at $DIR/self_assign_add.rs:+2:5: +2:11
-+         _1 = const 2_i32;                // scope 1 at $DIR/self_assign_add.rs:+3:5: +3:11
-          _0 = const ();                   // scope 0 at $DIR/self_assign_add.rs:+0:11: +4:2
-          StorageDead(_1);                 // scope 0 at $DIR/self_assign_add.rs:+4:1: +4:2
-          return;                          // scope 0 at $DIR/self_assign_add.rs:+4:2: +4:2
+          StorageLive(_1);
+          _1 = const 0_i32;
+-         _1 = Add(_1, const 1_i32);
+-         _1 = Add(_1, const 1_i32);
++         _1 = const 1_i32;
++         _1 = const 2_i32;
+          _0 = const ();
+          StorageDead(_1);
+          return;
       }
   }
   

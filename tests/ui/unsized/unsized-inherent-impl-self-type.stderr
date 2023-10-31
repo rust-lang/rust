@@ -4,7 +4,7 @@ error[E0277]: the size for values of type `X` cannot be known at compilation tim
 LL | impl<X: ?Sized> S5<X> {
    |      -          ^^^^^ doesn't have a size known at compile-time
    |      |
-   |      this type parameter needs to be `std::marker::Sized`
+   |      this type parameter needs to be `Sized`
    |
 note: required by a bound in `S5`
   --> $DIR/unsized-inherent-impl-self-type.rs:5:11

@@ -4,14 +4,15 @@
 </code></pre>
 {{ self.document() | safe }}
 {% if self.fields_iter().peek().is_some() %}
-    <h2 id="fields" class="fields small-section-header">
-        Fields<a href="#fields" class="anchor">§</a>
+    <h2 id="fields" class="fields small-section-header"> {# #}
+        Fields<a href="#fields" class="anchor">§</a> {# #}
     </h2>
     {% for (field, ty) in self.fields_iter() %}
         {% let name = field.name.expect("union field name") %}
-        <span id="structfield.{{ name }}" class="{{ ItemType::StructField }} small-section-header">
-            <a href="#structfield.{{ name }}" class="anchor field">§</a>
-            <code>{{ name }}: {{ self.print_ty(ty) | safe }}</code>
+        <span id="structfield.{{ name }}" {#+ #}
+            class="{{ ItemType::StructField +}} small-section-header"> {# #}
+            <a href="#structfield.{{ name }}" class="anchor field">§</a> {# #}
+            <code>{{ name }}: {{+ self.print_ty(ty) | safe }}</code> {# #}
         </span>
         {% if let Some(stability_class) = self.stability_field(field) %}
             <span class="stab {{ stability_class }}"></span>

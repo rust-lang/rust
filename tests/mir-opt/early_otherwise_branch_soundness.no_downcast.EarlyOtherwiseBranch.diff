@@ -2,37 +2,37 @@
 + // MIR for `no_downcast` after EarlyOtherwiseBranch
   
   fn no_downcast(_1: &E<'_>) -> u32 {
-      debug e => _1;                       // in scope 0 at $DIR/early_otherwise_branch_soundness.rs:+0:16: +0:17
-      let mut _0: u32;                     // return place in scope 0 at $DIR/early_otherwise_branch_soundness.rs:+0:26: +0:29
-      let mut _2: isize;                   // in scope 0 at $DIR/early_otherwise_branch_soundness.rs:+1:20: +1:30
-      let mut _3: isize;                   // in scope 0 at $DIR/early_otherwise_branch_soundness.rs:+1:12: +1:31
-      let mut _4: &E<'_>;                  // in scope 0 at $DIR/early_otherwise_branch_soundness.rs:+0:16: +0:17
+      debug e => _1;
+      let mut _0: u32;
+      let mut _2: isize;
+      let mut _3: isize;
+      let mut _4: &E<'_>;
       scope 1 {
       }
   
       bb0: {
-          _3 = discriminant((*_1));        // scope 1 at $DIR/early_otherwise_branch_soundness.rs:+1:12: +1:31
-          switchInt(move _3) -> [1: bb1, otherwise: bb3]; // scope 1 at $DIR/early_otherwise_branch_soundness.rs:+1:12: +1:31
+          _3 = discriminant((*_1));
+          switchInt(move _3) -> [1: bb1, otherwise: bb3];
       }
   
       bb1: {
-          _4 = deref_copy (((*_1) as Some).0: &E<'_>); // scope 1 at $DIR/early_otherwise_branch_soundness.rs:+1:12: +1:31
-          _2 = discriminant((*_4));        // scope 1 at $DIR/early_otherwise_branch_soundness.rs:+1:12: +1:31
-          switchInt(move _2) -> [1: bb2, otherwise: bb3]; // scope 1 at $DIR/early_otherwise_branch_soundness.rs:+1:12: +1:31
+          _4 = deref_copy (((*_1) as Some).0: &E<'_>);
+          _2 = discriminant((*_4));
+          switchInt(move _2) -> [1: bb2, otherwise: bb3];
       }
   
       bb2: {
-          _0 = const 1_u32;                // scope 1 at $DIR/early_otherwise_branch_soundness.rs:+1:38: +1:39
-          goto -> bb4;                     // scope 0 at $DIR/early_otherwise_branch_soundness.rs:+1:5: +1:52
+          _0 = const 1_u32;
+          goto -> bb4;
       }
   
       bb3: {
-          _0 = const 2_u32;                // scope 0 at $DIR/early_otherwise_branch_soundness.rs:+1:49: +1:50
-          goto -> bb4;                     // scope 0 at $DIR/early_otherwise_branch_soundness.rs:+1:5: +1:52
+          _0 = const 2_u32;
+          goto -> bb4;
       }
   
       bb4: {
-          return;                          // scope 0 at $DIR/early_otherwise_branch_soundness.rs:+2:2: +2:2
+          return;
       }
   }
   

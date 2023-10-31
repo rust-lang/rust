@@ -265,7 +265,7 @@ fn read_msg_text(inp: &mut dyn BufRead) -> io::Result<Option<String>> {
         let header_name = parts.next().unwrap();
         let header_value =
             parts.next().ok_or_else(|| invalid_data!("malformed header: {:?}", buf))?;
-        if header_name == "Content-Length" {
+        if header_name.eq_ignore_ascii_case("Content-Length") {
             size = Some(header_value.parse::<usize>().map_err(invalid_data)?);
         }
     }

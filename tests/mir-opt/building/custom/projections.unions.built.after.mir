@@ -1,10 +1,10 @@
 // MIR for `unions` after built
 
 fn unions(_1: U) -> i32 {
-    let mut _0: i32;                     // return place in scope 0 at $DIR/projections.rs:+0:20: +0:23
+    let mut _0: i32;
 
     bb0: {
-        _0 = (_1.0: i32);                // scope 0 at $DIR/projections.rs:+2:9: +2:18
-        return;                          // scope 0 at $DIR/projections.rs:+3:9: +3:17
+        _0 = (_1.0: i32);
+        return;
     }
 }

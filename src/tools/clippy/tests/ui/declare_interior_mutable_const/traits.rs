@@ -12,10 +12,10 @@ macro_rules! declare_const {
 
 // a constant whose type is a concrete type should be linted at the definition site.
 trait ConcreteTypes {
-    const ATOMIC: AtomicUsize; //~ ERROR interior mutable
+    const ATOMIC: AtomicUsize; //~ ERROR: interior mutable
     const INTEGER: u64;
     const STRING: String;
-    declare_const!(ANOTHER_ATOMIC: AtomicUsize = Self::ATOMIC); //~ ERROR interior mutable
+    declare_const!(ANOTHER_ATOMIC: AtomicUsize = Self::ATOMIC); //~ ERROR: interior mutable
 }
 
 impl ConcreteTypes for u64 {
@@ -40,7 +40,7 @@ trait GenericTypes<T, U> {
 
 impl<T: ConstDefault> GenericTypes<T, AtomicUsize> for u64 {
     const TO_REMAIN_GENERIC: T = T::DEFAULT;
-    const TO_BE_CONCRETE: AtomicUsize = AtomicUsize::new(11); //~ ERROR interior mutable
+    const TO_BE_CONCRETE: AtomicUsize = AtomicUsize::new(11); //~ ERROR: interior mutable
 }
 
 // a helper type used below
@@ -65,8 +65,8 @@ impl<T: ConstDefault> AssocTypes for Vec<T> {
     type ToBeGenericParam = T;
 
     const TO_BE_FROZEN: Self::ToBeFrozen = 12;
-    const TO_BE_UNFROZEN: Self::ToBeUnfrozen = AtomicUsize::new(13); //~ ERROR interior mutable
-    const WRAPPED_TO_BE_UNFROZEN: Wrapper<Self::ToBeUnfrozen> = Wrapper(AtomicUsize::new(14)); //~ ERROR interior mutable
+    const TO_BE_UNFROZEN: Self::ToBeUnfrozen = AtomicUsize::new(13); //~ ERROR: interior mutable
+    const WRAPPED_TO_BE_UNFROZEN: Wrapper<Self::ToBeUnfrozen> = Wrapper(AtomicUsize::new(14)); //~ ERROR: interior mutable
     const WRAPPED_TO_BE_GENERIC_PARAM: Wrapper<Self::ToBeGenericParam> = Wrapper(T::DEFAULT);
 }
 
@@ -85,7 +85,7 @@ where
     T: AssocTypesHelper<ToBeBounded = AtomicUsize>,
 {
     const NOT_BOUNDED: T::NotToBeBounded;
-    const BOUNDED: T::ToBeBounded; //~ ERROR interior mutable
+    const BOUNDED: T::ToBeBounded; //~ ERROR: interior mutable
 }
 
 impl<T> AssocTypesFromGenericParam<T> for u64
@@ -113,8 +113,8 @@ impl SelfType for u64 {
 impl SelfType for AtomicUsize {
     // this (interior mutable `Self` const) exists in `parking_lot`.
     // `const_trait_impl` will replace it in the future, hopefully.
-    const SELF: Self = AtomicUsize::new(17); //~ ERROR interior mutable
-    const WRAPPED_SELF: Option<Self> = Some(AtomicUsize::new(21)); //~ ERROR interior mutable
+    const SELF: Self = AtomicUsize::new(17); //~ ERROR: interior mutable
+    const WRAPPED_SELF: Option<Self> = Some(AtomicUsize::new(21)); //~ ERROR: interior mutable
 }
 
 // Even though a constant contains a generic type, if it also have an interior mutable type,
@@ -122,7 +122,7 @@ impl SelfType for AtomicUsize {
 trait BothOfCellAndGeneric<T> {
     // this is a false negative in the current implementation.
     const DIRECT: Cell<T>;
-    const INDIRECT: Cell<*const T>; //~ ERROR interior mutable
+    const INDIRECT: Cell<*const T>; //~ ERROR: interior mutable
 }
 
 impl<T: ConstDefault> BothOfCellAndGeneric<T> for u64 {
@@ -138,13 +138,13 @@ impl<T> Local<T>
 where
     T: ConstDefault + AssocTypesHelper<ToBeBounded = AtomicUsize>,
 {
-    const ATOMIC: AtomicUsize = AtomicUsize::new(18); //~ ERROR interior mutable
+    const ATOMIC: AtomicUsize = AtomicUsize::new(18); //~ ERROR: interior mutable
     const COW: Cow<'static, str> = Cow::Borrowed("tuvwxy");
 
     const GENERIC_TYPE: T = T::DEFAULT;
 
     const ASSOC_TYPE: T::NotToBeBounded = T::NOT_TO_BE_BOUNDED;
-    const BOUNDED_ASSOC_TYPE: T::ToBeBounded = AtomicUsize::new(19); //~ ERROR interior mutable
+    const BOUNDED_ASSOC_TYPE: T::ToBeBounded = AtomicUsize::new(19); //~ ERROR: interior mutable
 }
 
 fn main() {}

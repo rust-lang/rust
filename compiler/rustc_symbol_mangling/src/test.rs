@@ -7,7 +7,7 @@
 use crate::errors::{Kind, TestOutput};
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{subst::InternalSubsts, Instance, TyCtxt};
+use rustc_middle::ty::{GenericArgs, Instance, TyCtxt};
 use rustc_span::symbol::{sym, Symbol};
 
 const SYMBOL_NAME: Symbol = sym::rustc_symbol_name;
@@ -57,7 +57,7 @@ impl SymbolNamesTest<'_> {
             let def_id = def_id.to_def_id();
             let instance = Instance::new(
                 def_id,
-                tcx.erase_regions(InternalSubsts::identity_for_item(tcx, def_id)),
+                tcx.erase_regions(GenericArgs::identity_for_item(tcx, def_id)),
             );
             let mangled = tcx.symbol_name(instance);
             tcx.sess.emit_err(TestOutput {

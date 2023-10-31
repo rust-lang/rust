@@ -66,8 +66,8 @@ fn def_et4() -> Box<dyn Tr1<As1: for<'a> Tr2<'a>>> {
 pub fn use_et4() { assert_forall_tr2(def_et4().mk()); }
 
 fn main() {
-    let _ = use_et1();
-    let _ = use_et2();
-    let _ = use_et3();
-    let _ = use_et4();
+    use_et1();
+    use_et2();
+    use_et3();
+    use_et4();
 }

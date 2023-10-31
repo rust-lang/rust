@@ -10,7 +10,7 @@ source "$(cd "$(dirname "$0")" && pwd)/../shared.sh"
 
 # Load extra environment variables
 vars="${EXTRA_VARIABLES-}"
-echo "${vars}" | jq '' >/dev/null  # Validate JSON and exit on errors
+echo "${vars}" | jq '.' >/dev/null  # Validate JSON and exit on errors
 for key in $(echo "${vars}" | jq "keys[]" -r); do
     # On Windows, for whatever reason, $key contains the BOM character in it,
     # and that messes up `jq ".${key}"`. This line strips the BOM from the key.

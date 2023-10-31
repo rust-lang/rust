@@ -1,3 +1,3 @@
-static _X: () = loop {}; //~ ERROR could not evaluate static initializer
+static _X: () = loop {}; //~ ERROR taking a long time
 
 fn main() {}

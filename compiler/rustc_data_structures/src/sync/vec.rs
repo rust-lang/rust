@@ -43,37 +43,23 @@ impl<I: Idx, T: Copy> AppendOnlyIndexVec<I, T> {
 
 #[derive(Default)]
 pub struct AppendOnlyVec<T: Copy> {
-    #[cfg(not(parallel_compiler))]
-    vec: elsa::vec::FrozenVec<T>,
-    #[cfg(parallel_compiler)]
-    vec: elsa::sync::LockFreeFrozenVec<T>,
+    vec: parking_lot::RwLock<Vec<T>>,
 }
 
 impl<T: Copy> AppendOnlyVec<T> {
     pub fn new() -> Self {
-        Self {
-            #[cfg(not(parallel_compiler))]
-            vec: elsa::vec::FrozenVec::new(),
-            #[cfg(parallel_compiler)]
-            vec: elsa::sync::LockFreeFrozenVec::new(),
-        }
+        Self { vec: Default::default() }
     }
 
     pub fn push(&self, val: T) -> usize {
-        #[cfg(not(parallel_compiler))]
-        let i = self.vec.len();
-        #[cfg(not(parallel_compiler))]
-        self.vec.push(val);
-        #[cfg(parallel_compiler)]
-        let i = self.vec.push(val);
-        i
+        let mut v = self.vec.write();
+        let n = v.len();
+        v.push(val);
+        n
     }
 
     pub fn get(&self, i: usize) -> Option<T> {
-        #[cfg(not(parallel_compiler))]
-        return self.vec.get_copy(i);
-        #[cfg(parallel_compiler)]
-        return self.vec.get(i);
+        self.vec.read().get(i).copied()
     }
 
     pub fn iter_enumerated(&self) -> impl Iterator<Item = (usize, T)> + '_ {

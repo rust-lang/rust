@@ -11,6 +11,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
 use rustc_macros::HashStable_Generic;
 use rustc_span::symbol::{kw, sym};
+#[allow(hidden_glob_reexports)]
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::{self, edition::Edition, Span, DUMMY_SP};
 use std::borrow::Cow;
@@ -40,8 +41,6 @@ pub enum BinOpToken {
 /// Describes how a sequence of token trees is delimited.
 /// Cannot use `proc_macro::Delimiter` directly because this
 /// structure should implement some additional traits.
-/// The `None` variant is also renamed to `Invisible` to be
-/// less confusing and better convey the semantics.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[derive(Encodable, Decodable, Hash, HashStable_Generic)]
 pub enum Delimiter {
@@ -225,7 +224,9 @@ fn ident_can_begin_type(name: Symbol, span: Span, is_raw: bool) -> bool {
             .contains(&name)
 }
 
-#[derive(Clone, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
+// SAFETY: due to the `Clone` impl below, all fields of all variants other than
+// `Interpolated` must impl `Copy`.
+#[derive(PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub enum TokenKind {
     /* Expression-operator symbols. */
     Eq,
@@ -296,6 +297,19 @@ pub enum TokenKind {
     DocComment(CommentKind, ast::AttrStyle, Symbol),
 
     Eof,
+}
+
+impl Clone for TokenKind {
+    fn clone(&self) -> Self {
+        // `TokenKind` would impl `Copy` if it weren't for `Interpolated`. So
+        // for all other variants, this implementation of `clone` is just like
+        // a copy. This is faster than the `derive(Clone)` version which has a
+        // separate path for every variant.
+        match self {
+            Interpolated(nt) => Interpolated(nt.clone()),
+            _ => unsafe { std::ptr::read(self) },
+        }
+    }
 }
 
 #[derive(Clone, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]

@@ -1,4 +1,4 @@
-// compile-flags: -O
+// compile-flags: -O -Z merge-functions=disabled
 // only-x86_64
 // ignore-debug: the debug assertions get in the way
 
@@ -8,13 +8,43 @@ use std::mem::swap;
 
 type RGB48 = [u16; 3];
 
+// CHECK-LABEL: @swap_rgb48_manually(
+#[no_mangle]
+pub fn swap_rgb48_manually(x: &mut RGB48, y: &mut RGB48) {
+    // FIXME: See #115212 for why this has an alloca again
+
+    // CHECK: alloca [3 x i16], align 2
+    // CHECK: call void @llvm.memcpy.p0.p0.i64({{.+}}, i64 6, i1 false)
+    // CHECK: call void @llvm.memcpy.p0.p0.i64({{.+}}, i64 6, i1 false)
+    // CHECK: call void @llvm.memcpy.p0.p0.i64({{.+}}, i64 6, i1 false)
+
+    let temp = *x;
+    *x = *y;
+    *y = temp;
+}
+
 // CHECK-LABEL: @swap_rgb48
 #[no_mangle]
 pub fn swap_rgb48(x: &mut RGB48, y: &mut RGB48) {
-    // FIXME MIR inlining messes up LLVM optimizations.
-// WOULD-CHECK-NOT: alloca
-// WOULD-CHECK: load i48
-// WOULD-CHECK: store i48
+    // FIXME: See #115212 for why this has an alloca again
+
+    // CHECK: alloca [3 x i16], align 2
+    // CHECK: call void @llvm.memcpy.p0.p0.i64({{.+}}, i64 6, i1 false)
+    // CHECK: call void @llvm.memcpy.p0.p0.i64({{.+}}, i64 6, i1 false)
+    // CHECK: call void @llvm.memcpy.p0.p0.i64({{.+}}, i64 6, i1 false)
+    swap(x, y)
+}
+
+type RGBA64 = [u16; 4];
+
+// CHECK-LABEL: @swap_rgba64
+#[no_mangle]
+pub fn swap_rgba64(x: &mut RGBA64, y: &mut RGBA64) {
+    // CHECK-NOT: alloca
+    // CHECK-DAG: %[[XVAL:.+]] = load <4 x i16>, ptr %x, align 2
+    // CHECK-DAG: %[[YVAL:.+]] = load <4 x i16>, ptr %y, align 2
+    // CHECK-DAG: store <4 x i16> %[[YVAL]], ptr %x, align 2
+    // CHECK-DAG: store <4 x i16> %[[XVAL]], ptr %y, align 2
     swap(x, y)
 }
 

@@ -2,7 +2,6 @@ use rustc_ast as ast;
 use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
 use rustc_ast::{attr, AssocConstraint, AssocConstraintKind, NodeId};
 use rustc_ast::{PatKind, RangeEnd};
-use rustc_errors::{Applicability, StashKey};
 use rustc_feature::{AttributeGate, BuiltinAttribute, Features, GateIssue, BUILTIN_ATTRIBUTE_MAP};
 use rustc_session::parse::{feature_err, feature_err_issue, feature_warn};
 use rustc_session::Session;
@@ -219,6 +218,19 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 }
             }
         }
+        if !attr.is_doc_comment()
+            && attr.get_normal_item().path.segments.len() == 2
+            && attr.get_normal_item().path.segments[0].ident.name == sym::diagnostic
+            && !self.features.diagnostic_namespace
+        {
+            let msg = "`#[diagnostic]` attribute name space is experimental";
+            gate_feature_post!(
+                self,
+                diagnostic_namespace,
+                attr.get_normal_item().path.segments[0].ident.span,
+                msg
+            );
+        }
 
         // Emit errors for non-staged-api crates.
         if !self.features.staged_api {
@@ -374,55 +386,8 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         }
     }
 
-    fn visit_stmt(&mut self, stmt: &'a ast::Stmt) {
-        if let ast::StmtKind::Semi(expr) = &stmt.kind
-            && let ast::ExprKind::Assign(lhs, _, _) = &expr.kind
-            && let ast::ExprKind::Type(..) = lhs.kind
-            && self.sess.parse_sess.span_diagnostic.err_count() == 0
-            && !self.features.type_ascription
-            && !lhs.span.allows_unstable(sym::type_ascription)
-        {
-            // When we encounter a statement of the form `foo: Ty = val;`, this will emit a type
-            // ascription error, but the likely intention was to write a `let` statement. (#78907).
-            feature_err(
-                &self.sess.parse_sess,
-                sym::type_ascription,
-                lhs.span,
-                "type ascription is experimental",
-            ).span_suggestion_verbose(
-                lhs.span.shrink_to_lo(),
-                "you might have meant to introduce a new binding",
-                "let ",
-                Applicability::MachineApplicable,
-            ).emit();
-        }
-        visit::walk_stmt(self, stmt);
-    }
-
     fn visit_expr(&mut self, e: &'a ast::Expr) {
         match e.kind {
-            ast::ExprKind::Type(..) => {
-                if self.sess.parse_sess.span_diagnostic.err_count() == 0 {
-                    // To avoid noise about type ascription in common syntax errors,
-                    // only emit if it is the *only* error.
-                    gate_feature_post!(
-                        &self,
-                        type_ascription,
-                        e.span,
-                        "type ascription is experimental"
-                    );
-                } else {
-                    // And if it isn't, cancel the early-pass warning.
-                    if let Some(err) = self
-                        .sess
-                        .parse_sess
-                        .span_diagnostic
-                        .steal_diagnostic(e.span, StashKey::EarlySyntaxWarning)
-                    {
-                        err.cancel()
-                    }
-                }
-            }
             ast::ExprKind::TryBlock(_) => {
                 gate_feature_post!(&self, try_blocks, e.span, "`try` expression is experimental");
             }
@@ -549,10 +514,10 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     }
 }
 
-pub fn check_crate(krate: &ast::Crate, sess: &Session) {
-    maybe_stage_features(sess, krate);
-    check_incompatible_features(sess);
-    let mut visitor = PostExpansionVisitor { sess, features: &sess.features_untracked() };
+pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
+    maybe_stage_features(sess, features, krate);
+    check_incompatible_features(sess, features);
+    let mut visitor = PostExpansionVisitor { sess, features };
 
     let spans = sess.parse_sess.gated_spans.spans.borrow();
     macro_rules! gate_all {
@@ -603,6 +568,8 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session) {
     gate_all!(dyn_star, "`dyn*` trait objects are experimental");
     gate_all!(const_closures, "const closures are experimental");
     gate_all!(builtin_syntax, "`builtin #` syntax is unstable");
+    gate_all!(explicit_tail_calls, "`become` expression is experimental");
+    gate_all!(generic_const_items, "generic const items are experimental");
 
     if !visitor.features.negative_bounds {
         for &span in spans.get(&sym::negative_bounds).iter().copied().flatten() {
@@ -629,17 +596,16 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session) {
     gate_all!(box_patterns, "box pattern syntax is experimental");
     gate_all!(exclusive_range_pattern, "exclusive range pattern syntax is experimental");
     gate_all!(try_blocks, "`try` blocks are unstable");
-    gate_all!(type_ascription, "type ascription is experimental");
 
     visit::walk_crate(&mut visitor, krate);
 }
 
-fn maybe_stage_features(sess: &Session, krate: &ast::Crate) {
+fn maybe_stage_features(sess: &Session, features: &Features, krate: &ast::Crate) {
     // checks if `#![feature]` has been used to enable any lang feature
     // does not check the same for lib features unless there's at least one
     // declared lang feature
     if !sess.opts.unstable_features.is_nightly_build() {
-        let lang_features = &sess.features_untracked().declared_lang_features;
+        let lang_features = &features.declared_lang_features;
         if lang_features.len() == 0 {
             return;
         }
@@ -674,9 +640,7 @@ fn maybe_stage_features(sess: &Session, krate: &ast::Crate) {
     }
 }
 
-fn check_incompatible_features(sess: &Session) {
-    let features = sess.features_untracked();
-
+fn check_incompatible_features(sess: &Session, features: &Features) {
     let declared_features = features
         .declared_lang_features
         .iter()

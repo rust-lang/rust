@@ -1,5 +1,5 @@
 error[E0658]: use of unstable library feature 'data'
-  --> $DIR/assoc-inherent-unstable.rs:4:13
+  --> $DIR/assoc-inherent-unstable.rs:7:13
    |
 LL | type Data = aux::Owner::Data;
    |             ^^^^^^^^^^^^^^^^

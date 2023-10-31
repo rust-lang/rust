@@ -361,6 +361,12 @@ macro_rules! impl_fold_via_try_fold {
     (rfold -> try_rfold) => {
         impl_fold_via_try_fold! { @internal rfold -> try_rfold }
     };
+    (spec_fold -> spec_try_fold) => {
+        impl_fold_via_try_fold! { @internal spec_fold -> spec_try_fold }
+    };
+    (spec_rfold -> spec_try_rfold) => {
+        impl_fold_via_try_fold! { @internal spec_rfold -> spec_try_rfold }
+    };
     (@internal $fold:ident -> $try_fold:ident) => {
         #[inline]
         fn $fold<AAA, FFF>(mut self, init: AAA, fold: FFF) -> AAA
@@ -434,6 +440,8 @@ pub use self::adapters::Copied;
 pub use self::adapters::Flatten;
 #[stable(feature = "iter_map_while", since = "1.57.0")]
 pub use self::adapters::MapWhile;
+#[unstable(feature = "iter_map_windows", reason = "recently added", issue = "87155")]
+pub use self::adapters::MapWindows;
 #[unstable(feature = "inplace_iteration", issue = "none")]
 pub use self::adapters::SourceIter;
 #[stable(feature = "iterator_step_by", since = "1.28.0")]

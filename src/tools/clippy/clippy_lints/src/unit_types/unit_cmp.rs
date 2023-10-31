@@ -14,7 +14,9 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
                 "assert_ne" | "debug_assert_ne" => "fail",
                 _ => return,
             };
-            let Some ((left, _, _)) = find_assert_eq_args(cx, expr, macro_call.expn) else { return };
+            let Some((left, _, _)) = find_assert_eq_args(cx, expr, macro_call.expn) else {
+                return;
+            };
             if !cx.typeck_results().expr_ty(left).is_unit() {
                 return;
             }

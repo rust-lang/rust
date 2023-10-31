@@ -1,6 +1,7 @@
 use rustc_ast::{self as ast, attr};
 use rustc_expand::base::{ExtCtxt, ResolverExpand};
 use rustc_expand::expand::ExpansionConfig;
+use rustc_feature::Features;
 use rustc_session::Session;
 use rustc_span::edition::Edition::*;
 use rustc_span::hygiene::AstPass;
@@ -13,6 +14,7 @@ pub fn inject(
     pre_configured_attrs: &[ast::Attribute],
     resolver: &mut dyn ResolverExpand,
     sess: &Session,
+    features: &Features,
 ) -> usize {
     let orig_num_items = krate.items.len();
     let edition = sess.parse_sess.edition;
@@ -39,25 +41,34 @@ pub fn inject(
     let span = DUMMY_SP.with_def_site_ctxt(expn_id.to_expn_id());
     let call_site = DUMMY_SP.with_call_site_ctxt(expn_id.to_expn_id());
 
-    let ecfg = ExpansionConfig::default("std_lib_injection".to_string());
+    let ecfg = ExpansionConfig::default("std_lib_injection".to_string(), features);
     let cx = ExtCtxt::new(sess, ecfg, resolver, None);
 
     // .rev() to preserve ordering above in combination with insert(0, ...)
     for &name in names.iter().rev() {
-        let ident = if edition >= Edition2018 {
-            Ident::new(name, span)
-        } else {
-            Ident::new(name, call_site)
-        };
-        krate.items.insert(
-            0,
+        let ident_span = if edition >= Edition2018 { span } else { call_site };
+        let item = if name == sym::compiler_builtins {
+            // compiler_builtins is a private implementation detail. We only
+            // need to insert it into the crate graph for linking and should not
+            // expose any of its public API.
+            //
+            // FIXME(#113634) We should inject this during post-processing like
+            // we do for the panic runtime, profiler runtime, etc.
             cx.item(
                 span,
-                ident,
+                Ident::new(kw::Underscore, ident_span),
+                thin_vec![],
+                ast::ItemKind::ExternCrate(Some(name)),
+            )
+        } else {
+            cx.item(
+                span,
+                Ident::new(name, ident_span),
                 thin_vec![cx.attr_word(sym::macro_use, span)],
                 ast::ItemKind::ExternCrate(None),
-            ),
-        );
+            )
+        };
+        krate.items.insert(0, item);
     }
 
     // The crates have been injected, the assumption is that the first one is

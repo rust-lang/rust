@@ -1,0 +1,8 @@
+error: higher-ranked subtype error
+  --> $DIR/issue-111404-1.rs:10:1
+   |
+LL | fn bar(_: fn(Foo<for<'b> fn(Foo<fn(&'b ())>::Assoc)>::Assoc)) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

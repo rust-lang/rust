@@ -1,7 +1,6 @@
-use clippy_utils::{
-    diagnostics::span_lint_and_then, is_diag_item_method, is_trait_method, match_def_path, path_to_local_id, paths,
-    ty::match_type,
-};
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::ty::match_type;
+use clippy_utils::{is_diag_item_method, is_trait_method, match_def_path, path_to_local_id, paths};
 use rustc_errors::Applicability;
 use rustc_hir::{Body, Closure, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};

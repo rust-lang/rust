@@ -104,7 +104,9 @@ struct Footer {
     query_result_index: EncodedDepNodeIndex,
     side_effects_index: EncodedDepNodeIndex,
     // The location of all allocations.
-    interpret_alloc_index: Vec<u32>,
+    // Most uses only need values up to u32::MAX, but benchmarking indicates that we can use a u64
+    // without measurable overhead. This permits larger const allocations without ICEing.
+    interpret_alloc_index: Vec<u64>,
     // See `OnDiskCache.syntax_contexts`
     syntax_contexts: FxHashMap<u32, AbsoluteBytePos>,
     // See `OnDiskCache.expn_data`
@@ -301,7 +303,7 @@ impl<'sess> OnDiskCache<'sess> {
                     interpret_alloc_index.reserve(new_n - n);
                     for idx in n..new_n {
                         let id = encoder.interpret_allocs[idx];
-                        let pos: u32 = encoder.position().try_into().unwrap();
+                        let pos: u64 = encoder.position().try_into().unwrap();
                         interpret_alloc_index.push(pos);
                         interpret::specialized_encode_alloc_id(&mut encoder, tcx, id);
                     }
@@ -785,13 +787,6 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>>
 impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>>
     for &'tcx IndexVec<mir::Promoted, mir::Body<'tcx>>
 {
-    #[inline]
-    fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
-        RefDecodable::decode(d)
-    }
-}
-
-impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx [(ty::Predicate<'tcx>, Span)] {
     #[inline]
     fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
         RefDecodable::decode(d)

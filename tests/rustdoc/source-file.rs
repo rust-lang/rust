@@ -1,5 +1,5 @@
 #![crate_name = "foo"]
 
-// @hasraw source-files.js source-file.rs
+// @hasraw src-files.js source-file.rs
 
 pub struct Foo;

@@ -1,5 +1,4 @@
 // compile-flags: -O -Z merge-functions=disabled
-// min-llvm-version: 15.0 # this test uses `ptr`s
 // ignore-debug
 
 #![crate_type = "lib"]

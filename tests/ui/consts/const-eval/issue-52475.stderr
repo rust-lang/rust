@@ -1,12 +1,28 @@
-error[E0080]: evaluation of constant value failed
+error: constant evaluation is taking a long time
   --> $DIR/issue-52475.rs:5:9
    |
 LL | /         while n < 5 {
+LL | |
 LL | |             n = (n + 1) % 5;
 LL | |             x = &0; // Materialize a new AllocId
 LL | |         }
-   | |_________^ exceeded interpreter step limit (see `#[const_eval_limit]`)
+   | |_________^
+   |
+   = note: this lint makes sure the compiler doesn't get stuck due to infinite loops in const eval.
+           If your compilation actually takes a long time, you can safely allow the lint.
+help: the constant being evaluated
+  --> $DIR/issue-52475.rs:2:18
+   |
+LL |       let _ = [(); {
+   |  __________________^
+LL | |         let mut x = &0;
+LL | |         let mut n = 0;
+LL | |         while n < 5 {
+...  |
+LL | |         0
+LL | |     }];
+   | |_____^
+   = note: `#[deny(long_running_const_eval)]` on by default
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0080`.

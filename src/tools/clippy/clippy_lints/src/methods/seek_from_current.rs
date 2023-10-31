@@ -3,10 +3,10 @@ use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::LateContext;
 
-use clippy_utils::{
-    diagnostics::span_lint_and_sugg, get_trait_def_id, match_def_path, paths, source::snippet_with_applicability,
-    ty::implements_trait,
-};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::ty::implements_trait;
+use clippy_utils::{get_trait_def_id, match_def_path, paths};
 
 use super::SEEK_FROM_CURRENT;
 

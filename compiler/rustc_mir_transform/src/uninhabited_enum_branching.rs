@@ -105,7 +105,8 @@ impl<'tcx> MirPass<'tcx> for UninhabitedEnumBranching {
         for bb in body.basic_blocks.indices() {
             trace!("processing block {:?}", bb);
 
-            let Some(discriminant_ty) = get_switched_on_type(&body.basic_blocks[bb], tcx, body) else {
+            let Some(discriminant_ty) = get_switched_on_type(&body.basic_blocks[bb], tcx, body)
+            else {
                 continue;
             };
 

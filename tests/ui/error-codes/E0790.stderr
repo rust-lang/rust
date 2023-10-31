@@ -63,10 +63,10 @@ LL |     fn my_fn();
 LL |     MyTrait2::my_fn();
    |     ^^^^^^^^^^^^^^^ cannot call associated function of trait
    |
-help: use a fully-qualified path to a specific available implementation (2 found)
+help: use a fully-qualified path to a specific available implementation
    |
-LL |     <Impl1 as MyTrait2>::my_fn();
-   |     +++++++++         +
+LL |     </* self type */ as MyTrait2>::my_fn();
+   |     +++++++++++++++++++         +
 
 error: aborting due to 5 previous errors
 

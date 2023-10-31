@@ -76,9 +76,11 @@ fn fully_moved_locals(ssa: &SsaLocals, body: &Body<'_>) -> BitSet<Local> {
     let mut fully_moved = BitSet::new_filled(body.local_decls.len());
 
     for (_, rvalue, _) in ssa.assignments(body) {
-        let (Rvalue::Use(Operand::Copy(place) | Operand::Move(place)) | Rvalue::CopyForDeref(place))
-            = rvalue
-        else { continue };
+        let (Rvalue::Use(Operand::Copy(place) | Operand::Move(place))
+        | Rvalue::CopyForDeref(place)) = rvalue
+        else {
+            continue;
+        };
 
         let Some(rhs) = place.as_local() else { continue };
         if !ssa.is_ssa(rhs) {
@@ -130,7 +132,6 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
             PlaceContext::NonMutatingUse(
                 NonMutatingUseContext::SharedBorrow
                 | NonMutatingUseContext::ShallowBorrow
-                | NonMutatingUseContext::UniqueBorrow
                 | NonMutatingUseContext::AddressOf,
             ) => true,
             // For debuginfo, merging locals is ok.
@@ -153,7 +154,7 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
     fn visit_operand(&mut self, operand: &mut Operand<'tcx>, loc: Location) {
         if let Operand::Move(place) = *operand
             // A move out of a projection of a copy is equivalent to a copy of the original projection.
-            && !place.has_deref()
+            && !place.is_indirect_first_projection()
             && !self.fully_moved.contains(place.local)
         {
             *operand = Operand::Copy(place);

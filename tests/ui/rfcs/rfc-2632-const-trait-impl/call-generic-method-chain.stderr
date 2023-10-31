@@ -1,0 +1,14 @@
+error: ~const can only be applied to `#[const_trait]` traits
+  --> $DIR/call-generic-method-chain.rs:18:32
+   |
+LL | const fn equals_self<T: ~const PartialEq>(t: &T) -> bool {
+   |                                ^^^^^^^^^
+
+error: ~const can only be applied to `#[const_trait]` traits
+  --> $DIR/call-generic-method-chain.rs:22:40
+   |
+LL | const fn equals_self_wrapper<T: ~const PartialEq>(t: &T) -> bool {
+   |                                        ^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

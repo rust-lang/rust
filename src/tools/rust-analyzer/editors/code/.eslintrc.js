@@ -6,7 +6,7 @@ module.exports = {
     extends: ["prettier"],
     parser: "@typescript-eslint/parser",
     parserOptions: {
-        project: "tsconfig.eslint.json",
+        project: true,
         tsconfigRootDir: __dirname,
         sourceType: "module",
     },
@@ -33,5 +33,14 @@ module.exports = {
         "@typescript-eslint/semi": ["error", "always"],
         "@typescript-eslint/no-unnecessary-type-assertion": "error",
         "@typescript-eslint/no-floating-promises": "error",
+
+        "@typescript-eslint/consistent-type-imports": [
+            "error",
+            {
+                prefer: "type-imports",
+                fixStyle: "inline-type-imports",
+            },
+        ],
+        "@typescript-eslint/no-import-type-side-effects": "error",
     },
 };

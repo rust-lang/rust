@@ -52,6 +52,7 @@ trivially_parameterized_over_tcx! {
     usize,
     (),
     u32,
+    u64,
     bool,
     std::string::String,
     crate::metadata::ModChild,
@@ -73,6 +74,7 @@ trivially_parameterized_over_tcx! {
     ty::fast_reject::SimplifiedType,
     rustc_ast::Attribute,
     rustc_ast::DelimArgs,
+    rustc_ast::expand::StrippedCfgItem<rustc_hir::def_id::DefIndex>,
     rustc_attr::ConstStability,
     rustc_attr::DefaultBodyStability,
     rustc_attr::Deprecation,
@@ -128,5 +130,6 @@ parameterized_over_tcx! {
     ty::Const,
     ty::Predicate,
     ty::Clause,
+    ty::ClauseKind,
     ty::GeneratorDiagnosticData,
 }

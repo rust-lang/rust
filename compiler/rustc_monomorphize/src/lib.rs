@@ -1,4 +1,5 @@
 #![feature(array_windows)]
+#![feature(is_sorted)]
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability)]
 #![deny(rustc::untranslatable_diagnostic)]
@@ -30,12 +31,12 @@ fn custom_coerce_unsize_info<'tcx>(
     source_ty: Ty<'tcx>,
     target_ty: Ty<'tcx>,
 ) -> CustomCoerceUnsized {
-    let trait_ref = ty::Binder::dummy(ty::TraitRef::from_lang_item(
+    let trait_ref = ty::TraitRef::from_lang_item(
         tcx.tcx,
         LangItem::CoerceUnsized,
         tcx.span,
         [source_ty, target_ty],
-    ));
+    );
 
     match tcx.codegen_select_candidate((ty::ParamEnv::reveal_all(), trait_ref)) {
         Ok(traits::ImplSource::UserDefined(traits::ImplSourceUserDefinedData {

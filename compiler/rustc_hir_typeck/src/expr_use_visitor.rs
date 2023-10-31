@@ -211,7 +211,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                 self.select_from_expr(base);
             }
 
-            hir::ExprKind::Index(lhs, rhs) => {
+            hir::ExprKind::Index(lhs, rhs, _) => {
                 // lhs[rhs]
                 self.select_from_expr(lhs);
                 self.consume_expr(rhs);
@@ -326,6 +326,10 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                 }
             }
 
+            hir::ExprKind::Become(call) => {
+                self.consume_expr(call);
+            }
+
             hir::ExprKind::Assign(lhs, rhs, _) => {
                 self.mutate_expr(lhs);
                 self.consume_expr(rhs);
@@ -438,12 +442,19 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                         // to borrow discr.
                         needs_to_be_read = true;
                     }
-                    PatKind::Or(_)
-                    | PatKind::Box(_)
-                    | PatKind::Slice(..)
-                    | PatKind::Ref(..)
-                    | PatKind::Wild => {
-                        // If the PatKind is Or, Box, Slice or Ref, the decision is made later
+                    PatKind::Slice(lhs, wild, rhs) => {
+                        // We don't need to test the length if the pattern is `[..]`
+                        if matches!((lhs, wild, rhs), (&[], Some(_), &[]))
+                            // Arrays have a statically known size, so
+                            // there is no need to read their length
+                            || place.place.ty().peel_refs().is_array()
+                        {
+                        } else {
+                            needs_to_be_read = true;
+                        }
+                    }
+                    PatKind::Or(_) | PatKind::Box(_) | PatKind::Ref(..) | PatKind::Wild => {
+                        // If the PatKind is Or, Box, or Ref, the decision is made later
                         // as these patterns contains subpatterns
                         // If the PatKind is Wild, the decision is made based on the other patterns being
                         // examined
@@ -538,7 +549,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         // Select just those fields of the `with`
         // expression that will actually be used
         match with_place.place.ty().kind() {
-            ty::Adt(adt, substs) if adt.is_struct() => {
+            ty::Adt(adt, args) if adt.is_struct() => {
                 // Consume those fields of the with expression that are needed.
                 for (f_index, with_field) in adt.non_enum_variant().fields.iter_enumerated() {
                     let is_mentioned = fields
@@ -548,7 +559,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                         let field_place = self.mc.cat_projection(
                             &*with_expr,
                             with_place.clone(),
-                            with_field.ty(self.tcx(), substs),
+                            with_field.ty(self.tcx(), args),
                             ProjectionKind::Field(f_index, FIRST_VARIANT),
                         );
                         self.delegate_consume(&field_place, field_place.hir_id);

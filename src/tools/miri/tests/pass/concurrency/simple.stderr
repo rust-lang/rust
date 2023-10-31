@@ -1,3 +1,5 @@
-thread '<unnamed>' panicked at 'Hello!', $DIR/simple.rs:LL:CC
+thread '<unnamed>' panicked at $DIR/simple.rs:LL:CC:
+Hello!
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
-thread 'childthread' panicked at 'Hello, world!', $DIR/simple.rs:LL:CC
+thread 'childthread' panicked at $DIR/simple.rs:LL:CC:
+Hello, world!

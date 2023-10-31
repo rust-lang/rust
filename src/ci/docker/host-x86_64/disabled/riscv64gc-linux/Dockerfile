@@ -19,6 +19,7 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends \
     g++ \
     libc6-dev \
     libc6-dev-riscv64-cross \
+    libssl-dev \
     make \
     ninja-build \
     patch \
@@ -93,6 +94,9 @@ RUN mkdir build && cd build && \
     cp bbl /tmp
 WORKDIR /tmp
 RUN rm -rf /tmp/riscv-pk
+
+COPY scripts/cmake.sh /scripts/
+RUN /scripts/cmake.sh
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh

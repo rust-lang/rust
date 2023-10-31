@@ -1,17 +1,17 @@
 // MIR for `unsigny` after built
 
 fn unsigny(_1: UnsignedAroundZero) -> u16 {
-    debug x => _1;                       // in scope 0 at $DIR/enum_cast.rs:+0:12: +0:13
-    let mut _0: u16;                     // return place in scope 0 at $DIR/enum_cast.rs:+0:38: +0:41
-    let _2: UnsignedAroundZero;          // in scope 0 at $DIR/enum_cast.rs:+2:5: +2:6
-    let mut _3: u16;                     // in scope 0 at $DIR/enum_cast.rs:+2:5: +2:6
+    debug x => _1;
+    let mut _0: u16;
+    let _2: UnsignedAroundZero;
+    let mut _3: u16;
 
     bb0: {
-        StorageLive(_2);                 // scope 0 at $DIR/enum_cast.rs:+2:5: +2:6
-        _2 = move _1;                    // scope 0 at $DIR/enum_cast.rs:+2:5: +2:6
-        _3 = discriminant(_2);           // scope 0 at $DIR/enum_cast.rs:+2:5: +2:13
-        _0 = move _3 as u16 (IntToInt);  // scope 0 at $DIR/enum_cast.rs:+2:5: +2:13
-        StorageDead(_2);                 // scope 0 at $DIR/enum_cast.rs:+2:12: +2:13
-        return;                          // scope 0 at $DIR/enum_cast.rs:+3:2: +3:2
+        StorageLive(_2);
+        _2 = move _1;
+        _3 = discriminant(_2);
+        _0 = move _3 as u16 (IntToInt);
+        StorageDead(_2);
+        return;
     }
 }

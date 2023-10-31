@@ -1,18 +1,18 @@
 //! Database used for testing `hir`.
 
-use std::{
-    fmt, panic,
-    sync::{Arc, Mutex},
-};
+use std::{fmt, panic, sync::Mutex};
 
 use base_db::{
-    salsa, AnchoredPath, CrateId, FileId, FileLoader, FileLoaderDelegate, SourceDatabase, Upcast,
+    salsa::{self, Durability},
+    AnchoredPath, CrateId, FileId, FileLoader, FileLoaderDelegate, SourceDatabase, Upcast,
 };
 use hir_def::{db::DefDatabase, ModuleId};
 use hir_expand::db::ExpandDatabase;
-use stdx::hash::{NoHashHashMap, NoHashHashSet};
+use nohash_hasher::IntMap;
+use rustc_hash::FxHashSet;
 use syntax::TextRange;
 use test_utils::extract_annotations;
+use triomphe::Arc;
 
 #[salsa::database(
     base_db::SourceDatabaseExtStorage,
@@ -30,7 +30,7 @@ pub(crate) struct TestDB {
 impl Default for TestDB {
     fn default() -> Self {
         let mut this = Self { storage: Default::default(), events: Default::default() };
-        this.set_enable_proc_attr_macros(true);
+        this.set_expand_proc_attr_macros_with_durability(true, Durability::HIGH);
         this
     }
 }
@@ -74,13 +74,13 @@ impl salsa::ParallelDatabase for TestDB {
 impl panic::RefUnwindSafe for TestDB {}
 
 impl FileLoader for TestDB {
-    fn file_text(&self, file_id: FileId) -> Arc<String> {
+    fn file_text(&self, file_id: FileId) -> Arc<str> {
         FileLoaderDelegate(self).file_text(file_id)
     }
     fn resolve_path(&self, path: AnchoredPath<'_>) -> Option<FileId> {
         FileLoaderDelegate(self).resolve_path(path)
     }
-    fn relevant_crates(&self, file_id: FileId) -> Arc<NoHashHashSet<CrateId>> {
+    fn relevant_crates(&self, file_id: FileId) -> Arc<FxHashSet<CrateId>> {
         FileLoaderDelegate(self).relevant_crates(file_id)
     }
 }
@@ -102,7 +102,7 @@ impl TestDB {
         self.module_for_file_opt(file_id).unwrap()
     }
 
-    pub(crate) fn extract_annotations(&self) -> NoHashHashMap<FileId, Vec<(TextRange, String)>> {
+    pub(crate) fn extract_annotations(&self) -> IntMap<FileId, Vec<(TextRange, String)>> {
         let mut files = Vec::new();
         let crate_graph = self.crate_graph();
         for krate in crate_graph.iter() {

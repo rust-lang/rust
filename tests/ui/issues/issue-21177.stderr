@@ -10,6 +10,7 @@ note: cycle used when computing explicit predicates of `foo`
    |
 LL | fn foo<T: Trait<A = T::B>>() { }
    |                     ^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error: aborting due to previous error
 

@@ -1,6 +1,6 @@
 // build-fail
 // dont-check-compiler-stderr
-// compile-flags: -C linker=llllll -C linker-flavor=ld
+// compile-flags: -C linker=llllll
 // error-pattern: `llllll`
 
 // Before, the error-pattern checked for "not found". On WSL with appendWindowsPath=true, running

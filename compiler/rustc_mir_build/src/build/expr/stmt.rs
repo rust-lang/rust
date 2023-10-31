@@ -99,6 +99,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 BreakableTarget::Return,
                 source_info,
             ),
+            // FIXME(explicit_tail_calls): properly lower tail calls here
+            ExprKind::Become { value } => this.break_scope(
+                block,
+                Some(&this.thir[value]),
+                BreakableTarget::Return,
+                source_info,
+            ),
             _ => {
                 assert!(
                     statement_scope.is_some(),

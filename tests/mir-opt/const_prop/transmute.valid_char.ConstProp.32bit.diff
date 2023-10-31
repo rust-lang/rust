@@ -2,14 +2,14 @@
 + // MIR for `valid_char` after ConstProp
   
   fn valid_char() -> char {
-      let mut _0: char;                    // return place in scope 0 at $DIR/transmute.rs:+0:24: +0:28
+      let mut _0: char;
       scope 1 {
       }
   
       bb0: {
--         _0 = const 82_u32 as char (Transmute); // scope 1 at $DIR/transmute.rs:+1:14: +1:33
-+         _0 = const 'R';                  // scope 1 at $DIR/transmute.rs:+1:14: +1:33
-          return;                          // scope 0 at $DIR/transmute.rs:+2:2: +2:2
+-         _0 = const 82_u32 as char (Transmute);
++         _0 = const 'R';
+          return;
       }
   }
   

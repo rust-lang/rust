@@ -15,7 +15,7 @@ use syntax::{
 };
 use text_edit::TextEdit;
 
-use crate::{fix, Diagnostic, DiagnosticsContext};
+use crate::{fix, Diagnostic, DiagnosticCode, DiagnosticsContext};
 
 // Diagnostic: missing-fields
 //
@@ -31,7 +31,7 @@ use crate::{fix, Diagnostic, DiagnosticsContext};
 pub(crate) fn missing_fields(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Diagnostic {
     let mut message = String::from("missing structure fields:\n");
     for field in &d.missed_fields {
-        format_to!(message, "- {}\n", field);
+        format_to!(message, "- {}\n", field.display(ctx.sema.db));
     }
 
     let ptr = InFile::new(
@@ -42,7 +42,7 @@ pub(crate) fn missing_fields(ctx: &DiagnosticsContext<'_>, d: &hir::MissingField
             .unwrap_or_else(|| d.field_list_parent.clone().either(|it| it.into(), |it| it.into())),
     );
 
-    Diagnostic::new("missing-fields", message, ctx.sema.diagnostics_display_range(ptr).range)
+    Diagnostic::new_with_syntax_node_ptr(ctx, DiagnosticCode::RustcHardError("E0063"), message, ptr)
         .with_fixes(fixes(ctx, d))
 }
 
@@ -56,7 +56,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
         return None;
     }
 
-    let root = ctx.sema.db.parse_or_expand(d.file)?;
+    let root = ctx.sema.db.parse_or_expand(d.file);
 
     let current_module = match &d.field_list_parent {
         Either::Left(ptr) => ctx.sema.scope(ptr.to_node(&root).syntax()).map(|it| it.module()),
@@ -175,8 +175,10 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
 
 fn make_ty(ty: &hir::Type, db: &dyn HirDatabase, module: hir::Module) -> ast::Type {
     let ty_str = match ty.as_adt() {
-        Some(adt) => adt.name(db).to_string(),
-        None => ty.display_source_code(db, module.into()).ok().unwrap_or_else(|| "_".to_string()),
+        Some(adt) => adt.name(db).display(db.upcast()).to_string(),
+        None => {
+            ty.display_source_code(db, module.into(), false).ok().unwrap_or_else(|| "_".to_string())
+        }
     };
 
     make::ty(&ty_str)
@@ -206,7 +208,7 @@ fn get_default_constructor(
     }
 
     let krate = ctx.sema.to_module_def(d.file.original_file(ctx.sema.db))?.krate();
-    let module = krate.root_module(ctx.sema.db);
+    let module = krate.root_module();
 
     // Look for a ::new() associated function
     let has_new_func = ty

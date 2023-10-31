@@ -7,7 +7,7 @@ LL | use regex;
    = note: `-D clippy::single-component-path-imports` implied by `-D warnings`
 
 error: this import is redundant
-  --> $DIR/single_component_path_imports_nested_first.rs:13:10
+  --> $DIR/single_component_path_imports_nested_first.rs:15:10
    |
 LL |     use {regex, serde};
    |          ^^^^^
@@ -15,7 +15,7 @@ LL |     use {regex, serde};
    = help: remove this import
 
 error: this import is redundant
-  --> $DIR/single_component_path_imports_nested_first.rs:13:17
+  --> $DIR/single_component_path_imports_nested_first.rs:15:17
    |
 LL |     use {regex, serde};
    |                 ^^^^^

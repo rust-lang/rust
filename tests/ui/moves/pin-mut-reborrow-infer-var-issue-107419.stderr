@@ -13,7 +13,7 @@ note: `Pin::<&'a mut T>::get_mut` takes ownership of the receiver `self`, which 
 help: consider reborrowing the `Pin` instead of moving it
    |
 LL |     foo(r.as_mut().get_mut());
-   |           +++++++++
+   |          +++++++++
 
 error: aborting due to previous error
 

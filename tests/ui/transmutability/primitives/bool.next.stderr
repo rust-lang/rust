@@ -1,11 +1,11 @@
 error[E0277]: `u8` cannot be safely transmuted into `bool` in the defining scope of `assert::Context`
-  --> $DIR/bool.rs:24:35
+  --> $DIR/bool.rs:21:35
    |
 LL |     assert::is_transmutable::<u8, bool>();
    |                                   ^^^^ At least one value of `u8` isn't a bit-valid value of `bool`
    |
 note: required by a bound in `is_transmutable`
-  --> $DIR/bool.rs:14:14
+  --> $DIR/bool.rs:11:14
    |
 LL |     pub fn is_transmutable<Src, Dst>()
    |            --------------- required by a bound in this function

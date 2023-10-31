@@ -28,6 +28,12 @@ define-function: (
             ".result-" + |result_kind| + ":focus ." + |result_kind|,
             {"color": |hover_color|},
         )
+        // color of the typename (struct, module, method, ...) before search results
+        assert-css: (
+            ".result-name .typename",
+            {"color": |grey|},
+            ALL,
+        )
     },
 )
 
@@ -55,7 +61,7 @@ assert-css: (
     {"color": "#c5c5c5"},
 )
 assert-css: (
-    "//*[@class='result-name']/*[text()='test_docs::']",
+    "//*[@class='result-name']//*[text()='test_docs::']",
     {"color": "#0096cf"},
 )
 
@@ -65,16 +71,11 @@ assert-css: (
     {"border-bottom-color": "#aaa3"}
 )
 
-// Checking the color of "keyword" text.
-assert-css: (
-    "//*[@class='result-name']//*[text()='(keyword)']",
-    {"color": "#788797"},
-)
-
 store-value: (entry_color, "#0096cf") // color of the search entry
 store-value: (hover_entry_color, "#fff") // color of the hovered/focused search entry
 store-value: (background_color, "transparent") // background color
 store-value: (hover_background_color, "#3c3c3c") // hover background color
+store-value: (grey, "#999")
 
 call-function: (
     "check-result-color", (
@@ -137,7 +138,7 @@ call-function: (
 move-cursor-to: ".search-input"
 focus: ".search-input" // To ensure the `<a>` container isnt focus or hover.
 assert-css: (
-    "//*[@class='result-name']/*[text()='test_docs::']/ancestor::a",
+    "//*[@class='result-name']//*[text()='test_docs::']/ancestor::a",
     {"color": "#0096cf", "background-color": "transparent"},
     ALL,
 )
@@ -145,11 +146,11 @@ assert-css: (
 // Checking color and background on hover.
 move-cursor-to: "//*[@class='desc'][text()='Just a normal struct.']"
 assert-css: (
-    "//*[@class='result-name']/*[text()='test_docs::']",
+    "//*[@class='result-name']//*[text()='test_docs::']",
     {"color": "#fff"},
 )
 assert-css: (
-    "//*[@class='result-name']/*[text()='test_docs::']/ancestor::a",
+    "//*[@class='result-name']//*[text()='test_docs::']/ancestor::a",
     {"color": "#fff", "background-color": "rgb(60, 60, 60)"},
 )
 
@@ -172,7 +173,7 @@ assert-css: (
     {"color": "#ddd"},
 )
 assert-css: (
-    "//*[@class='result-name']/*[text()='test_docs::']",
+    "//*[@class='result-name']//*[text()='test_docs::']",
     {"color": "#ddd"},
 )
 
@@ -182,16 +183,11 @@ assert-css: (
     {"border-bottom-color": "#aaa3"}
 )
 
-// Checking the color for "keyword" text.
-assert-css: (
-    "//*[@class='result-name']//*[text()='(keyword)']",
-    {"color": "#ddd"},
-)
-
 store-value: (entry_color, "#ddd") // color of the search entry
 store-value: (hover_entry_color, "#ddd") // color of the hovered/focused search entry
 store-value: (background_color, "transparent") // background color
 store-value: (hover_background_color, "#616161") // hover background color
+store-value: (grey, "#ccc")
 
 call-function: (
     "check-result-color", (
@@ -254,7 +250,7 @@ call-function: (
 move-cursor-to: ".search-input"
 focus: ".search-input" // To ensure the `<a>` container isnt focus or hover.
 assert-css: (
-    "//*[@class='result-name']/*[text()='test_docs::']/ancestor::a",
+    "//*[@class='result-name']//*[text()='test_docs::']/ancestor::a",
     {"color": "#ddd", "background-color": "transparent"},
 )
 
@@ -274,7 +270,7 @@ assert-css: (
     {"color": "#000"},
 )
 assert-css: (
-    "//*[@class='result-name']/*[text()='test_docs::']",
+    "//*[@class='result-name']//*[text()='test_docs::']",
     {"color": "#000"},
 )
 
@@ -284,16 +280,11 @@ assert-css: (
     {"border-bottom-color": "#aaa3"}
 )
 
-// Checking the color for "keyword" text.
-assert-css: (
-    "//*[@class='result-name']//*[text()='(keyword)']",
-    {"color": "#000"},
-)
-
 store-value: (entry_color, "#000") // color of the search entry
 store-value: (hover_entry_color, "#000") // color of the hovered/focused search entry
 store-value: (background_color, "transparent") // background color
 store-value: (hover_background_color, "#ccc") // hover background color
+store-value: (grey, "#999")
 
 call-function: (
     "check-result-color", (
@@ -356,7 +347,7 @@ call-function: (
 move-cursor-to: ".search-input"
 focus: ".search-input" // To ensure the `<a>` container isnt focus or hover.
 assert-css: (
-    "//*[@class='result-name']/*[text()='test_docs::']/ancestor::a",
+    "//*[@class='result-name']//*[text()='test_docs::']/ancestor::a",
     {"color": "#000", "background-color": "transparent"},
 )
 
@@ -377,8 +368,8 @@ define-function: (
         // Waiting for the search results to appear...
         wait-for: "#search-tabs"
         // Checking that the colors for the alias element are the ones expected.
-        assert-css: (".result-name > .alias", {"color": |alias|})
-        assert-css: (".result-name > .alias > .grey", {"color": |grey|})
+        assert-css: (".result-name .path .alias", {"color": |alias|})
+        assert-css: (".result-name .path .alias > .grey", {"color": |grey|})
         // Leave the search results to prevent reloading with an already filled search input.
         press-key: "Escape"
     },

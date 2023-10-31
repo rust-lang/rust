@@ -1,7 +1,7 @@
 error[E0572]: return statement outside of function body
   --> $DIR/issue-64620.rs:2:10
    |
-LL |     V1 = return [0][0]
+LL |     V1 = return [0][0],
    |          ^^^^^^^^^^^^^
 
 error: aborting due to previous error

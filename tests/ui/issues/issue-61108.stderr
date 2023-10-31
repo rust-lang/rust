@@ -7,7 +7,7 @@ LL |     for l in bad_letters {
    |              ----------- `bad_letters` moved due to this implicit call to `.into_iter()`
 ...
 LL |     bad_letters.push('s');
-   |     ^^^^^^^^^^^^^^^^^^^^^ value borrowed here after move
+   |     ^^^^^^^^^^^ value borrowed here after move
    |
 note: `into_iter` takes ownership of the receiver `self`, which moves `bad_letters`
   --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL

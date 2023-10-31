@@ -1,15 +1,14 @@
 use std::ops::ControlFlow;
 
-use clippy_utils::{
-    diagnostics::span_lint_and_sugg,
-    peel_blocks,
-    source::{snippet, walk_span_to_context},
-    visitors::for_each_expr,
-};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::peel_blocks;
+use clippy_utils::source::{snippet, walk_span_to_context};
+use clippy_utils::visitors::for_each_expr;
 use rustc_errors::Applicability;
 use rustc_hir::{AsyncGeneratorKind, Closure, Expr, ExprKind, GeneratorKind, MatchSource};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::{lint::in_external_macro, ty::UpvarCapture};
+use rustc_middle::lint::in_external_macro;
+use rustc_middle::ty::UpvarCapture;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
@@ -35,7 +34,7 @@ declare_clippy_lint! {
     /// };
     /// let fut = f;
     /// ```
-    #[clippy::version = "1.69.0"]
+    #[clippy::version = "1.70.0"]
     pub REDUNDANT_ASYNC_BLOCK,
     complexity,
     "`async { future.await }` can be replaced by `future`"

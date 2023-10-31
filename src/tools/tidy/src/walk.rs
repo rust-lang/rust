@@ -4,6 +4,8 @@ use std::{ffi::OsStr, fs::File, io::Read, path::Path};
 
 /// The default directory filter.
 pub fn filter_dirs(path: &Path) -> bool {
+    // FIXME: sync submodule exclusion list with rustfmt.toml
+    // bootstrap/etc
     let skip = [
         "tidy-test-file",
         "compiler/rustc_codegen_cranelift",
@@ -15,9 +17,7 @@ pub fn filter_dirs(path: &Path) -> bool {
         "src/tools/cargo",
         "src/tools/clippy",
         "src/tools/miri",
-        "src/tools/rls",
         "src/tools/rust-analyzer",
-        "src/tools/rust-installer",
         "src/tools/rustfmt",
         "src/doc/book",
         "src/doc/edition-guide",

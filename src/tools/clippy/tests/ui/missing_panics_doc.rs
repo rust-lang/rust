@@ -1,5 +1,12 @@
+//@aux-build:macro_rules.rs
 #![warn(clippy::missing_panics_doc)]
-#![allow(clippy::option_map_unit_fn)]
+#![allow(clippy::option_map_unit_fn, clippy::unnecessary_literal_unwrap)]
+
+#[macro_use]
+extern crate macro_rules;
+
+use macro_rules::macro_with_panic;
+
 fn main() {}
 
 /// This needs to be documented
@@ -11,11 +18,6 @@ pub fn unwrap() {
 /// This needs to be documented
 pub fn panic() {
     panic!("This function panics")
-}
-
-/// This needs to be documented
-pub fn todo() {
-    todo!()
 }
 
 /// This needs to be documented
@@ -81,15 +83,6 @@ pub fn inner_body_documented(opt: Option<u32>) {
 /// # Panics
 ///
 /// We still need to do this part
-pub fn todo_documented() {
-    todo!()
-}
-
-/// This is documented
-///
-/// # Panics
-///
-/// We still need to do this part
 pub fn unreachable_amd_panic_documented() {
     if true { unreachable!() } else { panic!() }
 }
@@ -114,6 +107,11 @@ pub fn assert_ne_documented() {
     assert_ne!(x, 0);
 }
 
+/// `todo!()` is fine
+pub fn todo() {
+    todo!()
+}
+
 /// This is okay because it is private
 fn unwrap_private() {
     let result = Err("Hi");
@@ -123,11 +121,6 @@ fn unwrap_private() {
 /// This is okay because it is private
 fn panic_private() {
     panic!("This function panics")
-}
-
-/// This is okay because it is private
-fn todo_private() {
-    todo!()
 }
 
 /// This is okay because it is private
@@ -150,4 +143,51 @@ pub fn debug_assertions() {
     debug_assert!(false);
     debug_assert_eq!(1, 2);
     debug_assert_ne!(1, 2);
+}
+
+// all function must be triggered the lint.
+// `pub` is required, because the lint does not consider unreachable items
+pub mod issue10240 {
+    pub fn option_unwrap<T>(v: &[T]) -> &T {
+        let o: Option<&T> = v.last();
+        o.unwrap()
+    }
+
+    pub fn option_expect<T>(v: &[T]) -> &T {
+        let o: Option<&T> = v.last();
+        o.expect("passed an empty thing")
+    }
+
+    pub fn result_unwrap<T>(v: &[T]) -> &T {
+        let res: Result<&T, &str> = v.last().ok_or("oh noes");
+        res.unwrap()
+    }
+
+    pub fn result_expect<T>(v: &[T]) -> &T {
+        let res: Result<&T, &str> = v.last().ok_or("oh noes");
+        res.expect("passed an empty thing")
+    }
+
+    pub fn last_unwrap(v: &[u32]) -> u32 {
+        *v.last().unwrap()
+    }
+
+    pub fn last_expect(v: &[u32]) -> u32 {
+        *v.last().expect("passed an empty thing")
+    }
+}
+
+fn from_external_macro_should_not_lint() {
+    macro_with_panic!()
+}
+
+macro_rules! some_macro_that_panics {
+    () => {
+        panic!()
+    };
+}
+
+fn from_declared_macro_should_lint_at_macrosite() {
+    // Not here.
+    some_macro_that_panics!()
 }

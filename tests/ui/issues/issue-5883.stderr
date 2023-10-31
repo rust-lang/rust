@@ -15,22 +15,6 @@ help: function arguments must have a statically known size, borrowed types alway
 LL |     r: &dyn A + 'static
    |        +
 
-error[E0277]: the size for values of type `(dyn A + 'static)` cannot be known at compilation time
-  --> $DIR/issue-5883.rs:9:6
-   |
-LL | ) -> Struct {
-   |      ^^^^^^ doesn't have a size known at compile-time
-LL |     Struct { r: r }
-   |     --------------- this returned value is of type `Struct`
-   |
-   = help: within `Struct`, the trait `Sized` is not implemented for `(dyn A + 'static)`
-note: required because it appears within the type `Struct`
-  --> $DIR/issue-5883.rs:3:8
-   |
-LL | struct Struct {
-   |        ^^^^^^
-   = note: the return type of a function must have a statically known size
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0277`.

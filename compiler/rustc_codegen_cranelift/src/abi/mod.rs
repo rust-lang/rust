@@ -48,7 +48,9 @@ pub(crate) fn conv_to_call_conv(sess: &Session, c: Conv, default_call_conv: Call
             default_call_conv
         }
 
-        Conv::X86Intr => sess.fatal("x86-interrupt call conv not yet implemented"),
+        Conv::X86Intr | Conv::RiscvInterrupt { .. } => {
+            sess.fatal(format!("interrupt call conv {c:?} not yet implemented"))
+        }
 
         Conv::ArmAapcs => sess.fatal("aapcs call conv not yet implemented"),
         Conv::CCmseNonSecureCall => {
@@ -70,7 +72,7 @@ pub(crate) fn get_function_sig<'tcx>(
     default_call_conv: CallConv,
     inst: Instance<'tcx>,
 ) -> Signature {
-    assert!(!inst.substs.has_infer());
+    assert!(!inst.args.has_infer());
     clif_sig_from_fn_abi(
         tcx,
         default_call_conv,
@@ -377,16 +379,16 @@ pub(crate) fn codegen_terminator_call<'tcx>(
     let ret_place = codegen_place(fx, destination);
 
     // Handle special calls like intrinsics and empty drop glue.
-    let instance = if let ty::FnDef(def_id, substs) = *func.layout().ty.kind() {
+    let instance = if let ty::FnDef(def_id, fn_args) = *func.layout().ty.kind() {
         let instance =
-            ty::Instance::expect_resolve(fx.tcx, ty::ParamEnv::reveal_all(), def_id, substs)
+            ty::Instance::expect_resolve(fx.tcx, ty::ParamEnv::reveal_all(), def_id, fn_args)
                 .polymorphize(fx.tcx);
 
         if fx.tcx.symbol_name(instance).name.starts_with("llvm.") {
             crate::intrinsics::codegen_llvm_intrinsic_call(
                 fx,
                 &fx.tcx.symbol_name(instance).name,
-                substs,
+                fn_args,
                 args,
                 ret_place,
                 target,
@@ -445,9 +447,14 @@ pub(crate) fn codegen_terminator_call<'tcx>(
 
     // Unpack arguments tuple for closures
     let mut args = if fn_sig.abi() == Abi::RustCall {
-        assert_eq!(args.len(), 2, "rust-call abi requires two arguments");
-        let self_arg = codegen_call_argument_operand(fx, &args[0]);
-        let pack_arg = codegen_call_argument_operand(fx, &args[1]);
+        let (self_arg, pack_arg) = match args {
+            [pack_arg] => (None, codegen_call_argument_operand(fx, pack_arg)),
+            [self_arg, pack_arg] => (
+                Some(codegen_call_argument_operand(fx, self_arg)),
+                codegen_call_argument_operand(fx, pack_arg),
+            ),
+            _ => panic!("rust-call abi requires one or two arguments"),
+        };
 
         let tupled_arguments = match pack_arg.value.layout().ty.kind() {
             ty::Tuple(ref tupled_arguments) => tupled_arguments,
@@ -455,7 +462,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
         };
 
         let mut args = Vec::with_capacity(1 + tupled_arguments.len());
-        args.push(self_arg);
+        args.extend(self_arg);
         for i in 0..tupled_arguments.len() {
             args.push(CallArgument {
                 value: pack_arg.value.value_field(fx, FieldIdx::new(i)),
@@ -611,7 +618,7 @@ pub(crate) fn codegen_drop<'tcx>(
                 // `Instance::resolve_drop_in_place`?
                 let virtual_drop = Instance {
                     def: ty::InstanceDef::Virtual(drop_instance.def_id(), 0),
-                    substs: drop_instance.substs,
+                    args: drop_instance.args,
                 };
                 let fn_abi =
                     RevealAllLayoutCx(fx.tcx).fn_abi_of_instance(virtual_drop, ty::List::empty());
@@ -648,7 +655,7 @@ pub(crate) fn codegen_drop<'tcx>(
 
                 let virtual_drop = Instance {
                     def: ty::InstanceDef::Virtual(drop_instance.def_id(), 0),
-                    substs: drop_instance.substs,
+                    args: drop_instance.args,
                 };
                 let fn_abi =
                     RevealAllLayoutCx(fx.tcx).fn_abi_of_instance(virtual_drop, ty::List::empty());
@@ -665,7 +672,8 @@ pub(crate) fn codegen_drop<'tcx>(
 
                 let arg_value = drop_place.place_ref(
                     fx,
-                    fx.layout_of(fx.tcx.mk_ref(
+                    fx.layout_of(Ty::new_ref(
+                        fx.tcx,
                         fx.tcx.lifetimes.re_erased,
                         TypeAndMut { ty, mutbl: crate::rustc_hir::Mutability::Mut },
                     )),

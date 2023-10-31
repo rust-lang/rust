@@ -9,6 +9,7 @@ use rustc_session::config::OptLevel;
 use rustc_span::def_id::DefId;
 use rustc_target::abi::call::{
     ArgAbi, ArgAttribute, ArgAttributes, ArgExtension, Conv, FnAbi, PassMode, Reg, RegKind,
+    RiscvInterruptKind,
 };
 use rustc_target::abi::*;
 use rustc_target::spec::abi::Abi as SpecAbi;
@@ -51,12 +52,12 @@ fn fn_sig_for_fn_abi<'tcx>(
             //
             // We normalize the `fn_sig` again after substituting at a later point.
             let mut sig = match *ty.kind() {
-                ty::FnDef(def_id, substs) => tcx
+                ty::FnDef(def_id, args) => tcx
                     .fn_sig(def_id)
                     .map_bound(|fn_sig| {
                         tcx.normalize_erasing_regions(tcx.param_env(def_id), fn_sig)
                     })
-                    .subst(tcx, substs),
+                    .instantiate(tcx, args),
                 _ => unreachable!(),
             };
 
@@ -64,15 +65,15 @@ fn fn_sig_for_fn_abi<'tcx>(
                 // Modify `fn(self, ...)` to `fn(self: *mut Self, ...)`.
                 sig = sig.map_bound(|mut sig| {
                     let mut inputs_and_output = sig.inputs_and_output.to_vec();
-                    inputs_and_output[0] = tcx.mk_mut_ptr(inputs_and_output[0]);
+                    inputs_and_output[0] = Ty::new_mut_ptr(tcx, inputs_and_output[0]);
                     sig.inputs_and_output = tcx.mk_type_list(&inputs_and_output);
                     sig
                 });
             }
             sig
         }
-        ty::Closure(def_id, substs) => {
-            let sig = substs.as_closure().sig();
+        ty::Closure(def_id, args) => {
+            let sig = args.as_closure().sig();
 
             let bound_vars = tcx.mk_bound_variable_kinds_from_iter(
                 sig.bound_vars().iter().chain(iter::once(ty::BoundVariableKind::Region(ty::BrEnv))),
@@ -81,8 +82,8 @@ fn fn_sig_for_fn_abi<'tcx>(
                 var: ty::BoundVar::from_usize(bound_vars.len() - 1),
                 kind: ty::BoundRegionKind::BrEnv,
             };
-            let env_region = tcx.mk_re_late_bound(ty::INNERMOST, br);
-            let env_ty = tcx.closure_env_ty(def_id, substs, env_region).unwrap();
+            let env_region = ty::Region::new_late_bound(tcx, ty::INNERMOST, br);
+            let env_ty = tcx.closure_env_ty(def_id, args, env_region).unwrap();
 
             let sig = sig.skip_binder();
             ty::Binder::bind_with_vars(
@@ -96,8 +97,8 @@ fn fn_sig_for_fn_abi<'tcx>(
                 bound_vars,
             )
         }
-        ty::Generator(did, substs, _) => {
-            let sig = substs.as_generator().poly_sig();
+        ty::Generator(did, args, _) => {
+            let sig = args.as_generator().poly_sig();
 
             let bound_vars = tcx.mk_bound_variable_kinds_from_iter(
                 sig.bound_vars().iter().chain(iter::once(ty::BoundVariableKind::Region(ty::BrEnv))),
@@ -106,12 +107,13 @@ fn fn_sig_for_fn_abi<'tcx>(
                 var: ty::BoundVar::from_usize(bound_vars.len() - 1),
                 kind: ty::BoundRegionKind::BrEnv,
             };
-            let env_ty = tcx.mk_mut_ref(tcx.mk_re_late_bound(ty::INNERMOST, br), ty);
+            let env_ty =
+                Ty::new_mut_ref(tcx, ty::Region::new_late_bound(tcx, ty::INNERMOST, br), ty);
 
             let pin_did = tcx.require_lang_item(LangItem::Pin, None);
             let pin_adt_ref = tcx.adt_def(pin_did);
-            let pin_substs = tcx.mk_substs(&[env_ty.into()]);
-            let env_ty = tcx.mk_adt(pin_adt_ref, pin_substs);
+            let pin_args = tcx.mk_args(&[env_ty.into()]);
+            let env_ty = Ty::new_adt(tcx, pin_adt_ref, pin_args);
 
             let sig = sig.skip_binder();
             // The `FnSig` and the `ret_ty` here is for a generators main
@@ -122,8 +124,8 @@ fn fn_sig_for_fn_abi<'tcx>(
                 // The signature should be `Future::poll(_, &mut Context<'_>) -> Poll<Output>`
                 let poll_did = tcx.require_lang_item(LangItem::Poll, None);
                 let poll_adt_ref = tcx.adt_def(poll_did);
-                let poll_substs = tcx.mk_substs(&[sig.return_ty.into()]);
-                let ret_ty = tcx.mk_adt(poll_adt_ref, poll_substs);
+                let poll_args = tcx.mk_args(&[sig.return_ty.into()]);
+                let ret_ty = Ty::new_adt(tcx, poll_adt_ref, poll_args);
 
                 // We have to replace the `ResumeTy` that is used for type and borrow checking
                 // with `&mut Context<'_>` which is used in codegen.
@@ -137,15 +139,15 @@ fn fn_sig_for_fn_abi<'tcx>(
                         panic!("expected `ResumeTy`, found `{:?}`", sig.resume_ty);
                     };
                 }
-                let context_mut_ref = tcx.mk_task_context();
+                let context_mut_ref = Ty::new_task_context(tcx);
 
                 (context_mut_ref, ret_ty)
             } else {
                 // The signature should be `Generator::resume(_, Resume) -> GeneratorState<Yield, Return>`
                 let state_did = tcx.require_lang_item(LangItem::GeneratorState, None);
                 let state_adt_ref = tcx.adt_def(state_did);
-                let state_substs = tcx.mk_substs(&[sig.yield_ty.into(), sig.return_ty.into()]);
-                let ret_ty = tcx.mk_adt(state_adt_ref, state_substs);
+                let state_args = tcx.mk_args(&[sig.yield_ty.into(), sig.return_ty.into()]);
+                let ret_ty = Ty::new_adt(tcx, state_adt_ref, state_args);
 
                 (sig.resume_ty, ret_ty)
             };
@@ -192,6 +194,8 @@ fn conv_from_spec_abi(tcx: TyCtxt<'_>, abi: SpecAbi) -> Conv {
         AmdGpuKernel => Conv::AmdGpuKernel,
         AvrInterrupt => Conv::AvrInterrupt,
         AvrNonBlockingInterrupt => Conv::AvrNonBlockingInterrupt,
+        RiscvInterruptM => Conv::RiscvInterrupt { kind: RiscvInterruptKind::Machine },
+        RiscvInterruptS => Conv::RiscvInterrupt { kind: RiscvInterruptKind::Supervisor },
         Wasm => Conv::C,
 
         // These API constants ought to be more specific...
@@ -202,7 +206,7 @@ fn conv_from_spec_abi(tcx: TyCtxt<'_>, abi: SpecAbi) -> Conv {
 fn fn_abi_of_fn_ptr<'tcx>(
     tcx: TyCtxt<'tcx>,
     query: ty::ParamEnvAnd<'tcx, (ty::PolyFnSig<'tcx>, &'tcx ty::List<Ty<'tcx>>)>,
-) -> Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, FnAbiError<'tcx>> {
+) -> Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, &'tcx FnAbiError<'tcx>> {
     let (param_env, (sig, extra_args)) = query.into_parts();
 
     let cx = LayoutCx { tcx, param_env };
@@ -212,7 +216,7 @@ fn fn_abi_of_fn_ptr<'tcx>(
 fn fn_abi_of_instance<'tcx>(
     tcx: TyCtxt<'tcx>,
     query: ty::ParamEnvAnd<'tcx, (ty::Instance<'tcx>, &'tcx ty::List<Ty<'tcx>>)>,
-) -> Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, FnAbiError<'tcx>> {
+) -> Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, &'tcx FnAbiError<'tcx>> {
     let (param_env, (instance, extra_args)) = query.into_parts();
 
     let sig = fn_sig_for_fn_abi(tcx, instance, param_env);
@@ -331,7 +335,7 @@ fn fn_abi_new_uncached<'tcx>(
     fn_def_id: Option<DefId>,
     // FIXME(eddyb) replace this with something typed, like an `enum`.
     force_thin_self_ptr: bool,
-) -> Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, FnAbiError<'tcx>> {
+) -> Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, &'tcx FnAbiError<'tcx>> {
     let sig = cx.tcx.normalize_erasing_late_bound_regions(cx.param_env, sig);
 
     let conv = conv_from_spec_abi(cx.tcx(), sig.abi);
@@ -376,7 +380,7 @@ fn fn_abi_new_uncached<'tcx>(
     let is_drop_in_place =
         fn_def_id.is_some() && fn_def_id == cx.tcx.lang_items().drop_in_place_fn();
 
-    let arg_of = |ty: Ty<'tcx>, arg_idx: Option<usize>| -> Result<_, FnAbiError<'tcx>> {
+    let arg_of = |ty: Ty<'tcx>, arg_idx: Option<usize>| -> Result<_, &'tcx FnAbiError<'tcx>> {
         let span = tracing::debug_span!("arg_of");
         let _entered = span.enter();
         let is_return = arg_idx.is_none();
@@ -386,7 +390,8 @@ fn fn_abi_new_uncached<'tcx>(
             _ => bug!("argument to drop_in_place is not a raw ptr: {:?}", ty),
         });
 
-        let layout = cx.layout_of(ty)?;
+        let layout =
+            cx.layout_of(ty).map_err(|err| &*cx.tcx.arena.alloc(FnAbiError::Layout(*err)))?;
         let layout = if force_thin_self_ptr && arg_idx == Some(0) {
             // Don't pass the vtable, it's not an argument of the virtual fn.
             // Instead, pass just the data pointer, but give it the type `*const/mut dyn Trait`
@@ -454,7 +459,7 @@ fn fn_abi_adjust_for_abi<'tcx>(
     fn_abi: &mut FnAbi<'tcx, Ty<'tcx>>,
     abi: SpecAbi,
     fn_def_id: Option<DefId>,
-) -> Result<(), FnAbiError<'tcx>> {
+) -> Result<(), &'tcx FnAbiError<'tcx>> {
     if abi == SpecAbi::Unadjusted {
         return Ok(());
     }
@@ -548,7 +553,9 @@ fn fn_abi_adjust_for_abi<'tcx>(
             fixup(arg, Some(arg_idx));
         }
     } else {
-        fn_abi.adjust_for_foreign_abi(cx, abi)?;
+        fn_abi
+            .adjust_for_foreign_abi(cx, abi)
+            .map_err(|err| &*cx.tcx.arena.alloc(FnAbiError::AdjustForForeignAbi(err)))?;
     }
 
     Ok(())
@@ -563,7 +570,7 @@ fn make_thin_self_ptr<'tcx>(
     let fat_pointer_ty = if layout.is_unsized() {
         // unsized `self` is passed as a pointer to `self`
         // FIXME (mikeyhew) change this to use &own if it is ever added to the language
-        tcx.mk_mut_ptr(layout.ty)
+        Ty::new_mut_ptr(tcx, layout.ty)
     } else {
         match layout.abi {
             Abi::ScalarPair(..) | Abi::Scalar(..) => (),
@@ -597,7 +604,7 @@ fn make_thin_self_ptr<'tcx>(
     // we now have a type like `*mut RcBox<dyn Trait>`
     // change its layout to that of `*mut ()`, a thin pointer, but keep the same type
     // this is understood as a special case elsewhere in the compiler
-    let unit_ptr_ty = tcx.mk_mut_ptr(tcx.mk_unit());
+    let unit_ptr_ty = Ty::new_mut_ptr(tcx, Ty::new_unit(tcx));
 
     TyAndLayout {
         ty: fat_pointer_ty,

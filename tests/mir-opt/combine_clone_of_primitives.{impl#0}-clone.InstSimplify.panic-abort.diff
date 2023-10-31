@@ -1,0 +1,65 @@
+- // MIR for `<impl at $DIR/combine_clone_of_primitives.rs:6:10: 6:15>::clone` before InstSimplify
++ // MIR for `<impl at $DIR/combine_clone_of_primitives.rs:6:10: 6:15>::clone` after InstSimplify
+  
+  fn <impl at $DIR/combine_clone_of_primitives.rs:6:10: 6:15>::clone(_1: &MyThing<T>) -> MyThing<T> {
+      debug self => _1;
+      let mut _0: MyThing<T>;
+      let mut _2: T;
+      let mut _3: &T;
+      let _4: &T;
+      let mut _5: u64;
+      let mut _6: &u64;
+      let _7: &u64;
+      let mut _8: [f32; 3];
+      let mut _9: &[f32; 3];
+      let _10: &[f32; 3];
+  
+      bb0: {
+          StorageLive(_2);
+          StorageLive(_3);
+          StorageLive(_4);
+          _4 = &((*_1).0: T);
+-         _3 = &(*_4);
++         _3 = _4;
+          _2 = <T as Clone>::clone(move _3) -> [return: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+          StorageDead(_3);
+          StorageLive(_5);
+          StorageLive(_6);
+          StorageLive(_7);
+          _7 = &((*_1).1: u64);
+-         _6 = &(*_7);
+-         _5 = <u64 as Clone>::clone(move _6) -> [return: bb2, unwind unreachable];
++         _6 = _7;
++         _5 = (*_6);
++         goto -> bb2;
+      }
+  
+      bb2: {
+          StorageDead(_6);
+          StorageLive(_8);
+          StorageLive(_9);
+          StorageLive(_10);
+          _10 = &((*_1).2: [f32; 3]);
+-         _9 = &(*_10);
+-         _8 = <[f32; 3] as Clone>::clone(move _9) -> [return: bb3, unwind unreachable];
++         _9 = _10;
++         _8 = (*_9);
++         goto -> bb3;
+      }
+  
+      bb3: {
+          StorageDead(_9);
+          _0 = MyThing::<T> { v: move _2, i: move _5, a: move _8 };
+          StorageDead(_8);
+          StorageDead(_5);
+          StorageDead(_2);
+          StorageDead(_10);
+          StorageDead(_7);
+          StorageDead(_4);
+          return;
+      }
+  }
+  

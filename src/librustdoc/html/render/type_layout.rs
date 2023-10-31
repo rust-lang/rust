@@ -17,7 +17,7 @@ use crate::html::render::Context;
 #[template(path = "type_layout.html")]
 struct TypeLayout<'cx> {
     variants: Vec<(Symbol, TypeLayoutSize)>,
-    type_layout_size: Result<TypeLayoutSize, LayoutError<'cx>>,
+    type_layout_size: Result<TypeLayoutSize, &'cx LayoutError<'cx>>,
 }
 
 #[derive(Template)]
@@ -39,7 +39,7 @@ pub(crate) fn document_type_layout<'a, 'cx: 'a>(
 
         let tcx = cx.tcx();
         let param_env = tcx.param_env(ty_def_id);
-        let ty = tcx.type_of(ty_def_id).subst_identity();
+        let ty = tcx.type_of(ty_def_id).instantiate_identity();
         let type_layout = tcx.layout_of(param_env.and(ty));
 
         let variants =
@@ -54,13 +54,13 @@ pub(crate) fn document_type_layout<'a, 'cx: 'a>(
                     } else if let Primitive::Int(i, _) = tag.primitive() {
                         i.size().bytes()
                     } else {
-                        span_bug!(cx.tcx().def_span(ty_def_id), "tag is neither niche nor int")
+                        span_bug!(tcx.def_span(ty_def_id), "tag is neither niche nor int")
                     };
                 variants
                     .iter_enumerated()
                     .map(|(variant_idx, variant_layout)| {
                         let Adt(adt, _) = type_layout.ty.kind() else {
-                            span_bug!(cx.tcx().def_span(ty_def_id), "not an adt")
+                            span_bug!(tcx.def_span(ty_def_id), "not an adt")
                         };
                         let name = adt.variant(variant_idx).name;
                         let is_unsized = variant_layout.abi.is_unsized();

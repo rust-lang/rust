@@ -42,6 +42,7 @@ fn test_named_thread() {
     all(target_os = "linux", target_env = "gnu"),
     target_os = "macos",
     target_os = "ios",
+    target_os = "tvos",
     target_os = "watchos"
 ))]
 #[test]

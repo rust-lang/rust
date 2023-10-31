@@ -1,4 +1,4 @@
-// ignore-wasm32-bare compiled with panic=abort by default
+// EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 
 // Test that after the call to `std::mem::drop` we do not generate a
 // MIR drop of the argument. (We used to have a `DROP(_2)` in the code

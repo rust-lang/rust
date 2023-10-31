@@ -85,8 +85,8 @@ impl Parse for ClippyLint {
 /// 2. The `LINT_NAME`. See [lint naming][lint_naming] on lint naming conventions.
 /// 3. The `lint_level`, which is a mapping from *one* of our lint groups to `Allow`, `Warn` or
 ///    `Deny`. The lint level here has nothing to do with what lint groups the lint is a part of.
-/// 4. The `description` that contains a short explanation on what's wrong with code where the
-///    lint is triggered.
+/// 4. The `description` that contains a short explanation on what's wrong with code where the lint
+///    is triggered.
 ///
 /// Currently the categories `style`, `correctness`, `suspicious`, `complexity` and `perf` are
 /// enabled by default. As said in the README.md of this repository, if the lint level mapping

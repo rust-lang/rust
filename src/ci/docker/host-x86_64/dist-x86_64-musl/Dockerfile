@@ -1,6 +1,7 @@
-FROM ubuntu:20.04
+FROM ubuntu:22.04
 
-RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+ARG DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends \
   g++ \
   make \
   ninja-build \
@@ -11,6 +12,7 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-ins
   python3 \
   git \
   cmake \
+  bzip2 \
   xz-utils \
   sudo \
   gdb \
@@ -20,10 +22,6 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-ins
   && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /build/
-
-# Build cmake before musl toolchain, as we replace the compiler during that step.
-COPY scripts/cmake.sh /scripts/
-RUN /scripts/cmake.sh
 
 COPY scripts/musl-toolchain.sh /build/
 # We need to mitigate rust-lang/rust#34978 when compiling musl itself as well

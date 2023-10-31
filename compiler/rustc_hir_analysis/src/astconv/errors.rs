@@ -122,9 +122,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         let all_candidate_names: Vec<_> = all_candidates()
             .flat_map(|r| self.tcx().associated_items(r.def_id()).in_definition_order())
-            .filter_map(
-                |item| if item.kind == ty::AssocKind::Type { Some(item.name) } else { None },
-            )
+            .filter_map(|item| {
+                if !item.is_impl_trait_in_trait() && item.kind == ty::AssocKind::Type {
+                    Some(item.name)
+                } else {
+                    None
+                }
+            })
             .collect();
 
         if let (Some(suggested_name), true) = (
@@ -159,9 +163,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             .flat_map(|trait_def_id| {
                 self.tcx().associated_items(*trait_def_id).in_definition_order()
             })
-            .filter_map(
-                |item| if item.kind == ty::AssocKind::Type { Some(item.name) } else { None },
-            )
+            .filter_map(|item| {
+                if !item.is_impl_trait_in_trait() && item.kind == ty::AssocKind::Type {
+                    Some(item.name)
+                } else {
+                    None
+                }
+            })
             .collect();
 
         if let (Some(suggested_name), true) = (
@@ -189,7 +197,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
         }
 
-        err.span_label(span, format!("associated type `{}` not found", assoc_name));
+        err.span_label(span, format!("associated type `{assoc_name}` not found"));
         err.emit()
     }
 
@@ -239,7 +247,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 "the candidate".into()
             };
 
-            let impl_ty = tcx.at(span).type_of(impl_).subst_identity();
+            let impl_ty = tcx.at(span).type_of(impl_).instantiate_identity();
             let note = format!("{title} is defined in an impl for the type `{impl_ty}`");
 
             if let Some(span) = note_span {
@@ -287,7 +295,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             let type_candidates = candidates
                 .iter()
                 .take(limit)
-                .map(|&(impl_, _)| format!("- `{}`", tcx.at(span).type_of(impl_).subst_identity()))
+                .map(|&(impl_, _)| {
+                    format!("- `{}`", tcx.at(span).type_of(impl_).instantiate_identity())
+                })
                 .collect::<Vec<_>>()
                 .join("\n");
             let additional_types = if candidates.len() > limit {
@@ -343,18 +353,18 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let format_pred = |pred: ty::Predicate<'tcx>| {
             let bound_predicate = pred.kind();
             match bound_predicate.skip_binder() {
-                ty::PredicateKind::Clause(ty::Clause::Projection(pred)) => {
+                ty::PredicateKind::Clause(ty::ClauseKind::Projection(pred)) => {
                     let pred = bound_predicate.rebind(pred);
                     // `<Foo as Iterator>::Item = String`.
                     let projection_ty = pred.skip_binder().projection_ty;
 
-                    let substs_with_infer_self = tcx.mk_substs_from_iter(
-                        std::iter::once(tcx.mk_ty_var(ty::TyVid::from_u32(0)).into())
-                            .chain(projection_ty.substs.iter().skip(1)),
+                    let args_with_infer_self = tcx.mk_args_from_iter(
+                        std::iter::once(Ty::new_var(tcx, ty::TyVid::from_u32(0)).into())
+                            .chain(projection_ty.args.iter().skip(1)),
                     );
 
                     let quiet_projection_ty =
-                        tcx.mk_alias_ty(projection_ty.def_id, substs_with_infer_self);
+                        tcx.mk_alias_ty(projection_ty.def_id, args_with_infer_self);
 
                     let term = pred.skip_binder().term;
 
@@ -364,7 +374,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     bound_span_label(projection_ty.self_ty(), &obligation, &quiet);
                     Some((obligation, projection_ty.self_ty()))
                 }
-                ty::PredicateKind::Clause(ty::Clause::Trait(poly_trait_ref)) => {
+                ty::PredicateKind::Clause(ty::ClauseKind::Trait(poly_trait_ref)) => {
                     let p = poly_trait_ref.trait_ref;
                     let self_ty = p.self_ty();
                     let path = p.print_only_trait_path();
@@ -383,7 +393,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             .into_iter()
             .map(|error| error.root_obligation.predicate)
             .filter_map(format_pred)
-            .map(|(p, _)| format!("`{}`", p))
+            .map(|(p, _)| format!("`{p}`"))
             .collect();
         bounds.sort();
         bounds.dedup();
@@ -642,7 +652,7 @@ pub(crate) fn fn_trait_to_string(
             }
             .map(|s| {
                 // `s.empty()` checks to see if the type is the unit tuple, if so we don't want a comma
-                if parenthesized || s.is_empty() { format!("({})", s) } else { format!("({},)", s) }
+                if parenthesized || s.is_empty() { format!("({s})") } else { format!("({s},)") }
             })
             .ok(),
             _ => None,

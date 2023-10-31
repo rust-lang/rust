@@ -2,7 +2,7 @@ error: unnecessary use of `splitn`
   --> $DIR/ice-8250.rs:2:13
    |
 LL |     let _ = s[1..].splitn(2, '.').next()?;
-   |             ^^^^^^^^^^^^^^^^^^^^^ help: try this: `s[1..].split('.')`
+   |             ^^^^^^^^^^^^^^^^^^^^^ help: try: `s[1..].split('.')`
    |
    = note: `-D clippy::needless-splitn` implied by `-D warnings`
 

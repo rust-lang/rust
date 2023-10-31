@@ -2,13 +2,13 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/dealloc_intrinsic_dangling.rs:10:5
    |
 LL |     &*ptr
-   |     ^^^^^ pointer to alloc2 was dereferenced after this allocation got freed
+   |     ^^^^^ dereferencing pointer failed: alloc2 has been freed, so this pointer is dangling
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/dealloc_intrinsic_dangling.rs:18:5
    |
 LL |     *reference
-   |     ^^^^^^^^^^ pointer to alloc4 was dereferenced after this allocation got freed
+   |     ^^^^^^^^^^ dereferencing pointer failed: alloc4 has been freed, so this pointer is dangling
 
 error: aborting due to 2 previous errors
 

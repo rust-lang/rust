@@ -1,12 +1,15 @@
 //@compile-flags: --test
 
-#![allow(unused_mut, clippy::get_first, clippy::from_iter_instead_of_collect)]
+#![allow(
+    unused_mut,
+    clippy::get_first,
+    clippy::from_iter_instead_of_collect,
+    clippy::useless_vec
+)]
 #![warn(clippy::unwrap_used)]
-#![deny(clippy::get_unwrap)]
+#![warn(clippy::get_unwrap)]
 
-use std::collections::BTreeMap;
-use std::collections::HashMap;
-use std::collections::VecDeque;
+use std::collections::{BTreeMap, HashMap, VecDeque};
 
 struct GetFalsePositive {
     arr: [u32; 3],

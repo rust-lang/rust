@@ -213,6 +213,28 @@ pub trait AttrsOwnerEdit: ast::HasAttrs {
             }
         }
     }
+
+    fn add_attr(&self, attr: ast::Attr) {
+        add_attr(self.syntax(), attr);
+
+        fn add_attr(node: &SyntaxNode, attr: ast::Attr) {
+            let indent = IndentLevel::from_node(node);
+            attr.reindent_to(indent);
+
+            let after_attrs_and_comments = node
+                .children_with_tokens()
+                .find(|it| !matches!(it.kind(), WHITESPACE | COMMENT | ATTR))
+                .map_or(Position::first_child_of(node), |it| Position::before(it));
+
+            ted::insert_all(
+                after_attrs_and_comments,
+                vec![
+                    attr.syntax().clone().into(),
+                    make::tokens::whitespace(&format!("\n{indent}")).into(),
+                ],
+            )
+        }
+    }
 }
 
 impl<T: ast::HasAttrs> AttrsOwnerEdit for T {}
@@ -233,6 +255,21 @@ impl ast::GenericParamList {
                 let after_l_angle = Position::after(self.l_angle_token().unwrap());
                 ted::insert(after_l_angle, generic_param.syntax());
             }
+        }
+    }
+
+    /// Removes the existing generic param
+    pub fn remove_generic_param(&self, generic_param: ast::GenericParam) {
+        if let Some(previous) = generic_param.syntax().prev_sibling() {
+            if let Some(next_token) = previous.next_sibling_or_token() {
+                ted::remove_all(next_token..=generic_param.syntax().clone().into());
+            }
+        } else if let Some(next) = generic_param.syntax().next_sibling() {
+            if let Some(next_token) = next.prev_sibling_or_token() {
+                ted::remove_all(generic_param.syntax().clone().into()..=next_token);
+            }
+        } else {
+            ted::remove(generic_param.syntax());
         }
     }
 
@@ -343,6 +380,26 @@ impl Removable for ast::UseTree {
 }
 
 impl ast::UseTree {
+    /// Deletes the usetree node represented by the input. Recursively removes parents, including use nodes that become empty.
+    pub fn remove_recursive(self) {
+        let parent = self.syntax().parent();
+
+        self.remove();
+
+        if let Some(u) = parent.clone().and_then(ast::Use::cast) {
+            if u.use_tree().is_none() {
+                u.remove();
+            }
+        } else if let Some(u) = parent.and_then(ast::UseTreeList::cast) {
+            if u.use_trees().next().is_none() {
+                let parent = u.syntax().parent().and_then(ast::UseTree::cast);
+                if let Some(u) = parent {
+                    u.remove_recursive();
+                }
+            }
+        }
+    }
+
     pub fn get_or_create_use_tree_list(&self) -> ast::UseTreeList {
         match self.use_tree_list() {
             Some(it) => it,
@@ -450,6 +507,22 @@ impl Removable for ast::Use {
                 }
             }
         }
+        let prev_ws = self
+            .syntax()
+            .prev_sibling_or_token()
+            .and_then(|it| it.into_token())
+            .and_then(ast::Whitespace::cast);
+        if let Some(prev_ws) = prev_ws {
+            let ws_text = prev_ws.syntax().text();
+            let prev_newline = ws_text.rfind('\n').map(|x| x + 1).unwrap_or(0);
+            let rest = &ws_text[0..prev_newline];
+            if rest.is_empty() {
+                ted::remove(prev_ws.syntax());
+            } else {
+                ted::replace(prev_ws.syntax(), make::tokens::whitespace(rest));
+            }
+        }
+
         ted::remove(self.syntax());
     }
 }
@@ -465,6 +538,8 @@ impl ast::Impl {
 }
 
 impl ast::AssocItemList {
+    /// Attention! This function does align the first line of `item` with respect to `self`,
+    /// but it does _not_ change indentation of other lines (if any).
     pub fn add_item(&self, item: ast::AssocItem) {
         let (indent, position, whitespace) = match self.assoc_items().last() {
             Some(last_item) => (
@@ -659,12 +734,6 @@ fn get_or_insert_comma_after(syntax: &SyntaxNode) -> SyntaxToken {
     }
 }
 
-impl ast::StmtList {
-    pub fn push_front(&self, statement: ast::Stmt) {
-        ted::insert(Position::after(self.l_curly_token().unwrap()), statement.syntax());
-    }
-}
-
 impl ast::VariantList {
     pub fn add_variant(&self, variant: ast::Variant) {
         let (indent, position) = match self.variants().last() {
@@ -714,6 +783,27 @@ fn normalize_ws_between_braces(node: &SyntaxNode) -> Option<()> {
     }
     Some(())
 }
+
+pub trait HasVisibilityEdit: ast::HasVisibility {
+    fn set_visibility(&self, visbility: ast::Visibility) {
+        match self.visibility() {
+            Some(current_visibility) => {
+                ted::replace(current_visibility.syntax(), visbility.syntax())
+            }
+            None => {
+                let vis_before = self
+                    .syntax()
+                    .children_with_tokens()
+                    .find(|it| !matches!(it.kind(), WHITESPACE | COMMENT | ATTR))
+                    .unwrap_or_else(|| self.syntax().first_child_or_token().unwrap());
+
+                ted::insert(ted::Position::before(vis_before), visbility.syntax());
+            }
+        }
+    }
+}
+
+impl<T: ast::HasVisibility> HasVisibilityEdit for T {}
 
 pub trait Indent: AstNode + Clone + Sized {
     fn indent_level(&self) -> IndentLevel {

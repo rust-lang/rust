@@ -157,8 +157,7 @@ pub fn parse_asm_args<'a>(
         } else if p.eat_keyword(sym::sym) {
             let expr = p.parse_expr()?;
             let ast::ExprKind::Path(qself, path) = &expr.kind else {
-                let err = diag
-                    .create_err(errors::AsmSymNoPath { span: expr.span });
+                let err = diag.create_err(errors::AsmSymNoPath { span: expr.span });
                 return Err(err);
             };
             let sym = ast::InlineAsmSym {
@@ -371,24 +370,16 @@ fn parse_clobber_abi<'a>(p: &mut Parser<'a>, args: &mut AsmArgs) -> PResult<'a, 
     p.expect(&token::OpenDelim(Delimiter::Parenthesis))?;
 
     if p.eat(&token::CloseDelim(Delimiter::Parenthesis)) {
-        let err = p.sess.span_diagnostic.struct_span_err(
-            p.token.span,
-            "at least one abi must be provided as an argument to `clobber_abi`",
-        );
-        return Err(err);
+        return Err(p.sess.span_diagnostic.create_err(errors::NonABI { span: p.token.span }));
     }
 
     let mut new_abis = Vec::new();
-    loop {
+    while !p.eat(&token::CloseDelim(Delimiter::Parenthesis)) {
         match p.parse_str_lit() {
             Ok(str_lit) => {
                 new_abis.push((str_lit.symbol_unescaped, str_lit.span));
             }
             Err(opt_lit) => {
-                // If the non-string literal is a closing paren then it's the end of the list and is fine
-                if p.eat(&token::CloseDelim(Delimiter::Parenthesis)) {
-                    break;
-                }
                 let span = opt_lit.map_or(p.token.span, |lit| lit.span);
                 let mut err =
                     p.sess.span_diagnostic.struct_span_err(span, "expected string literal");
@@ -410,7 +401,7 @@ fn parse_clobber_abi<'a>(p: &mut Parser<'a>, args: &mut AsmArgs) -> PResult<'a, 
         // should have errored above during parsing
         [] => unreachable!(),
         [(abi, _span)] => args.clobber_abis.push((*abi, full_span)),
-        [abis @ ..] => {
+        abis => {
             for (abi, span) in abis {
                 args.clobber_abis.push((*abi, *span));
             }
@@ -432,9 +423,9 @@ fn parse_reg<'a>(
             ast::InlineAsmRegOrRegClass::Reg(symbol)
         }
         _ => {
-            return Err(
-                p.struct_span_err(p.token.span, "expected register class or explicit register")
-            );
+            return Err(p.sess.create_err(errors::ExpectedRegisterClassOrExplicitRegister {
+                span: p.token.span,
+            }));
         }
     };
     p.bump();
@@ -584,7 +575,7 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, args: AsmArgs) -> Option<ast::Inl
                                 || named_pos.contains_key(&idx)
                                 || args.reg_args.contains(idx)
                             {
-                                let msg = format!("invalid reference to argument at index {}", idx);
+                                let msg = format!("invalid reference to argument at index {idx}");
                                 let mut err = ecx.struct_span_err(span, msg);
                                 err.span_label(span, "from here");
 
@@ -597,9 +588,9 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, args: AsmArgs) -> Option<ast::Inl
                                     ""
                                 };
                                 let msg = match positional_args {
-                                    0 => format!("no {}arguments were given", positional),
-                                    1 => format!("there is 1 {}argument", positional),
-                                    x => format!("there are {} {}arguments", x, positional),
+                                    0 => format!("no {positional}arguments were given"),
+                                    1 => format!("there is 1 {positional}argument"),
+                                    x => format!("there are {x} {positional}arguments"),
                                 };
                                 err.note(msg);
 
@@ -633,7 +624,7 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, args: AsmArgs) -> Option<ast::Inl
                             match args.named_args.get(&Symbol::intern(name)) {
                                 Some(&idx) => Some(idx),
                                 None => {
-                                    let msg = format!("there is no argument named `{}`", name);
+                                    let msg = format!("there is no argument named `{name}`");
                                     let span = arg.position_span;
                                     ecx.struct_span_err(
                                         template_span
@@ -706,8 +697,7 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, args: AsmArgs) -> Option<ast::Inl
             err.span_label(sp, msg);
             err.help(format!(
                 "if this argument is intentionally unused, \
-                 consider using it in an asm comment: `\"/*{} */\"`",
-                help_str
+                 consider using it in an asm comment: `\"/*{help_str} */\"`"
             ));
             err.emit();
         }
@@ -721,8 +711,7 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, args: AsmArgs) -> Option<ast::Inl
             }
             err.help(format!(
                 "if these arguments are intentionally unused, \
-                 consider using them in an asm comment: `\"/*{} */\"`",
-                help_str
+                 consider using them in an asm comment: `\"/*{help_str} */\"`"
             ));
             err.emit();
         }

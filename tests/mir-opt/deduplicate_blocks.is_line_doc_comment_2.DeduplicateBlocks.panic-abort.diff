@@ -1,0 +1,96 @@
+- // MIR for `is_line_doc_comment_2` before DeduplicateBlocks
++ // MIR for `is_line_doc_comment_2` after DeduplicateBlocks
+  
+  fn is_line_doc_comment_2(_1: &str) -> bool {
+      debug s => _1;
+      let mut _0: bool;
+      let mut _2: &[u8];
+      let mut _3: &str;
+      let mut _4: usize;
+      let mut _5: usize;
+      let mut _6: bool;
+      let mut _7: usize;
+      let mut _8: usize;
+      let mut _9: bool;
+  
+      bb0: {
+          StorageLive(_2);
+          StorageLive(_3);
+          _3 = &(*_1);
+          _2 = core::str::<impl str>::as_bytes(move _3) -> [return: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+          StorageDead(_3);
+          _7 = Len((*_2));
+          _8 = const 4_usize;
+          _9 = Ge(move _7, move _8);
+          switchInt(move _9) -> [0: bb6, otherwise: bb2];
+      }
+  
+      bb2: {
+          switchInt((*_2)[0 of 4]) -> [47: bb3, otherwise: bb6];
+      }
+  
+      bb3: {
+          switchInt((*_2)[1 of 4]) -> [47: bb4, otherwise: bb6];
+      }
+  
+      bb4: {
+          switchInt((*_2)[2 of 4]) -> [47: bb5, otherwise: bb6];
+      }
+  
+      bb5: {
+-         switchInt((*_2)[3 of 4]) -> [47: bb11, otherwise: bb6];
++         switchInt((*_2)[3 of 4]) -> [47: bb10, otherwise: bb6];
+      }
+  
+      bb6: {
+          _4 = Len((*_2));
+          _5 = const 3_usize;
+          _6 = Ge(move _4, move _5);
+          switchInt(move _6) -> [0: bb10, otherwise: bb7];
+      }
+  
+      bb7: {
+          switchInt((*_2)[0 of 3]) -> [47: bb8, otherwise: bb10];
+      }
+  
+      bb8: {
+          switchInt((*_2)[1 of 3]) -> [47: bb9, otherwise: bb10];
+      }
+  
+      bb9: {
+-         switchInt((*_2)[2 of 3]) -> [47: bb12, 33: bb13, otherwise: bb10];
++         switchInt((*_2)[2 of 3]) -> [47: bb11, 33: bb11, otherwise: bb10];
+      }
+  
+      bb10: {
+          _0 = const false;
+-         goto -> bb14;
++         goto -> bb12;
+      }
+  
+      bb11: {
+-         _0 = const false;
+-         goto -> bb14;
+-     }
+- 
+-     bb12: {
+          _0 = const true;
+-         goto -> bb14;
++         goto -> bb12;
+      }
+  
+-     bb13: {
+-         _0 = const true;
+-         goto -> bb14;
+-     }
+- 
+-     bb14: {
++     bb12: {
+          StorageDead(_2);
+          return;
+      }
+  }
+  

@@ -1,0 +1,9 @@
+// MIR for `hello` before PreCodegen
+
+fn hello() -> () {
+    let mut _0: ();
+
+    bb0: {
+        return;
+    }
+}

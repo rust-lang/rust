@@ -126,12 +126,12 @@ impl<'k> StatCollector<'k> {
 
         let total_size = nodes.iter().map(|(_, node)| node.stats.count * node.stats.size).sum();
 
-        eprintln!("{} {}", prefix, title);
+        eprintln!("{prefix} {title}");
         eprintln!(
             "{} {:<18}{:>18}{:>14}{:>14}",
             prefix, "Name", "Accumulated Size", "Count", "Item Size"
         );
-        eprintln!("{} ----------------------------------------------------------------", prefix);
+        eprintln!("{prefix} ----------------------------------------------------------------");
 
         let percent = |m, n| (m * 100) as f64 / n as f64;
 
@@ -163,9 +163,9 @@ impl<'k> StatCollector<'k> {
                 }
             }
         }
-        eprintln!("{} ----------------------------------------------------------------", prefix);
+        eprintln!("{prefix} ----------------------------------------------------------------");
         eprintln!("{} {:<18}{:>10}", prefix, "Total", to_readable_str(total_size));
-        eprintln!("{}", prefix);
+        eprintln!("{prefix}");
     }
 }
 
@@ -302,8 +302,8 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
             [
                 ConstBlock, Array, Call, MethodCall, Tup, Binary, Unary, Lit, Cast, Type,
                 DropTemps, Let, If, Loop, Match, Closure, Block, Assign, AssignOp, Field, Index,
-                Path, AddrOf, Break, Continue, Ret, InlineAsm, OffsetOf, Struct, Repeat, Yield,
-                Err
+                Path, AddrOf, Break, Continue, Ret, Become, InlineAsm, OffsetOf, Struct, Repeat,
+                Yield, Err
             ]
         );
         hir_visit::walk_expr(self, e)
@@ -569,7 +569,8 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
                 Array, ConstBlock, Call, MethodCall, Tup, Binary, Unary, Lit, Cast, Type, Let,
                 If, While, ForLoop, Loop, Match, Closure, Block, Async, Await, TryBlock, Assign,
                 AssignOp, Field, Index, Range, Underscore, Path, AddrOf, Break, Continue, Ret,
-                InlineAsm, FormatArgs, OffsetOf, MacCall, Struct, Repeat, Paren, Try, Yield, Yeet, IncludedBytes, Err
+                InlineAsm, FormatArgs, OffsetOf, MacCall, Struct, Repeat, Paren, Try, Yield, Yeet,
+                Become, IncludedBytes, Err
             ]
         );
         ast_visit::walk_expr(self, e)

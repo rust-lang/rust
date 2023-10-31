@@ -1,0 +1,21 @@
+error[E0191]: the value of the associated type `Bop` (from trait `Foo`) must be specified
+  --> $DIR/assoc_type_bounds_sized_others.rs:12:16
+   |
+LL |     type Bop;
+   |     -------- `Bop` defined here
+...
+LL | fn foo(_: &dyn Foo) {}
+   |                ^^^ help: specify the associated type: `Foo<Bop = Type>`
+
+error[E0191]: the value of the associated type `Bop` (from trait `Bar`) must be specified
+  --> $DIR/assoc_type_bounds_sized_others.rs:22:16
+   |
+LL |     type Bop;
+   |     -------- `Bop` defined here
+...
+LL | fn bar(_: &dyn Bar) {}
+   |                ^^^ help: specify the associated type: `Bar<Bop = Type>`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0191`.

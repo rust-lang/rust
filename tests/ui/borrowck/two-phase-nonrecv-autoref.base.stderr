@@ -50,42 +50,42 @@ error[E0502]: cannot borrow `i` as immutable because it is also borrowed as muta
    |
 LL |     i[i[3]] = 4;
    |     --^----
-   |     | |
-   |     | immutable borrow occurs here
+   |     |||
+   |     ||immutable borrow occurs here
+   |     |mutable borrow later used here
    |     mutable borrow occurs here
-   |     mutable borrow later used here
    |
 help: try adding a local storing this...
-  --> $DIR/two-phase-nonrecv-autoref.rs:132:7
+  --> $DIR/two-phase-nonrecv-autoref.rs:132:8
    |
 LL |     i[i[3]] = 4;
-   |       ^^^^
+   |        ^^^
 help: ...and then using that local here
-  --> $DIR/two-phase-nonrecv-autoref.rs:132:5
+  --> $DIR/two-phase-nonrecv-autoref.rs:132:6
    |
 LL |     i[i[3]] = 4;
-   |     ^^^^^^^
+   |      ^^^^^^
 
 error[E0502]: cannot borrow `i` as immutable because it is also borrowed as mutable
   --> $DIR/two-phase-nonrecv-autoref.rs:138:7
    |
 LL |     i[i[3]] = i[4];
    |     --^----
-   |     | |
-   |     | immutable borrow occurs here
+   |     |||
+   |     ||immutable borrow occurs here
+   |     |mutable borrow later used here
    |     mutable borrow occurs here
-   |     mutable borrow later used here
    |
 help: try adding a local storing this...
-  --> $DIR/two-phase-nonrecv-autoref.rs:138:7
+  --> $DIR/two-phase-nonrecv-autoref.rs:138:8
    |
 LL |     i[i[3]] = i[4];
-   |       ^^^^
+   |        ^^^
 help: ...and then using that local here
-  --> $DIR/two-phase-nonrecv-autoref.rs:138:5
+  --> $DIR/two-phase-nonrecv-autoref.rs:138:6
    |
 LL |     i[i[3]] = i[4];
-   |     ^^^^^^^
+   |      ^^^^^^
 
 error: aborting due to 7 previous errors
 

@@ -1,7 +1,7 @@
 //@run-rustfix
 //@aux-build:macro_rules.rs
 
-#![allow(dead_code, unused_variables)]
+#![allow(clippy::needless_raw_string_hashes, dead_code, unused_variables)]
 #![warn(clippy::string_lit_as_bytes)]
 
 #[macro_use]

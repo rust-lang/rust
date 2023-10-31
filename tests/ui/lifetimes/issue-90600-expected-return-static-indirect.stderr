@@ -10,7 +10,7 @@ LL |     let read = &refcell as &RefCell<dyn Read>;
    |                -------- cast requires that `foo` is borrowed for `'static`
 ...
 LL | }
-   | - `foo` dropped here while still borrowed
+   |  - `foo` dropped here while still borrowed
 
 error: lifetime may not live long enough
   --> $DIR/issue-90600-expected-return-static-indirect.rs:9:16

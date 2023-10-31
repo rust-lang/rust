@@ -804,9 +804,7 @@ impl<'a, T: Idx> Iterator for ChunkedBitIter<'a, T> {
         // advance the iterator to the start of the next chunk, before proceeding in chunk sized
         // steps.
         while self.index % CHUNK_BITS != 0 {
-            let Some(item) = self.next() else {
-                return init
-            };
+            let Some(item) = self.next() else { return init };
             init = f(init, item);
         }
         let start_chunk = self.index / CHUNK_BITS;

@@ -112,7 +112,7 @@ pub(super) fn parse_cfg_name_directive<'a>(
             (config.target == "wasm32-unknown-unknown").then_some("emscripten"),
         ],
         allowed_names: &target_cfgs.all_oses,
-        message: "when the operative system is {name}"
+        message: "when the operating system is {name}"
     }
     condition! {
         name: &target_cfg.env,
@@ -122,7 +122,7 @@ pub(super) fn parse_cfg_name_directive<'a>(
     condition! {
         name: &target_cfg.os_and_env(),
         allowed_names: &target_cfgs.all_oses_and_envs,
-        message: "when the operative system and target environment are {name}"
+        message: "when the operating system and target environment are {name}"
     }
     condition! {
         name: &target_cfg.abi,

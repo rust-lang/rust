@@ -1,7 +1,14 @@
-const QUERY = '!';
-
-const EXPECTED = {
-    'others': [
-        { 'path': 'std', 'name': 'never' },
-    ],
-};
+const EXPECTED = [
+    {
+        'query': '!',
+        'others': [
+            { 'path': 'std', 'name': 'never' },
+        ],
+    },
+    {
+        'query': '!::clone',
+        'others': [
+            { 'path': 'std::never', 'name': 'clone' },
+        ],
+    },
+];

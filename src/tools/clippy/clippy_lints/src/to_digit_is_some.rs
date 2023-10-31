@@ -82,7 +82,7 @@ impl<'tcx> LateLintPass<'tcx> for ToDigitIsSome {
                         TO_DIGIT_IS_SOME,
                         expr.span,
                         "use of `.to_digit(..).is_some()`",
-                        "try this",
+                        "try",
                         if is_method_call {
                             format!("{char_arg_snip}.is_digit({radix_snip})")
                         } else {

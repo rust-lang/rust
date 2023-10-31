@@ -2,12 +2,10 @@ error[E0716]: temporary value dropped while borrowed
   --> $DIR/issue-52049.rs:6:10
    |
 LL |     foo(&unpromotable(5u32));
-   |     -----^^^^^^^^^^^^^^^^^^-
+   |     -----^^^^^^^^^^^^^^^^^^-- temporary value is freed at the end of this statement
    |     |    |
    |     |    creates a temporary value which is freed while still in use
    |     argument requires that borrow lasts for `'static`
-LL | }
-   | - temporary value is freed at the end of this statement
 
 error: aborting due to previous error
 

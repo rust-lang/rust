@@ -11,6 +11,6 @@ unsafe impl Send for SendRaw {}
 fn main() {
     unsafe {
         let dangling_ptr = std::thread::spawn(|| SendRaw(&TLS as *const u8)).join().unwrap();
-        let _val = *dangling_ptr.0; //~ ERROR: dereferenced after this allocation got freed
+        let _val = *dangling_ptr.0; //~ ERROR: has been freed
     }
 }

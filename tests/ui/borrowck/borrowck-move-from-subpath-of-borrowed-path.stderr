@@ -9,7 +9,7 @@ LL |
 LL |     let z = *a;
    |             ^^ move out of `*a` occurs here
 LL |     b.use_ref();
-   |     ----------- borrow later used here
+   |     - borrow later used here
 
 error: aborting due to previous error
 

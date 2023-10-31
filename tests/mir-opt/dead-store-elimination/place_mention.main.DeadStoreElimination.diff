@@ -2,24 +2,18 @@
 + // MIR for `main` after DeadStoreElimination
   
   fn main() -> () {
-      let mut _0: ();                      // return place in scope 0 at $DIR/place_mention.rs:+0:11: +0:11
-      let mut _1: (&str, &str);            // in scope 0 at $DIR/place_mention.rs:+3:18: +3:36
+      let mut _0: ();
+      let mut _1: (&str, &str);
       scope 1 {
       }
   
       bb0: {
-          StorageLive(_1);                 // scope 0 at $DIR/place_mention.rs:+3:18: +3:36
-          _1 = (const "Hello", const "World"); // scope 0 at $DIR/place_mention.rs:+3:18: +3:36
-                                           // mir::Constant
-                                           // + span: $DIR/place_mention.rs:8:19: 8:26
-                                           // + literal: Const { ty: &str, val: Value(Slice(..)) }
-                                           // mir::Constant
-                                           // + span: $DIR/place_mention.rs:8:28: 8:35
-                                           // + literal: Const { ty: &str, val: Value(Slice(..)) }
-          PlaceMention(_1);                // scope 0 at $DIR/place_mention.rs:+3:18: +3:36
-          StorageDead(_1);                 // scope 0 at $DIR/place_mention.rs:+3:36: +3:37
-          _0 = const ();                   // scope 0 at $DIR/place_mention.rs:+0:11: +4:2
-          return;                          // scope 0 at $DIR/place_mention.rs:+4:2: +4:2
+          StorageLive(_1);
+          _1 = (const "Hello", const "World");
+          PlaceMention(_1);
+          StorageDead(_1);
+          _0 = const ();
+          return;
       }
   }
   

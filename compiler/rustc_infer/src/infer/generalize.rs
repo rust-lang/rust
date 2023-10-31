@@ -173,21 +173,21 @@ where
         true
     }
 
-    fn relate_item_substs(
+    fn relate_item_args(
         &mut self,
         item_def_id: DefId,
-        a_subst: ty::SubstsRef<'tcx>,
-        b_subst: ty::SubstsRef<'tcx>,
-    ) -> RelateResult<'tcx, ty::SubstsRef<'tcx>> {
+        a_subst: ty::GenericArgsRef<'tcx>,
+        b_subst: ty::GenericArgsRef<'tcx>,
+    ) -> RelateResult<'tcx, ty::GenericArgsRef<'tcx>> {
         if self.ambient_variance == ty::Variance::Invariant {
             // Avoid fetching the variance if we are in an invariant
             // context; no need, and it can induce dependency cycles
             // (e.g., #41849).
-            relate::relate_substs(self, a_subst, b_subst)
+            relate::relate_args(self, a_subst, b_subst)
         } else {
             let tcx = self.tcx();
             let opt_variances = tcx.variances_of(item_def_id);
-            relate::relate_substs_with_variances(
+            relate::relate_args_with_variances(
                 self,
                 item_def_id,
                 opt_variances,
@@ -277,7 +277,7 @@ where
                             let origin = *inner.type_variables().var_origin(vid);
                             let new_var_id =
                                 inner.type_variables().new_var(self.for_universe, origin);
-                            let u = self.tcx().mk_ty_var(new_var_id);
+                            let u = Ty::new_var(self.tcx(), new_var_id);
 
                             // Record that we replaced `vid` with `new_var_id` as part of a generalization
                             // operation. This is needed to detect cyclic types. To see why, see the
@@ -398,21 +398,25 @@ where
                                 origin: var_value.origin,
                                 val: ConstVariableValue::Unknown { universe: self.for_universe },
                             });
-                            Ok(self.tcx().mk_const(new_var_id, c.ty()))
+                            Ok(ty::Const::new_var(self.tcx(), new_var_id, c.ty()))
                         }
                     }
                 }
             }
             // FIXME: remove this branch once `structurally_relate_consts` is fully
             // structural.
-            ty::ConstKind::Unevaluated(ty::UnevaluatedConst { def, substs }) => {
-                let substs = self.relate_with_variance(
+            ty::ConstKind::Unevaluated(ty::UnevaluatedConst { def, args }) => {
+                let args = self.relate_with_variance(
                     ty::Variance::Invariant,
                     ty::VarianceDiagInfo::default(),
-                    substs,
-                    substs,
+                    args,
+                    args,
                 )?;
-                Ok(self.tcx().mk_const(ty::UnevaluatedConst { def, substs }, c.ty()))
+                Ok(ty::Const::new_unevaluated(
+                    self.tcx(),
+                    ty::UnevaluatedConst { def, args },
+                    c.ty(),
+                ))
             }
             ty::ConstKind::Placeholder(placeholder) => {
                 if self.for_universe.can_name(placeholder.universe) {

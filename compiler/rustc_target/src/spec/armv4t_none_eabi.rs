@@ -39,9 +39,9 @@ pub fn target() -> Target {
             has_thumb_interworking: true,
             relocation_model: RelocModel::Static,
             panic_strategy: PanicStrategy::Abort,
-            // from thumb_base, rust-lang/rust#44993.
+            // From thumb_base, rust-lang/rust#44993.
             emit_debug_gdb_scripts: false,
-            // from thumb_base, apparently gcc/clang give enums a minimum of 8 bits on no-os targets
+            // From thumb_base, GCC gives enums a minimum of 8 bits on no-os targets.
             c_enum_min_bits: Some(8),
             ..Default::default()
         },

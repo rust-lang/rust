@@ -4,11 +4,11 @@ error[E0277]: `U` doesn't implement `Debug`
 LL | fn underconstrained<U>(_: U) -> Underconstrained<U> {
    |                                 ^^^^^^^^^^^^^^^^^^^ `U` cannot be formatted using `{:?}` because it doesn't implement `Debug`
    |
-note: required by a bound in `Underconstrained`
+note: required by a bound on the type alias `Underconstrained`
   --> $DIR/generic_underconstrained2.rs:5:26
    |
 LL | type Underconstrained<T: std::fmt::Debug> = impl Send;
-   |                          ^^^^^^^^^^^^^^^ required by this bound in `Underconstrained`
+   |                          ^^^^^^^^^^^^^^^ required by this bound
 help: consider restricting type parameter `U`
    |
 LL | fn underconstrained<U: std::fmt::Debug>(_: U) -> Underconstrained<U> {
@@ -20,11 +20,11 @@ error[E0277]: `V` doesn't implement `Debug`
 LL | fn underconstrained2<U, V>(_: U, _: V) -> Underconstrained2<V> {
    |                                           ^^^^^^^^^^^^^^^^^^^^ `V` cannot be formatted using `{:?}` because it doesn't implement `Debug`
    |
-note: required by a bound in `Underconstrained2`
+note: required by a bound on the type alias `Underconstrained2`
   --> $DIR/generic_underconstrained2.rs:13:27
    |
 LL | type Underconstrained2<T: std::fmt::Debug> = impl Send;
-   |                           ^^^^^^^^^^^^^^^ required by this bound in `Underconstrained2`
+   |                           ^^^^^^^^^^^^^^^ required by this bound
 help: consider restricting type parameter `V`
    |
 LL | fn underconstrained2<U, V: std::fmt::Debug>(_: U, _: V) -> Underconstrained2<V> {

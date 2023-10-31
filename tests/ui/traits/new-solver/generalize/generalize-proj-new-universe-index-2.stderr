@@ -1,0 +1,9 @@
+error[E0282]: type annotations needed
+  --> $DIR/generalize-proj-new-universe-index-2.rs:74:5
+   |
+LL |     bound::<<Rigid as IdHigherRankedBound>::Assoc, <Wrapper<Leaf> as Id>::Assoc, _>()
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type of the type parameter `V` declared on the function `bound`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0282`.

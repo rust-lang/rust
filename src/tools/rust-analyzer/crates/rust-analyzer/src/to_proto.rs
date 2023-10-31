@@ -10,8 +10,8 @@ use ide::{
     CompletionItemKind, CompletionRelevance, Documentation, FileId, FileRange, FileSystemEdit,
     Fold, FoldKind, Highlight, HlMod, HlOperator, HlPunct, HlRange, HlTag, Indel, InlayHint,
     InlayHintLabel, InlayHintLabelPart, InlayKind, Markup, NavigationTarget, ReferenceCategory,
-    RenameError, Runnable, Severity, SignatureHelp, SourceChange, StructureNodeKind, SymbolKind,
-    TextEdit, TextRange, TextSize,
+    RenameError, Runnable, Severity, SignatureHelp, SnippetEdit, SourceChange, StructureNodeKind,
+    SymbolKind, TextEdit, TextRange, TextSize,
 };
 use itertools::Itertools;
 use serde_json::to_value;
@@ -22,9 +22,9 @@ use crate::{
     config::{CallInfoConfig, Config},
     global_state::GlobalStateSnapshot,
     line_index::{LineEndings, LineIndex, PositionEncoding},
-    lsp_ext,
+    lsp_ext::{self, SnippetTextEdit},
     lsp_utils::invalid_params_error,
-    semantic_tokens,
+    semantic_tokens::{self, standard_fallback_type},
 };
 
 pub(crate) fn position(line_index: &LineIndex, offset: TextSize) -> lsp_types::Position {
@@ -32,7 +32,7 @@ pub(crate) fn position(line_index: &LineIndex, offset: TextSize) -> lsp_types::P
     match line_index.encoding {
         PositionEncoding::Utf8 => lsp_types::Position::new(line_col.line, line_col.col),
         PositionEncoding::Wide(enc) => {
-            let line_col = line_index.index.to_wide(enc, line_col);
+            let line_col = line_index.index.to_wide(enc, line_col).unwrap();
             lsp_types::Position::new(line_col.line, line_col.col)
         }
     }
@@ -94,7 +94,10 @@ pub(crate) fn document_highlight_kind(
 pub(crate) fn diagnostic_severity(severity: Severity) -> lsp_types::DiagnosticSeverity {
     match severity {
         Severity::Error => lsp_types::DiagnosticSeverity::ERROR,
+        Severity::Warning => lsp_types::DiagnosticSeverity::WARNING,
         Severity::WeakWarning => lsp_types::DiagnosticSeverity::HINT,
+        // unreachable
+        Severity::Allow => lsp_types::DiagnosticSeverity::INFORMATION,
     }
 }
 
@@ -279,7 +282,7 @@ fn completion_item(
 
     let mut lsp_item = lsp_types::CompletionItem {
         label: item.label.to_string(),
-        detail: item.detail.map(|it| it.to_string()),
+        detail: item.detail,
         filter_text: Some(lookup),
         kind: Some(completion_item_kind(item.kind)),
         text_edit: Some(text_edit),
@@ -306,12 +309,10 @@ fn completion_item(
             let imports: Vec<_> = item
                 .import_to_add
                 .into_iter()
-                .filter_map(|import_edit| {
-                    let import_path = &import_edit.import_path;
-                    let import_name = import_path.segments().last()?;
+                .filter_map(|(import_path, import_name)| {
                     Some(lsp_ext::CompletionImport {
-                        full_import_path: import_path.to_string(),
-                        imported_name: import_name.to_string(),
+                        full_import_path: import_path,
+                        imported_name: import_name,
                     })
                 })
                 .collect();
@@ -412,7 +413,7 @@ pub(crate) fn signature_help(
     let documentation = call_info.doc.filter(|_| config.docs).map(|doc| {
         lsp_types::Documentation::MarkupContent(lsp_types::MarkupContent {
             kind: lsp_types::MarkupKind::Markdown,
-            value: doc,
+            value: crate::markdown::format_docs(&doc),
         })
     });
 
@@ -434,83 +435,23 @@ pub(crate) fn signature_help(
 pub(crate) fn inlay_hint(
     snap: &GlobalStateSnapshot,
     line_index: &LineIndex,
-    render_colons: bool,
-    mut inlay_hint: InlayHint,
+    inlay_hint: InlayHint,
 ) -> Cancellable<lsp_types::InlayHint> {
-    match inlay_hint.kind {
-        InlayKind::Parameter if render_colons => inlay_hint.label.append_str(":"),
-        InlayKind::Type if render_colons => inlay_hint.label.prepend_str(": "),
-        InlayKind::ClosureReturnType => inlay_hint.label.prepend_str(" -> "),
-        InlayKind::Discriminant => inlay_hint.label.prepend_str(" = "),
-        _ => {}
-    }
-
     let (label, tooltip) = inlay_hint_label(snap, inlay_hint.label)?;
 
     Ok(lsp_types::InlayHint {
-        position: match inlay_hint.kind {
-            // before annotated thing
-            InlayKind::OpeningParenthesis
-            | InlayKind::Parameter
-            | InlayKind::Adjustment
-            | InlayKind::BindingMode => position(line_index, inlay_hint.range.start()),
-            // after annotated thing
-            InlayKind::ClosureReturnType
-            | InlayKind::Type
-            | InlayKind::Discriminant
-            | InlayKind::Chaining
-            | InlayKind::GenericParamList
-            | InlayKind::ClosingParenthesis
-            | InlayKind::AdjustmentPostfix
-            | InlayKind::Lifetime
-            | InlayKind::ClosingBrace => position(line_index, inlay_hint.range.end()),
+        position: match inlay_hint.position {
+            ide::InlayHintPosition::Before => position(line_index, inlay_hint.range.start()),
+            ide::InlayHintPosition::After => position(line_index, inlay_hint.range.end()),
         },
-        padding_left: Some(match inlay_hint.kind {
-            InlayKind::Type => !render_colons,
-            InlayKind::Chaining | InlayKind::ClosingBrace => true,
-            InlayKind::ClosingParenthesis
-            | InlayKind::Discriminant
-            | InlayKind::OpeningParenthesis
-            | InlayKind::BindingMode
-            | InlayKind::ClosureReturnType
-            | InlayKind::GenericParamList
-            | InlayKind::Adjustment
-            | InlayKind::AdjustmentPostfix
-            | InlayKind::Lifetime
-            | InlayKind::Parameter => false,
-        }),
-        padding_right: Some(match inlay_hint.kind {
-            InlayKind::ClosingParenthesis
-            | InlayKind::OpeningParenthesis
-            | InlayKind::Chaining
-            | InlayKind::ClosureReturnType
-            | InlayKind::GenericParamList
-            | InlayKind::Adjustment
-            | InlayKind::AdjustmentPostfix
-            | InlayKind::Type
-            | InlayKind::Discriminant
-            | InlayKind::ClosingBrace => false,
-            InlayKind::BindingMode => {
-                matches!(&label, lsp_types::InlayHintLabel::String(s) if s != "&")
-            }
-            InlayKind::Parameter | InlayKind::Lifetime => true,
-        }),
+        padding_left: Some(inlay_hint.pad_left),
+        padding_right: Some(inlay_hint.pad_right),
         kind: match inlay_hint.kind {
             InlayKind::Parameter => Some(lsp_types::InlayHintKind::PARAMETER),
-            InlayKind::ClosureReturnType | InlayKind::Type | InlayKind::Chaining => {
-                Some(lsp_types::InlayHintKind::TYPE)
-            }
-            InlayKind::ClosingParenthesis
-            | InlayKind::Discriminant
-            | InlayKind::OpeningParenthesis
-            | InlayKind::BindingMode
-            | InlayKind::GenericParamList
-            | InlayKind::Lifetime
-            | InlayKind::Adjustment
-            | InlayKind::AdjustmentPostfix
-            | InlayKind::ClosingBrace => None,
+            InlayKind::Type | InlayKind::Chaining => Some(lsp_types::InlayHintKind::TYPE),
+            _ => None,
         },
-        text_edits: None,
+        text_edits: inlay_hint.text_edit.map(|it| text_edit_vec(line_index, it)),
         data: None,
         tooltip,
         label,
@@ -580,6 +521,8 @@ pub(crate) fn semantic_tokens(
     text: &str,
     line_index: &LineIndex,
     highlights: Vec<HlRange>,
+    semantics_tokens_augments_syntax_tokens: bool,
+    non_standard_tokens: bool,
 ) -> lsp_types::SemanticTokens {
     let id = TOKEN_RESULT_COUNTER.fetch_add(1, Ordering::SeqCst).to_string();
     let mut builder = semantic_tokens::SemanticTokensBuilder::new(id);
@@ -589,7 +532,35 @@ pub(crate) fn semantic_tokens(
             continue;
         }
 
-        let (ty, mods) = semantic_token_type_and_modifiers(highlight_range.highlight);
+        if semantics_tokens_augments_syntax_tokens {
+            match highlight_range.highlight.tag {
+                HlTag::BoolLiteral
+                | HlTag::ByteLiteral
+                | HlTag::CharLiteral
+                | HlTag::Comment
+                | HlTag::Keyword
+                | HlTag::NumericLiteral
+                | HlTag::Operator(_)
+                | HlTag::Punctuation(_)
+                | HlTag::StringLiteral
+                | HlTag::None
+                    if highlight_range.highlight.mods.is_empty() =>
+                {
+                    continue
+                }
+                _ => (),
+            }
+        }
+
+        let (mut ty, mut mods) = semantic_token_type_and_modifiers(highlight_range.highlight);
+
+        if !non_standard_tokens {
+            ty = match standard_fallback_type(ty) {
+                Some(ty) => ty,
+                None => continue,
+            };
+            mods.standard_fallback();
+        }
         let token_index = semantic_tokens::type_index(ty);
         let modifier_bitset = mods.0;
 
@@ -669,6 +640,7 @@ fn semantic_token_type_and_modifiers(
         HlTag::CharLiteral => semantic_tokens::CHAR,
         HlTag::Comment => semantic_tokens::COMMENT,
         HlTag::EscapeSequence => semantic_tokens::ESCAPE_SEQUENCE,
+        HlTag::InvalidEscapeSequence => semantic_tokens::INVALID_ESCAPE_SEQUENCE,
         HlTag::FormatSpecifier => semantic_tokens::FORMAT_SPECIFIER,
         HlTag::Keyword => semantic_tokens::KEYWORD,
         HlTag::None => semantic_tokens::GENERIC,
@@ -710,6 +682,7 @@ fn semantic_token_type_and_modifiers(
             HlMod::Injected => semantic_tokens::INJECTED,
             HlMod::IntraDocLink => semantic_tokens::INTRA_DOC_LINK,
             HlMod::Library => semantic_tokens::LIBRARY,
+            HlMod::Macro => semantic_tokens::MACRO_MODIFIER,
             HlMod::Mutable => semantic_tokens::MUTABLE,
             HlMod::Public => semantic_tokens::PUBLIC,
             HlMod::Reference => semantic_tokens::REFERENCE,
@@ -912,16 +885,136 @@ fn outside_workspace_annotation_id() -> String {
     String::from("OutsideWorkspace")
 }
 
+fn merge_text_and_snippet_edits(
+    line_index: &LineIndex,
+    edit: TextEdit,
+    snippet_edit: SnippetEdit,
+) -> Vec<SnippetTextEdit> {
+    let mut edits: Vec<SnippetTextEdit> = vec![];
+    let mut snippets = snippet_edit.into_edit_ranges().into_iter().peekable();
+    let mut text_edits = edit.into_iter();
+
+    while let Some(current_indel) = text_edits.next() {
+        let new_range = {
+            let insert_len =
+                TextSize::try_from(current_indel.insert.len()).unwrap_or(TextSize::from(u32::MAX));
+            TextRange::at(current_indel.delete.start(), insert_len)
+        };
+
+        // insert any snippets before the text edit
+        for (snippet_index, snippet_range) in
+            snippets.take_while_ref(|(_, range)| range.end() < new_range.start())
+        {
+            let snippet_range = if !stdx::always!(
+                snippet_range.is_empty(),
+                "placeholder range {:?} is before current text edit range {:?}",
+                snippet_range,
+                new_range
+            ) {
+                // only possible for tabstops, so make sure it's an empty/insert range
+                TextRange::empty(snippet_range.start())
+            } else {
+                snippet_range
+            };
+
+            let range = range(&line_index, snippet_range);
+            let new_text = format!("${snippet_index}");
+
+            edits.push(SnippetTextEdit {
+                range,
+                new_text,
+                insert_text_format: Some(lsp_types::InsertTextFormat::SNIPPET),
+                annotation_id: None,
+            })
+        }
+
+        if snippets.peek().is_some_and(|(_, range)| new_range.intersect(*range).is_some()) {
+            // at least one snippet edit intersects this text edit,
+            // so gather all of the edits that intersect this text edit
+            let mut all_snippets = snippets
+                .take_while_ref(|(_, range)| new_range.intersect(*range).is_some())
+                .collect_vec();
+
+            // ensure all of the ranges are wholly contained inside of the new range
+            all_snippets.retain(|(_, range)| {
+                    stdx::always!(
+                        new_range.contains_range(*range),
+                        "found placeholder range {:?} which wasn't fully inside of text edit's new range {:?}", range, new_range
+                    )
+                });
+
+            let mut text_edit = text_edit(line_index, current_indel);
+
+            // escape out snippet text
+            stdx::replace(&mut text_edit.new_text, '\\', r"\\");
+            stdx::replace(&mut text_edit.new_text, '$', r"\$");
+
+            // ...and apply!
+            for (index, range) in all_snippets.iter().rev() {
+                let start = (range.start() - new_range.start()).into();
+                let end = (range.end() - new_range.start()).into();
+
+                if range.is_empty() {
+                    text_edit.new_text.insert_str(start, &format!("${index}"));
+                } else {
+                    text_edit.new_text.insert(end, '}');
+                    text_edit.new_text.insert_str(start, &format!("${{{index}:"));
+                }
+            }
+
+            edits.push(SnippetTextEdit {
+                range: text_edit.range,
+                new_text: text_edit.new_text,
+                insert_text_format: Some(lsp_types::InsertTextFormat::SNIPPET),
+                annotation_id: None,
+            })
+        } else {
+            // snippet edit was beyond the current one
+            // since it wasn't consumed, it's available for the next pass
+            edits.push(snippet_text_edit(line_index, false, current_indel));
+        }
+    }
+
+    // insert any remaining tabstops
+    edits.extend(snippets.map(|(snippet_index, snippet_range)| {
+        let snippet_range = if !stdx::always!(
+            snippet_range.is_empty(),
+            "found placeholder snippet {:?} without a text edit",
+            snippet_range
+        ) {
+            TextRange::empty(snippet_range.start())
+        } else {
+            snippet_range
+        };
+
+        let range = range(&line_index, snippet_range);
+        let new_text = format!("${snippet_index}");
+
+        SnippetTextEdit {
+            range,
+            new_text,
+            insert_text_format: Some(lsp_types::InsertTextFormat::SNIPPET),
+            annotation_id: None,
+        }
+    }));
+
+    edits
+}
+
 pub(crate) fn snippet_text_document_edit(
     snap: &GlobalStateSnapshot,
     is_snippet: bool,
     file_id: FileId,
     edit: TextEdit,
+    snippet_edit: Option<SnippetEdit>,
 ) -> Cancellable<lsp_ext::SnippetTextDocumentEdit> {
     let text_document = optional_versioned_text_document_identifier(snap, file_id);
     let line_index = snap.file_line_index(file_id)?;
-    let mut edits: Vec<_> =
-        edit.into_iter().map(|it| snippet_text_edit(&line_index, is_snippet, it)).collect();
+    let mut edits = if let Some(snippet_edit) = snippet_edit {
+        merge_text_and_snippet_edits(&line_index, edit, snippet_edit)
+    } else {
+        edit.into_iter().map(|it| snippet_text_edit(&line_index, is_snippet, it)).collect()
+    };
 
     if snap.analysis.is_library_file(file_id)? && snap.config.change_annotation_support() {
         for edit in &mut edits {
@@ -1001,8 +1094,14 @@ pub(crate) fn snippet_workspace_edit(
         let ops = snippet_text_document_ops(snap, op)?;
         document_changes.extend_from_slice(&ops);
     }
-    for (file_id, edit) in source_change.source_file_edits {
-        let edit = snippet_text_document_edit(snap, source_change.is_snippet, file_id, edit)?;
+    for (file_id, (edit, snippet_edit)) in source_change.source_file_edits {
+        let edit = snippet_text_document_edit(
+            snap,
+            source_change.is_snippet,
+            file_id,
+            edit,
+            snippet_edit,
+        )?;
         document_changes.push(lsp_ext::SnippetDocumentChangeOperation::Edit(edit));
     }
     let mut workspace_edit = lsp_ext::SnippetWorkspaceEdit {
@@ -1215,6 +1314,14 @@ pub(crate) fn code_lens(
                     data: None,
                 })
             }
+            if lens_config.interpret {
+                let command = command::interpret_single(&r);
+                acc.push(lsp_types::CodeLens {
+                    range: annotation_range,
+                    command: Some(command),
+                    data: None,
+                })
+            }
         }
         AnnotationKind::HasImpls { pos: file_range, data } => {
             if !client_commands_config.show_reference {
@@ -1257,7 +1364,16 @@ pub(crate) fn code_lens(
             acc.push(lsp_types::CodeLens {
                 range: annotation_range,
                 command,
-                data: Some(to_value(lsp_ext::CodeLensResolveData::Impls(goto_params)).unwrap()),
+                data: (|| {
+                    let version = snap.url_file_version(&url)?;
+                    Some(
+                        to_value(lsp_ext::CodeLensResolveData {
+                            version,
+                            kind: lsp_ext::CodeLensResolveDataKind::Impls(goto_params),
+                        })
+                        .unwrap(),
+                    )
+                })(),
             })
         }
         AnnotationKind::HasReferences { pos: file_range, data } => {
@@ -1287,7 +1403,16 @@ pub(crate) fn code_lens(
             acc.push(lsp_types::CodeLens {
                 range: annotation_range,
                 command,
-                data: Some(to_value(lsp_ext::CodeLensResolveData::References(doc_pos)).unwrap()),
+                data: (|| {
+                    let version = snap.url_file_version(&url)?;
+                    Some(
+                        to_value(lsp_ext::CodeLensResolveData {
+                            version,
+                            kind: lsp_ext::CodeLensResolveDataKind::References(doc_pos),
+                        })
+                        .unwrap(),
+                    )
+                })(),
             })
         }
     }
@@ -1338,6 +1463,15 @@ pub(crate) mod command {
             title: "Debug".into(),
             command: "rust-analyzer.debugSingle".into(),
             arguments: Some(vec![to_value(runnable).unwrap()]),
+        }
+    }
+
+    pub(crate) fn interpret_single(_runnable: &lsp_ext::Runnable) -> lsp_types::Command {
+        lsp_types::Command {
+            title: "Interpret".into(),
+            command: "rust-analyzer.interpretFunction".into(),
+            // FIXME: use the `_runnable` here.
+            arguments: Some(vec![]),
         }
     }
 
@@ -1406,9 +1540,11 @@ pub(crate) fn rename_error(err: RenameError) -> crate::LspError {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-
-    use ide::Analysis;
+    use expect_test::{expect, Expect};
+    use ide::{Analysis, FilePosition};
+    use ide_db::source_change::Snippet;
+    use test_utils::extract_offset;
+    use triomphe::Arc;
 
     use super::*;
 
@@ -1446,6 +1582,509 @@ fn main() {
             assert_eq!(folding_range.end_line, *end_line);
             assert_eq!(folding_range.end_character, None);
         }
+    }
+
+    #[test]
+    fn calling_function_with_ignored_code_in_signature() {
+        let text = r#"
+fn foo() {
+    bar($0);
+}
+/// ```
+/// # use crate::bar;
+/// bar(5);
+/// ```
+fn bar(_: usize) {}
+"#;
+
+        let (offset, text) = extract_offset(text);
+        let (analysis, file_id) = Analysis::from_single_file(text);
+        let help = signature_help(
+            analysis.signature_help(FilePosition { file_id, offset }).unwrap().unwrap(),
+            CallInfoConfig { params_only: false, docs: true },
+            false,
+        );
+        let docs = match &help.signatures[help.active_signature.unwrap() as usize].documentation {
+            Some(lsp_types::Documentation::MarkupContent(content)) => &content.value,
+            _ => panic!("documentation contains markup"),
+        };
+        assert!(docs.contains("bar(5)"));
+        assert!(!docs.contains("use crate::bar"));
+    }
+
+    fn check_rendered_snippets(edit: TextEdit, snippets: SnippetEdit, expect: Expect) {
+        let text = r#"/* place to put all ranges in */"#;
+        let line_index = LineIndex {
+            index: Arc::new(ide::LineIndex::new(text)),
+            endings: LineEndings::Unix,
+            encoding: PositionEncoding::Utf8,
+        };
+
+        let res = merge_text_and_snippet_edits(&line_index, edit, snippets);
+        expect.assert_debug_eq(&res);
+    }
+
+    #[test]
+    fn snippet_rendering_only_tabstops() {
+        let edit = TextEdit::builder().finish();
+        let snippets = SnippetEdit::new(vec![
+            Snippet::Tabstop(0.into()),
+            Snippet::Tabstop(0.into()),
+            Snippet::Tabstop(1.into()),
+            Snippet::Tabstop(1.into()),
+        ]);
+
+        check_rendered_snippets(
+            edit,
+            snippets,
+            expect![[r#"
+            [
+                SnippetTextEdit {
+                    range: Range {
+                        start: Position {
+                            line: 0,
+                            character: 0,
+                        },
+                        end: Position {
+                            line: 0,
+                            character: 0,
+                        },
+                    },
+                    new_text: "$1",
+                    insert_text_format: Some(
+                        Snippet,
+                    ),
+                    annotation_id: None,
+                },
+                SnippetTextEdit {
+                    range: Range {
+                        start: Position {
+                            line: 0,
+                            character: 0,
+                        },
+                        end: Position {
+                            line: 0,
+                            character: 0,
+                        },
+                    },
+                    new_text: "$2",
+                    insert_text_format: Some(
+                        Snippet,
+                    ),
+                    annotation_id: None,
+                },
+                SnippetTextEdit {
+                    range: Range {
+                        start: Position {
+                            line: 0,
+                            character: 1,
+                        },
+                        end: Position {
+                            line: 0,
+                            character: 1,
+                        },
+                    },
+                    new_text: "$3",
+                    insert_text_format: Some(
+                        Snippet,
+                    ),
+                    annotation_id: None,
+                },
+                SnippetTextEdit {
+                    range: Range {
+                        start: Position {
+                            line: 0,
+                            character: 1,
+                        },
+                        end: Position {
+                            line: 0,
+                            character: 1,
+                        },
+                    },
+                    new_text: "$0",
+                    insert_text_format: Some(
+                        Snippet,
+                    ),
+                    annotation_id: None,
+                },
+            ]
+        "#]],
+        );
+    }
+
+    #[test]
+    fn snippet_rendering_only_text_edits() {
+        let mut edit = TextEdit::builder();
+        edit.insert(0.into(), "abc".to_owned());
+        edit.insert(3.into(), "def".to_owned());
+        let edit = edit.finish();
+        let snippets = SnippetEdit::new(vec![]);
+
+        check_rendered_snippets(
+            edit,
+            snippets,
+            expect![[r#"
+            [
+                SnippetTextEdit {
+                    range: Range {
+                        start: Position {
+                            line: 0,
+                            character: 0,
+                        },
+                        end: Position {
+                            line: 0,
+                            character: 0,
+                        },
+                    },
+                    new_text: "abc",
+                    insert_text_format: None,
+                    annotation_id: None,
+                },
+                SnippetTextEdit {
+                    range: Range {
+                        start: Position {
+                            line: 0,
+                            character: 3,
+                        },
+                        end: Position {
+                            line: 0,
+                            character: 3,
+                        },
+                    },
+                    new_text: "def",
+                    insert_text_format: None,
+                    annotation_id: None,
+                },
+            ]
+        "#]],
+        );
+    }
+
+    #[test]
+    fn snippet_rendering_tabstop_after_text_edit() {
+        let mut edit = TextEdit::builder();
+        edit.insert(0.into(), "abc".to_owned());
+        let edit = edit.finish();
+        let snippets = SnippetEdit::new(vec![Snippet::Tabstop(7.into())]);
+
+        check_rendered_snippets(
+            edit,
+            snippets,
+            expect![[r#"
+            [
+                SnippetTextEdit {
+                    range: Range {
+                        start: Position {
+                            line: 0,
+                            character: 0,
+                        },
+                        end: Position {
+                            line: 0,
+                            character: 0,
+                        },
+                    },
+                    new_text: "abc",
+                    insert_text_format: None,
+                    annotation_id: None,
+                },
+                SnippetTextEdit {
+                    range: Range {
+                        start: Position {
+                            line: 0,
+                            character: 7,
+                        },
+                        end: Position {
+                            line: 0,
+                            character: 7,
+                        },
+                    },
+                    new_text: "$0",
+                    insert_text_format: Some(
+                        Snippet,
+                    ),
+                    annotation_id: None,
+                },
+            ]
+        "#]],
+        );
+    }
+
+    #[test]
+    fn snippet_rendering_tabstops_before_text_edit() {
+        let mut edit = TextEdit::builder();
+        edit.insert(2.into(), "abc".to_owned());
+        let edit = edit.finish();
+        let snippets =
+            SnippetEdit::new(vec![Snippet::Tabstop(0.into()), Snippet::Tabstop(0.into())]);
+
+        check_rendered_snippets(
+            edit,
+            snippets,
+            expect![[r#"
+                [
+                    SnippetTextEdit {
+                        range: Range {
+                            start: Position {
+                                line: 0,
+                                character: 0,
+                            },
+                            end: Position {
+                                line: 0,
+                                character: 0,
+                            },
+                        },
+                        new_text: "$1",
+                        insert_text_format: Some(
+                            Snippet,
+                        ),
+                        annotation_id: None,
+                    },
+                    SnippetTextEdit {
+                        range: Range {
+                            start: Position {
+                                line: 0,
+                                character: 0,
+                            },
+                            end: Position {
+                                line: 0,
+                                character: 0,
+                            },
+                        },
+                        new_text: "$0",
+                        insert_text_format: Some(
+                            Snippet,
+                        ),
+                        annotation_id: None,
+                    },
+                    SnippetTextEdit {
+                        range: Range {
+                            start: Position {
+                                line: 0,
+                                character: 2,
+                            },
+                            end: Position {
+                                line: 0,
+                                character: 2,
+                            },
+                        },
+                        new_text: "abc",
+                        insert_text_format: None,
+                        annotation_id: None,
+                    },
+                ]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn snippet_rendering_tabstops_between_text_edits() {
+        let mut edit = TextEdit::builder();
+        edit.insert(0.into(), "abc".to_owned());
+        edit.insert(7.into(), "abc".to_owned());
+        let edit = edit.finish();
+        let snippets =
+            SnippetEdit::new(vec![Snippet::Tabstop(4.into()), Snippet::Tabstop(4.into())]);
+
+        check_rendered_snippets(
+            edit,
+            snippets,
+            expect![[r#"
+            [
+                SnippetTextEdit {
+                    range: Range {
+                        start: Position {
+                            line: 0,
+                            character: 0,
+                        },
+                        end: Position {
+                            line: 0,
+                            character: 0,
+                        },
+                    },
+                    new_text: "abc",
+                    insert_text_format: None,
+                    annotation_id: None,
+                },
+                SnippetTextEdit {
+                    range: Range {
+                        start: Position {
+                            line: 0,
+                            character: 4,
+                        },
+                        end: Position {
+                            line: 0,
+                            character: 4,
+                        },
+                    },
+                    new_text: "$1",
+                    insert_text_format: Some(
+                        Snippet,
+                    ),
+                    annotation_id: None,
+                },
+                SnippetTextEdit {
+                    range: Range {
+                        start: Position {
+                            line: 0,
+                            character: 4,
+                        },
+                        end: Position {
+                            line: 0,
+                            character: 4,
+                        },
+                    },
+                    new_text: "$0",
+                    insert_text_format: Some(
+                        Snippet,
+                    ),
+                    annotation_id: None,
+                },
+                SnippetTextEdit {
+                    range: Range {
+                        start: Position {
+                            line: 0,
+                            character: 7,
+                        },
+                        end: Position {
+                            line: 0,
+                            character: 7,
+                        },
+                    },
+                    new_text: "abc",
+                    insert_text_format: None,
+                    annotation_id: None,
+                },
+            ]
+        "#]],
+        );
+    }
+
+    #[test]
+    fn snippet_rendering_multiple_tabstops_in_text_edit() {
+        let mut edit = TextEdit::builder();
+        edit.insert(0.into(), "abcdefghijkl".to_owned());
+        let edit = edit.finish();
+        let snippets = SnippetEdit::new(vec![
+            Snippet::Tabstop(0.into()),
+            Snippet::Tabstop(5.into()),
+            Snippet::Tabstop(12.into()),
+        ]);
+
+        check_rendered_snippets(
+            edit,
+            snippets,
+            expect![[r#"
+            [
+                SnippetTextEdit {
+                    range: Range {
+                        start: Position {
+                            line: 0,
+                            character: 0,
+                        },
+                        end: Position {
+                            line: 0,
+                            character: 0,
+                        },
+                    },
+                    new_text: "$1abcde$2fghijkl$0",
+                    insert_text_format: Some(
+                        Snippet,
+                    ),
+                    annotation_id: None,
+                },
+            ]
+        "#]],
+        );
+    }
+
+    #[test]
+    fn snippet_rendering_multiple_placeholders_in_text_edit() {
+        let mut edit = TextEdit::builder();
+        edit.insert(0.into(), "abcdefghijkl".to_owned());
+        let edit = edit.finish();
+        let snippets = SnippetEdit::new(vec![
+            Snippet::Placeholder(TextRange::new(0.into(), 3.into())),
+            Snippet::Placeholder(TextRange::new(5.into(), 7.into())),
+            Snippet::Placeholder(TextRange::new(10.into(), 12.into())),
+        ]);
+
+        check_rendered_snippets(
+            edit,
+            snippets,
+            expect![[r#"
+            [
+                SnippetTextEdit {
+                    range: Range {
+                        start: Position {
+                            line: 0,
+                            character: 0,
+                        },
+                        end: Position {
+                            line: 0,
+                            character: 0,
+                        },
+                    },
+                    new_text: "${1:abc}de${2:fg}hij${0:kl}",
+                    insert_text_format: Some(
+                        Snippet,
+                    ),
+                    annotation_id: None,
+                },
+            ]
+        "#]],
+        );
+    }
+
+    #[test]
+    fn snippet_rendering_escape_snippet_bits() {
+        // only needed for snippet formats
+        let mut edit = TextEdit::builder();
+        edit.insert(0.into(), r"abc\def$".to_owned());
+        edit.insert(8.into(), r"ghi\jkl$".to_owned());
+        let edit = edit.finish();
+        let snippets =
+            SnippetEdit::new(vec![Snippet::Placeholder(TextRange::new(0.into(), 3.into()))]);
+
+        check_rendered_snippets(
+            edit,
+            snippets,
+            expect![[r#"
+            [
+                SnippetTextEdit {
+                    range: Range {
+                        start: Position {
+                            line: 0,
+                            character: 0,
+                        },
+                        end: Position {
+                            line: 0,
+                            character: 0,
+                        },
+                    },
+                    new_text: "${0:abc}\\\\def\\$",
+                    insert_text_format: Some(
+                        Snippet,
+                    ),
+                    annotation_id: None,
+                },
+                SnippetTextEdit {
+                    range: Range {
+                        start: Position {
+                            line: 0,
+                            character: 8,
+                        },
+                        end: Position {
+                            line: 0,
+                            character: 8,
+                        },
+                    },
+                    new_text: "ghi\\jkl$",
+                    insert_text_format: None,
+                    annotation_id: None,
+                },
+            ]
+        "#]],
+        );
     }
 
     // `Url` is not able to parse windows paths on unix machines.

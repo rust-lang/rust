@@ -2,48 +2,48 @@
 + // MIR for `map` after SimplifyLocals-before-const-prop
   
   fn map(_1: Option<Box<()>>) -> Option<Box<()>> {
-      debug x => _1;                       // in scope 0 at $DIR/simplify_locals_removes_unused_discriminant_reads.rs:+0:8: +0:9
-      let mut _0: std::option::Option<std::boxed::Box<()>>; // return place in scope 0 at $DIR/simplify_locals_removes_unused_discriminant_reads.rs:+0:31: +0:46
-      let mut _2: isize;                   // in scope 0 at $DIR/simplify_locals_removes_unused_discriminant_reads.rs:+2:9: +2:13
-      let _3: std::boxed::Box<()>;         // in scope 0 at $DIR/simplify_locals_removes_unused_discriminant_reads.rs:+3:14: +3:15
-      let mut _4: std::boxed::Box<()>;     // in scope 0 at $DIR/simplify_locals_removes_unused_discriminant_reads.rs:+3:25: +3:26
--     let mut _5: bool;                    // in scope 0 at $DIR/simplify_locals_removes_unused_discriminant_reads.rs:+5:1: +5:2
--     let mut _6: isize;                   // in scope 0 at $DIR/simplify_locals_removes_unused_discriminant_reads.rs:+5:1: +5:2
--     let mut _7: isize;                   // in scope 0 at $DIR/simplify_locals_removes_unused_discriminant_reads.rs:+5:1: +5:2
+      debug x => _1;
+      let mut _0: std::option::Option<std::boxed::Box<()>>;
+      let mut _2: isize;
+      let _3: std::boxed::Box<()>;
+      let mut _4: std::boxed::Box<()>;
+-     let mut _5: bool;
+-     let mut _6: isize;
+-     let mut _7: isize;
       scope 1 {
-          debug x => _3;                   // in scope 1 at $DIR/simplify_locals_removes_unused_discriminant_reads.rs:+3:14: +3:15
+          debug x => _3;
       }
   
       bb0: {
--         _5 = const false;                // scope 0 at $DIR/simplify_locals_removes_unused_discriminant_reads.rs:+1:11: +1:12
--         _5 = const true;                 // scope 0 at $DIR/simplify_locals_removes_unused_discriminant_reads.rs:+1:11: +1:12
-          _2 = discriminant(_1);           // scope 0 at $DIR/simplify_locals_removes_unused_discriminant_reads.rs:+1:11: +1:12
-          switchInt(move _2) -> [0: bb3, 1: bb1, otherwise: bb2]; // scope 0 at $DIR/simplify_locals_removes_unused_discriminant_reads.rs:+1:5: +1:12
+-         _5 = const false;
+-         _5 = const true;
+          _2 = discriminant(_1);
+          switchInt(move _2) -> [0: bb3, 1: bb1, otherwise: bb2];
       }
   
       bb1: {
-          StorageLive(_3);                 // scope 0 at $DIR/simplify_locals_removes_unused_discriminant_reads.rs:+3:14: +3:15
-          _3 = move ((_1 as Some).0: std::boxed::Box<()>); // scope 0 at $DIR/simplify_locals_removes_unused_discriminant_reads.rs:+3:14: +3:15
-          StorageLive(_4);                 // scope 1 at $DIR/simplify_locals_removes_unused_discriminant_reads.rs:+3:25: +3:26
-          _4 = move _3;                    // scope 1 at $DIR/simplify_locals_removes_unused_discriminant_reads.rs:+3:25: +3:26
-          _0 = Option::<Box<()>>::Some(move _4); // scope 1 at $DIR/simplify_locals_removes_unused_discriminant_reads.rs:+3:20: +3:27
-          StorageDead(_4);                 // scope 1 at $DIR/simplify_locals_removes_unused_discriminant_reads.rs:+3:26: +3:27
-          StorageDead(_3);                 // scope 0 at $DIR/simplify_locals_removes_unused_discriminant_reads.rs:+3:26: +3:27
-          goto -> bb4;                     // scope 0 at $DIR/simplify_locals_removes_unused_discriminant_reads.rs:+3:26: +3:27
+          StorageLive(_3);
+          _3 = move ((_1 as Some).0: std::boxed::Box<()>);
+          StorageLive(_4);
+          _4 = move _3;
+          _0 = Option::<Box<()>>::Some(move _4);
+          StorageDead(_4);
+          StorageDead(_3);
+          goto -> bb4;
       }
   
       bb2: {
-          unreachable;                     // scope 0 at $DIR/simplify_locals_removes_unused_discriminant_reads.rs:+1:11: +1:12
+          unreachable;
       }
   
       bb3: {
-          _0 = Option::<Box<()>>::None;    // scope 0 at $DIR/simplify_locals_removes_unused_discriminant_reads.rs:+2:17: +2:21
-          goto -> bb4;                     // scope 0 at $DIR/simplify_locals_removes_unused_discriminant_reads.rs:+2:17: +2:21
+          _0 = Option::<Box<()>>::None;
+          goto -> bb4;
       }
   
       bb4: {
--         _6 = discriminant(_1);           // scope 0 at $DIR/simplify_locals_removes_unused_discriminant_reads.rs:+5:1: +5:2
-          return;                          // scope 0 at $DIR/simplify_locals_removes_unused_discriminant_reads.rs:+5:2: +5:2
+-         _6 = discriminant(_1);
+          return;
       }
   }
   

@@ -403,6 +403,7 @@ impl f32 {
     /// and the stability of its representation over Rust versions
     /// and target platforms isn't guaranteed.
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
+    #[rustc_diagnostic_item = "f32_nan"]
     pub const NAN: f32 = 0.0_f32 / 0.0_f32;
     /// Infinity (∞).
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]

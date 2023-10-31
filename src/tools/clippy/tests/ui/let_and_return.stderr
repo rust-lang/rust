@@ -1,5 +1,5 @@
 error: returning the result of a `let` binding from a block
-  --> $DIR/let_and_return.rs:7:5
+  --> $DIR/let_and_return.rs:9:5
    |
 LL |     let x = 5;
    |     ---------- unnecessary `let` binding
@@ -14,7 +14,7 @@ LL ~     5
    |
 
 error: returning the result of a `let` binding from a block
-  --> $DIR/let_and_return.rs:13:9
+  --> $DIR/let_and_return.rs:15:9
    |
 LL |         let x = 5;
    |         ---------- unnecessary `let` binding
@@ -28,7 +28,21 @@ LL ~         5
    |
 
 error: returning the result of a `let` binding from a block
-  --> $DIR/let_and_return.rs:164:13
+  --> $DIR/let_and_return.rs:77:5
+   |
+LL |     let line = stdin.lock().lines().next().unwrap().unwrap();
+   |     --------------------------------------------------------- unnecessary `let` binding
+LL |     line
+   |     ^^^^
+   |
+help: return the expression directly
+   |
+LL ~     
+LL ~     stdin.lock().lines().next().unwrap().unwrap()
+   |
+
+error: returning the result of a `let` binding from a block
+  --> $DIR/let_and_return.rs:167:13
    |
 LL |             let clone = Arc::clone(&self.foo);
    |             ---------------------------------- unnecessary `let` binding
@@ -41,5 +55,5 @@ LL ~
 LL ~             Arc::clone(&self.foo) as _
    |
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 

@@ -3,6 +3,7 @@
 // ignore-macos slightly different policy on stack protection of arrays
 // ignore-windows stack check code uses different function names
 // ignore-nvptx64 stack protector is not supported
+// ignore-wasm32-bare
 // [all] compile-flags: -Z stack-protector=all
 // [strong] compile-flags: -Z stack-protector=strong
 // [basic] compile-flags: -Z stack-protector=basic
@@ -370,7 +371,7 @@ pub fn unsized_fn_param(s: [u8], l: bool, f: fn([u8])) {
 
 
     // all: __stack_chk_fail
-    // strong-NOT: __stack_chk_fail
+    // strong: __stack_chk_fail
     // basic-NOT: __stack_chk_fail
     // none-NOT: __stack_chk_fail
     // missing-NOT: __stack_chk_fail

@@ -15,19 +15,22 @@ doctest = false
 cov-mark = "2.0.0-pre.1"
 itertools = "0.10.5"
 arrayvec = "0.7.2"
-bitflags = "1.3.2"
+bitflags = "2.1.0"
 smallvec.workspace = true
 ena = "0.14.0"
 either = "1.7.0"
+oorandom = "11.1.3"
 tracing = "0.1.35"
 rustc-hash = "1.1.0"
 scoped-tls = "1.0.0"
-chalk-solve = { version = "0.89.0", default-features = false }
-chalk-ir = "0.89.0"
-chalk-recursive = { version = "0.89.0", default-features = false }
-chalk-derive = "0.89.0"
-la-arena = { version = "0.3.0", path = "../../lib/la-arena" }
+chalk-solve = { version = "0.92.0", default-features = false }
+chalk-ir = "0.92.0"
+chalk-recursive = { version = "0.92.0", default-features = false }
+chalk-derive = "0.92.0"
+la-arena.workspace = true
 once_cell = "1.17.0"
+triomphe.workspace = true
+nohash-hasher.workspace = true
 typed-arena = "2.0.1"
 rustc_index = { version = "0.0.20221221", package = "hkalbasi-rustc-ap-rustc_index", default-features = false }
 
@@ -45,7 +48,6 @@ limit.workspace = true
 expect-test = "1.4.0"
 tracing = "0.1.35"
 tracing-subscriber = { version = "0.3.16", default-features = false, features = [
-    "env-filter",
     "registry",
 ] }
 tracing-tree = "0.2.1"

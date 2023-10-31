@@ -115,36 +115,22 @@ pub trait EmissionGuarantee: Sized {
     ) -> DiagnosticBuilder<'_, Self>;
 }
 
-/// Private module for sealing the `IsError` helper trait.
-mod sealed_level_is_error {
-    use crate::Level;
-
-    /// Sealed helper trait for statically checking that a `Level` is an error.
-    pub(crate) trait IsError<const L: Level> {}
-
-    impl IsError<{ Level::Bug }> for () {}
-    impl IsError<{ Level::DelayedBug }> for () {}
-    impl IsError<{ Level::Fatal }> for () {}
-    // NOTE(eddyb) `Level::Error { lint: true }` is also an error, but lints
-    // don't need error guarantees, as their levels are always dynamic.
-    impl IsError<{ Level::Error { lint: false } }> for () {}
-}
-
 impl<'a> DiagnosticBuilder<'a, ErrorGuaranteed> {
     /// Convenience function for internal use, clients should use one of the
     /// `struct_*` methods on [`Handler`].
     #[track_caller]
-    pub(crate) fn new_guaranteeing_error<M: Into<DiagnosticMessage>, const L: Level>(
+    pub(crate) fn new_guaranteeing_error<M: Into<DiagnosticMessage>>(
         handler: &'a Handler,
         message: M,
-    ) -> Self
-    where
-        (): sealed_level_is_error::IsError<L>,
-    {
+    ) -> Self {
         Self {
             inner: DiagnosticBuilderInner {
                 state: DiagnosticBuilderState::Emittable(handler),
-                diagnostic: Box::new(Diagnostic::new_with_code(L, None, message)),
+                diagnostic: Box::new(Diagnostic::new_with_code(
+                    Level::Error { lint: false },
+                    None,
+                    message,
+                )),
             },
             _marker: PhantomData,
         }
@@ -203,9 +189,7 @@ impl EmissionGuarantee for ErrorGuaranteed {
         handler: &Handler,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, Self> {
-        DiagnosticBuilder::new_guaranteeing_error::<_, { Level::Error { lint: false } }>(
-            handler, msg,
-        )
+        DiagnosticBuilder::new_guaranteeing_error(handler, msg)
     }
 }
 
@@ -552,13 +536,15 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
             }
         };
 
-        if handler.flags.dont_buffer_diagnostics || handler.flags.treat_err_as_bug.is_some() {
+        if handler.inner.lock().flags.dont_buffer_diagnostics
+            || handler.inner.lock().flags.treat_err_as_bug.is_some()
+        {
             self.emit();
             return None;
         }
 
         // Take the `Diagnostic` by replacing it with a dummy.
-        let dummy = Diagnostic::new(Level::Allow, DiagnosticMessage::Str("".to_string()));
+        let dummy = Diagnostic::new(Level::Allow, DiagnosticMessage::from(""));
         let diagnostic = std::mem::replace(&mut *self.inner.diagnostic, dummy);
 
         // Disable the ICE on `Drop`.
@@ -627,7 +613,7 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
     pub fn span_labels(
         &mut self,
         spans: impl IntoIterator<Item = Span>,
-        label: impl AsRef<str>,
+        label: &str,
     ) -> &mut Self);
 
     forward!(pub fn note_expected_found(
@@ -781,8 +767,8 @@ impl Drop for DiagnosticBuilderInner<'_> {
                 if !panicking() {
                     handler.emit_diagnostic(&mut Diagnostic::new(
                         Level::Bug,
-                        DiagnosticMessage::Str(
-                            "the following error was constructed but not emitted".to_string(),
+                        DiagnosticMessage::from(
+                            "the following error was constructed but not emitted",
                         ),
                     ));
                     handler.emit_diagnostic(&mut self.diagnostic);

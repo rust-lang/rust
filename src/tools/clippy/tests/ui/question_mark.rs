@@ -1,4 +1,5 @@
 //@run-rustfix
+#![feature(try_blocks)]
 #![allow(unreachable_code)]
 #![allow(dead_code)]
 #![allow(clippy::unnecessary_wraps)]
@@ -169,6 +170,23 @@ fn result_func(x: Result<i32, i32>) -> Result<i32, i32> {
     // no warning
     let _ = if let Err(e) = x { Err(e) } else { Ok(0) };
 
+    // issue #11283
+    // no warning
+    #[warn(clippy::question_mark_used)]
+    {
+        if let Err(err) = Ok(()) {
+            return Err(err);
+        }
+
+        if Err::<i32, _>(0).is_err() {
+            return Err(0);
+        } else {
+            return Ok(0);
+        }
+
+        unreachable!()
+    }
+
     Ok(y)
 }
 
@@ -262,6 +280,31 @@ fn pattern() -> Result<(), PatternedError> {
 }
 
 fn main() {}
+
+// `?` is not the same as `return None;` if inside of a try block
+fn issue8628(a: Option<u32>) -> Option<u32> {
+    let b: Option<u32> = try {
+        if a.is_none() {
+            return None;
+        }
+        32
+    };
+    b.or(Some(128))
+}
+
+fn issue6828_nested_body() -> Option<u32> {
+    try {
+        fn f2(a: Option<i32>) -> Option<i32> {
+            if a.is_none() {
+                return None;
+                // do lint here, the outer `try` is not relevant here
+                // https://github.com/rust-lang/rust-clippy/pull/11001#issuecomment-1610636867
+            }
+            Some(32)
+        }
+        123
+    }
+}
 
 // should not lint, `?` operator not available in const context
 const fn issue9175(option: Option<()>) -> Option<()> {

@@ -1,8 +1,5 @@
 // compile-flags: --crate-type=lib
-// normalize-stderr-32bit: "8 bytes" -> "$$TWO_WORDS bytes"
-// normalize-stderr-64bit: "16 bytes" -> "$$TWO_WORDS bytes"
-// normalize-stderr-32bit: "size 4" -> "size $$WORD"
-// normalize-stderr-64bit: "size 8" -> "size $$WORD"
+// check-pass
 
 #![feature(
     core_intrinsics,
@@ -34,30 +31,13 @@ check!(ne, unsafe { (FOO as *const usize as *const u8).offset(3) }, 0);
 
 // We want pointers to be equal to themselves, but aren't checking this yet because
 // there are some open questions (e.g. whether function pointers to the same function
-// compare equal, they don't necessarily at runtime).
-// The case tested here should work eventually, but does not work yet.
+// compare equal: they don't necessarily do at runtime).
 check!(!, FOO as *const _, FOO as *const _);
 
+// aside from 0, these pointers might end up pretty much anywhere.
+check!(!, FOO as *const _, 1); // this one could be `ne` by taking into account alignment
+check!(!, FOO as *const _, 1024);
 
-///////////////////////////////////////////////////////////////////////////////
-// If any of the below start compiling, make sure to add a `check` test for it.
-// These invocations exist as canaries so we don't forget to check that the
-// behaviour of `guaranteed_eq` and `guaranteed_ne` is still correct.
-// All of these try to obtain an out of bounds pointer in some manner. If we
-// can create out of bounds pointers, we can offset a pointer far enough that
-// at runtime it would be zero and at compile-time it would not be zero.
-
-const _: *const usize = unsafe { (FOO as *const usize).offset(2) };
-
-const _: *const u8 =
-    unsafe { std::ptr::addr_of!((*(FOO as *const usize as *const [u8; 1000]))[999]) };
-//~^ ERROR evaluation of constant value failed
-//~| out-of-bounds
-
-const _: usize = unsafe { std::mem::transmute::<*const usize, usize>(FOO) + 4 };
-//~^ ERROR evaluation of constant value failed
-//~| unable to turn pointer into raw bytes
-
-const _: usize = unsafe { *std::mem::transmute::<&&usize, &usize>(&FOO) + 4 };
-//~^ ERROR evaluation of constant value failed
-//~| unable to turn pointer into raw bytes
+// When pointers go out-of-bounds, they *might* become null, so these comparions cannot work.
+check!(!, unsafe { (FOO as *const usize).wrapping_add(2) }, 0);
+check!(!, unsafe { (FOO as *const usize).wrapping_sub(1) }, 0);

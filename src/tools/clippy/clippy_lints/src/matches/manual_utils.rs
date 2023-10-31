@@ -1,14 +1,17 @@
-use crate::{map_unit_fn::OPTION_MAP_UNIT_FN, matches::MATCH_AS_REF};
+use crate::map_unit_fn::OPTION_MAP_UNIT_FN;
+use crate::matches::MATCH_AS_REF;
 use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
+use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{is_copy, is_type_diagnostic_item, peel_mid_ty_refs_is_mutable, type_is_unsafe_function};
 use clippy_utils::{
     can_move_expr_to_closure, is_else_clause, is_lint_allowed, is_res_lang_ctor, path_res, path_to_local_id,
-    peel_blocks, peel_hir_expr_refs, peel_hir_expr_while, sugg::Sugg, CaptureKind,
+    peel_blocks, peel_hir_expr_refs, peel_hir_expr_while, CaptureKind,
 };
 use rustc_ast::util::parser::PREC_POSTFIX;
 use rustc_errors::Applicability;
+use rustc_hir::def::Res;
 use rustc_hir::LangItem::{OptionNone, OptionSome};
-use rustc_hir::{def::Res, BindingAnnotation, Expr, ExprKind, HirId, Mutability, Pat, PatKind, Path, QPath};
+use rustc_hir::{BindingAnnotation, Expr, ExprKind, HirId, Mutability, Pat, PatKind, Path, QPath};
 use rustc_lint::LateContext;
 use rustc_span::{sym, SyntaxContext};
 

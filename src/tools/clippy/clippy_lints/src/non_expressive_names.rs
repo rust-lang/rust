@@ -91,7 +91,7 @@ struct ExistingName {
 struct SimilarNamesLocalVisitor<'a, 'tcx> {
     names: Vec<ExistingName>,
     cx: &'a EarlyContext<'tcx>,
-    lint: &'a NonExpressiveNames,
+    lint: NonExpressiveNames,
 
     /// A stack of scopes containing the single-character bindings in each scope.
     single_char_names: Vec<Vec<Ident>>,
@@ -365,7 +365,7 @@ impl EarlyLintPass for NonExpressiveNames {
             ..
         }) = item.kind
         {
-            do_check(self, cx, &item.attrs, &sig.decl, blk);
+            do_check(*self, cx, &item.attrs, &sig.decl, blk);
         }
     }
 
@@ -380,12 +380,12 @@ impl EarlyLintPass for NonExpressiveNames {
             ..
         }) = item.kind
         {
-            do_check(self, cx, &item.attrs, &sig.decl, blk);
+            do_check(*self, cx, &item.attrs, &sig.decl, blk);
         }
     }
 }
 
-fn do_check(lint: &mut NonExpressiveNames, cx: &EarlyContext<'_>, attrs: &[Attribute], decl: &FnDecl, blk: &Block) {
+fn do_check(lint: NonExpressiveNames, cx: &EarlyContext<'_>, attrs: &[Attribute], decl: &FnDecl, blk: &Block) {
     if !attrs.iter().any(|attr| attr.has_name(sym::test)) {
         let mut visitor = SimilarNamesLocalVisitor {
             names: Vec::new(),

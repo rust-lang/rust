@@ -7,11 +7,11 @@ use std::process::Command;
 use std::{cmp::Ordering, ops, time::Instant};
 
 mod macros;
-pub mod hash;
 pub mod process;
 pub mod panic_context;
 pub mod non_empty_vec;
 pub mod rand;
+pub mod thread;
 
 pub use always_assert::{always, never};
 

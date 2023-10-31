@@ -1,4 +1,4 @@
-use rustc_apfloat::Float;
+use rustc_apfloat::{Float, Round};
 use rustc_middle::ty::layout::{HasParamEnv, LayoutOf};
 use rustc_middle::{mir, ty, ty::FloatTy};
 use rustc_target::abi::{Endian, HasDataLayout, Size};
@@ -57,8 +57,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 };
 
                 for i in 0..dest_len {
-                    let op = this.read_immediate(&this.mplace_index(&op, i)?.into())?;
-                    let dest = this.mplace_index(&dest, i)?;
+                    let op = this.read_immediate(&this.project_index(&op, i)?)?;
+                    let dest = this.project_index(&dest, i)?;
                     let val = match which {
                         Op::MirOp(mir_op) => this.unary_op(mir_op, &op)?.to_scalar(),
                         Op::Abs => {
@@ -104,7 +104,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
                         }
                     };
-                    this.write_scalar(val, &dest.into())?;
+                    this.write_scalar(val, &dest)?;
                 }
             }
             #[rustfmt::skip]
@@ -172,9 +172,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 };
 
                 for i in 0..dest_len {
-                    let left = this.read_immediate(&this.mplace_index(&left, i)?.into())?;
-                    let right = this.read_immediate(&this.mplace_index(&right, i)?.into())?;
-                    let dest = this.mplace_index(&dest, i)?;
+                    let left = this.read_immediate(&this.project_index(&left, i)?)?;
+                    let right = this.read_immediate(&this.project_index(&right, i)?)?;
+                    let dest = this.project_index(&dest, i)?;
                     let val = match which {
                         Op::MirOp(mir_op) => {
                             let (val, overflowed, ty) = this.overflowing_binary_op(mir_op, &left, &right)?;
@@ -217,7 +217,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                             fmin_op(&left, &right)?
                         }
                     };
-                    this.write_scalar(val, &dest.into())?;
+                    this.write_scalar(val, &dest)?;
                 }
             }
             "fma" => {
@@ -232,10 +232,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 assert_eq!(dest_len, c_len);
 
                 for i in 0..dest_len {
-                    let a = this.read_scalar(&this.mplace_index(&a, i)?.into())?;
-                    let b = this.read_scalar(&this.mplace_index(&b, i)?.into())?;
-                    let c = this.read_scalar(&this.mplace_index(&c, i)?.into())?;
-                    let dest = this.mplace_index(&dest, i)?;
+                    let a = this.read_scalar(&this.project_index(&a, i)?)?;
+                    let b = this.read_scalar(&this.project_index(&b, i)?)?;
+                    let c = this.read_scalar(&this.project_index(&c, i)?)?;
+                    let dest = this.project_index(&dest, i)?;
 
                     // Works for f32 and f64.
                     // FIXME: using host floats to work around https://github.com/rust-lang/miri/issues/2468.
@@ -258,7 +258,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                             Scalar::from_u64(res.to_bits())
                         }
                     };
-                    this.write_scalar(val, &dest.into())?;
+                    this.write_scalar(val, &dest)?;
                 }
             }
             #[rustfmt::skip]
@@ -295,13 +295,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 };
 
                 // Initialize with first lane, then proceed with the rest.
-                let mut res = this.read_immediate(&this.mplace_index(&op, 0)?.into())?;
+                let mut res = this.read_immediate(&this.project_index(&op, 0)?)?;
                 if matches!(which, Op::MirOpBool(_)) {
                     // Convert to `bool` scalar.
                     res = imm_from_bool(simd_element_to_bool(res)?);
                 }
                 for i in 1..op_len {
-                    let op = this.read_immediate(&this.mplace_index(&op, i)?.into())?;
+                    let op = this.read_immediate(&this.project_index(&op, i)?)?;
                     res = match which {
                         Op::MirOp(mir_op) => {
                             this.binary_op(mir_op, &res, &op)?
@@ -355,7 +355,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
                 let mut res = init;
                 for i in 0..op_len {
-                    let op = this.read_immediate(&this.mplace_index(&op, i)?.into())?;
+                    let op = this.read_immediate(&this.project_index(&op, i)?)?;
                     res = this.binary_op(mir_op, &res, &op)?;
                 }
                 this.write_immediate(*res, dest)?;
@@ -372,13 +372,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 assert_eq!(dest_len, no_len);
 
                 for i in 0..dest_len {
-                    let mask = this.read_immediate(&this.mplace_index(&mask, i)?.into())?;
-                    let yes = this.read_immediate(&this.mplace_index(&yes, i)?.into())?;
-                    let no = this.read_immediate(&this.mplace_index(&no, i)?.into())?;
-                    let dest = this.mplace_index(&dest, i)?;
+                    let mask = this.read_immediate(&this.project_index(&mask, i)?)?;
+                    let yes = this.read_immediate(&this.project_index(&yes, i)?)?;
+                    let no = this.read_immediate(&this.project_index(&no, i)?)?;
+                    let dest = this.project_index(&dest, i)?;
 
                     let val = if simd_element_to_bool(mask)? { yes } else { no };
-                    this.write_immediate(*val, &dest.into())?;
+                    this.write_immediate(*val, &dest)?;
                 }
             }
             "select_bitmask" => {
@@ -403,12 +403,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                         & 1u64
                             .checked_shl(simd_bitmask_index(i, dest_len, this.data_layout().endian))
                             .unwrap();
-                    let yes = this.read_immediate(&this.mplace_index(&yes, i.into())?.into())?;
-                    let no = this.read_immediate(&this.mplace_index(&no, i.into())?.into())?;
-                    let dest = this.mplace_index(&dest, i.into())?;
+                    let yes = this.read_immediate(&this.project_index(&yes, i.into())?)?;
+                    let no = this.read_immediate(&this.project_index(&no, i.into())?)?;
+                    let dest = this.project_index(&dest, i.into())?;
 
                     let val = if mask != 0 { yes } else { no };
-                    this.write_immediate(*val, &dest.into())?;
+                    this.write_immediate(*val, &dest)?;
                 }
                 for i in dest_len..bitmask_len {
                     // If the mask is "padded", ensure that padding is all-zero.
@@ -420,7 +420,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     }
                 }
             }
-            #[rustfmt::skip]
             "cast" | "as" | "cast_ptr" | "expose_addr" | "from_exposed_addr" => {
                 let [op] = check_arg_count(args)?;
                 let (op, op_len) = this.operand_to_simd(op)?;
@@ -435,12 +434,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let from_exposed_cast = intrinsic_name == "from_exposed_addr";
 
                 for i in 0..dest_len {
-                    let op = this.read_immediate(&this.mplace_index(&op, i)?.into())?;
-                    let dest = this.mplace_index(&dest, i)?;
+                    let op = this.read_immediate(&this.project_index(&op, i)?)?;
+                    let dest = this.project_index(&dest, i)?;
 
                     let val = match (op.layout.ty.kind(), dest.layout.ty.kind()) {
                         // Int-to-(int|float): always safe
-                        (ty::Int(_) | ty::Uint(_), ty::Int(_) | ty::Uint(_) | ty::Float(_)) if safe_cast || unsafe_cast =>
+                        (ty::Int(_) | ty::Uint(_), ty::Int(_) | ty::Uint(_) | ty::Float(_))
+                            if safe_cast || unsafe_cast =>
                             this.int_to_int_or_float(&op, dest.layout.ty)?,
                         // Float-to-float: always safe
                         (ty::Float(_), ty::Float(_)) if safe_cast || unsafe_cast =>
@@ -449,21 +449,36 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                         (ty::Float(_), ty::Int(_) | ty::Uint(_)) if safe_cast =>
                             this.float_to_float_or_int(&op, dest.layout.ty)?,
                         // Float-to-int in unchecked mode
-                        (ty::Float(FloatTy::F32), ty::Int(_) | ty::Uint(_)) if unsafe_cast =>
-                            this.float_to_int_unchecked(op.to_scalar().to_f32()?, dest.layout.ty)?.into(),
-                        (ty::Float(FloatTy::F64), ty::Int(_) | ty::Uint(_)) if unsafe_cast =>
-                            this.float_to_int_unchecked(op.to_scalar().to_f64()?, dest.layout.ty)?.into(),
+                        (ty::Float(FloatTy::F32), ty::Int(_) | ty::Uint(_)) if unsafe_cast => {
+                            let f = op.to_scalar().to_f32()?;
+                            this.float_to_int_checked(f, dest.layout.ty, Round::TowardZero)
+                                .ok_or_else(|| {
+                                    err_ub_format!(
+                                        "`simd_cast` intrinsic called on {f} which cannot be represented in target type `{:?}`",
+                                        dest.layout.ty
+                                    )
+                                })?
+                                .into()
+                        }
+                        (ty::Float(FloatTy::F64), ty::Int(_) | ty::Uint(_)) if unsafe_cast => {
+                            let f = op.to_scalar().to_f64()?;
+                            this.float_to_int_checked(f, dest.layout.ty, Round::TowardZero)
+                                .ok_or_else(|| {
+                                    err_ub_format!(
+                                        "`simd_cast` intrinsic called on {f} which cannot be represented in target type `{:?}`",
+                                        dest.layout.ty
+                                    )
+                                })?
+                                .into()
+                        }
                         // Ptr-to-ptr cast
-                        (ty::RawPtr(..), ty::RawPtr(..)) if ptr_cast => {
-                            this.ptr_to_ptr(&op, dest.layout.ty)?
-                        }
+                        (ty::RawPtr(..), ty::RawPtr(..)) if ptr_cast =>
+                            this.ptr_to_ptr(&op, dest.layout.ty)?,
                         // Ptr/Int casts
-                        (ty::RawPtr(..), ty::Int(_) | ty::Uint(_)) if expose_cast => {
-                            this.pointer_expose_address_cast(&op, dest.layout.ty)?
-                        }
-                        (ty::Int(_) | ty::Uint(_), ty::RawPtr(..)) if from_exposed_cast => {
-                            this.pointer_from_exposed_address_cast(&op, dest.layout.ty)?
-                        }
+                        (ty::RawPtr(..), ty::Int(_) | ty::Uint(_)) if expose_cast =>
+                            this.pointer_expose_address_cast(&op, dest.layout.ty)?,
+                        (ty::Int(_) | ty::Uint(_), ty::RawPtr(..)) if from_exposed_cast =>
+                            this.pointer_from_exposed_address_cast(&op, dest.layout.ty)?,
                         // Error otherwise
                         _ =>
                             throw_unsup_format!(
@@ -472,7 +487,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                                 to_ty = dest.layout.ty,
                             ),
                     };
-                    this.write_immediate(val, &dest.into())?;
+                    this.write_immediate(val, &dest)?;
                 }
             }
             "shuffle" => {
@@ -483,7 +498,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
                 // `index` is an array, not a SIMD type
                 let ty::Array(_, index_len) = index.layout.ty.kind() else {
-                    span_bug!(this.cur_span(), "simd_shuffle index argument has non-array type {}", index.layout.ty)
+                    span_bug!(
+                        this.cur_span(),
+                        "simd_shuffle index argument has non-array type {}",
+                        index.layout.ty
+                    )
                 };
                 let index_len = index_len.eval_target_usize(*this.tcx, this.param_env());
 
@@ -492,24 +511,24 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
                 for i in 0..dest_len {
                     let src_index: u64 = this
-                        .read_immediate(&this.operand_index(index, i)?)?
+                        .read_immediate(&this.project_index(index, i)?)?
                         .to_scalar()
                         .to_u32()?
                         .into();
-                    let dest = this.mplace_index(&dest, i)?;
+                    let dest = this.project_index(&dest, i)?;
 
                     let val = if src_index < left_len {
-                        this.read_immediate(&this.mplace_index(&left, src_index)?.into())?
+                        this.read_immediate(&this.project_index(&left, src_index)?)?
                     } else if src_index < left_len.checked_add(right_len).unwrap() {
                         let right_idx = src_index.checked_sub(left_len).unwrap();
-                        this.read_immediate(&this.mplace_index(&right, right_idx)?.into())?
+                        this.read_immediate(&this.project_index(&right, right_idx)?)?
                     } else {
                         span_bug!(
                             this.cur_span(),
                             "simd_shuffle index {src_index} is out of bounds for 2 vectors of size {left_len}",
                         );
                     };
-                    this.write_immediate(*val, &dest.into())?;
+                    this.write_immediate(*val, &dest)?;
                 }
             }
             "gather" => {
@@ -524,18 +543,18 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 assert_eq!(dest_len, mask_len);
 
                 for i in 0..dest_len {
-                    let passthru = this.read_immediate(&this.mplace_index(&passthru, i)?.into())?;
-                    let ptr = this.read_immediate(&this.mplace_index(&ptrs, i)?.into())?;
-                    let mask = this.read_immediate(&this.mplace_index(&mask, i)?.into())?;
-                    let dest = this.mplace_index(&dest, i)?;
+                    let passthru = this.read_immediate(&this.project_index(&passthru, i)?)?;
+                    let ptr = this.read_immediate(&this.project_index(&ptrs, i)?)?;
+                    let mask = this.read_immediate(&this.project_index(&mask, i)?)?;
+                    let dest = this.project_index(&dest, i)?;
 
                     let val = if simd_element_to_bool(mask)? {
-                        let place = this.deref_operand(&ptr.into())?;
-                        this.read_immediate(&place.into())?
+                        let place = this.deref_pointer(&ptr)?;
+                        this.read_immediate(&place)?
                     } else {
                         passthru
                     };
-                    this.write_immediate(*val, &dest.into())?;
+                    this.write_immediate(*val, &dest)?;
                 }
             }
             "scatter" => {
@@ -548,13 +567,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 assert_eq!(ptrs_len, mask_len);
 
                 for i in 0..ptrs_len {
-                    let value = this.read_immediate(&this.mplace_index(&value, i)?.into())?;
-                    let ptr = this.read_immediate(&this.mplace_index(&ptrs, i)?.into())?;
-                    let mask = this.read_immediate(&this.mplace_index(&mask, i)?.into())?;
+                    let value = this.read_immediate(&this.project_index(&value, i)?)?;
+                    let ptr = this.read_immediate(&this.project_index(&ptrs, i)?)?;
+                    let mask = this.read_immediate(&this.project_index(&mask, i)?)?;
 
                     if simd_element_to_bool(mask)? {
-                        let place = this.deref_operand(&ptr.into())?;
-                        this.write_immediate(*value, &place.into())?;
+                        let place = this.deref_pointer(&ptr)?;
+                        this.write_immediate(*value, &place)?;
                     }
                 }
             }
@@ -574,7 +593,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
                 let mut res = 0u64;
                 for i in 0..op_len {
-                    let op = this.read_immediate(&this.mplace_index(&op, i.into())?.into())?;
+                    let op = this.read_immediate(&this.project_index(&op, i.into())?)?;
                     if simd_element_to_bool(op)? {
                         res |= 1u64
                             .checked_shl(simd_bitmask_index(i, op_len, this.data_layout().endian))
@@ -584,7 +603,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 // We have to force the place type to be an int so that we can write `res` into it.
                 let mut dest = this.force_allocation(dest)?;
                 dest.layout = this.machine.layouts.uint(dest.layout.size).unwrap();
-                this.write_int(res, &dest.into())?;
+                this.write_int(res, &dest)?;
             }
 
             name => throw_unsup_format!("unimplemented intrinsic: `simd_{name}`"),
@@ -622,9 +641,7 @@ fn fmax_op<'tcx>(
     right: &ImmTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx, Scalar<Provenance>> {
     assert_eq!(left.layout.ty, right.layout.ty);
-    let ty::Float(float_ty) = left.layout.ty.kind() else {
-        bug!("fmax operand is not a float")
-    };
+    let ty::Float(float_ty) = left.layout.ty.kind() else { bug!("fmax operand is not a float") };
     let left = left.to_scalar();
     let right = right.to_scalar();
     Ok(match float_ty {
@@ -638,9 +655,7 @@ fn fmin_op<'tcx>(
     right: &ImmTy<'tcx, Provenance>,
 ) -> InterpResult<'tcx, Scalar<Provenance>> {
     assert_eq!(left.layout.ty, right.layout.ty);
-    let ty::Float(float_ty) = left.layout.ty.kind() else {
-        bug!("fmin operand is not a float")
-    };
+    let ty::Float(float_ty) = left.layout.ty.kind() else { bug!("fmin operand is not a float") };
     let left = left.to_scalar();
     let right = right.to_scalar();
     Ok(match float_ty {

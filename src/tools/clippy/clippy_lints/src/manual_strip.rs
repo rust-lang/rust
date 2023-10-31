@@ -8,8 +8,7 @@ use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_hir::def::Res;
 use rustc_hir::intravisit::{walk_expr, Visitor};
-use rustc_hir::BinOpKind;
-use rustc_hir::{BorrowKind, Expr, ExprKind};
+use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
@@ -205,7 +204,7 @@ fn find_stripping<'tcx>(
             if_chain! {
                 if is_ref_str(self.cx, ex);
                 let unref = peel_ref(ex);
-                if let ExprKind::Index(indexed, index) = &unref.kind;
+                if let ExprKind::Index(indexed, index, _) = &unref.kind;
                 if let Some(higher::Range { start, end, .. }) = higher::Range::hir(index);
                 if let ExprKind::Path(path) = &indexed.kind;
                 if self.cx.qpath_res(path, ex.hir_id) == self.target;

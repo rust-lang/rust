@@ -1,20 +1,21 @@
-use crate::fluent_generated as fluent;
+use crate::error::UnsupportedFnAbi;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::query::TyCtxtAt;
 use crate::ty::normalize_erasing_regions::NormalizationError;
-use crate::ty::{self, ReprOptions, Ty, TyCtxt, TypeVisitableExt};
+use crate::ty::{self, ConstKind, ReprOptions, Ty, TyCtxt, TypeVisitableExt};
+use rustc_error_messages::DiagnosticMessage;
 use rustc_errors::{DiagnosticBuilder, Handler, IntoDiagnostic};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_index::IndexVec;
 use rustc_session::config::OptLevel;
 use rustc_span::symbol::{sym, Symbol};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::{ErrorGuaranteed, Span, DUMMY_SP};
 use rustc_target::abi::call::FnAbi;
 use rustc_target::abi::*;
 use rustc_target::spec::{abi::Abi as SpecAbi, HasTargetSpec, PanicStrategy, Target};
 
-use std::cmp::{self};
+use std::cmp;
 use std::fmt;
 use std::num::NonZeroUsize;
 use std::ops::Bound;
@@ -132,7 +133,7 @@ impl PrimitiveExt for Primitive {
             F32 => tcx.types.f32,
             F64 => tcx.types.f64,
             // FIXME(erikdesjardins): handle non-default addrspace ptr sizes
-            Pointer(_) => tcx.mk_mut_ptr(tcx.mk_unit()),
+            Pointer(_) => Ty::new_mut_ptr(tcx, Ty::new_unit(tcx)),
         }
     }
 
@@ -211,32 +212,35 @@ pub enum LayoutError<'tcx> {
     Unknown(Ty<'tcx>),
     SizeOverflow(Ty<'tcx>),
     NormalizationFailure(Ty<'tcx>, NormalizationError<'tcx>),
+    ReferencesError(ErrorGuaranteed),
     Cycle,
 }
 
-impl IntoDiagnostic<'_, !> for LayoutError<'_> {
-    fn into_diagnostic(self, handler: &Handler) -> DiagnosticBuilder<'_, !> {
-        let mut diag = handler.struct_fatal("");
-
+impl<'tcx> LayoutError<'tcx> {
+    pub fn diagnostic_message(&self) -> DiagnosticMessage {
+        use crate::fluent_generated::*;
+        use LayoutError::*;
         match self {
-            LayoutError::Unknown(ty) => {
-                diag.set_arg("ty", ty);
-                diag.set_primary_message(fluent::middle_unknown_layout);
-            }
-            LayoutError::SizeOverflow(ty) => {
-                diag.set_arg("ty", ty);
-                diag.set_primary_message(fluent::middle_values_too_big);
-            }
-            LayoutError::NormalizationFailure(ty, e) => {
-                diag.set_arg("ty", ty);
-                diag.set_arg("failure_ty", e.get_type_for_failure());
-                diag.set_primary_message(fluent::middle_cannot_be_normalized);
-            }
-            LayoutError::Cycle => {
-                diag.set_primary_message(fluent::middle_cycle);
-            }
+            Unknown(_) => middle_unknown_layout,
+            SizeOverflow(_) => middle_values_too_big,
+            NormalizationFailure(_, _) => middle_cannot_be_normalized,
+            Cycle => middle_cycle,
+            ReferencesError(_) => middle_layout_references_error,
         }
-        diag
+    }
+
+    pub fn into_diagnostic(self) -> crate::error::LayoutError<'tcx> {
+        use crate::error::LayoutError as E;
+        use LayoutError::*;
+        match self {
+            Unknown(ty) => E::Unknown { ty },
+            SizeOverflow(ty) => E::Overflow { ty },
+            NormalizationFailure(ty, e) => {
+                E::NormalizationFailure { ty, failure_ty: e.get_type_for_failure() }
+            }
+            Cycle => E::Cycle,
+            ReferencesError(_) => E::ReferencesError,
+        }
     }
 }
 
@@ -245,9 +249,9 @@ impl IntoDiagnostic<'_, !> for LayoutError<'_> {
 impl<'tcx> fmt::Display for LayoutError<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            LayoutError::Unknown(ty) => write!(f, "the type `{}` has an unknown layout", ty),
+            LayoutError::Unknown(ty) => write!(f, "the type `{ty}` has an unknown layout"),
             LayoutError::SizeOverflow(ty) => {
-                write!(f, "values of the type `{}` are too big for the current architecture", ty)
+                write!(f, "values of the type `{ty}` are too big for the current architecture")
             }
             LayoutError::NormalizationFailure(t, e) => write!(
                 f,
@@ -256,6 +260,7 @@ impl<'tcx> fmt::Display for LayoutError<'tcx> {
                 e.get_type_for_failure()
             ),
             LayoutError::Cycle => write!(f, "a cycle occurred during layout computation"),
+            LayoutError::ReferencesError(_) => write!(f, "the type has an unknown layout"),
         }
     }
 }
@@ -309,7 +314,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
         ty: Ty<'tcx>,
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-    ) -> Result<SizeSkeleton<'tcx>, LayoutError<'tcx>> {
+    ) -> Result<SizeSkeleton<'tcx>, &'tcx LayoutError<'tcx>> {
         debug_assert!(!ty.has_non_region_infer());
 
         // First try computing a static layout.
@@ -317,7 +322,14 @@ impl<'tcx> SizeSkeleton<'tcx> {
             Ok(layout) => {
                 return Ok(SizeSkeleton::Known(layout.size));
             }
-            Err(err) => err,
+            Err(err @ LayoutError::Unknown(_)) => err,
+            // We can't extract SizeSkeleton info from other layout errors
+            Err(
+                e @ LayoutError::Cycle
+                | e @ LayoutError::SizeOverflow(_)
+                | e @ LayoutError::NormalizationFailure(..)
+                | e @ LayoutError::ReferencesError(_),
+            ) => return Err(e),
         };
 
         match *ty.kind() {
@@ -330,11 +342,8 @@ impl<'tcx> SizeSkeleton<'tcx> {
                         Ok(SizeSkeleton::Pointer { non_zero, tail: tcx.erase_regions(tail) })
                     }
                     _ => bug!(
-                        "SizeSkeleton::compute({}): layout errored ({}), yet \
-                              tail `{}` is not a type parameter or a projection",
-                        ty,
-                        err,
-                        tail
+                        "SizeSkeleton::compute({ty}): layout errored ({err:?}), yet \
+                              tail `{tail}` is not a type parameter or a projection",
                     ),
                 }
             }
@@ -349,13 +358,13 @@ impl<'tcx> SizeSkeleton<'tcx> {
                             let size = s
                                 .bytes()
                                 .checked_mul(c)
-                                .ok_or_else(|| LayoutError::SizeOverflow(ty))?;
+                                .ok_or_else(|| &*tcx.arena.alloc(LayoutError::SizeOverflow(ty)))?;
                             return Ok(SizeSkeleton::Known(Size::from_bytes(size)));
                         }
                         let len = tcx.expand_abstract_consts(len);
                         let prev = ty::Const::from_target_usize(tcx, s.bytes());
                         let Some(gen_size) = mul_sorted_consts(tcx, param_env, len, prev) else {
-                            return Err(LayoutError::SizeOverflow(ty));
+                            return Err(tcx.arena.alloc(LayoutError::SizeOverflow(ty)));
                         };
                         Ok(SizeSkeleton::Generic(gen_size))
                     }
@@ -363,14 +372,14 @@ impl<'tcx> SizeSkeleton<'tcx> {
                     SizeSkeleton::Generic(g) => {
                         let len = tcx.expand_abstract_consts(len);
                         let Some(gen_size) = mul_sorted_consts(tcx, param_env, len, g) else {
-                            return Err(LayoutError::SizeOverflow(ty));
+                            return Err(tcx.arena.alloc(LayoutError::SizeOverflow(ty)));
                         };
                         Ok(SizeSkeleton::Generic(gen_size))
                     }
                 }
             }
 
-            ty::Adt(def, substs) => {
+            ty::Adt(def, args) => {
                 // Only newtypes and enums w/ nullable pointer optimization.
                 if def.is_union() || def.variants().is_empty() || def.variants().len() > 2 {
                     return Err(err);
@@ -381,7 +390,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
                     let i = VariantIdx::from_usize(i);
                     let fields =
                         def.variant(i).fields.iter().map(|field| {
-                            SizeSkeleton::compute(field.ty(tcx, substs), tcx, param_env)
+                            SizeSkeleton::compute(field.ty(tcx, args), tcx, param_env)
                         });
                     let mut ptr = None;
                     for field in fields {
@@ -476,13 +485,11 @@ fn mul_sorted_consts<'tcx>(
     b: ty::Const<'tcx>,
 ) -> Option<ty::Const<'tcx>> {
     use crate::mir::BinOp::Mul;
-    use ty::ConstKind::Expr;
-    use ty::Expr::Binop;
 
     let mut work = vec![a, b];
     let mut done = vec![];
     while let Some(n) = work.pop() {
-        if let Expr(Binop(Mul, l, r)) = n.kind() {
+        if let ConstKind::Expr(ty::Expr::Binop(Mul, l, r)) = n.kind() {
             work.push(l);
             work.push(r)
         } else {
@@ -513,7 +520,7 @@ fn mul_sorted_consts<'tcx>(
     done.sort_unstable();
 
     // create a single tree from the buffer
-    done.into_iter().reduce(|acc, n| tcx.mk_const(Expr(Binop(Mul, n, acc)), n.ty()))
+    done.into_iter().reduce(|acc, n| ty::Const::new_expr(tcx, ty::Expr::Binop(Mul, n, acc), n.ty()))
 }
 
 pub trait HasTyCtxt<'tcx>: HasDataLayout {
@@ -668,7 +675,7 @@ pub trait LayoutOf<'tcx>: LayoutOfHelpers<'tcx> {
 
         MaybeResult::from(
             tcx.layout_of(self.param_env().and(ty))
-                .map_err(|err| self.handle_layout_err(err, span, ty)),
+                .map_err(|err| self.handle_layout_err(*err, span, ty)),
         )
     }
 }
@@ -676,16 +683,21 @@ pub trait LayoutOf<'tcx>: LayoutOfHelpers<'tcx> {
 impl<'tcx, C: LayoutOfHelpers<'tcx>> LayoutOf<'tcx> for C {}
 
 impl<'tcx> LayoutOfHelpers<'tcx> for LayoutCx<'tcx, TyCtxt<'tcx>> {
-    type LayoutOfResult = Result<TyAndLayout<'tcx>, LayoutError<'tcx>>;
+    type LayoutOfResult = Result<TyAndLayout<'tcx>, &'tcx LayoutError<'tcx>>;
 
     #[inline]
-    fn handle_layout_err(&self, err: LayoutError<'tcx>, _: Span, _: Ty<'tcx>) -> LayoutError<'tcx> {
-        err
+    fn handle_layout_err(
+        &self,
+        err: LayoutError<'tcx>,
+        _: Span,
+        _: Ty<'tcx>,
+    ) -> &'tcx LayoutError<'tcx> {
+        self.tcx.arena.alloc(err)
     }
 }
 
 impl<'tcx> LayoutOfHelpers<'tcx> for LayoutCx<'tcx, TyCtxtAt<'tcx>> {
-    type LayoutOfResult = Result<TyAndLayout<'tcx>, LayoutError<'tcx>>;
+    type LayoutOfResult = Result<TyAndLayout<'tcx>, &'tcx LayoutError<'tcx>>;
 
     #[inline]
     fn layout_tcx_at_span(&self) -> Span {
@@ -693,8 +705,13 @@ impl<'tcx> LayoutOfHelpers<'tcx> for LayoutCx<'tcx, TyCtxtAt<'tcx>> {
     }
 
     #[inline]
-    fn handle_layout_err(&self, err: LayoutError<'tcx>, _: Span, _: Ty<'tcx>) -> LayoutError<'tcx> {
-        err
+    fn handle_layout_err(
+        &self,
+        err: LayoutError<'tcx>,
+        _: Span,
+        _: Ty<'tcx>,
+    ) -> &'tcx LayoutError<'tcx> {
+        self.tcx.arena.alloc(err)
     }
 }
 
@@ -729,9 +746,9 @@ where
 
                 let fields = match this.ty.kind() {
                     ty::Adt(def, _) if def.variants().is_empty() =>
-                        bug!("for_variant called on zero-variant enum"),
+                        bug!("for_variant called on zero-variant enum {}", this.ty),
                     ty::Adt(def, _) => def.variant(variant_index).fields.len(),
-                    _ => bug!(),
+                    _ => bug!("`ty_and_layout_for_variant` on unexpected type {}", this.ty),
                 };
                 tcx.mk_layout(LayoutS {
                     variants: Variants::Single { index: variant_index },
@@ -743,6 +760,8 @@ where
                     largest_niche: None,
                     align: tcx.data_layout.i8_align,
                     size: Size::ZERO,
+                    max_repr_align: None,
+                    unadjusted_abi_align: tcx.data_layout.i8_align.abi,
                 })
             }
 
@@ -798,11 +817,11 @@ where
                     // (which may have no non-DST form), and will work as long
                     // as the `Abi` or `FieldsShape` is checked by users.
                     if i == 0 {
-                        let nil = tcx.mk_unit();
+                        let nil = Ty::new_unit(tcx);
                         let unit_ptr_ty = if this.ty.is_unsafe_ptr() {
-                            tcx.mk_mut_ptr(nil)
+                            Ty::new_mut_ptr(tcx, nil)
                         } else {
-                            tcx.mk_mut_ref(tcx.lifetimes.re_static, nil)
+                            Ty::new_mut_ref(tcx, tcx.lifetimes.re_static, nil)
                         };
 
                         // NOTE(eddyb) using an empty `ParamEnv`, and `unwrap`-ing
@@ -815,7 +834,11 @@ where
                     }
 
                     let mk_dyn_vtable = || {
-                        tcx.mk_imm_ref(tcx.lifetimes.re_static, tcx.mk_array(tcx.types.usize, 3))
+                        Ty::new_imm_ref(
+                            tcx,
+                            tcx.lifetimes.re_static,
+                            Ty::new_array(tcx, tcx.types.usize, 3),
+                        )
                         /* FIXME: use actual fn pointers
                         Warning: naively computing the number of entries in the
                         vtable by counting the methods on the trait + methods on
@@ -824,9 +847,9 @@ where
                         Increase this counter if you tried to implement this but
                         failed to do it without duplicating a lot of code from
                         other places in the compiler: 2
-                        tcx.mk_tup(&[
-                            tcx.mk_array(tcx.types.usize, 3),
-                            tcx.mk_array(Option<fn()>),
+                        Ty::new_tup(tcx,&[
+                            Ty::new_array(tcx,tcx.types.usize, 3),
+                            Ty::new_array(tcx,Option<fn()>),
                         ])
                         */
                     };
@@ -838,16 +861,16 @@ where
                     {
                         let metadata = tcx.normalize_erasing_regions(
                             cx.param_env(),
-                            tcx.mk_projection(metadata_def_id, [pointee]),
+                            Ty::new_projection(tcx,metadata_def_id, [pointee]),
                         );
 
                         // Map `Metadata = DynMetadata<dyn Trait>` back to a vtable, since it
                         // offers better information than `std::ptr::metadata::VTable`,
                         // and we rely on this layout information to trigger a panic in
                         // `std::mem::uninitialized::<&dyn Trait>()`, for example.
-                        if let ty::Adt(def, substs) = metadata.kind()
+                        if let ty::Adt(def, args) = metadata.kind()
                             && Some(def.did()) == tcx.lang_items().dyn_metadata()
-                            && substs.type_at(0).is_trait()
+                            && args.type_at(0).is_trait()
                         {
                             mk_dyn_vtable()
                         } else {
@@ -869,16 +892,15 @@ where
                 ty::Str => TyMaybeWithLayout::Ty(tcx.types.u8),
 
                 // Tuples, generators and closures.
-                ty::Closure(_, ref substs) => field_ty_or_layout(
-                    TyAndLayout { ty: substs.as_closure().tupled_upvars_ty(), ..this },
+                ty::Closure(_, ref args) => field_ty_or_layout(
+                    TyAndLayout { ty: args.as_closure().tupled_upvars_ty(), ..this },
                     cx,
                     i,
                 ),
 
-                ty::Generator(def_id, ref substs, _) => match this.variants {
+                ty::Generator(def_id, ref args, _) => match this.variants {
                     Variants::Single { index } => TyMaybeWithLayout::Ty(
-                        substs
-                            .as_generator()
+                        args.as_generator()
                             .state_tys(def_id, tcx)
                             .nth(index.as_usize())
                             .unwrap()
@@ -889,18 +911,18 @@ where
                         if i == tag_field {
                             return TyMaybeWithLayout::TyAndLayout(tag_layout(tag));
                         }
-                        TyMaybeWithLayout::Ty(substs.as_generator().prefix_tys().nth(i).unwrap())
+                        TyMaybeWithLayout::Ty(args.as_generator().prefix_tys()[i])
                     }
                 },
 
                 ty::Tuple(tys) => TyMaybeWithLayout::Ty(tys[i]),
 
                 // ADTs.
-                ty::Adt(def, substs) => {
+                ty::Adt(def, args) => {
                     match this.variants {
                         Variants::Single { index } => {
                             let field = &def.variant(index).fields[FieldIdx::from_usize(i)];
-                            TyMaybeWithLayout::Ty(field.ty(tcx, substs))
+                            TyMaybeWithLayout::Ty(field.ty(tcx, args))
                         }
 
                         // Discriminant field for enums (where applicable).
@@ -913,15 +935,14 @@ where
 
                 ty::Dynamic(_, _, ty::DynStar) => {
                     if i == 0 {
-                        TyMaybeWithLayout::Ty(tcx.mk_mut_ptr(tcx.types.unit))
+                        TyMaybeWithLayout::Ty(Ty::new_mut_ptr(tcx, tcx.types.unit))
                     } else if i == 1 {
                         // FIXME(dyn-star) same FIXME as above applies here too
-                        TyMaybeWithLayout::Ty(
-                            tcx.mk_imm_ref(
-                                tcx.lifetimes.re_static,
-                                tcx.mk_array(tcx.types.usize, 3),
-                            ),
-                        )
+                        TyMaybeWithLayout::Ty(Ty::new_imm_ref(
+                            tcx,
+                            tcx.lifetimes.re_static,
+                            Ty::new_array(tcx, tcx.types.usize, 3),
+                        ))
                     } else {
                         bug!("no field {i} on dyn*")
                     }
@@ -940,12 +961,8 @@ where
             TyMaybeWithLayout::Ty(field_ty) => {
                 cx.tcx().layout_of(cx.param_env().and(field_ty)).unwrap_or_else(|e| {
                     bug!(
-                        "failed to get layout for `{}`: {},\n\
-                         despite it being a field (#{}) of an existing layout: {:#?}",
-                        field_ty,
-                        e,
-                        i,
-                        this
+                        "failed to get layout for `{field_ty}`: {e:?},\n\
+                         despite it being a field (#{i}) of an existing layout: {this:#?}",
                     )
                 })
             }
@@ -970,10 +987,8 @@ where
                 })
             }
             ty::FnPtr(fn_sig) if offset.bytes() == 0 => {
-                tcx.layout_of(param_env.and(tcx.mk_fn_ptr(fn_sig))).ok().map(|layout| PointeeInfo {
-                    size: layout.size,
-                    align: layout.align.abi,
-                    safe: None,
+                tcx.layout_of(param_env.and(Ty::new_fn_ptr(tcx, fn_sig))).ok().map(|layout| {
+                    PointeeInfo { size: layout.size, align: layout.align.abi, safe: None }
                 })
             }
             ty::Ref(_, ty, mt) if offset.bytes() == 0 => {
@@ -1101,12 +1116,11 @@ where
 ///
 /// This takes two primary parameters:
 ///
-/// * `codegen_fn_attr_flags` - these are flags calculated as part of the
-///   codegen attrs for a defined function. For function pointers this set of
-///   flags is the empty set. This is only applicable for Rust-defined
-///   functions, and generally isn't needed except for small optimizations where
-///   we try to say a function which otherwise might look like it could unwind
-///   doesn't actually unwind (such as for intrinsics and such).
+/// * `fn_def_id` - the `DefId` of the function. If this is provided then we can
+///   determine more precisely if the function can unwind. If this is not provided
+///   then we will only infer whether the function can unwind or not based on the
+///   ABI of the function. For example, a function marked with `#[rustc_nounwind]`
+///   is known to not unwind even if it's using Rust ABI.
 ///
 /// * `abi` - this is the ABI that the function is defined with. This is the
 ///   primary factor for determining whether a function can unwind or not.
@@ -1138,11 +1152,6 @@ where
 ///   aborts the process.
 /// * This affects whether functions have the LLVM `nounwind` attribute, which
 ///   affects various optimizations and codegen.
-///
-/// FIXME: this is actually buggy with respect to Rust functions. Rust functions
-/// compiled with `-Cpanic=unwind` and referenced from another crate compiled
-/// with `-Cpanic=abort` will look like they can't unwind when in fact they
-/// might (from a foreign exception or similar).
 #[inline]
 #[tracing::instrument(level = "debug", skip(tcx))]
 pub fn fn_can_unwind(tcx: TyCtxt<'_>, fn_def_id: Option<DefId>, abi: SpecAbi) -> bool {
@@ -1230,6 +1239,8 @@ pub fn fn_can_unwind(tcx: TyCtxt<'_>, fn_def_id: Option<DefId>, abi: SpecAbi) ->
         | EfiApi
         | AvrInterrupt
         | AvrNonBlockingInterrupt
+        | RiscvInterruptM
+        | RiscvInterruptS
         | CCmseNonSecureCall
         | Wasm
         | PlatformIntrinsic
@@ -1250,30 +1261,15 @@ pub enum FnAbiError<'tcx> {
     AdjustForForeignAbi(call::AdjustForForeignAbiError),
 }
 
-impl<'tcx> From<LayoutError<'tcx>> for FnAbiError<'tcx> {
-    fn from(err: LayoutError<'tcx>) -> Self {
-        Self::Layout(err)
-    }
-}
-
-impl From<call::AdjustForForeignAbiError> for FnAbiError<'_> {
-    fn from(err: call::AdjustForForeignAbiError) -> Self {
-        Self::AdjustForForeignAbi(err)
-    }
-}
-
-impl<'tcx> fmt::Display for FnAbiError<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl<'a, 'b> IntoDiagnostic<'a, !> for FnAbiError<'b> {
+    fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, !> {
         match self {
-            Self::Layout(err) => err.fmt(f),
-            Self::AdjustForForeignAbi(err) => err.fmt(f),
+            Self::Layout(e) => e.into_diagnostic().into_diagnostic(handler),
+            Self::AdjustForForeignAbi(call::AdjustForForeignAbiError::Unsupported {
+                arch,
+                abi,
+            }) => UnsupportedFnAbi { arch, abi: abi.name() }.into_diagnostic(handler),
         }
-    }
-}
-
-impl IntoDiagnostic<'_, !> for FnAbiError<'_> {
-    fn into_diagnostic(self, handler: &Handler) -> DiagnosticBuilder<'_, !> {
-        handler.struct_fatal(self.to_string())
     }
 }
 
@@ -1324,7 +1320,7 @@ pub trait FnAbiOf<'tcx>: FnAbiOfHelpers<'tcx> {
         let tcx = self.tcx().at(span);
 
         MaybeResult::from(tcx.fn_abi_of_fn_ptr(self.param_env().and((sig, extra_args))).map_err(
-            |err| self.handle_fn_abi_err(err, span, FnAbiRequest::OfFnPtr { sig, extra_args }),
+            |err| self.handle_fn_abi_err(*err, span, FnAbiRequest::OfFnPtr { sig, extra_args }),
         ))
     }
 
@@ -1351,7 +1347,11 @@ pub trait FnAbiOf<'tcx>: FnAbiOfHelpers<'tcx> {
                 // However, we don't do this early in order to avoid calling
                 // `def_span` unconditionally (which may have a perf penalty).
                 let span = if !span.is_dummy() { span } else { tcx.def_span(instance.def_id()) };
-                self.handle_fn_abi_err(err, span, FnAbiRequest::OfInstance { instance, extra_args })
+                self.handle_fn_abi_err(
+                    *err,
+                    span,
+                    FnAbiRequest::OfInstance { instance, extra_args },
+                )
             }),
         )
     }

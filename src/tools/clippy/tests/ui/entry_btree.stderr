@@ -8,7 +8,7 @@ LL | |     }
    | |_____^
    |
    = note: `-D clippy::map-entry` implied by `-D warnings`
-help: try this
+help: try
    |
 LL ~     if let std::collections::btree_map::Entry::Vacant(e) = m.entry(k) {
 LL +         e.insert(v);

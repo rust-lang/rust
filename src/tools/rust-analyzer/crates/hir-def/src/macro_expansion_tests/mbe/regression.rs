@@ -297,55 +297,55 @@ macro_rules! impl_fn_for_zst  {
 
 #[derive(Clone)] struct CharEscapeDebugContinue;
 impl Fn<(char, )> for CharEscapeDebugContinue {
-    #[inline] extern "rust-call"fn call(&self , (c, ): (char, )) -> char::EscapeDebug { {
+    #[inline] extern "rust-call" fn call(&self , (c, ): (char, )) -> char::EscapeDebug { {
             c.escape_debug_ext(false )
         }
     }
 }
 impl FnMut<(char, )> for CharEscapeDebugContinue {
-    #[inline] extern "rust-call"fn call_mut(&mut self , (c, ): (char, )) -> char::EscapeDebug {
+    #[inline] extern "rust-call" fn call_mut(&mut self , (c, ): (char, )) -> char::EscapeDebug {
         Fn::call(&*self , (c, ))
     }
 }
 impl FnOnce<(char, )> for CharEscapeDebugContinue {
     type Output = char::EscapeDebug;
-    #[inline] extern "rust-call"fn call_once(self , (c, ): (char, )) -> char::EscapeDebug {
+    #[inline] extern "rust-call" fn call_once(self , (c, ): (char, )) -> char::EscapeDebug {
         Fn::call(&self , (c, ))
     }
 }
 #[derive(Clone)] struct CharEscapeUnicode;
 impl Fn<(char, )> for CharEscapeUnicode {
-    #[inline] extern "rust-call"fn call(&self , (c, ): (char, )) -> char::EscapeUnicode { {
+    #[inline] extern "rust-call" fn call(&self , (c, ): (char, )) -> char::EscapeUnicode { {
             c.escape_unicode()
         }
     }
 }
 impl FnMut<(char, )> for CharEscapeUnicode {
-    #[inline] extern "rust-call"fn call_mut(&mut self , (c, ): (char, )) -> char::EscapeUnicode {
+    #[inline] extern "rust-call" fn call_mut(&mut self , (c, ): (char, )) -> char::EscapeUnicode {
         Fn::call(&*self , (c, ))
     }
 }
 impl FnOnce<(char, )> for CharEscapeUnicode {
     type Output = char::EscapeUnicode;
-    #[inline] extern "rust-call"fn call_once(self , (c, ): (char, )) -> char::EscapeUnicode {
+    #[inline] extern "rust-call" fn call_once(self , (c, ): (char, )) -> char::EscapeUnicode {
         Fn::call(&self , (c, ))
     }
 }
 #[derive(Clone)] struct CharEscapeDefault;
 impl Fn<(char, )> for CharEscapeDefault {
-    #[inline] extern "rust-call"fn call(&self , (c, ): (char, )) -> char::EscapeDefault { {
+    #[inline] extern "rust-call" fn call(&self , (c, ): (char, )) -> char::EscapeDefault { {
             c.escape_default()
         }
     }
 }
 impl FnMut<(char, )> for CharEscapeDefault {
-    #[inline] extern "rust-call"fn call_mut(&mut self , (c, ): (char, )) -> char::EscapeDefault {
+    #[inline] extern "rust-call" fn call_mut(&mut self , (c, ): (char, )) -> char::EscapeDefault {
         Fn::call(&*self , (c, ))
     }
 }
 impl FnOnce<(char, )> for CharEscapeDefault {
     type Output = char::EscapeDefault;
-    #[inline] extern "rust-call"fn call_once(self , (c, ): (char, )) -> char::EscapeDefault {
+    #[inline] extern "rust-call" fn call_once(self , (c, ): (char, )) -> char::EscapeDefault {
         Fn::call(&self , (c, ))
     }
 }
@@ -833,7 +833,7 @@ macro_rules! rgb_color {
 /* parse error: expected SEMICOLON */
 /* parse error: expected expression, item or let statement */
 pub fn new() {
-    let _ = 0as u32<<(8+8);
+    let _ = 0 as u32<<(8+8);
 }
 // MACRO_ITEMS@0..31
 //   FN@0..31

@@ -4,7 +4,7 @@ error[E0597]: `mutex` does not live long enough
 LL |         let mutex = Mutex;
    |             ----- binding `mutex` declared here
 LL |         write!(Out, "{}", mutex.lock()) /* no semicolon */
-   |                           ^^^^^^^^^^^^
+   |                           ^^^^^-------
    |                           |
    |                           borrowed value does not live long enough
    |                           a temporary with access to the borrow is created here ...
@@ -21,7 +21,7 @@ error[E0597]: `mutex` does not live long enough
 LL |         let mutex = Mutex;
    |             ----- binding `mutex` declared here
 LL |         writeln!(Out, "{}", mutex.lock()) /* no semicolon */
-   |                             ^^^^^^^^^^^^
+   |                             ^^^^^-------
    |                             |
    |                             borrowed value does not live long enough
    |                             a temporary with access to the borrow is created here ...

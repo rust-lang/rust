@@ -330,7 +330,7 @@ fn sidebar_deref_methods<'a>(
 ) {
     let c = cx.cache();
 
-    debug!("found Deref: {:?}", impl_);
+    debug!("found Deref: {impl_:?}");
     if let Some((target, real_target)) =
         impl_.inner_impl().items.iter().find_map(|item| match *item.kind {
             clean::AssocTypeItem(box ref t, _) => Some(match *t {
@@ -340,7 +340,7 @@ fn sidebar_deref_methods<'a>(
             _ => None,
         })
     {
-        debug!("found target, real_target: {:?} {:?}", target, real_target);
+        debug!("found target, real_target: {target:?} {real_target:?}");
         if let Some(did) = target.def_id(c) &&
             let Some(type_did) = impl_.inner_impl().for_.def_id(c) &&
             // `impl Deref<Target = S> for S`
@@ -357,7 +357,7 @@ fn sidebar_deref_methods<'a>(
             })
             .and_then(|did| c.impls.get(&did));
         if let Some(impls) = inner_impl {
-            debug!("found inner_impl: {:?}", impls);
+            debug!("found inner_impl: {impls:?}");
             let mut ret = impls
                 .iter()
                 .filter(|i| i.inner_impl().trait_.is_none())
@@ -510,10 +510,10 @@ fn get_next_url(used_links: &mut FxHashSet<String>, url: String) -> String {
         return url;
     }
     let mut add = 1;
-    while !used_links.insert(format!("{}-{}", url, add)) {
+    while !used_links.insert(format!("{url}-{add}")) {
         add += 1;
     }
-    format!("{}-{}", url, add)
+    format!("{url}-{add}")
 }
 
 fn get_methods<'a>(
@@ -529,7 +529,7 @@ fn get_methods<'a>(
             Some(ref name) if !name.is_empty() && item.is_method() => {
                 if !for_deref || super::should_render_item(item, deref_mut, tcx) {
                     Some(Link::new(
-                        get_next_url(used_links, format!("{}.{}", ItemType::Method, name)),
+                        get_next_url(used_links, format!("{typ}.{name}", typ = ItemType::Method)),
                         name.as_str(),
                     ))
                 } else {
@@ -549,7 +549,7 @@ fn get_associated_constants<'a>(
         .iter()
         .filter_map(|item| match item.name {
             Some(ref name) if !name.is_empty() && item.is_associated_const() => Some(Link::new(
-                get_next_url(used_links, format!("{}.{}", ItemType::AssocConst, name)),
+                get_next_url(used_links, format!("{typ}.{name}", typ = ItemType::AssocConst)),
                 name.as_str(),
             )),
             _ => None,

@@ -57,7 +57,7 @@ impl<'tcx> Checker<'tcx> {
 
 fn visit_implementation_of_drop(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
     // Destructors only work on local ADT types.
-    match tcx.type_of(impl_did).subst_identity().kind() {
+    match tcx.type_of(impl_did).instantiate_identity().kind() {
         ty::Adt(def, _) if def.did().is_local() => return,
         ty::Error(_) => return,
         _ => {}
@@ -71,7 +71,7 @@ fn visit_implementation_of_drop(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
 fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
     debug!("visit_implementation_of_copy: impl_did={:?}", impl_did);
 
-    let self_type = tcx.type_of(impl_did).subst_identity();
+    let self_type = tcx.type_of(impl_did).instantiate_identity();
     debug!("visit_implementation_of_copy: self_type={:?} (bound)", self_type);
 
     let param_env = tcx.param_env(impl_did);
@@ -100,7 +100,7 @@ fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
 }
 
 fn visit_implementation_of_const_param_ty(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
-    let self_type = tcx.type_of(impl_did).subst_identity();
+    let self_type = tcx.type_of(impl_did).instantiate_identity();
     assert!(!self_type.has_escaping_bound_vars());
 
     let param_env = tcx.param_env(impl_did);
@@ -139,13 +139,13 @@ fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: LocalDef
 
     let dispatch_from_dyn_trait = tcx.require_lang_item(LangItem::DispatchFromDyn, Some(span));
 
-    let source = tcx.type_of(impl_did).subst_identity();
+    let source = tcx.type_of(impl_did).instantiate_identity();
     assert!(!source.has_escaping_bound_vars());
     let target = {
-        let trait_ref = tcx.impl_trait_ref(impl_did).unwrap().subst_identity();
+        let trait_ref = tcx.impl_trait_ref(impl_did).unwrap().instantiate_identity();
         assert_eq!(trait_ref.def_id, dispatch_from_dyn_trait);
 
-        trait_ref.substs.type_at(1)
+        trait_ref.args.type_at(1)
     };
 
     debug!("visit_implementation_of_dispatch_from_dyn: {:?} -> {:?}", source, target);
@@ -163,9 +163,7 @@ fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: LocalDef
             if infcx.at(&cause, param_env).eq(DefineOpaqueTypes::No, r_a, *r_b).is_ok()
                 && mutbl_a == *mutbl_b => {}
         (&RawPtr(tm_a), &RawPtr(tm_b)) if tm_a.mutbl == tm_b.mutbl => (),
-        (&Adt(def_a, substs_a), &Adt(def_b, substs_b))
-            if def_a.is_struct() && def_b.is_struct() =>
-        {
+        (&Adt(def_a, args_a), &Adt(def_b, args_b)) if def_a.is_struct() && def_b.is_struct() => {
             if def_a != def_b {
                 let source_path = tcx.def_path_str(def_a.did());
                 let target_path = tcx.def_path_str(def_b.did());
@@ -173,8 +171,7 @@ fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: LocalDef
                 create_err(&format!(
                     "the trait `DispatchFromDyn` may only be implemented \
                             for a coercion between structures with the same \
-                            definition; expected `{}`, found `{}`",
-                    source_path, target_path,
+                            definition; expected `{source_path}`, found `{target_path}`",
                 ))
                 .emit();
 
@@ -194,8 +191,8 @@ fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: LocalDef
             let coerced_fields = fields
                 .iter()
                 .filter(|field| {
-                    let ty_a = field.ty(tcx, substs_a);
-                    let ty_b = field.ty(tcx, substs_b);
+                    let ty_a = field.ty(tcx, args_a);
+                    let ty_b = field.ty(tcx, args_b);
 
                     if let Ok(layout) = tcx.layout_of(param_env.and(ty_a)) {
                         if layout.is_zst() && layout.align.abi.bytes() == 1 {
@@ -250,8 +247,8 @@ fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: LocalDef
                                 format!(
                                     "`{}` (`{}` to `{}`)",
                                     field.name,
-                                    field.ty(tcx, substs_a),
-                                    field.ty(tcx, substs_b),
+                                    field.ty(tcx, args_a),
+                                    field.ty(tcx, args_b),
                                 )
                             })
                             .collect::<Vec<_>>()
@@ -268,7 +265,7 @@ fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: LocalDef
                         ty::TraitRef::new(
                             tcx,
                             dispatch_from_dyn_trait,
-                            [field.ty(tcx, substs_a), field.ty(tcx, substs_b)],
+                            [field.ty(tcx, args_a), field.ty(tcx, args_b)],
                         ),
                     ));
                 }
@@ -300,10 +297,10 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: LocalDefId) -> Coe
 
     let unsize_trait = tcx.require_lang_item(LangItem::Unsize, Some(span));
 
-    let source = tcx.type_of(impl_did).subst_identity();
-    let trait_ref = tcx.impl_trait_ref(impl_did).unwrap().subst_identity();
+    let source = tcx.type_of(impl_did).instantiate_identity();
+    let trait_ref = tcx.impl_trait_ref(impl_did).unwrap().instantiate_identity();
     assert_eq!(trait_ref.def_id, coerce_unsized_trait);
-    let target = trait_ref.substs.type_at(1);
+    let target = trait_ref.args.type_at(1);
     debug!("visit_implementation_of_coerce_unsized: {:?} -> {:?} (bound)", source, target);
 
     let param_env = tcx.param_env(impl_did);
@@ -336,17 +333,19 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: LocalDefId) -> Coe
             infcx.sub_regions(infer::RelateObjectBound(span), r_b, r_a);
             let mt_a = ty::TypeAndMut { ty: ty_a, mutbl: mutbl_a };
             let mt_b = ty::TypeAndMut { ty: ty_b, mutbl: mutbl_b };
-            check_mutbl(mt_a, mt_b, &|ty| tcx.mk_imm_ref(r_b, ty))
+            check_mutbl(mt_a, mt_b, &|ty| Ty::new_imm_ref(tcx, r_b, ty))
         }
 
         (&ty::Ref(_, ty_a, mutbl_a), &ty::RawPtr(mt_b)) => {
             let mt_a = ty::TypeAndMut { ty: ty_a, mutbl: mutbl_a };
-            check_mutbl(mt_a, mt_b, &|ty| tcx.mk_imm_ptr(ty))
+            check_mutbl(mt_a, mt_b, &|ty| Ty::new_imm_ptr(tcx, ty))
         }
 
-        (&ty::RawPtr(mt_a), &ty::RawPtr(mt_b)) => check_mutbl(mt_a, mt_b, &|ty| tcx.mk_imm_ptr(ty)),
+        (&ty::RawPtr(mt_a), &ty::RawPtr(mt_b)) => {
+            check_mutbl(mt_a, mt_b, &|ty| Ty::new_imm_ptr(tcx, ty))
+        }
 
-        (&ty::Adt(def_a, substs_a), &ty::Adt(def_b, substs_b))
+        (&ty::Adt(def_a, args_a), &ty::Adt(def_b, args_b))
             if def_a.is_struct() && def_b.is_struct() =>
         {
             if def_a != def_b {
@@ -409,9 +408,9 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: LocalDefId) -> Coe
             let diff_fields = fields
                 .iter_enumerated()
                 .filter_map(|(i, f)| {
-                    let (a, b) = (f.ty(tcx, substs_a), f.ty(tcx, substs_b));
+                    let (a, b) = (f.ty(tcx, args_a), f.ty(tcx, args_b));
 
-                    if tcx.type_of(f.did).subst_identity().is_phantom_data() {
+                    if tcx.type_of(f.did).instantiate_identity().is_phantom_data() {
                         // Ignore PhantomData fields
                         return None;
                     }
@@ -571,7 +570,7 @@ fn infringing_fields_error(
                             .or_default()
                             .push(error.obligation.cause.span);
                     }
-                    if let ty::PredicateKind::Clause(ty::Clause::Trait(ty::TraitPredicate {
+                    if let ty::PredicateKind::Clause(ty::ClauseKind::Trait(ty::TraitPredicate {
                         trait_ref,
                         polarity: ty::ImplPolarity::Positive,
                         ..

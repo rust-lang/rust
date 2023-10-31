@@ -1,11 +1,11 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::ty::{implements_trait, is_type_lang_item};
 use clippy_utils::{return_ty, trait_ref_of_method};
-use if_chain::if_chain;
-use rustc_hir::{GenericParamKind, ImplItem, ImplItemKind, LangItem};
+use rustc_hir::{GenericParamKind, ImplItem, ImplItemKind, LangItem, Unsafety};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::sym;
+use rustc_target::spec::abi::Abi;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -95,24 +95,23 @@ impl<'tcx> LateLintPass<'tcx> for InherentToString {
             return;
         }
 
-        if_chain! {
-            // Check if item is a method, called to_string and has a parameter 'self'
-            if let ImplItemKind::Fn(ref signature, _) = impl_item.kind;
-            if impl_item.ident.name == sym::to_string;
-            let decl = &signature.decl;
-            if decl.implicit_self.has_implicit_self();
-            if decl.inputs.len() == 1;
-            if impl_item.generics.params.iter().all(|p| matches!(p.kind, GenericParamKind::Lifetime { .. }));
-
+        // Check if item is a method called `to_string` and has a parameter 'self'
+        if let ImplItemKind::Fn(ref signature, _) = impl_item.kind
+            // #11201
+            && let header = signature.header
+            && header.unsafety == Unsafety::Normal
+            && header.abi == Abi::Rust
+            && impl_item.ident.name == sym::to_string
+            && let decl = signature.decl
+            && decl.implicit_self.has_implicit_self()
+            && decl.inputs.len() == 1
+            && impl_item.generics.params.iter().all(|p| matches!(p.kind, GenericParamKind::Lifetime { .. }))
             // Check if return type is String
-            if is_type_lang_item(cx, return_ty(cx, impl_item.owner_id), LangItem::String);
-
+            && is_type_lang_item(cx, return_ty(cx, impl_item.owner_id), LangItem::String)
             // Filters instances of to_string which are required by a trait
-            if trait_ref_of_method(cx, impl_item.owner_id.def_id).is_none();
-
-            then {
-                show_lint(cx, impl_item);
-            }
+            && trait_ref_of_method(cx, impl_item.owner_id.def_id).is_none()
+        {
+            show_lint(cx, impl_item);
         }
     }
 }

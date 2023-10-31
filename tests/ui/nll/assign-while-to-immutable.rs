@@ -4,8 +4,8 @@
 // check-pass
 
 fn main() {
-    let x = while false {
+    let x: () = while false {
         break;
     };
-    let y = 'l: while break 'l {};
+    let y: () = 'l: while break 'l {};
 }

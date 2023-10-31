@@ -40,6 +40,7 @@
 #![recursion_limit = "256"]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
+#![cfg_attr(not(bootstrap), allow(internal_features))]
 
 #[macro_use]
 extern crate rustc_middle;
@@ -58,8 +59,10 @@ mod enum_intrinsics_non_enums;
 mod errors;
 mod expect;
 mod for_loops_over_fallibles;
+mod foreign_modules;
 pub mod hidden_unicode_codepoints;
 mod internal;
+mod invalid_from_utf8;
 mod late;
 mod let_underscore;
 mod levels;
@@ -74,7 +77,9 @@ mod noop_method_call;
 mod opaque_hidden_inferred_bound;
 mod pass_by_value;
 mod passes;
+mod ptr_nulls;
 mod redundant_semicolon;
+mod reference_casting;
 mod traits;
 mod types;
 mod unused;
@@ -85,7 +90,7 @@ use rustc_ast as ast;
 use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
 use rustc_fluent_macro::fluent_messages;
 use rustc_hir as hir;
-use rustc_hir::def_id::LocalDefId;
+use rustc_hir::def_id::{LocalDefId, LocalModDefId};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::lint::builtin::{
@@ -102,6 +107,7 @@ use enum_intrinsics_non_enums::EnumIntrinsicsNonEnums;
 use for_loops_over_fallibles::*;
 use hidden_unicode_codepoints::*;
 use internal::*;
+use invalid_from_utf8::*;
 use let_underscore::*;
 use map_unit_fn::*;
 use methods::*;
@@ -112,17 +118,19 @@ use nonstandard_style::*;
 use noop_method_call::*;
 use opaque_hidden_inferred_bound::*;
 use pass_by_value::*;
+use ptr_nulls::*;
 use redundant_semicolon::*;
+use reference_casting::*;
 use traits::*;
 use types::*;
 use unused::*;
 
 /// Useful for other parts of the compiler / Clippy.
-pub use builtin::SoftLints;
+pub use builtin::{MissingDoc, SoftLints};
 pub use context::{CheckLintNameResult, FindLintError, LintStore};
 pub use context::{EarlyContext, LateContext, LintContext};
 pub use early::{check_ast_node, EarlyCheckNode};
-pub use late::{check_crate, unerased_lint_store};
+pub use late::{check_crate, late_lint_mod, unerased_lint_store};
 pub use passes::{EarlyLintPass, LateLintPass};
 pub use rustc_session::lint::Level::{self, *};
 pub use rustc_session::lint::{BufferedEarlyLint, FutureIncompatibleInfo, Lint, LintId};
@@ -133,11 +141,12 @@ fluent_messages! { "../messages.ftl" }
 pub fn provide(providers: &mut Providers) {
     levels::provide(providers);
     expect::provide(providers);
+    foreign_modules::provide(providers);
     *providers = Providers { lint_mod, ..*providers };
 }
 
-fn lint_mod(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
-    late::late_lint_mod(tcx, module_def_id, BuiltinCombinedModuleLateLintPass::new());
+fn lint_mod(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
+    late_lint_mod(tcx, module_def_id, BuiltinCombinedModuleLateLintPass::new());
 }
 
 early_lint_methods!(
@@ -167,31 +176,10 @@ early_lint_methods!(
             WhileTrue: WhileTrue,
             NonAsciiIdents: NonAsciiIdents,
             HiddenUnicodeCodepoints: HiddenUnicodeCodepoints,
-            IncompleteFeatures: IncompleteFeatures,
+            IncompleteInternalFeatures: IncompleteInternalFeatures,
             RedundantSemicolons: RedundantSemicolons,
             UnusedDocComment: UnusedDocComment,
             UnexpectedCfgs: UnexpectedCfgs,
-        ]
-    ]
-);
-
-// FIXME: Make a separate lint type which does not require typeck tables.
-
-late_lint_methods!(
-    declare_combined_late_lint_pass,
-    [
-        pub BuiltinCombinedLateLintPass,
-        [
-            // Tracks state across modules
-            UnnameableTestItems: UnnameableTestItems::new(),
-            // Tracks attributes of parents
-            MissingDoc: MissingDoc::new(),
-            // Builds a global list of all impls of `Debug`.
-            // FIXME: Turn the computation of types which implement Debug into a query
-            // and change this to a module lint pass
-            MissingDebugImplementations: MissingDebugImplementations::default(),
-            // Keeps a global list of foreign declarations.
-            ClashingExternDeclarations: ClashingExternDeclarations::new(),
         ]
     ]
 );
@@ -207,10 +195,12 @@ late_lint_methods!(
             HardwiredLints: HardwiredLints,
             ImproperCTypesDeclarations: ImproperCTypesDeclarations,
             ImproperCTypesDefinitions: ImproperCTypesDefinitions,
+            InvalidFromUtf8: InvalidFromUtf8,
             VariantSizeDifferences: VariantSizeDifferences,
             BoxPointers: BoxPointers,
             PathStatements: PathStatements,
             LetUnderscore: LetUnderscore,
+            InvalidReferenceCasting: InvalidReferenceCasting::default(),
             // Depends on referenced function signatures in expressions
             UnusedResults: UnusedResults,
             NonUpperCaseGlobals: NonUpperCaseGlobals,
@@ -219,6 +209,7 @@ late_lint_methods!(
             // Depends on types used in type definitions
             MissingCopyImplementations: MissingCopyImplementations,
             // Depends on referenced function signatures in expressions
+            PtrNullChecks: PtrNullChecks,
             MutableTransmutes: MutableTransmutes,
             TypeAliasBounds: TypeAliasBounds,
             TrivialConstraints: TrivialConstraints,
@@ -245,6 +236,8 @@ late_lint_methods!(
             OpaqueHiddenInferredBound: OpaqueHiddenInferredBound,
             MultipleSupertraitUpcastable: MultipleSupertraitUpcastable,
             MapUnitFn: MapUnitFn,
+            MissingDebugImplementations: MissingDebugImplementations,
+            MissingDoc: MissingDoc,
         ]
     ]
 );
@@ -273,7 +266,7 @@ fn register_builtins(store: &mut LintStore) {
     store.register_lints(&BuiltinCombinedPreExpansionLintPass::get_lints());
     store.register_lints(&BuiltinCombinedEarlyLintPass::get_lints());
     store.register_lints(&BuiltinCombinedModuleLateLintPass::get_lints());
-    store.register_lints(&BuiltinCombinedLateLintPass::get_lints());
+    store.register_lints(&foreign_modules::get_lints());
 
     add_lint_group!(
         "nonstandard_style",
@@ -513,20 +506,20 @@ fn register_internals(store: &mut LintStore) {
     store.register_lints(&LintPassImpl::get_lints());
     store.register_early_pass(|| Box::new(LintPassImpl));
     store.register_lints(&DefaultHashTypes::get_lints());
-    store.register_late_pass(|_| Box::new(DefaultHashTypes));
+    store.register_late_mod_pass(|_| Box::new(DefaultHashTypes));
     store.register_lints(&QueryStability::get_lints());
-    store.register_late_pass(|_| Box::new(QueryStability));
+    store.register_late_mod_pass(|_| Box::new(QueryStability));
     store.register_lints(&ExistingDocKeyword::get_lints());
-    store.register_late_pass(|_| Box::new(ExistingDocKeyword));
+    store.register_late_mod_pass(|_| Box::new(ExistingDocKeyword));
     store.register_lints(&TyTyKind::get_lints());
-    store.register_late_pass(|_| Box::new(TyTyKind));
+    store.register_late_mod_pass(|_| Box::new(TyTyKind));
     store.register_lints(&Diagnostics::get_lints());
     store.register_early_pass(|| Box::new(Diagnostics));
-    store.register_late_pass(|_| Box::new(Diagnostics));
+    store.register_late_mod_pass(|_| Box::new(Diagnostics));
     store.register_lints(&BadOptAccess::get_lints());
-    store.register_late_pass(|_| Box::new(BadOptAccess));
+    store.register_late_mod_pass(|_| Box::new(BadOptAccess));
     store.register_lints(&PassByValue::get_lints());
-    store.register_late_pass(|_| Box::new(PassByValue));
+    store.register_late_mod_pass(|_| Box::new(PassByValue));
     // FIXME(davidtwco): deliberately do not include `UNTRANSLATABLE_DIAGNOSTIC` and
     // `DIAGNOSTIC_OUTSIDE_OF_IMPL` here because `-Wrustc::internal` is provided to every crate and
     // these lints will trigger all of the time - change this once migration to diagnostic structs

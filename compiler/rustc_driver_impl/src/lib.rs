@@ -7,6 +7,8 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(lazy_cell)]
 #![feature(decl_macro)]
+#![feature(panic_update_hook)]
+#![feature(let_chains)]
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability)]
 #![deny(rustc::untranslatable_diagnostic)]
@@ -24,22 +26,20 @@ use rustc_data_structures::profiling::{
 };
 use rustc_data_structures::sync::SeqCst;
 use rustc_errors::registry::{InvalidErrorCode, Registry};
-use rustc_errors::{
-    DiagnosticMessage, ErrorGuaranteed, Handler, PResult, SubdiagnosticMessage, TerminalUrl,
-};
+use rustc_errors::{markdown, ColorConfig};
+use rustc_errors::{DiagnosticMessage, ErrorGuaranteed, Handler, PResult, SubdiagnosticMessage};
 use rustc_feature::find_gated_cfg;
 use rustc_fluent_macro::fluent_messages;
 use rustc_interface::util::{self, collect_crate_types, get_codegen_backend};
 use rustc_interface::{interface, Queries};
-use rustc_lint::LintStore;
+use rustc_lint::{unerased_lint_store, LintStore};
 use rustc_metadata::locator;
 use rustc_session::config::{nightly_options, CG_OPTIONS, Z_OPTIONS};
-use rustc_session::config::{ErrorOutputType, Input, OutputType, PrintRequest, TrimmedDefPaths};
+use rustc_session::config::{ErrorOutputType, Input, OutFileName, OutputType, TrimmedDefPaths};
 use rustc_session::cstore::MetadataLoader;
 use rustc_session::getopts::{self, Matches};
 use rustc_session::lint::{Lint, LintId};
-use rustc_session::{config, Session};
-use rustc_session::{early_error, early_error_no_abort, early_warn};
+use rustc_session::{config, EarlyErrorHandler, Session};
 use rustc_span::source_map::{FileLoader, FileName};
 use rustc_span::symbol::sym;
 use rustc_target::json::ToJson;
@@ -49,20 +49,36 @@ use std::cmp::max;
 use std::collections::BTreeMap;
 use std::env;
 use std::ffi::OsString;
-use std::fs;
+use std::fmt::Write as _;
+use std::fs::{self, File};
 use std::io::{self, IsTerminal, Read, Write};
-use std::panic::{self, catch_unwind};
+use std::panic::{self, catch_unwind, PanicInfo};
 use std::path::PathBuf;
 use std::process::{self, Command, Stdio};
 use std::str;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::OnceLock;
-use std::time::Instant;
+use std::time::{Instant, SystemTime};
+use time::format_description::well_known::Rfc3339;
+use time::OffsetDateTime;
+
+#[allow(unused_macros)]
+macro do_not_use_print($($t:tt)*) {
+    std::compile_error!(
+        "Don't use `print` or `println` here, use `safe_print` or `safe_println` instead"
+    )
+}
+
+#[allow(unused_macros)]
+macro do_not_use_safe_print($($t:tt)*) {
+    std::compile_error!("Don't use `safe_print` or `safe_println` here, use `println_info` instead")
+}
 
 // This import blocks the use of panicking `print` and `println` in all the code
 // below. Please use `safe_print` and `safe_println` to avoid ICE when
 // encountering an I/O error during print.
 #[allow(unused_imports)]
-use std::{compile_error as print, compile_error as println};
+use {do_not_use_print as print, do_not_use_print as println};
 
 pub mod args;
 pub mod pretty;
@@ -88,6 +104,7 @@ pub static DEFAULT_LOCALE_RESOURCES: &[&str] = &[
     rustc_codegen_ssa::DEFAULT_LOCALE_RESOURCE,
     rustc_const_eval::DEFAULT_LOCALE_RESOURCE,
     rustc_error_messages::DEFAULT_LOCALE_RESOURCE,
+    rustc_errors::DEFAULT_LOCALE_RESOURCE,
     rustc_expand::DEFAULT_LOCALE_RESOURCE,
     rustc_hir_analysis::DEFAULT_LOCALE_RESOURCE,
     rustc_hir_typeck::DEFAULT_LOCALE_RESOURCE,
@@ -164,6 +181,7 @@ pub trait Callbacks {
     /// continue the compilation afterwards (defaults to `Compilation::Continue`)
     fn after_analysis<'tcx>(
         &mut self,
+        _handler: &EarlyErrorHandler,
         _compiler: &interface::Compiler,
         _queries: &'tcx Queries<'tcx>,
     ) -> Compilation {
@@ -250,22 +268,31 @@ fn run_compiler(
         Box<dyn FnOnce(&config::Options) -> Box<dyn CodegenBackend> + Send>,
     >,
 ) -> interface::Result<()> {
-    let args = args::arg_expand_all(at_args);
+    let mut early_error_handler = EarlyErrorHandler::new(ErrorOutputType::default());
 
-    let Some(matches) = handle_options(&args) else { return Ok(()) };
+    // Throw away the first argument, the name of the binary.
+    // In case of at_args being empty, as might be the case by
+    // passing empty argument array to execve under some platforms,
+    // just use an empty slice.
+    //
+    // This situation was possible before due to arg_expand_all being
+    // called before removing the argument, enabling a crash by calling
+    // the compiler with @empty_file as argv[0] and no more arguments.
+    let at_args = at_args.get(1..).unwrap_or_default();
 
-    let sopts = config::build_session_options(&matches);
+    let args = args::arg_expand_all(&early_error_handler, at_args);
 
-    // Set parallel mode before thread pool creation, which will create `Lock`s.
-    interface::set_thread_safe_mode(&sopts.unstable_opts);
+    let Some(matches) = handle_options(&early_error_handler, &args) else { return Ok(()) };
+
+    let sopts = config::build_session_options(&mut early_error_handler, &matches);
 
     if let Some(ref code) = matches.opt_str("explain") {
-        handle_explain(diagnostics_registry(), code, sopts.error_format);
+        handle_explain(&early_error_handler, diagnostics_registry(), code, sopts.color);
         return Ok(());
     }
 
-    let cfg = interface::parse_cfgspecs(matches.opt_strs("cfg"));
-    let check_cfg = interface::parse_check_cfg(matches.opt_strs("check-cfg"));
+    let cfg = interface::parse_cfgspecs(&early_error_handler, matches.opt_strs("cfg"));
+    let check_cfg = interface::parse_check_cfg(&early_error_handler, matches.opt_strs("check-cfg"));
     let (odir, ofile) = make_output(&matches);
     let mut config = interface::Config {
         opts: sopts,
@@ -274,6 +301,7 @@ fn run_compiler(
         input: Input::File(PathBuf::new()),
         output_file: ofile,
         output_dir: odir,
+        ice_file: ice_path().clone(),
         file_loader,
         locale_resources: DEFAULT_LOCALE_RESOURCES,
         lint_caps: Default::default(),
@@ -284,7 +312,7 @@ fn run_compiler(
         registry: diagnostics_registry(),
     };
 
-    match make_input(config.opts.error_format, &matches.free) {
+    match make_input(&early_error_handler, &matches.free) {
         Err(reported) => return Err(reported),
         Ok(Some(input)) => {
             config.input = input;
@@ -294,8 +322,13 @@ fn run_compiler(
         Ok(None) => match matches.free.len() {
             0 => {
                 callbacks.config(&mut config);
+
+                early_error_handler.abort_if_errors();
+
                 interface::run_compiler(config, |compiler| {
                     let sopts = &compiler.session().opts;
+                    let handler = EarlyErrorHandler::new(sopts.error_format);
+
                     if sopts.describe_lints {
                         let mut lint_store =
                             rustc_lint::new_lint_store(compiler.session().enable_internal_lints());
@@ -309,31 +342,38 @@ fn run_compiler(
                         describe_lints(compiler.session(), &lint_store, registered_lints);
                         return;
                     }
-                    let should_stop =
-                        print_crate_info(&***compiler.codegen_backend(), compiler.session(), false);
+                    let should_stop = print_crate_info(
+                        &handler,
+                        &**compiler.codegen_backend(),
+                        compiler.session(),
+                        false,
+                    );
 
                     if should_stop == Compilation::Stop {
                         return;
                     }
-                    early_error(sopts.error_format, "no input filename given")
+                    handler.early_error("no input filename given")
                 });
                 return Ok(());
             }
             1 => panic!("make_input should have provided valid inputs"),
-            _ => early_error(
-                config.opts.error_format,
-                format!(
-                    "multiple input filenames provided (first two filenames are `{}` and `{}`)",
-                    matches.free[0], matches.free[1],
-                ),
-            ),
+            _ => early_error_handler.early_error(format!(
+                "multiple input filenames provided (first two filenames are `{}` and `{}`)",
+                matches.free[0], matches.free[1],
+            )),
         },
     };
 
+    early_error_handler.abort_if_errors();
+
     interface::run_compiler(config, |compiler| {
         let sess = compiler.session();
-        let should_stop = print_crate_info(&***compiler.codegen_backend(), sess, true)
-            .and_then(|| list_metadata(sess, &*compiler.codegen_backend().metadata_loader()))
+        let handler = EarlyErrorHandler::new(sess.opts.error_format);
+
+        let should_stop = print_crate_info(&handler, &**compiler.codegen_backend(), sess, true)
+            .and_then(|| {
+                list_metadata(&handler, sess, &*compiler.codegen_backend().metadata_loader())
+            })
             .and_then(|| try_process_rlink(sess, compiler));
 
         if should_stop == Compilation::Stop {
@@ -351,6 +391,10 @@ fn run_compiler(
                         pretty::print_after_hir_lowering(tcx, *ppm);
                         Ok(())
                     })?;
+
+                    // Make sure the `output_filenames` query is run for its side
+                    // effects of writing the dep-info and reporting errors.
+                    queries.global_ctxt()?.enter(|tcx| tcx.output_filenames(()));
                 } else {
                     let krate = queries.parse()?.steal();
                     pretty::print_after_parsing(sess, &krate, *ppm);
@@ -367,15 +411,11 @@ fn run_compiler(
                 return early_exit();
             }
 
-            {
-                let plugins = queries.register_plugins()?;
-                let (.., lint_store) = &*plugins.borrow();
-
-                // Lint plugins are registered; now we can process command line flags.
-                if sess.opts.describe_lints {
-                    describe_lints(sess, lint_store, true);
-                    return early_exit();
-                }
+            if sess.opts.describe_lints {
+                queries
+                    .global_ctxt()?
+                    .enter(|tcx| describe_lints(sess, unerased_lint_store(tcx), true));
+                return early_exit();
             }
 
             // Make sure name resolution and macro expansion is run.
@@ -401,17 +441,24 @@ fn run_compiler(
 
             queries.global_ctxt()?.enter(|tcx| tcx.analysis(()))?;
 
-            if callbacks.after_analysis(compiler, queries) == Compilation::Stop {
+            if callbacks.after_analysis(&handler, compiler, queries) == Compilation::Stop {
                 return early_exit();
             }
 
-            queries.ongoing_codegen()?;
+            let ongoing_codegen = queries.ongoing_codegen()?;
 
             if sess.opts.unstable_opts.print_type_sizes {
                 sess.code_stats.print_type_sizes();
             }
 
-            let linker = queries.linker()?;
+            if sess.opts.unstable_opts.print_vtable_sizes {
+                let crate_name =
+                    compiler.session().opts.crate_name.as_deref().unwrap_or("<UNKNOWN_CRATE>");
+
+                sess.code_stats.print_vtable_sizes(crate_name);
+            }
+
+            let linker = queries.linker(ongoing_codegen)?;
             Ok(Some(linker))
         })?;
 
@@ -437,15 +484,18 @@ fn run_compiler(
 }
 
 // Extract output directory and file from matches.
-fn make_output(matches: &getopts::Matches) -> (Option<PathBuf>, Option<PathBuf>) {
+fn make_output(matches: &getopts::Matches) -> (Option<PathBuf>, Option<OutFileName>) {
     let odir = matches.opt_str("out-dir").map(|o| PathBuf::from(&o));
-    let ofile = matches.opt_str("o").map(|o| PathBuf::from(&o));
+    let ofile = matches.opt_str("o").map(|o| match o.as_str() {
+        "-" => OutFileName::Stdout,
+        path => OutFileName::Real(PathBuf::from(path)),
+    });
     (odir, ofile)
 }
 
 // Extract input (string or file and optional path) from matches.
 fn make_input(
-    error_format: ErrorOutputType,
+    handler: &EarlyErrorHandler,
     free_matches: &[String],
 ) -> Result<Option<Input>, ErrorGuaranteed> {
     if free_matches.len() == 1 {
@@ -455,8 +505,7 @@ fn make_input(
             if io::stdin().read_to_string(&mut src).is_err() {
                 // Immediately stop compilation if there was an issue reading
                 // the input (for example if the input stream is not UTF-8).
-                let reported = early_error_no_abort(
-                    error_format,
+                let reported = handler.early_error_no_abort(
                     "couldn't read from stdin, as it did not contain valid UTF-8",
                 );
                 return Err(reported);
@@ -497,7 +546,7 @@ impl Compilation {
     }
 }
 
-fn handle_explain(registry: Registry, code: &str, output: ErrorOutputType) {
+fn handle_explain(handler: &EarlyErrorHandler, registry: Registry, code: &str, color: ColorConfig) {
     let upper_cased_code = code.to_ascii_uppercase();
     let normalised =
         if upper_cased_code.starts_with('E') { upper_cased_code } else { format!("E{code:0>4}") };
@@ -521,53 +570,89 @@ fn handle_explain(registry: Registry, code: &str, output: ErrorOutputType) {
                 text.push('\n');
             }
             if io::stdout().is_terminal() {
-                show_content_with_pager(&text);
+                show_md_content_with_pager(&text, color);
             } else {
                 safe_print!("{text}");
             }
         }
         Err(InvalidErrorCode) => {
-            early_error(output, format!("{code} is not a valid error code"));
+            handler.early_error(format!("{code} is not a valid error code"));
         }
     }
 }
 
-fn show_content_with_pager(content: &str) {
+/// If color is always or auto, print formatted & colorized markdown. If color is never or
+/// if formatted printing fails, print the raw text.
+///
+/// Prefers a pager, falls back standard print
+fn show_md_content_with_pager(content: &str, color: ColorConfig) {
+    let mut fallback_to_println = false;
     let pager_name = env::var_os("PAGER").unwrap_or_else(|| {
         if cfg!(windows) { OsString::from("more.com") } else { OsString::from("less") }
     });
 
-    let mut fallback_to_println = false;
+    let mut cmd = Command::new(&pager_name);
+    // FIXME: find if other pagers accept color options
+    let mut print_formatted = if pager_name == "less" {
+        cmd.arg("-r");
+        true
+    } else if ["bat", "catbat", "delta"].iter().any(|v| *v == pager_name) {
+        true
+    } else {
+        false
+    };
 
-    match Command::new(pager_name).stdin(Stdio::piped()).spawn() {
-        Ok(mut pager) => {
-            if let Some(pipe) = pager.stdin.as_mut() {
-                if pipe.write_all(content.as_bytes()).is_err() {
-                    fallback_to_println = true;
-                }
-            }
+    if color == ColorConfig::Never {
+        print_formatted = false;
+    } else if color == ColorConfig::Always {
+        print_formatted = true;
+    }
 
-            if pager.wait().is_err() {
+    let mdstream = markdown::MdStream::parse_str(content);
+    let bufwtr = markdown::create_stdout_bufwtr();
+    let mut mdbuf = bufwtr.buffer();
+    if mdstream.write_termcolor_buf(&mut mdbuf).is_err() {
+        print_formatted = false;
+    }
+
+    if let Ok(mut pager) = cmd.stdin(Stdio::piped()).spawn() {
+        if let Some(pipe) = pager.stdin.as_mut() {
+            let res = if print_formatted {
+                pipe.write_all(mdbuf.as_slice())
+            } else {
+                pipe.write_all(content.as_bytes())
+            };
+
+            if res.is_err() {
                 fallback_to_println = true;
             }
         }
-        Err(_) => {
+
+        if pager.wait().is_err() {
             fallback_to_println = true;
         }
+    } else {
+        fallback_to_println = true;
     }
 
     // If pager fails for whatever reason, we should still print the content
     // to standard output
     if fallback_to_println {
-        safe_print!("{content}");
+        let fmt_success = match color {
+            ColorConfig::Auto => io::stdout().is_terminal() && bufwtr.print(&mdbuf).is_ok(),
+            ColorConfig::Always => bufwtr.print(&mdbuf).is_ok(),
+            ColorConfig::Never => false,
+        };
+
+        if !fmt_success {
+            safe_print!("{content}");
+        }
     }
 }
 
 pub fn try_process_rlink(sess: &Session, compiler: &interface::Compiler) -> Compilation {
     if sess.opts.unstable_opts.link_only {
         if let Input::File(file) = &sess.io.input {
-            // FIXME: #![crate_type] and #![crate_name] support not implemented yet
-            sess.init_crate_types(collect_crate_types(sess, &[]));
             let outputs = compiler.build_output_filenames(sess, &[]);
             let rlink_data = fs::read(file).unwrap_or_else(|err| {
                 sess.emit_fatal(RlinkUnableToRead { err });
@@ -606,7 +691,11 @@ pub fn try_process_rlink(sess: &Session, compiler: &interface::Compiler) -> Comp
     }
 }
 
-pub fn list_metadata(sess: &Session, metadata_loader: &dyn MetadataLoader) -> Compilation {
+pub fn list_metadata(
+    handler: &EarlyErrorHandler,
+    sess: &Session,
+    metadata_loader: &dyn MetadataLoader,
+) -> Compilation {
     if sess.opts.unstable_opts.ls {
         match sess.io.input {
             Input::File(ref ifile) => {
@@ -616,7 +705,7 @@ pub fn list_metadata(sess: &Session, metadata_loader: &dyn MetadataLoader) -> Co
                 safe_println!("{}", String::from_utf8(v).unwrap());
             }
             Input::Str { .. } => {
-                early_error(ErrorOutputType::default(), "cannot list metadata for stdin");
+                handler.early_error("cannot list metadata for stdin");
             }
         }
         return Compilation::Stop;
@@ -626,14 +715,22 @@ pub fn list_metadata(sess: &Session, metadata_loader: &dyn MetadataLoader) -> Co
 }
 
 fn print_crate_info(
+    handler: &EarlyErrorHandler,
     codegen_backend: &dyn CodegenBackend,
     sess: &Session,
     parse_attrs: bool,
 ) -> Compilation {
-    use rustc_session::config::PrintRequest::*;
+    use rustc_session::config::PrintKind::*;
+
+    // This import prevents the following code from using the printing macros
+    // used by the rest of the module. Within this function, we only write to
+    // the output specified by `sess.io.output_file`.
+    #[allow(unused_imports)]
+    use {do_not_use_safe_print as safe_print, do_not_use_safe_print as safe_println};
+
     // NativeStaticLibs and LinkArgs are special - printed during linking
     // (empty iterator returns true)
-    if sess.opts.prints.iter().all(|&p| p == NativeStaticLibs || p == LinkArgs) {
+    if sess.opts.prints.iter().all(|p| p.kind == NativeStaticLibs || p.kind == LinkArgs) {
         return Compilation::Continue;
     }
 
@@ -649,17 +746,23 @@ fn print_crate_info(
     } else {
         None
     };
+
     for req in &sess.opts.prints {
-        match *req {
+        let mut crate_info = String::new();
+        macro println_info($($arg:tt)*) {
+            crate_info.write_fmt(format_args!("{}\n", format_args!($($arg)*))).unwrap()
+        }
+
+        match req.kind {
             TargetList => {
                 let mut targets = rustc_target::spec::TARGETS.to_vec();
                 targets.sort_unstable();
-                safe_println!("{}", targets.join("\n"));
+                println_info!("{}", targets.join("\n"));
             }
-            Sysroot => safe_println!("{}", sess.sysroot.display()),
-            TargetLibdir => safe_println!("{}", sess.target_tlib_path.dir.display()),
+            Sysroot => println_info!("{}", sess.sysroot.display()),
+            TargetLibdir => println_info!("{}", sess.target_tlib_path.dir.display()),
             TargetSpec => {
-                safe_println!("{}", serde_json::to_string_pretty(&sess.target.to_json()).unwrap());
+                println_info!("{}", serde_json::to_string_pretty(&sess.target.to_json()).unwrap());
             }
             AllTargetSpecs => {
                 let mut targets = BTreeMap::new();
@@ -668,25 +771,29 @@ fn print_crate_info(
                     let target = Target::expect_builtin(&triple);
                     targets.insert(name, target.to_json());
                 }
-                safe_println!("{}", serde_json::to_string_pretty(&targets).unwrap());
+                println_info!("{}", serde_json::to_string_pretty(&targets).unwrap());
             }
-            FileNames | CrateName => {
+            FileNames => {
                 let Some(attrs) = attrs.as_ref() else {
                     // no crate attributes, print out an error and exit
                     return Compilation::Continue;
                 };
                 let t_outputs = rustc_interface::util::build_output_filenames(attrs, sess);
                 let id = rustc_session::output::find_crate_name(sess, attrs);
-                if *req == PrintRequest::CrateName {
-                    safe_println!("{id}");
-                    continue;
-                }
                 let crate_types = collect_crate_types(sess, attrs);
                 for &style in &crate_types {
                     let fname =
                         rustc_session::output::filename_for_input(sess, style, id, &t_outputs);
-                    safe_println!("{}", fname.file_name().unwrap().to_string_lossy());
+                    println_info!("{}", fname.as_path().file_name().unwrap().to_string_lossy());
                 }
+            }
+            CrateName => {
+                let Some(attrs) = attrs.as_ref() else {
+                    // no crate attributes, print out an error and exit
+                    return Compilation::Continue;
+                };
+                let id = rustc_session::output::find_crate_name(sess, attrs);
+                println_info!("{id}");
             }
             Cfg => {
                 let mut cfgs = sess
@@ -719,13 +826,13 @@ fn print_crate_info(
 
                 cfgs.sort();
                 for cfg in cfgs {
-                    safe_println!("{cfg}");
+                    println_info!("{cfg}");
                 }
             }
             CallingConventions => {
                 let mut calling_conventions = rustc_target::spec::abi::all_names();
                 calling_conventions.sort_unstable();
-                safe_println!("{}", calling_conventions.join("\n"));
+                println_info!("{}", calling_conventions.join("\n"));
             }
             RelocationModels
             | CodeModels
@@ -733,7 +840,7 @@ fn print_crate_info(
             | TargetCPUs
             | StackProtectorStrategies
             | TargetFeatures => {
-                codegen_backend.print(*req, sess);
+                codegen_backend.print(req, &mut crate_info, sess);
             }
             // Any output here interferes with Cargo's parsing of other printed output
             NativeStaticLibs => {}
@@ -742,10 +849,8 @@ fn print_crate_info(
                 use rustc_target::spec::SplitDebuginfo::{Off, Packed, Unpacked};
 
                 for split in &[Off, Packed, Unpacked] {
-                    let stable = sess.target.options.supported_split_debuginfo.contains(split);
-                    let unstable_ok = sess.unstable_options();
-                    if stable || unstable_ok {
-                        safe_println!("{split}");
+                    if sess.target.options.supported_split_debuginfo.contains(split) {
+                        println_info!("{split}");
                     }
                 }
             }
@@ -753,19 +858,19 @@ fn print_crate_info(
                 use rustc_target::spec::current_apple_deployment_target;
 
                 if sess.target.is_like_osx {
-                    safe_println!(
+                    println_info!(
                         "deployment_target={}",
                         current_apple_deployment_target(&sess.target)
                             .expect("unknown Apple target OS")
                     )
                 } else {
-                    early_error(
-                        ErrorOutputType::default(),
-                        "only Apple targets currently support deployment version info",
-                    )
+                    handler
+                        .early_error("only Apple targets currently support deployment version info")
                 }
             }
         }
+
+        req.out.overwrite(&crate_info, sess);
     }
     Compilation::Stop
 }
@@ -773,11 +878,12 @@ fn print_crate_info(
 /// Prints version information
 ///
 /// NOTE: this is a macro to support drivers built at a different time than the main `rustc_driver` crate.
-pub macro version($binary: literal, $matches: expr) {
+pub macro version($handler: expr, $binary: literal, $matches: expr) {
     fn unw(x: Option<&str>) -> &str {
         x.unwrap_or("unknown")
     }
     $crate::version_at_macro_invocation(
+        $handler,
         $binary,
         $matches,
         unw(option_env!("CFG_VERSION")),
@@ -789,6 +895,7 @@ pub macro version($binary: literal, $matches: expr) {
 
 #[doc(hidden)] // use the macro instead
 pub fn version_at_macro_invocation(
+    handler: &EarlyErrorHandler,
     binary: &str,
     matches: &getopts::Matches,
     version: &str,
@@ -809,7 +916,7 @@ pub fn version_at_macro_invocation(
 
         let debug_flags = matches.opt_strs("Z");
         let backend_name = debug_flags.iter().find_map(|x| x.strip_prefix("codegen-backend="));
-        get_codegen_backend(&None, backend_name).print_version();
+        get_codegen_backend(handler, &None, backend_name).print_version();
     }
 }
 
@@ -986,7 +1093,7 @@ Available lint options:
 /// Show help for flag categories shared between rustdoc and rustc.
 ///
 /// Returns whether a help option was printed.
-pub fn describe_flag_categories(matches: &Matches) -> bool {
+pub fn describe_flag_categories(handler: &EarlyErrorHandler, matches: &Matches) -> bool {
     // Handle the special case of -Wall.
     let wall = matches.opt_strs("W");
     if wall.iter().any(|x| *x == "all") {
@@ -1008,15 +1115,12 @@ pub fn describe_flag_categories(matches: &Matches) -> bool {
     }
 
     if cg_flags.iter().any(|x| *x == "no-stack-check") {
-        early_warn(
-            ErrorOutputType::default(),
-            "the --no-stack-check flag is deprecated and does nothing",
-        );
+        handler.early_warn("the --no-stack-check flag is deprecated and does nothing");
     }
 
     if cg_flags.iter().any(|x| *x == "passes=list") {
         let backend_name = debug_flags.iter().find_map(|x| x.strip_prefix("codegen-backend="));
-        get_codegen_backend(&None, backend_name).print_passes();
+        get_codegen_backend(handler, &None, backend_name).print_passes();
         return true;
     }
 
@@ -1073,10 +1177,7 @@ fn print_flag_list<T>(
 ///
 /// So with all that in mind, the comments below have some more detail about the
 /// contortions done here to get things to work out correctly.
-pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
-    // Throw away the first argument, the name of the binary
-    let args = &args[1..];
-
+pub fn handle_options(handler: &EarlyErrorHandler, args: &[String]) -> Option<getopts::Matches> {
     if args.is_empty() {
         // user did not write `-v` nor `-Z unstable-options`, so do not
         // include that extra information.
@@ -1102,7 +1203,7 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
                 .map(|(flag, _)| format!("{e}. Did you mean `-{flag} {opt}`?")),
             _ => None,
         };
-        early_error(ErrorOutputType::default(), msg.unwrap_or_else(|| e.to_string()));
+        handler.early_error(msg.unwrap_or_else(|| e.to_string()));
     });
 
     // For all options we just parsed, we check a few aspects:
@@ -1116,7 +1217,7 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
     //   we're good to go.
     // * Otherwise, if we're an unstable option then we generate an error
     //   (unstable option being used on stable)
-    nightly_options::check_nightly_options(&matches, &config::rustc_optgroups());
+    nightly_options::check_nightly_options(handler, &matches, &config::rustc_optgroups());
 
     if matches.opt_present("h") || matches.opt_present("help") {
         // Only show unstable options in --help if we accept unstable options.
@@ -1126,12 +1227,12 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
         return None;
     }
 
-    if describe_flag_categories(&matches) {
+    if describe_flag_categories(handler, &matches) {
         return None;
     }
 
     if matches.opt_present("version") {
-        version!("rustc", &matches);
+        version!(handler, "rustc", &matches);
         return None;
     }
 
@@ -1216,9 +1317,29 @@ pub fn catch_with_exit_code(f: impl FnOnce() -> interface::Result<()>) -> i32 {
     }
 }
 
-/// Stores the default panic hook, from before [`install_ice_hook`] was called.
-static DEFAULT_HOOK: OnceLock<Box<dyn Fn(&panic::PanicInfo<'_>) + Sync + Send + 'static>> =
-    OnceLock::new();
+pub static ICE_PATH: OnceLock<Option<PathBuf>> = OnceLock::new();
+
+pub fn ice_path() -> &'static Option<PathBuf> {
+    ICE_PATH.get_or_init(|| {
+        if !rustc_feature::UnstableFeatures::from_environment(None).is_nightly_build() {
+            return None;
+        }
+        if let Ok("0") = std::env::var("RUST_BACKTRACE").as_deref() {
+            return None;
+        }
+        let mut path = match std::env::var("RUSTC_ICE").as_deref() {
+            // Explicitly opting out of writing ICEs to disk.
+            Ok("0") => return None,
+            Ok(s) => PathBuf::from(s),
+            Err(_) => std::env::current_dir().unwrap_or_default(),
+        };
+        let now: OffsetDateTime = SystemTime::now().into();
+        let file_now = now.format(&Rfc3339).unwrap_or(String::new());
+        let pid = std::process::id();
+        path.push(format!("rustc-ice-{file_now}-{pid}.txt"));
+        Some(path)
+    })
+}
 
 /// Installs a panic hook that will print the ICE message on unexpected panics.
 ///
@@ -1242,32 +1363,59 @@ pub fn install_ice_hook(bug_report_url: &'static str, extra_info: fn(&Handler)) 
         std::env::set_var("RUST_BACKTRACE", "full");
     }
 
-    let default_hook = DEFAULT_HOOK.get_or_init(panic::take_hook);
+    panic::update_hook(Box::new(
+        move |default_hook: &(dyn Fn(&PanicInfo<'_>) + Send + Sync + 'static),
+              info: &PanicInfo<'_>| {
+            // If the error was caused by a broken pipe then this is not a bug.
+            // Write the error and return immediately. See #98700.
+            #[cfg(windows)]
+            if let Some(msg) = info.payload().downcast_ref::<String>() {
+                if msg.starts_with("failed printing to stdout: ") && msg.ends_with("(os error 232)")
+                {
+                    // the error code is already going to be reported when the panic unwinds up the stack
+                    let handler = EarlyErrorHandler::new(ErrorOutputType::default());
+                    let _ = handler.early_error_no_abort(msg.clone());
+                    return;
+                }
+            };
 
-    panic::set_hook(Box::new(move |info| {
-        // If the error was caused by a broken pipe then this is not a bug.
-        // Write the error and return immediately. See #98700.
-        #[cfg(windows)]
-        if let Some(msg) = info.payload().downcast_ref::<String>() {
-            if msg.starts_with("failed printing to stdout: ") && msg.ends_with("(os error 232)") {
-                // the error code is already going to be reported when the panic unwinds up the stack
-                let _ = early_error_no_abort(ErrorOutputType::default(), msg.as_str());
-                return;
+            // Invoke the default handler, which prints the actual panic message and optionally a backtrace
+            // Don't do this for delayed bugs, which already emit their own more useful backtrace.
+            if !info.payload().is::<rustc_errors::DelayedBugPanic>() {
+                default_hook(info);
+                // Separate the output with an empty line
+                eprintln!();
+
+                if let Some(ice_path) = ice_path()
+                    && let Ok(mut out) =
+                        File::options().create(true).append(true).open(&ice_path)
+                {
+                    // The current implementation always returns `Some`.
+                    let location = info.location().unwrap();
+                    let msg = match info.payload().downcast_ref::<&'static str>() {
+                        Some(s) => *s,
+                        None => match info.payload().downcast_ref::<String>() {
+                            Some(s) => &s[..],
+                            None => "Box<dyn Any>",
+                        },
+                    };
+                    let thread = std::thread::current();
+                    let name = thread.name().unwrap_or("<unnamed>");
+                    let _ = write!(
+                        &mut out,
+                        "thread '{name}' panicked at {location}:\n\
+                        {msg}\n\
+                        stack backtrace:\n\
+                        {:#}",
+                        std::backtrace::Backtrace::force_capture()
+                    );
+                }
             }
-        };
 
-        // Invoke the default handler, which prints the actual panic message and optionally a backtrace
-        // Don't do this for delayed bugs, which already emit their own more useful backtrace.
-        if !info.payload().is::<rustc_errors::DelayedBugPanic>() {
-            (*default_hook)(info);
-
-            // Separate the output with an empty line
-            eprintln!();
-        }
-
-        // Print the ICE message
-        report_ice(info, bug_report_url, extra_info);
-    }));
+            // Print the ICE message
+            report_ice(info, bug_report_url, extra_info);
+        },
+    ));
 }
 
 /// Prints the ICE message, including query stack, but without backtrace.
@@ -1281,17 +1429,9 @@ pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str, extra_info:
         rustc_errors::fallback_fluent_bundle(crate::DEFAULT_LOCALE_RESOURCES.to_vec(), false);
     let emitter = Box::new(rustc_errors::emitter::EmitterWriter::stderr(
         rustc_errors::ColorConfig::Auto,
-        None,
-        None,
         fallback_bundle,
-        false,
-        false,
-        None,
-        false,
-        false,
-        TerminalUrl::No,
     ));
-    let handler = rustc_errors::Handler::with_emitter(true, None, emitter);
+    let handler = rustc_errors::Handler::with_emitter(emitter);
 
     // a .span_bug or .bug call has already printed what
     // it wants to print.
@@ -1302,10 +1442,40 @@ pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str, extra_info:
     }
 
     handler.emit_note(session_diagnostics::IceBugReport { bug_report_url });
-    handler.emit_note(session_diagnostics::IceVersion {
-        version: util::version_str!().unwrap_or("unknown_version"),
-        triple: config::host_triple(),
-    });
+
+    let version = util::version_str!().unwrap_or("unknown_version");
+    let triple = config::host_triple();
+
+    static FIRST_PANIC: AtomicBool = AtomicBool::new(true);
+
+    let file = if let Some(path) = ice_path().as_ref() {
+        // Create the ICE dump target file.
+        match crate::fs::File::options().create(true).append(true).open(&path) {
+            Ok(mut file) => {
+                handler
+                    .emit_note(session_diagnostics::IcePath { path: path.display().to_string() });
+                if FIRST_PANIC.swap(false, Ordering::SeqCst) {
+                    let _ = write!(file, "\n\nrustc version: {version}\nplatform: {triple}");
+                }
+                Some(file)
+            }
+            Err(err) => {
+                // The path ICE couldn't be written to disk, provide feedback to the user as to why.
+                handler.emit_warning(session_diagnostics::IcePathError {
+                    path: path.display().to_string(),
+                    error: err.to_string(),
+                    env_var: std::env::var("RUSTC_ICE")
+                        .ok()
+                        .map(|env_var| session_diagnostics::IcePathErrorEnv { env_var }),
+                });
+                handler.emit_note(session_diagnostics::IceVersion { version, triple });
+                None
+            }
+        }
+    } else {
+        handler.emit_note(session_diagnostics::IceVersion { version, triple });
+        None
+    };
 
     if let Some((flags, excluded_cargo_defaults)) = extra_compiler_flags() {
         handler.emit_note(session_diagnostics::IceFlags { flags: flags.join(" ") });
@@ -1319,7 +1489,7 @@ pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str, extra_info:
 
     let num_frames = if backtrace { None } else { Some(2) };
 
-    interface::try_print_query_stack(&handler, num_frames);
+    interface::try_print_query_stack(&handler, num_frames, file);
 
     // We don't trust this callback not to panic itself, so run it at the end after we're sure we've
     // printed all the relevant info.
@@ -1334,16 +1504,16 @@ pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str, extra_info:
 
 /// This allows tools to enable rust logging without having to magically match rustc's
 /// tracing crate version.
-pub fn init_rustc_env_logger() {
-    init_env_logger("RUSTC_LOG");
+pub fn init_rustc_env_logger(handler: &EarlyErrorHandler) {
+    init_env_logger(handler, "RUSTC_LOG");
 }
 
 /// This allows tools to enable rust logging without having to magically match rustc's
 /// tracing crate version. In contrast to `init_rustc_env_logger` it allows you to choose an env var
 /// other than `RUSTC_LOG`.
-pub fn init_env_logger(env: &str) {
+pub fn init_env_logger(handler: &EarlyErrorHandler, env: &str) {
     if let Err(error) = rustc_log::init_env_logger(env) {
-        early_error(ErrorOutputType::default(), error.to_string());
+        handler.early_error(error.to_string());
     }
 }
 
@@ -1373,13 +1543,13 @@ mod signal_handler {
     /// When an error signal (such as SIGABRT or SIGSEGV) is delivered to the
     /// process, print a stack trace and then exit.
     pub(super) fn install() {
+        use std::alloc::{alloc, Layout};
+
         unsafe {
-            const ALT_STACK_SIZE: usize = libc::MINSIGSTKSZ + 64 * 1024;
+            let alt_stack_size: usize = min_sigstack_size() + 64 * 1024;
             let mut alt_stack: libc::stack_t = std::mem::zeroed();
-            alt_stack.ss_sp =
-                std::alloc::alloc(std::alloc::Layout::from_size_align(ALT_STACK_SIZE, 1).unwrap())
-                    as *mut libc::c_void;
-            alt_stack.ss_size = ALT_STACK_SIZE;
+            alt_stack.ss_sp = alloc(Layout::from_size_align(alt_stack_size, 1).unwrap()).cast();
+            alt_stack.ss_size = alt_stack_size;
             libc::sigaltstack(&alt_stack, std::ptr::null_mut());
 
             let mut sa: libc::sigaction = std::mem::zeroed();
@@ -1388,6 +1558,23 @@ mod signal_handler {
             libc::sigemptyset(&mut sa.sa_mask);
             libc::sigaction(libc::SIGSEGV, &sa, std::ptr::null_mut());
         }
+    }
+
+    /// Modern kernels on modern hardware can have dynamic signal stack sizes.
+    #[cfg(any(target_os = "linux", target_os = "android"))]
+    fn min_sigstack_size() -> usize {
+        const AT_MINSIGSTKSZ: core::ffi::c_ulong = 51;
+        let dynamic_sigstksz = unsafe { libc::getauxval(AT_MINSIGSTKSZ) };
+        // If getauxval couldn't find the entry, it returns 0,
+        // so take the higher of the "constant" and auxval.
+        // This transparently supports older kernels which don't provide AT_MINSIGSTKSZ
+        libc::MINSIGSTKSZ.max(dynamic_sigstksz as _)
+    }
+
+    /// Not all OS support hardware where this is needed.
+    #[cfg(not(any(target_os = "linux", target_os = "android")))]
+    fn min_sigstack_size() -> usize {
+        libc::MINSIGSTKSZ
     }
 }
 
@@ -1399,7 +1586,10 @@ mod signal_handler {
 pub fn main() -> ! {
     let start_time = Instant::now();
     let start_rss = get_resident_set_size();
-    init_rustc_env_logger();
+
+    let handler = EarlyErrorHandler::new(ErrorOutputType::default());
+
+    init_rustc_env_logger(&handler);
     signal_handler::install();
     let mut callbacks = TimePassesCallbacks::default();
     install_ice_hook(DEFAULT_BUG_REPORT_URL, |_| ());
@@ -1408,10 +1598,7 @@ pub fn main() -> ! {
             .enumerate()
             .map(|(i, arg)| {
                 arg.into_string().unwrap_or_else(|arg| {
-                    early_error(
-                        ErrorOutputType::default(),
-                        format!("argument {i} is not valid Unicode: {arg:?}"),
-                    )
+                    handler.early_error(format!("argument {i} is not valid Unicode: {arg:?}"))
                 })
             })
             .collect::<Vec<_>>();

@@ -4,7 +4,7 @@ error[E0560]: struct `Simba` has no field named `father`
 LL |     let s = Simba { mother: 1, father: 0 };
    |                                ^^^^^^ `Simba` does not have this field
    |
-   = note: available fields are: `mother`
+   = note: all struct fields are already assigned
 
 error: aborting due to previous error
 

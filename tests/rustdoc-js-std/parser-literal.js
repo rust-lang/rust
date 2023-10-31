@@ -1,7 +1,6 @@
-const QUERY = ['R<P>'];
-
 const PARSED = [
     {
+        query: 'R<P>',
         elems: [{
             name: "r",
             fullPath: ["r"],

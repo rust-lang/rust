@@ -6,14 +6,14 @@ LL |     1 +
    |
    = help: the trait `Add<()>` is not implemented for `{integer}`
    = help: the following other types implement trait `Add<Rhs>`:
-             <&'a f32 as Add<f32>>
-             <&'a f64 as Add<f64>>
-             <&'a i128 as Add<i128>>
-             <&'a i16 as Add<i16>>
-             <&'a i32 as Add<i32>>
-             <&'a i64 as Add<i64>>
-             <&'a i8 as Add<i8>>
-             <&'a isize as Add<isize>>
+             <isize as Add>
+             <isize as Add<&isize>>
+             <i8 as Add>
+             <i8 as Add<&i8>>
+             <i16 as Add>
+             <i16 as Add<&i16>>
+             <i32 as Add>
+             <i32 as Add<&i32>>
            and 48 others
 
 error[E0277]: cannot add `()` to `{integer}`
@@ -24,14 +24,14 @@ LL |     1 +
    |
    = help: the trait `Add<()>` is not implemented for `{integer}`
    = help: the following other types implement trait `Add<Rhs>`:
-             <&'a f32 as Add<f32>>
-             <&'a f64 as Add<f64>>
-             <&'a i128 as Add<i128>>
-             <&'a i16 as Add<i16>>
-             <&'a i32 as Add<i32>>
-             <&'a i64 as Add<i64>>
-             <&'a i8 as Add<i8>>
-             <&'a isize as Add<isize>>
+             <isize as Add>
+             <isize as Add<&isize>>
+             <i8 as Add>
+             <i8 as Add<&i8>>
+             <i16 as Add>
+             <i16 as Add<&i16>>
+             <i32 as Add>
+             <i32 as Add<&i32>>
            and 48 others
 
 error: aborting due to 2 previous errors

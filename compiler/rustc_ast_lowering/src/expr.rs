@@ -71,9 +71,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
             let kind = match &e.kind {
                 ExprKind::Array(exprs) => hir::ExprKind::Array(self.lower_exprs(exprs)),
-                ExprKind::ConstBlock(anon_const) => {
-                    let anon_const = self.lower_anon_const(anon_const);
-                    hir::ExprKind::ConstBlock(anon_const)
+                ExprKind::ConstBlock(c) => {
+                    let c = self.with_new_scopes(|this| hir::ConstBlock {
+                        def_id: this.local_def_id(c.id),
+                        hir_id: this.lower_node_id(c.id),
+                        body: this.lower_const_body(c.value.span, Some(&c.value)),
+                    });
+                    hir::ExprKind::ConstBlock(c)
                 }
                 ExprKind::Repeat(expr, count) => {
                     let expr = self.lower_expr(expr);
@@ -96,6 +100,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         ParamMode::Optional,
                         ParenthesizedGenericArgs::Err,
                         &ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                        None,
                     ));
                     let receiver = self.lower_expr(receiver);
                     let args =
@@ -236,8 +241,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ExprKind::Field(el, ident) => {
                     hir::ExprKind::Field(self.lower_expr(el), self.lower_ident(*ident))
                 }
-                ExprKind::Index(el, er) => {
-                    hir::ExprKind::Index(self.lower_expr(el), self.lower_expr(er))
+                ExprKind::Index(el, er, brackets_span) => {
+                    hir::ExprKind::Index(self.lower_expr(el), self.lower_expr(er), *brackets_span)
                 }
                 ExprKind::Range(Some(e1), Some(e2), RangeLimits::Closed) => {
                     self.lower_expr_range_closed(e.span, e1, e2)
@@ -256,6 +261,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         path,
                         ParamMode::Optional,
                         &ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                        None,
                     );
                     hir::ExprKind::Path(qpath)
                 }
@@ -271,6 +277,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     hir::ExprKind::Ret(e)
                 }
                 ExprKind::Yeet(sub_expr) => self.lower_expr_yeet(e.span, sub_expr.as_deref()),
+                ExprKind::Become(sub_expr) => {
+                    let sub_expr = self.lower_expr(sub_expr);
+                    hir::ExprKind::Become(sub_expr)
+                }
                 ExprKind::InlineAsm(asm) => {
                     hir::ExprKind::InlineAsm(self.lower_inline_asm(e.span, asm))
                 }
@@ -278,7 +288,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ExprKind::OffsetOf(container, fields) => hir::ExprKind::OffsetOf(
                     self.lower_ty(
                         container,
-                        &mut ImplTraitContext::Disallowed(ImplTraitPosition::OffsetOf),
+                        &ImplTraitContext::Disallowed(ImplTraitPosition::OffsetOf),
                     ),
                     self.arena.alloc_from_iter(fields.iter().map(|&ident| self.lower_ident(ident))),
                 ),
@@ -299,6 +309,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             &se.path,
                             ParamMode::Optional,
                             &ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                            None,
                         )),
                         self.arena
                             .alloc_from_iter(se.fields.iter().map(|x| self.lower_expr_field(x))),
@@ -649,14 +660,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     /// Forwards a possible `#[track_caller]` annotation from `outer_hir_id` to
-    /// `inner_hir_id` in case the `closure_track_caller` feature is enabled.
+    /// `inner_hir_id` in case the `async_fn_track_caller` feature is enabled.
     pub(super) fn maybe_forward_track_caller(
         &mut self,
         span: Span,
         outer_hir_id: hir::HirId,
         inner_hir_id: hir::HirId,
     ) {
-        if self.tcx.features().closure_track_caller
+        if self.tcx.features().async_fn_track_caller
             && let Some(attrs) = self.attrs.get(&outer_hir_id.local_id)
             && attrs.into_iter().any(|attr| attr.has_name(sym::track_caller))
         {
@@ -665,14 +676,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             self.lower_attrs(
                 inner_hir_id,
                 &[Attribute {
-                    kind: AttrKind::Normal(ptr::P(NormalAttr {
-                        item: AttrItem {
-                            path: Path::from_ident(Ident::new(sym::track_caller, span)),
-                            args: AttrArgs::Empty,
-                            tokens: None,
-                        },
-                        tokens: None,
-                    })),
+                    kind: AttrKind::Normal(ptr::P(NormalAttr::from_ident(Ident::new(sym::track_caller, span)))),
                     id: self.tcx.sess.parse_sess.attr_id_generator.mk_attr_id(),
                     style: AttrStyle::Outer,
                     span: unstable_span,
@@ -1178,6 +1182,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         path,
                         ParamMode::Optional,
                         &ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                        None,
                     );
                     // Destructure like a tuple struct.
                     let tuple_struct_pat = hir::PatKind::TupleStruct(
@@ -1197,6 +1202,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         path,
                         ParamMode::Optional,
                         &ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                        None,
                     );
                     // Destructure like a unit struct.
                     let unit_struct_pat = hir::PatKind::Path(qpath);
@@ -1221,6 +1227,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     &se.path,
                     ParamMode::Optional,
                     &ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                    None,
                 );
                 let fields_omitted = match &se.rest {
                     StructRest::Base(e) => {
@@ -1641,7 +1648,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         hir::ExprKind::Match(
             scrutinee,
             arena_vec![self; break_arm, continue_arm],
-            hir::MatchSource::TryDesugar,
+            hir::MatchSource::TryDesugar(scrutinee.hir_id),
         )
     }
 

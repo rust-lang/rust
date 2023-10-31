@@ -1,4 +1,7 @@
-use clippy_utils::{diagnostics::span_lint_and_sugg, get_parent_expr, path_to_local, source::snippet, ty::is_copy};
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::source::snippet;
+use clippy_utils::ty::is_copy;
+use clippy_utils::{get_parent_expr, path_to_local};
 use rustc_hir::{BindingAnnotation, Expr, ExprKind, Node, PatKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};

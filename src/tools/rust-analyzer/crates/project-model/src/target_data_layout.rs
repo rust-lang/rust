@@ -1,7 +1,6 @@
 //! Runs `rustc --print target-spec-json` to get the target_data_layout.
 use std::process::Command;
 
-use anyhow::Result;
 use rustc_hash::FxHashMap;
 
 use crate::{utf8_stdout, ManifestPath};
@@ -10,13 +9,13 @@ pub fn get(
     cargo_toml: Option<&ManifestPath>,
     target: Option<&str>,
     extra_env: &FxHashMap<String, String>,
-) -> Result<String> {
+) -> anyhow::Result<String> {
     let output = (|| {
         if let Some(cargo_toml) = cargo_toml {
             let mut cmd = Command::new(toolchain::rustc());
             cmd.envs(extra_env);
             cmd.current_dir(cargo_toml.parent())
-                .args(["-Z", "unstable-options", "rustc", "--print", "target-spec-json"])
+                .args(["-Z", "unstable-options", "--print", "target-spec-json"])
                 .env("RUSTC_BOOTSTRAP", "1");
             if let Some(target) = target {
                 cmd.args(["--target", target]);

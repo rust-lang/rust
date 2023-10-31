@@ -18,7 +18,7 @@ pub fn expand_compile_error<'cx>(
         reason = "diagnostic message is specified by user"
     )]
     #[expect(rustc::untranslatable_diagnostic, reason = "diagnostic message is specified by user")]
-    cx.span_err(sp, var.as_str());
+    cx.span_err(sp, var.to_string());
 
     DummyResult::any(sp)
 }

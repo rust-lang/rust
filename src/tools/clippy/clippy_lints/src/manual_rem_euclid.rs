@@ -119,7 +119,7 @@ fn check_for_either_unsigned_int_constant<'a>(
 }
 
 fn check_for_unsigned_int_constant<'a>(cx: &'a LateContext<'_>, expr: &'a Expr<'_>) -> Option<u128> {
-    let Some(int_const) = constant_full_int(cx, cx.typeck_results(), expr) else { return None };
+    let int_const = constant_full_int(cx, cx.typeck_results(), expr)?;
     match int_const {
         FullInt::S(s) => s.try_into().ok(),
         FullInt::U(u) => Some(u),

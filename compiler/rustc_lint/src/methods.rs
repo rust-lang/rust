@@ -53,9 +53,9 @@ fn lint_cstring_as_ptr(
     unwrap: &rustc_hir::Expr<'_>,
 ) {
     let source_type = cx.typeck_results().expr_ty(source);
-    if let ty::Adt(def, substs) = source_type.kind() {
+    if let ty::Adt(def, args) = source_type.kind() {
         if cx.tcx.is_diagnostic_item(sym::Result, def.did()) {
-            if let ty::Adt(adt, _) = substs.type_at(0).kind() {
+            if let ty::Adt(adt, _) = args.type_at(0).kind() {
                 if cx.tcx.is_diagnostic_item(sym::cstring_type, adt.did()) {
                     cx.emit_spanned_lint(
                         TEMPORARY_CSTRING_AS_PTR,

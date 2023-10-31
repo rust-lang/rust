@@ -5,14 +5,75 @@ use clippy_utils::source::snippet_with_applicability;
 use rustc_errors::Applicability;
 use rustc_hir::Expr;
 use rustc_lint::LateContext;
+use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
 use rustc_span::symbol::sym;
 
+#[derive(Clone, Copy)]
+enum AdjustKind {
+    None,
+    Borrow,
+    BorrowMut,
+    Reborrow,
+    ReborrowMut,
+}
+impl AdjustKind {
+    fn borrow(mutbl: AutoBorrowMutability) -> Self {
+        match mutbl {
+            AutoBorrowMutability::Not => Self::Borrow,
+            AutoBorrowMutability::Mut { .. } => Self::BorrowMut,
+        }
+    }
+
+    fn reborrow(mutbl: AutoBorrowMutability) -> Self {
+        match mutbl {
+            AutoBorrowMutability::Not => Self::Reborrow,
+            AutoBorrowMutability::Mut { .. } => Self::ReborrowMut,
+        }
+    }
+
+    fn display(self) -> &'static str {
+        match self {
+            Self::None => "",
+            Self::Borrow => "&",
+            Self::BorrowMut => "&mut ",
+            Self::Reborrow => "&*",
+            Self::ReborrowMut => "&mut *",
+        }
+    }
+}
+
 pub(super) fn check(cx: &LateContext<'_>, self_arg: &Expr<'_>, call_expr: &Expr<'_>) {
-    let self_ty = cx.typeck_results().expr_ty(self_arg);
-    let self_ty_adjusted = cx.typeck_results().expr_ty_adjusted(self_arg);
-    if !(self_ty == self_ty_adjusted && is_trait_method(cx, call_expr, sym::IntoIterator)) {
+    if !is_trait_method(cx, call_expr, sym::IntoIterator) {
         return;
     }
+
+    let typeck = cx.typeck_results();
+    let self_ty = typeck.expr_ty(self_arg);
+    let adjust = match typeck.expr_adjustments(self_arg) {
+        [] => AdjustKind::None,
+        &[
+            Adjustment {
+                kind: Adjust::Borrow(AutoBorrow::Ref(_, mutbl)),
+                ..
+            },
+        ] => AdjustKind::borrow(mutbl),
+        &[
+            Adjustment {
+                kind: Adjust::Deref(_), ..
+            },
+            Adjustment {
+                kind: Adjust::Borrow(AutoBorrow::Ref(_, mutbl)),
+                target,
+            },
+        ] => {
+            if self_ty == target && matches!(mutbl, AutoBorrowMutability::Not) {
+                AdjustKind::None
+            } else {
+                AdjustKind::reborrow(mutbl)
+            }
+        },
+        _ => return,
+    };
 
     let mut applicability = Applicability::MachineApplicable;
     let object = snippet_with_applicability(cx, self_arg.span, "_", &mut applicability);
@@ -23,7 +84,7 @@ pub(super) fn check(cx: &LateContext<'_>, self_arg: &Expr<'_>, call_expr: &Expr<
         "it is more concise to loop over containers instead of using explicit \
             iteration methods",
         "to write this more concisely, try",
-        object.to_string(),
+        format!("{}{object}", adjust.display()),
         applicability,
     );
 }

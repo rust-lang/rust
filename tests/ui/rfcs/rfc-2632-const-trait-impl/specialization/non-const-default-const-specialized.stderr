@@ -1,0 +1,12 @@
+error[E0119]: conflicting implementations of trait `Value` for type `FortyTwo`
+  --> $DIR/non-const-default-const-specialized.rs:27:1
+   |
+LL | impl<T> Value for T {
+   | ------------------- first implementation here
+...
+LL | impl const Value for FortyTwo {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `FortyTwo`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0119`.

@@ -28,22 +28,22 @@ pub fn ptr_alignment_helper(x: &&()) {}
 // CHECK-LABEL: @load_ref
 #[no_mangle]
 pub fn load_ref<'a>(x: &&'a i32) -> &'a i32 {
-    // CHECK: load {{i32\*|ptr}}, {{i32\*\*|ptr}} %x, align [[PTR_ALIGNMENT]], !nonnull !{{[0-9]+}}, !align ![[ALIGN_4_META:[0-9]+]], !noundef !{{[0-9]+}}
+    // CHECK: load ptr, ptr %x, align [[PTR_ALIGNMENT]], !nonnull !{{[0-9]+}}, !align ![[ALIGN_4_META:[0-9]+]], !noundef !{{[0-9]+}}
     *x
 }
 
 // CHECK-LABEL: @load_ref_higher_alignment
 #[no_mangle]
 pub fn load_ref_higher_alignment<'a>(x: &&'a Align16) -> &'a Align16 {
-    // CHECK: load {{%Align16\*|i128\*|ptr}}, {{%Align16\*\*|i128\*\*|ptr}} %x, align [[PTR_ALIGNMENT]], !nonnull !{{[0-9]+}}, !align ![[ALIGN_16_META:[0-9]+]], !noundef !{{[0-9]+}}
+    // CHECK: load ptr, ptr %x, align [[PTR_ALIGNMENT]], !nonnull !{{[0-9]+}}, !align ![[ALIGN_16_META:[0-9]+]], !noundef !{{[0-9]+}}
     *x
 }
 
 // CHECK-LABEL: @load_scalar_pair
 #[no_mangle]
 pub fn load_scalar_pair<'a>(x: &(&'a i32, &'a Align16)) -> (&'a i32, &'a Align16) {
-    // CHECK: load {{i32\*|ptr}}, {{i32\*\*|ptr}} %{{.+}}, align [[PTR_ALIGNMENT]], !nonnull !{{[0-9]+}}, !align ![[ALIGN_4_META]], !noundef !{{[0-9]+}}
-    // CHECK: load {{i64\*|ptr}}, {{i64\*\*|ptr}} %{{.+}}, align [[PTR_ALIGNMENT]], !nonnull !{{[0-9]+}}, !align ![[ALIGN_16_META]], !noundef !{{[0-9]+}}
+    // CHECK: load ptr, ptr %{{.+}}, align [[PTR_ALIGNMENT]], !nonnull !{{[0-9]+}}, !align ![[ALIGN_4_META]], !noundef !{{[0-9]+}}
+    // CHECK: load ptr, ptr %{{.+}}, align [[PTR_ALIGNMENT]], !nonnull !{{[0-9]+}}, !align ![[ALIGN_16_META]], !noundef !{{[0-9]+}}
     *x
 }
 
@@ -51,70 +51,70 @@ pub fn load_scalar_pair<'a>(x: &(&'a i32, &'a Align16)) -> (&'a i32, &'a Align16
 #[no_mangle]
 pub fn load_raw_pointer<'a>(x: &*const i32) -> *const i32 {
     // loaded raw pointer should not have !nonnull or !align metadata
-    // CHECK: load {{i32\*|ptr}}, {{i32\*\*|ptr}} %x, align [[PTR_ALIGNMENT]], !noundef ![[NOUNDEF:[0-9]+]]{{$}}
+    // CHECK: load ptr, ptr %x, align [[PTR_ALIGNMENT]], !noundef ![[NOUNDEF:[0-9]+]]{{$}}
     *x
 }
 
 // CHECK-LABEL: @load_box
 #[no_mangle]
 pub fn load_box<'a>(x: Box<Box<i32>>) -> Box<i32> {
-    // CHECK: load {{i32\*|ptr}}, {{i32\*\*|ptr}} %{{.*}}, align [[PTR_ALIGNMENT]], !nonnull !{{[0-9]+}}, !align ![[ALIGN_4_META]], !noundef !{{[0-9]+}}
+    // CHECK: load ptr, ptr %{{.*}}, align [[PTR_ALIGNMENT]], !nonnull !{{[0-9]+}}, !align ![[ALIGN_4_META]], !noundef !{{[0-9]+}}
     *x
 }
 
 // CHECK-LABEL: @load_bool
 #[no_mangle]
 pub fn load_bool(x: &bool) -> bool {
-    // CHECK: load i8, {{i8\*|ptr}} %x, align 1, !range ![[BOOL_RANGE:[0-9]+]], !noundef !{{[0-9]+}}
+    // CHECK: load i8, ptr %x, align 1, !range ![[BOOL_RANGE:[0-9]+]], !noundef !{{[0-9]+}}
     *x
 }
 
 // CHECK-LABEL: @load_maybeuninit_bool
 #[no_mangle]
 pub fn load_maybeuninit_bool(x: &MaybeUninit<bool>) -> MaybeUninit<bool> {
-    // CHECK: load i8, {{i8\*|ptr}} %x, align 1{{$}}
+    // CHECK: load i8, ptr %x, align 1{{$}}
     *x
 }
 
 // CHECK-LABEL: @load_enum_bool
 #[no_mangle]
 pub fn load_enum_bool(x: &MyBool) -> MyBool {
-    // CHECK: load i8, {{i8\*|ptr}} %x, align 1, !range ![[BOOL_RANGE]], !noundef !{{[0-9]+}}
+    // CHECK: load i8, ptr %x, align 1, !range ![[BOOL_RANGE]], !noundef !{{[0-9]+}}
     *x
 }
 
 // CHECK-LABEL: @load_maybeuninit_enum_bool
 #[no_mangle]
 pub fn load_maybeuninit_enum_bool(x: &MaybeUninit<MyBool>) -> MaybeUninit<MyBool> {
-    // CHECK: load i8, {{i8\*|ptr}} %x, align 1{{$}}
+    // CHECK: load i8, ptr %x, align 1{{$}}
     *x
 }
 
 // CHECK-LABEL: @load_int
 #[no_mangle]
 pub fn load_int(x: &u16) -> u16 {
-    // CHECK: load i16, {{i16\*|ptr}} %x, align 2, !noundef ![[NOUNDEF]]{{$}}
+    // CHECK: load i16, ptr %x, align 2, !noundef ![[NOUNDEF]]{{$}}
     *x
 }
 
 // CHECK-LABEL: @load_nonzero_int
 #[no_mangle]
 pub fn load_nonzero_int(x: &NonZeroU16) -> NonZeroU16 {
-    // CHECK: load i16, {{i16\*|ptr}} %x, align 2, !range ![[NONZEROU16_RANGE:[0-9]+]], !noundef !{{[0-9]+}}
+    // CHECK: load i16, ptr %x, align 2, !range ![[NONZEROU16_RANGE:[0-9]+]], !noundef !{{[0-9]+}}
     *x
 }
 
 // CHECK-LABEL: @load_option_nonzero_int
 #[no_mangle]
 pub fn load_option_nonzero_int(x: &Option<NonZeroU16>) -> Option<NonZeroU16> {
-    // CHECK: load i16, {{i16\*|ptr}} %x, align 2, !noundef ![[NOUNDEF]]{{$}}
+    // CHECK: load i16, ptr %x, align 2, !noundef ![[NOUNDEF]]{{$}}
     *x
 }
 
 // CHECK-LABEL: @borrow
 #[no_mangle]
 pub fn borrow(x: &i32) -> &i32 {
-    // CHECK: load {{i32\*|ptr}}, {{i32\*\*|ptr}} %x{{.*}}, !nonnull
+    // CHECK: load ptr, ptr %x{{.*}}, !nonnull
     &x; // keep variable in an alloca
     x
 }
@@ -122,7 +122,7 @@ pub fn borrow(x: &i32) -> &i32 {
 // CHECK-LABEL: @_box
 #[no_mangle]
 pub fn _box(x: Box<i32>) -> i32 {
-    // CHECK: load {{i32\*|ptr}}, {{i32\*\*|ptr}} %x{{.*}}, align [[PTR_ALIGNMENT]]
+    // CHECK: load ptr, ptr %x{{.*}}, align [[PTR_ALIGNMENT]]
     *x
 }
 
@@ -131,7 +131,7 @@ pub fn _box(x: Box<i32>) -> i32 {
 // dependent alignment
 #[no_mangle]
 pub fn small_array_alignment(x: [i8; 4]) -> [i8; 4] {
-    // CHECK: [[VAR:%[0-9]+]] = load i32, {{i32\*|ptr}} %{{.*}}, align 1
+    // CHECK: [[VAR:%[0-9]+]] = load i32, ptr %{{.*}}, align 1
     // CHECK: ret i32 [[VAR]]
     x
 }
@@ -141,7 +141,7 @@ pub fn small_array_alignment(x: [i8; 4]) -> [i8; 4] {
 // dependent alignment
 #[no_mangle]
 pub fn small_struct_alignment(x: Bytes) -> Bytes {
-    // CHECK: [[VAR:%[0-9]+]] = load i32, {{i32\*|ptr}} %{{.*}}, align 1
+    // CHECK: [[VAR:%[0-9]+]] = load i32, ptr %{{.*}}, align 1
     // CHECK: ret i32 [[VAR]]
     x
 }

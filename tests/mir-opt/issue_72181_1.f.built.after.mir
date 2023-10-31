@@ -1,15 +1,15 @@
 // MIR for `f` after built
 
 fn f(_1: Void) -> ! {
-    debug v => _1;                       // in scope 0 at $DIR/issue_72181_1.rs:+0:6: +0:7
-    let mut _0: !;                       // return place in scope 0 at $DIR/issue_72181_1.rs:+0:18: +0:19
+    debug v => _1;
+    let mut _0: !;
 
     bb0: {
-        FakeRead(ForMatchedPlace(None), _1); // scope 0 at $DIR/issue_72181_1.rs:+1:11: +1:12
-        unreachable;                     // scope 0 at $DIR/issue_72181_1.rs:+1:11: +1:12
+        FakeRead(ForMatchedPlace(None), _1);
+        unreachable;
     }
 
     bb1: {
-        return;                          // scope 0 at $DIR/issue_72181_1.rs:+2:2: +2:2
+        return;
     }
 }

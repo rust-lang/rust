@@ -35,7 +35,7 @@ error: redundant pattern matching, consider using `is_none()`
   --> $DIR/match_ref_pats.rs:38:12
    |
 LL |     if let &None = a {
-   |     -------^^^^^---- help: try this: `if a.is_none()`
+   |     -------^^^^^---- help: try: `if a.is_none()`
    |
    = note: `-D clippy::redundant-pattern-matching` implied by `-D warnings`
 
@@ -43,7 +43,7 @@ error: redundant pattern matching, consider using `is_none()`
   --> $DIR/match_ref_pats.rs:43:12
    |
 LL |     if let &None = &b {
-   |     -------^^^^^----- help: try this: `if b.is_none()`
+   |     -------^^^^^----- help: try: `if b.is_none()`
 
 error: you don't need to add `&` to all patterns
   --> $DIR/match_ref_pats.rs:103:9

@@ -6,7 +6,7 @@ use crate::back::write::TargetMachineFactoryFn;
 use crate::{CodegenResults, ModuleCodegen};
 
 use rustc_ast::expand::allocator::AllocatorKind;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_errors::ErrorGuaranteed;
 use rustc_metadata::EncodedMetadata;
@@ -22,6 +22,8 @@ use rustc_session::{
 use rustc_span::symbol::Symbol;
 use rustc_target::abi::call::FnAbi;
 use rustc_target::spec::Target;
+
+use std::fmt;
 
 pub trait BackendTypes {
     type Value: CodegenObject;
@@ -61,7 +63,7 @@ pub trait CodegenBackend {
     fn locale_resource(&self) -> &'static str;
 
     fn init(&self, _sess: &Session) {}
-    fn print(&self, _req: PrintRequest, _sess: &Session) {}
+    fn print(&self, _req: &PrintRequest, _out: &mut dyn PrintBackendInfo, _sess: &Session) {}
     fn target_features(&self, _sess: &Session, _allow_unstable: bool) -> Vec<Symbol> {
         vec![]
     }
@@ -101,7 +103,7 @@ pub trait CodegenBackend {
         ongoing_codegen: Box<dyn Any>,
         sess: &Session,
         outputs: &OutputFilenames,
-    ) -> Result<(CodegenResults, FxHashMap<WorkProductId, WorkProduct>), ErrorGuaranteed>;
+    ) -> Result<(CodegenResults, FxIndexMap<WorkProductId, WorkProduct>), ErrorGuaranteed>;
 
     /// This is called on the returned `Box<dyn Any>` from `join_codegen`
     ///
@@ -140,15 +142,6 @@ pub trait ExtraBackendMethods:
         target_features: &[String],
     ) -> TargetMachineFactoryFn<Self>;
 
-    fn spawn_thread<F, T>(_time_trace: bool, f: F) -> std::thread::JoinHandle<T>
-    where
-        F: FnOnce() -> T,
-        F: Send + 'static,
-        T: Send + 'static,
-    {
-        std::thread::spawn(f)
-    }
-
     fn spawn_named_thread<F, T>(
         _time_trace: bool,
         name: String,
@@ -160,5 +153,21 @@ pub trait ExtraBackendMethods:
         T: Send + 'static,
     {
         std::thread::Builder::new().name(name).spawn(f)
+    }
+}
+
+pub trait PrintBackendInfo {
+    fn infallible_write_fmt(&mut self, args: fmt::Arguments<'_>);
+}
+
+impl PrintBackendInfo for String {
+    fn infallible_write_fmt(&mut self, args: fmt::Arguments<'_>) {
+        fmt::Write::write_fmt(self, args).unwrap();
+    }
+}
+
+impl dyn PrintBackendInfo + '_ {
+    pub fn write_fmt(&mut self, args: fmt::Arguments<'_>) {
+        self.infallible_write_fmt(args);
     }
 }

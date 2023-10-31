@@ -9,6 +9,7 @@ impl <const B: &'static bool> T<B> {
         unsafe {
             *(B as *const bool as *mut bool) = false;
             //~^ ERROR evaluation of constant value failed [E0080]
+            //~| ERROR assigning to `&T` is undefined behavior
         }
     }
 }

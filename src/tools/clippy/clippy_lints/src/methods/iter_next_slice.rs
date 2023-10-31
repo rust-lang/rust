@@ -27,7 +27,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, cal
     if derefs_to_slice(cx, caller_expr, cx.typeck_results().expr_ty(caller_expr)).is_some() {
         // caller is a Slice
         if_chain! {
-            if let hir::ExprKind::Index(caller_var, index_expr) = &caller_expr.kind;
+            if let hir::ExprKind::Index(caller_var, index_expr, _) = &caller_expr.kind;
             if let Some(higher::Range { start: Some(start_expr), end: None, limits: ast::RangeLimits::HalfOpen })
                 = higher::Range::hir(index_expr);
             if let hir::ExprKind::Lit(start_lit) = &start_expr.kind;

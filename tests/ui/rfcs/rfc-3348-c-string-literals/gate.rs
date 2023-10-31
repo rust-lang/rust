@@ -1,4 +1,6 @@
 // gate-test-c_str_literals
+// known-bug: #113333
+// edition: 2021
 
 macro_rules! m {
     ($t:tt) => {}
@@ -6,8 +8,8 @@ macro_rules! m {
 
 fn main() {
     c"foo";
-    //~^ ERROR: `c".."` literals are experimental
+    // FIXME(c_str_literals): This should be ``c".."` literals are experimental`
 
     m!(c"test");
-    //~^ ERROR: `c".."` literals are experimental
+    // FIXME(c_str_literals): This should be ``c".."` literals are experimental`
 }

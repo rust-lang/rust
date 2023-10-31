@@ -16,14 +16,20 @@ pub struct WasiFd {
 fn iovec<'a>(a: &'a mut [IoSliceMut<'_>]) -> &'a [wasi::Iovec] {
     assert_eq!(mem::size_of::<IoSliceMut<'_>>(), mem::size_of::<wasi::Iovec>());
     assert_eq!(mem::align_of::<IoSliceMut<'_>>(), mem::align_of::<wasi::Iovec>());
-    // SAFETY: `IoSliceMut` and `IoVec` have exactly the same memory layout
+    // SAFETY: `IoSliceMut` and `IoVec` have exactly the same memory layout.
+    // We decorate our `IoSliceMut` with `repr(transparent)` (see `io.rs`), and
+    // `crate::io::IoSliceMut` is a `repr(transparent)` wrapper around our type, so this is
+    // guaranteed.
     unsafe { mem::transmute(a) }
 }
 
 fn ciovec<'a>(a: &'a [IoSlice<'_>]) -> &'a [wasi::Ciovec] {
     assert_eq!(mem::size_of::<IoSlice<'_>>(), mem::size_of::<wasi::Ciovec>());
     assert_eq!(mem::align_of::<IoSlice<'_>>(), mem::align_of::<wasi::Ciovec>());
-    // SAFETY: `IoSlice` and `CIoVec` have exactly the same memory layout
+    // SAFETY: `IoSlice` and `CIoVec` have exactly the same memory layout.
+    // We decorate our `IoSlice` with `repr(transparent)` (see `io.rs`), and
+    // `crate::io::IoSlice` is a `repr(transparent)` wrapper around our type, so this is
+    // guaranteed.
     unsafe { mem::transmute(a) }
 }
 
@@ -96,7 +102,7 @@ impl WasiFd {
         unsafe { wasi::fd_sync(self.as_raw_fd() as wasi::Fd).map_err(err2io) }
     }
 
-    pub fn advise(&self, offset: u64, len: u64, advice: wasi::Advice) -> io::Result<()> {
+    pub(crate) fn advise(&self, offset: u64, len: u64, advice: wasi::Advice) -> io::Result<()> {
         unsafe {
             wasi::fd_advise(self.as_raw_fd() as wasi::Fd, offset, len, advice).map_err(err2io)
         }
@@ -179,7 +185,7 @@ impl WasiFd {
         }
     }
 
-    pub fn filestat_get(&self) -> io::Result<wasi::Filestat> {
+    pub(crate) fn filestat_get(&self) -> io::Result<wasi::Filestat> {
         unsafe { wasi::fd_filestat_get(self.as_raw_fd() as wasi::Fd).map_err(err2io) }
     }
 
@@ -199,7 +205,7 @@ impl WasiFd {
         unsafe { wasi::fd_filestat_set_size(self.as_raw_fd() as wasi::Fd, size).map_err(err2io) }
     }
 
-    pub fn path_filestat_get(
+    pub(crate) fn path_filestat_get(
         &self,
         flags: wasi::Lookupflags,
         path: &str,
@@ -245,7 +251,7 @@ impl WasiFd {
     }
 
     pub fn sock_accept(&self, flags: wasi::Fdflags) -> io::Result<wasi::Fd> {
-        unsafe { wasi::sock_accept(self.as_raw_fd() as wasi::Fd, flags).map_err(err2io) }
+        unsafe { wasi::sock_accept_v2(self.as_raw_fd() as wasi::Fd, flags).map_err(err2io) }
     }
 
     pub fn sock_recv(

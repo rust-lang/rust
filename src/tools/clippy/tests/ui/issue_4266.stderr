@@ -1,16 +1,16 @@
 error: the following explicit lifetimes could be elided: 'a
-  --> $DIR/issue_4266.rs:4:1
+  --> $DIR/issue_4266.rs:4:16
    |
 LL | async fn sink1<'a>(_: &'a str) {} // lint
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                ^^      ^^
    |
    = note: `-D clippy::needless-lifetimes` implied by `-D warnings`
 
 error: the following explicit lifetimes could be elided: 'a
-  --> $DIR/issue_4266.rs:8:1
+  --> $DIR/issue_4266.rs:8:21
    |
 LL | async fn one_to_one<'a>(s: &'a str) -> &'a str {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                     ^^      ^^
 
 error: methods called `new` usually take no `self`
   --> $DIR/issue_4266.rs:28:22

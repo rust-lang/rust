@@ -11,7 +11,7 @@
     thread_local
 )]
 #![no_core]
-#![allow(dead_code)]
+#![allow(dead_code, internal_features)]
 
 #[lang = "sized"]
 pub trait Sized {}
@@ -502,6 +502,9 @@ pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
     drop_in_place(to_drop);
 }
 
+#[lang = "unpin"]
+pub auto trait Unpin {}
+
 #[lang = "deref"]
 pub trait Deref {
     type Target: ?Sized;
@@ -526,7 +529,7 @@ impl<T: ?Sized, U: ?Sized> CoerceUnsized<Unique<U>> for Unique<T> where T: Unsiz
 impl<T: ?Sized, U: ?Sized> DispatchFromDyn<Unique<U>> for Unique<T> where T: Unsize<U> {}
 
 #[lang = "owned_box"]
-pub struct Box<T: ?Sized>(Unique<T>, ());
+pub struct Box<T: ?Sized, A = ()>(Unique<T>, A);
 
 impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Box<U>> for Box<T> {}
 
@@ -541,9 +544,12 @@ impl<T> Box<T> {
     }
 }
 
-impl<T: ?Sized> Drop for Box<T> {
+impl<T: ?Sized, A> Drop for Box<T, A> {
     fn drop(&mut self) {
-        // drop is currently performed by compiler.
+        // inner value is dropped by compiler
+        unsafe {
+            libc::free(self.0.pointer.0 as *mut u8);
+        }
     }
 }
 
@@ -558,11 +564,6 @@ impl<T: ?Sized> Deref for Box<T> {
 #[lang = "exchange_malloc"]
 unsafe fn allocate(size: usize, _align: usize) -> *mut u8 {
     libc::malloc(size)
-}
-
-#[lang = "box_free"]
-unsafe fn box_free<T: ?Sized>(ptr: Unique<T>, _alloc: ()) {
-    libc::free(ptr.pointer.0 as *mut u8);
 }
 
 #[lang = "drop"]

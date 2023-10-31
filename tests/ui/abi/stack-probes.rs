@@ -1,12 +1,7 @@
+// revisions: x32 x64
 // run-pass
-// ignore-arm
-// ignore-aarch64
-// ignore-mips
-// ignore-mips64
-// ignore-sparc
-// ignore-sparc64
-// ignore-loongarch64
-// ignore-wasm
+//[x32] only-x86
+//[x64] only-x86_64
 // ignore-emscripten no processes
 // ignore-sgx no processes
 // ignore-fuchsia no exception handler registered for segfault

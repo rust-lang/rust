@@ -33,14 +33,16 @@ pub(crate) fn destructure_const<'tcx>(
     let (fields, variant) = match const_.ty().kind() {
         ty::Array(inner_ty, _) | ty::Slice(inner_ty) => {
             // construct the consts for the elements of the array/slice
-            let field_consts =
-                branches.iter().map(|b| tcx.mk_const(*b, *inner_ty)).collect::<Vec<_>>();
+            let field_consts = branches
+                .iter()
+                .map(|b| ty::Const::new_value(tcx, *b, *inner_ty))
+                .collect::<Vec<_>>();
             debug!(?field_consts);
 
             (field_consts, None)
         }
         ty::Adt(def, _) if def.variants().is_empty() => bug!("unreachable"),
-        ty::Adt(def, substs) => {
+        ty::Adt(def, args) => {
             let (variant_idx, branches) = if def.is_enum() {
                 let (head, rest) = branches.split_first().unwrap();
                 (VariantIdx::from_u32(head.unwrap_leaf().try_to_u32().unwrap()), rest)
@@ -51,8 +53,8 @@ pub(crate) fn destructure_const<'tcx>(
             let mut field_consts = Vec::with_capacity(fields.len());
 
             for (field, field_valtree) in iter::zip(fields, branches) {
-                let field_ty = field.ty(tcx, substs);
-                let field_const = tcx.mk_const(*field_valtree, field_ty);
+                let field_ty = field.ty(tcx, args);
+                let field_const = ty::Const::new_value(tcx, *field_valtree, field_ty);
                 field_consts.push(field_const);
             }
             debug!(?field_consts);
@@ -61,7 +63,7 @@ pub(crate) fn destructure_const<'tcx>(
         }
         ty::Tuple(elem_tys) => {
             let fields = iter::zip(*elem_tys, branches)
-                .map(|(elem_ty, elem_valtree)| tcx.mk_const(*elem_valtree, elem_ty))
+                .map(|(elem_ty, elem_valtree)| ty::Const::new_value(tcx, *elem_valtree, elem_ty))
                 .collect::<Vec<_>>();
 
             (fields, None)
@@ -78,8 +80,9 @@ pub(crate) fn destructure_const<'tcx>(
 fn check_binop(op: mir::BinOp) -> bool {
     use mir::BinOp::*;
     match op {
-        Add | Sub | Mul | Div | Rem | BitXor | BitAnd | BitOr | Shl | Shr | Eq | Lt | Le | Ne
-        | Ge | Gt => true,
+        Add | AddUnchecked | Sub | SubUnchecked | Mul | MulUnchecked | Div | Rem | BitXor
+        | BitAnd | BitOr | Shl | ShlUnchecked | Shr | ShrUnchecked | Eq | Lt | Le | Ne | Ge
+        | Gt => true,
         Offset => false,
     }
 }
@@ -116,7 +119,7 @@ fn recurse_build<'tcx>(
             let sp = node.span;
             match tcx.at(sp).lit_to_const(LitToConstInput { lit: &lit.node, ty: node.ty, neg }) {
                 Ok(c) => c,
-                Err(LitToConstError::Reported(guar)) => tcx.const_error(node.ty, guar),
+                Err(LitToConstError::Reported(guar)) => ty::Const::new_error(tcx, guar, node.ty),
                 Err(LitToConstError::TypeError) => {
                     bug!("encountered type error in lit_to_const")
                 }
@@ -124,17 +127,17 @@ fn recurse_build<'tcx>(
         }
         &ExprKind::NonHirLiteral { lit, user_ty: _ } => {
             let val = ty::ValTree::from_scalar_int(lit);
-            tcx.mk_const(val, node.ty)
+            ty::Const::new_value(tcx, val, node.ty)
         }
         &ExprKind::ZstLiteral { user_ty: _ } => {
             let val = ty::ValTree::zst();
-            tcx.mk_const(val, node.ty)
+            ty::Const::new_value(tcx, val, node.ty)
         }
-        &ExprKind::NamedConst { def_id, substs, user_ty: _ } => {
-            let uneval = ty::UnevaluatedConst::new(def_id, substs);
-            tcx.mk_const(uneval, node.ty)
+        &ExprKind::NamedConst { def_id, args, user_ty: _ } => {
+            let uneval = ty::UnevaluatedConst::new(def_id, args);
+            ty::Const::new_unevaluated(tcx, uneval, node.ty)
         }
-        ExprKind::ConstParam { param, .. } => tcx.mk_const(*param, node.ty),
+        ExprKind::ConstParam { param, .. } => ty::Const::new_param(tcx, *param, node.ty),
 
         ExprKind::Call { fun, args, .. } => {
             let fun = recurse_build(tcx, body, *fun, root_span)?;
@@ -144,16 +147,16 @@ fn recurse_build<'tcx>(
                 new_args.push(recurse_build(tcx, body, id, root_span)?);
             }
             let new_args = tcx.mk_const_list(&new_args);
-            tcx.mk_const(Expr::FunctionCall(fun, new_args), node.ty)
+            ty::Const::new_expr(tcx, Expr::FunctionCall(fun, new_args), node.ty)
         }
         &ExprKind::Binary { op, lhs, rhs } if check_binop(op) => {
             let lhs = recurse_build(tcx, body, lhs, root_span)?;
             let rhs = recurse_build(tcx, body, rhs, root_span)?;
-            tcx.mk_const(Expr::Binop(op, lhs, rhs), node.ty)
+            ty::Const::new_expr(tcx, Expr::Binop(op, lhs, rhs), node.ty)
         }
         &ExprKind::Unary { op, arg } if check_unop(op) => {
             let arg = recurse_build(tcx, body, arg, root_span)?;
-            tcx.mk_const(Expr::UnOp(op, arg), node.ty)
+            ty::Const::new_expr(tcx, Expr::UnOp(op, arg), node.ty)
         }
         // This is necessary so that the following compiles:
         //
@@ -171,14 +174,14 @@ fn recurse_build<'tcx>(
         }
         // `ExprKind::Use` happens when a `hir::ExprKind::Cast` is a
         // "coercion cast" i.e. using a coercion or is a no-op.
-        // This is important so that `N as usize as usize` doesnt unify with `N as usize`. (untested)
+        // This is important so that `N as usize as usize` doesn't unify with `N as usize`. (untested)
         &ExprKind::Use { source } => {
             let arg = recurse_build(tcx, body, source, root_span)?;
-            tcx.mk_const(Expr::Cast(CastKind::Use, arg, node.ty), node.ty)
+            ty::Const::new_expr(tcx, Expr::Cast(CastKind::Use, arg, node.ty), node.ty)
         }
         &ExprKind::Cast { source } => {
             let arg = recurse_build(tcx, body, source, root_span)?;
-            tcx.mk_const(Expr::Cast(CastKind::As, arg, node.ty), node.ty)
+            ty::Const::new_expr(tcx, Expr::Cast(CastKind::As, arg, node.ty), node.ty)
         }
         ExprKind::Borrow { arg, .. } => {
             let arg_node = &body.exprs[*arg];
@@ -218,7 +221,7 @@ fn recurse_build<'tcx>(
             maybe_supported_error(GenericConstantTooComplexSub::AdtNotSupported(node.span))?
         }
         // dont know if this is correct
-        ExprKind::Pointer { .. } => {
+        ExprKind::PointerCoercion { .. } => {
             error(GenericConstantTooComplexSub::PointerNotSupported(node.span))?
         }
         ExprKind::Yield { .. } => {
@@ -240,7 +243,8 @@ fn recurse_build<'tcx>(
         ExprKind::Assign { .. } | ExprKind::AssignOp { .. } => {
             error(GenericConstantTooComplexSub::AssignNotSupported(node.span))?
         }
-        ExprKind::Closure { .. } | ExprKind::Return { .. } => {
+        // FIXME(explicit_tail_calls): maybe get `become` a new error
+        ExprKind::Closure { .. } | ExprKind::Return { .. } | ExprKind::Become { .. } => {
             error(GenericConstantTooComplexSub::ClosureAndReturnNotSupported(node.span))?
         }
         // let expressions imply control flow
@@ -302,8 +306,9 @@ impl<'a, 'tcx> IsThirPolymorphic<'a, 'tcx> {
         }
 
         match expr.kind {
-            thir::ExprKind::NamedConst { substs, .. }
-            | thir::ExprKind::ConstBlock { substs, .. } => substs.has_non_region_param(),
+            thir::ExprKind::NamedConst { args, .. } | thir::ExprKind::ConstBlock { args, .. } => {
+                args.has_non_region_param()
+            }
             thir::ExprKind::ConstParam { .. } => true,
             thir::ExprKind::Repeat { value, count } => {
                 self.visit_expr(&self.thir()[value]);
@@ -320,7 +325,7 @@ impl<'a, 'tcx> IsThirPolymorphic<'a, 'tcx> {
             | thir::ExprKind::Cast { .. }
             | thir::ExprKind::Use { .. }
             | thir::ExprKind::NeverToAny { .. }
-            | thir::ExprKind::Pointer { .. }
+            | thir::ExprKind::PointerCoercion { .. }
             | thir::ExprKind::Loop { .. }
             | thir::ExprKind::Let { .. }
             | thir::ExprKind::Match { .. }
@@ -336,6 +341,7 @@ impl<'a, 'tcx> IsThirPolymorphic<'a, 'tcx> {
             | thir::ExprKind::Break { .. }
             | thir::ExprKind::Continue { .. }
             | thir::ExprKind::Return { .. }
+            | thir::ExprKind::Become { .. }
             | thir::ExprKind::Array { .. }
             | thir::ExprKind::Tuple { .. }
             | thir::ExprKind::Adt(_)
@@ -419,7 +425,7 @@ pub fn thir_abstract_const(
 
     let root_span = body.exprs[body_id].span;
 
-    Ok(Some(ty::EarlyBinder(recurse_build(tcx, body, body_id, root_span)?)))
+    Ok(Some(ty::EarlyBinder::bind(recurse_build(tcx, body, body_id, root_span)?)))
 }
 
 pub fn provide(providers: &mut Providers) {

@@ -22,6 +22,10 @@ function contentToDiffLine(key, value) {
     return `"${key}": "${value}",`;
 }
 
+function shouldIgnoreField(fieldName) {
+    return fieldName === "query" || fieldName === "correction";
+}
+
 // This function is only called when no matching result was found and therefore will only display
 // the diff between the two items.
 function betterLookingDiff(entry, data) {
@@ -135,6 +139,9 @@ function valueCheck(fullPath, expected, result, error_text, queryName) {
     } else if (expected !== null && typeof expected !== "undefined" &&
                expected.constructor == Object) { // eslint-disable-line eqeqeq
         for (const key in expected) {
+            if (shouldIgnoreField(key)) {
+                continue;
+            }
             if (!Object.prototype.hasOwnProperty.call(expected, key)) {
                 continue;
             }
@@ -184,6 +191,9 @@ function runSearch(query, expected, doSearch, loadedFile, queryName) {
     const error_text = [];
 
     for (const key in expected) {
+        if (shouldIgnoreField(key)) {
+            continue;
+        }
         if (!Object.prototype.hasOwnProperty.call(expected, key)) {
             continue;
         }
@@ -260,41 +270,49 @@ function checkResult(error_text, loadedFile, displaySuccess) {
     return 1;
 }
 
-function runCheck(loadedFile, key, callback) {
-    const expected = loadedFile[key];
-    const query = loadedFile.QUERY;
-
-    if (Array.isArray(query)) {
-        if (!Array.isArray(expected)) {
-            console.log("FAILED");
-            console.log(`==> If QUERY variable is an array, ${key} should be an array too`);
-            return 1;
-        } else if (query.length !== expected.length) {
-            console.log("FAILED");
-            console.log(`==> QUERY variable should have the same length as ${key}`);
-            return 1;
+function runCheckInner(callback, loadedFile, entry, getCorrections, extra) {
+    if (typeof entry.query !== "string") {
+        console.log("FAILED");
+        console.log("==> Missing `query` field");
+        return false;
+    }
+    let error_text = callback(entry.query, entry, extra ? "[ query `" + entry.query + "`]" : "");
+    if (checkResult(error_text, loadedFile, false) !== 0) {
+        return false;
+    }
+    if (entry.correction !== undefined) {
+        error_text = runCorrections(entry.query, entry.correction, getCorrections, loadedFile);
+        if (checkResult(error_text, loadedFile, false) !== 0) {
+            return false;
         }
-        for (let i = 0; i < query.length; ++i) {
-            const error_text = callback(query[i], expected[i], "[ query `" + query[i] + "`]");
-            if (checkResult(error_text, loadedFile, false) !== 0) {
+    }
+    return true;
+}
+
+function runCheck(loadedFile, key, getCorrections, callback) {
+    const expected = loadedFile[key];
+
+    if (Array.isArray(expected)) {
+        for (const entry of expected) {
+            if (!runCheckInner(callback, loadedFile, entry, getCorrections, true)) {
                 return 1;
             }
         }
-        console.log("OK");
-    } else {
-        const error_text = callback(query, expected, "");
-        if (checkResult(error_text, loadedFile, true) !== 0) {
-            return 1;
-        }
+    } else if (!runCheckInner(callback, loadedFile, expected, getCorrections, false)) {
+        return 1;
     }
+    console.log("OK");
     return 0;
+}
+
+function hasCheck(content, checkName) {
+    return content.startsWith(`const ${checkName}`) || content.includes(`\nconst ${checkName}`);
 }
 
 function runChecks(testFile, doSearch, parseQuery, getCorrections) {
     let checkExpected = false;
     let checkParsed = false;
-    let checkCorrections = false;
-    let testFileContent = readFile(testFile) + "exports.QUERY = QUERY;";
+    let testFileContent = readFile(testFile);
 
     if (testFileContent.indexOf("FILTER_CRATE") !== -1) {
         testFileContent += "exports.FILTER_CRATE = FILTER_CRATE;";
@@ -302,21 +320,17 @@ function runChecks(testFile, doSearch, parseQuery, getCorrections) {
         testFileContent += "exports.FILTER_CRATE = null;";
     }
 
-    if (testFileContent.indexOf("\nconst EXPECTED") !== -1) {
+    if (hasCheck(testFileContent, "EXPECTED")) {
         testFileContent += "exports.EXPECTED = EXPECTED;";
         checkExpected = true;
     }
-    if (testFileContent.indexOf("\nconst PARSED") !== -1) {
+    if (hasCheck(testFileContent, "PARSED")) {
         testFileContent += "exports.PARSED = PARSED;";
         checkParsed = true;
     }
-    if (testFileContent.indexOf("\nconst CORRECTIONS") !== -1) {
-        testFileContent += "exports.CORRECTIONS = CORRECTIONS;";
-        checkCorrections = true;
-    }
-    if (!checkParsed && !checkExpected && !checkCorrections) {
+    if (!checkParsed && !checkExpected) {
         console.log("FAILED");
-        console.log("==> At least `PARSED`, `EXPECTED`, or `CORRECTIONS` is needed!");
+        console.log("==> At least `PARSED` or `EXPECTED` is needed!");
         return 1;
     }
 
@@ -324,18 +338,13 @@ function runChecks(testFile, doSearch, parseQuery, getCorrections) {
     let res = 0;
 
     if (checkExpected) {
-        res += runCheck(loadedFile, "EXPECTED", (query, expected, text) => {
+        res += runCheck(loadedFile, "EXPECTED", getCorrections, (query, expected, text) => {
             return runSearch(query, expected, doSearch, loadedFile, text);
         });
     }
     if (checkParsed) {
-        res += runCheck(loadedFile, "PARSED", (query, expected, text) => {
+        res += runCheck(loadedFile, "PARSED", getCorrections, (query, expected, text) => {
             return runParser(query, expected, parseQuery, text);
-        });
-    }
-    if (checkCorrections) {
-        res += runCheck(loadedFile, "CORRECTIONS", (query, expected) => {
-            return runCorrections(query, expected, getCorrections, loadedFile);
         });
     }
     return res;
@@ -367,8 +376,7 @@ function loadSearchJS(doc_folder, resource_suffix) {
         },
         getCorrections: function(queryStr, filterCrate, currentCrate) {
             const parsedQuery = searchModule.parseQuery(queryStr);
-            searchModule.execQuery(parsedQuery, searchWords,
-                filterCrate, currentCrate);
+            searchModule.execQuery(parsedQuery, searchWords, filterCrate, currentCrate);
             return parsedQuery.correction;
         },
         parseQuery: searchModule.parseQuery,

@@ -4,10 +4,8 @@ use clippy_utils::sugg;
 use rustc_errors::Applicability;
 use rustc_hir::Expr;
 use rustc_lint::LateContext;
-use rustc_middle::{
-    query::Key,
-    ty::{self, Ty},
-};
+use rustc_middle::query::Key;
+use rustc_middle::ty::{self, Ty};
 use rustc_span::symbol::sym;
 
 /// Checks for `transmute_int_to_non_zero` lint.

@@ -1,0 +1,31 @@
+error[E0599]: the function or associated item `partial_cmp` exists for struct `A`, but its trait bounds were not satisfied
+  --> $DIR/derive-sugg-arg-arity.rs:5:23
+   |
+LL | pub struct A;
+   | ------------
+   | |
+   | function or associated item `partial_cmp` not found for this struct
+   | doesn't satisfy `A: Iterator`
+   | doesn't satisfy `A: PartialOrd<_>`
+...
+LL |         _ => match A::partial_cmp() {},
+   |                       ^^^^^^^^^^^ function or associated item cannot be called on `A` due to unsatisfied trait bounds
+   |
+   = note: the following trait bounds were not satisfied:
+           `A: PartialOrd<_>`
+           which is required by `&A: PartialOrd<&_>`
+           `A: PartialOrd<_>`
+           which is required by `&mut A: PartialOrd<&mut _>`
+           `A: Iterator`
+           which is required by `&mut A: Iterator`
+note: the trait `Iterator` must be implemented
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+help: consider annotating `A` with `#[derive(PartialEq, PartialOrd)]`
+   |
+LL + #[derive(PartialEq, PartialOrd)]
+LL | pub struct A;
+   |
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0599`.

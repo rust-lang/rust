@@ -62,11 +62,11 @@ pub(super) fn check_fn<'a, 'tcx>(
             fcx.require_type_is_sized(yield_ty, span, traits::SizedYieldType);
             yield_ty
         } else {
-            tcx.mk_unit()
+            Ty::new_unit(tcx,)
         };
 
         // Resume type defaults to `()` if the generator has no argument.
-        let resume_ty = fn_sig.inputs().get(0).copied().unwrap_or_else(|| tcx.mk_unit());
+        let resume_ty = fn_sig.inputs().get(0).copied().unwrap_or_else(|| Ty::new_unit(tcx,));
 
         fcx.resume_yield_tys = Some((resume_ty, yield_ty));
     }
@@ -80,7 +80,7 @@ pub(super) fn check_fn<'a, 'tcx>(
         let va_list_did = tcx.require_lang_item(LangItem::VaList, Some(span));
         let region = fcx.next_region_var(RegionVariableOrigin::MiscVariable(span));
 
-        tcx.type_of(va_list_did).subst(tcx, &[region.into()])
+        tcx.type_of(va_list_did).instantiate(tcx, &[region.into()])
     });
 
     // Add formal parameters.
@@ -89,14 +89,23 @@ pub(super) fn check_fn<'a, 'tcx>(
     for (idx, (param_ty, param)) in inputs_fn.chain(maybe_va_list).zip(body.params).enumerate() {
         // Check the pattern.
         let ty_span = try { inputs_hir?.get(idx)?.span };
-        fcx.check_pat_top(&param.pat, param_ty, ty_span, None);
+        fcx.check_pat_top(&param.pat, param_ty, ty_span, None, None);
 
         // Check that argument is Sized.
-        // The check for a non-trivial pattern is a hack to avoid duplicate warnings
-        // for simple cases like `fn foo(x: Trait)`,
-        // where we would error once on the parameter as a whole, and once on the binding `x`.
-        if param.pat.simple_ident().is_none() && !params_can_be_unsized {
-            fcx.require_type_is_sized(param_ty, param.pat.span, traits::SizedArgumentType(ty_span));
+        if !params_can_be_unsized {
+            fcx.require_type_is_sized(
+                param_ty,
+                param.pat.span,
+                // ty_span == binding_span iff this is a closure parameter with no type ascription,
+                // or if it's an implicit `self` parameter
+                traits::SizedArgumentType(
+                    if ty_span == Some(param.span) && tcx.is_closure(fn_def_id.into()) {
+                        None
+                    } else {
+                        ty_span
+                    },
+                ),
+            );
         }
 
         fcx.write_ty(param.hir_id, param_ty);
@@ -247,10 +256,10 @@ fn check_lang_start_fn<'tcx>(
         // for example `start`'s generic should be a type parameter
         let generics = tcx.generics_of(def_id);
         let fn_generic = generics.param_at(0, tcx);
-        let generic_ty = tcx.mk_ty_param(fn_generic.index, fn_generic.name);
+        let generic_ty = Ty::new_param(tcx, fn_generic.index, fn_generic.name);
         let expected_fn_sig =
             tcx.mk_fn_sig([], generic_ty, false, hir::Unsafety::Normal, Abi::Rust);
-        let expected_ty = tcx.mk_fn_ptr(Binder::dummy(expected_fn_sig));
+        let expected_ty = Ty::new_fn_ptr(tcx, Binder::dummy(expected_fn_sig));
 
         // we emit the same error to suggest changing the arg no matter what's wrong with the arg
         let emit_main_fn_arg_err = || {
@@ -307,9 +316,9 @@ fn check_lang_start_fn<'tcx>(
 
         if !argv_is_okay {
             let inner_ptr_ty =
-                tcx.mk_ptr(ty::TypeAndMut { mutbl: hir::Mutability::Not, ty: tcx.types.u8 });
+                Ty::new_ptr(tcx, ty::TypeAndMut { mutbl: hir::Mutability::Not, ty: tcx.types.u8 });
             let expected_ty =
-                tcx.mk_ptr(ty::TypeAndMut { mutbl: hir::Mutability::Not, ty: inner_ptr_ty });
+                Ty::new_ptr(tcx, ty::TypeAndMut { mutbl: hir::Mutability::Not, ty: inner_ptr_ty });
             tcx.sess.emit_err(LangStartIncorrectParam {
                 param_span: decl.inputs[2].span,
                 param_num: 3,

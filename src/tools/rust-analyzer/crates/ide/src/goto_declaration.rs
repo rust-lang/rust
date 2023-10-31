@@ -37,11 +37,15 @@ pub(crate) fn goto_declaration(
                 match parent {
                     ast::NameRef(name_ref) => match NameRefClass::classify(&sema, &name_ref)? {
                         NameRefClass::Definition(it) => Some(it),
-                        NameRefClass::FieldShorthand { field_ref, .. } => return field_ref.try_to_nav(db),
+                        NameRefClass::FieldShorthand { field_ref, .. } =>
+                            return field_ref.try_to_nav(db),
+                        NameRefClass::ExternCrateShorthand { decl, .. } =>
+                            return decl.try_to_nav(db),
                     },
                     ast::Name(name) => match NameClass::classify(&sema, &name)? {
                         NameClass::Definition(it) | NameClass::ConstReference(it) => Some(it),
-                        NameClass::PatFieldShorthand { field_ref, .. } => return field_ref.try_to_nav(db),
+                        NameClass::PatFieldShorthand { field_ref, .. } =>
+                            return field_ref.try_to_nav(db),
                     },
                     _ => None
                 }
@@ -53,6 +57,7 @@ pub(crate) fn goto_declaration(
                 Definition::Const(c) => c.as_assoc_item(db),
                 Definition::TypeAlias(ta) => ta.as_assoc_item(db),
                 Definition::Function(f) => f.as_assoc_item(db),
+                Definition::ExternCrateDecl(it) => return it.try_to_nav(db),
                 _ => None,
             }?;
 
@@ -210,5 +215,31 @@ fn main() {
 }
 "#,
         );
+    }
+
+    #[test]
+    fn goto_decl_for_extern_crate() {
+        check(
+            r#"
+//- /main.rs crate:main deps:std
+extern crate std$0;
+         /// ^^^
+//- /std/lib.rs crate:std
+// empty
+"#,
+        )
+    }
+
+    #[test]
+    fn goto_decl_for_renamed_extern_crate() {
+        check(
+            r#"
+//- /main.rs crate:main deps:std
+extern crate std as abc$0;
+                /// ^^^
+//- /std/lib.rs crate:std
+// empty
+"#,
+        )
     }
 }

@@ -1,0 +1,25 @@
+warning: `Class` is ambiguous
+  --> $DIR/ambiguous-5.rs:13:23
+   |
+LL |     struct MarkRecord(Class);
+   |                       ^^^^^ ambiguous name
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `Class` could refer to the struct imported here
+  --> $DIR/ambiguous-5.rs:12:9
+   |
+LL |     use super::*;
+   |         ^^^^^^^^
+   = help: consider adding an explicit import of `Class` to disambiguate
+note: `Class` could also refer to the struct imported here
+  --> $DIR/ambiguous-5.rs:11:9
+   |
+LL |     use super::gsubgpos::*;
+   |         ^^^^^^^^^^^^^^^^^^
+   = help: consider adding an explicit import of `Class` to disambiguate
+   = note: `#[warn(ambiguous_glob_imports)]` on by default
+
+warning: 1 warning emitted
+

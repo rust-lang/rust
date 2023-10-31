@@ -1,0 +1,12 @@
+error[E0050]: method `come_on_a_little_more_effort` has 0 parameters but the declaration in trait `TooLittle::come_on_a_little_more_effort` has 3
+  --> $DIR/method-signature-matches.rs:47:5
+   |
+LL |     fn come_on_a_little_more_effort(_: (), _: (), _: ()) -> impl Sized;
+   |                                        ---------------- trait requires 3 parameters
+...
+LL |     fn come_on_a_little_more_effort() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected 3 parameters, found 0
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0050`.

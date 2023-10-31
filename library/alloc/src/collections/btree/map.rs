@@ -613,8 +613,6 @@ impl<K, V> BTreeMap<K, V> {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// use std::collections::BTreeMap;
     ///
@@ -635,8 +633,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// Clears the map, removing all elements.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// use std::collections::BTreeMap;
@@ -660,8 +656,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// Makes a new empty BTreeMap with a reasonable choice for B.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// # #![feature(allocator_api)]
@@ -687,8 +681,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// on the borrowed form *must* match the ordering on the key type.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// use std::collections::BTreeMap;
@@ -743,8 +735,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// The key in this pair is the minimum key in the map.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// use std::collections::BTreeMap;
@@ -829,8 +819,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// The key in this pair is the maximum key in the map.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// use std::collections::BTreeMap;
@@ -917,8 +905,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// use std::collections::BTreeMap;
     ///
@@ -942,8 +928,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// on the borrowed form *must* match the ordering on the key type.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// use std::collections::BTreeMap;
@@ -982,8 +966,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// use std::collections::BTreeMap;
     ///
@@ -1017,8 +999,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// #![feature(map_try_insert)]
     ///
@@ -1051,8 +1031,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// use std::collections::BTreeMap;
     ///
@@ -1077,8 +1055,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// on the borrowed form *must* match the ordering on the key type.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// use std::collections::BTreeMap;
@@ -1132,7 +1108,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
         K: Ord,
         F: FnMut(&K, &mut V) -> bool,
     {
-        self.drain_filter(|k, v| !f(k, v));
+        self.extract_if(|k, v| !f(k, v)).for_each(drop);
     }
 
     /// Moves all elements from `other` into `self`, leaving `other` empty.
@@ -1208,8 +1184,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// use std::collections::BTreeMap;
     /// use std::ops::Bound::Included;
@@ -1251,8 +1225,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// use std::collections::BTreeMap;
     ///
@@ -1282,8 +1254,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// Gets the given key's corresponding entry in the map for in-place manipulation.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// use std::collections::BTreeMap;
@@ -1335,8 +1305,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// including the key.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// use std::collections::BTreeMap;
@@ -1395,40 +1363,37 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// The iterator also lets you mutate the value of each element in the
     /// closure, regardless of whether you choose to keep or remove it.
     ///
-    /// If the iterator is only partially consumed or not consumed at all, each
-    /// of the remaining elements is still subjected to the closure, which may
-    /// change its value and, by returning `true`, have the element removed and
-    /// dropped.
+    /// If the returned `ExtractIf` is not exhausted, e.g. because it is dropped without iterating
+    /// or the iteration short-circuits, then the remaining elements will be retained.
+    /// Use [`retain`] with a negated predicate if you do not need the returned iterator.
     ///
-    /// It is unspecified how many more elements will be subjected to the
-    /// closure if a panic occurs in the closure, or a panic occurs while
-    /// dropping an element, or if the `DrainFilter` value is leaked.
+    /// [`retain`]: BTreeMap::retain
     ///
     /// # Examples
     ///
     /// Splitting a map into even and odd keys, reusing the original map:
     ///
     /// ```
-    /// #![feature(btree_drain_filter)]
+    /// #![feature(btree_extract_if)]
     /// use std::collections::BTreeMap;
     ///
     /// let mut map: BTreeMap<i32, i32> = (0..8).map(|x| (x, x)).collect();
-    /// let evens: BTreeMap<_, _> = map.drain_filter(|k, _v| k % 2 == 0).collect();
+    /// let evens: BTreeMap<_, _> = map.extract_if(|k, _v| k % 2 == 0).collect();
     /// let odds = map;
     /// assert_eq!(evens.keys().copied().collect::<Vec<_>>(), [0, 2, 4, 6]);
     /// assert_eq!(odds.keys().copied().collect::<Vec<_>>(), [1, 3, 5, 7]);
     /// ```
-    #[unstable(feature = "btree_drain_filter", issue = "70530")]
-    pub fn drain_filter<F>(&mut self, pred: F) -> DrainFilter<'_, K, V, F, A>
+    #[unstable(feature = "btree_extract_if", issue = "70530")]
+    pub fn extract_if<F>(&mut self, pred: F) -> ExtractIf<'_, K, V, F, A>
     where
         K: Ord,
         F: FnMut(&K, &mut V) -> bool,
     {
-        let (inner, alloc) = self.drain_filter_inner();
-        DrainFilter { pred, inner, alloc }
+        let (inner, alloc) = self.extract_if_inner();
+        ExtractIf { pred, inner, alloc }
     }
 
-    pub(super) fn drain_filter_inner(&mut self) -> (DrainFilterInner<'_, K, V>, A)
+    pub(super) fn extract_if_inner(&mut self) -> (ExtractIfInner<'_, K, V>, A)
     where
         K: Ord,
     {
@@ -1436,7 +1401,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
             let (root, dormant_root) = DormantMutRef::new(root);
             let front = root.borrow_mut().first_leaf_edge();
             (
-                DrainFilterInner {
+                ExtractIfInner {
                     length: &mut self.length,
                     dormant_root: Some(dormant_root),
                     cur_leaf_edge: Some(front),
@@ -1445,7 +1410,7 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
             )
         } else {
             (
-                DrainFilterInner {
+                ExtractIfInner {
                     length: &mut self.length,
                     dormant_root: None,
                     cur_leaf_edge: None,
@@ -1899,9 +1864,10 @@ impl<K, V> Default for Values<'_, K, V> {
     }
 }
 
-/// An iterator produced by calling `drain_filter` on BTreeMap.
-#[unstable(feature = "btree_drain_filter", issue = "70530")]
-pub struct DrainFilter<
+/// An iterator produced by calling `extract_if` on BTreeMap.
+#[unstable(feature = "btree_extract_if", issue = "70530")]
+#[must_use = "iterators are lazy and do nothing unless consumed"]
+pub struct ExtractIf<
     'a,
     K,
     V,
@@ -1911,13 +1877,13 @@ pub struct DrainFilter<
     F: 'a + FnMut(&K, &mut V) -> bool,
 {
     pred: F,
-    inner: DrainFilterInner<'a, K, V>,
+    inner: ExtractIfInner<'a, K, V>,
     /// The BTreeMap will outlive this IntoIter so we don't care about drop order for `alloc`.
     alloc: A,
 }
-/// Most of the implementation of DrainFilter are generic over the type
-/// of the predicate, thus also serving for BTreeSet::DrainFilter.
-pub(super) struct DrainFilterInner<'a, K, V> {
+/// Most of the implementation of ExtractIf are generic over the type
+/// of the predicate, thus also serving for BTreeSet::ExtractIf.
+pub(super) struct ExtractIfInner<'a, K, V> {
     /// Reference to the length field in the borrowed map, updated live.
     length: &'a mut usize,
     /// Buried reference to the root field in the borrowed map.
@@ -1929,30 +1895,20 @@ pub(super) struct DrainFilterInner<'a, K, V> {
     cur_leaf_edge: Option<Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>>,
 }
 
-#[unstable(feature = "btree_drain_filter", issue = "70530")]
-impl<K, V, F, A: Allocator + Clone> Drop for DrainFilter<'_, K, V, F, A>
-where
-    F: FnMut(&K, &mut V) -> bool,
-{
-    fn drop(&mut self) {
-        self.for_each(drop);
-    }
-}
-
-#[unstable(feature = "btree_drain_filter", issue = "70530")]
-impl<K, V, F> fmt::Debug for DrainFilter<'_, K, V, F>
+#[unstable(feature = "btree_extract_if", issue = "70530")]
+impl<K, V, F> fmt::Debug for ExtractIf<'_, K, V, F>
 where
     K: fmt::Debug,
     V: fmt::Debug,
     F: FnMut(&K, &mut V) -> bool,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("DrainFilter").field(&self.inner.peek()).finish()
+        f.debug_tuple("ExtractIf").field(&self.inner.peek()).finish()
     }
 }
 
-#[unstable(feature = "btree_drain_filter", issue = "70530")]
-impl<K, V, F, A: Allocator + Clone> Iterator for DrainFilter<'_, K, V, F, A>
+#[unstable(feature = "btree_extract_if", issue = "70530")]
+impl<K, V, F, A: Allocator + Clone> Iterator for ExtractIf<'_, K, V, F, A>
 where
     F: FnMut(&K, &mut V) -> bool,
 {
@@ -1967,14 +1923,14 @@ where
     }
 }
 
-impl<'a, K, V> DrainFilterInner<'a, K, V> {
+impl<'a, K, V> ExtractIfInner<'a, K, V> {
     /// Allow Debug implementations to predict the next element.
     pub(super) fn peek(&self) -> Option<(&K, &V)> {
         let edge = self.cur_leaf_edge.as_ref()?;
         edge.reborrow().next_kv().ok().map(Handle::into_kv)
     }
 
-    /// Implementation of a typical `DrainFilter::next` method, given the predicate.
+    /// Implementation of a typical `ExtractIf::next` method, given the predicate.
     pub(super) fn next<F, A: Allocator + Clone>(&mut self, pred: &mut F, alloc: A) -> Option<(K, V)>
     where
         F: FnMut(&K, &mut V) -> bool,
@@ -2001,7 +1957,7 @@ impl<'a, K, V> DrainFilterInner<'a, K, V> {
         None
     }
 
-    /// Implementation of a typical `DrainFilter::size_hint` method.
+    /// Implementation of a typical `ExtractIf::size_hint` method.
     pub(super) fn size_hint(&self) -> (usize, Option<usize>) {
         // In most of the btree iterators, `self.length` is the number of elements
         // yet to be visited. Here, it includes elements that were visited and that
@@ -2011,8 +1967,8 @@ impl<'a, K, V> DrainFilterInner<'a, K, V> {
     }
 }
 
-#[unstable(feature = "btree_drain_filter", issue = "70530")]
-impl<K, V, F> FusedIterator for DrainFilter<'_, K, V, F> where F: FnMut(&K, &mut V) -> bool {}
+#[unstable(feature = "btree_extract_if", issue = "70530")]
+impl<K, V, F> FusedIterator for ExtractIf<'_, K, V, F> where F: FnMut(&K, &mut V) -> bool {}
 
 #[stable(feature = "btree_range", since = "1.17.0")]
 impl<'a, K, V> Iterator for Range<'a, K, V> {
@@ -2400,8 +2356,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// use std::collections::BTreeMap;
     ///
@@ -2431,8 +2385,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// Gets a mutable iterator over the entries of the map, sorted by key.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// use std::collections::BTreeMap;
@@ -2465,8 +2417,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// use std::collections::BTreeMap;
     ///
@@ -2486,8 +2436,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// use std::collections::BTreeMap;
     ///
@@ -2506,8 +2454,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// Gets a mutable iterator over the values of the map, in order by key.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// use std::collections::BTreeMap;
@@ -2533,8 +2479,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// use std::collections::BTreeMap;
     ///
@@ -2557,8 +2501,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// Returns `true` if the map contains no elements.
     ///
     /// # Examples
-    ///
-    /// Basic usage:
     ///
     /// ```
     /// use std::collections::BTreeMap;
@@ -2590,8 +2532,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// #![feature(btree_cursors)]
     ///
@@ -2603,6 +2543,8 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// a.insert(2, "b");
     /// a.insert(3, "c");
     /// a.insert(4, "c");
+    /// let cursor = a.lower_bound(Bound::Included(&2));
+    /// assert_eq!(cursor.key(), Some(&2));
     /// let cursor = a.lower_bound(Bound::Excluded(&2));
     /// assert_eq!(cursor.key(), Some(&3));
     /// ```
@@ -2631,8 +2573,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// #![feature(btree_cursors)]
     ///
@@ -2644,6 +2584,8 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// a.insert(2, "b");
     /// a.insert(3, "c");
     /// a.insert(4, "c");
+    /// let cursor = a.lower_bound_mut(Bound::Included(&2));
+    /// assert_eq!(cursor.key(), Some(&2));
     /// let cursor = a.lower_bound_mut(Bound::Excluded(&2));
     /// assert_eq!(cursor.key(), Some(&3));
     /// ```
@@ -2685,8 +2627,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// #![feature(btree_cursors)]
     ///
@@ -2698,6 +2638,8 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// a.insert(2, "b");
     /// a.insert(3, "c");
     /// a.insert(4, "c");
+    /// let cursor = a.upper_bound(Bound::Included(&3));
+    /// assert_eq!(cursor.key(), Some(&3));
     /// let cursor = a.upper_bound(Bound::Excluded(&3));
     /// assert_eq!(cursor.key(), Some(&2));
     /// ```
@@ -2726,8 +2668,6 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     ///
     /// # Examples
     ///
-    /// Basic usage:
-    ///
     /// ```
     /// #![feature(btree_cursors)]
     ///
@@ -2739,6 +2679,8 @@ impl<K, V, A: Allocator + Clone> BTreeMap<K, V, A> {
     /// a.insert(2, "b");
     /// a.insert(3, "c");
     /// a.insert(4, "c");
+    /// let cursor = a.upper_bound_mut(Bound::Included(&3));
+    /// assert_eq!(cursor.key(), Some(&3));
     /// let cursor = a.upper_bound_mut(Bound::Excluded(&3));
     /// assert_eq!(cursor.key(), Some(&2));
     /// ```

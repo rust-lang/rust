@@ -5,16 +5,16 @@ use std::fmt::Debug;
 
 type Foo = impl Debug;
 
-fn foo1() -> u32 {
+fn foo1() -> (u32, Foo) {
     let x: Foo = 22_u32;
-    x
+    (x, todo!())
 }
 
-fn foo2() -> u32 {
+fn foo2() -> (u32, Foo) {
     let x: Foo = 22_u32;
     let y: Foo = x;
     same_type((x, y)); //~ ERROR use of moved value
-    y //~ ERROR use of moved value
+    (y, todo!()) //~ ERROR use of moved value
 }
 
 fn same_type<T>(x: (T, T)) {}

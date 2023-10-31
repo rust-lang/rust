@@ -7,6 +7,7 @@
     clippy::no_effect,
     clippy::if_same_then_else,
     clippy::equatable_if_let,
+    clippy::needless_if,
     clippy::needless_return,
     clippy::self_named_constructors
 )]

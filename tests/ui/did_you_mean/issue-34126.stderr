@@ -19,9 +19,8 @@ error[E0502]: cannot borrow `self` as mutable because it is also borrowed as imm
   --> $DIR/issue-34126.rs:6:18
    |
 LL |         self.run(&mut self);
-   |         ---------^^^^^^^^^-
-   |         |    |   |
-   |         |    |   mutable borrow occurs here
+   |         ---- --- ^^^^^^^^^ mutable borrow occurs here
+   |         |    |
    |         |    immutable borrow later used by call
    |         immutable borrow occurs here
 

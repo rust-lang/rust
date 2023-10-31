@@ -1,0 +1,27 @@
+warning: unnecessary associated type bound for not object safe associated type
+  --> $DIR/assoc_type_bounds_sized_unnecessary.rs:9:20
+   |
+LL | fn foo(_: &dyn Foo<Bar = ()>) {}
+   |                    ^^^^^^^^ help: remove this bound
+   |
+   = note: this associated type has a `where Self: Sized` bound. Thus, while the associated type can be specified, it cannot be used in any way, because trait objects are not `Sized`.
+   = note: `#[warn(unused_associated_type_bounds)]` on by default
+
+warning: unnecessary associated type bound for not object safe associated type
+  --> $DIR/assoc_type_bounds_sized_unnecessary.rs:9:20
+   |
+LL | fn foo(_: &dyn Foo<Bar = ()>) {}
+   |                    ^^^^^^^^ help: remove this bound
+   |
+   = note: this associated type has a `where Self: Sized` bound. Thus, while the associated type can be specified, it cannot be used in any way, because trait objects are not `Sized`.
+
+warning: unnecessary associated type bound for not object safe associated type
+  --> $DIR/assoc_type_bounds_sized_unnecessary.rs:9:20
+   |
+LL | fn foo(_: &dyn Foo<Bar = ()>) {}
+   |                    ^^^^^^^^ help: remove this bound
+   |
+   = note: this associated type has a `where Self: Sized` bound. Thus, while the associated type can be specified, it cannot be used in any way, because trait objects are not `Sized`.
+
+warning: 3 warnings emitted
+

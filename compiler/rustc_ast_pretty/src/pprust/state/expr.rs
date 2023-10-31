@@ -477,7 +477,7 @@ impl<'a> State<'a> {
                 self.word(".");
                 self.print_ident(*ident);
             }
-            ast::ExprKind::Index(expr, index) => {
+            ast::ExprKind::Index(expr, index, _) => {
                 self.print_expr_maybe_paren(expr, parser::PREC_POSTFIX);
                 self.word("[");
                 self.print_expr(index);
@@ -536,6 +536,11 @@ impl<'a> State<'a> {
                     self.word(" ");
                     self.print_expr_maybe_paren(expr, parser::PREC_JUMP);
                 }
+            }
+            ast::ExprKind::Become(result) => {
+                self.word("become");
+                self.word(" ");
+                self.print_expr_maybe_paren(result, parser::PREC_JUMP);
             }
             ast::ExprKind::InlineAsm(a) => {
                 // FIXME: This should have its own syntax, distinct from a macro invocation.
@@ -692,15 +697,15 @@ pub fn reconstruct_format_args_template_string(pieces: &[FormatArgsPiece]) -> St
                 write!(template, "{n}").unwrap();
                 if p.format_options != Default::default() || p.format_trait != FormatTrait::Display
                 {
-                    template.push_str(":");
+                    template.push(':');
                 }
                 if let Some(fill) = p.format_options.fill {
                     template.push(fill);
                 }
                 match p.format_options.alignment {
-                    Some(FormatAlignment::Left) => template.push_str("<"),
-                    Some(FormatAlignment::Right) => template.push_str(">"),
-                    Some(FormatAlignment::Center) => template.push_str("^"),
+                    Some(FormatAlignment::Left) => template.push('<'),
+                    Some(FormatAlignment::Right) => template.push('>'),
+                    Some(FormatAlignment::Center) => template.push('^'),
                     None => {}
                 }
                 match p.format_options.sign {

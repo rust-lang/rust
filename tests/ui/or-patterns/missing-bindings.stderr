@@ -79,6 +79,14 @@ LL |     let (A(A(..) | B(a), _) | B(A(a, _) | B(a))) = Y;
    |            |
    |            pattern doesn't bind `a`
 
+error[E0408]: variable `c` is not bound in all patterns
+  --> $DIR/missing-bindings.rs:45:12
+   |
+LL |     let (A(A(a, b) | B(c), d) | B(e)) = Y;
+   |            ^^^^^^^     - variable not in all patterns
+   |            |
+   |            pattern doesn't bind `c`
+
 error[E0408]: variable `a` is not bound in all patterns
   --> $DIR/missing-bindings.rs:45:22
    |
@@ -96,12 +104,12 @@ LL |     let (A(A(a, b) | B(c), d) | B(e)) = Y;
    |                 variable not in all patterns
 
 error[E0408]: variable `c` is not bound in all patterns
-  --> $DIR/missing-bindings.rs:45:12
+  --> $DIR/missing-bindings.rs:45:33
    |
 LL |     let (A(A(a, b) | B(c), d) | B(e)) = Y;
-   |            ^^^^^^^     - variable not in all patterns
-   |            |
-   |            pattern doesn't bind `c`
+   |                        -        ^^^^ pattern doesn't bind `c`
+   |                        |
+   |                        variable not in all patterns
 
 error[E0408]: variable `d` is not bound in all patterns
   --> $DIR/missing-bindings.rs:45:33
@@ -134,14 +142,6 @@ LL |     let (A(A(a, b) | B(c), d) | B(e)) = Y;
    |                 -               ^^^^ pattern doesn't bind `b`
    |                 |
    |                 variable not in all patterns
-
-error[E0408]: variable `c` is not bound in all patterns
-  --> $DIR/missing-bindings.rs:45:33
-   |
-LL |     let (A(A(a, b) | B(c), d) | B(e)) = Y;
-   |                        -        ^^^^ pattern doesn't bind `c`
-   |                        |
-   |                        variable not in all patterns
 
 error[E0408]: variable `a` is not bound in all patterns
   --> $DIR/missing-bindings.rs:61:29
@@ -185,6 +185,28 @@ LL |                     B(b),
 LL |                 B(_)
    |                 ^^^^ pattern doesn't bind `b`
 
+error[E0408]: variable `c` is not bound in all patterns
+  --> $DIR/missing-bindings.rs:57:13
+   |
+LL | /             V1(
+LL | |
+LL | |
+LL | |                 A(
+...  |
+LL | |                 B(Ok(a) | Err(a))
+LL | |             ) |
+   | |_____________^ pattern doesn't bind `c`
+LL | /             V2(
+LL | |                 A(
+LL | |                     A(_, a) |
+LL | |                     B(b),
+...  |
+LL | |
+LL | |             ) |
+   | |_____________^ pattern doesn't bind `c`
+LL |               V3(c),
+   |                  - variable not in all patterns
+
 error[E0408]: variable `a` is not bound in all patterns
   --> $DIR/missing-bindings.rs:76:13
    |
@@ -214,28 +236,6 @@ LL |                       B(b),
 ...
 LL |               V3(c),
    |               ^^^^^ pattern doesn't bind `b`
-
-error[E0408]: variable `c` is not bound in all patterns
-  --> $DIR/missing-bindings.rs:57:13
-   |
-LL | /             V1(
-LL | |
-LL | |
-LL | |                 A(
-...  |
-LL | |                 B(Ok(a) | Err(a))
-LL | |             ) |
-   | |_____________^ pattern doesn't bind `c`
-LL | /             V2(
-LL | |                 A(
-LL | |                     A(_, a) |
-LL | |                     B(b),
-...  |
-LL | |
-LL | |             ) |
-   | |_____________^ pattern doesn't bind `c`
-LL |               V3(c),
-   |                  - variable not in all patterns
 
 error: aborting due to 26 previous errors
 

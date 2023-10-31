@@ -6,10 +6,10 @@ use rustc_hir::intravisit::Visitor;
 use rustc_index::IndexSlice;
 use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_middle::mir::{
-    Body, CastKind, ConstraintCategory, FakeReadCause, Local, LocalInfo, Location, Operand, Place,
-    Rvalue, Statement, StatementKind, TerminatorKind,
+    Body, CallSource, CastKind, ConstraintCategory, FakeReadCause, Local, LocalInfo, Location,
+    Operand, Place, Rvalue, Statement, StatementKind, TerminatorKind,
 };
-use rustc_middle::ty::adjustment::PointerCast;
+use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::{self, RegionVid, TyCtxt};
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::{sym, DesugaringKind, Span};
@@ -79,7 +79,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
                         | hir::ExprKind::Unary(hir::UnOp::Deref, inner)
                         | hir::ExprKind::Field(inner, _)
                         | hir::ExprKind::MethodCall(_, inner, _, _)
-                        | hir::ExprKind::Index(inner, _) = &expr.kind
+                        | hir::ExprKind::Index(inner, _, _) = &expr.kind
                     {
                         expr = inner;
                     }
@@ -168,17 +168,17 @@ impl<'tcx> BorrowExplanation<'tcx> {
                 let local_decl = &body.local_decls[dropped_local];
                 let mut ty = local_decl.ty;
                 if local_decl.source_info.span.desugaring_kind() == Some(DesugaringKind::ForLoop) {
-                    if let ty::Adt(adt, substs) = local_decl.ty.kind() {
+                    if let ty::Adt(adt, args) = local_decl.ty.kind() {
                         if tcx.is_diagnostic_item(sym::Option, adt.did()) {
                             // in for loop desugaring, only look at the `Some(..)` inner type
-                            ty = substs.type_at(0);
+                            ty = args.type_at(0);
                         }
                     }
                 }
                 let (dtor_desc, type_desc) = match ty.kind() {
                     // If type is an ADT that implements Drop, then
                     // simplify output by reporting just the ADT name.
-                    ty::Adt(adt, _substs) if adt.has_dtor(tcx) && !adt.is_box() => {
+                    ty::Adt(adt, _args) if adt.has_dtor(tcx) && !adt.is_box() => {
                         ("`Drop` code", format!("type `{}`", tcx.def_path_str(adt.did())))
                     }
 
@@ -494,7 +494,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 } else if self.was_captured_by_trait_object(borrow) {
                     LaterUseKind::TraitCapture
                 } else if location.statement_index == block.statements.len() {
-                    if let TerminatorKind::Call { func, from_hir_call: true, .. } =
+                    if let TerminatorKind::Call { func, call_source: CallSource::Normal, .. } =
                         &block.terminator().kind
                     {
                         // Just point to the function, to reduce the chance of overlapping spans.
@@ -584,7 +584,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         },
                         // If we see an unsized cast, then if it is our data we should check
                         // whether it is being cast to a trait object.
-                        Rvalue::Cast(CastKind::Pointer(PointerCast::Unsize), operand, ty) => {
+                        Rvalue::Cast(
+                            CastKind::PointerCoercion(PointerCoercion::Unsize),
+                            operand,
+                            ty,
+                        ) => {
                             match operand {
                                 Operand::Copy(place) | Operand::Move(place) => {
                                     if let Some(from) = place.as_local() {

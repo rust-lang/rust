@@ -1,0 +1,20 @@
+error: where clauses are not allowed after the type for type aliases
+  --> $DIR/where-clause-placement-type-alias.rs:6:15
+   |
+LL | type Bar = () where u32: Copy;
+   |               ^^^^^^^^^^^^^^^
+   |
+   = note: see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
+   = help: add `#![feature(lazy_type_alias)]` to the crate attributes to enable
+
+error: where clauses are not allowed after the type for type aliases
+  --> $DIR/where-clause-placement-type-alias.rs:8:15
+   |
+LL | type Baz = () where;
+   |               ^^^^^
+   |
+   = note: see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information
+   = help: add `#![feature(lazy_type_alias)]` to the crate attributes to enable
+
+error: aborting due to 2 previous errors
+

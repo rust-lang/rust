@@ -47,7 +47,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             diag.span_suggestion(
                                 sp,
                                 "use a float literal",
-                                format!("{}.0", snippet),
+                                format!("{snippet}.0"),
                                 MachineApplicable,
                             );
                         }
@@ -100,9 +100,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         {
                             // Synthesize the associated type restriction `Add<Output = Expected>`.
                             // FIXME: extract this logic for use in other diagnostics.
-                            let (trait_ref, assoc_substs) = proj.trait_ref_and_own_substs(tcx);
+                            let (trait_ref, assoc_args) = proj.trait_ref_and_own_args(tcx);
                             let item_name = tcx.item_name(proj.def_id);
-                            let item_args = self.format_generic_args(assoc_substs);
+                            let item_args = self.format_generic_args(assoc_args);
 
                             // Here, we try to see if there's an existing
                             // trait implementation that matches the one that
@@ -134,12 +134,12 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
                             if matched_end_of_args {
                                 // Append suggestion to the end of our args
-                                let path = format!(", {}{} = {}",item_name, item_args, p);
+                                let path = format!(", {item_name}{item_args} = {p}");
                                 note = !suggest_constraining_type_param(
                                     tcx,
                                     generics,
                                     diag,
-                                    &format!("{}", proj.self_ty()),
+                                    &proj.self_ty().to_string(),
                                     &path,
                                     None,
                                     matching_span,
@@ -148,12 +148,12 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                                 // Suggest adding a bound to an existing trait
                                 // or if the trait doesn't exist, add the trait
                                 // and the suggested bounds.
-                                let path = format!("<{}{} = {}>", item_name, item_args, p);
+                                let path = format!("<{item_name}{item_args} = {p}>");
                                 note = !suggest_constraining_type_param(
                                     tcx,
                                     generics,
                                     diag,
-                                    &format!("{}", proj.self_ty()),
+                                    &proj.self_ty().to_string(),
                                     &path,
                                     None,
                                     matching_span,
@@ -213,8 +213,7 @@ impl<T> Trait<T> for X {
                         }
                         diag.help(format!(
                             "every closure has a distinct type and so could not always match the \
-                             caller-chosen type of parameter `{}`",
-                            p
+                             caller-chosen type of parameter `{p}`"
                         ));
                     }
                     (ty::Param(p), _) | (_, ty::Param(p)) => {
@@ -234,13 +233,13 @@ impl<T> Trait<T> for X {
                         );
                     }
                     (_, ty::Alias(ty::Projection | ty::Inherent, proj_ty)) if !tcx.is_impl_trait_in_trait(proj_ty.def_id) => {
-                        let msg = format!(
+                        let msg = || format!(
                             "consider constraining the associated type `{}` to `{}`",
                             values.found, values.expected,
                         );
                         if !(self.suggest_constraining_opaque_associated_type(
                             diag,
-                            &msg,
+                            msg,
                             proj_ty,
                             values.expected,
                         ) || self.suggest_constraint(
@@ -250,17 +249,18 @@ impl<T> Trait<T> for X {
                             proj_ty,
                             values.expected,
                         )) {
-                            diag.help(msg);
+                            diag.help(msg());
                             diag.note(
                                 "for more information, visit \
                                 https://doc.rust-lang.org/book/ch19-03-advanced-traits.html",
                             );
                         }
                     }
-                    (ty::Alias(ty::Opaque, alias), _) | (_, ty::Alias(ty::Opaque, alias)) if alias.def_id.is_local() && matches!(tcx.def_kind(body_owner_def_id), DefKind::AssocFn | DefKind::AssocConst) => {
+                    (ty::Alias(ty::Opaque, alias), _) | (_, ty::Alias(ty::Opaque, alias)) if alias.def_id.is_local() && matches!(tcx.def_kind(body_owner_def_id), DefKind::Fn | DefKind::Static(_) | DefKind::Const | DefKind::AssocFn | DefKind::AssocConst) => {
                         if tcx.is_type_alias_impl_trait(alias.def_id) {
                             if !tcx.opaque_types_defined_by(body_owner_def_id.expect_local()).contains(&alias.def_id.expect_local()) {
-                                diag.span_note(tcx.def_span(body_owner_def_id), "\
+                                let sp = tcx.def_ident_span(body_owner_def_id).unwrap_or_else(|| tcx.def_span(body_owner_def_id));
+                                diag.span_note(sp, "\
                                     this item must have the opaque type in its signature \
                                     in order to be able to register hidden types");
                             }
@@ -308,14 +308,14 @@ impl<T> Trait<T> for X {
     fn suggest_constraint(
         &self,
         diag: &mut Diagnostic,
-        msg: &str,
+        msg: impl Fn() -> String,
         body_owner_def_id: DefId,
         proj_ty: &ty::AliasTy<'tcx>,
         ty: Ty<'tcx>,
     ) -> bool {
         let tcx = self.tcx;
         let assoc = tcx.associated_item(proj_ty.def_id);
-        let (trait_ref, assoc_substs) = proj_ty.trait_ref_and_own_substs(tcx);
+        let (trait_ref, assoc_args) = proj_ty.trait_ref_and_own_args(tcx);
         if let Some(item) = tcx.hir().get_if_local(body_owner_def_id) {
             if let Some(hir_generics) = item.generics() {
                 // Get the `DefId` for the type parameter corresponding to `A` in `<A as T>::Foo`.
@@ -338,9 +338,9 @@ impl<T> Trait<T> for X {
                         &trait_ref,
                         pred.bounds,
                         assoc,
-                        assoc_substs,
+                        assoc_args,
                         ty,
-                        msg,
+                        &msg,
                         false,
                     ) {
                         return true;
@@ -374,10 +374,18 @@ impl<T> Trait<T> for X {
     ) {
         let tcx = self.tcx;
 
-        let msg = format!(
-            "consider constraining the associated type `{}` to `{}`",
-            values.expected, values.found
-        );
+        // Don't suggest constraining a projection to something containing itself
+        if self.tcx.erase_regions(values.found).contains(self.tcx.erase_regions(values.expected)) {
+            return;
+        }
+
+        let msg = || {
+            format!(
+                "consider constraining the associated type `{}` to `{}`",
+                values.expected, values.found
+            )
+        };
+
         let body_owner = tcx.hir().get_if_local(body_owner_def_id);
         let current_method_ident = body_owner.and_then(|n| n.ident()).map(|i| i.name);
 
@@ -428,10 +436,11 @@ impl<T> Trait<T> for X {
             if callable_scope {
                 diag.help(format!(
                     "{} or calling a method that returns `{}`",
-                    msg, values.expected
+                    msg(),
+                    values.expected
                 ));
             } else {
-                diag.help(msg);
+                diag.help(msg());
             }
             diag.note(
                 "for more information, visit \
@@ -463,7 +472,7 @@ fn foo(&self) -> Self::T { String::new() }
     fn suggest_constraining_opaque_associated_type(
         &self,
         diag: &mut Diagnostic,
-        msg: &str,
+        msg: impl Fn() -> String,
         proj_ty: &ty::AliasTy<'tcx>,
         ty: Ty<'tcx>,
     ) -> bool {
@@ -478,14 +487,14 @@ fn foo(&self) -> Self::T { String::new() }
                 return false;
             };
 
-            let (trait_ref, assoc_substs) = proj_ty.trait_ref_and_own_substs(tcx);
+            let (trait_ref, assoc_args) = proj_ty.trait_ref_and_own_args(tcx);
 
             self.constrain_generic_bound_associated_type_structured_suggestion(
                 diag,
                 &trait_ref,
                 opaque_hir_ty.bounds,
                 assoc,
-                assoc_substs,
+                assoc_args,
                 ty,
                 msg,
                 true,
@@ -517,7 +526,7 @@ fn foo(&self) -> Self::T { String::new() }
                     && !tcx.is_doc_hidden(item.def_id)
             })
             .filter_map(|item| {
-                let method = tcx.fn_sig(item.def_id).subst_identity();
+                let method = tcx.fn_sig(item.def_id).instantiate_identity();
                 match *method.output().skip_binder().kind() {
                     ty::Alias(ty::Projection, ty::AliasTy { def_id: item_def_id, .. })
                         if item_def_id == proj_ty_item_def_id =>
@@ -564,7 +573,9 @@ fn foo(&self) -> Self::T { String::new() }
         let Some(hir_id) = body_owner_def_id.as_local() else {
             return false;
         };
-        let hir_id = tcx.hir().local_def_id_to_hir_id(hir_id);
+        let Some(hir_id) = tcx.opt_local_def_id_to_hir_id(hir_id) else {
+            return false;
+        };
         // When `body_owner` is an `impl` or `trait` item, look in its associated types for
         // `expected` and point at it.
         let parent_id = tcx.hir().get_parent_item(hir_id);
@@ -583,9 +594,9 @@ fn foo(&self) -> Self::T { String::new() }
                             // FIXME: account for returning some type in a trait fn impl that has
                             // an assoc type as a return type (#72076).
                             if let hir::Defaultness::Default { has_value: true } =
-                                tcx.impl_defaultness(item.id.owner_id)
+                                tcx.defaultness(item.id.owner_id)
                             {
-                                let assoc_ty = tcx.type_of(item.id.owner_id).subst_identity();
+                                let assoc_ty = tcx.type_of(item.id.owner_id).instantiate_identity();
                                 if self.infcx.can_eq(param_env, assoc_ty, found) {
                                     diag.span_label(
                                         item.span,
@@ -606,7 +617,7 @@ fn foo(&self) -> Self::T { String::new() }
             })) => {
                 for item in &items[..] {
                     if let hir::AssocItemKind::Type = item.kind {
-                        let assoc_ty = tcx.type_of(item.id.owner_id).subst_identity();
+                        let assoc_ty = tcx.type_of(item.id.owner_id).instantiate_identity();
 
                         if self.infcx.can_eq(param_env, assoc_ty, found) {
                             diag.span_label(item.span, "expected this associated type");
@@ -633,9 +644,9 @@ fn foo(&self) -> Self::T { String::new() }
         trait_ref: &ty::TraitRef<'tcx>,
         bounds: hir::GenericBounds<'_>,
         assoc: ty::AssocItem,
-        assoc_substs: &[ty::GenericArg<'tcx>],
+        assoc_args: &[ty::GenericArg<'tcx>],
         ty: Ty<'tcx>,
-        msg: &str,
+        msg: impl Fn() -> String,
         is_bound_surely_present: bool,
     ) -> bool {
         // FIXME: we would want to call `resolve_vars_if_possible` on `ty` before suggesting.
@@ -659,14 +670,7 @@ fn foo(&self) -> Self::T { String::new() }
             _ => return false,
         };
 
-        self.constrain_associated_type_structured_suggestion(
-            diag,
-            span,
-            assoc,
-            assoc_substs,
-            ty,
-            msg,
-        )
+        self.constrain_associated_type_structured_suggestion(diag, span, assoc, assoc_args, ty, msg)
     }
 
     /// Given a span corresponding to a bound, provide a structured suggestion to set an
@@ -676,9 +680,9 @@ fn foo(&self) -> Self::T { String::new() }
         diag: &mut Diagnostic,
         span: Span,
         assoc: ty::AssocItem,
-        assoc_substs: &[ty::GenericArg<'tcx>],
+        assoc_args: &[ty::GenericArg<'tcx>],
         ty: Ty<'tcx>,
-        msg: &str,
+        msg: impl Fn() -> String,
     ) -> bool {
         let tcx = self.tcx;
 
@@ -690,10 +694,10 @@ fn foo(&self) -> Self::T { String::new() }
                 let span = Span::new(pos, pos, span.ctxt(), span.parent());
                 (span, format!(", {} = {}", assoc.ident(tcx), ty))
             } else {
-                let item_args = self.format_generic_args(assoc_substs);
+                let item_args = self.format_generic_args(assoc_args);
                 (span.shrink_to_hi(), format!("<{}{} = {}>", assoc.ident(tcx), item_args, ty))
             };
-            diag.span_suggestion_verbose(span, msg, sugg, MaybeIncorrect);
+            diag.span_suggestion_verbose(span, msg(), sugg, MaybeIncorrect);
             return true;
         }
         false

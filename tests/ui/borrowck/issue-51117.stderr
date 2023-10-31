@@ -4,7 +4,7 @@ error[E0499]: cannot borrow `*bar` as mutable more than once at a time
 LL |         Some(baz) => {
    |              --- first mutable borrow occurs here
 LL |             bar.take();
-   |             ^^^^^^^^^^ second mutable borrow occurs here
+   |             ^^^ second mutable borrow occurs here
 LL |             drop(baz);
    |                  --- first borrow later used here
 

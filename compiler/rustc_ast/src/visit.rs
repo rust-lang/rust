@@ -308,8 +308,12 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
     match &item.kind {
         ItemKind::ExternCrate(_) => {}
         ItemKind::Use(use_tree) => visitor.visit_use_tree(use_tree, item.id, false),
-        ItemKind::Static(box StaticItem { ty, mutability: _, expr })
-        | ItemKind::Const(box ConstItem { ty, expr, .. }) => {
+        ItemKind::Static(box StaticItem { ty, mutability: _, expr }) => {
+            visitor.visit_ty(ty);
+            walk_list!(visitor, visit_expr, expr);
+        }
+        ItemKind::Const(box ConstItem { defaultness: _, generics, ty, expr }) => {
+            visitor.visit_generics(generics);
             visitor.visit_ty(ty);
             walk_list!(visitor, visit_expr, expr);
         }
@@ -677,7 +681,8 @@ pub fn walk_assoc_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a AssocItem,
     visitor.visit_ident(ident);
     walk_list!(visitor, visit_attribute, attrs);
     match kind {
-        AssocItemKind::Const(box ConstItem { ty, expr, .. }) => {
+        AssocItemKind::Const(box ConstItem { defaultness: _, generics, ty, expr }) => {
+            visitor.visit_generics(generics);
             visitor.visit_ty(ty);
             walk_list!(visitor, visit_expr, expr);
         }
@@ -880,7 +885,7 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
             visitor.visit_expr(subexpression);
             visitor.visit_ident(*ident);
         }
-        ExprKind::Index(main_expression, index_expression) => {
+        ExprKind::Index(main_expression, index_expression, _) => {
             visitor.visit_expr(main_expression);
             visitor.visit_expr(index_expression)
         }
@@ -908,6 +913,7 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
         ExprKind::Yeet(optional_expression) => {
             walk_list!(visitor, visit_expr, optional_expression);
         }
+        ExprKind::Become(expr) => visitor.visit_expr(expr),
         ExprKind::MacCall(mac) => visitor.visit_mac_call(mac),
         ExprKind::Paren(subexpression) => visitor.visit_expr(subexpression),
         ExprKind::InlineAsm(asm) => visitor.visit_inline_asm(asm),

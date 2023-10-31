@@ -31,6 +31,7 @@ LL | | // FIXME(inherent_associated_types): This shouldn't lead to a cycle error
 LL | |
 LL | | fn main() {}
    | |____________^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error: aborting due to previous error
 

@@ -27,37 +27,37 @@
 // cdb-command:g
 
 // cdb-command:dx rc,d
-// cdb-check:rc,d             : 111 [Type: alloc::rc::Rc<i32>]
+// cdb-check:rc,d             : 111 [Type: alloc::rc::Rc<i32,alloc::alloc::Global>]
 // cdb-check:    [Reference count] : 11 [Type: core::cell::Cell<usize>]
 // cdb-check:    [Weak reference count] : 2 [Type: core::cell::Cell<usize>]
 
 // cdb-command:dx weak_rc,d
-// cdb-check:weak_rc,d        : 111 [Type: alloc::rc::Weak<i32>]
+// cdb-check:weak_rc,d        : 111 [Type: alloc::rc::Weak<i32,alloc::alloc::Global>]
 // cdb-check:    [Reference count] : 11 [Type: core::cell::Cell<usize>]
 // cdb-check:    [Weak reference count] : 2 [Type: core::cell::Cell<usize>]
 
 // cdb-command:dx arc,d
-// cdb-check:arc,d            : 222 [Type: alloc::sync::Arc<i32>]
+// cdb-check:arc,d            : 222 [Type: alloc::sync::Arc<i32,alloc::alloc::Global>]
 // cdb-check:    [Reference count] : 21 [Type: core::sync::atomic::AtomicUsize]
 // cdb-check:    [Weak reference count] : 2 [Type: core::sync::atomic::AtomicUsize]
 
 // cdb-command:dx weak_arc,d
-// cdb-check:weak_arc,d       : 222 [Type: alloc::sync::Weak<i32>]
+// cdb-check:weak_arc,d       : 222 [Type: alloc::sync::Weak<i32,alloc::alloc::Global>]
 // cdb-check:    [Reference count] : 21 [Type: core::sync::atomic::AtomicUsize]
 // cdb-check:    [Weak reference count] : 2 [Type: core::sync::atomic::AtomicUsize]
 
 // cdb-command:dx dyn_rc,d
-// cdb-check:dyn_rc,d         [Type: alloc::rc::Rc<dyn$<core::fmt::Debug> >]
+// cdb-check:dyn_rc,d         [Type: alloc::rc::Rc<dyn$<core::fmt::Debug>,alloc::alloc::Global>]
 // cdb-check:    [Reference count] : 31 [Type: core::cell::Cell<usize>]
 // cdb-check:    [Weak reference count] : 2 [Type: core::cell::Cell<usize>]
 
 // cdb-command:dx dyn_rc_weak,d
-// cdb-check:dyn_rc_weak,d    [Type: alloc::rc::Weak<dyn$<core::fmt::Debug> >]
+// cdb-check:dyn_rc_weak,d    [Type: alloc::rc::Weak<dyn$<core::fmt::Debug>,alloc::alloc::Global>]
 // cdb-check:    [Reference count] : 31 [Type: core::cell::Cell<usize>]
 // cdb-check:    [Weak reference count] : 2 [Type: core::cell::Cell<usize>]
 
 // cdb-command:dx slice_rc,d
-// cdb-check:slice_rc,d       : { len=3 } [Type: alloc::rc::Rc<slice2$<u32> >]
+// cdb-check:slice_rc,d       : { len=3 } [Type: alloc::rc::Rc<slice2$<u32>,alloc::alloc::Global>]
 // cdb-check:    [Length]         : 3 [Type: [...]]
 // cdb-check:    [Reference count] : 41 [Type: core::cell::Cell<usize>]
 // cdb-check:    [Weak reference count] : 2 [Type: core::cell::Cell<usize>]
@@ -66,7 +66,7 @@
 // cdb-check:    [2]              : 3 [Type: u32]
 
 // cdb-command:dx slice_rc_weak,d
-// cdb-check:slice_rc_weak,d  : { len=3 } [Type: alloc::rc::Weak<slice2$<u32> >]
+// cdb-check:slice_rc_weak,d  : { len=3 } [Type: alloc::rc::Weak<slice2$<u32>,alloc::alloc::Global>]
 // cdb-check:    [Length]         : 3 [Type: [...]]
 // cdb-check:    [Reference count] : 41 [Type: core::cell::Cell<usize>]
 // cdb-check:    [Weak reference count] : 2 [Type: core::cell::Cell<usize>]
@@ -75,17 +75,17 @@
 // cdb-check:    [2]              : 3 [Type: u32]
 
 // cdb-command:dx dyn_arc,d
-// cdb-check:dyn_arc,d        [Type: alloc::sync::Arc<dyn$<core::fmt::Debug> >]
+// cdb-check:dyn_arc,d        [Type: alloc::sync::Arc<dyn$<core::fmt::Debug>,alloc::alloc::Global>]
 // cdb-check:    [Reference count] : 51 [Type: core::sync::atomic::AtomicUsize]
 // cdb-check:    [Weak reference count] : 2 [Type: core::sync::atomic::AtomicUsize]
 
 // cdb-command:dx dyn_arc_weak,d
-// cdb-check:dyn_arc_weak,d   [Type: alloc::sync::Weak<dyn$<core::fmt::Debug> >]
+// cdb-check:dyn_arc_weak,d   [Type: alloc::sync::Weak<dyn$<core::fmt::Debug>,alloc::alloc::Global>]
 // cdb-check:    [Reference count] : 51 [Type: core::sync::atomic::AtomicUsize]
 // cdb-check:    [Weak reference count] : 2 [Type: core::sync::atomic::AtomicUsize]
 
 // cdb-command:dx slice_arc,d
-// cdb-check:slice_arc,d      : { len=3 } [Type: alloc::sync::Arc<slice2$<u32> >]
+// cdb-check:slice_arc,d      : { len=3 } [Type: alloc::sync::Arc<slice2$<u32>,alloc::alloc::Global>]
 // cdb-check:    [Length]         : 3 [Type: [...]]
 // cdb-check:    [Reference count] : 61 [Type: core::sync::atomic::AtomicUsize]
 // cdb-check:    [Weak reference count] : 2 [Type: core::sync::atomic::AtomicUsize]
@@ -94,7 +94,7 @@
 // cdb-check:    [2]              : 6 [Type: u32]
 
 // cdb-command:dx slice_arc_weak,d
-// cdb-check:slice_arc_weak,d : { len=3 } [Type: alloc::sync::Weak<slice2$<u32> >]
+// cdb-check:slice_arc_weak,d : { len=3 } [Type: alloc::sync::Weak<slice2$<u32>,alloc::alloc::Global>]
 // cdb-check:    [Length]         : 3 [Type: [...]]
 // cdb-check:    [Reference count] : 61 [Type: core::sync::atomic::AtomicUsize]
 // cdb-check:    [Weak reference count] : 2 [Type: core::sync::atomic::AtomicUsize]

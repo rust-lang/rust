@@ -7,7 +7,7 @@ This tier supports the ARM Cortex A9 processor running on a PlayStation Vita con
 Rust support for this target is not affiliated with Sony, and is not derived
 from nor used with any official Sony SDK.
 
-## Designated Developers
+## Target maintainers
 
 * [@amg98](https://github.com/amg98)
 * [@nikarh](https://github.com/nikarh)
@@ -27,9 +27,9 @@ In order to support some APIs, binaries must be linked against `libc` written
 for the target, using a linker for the target. These are provided by the
 VITASDK toolchain.
 
-This target generates binaries in the ELF format.
+This target generates binaries in the ELF format with thumb ISA.
 
-## Building
+## Building the target
 
 Rust does not ship pre-compiled artifacts for this target. You can use `build-std` flag to build binaries with `std`:
 
@@ -37,43 +37,9 @@ Rust does not ship pre-compiled artifacts for this target. You can use `build-st
 cargo build -Z build-std=std,panic_abort --target=armv7-sony-vita-newlibeabihf --release
 ```
 
-## Cross-compilation
+## Building Rust programs
 
-This target can be cross-compiled from `x86_64` on either Windows, MacOS or Linux systems. Other hosts are not supported for cross-compilation.
-
-## Testing
-
-Currently there is no support to run the rustc test suite for this target.
-
-## Building and Running Rust Programs
-
-`std` support for this target relies on newlib. In order to work, newlib must be initialized correctly. The easiest way to achieve this with VITASDK newlib implementation is by compiling your program as a staticlib with and exposing your main function from rust to `_init` function in `crt0`.
-
-Add this to your `Cargo.toml`:
-
-```toml
-[lib]
-crate-type = ["staticlib"]
-
-[profile.release]
-panic = 'abort'
-lto = true
-opt-level = 3
-```
-
-Your entrypoint should look roughly like this, `src/lib.rs`:
-```rust,ignore,no_run
-#[used]
-#[export_name = "_newlib_heap_size_user"]
-pub static _NEWLIB_HEAP_SIZE_USER: u32 = 100 * 1024 * 1024; // Default heap size is only 32mb, increase it to something suitable for your application
-
-#[no_mangle]
-pub extern "C" fn main() {
-    println!("Hello, world!");
-}
-```
-
-To test your developed rust programs on PlayStation Vita, first you must correctly link and package your rust staticlib. These steps can be preformed using tools available in VITASDK, and can be automated using tools like `cargo-make`.
+To test your developed rust programs on PlayStation Vita, first you must correctly package your elf. These steps can be preformed using tools available in VITASDK, and can be automated using a tool like `cargo-make`.
 
 First, set up environment variables for `VITASDK`, and it's binaries:
 
@@ -88,40 +54,21 @@ Use the example below as a template for your project:
 [env]
 TITLE = "Rust Hello World"
 TITLEID = "RUST00001"
-# Add other libs required by your project here
-LINKER_LIBS = "-lpthread -lm -lmathneon"
 
 # At least a "sce_sys" folder should be place there for app metadata (title, icons, description...)
 # You can find sample assets for that on $VITASDK/share/gcc-arm-vita-eabi/samples/hello_world/sce_sys/
 STATIC_DIR = "static"   # Folder where static assets should be placed (sce_sys folder is at $STATIC_DIR/sce_sys)
 CARGO_TARGET_DIR = { script = ["echo ${CARGO_TARGET_DIR:=target}"] }
-RUST_TARGET = "armv7-sony-vita-newlibeabihf"
 CARGO_OUT_DIR = "${CARGO_TARGET_DIR}/${RUST_TARGET}/release"
 
-TARGET_LINKER = "arm-vita-eabi-gcc"
-TARGET_LINKER_FLAGS = "-Wl,-q"
-
 [tasks.build]
-description = "Build the project using `cargo` as a static lib."
+description = "Build the project using `cargo`."
 command = "cargo"
 args = ["build", "-Z", "build-std=std,panic_abort", "--target=armv7-sony-vita-newlibeabihf", "--release"]
 
-[tasks.link]
-description = "Build an ELF executable using the `vitasdk` linker."
-dependencies = ["build"]
-script = [
-    """
-    ${TARGET_LINKER} ${TARGET_LINKER_FLAGS} \
-        -L"${CARGO_OUT_DIR}" \
-        -l"${CARGO_MAKE_CRATE_FS_NAME}" \
-        ${LINKER_LIBS} \
-        -o"${CARGO_OUT_DIR}/${CARGO_MAKE_CRATE_NAME}.elf"
-    """
-]
-
 [tasks.strip]
 description = "Strip the produced ELF executable."
-dependencies = ["link"]
+dependencies = ["build"]
 command = "arm-vita-eabi-strip"
 args = ["-g", '${CARGO_OUT_DIR}/${CARGO_MAKE_CRATE_FS_NAME}.elf']
 
@@ -194,3 +141,11 @@ script = [
 ```
 
 After running the above script, you should be able to get a *.vpk file in the same folder your *.elf executable resides. Now you can pick it and install it on your own PlayStation Vita using, or you can use an [Vita3K](https://vita3k.org/) emulator.
+
+## Testing
+
+Currently there is no support to run the rustc test suite for this target.
+
+## Cross-compilation
+
+This target can be cross-compiled from `x86_64` on either Windows, MacOS or Linux systems. Other hosts are not supported for cross-compilation.

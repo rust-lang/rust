@@ -1,8 +1,8 @@
 warning: unused closure that must be used
-  --> $DIR/issue-1460.rs:6:5
+  --> $DIR/issue-1460.rs:6:6
    |
 LL |     {|i: u32| if 1 == i { }};
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |      ^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: closures are lazy and do nothing unless called
    = note: `#[warn(unused_must_use)]` on by default

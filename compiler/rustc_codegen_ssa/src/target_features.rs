@@ -29,7 +29,6 @@ const ARM_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("aclass", Some(sym::arm_target_feature)),
     ("aes", Some(sym::arm_target_feature)),
     ("crc", Some(sym::arm_target_feature)),
-    ("crypto", Some(sym::arm_target_feature)),
     ("d32", Some(sym::arm_target_feature)),
     ("dotprod", Some(sym::arm_target_feature)),
     ("dsp", Some(sym::arm_target_feature)),
@@ -44,6 +43,7 @@ const ARM_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     // #[target_feature].
     ("thumb-mode", Some(sym::arm_target_feature)),
     ("thumb2", Some(sym::arm_target_feature)),
+    ("trustzone", Some(sym::arm_target_feature)),
     ("v5te", Some(sym::arm_target_feature)),
     ("v6", Some(sym::arm_target_feature)),
     ("v6k", Some(sym::arm_target_feature)),
@@ -53,6 +53,7 @@ const ARM_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("vfp2", Some(sym::arm_target_feature)),
     ("vfp3", Some(sym::arm_target_feature)),
     ("vfp4", Some(sym::arm_target_feature)),
+    ("virtualization", Some(sym::arm_target_feature)),
     // tidy-alphabetical-end
 ];
 
@@ -282,6 +283,7 @@ const WASM_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     // tidy-alphabetical-start
     ("atomics", Some(sym::wasm_target_feature)),
     ("bulk-memory", Some(sym::wasm_target_feature)),
+    ("exception-handling", Some(sym::wasm_target_feature)),
     ("multivalue", Some(sym::wasm_target_feature)),
     ("mutable-globals", Some(sym::wasm_target_feature)),
     ("nontrapping-fptoint", Some(sym::wasm_target_feature)),
@@ -294,6 +296,52 @@ const WASM_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
 
 const BPF_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[("alu32", Some(sym::bpf_target_feature))];
 
+const CSKY_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
+    // tidy-alphabetical-start
+    ("10e60", Some(sym::csky_target_feature)),
+    ("2e3", Some(sym::csky_target_feature)),
+    ("3e3r1", Some(sym::csky_target_feature)),
+    ("3e3r2", Some(sym::csky_target_feature)),
+    ("3e3r3", Some(sym::csky_target_feature)),
+    ("3e7", Some(sym::csky_target_feature)),
+    ("7e10", Some(sym::csky_target_feature)),
+    ("cache", Some(sym::csky_target_feature)),
+    ("doloop", Some(sym::csky_target_feature)),
+    ("dsp1e2", Some(sym::csky_target_feature)),
+    ("dspe60", Some(sym::csky_target_feature)),
+    ("e1", Some(sym::csky_target_feature)),
+    ("e2", Some(sym::csky_target_feature)),
+    ("edsp", Some(sym::csky_target_feature)),
+    ("elrw", Some(sym::csky_target_feature)),
+    ("float1e2", Some(sym::csky_target_feature)),
+    ("float1e3", Some(sym::csky_target_feature)),
+    ("float3e4", Some(sym::csky_target_feature)),
+    ("float7e60", Some(sym::csky_target_feature)),
+    ("floate1", Some(sym::csky_target_feature)),
+    ("hard-tp", Some(sym::csky_target_feature)),
+    ("high-registers", Some(sym::csky_target_feature)),
+    ("hwdiv", Some(sym::csky_target_feature)),
+    ("mp", Some(sym::csky_target_feature)),
+    ("mp1e2", Some(sym::csky_target_feature)),
+    ("nvic", Some(sym::csky_target_feature)),
+    ("trust", Some(sym::csky_target_feature)),
+    ("vdsp2e60f", Some(sym::csky_target_feature)),
+    ("vdspv1", Some(sym::csky_target_feature)),
+    ("vdspv2", Some(sym::csky_target_feature)),
+    // tidy-alphabetical-end
+    //fpu
+    // tidy-alphabetical-start
+    ("fdivdu", Some(sym::csky_target_feature)),
+    ("fpuv2_df", Some(sym::csky_target_feature)),
+    ("fpuv2_sf", Some(sym::csky_target_feature)),
+    ("fpuv3_df", Some(sym::csky_target_feature)),
+    ("fpuv3_hf", Some(sym::csky_target_feature)),
+    ("fpuv3_hi", Some(sym::csky_target_feature)),
+    ("fpuv3_sf", Some(sym::csky_target_feature)),
+    ("hard-float", Some(sym::csky_target_feature)),
+    ("hard-float-abi", Some(sym::csky_target_feature)),
+    // tidy-alphabetical-end
+];
 /// When rustdoc is running, provide a list of all known features so that all their respective
 /// primitives may be documented.
 ///
@@ -309,6 +357,7 @@ pub fn all_known_features() -> impl Iterator<Item = (&'static str, Option<Symbol
         .chain(RISCV_ALLOWED_FEATURES.iter())
         .chain(WASM_ALLOWED_FEATURES.iter())
         .chain(BPF_ALLOWED_FEATURES.iter())
+        .chain(CSKY_ALLOWED_FEATURES)
         .cloned()
 }
 
@@ -318,11 +367,12 @@ pub fn supported_target_features(sess: &Session) -> &'static [(&'static str, Opt
         "aarch64" => AARCH64_ALLOWED_FEATURES,
         "x86" | "x86_64" => X86_ALLOWED_FEATURES,
         "hexagon" => HEXAGON_ALLOWED_FEATURES,
-        "mips" | "mips64" => MIPS_ALLOWED_FEATURES,
+        "mips" | "mips32r6" | "mips64" | "mips64r6" => MIPS_ALLOWED_FEATURES,
         "powerpc" | "powerpc64" => POWERPC_ALLOWED_FEATURES,
         "riscv32" | "riscv64" => RISCV_ALLOWED_FEATURES,
         "wasm32" | "wasm64" => WASM_ALLOWED_FEATURES,
         "bpf" => BPF_ALLOWED_FEATURES,
+        "csky" => CSKY_ALLOWED_FEATURES,
         _ => &[],
     }
 }
@@ -366,13 +416,9 @@ pub fn from_target_feature(
         // We allow comma separation to enable multiple features.
         target_features.extend(value.as_str().split(',').filter_map(|feature| {
             let Some(feature_gate) = supported_target_features.get(feature) else {
-                let msg =
-                    format!("the feature named `{}` is not valid for this target", feature);
+                let msg = format!("the feature named `{feature}` is not valid for this target");
                 let mut err = tcx.sess.struct_span_err(item.span(), msg);
-                err.span_label(
-                    item.span(),
-                    format!("`{}` is not valid for this target", feature),
-                );
+                err.span_label(item.span(), format!("`{feature}` is not valid for this target"));
                 if let Some(stripped) = feature.strip_prefix('+') {
                     let valid = supported_target_features.contains_key(stripped);
                     if valid {
@@ -398,6 +444,7 @@ pub fn from_target_feature(
                 Some(sym::ermsb_target_feature) => rust_features.ermsb_target_feature,
                 Some(sym::bpf_target_feature) => rust_features.bpf_target_feature,
                 Some(sym::aarch64_ver_target_feature) => rust_features.aarch64_ver_target_feature,
+                Some(sym::csky_target_feature) => rust_features.csky_target_feature,
                 Some(name) => bug!("unknown target feature gate {}", name),
                 None => true,
             };
@@ -406,7 +453,7 @@ pub fn from_target_feature(
                     &tcx.sess.parse_sess,
                     feature_gate.unwrap(),
                     item.span(),
-                    format!("the target feature `{}` is currently unstable", feature),
+                    format!("the target feature `{feature}` is currently unstable"),
                 )
                 .emit();
             }

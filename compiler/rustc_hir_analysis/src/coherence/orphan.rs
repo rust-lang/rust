@@ -5,8 +5,8 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{struct_span_err, DelayDm};
 use rustc_errors::{Diagnostic, ErrorGuaranteed};
 use rustc_hir as hir;
-use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::util::CheckRegions;
+use rustc_middle::ty::GenericArgs;
 use rustc_middle::ty::{
     self, AliasKind, ImplPolarity, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
     TypeVisitor,
@@ -22,7 +22,7 @@ pub(crate) fn orphan_check_impl(
     tcx: TyCtxt<'_>,
     impl_def_id: LocalDefId,
 ) -> Result<(), ErrorGuaranteed> {
-    let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap().subst_identity();
+    let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap().instantiate_identity();
     trait_ref.error_reported()?;
 
     let ret = do_orphan_check_impl(tcx, trait_ref, impl_def_id);
@@ -200,35 +200,32 @@ fn do_orphan_check_impl<'tcx>(
                 NonlocalImpl::DisallowOther,
             ),
 
-            // trait Id { type This: ?Sized; }
-            // impl<T: ?Sized> Id for T {
-            //     type This = T;
-            // }
-            // impl<T: ?Sized> AutoTrait for <T as Id>::This {}
-            ty::Alias(AliasKind::Projection, _) => (
-                LocalImpl::Disallow { problematic_kind: "associated type" },
-                NonlocalImpl::DisallowOther,
-            ),
-
-            // ```
-            // struct S<T>(T);
-            // impl<T: ?Sized> S<T> {
-            //     type This = T;
-            // }
-            // impl<T: ?Sized> AutoTrait for S<T>::This {}
-            // ```
-            // FIXME(inherent_associated_types): The example code above currently leads to a cycle
-            ty::Alias(AliasKind::Inherent, _) => (
-                LocalImpl::Disallow { problematic_kind: "associated type" },
-                NonlocalImpl::DisallowOther,
-            ),
-
-            // type Opaque = impl Trait;
-            // impl AutoTrait for Opaque {}
-            ty::Alias(AliasKind::Opaque, _) => (
-                LocalImpl::Disallow { problematic_kind: "opaque type" },
-                NonlocalImpl::DisallowOther,
-            ),
+            ty::Alias(kind, _) => {
+                let problematic_kind = match kind {
+                    // trait Id { type This: ?Sized; }
+                    // impl<T: ?Sized> Id for T {
+                    //     type This = T;
+                    // }
+                    // impl<T: ?Sized> AutoTrait for <T as Id>::This {}
+                    AliasKind::Projection => "associated type",
+                    // type Foo = (impl Sized, bool)
+                    // impl AutoTrait for Foo {}
+                    AliasKind::Weak => "type alias",
+                    // type Opaque = impl Trait;
+                    // impl AutoTrait for Opaque {}
+                    AliasKind::Opaque => "opaque type",
+                    // ```
+                    // struct S<T>(T);
+                    // impl<T: ?Sized> S<T> {
+                    //     type This = T;
+                    // }
+                    // impl<T: ?Sized> AutoTrait for S<T>::This {}
+                    // ```
+                    // FIXME(inherent_associated_types): The example code above currently leads to a cycle
+                    AliasKind::Inherent => "associated type",
+                };
+                (LocalImpl::Disallow { problematic_kind }, NonlocalImpl::DisallowOther)
+            }
 
             ty::Bool
             | ty::Char
@@ -346,7 +343,7 @@ fn emit_orphan_check_error<'tcx>(
                     // That way if we had `Vec<MyType>`, we will properly attribute the
                     // problem to `Vec<T>` and avoid confusing the user if they were to see
                     // `MyType` in the error.
-                    ty::Adt(def, _) => tcx.mk_adt(*def, ty::List::empty()),
+                    ty::Adt(def, _) => Ty::new_adt(tcx, *def, ty::List::empty()),
                     _ => ty,
                 };
                 let msg = |ty: &str, postfix: &str| {
@@ -355,7 +352,7 @@ fn emit_orphan_check_error<'tcx>(
 
                 let this = |name: &str| {
                     if !trait_ref.def_id.is_local() && !is_target_ty {
-                        msg("this", &format!(" because this is a foreign trait"))
+                        msg("this", " because this is a foreign trait")
                     } else {
                         msg("this", &format!(" because {name} are always foreign"))
                     }
@@ -415,9 +412,8 @@ fn emit_orphan_check_error<'tcx>(
                 .span_label(
                     sp,
                     format!(
-                        "type parameter `{}` must be covered by another type \
-                    when it appears before the first local type (`{}`)",
-                        param_ty, local_type
+                        "type parameter `{param_ty}` must be covered by another type \
+                    when it appears before the first local type (`{local_type}`)"
                     ),
                 )
                 .note(
@@ -444,9 +440,8 @@ fn emit_orphan_check_error<'tcx>(
                 .span_label(
                     sp,
                     format!(
-                        "type parameter `{}` must be used as the type parameter for some \
+                        "type parameter `{param_ty}` must be used as the type parameter for some \
                     local type",
-                        param_ty,
                     ),
                 )
                 .note(
@@ -491,10 +486,10 @@ fn lint_auto_trait_impl<'tcx>(
     trait_ref: ty::TraitRef<'tcx>,
     impl_def_id: LocalDefId,
 ) {
-    assert_eq!(trait_ref.substs.len(), 1);
+    assert_eq!(trait_ref.args.len(), 1);
     let self_ty = trait_ref.self_ty();
-    let (self_type_did, substs) = match self_ty.kind() {
-        ty::Adt(def, substs) => (def.did(), substs),
+    let (self_type_did, args) = match self_ty.kind() {
+        ty::Adt(def, args) => (def.did(), args),
         _ => {
             // FIXME: should also lint for stuff like `&i32` but
             // considering that auto traits are unstable, that
@@ -505,9 +500,9 @@ fn lint_auto_trait_impl<'tcx>(
     };
 
     // Impls which completely cover a given root type are fine as they
-    // disable auto impls entirely. So only lint if the substs
-    // are not a permutation of the identity substs.
-    let Err(arg) = tcx.uses_unique_generic_params(substs, CheckRegions::No) else {
+    // disable auto impls entirely. So only lint if the args
+    // are not a permutation of the identity args.
+    let Err(arg) = tcx.uses_unique_generic_params(args, CheckRegions::No) else {
         // ok
         return;
     };
@@ -544,17 +539,16 @@ fn lint_auto_trait_impl<'tcx>(
             let self_descr = tcx.def_descr(self_type_did);
             match arg {
                 ty::util::NotUniqueParam::DuplicateParam(arg) => {
-                    lint.note(format!("`{}` is mentioned multiple times", arg));
+                    lint.note(format!("`{arg}` is mentioned multiple times"));
                 }
                 ty::util::NotUniqueParam::NotParam(arg) => {
-                    lint.note(format!("`{}` is not a generic parameter", arg));
+                    lint.note(format!("`{arg}` is not a generic parameter"));
                 }
             }
             lint.span_note(
                 item_span,
                 format!(
-                    "try using the same sequence of generic parameters as the {} definition",
-                    self_descr,
+                    "try using the same sequence of generic parameters as the {self_descr} definition",
                 ),
             )
         },
@@ -571,10 +565,10 @@ fn fast_reject_auto_impl<'tcx>(tcx: TyCtxt<'tcx>, trait_def_id: DefId, self_ty: 
 
     impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for DisableAutoTraitVisitor<'tcx> {
         type BreakTy = ();
-        fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+        fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
             let tcx = self.tcx;
-            if t != self.self_ty_root {
-                for impl_def_id in tcx.non_blanket_impls_for_ty(self.trait_def_id, t) {
+            if ty != self.self_ty_root {
+                for impl_def_id in tcx.non_blanket_impls_for_ty(self.trait_def_id, ty) {
                     match tcx.impl_polarity(impl_def_id) {
                         ImplPolarity::Negative => return ControlFlow::Break(()),
                         ImplPolarity::Reservation => {}
@@ -587,28 +581,28 @@ fn fast_reject_auto_impl<'tcx>(tcx: TyCtxt<'tcx>, trait_def_id: DefId, self_ty: 
                 }
             }
 
-            match t.kind() {
-                ty::Adt(def, substs) if def.is_phantom_data() => substs.visit_with(self),
-                ty::Adt(def, substs) => {
+            match ty.kind() {
+                ty::Adt(def, args) if def.is_phantom_data() => args.visit_with(self),
+                ty::Adt(def, args) => {
                     // @lcnr: This is the only place where cycles can happen. We avoid this
                     // by only visiting each `DefId` once.
                     //
                     // This will be is incorrect in subtle cases, but I don't care :)
                     if self.seen.insert(def.did()) {
-                        for ty in def.all_fields().map(|field| field.ty(tcx, substs)) {
+                        for ty in def.all_fields().map(|field| field.ty(tcx, args)) {
                             ty.visit_with(self)?;
                         }
                     }
 
                     ControlFlow::Continue(())
                 }
-                _ => t.super_visit_with(self),
+                _ => ty.super_visit_with(self),
             }
         }
     }
 
     let self_ty_root = match self_ty.kind() {
-        ty::Adt(def, _) => tcx.mk_adt(*def, InternalSubsts::identity_for_item(tcx, def.did())),
+        ty::Adt(def, _) => Ty::new_adt(tcx, *def, GenericArgs::identity_for_item(tcx, def.did())),
         _ => unimplemented!("unexpected self ty {:?}", self_ty),
     };
 

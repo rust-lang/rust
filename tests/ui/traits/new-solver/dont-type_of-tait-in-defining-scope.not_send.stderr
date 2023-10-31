@@ -1,0 +1,16 @@
+error[E0283]: type annotations needed: cannot satisfy `Foo: Send`
+  --> $DIR/dont-type_of-tait-in-defining-scope.rs:16:5
+   |
+LL |     needs_send::<Foo>();
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = note: cannot satisfy `Foo: Send`
+note: required by a bound in `needs_send`
+  --> $DIR/dont-type_of-tait-in-defining-scope.rs:13:18
+   |
+LL | fn needs_send<T: Send>() {}
+   |                  ^^^^ required by this bound in `needs_send`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0283`.

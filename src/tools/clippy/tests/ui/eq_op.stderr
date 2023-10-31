@@ -1,5 +1,5 @@
 error: equal expressions as operands to `==`
-  --> $DIR/eq_op.rs:9:13
+  --> $DIR/eq_op.rs:7:13
    |
 LL |     let _ = 1 == 1;
    |             ^^^^^^
@@ -7,28 +7,36 @@ LL |     let _ = 1 == 1;
    = note: `-D clippy::eq-op` implied by `-D warnings`
 
 error: equal expressions as operands to `==`
-  --> $DIR/eq_op.rs:10:13
+  --> $DIR/eq_op.rs:8:13
    |
 LL |     let _ = "no" == "no";
    |             ^^^^^^^^^^^^
 
 error: equal expressions as operands to `!=`
-  --> $DIR/eq_op.rs:12:13
+  --> $DIR/eq_op.rs:10:13
    |
 LL |     let _ = false != false;
    |             ^^^^^^^^^^^^^^
 
 error: equal expressions as operands to `<`
-  --> $DIR/eq_op.rs:13:13
+  --> $DIR/eq_op.rs:11:13
    |
 LL |     let _ = 1.5 < 1.5;
    |             ^^^^^^^^^
 
 error: equal expressions as operands to `>=`
-  --> $DIR/eq_op.rs:14:13
+  --> $DIR/eq_op.rs:12:13
    |
 LL |     let _ = 1u64 >= 1u64;
    |             ^^^^^^^^^^^^
+
+error: equal expressions as operands to `!=`
+  --> $DIR/eq_op.rs:14:13
+   |
+LL |     let _ = x != x;
+   |             ^^^^^^
+   |
+   = note: if you intended to check if the operand is NaN, use `.is_nan()` instead
 
 error: equal expressions as operands to `&`
   --> $DIR/eq_op.rs:17:13
@@ -168,5 +176,5 @@ error: equal expressions as operands to `==`
 LL |     (n1.inner.0).0 == (n1.inner.0).0 && (n1.inner.1).0 == (n2.inner.1).0 && (n1.inner.2).0 == (n2.inner.2).0
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 28 previous errors
+error: aborting due to 29 previous errors
 

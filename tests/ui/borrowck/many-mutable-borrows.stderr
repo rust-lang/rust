@@ -4,23 +4,23 @@ error[E0596]: cannot borrow `v` as mutable, as it is not declared as mutable
 LL |     let v = Vec::new();
    |         ^ not mutable
 LL |     v.push(0);
-   |     --------- cannot borrow as mutable
+   |     - cannot borrow as mutable
 LL |     v.push(0);
-   |     --------- cannot borrow as mutable
+   |     - cannot borrow as mutable
 LL |     v.push(0);
-   |     --------- cannot borrow as mutable
+   |     - cannot borrow as mutable
 LL |     v.push(0);
-   |     --------- cannot borrow as mutable
+   |     - cannot borrow as mutable
 LL |     v.push(0);
-   |     --------- cannot borrow as mutable
+   |     - cannot borrow as mutable
 LL |     v.push(0);
-   |     --------- cannot borrow as mutable
+   |     - cannot borrow as mutable
 LL |     v.push(0);
-   |     --------- cannot borrow as mutable
+   |     - cannot borrow as mutable
 LL |     v.push(0);
-   |     --------- cannot borrow as mutable
+   |     - cannot borrow as mutable
 LL |     v.push(0);
-   |     --------- cannot borrow as mutable
+   |     - cannot borrow as mutable
    |
    = note: ...and 5 other attempted mutable borrows
 help: consider changing this to be mutable

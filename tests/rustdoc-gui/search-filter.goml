@@ -65,9 +65,9 @@ reload:
 set-timeout: 2000
 wait-for: "#crate-search"
 assert-css: ("#crate-search", {
-    "border": "1px solid rgb(224, 224, 224)",
-    "color": "rgb(0, 0, 0)",
-    "background-color": "rgb(255, 255, 255)",
+    "border": "1px solid #e0e0e0",
+    "color": "black",
+    "background-color": "white",
 })
 
 // We now check the dark theme.
@@ -75,15 +75,15 @@ click: "#settings-menu"
 wait-for: "#settings"
 click: "#theme-dark"
 wait-for-css: ("#crate-search", {
-    "border": "1px solid rgb(224, 224, 224)",
-    "color": "rgb(221, 221, 221)",
-    "background-color": "rgb(53, 53, 53)",
+    "border": "1px solid #e0e0e0",
+    "color": "#ddd",
+    "background-color": "#353535",
 })
 
 // And finally we check the ayu theme.
 click: "#theme-ayu"
 wait-for-css: ("#crate-search", {
-    "border": "1px solid rgb(92, 103, 115)",
-    "color": "rgb(255, 255, 255)",
-    "background-color": "rgb(15, 20, 25)",
+    "border": "1px solid #5c6773",
+    "color": "#fff",
+    "background-color": "#0f1419",
 })

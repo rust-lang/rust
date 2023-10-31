@@ -1,14 +1,13 @@
 use hir::FnSig;
 use rustc_ast::ast::Attribute;
 use rustc_errors::Applicability;
+use rustc_hir::def::Res;
 use rustc_hir::def_id::DefIdSet;
-use rustc_hir::{self as hir, def::Res, QPath};
+use rustc_hir::{self as hir, QPath};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LintContext};
-use rustc_middle::{
-    lint::in_external_macro,
-    ty::{self, Ty},
-};
+use rustc_middle::lint::in_external_macro;
+use rustc_middle::ty::{self, Ty};
 use rustc_span::{sym, Span, Symbol};
 
 use clippy_utils::attrs::is_proc_macro;
@@ -198,14 +197,14 @@ fn is_mutable_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, tys: &mut DefIdSet)
     match *ty.kind() {
         // primitive types are never mutable
         ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Str => false,
-        ty::Adt(adt, substs) => {
+        ty::Adt(adt, args) => {
             tys.insert(adt.did()) && !ty.is_freeze(cx.tcx, cx.param_env)
                 || KNOWN_WRAPPER_TYS
                     .iter()
                     .any(|&sym| cx.tcx.is_diagnostic_item(sym, adt.did()))
-                    && substs.types().any(|ty| is_mutable_ty(cx, ty, tys))
+                    && args.types().any(|ty| is_mutable_ty(cx, ty, tys))
         },
-        ty::Tuple(substs) => substs.iter().any(|ty| is_mutable_ty(cx, ty, tys)),
+        ty::Tuple(args) => args.iter().any(|ty| is_mutable_ty(cx, ty, tys)),
         ty::Array(ty, _) | ty::Slice(ty) => is_mutable_ty(cx, ty, tys),
         ty::RawPtr(ty::TypeAndMut { ty, mutbl }) | ty::Ref(_, ty, mutbl) => {
             mutbl == hir::Mutability::Mut || is_mutable_ty(cx, ty, tys)
@@ -222,7 +221,7 @@ fn is_mutated_static(e: &hir::Expr<'_>) -> bool {
     match e.kind {
         Path(QPath::Resolved(_, path)) => !matches!(path.res, Res::Local(_)),
         Path(_) => true,
-        Field(inner, _) | Index(inner, _) => is_mutated_static(inner),
+        Field(inner, _) | Index(inner, _, _) => is_mutated_static(inner),
         _ => false,
     }
 }

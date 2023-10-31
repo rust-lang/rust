@@ -4,10 +4,12 @@ use rustc_ast as ast;
 use rustc_ast::entry::EntryPointType;
 use rustc_ast::mut_visit::{ExpectOne, *};
 use rustc_ast::ptr::P;
+use rustc_ast::visit::{walk_item, Visitor};
 use rustc_ast::{attr, ModKind};
 use rustc_expand::base::{ExtCtxt, ResolverExpand};
 use rustc_expand::expand::{AstFragment, ExpansionConfig};
 use rustc_feature::Features;
+use rustc_session::lint::builtin::UNNAMEABLE_TEST_ITEMS;
 use rustc_session::Session;
 use rustc_span::hygiene::{AstPass, SyntaxContext, Transparency};
 use rustc_span::symbol::{sym, Ident, Symbol};
@@ -39,7 +41,12 @@ struct TestCtxt<'a> {
 
 /// Traverse the crate, collecting all the test functions, eliding any
 /// existing main functions, and synthesizing a main test harness
-pub fn inject(krate: &mut ast::Crate, sess: &Session, resolver: &mut dyn ResolverExpand) {
+pub fn inject(
+    krate: &mut ast::Crate,
+    sess: &Session,
+    features: &Features,
+    resolver: &mut dyn ResolverExpand,
+) {
     let span_diagnostic = sess.diagnostic();
     let panic_strategy = sess.panic_strategy();
     let platform_panic_strategy = sess.target.panic_strategy;
@@ -63,10 +70,7 @@ pub fn inject(krate: &mut ast::Crate, sess: &Session, resolver: &mut dyn Resolve
                     // Silently allow compiling with panic=abort on these platforms,
                     // but with old behavior (abort if a test fails).
                 } else {
-                    span_diagnostic.err(
-                        "building tests with panic=abort is not supported \
-                                         without `-Zpanic_abort_tests`",
-                    );
+                    span_diagnostic.emit_err(errors::TestsNotSupport {});
                 }
                 PanicStrategy::Unwind
             }
@@ -77,7 +81,7 @@ pub fn inject(krate: &mut ast::Crate, sess: &Session, resolver: &mut dyn Resolve
             resolver,
             reexport_test_harness_main,
             krate,
-            &sess.features_untracked(),
+            features,
             panic_strategy,
             test_runner,
         )
@@ -140,8 +144,28 @@ impl<'a> MutVisitor for TestHarnessGenerator<'a> {
             let prev_tests = mem::take(&mut self.tests);
             noop_visit_item_kind(&mut item.kind, self);
             self.add_test_cases(item.id, span, prev_tests);
+        } else {
+            // But in those cases, we emit a lint to warn the user of these missing tests.
+            walk_item(&mut InnerItemLinter { sess: self.cx.ext_cx.sess }, &item);
         }
         smallvec![P(item)]
+    }
+}
+
+struct InnerItemLinter<'a> {
+    sess: &'a Session,
+}
+
+impl<'a> Visitor<'a> for InnerItemLinter<'_> {
+    fn visit_item(&mut self, i: &'a ast::Item) {
+        if let Some(attr) = attr::find_by_name(&i.attrs, sym::rustc_test_marker) {
+            self.sess.parse_sess.buffer_lint(
+                UNNAMEABLE_TEST_ITEMS,
+                attr.span,
+                i.id,
+                crate::fluent_generated::builtin_macros_unnameable_test_items,
+            );
+        }
     }
 }
 
@@ -224,9 +248,7 @@ fn generate_test_harness(
     panic_strategy: PanicStrategy,
     test_runner: Option<ast::Path>,
 ) {
-    let mut econfig = ExpansionConfig::default("test".to_string());
-    econfig.features = Some(features);
-
+    let econfig = ExpansionConfig::default("test".to_string(), features);
     let ext_cx = ExtCtxt::new(sess, econfig, resolver, None);
 
     let expn_id = ext_cx.resolver.expansion_for_ast_pass(

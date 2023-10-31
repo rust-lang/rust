@@ -6,7 +6,7 @@ use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_middle::mir::visit::{MutVisitor, TyContext};
 use rustc_middle::mir::Constant;
 use rustc_middle::mir::{Body, Location, Promoted};
-use rustc_middle::ty::subst::SubstsRef;
+use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_span::{Span, Symbol};
 
@@ -94,10 +94,10 @@ impl<'a, 'tcx> MutVisitor<'tcx> for RegionRenumberer<'a, 'tcx> {
     }
 
     #[instrument(skip(self), level = "debug")]
-    fn visit_substs(&mut self, substs: &mut SubstsRef<'tcx>, location: Location) {
-        *substs = self.renumber_regions(*substs, || RegionCtxt::Location(location));
+    fn visit_args(&mut self, args: &mut GenericArgsRef<'tcx>, location: Location) {
+        *args = self.renumber_regions(*args, || RegionCtxt::Location(location));
 
-        debug!(?substs);
+        debug!(?args);
     }
 
     #[instrument(skip(self), level = "debug")]

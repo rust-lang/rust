@@ -1,8 +1,8 @@
 error: Undefined Behavior: dereferencing pointer failed: $HEX[noalloc] is a dangling pointer (it has no provenance)
   --> $DIR/storage_dead_dangling.rs:LL:CC
    |
-LL |     unsafe { &mut *(LEAK as *mut i32) };
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^ dereferencing pointer failed: $HEX[noalloc] is a dangling pointer (it has no provenance)
+LL |     let _ = unsafe { &mut *(LEAK as *mut i32) };
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^ dereferencing pointer failed: $HEX[noalloc] is a dangling pointer (it has no provenance)
    |
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information

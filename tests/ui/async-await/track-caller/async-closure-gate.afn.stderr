@@ -1,0 +1,57 @@
+error[E0658]: `#[track_caller]` on closures is currently unstable
+  --> $DIR/async-closure-gate.rs:8:13
+   |
+LL |     let _ = #[track_caller] async || {
+   |             ^^^^^^^^^^^^^^^
+   |
+   = note: see issue #87417 <https://github.com/rust-lang/rust/issues/87417> for more information
+   = help: add `#![feature(closure_track_caller)]` to the crate attributes to enable
+
+error[E0658]: `#[track_caller]` on closures is currently unstable
+  --> $DIR/async-closure-gate.rs:15:13
+   |
+LL |     let _ = #[track_caller] async || {
+   |             ^^^^^^^^^^^^^^^
+   |
+   = note: see issue #87417 <https://github.com/rust-lang/rust/issues/87417> for more information
+   = help: add `#![feature(closure_track_caller)]` to the crate attributes to enable
+
+error[E0658]: `#[track_caller]` on closures is currently unstable
+  --> $DIR/async-closure-gate.rs:21:13
+   |
+LL |     let _ = #[track_caller] || {
+   |             ^^^^^^^^^^^^^^^
+   |
+   = note: see issue #87417 <https://github.com/rust-lang/rust/issues/87417> for more information
+   = help: add `#![feature(closure_track_caller)]` to the crate attributes to enable
+
+error[E0658]: `#[track_caller]` on closures is currently unstable
+  --> $DIR/async-closure-gate.rs:28:17
+   |
+LL |         let _ = #[track_caller] || {
+   |                 ^^^^^^^^^^^^^^^
+   |
+   = note: see issue #87417 <https://github.com/rust-lang/rust/issues/87417> for more information
+   = help: add `#![feature(closure_track_caller)]` to the crate attributes to enable
+
+error[E0658]: `#[track_caller]` on closures is currently unstable
+  --> $DIR/async-closure-gate.rs:36:9
+   |
+LL |         #[track_caller] || {
+   |         ^^^^^^^^^^^^^^^
+   |
+   = note: see issue #87417 <https://github.com/rust-lang/rust/issues/87417> for more information
+   = help: add `#![feature(closure_track_caller)]` to the crate attributes to enable
+
+error[E0658]: `#[track_caller]` on closures is currently unstable
+  --> $DIR/async-closure-gate.rs:45:13
+   |
+LL |             #[track_caller] || {
+   |             ^^^^^^^^^^^^^^^
+   |
+   = note: see issue #87417 <https://github.com/rust-lang/rust/issues/87417> for more information
+   = help: add `#![feature(closure_track_caller)]` to the crate attributes to enable
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

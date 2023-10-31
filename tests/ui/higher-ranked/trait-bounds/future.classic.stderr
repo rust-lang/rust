@@ -1,0 +1,6 @@
+error: the compiler unexpectedly panicked. this is a bug.
+
+query stack during panic:
+#0 [evaluate_obligation] evaluating trait selection obligation `for<'a> [async fn body@$DIR/future.rs:32:35: 34:2]: core::future::future::Future`
+#1 [codegen_select_candidate] computing candidate for `<strlen as Trait>`
+end of query stack

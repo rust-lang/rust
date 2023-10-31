@@ -1,25 +1,19 @@
 use std::env;
-use std::fs;
+use std::io::Write;
 use std::path::Path;
 
-use super::path::{Dirs, RelPath};
-use super::prepare::GitRepo;
-use super::rustc_info::get_file_name;
-use super::utils::{hyperfine_command, spawn_and_wait, CargoProject, Compiler};
+use crate::path::{Dirs, RelPath};
+use crate::prepare::GitRepo;
+use crate::rustc_info::get_file_name;
+use crate::utils::{hyperfine_command, spawn_and_wait, Compiler};
 
 static SIMPLE_RAYTRACER_REPO: GitRepo = GitRepo::github(
     "ebobby",
     "simple-raytracer",
     "804a7a21b9e673a482797aa289a18ed480e4d813",
+    "ad6f59a2331a3f56",
     "<none>",
 );
-
-// Use a separate target dir for the initial LLVM build to reduce unnecessary recompiles
-static SIMPLE_RAYTRACER_LLVM: CargoProject =
-    CargoProject::new(&SIMPLE_RAYTRACER_REPO.source_dir(), "simple_raytracer_llvm");
-
-static SIMPLE_RAYTRACER: CargoProject =
-    CargoProject::new(&SIMPLE_RAYTRACER_REPO.source_dir(), "simple_raytracer");
 
 pub(crate) fn benchmark(dirs: &Dirs, bootstrap_host_compiler: &Compiler) {
     benchmark_simple_raytracer(dirs, bootstrap_host_compiler);
@@ -32,35 +26,23 @@ fn benchmark_simple_raytracer(dirs: &Dirs, bootstrap_host_compiler: &Compiler) {
         std::process::exit(1);
     }
 
-    if !SIMPLE_RAYTRACER_REPO.source_dir().to_path(dirs).exists() {
-        SIMPLE_RAYTRACER_REPO.fetch(dirs);
-        spawn_and_wait(SIMPLE_RAYTRACER.fetch(
-            &bootstrap_host_compiler.cargo,
-            &bootstrap_host_compiler.rustc,
-            dirs,
-        ));
-    }
-
-    eprintln!("[LLVM BUILD] simple-raytracer");
-    let build_cmd = SIMPLE_RAYTRACER_LLVM.build(bootstrap_host_compiler, dirs);
-    spawn_and_wait(build_cmd);
-    fs::copy(
-        SIMPLE_RAYTRACER_LLVM
-            .target_dir(dirs)
-            .join(&bootstrap_host_compiler.triple)
-            .join("debug")
-            .join(get_file_name("main", "bin")),
-        RelPath::BUILD.to_path(dirs).join(get_file_name("raytracer_cg_llvm", "bin")),
-    )
-    .unwrap();
+    SIMPLE_RAYTRACER_REPO.fetch(dirs);
+    SIMPLE_RAYTRACER_REPO.patch(dirs);
 
     let bench_runs = env::var("BENCH_RUNS").unwrap_or_else(|_| "10".to_string()).parse().unwrap();
 
+    let mut gha_step_summary = if let Ok(file) = std::env::var("GITHUB_STEP_SUMMARY") {
+        Some(std::fs::OpenOptions::new().append(true).open(file).unwrap())
+    } else {
+        None
+    };
+
     eprintln!("[BENCH COMPILE] ebobby/simple-raytracer");
-    let cargo_clif =
-        RelPath::DIST.to_path(dirs).join(get_file_name("cargo_clif", "bin").replace('_', "-"));
-    let manifest_path = SIMPLE_RAYTRACER.manifest_path(dirs);
-    let target_dir = SIMPLE_RAYTRACER.target_dir(dirs);
+    let cargo_clif = RelPath::DIST
+        .to_path(dirs)
+        .join(get_file_name(&bootstrap_host_compiler.rustc, "cargo_clif", "bin").replace('_', "-"));
+    let manifest_path = SIMPLE_RAYTRACER_REPO.source_dir().to_path(dirs).join("Cargo.toml");
+    let target_dir = RelPath::BUILD.join("simple_raytracer").to_path(dirs);
 
     let clean_cmd = format!(
         "RUSTC=rustc cargo clean --manifest-path {manifest_path} --target-dir {target_dir}",
@@ -68,36 +50,81 @@ fn benchmark_simple_raytracer(dirs: &Dirs, bootstrap_host_compiler: &Compiler) {
         target_dir = target_dir.display(),
     );
     let llvm_build_cmd = format!(
-        "RUSTC=rustc cargo build --manifest-path {manifest_path} --target-dir {target_dir}",
+        "RUSTC=rustc cargo build --manifest-path {manifest_path} --target-dir {target_dir} && (rm build/raytracer_cg_llvm || true) && ln build/simple_raytracer/debug/main build/raytracer_cg_llvm",
         manifest_path = manifest_path.display(),
         target_dir = target_dir.display(),
     );
     let clif_build_cmd = format!(
-        "RUSTC=rustc {cargo_clif} build --manifest-path {manifest_path} --target-dir {target_dir}",
+        "RUSTC=rustc {cargo_clif} build --manifest-path {manifest_path} --target-dir {target_dir} && (rm build/raytracer_cg_clif || true) && ln build/simple_raytracer/debug/main build/raytracer_cg_clif",
+        cargo_clif = cargo_clif.display(),
+        manifest_path = manifest_path.display(),
+        target_dir = target_dir.display(),
+    );
+    let clif_build_opt_cmd = format!(
+        "RUSTC=rustc {cargo_clif} build --manifest-path {manifest_path} --target-dir {target_dir} --release && (rm build/raytracer_cg_clif_opt || true) && ln build/simple_raytracer/release/main build/raytracer_cg_clif_opt",
         cargo_clif = cargo_clif.display(),
         manifest_path = manifest_path.display(),
         target_dir = target_dir.display(),
     );
 
-    let bench_compile =
-        hyperfine_command(1, bench_runs, Some(&clean_cmd), &llvm_build_cmd, &clif_build_cmd);
+    let bench_compile_markdown = RelPath::DIST.to_path(dirs).join("bench_compile.md");
+
+    let bench_compile = hyperfine_command(
+        1,
+        bench_runs,
+        Some(&clean_cmd),
+        &[
+            ("cargo build", &llvm_build_cmd),
+            ("cargo-clif build", &clif_build_cmd),
+            ("cargo-clif build --release", &clif_build_opt_cmd),
+        ],
+        &bench_compile_markdown,
+    );
 
     spawn_and_wait(bench_compile);
 
-    eprintln!("[BENCH RUN] ebobby/simple-raytracer");
-    fs::copy(
-        target_dir.join("debug").join(get_file_name("main", "bin")),
-        RelPath::BUILD.to_path(dirs).join(get_file_name("raytracer_cg_clif", "bin")),
-    )
-    .unwrap();
+    if let Some(gha_step_summary) = gha_step_summary.as_mut() {
+        gha_step_summary.write_all(b"## Compile ebobby/simple-raytracer\n\n").unwrap();
+        gha_step_summary.write_all(&std::fs::read(bench_compile_markdown).unwrap()).unwrap();
+        gha_step_summary.write_all(b"\n").unwrap();
+    }
 
+    eprintln!("[BENCH RUN] ebobby/simple-raytracer");
+
+    let bench_run_markdown = RelPath::DIST.to_path(dirs).join("bench_run.md");
+
+    let raytracer_cg_llvm = Path::new(".").join(get_file_name(
+        &bootstrap_host_compiler.rustc,
+        "raytracer_cg_llvm",
+        "bin",
+    ));
+    let raytracer_cg_clif = Path::new(".").join(get_file_name(
+        &bootstrap_host_compiler.rustc,
+        "raytracer_cg_clif",
+        "bin",
+    ));
+    let raytracer_cg_clif_opt = Path::new(".").join(get_file_name(
+        &bootstrap_host_compiler.rustc,
+        "raytracer_cg_clif_opt",
+        "bin",
+    ));
     let mut bench_run = hyperfine_command(
         0,
         bench_runs,
         None,
-        Path::new(".").join(get_file_name("raytracer_cg_llvm", "bin")).to_str().unwrap(),
-        Path::new(".").join(get_file_name("raytracer_cg_clif", "bin")).to_str().unwrap(),
+        &[
+            ("", raytracer_cg_llvm.to_str().unwrap()),
+            ("", raytracer_cg_clif.to_str().unwrap()),
+            ("", raytracer_cg_clif_opt.to_str().unwrap()),
+        ],
+        &bench_run_markdown,
     );
     bench_run.current_dir(RelPath::BUILD.to_path(dirs));
     spawn_and_wait(bench_run);
+
+    if let Some(gha_step_summary) = gha_step_summary.as_mut() {
+        gha_step_summary.write_all(b"## Run ebobby/simple-raytracer\n\n").unwrap();
+        gha_step_summary.write_all(&std::fs::read(bench_run_markdown).unwrap()).unwrap();
+        gha_step_summary.write_all(b"\n").unwrap();
+    }
 }

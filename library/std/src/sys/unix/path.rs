@@ -30,7 +30,7 @@ pub(crate) fn absolute(path: &Path) -> io::Result<PathBuf> {
 
     // Get the components, skipping the redundant leading "." component if it exists.
     let mut components = path.strip_prefix(".").unwrap_or(path).components();
-    let path_os = path.as_os_str().bytes();
+    let path_os = path.as_os_str().as_os_str_bytes();
 
     let mut normalized = if path.is_absolute() {
         // "If a pathname begins with two successive <slash> characters, the

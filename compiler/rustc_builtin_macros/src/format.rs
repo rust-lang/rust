@@ -1,6 +1,6 @@
 use rustc_ast::ptr::P;
-use rustc_ast::token;
 use rustc_ast::tokenstream::TokenStream;
+use rustc_ast::{token, StmtKind};
 use rustc_ast::{
     Expr, ExprKind, FormatAlignment, FormatArgPosition, FormatArgPositionKind, FormatArgs,
     FormatArgsPiece, FormatArgument, FormatArgumentKind, FormatArguments, FormatCount,
@@ -163,7 +163,7 @@ fn make_format_args(
 
     let MacroInput { fmtstr: efmt, mut args, is_direct_literal } = input;
 
-    let (fmt_str, fmt_style, fmt_span) = match expr_to_spanned_string(ecx, efmt, msg) {
+    let (fmt_str, fmt_style, fmt_span) = match expr_to_spanned_string(ecx, efmt.clone(), msg) {
         Ok(mut fmt) if append_newline => {
             fmt.0 = Symbol::intern(&format!("{}\n", fmt.0));
             fmt
@@ -171,17 +171,33 @@ fn make_format_args(
         Ok(fmt) => fmt,
         Err(err) => {
             if let Some((mut err, suggested)) = err {
-                let sugg_fmt = match args.explicit_args().len() {
-                    0 => "{}".to_string(),
-                    _ => format!("{}{{}}", "{} ".repeat(args.explicit_args().len())),
-                };
                 if !suggested {
-                    err.span_suggestion(
-                        unexpanded_fmt_span.shrink_to_lo(),
-                        "you might be missing a string literal to format with",
-                        format!("\"{}\", ", sugg_fmt),
-                        Applicability::MaybeIncorrect,
-                    );
+                    if let ExprKind::Block(block, None) = &efmt.kind
+                        && block.stmts.len() == 1
+                        && let StmtKind::Expr(expr) = &block.stmts[0].kind
+                        && let ExprKind::Path(None, path) = &expr.kind
+                            && path.is_potential_trivial_const_arg()
+                    {
+                        err.multipart_suggestion(
+                            "quote your inlined format argument to use as string literal",
+                            vec![
+                                (unexpanded_fmt_span.shrink_to_hi(), "\"".to_string()),
+                                (unexpanded_fmt_span.shrink_to_lo(), "\"".to_string()),
+                            ],
+                             Applicability::MaybeIncorrect,
+                        );
+                    } else {
+                        let sugg_fmt = match args.explicit_args().len() {
+                            0 => "{}".to_string(),
+                            _ => format!("{}{{}}", "{} ".repeat(args.explicit_args().len())),
+                        };
+                        err.span_suggestion(
+                            unexpanded_fmt_span.shrink_to_lo(),
+                            "you might be missing a string literal to format with",
+                            format!("\"{sugg_fmt}\", "),
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
                 }
                 err.emit();
             }
@@ -554,9 +570,6 @@ fn report_missing_placeholders(
     fmt_span: Span,
 ) {
     let mut diag = if let &[(span, named)] = &unused[..] {
-        //let mut diag = ecx.struct_span_err(span, msg);
-        //diag.span_label(span, msg);
-        //diag
         ecx.create_err(errors::FormatUnusedArg { span, named })
     } else {
         let unused_labels =
@@ -671,7 +684,7 @@ fn report_invalid_references(
     let num_args_desc = match args.explicit_args().len() {
         0 => "no arguments were given".to_string(),
         1 => "there is 1 argument".to_string(),
-        n => format!("there are {} arguments", n),
+        n => format!("there are {n} arguments"),
     };
 
     let mut e;
@@ -783,7 +796,7 @@ fn report_invalid_references(
                         if num_placeholders == 1 {
                             "is 1 argument".to_string()
                         } else {
-                            format!("are {} arguments", num_placeholders)
+                            format!("are {num_placeholders} arguments")
                         },
                     ),
                 );
@@ -814,7 +827,7 @@ fn report_invalid_references(
         };
         e = ecx.struct_span_err(
             span,
-            format!("invalid reference to positional {} ({})", arg_list, num_args_desc),
+            format!("invalid reference to positional {arg_list} ({num_args_desc})"),
         );
         e.note("positional arguments are zero-based");
     }

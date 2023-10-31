@@ -6,8 +6,10 @@ import * as Is from "vscode-languageclient/lib/common/utils/is";
 import { assert } from "./util";
 import * as diagnostics from "./diagnostics";
 import { WorkspaceEdit } from "vscode";
-import { Config, prepareVSCodeConfig } from "./config";
+import { type Config, prepareVSCodeConfig } from "./config";
 import { randomUUID } from "crypto";
+import { sep as pathSeparator } from "path";
+import { unwrapUndefinable } from "./undefinable";
 
 export interface Env {
     [name: string]: string;
@@ -32,21 +34,24 @@ export const LINKED_COMMANDS = new Map<string, ra.CommandLink>();
 // add code to remove a target command from the map after the link is
 // clicked, but assuming most links in hover sheets won't be clicked anyway
 // this code won't change the overall memory use much.
-setInterval(function cleanupOlderCommandLinks() {
-    // keys are returned in insertion order, we'll keep a few
-    // of recent keys available, and clean the rest
-    const keys = [...LINKED_COMMANDS.keys()];
-    const keysToRemove = keys.slice(0, keys.length - 10);
-    for (const key of keysToRemove) {
-        LINKED_COMMANDS.delete(key);
-    }
-}, 10 * 60 * 1000);
+setInterval(
+    function cleanupOlderCommandLinks() {
+        // keys are returned in insertion order, we'll keep a few
+        // of recent keys available, and clean the rest
+        const keys = [...LINKED_COMMANDS.keys()];
+        const keysToRemove = keys.slice(0, keys.length - 10);
+        for (const key of keysToRemove) {
+            LINKED_COMMANDS.delete(key);
+        }
+    },
+    10 * 60 * 1000,
+);
 
 function renderCommand(cmd: ra.CommandLink): string {
     const commandId = randomUUID();
     LINKED_COMMANDS.set(commandId, cmd);
     return `[${cmd.title}](command:rust-analyzer.linkToCommand?${encodeURIComponent(
-        JSON.stringify([commandId])
+        JSON.stringify([commandId]),
     )} '${cmd.tooltip}')`;
 }
 
@@ -55,7 +60,7 @@ function renderHoverActions(actions: ra.CommandLinkGroup[]): vscode.MarkdownStri
         .map(
             (group) =>
                 (group.title ? group.title + " " : "") +
-                group.commands.map(renderCommand).join(" | ")
+                group.commands.map(renderCommand).join(" | "),
         )
         .join("___");
 
@@ -69,7 +74,8 @@ export async function createClient(
     outputChannel: vscode.OutputChannel,
     initializationOptions: vscode.WorkspaceConfiguration,
     serverOptions: lc.ServerOptions,
-    config: Config
+    config: Config,
+    unlinkedFiles: vscode.Uri[],
 ): Promise<lc.LanguageClient> {
     const clientOptions: lc.LanguageClientOptions = {
         documentSelector: [{ scheme: "file", language: "rust" }],
@@ -90,7 +96,7 @@ export async function createClient(
                 async configuration(
                     params: lc.ConfigurationParams,
                     token: vscode.CancellationToken,
-                    next: lc.ConfigurationRequest.HandlerSignature
+                    next: lc.ConfigurationRequest.HandlerSignature,
                 ) {
                     const resp = await next(params, token);
                     if (resp && Array.isArray(resp)) {
@@ -114,11 +120,74 @@ export async function createClient(
             async handleDiagnostics(
                 uri: vscode.Uri,
                 diagnosticList: vscode.Diagnostic[],
-                next: lc.HandleDiagnosticsSignature
+                next: lc.HandleDiagnosticsSignature,
             ) {
                 const preview = config.previewRustcOutput;
                 const errorCode = config.useRustcErrorCode;
                 diagnosticList.forEach((diag, idx) => {
+                    const value =
+                        typeof diag.code === "string" || typeof diag.code === "number"
+                            ? diag.code
+                            : diag.code?.value;
+                    if (
+                        value === "unlinked-file" &&
+                        !unlinkedFiles.includes(uri) &&
+                        diag.message !== "file not included in module tree"
+                    ) {
+                        const config = vscode.workspace.getConfiguration("rust-analyzer");
+                        if (config.get("showUnlinkedFileNotification")) {
+                            unlinkedFiles.push(uri);
+                            const folder = vscode.workspace.getWorkspaceFolder(uri)?.uri.fsPath;
+                            if (folder) {
+                                const parentBackslash = uri.fsPath.lastIndexOf(
+                                    pathSeparator + "src",
+                                );
+                                const parent = uri.fsPath.substring(0, parentBackslash);
+
+                                if (parent.startsWith(folder)) {
+                                    const path = vscode.Uri.file(
+                                        parent + pathSeparator + "Cargo.toml",
+                                    );
+                                    void vscode.workspace.fs.stat(path).then(async () => {
+                                        const choice = await vscode.window.showInformationMessage(
+                                            `This rust file does not belong to a loaded cargo project. It looks like it might belong to the workspace at ${path.path}, do you want to add it to the linked Projects?`,
+                                            "Yes",
+                                            "No",
+                                            "Don't show this again",
+                                        );
+                                        switch (choice) {
+                                            case undefined:
+                                                break;
+                                            case "No":
+                                                break;
+                                            case "Yes":
+                                                const pathToInsert =
+                                                    "." +
+                                                    parent.substring(folder.length) +
+                                                    pathSeparator +
+                                                    "Cargo.toml";
+                                                await config.update(
+                                                    "linkedProjects",
+                                                    config
+                                                        .get<any[]>("linkedProjects")
+                                                        ?.concat(pathToInsert),
+                                                    false,
+                                                );
+                                                break;
+                                            case "Don't show this again":
+                                                await config.update(
+                                                    "showUnlinkedFileNotification",
+                                                    false,
+                                                    false,
+                                                );
+                                                break;
+                                        }
+                                    });
+                                }
+                            }
+                        }
+                    }
+
                     // Abuse the fact that VSCode leaks the LSP diagnostics data field through the
                     // Diagnostic class, if they ever break this we are out of luck and have to go
                     // back to the worst diagnostics experience ever:)
@@ -138,14 +207,6 @@ export async function createClient(
                                 .substring(0, index)
                                 .replace(/^ -->[^\n]+\n/m, "");
                         }
-                        let value;
-                        if (errorCode) {
-                            if (typeof diag.code === "string" || typeof diag.code === "number") {
-                                value = diag.code;
-                            } else {
-                                value = diag.code?.value;
-                            }
-                        }
                         diag.code = {
                             target: vscode.Uri.from({
                                 scheme: diagnostics.URI_SCHEME,
@@ -153,7 +214,8 @@ export async function createClient(
                                 fragment: uri.toString(),
                                 query: idx.toString(),
                             }),
-                            value: value ?? "Click for full compiler diagnostic",
+                            value:
+                                errorCode && value ? value : "Click for full compiler diagnostic",
                         };
                     }
                 });
@@ -163,7 +225,7 @@ export async function createClient(
                 document: vscode.TextDocument,
                 position: vscode.Position,
                 token: vscode.CancellationToken,
-                _next: lc.ProvideHoverSignature
+                _next: lc.ProvideHoverSignature,
             ) {
                 const editor = vscode.window.activeTextEditor;
                 const positionOrRange = editor?.selection?.contains(position)
@@ -177,7 +239,7 @@ export async function createClient(
                                 client.code2ProtocolConverter.asTextDocumentIdentifier(document),
                             position: positionOrRange,
                         },
-                        token
+                        token,
                     )
                     .then(
                         (result) => {
@@ -191,7 +253,7 @@ export async function createClient(
                         (error) => {
                             client.handleFailedRequest(lc.HoverRequest.type, token, error, null);
                             return Promise.resolve(null);
-                        }
+                        },
                     );
             },
             // Using custom handling of CodeActions to support action groups and snippet edits.
@@ -201,14 +263,14 @@ export async function createClient(
                 range: vscode.Range,
                 context: vscode.CodeActionContext,
                 token: vscode.CancellationToken,
-                _next: lc.ProvideCodeActionsSignature
+                _next: lc.ProvideCodeActionsSignature,
             ) {
                 const params: lc.CodeActionParams = {
                     textDocument: client.code2ProtocolConverter.asTextDocumentIdentifier(document),
                     range: client.code2ProtocolConverter.asRange(range),
                     context: await client.code2ProtocolConverter.asCodeActionContext(
                         context,
-                        token
+                        token,
                     ),
                 };
                 return client.sendRequest(lc.CodeActionRequest.type, params, token).then(
@@ -224,21 +286,21 @@ export async function createClient(
                             if (lc.CodeAction.is(item)) {
                                 assert(
                                     !item.command,
-                                    "We don't expect to receive commands in CodeActions"
+                                    "We don't expect to receive commands in CodeActions",
                                 );
                                 const action = await client.protocol2CodeConverter.asCodeAction(
                                     item,
-                                    token
+                                    token,
                                 );
                                 result.push(action);
                                 continue;
                             }
                             assert(
                                 isCodeActionWithoutEditsAndCommands(item),
-                                "We don't expect edits or commands here"
+                                "We don't expect edits or commands here",
                             );
                             const kind = client.protocol2CodeConverter.asCodeActionKind(
-                                (item as any).kind
+                                (item as any).kind,
                             );
                             const action = new vscode.CodeAction(item.title, kind);
                             const group = (item as any).group;
@@ -265,10 +327,12 @@ export async function createClient(
                         }
                         for (const [group, { index, items }] of groups) {
                             if (items.length === 1) {
-                                result[index] = items[0];
+                                const item = unwrapUndefinable(items[0]);
+                                result[index] = item;
                             } else {
                                 const action = new vscode.CodeAction(group);
-                                action.kind = items[0].kind;
+                                const item = unwrapUndefinable(items[0]);
+                                action.kind = item.kind;
                                 action.command = {
                                     command: "rust-analyzer.applyActionGroup",
                                     title: "",
@@ -290,7 +354,7 @@ export async function createClient(
                         }
                         return result;
                     },
-                    (_error) => undefined
+                    (_error) => undefined,
                 );
             },
         },
@@ -303,11 +367,12 @@ export async function createClient(
         "rust-analyzer",
         "Rust Analyzer Language Server",
         serverOptions,
-        clientOptions
+        clientOptions,
     );
 
     // To turn on all proposed features use: client.registerProposedFeatures();
     client.registerFeature(new ExperimentalFeatures());
+    client.registerFeature(new OverrideFeatures());
 
     return client;
 }
@@ -338,7 +403,26 @@ class ExperimentalFeatures implements lc.StaticFeature {
     }
     initialize(
         _capabilities: lc.ServerCapabilities,
-        _documentSelector: lc.DocumentSelector | undefined
+        _documentSelector: lc.DocumentSelector | undefined,
+    ): void {}
+    dispose(): void {}
+}
+
+class OverrideFeatures implements lc.StaticFeature {
+    getState(): lc.FeatureState {
+        return { kind: "static" };
+    }
+    fillClientCapabilities(capabilities: lc.ClientCapabilities): void {
+        // Force disable `augmentsSyntaxTokens`, VSCode's textmate grammar is somewhat incomplete
+        // making the experience generally worse
+        const caps = capabilities.textDocument?.semanticTokens;
+        if (caps) {
+            caps.augmentsSyntaxTokens = false;
+        }
+    }
+    initialize(
+        _capabilities: lc.ServerCapabilities,
+        _documentSelector: lc.DocumentSelector | undefined,
     ): void {}
     dispose(): void {}
 }

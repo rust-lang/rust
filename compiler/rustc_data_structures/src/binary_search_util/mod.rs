@@ -10,41 +10,17 @@ pub fn binary_search_slice<'d, E, K>(data: &'d [E], key_fn: impl Fn(&E) -> K, ke
 where
     K: Ord,
 {
-    let Ok(mid) = data.binary_search_by_key(key, &key_fn) else {
+    let size = data.len();
+    let start = data.partition_point(|x| key_fn(x) < *key);
+    // At this point `start` either points at the first entry with equal or
+    // greater key or is equal to `size` in case all elements have smaller keys
+    if start == size || key_fn(&data[start]) != *key {
         return &[];
     };
-    let size = data.len();
-
-    // We get back *some* element with the given key -- so do
-    // a galloping search backwards to find the *first* one.
-    let mut start = mid;
-    let mut previous = mid;
-    let mut step = 1;
-    loop {
-        start = start.saturating_sub(step);
-        if start == 0 || key_fn(&data[start]) != *key {
-            break;
-        }
-        previous = start;
-        step *= 2;
-    }
-    step = previous - start;
-    while step > 1 {
-        let half = step / 2;
-        let mid = start + half;
-        if key_fn(&data[mid]) != *key {
-            start = mid;
-        }
-        step -= half;
-    }
-    // adjust by one if we have overshot
-    if start < size && key_fn(&data[start]) != *key {
-        start += 1;
-    }
 
     // Now search forward to find the *last* one.
-    let mut end = mid;
-    let mut previous = mid;
+    let mut end = start;
+    let mut previous = start;
     let mut step = 1;
     loop {
         end = end.saturating_add(step).min(size);

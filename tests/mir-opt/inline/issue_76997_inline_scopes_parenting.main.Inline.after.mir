@@ -1,45 +1,38 @@
 // MIR for `main` after Inline
 
 fn main() -> () {
-    let mut _0: ();                      // return place in scope 0 at $DIR/issue_76997_inline_scopes_parenting.rs:+0:11: +0:11
-    let _1: [closure@$DIR/issue_76997_inline_scopes_parenting.rs:5:13: 5:16]; // in scope 0 at $DIR/issue_76997_inline_scopes_parenting.rs:+1:9: +1:10
-    let mut _2: &[closure@$DIR/issue_76997_inline_scopes_parenting.rs:5:13: 5:16]; // in scope 0 at $DIR/issue_76997_inline_scopes_parenting.rs:+2:5: +2:6
-    let mut _3: ((),);                   // in scope 0 at $DIR/issue_76997_inline_scopes_parenting.rs:+2:5: +2:10
-    let mut _4: ();                      // in scope 0 at $DIR/issue_76997_inline_scopes_parenting.rs:+2:7: +2:9
-    let mut _5: ();                      // in scope 0 at $DIR/issue_76997_inline_scopes_parenting.rs:+2:5: +2:10
+    let mut _0: ();
+    let _1: [closure@$DIR/issue_76997_inline_scopes_parenting.rs:5:13: 5:16];
+    let mut _2: &[closure@$DIR/issue_76997_inline_scopes_parenting.rs:5:13: 5:16];
+    let mut _3: ((),);
+    let mut _4: ();
+    let mut _5: ();
     scope 1 {
-        debug f => _1;                   // in scope 1 at $DIR/issue_76997_inline_scopes_parenting.rs:+1:9: +1:10
-        scope 2 (inlined main::{closure#0}) { // at $DIR/issue_76997_inline_scopes_parenting.rs:6:5: 6:10
-            debug x => const ();         // in scope 2 at $DIR/issue_76997_inline_scopes_parenting.rs:+1:14: +1:15
+        debug f => _1;
+        scope 2 (inlined main::{closure#0}) {
+            debug x => const ();
             scope 3 {
-                debug y => const ();     // in scope 3 at $DIR/issue_76997_inline_scopes_parenting.rs:+1:23: +1:24
+                debug y => const ();
             }
         }
     }
 
     bb0: {
-        StorageLive(_1);                 // scope 0 at $DIR/issue_76997_inline_scopes_parenting.rs:+1:9: +1:10
-        _1 = [closure@$DIR/issue_76997_inline_scopes_parenting.rs:5:13: 5:16]; // scope 0 at $DIR/issue_76997_inline_scopes_parenting.rs:+1:13: +1:33
-                                         // closure
-                                         // + def_id: DefId(0:4 ~ issue_76997_inline_scopes_parenting[5cd2]::main::{closure#0})
-                                         // + substs: [
-                                         //     i8,
-                                         //     extern "rust-call" fn(((),)),
-                                         //     (),
-                                         // ]
-        StorageLive(_2);                 // scope 1 at $DIR/issue_76997_inline_scopes_parenting.rs:+2:5: +2:6
-        _2 = &_1;                        // scope 1 at $DIR/issue_76997_inline_scopes_parenting.rs:+2:5: +2:6
-        StorageLive(_3);                 // scope 1 at $DIR/issue_76997_inline_scopes_parenting.rs:+2:5: +2:10
-        StorageLive(_4);                 // scope 1 at $DIR/issue_76997_inline_scopes_parenting.rs:+2:7: +2:9
-        _4 = ();                         // scope 1 at $DIR/issue_76997_inline_scopes_parenting.rs:+2:7: +2:9
-        _3 = (move _4,);                 // scope 1 at $DIR/issue_76997_inline_scopes_parenting.rs:+2:5: +2:10
-        StorageLive(_5);                 // scope 1 at $DIR/issue_76997_inline_scopes_parenting.rs:+2:5: +2:10
-        _5 = move (_3.0: ());            // scope 1 at $DIR/issue_76997_inline_scopes_parenting.rs:+2:5: +2:10
-        StorageDead(_5);                 // scope 1 at $DIR/issue_76997_inline_scopes_parenting.rs:+2:5: +2:10
-        StorageDead(_4);                 // scope 1 at $DIR/issue_76997_inline_scopes_parenting.rs:+2:9: +2:10
-        StorageDead(_3);                 // scope 1 at $DIR/issue_76997_inline_scopes_parenting.rs:+2:9: +2:10
-        StorageDead(_2);                 // scope 1 at $DIR/issue_76997_inline_scopes_parenting.rs:+2:9: +2:10
-        StorageDead(_1);                 // scope 0 at $DIR/issue_76997_inline_scopes_parenting.rs:+3:1: +3:2
-        return;                          // scope 0 at $DIR/issue_76997_inline_scopes_parenting.rs:+3:2: +3:2
+        StorageLive(_1);
+        _1 = [closure@$DIR/issue_76997_inline_scopes_parenting.rs:5:13: 5:16];
+        StorageLive(_2);
+        _2 = &_1;
+        StorageLive(_3);
+        StorageLive(_4);
+        _4 = ();
+        _3 = (move _4,);
+        StorageLive(_5);
+        _5 = move (_3.0: ());
+        StorageDead(_5);
+        StorageDead(_4);
+        StorageDead(_3);
+        StorageDead(_2);
+        StorageDead(_1);
+        return;
     }
 }

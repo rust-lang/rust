@@ -60,6 +60,15 @@ impl From<String> for A {
     }
 }
 
+struct PathInExpansion;
+
+impl From<PathInExpansion> for String {
+    fn from(val: PathInExpansion) -> Self {
+        // non self/Self paths in expansions are fine
+        panic!()
+    }
+}
+
 #[clippy::msrv = "1.40"]
 fn msrv_1_40() {
     struct FromOverInto<T>(Vec<T>);
@@ -80,12 +89,6 @@ fn msrv_1_41() {
             FromOverInto(val)
         }
     }
-}
-
-type Opaque = impl Sized;
-struct IntoOpaque;
-impl Into<Opaque> for IntoOpaque {
-    fn into(self) -> Opaque {}
 }
 
 fn main() {}

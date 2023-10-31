@@ -35,6 +35,7 @@ const GATED_CFGS: &[GatedCfg] = &[
     (sym::target_has_atomic_load_store, sym::cfg_target_has_atomic, cfg_fn!(cfg_target_has_atomic)),
     (sym::sanitize, sym::cfg_sanitize, cfg_fn!(cfg_sanitize)),
     (sym::version, sym::cfg_version, cfg_fn!(cfg_version)),
+    (sym::relocation_model, sym::cfg_relocation_model, cfg_fn!(cfg_relocation_model)),
 ];
 
 /// Find a gated cfg determined by the `pred`icate which is given the cfg's name.
@@ -356,10 +357,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ungated!(recursion_limit, CrateLevel, template!(NameValueStr: "N"), FutureWarnFollowing),
     ungated!(type_length_limit, CrateLevel, template!(NameValueStr: "N"), FutureWarnFollowing),
     gated!(
-        const_eval_limit, CrateLevel, template!(NameValueStr: "N"), ErrorFollowing,
-        const_eval_limit, experimental!(const_eval_limit)
-    ),
-    gated!(
         move_size_limit, CrateLevel, template!(NameValueStr: "N"), ErrorFollowing,
         large_assignments, experimental!(move_size_limit)
     ),
@@ -629,6 +626,12 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         ErrorFollowing,
         INTERNAL_UNSTABLE
     ),
+    rustc_attr!(
+        rustc_confusables, Normal,
+        template!(List: r#""name1", "name2", ..."#),
+        ErrorFollowing,
+        INTERNAL_UNSTABLE,
+    ),
     // Enumerates "identity-like" conversion methods to suggest on type mismatch.
     rustc_attr!(
         rustc_conversion_suggestion, Normal, template!(Word), WarnFollowing, INTERNAL_UNSTABLE
@@ -709,7 +712,11 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         "#[rustc_allow_incoherent_impl] has to be added to all impl items of an incoherent inherent impl."
     ),
     rustc_attr!(
-        rustc_deny_explicit_impl, AttributeType::Normal, template!(Word), ErrorFollowing, @only_local: false,
+        rustc_deny_explicit_impl,
+        AttributeType::Normal,
+        template!(List: "implement_via_object = (true|false)"),
+        ErrorFollowing,
+        @only_local: true,
         "#[rustc_deny_explicit_impl] enforces that a trait can have no user-provided impls"
     ),
     rustc_attr!(
@@ -721,6 +728,12 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         rustc_box, AttributeType::Normal, template!(Word), ErrorFollowing,
         "#[rustc_box] allows creating boxes \
         and it is only intended to be used in `alloc`."
+    ),
+
+    rustc_attr!(
+        rustc_host, AttributeType::Normal, template!(Word), ErrorFollowing,
+        "#[rustc_host] annotates const generic parameters as the `host` effect param, \
+        and it is only intended for internal use and as a desugaring."
     ),
 
     BuiltinAttribute {
@@ -806,7 +819,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         TEST, rustc_error, Normal,
         template!(Word, List: "delay_span_bug_from_inside_query"), WarnFollowingWordOnly
     ),
-    rustc_attr!(TEST, rustc_dump_user_substs, Normal, template!(Word), WarnFollowing),
+    rustc_attr!(TEST, rustc_dump_user_args, Normal, template!(Word), WarnFollowing),
     rustc_attr!(TEST, rustc_evaluate_where_clauses, Normal, template!(Word), WarnFollowing),
     rustc_attr!(
         TEST, rustc_if_this_changed, Normal, template!(Word, List: "DepNode"), DuplicatesOk

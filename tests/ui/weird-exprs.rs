@@ -1,7 +1,6 @@
 // run-pass
 
 #![feature(generators)]
-#![feature(unboxed_closures, fn_traits)]
 
 #![allow(non_camel_case_types)]
 #![allow(dead_code)]
@@ -17,6 +16,7 @@
 extern crate core;
 use std::cell::Cell;
 use std::mem::swap;
+use std::ops::Deref;
 
 // Just a grab bag of stuff that you wouldn't want to actually write.
 
@@ -81,7 +81,7 @@ fn angrydome() {
       break; }
 }
 
-fn evil_lincoln() { let _evil = println!("lincoln"); }
+fn evil_lincoln() { let _evil: () = println!("lincoln"); }
 
 fn dots() {
     assert_eq!(String::from(".................................................."),
@@ -137,7 +137,7 @@ fn punch_card() -> impl std::fmt::Debug {
 }
 
 fn r#match() {
-    let val = match match match match match () {
+    let val: () = match match match match match () {
         () => ()
     } {
         () => ()
@@ -166,7 +166,7 @@ fn match_nested_if() {
 }
 
 fn monkey_barrel() {
-    let val = ()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=();
+    let val: () = ()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=()=();
     assert_eq!(val, ());
 }
 
@@ -183,10 +183,10 @@ fn 𝚌𝚘𝚗𝚝𝚒𝚗𝚞𝚎() {
 
 fn function() {
     struct foo;
-    impl FnOnce<()> for foo {
-        type Output = foo;
-        extern "rust-call" fn call_once(self, _args: ()) -> Self::Output {
-            foo
+    impl Deref for foo {
+        type Target = fn() -> Self;
+        fn deref(&self) -> &Self::Target {
+            &((|| foo) as _)
         }
     }
     let foo = foo () ()() ()()() ()()()() ()()()()();

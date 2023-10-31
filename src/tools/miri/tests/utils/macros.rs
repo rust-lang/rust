@@ -9,7 +9,7 @@
 /// The id obtained can be passed directly to `print_state!`.
 macro_rules! alloc_id {
     ($ptr:expr) => {
-        crate::utils::miri_extern::miri_get_alloc_id($ptr as *const u8 as *const ())
+        $crate::utils::miri_get_alloc_id($ptr as *const u8 as *const ())
     };
 }
 
@@ -22,10 +22,10 @@ macro_rules! alloc_id {
 /// tags that have not been given a name. Defaults to `false`.
 macro_rules! print_state {
     ($alloc_id:expr) => {
-        crate::utils::macros::print_state!($alloc_id, false);
+        print_state!($alloc_id, false);
     };
     ($alloc_id:expr, $show:expr) => {
-        crate::utils::miri_extern::miri_print_borrow_state($alloc_id, $show);
+        $crate::utils::miri_print_borrow_state($alloc_id, $show);
     };
 }
 
@@ -42,20 +42,16 @@ macro_rules! print_state {
 /// `stringify!($ptr)` the name of `ptr` in the source code.
 macro_rules! name {
     ($ptr:expr, $name:expr) => {
-        crate::utils::macros::name!($ptr => 0, $name);
+        name!($ptr => 0, $name);
     };
     ($ptr:expr) => {
-        crate::utils::macros::name!($ptr => 0, stringify!($ptr));
+        name!($ptr => 0, stringify!($ptr));
     };
-    ($ptr:expr => $nb:expr) => {
-        crate::utils::macros::name!($ptr => $nb, stringify!($ptr));
+    ($ptr:expr => $nth_parent:expr) => {
+        name!($ptr => $nth_parent, stringify!($ptr));
     };
-    ($ptr:expr => $nb:expr, $name:expr) => {
+    ($ptr:expr => $nth_parent:expr, $name:expr) => {
         let name = $name.as_bytes();
-        crate::utils::miri_extern::miri_pointer_name($ptr as *const u8 as *const (), $nb, name);
+        $crate::utils::miri_pointer_name($ptr as *const u8 as *const (), $nth_parent, name);
     };
 }
-
-pub(crate) use alloc_id;
-pub(crate) use name;
-pub(crate) use print_state;

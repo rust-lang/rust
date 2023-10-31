@@ -1,4 +1,5 @@
-thread 'main' panicked at 'explicit panic', $DIR/exported_symbol_bad_unwind2.rs:LL:CC
+thread 'main' panicked at $DIR/exported_symbol_bad_unwind2.rs:LL:CC:
+explicit panic
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 error: Undefined Behavior: unwinding past a stack frame that does not allow unwinding
   --> $DIR/exported_symbol_bad_unwind2.rs:LL:CC

@@ -18,7 +18,7 @@ use crate::ffi::{c_int, c_void};
 cfg_if::cfg_if! {
     if #[cfg(any(
         target_os = "dragonfly", target_os = "freebsd",
-        target_os = "ios", target_os = "macos", target_os = "watchos",
+        target_os = "ios", target_os = "tvos", target_os = "macos", target_os = "watchos",
         target_os = "openbsd", target_os = "netbsd", target_os = "illumos",
         target_os = "solaris", target_os = "haiku", target_os = "l4re", target_os = "nto"))] {
         use crate::sys::net::netc::IPV6_JOIN_GROUP as IPV6_ADD_MEMBERSHIP;
@@ -446,6 +446,14 @@ impl TcpListener {
         let mut storage: c::sockaddr_storage = unsafe { mem::zeroed() };
         let mut len = mem::size_of_val(&storage) as c::socklen_t;
         let sock = self.inner.accept(&mut storage as *mut _ as *mut _, &mut len)?;
+        let addr = sockaddr_to_addr(&storage, len as usize)?;
+        Ok((TcpStream { inner: sock }, addr))
+    }
+
+    pub fn accept_timeout(&self, timeout: crate::time::Duration) -> io::Result<(TcpStream, SocketAddr)> {
+        let mut storage: c::sockaddr_storage = unsafe { mem::zeroed() };
+        let mut len = mem::size_of_val(&storage) as c::socklen_t;
+        let sock = self.inner.accept_timeout(&mut storage as *mut _ as *mut _, &mut len, timeout)?;
         let addr = sockaddr_to_addr(&storage, len as usize)?;
         Ok((TcpStream { inner: sock }, addr))
     }

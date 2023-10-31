@@ -14,23 +14,23 @@ actor! {
     #[derive(Debug)]
     pub struct Tarballer {
         /// The input folder to be compressed.
-        #[clap(value_name = "NAME")]
+        #[arg(value_name = "NAME")]
         input: String = "package",
 
         /// The prefix of the tarballs.
-        #[clap(value_name = "PATH")]
+        #[arg(value_name = "PATH")]
         output: String = "./dist",
 
         /// The folder in which the input is to be found.
-        #[clap(value_name = "DIR")]
+        #[arg(value_name = "DIR")]
         work_dir: String = "./workdir",
 
         /// The profile used to compress the tarball.
-        #[clap(value_name = "FORMAT", default_value_t)]
+        #[arg(value_name = "FORMAT", default_value_t)]
         compression_profile: CompressionProfile,
 
         /// The formats used to compress the tarball.
-        #[clap(value_name = "FORMAT", default_value_t)]
+        #[arg(value_name = "FORMAT", default_value_t)]
         compression_formats: CompressionFormats,
     }
 }
@@ -58,10 +58,7 @@ impl Tarballer {
         let buf = BufWriter::with_capacity(1024 * 1024, encoder);
         let mut builder = Builder::new(buf);
 
-        let pool = rayon::ThreadPoolBuilder::new()
-            .num_threads(2)
-            .build()
-            .unwrap();
+        let pool = rayon::ThreadPoolBuilder::new().num_threads(2).build().unwrap();
         pool.install(move || {
             for path in dirs {
                 let src = Path::new(&self.work_dir).join(&path);
@@ -98,7 +95,7 @@ fn append_path<W: Write>(builder: &mut Builder<W>, src: &Path, path: &String) ->
         if cfg!(windows) {
             // Windows doesn't really have a mode, so `tar` never marks files executable.
             // Use an extension whitelist to update files that usually should be so.
-            const EXECUTABLES: [&'static str; 4] = ["exe", "dll", "py", "sh"];
+            const EXECUTABLES: [&str; 4] = ["exe", "dll", "py", "sh"];
             if let Some(ext) = src.extension().and_then(|s| s.to_str()) {
                 if EXECUTABLES.contains(&ext) {
                     let mode = header.mode()?;
@@ -122,11 +119,7 @@ where
     let name = name.as_ref();
 
     if !name.is_relative() && !name.starts_with(root) {
-        bail!(
-            "input '{}' is not in work dir '{}'",
-            name.display(),
-            root.display()
-        );
+        bail!("input '{}' is not in work dir '{}'", name.display(), root.display());
     }
 
     let mut dirs = vec![];
@@ -134,7 +127,7 @@ where
     for entry in WalkDir::new(root.join(name)) {
         let entry = entry?;
         let path = entry.path().strip_prefix(root)?;
-        let path = path_to_str(&path)?;
+        let path = path_to_str(path)?;
 
         if entry.file_type().is_dir() {
             dirs.push(path.to_owned());

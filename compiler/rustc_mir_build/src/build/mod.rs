@@ -1,4 +1,3 @@
-pub(crate) use crate::build::expr::as_constant::lit_to_mir_constant;
 use crate::build::expr::as_place::PlaceBuilder;
 use crate::build::scope::DropKind;
 use rustc_apfloat::ieee::{Double, Single};
@@ -11,6 +10,7 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{GeneratorKind, Node};
+use rustc_index::bit_set::GrowableBitSet;
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_middle::hir::place::PlaceBase as HirPlaceBase;
@@ -35,6 +35,22 @@ pub(crate) fn mir_built(
     def: LocalDefId,
 ) -> &rustc_data_structures::steal::Steal<Body<'_>> {
     tcx.alloc_steal_mir(mir_build(tcx, def))
+}
+
+pub(crate) fn closure_saved_names_of_captured_variables<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: LocalDefId,
+) -> IndexVec<FieldIdx, Symbol> {
+    tcx.closure_captures(def_id)
+        .iter()
+        .map(|captured_place| {
+            let name = captured_place.to_symbol();
+            match captured_place.info.capture_kind {
+                ty::UpvarCapture::ByValue => name,
+                ty::UpvarCapture::ByRef(..) => Symbol::intern(&format!("_ref__{name}")),
+            }
+        })
+        .collect()
 }
 
 /// Construct the MIR for a given `DefId`.
@@ -78,8 +94,7 @@ fn mir_build(tcx: TyCtxt<'_>, def: LocalDefId) -> Body<'_> {
             || body.basic_blocks.has_free_regions()
             || body.var_debug_info.has_free_regions()
             || body.yield_ty().has_free_regions()),
-        "Unexpected free regions in MIR: {:?}",
-        body,
+        "Unexpected free regions in MIR: {body:?}",
     );
 
     body
@@ -200,6 +215,14 @@ struct Builder<'a, 'tcx> {
     unit_temp: Option<Place<'tcx>>,
 
     var_debug_info: Vec<VarDebugInfo<'tcx>>,
+
+    // A cache for `maybe_lint_level_roots_bounded`. That function is called
+    // repeatedly, and each time it effectively traces a path through a tree
+    // structure from a node towards the root, doing an attribute check on each
+    // node along the way. This cache records which nodes trace all the way to
+    // the root (most of them do) and saves us from retracing many sub-paths
+    // many times, and rechecking many nodes.
+    lint_level_roots_cache: GrowableBitSet<hir::ItemLocalId>,
 }
 
 type CaptureMap<'tcx> = SortedIndexMultiMap<usize, hir::HirId, Capture<'tcx>>;
@@ -458,7 +481,7 @@ fn construct_fn<'tcx>(
     let (yield_ty, return_ty) = if generator_kind.is_some() {
         let gen_ty = arguments[thir::UPVAR_ENV_PARAM].ty;
         let gen_sig = match gen_ty.kind() {
-            ty::Generator(_, gen_substs, ..) => gen_substs.as_generator().sig(),
+            ty::Generator(_, gen_args, ..) => gen_args.as_generator().sig(),
             _ => {
                 span_bug!(span, "generator w/o generator type: {:?}", gen_ty)
             }
@@ -547,7 +570,7 @@ fn construct_const<'a, 'tcx>(
     // Figure out what primary body this item has.
     let (span, const_ty_span) = match tcx.hir().get(hir_id) {
         Node::Item(hir::Item {
-            kind: hir::ItemKind::Static(ty, _, _) | hir::ItemKind::Const(ty, _),
+            kind: hir::ItemKind::Static(ty, _, _) | hir::ItemKind::Const(ty, _, _),
             span,
             ..
         })
@@ -557,7 +580,7 @@ fn construct_const<'a, 'tcx>(
             span,
             ..
         }) => (*span, ty.span),
-        Node::AnonConst(_) => {
+        Node::AnonConst(_) | Node::ConstBlock(_) => {
             let span = tcx.def_span(def);
             (span, span)
         }
@@ -599,15 +622,13 @@ fn construct_error(tcx: TyCtxt<'_>, def: LocalDefId, err: ErrorGuaranteed) -> Bo
     let generator_kind = tcx.generator_kind(def);
     let body_owner_kind = tcx.hir().body_owner_kind(def);
 
-    let ty = tcx.ty_error(err);
+    let ty = Ty::new_error(tcx, err);
     let num_params = match body_owner_kind {
         hir::BodyOwnerKind::Fn => tcx.fn_sig(def).skip_binder().inputs().skip_binder().len(),
         hir::BodyOwnerKind::Closure => {
-            let ty = tcx.type_of(def).subst_identity();
+            let ty = tcx.type_of(def).instantiate_identity();
             match ty.kind() {
-                ty::Closure(_, substs) => {
-                    1 + substs.as_closure().sig().inputs().skip_binder().len()
-                }
+                ty::Closure(_, args) => 1 + args.as_closure().sig().inputs().skip_binder().len(),
                 ty::Generator(..) => 2,
                 _ => bug!("expected closure or generator, found {ty:?}"),
             }
@@ -710,6 +731,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             var_indices: Default::default(),
             unit_temp: None,
             var_debug_info: vec![],
+            lint_level_roots_cache: GrowableBitSet::new_empty(),
         };
 
         assert_eq!(builder.cfg.start_new_block(), START_BLOCK);
@@ -753,9 +775,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             closure_ty = *ty;
         }
 
-        let upvar_substs = match closure_ty.kind() {
-            ty::Closure(_, substs) => ty::UpvarSubsts::Closure(substs),
-            ty::Generator(_, substs, _) => ty::UpvarSubsts::Generator(substs),
+        let upvar_args = match closure_ty.kind() {
+            ty::Closure(_, args) => ty::UpvarArgs::Closure(args),
+            ty::Generator(_, args, _) => ty::UpvarArgs::Generator(args),
             _ => return,
         };
 
@@ -764,7 +786,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // with the closure's DefId. Here, we run through that vec of UpvarIds for
         // the given closure and use the necessary information to create upvar
         // debuginfo and to fill `self.upvars`.
-        let capture_tys = upvar_substs.upvar_tys();
+        let capture_tys = upvar_args.upvar_tys();
 
         let tcx = self.tcx;
         self.upvars = tcx
@@ -798,7 +820,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 };
                 self.var_debug_info.push(VarDebugInfo {
                     name,
-                    references: 0,
                     source_info: SourceInfo::outermost(captured_place.var_ident.span),
                     value: VarDebugInfoContents::Place(use_place),
                     argument_index: None,
@@ -829,7 +850,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.var_debug_info.push(VarDebugInfo {
                     name,
                     source_info,
-                    references: 0,
                     value: VarDebugInfoContents::Place(arg_local.into()),
                     argument_index: Some(argument_index as u16 + 1),
                 });
@@ -927,7 +947,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         match self.unit_temp {
             Some(tmp) => tmp,
             None => {
-                let ty = self.tcx.mk_unit();
+                let ty = Ty::new_unit(self.tcx);
                 let fn_span = self.fn_span;
                 let tmp = self.temp(ty, fn_span);
                 self.unit_temp = Some(tmp);
@@ -954,9 +974,9 @@ pub(crate) fn parse_float_into_scalar(
     match float_ty {
         ty::FloatTy::F32 => {
             let Ok(rust_f) = num.parse::<f32>() else { return None };
-            let mut f = num.parse::<Single>().unwrap_or_else(|e| {
-                panic!("apfloat::ieee::Single failed to parse `{}`: {:?}", num, e)
-            });
+            let mut f = num
+                .parse::<Single>()
+                .unwrap_or_else(|e| panic!("apfloat::ieee::Single failed to parse `{num}`: {e:?}"));
 
             assert!(
                 u128::from(rust_f.to_bits()) == f.to_bits(),
@@ -977,9 +997,9 @@ pub(crate) fn parse_float_into_scalar(
         }
         ty::FloatTy::F64 => {
             let Ok(rust_f) = num.parse::<f64>() else { return None };
-            let mut f = num.parse::<Double>().unwrap_or_else(|e| {
-                panic!("apfloat::ieee::Double failed to parse `{}`: {:?}", num, e)
-            });
+            let mut f = num
+                .parse::<Double>()
+                .unwrap_or_else(|e| panic!("apfloat::ieee::Double failed to parse `{num}`: {e:?}"));
 
             assert!(
                 u128::from(rust_f.to_bits()) == f.to_bits(),

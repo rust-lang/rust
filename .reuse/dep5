@@ -38,11 +38,6 @@ Files: compiler/*
 Copyright: The Rust Project Developers (see https://thanks.rust-lang.org)
 License: MIT or Apache-2.0
 
-Files: compiler/rustc_apfloat/*
-Copyright: LLVM APFloat authors
-           The Rust Project Developers (see https://thanks.rust-lang.org)
-License: NCSA AND (MIT OR Apache-2.0)
-
 Files: compiler/rustc_codegen_cranelift/src/cranelift_native.rs
 Copyright: The Cranelift Project Developers
            The Rust Project Developers (see https://thanks.rust-lang.org)

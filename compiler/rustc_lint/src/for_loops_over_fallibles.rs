@@ -51,7 +51,7 @@ impl<'tcx> LateLintPass<'tcx> for ForLoopsOverFallibles {
 
         let ty = cx.typeck_results().expr_ty(arg);
 
-        let &ty::Adt(adt, substs) = ty.kind() else { return };
+        let &ty::Adt(adt, args) = ty.kind() else { return };
 
         let (article, ty, var) = match adt.did() {
             did if cx.tcx.is_diagnostic_item(sym::Option, did) => ("an", "Option", "Some"),
@@ -66,7 +66,7 @@ impl<'tcx> LateLintPass<'tcx> for ForLoopsOverFallibles {
             } else {
                 ForLoopsOverFalliblesLoopSub::UseWhileLet { start_span: expr.span.with_hi(pat.span.lo()), end_span: pat.span.between(arg.span), var }
             } ;
-        let question_mark = suggest_question_mark(cx, adt, substs, expr.span)
+        let question_mark = suggest_question_mark(cx, adt, args, expr.span)
             .then(|| ForLoopsOverFalliblesQuestionMark { suggestion: arg.span.shrink_to_hi() });
         let suggestion = ForLoopsOverFalliblesSuggestion {
             var,
@@ -115,11 +115,13 @@ fn extract_iterator_next_call<'tcx>(
 fn suggest_question_mark<'tcx>(
     cx: &LateContext<'tcx>,
     adt: ty::AdtDef<'tcx>,
-    substs: &List<ty::GenericArg<'tcx>>,
+    args: &List<ty::GenericArg<'tcx>>,
     span: Span,
 ) -> bool {
     let Some(body_id) = cx.enclosing_body else { return false };
-    let Some(into_iterator_did) = cx.tcx.get_diagnostic_item(sym::IntoIterator) else { return false };
+    let Some(into_iterator_did) = cx.tcx.get_diagnostic_item(sym::IntoIterator) else {
+        return false;
+    };
 
     if !cx.tcx.is_diagnostic_item(sym::Result, adt.did()) {
         return false;
@@ -135,7 +137,7 @@ fn suggest_question_mark<'tcx>(
         }
     }
 
-    let ty = substs.type_at(0);
+    let ty = args.type_at(0);
     let infcx = cx.tcx.infer_ctxt().build();
     let ocx = ObligationCtxt::new(&infcx);
 

@@ -2,7 +2,7 @@ error: use of `.to_digit(..).is_some()`
   --> $DIR/to_digit_is_some.rs:9:13
    |
 LL |     let _ = d.to_digit(8).is_some();
-   |             ^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `d.is_digit(8)`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `d.is_digit(8)`
    |
    = note: `-D clippy::to-digit-is-some` implied by `-D warnings`
 
@@ -10,7 +10,7 @@ error: use of `.to_digit(..).is_some()`
   --> $DIR/to_digit_is_some.rs:10:13
    |
 LL |     let _ = char::to_digit(c, 8).is_some();
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `char::is_digit(c, 8)`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `char::is_digit(c, 8)`
 
 error: aborting due to 2 previous errors
 

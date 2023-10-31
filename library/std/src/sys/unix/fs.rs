@@ -7,16 +7,6 @@ use crate::ffi::{CStr, OsStr, OsString};
 use crate::fmt;
 use crate::io::{self, BorrowedCursor, Error, IoSlice, IoSliceMut, SeekFrom};
 use crate::mem;
-#[cfg(any(
-    target_os = "android",
-    target_os = "linux",
-    target_os = "solaris",
-    target_os = "fuchsia",
-    target_os = "redox",
-    target_os = "illumos",
-    target_os = "nto",
-))]
-use crate::mem::MaybeUninit;
 use crate::os::unix::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd};
 use crate::path::{Path, PathBuf};
 use crate::ptr;
@@ -31,6 +21,7 @@ use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
     all(target_os = "linux", target_env = "gnu"),
     target_os = "macos",
     target_os = "ios",
+    target_os = "tvos",
     target_os = "watchos",
 ))]
 use crate::sys::weak::syscall;
@@ -42,6 +33,7 @@ use libc::{c_int, mode_t};
 #[cfg(any(
     target_os = "macos",
     target_os = "ios",
+    target_os = "tvos",
     target_os = "watchos",
     target_os = "solaris",
     all(target_os = "linux", target_env = "gnu")
@@ -58,6 +50,7 @@ use libc::fstatat64;
     target_os = "redox",
     target_os = "illumos",
     target_os = "nto",
+    target_os = "vita",
 ))]
 use libc::readdir as readdir64;
 #[cfg(target_os = "linux")]
@@ -74,6 +67,7 @@ use libc::readdir64_r;
     target_os = "fuchsia",
     target_os = "redox",
     target_os = "nto",
+    target_os = "vita",
 )))]
 use libc::readdir_r as readdir64_r;
 #[cfg(target_os = "android")]
@@ -283,6 +277,7 @@ unsafe impl Sync for Dir {}
     target_os = "fuchsia",
     target_os = "redox",
     target_os = "nto",
+    target_os = "vita"
 ))]
 pub struct DirEntry {
     dir: Arc<InnerReadDir>,
@@ -304,10 +299,16 @@ pub struct DirEntry {
     target_os = "fuchsia",
     target_os = "redox",
     target_os = "nto",
+    target_os = "vita",
 ))]
 struct dirent64_min {
     d_ino: u64,
-    #[cfg(not(any(target_os = "solaris", target_os = "illumos", target_os = "nto")))]
+    #[cfg(not(any(
+        target_os = "solaris",
+        target_os = "illumos",
+        target_os = "nto",
+        target_os = "vita"
+    )))]
     d_type: u8,
 }
 
@@ -319,6 +320,7 @@ struct dirent64_min {
     target_os = "fuchsia",
     target_os = "redox",
     target_os = "nto",
+    target_os = "vita",
 )))]
 pub struct DirEntry {
     dir: Arc<InnerReadDir>,
@@ -349,7 +351,7 @@ pub struct FilePermissions {
 pub struct FileTimes {
     accessed: Option<SystemTime>,
     modified: Option<SystemTime>,
-    #[cfg(any(target_os = "macos", target_os = "ios", target_os = "watchos"))]
+    #[cfg(any(target_os = "macos", target_os = "ios", target_os = "watchos", target_os = "tvos"))]
     created: Option<SystemTime>,
 }
 
@@ -508,6 +510,7 @@ impl FileAttr {
         target_os = "openbsd",
         target_os = "macos",
         target_os = "ios",
+        target_os = "tvos",
         target_os = "watchos",
     ))]
     pub fn created(&self) -> io::Result<SystemTime> {
@@ -519,7 +522,9 @@ impl FileAttr {
         target_os = "openbsd",
         target_os = "macos",
         target_os = "ios",
+        target_os = "tvos",
         target_os = "watchos",
+        target_os = "vita",
     )))]
     pub fn created(&self) -> io::Result<SystemTime> {
         cfg_has_statx! {
@@ -540,6 +545,11 @@ impl FileAttr {
             "creation time is not available on this platform \
                             currently",
         ))
+    }
+
+    #[cfg(target_os = "vita")]
+    pub fn created(&self) -> io::Result<SystemTime> {
+        Ok(SystemTime::new(self.stat.st_ctime as i64, 0))
     }
 }
 
@@ -594,7 +604,7 @@ impl FileTimes {
         self.modified = Some(t);
     }
 
-    #[cfg(any(target_os = "macos", target_os = "ios", target_os = "watchos"))]
+    #[cfg(any(target_os = "macos", target_os = "ios", target_os = "watchos", target_os = "tvos"))]
     pub fn set_created(&mut self, t: SystemTime) {
         self.created = Some(t);
     }
@@ -645,6 +655,7 @@ impl Iterator for ReadDir {
         target_os = "redox",
         target_os = "illumos",
         target_os = "nto",
+        target_os = "vita",
     ))]
     fn next(&mut self) -> Option<io::Result<DirEntry>> {
         if self.end_of_stream {
@@ -690,22 +701,10 @@ impl Iterator for ReadDir {
                 // requires the full extent of *entry_ptr to be in bounds of the same
                 // allocation, which is not necessarily the case here.
                 //
-                // Absent any other way to obtain a pointer to `(*entry_ptr).d_name`
-                // legally in Rust analogously to how it would be done in C, we instead
-                // need to make our own non-libc allocation that conforms to the weird
-                // imaginary definition of dirent64, and use that for a field offset
-                // computation.
+                // Instead we must access fields individually through their offsets.
                 macro_rules! offset_ptr {
                     ($entry_ptr:expr, $field:ident) => {{
-                        const OFFSET: isize = {
-                            let delusion = MaybeUninit::<dirent64>::uninit();
-                            let entry_ptr = delusion.as_ptr();
-                            unsafe {
-                                ptr::addr_of!((*entry_ptr).$field)
-                                    .cast::<u8>()
-                                    .offset_from(entry_ptr.cast::<u8>())
-                            }
-                        };
+                        const OFFSET: isize = mem::offset_of!(dirent64, $field) as isize;
                         if true {
                             // Cast to the same type determined by the else branch.
                             $entry_ptr.byte_offset(OFFSET).cast::<_>()
@@ -725,6 +724,7 @@ impl Iterator for ReadDir {
                     continue;
                 }
 
+                #[cfg(not(target_os = "vita"))]
                 let entry = dirent64_min {
                     d_ino: *offset_ptr!(entry_ptr, d_ino) as u64,
                     #[cfg(not(any(
@@ -734,6 +734,9 @@ impl Iterator for ReadDir {
                     )))]
                     d_type: *offset_ptr!(entry_ptr, d_type) as u8,
                 };
+
+                #[cfg(target_os = "vita")]
+                let entry = dirent64_min { d_ino: 0u64 };
 
                 return Some(Ok(DirEntry {
                     entry,
@@ -752,6 +755,7 @@ impl Iterator for ReadDir {
         target_os = "redox",
         target_os = "illumos",
         target_os = "nto",
+        target_os = "vita",
     )))]
     fn next(&mut self) -> Option<io::Result<DirEntry>> {
         if self.end_of_stream {
@@ -842,6 +846,7 @@ impl DirEntry {
         target_os = "haiku",
         target_os = "vxworks",
         target_os = "nto",
+        target_os = "vita",
     ))]
     pub fn file_type(&self) -> io::Result<FileType> {
         self.metadata().map(|m| m.file_type())
@@ -853,6 +858,7 @@ impl DirEntry {
         target_os = "haiku",
         target_os = "vxworks",
         target_os = "nto",
+        target_os = "vita",
     )))]
     pub fn file_type(&self) -> io::Result<FileType> {
         match self.entry.d_type {
@@ -870,6 +876,7 @@ impl DirEntry {
     #[cfg(any(
         target_os = "macos",
         target_os = "ios",
+        target_os = "tvos",
         target_os = "watchos",
         target_os = "linux",
         target_os = "emscripten",
@@ -903,6 +910,7 @@ impl DirEntry {
     #[cfg(any(
         target_os = "macos",
         target_os = "ios",
+        target_os = "tvos",
         target_os = "watchos",
         target_os = "netbsd",
         target_os = "openbsd",
@@ -921,6 +929,7 @@ impl DirEntry {
     #[cfg(not(any(
         target_os = "macos",
         target_os = "ios",
+        target_os = "tvos",
         target_os = "watchos",
         target_os = "netbsd",
         target_os = "openbsd",
@@ -939,6 +948,7 @@ impl DirEntry {
         target_os = "fuchsia",
         target_os = "redox",
         target_os = "nto",
+        target_os = "vita",
     )))]
     fn name_cstr(&self) -> &CStr {
         unsafe { CStr::from_ptr(self.entry.d_name.as_ptr()) }
@@ -951,6 +961,7 @@ impl DirEntry {
         target_os = "fuchsia",
         target_os = "redox",
         target_os = "nto",
+        target_os = "vita",
     ))]
     fn name_cstr(&self) -> &CStr {
         &self.name
@@ -1080,11 +1091,21 @@ impl File {
         cvt_r(|| unsafe { os_fsync(self.as_raw_fd()) })?;
         return Ok(());
 
-        #[cfg(any(target_os = "macos", target_os = "ios", target_os = "watchos"))]
+        #[cfg(any(
+            target_os = "macos",
+            target_os = "ios",
+            target_os = "tvos",
+            target_os = "watchos",
+        ))]
         unsafe fn os_fsync(fd: c_int) -> c_int {
             libc::fcntl(fd, libc::F_FULLFSYNC)
         }
-        #[cfg(not(any(target_os = "macos", target_os = "ios", target_os = "watchos")))]
+        #[cfg(not(any(
+            target_os = "macos",
+            target_os = "ios",
+            target_os = "tvos",
+            target_os = "watchos",
+        )))]
         unsafe fn os_fsync(fd: c_int) -> c_int {
             libc::fsync(fd)
         }
@@ -1094,7 +1115,12 @@ impl File {
         cvt_r(|| unsafe { os_datasync(self.as_raw_fd()) })?;
         return Ok(());
 
-        #[cfg(any(target_os = "macos", target_os = "ios", target_os = "watchos"))]
+        #[cfg(any(
+            target_os = "macos",
+            target_os = "ios",
+            target_os = "tvos",
+            target_os = "watchos",
+        ))]
         unsafe fn os_datasync(fd: c_int) -> c_int {
             libc::fcntl(fd, libc::F_FULLFSYNC)
         }
@@ -1113,6 +1139,7 @@ impl File {
             target_os = "android",
             target_os = "freebsd",
             target_os = "ios",
+            target_os = "tvos",
             target_os = "linux",
             target_os = "macos",
             target_os = "netbsd",
@@ -1177,6 +1204,7 @@ impl File {
         self.0.write_vectored_at(bufs, offset)
     }
 
+    #[inline]
     pub fn flush(&self) -> io::Result<()> {
         Ok(())
     }
@@ -1222,7 +1250,7 @@ impl File {
                     io::ErrorKind::Unsupported,
                     "setting file times not supported",
                 ))
-            } else if #[cfg(any(target_os = "macos", target_os = "ios", target_os = "watchos"))] {
+            } else if #[cfg(any(target_os = "macos", target_os = "ios", target_os = "tvos", target_os = "watchos"))] {
                 let mut buf = [mem::MaybeUninit::<libc::timespec>::uninit(); 3];
                 let mut num_times = 0;
                 let mut attrlist: libc::attrlist = unsafe { mem::zeroed() };
@@ -1543,7 +1571,7 @@ pub fn link(original: &Path, link: &Path) -> io::Result<()> {
     run_path_with_cstr(original, |original| {
         run_path_with_cstr(link, |link| {
             cfg_if::cfg_if! {
-                if #[cfg(any(target_os = "vxworks", target_os = "redox", target_os = "android", target_os = "espidf", target_os = "horizon"))] {
+                if #[cfg(any(target_os = "vxworks", target_os = "redox", target_os = "android", target_os = "espidf", target_os = "horizon", target_os = "vita"))] {
                     // VxWorks, Redox and ESP-IDF lack `linkat`, so use `link` instead. POSIX leaves
                     // it implementation-defined whether `link` follows symlinks, so rely on the
                     // `symlink_hard_link` test in library/std/src/fs/tests.rs to check the behavior.
@@ -1666,6 +1694,8 @@ fn open_to_and_set_permissions(
         .truncate(true)
         .open(to)?;
     let writer_metadata = writer.metadata()?;
+    // fchmod is broken on vita
+    #[cfg(not(target_os = "vita"))]
     if writer_metadata.is_file() {
         // Set the correct file permissions, in case the file already existed.
         // Don't set the permissions on already existing non-files like
@@ -1680,6 +1710,7 @@ fn open_to_and_set_permissions(
     target_os = "android",
     target_os = "macos",
     target_os = "ios",
+    target_os = "tvos",
     target_os = "watchos",
 )))]
 pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
@@ -1707,7 +1738,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     }
 }
 
-#[cfg(any(target_os = "macos", target_os = "ios", target_os = "watchos"))]
+#[cfg(any(target_os = "macos", target_os = "ios", target_os = "tvos", target_os = "watchos"))]
 pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     use crate::sync::atomic::{AtomicBool, Ordering};
 
@@ -1844,11 +1875,12 @@ pub fn chroot(dir: &Path) -> io::Result<()> {
 
 pub use remove_dir_impl::remove_dir_all;
 
-// Fallback for REDOX, ESP-ID, Horizon, and Miri
+// Fallback for REDOX, ESP-ID, Horizon, Vita and Miri
 #[cfg(any(
     target_os = "redox",
     target_os = "espidf",
     target_os = "horizon",
+    target_os = "vita",
     target_os = "nto",
     miri
 ))]
@@ -1861,6 +1893,7 @@ mod remove_dir_impl {
     target_os = "redox",
     target_os = "espidf",
     target_os = "horizon",
+    target_os = "vita",
     target_os = "nto",
     miri
 )))]

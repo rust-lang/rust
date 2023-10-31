@@ -1,0 +1,35 @@
+error[E0637]: `&` without an explicit lifetime name cannot be used here
+  --> $DIR/elided-lifetimes.rs:8:5
+   |
+LL |     &T: Copy;
+   |     ^ explicit lifetime name needed here
+   |
+help: consider introducing a higher-ranked lifetime here
+   |
+LL |     for<'a> &'a T: Copy;
+   |     +++++++  ++
+
+error[E0637]: `&` without an explicit lifetime name cannot be used here
+  --> $DIR/elided-lifetimes.rs:10:18
+   |
+LL | const I<const S: &str>: &str = "";
+   |                  ^ explicit lifetime name needed here
+
+error[E0637]: `'_` cannot be used here
+  --> $DIR/elided-lifetimes.rs:14:18
+   |
+LL | const B<T: Trait<'_>>: () = ();
+   |                  ^^ `'_` is a reserved lifetime name
+
+error: `&str` is forbidden as the type of a const generic parameter
+  --> $DIR/elided-lifetimes.rs:10:18
+   |
+LL | const I<const S: &str>: &str = "";
+   |                  ^^^^
+   |
+   = note: the only supported types are integers, `bool` and `char`
+   = help: more complex types are supported with `#![feature(adt_const_params)]`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0637`.

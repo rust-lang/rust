@@ -1,4 +1,4 @@
-// ignore-wasm32 compiled with panic=abort by default
+// EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 // Check that CopyProp does not propagate an assignment to a function argument
 // (doing so can break usages of the original argument value)
 // unit-test: CopyProp

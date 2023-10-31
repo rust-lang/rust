@@ -1,0 +1,22 @@
+- // MIR for `transmute_to_ref_uninhabited` before LowerIntrinsics
++ // MIR for `transmute_to_ref_uninhabited` after LowerIntrinsics
+  
+  fn transmute_to_ref_uninhabited() -> ! {
+      let mut _0: !;
+      let _1: &Never;
+      scope 1 {
+          debug x => _1;
+      }
+  
+      bb0: {
+          StorageLive(_1);
+-         _1 = transmute::<usize, &Never>(const 1_usize) -> [return: bb1, unwind unreachable];
++         _1 = const 1_usize as &Never (Transmute);
++         goto -> bb1;
+      }
+  
+      bb1: {
+          unreachable;
+      }
+  }
+  

@@ -18,16 +18,14 @@
     clippy::wrong_self_convention,
     clippy::unused_async,
     clippy::unused_self,
+    clippy::useless_vec,
     unused
 )]
 
 #[macro_use]
 extern crate option_helpers;
 
-use std::collections::BTreeMap;
-use std::collections::HashMap;
-use std::collections::HashSet;
-use std::collections::VecDeque;
+use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 use std::ops::Mul;
 use std::rc::{self, Rc};
 use std::sync::{self, Arc};

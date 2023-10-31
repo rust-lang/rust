@@ -12,13 +12,13 @@ use crate::os::windows::io::{AsRawHandle, BorrowedHandle};
 use crate::ptr;
 use core::ffi::NonZero_c_ulong;
 
-#[path = "c/windows_sys.rs"] // c.rs is included from two places so we need to specify this
 mod windows_sys;
 pub use windows_sys::*;
 
 pub type DWORD = c_ulong;
 pub type NonZeroDWORD = NonZero_c_ulong;
 pub type LARGE_INTEGER = c_longlong;
+#[cfg_attr(target_vendor = "uwp", allow(unused))]
 pub type LONG = c_long;
 pub type UINT = c_uint;
 pub type WCHAR = u16;
@@ -267,6 +267,8 @@ pub unsafe fn getaddrinfo(
     windows_sys::getaddrinfo(node.cast::<u8>(), service.cast::<u8>(), hints, res)
 }
 
+cfg_if::cfg_if! {
+if #[cfg(not(target_vendor = "uwp"))] {
 pub unsafe fn NtReadFile(
     filehandle: BorrowedHandle<'_>,
     event: HANDLE,
@@ -312,6 +314,8 @@ pub unsafe fn NtWriteFile(
         byteoffset.map(|o| o as *const i64).unwrap_or(ptr::null()),
         key.map(|k| k as *const u32).unwrap_or(ptr::null()),
     )
+}
+}
 }
 
 // Functions that aren't available on every version of Windows that we support,
@@ -376,4 +380,98 @@ compat_fn_with_fallback! {
     ) -> NTSTATUS {
         panic!("keyed events not available")
     }
+
+    // These functions are available on UWP when lazily loaded. They will fail WACK if loaded statically.
+    #[cfg(target_vendor = "uwp")]
+    pub fn NtCreateFile(
+        filehandle: *mut HANDLE,
+        desiredaccess: FILE_ACCESS_RIGHTS,
+        objectattributes: *const OBJECT_ATTRIBUTES,
+        iostatusblock: *mut IO_STATUS_BLOCK,
+        allocationsize: *const i64,
+        fileattributes: FILE_FLAGS_AND_ATTRIBUTES,
+        shareaccess: FILE_SHARE_MODE,
+        createdisposition: NTCREATEFILE_CREATE_DISPOSITION,
+        createoptions: NTCREATEFILE_CREATE_OPTIONS,
+        eabuffer: *const ::core::ffi::c_void,
+        ealength: u32
+    ) -> NTSTATUS {
+        STATUS_NOT_IMPLEMENTED
+    }
+    #[cfg(target_vendor = "uwp")]
+    pub fn NtReadFile(
+        filehandle: BorrowedHandle<'_>,
+        event: HANDLE,
+        apcroutine: PIO_APC_ROUTINE,
+        apccontext: *mut c_void,
+        iostatusblock: &mut IO_STATUS_BLOCK,
+        buffer: *mut crate::mem::MaybeUninit<u8>,
+        length: ULONG,
+        byteoffset: Option<&LARGE_INTEGER>,
+        key: Option<&ULONG>
+    ) -> NTSTATUS {
+        STATUS_NOT_IMPLEMENTED
+    }
+    #[cfg(target_vendor = "uwp")]
+    pub fn NtWriteFile(
+        filehandle: BorrowedHandle<'_>,
+        event: HANDLE,
+        apcroutine: PIO_APC_ROUTINE,
+        apccontext: *mut c_void,
+        iostatusblock: &mut IO_STATUS_BLOCK,
+        buffer: *const u8,
+        length: ULONG,
+        byteoffset: Option<&LARGE_INTEGER>,
+        key: Option<&ULONG>
+    ) -> NTSTATUS {
+        STATUS_NOT_IMPLEMENTED
+    }
+    #[cfg(target_vendor = "uwp")]
+    pub fn RtlNtStatusToDosError(Status: NTSTATUS) -> u32 {
+        Status as u32
+    }
+}
+
+// # Arm32 shim
+//
+// AddVectoredExceptionHandler and WSAStartup use platform-specific types.
+// However, Microsoft no longer supports thumbv7a so definitions for those targets
+// are not included in the win32 metadata. We work around that by defining them here.
+//
+// Where possible, these definitions should be kept in sync with https://docs.rs/windows-sys
+cfg_if::cfg_if! {
+if #[cfg(not(target_vendor = "uwp"))] {
+    #[link(name = "kernel32")]
+    extern "system" {
+        pub fn AddVectoredExceptionHandler(
+            first: u32,
+            handler: PVECTORED_EXCEPTION_HANDLER,
+        ) -> *mut c_void;
+    }
+    pub type PVECTORED_EXCEPTION_HANDLER = Option<
+        unsafe extern "system" fn(exceptioninfo: *mut EXCEPTION_POINTERS) -> i32,
+    >;
+    #[repr(C)]
+    pub struct EXCEPTION_POINTERS {
+        pub ExceptionRecord: *mut EXCEPTION_RECORD,
+        pub ContextRecord: *mut CONTEXT,
+    }
+    #[cfg(target_arch = "arm")]
+    pub enum CONTEXT {}
+}}
+
+#[link(name = "ws2_32")]
+extern "system" {
+    pub fn WSAStartup(wversionrequested: u16, lpwsadata: *mut WSADATA) -> i32;
+}
+#[cfg(target_arch = "arm")]
+#[repr(C)]
+pub struct WSADATA {
+    pub wVersion: u16,
+    pub wHighVersion: u16,
+    pub szDescription: [u8; 257],
+    pub szSystemStatus: [u8; 129],
+    pub iMaxSockets: u16,
+    pub iMaxUdpDg: u16,
+    pub lpVendorInfo: PSTR,
 }

@@ -204,6 +204,7 @@ where
 {
     type Error = TryFromSliceError;
 
+    #[inline]
     fn try_from(slice: &[T]) -> Result<[T; N], TryFromSliceError> {
         <&Self>::try_from(slice).map(|r| *r)
     }
@@ -228,6 +229,7 @@ where
 {
     type Error = TryFromSliceError;
 
+    #[inline]
     fn try_from(slice: &mut [T]) -> Result<[T; N], TryFromSliceError> {
         <Self>::try_from(&*slice)
     }
@@ -249,6 +251,7 @@ where
 impl<'a, T, const N: usize> TryFrom<&'a [T]> for &'a [T; N] {
     type Error = TryFromSliceError;
 
+    #[inline]
     fn try_from(slice: &'a [T]) -> Result<&'a [T; N], TryFromSliceError> {
         if slice.len() == N {
             let ptr = slice.as_ptr() as *const [T; N];
@@ -276,6 +279,7 @@ impl<'a, T, const N: usize> TryFrom<&'a [T]> for &'a [T; N] {
 impl<'a, T, const N: usize> TryFrom<&'a mut [T]> for &'a mut [T; N] {
     type Error = TryFromSliceError;
 
+    #[inline]
     fn try_from(slice: &'a mut [T]) -> Result<&'a mut [T; N], TryFromSliceError> {
         if slice.len() == N {
             let ptr = slice.as_mut_ptr() as *mut [T; N];
@@ -291,7 +295,6 @@ impl<'a, T, const N: usize> TryFrom<&'a mut [T]> for &'a mut [T; N] {
 /// as required by the `Borrow` implementation.
 ///
 /// ```
-/// #![feature(build_hasher_simple_hash_one)]
 /// use std::hash::BuildHasher;
 ///
 /// let b = std::collections::hash_map::RandomState::new();
@@ -533,29 +536,6 @@ impl<T, const N: usize> [T; N] {
         R::Residual: Residual<[R::Output; N]>,
     {
         drain_array_with(self, |iter| try_from_trusted_iterator(iter.map(f)))
-    }
-
-    /// 'Zips up' two arrays into a single array of pairs.
-    ///
-    /// `zip()` returns a new array where every element is a tuple where the
-    /// first element comes from the first array, and the second element comes
-    /// from the second array. In other words, it zips two arrays together,
-    /// into a single one.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(array_zip)]
-    /// let x = [1, 2, 3];
-    /// let y = [4, 5, 6];
-    /// let z = x.zip(y);
-    /// assert_eq!(z, [(1, 4), (2, 5), (3, 6)]);
-    /// ```
-    #[unstable(feature = "array_zip", issue = "80094")]
-    pub fn zip<U>(self, rhs: [U; N]) -> [(T, U); N] {
-        drain_array_with(self, |lhs| {
-            drain_array_with(rhs, |rhs| from_trusted_iterator(crate::iter::zip(lhs, rhs)))
-        })
     }
 
     /// Returns a slice containing the entire array. Equivalent to `&s[..]`.
@@ -945,7 +925,7 @@ fn iter_next_chunk_erased<T>(
             // so we need to defuse the guard instead of using `?`.
             let initialized = guard.initialized;
             mem::forget(guard);
-            return Err(initialized)
+            return Err(initialized);
         };
 
         // SAFETY: The loop condition ensures we have space to push the item

@@ -4,7 +4,7 @@ error: usage of `contains_key` followed by `insert` on a `HashMap`
 LL | /     if !m.contains_key(&k) {
 LL | |         m.insert(k, v);
 LL | |     }
-   | |_____^ help: try this: `m.entry(k).or_insert(v);`
+   | |_____^ help: try: `m.entry(k).or_insert(v);`
    |
    = note: `-D clippy::map-entry` implied by `-D warnings`
 
@@ -20,7 +20,7 @@ LL | |         }
 LL | |     }
    | |_____^
    |
-help: try this
+help: try
    |
 LL ~     m.entry(k).or_insert_with(|| {
 LL +         if true {
@@ -43,7 +43,7 @@ LL | |         };
 LL | |     }
    | |_____^
    |
-help: try this
+help: try
    |
 LL ~     m.entry(k).or_insert_with(|| {
 LL +         if true {
@@ -66,7 +66,7 @@ LL | |         }
 LL | |     }
    | |_____^
    |
-help: try this
+help: try
    |
 LL ~     if let std::collections::hash_map::Entry::Vacant(e) = m.entry(k) {
 LL +         if true {
@@ -87,7 +87,7 @@ LL | |         m.insert(k, v);
 LL | |     }
    | |_____^
    |
-help: try this
+help: try
    |
 LL ~     m.entry(k).or_insert_with(|| {
 LL +         foo();
@@ -107,7 +107,7 @@ LL | |         };
 LL | |     }
    | |_____^
    |
-help: try this
+help: try
    |
 LL ~     m.entry(k).or_insert_with(|| {
 LL +         match 0 {
@@ -133,7 +133,7 @@ LL | |         };
 LL | |     }
    | |_____^
    |
-help: try this
+help: try
    |
 LL ~     if let std::collections::hash_map::Entry::Vacant(e) = m.entry(k) {
 LL +         match 0 {
@@ -157,7 +157,7 @@ LL | |         }
 LL | |     }
    | |_____^
    |
-help: try this
+help: try
    |
 LL ~     m.entry(k).or_insert_with(|| {
 LL +         foo();
@@ -192,7 +192,7 @@ error: usage of `contains_key` followed by `insert` on a `HashMap`
 LL | /     if !m.contains_key(&m!(k)) {
 LL | |         m.insert(m!(k), m!(v));
 LL | |     }
-   | |_____^ help: try this: `m.entry(m!(k)).or_insert_with(|| m!(v));`
+   | |_____^ help: try: `m.entry(m!(k)).or_insert_with(|| m!(v));`
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
   --> $DIR/entry.rs:152:5
@@ -204,7 +204,7 @@ LL | |         m.insert(k, v);
 LL | |     }
    | |_____^
    |
-help: try this
+help: try
    |
 LL ~     m.entry(k).or_insert_with(|| {
 LL +         let x = (String::new(), String::new());

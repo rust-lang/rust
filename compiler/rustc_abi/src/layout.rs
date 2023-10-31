@@ -40,6 +40,8 @@ pub trait LayoutCalculator {
             largest_niche,
             align,
             size,
+            max_repr_align: None,
+            unadjusted_abi_align: align.abi,
         }
     }
 
@@ -57,48 +59,54 @@ pub trait LayoutCalculator {
         // run and bias niches to the right and then check which one is closer to one of the struct's
         // edges.
         if let Some(layout) = &layout {
-            if let Some(niche) = layout.largest_niche {
-                let head_space = niche.offset.bytes();
-                let niche_length = niche.value.size(dl).bytes();
-                let tail_space = layout.size.bytes() - head_space - niche_length;
+            // Don't try to calculate an end-biased layout for unsizable structs,
+            // otherwise we could end up with different layouts for
+            // Foo<Type> and Foo<dyn Trait> which would break unsizing
+            if !matches!(kind, StructKind::MaybeUnsized) {
+                if let Some(niche) = layout.largest_niche {
+                    let head_space = niche.offset.bytes();
+                    let niche_length = niche.value.size(dl).bytes();
+                    let tail_space = layout.size.bytes() - head_space - niche_length;
 
-                // This may end up doing redundant work if the niche is already in the last field
-                // (e.g. a trailing bool) and there is tail padding. But it's non-trivial to get
-                // the unpadded size so we try anyway.
-                if fields.len() > 1 && head_space != 0 && tail_space > 0 {
-                    let alt_layout = univariant(self, dl, fields, repr, kind, NicheBias::End)
-                        .expect("alt layout should always work");
-                    let niche = alt_layout
-                        .largest_niche
-                        .expect("alt layout should have a niche like the regular one");
-                    let alt_head_space = niche.offset.bytes();
-                    let alt_niche_len = niche.value.size(dl).bytes();
-                    let alt_tail_space = alt_layout.size.bytes() - alt_head_space - alt_niche_len;
+                    // This may end up doing redundant work if the niche is already in the last field
+                    // (e.g. a trailing bool) and there is tail padding. But it's non-trivial to get
+                    // the unpadded size so we try anyway.
+                    if fields.len() > 1 && head_space != 0 && tail_space > 0 {
+                        let alt_layout = univariant(self, dl, fields, repr, kind, NicheBias::End)
+                            .expect("alt layout should always work");
+                        let niche = alt_layout
+                            .largest_niche
+                            .expect("alt layout should have a niche like the regular one");
+                        let alt_head_space = niche.offset.bytes();
+                        let alt_niche_len = niche.value.size(dl).bytes();
+                        let alt_tail_space =
+                            alt_layout.size.bytes() - alt_head_space - alt_niche_len;
 
-                    debug_assert_eq!(layout.size.bytes(), alt_layout.size.bytes());
+                        debug_assert_eq!(layout.size.bytes(), alt_layout.size.bytes());
 
-                    let prefer_alt_layout =
-                        alt_head_space > head_space && alt_head_space > tail_space;
+                        let prefer_alt_layout =
+                            alt_head_space > head_space && alt_head_space > tail_space;
 
-                    debug!(
-                        "sz: {}, default_niche_at: {}+{}, default_tail_space: {}, alt_niche_at/head_space: {}+{}, alt_tail: {}, num_fields: {}, better: {}\n\
-                        layout: {}\n\
-                        alt_layout: {}\n",
-                        layout.size.bytes(),
-                        head_space,
-                        niche_length,
-                        tail_space,
-                        alt_head_space,
-                        alt_niche_len,
-                        alt_tail_space,
-                        layout.fields.count(),
-                        prefer_alt_layout,
-                        format_field_niches(&layout, &fields, &dl),
-                        format_field_niches(&alt_layout, &fields, &dl),
-                    );
+                        debug!(
+                            "sz: {}, default_niche_at: {}+{}, default_tail_space: {}, alt_niche_at/head_space: {}+{}, alt_tail: {}, num_fields: {}, better: {}\n\
+                            layout: {}\n\
+                            alt_layout: {}\n",
+                            layout.size.bytes(),
+                            head_space,
+                            niche_length,
+                            tail_space,
+                            alt_head_space,
+                            alt_niche_len,
+                            alt_tail_space,
+                            layout.fields.count(),
+                            prefer_alt_layout,
+                            format_field_niches(&layout, &fields, &dl),
+                            format_field_niches(&alt_layout, &fields, &dl),
+                        );
 
-                    if prefer_alt_layout {
-                        return Some(alt_layout);
+                        if prefer_alt_layout {
+                            return Some(alt_layout);
+                        }
                     }
                 }
             }
@@ -116,6 +124,8 @@ pub trait LayoutCalculator {
             largest_niche: None,
             align: dl.i8_align,
             size: Size::ZERO,
+            max_repr_align: None,
+            unadjusted_abi_align: dl.i8_align.abi,
         }
     }
 
@@ -128,7 +138,7 @@ pub trait LayoutCalculator {
         scalar_valid_range: (Bound<u128>, Bound<u128>),
         discr_range_of_repr: impl Fn(i128, i128) -> (Integer, bool),
         discriminants: impl Iterator<Item = (VariantIdx, i128)>,
-        niche_optimize_enum: bool,
+        dont_niche_optimize_enum: bool,
         always_sized: bool,
     ) -> Option<LayoutS> {
         let dl = self.current_data_layout();
@@ -177,10 +187,10 @@ pub trait LayoutCalculator {
             // (Typechecking will reject discriminant-sizing attrs.)
 
             let v = present_first;
-            let kind = if is_enum || variants[v].is_empty() {
+            let kind = if is_enum || variants[v].is_empty() || always_sized {
                 StructKind::AlwaysSized
             } else {
-                if !always_sized { StructKind::MaybeUnsized } else { StructKind::AlwaysSized }
+                StructKind::MaybeUnsized
             };
 
             let mut st = self.univariant(dl, &variants[v], repr, kind)?;
@@ -250,8 +260,7 @@ pub trait LayoutCalculator {
                 }
                 _ => assert!(
                     start == Bound::Unbounded && end == Bound::Unbounded,
-                    "nonscalar layout for layout_scalar_valid_range type: {:#?}",
-                    st,
+                    "nonscalar layout for layout_scalar_valid_range type: {st:#?}",
                 ),
             }
 
@@ -274,7 +283,7 @@ pub trait LayoutCalculator {
         }
 
         let calculate_niche_filling_layout = || -> Option<TmpLayout> {
-            if niche_optimize_enum {
+            if dont_niche_optimize_enum {
                 return None;
             }
 
@@ -283,6 +292,9 @@ pub trait LayoutCalculator {
             }
 
             let mut align = dl.aggregate_align;
+            let mut max_repr_align = repr.align;
+            let mut unadjusted_abi_align = align.abi;
+
             let mut variant_layouts = variants
                 .iter_enumerated()
                 .map(|(j, v)| {
@@ -290,6 +302,8 @@ pub trait LayoutCalculator {
                     st.variants = Variants::Single { index: j };
 
                     align = align.max(st.align);
+                    max_repr_align = max_repr_align.max(st.max_repr_align);
+                    unadjusted_abi_align = unadjusted_abi_align.max(st.unadjusted_abi_align);
 
                     Some(st)
                 })
@@ -416,6 +430,8 @@ pub trait LayoutCalculator {
                 largest_niche,
                 size,
                 align,
+                max_repr_align,
+                unadjusted_abi_align,
             };
 
             Some(TmpLayout { layout, variants: variant_layouts })
@@ -446,10 +462,13 @@ pub trait LayoutCalculator {
             min = 0;
             max = 0;
         }
-        assert!(min <= max, "discriminant range is {}...{}", min, max);
+        assert!(min <= max, "discriminant range is {min}...{max}");
         let (min_ity, signed) = discr_range_of_repr(min, max); //Integer::repr_discr(tcx, ty, &repr, min, max);
 
         let mut align = dl.aggregate_align;
+        let mut max_repr_align = repr.align;
+        let mut unadjusted_abi_align = align.abi;
+
         let mut size = Size::ZERO;
 
         // We're interested in the smallest alignment, so start large.
@@ -492,6 +511,8 @@ pub trait LayoutCalculator {
                 }
                 size = cmp::max(size, st.size);
                 align = align.max(st.align);
+                max_repr_align = max_repr_align.max(st.max_repr_align);
+                unadjusted_abi_align = unadjusted_abi_align.max(st.unadjusted_abi_align);
                 Some(st)
             })
             .collect::<Option<IndexVec<VariantIdx, _>>>()?;
@@ -515,8 +536,7 @@ pub trait LayoutCalculator {
             // space necessary to represent would have to be discarded (or layout is wrong
             // on thinking it needs 16 bits)
             panic!(
-                "layout decided on a larger discriminant type ({:?}) than typeck ({:?})",
-                min_ity, typeck_ity
+                "layout decided on a larger discriminant type ({min_ity:?}) than typeck ({typeck_ity:?})"
             );
             // However, it is fine to make discr type however large (as an optimisation)
             // after this point – we’ll just truncate the value we load in codegen.
@@ -685,6 +705,8 @@ pub trait LayoutCalculator {
             abi,
             align,
             size,
+            max_repr_align,
+            unadjusted_abi_align,
         };
 
         let tagged_layout = TmpLayout { layout: tagged_layout, variants: layout_variants };
@@ -724,10 +746,7 @@ pub trait LayoutCalculator {
         let dl = self.current_data_layout();
         let dl = dl.borrow();
         let mut align = if repr.pack.is_some() { dl.i8_align } else { dl.aggregate_align };
-
-        if let Some(repr_align) = repr.align {
-            align = align.max(AbiAndPrefAlign::new(repr_align));
-        }
+        let mut max_repr_align = repr.align;
 
         // If all the non-ZST fields have the same ABI and union ABI optimizations aren't
         // disabled, we can use that common ABI for the union as a whole.
@@ -742,9 +761,12 @@ pub trait LayoutCalculator {
         let mut size = Size::ZERO;
         let only_variant = &variants[FIRST_VARIANT];
         for field in only_variant {
-            assert!(field.0.is_sized());
+            if field.0.is_unsized() {
+                self.delay_bug("unsized field in union".to_string());
+            }
 
             align = align.max(field.align());
+            max_repr_align = max_repr_align.max(field.max_repr_align());
             size = cmp::max(size, field.size());
 
             if field.0.is_zst() {
@@ -781,6 +803,14 @@ pub trait LayoutCalculator {
         if let Some(pack) = repr.pack {
             align = align.min(AbiAndPrefAlign::new(pack));
         }
+        // The unadjusted ABI alignment does not include repr(align), but does include repr(pack).
+        // See documentation on `LayoutS::unadjusted_abi_align`.
+        let unadjusted_abi_align = align.abi;
+        if let Some(repr_align) = repr.align {
+            align = align.max(AbiAndPrefAlign::new(repr_align));
+        }
+        // `align` must not be modified after this, or `unadjusted_abi_align` could be inaccurate.
+        let align = align;
 
         // If all non-ZST fields have the same ABI, we may forward that ABI
         // for the union as a whole, unless otherwise inhibited.
@@ -803,6 +833,8 @@ pub trait LayoutCalculator {
             largest_niche: None,
             align,
             size: size.align_to(align.abi),
+            max_repr_align,
+            unadjusted_abi_align,
         })
     }
 }
@@ -823,11 +855,13 @@ fn univariant(
 ) -> Option<LayoutS> {
     let pack = repr.pack;
     let mut align = if pack.is_some() { dl.i8_align } else { dl.aggregate_align };
+    let mut max_repr_align = repr.align;
     let mut inverse_memory_index: IndexVec<u32, FieldIdx> = fields.indices().collect();
     let optimize = !repr.inhibit_struct_field_reordering_opt();
     if optimize && fields.len() > 1 {
         let end = if let StructKind::MaybeUnsized = kind { fields.len() - 1 } else { fields.len() };
         let optimizing = &mut inverse_memory_index.raw[..end];
+        let fields_excluding_tail = &fields.raw[..end];
 
         // If `-Z randomize-layout` was enabled for the type definition we can shuffle
         // the field ordering to try and catch some code making assumptions about layouts
@@ -844,8 +878,11 @@ fn univariant(
             }
             // Otherwise we just leave things alone and actually optimize the type's fields
         } else {
-            let max_field_align = fields.iter().map(|f| f.align().abi.bytes()).max().unwrap_or(1);
-            let largest_niche_size = fields
+            // To allow unsizing `&Foo<Type>` -> `&Foo<dyn Trait>`, the layout of the struct must
+            // not depend on the layout of the tail.
+            let max_field_align =
+                fields_excluding_tail.iter().map(|f| f.align().abi.bytes()).max().unwrap_or(1);
+            let largest_niche_size = fields_excluding_tail
                 .iter()
                 .filter_map(|f| f.largest_niche())
                 .map(|n| n.available(dl))
@@ -987,6 +1024,7 @@ fn univariant(
         };
         offset = offset.align_to(field_align.abi);
         align = align.max(field_align);
+        max_repr_align = max_repr_align.max(field.max_repr_align());
 
         debug!("univariant offset: {:?} field: {:#?}", offset, field);
         offsets[i] = offset;
@@ -1008,9 +1046,16 @@ fn univariant(
 
         offset = offset.checked_add(field.size(), dl)?;
     }
+
+    // The unadjusted ABI alignment does not include repr(align), but does include repr(pack).
+    // See documentation on `LayoutS::unadjusted_abi_align`.
+    let unadjusted_abi_align = align.abi;
     if let Some(repr_align) = repr.align {
         align = align.max(AbiAndPrefAlign::new(repr_align));
     }
+    // `align` must not be modified after this point, or `unadjusted_abi_align` could be inaccurate.
+    let align = align;
+
     debug!("univariant min_size: {:?}", offset);
     let min_size = offset;
     // As stated above, inverse_memory_index holds field indices by increasing offset.
@@ -1026,6 +1071,7 @@ fn univariant(
         inverse_memory_index.into_iter().map(FieldIdx::as_u32).collect()
     };
     let size = min_size.align_to(align.abi);
+    let mut layout_of_single_non_zst_field = None;
     let mut abi = Abi::Aggregate { sized };
     // Unpack newtype ABIs and find scalar pairs.
     if sized && size.bytes() > 0 {
@@ -1035,6 +1081,8 @@ fn univariant(
         match (non_zst_fields.next(), non_zst_fields.next(), non_zst_fields.next()) {
             // We have exactly one non-ZST field.
             (Some((i, field)), None, None) => {
+                layout_of_single_non_zst_field = Some(field);
+
                 // Field fills the struct and it has a scalar or scalar pair ABI.
                 if offsets[i].bytes() == 0 && align.abi == field.align().abi && size == field.size()
                 {
@@ -1092,6 +1140,19 @@ fn univariant(
     if fields.iter().any(|f| f.abi().is_uninhabited()) {
         abi = Abi::Uninhabited;
     }
+
+    let unadjusted_abi_align = if repr.transparent() {
+        match layout_of_single_non_zst_field {
+            Some(l) => l.unadjusted_abi_align(),
+            None => {
+                // `repr(transparent)` with all ZST fields.
+                align.abi
+            }
+        }
+    } else {
+        unadjusted_abi_align
+    };
+
     Some(LayoutS {
         variants: Variants::Single { index: FIRST_VARIANT },
         fields: FieldsShape::Arbitrary { offsets, memory_index },
@@ -1099,6 +1160,8 @@ fn univariant(
         largest_niche,
         align,
         size,
+        max_repr_align,
+        unadjusted_abi_align,
     })
 }
 

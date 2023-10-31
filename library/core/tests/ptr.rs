@@ -1001,7 +1001,7 @@ fn nonnull_tagged_pointer_with_provenance() {
     assert_eq!(p.tag(), 3);
     assert_eq!(unsafe { *p.pointer().as_ptr() }, 10);
 
-    unsafe { Box::from_raw(p.pointer().as_ptr()) };
+    unsafe { drop(Box::from_raw(p.pointer().as_ptr())) };
 
     /// A non-null pointer type which carries several bits of metadata and maintains provenance.
     #[repr(transparent)]

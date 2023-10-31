@@ -26,7 +26,7 @@ fn foo() {
     let cwd = env::current_dir().unwrap();
     let src = cwd.clone();
     let summary = File::open(&src.join("SUMMARY.md")).unwrap();
-    let _ = parse_summary(summary, &src);
+    parse_summary(summary, &src);
 }
 
 fn main() {}

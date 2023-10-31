@@ -2,7 +2,7 @@ error[E0596]: cannot borrow `arg` as mutable, as it is not declared as mutable
   --> $DIR/borrowck-argument.rs:10:5
    |
 LL |     arg.mutate();
-   |     ^^^^^^^^^^^^ cannot borrow as mutable
+   |     ^^^ cannot borrow as mutable
    |
 help: consider changing this to be mutable
    |
@@ -13,7 +13,7 @@ error[E0596]: cannot borrow `arg` as mutable, as it is not declared as mutable
   --> $DIR/borrowck-argument.rs:15:9
    |
 LL |         arg.mutate();
-   |         ^^^^^^^^^^^^ cannot borrow as mutable
+   |         ^^^ cannot borrow as mutable
    |
 help: consider changing this to be mutable
    |
@@ -24,7 +24,7 @@ error[E0596]: cannot borrow `arg` as mutable, as it is not declared as mutable
   --> $DIR/borrowck-argument.rs:21:9
    |
 LL |         arg.mutate();
-   |         ^^^^^^^^^^^^ cannot borrow as mutable
+   |         ^^^ cannot borrow as mutable
    |
 help: consider changing this to be mutable
    |
@@ -35,7 +35,7 @@ error[E0596]: cannot borrow `arg` as mutable, as it is not declared as mutable
   --> $DIR/borrowck-argument.rs:32:17
    |
 LL |     (|arg: S| { arg.mutate() })(s);
-   |                 ^^^^^^^^^^^^ cannot borrow as mutable
+   |                 ^^^ cannot borrow as mutable
    |
 help: consider changing this to be mutable
    |

@@ -5,7 +5,7 @@ use rustc_errors::{
     error_code, Applicability, DiagnosticBuilder, ErrorGuaranteed, Handler, IntoDiagnostic,
     MultiSpan,
 };
-use rustc_macros::{Diagnostic, Subdiagnostic};
+use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::{self, print::TraitRefPrintOnlyTraitPath, Ty};
 use rustc_span::{symbol::Ident, Span, Symbol};
 
@@ -184,6 +184,16 @@ pub struct UnconstrainedOpaqueType {
     pub what: &'static str,
 }
 
+#[derive(Diagnostic)]
+#[diag(hir_analysis_tait_forward_compat)]
+#[note]
+pub struct TaitForwardCompat {
+    #[primary_span]
+    pub span: Span,
+    #[note]
+    pub item_span: Span,
+}
+
 pub struct MissingTypeParams {
     pub span: Span,
     pub def_span: Span,
@@ -206,7 +216,7 @@ impl<'a> IntoDiagnostic<'a> for MissingTypeParams {
             "parameters",
             self.missing_type_params
                 .iter()
-                .map(|n| format!("`{}`", n))
+                .map(|n| format!("`{n}`"))
                 .collect::<Vec<_>>()
                 .join(", "),
         );
@@ -856,4 +866,64 @@ pub(crate) enum DropImplPolarity {
         #[primary_span]
         span: Span,
     },
+}
+
+#[derive(Diagnostic)]
+pub(crate) enum ReturnTypeNotationIllegalParam {
+    #[diag(hir_analysis_return_type_notation_illegal_param_type)]
+    Type {
+        #[primary_span]
+        span: Span,
+        #[label]
+        param_span: Span,
+    },
+    #[diag(hir_analysis_return_type_notation_illegal_param_const)]
+    Const {
+        #[primary_span]
+        span: Span,
+        #[label]
+        param_span: Span,
+    },
+}
+
+#[derive(Diagnostic)]
+pub(crate) enum LateBoundInApit {
+    #[diag(hir_analysis_late_bound_type_in_apit)]
+    Type {
+        #[primary_span]
+        span: Span,
+        #[label]
+        param_span: Span,
+    },
+    #[diag(hir_analysis_late_bound_const_in_apit)]
+    Const {
+        #[primary_span]
+        span: Span,
+        #[label]
+        param_span: Span,
+    },
+    #[diag(hir_analysis_late_bound_lifetime_in_apit)]
+    Lifetime {
+        #[primary_span]
+        span: Span,
+        #[label]
+        param_span: Span,
+    },
+}
+
+#[derive(LintDiagnostic)]
+#[diag(hir_analysis_unused_associated_type_bounds)]
+#[note]
+pub struct UnusedAssociatedTypeBounds {
+    #[suggestion(code = "")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_assoc_bound_on_const)]
+#[note]
+pub struct AssocBoundOnConst {
+    #[primary_span]
+    pub span: Span,
+    pub descr: &'static str,
 }

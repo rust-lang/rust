@@ -1,0 +1,14 @@
+error[E0282]: type annotations needed
+  --> $DIR/issue-113264-incorrect-impl-trait-in-path-suggestion.rs:10:16
+   |
+LL |     (S {}).owo(None)
+   |                ^^^^ cannot infer type of the type parameter `T` declared on the enum `Option`
+   |
+help: consider specifying the generic argument
+   |
+LL |     (S {}).owo(None::<&_>)
+   |                    ++++++
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0282`.

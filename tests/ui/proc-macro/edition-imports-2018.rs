@@ -1,4 +1,4 @@
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
 // edition:2018
 // aux-build:edition-imports-2015.rs
 

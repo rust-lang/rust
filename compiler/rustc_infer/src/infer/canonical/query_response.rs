@@ -15,7 +15,7 @@ use crate::infer::canonical::{
 use crate::infer::nll_relate::{TypeRelating, TypeRelatingDelegate};
 use crate::infer::region_constraints::{Constraint, RegionConstraintData};
 use crate::infer::{DefineOpaqueTypes, InferCtxt, InferOk, InferResult, NllRegionVariableOrigin};
-use crate::traits::query::{Fallible, NoSolution};
+use crate::traits::query::NoSolution;
 use crate::traits::{Obligation, ObligationCause, PredicateObligation};
 use crate::traits::{PredicateObligations, TraitEngine, TraitEngineExt};
 use rustc_data_structures::captures::Captures;
@@ -25,8 +25,8 @@ use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::relate::TypeRelation;
-use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
 use rustc_middle::ty::{self, BoundVar, ToPredicate, Ty, TyCtxt};
+use rustc_middle::ty::{GenericArg, GenericArgKind};
 use rustc_span::{Span, Symbol};
 use std::fmt::Debug;
 use std::iter;
@@ -57,7 +57,7 @@ impl<'tcx> InferCtxt<'tcx> {
         inference_vars: CanonicalVarValues<'tcx>,
         answer: T,
         fulfill_cx: &mut dyn TraitEngine<'tcx>,
-    ) -> Fallible<CanonicalQueryResponse<'tcx, T>>
+    ) -> Result<CanonicalQueryResponse<'tcx, T>, NoSolution>
     where
         T: Debug + TypeFoldable<TyCtxt<'tcx>>,
         Canonical<'tcx, QueryResponse<'tcx, T>>: ArenaAllocatable<'tcx>,
@@ -484,7 +484,7 @@ impl<'tcx> InferCtxt<'tcx> {
         // given variable in the loop above, use that. Otherwise, use
         // a fresh inference variable.
         let result_subst = CanonicalVarValues {
-            var_values: self.tcx.mk_substs_from_iter(
+            var_values: self.tcx.mk_args_from_iter(
                 query_response.variables.iter().enumerate().map(|(index, info)| {
                     if info.is_existential() {
                         match opt_values[BoundVar::new(index)] {
@@ -520,7 +520,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 self.at(cause, param_env)
                     .eq(
                         DefineOpaqueTypes::Yes,
-                        self.tcx.mk_opaque(a.def_id.to_def_id(), a.substs),
+                        Ty::new_opaque(self.tcx, a.def_id.to_def_id(), a.args),
                         b,
                     )?
                     .obligations,
@@ -584,12 +584,12 @@ impl<'tcx> InferCtxt<'tcx> {
         let ty::OutlivesPredicate(k1, r2) = predicate;
 
         let atom = match k1.unpack() {
-            GenericArgKind::Lifetime(r1) => {
-                ty::PredicateKind::Clause(ty::Clause::RegionOutlives(ty::OutlivesPredicate(r1, r2)))
-            }
-            GenericArgKind::Type(t1) => {
-                ty::PredicateKind::Clause(ty::Clause::TypeOutlives(ty::OutlivesPredicate(t1, r2)))
-            }
+            GenericArgKind::Lifetime(r1) => ty::PredicateKind::Clause(
+                ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(r1, r2)),
+            ),
+            GenericArgKind::Type(t1) => ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(
+                ty::OutlivesPredicate(t1, r2),
+            )),
             GenericArgKind::Const(..) => {
                 // Consts cannot outlive one another, so we don't expect to
                 // encounter this branch.
@@ -668,14 +668,15 @@ pub fn make_query_region_constraints<'tcx>(
             let constraint = match *k {
                 // Swap regions because we are going from sub (<=) to outlives
                 // (>=).
-                Constraint::VarSubVar(v1, v2) => {
-                    ty::OutlivesPredicate(tcx.mk_re_var(v2).into(), tcx.mk_re_var(v1))
-                }
+                Constraint::VarSubVar(v1, v2) => ty::OutlivesPredicate(
+                    ty::Region::new_var(tcx, v2).into(),
+                    ty::Region::new_var(tcx, v1),
+                ),
                 Constraint::VarSubReg(v1, r2) => {
-                    ty::OutlivesPredicate(r2.into(), tcx.mk_re_var(v1))
+                    ty::OutlivesPredicate(r2.into(), ty::Region::new_var(tcx, v1))
                 }
                 Constraint::RegSubVar(r1, v2) => {
-                    ty::OutlivesPredicate(tcx.mk_re_var(v2).into(), r1)
+                    ty::OutlivesPredicate(ty::Region::new_var(tcx, v2).into(), r1)
                 }
                 Constraint::RegSubReg(r1, r2) => ty::OutlivesPredicate(r2.into(), r1),
             };
@@ -719,7 +720,7 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for QueryTypeRelatingDelegate<'_, 'tcx> {
     }
 
     fn next_placeholder_region(&mut self, placeholder: ty::PlaceholderRegion) -> ty::Region<'tcx> {
-        self.infcx.tcx.mk_re_placeholder(placeholder)
+        ty::Region::new_placeholder(self.infcx.tcx, placeholder)
     }
 
     fn generalize_existential(&mut self, universe: ty::UniverseIndex) -> ty::Region<'tcx> {
@@ -738,10 +739,8 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for QueryTypeRelatingDelegate<'_, 'tcx> {
         self.obligations.push(Obligation {
             cause: self.cause.clone(),
             param_env: self.param_env,
-            predicate: ty::Binder::dummy(ty::PredicateKind::Clause(ty::Clause::RegionOutlives(
-                ty::OutlivesPredicate(sup, sub),
-            )))
-            .to_predicate(self.infcx.tcx),
+            predicate: ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(sup, sub))
+                .to_predicate(self.infcx.tcx),
             recursion_depth: 0,
         });
     }

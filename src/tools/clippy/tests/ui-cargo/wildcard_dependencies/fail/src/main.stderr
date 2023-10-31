@@ -1,6 +1,0 @@
-error: wildcard dependency for `regex`
-   |
-   = note: `-D clippy::wildcard-dependencies` implied by `-D warnings`
-
-error: aborting due to previous error
-

@@ -115,7 +115,7 @@ impl From<DefKind> for ItemType {
             DefKind::Struct => Self::Struct,
             DefKind::Union => Self::Union,
             DefKind::Trait => Self::Trait,
-            DefKind::TyAlias => Self::Typedef,
+            DefKind::TyAlias { .. } => Self::Typedef,
             DefKind::TraitAlias => Self::TraitAlias,
             DefKind::Macro(kind) => match kind {
                 MacroKind::Bang => ItemType::Macro,
@@ -136,7 +136,6 @@ impl From<DefKind> for ItemType {
             | DefKind::AnonConst
             | DefKind::InlineConst
             | DefKind::OpaqueTy
-            | DefKind::ImplTraitPlaceholder
             | DefKind::Field
             | DefKind::LifetimeParam
             | DefKind::GlobalAsm

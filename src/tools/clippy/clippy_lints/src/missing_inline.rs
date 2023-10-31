@@ -74,7 +74,6 @@ fn is_executable_or_proc_macro(cx: &LateContext<'_>) -> bool {
     use rustc_session::config::CrateType;
 
     cx.tcx
-        .sess
         .crate_types()
         .iter()
         .any(|t: &CrateType| matches!(t, CrateType::Executable | CrateType::ProcMacro))
@@ -105,7 +104,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingInline {
                     match tit_.kind {
                         hir::TraitItemKind::Const(..) | hir::TraitItemKind::Type(..) => {},
                         hir::TraitItemKind::Fn(..) => {
-                            if cx.tcx.impl_defaultness(tit.id.owner_id).has_value() {
+                            if cx.tcx.defaultness(tit.id.owner_id).has_value() {
                                 // trait method with default body needs inline in case
                                 // an impl is not provided
                                 let desc = "a default trait method";

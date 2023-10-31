@@ -33,6 +33,15 @@ function check {
     ${objdump} --disassemble-symbols="${func}" --demangle \
       ${enclave} > ${asm}
     ${filecheck} --input-file ${asm} ${checks}
+
+    if [ "${func_re}" != "rust_plus_one_global_asm" &&
+         "${func_re}" != "cmake_plus_one_c_global_asm" ]; then
+        # The assembler cannot avoid explicit `ret` instructions. Sequences
+        # of `shlq $0x0, (%rsp); lfence; retq` are used instead.
+        # https://www.intel.com/content/www/us/en/developer/articles/technical/
+        #     software-security-guidance/technical-documentation/load-value-injection.html
+        ${filecheck} --implicit-check-not ret --input-file ${asm} ${checks}
+    fi
 }
 
 build

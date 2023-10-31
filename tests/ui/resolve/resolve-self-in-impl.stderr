@@ -1,4 +1,20 @@
 error: `Self` is not valid in the self type of an impl block
+  --> $DIR/resolve-self-in-impl.rs:14:13
+   |
+LL | impl Tr for Self {}
+   |             ^^^^
+   |
+   = note: replace `Self` with a different type
+
+error: `Self` is not valid in the self type of an impl block
+  --> $DIR/resolve-self-in-impl.rs:15:15
+   |
+LL | impl Tr for S<Self> {}
+   |               ^^^^
+   |
+   = note: replace `Self` with a different type
+
+error: `Self` is not valid in the self type of an impl block
   --> $DIR/resolve-self-in-impl.rs:16:6
    |
 LL | impl Self {}
@@ -22,22 +38,6 @@ LL | impl (Self, Self) {}
    |
    = note: replace `Self` with a different type
 
-error: `Self` is not valid in the self type of an impl block
-  --> $DIR/resolve-self-in-impl.rs:14:13
-   |
-LL | impl Tr for Self {}
-   |             ^^^^
-   |
-   = note: replace `Self` with a different type
-
-error: `Self` is not valid in the self type of an impl block
-  --> $DIR/resolve-self-in-impl.rs:15:15
-   |
-LL | impl Tr for S<Self> {}
-   |               ^^^^
-   |
-   = note: replace `Self` with a different type
-
 error[E0391]: cycle detected when computing trait implemented by `<impl at $DIR/resolve-self-in-impl.rs:19:1: 19:23>`
   --> $DIR/resolve-self-in-impl.rs:19:1
    |
@@ -56,6 +56,7 @@ LL | | trait Tr<T = u8> {
 LL | |
 LL | | fn main() {}
    | |____________^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
 error: aborting due to 6 previous errors
 

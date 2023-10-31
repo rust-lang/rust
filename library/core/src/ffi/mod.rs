@@ -52,11 +52,6 @@ macro_rules! type_alias {
 }
 
 type_alias! { "c_char.md", c_char = c_char_definition::c_char, NonZero_c_char = c_char_definition::NonZero_c_char;
-// Make this type alias appear cfg-dependent so that Clippy does not suggest
-// replacing `0 as c_char` with `0_i8`/`0_u8`. This #[cfg(all())] can be removed
-// after the false positive in https://github.com/rust-lang/rust-clippy/issues/8093
-// is fixed.
-#[cfg(all())]
 #[doc(cfg(all()))] }
 
 type_alias! { "c_schar.md", c_schar = i8, NonZero_c_schar = NonZeroI8; }
@@ -115,7 +110,8 @@ mod c_char_definition {
                     target_arch = "powerpc64",
                     target_arch = "s390x",
                     target_arch = "riscv64",
-                    target_arch = "riscv32"
+                    target_arch = "riscv32",
+                    target_arch = "csky"
                 )
             ),
             all(target_os = "android", any(target_arch = "aarch64", target_arch = "arm")),
@@ -132,7 +128,12 @@ mod c_char_definition {
             ),
             all(
                 target_os = "netbsd",
-                any(target_arch = "aarch64", target_arch = "arm", target_arch = "powerpc")
+                any(
+                    target_arch = "aarch64",
+                    target_arch = "arm",
+                    target_arch = "powerpc",
+                    target_arch = "riscv64"
+                )
             ),
             all(
                 target_os = "vxworks",
@@ -202,7 +203,7 @@ mod c_long_definition {
 //     would be uninhabited and at least dereferencing such pointers would
 //     be UB.
 #[doc = include_str!("c_void.md")]
-#[cfg_attr(not(bootstrap), lang = "c_void")]
+#[lang = "c_void"]
 #[cfg_attr(not(doc), repr(u8))] // work around https://github.com/rust-lang/rust/issues/90435
 #[stable(feature = "core_c_void", since = "1.30.0")]
 pub enum c_void {
@@ -238,7 +239,7 @@ impl fmt::Debug for c_void {
         not(target_arch = "s390x"),
         not(target_arch = "x86_64")
     ),
-    all(target_arch = "aarch64", any(target_os = "macos", target_os = "ios")),
+    all(target_arch = "aarch64", any(target_os = "macos", target_os = "ios", target_os = "tvos")),
     target_family = "wasm",
     target_arch = "asmjs",
     target_os = "uefi",
@@ -267,7 +268,7 @@ pub struct VaListImpl<'f> {
         not(target_arch = "s390x"),
         not(target_arch = "x86_64")
     ),
-    all(target_arch = "aarch64", any(target_os = "macos", target_os = "ios")),
+    all(target_arch = "aarch64", any(target_os = "macos", target_os = "ios", target_os = "tvos")),
     target_family = "wasm",
     target_arch = "asmjs",
     target_os = "uefi",
@@ -292,7 +293,7 @@ impl<'f> fmt::Debug for VaListImpl<'f> {
 /// http://infocenter.arm.com/help/topic/com.arm.doc.ihi0055b/IHI0055B_aapcs64.pdf
 #[cfg(all(
     target_arch = "aarch64",
-    not(any(target_os = "macos", target_os = "ios")),
+    not(any(target_os = "macos", target_os = "ios", target_os = "tvos")),
     not(target_os = "uefi"),
     not(windows),
 ))]
@@ -389,7 +390,10 @@ pub struct VaList<'a, 'f: 'a> {
             not(target_arch = "s390x"),
             not(target_arch = "x86_64")
         ),
-        all(target_arch = "aarch64", any(target_os = "macos", target_os = "ios")),
+        all(
+            target_arch = "aarch64",
+            any(target_os = "macos", target_os = "ios", target_os = "tvos")
+        ),
         target_family = "wasm",
         target_arch = "asmjs",
         target_os = "uefi",
@@ -404,7 +408,10 @@ pub struct VaList<'a, 'f: 'a> {
             target_arch = "s390x",
             target_arch = "x86_64"
         ),
-        any(not(target_arch = "aarch64"), not(any(target_os = "macos", target_os = "ios"))),
+        any(
+            not(target_arch = "aarch64"),
+            not(any(target_os = "macos", target_os = "ios", target_os = "tvos"))
+        ),
         not(target_family = "wasm"),
         not(target_arch = "asmjs"),
         not(target_os = "uefi"),
@@ -422,7 +429,7 @@ pub struct VaList<'a, 'f: 'a> {
         not(target_arch = "s390x"),
         not(target_arch = "x86_64")
     ),
-    all(target_arch = "aarch64", any(target_os = "macos", target_os = "ios")),
+    all(target_arch = "aarch64", any(target_os = "macos", target_os = "ios", target_os = "tvos")),
     target_family = "wasm",
     target_arch = "asmjs",
     target_os = "uefi",
@@ -449,7 +456,10 @@ impl<'f> VaListImpl<'f> {
         target_arch = "s390x",
         target_arch = "x86_64"
     ),
-    any(not(target_arch = "aarch64"), not(any(target_os = "macos", target_os = "ios"))),
+    any(
+        not(target_arch = "aarch64"),
+        not(any(target_os = "macos", target_os = "ios", target_os = "tvos"))
+    ),
     not(target_family = "wasm"),
     not(target_arch = "asmjs"),
     not(target_os = "uefi"),

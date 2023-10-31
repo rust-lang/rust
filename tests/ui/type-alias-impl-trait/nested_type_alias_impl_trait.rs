@@ -10,11 +10,11 @@ mod my_mod {
         5i32
     }
 
-    pub fn get_foot() -> Foot {
+    pub fn get_foot(_: Foo) -> Foot {
         get_foo() //~ ERROR opaque type's hidden type cannot be another opaque type
     }
 }
 
 fn main() {
-    let _: my_mod::Foot = my_mod::get_foot();
+    let _: my_mod::Foot = my_mod::get_foot(my_mod::get_foo());
 }

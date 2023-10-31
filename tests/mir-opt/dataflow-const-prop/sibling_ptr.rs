@@ -1,4 +1,4 @@
-// ignore-wasm32 compiled with panic=abort by default
+// EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 // This attempts to modify `x.1` via a pointer derived from `addr_of_mut!(x.0)`.
 // According to Miri, that is UB. However, T-opsem has not finalized that
 // decision and as such we cannot rely on it in optimizations. Consequently,

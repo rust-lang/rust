@@ -1,0 +1,25 @@
+warning: `foo` is ambiguous
+  --> $DIR/ambiguous-14.rs:23:8
+   |
+LL |     g::foo();
+   |        ^^^ ambiguous name
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #114095 <https://github.com/rust-lang/rust/issues/114095>
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `foo` could refer to the function imported here
+  --> $DIR/ambiguous-14.rs:13:13
+   |
+LL |     pub use a::*;
+   |             ^^^^
+   = help: consider adding an explicit import of `foo` to disambiguate
+note: `foo` could also refer to the function imported here
+  --> $DIR/ambiguous-14.rs:14:13
+   |
+LL |     pub use b::*;
+   |             ^^^^
+   = help: consider adding an explicit import of `foo` to disambiguate
+   = note: `#[warn(ambiguous_glob_imports)]` on by default
+
+warning: 1 warning emitted
+

@@ -1,5 +1,5 @@
 //@run-rustfix
-#![allow(dead_code, unused_must_use)]
+#![allow(clippy::needless_if, dead_code, unused_must_use)]
 
 fn main() {}
 

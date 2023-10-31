@@ -1,0 +1,48 @@
+- // MIR for `option_payload` before LowerIntrinsics
++ // MIR for `option_payload` after LowerIntrinsics
+  
+  fn option_payload(_1: &Option<usize>, _2: &Option<String>) -> () {
+      debug o => _1;
+      debug p => _2;
+      let mut _0: ();
+      let mut _4: *const std::option::Option<usize>;
+      let mut _6: *const std::option::Option<std::string::String>;
+      scope 1 {
+          let _3: *const usize;
+          scope 2 {
+              debug _x => _3;
+              let _5: *const std::string::String;
+              scope 3 {
+                  debug _y => _5;
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_3);
+          StorageLive(_4);
+          _4 = &raw const (*_1);
+-         _3 = option_payload_ptr::<usize>(move _4) -> [return: bb1, unwind unreachable];
++         _3 = &raw const (((*_4) as Some).0: usize);
++         goto -> bb1;
+      }
+  
+      bb1: {
+          StorageDead(_4);
+          StorageLive(_5);
+          StorageLive(_6);
+          _6 = &raw const (*_2);
+-         _5 = option_payload_ptr::<String>(move _6) -> [return: bb2, unwind unreachable];
++         _5 = &raw const (((*_6) as Some).0: std::string::String);
++         goto -> bb2;
+      }
+  
+      bb2: {
+          StorageDead(_6);
+          _0 = const ();
+          StorageDead(_5);
+          StorageDead(_3);
+          return;
+      }
+  }
+  

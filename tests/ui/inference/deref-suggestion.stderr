@@ -84,15 +84,16 @@ LL | fn foo3(_: u32) {}
    |    ^^^^ ------
 
 error[E0308]: mismatched types
-  --> $DIR/deref-suggestion.rs:37:5
+  --> $DIR/deref-suggestion.rs:37:22
    |
 LL |     assert_eq!(3i32, &3i32);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^
-   |     |
-   |     expected `i32`, found `&i32`
-   |     expected because this is `i32`
+   |                      ^^^^^ expected `i32`, found `&i32`
    |
-   = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider removing the borrow
+   |
+LL -     assert_eq!(3i32, &3i32);
+LL +     assert_eq!(3i32, 3i32);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/deref-suggestion.rs:40:17

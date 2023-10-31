@@ -1,4 +1,4 @@
-//@aux-build:proc_macros.rs
+//@aux-build:proc_macros.rs:proc-macro
 #![warn(clippy::mem_replace_with_default)]
 
 extern crate proc_macros;

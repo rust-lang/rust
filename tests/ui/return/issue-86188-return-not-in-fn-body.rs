@@ -7,7 +7,7 @@
 
 const C: [(); 42] = {
     [(); return || {
-    //~^ ERROR: return statement outside of function body [E0572]
+        //~^ ERROR: return statement outside of function body [E0572]
         let tx;
     }]
 };
@@ -16,7 +16,7 @@ struct S {}
 trait Tr {
     fn foo();
     fn bar() {
-    //~^ NOTE: ...not the enclosing function body
+        //~^ NOTE: ...not the enclosing function body
         [(); return];
         //~^ ERROR: return statement outside of function body [E0572]
         //~| NOTE: the return is part of this body...
@@ -24,7 +24,7 @@ trait Tr {
 }
 impl Tr for S {
     fn foo() {
-    //~^ NOTE: ...not the enclosing function body
+        //~^ NOTE: ...not the enclosing function body
         [(); return];
         //~^ ERROR: return statement outside of function body [E0572]
         //~| NOTE: the return is part of this body...
@@ -32,10 +32,10 @@ impl Tr for S {
 }
 
 fn main() {
-//~^ NOTE: ...not the enclosing function body
+    //~^ NOTE: ...not the enclosing function body
     [(); return || {
-    //~^ ERROR: return statement outside of function body [E0572]
-    //~| NOTE: the return is part of this body...
+        //~^ ERROR: return statement outside of function body [E0572]
+        //~| NOTE: the return is part of this body...
         let tx;
     }];
 }
