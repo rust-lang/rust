@@ -79,7 +79,7 @@ Rust, as well as publications about Rust.
   Rust](https://munksgaard.me/papers/laumann-munksgaard-larsen.pdf). Philip
   Munksgaard's master's thesis. Research for Servo.
 * [Ownership is Theft: Experiences Building an Embedded OS in Rust - Amit Levy, et. al.](https://amitlevy.com/papers/tock-plos2015.pdf)
-* [You can't spell trust without Rust](https://raw.githubusercontent.com/Gankro/thesis/master/thesis.pdf). Alexis Beingessner's master's thesis.
+* [You can't spell trust without Rust](https://faultlore.com/blah/papers/thesis.pdf). Aria Beingessner's master's thesis.
 * [Rust-Bio: a fast and safe bioinformatics library](https://academic.oup.com/bioinformatics/article/32/3/444/1743419). Johannes Köster
 * [Safe, Correct, and Fast Low-Level Networking](https://octarineparrot.com/assets/msci_paper.pdf). Robert Clipsham's master's thesis.
 * [Formalizing Rust traits](https://open.library.ubc.ca/cIRcle/collections/ubctheses/24/items/1.0220521). Jonatan Milewski's master's thesis.
