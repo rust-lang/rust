@@ -954,6 +954,21 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
     let cloned_shared = Rc::clone(&cx.shared);
     let cache = &cloned_shared.cache;
     let mut extern_crates = FxHashSet::default();
+
+    if !t.is_object_safe(cx.tcx()) {
+        write_small_section_header(
+            w,
+            "object-safety",
+            "Object Safety",
+            &format!(
+                "<div class=\"object-safety-info\">This trait is <b>not</b> \
+                <a href=\"{base}/reference/items/traits.html#object-safety\">\
+                object safe</a>.</div>",
+                base = crate::clean::utils::DOC_RUST_LANG_ORG_CHANNEL
+            ),
+        );
+    }
+
     if let Some(implementors) = cache.implementors.get(&it.item_id.expect_def_id()) {
         // The DefId is for the first Type found with that name. The bool is
         // if any Types with the same name but different DefId have been found.
