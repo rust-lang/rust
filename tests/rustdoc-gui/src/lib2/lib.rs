@@ -147,13 +147,13 @@ pub struct LongItemInfo2;
 #[doc(cfg(any(target_os = "android", target_os = "linux", target_os = "emscripten", target_os = "dragonfly", target_os = "freebsd", target_os = "netbsd", target_os = "openbsd")))]
 impl SimpleTrait for LongItemInfo2 {}
 
-pub struct WhereWhitespace<T>;
+pub struct WhereWhitespace<T>(T);
 
 impl<T> WhereWhitespace<T> {
     pub fn new<F>(f: F) -> Self
     where
         F: FnMut() -> i32,
-    {}
+    {todo!()}
 }
 
 impl<K, T> Whitespace<&K> for WhereWhitespace<T>
@@ -186,6 +186,11 @@ impl ItemInfoAlignmentTest {
 
 pub mod scroll_traits {
     use std::iter::*;
+
+    struct Intersperse<T>(T);
+    struct IntersperseWith<T, U>(T, U);
+    struct Flatten<T>(T);
+    struct Peekable<T>(T);
 
     /// Shamelessly (partially) copied from `std::iter::Iterator`.
     /// It allows us to check that the scroll is working as expected on "hidden" items.

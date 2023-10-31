@@ -9,21 +9,21 @@ pub struct Error;
 pub trait Write {
     // @snapshot 'declaration' - '//*[@class="rust item-decl"]//code'
     fn poll_write(
-        self: Option<String>,
+        self,
         cx: &mut Option<String>,
         buf: &mut [usize]
     ) -> Option<Result<usize, Error>>;
     fn poll_flush(
-        self: Option<String>,
+        self,
         cx: &mut Option<String>
     ) -> Option<Result<(), Error>>;
     fn poll_close(
-        self: Option<String>,
+        self,
         cx: &mut Option<String>,
     ) -> Option<Result<(), Error>>;
 
     fn poll_write_vectored(
-        self: Option<String>,
+        self,
         cx: &mut Option<String>,
         bufs: &[usize]
     ) -> Option<Result<usize, Error>> {}

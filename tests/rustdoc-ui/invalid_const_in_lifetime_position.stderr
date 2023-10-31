@@ -28,6 +28,86 @@ note: associated type defined here, with 0 generic parameters
 LL |     type Y<'a>;
    |          ^
 
-error: aborting due to 2 previous errors
+error[E0107]: associated type takes 1 lifetime argument but 0 lifetime arguments were supplied
+  --> $DIR/invalid_const_in_lifetime_position.rs:4:26
+   |
+LL | fn f<'a>(arg : Box<dyn X<Y<1> = &'a ()>>) {}
+   |                          ^ expected 1 lifetime argument
+   |
+note: associated type defined here, with 1 lifetime parameter: `'a`
+  --> $DIR/invalid_const_in_lifetime_position.rs:2:10
+   |
+LL |     type Y<'a>;
+   |          ^ --
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: add missing lifetime argument
+   |
+LL | fn f<'a>(arg : Box<dyn X<Y<'_, 1> = &'a ()>>) {}
+   |                            +++
 
-For more information about this error, try `rustc --explain E0107`.
+error[E0107]: associated type takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/invalid_const_in_lifetime_position.rs:4:26
+   |
+LL | fn f<'a>(arg : Box<dyn X<Y<1> = &'a ()>>) {}
+   |                          ^--- help: remove these generics
+   |                          |
+   |                          expected 0 generic arguments
+   |
+note: associated type defined here, with 0 generic parameters
+  --> $DIR/invalid_const_in_lifetime_position.rs:2:10
+   |
+LL |     type Y<'a>;
+   |          ^
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0107]: associated type takes 1 lifetime argument but 0 lifetime arguments were supplied
+  --> $DIR/invalid_const_in_lifetime_position.rs:4:26
+   |
+LL | fn f<'a>(arg : Box<dyn X<Y<1> = &'a ()>>) {}
+   |                          ^ expected 1 lifetime argument
+   |
+note: associated type defined here, with 1 lifetime parameter: `'a`
+  --> $DIR/invalid_const_in_lifetime_position.rs:2:10
+   |
+LL |     type Y<'a>;
+   |          ^ --
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: add missing lifetime argument
+   |
+LL | fn f<'a>(arg : Box<dyn X<Y<'_, 1> = &'a ()>>) {}
+   |                            +++
+
+error[E0107]: associated type takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/invalid_const_in_lifetime_position.rs:4:26
+   |
+LL | fn f<'a>(arg : Box<dyn X<Y<1> = &'a ()>>) {}
+   |                          ^--- help: remove these generics
+   |                          |
+   |                          expected 0 generic arguments
+   |
+note: associated type defined here, with 0 generic parameters
+  --> $DIR/invalid_const_in_lifetime_position.rs:2:10
+   |
+LL |     type Y<'a>;
+   |          ^
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0038]: the trait `X` cannot be made into an object
+  --> $DIR/invalid_const_in_lifetime_position.rs:4:20
+   |
+LL | fn f<'a>(arg : Box<dyn X<Y<1> = &'a ()>>) {}
+   |                    ^^^^^^^^^^^^^^^^^^^^ `X` cannot be made into an object
+   |
+note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/invalid_const_in_lifetime_position.rs:2:10
+   |
+LL | trait X {
+   |       - this trait cannot be made into an object...
+LL |     type Y<'a>;
+   |          ^ ...because it contains the generic associated type `Y`
+   = help: consider moving `Y` to another trait
+
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0038, E0107.
+For more information about an error, try `rustc --explain E0038`.

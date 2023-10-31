@@ -12,6 +12,7 @@ struct DefaultAllocator;
 // `<DefaultAllocator as Allocator>::Buffer` to be ambiguous,
 // which caused an ICE with `-Znormalize-docs`.
 impl<T> Allocator for DefaultAllocator {
+    //~^ ERROR: type annotations needed
     type Buffer = ();
 }
 
