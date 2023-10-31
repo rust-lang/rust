@@ -320,6 +320,11 @@ fn check_variant(cx: &LateContext<'_>, threshold: u64, def: &EnumDef<'_>, item_n
         return;
     }
 
+    for var in def.variants {
+        check_enum_start(cx, item_name, var);
+        check_enum_end(cx, item_name, var);
+    }
+
     let first = match def.variants.first() {
         Some(variant) => variant.ident.name.as_str(),
         None => return,
@@ -328,8 +333,6 @@ fn check_variant(cx: &LateContext<'_>, threshold: u64, def: &EnumDef<'_>, item_n
     let mut post = pre.clone();
     post.reverse();
     for var in def.variants {
-        check_enum_start(cx, item_name, var);
-        check_enum_end(cx, item_name, var);
         let name = var.ident.name.as_str();
 
         let variant_split = camel_case_split(name);
