@@ -117,7 +117,7 @@ LL | impl Quux for u8 {}
    | ------------------- not a function definition
 
 error: attribute should be applied to a function definition
-  --> $DIR/invalid-attribute.rs:90:1
+  --> $DIR/invalid-attribute.rs:92:1
    |
 LL | #[target_feature(enable = "sse2")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -126,7 +126,7 @@ LL | impl Foo {}
    | ----------- not a function definition
 
 error: attribute should be applied to a function definition
-  --> $DIR/invalid-attribute.rs:108:5
+  --> $DIR/invalid-attribute.rs:110:5
    |
 LL |       #[target_feature(enable = "sse2")]
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -138,7 +138,7 @@ LL | |     }
    | |_____- not a function definition
 
 error: attribute should be applied to a function definition
-  --> $DIR/invalid-attribute.rs:116:5
+  --> $DIR/invalid-attribute.rs:118:5
    |
 LL |     #[target_feature(enable = "sse2")]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -183,7 +183,7 @@ LL | #[inline(always)]
    | ^^^^^^^^^^^^^^^^^
 
 error[E0658]: `#[target_feature(..)]` can only be applied to `unsafe` functions
-  --> $DIR/invalid-attribute.rs:100:5
+  --> $DIR/invalid-attribute.rs:102:5
    |
 LL |     #[target_feature(enable = "sse2")]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -194,6 +194,16 @@ LL |     fn foo() {}
    = note: see issue #69098 <https://github.com/rust-lang/rust/issues/69098> for more information
    = help: add `#![feature(target_feature_11)]` to the crate attributes to enable
 
-error: aborting due to 22 previous errors
+error[E0046]: not all trait items implemented, missing: `foo`
+  --> $DIR/invalid-attribute.rs:87:1
+   |
+LL | impl Quux for u8 {}
+   | ^^^^^^^^^^^^^^^^ missing `foo` in implementation
+...
+LL |     fn foo();
+   |     --------- `foo` from trait
 
-For more information about this error, try `rustc --explain E0658`.
+error: aborting due to 23 previous errors
+
+Some errors have detailed explanations: E0046, E0658.
+For more information about an error, try `rustc --explain E0046`.
