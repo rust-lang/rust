@@ -99,6 +99,7 @@ mod suspicious_to_owned;
 mod type_id_on_box;
 mod uninit_assumed_init;
 mod unit_hash;
+mod unnecessary_fallible_conversions;
 mod unnecessary_filter_map;
 mod unnecessary_fold;
 mod unnecessary_iter_cloned;
@@ -3655,6 +3656,33 @@ declare_clippy_lint! {
     "cloning a `Waker` only to wake it"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for calls to `TryInto::try_into` and `TryFrom::try_from` when their infallible counterparts
+    /// could be used.
+    ///
+    /// ### Why is this bad?
+    /// In those cases, the `TryInto` and `TryFrom` trait implementation is a blanket impl that forwards
+    /// to `Into` or `From`, which always succeeds.
+    /// The returned `Result<_, Infallible>` requires error handling to get the contained value
+    /// even though the conversion can never fail.
+    ///
+    /// ### Example
+    /// ```rust
+    /// let _: Result<i64, _> = 1i32.try_into();
+    /// let _: Result<i64, _> = <_>::try_from(1i32);
+    /// ```
+    /// Use `from`/`into` instead:
+    /// ```rust
+    /// let _: i64 = 1i32.into();
+    /// let _: i64 = <_>::from(1i32);
+    /// ```
+    #[clippy::version = "1.75.0"]
+    pub UNNECESSARY_FALLIBLE_CONVERSIONS,
+    style,
+    "calling the `try_from` and `try_into` trait methods when `From`/`Into` is implemented"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Msrv,
@@ -3801,6 +3829,7 @@ impl_lint_pass!(Methods => [
     PATH_ENDS_WITH_EXT,
     REDUNDANT_AS_STR,
     WAKER_CLONE_WAKE,
+    UNNECESSARY_FALLIBLE_CONVERSIONS,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -3827,6 +3856,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
         match expr.kind {
             hir::ExprKind::Call(func, args) => {
                 from_iter_instead_of_collect::check(cx, expr, args, func);
+                unnecessary_fallible_conversions::check_function(cx, expr, func);
             },
             hir::ExprKind::MethodCall(method_call, receiver, args, _) => {
                 let method_span = method_call.ident.span;
@@ -4316,6 +4346,9 @@ impl Methods {
                     }
                     unnecessary_lazy_eval::check(cx, expr, recv, arg, "then_some");
                 },
+                ("try_into", []) if is_trait_method(cx, expr, sym::TryInto) => {
+                    unnecessary_fallible_conversions::check_method(cx, expr);
+                }
                 ("to_owned", []) => {
                     if !suspicious_to_owned::check(cx, expr, recv) {
                         implicit_clone::check(cx, name, expr, recv);

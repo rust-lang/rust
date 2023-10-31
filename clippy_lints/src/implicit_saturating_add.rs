@@ -82,18 +82,18 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitSaturatingAdd {
 
 fn get_int_max(ty: Ty<'_>) -> Option<u128> {
     match ty.peel_refs().kind() {
-        Int(IntTy::I8) => i8::max_value().try_into().ok(),
-        Int(IntTy::I16) => i16::max_value().try_into().ok(),
-        Int(IntTy::I32) => i32::max_value().try_into().ok(),
-        Int(IntTy::I64) => i64::max_value().try_into().ok(),
-        Int(IntTy::I128) => i128::max_value().try_into().ok(),
-        Int(IntTy::Isize) => isize::max_value().try_into().ok(),
-        Uint(UintTy::U8) => u8::max_value().try_into().ok(),
-        Uint(UintTy::U16) => u16::max_value().try_into().ok(),
-        Uint(UintTy::U32) => u32::max_value().try_into().ok(),
-        Uint(UintTy::U64) => u64::max_value().try_into().ok(),
-        Uint(UintTy::U128) => Some(u128::max_value()),
-        Uint(UintTy::Usize) => usize::max_value().try_into().ok(),
+        Int(IntTy::I8) => i8::MAX.try_into().ok(),
+        Int(IntTy::I16) => i16::MAX.try_into().ok(),
+        Int(IntTy::I32) => i32::MAX.try_into().ok(),
+        Int(IntTy::I64) => i64::MAX.try_into().ok(),
+        Int(IntTy::I128) => i128::MAX.try_into().ok(),
+        Int(IntTy::Isize) => isize::MAX.try_into().ok(),
+        Uint(UintTy::U8) => Some(u8::MAX.into()),
+        Uint(UintTy::U16) => Some(u16::MAX.into()),
+        Uint(UintTy::U32) => Some(u32::MAX.into()),
+        Uint(UintTy::U64) => Some(u64::MAX.into()),
+        Uint(UintTy::U128) => Some(u128::MAX),
+        Uint(UintTy::Usize) => usize::MAX.try_into().ok(),
         _ => None,
     }
 }
