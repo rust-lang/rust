@@ -801,3 +801,32 @@ fn test_vis() {
     assert_eq!(inherited_vis!(struct), "");
     assert_eq!(stringify!(), "");
 }
+
+macro_rules! p {
+    ([$($tt:tt)*], $s:literal) => {
+        assert_eq!(stringify!($($tt)*), $s);
+    };
+}
+
+#[test]
+fn test_punct() {
+    // For all these cases, we must preserve spaces between the tokens.
+    // Otherwise, any old proc macro that parses pretty-printed code might glue
+    // together tokens that shouldn't be glued.
+    p!([ = = < < <= <= == == != != >= >= > > ], "= = < < <= <= == == != != >= >= > >");
+    p!([ && && & & || || | | ! ! ], "&& && & & || || | |!!"); // FIXME
+    p!([ ~ ~ @ @ # # ], "~ ~ @ @ # #");
+    p!([ . . .. .. ... ... ..= ..=], ".... .. ... ... ..= ..="); // FIXME
+    p!([ , , ; ; : : :: :: ], ",, ; ; : : :: ::"); // FIXME
+    p!([ -> -> <- <- => =>], "-> -> <- <- => =>");
+    p!([ $ $ ? ? ' ' ], "$$? ? ' '"); // FIXME
+    p!([ + + += += - - -= -= * * *= *= / / /= /= ], "+ + += += - - -= -= * * *= *= / / /= /=");
+    p!([ % % %= %= ^ ^ ^= ^= << << <<= <<= >> >> >>= >>= ],
+        "% % %= %= ^ ^ ^= ^= << << <<= <<= >> >> >>= >>=");
+
+    // For these one we must insert spaces between adjacent tokens, again due
+    // to proc macros.
+    p!([ +! ?= |> >>@ --> <-- $$ =====> ], "+! ? = | > >> @ - -> <- - $$== == =>"); // FIXME
+    p!([ ,; ;, ** @@ $+$ >< <> ?? +== ], ", ; ;, * * @ @ $+ $> < < > ? ? += ="); // FIXME
+    p!([ :#!@|$=&*,+;*~? ], ": #! @ | $= & *, + ; * ~ ?"); // FIXME
+}
