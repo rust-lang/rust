@@ -386,7 +386,6 @@
 #![feature(get_many_mut)]
 #![feature(lazy_cell)]
 #![feature(log_syntax)]
-#![feature(stdsimd)]
 #![feature(test)]
 #![feature(trace_macros)]
 // tidy-alphabetical-end
@@ -625,13 +624,16 @@ pub mod arch {
 
     #[stable(feature = "simd_aarch64", since = "1.60.0")]
     pub use std_detect::is_aarch64_feature_detected;
+    #[unstable(feature = "stdarch_arm_feature_detection", issue = "111190")]
+    pub use std_detect::is_arm_feature_detected;
+    #[unstable(feature = "is_riscv_feature_detected", issue = "111192")]
+    pub use std_detect::is_riscv_feature_detected;
     #[stable(feature = "simd_x86", since = "1.27.0")]
     pub use std_detect::is_x86_feature_detected;
-    #[unstable(feature = "stdsimd", issue = "48556")]
-    pub use std_detect::{
-        is_arm_feature_detected, is_mips64_feature_detected, is_mips_feature_detected,
-        is_powerpc64_feature_detected, is_powerpc_feature_detected, is_riscv_feature_detected,
-    };
+    #[unstable(feature = "stdarch_mips_feature_detection", issue = "111188")]
+    pub use std_detect::{is_mips64_feature_detected, is_mips_feature_detected};
+    #[unstable(feature = "stdarch_powerpc_feature_detection", issue = "111191")]
+    pub use std_detect::{is_powerpc64_feature_detected, is_powerpc_feature_detected};
 }
 
 // This was stabilized in the crate root so we have to keep it there.
