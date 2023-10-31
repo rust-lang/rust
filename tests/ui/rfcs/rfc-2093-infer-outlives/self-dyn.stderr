@@ -6,5 +6,18 @@ LL | struct Foo<'a, 'b, A>
    |
    = note: A: 'a
 
-error: aborting due to previous error
+error[E0640]: rustc_outlives
+  --> $DIR/self-dyn.rs:8:1
+   |
+LL | struct Foo<'a, 'b, A>
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+note: A: 'a
+  --> $DIR/self-dyn.rs:3:33
+   |
+LL | trait Trait<'x, 's, T> where T: 'x,
+   |                                 ^^
 
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0640`.

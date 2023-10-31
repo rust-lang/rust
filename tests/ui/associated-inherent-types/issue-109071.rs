@@ -2,18 +2,20 @@
 #![cfg_attr(with_gate, feature(inherent_associated_types))]
 #![cfg_attr(with_gate, allow(incomplete_features))]
 
-struct Windows<T> {}
+struct Windows<T> { t: T }
 
 impl<T> Windows { //~ ERROR: missing generics for struct `Windows`
     type Item = &[T]; //~ ERROR: `&` without an explicit lifetime name cannot be used here
     //[no_gate]~^ ERROR: inherent associated types are unstable
 
     fn next() -> Option<Self::Item> {}
+    //[with_gate]~^ ERROR type annotations needed
 }
 
 impl<T> Windows<T> {
     fn T() -> Option<Self::Item> {}
     //[no_gate]~^ ERROR: ambiguous associated type
+    //[with_gate]~^^ ERROR type annotations needed
 }
 
 fn main() {}

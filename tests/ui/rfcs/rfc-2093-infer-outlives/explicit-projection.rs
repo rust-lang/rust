@@ -6,6 +6,7 @@ trait Trait<'x, T> where T: 'x {
 
 #[rustc_outlives]
 struct Foo<'a, A, B> where A: Trait<'a, B> //~ ERROR rustc_outlives
+//~^ ERROR rustc_outlives
 {
     foo: <A as Trait<'a, B>>::Type
 }

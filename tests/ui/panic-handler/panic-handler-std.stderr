@@ -8,6 +8,16 @@ LL | fn panic(info: PanicInfo) -> ! {
    = note: first definition in `std` loaded from SYSROOT/libstd-*.rlib
    = note: second definition in the local crate (`panic_handler_std`)
 
-error: aborting due to previous error
+error[E0308]: `#[panic_handler]` function has wrong type
+  --> $DIR/panic-handler-std.rs:8:16
+   |
+LL | fn panic(info: PanicInfo) -> ! {
+   |                ^^^^^^^^^ expected `&PanicInfo<'_>`, found `PanicInfo<'_>`
+   |
+   = note: expected signature `for<'a, 'b> fn(&'a PanicInfo<'b>) -> _`
+              found signature `for<'a> fn(PanicInfo<'a>) -> _`
 
-For more information about this error, try `rustc --explain E0152`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0152, E0308.
+For more information about an error, try `rustc --explain E0152`.

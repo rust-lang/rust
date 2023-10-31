@@ -8,5 +8,28 @@ LL | struct Foo<'a, 'b, T> {
    = note: T: 'a
    = note: T: 'b
 
-error: aborting due to previous error
+error[E0640]: rustc_outlives
+  --> $DIR/nested-regions.rs:4:1
+   |
+LL | struct Foo<'a, 'b, T> {
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+note: 'b: 'a
+  --> $DIR/nested-regions.rs:6:5
+   |
+LL |     x: &'a &'b T
+   |     ^^^^^^^^^^^^
+note: T: 'a
+  --> $DIR/nested-regions.rs:6:5
+   |
+LL |     x: &'a &'b T
+   |     ^^^^^^^^^^^^
+note: T: 'b
+  --> $DIR/nested-regions.rs:6:5
+   |
+LL |     x: &'a &'b T
+   |     ^^^^^^^^^^^^
 
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0640`.

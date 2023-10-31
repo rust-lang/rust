@@ -22,6 +22,8 @@ trait MyIndex<'a, T> {}
 #[lang = "phantom_data"]
 //~^ ERROR `phantom_data` language item must be applied to a struct with 1 generic argument
 struct MyPhantomData<T, U>;
+//~^ ERROR `T` is never used
+//~| ERROR `U` is never used
 
 #[lang = "owned_box"]
 //~^ ERROR `owned_box` language item must be applied to a struct with at least 1 generic argument
@@ -39,7 +41,7 @@ fn ice() {
     // Use add
     let r = 5;
     let a = 6;
-    r + a;
+    r + a; //~ ERROR cannot add
 
     // Use drop in place
     my_ptr_drop();

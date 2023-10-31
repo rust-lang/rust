@@ -1,5 +1,5 @@
 error[E0015]: cannot call non-const fn `<T as Foo>::a` in constant functions
-  --> $DIR/super-traits-fail-3.rs:19:7
+  --> $DIR/super-traits-fail-3.rs:20:7
    |
 LL |     x.a();
    |       ^^^

@@ -6,5 +6,15 @@ LL | struct Foo<'a, T> {
    |
    = note: T: 'a
 
-error: aborting due to previous error
+error[E0640]: rustc_outlives
+  --> $DIR/cross-crate.rs:4:1
+   |
+LL | struct Foo<'a, T> {
+   | ^^^^^^^^^^^^^^^^^
+   |
+note: T: 'a
+  --> $SRC_DIR/core/src/slice/iter.rs:LL:COL
 
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0640`.

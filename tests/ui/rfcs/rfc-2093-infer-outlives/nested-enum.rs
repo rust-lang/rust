@@ -2,7 +2,7 @@
 
 #[rustc_outlives]
 enum Foo<'a, T> { //~ ERROR rustc_outlives
-
+    //~^ ERROR rustc_outlives
     One(Bar<'a, T>)
 }
 

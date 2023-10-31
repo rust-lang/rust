@@ -1,4 +1,5 @@
 enum Enum<T: Trait> {
+    //~^ ERROR: `T` is never used
     X = Trait::Number,
     //~^ ERROR mismatched types
     //~| expected `isize`, found `i32`

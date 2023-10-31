@@ -6,6 +6,7 @@ trait Trait<'x, 's, T> where T: 'x,
 
 #[rustc_outlives]
 struct Foo<'a, 'b, A> //~ ERROR rustc_outlives
+//~^ ERROR: rustc_outlives
 {
     foo: Box<dyn Trait<'a, 'b, A>>
 }

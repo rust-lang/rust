@@ -34,6 +34,14 @@ error: ~const can only be applied to `#[const_trait]` traits
 LL |     fn huh() -> impl ~const PartialEq + ~const Destruct + Copy {
    |                             ^^^^^^^^^
 
-error: aborting due to 6 previous errors
+error: ~const can only be applied to `#[const_trait]` traits
+  --> $DIR/const-impl-trait.rs:23:29
+   |
+LL |     fn huh() -> impl ~const PartialEq + ~const Destruct + Copy;
+   |                             ^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 7 previous errors
 
 For more information about this error, try `rustc --explain E0635`.

@@ -20,7 +20,38 @@ error[E0582]: binding for associated type `Y` references lifetime `'a`, which do
 LL |   fn _f(arg : Box<dyn for<'a> X<Y<'x> = &'a [u32]>>) {}
    |                                 ^^^^^^^^^^^^^^^^^
 
-error: aborting due to 2 previous errors
+error[E0582]: binding for associated type `Y` references lifetime `'a`, which does not appear in the trait input types
+  --> $DIR/gat-in-trait-path-undeclared-lifetime.rs:6:33
+   |
+LL |   fn _f(arg : Box<dyn for<'a> X<Y<'x> = &'a [u32]>>) {}
+   |                                 ^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-Some errors have detailed explanations: E0261, E0582.
-For more information about an error, try `rustc --explain E0261`.
+error[E0582]: binding for associated type `Y` references lifetime `'a`, which does not appear in the trait input types
+  --> $DIR/gat-in-trait-path-undeclared-lifetime.rs:6:33
+   |
+LL |   fn _f(arg : Box<dyn for<'a> X<Y<'x> = &'a [u32]>>) {}
+   |                                 ^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0038]: the trait `X` cannot be made into an object
+  --> $DIR/gat-in-trait-path-undeclared-lifetime.rs:6:19
+   |
+LL |   fn _f(arg : Box<dyn for<'a> X<Y<'x> = &'a [u32]>>) {}
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `X` cannot be made into an object
+   |
+note: for a trait to be "object safe" it needs to allow building a vtable to allow the call to be resolvable dynamically; for more information visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/gat-in-trait-path-undeclared-lifetime.rs:2:8
+   |
+LL | trait X {
+   |       - this trait cannot be made into an object...
+LL |   type Y<'x>;
+   |        ^ ...because it contains the generic associated type `Y`
+   = help: consider moving `Y` to another trait
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0038, E0261, E0582.
+For more information about an error, try `rustc --explain E0038`.

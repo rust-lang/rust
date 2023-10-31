@@ -2,6 +2,7 @@
 
 #[rustc_outlives]
 union Foo<'b, U: Copy> { //~ ERROR rustc_outlives
+    //~^ ERROR: rustc_outlives
     bar: Bar<'b, U>
 }
 
