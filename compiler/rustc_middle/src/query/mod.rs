@@ -1101,10 +1101,6 @@ rustc_queries! {
         desc { "destructuring type level constant"}
     }
 
-    query const_caller_location(key: (rustc_span::Symbol, u32, u32)) -> mir::ConstValue<'tcx> {
-        desc { "getting a &core::panic::Location referring to a span" }
-    }
-
     // FIXME get rid of this with valtrees
     query lit_to_const(
         key: LitToConstInput<'tcx>

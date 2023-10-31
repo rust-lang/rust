@@ -1,8 +1,9 @@
 use rustc_hir::LangItem;
 use rustc_middle::mir;
+use rustc_middle::query::TyCtxtAt;
+use rustc_middle::ty;
 use rustc_middle::ty::layout::LayoutOf;
-use rustc_middle::ty::{self, TyCtxt};
-use rustc_span::{source_map::DUMMY_SP, symbol::Symbol};
+use rustc_span::symbol::Symbol;
 use rustc_type_ir::Mutability;
 
 use crate::const_eval::{mk_eval_cx, CanAccessStatics, CompileTimeEvalContext};
@@ -49,11 +50,13 @@ fn alloc_caller_location<'mir, 'tcx>(
 }
 
 pub(crate) fn const_caller_location_provider(
-    tcx: TyCtxt<'_>,
-    (file, line, col): (Symbol, u32, u32),
+    tcx: TyCtxtAt<'_>,
+    file: Symbol,
+    line: u32,
+    col: u32,
 ) -> mir::ConstValue<'_> {
     trace!("const_caller_location: {}:{}:{}", file, line, col);
-    let mut ecx = mk_eval_cx(tcx, DUMMY_SP, ty::ParamEnv::reveal_all(), CanAccessStatics::No);
+    let mut ecx = mk_eval_cx(tcx.tcx, tcx.span, ty::ParamEnv::reveal_all(), CanAccessStatics::No);
 
     let loc_place = alloc_caller_location(&mut ecx, file, line, col);
     if intern_const_alloc_recursive(&mut ecx, InternKind::Constant, &loc_place).is_err() {
