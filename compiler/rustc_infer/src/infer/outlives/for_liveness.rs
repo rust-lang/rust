@@ -1,4 +1,6 @@
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor};
+use rustc_middle::ty::{
+    self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
+};
 
 use std::ops::ControlFlow;
 
@@ -47,6 +49,12 @@ where
         // We're only interested in types involving regions
         if !ty.flags().intersects(ty::TypeFlags::HAS_FREE_REGIONS) {
             return ControlFlow::Continue(());
+        }
+
+        // FIXME: Don't consider alias bounds on types that have escaping bound
+        // vars. See #117455.
+        if ty.has_escaping_bound_vars() {
+            return ty.super_visit_with(self);
         }
 
         match ty.kind() {
