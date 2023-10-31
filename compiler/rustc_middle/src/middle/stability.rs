@@ -5,7 +5,9 @@ pub use self::StabilityLevel::*;
 
 use crate::ty::{self, TyCtxt};
 use rustc_ast::NodeId;
-use rustc_attr::{self as attr, ConstStability, DefaultBodyStability, Deprecation, Stability};
+use rustc_attr::{
+    self as attr, ConstStability, DefaultBodyStability, DeprecatedSince, Deprecation, Stability,
+};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, Diagnostic};
 use rustc_feature::GateIssue;
@@ -16,7 +18,7 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_session::lint::builtin::{DEPRECATED, DEPRECATED_IN_FUTURE, SOFT_UNSTABLE};
 use rustc_session::lint::{BuiltinLintDiagnostics, Level, Lint, LintBuffer};
 use rustc_session::parse::feature_err_issue;
-use rustc_session::{RustcVersion, Session};
+use rustc_session::Session;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 use std::num::NonZeroU32;
@@ -123,41 +125,6 @@ pub fn report_unstable(
     }
 }
 
-/// Checks whether an item marked with `deprecated(since="X")` is currently
-/// deprecated (i.e., whether X is not greater than the current rustc version).
-pub fn deprecation_in_effect(depr: &Deprecation) -> bool {
-    let is_since_rustc_version = depr.is_since_rustc_version;
-    let since = depr.since.as_ref().map(Symbol::as_str);
-
-    if !is_since_rustc_version {
-        // The `since` field doesn't have semantic purpose without `#![staged_api]`.
-        return true;
-    }
-
-    if let Some(since) = since {
-        if since == "TBD" {
-            return false;
-        }
-
-        // We ignore non-integer components of the version (e.g., "nightly").
-        let since: Vec<u16> =
-            since.split(|c| c == '.' || c == '-').flat_map(|s| s.parse()).collect();
-
-        // We simply treat invalid `since` attributes as relating to a previous
-        // Rust version, thus always displaying the warning.
-        if since.len() != 3 {
-            return true;
-        }
-
-        let rustc = RustcVersion::CURRENT;
-        return since.as_slice() <= &[rustc.major, rustc.minor, rustc.patch];
-    };
-
-    // Assume deprecation is in effect if "since" field is missing
-    // or if we can't determine the current Rust version.
-    true
-}
-
 pub fn deprecation_suggestion(
     diag: &mut Diagnostic,
     kind: &str,
@@ -180,7 +147,7 @@ fn deprecation_lint(is_in_effect: bool) -> &'static Lint {
 
 fn deprecation_message(
     is_in_effect: bool,
-    since: Option<Symbol>,
+    since: DeprecatedSince,
     note: Option<Symbol>,
     kind: &str,
     path: &str,
@@ -188,17 +155,18 @@ fn deprecation_message(
     let message = if is_in_effect {
         format!("use of deprecated {kind} `{path}`")
     } else {
-        let since = since.as_ref().map(Symbol::as_str);
-
-        if since == Some("TBD") {
-            format!("use of {kind} `{path}` that will be deprecated in a future Rust version")
-        } else {
-            format!(
-                "use of {} `{}` that will be deprecated in future version {}",
-                kind,
-                path,
-                since.unwrap()
-            )
+        match since {
+            DeprecatedSince::RustcVersion(version) => format!(
+                "use of {kind} `{path}` that will be deprecated in future version {version}"
+            ),
+            DeprecatedSince::Future => {
+                format!("use of {kind} `{path}` that will be deprecated in a future Rust version")
+            }
+            DeprecatedSince::NonStandard(_)
+            | DeprecatedSince::Unspecified
+            | DeprecatedSince::Err => {
+                unreachable!("this deprecation is always in effect; {since:?}")
+            }
         }
     };
 
@@ -213,7 +181,7 @@ pub fn deprecation_message_and_lint(
     kind: &str,
     path: &str,
 ) -> (String, &'static Lint) {
-    let is_in_effect = deprecation_in_effect(depr);
+    let is_in_effect = depr.is_in_effect();
     (
         deprecation_message(is_in_effect, depr.since, depr.note, kind, path),
         deprecation_lint(is_in_effect),
@@ -381,11 +349,11 @@ impl<'tcx> TyCtxt<'tcx> {
                 // With #![staged_api], we want to emit down the whole
                 // hierarchy.
                 let depr_attr = &depr_entry.attr;
-                if !skip || depr_attr.is_since_rustc_version {
+                if !skip || depr_attr.is_since_rustc_version() {
                     // Calculating message for lint involves calling `self.def_path_str`.
                     // Which by default to calculate visible path will invoke expensive `visible_parent_map` query.
                     // So we skip message calculation altogether, if lint is allowed.
-                    let is_in_effect = deprecation_in_effect(depr_attr);
+                    let is_in_effect = depr_attr.is_in_effect();
                     let lint = deprecation_lint(is_in_effect);
                     if self.lint_level_at_node(lint, id).0 != Level::Allow {
                         let def_path = with_no_trimmed_paths!(self.def_path_str(def_id));

@@ -48,12 +48,11 @@ use std::str;
 use std::string::ToString;
 
 use askama::Template;
-use rustc_attr::{ConstStability, Deprecation, Since, StabilityLevel};
+use rustc_attr::{ConstStability, DeprecatedSince, Deprecation, StabilityLevel, StableSince};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_hir::Mutability;
-use rustc_middle::middle::stability;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::RustcVersion;
 use rustc_span::{
@@ -617,24 +616,22 @@ fn short_item_info(
 ) -> Vec<ShortItemInfo> {
     let mut extra_info = vec![];
 
-    if let Some(depr @ Deprecation { note, since, is_since_rustc_version: _, suggestion: _ }) =
-        item.deprecation(cx.tcx())
-    {
+    if let Some(depr @ Deprecation { note, since, suggestion: _ }) = item.deprecation(cx.tcx()) {
         // We display deprecation messages for #[deprecated], but only display
         // the future-deprecation messages for rustc versions.
-        let mut message = if let Some(since) = since {
-            let since = since.as_str();
-            if !stability::deprecation_in_effect(&depr) {
-                if since == "TBD" {
-                    String::from("Deprecating in a future Rust version")
+        let mut message = match since {
+            DeprecatedSince::RustcVersion(version) => {
+                if depr.is_in_effect() {
+                    format!("Deprecated since {version}")
                 } else {
-                    format!("Deprecating in {}", Escape(since))
+                    format!("Deprecating in {version}")
                 }
-            } else {
-                format!("Deprecated since {}", Escape(since))
             }
-        } else {
-            String::from("Deprecated")
+            DeprecatedSince::Future => String::from("Deprecating in a future Rust version"),
+            DeprecatedSince::NonStandard(since) => {
+                format!("Deprecated since {}", Escape(since.as_str()))
+            }
+            DeprecatedSince::Unspecified | DeprecatedSince::Err => String::from("Deprecated"),
         };
 
         if let Some(note) = note {
@@ -912,10 +909,10 @@ fn assoc_method(
 /// consequence of the above rules.
 fn render_stability_since_raw_with_extra(
     w: &mut Buffer,
-    ver: Option<Since>,
+    ver: Option<StableSince>,
     const_stability: Option<ConstStability>,
-    containing_ver: Option<Since>,
-    containing_const_ver: Option<Since>,
+    containing_ver: Option<StableSince>,
+    containing_const_ver: Option<StableSince>,
     extra_class: &str,
 ) -> bool {
     let stable_version = if ver != containing_ver && let Some(ver) = &ver {
@@ -977,21 +974,21 @@ fn render_stability_since_raw_with_extra(
     !stability.is_empty()
 }
 
-fn since_to_string(since: &Since) -> Option<String> {
+fn since_to_string(since: &StableSince) -> Option<String> {
     match since {
-        Since::Version(since) => Some(since.to_string()),
-        Since::Current => Some(RustcVersion::CURRENT.to_string()),
-        Since::Err => None,
+        StableSince::Version(since) => Some(since.to_string()),
+        StableSince::Current => Some(RustcVersion::CURRENT.to_string()),
+        StableSince::Err => None,
     }
 }
 
 #[inline]
 fn render_stability_since_raw(
     w: &mut Buffer,
-    ver: Option<Since>,
+    ver: Option<StableSince>,
     const_stability: Option<ConstStability>,
-    containing_ver: Option<Since>,
-    containing_const_ver: Option<Since>,
+    containing_ver: Option<StableSince>,
+    containing_const_ver: Option<StableSince>,
 ) -> bool {
     render_stability_since_raw_with_extra(
         w,

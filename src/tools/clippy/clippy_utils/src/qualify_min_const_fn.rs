@@ -5,7 +5,7 @@
 
 use crate::msrvs::Msrv;
 use hir::LangItem;
-use rustc_attr::Since;
+use rustc_attr::StableSince;
 use rustc_const_eval::transform::check_consts::ConstCx;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -372,9 +372,9 @@ fn is_const_fn(tcx: TyCtxt<'_>, def_id: DefId, msrv: &Msrv) -> bool {
                 // as a part of an unimplemented MSRV check https://github.com/rust-lang/rust/issues/65262.
 
                 let const_stab_rust_version = match since {
-                    Since::Version(version) => version,
-                    Since::Current => rustc_session::RustcVersion::CURRENT,
-                    Since::Err => return false,
+                    StableSince::Version(version) => version,
+                    StableSince::Current => rustc_session::RustcVersion::CURRENT,
+                    StableSince::Err => return false,
                 };
 
                 msrv.meets(RustcVersion::new(
