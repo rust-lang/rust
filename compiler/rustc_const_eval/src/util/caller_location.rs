@@ -3,6 +3,7 @@ use rustc_middle::mir;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::{source_map::DUMMY_SP, symbol::Symbol};
+use rustc_target::abi::Align;
 use rustc_type_ir::Mutability;
 
 use crate::const_eval::{mk_eval_cx, CanAccessStatics, CompileTimeEvalContext};
@@ -19,13 +20,23 @@ fn alloc_caller_location<'mir, 'tcx>(
     // This can fail if rustc runs out of memory right here. Trying to emit an error would be
     // pointless, since that would require allocating more memory than these short strings.
     let file = if loc_details.file {
-        ecx.allocate_str(filename.as_str(), MemoryKind::CallerLocation, Mutability::Not).unwrap()
+        let mut bytes = filename.as_str().to_owned().into_bytes();
+        bytes.push(0);
+        ecx.allocate_bytes_ptr(&bytes, Align::ONE, MemoryKind::CallerLocation, Mutability::Not)
+            .unwrap()
     } else {
         // FIXME: This creates a new allocation each time. It might be preferable to
         // perform this allocation only once, and re-use the `MPlaceTy`.
         // See https://github.com/rust-lang/rust/pull/89920#discussion_r730012398
-        ecx.allocate_str("<redacted>", MemoryKind::CallerLocation, Mutability::Not).unwrap()
+        ecx.allocate_bytes_ptr(
+            b"<redacted>\0",
+            Align::ONE,
+            MemoryKind::CallerLocation,
+            Mutability::Not,
+        )
+        .unwrap()
     };
+    let file = Scalar::from_pointer(file, ecx);
     let line = if loc_details.line { Scalar::from_u32(line) } else { Scalar::from_u32(0) };
     let col = if loc_details.column { Scalar::from_u32(col) } else { Scalar::from_u32(0) };
 
@@ -38,11 +49,11 @@ fn alloc_caller_location<'mir, 'tcx>(
     let location = ecx.allocate(loc_layout, MemoryKind::CallerLocation).unwrap();
 
     // Initialize fields.
-    ecx.write_immediate(file.to_ref(ecx), &ecx.project_field(&location, 0).unwrap())
+    ecx.write_scalar(file, &ecx.project_field(&location, 0).unwrap())
         .expect("writing to memory we just allocated cannot fail");
-    ecx.write_scalar(line, &ecx.project_field(&location, 1).unwrap())
+    ecx.write_scalar(line, &ecx.project_field(&location, 2).unwrap())
         .expect("writing to memory we just allocated cannot fail");
-    ecx.write_scalar(col, &ecx.project_field(&location, 2).unwrap())
+    ecx.write_scalar(col, &ecx.project_field(&location, 3).unwrap())
         .expect("writing to memory we just allocated cannot fail");
 
     location

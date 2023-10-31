@@ -393,7 +393,7 @@ pub fn intern_const_alloc_recursive<
     debug!(?todo);
     debug!("dead_alloc_map: {:#?}", ecx.memory.dead_alloc_map);
     while let Some(alloc_id) = todo.pop() {
-        if let Some((_, mut alloc)) = ecx.memory.alloc_map.remove(&alloc_id) {
+        if let Some((alloc_kind, mut alloc)) = ecx.memory.alloc_map.remove(&alloc_id) {
             // We can't call the `intern_shallow` method here, as its logic is tailored to safe
             // references and a `leftover_allocations` set (where we only have a todo-list here).
             // So we hand-roll the interning logic here again.
@@ -424,9 +424,12 @@ pub fn intern_const_alloc_recursive<
                 // something that cannot be promoted, which in constants means values that have
                 // drop glue, such as the example above.
                 InternKind::Constant => {
-                    ecx.tcx.sess.emit_err(UnsupportedUntypedPointer { span: ecx.tcx.span });
-                    // For better errors later, mark the allocation as immutable.
-                    alloc.mutability = Mutability::Not;
+                    // The Location does have leftover allocations, but that's fine, as we control it.
+                    if alloc_kind != MemoryKind::CallerLocation {
+                        ecx.tcx.sess.emit_err(UnsupportedUntypedPointer { span: ecx.tcx.span });
+                        // For better errors later, mark the allocation as immutable.
+                        alloc.mutability = Mutability::Not;
+                    }
                 }
             }
             let alloc = tcx.mk_const_alloc(alloc);

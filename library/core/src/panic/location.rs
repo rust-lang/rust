@@ -1,4 +1,6 @@
 use crate::fmt;
+#[cfg(not(bootstrap))]
+use crate::{ffi::CStr, marker::PhantomData};
 
 /// A struct containing information about the location of a panic.
 ///
@@ -28,8 +30,21 @@ use crate::fmt;
 /// Files are compared as strings, not `Path`, which could be unexpected.
 /// See [`Location::file`]'s documentation for more discussion.
 #[lang = "panic_location"]
+#[derive(Copy, Clone)]
+#[stable(feature = "panic_hooks", since = "1.10.0")]
+#[cfg(not(bootstrap))]
+pub struct Location<'a> {
+    file: *const (),
+    _file_actual: PhantomData<&'a CStr>,
+    line: u32,
+    col: u32,
+}
+
+/// Location
+#[lang = "panic_location"]
 #[derive(Copy, Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[stable(feature = "panic_hooks", since = "1.10.0")]
+#[cfg(bootstrap)]
 pub struct Location<'a> {
     file: &'a str,
     line: u32,
@@ -126,7 +141,17 @@ impl<'a> Location<'a> {
     #[rustc_const_unstable(feature = "const_location_fields", issue = "102911")]
     #[inline]
     pub const fn file(&self) -> &str {
-        self.file
+        #[cfg(bootstrap)]
+        {
+            self.file
+        }
+        #[cfg(not(bootstrap))]
+        // SAFETY: Codegen ensures that there is a null byte.
+        unsafe {
+            let cstr = CStr::from_ptr(self.file as _);
+            let len = cstr.count_bytes();
+            crate::str::from_utf8_unchecked(crate::slice::from_raw_parts(self.file as _, len))
+        }
     }
 
     /// Returns the line number from which the panic originated.
@@ -180,21 +205,63 @@ impl<'a> Location<'a> {
     }
 }
 
-#[unstable(
-    feature = "panic_internals",
-    reason = "internal details of the implementation of the `panic!` and related macros",
-    issue = "none"
-)]
-impl<'a> Location<'a> {
-    #[doc(hidden)]
-    pub const fn internal_constructor(file: &'a str, line: u32, col: u32) -> Self {
-        Location { file, line, col }
+// cfg(not(bootstrap)) NOTE: inline this module when bumping, it's only here to group the cfg
+#[cfg(not(bootstrap))]
+mod location_impls {
+    use super::Location;
+
+    impl Location<'_> {
+        fn to_parts(&self) -> (&str, u32, u32) {
+            (self.file(), self.line, self.col)
+        }
+    }
+
+    #[stable(feature = "panic_hooks", since = "1.10.0")]
+    impl crate::fmt::Debug for Location<'_> {
+        fn fmt(&self, f: &mut crate::fmt::Formatter<'_>) -> crate::fmt::Result {
+            f.debug_struct("Location")
+                .field("file", &self.file())
+                .field("line", &self.line)
+                .field("col", &self.col)
+                .finish()
+        }
+    }
+
+    #[stable(feature = "panic_hooks", since = "1.10.0")]
+    impl crate::cmp::PartialEq for Location<'_> {
+        fn eq(&self, other: &Self) -> bool {
+            self.to_parts() == other.to_parts()
+        }
+    }
+
+    #[stable(feature = "panic_hooks", since = "1.10.0")]
+    impl crate::cmp::Eq for Location<'_> {}
+
+    #[stable(feature = "panic_hooks", since = "1.10.0")]
+    impl crate::cmp::PartialOrd for Location<'_> {
+        fn partial_cmp(&self, other: &Self) -> Option<crate::cmp::Ordering> {
+            self.to_parts().partial_cmp(&other.to_parts())
+        }
+    }
+
+    #[stable(feature = "panic_hooks", since = "1.10.0")]
+    impl crate::cmp::Ord for Location<'_> {
+        fn cmp(&self, other: &Self) -> crate::cmp::Ordering {
+            self.to_parts().cmp(&other.to_parts())
+        }
+    }
+
+    #[stable(feature = "panic_hooks", since = "1.10.0")]
+    impl crate::hash::Hash for Location<'_> {
+        fn hash<H: crate::hash::Hasher>(&self, state: &mut H) {
+            self.to_parts().hash(state)
+        }
     }
 }
 
 #[stable(feature = "panic_hook_display", since = "1.26.0")]
 impl fmt::Display for Location<'_> {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(formatter, "{}:{}:{}", self.file, self.line, self.col)
+        write!(formatter, "{}:{}:{}", self.file(), self.line, self.col)
     }
 }
