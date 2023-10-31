@@ -106,6 +106,9 @@ jobs:
       - name: install clang
         run: src/ci/scripts/install-clang.sh
         if: success() && !env.SKIP_JOB
+      - name: install tidy
+        run: src/ci/scripts/install-tidy.sh
+        if: success() && !env.SKIP_JOB
       - name: install WIX
         run: src/ci/scripts/install-wix.sh
         if: success() && !env.SKIP_JOB
@@ -483,6 +486,9 @@ jobs:
       - name: install clang
         run: src/ci/scripts/install-clang.sh
         if: success() && !env.SKIP_JOB
+      - name: install tidy
+        run: src/ci/scripts/install-tidy.sh
+        if: success() && !env.SKIP_JOB
       - name: install WIX
         run: src/ci/scripts/install-wix.sh
         if: success() && !env.SKIP_JOB
@@ -606,6 +612,9 @@ jobs:
         if: success() && !env.SKIP_JOB
       - name: install clang
         run: src/ci/scripts/install-clang.sh
+        if: success() && !env.SKIP_JOB
+      - name: install tidy
+        run: src/ci/scripts/install-tidy.sh
         if: success() && !env.SKIP_JOB
       - name: install WIX
         run: src/ci/scripts/install-wix.sh
