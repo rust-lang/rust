@@ -1,0 +1,35 @@
+error[E0637]: `'_` cannot be used here
+  --> $DIR/impl-trait-invalid-anon-lifetimes.rs:17:42
+   |
+LL |     fn foo1(_: impl LendingIterator<Item<'_> = &u32>) {}
+   |                                          ^^ `'_` is a reserved lifetime name
+
+error[E0107]: trait takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/impl-trait-invalid-anon-lifetimes.rs:14:21
+   |
+LL |     fn foo0(_: impl FooBar<_, Item = &u32>) {}
+   |                     ^^^^^^ - help: remove this generic argument
+   |                     |
+   |                     expected 0 generic arguments
+   |
+note: trait defined here, with 0 generic parameters
+  --> $DIR/impl-trait-invalid-anon-lifetimes.rs:1:7
+   |
+LL | trait FooBar<'a> {
+   |       ^^^^^^
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/impl-trait-invalid-anon-lifetimes.rs:14:28
+   |
+LL |     fn foo0(_: impl FooBar<_, Item = &u32>) {}
+   |                            ^ not allowed in type signatures
+   |
+help: use type parameters instead
+   |
+LL |     fn foo0<T>(_: impl FooBar<T, Item = &u32>) {}
+   |            +++                ~
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0107, E0121, E0637.
+For more information about an error, try `rustc --explain E0107`.

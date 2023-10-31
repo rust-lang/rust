@@ -21,7 +21,7 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, TypeSuperVisitable, TypeVisitor};
 use rustc_session::lint;
 use rustc_span::def_id::DefId;
-use rustc_span::symbol::{sym, Ident};
+use rustc_span::symbol::Ident;
 use rustc_span::{Span, DUMMY_SP};
 use std::fmt;
 
@@ -1199,74 +1199,13 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                     break None;
                 }
 
-                Scope::Binder { ref bound_vars, scope_type, s, where_bound_origin, .. } => {
+                Scope::Binder { ref bound_vars, scope_type, s, .. } => {
                     if let Some(&def) = bound_vars.get(&region_def_id) {
                         break Some(def.shifted(late_depth));
                     }
                     match scope_type {
                         BinderScopeType::Normal => late_depth += 1,
                         BinderScopeType::Concatenating => {}
-                    }
-                    // Fresh lifetimes in APIT used to be allowed in async fns and forbidden in
-                    // regular fns.
-                    if let Some(hir::PredicateOrigin::ImplTrait) = where_bound_origin
-                        && let hir::LifetimeName::Param(param_id) = lifetime_ref.res
-                        && let Some(generics) =
-                            self.tcx.hir().get_generics(self.tcx.local_parent(param_id))
-                        && let Some(param) = generics.params.iter().find(|p| p.def_id == param_id)
-                        && param.is_elided_lifetime()
-                        && !self.tcx.asyncness(lifetime_ref.hir_id.owner.def_id).is_async()
-                        && !self.tcx.features().anonymous_lifetime_in_impl_trait
-                    {
-                        let mut diag = rustc_session::parse::feature_err(
-                            &self.tcx.sess.parse_sess,
-                            sym::anonymous_lifetime_in_impl_trait,
-                            lifetime_ref.ident.span,
-                            "anonymous lifetimes in `impl Trait` are unstable",
-                        );
-
-                        if let Some(generics) =
-                            self.tcx.hir().get_generics(lifetime_ref.hir_id.owner.def_id)
-                        {
-                            let new_param_sugg =
-                                if let Some(span) = generics.span_for_lifetime_suggestion() {
-                                    (span, "'a, ".to_owned())
-                                } else {
-                                    (generics.span, "<'a>".to_owned())
-                                };
-
-                            let lifetime_sugg = match lifetime_ref.suggestion_position() {
-                                (hir::LifetimeSuggestionPosition::Normal, span) => {
-                                    (span, "'a".to_owned())
-                                }
-                                (hir::LifetimeSuggestionPosition::Ampersand, span) => {
-                                    (span, "'a ".to_owned())
-                                }
-                                (hir::LifetimeSuggestionPosition::ElidedPath, span) => {
-                                    (span, "<'a>".to_owned())
-                                }
-                                (hir::LifetimeSuggestionPosition::ElidedPathArgument, span) => {
-                                    (span, "'a, ".to_owned())
-                                }
-                                (hir::LifetimeSuggestionPosition::ObjectDefault, span) => {
-                                    (span, "+ 'a".to_owned())
-                                }
-                            };
-                            let suggestions = vec![lifetime_sugg, new_param_sugg];
-
-                            diag.span_label(
-                                lifetime_ref.ident.span,
-                                "expected named lifetime parameter",
-                            );
-                            diag.multipart_suggestion(
-                                "consider introducing a named lifetime parameter",
-                                suggestions,
-                                rustc_errors::Applicability::MaybeIncorrect,
-                            );
-                        }
-
-                        diag.emit();
-                        return;
                     }
                     scope = s;
                 }

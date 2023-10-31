@@ -1,7 +1,5 @@
 // edition:2021
 
-#![feature(anonymous_lifetime_in_impl_trait)]
-
 // This is understood as `fn foo<'_1>(_: impl Iterator<Item = &'_1 ()>) {}`.
 fn f(_: impl Iterator<Item = &'_ ()>) {}
 
