@@ -1,4 +1,5 @@
 // Regression test from https://github.com/rust-lang/rust/pull/98109
+// check-pass
 
 pub trait Get {
     type Value<'a>
@@ -11,10 +12,6 @@ where
     for<'a> T: Get<Value<'a> = ()>,
 {
     || {
-        //~^ `T` does not live long enough
-        //
-        // FIXME(#98437). This regressed at some point and
-        // probably should work.
         let _x = x;
     };
 }

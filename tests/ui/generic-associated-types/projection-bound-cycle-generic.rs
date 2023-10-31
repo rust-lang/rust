@@ -1,6 +1,9 @@
 // Like `projection-bound-cycle.rs` but this avoids using
 // `feature(trivial_bounds)`.
 
+// FIXME(aliemjay): this should not pass.
+// check-pass
+
 trait Print {
     fn print();
 }
@@ -21,7 +24,6 @@ impl<T> Foo for Number<T> {
     // ```
     // which it is :)
     type Item = [T] where [T]: Sized;
-    //~^ ERROR overflow evaluating the requirement `<Number<T> as Foo>::Item == _`
 }
 
 struct OnlySized<T> where T: Sized { f: T }

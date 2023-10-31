@@ -1,5 +1,3 @@
-//~ ERROR the parameter type `Self` may not live long enough
-
 trait GatTrait {
     type Gat<'a>
     where

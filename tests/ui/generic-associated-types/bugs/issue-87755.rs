@@ -1,7 +1,5 @@
-// check-fail
-// known-bug: #87755
-
-// This should pass.
+// issue: #87755
+// check-pass
 
 use std::fmt::Debug;
 

@@ -5,6 +5,11 @@ LL |     type Assoc2<T> = Vec<T>;
    |                      ^^^^^^ `T` cannot be formatted with the default formatter
    |
    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
+note: required by a bound in `Foo::Assoc2`
+  --> $DIR/generic-associated-types-where.rs:8:29
+   |
+LL |     type Assoc2<T> where T: Display;
+   |                             ^^^^^^^ required by this bound in `Foo::Assoc2`
 help: consider restricting type parameter `T`
    |
 LL |     type Assoc2<T: std::fmt::Display> = Vec<T>;
