@@ -246,7 +246,6 @@ pub enum AssertMessage {
     RemainderByZero(Operand),
     ResumedAfterReturn(CoroutineKind),
     ResumedAfterPanic(CoroutineKind),
-    MisalignedPointerDereference { required: Operand, found: Operand },
 }
 
 impl AssertMessage {
@@ -299,9 +298,6 @@ impl AssertMessage {
             )) => Ok("`gen fn` should just keep returning `AssertMessage::None` after panicking"),
 
             AssertMessage::BoundsCheck { .. } => Ok("index out of bounds"),
-            AssertMessage::MisalignedPointerDereference { .. } => {
-                Ok("misaligned pointer dereference")
-            }
         }
     }
 }
