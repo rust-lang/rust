@@ -76,6 +76,30 @@ impl Timespec {
     }
 
     const fn new(tv_sec: i64, tv_nsec: i64) -> Timespec {
+        // On Apple OS, dates before epoch are represented differently than on other
+        // Unix platforms: e.g. 1/10th of a second before epoch is represented as `seconds=-1`
+        // and `nanoseconds=100_000_000` on other platforms, but is `seconds=0` and
+        // `nanoseconds=-900_000_000` on Apple OS.
+        //
+        // To compensate, we first detect this special case by checking if both
+        // seconds and nanoseconds are in range, and then correct the value for seconds
+        // and nanoseconds to match the common unix representation.
+        //
+        // Please note that Apple OS nonetheless accepts the standard unix format when
+        // setting file times, which makes this compensation round-trippable and generally
+        // transparent.
+        #[cfg(any(
+            target_os = "macos",
+            target_os = "ios",
+            target_os = "tvos",
+            target_os = "watchos"
+        ))]
+        let (tv_sec, tv_nsec) =
+            if (tv_sec <= 0 && tv_sec > i64::MIN) && (tv_nsec < 0 && tv_nsec > -1_000_000_000) {
+                (tv_sec - 1, tv_nsec + 1_000_000_000)
+            } else {
+                (tv_sec, tv_nsec)
+            };
         assert!(tv_nsec >= 0 && tv_nsec < NSEC_PER_SEC as i64);
         // SAFETY: The assert above checks tv_nsec is within the valid range
         Timespec { tv_sec, tv_nsec: unsafe { Nanoseconds(tv_nsec as u32) } }
