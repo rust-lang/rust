@@ -1,4 +1,6 @@
 // build-fail
+// revisions: normal mir-opt
+// [mir-opt]compile-flags: -Zmir-opt-level=4
 
 trait C {
     const BOO: usize;
