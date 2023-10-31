@@ -553,10 +553,11 @@ change-id = 117435
 # Whether to always use incremental compilation when building rustc
 #incremental = false
 
-# Build a multi-threaded rustc
-# FIXME(#75760): Some UI tests fail when this option is enabled.
-# NOTE: This option is NOT SUPPORTED. See #48685.
-#parallel-compiler = false
+# Build a multi-threaded rustc. This allows users to use parallel rustc
+# via the unstable option `-Z threads=n`.
+# Since stable/beta channels only allow using stable features,
+# `parallel-compiler = false` should be set for these channels.
+#parallel-compiler = true
 
 # The default linker that will be hard-coded into the generated
 # compiler for targets that don't specify a default linker explicitly

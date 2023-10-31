@@ -1112,7 +1112,7 @@ impl Config {
 
     fn parse_inner(args: &[String], get_toml: impl Fn(&Path) -> TomlConfig) -> Config {
         let mut flags = Flags::parse(&args);
-        let mut config: Config = Config::default_opts();
+        let mut config = Config::default_opts();
 
         // Set flags.
         config.paths = std::mem::take(&mut flags.paths);
