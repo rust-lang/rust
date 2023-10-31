@@ -467,9 +467,9 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 let val = match null_op {
                     NullOp::SizeOf => layout.size.bytes(),
                     NullOp::AlignOf => layout.align.abi.bytes(),
-                    NullOp::OffsetOf(fields) => layout
-                        .offset_of_subfield(&self.ecx, fields.iter().map(|f| f.index()))
-                        .bytes(),
+                    NullOp::OffsetOf(fields) => {
+                        layout.offset_of_subfield(&self.ecx, fields.iter()).bytes()
+                    }
                 };
                 let usize_layout = self.ecx.layout_of(self.tcx.types.usize).unwrap();
                 let imm = ImmTy::try_from_uint(val, usize_layout)?;

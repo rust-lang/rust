@@ -1299,8 +1299,8 @@ impl<T> SizedTypeProperties for T {}
 /// Enum variants may be traversed as if they were fields. Variants themselves do
 /// not have an offset.
 ///
-/// Note that type layout is, in general, [platform-specific, and subject to
-/// change](https://doc.rust-lang.org/reference/type-layout.html).
+/// Note that type layout is, in general, [subject to change and
+/// platform-specific](https://doc.rust-lang.org/reference/type-layout.html).
 ///
 /// # Examples
 ///
