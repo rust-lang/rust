@@ -24,16 +24,13 @@
 // because getting it wrong can lead to nested `HygieneData::with` calls that
 // trigger runtime aborts. (Fortunately these are obvious and easy to fix.)
 
+use crate::def_id::{CrateNum, DefId, StableCrateId, CRATE_DEF_ID, LOCAL_CRATE};
 use crate::edition::Edition;
 use crate::symbol::{kw, sym, Symbol};
-use crate::with_session_globals;
-use crate::{HashStableContext, Span, DUMMY_SP};
-
-use crate::def_id::{CrateNum, DefId, StableCrateId, CRATE_DEF_ID, LOCAL_CRATE};
+use crate::{with_session_globals, HashStableContext, Span, DUMMY_SP};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::stable_hasher::HashingControls;
-use rustc_data_structures::stable_hasher::{Hash64, HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{Hash64, HashStable, HashingControls, StableHasher};
 use rustc_data_structures::sync::{Lock, Lrc, WorkerLocal};
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_index::IndexVec;
