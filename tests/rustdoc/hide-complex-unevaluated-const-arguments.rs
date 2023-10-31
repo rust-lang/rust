@@ -4,8 +4,10 @@
 //
 // Read the documentation of `rustdoc::clean::utils::print_const_expr`
 // for further details.
-#![feature(const_trait_impl, generic_const_exprs)]
+#![feature(const_trait_impl, generic_const_exprs, adt_const_params, generic_const_items)]
 #![allow(incomplete_features)]
+
+use std::marker::ConstParamTy;
 
 // @has hide_complex_unevaluated_const_arguments/trait.Stage.html
 pub trait Stage {
@@ -29,11 +31,13 @@ pub trait Stage {
     //
     // @has - '//*[@id="associatedconstant.ARRAY1"]' \
     //        'const ARRAY1: [u8; { _ }]'
-    const ARRAY1: [u8; Struct::new(/* ... */).do_something(Self::ABSTRACT * 1_000)];
+    const ARRAY1: [u8; Struct::new(/* ... */).do_something(Self::ABSTRACT * 1_000)]
+        where [(); Struct::new(/* ... */).do_something(Self::ABSTRACT * 1_000)]:;
 
     // @has - '//*[@id="associatedconstant.VERBOSE"]' \
     //        'const VERBOSE: [u16; { _ }]'
-    const VERBOSE: [u16; compute("thing", 9 + 9) * Self::ABSTRACT];
+    const VERBOSE: [u16; compute("thing", 9 + 9) * Self::ABSTRACT]
+        where [(); compute("thing", 9 + 9) * Self::ABSTRACT]:;
 
     // Check that we do not leak the private struct field contained within
     // the path. The output could definitely be improved upon
@@ -69,6 +73,7 @@ pub trait Sub: Sup<{ 90 * 20 * 4 }, { Struct { private: () } }> {}
 
 pub trait Sup<const N: usize, const S: Struct> {}
 
+#[derive(ConstParamTy, PartialEq, Eq)]
 pub struct Struct { private: () }
 
 impl Struct {

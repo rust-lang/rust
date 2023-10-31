@@ -4,7 +4,10 @@
 
 pub struct Attribute;
 
-pub struct Map<'hir> {}
+pub struct Map<'hir> {
+    lt: &'hir (),
+}
+
 impl<'hir> Map<'hir> {
     pub fn attrs(&self) -> &'hir [Attribute] { &[] }
 }
