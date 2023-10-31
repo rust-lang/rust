@@ -1866,20 +1866,32 @@ fn gen_test(
                 2 => &c,
                 _ => unreachable!(),
             };
-            write!(test, "\n        let {chr}{};", values(in_t[i as usize], v)).unwrap();
+            let param_type = in_t[i as usize];
+            write!(test, "\n        let {chr}{};", values(param_type, v)).unwrap();
             if i != 0 {
                 call_params.push_str(", ");
             }
-            write!(call_params, "transmute({chr})").unwrap();
+            if param_type != type_to_global_type(param_type) {
+                write!(call_params, "transmute({chr})").unwrap();
+            } else {
+                call_params.push(chr);
+            }
         }
+        let r_trans = if r_type != out_t {
+            ("transmute(", ")")
+        } else {
+            ("", "")
+        };
         write!(
             test,
             r#"
         let e{};
-        let r: {r_type} = transmute({name}{const_value}({call_params}));
+        let r: {r_type} = {}{name}{const_value}({call_params}){};
         assert_eq!(r, e);
 "#,
-            values(out_t, &e)
+            values(out_t, &e),
+            r_trans.0,
+            r_trans.1,
         )
         .unwrap();
     }

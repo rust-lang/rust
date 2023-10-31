@@ -33371,7 +33371,7 @@ mod test {
     unsafe fn test_vcreate_s8() {
         let a: u64 = 1;
         let e: i8x8 = i8x8::new(1, 0, 0, 0, 0, 0, 0, 0);
-        let r: i8x8 = transmute(vcreate_s8(transmute(a)));
+        let r: i8x8 = transmute(vcreate_s8(a));
         assert_eq!(r, e);
     }
 
@@ -33379,7 +33379,7 @@ mod test {
     unsafe fn test_vcreate_s16() {
         let a: u64 = 1;
         let e: i16x4 = i16x4::new(1, 0, 0, 0);
-        let r: i16x4 = transmute(vcreate_s16(transmute(a)));
+        let r: i16x4 = transmute(vcreate_s16(a));
         assert_eq!(r, e);
     }
 
@@ -33387,7 +33387,7 @@ mod test {
     unsafe fn test_vcreate_s32() {
         let a: u64 = 1;
         let e: i32x2 = i32x2::new(1, 0);
-        let r: i32x2 = transmute(vcreate_s32(transmute(a)));
+        let r: i32x2 = transmute(vcreate_s32(a));
         assert_eq!(r, e);
     }
 
@@ -33395,7 +33395,7 @@ mod test {
     unsafe fn test_vcreate_s64() {
         let a: u64 = 1;
         let e: i64x1 = i64x1::new(1);
-        let r: i64x1 = transmute(vcreate_s64(transmute(a)));
+        let r: i64x1 = transmute(vcreate_s64(a));
         assert_eq!(r, e);
     }
 
@@ -33403,7 +33403,7 @@ mod test {
     unsafe fn test_vcreate_u8() {
         let a: u64 = 1;
         let e: u8x8 = u8x8::new(1, 0, 0, 0, 0, 0, 0, 0);
-        let r: u8x8 = transmute(vcreate_u8(transmute(a)));
+        let r: u8x8 = transmute(vcreate_u8(a));
         assert_eq!(r, e);
     }
 
@@ -33411,7 +33411,7 @@ mod test {
     unsafe fn test_vcreate_u16() {
         let a: u64 = 1;
         let e: u16x4 = u16x4::new(1, 0, 0, 0);
-        let r: u16x4 = transmute(vcreate_u16(transmute(a)));
+        let r: u16x4 = transmute(vcreate_u16(a));
         assert_eq!(r, e);
     }
 
@@ -33419,7 +33419,7 @@ mod test {
     unsafe fn test_vcreate_u32() {
         let a: u64 = 1;
         let e: u32x2 = u32x2::new(1, 0);
-        let r: u32x2 = transmute(vcreate_u32(transmute(a)));
+        let r: u32x2 = transmute(vcreate_u32(a));
         assert_eq!(r, e);
     }
 
@@ -33427,7 +33427,7 @@ mod test {
     unsafe fn test_vcreate_u64() {
         let a: u64 = 1;
         let e: u64x1 = u64x1::new(1);
-        let r: u64x1 = transmute(vcreate_u64(transmute(a)));
+        let r: u64x1 = transmute(vcreate_u64(a));
         assert_eq!(r, e);
     }
 
@@ -33435,7 +33435,7 @@ mod test {
     unsafe fn test_vcreate_p8() {
         let a: u64 = 1;
         let e: i8x8 = i8x8::new(1, 0, 0, 0, 0, 0, 0, 0);
-        let r: i8x8 = transmute(vcreate_p8(transmute(a)));
+        let r: i8x8 = transmute(vcreate_p8(a));
         assert_eq!(r, e);
     }
 
@@ -33443,7 +33443,7 @@ mod test {
     unsafe fn test_vcreate_p16() {
         let a: u64 = 1;
         let e: i16x4 = i16x4::new(1, 0, 0, 0);
-        let r: i16x4 = transmute(vcreate_p16(transmute(a)));
+        let r: i16x4 = transmute(vcreate_p16(a));
         assert_eq!(r, e);
     }
 
@@ -33451,7 +33451,7 @@ mod test {
     unsafe fn test_vcreate_p64() {
         let a: u64 = 1;
         let e: i64x1 = i64x1::new(1);
-        let r: i64x1 = transmute(vcreate_p64(transmute(a)));
+        let r: i64x1 = transmute(vcreate_p64(a));
         assert_eq!(r, e);
     }
 
@@ -33459,7 +33459,7 @@ mod test {
     unsafe fn test_vcreate_f32() {
         let a: u64 = 0;
         let e: f32x2 = f32x2::new(0., 0.);
-        let r: f32x2 = transmute(vcreate_f32(transmute(a)));
+        let r: f32x2 = transmute(vcreate_f32(a));
         assert_eq!(r, e);
     }
 
@@ -34269,7 +34269,7 @@ mod test {
         let b: i16x4 = i16x4::new(2, 2, 2, 2);
         let c: i16 = 3;
         let e: i16x4 = i16x4::new(6, 7, 8, 9);
-        let r: i16x4 = transmute(vmla_n_s16(transmute(a), transmute(b), transmute(c)));
+        let r: i16x4 = transmute(vmla_n_s16(transmute(a), transmute(b), c));
         assert_eq!(r, e);
     }
 
@@ -34279,7 +34279,7 @@ mod test {
         let b: i16x8 = i16x8::new(2, 2, 2, 2, 2, 2, 2, 2);
         let c: i16 = 3;
         let e: i16x8 = i16x8::new(6, 7, 8, 9, 10, 11, 12, 13);
-        let r: i16x8 = transmute(vmlaq_n_s16(transmute(a), transmute(b), transmute(c)));
+        let r: i16x8 = transmute(vmlaq_n_s16(transmute(a), transmute(b), c));
         assert_eq!(r, e);
     }
 
@@ -34289,7 +34289,7 @@ mod test {
         let b: i32x2 = i32x2::new(2, 2);
         let c: i32 = 3;
         let e: i32x2 = i32x2::new(6, 7);
-        let r: i32x2 = transmute(vmla_n_s32(transmute(a), transmute(b), transmute(c)));
+        let r: i32x2 = transmute(vmla_n_s32(transmute(a), transmute(b), c));
         assert_eq!(r, e);
     }
 
@@ -34299,7 +34299,7 @@ mod test {
         let b: i32x4 = i32x4::new(2, 2, 2, 2);
         let c: i32 = 3;
         let e: i32x4 = i32x4::new(6, 7, 8, 9);
-        let r: i32x4 = transmute(vmlaq_n_s32(transmute(a), transmute(b), transmute(c)));
+        let r: i32x4 = transmute(vmlaq_n_s32(transmute(a), transmute(b), c));
         assert_eq!(r, e);
     }
 
@@ -34309,7 +34309,7 @@ mod test {
         let b: u16x4 = u16x4::new(2, 2, 2, 2);
         let c: u16 = 3;
         let e: u16x4 = u16x4::new(6, 7, 8, 9);
-        let r: u16x4 = transmute(vmla_n_u16(transmute(a), transmute(b), transmute(c)));
+        let r: u16x4 = transmute(vmla_n_u16(transmute(a), transmute(b), c));
         assert_eq!(r, e);
     }
 
@@ -34319,7 +34319,7 @@ mod test {
         let b: u16x8 = u16x8::new(2, 2, 2, 2, 2, 2, 2, 2);
         let c: u16 = 3;
         let e: u16x8 = u16x8::new(6, 7, 8, 9, 10, 11, 12, 13);
-        let r: u16x8 = transmute(vmlaq_n_u16(transmute(a), transmute(b), transmute(c)));
+        let r: u16x8 = transmute(vmlaq_n_u16(transmute(a), transmute(b), c));
         assert_eq!(r, e);
     }
 
@@ -34329,7 +34329,7 @@ mod test {
         let b: u32x2 = u32x2::new(2, 2);
         let c: u32 = 3;
         let e: u32x2 = u32x2::new(6, 7);
-        let r: u32x2 = transmute(vmla_n_u32(transmute(a), transmute(b), transmute(c)));
+        let r: u32x2 = transmute(vmla_n_u32(transmute(a), transmute(b), c));
         assert_eq!(r, e);
     }
 
@@ -34339,7 +34339,7 @@ mod test {
         let b: u32x4 = u32x4::new(2, 2, 2, 2);
         let c: u32 = 3;
         let e: u32x4 = u32x4::new(6, 7, 8, 9);
-        let r: u32x4 = transmute(vmlaq_n_u32(transmute(a), transmute(b), transmute(c)));
+        let r: u32x4 = transmute(vmlaq_n_u32(transmute(a), transmute(b), c));
         assert_eq!(r, e);
     }
 
@@ -34349,7 +34349,7 @@ mod test {
         let b: f32x2 = f32x2::new(2., 2.);
         let c: f32 = 3.;
         let e: f32x2 = f32x2::new(6., 7.);
-        let r: f32x2 = transmute(vmla_n_f32(transmute(a), transmute(b), transmute(c)));
+        let r: f32x2 = transmute(vmla_n_f32(transmute(a), transmute(b), c));
         assert_eq!(r, e);
     }
 
@@ -34359,7 +34359,7 @@ mod test {
         let b: f32x4 = f32x4::new(2., 2., 2., 2.);
         let c: f32 = 3.;
         let e: f32x4 = f32x4::new(6., 7., 8., 9.);
-        let r: f32x4 = transmute(vmlaq_n_f32(transmute(a), transmute(b), transmute(c)));
+        let r: f32x4 = transmute(vmlaq_n_f32(transmute(a), transmute(b), c));
         assert_eq!(r, e);
     }
 
@@ -34629,7 +34629,7 @@ mod test {
         let b: i16x4 = i16x4::new(2, 2, 2, 2);
         let c: i16 = 3;
         let e: i32x4 = i32x4::new(6, 7, 8, 9);
-        let r: i32x4 = transmute(vmlal_n_s16(transmute(a), transmute(b), transmute(c)));
+        let r: i32x4 = transmute(vmlal_n_s16(transmute(a), transmute(b), c));
         assert_eq!(r, e);
     }
 
@@ -34639,7 +34639,7 @@ mod test {
         let b: i32x2 = i32x2::new(2, 2);
         let c: i32 = 3;
         let e: i64x2 = i64x2::new(6, 7);
-        let r: i64x2 = transmute(vmlal_n_s32(transmute(a), transmute(b), transmute(c)));
+        let r: i64x2 = transmute(vmlal_n_s32(transmute(a), transmute(b), c));
         assert_eq!(r, e);
     }
 
@@ -34649,7 +34649,7 @@ mod test {
         let b: u16x4 = u16x4::new(2, 2, 2, 2);
         let c: u16 = 3;
         let e: u32x4 = u32x4::new(6, 7, 8, 9);
-        let r: u32x4 = transmute(vmlal_n_u16(transmute(a), transmute(b), transmute(c)));
+        let r: u32x4 = transmute(vmlal_n_u16(transmute(a), transmute(b), c));
         assert_eq!(r, e);
     }
 
@@ -34659,7 +34659,7 @@ mod test {
         let b: u32x2 = u32x2::new(2, 2);
         let c: u32 = 3;
         let e: u64x2 = u64x2::new(6, 7);
-        let r: u64x2 = transmute(vmlal_n_u32(transmute(a), transmute(b), transmute(c)));
+        let r: u64x2 = transmute(vmlal_n_u32(transmute(a), transmute(b), c));
         assert_eq!(r, e);
     }
 
@@ -34889,7 +34889,7 @@ mod test {
         let b: i16x4 = i16x4::new(2, 2, 2, 2);
         let c: i16 = 3;
         let e: i16x4 = i16x4::new(0, 1, 2, 3);
-        let r: i16x4 = transmute(vmls_n_s16(transmute(a), transmute(b), transmute(c)));
+        let r: i16x4 = transmute(vmls_n_s16(transmute(a), transmute(b), c));
         assert_eq!(r, e);
     }
 
@@ -34899,7 +34899,7 @@ mod test {
         let b: i16x8 = i16x8::new(2, 2, 2, 2, 2, 2, 2, 2);
         let c: i16 = 3;
         let e: i16x8 = i16x8::new(0, 1, 2, 3, 4, 5, 6, 7);
-        let r: i16x8 = transmute(vmlsq_n_s16(transmute(a), transmute(b), transmute(c)));
+        let r: i16x8 = transmute(vmlsq_n_s16(transmute(a), transmute(b), c));
         assert_eq!(r, e);
     }
 
@@ -34909,7 +34909,7 @@ mod test {
         let b: i32x2 = i32x2::new(2, 2);
         let c: i32 = 3;
         let e: i32x2 = i32x2::new(0, 1);
-        let r: i32x2 = transmute(vmls_n_s32(transmute(a), transmute(b), transmute(c)));
+        let r: i32x2 = transmute(vmls_n_s32(transmute(a), transmute(b), c));
         assert_eq!(r, e);
     }
 
@@ -34919,7 +34919,7 @@ mod test {
         let b: i32x4 = i32x4::new(2, 2, 2, 2);
         let c: i32 = 3;
         let e: i32x4 = i32x4::new(0, 1, 2, 3);
-        let r: i32x4 = transmute(vmlsq_n_s32(transmute(a), transmute(b), transmute(c)));
+        let r: i32x4 = transmute(vmlsq_n_s32(transmute(a), transmute(b), c));
         assert_eq!(r, e);
     }
 
@@ -34929,7 +34929,7 @@ mod test {
         let b: u16x4 = u16x4::new(2, 2, 2, 2);
         let c: u16 = 3;
         let e: u16x4 = u16x4::new(0, 1, 2, 3);
-        let r: u16x4 = transmute(vmls_n_u16(transmute(a), transmute(b), transmute(c)));
+        let r: u16x4 = transmute(vmls_n_u16(transmute(a), transmute(b), c));
         assert_eq!(r, e);
     }
 
@@ -34939,7 +34939,7 @@ mod test {
         let b: u16x8 = u16x8::new(2, 2, 2, 2, 2, 2, 2, 2);
         let c: u16 = 3;
         let e: u16x8 = u16x8::new(0, 1, 2, 3, 4, 5, 6, 7);
-        let r: u16x8 = transmute(vmlsq_n_u16(transmute(a), transmute(b), transmute(c)));
+        let r: u16x8 = transmute(vmlsq_n_u16(transmute(a), transmute(b), c));
         assert_eq!(r, e);
     }
 
@@ -34949,7 +34949,7 @@ mod test {
         let b: u32x2 = u32x2::new(2, 2);
         let c: u32 = 3;
         let e: u32x2 = u32x2::new(0, 1);
-        let r: u32x2 = transmute(vmls_n_u32(transmute(a), transmute(b), transmute(c)));
+        let r: u32x2 = transmute(vmls_n_u32(transmute(a), transmute(b), c));
         assert_eq!(r, e);
     }
 
@@ -34959,7 +34959,7 @@ mod test {
         let b: u32x4 = u32x4::new(2, 2, 2, 2);
         let c: u32 = 3;
         let e: u32x4 = u32x4::new(0, 1, 2, 3);
-        let r: u32x4 = transmute(vmlsq_n_u32(transmute(a), transmute(b), transmute(c)));
+        let r: u32x4 = transmute(vmlsq_n_u32(transmute(a), transmute(b), c));
         assert_eq!(r, e);
     }
 
@@ -34969,7 +34969,7 @@ mod test {
         let b: f32x2 = f32x2::new(2., 2.);
         let c: f32 = 3.;
         let e: f32x2 = f32x2::new(0., 1.);
-        let r: f32x2 = transmute(vmls_n_f32(transmute(a), transmute(b), transmute(c)));
+        let r: f32x2 = transmute(vmls_n_f32(transmute(a), transmute(b), c));
         assert_eq!(r, e);
     }
 
@@ -34979,7 +34979,7 @@ mod test {
         let b: f32x4 = f32x4::new(2., 2., 2., 2.);
         let c: f32 = 3.;
         let e: f32x4 = f32x4::new(0., 1., 2., 3.);
-        let r: f32x4 = transmute(vmlsq_n_f32(transmute(a), transmute(b), transmute(c)));
+        let r: f32x4 = transmute(vmlsq_n_f32(transmute(a), transmute(b), c));
         assert_eq!(r, e);
     }
 
@@ -35249,7 +35249,7 @@ mod test {
         let b: i16x4 = i16x4::new(2, 2, 2, 2);
         let c: i16 = 3;
         let e: i32x4 = i32x4::new(0, 1, 2, 3);
-        let r: i32x4 = transmute(vmlsl_n_s16(transmute(a), transmute(b), transmute(c)));
+        let r: i32x4 = transmute(vmlsl_n_s16(transmute(a), transmute(b), c));
         assert_eq!(r, e);
     }
 
@@ -35259,7 +35259,7 @@ mod test {
         let b: i32x2 = i32x2::new(2, 2);
         let c: i32 = 3;
         let e: i64x2 = i64x2::new(0, 1);
-        let r: i64x2 = transmute(vmlsl_n_s32(transmute(a), transmute(b), transmute(c)));
+        let r: i64x2 = transmute(vmlsl_n_s32(transmute(a), transmute(b), c));
         assert_eq!(r, e);
     }
 
@@ -35269,7 +35269,7 @@ mod test {
         let b: u16x4 = u16x4::new(2, 2, 2, 2);
         let c: u16 = 3;
         let e: u32x4 = u32x4::new(0, 1, 2, 3);
-        let r: u32x4 = transmute(vmlsl_n_u16(transmute(a), transmute(b), transmute(c)));
+        let r: u32x4 = transmute(vmlsl_n_u16(transmute(a), transmute(b), c));
         assert_eq!(r, e);
     }
 
@@ -35279,7 +35279,7 @@ mod test {
         let b: u32x2 = u32x2::new(2, 2);
         let c: u32 = 3;
         let e: u64x2 = u64x2::new(0, 1);
-        let r: u64x2 = transmute(vmlsl_n_u32(transmute(a), transmute(b), transmute(c)));
+        let r: u64x2 = transmute(vmlsl_n_u32(transmute(a), transmute(b), c));
         assert_eq!(r, e);
     }
 
@@ -40059,7 +40059,7 @@ mod test {
         let a: i16x4 = i16x4::new(1, 2, 3, 4);
         let b: i16 = 2;
         let e: i16x4 = i16x4::new(2, 4, 6, 8);
-        let r: i16x4 = transmute(vmul_n_s16(transmute(a), transmute(b)));
+        let r: i16x4 = transmute(vmul_n_s16(transmute(a), b));
         assert_eq!(r, e);
     }
 
@@ -40068,7 +40068,7 @@ mod test {
         let a: i16x8 = i16x8::new(1, 2, 3, 4, 5, 6, 7, 8);
         let b: i16 = 2;
         let e: i16x8 = i16x8::new(2, 4, 6, 8, 10, 12, 14, 16);
-        let r: i16x8 = transmute(vmulq_n_s16(transmute(a), transmute(b)));
+        let r: i16x8 = transmute(vmulq_n_s16(transmute(a), b));
         assert_eq!(r, e);
     }
 
@@ -40077,7 +40077,7 @@ mod test {
         let a: i32x2 = i32x2::new(1, 2);
         let b: i32 = 2;
         let e: i32x2 = i32x2::new(2, 4);
-        let r: i32x2 = transmute(vmul_n_s32(transmute(a), transmute(b)));
+        let r: i32x2 = transmute(vmul_n_s32(transmute(a), b));
         assert_eq!(r, e);
     }
 
@@ -40086,7 +40086,7 @@ mod test {
         let a: i32x4 = i32x4::new(1, 2, 3, 4);
         let b: i32 = 2;
         let e: i32x4 = i32x4::new(2, 4, 6, 8);
-        let r: i32x4 = transmute(vmulq_n_s32(transmute(a), transmute(b)));
+        let r: i32x4 = transmute(vmulq_n_s32(transmute(a), b));
         assert_eq!(r, e);
     }
 
@@ -40095,7 +40095,7 @@ mod test {
         let a: u16x4 = u16x4::new(1, 2, 3, 4);
         let b: u16 = 2;
         let e: u16x4 = u16x4::new(2, 4, 6, 8);
-        let r: u16x4 = transmute(vmul_n_u16(transmute(a), transmute(b)));
+        let r: u16x4 = transmute(vmul_n_u16(transmute(a), b));
         assert_eq!(r, e);
     }
 
@@ -40104,7 +40104,7 @@ mod test {
         let a: u16x8 = u16x8::new(1, 2, 3, 4, 5, 6, 7, 8);
         let b: u16 = 2;
         let e: u16x8 = u16x8::new(2, 4, 6, 8, 10, 12, 14, 16);
-        let r: u16x8 = transmute(vmulq_n_u16(transmute(a), transmute(b)));
+        let r: u16x8 = transmute(vmulq_n_u16(transmute(a), b));
         assert_eq!(r, e);
     }
 
@@ -40113,7 +40113,7 @@ mod test {
         let a: u32x2 = u32x2::new(1, 2);
         let b: u32 = 2;
         let e: u32x2 = u32x2::new(2, 4);
-        let r: u32x2 = transmute(vmul_n_u32(transmute(a), transmute(b)));
+        let r: u32x2 = transmute(vmul_n_u32(transmute(a), b));
         assert_eq!(r, e);
     }
 
@@ -40122,7 +40122,7 @@ mod test {
         let a: u32x4 = u32x4::new(1, 2, 3, 4);
         let b: u32 = 2;
         let e: u32x4 = u32x4::new(2, 4, 6, 8);
-        let r: u32x4 = transmute(vmulq_n_u32(transmute(a), transmute(b)));
+        let r: u32x4 = transmute(vmulq_n_u32(transmute(a), b));
         assert_eq!(r, e);
     }
 
@@ -40131,7 +40131,7 @@ mod test {
         let a: f32x2 = f32x2::new(1., 2.);
         let b: f32 = 2.;
         let e: f32x2 = f32x2::new(2., 4.);
-        let r: f32x2 = transmute(vmul_n_f32(transmute(a), transmute(b)));
+        let r: f32x2 = transmute(vmul_n_f32(transmute(a), b));
         assert_eq!(r, e);
     }
 
@@ -40140,7 +40140,7 @@ mod test {
         let a: f32x4 = f32x4::new(1., 2., 3., 4.);
         let b: f32 = 2.;
         let e: f32x4 = f32x4::new(2., 4., 6., 8.);
-        let r: f32x4 = transmute(vmulq_n_f32(transmute(a), transmute(b)));
+        let r: f32x4 = transmute(vmulq_n_f32(transmute(a), b));
         assert_eq!(r, e);
     }
 
@@ -40392,7 +40392,7 @@ mod test {
         let a: i16x4 = i16x4::new(1, 2, 3, 4);
         let b: i16 = 2;
         let e: i32x4 = i32x4::new(2, 4, 6, 8);
-        let r: i32x4 = transmute(vmull_n_s16(transmute(a), transmute(b)));
+        let r: i32x4 = transmute(vmull_n_s16(transmute(a), b));
         assert_eq!(r, e);
     }
 
@@ -40401,7 +40401,7 @@ mod test {
         let a: i32x2 = i32x2::new(1, 2);
         let b: i32 = 2;
         let e: i64x2 = i64x2::new(2, 4);
-        let r: i64x2 = transmute(vmull_n_s32(transmute(a), transmute(b)));
+        let r: i64x2 = transmute(vmull_n_s32(transmute(a), b));
         assert_eq!(r, e);
     }
 
@@ -40410,7 +40410,7 @@ mod test {
         let a: u16x4 = u16x4::new(1, 2, 3, 4);
         let b: u16 = 2;
         let e: u32x4 = u32x4::new(2, 4, 6, 8);
-        let r: u32x4 = transmute(vmull_n_u16(transmute(a), transmute(b)));
+        let r: u32x4 = transmute(vmull_n_u16(transmute(a), b));
         assert_eq!(r, e);
     }
 
@@ -40419,7 +40419,7 @@ mod test {
         let a: u32x2 = u32x2::new(1, 2);
         let b: u32 = 2;
         let e: u64x2 = u64x2::new(2, 4);
-        let r: u64x2 = transmute(vmull_n_u32(transmute(a), transmute(b)));
+        let r: u64x2 = transmute(vmull_n_u32(transmute(a), b));
         assert_eq!(r, e);
     }
 
@@ -40524,7 +40524,7 @@ mod test {
         let b: f32x2 = f32x2::new(6.0, 4.0);
         let c: f32 = 8.0;
         let e: f32x2 = f32x2::new(50.0, 35.0);
-        let r: f32x2 = transmute(vfma_n_f32(transmute(a), transmute(b), transmute(c)));
+        let r: f32x2 = transmute(vfma_n_f32(transmute(a), transmute(b), c));
         assert_eq!(r, e);
     }
 
@@ -40535,7 +40535,7 @@ mod test {
         let b: f32x4 = f32x4::new(6.0, 4.0, 7.0, 8.0);
         let c: f32 = 8.0;
         let e: f32x4 = f32x4::new(50.0, 35.0, 60.0, 69.0);
-        let r: f32x4 = transmute(vfmaq_n_f32(transmute(a), transmute(b), transmute(c)));
+        let r: f32x4 = transmute(vfmaq_n_f32(transmute(a), transmute(b), c));
         assert_eq!(r, e);
     }
 
@@ -40568,7 +40568,7 @@ mod test {
         let b: f32x2 = f32x2::new(6.0, 4.0);
         let c: f32 = 8.0;
         let e: f32x2 = f32x2::new(2.0, 3.0);
-        let r: f32x2 = transmute(vfms_n_f32(transmute(a), transmute(b), transmute(c)));
+        let r: f32x2 = transmute(vfms_n_f32(transmute(a), transmute(b), c));
         assert_eq!(r, e);
     }
 
@@ -40579,7 +40579,7 @@ mod test {
         let b: f32x4 = f32x4::new(6.0, 4.0, 7.0, 8.0);
         let c: f32 = 8.0;
         let e: f32x4 = f32x4::new(2.0, 3.0, 4.0, 5.0);
-        let r: f32x4 = transmute(vfmsq_n_f32(transmute(a), transmute(b), transmute(c)));
+        let r: f32x4 = transmute(vfmsq_n_f32(transmute(a), transmute(b), c));
         assert_eq!(r, e);
     }
 
@@ -40804,7 +40804,7 @@ mod test {
         let a: p128 = 16;
         let b: p128 = 1;
         let e: p128 = 17;
-        let r: p128 = transmute(vaddq_p128(transmute(a), transmute(b)));
+        let r: p128 = vaddq_p128(a, b);
         assert_eq!(r, e);
     }
 
@@ -41542,7 +41542,7 @@ mod test {
         let a: i16x4 = i16x4::new(2, 4, 6, 8);
         let b: i16 = 2;
         let e: i32x4 = i32x4::new(8, 16, 24, 32);
-        let r: i32x4 = transmute(vqdmull_n_s16(transmute(a), transmute(b)));
+        let r: i32x4 = transmute(vqdmull_n_s16(transmute(a), b));
         assert_eq!(r, e);
     }
 
@@ -41551,7 +41551,7 @@ mod test {
         let a: i32x2 = i32x2::new(2, 4);
         let b: i32 = 2;
         let e: i64x2 = i64x2::new(8, 16);
-        let r: i64x2 = transmute(vqdmull_n_s32(transmute(a), transmute(b)));
+        let r: i64x2 = transmute(vqdmull_n_s32(transmute(a), b));
         assert_eq!(r, e);
     }
 
@@ -41599,7 +41599,7 @@ mod test {
         let b: i16x4 = i16x4::new(1, 2, 3, 4);
         let c: i16 = 2;
         let e: i32x4 = i32x4::new(5, 9, 13, 17);
-        let r: i32x4 = transmute(vqdmlal_n_s16(transmute(a), transmute(b), transmute(c)));
+        let r: i32x4 = transmute(vqdmlal_n_s16(transmute(a), transmute(b), c));
         assert_eq!(r, e);
     }
 
@@ -41609,7 +41609,7 @@ mod test {
         let b: i32x2 = i32x2::new(1, 2);
         let c: i32 = 2;
         let e: i64x2 = i64x2::new(5, 9);
-        let r: i64x2 = transmute(vqdmlal_n_s32(transmute(a), transmute(b), transmute(c)));
+        let r: i64x2 = transmute(vqdmlal_n_s32(transmute(a), transmute(b), c));
         assert_eq!(r, e);
     }
 
@@ -41659,7 +41659,7 @@ mod test {
         let b: i16x4 = i16x4::new(1, 2, 3, 4);
         let c: i16 = 2;
         let e: i32x4 = i32x4::new(-1, -1, -1, -1);
-        let r: i32x4 = transmute(vqdmlsl_n_s16(transmute(a), transmute(b), transmute(c)));
+        let r: i32x4 = transmute(vqdmlsl_n_s16(transmute(a), transmute(b), c));
         assert_eq!(r, e);
     }
 
@@ -41669,7 +41669,7 @@ mod test {
         let b: i32x2 = i32x2::new(1, 2);
         let c: i32 = 2;
         let e: i64x2 = i64x2::new(-1, -1);
-        let r: i64x2 = transmute(vqdmlsl_n_s32(transmute(a), transmute(b), transmute(c)));
+        let r: i64x2 = transmute(vqdmlsl_n_s32(transmute(a), transmute(b), c));
         assert_eq!(r, e);
     }
 
@@ -41734,7 +41734,7 @@ mod test {
         let a: i16x4 = i16x4::new(0x7F_FF, 0x7F_FF, 0x7F_FF, 0x7F_FF);
         let b: i16 = 2;
         let e: i16x4 = i16x4::new(1, 1, 1, 1);
-        let r: i16x4 = transmute(vqdmulh_n_s16(transmute(a), transmute(b)));
+        let r: i16x4 = transmute(vqdmulh_n_s16(transmute(a), b));
         assert_eq!(r, e);
     }
 
@@ -41743,7 +41743,7 @@ mod test {
         let a: i32x2 = i32x2::new(0x7F_FF_FF_FF, 0x7F_FF_FF_FF);
         let b: i32 = 2;
         let e: i32x2 = i32x2::new(1, 1);
-        let r: i32x2 = transmute(vqdmulh_n_s32(transmute(a), transmute(b)));
+        let r: i32x2 = transmute(vqdmulh_n_s32(transmute(a), b));
         assert_eq!(r, e);
     }
 
@@ -41752,7 +41752,7 @@ mod test {
         let a: i16x8 = i16x8::new(0x7F_FF, 0x7F_FF, 0x7F_FF, 0x7F_FF, 0x7F_FF, 0x7F_FF, 0x7F_FF, 0x7F_FF);
         let b: i16 = 2;
         let e: i16x8 = i16x8::new(1, 1, 1, 1, 1, 1, 1, 1);
-        let r: i16x8 = transmute(vqdmulhq_n_s16(transmute(a), transmute(b)));
+        let r: i16x8 = transmute(vqdmulhq_n_s16(transmute(a), b));
         assert_eq!(r, e);
     }
 
@@ -41761,7 +41761,7 @@ mod test {
         let a: i32x4 = i32x4::new(0x7F_FF_FF_FF, 0x7F_FF_FF_FF, 0x7F_FF_FF_FF, 0x7F_FF_FF_FF);
         let b: i32 = 2;
         let e: i32x4 = i32x4::new(1, 1, 1, 1);
-        let r: i32x4 = transmute(vqdmulhq_n_s32(transmute(a), transmute(b)));
+        let r: i32x4 = transmute(vqdmulhq_n_s32(transmute(a), b));
         assert_eq!(r, e);
     }
 
@@ -41914,7 +41914,7 @@ mod test {
         let a: i16x4 = i16x4::new(0x7F_FF, 0x7F_FF, 0x7F_FF, 0x7F_FF);
         let b: i16 = 2;
         let e: i16x4 = i16x4::new(2, 2, 2, 2);
-        let r: i16x4 = transmute(vqrdmulh_n_s16(transmute(a), transmute(b)));
+        let r: i16x4 = transmute(vqrdmulh_n_s16(transmute(a), b));
         assert_eq!(r, e);
     }
 
@@ -41923,7 +41923,7 @@ mod test {
         let a: i16x8 = i16x8::new(0x7F_FF, 0x7F_FF, 0x7F_FF, 0x7F_FF, 0x7F_FF, 0x7F_FF, 0x7F_FF, 0x7F_FF);
         let b: i16 = 2;
         let e: i16x8 = i16x8::new(2, 2, 2, 2, 2, 2, 2, 2);
-        let r: i16x8 = transmute(vqrdmulhq_n_s16(transmute(a), transmute(b)));
+        let r: i16x8 = transmute(vqrdmulhq_n_s16(transmute(a), b));
         assert_eq!(r, e);
     }
 
@@ -41932,7 +41932,7 @@ mod test {
         let a: i32x2 = i32x2::new(0x7F_FF_FF_FF, 0x7F_FF_FF_FF);
         let b: i32 = 2;
         let e: i32x2 = i32x2::new(2, 2);
-        let r: i32x2 = transmute(vqrdmulh_n_s32(transmute(a), transmute(b)));
+        let r: i32x2 = transmute(vqrdmulh_n_s32(transmute(a), b));
         assert_eq!(r, e);
     }
 
@@ -41941,7 +41941,7 @@ mod test {
         let a: i32x4 = i32x4::new(0x7F_FF_FF_FF, 0x7F_FF_FF_FF, 0x7F_FF_FF_FF, 0x7F_FF_FF_FF);
         let b: i32 = 2;
         let e: i32x4 = i32x4::new(2, 2, 2, 2);
-        let r: i32x4 = transmute(vqrdmulhq_n_s32(transmute(a), transmute(b)));
+        let r: i32x4 = transmute(vqrdmulhq_n_s32(transmute(a), b));
         assert_eq!(r, e);
     }
 
@@ -43337,7 +43337,7 @@ mod test {
     unsafe fn test_vreinterpretq_s64_p128() {
         let a: p128 = 0;
         let e: i64x2 = i64x2::new(0, 0);
-        let r: i64x2 = transmute(vreinterpretq_s64_p128(transmute(a)));
+        let r: i64x2 = transmute(vreinterpretq_s64_p128(a));
         assert_eq!(r, e);
     }
 
@@ -43345,7 +43345,7 @@ mod test {
     unsafe fn test_vreinterpretq_u64_p128() {
         let a: p128 = 0;
         let e: u64x2 = u64x2::new(0, 0);
-        let r: u64x2 = transmute(vreinterpretq_u64_p128(transmute(a)));
+        let r: u64x2 = transmute(vreinterpretq_u64_p128(a));
         assert_eq!(r, e);
     }
 
@@ -43353,7 +43353,7 @@ mod test {
     unsafe fn test_vreinterpretq_p64_p128() {
         let a: p128 = 0;
         let e: i64x2 = i64x2::new(0, 0);
-        let r: i64x2 = transmute(vreinterpretq_p64_p128(transmute(a)));
+        let r: i64x2 = transmute(vreinterpretq_p64_p128(a));
         assert_eq!(r, e);
     }
 
@@ -43697,7 +43697,7 @@ mod test {
     unsafe fn test_vreinterpretq_p128_s64() {
         let a: i64x2 = i64x2::new(0, 0);
         let e: p128 = 0;
-        let r: p128 = transmute(vreinterpretq_p128_s64(transmute(a)));
+        let r: p128 = vreinterpretq_p128_s64(transmute(a));
         assert_eq!(r, e);
     }
 
@@ -43705,7 +43705,7 @@ mod test {
     unsafe fn test_vreinterpretq_p128_u64() {
         let a: u64x2 = u64x2::new(0, 0);
         let e: p128 = 0;
-        let r: p128 = transmute(vreinterpretq_p128_u64(transmute(a)));
+        let r: p128 = vreinterpretq_p128_u64(transmute(a));
         assert_eq!(r, e);
     }
 
@@ -43713,7 +43713,7 @@ mod test {
     unsafe fn test_vreinterpretq_p128_p64() {
         let a: i64x2 = i64x2::new(0, 0);
         let e: p128 = 0;
-        let r: p128 = transmute(vreinterpretq_p128_p64(transmute(a)));
+        let r: p128 = vreinterpretq_p128_p64(transmute(a));
         assert_eq!(r, e);
     }
 
@@ -43961,7 +43961,7 @@ mod test {
     unsafe fn test_vreinterpretq_s32_p128() {
         let a: p128 = 0;
         let e: i32x4 = i32x4::new(0, 0, 0, 0);
-        let r: i32x4 = transmute(vreinterpretq_s32_p128(transmute(a)));
+        let r: i32x4 = transmute(vreinterpretq_s32_p128(a));
         assert_eq!(r, e);
     }
 
@@ -43969,7 +43969,7 @@ mod test {
     unsafe fn test_vreinterpretq_u32_p128() {
         let a: p128 = 0;
         let e: u32x4 = u32x4::new(0, 0, 0, 0);
-        let r: u32x4 = transmute(vreinterpretq_u32_p128(transmute(a)));
+        let r: u32x4 = transmute(vreinterpretq_u32_p128(a));
         assert_eq!(r, e);
     }
 
@@ -44217,7 +44217,7 @@ mod test {
     unsafe fn test_vreinterpretq_p128_s32() {
         let a: i32x4 = i32x4::new(0, 0, 0, 0);
         let e: p128 = 0;
-        let r: p128 = transmute(vreinterpretq_p128_s32(transmute(a)));
+        let r: p128 = vreinterpretq_p128_s32(transmute(a));
         assert_eq!(r, e);
     }
 
@@ -44225,7 +44225,7 @@ mod test {
     unsafe fn test_vreinterpretq_p128_u32() {
         let a: u32x4 = u32x4::new(0, 0, 0, 0);
         let e: p128 = 0;
-        let r: p128 = transmute(vreinterpretq_p128_u32(transmute(a)));
+        let r: p128 = vreinterpretq_p128_u32(transmute(a));
         assert_eq!(r, e);
     }
 
@@ -44377,7 +44377,7 @@ mod test {
     unsafe fn test_vreinterpretq_s16_p128() {
         let a: p128 = 0;
         let e: i16x8 = i16x8::new(0, 0, 0, 0, 0, 0, 0, 0);
-        let r: i16x8 = transmute(vreinterpretq_s16_p128(transmute(a)));
+        let r: i16x8 = transmute(vreinterpretq_s16_p128(a));
         assert_eq!(r, e);
     }
 
@@ -44385,7 +44385,7 @@ mod test {
     unsafe fn test_vreinterpretq_u16_p128() {
         let a: p128 = 0;
         let e: u16x8 = u16x8::new(0, 0, 0, 0, 0, 0, 0, 0);
-        let r: u16x8 = transmute(vreinterpretq_u16_p128(transmute(a)));
+        let r: u16x8 = transmute(vreinterpretq_u16_p128(a));
         assert_eq!(r, e);
     }
 
@@ -44393,7 +44393,7 @@ mod test {
     unsafe fn test_vreinterpretq_p16_p128() {
         let a: p128 = 0;
         let e: i16x8 = i16x8::new(0, 0, 0, 0, 0, 0, 0, 0);
-        let r: i16x8 = transmute(vreinterpretq_p16_p128(transmute(a)));
+        let r: i16x8 = transmute(vreinterpretq_p16_p128(a));
         assert_eq!(r, e);
     }
 
@@ -44545,7 +44545,7 @@ mod test {
     unsafe fn test_vreinterpretq_p128_s16() {
         let a: i16x8 = i16x8::new(0, 0, 0, 0, 0, 0, 0, 0);
         let e: p128 = 0;
-        let r: p128 = transmute(vreinterpretq_p128_s16(transmute(a)));
+        let r: p128 = vreinterpretq_p128_s16(transmute(a));
         assert_eq!(r, e);
     }
 
@@ -44553,7 +44553,7 @@ mod test {
     unsafe fn test_vreinterpretq_p128_u16() {
         let a: u16x8 = u16x8::new(0, 0, 0, 0, 0, 0, 0, 0);
         let e: p128 = 0;
-        let r: p128 = transmute(vreinterpretq_p128_u16(transmute(a)));
+        let r: p128 = vreinterpretq_p128_u16(transmute(a));
         assert_eq!(r, e);
     }
 
@@ -44561,7 +44561,7 @@ mod test {
     unsafe fn test_vreinterpretq_p128_p16() {
         let a: i16x8 = i16x8::new(0, 0, 0, 0, 0, 0, 0, 0);
         let e: p128 = 0;
-        let r: p128 = transmute(vreinterpretq_p128_p16(transmute(a)));
+        let r: p128 = vreinterpretq_p128_p16(transmute(a));
         assert_eq!(r, e);
     }
 
@@ -44569,7 +44569,7 @@ mod test {
     unsafe fn test_vreinterpretq_p128_s8() {
         let a: i8x16 = i8x16::new(1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
         let e: p128 = 1;
-        let r: p128 = transmute(vreinterpretq_p128_s8(transmute(a)));
+        let r: p128 = vreinterpretq_p128_s8(transmute(a));
         assert_eq!(r, e);
     }
 
@@ -44577,7 +44577,7 @@ mod test {
     unsafe fn test_vreinterpretq_p128_u8() {
         let a: u8x16 = u8x16::new(1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
         let e: p128 = 1;
-        let r: p128 = transmute(vreinterpretq_p128_u8(transmute(a)));
+        let r: p128 = vreinterpretq_p128_u8(transmute(a));
         assert_eq!(r, e);
     }
 
@@ -44585,7 +44585,7 @@ mod test {
     unsafe fn test_vreinterpretq_p128_p8() {
         let a: i8x16 = i8x16::new(1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
         let e: p128 = 1;
-        let r: p128 = transmute(vreinterpretq_p128_p8(transmute(a)));
+        let r: p128 = vreinterpretq_p128_p8(transmute(a));
         assert_eq!(r, e);
     }
 
@@ -44593,7 +44593,7 @@ mod test {
     unsafe fn test_vreinterpretq_s8_p128() {
         let a: p128 = 1;
         let e: i8x16 = i8x16::new(1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-        let r: i8x16 = transmute(vreinterpretq_s8_p128(transmute(a)));
+        let r: i8x16 = transmute(vreinterpretq_s8_p128(a));
         assert_eq!(r, e);
     }
 
@@ -44601,7 +44601,7 @@ mod test {
     unsafe fn test_vreinterpretq_u8_p128() {
         let a: p128 = 1;
         let e: u8x16 = u8x16::new(1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-        let r: u8x16 = transmute(vreinterpretq_u8_p128(transmute(a)));
+        let r: u8x16 = transmute(vreinterpretq_u8_p128(a));
         assert_eq!(r, e);
     }
 
@@ -44609,7 +44609,7 @@ mod test {
     unsafe fn test_vreinterpretq_p8_p128() {
         let a: p128 = 1;
         let e: i8x16 = i8x16::new(1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-        let r: i8x16 = transmute(vreinterpretq_p8_p128(transmute(a)));
+        let r: i8x16 = transmute(vreinterpretq_p8_p128(a));
         assert_eq!(r, e);
     }
 
@@ -44777,7 +44777,7 @@ mod test {
     unsafe fn test_vreinterpretq_p128_f32() {
         let a: f32x4 = f32x4::new(0., 0., 0., 0.);
         let e: p128 = 0;
-        let r: p128 = transmute(vreinterpretq_p128_f32(transmute(a)));
+        let r: p128 = vreinterpretq_p128_f32(transmute(a));
         assert_eq!(r, e);
     }
 
@@ -44945,7 +44945,7 @@ mod test {
     unsafe fn test_vreinterpretq_f32_p128() {
         let a: p128 = 0;
         let e: f32x4 = f32x4::new(0., 0., 0., 0.);
-        let r: f32x4 = transmute(vreinterpretq_f32_p128(transmute(a)));
+        let r: f32x4 = transmute(vreinterpretq_f32_p128(a));
         assert_eq!(r, e);
     }
 
@@ -45472,7 +45472,7 @@ mod test {
         let a: i8 = 1;
         let b: i8x8 = i8x8::new(0, 2, 3, 4, 5, 6, 7, 8);
         let e: i8x8 = i8x8::new(1, 2, 3, 4, 5, 6, 7, 8);
-        let r: i8x8 = transmute(vset_lane_s8::<0>(transmute(a), transmute(b)));
+        let r: i8x8 = transmute(vset_lane_s8::<0>(a, transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -45481,7 +45481,7 @@ mod test {
         let a: i16 = 1;
         let b: i16x4 = i16x4::new(0, 2, 3, 4);
         let e: i16x4 = i16x4::new(1, 2, 3, 4);
-        let r: i16x4 = transmute(vset_lane_s16::<0>(transmute(a), transmute(b)));
+        let r: i16x4 = transmute(vset_lane_s16::<0>(a, transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -45490,7 +45490,7 @@ mod test {
         let a: i32 = 1;
         let b: i32x2 = i32x2::new(0, 2);
         let e: i32x2 = i32x2::new(1, 2);
-        let r: i32x2 = transmute(vset_lane_s32::<0>(transmute(a), transmute(b)));
+        let r: i32x2 = transmute(vset_lane_s32::<0>(a, transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -45499,7 +45499,7 @@ mod test {
         let a: i64 = 1;
         let b: i64x1 = i64x1::new(0);
         let e: i64x1 = i64x1::new(1);
-        let r: i64x1 = transmute(vset_lane_s64::<0>(transmute(a), transmute(b)));
+        let r: i64x1 = transmute(vset_lane_s64::<0>(a, transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -45508,7 +45508,7 @@ mod test {
         let a: u8 = 1;
         let b: u8x8 = u8x8::new(0, 2, 3, 4, 5, 6, 7, 8);
         let e: u8x8 = u8x8::new(1, 2, 3, 4, 5, 6, 7, 8);
-        let r: u8x8 = transmute(vset_lane_u8::<0>(transmute(a), transmute(b)));
+        let r: u8x8 = transmute(vset_lane_u8::<0>(a, transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -45517,7 +45517,7 @@ mod test {
         let a: u16 = 1;
         let b: u16x4 = u16x4::new(0, 2, 3, 4);
         let e: u16x4 = u16x4::new(1, 2, 3, 4);
-        let r: u16x4 = transmute(vset_lane_u16::<0>(transmute(a), transmute(b)));
+        let r: u16x4 = transmute(vset_lane_u16::<0>(a, transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -45526,7 +45526,7 @@ mod test {
         let a: u32 = 1;
         let b: u32x2 = u32x2::new(0, 2);
         let e: u32x2 = u32x2::new(1, 2);
-        let r: u32x2 = transmute(vset_lane_u32::<0>(transmute(a), transmute(b)));
+        let r: u32x2 = transmute(vset_lane_u32::<0>(a, transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -45535,7 +45535,7 @@ mod test {
         let a: u64 = 1;
         let b: u64x1 = u64x1::new(0);
         let e: u64x1 = u64x1::new(1);
-        let r: u64x1 = transmute(vset_lane_u64::<0>(transmute(a), transmute(b)));
+        let r: u64x1 = transmute(vset_lane_u64::<0>(a, transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -45544,7 +45544,7 @@ mod test {
         let a: p8 = 1;
         let b: i8x8 = i8x8::new(0, 2, 3, 4, 5, 6, 7, 8);
         let e: i8x8 = i8x8::new(1, 2, 3, 4, 5, 6, 7, 8);
-        let r: i8x8 = transmute(vset_lane_p8::<0>(transmute(a), transmute(b)));
+        let r: i8x8 = transmute(vset_lane_p8::<0>(a, transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -45553,7 +45553,7 @@ mod test {
         let a: p16 = 1;
         let b: i16x4 = i16x4::new(0, 2, 3, 4);
         let e: i16x4 = i16x4::new(1, 2, 3, 4);
-        let r: i16x4 = transmute(vset_lane_p16::<0>(transmute(a), transmute(b)));
+        let r: i16x4 = transmute(vset_lane_p16::<0>(a, transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -45562,7 +45562,7 @@ mod test {
         let a: p64 = 1;
         let b: i64x1 = i64x1::new(0);
         let e: i64x1 = i64x1::new(1);
-        let r: i64x1 = transmute(vset_lane_p64::<0>(transmute(a), transmute(b)));
+        let r: i64x1 = transmute(vset_lane_p64::<0>(a, transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -45571,7 +45571,7 @@ mod test {
         let a: i8 = 1;
         let b: i8x16 = i8x16::new(0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
         let e: i8x16 = i8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
-        let r: i8x16 = transmute(vsetq_lane_s8::<0>(transmute(a), transmute(b)));
+        let r: i8x16 = transmute(vsetq_lane_s8::<0>(a, transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -45580,7 +45580,7 @@ mod test {
         let a: i16 = 1;
         let b: i16x8 = i16x8::new(0, 2, 3, 4, 5, 6, 7, 8);
         let e: i16x8 = i16x8::new(1, 2, 3, 4, 5, 6, 7, 8);
-        let r: i16x8 = transmute(vsetq_lane_s16::<0>(transmute(a), transmute(b)));
+        let r: i16x8 = transmute(vsetq_lane_s16::<0>(a, transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -45589,7 +45589,7 @@ mod test {
         let a: i32 = 1;
         let b: i32x4 = i32x4::new(0, 2, 3, 4);
         let e: i32x4 = i32x4::new(1, 2, 3, 4);
-        let r: i32x4 = transmute(vsetq_lane_s32::<0>(transmute(a), transmute(b)));
+        let r: i32x4 = transmute(vsetq_lane_s32::<0>(a, transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -45598,7 +45598,7 @@ mod test {
         let a: i64 = 1;
         let b: i64x2 = i64x2::new(0, 2);
         let e: i64x2 = i64x2::new(1, 2);
-        let r: i64x2 = transmute(vsetq_lane_s64::<0>(transmute(a), transmute(b)));
+        let r: i64x2 = transmute(vsetq_lane_s64::<0>(a, transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -45607,7 +45607,7 @@ mod test {
         let a: u8 = 1;
         let b: u8x16 = u8x16::new(0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
         let e: u8x16 = u8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
-        let r: u8x16 = transmute(vsetq_lane_u8::<0>(transmute(a), transmute(b)));
+        let r: u8x16 = transmute(vsetq_lane_u8::<0>(a, transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -45616,7 +45616,7 @@ mod test {
         let a: u16 = 1;
         let b: u16x8 = u16x8::new(0, 2, 3, 4, 5, 6, 7, 8);
         let e: u16x8 = u16x8::new(1, 2, 3, 4, 5, 6, 7, 8);
-        let r: u16x8 = transmute(vsetq_lane_u16::<0>(transmute(a), transmute(b)));
+        let r: u16x8 = transmute(vsetq_lane_u16::<0>(a, transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -45625,7 +45625,7 @@ mod test {
         let a: u32 = 1;
         let b: u32x4 = u32x4::new(0, 2, 3, 4);
         let e: u32x4 = u32x4::new(1, 2, 3, 4);
-        let r: u32x4 = transmute(vsetq_lane_u32::<0>(transmute(a), transmute(b)));
+        let r: u32x4 = transmute(vsetq_lane_u32::<0>(a, transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -45634,7 +45634,7 @@ mod test {
         let a: u64 = 1;
         let b: u64x2 = u64x2::new(0, 2);
         let e: u64x2 = u64x2::new(1, 2);
-        let r: u64x2 = transmute(vsetq_lane_u64::<0>(transmute(a), transmute(b)));
+        let r: u64x2 = transmute(vsetq_lane_u64::<0>(a, transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -45643,7 +45643,7 @@ mod test {
         let a: p8 = 1;
         let b: i8x16 = i8x16::new(0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
         let e: i8x16 = i8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
-        let r: i8x16 = transmute(vsetq_lane_p8::<0>(transmute(a), transmute(b)));
+        let r: i8x16 = transmute(vsetq_lane_p8::<0>(a, transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -45652,7 +45652,7 @@ mod test {
         let a: p16 = 1;
         let b: i16x8 = i16x8::new(0, 2, 3, 4, 5, 6, 7, 8);
         let e: i16x8 = i16x8::new(1, 2, 3, 4, 5, 6, 7, 8);
-        let r: i16x8 = transmute(vsetq_lane_p16::<0>(transmute(a), transmute(b)));
+        let r: i16x8 = transmute(vsetq_lane_p16::<0>(a, transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -45661,7 +45661,7 @@ mod test {
         let a: p64 = 1;
         let b: i64x2 = i64x2::new(0, 2);
         let e: i64x2 = i64x2::new(1, 2);
-        let r: i64x2 = transmute(vsetq_lane_p64::<0>(transmute(a), transmute(b)));
+        let r: i64x2 = transmute(vsetq_lane_p64::<0>(a, transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -45670,7 +45670,7 @@ mod test {
         let a: f32 = 1.;
         let b: f32x2 = f32x2::new(0., 2.);
         let e: f32x2 = f32x2::new(1., 2.);
-        let r: f32x2 = transmute(vset_lane_f32::<0>(transmute(a), transmute(b)));
+        let r: f32x2 = transmute(vset_lane_f32::<0>(a, transmute(b)));
         assert_eq!(r, e);
     }
 
@@ -45679,7 +45679,7 @@ mod test {
         let a: f32 = 1.;
         let b: f32x4 = f32x4::new(0., 2., 3., 4.);
         let e: f32x4 = f32x4::new(1., 2., 3., 4.);
-        let r: f32x4 = transmute(vsetq_lane_f32::<0>(transmute(a), transmute(b)));
+        let r: f32x4 = transmute(vsetq_lane_f32::<0>(a, transmute(b)));
         assert_eq!(r, e);
     }
 
