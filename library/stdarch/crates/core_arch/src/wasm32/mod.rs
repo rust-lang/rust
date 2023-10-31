@@ -12,7 +12,7 @@ mod simd128;
 pub use self::simd128::*;
 
 mod relaxed_simd;
-#[unstable(feature = "stdarch_wasm_relaxed_simd", issue = "111196")]
+#[stable(feature = "stdarch_wasm_relaxed_simd", since = "CURRENT_RUSTC_VERSION")]
 pub use self::relaxed_simd::*;
 
 mod memory;
