@@ -147,7 +147,7 @@ impl<'tcx> MutVisitor<'tcx> for DerefArgVisitor<'tcx> {
 }
 
 struct PinArgVisitor<'tcx> {
-    ref_gen_ty: Ty<'tcx>,
+    ref_coroutine_ty: Ty<'tcx>,
     tcx: TyCtxt<'tcx>,
 }
 
@@ -168,7 +168,7 @@ impl<'tcx> MutVisitor<'tcx> for PinArgVisitor<'tcx> {
                     local: SELF_ARG,
                     projection: self.tcx().mk_place_elems(&[ProjectionElem::Field(
                         FieldIdx::new(0),
-                        self.ref_gen_ty,
+                        self.ref_coroutine_ty,
                     )]),
                 },
                 self.tcx,
@@ -468,34 +468,34 @@ impl<'tcx> MutVisitor<'tcx> for TransformVisitor<'tcx> {
 }
 
 fn make_coroutine_state_argument_indirect<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-    let gen_ty = body.local_decls.raw[1].ty;
+    let coroutine_ty = body.local_decls.raw[1].ty;
 
-    let ref_gen_ty = Ty::new_ref(
+    let ref_coroutine_ty = Ty::new_ref(
         tcx,
         tcx.lifetimes.re_erased,
-        ty::TypeAndMut { ty: gen_ty, mutbl: Mutability::Mut },
+        ty::TypeAndMut { ty: coroutine_ty, mutbl: Mutability::Mut },
     );
 
     // Replace the by value coroutine argument
-    body.local_decls.raw[1].ty = ref_gen_ty;
+    body.local_decls.raw[1].ty = ref_coroutine_ty;
 
     // Add a deref to accesses of the coroutine state
     DerefArgVisitor { tcx }.visit_body(body);
 }
 
 fn make_coroutine_state_argument_pinned<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-    let ref_gen_ty = body.local_decls.raw[1].ty;
+    let ref_coroutine_ty = body.local_decls.raw[1].ty;
 
     let pin_did = tcx.require_lang_item(LangItem::Pin, Some(body.span));
     let pin_adt_ref = tcx.adt_def(pin_did);
-    let args = tcx.mk_args(&[ref_gen_ty.into()]);
-    let pin_ref_gen_ty = Ty::new_adt(tcx, pin_adt_ref, args);
+    let args = tcx.mk_args(&[ref_coroutine_ty.into()]);
+    let pin_ref_coroutine_ty = Ty::new_adt(tcx, pin_adt_ref, args);
 
     // Replace the by ref coroutine argument
-    body.local_decls.raw[1].ty = pin_ref_gen_ty;
+    body.local_decls.raw[1].ty = pin_ref_coroutine_ty;
 
     // Add the Pin field access to accesses of the coroutine state
-    PinArgVisitor { ref_gen_ty, tcx }.visit_body(body);
+    PinArgVisitor { ref_coroutine_ty, tcx }.visit_body(body);
 }
 
 /// Allocates a new local and replaces all references of `local` with it. Returns the new local.
@@ -1104,7 +1104,7 @@ fn elaborate_coroutine_drops<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 fn create_coroutine_drop_shim<'tcx>(
     tcx: TyCtxt<'tcx>,
     transform: &TransformVisitor<'tcx>,
-    gen_ty: Ty<'tcx>,
+    coroutine_ty: Ty<'tcx>,
     body: &mut Body<'tcx>,
     drop_clean: BasicBlock,
 ) -> Body<'tcx> {
@@ -1136,7 +1136,7 @@ fn create_coroutine_drop_shim<'tcx>(
 
     // Change the coroutine argument from &mut to *mut
     body.local_decls[SELF_ARG] = LocalDecl::with_source_info(
-        Ty::new_ptr(tcx, ty::TypeAndMut { ty: gen_ty, mutbl: hir::Mutability::Mut }),
+        Ty::new_ptr(tcx, ty::TypeAndMut { ty: coroutine_ty, mutbl: hir::Mutability::Mut }),
         source_info,
     );
 
@@ -1146,9 +1146,9 @@ fn create_coroutine_drop_shim<'tcx>(
 
     // Update the body's def to become the drop glue.
     // This needs to be updated before the AbortUnwindingCalls pass.
-    let gen_instance = body.source.instance;
+    let coroutine_instance = body.source.instance;
     let drop_in_place = tcx.require_lang_item(LangItem::DropInPlace, None);
-    let drop_instance = InstanceDef::DropGlue(drop_in_place, Some(gen_ty));
+    let drop_instance = InstanceDef::DropGlue(drop_in_place, Some(coroutine_ty));
     body.source.instance = drop_instance;
 
     pm::run_passes_no_validate(
@@ -1160,7 +1160,7 @@ fn create_coroutine_drop_shim<'tcx>(
 
     // Temporary change MirSource to coroutine's instance so that dump_mir produces more sensible
     // filename.
-    body.source.instance = gen_instance;
+    body.source.instance = coroutine_instance;
     dump_mir(tcx, false, "coroutine_drop", &0, &body, |_, _| Ok(()));
     body.source.instance = drop_instance;
 
@@ -1447,13 +1447,13 @@ pub(crate) fn mir_coroutine_witnesses<'tcx>(
     let body = &*body;
 
     // The first argument is the coroutine type passed by value
-    let gen_ty = body.local_decls[ty::CAPTURE_STRUCT_LOCAL].ty;
+    let coroutine_ty = body.local_decls[ty::CAPTURE_STRUCT_LOCAL].ty;
 
     // Get the interior types and args which typeck computed
-    let movable = match *gen_ty.kind() {
+    let movable = match *coroutine_ty.kind() {
         ty::Coroutine(_, _, movability) => movability == hir::Movability::Movable,
         ty::Error(_) => return None,
-        _ => span_bug!(body.span, "unexpected coroutine type {}", gen_ty),
+        _ => span_bug!(body.span, "unexpected coroutine type {}", coroutine_ty),
     };
 
     // When first entering the coroutine, move the resume argument into its new local.
@@ -1481,16 +1481,17 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
         assert!(body.coroutine_drop().is_none());
 
         // The first argument is the coroutine type passed by value
-        let gen_ty = body.local_decls.raw[1].ty;
+        let coroutine_ty = body.local_decls.raw[1].ty;
 
         // Get the discriminant type and args which typeck computed
-        let (discr_ty, movable) = match *gen_ty.kind() {
+        let (discr_ty, movable) = match *coroutine_ty.kind() {
             ty::Coroutine(_, args, movability) => {
                 let args = args.as_coroutine();
                 (args.discr_ty(tcx), movability == hir::Movability::Movable)
             }
             _ => {
-                tcx.sess.delay_span_bug(body.span, format!("unexpected coroutine type {gen_ty}"));
+                tcx.sess
+                    .delay_span_bug(body.span, format!("unexpected coroutine type {coroutine_ty}"));
                 return;
             }
         };
@@ -1626,7 +1627,7 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
         dump_mir(tcx, false, "coroutine_post-transform", &0, body, |_, _| Ok(()));
 
         // Create a copy of our MIR and use it to create the drop shim for the coroutine
-        let drop_shim = create_coroutine_drop_shim(tcx, &transform, gen_ty, body, drop_clean);
+        let drop_shim = create_coroutine_drop_shim(tcx, &transform, coroutine_ty, body, drop_clean);
 
         body.coroutine.as_mut().unwrap().coroutine_drop = Some(drop_shim);
 

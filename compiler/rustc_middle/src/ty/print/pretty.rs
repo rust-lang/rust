@@ -1053,7 +1053,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                         let term = if let Some(ty) = term.skip_binder().ty()
                             && let ty::Alias(ty::Projection, proj) = ty.kind()
                             && let Some(assoc) = tcx.opt_associated_item(proj.def_id)
-                            && assoc.trait_container(tcx) == tcx.lang_items().gen_trait()
+                            && assoc.trait_container(tcx) == tcx.lang_items().coroutine_trait()
                             && assoc.name == rustc_span::sym::Return
                         {
                             if let ty::Coroutine(_, args, _) = args.type_at(0).kind() {

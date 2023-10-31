@@ -1648,7 +1648,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     }
 
     fn describe_coroutine(&self, body_id: hir::BodyId) -> Option<&'static str> {
-        self.tcx.hir().body(body_id).coroutine_kind.map(|gen_kind| match gen_kind {
+        self.tcx.hir().body(body_id).coroutine_kind.map(|coroutine_source| match coroutine_source {
             hir::CoroutineKind::Coroutine => "a coroutine",
             hir::CoroutineKind::Async(hir::CoroutineSource::Block) => "an async block",
             hir::CoroutineKind::Async(hir::CoroutineSource::Fn) => "an async function",
@@ -3187,7 +3187,8 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         // traits manually, but don't make it more confusing when it does
         // happen.
         Some(
-            if Some(expected_trait_ref.def_id()) != self.tcx.lang_items().gen_trait() && not_tupled
+            if Some(expected_trait_ref.def_id()) != self.tcx.lang_items().coroutine_trait()
+                && not_tupled
             {
                 self.report_and_explain_type_error(
                     TypeTrace::poly_trait_refs(

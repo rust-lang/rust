@@ -302,8 +302,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let is_fn = tcx.is_fn_trait(trait_def_id);
 
-        let gen_trait = tcx.lang_items().gen_trait();
-        let is_gen = gen_trait == Some(trait_def_id);
+        let coroutine_trait = tcx.lang_items().coroutine_trait();
+        let is_gen = coroutine_trait == Some(trait_def_id);
 
         if !is_fn && !is_gen {
             debug!("not fn or coroutine");

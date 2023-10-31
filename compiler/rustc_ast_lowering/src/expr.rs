@@ -606,7 +606,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         closure_node_id: NodeId,
         ret_ty: Option<hir::FnRetTy<'hir>>,
         span: Span,
-        async_gen_kind: hir::CoroutineSource,
+        async_coroutine_source: hir::CoroutineSource,
         body: impl FnOnce(&mut Self) -> hir::Expr<'hir>,
     ) -> hir::ExprKind<'hir> {
         let output = ret_ty.unwrap_or_else(|| hir::FnRetTy::DefaultReturn(self.lower_span(span)));
@@ -645,7 +645,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let params = arena_vec![self; param];
 
         let body = self.lower_body(move |this| {
-            this.coroutine_kind = Some(hir::CoroutineKind::Async(async_gen_kind));
+            this.coroutine_kind = Some(hir::CoroutineKind::Async(async_coroutine_source));
 
             let old_ctx = this.task_context;
             this.task_context = Some(task_context_hid);
@@ -684,7 +684,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         closure_node_id: NodeId,
         _yield_ty: Option<hir::FnRetTy<'hir>>,
         span: Span,
-        gen_kind: hir::CoroutineSource,
+        coroutine_source: hir::CoroutineSource,
         body: impl FnOnce(&mut Self) -> hir::Expr<'hir>,
     ) -> hir::ExprKind<'hir> {
         let output = hir::FnRetTy::DefaultReturn(self.lower_span(span));
@@ -699,7 +699,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         });
 
         let body = self.lower_body(move |this| {
-            this.coroutine_kind = Some(hir::CoroutineKind::Gen(gen_kind));
+            this.coroutine_kind = Some(hir::CoroutineKind::Gen(coroutine_source));
 
             let res = body(this);
             (&[], res)

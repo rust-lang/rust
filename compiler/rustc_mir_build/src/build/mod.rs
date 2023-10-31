@@ -483,14 +483,14 @@ fn construct_fn<'tcx>(
     let arguments = &thir.params;
 
     let (yield_ty, return_ty) = if coroutine_kind.is_some() {
-        let gen_ty = arguments[thir::UPVAR_ENV_PARAM].ty;
-        let gen_sig = match gen_ty.kind() {
+        let coroutine_ty = arguments[thir::UPVAR_ENV_PARAM].ty;
+        let coroutine_sig = match coroutine_ty.kind() {
             ty::Coroutine(_, gen_args, ..) => gen_args.as_coroutine().sig(),
             _ => {
-                span_bug!(span, "coroutine w/o coroutine type: {:?}", gen_ty)
+                span_bug!(span, "coroutine w/o coroutine type: {:?}", coroutine_ty)
             }
         };
-        (Some(gen_sig.yield_ty), gen_sig.return_ty)
+        (Some(coroutine_sig.yield_ty), coroutine_sig.return_ty)
     } else {
         (None, fn_sig.output())
     };

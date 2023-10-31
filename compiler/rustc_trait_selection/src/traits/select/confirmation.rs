@@ -730,7 +730,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         debug!(?obligation, ?coroutine_def_id, ?args, "confirm_coroutine_candidate");
 
-        let gen_sig = args.as_coroutine().poly_sig();
+        let coroutine_sig = args.as_coroutine().poly_sig();
 
         // NOTE: The self-type is a coroutine type and hence is
         // in fact unparameterized (or at least does not reference any
@@ -745,7 +745,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             self.tcx(),
             obligation.predicate.def_id(),
             self_ty,
-            gen_sig,
+            coroutine_sig,
         )
         .map_bound(|(trait_ref, ..)| trait_ref);
 
@@ -769,13 +769,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         debug!(?obligation, ?coroutine_def_id, ?args, "confirm_future_candidate");
 
-        let gen_sig = args.as_coroutine().poly_sig();
+        let coroutine_sig = args.as_coroutine().poly_sig();
 
         let trait_ref = super::util::future_trait_ref_and_outputs(
             self.tcx(),
             obligation.predicate.def_id(),
             obligation.predicate.no_bound_vars().expect("future has no bound vars").self_ty(),
-            gen_sig,
+            coroutine_sig,
         )
         .map_bound(|(trait_ref, ..)| trait_ref);
 
