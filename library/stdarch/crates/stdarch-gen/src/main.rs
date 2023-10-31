@@ -1,7 +1,7 @@
 use self::Suffix::*;
 use self::TargetFeature::*;
 use std::env;
-use std::fmt;
+use std::fmt::{self, Write as _};
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::{self, BufReader};
@@ -1856,66 +1856,32 @@ fn gen_test(
             1 => type_to_global_type(out_t).to_string(),
             _ => format!("[{}; {}]", type_to_native_type(out_t), type_len(out_t)),
         };
-        let t = {
-            match para_num {
-                1 => {
-                    format!(
-                        r#"
-        let a{};
-        let e{};
-        let r: {} = transmute({}{}(transmute(a)));
-        assert_eq!(r, e);
-"#,
-                        values(in_t[0], &a),
-                        values(out_t, &e),
-                        r_type,
-                        name,
-                        const_value
-                    )
-                }
-                2 => {
-                    format!(
-                        r#"
-        let a{};
-        let b{};
-        let e{};
-        let r: {} = transmute({}{}(transmute(a), transmute(b)));
-        assert_eq!(r, e);
-"#,
-                        values(in_t[0], &a),
-                        values(in_t[1], &b),
-                        values(out_t, &e),
-                        r_type,
-                        name,
-                        const_value
-                    )
-                }
-                3 => {
-                    format!(
-                        r#"
-        let a{};
-        let b{};
-        let c{};
-        let e{};
-        let r: {} = transmute({}{}(transmute(a), transmute(b), transmute(c)));
-        assert_eq!(r, e);
-"#,
-                        values(in_t[0], &a),
-                        values(in_t[1], &b),
-                        values(in_t[2], &c),
-                        values(out_t, &e),
-                        r_type,
-                        name,
-                        const_value
-                    )
-                }
-                _ => {
-                    panic!("no support para_num:{}", para_num.to_string())
-                }
+        let mut call_params = String::new();
+        assert!(matches!(para_num, 1..=3));
+        for i in 0..para_num {
+            let chr = char::from(b'a' + i as u8);
+            let v = match i {
+                0 => &a,
+                1 => &b,
+                2 => &c,
+                _ => unreachable!(),
+            };
+            write!(test, "\n        let {chr}{};", values(in_t[i as usize], v)).unwrap();
+            if i != 0 {
+                call_params.push_str(", ");
             }
-        };
-
-        test.push_str(&t);
+            write!(call_params, "transmute({chr})").unwrap();
+        }
+        write!(
+            test,
+            r#"
+        let e{};
+        let r: {r_type} = transmute({name}{const_value}({call_params}));
+        assert_eq!(r, e);
+"#,
+            values(out_t, &e)
+        )
+        .unwrap();
     }
     test.push_str("    }\n");
     test
