@@ -520,11 +520,13 @@ impl<'tcx> Const<'tcx> {
                 // types are fine though.
                 ty::ConstKind::Value(_) => c.ty().is_primitive(),
                 ty::ConstKind::Unevaluated(..) | ty::ConstKind::Expr(..) => false,
+                // This can happen if evaluation of a constant failed. The result does not matter
+                // much since compilation is doomed.
+                ty::ConstKind::Error(..) => false,
                 // Should not appear in runtime MIR.
                 ty::ConstKind::Infer(..)
                 | ty::ConstKind::Bound(..)
-                | ty::ConstKind::Placeholder(..)
-                | ty::ConstKind::Error(..) => bug!(),
+                | ty::ConstKind::Placeholder(..) => bug!(),
             },
             Const::Unevaluated(..) => false,
             // If the same slice appears twice in the MIR, we cannot guarantee that we will
