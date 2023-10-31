@@ -115,6 +115,7 @@ fn test_expr() {
         "a + b * c - d + -1 * -2 - -3",
         "a + b * c - d + - 1 * - 2 - - 3"
     );
+    c2!(expr, [ x = !y ], "x = !y", "x =! y"); // FIXME
 
     // ExprKind::Unary
     c2!(expr, [ *expr ], "*expr", "* expr");
@@ -137,6 +138,7 @@ fn test_expr() {
 
     // ExprKind::If
     c1!(expr, [ if true {} ], "if true {}");
+    c2!(expr, [ if !true {} ], "if !true {}", "if! true {}"); // FIXME
     c2!(expr,
         [ if ::std::blah() { } else { } ],
         "if ::std::blah() {} else {}",
