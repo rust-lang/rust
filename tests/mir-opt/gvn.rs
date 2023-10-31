@@ -644,6 +644,27 @@ fn constant_index_overflow<T: Copy>(x: &[T]) {
     opaque(b)
 }
 
+fn wide_ptr_ops() {
+    let a: *const dyn Send = &1 as &dyn Send;
+    let b: *const dyn Send = &1 as &dyn Send;
+    let _val = a == b;
+    let _val = a != b;
+    let _val = a < b;
+    let _val = a <= b;
+    let _val = a > b;
+    let _val = a >= b;
+
+    let a: *const [u8] = unsafe { transmute((1usize, 1usize)) };
+    let b: *const [u8] = unsafe { transmute((1usize, 2usize)) };
+
+    opaque(!(a == b));
+    opaque(a != b);
+    opaque(a <= b);
+    opaque(a < b);
+    opaque(!(a >= b));
+    opaque(!(a > b));
+}
+
 fn main() {
     subexpression_elimination(2, 4, 5);
     wrap_unwrap(5);
@@ -664,6 +685,7 @@ fn main() {
     fn_pointers();
     indirect_static();
     constant_index_overflow(&[5, 3]);
+    wide_ptr_ops();
 }
 
 #[inline(never)]
@@ -692,3 +714,4 @@ fn identity<T>(x: T) -> T {
 // EMIT_MIR gvn.fn_pointers.GVN.diff
 // EMIT_MIR gvn.indirect_static.GVN.diff
 // EMIT_MIR gvn.constant_index_overflow.GVN.diff
+// EMIT_MIR gvn.wide_ptr_ops.GVN.diff

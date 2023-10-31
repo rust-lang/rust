@@ -953,8 +953,13 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
 
         let as_bits = |value| {
             let constant = self.evaluated[value].as_ref()?;
-            let scalar = self.ecx.read_scalar(constant).ok()?;
-            scalar.to_bits(constant.layout.size).ok()
+            if layout.abi.is_scalar() {
+                let scalar = self.ecx.read_scalar(constant).ok()?;
+                scalar.to_bits(constant.layout.size).ok()
+            } else {
+                // `constant` is a wide pointer. Do not evaluate to bits.
+                None
+            }
         };
 
         // Represent the values as `Ok(bits)` or `Err(VnIndex)`.
