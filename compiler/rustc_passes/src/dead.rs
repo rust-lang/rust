@@ -257,10 +257,10 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
 
         let mut current_ty = container;
 
-        for &index in indices {
+        for &(variant, field) in indices {
             match current_ty.kind() {
                 ty::Adt(def, subst) => {
-                    let field = &def.non_enum_variant().fields[index];
+                    let field = &def.variant(variant).fields[field];
 
                     self.insert_def_id(field.did);
                     let field_ty = field.ty(self.tcx, subst);
@@ -271,7 +271,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                 // but we may need to mark subfields
                 ty::Tuple(tys) => {
                     current_ty =
-                        self.tcx.normalize_erasing_regions(param_env, tys[index.as_usize()]);
+                        self.tcx.normalize_erasing_regions(param_env, tys[field.as_usize()]);
                 }
                 _ => span_bug!(expr.span, "named field access on non-ADT"),
             }

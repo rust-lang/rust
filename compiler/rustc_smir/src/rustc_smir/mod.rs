@@ -649,6 +649,13 @@ impl<'tcx> Stable<'tcx> for FieldIdx {
     }
 }
 
+impl<'tcx> Stable<'tcx> for (rustc_target::abi::VariantIdx, FieldIdx) {
+    type T = (usize, usize);
+    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
+        (self.0.as_usize(), self.1.as_usize())
+    }
+}
+
 impl<'tcx> Stable<'tcx> for mir::Operand<'tcx> {
     type T = stable_mir::mir::Operand;
     fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {

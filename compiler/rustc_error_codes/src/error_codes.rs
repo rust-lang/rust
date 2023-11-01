@@ -514,6 +514,7 @@ E0791: include_str!("./error_codes/E0791.md"),
 E0792: include_str!("./error_codes/E0792.md"),
 E0793: include_str!("./error_codes/E0793.md"),
 E0794: include_str!("./error_codes/E0794.md"),
+E0795: include_str!("./error_codes/E0795.md"),
 }
 
 // Undocumented removed error codes. Note that many removed error codes are kept in the list above

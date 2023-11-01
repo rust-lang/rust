@@ -275,7 +275,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     mir::NullOp::SizeOf => layout.size.bytes(),
                     mir::NullOp::AlignOf => layout.align.abi.bytes(),
                     mir::NullOp::OffsetOf(fields) => {
-                        layout.offset_of_subfield(self, fields.iter().map(|f| f.index())).bytes()
+                        layout.offset_of_subfield(self, fields.iter()).bytes()
                     }
                 };
                 self.write_scalar(Scalar::from_target_usize(val, self), &dest)?;

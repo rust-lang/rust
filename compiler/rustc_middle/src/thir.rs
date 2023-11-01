@@ -492,7 +492,7 @@ pub enum ExprKind<'tcx> {
     /// Field offset (`offset_of!`)
     OffsetOf {
         container: Ty<'tcx>,
-        fields: &'tcx List<FieldIdx>,
+        fields: &'tcx List<(VariantIdx, FieldIdx)>,
     },
     /// An expression taking a reference to a thread local.
     ThreadLocalRef(DefId),

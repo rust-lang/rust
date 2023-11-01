@@ -286,9 +286,9 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
                 let val = match null_op {
                     NullOp::SizeOf if layout.is_sized() => layout.size.bytes(),
                     NullOp::AlignOf if layout.is_sized() => layout.align.abi.bytes(),
-                    NullOp::OffsetOf(fields) => layout
-                        .offset_of_subfield(&self.ecx, fields.iter().map(|f| f.index()))
-                        .bytes(),
+                    NullOp::OffsetOf(fields) => {
+                        layout.offset_of_subfield(&self.ecx, fields.iter()).bytes()
+                    }
                     _ => return ValueOrPlace::Value(FlatSet::Top),
                 };
                 FlatSet::Elem(Scalar::from_target_usize(val, &self.tcx))

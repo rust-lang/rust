@@ -54,7 +54,7 @@ use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::source_map::{Span, Spanned};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_target::abi::FieldIdx;
+use rustc_target::abi::{FieldIdx, FIRST_VARIANT};
 use rustc_target::spec::abi::Abi::RustIntrinsic;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
@@ -3107,12 +3107,81 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let mut field_indices = Vec::with_capacity(fields.len());
         let mut current_container = container;
+        let mut fields = fields.into_iter();
 
-        for &field in fields {
+        while let Some(&field) = fields.next() {
             let container = self.structurally_resolve_type(expr.span, current_container);
 
             match container.kind() {
-                ty::Adt(container_def, args) if !container_def.is_enum() => {
+                ty::Adt(container_def, args) if container_def.is_enum() => {
+                    let block = self.tcx.hir().local_def_id_to_hir_id(self.body_id);
+                    let (ident, _def_scope) =
+                        self.tcx.adjust_ident_and_get_scope(field, container_def.did(), block);
+
+                    let Some((index, variant)) = container_def.variants()
+                        .iter_enumerated()
+                        .find(|(_, v)| v.ident(self.tcx).normalize_to_macros_2_0() == ident) else {
+                        let mut err = type_error_struct!(
+                            self.tcx().sess,
+                            ident.span,
+                            container,
+                            E0599,
+                            "no variant named `{ident}` found for enum `{container}`",
+                            );
+                        err.span_label(field.span, "variant not found");
+                        err.emit();
+                        break;
+                    };
+                    let Some(&subfield) = fields.next() else {
+                        let mut err = type_error_struct!(
+                            self.tcx().sess,
+                            ident.span,
+                            container,
+                            E0795,
+                            "`{ident}` is an enum variant; expected field at end of `offset_of`",
+                            );
+                        err.span_label(field.span, "enum variant");
+                        err.emit();
+                        break;
+                    };
+                    let (subident, sub_def_scope) =
+                        self.tcx.adjust_ident_and_get_scope(subfield, variant.def_id, block);
+
+                    let Some((subindex, field)) = variant.fields
+                        .iter_enumerated()
+                        .find(|(_, f)| f.ident(self.tcx).normalize_to_macros_2_0() == subident) else {
+                        let mut err = type_error_struct!(
+                            self.tcx().sess,
+                            ident.span,
+                            container,
+                            E0609,
+                            "no field named `{subfield}` on enum variant `{container}::{ident}`",
+                            );
+                        err.span_label(field.span, "this enum variant...");
+                        err.span_label(subident.span, "...does not have this field");
+                        err.emit();
+                        break;
+                    };
+
+                    let field_ty = self.field_ty(expr.span, field, args);
+
+                    // FIXME: DSTs with static alignment should be allowed
+                    self.require_type_is_sized(field_ty, expr.span, traits::MiscObligation);
+
+                    if field.vis.is_accessible_from(sub_def_scope, self.tcx) {
+                        self.tcx.check_stability(field.did, Some(expr.hir_id), expr.span, None);
+                    } else {
+                        self.private_field_err(ident, container_def.did()).emit();
+                    }
+
+                    // Save the index of all fields regardless of their visibility in case
+                    // of error recovery.
+                    field_indices.push((index, subindex));
+                    current_container = field_ty;
+
+                    continue;
+                }
+                ty::Adt(container_def, args) => {
                     let block = self.tcx.hir().local_def_id_to_hir_id(self.body_id);
                     let (ident, def_scope) =
                         self.tcx.adjust_ident_and_get_scope(field, container_def.did(), block);
@@ -3135,7 +3204,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                         // Save the index of all fields regardless of their visibility in case
                         // of error recovery.
-                        field_indices.push(index);
+                        field_indices.push((FIRST_VARIANT, index));
                         current_container = field_ty;
 
                         continue;
@@ -3149,7 +3218,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             self.require_type_is_sized(ty, expr.span, traits::MiscObligation);
                         }
                         if let Some(&field_ty) = tys.get(index) {
-                            field_indices.push(index.into());
+                            field_indices.push((FIRST_VARIANT, index.into()));
                             current_container = field_ty;
 
                             continue;

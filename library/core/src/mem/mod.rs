@@ -1292,11 +1292,15 @@ impl<T> SizedTypeProperties for T {}
 
 /// Expands to the offset in bytes of a field from the beginning of the given type.
 ///
-/// Only structs, unions and tuples are supported.
+/// Structs, enums, unions and tuples are supported.
 ///
 /// Nested field accesses may be used, but not array indexes like in `C`'s `offsetof`.
 ///
-/// Note that the output of this macro is not stable, except for `#[repr(C)]` types.
+/// Enum variants may be traversed as if they were fields. Variants themselves do
+/// not have an offset.
+///
+/// Note that type layout is, in general, [subject to change and
+/// platform-specific](https://doc.rust-lang.org/reference/type-layout.html).
 ///
 /// # Examples
 ///
@@ -1324,6 +1328,9 @@ impl<T> SizedTypeProperties for T {}
 /// struct NestedB(u8);
 ///
 /// assert_eq!(mem::offset_of!(NestedA, b.0), 0);
+///
+/// # #[cfg(not(bootstrap))]
+/// assert_eq!(mem::offset_of!(Option<&u8>, Some.0), 0);
 /// ```
 #[unstable(feature = "offset_of", issue = "106655")]
 #[allow_internal_unstable(builtin_syntax, hint_must_use)]

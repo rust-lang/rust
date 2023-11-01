@@ -516,7 +516,7 @@ pub enum NullOp {
     /// Returns the minimum alignment of a type.
     AlignOf,
     /// Returns the offset of a field.
-    OffsetOf(Vec<FieldIdx>),
+    OffsetOf(Vec<(VariantIdx, FieldIdx)>),
 }
 
 impl Operand {
