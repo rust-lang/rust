@@ -132,8 +132,8 @@ pub(super) fn op_to_const<'tcx>(
         // functionality.)
         _ => false,
     };
-    let immediate = if force_as_immediate {
-        Right(ecx.read_immediate(op).expect("normalization works on validated constants"))
+    let immediate = if force_as_immediate && let Ok(imm) = ecx.read_immediate(op) {
+        Right(imm)
     } else {
         op.as_mplace_or_imm()
     };
