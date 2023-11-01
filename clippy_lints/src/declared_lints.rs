@@ -274,6 +274,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::loops::NEVER_LOOP_INFO,
     crate::loops::SAME_ITEM_PUSH_INFO,
     crate::loops::SINGLE_ELEMENT_LOOP_INFO,
+    crate::loops::UNUSED_ENUMERATE_INDEX_INFO,
     crate::loops::WHILE_IMMUTABLE_CONDITION_INFO,
     crate::loops::WHILE_LET_LOOP_INFO,
     crate::loops::WHILE_LET_ON_ITERATOR_INFO,
