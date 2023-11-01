@@ -967,11 +967,12 @@ impl<'a> Parser<'a> {
 
             // check that a comma comes after every field
             if !ate_comma {
-                let err = ExpectedCommaAfterPatternField { span: self.token.span }
+                let mut err = ExpectedCommaAfterPatternField { span: self.token.span }
                     .into_diagnostic(&self.sess.span_diagnostic);
                 if let Some(mut delayed) = delayed_err {
                     delayed.emit();
                 }
+                self.recover_misplaced_pattern_modifiers(&fields, &mut err);
                 return Err(err);
             }
             ate_comma = false;
@@ -1107,6 +1108,37 @@ impl<'a> Parser<'a> {
             err.emit();
         }
         Ok((fields, etc))
+    }
+
+    /// If the user writes `S { ref field: name }` instead of `S { field: ref name }`, we suggest
+    /// the correct code.
+    fn recover_misplaced_pattern_modifiers(
+        &self,
+        fields: &ThinVec<PatField>,
+        err: &mut DiagnosticBuilder<'a, ErrorGuaranteed>,
+    ) {
+        if let Some(last) = fields.iter().last()
+            && last.is_shorthand
+            && let PatKind::Ident(binding, ident, None) = last.pat.kind
+            && binding != BindingAnnotation::NONE
+            && self.token == token::Colon
+            // We found `ref mut? ident:`, try to parse a `name,` or `name }`.
+            && let Some(name_span) = self.look_ahead(1, |t| t.is_ident().then(|| t.span))
+            && self.look_ahead(2, |t| {
+                t == &token::Comma || t == &token::CloseDelim(Delimiter::Brace)
+            })
+        {
+            let span = last.pat.span.with_hi(ident.span.lo());
+            // We have `S { ref field: name }` instead of `S { field: ref name }`
+            err.multipart_suggestion(
+                "the pattern modifiers belong after the `:`",
+                vec![
+                    (span, String::new()),
+                    (name_span.shrink_to_lo(), binding.prefix_str().to_string()),
+                ],
+                Applicability::MachineApplicable,
+            );
+        }
     }
 
     /// Recover on `...` or `_` as if it were `..` to avoid further errors.
