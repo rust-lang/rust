@@ -471,7 +471,7 @@ macro_rules! int_impl {
         )]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[rustc_const_unstable(feature = "const_inherent_unchecked_arith", issue = "85122")]
+        #[rustc_const_unstable(feature = "unchecked_math", issue = "85122")]
         #[inline(always)]
         #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
         pub const unsafe fn unchecked_add(self, rhs: Self) -> Self {
@@ -539,7 +539,7 @@ macro_rules! int_impl {
         )]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[rustc_const_unstable(feature = "const_inherent_unchecked_arith", issue = "85122")]
+        #[rustc_const_unstable(feature = "unchecked_math", issue = "85122")]
         #[inline(always)]
         #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
         pub const unsafe fn unchecked_sub(self, rhs: Self) -> Self {
@@ -607,7 +607,7 @@ macro_rules! int_impl {
         )]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[rustc_const_unstable(feature = "const_inherent_unchecked_arith", issue = "85122")]
+        #[rustc_const_unstable(feature = "unchecked_math", issue = "85122")]
         #[inline(always)]
         #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
         pub const unsafe fn unchecked_mul(self, rhs: Self) -> Self {
@@ -740,6 +740,31 @@ macro_rules! int_impl {
             if unlikely!(b) {None} else {Some(a)}
         }
 
+        /// Unchecked negation. Computes `-self`, assuming overflow cannot occur.
+        ///
+        /// # Safety
+        ///
+        /// This results in undefined behavior when
+        #[doc = concat!("`self == ", stringify!($SelfT), "::MIN`,")]
+        /// i.e. when [`checked_neg`] would return `None`.
+        ///
+        #[doc = concat!("[`checked_neg`]: ", stringify!($SelfT), "::checked_neg")]
+        #[unstable(
+            feature = "unchecked_neg",
+            reason = "niche optimization path",
+            issue = "85122",
+        )]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[rustc_const_unstable(feature = "unchecked_neg", issue = "85122")]
+        #[inline(always)]
+        #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+        pub const unsafe fn unchecked_neg(self) -> Self {
+            // SAFETY: the caller must uphold the safety contract for
+            // `unchecked_neg`.
+            unsafe { intrinsics::unchecked_sub(0, self) }
+        }
+
         /// Checked shift left. Computes `self << rhs`, returning `None` if `rhs` is larger
         /// than or equal to the number of bits in `self`.
         ///
@@ -772,13 +797,13 @@ macro_rules! int_impl {
         ///
         #[doc = concat!("[`checked_shl`]: ", stringify!($SelfT), "::checked_shl")]
         #[unstable(
-            feature = "unchecked_math",
+            feature = "unchecked_shifts",
             reason = "niche optimization path",
             issue = "85122",
         )]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[rustc_const_unstable(feature = "const_inherent_unchecked_arith", issue = "85122")]
+        #[rustc_const_unstable(feature = "unchecked_shifts", issue = "85122")]
         #[inline(always)]
         #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
         pub const unsafe fn unchecked_shl(self, rhs: u32) -> Self {
@@ -820,13 +845,13 @@ macro_rules! int_impl {
         ///
         #[doc = concat!("[`checked_shr`]: ", stringify!($SelfT), "::checked_shr")]
         #[unstable(
-            feature = "unchecked_math",
+            feature = "unchecked_shifts",
             reason = "niche optimization path",
             issue = "85122",
         )]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[rustc_const_unstable(feature = "const_inherent_unchecked_arith", issue = "85122")]
+        #[rustc_const_unstable(feature = "unchecked_shifts", issue = "85122")]
         #[inline(always)]
         #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
         pub const unsafe fn unchecked_shr(self, rhs: u32) -> Self {
@@ -1404,7 +1429,7 @@ macro_rules! int_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
-        #[rustc_allow_const_fn_unstable(const_inherent_unchecked_arith)]
+        #[rustc_allow_const_fn_unstable(unchecked_shifts)]
         pub const fn wrapping_shl(self, rhs: u32) -> Self {
             // SAFETY: the masking by the bitsize of the type ensures that we do not shift
             // out of bounds
@@ -1434,7 +1459,7 @@ macro_rules! int_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
-        #[rustc_allow_const_fn_unstable(const_inherent_unchecked_arith)]
+        #[rustc_allow_const_fn_unstable(unchecked_shifts)]
         pub const fn wrapping_shr(self, rhs: u32) -> Self {
             // SAFETY: the masking by the bitsize of the type ensures that we do not shift
             // out of bounds
