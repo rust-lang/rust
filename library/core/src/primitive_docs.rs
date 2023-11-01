@@ -868,6 +868,33 @@ mod prim_array {}
 /// * Further methods that return iterators are [`.split`], [`.splitn`],
 ///   [`.chunks`], [`.windows`] and more.
 ///
+/// ## Use in slice-based dynamically-sized types
+///
+/// Slices can be used to construct "slice-based dynamically-sized types", also
+/// known as "slice DSTs" or "custom DSTs":
+///
+/// ```rust
+/// struct SliceDst {
+///     a: u8,
+///     b: u16,
+///     c: [u32],
+/// }
+/// ```
+///
+/// Just like a slice, a slice DST is a `!Sized` type, and cannot be used by-value.
+/// References to slice DSTs encode the number of elements in the trailing slice
+/// field:
+///
+/// ```rust
+/// # struct SliceDst { a: u8, b: u16, c: [u32] }
+/// let pointer_size = std::mem::size_of::<&u8>();
+/// assert_eq!(2 * pointer_size, std::mem::size_of::<&SliceDst>());
+/// ```
+///
+/// Rust guarantees that, if a slice DST compiles successfully, then the instance
+/// of that type with 0 elements in its trailing slice is no more than `isize::MAX`
+/// bytes in size.
+///
 /// [`Hash`]: core::hash::Hash
 /// [`.iter`]: slice::iter
 /// [`.iter_mut`]: slice::iter_mut
