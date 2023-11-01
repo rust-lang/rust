@@ -526,6 +526,9 @@ parse_missing_fn_for_function_definition = missing `fn` for function definition
 parse_missing_fn_for_method_definition = missing `fn` for method definition
     .suggestion = add `fn` here to parse `{$ident}` as a public method
 
+parse_missing_fn_params = missing parameters for function definition
+    .suggestion = add a parameter list
+
 parse_missing_for_in_trait_impl = missing `for` in a trait impl
     .suggestion = add `for` here
 
