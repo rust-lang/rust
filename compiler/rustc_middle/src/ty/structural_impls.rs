@@ -420,7 +420,6 @@ TrivialLiftImpls! {
 // provide any traversal implementations, we need to provide a traversal
 // implementation (only for TyCtxt<'_> interners).
 TrivialTypeTraversalImpls! {
-    crate::mir::Local,
     crate::ty::BoundConstness,
     ::rustc_span::Span,
     ::rustc_errors::ErrorGuaranteed,
