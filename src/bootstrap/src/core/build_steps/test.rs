@@ -1433,24 +1433,16 @@ impl Step for Coverage {
     }
 
     fn run(self, builder: &Builder<'_>) {
-        builder.ensure(Compiletest {
-            compiler: self.compiler,
-            target: self.target,
-            mode: "coverage-map",
-            suite: "coverage-map",
-            path: "tests/coverage-map",
-            compare_mode: None,
-        });
+        self.run_unified_suite(builder, CoverageMap::MODE);
         self.run_unified_suite(builder, RunCoverage::MODE);
     }
 }
 
-default_test!(CoverageMap {
-    path: "tests/coverage-map",
-    mode: "coverage-map",
-    suite: "coverage-map"
+coverage_test_alias!(CoverageMap {
+    alias_and_mode: "coverage-map",
+    default: true,
+    only_hosts: false,
 });
-
 coverage_test_alias!(RunCoverage {
     alias_and_mode: "run-coverage",
     default: true,
