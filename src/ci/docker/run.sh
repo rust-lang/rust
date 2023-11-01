@@ -271,6 +271,7 @@ docker \
   run \
   --workdir /checkout/obj \
   --env SRC=/checkout \
+  --env "SKIP_CODEGEN_TESTS=$SKIP_CODEGEN_TESTS" \
   $args \
   --env CARGO_HOME=/cargo \
   --env DEPLOY \

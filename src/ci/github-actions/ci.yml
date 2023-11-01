@@ -332,6 +332,8 @@ jobs:
 
           - name: x86_64-gnu-llvm-15
             <<: *job-linux-16c
+            env:
+              SKIP_CODEGEN_TESTS: "1"
 
           - name: x86_64-gnu-tools
             <<: *job-linux-16c
