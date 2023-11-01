@@ -1423,7 +1423,7 @@ impl Step for Coverage {
     const ONLY_HOSTS: bool = false;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.alias(Self::SUITE)
+        run.suite_path(Self::PATH)
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1438,6 +1438,7 @@ impl Step for Coverage {
     }
 }
 
+// Aliases for running the coverage tests in only one mode.
 coverage_test_alias!(CoverageMap {
     alias_and_mode: "coverage-map",
     default: true,
