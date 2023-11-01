@@ -1,7 +1,7 @@
 // skip-filecheck
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 #![crate_type = "lib"]
-#![feature(unchecked_math)]
+#![feature(unchecked_shifts)]
 
 // ignore-debug: the debug assertions prevent the inlining we are testing for
 // compile-flags: -Zmir-opt-level=2 -Zinline-mir
