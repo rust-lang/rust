@@ -568,10 +568,11 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         &[
             &check_alignment::CheckAlignment,
             &lower_slice_len::LowerSliceLenCalls, // has to be done before inlining, otherwise actual call will be almost always inlined. Also simple, so can just do first
-            &unreachable_prop::UnreachablePropagation,
-            &uninhabited_enum_branching::UninhabitedEnumBranching,
-            &o1(simplify::SimplifyCfg::AfterUninhabitedEnumBranching),
             &inline::Inline,
+            // Substitutions during inlining may introduce switch on enums with uninhabited branches.
+            &uninhabited_enum_branching::UninhabitedEnumBranching,
+            &unreachable_prop::UnreachablePropagation,
+            &o1(simplify::SimplifyCfg::AfterUninhabitedEnumBranching),
             &remove_storage_markers::RemoveStorageMarkers,
             &remove_zsts::RemoveZsts,
             &normalize_array_len::NormalizeArrayLen, // has to run after `slice::len` lowering
