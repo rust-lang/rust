@@ -727,6 +727,7 @@ impl<'a> Builder<'a> {
                 test::Tidy,
                 test::Ui,
                 test::RunPassValgrind,
+                test::Coverage,
                 test::CoverageMap,
                 test::RunCoverage,
                 test::MirOpt,

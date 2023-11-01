@@ -1349,6 +1349,56 @@ host_test!(RunMakeFullDeps {
 
 default_test!(Assembly { path: "tests/assembly", mode: "assembly", suite: "assembly" });
 
+/// Custom test step that is responsible for running the coverage tests
+/// in multiple different modes.
+///
+/// Each individual mode also has its own alias that will run the tests in
+/// just that mode.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct Coverage {
+    pub compiler: Compiler,
+    pub target: TargetSelection,
+}
+
+impl Coverage {
+    const SUITE: &'static str = "coverage";
+}
+
+impl Step for Coverage {
+    type Output = ();
+    const DEFAULT: bool = false;
+    const ONLY_HOSTS: bool = false;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.alias(Self::SUITE)
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        let compiler = run.builder.compiler(run.builder.top_stage, run.build_triple());
+
+        run.builder.ensure(Coverage { compiler, target: run.target });
+    }
+
+    fn run(self, builder: &Builder<'_>) {
+        builder.ensure(Compiletest {
+            compiler: self.compiler,
+            target: self.target,
+            mode: "coverage-map",
+            suite: "coverage-map",
+            path: "tests/coverage-map",
+            compare_mode: None,
+        });
+        builder.ensure(Compiletest {
+            compiler: self.compiler,
+            target: self.target,
+            mode: "run-coverage",
+            suite: "run-coverage",
+            path: "tests/run-coverage",
+            compare_mode: None,
+        });
+    }
+}
+
 default_test!(CoverageMap {
     path: "tests/coverage-map",
     mode: "coverage-map",
