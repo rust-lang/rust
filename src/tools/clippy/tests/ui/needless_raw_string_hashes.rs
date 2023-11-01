@@ -1,6 +1,5 @@
 #![allow(clippy::no_effect, unused)]
 #![warn(clippy::needless_raw_string_hashes)]
-#![feature(c_str_literals)]
 
 fn main() {
     r#"\aaa"#;

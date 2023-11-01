@@ -1,8 +1,6 @@
 // run-pass
 // edition: 2021
 
-#![feature(c_str_literals)]
-
 fn main() {
     assert_eq!(
         c"\xEF\x80🦀\u{1F980}".to_bytes_with_nul(),
