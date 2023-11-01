@@ -7,6 +7,7 @@ use crate::hint;
 use crate::intrinsics;
 use crate::mem;
 use crate::ops::{Add, Mul, Sub};
+use crate::panic::debug_assert_nounwind;
 use crate::str::FromStr;
 
 // Used because the `?` operator is not allowed in a const context.

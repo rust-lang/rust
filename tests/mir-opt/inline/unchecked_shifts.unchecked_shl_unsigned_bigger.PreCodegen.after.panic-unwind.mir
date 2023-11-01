@@ -7,16 +7,47 @@ fn unchecked_shl_unsigned_bigger(_1: u64, _2: u32) -> u64 {
     scope 1 (inlined core::num::<impl u64>::unchecked_shl) {
         debug self => _1;
         debug rhs => _2;
-        let mut _3: u64;
+        let mut _3: bool;
+        let mut _4: bool;
+        let _5: !;
         scope 2 {
+            scope 3 {
+                debug lhs => _1;
+                let _6: u64;
+                scope 4 {
+                    debug rhs => _6;
+                }
+            }
         }
     }
 
     bb0: {
+        StorageLive(_6);
         StorageLive(_3);
-        _3 = _2 as u64 (IntToInt);
-        _0 = ShlUnchecked(_1, move _3);
+        _3 = cfg!(debug_assertions);
+        switchInt(move _3) -> [0: bb4, otherwise: bb1];
+    }
+
+    bb1: {
+        StorageLive(_4);
+        _4 = Lt(_2, const _);
+        switchInt(move _4) -> [0: bb2, otherwise: bb3];
+    }
+
+    bb2: {
+        _5 = core::panicking::panic_nounwind(const "u64::unchecked_shl cannot overflow") -> unwind unreachable;
+    }
+
+    bb3: {
+        StorageDead(_4);
+        goto -> bb4;
+    }
+
+    bb4: {
         StorageDead(_3);
+        _6 = _2 as u64 (IntToInt);
+        _0 = ShlUnchecked(_1, _6);
+        StorageDead(_6);
         return;
     }
 }

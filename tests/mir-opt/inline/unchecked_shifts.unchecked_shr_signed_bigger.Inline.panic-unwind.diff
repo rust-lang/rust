@@ -10,8 +10,17 @@
 +     scope 1 (inlined core::num::<impl i64>::unchecked_shr) {
 +         debug self => _3;
 +         debug rhs => _4;
-+         let mut _5: i64;
++         let mut _5: bool;
++         let mut _6: bool;
++         let _7: !;
 +         scope 2 {
++             scope 3 {
++                 debug lhs => _3;
++                 let _8: i64;
++                 scope 4 {
++                     debug rhs => _8;
++                 }
++             }
 +         }
 +     }
   
@@ -21,13 +30,34 @@
           StorageLive(_4);
           _4 = _2;
 -         _0 = core::num::<impl i64>::unchecked_shr(move _3, move _4) -> [return: bb1, unwind continue];
--     }
-- 
--     bb1: {
++         StorageLive(_7);
++         StorageLive(_8);
 +         StorageLive(_5);
-+         _5 = _4 as i64 (IntToInt);
-+         _0 = ShrUnchecked(_3, move _5);
++         _5 = cfg!(debug_assertions);
++         switchInt(move _5) -> [0: bb4, otherwise: bb1];
+      }
+  
+      bb1: {
++         StorageLive(_6);
++         _6 = Lt(_4, const _);
++         switchInt(move _6) -> [0: bb3, otherwise: bb2];
++     }
++ 
++     bb2: {
++         StorageDead(_6);
++         goto -> bb4;
++     }
++ 
++     bb3: {
++         _7 = core::panicking::panic_nounwind(const "i64::unchecked_shr cannot overflow") -> unwind unreachable;
++     }
++ 
++     bb4: {
 +         StorageDead(_5);
++         _8 = _4 as i64 (IntToInt);
++         _0 = ShrUnchecked(_3, _8);
++         StorageDead(_8);
++         StorageDead(_7);
           StorageDead(_4);
           StorageDead(_3);
           return;

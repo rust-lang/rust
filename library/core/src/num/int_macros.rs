@@ -510,9 +510,15 @@ macro_rules! int_impl {
         #[inline(always)]
         #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
         pub const unsafe fn unchecked_add(self, rhs: Self) -> Self {
-            // SAFETY: the caller must uphold the safety contract for
-            // `unchecked_add`.
-            unsafe { intrinsics::unchecked_add(self, rhs) }
+            debug_assert_nounwind!(
+                !self.overflowing_add(rhs).1,
+                concat!(stringify!($SelfT), "::unchecked_add cannot overflow"),
+            );
+            // SAFETY: this is guaranteed to be safe by the caller.
+            unsafe {
+                let lhs = self;
+                intrinsics::unchecked_add(lhs, rhs)
+            }
         }
 
         /// Checked addition with an unsigned integer. Computes `self + rhs`,
@@ -648,9 +654,15 @@ macro_rules! int_impl {
         #[inline(always)]
         #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
         pub const unsafe fn unchecked_sub(self, rhs: Self) -> Self {
-            // SAFETY: the caller must uphold the safety contract for
-            // `unchecked_sub`.
-            unsafe { intrinsics::unchecked_sub(self, rhs) }
+            debug_assert_nounwind!(
+                !self.overflowing_sub(rhs).1,
+                concat!(stringify!($SelfT), "::unchecked_sub cannot overflow"),
+            );
+            // SAFETY: this is guaranteed to be safe by the caller.
+            unsafe {
+                let lhs = self;
+                intrinsics::unchecked_sub(lhs, rhs)
+            }
         }
 
         /// Checked subtraction with an unsigned integer. Computes `self - rhs`,
@@ -786,9 +798,15 @@ macro_rules! int_impl {
         #[inline(always)]
         #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
         pub const unsafe fn unchecked_mul(self, rhs: Self) -> Self {
-            // SAFETY: the caller must uphold the safety contract for
-            // `unchecked_mul`.
-            unsafe { intrinsics::unchecked_mul(self, rhs) }
+            debug_assert_nounwind!(
+                !self.overflowing_mul(rhs).1,
+                concat!(stringify!($SelfT), "::unchecked_mul cannot overflow"),
+            );
+            // SAFETY: this is guaranteed to be safe by the caller.
+            unsafe {
+                let lhs = self;
+                intrinsics::unchecked_mul(lhs, rhs)
+            }
         }
 
         /// Checked integer division. Computes `self / rhs`, returning `None` if `rhs == 0`
@@ -1125,9 +1143,15 @@ macro_rules! int_impl {
         #[inline(always)]
         #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
         pub const unsafe fn unchecked_neg(self) -> Self {
-            // SAFETY: the caller must uphold the safety contract for
-            // `unchecked_neg`.
-            unsafe { intrinsics::unchecked_sub(0, self) }
+            debug_assert_nounwind!(
+                !self.overflowing_neg().1,
+                concat!(stringify!($SelfT), "::unchecked_neg cannot overflow"),
+            );
+            // SAFETY: this is guaranteed to be safe by the caller.
+            unsafe {
+                let n = self;
+                intrinsics::unchecked_sub(0, n)
+            }
         }
 
         /// Strict negation. Computes `-self`, panicking if `self == MIN`.
@@ -1179,7 +1203,7 @@ macro_rules! int_impl {
         #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.47.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[inline]
+        #[inline(always)]
         pub const fn checked_shl(self, rhs: u32) -> Option<Self> {
             let (a, b) = self.overflowing_shl(rhs);
             if unlikely!(b) { None } else { Some(a) }
@@ -1241,10 +1265,17 @@ macro_rules! int_impl {
         #[inline(always)]
         #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
         pub const unsafe fn unchecked_shl(self, rhs: u32) -> Self {
-            // SAFETY: the caller must uphold the safety contract for
-            // `unchecked_shl`.
+            debug_assert_nounwind!(
+                rhs < Self::BITS,
+                concat!(stringify!($SelfT), "::unchecked_shl cannot overflow"),
+            );
+            // SAFETY: this is guaranteed to be safe by the caller.
             // Any legal shift amount is losslessly representable in the self type.
-            unsafe { intrinsics::unchecked_shl(self, conv_rhs_for_unchecked_shift!($SelfT, rhs)) }
+            unsafe {
+                let lhs = self;
+                let rhs = conv_rhs_for_unchecked_shift!($SelfT, rhs);
+                intrinsics::unchecked_shl(lhs, rhs)
+            }
         }
 
         /// Checked shift right. Computes `self >> rhs`, returning `None` if `rhs` is
@@ -1262,7 +1293,7 @@ macro_rules! int_impl {
         #[rustc_const_stable(feature = "const_checked_int_methods", since = "1.47.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
-        #[inline]
+        #[inline(always)]
         pub const fn checked_shr(self, rhs: u32) -> Option<Self> {
             let (a, b) = self.overflowing_shr(rhs);
             if unlikely!(b) { None } else { Some(a) }
@@ -1324,10 +1355,17 @@ macro_rules! int_impl {
         #[inline(always)]
         #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
         pub const unsafe fn unchecked_shr(self, rhs: u32) -> Self {
-            // SAFETY: the caller must uphold the safety contract for
-            // `unchecked_shr`.
+            debug_assert_nounwind!(
+                rhs < Self::BITS,
+                concat!(stringify!($SelfT), "::unchecked_shr cannot overflow"),
+            );
+            // SAFETY: this is guaranteed to be safe by the caller.
             // Any legal shift amount is losslessly representable in the self type.
-            unsafe { intrinsics::unchecked_shr(self, conv_rhs_for_unchecked_shift!($SelfT, rhs)) }
+            unsafe {
+                let lhs = self;
+                let rhs = conv_rhs_for_unchecked_shift!($SelfT, rhs);
+                intrinsics::unchecked_shr(lhs, rhs)
+            }
         }
 
         /// Checked absolute value. Computes `self.abs()`, returning `None` if
@@ -1991,7 +2029,10 @@ macro_rules! int_impl {
             // SAFETY: the masking by the bitsize of the type ensures that we do not shift
             // out of bounds
             unsafe {
-                self.unchecked_shl(rhs & (Self::BITS - 1))
+                // FIXME: we can't optimize out the extra check here,
+                // so, we can't just call the method for now
+                let rhs = conv_rhs_for_unchecked_shift!($SelfT, rhs & (Self::BITS - 1));
+                intrinsics::unchecked_shl(self, rhs)
             }
         }
 
@@ -2021,7 +2062,10 @@ macro_rules! int_impl {
             // SAFETY: the masking by the bitsize of the type ensures that we do not shift
             // out of bounds
             unsafe {
-                self.unchecked_shr(rhs & (Self::BITS - 1))
+                // FIXME: we can't optimize out the extra check here,
+                // so, we can't just call the method for now
+                let rhs = conv_rhs_for_unchecked_shift!($SelfT, rhs & (Self::BITS - 1));
+                intrinsics::unchecked_shr(self, rhs)
             }
         }
 

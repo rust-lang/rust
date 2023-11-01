@@ -167,7 +167,7 @@ pub macro debug_assert_nounwind {
             }
         }
     },
-    ($cond:expr, $message:expr) => {
+    ($cond:expr, $message:expr $(,)?) => {
         if $crate::intrinsics::debug_assertions() {
             if !$cond {
                 $crate::panicking::panic_nounwind($message);

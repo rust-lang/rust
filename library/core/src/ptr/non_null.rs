@@ -702,7 +702,7 @@ impl<T: ?Sized> NonNull<T> {
     #[rustc_const_unstable(feature = "non_null_convenience", issue = "117691")]
     #[must_use = "returns a new pointer rather than modifying its argument"]
     // We could always go back to wrapping if unchecked becomes unacceptable
-    #[rustc_allow_const_fn_unstable(const_int_unchecked_arith)]
+    #[rustc_allow_const_fn_unstable(unchecked_math)]
     #[inline(always)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn sub(self, count: usize) -> Self
@@ -716,7 +716,10 @@ impl<T: ?Sized> NonNull<T> {
             // SAFETY: the caller must uphold the safety contract for `offset`.
             // Because the pointee is *not* a ZST, that means that `count` is
             // at most `isize::MAX`, and thus the negation cannot overflow.
-            unsafe { self.offset(intrinsics::unchecked_sub(0, count as isize)) }
+            // FIXME: replacing unchecked_sub with unchecked_neg and replacing the
+            // unchecked_math flag with unchecked_neg will anger the UnstableInStable lint
+            // and I cannot for the life of me understand why
+            unsafe { self.offset(0isize.unchecked_sub(count as isize)) }
         }
     }
 

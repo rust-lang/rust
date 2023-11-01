@@ -8,20 +8,51 @@ fn unchecked_shr_signed_smaller(_1: i16, _2: u32) -> i16 {
         debug self => _1;
         debug rhs => _2;
         let mut _3: bool;
-        let mut _4: i16;
+        let mut _4: bool;
+        let _5: !;
+        let mut _6: bool;
         scope 2 {
+            scope 3 {
+                debug lhs => _1;
+                let _7: i16;
+                scope 4 {
+                    debug rhs => _7;
+                }
+            }
         }
     }
 
     bb0: {
-        StorageLive(_4);
+        StorageLive(_7);
         StorageLive(_3);
-        _3 = Le(_2, const 32767_u32);
-        assume(move _3);
-        StorageDead(_3);
-        _4 = _2 as i16 (IntToInt);
-        _0 = ShrUnchecked(_1, move _4);
+        _3 = cfg!(debug_assertions);
+        switchInt(move _3) -> [0: bb4, otherwise: bb1];
+    }
+
+    bb1: {
+        StorageLive(_4);
+        _4 = Lt(_2, const _);
+        switchInt(move _4) -> [0: bb2, otherwise: bb3];
+    }
+
+    bb2: {
+        _5 = core::panicking::panic_nounwind(const "i16::unchecked_shr cannot overflow") -> unwind unreachable;
+    }
+
+    bb3: {
         StorageDead(_4);
+        goto -> bb4;
+    }
+
+    bb4: {
+        StorageDead(_3);
+        StorageLive(_6);
+        _6 = Le(_2, const 32767_u32);
+        assume(move _6);
+        StorageDead(_6);
+        _7 = _2 as i16 (IntToInt);
+        _0 = ShrUnchecked(_1, _7);
+        StorageDead(_7);
         return;
     }
 }
