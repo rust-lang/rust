@@ -1,4 +1,3 @@
-// skip-filecheck
 // ignore-endian-big
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 // ignore-debug MIR alignment checks in std alter the diff, breaking the test
@@ -6,5 +5,7 @@
 
 // EMIT_MIR inline_into_box_place.main.Inline.diff
 fn main() {
+    // CHECK-LABEL: fn main(
+    // CHECK: (inlined Box::<Vec<u32>>::new)
     let _x: Box<Vec<u32>> = Box::new(Vec::new());
 }
