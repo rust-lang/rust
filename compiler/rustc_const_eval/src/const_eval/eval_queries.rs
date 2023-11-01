@@ -106,6 +106,11 @@ pub(crate) fn mk_eval_cx<'mir, 'tcx>(
 }
 
 /// This function converts an interpreter value into a MIR constant.
+///
+/// The `for_diagnostics` flag turns the usual rules for returning `ConstValue::Scalar` into a
+/// best-effort attempt. This is not okay for use in const-eval sine it breaks invariants rustc
+/// relies on, but it is okay for diagnostics which will just give up gracefully when they
+/// encounter an `Indirect` they cannot handle.
 #[instrument(skip(ecx), level = "debug")]
 pub(super) fn op_to_const<'tcx>(
     ecx: &CompileTimeEvalContext<'_, 'tcx>,
