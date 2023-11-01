@@ -158,7 +158,6 @@ pub trait Sized {
 /// - Types implementing a trait `Trait` also implement `Unsize<dyn Trait>`.
 /// - Structs `Foo<..., T, ...>` implement `Unsize<Foo<..., U, ...>>` if all of these conditions
 ///   are met:
-///   - `T: Unsize<U>`.
 ///   - Only the last field of `Foo` has a type involving `T`.
 ///   - `Bar<T>: Unsize<Bar<U>>`, where `Bar<T>` stands for the actual type of that last field.
 ///
