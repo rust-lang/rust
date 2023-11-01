@@ -333,45 +333,6 @@ impl BasicCoverageBlockData {
     }
 }
 
-/// Represents a successor from a branching BasicCoverageBlock (such as the arms of a `SwitchInt`)
-/// as either the successor BCB itself, if it has only one incoming edge, or the successor _plus_
-/// the specific branching BCB, representing the edge between the two. The latter case
-/// distinguishes this incoming edge from other incoming edges to the same `target_bcb`.
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub(super) struct BcbBranch {
-    pub edge_from_bcb: Option<BasicCoverageBlock>,
-    pub target_bcb: BasicCoverageBlock,
-}
-
-impl BcbBranch {
-    pub fn from_to(
-        from_bcb: BasicCoverageBlock,
-        to_bcb: BasicCoverageBlock,
-        basic_coverage_blocks: &CoverageGraph,
-    ) -> Self {
-        let edge_from_bcb = if basic_coverage_blocks.bcb_has_multiple_in_edges(from_bcb) {
-            Some(from_bcb)
-        } else {
-            None
-        };
-        Self { edge_from_bcb, target_bcb: to_bcb }
-    }
-
-    pub fn is_only_path_to_target(&self) -> bool {
-        self.edge_from_bcb.is_none()
-    }
-}
-
-impl std::fmt::Debug for BcbBranch {
-    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if let Some(from_bcb) = self.edge_from_bcb {
-            write!(fmt, "{:?}->{:?}", from_bcb, self.target_bcb)
-        } else {
-            write!(fmt, "{:?}", self.target_bcb)
-        }
-    }
-}
-
 // Returns the subset of a block's successors that are relevant to the coverage
 // graph, i.e. those that do not represent unwinds or unreachable branches.
 // FIXME(#78544): MIR InstrumentCoverage: Improve coverage of `#[should_panic]` tests and
