@@ -422,7 +422,6 @@ TrivialLiftImpls! {
 TrivialTypeTraversalImpls! {
     crate::ty::BoundConstness,
     ::rustc_span::Span,
-    ::rustc_errors::ErrorGuaranteed,
 }
 // For some things about which the type library does not know, or does not
 // provide any traversal implementations, we need to provide a traversal

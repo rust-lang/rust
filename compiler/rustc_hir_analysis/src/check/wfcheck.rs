@@ -128,8 +128,7 @@ where
 
     let outlives_env = OutlivesEnvironment::with_bounds(param_env, implied_bounds);
 
-    wfcx.ocx.resolve_regions_and_report_errors(body_def_id, &outlives_env)?;
-    infcx.tainted_by_errors().error_reported()
+    wfcx.ocx.resolve_regions_and_report_errors(body_def_id, &outlives_env)
 }
 
 fn check_well_formed(tcx: TyCtxt<'_>, def_id: hir::OwnerId) -> Result<(), ErrorGuaranteed> {
