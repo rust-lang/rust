@@ -2465,9 +2465,9 @@ dependencies = [
 
 [[package]]
 name = "minifier"
-version = "0.2.3"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5394aa376422b4b2b6c02fd9cfcb657e4ec544ae98e43d7d5d785fd0d042fd6d"
+checksum = "95bbbf96b9ac3482c2a25450b67a15ed851319bc5fabf3b40742ea9066e84282"
 
 [[package]]
 name = "minimal-lexical"
