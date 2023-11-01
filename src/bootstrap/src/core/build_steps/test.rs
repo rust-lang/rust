@@ -1441,14 +1441,7 @@ impl Step for Coverage {
             path: "tests/coverage-map",
             compare_mode: None,
         });
-        builder.ensure(Compiletest {
-            compiler: self.compiler,
-            target: self.target,
-            mode: "run-coverage",
-            suite: "run-coverage",
-            path: "tests/run-coverage",
-            compare_mode: None,
-        });
+        self.run_unified_suite(builder, RunCoverage::MODE);
     }
 }
 
@@ -1458,7 +1451,12 @@ default_test!(CoverageMap {
     suite: "coverage-map"
 });
 
-host_test!(RunCoverage { path: "tests/run-coverage", mode: "run-coverage", suite: "run-coverage" });
+coverage_test_alias!(RunCoverage {
+    alias_and_mode: "run-coverage",
+    default: true,
+    only_hosts: true,
+});
+
 host_test!(RunCoverageRustdoc {
     path: "tests/run-coverage-rustdoc",
     mode: "run-coverage",
