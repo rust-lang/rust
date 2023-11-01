@@ -35,10 +35,12 @@
       bb2: {
           _1 = const 1_i32;
           _0 = const ();
+          StorageDead(_3);
           goto -> bb4;
       }
   
       bb3: {
+          StorageDead(_3);
           StorageLive(_7);
           _0 = const ();
           StorageDead(_7);
@@ -46,7 +48,6 @@
       }
   
       bb4: {
-          StorageDead(_3);
           StorageDead(_1);
           return;
       }

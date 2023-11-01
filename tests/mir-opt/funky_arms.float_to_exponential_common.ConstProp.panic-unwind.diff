@@ -87,10 +87,12 @@
       bb5: {
           StorageDead(_12);
           StorageDead(_11);
+          StorageDead(_6);
           goto -> bb8;
       }
   
       bb6: {
+          StorageDead(_6);
           StorageLive(_18);
           _18 = _5;
           _0 = float_to_exponential_common_shortest::<T>(_1, _2, move _18, _3) -> [return: bb7, unwind continue];
@@ -104,7 +106,6 @@
       bb8: {
           StorageDead(_5);
           StorageDead(_4);
-          StorageDead(_6);
           return;
       }
   }

@@ -27,16 +27,17 @@
           _5 = ((_2 as Some).0: usize);
           _0 = _5;
           StorageDead(_5);
+          StorageDead(_2);
           goto -> bb3;
       }
   
       bb2: {
+          StorageDead(_2);
           _0 = const 0_usize;
           goto -> bb3;
       }
   
       bb3: {
-          StorageDead(_2);
           return;
       }
   }

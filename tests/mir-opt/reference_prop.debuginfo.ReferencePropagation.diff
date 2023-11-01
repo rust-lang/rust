@@ -127,17 +127,19 @@
           StorageDead(_21);
           StorageDead(_20);
           StorageDead(_19);
+-         StorageDead(_12);
+-         StorageDead(_11);
           goto -> bb8;
       }
   
       bb7: {
+-         StorageDead(_12);
+-         StorageDead(_11);
 -         _10 = const ();
           goto -> bb8;
       }
   
       bb8: {
--         StorageDead(_12);
--         StorageDead(_11);
 -         StorageDead(_10);
           StorageLive(_22);
           StorageLive(_23);

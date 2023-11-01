@@ -56,9 +56,9 @@
       }
   
       bb6: {
+          StorageDead(_2);
           _0 = const ();
           StorageDead(_1);
-          StorageDead(_2);
           return;
       }
   }
