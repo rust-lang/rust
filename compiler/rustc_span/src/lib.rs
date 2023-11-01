@@ -4,10 +4,12 @@
 //!
 //! - the *span*, represented by [`SpanData`] and related types;
 //! - source code as represented by a [`SourceMap`]; and
-//! - interned strings, represented by [`Symbol`]s, with some common symbols available statically in the [`sym`] module.
+//! - interned strings, represented by [`Symbol`]s, with some common symbols available statically
+//!   in the [`sym`] module.
 //!
-//! Unlike most compilers, the span contains not only the position in the source code, but also various other metadata,
-//! such as the edition and macro hygiene. This metadata is stored in [`SyntaxContext`] and [`ExpnData`].
+//! Unlike most compilers, the span contains not only the position in the source code, but also
+//! various other metadata, such as the edition and macro hygiene. This metadata is stored in
+//! [`SyntaxContext`] and [`ExpnData`].
 //!
 //! ## Note
 //!
@@ -179,8 +181,7 @@ scoped_tls::scoped_thread_local!(static SESSION_GLOBALS: SessionGlobals);
 
 // FIXME: We should use this enum or something like it to get rid of the
 // use of magic `/rust/1.x/...` paths across the board.
-#[derive(Debug, Eq, PartialEq, Clone, Ord, PartialOrd)]
-#[derive(Decodable)]
+#[derive(Debug, Eq, PartialEq, Clone, Ord, PartialOrd, Decodable)]
 pub enum RealFileName {
     LocalPath(PathBuf),
     /// For remapped paths (namely paths into libstd that have been mapped
@@ -217,8 +218,8 @@ impl<S: Encoder> Encodable<S> for RealFileName {
 
             RealFileName::Remapped { ref local_path, ref virtual_name } => encoder
                 .emit_enum_variant(1, |encoder| {
-                    // For privacy and build reproducibility, we must not embed host-dependant path in artifacts
-                    // if they have been remapped by --remap-path-prefix
+                    // For privacy and build reproducibility, we must not embed host-dependant path
+                    // in artifacts if they have been remapped by --remap-path-prefix
                     assert!(local_path.is_none());
                     local_path.encode(encoder);
                     virtual_name.encode(encoder);
@@ -1529,7 +1530,8 @@ impl SourceFile {
         })
     }
 
-    /// This converts the `lines` field to contain `SourceFileLines::Lines` if needed and freezes it.
+    /// This converts the `lines` field to contain `SourceFileLines::Lines` if needed and freezes
+    /// it.
     fn convert_diffs_to_lines_frozen(&self) {
         let mut guard = if let Some(guard) = self.lines.try_write() { guard } else { return };
 
@@ -2267,7 +2269,8 @@ impl<E: rustc_serialize::Encoder> Encodable<E> for ErrorGuaranteed {
     #[inline]
     fn encode(&self, _e: &mut E) {
         panic!(
-            "should never serialize an `ErrorGuaranteed`, as we do not write metadata or incremental caches in case errors occurred"
+            "should never serialize an `ErrorGuaranteed`, as we do not write metadata or \
+            incremental caches in case errors occurred"
         )
     }
 }
