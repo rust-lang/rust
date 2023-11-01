@@ -954,7 +954,7 @@ impl Span {
     /// Produces a span with the same location as `self` and context produced by a macro with the
     /// given ID and transparency, assuming that macro was defined directly and not produced by
     /// some other macro (which is the case for built-in and procedural macros).
-    pub fn with_ctxt_from_mark(self, expn_id: ExpnId, transparency: Transparency) -> Span {
+    fn with_ctxt_from_mark(self, expn_id: ExpnId, transparency: Transparency) -> Span {
         self.with_ctxt(SyntaxContext::root().apply_mark(expn_id, transparency))
     }
 
