@@ -339,10 +339,11 @@ impl<'tcx> NonConstOp<'tcx> for FnCallUnstable {
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let FnCallUnstable(def_id, feature) = *self;
 
-        let mut err = ccx
-            .tcx
-            .sess
-            .create_err(errors::UnstableConstFn { span, def_path: ccx.tcx.def_path_str(def_id) });
+        let mut err = ccx.tcx.sess.create_err(errors::UnstableConstFn {
+            span,
+            def_path: ccx.tcx.def_path_str(def_id),
+            declared: ccx.tcx.def_span(def_id),
+        });
 
         if ccx.is_const_stable_const_fn() {
             err.help("const-stable functions can only call other const-stable functions");

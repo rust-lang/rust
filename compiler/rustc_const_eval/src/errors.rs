@@ -129,6 +129,9 @@ pub(crate) struct UnstableConstFn {
     #[primary_span]
     pub span: Span,
     pub def_path: String,
+
+    #[label(const_eval_declared_here)]
+    pub declared: Span,
 }
 
 #[derive(Diagnostic)]
