@@ -591,13 +591,14 @@ fn fn_abi_adjust_for_abi<'tcx>(
 
                 _ => return,
             }
-            // `Aggregate` ABI must be adjusted to ensure that ABI-compatible Rust types are passed
-            // the same way.
+            // Compute `Aggregate` ABI.
+
+            let is_indirect_not_on_stack =
+                matches!(arg.mode, PassMode::Indirect { on_stack: false, .. });
+            assert!(is_indirect_not_on_stack, "{:?}", arg);
 
             let size = arg.layout.size;
-            if arg.layout.is_unsized() || size > Pointer(AddressSpace::DATA).size(cx) {
-                arg.make_indirect();
-            } else {
+            if !arg.layout.is_unsized() && size <= Pointer(AddressSpace::DATA).size(cx) {
                 // We want to pass small aggregates as immediates, but using
                 // an LLVM aggregate type for this leads to bad optimizations,
                 // so we pick an appropriately sized integer type instead.
