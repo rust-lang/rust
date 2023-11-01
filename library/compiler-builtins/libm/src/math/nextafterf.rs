@@ -23,7 +23,7 @@ pub fn nextafterf(x: f32, y: f32) -> f32 {
         ux_i += 1;
     }
 
-    let e = ux_i.wrapping_shr(0x7f80_0000_u32);
+    let e = ux_i & 0x7f80_0000_u32;
     // raise overflow if ux_f is infinite and x is finite
     if e == 0x7f80_0000_u32 {
         force_eval!(x + x);
