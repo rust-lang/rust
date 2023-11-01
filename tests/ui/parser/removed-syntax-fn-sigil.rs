@@ -1,3 +1,4 @@
 fn main() {
-    let x: fn~() = || (); //~ ERROR expected `(`, found `~`
+    let x: fn~() = || (); //~ ERROR missing parameters for function definition
+    //~| ERROR expected one of `->`, `;`, or `=`, found `~`
 }

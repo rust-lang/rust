@@ -2499,6 +2499,16 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_fn_params(&mut self, req_name: ReqName) -> PResult<'a, ThinVec<Param>> {
         let mut first_param = true;
         // Parse the arguments, starting out with `self` being allowed...
+        if self.token.kind != TokenKind::OpenDelim(Delimiter::Parenthesis)
+        // might be typo'd trait impl, handled elsewhere
+        && !self.token.is_keyword(kw::For)
+        {
+            // recover from missing argument list, e.g. `fn main -> () {}`
+            self.sess
+                .emit_err(errors::MissingFnParams { span: self.prev_token.span.shrink_to_hi() });
+            return Ok(ThinVec::new());
+        }
+
         let (mut params, _) = self.parse_paren_comma_seq(|p| {
             p.recover_diff_marker();
             let snapshot = p.create_snapshot_for_diagnostic();
