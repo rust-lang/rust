@@ -2,7 +2,7 @@
 // ignore-debug (because unchecked is checked in debug)
 
 #![crate_type = "lib"]
-#![feature(unchecked_math)]
+#![feature(unchecked_shifts)]
 
 // CHECK-LABEL: @unchecked_shl_unsigned_same
 #[no_mangle]
