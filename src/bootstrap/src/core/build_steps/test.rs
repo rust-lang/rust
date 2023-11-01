@@ -1305,6 +1305,47 @@ macro_rules! test_definitions {
     };
 }
 
+/// Declares an alias for running the [`Coverage`] tests in only one mode.
+/// Adapted from [`test_definitions`].
+macro_rules! coverage_test_alias {
+    ($name:ident {
+        alias_and_mode: $alias_and_mode:expr,
+        default: $default:expr,
+        only_hosts: $only_hosts:expr $(,)?
+    }) => {
+        #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+        pub struct $name {
+            pub compiler: Compiler,
+            pub target: TargetSelection,
+        }
+
+        impl $name {
+            const MODE: &'static str = $alias_and_mode;
+        }
+
+        impl Step for $name {
+            type Output = ();
+            const DEFAULT: bool = $default;
+            const ONLY_HOSTS: bool = $only_hosts;
+
+            fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+                run.alias($alias_and_mode)
+            }
+
+            fn make_run(run: RunConfig<'_>) {
+                let compiler = run.builder.compiler(run.builder.top_stage, run.build_triple());
+
+                run.builder.ensure($name { compiler, target: run.target });
+            }
+
+            fn run(self, builder: &Builder<'_>) {
+                Coverage { compiler: self.compiler, target: self.target }
+                    .run_unified_suite(builder, Self::MODE)
+            }
+        }
+    };
+}
+
 default_test!(Ui { path: "tests/ui", mode: "ui", suite: "ui" });
 
 default_test!(RunPassValgrind {
@@ -1361,7 +1402,19 @@ pub struct Coverage {
 }
 
 impl Coverage {
+    const PATH: &'static str = "tests/coverage";
     const SUITE: &'static str = "coverage";
+
+    fn run_unified_suite(&self, builder: &Builder<'_>, mode: &'static str) {
+        builder.ensure(Compiletest {
+            compiler: self.compiler,
+            target: self.target,
+            mode,
+            suite: Self::SUITE,
+            path: Self::PATH,
+            compare_mode: None,
+        })
+    }
 }
 
 impl Step for Coverage {
