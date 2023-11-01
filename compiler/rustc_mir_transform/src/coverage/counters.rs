@@ -12,7 +12,7 @@ use std::fmt::{self, Debug};
 
 /// The coverage counter or counter expression associated with a particular
 /// BCB node or BCB edge.
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub(super) enum BcbCounter {
     Counter { id: CounterId },
     Expression { id: ExpressionId },
@@ -88,8 +88,9 @@ impl CoverageCounters {
         BcbCounter::Counter { id }
     }
 
-    fn make_expression(&mut self, lhs: CovTerm, op: Op, rhs: CovTerm) -> BcbCounter {
-        let id = self.expressions.push(Expression { lhs, op, rhs });
+    fn make_expression(&mut self, lhs: BcbCounter, op: Op, rhs: BcbCounter) -> BcbCounter {
+        let expression = Expression { lhs: lhs.as_term(), op, rhs: rhs.as_term() };
+        let id = self.expressions.push(expression);
         BcbCounter::Expression { id }
     }
 
@@ -109,7 +110,7 @@ impl CoverageCounters {
         self.expressions.len()
     }
 
-    fn set_bcb_counter(&mut self, bcb: BasicCoverageBlock, counter_kind: BcbCounter) -> CovTerm {
+    fn set_bcb_counter(&mut self, bcb: BasicCoverageBlock, counter_kind: BcbCounter) -> BcbCounter {
         assert!(
             // If the BCB has an edge counter (to be injected into a new `BasicBlock`), it can also
             // have an expression (to be injected into an existing `BasicBlock` represented by this
@@ -118,14 +119,13 @@ impl CoverageCounters {
             "attempt to add a `Counter` to a BCB target with existing incoming edge counters"
         );
 
-        let term = counter_kind.as_term();
         if let Some(replaced) = self.bcb_counters[bcb].replace(counter_kind) {
             bug!(
                 "attempt to set a BasicCoverageBlock coverage counter more than once; \
                 {bcb:?} already had counter {replaced:?}",
             );
         } else {
-            term
+            counter_kind
         }
     }
 
@@ -134,7 +134,7 @@ impl CoverageCounters {
         from_bcb: BasicCoverageBlock,
         to_bcb: BasicCoverageBlock,
         counter_kind: BcbCounter,
-    ) -> CovTerm {
+    ) -> BcbCounter {
         // If the BCB has an edge counter (to be injected into a new `BasicBlock`), it can also
         // have an expression (to be injected into an existing `BasicBlock` represented by this
         // `BasicCoverageBlock`).
@@ -148,14 +148,13 @@ impl CoverageCounters {
         }
 
         self.bcb_has_incoming_edge_counters.insert(to_bcb);
-        let term = counter_kind.as_term();
         if let Some(replaced) = self.bcb_edge_counters.insert((from_bcb, to_bcb), counter_kind) {
             bug!(
                 "attempt to set an edge counter more than once; from_bcb: \
                 {from_bcb:?} already had counter {replaced:?}",
             );
         } else {
-            term
+            counter_kind
         }
     }
 
@@ -305,8 +304,7 @@ impl<'a> MakeBcbCounters<'a> {
                         sumup_counter_operand,
                     );
                     debug!("  [new intermediate expression: {:?}]", intermediate_expression);
-                    let intermediate_expression_operand = intermediate_expression.as_term();
-                    some_sumup_counter_operand.replace(intermediate_expression_operand);
+                    some_sumup_counter_operand.replace(intermediate_expression);
                 }
             }
         }
@@ -336,11 +334,11 @@ impl<'a> MakeBcbCounters<'a> {
     }
 
     #[instrument(level = "debug", skip(self))]
-    fn get_or_make_counter_operand(&mut self, bcb: BasicCoverageBlock) -> CovTerm {
+    fn get_or_make_counter_operand(&mut self, bcb: BasicCoverageBlock) -> BcbCounter {
         // If the BCB already has a counter, return it.
-        if let Some(counter_kind) = &self.coverage_counters.bcb_counters[bcb] {
+        if let Some(counter_kind) = self.coverage_counters.bcb_counters[bcb] {
             debug!("{bcb:?} already has a counter: {counter_kind:?}");
-            return counter_kind.as_term();
+            return counter_kind;
         }
 
         // A BCB with only one incoming edge gets a simple `Counter` (via `make_counter()`).
@@ -382,8 +380,7 @@ impl<'a> MakeBcbCounters<'a> {
                     edge_counter_operand,
                 );
                 debug!("new intermediate expression: {intermediate_expression:?}");
-                let intermediate_expression_operand = intermediate_expression.as_term();
-                some_sumup_edge_counter_operand.replace(intermediate_expression_operand);
+                some_sumup_edge_counter_operand.replace(intermediate_expression);
             }
         }
         let counter_kind = self.coverage_counters.make_expression(
@@ -402,7 +399,7 @@ impl<'a> MakeBcbCounters<'a> {
         &mut self,
         from_bcb: BasicCoverageBlock,
         to_bcb: BasicCoverageBlock,
-    ) -> CovTerm {
+    ) -> BcbCounter {
         // If the source BCB has only one successor (assumed to be the given target), an edge
         // counter is unnecessary. Just get or make a counter for the source BCB.
         let successors = self.bcb_successors(from_bcb).iter();
@@ -411,11 +408,11 @@ impl<'a> MakeBcbCounters<'a> {
         }
 
         // If the edge already has a counter, return it.
-        if let Some(counter_kind) =
+        if let Some(&counter_kind) =
             self.coverage_counters.bcb_edge_counters.get(&(from_bcb, to_bcb))
         {
             debug!("Edge {from_bcb:?}->{to_bcb:?} already has a counter: {counter_kind:?}");
-            return counter_kind.as_term();
+            return counter_kind;
         }
 
         // Make a new counter to count this edge.
