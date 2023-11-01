@@ -110,6 +110,7 @@ pub(crate) fn mk_eval_cx<'mir, 'tcx>(
 pub(super) fn op_to_const<'tcx>(
     ecx: &CompileTimeEvalContext<'_, 'tcx>,
     op: &OpTy<'tcx>,
+    for_diagnostics: bool,
 ) -> ConstValue<'tcx> {
     // Handle ZST consistently and early.
     if op.layout.is_zst() {
@@ -132,8 +133,14 @@ pub(super) fn op_to_const<'tcx>(
         // functionality.)
         _ => false,
     };
-    let immediate = if force_as_immediate && let Ok(imm) = ecx.read_immediate(op) {
-        Right(imm)
+    let immediate = if force_as_immediate {
+        match ecx.read_immediate(op) {
+            Ok(imm) => Right(imm),
+            Err(err) if !for_diagnostics => {
+                panic!("normalization works on validated constants: {err:?}")
+            }
+            _ => op.as_mplace_or_imm(),
+        }
     } else {
         op.as_mplace_or_imm()
     };
@@ -205,7 +212,7 @@ pub(crate) fn turn_into_const_value<'tcx>(
     );
 
     // Turn this into a proper constant.
-    op_to_const(&ecx, &mplace.into())
+    op_to_const(&ecx, &mplace.into(), /* for diagnostics */ false)
 }
 
 #[instrument(skip(tcx), level = "debug")]
