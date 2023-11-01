@@ -232,7 +232,7 @@ pub fn valtree_to_const_value<'tcx>(
             let mut ecx = mk_eval_cx(tcx, DUMMY_SP, param_env, CanAccessStatics::No);
             let imm = valtree_to_ref(&mut ecx, valtree, *inner_ty);
             let imm = ImmTy::from_immediate(imm, tcx.layout_of(param_env_ty).unwrap());
-            op_to_const(&ecx, &imm.into())
+            op_to_const(&ecx, &imm.into(), /* for diagnostics */ false)
         }
         ty::Tuple(_) | ty::Array(_, _) | ty::Adt(..) => {
             let layout = tcx.layout_of(param_env_ty).unwrap();
@@ -265,7 +265,7 @@ pub fn valtree_to_const_value<'tcx>(
             dump_place(&ecx, &place);
             intern_const_alloc_recursive(&mut ecx, InternKind::Constant, &place).unwrap();
 
-            op_to_const(&ecx, &place.into())
+            op_to_const(&ecx, &place.into(), /* for diagnostics */ false)
         }
         ty::Never
         | ty::Error(_)

@@ -1,0 +1,92 @@
+- // MIR for `main` before GVN
++ // MIR for `main` after GVN
+  
+  fn main() -> () {
+      let mut _0: ();
+      let _1: std::alloc::Layout;
+      let mut _2: std::option::Option<std::alloc::Layout>;
+      let mut _3: *mut u8;
+      let mut _4: *mut [u8];
+      let mut _5: std::ptr::NonNull<[u8]>;
+      let mut _6: std::result::Result<std::ptr::NonNull<[u8]>, std::alloc::AllocError>;
+      let mut _7: &std::alloc::Global;
+      let mut _8: std::alloc::Layout;
+      scope 1 {
+          debug layout => _1;
+          let mut _9: &std::alloc::Global;
+          scope 2 {
+              debug ptr => _3;
+          }
+          scope 5 (inlined <std::alloc::Global as Allocator>::allocate) {
+              debug self => _9;
+              debug layout => _1;
+          }
+          scope 6 (inlined NonNull::<[u8]>::as_ptr) {
+              debug self => _5;
+              let mut _12: *const [u8];
+          }
+      }
+      scope 3 (inlined #[track_caller] Option::<Layout>::unwrap) {
+          debug self => _2;
+          let mut _10: isize;
+          let mut _11: !;
+          scope 4 {
+              debug val => _1;
+          }
+      }
+  
+      bb0: {
+          StorageLive(_2);
+-         _2 = Option::<Layout>::None;
++         _2 = const Option::<Layout>::None;
+          StorageLive(_10);
+          _10 = const 0_isize;
+          switchInt(const 0_isize) -> [0: bb2, 1: bb4, otherwise: bb3];
+      }
+  
+      bb1: {
+          StorageDead(_6);
+          StorageLive(_12);
+          _12 = (_5.0: *const [u8]);
+          _4 = move _12 as *mut [u8] (PtrToPtr);
+          StorageDead(_12);
+          StorageDead(_5);
+          _3 = move _4 as *mut u8 (PtrToPtr);
+          StorageDead(_4);
+          StorageDead(_3);
+          return;
+      }
+  
+      bb2: {
+          _11 = core::panicking::panic(const "called `Option::unwrap()` on a `None` value") -> unwind continue;
+      }
+  
+      bb3: {
+          unreachable;
+      }
+  
+      bb4: {
+-         _1 = move ((_2 as Some).0: std::alloc::Layout);
++         _1 = const Layout {{ size: Indirect { alloc_id: ALLOC0, offset: Size(8 bytes) }: usize, align: std::ptr::Alignment(Scalar(0x0000000000000000): ptr::alignment::AlignmentEnum64) }};
+          StorageDead(_10);
+          StorageDead(_2);
+          StorageLive(_3);
+          StorageLive(_4);
+          StorageLive(_5);
+          StorageLive(_6);
+          _9 = const _;
+-         _6 = std::alloc::Global::alloc_impl(_9, _1, const false) -> [return: bb5, unwind continue];
++         _6 = std::alloc::Global::alloc_impl(const {ALLOC1: &std::alloc::Global}, const Layout {{ size: Indirect { alloc_id: ALLOC0, offset: Size(8 bytes) }: usize, align: std::ptr::Alignment(Scalar(0x0000000000000000): ptr::alignment::AlignmentEnum64) }}, const false) -> [return: bb5, unwind continue];
+      }
+  
+      bb5: {
+          _5 = Result::<NonNull<[u8]>, std::alloc::AllocError>::unwrap(move _6) -> [return: bb1, unwind continue];
+      }
+  }
++ 
++ ALLOC0 (size: 16, align: 8) {
++     00 00 00 00 00 00 00 00 __ __ __ __ __ __ __ __ │ ........░░░░░░░░
++ }
++ 
++ ALLOC1 (size: 0, align: 1) {}
+  
