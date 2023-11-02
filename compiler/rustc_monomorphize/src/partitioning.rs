@@ -94,8 +94,8 @@
 
 // Manuel, fixing rebase
 use rustc_symbol_mangling::symbol_name_for_instance_in_crate;
-//use crate::ty::ParamEnv;
-use rustc_middle::ty::ParamEnv;
+use rustc_middle::middle::typetree::{Kind, Type, TypeTree};
+use rustc_target::abi::FieldsShape;
 
 use std::cmp;
 use std::collections::hash_map::Entry;
@@ -117,7 +117,7 @@ use rustc_middle::mir::mono::{
 };
 use rustc_middle::query::Providers;
 use rustc_middle::ty::print::{characteristic_def_id_of_type, with_no_trimmed_paths};
-use rustc_middle::ty::{self, visit::TypeVisitableExt, InstanceDef, TyCtxt};
+use rustc_middle::ty::{self, visit::TypeVisitableExt, InstanceDef, TyCtxt, ParamEnv, ParamEnvAnd, Adt, Ty};
 use rustc_session::config::{DumpMonoStatsFormat, SwitchWithOptPath};
 use rustc_session::CodegenUnits;
 use rustc_span::symbol::Symbol;
@@ -1249,9 +1249,9 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> (&DefIdSet, &[Au
 
     (tcx.arena.alloc(mono_items), autodiff_items, codegen_units)
 }
-use rustc_middle::ty::{self, Adt, ParamEnvAnd, Ty};
-use rustc_target::abi::FieldsShape;
-use std::iter;
+//use rustc_middle::ty::{self, Adt, ParamEnvAnd, Ty};
+//use rustc_target::abi::FieldsShape;
+//use std::iter;
 
 pub fn typetree_empty() -> TypeTree {
     TypeTree(vec![])
@@ -1369,7 +1369,7 @@ pub fn typetree_from_ty<'a>(ty: Ty<'a>, tcx: TyCtxt<'a>, depth: usize) -> TypeTr
         let param_env_and = ParamEnvAnd { param_env: ParamEnv::empty(), value: sub_ty };
         let size = tcx.layout_of(param_env_and).unwrap().size.bytes() as usize;
         let tt = TypeTree(
-            iter::repeat(subtt)
+            std::iter::repeat(subtt)
                 .take(*count as usize)
                 .enumerate()
                 .map(|(idx, x)| x.0.into_iter().map(move |x| x.add_offset((idx * size) as isize)))
