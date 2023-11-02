@@ -556,6 +556,7 @@ name = "clippy"
 version = "0.1.75"
 dependencies = [
  "anstream",
+ "clippy_config",
  "clippy_lints",
  "clippy_utils",
  "color-print",
@@ -579,6 +580,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "clippy_config"
+version = "0.1.75"
+dependencies = [
+ "rustc-semver",
+ "serde",
+ "toml 0.7.5",
+ "walkdir",
+]
+
+[[package]]
 name = "clippy_dev"
 version = "0.0.1"
 dependencies = [
@@ -597,6 +608,7 @@ version = "0.1.75"
 dependencies = [
  "arrayvec",
  "cargo_metadata 0.15.4",
+ "clippy_config",
  "clippy_utils",
  "declare_clippy_lint",
  "if_chain",
@@ -621,10 +633,10 @@ name = "clippy_utils"
 version = "0.1.75"
 dependencies = [
  "arrayvec",
+ "clippy_config",
  "if_chain",
  "itertools",
  "rustc-semver",
- "serde",
 ]
 
 [[package]]
