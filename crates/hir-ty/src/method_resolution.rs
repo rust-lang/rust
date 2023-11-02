@@ -1478,26 +1478,38 @@ fn is_valid_fn_candidate(
             // We need to consider the bounds on the impl to distinguish functions of the same name
             // for a type.
             let predicates = db.generic_predicates(impl_id.into());
-            let valid = predicates
-                .iter()
-                .map(|predicate| {
-                    let (p, b) = predicate
-                        .clone()
-                        .substitute(Interner, &impl_subst)
-                        // Skipping the inner binders is ok, as we don't handle quantified where
-                        // clauses yet.
-                        .into_value_and_skipped_binders();
-                    stdx::always!(b.len(Interner) == 0);
-                    p
-                })
-                // It's ok to get ambiguity here, as we may not have enough information to prove
-                // obligations. We'll check if the user is calling the selected method properly
-                // later anyway.
-                .all(|p| table.try_obligation(p.cast(Interner)).is_some());
-            match valid {
-                true => IsValidCandidate::Yes,
-                false => IsValidCandidate::No,
+            let mut alias = Vec::new();
+            let mut other_predicate = Vec::new();
+
+            for predicate in predicates.iter() {
+                let (p, b) = predicate
+                    .clone()
+                    .substitute(Interner, &impl_subst)
+                    // Skipping the inner binders is ok, as we don't handle quantified where
+                    // clauses yet.
+                    .into_value_and_skipped_binders();
+                stdx::always!(b.len(Interner) == 0);
+
+                if let WhereClause::AliasEq(_) = p {
+                    alias.push(p);
+                } else {
+                    other_predicate.push(p);
+                }
             }
+
+            for p in alias {
+                if !table.try_resolve_alias(p.cast(Interner)) {
+                    return IsValidCandidate::No;
+                }
+            }
+
+            for p in other_predicate {
+                if table.try_obligation(p.cast(Interner)).is_none() {
+                    return IsValidCandidate::No;
+                }
+            }
+
+            IsValidCandidate::Yes
         } else {
             // For `ItemContainerId::TraitId`, we check if `self_ty` implements the trait in
             // `iterate_trait_method_candidates()`.

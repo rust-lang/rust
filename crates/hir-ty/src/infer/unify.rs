@@ -495,6 +495,35 @@ impl<'a> InferenceTable<'a> {
         solution
     }
 
+    pub(crate) fn try_resolve_alias(&mut self, goal: Goal) -> bool {
+        let in_env = InEnvironment::new(&self.trait_env.env, goal);
+        let canonicalized = self.canonicalize(in_env);
+        let solution = self.db.trait_solve(
+            self.trait_env.krate,
+            self.trait_env.block,
+            canonicalized.value.clone(),
+        );
+
+        match solution {
+            Some(Solution::Unique(canonical_subst)) => {
+                canonicalized.apply_solution(
+                    self,
+                    Canonical {
+                        binders: canonical_subst.binders,
+                        value: canonical_subst.value.subst,
+                    },
+                );
+                true
+            }
+            Some(Solution::Ambig(Guidance::Definite(substs))) => {
+                canonicalized.apply_solution(self, substs);
+                true
+            }
+            Some(_) => true,
+            None => false,
+        }
+    }
+
     pub(crate) fn register_obligation(&mut self, goal: Goal) {
         let in_env = InEnvironment::new(&self.trait_env.env, goal);
         self.register_obligation_in_env(in_env)
