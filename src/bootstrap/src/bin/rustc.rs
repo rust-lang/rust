@@ -300,10 +300,9 @@ fn format_rusage_data(child: Child) -> Option<String> {
             &mut user_filetime,
         )
     }
-    .ok()
     .ok()?;
-    unsafe { FileTimeToSystemTime(&user_filetime, &mut user_time) }.ok().ok()?;
-    unsafe { FileTimeToSystemTime(&kernel_filetime, &mut kernel_time) }.ok().ok()?;
+    unsafe { FileTimeToSystemTime(&user_filetime, &mut user_time) }.ok()?;
+    unsafe { FileTimeToSystemTime(&kernel_filetime, &mut kernel_time) }.ok()?;
 
     // Unlike on Linux with RUSAGE_CHILDREN, this will only return memory information for the process
     // with the given handle and none of that process's children.

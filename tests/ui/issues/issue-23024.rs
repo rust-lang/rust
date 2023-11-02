@@ -8,5 +8,5 @@ fn main()
     println!("{:?}",(vfnfer[0] as dyn Fn)(3));
     //~^ ERROR the precise format of `Fn`-family traits'
     //~| ERROR missing generics for trait `Fn`
-    //~| ERROR the value of the associated type `Output` (from trait `FnOnce`)
+    //~| ERROR the value of the associated type `Output` in `FnOnce`
 }

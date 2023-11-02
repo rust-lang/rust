@@ -9,6 +9,7 @@
 +         debug self => _2;
 +         let mut _3: &std::option::Option<T>;
 +         let mut _4: isize;
++         let mut _5: bool;
 +         scope 2 {
 +             debug val => _0;
 +         }
@@ -29,18 +30,17 @@
           StorageLive(_2);
           _2 = move _1;
 -         _0 = Option::<T>::unwrap_unchecked(move _2) -> [return: bb1, unwind unreachable];
+-     }
+- 
+-     bb1: {
 +         StorageLive(_3);
 +         StorageLive(_4);
++         StorageLive(_5);
 +         _4 = discriminant(_2);
-+         switchInt(move _4) -> [1: bb2, otherwise: bb1];
-      }
-  
-      bb1: {
-+         unreachable;
-+     }
-+ 
-+     bb2: {
++         _5 = Eq(_4, const 1_isize);
++         assume(move _5);
 +         _0 = move ((_2 as Some).0: T);
++         StorageDead(_5);
 +         StorageDead(_4);
 +         StorageDead(_3);
           StorageDead(_2);

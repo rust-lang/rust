@@ -373,11 +373,12 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         span: Span,
         yield_span: Span,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
+        let coroutine_kind = self.body.coroutine.as_ref().unwrap().coroutine_kind;
         let mut err = struct_span_err!(
             self,
             span,
             E0626,
-            "borrow may still be in use when coroutine yields",
+            "borrow may still be in use when {coroutine_kind:#} yields",
         );
         err.span_label(yield_span, "possible yield occurs here");
         err

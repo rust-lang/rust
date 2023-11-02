@@ -93,6 +93,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ImplSource::Builtin(BuiltinImplSource::Misc, vtable_future)
             }
 
+            IteratorCandidate => {
+                let vtable_iterator = self.confirm_iterator_candidate(obligation)?;
+                ImplSource::Builtin(BuiltinImplSource::Misc, vtable_iterator)
+            }
+
             FnPointerCandidate { is_const } => {
                 let data = self.confirm_fn_pointer_candidate(obligation, is_const)?;
                 ImplSource::Builtin(BuiltinImplSource::Misc, data)
@@ -725,7 +730,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         debug!(?obligation, ?coroutine_def_id, ?args, "confirm_coroutine_candidate");
 
-        let gen_sig = args.as_coroutine().poly_sig();
+        let coroutine_sig = args.as_coroutine().poly_sig();
 
         // NOTE: The self-type is a coroutine type and hence is
         // in fact unparameterized (or at least does not reference any
@@ -740,7 +745,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             self.tcx(),
             obligation.predicate.def_id(),
             self_ty,
-            gen_sig,
+            coroutine_sig,
         )
         .map_bound(|(trait_ref, ..)| trait_ref);
 
@@ -764,18 +769,48 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         debug!(?obligation, ?coroutine_def_id, ?args, "confirm_future_candidate");
 
-        let gen_sig = args.as_coroutine().poly_sig();
+        let coroutine_sig = args.as_coroutine().poly_sig();
 
         let trait_ref = super::util::future_trait_ref_and_outputs(
             self.tcx(),
             obligation.predicate.def_id(),
             obligation.predicate.no_bound_vars().expect("future has no bound vars").self_ty(),
-            gen_sig,
+            coroutine_sig,
         )
         .map_bound(|(trait_ref, ..)| trait_ref);
 
         let nested = self.confirm_poly_trait_refs(obligation, trait_ref)?;
         debug!(?trait_ref, ?nested, "future candidate obligations");
+
+        Ok(nested)
+    }
+
+    fn confirm_iterator_candidate(
+        &mut self,
+        obligation: &PolyTraitObligation<'tcx>,
+    ) -> Result<Vec<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
+        // Okay to skip binder because the args on coroutine types never
+        // touch bound regions, they just capture the in-scope
+        // type/region parameters.
+        let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
+        let ty::Coroutine(coroutine_def_id, args, _) = *self_ty.kind() else {
+            bug!("closure candidate for non-closure {:?}", obligation);
+        };
+
+        debug!(?obligation, ?coroutine_def_id, ?args, "confirm_iterator_candidate");
+
+        let gen_sig = args.as_coroutine().poly_sig();
+
+        let trait_ref = super::util::iterator_trait_ref_and_outputs(
+            self.tcx(),
+            obligation.predicate.def_id(),
+            obligation.predicate.no_bound_vars().expect("iterator has no bound vars").self_ty(),
+            gen_sig,
+        )
+        .map_bound(|(trait_ref, ..)| trait_ref);
+
+        let nested = self.confirm_poly_trait_refs(obligation, trait_ref)?;
+        debug!(?trait_ref, ?nested, "iterator candidate obligations");
 
         Ok(nested)
     }

@@ -367,7 +367,7 @@ pub(crate) fn format_expr(
                 ))
             }
         }
-        ast::ExprKind::Async(capture_by, ref block) => {
+        ast::ExprKind::Gen(capture_by, ref block, ref kind) => {
             let mover = if capture_by == ast::CaptureBy::Value {
                 "move "
             } else {
@@ -375,7 +375,7 @@ pub(crate) fn format_expr(
             };
             if let rw @ Some(_) = rewrite_single_line_block(
                 context,
-                format!("async {mover}").as_str(),
+                format!("{kind} {mover}").as_str(),
                 block,
                 Some(&expr.attrs),
                 None,
@@ -386,7 +386,7 @@ pub(crate) fn format_expr(
                 // 6 = `async `
                 let budget = shape.width.saturating_sub(6);
                 Some(format!(
-                    "async {mover}{}",
+                    "{kind} {mover}{}",
                     rewrite_block(
                         block,
                         Some(&expr.attrs),
@@ -1371,7 +1371,7 @@ pub(crate) fn can_be_overflowed_expr(
         }
 
         // Handle always block-like expressions
-        ast::ExprKind::Async(..) | ast::ExprKind::Block(..) | ast::ExprKind::Closure(..) => true,
+        ast::ExprKind::Gen(..) | ast::ExprKind::Block(..) | ast::ExprKind::Closure(..) => true,
 
         // Handle `[]` and `{}`-like expressions
         ast::ExprKind::Array(..) | ast::ExprKind::Struct(..) => {

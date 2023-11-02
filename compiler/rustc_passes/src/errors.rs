@@ -1525,16 +1525,6 @@ pub struct CannotStabilizeDeprecated {
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_invalid_deprecation_version)]
-pub struct InvalidDeprecationVersion {
-    #[primary_span]
-    #[label]
-    pub span: Span,
-    #[label(passes_item)]
-    pub item_sp: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(passes_missing_stability_attr)]
 pub struct MissingStabilityAttr<'a> {
     #[primary_span]
@@ -1768,15 +1758,24 @@ pub struct UnusedVariableTryPrefix {
     #[subdiagnostic]
     pub string_interp: Vec<UnusedVariableStringInterp>,
     #[subdiagnostic]
-    pub sugg: UnusedVariableTryPrefixSugg,
+    pub sugg: UnusedVariableSugg,
+    pub name: String,
 }
 
 #[derive(Subdiagnostic)]
-#[multipart_suggestion(passes_suggestion, applicability = "machine-applicable")]
-pub struct UnusedVariableTryPrefixSugg {
-    #[suggestion_part(code = "_{name}")]
-    pub spans: Vec<Span>,
-    pub name: String,
+pub enum UnusedVariableSugg {
+    #[multipart_suggestion(passes_suggestion, applicability = "machine-applicable")]
+    TryPrefixSugg {
+        #[suggestion_part(code = "_{name}")]
+        spans: Vec<Span>,
+        name: String,
+    },
+    #[help(passes_unused_variable_args_in_macro)]
+    NoSugg {
+        #[primary_span]
+        span: Span,
+        name: String,
+    },
 }
 
 pub struct UnusedVariableStringInterp {

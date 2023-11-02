@@ -3,7 +3,6 @@ name = "rustc_lexer"
 version = "0.0.0"
 license = "MIT OR Apache-2.0"
 edition = "2021"
-
 repository = "https://github.com/rust-lang/rust/"
 description = """
 Rust lexer used by rustc. No stability guarantees are provided.

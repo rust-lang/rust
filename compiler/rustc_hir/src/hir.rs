@@ -1522,6 +1522,9 @@ pub enum CoroutineKind {
     /// An explicit `async` block or the body of an async function.
     Async(CoroutineSource),
 
+    /// An explicit `gen` block or the body of a `gen` function.
+    Gen(CoroutineSource),
+
     /// A coroutine literal created via a `yield` inside a closure.
     Coroutine,
 }
@@ -1538,6 +1541,14 @@ impl fmt::Display for CoroutineKind {
                 k.fmt(f)
             }
             CoroutineKind::Coroutine => f.write_str("coroutine"),
+            CoroutineKind::Gen(k) => {
+                if f.alternate() {
+                    f.write_str("`gen` ")?;
+                } else {
+                    f.write_str("gen ")?
+                }
+                k.fmt(f)
+            }
         }
     }
 }
@@ -2251,6 +2262,7 @@ impl From<CoroutineKind> for YieldSource {
             // Guess based on the kind of the current coroutine.
             CoroutineKind::Coroutine => Self::Yield,
             CoroutineKind::Async(_) => Self::Await { expr: None },
+            CoroutineKind::Gen(_) => Self::Yield,
         }
     }
 }

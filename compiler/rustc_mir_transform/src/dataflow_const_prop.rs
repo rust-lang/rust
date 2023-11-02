@@ -286,9 +286,9 @@ impl<'tcx> ValueAnalysis<'tcx> for ConstAnalysis<'_, 'tcx> {
                 let val = match null_op {
                     NullOp::SizeOf if layout.is_sized() => layout.size.bytes(),
                     NullOp::AlignOf if layout.is_sized() => layout.align.abi.bytes(),
-                    NullOp::OffsetOf(fields) => layout
-                        .offset_of_subfield(&self.ecx, fields.iter().map(|f| f.index()))
-                        .bytes(),
+                    NullOp::OffsetOf(fields) => {
+                        layout.offset_of_subfield(&self.ecx, fields.iter()).bytes()
+                    }
                     _ => return ValueOrPlace::Value(FlatSet::Top),
                 };
                 FlatSet::Elem(Scalar::from_target_usize(val, &self.tcx))
@@ -406,7 +406,8 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                 TrackElem::Variant(idx) => self.ecx.project_downcast(op, idx).ok(),
                 TrackElem::Discriminant => {
                     let variant = self.ecx.read_discriminant(op).ok()?;
-                    let discr_value = self.ecx.discriminant_for_variant(op.layout, variant).ok()?;
+                    let discr_value =
+                        self.ecx.discriminant_for_variant(op.layout.ty, variant).ok()?;
                     Some(discr_value.into())
                 }
                 TrackElem::DerefLen => {
@@ -507,7 +508,8 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
             return None;
         }
         let enum_ty_layout = self.tcx.layout_of(self.param_env.and(enum_ty)).ok()?;
-        let discr_value = self.ecx.discriminant_for_variant(enum_ty_layout, variant_index).ok()?;
+        let discr_value =
+            self.ecx.discriminant_for_variant(enum_ty_layout.ty, variant_index).ok()?;
         Some(discr_value.to_scalar())
     }
 
@@ -854,7 +856,7 @@ impl<'tcx> Visitor<'tcx> for OperandCollector<'tcx, '_, '_, '_> {
     }
 }
 
-struct DummyMachine;
+pub(crate) struct DummyMachine;
 
 impl<'mir, 'tcx: 'mir> rustc_const_eval::interpret::Machine<'mir, 'tcx> for DummyMachine {
     rustc_const_eval::interpret::compile_time_machine!(<'mir, 'tcx>);

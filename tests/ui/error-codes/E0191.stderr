@@ -1,4 +1,4 @@
-error[E0191]: the value of the associated type `Bar` (from trait `Trait`) must be specified
+error[E0191]: the value of the associated type `Bar` in `Trait` must be specified
   --> $DIR/E0191.rs:5:16
    |
 LL |     type Bar;

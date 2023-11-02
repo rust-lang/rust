@@ -4,26 +4,26 @@
   fn main() -> () {
       let mut _0: ();
       let _1: std::ops::CoroutineState<i32, bool>;
-      let mut _2: std::pin::Pin<&mut {coroutine@$DIR/inline_coroutine.rs:17:5: 17:8}>;
-      let mut _3: &mut {coroutine@$DIR/inline_coroutine.rs:17:5: 17:8};
-      let mut _4: {coroutine@$DIR/inline_coroutine.rs:17:5: 17:8};
+      let mut _2: std::pin::Pin<&mut {coroutine@$DIR/inline_coroutine.rs:19:5: 19:8}>;
+      let mut _3: &mut {coroutine@$DIR/inline_coroutine.rs:19:5: 19:8};
+      let mut _4: {coroutine@$DIR/inline_coroutine.rs:19:5: 19:8};
 +     let mut _5: bool;
       scope 1 {
           debug _r => _1;
       }
 +     scope 2 (inlined g) {
 +     }
-+     scope 3 (inlined Pin::<&mut {coroutine@$DIR/inline_coroutine.rs:17:5: 17:8}>::new) {
++     scope 3 (inlined Pin::<&mut {coroutine@$DIR/inline_coroutine.rs:19:5: 19:8}>::new) {
 +         debug pointer => _3;
 +         scope 4 {
-+             scope 5 (inlined Pin::<&mut {coroutine@$DIR/inline_coroutine.rs:17:5: 17:8}>::new_unchecked) {
++             scope 5 (inlined Pin::<&mut {coroutine@$DIR/inline_coroutine.rs:19:5: 19:8}>::new_unchecked) {
 +                 debug pointer => _3;
 +             }
 +         }
 +     }
 +     scope 6 (inlined g::{closure#0}) {
 +         debug a => _5;
-+         let mut _6: &mut {coroutine@$DIR/inline_coroutine.rs:17:5: 17:8};
++         let mut _6: &mut {coroutine@$DIR/inline_coroutine.rs:19:5: 19:8};
 +         let mut _7: u32;
 +         let mut _8: i32;
 +     }
@@ -34,22 +34,22 @@
           StorageLive(_3);
           StorageLive(_4);
 -         _4 = g() -> [return: bb1, unwind unreachable];
-+         _4 = {coroutine@$DIR/inline_coroutine.rs:17:5: 17:8 (#0)};
++         _4 = {coroutine@$DIR/inline_coroutine.rs:19:5: 19:8 (#0)};
 +         _3 = &mut _4;
-+         _2 = Pin::<&mut {coroutine@$DIR/inline_coroutine.rs:17:5: 17:8}> { pointer: move _3 };
++         _2 = Pin::<&mut {coroutine@$DIR/inline_coroutine.rs:19:5: 19:8}> { pointer: move _3 };
 +         StorageDead(_3);
 +         StorageLive(_5);
 +         _5 = const false;
 +         StorageLive(_6);
 +         StorageLive(_7);
-+         _6 = (_2.0: &mut {coroutine@$DIR/inline_coroutine.rs:17:5: 17:8});
++         _6 = (_2.0: &mut {coroutine@$DIR/inline_coroutine.rs:19:5: 19:8});
 +         _7 = discriminant((*_6));
 +         switchInt(move _7) -> [0: bb3, 1: bb7, 3: bb8, otherwise: bb9];
       }
   
       bb1: {
 -         _3 = &mut _4;
--         _2 = Pin::<&mut {coroutine@$DIR/inline_coroutine.rs:17:5: 17:8}>::new(move _3) -> [return: bb2, unwind unreachable];
+-         _2 = Pin::<&mut {coroutine@$DIR/inline_coroutine.rs:19:5: 19:8}>::new(move _3) -> [return: bb2, unwind unreachable];
 +         StorageDead(_7);
 +         StorageDead(_6);
 +         StorageDead(_5);
@@ -59,7 +59,7 @@
   
       bb2: {
 -         StorageDead(_3);
--         _1 = <{coroutine@$DIR/inline_coroutine.rs:17:5: 17:8} as Coroutine<bool>>::resume(move _2, const false) -> [return: bb3, unwind unreachable];
+-         _1 = <{coroutine@$DIR/inline_coroutine.rs:19:5: 19:8} as Coroutine<bool>>::resume(move _2, const false) -> [return: bb3, unwind unreachable];
 +         StorageDead(_4);
 +         _0 = const ();
 +         StorageDead(_1);

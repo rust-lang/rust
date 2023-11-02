@@ -360,7 +360,7 @@ fn generics_require_sized_self(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 
 /// Returns `Some(_)` if this item makes the containing trait not object safe.
 #[instrument(level = "debug", skip(tcx), ret)]
-fn object_safety_violations_for_assoc_item(
+pub fn object_safety_violations_for_assoc_item(
     tcx: TyCtxt<'_>,
     trait_def_id: DefId,
     item: ty::AssocItem,

@@ -26,18 +26,6 @@ use rustc_span::def_id::DefId;
 use rustc_span::source_map::SourceMap;
 use rustc_span::{ExpnKind, SourceFile, Span, Symbol};
 
-/// A simple error message wrapper for `coverage::Error`s.
-#[derive(Debug)]
-struct Error {
-    message: String,
-}
-
-impl Error {
-    pub fn from_string<T>(message: String) -> Result<T, Error> {
-        Err(Self { message })
-    }
-}
-
 /// Inserts `StatementKind::Coverage` statements that either instrument the binary with injected
 /// counters, via intrinsic `llvm.instrprof.increment`, and/or inject metadata used during codegen
 /// to construct the coverage map.
@@ -167,10 +155,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         // `BasicCoverageBlock`s not already associated with a coverage span.
         let bcb_has_coverage_spans = |bcb| coverage_spans.bcb_has_coverage_spans(bcb);
         self.coverage_counters
-            .make_bcb_counters(&mut self.basic_coverage_blocks, bcb_has_coverage_spans)
-            .unwrap_or_else(|e| {
-                bug!("Error processing: {:?}: {:?}", self.mir_body.source.def_id(), e.message)
-            });
+            .make_bcb_counters(&self.basic_coverage_blocks, bcb_has_coverage_spans);
 
         let mappings = self.create_mappings_and_inject_coverage_statements(&coverage_spans);
 

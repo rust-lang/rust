@@ -396,6 +396,12 @@ impl Step for Llvm {
             ldflags.shared.push(" -latomic");
         }
 
+        if target.starts_with("mips") && target.contains("netbsd") {
+            // LLVM wants 64-bit atomics, while mipsel is 32-bit only, so needs -latomic
+            ldflags.exe.push(" -latomic");
+            ldflags.shared.push(" -latomic");
+        }
+
         if target.contains("msvc") {
             cfg.define("LLVM_USE_CRT_DEBUG", "MT");
             cfg.define("LLVM_USE_CRT_RELEASE", "MT");

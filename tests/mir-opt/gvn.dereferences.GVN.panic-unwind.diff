@@ -72,7 +72,8 @@
       bb2: {
           StorageDead(_7);
           StorageDead(_6);
-          StorageLive(_8);
+-         StorageLive(_8);
++         nop;
           _8 = &raw const (*_1);
           StorageLive(_9);
           StorageLive(_10);
@@ -92,7 +93,8 @@
       bb4: {
           StorageDead(_12);
           StorageDead(_11);
-          StorageLive(_13);
+-         StorageLive(_13);
++         nop;
           _13 = &raw mut (*_1);
           StorageLive(_14);
           StorageLive(_15);
@@ -112,10 +114,12 @@
       bb6: {
           StorageDead(_17);
           StorageDead(_16);
-          StorageLive(_18);
+-         StorageLive(_18);
++         nop;
           _18 = &(*_1);
           StorageLive(_19);
 -         StorageLive(_20);
++         nop;
           _20 = (*_18);
 -         _19 = opaque::<u32>(move _20) -> [return: bb7, unwind continue];
 +         _19 = opaque::<u32>(_20) -> [return: bb7, unwind continue];
@@ -123,16 +127,18 @@
   
       bb7: {
 -         StorageDead(_20);
++         nop;
           StorageDead(_19);
           StorageLive(_21);
--         StorageLive(_22);
+          StorageLive(_22);
 -         _22 = (*_18);
 -         _21 = opaque::<u32>(move _22) -> [return: bb8, unwind continue];
++         _22 = _20;
 +         _21 = opaque::<u32>(_20) -> [return: bb8, unwind continue];
       }
   
       bb8: {
--         StorageDead(_22);
+          StorageDead(_22);
           StorageDead(_21);
           StorageLive(_23);
           StorageLive(_24);
@@ -163,6 +169,7 @@
           StorageDead(_27);
           StorageLive(_29);
 -         StorageLive(_30);
++         nop;
           _30 = ((*_3).0: u32);
 -         _29 = opaque::<u32>(move _30) -> [return: bb12, unwind continue];
 +         _29 = opaque::<u32>(_30) -> [return: bb12, unwind continue];
@@ -170,21 +177,26 @@
   
       bb12: {
 -         StorageDead(_30);
++         nop;
           StorageDead(_29);
           StorageLive(_31);
--         StorageLive(_32);
+          StorageLive(_32);
 -         _32 = ((*_3).0: u32);
 -         _31 = opaque::<u32>(move _32) -> [return: bb13, unwind continue];
++         _32 = _30;
 +         _31 = opaque::<u32>(_30) -> [return: bb13, unwind continue];
       }
   
       bb13: {
--         StorageDead(_32);
+          StorageDead(_32);
           StorageDead(_31);
           _0 = const ();
-          StorageDead(_18);
-          StorageDead(_13);
-          StorageDead(_8);
+-         StorageDead(_18);
+-         StorageDead(_13);
+-         StorageDead(_8);
++         nop;
++         nop;
++         nop;
           return;
       }
   }

@@ -212,8 +212,8 @@ language_item_table! {
 
     Iterator,                sym::iterator,            iterator_trait,             Target::Trait,          GenericRequirement::Exact(0);
     Future,                  sym::future_trait,        future_trait,               Target::Trait,          GenericRequirement::Exact(0);
-    CoroutineState,          sym::coroutine_state,     gen_state,                  Target::Enum,           GenericRequirement::None;
-    Coroutine,               sym::coroutine,           gen_trait,                  Target::Trait,          GenericRequirement::Minimum(1);
+    CoroutineState,          sym::coroutine_state,     coroutine_state,            Target::Enum,           GenericRequirement::None;
+    Coroutine,               sym::coroutine,           coroutine_trait,            Target::Trait,          GenericRequirement::Minimum(1);
     Unpin,                   sym::unpin,               unpin_trait,                Target::Trait,          GenericRequirement::None;
     Pin,                     sym::pin,                 pin_type,                   Target::Struct,         GenericRequirement::None;
 

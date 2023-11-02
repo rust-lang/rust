@@ -1035,7 +1035,7 @@ enum TestKind<'tcx> {
         ty: Ty<'tcx>,
     },
 
-    /// Test whether the value falls within an inclusive or exclusive range
+    /// Test whether the value falls within an inclusive or exclusive range.
     Range(Box<PatRange<'tcx>>),
 
     /// Test that the length of the slice is equal to `len`.

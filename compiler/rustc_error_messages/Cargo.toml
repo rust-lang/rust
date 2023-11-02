@@ -3,23 +3,25 @@ name = "rustc_error_messages"
 version = "0.0.0"
 edition = "2021"
 
-[lib]
-
 [dependencies]
+# tidy-alphabetical-start
 fluent-bundle = "0.15.2"
 fluent-syntax = "0.11"
+icu_list = "1.2"
+icu_locid = "1.2"
+icu_provider_adapters = "1.2"
 intl-memoizer = "0.5.1"
 rustc_baked_icu_data = { path = "../rustc_baked_icu_data" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_fluent_macro = { path = "../rustc_fluent_macro" }
+rustc_macros = { path = "../rustc_macros" }
 rustc_serialize = { path = "../rustc_serialize" }
 rustc_span = { path = "../rustc_span" }
-rustc_macros = { path = "../rustc_macros" }
 tracing = "0.1"
 unic-langid = { version = "0.9.0", features = ["macros"] }
-icu_list = "1.2"
-icu_locid = "1.2"
-icu_provider_adapters = "1.2"
+# tidy-alphabetical-end
 
 [features]
+# tidy-alphabetical-start
 rustc_use_parallel_compiler = ['rustc_baked_icu_data/rustc_use_parallel_compiler']
+# tidy-alphabetical-end

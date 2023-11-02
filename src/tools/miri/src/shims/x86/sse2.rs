@@ -1,8 +1,4 @@
-use rustc_apfloat::{
-    ieee::{Double, Single},
-    Float as _,
-};
-use rustc_middle::mir;
+use rustc_apfloat::ieee::Double;
 use rustc_middle::ty::layout::LayoutOf as _;
 use rustc_middle::ty::Ty;
 use rustc_span::Symbol;
@@ -39,49 +35,6 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
         // Intrinsincs sufixed with "epiX" or "epuX" operate with X-bit signed or unsigned
         // vectors.
         match unprefixed_name {
-            // Used to implement the _mm_avg_epu8 and _mm_avg_epu16 functions.
-            // Averages packed unsigned 8/16-bit integers in `left` and `right`.
-            "pavg.b" | "pavg.w" => {
-                let [left, right] =
-                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-
-                let (left, left_len) = this.operand_to_simd(left)?;
-                let (right, right_len) = this.operand_to_simd(right)?;
-                let (dest, dest_len) = this.place_to_simd(dest)?;
-
-                assert_eq!(dest_len, left_len);
-                assert_eq!(dest_len, right_len);
-
-                for i in 0..dest_len {
-                    let left = this.read_immediate(&this.project_index(&left, i)?)?;
-                    let right = this.read_immediate(&this.project_index(&right, i)?)?;
-                    let dest = this.project_index(&dest, i)?;
-
-                    // Widen the operands to avoid overflow
-                    let twice_wide = this.layout_of(this.get_twice_wide_int_ty(left.layout.ty))?;
-                    let left = this.int_to_int_or_float(&left, twice_wide)?;
-                    let right = this.int_to_int_or_float(&right, twice_wide)?;
-
-                    // Calculate left + right + 1
-                    let added = this.wrapping_binary_op(mir::BinOp::Add, &left, &right)?;
-                    let added = this.wrapping_binary_op(
-                        mir::BinOp::Add,
-                        &added,
-                        &ImmTy::from_uint(1u32, twice_wide),
-                    )?;
-
-                    // Calculate (left + right + 1) / 2
-                    let divided = this.wrapping_binary_op(
-                        mir::BinOp::Div,
-                        &added,
-                        &ImmTy::from_uint(2u32, twice_wide),
-                    )?;
-
-                    // Narrow back to the original type
-                    let res = this.int_to_int_or_float(&divided, dest.layout)?;
-                    this.write_immediate(*res, &dest)?;
-                }
-            }
             // Used to implement the _mm_madd_epi16 function.
             // Multiplies packed signed 16-bit integers in `left` and `right`, producing
             // intermediate signed 32-bit integers. Horizontally add adjacent pairs of
@@ -116,70 +69,6 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                     let res = mul1.wrapping_add(mul2);
 
                     this.write_scalar(Scalar::from_i32(res), &dest)?;
-                }
-            }
-            // Used to implement the _mm_mulhi_epi16 and _mm_mulhi_epu16 functions.
-            "pmulh.w" | "pmulhu.w" => {
-                let [left, right] =
-                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-
-                let (left, left_len) = this.operand_to_simd(left)?;
-                let (right, right_len) = this.operand_to_simd(right)?;
-                let (dest, dest_len) = this.place_to_simd(dest)?;
-
-                assert_eq!(dest_len, left_len);
-                assert_eq!(dest_len, right_len);
-
-                for i in 0..dest_len {
-                    let left = this.read_immediate(&this.project_index(&left, i)?)?;
-                    let right = this.read_immediate(&this.project_index(&right, i)?)?;
-                    let dest = this.project_index(&dest, i)?;
-
-                    // Widen the operands to avoid overflow
-                    let twice_wide = this.layout_of(this.get_twice_wide_int_ty(left.layout.ty))?;
-                    let left = this.int_to_int_or_float(&left, twice_wide)?;
-                    let right = this.int_to_int_or_float(&right, twice_wide)?;
-
-                    // Multiply
-                    let multiplied = this.wrapping_binary_op(mir::BinOp::Mul, &left, &right)?;
-                    // Keep the high half
-                    let high = this.wrapping_binary_op(
-                        mir::BinOp::Shr,
-                        &multiplied,
-                        &ImmTy::from_uint(dest.layout.size.bits(), twice_wide),
-                    )?;
-
-                    // Narrow back to the original type
-                    let res = this.int_to_int_or_float(&high, dest.layout)?;
-                    this.write_immediate(*res, &dest)?;
-                }
-            }
-            // Used to implement the _mm_mul_epu32 function.
-            // Multiplies the the low unsigned 32-bit integers from each packed
-            // 64-bit element and stores the result as 64-bit unsigned integers.
-            "pmulu.dq" => {
-                let [left, right] =
-                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-
-                let (left, left_len) = this.operand_to_simd(left)?;
-                let (right, right_len) = this.operand_to_simd(right)?;
-                let (dest, dest_len) = this.place_to_simd(dest)?;
-
-                // left and right are u32x4, dest is u64x2
-                assert_eq!(left_len, 4);
-                assert_eq!(right_len, 4);
-                assert_eq!(dest_len, 2);
-
-                for i in 0..dest_len {
-                    let op_i = i.checked_mul(2).unwrap();
-                    let left = this.read_scalar(&this.project_index(&left, op_i)?)?.to_u32()?;
-                    let right = this.read_scalar(&this.project_index(&right, op_i)?)?.to_u32()?;
-                    let dest = this.project_index(&dest, i)?;
-
-                    // The multiplication will not overflow because stripping the
-                    // operands are expanded from 32-bit to 64-bit.
-                    let res = u64::from(left).checked_mul(u64::from(right)).unwrap();
-                    this.write_scalar(Scalar::from_u64(res), &dest)?;
                 }
             }
             // Used to implement the _mm_sad_epu8 function.
@@ -368,25 +257,6 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                     };
 
                     this.write_scalar(Scalar::from_u64(res), &dest)?;
-                }
-            }
-            // Used to implement the _mm_cvtepi32_ps function.
-            // Converts packed i32 to packed f32.
-            // FIXME: Can we get rid of this intrinsic and just use simd_as?
-            "cvtdq2ps" => {
-                let [op] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-
-                let (op, op_len) = this.operand_to_simd(op)?;
-                let (dest, dest_len) = this.place_to_simd(dest)?;
-
-                assert_eq!(dest_len, op_len);
-
-                for i in 0..dest_len {
-                    let op = this.read_scalar(&this.project_index(&op, i)?)?.to_i32()?;
-                    let dest = this.project_index(&dest, i)?;
-
-                    let res = Scalar::from_f32(Single::from_i128(op.into()).value);
-                    this.write_scalar(res, &dest)?;
                 }
             }
             // Used to implement the _mm_cvtps_epi32 and _mm_cvttps_epi32 functions.
@@ -652,31 +522,6 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                 };
                 this.write_scalar(Scalar::from_i32(i32::from(res)), dest)?;
             }
-            // Used to implement the _mm_cvtpd_ps and _mm_cvtps_pd functions.
-            // Converts packed f32/f64 to packed f64/f32.
-            "cvtpd2ps" | "cvtps2pd" => {
-                let [op] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-
-                let (op, op_len) = this.operand_to_simd(op)?;
-                let (dest, dest_len) = this.place_to_simd(dest)?;
-
-                // For cvtpd2ps: op is f64x2, dest is f32x4
-                // For cvtps2pd: op is f32x4, dest is f64x2
-                // In either case, the two first values are converted
-                for i in 0..op_len.min(dest_len) {
-                    let op = this.read_immediate(&this.project_index(&op, i)?)?;
-                    let dest = this.project_index(&dest, i)?;
-
-                    let res = this.float_to_float_or_int(&op, dest.layout)?;
-                    this.write_immediate(*res, &dest)?;
-                }
-                // For f32 -> f64, ignore the remaining
-                // For f64 -> f32, fill the remaining with zeros
-                for i in op_len..dest_len {
-                    let dest = this.project_index(&dest, i)?;
-                    this.write_scalar(Scalar::from_int(0, dest.layout.size), &dest)?;
-                }
-            }
             // Used to implement the _mm_cvtpd_epi32 and _mm_cvttpd_epi32 functions.
             // Converts packed f64 to packed i32.
             "cvtpd2dq" | "cvttpd2dq" => {
@@ -771,25 +616,6 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                         /*allow_transmute*/ false,
                     )?;
                 }
-            }
-            // Used to implement the _mm_movemask_pd function.
-            // Returns a scalar integer where the i-th bit is the highest
-            // bit of the i-th component of `op`.
-            // https://www.felixcloutier.com/x86/movmskpd
-            "movmsk.pd" => {
-                let [op] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let (op, op_len) = this.operand_to_simd(op)?;
-
-                let mut res = 0;
-                for i in 0..op_len {
-                    let op = this.read_scalar(&this.project_index(&op, i)?)?;
-                    let op = op.to_u64()?;
-
-                    // Extract the highest bit of `op` and place it in the `i`-th bit of `res`
-                    res |= (op >> 63) << i;
-                }
-
-                this.write_scalar(Scalar::from_u32(res.try_into().unwrap()), dest)?;
             }
             // Used to implement the `_mm_pause` function.
             // The intrinsic is used to hint the processor that the code is in a spin-loop.

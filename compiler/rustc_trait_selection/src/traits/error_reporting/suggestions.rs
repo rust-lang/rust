@@ -2425,6 +2425,21 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         CoroutineKind::Async(CoroutineSource::Closure) => {
                             format!("future created by async closure is not {trait_name}")
                         }
+                        CoroutineKind::Gen(CoroutineSource::Fn) => self
+                            .tcx
+                            .parent(coroutine_did)
+                            .as_local()
+                            .map(|parent_did| hir.local_def_id_to_hir_id(parent_did))
+                            .and_then(|parent_hir_id| hir.opt_name(parent_hir_id))
+                            .map(|name| {
+                                format!("iterator returned by `{name}` is not {trait_name}")
+                            })?,
+                        CoroutineKind::Gen(CoroutineSource::Block) => {
+                            format!("iterator created by gen block is not {trait_name}")
+                        }
+                        CoroutineKind::Gen(CoroutineSource::Closure) => {
+                            format!("iterator created by gen closure is not {trait_name}")
+                        }
                     })
                 })
                 .unwrap_or_else(|| format!("{future_or_coroutine} is not {trait_name}"));
@@ -2691,8 +2706,6 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         if let DefKind::Trait = tcx.def_kind(item_def_id)
                             && !visible_item
                         {
-                            // FIXME(estebank): extend this to search for all the types that do
-                            // implement this trait and list them.
                             err.note(format!(
                                 "`{short_item_name}` is a \"sealed trait\", because to implement \
                                  it you also need to implement `{}`, which is not accessible; \
@@ -2700,6 +2713,34 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                  types that already implement it",
                                 with_no_trimmed_paths!(tcx.def_path_str(def_id)),
                             ));
+                            let impls_of = tcx.trait_impls_of(def_id);
+                            let impls = impls_of
+                                .non_blanket_impls()
+                                .values()
+                                .flatten()
+                                .chain(impls_of.blanket_impls().iter())
+                                .collect::<Vec<_>>();
+                            if !impls.is_empty() {
+                                let len = impls.len();
+                                let mut types = impls.iter()
+                                    .map(|t| with_no_trimmed_paths!(format!(
+                                        "  {}",
+                                        tcx.type_of(*t).instantiate_identity(),
+                                    )))
+                                    .collect::<Vec<_>>();
+                                let post = if types.len() > 9 {
+                                    types.truncate(8);
+                                    format!("\nand {} others", len - 8)
+                                } else {
+                                    String::new()
+                                };
+                                err.help(format!(
+                                    "the following type{} implement{} the trait:\n{}{post}",
+                                    pluralize!(len),
+                                    if len == 1 { "s" } else { "" },
+                                    types.join("\n"),
+                                ));
+                            }
                         }
                     }
                 } else {
@@ -2905,7 +2946,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             }
             ObligationCauseCode::SizedCoroutineInterior(coroutine_def_id) => {
                 let what = match self.tcx.coroutine_kind(coroutine_def_id) {
-                    None | Some(hir::CoroutineKind::Coroutine) => "yield",
+                    None | Some(hir::CoroutineKind::Coroutine) | Some(hir::CoroutineKind::Gen(_)) => "yield",
                     Some(hir::CoroutineKind::Async(..)) => "await",
                 };
                 err.note(format!(

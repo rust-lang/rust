@@ -1,0 +1,98 @@
+Function name: <bad_counter_ids::Foo as core::cmp::PartialEq>::eq
+Raw bytes (9): 0x[01, 01, 00, 01, 01, 0c, 11, 00, 1a]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 0
+Number of file 0 mappings: 1
+- Code(Counter(0)) at (prev + 12, 17) to (start + 0, 26)
+
+Function name: <bad_counter_ids::Foo as core::fmt::Debug>::fmt
+Raw bytes (9): 0x[01, 01, 00, 01, 01, 0c, 0a, 00, 0f]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 0
+Number of file 0 mappings: 1
+- Code(Counter(0)) at (prev + 12, 10) to (start + 0, 15)
+
+Function name: bad_counter_ids::eq_bad
+Raw bytes (14): 0x[01, 01, 00, 02, 01, 23, 01, 02, 1f, 00, 03, 01, 00, 02]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 0
+Number of file 0 mappings: 2
+- Code(Counter(0)) at (prev + 35, 1) to (start + 2, 31)
+- Code(Zero) at (prev + 3, 1) to (start + 0, 2)
+
+Function name: bad_counter_ids::eq_bad_message
+Raw bytes (21): 0x[01, 01, 01, 01, 00, 03, 01, 28, 01, 02, 0f, 02, 02, 20, 00, 2b, 00, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 1
+- expression 0 operands: lhs = Counter(0), rhs = Zero
+Number of file 0 mappings: 3
+- Code(Counter(0)) at (prev + 40, 1) to (start + 2, 15)
+- Code(Expression(0, Sub)) at (prev + 2, 32) to (start + 0, 43)
+    = (c0 - Zero)
+- Code(Zero) at (prev + 1, 1) to (start + 0, 2)
+
+Function name: bad_counter_ids::eq_good
+Raw bytes (14): 0x[01, 01, 00, 02, 01, 0f, 01, 02, 1f, 05, 03, 01, 00, 02]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 0
+Number of file 0 mappings: 2
+- Code(Counter(0)) at (prev + 15, 1) to (start + 2, 31)
+- Code(Counter(1)) at (prev + 3, 1) to (start + 0, 2)
+
+Function name: bad_counter_ids::eq_good_message
+Raw bytes (19): 0x[01, 01, 00, 03, 01, 14, 01, 02, 0f, 00, 02, 20, 00, 2b, 05, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 0
+Number of file 0 mappings: 3
+- Code(Counter(0)) at (prev + 20, 1) to (start + 2, 15)
+- Code(Zero) at (prev + 2, 32) to (start + 0, 43)
+- Code(Counter(1)) at (prev + 1, 1) to (start + 0, 2)
+
+Function name: bad_counter_ids::ne_bad
+Raw bytes (14): 0x[01, 01, 00, 02, 01, 2d, 01, 02, 1f, 00, 03, 01, 00, 02]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 0
+Number of file 0 mappings: 2
+- Code(Counter(0)) at (prev + 45, 1) to (start + 2, 31)
+- Code(Zero) at (prev + 3, 1) to (start + 0, 2)
+
+Function name: bad_counter_ids::ne_bad_message
+Raw bytes (19): 0x[01, 01, 00, 03, 01, 32, 01, 02, 0f, 05, 02, 20, 00, 2b, 00, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 0
+Number of file 0 mappings: 3
+- Code(Counter(0)) at (prev + 50, 1) to (start + 2, 15)
+- Code(Counter(1)) at (prev + 2, 32) to (start + 0, 43)
+- Code(Zero) at (prev + 1, 1) to (start + 0, 2)
+
+Function name: bad_counter_ids::ne_good
+Raw bytes (16): 0x[01, 01, 01, 01, 00, 02, 01, 19, 01, 02, 1f, 02, 03, 01, 00, 02]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 1
+- expression 0 operands: lhs = Counter(0), rhs = Zero
+Number of file 0 mappings: 2
+- Code(Counter(0)) at (prev + 25, 1) to (start + 2, 31)
+- Code(Expression(0, Sub)) at (prev + 3, 1) to (start + 0, 2)
+    = (c0 - Zero)
+
+Function name: bad_counter_ids::ne_good_message
+Raw bytes (21): 0x[01, 01, 01, 01, 00, 03, 01, 1e, 01, 02, 0f, 00, 02, 20, 00, 2b, 02, 01, 01, 00, 02]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 1
+- expression 0 operands: lhs = Counter(0), rhs = Zero
+Number of file 0 mappings: 3
+- Code(Counter(0)) at (prev + 30, 1) to (start + 2, 15)
+- Code(Zero) at (prev + 2, 32) to (start + 0, 43)
+- Code(Expression(0, Sub)) at (prev + 1, 1) to (start + 0, 2)
+    = (c0 - Zero)
+

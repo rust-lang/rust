@@ -698,6 +698,20 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                             " of async function"
                         }
                     },
+                    Some(hir::CoroutineKind::Gen(gen)) => match gen {
+                        hir::CoroutineSource::Block => " of gen block",
+                        hir::CoroutineSource::Closure => " of gen closure",
+                        hir::CoroutineSource::Fn => {
+                            let parent_item =
+                                hir.get_by_def_id(hir.get_parent_item(mir_hir_id).def_id);
+                            let output = &parent_item
+                                .fn_decl()
+                                .expect("coroutine lowered from gen fn should be in fn")
+                                .output;
+                            span = output.span();
+                            " of gen function"
+                        }
+                    },
                     Some(hir::CoroutineKind::Coroutine) => " of coroutine",
                     None => " of closure",
                 };

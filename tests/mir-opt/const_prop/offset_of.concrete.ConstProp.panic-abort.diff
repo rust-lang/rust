@@ -8,6 +8,9 @@
       let mut _4: usize;
       let mut _6: usize;
       let mut _8: usize;
+      let mut _10: usize;
+      let mut _12: usize;
+      let mut _14: usize;
       scope 1 {
           debug x => _1;
           let _3: usize;
@@ -19,6 +22,18 @@
                   let _7: usize;
                   scope 4 {
                       debug z1 => _7;
+                      let _9: usize;
+                      scope 5 {
+                          debug eA0 => _9;
+                          let _11: usize;
+                          scope 6 {
+                              debug eA1 => _11;
+                              let _13: usize;
+                              scope 7 {
+                                  debug eC => _13;
+                              }
+                          }
+                      }
                   }
               }
           }
@@ -27,7 +42,7 @@
       bb0: {
           StorageLive(_1);
           StorageLive(_2);
--         _2 = OffsetOf(Alpha, [0]);
+-         _2 = OffsetOf(Alpha, [(0, 0)]);
 -         _1 = must_use::<usize>(move _2) -> [return: bb1, unwind unreachable];
 +         _2 = const 4_usize;
 +         _1 = must_use::<usize>(const 4_usize) -> [return: bb1, unwind unreachable];
@@ -37,7 +52,7 @@
           StorageDead(_2);
           StorageLive(_3);
           StorageLive(_4);
--         _4 = OffsetOf(Alpha, [1]);
+-         _4 = OffsetOf(Alpha, [(0, 1)]);
 -         _3 = must_use::<usize>(move _4) -> [return: bb2, unwind unreachable];
 +         _4 = const 0_usize;
 +         _3 = must_use::<usize>(const 0_usize) -> [return: bb2, unwind unreachable];
@@ -47,7 +62,7 @@
           StorageDead(_4);
           StorageLive(_5);
           StorageLive(_6);
--         _6 = OffsetOf(Alpha, [2, 0]);
+-         _6 = OffsetOf(Alpha, [(0, 2), (0, 0)]);
 -         _5 = must_use::<usize>(move _6) -> [return: bb3, unwind unreachable];
 +         _6 = const 2_usize;
 +         _5 = must_use::<usize>(const 2_usize) -> [return: bb3, unwind unreachable];
@@ -57,7 +72,7 @@
           StorageDead(_6);
           StorageLive(_7);
           StorageLive(_8);
--         _8 = OffsetOf(Alpha, [2, 1]);
+-         _8 = OffsetOf(Alpha, [(0, 2), (0, 1)]);
 -         _7 = must_use::<usize>(move _8) -> [return: bb4, unwind unreachable];
 +         _8 = const 3_usize;
 +         _7 = must_use::<usize>(const 3_usize) -> [return: bb4, unwind unreachable];
@@ -65,7 +80,40 @@
   
       bb4: {
           StorageDead(_8);
+          StorageLive(_9);
+          StorageLive(_10);
+-         _10 = OffsetOf(Epsilon, [(0, 0)]);
+-         _9 = must_use::<usize>(move _10) -> [return: bb5, unwind unreachable];
++         _10 = const 1_usize;
++         _9 = must_use::<usize>(const 1_usize) -> [return: bb5, unwind unreachable];
+      }
+  
+      bb5: {
+          StorageDead(_10);
+          StorageLive(_11);
+          StorageLive(_12);
+-         _12 = OffsetOf(Epsilon, [(0, 1)]);
+-         _11 = must_use::<usize>(move _12) -> [return: bb6, unwind unreachable];
++         _12 = const 2_usize;
++         _11 = must_use::<usize>(const 2_usize) -> [return: bb6, unwind unreachable];
+      }
+  
+      bb6: {
+          StorageDead(_12);
+          StorageLive(_13);
+          StorageLive(_14);
+-         _14 = OffsetOf(Epsilon, [(2, 0)]);
+-         _13 = must_use::<usize>(move _14) -> [return: bb7, unwind unreachable];
++         _14 = const 4_usize;
++         _13 = must_use::<usize>(const 4_usize) -> [return: bb7, unwind unreachable];
+      }
+  
+      bb7: {
+          StorageDead(_14);
           _0 = const ();
+          StorageDead(_13);
+          StorageDead(_11);
+          StorageDead(_9);
           StorageDead(_7);
           StorageDead(_5);
           StorageDead(_3);

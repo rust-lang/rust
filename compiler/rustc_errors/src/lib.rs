@@ -556,7 +556,7 @@ impl Drop for HandlerInner {
         // instead of "require some error happened". Sadly that isn't ideal, as
         // lints can be `#[allow]`'d, potentially leading to this triggering.
         // Also, "good path" should be replaced with a better naming.
-        if !self.has_any_message() && !self.suppressed_expected_diag {
+        if !self.has_any_message() && !self.suppressed_expected_diag && !std::thread::panicking() {
             let bugs = std::mem::replace(&mut self.delayed_good_path_bugs, Vec::new());
             self.flush_delayed(
                 bugs,

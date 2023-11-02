@@ -207,7 +207,9 @@ impl Thread {
     pub fn set_name(name: &CStr) {
         unsafe {
             let thread_self = libc::find_thread(ptr::null_mut());
-            libc::rename_thread(thread_self, name.as_ptr());
+            let res = libc::rename_thread(thread_self, name.as_ptr());
+            // We have no good way of propagating errors here, but in debug-builds let's check that this actually worked.
+            debug_assert_eq!(res, libc::B_OK);
         }
     }
 

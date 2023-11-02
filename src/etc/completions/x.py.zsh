@@ -48,6 +48,7 @@ _x.py() {
 '--json-output[use message-format=json]' \
 '--llvm-profile-generate[generate PGO profile with llvm built for rustc]' \
 '--enable-bolt-settings[Enable BOLT link flags]' \
+'--skip-stage0-validation[Skip stage0 compiler validation]' \
 '-h[Print help]' \
 '--help[Print help]' \
 '::paths -- paths for the subcommand:_files' \
@@ -96,6 +97,7 @@ _arguments "${_arguments_options[@]}" \
 '--json-output[use message-format=json]' \
 '--llvm-profile-generate[generate PGO profile with llvm built for rustc]' \
 '--enable-bolt-settings[Enable BOLT link flags]' \
+'--skip-stage0-validation[Skip stage0 compiler validation]' \
 '-h[Print help (see more with '\''--help'\'')]' \
 '--help[Print help (see more with '\''--help'\'')]' \
 '*::paths -- paths for the subcommand:_files' \
@@ -137,6 +139,7 @@ _arguments "${_arguments_options[@]}" \
 '--json-output[use message-format=json]' \
 '--llvm-profile-generate[generate PGO profile with llvm built for rustc]' \
 '--enable-bolt-settings[Enable BOLT link flags]' \
+'--skip-stage0-validation[Skip stage0 compiler validation]' \
 '-h[Print help (see more with '\''--help'\'')]' \
 '--help[Print help (see more with '\''--help'\'')]' \
 '*::paths -- paths for the subcommand:_files' \
@@ -182,6 +185,7 @@ _arguments "${_arguments_options[@]}" \
 '--json-output[use message-format=json]' \
 '--llvm-profile-generate[generate PGO profile with llvm built for rustc]' \
 '--enable-bolt-settings[Enable BOLT link flags]' \
+'--skip-stage0-validation[Skip stage0 compiler validation]' \
 '-h[Print help (see more with '\''--help'\'')]' \
 '--help[Print help (see more with '\''--help'\'')]' \
 '*::paths -- paths for the subcommand:_files' \
@@ -222,6 +226,7 @@ _arguments "${_arguments_options[@]}" \
 '--json-output[use message-format=json]' \
 '--llvm-profile-generate[generate PGO profile with llvm built for rustc]' \
 '--enable-bolt-settings[Enable BOLT link flags]' \
+'--skip-stage0-validation[Skip stage0 compiler validation]' \
 '-h[Print help (see more with '\''--help'\'')]' \
 '--help[Print help (see more with '\''--help'\'')]' \
 '*::paths -- paths for the subcommand:_files' \
@@ -263,6 +268,7 @@ _arguments "${_arguments_options[@]}" \
 '--json-output[use message-format=json]' \
 '--llvm-profile-generate[generate PGO profile with llvm built for rustc]' \
 '--enable-bolt-settings[Enable BOLT link flags]' \
+'--skip-stage0-validation[Skip stage0 compiler validation]' \
 '-h[Print help (see more with '\''--help'\'')]' \
 '--help[Print help (see more with '\''--help'\'')]' \
 '*::paths -- paths for the subcommand:_files' \
@@ -305,6 +311,7 @@ _arguments "${_arguments_options[@]}" \
 '--json-output[use message-format=json]' \
 '--llvm-profile-generate[generate PGO profile with llvm built for rustc]' \
 '--enable-bolt-settings[Enable BOLT link flags]' \
+'--skip-stage0-validation[Skip stage0 compiler validation]' \
 '-h[Print help (see more with '\''--help'\'')]' \
 '--help[Print help (see more with '\''--help'\'')]' \
 '*::paths -- paths for the subcommand:_files' \
@@ -358,6 +365,7 @@ _arguments "${_arguments_options[@]}" \
 '--json-output[use message-format=json]' \
 '--llvm-profile-generate[generate PGO profile with llvm built for rustc]' \
 '--enable-bolt-settings[Enable BOLT link flags]' \
+'--skip-stage0-validation[Skip stage0 compiler validation]' \
 '-h[Print help (see more with '\''--help'\'')]' \
 '--help[Print help (see more with '\''--help'\'')]' \
 '*::paths -- paths for the subcommand:_files' \
@@ -399,6 +407,7 @@ _arguments "${_arguments_options[@]}" \
 '--json-output[use message-format=json]' \
 '--llvm-profile-generate[generate PGO profile with llvm built for rustc]' \
 '--enable-bolt-settings[Enable BOLT link flags]' \
+'--skip-stage0-validation[Skip stage0 compiler validation]' \
 '-h[Print help]' \
 '--help[Print help]' \
 '*::paths -- paths for the subcommand:_files' \
@@ -440,6 +449,7 @@ _arguments "${_arguments_options[@]}" \
 '--json-output[use message-format=json]' \
 '--llvm-profile-generate[generate PGO profile with llvm built for rustc]' \
 '--enable-bolt-settings[Enable BOLT link flags]' \
+'--skip-stage0-validation[Skip stage0 compiler validation]' \
 '-h[Print help]' \
 '--help[Print help]' \
 '*::paths -- paths for the subcommand:_files' \
@@ -480,6 +490,7 @@ _arguments "${_arguments_options[@]}" \
 '--json-output[use message-format=json]' \
 '--llvm-profile-generate[generate PGO profile with llvm built for rustc]' \
 '--enable-bolt-settings[Enable BOLT link flags]' \
+'--skip-stage0-validation[Skip stage0 compiler validation]' \
 '-h[Print help]' \
 '--help[Print help]' \
 '*::paths -- paths for the subcommand:_files' \
@@ -520,6 +531,7 @@ _arguments "${_arguments_options[@]}" \
 '--json-output[use message-format=json]' \
 '--llvm-profile-generate[generate PGO profile with llvm built for rustc]' \
 '--enable-bolt-settings[Enable BOLT link flags]' \
+'--skip-stage0-validation[Skip stage0 compiler validation]' \
 '-h[Print help]' \
 '--help[Print help]' \
 '*::paths -- paths for the subcommand:_files' \
@@ -561,6 +573,7 @@ _arguments "${_arguments_options[@]}" \
 '--json-output[use message-format=json]' \
 '--llvm-profile-generate[generate PGO profile with llvm built for rustc]' \
 '--enable-bolt-settings[Enable BOLT link flags]' \
+'--skip-stage0-validation[Skip stage0 compiler validation]' \
 '-h[Print help (see more with '\''--help'\'')]' \
 '--help[Print help (see more with '\''--help'\'')]' \
 '*::paths -- paths for the subcommand:_files' \
@@ -601,6 +614,7 @@ _arguments "${_arguments_options[@]}" \
 '--json-output[use message-format=json]' \
 '--llvm-profile-generate[generate PGO profile with llvm built for rustc]' \
 '--enable-bolt-settings[Enable BOLT link flags]' \
+'--skip-stage0-validation[Skip stage0 compiler validation]' \
 '-h[Print help (see more with '\''--help'\'')]' \
 '--help[Print help (see more with '\''--help'\'')]' \
 '::profile -- Either the profile for `config.toml` or another setup action. May be omitted to set up interactively:_files' \
@@ -643,6 +657,7 @@ _arguments "${_arguments_options[@]}" \
 '--json-output[use message-format=json]' \
 '--llvm-profile-generate[generate PGO profile with llvm built for rustc]' \
 '--enable-bolt-settings[Enable BOLT link flags]' \
+'--skip-stage0-validation[Skip stage0 compiler validation]' \
 '-h[Print help (see more with '\''--help'\'')]' \
 '--help[Print help (see more with '\''--help'\'')]' \
 '*::paths -- paths for the subcommand:_files' \

@@ -230,17 +230,14 @@ impl<'cx, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'cx, 'tcx> 
                     Reveal::All => {
                         let args = data.args.try_fold_with(self)?;
                         let recursion_limit = self.interner().recursion_limit();
+
                         if !recursion_limit.value_within_limit(self.anon_depth) {
-                            // A closure or coroutine may have itself as in its upvars.
-                            // This should be checked handled by the recursion check for opaque
-                            // types, but we may end up here before that check can happen.
-                            // In that case, we delay a bug to mark the trip, and continue without
-                            // revealing the opaque.
-                            self.infcx
+                            let guar = self
+                                .infcx
                                 .err_ctxt()
                                 .build_overflow_error(&ty, self.cause.span, true)
                                 .delay_as_bug();
-                            return ty.try_super_fold_with(self);
+                            return Ok(Ty::new_error(self.interner(), guar));
                         }
 
                         let generic_ty = self.interner().type_of(data.def_id);

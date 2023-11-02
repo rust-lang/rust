@@ -426,14 +426,18 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             return;
                         }
                         let trait_ref = trait_predicate.to_poly_trait_ref();
-
-                        let (post_message, pre_message, type_def) = self
+                        let (post_message, pre_message, type_def, file_note) = self
                             .get_parent_trait_ref(obligation.cause.code())
                             .map(|(t, s)| {
+                                let (t, file) = self.tcx.short_ty_string(t);
                                 (
                                     format!(" in `{t}`"),
                                     format!("within `{t}`, "),
                                     s.map(|s| (format!("within this `{t}`"), s)),
+                                    file.map(|file| format!(
+                                        "the full trait has been written to '{}'",
+                                        file.display(),
+                                    ))
                                 )
                             })
                             .unwrap_or_default();
@@ -441,7 +445,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         let OnUnimplementedNote {
                             message,
                             label,
-                            note,
+                            notes,
                             parent_label,
                             append_const_msg,
                         } = self.on_unimplemented_note(trait_ref, &obligation);
@@ -449,21 +453,21 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         let is_try_conversion = self.is_try_conversion(span, trait_ref.def_id());
                         let is_unsize =
                             Some(trait_ref.def_id()) == self.tcx.lang_items().unsize_trait();
-                        let (message, note, append_const_msg) = if is_try_conversion {
+                        let (message, notes, append_const_msg) = if is_try_conversion {
                             (
                                 Some(format!(
                                     "`?` couldn't convert the error to `{}`",
                                     trait_ref.skip_binder().self_ty(),
                                 )),
-                                Some(
+                                vec![
                                     "the question mark operation (`?`) implicitly performs a \
                                      conversion on the error value using the `From` trait"
                                         .to_owned(),
-                                ),
+                                ],
                                 Some(AppendConstMessage::Default),
                             )
                         } else {
-                            (message, note, append_const_msg)
+                            (message, notes, append_const_msg)
                         };
 
                         let err_msg = self.get_standard_error_message(
@@ -541,6 +545,8 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             err.emit();
                             return;
                         }
+
+                        file_note.map(|note| err.note(note));
                         if let Some(s) = label {
                             // If it has a custom `#[rustc_on_unimplemented]`
                             // error message, let's display it as the label!
@@ -582,9 +588,9 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         if let Some((msg, span)) = type_def {
                             err.span_label(span, msg);
                         }
-                        if let Some(s) = note {
+                        for note in notes {
                             // If it has a custom `#[rustc_on_unimplemented]` note, let's display it
-                            err.note(s);
+                            err.note(note);
                         }
                         if let Some(s) = parent_label {
                             let body = obligation.cause.body_id;
@@ -1094,7 +1100,7 @@ pub(super) trait InferCtxtPrivExt<'tcx> {
     fn get_parent_trait_ref(
         &self,
         code: &ObligationCauseCode<'tcx>,
-    ) -> Option<(String, Option<Span>)>;
+    ) -> Option<(Ty<'tcx>, Option<Span>)>;
 
     /// If the `Self` type of the unsatisfied trait `trait_ref` implements a trait
     /// with the same path as `trait_ref`, a help message about
@@ -1642,11 +1648,14 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     }
 
     fn describe_coroutine(&self, body_id: hir::BodyId) -> Option<&'static str> {
-        self.tcx.hir().body(body_id).coroutine_kind.map(|gen_kind| match gen_kind {
+        self.tcx.hir().body(body_id).coroutine_kind.map(|coroutine_source| match coroutine_source {
             hir::CoroutineKind::Coroutine => "a coroutine",
             hir::CoroutineKind::Async(hir::CoroutineSource::Block) => "an async block",
             hir::CoroutineKind::Async(hir::CoroutineSource::Fn) => "an async function",
             hir::CoroutineKind::Async(hir::CoroutineSource::Closure) => "an async closure",
+            hir::CoroutineKind::Gen(hir::CoroutineSource::Block) => "a gen block",
+            hir::CoroutineKind::Gen(hir::CoroutineSource::Fn) => "a gen function",
+            hir::CoroutineKind::Gen(hir::CoroutineSource::Closure) => "a gen closure",
         })
     }
 
@@ -1943,7 +1952,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     fn get_parent_trait_ref(
         &self,
         code: &ObligationCauseCode<'tcx>,
-    ) -> Option<(String, Option<Span>)> {
+    ) -> Option<(Ty<'tcx>, Option<Span>)> {
         match code {
             ObligationCauseCode::BuiltinDerivedObligation(data) => {
                 let parent_trait_ref = self.resolve_vars_if_possible(data.parent_trait_pred);
@@ -1953,7 +1962,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         let ty = parent_trait_ref.skip_binder().self_ty();
                         let span = TyCategory::from_ty(self.tcx, ty)
                             .map(|(_, def_id)| self.tcx.def_span(def_id));
-                        Some((ty.to_string(), span))
+                        Some((ty, span))
                     }
                 }
             }
@@ -3178,7 +3187,8 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         // traits manually, but don't make it more confusing when it does
         // happen.
         Some(
-            if Some(expected_trait_ref.def_id()) != self.tcx.lang_items().gen_trait() && not_tupled
+            if Some(expected_trait_ref.def_id()) != self.tcx.lang_items().coroutine_trait()
+                && not_tupled
             {
                 self.report_and_explain_type_error(
                     TypeTrace::poly_trait_refs(

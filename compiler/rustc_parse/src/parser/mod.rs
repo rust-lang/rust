@@ -11,6 +11,7 @@ mod stmt;
 mod ty;
 
 use crate::lexer::UnmatchedDelim;
+use ast::Gen;
 pub use attr_wrapper::AttrWrapper;
 pub use diagnostics::AttemptLocalParseRecovery;
 pub(crate) use expr::ForbiddenLetReason;
@@ -1125,6 +1126,16 @@ impl<'a> Parser<'a> {
             Async::Yes { span, closure_id: DUMMY_NODE_ID, return_impl_trait_id: DUMMY_NODE_ID }
         } else {
             Async::No
+        }
+    }
+
+    /// Parses genness: `gen` or nothing.
+    fn parse_genness(&mut self, case: Case) -> Gen {
+        if self.token.span.at_least_rust_2024() && self.eat_keyword_case(kw::Gen, case) {
+            let span = self.prev_token.uninterpolated_span();
+            Gen::Yes { span, closure_id: DUMMY_NODE_ID, return_impl_trait_id: DUMMY_NODE_ID }
+        } else {
+            Gen::No
         }
     }
 

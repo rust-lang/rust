@@ -12,7 +12,7 @@ use thin_vec::ThinVec;
 
 use rustc_ast as ast;
 use rustc_ast_pretty::pprust;
-use rustc_attr::{ConstStability, Deprecation, Since, Stability, StabilityLevel};
+use rustc_attr::{ConstStability, Deprecation, Stability, StabilityLevel, StableSince};
 use rustc_const_eval::const_eval::is_unstable_const_fn;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
@@ -585,14 +585,14 @@ impl Item {
         })
     }
 
-    pub(crate) fn stable_since(&self, tcx: TyCtxt<'_>) -> Option<Since> {
+    pub(crate) fn stable_since(&self, tcx: TyCtxt<'_>) -> Option<StableSince> {
         match self.stability(tcx)?.level {
             StabilityLevel::Stable { since, .. } => Some(since),
             StabilityLevel::Unstable { .. } => None,
         }
     }
 
-    pub(crate) fn const_stable_since(&self, tcx: TyCtxt<'_>) -> Option<Since> {
+    pub(crate) fn const_stable_since(&self, tcx: TyCtxt<'_>) -> Option<StableSince> {
         match self.const_stability(tcx)?.level {
             StabilityLevel::Stable { since, .. } => Some(since),
             StabilityLevel::Unstable { .. } => None,
@@ -1325,8 +1325,8 @@ impl WherePredicate {
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) enum GenericParamDefKind {
-    Lifetime { outlives: Vec<Lifetime> },
-    Type { did: DefId, bounds: Vec<GenericBound>, default: Option<Box<Type>>, synthetic: bool },
+    Lifetime { outlives: ThinVec<Lifetime> },
+    Type { did: DefId, bounds: ThinVec<GenericBound>, default: Option<Box<Type>>, synthetic: bool },
     Const { ty: Box<Type>, default: Option<Box<String>>, is_host_effect: bool },
 }
 
@@ -1344,7 +1344,7 @@ pub(crate) struct GenericParamDef {
 
 impl GenericParamDef {
     pub(crate) fn lifetime(name: Symbol) -> Self {
-        Self { name, kind: GenericParamDefKind::Lifetime { outlives: Vec::new() } }
+        Self { name, kind: GenericParamDefKind::Lifetime { outlives: ThinVec::new() } }
     }
 
     pub(crate) fn is_synthetic_param(&self) -> bool {
@@ -1454,6 +1454,9 @@ impl Trait {
     }
     pub(crate) fn unsafety(&self, tcx: TyCtxt<'_>) -> hir::Unsafety {
         tcx.trait_def(self.def_id).unsafety
+    }
+    pub(crate) fn is_object_safe(&self, tcx: TyCtxt<'_>) -> bool {
+        tcx.check_is_object_safe(self.def_id)
     }
 }
 
@@ -2521,7 +2524,7 @@ mod size_asserts {
     static_assert_size!(DocFragment, 32);
     static_assert_size!(GenericArg, 32);
     static_assert_size!(GenericArgs, 32);
-    static_assert_size!(GenericParamDef, 56);
+    static_assert_size!(GenericParamDef, 40);
     static_assert_size!(Generics, 16);
     static_assert_size!(Item, 56);
     static_assert_size!(ItemKind, 56);

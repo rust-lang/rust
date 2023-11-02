@@ -396,11 +396,6 @@ passes_invalid_attr_at_crate_level =
 passes_invalid_attr_at_crate_level_item =
     the inner attribute doesn't annotate this {$kind}
 
-passes_invalid_deprecation_version =
-    invalid deprecation version found
-    .label = invalid deprecation version
-    .item = the stability attribute annotates this item
-
 passes_invalid_macro_export_arguments = `{$name}` isn't a valid `#[macro_export]` argument
 
 passes_invalid_macro_export_arguments_too_many_items = `#[macro_export]` can only take 1 or 0 arguments
@@ -778,12 +773,15 @@ passes_unused_var_maybe_capture_ref = unused variable: `{$name}`
 passes_unused_var_remove_field = unused variable: `{$name}`
 passes_unused_var_remove_field_suggestion = try removing the field
 
+passes_unused_variable_args_in_macro = `{$name}` is captured in macro and introduced a unused variable
+
 passes_unused_variable_try_ignore = unused variable: `{$name}`
     .suggestion = try ignoring the field
 
 passes_unused_variable_try_prefix = unused variable: `{$name}`
     .label = unused variable
     .suggestion = if this is intentional, prefix it with an underscore
+
 
 passes_used_compiler_linker =
     `used(compiler)` and `used(linker)` can't be used together

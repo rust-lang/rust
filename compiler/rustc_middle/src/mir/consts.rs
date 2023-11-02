@@ -3,6 +3,7 @@ use std::fmt::{self, Debug, Display, Formatter};
 use rustc_hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir};
+use rustc_session::RemapFileNameExt;
 use rustc_span::Span;
 use rustc_target::abi::{HasDataLayout, Size};
 
@@ -171,6 +172,24 @@ impl<'tcx> ConstValue<'tcx> {
         let start = start.try_into().unwrap();
         let end = end.try_into().unwrap();
         Some(data.inner().inspect_with_uninit_and_ptr_outside_interpreter(start..end))
+    }
+
+    /// Check if a constant may contain provenance information. This is used by MIR opts.
+    /// Can return `true` even if there is no provenance.
+    pub fn may_have_provenance(&self, tcx: TyCtxt<'tcx>, size: Size) -> bool {
+        match *self {
+            ConstValue::ZeroSized | ConstValue::Scalar(Scalar::Int(_)) => return false,
+            ConstValue::Scalar(Scalar::Ptr(..)) => return true,
+            // It's hard to find out the part of the allocation we point to;
+            // just conservatively check everything.
+            ConstValue::Slice { data, meta: _ } => !data.inner().provenance().ptrs().is_empty(),
+            ConstValue::Indirect { alloc_id, offset } => !tcx
+                .global_alloc(alloc_id)
+                .unwrap_memory()
+                .inner()
+                .provenance()
+                .range_empty(super::AllocRange::from(offset..offset + size), &tcx),
+        }
     }
 }
 
@@ -485,6 +504,40 @@ impl<'tcx> Const<'tcx> {
             _ => Self::Ty(c),
         }
     }
+
+    /// Return true if any evaluation of this constant always returns the same value,
+    /// taking into account even pointer identity tests.
+    pub fn is_deterministic(&self) -> bool {
+        // Some constants may generate fresh allocations for pointers they contain,
+        // so using the same constant twice can yield two different results:
+        // - valtrees purposefully generate new allocations
+        // - ConstValue::Slice also generate new allocations
+        match self {
+            Const::Ty(c) => match c.kind() {
+                ty::ConstKind::Param(..) => true,
+                // A valtree may be a reference. Valtree references correspond to a
+                // different allocation each time they are evaluated. Valtrees for primitive
+                // types are fine though.
+                ty::ConstKind::Value(_) => c.ty().is_primitive(),
+                ty::ConstKind::Unevaluated(..) | ty::ConstKind::Expr(..) => false,
+                // This can happen if evaluation of a constant failed. The result does not matter
+                // much since compilation is doomed.
+                ty::ConstKind::Error(..) => false,
+                // Should not appear in runtime MIR.
+                ty::ConstKind::Infer(..)
+                | ty::ConstKind::Bound(..)
+                | ty::ConstKind::Placeholder(..) => bug!(),
+            },
+            Const::Unevaluated(..) => false,
+            // If the same slice appears twice in the MIR, we cannot guarantee that we will
+            // give the same `AllocId` to the data.
+            Const::Val(ConstValue::Slice { .. }, _) => false,
+            Const::Val(
+                ConstValue::ZeroSized | ConstValue::Scalar(_) | ConstValue::Indirect { .. },
+                _,
+            ) => true,
+        }
+    }
 }
 
 /// An unevaluated (potentially generic) constant used in MIR.
@@ -527,5 +580,22 @@ impl<'tcx> Display for Const<'tcx> {
                 Ok(())
             }
         }
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////
+/// Const-related utilities
+
+impl<'tcx> TyCtxt<'tcx> {
+    pub fn span_as_caller_location(self, span: Span) -> ConstValue<'tcx> {
+        let topmost = span.ctxt().outer_expn().expansion_cause().unwrap_or(span);
+        let caller = self.sess.source_map().lookup_char_pos(topmost.lo());
+        self.const_caller_location(
+            rustc_span::symbol::Symbol::intern(
+                &caller.file.name.for_codegen(&self.sess).to_string_lossy(),
+            ),
+            caller.line as u32,
+            caller.col_display as u32 + 1,
+        )
     }
 }

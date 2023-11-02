@@ -4,10 +4,12 @@ version = "0.0.0"
 edition = "2021"
 
 [dependencies]
-tracing = "0.1"
-rustc_middle = { path = "../rustc_middle" }
+# tidy-alphabetical-start
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_hir = { path = "../rustc_hir" }
-rustc_span = { path = "../rustc_span" }
 rustc_infer = { path = "../rustc_infer" }
+rustc_middle = { path = "../rustc_middle" }
+rustc_span = { path = "../rustc_span" }
 rustc_trait_selection = { path = "../rustc_trait_selection" }
+tracing = "0.1"
+# tidy-alphabetical-end

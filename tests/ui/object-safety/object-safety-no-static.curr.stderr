@@ -11,6 +11,7 @@ LL | trait Foo {
    |       --- this trait cannot be made into an object...
 LL |     fn foo() {}
    |        ^^^ ...because associated function `foo` has no `self` parameter
+   = help: only type `Bar` implements the trait, consider using it directly instead
 help: consider turning `foo` into a method by giving it a `&self` argument
    |
 LL |     fn foo(&self) {}

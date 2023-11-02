@@ -64,10 +64,10 @@ pub(crate) fn parse_token_trees<'a>(
         override_span,
         nbsp_is_whitespace: false,
     };
-    let (token_trees, unmatched_delims) =
+    let (stream, res, unmatched_delims) =
         tokentrees::TokenTreesReader::parse_all_token_trees(string_reader);
-    match token_trees {
-        Ok(stream) if unmatched_delims.is_empty() => Ok(stream),
+    match res {
+        Ok(()) if unmatched_delims.is_empty() => Ok(stream),
         _ => {
             // Return error if there are unmatched delimiters or unclosed delimiters.
             // We emit delimiter mismatch errors first, then emit the unclosing delimiter mismatch
@@ -79,9 +79,11 @@ pub(crate) fn parse_token_trees<'a>(
                     err.buffer(&mut buffer);
                 }
             }
-            if let Err(err) = token_trees {
-                // Add unclosing delimiter error
-                err.buffer(&mut buffer);
+            if let Err(errs) = res {
+                // Add unclosing delimiter or diff marker errors
+                for err in errs {
+                    err.buffer(&mut buffer);
+                }
             }
             Err(buffer)
         }

@@ -8,11 +8,10 @@ LL |     S.a();
    |       ^ method not found in `S`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
-note: `method::A` defines an item `a`, perhaps you need to implement it
-  --> $DIR/item-privacy.rs:6:5
+help: the following trait is implemented but not in scope; perhaps add a `use` for it:
    |
-LL |     trait A {
-   |     ^^^^^^^
+LL + use method::A;
+   |
 
 error[E0599]: no method named `b` found for struct `S` in the current scope
   --> $DIR/item-privacy.rs:68:7
@@ -51,11 +50,10 @@ LL |     S::a(&S);
    |        ^ function or associated item not found in `S`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
-note: `method::A` defines an item `a`, perhaps you need to implement it
-  --> $DIR/item-privacy.rs:6:5
+help: the following trait is implemented but not in scope; perhaps add a `use` for it:
    |
-LL |     trait A {
-   |     ^^^^^^^
+LL + use method::A;
+   |
 
 error[E0599]: no function or associated item named `b` found for struct `S` in the current scope
   --> $DIR/item-privacy.rs:80:8
@@ -91,11 +89,10 @@ LL |     S::A;
    |        ^ associated item not found in `S`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
-note: `assoc_const::A` defines an item `A`, perhaps you need to implement it
-  --> $DIR/item-privacy.rs:24:5
+help: the following trait is implemented but not in scope; perhaps add a `use` for it:
    |
-LL |     trait A {
-   |     ^^^^^^^
+LL + use assoc_const::A;
+   |
 
 error[E0599]: no associated item named `B` found for struct `S` in the current scope
   --> $DIR/item-privacy.rs:98:8
@@ -143,6 +140,7 @@ LL |         const C: u8 = 0;
    = help: consider moving `C` to another trait
    = help: consider moving `A` to another trait
    = help: consider moving `B` to another trait
+   = help: only type `S` implements the trait, consider using it directly instead
 
 error[E0223]: ambiguous associated type
   --> $DIR/item-privacy.rs:115:12

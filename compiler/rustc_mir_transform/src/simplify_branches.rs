@@ -16,8 +16,25 @@ impl<'tcx> MirPass<'tcx> for SimplifyConstCondition {
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+        trace!("Running SimplifyConstCondition on {:?}", body.source);
         let param_env = tcx.param_env_reveal_all_normalized(body.source.def_id());
-        for block in body.basic_blocks_mut() {
+        'blocks: for block in body.basic_blocks_mut() {
+            for stmt in block.statements.iter_mut() {
+                if let StatementKind::Intrinsic(box ref intrinsic) = stmt.kind
+                    && let NonDivergingIntrinsic::Assume(discr) = intrinsic
+                    && let Operand::Constant(ref c) = discr
+                    && let Some(constant) = c.const_.try_eval_bool(tcx, param_env)
+                {
+                    if constant {
+                        stmt.make_nop();
+                    } else {
+                        block.statements.clear();
+                        block.terminator_mut().kind = TerminatorKind::Unreachable;
+                        continue 'blocks;
+                    }
+                }
+            }
+
             let terminator = block.terminator_mut();
             terminator.kind = match terminator.kind {
                 TerminatorKind::SwitchInt {

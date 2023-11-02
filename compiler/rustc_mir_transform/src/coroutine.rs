@@ -147,7 +147,7 @@ impl<'tcx> MutVisitor<'tcx> for DerefArgVisitor<'tcx> {
 }
 
 struct PinArgVisitor<'tcx> {
-    ref_gen_ty: Ty<'tcx>,
+    ref_coroutine_ty: Ty<'tcx>,
     tcx: TyCtxt<'tcx>,
 }
 
@@ -168,7 +168,7 @@ impl<'tcx> MutVisitor<'tcx> for PinArgVisitor<'tcx> {
                     local: SELF_ARG,
                     projection: self.tcx().mk_place_elems(&[ProjectionElem::Field(
                         FieldIdx::new(0),
-                        self.ref_gen_ty,
+                        self.ref_coroutine_ty,
                     )]),
                 },
                 self.tcx,
@@ -224,7 +224,7 @@ struct SuspensionPoint<'tcx> {
 
 struct TransformVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
-    is_async_kind: bool,
+    coroutine_kind: hir::CoroutineKind,
     state_adt_ref: AdtDef<'tcx>,
     state_args: GenericArgsRef<'tcx>,
 
@@ -249,6 +249,47 @@ struct TransformVisitor<'tcx> {
 }
 
 impl<'tcx> TransformVisitor<'tcx> {
+    fn insert_none_ret_block(&self, body: &mut Body<'tcx>) -> BasicBlock {
+        let block = BasicBlock::new(body.basic_blocks.len());
+
+        let source_info = SourceInfo::outermost(body.span);
+
+        let (kind, idx) = self.coroutine_state_adt_and_variant_idx(true);
+        assert_eq!(self.state_adt_ref.variant(idx).fields.len(), 0);
+        let statements = vec![Statement {
+            kind: StatementKind::Assign(Box::new((
+                Place::return_place(),
+                Rvalue::Aggregate(Box::new(kind), IndexVec::new()),
+            ))),
+            source_info,
+        }];
+
+        body.basic_blocks_mut().push(BasicBlockData {
+            statements,
+            terminator: Some(Terminator { source_info, kind: TerminatorKind::Return }),
+            is_cleanup: false,
+        });
+
+        block
+    }
+
+    fn coroutine_state_adt_and_variant_idx(
+        &self,
+        is_return: bool,
+    ) -> (AggregateKind<'tcx>, VariantIdx) {
+        let idx = VariantIdx::new(match (is_return, self.coroutine_kind) {
+            (true, hir::CoroutineKind::Coroutine) => 1, // CoroutineState::Complete
+            (false, hir::CoroutineKind::Coroutine) => 0, // CoroutineState::Yielded
+            (true, hir::CoroutineKind::Async(_)) => 0,  // Poll::Ready
+            (false, hir::CoroutineKind::Async(_)) => 1, // Poll::Pending
+            (true, hir::CoroutineKind::Gen(_)) => 0,    // Option::None
+            (false, hir::CoroutineKind::Gen(_)) => 1,   // Option::Some
+        });
+
+        let kind = AggregateKind::Adt(self.state_adt_ref.did(), idx, self.state_args, None, None);
+        (kind, idx)
+    }
+
     // Make a `CoroutineState` or `Poll` variant assignment.
     //
     // `core::ops::CoroutineState` only has single element tuple variants,
@@ -261,31 +302,44 @@ impl<'tcx> TransformVisitor<'tcx> {
         is_return: bool,
         statements: &mut Vec<Statement<'tcx>>,
     ) {
-        let idx = VariantIdx::new(match (is_return, self.is_async_kind) {
-            (true, false) => 1,  // CoroutineState::Complete
-            (false, false) => 0, // CoroutineState::Yielded
-            (true, true) => 0,   // Poll::Ready
-            (false, true) => 1,  // Poll::Pending
-        });
+        let (kind, idx) = self.coroutine_state_adt_and_variant_idx(is_return);
 
-        let kind = AggregateKind::Adt(self.state_adt_ref.did(), idx, self.state_args, None, None);
+        match self.coroutine_kind {
+            // `Poll::Pending`
+            CoroutineKind::Async(_) => {
+                if !is_return {
+                    assert_eq!(self.state_adt_ref.variant(idx).fields.len(), 0);
 
-        // `Poll::Pending`
-        if self.is_async_kind && idx == VariantIdx::new(1) {
-            assert_eq!(self.state_adt_ref.variant(idx).fields.len(), 0);
+                    // FIXME(swatinem): assert that `val` is indeed unit?
+                    statements.push(Statement {
+                        kind: StatementKind::Assign(Box::new((
+                            Place::return_place(),
+                            Rvalue::Aggregate(Box::new(kind), IndexVec::new()),
+                        ))),
+                        source_info,
+                    });
+                    return;
+                }
+            }
+            // `Option::None`
+            CoroutineKind::Gen(_) => {
+                if is_return {
+                    assert_eq!(self.state_adt_ref.variant(idx).fields.len(), 0);
 
-            // FIXME(swatinem): assert that `val` is indeed unit?
-            statements.push(Statement {
-                kind: StatementKind::Assign(Box::new((
-                    Place::return_place(),
-                    Rvalue::Aggregate(Box::new(kind), IndexVec::new()),
-                ))),
-                source_info,
-            });
-            return;
+                    statements.push(Statement {
+                        kind: StatementKind::Assign(Box::new((
+                            Place::return_place(),
+                            Rvalue::Aggregate(Box::new(kind), IndexVec::new()),
+                        ))),
+                        source_info,
+                    });
+                    return;
+                }
+            }
+            CoroutineKind::Coroutine => {}
         }
 
-        // else: `Poll::Ready(x)`, `CoroutineState::Yielded(x)` or `CoroutineState::Complete(x)`
+        // else: `Poll::Ready(x)`, `CoroutineState::Yielded(x)`, `CoroutineState::Complete(x)`, or `Option::Some(x)`
         assert_eq!(self.state_adt_ref.variant(idx).fields.len(), 1);
 
         statements.push(Statement {
@@ -414,34 +468,34 @@ impl<'tcx> MutVisitor<'tcx> for TransformVisitor<'tcx> {
 }
 
 fn make_coroutine_state_argument_indirect<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-    let gen_ty = body.local_decls.raw[1].ty;
+    let coroutine_ty = body.local_decls.raw[1].ty;
 
-    let ref_gen_ty = Ty::new_ref(
+    let ref_coroutine_ty = Ty::new_ref(
         tcx,
         tcx.lifetimes.re_erased,
-        ty::TypeAndMut { ty: gen_ty, mutbl: Mutability::Mut },
+        ty::TypeAndMut { ty: coroutine_ty, mutbl: Mutability::Mut },
     );
 
     // Replace the by value coroutine argument
-    body.local_decls.raw[1].ty = ref_gen_ty;
+    body.local_decls.raw[1].ty = ref_coroutine_ty;
 
     // Add a deref to accesses of the coroutine state
     DerefArgVisitor { tcx }.visit_body(body);
 }
 
 fn make_coroutine_state_argument_pinned<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-    let ref_gen_ty = body.local_decls.raw[1].ty;
+    let ref_coroutine_ty = body.local_decls.raw[1].ty;
 
     let pin_did = tcx.require_lang_item(LangItem::Pin, Some(body.span));
     let pin_adt_ref = tcx.adt_def(pin_did);
-    let args = tcx.mk_args(&[ref_gen_ty.into()]);
-    let pin_ref_gen_ty = Ty::new_adt(tcx, pin_adt_ref, args);
+    let args = tcx.mk_args(&[ref_coroutine_ty.into()]);
+    let pin_ref_coroutine_ty = Ty::new_adt(tcx, pin_adt_ref, args);
 
     // Replace the by ref coroutine argument
-    body.local_decls.raw[1].ty = pin_ref_gen_ty;
+    body.local_decls.raw[1].ty = pin_ref_coroutine_ty;
 
     // Add the Pin field access to accesses of the coroutine state
-    PinArgVisitor { ref_gen_ty, tcx }.visit_body(body);
+    PinArgVisitor { ref_coroutine_ty, tcx }.visit_body(body);
 }
 
 /// Allocates a new local and replaces all references of `local` with it. Returns the new local.
@@ -1050,7 +1104,7 @@ fn elaborate_coroutine_drops<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 fn create_coroutine_drop_shim<'tcx>(
     tcx: TyCtxt<'tcx>,
     transform: &TransformVisitor<'tcx>,
-    gen_ty: Ty<'tcx>,
+    coroutine_ty: Ty<'tcx>,
     body: &mut Body<'tcx>,
     drop_clean: BasicBlock,
 ) -> Body<'tcx> {
@@ -1082,7 +1136,7 @@ fn create_coroutine_drop_shim<'tcx>(
 
     // Change the coroutine argument from &mut to *mut
     body.local_decls[SELF_ARG] = LocalDecl::with_source_info(
-        Ty::new_ptr(tcx, ty::TypeAndMut { ty: gen_ty, mutbl: hir::Mutability::Mut }),
+        Ty::new_ptr(tcx, ty::TypeAndMut { ty: coroutine_ty, mutbl: hir::Mutability::Mut }),
         source_info,
     );
 
@@ -1092,9 +1146,9 @@ fn create_coroutine_drop_shim<'tcx>(
 
     // Update the body's def to become the drop glue.
     // This needs to be updated before the AbortUnwindingCalls pass.
-    let gen_instance = body.source.instance;
+    let coroutine_instance = body.source.instance;
     let drop_in_place = tcx.require_lang_item(LangItem::DropInPlace, None);
-    let drop_instance = InstanceDef::DropGlue(drop_in_place, Some(gen_ty));
+    let drop_instance = InstanceDef::DropGlue(drop_in_place, Some(coroutine_ty));
     body.source.instance = drop_instance;
 
     pm::run_passes_no_validate(
@@ -1106,7 +1160,7 @@ fn create_coroutine_drop_shim<'tcx>(
 
     // Temporary change MirSource to coroutine's instance so that dump_mir produces more sensible
     // filename.
-    body.source.instance = gen_instance;
+    body.source.instance = coroutine_instance;
     dump_mir(tcx, false, "coroutine_drop", &0, &body, |_, _| Ok(()));
     body.source.instance = drop_instance;
 
@@ -1263,10 +1317,13 @@ fn create_coroutine_resume_function<'tcx>(
     }
 
     if can_return {
-        cases.insert(
-            1,
-            (RETURNED, insert_panic_block(tcx, body, ResumedAfterReturn(coroutine_kind))),
-        );
+        let block = match coroutine_kind {
+            CoroutineKind::Async(_) | CoroutineKind::Coroutine => {
+                insert_panic_block(tcx, body, ResumedAfterReturn(coroutine_kind))
+            }
+            CoroutineKind::Gen(_) => transform.insert_none_ret_block(body),
+        };
+        cases.insert(1, (RETURNED, block));
     }
 
     insert_switch(body, cases, &transform, TerminatorKind::Unreachable);
@@ -1390,13 +1447,13 @@ pub(crate) fn mir_coroutine_witnesses<'tcx>(
     let body = &*body;
 
     // The first argument is the coroutine type passed by value
-    let gen_ty = body.local_decls[ty::CAPTURE_STRUCT_LOCAL].ty;
+    let coroutine_ty = body.local_decls[ty::CAPTURE_STRUCT_LOCAL].ty;
 
     // Get the interior types and args which typeck computed
-    let movable = match *gen_ty.kind() {
+    let movable = match *coroutine_ty.kind() {
         ty::Coroutine(_, _, movability) => movability == hir::Movability::Movable,
         ty::Error(_) => return None,
-        _ => span_bug!(body.span, "unexpected coroutine type {}", gen_ty),
+        _ => span_bug!(body.span, "unexpected coroutine type {}", coroutine_ty),
     };
 
     // When first entering the coroutine, move the resume argument into its new local.
@@ -1424,33 +1481,44 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
         assert!(body.coroutine_drop().is_none());
 
         // The first argument is the coroutine type passed by value
-        let gen_ty = body.local_decls.raw[1].ty;
+        let coroutine_ty = body.local_decls.raw[1].ty;
 
         // Get the discriminant type and args which typeck computed
-        let (discr_ty, movable) = match *gen_ty.kind() {
+        let (discr_ty, movable) = match *coroutine_ty.kind() {
             ty::Coroutine(_, args, movability) => {
                 let args = args.as_coroutine();
                 (args.discr_ty(tcx), movability == hir::Movability::Movable)
             }
             _ => {
-                tcx.sess.delay_span_bug(body.span, format!("unexpected coroutine type {gen_ty}"));
+                tcx.sess
+                    .delay_span_bug(body.span, format!("unexpected coroutine type {coroutine_ty}"));
                 return;
             }
         };
 
         let is_async_kind = matches!(body.coroutine_kind(), Some(CoroutineKind::Async(_)));
-        let (state_adt_ref, state_args) = if is_async_kind {
-            // Compute Poll<return_ty>
-            let poll_did = tcx.require_lang_item(LangItem::Poll, None);
-            let poll_adt_ref = tcx.adt_def(poll_did);
-            let poll_args = tcx.mk_args(&[body.return_ty().into()]);
-            (poll_adt_ref, poll_args)
-        } else {
-            // Compute CoroutineState<yield_ty, return_ty>
-            let state_did = tcx.require_lang_item(LangItem::CoroutineState, None);
-            let state_adt_ref = tcx.adt_def(state_did);
-            let state_args = tcx.mk_args(&[yield_ty.into(), body.return_ty().into()]);
-            (state_adt_ref, state_args)
+        let (state_adt_ref, state_args) = match body.coroutine_kind().unwrap() {
+            CoroutineKind::Async(_) => {
+                // Compute Poll<return_ty>
+                let poll_did = tcx.require_lang_item(LangItem::Poll, None);
+                let poll_adt_ref = tcx.adt_def(poll_did);
+                let poll_args = tcx.mk_args(&[body.return_ty().into()]);
+                (poll_adt_ref, poll_args)
+            }
+            CoroutineKind::Gen(_) => {
+                // Compute Option<yield_ty>
+                let option_did = tcx.require_lang_item(LangItem::Option, None);
+                let option_adt_ref = tcx.adt_def(option_did);
+                let option_args = tcx.mk_args(&[body.yield_ty().unwrap().into()]);
+                (option_adt_ref, option_args)
+            }
+            CoroutineKind::Coroutine => {
+                // Compute CoroutineState<yield_ty, return_ty>
+                let state_did = tcx.require_lang_item(LangItem::CoroutineState, None);
+                let state_adt_ref = tcx.adt_def(state_did);
+                let state_args = tcx.mk_args(&[yield_ty.into(), body.return_ty().into()]);
+                (state_adt_ref, state_args)
+            }
         };
         let ret_ty = Ty::new_adt(tcx, state_adt_ref, state_args);
 
@@ -1518,7 +1586,7 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
         // or Poll::Ready(x) and Poll::Pending respectively depending on `is_async_kind`.
         let mut transform = TransformVisitor {
             tcx,
-            is_async_kind,
+            coroutine_kind: body.coroutine_kind().unwrap(),
             state_adt_ref,
             state_args,
             remap,
@@ -1559,7 +1627,7 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
         dump_mir(tcx, false, "coroutine_post-transform", &0, body, |_, _| Ok(()));
 
         // Create a copy of our MIR and use it to create the drop shim for the coroutine
-        let drop_shim = create_coroutine_drop_shim(tcx, &transform, gen_ty, body, drop_clean);
+        let drop_shim = create_coroutine_drop_shim(tcx, &transform, coroutine_ty, body, drop_clean);
 
         body.coroutine.as_mut().unwrap().coroutine_drop = Some(drop_shim);
 

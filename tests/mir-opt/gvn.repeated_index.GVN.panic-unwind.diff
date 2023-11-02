@@ -23,11 +23,11 @@
   
       bb0: {
           StorageLive(_3);
--         StorageLive(_4);
--         _4 = _1;
+          StorageLive(_4);
+          _4 = _1;
 -         _3 = [move _4; N];
--         StorageDead(_4);
 +         _3 = [_1; N];
+          StorageDead(_4);
           StorageLive(_5);
           StorageLive(_6);
           StorageLive(_7);
@@ -40,8 +40,10 @@
       }
   
       bb1: {
-          _6 = _3[_7];
-          _5 = opaque::<T>(move _6) -> [return: bb2, unwind continue];
+-         _6 = _3[_7];
+-         _5 = opaque::<T>(move _6) -> [return: bb2, unwind continue];
++         _6 = _1;
++         _5 = opaque::<T>(_1) -> [return: bb2, unwind continue];
       }
   
       bb2: {
@@ -55,13 +57,16 @@
 -         _13 = Len(_3);
 -         _14 = Lt(_12, _13);
 -         assert(move _14, "index out of bounds: the length is {} but the index is {}", move _13, _12) -> [success: bb3, unwind continue];
++         _13 = _8;
 +         _14 = Lt(_2, _8);
 +         assert(move _14, "index out of bounds: the length is {} but the index is {}", _8, _2) -> [success: bb3, unwind continue];
       }
   
       bb3: {
-          _11 = _3[_12];
-          _10 = opaque::<T>(move _11) -> [return: bb4, unwind continue];
+-         _11 = _3[_12];
+-         _10 = opaque::<T>(move _11) -> [return: bb4, unwind continue];
++         _11 = _1;
++         _10 = opaque::<T>(_1) -> [return: bb4, unwind continue];
       }
   
       bb4: {

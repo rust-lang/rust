@@ -308,7 +308,8 @@
 use self::ArmType::*;
 use self::Usefulness::*;
 use super::deconstruct_pat::{
-    Constructor, ConstructorSet, DeconstructedPat, IntRange, SplitConstructorSet, WitnessPat,
+    Constructor, ConstructorSet, DeconstructedPat, IntRange, MaybeInfiniteInt, SplitConstructorSet,
+    WitnessPat,
 };
 use crate::errors::{NonExhaustiveOmittedPattern, Overlap, OverlappingRangeEndpoints, Uncovered};
 
@@ -931,7 +932,7 @@ impl<'p, 'tcx> PatternColumn<'p, 'tcx> {
             let specialized = pat.specialize(pcx, &ctor);
             for (subpat, column) in specialized.iter().zip(&mut specialized_columns) {
                 if subpat.is_or_pat() {
-                    column.patterns.extend(subpat.iter_fields())
+                    column.patterns.extend(subpat.flatten_or_pat())
                 } else {
                     column.patterns.push(subpat)
                 }
@@ -1013,7 +1014,7 @@ fn lint_overlapping_range_endpoints<'p, 'tcx>(
 
     if IntRange::is_integral(ty) {
         let emit_lint = |overlap: &IntRange, this_span: Span, overlapped_spans: &[Span]| {
-            let overlap_as_pat = overlap.to_pat(cx.tcx, ty);
+            let overlap_as_pat = overlap.to_diagnostic_pat(ty, cx.tcx);
             let overlaps: Vec<_> = overlapped_spans
                 .iter()
                 .copied()
@@ -1031,9 +1032,10 @@ fn lint_overlapping_range_endpoints<'p, 'tcx>(
         let split_int_ranges = set.present.iter().filter_map(|c| c.as_int_range());
         for overlap_range in split_int_ranges.clone() {
             if overlap_range.is_singleton() {
-                let overlap: u128 = overlap_range.boundaries().0;
-                // Spans of ranges that start or end with the overlap.
+                let overlap: MaybeInfiniteInt = overlap_range.lo;
+                // Ranges that look like `lo..=overlap`.
                 let mut prefixes: SmallVec<[_; 1]> = Default::default();
+                // Ranges that look like `overlap..=hi`.
                 let mut suffixes: SmallVec<[_; 1]> = Default::default();
                 // Iterate on patterns that contained `overlap`.
                 for pat in column.iter() {
@@ -1043,17 +1045,16 @@ fn lint_overlapping_range_endpoints<'p, 'tcx>(
                         // Don't lint when one of the ranges is a singleton.
                         continue;
                     }
-                    let (start, end) = this_range.boundaries();
-                    if start == overlap {
-                        // `this_range` looks like `overlap..=end`; it overlaps with any ranges that
-                        // look like `start..=overlap`.
+                    if this_range.lo == overlap {
+                        // `this_range` looks like `overlap..=this_range.hi`; it overlaps with any
+                        // ranges that look like `lo..=overlap`.
                         if !prefixes.is_empty() {
                             emit_lint(overlap_range, this_span, &prefixes);
                         }
                         suffixes.push(this_span)
-                    } else if end == overlap {
-                        // `this_range` looks like `start..=overlap`; it overlaps with any ranges
-                        // that look like `overlap..=end`.
+                    } else if this_range.hi == overlap.plus_one() {
+                        // `this_range` looks like `this_range.lo..=overlap`; it overlaps with any
+                        // ranges that look like `overlap..=hi`.
                         if !suffixes.is_empty() {
                             emit_lint(overlap_range, this_span, &suffixes);
                         }

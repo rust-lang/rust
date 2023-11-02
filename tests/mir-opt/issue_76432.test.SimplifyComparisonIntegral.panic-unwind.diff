@@ -7,22 +7,18 @@
       let _2: &[T];
       let mut _3: &[T; 3];
       let _4: [T; 3];
-      let mut _5: T;
-      let mut _6: T;
-      let mut _7: T;
-      let mut _8: usize;
-      let mut _9: usize;
-      let mut _10: bool;
-      let mut _14: !;
+      let mut _5: usize;
+      let mut _6: bool;
+      let mut _10: !;
       scope 1 {
           debug v => _2;
-          let _11: &T;
-          let _12: &T;
-          let _13: &T;
+          let _7: &T;
+          let _8: &T;
+          let _9: &T;
           scope 2 {
-              debug v1 => _11;
-              debug v2 => _12;
-              debug v3 => _13;
+              debug v1 => _7;
+              debug v2 => _8;
+              debug v3 => _9;
           }
       }
   
@@ -33,26 +29,25 @@
           _3 = &_4;
           _2 = move _3 as &[T] (PointerCoercion(Unsize));
           StorageDead(_3);
-          _8 = const 3_usize;
-          _9 = const 3_usize;
-          _10 = const true;
+          _5 = const 3_usize;
+          _6 = const true;
           goto -> bb2;
       }
   
       bb1: {
-          _14 = core::panicking::panic(const "internal error: entered unreachable code") -> unwind continue;
+          _10 = core::panicking::panic(const "internal error: entered unreachable code") -> unwind continue;
       }
   
       bb2: {
-          StorageLive(_11);
-          _11 = &(*_2)[0 of 3];
-          StorageLive(_12);
-          _12 = &(*_2)[1 of 3];
-          StorageLive(_13);
-          _13 = &(*_2)[2 of 3];
-          StorageDead(_13);
-          StorageDead(_12);
-          StorageDead(_11);
+          StorageLive(_7);
+          _7 = &(*_2)[0 of 3];
+          StorageLive(_8);
+          _8 = &(*_2)[1 of 3];
+          StorageLive(_9);
+          _9 = &(*_2)[2 of 3];
+          StorageDead(_9);
+          StorageDead(_8);
+          StorageDead(_7);
           StorageDead(_4);
           return;
       }

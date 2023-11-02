@@ -3,8 +3,8 @@
 
 use crate::errors;
 use rustc_attr::{
-    self as attr, ConstStability, Since, Stability, StabilityLevel, Unstable, UnstableReason,
-    VERSION_PLACEHOLDER,
+    self as attr, ConstStability, DeprecatedSince, Stability, StabilityLevel, StableSince,
+    Unstable, UnstableReason, VERSION_PLACEHOLDER,
 };
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_hir as hir;
@@ -24,8 +24,6 @@ use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
 
-use std::cmp::Ordering;
-use std::iter;
 use std::mem::replace;
 use std::num::NonZeroU32;
 
@@ -198,10 +196,8 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
             }
         }
 
-        if let Some((rustc_attr::Deprecation { is_since_rustc_version: true, .. }, span)) = &depr {
-            if stab.is_none() {
-                self.tcx.sess.emit_err(errors::DeprecatedAttribute { span: *span });
-            }
+        if let Some((depr, span)) = &depr && depr.is_since_rustc_version() && stab.is_none() {
+            self.tcx.sess.emit_err(errors::DeprecatedAttribute { span: *span });
         }
 
         if let Some((body_stab, _span)) = body_stab {
@@ -223,44 +219,23 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
 
             // Check if deprecated_since < stable_since. If it is,
             // this is *almost surely* an accident.
-            if let (&Some(dep_since), &attr::Stable { since: stab_since, .. }) =
-                (&depr.as_ref().and_then(|(d, _)| d.since), &stab.level)
+            if let (
+                &Some(DeprecatedSince::RustcVersion(dep_since)),
+                &attr::Stable { since: stab_since, .. },
+            ) = (&depr.as_ref().map(|(d, _)| d.since), &stab.level)
             {
                 match stab_since {
-                    Since::Current => {
+                    StableSince::Current => {
                         self.tcx.sess.emit_err(errors::CannotStabilizeDeprecated { span, item_sp });
                     }
-                    Since::Version(stab_since) => {
-                        // Explicit version of iter::order::lt to handle parse errors properly
-                        for (dep_v, stab_v) in iter::zip(
-                            dep_since.as_str().split('.'),
-                            [stab_since.major, stab_since.minor, stab_since.patch],
-                        ) {
-                            match dep_v.parse::<u64>() {
-                                Ok(dep_vp) => match dep_vp.cmp(&u64::from(stab_v)) {
-                                    Ordering::Less => {
-                                        self.tcx.sess.emit_err(errors::CannotStabilizeDeprecated {
-                                            span,
-                                            item_sp,
-                                        });
-                                        break;
-                                    }
-                                    Ordering::Equal => continue,
-                                    Ordering::Greater => break,
-                                },
-                                Err(_) => {
-                                    if dep_v != "TBD" {
-                                        self.tcx.sess.emit_err(errors::InvalidDeprecationVersion {
-                                            span,
-                                            item_sp,
-                                        });
-                                    }
-                                    break;
-                                }
-                            }
+                    StableSince::Version(stab_since) => {
+                        if dep_since < stab_since {
+                            self.tcx
+                                .sess
+                                .emit_err(errors::CannotStabilizeDeprecated { span, item_sp });
                         }
                     }
-                    Since::Err => {
+                    StableSince::Err => {
                         // An error already reported. Assume the unparseable stabilization
                         // version is older than the deprecation version.
                     }

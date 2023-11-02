@@ -190,7 +190,7 @@ impl<'a> Sugg<'a> {
                 (snip, false) => Sugg::MaybeParen(snip),
                 (snip, true) => Sugg::NonParen(snip),
             },
-            ast::ExprKind::Async(..)
+            ast::ExprKind::Gen(..)
             | ast::ExprKind::Block(..)
             | ast::ExprKind::Break(..)
             | ast::ExprKind::Call(..)

@@ -8,6 +8,7 @@ use rustc_middle::ty::{self as ty, Ty, TypeVisitableExt};
 use rustc_span::symbol::Ident;
 use rustc_span::{ErrorGuaranteed, Span};
 use rustc_trait_selection::traits;
+use smallvec::SmallVec;
 
 use crate::astconv::{
     AstConv, ConvertedBinding, ConvertedBindingKind, OnlySelfBounds, PredicateFilter,
@@ -28,15 +29,11 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
         let tcx = self.tcx();
 
         // Try to find an unbound in bounds.
-        let mut unbound = None;
+        let mut unbounds: SmallVec<[_; 1]> = SmallVec::new();
         let mut search_bounds = |ast_bounds: &'tcx [hir::GenericBound<'tcx>]| {
             for ab in ast_bounds {
                 if let hir::GenericBound::Trait(ptr, hir::TraitBoundModifier::Maybe) = ab {
-                    if unbound.is_none() {
-                        unbound = Some(&ptr.trait_ref);
-                    } else {
-                        tcx.sess.emit_err(errors::MultipleRelaxedDefaultBounds { span });
-                    }
+                    unbounds.push(ptr)
                 }
             }
         };
@@ -51,33 +48,41 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
             }
         }
 
-        let sized_def_id = tcx.lang_items().sized_trait();
-        match (&sized_def_id, unbound) {
-            (Some(sized_def_id), Some(tpb))
-                if tpb.path.res == Res::Def(DefKind::Trait, *sized_def_id) =>
-            {
-                // There was in fact a `?Sized` bound, return without doing anything
-                return;
-            }
-            (_, Some(_)) => {
-                // There was a `?Trait` bound, but it was not `?Sized`; warn.
-                tcx.sess.span_warn(
-                    span,
-                    "default bound relaxed for a type parameter, but \
-                        this does nothing because the given bound is not \
-                        a default; only `?Sized` is supported",
-                );
-                // Otherwise, add implicitly sized if `Sized` is available.
-            }
-            _ => {
-                // There was no `?Sized` bound; add implicitly sized if `Sized` is available.
-            }
+        if unbounds.len() > 1 {
+            tcx.sess.emit_err(errors::MultipleRelaxedDefaultBounds {
+                spans: unbounds.iter().map(|ptr| ptr.span).collect(),
+            });
         }
+
+        let sized_def_id = tcx.lang_items().sized_trait();
+
+        let mut seen_sized_unbound = false;
+        for unbound in unbounds {
+            if let Some(sized_def_id) = sized_def_id {
+                if unbound.trait_ref.path.res == Res::Def(DefKind::Trait, sized_def_id) {
+                    seen_sized_unbound = true;
+                    continue;
+                }
+            }
+            // There was a `?Trait` bound, but it was not `?Sized`; warn.
+            tcx.sess.span_warn(
+                unbound.span,
+                "relaxing a default bound only does something for `?Sized`; \
+                all other traits are not bound by default",
+            );
+        }
+
+        // If the above loop finished there was no `?Sized` bound; add implicitly sized if `Sized` is available.
         if sized_def_id.is_none() {
             // No lang item for `Sized`, so we can't add it as a bound.
             return;
         }
-        bounds.push_sized(tcx, self_ty, span);
+        if seen_sized_unbound {
+            // There was in fact a `?Sized` bound, return without doing anything
+        } else {
+            // There was no `?Sized` bound; add implicitly sized if `Sized` is available.
+            bounds.push_sized(tcx, self_ty, span);
+        }
     }
 
     /// This helper takes a *converted* parameter type (`param_ty`)

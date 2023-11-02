@@ -1,3 +1,5 @@
+use crate::inline;
+use crate::pass_manager as pm;
 use rustc_attr::InlineAttr;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
@@ -40,8 +42,11 @@ fn cross_crate_inlinable(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
         return false;
     }
 
-    // Don't do any inference unless optimizations are enabled.
-    if matches!(tcx.sess.opts.optimize, OptLevel::No) {
+    // Don't do any inference if codegen optimizations are disabled and also MIR inlining is not
+    // enabled. This ensures that we do inference even if someone only passes -Zinline-mir,
+    // which is less confusing than having to also enable -Copt-level=1.
+    if matches!(tcx.sess.opts.optimize, OptLevel::No) && !pm::should_run_pass(tcx, &inline::Inline)
+    {
         return false;
     }
 

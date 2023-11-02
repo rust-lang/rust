@@ -489,6 +489,37 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
         )
     }
 
+    fn consider_builtin_iterator_candidate(
+        ecx: &mut EvalCtxt<'_, 'tcx>,
+        goal: Goal<'tcx, Self>,
+    ) -> QueryResult<'tcx> {
+        let self_ty = goal.predicate.self_ty();
+        let ty::Coroutine(def_id, args, _) = *self_ty.kind() else {
+            return Err(NoSolution);
+        };
+
+        // Coroutines are not Iterators unless they come from `gen` desugaring
+        let tcx = ecx.tcx();
+        if !tcx.coroutine_is_gen(def_id) {
+            return Err(NoSolution);
+        }
+
+        let term = args.as_coroutine().yield_ty().into();
+
+        Self::consider_implied_clause(
+            ecx,
+            goal,
+            ty::ProjectionPredicate {
+                projection_ty: ty::AliasTy::new(ecx.tcx(), goal.predicate.def_id(), [self_ty]),
+                term,
+            }
+            .to_predicate(tcx),
+            // Technically, we need to check that the iterator type is Sized,
+            // but that's already proven by the generator being WF.
+            [],
+        )
+    }
+
     fn consider_builtin_coroutine_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
@@ -500,7 +531,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
 
         // `async`-desugared coroutines do not implement the coroutine trait
         let tcx = ecx.tcx();
-        if tcx.coroutine_is_async(def_id) {
+        if !tcx.is_general_coroutine(def_id) {
             return Err(NoSolution);
         }
 
@@ -527,7 +558,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
                 term,
             }
             .to_predicate(tcx),
-            // Technically, we need to check that the future type is Sized,
+            // Technically, we need to check that the coroutine type is Sized,
             // but that's already proven by the coroutine being WF.
             [],
         )

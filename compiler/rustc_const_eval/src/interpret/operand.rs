@@ -169,6 +169,16 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
         ImmTy { imm: val.into(), layout }
     }
 
+    #[inline]
+    pub fn from_scalar_pair(a: Scalar<Prov>, b: Scalar<Prov>, layout: TyAndLayout<'tcx>) -> Self {
+        debug_assert!(
+            matches!(layout.abi, Abi::ScalarPair(..)),
+            "`ImmTy::from_scalar_pair` on non-scalar-pair layout"
+        );
+        let imm = Immediate::ScalarPair(a, b);
+        ImmTy { imm, layout }
+    }
+
     #[inline(always)]
     pub fn from_immediate(imm: Immediate<Prov>, layout: TyAndLayout<'tcx>) -> Self {
         debug_assert!(

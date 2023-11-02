@@ -2297,9 +2297,9 @@ impl<'a> Parser<'a> {
         // `pub` is added in case users got confused with the ordering like `async pub fn`,
         // only if it wasn't preceded by `default` as `default pub` is invalid.
         let quals: &[Symbol] = if check_pub {
-            &[kw::Pub, kw::Const, kw::Async, kw::Unsafe, kw::Extern]
+            &[kw::Pub, kw::Gen, kw::Const, kw::Async, kw::Unsafe, kw::Extern]
         } else {
-            &[kw::Const, kw::Async, kw::Unsafe, kw::Extern]
+            &[kw::Gen, kw::Const, kw::Async, kw::Unsafe, kw::Extern]
         };
         self.check_keyword_case(kw::Fn, case) // Definitely an `fn`.
             // `$qual fn` or `$qual $qual`:
@@ -2353,6 +2353,9 @@ impl<'a> Parser<'a> {
         let async_start_sp = self.token.span;
         let asyncness = self.parse_asyncness(case);
 
+        let _gen_start_sp = self.token.span;
+        let genness = self.parse_genness(case);
+
         let unsafe_start_sp = self.token.span;
         let unsafety = self.parse_unsafety(case);
 
@@ -2366,6 +2369,10 @@ impl<'a> Parser<'a> {
                     help: errors::HelpUseLatestEdition::new(),
                 });
             }
+        }
+
+        if let Gen::Yes { span, .. } = genness {
+            self.sess.emit_err(errors::GenFn { span });
         }
 
         if !self.eat_keyword_case(kw::Fn, case) {
@@ -2494,9 +2501,11 @@ impl<'a> Parser<'a> {
         // Parse the arguments, starting out with `self` being allowed...
         let (mut params, _) = self.parse_paren_comma_seq(|p| {
             p.recover_diff_marker();
+            let snapshot = p.create_snapshot_for_diagnostic();
             let param = p.parse_param_general(req_name, first_param).or_else(|mut e| {
                 e.emit();
                 let lo = p.prev_token.span;
+                p.restore_snapshot(snapshot);
                 // Skip every token until next possible arg or end.
                 p.eat_to_tokens(&[&token::Comma, &token::CloseDelim(Delimiter::Parenthesis)]);
                 // Create a placeholder argument for proper arg count (issue #34264).

@@ -46,7 +46,6 @@ use std::cell::Cell;
 use std::cmp::{self, max, min, Ordering};
 use std::fmt;
 use std::iter::once;
-use std::ops::RangeInclusive;
 
 use smallvec::{smallvec, SmallVec};
 
@@ -57,13 +56,15 @@ use rustc_hir::RangeEnd;
 use rustc_index::Idx;
 use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::mir;
-use rustc_middle::thir::{FieldPat, Pat, PatKind, PatRange};
+use rustc_middle::mir::interpret::Scalar;
+use rustc_middle::thir::{FieldPat, Pat, PatKind, PatRange, PatRangeBoundary};
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{self, Ty, TyCtxt, VariantDef};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{FieldIdx, Integer, VariantIdx, FIRST_VARIANT};
 
 use self::Constructor::*;
+use self::MaybeInfiniteInt::*;
 use self::SliceKind::*;
 
 use super::usefulness::{MatchCheckCtxt, PatCtxt};
@@ -92,65 +93,21 @@ enum Presence {
     Seen,
 }
 
-/// An inclusive interval, used for precise integer exhaustiveness checking.
-/// `IntRange`s always store a contiguous range. This means that values are
-/// encoded such that `0` encodes the minimum value for the integer,
-/// regardless of the signedness.
-/// For example, the pattern `-128..=127i8` is encoded as `0..=255`.
-/// This makes comparisons and arithmetic on interval endpoints much more
-/// straightforward. See `signed_bias` for details.
-///
-/// `IntRange` is never used to encode an empty range or a "range" that wraps
-/// around the (offset) space: i.e., `range.lo <= range.hi`.
-#[derive(Clone, PartialEq, Eq)]
-pub(crate) struct IntRange {
-    range: RangeInclusive<u128>,
+/// A possibly infinite integer. Values are encoded such that the ordering on `u128` matches the
+/// natural order on the original type. For example, `-128i8` is encoded as `0` and `127i8` as
+/// `255`. See `signed_bias` for details.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub(crate) enum MaybeInfiniteInt {
+    NegInfinity,
+    /// Encoded value. DO NOT CONSTRUCT BY HAND; use `new_finite`.
+    Finite(u128),
+    /// The integer after `u128::MAX`. We need it to represent `x..=u128::MAX` as an exclusive range.
+    JustAfterMax,
+    PosInfinity,
 }
 
-impl IntRange {
-    #[inline]
-    pub(super) fn is_integral(ty: Ty<'_>) -> bool {
-        matches!(ty.kind(), ty::Char | ty::Int(_) | ty::Uint(_) | ty::Bool)
-    }
-
-    pub(super) fn is_singleton(&self) -> bool {
-        self.range.start() == self.range.end()
-    }
-
-    pub(super) fn boundaries(&self) -> (u128, u128) {
-        (*self.range.start(), *self.range.end())
-    }
-
-    #[inline]
-    fn from_bits<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, bits: u128) -> IntRange {
-        let bias = IntRange::signed_bias(tcx, ty);
-        // Perform a shift if the underlying types are signed,
-        // which makes the interval arithmetic simpler.
-        let val = bits ^ bias;
-        IntRange { range: val..=val }
-    }
-
-    #[inline]
-    fn from_range<'tcx>(
-        tcx: TyCtxt<'tcx>,
-        lo: u128,
-        hi: u128,
-        ty: Ty<'tcx>,
-        end: RangeEnd,
-    ) -> IntRange {
-        // Perform a shift if the underlying types are signed,
-        // which makes the interval arithmetic simpler.
-        let bias = IntRange::signed_bias(tcx, ty);
-        let (lo, hi) = (lo ^ bias, hi ^ bias);
-        let offset = (end == RangeEnd::Excluded) as u128;
-        if lo > hi || (lo == hi && end == RangeEnd::Excluded) {
-            // This should have been caught earlier by E0030.
-            bug!("malformed range pattern: {}..={}", lo, (hi - offset));
-        }
-        IntRange { range: lo..=(hi - offset) }
-    }
-
-    // The return value of `signed_bias` should be XORed with an endpoint to encode/decode it.
+impl MaybeInfiniteInt {
+    // The return value of `signed_bias` should be XORed with a value to encode/decode it.
     fn signed_bias(tcx: TyCtxt<'_>, ty: Ty<'_>) -> u128 {
         match *ty.kind() {
             ty::Int(ity) => {
@@ -161,15 +118,132 @@ impl IntRange {
         }
     }
 
+    fn new_finite(tcx: TyCtxt<'_>, ty: Ty<'_>, bits: u128) -> Self {
+        let bias = Self::signed_bias(tcx, ty);
+        // Perform a shift if the underlying types are signed, which makes the interval arithmetic
+        // type-independent.
+        let x = bits ^ bias;
+        Finite(x)
+    }
+    fn from_pat_range_bdy<'tcx>(
+        bdy: PatRangeBoundary<'tcx>,
+        ty: Ty<'tcx>,
+        tcx: TyCtxt<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+    ) -> Self {
+        match bdy {
+            PatRangeBoundary::NegInfinity => NegInfinity,
+            PatRangeBoundary::Finite(value) => {
+                let bits = value.eval_bits(tcx, param_env);
+                Self::new_finite(tcx, ty, bits)
+            }
+            PatRangeBoundary::PosInfinity => PosInfinity,
+        }
+    }
+
+    /// Used only for diagnostics.
+    /// Note: it is possible to get `isize/usize::MAX+1` here, as explained in the doc for
+    /// [`IntRange::split`]. This cannot be represented as a `Const`, so we represent it with
+    /// `PosInfinity`.
+    fn to_diagnostic_pat_range_bdy<'tcx>(
+        self,
+        ty: Ty<'tcx>,
+        tcx: TyCtxt<'tcx>,
+    ) -> PatRangeBoundary<'tcx> {
+        match self {
+            NegInfinity => PatRangeBoundary::NegInfinity,
+            Finite(x) => {
+                let bias = Self::signed_bias(tcx, ty);
+                let bits = x ^ bias;
+                let size = ty.primitive_size(tcx);
+                match Scalar::try_from_uint(bits, size) {
+                    Some(scalar) => {
+                        let value = mir::Const::from_scalar(tcx, scalar, ty);
+                        PatRangeBoundary::Finite(value)
+                    }
+                    // The value doesn't fit. Since `x >= 0` and 0 always encodes the minimum value
+                    // for a type, the problem isn't that the value is too small. So it must be too
+                    // large.
+                    None => PatRangeBoundary::PosInfinity,
+                }
+            }
+            JustAfterMax | PosInfinity => PatRangeBoundary::PosInfinity,
+        }
+    }
+
+    /// Note: this will not turn a finite value into an infinite one or vice-versa.
+    pub(crate) fn minus_one(self) -> Self {
+        match self {
+            Finite(n) => match n.checked_sub(1) {
+                Some(m) => Finite(m),
+                None => bug!(),
+            },
+            JustAfterMax => Finite(u128::MAX),
+            x => x,
+        }
+    }
+    /// Note: this will not turn a finite value into an infinite one or vice-versa.
+    pub(crate) fn plus_one(self) -> Self {
+        match self {
+            Finite(n) => match n.checked_add(1) {
+                Some(m) => Finite(m),
+                None => JustAfterMax,
+            },
+            JustAfterMax => bug!(),
+            x => x,
+        }
+    }
+}
+
+/// An exclusive interval, used for precise integer exhaustiveness checking. `IntRange`s always
+/// store a contiguous range.
+///
+/// `IntRange` is never used to encode an empty range or a "range" that wraps around the (offset)
+/// space: i.e., `range.lo < range.hi`.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) struct IntRange {
+    pub(crate) lo: MaybeInfiniteInt, // Must not be `PosInfinity`.
+    pub(crate) hi: MaybeInfiniteInt, // Must not be `NegInfinity`.
+}
+
+impl IntRange {
+    #[inline]
+    pub(super) fn is_integral(ty: Ty<'_>) -> bool {
+        matches!(ty.kind(), ty::Char | ty::Int(_) | ty::Uint(_))
+    }
+
+    /// Best effort; will not know that e.g. `255u8..` is a singleton.
+    pub(super) fn is_singleton(&self) -> bool {
+        // Since `lo` and `hi` can't be the same `Infinity` and `plus_one` never changes from finite
+        // to infinite, this correctly only detects ranges that contain exacly one `Finite(x)`.
+        self.lo.plus_one() == self.hi
+    }
+
+    #[inline]
+    fn from_bits<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, bits: u128) -> IntRange {
+        let x = MaybeInfiniteInt::new_finite(tcx, ty, bits);
+        IntRange { lo: x, hi: x.plus_one() }
+    }
+
+    #[inline]
+    fn from_range(lo: MaybeInfiniteInt, mut hi: MaybeInfiniteInt, end: RangeEnd) -> IntRange {
+        if end == RangeEnd::Included {
+            hi = hi.plus_one();
+        }
+        if lo >= hi {
+            // This should have been caught earlier by E0030.
+            bug!("malformed range pattern: {lo:?}..{hi:?}");
+        }
+        IntRange { lo, hi }
+    }
+
     fn is_subrange(&self, other: &Self) -> bool {
-        other.range.start() <= self.range.start() && self.range.end() <= other.range.end()
+        other.lo <= self.lo && self.hi <= other.hi
     }
 
     fn intersection(&self, other: &Self) -> Option<Self> {
-        let (lo, hi) = self.boundaries();
-        let (other_lo, other_hi) = other.boundaries();
-        if lo <= other_hi && other_lo <= hi {
-            Some(IntRange { range: max(lo, other_lo)..=min(hi, other_hi) })
+        if self.lo < other.hi && other.lo < self.hi {
+            Some(IntRange { lo: max(self.lo, other.lo), hi: min(self.hi, other.hi) })
         } else {
             None
         }
@@ -202,52 +276,45 @@ impl IntRange {
     /// ```
     /// where each sequence of dashes is an output range, and dashes outside parentheses are marked
     /// as `Presence::Missing`.
+    ///
+    /// ## `isize`/`usize`
+    ///
+    /// Whereas a wildcard of type `i32` stands for the range `i32::MIN..=i32::MAX`, a `usize`
+    /// wildcard stands for `0..PosInfinity` and a `isize` wildcard stands for
+    /// `NegInfinity..PosInfinity`. In other words, as far as `IntRange` is concerned, there are
+    /// values before `isize::MIN` and after `usize::MAX`/`isize::MAX`.
+    /// This is to avoid e.g. `0..(u32::MAX as usize)` from being exhaustive on one architecture and
+    /// not others. See discussions around the `precise_pointer_size_matching` feature for more
+    /// details.
+    ///
+    /// These infinities affect splitting subtly: it is possible to get `NegInfinity..0` and
+    /// `usize::MAX+1..PosInfinity` in the output. Diagnostics must be careful to handle these
+    /// fictitious ranges sensibly.
     fn split(
         &self,
         column_ranges: impl Iterator<Item = IntRange>,
     ) -> impl Iterator<Item = (Presence, IntRange)> {
-        /// Represents a boundary between 2 integers. Because the intervals spanning boundaries must be
-        /// able to cover every integer, we need to be able to represent 2^128 + 1 such boundaries.
-        #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-        enum IntBoundary {
-            JustBefore(u128),
-            AfterMax,
-        }
-
-        fn unpack_intrange(range: IntRange) -> [IntBoundary; 2] {
-            use IntBoundary::*;
-            let (lo, hi) = range.boundaries();
-            let lo = JustBefore(lo);
-            let hi = match hi.checked_add(1) {
-                Some(m) => JustBefore(m),
-                None => AfterMax,
-            };
-            [lo, hi]
-        }
-
         // The boundaries of ranges in `column_ranges` intersected with `self`.
         // We do parenthesis matching for input ranges. A boundary counts as +1 if it starts
         // a range and -1 if it ends it. When the count is > 0 between two boundaries, we
         // are within an input range.
-        let mut boundaries: Vec<(IntBoundary, isize)> = column_ranges
+        let mut boundaries: Vec<(MaybeInfiniteInt, isize)> = column_ranges
             .filter_map(|r| self.intersection(&r))
-            .map(unpack_intrange)
-            .flat_map(|[lo, hi]| [(lo, 1), (hi, -1)])
+            .flat_map(|r| [(r.lo, 1), (r.hi, -1)])
             .collect();
         // We sort by boundary, and for each boundary we sort the "closing parentheses" first. The
         // order of +1/-1 for a same boundary value is actually irrelevant, because we only look at
         // the accumulated count between distinct boundary values.
         boundaries.sort_unstable();
 
-        let [self_start, self_end] = unpack_intrange(self.clone());
         // Accumulate parenthesis counts.
         let mut paren_counter = 0isize;
         // Gather pairs of adjacent boundaries.
-        let mut prev_bdy = self_start;
+        let mut prev_bdy = self.lo;
         boundaries
             .into_iter()
             // End with the end of the range. The count is ignored.
-            .chain(once((self_end, 0)))
+            .chain(once((self.hi, 0)))
             // List pairs of adjacent boundaries and the count between them.
             .map(move |(bdy, delta)| {
                 // `delta` affects the count as we cross `bdy`, so the relevant count between
@@ -261,51 +328,75 @@ impl IntRange {
             .filter(|&(prev_bdy, _, bdy)| prev_bdy != bdy)
             // Convert back to ranges.
             .map(move |(prev_bdy, paren_count, bdy)| {
-                use IntBoundary::*;
                 use Presence::*;
                 let presence = if paren_count > 0 { Seen } else { Unseen };
-                let range = match (prev_bdy, bdy) {
-                    (JustBefore(n), JustBefore(m)) if n < m => n..=(m - 1),
-                    (JustBefore(n), AfterMax) => n..=u128::MAX,
-                    _ => unreachable!(), // Ruled out by the sorting and filtering we did
-                };
-                (presence, IntRange { range })
+                let range = IntRange { lo: prev_bdy, hi: bdy };
+                (presence, range)
             })
     }
 
+    /// Whether the range denotes the fictitious values before `isize::MIN` or after
+    /// `usize::MAX`/`isize::MAX` (see doc of [`IntRange::split`] for why these exist).
+    pub(crate) fn is_beyond_boundaries<'tcx>(&self, ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> bool {
+        ty.is_ptr_sized_integral() && !tcx.features().precise_pointer_size_matching && {
+            // The two invalid ranges are `NegInfinity..isize::MIN` (represented as
+            // `NegInfinity..0`), and `{u,i}size::MAX+1..PosInfinity`. `to_diagnostic_pat_range_bdy`
+            // converts `MAX+1` to `PosInfinity`, and we couldn't have `PosInfinity` in `self.lo`
+            // otherwise.
+            let lo = self.lo.to_diagnostic_pat_range_bdy(ty, tcx);
+            matches!(lo, PatRangeBoundary::PosInfinity)
+                || matches!(self.hi, MaybeInfiniteInt::Finite(0))
+        }
+    }
     /// Only used for displaying the range.
-    pub(super) fn to_pat<'tcx>(&self, tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Pat<'tcx> {
-        let (lo, hi) = self.boundaries();
-
-        let bias = IntRange::signed_bias(tcx, ty);
-        let (lo, hi) = (lo ^ bias, hi ^ bias);
-
-        let env = ty::ParamEnv::empty().and(ty);
-        let lo_const = mir::Const::from_bits(tcx, lo, env);
-        let hi_const = mir::Const::from_bits(tcx, hi, env);
-
-        let kind = if lo == hi {
-            PatKind::Constant { value: lo_const }
+    pub(super) fn to_diagnostic_pat<'tcx>(&self, ty: Ty<'tcx>, tcx: TyCtxt<'tcx>) -> Pat<'tcx> {
+        let kind = if matches!((self.lo, self.hi), (NegInfinity, PosInfinity)) {
+            PatKind::Wild
+        } else if self.is_singleton() {
+            let lo = self.lo.to_diagnostic_pat_range_bdy(ty, tcx);
+            let value = lo.as_finite().unwrap();
+            PatKind::Constant { value }
         } else {
-            PatKind::Range(Box::new(PatRange {
-                lo: lo_const,
-                hi: hi_const,
-                end: RangeEnd::Included,
-            }))
+            // We convert to an inclusive range for diagnostics.
+            let mut end = RangeEnd::Included;
+            let mut lo = self.lo.to_diagnostic_pat_range_bdy(ty, tcx);
+            if matches!(lo, PatRangeBoundary::PosInfinity) {
+                // The only reason to get `PosInfinity` here is the special case where
+                // `to_diagnostic_pat_range_bdy` found `{u,i}size::MAX+1`. So the range denotes the
+                // fictitious values after `{u,i}size::MAX` (see [`IntRange::split`] for why we do
+                // this). We show this to the user as `usize::MAX..` which is slightly incorrect but
+                // probably clear enough.
+                let c = ty.numeric_max_val(tcx).unwrap();
+                let value = mir::Const::from_ty_const(c, tcx);
+                lo = PatRangeBoundary::Finite(value);
+            }
+            let hi = if matches!(self.hi, MaybeInfiniteInt::Finite(0)) {
+                // The range encodes `..ty::MIN`, so we can't convert it to an inclusive range.
+                end = RangeEnd::Excluded;
+                self.hi
+            } else {
+                self.hi.minus_one()
+            };
+            let hi = hi.to_diagnostic_pat_range_bdy(ty, tcx);
+            PatKind::Range(Box::new(PatRange { lo, hi, end, ty }))
         };
 
         Pat { ty, span: DUMMY_SP, kind }
     }
 }
 
-/// Note: this is often not what we want: e.g. `false` is converted into the range `0..=0` and
-/// would be displayed as such. To render properly, convert to a pattern first.
+/// Note: this will render signed ranges incorrectly. To render properly, convert to a pattern
+/// first.
 impl fmt::Debug for IntRange {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let (lo, hi) = self.boundaries();
-        write!(f, "{lo}")?;
-        write!(f, "{}", RangeEnd::Included)?;
-        write!(f, "{hi}")
+        if let Finite(lo) = self.lo {
+            write!(f, "{lo}")?;
+        }
+        write!(f, "{}", RangeEnd::Excluded)?;
+        if let Finite(hi) = self.hi {
+            write!(f, "{hi}")?;
+        }
+        Ok(())
     }
 }
 
@@ -540,6 +631,8 @@ pub(super) enum Constructor<'tcx> {
     Single,
     /// Enum variants.
     Variant(VariantIdx),
+    /// Booleans
+    Bool(bool),
     /// Ranges of integer literal values (`2`, `2..=5` or `2..5`).
     IntRange(IntRange),
     /// Ranges of floating-point literal values (`2.0..=5.2`).
@@ -577,6 +670,12 @@ impl<'tcx> Constructor<'tcx> {
     pub(super) fn as_variant(&self) -> Option<VariantIdx> {
         match self {
             Variant(i) => Some(*i),
+            _ => None,
+        }
+    }
+    fn as_bool(&self) -> Option<bool> {
+        match self {
+            Bool(b) => Some(*b),
             _ => None,
         }
     }
@@ -624,10 +723,11 @@ impl<'tcx> Constructor<'tcx> {
                 _ => bug!("Unexpected type for `Single` constructor: {:?}", pcx.ty),
             },
             Slice(slice) => slice.arity(),
-            Str(..)
+            Bool(..)
+            | IntRange(..)
             | F32Range(..)
             | F64Range(..)
-            | IntRange(..)
+            | Str(..)
             | Opaque
             | NonExhaustive
             | Hidden
@@ -743,6 +843,7 @@ impl<'tcx> Constructor<'tcx> {
 
             (Single, Single) => true,
             (Variant(self_id), Variant(other_id)) => self_id == other_id,
+            (Bool(self_b), Bool(other_b)) => self_b == other_b,
 
             (IntRange(self_range), IntRange(other_range)) => self_range.is_subrange(other_range),
             (F32Range(self_from, self_to, self_end), F32Range(other_from, other_to, other_end)) => {
@@ -795,12 +896,11 @@ pub(super) enum ConstructorSet {
         hidden_variants: Vec<VariantIdx>,
         non_exhaustive: bool,
     },
+    /// Booleans.
+    Bool,
     /// The type is spanned by integer values. The range or ranges give the set of allowed values.
     /// The second range is only useful for `char`.
-    /// This is reused for bool. FIXME: don't.
-    /// `non_exhaustive` is used when the range is not allowed to be matched exhaustively (that's
-    /// for usize/isize).
-    Integers { range_1: IntRange, range_2: Option<IntRange>, non_exhaustive: bool },
+    Integers { range_1: IntRange, range_2: Option<IntRange> },
     /// The type is matched by slices. The usize is the compile-time length of the array, if known.
     Slice(Option<usize>),
     /// The type is matched by slices whose elements are uninhabited.
@@ -836,8 +936,13 @@ pub(super) struct SplitConstructorSet<'tcx> {
 impl ConstructorSet {
     #[instrument(level = "debug", skip(cx), ret)]
     pub(super) fn for_ty<'p, 'tcx>(cx: &MatchCheckCtxt<'p, 'tcx>, ty: Ty<'tcx>) -> Self {
-        let make_range =
-            |start, end| IntRange::from_range(cx.tcx, start, end, ty, RangeEnd::Included);
+        let make_range = |start, end| {
+            IntRange::from_range(
+                MaybeInfiniteInt::new_finite(cx.tcx, ty, start),
+                MaybeInfiniteInt::new_finite(cx.tcx, ty, end),
+                RangeEnd::Included,
+            )
+        };
         // This determines the set of all possible constructors for the type `ty`. For numbers,
         // arrays and slices we use ranges and variable-length slices when appropriate.
         //
@@ -847,35 +952,43 @@ impl ConstructorSet {
         // Invariant: this is `Uninhabited` if and only if the type is uninhabited (as determined by
         // `cx.is_uninhabited()`).
         match ty.kind() {
-            ty::Bool => {
-                Self::Integers { range_1: make_range(0, 1), range_2: None, non_exhaustive: false }
-            }
+            ty::Bool => Self::Bool,
             ty::Char => {
                 // The valid Unicode Scalar Value ranges.
                 Self::Integers {
                     range_1: make_range('\u{0000}' as u128, '\u{D7FF}' as u128),
                     range_2: Some(make_range('\u{E000}' as u128, '\u{10FFFF}' as u128)),
-                    non_exhaustive: false,
                 }
             }
             &ty::Int(ity) => {
-                // `usize`/`isize` are not allowed to be matched exhaustively unless the
-                // `precise_pointer_size_matching` feature is enabled.
-                let non_exhaustive =
-                    ty.is_ptr_sized_integral() && !cx.tcx.features().precise_pointer_size_matching;
-                let bits = Integer::from_int_ty(&cx.tcx, ity).size().bits() as u128;
-                let min = 1u128 << (bits - 1);
-                let max = min - 1;
-                Self::Integers { range_1: make_range(min, max), non_exhaustive, range_2: None }
+                let range = if ty.is_ptr_sized_integral()
+                    && !cx.tcx.features().precise_pointer_size_matching
+                {
+                    // The min/max values of `isize` are not allowed to be observed unless the
+                    // `precise_pointer_size_matching` feature is enabled.
+                    IntRange { lo: NegInfinity, hi: PosInfinity }
+                } else {
+                    let bits = Integer::from_int_ty(&cx.tcx, ity).size().bits() as u128;
+                    let min = 1u128 << (bits - 1);
+                    let max = min - 1;
+                    make_range(min, max)
+                };
+                Self::Integers { range_1: range, range_2: None }
             }
             &ty::Uint(uty) => {
-                // `usize`/`isize` are not allowed to be matched exhaustively unless the
-                // `precise_pointer_size_matching` feature is enabled.
-                let non_exhaustive =
-                    ty.is_ptr_sized_integral() && !cx.tcx.features().precise_pointer_size_matching;
-                let size = Integer::from_uint_ty(&cx.tcx, uty).size();
-                let max = size.truncate(u128::MAX);
-                Self::Integers { range_1: make_range(0, max), non_exhaustive, range_2: None }
+                let range = if ty.is_ptr_sized_integral()
+                    && !cx.tcx.features().precise_pointer_size_matching
+                {
+                    // The max value of `usize` is not allowed to be observed unless the
+                    // `precise_pointer_size_matching` feature is enabled.
+                    let lo = MaybeInfiniteInt::new_finite(cx.tcx, ty, 0);
+                    IntRange { lo, hi: PosInfinity }
+                } else {
+                    let size = Integer::from_uint_ty(&cx.tcx, uty).size();
+                    let max = size.truncate(u128::MAX);
+                    make_range(0, max)
+                };
+                Self::Integers { range_1: range, range_2: None }
             }
             ty::Array(sub_ty, len) if len.try_eval_target_usize(cx.tcx, cx.param_env).is_some() => {
                 let len = len.eval_target_usize(cx.tcx, cx.param_env) as usize;
@@ -1009,7 +1122,28 @@ impl ConstructorSet {
                     missing.push(NonExhaustive);
                 }
             }
-            ConstructorSet::Integers { range_1, range_2, non_exhaustive } => {
+            ConstructorSet::Bool => {
+                let mut seen_false = false;
+                let mut seen_true = false;
+                for b in seen.map(|ctor| ctor.as_bool().unwrap()) {
+                    if b {
+                        seen_true = true;
+                    } else {
+                        seen_false = true;
+                    }
+                }
+                if seen_false {
+                    present.push(Bool(false));
+                } else {
+                    missing.push(Bool(false));
+                }
+                if seen_true {
+                    present.push(Bool(true));
+                } else {
+                    missing.push(Bool(true));
+                }
+            }
+            ConstructorSet::Integers { range_1, range_2 } => {
                 let seen_ranges: Vec<_> =
                     seen.map(|ctor| ctor.as_int_range().unwrap().clone()).collect();
                 for (seen, splitted_range) in range_1.split(seen_ranges.iter().cloned()) {
@@ -1025,10 +1159,6 @@ impl ConstructorSet {
                             Presence::Seen => present.push(IntRange(splitted_range)),
                         }
                     }
-                }
-
-                if *non_exhaustive {
-                    missing.push(NonExhaustive);
                 }
             }
             &ConstructorSet::Slice(array_len) => {
@@ -1204,10 +1334,11 @@ impl<'p, 'tcx> Fields<'p, 'tcx> {
                 }
                 _ => bug!("bad slice pattern {:?} {:?}", constructor, pcx),
             },
-            Str(..)
+            Bool(..)
+            | IntRange(..)
             | F32Range(..)
             | F64Range(..)
-            | IntRange(..)
+            | Str(..)
             | Opaque
             | NonExhaustive
             | Hidden
@@ -1336,7 +1467,14 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
             }
             PatKind::Constant { value } => {
                 match pat.ty.kind() {
-                    ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) => {
+                    ty::Bool => {
+                        ctor = match value.try_eval_bool(cx.tcx, cx.param_env) {
+                            Some(b) => Bool(b),
+                            None => Opaque,
+                        };
+                        fields = Fields::empty();
+                    }
+                    ty::Char | ty::Int(_) | ty::Uint(_) => {
                         ctor = match value.try_eval_bits(cx.tcx, cx.param_env) {
                             Some(bits) => IntRange(IntRange::from_bits(cx.tcx, pat.ty, bits)),
                             None => Opaque,
@@ -1387,24 +1525,34 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
                     }
                 }
             }
-            PatKind::Range(box PatRange { lo, hi, end }) => {
-                use rustc_apfloat::Float;
-                let ty = lo.ty();
-                let lo = lo.try_eval_bits(cx.tcx, cx.param_env).unwrap();
-                let hi = hi.try_eval_bits(cx.tcx, cx.param_env).unwrap();
+            PatKind::Range(box PatRange { lo, hi, end, .. }) => {
+                let ty = pat.ty;
                 ctor = match ty.kind() {
                     ty::Char | ty::Int(_) | ty::Uint(_) => {
-                        IntRange(IntRange::from_range(cx.tcx, lo, hi, ty, *end))
+                        let lo =
+                            MaybeInfiniteInt::from_pat_range_bdy(*lo, ty, cx.tcx, cx.param_env);
+                        let hi =
+                            MaybeInfiniteInt::from_pat_range_bdy(*hi, ty, cx.tcx, cx.param_env);
+                        IntRange(IntRange::from_range(lo, hi, *end))
                     }
-                    ty::Float(ty::FloatTy::F32) => {
-                        let lo = rustc_apfloat::ieee::Single::from_bits(lo);
-                        let hi = rustc_apfloat::ieee::Single::from_bits(hi);
-                        F32Range(lo, hi, *end)
-                    }
-                    ty::Float(ty::FloatTy::F64) => {
-                        let lo = rustc_apfloat::ieee::Double::from_bits(lo);
-                        let hi = rustc_apfloat::ieee::Double::from_bits(hi);
-                        F64Range(lo, hi, *end)
+                    ty::Float(fty) => {
+                        use rustc_apfloat::Float;
+                        let lo = lo.as_finite().map(|c| c.eval_bits(cx.tcx, cx.param_env));
+                        let hi = hi.as_finite().map(|c| c.eval_bits(cx.tcx, cx.param_env));
+                        match fty {
+                            ty::FloatTy::F32 => {
+                                use rustc_apfloat::ieee::Single;
+                                let lo = lo.map(Single::from_bits).unwrap_or(-Single::INFINITY);
+                                let hi = hi.map(Single::from_bits).unwrap_or(Single::INFINITY);
+                                F32Range(lo, hi, *end)
+                            }
+                            ty::FloatTy::F64 => {
+                                use rustc_apfloat::ieee::Double;
+                                let lo = lo.map(Double::from_bits).unwrap_or(-Double::INFINITY);
+                                let hi = hi.map(Double::from_bits).unwrap_or(Double::INFINITY);
+                                F64Range(lo, hi, *end)
+                            }
+                        }
                     }
                     _ => bug!("invalid type for range pattern: {}", ty),
                 };
@@ -1614,9 +1762,11 @@ impl<'p, 'tcx> fmt::Debug for DeconstructedPat<'p, 'tcx> {
                 }
                 write!(f, "]")
             }
+            Bool(b) => write!(f, "{b}"),
+            // Best-effort, will render signed ranges incorrectly
+            IntRange(range) => write!(f, "{range:?}"),
             F32Range(lo, hi, end) => write!(f, "{lo}{end}{hi}"),
             F64Range(lo, hi, end) => write!(f, "{lo}{end}{hi}"),
-            IntRange(range) => write!(f, "{range:?}"), // Best-effort, will render e.g. `false` as `0..=0`
             Str(value) => write!(f, "{value}"),
             Opaque => write!(f, "<constant pattern>"),
             Or => {
@@ -1666,10 +1816,14 @@ impl<'tcx> WitnessPat<'tcx> {
         self.ty
     }
 
-    pub(crate) fn to_pat(&self, cx: &MatchCheckCtxt<'_, 'tcx>) -> Pat<'tcx> {
+    /// Convert back to a `thir::Pat` for diagnostic purposes. This panics for patterns that don't
+    /// appear in diagnostics, like float ranges.
+    pub(crate) fn to_diagnostic_pat(&self, cx: &MatchCheckCtxt<'_, 'tcx>) -> Pat<'tcx> {
         let is_wildcard = |pat: &Pat<'_>| matches!(pat.kind, PatKind::Wild);
-        let mut subpatterns = self.iter_fields().map(|p| Box::new(p.to_pat(cx)));
+        let mut subpatterns = self.iter_fields().map(|p| Box::new(p.to_diagnostic_pat(cx)));
         let kind = match &self.ctor {
+            Bool(b) => PatKind::Constant { value: mir::Const::from_bool(cx.tcx, *b) },
+            IntRange(range) => return range.to_diagnostic_pat(self.ty, cx.tcx),
             Single | Variant(_) => match self.ty.kind() {
                 ty::Tuple(..) => PatKind::Leaf {
                     subpatterns: subpatterns
@@ -1739,7 +1893,6 @@ impl<'tcx> WitnessPat<'tcx> {
                 }
             }
             &Str(value) => PatKind::Constant { value },
-            IntRange(range) => return range.to_pat(cx.tcx, self.ty),
             Wildcard | NonExhaustive | Hidden => PatKind::Wild,
             Missing { .. } => bug!(
                 "trying to convert a `Missing` constructor into a `Pat`; this is probably a bug,

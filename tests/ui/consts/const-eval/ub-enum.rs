@@ -2,7 +2,7 @@
 // Strip out raw byte dumps to make comparison platform-independent:
 // normalize-stderr-test "(the raw bytes of the constant) \(size: [0-9]*, align: [0-9]*\)" -> "$1 (size: $$SIZE, align: $$ALIGN)"
 // normalize-stderr-test "([0-9a-f][0-9a-f] |╾─*a(lloc)?[0-9]+(\+[a-z0-9]+)?─*╼ )+ *│.*" -> "HEX_DUMP"
-#![feature(never_type, const_discriminant)]
+#![feature(never_type)]
 #![allow(invalid_value)]
 
 use std::mem;

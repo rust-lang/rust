@@ -218,6 +218,14 @@ fn sidebar_trait<'a>(
     .map(|(id, title, items)| LinkBlock::new(Link::new(id, title), "", items))
     .collect();
     sidebar_assoc_items(cx, it, &mut blocks);
+
+    if !t.is_object_safe(cx.tcx()) {
+        blocks.push(LinkBlock::forced(
+            Link::new("object-safety", "Object Safety"),
+            "object-safety-note",
+        ));
+    }
+
     blocks.push(LinkBlock::forced(Link::new("implementors", "Implementors"), "impl"));
     if t.is_auto(cx.tcx()) {
         blocks.push(LinkBlock::forced(

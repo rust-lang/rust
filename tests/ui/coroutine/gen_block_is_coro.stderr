@@ -1,0 +1,21 @@
+error[E0277]: the trait bound `{gen block@$DIR/gen_block_is_coro.rs:7:5: 7:21}: Coroutine` is not satisfied
+  --> $DIR/gen_block_is_coro.rs:6:13
+   |
+LL | fn foo() -> impl Coroutine<Yield = u32, Return = ()> {
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Coroutine` is not implemented for `{gen block@$DIR/gen_block_is_coro.rs:7:5: 7:21}`
+
+error[E0277]: the trait bound `{gen block@$DIR/gen_block_is_coro.rs:11:5: 11:21}: Coroutine` is not satisfied
+  --> $DIR/gen_block_is_coro.rs:10:13
+   |
+LL | fn bar() -> impl Coroutine<Yield = i64, Return = ()> {
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Coroutine` is not implemented for `{gen block@$DIR/gen_block_is_coro.rs:11:5: 11:21}`
+
+error[E0277]: the trait bound `{gen block@$DIR/gen_block_is_coro.rs:15:5: 15:21}: Coroutine` is not satisfied
+  --> $DIR/gen_block_is_coro.rs:14:13
+   |
+LL | fn baz() -> impl Coroutine<Yield = i32, Return = ()> {
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Coroutine` is not implemented for `{gen block@$DIR/gen_block_is_coro.rs:15:5: 15:21}`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

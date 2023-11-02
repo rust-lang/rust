@@ -295,12 +295,53 @@ fn default_hook(info: &PanicInfo<'_>) {
 
 #[cfg(not(test))]
 #[doc(hidden)]
+#[cfg(feature = "panic_immediate_abort")]
+#[unstable(feature = "update_panic_count", issue = "none")]
+pub mod panic_count {
+    /// A reason for forcing an immediate abort on panic.
+    #[derive(Debug)]
+    pub enum MustAbort {
+        AlwaysAbort,
+        PanicInHook,
+    }
+
+    #[inline]
+    pub fn increase(run_panic_hook: bool) -> Option<MustAbort> {
+        None
+    }
+
+    #[inline]
+    pub fn finished_panic_hook() {}
+
+    #[inline]
+    pub fn decrease() {}
+
+    #[inline]
+    pub fn set_always_abort() {}
+
+    // Disregards ALWAYS_ABORT_FLAG
+    #[inline]
+    #[must_use]
+    pub fn get_count() -> usize {
+        0
+    }
+
+    #[must_use]
+    #[inline]
+    pub fn count_is_zero() -> bool {
+        true
+    }
+}
+
+#[cfg(not(test))]
+#[doc(hidden)]
+#[cfg(not(feature = "panic_immediate_abort"))]
 #[unstable(feature = "update_panic_count", issue = "none")]
 pub mod panic_count {
     use crate::cell::Cell;
     use crate::sync::atomic::{AtomicUsize, Ordering};
 
-    pub const ALWAYS_ABORT_FLAG: usize = 1 << (usize::BITS - 1);
+    const ALWAYS_ABORT_FLAG: usize = 1 << (usize::BITS - 1);
 
     /// A reason for forcing an immediate abort on panic.
     #[derive(Debug)]
@@ -421,6 +462,13 @@ pub mod panic_count {
 pub use realstd::rt::panic_count;
 
 /// Invoke a closure, capturing the cause of an unwinding panic if one occurs.
+#[cfg(feature = "panic_immediate_abort")]
+pub unsafe fn r#try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>> {
+    Ok(f())
+}
+
+/// Invoke a closure, capturing the cause of an unwinding panic if one occurs.
+#[cfg(not(feature = "panic_immediate_abort"))]
 pub unsafe fn r#try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>> {
     union Data<F, R> {
         f: ManuallyDrop<F>,
@@ -755,6 +803,7 @@ fn rust_panic_with_hook(
 
 /// This is the entry point for `resume_unwind`.
 /// It just forwards the payload to the panic runtime.
+#[cfg_attr(feature = "panic_immediate_abort", inline)]
 pub fn rust_panic_without_hook(payload: Box<dyn Any + Send>) -> ! {
     panic_count::increase(false);
 
@@ -777,7 +826,16 @@ pub fn rust_panic_without_hook(payload: Box<dyn Any + Send>) -> ! {
 /// yer breakpoints.
 #[inline(never)]
 #[cfg_attr(not(test), rustc_std_internal_symbol)]
+#[cfg(not(feature = "panic_immediate_abort"))]
 fn rust_panic(msg: &mut dyn PanicPayload) -> ! {
     let code = unsafe { __rust_start_panic(msg) };
     rtabort!("failed to initiate panic, error {code}")
+}
+
+#[cfg_attr(not(test), rustc_std_internal_symbol)]
+#[cfg(feature = "panic_immediate_abort")]
+fn rust_panic(_: &mut dyn PanicPayload) -> ! {
+    unsafe {
+        crate::intrinsics::abort();
+    }
 }

@@ -815,6 +815,7 @@ impl<'a> Builder<'a> {
                 dist::JsonDocs,
                 dist::Mingw,
                 dist::Rustc,
+                dist::CodegenBackend,
                 dist::Std,
                 dist::RustcDev,
                 dist::Analysis,

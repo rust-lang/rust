@@ -560,6 +560,9 @@ pub fn push_item_name(tcx: TyCtxt<'_>, def_id: DefId, qualified: bool, output: &
 
 fn coroutine_kind_label(coroutine_kind: Option<CoroutineKind>) -> &'static str {
     match coroutine_kind {
+        Some(CoroutineKind::Gen(CoroutineSource::Block)) => "gen_block",
+        Some(CoroutineKind::Gen(CoroutineSource::Closure)) => "gen_closure",
+        Some(CoroutineKind::Gen(CoroutineSource::Fn)) => "gen_fn",
         Some(CoroutineKind::Async(CoroutineSource::Block)) => "async_block",
         Some(CoroutineKind::Async(CoroutineSource::Closure)) => "async_closure",
         Some(CoroutineKind::Async(CoroutineSource::Fn)) => "async_fn",

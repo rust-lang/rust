@@ -43,8 +43,8 @@ impl NormalizableHelper for u32
 
 fn main() {
     let _x: Box<dyn Helper<Target=i32>> = Box::new(2u32);
-    //~^ ERROR the value of the associated type `Output` (from trait `Base`) must be specified
+    //~^ ERROR the value of the associated type `Output` in `Base` must be specified
 
     let _y: Box<dyn NormalizableHelper<Target=i32>> = Box::new(2u32);
-    //~^ ERROR the value of the associated type `Output` (from trait `Base`) must be specified
+    //~^ ERROR the value of the associated type `Output` in `Base` must be specified
 }

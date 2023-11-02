@@ -703,14 +703,21 @@ fn report_arm_reachability<'p, 'tcx>(
 }
 
 fn collect_non_exhaustive_tys<'tcx>(
+    tcx: TyCtxt<'tcx>,
     pat: &WitnessPat<'tcx>,
     non_exhaustive_tys: &mut FxHashSet<Ty<'tcx>>,
 ) {
     if matches!(pat.ctor(), Constructor::NonExhaustive) {
         non_exhaustive_tys.insert(pat.ty());
     }
+    if let Constructor::IntRange(range) = pat.ctor() {
+        if range.is_beyond_boundaries(pat.ty(), tcx) {
+            // The range denotes the values before `isize::MIN` or the values after `usize::MAX`/`isize::MAX`.
+            non_exhaustive_tys.insert(pat.ty());
+        }
+    }
     pat.iter_fields()
-        .for_each(|field_pat| collect_non_exhaustive_tys(field_pat, non_exhaustive_tys))
+        .for_each(|field_pat| collect_non_exhaustive_tys(tcx, field_pat, non_exhaustive_tys))
 }
 
 /// Report that a match is not exhaustive.
@@ -753,7 +760,7 @@ fn non_exhaustive_match<'p, 'tcx>(
         pattern = if witnesses.len() < 4 {
             witnesses
                 .iter()
-                .map(|witness| witness.to_pat(cx).to_string())
+                .map(|witness| witness.to_diagnostic_pat(cx).to_string())
                 .collect::<Vec<String>>()
                 .join(" | ")
         } else {
@@ -764,16 +771,24 @@ fn non_exhaustive_match<'p, 'tcx>(
     adt_defined_here(cx, &mut err, scrut_ty, &witnesses);
     err.note(format!("the matched value is of type `{}`", scrut_ty));
 
-    if !is_empty_match && witnesses.len() == 1 {
+    if !is_empty_match {
         let mut non_exhaustive_tys = FxHashSet::default();
-        collect_non_exhaustive_tys(&witnesses[0], &mut non_exhaustive_tys);
+        // Look at the first witness.
+        collect_non_exhaustive_tys(cx.tcx, &witnesses[0], &mut non_exhaustive_tys);
 
         for ty in non_exhaustive_tys {
             if ty.is_ptr_sized_integral() {
-                err.note(format!(
-                    "`{ty}` does not have a fixed maximum value, so a wildcard `_` is necessary to match \
-                         exhaustively",
+                if ty == cx.tcx.types.usize {
+                    err.note(format!(
+                        "`{ty}` does not have a fixed maximum value, so half-open ranges are necessary to match \
+                             exhaustively",
                     ));
+                } else if ty == cx.tcx.types.isize {
+                    err.note(format!(
+                        "`{ty}` does not have fixed minimum and maximum values, so half-open ranges are necessary to match \
+                             exhaustively",
+                    ));
+                }
                 if cx.tcx.sess.is_nightly_build() {
                     err.help(format!(
                             "add `#![feature(precise_pointer_size_matching)]` to the crate attributes to \
@@ -900,13 +915,13 @@ pub(crate) fn joined_uncovered_patterns<'p, 'tcx>(
     witnesses: &[WitnessPat<'tcx>],
 ) -> String {
     const LIMIT: usize = 3;
-    let pat_to_str = |pat: &WitnessPat<'tcx>| pat.to_pat(cx).to_string();
+    let pat_to_str = |pat: &WitnessPat<'tcx>| pat.to_diagnostic_pat(cx).to_string();
     match witnesses {
         [] => bug!(),
-        [witness] => format!("`{}`", witness.to_pat(cx)),
+        [witness] => format!("`{}`", witness.to_diagnostic_pat(cx)),
         [head @ .., tail] if head.len() < LIMIT => {
             let head: Vec<_> = head.iter().map(pat_to_str).collect();
-            format!("`{}` and `{}`", head.join("`, `"), tail.to_pat(cx))
+            format!("`{}` and `{}`", head.join("`, `"), tail.to_diagnostic_pat(cx))
         }
         _ => {
             let (head, tail) = witnesses.split_at(LIMIT);

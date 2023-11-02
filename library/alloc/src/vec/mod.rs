@@ -1447,7 +1447,8 @@ impl<T, A: Allocator> Vec<T, A> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn swap_remove(&mut self, index: usize) -> T {
         #[cold]
-        #[inline(never)]
+        #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
+        #[track_caller]
         fn assert_failed(index: usize, len: usize) -> ! {
             panic!("swap_remove index (is {index}) should be < len (is {len})");
         }
@@ -1488,7 +1489,8 @@ impl<T, A: Allocator> Vec<T, A> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn insert(&mut self, index: usize, element: T) {
         #[cold]
-        #[inline(never)]
+        #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
+        #[track_caller]
         fn assert_failed(index: usize, len: usize) -> ! {
             panic!("insertion index (is {index}) should be <= len (is {len})");
         }
@@ -1549,7 +1551,7 @@ impl<T, A: Allocator> Vec<T, A> {
     #[track_caller]
     pub fn remove(&mut self, index: usize) -> T {
         #[cold]
-        #[inline(never)]
+        #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
         #[track_caller]
         fn assert_failed(index: usize, len: usize) -> ! {
             panic!("removal index (is {index}) should be < len (is {len})");
@@ -2148,7 +2150,8 @@ impl<T, A: Allocator> Vec<T, A> {
         A: Clone,
     {
         #[cold]
-        #[inline(never)]
+        #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
+        #[track_caller]
         fn assert_failed(at: usize, len: usize) -> ! {
             panic!("`at` split index (is {at}) should be <= len (is {len})");
         }

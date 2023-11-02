@@ -3,9 +3,8 @@ name = "rustc_resolve"
 version = "0.0.0"
 edition = "2021"
 
-[lib]
-
 [dependencies]
+# tidy-alphabetical-start
 bitflags = "1.2.1"
 pulldown-cmark = { version = "0.9.3", default-features = false }
 rustc_arena = { path = "../rustc_arena" }
@@ -28,3 +27,4 @@ rustc_span = { path = "../rustc_span" }
 smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
 thin-vec = "0.2.12"
 tracing = "0.1"
+# tidy-alphabetical-end

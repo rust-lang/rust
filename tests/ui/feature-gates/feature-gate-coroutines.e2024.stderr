@@ -1,0 +1,28 @@
+error[E0658]: yield syntax is experimental
+  --> $DIR/feature-gate-coroutines.rs:5:5
+   |
+LL |     yield true;
+   |     ^^^^^^^^^^
+   |
+   = note: see issue #43122 <https://github.com/rust-lang/rust/issues/43122> for more information
+   = help: add `#![feature(coroutines)]` to the crate attributes to enable
+
+error[E0658]: yield syntax is experimental
+  --> $DIR/feature-gate-coroutines.rs:9:16
+   |
+LL |     let _ = || yield true;
+   |                ^^^^^^^^^^
+   |
+   = note: see issue #43122 <https://github.com/rust-lang/rust/issues/43122> for more information
+   = help: add `#![feature(coroutines)]` to the crate attributes to enable
+
+error[E0627]: yield expression outside of coroutine literal
+  --> $DIR/feature-gate-coroutines.rs:5:5
+   |
+LL |     yield true;
+   |     ^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0627, E0658.
+For more information about an error, try `rustc --explain E0627`.

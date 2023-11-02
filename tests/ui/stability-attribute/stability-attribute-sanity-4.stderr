@@ -28,12 +28,19 @@ error[E0542]: missing 'since'
 LL |     #[deprecated]
    |     ^^^^^^^^^^^^^
 
+error[E0543]: missing 'note'
+  --> $DIR/stability-attribute-sanity-4.rs:21:5
+   |
+LL |     #[deprecated]
+   |     ^^^^^^^^^^^^^
+
 error[E0542]: missing 'since'
-  --> $DIR/stability-attribute-sanity-4.rs:25:5
+  --> $DIR/stability-attribute-sanity-4.rs:26:5
    |
 LL |     #[deprecated = "a"]
    |     ^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 6 previous errors
+error: aborting due to 7 previous errors
 
-For more information about this error, try `rustc --explain E0542`.
+Some errors have detailed explanations: E0542, E0543.
+For more information about an error, try `rustc --explain E0542`.

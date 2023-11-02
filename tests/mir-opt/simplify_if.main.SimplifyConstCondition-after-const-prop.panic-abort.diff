@@ -3,18 +3,15 @@
   
   fn main() -> () {
       let mut _0: ();
-      let mut _1: bool;
-      let _2: ();
+      let _1: ();
   
       bb0: {
-          StorageLive(_1);
-          _1 = const false;
 -         switchInt(const false) -> [0: bb3, otherwise: bb1];
 +         goto -> bb3;
       }
   
       bb1: {
-          _2 = noop() -> [return: bb2, unwind unreachable];
+          _1 = noop() -> [return: bb2, unwind unreachable];
       }
   
       bb2: {
@@ -26,7 +23,6 @@
       }
   
       bb4: {
-          StorageDead(_1);
           return;
       }
   }
