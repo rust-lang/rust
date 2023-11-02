@@ -114,46 +114,40 @@ impl<'tcx> LateLintPass<'tcx> for ManualFloatMethods {
                 _ => return,
             };
 
-            span_lint_and_then(
-                cx,
-                variant.lint(),
-                expr.span,
-                variant.msg(),
-                |diag| {
-                    match variant {
-                        Variant::ManualIsInfinite => {
-                            diag.span_suggestion(
-                                expr.span,
-                                "use the dedicated method instead",
-                                format!("{local_snippet}.is_infinite()"),
-                                Applicability::MachineApplicable,
-                            );
-                        },
-                        Variant::ManualIsFinite => {
-                            // TODO: There's probably some better way to do this, i.e., create
-                            // multiple suggestions with notes between each of them
-                            diag.span_suggestion_verbose(
-                                expr.span,
-                                "use the dedicated method instead",
-                                format!("{local_snippet}.is_finite()"),
-                                Applicability::MaybeIncorrect,
-                            )
-                            .span_suggestion_verbose(
-                                expr.span,
-                                "this will alter how it handles NaN; if that is a problem, use instead",
-                                format!("{local_snippet}.is_finite() || {local_snippet}.is_nan()"),
-                                Applicability::MaybeIncorrect,
-                            )
-                            .span_suggestion_verbose(
-                                expr.span,
-                                "or, for conciseness",
-                                format!("!{local_snippet}.is_infinite()"),
-                                Applicability::MaybeIncorrect,
-                            );
-                        },
-                    }
-                },
-            );
+            span_lint_and_then(cx, variant.lint(), expr.span, variant.msg(), |diag| {
+                match variant {
+                    Variant::ManualIsInfinite => {
+                        diag.span_suggestion(
+                            expr.span,
+                            "use the dedicated method instead",
+                            format!("{local_snippet}.is_infinite()"),
+                            Applicability::MachineApplicable,
+                        );
+                    },
+                    Variant::ManualIsFinite => {
+                        // TODO: There's probably some better way to do this, i.e., create
+                        // multiple suggestions with notes between each of them
+                        diag.span_suggestion_verbose(
+                            expr.span,
+                            "use the dedicated method instead",
+                            format!("{local_snippet}.is_finite()"),
+                            Applicability::MaybeIncorrect,
+                        )
+                        .span_suggestion_verbose(
+                            expr.span,
+                            "this will alter how it handles NaN; if that is a problem, use instead",
+                            format!("{local_snippet}.is_finite() || {local_snippet}.is_nan()"),
+                            Applicability::MaybeIncorrect,
+                        )
+                        .span_suggestion_verbose(
+                            expr.span,
+                            "or, for conciseness",
+                            format!("!{local_snippet}.is_infinite()"),
+                            Applicability::MaybeIncorrect,
+                        );
+                    },
+                }
+            });
         }
     }
 }

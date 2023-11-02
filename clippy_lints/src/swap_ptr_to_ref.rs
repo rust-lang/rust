@@ -58,9 +58,14 @@ impl LateLintPass<'_> for SwapPtrToRef {
                         let mut app = Applicability::MachineApplicable;
                         let snip1 = snippet_with_context(cx, arg1_span.unwrap_or(arg1.span), ctxt, "..", &mut app).0;
                         let snip2 = snippet_with_context(cx, arg2_span.unwrap_or(arg2.span), ctxt, "..", &mut app).0;
-                        diag.span_suggestion(e.span, "use ptr::swap", format!("core::ptr::swap({snip1}, {snip2})"), app);
+                        diag.span_suggestion(
+                            e.span,
+                            "use ptr::swap",
+                            format!("core::ptr::swap({snip1}, {snip2})"),
+                            app,
+                        );
                     }
-                }
+                },
             );
         }
     }
@@ -73,7 +78,10 @@ fn is_ptr_to_ref(cx: &LateContext<'_>, e: &Expr<'_>, ctxt: SyntaxContext) -> (bo
         && let ExprKind::Unary(UnOp::Deref, derefed_expr) = borrowed_expr.kind
         && cx.typeck_results().expr_ty(derefed_expr).is_unsafe_ptr()
     {
-        (true, (borrowed_expr.span.ctxt() == ctxt || derefed_expr.span.ctxt() == ctxt).then_some(derefed_expr.span))
+        (
+            true,
+            (borrowed_expr.span.ctxt() == ctxt || derefed_expr.span.ctxt() == ctxt).then_some(derefed_expr.span),
+        )
     } else {
         (false, None)
     }

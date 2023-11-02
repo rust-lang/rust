@@ -211,7 +211,7 @@ impl<'tcx> LateLintPass<'tcx> for VecInitThenPush {
                     found: searcher.found + 1,
                     err_span: searcher.err_span.to(stmt.span),
                     last_push_expr: expr.hir_id,
-                    .. searcher
+                    ..searcher
                 });
             } else {
                 searcher.display_err(cx);

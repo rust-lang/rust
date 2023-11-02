@@ -48,7 +48,8 @@ impl<'tcx> LateLintPass<'tcx> for NoMangleWithRustAbi {
                     && let Some((fn_attrs, _)) = snippet.split_once("fn")
                     && !fn_attrs.contains("extern")
                 {
-                    let sugg_span = fn_sig.span
+                    let sugg_span = fn_sig
+                        .span
                         .with_lo(fn_sig.span.lo() + BytePos::from_usize(fn_attrs.len()))
                         .shrink_to_lo();
 

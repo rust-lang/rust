@@ -68,7 +68,10 @@ fn make_sugg(
             _ => None,
         })
     {
-        format!("std::iter::empty::<{}>()", snippet_with_context(cx, iter_ty.span, ctxt, "..", applicability).0)
+        format!(
+            "std::iter::empty::<{}>()",
+            snippet_with_context(cx, iter_ty.span, ctxt, "..", applicability).0
+        )
     } else {
         "std::iter::empty()".to_owned()
     }

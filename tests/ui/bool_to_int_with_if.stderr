@@ -99,7 +99,7 @@ LL | |     };
    = note: `!b as i32` or `(!b).into()` can also be valid options
 
 error: boolean to int conversion using if
-  --> $DIR/bool_to_int_with_if.rs:124:5
+  --> $DIR/bool_to_int_with_if.rs:122:5
    |
 LL |     if a { 1 } else { 0 }
    |     ^^^^^^^^^^^^^^^^^^^^^ help: replace with from: `u8::from(a)`

@@ -155,17 +155,18 @@ impl LateLintPass<'_> for IterWithoutIntoIter {
         if let ItemKind::Impl(imp) = item.kind
             && let TyKind::Ref(_, self_ty_without_ref) = &imp.self_ty.kind
             && let Some(trait_ref) = imp.of_trait
-            && trait_ref.trait_def_id().is_some_and(|did| cx.tcx.is_diagnostic_item(sym::IntoIterator, did))
+            && trait_ref
+                .trait_def_id()
+                .is_some_and(|did| cx.tcx.is_diagnostic_item(sym::IntoIterator, did))
             && let &ty::Ref(_, ty, mtbl) = cx.tcx.type_of(item.owner_id).instantiate_identity().kind()
             && let expected_method_name = match mtbl {
                 Mutability::Mut => sym::iter_mut,
                 Mutability::Not => sym::iter,
             }
-            && !deref_chain(cx, ty)
-                .any(|ty| {
-                    // We can't check inherent impls for slices, but we know that they have an `iter(_mut)` method
-                    ty.peel_refs().is_slice() || adt_has_inherent_method(cx, ty, expected_method_name)
-                })
+            && !deref_chain(cx, ty).any(|ty| {
+                // We can't check inherent impls for slices, but we know that they have an `iter(_mut)` method
+                ty.peel_refs().is_slice() || adt_has_inherent_method(cx, ty, expected_method_name)
+            })
             && let Some(iter_assoc_span) = imp.items.iter().find_map(|item| {
                 if item.ident.name == sym!(IntoIter) {
                     Some(cx.tcx.hir().impl_item(item.id).expect_type().span)
@@ -185,7 +186,7 @@ impl LateLintPass<'_> for IterWithoutIntoIter {
                     // to avoid name ambiguities, as there might be an inherent into_iter method
                     // that we don't want to call.
                     let sugg = format!(
-"
+                        "
 impl {self_ty_without_ref} {{
     fn {expected_method_name}({ref_self}self) -> {iter_ty} {{
         <{ref_self}Self as IntoIterator>::into_iter(self)
@@ -203,9 +204,9 @@ impl {self_ty_without_ref} {{
                         sugg,
                         // Just like iter_without_into_iter, this suggestion is on a best effort basis
                         // and requires potentially adding lifetimes or moving them around.
-                        Applicability::Unspecified
+                        Applicability::Unspecified,
                     );
-                }
+                },
             );
         }
     }
@@ -241,7 +242,7 @@ impl {self_ty_without_ref} {{
                 cx.tcx,
                 cx.param_env,
                 iterator_did,
-                sym!(Item),
+                sym::Item,
                 [ret_ty],
             )
             // Only lint if the `IntoIterator` impl doesn't actually exist
@@ -254,18 +255,22 @@ impl {self_ty_without_ref} {{
                 cx,
                 ITER_WITHOUT_INTO_ITER,
                 item.span,
-                &format!("`{}` method without an `IntoIterator` impl for `{self_ty_snippet}`", item.ident),
+                &format!(
+                    "`{}` method without an `IntoIterator` impl for `{self_ty_snippet}`",
+                    item.ident
+                ),
                 |diag| {
                     // Get the lower span of the `impl` block, and insert the suggestion right before it:
                     // impl X {
                     // ^   fn iter(&self) -> impl IntoIterator { ... }
                     // }
-                    let span_behind_impl = cx.tcx
+                    let span_behind_impl = cx
+                        .tcx
                         .def_span(cx.tcx.hir().parent_id(item.hir_id()).owner.def_id)
                         .shrink_to_lo();
 
                     let sugg = format!(
-"
+                        "
 impl IntoIterator for {self_ty_snippet} {{
     type IntoIter = {ret_ty};
     type Item = {iter_ty};
@@ -283,7 +288,8 @@ impl IntoIterator for {self_ty_snippet} {{
                         // such as adding some lifetimes in the associated types, or importing types.
                         Applicability::Unspecified,
                     );
-            });
+                },
+            );
         }
     }
 }

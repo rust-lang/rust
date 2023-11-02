@@ -52,7 +52,7 @@ pub(super) fn check<'tcx>(
                     format!("matches!({scrutinee_snip}, {pat_snip})"),
                     Applicability::MachineApplicable,
                 );
-            }
+            },
         );
     }
 }

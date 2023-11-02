@@ -1142,12 +1142,8 @@ fn eq_span_tokens(
             let pred = |t: &(_, _)| pred(t.0);
             let map = |(_, x)| x;
 
-            let ltok = tokenize_with_text(lsrc)
-                .filter(pred)
-                .map(map);
-            let rtok = tokenize_with_text(rsrc)
-                .filter(pred)
-                .map(map);
+            let ltok = tokenize_with_text(lsrc).filter(pred).map(map);
+            let rtok = tokenize_with_text(rsrc).filter(pred).map(map);
             ltok.eq(rtok)
         } else {
             // Unable to access the source. Conservatively assume the blocks aren't equal.

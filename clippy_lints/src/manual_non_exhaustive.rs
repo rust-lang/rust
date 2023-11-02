@@ -138,7 +138,7 @@ impl EarlyLintPass for ManualNonExhaustiveStruct {
                             );
                         }
                         diag.span_help(field.span, "remove this field");
-                    }
+                    },
                 );
             }
         }

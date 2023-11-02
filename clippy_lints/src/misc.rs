@@ -263,7 +263,7 @@ impl<'tcx> LateLintPass<'tcx> for LintPass {
                 ),
                 |diag| {
                     diag.span_note(definition_span, format!("`{name}` is defined here"));
-                }
+                },
             );
         }
     }

@@ -21,7 +21,9 @@ fn result_err_ty<'tcx>(
 ) -> Option<(&'tcx hir::Ty<'tcx>, Ty<'tcx>)> {
     if !in_external_macro(cx.sess(), item_span)
         && let hir::FnRetTy::Return(hir_ty) = decl.output
-        && let ty = cx.tcx.erase_late_bound_regions(cx.tcx.fn_sig(id).instantiate_identity().output())
+        && let ty = cx
+            .tcx
+            .erase_late_bound_regions(cx.tcx.fn_sig(id).instantiate_identity().output())
         && is_type_diagnostic_item(cx, ty, sym::Result)
         && let ty::Adt(_, args) = ty.kind()
     {

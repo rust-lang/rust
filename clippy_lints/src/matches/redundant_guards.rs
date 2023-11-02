@@ -27,8 +27,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'tcx>]) {
                     arm,
                     Arm {
                         pat: Pat {
-                            kind: PatKind::Wild,
-                            ..
+                            kind: PatKind::Wild, ..
                         },
                         ..
                     },
@@ -42,14 +41,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'tcx>]) {
                 (PatKind::Ref(..), None) | (_, Some(_)) => continue,
                 _ => arm.pat.span,
             };
-            emit_redundant_guards(
-                cx,
-                outer_arm,
-                if_expr.span,
-                pat_span,
-                &binding,
-                arm.guard,
-            );
+            emit_redundant_guards(cx, outer_arm, if_expr.span, pat_span, &binding, arm.guard);
         }
         // `Some(x) if let Some(2) = x`
         else if let Guard::IfLet(let_expr) = guard
@@ -60,14 +52,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'tcx>]) {
                 (PatKind::Ref(..), None) | (_, Some(_)) => continue,
                 _ => let_expr.pat.span,
             };
-            emit_redundant_guards(
-                cx,
-                outer_arm,
-                let_expr.span,
-                pat_span,
-                &binding,
-                None,
-            );
+            emit_redundant_guards(cx, outer_arm, let_expr.span, pat_span, &binding, None);
         }
         // `Some(x) if x == Some(2)`
         // `Some(x) if Some(2) == x`
@@ -93,14 +78,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'tcx>]) {
                 (ExprKind::AddrOf(..), None) | (_, Some(_)) => continue,
                 _ => pat.span,
             };
-            emit_redundant_guards(
-                cx,
-                outer_arm,
-                if_expr.span,
-                pat_span,
-                &binding,
-                None,
-            );
+            emit_redundant_guards(cx, outer_arm, if_expr.span, pat_span, &binding, None);
         }
     }
 }
@@ -116,7 +94,9 @@ fn get_pat_binding<'tcx>(
     guard_expr: &Expr<'_>,
     outer_arm: &Arm<'tcx>,
 ) -> Option<PatBindingInfo> {
-    if let Some(local) = path_to_local(guard_expr) && !is_local_used(cx, outer_arm.body, local) {
+    if let Some(local) = path_to_local(guard_expr)
+        && !is_local_used(cx, outer_arm.body, local)
+    {
         let mut span = None;
         let mut byref_ident = None;
         let mut multiple_bindings = false;
@@ -223,10 +203,7 @@ fn expr_can_be_pat(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
                     Res::Def(DefKind::Struct | DefKind::Enum | DefKind::Ctor(..), ..),
                 )
             },
-            ExprKind::AddrOf(..)
-            | ExprKind::Array(..)
-            | ExprKind::Tup(..)
-            | ExprKind::Struct(..) => true,
+            ExprKind::AddrOf(..) | ExprKind::Array(..) | ExprKind::Tup(..) | ExprKind::Struct(..) => true,
             ExprKind::Lit(lit) if !matches!(lit.node, LitKind::Float(..)) => true,
             _ => false,
         } {

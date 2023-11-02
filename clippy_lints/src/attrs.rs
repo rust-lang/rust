@@ -602,9 +602,26 @@ fn check_should_panic_reason(cx: &LateContext<'_>, attr: &Attribute) {
 
         if let AttrArgs::Delimited(args) = &normal_attr.item.args
             && let mut tt_iter = args.tokens.trees()
-            && let Some(TokenTree::Token(Token { kind: TokenKind::Ident(sym::expected, _), .. }, _)) = tt_iter.next()
-            && let Some(TokenTree::Token(Token { kind: TokenKind::Eq, .. }, _)) = tt_iter.next()
-            && let Some(TokenTree::Token(Token { kind: TokenKind::Literal(_), .. }, _)) = tt_iter.next()
+            && let Some(TokenTree::Token(
+                Token {
+                    kind: TokenKind::Ident(sym::expected, _),
+                    ..
+                },
+                _,
+            )) = tt_iter.next()
+            && let Some(TokenTree::Token(
+                Token {
+                    kind: TokenKind::Eq, ..
+                },
+                _,
+            )) = tt_iter.next()
+            && let Some(TokenTree::Token(
+                Token {
+                    kind: TokenKind::Literal(_),
+                    ..
+                },
+                _,
+            )) = tt_iter.next()
         {
             // `#[should_panic(expected = "..")]` found, good
             return;
@@ -914,7 +931,9 @@ fn check_nested_cfg(cx: &EarlyContext<'_>, items: &[NestedMetaItem]) {
 fn check_nested_misused_cfg(cx: &EarlyContext<'_>, items: &[NestedMetaItem]) {
     for item in items {
         if let NestedMetaItem::MetaItem(meta) = item {
-            if meta.has_name(sym!(features)) && let Some(val) = meta.value_str() {
+            if meta.has_name(sym!(features))
+                && let Some(val) = meta.value_str()
+            {
                 span_lint_and_sugg(
                     cx,
                     MAYBE_MISUSED_CFG,
@@ -933,16 +952,16 @@ fn check_nested_misused_cfg(cx: &EarlyContext<'_>, items: &[NestedMetaItem]) {
 }
 
 fn check_minimal_cfg_condition(cx: &EarlyContext<'_>, attr: &Attribute) {
-    if attr.has_name(sym::cfg) &&
-        let Some(items) = attr.meta_item_list()
+    if attr.has_name(sym::cfg)
+        && let Some(items) = attr.meta_item_list()
     {
         check_nested_cfg(cx, &items);
     }
 }
 
 fn check_misused_cfg(cx: &EarlyContext<'_>, attr: &Attribute) {
-    if attr.has_name(sym::cfg) &&
-        let Some(items) = attr.meta_item_list()
+    if attr.has_name(sym::cfg)
+        && let Some(items) = attr.meta_item_list()
     {
         check_nested_misused_cfg(cx, &items);
     }

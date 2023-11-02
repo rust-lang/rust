@@ -56,21 +56,20 @@ impl<'tcx> QuestionMark {
             return;
         }
 
-        if let StmtKind::Local(local) = stmt.kind &&
-            let Some(init) = local.init &&
-            local.els.is_none() &&
-            local.ty.is_none() &&
-            init.span.eq_ctxt(stmt.span) &&
-            let Some(if_let_or_match) = IfLetOrMatch::parse(cx, init)
+        if let StmtKind::Local(local) = stmt.kind
+            && let Some(init) = local.init
+            && local.els.is_none()
+            && local.ty.is_none()
+            && init.span.eq_ctxt(stmt.span)
+            && let Some(if_let_or_match) = IfLetOrMatch::parse(cx, init)
         {
             match if_let_or_match {
                 IfLetOrMatch::IfLet(if_let_expr, let_pat, if_then, if_else) => {
-                    if
-                        let Some(ident_map) = expr_simple_identity_map(local.pat, let_pat, if_then) &&
-                        let Some(if_else) = if_else &&
-                        expr_diverges(cx, if_else) &&
-                        let qm_allowed = is_lint_allowed(cx, QUESTION_MARK, stmt.hir_id) &&
-                        (qm_allowed || pat_and_expr_can_be_question_mark(cx, let_pat, if_else).is_none())
+                    if let Some(ident_map) = expr_simple_identity_map(local.pat, let_pat, if_then)
+                        && let Some(if_else) = if_else
+                        && expr_diverges(cx, if_else)
+                        && let qm_allowed = is_lint_allowed(cx, QUESTION_MARK, stmt.hir_id)
+                        && (qm_allowed || pat_and_expr_can_be_question_mark(cx, let_pat, if_else).is_none())
                     {
                         emit_manual_let_else(cx, stmt.span, if_let_expr, &ident_map, let_pat, if_else);
                     }
@@ -96,7 +95,9 @@ impl<'tcx> QuestionMark {
                         .iter()
                         .enumerate()
                         .find(|(_, arm)| expr_diverges(cx, arm.body) && pat_allowed_for_else(cx, arm.pat, check_types));
-                    let Some((idx, diverging_arm)) = diverging_arm_opt else { return; };
+                    let Some((idx, diverging_arm)) = diverging_arm_opt else {
+                        return;
+                    };
                     // If the non-diverging arm is the first one, its pattern can be reused in a let/else statement.
                     // However, if it arrives in second position, its pattern may cover some cases already covered
                     // by the diverging one.
@@ -106,7 +107,7 @@ impl<'tcx> QuestionMark {
                     }
                     let pat_arm = &arms[1 - idx];
                     let Some(ident_map) = expr_simple_identity_map(local.pat, pat_arm.pat, pat_arm.body) else {
-                        return
+                        return;
                     };
 
                     emit_manual_let_else(cx, stmt.span, match_expr, &ident_map, pat_arm.pat, diverging_arm.body);
@@ -217,8 +218,8 @@ fn replace_in_pattern(
                 let fields = fields
                     .iter()
                     .map(|fld| {
-                        if let PatKind::Binding(_, _, name, None) = fld.pat.kind &&
-                            let Some(pat_to_put) = ident_map.get(&name.name)
+                        if let PatKind::Binding(_, _, name, None) = fld.pat.kind
+                            && let Some(pat_to_put) = ident_map.get(&name.name)
                         {
                             let (sn_fld_name, _) = snippet_with_context(cx, fld.ident.span, span.ctxt(), "", app);
                             let (sn_ptp, _) = snippet_with_context(cx, pat_to_put.span, span.ctxt(), "", app);
@@ -464,8 +465,8 @@ fn expr_simple_identity_map<'a, 'hir>(
     }
     let mut ident_map = FxHashMap::default();
     for (sub_pat, path) in sub_pats.iter().zip(paths.iter()) {
-        if let ExprKind::Path(QPath::Resolved(_ty, path)) = path.kind &&
-            let [path_seg] = path.segments
+        if let ExprKind::Path(QPath::Resolved(_ty, path)) = path.kind
+            && let [path_seg] = path.segments
         {
             let ident = path_seg.ident;
             if !pat_bindings.remove(&ident) {

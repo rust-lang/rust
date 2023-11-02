@@ -106,16 +106,8 @@ impl<'tcx> LateLintPass<'tcx> for StdReexports {
         {
             let (lint, used_mod, replace_with) = match first_segment.ident.name {
                 sym::std => match cx.tcx.crate_name(def_id.krate) {
-                    sym::core => (
-                        STD_INSTEAD_OF_CORE,
-                        "std",
-                        "core",
-                    ),
-                    sym::alloc => (
-                        STD_INSTEAD_OF_ALLOC,
-                        "std",
-                        "alloc",
-                    ),
+                    sym::core => (STD_INSTEAD_OF_CORE, "std", "core"),
+                    sym::alloc => (STD_INSTEAD_OF_ALLOC, "std", "alloc"),
                     _ => {
                         self.prev_span = path.span;
                         return;
@@ -123,11 +115,7 @@ impl<'tcx> LateLintPass<'tcx> for StdReexports {
                 },
                 sym::alloc => {
                     if cx.tcx.crate_name(def_id.krate) == sym::core {
-                        (
-                            ALLOC_INSTEAD_OF_CORE,
-                            "alloc",
-                            "core",
-                        )
+                        (ALLOC_INSTEAD_OF_CORE, "alloc", "core")
                     } else {
                         self.prev_span = path.span;
                         return;
@@ -143,7 +131,8 @@ impl<'tcx> LateLintPass<'tcx> for StdReexports {
                     &format!("used import from `{used_mod}` instead of `{replace_with}`"),
                     &format!("consider importing the item from `{replace_with}`"),
                     replace_with.to_string(),
-                    Applicability::MachineApplicable);
+                    Applicability::MachineApplicable,
+                );
                 self.prev_span = path.span;
             }
         }

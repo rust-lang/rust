@@ -19,6 +19,7 @@ mod in_fn_test {
 }
 
 mod blurg {
+    #[allow(unused_imports)]
     pub use std::cmp::Ordering::*; // ok, re-export
 }
 

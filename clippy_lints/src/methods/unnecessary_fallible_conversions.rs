@@ -43,16 +43,15 @@ fn check<'tcx>(
         // what `<T as TryFrom<U>>::Error` is: it's always `Infallible`
         && implements_trait(cx, self_ty, from_into_trait, &[other_ty])
     {
-        let parent_unwrap_call = get_parent_expr(cx, expr)
-            .and_then(|parent| {
-                if let ExprKind::MethodCall(path, .., span) = parent.kind
-                    && let sym::unwrap | sym::expect = path.ident.name
-                {
-                    Some(span)
-                } else {
-                    None
-                }
-            });
+        let parent_unwrap_call = get_parent_expr(cx, expr).and_then(|parent| {
+            if let ExprKind::MethodCall(path, .., span) = parent.kind
+                && let sym::unwrap | sym::expect = path.ident.name
+            {
+                Some(span)
+            } else {
+                None
+            }
+        });
 
         let (sugg, span, applicability) = match kind {
             FunctionKind::TryIntoMethod if let Some(unwrap_span) = parent_unwrap_call => {
@@ -63,8 +62,12 @@ fn check<'tcx>(
                 // `try_into().unwrap()` specifically can be trivially replaced with just `into()`,
                 // so that can be machine-applicable
 
-                ("into()", primary_span.with_hi(unwrap_span.hi()), Applicability::MachineApplicable)
-            }
+                (
+                    "into()",
+                    primary_span.with_hi(unwrap_span.hi()),
+                    Applicability::MachineApplicable,
+                )
+            },
             FunctionKind::TryFromFunction => ("From::from", primary_span, Applicability::Unspecified),
             FunctionKind::TryIntoFunction => ("Into::into", primary_span, Applicability::Unspecified),
             FunctionKind::TryIntoMethod => ("into", primary_span, Applicability::Unspecified),
@@ -77,7 +80,7 @@ fn check<'tcx>(
             "use of a fallible conversion when an infallible one could be used",
             "use",
             sugg.into(),
-            applicability
+            applicability,
         );
     }
 }

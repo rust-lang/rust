@@ -5,6 +5,7 @@
 
 use clippy_config::msrvs::Msrv;
 use hir::LangItem;
+use rustc_attr::StableSince;
 use rustc_const_eval::transform::check_consts::ConstCx;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -370,19 +371,17 @@ fn is_const_fn(tcx: TyCtxt<'_>, def_id: DefId, msrv: &Msrv) -> bool {
                 // function could be removed if `rustc` provided a MSRV-aware version of `is_const_fn`.
                 // as a part of an unimplemented MSRV check https://github.com/rust-lang/rust/issues/65262.
 
-                // HACK(nilstrieb): CURRENT_RUSTC_VERSION can return versions like 1.66.0-dev. `rustc-semver`
-                // doesn't accept the `-dev` version number so we have to strip it off.
-                let short_version = since
-                    .as_str()
-                    .split('-')
-                    .next()
-                    .expect("rustc_attr::StabilityLevel::Stable::since` is empty");
+                let const_stab_rust_version = match since {
+                    StableSince::Version(version) => version,
+                    StableSince::Current => rustc_session::RustcVersion::CURRENT,
+                    StableSince::Err => return false,
+                };
 
-                let since = rustc_span::Symbol::intern(short_version);
-
-                msrv.meets(RustcVersion::parse(since.as_str()).unwrap_or_else(|err| {
-                    panic!("`rustc_attr::StabilityLevel::Stable::since` is ill-formatted: `{since}`, {err:?}")
-                }))
+                msrv.meets(RustcVersion::new(
+                    u32::from(const_stab_rust_version.major),
+                    u32::from(const_stab_rust_version.minor),
+                    u32::from(const_stab_rust_version.patch),
+                ))
             } else {
                 // Unstable const fn with the feature enabled.
                 msrv.current().is_none()

@@ -87,18 +87,24 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBorrowsForGenericArgs<'tcx> {
             && let ty::Param(ty) = *ty.value.skip_binder().kind()
             && let Some((hir_id, fn_id, i)) = match use_cx.node {
                 ExprUseNode::MethodArg(_, _, 0) => None,
-                ExprUseNode::MethodArg(hir_id, None, i) => {
-                    cx.typeck_results().type_dependent_def_id(hir_id).map(|id| (hir_id, id, i))
-                },
-                ExprUseNode::FnArg(&Expr { kind: ExprKind::Path(ref p), hir_id, .. }, i)
-                if !path_has_args(p) => match cx.typeck_results().qpath_res(p, hir_id) {
-                    Res::Def(DefKind::Fn | DefKind::Ctor(..) | DefKind::AssocFn, id) => {
-                        Some((hir_id, id, i))
+                ExprUseNode::MethodArg(hir_id, None, i) => cx
+                    .typeck_results()
+                    .type_dependent_def_id(hir_id)
+                    .map(|id| (hir_id, id, i)),
+                ExprUseNode::FnArg(
+                    &Expr {
+                        kind: ExprKind::Path(ref p),
+                        hir_id,
+                        ..
                     },
+                    i,
+                ) if !path_has_args(p) => match cx.typeck_results().qpath_res(p, hir_id) {
+                    Res::Def(DefKind::Fn | DefKind::Ctor(..) | DefKind::AssocFn, id) => Some((hir_id, id, i)),
                     _ => None,
                 },
                 _ => None,
-            } && let count = needless_borrow_count(
+            }
+            && let count = needless_borrow_count(
                 cx,
                 &mut self.possible_borrowers,
                 fn_id,
@@ -107,7 +113,8 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBorrowsForGenericArgs<'tcx> {
                 ty,
                 expr,
                 &self.msrv,
-            ) && count != 0
+            )
+            && count != 0
         {
             span_lint_and_then(
                 cx,
@@ -119,7 +126,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBorrowsForGenericArgs<'tcx> {
                     let snip_span = peel_n_hir_expr_refs(expr, count).0.span;
                     let snip = snippet_with_context(cx, snip_span, expr.span.ctxt(), "..", &mut app).0;
                     diag.span_suggestion(expr.span, "change this to", snip.into_owned(), app);
-                }
+                },
             );
         }
     }
@@ -245,7 +252,9 @@ fn needless_borrow_count<'tcx>(
 
         predicates.iter().all(|predicate| {
             if let ClauseKind::Trait(trait_predicate) = predicate.kind().skip_binder()
-                && cx.tcx.is_diagnostic_item(sym::IntoIterator, trait_predicate.trait_ref.def_id)
+                && cx
+                    .tcx
+                    .is_diagnostic_item(sym::IntoIterator, trait_predicate.trait_ref.def_id)
                 && let ty::Param(param_ty) = trait_predicate.self_ty().kind()
                 && let GenericArgKind::Type(ty) = args_with_referent_ty[param_ty.index as usize].unpack()
                 && ty.is_array()
@@ -308,13 +317,13 @@ fn is_mixed_projection_predicate<'tcx>(
             match projection_ty.self_ty().kind() {
                 ty::Alias(ty::Projection, inner_projection_ty) => {
                     projection_ty = *inner_projection_ty;
-                }
+                },
                 ty::Param(param_ty) => {
                     return (param_ty.index as usize) >= generics.parent_count;
-                }
+                },
                 _ => {
                     return false;
-                }
+                },
             }
         }
     } else {

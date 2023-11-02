@@ -85,8 +85,8 @@ impl<'tcx> LateLintPass<'tcx> for UnusedPeekable {
                         ident.span,
                         "`peek` never called on `Peekable` iterator",
                         None,
-                        "consider removing the call to `peekable`"
-                   );
+                        "consider removing the call to `peekable`",
+                    );
                 }
             }
         }
@@ -131,11 +131,7 @@ impl<'tcx> Visitor<'tcx> for PeekableVisitor<'_, 'tcx> {
                             // If the Peekable is passed to a function, stop
                             ExprKind::Call(_, args) => {
                                 if let Some(func_did) = fn_def_id(self.cx, expr)
-                                    && let Some(into_iter_did) = self
-                                        .cx
-                                        .tcx
-                                        .lang_items()
-                                        .into_iter_fn()
+                                    && let Some(into_iter_did) = self.cx.tcx.lang_items().into_iter_fn()
                                     && func_did == into_iter_did
                                 {
                                     // Probably a for loop desugar, stop searching

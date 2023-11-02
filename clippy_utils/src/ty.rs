@@ -890,7 +890,9 @@ pub fn for_each_top_level_late_bound_region<B>(
     impl<'tcx, B, F: FnMut(BoundRegion) -> ControlFlow<B>> TypeVisitor<TyCtxt<'tcx>> for V<F> {
         type BreakTy = B;
         fn visit_region(&mut self, r: Region<'tcx>) -> ControlFlow<Self::BreakTy> {
-            if let RegionKind::ReLateBound(idx, bound) = r.kind() && idx.as_u32() == self.index {
+            if let RegionKind::ReLateBound(idx, bound) = r.kind()
+                && idx.as_u32() == self.index
+            {
                 (self.f)(bound)
             } else {
                 ControlFlow::Continue(())
@@ -984,16 +986,16 @@ pub fn ty_is_fn_once_param<'tcx>(tcx: TyCtxt<'_>, ty: Ty<'tcx>, predicates: &'tc
         .iter()
         .try_fold(false, |found, p| {
             if let ty::ClauseKind::Trait(p) = p.kind().skip_binder()
-            && let ty::Param(self_ty) = p.trait_ref.self_ty().kind()
-            && ty.index == self_ty.index
-        {
-            // This should use `super_traits_of`, but that's a private function.
-            if p.trait_ref.def_id == fn_once_id {
-                return Some(true);
-            } else if p.trait_ref.def_id == fn_mut_id || p.trait_ref.def_id == fn_id {
-                return None;
+                && let ty::Param(self_ty) = p.trait_ref.self_ty().kind()
+                && ty.index == self_ty.index
+            {
+                // This should use `super_traits_of`, but that's a private function.
+                if p.trait_ref.def_id == fn_once_id {
+                    return Some(true);
+                } else if p.trait_ref.def_id == fn_mut_id || p.trait_ref.def_id == fn_id {
+                    return None;
+                }
             }
-        }
             Some(found)
         })
         .unwrap_or(false)
