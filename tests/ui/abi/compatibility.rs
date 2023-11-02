@@ -46,6 +46,15 @@
 // revisions: wasi
 //[wasi] compile-flags: --target wasm32-wasi
 //[wasi] needs-llvm-components: webassembly
+// revisions: csky
+//[csky] compile-flags: --target csky-unknown-linux-gnuabiv2
+//[csky] needs-llvm-components: csky
+// revisions: bpf
+//[bpf] compile-flags: --target bpfeb-unknown-none
+//[bpf] needs-llvm-components: bpf
+// revisions: m68k
+//[m68k] compile-flags: --target m68k-unknown-linux-gnu
+//[m68k] needs-llvm-components: m68k
 // FIXME: disabled on nvptx64 since the target ABI fails the sanity check
 // see https://github.com/rust-lang/rust/issues/117480
 /* revisions: nvptx64
