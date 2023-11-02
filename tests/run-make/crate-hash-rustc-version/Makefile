@@ -4,7 +4,7 @@ include ../tools.mk
 # Ensure that crates compiled with different rustc versions cannot
 # be dynamically linked.
 
-FLAGS := -Cprefer-dynamic -Zsymbol-mangling-version=v0
+FLAGS := -Cprefer-dynamic -Csymbol-mangling-version=v0
 UNAME := $(shell uname)
 ifeq ($(UNAME),Linux)
   EXT=".so"

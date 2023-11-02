@@ -2674,28 +2674,19 @@ pub fn build_session_options(
         );
     }
 
-    // Handle both `-Z symbol-mangling-version` and `-C symbol-mangling-version`; the latter takes
-    // precedence.
-    match (cg.symbol_mangling_version, unstable_opts.symbol_mangling_version) {
-        (Some(smv_c), Some(smv_z)) if smv_c != smv_z => {
-            handler.early_error(
-                "incompatible values passed for `-C symbol-mangling-version` \
-                and `-Z symbol-mangling-version`",
-            );
+    // Check for unstable values of `-C symbol-mangling-version`.
+    // This is what prevents them from being used on stable compilers.
+    match cg.symbol_mangling_version {
+        // Stable values:
+        None | Some(SymbolManglingVersion::V0) => {}
+        // Unstable values:
+        Some(SymbolManglingVersion::Legacy) => {
+            if !unstable_opts.unstable_options {
+                handler.early_error(
+                    "`-C symbol-mangling-version=legacy` requires `-Z unstable-options`",
+                );
+            }
         }
-        (Some(SymbolManglingVersion::V0), _) => {}
-        (Some(_), _) if !unstable_opts.unstable_options => {
-            handler
-                .early_error("`-C symbol-mangling-version=legacy` requires `-Z unstable-options`");
-        }
-        (None, None) => {}
-        (None, smv) => {
-            handler.early_warn(
-                "`-Z symbol-mangling-version` is deprecated; use `-C symbol-mangling-version`",
-            );
-            cg.symbol_mangling_version = smv;
-        }
-        _ => {}
     }
 
     // Check for unstable values of `-C instrument-coverage`.
