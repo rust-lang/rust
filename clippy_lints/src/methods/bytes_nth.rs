@@ -24,8 +24,9 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, recv: &'tcx E
     let n = snippet_with_applicability(cx, n_arg.span, "..", &mut applicability);
 
     if let Some(parent) = clippy_utils::get_parent_expr(cx, expr)
-      && let Some((name, _, _, _, _)) = method_call(parent)
-      && name == "unwrap" {
+        && let Some((name, _, _, _, _)) = method_call(parent)
+        && name == "unwrap"
+    {
         span_lint_and_sugg(
             cx,
             BYTES_NTH,
@@ -33,7 +34,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, recv: &'tcx E
             &format!("called `.bytes().nth().unwrap()` on a `{caller_type}`"),
             "try",
             format!("{receiver}.as_bytes()[{n}]",),
-            applicability
+            applicability,
         );
     } else {
         span_lint_and_sugg(
@@ -42,8 +43,8 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, recv: &'tcx E
             expr.span,
             &format!("called `.bytes().nth()` on a `{caller_type}`"),
             "try",
-            format!("{receiver}.as_bytes().get({n}).copied()"), 
-            applicability
+            format!("{receiver}.as_bytes().get({n}).copied()"),
+            applicability,
         );
     };
 }

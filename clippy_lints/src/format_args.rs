@@ -370,7 +370,7 @@ fn check_one_arg(
         };
         fixes.push((pos_span, replacement));
         fixes.push((arg_span, String::new()));
-        true  // successful inlining, continue checking
+        true // successful inlining, continue checking
     } else {
         // Do not continue inlining (return false) in case
         // * if we can't inline a numbered argument, e.g. `print!("{0} ...", foo.bar, ...)`

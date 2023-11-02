@@ -41,10 +41,11 @@ impl<'tcx> LateLintPass<'tcx> for ErrorImplError {
         };
 
         match item.kind {
-            ItemKind::TyAlias(..) if item.ident.name == sym::Error
-                && is_visible_outside_module(cx, item.owner_id.def_id)
-                && let ty = cx.tcx.type_of(item.owner_id).instantiate_identity()
-                && implements_trait(cx, ty, error_def_id, &[]) =>
+            ItemKind::TyAlias(..)
+                if item.ident.name == sym::Error
+                    && is_visible_outside_module(cx, item.owner_id.def_id)
+                    && let ty = cx.tcx.type_of(item.owner_id).instantiate_identity()
+                    && implements_trait(cx, ty, error_def_id, &[]) =>
             {
                 span_lint(
                     cx,
@@ -53,13 +54,14 @@ impl<'tcx> LateLintPass<'tcx> for ErrorImplError {
                     "exported type alias named `Error` that implements `Error`",
                 );
             },
-            ItemKind::Impl(imp) if let Some(trait_def_id) = imp.of_trait.and_then(|t| t.trait_def_id())
-                && error_def_id == trait_def_id
-                && let Some(def_id) = path_res(cx, imp.self_ty).opt_def_id().and_then(DefId::as_local)
-                && let hir_id = cx.tcx.hir().local_def_id_to_hir_id(def_id)
-                && let Some(ident) = cx.tcx.opt_item_ident(def_id.to_def_id())
-                && ident.name == sym::Error
-                && is_visible_outside_module(cx, def_id) =>
+            ItemKind::Impl(imp)
+                if let Some(trait_def_id) = imp.of_trait.and_then(|t| t.trait_def_id())
+                    && error_def_id == trait_def_id
+                    && let Some(def_id) = path_res(cx, imp.self_ty).opt_def_id().and_then(DefId::as_local)
+                    && let hir_id = cx.tcx.hir().local_def_id_to_hir_id(def_id)
+                    && let Some(ident) = cx.tcx.opt_item_ident(def_id.to_def_id())
+                    && ident.name == sym::Error
+                    && is_visible_outside_module(cx, def_id) =>
             {
                 span_lint_hir_and_then(
                     cx,
@@ -69,9 +71,9 @@ impl<'tcx> LateLintPass<'tcx> for ErrorImplError {
                     "exported type named `Error` that implements `Error`",
                     |diag| {
                         diag.span_note(item.span, "`Error` was implemented here");
-                    }
+                    },
                 );
-            }
+            },
             _ => {},
         }
     }

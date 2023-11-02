@@ -225,11 +225,11 @@ fn is_if_elseif_else_pattern<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx
         then,
         r#else: Some(else_if),
     }) = If::hir(expr)
-    && let Some(If {
-        cond: else_if_cond,
-        then: else_if_then,
-        r#else: Some(else_body),
-    }) = If::hir(peel_blocks(else_if))
+        && let Some(If {
+            cond: else_if_cond,
+            then: else_if_then,
+            r#else: Some(else_body),
+        }) = If::hir(peel_blocks(else_if))
     {
         let params = is_clamp_meta_pattern(
             cx,
@@ -275,7 +275,12 @@ fn is_max_min_pattern<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> O
             _ => return None,
         };
         Some(ClampSuggestion {
-            params: InputMinMax { input, min, max, is_float },
+            params: InputMinMax {
+                input,
+                min,
+                max,
+                is_float,
+            },
             span: expr.span,
             make_assignment: None,
             hir_with_ignore_attr: None,
@@ -346,11 +351,16 @@ fn is_call_max_min_pattern<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>)
                         ("max", "min") => (inner_arg, outer_arg),
                         _ => return None,
                     }
-                }
+                },
                 _ => return None,
             };
             Some(ClampSuggestion {
-                params: InputMinMax { input, min, max, is_float },
+                params: InputMinMax {
+                    input,
+                    min,
+                    max,
+                    is_float,
+                },
                 span,
                 make_assignment: None,
                 hir_with_ignore_attr: None,
@@ -384,7 +394,8 @@ fn is_match_pattern<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> Opt
         // Find possible min/max branches
         let minmax_values = |a: &'tcx Arm<'tcx>| {
             if let PatKind::Binding(_, var_hir_id, _, None) = &a.pat.kind
-            && let Some(Guard::If(e)) = a.guard {
+                && let Some(Guard::If(e)) = a.guard
+            {
                 Some((e, var_hir_id, a.body))
             } else {
                 None
@@ -441,18 +452,20 @@ fn is_two_if_pattern<'tcx>(cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>) -> 
         .filter_map(|(maybe_set_first, maybe_set_second)| {
             if let StmtKind::Expr(first_expr) = *maybe_set_first
                 && let StmtKind::Expr(second_expr) = *maybe_set_second
-                && let Some(If { cond: first_cond, then: first_then, r#else: None }) = If::hir(first_expr)
-                && let Some(If { cond: second_cond, then: second_then, r#else: None }) = If::hir(second_expr)
-                && let ExprKind::Assign(
-                    maybe_input_first_path,
-                    maybe_min_max_first,
-                    _
-                ) = peel_blocks_with_stmt(first_then).kind
-                && let ExprKind::Assign(
-                    maybe_input_second_path,
-                    maybe_min_max_second,
-                    _
-                ) = peel_blocks_with_stmt(second_then).kind
+                && let Some(If {
+                    cond: first_cond,
+                    then: first_then,
+                    r#else: None,
+                }) = If::hir(first_expr)
+                && let Some(If {
+                    cond: second_cond,
+                    then: second_then,
+                    r#else: None,
+                }) = If::hir(second_expr)
+                && let ExprKind::Assign(maybe_input_first_path, maybe_min_max_first, _) =
+                    peel_blocks_with_stmt(first_then).kind
+                && let ExprKind::Assign(maybe_input_second_path, maybe_min_max_second, _) =
+                    peel_blocks_with_stmt(second_then).kind
                 && eq_expr_value(cx, maybe_input_first_path, maybe_input_second_path)
                 && let Some(first_bin) = BinaryOp::new(first_cond)
                 && let Some(second_bin) = BinaryOp::new(second_cond)
@@ -462,7 +475,7 @@ fn is_two_if_pattern<'tcx>(cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>) -> 
                     &second_bin,
                     maybe_min_max_first,
                     maybe_min_max_second,
-                    None
+                    None,
                 )
             {
                 Some(ClampSuggestion {
@@ -505,16 +518,9 @@ fn is_if_elseif_pattern<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) ->
             then: else_if_then,
             r#else: None,
         }) = If::hir(peel_blocks(else_if))
-        && let ExprKind::Assign(
-            maybe_input_first_path,
-            maybe_min_max_first,
-            _
-        ) = peel_blocks_with_stmt(then).kind
-        && let ExprKind::Assign(
-            maybe_input_second_path,
-            maybe_min_max_second,
-            _
-        ) = peel_blocks_with_stmt(else_if_then).kind
+        && let ExprKind::Assign(maybe_input_first_path, maybe_min_max_first, _) = peel_blocks_with_stmt(then).kind
+        && let ExprKind::Assign(maybe_input_second_path, maybe_min_max_second, _) =
+            peel_blocks_with_stmt(else_if_then).kind
     {
         let params = is_clamp_meta_pattern(
             cx,

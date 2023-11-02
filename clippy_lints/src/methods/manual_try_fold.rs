@@ -44,7 +44,7 @@ pub(super) fn check<'tcx>(
             fold_span,
             "usage of `Iterator::fold` on a type that implements `Try`",
             "use `try_fold` instead",
-            format!("try_fold({init_snip}, {args_snip} ...)", ),
+            format!("try_fold({init_snip}, {args_snip} ...)",),
             Applicability::HasPlaceholders,
         );
     }

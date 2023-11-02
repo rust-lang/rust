@@ -98,16 +98,23 @@ enum IfBlockType<'hir> {
 }
 
 fn check_let_some_else_return_none(cx: &LateContext<'_>, stmt: &Stmt<'_>) {
-    if let StmtKind::Local(Local { pat, init: Some(init_expr), els: Some(els), .. }) = stmt.kind &&
-        let Block { stmts: &[], expr: Some(els), .. } = els &&
-        let Some(inner_pat) = pat_and_expr_can_be_question_mark(cx, pat, els)
+    if let StmtKind::Local(Local {
+        pat,
+        init: Some(init_expr),
+        els: Some(els),
+        ..
+    }) = stmt.kind
+        && let Block {
+            stmts: &[],
+            expr: Some(els),
+            ..
+        } = els
+        && let Some(inner_pat) = pat_and_expr_can_be_question_mark(cx, pat, els)
     {
         let mut applicability = Applicability::MaybeIncorrect;
         let init_expr_str = snippet_with_applicability(cx, init_expr.span, "..", &mut applicability);
         let receiver_str = snippet_with_applicability(cx, inner_pat.span, "..", &mut applicability);
-        let sugg = format!(
-            "let {receiver_str} = {init_expr_str}?;",
-        );
+        let sugg = format!("let {receiver_str} = {init_expr_str}?;",);
         span_lint_and_sugg(
             cx,
             QUESTION_MARK,

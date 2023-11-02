@@ -41,16 +41,17 @@ declare_lint_pass!(PubUse => [PUB_USE]);
 
 impl EarlyLintPass for PubUse {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
-        if let ItemKind::Use(_) = item.kind &&
-            let VisibilityKind::Public = item.vis.kind {
-                span_lint_and_help(
-                    cx,
-                    PUB_USE,
-                    item.span,
-                    "using `pub use`",
-                    None,
-                    "move the exported item to a public module instead",
-                );
-            }
+        if let ItemKind::Use(_) = item.kind
+            && let VisibilityKind::Public = item.vis.kind
+        {
+            span_lint_and_help(
+                cx,
+                PUB_USE,
+                item.span,
+                "using `pub use`",
+                None,
+                "move the exported item to a public module instead",
+            );
+        }
     }
 }

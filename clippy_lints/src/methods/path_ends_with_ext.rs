@@ -46,7 +46,7 @@ pub(super) fn check(
             "this looks like a failed attempt at checking for the file extension",
             "try",
             sugg,
-            Applicability::MaybeIncorrect
+            Applicability::MaybeIncorrect,
         );
     }
 }

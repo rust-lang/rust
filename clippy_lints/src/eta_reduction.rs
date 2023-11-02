@@ -119,19 +119,21 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
 
         match body.value.kind {
             ExprKind::Call(callee, args)
-                if matches!(callee.kind, ExprKind::Path(QPath::Resolved(..) | QPath::TypeRelative(..))) =>
+                if matches!(
+                    callee.kind,
+                    ExprKind::Path(QPath::Resolved(..) | QPath::TypeRelative(..))
+                ) =>
             {
                 let callee_ty = typeck.expr_ty(callee).peel_refs();
-                if matches!(
-                    type_diagnostic_name(cx, callee_ty),
-                    Some(sym::Arc | sym::Rc)
-                ) || !check_inputs(typeck, body.params, None, args) {
+                if matches!(type_diagnostic_name(cx, callee_ty), Some(sym::Arc | sym::Rc))
+                    || !check_inputs(typeck, body.params, None, args)
+                {
                     return;
                 }
-                let callee_ty_adjusted = typeck.expr_adjustments(callee).last().map_or(
-                    callee_ty,
-                    |a| a.target.peel_refs(),
-                );
+                let callee_ty_adjusted = typeck
+                    .expr_adjustments(callee)
+                    .last()
+                    .map_or(callee_ty, |a| a.target.peel_refs());
 
                 let sig = match callee_ty_adjusted.kind() {
                     ty::FnDef(def, _) => cx.tcx.fn_sig(def).skip_binder().skip_binder(),
@@ -160,36 +162,26 @@ impl<'tcx> LateLintPass<'tcx> for EtaReduction {
                     // For now ignore all callee types which reference a type parameter.
                     && !generic_args.types().any(|t| matches!(t.kind(), ty::Param(_)))
                 {
-                    span_lint_and_then(
-                        cx,
-                        REDUNDANT_CLOSURE,
-                        expr.span,
-                        "redundant closure",
-                        |diag| {
-                            if let Some(mut snippet) = snippet_opt(cx, callee.span) {
-                                if let Ok((ClosureKind::FnMut, _))
-                                    = cx.tcx.infer_ctxt().build().type_implements_fn_trait(
-                                        cx.param_env,
-                                        Binder::bind_with_vars(callee_ty_adjusted, List::empty()),
-                                        ImplPolarity::Positive,
-                                    ) && path_to_local(callee)
-                                        .map_or(
-                                            false,
-                                            |l| local_used_in(cx, l, args) || local_used_after_expr(cx, l, expr),
-                                        )
-                                {
-                                    // Mutable closure is used after current expr; we cannot consume it.
-                                    snippet = format!("&mut {snippet}");
-                                }
-                                diag.span_suggestion(
-                                    expr.span,
-                                    "replace the closure with the function itself",
-                                    snippet,
-                                    Applicability::MachineApplicable,
-                                );
+                    span_lint_and_then(cx, REDUNDANT_CLOSURE, expr.span, "redundant closure", |diag| {
+                        if let Some(mut snippet) = snippet_opt(cx, callee.span) {
+                            if let Ok((ClosureKind::FnMut, _)) = cx.tcx.infer_ctxt().build().type_implements_fn_trait(
+                                cx.param_env,
+                                Binder::bind_with_vars(callee_ty_adjusted, List::empty()),
+                                ImplPolarity::Positive,
+                            ) && path_to_local(callee).map_or(false, |l| {
+                                local_used_in(cx, l, args) || local_used_after_expr(cx, l, expr)
+                            }) {
+                                // Mutable closure is used after current expr; we cannot consume it.
+                                snippet = format!("&mut {snippet}");
                             }
+                            diag.span_suggestion(
+                                expr.span,
+                                "replace the closure with the function itself",
+                                snippet,
+                                Applicability::MachineApplicable,
+                            );
                         }
-                    );
+                    });
                 }
             },
             ExprKind::MethodCall(path, self_, args, _) if check_inputs(typeck, body.params, Some(self_), args) => {

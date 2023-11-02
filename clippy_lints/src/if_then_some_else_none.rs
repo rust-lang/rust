@@ -76,7 +76,11 @@ impl<'tcx> LateLintPass<'tcx> for IfThenSomeElseNone {
 
         let ctxt = expr.span.ctxt();
 
-        if let Some(higher::If { cond, then, r#else: Some(els) }) = higher::If::hir(expr)
+        if let Some(higher::If {
+            cond,
+            then,
+            r#else: Some(els),
+        }) = higher::If::hir(expr)
             && let ExprKind::Block(then_block, _) = then.kind
             && let Some(then_expr) = then_block.expr
             && let ExprKind::Call(then_call, [then_arg]) = then_expr.kind
@@ -86,7 +90,9 @@ impl<'tcx> LateLintPass<'tcx> for IfThenSomeElseNone {
             && !contains_return(then_block.stmts)
         {
             let mut app = Applicability::Unspecified;
-            let cond_snip = Sugg::hir_with_context(cx, cond, expr.span.ctxt(), "[condition]", &mut app).maybe_par().to_string();
+            let cond_snip = Sugg::hir_with_context(cx, cond, expr.span.ctxt(), "[condition]", &mut app)
+                .maybe_par()
+                .to_string();
             let arg_snip = snippet_with_context(cx, then_arg.span, ctxt, "[body]", &mut app).0;
             let mut method_body = if then_block.stmts.is_empty() {
                 arg_snip.into_owned()
@@ -100,9 +106,8 @@ impl<'tcx> LateLintPass<'tcx> for IfThenSomeElseNone {
                 "then"
             };
 
-            let help = format!(
-                "consider using `bool::{method_name}` like: `{cond_snip}.{method_name}({method_body})`",
-            );
+            let help =
+                format!("consider using `bool::{method_name}` like: `{cond_snip}.{method_name}({method_body})`",);
             span_lint_and_help(
                 cx,
                 IF_THEN_SOME_ELSE_NONE,

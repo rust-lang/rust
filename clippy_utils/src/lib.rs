@@ -287,7 +287,7 @@ pub fn is_wild(pat: &Pat<'_>) -> bool {
 pub fn is_ty_alias(qpath: &QPath<'_>) -> bool {
     match *qpath {
         QPath::Resolved(_, path) => matches!(path.res, Res::Def(DefKind::TyAlias | DefKind::AssocTy, ..)),
-        QPath::TypeRelative(ty, _) if let TyKind::Path(qpath) = ty.kind => { is_ty_alias(&qpath) },
+        QPath::TypeRelative(ty, _) if let TyKind::Path(qpath) = ty.kind => is_ty_alias(&qpath),
         _ => false,
     }
 }
@@ -863,8 +863,8 @@ pub fn is_default_equivalent(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
 }
 
 fn is_default_equivalent_from(cx: &LateContext<'_>, from_func: &Expr<'_>, arg: &Expr<'_>) -> bool {
-    if let ExprKind::Path(QPath::TypeRelative(ty, seg)) = from_func.kind &&
-        seg.ident.name == sym::from
+    if let ExprKind::Path(QPath::TypeRelative(ty, seg)) = from_func.kind
+        && seg.ident.name == sym::from
     {
         match arg.kind {
             ExprKind::Lit(hir::Lit {
@@ -873,12 +873,12 @@ fn is_default_equivalent_from(cx: &LateContext<'_>, from_func: &Expr<'_>, arg: &
             }) => return sym.is_empty() && is_path_lang_item(cx, ty, LangItem::String),
             ExprKind::Array([]) => return is_path_diagnostic_item(cx, ty, sym::Vec),
             ExprKind::Repeat(_, ArrayLen::Body(len)) => {
-                if let ExprKind::Lit(const_lit) = cx.tcx.hir().body(len.body).value.kind &&
-                    let LitKind::Int(v, _) = const_lit.node
+                if let ExprKind::Lit(const_lit) = cx.tcx.hir().body(len.body).value.kind
+                    && let LitKind::Int(v, _) = const_lit.node
                 {
-                        return v == 0 && is_path_diagnostic_item(cx, ty, sym::Vec);
+                    return v == 0 && is_path_diagnostic_item(cx, ty, sym::Vec);
                 }
-            }
+            },
             _ => (),
         }
     }
@@ -1515,32 +1515,30 @@ pub fn is_range_full(cx: &LateContext<'_>, expr: &Expr<'_>, container_path: Opti
                 false
             }
         });
-        let end_is_none_or_max = end.map_or(true, |end| {
-            match limits {
-                RangeLimits::Closed => {
-                    if let rustc_ty::Adt(_, subst) = ty.kind()
-                        && let bnd_ty = subst.type_at(0)
-                        && let Some(max_val) = bnd_ty.numeric_max_val(cx.tcx)
-                        && let Some(max_const) = mir_to_const(cx, Const::from_ty_const(max_val, cx.tcx))
-                        && let Some(end_const) = constant(cx, cx.typeck_results(), end)
-                    {
-                        end_const == max_const
-                    } else {
-                        false
-                    }
-                },
-                RangeLimits::HalfOpen => {
-                    if let Some(container_path) = container_path
-                        && let ExprKind::MethodCall(name, self_arg, [], _) = end.kind
-                        && name.ident.name == sym::len
-                        && let ExprKind::Path(QPath::Resolved(None, path)) = self_arg.kind
-                    {
-                        container_path.res == path.res
-                    } else {
-                        false
-                    }
-                },
-            }
+        let end_is_none_or_max = end.map_or(true, |end| match limits {
+            RangeLimits::Closed => {
+                if let rustc_ty::Adt(_, subst) = ty.kind()
+                    && let bnd_ty = subst.type_at(0)
+                    && let Some(max_val) = bnd_ty.numeric_max_val(cx.tcx)
+                    && let Some(max_const) = mir_to_const(cx, Const::from_ty_const(max_val, cx.tcx))
+                    && let Some(end_const) = constant(cx, cx.typeck_results(), end)
+                {
+                    end_const == max_const
+                } else {
+                    false
+                }
+            },
+            RangeLimits::HalfOpen => {
+                if let Some(container_path) = container_path
+                    && let ExprKind::MethodCall(name, self_arg, [], _) = end.kind
+                    && name.ident.name == sym::len
+                    && let ExprKind::Path(QPath::Resolved(None, path)) = self_arg.kind
+                {
+                    container_path.res == path.res
+                } else {
+                    false
+                }
+            },
         });
         return start_is_none_or_min && end_is_none_or_max;
     }
@@ -2101,7 +2099,8 @@ pub fn is_expr_untyped_identity_function(cx: &LateContext<'_>, expr: &Expr<'_>) 
         },
         ExprKind::Path(QPath::Resolved(_, path))
             if path.segments.iter().all(|seg| seg.infer_args)
-                && let Some(did) = path.res.opt_def_id() => {
+                && let Some(did) = path.res.opt_def_id() =>
+        {
             cx.tcx.is_diagnostic_item(sym::convert_identity, did)
         },
         _ => false,
@@ -2455,7 +2454,8 @@ fn with_test_item_names(tcx: TyCtxt<'_>, module: LocalModDefId, f: impl Fn(&[Sym
             for id in tcx.hir().module_items(module) {
                 if matches!(tcx.def_kind(id.owner_id), DefKind::Const)
                     && let item = tcx.hir().item(id)
-                    && let ItemKind::Const(ty, _generics, _body) = item.kind {
+                    && let ItemKind::Const(ty, _generics, _body) = item.kind
+                {
                     if let TyKind::Path(QPath::Resolved(_, path)) = ty.kind {
                         // We could also check for the type name `test::TestDescAndFn`
                         if let Res::Def(DefKind::Struct, _) = path.res {
@@ -2719,7 +2719,9 @@ pub fn expr_use_ctxt<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'tcx>) -> Optio
     let ctxt = e.span.ctxt();
     walk_to_expr_usage(cx, e, &mut |parent, child_id| {
         // LocalTableInContext returns the wrong lifetime, so go use `expr_adjustments` instead.
-        if adjustments.is_empty() && let Node::Expr(e) = cx.tcx.hir().get(child_id) {
+        if adjustments.is_empty()
+            && let Node::Expr(e) = cx.tcx.hir().get(child_id)
+        {
             adjustments = cx.typeck_results().expr_adjustments(e);
         }
         match parent {
@@ -2916,13 +2918,13 @@ pub fn pat_and_expr_can_be_question_mark<'a, 'hir>(
     pat: &'a Pat<'hir>,
     else_body: &Expr<'_>,
 ) -> Option<&'a Pat<'hir>> {
-    if let PatKind::TupleStruct(pat_path, [inner_pat], _) = pat.kind &&
-        is_res_lang_ctor(cx, cx.qpath_res(&pat_path, pat.hir_id), OptionSome) &&
-        !is_refutable(cx, inner_pat) &&
-        let else_body = peel_blocks(else_body) &&
-        let ExprKind::Ret(Some(ret_val)) = else_body.kind &&
-        let ExprKind::Path(ret_path) = ret_val.kind &&
-        is_res_lang_ctor(cx, cx.qpath_res(&ret_path, ret_val.hir_id), OptionNone)
+    if let PatKind::TupleStruct(pat_path, [inner_pat], _) = pat.kind
+        && is_res_lang_ctor(cx, cx.qpath_res(&pat_path, pat.hir_id), OptionSome)
+        && !is_refutable(cx, inner_pat)
+        && let else_body = peel_blocks(else_body)
+        && let ExprKind::Ret(Some(ret_val)) = else_body.kind
+        && let ExprKind::Path(ret_path) = ret_val.kind
+        && is_res_lang_ctor(cx, cx.qpath_res(&ret_path, ret_val.hir_id), OptionNone)
     {
         Some(inner_pat)
     } else {

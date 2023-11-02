@@ -64,7 +64,8 @@ impl<'tcx> LateLintPass<'tcx> for ManualAssert {
             };
             let cond_sugg = sugg::Sugg::hir_with_applicability(cx, cond, "..", &mut applicability).maybe_par();
             let sugg = format!("assert!({not}{cond_sugg}, {format_args_snip});");
-            // we show to the user the suggestion without the comments, but when applying the fix, include the comments in the block
+            // we show to the user the suggestion without the comments, but when applying the fix, include the
+            // comments in the block
             span_lint_and_then(
                 cx,
                 MANUAL_ASSERT,
@@ -77,16 +78,11 @@ impl<'tcx> LateLintPass<'tcx> for ManualAssert {
                             expr.span.shrink_to_lo(),
                             "add comments back",
                             comments,
-                            applicability
+                            applicability,
                         );
                     }
-                    diag.span_suggestion(
-                        expr.span,
-                        "try instead",
-                        sugg,
-                        applicability
-                    );
-                }
+                    diag.span_suggestion(expr.span, "try instead", sugg, applicability);
+                },
             );
         }
     }

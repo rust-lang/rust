@@ -569,9 +569,7 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                 if let End(Heading(_, _, _)) = event {
                     in_heading = false;
                 }
-                if ticks_unbalanced
-                    && let Some(span) = fragments.span(cx, paragraph_range.clone())
-                {
+                if ticks_unbalanced && let Some(span) = fragments.span(cx, paragraph_range.clone()) {
                     span_lint_and_help(
                         cx,
                         DOC_MARKDOWN,
@@ -617,8 +615,9 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                         check_link_quotes(cx, trimmed_text, range.clone(), fragments);
                     }
                     if let Some(link) = in_link.as_ref()
-                      && let Ok(url) = Url::parse(link)
-                      && (url.scheme() == "https" || url.scheme() == "http") {
+                        && let Ok(url) = Url::parse(link)
+                        && (url.scheme() == "https" || url.scheme() == "http")
+                    {
                         // Don't check the text associated with external URLs
                         continue;
                     }
@@ -716,7 +715,9 @@ fn check_code(cx: &LateContext<'_>, text: &str, edition: Edition, range: Range<u
     // Because of the global session, we need to create a new session in a different thread with
     // the edition we need.
     let text = text.to_owned();
-    if thread::spawn(move || has_needless_main(text, edition)).join().expect("thread::spawn failed")
+    if thread::spawn(move || has_needless_main(text, edition))
+        .join()
+        .expect("thread::spawn failed")
         && let Some(span) = fragments.span(cx, range.start..range.end - trailing_whitespace)
     {
         span_lint(cx, NEEDLESS_DOCTEST_MAIN, span, "needless `fn main` in doctest");

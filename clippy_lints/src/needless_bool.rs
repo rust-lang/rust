@@ -207,9 +207,9 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBool {
                     _ => (),
                 }
             }
-            if let Some((lhs_a, a)) = fetch_assign(then) &&
-                let Some((lhs_b, b)) = fetch_assign(r#else) &&
-                SpanlessEq::new(cx).eq_expr(lhs_a, lhs_b)
+            if let Some((lhs_a, a)) = fetch_assign(then)
+                && let Some((lhs_b, b)) = fetch_assign(r#else)
+                && SpanlessEq::new(cx).eq_expr(lhs_a, lhs_b)
             {
                 let mut applicability = Applicability::MachineApplicable;
                 let cond = Sugg::hir_with_applicability(cx, cond, "..", &mut applicability);
@@ -226,7 +226,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBool {
                     "this if-then-else expression assigns a bool literal",
                     "you can reduce it to",
                     sugg,
-                    applicability
+                    applicability,
                 );
             }
         }

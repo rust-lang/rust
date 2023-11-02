@@ -159,14 +159,15 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
                             binding or dropping explicitly with `std::mem::drop`",
                 );
             } else if let Some(future_trait_def_id) = cx.tcx.lang_items().future_trait()
-                && implements_trait(cx, cx.typeck_results().expr_ty(init), future_trait_def_id, &[]) {
+                && implements_trait(cx, cx.typeck_results().expr_ty(init), future_trait_def_id, &[])
+            {
                 span_lint_and_help(
                     cx,
                     LET_UNDERSCORE_FUTURE,
                     local.span,
                     "non-binding `let` on a future",
                     None,
-                    "consider awaiting the future or dropping explicitly with `std::mem::drop`"
+                    "consider awaiting the future or dropping explicitly with `std::mem::drop`",
                 );
             } else if is_must_use_ty(cx, cx.typeck_results().expr_ty(init)) {
                 span_lint_and_help(
@@ -203,17 +204,17 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
                     return;
                 }
 
-				span_lint_and_help(
+                span_lint_and_help(
                     cx,
                     LET_UNDERSCORE_UNTYPED,
                     local.span,
                     "non-binding `let` without a type annotation",
-                    Some(
-						Span::new(local.pat.span.hi(),
-						local.pat.span.hi() + BytePos(1),
-						local.pat.span.ctxt(),
-						local.pat.span.parent()
-					)),
+                    Some(Span::new(
+                        local.pat.span.hi(),
+                        local.pat.span.hi() + BytePos(1),
+                        local.pat.span.ctxt(),
+                        local.pat.span.parent(),
+                    )),
                     "consider adding a type annotation",
                 );
             }

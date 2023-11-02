@@ -3,7 +3,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::{match_def_path, paths};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{CoroutineSource, Body, CoroutineKind};
+use rustc_hir::{Body, CoroutineKind, CoroutineSource};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::mir::CoroutineLayout;
 use rustc_session::{declare_tool_lint, impl_lint_pass};

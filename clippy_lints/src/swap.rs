@@ -232,7 +232,7 @@ fn is_same(cx: &LateContext<'_>, lhs: ExprOrIdent<'_>, rhs: &Expr<'_>) -> bool {
             } else {
                 false
             }
-        }
+        },
     }
 }
 

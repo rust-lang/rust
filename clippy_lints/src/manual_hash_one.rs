@@ -117,12 +117,11 @@ impl LateLintPass<'_> for ManualHashOne {
                                     finish_expr.span,
                                     // `needless_borrows_for_generic_args` will take care of
                                     // removing the `&` when it isn't needed
-                                    format!("{build_hasher}.hash_one(&{hashed_value})")
-                                )
+                                    format!("{build_hasher}.hash_one(&{hashed_value})"),
+                                ),
                             ],
                             Applicability::MachineApplicable,
                         );
-
                     }
                 },
             );

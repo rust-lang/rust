@@ -638,7 +638,9 @@ fn get_body_search_span(cx: &LateContext<'_>) -> Option<Span> {
 fn span_has_safety_comment(cx: &LateContext<'_>, span: Span) -> bool {
     let source_map = cx.sess().source_map();
     let ctxt = span.ctxt();
-    if ctxt.is_root() && let Some(search_span) = get_body_search_span(cx) {
+    if ctxt.is_root()
+        && let Some(search_span) = get_body_search_span(cx)
+    {
         if let Ok(unsafe_line) = source_map.lookup_line(span.lo())
             && let Some(body_span) = walk_span_to_context(search_span, SyntaxContext::root())
             && let Ok(body_line) = source_map.lookup_line(body_span.lo())
@@ -648,11 +650,13 @@ fn span_has_safety_comment(cx: &LateContext<'_>, span: Span) -> bool {
             // Get the text from the start of function body to the unsafe block.
             //     fn foo() { some_stuff; unsafe { stuff }; other_stuff; }
             //              ^-------------^
-            body_line.line < unsafe_line.line && text_has_safety_comment(
-                src,
-                &unsafe_line.sf.lines()[body_line.line + 1..=unsafe_line.line],
-                unsafe_line.sf.start_pos,
-            ).is_some()
+            body_line.line < unsafe_line.line
+                && text_has_safety_comment(
+                    src,
+                    &unsafe_line.sf.lines()[body_line.line + 1..=unsafe_line.line],
+                    unsafe_line.sf.start_pos,
+                )
+                .is_some()
         } else {
             // Problem getting source text. Pretend a comment was found.
             true

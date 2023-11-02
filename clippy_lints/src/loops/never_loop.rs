@@ -271,9 +271,9 @@ fn never_loop_expr<'tcx>(
             NeverLoopResult::Normal
         }
     });
-    if  let NeverLoopResult::Diverging = result &&
-        let Some(macro_call) = root_macro_call_first_node(cx, expr) &&
-        let Some(sym::todo_macro) = cx.tcx.get_diagnostic_name(macro_call.def_id)
+    if let NeverLoopResult::Diverging = result
+        && let Some(macro_call) = root_macro_call_first_node(cx, expr)
+        && let Some(sym::todo_macro) = cx.tcx.get_diagnostic_name(macro_call.def_id)
     {
         // We return MayContinueMainLoop here because we treat `todo!()`
         // as potentially containing any code, including a continue of the main loop.

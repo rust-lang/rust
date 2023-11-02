@@ -20,8 +20,7 @@ fn empty_arm_has_comment(cx: &LateContext<'_>, span: Span) -> bool {
     if let Some(ff) = get_source_text(cx, span)
         && let Some(text) = ff.as_str()
     {
-        text.as_bytes().windows(2)
-            .any(|w| w == b"//" || w == b"/*")
+        text.as_bytes().windows(2).any(|w| w == b"//" || w == b"/*")
     } else {
         false
     }

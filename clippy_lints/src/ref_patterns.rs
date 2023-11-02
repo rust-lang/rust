@@ -29,7 +29,7 @@ declare_lint_pass!(RefPatterns => [REF_PATTERNS]);
 impl EarlyLintPass for RefPatterns {
     fn check_pat(&mut self, cx: &EarlyContext<'_>, pat: &Pat) {
         if let PatKind::Ident(BindingAnnotation::REF, _, _) = pat.kind
-                && !pat.span.from_expansion()
+            && !pat.span.from_expansion()
         {
             span_lint_and_help(
                 cx,

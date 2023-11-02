@@ -46,9 +46,9 @@ fn snippet_enclosed_in_parenthesis(snippet: &str) -> bool {
 }
 
 fn check_for_parens(cx: &LateContext<'_>, e: &Expr<'_>, is_start: bool) {
-    if is_start &&
-    let ExprKind::Lit(literal) = e.kind &&
-    let ast::LitKind::Float(_sym, ast::LitFloatType::Unsuffixed) = literal.node
+    if is_start
+        && let ExprKind::Lit(literal) = e.kind
+        && let ast::LitKind::Float(_sym, ast::LitFloatType::Unsuffixed) = literal.node
     {
         // don't check floating point literals on the start expression of a range
         return;

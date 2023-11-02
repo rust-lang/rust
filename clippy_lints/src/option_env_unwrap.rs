@@ -46,16 +46,19 @@ impl EarlyLintPass for OptionEnvUnwrap {
             );
         }
 
-        if let ExprKind::MethodCall(box MethodCall { seg, receiver, .. }) = &expr.kind &&
-		matches!(seg.ident.name, sym::expect | sym::unwrap) {
-			if let ExprKind::Call(caller, _) = &receiver.kind &&
+        if let ExprKind::MethodCall(box MethodCall { seg, receiver, .. }) = &expr.kind
+            && matches!(seg.ident.name, sym::expect | sym::unwrap)
+        {
+            if let ExprKind::Call(caller, _) = &receiver.kind &&
             // If it exists, it will be ::core::option::Option::Some("<env var>").unwrap() (A method call in the HIR)
-            is_direct_expn_of(caller.span, "option_env").is_some() {
-				lint(cx, expr.span);
-			} else if let ExprKind::Path(_, caller) = &receiver.kind && // If it doesn't exist, it will be ::core::option::Option::None::<&'static str>.unwrap() (A path in the HIR)
-            is_direct_expn_of(caller.span, "option_env").is_some() {
-				lint(cx, expr.span);
-			}
-		}
+            is_direct_expn_of(caller.span, "option_env").is_some()
+            {
+                lint(cx, expr.span);
+            } else if let ExprKind::Path(_, caller) = &receiver.kind && // If it doesn't exist, it will be ::core::option::Option::None::<&'static str>.unwrap() (A path in the HIR)
+            is_direct_expn_of(caller.span, "option_env").is_some()
+            {
+                lint(cx, expr.span);
+            }
+        }
     }
 }

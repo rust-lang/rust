@@ -42,9 +42,7 @@ fn main() {
 
     // Lint. `s` is captured by reference, so no lifetime issues.
     let s = Some(String::new());
-    let _ = s.as_ref().map(|x| {
-            if let Some(ref s) = s { (x.clone(), s) } else { panic!() }
-        });
+    let _ = s.as_ref().map(|x| { if let Some(ref s) = s { (x.clone(), s) } else { panic!() } });
 
     // Issue #7820
     unsafe fn f(x: u32) -> u32 {

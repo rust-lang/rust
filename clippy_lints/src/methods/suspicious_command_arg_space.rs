@@ -25,13 +25,10 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, recv: &'tcx hir::Expr<'_>, arg
             |diag: &mut Diagnostic| {
                 diag.multipart_suggestion_verbose(
                     "consider splitting the argument",
-                    vec![
-                        (span, "args".to_string()),
-                        (arg.span, format!("[{arg1:?}, {arg2:?}]")),
-                    ],
+                    vec![(span, "args".to_string()), (arg.span, format!("[{arg1:?}, {arg2:?}]"))],
                     Applicability::MaybeIncorrect,
                 );
-            }
+            },
         );
     }
 }

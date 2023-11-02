@@ -4,7 +4,7 @@ use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
-    CoroutineSource, Block, Body, Closure, CoroutineKind, Expr, ExprKind, FnDecl, FnRetTy, GenericArg, GenericBound,
+    Block, Body, Closure, CoroutineKind, CoroutineSource, Expr, ExprKind, FnDecl, FnRetTy, GenericArg, GenericBound,
     ImplItem, Item, ItemKind, LifetimeName, Node, Term, TraitRef, Ty, TyKind, TypeBindingKind,
 };
 use rustc_lint::{LateContext, LateLintPass};

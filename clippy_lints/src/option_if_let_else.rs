@@ -240,7 +240,7 @@ fn try_convert_match<'tcx>(
     if let [first_arm, second_arm] = arms
         && first_arm.guard.is_none()
         && second_arm.guard.is_none()
-        {
+    {
         return if is_none_or_err_arm(cx, second_arm) {
             Some((first_arm.pat, first_arm.body, second_arm.body))
         } else if is_none_or_err_arm(cx, first_arm) {

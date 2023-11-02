@@ -70,9 +70,9 @@ pub fn expr_block<T: LintContext>(
     app: &mut Applicability,
 ) -> String {
     let (code, from_macro) = snippet_block_with_context(cx, expr.span, outer, default, indent_relative_to, app);
-    if !from_macro &&
-        let ExprKind::Block(block, _) = expr.kind &&
-        block.rules != BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided)
+    if !from_macro
+        && let ExprKind::Block(block, _) = expr.kind
+        && block.rules != BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided)
     {
         format!("{code}")
     } else {

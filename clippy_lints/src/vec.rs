@@ -110,14 +110,15 @@ impl<'tcx> LateLintPass<'tcx> for UselessVec {
                 } else {
                     ControlFlow::Break(())
                 }
-            }).is_continue();
+            })
+            .is_continue();
 
             if only_slice_uses {
                 self.check_vec_macro(
                     cx,
                     &vec_args,
                     expr.span.ctxt().outer_expn_data().call_site,
-                    SuggestedType::Array
+                    SuggestedType::Array,
                 );
             }
         }

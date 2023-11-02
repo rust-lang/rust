@@ -266,10 +266,12 @@ pub fn main() {
         if clippy_enabled {
             args.extend(clippy_args);
             rustc_driver::RunCompiler::new(&args, &mut ClippyCallbacks { clippy_args_var })
-                .set_using_internal_features(using_internal_features).run()
+                .set_using_internal_features(using_internal_features)
+                .run()
         } else {
             rustc_driver::RunCompiler::new(&args, &mut RustcCallbacks { clippy_args_var })
-                .set_using_internal_features(using_internal_features).run()
+                .set_using_internal_features(using_internal_features)
+                .run()
         }
     }))
 }

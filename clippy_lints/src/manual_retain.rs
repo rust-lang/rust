@@ -97,7 +97,8 @@ fn check_into_iter(
         && let Some(into_iter_def_id) = cx.typeck_results().type_dependent_def_id(into_iter_expr.hir_id)
         && Some(into_iter_def_id) == cx.tcx.lang_items().into_iter_fn()
         && match_acceptable_type(cx, left_expr, msrv)
-        && SpanlessEq::new(cx).eq_expr(left_expr, struct_expr) {
+        && SpanlessEq::new(cx).eq_expr(left_expr, struct_expr)
+    {
         suggest(cx, parent_expr, left_expr, target_expr);
     }
 }
@@ -120,7 +121,8 @@ fn check_iter(
         && let Some(iter_expr_def_id) = cx.typeck_results().type_dependent_def_id(iter_expr.hir_id)
         && match_acceptable_def_path(cx, iter_expr_def_id)
         && match_acceptable_type(cx, left_expr, msrv)
-        && SpanlessEq::new(cx).eq_expr(left_expr, struct_expr) {
+        && SpanlessEq::new(cx).eq_expr(left_expr, struct_expr)
+    {
         suggest(cx, parent_expr, left_expr, filter_expr);
     }
 }
@@ -144,33 +146,35 @@ fn check_to_owned(
         && match_def_path(cx, chars_expr_def_id, &paths::STR_CHARS)
         && let ty = cx.typeck_results().expr_ty(str_expr).peel_refs()
         && is_type_lang_item(cx, ty, hir::LangItem::String)
-        && SpanlessEq::new(cx).eq_expr(left_expr, str_expr) {
+        && SpanlessEq::new(cx).eq_expr(left_expr, str_expr)
+    {
         suggest(cx, parent_expr, left_expr, filter_expr);
     }
 }
 
 fn suggest(cx: &LateContext<'_>, parent_expr: &hir::Expr<'_>, left_expr: &hir::Expr<'_>, filter_expr: &hir::Expr<'_>) {
     if let hir::ExprKind::MethodCall(_, _, [closure], _) = filter_expr.kind
-        && let hir::ExprKind::Closure(&hir::Closure { body, ..}) = closure.kind
+        && let hir::ExprKind::Closure(&hir::Closure { body, .. }) = closure.kind
         && let filter_body = cx.tcx.hir().body(body)
         && let [filter_params] = filter_body.params
         && let Some(sugg) = match filter_params.pat.kind {
-            hir::PatKind::Binding(_, _, filter_param_ident, None) => {
-                Some(format!("{}.retain(|{filter_param_ident}| {})", snippet(cx, left_expr.span, ".."), snippet(cx, filter_body.value.span, "..")))
+            hir::PatKind::Binding(_, _, filter_param_ident, None) => Some(format!(
+                "{}.retain(|{filter_param_ident}| {})",
+                snippet(cx, left_expr.span, ".."),
+                snippet(cx, filter_body.value.span, "..")
+            )),
+            hir::PatKind::Tuple([key_pat, value_pat], _) => make_sugg(cx, key_pat, value_pat, left_expr, filter_body),
+            hir::PatKind::Ref(pat, _) => match pat.kind {
+                hir::PatKind::Binding(_, _, filter_param_ident, None) => Some(format!(
+                    "{}.retain(|{filter_param_ident}| {})",
+                    snippet(cx, left_expr.span, ".."),
+                    snippet(cx, filter_body.value.span, "..")
+                )),
+                _ => None,
             },
-            hir::PatKind::Tuple([key_pat, value_pat], _) => {
-                make_sugg(cx, key_pat, value_pat, left_expr, filter_body)
-            },
-            hir::PatKind::Ref(pat, _) => {
-                match pat.kind {
-                    hir::PatKind::Binding(_, _, filter_param_ident, None) => {
-                        Some(format!("{}.retain(|{filter_param_ident}| {})", snippet(cx, left_expr.span, ".."), snippet(cx, filter_body.value.span, "..")))
-                    },
-                    _ => None
-                }
-            },
-            _ => None
-        } {
+            _ => None,
+        }
+    {
         span_lint_and_sugg(
             cx,
             MANUAL_RETAIN,
@@ -178,7 +182,7 @@ fn suggest(cx: &LateContext<'_>, parent_expr: &hir::Expr<'_>, left_expr: &hir::E
             "this expression can be written more simply using `.retain()`",
             "consider calling `.retain()` instead",
             sugg,
-            Applicability::MachineApplicable
+            Applicability::MachineApplicable,
         );
     }
 }

@@ -200,9 +200,13 @@ impl<'hir> IndexEntry<'hir> {
 /// E.g. for `5` this returns `Some(5)`, for `..5` this returns `Some(4)`,
 /// for `..=5` this returns `Some(5)`
 fn upper_index_expr(expr: &Expr<'_>) -> Option<usize> {
-    if let ExprKind::Lit(lit) = &expr.kind && let LitKind::Int(index, _) = lit.node {
+    if let ExprKind::Lit(lit) = &expr.kind
+        && let LitKind::Int(index, _) = lit.node
+    {
         Some(index as usize)
-    } else if let Some(higher::Range { end: Some(end), limits, .. }) = higher::Range::hir(expr)
+    } else if let Some(higher::Range {
+        end: Some(end), limits, ..
+    }) = higher::Range::hir(expr)
         && let ExprKind::Lit(lit) = &end.kind
         && let LitKind::Int(index @ 1.., _) = lit.node
     {
@@ -228,7 +232,12 @@ fn check_index<'hir>(cx: &LateContext<'_>, expr: &'hir Expr<'hir>, map: &mut Unh
 
         if let Some(entry) = entry {
             match entry {
-                IndexEntry::StrayAssert { asserted_len, comparison, assert_span, slice } => {
+                IndexEntry::StrayAssert {
+                    asserted_len,
+                    comparison,
+                    assert_span,
+                    slice,
+                } => {
                     *entry = IndexEntry::AssertWithIndex {
                         highest_index: index,
                         asserted_len: *asserted_len,
@@ -238,8 +247,12 @@ fn check_index<'hir>(cx: &LateContext<'_>, expr: &'hir Expr<'hir>, map: &mut Unh
                         comparison: *comparison,
                     };
                 },
-                IndexEntry::IndexWithoutAssert { highest_index, indexes, .. }
-                | IndexEntry::AssertWithIndex { highest_index, indexes, .. } => {
+                IndexEntry::IndexWithoutAssert {
+                    highest_index, indexes, ..
+                }
+                | IndexEntry::AssertWithIndex {
+                    highest_index, indexes, ..
+                } => {
                     indexes.push(expr.span);
                     *highest_index = (*highest_index).max(index);
                 },

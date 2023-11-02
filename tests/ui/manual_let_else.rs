@@ -35,9 +35,7 @@ fn fire() {
     let v = if let Some(v) = g() {
         //~^ ERROR: this could be rewritten as `let...else`
         // Blocks around the identity should have no impact
-        {
-            { v }
-        }
+        { { v } }
     } else {
         // Some computation should still make it fire
         g();
