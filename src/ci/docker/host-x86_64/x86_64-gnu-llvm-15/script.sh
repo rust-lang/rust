@@ -4,6 +4,8 @@ set -ex
 
 # Only run the stage 1 tests on merges, not on PR CI jobs.
 if [[ -z "${PR_CI_JOB}" ]]; then
+    # When running gcc backend tests, we need to install `libgccjit` and to not run llvm codegen
+    # tests as it will fail them.
     if [[ "${ENABLE_GCC_CODEGEN}" == "1" ]]; then
         ../x.py --stage 1 test --skip src/tools/tidy --skip tests/codegen
     else
@@ -23,6 +25,8 @@ if [[ -z "${PR_CI_JOB}" ]]; then
     ../x.py --stage 1 test tests/ui-fulldeps
 fi
 
+# When running gcc backend tests, we need to install `libgccjit` and to not run llvm codegen
+# tests as it will fail them.
 # NOTE: intentionally uses all of `x.py`, `x`, and `x.ps1` to make sure they all work on Linux.
 if [[ "${ENABLE_GCC_CODEGEN}" == "1" ]]; then
     ../x.py --stage 2 test --skip src/tools/tidy --skip tests/codegen
