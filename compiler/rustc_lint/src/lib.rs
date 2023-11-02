@@ -179,7 +179,6 @@ early_lint_methods!(
             IncompleteInternalFeatures: IncompleteInternalFeatures,
             RedundantSemicolons: RedundantSemicolons,
             UnusedDocComment: UnusedDocComment,
-            UnexpectedCfgs: UnexpectedCfgs,
         ]
     ]
 );
