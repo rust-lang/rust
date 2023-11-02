@@ -6,7 +6,7 @@ use rustc_middle::mir;
 use rustc_middle::mir::interpret::{EvalToValTreeResult, GlobalId};
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_span::source_map::DUMMY_SP;
+use rustc_span::DUMMY_SP;
 
 mod error;
 mod eval_queries;

@@ -4,7 +4,7 @@ use std::io::prelude::*;
 use std::path::Path;
 
 use rustc_span::edition::Edition;
-use rustc_span::source_map::DUMMY_SP;
+use rustc_span::DUMMY_SP;
 
 use crate::config::{Options, RenderOptions};
 use crate::doctest::{Collector, GlobalTestOptions};

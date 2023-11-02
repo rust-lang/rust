@@ -10,8 +10,8 @@ use rustc_hir::ItemId;
 use rustc_index::Idx;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::config::OptLevel;
-use rustc_span::source_map::Span;
 use rustc_span::symbol::Symbol;
+use rustc_span::Span;
 use std::fmt;
 use std::hash::Hash;
 

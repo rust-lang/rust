@@ -7,7 +7,7 @@ extern crate rustc_span;
 
 use rustc_interface::interface;
 use rustc_session::config::{Input, Options, OutFileName, OutputType, OutputTypes};
-use rustc_span::source_map::FileName;
+use rustc_span::FileName;
 
 use std::path::PathBuf;
 

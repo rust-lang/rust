@@ -18,9 +18,8 @@ use rustc_ast::{
     TraitObjectSyntax, Ty, TyKind,
 };
 use rustc_errors::{Applicability, PResult};
-use rustc_span::source_map::Span;
 use rustc_span::symbol::{kw, sym, Ident};
-use rustc_span::Symbol;
+use rustc_span::{Span, Symbol};
 use thin_vec::{thin_vec, ThinVec};
 
 /// Any `?`, `!`, or `~const` modifiers that appear at the start of a bound.

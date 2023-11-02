@@ -18,10 +18,9 @@ use rustc_target::spec::{Target, TargetTriple, TargetWarnings, TARGETS};
 
 use rustc_feature::UnstableFeatures;
 use rustc_span::edition::{Edition, DEFAULT_EDITION, EDITION_NAME_LIST, LATEST_STABLE_EDITION};
-use rustc_span::source_map::{FileName, FilePathMapping};
+use rustc_span::source_map::FilePathMapping;
 use rustc_span::symbol::{sym, Symbol};
-use rustc_span::SourceFileHashAlgorithm;
-use rustc_span::{FileNameDisplayPreference, RealFileName};
+use rustc_span::{FileName, FileNameDisplayPreference, RealFileName, SourceFileHashAlgorithm};
 
 use rustc_errors::emitter::HumanReadableErrorType;
 use rustc_errors::{ColorConfig, DiagnosticArgValue, HandlerFlags, IntoDiagnosticArg};

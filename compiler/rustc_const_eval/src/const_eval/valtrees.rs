@@ -10,7 +10,7 @@ use crate::interpret::{
 use rustc_middle::mir;
 use rustc_middle::ty::layout::{LayoutCx, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt};
-use rustc_span::source_map::DUMMY_SP;
+use rustc_span::DUMMY_SP;
 use rustc_target::abi::VariantIdx;
 
 #[instrument(skip(ecx), level = "debug")]

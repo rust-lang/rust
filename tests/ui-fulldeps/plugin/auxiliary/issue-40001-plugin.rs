@@ -17,7 +17,7 @@ use rustc_hir::intravisit;
 use rustc_hir::Node;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_span::def_id::LocalDefId;
-use rustc_span::source_map;
+use rustc_span::Span;
 
 #[no_mangle]
 fn __rustc_plugin_registrar(reg: &mut Registry) {
@@ -40,7 +40,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingAllowedAttrPass {
         _: intravisit::FnKind<'tcx>,
         _: &'tcx hir::FnDecl,
         _: &'tcx hir::Body,
-        span: source_map::Span,
+        span: Span,
         def_id: LocalDefId,
     ) {
         let id = cx.tcx.hir().local_def_id_to_hir_id(def_id);

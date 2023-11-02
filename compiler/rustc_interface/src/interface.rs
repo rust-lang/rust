@@ -21,8 +21,9 @@ use rustc_session::config::{
 use rustc_session::filesearch::sysroot_candidates;
 use rustc_session::parse::ParseSess;
 use rustc_session::{lint, CompilerIO, EarlyErrorHandler, Session};
-use rustc_span::source_map::{FileLoader, FileName};
+use rustc_span::source_map::FileLoader;
 use rustc_span::symbol::sym;
+use rustc_span::FileName;
 use std::path::PathBuf;
 use std::result;
 use std::sync::Arc;

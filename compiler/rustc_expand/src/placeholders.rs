@@ -4,8 +4,8 @@ use rustc_ast::mut_visit::*;
 use rustc_ast::ptr::P;
 use rustc_ast::token::Delimiter;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_span::source_map::DUMMY_SP;
 use rustc_span::symbol::Ident;
+use rustc_span::DUMMY_SP;
 use smallvec::{smallvec, SmallVec};
 use thin_vec::ThinVec;
 

@@ -20,8 +20,9 @@ use rustc_ast::{
 use rustc_ast_pretty::pprust;
 use rustc_errors::{Applicability, DiagnosticBuilder, ErrorGuaranteed, IntoDiagnostic, PResult};
 use rustc_session::errors::ExprParenthesesNeeded;
-use rustc_span::source_map::{respan, Span, Spanned};
+use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{kw, sym, Ident};
+use rustc_span::Span;
 use thin_vec::{thin_vec, ThinVec};
 
 #[derive(PartialEq, Copy, Clone)]
