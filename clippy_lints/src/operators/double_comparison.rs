@@ -4,7 +4,7 @@ use clippy_utils::source::snippet_with_applicability;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::LateContext;
-use rustc_span::source_map::Span;
+use rustc_span::Span;
 
 use super::DOUBLE_COMPARISONS;
 

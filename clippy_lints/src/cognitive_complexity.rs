@@ -12,8 +12,7 @@ use rustc_hir::{Body, Expr, ExprKind, FnDecl};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::def_id::LocalDefId;
-use rustc_span::source_map::Span;
-use rustc_span::{sym, BytePos};
+use rustc_span::{sym, BytePos, Span};
 
 declare_clippy_lint! {
     /// ### What it does

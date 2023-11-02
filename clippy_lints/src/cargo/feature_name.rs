@@ -1,7 +1,7 @@
 use cargo_metadata::Metadata;
 use clippy_utils::diagnostics::span_lint_and_help;
 use rustc_lint::LateContext;
-use rustc_span::source_map::DUMMY_SP;
+use rustc_span::DUMMY_SP;
 
 use super::{NEGATIVE_FEATURE_NAMES, REDUNDANT_FEATURE_NAMES};
 

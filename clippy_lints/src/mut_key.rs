@@ -8,7 +8,7 @@ use rustc_middle::query::Key;
 use rustc_middle::ty::{Adt, Ty};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::def_id::LocalDefId;
-use rustc_span::source_map::Span;
+use rustc_span::Span;
 use rustc_span::symbol::sym;
 use std::iter;
 
