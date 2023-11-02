@@ -268,8 +268,14 @@ pub fn each_linked_rlib(
 
     for &cnum in crates {
         match fmts.get(cnum.as_usize() - 1) {
-            Some(&Linkage::NotLinked | &Linkage::Dynamic | &Linkage::IncludedFromDylib) => continue,
-            Some(_) => {}
+            Some(&Linkage::NotLinked | &Linkage::Dynamic) => continue,
+            Some(&Linkage::IncludedFromDylib) => {
+                // We always link crate `compiler_builtins` statically. When enabling LTO, we include it as well.
+                if info.compiler_builtins != Some(cnum) {
+                    continue;
+                }
+            }
+            Some(&Linkage::Static) => {}
             None => return Err(errors::LinkRlibError::MissingFormat),
         }
         let crate_name = info.crate_name[&cnum];
