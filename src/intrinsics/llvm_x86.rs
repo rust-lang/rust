@@ -20,16 +20,11 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
 
         // Used by is_x86_feature_detected!();
         "llvm.x86.xgetbv" => {
-            // FIXME use the actual xgetbv instruction
-            intrinsic_args!(fx, args => (v); intrinsic);
+            intrinsic_args!(fx, args => (xcr_no); intrinsic);
 
-            let v = v.load_scalar(fx);
+            let xcr_no = xcr_no.load_scalar(fx);
 
-            // As of writing on XCR0 exists
-            fx.bcx.ins().trapnz(v, TrapCode::UnreachableCodeReached);
-
-            let res = fx.bcx.ins().iconst(types::I64, 1 /* bit 0 must be set */);
-            ret.write_cvalue(fx, CValue::by_val(res, fx.layout_of(fx.tcx.types.i64)));
+            crate::inline_asm::codegen_xgetbv(fx, xcr_no, ret);
         }
 
         "llvm.x86.sse.cmp.ps" | "llvm.x86.sse2.cmp.pd" => {
