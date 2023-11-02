@@ -1,17 +1,26 @@
-// known-bug: #110395
-// FIXME check-pass
+// check-pass
 
 // Test that we can call methods from const trait impls inside of generic const items.
+// `~const` bounds are interpreted as `const` bounds.
 
-#![feature(generic_const_items, const_trait_impl)]
+#![feature(generic_const_items, const_trait_impl, effects)]
 #![allow(incomplete_features)]
 #![crate_type = "lib"]
 
-// FIXME(generic_const_items): Interpret `~const` as always-const.
 const CREATE<T: ~const Create>: T = T::create();
 
 pub const K0: i32 = CREATE::<i32>;
 pub const K1: i32 = CREATE; // arg inferred
+
+trait Mod { // doesn't need to be a `#[const_trait]`
+    const CREATE<T: ~const Create>: T;
+}
+
+impl Mod for () {
+    const CREATE<T: ~const Create>: T = T::create();
+}
+
+pub const K2: i32 = <() as Mod>::CREATE::<i32>;
 
 #[const_trait]
 trait Create {

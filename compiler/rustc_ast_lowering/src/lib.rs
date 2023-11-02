@@ -146,7 +146,7 @@ struct LoweringContext<'a, 'hir> {
     /// field from the original parameter 'a to the new parameter 'a1.
     generics_def_id_map: Vec<FxHashMap<LocalDefId, LocalDefId>>,
 
-    host_param_id: Option<LocalDefId>,
+    effect_context: Option<EffectContext>,
 }
 
 trait ResolverAstLoweringExt {
@@ -225,6 +225,12 @@ impl ResolverAstLoweringExt for ResolverAstLowering {
     fn decl_macro_kind(&self, def_id: LocalDefId) -> MacroKind {
         self.builtin_macro_kinds.get(&def_id).copied().unwrap_or(MacroKind::Bang)
     }
+}
+
+#[derive(Clone, Copy)]
+enum EffectContext {
+    Parametrized { host_param_id: LocalDefId },
+    Invariant { value: bool },
 }
 
 /// Context of `impl Trait` in code, which determines whether it is allowed in an HIR subtree,
@@ -2476,34 +2482,38 @@ impl<'hir> GenericArgsCtor<'hir> {
 
         // if bound is non-const, don't add host effect param
         let ast::Const::Yes(span) = constness else { return };
-
         let span = lcx.lower_span(span);
 
         let id = lcx.next_node_id();
         let hir_id = lcx.next_id();
 
-        let Some(host_param_id) = lcx.host_param_id else {
-            lcx.tcx
-                .sess
-                .delay_span_bug(span, "no host param id for call in const yet no errors reported");
+        let Some(context) = lcx.effect_context else {
+            lcx.tcx.sess.delay_span_bug(span, "no effect context for maybe-const trait bound");
             return;
         };
 
         let body = lcx.lower_body(|lcx| {
             (&[], {
-                let hir_id = lcx.next_id();
-                let res = Res::Def(DefKind::ConstParam, host_param_id.to_def_id());
-                let expr_kind = hir::ExprKind::Path(hir::QPath::Resolved(
-                    None,
-                    lcx.arena.alloc(hir::Path {
-                        span,
-                        res,
-                        segments: arena_vec![lcx; hir::PathSegment::new(Ident {
-                            name: sym::host,
-                            span,
-                        }, hir_id, res)],
-                    }),
-                ));
+                let expr_kind = match context {
+                    EffectContext::Parametrized { host_param_id } => {
+                        let hir_id = lcx.next_id();
+                        let res = Res::Def(DefKind::ConstParam, host_param_id.to_def_id());
+                        hir::ExprKind::Path(hir::QPath::Resolved(
+                            None,
+                            lcx.arena.alloc(hir::Path {
+                                span,
+                                res,
+                                segments: arena_vec![lcx; hir::PathSegment::new(Ident {
+                                    name: sym::host,
+                                    span,
+                                }, hir_id, res)],
+                            }),
+                        ))
+                    }
+                    EffectContext::Invariant { value } => hir::ExprKind::Lit(
+                        lcx.arena.alloc(hir::Lit { node: LitKind::Bool(value), span }),
+                    ),
+                };
                 lcx.expr(span, expr_kind)
             })
         });
