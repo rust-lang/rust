@@ -766,7 +766,7 @@ fn codegen_stmt<'tcx>(
                         NullOp::SizeOf => layout.size.bytes(),
                         NullOp::AlignOf => layout.align.abi.bytes(),
                         NullOp::OffsetOf(fields) => {
-                            layout.offset_of_subfield(fx, fields.iter().map(|f| f.index())).bytes()
+                            layout.offset_of_subfield(fx, fields.iter()).bytes()
                         }
                     };
                     let val = CValue::by_val(
