@@ -873,7 +873,7 @@ mod prim_array {}
 /// Slices can be used to construct "slice-based dynamically-sized types", also
 /// known as "slice DSTs" or "custom DSTs":
 ///
-/// ```rust
+/// ```
 /// struct SliceDst {
 ///     a: u8,
 ///     b: u16,
@@ -885,7 +885,7 @@ mod prim_array {}
 /// References to slice DSTs encode the number of elements in the trailing slice
 /// field:
 ///
-/// ```rust
+/// ```
 /// # struct SliceDst { a: u8, b: u16, c: [u32] }
 /// let pointer_size = std::mem::size_of::<&u8>();
 /// assert_eq!(2 * pointer_size, std::mem::size_of::<&SliceDst>());
