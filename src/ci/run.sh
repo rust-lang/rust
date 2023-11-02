@@ -126,7 +126,7 @@ else
 
   RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.verify-llvm-ir"
 
-  if [[ "${SKIP_CODEGEN_TESTS}" == "1" ]]; then
+  if [[ "${ENABLE_GCC_CODEGEN}" == "1" ]]; then
     # Test the Cranelift backend in CI. Bootstrap knows which targets to run tests on.
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.codegen-backends=llvm,cranelift"
   else

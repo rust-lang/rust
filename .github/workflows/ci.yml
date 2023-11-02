@@ -58,7 +58,7 @@ jobs:
             env: {}
           - name: x86_64-gnu-llvm-15
             env:
-              SKIP_CODEGEN_TESTS: "1"
+              ENABLE_GCC_CODEGEN: "1"
             os: ubuntu-20.04-16core-64gb
           - name: x86_64-gnu-tools
             os: ubuntu-20.04-16core-64gb

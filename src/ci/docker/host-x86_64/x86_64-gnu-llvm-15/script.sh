@@ -4,7 +4,7 @@ set -ex
 
 # Only run the stage 1 tests on merges, not on PR CI jobs.
 if [[ -z "${PR_CI_JOB}" ]]; then
-    if [[ "${SKIP_CODEGEN_TESTS}" == "1" ]]; then
+    if [[ "${ENABLE_GCC_CODEGEN}" == "1" ]]; then
         ../x.py --stage 1 test --skip src/tools/tidy --skip tests/codegen
     else
         ../x.py --stage 1 test --skip src/tools/tidy
@@ -24,7 +24,7 @@ if [[ -z "${PR_CI_JOB}" ]]; then
 fi
 
 # NOTE: intentionally uses all of `x.py`, `x`, and `x.ps1` to make sure they all work on Linux.
-if [[ "${SKIP_CODEGEN_TESTS}" == "1" ]]; then
+if [[ "${ENABLE_GCC_CODEGEN}" == "1" ]]; then
     ../x.py --stage 2 test --skip src/tools/tidy --skip tests/codegen
 else
     ../x.py --stage 2 test --skip src/tools/tidy
