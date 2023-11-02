@@ -119,7 +119,6 @@ impl SessionGlobals {
     }
 }
 
-#[inline]
 pub fn create_session_globals_then<R>(edition: Edition, f: impl FnOnce() -> R) -> R {
     assert!(
         !SESSION_GLOBALS.is_set(),
@@ -130,7 +129,6 @@ pub fn create_session_globals_then<R>(edition: Edition, f: impl FnOnce() -> R) -
     SESSION_GLOBALS.set(&session_globals, f)
 }
 
-#[inline]
 pub fn set_session_globals_then<R>(session_globals: &SessionGlobals, f: impl FnOnce() -> R) -> R {
     assert!(
         !SESSION_GLOBALS.is_set(),
@@ -140,7 +138,6 @@ pub fn set_session_globals_then<R>(session_globals: &SessionGlobals, f: impl FnO
     SESSION_GLOBALS.set(session_globals, f)
 }
 
-#[inline]
 pub fn create_default_session_if_not_set_then<R, F>(f: F) -> R
 where
     F: FnOnce(&SessionGlobals) -> R,
@@ -148,7 +145,6 @@ where
     create_session_if_not_set_then(edition::DEFAULT_EDITION, f)
 }
 
-#[inline]
 pub fn create_session_if_not_set_then<R, F>(edition: Edition, f: F) -> R
 where
     F: FnOnce(&SessionGlobals) -> R,
@@ -161,7 +157,6 @@ where
     }
 }
 
-#[inline]
 pub fn with_session_globals<R, F>(f: F) -> R
 where
     F: FnOnce(&SessionGlobals) -> R,
@@ -169,7 +164,6 @@ where
     SESSION_GLOBALS.with(f)
 }
 
-#[inline]
 pub fn create_default_session_globals_then<R>(f: impl FnOnce() -> R) -> R {
     create_session_globals_then(edition::DEFAULT_EDITION, f)
 }
