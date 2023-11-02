@@ -991,7 +991,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
             }
         }
 
-        let (local, foreign) =
+        let (local, mut foreign) =
             implementors.iter().partition::<Vec<_>, _>(|i| i.is_on_local_type(cx));
 
         let (mut synthetic, mut concrete): (Vec<&&Impl>, Vec<&&Impl>) =
@@ -999,6 +999,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
 
         synthetic.sort_by_cached_key(|i| ImplString::new(i, cx));
         concrete.sort_by_cached_key(|i| ImplString::new(i, cx));
+        foreign.sort_by_cached_key(|i| ImplString::new(i, cx));
 
         if !foreign.is_empty() {
             write_small_section_header(w, "foreign-impls", "Implementations on Foreign Types", "");
