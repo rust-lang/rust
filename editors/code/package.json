@@ -17,6 +17,8 @@
         "rust"
     ],
     "categories": [
+        "Formatters",
+        "Linters",
         "Programming Languages"
     ],
     "capabilities": {
