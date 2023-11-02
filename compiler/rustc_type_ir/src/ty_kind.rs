@@ -218,7 +218,6 @@ pub enum TyKind<I: Interner> {
     /// the type of the coroutine, we convert them to higher ranked
     /// lifetimes bound by the witness itself.
     ///
-    /// This variant is only using when `drop_tracking_mir` is set.
     /// This contains the `DefId` and the `GenericArgsRef` of the coroutine.
     /// The actual witness types are computed on MIR by the `mir_coroutine_witnesses` query.
     ///

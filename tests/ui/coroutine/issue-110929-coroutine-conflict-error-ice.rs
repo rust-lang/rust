@@ -1,4 +1,5 @@
 // edition:2021
+// check-pass
 #![feature(coroutines)]
 
 fn main() {
@@ -6,6 +7,5 @@ fn main() {
     || {
         let _c = || yield *&mut *x;
         || _ = &mut *x;
-        //~^ cannot borrow `*x` as mutable more than once at a time
     };
 }
