@@ -340,6 +340,8 @@ pub(crate) struct MatchCheckCtxt<'p, 'tcx> {
     pub(crate) module: DefId,
     pub(crate) param_env: ty::ParamEnv<'tcx>,
     pub(crate) pattern_arena: &'p TypedArena<DeconstructedPat<'p, 'tcx>>,
+    /// The span of the whole match, if applicable.
+    pub(crate) match_span: Option<Span>,
     /// Only produce `NON_EXHAUSTIVE_OMITTED_PATTERNS` lint on refutable patterns.
     pub(crate) refutable: bool,
 }
@@ -1179,16 +1181,21 @@ pub(crate) fn compute_match_usefulness<'p, 'tcx>(
             // arm. This no longer makes sense so we warn users, to avoid silently breaking their
             // usage of the lint.
             for arm in arms {
-                if !matches!(
-                    cx.tcx.lint_level_at_node(NON_EXHAUSTIVE_OMITTED_PATTERNS, arm.hir_id).0,
-                    rustc_session::lint::Level::Allow
-                ) {
-                    cx.tcx.emit_spanned_lint(
-                        NON_EXHAUSTIVE_OMITTED_PATTERNS,
-                        arm.hir_id,
-                        arm.pat.span(),
-                        NonExhaustiveOmittedPatternLintOnArm,
-                    );
+                let (lint_level, lint_level_source) =
+                    cx.tcx.lint_level_at_node(NON_EXHAUSTIVE_OMITTED_PATTERNS, arm.hir_id);
+                if !matches!(lint_level, rustc_session::lint::Level::Allow) {
+                    let decorator = NonExhaustiveOmittedPatternLintOnArm {
+                        lint_span: lint_level_source.span(),
+                        suggest_lint_on_match: cx.match_span.map(|span| span.shrink_to_lo()),
+                        lint_level: lint_level.as_str(),
+                        lint_name: "non_exhaustive_omitted_patterns",
+                    };
+
+                    use rustc_errors::DecorateLint;
+                    let mut err = cx.tcx.sess.struct_span_warn(arm.pat.span(), "");
+                    err.set_primary_message(decorator.msg());
+                    decorator.decorate_lint(&mut err);
+                    err.emit();
                 }
             }
         }

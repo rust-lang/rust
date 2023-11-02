@@ -26,44 +26,50 @@ note: the lint level is defined here
 LL |     #[cfg_attr(lint, deny(non_exhaustive_omitted_patterns))]
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: the `non_exhaustive_omitted_pattern` lint level must be set on the whole match
+warning: the lint level must be set on the whole match
   --> $DIR/omitted-patterns-dont-lint-on-arm.rs:34:9
    |
-LL |         _ => {}
-   |         ^
-   |
-   = help: it used to make sense to set the lint level on an individual match arm, but that is no longer the case
-note: the lint level is defined here
-  --> $DIR/omitted-patterns-dont-lint-on-arm.rs:33:16
-   |
 LL |         #[deny(non_exhaustive_omitted_patterns)]
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: the `non_exhaustive_omitted_pattern` lint level must be set on the whole match
-  --> $DIR/omitted-patterns-dont-lint-on-arm.rs:41:9
-   |
+   |                ------------------------------- remove this attribute
 LL |         _ => {}
    |         ^
    |
-   = help: it used to make sense to set the lint level on an individual match arm, but that is no longer the case
-note: the lint level is defined here
-  --> $DIR/omitted-patterns-dont-lint-on-arm.rs:40:31
+   = help: it no longer has any effect to set the lint level on an individual match arm
+help: set the lint level on the whole match
+   |
+LL +     #[deny(non_exhaustive_omitted_patterns)]
+LL |     match val {
+   |
+
+warning: the lint level must be set on the whole match
+  --> $DIR/omitted-patterns-dont-lint-on-arm.rs:42:9
    |
 LL |         #[cfg_attr(lint, deny(non_exhaustive_omitted_patterns))]
-   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-warning: the `non_exhaustive_omitted_pattern` lint level must be set on the whole match
-  --> $DIR/omitted-patterns-dont-lint-on-arm.rs:48:9
-   |
+   |                               ------------------------------- remove this attribute
 LL |         _ => {}
    |         ^
    |
-   = help: it used to make sense to set the lint level on an individual match arm, but that is no longer the case
-note: the lint level is defined here
-  --> $DIR/omitted-patterns-dont-lint-on-arm.rs:47:31
+   = help: it no longer has any effect to set the lint level on an individual match arm
+help: set the lint level on the whole match
+   |
+LL +     #[deny(non_exhaustive_omitted_patterns)]
+LL |     match val {
+   |
+
+warning: the lint level must be set on the whole match
+  --> $DIR/omitted-patterns-dont-lint-on-arm.rs:50:9
    |
 LL |         #[cfg_attr(lint, warn(non_exhaustive_omitted_patterns))]
-   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                               ------------------------------- remove this attribute
+LL |         _ => {}
+   |         ^
+   |
+   = help: it no longer has any effect to set the lint level on an individual match arm
+help: set the lint level on the whole match
+   |
+LL +     #[warn(non_exhaustive_omitted_patterns)]
+LL |     match val {
+   |
 
-error: aborting due to 4 previous errors; 1 warning emitted
+error: aborting due to 2 previous errors; 3 warnings emitted
 

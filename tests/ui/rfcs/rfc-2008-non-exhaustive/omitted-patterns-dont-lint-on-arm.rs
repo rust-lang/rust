@@ -31,20 +31,23 @@ fn main() {
         NonExhaustiveEnum::Unit => {}
         NonExhaustiveEnum::Tuple(_) => {}
         #[deny(non_exhaustive_omitted_patterns)]
-        _ => {} //~ ERROR lint level must be set on the whole match
+        _ => {}
     }
+    //~^^ WARN lint level must be set on the whole match
 
     match val {
         NonExhaustiveEnum::Unit => {}
         NonExhaustiveEnum::Tuple(_) => {}
         #[cfg_attr(lint, deny(non_exhaustive_omitted_patterns))]
-        _ => {} //[lint]~ ERROR lint level must be set on the whole match
+        _ => {}
     }
+    //[lint]~^^ WARN lint level must be set on the whole match
 
     match val {
         NonExhaustiveEnum::Unit => {}
         NonExhaustiveEnum::Tuple(_) => {}
         #[cfg_attr(lint, warn(non_exhaustive_omitted_patterns))]
-        _ => {} //[lint]~ WARN lint level must be set on the whole match
+        _ => {}
     }
+    //[lint]~^^ WARN lint level must be set on the whole match
 }
