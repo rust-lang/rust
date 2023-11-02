@@ -236,9 +236,13 @@ impl<'ap, 'lc, 'others, 'stmt, 'tcx> StmtsChecker<'ap, 'lc, 'others, 'stmt, 'tcx
     fn manage_has_expensive_expr_after_last_attr(&mut self) {
         let has_expensive_stmt = match self.ap.curr_stmt.kind {
             hir::StmtKind::Expr(expr) if is_inexpensive_expr(expr) => false,
-            hir::StmtKind::Local(local) if let Some(expr) = local.init
-                && let hir::ExprKind::Path(_) = expr.kind => false,
-            _ => true
+            hir::StmtKind::Local(local)
+                if let Some(expr) = local.init
+                    && let hir::ExprKind::Path(_) = expr.kind =>
+            {
+                false
+            },
+            _ => true,
         };
         if has_expensive_stmt {
             for apa in self.ap.apas.values_mut() {
@@ -292,8 +296,7 @@ impl<'ap, 'lc, 'others, 'stmt, 'tcx> Visitor<'tcx> for StmtsChecker<'ap, 'lc, 'o
                 && {
                     if let Some(local_hir_id) = path_to_local(expr) {
                         local_hir_id == hir_id
-                    }
-                    else {
+                    } else {
                         true
                     }
                 }
@@ -306,8 +309,7 @@ impl<'ap, 'lc, 'others, 'stmt, 'tcx> Visitor<'tcx> for StmtsChecker<'ap, 'lc, 'o
                         let expr_or_init = expr_or_init(self.cx, expr);
                         if let hir::ExprKind::MethodCall(_, local_expr, _, span) = expr_or_init.kind {
                             local_expr.span.to(span)
-                        }
-                        else {
+                        } else {
                             expr_or_init.span
                         }
                     },
@@ -317,8 +319,12 @@ impl<'ap, 'lc, 'others, 'stmt, 'tcx> Visitor<'tcx> for StmtsChecker<'ap, 'lc, 'o
                 modify_apa_params(&mut apa);
                 let _ = self.ap.apas.insert(hir_id, apa);
             } else {
-                let Some(hir_id) = path_to_local(expr) else { return; };
-                let Some(apa) = self.ap.apas.get_mut(&hir_id) else { return; };
+                let Some(hir_id) = path_to_local(expr) else {
+                    return;
+                };
+                let Some(apa) = self.ap.apas.get_mut(&hir_id) else {
+                    return;
+                };
                 match self.ap.curr_stmt.kind {
                     hir::StmtKind::Local(local) => {
                         if let hir::PatKind::Binding(_, _, ident, _) = local.pat.kind {
@@ -437,19 +443,20 @@ fn has_drop(expr: &hir::Expr<'_>, first_bind_ident: &Ident, lcx: &LateContext<'_
     {
         let has_ident = |local_expr: &hir::Expr<'_>| {
             if let hir::ExprKind::Path(hir::QPath::Resolved(_, arg_path)) = &local_expr.kind
-                && let [first_arg_ps, .. ] = arg_path.segments
+                && let [first_arg_ps, ..] = arg_path.segments
                 && &first_arg_ps.ident == first_bind_ident
             {
                 true
-            }
-            else {
+            } else {
                 false
             }
         };
         if has_ident(first_arg) {
             return true;
         }
-        if let hir::ExprKind::Tup(value) = &first_arg.kind && value.iter().any(has_ident) {
+        if let hir::ExprKind::Tup(value) = &first_arg.kind
+            && value.iter().any(has_ident)
+        {
             return true;
         }
     }

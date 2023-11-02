@@ -1,5 +1,5 @@
+use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::msrvs::{Msrv, MATCHES_MACRO};
 use clippy_utils::source::snippet_opt;
 use clippy_utils::{is_from_proc_macro, is_trait_method, path_to_local};
 use itertools::Itertools;
@@ -19,7 +19,7 @@ pub(super) fn check<'tcx>(
     body: &Expr<'_>,
     msrv: &Msrv,
 ) {
-    if msrv.meets(MATCHES_MACRO)
+    if msrv.meets(msrvs::MATCHES_MACRO)
         && is_trait_method(cx, expr, sym::Iterator)
         && let PatKind::Binding(_, arg, _, _) = param.pat.kind
         && let ExprKind::Lit(lit_kind) = recv.kind
@@ -52,7 +52,7 @@ pub(super) fn check<'tcx>(
                     format!("matches!({scrutinee_snip}, {pat_snip})"),
                     Applicability::MachineApplicable,
                 );
-            }
+            },
         );
     }
 }

@@ -15,7 +15,7 @@ declare_clippy_lint! {
     /// Increases the amount and decreases the readability of code
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// enum ValType {
     ///     I32,
     ///     I64,
@@ -35,7 +35,7 @@ declare_clippy_lint! {
     ///
     /// Could be rewritten as
     ///
-    /// ```rust
+    /// ```no_run
     /// enum ValType {
     ///     I32,
     ///     I64,

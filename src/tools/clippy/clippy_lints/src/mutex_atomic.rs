@@ -29,14 +29,14 @@ declare_clippy_lint! {
     /// for waiting before a critical section.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # let y = true;
     /// # use std::sync::Mutex;
     /// let x = Mutex::new(&y);
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # let y = true;
     /// # use std::sync::atomic::AtomicBool;
     /// let x = AtomicBool::new(y);
@@ -62,13 +62,13 @@ declare_clippy_lint! {
     /// for waiting before a critical section.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # use std::sync::Mutex;
     /// let x = Mutex::new(0usize);
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # use std::sync::atomic::AtomicUsize;
     /// let x = AtomicUsize::new(0usize);
     /// ```

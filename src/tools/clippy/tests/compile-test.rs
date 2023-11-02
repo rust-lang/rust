@@ -30,6 +30,7 @@ mod test_utils;
 
 /// All crates used in UI tests are listed here
 static TEST_DEPENDENCIES: &[&str] = &[
+    "clippy_config",
     "clippy_lints",
     "clippy_utils",
     "futures",

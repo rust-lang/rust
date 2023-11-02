@@ -1,11 +1,11 @@
 use arrayvec::ArrayVec;
+use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::is_diag_trait_item;
 use clippy_utils::macros::{
     find_format_arg_expr, find_format_args, format_arg_removal_span, format_placeholder_format_span, is_assert_macro,
     is_format_macro, is_panic, root_macro_call, root_macro_call_first_node, FormatParamUsage,
 };
-use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::{implements_trait, is_type_lang_item};
 use if_chain::if_chain;
@@ -35,12 +35,12 @@ declare_clippy_lint! {
     /// The recommended code is both shorter and avoids a temporary allocation.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # use std::panic::Location;
     /// println!("error: {}", format!("something failed at {}", Location::caller()));
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # use std::panic::Location;
     /// println!("error: something failed at {}", Location::caller());
     /// ```
@@ -61,12 +61,12 @@ declare_clippy_lint! {
     /// unnecessary.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # use std::panic::Location;
     /// println!("error: something failed at {}", Location::caller().to_string());
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # use std::panic::Location;
     /// println!("error: something failed at {}", Location::caller());
     /// ```
@@ -87,7 +87,7 @@ declare_clippy_lint! {
     /// The inlined syntax, where allowed, is simpler.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # let var = 42;
     /// # let width = 1;
     /// # let prec = 2;
@@ -98,7 +98,7 @@ declare_clippy_lint! {
     /// format!("{:.*}", prec, var);
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # let var = 42;
     /// # let width = 1;
     /// # let prec = 2;
@@ -111,12 +111,12 @@ declare_clippy_lint! {
     ///
     /// If allow-mixed-uninlined-format-args is set to false in clippy.toml,
     /// the following code will also trigger the lint:
-    /// ```rust
+    /// ```no_run
     /// # let var = 42;
     /// format!("{} {}", var, 1+2);
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # let var = 42;
     /// format!("{var} {}", 1+2);
     /// ```
@@ -141,13 +141,13 @@ declare_clippy_lint! {
     /// an expected formatting operation such as adding padding isn't happening.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// println!("{:.}", 1.0);
     ///
     /// println!("not padded: {:5}", format_args!("..."));
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// println!("{}", 1.0);
     ///
     /// println!("not padded: {}", format_args!("..."));
@@ -370,7 +370,7 @@ fn check_one_arg(
         };
         fixes.push((pos_span, replacement));
         fixes.push((arg_span, String::new()));
-        true  // successful inlining, continue checking
+        true // successful inlining, continue checking
     } else {
         // Do not continue inlining (return false) in case
         // * if we can't inline a numbered argument, e.g. `print!("{0} ...", foo.bar, ...)`

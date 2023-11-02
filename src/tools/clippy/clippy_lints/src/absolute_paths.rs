@@ -24,11 +24,11 @@ declare_clippy_lint! {
     /// using absolute paths is the proper way of referencing items in one.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let x = std::f64::consts::PI;
     /// ```
     /// Use any of the below instead, or anything else:
-    /// ```rust
+    /// ```no_run
     /// use std::f64;
     /// use std::f64::consts;
     /// use std::f64::consts::PI;

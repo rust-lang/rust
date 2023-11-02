@@ -19,11 +19,11 @@ declare_clippy_lint! {
     /// to detect this scenario and that is why it is a restriction lint.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// use std::io::{self};
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// use std::io;
     /// ```
     #[clippy::version = "1.53.0"]

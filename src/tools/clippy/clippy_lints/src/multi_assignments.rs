@@ -13,12 +13,12 @@ declare_clippy_lint! {
     /// where such assignments return a copy of the assigned value.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     ///# let (a, b);
     /// a = b = 42;
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     ///# let (a, b);
     /// b = 42;
     /// a = b;

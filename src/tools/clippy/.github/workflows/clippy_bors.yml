@@ -120,8 +120,12 @@ jobs:
       working-directory: clippy_lints
 
     - name: Test clippy_utils
-      run: cargo test --features deny-warnings,internal
+      run: cargo test --features deny-warnings
       working-directory: clippy_utils
+
+    - name: Test clippy_config
+      run: cargo test --features deny-warnings
+      working-directory: clippy_config
 
     - name: Test rustc_tools_util
       run: cargo test --features deny-warnings

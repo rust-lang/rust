@@ -48,7 +48,7 @@ fn main() {
         Some(x) if let Some(1) = x => {
             x;
             ..
-        }
+        },
         _ => todo!(),
     };
     let y = 1;

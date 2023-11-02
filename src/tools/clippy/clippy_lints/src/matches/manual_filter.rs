@@ -99,12 +99,20 @@ pub(super) fn check_match<'tcx>(
 ) {
     let ty = cx.typeck_results().expr_ty(expr);
     if is_type_diagnostic_item(cx, ty, sym::Option)
-    && let [first_arm, second_arm] = arms
-    && first_arm.guard.is_none()
-    && second_arm.guard.is_none()
-         {
-            check(cx, expr, scrutinee, first_arm.pat, first_arm.body, Some(second_arm.pat), second_arm.body);
-        }
+        && let [first_arm, second_arm] = arms
+        && first_arm.guard.is_none()
+        && second_arm.guard.is_none()
+    {
+        check(
+            cx,
+            expr,
+            scrutinee,
+            first_arm.pat,
+            first_arm.body,
+            Some(second_arm.pat),
+            second_arm.body,
+        );
+    }
 }
 
 pub(super) fn check_if_let<'tcx>(

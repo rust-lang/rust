@@ -9,18 +9,18 @@ use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Suggest removing the use of a may (or map_err) method when an Option or Result is being construted.
+    /// Suggest removing the use of a may (or map_err) method when an Option or Result is being constructed.
     ///
     /// ### Why is this bad?
     /// It introduces unnecessary complexity. In this case the function can be used directly and
     /// construct the Option or Result from the output.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// Some(4).map(i32::swap_bytes);
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// Some(i32::swap_bytes(4));
     /// ```
     #[clippy::version = "1.73.0"]
@@ -36,19 +36,20 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryMapOnConstructor {
             return;
         }
         if let hir::ExprKind::MethodCall(path, recv, args, ..) = expr.kind
-            && let Some(sym::Option | sym::Result) = get_type_diagnostic_name(cx, cx.typeck_results().expr_ty(recv)){
-            let (constructor_path, constructor_item) =
-                if let hir::ExprKind::Call(constructor, constructor_args) = recv.kind
-                    && let hir::ExprKind::Path(constructor_path) = constructor.kind
-                    && let Some(arg) = constructor_args.first()
-                {
-                    if constructor.span.from_expansion() || arg.span.from_expansion() {
-                        return;
-                    }
-                    (constructor_path, arg)
-                } else {
+            && let Some(sym::Option | sym::Result) = get_type_diagnostic_name(cx, cx.typeck_results().expr_ty(recv))
+        {
+            let (constructor_path, constructor_item) = if let hir::ExprKind::Call(constructor, constructor_args) =
+                recv.kind
+                && let hir::ExprKind::Path(constructor_path) = constructor.kind
+                && let Some(arg) = constructor_args.first()
+            {
+                if constructor.span.from_expansion() || arg.span.from_expansion() {
                     return;
-                };
+                }
+                (constructor_path, arg)
+            } else {
+                return;
+            };
             let constructor_symbol = match constructor_path {
                 hir::QPath::Resolved(_, path) => {
                     if let Some(path_segment) = path.segments.last() {
@@ -82,7 +83,10 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryMapOnConstructor {
                     cx,
                     UNNECESSARY_MAP_ON_CONSTRUCTOR,
                     expr.span,
-                    &format!("unnecessary {} on constructor {constructor_snippet}(_)", path.ident.name),
+                    &format!(
+                        "unnecessary {} on constructor {constructor_snippet}(_)",
+                        path.ident.name
+                    ),
                     "try",
                     format!("{constructor_snippet}({fun_snippet}({constructor_arg_snippet}))"),
                     applicability,

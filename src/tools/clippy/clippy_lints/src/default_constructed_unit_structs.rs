@@ -17,7 +17,7 @@ declare_clippy_lint! {
     /// This adds code complexity and an unnecessary function call.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # use std::marker::PhantomData;
     /// #[derive(Default)]
     /// struct S<T> {
@@ -29,7 +29,7 @@ declare_clippy_lint! {
     /// };
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # use std::marker::PhantomData;
     /// struct S<T> {
     ///     _marker: PhantomData<T>

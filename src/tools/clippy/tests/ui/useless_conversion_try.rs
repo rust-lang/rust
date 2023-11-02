@@ -1,5 +1,5 @@
 #![deny(clippy::useless_conversion)]
-#![allow(clippy::needless_if)]
+#![allow(clippy::needless_if, clippy::unnecessary_fallible_conversions)]
 
 fn test_generic<T: Copy>(val: T) -> T {
     let _ = T::try_from(val).unwrap();

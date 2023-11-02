@@ -19,7 +19,7 @@ declare_clippy_lint! {
     /// causes runtime overhead and hassle for the caller.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// async fn get_random_number() -> i64 {
     ///     4 // Chosen by fair dice roll. Guaranteed to be random.
     /// }
@@ -27,7 +27,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// fn get_random_number_improved() -> i64 {
     ///     4 // Chosen by fair dice roll. Guaranteed to be random.
     /// }

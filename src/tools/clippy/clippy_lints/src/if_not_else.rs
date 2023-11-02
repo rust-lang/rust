@@ -1,6 +1,7 @@
 //! lint on if branches that could be swapped so no `!` operation is necessary
 //! on the condition
 
+use clippy_utils::consts::{constant_simple, Constant};
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::is_else_clause;
 use rustc_hir::{BinOpKind, Expr, ExprKind, UnOp};
@@ -16,7 +17,7 @@ declare_clippy_lint! {
     /// Negations reduce the readability of statements.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # let v: Vec<usize> = vec![];
     /// # fn a() {}
     /// # fn b() {}
@@ -29,7 +30,7 @@ declare_clippy_lint! {
     ///
     /// Could be written:
     ///
-    /// ```rust
+    /// ```no_run
     /// # let v: Vec<usize> = vec![];
     /// # fn a() {}
     /// # fn b() {}
@@ -46,6 +47,13 @@ declare_clippy_lint! {
 }
 
 declare_lint_pass!(IfNotElse => [IF_NOT_ELSE]);
+
+fn is_zero_const(expr: &Expr<'_>, cx: &LateContext<'_>) -> bool {
+    if let Some(value) = constant_simple(cx, cx.typeck_results(), expr) {
+        return Constant::Int(0) == value;
+    }
+    false
+}
 
 impl LateLintPass<'_> for IfNotElse {
     fn check_expr(&mut self, cx: &LateContext<'_>, item: &Expr<'_>) {
@@ -72,7 +80,9 @@ impl LateLintPass<'_> for IfNotElse {
                             "remove the `!` and swap the blocks of the `if`/`else`",
                         );
                     },
-                    ExprKind::Binary(ref kind, _, _) if kind.node == BinOpKind::Ne => {
+                    ExprKind::Binary(ref kind, _, lhs) if kind.node == BinOpKind::Ne && !is_zero_const(lhs, cx) => {
+                        // Disable firing the lint on `… != 0`, as these are likely to be bit tests.
+                        // For example, `if foo & 0x0F00 != 0 { … } else { … }` already is in the "proper" order.
                         span_lint_and_help(
                             cx,
                             IF_NOT_ELSE,

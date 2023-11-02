@@ -588,7 +588,7 @@ impl Lint {
             .collect()
     }
 
-    /// Returns all internal lints (not `internal_warn` lints)
+    /// Returns all internal lints
     #[must_use]
     fn internal_lints(lints: &[Self]) -> Vec<Self> {
         lints.iter().filter(|l| l.group == "internal").cloned().collect()

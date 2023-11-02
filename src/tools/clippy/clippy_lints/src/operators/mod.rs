@@ -48,7 +48,7 @@ declare_clippy_lint! {
     /// like `#[cfg(target_pointer_width = "64")] ..` instead.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let vec: Vec<isize> = Vec::new();
     /// if vec.len() <= 0 {}
     /// if 100 > i32::MAX {}
@@ -76,7 +76,7 @@ declare_clippy_lint! {
     /// desirable to explicitly call checked, wrapping or saturating arithmetic methods.
     ///
     /// #### Example
-    /// ```rust
+    /// ```no_run
     /// // `n` can be any number, including `i32::MAX`.
     /// fn foo(n: i32) -> i32 {
     ///   n + 1
@@ -105,7 +105,7 @@ declare_clippy_lint! {
     /// can be useful to rule out floating-point numbers.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # let a = 0.0;
     /// a + 1.0;
     /// ```
@@ -128,7 +128,7 @@ declare_clippy_lint! {
     /// implementations that differ from the regular `Op` impl.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let mut a = 5;
     /// let b = 0;
     /// // ...
@@ -137,7 +137,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let mut a = 5;
     /// let b = 0;
     /// // ...
@@ -165,7 +165,7 @@ declare_clippy_lint! {
     /// written as `a = a op a op b` as it's less confusing.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let mut a = 5;
     /// let b = 2;
     /// // ...
@@ -205,7 +205,7 @@ declare_clippy_lint! {
     /// test-case for this lint.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # let x = 1;
     /// if (x & 1 == 2) { }
     /// ```
@@ -238,7 +238,7 @@ declare_clippy_lint! {
     /// uncommon).
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # let x = 1;
     /// if (x | 1 > 3) {  }
     /// ```
@@ -261,7 +261,7 @@ declare_clippy_lint! {
     /// llvm generates better code for `x & 15 == 0` on x86
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # let x = 1;
     /// if x & 0b1111 == 0 { }
     /// ```
@@ -280,7 +280,7 @@ declare_clippy_lint! {
     /// Readability.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # let x = 1;
     /// # let y = 2;
     /// if x == y || x < y {}
@@ -288,7 +288,7 @@ declare_clippy_lint! {
     ///
     /// Use instead:
     ///
-    /// ```rust
+    /// ```no_run
     /// # let x = 1;
     /// # let y = 2;
     /// if x <= y {}
@@ -308,7 +308,7 @@ declare_clippy_lint! {
     /// which is probably not the programmer's intention
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # let status_code = 200;
     /// if status_code <= 400 && status_code > 500 {}
     /// ```
@@ -328,7 +328,7 @@ declare_clippy_lint! {
     /// different value entirely.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # let status_code = 200;
     /// if status_code <= 400 && status_code < 500 {}
     /// ```
@@ -348,7 +348,7 @@ declare_clippy_lint! {
     /// `Duration::subsec_millis()` than to calculate them.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # use std::time::Duration;
     /// # let duration = Duration::new(5, 0);
     /// let micros = duration.subsec_nanos() / 1_000;
@@ -356,7 +356,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # use std::time::Duration;
     /// # let duration = Duration::new(5, 0);
     /// let micros = duration.subsec_micros();
@@ -384,7 +384,7 @@ declare_clippy_lint! {
     /// calls. We may introduce a list of known pure functions in the future.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # let x = 1;
     /// if x + 1 == x + 1 {}
     ///
@@ -434,7 +434,7 @@ declare_clippy_lint! {
     /// corrected
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let x = 1;
     /// 0 / x;
     /// 0 * x;
@@ -462,13 +462,13 @@ declare_clippy_lint! {
     /// with an allow.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// pub fn is_roughly_equal(a: f32, b: f32) -> bool {
     ///     (a - b) < f32::EPSILON
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// pub fn is_roughly_equal(a: f32, b: f32) -> bool {
     ///     (a - b).abs() < f32::EPSILON
     /// }
@@ -488,7 +488,7 @@ declare_clippy_lint! {
     /// meaning. So it just obscures what's going on. Delete it mercilessly.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # let x = 1;
     /// x / 1 + 0 * 1 - 0 | 0;
     /// ```
@@ -508,13 +508,13 @@ declare_clippy_lint! {
     /// remainder.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let x = 3 / 2;
     /// println!("{}", x);
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let x = 3f32 / 2f32;
     /// println!("{}", x);
     /// ```
@@ -535,14 +535,14 @@ declare_clippy_lint! {
     /// needlessly consuming code and heap space.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # let x = "foo";
     /// # let y = String::from("foo");
     /// if x.to_owned() == y {}
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # let x = "foo";
     /// # let y = String::from("foo");
     /// if x == y {}
@@ -566,7 +566,7 @@ declare_clippy_lint! {
     /// guide](http://www.floating-point-gui.de/errors/comparison).
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let x = 1.2331f64;
     /// let y = 1.2332f64;
     ///
@@ -575,7 +575,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # let x = 1.2331f64;
     /// # let y = 1.2332f64;
     /// let error_margin = f64::EPSILON; // Use an epsilon for comparison
@@ -603,7 +603,7 @@ declare_clippy_lint! {
     /// guide](http://www.floating-point-gui.de/errors/comparison).
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let x: f64 = 1.0;
     /// const ONE: f64 = 1.00;
     ///
@@ -611,7 +611,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # let x: f64 = 1.0;
     /// # const ONE: f64 = 1.00;
     /// let error_margin = f64::EPSILON; // Use an epsilon for comparison
@@ -638,7 +638,7 @@ declare_clippy_lint! {
     /// contest, it's probably a bad idea. Use something more underhanded.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # let x = 1;
     /// let a = x % 1;
     /// let a = x % -1;
@@ -662,7 +662,7 @@ declare_clippy_lint! {
     /// For example, in Rust `17 % -3 = 2`, but in Python `17 % -3 = -1`.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let x = -17 % 3;
     /// ```
     #[clippy::version = "1.42.0"]
@@ -685,12 +685,12 @@ declare_clippy_lint! {
     /// determination is quite conservative.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let (x,y) = (true, false);
     /// if x & !y {} // where both x and y are booleans
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let (x,y) = (true, false);
     /// if x && !y {}
     /// ```
@@ -710,14 +710,14 @@ declare_clippy_lint! {
     /// comparing the values they point to.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let a = &[1, 2, 3];
     /// let b = &[1, 2, 3];
     ///
     /// assert!(a as *const _ as usize == b as *const _ as usize);
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let a = &[1, 2, 3];
     /// let b = &[1, 2, 3];
     ///
@@ -742,7 +742,7 @@ declare_clippy_lint! {
     /// indexing operations they are assumed not to have any side effects.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// struct Event {
     ///     x: i32,
     /// }
@@ -753,7 +753,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Should be:
-    /// ```rust
+    /// ```no_run
     /// struct Event {
     ///     x: i32,
     /// }

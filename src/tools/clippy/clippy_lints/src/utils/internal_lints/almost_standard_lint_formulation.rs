@@ -11,7 +11,7 @@ declare_clippy_lint! {
     /// Checks if lint formulations have a standardized format.
     ///
     /// ### Why is this bad?
-    /// It's not neccessarily bad, but we try to enforce a standard in Clippy.
+    /// It's not necessarily bad, but we try to enforce a standard in Clippy.
     ///
     /// ### Example
     /// `Checks for use...` can be written as `Checks for usage...` .

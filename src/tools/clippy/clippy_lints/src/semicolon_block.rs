@@ -19,13 +19,13 @@ declare_clippy_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust
+    /// ```no_run
     /// # fn f(_: u32) {}
     /// # let x = 0;
     /// unsafe { f(x) };
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # fn f(_: u32) {}
     /// # let x = 0;
     /// unsafe { f(x); }
@@ -48,13 +48,13 @@ declare_clippy_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust
+    /// ```no_run
     /// # fn f(_: u32) {}
     /// # let x = 0;
     /// unsafe { f(x); }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # fn f(_: u32) {}
     /// # let x = 0;
     /// unsafe { f(x) };

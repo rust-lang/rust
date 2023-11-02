@@ -17,7 +17,7 @@ declare_clippy_lint! {
     /// `TryFrom` should be used if there's a possibility of failure.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// struct Foo(i32);
     ///
     /// impl From<String> for Foo {
@@ -28,7 +28,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// struct Foo(i32);
     ///
     /// impl TryFrom<String> for Foo {

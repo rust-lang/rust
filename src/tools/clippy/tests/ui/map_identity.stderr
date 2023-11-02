@@ -40,5 +40,32 @@ error: unnecessary map of the identity function
 LL |     let _: Result<u32, u32> = Ok(1).map_err(|a| a);
    |                                    ^^^^^^^^^^^^^^^ help: remove the call to `map_err`
 
-error: aborting due to 6 previous errors
+error: unnecessary map of the identity function
+  --> $DIR/map_identity.rs:30:21
+   |
+LL |     let _ = x.iter().map(|(x, y)| (x, y));
+   |                     ^^^^^^^^^^^^^^^^^^^^^ help: remove the call to `map`
+
+error: unnecessary map of the identity function
+  --> $DIR/map_identity.rs:31:21
+   |
+LL |       let _ = x.iter().map(|(x, y)| {
+   |  _____________________^
+LL | |         return (x, y);
+LL | |     });
+   | |______^ help: remove the call to `map`
+
+error: unnecessary map of the identity function
+  --> $DIR/map_identity.rs:34:21
+   |
+LL |     let _ = x.iter().map(|(x, y)| return (x, y));
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove the call to `map`
+
+error: unnecessary map of the identity function
+  --> $DIR/map_identity.rs:37:21
+   |
+LL |     let _ = y.iter().map(|(x, y, (z, (w,)))| (x, y, (z, (w,))));
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove the call to `map`
+
+error: aborting due to 10 previous errors
 

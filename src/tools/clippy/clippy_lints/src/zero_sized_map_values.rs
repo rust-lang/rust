@@ -23,14 +23,14 @@ declare_clippy_lint! {
     /// * This lints the signature of public items
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # use std::collections::HashMap;
     /// fn unique_words(text: &str) -> HashMap<&str, ()> {
     ///     todo!();
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # use std::collections::HashSet;
     /// fn unique_words(text: &str) -> HashSet<&str> {
     ///     todo!();

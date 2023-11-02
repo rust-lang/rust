@@ -15,14 +15,14 @@ declare_clippy_lint! {
     /// Readability suffers from unnecessary struct building.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// struct S { s: String }
     ///
     /// let a = S { s: String::from("Hello, world!") };
     /// let b = S { ..a };
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// struct S { s: String }
     ///
     /// let a = S { s: String::from("Hello, world!") };
@@ -42,9 +42,9 @@ declare_lint_pass!(UnnecessaryStruct => [UNNECESSARY_STRUCT_INITIALIZATION]);
 impl LateLintPass<'_> for UnnecessaryStruct {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         if let ExprKind::Struct(_, &[], Some(base)) = expr.kind {
-            if let Some(parent) = get_parent_expr(cx, expr) &&
-                let parent_ty = cx.typeck_results().expr_ty_adjusted(parent) &&
-                parent_ty.is_any_ptr()
+            if let Some(parent) = get_parent_expr(cx, expr)
+                && let parent_ty = cx.typeck_results().expr_ty_adjusted(parent)
+                && parent_ty.is_any_ptr()
             {
                 if is_copy(cx, cx.typeck_results().expr_ty(expr)) && path_to_local(base).is_some() {
                     // When the type implements `Copy`, a reference to the new struct works on the
@@ -59,9 +59,9 @@ impl LateLintPass<'_> for UnnecessaryStruct {
             }
 
             // TODO: do not propose to replace *XX if XX is not Copy
-            if let ExprKind::Unary(UnOp::Deref, target) = base.kind &&
-                matches!(target.kind, ExprKind::Path(..)) &&
-                !is_copy(cx, cx.typeck_results().expr_ty(expr))
+            if let ExprKind::Unary(UnOp::Deref, target) = base.kind
+                && matches!(target.kind, ExprKind::Path(..))
+                && !is_copy(cx, cx.typeck_results().expr_ty(expr))
             {
                 // `*base` cannot be used instead of the struct in the general case if it is not Copy.
                 return;
@@ -81,8 +81,8 @@ impl LateLintPass<'_> for UnnecessaryStruct {
 }
 
 fn is_mutable(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    if let Some(hir_id) = path_to_local(expr) &&
-        let Node::Pat(pat) = cx.tcx.hir().get(hir_id)
+    if let Some(hir_id) = path_to_local(expr)
+        && let Node::Pat(pat) = cx.tcx.hir().get(hir_id)
     {
         matches!(pat.kind, PatKind::Binding(BindingAnnotation::MUT, ..))
     } else {

@@ -23,13 +23,13 @@ declare_clippy_lint! {
     /// requires using a turbofish, which serves no purpose but to satisfy the compiler.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// fn unused_ty<T>(x: u8) {
     ///     // ..
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// fn no_unused_ty(x: u8) {
     ///     // ..
     /// }
@@ -177,20 +177,22 @@ impl<'cx, 'tcx> TypeWalker<'cx, 'tcx> {
                     .iter()
                     .rev()
                     .map(|(idx, param)| {
-                        if let Some(next) = explicit_params.get(idx + 1) && end != Some(next.def_id) {
-                        // Extend the current span forward, up until the next param in the list.
-                        param.span.until(next.span)
-                    } else {
-                        // Extend the current span back to include the comma following the previous
-                        // param. If the span of the next param in the list has already been
-                        // extended, we continue the chain. This is why we're iterating in reverse.
-                        end = Some(param.def_id);
+                        if let Some(next) = explicit_params.get(idx + 1)
+                            && end != Some(next.def_id)
+                        {
+                            // Extend the current span forward, up until the next param in the list.
+                            param.span.until(next.span)
+                        } else {
+                            // Extend the current span back to include the comma following the previous
+                            // param. If the span of the next param in the list has already been
+                            // extended, we continue the chain. This is why we're iterating in reverse.
+                            end = Some(param.def_id);
 
-                        // idx will never be 0, else we'd be removing the entire list of generics
-                        let prev = explicit_params[idx - 1];
-                        let prev_span = self.get_bound_span(prev);
-                        self.get_bound_span(param).with_lo(prev_span.hi())
-                    }
+                            // idx will never be 0, else we'd be removing the entire list of generics
+                            let prev = explicit_params[idx - 1];
+                            let prev_span = self.get_bound_span(prev);
+                            self.get_bound_span(param).with_lo(prev_span.hi())
+                        }
                     })
                     .collect()
             };

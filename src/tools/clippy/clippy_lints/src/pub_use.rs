@@ -14,7 +14,7 @@ declare_clippy_lint! {
     /// unintentional exports or to encourage placing exported items directly in public modules
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// pub mod outer {
     ///     mod inner {
     ///         pub struct Test {}
@@ -25,7 +25,7 @@ declare_clippy_lint! {
     /// use outer::Test;
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// pub mod outer {
     ///     pub struct Test {}
     /// }
@@ -41,16 +41,17 @@ declare_lint_pass!(PubUse => [PUB_USE]);
 
 impl EarlyLintPass for PubUse {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
-        if let ItemKind::Use(_) = item.kind &&
-            let VisibilityKind::Public = item.vis.kind {
-                span_lint_and_help(
-                    cx,
-                    PUB_USE,
-                    item.span,
-                    "using `pub use`",
-                    None,
-                    "move the exported item to a public module instead",
-                );
-            }
+        if let ItemKind::Use(_) = item.kind
+            && let VisibilityKind::Public = item.vis.kind
+        {
+            span_lint_and_help(
+                cx,
+                PUB_USE,
+                item.span,
+                "using `pub use`",
+                None,
+                "move the exported item to a public module instead",
+            );
+        }
     }
 }

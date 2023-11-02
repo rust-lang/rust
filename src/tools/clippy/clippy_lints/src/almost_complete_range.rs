@@ -1,5 +1,5 @@
+use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::{trim_span, walk_span_to_context};
 use rustc_ast::ast::{Expr, ExprKind, LitKind, Pat, PatKind, RangeEnd, RangeLimits};
 use rustc_errors::Applicability;
@@ -17,11 +17,11 @@ declare_clippy_lint! {
     /// This (`'a'..'z'`) is almost certainly a typo meant to include all letters.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let _ = 'a'..'z';
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let _ = 'a'..='z';
     /// ```
     #[clippy::version = "1.68.0"]
@@ -82,33 +82,20 @@ fn check_range(cx: &EarlyContext<'_>, span: Span, start: &Expr, end: &Expr, sugg
             (
                 Ok(LitKind::Byte(b'a') | LitKind::Char('a')),
                 Ok(LitKind::Byte(b'z') | LitKind::Char('z'))
-            )
-            | (
+            ) | (
                 Ok(LitKind::Byte(b'A') | LitKind::Char('A')),
                 Ok(LitKind::Byte(b'Z') | LitKind::Char('Z')),
-            )
-            | (
+            ) | (
                 Ok(LitKind::Byte(b'0') | LitKind::Char('0')),
                 Ok(LitKind::Byte(b'9') | LitKind::Char('9')),
             )
         )
         && !in_external_macro(cx.sess(), span)
     {
-        span_lint_and_then(
-            cx,
-            ALMOST_COMPLETE_RANGE,
-            span,
-            "almost complete ascii range",
-            |diag| {
-                if let Some((span, sugg)) = sugg {
-                    diag.span_suggestion(
-                        span,
-                        "use an inclusive range",
-                        sugg,
-                        Applicability::MaybeIncorrect,
-                    );
-                }
+        span_lint_and_then(cx, ALMOST_COMPLETE_RANGE, span, "almost complete ascii range", |diag| {
+            if let Some((span, sugg)) = sugg {
+                diag.span_suggestion(span, "use an inclusive range", sugg, Applicability::MaybeIncorrect);
             }
-        );
+        });
     }
 }

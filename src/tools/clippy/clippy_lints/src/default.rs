@@ -23,12 +23,12 @@ declare_clippy_lint! {
     /// generic `Default`.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let s: String = Default::default();
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let s = String::default();
     /// ```
     #[clippy::version = "pre 1.29.0"]
@@ -49,7 +49,7 @@ declare_clippy_lint! {
     /// Assignments to patterns that are of tuple type are not linted.
     ///
     /// ### Example
-    /// ```
+    /// ```no_run
     /// # #[derive(Default)]
     /// # struct A { i: i32 }
     /// let mut a: A = Default::default();
@@ -57,7 +57,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```
+    /// ```no_run
     /// # #[derive(Default)]
     /// # struct A { i: i32 }
     /// let a = A {

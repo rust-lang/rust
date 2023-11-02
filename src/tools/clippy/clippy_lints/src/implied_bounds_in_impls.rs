@@ -29,7 +29,7 @@ declare_clippy_lint! {
     /// (e.g. `trait A {} trait B: A {} trait C: B {}`, then having an `fn() -> impl A + C`)
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # use std::ops::{Deref,DerefMut};
     /// fn f() -> impl Deref<Target = i32> + DerefMut<Target = i32> {
     /// //             ^^^^^^^^^^^^^^^^^^^ unnecessary bound, already implied by the `DerefMut` trait bound
@@ -37,7 +37,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # use std::ops::{Deref,DerefMut};
     /// fn f() -> impl DerefMut<Target = i32> {
     ///     Box::new(123)
@@ -230,19 +230,24 @@ fn check(cx: &LateContext<'_>, decl: &FnDecl<'_>) {
         // Example:
         // `impl Deref<Target = i32> + DerefMut<Target = u32>` is not allowed.
         // `DerefMut::Target` needs to match `Deref::Target`.
-        let implied_bounds: Vec<_> = opaque_ty.bounds.iter().filter_map(|bound| {
-            if let GenericBound::Trait(poly_trait, TraitBoundModifier::None) = bound
-                && let [.., path]  = poly_trait.trait_ref.path.segments
-                && poly_trait.bound_generic_params.is_empty()
-                && let Some(trait_def_id) = path.res.opt_def_id()
-                && let predicates = cx.tcx.super_predicates_of(trait_def_id).predicates
-                && !predicates.is_empty() // If the trait has no supertrait, there is nothing to add.
-            {
-                Some((bound.span(), path, predicates, trait_def_id))
-            } else {
-                None
-            }
-        }).collect();
+        let implied_bounds: Vec<_> = opaque_ty
+            .bounds
+            .iter()
+            .filter_map(|bound| {
+                if let GenericBound::Trait(poly_trait, TraitBoundModifier::None) = bound
+                    && let [.., path] = poly_trait.trait_ref.path.segments
+                    && poly_trait.bound_generic_params.is_empty()
+                    && let Some(trait_def_id) = path.res.opt_def_id()
+                    && let predicates = cx.tcx.super_predicates_of(trait_def_id).predicates
+                    && !predicates.is_empty()
+                // If the trait has no supertrait, there is nothing to add.
+                {
+                    Some((bound.span(), path, predicates, trait_def_id))
+                } else {
+                    None
+                }
+            })
+            .collect();
 
         // Lint all bounds in the `impl Trait` type that are also in the `implied_bounds` vec.
         // This involves some extra logic when generic arguments are present, since
@@ -253,30 +258,31 @@ fn check(cx: &LateContext<'_>, decl: &FnDecl<'_>) {
                 && let implied_args = path.args.map_or([].as_slice(), |a| a.args)
                 && let implied_bindings = path.args.map_or([].as_slice(), |a| a.bindings)
                 && let Some(def_id) = poly_trait.trait_ref.path.res.opt_def_id()
-                && let Some((implied_by_span, implied_by_args, implied_by_bindings)) = implied_bounds
-                    .iter()
-                    .find_map(|&(span, implied_by_path, preds, implied_by_def_id)| {
-                        let implied_by_args = implied_by_path.args.map_or([].as_slice(), |a| a.args);
-                        let implied_by_bindings = implied_by_path.args.map_or([].as_slice(), |a| a.bindings);
+                && let Some((implied_by_span, implied_by_args, implied_by_bindings)) =
+                    implied_bounds
+                        .iter()
+                        .find_map(|&(span, implied_by_path, preds, implied_by_def_id)| {
+                            let implied_by_args = implied_by_path.args.map_or([].as_slice(), |a| a.args);
+                            let implied_by_bindings = implied_by_path.args.map_or([].as_slice(), |a| a.bindings);
 
-                        preds.iter().find_map(|(clause, _)| {
-                            if let ClauseKind::Trait(tr) = clause.kind().skip_binder()
-                                && tr.def_id() == def_id
-                                && is_same_generics(
-                                    cx.tcx,
-                                    tr.trait_ref.args,
-                                    implied_by_args,
-                                    implied_args,
-                                    implied_by_def_id,
-                                    def_id,
-                                )
-                            {
-                                Some((span, implied_by_args, implied_by_bindings))
-                            } else {
-                                None
-                            }
+                            preds.iter().find_map(|(clause, _)| {
+                                if let ClauseKind::Trait(tr) = clause.kind().skip_binder()
+                                    && tr.def_id() == def_id
+                                    && is_same_generics(
+                                        cx.tcx,
+                                        tr.trait_ref.args,
+                                        implied_by_args,
+                                        implied_args,
+                                        implied_by_def_id,
+                                        def_id,
+                                    )
+                                {
+                                    Some((span, implied_by_args, implied_by_bindings))
+                                } else {
+                                    None
+                                }
+                            })
                         })
-                    })
             {
                 emit_lint(
                     cx,
@@ -286,7 +292,7 @@ fn check(cx: &LateContext<'_>, decl: &FnDecl<'_>) {
                     implied_bindings,
                     implied_by_bindings,
                     implied_by_args,
-                    implied_by_span
+                    implied_by_span,
                 );
             }
         }

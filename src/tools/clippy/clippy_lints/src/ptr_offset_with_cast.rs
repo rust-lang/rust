@@ -17,7 +17,7 @@ declare_clippy_lint! {
     /// cast by using the `add` method instead.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let vec = vec![b'a', b'b', b'c'];
     /// let ptr = vec.as_ptr();
     /// let offset = 1_usize;
@@ -29,7 +29,7 @@ declare_clippy_lint! {
     ///
     /// Could be written:
     ///
-    /// ```rust
+    /// ```no_run
     /// let vec = vec![b'a', b'b', b'c'];
     /// let ptr = vec.as_ptr();
     /// let offset = 1_usize;

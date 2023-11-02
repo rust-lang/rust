@@ -37,7 +37,7 @@ declare_clippy_lint! {
     /// False-negatives: analysis performed by this lint is conservative and limited.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # use std::path::Path;
     /// # #[derive(Clone)]
     /// # struct Foo;
