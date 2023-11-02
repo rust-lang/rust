@@ -67,7 +67,7 @@ struct NeedsDropTypes<'tcx, F> {
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     // Whether to reveal coroutine witnesses, this is set
-    // to `false` unless we compute `needs_drop` for a generator witness.
+    // to `false` unless we compute `needs_drop` for a coroutine witness.
     reveal_coroutine_witnesses: bool,
     query_ty: Ty<'tcx>,
     seen_tys: FxHashSet<Ty<'tcx>>,
@@ -138,11 +138,11 @@ where
                     // computed on MIR, while this very method is used to build MIR.
                     // To avoid cycles, we consider that coroutines always require drop.
                     //
-                    // HACK: Because we erase regions contained in the generator witness, we
+                    // HACK: Because we erase regions contained in the coroutine witness, we
                     // have to conservatively assume that every region captured by the
-                    // generator has to be live when dropped. This results in a lot of
+                    // coroutine has to be live when dropped. This results in a lot of
                     // undesirable borrowck errors. During borrowck, we call `needs_drop`
-                    // for the generator witness and check whether any of the contained types
+                    // for the coroutine witness and check whether any of the contained types
                     // need to be dropped, and only require the captured types to be live
                     // if they do.
                     ty::Coroutine(_, args, _) => {
