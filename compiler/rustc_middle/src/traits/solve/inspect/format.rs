@@ -74,13 +74,10 @@ impl<'a, 'b> ProofTreeFormatter<'a, 'b> {
             CanonicalGoalEvaluationKind::Overflow => {
                 writeln!(self.f, "OVERFLOW: {:?}", eval.result)
             }
-            CanonicalGoalEvaluationKind::CacheHit(CacheHit::Global) => {
-                writeln!(self.f, "GLOBAL CACHE HIT: {:?}", eval.result)
+            CanonicalGoalEvaluationKind::CycleInStack => {
+                writeln!(self.f, "CYCLE IN STACK: {:?}", eval.result)
             }
-            CanonicalGoalEvaluationKind::CacheHit(CacheHit::Provisional) => {
-                writeln!(self.f, "PROVISIONAL CACHE HIT: {:?}", eval.result)
-            }
-            CanonicalGoalEvaluationKind::Uncached { revisions } => {
+            CanonicalGoalEvaluationKind::Evaluation { revisions } => {
                 for (n, step) in revisions.iter().enumerate() {
                     writeln!(self.f, "REVISION {n}")?;
                     self.nested(|this| this.format_evaluation_step(step))?;
