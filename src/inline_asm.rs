@@ -13,7 +13,7 @@ use crate::prelude::*;
 enum CInlineAsmOperand<'tcx> {
     In {
         reg: InlineAsmRegOrRegClass,
-        value: CValue<'tcx>,
+        value: Value,
     },
     Out {
         reg: InlineAsmRegOrRegClass,
@@ -23,7 +23,7 @@ enum CInlineAsmOperand<'tcx> {
     InOut {
         reg: InlineAsmRegOrRegClass,
         _late: bool,
-        in_value: CValue<'tcx>,
+        in_value: Value,
         out_place: Option<CPlace<'tcx>>,
     },
     Const {
@@ -57,9 +57,10 @@ pub(crate) fn codegen_inline_asm<'tcx>(
     let operands = operands
         .into_iter()
         .map(|operand| match *operand {
-            InlineAsmOperand::In { reg, ref value } => {
-                CInlineAsmOperand::In { reg, value: crate::base::codegen_operand(fx, value) }
-            }
+            InlineAsmOperand::In { reg, ref value } => CInlineAsmOperand::In {
+                reg,
+                value: crate::base::codegen_operand(fx, value).load_scalar(fx),
+            },
             InlineAsmOperand::Out { reg, late, ref place } => CInlineAsmOperand::Out {
                 reg,
                 late,
@@ -69,7 +70,7 @@ pub(crate) fn codegen_inline_asm<'tcx>(
                 CInlineAsmOperand::InOut {
                     reg,
                     _late: late,
-                    in_value: crate::base::codegen_operand(fx, in_value),
+                    in_value: crate::base::codegen_operand(fx, in_value).load_scalar(fx),
                     out_place: out_place.map(|place| crate::base::codegen_place(fx, place)),
                 }
             }
@@ -167,7 +168,7 @@ pub(crate) fn codegen_inline_asm<'tcx>(
     for (i, operand) in operands.iter().enumerate() {
         match operand {
             CInlineAsmOperand::In { reg: _, value } => {
-                inputs.push((asm_gen.stack_slots_input[i].unwrap(), value.load_scalar(fx)));
+                inputs.push((asm_gen.stack_slots_input[i].unwrap(), *value));
             }
             CInlineAsmOperand::Out { reg: _, late: _, place } => {
                 if let Some(place) = place {
@@ -175,7 +176,7 @@ pub(crate) fn codegen_inline_asm<'tcx>(
                 }
             }
             CInlineAsmOperand::InOut { reg: _, _late: _, in_value, out_place } => {
-                inputs.push((asm_gen.stack_slots_input[i].unwrap(), in_value.load_scalar(fx)));
+                inputs.push((asm_gen.stack_slots_input[i].unwrap(), *in_value));
                 if let Some(out_place) = out_place {
                     outputs.push((asm_gen.stack_slots_output[i].unwrap(), *out_place));
                 }
