@@ -1,7 +1,6 @@
 use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_context;
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Expr, ExprKind};
@@ -37,7 +36,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_expr: &Expr<'_>,
     {
         let func = match rpk {
             RawPartsKind::Immutable => "from_raw_parts",
-            RawPartsKind::Mutable => "from_raw_parts_mut"
+            RawPartsKind::Mutable => "from_raw_parts_mut",
         };
         let span = expr.span;
         let mut applicability = Applicability::MachineApplicable;
@@ -50,7 +49,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_expr: &Expr<'_>,
             &format!("casting the result of `{func}` to {cast_to}"),
             "replace with",
             format!("core::ptr::slice_{func}({ptr}, {len})"),
-            applicability
+            applicability,
         );
     }
 }

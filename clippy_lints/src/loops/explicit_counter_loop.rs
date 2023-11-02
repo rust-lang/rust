@@ -2,7 +2,6 @@ use super::{make_iterator_snippet, IncrementVisitor, InitializeVisitor, EXPLICIT
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::{get_enclosing_block, is_integer_const};
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_block, walk_expr};
 use rustc_hir::{Expr, Pat};
@@ -53,7 +52,7 @@ pub(super) fn check<'tcx>(
                             applicability,
                         );
                         return;
-                    }
+                    },
                     Some(ty::Int(int_ty)) => int_ty.name_str(),
                     Some(ty::Uint(uint_ty)) => uint_ty.name_str(),
                     _ => return,

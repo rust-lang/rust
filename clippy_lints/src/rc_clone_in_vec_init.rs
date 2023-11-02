@@ -122,13 +122,13 @@ fn ref_init(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<(Symbol, Span)> {
         && let ExprKind::Path(ref func_path @ QPath::TypeRelative(ty, _)) = func.kind
         && let TyKind::Path(ref ty_path) = ty.kind
         && let Some(def_id) = cx.qpath_res(ty_path, ty.hir_id).opt_def_id()
-
     {
         if last_path_segment(func_path).ident.name == sym::new
             && let Some(symbol) = cx
                 .tcx
                 .get_diagnostic_name(def_id)
-                .filter(|symbol| symbol == &sym::Arc || symbol == &sym::Rc) {
+                .filter(|symbol| symbol == &sym::Arc || symbol == &sym::Rc)
+        {
             return Some((symbol, func.span));
         }
 

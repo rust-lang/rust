@@ -4,7 +4,6 @@ use clippy_utils::ty::implements_trait;
 use clippy_utils::visitors::{for_each_expr, Descend};
 use clippy_utils::{get_parent_expr, higher};
 use core::ops::ControlFlow;
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{BlockCheckMode, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};

@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::method_chain_args;
 use clippy_utils::source::snippet_with_applicability;
-use if_chain::if_chain;
 use rustc_ast::ast;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -26,10 +25,12 @@ pub(super) fn check(
             info.expr.span,
             &format!("you should use the `{suggest}` method"),
             "like this",
-            format!("{}{}.{suggest}('{}')",
-                    if info.eq { "" } else { "!" },
-                    snippet_with_applicability(cx, args[0].0.span, "..", &mut applicability),
-                    c.escape_default()),
+            format!(
+                "{}{}.{suggest}('{}')",
+                if info.eq { "" } else { "!" },
+                snippet_with_applicability(cx, args[0].0.span, "..", &mut applicability),
+                c.escape_default()
+            ),
             applicability,
         );
 

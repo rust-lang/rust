@@ -4,7 +4,6 @@ use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::{in_constant, is_integer_literal, SpanlessEq};
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOp, BinOpKind, Expr, ExprKind, QPath, TyKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -58,7 +57,6 @@ impl<'tcx> LateLintPass<'tcx> for CheckedConversions {
         let result = if !in_constant(cx, item.hir_id)
             && !in_external_macro(cx.sess(), item.span)
             && let ExprKind::Binary(op, left, right) = &item.kind
-
         {
             match op.node {
                 BinOpKind::Ge | BinOpKind::Le => single_check(item),
@@ -192,12 +190,11 @@ impl ConversionType {
 /// Check for `expr <= (to_type::MAX as from_type)`
 fn check_upper_bound<'tcx>(expr: &'tcx Expr<'tcx>) -> Option<Conversion<'tcx>> {
     if let ExprKind::Binary(ref op, left, right) = &expr.kind
-         && let Some((candidate, check)) = normalize_le_ge(op, left, right)
-         && let Some((from, to)) = get_types_from_cast(check, INTS, "max_value", "MAX")
-
-     {
-         Conversion::try_new(candidate, from, to)
-     } else {
+        && let Some((candidate, check)) = normalize_le_ge(op, left, right)
+        && let Some((from, to)) = get_types_from_cast(check, INTS, "max_value", "MAX")
+    {
+        Conversion::try_new(candidate, from, to)
+    } else {
         None
     }
 }
@@ -243,7 +240,6 @@ fn get_types_from_cast<'a>(
         // to_type::max_value(), from_type
         && let TyKind::Path(ref from_type_path) = &from_type.kind
         && let Some(from_sym) = int_ty_to_sym(from_type_path)
-
     {
         Some((limit, from_sym))
     } else {
@@ -257,7 +253,6 @@ fn get_types_from_cast<'a>(
             // `from_type::from`
             && let ExprKind::Path(ref path) = &from_func.kind
             && let Some(from_sym) = get_implementing_type(path, INTS, "from")
-
         {
             Some((limit, from_sym))
         } else {

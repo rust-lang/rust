@@ -7,7 +7,6 @@ use std::ptr;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::macros::macro_backtrace;
 use clippy_utils::{def_path_def_ids, in_constant};
-use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -414,12 +413,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst {
                         && !self.is_ty_ignored(ty) && Self::is_unfrozen(cx, normalized)
                         && self.is_value_unfrozen_poly(cx, *body_id, normalized)
                     {
-                        lint(
-                           cx,
-                           Source::Assoc {
-                               item: impl_item.span,
-                            },
-                        );
+                        lint(cx, Source::Assoc { item: impl_item.span });
                     }
                 },
                 ItemKind::Impl(Impl { of_trait: None, .. }) => {

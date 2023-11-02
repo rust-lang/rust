@@ -2,7 +2,6 @@ use clippy_utils::ast_utils::{eq_id, is_useless_with_eq_exprs, IdentIter};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use core::ops::{Add, AddAssign};
-use if_chain::if_chain;
 use rustc_ast::ast::{BinOpKind, Expr, ExprKind, StmtKind};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
@@ -168,19 +167,9 @@ fn check_binops(cx: &EarlyContext<'_>, binops: &[&BinaryOp<'_>]) {
                         return;
                     };
 
-                    if let Some(sugg) = ident_swap_sugg(
-                        cx,
-                        &paired_identifiers,
-                        binop,
-                        changed_loc,
-                        &mut applicability,
-                    ) {
-                        emit_suggestion(
-                            cx,
-                            binop.span,
-                            sugg,
-                            applicability,
-                        );
+                    if let Some(sugg) = ident_swap_sugg(cx, &paired_identifiers, binop, changed_loc, &mut applicability)
+                    {
+                        emit_suggestion(cx, binop.span, sugg, applicability);
                     }
                 }
             },
@@ -210,16 +199,10 @@ fn attempt_to_emit_no_difference_lint(
         let old_right_ident = get_ident(binop.right, expected_loc);
 
         for b in skip_index(binops.iter(), i) {
-            if let (Some(old_ident), Some(new_ident)) =
-                (old_left_ident, get_ident(b.left, expected_loc))
+            if let (Some(old_ident), Some(new_ident)) = (old_left_ident, get_ident(b.left, expected_loc))
                 && old_ident != new_ident
-                && let Some(sugg) = suggestion_with_swapped_ident(
-                    cx,
-                    binop.left,
-                    expected_loc,
-                    new_ident,
-                    &mut applicability,
-                )
+                && let Some(sugg) =
+                    suggestion_with_swapped_ident(cx, binop.left, expected_loc, new_ident, &mut applicability)
             {
                 emit_suggestion(
                     cx,
@@ -230,16 +213,10 @@ fn attempt_to_emit_no_difference_lint(
                 return;
             }
 
-            if let (Some(old_ident), Some(new_ident)) =
-                    (old_right_ident, get_ident(b.right, expected_loc))
+            if let (Some(old_ident), Some(new_ident)) = (old_right_ident, get_ident(b.right, expected_loc))
                 && old_ident != new_ident
-                && let Some(sugg) = suggestion_with_swapped_ident(
-                    cx,
-                    binop.right,
-                    expected_loc,
-                    new_ident,
-                    &mut applicability,
-                )
+                && let Some(sugg) =
+                    suggestion_with_swapped_ident(cx, binop.right, expected_loc, new_ident, &mut applicability)
             {
                 emit_suggestion(
                     cx,

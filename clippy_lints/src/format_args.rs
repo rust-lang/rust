@@ -8,7 +8,6 @@ use clippy_utils::macros::{
 };
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::{implements_trait, is_type_lang_item};
-use if_chain::if_chain;
 use itertools::Itertools;
 use rustc_ast::{
     FormatArgPosition, FormatArgPositionKind, FormatArgsPiece, FormatArgumentKind, FormatCount, FormatOptions,
@@ -422,9 +421,7 @@ fn check_to_string_in_format_args(cx: &LateContext<'_>, name: Symbol, value: &Ex
                 cx,
                 TO_STRING_IN_FORMAT_ARGS,
                 to_string_span.with_lo(receiver.span.hi()),
-                &format!(
-                    "`to_string` applied to a type that implements `Display` in `{name}!` args"
-                ),
+                &format!("`to_string` applied to a type that implements `Display` in `{name}!` args"),
                 "remove this",
                 String::new(),
                 Applicability::MachineApplicable,
@@ -434,9 +431,7 @@ fn check_to_string_in_format_args(cx: &LateContext<'_>, name: Symbol, value: &Ex
                 cx,
                 TO_STRING_IN_FORMAT_ARGS,
                 value.span,
-                &format!(
-                    "`to_string` applied to a type that implements `Display` in `{name}!` args"
-                ),
+                &format!("`to_string` applied to a type that implements `Display` in `{name}!` args"),
                 "use this",
                 format!(
                     "{}{:*>n_needed_derefs$}{receiver_snippet}",

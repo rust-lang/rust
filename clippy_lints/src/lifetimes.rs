@@ -313,7 +313,6 @@ fn explicit_self_type<'tcx>(cx: &LateContext<'tcx>, func: &FnDecl<'tcx>, ident: 
     if let Some(ident) = ident
         && ident.name == kw::SelfLower
         && !func.implicit_self.has_implicit_self()
-
         && let Some(self_ty) = func.inputs.first()
     {
         let mut visitor = RefVisitor::new(cx);

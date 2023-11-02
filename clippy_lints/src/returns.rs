@@ -4,7 +4,6 @@ use clippy_utils::sugg::has_enclosing_paren;
 use clippy_utils::visitors::{for_each_expr_with_closures, Descend};
 use clippy_utils::{fn_def_id, is_from_proc_macro, path_to_local_id, span_find_starting_semi};
 use core::ops::ControlFlow;
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
@@ -220,10 +219,7 @@ impl<'tcx> LateLintPass<'tcx> for Return {
                         }
                         err.multipart_suggestion(
                             "return the expression directly",
-                            vec![
-                                (local.span, String::new()),
-                                (retexpr.span, snippet),
-                            ],
+                            vec![(local.span, String::new()), (retexpr.span, snippet)],
                             Applicability::MachineApplicable,
                         );
                     } else {

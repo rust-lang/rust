@@ -4,7 +4,6 @@ use clippy_utils::diagnostics::{multispan_sugg, span_lint_and_then};
 use clippy_utils::source::snippet;
 use clippy_utils::usage::mutated_variables;
 use clippy_utils::{eq_expr_value, higher, match_def_path, paths};
-use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_hir::def::Res;
 use rustc_hir::intravisit::{walk_expr, Visitor};
@@ -97,25 +96,35 @@ impl<'tcx> LateLintPass<'tcx> for ManualStrip {
 
             let strippings = find_stripping(cx, strip_kind, target_res, pattern, then);
             if !strippings.is_empty() {
-
                 let kind_word = match strip_kind {
                     StripKind::Prefix => "prefix",
                     StripKind::Suffix => "suffix",
                 };
 
                 let test_span = expr.span.until(then.span);
-                span_lint_and_then(cx, MANUAL_STRIP, strippings[0], &format!("stripping a {kind_word} manually"), |diag| {
-                    diag.span_note(test_span, format!("the {kind_word} was tested here"));
-                    multispan_sugg(
-                        diag,
-                        &format!("try using the `strip_{kind_word}` method"),
-                        vec![(test_span,
-                              format!("if let Some(<stripped>) = {}.strip_{kind_word}({}) ",
-                                      snippet(cx, target_arg.span, ".."),
-                                      snippet(cx, pattern.span, "..")))]
-                        .into_iter().chain(strippings.into_iter().map(|span| (span, "<stripped>".into()))),
-                    );
-                });
+                span_lint_and_then(
+                    cx,
+                    MANUAL_STRIP,
+                    strippings[0],
+                    &format!("stripping a {kind_word} manually"),
+                    |diag| {
+                        diag.span_note(test_span, format!("the {kind_word} was tested here"));
+                        multispan_sugg(
+                            diag,
+                            &format!("try using the `strip_{kind_word}` method"),
+                            vec![(
+                                test_span,
+                                format!(
+                                    "if let Some(<stripped>) = {}.strip_{kind_word}({}) ",
+                                    snippet(cx, target_arg.span, ".."),
+                                    snippet(cx, pattern.span, "..")
+                                ),
+                            )]
+                            .into_iter()
+                            .chain(strippings.into_iter().map(|span| (span, "<stripped>".into()))),
+                        );
+                    },
+                );
             }
         }
     }
@@ -210,7 +219,13 @@ fn find_stripping<'tcx>(
                         }
                     },
                     (StripKind::Suffix, None, Some(end)) => {
-                        if let ExprKind::Binary(Spanned { node: BinOpKind::Sub, .. }, left, right) = end.kind
+                        if let ExprKind::Binary(
+                            Spanned {
+                                node: BinOpKind::Sub, ..
+                            },
+                            left,
+                            right,
+                        ) = end.kind
                             && let Some(left_arg) = len_arg(self.cx, left)
                             && let ExprKind::Path(left_path) = &left_arg.kind
                             && self.cx.qpath_res(left_path, left_arg.hir_id) == self.target
@@ -220,7 +235,7 @@ fn find_stripping<'tcx>(
                             return;
                         }
                     },
-                    _ => {}
+                    _ => {},
                 }
             }
 

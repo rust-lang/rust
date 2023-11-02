@@ -21,11 +21,9 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
             cx,
             BOX_COLLECTION,
             hir_ty.span,
-            &format!(
-                "you seem to be trying to use `Box<{box_content}>`. Consider using just `{box_content}`"),
+            &format!("you seem to be trying to use `Box<{box_content}>`. Consider using just `{box_content}`"),
             None,
-            &format!(
-                "`{box_content}` is already on the heap, `Box<{box_content}>` makes an extra allocation")
+            &format!("`{box_content}` is already on the heap, `Box<{box_content}>` makes an extra allocation"),
         );
         true
     } else {

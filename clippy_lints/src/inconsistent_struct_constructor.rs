@@ -1,6 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
-use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
 use rustc_hir::{self as hir, ExprKind};
@@ -94,14 +93,15 @@ impl<'tcx> LateLintPass<'tcx> for InconsistentStructConstructor {
             fields_snippet.push_str(&last_ident.to_string());
 
             let base_snippet = if let Some(base) = base {
-                    format!(", ..{}", snippet(cx, base.span, ".."))
-                } else {
-                    String::new()
-                };
+                format!(", ..{}", snippet(cx, base.span, ".."))
+            } else {
+                String::new()
+            };
 
-            let sugg = format!("{} {{ {fields_snippet}{base_snippet} }}",
+            let sugg = format!(
+                "{} {{ {fields_snippet}{base_snippet} }}",
                 snippet(cx, qpath.span(), ".."),
-                );
+            );
 
             span_lint_and_sugg(
                 cx,
@@ -111,7 +111,7 @@ impl<'tcx> LateLintPass<'tcx> for InconsistentStructConstructor {
                 "try",
                 sugg,
                 Applicability::MachineApplicable,
-            )
+            );
         }
     }
 }

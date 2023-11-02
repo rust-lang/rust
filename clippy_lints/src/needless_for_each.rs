@@ -6,8 +6,6 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 use rustc_span::{sym, Symbol};
 
-use if_chain::if_chain;
-
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_trait_method;
 use clippy_utils::source::snippet_with_applicability;
@@ -108,7 +106,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessForEach {
                 if let Some(ret_suggs) = ret_suggs {
                     diag.multipart_suggestion("...and replace `return` with `continue`", ret_suggs, applicability);
                 }
-            })
+            });
         }
     }
 }

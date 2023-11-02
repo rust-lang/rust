@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::{is_trait_method, path_to_local_id, peel_blocks, strip_pat_refs};
-use if_chain::if_chain;
 use rustc_ast::ast;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -77,7 +76,6 @@ fn check_fold_with_op(
 
         && path_to_local_id(left_expr, first_arg_id)
         && (replacement.has_args || path_to_local_id(right_expr, second_arg_id))
-
     {
         let mut applicability = Applicability::MachineApplicable;
 
@@ -94,10 +92,7 @@ fn check_fold_with_op(
                 r = snippet_with_applicability(cx, right_expr.span, "EXPR", &mut applicability),
             )
         } else {
-            format!(
-                "{method}{turbofish}()",
-                method = replacement.method_name,
-            )
+            format!("{method}{turbofish}()", method = replacement.method_name,)
         };
 
         span_lint_and_sugg(

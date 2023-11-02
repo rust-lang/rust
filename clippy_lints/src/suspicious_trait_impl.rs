@@ -2,7 +2,6 @@ use clippy_utils::diagnostics::span_lint;
 use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{binop_traits, trait_ref_of_method, BINOP_TRAITS, OP_ASSIGN_TRAITS};
 use core::ops::ControlFlow;
-use if_chain::if_chain;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -84,7 +83,11 @@ impl<'tcx> LateLintPass<'tcx> for SuspiciousImpl {
                 cx,
                 lint,
                 binop.span,
-                &format!("suspicious use of `{}` in `{}` impl", binop.node.as_str(), cx.tcx.item_name(trait_id)),
+                &format!(
+                    "suspicious use of `{}` in `{}` impl",
+                    binop.node.as_str(),
+                    cx.tcx.item_name(trait_id)
+                ),
             );
         }
     }

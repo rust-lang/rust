@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::is_trait_method;
 use clippy_utils::ty::has_iter_method;
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
@@ -28,9 +27,7 @@ pub(super) fn check(
             cx,
             INTO_ITER_ON_REF,
             method_span,
-            &format!(
-                "this `.into_iter()` call is equivalent to `.{method_name}()` and will not consume the `{kind}`",
-            ),
+            &format!("this `.into_iter()` call is equivalent to `.{method_name}()` and will not consume the `{kind}`",),
             "call directly",
             method_name.to_string(),
             Applicability::MachineApplicable,

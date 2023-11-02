@@ -2,7 +2,6 @@ use clippy_utils::diagnostics::{multispan_sugg, span_lint_and_then};
 use clippy_utils::get_enclosing_block;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::{implements_trait, is_copy};
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::DefId;
@@ -190,11 +189,9 @@ fn in_impl<'tcx>(
         && trait_id == bin_op
         && let Some(generic_args) = seg.args
         && let Some(GenericArg::Type(other_ty)) = generic_args.args.last()
-
     {
         Some((item.self_ty, other_ty))
-    }
-    else {
+    } else {
         None
     }
 }
@@ -206,11 +203,9 @@ fn are_equal(cx: &LateContext<'_>, middle_ty: Ty<'_>, hir_ty: &rustc_hir::Ty<'_>
         && let middle_ty_id = item.owner_id.to_def_id()
         && let TyKind::Path(QPath::Resolved(_, path)) = hir_ty.kind
         && let Res::Def(_, hir_ty_id) = path.res
-
     {
         hir_ty_id == middle_ty_id
-    }
-    else {
+    } else {
         false
     }
 }

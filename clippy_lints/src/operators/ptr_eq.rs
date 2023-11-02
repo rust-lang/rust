@@ -1,6 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_opt;
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::LateContext;
@@ -35,7 +34,7 @@ pub(super) fn check<'tcx>(
                 "try",
                 format!("std::ptr::eq({left_snip}, {right_snip})"),
                 Applicability::MachineApplicable,
-                );
+            );
         }
     }
 }

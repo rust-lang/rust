@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_note, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::ty::{implements_trait, implements_trait_with_env, is_copy};
 use clippy_utils::{is_lint_allowed, match_def_path, paths};
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{walk_expr, walk_fn, walk_item, FnKind, Visitor};
@@ -258,12 +257,9 @@ fn check_hash_peq<'tcx>(
                     |diag| {
                         if let Some(local_def_id) = impl_id.as_local() {
                             let hir_id = cx.tcx.hir().local_def_id_to_hir_id(local_def_id);
-                            diag.span_note(
-                                cx.tcx.hir().span(hir_id),
-                                "`PartialEq` implemented here"
-                            );
+                            diag.span_note(cx.tcx.hir().span(hir_id), "`PartialEq` implemented here");
                         }
-                    }
+                    },
                 );
             }
         });
@@ -302,21 +298,12 @@ fn check_ord_partial_ord<'tcx>(
                     "you are deriving `Ord` but have implemented `PartialOrd` explicitly"
                 };
 
-                span_lint_and_then(
-                    cx,
-                    DERIVE_ORD_XOR_PARTIAL_ORD,
-                    span,
-                    mess,
-                    |diag| {
-                        if let Some(local_def_id) = impl_id.as_local() {
-                            let hir_id = cx.tcx.hir().local_def_id_to_hir_id(local_def_id);
-                            diag.span_note(
-                                cx.tcx.hir().span(hir_id),
-                                "`PartialOrd` implemented here"
-                            );
-                        }
+                span_lint_and_then(cx, DERIVE_ORD_XOR_PARTIAL_ORD, span, mess, |diag| {
+                    if let Some(local_def_id) = impl_id.as_local() {
+                        let hir_id = cx.tcx.hir().local_def_id_to_hir_id(local_def_id);
+                        diag.span_note(cx.tcx.hir().span(hir_id), "`PartialOrd` implemented here");
                     }
-                );
+                });
             }
         });
     }
@@ -397,7 +384,9 @@ fn check_unsafe_derive_deserialize<'tcx>(
         && let Some(local_def_id) = def.did().as_local()
         && let adt_hir_id = cx.tcx.hir().local_def_id_to_hir_id(local_def_id)
         && !is_lint_allowed(cx, UNSAFE_DERIVE_DESERIALIZE, adt_hir_id)
-        && cx.tcx.inherent_impls(def.did())
+        && cx
+            .tcx
+            .inherent_impls(def.did())
             .iter()
             .map(|imp_did| cx.tcx.hir().expect_item(imp_did.expect_local()))
             .any(|imp| has_unsafe(cx, imp))
@@ -408,7 +397,7 @@ fn check_unsafe_derive_deserialize<'tcx>(
             item.span,
             "you are deriving `serde::Deserialize` on a type that has methods using `unsafe`",
             None,
-            "consider implementing `serde::Deserialize` manually. See https://serde.rs/impl-deserialize.html"
+            "consider implementing `serde::Deserialize` manually. See https://serde.rs/impl-deserialize.html",
         );
     }
 }
@@ -477,7 +466,7 @@ fn check_partial_eq_without_eq<'tcx>(cx: &LateContext<'tcx>, span: Span, trait_r
             "consider deriving `Eq` as well",
             "PartialEq, Eq".to_string(),
             Applicability::MachineApplicable,
-        )
+        );
     }
 }
 

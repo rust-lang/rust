@@ -3,7 +3,6 @@ use clippy_utils::source::{snippet, snippet_with_applicability, snippet_with_con
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{is_copy, is_type_diagnostic_item, same_type_and_consts};
 use clippy_utils::{get_parent_expr, is_trait_method, is_ty_alias, path_to_local};
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
@@ -311,14 +310,14 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                         );
                     }
                 }
-                if is_trait_method(cx, e, sym::TryInto) && name.ident.name == sym::try_into
+                if is_trait_method(cx, e, sym::TryInto)
+                    && name.ident.name == sym::try_into
                     && let a = cx.typeck_results().expr_ty(e)
                     && let b = cx.typeck_results().expr_ty(recv)
                     && is_type_diagnostic_item(cx, a, sym::Result)
                     && let ty::Adt(_, args) = a.kind()
                     && let Some(a_type) = args.types().next()
                     && same_type_and_consts(a_type, b)
-
                 {
                     span_lint_and_help(
                         cx,
@@ -343,7 +342,6 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                         && let ty::Adt(_, args) = a.kind()
                         && let Some(a_type) = args.types().next()
                         && same_type_and_consts(a_type, b)
-
                     {
                         let hint = format!("consider removing `{}()`", snippet(cx, path.span, "TryFrom::try_from"));
                         span_lint_and_help(
@@ -356,14 +354,10 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                         );
                     }
 
-                    if cx.tcx.is_diagnostic_item(sym::from_fn, def_id)
-                        && same_type_and_consts(a, b)
-
-                    {
+                    if cx.tcx.is_diagnostic_item(sym::from_fn, def_id) && same_type_and_consts(a, b) {
                         let mut app = Applicability::MachineApplicable;
                         let sugg = Sugg::hir_with_context(cx, arg, e.span.ctxt(), "<expr>", &mut app).maybe_par();
-                        let sugg_msg =
-                            format!("consider removing `{}()`", snippet(cx, path.span, "From::from"));
+                        let sugg_msg = format!("consider removing `{}()`", snippet(cx, path.span, "From::from"));
                         span_lint_and_sugg(
                             cx,
                             USELESS_CONVERSION,

@@ -1,6 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::numeric_literal;
-use if_chain::if_chain;
 use rustc_ast::ast::{self, LitFloatType, LitKind};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -79,7 +78,7 @@ impl<'tcx> LateLintPass<'tcx> for FloatLiteral {
             let type_suffix = match lit_float_ty {
                 LitFloatType::Suffixed(ast::FloatTy::F32) => Some("f32"),
                 LitFloatType::Suffixed(ast::FloatTy::F64) => Some("f64"),
-                LitFloatType::Unsuffixed => None
+                LitFloatType::Unsuffixed => None,
             };
             let (is_whole, is_inf, mut float_str) = match fty {
                 FloatTy::F32 => {
@@ -89,7 +88,6 @@ impl<'tcx> LateLintPass<'tcx> for FloatLiteral {
                 },
                 FloatTy::F64 => {
                     let value = sym_str.parse::<f64>().unwrap();
-
 
                     (value.fract() == 0.0, value.is_infinite(), formatter.format(value))
                 },

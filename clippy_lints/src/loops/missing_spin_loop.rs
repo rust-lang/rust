@@ -31,7 +31,12 @@ fn unpack_cond<'tcx>(cond: &'tcx Expr<'tcx>) -> &'tcx Expr<'tcx> {
 }
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, cond: &'tcx Expr<'_>, body: &'tcx Expr<'_>) {
-    if let ExprKind::Block(Block { stmts: [], expr: None, ..}, _) = body.kind
+    if let ExprKind::Block(
+        Block {
+            stmts: [], expr: None, ..
+        },
+        _,
+    ) = body.kind
         && let ExprKind::MethodCall(method, callee, ..) = unpack_cond(cond).kind
         && [sym::load, sym::compare_exchange, sym::compare_exchange_weak].contains(&method.ident.name)
         && let ty::Adt(def, _args) = cx.typeck_results().expr_ty(callee).kind()
@@ -47,8 +52,9 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, cond: &'tcx Expr<'_>, body: &'
                 "{ core::hint::spin_loop() }"
             } else {
                 "{ std::hint::spin_loop() }"
-            }).into(),
-            Applicability::MachineApplicable
+            })
+            .into(),
+            Applicability::MachineApplicable,
         );
     }
 }

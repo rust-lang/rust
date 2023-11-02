@@ -3,7 +3,6 @@ use super::MANUAL_FLATTEN;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::visitors::is_local_used;
 use clippy_utils::{higher, path_to_local_id, peel_blocks_with_stmt};
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Expr, Pat, PatKind};
@@ -38,7 +37,8 @@ pub(super) fn check<'tcx>(
     {
         let if_let_type = if some_ctor { "Some" } else { "Ok" };
         // Prepare the error message
-        let msg = format!("unnecessary `if let` since only the `{if_let_type}` variant of the iterator element is used");
+        let msg =
+            format!("unnecessary `if let` since only the `{if_let_type}` variant of the iterator element is used");
 
         // Prepare the help message
         let mut applicability = Applicability::MaybeIncorrect;
@@ -46,39 +46,25 @@ pub(super) fn check<'tcx>(
         let copied = match cx.typeck_results().expr_ty(let_expr).kind() {
             ty::Ref(_, inner, _) => match inner.kind() {
                 ty::Ref(..) => ".copied()",
-                _ => ""
-            }
-            _ => ""
+                _ => "",
+            },
+            _ => "",
         };
 
         let sugg = format!("{arg_snippet}{copied}.flatten()");
 
-        // If suggestion is not a one-liner, it won't be shown inline within the error message. In that case,
-        // it will be shown in the extra `help` message at the end, which is why the first `help_msg` needs
-        // to refer to the correct relative position of the suggestion.
+        // If suggestion is not a one-liner, it won't be shown inline within the error message. In that
+        // case, it will be shown in the extra `help` message at the end, which is why the first
+        // `help_msg` needs to refer to the correct relative position of the suggestion.
         let help_msg = if sugg.contains('\n') {
             "remove the `if let` statement in the for loop and then..."
         } else {
             "...and remove the `if let` statement in the for loop"
         };
 
-        span_lint_and_then(
-            cx,
-            MANUAL_FLATTEN,
-            span,
-            &msg,
-            |diag| {
-                diag.span_suggestion(
-                    arg.span,
-                    "try",
-                    sugg,
-                    applicability,
-                );
-                diag.span_help(
-                    inner_expr.span,
-                    help_msg,
-                );
-            }
-        );
+        span_lint_and_then(cx, MANUAL_FLATTEN, span, &msg, |diag| {
+            diag.span_suggestion(arg.span, "try", sugg, applicability);
+            diag.span_help(inner_expr.span, help_msg);
+        });
     }
 }

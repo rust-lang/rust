@@ -2,7 +2,6 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::path_to_local_id;
 use clippy_utils::source::snippet;
 use clippy_utils::visitors::is_local_used;
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::{BindingAnnotation, Mutability};
@@ -65,7 +64,14 @@ impl<'tcx> LateLintPass<'tcx> for LetIfSeq {
                 && let hir::StmtKind::Local(local) = stmt.kind
                 && let hir::PatKind::Binding(mode, canonical_id, ident, None) = local.pat.kind
                 && let hir::StmtKind::Expr(if_) = expr.kind
-                && let hir::ExprKind::If(hir::Expr { kind: hir::ExprKind::DropTemps(cond), ..}, then, else_) = if_.kind
+                && let hir::ExprKind::If(
+                    hir::Expr {
+                        kind: hir::ExprKind::DropTemps(cond),
+                        ..
+                    },
+                    then,
+                    else_,
+                ) = if_.kind
                 && !is_local_used(cx, *cond, canonical_id)
                 && let hir::ExprKind::Block(then, _) = then.kind
                 && let Some(value) = check_assign(cx, canonical_id, then)
@@ -73,11 +79,13 @@ impl<'tcx> LateLintPass<'tcx> for LetIfSeq {
             {
                 let span = stmt.span.to(if_.span);
 
-                let has_interior_mutability = !cx.typeck_results().node_type(canonical_id).is_freeze(
-                    cx.tcx,
-                    cx.param_env,
-                );
-                if has_interior_mutability { return; }
+                let has_interior_mutability = !cx
+                    .typeck_results()
+                    .node_type(canonical_id)
+                    .is_freeze(cx.tcx, cx.param_env);
+                if has_interior_mutability {
+                    return;
+                }
 
                 let (default_multi_stmts, default) = if let Some(else_) = else_ {
                     if let hir::ExprKind::Block(else_, _) = else_.kind {
@@ -114,21 +122,23 @@ impl<'tcx> LateLintPass<'tcx> for LetIfSeq {
                     value=snippet(cx, value.span, "<value>"),
                     default=snippet(cx, default.span, "<default>"),
                 );
-                span_lint_and_then(cx,
-                                   USELESS_LET_IF_SEQ,
-                                   span,
-                                   "`if _ { .. } else { .. }` is an expression",
-                                   |diag| {
-                                       diag.span_suggestion(
-                                            span,
-                                            "it is more idiomatic to write",
-                                            sug,
-                                            Applicability::HasPlaceholders,
-                                        );
-                                       if !mutability.is_empty() {
-                                           diag.note("you might not need `mut` at all");
-                                       }
-                                   });
+                span_lint_and_then(
+                    cx,
+                    USELESS_LET_IF_SEQ,
+                    span,
+                    "`if _ { .. } else { .. }` is an expression",
+                    |diag| {
+                        diag.span_suggestion(
+                            span,
+                            "it is more idiomatic to write",
+                            sug,
+                            Applicability::HasPlaceholders,
+                        );
+                        if !mutability.is_empty() {
+                            diag.note("you might not need `mut` at all");
+                        }
+                    },
+                );
             }
         }
     }
@@ -145,7 +155,12 @@ fn check_assign<'tcx>(
         && let hir::ExprKind::Assign(var, value, _) = expr.kind
         && path_to_local_id(var, decl)
     {
-        if block.stmts.iter().take(block.stmts.len()-1).any(|stmt| is_local_used(cx, stmt, decl)) {
+        if block
+            .stmts
+            .iter()
+            .take(block.stmts.len() - 1)
+            .any(|stmt| is_local_used(cx, stmt, decl))
+        {
             None
         } else {
             Some(value)

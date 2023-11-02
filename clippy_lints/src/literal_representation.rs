@@ -4,7 +4,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::numeric_literal::{NumericLiteral, Radix};
 use clippy_utils::source::snippet_opt;
-use if_chain::if_chain;
 use rustc_ast::ast::{Expr, ExprKind, LitKind};
 use rustc_ast::token;
 use rustc_errors::Applicability;
@@ -268,18 +267,17 @@ impl LiteralDigitGrouping {
             }
 
             let result = (|| {
-
                 let integral_group_size = Self::get_group_size(num_lit.integer.split('_'), num_lit.radix, true)?;
                 if let Some(fraction) = num_lit.fraction {
-                    let fractional_group_size = Self::get_group_size(
-                        fraction.rsplit('_'),
-                        num_lit.radix,
-                        self.lint_fraction_readability)?;
+                    let fractional_group_size =
+                        Self::get_group_size(fraction.rsplit('_'), num_lit.radix, self.lint_fraction_readability)?;
 
-                    let consistent = Self::parts_consistent(integral_group_size,
-                                                            fractional_group_size,
-                                                            num_lit.integer.len(),
-                                                            fraction.len());
+                    let consistent = Self::parts_consistent(
+                        integral_group_size,
+                        fractional_group_size,
+                        num_lit.integer.len(),
+                        fraction.len(),
+                    );
                     if !consistent {
                         return Err(WarningType::InconsistentDigitGrouping);
                     };
@@ -288,18 +286,13 @@ impl LiteralDigitGrouping {
                 Ok(())
             })();
 
-
             if let Err(warning_type) = result {
                 let should_warn = match warning_type {
-                    | WarningType::UnreadableLiteral
+                    WarningType::UnreadableLiteral
                     | WarningType::InconsistentDigitGrouping
                     | WarningType::UnusualByteGroupings
-                    | WarningType::LargeDigitGroups => {
-                        !span.from_expansion()
-                    }
-                    WarningType::DecimalRepresentation | WarningType::MistypedLiteralSuffix => {
-                        true
-                    }
+                    | WarningType::LargeDigitGroups => !span.from_expansion(),
+                    WarningType::DecimalRepresentation | WarningType::MistypedLiteralSuffix => true,
                 };
                 if should_warn {
                     warning_type.display(num_lit.format(), cx, span);

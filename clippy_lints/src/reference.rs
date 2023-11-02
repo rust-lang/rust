@@ -1,6 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::{snippet_opt, snippet_with_applicability};
-use if_chain::if_chain;
 use rustc_ast::ast::{Expr, ExprKind, Mutability, UnOp};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
@@ -58,12 +57,13 @@ impl EarlyLintPass for DerefAddrOf {
                     // Remove leading whitespace from the given span
                     // e.g: ` $visitor` turns into `$visitor`
                     let trim_leading_whitespaces = |span| {
-                        snippet_opt(cx, span).and_then(|snip| {
-                            #[expect(clippy::cast_possible_truncation)]
-                            snip.find(|c: char| !c.is_whitespace()).map(|pos| {
-                                span.lo() + BytePos(pos as u32)
+                        snippet_opt(cx, span)
+                            .and_then(|snip| {
+                                #[expect(clippy::cast_possible_truncation)]
+                                snip.find(|c: char| !c.is_whitespace())
+                                    .map(|pos| span.lo() + BytePos(pos as u32))
                             })
-                        }).map_or(span, |start_no_whitespace| e.span.with_lo(start_no_whitespace))
+                            .map_or(span, |start_no_whitespace| e.span.with_lo(start_no_whitespace))
                     };
 
                     let mut generate_snippet = |pattern: &str| {
@@ -85,7 +85,12 @@ impl EarlyLintPass for DerefAddrOf {
                     Some(snippet_with_applicability(cx, e.span, "_", &mut applicability))
                 }
             } else {
-                Some(snippet_with_applicability(cx, addrof_target.span, "_", &mut applicability))
+                Some(snippet_with_applicability(
+                    cx,
+                    addrof_target.span,
+                    "_",
+                    &mut applicability,
+                ))
             };
             if let Some(sugg) = sugg {
                 span_lint_and_sugg(

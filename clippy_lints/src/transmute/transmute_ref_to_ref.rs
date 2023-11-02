@@ -2,7 +2,6 @@ use super::{TRANSMUTE_BYTES_TO_STR, TRANSMUTE_PTR_TO_PTR};
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::snippet;
 use clippy_utils::sugg;
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, Mutability};
 use rustc_lint::LateContext;
@@ -26,11 +25,7 @@ pub(super) fn check<'tcx>(
             && let ty::Uint(ty::UintTy::U8) = slice_ty.kind()
             && from_mutbl == to_mutbl
         {
-            let postfix = if *from_mutbl == Mutability::Mut {
-                "_mut"
-            } else {
-                ""
-            };
+            let postfix = if *from_mutbl == Mutability::Mut { "_mut" } else { "" };
 
             let snippet = snippet(cx, arg.span, "..");
 
@@ -48,39 +43,36 @@ pub(super) fn check<'tcx>(
                 Applicability::MaybeIncorrect,
             );
             triggered = true;
-        } else {
-            if (cx.tcx.erase_regions(from_ty) != cx.tcx.erase_regions(to_ty))
-                && !const_context {
-                span_lint_and_then(
-                    cx,
-                    TRANSMUTE_PTR_TO_PTR,
-                    e.span,
-                    "transmute from a reference to a reference",
-                    |diag| if let Some(arg) = sugg::Sugg::hir_opt(cx, arg) {
+        } else if (cx.tcx.erase_regions(from_ty) != cx.tcx.erase_regions(to_ty)) && !const_context {
+            span_lint_and_then(
+                cx,
+                TRANSMUTE_PTR_TO_PTR,
+                e.span,
+                "transmute from a reference to a reference",
+                |diag| {
+                    if let Some(arg) = sugg::Sugg::hir_opt(cx, arg) {
                         let ty_from_and_mut = ty::TypeAndMut {
                             ty: *ty_from,
-                            mutbl: *from_mutbl
+                            mutbl: *from_mutbl,
                         };
-                        let ty_to_and_mut = ty::TypeAndMut { ty: *ty_to, mutbl: *to_mutbl };
+                        let ty_to_and_mut = ty::TypeAndMut {
+                            ty: *ty_to,
+                            mutbl: *to_mutbl,
+                        };
                         let sugg_paren = arg
-                            .as_ty(Ty::new_ptr(cx.tcx,ty_from_and_mut))
-                            .as_ty(Ty::new_ptr(cx.tcx,ty_to_and_mut));
+                            .as_ty(Ty::new_ptr(cx.tcx, ty_from_and_mut))
+                            .as_ty(Ty::new_ptr(cx.tcx, ty_to_and_mut));
                         let sugg = if *to_mutbl == Mutability::Mut {
                             sugg_paren.mut_addr_deref()
                         } else {
                             sugg_paren.addr_deref()
                         };
-                        diag.span_suggestion(
-                            e.span,
-                            "try",
-                            sugg,
-                            Applicability::Unspecified,
-                        );
-                    },
-                );
+                        diag.span_suggestion(e.span, "try", sugg, Applicability::Unspecified);
+                    }
+                },
+            );
 
-                triggered = true;
-            }
+            triggered = true;
         }
     }
 

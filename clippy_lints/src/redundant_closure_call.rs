@@ -2,7 +2,6 @@ use crate::rustc_lint::LintContext;
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
 use clippy_utils::get_parent_expr;
 use clippy_utils::sugg::Sugg;
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::intravisit as hir_visit;
@@ -141,7 +140,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClosureCall {
         }
 
         if let hir::ExprKind::Call(recv, _) = expr.kind
-            // don't lint if the receiver is a call, too. 
+            // don't lint if the receiver is a call, too.
             // we do this in order to prevent linting multiple times; consider:
             // `(|| || 1)()()`
             //           ^^  we only want to lint for this call (but we walk up the calls to consider both calls).

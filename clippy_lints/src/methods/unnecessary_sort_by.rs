@@ -2,7 +2,6 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::is_trait_method;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::implements_trait;
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{Closure, Expr, ExprKind, Mutability, Param, Pat, PatKind, Path, PathSegment, QPath};
 use rustc_lint::LateContext;
@@ -122,30 +121,51 @@ fn detect_lint(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, arg: &Exp
         && let ExprKind::Closure(&Closure { body, .. }) = arg.kind
         && let closure_body = cx.tcx.hir().body(body)
         && let &[
-            Param { pat: Pat { kind: PatKind::Binding(_, _, left_ident, _), .. }, ..},
-            Param { pat: Pat { kind: PatKind::Binding(_, _, right_ident, _), .. }, .. }
+            Param {
+                pat:
+                    Pat {
+                        kind: PatKind::Binding(_, _, left_ident, _),
+                        ..
+                    },
+                ..
+            },
+            Param {
+                pat:
+                    Pat {
+                        kind: PatKind::Binding(_, _, right_ident, _),
+                        ..
+                    },
+                ..
+            },
         ] = &closure_body.params
         && let ExprKind::MethodCall(method_path, left_expr, [right_expr], _) = closure_body.value.kind
         && method_path.ident.name == sym::cmp
         && is_trait_method(cx, closure_body.value, sym::Ord)
     {
-        let (closure_body, closure_arg, reverse) = if mirrored_exprs(
-            left_expr,
-            left_ident,
-            right_expr,
-            right_ident
-        ) {
-            (Sugg::hir(cx, left_expr, "..").to_string(), left_ident.name.to_string(), false)
+        let (closure_body, closure_arg, reverse) = if mirrored_exprs(left_expr, left_ident, right_expr, right_ident) {
+            (
+                Sugg::hir(cx, left_expr, "..").to_string(),
+                left_ident.name.to_string(),
+                false,
+            )
         } else if mirrored_exprs(left_expr, right_ident, right_expr, left_ident) {
-            (Sugg::hir(cx, left_expr, "..").to_string(), right_ident.name.to_string(), true)
+            (
+                Sugg::hir(cx, left_expr, "..").to_string(),
+                right_ident.name.to_string(),
+                true,
+            )
         } else {
             return None;
         };
         let vec_name = Sugg::hir(cx, recv, "..").to_string();
 
-        if let ExprKind::Path(QPath::Resolved(_, Path {
-                segments: [PathSegment { ident: left_name, .. }], ..
-            })) = &left_expr.kind
+        if let ExprKind::Path(QPath::Resolved(
+            _,
+            Path {
+                segments: [PathSegment { ident: left_name, .. }],
+                ..
+            },
+        )) = &left_expr.kind
             && left_name == left_ident
             && cx.tcx.get_diagnostic_item(sym::Ord).map_or(false, |id| {
                 implements_trait(cx, cx.typeck_results().expr_ty(left_expr), id, &[])

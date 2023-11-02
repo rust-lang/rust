@@ -14,7 +14,6 @@ use clippy_config::{get_configuration_metadata, ClippyConfiguration};
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::ty::{match_type, walk_ptrs_ty_depth};
 use clippy_utils::{last_path_segment, match_def_path, match_function_call, match_path, paths};
-use if_chain::if_chain;
 use itertools::Itertools;
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
@@ -923,7 +922,6 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for LintResolver<'a, 'hir> {
     fn visit_expr(&mut self, expr: &'hir hir::Expr<'hir>) {
         if let ExprKind::Path(qpath) = &expr.kind
             && let QPath::Resolved(_, path) = qpath
-
             && let (expr_ty, _) = walk_ptrs_ty_depth(self.cx.typeck_results().expr_ty(expr))
             && match_type(self.cx, expr_ty, &paths::LINT)
         {

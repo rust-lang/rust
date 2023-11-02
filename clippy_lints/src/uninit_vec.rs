@@ -161,7 +161,7 @@ fn extract_init_or_reserve_target<'tcx>(cx: &LateContext<'tcx>, stmt: &'tcx Stmt
                 return Some(TargetVec {
                     location: VecLocation::Local(hir_id),
                     init_kind: Some(init_kind),
-                })
+                });
             }
         },
         StmtKind::Expr(expr) | StmtKind::Semi(expr) => match expr.kind {

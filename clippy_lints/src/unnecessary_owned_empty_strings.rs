@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::ty::is_type_lang_item;
 use clippy_utils::{match_def_path, paths};
-use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::{BorrowKind, Expr, ExprKind, LangItem, Mutability};
@@ -44,34 +43,32 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryOwnedEmptyStrings {
             && inner_str.is_str()
         {
             if match_def_path(cx, fun_def_id, &paths::STRING_NEW) {
-                 span_lint_and_sugg(
-                        cx,
-                        UNNECESSARY_OWNED_EMPTY_STRINGS,
-                        expr.span,
-                        "usage of `&String::new()` for a function expecting a `&str` argument",
-                        "try",
-                        "\"\"".to_owned(),
-                        Applicability::MachineApplicable,
-                    );
-            } else {
-                if cx.tcx.is_diagnostic_item(sym::from_fn, fun_def_id)
-                    && let [.., last_arg] = args
-                    && let ExprKind::Lit(spanned) = &last_arg.kind
-                    && let LitKind::Str(symbol, _) = spanned.node
-                    && symbol.is_empty()
-                    && let inner_expr_type = cx.typeck_results().expr_ty(inner_expr)
-                    && is_type_lang_item(cx, inner_expr_type, LangItem::String)
-                {
-                    span_lint_and_sugg(
-                        cx,
-                        UNNECESSARY_OWNED_EMPTY_STRINGS,
-                        expr.span,
-                        "usage of `&String::from(\"\")` for a function expecting a `&str` argument",
-                        "try",
-                        "\"\"".to_owned(),
-                        Applicability::MachineApplicable,
-                    );
-                }
+                span_lint_and_sugg(
+                    cx,
+                    UNNECESSARY_OWNED_EMPTY_STRINGS,
+                    expr.span,
+                    "usage of `&String::new()` for a function expecting a `&str` argument",
+                    "try",
+                    "\"\"".to_owned(),
+                    Applicability::MachineApplicable,
+                );
+            } else if cx.tcx.is_diagnostic_item(sym::from_fn, fun_def_id)
+                && let [.., last_arg] = args
+                && let ExprKind::Lit(spanned) = &last_arg.kind
+                && let LitKind::Str(symbol, _) = spanned.node
+                && symbol.is_empty()
+                && let inner_expr_type = cx.typeck_results().expr_ty(inner_expr)
+                && is_type_lang_item(cx, inner_expr_type, LangItem::String)
+            {
+                span_lint_and_sugg(
+                    cx,
+                    UNNECESSARY_OWNED_EMPTY_STRINGS,
+                    expr.span,
+                    "usage of `&String::from(\"\")` for a function expecting a `&str` argument",
+                    "try",
+                    "\"\"".to_owned(),
+                    Applicability::MachineApplicable,
+                );
             }
         }
     }

@@ -23,10 +23,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, scrutinee: &'tcx Expr<'_>, arm
     if let ty::Ref(_, ty, _) = cx.typeck_results().expr_ty(scrutinee).kind()
         && let ty::Str = ty.kind()
     {
-        let mut visitor = MatchExprVisitor {
-            cx,
-            case_method: None,
-        };
+        let mut visitor = MatchExprVisitor { cx, case_method: None };
 
         visitor.visit_expr(scrutinee);
 
@@ -87,9 +84,9 @@ fn verify_case<'a>(case_method: &'a CaseMethod, arms: &'a [Arm<'_>]) -> Option<(
 
     for arm in arms {
         if let PatKind::Lit(Expr {
-                                kind: ExprKind::Lit(lit),
-                                ..
-                            }) = arm.pat.kind
+            kind: ExprKind::Lit(lit),
+            ..
+        }) = arm.pat.kind
             && let LitKind::Str(symbol, _) = lit.node
             && let input = symbol.as_str()
             && !case_check(input)

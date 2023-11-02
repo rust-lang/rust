@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_from_proc_macro;
 use clippy_utils::source::{indent_of, reindent_multiline, snippet_opt};
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{self as hir, Block, Expr, ExprKind, MatchSource, Node, StmtKind};
 use rustc_lint::LateContext;
@@ -84,12 +83,8 @@ fn lint_unit_args(cx: &LateContext<'_>, expr: &Expr<'_>, args_to_recover: &[&Exp
                         && let StmtKind::Semi(last_expr) = last_stmt.kind
                         && let Some(snip) = snippet_opt(cx, last_expr.span)
                     {
-                        Some((
-                            last_stmt.span,
-                            snip,
-                        ))
-                    }
-                    else {
+                        Some((last_stmt.span, snip))
+                    } else {
                         None
                     }
                 })

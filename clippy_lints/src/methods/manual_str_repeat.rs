@@ -3,7 +3,6 @@ use clippy_utils::is_path_diagnostic_item;
 use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{is_type_diagnostic_item, is_type_lang_item};
-use if_chain::if_chain;
 use rustc_ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, LangItem};
@@ -73,13 +72,14 @@ pub(super) fn check(
             RepeatKind::Char(_) if repeat_arg.span.ctxt() != ctxt => return,
             RepeatKind::Char('\'') => r#""'""#.into(),
             RepeatKind::Char('"') => r#""\"""#.into(),
-            RepeatKind::Char(_) =>
-                match snippet_with_applicability(cx, repeat_arg.span, "..", &mut app) {
-                    Cow::Owned(s) => Cow::Owned(format!("\"{}\"", &s[1..s.len() - 1])),
-                    s @ Cow::Borrowed(_) => s,
-                },
-            RepeatKind::String =>
-                Sugg::hir_with_context(cx, repeat_arg, ctxt, "..", &mut app).maybe_par().to_string().into(),
+            RepeatKind::Char(_) => match snippet_with_applicability(cx, repeat_arg.span, "..", &mut app) {
+                Cow::Owned(s) => Cow::Owned(format!("\"{}\"", &s[1..s.len() - 1])),
+                s @ Cow::Borrowed(_) => s,
+            },
+            RepeatKind::String => Sugg::hir_with_context(cx, repeat_arg, ctxt, "..", &mut app)
+                .maybe_par()
+                .to_string()
+                .into(),
         };
 
         span_lint_and_sugg(
@@ -89,7 +89,7 @@ pub(super) fn check(
             "manual implementation of `str::repeat` using iterators",
             "try",
             format!("{val_str}.repeat({count_snip})"),
-            app
-        )
+            app,
+        );
     }
 }

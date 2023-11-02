@@ -53,7 +53,7 @@ impl LateLintPass<'_> for LargeIncludeFile {
         if let Some(macro_call) = root_macro_call_first_node(cx, expr)
             && !is_lint_allowed(cx, LARGE_INCLUDE_FILE, expr.hir_id)
             && (cx.tcx.is_diagnostic_item(sym::include_bytes_macro, macro_call.def_id)
-            || cx.tcx.is_diagnostic_item(sym::include_str_macro, macro_call.def_id))
+                || cx.tcx.is_diagnostic_item(sym::include_str_macro, macro_call.def_id))
             && let ExprKind::Lit(lit) = &expr.kind
         {
             let len = match &lit.node {

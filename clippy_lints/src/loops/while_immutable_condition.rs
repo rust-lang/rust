@@ -2,7 +2,6 @@ use super::WHILE_IMMUTABLE_CONDITION;
 use clippy_utils::consts::constant;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::usage::mutated_variables;
-use if_chain::if_chain;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefIdMap;
 use rustc_hir::intravisit::{walk_expr, Visitor};

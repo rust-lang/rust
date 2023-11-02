@@ -19,7 +19,6 @@ mod wrong_transmute;
 
 use clippy_config::msrvs::Msrv;
 use clippy_utils::in_constant;
-use if_chain::if_chain;
 use rustc_hir::{Expr, ExprKind, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
@@ -530,10 +529,8 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                 | transmute_int_to_non_zero::check(cx, e, from_ty, to_ty, arg)
                 | transmute_float_to_int::check(cx, e, from_ty, to_ty, arg, const_context)
                 | transmute_num_to_bytes::check(cx, e, from_ty, to_ty, arg, const_context)
-                | (
-                    unsound_collection_transmute::check(cx, e, from_ty, to_ty)
-                    || transmute_undefined_repr::check(cx, e, from_ty, to_ty)
-                );
+                | (unsound_collection_transmute::check(cx, e, from_ty, to_ty)
+                    || transmute_undefined_repr::check(cx, e, from_ty, to_ty));
 
             if !linted {
                 transmutes_expressible_as_ptr_casts::check(cx, e, from_ty, from_ty_adjusted, to_ty, arg);

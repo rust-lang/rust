@@ -1,6 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::ty::{is_normalizable, is_type_diagnostic_item};
-use if_chain::if_chain;
 use rustc_hir::{self as hir, HirId, ItemKind, Node};
 use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_lint::{LateContext, LateLintPass};
@@ -60,7 +59,14 @@ impl LateLintPass<'_> for ZeroSizedMapValues {
             && let Ok(layout) = cx.layout_of(ty)
             && layout.is_zst()
         {
-            span_lint_and_help(cx, ZERO_SIZED_MAP_VALUES, hir_ty.span, "map with zero-sized value type", None, "consider using a set instead");
+            span_lint_and_help(
+                cx,
+                ZERO_SIZED_MAP_VALUES,
+                hir_ty.span,
+                "map with zero-sized value type",
+                None,
+                "consider using a set instead",
+            );
         }
     }
 }

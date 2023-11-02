@@ -5,7 +5,6 @@ use clippy_utils::visitors::is_local_used;
 use clippy_utils::{
     is_res_lang_ctor, is_unit_expr, path_to_local, peel_blocks_with_stmt, peel_ref_operators, SpanlessEq,
 };
-use if_chain::if_chain;
 use rustc_errors::MultiSpan;
 use rustc_hir::LangItem::OptionNone;
 use rustc_hir::{Arm, Expr, Guard, HirId, Let, Pat, PatKind};
@@ -84,7 +83,11 @@ fn check_arm<'tcx>(
     {
         let msg = format!(
             "this `{}` can be collapsed into the outer `{}`",
-            if matches!(inner, IfLetOrMatch::Match(..)) { "match" } else { "if let" },
+            if matches!(inner, IfLetOrMatch::Match(..)) {
+                "match"
+            } else {
+                "if let"
+            },
             if outer_is_match { "match" } else { "if let" },
         );
         // collapsing patterns need an explicit field name in struct pattern matching
@@ -94,18 +97,15 @@ fn check_arm<'tcx>(
         } else {
             String::new()
         };
-        span_lint_and_then(
-            cx,
-            COLLAPSIBLE_MATCH,
-            inner_expr.span,
-            &msg,
-            |diag| {
-                let mut help_span = MultiSpan::from_spans(vec![binding_span, inner_then_pat.span]);
-                help_span.push_span_label(binding_span, "replace this binding");
-                help_span.push_span_label(inner_then_pat.span, format!("with this pattern{replace_msg}"));
-                diag.span_help(help_span, "the outer pattern can be modified to include the inner pattern");
-            },
-        );
+        span_lint_and_then(cx, COLLAPSIBLE_MATCH, inner_expr.span, &msg, |diag| {
+            let mut help_span = MultiSpan::from_spans(vec![binding_span, inner_then_pat.span]);
+            help_span.push_span_label(binding_span, "replace this binding");
+            help_span.push_span_label(inner_then_pat.span, format!("with this pattern{replace_msg}"));
+            diag.span_help(
+                help_span,
+                "the outer pattern can be modified to include the inner pattern",
+            );
+        });
     }
 }
 

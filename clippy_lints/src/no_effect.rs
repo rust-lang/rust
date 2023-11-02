@@ -145,7 +145,7 @@ fn check_no_effect(cx: &LateContext<'_>, stmt: &Stmt<'_>) -> bool {
                 NO_EFFECT_UNDERSCORE_BINDING,
                 init.hir_id,
                 stmt.span,
-                "binding to `_` prefixed variable with no side-effect"
+                "binding to `_` prefixed variable with no side-effect",
             );
             return true;
         }
@@ -205,13 +205,12 @@ fn check_unnecessary_operation(cx: &LateContext<'_>, stmt: &Stmt<'_>) {
         && reduced.iter().all(|e| e.span.ctxt() == ctxt)
     {
         if let ExprKind::Index(..) = &expr.kind {
-            let snippet = if let (Some(arr), Some(func)) =
-                (snippet_opt(cx, reduced[0].span), snippet_opt(cx, reduced[1].span))
-            {
-                format!("assert!({}.len() > {});", &arr, &func)
-            } else {
-                return;
-            };
+            let snippet =
+                if let (Some(arr), Some(func)) = (snippet_opt(cx, reduced[0].span), snippet_opt(cx, reduced[1].span)) {
+                    format!("assert!({}.len() > {});", &arr, &func)
+                } else {
+                    return;
+                };
             span_lint_hir_and_then(
                 cx,
                 UNNECESSARY_OPERATION,

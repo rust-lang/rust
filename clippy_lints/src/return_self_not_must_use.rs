@@ -86,7 +86,6 @@ fn check_method(cx: &LateContext<'_>, decl: &FnDecl<'_>, fn_def: LocalDefId, spa
         && self_arg.peel_refs() == ret_ty
         // If `Self` is already marked as `#[must_use]`, no need for the attribute here.
         && !is_must_use_ty(cx, ret_ty)
-
     {
         span_lint_and_help(
             cx,
@@ -94,7 +93,7 @@ fn check_method(cx: &LateContext<'_>, decl: &FnDecl<'_>, fn_def: LocalDefId, spa
             span,
             "missing `#[must_use]` attribute on a method returning `Self`",
             None,
-            "consider adding the `#[must_use]` attribute to the method or directly to the `Self` type"
+            "consider adding the `#[must_use]` attribute to the method or directly to the `Self` type",
         );
     }
 }
@@ -115,7 +114,6 @@ impl<'tcx> LateLintPass<'tcx> for ReturnSelfNotMustUse {
             // We don't want this method to be te implementation of a trait because the
             // `#[must_use]` should be put on the trait definition directly.
             && cx.tcx.trait_id_of_impl(impl_def).is_none()
-
         {
             let hir_id = cx.tcx.hir().local_def_id_to_hir_id(fn_def);
             check_method(cx, decl, fn_def, span, hir_id.expect_owner());

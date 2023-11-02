@@ -3,7 +3,6 @@ use clippy_utils::eager_or_lazy::switch_to_lazy_eval;
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::{expr_type_is_certain, implements_trait, is_type_diagnostic_item};
 use clippy_utils::{contains_return, is_default_equivalent, is_default_equivalent_call, last_path_segment};
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_lint::LateContext;
 use rustc_middle::ty;
@@ -132,17 +131,12 @@ pub(super) fn check<'tcx>(
         ];
 
         if KNOW_TYPES.iter().any(|k| k.2.contains(&name))
-
             && switch_to_lazy_eval(cx, arg)
             && !contains_return(arg)
-
             && let self_ty = cx.typeck_results().expr_ty(self_expr)
-
             && let Some(&(_, fn_has_arguments, poss, suffix)) =
                 KNOW_TYPES.iter().find(|&&i| is_type_diagnostic_item(cx, self_ty, i.0))
-
             && poss.contains(&name)
-
         {
             let ctxt = span.ctxt();
             let mut app = Applicability::HasPlaceholders;

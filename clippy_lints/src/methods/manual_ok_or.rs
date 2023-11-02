@@ -2,7 +2,6 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::{indent_of, reindent_multiline, snippet_opt};
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{is_res_lang_ctor, path_res, path_to_local_id};
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::{ResultErr, ResultOk};
 use rustc_hir::{Expr, ExprKind, PatKind};
@@ -35,9 +34,7 @@ pub(super) fn check<'tcx>(
             expr.span,
             "this pattern reimplements `Option::ok_or`",
             "replace with",
-            format!(
-                "{recv_snippet}.ok_or({reindented_err_arg_snippet})"
-            ),
+            format!("{recv_snippet}.ok_or({reindented_err_arg_snippet})"),
             Applicability::MachineApplicable,
         );
     }

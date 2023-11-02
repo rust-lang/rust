@@ -5,7 +5,6 @@ use clippy_utils::{
     get_expr_use_or_unification_node, get_parent_expr, is_lint_allowed, is_path_diagnostic_item, method_calls,
     peel_blocks, SpanlessEq,
 };
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind, LangItem, Node, QPath};
@@ -251,7 +250,6 @@ const MAX_LENGTH_BYTE_STRING_LIT: usize = 32;
 declare_lint_pass!(StringLitAsBytes => [STRING_LIT_AS_BYTES, STRING_FROM_UTF8_AS_BYTES]);
 
 impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
-    #[expect(clippy::too_many_lines)]
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         use rustc_ast::LitKind;
 
@@ -270,16 +268,11 @@ impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
 
             // Check for slicer
             && let ExprKind::Struct(QPath::LangItem(LangItem::Range, ..), _, _) = right.kind
-
         {
             let mut applicability = Applicability::MachineApplicable;
             let string_expression = &expressions[0].0;
 
-            let snippet_app = snippet_with_applicability(
-                cx,
-                string_expression.span, "..",
-                &mut applicability,
-            );
+            let snippet_app = snippet_with_applicability(cx, string_expression.span, "..", &mut applicability);
 
             span_lint_and_sugg(
                 cx,
@@ -288,8 +281,8 @@ impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
                 "calling a slice of `as_bytes()` with `from_utf8` should be not necessary",
                 "try",
                 format!("Some(&{snippet_app}[{}])", snippet(cx, right.span, "..")),
-                applicability
-            )
+                applicability,
+            );
         }
 
         if !in_external_macro(cx.sess(), e.span)
@@ -348,7 +341,6 @@ impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
             && matches!(path.ident.name.as_str(), "to_owned" | "to_string")
             && let ExprKind::Lit(lit) = &recv.kind
             && let LitKind::Str(lit_content, _) = &lit.node
-
             && lit_content.as_str().is_ascii()
             && lit_content.as_str().len() <= MAX_LENGTH_BYTE_STRING_LIT
             && !recv.span.from_expansion()

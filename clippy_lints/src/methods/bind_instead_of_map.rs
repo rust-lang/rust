@@ -3,7 +3,6 @@ use clippy_utils::diagnostics::{multispan_sugg_with_applicability, span_lint_and
 use clippy_utils::peel_blocks;
 use clippy_utils::source::{snippet, snippet_with_context};
 use clippy_utils::visitors::find_all_ret_expressions;
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
@@ -81,16 +80,11 @@ pub(crate) trait BindInsteadOfMap {
 
             let closure_args_snip = snippet(cx, closure_args_span, "..");
             let option_snip = snippet(cx, recv.span, "..");
-            let note = format!("{option_snip}.{}({closure_args_snip} {some_inner_snip})", Self::GOOD_METHOD_NAME);
-            span_lint_and_sugg(
-                cx,
-                BIND_INSTEAD_OF_MAP,
-                expr.span,
-                &msg,
-                "try",
-                note,
-                app,
+            let note = format!(
+                "{option_snip}.{}({closure_args_snip} {some_inner_snip})",
+                Self::GOOD_METHOD_NAME
             );
+            span_lint_and_sugg(cx, BIND_INSTEAD_OF_MAP, expr.span, &msg, "try", note, app);
             true
         } else {
             false
@@ -115,7 +109,11 @@ pub(crate) trait BindInsteadOfMap {
         let (span, msg) = if can_sugg
             && let hir::ExprKind::MethodCall(segment, ..) = expr.kind
             && let Some(msg) = Self::lint_msg(cx)
-        { (segment.ident.span, msg) } else { return false; };
+        {
+            (segment.ident.span, msg)
+        } else {
+            return false;
+        };
         span_lint_and_then(cx, BIND_INSTEAD_OF_MAP, expr.span, &msg, |diag| {
             multispan_sugg_with_applicability(
                 diag,
@@ -136,7 +134,10 @@ pub(crate) trait BindInsteadOfMap {
         if let Some(adt) = cx.typeck_results().expr_ty(recv).ty_adt_def()
             && let Some(vid) = cx.tcx.lang_items().get(Self::VARIANT_LANG_ITEM)
             && adt.did() == cx.tcx.parent(vid)
-        {} else { return false; }
+        {
+        } else {
+            return false;
+        }
 
         match arg.kind {
             hir::ExprKind::Closure(&hir::Closure { body, fn_decl_span, .. }) => {

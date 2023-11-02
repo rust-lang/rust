@@ -4,7 +4,6 @@ use clippy_utils::source::{indent_of, reindent_multiline, snippet};
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{higher, is_trait_method, path_to_local_id, peel_blocks, SpanlessEq};
 use hir::{Body, HirId, MatchSource, Pat};
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
@@ -33,7 +32,7 @@ fn is_method(cx: &LateContext<'_>, expr: &hir::Expr<'_>, method_name: Symbol) ->
                         && let hir::ExprKind::Path(path) = &receiver.kind
                         && let Res::Local(ref local) = cx.qpath_res(path, receiver.hir_id)
                     {
-                        return arg_id == *local
+                        return arg_id == *local;
                     }
                     false
                 },
@@ -324,7 +323,6 @@ pub(super) fn check(
 
         && let Some(check_result) =
             offending_expr.check_map_call(cx, map_body, map_param_id, filter_param_id, is_filter_param_ref)
-
     {
         let span = filter_span.with_hi(expr.span.hi());
         let (filter_name, lint) = if is_find {
@@ -335,18 +333,23 @@ pub(super) fn check(
         let msg = format!("`{filter_name}(..).map(..)` can be simplified as `{filter_name}_map(..)`");
 
         let (sugg, note_and_span, applicability) = match check_result {
-            CheckResult::Method { map_arg, method, side_effect_expr_span } => {
+            CheckResult::Method {
+                map_arg,
+                method,
+                side_effect_expr_span,
+            } => {
                 let (to_opt, deref) = match method {
                     CalledMethod::ResultIsOk => (".ok()", String::new()),
                     CalledMethod::OptionIsSome => {
-                        let derefs = cx.typeck_results()
+                        let derefs = cx
+                            .typeck_results()
                             .expr_adjustments(map_arg)
                             .iter()
                             .filter(|adj| matches!(adj.kind, Adjust::Deref(_)))
                             .count();
 
                         ("", "*".repeat(derefs))
-                    }
+                    },
                 };
 
                 let sugg = format!(
@@ -363,15 +366,24 @@ pub(super) fn check(
                 };
 
                 (sugg, note_and_span, applicability)
-            }
-            CheckResult::PatternMatching { variant_span, variant_ident } => {
+            },
+            CheckResult::PatternMatching {
+                variant_span,
+                variant_ident,
+            } => {
                 let pat = snippet(cx, variant_span, "<pattern>");
 
-                (format!("{filter_name}_map(|{map_param_ident}| match {map_param_ident} {{ \
+                (
+                    format!(
+                        "{filter_name}_map(|{map_param_ident}| match {map_param_ident} {{ \
                     {pat} => Some({variant_ident}), \
                     _ => None \
-                }})"), None, Applicability::MachineApplicable)
-            }
+                }})"
+                    ),
+                    None,
+                    Applicability::MachineApplicable,
+                )
+            },
         };
         span_lint_and_then(cx, lint, span, &msg, |diag| {
             diag.span_suggestion(span, "try", sugg, applicability);

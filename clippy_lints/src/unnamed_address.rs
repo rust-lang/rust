@@ -1,5 +1,4 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
-use if_chain::if_chain;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
@@ -78,7 +77,8 @@ impl LateLintPass<'_> for UnnamedAddress {
 
         if let ExprKind::Binary(binop, left, right) = expr.kind
             && is_comparison(binop.node)
-            && is_trait_ptr(cx, left) && is_trait_ptr(cx, right)
+            && is_trait_ptr(cx, left)
+            && is_trait_ptr(cx, right)
         {
             span_lint_and_help(
                 cx,

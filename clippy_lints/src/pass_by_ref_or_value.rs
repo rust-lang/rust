@@ -5,7 +5,6 @@ use clippy_utils::source::snippet;
 use clippy_utils::ty::{for_each_top_level_late_bound_region, is_copy};
 use clippy_utils::{is_self, is_self_ty};
 use core::ops::ControlFlow;
-use if_chain::if_chain;
 use rustc_ast::attr;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
@@ -238,7 +237,10 @@ impl<'tcx> PassByRefOrValue {
                             cx,
                             LARGE_TYPES_PASSED_BY_VALUE,
                             input.span,
-                            &format!("this argument ({size} byte) is passed by value, but might be more efficient if passed by reference (limit: {} byte)", self.value_max_size),
+                            &format!(
+                                "this argument ({size} byte) is passed by value, but might be more efficient if passed by reference (limit: {} byte)",
+                                self.value_max_size
+                            ),
                             "consider passing by reference instead",
                             format!("&{}", snippet(cx, input.span, "_")),
                             Applicability::MaybeIncorrect,

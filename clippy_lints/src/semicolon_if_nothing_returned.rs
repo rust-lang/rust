@@ -1,7 +1,6 @@
 use crate::rustc_lint::LintContext;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_context;
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{Block, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -44,7 +43,8 @@ impl<'tcx> LateLintPass<'tcx> for SemicolonIfNothingReturned {
             && t_expr.is_unit()
             && let mut app = Applicability::MachineApplicable
             && let snippet = snippet_with_context(cx, expr.span, block.span.ctxt(), "}", &mut app).0
-            && !snippet.ends_with('}') && !snippet.ends_with(';')
+            && !snippet.ends_with('}')
+            && !snippet.ends_with(';')
             && cx.sess().source_map().is_multiline(block.span)
         {
             // filter out the desugared `for` loop

@@ -1,6 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -46,7 +45,7 @@ impl LateLintPass<'_> for CreateDir {
                 "consider calling `std::fs::create_dir_all` instead",
                 format!("create_dir_all({})", snippet(cx, arg.span, "..")),
                 Applicability::MaybeIncorrect,
-            )
+            );
         }
     }
 }

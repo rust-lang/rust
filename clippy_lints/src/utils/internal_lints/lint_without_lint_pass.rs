@@ -2,7 +2,6 @@ use crate::utils::internal_lints::metadata_collector::is_deprecated_lint;
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
 use clippy_utils::macros::root_macro_call_first_node;
 use clippy_utils::{is_lint_allowed, match_def_path, paths};
-use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def::{DefKind, Res};
@@ -315,7 +314,11 @@ pub(super) fn extract_clippy_version_value(cx: &LateContext<'_>, item: &'_ Item<
             && tool_name.ident.name == sym::clippy
             && attr_name.ident.name == sym::version
             && let Some(version) = attr.value_str()
-        { Some(version) } else { None }
+        {
+            Some(version)
+        } else {
+            None
+        }
     })
 }
 

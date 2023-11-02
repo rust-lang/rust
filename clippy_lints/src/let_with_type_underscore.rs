@@ -44,8 +44,8 @@ impl LateLintPass<'_> for UnderscoreTyped {
                 local.span,
                 "variable declared with type underscore",
                 Some(ty.span.with_lo(local.pat.span.hi())),
-                "remove the explicit type `_` declaration"
-            )
+                "remove the explicit type `_` declaration",
+            );
         };
     }
 }

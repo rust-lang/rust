@@ -1,6 +1,5 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_note};
 use clippy_utils::{get_parent_expr, path_to_local, path_to_local_id};
-use if_chain::if_chain;
 use rustc_hir::intravisit::{walk_expr, Visitor};
 use rustc_hir::{BinOpKind, Block, Expr, ExprKind, Guard, HirId, Local, Node, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -83,7 +82,11 @@ impl<'tcx> LateLintPass<'tcx> for EvalOrderDependence {
         let var = if let ExprKind::Assign(lhs, ..) | ExprKind::AssignOp(_, lhs, _) = expr.kind
             && let Some(var) = path_to_local(lhs)
             && expr.span.desugaring_kind().is_none()
-        { var } else { return; };
+        {
+            var
+        } else {
+            return;
+        };
         let mut visitor = ReadVisitor {
             cx,
             var,

@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::source::snippet;
 use hir::def::{DefKind, Res};
-use if_chain::if_chain;
 use rustc_ast::ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::Applicability;
@@ -108,10 +107,8 @@ impl<'tcx> LateLintPass<'tcx> for MacroUseImports {
                     self.imports.push((def_path, span, hir_id));
                 }
             }
-        } else {
-            if item.span.from_expansion() {
-                self.push_unique_macro_pat_ty(cx, item.span);
-            }
+        } else if item.span.from_expansion() {
+            self.push_unique_macro_pat_ty(cx, item.span);
         }
     }
     fn check_attribute(&mut self, cx: &LateContext<'_>, attr: &ast::Attribute) {

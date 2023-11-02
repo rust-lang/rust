@@ -3,7 +3,6 @@ use clippy_utils::source::snippet_with_context;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{can_mut_borrow_both, eq_expr_value, in_constant, std_or_core};
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Block, Expr, ExprKind, PatKind, QPath, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -173,7 +172,6 @@ fn check_manual_swap(cx: &LateContext<'_>, block: &Block<'_>) {
             && s3.span.ctxt() == ctxt
             && first.span.ctxt() == ctxt
             && second.span.ctxt() == ctxt
-
         {
             let span = s1.span.to(s3.span);
             generate_swap_warning(cx, lhs1, lhs2, span, false);

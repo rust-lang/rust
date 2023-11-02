@@ -98,9 +98,9 @@ impl<'tcx> LateLintPass<'tcx> for NonSendFieldInSendTy {
             for variant in adt_def.variants() {
                 for field in &variant.fields {
                     if let Some(field_hir_id) = field
-                            .did
-                            .as_local()
-                            .map(|local_def_id| hir_map.local_def_id_to_hir_id(local_def_id))
+                        .did
+                        .as_local()
+                        .map(|local_def_id| hir_map.local_def_id_to_hir_id(local_def_id))
                         && !is_lint_allowed(cx, NON_SEND_FIELDS_IN_SEND_TY, field_hir_id)
                         && let field_ty = field.ty(cx.tcx, impl_trait_args)
                         && !ty_allowed_in_send(cx, field_ty, send_trait)
@@ -110,7 +110,7 @@ impl<'tcx> LateLintPass<'tcx> for NonSendFieldInSendTy {
                             def: field_def,
                             ty: field_ty,
                             generic_params: collect_generic_params(field_ty),
-                        })
+                        });
                     }
                 }
             }
@@ -128,12 +128,17 @@ impl<'tcx> LateLintPass<'tcx> for NonSendFieldInSendTy {
                         for field in non_send_fields {
                             diag.span_note(
                                 field.def.span,
-                                format!("it is not safe to send field `{}` to another thread", field.def.ident.name),
+                                format!(
+                                    "it is not safe to send field `{}` to another thread",
+                                    field.def.ident.name
+                                ),
                             );
 
                             match field.generic_params.len() {
                                 0 => diag.help("use a thread-safe type that implements `Send`"),
-                                1 if is_ty_param(field.ty) => diag.help(format!("add `{}: Send` bound in `Send` impl", field.ty)),
+                                1 if is_ty_param(field.ty) => {
+                                    diag.help(format!("add `{}: Send` bound in `Send` impl", field.ty))
+                                },
                                 _ => diag.help(format!(
                                     "add bounds on type parameter{} `{}` that satisfy `{}: Send`",
                                     if field.generic_params.len() > 1 { "s" } else { "" },

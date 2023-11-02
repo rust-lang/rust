@@ -21,7 +21,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr
             |diag| {
                 if let Some(id) = path_to_local(recv)
                     && let Node::Pat(pat) = cx.tcx.hir().get(id)
-                    && let PatKind::Binding(ann, _, _, _)  = pat.kind
+                    && let PatKind::Binding(ann, _, _, _) = pat.kind
                     && ann != BindingAnnotation::MUT
                 {
                     application = Applicability::Unspecified;

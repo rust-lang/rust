@@ -23,16 +23,18 @@ fn get_cond_expr<'tcx>(
 ) -> Option<SomeExpr<'tcx>> {
     if let Some(block_expr) = peels_blocks_incl_unsafe_opt(expr)
         && let ExprKind::If(cond, then_expr, Some(else_expr)) = block_expr.kind
-        && let PatKind::Binding(_,target, ..) = pat.kind
+        && let PatKind::Binding(_, target, ..) = pat.kind
         && (is_some_expr(cx, target, ctxt, then_expr) && is_none_expr(cx, else_expr)
-            || is_none_expr(cx, then_expr) && is_some_expr(cx, target, ctxt, else_expr)) // check that one expr resolves to `Some(x)`, the other to `None`
+            || is_none_expr(cx, then_expr) && is_some_expr(cx, target, ctxt, else_expr))
+    // check that one expr resolves to `Some(x)`, the other to `None`
     {
         return Some(SomeExpr {
-                expr: peels_blocks_incl_unsafe(cond.peel_drop_temps()),
-                needs_unsafe_block: contains_unsafe_block(cx, expr),
-                needs_negated: is_none_expr(cx, then_expr) // if the `then_expr` resolves to `None`, need to negate the cond
-            })
-        };
+            expr: peels_blocks_incl_unsafe(cond.peel_drop_temps()),
+            needs_unsafe_block: contains_unsafe_block(cx, expr),
+            needs_negated: is_none_expr(cx, then_expr), /* if the `then_expr` resolves to `None`, need to negate the
+                                                         * cond */
+        });
+    };
     None
 }
 

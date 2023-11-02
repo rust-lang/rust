@@ -10,7 +10,6 @@ use clippy_utils::{
     is_res_lang_ctor, pat_and_expr_can_be_question_mark, path_to_local, path_to_local_id, peel_blocks,
     peel_blocks_with_stmt,
 };
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::LangItem::{self, OptionNone, OptionSome, ResultErr, ResultOk};
@@ -226,8 +225,8 @@ impl QuestionMark {
         {
             let mut applicability = Applicability::MachineApplicable;
             let receiver_str = snippet_with_applicability(cx, caller.span, "..", &mut applicability);
-            let by_ref = !caller_ty.is_copy_modulo_regions(cx.tcx, cx.param_env) &&
-                !matches!(caller.kind, ExprKind::Call(..) | ExprKind::MethodCall(..));
+            let by_ref = !caller_ty.is_copy_modulo_regions(cx.tcx, cx.param_env)
+                && !matches!(caller.kind, ExprKind::Call(..) | ExprKind::MethodCall(..));
             let sugg = if let Some(else_inner) = r#else {
                 if eq_expr_value(cx, caller, peel_blocks(else_inner)) {
                     format!("Some({receiver_str}?)")
@@ -252,7 +251,12 @@ impl QuestionMark {
 
     fn check_if_let_some_or_err_and_early_return<'tcx>(&self, cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
         if !self.inside_try_block()
-            && let Some(higher::IfLet { let_pat, let_expr, if_then, if_else }) = higher::IfLet::hir(cx, expr)
+            && let Some(higher::IfLet {
+                let_pat,
+                let_expr,
+                if_then,
+                if_else,
+            }) = higher::IfLet::hir(cx, expr)
             && !is_else_clause(cx.tcx, expr)
             && let PatKind::TupleStruct(ref path1, [field], ddpos) = let_pat.kind
             && ddpos.as_opt_usize().is_none()
@@ -264,11 +268,14 @@ impl QuestionMark {
                 ident.name,
                 let_expr,
                 if_then,
-                if_else
+                if_else,
             )
             && ((is_early_return(sym::Option, cx, &if_block) && path_to_local_id(peel_blocks(if_then), bind_id))
                 || is_early_return(sym::Result, cx, &if_block))
-            && if_else.map(|e| eq_expr_value(cx, let_expr, peel_blocks(e))).filter(|e| *e).is_none()
+            && if_else
+                .map(|e| eq_expr_value(cx, let_expr, peel_blocks(e)))
+                .filter(|e| *e)
+                .is_none()
         {
             let mut applicability = Applicability::MachineApplicable;
             let receiver_str = snippet_with_applicability(cx, let_expr.span, "..", &mut applicability);

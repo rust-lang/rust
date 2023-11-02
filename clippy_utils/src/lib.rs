@@ -76,7 +76,6 @@ use std::collections::hash_map::Entry;
 use std::hash::BuildHasherDefault;
 use std::sync::{Mutex, MutexGuard, OnceLock};
 
-use if_chain::if_chain;
 use itertools::Itertools;
 use rustc_ast::ast::{self, LitKind, RangeLimits};
 use rustc_data_structures::fx::FxHashMap;
@@ -823,7 +822,11 @@ pub fn is_default_equivalent_call(cx: &LateContext<'_>, repl_func: &Expr<'_>) ->
         && let Some(repl_def_id) = cx.qpath_res(repl_func_qpath, repl_func.hir_id).opt_def_id()
         && (is_diag_trait_item(cx, repl_def_id, sym::Default)
             || is_default_equivalent_ctor(cx, repl_def_id, repl_func_qpath))
-    { true } else { false }
+    {
+        true
+    } else {
+        false
+    }
 }
 
 /// Returns true if the expr is equal to `Default::default()` of it's type when evaluated.
@@ -837,14 +840,16 @@ pub fn is_default_equivalent(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
             _ => false,
         },
         ExprKind::Tup(items) | ExprKind::Array(items) => items.iter().all(|x| is_default_equivalent(cx, x)),
-        ExprKind::Repeat(x, ArrayLen::Body(len)) => if let ExprKind::Lit(const_lit) = cx.tcx.hir().body(len.body).value.kind
-            && let LitKind::Int(v, _) = const_lit.node
-            && v <= 32 && is_default_equivalent(cx, x)
-        {
-            true
-        }
-        else {
-            false
+        ExprKind::Repeat(x, ArrayLen::Body(len)) => {
+            if let ExprKind::Lit(const_lit) = cx.tcx.hir().body(len.body).value.kind
+                && let LitKind::Int(v, _) = const_lit.node
+                && v <= 32
+                && is_default_equivalent(cx, x)
+            {
+                true
+            } else {
+                false
+            }
         },
         ExprKind::Call(repl_func, []) => is_default_equivalent_call(cx, repl_func),
         ExprKind::Call(from_func, [ref arg]) => is_default_equivalent_from(cx, from_func, arg),
@@ -1992,12 +1997,14 @@ pub fn get_async_fn_body<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'_>) -> Option<&'t
 // check if expr is calling method or function with #[must_use] attribute
 pub fn is_must_use_func_call(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     let did = match expr.kind {
-        ExprKind::Call(path, _) => if let ExprKind::Path(ref qpath) = path.kind
-            && let def::Res::Def(_, did) = cx.qpath_res(qpath, path.hir_id)
-        {
-            Some(did)
-        } else {
-            None
+        ExprKind::Call(path, _) => {
+            if let ExprKind::Path(ref qpath) = path.kind
+                && let def::Res::Def(_, did) = cx.qpath_res(qpath, path.hir_id)
+            {
+                Some(did)
+            } else {
+                None
+            }
         },
         ExprKind::MethodCall(..) => cx.typeck_results().type_dependent_def_id(expr.hir_id),
         _ => None,

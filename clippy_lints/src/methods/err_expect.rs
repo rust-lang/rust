@@ -27,7 +27,6 @@ pub(super) fn check(
         && let Some(data_type) = get_data_type(cx, result_type)
         // Tests if the T type in a `Result<T, E>` implements debug
         && has_debug_impl(cx, data_type)
-
     {
         span_lint_and_sugg(
             cx,
@@ -36,8 +35,8 @@ pub(super) fn check(
             "called `.err().expect()` on a `Result` value",
             "try",
             "expect_err".to_string(),
-            Applicability::MachineApplicable
-    );
+            Applicability::MachineApplicable,
+        );
     };
 }
 

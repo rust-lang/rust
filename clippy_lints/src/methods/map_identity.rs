@@ -20,8 +20,8 @@ pub(super) fn check(
     let caller_ty = cx.typeck_results().expr_ty(caller);
 
     if (is_trait_method(cx, expr, sym::Iterator)
-            || is_type_diagnostic_item(cx, caller_ty, sym::Result)
-            || is_type_diagnostic_item(cx, caller_ty, sym::Option))
+        || is_type_diagnostic_item(cx, caller_ty, sym::Result)
+        || is_type_diagnostic_item(cx, caller_ty, sym::Option))
         && is_expr_untyped_identity_function(cx, map_arg)
         && let Some(sugg_span) = expr.span.trim_start(caller.span)
     {
@@ -33,6 +33,6 @@ pub(super) fn check(
             &format!("remove the call to `{name}`"),
             String::new(),
             Applicability::MachineApplicable,
-        )
+        );
     }
 }

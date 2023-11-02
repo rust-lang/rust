@@ -4,7 +4,6 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::{
     eq_expr_value, get_parent_expr, higher, in_constant, is_no_std_crate, numeric_literal, peel_blocks, sugg,
 };
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, PathSegment, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
@@ -143,17 +142,14 @@ fn prepare_receiver_sugg<'a>(cx: &LateContext<'_>, mut expr: &'a Expr<'a>) -> Su
             "{suggestion}{}{}",
             // Check for float literals without numbers following the decimal
             // separator such as `2.` and adds a trailing zero
-            if sym.as_str().ends_with('.') {
-                "0"
-            } else {
-                ""
-            },
+            if sym.as_str().ends_with('.') { "0" } else { "" },
             float_ty.name_str()
-        ).into();
+        )
+        .into();
 
         suggestion = match suggestion {
             Sugg::MaybeParen(_) => Sugg::MaybeParen(op),
-            _ => Sugg::NonParen(op)
+            _ => Sugg::NonParen(op),
         };
     }
 
@@ -357,31 +353,59 @@ fn detect_hypot(cx: &LateContext<'_>, receiver: &Expr<'_>) -> Option<String> {
     ) = receiver.kind
     {
         // check if expression of the form x * x + y * y
-        if let ExprKind::Binary(Spanned { node: BinOpKind::Mul, .. }, lmul_lhs, lmul_rhs) = add_lhs.kind
-            && let ExprKind::Binary(Spanned { node: BinOpKind::Mul, .. }, rmul_lhs, rmul_rhs) = add_rhs.kind
+        if let ExprKind::Binary(
+            Spanned {
+                node: BinOpKind::Mul, ..
+            },
+            lmul_lhs,
+            lmul_rhs,
+        ) = add_lhs.kind
+            && let ExprKind::Binary(
+                Spanned {
+                    node: BinOpKind::Mul, ..
+                },
+                rmul_lhs,
+                rmul_rhs,
+            ) = add_rhs.kind
             && eq_expr_value(cx, lmul_lhs, lmul_rhs)
             && eq_expr_value(cx, rmul_lhs, rmul_rhs)
         {
-            return Some(format!("{}.hypot({})", Sugg::hir(cx, lmul_lhs, "..").maybe_par(), Sugg::hir(cx, rmul_lhs, "..")));
+            return Some(format!(
+                "{}.hypot({})",
+                Sugg::hir(cx, lmul_lhs, "..").maybe_par(),
+                Sugg::hir(cx, rmul_lhs, "..")
+            ));
         }
 
         // check if expression of the form x.powi(2) + y.powi(2)
         if let ExprKind::MethodCall(
-                PathSegment { ident: lmethod_name, .. },
-                largs_0, [largs_1, ..],
-                _
-            ) = &add_lhs.kind
+            PathSegment {
+                ident: lmethod_name, ..
+            },
+            largs_0,
+            [largs_1, ..],
+            _,
+        ) = &add_lhs.kind
             && let ExprKind::MethodCall(
-                PathSegment { ident: rmethod_name, .. },
-                rargs_0, [rargs_1, ..],
-                _
+                PathSegment {
+                    ident: rmethod_name, ..
+                },
+                rargs_0,
+                [rargs_1, ..],
+                _,
             ) = &add_rhs.kind
-            && lmethod_name.as_str() == "powi" && rmethod_name.as_str() == "powi"
+            && lmethod_name.as_str() == "powi"
+            && rmethod_name.as_str() == "powi"
             && let Some(lvalue) = constant(cx, cx.typeck_results(), largs_1)
             && let Some(rvalue) = constant(cx, cx.typeck_results(), rargs_1)
-            && Int(2) == lvalue && Int(2) == rvalue
+            && Int(2) == lvalue
+            && Int(2) == rvalue
         {
-            return Some(format!("{}.hypot({})", Sugg::hir(cx, largs_0, "..").maybe_par(), Sugg::hir(cx, rargs_0, "..")));
+            return Some(format!(
+                "{}.hypot({})",
+                Sugg::hir(cx, largs_0, "..").maybe_par(),
+                Sugg::hir(cx, rargs_0, "..")
+            ));
         }
     }
 
@@ -405,7 +429,13 @@ fn check_hypot(cx: &LateContext<'_>, expr: &Expr<'_>, receiver: &Expr<'_>) {
 // TODO: Lint expressions of the form `x.exp() - y` where y > 1
 // and suggest usage of `x.exp_m1() - (y - 1)` instead
 fn check_expm1(cx: &LateContext<'_>, expr: &Expr<'_>) {
-    if let ExprKind::Binary(Spanned { node: BinOpKind::Sub, .. }, lhs, rhs) = expr.kind
+    if let ExprKind::Binary(
+        Spanned {
+            node: BinOpKind::Sub, ..
+        },
+        lhs,
+        rhs,
+    ) = expr.kind
         && cx.typeck_results().expr_ty(lhs).is_floating_point()
         && let Some(value) = constant(cx, cx.typeck_results(), rhs)
         && (F32(1.0) == value || F64(1.0) == value)
@@ -419,17 +449,20 @@ fn check_expm1(cx: &LateContext<'_>, expr: &Expr<'_>) {
             expr.span,
             "(e.pow(x) - 1) can be computed more accurately",
             "consider using",
-            format!(
-                "{}.exp_m1()",
-                Sugg::hir(cx, self_arg, "..").maybe_par()
-            ),
+            format!("{}.exp_m1()", Sugg::hir(cx, self_arg, "..").maybe_par()),
             Applicability::MachineApplicable,
         );
     }
 }
 
 fn is_float_mul_expr<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<(&'a Expr<'a>, &'a Expr<'a>)> {
-    if let ExprKind::Binary(Spanned { node: BinOpKind::Mul, .. }, lhs, rhs) = &expr.kind
+    if let ExprKind::Binary(
+        Spanned {
+            node: BinOpKind::Mul, ..
+        },
+        lhs,
+        rhs,
+    ) = &expr.kind
         && cx.typeck_results().expr_ty(lhs).is_floating_point()
         && cx.typeck_results().expr_ty(rhs).is_floating_point()
     {
@@ -543,7 +576,11 @@ fn are_negated<'a>(cx: &LateContext<'_>, expr1: &'a Expr<'a>, expr2: &'a Expr<'a
 }
 
 fn check_custom_abs(cx: &LateContext<'_>, expr: &Expr<'_>) {
-    if let Some(higher::If { cond, then, r#else: Some(r#else) }) = higher::If::hir(expr)
+    if let Some(higher::If {
+        cond,
+        then,
+        r#else: Some(r#else),
+    }) = higher::If::hir(expr)
         && let if_body_expr = peel_blocks(then)
         && let else_body_expr = peel_blocks(r#else)
         && let Some((if_expr_positive, body)) = are_negated(cx, if_body_expr, else_body_expr)
@@ -584,15 +621,27 @@ fn check_custom_abs(cx: &LateContext<'_>, expr: &Expr<'_>) {
 }
 
 fn are_same_base_logs(cx: &LateContext<'_>, expr_a: &Expr<'_>, expr_b: &Expr<'_>) -> bool {
-    if let ExprKind::MethodCall(PathSegment { ident: method_name_a, .. }, _, args_a, _) = expr_a.kind
-        && let ExprKind::MethodCall(PathSegment { ident: method_name_b, .. }, _, args_b, _) = expr_b.kind
+    if let ExprKind::MethodCall(
+        PathSegment {
+            ident: method_name_a, ..
+        },
+        _,
+        args_a,
+        _,
+    ) = expr_a.kind
+        && let ExprKind::MethodCall(
+            PathSegment {
+                ident: method_name_b, ..
+            },
+            _,
+            args_b,
+            _,
+        ) = expr_b.kind
     {
-        return method_name_a.as_str() == method_name_b.as_str() &&
-            args_a.len() == args_b.len() &&
-            (
-                ["ln", "log2", "log10"].contains(&method_name_a.as_str()) ||
-                method_name_a.as_str() == "log" && args_a.len() == 1 && eq_expr_value(cx, &args_a[0], &args_b[0])
-            );
+        return method_name_a.as_str() == method_name_b.as_str()
+            && args_a.len() == args_b.len()
+            && (["ln", "log2", "log10"].contains(&method_name_a.as_str())
+                || method_name_a.as_str() == "log" && args_a.len() == 1 && eq_expr_value(cx, &args_a[0], &args_b[0]));
     }
 
     false
@@ -601,12 +650,12 @@ fn are_same_base_logs(cx: &LateContext<'_>, expr_a: &Expr<'_>, expr_b: &Expr<'_>
 fn check_log_division(cx: &LateContext<'_>, expr: &Expr<'_>) {
     // check if expression of the form x.logN() / y.logN()
     if let ExprKind::Binary(
-            Spanned {
-                node: BinOpKind::Div, ..
-            },
-            lhs,
-            rhs,
-        ) = &expr.kind
+        Spanned {
+            node: BinOpKind::Div, ..
+        },
+        lhs,
+        rhs,
+    ) = &expr.kind
         && are_same_base_logs(cx, lhs, rhs)
         && let ExprKind::MethodCall(_, largs_self, ..) = &lhs.kind
         && let ExprKind::MethodCall(_, rargs_self, ..) = &rhs.kind
@@ -617,7 +666,11 @@ fn check_log_division(cx: &LateContext<'_>, expr: &Expr<'_>) {
             expr.span,
             "log base can be expressed more clearly",
             "consider using",
-            format!("{}.log({})", Sugg::hir(cx, largs_self, "..").maybe_par(), Sugg::hir(cx, rargs_self, ".."),),
+            format!(
+                "{}.log({})",
+                Sugg::hir(cx, largs_self, "..").maybe_par(),
+                Sugg::hir(cx, rargs_self, ".."),
+            ),
             Applicability::MachineApplicable,
         );
     }
@@ -625,12 +678,12 @@ fn check_log_division(cx: &LateContext<'_>, expr: &Expr<'_>) {
 
 fn check_radians(cx: &LateContext<'_>, expr: &Expr<'_>) {
     if let ExprKind::Binary(
-            Spanned {
-                node: BinOpKind::Div, ..
-            },
-            div_lhs,
-            div_rhs,
-        ) = &expr.kind
+        Spanned {
+            node: BinOpKind::Div, ..
+        },
+        div_lhs,
+        div_rhs,
+    ) = &expr.kind
         && let ExprKind::Binary(
             Spanned {
                 node: BinOpKind::Mul, ..
@@ -642,8 +695,8 @@ fn check_radians(cx: &LateContext<'_>, expr: &Expr<'_>) {
         && let Some(lvalue) = constant(cx, cx.typeck_results(), mul_rhs)
     {
         // TODO: also check for constant values near PI/180 or 180/PI
-        if (F32(f32_consts::PI) == rvalue || F64(f64_consts::PI) == rvalue) &&
-           (F32(180_f32) == lvalue || F64(180_f64) == lvalue)
+        if (F32(f32_consts::PI) == rvalue || F64(f64_consts::PI) == rvalue)
+            && (F32(180_f32) == lvalue || F64(180_f64) == lvalue)
         {
             let mut proposal = format!("{}.to_degrees()", Sugg::hir(cx, mul_lhs, "..").maybe_par());
             if let ExprKind::Lit(literal) = mul_lhs.kind
@@ -665,9 +718,8 @@ fn check_radians(cx: &LateContext<'_>, expr: &Expr<'_>) {
                 proposal,
                 Applicability::MachineApplicable,
             );
-        } else if
-            (F32(180_f32) == rvalue || F64(180_f64) == rvalue) &&
-            (F32(f32_consts::PI) == lvalue || F64(f64_consts::PI) == lvalue)
+        } else if (F32(180_f32) == rvalue || F64(180_f64) == rvalue)
+            && (F32(f32_consts::PI) == lvalue || F64(f64_consts::PI) == lvalue)
         {
             let mut proposal = format!("{}.to_radians()", Sugg::hir(cx, mul_lhs, "..").maybe_par());
             if let ExprKind::Lit(literal) = mul_lhs.kind

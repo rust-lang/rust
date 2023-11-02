@@ -3,7 +3,6 @@ use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{method_chain_args, return_ty};
 use core::ops::ControlFlow;
-use if_chain::if_chain;
 use rustc_hir as hir;
 use rustc_hir::ImplItemKind;
 use rustc_lint::{LateContext, LateLintPass};

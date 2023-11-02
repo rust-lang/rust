@@ -5,7 +5,6 @@ use clippy_utils::{
     get_enclosing_block, is_expr_path_def_path, is_integer_literal, is_path_diagnostic_item, path_to_local,
     path_to_local_id, paths, SpanlessEq,
 };
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_block, walk_expr, walk_stmt, Visitor};
 use rustc_hir::{BindingAnnotation, Block, Expr, ExprKind, HirId, PatKind, Stmt, StmtKind};
@@ -106,7 +105,6 @@ impl<'tcx> LateLintPass<'tcx> for SlowVectorInit {
         if let ExprKind::Assign(left, right, _) = expr.kind
             && let Some(local_id) = path_to_local(left)
             && let Some(size_expr) = Self::as_vec_initializer(cx, right)
-
         {
             let vi = VecAllocation {
                 local_id,
@@ -125,7 +123,6 @@ impl<'tcx> LateLintPass<'tcx> for SlowVectorInit {
             && let PatKind::Binding(BindingAnnotation::MUT, local_id, _, None) = local.pat.kind
             && let Some(init) = local.init
             && let Some(size_expr) = Self::as_vec_initializer(cx, init)
-
         {
             let vi = VecAllocation {
                 local_id,
@@ -243,7 +240,6 @@ impl<'a, 'tcx> VectorInitializationVisitor<'a, 'tcx> {
             && path_to_local_id(self_arg, self.vec_alloc.local_id)
             && path.ident.name == sym!(extend)
             && self.is_repeat_take(extend_arg)
-
         {
             self.slow_expression = Some(InitializationType::Extend(expr));
         }
@@ -283,7 +279,7 @@ impl<'a, 'tcx> VectorInitializationVisitor<'a, 'tcx> {
             if let InitializedSize::Initialized(size_expr) = self.vec_alloc.size_expr {
                 // Check that len expression is equals to `with_capacity` expression
                 return SpanlessEq::new(self.cx).eq_expr(len_arg, size_expr)
-                    || matches!(len_arg.kind, ExprKind::MethodCall(path, ..) if path.ident.as_str() == "capacity")
+                    || matches!(len_arg.kind, ExprKind::MethodCall(path, ..) if path.ident.as_str() == "capacity");
             }
 
             self.vec_alloc.size_expr = InitializedSize::Initialized(len_arg);

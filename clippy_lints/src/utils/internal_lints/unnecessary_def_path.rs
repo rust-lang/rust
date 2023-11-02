@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_then};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::{def_path_def_ids, is_lint_allowed, match_any_def_paths, peel_hir_expr_refs};
-use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_errors::Applicability;
@@ -109,7 +108,7 @@ impl UnnecessaryDefPath {
             && let item_arg = if which_path == 4 { &args[1] } else { &args[0] }
             // Extract the path to the matched type
             && let Some(segments) = path_to_matched_type(cx, item_arg)
-            && let segments: Vec<&str> = segments.iter().map(|sym| &**sym).collect()
+            && let segments = segments.iter().map(|sym| &**sym).collect::<Vec<_>>()
             && let Some(def_id) = def_path_def_ids(cx, &segments[..]).next()
         {
             // Check if the target item is a diagnostic item or LangItem.

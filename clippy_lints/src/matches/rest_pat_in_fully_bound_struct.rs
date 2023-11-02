@@ -14,7 +14,6 @@ pub(crate) fn check(cx: &LateContext<'_>, pat: &Pat<'_>) {
         && (def.is_struct() || def.is_union())
         && fields.len() == def.non_enum_variant().fields.len()
         && !def.non_enum_variant().is_field_list_non_exhaustive()
-
     {
         span_lint_and_help(
             cx,

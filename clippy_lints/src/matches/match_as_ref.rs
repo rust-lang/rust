@@ -71,9 +71,10 @@ fn is_ref_some_arm(cx: &LateContext<'_>, arm: &Arm<'_>) -> Option<Mutability> {
         && let ExprKind::Call(e, [arg]) = peel_blocks(arm.body).kind
         && is_res_lang_ctor(cx, path_res(cx, e), LangItem::OptionSome)
         && let ExprKind::Path(QPath::Resolved(_, path2)) = arg.kind
-        && path2.segments.len() == 1 && ident.name == path2.segments[0].ident.name
+        && path2.segments.len() == 1
+        && ident.name == path2.segments[0].ident.name
     {
-        return Some(mutabl)
+        return Some(mutabl);
     }
     None
 }

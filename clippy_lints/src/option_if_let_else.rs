@@ -4,7 +4,6 @@ use clippy_utils::{
     can_move_expr_to_closure, eager_or_lazy, higher, in_constant, is_else_clause, is_res_lang_ctor, peel_blocks,
     peel_hir_expr_while, CaptureKind,
 };
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::LangItem::{OptionNone, OptionSome, ResultErr, ResultOk};
@@ -130,18 +129,29 @@ fn try_get_option_occurrence<'tcx>(
             .filter_map(|(id, &c)| none_captures.get(id).map(|&c2| (c, c2)))
             .all(|(x, y)| x.is_imm_ref() && y.is_imm_ref())
     {
-        let capture_mut = if bind_annotation == BindingAnnotation::MUT { "mut " } else { "" };
+        let capture_mut = if bind_annotation == BindingAnnotation::MUT {
+            "mut "
+        } else {
+            ""
+        };
         let some_body = peel_blocks(if_then);
         let none_body = peel_blocks(if_else);
-        let method_sugg = if eager_or_lazy::switch_to_eager_eval(cx, none_body) { "map_or" } else { "map_or_else" };
+        let method_sugg = if eager_or_lazy::switch_to_eager_eval(cx, none_body) {
+            "map_or"
+        } else {
+            "map_or_else"
+        };
         let capture_name = id.name.to_ident_string();
         let (as_ref, as_mut) = match &expr.kind {
             ExprKind::AddrOf(_, Mutability::Not, _) => (true, false),
             ExprKind::AddrOf(_, Mutability::Mut, _) => (false, true),
             _ if let Some(mutb) = cx.typeck_results().expr_ty(expr).ref_mutability() => {
                 (mutb == Mutability::Not, mutb == Mutability::Mut)
-            }
-            _ => (bind_annotation == BindingAnnotation::REF, bind_annotation == BindingAnnotation::REF_MUT),
+            },
+            _ => (
+                bind_annotation == BindingAnnotation::REF,
+                bind_annotation == BindingAnnotation::REF_MUT,
+            ),
         };
 
         // Check if captures the closure will need conflict with borrows made in the scrutinee.
@@ -152,10 +162,19 @@ fn try_get_option_occurrence<'tcx>(
                 ExprKind::Field(e, _) | ExprKind::AddrOf(_, _, e) => Some(e),
                 _ => None,
             });
-            if let ExprKind::Path(QPath::Resolved(None, Path { res: Res::Local(local_id), .. })) = e.kind {
-                match some_captures.get(local_id)
-                    .or_else(|| (method_sugg == "map_or_else").then_some(()).and_then(|()| none_captures.get(local_id)))
-                {
+            if let ExprKind::Path(QPath::Resolved(
+                None,
+                Path {
+                    res: Res::Local(local_id),
+                    ..
+                },
+            )) = e.kind
+            {
+                match some_captures.get(local_id).or_else(|| {
+                    (method_sugg == "map_or_else")
+                        .then_some(())
+                        .and_then(|()| none_captures.get(local_id))
+                }) {
                     Some(CaptureKind::Value | CaptureKind::Ref(Mutability::Mut)) => return None,
                     Some(CaptureKind::Ref(Mutability::Not)) if as_mut => return None,
                     Some(CaptureKind::Ref(Mutability::Not)) | None => (),
@@ -183,7 +202,13 @@ fn try_get_option_occurrence<'tcx>(
             ),
             none_expr: format!(
                 "{}{}",
-                if method_sugg == "map_or" || is_argless_call { "" } else if is_result { "|_| " } else { "|| "},
+                if method_sugg == "map_or" || is_argless_call {
+                    ""
+                } else if is_result {
+                    "|_| "
+                } else {
+                    "|| "
+                },
                 Sugg::hir_with_context(cx, none_body, ctxt, "..", &mut app),
             ),
         });

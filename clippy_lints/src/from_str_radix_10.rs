@@ -2,7 +2,6 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::is_integer_literal;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{is_type_diagnostic_item, is_type_lang_item};
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{def, Expr, ExprKind, LangItem, PrimTy, QPath, TyKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -61,25 +60,16 @@ impl<'tcx> LateLintPass<'tcx> for FromStrRadix10 {
 
             // check if the second argument is a primitive `10`
             && is_integer_literal(radix, 10)
-
         {
             let expr = if let ExprKind::AddrOf(_, _, expr) = &src.kind {
                 let ty = cx.typeck_results().expr_ty(expr);
-                if is_ty_stringish(cx, ty) {
-                    expr
-                } else {
-                    &src
-                }
+                if is_ty_stringish(cx, ty) { expr } else { &src }
             } else {
                 &src
             };
 
-            let sugg = Sugg::hir_with_applicability(
-                cx,
-                expr,
-                "<string>",
-                &mut Applicability::MachineApplicable
-            ).maybe_par();
+            let sugg =
+                Sugg::hir_with_applicability(cx, expr, "<string>", &mut Applicability::MachineApplicable).maybe_par();
 
             span_lint_and_sugg(
                 cx,
@@ -88,7 +78,7 @@ impl<'tcx> LateLintPass<'tcx> for FromStrRadix10 {
                 "this call to `from_str_radix` can be replaced with a call to `str::parse`",
                 "try",
                 format!("{sugg}.parse::<{}>()", prim_ty.name_str()),
-                Applicability::MaybeIncorrect
+                Applicability::MaybeIncorrect,
             );
         }
     }

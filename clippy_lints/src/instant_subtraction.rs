@@ -90,22 +90,16 @@ impl LateLintPass<'_> for InstantSubtraction {
         ) = expr.kind
         {
             if is_instant_now_call(cx, lhs)
-
                 && is_an_instant(cx, rhs)
                 && let Some(sugg) = Sugg::hir_opt(cx, rhs)
-
             {
-                print_manual_instant_elapsed_sugg(cx, expr, sugg)
-            } else {
-                if !expr.span.from_expansion()
-                    && self.msrv.meets(msrvs::TRY_FROM)
-
-                    && is_an_instant(cx, lhs)
-                    && is_a_duration(cx, rhs)
-
-                {
-                    print_unchecked_duration_subtraction_sugg(cx, lhs, rhs, expr)
-                }
+                print_manual_instant_elapsed_sugg(cx, expr, sugg);
+            } else if !expr.span.from_expansion()
+                && self.msrv.meets(msrvs::TRY_FROM)
+                && is_an_instant(cx, lhs)
+                && is_a_duration(cx, rhs)
+            {
+                print_unchecked_duration_subtraction_sugg(cx, lhs, rhs, expr);
             }
         }
     }

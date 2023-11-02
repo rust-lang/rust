@@ -1,7 +1,6 @@
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{get_parent_expr, path_to_local_id, usage};
-use if_chain::if_chain;
 use rustc_ast::ast;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -70,11 +69,14 @@ pub(super) fn get_hint_if_single_char_arg(
             &snip[1..(snip.len() - 1)]
         };
 
-        let hint = format!("'{}'", match ch {
-            "'" => "\\'" ,
-            r"\" => "\\\\",
-            _ => ch,
-        });
+        let hint = format!(
+            "'{}'",
+            match ch {
+                "'" => "\\'",
+                r"\" => "\\\\",
+                _ => ch,
+            }
+        );
 
         Some(hint)
     } else {

@@ -123,7 +123,6 @@ use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
 use clippy_utils::ty::{contains_ty_adt_constructor_opaque, implements_trait, is_copy, is_type_diagnostic_item};
 use clippy_utils::{contains_return, is_bool, is_trait_method, iter_input_pats, peel_blocks, return_ty};
-use if_chain::if_chain;
 pub use path_ends_with_ext::DEFAULT_ALLOWED_DOTFILES;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
@@ -3980,7 +3979,9 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
         if let TraitItemKind::Fn(ref sig, _) = item.kind
             && sig.decl.implicit_self.has_implicit_self()
             && let Some(first_arg_hir_ty) = sig.decl.inputs.first()
-            && let Some(&first_arg_ty) = cx.tcx.fn_sig(item.owner_id)
+            && let Some(&first_arg_ty) = cx
+                .tcx
+                .fn_sig(item.owner_id)
                 .instantiate_identity()
                 .inputs()
                 .skip_binder()
@@ -4003,7 +4004,6 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             && let ret_ty = return_ty(cx, item.owner_id)
             && let self_ty = TraitRef::identity(cx.tcx, item.owner_id.to_def_id()).self_ty()
             && !ret_ty.contains(self_ty)
-
         {
             span_lint(
                 cx,

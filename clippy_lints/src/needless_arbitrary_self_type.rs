@@ -1,5 +1,4 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use if_chain::if_chain;
 use rustc_ast::ast::{BindingAnnotation, ByRef, Lifetime, Mutability, Param, PatKind, Path, TyKind};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
@@ -105,7 +104,7 @@ fn check_param_inner(cx: &EarlyContext<'_>, path: &Path, span: Span, binding_mod
             "consider to change this parameter to",
             self_param,
             applicability,
-        )
+        );
     }
 }
 
@@ -124,7 +123,7 @@ impl EarlyLintPass for NeedlessArbitrarySelfType {
             },
             TyKind::Ref(lifetime, mut_ty) => {
                 if let TyKind::Path(None, path) = &mut_ty.ty.kind
-                && let PatKind::Ident(BindingAnnotation::NONE, _, _) = p.pat.kind
+                    && let PatKind::Ident(BindingAnnotation::NONE, _, _) = p.pat.kind
                 {
                     check_param_inner(cx, path, p.span.to(p.ty.span), &Mode::Ref(*lifetime), mut_ty.mutbl);
                 }

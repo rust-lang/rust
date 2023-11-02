@@ -1,6 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::{higher, is_integer_literal, peel_blocks_with_stmt, SpanlessEq};
-use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, QPath};
@@ -59,7 +58,6 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitSaturatingSub {
 
             // Extracting out the variable name
             && let ExprKind::Path(QPath::Resolved(_, ares_path)) = target.kind
-
         {
             // Handle symmetric conditions in the if statement
             let (cond_var, cond_num_val) = if SpanlessEq::new(cx).eq_expr(cond_left, target) {
@@ -102,7 +100,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitSaturatingSub {
                         && let None = cx.tcx.impl_trait_ref(impl_id) // An inherent impl
                         && cx.tcx.type_of(impl_id).instantiate_identity().is_integral()
                     {
-                        print_lint_and_sugg(cx, var_name, expr)
+                        print_lint_and_sugg(cx, var_name, expr);
                     }
                 },
                 ExprKind::Call(func, []) => {
@@ -113,7 +111,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitSaturatingSub {
                         && let None = cx.tcx.impl_trait_ref(impl_id) // An inherent impl
                         && cx.tcx.type_of(impl_id).instantiate_identity().is_integral()
                     {
-                        print_lint_and_sugg(cx, var_name, expr)
+                        print_lint_and_sugg(cx, var_name, expr);
                     }
                 },
                 _ => (),
@@ -131,9 +129,7 @@ fn subtracts_one<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<&'a Exp
         ExprKind::Assign(target, value, _) => {
             if let ExprKind::Binary(ref op1, left1, right1) = value.kind
                 && BinOpKind::Sub == op1.node
-
                 && SpanlessEq::new(cx).eq_expr(left1, target)
-
                 && is_integer_literal(right1, 1)
             {
                 Some(target)

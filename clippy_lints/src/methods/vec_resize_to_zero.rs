@@ -1,6 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::ty::is_type_diagnostic_item;
-use if_chain::if_chain;
 use rustc_ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
@@ -20,8 +19,13 @@ pub(super) fn check<'tcx>(
     if let Some(method_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
         && let Some(impl_id) = cx.tcx.impl_of_method(method_id)
         && is_type_diagnostic_item(cx, cx.tcx.type_of(impl_id).instantiate_identity(), sym::Vec)
-        && let ExprKind::Lit(Spanned { node: LitKind::Int(0, _), .. }) = count_arg.kind
-        && let ExprKind::Lit(Spanned { node: LitKind::Int(..), .. }) = default_arg.kind
+        && let ExprKind::Lit(Spanned {
+            node: LitKind::Int(0, _),
+            ..
+        }) = count_arg.kind
+        && let ExprKind::Lit(Spanned {
+            node: LitKind::Int(..), ..
+        }) = default_arg.kind
     {
         let method_call_span = expr.span.with_lo(name_span.lo());
         span_lint_and_then(

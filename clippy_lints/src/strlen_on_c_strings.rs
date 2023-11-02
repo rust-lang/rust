@@ -3,7 +3,6 @@ use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::{is_type_diagnostic_item, is_type_lang_item};
 use clippy_utils::visitors::is_expr_unsafe;
 use clippy_utils::{get_parent_node, match_libc_symbol};
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{Block, BlockCheckMode, Expr, ExprKind, LangItem, Node, UnsafeSource};
 use rustc_lint::{LateContext, LateLintPass};
@@ -53,11 +52,10 @@ impl<'tcx> LateLintPass<'tcx> for StrlenOnCStrings {
             let ctxt = expr.span.ctxt();
             let span = match get_parent_node(cx.tcx, expr.hir_id) {
                 Some(Node::Block(&Block {
-                    rules: BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided), span, ..
-                }))
-                if span.ctxt() == ctxt && !is_expr_unsafe(cx, self_arg) => {
-                    span
-                }
+                    rules: BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided),
+                    span,
+                    ..
+                })) if span.ctxt() == ctxt && !is_expr_unsafe(cx, self_arg) => span,
                 _ => expr.span,
             };
 

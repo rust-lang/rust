@@ -3,7 +3,6 @@
 use std::cmp::Ordering;
 
 use clippy_utils::consts::{constant, Constant};
-use if_chain::if_chain;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::layout::HasTyCtxt;
@@ -76,7 +75,6 @@ pub(super) fn check<'tcx>(
             (&left_cmp_op, &right_cmp_op, ordering),
             (CmpOp::Le | CmpOp::Ge, CmpOp::Le | CmpOp::Ge, Ordering::Equal)
         )
-
     {
         if left_cmp_op.direction() == right_cmp_op.direction() {
             let lhs_str = snippet(cx, left_cond.span, "<lhs>");
@@ -104,15 +102,20 @@ pub(super) fn check<'tcx>(
             }
             // We could autofix this error but choose not to,
             // because code triggering this lint probably not behaving correctly in the first place
-        }
-        else if !comparison_is_possible(left_cmp_op.direction(), ordering) {
+        } else if !comparison_is_possible(left_cmp_op.direction(), ordering) {
             let expr_str = snippet(cx, left_expr.span, "..");
             let lhs_str = snippet(cx, left_const_expr.span, "<lhs>");
             let rhs_str = snippet(cx, right_const_expr.span, "<rhs>");
             let note = match ordering {
-                Ordering::Less => format!("since `{lhs_str}` < `{rhs_str}`, the expression evaluates to false for any value of `{expr_str}`"),
-                Ordering::Equal => format!("`{expr_str}` cannot simultaneously be greater than and less than `{lhs_str}`"),
-                Ordering::Greater => format!("since `{lhs_str}` > `{rhs_str}`, the expression evaluates to false for any value of `{expr_str}`"),
+                Ordering::Less => format!(
+                    "since `{lhs_str}` < `{rhs_str}`, the expression evaluates to false for any value of `{expr_str}`"
+                ),
+                Ordering::Equal => {
+                    format!("`{expr_str}` cannot simultaneously be greater than and less than `{lhs_str}`")
+                },
+                Ordering::Greater => format!(
+                    "since `{lhs_str}` > `{rhs_str}`, the expression evaluates to false for any value of `{expr_str}`"
+                ),
             };
             span_lint_and_note(
                 cx,

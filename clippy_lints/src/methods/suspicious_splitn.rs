@@ -1,5 +1,4 @@
 use clippy_utils::diagnostics::span_lint_and_note;
-use if_chain::if_chain;
 use rustc_ast::LitKind;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::LateContext;
@@ -23,24 +22,21 @@ pub(super) fn check(cx: &LateContext<'_>, method_name: &str, expr: &Expr<'_>, se
         }
 
         let (msg, note_msg) = if count == 0 {
-            (format!("`{method_name}` called with `0` splits"),
-            "the resulting iterator will always return `None`")
+            (
+                format!("`{method_name}` called with `0` splits"),
+                "the resulting iterator will always return `None`",
+            )
         } else {
-            (format!("`{method_name}` called with `1` split"),
-            if self_ty.is_slice() {
-                "the resulting iterator will always return the entire slice followed by `None`"
-            } else {
-                "the resulting iterator will always return the entire string followed by `None`"
-            })
+            (
+                format!("`{method_name}` called with `1` split"),
+                if self_ty.is_slice() {
+                    "the resulting iterator will always return the entire slice followed by `None`"
+                } else {
+                    "the resulting iterator will always return the entire string followed by `None`"
+                },
+            )
         };
 
-        span_lint_and_note(
-            cx,
-            SUSPICIOUS_SPLITN,
-            expr.span,
-            &msg,
-            None,
-            note_msg,
-        );
+        span_lint_and_note(cx, SUSPICIOUS_SPLITN, expr.span, &msg, None, note_msg);
     }
 }

@@ -2,7 +2,6 @@ use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::get_parent_expr;
 use clippy_utils::source::snippet_with_context;
-use if_chain::if_chain;
 use rustc_ast::ast::{LitIntType, LitKind};
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Block, Expr, ExprKind, Stmt, StmtKind};
@@ -47,10 +46,20 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitSaturatingAdd {
             && let ExprKind::Block(block, None) = then.kind
             && let Block {
                 stmts:
-                    [Stmt
-                        { kind: StmtKind::Expr(ex) | StmtKind::Semi(ex), .. }],
-                        expr: None, ..} |
-                        Block { stmts: [], expr: Some(ex), ..} = block
+                    [
+                        Stmt {
+                            kind: StmtKind::Expr(ex) | StmtKind::Semi(ex),
+                            ..
+                        },
+                    ],
+                expr: None,
+                ..
+            }
+            | Block {
+                stmts: [],
+                expr: Some(ex),
+                ..
+            } = block
             && let ExprKind::AssignOp(op1, target, value) = ex.kind
             && let ty = cx.typeck_results().expr_ty(target)
             && Some(c) == get_int_max(ty)
@@ -73,7 +82,15 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitSaturatingAdd {
             } else {
                 format!("{code} = {code}.saturating_add(1);")
             };
-            span_lint_and_sugg(cx, IMPLICIT_SATURATING_ADD, expr.span, "manual saturating add detected", "use instead", sugg, app);
+            span_lint_and_sugg(
+                cx,
+                IMPLICIT_SATURATING_ADD,
+                expr.span,
+                "manual saturating add detected",
+                "use instead",
+                sugg,
+                app,
+            );
         }
     }
 }

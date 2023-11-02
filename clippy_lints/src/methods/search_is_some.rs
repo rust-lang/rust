@@ -3,7 +3,6 @@ use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::sugg::deref_closure_args;
 use clippy_utils::ty::is_type_lang_item;
 use clippy_utils::{is_trait_method, strip_pat_refs};
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::PatKind;
@@ -108,9 +107,7 @@ pub(super) fn check<'tcx>(
                 self_ty.is_str()
             }
         };
-        if is_string_or_str_slice(search_recv)
-            && is_string_or_str_slice(search_arg)
-        {
+        if is_string_or_str_slice(search_recv) && is_string_or_str_slice(search_arg) {
             let msg = format!("called `{option_check_method}()` after calling `find()` on a string");
             match option_check_method {
                 "is_some" => {

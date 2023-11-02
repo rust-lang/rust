@@ -2,7 +2,6 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{get_parent_expr, is_res_lang_ctor, path_res};
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::ResultErr;
 use rustc_hir::{Expr, ExprKind, LangItem, MatchSource, QPath};
@@ -104,7 +103,6 @@ fn poll_result_error_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<
     if let ty::Adt(def, subst) = ty.kind()
         && cx.tcx.lang_items().get(LangItem::Poll) == Some(def.did())
         && let ready_ty = subst.type_at(0)
-
         && let ty::Adt(ready_def, ready_subst) = ready_ty.kind()
         && cx.tcx.is_diagnostic_item(sym::Result, ready_def.did())
     {
@@ -119,11 +117,9 @@ fn poll_option_result_error_type<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> 
     if let ty::Adt(def, subst) = ty.kind()
         && cx.tcx.lang_items().get(LangItem::Poll) == Some(def.did())
         && let ready_ty = subst.type_at(0)
-
         && let ty::Adt(ready_def, ready_subst) = ready_ty.kind()
         && cx.tcx.is_diagnostic_item(sym::Option, ready_def.did())
         && let some_ty = ready_subst.type_at(0)
-
         && let ty::Adt(some_def, some_subst) = some_ty.kind()
         && cx.tcx.is_diagnostic_item(sym::Result, some_def.did())
     {

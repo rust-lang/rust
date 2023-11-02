@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg};
 use clippy_utils::macros::{find_format_arg_expr, find_format_args, is_format_macro, root_macro_call_first_node};
 use clippy_utils::{get_parent_as_impl, is_diag_trait_item, path_to_local, peel_ref_operators};
-use if_chain::if_chain;
 use rustc_ast::{FormatArgsPiece, FormatTrait};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, Impl, ImplItem, ImplItemKind, QPath};
@@ -243,20 +242,22 @@ fn check_print_in_format_impl(cx: &LateContext<'_>, expr: &Expr<'_>, impl_trait:
 fn is_format_trait_impl(cx: &LateContext<'_>, impl_item: &ImplItem<'_>) -> Option<FormatTraitNames> {
     if impl_item.ident.name == sym::fmt
         && let ImplItemKind::Fn(_, body_id) = impl_item.kind
-        && let Some(Impl { of_trait: Some(trait_ref),..}) = get_parent_as_impl(cx.tcx, impl_item.hir_id())
+        && let Some(Impl {
+            of_trait: Some(trait_ref),
+            ..
+        }) = get_parent_as_impl(cx.tcx, impl_item.hir_id())
         && let Some(did) = trait_ref.trait_def_id()
         && let Some(name) = cx.tcx.get_diagnostic_name(did)
         && matches!(name, sym::Debug | sym::Display)
     {
         let body = cx.tcx.hir().body(body_id);
-        let formatter_name = body.params.get(1)
+        let formatter_name = body
+            .params
+            .get(1)
             .and_then(|param| param.pat.simple_ident())
             .map(|ident| ident.name);
 
-        Some(FormatTraitNames {
-            name,
-            formatter_name,
-        })
+        Some(FormatTraitNames { name, formatter_name })
     } else {
         None
     }

@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::is_type_lang_item;
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
@@ -27,8 +26,11 @@ pub(super) fn check<'tcx>(
             expr.span,
             "using long and hard to read `.bytes().count()`",
             "consider calling `.len()` instead",
-            format!("{}.len()", snippet_with_applicability(cx, bytes_recv.span, "..", &mut applicability)),
-            applicability
+            format!(
+                "{}.len()",
+                snippet_with_applicability(cx, bytes_recv.span, "..", &mut applicability)
+            ),
+            applicability,
         );
     };
 }

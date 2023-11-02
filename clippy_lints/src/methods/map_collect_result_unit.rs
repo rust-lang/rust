@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::is_type_diagnostic_item;
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
@@ -17,7 +16,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, iter: &hir::Expr
         && let ty::Adt(_, args) = collect_ret_ty.kind()
         && let Some(result_t) = args.types().next()
         && result_t.is_unit()
-        // get parts for snippet
+    // get parts for snippet
     {
         span_lint_and_sugg(
             cx,

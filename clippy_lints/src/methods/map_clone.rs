@@ -3,7 +3,6 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::{is_copy, is_type_diagnostic_item};
 use clippy_utils::{is_diag_trait_item, peel_blocks};
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
@@ -17,19 +16,19 @@ use super::MAP_CLONE;
 
 pub(super) fn check(cx: &LateContext<'_>, e: &hir::Expr<'_>, recv: &hir::Expr<'_>, arg: &hir::Expr<'_>, msrv: &Msrv) {
     if let Some(method_id) = cx.typeck_results().type_dependent_def_id(e.hir_id)
-        && (cx.tcx.impl_of_method(method_id)
-            .map_or(false, |id| is_type_diagnostic_item(cx, cx.tcx.type_of(id).instantiate_identity(), sym::Option))
-            || is_diag_trait_item(cx, method_id, sym::Iterator))
-        && let hir::ExprKind::Closure(&hir::Closure{ body, .. }) = arg.kind
+        && (cx.tcx.impl_of_method(method_id).map_or(false, |id| {
+            is_type_diagnostic_item(cx, cx.tcx.type_of(id).instantiate_identity(), sym::Option)
+        }) || is_diag_trait_item(cx, method_id, sym::Iterator))
+        && let hir::ExprKind::Closure(&hir::Closure { body, .. }) = arg.kind
     {
         let closure_body = cx.tcx.hir().body(body);
         let closure_expr = peel_blocks(closure_body.value);
         match closure_body.params[0].pat.kind {
-            hir::PatKind::Ref(inner, hir::Mutability::Not) => if let hir::PatKind::Binding(
-                hir::BindingAnnotation::NONE, .., name, None
-            ) = inner.kind {
-                if ident_eq(name, closure_expr) {
-                    lint_explicit_closure(cx, e.span, recv.span, true, msrv);
+            hir::PatKind::Ref(inner, hir::Mutability::Not) => {
+                if let hir::PatKind::Binding(hir::BindingAnnotation::NONE, .., name, None) = inner.kind {
+                    if ident_eq(name, closure_expr) {
+                        lint_explicit_closure(cx, e.span, recv.span, true, msrv);
+                    }
                 }
             },
             hir::PatKind::Binding(hir::BindingAnnotation::NONE, .., name, None) => {
@@ -41,22 +40,24 @@ pub(super) fn check(cx: &LateContext<'_>, e: &hir::Expr<'_>, recv: &hir::Expr<'_
                             }
                         }
                     },
-                    hir::ExprKind::MethodCall(method, obj, [], _) => if ident_eq(name, obj) && method.ident.name == sym::clone
+                    hir::ExprKind::MethodCall(method, obj, [], _) => {
+                        if ident_eq(name, obj) && method.ident.name == sym::clone
                         && let Some(fn_id) = cx.typeck_results().type_dependent_def_id(closure_expr.hir_id)
                         && let Some(trait_id) = cx.tcx.trait_of_item(fn_id)
                         && cx.tcx.lang_items().clone_trait().map_or(false, |id| id == trait_id)
                         // no autoderefs
                         && !cx.typeck_results().expr_adjustments(obj).iter()
                             .any(|a| matches!(a.kind, Adjust::Deref(Some(..))))
-                    {
-                        let obj_ty = cx.typeck_results().expr_ty(obj);
-                        if let ty::Ref(_, ty, mutability) = obj_ty.kind() {
-                            if matches!(mutability, Mutability::Not) {
-                                let copy = is_copy(cx, *ty);
-                                lint_explicit_closure(cx, e.span, recv.span, copy, msrv);
+                        {
+                            let obj_ty = cx.typeck_results().expr_ty(obj);
+                            if let ty::Ref(_, ty, mutability) = obj_ty.kind() {
+                                if matches!(mutability, Mutability::Not) {
+                                    let copy = is_copy(cx, *ty);
+                                    lint_explicit_closure(cx, e.span, recv.span, copy, msrv);
+                                }
+                            } else {
+                                lint_needless_cloning(cx, e.span, recv.span);
                             }
-                        } else {
-                            lint_needless_cloning(cx, e.span, recv.span);
                         }
                     },
                     _ => {},

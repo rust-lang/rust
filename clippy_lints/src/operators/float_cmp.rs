@@ -2,7 +2,6 @@ use clippy_utils::consts::{constant_with_source, Constant};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::get_item_name;
 use clippy_utils::sugg::Sugg;
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, UnOp};
 use rustc_lint::LateContext;
@@ -107,8 +106,8 @@ fn is_signum(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
 
     if let ExprKind::MethodCall(method_name, self_arg, ..) = expr.kind
         && sym!(signum) == method_name.ident.name
-        // Check that the receiver of the signum() is a float (expressions[0] is the receiver of
-        // the method call)
+    // Check that the receiver of the signum() is a float (expressions[0] is the receiver of
+    // the method call)
     {
         return is_float(cx, self_arg);
     }

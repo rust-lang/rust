@@ -15,7 +15,6 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::{snippet, snippet_block, snippet_block_with_applicability};
 use clippy_utils::sugg::Sugg;
-use if_chain::if_chain;
 use rustc_ast::ast;
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
@@ -131,7 +130,11 @@ fn check_collapsible_maybe_if_let(cx: &EarlyContext<'_>, then_span: Span, else_:
         // Prevent "elseif"
         // Check that the "else" is followed by whitespace
         let up_to_else = then_span.between(block.span);
-        let requires_space = if let Some(c) = snippet(cx, up_to_else, "..").chars().last() { !c.is_whitespace() } else { false };
+        let requires_space = if let Some(c) = snippet(cx, up_to_else, "..").chars().last() {
+            !c.is_whitespace()
+        } else {
+            false
+        };
 
         let mut applicability = Applicability::MachineApplicable;
         span_lint_and_sugg(
@@ -160,21 +163,27 @@ fn check_collapsible_no_if_let(cx: &EarlyContext<'_>, expr: &ast::Expr, check: &
         && let ctxt = expr.span.ctxt()
         && inner.span.ctxt() == ctxt
     {
-        span_lint_and_then(cx, COLLAPSIBLE_IF, expr.span, "this `if` statement can be collapsed", |diag| {
-            let mut app = Applicability::MachineApplicable;
-            let lhs = Sugg::ast(cx, check, "..", ctxt, &mut app);
-            let rhs = Sugg::ast(cx, check_inner, "..", ctxt, &mut app);
-            diag.span_suggestion(
-                expr.span,
-                "collapse nested if block",
-                format!(
-                    "if {} {}",
-                    lhs.and(&rhs),
-                    snippet_block(cx, content.span, "..", Some(expr.span)),
-                ),
-                app, // snippet
-            );
-        });
+        span_lint_and_then(
+            cx,
+            COLLAPSIBLE_IF,
+            expr.span,
+            "this `if` statement can be collapsed",
+            |diag| {
+                let mut app = Applicability::MachineApplicable;
+                let lhs = Sugg::ast(cx, check, "..", ctxt, &mut app);
+                let rhs = Sugg::ast(cx, check_inner, "..", ctxt, &mut app);
+                diag.span_suggestion(
+                    expr.span,
+                    "collapse nested if block",
+                    format!(
+                        "if {} {}",
+                        lhs.and(&rhs),
+                        snippet_block(cx, content.span, "..", Some(expr.span)),
+                    ),
+                    app, // snippet
+                );
+            },
+        );
     }
 }
 

@@ -3,7 +3,6 @@ use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg};
 use clippy_utils::source::{snippet, snippet_opt, snippet_with_applicability};
 use clippy_utils::{is_from_proc_macro, SpanlessEq, SpanlessHash};
 use core::hash::{Hash, Hasher};
-use if_chain::if_chain;
 use itertools::Itertools;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::unhash::UnhashMap;
@@ -129,19 +128,19 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
                 && !bound_predicate.span.from_expansion()
                 && let TyKind::Path(QPath::Resolved(_, Path { segments, .. })) = bound_predicate.bounded_ty.kind
                 && let Some(PathSegment {
-                    res: Res::SelfTyParam { trait_: def_id }, ..
+                    res: Res::SelfTyParam { trait_: def_id },
+                    ..
                 }) = segments.first()
-                && let Some(
-                    Node::Item(
-                        Item {
-                            kind: ItemKind::Trait(_, _, _, self_bounds, _),
-                            .. }
-                        )
-                    ) = cx.tcx.hir().get_if_local(*def_id)
+                && let Some(Node::Item(Item {
+                    kind: ItemKind::Trait(_, _, _, self_bounds, _),
+                    ..
+                })) = cx.tcx.hir().get_if_local(*def_id)
             {
                 if self_bounds_map.is_empty() {
                     for bound in *self_bounds {
-                        let Some((self_res, self_segments, _)) = get_trait_info_from_bound(bound) else { continue };
+                        let Some((self_res, self_segments, _)) = get_trait_info_from_bound(bound) else {
+                            continue;
+                        };
                         self_bounds_map.insert(self_res, self_segments);
                     }
                 }
@@ -173,7 +172,6 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
             && let TyKind::TraitObject(bounds, ..) = mut_ty.ty.kind
             && bounds.len() > 2
         {
-
             // Build up a hash of every trait we've seen
             // When we see a trait for the first time, add it to unique_traits
             // so we can later use it to build a string of all traits exactly once, without duplicates
@@ -184,7 +182,9 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
             // Iterate the bounds and add them to our seen hash
             // If we haven't yet seen it, add it to the fixed traits
             for bound in bounds {
-                let Some(def_id) = bound.trait_ref.trait_def_id() else { continue; };
+                let Some(def_id) = bound.trait_ref.trait_def_id() else {
+                    continue;
+                };
 
                 let new_trait = seen_def_ids.insert(def_id);
 
@@ -267,7 +267,11 @@ impl TraitBounds {
                 && p.origin != PredicateOrigin::ImplTrait
                 && p.bounds.len() as u64 <= self.max_trait_bounds
                 && !p.span.from_expansion()
-                && let bounds = p.bounds.iter().filter(|b| !self.cannot_combine_maybe_bound(cx, b)).collect::<Vec<_>>()
+                && let bounds = p
+                    .bounds
+                    .iter()
+                    .filter(|b| !self.cannot_combine_maybe_bound(cx, b))
+                    .collect::<Vec<_>>()
                 && !bounds.is_empty()
                 && let Some(ref v) = map.insert(SpanlessTy { ty: p.bounded_ty, cx }, bounds)
                 && !is_from_proc_macro(cx, p.bounded_ty)
@@ -314,11 +318,17 @@ fn check_trait_bound_duplication(cx: &LateContext<'_>, gen: &'_ Generics<'_>) {
         .filter_map(|pred| {
             if pred.in_where_clause()
                 && let WherePredicate::BoundPredicate(bound_predicate) = pred
-                && let TyKind::Path(QPath::Resolved(_, path)) =  bound_predicate.bounded_ty.kind
+                && let TyKind::Path(QPath::Resolved(_, path)) = bound_predicate.bounded_ty.kind
             {
                 return Some(
-                    rollup_traits(cx, bound_predicate.bounds, "these where clauses contain repeated elements")
-                    .into_iter().map(|(trait_ref, _)| (path.res, trait_ref)))
+                    rollup_traits(
+                        cx,
+                        bound_predicate.bounds,
+                        "these where clauses contain repeated elements",
+                    )
+                    .into_iter()
+                    .map(|(trait_ref, _)| (path.res, trait_ref)),
+                );
             }
             None
         })
@@ -335,7 +345,7 @@ fn check_trait_bound_duplication(cx: &LateContext<'_>, gen: &'_ Generics<'_>) {
         if let WherePredicate::BoundPredicate(bound_predicate) = predicate
             && bound_predicate.origin != PredicateOrigin::ImplTrait
             && !bound_predicate.span.from_expansion()
-            && let TyKind::Path(QPath::Resolved(_, path)) =  bound_predicate.bounded_ty.kind
+            && let TyKind::Path(QPath::Resolved(_, path)) = bound_predicate.bounded_ty.kind
         {
             let traits = rollup_traits(cx, bound_predicate.bounds, "these bounds contain repeated elements");
             for (trait_ref, span) in traits {
@@ -393,7 +403,9 @@ fn into_comparable_trait_ref(trait_ref: &TraitRef<'_>) -> ComparableTraitRef {
                 Some(segment.args?.args.iter().filter_map(|arg| {
                     if let GenericArg::Type(ty) = arg
                         && let TyKind::Path(QPath::Resolved(_, path)) = ty.kind
-                    { return Some(path.res) }
+                    {
+                        return Some(path.res);
+                    }
                     None
                 }))
             })
@@ -432,12 +444,11 @@ fn rollup_traits(cx: &LateContext<'_>, bounds: &[GenericBound<'_>], msg: &str) -
         comparable_bounds[i] = (k, v);
     }
 
-    if repeated_res
-        && let [first_trait, .., last_trait] = bounds
-    {
+    if repeated_res && let [first_trait, .., last_trait] = bounds {
         let all_trait_span = first_trait.span().to(last_trait.span());
 
-        let traits = comparable_bounds.iter()
+        let traits = comparable_bounds
+            .iter()
             .filter_map(|&(_, span)| snippet_opt(cx, span))
             .collect::<Vec<_>>();
         let traits = traits.join(" + ");
@@ -449,7 +460,7 @@ fn rollup_traits(cx: &LateContext<'_>, bounds: &[GenericBound<'_>], msg: &str) -
             msg,
             "try",
             traits,
-            Applicability::MachineApplicable
+            Applicability::MachineApplicable,
         );
     }
 

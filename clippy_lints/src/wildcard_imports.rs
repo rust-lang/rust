@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::is_test_module_or_function;
 use clippy_utils::source::{snippet, snippet_with_applicability};
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Item, ItemKind, PathSegment, UseKind};
@@ -139,10 +138,7 @@ impl LateLintPass<'_> for WildcardImports {
                 // This is a `_::{_, *}` import
                 // In this case `use_path.span` is empty and ends directly in front of the `*`,
                 // so we need to extend it by one byte.
-                (
-                    use_path.span.with_hi(use_path.span.hi() + BytePos(1)),
-                    true,
-                )
+                (use_path.span.with_hi(use_path.span.hi() + BytePos(1)), true)
             } else {
                 // In this case, the `use_path.span` ends right before the `::*`, so we need to
                 // extend it up to the `*`. Since it is hard to find the `*` in weird
@@ -153,9 +149,7 @@ impl LateLintPass<'_> for WildcardImports {
                 if snippet(cx, span, "").ends_with(';') {
                     span = use_path.span.with_hi(item.span.hi() - BytePos(1));
                 }
-                (
-                    span, false,
-                )
+                (span, false)
             };
 
             let mut imports = used_imports.items().map(ToString::to_string).into_sorted_stable_ord();
@@ -180,15 +174,7 @@ impl LateLintPass<'_> for WildcardImports {
                 (WILDCARD_IMPORTS, "usage of wildcard import")
             };
 
-            span_lint_and_sugg(
-                cx,
-                lint,
-                span,
-                message,
-                "try",
-                sugg,
-                applicability,
-            );
+            span_lint_and_sugg(cx, lint, span, message, "try", sugg, applicability);
         }
     }
 

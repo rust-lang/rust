@@ -6,7 +6,6 @@ use clippy_utils::usage::local_used_after_expr;
 use clippy_utils::visitors::{for_each_expr_with_closures, Descend};
 use clippy_utils::{is_diag_item_method, match_def_path, path_to_local_id, paths};
 use core::ops::ControlFlow;
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{
     BindingAnnotation, Expr, ExprKind, HirId, LangItem, Local, MatchSource, Node, Pat, PatKind, QPath, Stmt, StmtKind,
@@ -295,7 +294,7 @@ fn parse_iter_usage<'tcx>(
                         Some(IterUsage {
                             kind: IterUsageKind::NextTuple,
                             span: e.span,
-                            unwrap_kind: None
+                            unwrap_kind: None,
                         })
                     } else {
                         None
@@ -305,18 +304,16 @@ fn parse_iter_usage<'tcx>(
                     if let Some(Constant::Int(idx)) = constant(cx, cx.typeck_results(), idx_expr) {
                         let span = if name.ident.as_str() == "nth" {
                             e.span
+                        } else if let Some((_, Node::Expr(next_expr))) = iter.next()
+                            && let ExprKind::MethodCall(next_name, _, [], _) = next_expr.kind
+                            && next_name.ident.name == sym::next
+                            && next_expr.span.ctxt() == ctxt
+                            && let Some(next_id) = cx.typeck_results().type_dependent_def_id(next_expr.hir_id)
+                            && cx.tcx.trait_of_item(next_id) == Some(iter_id)
+                        {
+                            next_expr.span
                         } else {
-                            if let Some((_, Node::Expr(next_expr))) = iter.next()
-                                && let ExprKind::MethodCall(next_name, _, [], _) = next_expr.kind
-                                && next_name.ident.name == sym::next
-                                && next_expr.span.ctxt() == ctxt
-                                && let Some(next_id) = cx.typeck_results().type_dependent_def_id(next_expr.hir_id)
-                                && cx.tcx.trait_of_item(next_id) == Some(iter_id)
-                            {
-                                next_expr.span
-                            } else {
-                                return None;
-                            }
+                            return None;
                         };
                         (IterUsageKind::Nth(idx), span)
                     } else {

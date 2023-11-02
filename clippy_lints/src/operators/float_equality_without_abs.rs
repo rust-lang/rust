@@ -1,6 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::{match_def_path, paths, sugg};
-use if_chain::if_chain;
 use rustc_ast::util::parser::AssocOp;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
@@ -44,26 +43,23 @@ pub(crate) fn check<'tcx>(
         && let t_val_r = cx.typeck_results().expr_ty(val_r)
         && let ty::Float(_) = t_val_l.kind()
         && let ty::Float(_) = t_val_r.kind()
-
     {
         let sug_l = sugg::Sugg::hir(cx, val_l, "..");
         let sug_r = sugg::Sugg::hir(cx, val_r, "..");
         // format the suggestion
-        let suggestion = format!("{}.abs()", sugg::make_assoc(AssocOp::Subtract, &sug_l, &sug_r).maybe_par());
+        let suggestion = format!(
+            "{}.abs()",
+            sugg::make_assoc(AssocOp::Subtract, &sug_l, &sug_r).maybe_par()
+        );
         // spans the lint
         span_lint_and_then(
             cx,
             FLOAT_EQUALITY_WITHOUT_ABS,
             expr.span,
             "float equality check without `.abs()`",
-            | diag | {
-                diag.span_suggestion(
-                    lhs.span,
-                    "add `.abs()`",
-                    suggestion,
-                    Applicability::MaybeIncorrect,
-                );
-            }
+            |diag| {
+                diag.span_suggestion(lhs.span, "add `.abs()`", suggestion, Applicability::MaybeIncorrect);
+            },
         );
     }
 }

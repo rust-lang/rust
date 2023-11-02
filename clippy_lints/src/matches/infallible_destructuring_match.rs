@@ -11,14 +11,13 @@ pub(crate) fn check(cx: &LateContext<'_>, local: &Local<'_>) -> bool {
     if !local.span.from_expansion()
         && let Some(expr) = local.init
         && let ExprKind::Match(target, arms, MatchSource::Normal) = expr.kind
-        && arms.len() == 1 && arms[0].guard.is_none()
-        && let PatKind::TupleStruct(
-            QPath::Resolved(None, variant_name), args, _) = arms[0].pat.kind
+        && arms.len() == 1
+        && arms[0].guard.is_none()
+        && let PatKind::TupleStruct(QPath::Resolved(None, variant_name), args, _) = arms[0].pat.kind
         && args.len() == 1
         && let PatKind::Binding(binding, arg, ..) = strip_pat_refs(&args[0]).kind
         && let body = peel_blocks(arms[0].body)
         && path_to_local_id(body, arg)
-
     {
         let mut applicability = Applicability::MachineApplicable;
         span_lint_and_sugg(

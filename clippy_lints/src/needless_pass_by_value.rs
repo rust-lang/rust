@@ -5,7 +5,6 @@ use clippy_utils::source::{snippet, snippet_opt};
 use clippy_utils::ty::{
     implements_trait, implements_trait_with_env_from_iter, is_copy, is_type_diagnostic_item, is_type_lang_item,
 };
-use if_chain::if_chain;
 use rustc_ast::ast::Attribute;
 use rustc_errors::{Applicability, Diagnostic};
 use rustc_hir::intravisit::FnKind;
@@ -181,16 +180,17 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                 && !ty.is_mutable_ptr()
                 && !is_copy(cx, ty)
                 && ty.is_sized(cx.tcx, cx.param_env)
-                && !allowed_traits.iter().any(|&t| implements_trait_with_env_from_iter(
-                    cx.tcx,
-                    cx.param_env,
-                    ty,
-                    t,
-                    [Option::<ty::GenericArg<'tcx>>::None],
-                ))
+                && !allowed_traits.iter().any(|&t| {
+                    implements_trait_with_env_from_iter(
+                        cx.tcx,
+                        cx.param_env,
+                        ty,
+                        t,
+                        [Option::<ty::GenericArg<'tcx>>::None],
+                    )
+                })
                 && !implements_borrow_trait
                 && !all_borrowable_trait
-
                 && let PatKind::Binding(BindingAnnotation(_, Mutability::Not), canonical_id, ..) = arg.pat.kind
                 && !moved_vars.contains(&canonical_id)
             {
@@ -203,23 +203,32 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                                 cx.param_env,
                                 ty,
                                 traits::ObligationCause::dummy_with_span(span),
-                            ).is_ok() {
+                            )
+                            .is_ok()
+                            {
                                 diag.span_help(span, "consider marking this type as `Copy`");
                             }
                         }
                     }
 
                     if is_type_diagnostic_item(cx, ty, sym::Vec)
-                        && let Some(clone_spans) =
-                            get_spans(cx, Some(body.id()), idx, &[("clone", ".to_owned()")])
+                        && let Some(clone_spans) = get_spans(cx, Some(body.id()), idx, &[("clone", ".to_owned()")])
                         && let TyKind::Path(QPath::Resolved(_, path)) = input.kind
-                        && let Some(elem_ty) = path.segments.iter()
+                        && let Some(elem_ty) = path
+                            .segments
+                            .iter()
                             .find(|seg| seg.ident.name == sym::Vec)
                             .and_then(|ps| ps.args.as_ref())
-                            .map(|params| params.args.iter().find_map(|arg| match arg {
-                                GenericArg::Type(ty) => Some(ty),
-                                _ => None,
-                            }).unwrap())
+                            .map(|params| {
+                                params
+                                    .args
+                                    .iter()
+                                    .find_map(|arg| match arg {
+                                        GenericArg::Type(ty) => Some(ty),
+                                        _ => None,
+                                    })
+                                    .unwrap()
+                            })
                     {
                         let slice_ty = format!("&[{}]", snippet(cx, elem_ty.span, "_"));
                         diag.span_suggestion(
@@ -233,10 +242,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                             diag.span_suggestion(
                                 span,
                                 snippet_opt(cx, span)
-                                    .map_or(
-                                        "change the call to".into(),
-                                        |x| format!("change `{x}` to"),
-                                    ),
+                                    .map_or("change the call to".into(), |x| format!("change `{x}` to")),
                                 suggestion,
                                 Applicability::Unspecified,
                             );
@@ -248,7 +254,8 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
 
                     if is_type_lang_item(cx, ty, LangItem::String) {
                         if let Some(clone_spans) =
-                            get_spans(cx, Some(body.id()), idx, &[("clone", ".to_string()"), ("as_str", "")]) {
+                            get_spans(cx, Some(body.id()), idx, &[("clone", ".to_string()"), ("as_str", "")])
+                        {
                             diag.span_suggestion(
                                 input.span,
                                 "consider changing the type to",
@@ -260,10 +267,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                                 diag.span_suggestion(
                                     span,
                                     snippet_opt(cx, span)
-                                        .map_or(
-                                            "change the call to".into(),
-                                            |x| format!("change `{x}` to")
-                                        ),
+                                        .map_or("change the call to".into(), |x| format!("change `{x}` to")),
                                     suggestion,
                                     Applicability::Unspecified,
                                 );

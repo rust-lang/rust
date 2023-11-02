@@ -2,7 +2,6 @@ use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_the
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{get_item_name, get_parent_as_impl, is_lint_allowed, peel_ref_operators};
-use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
@@ -144,10 +143,8 @@ impl<'tcx> LateLintPass<'tcx> for LenZero {
             && let Some(local_id) = ty_id.as_local()
             && let ty_hir_id = cx.tcx.hir().local_def_id_to_hir_id(local_id)
             && !is_lint_allowed(cx, LEN_WITHOUT_IS_EMPTY, ty_hir_id)
-            && let Some(output) = parse_len_output(
-                cx,
-                cx.tcx.fn_sig(item.owner_id).instantiate_identity().skip_binder()
-            )
+            && let Some(output) =
+                parse_len_output(cx, cx.tcx.fn_sig(item.owner_id).instantiate_identity().skip_binder())
         {
             let (name, kind) = match cx.tcx.hir().find(ty_hir_id) {
                 Some(Node::ForeignItem(x)) => (x.ident.name, "extern type"),
@@ -156,10 +153,10 @@ impl<'tcx> LateLintPass<'tcx> for LenZero {
                     ItemKind::Enum(..) => (x.ident.name, "enum"),
                     ItemKind::Union(..) => (x.ident.name, "union"),
                     _ => (x.ident.name, "type"),
-                }
+                },
                 _ => return,
             };
-            check_for_is_empty(cx, sig.span, sig.decl.implicit_self, output, ty_id, name, kind)
+            check_for_is_empty(cx, sig.span, sig.decl.implicit_self, output, ty_id, name, kind);
         }
     }
 

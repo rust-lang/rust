@@ -5,7 +5,6 @@ use clippy_utils::{
     any_parent_is_automatically_derived, fulfill_or_allowed, get_parent_expr, is_lint_allowed, iter_input_pats,
     last_path_segment, SpanlessEq,
 };
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::intravisit::FnKind;
@@ -174,13 +173,10 @@ impl<'tcx> LateLintPass<'tcx> for LintPass {
                     diag.span_suggestion(
                         stmt.span,
                         "try",
-                        format!(
-                            "let {name}{tyopt} = {initref};",
-                            name=snippet(cx, name.span, ".."),
-                        ),
+                        format!("let {name}{tyopt} = {initref};", name = snippet(cx, name.span, ".."),),
                         app,
                     );
-                }
+                },
             );
         };
         if let StmtKind::Semi(expr) = stmt.kind
@@ -199,13 +195,11 @@ impl<'tcx> LateLintPass<'tcx> for LintPass {
                     diag.span_suggestion(
                         stmt.span,
                         "replace it with",
-                        format!(
-                            "if {sugg} {{ {}; }}",
-                            &snippet(cx, b.span, ".."),
-                        ),
+                        format!("if {sugg} {{ {}; }}", &snippet(cx, b.span, ".."),),
                         Applicability::MachineApplicable, // snippet
                     );
-                });
+                },
+            );
         };
     }
 

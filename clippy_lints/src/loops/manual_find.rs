@@ -4,7 +4,6 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::{higher, is_res_lang_ctor, path_res, peel_blocks_with_stmt};
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::lang_items::LangItem;
@@ -23,7 +22,11 @@ pub(super) fn check<'tcx>(
     let inner_expr = peel_blocks_with_stmt(body);
     // Check for the specific case that the result is returned and optimize suggestion for that (more
     // cases can be added later)
-    if let Some(higher::If { cond, then, r#else: None, }) = higher::If::hir(inner_expr)
+    if let Some(higher::If {
+        cond,
+        then,
+        r#else: None,
+    }) = higher::If::hir(inner_expr)
         && let Some(binding_id) = get_binding(pat)
         && let ExprKind::Block(block, _) = then.kind
         && let [stmt] = block.stmts
@@ -51,7 +54,12 @@ pub(super) fn check<'tcx>(
             );
         }
         let ty = cx.typeck_results().expr_ty(inner_ret);
-        if cx.tcx.lang_items().copy_trait().map_or(false, |id| implements_trait(cx, ty, id, &[])) {
+        if cx
+            .tcx
+            .lang_items()
+            .copy_trait()
+            .map_or(false, |id| implements_trait(cx, ty, id, &[]))
+        {
             snippet.push_str(
                 &format!(
                     ".find(|{}{}| {})",
@@ -84,12 +92,7 @@ pub(super) fn check<'tcx>(
                 if applicability == Applicability::MaybeIncorrect {
                     diag.note("you may need to dereference some variables");
                 }
-                diag.span_suggestion(
-                    lint_span,
-                    "replace with an iterator",
-                    snippet,
-                    applicability,
-                );
+                diag.span_suggestion(lint_span, "replace with an iterator", snippet, applicability);
             },
         );
     }

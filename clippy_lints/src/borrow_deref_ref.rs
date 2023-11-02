@@ -54,25 +54,25 @@ impl<'tcx> LateLintPass<'tcx> for BorrowDerefRef {
             && !addrof_target.span.from_expansion()
             && let ExprKind::Unary(UnOp::Deref, deref_target) = addrof_target.kind
             && !deref_target.span.from_expansion()
-            && !matches!(deref_target.kind, ExprKind::Unary(UnOp::Deref, ..) )
+            && !matches!(deref_target.kind, ExprKind::Unary(UnOp::Deref, ..))
             && let ref_ty = cx.typeck_results().expr_ty(deref_target)
             && let ty::Ref(_, inner_ty, Mutability::Not) = ref_ty.kind()
             && !is_from_proc_macro(cx, e)
         {
-
-            if let Some(parent_expr) = get_parent_expr(cx, e){
-                if matches!(parent_expr.kind, ExprKind::Unary(UnOp::Deref, ..)) &&
-                   !is_lint_allowed(cx, DEREF_ADDROF, parent_expr.hir_id) {
+            if let Some(parent_expr) = get_parent_expr(cx, e) {
+                if matches!(parent_expr.kind, ExprKind::Unary(UnOp::Deref, ..))
+                    && !is_lint_allowed(cx, DEREF_ADDROF, parent_expr.hir_id)
+                {
                     return;
                 }
 
                 // modification to `&mut &*x` is different from `&mut x`
-                if matches!(deref_target.kind, ExprKind::Path(..)
-                                         | ExprKind::Field(..)
-                                         | ExprKind::Index(..)
-                                         | ExprKind::Unary(UnOp::Deref, ..))
-                 && matches!(parent_expr.kind, ExprKind::AddrOf(_, Mutability::Mut, _)) {
-                   return;
+                if matches!(
+                    deref_target.kind,
+                    ExprKind::Path(..) | ExprKind::Field(..) | ExprKind::Index(..) | ExprKind::Unary(UnOp::Deref, ..)
+                ) && matches!(parent_expr.kind, ExprKind::AddrOf(_, Mutability::Mut, _))
+                {
+                    return;
                 }
             }
 
@@ -86,12 +86,12 @@ impl<'tcx> LateLintPass<'tcx> for BorrowDerefRef {
                         e.span,
                         "if you would like to reborrow, try removing `&*`",
                         snippet_opt(cx, deref_target.span).unwrap(),
-                        Applicability::MachineApplicable
+                        Applicability::MachineApplicable,
                     );
 
                     // has deref trait -> give 2 help
                     // doesn't have deref trait -> give 1 help
-                    if let Some(deref_trait_id) = cx.tcx.lang_items().deref_trait(){
+                    if let Some(deref_trait_id) = cx.tcx.lang_items().deref_trait() {
                         if !implements_trait(cx, *inner_ty, deref_trait_id, &[]) {
                             return;
                         }
@@ -100,16 +100,11 @@ impl<'tcx> LateLintPass<'tcx> for BorrowDerefRef {
                     diag.span_suggestion(
                         e.span,
                         "if you would like to deref, try using `&**`",
-                        format!(
-                            "&**{}",
-                            &snippet_opt(cx, deref_target.span).unwrap(),
-                         ),
-                        Applicability::MaybeIncorrect
+                        format!("&**{}", &snippet_opt(cx, deref_target.span).unwrap()),
+                        Applicability::MaybeIncorrect,
                     );
-
-                }
+                },
             );
-
         }
     }
 }

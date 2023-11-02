@@ -1,7 +1,6 @@
 use super::MUT_RANGE_BOUND;
 use clippy_utils::diagnostics::span_lint_and_note;
 use clippy_utils::{get_enclosing_block, higher, path_to_local};
-use if_chain::if_chain;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{BindingAnnotation, Expr, ExprKind, HirId, Node, PatKind};
 use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
@@ -13,10 +12,10 @@ use rustc_span::source_map::Span;
 
 pub(super) fn check(cx: &LateContext<'_>, arg: &Expr<'_>, body: &Expr<'_>) {
     if let Some(higher::Range {
-            start: Some(start),
-            end: Some(end),
-            ..
-        }) = higher::Range::hir(arg)
+        start: Some(start),
+        end: Some(end),
+        ..
+    }) = higher::Range::hir(arg)
         && let (mut_id_start, mut_id_end) = (check_for_mutability(cx, start), check_for_mutability(cx, end))
         && (mut_id_start.is_some() || mut_id_end.is_some())
     {

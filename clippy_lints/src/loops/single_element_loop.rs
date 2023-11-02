@@ -2,7 +2,6 @@ use super::SINGLE_ELEMENT_LOOP;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::{indent_of, snippet_with_applicability};
 use clippy_utils::visitors::contains_break_or_continue;
-use if_chain::if_chain;
 use rustc_ast::util::parser::PREC_PREFIX;
 use rustc_ast::Mutability;
 use rustc_errors::Applicability;
@@ -79,10 +78,12 @@ pub(super) fn check<'tcx>(
         let indent = " ".repeat(indent_of(cx, block.stmts[0].span).unwrap_or(0));
 
         // Reference iterator from `&(mut) []` or `[].iter(_mut)()`.
-        if !prefix.is_empty() && (
-            // Precedence of internal expression is less than or equal to precedence of `&expr`.
-            arg_expression.precedence().order() <= PREC_PREFIX || is_range_literal(arg_expression)
-        ) {
+        if !prefix.is_empty()
+            && (
+                // Precedence of internal expression is less than or equal to precedence of `&expr`.
+                arg_expression.precedence().order() <= PREC_PREFIX || is_range_literal(arg_expression)
+            )
+        {
             arg_snip = format!("({arg_snip})").into();
         }
 
@@ -94,6 +95,6 @@ pub(super) fn check<'tcx>(
             "try",
             format!("{{\n{indent}let {pat_snip} = {prefix}{arg_snip};{block_str}}}"),
             applicability,
-        )
+        );
     }
 }

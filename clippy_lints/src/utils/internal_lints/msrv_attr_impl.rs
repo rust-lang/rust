@@ -2,7 +2,6 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::match_type;
 use clippy_utils::{match_def_path, paths};
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -23,11 +22,14 @@ declare_lint_pass!(MsrvAttrImpl => [MISSING_MSRV_ATTR_IMPL]);
 impl LateLintPass<'_> for MsrvAttrImpl {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &hir::Item<'_>) {
         if let hir::ItemKind::Impl(hir::Impl {
-                of_trait: Some(_),
-                items,
-                ..
-            }) = &item.kind
-            && let Some(trait_ref) = cx.tcx.impl_trait_ref(item.owner_id).map(EarlyBinder::instantiate_identity)
+            of_trait: Some(_),
+            items,
+            ..
+        }) = &item.kind
+            && let Some(trait_ref) = cx
+                .tcx
+                .impl_trait_ref(item.owner_id)
+                .map(EarlyBinder::instantiate_identity)
             && let is_late_pass = match_def_path(cx, trait_ref.def_id, &paths::LATE_LINT_PASS)
             && (is_late_pass || match_def_path(cx, trait_ref.def_id, &paths::EARLY_LINT_PASS))
             && let ty::Adt(self_ty_def, _) = trait_ref.self_ty().kind()

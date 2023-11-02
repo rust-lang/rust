@@ -1,5 +1,4 @@
 use clippy_utils::last_path_segment;
-use if_chain::if_chain;
 use rustc_hir::{GenericArg, GenericArgsParentheses, QPath, TyKind};
 use rustc_lint::LateContext;
 use rustc_span::source_map::Span;

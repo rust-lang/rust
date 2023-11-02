@@ -79,7 +79,7 @@ impl LateLintPass<'_> for DefaultConstructedUnitStructs {
                 "remove this call to `default`",
                 String::new(),
                 Applicability::MachineApplicable,
-            )
+            );
         };
     }
 }

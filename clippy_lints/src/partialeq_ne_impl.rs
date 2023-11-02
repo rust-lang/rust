@@ -1,5 +1,4 @@
 use clippy_utils::diagnostics::span_lint_hir;
-use if_chain::if_chain;
 use rustc_hir::{Impl, Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -34,7 +33,11 @@ declare_lint_pass!(PartialEqNeImpl => [PARTIALEQ_NE_IMPL]);
 
 impl<'tcx> LateLintPass<'tcx> for PartialEqNeImpl {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
-        if let ItemKind::Impl(Impl { of_trait: Some(ref trait_ref), items: impl_items, .. }) = item.kind
+        if let ItemKind::Impl(Impl {
+            of_trait: Some(ref trait_ref),
+            items: impl_items,
+            ..
+        }) = item.kind
             && !cx.tcx.has_attr(item.owner_id, sym::automatically_derived)
             && let Some(eq_trait) = cx.tcx.lang_items().eq_trait()
             && trait_ref.path.res.def_id() == eq_trait

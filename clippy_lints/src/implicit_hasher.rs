@@ -13,8 +13,6 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 use rustc_span::symbol::sym;
 
-use if_chain::if_chain;
-
 use clippy_utils::diagnostics::{multispan_sugg, span_lint_and_then};
 use clippy_utils::source::{snippet, snippet_opt};
 use clippy_utils::ty::is_type_diagnostic_item;
@@ -348,8 +346,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'a, 'b, 't
 
             if self.cx.tcx.is_diagnostic_item(sym::HashMap, ty_did) {
                 if method.ident.name == sym::new {
-                    self.suggestions
-                        .insert(e.span, "HashMap::default()".to_string());
+                    self.suggestions.insert(e.span, "HashMap::default()".to_string());
                 } else if method.ident.name == sym!(with_capacity) {
                     self.suggestions.insert(
                         e.span,
@@ -361,8 +358,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'a, 'b, 't
                 }
             } else if self.cx.tcx.is_diagnostic_item(sym::HashSet, ty_did) {
                 if method.ident.name == sym::new {
-                    self.suggestions
-                        .insert(e.span, "HashSet::default()".to_string());
+                    self.suggestions.insert(e.span, "HashSet::default()".to_string());
                 } else if method.ident.name == sym!(with_capacity) {
                     self.suggestions.insert(
                         e.span,

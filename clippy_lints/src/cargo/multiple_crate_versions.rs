@@ -2,7 +2,6 @@
 
 use cargo_metadata::{DependencyKind, Metadata, Node, Package, PackageId};
 use clippy_utils::diagnostics::span_lint;
-use if_chain::if_chain;
 use itertools::Itertools;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_lint::LateContext;
@@ -16,9 +15,13 @@ pub(super) fn check(cx: &LateContext<'_>, metadata: &Metadata) {
     packages.sort_by(|a, b| a.name.cmp(&b.name));
 
     if let Some(resolve) = &metadata.resolve
-        && let Some(local_id) = packages
-            .iter()
-            .find_map(|p| if p.name == local_name.as_str() { Some(&p.id) } else { None })
+        && let Some(local_id) = packages.iter().find_map(|p| {
+            if p.name == local_name.as_str() {
+                Some(&p.id)
+            } else {
+                None
+            }
+        })
     {
         for (name, group) in &packages.iter().group_by(|p| p.name.clone()) {
             let group: Vec<&Package> = group.collect();

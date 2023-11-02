@@ -4,7 +4,6 @@ use clippy_utils::source::snippet;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_copy;
 use clippy_utils::{get_enclosing_block, higher, path_to_local, sugg};
-use if_chain::if_chain;
 use rustc_ast::ast;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::walk_block;
@@ -69,8 +68,19 @@ pub(super) fn check<'tcx>(
                             // Source and destination must be different
                             && path_to_local(base_left) != path_to_local(base_right)
                         {
-                            Some((ty, IndexExpr { base: base_left, idx: start_left, idx_offset: offset_left },
-                                IndexExpr { base: base_right, idx: start_right, idx_offset: offset_right }))
+                            Some((
+                                ty,
+                                IndexExpr {
+                                    base: base_left,
+                                    idx: start_left,
+                                    idx_offset: offset_left,
+                                },
+                                IndexExpr {
+                                    base: base_right,
+                                    idx: start_right,
+                                    idx_offset: offset_right,
+                                },
+                            ))
                         } else {
                             None
                         }
@@ -127,9 +137,7 @@ fn build_manual_memcpy_suggestion<'tcx>(
             }
         } else {
             match limits {
-                ast::RangeLimits::Closed => {
-                    sugg + &sugg::ONE.into()
-                },
+                ast::RangeLimits::Closed => sugg + &sugg::ONE.into(),
                 ast::RangeLimits::HalfOpen => sugg,
             }
         }
@@ -329,7 +337,11 @@ fn get_slice_like_element_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Opti
 fn fetch_cloned_expr<'tcx>(expr: &'tcx Expr<'tcx>) -> &'tcx Expr<'tcx> {
     if let ExprKind::MethodCall(method, arg, [], _) = expr.kind
         && method.ident.name == sym::clone
-    { arg } else { expr }
+    {
+        arg
+    } else {
+        expr
+    }
 }
 
 fn get_details_from_idx<'tcx>(

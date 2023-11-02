@@ -1,5 +1,4 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use if_chain::if_chain;
 use rustc_ast::{Item, ItemKind, UseTreeKind};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
@@ -42,7 +41,6 @@ impl EarlyLintPass for UnnecessarySelfImports {
             && let [self_seg] = &*self_tree.prefix.segments
             && self_seg.ident.name == kw::SelfLower
             && let Some(last_segment) = use_tree.prefix.segments.last()
-
         {
             span_lint_and_then(
                 cx,
@@ -56,7 +54,11 @@ impl EarlyLintPass for UnnecessarySelfImports {
                         format!(
                             "{}{};",
                             last_segment.ident,
-                            if let UseTreeKind::Simple(Some(alias)) = self_tree.kind { format!(" as {alias}") } else { String::new() },
+                            if let UseTreeKind::Simple(Some(alias)) = self_tree.kind {
+                                format!(" as {alias}")
+                            } else {
+                                String::new()
+                            },
                         ),
                         Applicability::MaybeIncorrect,
                     );

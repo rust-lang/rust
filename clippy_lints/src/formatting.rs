@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_note};
 use clippy_utils::is_span_if;
 use clippy_utils::source::snippet_opt;
-use if_chain::if_chain;
 use rustc_ast::ast::{BinOpKind, Block, Expr, ExprKind, StmtKind, UnOp};
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
@@ -193,9 +192,7 @@ fn check_unop(cx: &EarlyContext<'_>, expr: &Expr) {
                  `{binop_str}{unop_str}` is a single operator"
             ),
             None,
-            &format!(
-                "put a space between `{binop_str}` and `{unop_str}` and remove the space after `{unop_str}`"
-            ),
+            &format!("put a space between `{binop_str}` and `{unop_str}` and remove the space after `{unop_str}`"),
         );
     }
 }
@@ -219,7 +216,6 @@ fn check_else(cx: &EarlyContext<'_>, expr: &Expr) {
         && let Some(else_snippet) = snippet_opt(cx, else_span)
         && let Some((pre_else, post_else)) = else_snippet.split_once("else")
         && let Some((_, post_else_post_eol)) = post_else.split_once('\n')
-
     {
         // Allow allman style braces `} \n else \n {`
         if is_block(else_)
@@ -234,7 +230,7 @@ fn check_else(cx: &EarlyContext<'_>, expr: &Expr) {
         // Don't warn if the only thing inside post_else_post_eol is a comment block.
         let trimmed_post_else_post_eol = post_else_post_eol.trim();
         if trimmed_post_else_post_eol.starts_with("/*") && trimmed_post_else_post_eol.ends_with("*/") {
-            return
+            return;
         }
 
         let else_desc = if is_if(else_) { "if" } else { "{..}" };
@@ -267,7 +263,8 @@ fn check_array(cx: &EarlyContext<'_>, expr: &Expr) {
     if let ExprKind::Array(ref array) = expr.kind {
         for element in array {
             if let ExprKind::Binary(ref op, ref lhs, _) = element.kind
-                && has_unary_equivalent(op.node) && lhs.span.eq_ctxt(op.span)
+                && has_unary_equivalent(op.node)
+                && lhs.span.eq_ctxt(op.span)
                 && let space_span = lhs.span.between(op.span)
                 && let Some(space_snippet) = snippet_opt(cx, space_span)
                 && let lint_span = lhs.span.with_lo(lhs.span.hi())
@@ -313,9 +310,7 @@ fn check_missing_else(cx: &EarlyContext<'_>, first: &Expr, second: &Expr) {
             else_span,
             &format!("this looks like {looks_like} but the `else` is missing"),
             None,
-            &format!(
-                "to remove this lint, add the missing `else` or add a new line before {next_thing}",
-            ),
+            &format!("to remove this lint, add the missing `else` or add a new line before {next_thing}",),
         );
     }
 }

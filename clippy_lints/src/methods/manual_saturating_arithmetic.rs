@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::{match_def_path, path_def_id};
-use if_chain::if_chain;
 use rustc_ast::ast;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -76,7 +75,7 @@ fn is_min_or_max(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> Option<MinMax> {
         match segment.ident.as_str() {
             "max_value" => return Some(MinMax::Max),
             "min_value" => return Some(MinMax::Min),
-            _ => {}
+            _ => {},
         }
     }
 

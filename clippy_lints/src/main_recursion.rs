@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::source::snippet;
 use clippy_utils::{is_entrypoint_fn, is_no_std_crate};
-use if_chain::if_chain;
 use rustc_hir::{Expr, ExprKind, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
@@ -54,8 +53,8 @@ impl LateLintPass<'_> for MainRecursion {
                 func.span,
                 &format!("recursing into entrypoint `{}`", snippet(cx, func.span, "main")),
                 None,
-                "consider using another function for this recursion"
-            )
+                "consider using another function for this recursion",
+            );
         }
     }
 }

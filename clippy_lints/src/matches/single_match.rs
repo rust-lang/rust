@@ -93,14 +93,18 @@ fn report_single_pattern(
         && let (ty, ty_ref_count) = peel_mid_ty_refs(cx.typeck_results().expr_ty(ex))
         && let Some(spe_trait_id) = cx.tcx.lang_items().structural_peq_trait()
         && let Some(pe_trait_id) = cx.tcx.lang_items().eq_trait()
-        && (ty.is_integral() || ty.is_char() || ty.is_str()
-            || (implements_trait(cx, ty, spe_trait_id, &[])
-                && implements_trait(cx, ty, pe_trait_id, &[ty.into()])))
+        && (ty.is_integral()
+            || ty.is_char()
+            || ty.is_str()
+            || (implements_trait(cx, ty, spe_trait_id, &[]) && implements_trait(cx, ty, pe_trait_id, &[ty.into()])))
     {
         // scrutinee derives PartialEq and the pattern is a constant.
         let pat_ref_count = match pat.kind {
             // string literals are already a reference.
-            PatKind::Lit(Expr { kind: ExprKind::Lit(lit), .. }) if lit.node.is_str() => pat_ref_count + 1,
+            PatKind::Lit(Expr {
+                kind: ExprKind::Lit(lit),
+                ..
+            }) if lit.node.is_str() => pat_ref_count + 1,
             _ => pat_ref_count,
         };
         // References are only implicitly added to the pattern, so no overflow here.

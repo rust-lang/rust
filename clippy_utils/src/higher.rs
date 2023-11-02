@@ -5,7 +5,7 @@
 use crate::consts::{constant_simple, Constant};
 use crate::ty::is_type_diagnostic_item;
 use crate::{is_expn_of, match_def_path, paths};
-use if_chain::if_chain;
+
 use rustc_ast::ast;
 use rustc_hir as hir;
 use rustc_hir::{Arm, Block, Expr, ExprKind, HirId, LoopSource, MatchSource, Node, Pat, QPath};
@@ -286,7 +286,8 @@ impl<'a> VecArgs<'a> {
             } else if match_def_path(cx, fun_def_id, &paths::SLICE_INTO_VEC) && args.len() == 1 {
                 // `vec![a, b, c]` case
                 if let hir::ExprKind::Call(_, [arg]) = &args[0].kind
-                    && let hir::ExprKind::Array(args) = arg.kind {
+                    && let hir::ExprKind::Array(args) = arg.kind
+                {
                     Some(VecArgs::Vec(args))
                 } else {
                     None

@@ -1,5 +1,4 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
-use if_chain::if_chain;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Closure, Expr, ExprKind, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -128,7 +127,7 @@ fn check_arg<'tcx>(cx: &LateContext<'tcx>, arg: &'tcx Expr<'tcx>) -> Option<(Spa
         {
             let data = stmt.span.data();
             // Make a span out of the semicolon for the help message
-            Some((fn_decl_span, Some(data.with_lo(data.hi-BytePos(1)))))
+            Some((fn_decl_span, Some(data.with_lo(data.hi - BytePos(1)))))
         } else {
             Some((fn_decl_span, None))
         }

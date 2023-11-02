@@ -1,6 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::{position_before_rarrow, snippet_block, snippet_opt};
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
@@ -85,7 +84,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualAsyncFn {
                             header_span,
                             help,
                             format!("{header_snip}{ret_snip}"),
-                            Applicability::MachineApplicable
+                            Applicability::MachineApplicable,
                         );
 
                         let body_snip = snippet_block(cx, closure_body.value.span, "..", Some(block.span));
@@ -93,7 +92,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualAsyncFn {
                             block.span,
                             "move the body of the async block to the enclosing function",
                             body_snip,
-                            Applicability::MachineApplicable
+                            Applicability::MachineApplicable,
                         );
                     }
                 },

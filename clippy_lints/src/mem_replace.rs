@@ -4,7 +4,6 @@ use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_non_aggregate_primitive_type;
 use clippy_utils::{is_default_equivalent, is_res_lang_ctor, path_res, peel_ref_operators};
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::OptionNone;
 use rustc_hir::{Expr, ExprKind};
@@ -163,8 +162,9 @@ fn check_replace_with_uninit(cx: &LateContext<'_>, src: &Expr<'_>, dest: &Expr<'
                 ),
                 applicability,
             );
-        } else if cx.tcx.is_diagnostic_item(sym::mem_zeroed, repl_def_id) &&
-                !cx.typeck_results().expr_ty(src).is_primitive() {
+        } else if cx.tcx.is_diagnostic_item(sym::mem_zeroed, repl_def_id)
+            && !cx.typeck_results().expr_ty(src).is_primitive()
+        {
             span_lint_and_help(
                 cx,
                 MEM_REPLACE_WITH_UNINIT,

@@ -1,5 +1,4 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -59,7 +58,6 @@ impl<'tcx> LateLintPass<'tcx> for LargeConstArrays {
             && let Ok(element_count) = element_count.try_to_target_usize(cx.tcx)
             && let Ok(element_size) = cx.layout_of(*element_type).map(|l| l.size.bytes())
             && self.maximum_allowed_size < u128::from(element_count) * u128::from(element_size)
-
         {
             let hi_pos = item.ident.span.lo() - BytePos::from_usize(1);
             let sugg_span = Span::new(
@@ -80,7 +78,7 @@ impl<'tcx> LateLintPass<'tcx> for LargeConstArrays {
                         "static",
                         Applicability::MachineApplicable,
                     );
-                }
+                },
             );
         }
     }

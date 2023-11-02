@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::match_def_path;
 use clippy_utils::source::snippet_with_applicability;
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
@@ -51,20 +50,24 @@ impl<'tcx> LateLintPass<'tcx> for ToDigitIsSome {
                     } else {
                         None
                     }
-                }
+                },
                 hir::ExprKind::Call(to_digits_call, to_digit_args) => {
                     if let [char_arg, radix_arg] = *to_digit_args
                         && let hir::ExprKind::Path(to_digits_path) = &to_digits_call.kind
                         && let to_digits_call_res = cx.qpath_res(to_digits_path, to_digits_call.hir_id)
                         && let Some(to_digits_def_id) = to_digits_call_res.opt_def_id()
-                        && match_def_path(cx, to_digits_def_id, &["core", "char", "methods", "<impl char>", "to_digit"])
+                        && match_def_path(
+                            cx,
+                            to_digits_def_id,
+                            &["core", "char", "methods", "<impl char>", "to_digit"],
+                        )
                     {
                         Some((false, char_arg, radix_arg))
                     } else {
                         None
                     }
-                }
-                _ => None
+                },
+                _ => None,
             };
 
             if let Some((is_method_call, char_arg, radix_arg)) = match_result {

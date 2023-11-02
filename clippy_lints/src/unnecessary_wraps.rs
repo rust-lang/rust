@@ -2,7 +2,6 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet;
 use clippy_utils::visitors::find_all_ret_expressions;
 use clippy_utils::{contains_return, is_res_lang_ctor, path_res, return_ty};
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::LangItem::{OptionSome, ResultOk};
@@ -126,16 +125,14 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
                 // Make sure the function argument does not contain a return expression.
                 && !contains_return(arg)
             {
-                suggs.push(
-                    (
-                        ret_expr.span,
-                        if inner_type.is_unit() {
-                            String::new()
-                        } else {
-                            snippet(cx, arg.span.source_callsite(), "..").to_string()
-                        }
-                    )
-                );
+                suggs.push((
+                    ret_expr.span,
+                    if inner_type.is_unit() {
+                        String::new()
+                    } else {
+                        snippet(cx, arg.span.source_callsite(), "..").to_string()
+                    },
+                ));
                 true
             } else {
                 false

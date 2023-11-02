@@ -2,7 +2,6 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::macros::{is_panic, root_macro_call_first_node};
 use clippy_utils::method_chain_args;
 use clippy_utils::ty::is_type_diagnostic_item;
-use if_chain::if_chain;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
@@ -55,7 +54,9 @@ impl<'tcx> LateLintPass<'tcx> for FallibleImplFrom {
         // check for `impl From<???> for ..`
         if let hir::ItemKind::Impl(impl_) = &item.kind
             && let Some(impl_trait_ref) = cx.tcx.impl_trait_ref(item.owner_id)
-            && cx.tcx.is_diagnostic_item(sym::From, impl_trait_ref.skip_binder().def_id)
+            && cx
+                .tcx
+                .is_diagnostic_item(sym::From, impl_trait_ref.skip_binder().def_id)
         {
             lint_impl_body(cx, item.span, impl_.items);
         }
@@ -97,8 +98,7 @@ fn lint_impl_body(cx: &LateContext<'_>, impl_span: Span, impl_items: &[hir::Impl
 
     for impl_item in impl_items {
         if impl_item.ident.name == sym::from
-            && let ImplItemKind::Fn(_, body_id) =
-                cx.tcx.hir().impl_item(impl_item.id).kind
+            && let ImplItemKind::Fn(_, body_id) = cx.tcx.hir().impl_item(impl_item.id).kind
         {
             // check the body for `begin_panic` or `unwrap`
             let body = cx.tcx.hir().body(body_id);
@@ -119,9 +119,11 @@ fn lint_impl_body(cx: &LateContext<'_>, impl_span: Span, impl_items: &[hir::Impl
                     move |diag| {
                         diag.help(
                             "`From` is intended for infallible conversions only. \
-                            Use `TryFrom` if there's a possibility for the conversion to fail");
+                            Use `TryFrom` if there's a possibility for the conversion to fail",
+                        );
                         diag.span_note(fpu.result, "potential failure(s)");
-                    });
+                    },
+                );
             }
         }
     }

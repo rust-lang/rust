@@ -1,6 +1,5 @@
 use clippy_utils::consts::{constant_simple, Constant};
 use clippy_utils::diagnostics::span_lint_and_help;
-use if_chain::if_chain;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -45,9 +44,8 @@ impl<'tcx> LateLintPass<'tcx> for ZeroDiv {
             // since we're about to suggest a use of f32::NAN or f64::NAN,
             // match the precision of the literals that are given.
             let float_type = match (lhs_value, rhs_value) {
-                (Constant::F64(_), _)
-                | (_, Constant::F64(_)) => "f64",
-                _ => "f32"
+                (Constant::F64(_), _) | (_, Constant::F64(_)) => "f64",
+                _ => "f32",
             };
             span_lint_and_help(
                 cx,
@@ -55,9 +53,7 @@ impl<'tcx> LateLintPass<'tcx> for ZeroDiv {
                 expr.span,
                 "constant division of `0.0` with `0.0` will always result in NaN",
                 None,
-                &format!(
-                    "consider using `{float_type}::NAN` if you would like a constant representing NaN",
-                ),
+                &format!("consider using `{float_type}::NAN` if you would like a constant representing NaN",),
             );
         }
     }

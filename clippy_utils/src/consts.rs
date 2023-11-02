@@ -2,7 +2,7 @@
 
 use crate::source::{get_source_text, walk_span_to_context};
 use crate::{clip, is_direct_expn_of, sext, unsext};
-use if_chain::if_chain;
+
 use rustc_ast::ast::{self, LitFloatType, LitKind};
 use rustc_data_structures::sync::Lrc;
 use rustc_hir::def::{DefKind, Res};
@@ -377,7 +377,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
                     && let res = self.typeck_results.qpath_res(qpath, callee.hir_id)
                     && let Some(def_id) = res.opt_def_id()
                     && let def_path = self.lcx.get_def_path(def_id)
-                    && let def_path: Vec<&str> = def_path.iter().take(4).map(Symbol::as_str).collect()
+                    && let def_path = def_path.iter().take(4).map(Symbol::as_str).collect::<Vec<_>>()
                     && let ["core", "num", int_impl, "max_value"] = *def_path
                 {
                     let value = match int_impl {

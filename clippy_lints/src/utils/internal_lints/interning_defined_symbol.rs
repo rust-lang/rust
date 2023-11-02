@@ -3,7 +3,6 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::match_type;
 use clippy_utils::{def_path_def_ids, is_expn_of, match_def_path, paths};
-use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
@@ -161,7 +160,11 @@ impl InterningDefinedSymbol {
         static SYMBOL_STR_PATHS: &[&[&str]] = &[&paths::SYMBOL_AS_STR, &paths::SYMBOL_TO_IDENT_STRING];
         let call = if let ExprKind::AddrOf(_, _, e) = expr.kind
             && let ExprKind::Unary(UnOp::Deref, e) = e.kind
-        { e } else { expr };
+        {
+            e
+        } else {
+            expr
+        };
         if let ExprKind::MethodCall(_, item, [], _) = call.kind
             // is a method call
             && let Some(did) = cx.typeck_results().type_dependent_def_id(call.hir_id)

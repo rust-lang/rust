@@ -87,10 +87,7 @@ where
         && b0 != b1
         && (first_guard.is_none() || iter.len() == 0)
         && first_attrs.is_empty()
-        && iter
-            .all(|arm| {
-                find_bool_lit(&arm.2.kind).map_or(false, |b| b == b0) && arm.3.is_none() && arm.0.is_empty()
-            })
+        && iter.all(|arm| find_bool_lit(&arm.2.kind).map_or(false, |b| b == b0) && arm.3.is_none() && arm.0.is_empty())
     {
         if let Some(last_pat) = last_pat_opt {
             if !is_wild(last_pat) {
@@ -119,7 +116,10 @@ where
                 .join(" | ")
         };
         let pat_and_guard = if let Some(Guard::If(g)) = first_guard {
-            format!("{pat} if {}", snippet_with_applicability(cx, g.span, "..", &mut applicability))
+            format!(
+                "{pat} if {}",
+                snippet_with_applicability(cx, g.span, "..", &mut applicability)
+            )
         } else {
             pat
         };
@@ -135,7 +135,10 @@ where
             cx,
             MATCH_LIKE_MATCHES_MACRO,
             expr.span,
-            &format!("{} expression looks like `matches!` macro", if is_if_let { "if let .. else" } else { "match" }),
+            &format!(
+                "{} expression looks like `matches!` macro",
+                if is_if_let { "if let .. else" } else { "match" }
+            ),
             "try",
             format!(
                 "{}matches!({}, {pat_and_guard})",

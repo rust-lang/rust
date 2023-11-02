@@ -2,7 +2,6 @@ use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::usage::is_potentially_local_place;
 use clippy_utils::{higher, path_to_local};
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_expr, walk_fn, FnKind, Visitor};
 use rustc_hir::{BinOpKind, Body, Expr, ExprKind, FnDecl, HirId, Node, PathSegment, UnOp};
@@ -156,39 +155,35 @@ fn collect_unwrap_info<'tcx>(
         }
     } else if let ExprKind::Unary(UnOp::Not, expr) = &expr.kind {
         return collect_unwrap_info(cx, if_expr, expr, branch, !invert, false);
-    } else {
-        if let ExprKind::MethodCall(method_name, receiver, args, _) = &expr.kind
-            && let Some(local_id) = path_to_local(receiver)
-            && let ty = cx.typeck_results().expr_ty(receiver)
-            && let name = method_name.ident.as_str()
-            && (is_relevant_option_call(cx, ty, name) || is_relevant_result_call(cx, ty, name))
-        {
-            assert!(args.is_empty());
-            let unwrappable = match name {
-                "is_some" | "is_ok" => true,
-                "is_err" | "is_none" => false,
-                _ => unreachable!(),
-            };
-            let safe_to_unwrap = unwrappable != invert;
-            let kind = if is_type_diagnostic_item(cx, ty, sym::Option) {
-                UnwrappableKind::Option
-            } else {
-                UnwrappableKind::Result
-            };
+    } else if let ExprKind::MethodCall(method_name, receiver, args, _) = &expr.kind
+        && let Some(local_id) = path_to_local(receiver)
+        && let ty = cx.typeck_results().expr_ty(receiver)
+        && let name = method_name.ident.as_str()
+        && (is_relevant_option_call(cx, ty, name) || is_relevant_result_call(cx, ty, name))
+    {
+        assert!(args.is_empty());
+        let unwrappable = match name {
+            "is_some" | "is_ok" => true,
+            "is_err" | "is_none" => false,
+            _ => unreachable!(),
+        };
+        let safe_to_unwrap = unwrappable != invert;
+        let kind = if is_type_diagnostic_item(cx, ty, sym::Option) {
+            UnwrappableKind::Option
+        } else {
+            UnwrappableKind::Result
+        };
 
-            return vec![
-                UnwrapInfo {
-                    local_id,
-                    if_expr,
-                    check: expr,
-                    check_name: method_name,
-                    branch,
-                    safe_to_unwrap,
-                    kind,
-                    is_entire_condition,
-                }
-            ]
-        }
+        return vec![UnwrapInfo {
+            local_id,
+            if_expr,
+            check: expr,
+            check_name: method_name,
+            branch,
+            safe_to_unwrap,
+            kind,
+            is_entire_condition,
+        }];
     }
     Vec::new()
 }
@@ -379,9 +374,10 @@ impl<'a, 'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'a, 'tcx> {
                         PANICKING_UNWRAP,
                         expr.hir_id,
                         expr.span,
-                        &format!("this call to `{}()` will always panic",
-                        method_name.ident.name),
-                        |diag| { diag.span_label(unwrappable.check.span, "because of this check"); },
+                        &format!("this call to `{}()` will always panic", method_name.ident.name),
+                        |diag| {
+                            diag.span_label(unwrappable.check.span, "because of this check");
+                        },
                     );
                 }
             }

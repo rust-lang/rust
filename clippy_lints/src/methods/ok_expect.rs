@@ -1,6 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::ty::{has_debug_impl, is_type_diagnostic_item};
-use if_chain::if_chain;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, Ty};
@@ -15,7 +14,6 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr
         && let result_type = cx.typeck_results().expr_ty(recv)
         && let Some(error_type) = get_error_type(cx, result_type)
         && has_debug_impl(cx, error_type)
-
     {
         span_lint_and_help(
             cx,

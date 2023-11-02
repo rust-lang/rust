@@ -4,7 +4,6 @@ use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_the
 use clippy_utils::source::{snippet, snippet_opt, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{get_parent_expr, higher, in_constant, is_integer_const, path_to_local};
-use if_chain::if_chain;
 use rustc_ast::ast::RangeLimits;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, HirId};
@@ -350,7 +349,7 @@ fn check_exclusive_range_plus_one(cx: &LateContext<'_>, expr: &Expr<'_>) {
         && let Some(higher::Range {
             start,
             end: Some(end),
-            limits: RangeLimits::HalfOpen
+            limits: RangeLimits::HalfOpen,
         }) = higher::Range::hir(expr)
         && let Some(y) = y_plus_one(cx, end)
     {
@@ -365,12 +364,7 @@ fn check_exclusive_range_plus_one(cx: &LateContext<'_>, expr: &Expr<'_>) {
                 let end = Sugg::hir(cx, y, "y").maybe_par();
                 if let Some(is_wrapped) = &snippet_opt(cx, span) {
                     if is_wrapped.starts_with('(') && is_wrapped.ends_with(')') {
-                        diag.span_suggestion(
-                            span,
-                            "use",
-                            format!("({start}..={end})"),
-                            Applicability::MaybeIncorrect,
-                        );
+                        diag.span_suggestion(span, "use", format!("({start}..={end})"), Applicability::MaybeIncorrect);
                     } else {
                         diag.span_suggestion(
                             span,
@@ -388,7 +382,11 @@ fn check_exclusive_range_plus_one(cx: &LateContext<'_>, expr: &Expr<'_>) {
 // inclusive range minus one: `x..=(y-1)`
 fn check_inclusive_range_minus_one(cx: &LateContext<'_>, expr: &Expr<'_>) {
     if expr.span.can_be_used_for_suggestions()
-        && let Some(higher::Range { start, end: Some(end), limits: RangeLimits::Closed }) = higher::Range::hir(expr)
+        && let Some(higher::Range {
+            start,
+            end: Some(end),
+            limits: RangeLimits::Closed,
+        }) = higher::Range::hir(expr)
         && let Some(y) = y_minus_one(cx, end)
     {
         span_lint_and_then(
@@ -440,7 +438,11 @@ fn check_reversed_empty_range(cx: &LateContext<'_>, expr: &Expr<'_>) {
         }
     }
 
-    if let Some(higher::Range { start: Some(start), end: Some(end), limits }) = higher::Range::hir(expr)
+    if let Some(higher::Range {
+        start: Some(start),
+        end: Some(end),
+        limits,
+    }) = higher::Range::hir(expr)
         && let ty = cx.typeck_results().expr_ty(start)
         && let ty::Int(_) | ty::Uint(_) = ty.kind()
         && let Some(start_idx) = constant(cx, cx.typeck_results(), start)
@@ -471,7 +473,7 @@ fn check_reversed_empty_range(cx: &LateContext<'_>, expr: &Expr<'_>) {
                         let end_snippet = snippet(cx, end.span, "_");
                         let dots = match limits {
                             RangeLimits::HalfOpen => "..",
-                            RangeLimits::Closed => "..="
+                            RangeLimits::Closed => "..=",
                         };
 
                         diag.span_suggestion(

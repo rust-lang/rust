@@ -3,7 +3,6 @@ use clippy_utils::numeric_literal::NumericLiteral;
 use clippy_utils::source::snippet_opt;
 use clippy_utils::visitors::{for_each_expr, Visitable};
 use clippy_utils::{get_parent_expr, get_parent_node, is_hir_ty_cfg_dependant, is_ty_alias, path_to_local};
-use if_chain::if_chain;
 use rustc_ast::{LitFloatType, LitIntType, LitKind};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
@@ -52,7 +51,9 @@ pub(super) fn check<'tcx>(
             cx,
             UNNECESSARY_CAST,
             expr.span,
-            &format!("casting raw pointers to the same type and constness is unnecessary (`{cast_from}` -> `{cast_to}`)"),
+            &format!(
+                "casting raw pointers to the same type and constness is unnecessary (`{cast_from}` -> `{cast_to}`)"
+            ),
             "try",
             cast_str.clone(),
             Applicability::MaybeIncorrect,
@@ -87,8 +88,8 @@ pub(super) fn check<'tcx>(
     if let ExprKind::Cast(_, cast_to) = expr.kind
         && let TyKind::Path(QPath::Resolved(_, path)) = &cast_to.kind
         && let Res::PrimTy(_) = path.res
-    {}
-    else {
+    {
+    } else {
         return false;
     }
 
@@ -108,10 +109,13 @@ pub(super) fn check<'tcx>(
             && let Some(num_lit) = NumericLiteral::from_lit_kind(&src, &lit.node)
             && let from_nbits = 128 - n.leading_zeros()
             && let to_nbits = fp_ty_mantissa_nbits(cast_to)
-            && from_nbits != 0 && to_nbits != 0 && from_nbits <= to_nbits && num_lit.is_decimal()
+            && from_nbits != 0
+            && to_nbits != 0
+            && from_nbits <= to_nbits
+            && num_lit.is_decimal()
         {
             lint_unnecessary_cast(cx, expr, num_lit.integer, cast_from, cast_to);
-            return true
+            return true;
         }
 
         match lit.node {

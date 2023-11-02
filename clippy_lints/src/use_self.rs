@@ -2,7 +2,6 @@ use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::is_from_proc_macro;
 use clippy_utils::ty::same_type_and_consts;
-use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::def::{CtorOf, DefKind, Res};
@@ -93,23 +92,33 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
         // relevant for linting, since this is the self type of the `impl` we're currently in. To
         // avoid linting on nested items, we push `StackItem::NoCheck` on the stack to signal, that
         // we're in an `impl` or nested item, that we don't want to lint
-        let stack_item = if let ItemKind::Impl(Impl { self_ty, generics,.. }) = item.kind
+        let stack_item = if let ItemKind::Impl(Impl { self_ty, generics, .. }) = item.kind
             && let TyKind::Path(QPath::Resolved(_, item_path)) = self_ty.kind
             && let parameters = &item_path.segments.last().expect(SEGMENTS_MSG).args
             && parameters.as_ref().map_or(true, |params| {
-                params.parenthesized  == GenericArgsParentheses::No
+                params.parenthesized == GenericArgsParentheses::No
                     && !params.args.iter().any(|arg| matches!(arg, GenericArg::Lifetime(_)))
             })
             && !item.span.from_expansion()
-            && !is_from_proc_macro(cx, item) // expensive, should be last check
+            && !is_from_proc_macro(cx, item)
+        // expensive, should be last check
         {
             // Self cannot be used inside const generic parameters
-            let types_to_skip = generics.params.iter().filter_map(|param| {
-                match param {
-                    GenericParam { kind: GenericParamKind::Const { ty: Ty { hir_id, ..}, ..}, ..} => Some(*hir_id),
+            let types_to_skip = generics
+                .params
+                .iter()
+                .filter_map(|param| match param {
+                    GenericParam {
+                        kind:
+                            GenericParamKind::Const {
+                                ty: Ty { hir_id, .. }, ..
+                            },
+                        ..
+                    } => Some(*hir_id),
                     _ => None,
-                }
-            }).chain(std::iter::once(self_ty.hir_id)).collect();
+                })
+                .chain(std::iter::once(self_ty.hir_id))
+                .collect();
             StackItem::Check {
                 impl_id: item.owner_id.def_id,
                 in_body: 0,
@@ -209,9 +218,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
             && let TyKind::Path(QPath::Resolved(_, path)) = hir_ty.kind
             && !matches!(
                 path.res,
-                Res::SelfTyParam { .. }
-                | Res::SelfTyAlias { .. }
-                | Res::Def(DefKind::TyParam, _)
+                Res::SelfTyParam { .. } | Res::SelfTyAlias { .. } | Res::Def(DefKind::TyParam, _)
             )
             && !types_to_skip.contains(&hir_ty.hir_id)
             && let ty = if in_body > 0 {
@@ -230,7 +237,10 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
             && self.msrv.meets(msrvs::TYPE_ALIAS_ENUM_VARIANTS)
             && let Some(&StackItem::Check { impl_id, .. }) = self.stack.last()
             && cx.typeck_results().expr_ty(expr) == cx.tcx.type_of(impl_id).instantiate_identity()
-        {} else { return; }
+        {
+        } else {
+            return;
+        }
         match expr.kind {
             ExprKind::Struct(QPath::Resolved(_, path), ..) => check_path(cx, path),
             ExprKind::Call(fun, _) => {

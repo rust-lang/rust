@@ -104,9 +104,19 @@ fn contains_unhygienic_crate_reference(tts: &TokenStream) -> Option<Span> {
 }
 
 fn is_crate_keyword(tt: &TokenTree) -> Option<Span> {
-    if let TokenTree::Token(Token { kind: TokenKind::Ident(symbol, _), span }, _) = tt
+    if let TokenTree::Token(
+        Token {
+            kind: TokenKind::Ident(symbol, _),
+            span,
+        },
+        _,
+    ) = tt
         && symbol.as_str() == "crate"
-    { Some(*span) } else { None }
+    {
+        Some(*span)
+    } else {
+        None
+    }
 }
 
 fn is_token(tt: &TokenTree, kind: &TokenKind) -> bool {

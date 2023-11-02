@@ -5,7 +5,6 @@ use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{is_type_diagnostic_item, needs_ordered_drop};
 use clippy_utils::visitors::{any_temporaries_need_ordered_drop, for_each_expr};
 use clippy_utils::{higher, is_expn_of, is_trait_method};
-use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};

@@ -3,7 +3,6 @@ use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::path_to_local;
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
-use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
@@ -76,7 +75,7 @@ pub(super) fn check<'tcx>(
                                     if let Res::Def(DefKind::Const, ..) = cx.qpath_res(path, init.hir_id) {
                                         emit_lint(cx, vec, pushed_item, ctxt);
                                     }
-                                }
+                                },
                                 _ => {},
                             }
                         }
@@ -182,8 +181,8 @@ fn get_vec_push<'tcx>(
             // Check that the method being called is push() on a Vec
             && is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(self_expr), sym::Vec)
             && path.ident.name.as_str() == "push"
-        {
-            return Some((self_expr, pushed_item, semi_stmt.span.ctxt()))
-        }
+    {
+        return Some((self_expr, pushed_item, semi_stmt.span.ctxt()));
+    }
     None
 }

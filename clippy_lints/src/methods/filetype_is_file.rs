@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::get_parent_expr;
 use clippy_utils::ty::is_type_diagnostic_item;
-use if_chain::if_chain;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
 use rustc_span::source_map::Span;

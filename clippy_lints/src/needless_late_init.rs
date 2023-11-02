@@ -136,7 +136,6 @@ impl LocalAssign {
                     // avoid visiting if not needed
                     && assign.lhs_id == binding_id
                     && other_stmts.iter().all(|stmt| !contains_assign_expr(cx, stmt))
-
                 {
                     Some(assign)
                 } else {
@@ -367,17 +366,17 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessLateInit {
     fn check_local(&mut self, cx: &LateContext<'tcx>, local: &'tcx Local<'tcx>) {
         let mut parents = cx.tcx.hir().parent_iter(local.hir_id);
         if let Local {
-                init: None,
-                pat: &Pat {
+            init: None,
+            pat:
+                &Pat {
                     kind: PatKind::Binding(BindingAnnotation::NONE, binding_id, _, None),
                     ..
                 },
-                source: LocalSource::Normal,
-                ..
-            } = local
+            source: LocalSource::Normal,
+            ..
+        } = local
             && let Some((_, Node::Stmt(local_stmt))) = parents.next()
             && let Some((_, Node::Block(block))) = parents.next()
-
         {
             check(cx, local, local_stmt, block, binding_id);
         }

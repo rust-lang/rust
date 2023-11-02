@@ -1,7 +1,6 @@
 use clippy_utils::consts::{constant_simple, Constant};
 use clippy_utils::def_path_res;
 use clippy_utils::diagnostics::span_lint;
-use if_chain::if_chain;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::Item;

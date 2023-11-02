@@ -2,7 +2,6 @@
 //! expecting a count of T
 
 use clippy_utils::diagnostics::span_lint_and_help;
-use if_chain::if_chain;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, Ty, TypeAndMut};
@@ -42,7 +41,10 @@ fn get_size_of_ty<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, inverted: 
             if !inverted
                 && let ExprKind::Path(ref count_func_qpath) = count_func.kind
                 && let Some(def_id) = cx.qpath_res(count_func_qpath, count_func.hir_id).opt_def_id()
-                && matches!(cx.tcx.get_diagnostic_name(def_id), Some(sym::mem_size_of | sym::mem_size_of_val))
+                && matches!(
+                    cx.tcx.get_diagnostic_name(def_id),
+                    Some(sym::mem_size_of | sym::mem_size_of_val)
+                )
             {
                 cx.typeck_results().node_args(count_func.hir_id).types().next()
             } else {
@@ -130,14 +132,7 @@ impl<'tcx> LateLintPass<'tcx> for SizeOfInElementCount {
             && let Some(ty_used_for_size_of) = get_size_of_ty(cx, count_expr, false)
             && pointee_ty == ty_used_for_size_of
         {
-            span_lint_and_help(
-                cx,
-                SIZE_OF_IN_ELEMENT_COUNT,
-                count_expr.span,
-                LINT_MSG,
-                None,
-                HELP_MSG
-            );
+            span_lint_and_help(cx, SIZE_OF_IN_ELEMENT_COUNT, count_expr.span, LINT_MSG, None, HELP_MSG);
         };
     }
 }

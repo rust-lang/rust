@@ -4,7 +4,6 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher::IfLet;
 use clippy_utils::ty::is_copy;
 use clippy_utils::{is_expn_of, is_lint_allowed, path_to_local};
-use if_chain::if_chain;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -71,10 +70,9 @@ impl_lint_pass!(IndexRefutableSlice => [INDEX_REFUTABLE_SLICE]);
 impl<'tcx> LateLintPass<'tcx> for IndexRefutableSlice {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
         if (!expr.span.from_expansion() || is_expn_of(expr.span, "if_chain").is_some())
-            && let Some(IfLet {let_pat, if_then, ..}) = IfLet::hir(cx, expr)
+            && let Some(IfLet { let_pat, if_then, .. }) = IfLet::hir(cx, expr)
             && !is_lint_allowed(cx, INDEX_REFUTABLE_SLICE, expr.hir_id)
             && self.msrv.meets(msrvs::SLICE_PATTERNS)
-
             && let found_slices = find_slice_values(cx, let_pat)
             && !found_slices.is_empty()
             && let filtered_slices = filter_lintable_slices(cx, found_slices, self.max_suggested_slice, if_then)

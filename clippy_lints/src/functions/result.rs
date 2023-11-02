@@ -87,11 +87,12 @@ fn check_result_unit_err(cx: &LateContext<'_>, err_ty: Ty<'_>, fn_header_span: S
 
 fn check_result_large_err<'tcx>(cx: &LateContext<'tcx>, err_ty: Ty<'tcx>, hir_ty_span: Span, large_err_threshold: u64) {
     if let Adt(adt, subst) = err_ty.kind()
-        && let Some(local_def_id) = err_ty.ty_adt_def().expect("already checked this is adt").did().as_local()
-        && let Some(hir::Node::Item(item)) = cx
-            .tcx
-            .hir()
-            .find_by_def_id(local_def_id)
+        && let Some(local_def_id) = err_ty
+            .ty_adt_def()
+            .expect("already checked this is adt")
+            .did()
+            .as_local()
+        && let Some(hir::Node::Item(item)) = cx.tcx.hir().find_by_def_id(local_def_id)
         && let hir::ItemKind::Enum(ref def, _) = item.kind
     {
         let variants_size = AdtVariantInfo::new(cx, *adt, subst);
@@ -114,17 +115,19 @@ fn check_result_large_err<'tcx>(cx: &LateContext<'tcx>, err_ty: Ty<'tcx>, hir_ty
                             let variant_def = &def.variants[variant.ind];
                             diag.span_label(
                                 variant_def.span,
-                                format!("the variant `{}` contains at least {} bytes", variant_def.ident, variant.size),
+                                format!(
+                                    "the variant `{}` contains at least {} bytes",
+                                    variant_def.ident, variant.size
+                                ),
                             );
                         }
                     }
 
                     diag.help(format!("try reducing the size of `{err_ty}`, for example by boxing large elements or replacing it with `Box<{err_ty}>`"));
-                }
+                },
             );
         }
-    }
-    else {
+    } else {
         let ty_size = approx_ty_size(cx, err_ty);
         if ty_size >= large_err_threshold {
             span_lint_and_then(

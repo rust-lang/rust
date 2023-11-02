@@ -1,6 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::indent_of;
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -77,9 +76,7 @@ impl LateLintPass<'_> for ExhaustiveItems {
             && !attrs.iter().any(|a| a.has_name(sym::non_exhaustive))
         {
             let (lint, msg) = if let ItemKind::Struct(ref v, ..) = item.kind {
-                if v.fields().iter().any(|f| {
-                    !cx.tcx.visibility(f.def_id).is_public()
-                }) {
+                if v.fields().iter().any(|f| !cx.tcx.visibility(f.def_id).is_public()) {
                     // skip structs with private fields
                     return;
                 }
@@ -89,20 +86,15 @@ impl LateLintPass<'_> for ExhaustiveItems {
             };
             let suggestion_span = item.span.shrink_to_lo();
             let indent = " ".repeat(indent_of(cx, item.span).unwrap_or(0));
-            span_lint_and_then(
-                cx,
-                lint,
-                item.span,
-                msg,
-                |diag| {
-                    let sugg = format!("#[non_exhaustive]\n{indent}");
-                    diag.span_suggestion(suggestion_span,
-                                         "try adding #[non_exhaustive]",
-                                         sugg,
-                                         Applicability::MaybeIncorrect);
-                }
-            );
-
+            span_lint_and_then(cx, lint, item.span, msg, |diag| {
+                let sugg = format!("#[non_exhaustive]\n{indent}");
+                diag.span_suggestion(
+                    suggestion_span,
+                    "try adding #[non_exhaustive]",
+                    sugg,
+                    Applicability::MaybeIncorrect,
+                );
+            });
         }
     }
 }

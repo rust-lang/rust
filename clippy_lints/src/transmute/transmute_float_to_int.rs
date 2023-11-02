@@ -1,7 +1,6 @@
 use super::TRANSMUTE_FLOAT_TO_INT;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::sugg;
-use if_chain::if_chain;
 use rustc_ast as ast;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, UnOp};
@@ -40,7 +39,7 @@ pub(super) fn check<'tcx>(
                         let op = format!("{sugg}{}", float_ty.name_str()).into();
                         match sugg {
                             sugg::Sugg::MaybeParen(_) => sugg = sugg::Sugg::MaybeParen(op),
-                            _ => sugg = sugg::Sugg::NonParen(op)
+                            _ => sugg = sugg::Sugg::NonParen(op),
                         }
                     }
 
