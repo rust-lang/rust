@@ -78,11 +78,7 @@ use crate::sys::locks as sys;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "RwLock")]
 #[cfg_attr(
-    any(
-        target_arch = "x86_64",
-        target_arch = "aarch64",
-        target_arch = "powerpc64",
-    ),
+    any(target_arch = "x86_64", target_arch = "aarch64", target_arch = "powerpc64",),
     repr(align(128))
 )]
 #[cfg_attr(
