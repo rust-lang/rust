@@ -1,18 +1,30 @@
 error: the `dbg!` macro is intended as a debugging tool
-  --> $DIR/dbg_macro.rs:6:22
+  --> $DIR/auxiliary/submodule.rs:2:5
+   |
+LL |     dbg!();
+   |     ^^^^^^^
+   |
+   = note: `-D clippy::dbg-macro` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::dbg_macro)]`
+help: remove the invocation before committing it to a version control system
+   |
+LL -     dbg!();
+LL +     
+   |
+
+error: the `dbg!` macro is intended as a debugging tool
+  --> $DIR/dbg_macro.rs:9:22
    |
 LL |     if let Some(n) = dbg!(n.checked_sub(4)) { n } else { n }
    |                      ^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::dbg-macro` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::dbg_macro)]`
 help: remove the invocation before committing it to a version control system
    |
 LL |     if let Some(n) = n.checked_sub(4) { n } else { n }
    |                      ~~~~~~~~~~~~~~~~
 
 error: the `dbg!` macro is intended as a debugging tool
-  --> $DIR/dbg_macro.rs:13:8
+  --> $DIR/dbg_macro.rs:15:8
    |
 LL |     if dbg!(n <= 1) {
    |        ^^^^^^^^^^^^
@@ -23,7 +35,7 @@ LL |     if n <= 1 {
    |        ~~~~~~
 
 error: the `dbg!` macro is intended as a debugging tool
-  --> $DIR/dbg_macro.rs:15:9
+  --> $DIR/dbg_macro.rs:17:9
    |
 LL |         dbg!(1)
    |         ^^^^^^^
@@ -34,7 +46,7 @@ LL |         1
    |
 
 error: the `dbg!` macro is intended as a debugging tool
-  --> $DIR/dbg_macro.rs:18:9
+  --> $DIR/dbg_macro.rs:20:9
    |
 LL |         dbg!(n * factorial(n - 1))
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -45,7 +57,7 @@ LL |         n * factorial(n - 1)
    |
 
 error: the `dbg!` macro is intended as a debugging tool
-  --> $DIR/dbg_macro.rs:24:5
+  --> $DIR/dbg_macro.rs:26:5
    |
 LL |     dbg!(42);
    |     ^^^^^^^^
@@ -56,7 +68,7 @@ LL |     42;
    |     ~~
 
 error: the `dbg!` macro is intended as a debugging tool
-  --> $DIR/dbg_macro.rs:26:5
+  --> $DIR/dbg_macro.rs:28:5
    |
 LL |     dbg!(dbg!(dbg!(42)));
    |     ^^^^^^^^^^^^^^^^^^^^
@@ -67,7 +79,7 @@ LL |     dbg!(dbg!(42));
    |     ~~~~~~~~~~~~~~
 
 error: the `dbg!` macro is intended as a debugging tool
-  --> $DIR/dbg_macro.rs:28:14
+  --> $DIR/dbg_macro.rs:30:14
    |
 LL |     foo(3) + dbg!(factorial(4));
    |              ^^^^^^^^^^^^^^^^^^
@@ -78,7 +90,7 @@ LL |     foo(3) + factorial(4);
    |              ~~~~~~~~~~~~
 
 error: the `dbg!` macro is intended as a debugging tool
-  --> $DIR/dbg_macro.rs:30:5
+  --> $DIR/dbg_macro.rs:32:5
    |
 LL |     dbg!(1, 2, dbg!(3, 4));
    |     ^^^^^^^^^^^^^^^^^^^^^^
@@ -89,7 +101,7 @@ LL |     (1, 2, dbg!(3, 4));
    |     ~~~~~~~~~~~~~~~~~~
 
 error: the `dbg!` macro is intended as a debugging tool
-  --> $DIR/dbg_macro.rs:32:5
+  --> $DIR/dbg_macro.rs:34:5
    |
 LL |     dbg!(1, 2, 3, 4, 5);
    |     ^^^^^^^^^^^^^^^^^^^
@@ -100,7 +112,7 @@ LL |     (1, 2, 3, 4, 5);
    |     ~~~~~~~~~~~~~~~
 
 error: the `dbg!` macro is intended as a debugging tool
-  --> $DIR/dbg_macro.rs:53:5
+  --> $DIR/dbg_macro.rs:55:5
    |
 LL |     dbg!();
    |     ^^^^^^^
@@ -112,7 +124,7 @@ LL +
    |
 
 error: the `dbg!` macro is intended as a debugging tool
-  --> $DIR/dbg_macro.rs:56:13
+  --> $DIR/dbg_macro.rs:58:13
    |
 LL |     let _ = dbg!();
    |             ^^^^^^
@@ -123,7 +135,7 @@ LL |     let _ = ();
    |             ~~
 
 error: the `dbg!` macro is intended as a debugging tool
-  --> $DIR/dbg_macro.rs:58:9
+  --> $DIR/dbg_macro.rs:60:9
    |
 LL |     bar(dbg!());
    |         ^^^^^^
@@ -134,7 +146,7 @@ LL |     bar(());
    |         ~~
 
 error: the `dbg!` macro is intended as a debugging tool
-  --> $DIR/dbg_macro.rs:60:10
+  --> $DIR/dbg_macro.rs:62:10
    |
 LL |     foo!(dbg!());
    |          ^^^^^^
@@ -145,7 +157,7 @@ LL |     foo!(());
    |          ~~
 
 error: the `dbg!` macro is intended as a debugging tool
-  --> $DIR/dbg_macro.rs:62:16
+  --> $DIR/dbg_macro.rs:64:16
    |
 LL |     foo2!(foo!(dbg!()));
    |                ^^^^^^
@@ -156,7 +168,7 @@ LL |     foo2!(foo!(()));
    |                ~~
 
 error: the `dbg!` macro is intended as a debugging tool
-  --> $DIR/dbg_macro.rs:84:9
+  --> $DIR/dbg_macro.rs:86:9
    |
 LL |         dbg!(2);
    |         ^^^^^^^
@@ -167,7 +179,7 @@ LL |         2;
    |         ~
 
 error: the `dbg!` macro is intended as a debugging tool
-  --> $DIR/dbg_macro.rs:91:5
+  --> $DIR/dbg_macro.rs:93:5
    |
 LL |     dbg!(1);
    |     ^^^^^^^
@@ -178,7 +190,7 @@ LL |     1;
    |     ~
 
 error: the `dbg!` macro is intended as a debugging tool
-  --> $DIR/dbg_macro.rs:97:5
+  --> $DIR/dbg_macro.rs:99:5
    |
 LL |     dbg!(1);
    |     ^^^^^^^
@@ -189,7 +201,7 @@ LL |     1;
    |     ~
 
 error: the `dbg!` macro is intended as a debugging tool
-  --> $DIR/dbg_macro.rs:104:9
+  --> $DIR/dbg_macro.rs:106:9
    |
 LL |         dbg!(1);
    |         ^^^^^^^
@@ -199,5 +211,5 @@ help: remove the invocation before committing it to a version control system
 LL |         1;
    |         ~
 
-error: aborting due to 18 previous errors
+error: aborting due to 19 previous errors
 
