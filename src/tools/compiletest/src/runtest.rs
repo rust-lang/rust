@@ -6,7 +6,7 @@ use crate::common::{Assembly, Incremental, JsDocTest, MirOpt, RunMake, RustdocJs
 use crate::common::{Codegen, CodegenUnits, DebugInfo, Debugger, Rustdoc};
 use crate::common::{CompareMode, FailMode, PassMode};
 use crate::common::{Config, TestPaths};
-use crate::common::{CoverageMap, Pretty, RunCoverage, RunPassValgrind};
+use crate::common::{CoverageMap, CoverageRun, Pretty, RunPassValgrind};
 use crate::common::{UI_COVERAGE, UI_COVERAGE_MAP, UI_RUN_STDERR, UI_RUN_STDOUT};
 use crate::compute_diff::{write_diff, write_filtered_diff};
 use crate::errors::{self, Error, ErrorKind};
@@ -257,7 +257,7 @@ impl<'test> TestCx<'test> {
             Assembly => self.run_assembly_test(),
             JsDocTest => self.run_js_doc_test(),
             CoverageMap => self.run_coverage_map_test(),
-            RunCoverage => self.run_coverage_test(),
+            CoverageRun => self.run_coverage_run_test(),
         }
     }
 
@@ -510,7 +510,7 @@ impl<'test> TestCx<'test> {
         }
     }
 
-    fn run_coverage_test(&self) {
+    fn run_coverage_run_test(&self) {
         let should_run = self.run_if_enabled();
         let proc_res = self.compile_test(should_run, Emit::None);
 
@@ -549,7 +549,7 @@ impl<'test> TestCx<'test> {
         let mut profraw_paths = vec![profraw_path];
         let mut bin_paths = vec![self.make_exe_name()];
 
-        if self.config.suite == "run-coverage-rustdoc" {
+        if self.config.suite == "coverage-run-rustdoc" {
             self.run_doctests_for_coverage(&mut profraw_paths, &mut bin_paths);
         }
 
@@ -2193,7 +2193,7 @@ impl<'test> TestCx<'test> {
             || self.is_vxworks_pure_static()
             || self.config.target.contains("bpf")
             || !self.config.target_cfg().dynamic_linking
-            || matches!(self.config.mode, CoverageMap | RunCoverage)
+            || matches!(self.config.mode, CoverageMap | CoverageRun)
         {
             // We primarily compile all auxiliary libraries as dynamic libraries
             // to avoid code size bloat and large binaries as much as possible
@@ -2395,7 +2395,7 @@ impl<'test> TestCx<'test> {
                     }
                 }
                 DebugInfo => { /* debuginfo tests must be unoptimized */ }
-                CoverageMap | RunCoverage => {
+                CoverageMap | CoverageRun => {
                     // Coverage mappings and coverage reports are affected by
                     // optimization level, so they ignore the optimize-tests
                     // setting and set an optimization level in their mode's
@@ -2478,7 +2478,7 @@ impl<'test> TestCx<'test> {
                 // by `compile-flags`.
                 rustc.arg("-Copt-level=2");
             }
-            RunCoverage => {
+            CoverageRun => {
                 rustc.arg("-Cinstrument-coverage");
                 // Coverage reports are sometimes sensitive to optimizations,
                 // and the current snapshots assume `opt-level=2` unless
