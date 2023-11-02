@@ -682,10 +682,39 @@ impl<'tcx> Stable<'tcx> for mir::ConstOperand<'tcx> {
 
 impl<'tcx> Stable<'tcx> for mir::Place<'tcx> {
     type T = stable_mir::mir::Place;
-    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
         stable_mir::mir::Place {
             local: self.local.as_usize(),
-            projection: format!("{:?}", self.projection),
+            projection: self.projection.iter().map(|e| e.stable(tables)).collect(),
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for mir::PlaceElem<'tcx> {
+    type T = stable_mir::mir::ProjectionElem<stable_mir::mir::Local, stable_mir::ty::Ty>;
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        use mir::ProjectionElem::*;
+        match self {
+            Deref => stable_mir::mir::ProjectionElem::Deref,
+            Field(idx, ty) => {
+                stable_mir::mir::ProjectionElem::Field(idx.stable(tables), ty.stable(tables))
+            }
+            Index(local) => stable_mir::mir::ProjectionElem::Index(local.stable(tables)),
+            ConstantIndex { offset, min_length, from_end } => {
+                stable_mir::mir::ProjectionElem::ConstantIndex {
+                    offset: *offset,
+                    min_length: *min_length,
+                    from_end: *from_end,
+                }
+            }
+            Subslice { from, to, from_end } => stable_mir::mir::ProjectionElem::Subslice {
+                from: *from,
+                to: *to,
+                from_end: *from_end,
+            },
+            Downcast(_, idx) => stable_mir::mir::ProjectionElem::Downcast(idx.stable(tables)),
+            OpaqueCast(ty) => stable_mir::mir::ProjectionElem::OpaqueCast(ty.stable(tables)),
+            Subtype(ty) => stable_mir::mir::ProjectionElem::Subtype(ty.stable(tables)),
         }
     }
 }
@@ -693,8 +722,40 @@ impl<'tcx> Stable<'tcx> for mir::Place<'tcx> {
 impl<'tcx> Stable<'tcx> for mir::UserTypeProjection {
     type T = stable_mir::mir::UserTypeProjection;
 
-    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
-        UserTypeProjection { base: self.base.as_usize(), projection: format!("{:?}", self.projs) }
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        UserTypeProjection {
+            base: self.base.as_usize(),
+            projection: self.projs.iter().map(|e| e.stable(tables)).collect(),
+        }
+    }
+}
+
+// ProjectionKind is nearly identical to PlaceElem, except its generic arguments are units. We
+// therefore don't need to resolve any arguments with the generic types.
+impl<'tcx> Stable<'tcx> for mir::ProjectionKind {
+    type T = stable_mir::mir::ProjectionElem<(), ()>;
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        use mir::ProjectionElem::*;
+        match self {
+            Deref => stable_mir::mir::ProjectionElem::Deref,
+            Field(idx, ty) => stable_mir::mir::ProjectionElem::Field(idx.stable(tables), *ty),
+            Index(local) => stable_mir::mir::ProjectionElem::Index(*local),
+            ConstantIndex { offset, min_length, from_end } => {
+                stable_mir::mir::ProjectionElem::ConstantIndex {
+                    offset: *offset,
+                    min_length: *min_length,
+                    from_end: *from_end,
+                }
+            }
+            Subslice { from, to, from_end } => stable_mir::mir::ProjectionElem::Subslice {
+                from: *from,
+                to: *to,
+                from_end: *from_end,
+            },
+            Downcast(_, idx) => stable_mir::mir::ProjectionElem::Downcast(idx.stable(tables)),
+            OpaqueCast(ty) => stable_mir::mir::ProjectionElem::OpaqueCast(*ty),
+            Subtype(ty) => stable_mir::mir::ProjectionElem::Subtype(*ty),
+        }
     }
 }
 
