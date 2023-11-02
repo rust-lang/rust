@@ -163,6 +163,7 @@ pub fn provide(providers: &mut Providers) {
     hir_wf_check::provide(providers);
 }
 
+// FIXME(matthewjasper) We shouldn't need to use `track_errors` in this function.
 pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
     let _prof_timer = tcx.sess.timer("type_check_crate");
 
