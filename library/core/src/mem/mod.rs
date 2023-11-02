@@ -1385,7 +1385,9 @@ impl<T> SizedTypeProperties for T {}
 ///     B { one: u8, two: u16 },
 /// }
 ///
+/// # #[cfg(not(bootstrap))]
 /// assert_eq!(mem::offset_of!(Enum, A.0), 1);
+/// # #[cfg(not(bootstrap))]
 /// assert_eq!(mem::offset_of!(Enum, B.two), 2);
 ///
 /// # #[cfg(not(bootstrap))]
