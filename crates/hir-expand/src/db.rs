@@ -12,11 +12,15 @@ use syntax::{
 use triomphe::Arc;
 
 use crate::{
-    ast_id_map::AstIdMap, builtin_attr_macro::pseudo_derive_attr_expansion,
-    builtin_fn_macro::EagerExpander, fixup, hygiene::HygieneFrame, tt, AstId, BuiltinAttrExpander,
-    BuiltinDeriveExpander, BuiltinFnLikeExpander, EagerCallInfo, ExpandError, ExpandResult,
-    ExpandTo, HirFileId, HirFileIdRepr, MacroCallId, MacroCallKind, MacroCallLoc, MacroDefId,
-    MacroDefKind, MacroFile, ProcMacroExpander,
+    ast_id_map::AstIdMap,
+    builtin_attr_macro::pseudo_derive_attr_expansion,
+    builtin_fn_macro::EagerExpander,
+    fixup,
+    hygiene::HygieneFrame,
+    name::{name, AsName},
+    tt, AstId, BuiltinAttrExpander, BuiltinDeriveExpander, BuiltinFnLikeExpander, EagerCallInfo,
+    ExpandError, ExpandResult, ExpandTo, HirFileId, HirFileIdRepr, MacroCallId, MacroCallKind,
+    MacroCallLoc, MacroDefId, MacroDefKind, MacroFile, ProcMacroExpander,
 };
 
 /// Total limit on the number of tokens produced by any macro invocation.
@@ -620,7 +624,7 @@ fn macro_expand(db: &dyn ExpandDatabase, id: MacroCallId) -> ExpandResult<Arc<tt
             if let Some(name_ref) =
                 ast_id.to_node(db).path().and_then(|p| p.segment()).and_then(|s| s.name_ref())
             {
-                name_ref.text() == "include"
+                name_ref.as_name() == name!(include)
             } else {
                 false
             }
