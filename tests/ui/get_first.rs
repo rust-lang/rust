@@ -32,9 +32,12 @@ fn main() {
     let _ = z[0];
 
     let vecdeque: VecDeque<_> = x.iter().cloned().collect();
+    let _ = vecdeque.get(0);
+    //~^ ERROR: accessing first element with `vecdeque.get(0)`
+    let _ = vecdeque.get(1);
+
     let hashmap: HashMap<u8, char> = HashMap::from_iter(vec![(0, 'a'), (1, 'b')]);
     let btreemap: BTreeMap<u8, char> = BTreeMap::from_iter(vec![(0, 'a'), (1, 'b')]);
-    let _ = vecdeque.get(0); // Do not lint, because VecDeque is not slice.
     let _ = hashmap.get(&0); // Do not lint, because HashMap is not slice.
     let _ = btreemap.get(&0); // Do not lint, because BTreeMap is not slice.
 

@@ -1,6 +1,6 @@
+use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::get_parent_expr;
-use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_context;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
@@ -20,11 +20,11 @@ declare_clippy_lint! {
     /// Can be written as the shorter `T::BITS`.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// std::mem::size_of::<usize>() * 8;
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// usize::BITS as usize;
     /// ```
     #[clippy::version = "1.60.0"]

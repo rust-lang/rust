@@ -26,22 +26,13 @@ error: manual implementation of `Option::map`
    |
 LL |       let _ = match &s {
    |  _____________^
-LL | |         Some(x) => Some({
-LL | |             if let Some(ref s) = s { (x.clone(), s) } else { panic!() }
-LL | |         }),
+LL | |         Some(x) => Some({ if let Some(ref s) = s { (x.clone(), s) } else { panic!() } }),
 LL | |         None => None,
 LL | |     };
-   | |_____^
-   |
-help: try
-   |
-LL ~     let _ = s.as_ref().map(|x| {
-LL +             if let Some(ref s) = s { (x.clone(), s) } else { panic!() }
-LL ~         });
-   |
+   | |_____^ help: try: `s.as_ref().map(|x| { if let Some(ref s) = s { (x.clone(), s) } else { panic!() } })`
 
 error: manual implementation of `Option::map`
-  --> $DIR/manual_map_option_2.rs:60:17
+  --> $DIR/manual_map_option_2.rs:58:17
    |
 LL |           let _ = match Some(0) {
    |  _________________^
@@ -51,7 +42,7 @@ LL | |         };
    | |_________^ help: try: `Some(0).map(|x| f(x))`
 
 error: manual implementation of `Option::map`
-  --> $DIR/manual_map_option_2.rs:65:13
+  --> $DIR/manual_map_option_2.rs:63:13
    |
 LL |       let _ = match Some(0) {
    |  _____________^
@@ -61,7 +52,7 @@ LL | |     };
    | |_____^ help: try: `Some(0).map(|x| unsafe { f(x) })`
 
 error: manual implementation of `Option::map`
-  --> $DIR/manual_map_option_2.rs:69:13
+  --> $DIR/manual_map_option_2.rs:67:13
    |
 LL |       let _ = match Some(0) {
    |  _____________^

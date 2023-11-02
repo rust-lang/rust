@@ -39,12 +39,12 @@ declare_clippy_lint! {
     /// requirements, activating this lint could be useful.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let x = String::from("€");
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let x = String::from("\u{20ac}");
     /// ```
     #[clippy::version = "pre 1.29.0"]

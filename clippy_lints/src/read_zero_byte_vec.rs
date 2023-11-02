@@ -24,7 +24,7 @@ declare_clippy_lint! {
     /// a zero-byte read would allocate a `Vec` for it.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// use std::io;
     /// fn foo<F: io::Read>(mut f: F) {
     ///     let mut data = Vec::with_capacity(100);
@@ -32,7 +32,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// use std::io;
     /// fn foo<F: io::Read>(mut f: F) {
     ///     let mut data = Vec::with_capacity(100);
@@ -42,7 +42,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.63.0"]
     pub READ_ZERO_BYTE_VEC,
-    correctness,
+    nursery,
     "checks for reads into a zero-length `Vec`"
 }
 declare_lint_pass!(ReadZeroByteVec => [READ_ZERO_BYTE_VEC]);
@@ -59,7 +59,10 @@ impl<'tcx> LateLintPass<'tcx> for ReadZeroByteVec {
             {
                 let visitor = |expr: &Expr<'_>| {
                     if let ExprKind::MethodCall(path, _, [arg], _) = expr.kind
-                        && let PathSegment { ident: read_or_read_exact, .. } = *path
+                        && let PathSegment {
+                            ident: read_or_read_exact,
+                            ..
+                        } = *path
                         && matches!(read_or_read_exact.as_str(), "read" | "read_exact")
                         && let ExprKind::AddrOf(_, hir::Mutability::Mut, inner) = arg.kind
                         && let ExprKind::Path(QPath::Resolved(None, inner_path)) = inner.kind
@@ -72,15 +75,14 @@ impl<'tcx> LateLintPass<'tcx> for ReadZeroByteVec {
                     }
                 };
 
-                let (read_found, next_stmt_span) =
-                if let Some(next_stmt) = block.stmts.get(idx + 1) {
+                let (read_found, next_stmt_span) = if let Some(next_stmt) = block.stmts.get(idx + 1) {
                     // case { .. stmt; stmt; .. }
                     (for_each_expr(next_stmt, visitor).is_some(), next_stmt.span)
                 } else if let Some(e) = block.expr {
                     // case { .. stmt; expr }
                     (for_each_expr(e, visitor).is_some(), e.span)
                 } else {
-                    return
+                    return;
                 };
 
                 if read_found && !next_stmt_span.from_expansion() {
@@ -93,13 +95,14 @@ impl<'tcx> LateLintPass<'tcx> for ReadZeroByteVec {
                                 next_stmt_span,
                                 "reading zero byte data to `Vec`",
                                 "try",
-                                format!("{}.resize({len}, 0); {}",
+                                format!(
+                                    "{}.resize({len}, 0); {}",
                                     ident.as_str(),
                                     snippet(cx, next_stmt_span, "..")
                                 ),
                                 applicability,
                             );
-                        }
+                        },
                         VecInitKind::WithExprCapacity(hir_id) => {
                             let e = cx.tcx.hir().expect_expr(hir_id);
                             span_lint_and_sugg(
@@ -108,14 +111,15 @@ impl<'tcx> LateLintPass<'tcx> for ReadZeroByteVec {
                                 next_stmt_span,
                                 "reading zero byte data to `Vec`",
                                 "try",
-                                format!("{}.resize({}, 0); {}",
+                                format!(
+                                    "{}.resize({}, 0); {}",
                                     ident.as_str(),
                                     snippet(cx, e.span, ".."),
                                     snippet(cx, next_stmt_span, "..")
                                 ),
                                 applicability,
                             );
-                        }
+                        },
                         _ => {
                             span_lint(
                                 cx,
@@ -123,8 +127,7 @@ impl<'tcx> LateLintPass<'tcx> for ReadZeroByteVec {
                                 next_stmt_span,
                                 "reading zero byte data to `Vec`",
                             );
-
-                        }
+                        },
                     }
                 }
             }

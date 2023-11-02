@@ -14,7 +14,7 @@ declare_clippy_lint! {
     /// ### Why is this bad?
     /// Having items declared after the testing module is confusing and may lead to bad test coverage.
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// #[cfg(test)]
     /// mod tests {
     ///     // [...]
@@ -25,7 +25,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// fn my_function() {
     ///     // [...]
     /// }
@@ -74,9 +74,7 @@ impl LateLintPass<'_> for ItemsAfterTestModule {
 
         if let Some(last) = after.last()
             && after.iter().all(|&item| {
-                !matches!(item.kind, ItemKind::Mod(_))
-                    && !item.span.from_expansion()
-                    && !is_from_proc_macro(cx, item)
+                !matches!(item.kind, ItemKind::Mod(_)) && !item.span.from_expansion() && !is_from_proc_macro(cx, item)
             })
             && !fulfill_or_allowed(cx, ITEMS_AFTER_TEST_MODULE, after.iter().map(|item| item.hir_id()))
         {
@@ -99,10 +97,7 @@ impl LateLintPass<'_> for ItemsAfterTestModule {
                     {
                         diag.multipart_suggestion_with_style(
                             "move the items to before the test module was defined",
-                            vec![
-                                (prev.span.shrink_to_hi(), items),
-                                (items_span, String::new())
-                            ],
+                            vec![(prev.span.shrink_to_hi(), items), (items_span, String::new())],
                             Applicability::MachineApplicable,
                             SuggestionStyle::HideCodeAlways,
                         );

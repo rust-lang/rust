@@ -21,7 +21,7 @@ declare_clippy_lint! {
     /// Style, using blocks in the condition makes it hard to read.
     ///
     /// ### Examples
-    /// ```rust
+    /// ```no_run
     /// # fn somefunc() -> bool { true };
     /// if { true } { /* ... */ }
     ///
@@ -29,7 +29,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # fn somefunc() -> bool { true };
     /// if true { /* ... */ }
     ///

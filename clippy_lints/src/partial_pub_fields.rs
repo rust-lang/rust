@@ -16,7 +16,7 @@ declare_clippy_lint! {
     /// * Data: relatively simple objects which group a bunch of related attributes together.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// pub struct Color {
     ///     pub r: u8,
     ///     pub g: u8,
@@ -24,7 +24,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// pub struct Color {
     ///     pub r: u8,
     ///     pub g: u8,

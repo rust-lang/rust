@@ -1,5 +1,5 @@
+use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::msrvs::{Msrv, POINTER_CAST_CONSTNESS};
 use clippy_utils::sugg::Sugg;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
@@ -18,7 +18,7 @@ pub(super) fn check<'tcx>(
     msrv: &Msrv,
 ) {
     if_chain! {
-        if msrv.meets(POINTER_CAST_CONSTNESS);
+        if msrv.meets(msrvs::POINTER_CAST_CONSTNESS);
         if let ty::RawPtr(TypeAndMut { mutbl: from_mutbl, ty: from_ty }) = cast_from.kind();
         if let ty::RawPtr(TypeAndMut { mutbl: to_mutbl, ty: to_ty }) = cast_to.kind();
         if matches!((from_mutbl, to_mutbl),

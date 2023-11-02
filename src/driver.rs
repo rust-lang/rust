@@ -126,7 +126,7 @@ impl rustc_driver::Callbacks for ClippyCallbacks {
     // JUSTIFICATION: necessary in clippy driver to set `mir_opt_level`
     #[allow(rustc::bad_opt_access)]
     fn config(&mut self, config: &mut interface::Config) {
-        let conf_path = clippy_lints::lookup_conf_file();
+        let conf_path = clippy_config::lookup_conf_file();
         let previous = config.register_lints.take();
         let clippy_args_var = self.clippy_args_var.take();
         config.parse_sess_created = Some(Box::new(move |parse_sess| {
@@ -147,7 +147,7 @@ impl rustc_driver::Callbacks for ClippyCallbacks {
                 (previous)(sess, lint_store);
             }
 
-            let conf = clippy_lints::Conf::read(sess, &conf_path);
+            let conf = clippy_config::Conf::read(sess, &conf_path);
             clippy_lints::register_plugins(lint_store, sess, conf);
             clippy_lints::register_pre_expansion_lints(lint_store, conf);
             clippy_lints::register_renamed(lint_store);
@@ -266,10 +266,12 @@ pub fn main() {
         if clippy_enabled {
             args.extend(clippy_args);
             rustc_driver::RunCompiler::new(&args, &mut ClippyCallbacks { clippy_args_var })
-                .set_using_internal_features(using_internal_features).run()
+                .set_using_internal_features(using_internal_features)
+                .run()
         } else {
             rustc_driver::RunCompiler::new(&args, &mut RustcCallbacks { clippy_args_var })
-                .set_using_internal_features(using_internal_features).run()
+                .set_using_internal_features(using_internal_features)
+                .run()
         }
     }))
 }

@@ -28,7 +28,7 @@ declare_clippy_lint! {
     /// unusual that happens to look like a typo.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// struct Vec3 {
     ///     x: f64,
     ///     y: f64,
@@ -45,7 +45,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # struct Vec3 {
     /// #     x: f64,
     /// #     y: f64,

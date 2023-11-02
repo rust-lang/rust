@@ -18,18 +18,18 @@ declare_clippy_lint! {
     /// The `Vec::with_capacity` constructor is less complex.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let mut v: Vec<usize> = vec![];
     /// v.reserve(10);
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let mut v: Vec<usize> = Vec::with_capacity(10);
     /// ```
     #[clippy::version = "1.73.0"]
     pub RESERVE_AFTER_INITIALIZATION,
     complexity,
-    "`reserve` called immediatly after `Vec` creation"
+    "`reserve` called immediately after `Vec` creation"
 }
 impl_lint_pass!(ReserveAfterInitialization => [RESERVE_AFTER_INITIALIZATION]);
 
@@ -74,15 +74,24 @@ impl<'tcx> LateLintPass<'tcx> for ReserveAfterInitialization {
             && let PatKind::Binding(BindingAnnotation::MUT, id, _, None) = local.pat.kind
             && !in_external_macro(cx.sess(), local.span)
             && let Some(init) = get_vec_init_kind(cx, init_expr)
-            && !matches!(init, VecInitKind::WithExprCapacity(_) | VecInitKind::WithConstCapacity(_))
+            && !matches!(
+                init,
+                VecInitKind::WithExprCapacity(_) | VecInitKind::WithConstCapacity(_)
+            )
         {
             self.searcher = Some(VecReserveSearcher {
                 local_id: id,
                 err_span: local.span,
-                init_part: snippet(cx, local.span.shrink_to_lo()
-                    .to(init_expr.span.source_callsite().shrink_to_lo()), "..")
-                    .into_owned(),
-                space_hint: String::new()
+                init_part: snippet(
+                    cx,
+                    local
+                        .span
+                        .shrink_to_lo()
+                        .to(init_expr.span.source_callsite().shrink_to_lo()),
+                    "..",
+                )
+                .into_owned(),
+                space_hint: String::new(),
             });
         }
     }
@@ -94,15 +103,21 @@ impl<'tcx> LateLintPass<'tcx> for ReserveAfterInitialization {
             && let Res::Local(id) = path.res
             && !in_external_macro(cx.sess(), expr.span)
             && let Some(init) = get_vec_init_kind(cx, right)
-            && !matches!(init, VecInitKind::WithExprCapacity(_) | VecInitKind::WithConstCapacity(_))
+            && !matches!(
+                init,
+                VecInitKind::WithExprCapacity(_) | VecInitKind::WithConstCapacity(_)
+            )
         {
             self.searcher = Some(VecReserveSearcher {
                 local_id: id,
                 err_span: expr.span,
-                init_part: snippet(cx, left.span.shrink_to_lo()
-                    .to(right.span.source_callsite().shrink_to_lo()), "..")
-                    .into_owned(), // see `assign_expression` test
-                space_hint: String::new()
+                init_part: snippet(
+                    cx,
+                    left.span.shrink_to_lo().to(right.span.source_callsite().shrink_to_lo()),
+                    "..",
+                )
+                .into_owned(), // see `assign_expression` test
+                space_hint: String::new(),
             });
         }
     }
@@ -118,7 +133,7 @@ impl<'tcx> LateLintPass<'tcx> for ReserveAfterInitialization {
                 self.searcher = Some(VecReserveSearcher {
                     err_span: searcher.err_span.to(stmt.span),
                     space_hint: snippet(cx, space_hint.span, "..").into_owned(),
-                    .. searcher
+                    ..searcher
                 });
             } else {
                 searcher.display_err(cx);

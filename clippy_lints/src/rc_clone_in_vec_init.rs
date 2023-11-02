@@ -21,13 +21,13 @@ declare_clippy_lint! {
     /// than different instances.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let v = vec![std::sync::Arc::new("some data".to_string()); 100];
     /// // or
     /// let v = vec![std::rc::Rc::new("some data".to_string()); 100];
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// // Initialize each value separately:
     /// let mut data = Vec::with_capacity(100);
     /// for _ in 0..100 {

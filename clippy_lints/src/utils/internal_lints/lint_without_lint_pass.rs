@@ -153,8 +153,9 @@ impl<'tcx> LateLintPass<'tcx> for LintWithoutLintPass {
                 let fields;
                 if is_lint_ref_ty {
                     if let ExprKind::AddrOf(_, _, inner_exp) = expr.kind
-                        && let ExprKind::Struct(_, struct_fields, _) = inner_exp.kind {
-                            fields = struct_fields;
+                        && let ExprKind::Struct(_, struct_fields, _) = inner_exp.kind
+                    {
+                        fields = struct_fields;
                     } else {
                         return;
                     }

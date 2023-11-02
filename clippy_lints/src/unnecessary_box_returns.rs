@@ -22,13 +22,13 @@ declare_clippy_lint! {
     /// `Box<T>` been dropped.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// fn foo() -> Box<String> {
     ///     Box::new(String::from("Hello, world!"))
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// fn foo() -> String {
     ///     String::from("Hello, world!")
     /// }

@@ -26,7 +26,7 @@ declare_clippy_lint! {
     /// if it was added on constructors for example.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// pub struct Bar;
     /// impl Bar {
     ///     // Missing attribute
@@ -37,7 +37,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # {
     /// // It's better to have the `#[must_use]` attribute on the method like this:
     /// pub struct Bar;

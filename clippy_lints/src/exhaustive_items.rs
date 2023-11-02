@@ -17,14 +17,14 @@ declare_clippy_lint! {
     /// disable them by default.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// enum Foo {
     ///     Bar,
     ///     Baz
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// #[non_exhaustive]
     /// enum Foo {
     ///     Bar,
@@ -47,14 +47,14 @@ declare_clippy_lint! {
     /// disable them by default.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// struct Foo {
     ///     bar: u8,
     ///     baz: String,
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// #[non_exhaustive]
     /// struct Foo {
     ///     bar: u8,

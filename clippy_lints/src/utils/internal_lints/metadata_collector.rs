@@ -9,7 +9,7 @@
 
 use crate::renamed_lints::RENAMED_LINTS;
 use crate::utils::internal_lints::lint_without_lint_pass::{extract_clippy_version_value, is_lint_ref_type};
-use crate::utils::{collect_configs, ClippyConfiguration};
+use clippy_config::{get_configuration_metadata, ClippyConfiguration};
 
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::ty::{match_type, walk_ptrs_ty_depth};
@@ -40,8 +40,6 @@ use std::process::Command;
 const JSON_OUTPUT_FILE: &str = "../util/gh-pages/lints.json";
 /// This is the markdown output file of the lint collector.
 const MARKDOWN_OUTPUT_FILE: &str = "../book/src/lint_configuration.md";
-/// These lints are excluded from the export.
-const BLACK_LISTED_LINTS: &[&str] = &["lint_author", "dump_hir", "internal_metadata_collector"];
 /// These groups will be ignored by the lint group matcher. This is useful for collections like
 /// `clippy::all`
 const IGNORED_LINT_GROUPS: [&str; 1] = ["clippy::all"];
@@ -121,7 +119,7 @@ declare_clippy_lint! {
     /// ### Example output
     /// ```json,ignore
     /// {
-    ///     "id": "internal_metadata_collector",
+    ///     "id": "metadata_collector",
     ///     "id_span": {
     ///         "path": "clippy_lints/src/utils/internal_lints/metadata_collector.rs",
     ///         "line": 1
@@ -131,12 +129,12 @@ declare_clippy_lint! {
     /// }
     /// ```
     #[clippy::version = "1.56.0"]
-    pub INTERNAL_METADATA_COLLECTOR,
-    internal_warn,
+    pub METADATA_COLLECTOR,
+    internal,
     "A busy bee collection metadata about lints"
 }
 
-impl_lint_pass!(MetadataCollector => [INTERNAL_METADATA_COLLECTOR]);
+impl_lint_pass!(MetadataCollector => [METADATA_COLLECTOR]);
 
 #[allow(clippy::module_name_repetitions)]
 #[derive(Debug, Clone)]
@@ -155,7 +153,7 @@ impl MetadataCollector {
         Self {
             lints: BinaryHeap::<LintMetadata>::default(),
             applicability_info: FxHashMap::<String, ApplicabilityInfo>::default(),
-            config: collect_configs(),
+            config: get_configuration_metadata(),
             clippy_project_root: std::env::current_dir()
                 .expect("failed to get current dir")
                 .ancestors()
@@ -528,16 +526,6 @@ impl Serialize for ApplicabilityInfo {
     }
 }
 
-impl fmt::Display for ClippyConfiguration {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(
-            f,
-            "* `{}`: `{}`(defaults to `{}`): {}",
-            self.name, self.config_type, self.default, self.doc
-        )
-    }
-}
-
 // ==================================================================
 // Lint pass
 // ==================================================================
@@ -560,7 +548,6 @@ impl<'hir> LateLintPass<'hir> for MetadataCollector {
                 if is_lint_ref_type(cx, ty);
                 // disallow check
                 let lint_name = sym_to_string(item.ident.name).to_ascii_lowercase();
-                if !BLACK_LISTED_LINTS.contains(&lint_name.as_str());
                 // metadata extraction
                 if let Some((group, level)) = get_lint_group_and_level_or_lint(cx, &lint_name, item);
                 if let Some(mut raw_docs) = extract_attr_docs_or_lint(cx, item);
@@ -585,7 +572,6 @@ impl<'hir> LateLintPass<'hir> for MetadataCollector {
                 if is_deprecated_lint(cx, ty);
                 // disallow check
                 let lint_name = sym_to_string(item.ident.name).to_ascii_lowercase();
-                if !BLACK_LISTED_LINTS.contains(&lint_name.as_str());
                 // Metadata the little we can get from a deprecated lint
                 if let Some(raw_docs) = extract_attr_docs_or_lint(cx, item);
                 then {
@@ -841,7 +827,7 @@ fn collect_renames(lints: &mut Vec<LintMetadata>) {
 fn lint_collection_error_item(cx: &LateContext<'_>, item: &Item<'_>, message: &str) {
     span_lint(
         cx,
-        INTERNAL_METADATA_COLLECTOR,
+        METADATA_COLLECTOR,
         item.ident.span,
         &format!("metadata collection error for `{}`: {message}", item.ident.name),
     );

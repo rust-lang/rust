@@ -20,8 +20,7 @@ fn empty_arm_has_comment(cx: &LateContext<'_>, span: Span) -> bool {
     if let Some(ff) = get_source_text(cx, span)
         && let Some(text) = ff.as_str()
     {
-        text.as_bytes().windows(2)
-            .any(|w| w == b"//" || w == b"/*")
+        text.as_bytes().windows(2).any(|w| w == b"//" || w == b"/*")
     } else {
         false
     }
@@ -51,7 +50,7 @@ pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr:
             // block with 2+ statements or 1 expr and 1+ statement
             Some(els)
         } else {
-            // not a block or an emtpy block w/ comments, don't lint
+            // not a block or an empty block w/ comments, don't lint
             return;
         };
 

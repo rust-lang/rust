@@ -70,9 +70,9 @@ pub fn expr_block<T: LintContext>(
     app: &mut Applicability,
 ) -> String {
     let (code, from_macro) = snippet_block_with_context(cx, expr.span, outer, default, indent_relative_to, app);
-    if !from_macro &&
-        let ExprKind::Block(block, _) = expr.kind &&
-        block.rules != BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided)
+    if !from_macro
+        && let ExprKind::Block(block, _) = expr.kind
+        && block.rules != BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided)
     {
         format!("{code}")
     } else {
@@ -108,7 +108,7 @@ fn first_char_in_first_line<T: LintContext>(cx: &T, span: Span) -> Option<BytePo
 
 /// Extends the span to the beginning of the spans line, incl. whitespaces.
 ///
-/// ```rust
+/// ```no_run
 ///        let x = ();
 /// //             ^^
 /// // will be converted to

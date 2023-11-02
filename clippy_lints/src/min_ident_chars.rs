@@ -107,13 +107,17 @@ impl Visitor<'_> for IdentVisitor<'_, '_> {
 
         let str = ident.as_str();
         if conf.is_ident_too_short(cx, str, ident.span) {
-            if let Node::Item(item) = node && let ItemKind::Use(..) = item.kind {
+            if let Node::Item(item) = node
+                && let ItemKind::Use(..) = item.kind
+            {
                 return;
             }
             // `struct Awa<T>(T)`
             //                ^
             if let Node::PathSegment(path) = node {
-                if let Res::Def(def_kind, ..) = path.res && let DefKind::TyParam = def_kind {
+                if let Res::Def(def_kind, ..) = path.res
+                    && let DefKind::TyParam = def_kind
+                {
                     return;
                 }
                 if matches!(path.res, Res::PrimTy(..)) || path.res.opt_def_id().is_some_and(|def_id| !def_id.is_local())

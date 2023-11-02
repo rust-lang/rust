@@ -1,9 +1,8 @@
 use rustc_ast::Attribute;
 use rustc_semver::RustcVersion;
 use rustc_session::Session;
+use rustc_span::{sym, Symbol};
 use serde::Deserialize;
-
-use crate::attrs::get_unique_attr;
 
 macro_rules! msrv_aliases {
     ($($major:literal,$minor:literal,$patch:literal {
@@ -101,7 +100,16 @@ impl Msrv {
     }
 
     fn parse_attr(sess: &Session, attrs: &[Attribute]) -> Option<RustcVersion> {
-        if let Some(msrv_attr) = get_unique_attr(sess, attrs, "msrv") {
+        let sym_msrv = Symbol::intern("msrv");
+        let mut msrv_attrs = attrs.iter().filter(|attr| attr.path_matches(&[sym::clippy, sym_msrv]));
+
+        if let Some(msrv_attr) = msrv_attrs.next() {
+            if let Some(duplicate) = msrv_attrs.last() {
+                sess.struct_span_err(duplicate.span, "`clippy::msrv` is defined multiple times")
+                    .span_note(msrv_attr.span, "first definition found here")
+                    .emit();
+            }
+
             if let Some(msrv) = msrv_attr.value_str() {
                 if let Ok(version) = RustcVersion::parse(msrv.as_str()) {
                     return Some(version);

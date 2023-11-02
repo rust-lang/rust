@@ -1,6 +1,6 @@
+use clippy_config::types::Rename;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_opt;
-
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
@@ -9,8 +9,6 @@ use rustc_hir::{Item, ItemKind, UseKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::Symbol;
-
-use crate::utils::conf::Rename;
 
 declare_clippy_lint! {
     /// ### What it does

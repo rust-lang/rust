@@ -15,7 +15,7 @@ declare_clippy_lint! {
     /// Some coding guidelines require this (e.g., MISRA-C:2004 Rule 14.10).
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # fn a() {}
     /// # fn b() {}
     /// # let x: i32 = 1;
@@ -28,7 +28,7 @@ declare_clippy_lint! {
     ///
     /// Use instead:
     ///
-    /// ```rust
+    /// ```no_run
     /// # fn a() {}
     /// # fn b() {}
     /// # let x: i32 = 1;

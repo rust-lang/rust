@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::implements_trait;
 use rustc_errors::Applicability;
-use rustc_hir::{CoroutineSource, Body, BodyId, CoroutineKind, ExprKind, QPath};
+use rustc_hir::{Body, BodyId, CoroutineKind, CoroutineSource, ExprKind, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
@@ -15,7 +15,7 @@ declare_clippy_lint! {
     /// An await is likely missing.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// async fn foo() {}
     ///
     /// fn bar() {
@@ -26,7 +26,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// async fn foo() {}
     ///
     /// fn bar() {

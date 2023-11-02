@@ -33,15 +33,17 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, recv: &'
 }
 
 fn arg_is_seek_from_current<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> bool {
-    if let ExprKind::Call(f, args) = expr.kind &&
-        let ExprKind::Path(ref path) = f.kind &&
-        let Some(def_id) = cx.qpath_res(path, f.hir_id).opt_def_id() &&
-        match_def_path(cx, def_id, &paths::STD_IO_SEEK_FROM_CURRENT) {
+    if let ExprKind::Call(f, args) = expr.kind
+        && let ExprKind::Path(ref path) = f.kind
+        && let Some(def_id) = cx.qpath_res(path, f.hir_id).opt_def_id()
+        && match_def_path(cx, def_id, &paths::STD_IO_SEEK_FROM_CURRENT)
+    {
         // check if argument of `SeekFrom::Current` is `0`
-        if args.len() == 1 &&
-            let ExprKind::Lit(lit) = args[0].kind &&
-            let LitKind::Int(0, LitIntType::Unsuffixed) = lit.node {
-            return true
+        if args.len() == 1
+            && let ExprKind::Lit(lit) = args[0].kind
+            && let LitKind::Int(0, LitIntType::Unsuffixed) = lit.node
+        {
+            return true;
         }
     }
 

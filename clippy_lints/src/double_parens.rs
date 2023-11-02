@@ -12,7 +12,7 @@ declare_clippy_lint! {
     /// mistake.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// fn simple_double_parens() -> i32 {
     ///     ((0))
     /// }
@@ -22,7 +22,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// fn simple_no_parens() -> i32 {
     ///     0
     /// }

@@ -50,7 +50,6 @@ extern crate clippy_utils;
 #[macro_use]
 extern crate declare_clippy_lint;
 
-use clippy_utils::msrvs::Msrv;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_lint::{Lint, LintId};
 use rustc_session::Session;
@@ -358,9 +357,7 @@ mod zero_div_zero;
 mod zero_sized_map_values;
 // end lints modules, do not remove this comment, it’s used in `update_lints`
 
-use crate::utils::conf::metadata::get_configuration_metadata;
-pub use crate::utils::conf::{lookup_conf_file, Conf};
-use crate::utils::FindAll;
+use clippy_config::{get_configuration_metadata, Conf};
 
 /// Register all pre expansion lints
 ///
@@ -462,16 +459,13 @@ pub fn explain(name: &str) -> i32 {
     if let Some(info) = declared_lints::LINTS.iter().find(|info| info.lint.name == target) {
         println!("{}", info.explanation);
         // Check if the lint has configuration
-        let mdconf = get_configuration_metadata();
-        if let Some(config_vec_positions) = mdconf
-            .iter()
-            .find_all(|cconf| cconf.lints.contains(&info.lint.name_lower()[8..].to_owned()))
-        {
-            // If it has, print it
+        let mut mdconf = get_configuration_metadata();
+        let name = name.to_ascii_lowercase();
+        mdconf.retain(|cconf| cconf.lints.contains(&name));
+        if !mdconf.is_empty() {
             println!("### Configuration for {}:\n", info.lint.name_lower());
-            for position in config_vec_positions {
-                let conf = &mdconf[position];
-                println!("  - {}: {} (default: {})", conf.name, conf.doc, conf.default);
+            for conf in mdconf {
+                println!("{conf}");
             }
         }
         0
@@ -519,7 +513,9 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     // all the internal lints
     #[cfg(feature = "internal")]
     {
-        store.register_early_pass(|| Box::new(utils::internal_lints::clippy_lints_internal::ClippyLintsInternal));
+        store.register_early_pass(|| {
+            Box::new(utils::internal_lints::unsorted_clippy_utils_paths::UnsortedClippyUtilsPaths)
+        });
         store.register_early_pass(|| Box::new(utils::internal_lints::produce_ice::ProduceIce));
         store.register_late_pass(|_| Box::new(utils::internal_lints::collapsible_calls::CollapsibleCalls));
         store.register_late_pass(|_| {

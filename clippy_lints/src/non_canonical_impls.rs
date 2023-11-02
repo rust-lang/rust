@@ -64,7 +64,7 @@ declare_clippy_lint! {
     /// in `Some`.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # use std::cmp::Ordering;
     /// #[derive(Eq, PartialEq)]
     /// struct A(u32);
@@ -84,7 +84,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # use std::cmp::Ordering;
     /// #[derive(Eq, PartialEq)]
     /// struct A(u32);
@@ -131,12 +131,7 @@ impl LateLintPass<'_> for NonCanonicalImpls {
 
         if cx.tcx.is_diagnostic_item(sym::Clone, trait_impl.def_id)
             && let Some(copy_def_id) = cx.tcx.get_diagnostic_item(sym::Copy)
-            && implements_trait(
-                    cx,
-                    trait_impl.self_ty(),
-                    copy_def_id,
-                    &[],
-                )
+            && implements_trait(cx, trait_impl.self_ty(), copy_def_id, &[])
         {
             if impl_item.ident.name == sym::clone {
                 if block.stmts.is_empty()
@@ -144,7 +139,8 @@ impl LateLintPass<'_> for NonCanonicalImpls {
                     && let ExprKind::Unary(UnOp::Deref, deref) = expr.kind
                     && let ExprKind::Path(qpath) = deref.kind
                     && last_path_segment(&qpath).ident.name == kw::SelfLower
-                {} else {
+                {
+                } else {
                     span_lint_and_sugg(
                         cx,
                         NON_CANONICAL_CLONE_IMPL,
@@ -197,10 +193,13 @@ impl LateLintPass<'_> for NonCanonicalImpls {
                 && is_res_lang_ctor(cx, cx.qpath_res(some_path, *some_hir_id), LangItem::OptionSome)
                 // Fix #11178, allow `Self::cmp(self, ..)` too
                 && self_cmp_call(cx, cmp_expr, impl_item.owner_id.def_id, &mut needs_fully_qualified)
-            {} else {
+            {
+            } else {
                 // If `Self` and `Rhs` are not the same type, bail. This makes creating a valid
                 // suggestion tons more complex.
-                if let [lhs, rhs, ..] = trait_impl.args.as_slice() && lhs != rhs {
+                if let [lhs, rhs, ..] = trait_impl.args.as_slice()
+                    && lhs != rhs
+                {
                     return;
                 }
 
@@ -238,12 +237,8 @@ impl LateLintPass<'_> for NonCanonicalImpls {
                             ],
                         };
 
-                        diag.multipart_suggestion(
-                            "change this to",
-                            suggs,
-                            Applicability::Unspecified,
-                        );
-                    }
+                        diag.multipart_suggestion("change this to", suggs, Applicability::Unspecified);
+                    },
                 );
             }
         }

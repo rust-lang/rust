@@ -4,16 +4,13 @@
 //! Whenever possible, please consider diagnostic items over hardcoded paths.
 //! See <https://github.com/rust-lang/rust-clippy/issues/5393> for more information.
 
-#[cfg(feature = "internal")]
 pub const APPLICABILITY: [&str; 2] = ["rustc_lint_defs", "Applicability"];
-#[cfg(feature = "internal")]
 pub const APPLICABILITY_VALUES: [[&str; 3]; 4] = [
     ["rustc_lint_defs", "Applicability", "Unspecified"],
     ["rustc_lint_defs", "Applicability", "HasPlaceholders"],
     ["rustc_lint_defs", "Applicability", "MaybeIncorrect"],
     ["rustc_lint_defs", "Applicability", "MachineApplicable"],
 ];
-#[cfg(feature = "internal")]
 pub const DIAGNOSTIC_BUILDER: [&str; 3] = ["rustc_errors", "diagnostic_builder", "DiagnosticBuilder"];
 pub const BINARYHEAP_ITER: [&str; 5] = ["alloc", "collections", "binary_heap", "BinaryHeap", "iter"];
 pub const BTREEMAP_CONTAINS_KEY: [&str; 6] = ["alloc", "collections", "btree", "map", "BTreeMap", "contains_key"];
@@ -25,9 +22,7 @@ pub const CORE_ITER_COPIED: [&str; 6] = ["core", "iter", "traits", "iterator", "
 pub const CORE_ITER_FILTER: [&str; 6] = ["core", "iter", "traits", "iterator", "Iterator", "filter"];
 pub const CORE_RESULT_OK_METHOD: [&str; 4] = ["core", "result", "Result", "ok"];
 pub const CSTRING_AS_C_STR: [&str; 5] = ["alloc", "ffi", "c_str", "CString", "as_c_str"];
-#[cfg(feature = "internal")]
 pub const EARLY_CONTEXT: [&str; 2] = ["rustc_lint", "EarlyContext"];
-#[cfg(feature = "internal")]
 pub const EARLY_LINT_PASS: [&str; 3] = ["rustc_lint", "passes", "EarlyLintPass"];
 pub const F32_EPSILON: [&str; 4] = ["core", "f32", "<impl f32>", "EPSILON"];
 pub const F64_EPSILON: [&str; 4] = ["core", "f64", "<impl f64>", "EPSILON"];
@@ -38,22 +33,15 @@ pub const FUTURES_IO_ASYNCWRITEEXT: [&str; 3] = ["futures_util", "io", "AsyncWri
 pub const HASHMAP_CONTAINS_KEY: [&str; 6] = ["std", "collections", "hash", "map", "HashMap", "contains_key"];
 pub const HASHMAP_INSERT: [&str; 6] = ["std", "collections", "hash", "map", "HashMap", "insert"];
 pub const HASHSET_ITER: [&str; 6] = ["std", "collections", "hash", "set", "HashSet", "iter"];
-#[cfg(feature = "internal")]
 pub const IDENT: [&str; 3] = ["rustc_span", "symbol", "Ident"];
-#[cfg(feature = "internal")]
 pub const IDENT_AS_STR: [&str; 4] = ["rustc_span", "symbol", "Ident", "as_str"];
 pub const INSERT_STR: [&str; 4] = ["alloc", "string", "String", "insert_str"];
 pub const ITERTOOLS_NEXT_TUPLE: [&str; 3] = ["itertools", "Itertools", "next_tuple"];
-#[cfg(feature = "internal")]
 pub const KW_MODULE: [&str; 3] = ["rustc_span", "symbol", "kw"];
-#[cfg(feature = "internal")]
 pub const LATE_CONTEXT: [&str; 2] = ["rustc_lint", "LateContext"];
-#[cfg(feature = "internal")]
 pub const LATE_LINT_PASS: [&str; 3] = ["rustc_lint", "passes", "LateLintPass"];
-#[cfg(feature = "internal")]
 pub const LINT: [&str; 2] = ["rustc_lint_defs", "Lint"];
-#[cfg(feature = "internal")]
-pub const MSRV: [&str; 3] = ["clippy_utils", "msrvs", "Msrv"];
+pub const MSRV: [&str; 3] = ["clippy_config", "msrvs", "Msrv"];
 pub const OS_STRING_AS_OS_STR: [&str; 5] = ["std", "ffi", "os_str", "OsString", "as_os_str"];
 pub const OS_STR_TO_OS_STRING: [&str; 5] = ["std", "ffi", "os_str", "OsStr", "to_os_string"];
 pub const PARKING_LOT_MUTEX_GUARD: [&str; 3] = ["lock_api", "mutex", "MutexGuard"];
@@ -86,17 +74,11 @@ pub const STR_CHARS: [&str; 4] = ["core", "str", "<impl str>", "chars"];
 pub const STR_ENDS_WITH: [&str; 4] = ["core", "str", "<impl str>", "ends_with"];
 pub const STR_LEN: [&str; 4] = ["core", "str", "<impl str>", "len"];
 pub const STR_STARTS_WITH: [&str; 4] = ["core", "str", "<impl str>", "starts_with"];
-#[cfg(feature = "internal")]
 pub const SYMBOL: [&str; 3] = ["rustc_span", "symbol", "Symbol"];
-#[cfg(feature = "internal")]
 pub const SYMBOL_AS_STR: [&str; 4] = ["rustc_span", "symbol", "Symbol", "as_str"];
-#[cfg(feature = "internal")]
 pub const SYMBOL_INTERN: [&str; 4] = ["rustc_span", "symbol", "Symbol", "intern"];
-#[cfg(feature = "internal")]
 pub const SYMBOL_TO_IDENT_STRING: [&str; 4] = ["rustc_span", "symbol", "Symbol", "to_ident_string"];
-#[cfg(feature = "internal")]
 pub const SYM_MODULE: [&str; 3] = ["rustc_span", "symbol", "sym"];
-#[cfg(feature = "internal")]
 pub const SYNTAX_CONTEXT: [&str; 3] = ["rustc_span", "hygiene", "SyntaxContext"];
 #[expect(clippy::invalid_paths)] // internal lints do not know about all external crates
 pub const TOKIO_IO_ASYNCREADEXT: [&str; 5] = ["tokio", "io", "util", "async_read_ext", "AsyncReadExt"];
@@ -112,6 +94,7 @@ pub const VEC_RESIZE: [&str; 4] = ["alloc", "vec", "Vec", "resize"];
 pub const INSTANT_NOW: [&str; 4] = ["std", "time", "Instant", "now"];
 pub const VEC_IS_EMPTY: [&str; 4] = ["alloc", "vec", "Vec", "is_empty"];
 pub const VEC_POP: [&str; 4] = ["alloc", "vec", "Vec", "pop"];
+pub const WAKER: [&str; 4] = ["core", "task", "wake", "Waker"];
 pub const OPTION_UNWRAP: [&str; 4] = ["core", "option", "Option", "unwrap"];
 pub const OPTION_EXPECT: [&str; 4] = ["core", "option", "Option", "expect"];
 #[expect(clippy::invalid_paths)] // not sure why it thinks this, it works so

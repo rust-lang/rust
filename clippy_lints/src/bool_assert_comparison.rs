@@ -18,13 +18,13 @@ declare_clippy_lint! {
     /// It is shorter to use the equivalent.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// assert_eq!("a".is_empty(), false);
     /// assert_ne!("a".is_empty(), true);
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// assert!(!"a".is_empty());
     /// ```
     #[clippy::version = "1.53.0"]

@@ -204,4 +204,21 @@ mod allow_attributes_on_variants {
     }
 }
 
+mod issue11494 {
+    // variant order should not affect lint
+    enum Data {
+        Valid,
+        Invalid,
+        DataDependent,
+        //~^ ERROR: variant name starts with the enum's name
+    }
+
+    enum Datas {
+        DatasDependent,
+        //~^ ERROR: variant name starts with the enum's name
+        Valid,
+        Invalid,
+    }
+}
+
 fn main() {}

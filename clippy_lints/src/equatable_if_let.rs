@@ -68,7 +68,8 @@ impl<'tcx> LateLintPass<'tcx> for PatternEquality {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         if !in_external_macro(cx.sess(), expr.span)
             && let ExprKind::Let(let_expr) = expr.kind
-            && unary_pattern(let_expr.pat) {
+            && unary_pattern(let_expr.pat)
+        {
             let exp_ty = cx.typeck_results().expr_ty(let_expr.init);
             let pat_ty = cx.typeck_results().pat_ty(let_expr.pat);
             let mut applicability = Applicability::MachineApplicable;
@@ -79,7 +80,9 @@ impl<'tcx> LateLintPass<'tcx> for PatternEquality {
                         "({})",
                         snippet_with_context(cx, let_expr.pat.span, expr.span.ctxt(), "..", &mut applicability).0,
                     ),
-                    _ => snippet_with_context(cx, let_expr.pat.span, expr.span.ctxt(), "..", &mut applicability).0.to_string(),
+                    _ => snippet_with_context(cx, let_expr.pat.span, expr.span.ctxt(), "..", &mut applicability)
+                        .0
+                        .to_string(),
                 };
                 span_lint_and_sugg(
                     cx,

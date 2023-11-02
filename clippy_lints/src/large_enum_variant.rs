@@ -38,7 +38,7 @@ declare_clippy_lint! {
     /// this may lead to a false positive.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// enum Test {
     ///     A(i32),
     ///     B([i32; 8000]),
@@ -46,7 +46,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// // Possibly better
     /// enum Test2 {
     ///     A(i32),

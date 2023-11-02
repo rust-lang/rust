@@ -33,6 +33,9 @@ fn main() {
 
     let _ = a.mul_add(a, b).sqrt();
 
+    let u = 1usize;
+    let _ = b.mul_add(-(u as f64), a);
+
     // Cases where the lint shouldn't be applied
     let _ = (a * a + b * b).sqrt();
 }

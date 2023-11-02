@@ -13,7 +13,7 @@ declare_clippy_lint! {
     /// An empty else branch does nothing and can be removed.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     ///# fn check() -> bool { true }
     /// if check() {
     ///     println!("Check successful!");
@@ -21,7 +21,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     ///# fn check() -> bool { true }
     /// if check() {
     ///     println!("Check successful!");

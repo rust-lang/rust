@@ -38,7 +38,7 @@ declare_clippy_lint! {
     /// are mentioned due to potential false positives.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// // Unnecessary lifetime annotations
     /// fn in_and_out<'a>(x: &'a u8, y: u8) -> &'a u8 {
     ///     x
@@ -46,7 +46,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// fn elided(x: &u8, y: u8) -> &u8 {
     ///     x
     /// }
@@ -69,7 +69,7 @@ declare_clippy_lint! {
     /// them leads to more readable code.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// // unnecessary lifetimes
     /// fn unused_lifetime<'a>(x: u8) {
     ///     // ..
@@ -77,7 +77,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// fn no_lifetime(x: u8) {
     ///     // ...
     /// }
@@ -517,9 +517,11 @@ impl<'a, 'tcx> Visitor<'tcx> for RefVisitor<'a, 'tcx> {
 
     fn visit_poly_trait_ref(&mut self, poly_tref: &'tcx PolyTraitRef<'tcx>) {
         let trait_ref = &poly_tref.trait_ref;
-        if let Some(id) = trait_ref.trait_def_id() && lang_items::FN_TRAITS.iter().any(|&item| {
-            self.cx.tcx.lang_items().get(item) == Some(id)
-        }) {
+        if let Some(id) = trait_ref.trait_def_id()
+            && lang_items::FN_TRAITS
+                .iter()
+                .any(|&item| self.cx.tcx.lang_items().get(item) == Some(id))
+        {
             let mut sub_visitor = RefVisitor::new(self.cx);
             sub_visitor.visit_trait_ref(trait_ref);
             self.nested_elision_site_lts.append(&mut sub_visitor.all_lts());

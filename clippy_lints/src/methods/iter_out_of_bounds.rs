@@ -51,7 +51,7 @@ fn get_iterator_length<'tcx>(cx: &LateContext<'tcx>, iter: &'tcx Expr<'tcx>) -> 
         Some(0)
     } else if cx.tcx.is_diagnostic_item(sym::IterOnce, did) {
         Some(1)
-    }  else {
+    } else {
         None
     }
 }

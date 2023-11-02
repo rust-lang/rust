@@ -1,7 +1,7 @@
 //! lint on manually implemented checked conversions that could be transformed into `try_from`
 
+use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::{in_constant, is_integer_literal, SpanlessEq};
 use if_chain::if_chain;
@@ -19,13 +19,13 @@ declare_clippy_lint! {
     /// Reduces the readability of statements & is error prone.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # let foo: u32 = 5;
     /// foo <= i32::MAX as u32;
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # let foo = 1;
     /// # #[allow(unused)]
     /// i32::try_from(foo).is_ok();
