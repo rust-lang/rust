@@ -37,13 +37,13 @@ declare_clippy_lint! {
     /// opportunities for parallelization.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// fn foo(y: &mut i32) -> i32 {
     ///     12 + *y
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// fn foo(y: &i32) -> i32 {
     ///     12 + *y
     /// }

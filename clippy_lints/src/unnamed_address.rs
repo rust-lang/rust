@@ -16,7 +16,7 @@ declare_clippy_lint! {
     /// the same address after being merged together.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// type F = fn();
     /// fn a() {}
     /// let f: F = a;

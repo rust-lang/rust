@@ -23,12 +23,12 @@ declare_clippy_lint! {
     ///
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// enum Test {}
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// #![feature(never_type)]
     ///
     /// struct Test(!);

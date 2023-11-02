@@ -15,7 +15,7 @@ declare_clippy_lint! {
     /// The idiomatic (and more performant) way of writing tests is inside a testing module (flagged with `#[cfg(test)]`),
     /// having test functions outside of this module is confusing and may lead to them being "hidden".
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// #[test]
     /// fn my_cool_test() {
     ///     // [...]
@@ -28,7 +28,7 @@ declare_clippy_lint! {
     ///
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// #[cfg(test)]
     /// mod tests {
     ///     #[test]

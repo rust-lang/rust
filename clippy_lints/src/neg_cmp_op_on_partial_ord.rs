@@ -18,7 +18,7 @@ declare_clippy_lint! {
     /// especially easy to miss if the operator based comparison result is negated.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let a = 1.0;
     /// let b = f64::NAN;
     ///
@@ -26,7 +26,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// use std::cmp::Ordering;
     /// # let a = 1.0;
     /// # let b = f64::NAN;

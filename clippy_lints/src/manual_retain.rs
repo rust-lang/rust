@@ -1,5 +1,5 @@
+use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet;
 use clippy_utils::ty::{is_type_diagnostic_item, is_type_lang_item};
 use clippy_utils::{get_parent_expr, match_def_path, paths, SpanlessEq};
@@ -35,13 +35,13 @@ declare_clippy_lint! {
     /// ### Why is this bad?
     /// `.retain()` is simpler and avoids needless allocation.
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let mut vec = vec![0, 1, 2];
     /// vec = vec.iter().filter(|&x| x % 2 == 0).copied().collect();
     /// vec = vec.into_iter().filter(|x| x % 2 == 0).collect();
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let mut vec = vec![0, 1, 2];
     /// vec.retain(|x| x % 2 == 0);
     /// ```

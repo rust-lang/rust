@@ -16,7 +16,7 @@ declare_clippy_lint! {
     /// other. This would then lead to undefined behavior.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// unsafe fn swap(x: &[*mut u32], y: &[*mut u32]) {
     ///     for (&x, &y) in x.iter().zip(y) {
     ///         core::mem::swap(&mut *x, &mut *y);
@@ -24,7 +24,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// unsafe fn swap(x: &[*mut u32], y: &[*mut u32]) {
     ///     for (&x, &y) in x.iter().zip(y) {
     ///         core::ptr::swap(x, y);

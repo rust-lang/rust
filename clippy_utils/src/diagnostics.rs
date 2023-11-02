@@ -83,9 +83,9 @@ pub fn span_lint_and_help<T: LintContext>(
     cx.struct_span_lint(lint, span, msg.to_string(), |diag| {
         let help = help.to_string();
         if let Some(help_span) = help_span {
-            diag.span_help(help_span, help.to_string());
+            diag.span_help(help_span, help);
         } else {
-            diag.help(help.to_string());
+            diag.help(help);
         }
         docs_link(diag, lint);
         diag
@@ -193,7 +193,7 @@ pub fn span_lint_hir_and_then(
 ///     |
 ///     = note: `-D fold-any` implied by `-D warnings`
 /// ```
-#[cfg_attr(feature = "internal", allow(clippy::collapsible_span_lint_calls))]
+#[expect(clippy::collapsible_span_lint_calls)]
 pub fn span_lint_and_sugg<T: LintContext>(
     cx: &T,
     lint: &'static Lint,

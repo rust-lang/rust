@@ -15,7 +15,7 @@ declare_clippy_lint! {
     /// An await is likely missing.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// async fn foo() {}
     ///
     /// fn bar() {
@@ -26,7 +26,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// async fn foo() {}
     ///
     /// fn bar() {

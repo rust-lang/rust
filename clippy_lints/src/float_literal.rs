@@ -18,13 +18,13 @@ declare_clippy_lint! {
     /// Rust will truncate the literal silently.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let v: f32 = 0.123_456_789_9;
     /// println!("{}", v); //  0.123_456_789
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let v: f64 = 0.123_456_789_9;
     /// println!("{}", v); //  0.123_456_789_9
     /// ```
@@ -44,12 +44,12 @@ declare_clippy_lint! {
     /// conversion to a float.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let _: f32 = 16_777_217.0; // 16_777_216.0
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let _: f32 = 16_777_216.0;
     /// let _: f64 = 16_777_217.0;
     /// ```

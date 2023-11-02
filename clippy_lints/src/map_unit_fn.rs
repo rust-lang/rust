@@ -21,7 +21,7 @@ declare_clippy_lint! {
     /// an if let statement
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # fn do_stuff() -> Option<String> { Some(String::new()) }
     /// # fn log_err_msg(foo: String) -> Option<String> { Some(foo) }
     /// # fn format_msg(foo: String) -> String { String::new() }
@@ -33,7 +33,7 @@ declare_clippy_lint! {
     ///
     /// The correct use would be:
     ///
-    /// ```rust
+    /// ```no_run
     /// # fn do_stuff() -> Option<String> { Some(String::new()) }
     /// # fn log_err_msg(foo: String) -> Option<String> { Some(foo) }
     /// # fn format_msg(foo: String) -> String { String::new() }
@@ -63,7 +63,7 @@ declare_clippy_lint! {
     /// an if let statement
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # fn do_stuff() -> Result<String, String> { Ok(String::new()) }
     /// # fn log_err_msg(foo: String) -> Result<String, String> { Ok(foo) }
     /// # fn format_msg(foo: String) -> String { String::new() }
@@ -75,7 +75,7 @@ declare_clippy_lint! {
     ///
     /// The correct use would be:
     ///
-    /// ```rust
+    /// ```no_run
     /// # fn do_stuff() -> Result<String, String> { Ok(String::new()) }
     /// # fn log_err_msg(foo: String) -> Result<String, String> { Ok(foo) }
     /// # fn format_msg(foo: String) -> String { String::new() }

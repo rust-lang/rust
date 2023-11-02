@@ -1,6 +1,6 @@
+use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::eager_or_lazy::switch_to_eager_eval;
-use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{contains_return, higher, is_else_clause, is_res_lang_ctor, path_res, peel_blocks};
@@ -21,7 +21,7 @@ declare_clippy_lint! {
     /// in comparison to `bool::then`.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # let v = vec![0];
     /// let a = if v.is_empty() {
     ///     println!("true!");
@@ -33,7 +33,7 @@ declare_clippy_lint! {
     ///
     /// Could be written:
     ///
-    /// ```rust
+    /// ```no_run
     /// # let v = vec![0];
     /// let a = v.is_empty().then(|| {
     ///     println!("true!");

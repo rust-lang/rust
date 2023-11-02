@@ -21,7 +21,7 @@ declare_clippy_lint! {
     /// See https://doc.rust-lang.org/std/primitive.bool.html#impl-From%3Cbool%3E
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # let condition = false;
     /// if condition {
     ///     1_i64
@@ -30,12 +30,12 @@ declare_clippy_lint! {
     /// };
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # let condition = false;
     /// i64::from(condition);
     /// ```
     /// or
-    /// ```rust
+    /// ```no_run
     /// # let condition = false;
     /// condition as i64;
     /// ```

@@ -16,11 +16,11 @@ declare_clippy_lint! {
     /// This is unnecessary and confusing to the reader. Doing this is probably a mistake.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let x = 1f32.ceil();
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let x = 1f32;
     /// ```
     #[clippy::version = "1.63.0"]

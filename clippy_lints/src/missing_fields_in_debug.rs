@@ -40,7 +40,7 @@ declare_clippy_lint! {
     /// making it much less likely to accidentally forget to update the `Debug` impl when adding a new variant.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// use std::fmt;
     /// struct Foo {
     ///     data: String,
@@ -57,7 +57,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// use std::fmt;
     /// struct Foo {
     ///     data: String,

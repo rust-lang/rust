@@ -22,14 +22,14 @@ declare_clippy_lint! {
     /// Functions called from a function returning a `Result` may invoke a panicking macro. This is not checked.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// fn result_with_panic() -> Result<bool, String>
     /// {
     ///     panic!("error");
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// fn result_without_panic() -> Result<bool, String> {
     ///     Err(String::from("error"))
     /// }

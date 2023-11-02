@@ -1,6 +1,6 @@
+use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::macros::root_macro_call;
-use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{higher, in_constant};
 use rustc_ast::ast::RangeLimits;
@@ -23,7 +23,7 @@ declare_clippy_lint! {
     /// clear that it's not a specific subset of characters, but all
     /// ASCII (lowercase|uppercase|digit|hexdigit) characters.
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// fn main() {
     ///     assert!(matches!('x', 'a'..='z'));
     ///     assert!(matches!(b'X', b'A'..=b'Z'));
@@ -37,7 +37,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// fn main() {
     ///     assert!('x'.is_ascii_lowercase());
     ///     assert!(b'X'.is_ascii_uppercase());

@@ -26,13 +26,13 @@ declare_clippy_lint! {
     /// Redundant code.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// // format!() returns a `String`
     /// let s: String = format!("hello").into();
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let s: String = format!("hello");
     /// ```
     #[clippy::version = "1.45.0"]

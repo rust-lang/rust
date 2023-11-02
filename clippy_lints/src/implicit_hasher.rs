@@ -35,7 +35,7 @@ declare_clippy_lint! {
     /// pieces of code, possibly including external crates.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # use std::collections::HashMap;
     /// # use std::hash::{Hash, BuildHasher};
     /// # trait Serialize {};
@@ -44,7 +44,7 @@ declare_clippy_lint! {
     /// pub fn foo(map: &mut HashMap<i32, i32>) { }
     /// ```
     /// could be rewritten as
-    /// ```rust
+    /// ```no_run
     /// # use std::collections::HashMap;
     /// # use std::hash::{Hash, BuildHasher};
     /// # trait Serialize {};

@@ -14,7 +14,7 @@ declare_clippy_lint! {
     /// ### Why is this bad?
     /// Having items declared after the testing module is confusing and may lead to bad test coverage.
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// #[cfg(test)]
     /// mod tests {
     ///     // [...]
@@ -25,7 +25,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// fn my_function() {
     ///     // [...]
     /// }

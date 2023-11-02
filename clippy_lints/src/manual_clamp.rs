@@ -1,6 +1,6 @@
+use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::{span_lint_and_then, span_lint_hir_and_then};
 use clippy_utils::higher::If;
-use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::visitors::is_const_evaluatable;
@@ -38,7 +38,7 @@ declare_clippy_lint! {
     /// PR](https://github.com/rust-lang/rust-clippy/pull/9484#issuecomment-1278922613).
     ///
     /// ### Examples
-    /// ```rust
+    /// ```no_run
     /// # let (input, min, max) = (0, -2, 1);
     /// if input > max {
     ///     max
@@ -50,13 +50,13 @@ declare_clippy_lint! {
     /// # ;
     /// ```
     ///
-    /// ```rust
+    /// ```no_run
     /// # let (input, min, max) = (0, -2, 1);
     /// input.max(min).min(max)
     /// # ;
     /// ```
     ///
-    /// ```rust
+    /// ```no_run
     /// # let (input, min, max) = (0, -2, 1);
     /// match input {
     ///     x if x > max => max,
@@ -66,14 +66,14 @@ declare_clippy_lint! {
     /// # ;
     /// ```
     ///
-    /// ```rust
+    /// ```no_run
     /// # let (input, min, max) = (0, -2, 1);
     /// let mut x = input;
     /// if x < min { x = min; }
     /// if x > max { x = max; }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # let (input, min, max) = (0, -2, 1);
     /// input.clamp(min, max)
     /// # ;
@@ -207,7 +207,7 @@ impl TypeClampability {
 
 /// Targets patterns like
 ///
-/// ```
+/// ```no_run
 /// # let (input, min, max) = (0, -3, 12);
 ///
 /// if input < min {
@@ -256,7 +256,7 @@ fn is_if_elseif_else_pattern<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx
 
 /// Targets patterns like
 ///
-/// ```
+/// ```no_run
 /// # let (input, min_value, max_value) = (0, -3, 12);
 ///
 /// input.max(min_value).min(max_value)
@@ -287,7 +287,7 @@ fn is_max_min_pattern<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> O
 
 /// Targets patterns like
 ///
-/// ```
+/// ```no_run
 /// # let (input, min_value, max_value) = (0, -3, 12);
 /// # use std::cmp::{max, min};
 /// min(max(input, min_value), max_value)
@@ -369,7 +369,7 @@ fn is_call_max_min_pattern<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>)
 
 /// Targets patterns like
 ///
-/// ```
+/// ```no_run
 /// # let (input, min, max) = (0, -3, 12);
 ///
 /// match input {
@@ -428,7 +428,7 @@ fn is_match_pattern<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> Opt
 
 /// Targets patterns like
 ///
-/// ```
+/// ```no_run
 /// # let (input, min, max) = (0, -3, 12);
 ///
 /// let mut x = input;
@@ -485,7 +485,7 @@ fn is_two_if_pattern<'tcx>(cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>) -> 
 
 /// Targets patterns like
 ///
-/// ```
+/// ```no_run
 /// # let (mut input, min, max) = (0, -3, 12);
 ///
 /// if input < min {

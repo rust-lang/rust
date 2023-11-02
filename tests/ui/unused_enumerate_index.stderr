@@ -1,0 +1,26 @@
+error: you seem to use `.enumerate()` and immediately discard the index
+  --> $DIR/unused_enumerate_index.rs:8:19
+   |
+LL |     for (_, x) in v.iter().enumerate() {
+   |                   ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::unused-enumerate-index` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unused_enumerate_index)]`
+help: remove the `.enumerate()` call
+   |
+LL |     for x in v.iter() {
+   |         ~    ~~~~~~~~
+
+error: you seem to use `.enumerate()` and immediately discard the index
+  --> $DIR/unused_enumerate_index.rs:55:19
+   |
+LL |     for (_, x) in dummy.enumerate() {
+   |                   ^^^^^^^^^^^^^^^^^
+   |
+help: remove the `.enumerate()` call
+   |
+LL |     for x in dummy {
+   |         ~    ~~~~~
+
+error: aborting due to 2 previous errors
+

@@ -18,7 +18,7 @@ declare_clippy_lint! {
     /// https://doc.rust-lang.org/reference/macros-by-example.html#hygiene
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// #[macro_export]
     /// macro_rules! print_message {
     ///     () => {
@@ -28,7 +28,7 @@ declare_clippy_lint! {
     /// pub const MESSAGE: &str = "Hello!";
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// #[macro_export]
     /// macro_rules! print_message {
     ///     () => {

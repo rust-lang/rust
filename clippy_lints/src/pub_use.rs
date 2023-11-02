@@ -14,7 +14,7 @@ declare_clippy_lint! {
     /// unintentional exports or to encourage placing exported items directly in public modules
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// pub mod outer {
     ///     mod inner {
     ///         pub struct Test {}
@@ -25,7 +25,7 @@ declare_clippy_lint! {
     /// use outer::Test;
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// pub mod outer {
     ///     pub struct Test {}
     /// }

@@ -1,6 +1,6 @@
+use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::consts::{constant_full_int, FullInt};
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::{in_constant, path_to_local};
 use rustc_errors::Applicability;
@@ -18,12 +18,12 @@ declare_clippy_lint! {
     /// It's simpler and more readable.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let x: i32 = 24;
     /// let rem = ((x % 4) + 4) % 4;
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let x: i32 = 24;
     /// let rem = x.rem_euclid(4);
     /// ```

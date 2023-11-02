@@ -8,7 +8,7 @@ use rustc_hir::{BlockCheckMode, Expr, ExprKind, UnsafeSource};
 use rustc_lint::{LateContext, LintContext};
 use rustc_session::Session;
 use rustc_span::source_map::{original_sp, SourceMap};
-use rustc_span::{hygiene, BytePos, SourceFileAndLine, Pos, SourceFile, Span, SpanData, SyntaxContext, DUMMY_SP};
+use rustc_span::{hygiene, BytePos, Pos, SourceFile, SourceFileAndLine, Span, SpanData, SyntaxContext, DUMMY_SP};
 use std::borrow::Cow;
 use std::ops::Range;
 
@@ -108,7 +108,7 @@ fn first_char_in_first_line<T: LintContext>(cx: &T, span: Span) -> Option<BytePo
 
 /// Extends the span to the beginning of the spans line, incl. whitespaces.
 ///
-/// ```rust
+/// ```no_run
 ///        let x = ();
 /// //             ^^
 /// // will be converted to

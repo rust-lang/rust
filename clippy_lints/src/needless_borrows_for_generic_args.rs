@@ -1,6 +1,6 @@
+use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::mir::{enclosing_mir, expr_local, local_assignments, used_exactly_once, PossibleBorrowerMap};
-use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::is_copy;
 use clippy_utils::{expr_use_ctxt, peel_n_hir_expr_refs, DefinedTy, ExprUseNode};
@@ -36,7 +36,7 @@ declare_clippy_lint! {
     /// in such a case can change the semantics of the code.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// fn f(_: impl AsRef<str>) {}
     ///
     /// let x = "foo";
@@ -44,7 +44,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// fn f(_: impl AsRef<str>) {}
     ///
     /// let x = "foo";

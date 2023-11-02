@@ -19,8 +19,13 @@ declare_clippy_lint! {
     /// It's not bad, but having them is idiomatic and allows the type to be used in for loops directly
     /// (`for val in &iter {}`), without having to first call `iter()` or `iter_mut()`.
     ///
+    /// ### Limitations
+    /// This lint focuses on providing an idiomatic API. Therefore, it will only
+    /// lint on types which are accessible outside of the crate. For internal types,
+    /// the `IntoIterator` trait can be implemented on demand if it is actually needed.
+    ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// struct MySlice<'a>(&'a [u8]);
     /// impl<'a> MySlice<'a> {
     ///     pub fn iter(&self) -> std::slice::Iter<'a, u8> {
@@ -29,7 +34,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// struct MySlice<'a>(&'a [u8]);
     /// impl<'a> MySlice<'a> {
     ///     pub fn iter(&self) -> std::slice::Iter<'a, u8> {
@@ -61,8 +66,16 @@ declare_clippy_lint! {
     /// by just calling `.iter()`, instead of the more awkward `<&Type>::into_iter` or `(&val).into_iter()` syntax
     /// in case of ambiguity with another `IntoIterator` impl.
     ///
+    /// ### Limitations
+    /// This lint focuses on providing an idiomatic API. Therefore, it will only
+    /// lint on types which are accessible outside of the crate. For internal types,
+    /// these methods can be added on demand if they are actually needed. Otherwise,
+    /// it would trigger the [`dead_code`] lint for the unused method.
+    ///
+    /// [`dead_code`]: https://doc.rust-lang.org/rustc/lints/listing/warn-by-default.html#dead-code
+    ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// struct MySlice<'a>(&'a [u8]);
     /// impl<'a> IntoIterator for &MySlice<'a> {
     ///     type Item = &'a u8;
@@ -73,7 +86,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// struct MySlice<'a>(&'a [u8]);
     /// impl<'a> MySlice<'a> {
     ///     pub fn iter(&self) -> std::slice::Iter<'a, u8> {
@@ -102,6 +115,12 @@ declare_lint_pass!(IterWithoutIntoIter => [ITER_WITHOUT_INTO_ITER, INTO_ITER_WIT
 /// suggest `type IntoIter = impl IntoIterator`.
 fn is_nameable_in_impl_trait(ty: &rustc_hir::Ty<'_>) -> bool {
     !matches!(ty.kind, TyKind::OpaqueDef(..))
+}
+
+fn is_ty_exported(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
+    ty.ty_adt_def()
+        .and_then(|adt| adt.did().as_local())
+        .is_some_and(|did| cx.effective_visibilities.is_exported(did))
 }
 
 /// Returns the deref chain of a type, starting with the type itself.
@@ -154,6 +173,7 @@ impl LateLintPass<'_> for IterWithoutIntoIter {
                     None
                 }
             })
+            && is_ty_exported(cx, ty)
         {
             span_lint_and_then(
                 cx,
@@ -221,11 +241,12 @@ impl {self_ty_without_ref} {{
                 cx.tcx,
                 cx.param_env,
                 iterator_did,
-                sym!(Item),
+                sym::Item,
                 [ret_ty],
             )
             // Only lint if the `IntoIterator` impl doesn't actually exist
             && !implements_trait(cx, ref_ty, into_iter_did, &[])
+            && is_ty_exported(cx, ref_ty.peel_refs())
         {
             let self_ty_snippet = format!("{borrow_prefix}{}", snippet(cx, imp.self_ty.span, ".."));
 
@@ -247,8 +268,8 @@ impl {self_ty_without_ref} {{
 "
 impl IntoIterator for {self_ty_snippet} {{
     type IntoIter = {ret_ty};
-    type Iter = {iter_ty};
-    fn into_iter() -> Self::IntoIter {{
+    type Item = {iter_ty};
+    fn into_iter(self) -> Self::IntoIter {{
         self.iter()
     }}
 }}

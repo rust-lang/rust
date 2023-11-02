@@ -20,7 +20,7 @@ declare_clippy_lint! {
   ///
   /// ### Example
   ///
-  /// ```rust
+  /// ```no_run
   /// for i in (0)..10 {
   ///   println!("{i}");
   /// }
@@ -28,7 +28,7 @@ declare_clippy_lint! {
   ///
   /// Use instead:
   ///
-  /// ```rust
+  /// ```no_run
   /// for i in 0..10 {
   ///   println!("{i}");
   /// }

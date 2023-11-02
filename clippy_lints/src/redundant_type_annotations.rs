@@ -24,11 +24,11 @@ declare_clippy_lint! {
     /// - `Path` to anything else than a primitive type.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let foo: String = String::new();
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let foo = String::new();
     /// ```
     #[clippy::version = "1.72.0"]

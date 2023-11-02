@@ -18,18 +18,18 @@ declare_clippy_lint! {
     /// The `Vec::with_capacity` constructor is less complex.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let mut v: Vec<usize> = vec![];
     /// v.reserve(10);
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let mut v: Vec<usize> = Vec::with_capacity(10);
     /// ```
     #[clippy::version = "1.73.0"]
     pub RESERVE_AFTER_INITIALIZATION,
     complexity,
-    "`reserve` called immediatly after `Vec` creation"
+    "`reserve` called immediately after `Vec` creation"
 }
 impl_lint_pass!(ReserveAfterInitialization => [RESERVE_AFTER_INITIALIZATION]);
 

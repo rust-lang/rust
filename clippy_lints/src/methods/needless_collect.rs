@@ -207,11 +207,10 @@ fn is_is_empty_sig(cx: &LateContext<'_>, call_id: HirId) -> bool {
 
 /// Checks if `<iter_ty as Iterator>::Item` is the same as `<collect_ty as IntoIter>::Item`
 fn iterates_same_ty<'tcx>(cx: &LateContext<'tcx>, iter_ty: Ty<'tcx>, collect_ty: Ty<'tcx>) -> bool {
-    let item = Symbol::intern("Item");
     if let Some(iter_trait) = cx.tcx.get_diagnostic_item(sym::Iterator)
         && let Some(into_iter_trait) = cx.tcx.get_diagnostic_item(sym::IntoIterator)
-        && let Some(iter_item_ty) = make_normalized_projection(cx.tcx, cx.param_env, iter_trait, item, [iter_ty])
-        && let Some(into_iter_item_proj) = make_projection(cx.tcx, into_iter_trait, item, [collect_ty])
+        && let Some(iter_item_ty) = make_normalized_projection(cx.tcx, cx.param_env, iter_trait, sym::Item, [iter_ty])
+        && let Some(into_iter_item_proj) = make_projection(cx.tcx, into_iter_trait, sym::Item, [collect_ty])
         && let Ok(into_iter_item_ty) = cx.tcx.try_normalize_erasing_regions(
             cx.param_env,
             Ty::new_projection(cx.tcx,into_iter_item_proj.def_id, into_iter_item_proj.args)
@@ -233,9 +232,12 @@ fn is_contains_sig(cx: &LateContext<'_>, call_id: HirId, iter_expr: &Expr<'_>) -
         && let [_, search_ty] = *sig.skip_binder().inputs()
         && let ty::Ref(_, search_ty, Mutability::Not) = *cx.tcx.erase_late_bound_regions(sig.rebind(search_ty)).kind()
         && let Some(iter_trait) = cx.tcx.get_diagnostic_item(sym::Iterator)
-        && let Some(iter_item) = cx.tcx
-            .associated_items(iter_trait)
-            .find_by_name_and_kind(cx.tcx, Ident::with_dummy_span(Symbol::intern("Item")), AssocKind::Type, iter_trait)
+        && let Some(iter_item) = cx.tcx.associated_items(iter_trait).find_by_name_and_kind(
+            cx.tcx,
+            Ident::with_dummy_span(sym::Item),
+            AssocKind::Type,
+            iter_trait,
+        )
         && let args = cx.tcx.mk_args(&[GenericArg::from(typeck.expr_ty_adjusted(iter_expr))])
         && let proj_ty = Ty::new_projection(cx.tcx,iter_item.def_id, args)
         && let Ok(item_ty) = cx.tcx.try_normalize_erasing_regions(cx.param_env, proj_ty)

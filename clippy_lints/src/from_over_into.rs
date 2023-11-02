@@ -1,6 +1,6 @@
+use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::macros::span_is_local;
-use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::path_def_id;
 use clippy_utils::source::snippet_opt;
 use rustc_errors::Applicability;
@@ -24,7 +24,7 @@ declare_clippy_lint! {
     /// According the std docs implementing `From<..>` is preferred since it gives you `Into<..>` for free where the reverse isn't true.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// struct StringWrapper(String);
     ///
     /// impl Into<StringWrapper> for String {
@@ -34,7 +34,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// struct StringWrapper(String);
     ///
     /// impl From<String> for StringWrapper {
@@ -110,12 +110,12 @@ impl<'tcx> LateLintPass<'tcx> for FromOverInto {
     extract_msrv_attr!(LateContext);
 }
 
-/// Finds the occurences of `Self` and `self`
+/// Finds the occurrences of `Self` and `self`
 struct SelfFinder<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
-    /// Occurences of `Self`
+    /// Occurrences of `Self`
     upper: Vec<Span>,
-    /// Occurences of `self`
+    /// Occurrences of `self`
     lower: Vec<Span>,
     /// If any of the `self`/`Self` usages were from an expansion, or the body contained a binding
     /// already named `val`

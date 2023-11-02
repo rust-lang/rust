@@ -15,11 +15,11 @@ declare_clippy_lint! {
     /// Empty brackets after a struct declaration can be omitted.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// struct Cookie {}
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// struct Cookie;
     /// ```
     #[clippy::version = "1.62.0"]

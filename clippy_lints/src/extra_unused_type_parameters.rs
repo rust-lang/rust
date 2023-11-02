@@ -23,13 +23,13 @@ declare_clippy_lint! {
     /// requires using a turbofish, which serves no purpose but to satisfy the compiler.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// fn unused_ty<T>(x: u8) {
     ///     // ..
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// fn no_unused_ty(x: u8) {
     ///     // ..
     /// }

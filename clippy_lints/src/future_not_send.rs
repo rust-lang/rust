@@ -34,11 +34,11 @@ declare_clippy_lint! {
     /// produced.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// async fn not_send(bytes: std::rc::Rc<[u8]>) {}
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// async fn is_send(bytes: std::sync::Arc<[u8]>) {}
     /// ```
     #[clippy::version = "1.44.0"]

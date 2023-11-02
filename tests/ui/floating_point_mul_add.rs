@@ -33,6 +33,9 @@ fn main() {
 
     let _ = (a * a + b).sqrt();
 
+    let u = 1usize;
+    let _ = a - (b * u as f64);
+
     // Cases where the lint shouldn't be applied
     let _ = (a * a + b * b).sqrt();
 }

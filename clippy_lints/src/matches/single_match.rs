@@ -51,7 +51,7 @@ pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr:
             // block with 2+ statements or 1 expr and 1+ statement
             Some(els)
         } else {
-            // not a block or an emtpy block w/ comments, don't lint
+            // not a block or an empty block w/ comments, don't lint
             return;
         };
 

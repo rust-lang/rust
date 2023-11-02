@@ -1,10 +1,12 @@
 use crate::question_mark::{QuestionMark, QUESTION_MARK};
+use clippy_config::msrvs;
+use clippy_config::types::MatchLintBehaviour;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher::IfLetOrMatch;
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::visitors::{Descend, Visitable};
-use clippy_utils::{is_lint_allowed, msrvs, pat_and_expr_can_be_question_mark, peel_blocks};
+use clippy_utils::{is_lint_allowed, pat_and_expr_can_be_question_mark, peel_blocks};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_expr, Visitor};
@@ -14,7 +16,6 @@ use rustc_middle::lint::in_external_macro;
 use rustc_session::declare_tool_lint;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
-use serde::Deserialize;
 use std::ops::ControlFlow;
 use std::slice;
 
@@ -30,14 +31,14 @@ declare_clippy_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust
+    /// ```no_run
     /// # let w = Some(0);
     /// let v = if let Some(v) = w { v } else { return };
     /// ```
     ///
     /// Could be written:
     ///
-    /// ```rust
+    /// ```no_run
     /// # fn main () {
     /// # let w = Some(0);
     /// let Some(v) = w else { return };
@@ -476,11 +477,4 @@ fn expr_simple_identity_map<'a, 'hir>(
         }
     }
     Some(ident_map)
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
-pub enum MatchLintBehaviour {
-    AllTypes,
-    WellKnownTypes,
-    Never,
 }

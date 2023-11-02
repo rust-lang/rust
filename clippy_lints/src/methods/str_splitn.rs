@@ -1,6 +1,6 @@
+use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
-use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::usage::local_used_after_expr;
 use clippy_utils::visitors::{for_each_expr_with_closures, Descend};
@@ -115,7 +115,7 @@ fn check_manual_split_once(
 
 /// checks for
 ///
-/// ```
+/// ```no_run
 /// let mut iter = "a.b.c".splitn(2, '.');
 /// let a = iter.next();
 /// let b = iter.next();

@@ -24,11 +24,11 @@ declare_clippy_lint! {
     /// [in certain cases](https://nnethercote.github.io/perf-book/standard-library-types.html#box).
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let x: Box<String> = Box::new(Default::default());
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let x: Box<String> = Box::default();
     /// ```
     #[clippy::version = "1.66.0"]

@@ -199,7 +199,6 @@ fn get_clap_config() -> ArgMatches {
                             "cargo",
                             "nursery",
                             "internal",
-                            "internal_warn",
                         ]),
                     Arg::new("type").long("type").help("What directory the lint belongs in"),
                     Arg::new("msrv")

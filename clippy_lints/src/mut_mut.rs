@@ -17,7 +17,7 @@ declare_clippy_lint! {
     /// misunderstanding of references.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # let mut y = 1;
     /// let x = &mut &mut y;
     /// ```

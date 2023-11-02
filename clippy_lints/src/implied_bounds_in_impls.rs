@@ -29,7 +29,7 @@ declare_clippy_lint! {
     /// (e.g. `trait A {} trait B: A {} trait C: B {}`, then having an `fn() -> impl A + C`)
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # use std::ops::{Deref,DerefMut};
     /// fn f() -> impl Deref<Target = i32> + DerefMut<Target = i32> {
     /// //             ^^^^^^^^^^^^^^^^^^^ unnecessary bound, already implied by the `DerefMut` trait bound
@@ -37,7 +37,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # use std::ops::{Deref,DerefMut};
     /// fn f() -> impl DerefMut<Target = i32> {
     ///     Box::new(123)
