@@ -35,10 +35,8 @@ RUN curl -sL "https://github.com/PowerShell/PowerShell/releases/download/v7.3.1/
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
-# Make `libgccjit.so` accessible.
+# Make `libgccjit.so` accessible to the linker.
 RUN ln -s /usr/lib/gcc/x86_64-linux-gnu/12/libgccjit.so /usr/lib/x86_64-linux-gnu/libgccjit.so
-# Fix rustc_codegen_gcc lto issues.
-ENV GCC_EXEC_PREFIX="/usr/lib/gcc/"
 
 # We are disabling CI LLVM since this builder is intentionally using a host
 # LLVM, rather than the typical src/llvm-project LLVM.
@@ -53,8 +51,8 @@ ENV RUST_CONFIGURE_ARGS \
       --build=x86_64-unknown-linux-gnu \
       --llvm-root=/usr/lib/llvm-15 \
       --enable-llvm-link-shared \
-      --set rust.thin-lto-import-instr-limit=10 \
-      --enable-new-symbol-mangling
+      $USE_NEW_MANGLING \
+      --set rust.thin-lto-import-instr-limit=10
 
 COPY host-x86_64/x86_64-gnu-llvm-15/script.sh /tmp/
 
