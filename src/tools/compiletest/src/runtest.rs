@@ -2720,7 +2720,7 @@ impl<'test> TestCx<'test> {
     fn aux_output_dir_name(&self) -> PathBuf {
         self.output_base_dir()
             .join("auxiliary")
-            .with_extra_extension(self.config.mode.disambiguator())
+            .with_extra_extension(self.config.mode.aux_dir_disambiguator())
     }
 
     /// Generates a unique name for the test, such as `testname.revision.mode`.
