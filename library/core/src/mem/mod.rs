@@ -1328,7 +1328,6 @@ impl<T> SizedTypeProperties for T {}
 /// ```
 /// #![feature(offset_of)]
 ///
-/// use std::mem;
 /// struct Wrapper<T, U>(T, U);
 ///
 /// type A = Wrapper<u8, u8>;
@@ -1345,7 +1344,7 @@ impl<T> SizedTypeProperties for T {}
 /// // Not necessarily identical even though `u8` and `U8` have the same layout!
 /// // assert!(mem::offset_of!(A, 1), mem::offset_of!(C, 1));
 ///
-/// struct Empty<T>(PhantomData<T>);
+/// struct Empty<T>(core::marker::PhantomData<T>);
 ///
 /// // Not necessarily identical even though `PhantomData` always has the same layout!
 /// // assert!(mem::offset_of!(Empty<u8>, 0), mem::offset_of!(Empty<i8>, 0));
