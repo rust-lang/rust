@@ -469,7 +469,8 @@ fn install_git_hook_maybe(config: &Config) -> io::Result<()> {
         assert!(output.status.success(), "failed to run `git`");
         PathBuf::from(t!(String::from_utf8(output.stdout)).trim())
     }));
-    let dst = git.join("hooks").join("pre-push");
+    let hooks_dir = git.join("hooks");
+    let dst = hooks_dir.join("pre-push");
     if dst.exists() {
         // The git hook has already been set up, or the user already has a custom hook.
         return Ok(());
@@ -485,6 +486,10 @@ undesirable, simply delete the `pre-push` file from .git/hooks."
     if prompt_user("Would you like to install the git hook?: [y/N]")? != Some(PromptResult::Yes) {
         println!("Ok, skipping installation!");
         return Ok(());
+    }
+    if !hooks_dir.exists() {
+        // We need to (try to) create the hooks directory first.
+        let _ = fs::create_dir(hooks_dir);
     }
     let src = config.src.join("src").join("etc").join("pre-push.sh");
     match fs::hard_link(src, &dst) {
