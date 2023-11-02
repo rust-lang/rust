@@ -1310,7 +1310,7 @@ impl<T> SizedTypeProperties for T {}
 ///         private: u8,
 ///     }
 /// }
-/// 
+///
 /// // assert_eq!(mem::offset_of!(nested::Struct, private), 0);
 /// // ^^^ error[E0616]: field `private` of struct `Struct` is private
 /// ```
