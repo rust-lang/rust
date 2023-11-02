@@ -72,7 +72,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         blk_id: hir::HirId,
     ) -> bool {
         let expr = expr.peel_drop_temps();
-        self.suggest_missing_semicolon(err, expr, expected, false);
         let mut pointing_at_return_type = false;
         if let hir::ExprKind::Break(..) = expr.kind {
             // `break` type mismatches provide better context for tail `loop` expressions.
