@@ -1294,13 +1294,63 @@ impl<T> SizedTypeProperties for T {}
 ///
 /// Structs, enums, unions and tuples are supported.
 ///
-/// Nested field accesses may be used, but not array indexes like in `C`'s `offsetof`.
+/// Nested field accesses may be used, but not array indexes.
 ///
 /// Enum variants may be traversed as if they were fields. Variants themselves do
 /// not have an offset.
 ///
+/// Visibility is respected - all types and fields must be visible to the call site:
+///
+/// ```
+/// #![feature(offset_of)]
+///
+/// mod nested {
+///     #[repr(C)]
+///     pub struct Struct {
+///         private: u8,
+///     }
+/// }
+///
+/// // assert_eq!(mem::offset_of!(nested::Struct, private), 0);
+/// // ^^^ error[E0616]: field `private` of struct `Struct` is private
+/// ```
+///
 /// Note that type layout is, in general, [subject to change and
-/// platform-specific](https://doc.rust-lang.org/reference/type-layout.html).
+/// platform-specific](https://doc.rust-lang.org/reference/type-layout.html). If
+/// layout stability is required, consider using an [explicit `repr` attribute].
+///
+/// Rust guarantees that the offset of a given field within a given type will not
+/// change over the lifetime of the program. However, two different compilations of
+/// the same program may result in different layouts. Also, even within a single
+/// program execution, no guarantees are made about types which are *similar* but
+/// not *identical*, e.g.:
+///
+/// ```
+/// #![feature(offset_of)]
+///
+/// struct Wrapper<T, U>(T, U);
+///
+/// type A = Wrapper<u8, u8>;
+/// type B = Wrapper<u8, i8>;
+///
+/// // Not necessarily identical even though `u8` and `i8` have the same layout!
+/// // assert!(mem::offset_of!(A, 1), mem::offset_of!(B, 1));
+///
+/// #[repr(transparent)]
+/// struct U8(u8);
+///
+/// type C = Wrapper<u8, U8>;
+///
+/// // Not necessarily identical even though `u8` and `U8` have the same layout!
+/// // assert!(mem::offset_of!(A, 1), mem::offset_of!(C, 1));
+///
+/// struct Empty<T>(core::marker::PhantomData<T>);
+///
+/// // Not necessarily identical even though `PhantomData` always has the same layout!
+/// // assert!(mem::offset_of!(Empty<u8>, 0), mem::offset_of!(Empty<i8>, 0));
+/// ```
+///
+/// [explicit `repr` attribute]: https://doc.rust-lang.org/reference/type-layout.html#representations
 ///
 /// # Examples
 ///
@@ -1328,6 +1378,17 @@ impl<T> SizedTypeProperties for T {}
 /// struct NestedB(u8);
 ///
 /// assert_eq!(mem::offset_of!(NestedA, b.0), 0);
+///
+/// #[repr(u8)]
+/// enum Enum {
+///     A(u8, u16),
+///     B { one: u8, two: u16 },
+/// }
+///
+/// # #[cfg(not(bootstrap))]
+/// assert_eq!(mem::offset_of!(Enum, A.0), 1);
+/// # #[cfg(not(bootstrap))]
+/// assert_eq!(mem::offset_of!(Enum, B.two), 2);
 ///
 /// # #[cfg(not(bootstrap))]
 /// assert_eq!(mem::offset_of!(Option<&u8>, Some.0), 0);
