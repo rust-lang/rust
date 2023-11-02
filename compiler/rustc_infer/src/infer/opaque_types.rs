@@ -362,6 +362,8 @@ impl<'tcx> InferCtxt<'tcx> {
                 .collect(),
         );
 
+        // FIXME(#42940): This should use the `FreeRegionsVisitor`, but that's
+        // not currently sound until we have existential regions.
         concrete_ty.visit_with(&mut ConstrainOpaqueTypeRegionVisitor {
             tcx: self.tcx,
             op: |r| self.member_constraint(opaque_type_key, span, concrete_ty, r, &choice_regions),

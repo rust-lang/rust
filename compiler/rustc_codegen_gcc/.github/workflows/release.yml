@@ -26,11 +26,6 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - uses: actions/checkout@v3
-      with:
-        repository: llvm/llvm-project
-        path: llvm
-
     - name: Install packages
       run: sudo apt-get install ninja-build ripgrep
 
@@ -55,9 +50,6 @@ jobs:
         echo "LIBRARY_PATH=$(cat gcc_path)" >> $GITHUB_ENV
         echo "LD_LIBRARY_PATH=$(cat gcc_path)" >> $GITHUB_ENV
         echo "workspace="$GITHUB_WORKSPACE >> $GITHUB_ENV
-
-    - name: Set RUST_COMPILER_RT_ROOT
-      run: echo "RUST_COMPILER_RT_ROOT="${{ env.workspace }}/llvm/compiler-rt >> $GITHUB_ENV
 
     - name: Cache cargo installed crates
       uses: actions/cache@v3

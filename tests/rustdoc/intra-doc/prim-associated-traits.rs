@@ -41,6 +41,6 @@ pub struct Number {
     pub u_128: u128,
     pub ch: char,
     pub boolean: bool,
-    pub string: str,
+    pub string: &'static str,
     pub n: !,
 }

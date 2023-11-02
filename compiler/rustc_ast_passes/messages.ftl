@@ -42,6 +42,10 @@ ast_passes_const_and_async = functions cannot be both `const` and `async`
     .async = `async` because of this
     .label = {""}
 
+ast_passes_const_and_c_variadic = functions cannot be both `const` and C-variadic
+    .const = `const` because of this
+    .variadic = C-variadic because of this
+
 ast_passes_const_without_body =
     free constant item without body
     .suggestion = provide a definition for the constant

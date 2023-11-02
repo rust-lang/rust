@@ -1083,7 +1083,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 for rib in ribs {
                     match rib.kind {
                         RibKind::Normal
-                        | RibKind::ClosureOrAsync
+                        | RibKind::FnOrCoroutine
                         | RibKind::Module(..)
                         | RibKind::MacroDefinition(..)
                         | RibKind::ForwardGenericParamBan => {
@@ -1156,7 +1156,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 for rib in ribs {
                     let has_generic_params: HasGenericParams = match rib.kind {
                         RibKind::Normal
-                        | RibKind::ClosureOrAsync
+                        | RibKind::FnOrCoroutine
                         | RibKind::Module(..)
                         | RibKind::MacroDefinition(..)
                         | RibKind::InlineAsmSym
@@ -1240,7 +1240,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 for rib in ribs {
                     let has_generic_params = match rib.kind {
                         RibKind::Normal
-                        | RibKind::ClosureOrAsync
+                        | RibKind::FnOrCoroutine
                         | RibKind::Module(..)
                         | RibKind::MacroDefinition(..)
                         | RibKind::InlineAsmSym

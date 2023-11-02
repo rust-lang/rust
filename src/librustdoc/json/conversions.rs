@@ -7,6 +7,7 @@
 use std::fmt;
 
 use rustc_ast::ast;
+use rustc_attr::DeprecatedSince;
 use rustc_hir::{def::CtorKind, def::DefKind, def_id::DefId};
 use rustc_metadata::rendered_const;
 use rustc_middle::ty::{self, TyCtxt};
@@ -138,9 +139,14 @@ where
 }
 
 pub(crate) fn from_deprecation(deprecation: rustc_attr::Deprecation) -> Deprecation {
-    #[rustfmt::skip]
-    let rustc_attr::Deprecation { since, note, is_since_rustc_version: _, suggestion: _ } = deprecation;
-    Deprecation { since: since.map(|s| s.to_string()), note: note.map(|s| s.to_string()) }
+    let rustc_attr::Deprecation { since, note, suggestion: _ } = deprecation;
+    let since = match since {
+        DeprecatedSince::RustcVersion(version) => Some(version.to_string()),
+        DeprecatedSince::Future => Some("TBD".to_owned()),
+        DeprecatedSince::NonStandard(since) => Some(since.to_string()),
+        DeprecatedSince::Unspecified | DeprecatedSince::Err => None,
+    };
+    Deprecation { since, note: note.map(|s| s.to_string()) }
 }
 
 impl FromWithTcx<clean::GenericArgs> for GenericArgs {

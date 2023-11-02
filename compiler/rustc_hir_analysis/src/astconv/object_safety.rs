@@ -380,7 +380,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             span,
                             E0228,
                             "the lifetime bound for this object type cannot be deduced \
-                         from context; please supply an explicit bound"
+                             from context; please supply an explicit bound"
                         );
                         let e = if borrowed {
                             // We will have already emitted an error E0106 complaining about a

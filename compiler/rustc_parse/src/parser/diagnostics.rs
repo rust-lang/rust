@@ -2808,8 +2808,15 @@ impl<'a> Parser<'a> {
     }
 
     pub fn recover_diff_marker(&mut self) {
+        if let Err(mut err) = self.err_diff_marker() {
+            err.emit();
+            FatalError.raise();
+        }
+    }
+
+    pub fn err_diff_marker(&mut self) -> PResult<'a, ()> {
         let Some(start) = self.diff_marker(&TokenKind::BinOp(token::Shl), &TokenKind::Lt) else {
-            return;
+            return Ok(());
         };
         let mut spans = Vec::with_capacity(3);
         spans.push(start);
@@ -2856,8 +2863,7 @@ impl<'a> Parser<'a> {
             "for an explanation on these markers from the `git` documentation, visit \
              <https://git-scm.com/book/en/v2/Git-Tools-Advanced-Merging#_checking_out_conflicts>",
         );
-        err.emit();
-        FatalError.raise()
+        Err(err)
     }
 
     /// Parse and throw away a parenthesized comma separated

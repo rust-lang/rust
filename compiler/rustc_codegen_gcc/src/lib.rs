@@ -12,6 +12,7 @@
  * TODO(antoyo): remove the patches.
  */
 
+#![cfg_attr(not(bootstrap), allow(internal_features))]
 #![cfg_attr(not(bootstrap), doc(rust_logo))]
 #![cfg_attr(not(bootstrap), feature(rustdoc_internals))]
 #![feature(
@@ -251,8 +252,9 @@ impl ExtraBackendMethods for GccCodegenBackend {
             temp_dir: None,
         };
 
-        // TODO(antoyo): only set for x86.
-        mods.context.add_command_line_option("-masm=intel");
+        if tcx.sess.target.arch == "x86" || tcx.sess.target.arch == "x86_64" {
+            mods.context.add_command_line_option("-masm=intel");
+        }
         unsafe { allocator::codegen(tcx, &mut mods, module_name, kind, alloc_error_handler_kind); }
         mods
     }

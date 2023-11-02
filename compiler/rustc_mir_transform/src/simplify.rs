@@ -366,6 +366,7 @@ pub fn remove_dead_blocks(body: &mut Body<'_>) {
 
 pub enum SimplifyLocals {
     BeforeConstProp,
+    AfterGVN,
     Final,
 }
 
@@ -373,6 +374,7 @@ impl<'tcx> MirPass<'tcx> for SimplifyLocals {
     fn name(&self) -> &'static str {
         match &self {
             SimplifyLocals::BeforeConstProp => "SimplifyLocals-before-const-prop",
+            SimplifyLocals::AfterGVN => "SimplifyLocals-after-value-numbering",
             SimplifyLocals::Final => "SimplifyLocals-final",
         }
     }

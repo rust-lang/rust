@@ -5,7 +5,7 @@ use super::{StringReader, UnmatchedDelim};
 use rustc_ast::token::{self, Delimiter, Token};
 use rustc_ast::tokenstream::{DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_ast_pretty::pprust::token_to_string;
-use rustc_errors::{PErr, PResult};
+use rustc_errors::PErr;
 
 pub(super) struct TokenTreesReader<'a> {
     string_reader: StringReader<'a>,
@@ -18,36 +18,42 @@ pub(super) struct TokenTreesReader<'a> {
 impl<'a> TokenTreesReader<'a> {
     pub(super) fn parse_all_token_trees(
         string_reader: StringReader<'a>,
-    ) -> (PResult<'a, TokenStream>, Vec<UnmatchedDelim>) {
+    ) -> (TokenStream, Result<(), Vec<PErr<'a>>>, Vec<UnmatchedDelim>) {
         let mut tt_reader = TokenTreesReader {
             string_reader,
             token: Token::dummy(),
             diag_info: TokenTreeDiagInfo::default(),
         };
-        let res = tt_reader.parse_token_trees(/* is_delimited */ false);
-        (res, tt_reader.diag_info.unmatched_delims)
+        let (stream, res) = tt_reader.parse_token_trees(/* is_delimited */ false);
+        (stream, res, tt_reader.diag_info.unmatched_delims)
     }
 
     // Parse a stream of tokens into a list of `TokenTree`s.
-    fn parse_token_trees(&mut self, is_delimited: bool) -> PResult<'a, TokenStream> {
+    fn parse_token_trees(
+        &mut self,
+        is_delimited: bool,
+    ) -> (TokenStream, Result<(), Vec<PErr<'a>>>) {
         self.token = self.string_reader.next_token().0;
         let mut buf = Vec::new();
         loop {
             match self.token.kind {
-                token::OpenDelim(delim) => buf.push(self.parse_token_tree_open_delim(delim)?),
+                token::OpenDelim(delim) => {
+                    buf.push(match self.parse_token_tree_open_delim(delim) {
+                        Ok(val) => val,
+                        Err(errs) => return (TokenStream::new(buf), Err(errs)),
+                    })
+                }
                 token::CloseDelim(delim) => {
-                    return if is_delimited {
-                        Ok(TokenStream::new(buf))
-                    } else {
-                        Err(self.close_delim_err(delim))
-                    };
+                    return (
+                        TokenStream::new(buf),
+                        if is_delimited { Ok(()) } else { Err(vec![self.close_delim_err(delim)]) },
+                    );
                 }
                 token::Eof => {
-                    return if is_delimited {
-                        Err(self.eof_err())
-                    } else {
-                        Ok(TokenStream::new(buf))
-                    };
+                    return (
+                        TokenStream::new(buf),
+                        if is_delimited { Err(vec![self.eof_err()]) } else { Ok(()) },
+                    );
                 }
                 _ => {
                     // Get the next normal token. This might require getting multiple adjacent
@@ -97,7 +103,10 @@ impl<'a> TokenTreesReader<'a> {
         err
     }
 
-    fn parse_token_tree_open_delim(&mut self, open_delim: Delimiter) -> PResult<'a, TokenTree> {
+    fn parse_token_tree_open_delim(
+        &mut self,
+        open_delim: Delimiter,
+    ) -> Result<TokenTree, Vec<PErr<'a>>> {
         // The span for beginning of the delimited section
         let pre_span = self.token.span;
 
@@ -106,7 +115,26 @@ impl<'a> TokenTreesReader<'a> {
         // Parse the token trees within the delimiters.
         // We stop at any delimiter so we can try to recover if the user
         // uses an incorrect delimiter.
-        let tts = self.parse_token_trees(/* is_delimited */ true)?;
+        let (tts, res) = self.parse_token_trees(/* is_delimited */ true);
+        if let Err(mut errs) = res {
+            // If there are unclosed delims, see if there are diff markers and if so, point them
+            // out instead of complaining about the unclosed delims.
+            let mut parser = crate::stream_to_parser(self.string_reader.sess, tts, None);
+            let mut diff_errs = vec![];
+            while parser.token != token::Eof {
+                if let Err(diff_err) = parser.err_diff_marker() {
+                    diff_errs.push(diff_err);
+                }
+                parser.bump();
+            }
+            if !diff_errs.is_empty() {
+                errs.iter_mut().for_each(|err| {
+                    err.delay_as_bug();
+                });
+                return Err(diff_errs);
+            }
+            return Err(errs);
+        }
 
         // Expand to cover the entire delimited token tree
         let delim_span = DelimSpan::from_pair(pre_span, self.token.span);

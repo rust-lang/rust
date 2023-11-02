@@ -1,7 +1,8 @@
 //! Functions for reading and writing discriminants of multi-variant layouts (enums and coroutines).
 
-use rustc_middle::ty::layout::{LayoutOf, PrimitiveExt, TyAndLayout};
-use rustc_middle::{mir, ty};
+use rustc_middle::mir;
+use rustc_middle::ty::layout::{LayoutOf, PrimitiveExt};
+use rustc_middle::ty::{self, Ty};
 use rustc_target::abi::{self, TagEncoding};
 use rustc_target::abi::{VariantIdx, Variants};
 
@@ -244,11 +245,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     pub fn discriminant_for_variant(
         &self,
-        layout: TyAndLayout<'tcx>,
+        ty: Ty<'tcx>,
         variant: VariantIdx,
     ) -> InterpResult<'tcx, ImmTy<'tcx, M::Provenance>> {
-        let discr_layout = self.layout_of(layout.ty.discriminant_ty(*self.tcx))?;
-        let discr_value = match layout.ty.discriminant_for_variant(*self.tcx, variant) {
+        let discr_layout = self.layout_of(ty.discriminant_ty(*self.tcx))?;
+        let discr_value = match ty.discriminant_for_variant(*self.tcx, variant) {
             Some(discr) => {
                 // This type actually has discriminants.
                 assert_eq!(discr.ty, discr_layout.ty);

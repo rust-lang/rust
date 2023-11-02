@@ -121,6 +121,7 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
 }
 
 impl<'tcx> super::sig_types::SpannedTypeVisitor<'tcx> for OpaqueTypeCollector<'tcx> {
+    #[instrument(skip(self), ret, level = "trace")]
     fn visit(&mut self, span: Span, value: impl TypeVisitable<TyCtxt<'tcx>>) -> ControlFlow<!> {
         self.visit_spanned(span, value);
         ControlFlow::Continue(())
@@ -154,7 +155,14 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
 
                 self.opaques.push(alias_ty.def_id.expect_local());
 
-                match self.tcx.uses_unique_generic_params(alias_ty.args, CheckRegions::Bound) {
+                let parent_count = self.tcx.generics_of(alias_ty.def_id).parent_count;
+                // Only check that the parent generics of the TAIT/RPIT are unique.
+                // the args owned by the opaque are going to always be duplicate
+                // lifetime params for RPITs, and empty for TAITs.
+                match self
+                    .tcx
+                    .uses_unique_generic_params(&alias_ty.args[..parent_count], CheckRegions::Bound)
+                {
                     Ok(()) => {
                         // FIXME: implement higher kinded lifetime bounds on nested opaque types. They are not
                         // supported at all, so this is sound to do, but once we want to support them, you'll

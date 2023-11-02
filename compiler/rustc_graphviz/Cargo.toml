@@ -2,3 +2,7 @@
 name = "rustc_graphviz"
 version = "0.0.0"
 edition = "2021"
+
+[dependencies]
+# tidy-alphabetical-start
+# tidy-alphabetical-end

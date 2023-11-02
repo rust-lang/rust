@@ -19,9 +19,8 @@ jobs:
       fail-fast: false
       matrix:
         libgccjit_version:
-          - { gcc: "libgccjit.so", extra: "", env_extra: "", artifacts_branch: "master" }
-          - { gcc: "libgccjit_without_int128.so", extra: "", env_extra: "", artifacts_branch: "master-without-128bit-integers" }
-          - { gcc: "libgccjit12.so", extra: "--no-default-features", env_extra: "TEST_FLAGS='-Cpanic=abort -Zpanic-abort-tests'", artifacts_branch: "gcc12" }
+          - { gcc: "libgccjit.so", artifacts_branch: "master" }
+          - { gcc: "libgccjit_without_int128.so", artifacts_branch: "master-without-128bit-integers" }
         commands: [
           "--mini-tests",
           "--std-tests",
@@ -33,27 +32,16 @@ jobs:
           "--extended-regex-tests",
           "--test-successful-rustc --nb-parts 2 --current-part 0",
           "--test-successful-rustc --nb-parts 2 --current-part 1",
-          "--test-failing-rustc",
         ]
 
     steps:
     - uses: actions/checkout@v3
 
-    - uses: actions/checkout@v3
-      with:
-        repository: llvm/llvm-project
-        path: llvm
-
     - name: Install packages
       # `llvm-14-tools` is needed to install the `FileCheck` binary which is used for asm tests.
       run: sudo apt-get install ninja-build ripgrep llvm-14-tools
 
-    - name: Install libgccjit12
-      if: matrix.libgccjit_version.gcc == 'libgccjit12.so'
-      run: sudo apt-get install libgccjit-12-dev
-
     - name: Download artifact
-      if: matrix.libgccjit_version.gcc != 'libgccjit12.so'
       uses: dawidd6/action-download-artifact@v2
       with:
           workflow: main.yml
@@ -65,11 +53,6 @@ jobs:
           search_artifacts: true # Because, instead, the action only check the last job ran and that won't work since we want multiple artifacts.
 
     - name: Setup path to libgccjit
-      if: matrix.libgccjit_version.gcc == 'libgccjit12.so'
-      run: echo /usr/lib/gcc/x86_64-linux-gnu/12 > gcc_path
-
-    - name: Setup path to libgccjit
-      if: matrix.libgccjit_version.gcc != 'libgccjit12.so'
       run: |
           sudo dpkg --force-overwrite -i gcc-13/gcc-13.deb
           echo /usr/lib/ > gcc_path
@@ -79,9 +62,6 @@ jobs:
         echo "LIBRARY_PATH=$(cat gcc_path)" >> $GITHUB_ENV
         echo "LD_LIBRARY_PATH=$(cat gcc_path)" >> $GITHUB_ENV
         echo "workspace="$GITHUB_WORKSPACE >> $GITHUB_ENV
-
-    - name: Set RUST_COMPILER_RT_ROOT
-      run: echo "RUST_COMPILER_RT_ROOT="${{ env.workspace }}/llvm/compiler-rt >> $GITHUB_ENV
 
     - name: Cache cargo installed crates
       uses: actions/cache@v3
@@ -119,8 +99,8 @@ jobs:
     - name: Build
       run: |
         ./y.sh prepare --only-libcore
-        ${{ matrix.libgccjit_version.env_extra }} ./y.sh build ${{ matrix.libgccjit_version.extra }}
-        ${{ matrix.libgccjit_version.env_extra }} cargo test ${{ matrix.libgccjit_version.extra }}
+        ./y.sh build
+        cargo test
         ./clean_all.sh
 
     - name: Prepare dependencies
@@ -136,16 +116,12 @@ jobs:
         command: build
         args: --release
 
-    - name: Add more failing tests for GCC 12
-      if: ${{ matrix.libgccjit_version.gcc == 'libgccjit12.so' }}
-      run: cat failing-ui-tests12.txt >> failing-ui-tests.txt
-
     - name: Add more failing tests because the sysroot is not compiled with LTO
       run: cat failing-non-lto-tests.txt >> failing-ui-tests.txt
 
     - name: Run tests
       run: |
-        ${{ matrix.libgccjit_version.env_extra }} ./test.sh --release --clean --build-sysroot ${{ matrix.commands }} ${{ matrix.libgccjit_version.extra }}
+        ./test.sh --release --clean --build-sysroot ${{ matrix.commands }}
 
   duplicates:
     runs-on: ubuntu-latest

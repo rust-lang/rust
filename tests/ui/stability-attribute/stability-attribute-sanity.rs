@@ -41,7 +41,7 @@ mod missing_version {
     fn f2() { }
 
     #[stable(feature = "a", since = "4.4.4")]
-    #[deprecated(since = "a")] //~ ERROR missing 'note' [E0543]
+    #[deprecated(since = "5.5.5")] //~ ERROR missing 'note' [E0543]
     fn f3() { }
 }
 
@@ -58,18 +58,17 @@ fn multiple2() { }
 fn multiple3() { }
 
 #[stable(feature = "e", since = "b")] //~ ERROR 'since' must be a Rust version number, such as "1.31.0"
-#[deprecated(since = "b", note = "text")]
-#[deprecated(since = "b", note = "text")] //~ ERROR multiple `deprecated` attributes
+#[deprecated(since = "5.5.5", note = "text")]
+#[deprecated(since = "5.5.5", note = "text")] //~ ERROR multiple `deprecated` attributes
 #[rustc_const_unstable(feature = "c", issue = "none")]
 #[rustc_const_unstable(feature = "d", issue = "none")] //~ ERROR multiple stability levels
 pub const fn multiple4() { }
 
-#[stable(feature = "a", since = "1.0.0")] //~ ERROR invalid deprecation version found
-//~^ ERROR feature `a` is declared stable since 1.0.0
-#[deprecated(since = "invalid", note = "text")]
+#[stable(feature = "a", since = "1.0.0")] //~ ERROR feature `a` is declared stable since 1.0.0
+#[deprecated(since = "invalid", note = "text")] //~ ERROR 'since' must be a Rust version number, such as "1.31.0"
 fn invalid_deprecation_version() {}
 
-#[deprecated(since = "a", note = "text")]
+#[deprecated(since = "5.5.5", note = "text")]
 fn deprecated_without_unstable_or_stable() { }
 //~^^ ERROR deprecated attribute must be paired with either stable or unstable attribute
 

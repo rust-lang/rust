@@ -1,0 +1,9 @@
+error[E0282]: type annotations needed
+  --> $DIR/not-wf-ambiguous-normalization.rs:14:23
+   |
+LL | impl<T> Allocator for DefaultAllocator {
+   |                       ^^^^^^^^^^^^^^^^ cannot infer type for type parameter `T`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0282`.

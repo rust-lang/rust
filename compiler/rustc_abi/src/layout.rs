@@ -539,6 +539,7 @@ pub trait LayoutCalculator {
         // Align the maximum variant size to the largest alignment.
         size = size.align_to(align.abi);
 
+        // FIXME(oli-obk): deduplicate and harden these checks
         if size.bytes() >= dl.obj_size_bound() {
             return None;
         }
@@ -1103,6 +1104,10 @@ fn univariant<
         inverse_memory_index.into_iter().map(|it| it.index() as u32).collect()
     };
     let size = min_size.align_to(align.abi);
+    // FIXME(oli-obk): deduplicate and harden these checks
+    if size.bytes() >= dl.obj_size_bound() {
+        return None;
+    }
     let mut layout_of_single_non_zst_field = None;
     let mut abi = Abi::Aggregate { sized };
     // Try to make this a Scalar/ScalarPair.

@@ -482,9 +482,36 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    /// Reject C-variadic type unless the function is foreign,
-    /// or free and `unsafe extern "C"` semantically.
+    /// Reject invalid C-variadic types.
+    ///
+    /// C-variadics must be:
+    /// - Non-const
+    /// - Either foreign, or free and `unsafe extern "C"` semantically
     fn check_c_variadic_type(&self, fk: FnKind<'a>) {
+        let variadic_spans: Vec<_> = fk
+            .decl()
+            .inputs
+            .iter()
+            .filter(|arg| matches!(arg.ty.kind, TyKind::CVarArgs))
+            .map(|arg| arg.span)
+            .collect();
+
+        if variadic_spans.is_empty() {
+            return;
+        }
+
+        if let Some(header) = fk.header() {
+            if let Const::Yes(const_span) = header.constness {
+                let mut spans = variadic_spans.clone();
+                spans.push(const_span);
+                self.err_handler().emit_err(errors::ConstAndCVariadic {
+                    spans,
+                    const_span,
+                    variadic_spans: variadic_spans.clone(),
+                });
+            }
+        }
+
         match (fk.ctxt(), fk.header()) {
             (Some(FnCtxt::Foreign), _) => return,
             (Some(FnCtxt::Free), Some(header)) => match header.ext {
@@ -499,11 +526,7 @@ impl<'a> AstValidator<'a> {
             _ => {}
         };
 
-        for Param { ty, span, .. } in &fk.decl().inputs {
-            if let TyKind::CVarArgs = ty.kind {
-                self.err_handler().emit_err(errors::BadCVariadic { span: *span });
-            }
-        }
+        self.err_handler().emit_err(errors::BadCVariadic { span: variadic_spans });
     }
 
     fn check_item_named(&self, ident: Ident, kind: &str) {

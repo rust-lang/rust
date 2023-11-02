@@ -149,10 +149,15 @@ impl<'tcx> Cx<'tcx> {
                 Some(env_param)
             }
             DefKind::Coroutine => {
-                let gen_ty = self.typeck_results.node_type(owner_id);
-                let gen_param =
-                    Param { ty: gen_ty, pat: None, ty_span: None, self_kind: None, hir_id: None };
-                Some(gen_param)
+                let coroutine_ty = self.typeck_results.node_type(owner_id);
+                let coroutine_param = Param {
+                    ty: coroutine_ty,
+                    pat: None,
+                    ty_span: None,
+                    self_kind: None,
+                    hir_id: None,
+                };
+                Some(coroutine_param)
             }
             _ => None,
         }

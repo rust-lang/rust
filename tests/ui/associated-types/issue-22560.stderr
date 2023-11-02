@@ -9,7 +9,7 @@ LL | type Test = dyn Add + Sub;
    = help: consider creating a new trait with all of these as supertraits and using that trait here instead: `trait NewTrait: Add + Sub {}`
    = note: auto-traits like `Send` and `Sync` are traits that have special properties; for more information on them, visit <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>
 
-error[E0191]: the value of the associated types `Output` (from trait `Add`), `Output` (from trait `Sub`) must be specified
+error[E0191]: the value of the associated types `Output` in `Add`, `Output` in `Sub` must be specified
   --> $DIR/issue-22560.rs:9:17
    |
 LL |     type Output;

@@ -177,8 +177,8 @@ pub(crate) enum RibKind<'a> {
     /// upvars).
     AssocItem,
 
-    /// We passed through a closure. Disallow labels.
-    ClosureOrAsync,
+    /// We passed through a function, closure or coroutine signature. Disallow labels.
+    FnOrCoroutine,
 
     /// We passed through an item scope. Disallow upvars.
     Item(HasGenericParams),
@@ -215,7 +215,7 @@ impl RibKind<'_> {
     pub(crate) fn contains_params(&self) -> bool {
         match self {
             RibKind::Normal
-            | RibKind::ClosureOrAsync
+            | RibKind::FnOrCoroutine
             | RibKind::ConstantItem(..)
             | RibKind::Module(_)
             | RibKind::MacroDefinition(_)
@@ -231,7 +231,7 @@ impl RibKind<'_> {
             RibKind::Normal | RibKind::MacroDefinition(..) => false,
 
             RibKind::AssocItem
-            | RibKind::ClosureOrAsync
+            | RibKind::FnOrCoroutine
             | RibKind::Item(..)
             | RibKind::ConstantItem(..)
             | RibKind::Module(..)
@@ -924,9 +924,9 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
         debug!("(resolving function) entering function");
 
         // Create a value rib for the function.
-        self.with_rib(ValueNS, RibKind::ClosureOrAsync, |this| {
+        self.with_rib(ValueNS, RibKind::FnOrCoroutine, |this| {
             // Create a label rib for the function.
-            this.with_label_rib(RibKind::ClosureOrAsync, |this| {
+            this.with_label_rib(RibKind::FnOrCoroutine, |this| {
                 match fn_kind {
                     FnKind::Fn(_, _, sig, _, generics, body) => {
                         this.visit_generics(generics);
@@ -4287,7 +4287,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                 ..
             }) => {
                 self.with_rib(ValueNS, RibKind::Normal, |this| {
-                    this.with_label_rib(RibKind::ClosureOrAsync, |this| {
+                    this.with_label_rib(RibKind::FnOrCoroutine, |this| {
                         // Resolve arguments:
                         this.resolve_params(&fn_decl.inputs);
                         // No need to resolve return type --
@@ -4304,7 +4304,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                     })
                 });
             }
-            // For closures, ClosureOrAsyncRibKind is added in visit_fn
+            // For closures, RibKind::FnOrCoroutine is added in visit_fn
             ExprKind::Closure(box ast::Closure {
                 binder: ClosureBinder::For { ref generic_params, span },
                 ..
@@ -4321,8 +4321,8 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                 );
             }
             ExprKind::Closure(..) => visit::walk_expr(self, expr),
-            ExprKind::Async(..) => {
-                self.with_label_rib(RibKind::ClosureOrAsync, |this| visit::walk_expr(this, expr));
+            ExprKind::Gen(..) => {
+                self.with_label_rib(RibKind::FnOrCoroutine, |this| visit::walk_expr(this, expr));
             }
             ExprKind::Repeat(ref elem, ref ct) => {
                 self.visit_expr(elem);

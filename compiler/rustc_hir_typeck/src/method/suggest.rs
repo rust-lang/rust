@@ -35,6 +35,7 @@ use rustc_span::def_id::DefIdSet;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Symbol;
 use rustc_span::{edit_distance, source_map, ExpnKind, FileName, MacroKind, Span};
+use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::error_reporting::on_unimplemented::OnUnimplementedNote;
 use rustc_trait_selection::traits::error_reporting::on_unimplemented::TypeErrCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
@@ -192,7 +193,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .span_if_local(def_id)
                     .unwrap_or_else(|| self.tcx.def_span(def_id));
                 err.span_label(sp, format!("private {kind} defined here"));
-                self.suggest_valid_traits(&mut err, out_of_scope_traits);
+                self.suggest_valid_traits(&mut err, out_of_scope_traits, true);
                 err.emit();
             }
 
@@ -2464,6 +2465,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         err: &mut Diagnostic,
         valid_out_of_scope_traits: Vec<DefId>,
+        explain: bool,
     ) -> bool {
         if !valid_out_of_scope_traits.is_empty() {
             let mut candidates = valid_out_of_scope_traits;
@@ -2476,7 +2478,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .find(|did| self.tcx.is_diagnostic_item(sym::TryInto, **did))
                 .copied();
 
-            err.help("items from traits can only be used if the trait is in scope");
+            if explain {
+                err.help("items from traits can only be used if the trait is in scope");
+            }
             let msg = format!(
                 "the following {traits_are} implemented but not in scope; \
                  perhaps add a `use` for {one_of_them}:",
@@ -2693,7 +2697,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
         }
-        if self.suggest_valid_traits(err, valid_out_of_scope_traits) {
+        if self.suggest_valid_traits(err, valid_out_of_scope_traits, true) {
             return;
         }
 
@@ -2970,22 +2974,39 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 (candidates, Vec::new())
             };
 
+            let impls_trait = |def_id: DefId| {
+                let args = ty::GenericArgs::for_item(self.tcx, def_id, |param, _| {
+                    if param.index == 0 {
+                        rcvr_ty.into()
+                    } else {
+                        self.infcx.var_for_def(span, param)
+                    }
+                });
+                self.infcx
+                    .type_implements_trait(def_id, args, self.param_env)
+                    .must_apply_modulo_regions()
+                    && param_type.is_none()
+            };
             match &potential_candidates[..] {
                 [] => {}
                 [trait_info] if trait_info.def_id.is_local() => {
-                    err.subdiagnostic(CandidateTraitNote {
-                        span: self.tcx.def_span(trait_info.def_id),
-                        trait_name: self.tcx.def_path_str(trait_info.def_id),
-                        item_name,
-                        action_or_ty: if trait_missing_method {
-                            "NONE".to_string()
-                        } else {
-                            param_type.map_or_else(
-                                || "implement".to_string(), // FIXME: it might only need to be imported into scope, not implemented.
-                                ToString::to_string,
-                            )
-                        },
-                    });
+                    if impls_trait(trait_info.def_id) {
+                        self.suggest_valid_traits(err, vec![trait_info.def_id], false);
+                    } else {
+                        err.subdiagnostic(CandidateTraitNote {
+                            span: self.tcx.def_span(trait_info.def_id),
+                            trait_name: self.tcx.def_path_str(trait_info.def_id),
+                            item_name,
+                            action_or_ty: if trait_missing_method {
+                                "NONE".to_string()
+                            } else {
+                                param_type.map_or_else(
+                                    || "implement".to_string(), // FIXME: it might only need to be imported into scope, not implemented.
+                                    ToString::to_string,
+                                )
+                            },
+                        });
+                    }
                 }
                 trait_infos => {
                     let mut msg = message(param_type.map_or_else(
@@ -2993,6 +3014,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         |param| format!("restrict type parameter `{param}` with"),
                     ));
                     for (i, trait_info) in trait_infos.iter().enumerate() {
+                        if impls_trait(trait_info.def_id) {
+                            self.suggest_valid_traits(err, vec![trait_info.def_id], false);
+                        }
                         msg.push_str(&format!(
                             "\ncandidate #{}: `{}`",
                             i + 1,

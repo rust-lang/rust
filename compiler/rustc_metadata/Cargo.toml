@@ -3,30 +3,30 @@ name = "rustc_metadata"
 version = "0.0.0"
 edition = "2021"
 
-[lib]
-
 [dependencies]
+# tidy-alphabetical-start
 bitflags = "1.2.1"
 libloading = "0.7.1"
 odht = { version = "0.3.1", features = ["nightly"] }
-snap = "1"
-tracing = "0.1"
-tempfile = "3.2"
-rustc_middle = { path = "../rustc_middle" }
+rustc_ast = { path = "../rustc_ast" }
 rustc_attr = { path = "../rustc_attr" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_errors = { path = "../rustc_errors" }
+rustc_expand = { path = "../rustc_expand" }
 rustc_feature = { path = "../rustc_feature" }
 rustc_fluent_macro = { path = "../rustc_fluent_macro" }
 rustc_fs_util = { path = "../rustc_fs_util" }
 rustc_hir = { path = "../rustc_hir" }
 rustc_hir_pretty = { path = "../rustc_hir_pretty" }
-rustc_target = { path = "../rustc_target" }
 rustc_index = { path = "../rustc_index" }
 rustc_macros = { path = "../rustc_macros" }
+rustc_middle = { path = "../rustc_middle" }
 rustc_serialize = { path = "../rustc_serialize" }
-rustc_ast = { path = "../rustc_ast" }
-rustc_expand = { path = "../rustc_expand" }
-rustc_span = { path = "../rustc_span" }
 rustc_session = { path = "../rustc_session" }
+rustc_span = { path = "../rustc_span" }
+rustc_target = { path = "../rustc_target" }
 rustc_type_ir = { path = "../rustc_type_ir" }
+snap = "1"
+tempfile = "3.2"
+tracing = "0.1"
+# tidy-alphabetical-end

@@ -1,5 +1,5 @@
 error[E0004]: non-exhaustive patterns: type `usize` is non-empty
-  --> $DIR/pointer-sized-int.rs:48:11
+  --> $DIR/pointer-sized-int.rs:54:11
    |
 LL |     match 7usize {}
    |           ^^^^^^

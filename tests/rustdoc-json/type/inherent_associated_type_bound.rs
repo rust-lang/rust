@@ -16,5 +16,5 @@ pub struct Carrier<'a>(&'a ());
 pub fn user(_: for<'b> fn(Carrier<'b>::Focus<i32>)) {}
 
 impl<'a> Carrier<'a> {
-    pub type Focus<T> = &'a mut T;
+    pub type Focus<T> = &'a mut T where T: 'a;
 }

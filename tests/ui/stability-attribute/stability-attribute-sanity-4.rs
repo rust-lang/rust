@@ -19,6 +19,7 @@ mod bogus_attribute_types_2 {
 
     #[stable(feature = "a", since = "3.3.3")]
     #[deprecated] //~ ERROR missing 'since'
+    //~^ ERROR missing 'note'
     fn f5() { }
 
     #[stable(feature = "a", since = "3.3.3")]

@@ -11,6 +11,7 @@ LL | trait Expr: Debug + PartialEq {
    |       ----          ^^^^^^^^^ ...because it uses `Self` as a type parameter
    |       |
    |       this trait cannot be made into an object...
+   = help: only type `SExpr<'x>` implements the trait, consider using it directly instead
 
 error: aborting due to previous error
 

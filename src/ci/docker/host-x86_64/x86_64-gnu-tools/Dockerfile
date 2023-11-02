@@ -83,6 +83,8 @@ ENV RUST_CONFIGURE_ARGS \
   --build=x86_64-unknown-linux-gnu \
   --save-toolstates=/tmp/toolstate/toolstates.json
 
+ENV HOST_TARGET x86_64-unknown-linux-gnu
+
 ENV SCRIPT /tmp/checktools.sh ../x.py && \
   NODE_PATH=`npm root -g` python3 ../x.py test tests/rustdoc-gui --stage 2 \
     --test-args "'--no-sandbox --jobs 1'"

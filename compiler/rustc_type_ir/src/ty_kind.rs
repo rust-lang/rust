@@ -3,9 +3,8 @@
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::unify::{EqUnifyValue, UnifyKey};
 use rustc_serialize::{Decodable, Decoder, Encodable};
-use std::cmp::Ordering;
+use std::fmt;
 use std::mem::discriminant;
-use std::{fmt, hash};
 
 use crate::HashStableContext;
 use crate::Interner;
@@ -114,6 +113,15 @@ pub enum AliasKind {
 /// Types written by the user start out as `hir::TyKind` and get
 /// converted to this representation using `AstConv::ast_ty_to_ty`.
 #[rustc_diagnostic_item = "IrTyKind"]
+#[derive(derivative::Derivative)]
+#[derivative(
+    Clone(bound = ""),
+    PartialOrd(bound = ""),
+    PartialOrd = "feature_allow_slow_enum",
+    Ord(bound = ""),
+    Ord = "feature_allow_slow_enum",
+    Hash(bound = "")
+)]
 pub enum TyKind<I: Interner> {
     /// The primitive boolean type. Written as `bool`.
     Bool,
@@ -324,40 +332,6 @@ const fn tykind_discriminant<I: Interner>(value: &TyKind<I>) -> usize {
     }
 }
 
-// This is manually implemented because a derive would require `I: Clone`
-impl<I: Interner> Clone for TyKind<I> {
-    fn clone(&self) -> Self {
-        match self {
-            Bool => Bool,
-            Char => Char,
-            Int(i) => Int(*i),
-            Uint(u) => Uint(*u),
-            Float(f) => Float(*f),
-            Adt(d, s) => Adt(d.clone(), s.clone()),
-            Foreign(d) => Foreign(d.clone()),
-            Str => Str,
-            Array(t, c) => Array(t.clone(), c.clone()),
-            Slice(t) => Slice(t.clone()),
-            RawPtr(p) => RawPtr(p.clone()),
-            Ref(r, t, m) => Ref(r.clone(), t.clone(), m.clone()),
-            FnDef(d, s) => FnDef(d.clone(), s.clone()),
-            FnPtr(s) => FnPtr(s.clone()),
-            Dynamic(p, r, repr) => Dynamic(p.clone(), r.clone(), *repr),
-            Closure(d, s) => Closure(d.clone(), s.clone()),
-            Coroutine(d, s, m) => Coroutine(d.clone(), s.clone(), m.clone()),
-            CoroutineWitness(d, s) => CoroutineWitness(d.clone(), s.clone()),
-            Never => Never,
-            Tuple(t) => Tuple(t.clone()),
-            Alias(k, p) => Alias(*k, p.clone()),
-            Param(p) => Param(p.clone()),
-            Bound(d, b) => Bound(*d, b.clone()),
-            Placeholder(p) => Placeholder(p.clone()),
-            Infer(t) => Infer(t.clone()),
-            Error(e) => Error(e.clone()),
-        }
-    }
-}
-
 // This is manually implemented because a derive would require `I: PartialEq`
 impl<I: Interner> PartialEq for TyKind<I> {
     #[inline]
@@ -409,129 +383,6 @@ impl<I: Interner> PartialEq for TyKind<I> {
 
 // This is manually implemented because a derive would require `I: Eq`
 impl<I: Interner> Eq for TyKind<I> {}
-
-// This is manually implemented because a derive would require `I: PartialOrd`
-impl<I: Interner> PartialOrd for TyKind<I> {
-    #[inline]
-    fn partial_cmp(&self, other: &TyKind<I>) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-// This is manually implemented because a derive would require `I: Ord`
-impl<I: Interner> Ord for TyKind<I> {
-    #[inline]
-    fn cmp(&self, other: &TyKind<I>) -> Ordering {
-        tykind_discriminant(self).cmp(&tykind_discriminant(other)).then_with(|| {
-            match (self, other) {
-                (Int(a_i), Int(b_i)) => a_i.cmp(b_i),
-                (Uint(a_u), Uint(b_u)) => a_u.cmp(b_u),
-                (Float(a_f), Float(b_f)) => a_f.cmp(b_f),
-                (Adt(a_d, a_s), Adt(b_d, b_s)) => a_d.cmp(b_d).then_with(|| a_s.cmp(b_s)),
-                (Foreign(a_d), Foreign(b_d)) => a_d.cmp(b_d),
-                (Array(a_t, a_c), Array(b_t, b_c)) => a_t.cmp(b_t).then_with(|| a_c.cmp(b_c)),
-                (Slice(a_t), Slice(b_t)) => a_t.cmp(b_t),
-                (RawPtr(a_t), RawPtr(b_t)) => a_t.cmp(b_t),
-                (Ref(a_r, a_t, a_m), Ref(b_r, b_t, b_m)) => {
-                    a_r.cmp(b_r).then_with(|| a_t.cmp(b_t).then_with(|| a_m.cmp(b_m)))
-                }
-                (FnDef(a_d, a_s), FnDef(b_d, b_s)) => a_d.cmp(b_d).then_with(|| a_s.cmp(b_s)),
-                (FnPtr(a_s), FnPtr(b_s)) => a_s.cmp(b_s),
-                (Dynamic(a_p, a_r, a_repr), Dynamic(b_p, b_r, b_repr)) => {
-                    a_p.cmp(b_p).then_with(|| a_r.cmp(b_r).then_with(|| a_repr.cmp(b_repr)))
-                }
-                (Closure(a_p, a_s), Closure(b_p, b_s)) => a_p.cmp(b_p).then_with(|| a_s.cmp(b_s)),
-                (Coroutine(a_d, a_s, a_m), Coroutine(b_d, b_s, b_m)) => {
-                    a_d.cmp(b_d).then_with(|| a_s.cmp(b_s).then_with(|| a_m.cmp(b_m)))
-                }
-                (
-                    CoroutineWitness(a_d, a_s),
-                    CoroutineWitness(b_d, b_s),
-                ) => match Ord::cmp(a_d, b_d) {
-                    Ordering::Equal => Ord::cmp(a_s, b_s),
-                    cmp => cmp,
-                },
-                (Tuple(a_t), Tuple(b_t)) => a_t.cmp(b_t),
-                (Alias(a_i, a_p), Alias(b_i, b_p)) => a_i.cmp(b_i).then_with(|| a_p.cmp(b_p)),
-                (Param(a_p), Param(b_p)) => a_p.cmp(b_p),
-                (Bound(a_d, a_b), Bound(b_d, b_b)) => a_d.cmp(b_d).then_with(|| a_b.cmp(b_b)),
-                (Placeholder(a_p), Placeholder(b_p)) => a_p.cmp(b_p),
-                (Infer(a_t), Infer(b_t)) => a_t.cmp(b_t),
-                (Error(a_e), Error(b_e)) => a_e.cmp(b_e),
-                (Bool, Bool) | (Char, Char) | (Str, Str) | (Never, Never) => Ordering::Equal,
-                _ => {
-                    debug_assert!(false, "This branch must be unreachable, maybe the match is missing an arm? self = {self:?}, other = {other:?}");
-                    Ordering::Equal
-                }
-            }
-        })
-    }
-}
-
-// This is manually implemented because a derive would require `I: Hash`
-impl<I: Interner> hash::Hash for TyKind<I> {
-    fn hash<__H: hash::Hasher>(&self, state: &mut __H) -> () {
-        tykind_discriminant(self).hash(state);
-        match self {
-            Int(i) => i.hash(state),
-            Uint(u) => u.hash(state),
-            Float(f) => f.hash(state),
-            Adt(d, s) => {
-                d.hash(state);
-                s.hash(state)
-            }
-            Foreign(d) => d.hash(state),
-            Array(t, c) => {
-                t.hash(state);
-                c.hash(state)
-            }
-            Slice(t) => t.hash(state),
-            RawPtr(t) => t.hash(state),
-            Ref(r, t, m) => {
-                r.hash(state);
-                t.hash(state);
-                m.hash(state)
-            }
-            FnDef(d, s) => {
-                d.hash(state);
-                s.hash(state)
-            }
-            FnPtr(s) => s.hash(state),
-            Dynamic(p, r, repr) => {
-                p.hash(state);
-                r.hash(state);
-                repr.hash(state)
-            }
-            Closure(d, s) => {
-                d.hash(state);
-                s.hash(state)
-            }
-            Coroutine(d, s, m) => {
-                d.hash(state);
-                s.hash(state);
-                m.hash(state)
-            }
-            CoroutineWitness(d, s) => {
-                d.hash(state);
-                s.hash(state);
-            }
-            Tuple(t) => t.hash(state),
-            Alias(i, p) => {
-                i.hash(state);
-                p.hash(state);
-            }
-            Param(p) => p.hash(state),
-            Bound(d, b) => {
-                d.hash(state);
-                b.hash(state)
-            }
-            Placeholder(p) => p.hash(state),
-            Infer(t) => t.hash(state),
-            Error(e) => e.hash(state),
-            Bool | Char | Str | Never => (),
-        }
-    }
-}
 
 impl<I: Interner> DebugWithInfcx<I> for TyKind<I> {
     fn fmt<Infcx: InferCtxtLike<Interner = I>>(
@@ -614,6 +465,7 @@ impl<I: Interner> DebugWithInfcx<I> for TyKind<I> {
         }
     }
 }
+
 // This is manually implemented because a derive would require `I: Debug`
 impl<I: Interner> fmt::Debug for TyKind<I> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

@@ -3,9 +3,9 @@ name = "rustc_ast_pretty"
 version = "0.0.0"
 edition = "2021"
 
-[lib]
-
 [dependencies]
+# tidy-alphabetical-start
 rustc_ast = { path = "../rustc_ast" }
 rustc_span = { path = "../rustc_span" }
 thin-vec = "0.2.12"
+# tidy-alphabetical-end

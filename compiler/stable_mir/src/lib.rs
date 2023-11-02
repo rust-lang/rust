@@ -103,8 +103,6 @@ pub type DefKind = Opaque;
 pub type Filename = Opaque;
 
 /// Holds information about an item in the crate.
-/// For now, it only stores the item DefId. Use functions inside `rustc_internal` module to
-/// use this item.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub struct CrateItem(pub DefId);
 
@@ -224,6 +222,9 @@ pub trait Context {
     /// Get the instance.
     fn instance_def_id(&self, instance: InstanceDef) -> DefId;
 
+    /// Get the instance mangled name.
+    fn instance_mangled_name(&self, instance: InstanceDef) -> String;
+
     /// Convert a non-generic crate item into an instance.
     /// This function will panic if the item is generic.
     fn mono_instance(&self, item: CrateItem) -> Instance;
@@ -259,7 +260,7 @@ pub fn with<R>(f: impl FnOnce(&dyn Context) -> R) -> R {
 }
 
 /// A type that provides internal information but that can still be used for debug purpose.
-#[derive(Clone)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Opaque(String);
 
 impl std::fmt::Display for Opaque {

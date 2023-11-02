@@ -6,7 +6,8 @@
 // @has 'foo/trait.ToOwned.html'
 // @snapshot trait - '//*[@class="rust item-decl"]'
 pub trait ToOwned<T>
-where T: Clone
+where
+    T: Clone,
 {
     type Owned;
     fn to_owned(&self) -> Self::Owned;
@@ -26,7 +27,7 @@ pub trait ToOwned2<T: Clone> {
 // @snapshot enum - '//*[@class="rust item-decl"]'
 pub enum Cow<'a, B: ?Sized + 'a>
 where
-    B: ToOwned<Clone>,
+    B: ToOwned<()>,
 {
     Borrowed(&'a B),
     Whatever(u32),
@@ -35,7 +36,7 @@ where
 // @has 'foo/enum.Cow2.html'
 // @snapshot enum2 - '//*[@class="rust item-decl"]'
 // There should be a whitespace before `{` in this case!
-pub enum Cow2<'a, B: ?Sized + ToOwned<Clone> + 'a> {
+pub enum Cow2<'a, B: ?Sized + ToOwned<()> + 'a> {
     Borrowed(&'a B),
     Whatever(u32),
 }
@@ -44,7 +45,7 @@ pub enum Cow2<'a, B: ?Sized + ToOwned<Clone> + 'a> {
 // @snapshot struct - '//*[@class="rust item-decl"]'
 pub struct Struct<'a, B: ?Sized + 'a>
 where
-    B: ToOwned<Clone>,
+    B: ToOwned<()>,
 {
     pub a: &'a B,
     pub b: u32,
@@ -53,7 +54,7 @@ where
 // @has 'foo/struct.Struct2.html'
 // @snapshot struct2 - '//*[@class="rust item-decl"]'
 // There should be a whitespace before `{` in this case!
-pub struct Struct2<'a, B: ?Sized + ToOwned<Clone> + 'a> {
+pub struct Struct2<'a, B: ?Sized + ToOwned<()> + 'a> {
     pub a: &'a B,
     pub b: u32,
 }
@@ -62,7 +63,7 @@ pub struct Struct2<'a, B: ?Sized + ToOwned<Clone> + 'a> {
 // @snapshot union - '//*[@class="rust item-decl"]'
 pub union Union<'a, B: ?Sized + 'a>
 where
-    B: ToOwned<Clone>,
+    B: ToOwned<()>,
 {
     a: &'a B,
     b: u32,
@@ -71,7 +72,7 @@ where
 // @has 'foo/union.Union2.html'
 // @snapshot union2 - '//*[@class="rust item-decl"]'
 // There should be a whitespace before `{` in this case!
-pub union Union2<'a, B: ?Sized + ToOwned<Clone> + 'a> {
+pub union Union2<'a, B: ?Sized + ToOwned<()> + 'a> {
     a: &'a B,
     b: u32,
 }

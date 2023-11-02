@@ -24,6 +24,7 @@ LL | trait MyAdd<Rhs=Self> { fn add(&self, other: &Rhs) -> Self; }
    |       |
    |       this trait cannot be made into an object...
    = help: consider moving `add` to another trait
+   = help: only type `i32` implements the trait, consider using it directly instead
 
 error: aborting due to 2 previous errors
 

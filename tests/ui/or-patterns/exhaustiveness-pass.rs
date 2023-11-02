@@ -35,4 +35,10 @@ fn main() {
         ((0, 0) | (1, 0),) => {}
         _ => {}
     }
+
+    // This one caused ICE https://github.com/rust-lang/rust/issues/117378
+    match (0u8, 0) {
+        (x @ 0 | x @ (1 | 2), _) => {}
+        (3.., _) => {}
+    }
 }

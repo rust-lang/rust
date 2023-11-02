@@ -58,15 +58,16 @@ pub(super) fn check_fn<'a, 'tcx>(
     if let Some(kind) = body.coroutine_kind
         && can_be_coroutine.is_some()
     {
-        let yield_ty = if kind == hir::CoroutineKind::Coroutine {
-            let yield_ty = fcx.next_ty_var(TypeVariableOrigin {
-                kind: TypeVariableOriginKind::TypeInference,
-                span,
-            });
-            fcx.require_type_is_sized(yield_ty, span, traits::SizedYieldType);
-            yield_ty
-        } else {
-            Ty::new_unit(tcx)
+        let yield_ty = match kind {
+            hir::CoroutineKind::Gen(..) | hir::CoroutineKind::Coroutine => {
+                let yield_ty = fcx.next_ty_var(TypeVariableOrigin {
+                    kind: TypeVariableOriginKind::TypeInference,
+                    span,
+                });
+                fcx.require_type_is_sized(yield_ty, span, traits::SizedYieldType);
+                yield_ty
+            }
+            hir::CoroutineKind::Async(..) => Ty::new_unit(tcx),
         };
 
         // Resume type defaults to `()` if the coroutine has no argument.
@@ -127,14 +128,16 @@ pub(super) fn check_fn<'a, 'tcx>(
     // We insert the deferred_coroutine_interiors entry after visiting the body.
     // This ensures that all nested coroutines appear before the entry of this coroutine.
     // resolve_coroutine_interiors relies on this property.
-    let gen_ty = if let (Some(_), Some(gen_kind)) = (can_be_coroutine, body.coroutine_kind) {
+    let coroutine_ty = if let (Some(_), Some(coroutine_kind)) =
+        (can_be_coroutine, body.coroutine_kind)
+    {
         let interior = fcx
             .next_ty_var(TypeVariableOrigin { kind: TypeVariableOriginKind::MiscVariable, span });
         fcx.deferred_coroutine_interiors.borrow_mut().push((
             fn_def_id,
             body.id(),
             interior,
-            gen_kind,
+            coroutine_kind,
         ));
 
         let (resume_ty, yield_ty) = fcx.resume_yield_tys.unwrap();
@@ -183,7 +186,7 @@ pub(super) fn check_fn<'a, 'tcx>(
         check_lang_start_fn(tcx, fn_sig, fn_def_id);
     }
 
-    gen_ty
+    coroutine_ty
 }
 
 fn check_panic_info_fn(tcx: TyCtxt<'_>, fn_id: LocalDefId, fn_sig: ty::FnSig<'_>) {

@@ -440,8 +440,6 @@ where
     );
 
     if let Some(key) = Q::Key::recover(tcx, &dep_node) {
-        #[cfg(debug_assertions)]
-        let _guard = tracing::span!(tracing::Level::TRACE, stringify!($name), ?key).entered();
         force_query(query, QueryCtxt::new(tcx), key, dep_node);
         true
     } else {

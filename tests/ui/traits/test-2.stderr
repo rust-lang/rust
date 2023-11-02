@@ -42,6 +42,9 @@ LL | trait bar { fn dup(&self) -> Self; fn blah<X>(&self); }
    |       this trait cannot be made into an object...
    = help: consider moving `dup` to another trait
    = help: consider moving `blah` to another trait
+   = help: the following types implement the trait, consider defining an enum where each variant holds one of these types, implementing `bar` for this new enum and using it instead:
+             i32
+             u32
 
 error[E0038]: the trait `bar` cannot be made into an object
   --> $DIR/test-2.rs:13:5
@@ -59,6 +62,9 @@ LL | trait bar { fn dup(&self) -> Self; fn blah<X>(&self); }
    |       this trait cannot be made into an object...
    = help: consider moving `dup` to another trait
    = help: consider moving `blah` to another trait
+   = help: the following types implement the trait, consider defining an enum where each variant holds one of these types, implementing `bar` for this new enum and using it instead:
+             i32
+             u32
 
 error[E0038]: the trait `bar` cannot be made into an object
   --> $DIR/test-2.rs:13:6
@@ -76,6 +82,9 @@ LL | trait bar { fn dup(&self) -> Self; fn blah<X>(&self); }
    |       this trait cannot be made into an object...
    = help: consider moving `dup` to another trait
    = help: consider moving `blah` to another trait
+   = help: the following types implement the trait, consider defining an enum where each variant holds one of these types, implementing `bar` for this new enum and using it instead:
+             i32
+             u32
    = note: required for the cast from `Box<{integer}>` to `Box<dyn bar>`
 
 error: aborting due to 5 previous errors

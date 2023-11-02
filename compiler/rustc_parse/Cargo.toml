@@ -3,9 +3,8 @@ name = "rustc_parse"
 version = "0.0.0"
 edition = "2021"
 
-[lib]
-
 [dependencies]
+# tidy-alphabetical-start
 bitflags = "1.0"
 rustc_ast = { path = "../rustc_ast" }
 rustc_ast_pretty = { path = "../rustc_ast_pretty" }
@@ -21,3 +20,4 @@ thin-vec = "0.2.12"
 tracing = "0.1"
 unicode-normalization = "0.1.11"
 unicode-width = "0.1.4"
+# tidy-alphabetical-end

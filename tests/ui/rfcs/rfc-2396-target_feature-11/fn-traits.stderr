@@ -58,6 +58,7 @@ LL |     call(foo_unsafe);
    |     required by a bound introduced by this call
    |
    = help: the trait `Fn<()>` is not implemented for fn item `unsafe fn() {foo_unsafe}`
+   = note: unsafe function cannot be called generically without an unsafe block
    = note: wrap the `unsafe fn() {foo_unsafe}` in a closure with no arguments: `|| { /* code */ }`
    = note: `#[target_feature]` functions do not implement the `Fn` traits
 note: required by a bound in `call`
@@ -75,6 +76,7 @@ LL |     call_mut(foo_unsafe);
    |     required by a bound introduced by this call
    |
    = help: the trait `FnMut<()>` is not implemented for fn item `unsafe fn() {foo_unsafe}`
+   = note: unsafe function cannot be called generically without an unsafe block
    = note: wrap the `unsafe fn() {foo_unsafe}` in a closure with no arguments: `|| { /* code */ }`
    = note: `#[target_feature]` functions do not implement the `Fn` traits
 note: required by a bound in `call_mut`
@@ -92,6 +94,7 @@ LL |     call_once(foo_unsafe);
    |     required by a bound introduced by this call
    |
    = help: the trait `FnOnce<()>` is not implemented for fn item `unsafe fn() {foo_unsafe}`
+   = note: unsafe function cannot be called generically without an unsafe block
    = note: wrap the `unsafe fn() {foo_unsafe}` in a closure with no arguments: `|| { /* code */ }`
    = note: `#[target_feature]` functions do not implement the `Fn` traits
 note: required by a bound in `call_once`

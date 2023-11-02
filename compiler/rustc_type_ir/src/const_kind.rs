@@ -1,9 +1,7 @@
 use rustc_data_structures::stable_hasher::HashStable;
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_serialize::{Decodable, Decoder, Encodable};
-use std::cmp::Ordering;
 use std::fmt;
-use std::hash;
 
 use crate::{
     DebruijnIndex, DebugWithInfcx, HashStableContext, InferCtxtLike, Interner, TyDecoder,
@@ -13,7 +11,15 @@ use crate::{
 use self::ConstKind::*;
 
 /// Represents a constant in Rust.
-// #[derive(derive_more::From)]
+#[derive(derivative::Derivative)]
+#[derivative(
+    Clone(bound = ""),
+    PartialOrd(bound = ""),
+    PartialOrd = "feature_allow_slow_enum",
+    Ord(bound = ""),
+    Ord = "feature_allow_slow_enum",
+    Hash(bound = "")
+)]
 pub enum ConstKind<I: Interner> {
     /// A const generic parameter.
     Param(I::ParamConst),
@@ -54,25 +60,6 @@ const fn const_kind_discriminant<I: Interner>(value: &ConstKind<I>) -> usize {
         Value(_) => 5,
         Error(_) => 6,
         Expr(_) => 7,
-    }
-}
-
-impl<I: Interner> hash::Hash for ConstKind<I> {
-    fn hash<H: hash::Hasher>(&self, state: &mut H) {
-        const_kind_discriminant(self).hash(state);
-        match self {
-            Param(p) => p.hash(state),
-            Infer(i) => i.hash(state),
-            Bound(d, b) => {
-                d.hash(state);
-                b.hash(state);
-            }
-            Placeholder(p) => p.hash(state),
-            Unevaluated(u) => u.hash(state),
-            Value(v) => v.hash(state),
-            Error(e) => e.hash(state),
-            Expr(e) => e.hash(state),
-        }
     }
 }
 
@@ -166,33 +153,6 @@ where
     }
 }
 
-impl<I: Interner> PartialOrd for ConstKind<I> {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl<I: Interner> Ord for ConstKind<I> {
-    fn cmp(&self, other: &Self) -> Ordering {
-        const_kind_discriminant(self)
-            .cmp(&const_kind_discriminant(other))
-            .then_with(|| match (self, other) {
-                (Param(p1), Param(p2)) => p1.cmp(p2),
-                (Infer(i1), Infer(i2)) => i1.cmp(i2),
-                (Bound(d1, b1), Bound(d2, b2)) => d1.cmp(d2).then_with(|| b1.cmp(b2)),
-                (Placeholder(p1), Placeholder(p2)) => p1.cmp(p2),
-                (Unevaluated(u1), Unevaluated(u2)) => u1.cmp(u2),
-                (Value(v1), Value(v2)) => v1.cmp(v2),
-                (Error(e1), Error(e2)) => e1.cmp(e2),
-                (Expr(e1), Expr(e2)) => e1.cmp(e2),
-                _ => {
-                    debug_assert!(false, "This branch must be unreachable, maybe the match is missing an arm? self = {self:?}, other = {other:?}");
-                    Ordering::Equal
-                }
-            })
-    }
-}
-
 impl<I: Interner> PartialEq for ConstKind<I> {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
@@ -210,21 +170,6 @@ impl<I: Interner> PartialEq for ConstKind<I> {
 }
 
 impl<I: Interner> Eq for ConstKind<I> {}
-
-impl<I: Interner> Clone for ConstKind<I> {
-    fn clone(&self) -> Self {
-        match self {
-            Param(arg0) => Param(arg0.clone()),
-            Infer(arg0) => Infer(arg0.clone()),
-            Bound(arg0, arg1) => Bound(arg0.clone(), arg1.clone()),
-            Placeholder(arg0) => Placeholder(arg0.clone()),
-            Unevaluated(arg0) => Unevaluated(arg0.clone()),
-            Value(arg0) => Value(arg0.clone()),
-            Error(arg0) => Error(arg0.clone()),
-            Expr(arg0) => Expr(arg0.clone()),
-        }
-    }
-}
 
 impl<I: Interner> fmt::Debug for ConstKind<I> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

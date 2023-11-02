@@ -2491,11 +2491,17 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         let (sugg_span, suggestion) = match tcx.sess.source_map().span_to_snippet(args_span) {
             Ok(string) => {
-                if string.starts_with("async ") {
-                    let pos = args_span.lo() + BytePos(6);
-                    (args_span.with_lo(pos).with_hi(pos), "move ")
-                } else if string.starts_with("async|") {
-                    let pos = args_span.lo() + BytePos(5);
+                let coro_prefix = if string.starts_with("async") {
+                    // `async` is 5 chars long. Not using `.len()` to avoid the cast from `usize` to `u32`
+                    Some(5)
+                } else if string.starts_with("gen") {
+                    // `gen` is 3 chars long
+                    Some(3)
+                } else {
+                    None
+                };
+                if let Some(n) = coro_prefix {
+                    let pos = args_span.lo() + BytePos(n);
                     (args_span.with_lo(pos).with_hi(pos), " move")
                 } else {
                     (args_span.shrink_to_lo(), "move ")
@@ -2505,6 +2511,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         };
         let kind = match use_span.coroutine_kind() {
             Some(coroutine_kind) => match coroutine_kind {
+                CoroutineKind::Gen(kind) => match kind {
+                    CoroutineSource::Block => "gen block",
+                    CoroutineSource::Closure => "gen closure",
+                    _ => bug!("gen block/closure expected, but gen function found."),
+                },
                 CoroutineKind::Async(async_kind) => match async_kind {
                     CoroutineSource::Block => "async block",
                     CoroutineSource::Closure => "async closure",

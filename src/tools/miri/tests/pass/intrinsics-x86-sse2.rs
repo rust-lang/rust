@@ -117,12 +117,12 @@ mod tests {
         #[target_feature(enable = "sse2")]
         unsafe fn test_mm_sad_epu8() {
             #[rustfmt::skip]
-        let a = _mm_setr_epi8(
-            255u8 as i8, 254u8 as i8, 253u8 as i8, 252u8 as i8,
-            1, 2, 3, 4,
-            155u8 as i8, 154u8 as i8, 153u8 as i8, 152u8 as i8,
-            1, 2, 3, 4,
-        );
+            let a = _mm_setr_epi8(
+                255u8 as i8, 254u8 as i8, 253u8 as i8, 252u8 as i8,
+                1, 2, 3, 4,
+                155u8 as i8, 154u8 as i8, 153u8 as i8, 152u8 as i8,
+                1, 2, 3, 4,
+            );
             let b = _mm_setr_epi8(0, 0, 0, 0, 2, 1, 2, 1, 1, 1, 1, 1, 1, 2, 1, 2);
             let r = _mm_sad_epu8(a, b);
             let e = _mm_setr_epi64x(1020, 614);

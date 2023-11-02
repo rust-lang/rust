@@ -359,6 +359,8 @@ jobs:
             <<: *job-linux-8c
 
           - name: dist-aarch64-linux
+            env:
+              CODEGEN_BACKENDS: llvm,cranelift
             <<: *job-linux-8c
 
           - name: dist-android
@@ -411,14 +413,19 @@ jobs:
 
           - &dist-x86_64-linux
             name: dist-x86_64-linux
+            env:
+              CODEGEN_BACKENDS: llvm,cranelift
             <<: *job-linux-16c
 
           - name: dist-x86_64-linux-alt
             env:
               IMAGE: dist-x86_64-linux
+              CODEGEN_BACKENDS: llvm,cranelift
             <<: *job-linux-16c
 
           - name: dist-x86_64-musl
+            env:
+              CODEGEN_BACKENDS: llvm,cranelift
             <<: *job-linux-8c
 
           - name: dist-x86_64-netbsd
@@ -501,6 +508,7 @@ jobs:
               NO_DEBUG_ASSERTIONS: 1
               NO_OVERFLOW_CHECKS: 1
               DIST_REQUIRE_ALL_TOOLS: 1
+              CODEGEN_BACKENDS: llvm,cranelift
             <<: *job-macos-xl
 
           - name: dist-apple-various
@@ -574,6 +582,7 @@ jobs:
           - name: x86_64-msvc-ext
             env:
               SCRIPT: python x.py --stage 2 test src/tools/cargotest src/tools/cargo && src/ci/docker/host-x86_64/x86_64-gnu-tools/checktools.sh x.py /tmp/toolstate/toolstates.json windows
+              HOST_TARGET: x86_64-pc-windows-msvc
               RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-lld --save-toolstates=/tmp/toolstate/toolstates.json
               DEPLOY_TOOLSTATES_JSON: toolstates-windows.json
             <<: *job-windows-8c
@@ -697,6 +706,8 @@ jobs:
         include:
           - &dist-x86_64-linux
             name: dist-x86_64-linux
+            env:
+              CODEGEN_BACKENDS: llvm,cranelift
             <<: *job-linux-16c
 
   master:

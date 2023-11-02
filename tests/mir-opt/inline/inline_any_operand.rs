@@ -1,4 +1,3 @@
-// skip-filecheck
 // compile-flags: -Z span_free_formats
 
 // Tests that MIR inliner works for any operand
@@ -9,6 +8,8 @@ fn main() {
 
 // EMIT_MIR inline_any_operand.bar.Inline.after.mir
 fn bar() -> bool {
+    // CHECK-LABEL: fn bar(
+    // CHECK: (inlined foo)
     let f = foo;
     f(1, -1)
 }

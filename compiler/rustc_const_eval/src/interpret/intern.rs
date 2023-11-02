@@ -450,6 +450,42 @@ pub fn intern_const_alloc_recursive<
     Ok(())
 }
 
+/// Intern `ret`. This function assumes that `ret` references no other allocation.
+#[instrument(level = "debug", skip(ecx))]
+pub fn intern_const_alloc_for_constprop<
+    'mir,
+    'tcx: 'mir,
+    T,
+    M: CompileTimeMachine<'mir, 'tcx, T>,
+>(
+    ecx: &mut InterpCx<'mir, 'tcx, M>,
+    alloc_id: AllocId,
+) -> InterpResult<'tcx, ()> {
+    // Move allocation to `tcx`.
+    let Some((_, mut alloc)) = ecx.memory.alloc_map.remove(&alloc_id) else {
+        // Pointer not found in local memory map. It is either a pointer to the global
+        // map, or dangling.
+        if ecx.tcx.try_get_global_alloc(alloc_id).is_none() {
+            throw_ub!(DeadLocal)
+        }
+        // The constant is already in global memory. Do nothing.
+        return Ok(());
+    };
+
+    alloc.mutability = Mutability::Not;
+
+    // We are not doing recursive interning, so we don't currently support provenance.
+    // (If this assertion ever triggers, we should just implement a
+    // proper recursive interning loop.)
+    assert!(alloc.provenance().ptrs().is_empty());
+
+    // Link the alloc id to the actual allocation
+    let alloc = ecx.tcx.mk_const_alloc(alloc);
+    ecx.tcx.set_alloc_id_memory(alloc_id, alloc);
+
+    Ok(())
+}
+
 impl<'mir, 'tcx: 'mir, M: super::intern::CompileTimeMachine<'mir, 'tcx, !>>
     InterpCx<'mir, 'tcx, M>
 {

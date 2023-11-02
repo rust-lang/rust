@@ -1077,26 +1077,6 @@ mod prim_tuple {}
 #[doc(hidden)]
 impl<T> (T,) {}
 
-// Fake impl that's only really used for docs.
-#[cfg(doc)]
-#[stable(feature = "rust1", since = "1.0.0")]
-#[doc(fake_variadic)]
-/// This trait is implemented on arbitrary-length tuples.
-impl<T: Clone> Clone for (T,) {
-    fn clone(&self) -> Self {
-        loop {}
-    }
-}
-
-// Fake impl that's only really used for docs.
-#[cfg(doc)]
-#[stable(feature = "rust1", since = "1.0.0")]
-#[doc(fake_variadic)]
-/// This trait is implemented on arbitrary-length tuples.
-impl<T: Copy> Copy for (T,) {
-    // empty
-}
-
 #[rustc_doc_primitive = "f32"]
 /// A 32-bit floating point type (specifically, the "binary32" type defined in IEEE 754-2008).
 ///

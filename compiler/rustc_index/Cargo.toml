@@ -3,14 +3,16 @@ name = "rustc_index"
 version = "0.0.0"
 edition = "2021"
 
-[lib]
-
 [dependencies]
+# tidy-alphabetical-start
 arrayvec = { version = "0.7", default-features = false }
-rustc_serialize = { path = "../rustc_serialize", optional = true }
 rustc_macros = { path = "../rustc_macros", optional = true }
+rustc_serialize = { path = "../rustc_serialize", optional = true }
 smallvec = "1.8.1"
+# tidy-alphabetical-end
 
 [features]
+# tidy-alphabetical-start
 default = ["nightly"]
 nightly = ["rustc_serialize", "rustc_macros"]
+# tidy-alphabetical-end

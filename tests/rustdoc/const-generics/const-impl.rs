@@ -2,7 +2,9 @@
 #![feature(adt_const_params)]
 #![crate_name = "foo"]
 
-#[derive(PartialEq, Eq)]
+use std::marker::ConstParamTy;
+
+#[derive(PartialEq, Eq, ConstParamTy)]
 pub enum Order {
     Sorted,
     Unsorted,

@@ -55,13 +55,6 @@ $ make check-jit RUNTESTFLAGS="-v -v -v jit.exp=jit.dg/test-asm.cc"
 $ dirname $(readlink -f `find . -name libgccjit.so`) > gcc_path
 ```
 
-You also need to set RUST_COMPILER_RT_ROOT:
-
-```bash
-$ git clone https://github.com/llvm/llvm-project llvm --depth 1 --single-branch
-$ export RUST_COMPILER_RT_ROOT="$PWD/llvm/compiler-rt"
-```
-
 Then you can run commands like this:
 
 ```bash
@@ -91,8 +84,16 @@ $ CHANNEL="release" $CG_GCCJIT_DIR/cargo.sh run
 
 If you compiled cg_gccjit in debug mode (aka you didn't pass `--release` to `./test.sh`) you should use `CHANNEL="debug"` instead or omit `CHANNEL="release"` completely.
 
+### LTO
+
 To use LTO, you need to set the variable `FAT_LTO=1` and `EMBED_LTO_BITCODE=1` in addition to setting `lto = "fat"` in the `Cargo.toml`.
 Don't set `FAT_LTO` when compiling the sysroot, though: only set `EMBED_LTO_BITCODE=1`.
+
+Failing to set `EMBED_LTO_BITCODE` will give you the following error:
+
+```
+error: failed to copy bitcode to object file: No such file or directory (os error 2)
+```
 
 ### Rustc
 
@@ -286,6 +287,16 @@ git checkout sync_branch_name
 git merge master
 ```
 
+To send the changes to the rust repo:
+
+```bash
+cd ../rust
+git pull origin master
+git checkout -b subtree-update_cg_gcc_YYYY-MM-DD
+PATH="$HOME/bin:$PATH" ~/bin/git-subtree pull --prefix=compiler/rustc_codegen_gcc/ https://github.com/rust-lang/rustc_codegen_gcc.git master
+git push
+```
+
 TODO: write a script that does the above.
 
 https://rust-lang.zulipchat.com/#narrow/stream/301329-t-devtools/topic/subtree.20madness/near/258877725
@@ -303,16 +314,25 @@ generate it in [gimple.md](./doc/gimple.md).
 
 #### Building libgccjit
 
- * Follow these instructions: https://preshing.com/20141119/how-to-build-a-gcc-cross-compiler/ with the following changes:
- * Configure gcc with `../gcc/configure --enable-host-shared --disable-multilib --enable-languages=c,jit,c++ --disable-bootstrap --enable-checking=release --prefix=/opt/m68k-gcc/ --target=m68k-linux --without-headers`.
- * Some shells, like fish, don't define the environment variable `$MACHTYPE`.
- * Add `CFLAGS="-Wno-error=attributes -g -O2"` at the end of the configure command for building glibc (`CFLAGS="-Wno-error=attributes -Wno-error=array-parameter -Wno-error=stringop-overflow -Wno-error=array-bounds -g -O2"` for glibc 2.31, which is useful for Debian).
+ * Follow the instructions on [this repo](https://github.com/cross-cg-gcc-tools/cross-gcc).
 
 #### Configuring rustc_codegen_gcc
 
- * Set `TARGET_TRIPLE="m68k-unknown-linux-gnu"` in config.sh.
- * Since rustc doesn't support this architecture yet, set it back to `TARGET_TRIPLE="mips-unknown-linux-gnu"` (or another target having the same attributes). Alternatively, create a [target specification file](https://book.avr-rust.com/005.1-the-target-specification-json-file.html) (note that the `arch` specified in this file must be supported by the rust compiler).
- * Set `linker='-Clinker=m68k-linux-gcc'`.
+ * Run `./y.sh prepare --cross` so that the sysroot is patched for the cross-compiling case.
  * Set the path to the cross-compiling libgccjit in `gcc_path`.
- * Comment the line: `context.add_command_line_option("-masm=intel");` in src/base.rs.
- * (might not be necessary) Disable the compilation of libstd.so (and possibly libcore.so?): Remove dylib from build_sysroot/sysroot_src/library/std/Cargo.toml.
+ * Make sure you have the linker for your target (for instance `m68k-unknown-linux-gnu-gcc`) in your `$PATH`. Currently, the linker name is hardcoded as being `$TARGET-gcc`. Specify the target when building the sysroot: `./y.sh build --target-triple m68k-unknown-linux-gnu`.
+ * Build your project by specifying the target: `OVERWRITE_TARGET_TRIPLE=m68k-unknown-linux-gnu ../cargo.sh build --target m68k-unknown-linux-gnu`.
+
+If the target is not yet supported by the Rust compiler, create a [target specification file](https://docs.rust-embedded.org/embedonomicon/custom-target.html) (note that the `arch` specified in this file must be supported by the rust compiler).
+Then, you can use it the following way:
+
+ * Add the target specification file using `--target` as an **absolute** path to build the sysroot: `./y.sh build --target-triple m68k-unknown-linux-gnu --target $(pwd)/m68k-unknown-linux-gnu.json`
+ * Build your project by specifying the target specification file: `OVERWRITE_TARGET_TRIPLE=m68k-unknown-linux-gnu ../cargo.sh build --target path/to/m68k-unknown-linux-gnu.json`.
+
+If you get the following error:
+
+```
+/usr/bin/ld: unrecognised emulation mode: m68kelf
+```
+
+Make sure you set `gcc_path` to the install directory.
