@@ -10,53 +10,54 @@ use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_target::spec::abi;
 use thin_vec::ThinVec;
-use tracing::debug;
 
 use crate::errors;
 
-macro_rules! gate_feature_fn {
-    ($visitor: expr, $has_feature: expr, $span: expr, $name: expr, $explain: expr, $help: expr) => {{
-        let (visitor, has_feature, span, name, explain, help) =
-            (&*$visitor, $has_feature, $span, $name, $explain, $help);
-        let has_feature: bool = has_feature(visitor.features);
-        debug!("gate_feature(feature = {:?}, span = {:?}); has? {}", name, span, has_feature);
-        if !has_feature && !span.allows_unstable($name) {
-            feature_err(&visitor.sess.parse_sess, name, span, explain).help(help).emit();
+/// The common case.
+macro_rules! gate {
+    ($visitor:expr, $feature:ident, $span:expr, $explain:expr) => {{
+        if !$visitor.features.$feature && !$span.allows_unstable(sym::$feature) {
+            feature_err(&$visitor.sess.parse_sess, sym::$feature, $span, $explain).emit();
         }
     }};
-    ($visitor: expr, $has_feature: expr, $span: expr, $name: expr, $explain: expr) => {{
-        let (visitor, has_feature, span, name, explain) =
-            (&*$visitor, $has_feature, $span, $name, $explain);
-        let has_feature: bool = has_feature(visitor.features);
-        debug!("gate_feature(feature = {:?}, span = {:?}); has? {}", name, span, has_feature);
-        if !has_feature && !span.allows_unstable($name) {
-            feature_err(&visitor.sess.parse_sess, name, span, explain).emit();
-        }
-    }};
-    (future_incompatible; $visitor: expr, $has_feature: expr, $span: expr, $name: expr, $explain: expr) => {{
-        let (visitor, has_feature, span, name, explain) =
-            (&*$visitor, $has_feature, $span, $name, $explain);
-        let has_feature: bool = has_feature(visitor.features);
-        debug!(
-            "gate_feature(feature = {:?}, span = {:?}); has? {} (future_incompatible)",
-            name, span, has_feature
-        );
-        if !has_feature && !span.allows_unstable($name) {
-            feature_warn(&visitor.sess.parse_sess, name, span, explain);
+    ($visitor:expr, $feature:ident, $span:expr, $explain:expr, $help:expr) => {{
+        if !$visitor.features.$feature && !$span.allows_unstable(sym::$feature) {
+            feature_err(&$visitor.sess.parse_sess, sym::$feature, $span, $explain)
+                .help($help)
+                .emit();
         }
     }};
 }
 
-macro_rules! gate_feature_post {
-    ($visitor: expr, $feature: ident, $span: expr, $explain: expr, $help: expr) => {
-        gate_feature_fn!($visitor, |x: &Features| x.$feature, $span, sym::$feature, $explain, $help)
-    };
-    ($visitor: expr, $feature: ident, $span: expr, $explain: expr) => {
-        gate_feature_fn!($visitor, |x: &Features| x.$feature, $span, sym::$feature, $explain)
-    };
-    (future_incompatible; $visitor: expr, $feature: ident, $span: expr, $explain: expr) => {
-        gate_feature_fn!(future_incompatible; $visitor, |x: &Features| x.$feature, $span, sym::$feature, $explain)
-    };
+/// The unusual case, where the `has_feature` condition is non-standard.
+macro_rules! gate_alt {
+    ($visitor:expr, $has_feature:expr, $name:expr, $span:expr, $explain:expr) => {{
+        if !$has_feature && !$span.allows_unstable($name) {
+            feature_err(&$visitor.sess.parse_sess, $name, $span, $explain).emit();
+        }
+    }};
+}
+
+/// The case involving a multispan.
+macro_rules! gate_multi {
+    ($visitor:expr, $feature:ident, $spans:expr, $explain:expr) => {{
+        if !$visitor.features.$feature {
+            let spans: Vec<_> =
+                $spans.filter(|span| !span.allows_unstable(sym::$feature)).collect();
+            if !spans.is_empty() {
+                feature_err(&$visitor.sess.parse_sess, sym::$feature, spans, $explain).emit();
+            }
+        }
+    }};
+}
+
+/// The legacy case.
+macro_rules! gate_legacy {
+    ($visitor:expr, $feature:ident, $span:expr, $explain:expr) => {{
+        if !$visitor.features.$feature && !$span.allows_unstable(sym::$feature) {
+            feature_warn(&$visitor.sess.parse_sess, sym::$feature, $span, $explain);
+        }
+    }};
 }
 
 pub fn check_attribute(attr: &ast::Attribute, sess: &Session, features: &Features) {
@@ -78,7 +79,7 @@ impl<'a> PostExpansionVisitor<'a> {
             match symbol_unescaped {
                 // Stable
                 sym::Rust | sym::C => {}
-                abi => gate_feature_post!(
+                abi => gate!(
                     &self,
                     const_extern_fn,
                     span,
@@ -129,14 +130,14 @@ impl<'a> PostExpansionVisitor<'a> {
             fn visit_ty(&mut self, ty: &ast::Ty) {
                 if let ast::TyKind::ImplTrait(..) = ty.kind {
                     if self.in_associated_ty {
-                        gate_feature_post!(
+                        gate!(
                             &self.vis,
                             impl_trait_in_assoc_type,
                             ty.span,
                             "`impl Trait` in associated types is unstable"
                         );
                     } else {
-                        gate_feature_post!(
+                        gate!(
                             &self.vis,
                             type_alias_impl_trait,
                             ty.span,
@@ -153,23 +154,16 @@ impl<'a> PostExpansionVisitor<'a> {
     fn check_late_bound_lifetime_defs(&self, params: &[ast::GenericParam]) {
         // Check only lifetime parameters are present and that the lifetime
         // parameters that are present have no bounds.
-        let non_lt_param_spans: Vec<_> = params
-            .iter()
-            .filter_map(|param| match param.kind {
-                ast::GenericParamKind::Lifetime { .. } => None,
-                _ => Some(param.ident.span),
-            })
-            .collect();
-        // FIXME: gate_feature_post doesn't really handle multispans...
-        if !non_lt_param_spans.is_empty() && !self.features.non_lifetime_binders {
-            feature_err(
-                &self.sess.parse_sess,
-                sym::non_lifetime_binders,
-                non_lt_param_spans,
-                crate::fluent_generated::ast_passes_forbidden_non_lifetime_param,
-            )
-            .emit();
-        }
+        let non_lt_param_spans = params.iter().filter_map(|param| match param.kind {
+            ast::GenericParamKind::Lifetime { .. } => None,
+            _ => Some(param.ident.span),
+        });
+        gate_multi!(
+            &self,
+            non_lifetime_binders,
+            non_lt_param_spans,
+            crate::fluent_generated::ast_passes_forbidden_non_lifetime_param
+        );
         for param in params {
             if !param.bounds.is_empty() {
                 let spans: Vec<_> = param.bounds.iter().map(|b| b.span()).collect();
@@ -188,48 +182,39 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             ..
         }) = attr_info
         {
-            gate_feature_fn!(self, has_feature, attr.span, *name, *descr);
+            gate_alt!(self, has_feature(&self.features), *name, attr.span, *descr);
         }
         // Check unstable flavors of the `#[doc]` attribute.
         if attr.has_name(sym::doc) {
             for nested_meta in attr.meta_item_list().unwrap_or_default() {
-                macro_rules! gate_doc { ($($name:ident => $feature:ident)*) => {
-                    $(if nested_meta.has_name(sym::$name) {
-                        let msg = concat!("`#[doc(", stringify!($name), ")]` is experimental");
-                        gate_feature_post!(self, $feature, attr.span, msg);
-                    })*
+                macro_rules! gate_doc { ($($s:literal { $($name:ident => $feature:ident)* })*) => {
+                    $($(if nested_meta.has_name(sym::$name) {
+                        let msg = concat!("`#[doc(", stringify!($name), ")]` is ", $s);
+                        gate!(self, $feature, attr.span, msg);
+                    })*)*
                 }}
 
                 gate_doc!(
-                    cfg => doc_cfg
-                    cfg_hide => doc_cfg_hide
-                    masked => doc_masked
-                    notable_trait => doc_notable_trait
+                    "experimental" {
+                        cfg => doc_cfg
+                        cfg_hide => doc_cfg_hide
+                        masked => doc_masked
+                        notable_trait => doc_notable_trait
+                    }
+                    "meant for internal use only" {
+                        keyword => rustdoc_internals
+                        fake_variadic => rustdoc_internals
+                    }
                 );
-
-                if nested_meta.has_name(sym::keyword) {
-                    let msg = "`#[doc(keyword)]` is meant for internal use only";
-                    gate_feature_post!(self, rustdoc_internals, attr.span, msg);
-                }
-
-                if nested_meta.has_name(sym::fake_variadic) {
-                    let msg = "`#[doc(fake_variadic)]` is meant for internal use only";
-                    gate_feature_post!(self, rustdoc_internals, attr.span, msg);
-                }
             }
         }
         if !attr.is_doc_comment()
-            && attr.get_normal_item().path.segments.len() == 2
-            && attr.get_normal_item().path.segments[0].ident.name == sym::diagnostic
+            && let [seg, _] = attr.get_normal_item().path.segments.as_slice()
+            && seg.ident.name == sym::diagnostic
             && !self.features.diagnostic_namespace
         {
             let msg = "`#[diagnostic]` attribute name space is experimental";
-            gate_feature_post!(
-                self,
-                diagnostic_namespace,
-                attr.get_normal_item().path.segments[0].ident.span,
-                msg
-            );
+            gate!(self, diagnostic_namespace, seg.ident.span, msg);
         }
 
         // Emit errors for non-staged-api crates.
@@ -255,12 +240,11 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 
             ast::ItemKind::Fn(..) => {
                 if attr::contains_name(&i.attrs, sym::start) {
-                    gate_feature_post!(
+                    gate!(
                         &self,
                         start,
                         i.span,
-                        "`#[start]` functions are experimental \
-                         and their signature may change \
+                        "`#[start]` functions are experimental and their signature may change \
                          over time"
                     );
                 }
@@ -270,7 +254,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 for attr in attr::filter_by_name(&i.attrs, sym::repr) {
                     for item in attr.meta_item_list().unwrap_or_else(ThinVec::new) {
                         if item.has_name(sym::simd) {
-                            gate_feature_post!(
+                            gate!(
                                 &self,
                                 repr_simd,
                                 attr.span,
@@ -283,7 +267,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 
             ast::ItemKind::Impl(box ast::Impl { polarity, defaultness, of_trait, .. }) => {
                 if let &ast::ImplPolarity::Negative(span) = polarity {
-                    gate_feature_post!(
+                    gate!(
                         &self,
                         negative_impls,
                         span.to(of_trait.as_ref().map_or(span, |t| t.path.span)),
@@ -293,12 +277,12 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 }
 
                 if let ast::Defaultness::Default(_) = defaultness {
-                    gate_feature_post!(&self, specialization, i.span, "specialization is unstable");
+                    gate!(&self, specialization, i.span, "specialization is unstable");
                 }
             }
 
             ast::ItemKind::Trait(box ast::Trait { is_auto: ast::IsAuto::Yes, .. }) => {
-                gate_feature_post!(
+                gate!(
                     &self,
                     auto_traits,
                     i.span,
@@ -307,12 +291,12 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             }
 
             ast::ItemKind::TraitAlias(..) => {
-                gate_feature_post!(&self, trait_alias, i.span, "trait aliases are experimental");
+                gate!(&self, trait_alias, i.span, "trait aliases are experimental");
             }
 
             ast::ItemKind::MacroDef(ast::MacroDef { macro_rules: false, .. }) => {
                 let msg = "`macro` is experimental";
-                gate_feature_post!(&self, decl_macro, i.span, msg);
+                gate!(&self, decl_macro, i.span, msg);
             }
 
             ast::ItemKind::TyAlias(box ast::TyAlias { ty: Some(ty), .. }) => {
@@ -331,7 +315,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 let link_name = attr::first_attr_value_str_by_name(&i.attrs, sym::link_name);
                 let links_to_llvm = link_name.is_some_and(|val| val.as_str().starts_with("llvm."));
                 if links_to_llvm {
-                    gate_feature_post!(
+                    gate!(
                         &self,
                         link_llvm_intrinsics,
                         i.span,
@@ -340,7 +324,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 }
             }
             ast::ForeignItemKind::TyAlias(..) => {
-                gate_feature_post!(&self, extern_types, i.span, "extern types are experimental");
+                gate!(&self, extern_types, i.span, "extern types are experimental");
             }
             ast::ForeignItemKind::MacCall(..) => {}
         }
@@ -356,7 +340,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 self.check_late_bound_lifetime_defs(&bare_fn_ty.generic_params);
             }
             ast::TyKind::Never => {
-                gate_feature_post!(&self, never_type, ty.span, "the `!` type is experimental");
+                gate!(&self, never_type, ty.span, "the `!` type is experimental");
             }
             _ => {}
         }
@@ -389,7 +373,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     fn visit_expr(&mut self, e: &'a ast::Expr) {
         match e.kind {
             ast::ExprKind::TryBlock(_) => {
-                gate_feature_post!(&self, try_blocks, e.span, "`try` expression is experimental");
+                gate!(&self, try_blocks, e.span, "`try` expression is experimental");
             }
             _ => {}
         }
@@ -405,7 +389,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                         _ => pat,
                     };
                     if let PatKind::Range(Some(_), None, Spanned { .. }) = inner_pat.kind {
-                        gate_feature_post!(
+                        gate!(
                             &self,
                             half_open_range_patterns_in_slices,
                             pat.span,
@@ -415,15 +399,10 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 }
             }
             PatKind::Box(..) => {
-                gate_feature_post!(
-                    &self,
-                    box_patterns,
-                    pattern.span,
-                    "box pattern syntax is experimental"
-                );
+                gate!(&self, box_patterns, pattern.span, "box pattern syntax is experimental");
             }
             PatKind::Range(_, Some(_), Spanned { node: RangeEnd::Excluded, .. }) => {
-                gate_feature_post!(
+                gate!(
                     &self,
                     exclusive_range_pattern,
                     pattern.span,
@@ -451,7 +430,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         }
 
         if fn_kind.ctxt() != Some(FnCtxt::Foreign) && fn_kind.decl().c_variadic() {
-            gate_feature_post!(&self, c_variadic, span, "C-variadic functions are unstable");
+            gate!(&self, c_variadic, span, "C-variadic functions are unstable");
         }
 
         visit::walk_fn(self, fn_kind)
@@ -463,14 +442,14 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 && args.inputs.is_empty()
                 && matches!(args.output, ast::FnRetTy::Default(..))
             {
-                gate_feature_post!(
+                gate!(
                     &self,
                     return_type_notation,
                     constraint.span,
                     "return type notation is experimental"
                 );
             } else {
-                gate_feature_post!(
+                gate!(
                     &self,
                     associated_type_bounds,
                     constraint.span,
@@ -486,7 +465,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             ast::AssocItemKind::Fn(_) => true,
             ast::AssocItemKind::Type(box ast::TyAlias { ty, .. }) => {
                 if let (Some(_), AssocCtxt::Trait) = (ty, ctxt) {
-                    gate_feature_post!(
+                    gate!(
                         &self,
                         associated_type_defaults,
                         i.span,
@@ -502,11 +481,11 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         };
         if let ast::Defaultness::Default(_) = i.kind.defaultness() {
             // Limit `min_specialization` to only specializing functions.
-            gate_feature_fn!(
+            gate_alt!(
                 &self,
-                |x: &Features| x.specialization || (is_fn && x.min_specialization),
-                i.span,
+                self.features.specialization || (is_fn && self.features.min_specialization),
                 sym::specialization,
+                i.span,
                 "specialization is unstable"
             );
         }
@@ -521,17 +500,17 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
 
     let spans = sess.parse_sess.gated_spans.spans.borrow();
     macro_rules! gate_all {
-        ($gate:ident, $msg:literal, $help:literal) => {
-            if let Some(spans) = spans.get(&sym::$gate) {
-                for span in spans {
-                    gate_feature_post!(&visitor, $gate, *span, $msg, $help);
-                }
-            }
-        };
         ($gate:ident, $msg:literal) => {
             if let Some(spans) = spans.get(&sym::$gate) {
                 for span in spans {
-                    gate_feature_post!(&visitor, $gate, *span, $msg);
+                    gate!(&visitor, $gate, *span, $msg);
+                }
+            }
+        };
+        ($gate:ident, $msg:literal, $help:literal) => {
+            if let Some(spans) = spans.get(&sym::$gate) {
+                for span in spans {
+                    gate!(&visitor, $gate, *span, $msg, $help);
                 }
             }
         };
@@ -556,7 +535,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     gate_all!(more_qualified_paths, "usage of qualified paths in this context is experimental");
     for &span in spans.get(&sym::yield_expr).iter().copied().flatten() {
         if !span.at_least_rust_2024() {
-            gate_feature_post!(&visitor, coroutines, span, "yield syntax is experimental");
+            gate!(&visitor, coroutines, span, "yield syntax is experimental");
         }
     }
     gate_all!(gen_blocks, "gen blocks are experimental");
@@ -590,7 +569,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     macro_rules! gate_all_legacy_dont_use {
         ($gate:ident, $msg:literal) => {
             for span in spans.get(&sym::$gate).unwrap_or(&vec![]) {
-                gate_feature_post!(future_incompatible; &visitor, $gate, *span, $msg);
+                gate_legacy!(&visitor, $gate, *span, $msg);
             }
         };
     }
