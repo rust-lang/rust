@@ -1617,6 +1617,10 @@ dependencies = [
  "ra-ap-rustc_index",
  "ra-ap-rustc_lexer",
  "ra-ap-rustc_parse_format",
+ "rustc_abi",
+ "rustc_index",
+ "rustc_lexer",
+ "rustc_parse_format",
 ]
 
 [[package]]
@@ -1624,6 +1628,39 @@ name = "rustc-hash"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2"
+
+[[package]]
+name = "rustc_abi"
+version = "0.0.0"
+dependencies = [
+ "bitflags 1.3.2",
+ "rustc_index",
+ "tracing",
+]
+
+[[package]]
+name = "rustc_index"
+version = "0.0.0"
+dependencies = [
+ "arrayvec",
+ "smallvec",
+]
+
+[[package]]
+name = "rustc_lexer"
+version = "0.1.0"
+dependencies = [
+ "unicode-properties",
+ "unicode-xid",
+]
+
+[[package]]
+name = "rustc_parse_format"
+version = "0.0.0"
+dependencies = [
+ "rustc_index",
+ "rustc_lexer",
+]
 
 [[package]]
 name = "ryu"
