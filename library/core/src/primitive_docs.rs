@@ -291,7 +291,7 @@ mod prim_never {}
 /// Surrogate code points, used by UTF-16, are in the range 0xD800 to 0xDFFF.
 ///
 /// No `char` may be constructed, whether as a literal or at runtime, that is not a
-/// Unicode scalar value:
+/// Unicode scalar value. Violating this rule causes Undefined Behavior.
 ///
 /// ```compile_fail
 /// // Each of these is a compiler error
@@ -308,9 +308,10 @@ mod prim_never {}
 /// let _ = unsafe { char::from_u32_unchecked(0x110000) };
 /// ```
 ///
-/// USVs are also the exact set of values that may be encoded in UTF-8. Because
-/// `char` values are USVs and `str` values are valid UTF-8, it is safe to store
-/// any `char` in a `str` or read any character from a `str` as a `char`.
+/// USVs are also the exact set of values that may be encoded in UTF-8. Because `char` values are
+/// USVs and functions may assume [incoming `str` values are valid
+/// UTF-8](primitive.str.html#invariant), it is safe to store any `char` in a `str` or read any
+/// character from a `str` as a `char`.
 ///
 /// The gap in valid `char` values is understood by the compiler, so in the
 /// below example the two ranges are understood to cover the whole range of
@@ -887,8 +888,6 @@ mod prim_slice {}
 /// type. It is usually seen in its borrowed form, `&str`. It is also the type
 /// of string literals, `&'static str`.
 ///
-/// String slices are always valid UTF-8.
-///
 /// # Basic Usage
 ///
 /// String literals are string slices:
@@ -942,6 +941,14 @@ mod prim_slice {}
 /// Note: This example shows the internals of `&str`. `unsafe` should not be
 /// used to get a string slice under normal circumstances. Use `as_str`
 /// instead.
+///
+/// # Invariant
+///
+/// Rust libraries may assume that string slices are always valid UTF-8.
+///
+/// Constructing a non-UTF-8 string slice is not immediate Undefined Behavior, but any function
+/// called on a string slice may assume that it is valid UTF-8, which means that a non-UTF-8 string
+/// slice can lead to Undefined Behaviior down the road.
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_str {}
 
