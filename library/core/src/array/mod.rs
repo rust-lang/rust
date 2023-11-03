@@ -206,7 +206,7 @@ where
 
     #[inline]
     fn try_from(slice: &[T]) -> Result<[T; N], TryFromSliceError> {
-        <&Self>::try_from(slice).map(|r| *r)
+        <&Self>::try_from(slice).copied()
     }
 }
 
