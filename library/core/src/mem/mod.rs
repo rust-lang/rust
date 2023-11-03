@@ -1355,7 +1355,7 @@ impl<T> SizedTypeProperties for T {}
 /// # Examples
 ///
 /// ```
-/// #![feature(offset_of)]
+/// #![feature(offset_of, offset_of_enum)]
 ///
 /// use std::mem;
 /// #[repr(C)]

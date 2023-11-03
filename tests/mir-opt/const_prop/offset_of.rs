@@ -2,7 +2,7 @@
 // unit-test: ConstProp
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 
-#![feature(offset_of)]
+#![feature(offset_of, offset_of_enum)]
 
 use std::marker::PhantomData;
 use std::mem::offset_of;
