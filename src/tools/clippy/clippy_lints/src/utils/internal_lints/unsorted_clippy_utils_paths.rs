@@ -5,21 +5,21 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for various things we like to keep tidy in clippy.
+    /// Checks that [`clippy_utils::paths`] is sorted lexically
     ///
     /// ### Why is this bad?
     /// We like to pretend we're an example of tidy code.
     ///
     /// ### Example
     /// Wrong ordering of the util::paths constants.
-    pub CLIPPY_LINTS_INTERNAL,
+    pub UNSORTED_CLIPPY_UTILS_PATHS,
     internal,
     "various things that will negatively affect your clippy experience"
 }
 
-declare_lint_pass!(ClippyLintsInternal => [CLIPPY_LINTS_INTERNAL]);
+declare_lint_pass!(UnsortedClippyUtilsPaths => [UNSORTED_CLIPPY_UTILS_PATHS]);
 
-impl EarlyLintPass for ClippyLintsInternal {
+impl EarlyLintPass for UnsortedClippyUtilsPaths {
     fn check_crate(&mut self, cx: &EarlyContext<'_>, krate: &Crate) {
         if let Some(utils) = krate.items.iter().find(|item| item.ident.name.as_str() == "utils") {
             if let ItemKind::Mod(_, ModKind::Loaded(ref items, ..)) = utils.kind {
@@ -32,7 +32,7 @@ impl EarlyLintPass for ClippyLintsInternal {
                                 if *last_name > *name {
                                     span_lint(
                                         cx,
-                                        CLIPPY_LINTS_INTERNAL,
+                                        UNSORTED_CLIPPY_UTILS_PATHS,
                                         item.span,
                                         "this constant should be before the previous constant due to lexical \
                                          ordering",

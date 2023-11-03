@@ -1,6 +1,6 @@
+use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::macros::span_is_local;
-use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::path_def_id;
 use clippy_utils::source::snippet_opt;
 use rustc_errors::Applicability;
@@ -24,7 +24,7 @@ declare_clippy_lint! {
     /// According the std docs implementing `From<..>` is preferred since it gives you `Into<..>` for free where the reverse isn't true.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// struct StringWrapper(String);
     ///
     /// impl Into<StringWrapper> for String {
@@ -34,7 +34,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// struct StringWrapper(String);
     ///
     /// impl From<String> for StringWrapper {
@@ -88,7 +88,8 @@ impl<'tcx> LateLintPass<'tcx> for FromOverInto {
                 cx.tcx.sess.source_map().guess_head_span(item.span),
                 "an implementation of `From` is preferred since it gives you `Into<_>` for free where the reverse isn't true",
                 |diag| {
-                    // If the target type is likely foreign mention the orphan rules as it's a common source of confusion
+                    // If the target type is likely foreign mention the orphan rules as it's a common source of
+                    // confusion
                     if path_def_id(cx, target_ty.peel_refs()).map_or(true, |id| !id.is_local()) {
                         diag.help(
                             "`impl From<Local> for Foreign` is allowed by the orphan rules, for more information see\n\
@@ -96,7 +97,10 @@ impl<'tcx> LateLintPass<'tcx> for FromOverInto {
                         );
                     }
 
-                    let message = format!("replace the `Into` implementation with `From<{}>`", middle_trait_ref.self_ty());
+                    let message = format!(
+                        "replace the `Into` implementation with `From<{}>`",
+                        middle_trait_ref.self_ty()
+                    );
                     if let Some(suggestions) = convert_to_from(cx, into_trait_seg, target_ty, self_ty, impl_item_ref) {
                         diag.multipart_suggestion(message, suggestions, Applicability::MachineApplicable);
                     } else {
@@ -110,12 +114,12 @@ impl<'tcx> LateLintPass<'tcx> for FromOverInto {
     extract_msrv_attr!(LateContext);
 }
 
-/// Finds the occurences of `Self` and `self`
+/// Finds the occurrences of `Self` and `self`
 struct SelfFinder<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
-    /// Occurences of `Self`
+    /// Occurrences of `Self`
     upper: Vec<Span>,
-    /// Occurences of `self`
+    /// Occurrences of `self`
     lower: Vec<Span>,
     /// If any of the `self`/`Self` usages were from an expansion, or the body contained a binding
     /// already named `val`

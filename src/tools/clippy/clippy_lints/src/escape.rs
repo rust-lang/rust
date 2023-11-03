@@ -28,12 +28,12 @@ declare_clippy_lint! {
     /// into something.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// fn foo(x: Box<u32>) {}
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// fn foo(x: u32) {}
     /// ```
     #[clippy::version = "pre 1.29.0"]

@@ -58,7 +58,7 @@ impl<'tcx> LateLintPass<'tcx> for AssertionsOnResultStates {
                     return;
                 }
             }
-            let semicolon = if is_expr_final_block_expr(cx.tcx, e) {";"} else {""};
+            let semicolon = if is_expr_final_block_expr(cx.tcx, e) { ";" } else { "" };
             let mut app = Applicability::MachineApplicable;
             match method_segment.ident.as_str() {
                 "is_ok" if type_suitable_to_unwrap(cx, args.type_at(1)) => {
@@ -74,7 +74,7 @@ impl<'tcx> LateLintPass<'tcx> for AssertionsOnResultStates {
                         ),
                         app,
                     );
-                }
+                },
                 "is_err" if type_suitable_to_unwrap(cx, args.type_at(0)) => {
                     span_lint_and_sugg(
                         cx,
@@ -88,7 +88,7 @@ impl<'tcx> LateLintPass<'tcx> for AssertionsOnResultStates {
                         ),
                         app,
                     );
-                }
+                },
                 _ => (),
             };
         }

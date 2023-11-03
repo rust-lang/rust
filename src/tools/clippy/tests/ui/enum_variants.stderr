@@ -158,5 +158,17 @@ LL | |     }
    |
    = help: remove the postfixes and use full paths to the variants instead of glob imports
 
-error: aborting due to 14 previous errors
+error: variant name starts with the enum's name
+  --> $DIR/enum_variants.rs:212:9
+   |
+LL |         DataDependent,
+   |         ^^^^^^^^^^^^^
+
+error: variant name starts with the enum's name
+  --> $DIR/enum_variants.rs:217:9
+   |
+LL |         DatasDependent,
+   |         ^^^^^^^^^^^^^^
+
+error: aborting due to 16 previous errors
 

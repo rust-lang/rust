@@ -37,13 +37,13 @@ declare_clippy_lint! {
     /// opportunities for parallelization.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// fn foo(y: &mut i32) -> i32 {
     ///     12 + *y
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// fn foo(y: &i32) -> i32 {
     ///     12 + *y
     /// }
@@ -225,7 +225,10 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
             if let PatKind::Binding(_, canonical_id, ..) = arg.pat.kind
                 && !mutably_used_vars.contains(&canonical_id)
             {
-                self.fn_def_ids_to_maybe_unused_mut.entry(fn_def_id).or_default().push(input);
+                self.fn_def_ids_to_maybe_unused_mut
+                    .entry(fn_def_id)
+                    .or_default()
+                    .push(input);
             }
         }
     }
@@ -520,7 +523,11 @@ impl<'tcx> Visitor<'tcx> for FnNeedsMutVisitor<'_, 'tcx> {
         // #11182; do not lint if mutability is required elsewhere
         if let Node::Expr(expr) = cx.tcx.hir().get(hir_id)
             && let Some(parent) = get_parent_node(cx.tcx, expr.hir_id)
-            && let ty::FnDef(def_id, _) = cx.tcx.typeck(cx.tcx.hir().enclosing_body_owner(hir_id)).expr_ty(expr).kind()
+            && let ty::FnDef(def_id, _) = cx
+                .tcx
+                .typeck(cx.tcx.hir().enclosing_body_owner(hir_id))
+                .expr_ty(expr)
+                .kind()
             && let Some(def_id) = def_id.as_local()
         {
             if let Node::Expr(e) = parent

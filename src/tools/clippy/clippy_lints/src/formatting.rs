@@ -37,7 +37,7 @@ declare_clippy_lint! {
     /// This is either a typo in the binary operator or confusing.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # let foo = true;
     /// # let bar = false;
     /// // &&! looks like a different operator
@@ -45,7 +45,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # let foo = true;
     /// # let bar = false;
     /// if foo && !bar {}

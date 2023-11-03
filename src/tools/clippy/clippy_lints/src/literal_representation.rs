@@ -23,14 +23,14 @@ declare_clippy_lint! {
     /// Reading long numbers is difficult without separators.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # let _: u64 =
     /// 61864918973511
     /// # ;
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # let _: u64 =
     /// 61_864_918_973_511
     /// # ;
@@ -73,14 +73,14 @@ declare_clippy_lint! {
     /// grouped digits.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # let _: u64 =
     /// 618_64_9189_73_511
     /// # ;
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # let _: u64 =
     /// 61_864_918_973_511
     /// # ;
@@ -100,7 +100,7 @@ declare_clippy_lint! {
     /// Negatively impacts readability.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let x: u32 = 0xFFF_FFF;
     /// let y: u8 = 0b01_011_101;
     /// ```
@@ -120,7 +120,7 @@ declare_clippy_lint! {
     /// Negatively impacts readability.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let x: u64 = 6186491_8973511;
     /// ```
     #[clippy::version = "pre 1.29.0"]

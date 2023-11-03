@@ -21,11 +21,11 @@ declare_clippy_lint! {
     /// the end of the range to be the length instead.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let x = [0..200];
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// // If it was intended to include every element in the range...
     /// let x = (0..200).collect::<Vec<i32>>();
     /// // ...Or if 200 was meant to be the len

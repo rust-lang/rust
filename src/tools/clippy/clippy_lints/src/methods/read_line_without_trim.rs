@@ -46,9 +46,12 @@ pub fn check(cx: &LateContext<'_>, call: &Expr<'_>, recv: &Expr<'_>, arg: &Expr<
                     span,
                     "calling `.parse()` without trimming the trailing newline character",
                     |diag| {
-                        diag.span_note(call.span, "call to `.read_line()` here, \
+                        diag.span_note(
+                            call.span,
+                            "call to `.read_line()` here, \
                             which leaves a trailing newline character in the buffer, \
-                            which in turn will cause `.parse()` to fail");
+                            which in turn will cause `.parse()` to fail",
+                        );
 
                         diag.span_suggestion(
                             expr.span,
@@ -56,7 +59,7 @@ pub fn check(cx: &LateContext<'_>, call: &Expr<'_>, recv: &Expr<'_>, arg: &Expr<
                             format!("{local_snippet}.trim_end()"),
                             Applicability::MachineApplicable,
                         );
-                    }
+                    },
                 );
             }
 

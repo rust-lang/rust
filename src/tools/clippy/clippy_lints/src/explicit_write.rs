@@ -19,7 +19,7 @@ declare_clippy_lint! {
     /// Using `(e)println! is clearer and more concise
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # use std::io::Write;
     /// # let bar = "furchtbar";
     /// writeln!(&mut std::io::stderr(), "foo: {:?}", bar).unwrap();
@@ -27,7 +27,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # use std::io::Write;
     /// # let bar = "furchtbar";
     /// eprintln!("foo: {:?}", bar);
@@ -58,7 +58,9 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitWrite {
                 Some(sym::io_stderr) => ("stderr", "e"),
                 _ => return,
             };
-            let Some(format_args) = find_format_args(cx, write_arg, ExpnId::root()) else { return; };
+            let Some(format_args) = find_format_args(cx, write_arg, ExpnId::root()) else {
+                return;
+            };
 
             // ordering is important here, since `writeln!` uses `write!` internally
             let calling_macro = if is_expn_of(write_call.span, "writeln").is_some() {
@@ -78,18 +80,11 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitWrite {
                     macro_name.replace("write", "print"),
                 )
             } else {
-                (
-                    format!("{dest_name}().write_fmt(...)"),
-                    "print".into(),
-                )
+                (format!("{dest_name}().write_fmt(...)"), "print".into())
             };
             let mut applicability = Applicability::MachineApplicable;
-            let inputs_snippet = snippet_with_applicability(
-                cx,
-                format_args_inputs_span(&format_args),
-                "..",
-                &mut applicability,
-            );
+            let inputs_snippet =
+                snippet_with_applicability(cx, format_args_inputs_span(&format_args), "..", &mut applicability);
             span_lint_and_sugg(
                 cx,
                 EXPLICIT_WRITE,

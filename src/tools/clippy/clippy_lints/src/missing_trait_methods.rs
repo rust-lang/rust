@@ -21,7 +21,7 @@ declare_clippy_lint! {
     /// Indicates that a method is missing.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// trait Trait {
     ///     fn required();
     ///
@@ -35,7 +35,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// trait Trait {
     ///     fn required();
     ///

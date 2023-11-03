@@ -16,7 +16,7 @@ declare_clippy_lint! {
     /// binding one is kind of pointless.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let x = {
     ///     1;
     /// };
@@ -38,7 +38,7 @@ declare_clippy_lint! {
     /// adds semicolons at the end of the operands.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # fn foo() {};
     /// # fn bar() {};
     /// # fn baz() {};
@@ -51,7 +51,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     /// is equal to
-    /// ```rust
+    /// ```no_run
     /// # fn foo() {};
     /// # fn bar() {};
     /// # fn baz() {};
@@ -63,7 +63,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// For asserts:
-    /// ```rust
+    /// ```no_run
     /// # fn foo() {};
     /// # fn bar() {};
     /// assert_eq!({ foo(); }, { bar(); });

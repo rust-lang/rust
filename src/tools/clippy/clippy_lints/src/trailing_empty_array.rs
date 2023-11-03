@@ -13,7 +13,7 @@ declare_clippy_lint! {
     /// Zero-sized arrays aren't very useful in Rust itself, so such a struct is likely being created to pass to C code or in some other situation where control over memory layout matters (for example, in conjunction with manual allocation to make it easy to compute the offset of the array). Either way, `#[repr(C)]` (or another `repr` attribute) is needed.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// struct RarelyUseful {
     ///     some_field: u32,
     ///     last: [u32; 0],
@@ -21,7 +21,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// #[repr(C)]
     /// struct MoreOftenUseful {
     ///     some_field: usize,

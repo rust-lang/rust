@@ -24,7 +24,7 @@ declare_clippy_lint! {
     /// ignored.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// struct Foo<A, B> {
     ///     x: A,
     ///     y: B,
@@ -33,7 +33,7 @@ declare_clippy_lint! {
     /// impl<B, A> Foo<B, A> {}
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// struct Foo<A, B> {
     ///     x: A,
     ///     y: B,

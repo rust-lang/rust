@@ -23,7 +23,7 @@ declare_clippy_lint! {
     /// Note: If this lint is used, prepare to allow this a lot.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// pub fn a<T>(t: &T)
     /// where
     ///     T: AsRef<str>,
@@ -37,7 +37,7 @@ declare_clippy_lint! {
     ///
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// pub fn a<T>(t: &T)
     /// where
     ///     T: AsRef<str>,

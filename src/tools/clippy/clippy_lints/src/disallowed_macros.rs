@@ -1,3 +1,4 @@
+use clippy_config::types::DisallowedPath;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::macros::macro_backtrace;
 use rustc_ast::Attribute;
@@ -7,8 +8,6 @@ use rustc_hir::{Expr, ExprKind, ForeignItem, HirId, ImplItem, Item, Pat, Path, S
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{ExpnId, Span};
-
-use crate::utils::conf;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -35,7 +34,7 @@ declare_clippy_lint! {
     ///     { path = "serde::Serialize", reason = "no serializing" },
     /// ]
     /// ```
-    /// ```
+    /// ```no_run
     /// use serde::Serialize;
     ///
     /// // Example code where clippy issues a warning
@@ -55,13 +54,13 @@ declare_clippy_lint! {
 }
 
 pub struct DisallowedMacros {
-    conf_disallowed: Vec<conf::DisallowedPath>,
+    conf_disallowed: Vec<DisallowedPath>,
     disallowed: DefIdMap<usize>,
     seen: FxHashSet<ExpnId>,
 }
 
 impl DisallowedMacros {
-    pub fn new(conf_disallowed: Vec<conf::DisallowedPath>) -> Self {
+    pub fn new(conf_disallowed: Vec<DisallowedPath>) -> Self {
         Self {
             conf_disallowed,
             disallowed: DefIdMap::default(),

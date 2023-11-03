@@ -25,14 +25,14 @@ declare_clippy_lint! {
     /// But when none of these apply, a simple `for` loop is more idiomatic.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let v = vec![0, 1, 2];
     /// v.iter().for_each(|elem| {
     ///     println!("{}", elem);
     /// })
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let v = vec![0, 1, 2];
     /// for elem in v.iter() {
     ///     println!("{}", elem);

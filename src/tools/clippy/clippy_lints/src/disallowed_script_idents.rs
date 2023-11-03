@@ -30,7 +30,7 @@ declare_clippy_lint! {
     /// [`non_ascii_idents`]: https://doc.rust-lang.org/rustc/lints/listing/allowed-by-default.html#non-ascii-idents
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// // Assuming that `clippy.toml` contains the following line:
     /// // allowed-scripts = ["Latin", "Cyrillic"]
     /// let counter = 10; // OK, latin is allowed.

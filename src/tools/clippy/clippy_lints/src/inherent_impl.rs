@@ -18,7 +18,7 @@ declare_clippy_lint! {
     /// Splitting the implementation of a type makes the code harder to navigate.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// struct X;
     /// impl X {
     ///     fn one() {}
@@ -30,7 +30,7 @@ declare_clippy_lint! {
     ///
     /// Could be written:
     ///
-    /// ```rust
+    /// ```no_run
     /// struct X;
     /// impl X {
     ///     fn one() {}

@@ -98,17 +98,17 @@ pub(super) fn check<'tcx>(
             },
 
             (ReducedTy::UnorderedFields(from_ty), ReducedTy::UnorderedFields(to_ty)) if from_ty != to_ty => {
-                let same_adt_did = if let (ty::Adt(from_def, from_subs), ty::Adt(to_def, to_subs))
-                        = (from_ty.kind(), to_ty.kind())
-                        && from_def == to_def
-                    {
-                        if same_except_params(from_subs, to_subs) {
-                            return false;
-                        }
-                        Some(from_def.did())
-                    } else {
-                        None
-                    };
+                let same_adt_did = if let (ty::Adt(from_def, from_subs), ty::Adt(to_def, to_subs)) =
+                    (from_ty.kind(), to_ty.kind())
+                    && from_def == to_def
+                {
+                    if same_except_params(from_subs, to_subs) {
+                        return false;
+                    }
+                    Some(from_def.did())
+                } else {
+                    None
+                };
                 span_lint_and_then(
                     cx,
                     TRANSMUTE_UNDEFINED_REPR,

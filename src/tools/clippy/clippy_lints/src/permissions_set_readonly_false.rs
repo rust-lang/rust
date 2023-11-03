@@ -14,7 +14,7 @@ declare_clippy_lint! {
     /// On Unix platforms this results in the file being world writable,
     /// equivalent to `chmod a+w <file>`.
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// use std::fs::File;
     /// let f = File::create("foo.txt").unwrap();
     /// let metadata = f.metadata().unwrap();
@@ -43,9 +43,11 @@ impl<'tcx> LateLintPass<'tcx> for PermissionsSetReadonlyFalse {
                 "call to `set_readonly` with argument `false`",
                 |diag| {
                     diag.note("on Unix platforms this results in the file being world writable");
-                    diag.help("you can set the desired permissions using `PermissionsExt`. For more information, see\n\
-                        https://doc.rust-lang.org/std/os/unix/fs/trait.PermissionsExt.html");
-                }
+                    diag.help(
+                        "you can set the desired permissions using `PermissionsExt`. For more information, see\n\
+                        https://doc.rust-lang.org/std/os/unix/fs/trait.PermissionsExt.html",
+                    );
+                },
             );
         }
     }

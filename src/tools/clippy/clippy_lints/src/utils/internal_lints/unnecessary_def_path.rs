@@ -270,7 +270,8 @@ fn read_mir_alloc_def_path<'tcx>(cx: &LateContext<'tcx>, alloc: &'tcx Allocation
                 if let GlobalAlloc::Memory(alloc) = cx.tcx.global_alloc(alloc) {
                     let alloc = alloc.inner();
                     str::from_utf8(alloc.inspect_with_uninit_and_ptr_outside_interpreter(0..alloc.len()))
-                        .ok().map(ToOwned::to_owned)
+                        .ok()
+                        .map(ToOwned::to_owned)
                 } else {
                     None
                 }

@@ -43,13 +43,13 @@ declare_clippy_lint! {
     /// (by using `Borrow` trait, for example), depending on how the function is used.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// fn foo(v: Vec<i32>) {
     ///     assert_eq!(v.len(), 42);
     /// }
     /// ```
     /// should be
-    /// ```rust
+    /// ```no_run
     /// fn foo(v: &[i32]) {
     ///     assert_eq!(v.len(), 42);
     /// }

@@ -23,12 +23,12 @@ declare_clippy_lint! {
     /// complexity.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let a = (|| 42)();
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let a = 42;
     /// ```
     #[clippy::version = "pre 1.29.0"]
@@ -98,11 +98,15 @@ fn find_innermost_closure<'tcx>(
         && steps > 0
     {
         expr = body.value;
-        data = Some((body.value, closure.fn_decl, if is_async_closure(body) {
-            ty::Asyncness::Yes
-        } else {
-            ty::Asyncness::No
-        }));
+        data = Some((
+            body.value,
+            closure.fn_decl,
+            if is_async_closure(body) {
+                ty::Asyncness::Yes
+            } else {
+                ty::Asyncness::No
+            },
+        ));
         steps -= 1;
     }
 
@@ -154,7 +158,8 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClosureCall {
                 |diag| {
                     if fn_decl.inputs.is_empty() {
                         let mut applicability = Applicability::MachineApplicable;
-                        let mut hint = Sugg::hir_with_context(cx, body, full_expr.span.ctxt(), "..", &mut applicability);
+                        let mut hint =
+                            Sugg::hir_with_context(cx, body, full_expr.span.ctxt(), "..", &mut applicability);
 
                         if coroutine_kind.is_async()
                             && let hir::ExprKind::Closure(closure) = body.kind
@@ -173,10 +178,10 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClosureCall {
                             full_expr.span,
                             "try doing something like",
                             hint.maybe_par(),
-                            applicability
+                            applicability,
                         );
                     }
-                }
+                },
             );
         }
     }
