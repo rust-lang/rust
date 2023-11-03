@@ -860,7 +860,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         self.suggest_boxing_for_return_impl_trait(
                             err,
                             ret_sp,
-                            prior_arms.iter().chain(std::iter::once(&arm_span)).map(|s| *s),
+                            prior_arms.iter().chain(std::iter::once(&arm_span)).copied(),
                         );
                     }
                 }
