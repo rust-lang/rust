@@ -267,6 +267,15 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                                 "SIMD types are experimental and possibly buggy"
                             );
                         }
+
+                        if item.has_name(sym::scalable) {
+                            gate!(
+                                &self,
+                                repr_scalable,
+                                attr.span,
+                                "Scalable SIMD types are experimental and possibly buggy"
+                            );
+                        }
                     }
                 }
             }
