@@ -3796,7 +3796,6 @@ dependencies = [
  "rustc_monomorphize",
  "rustc_parse",
  "rustc_passes",
- "rustc_plugin_impl",
  "rustc_privacy",
  "rustc_query_system",
  "rustc_resolve",
@@ -4085,7 +4084,6 @@ dependencies = [
  "rustc_monomorphize",
  "rustc_parse",
  "rustc_passes",
- "rustc_plugin_impl",
  "rustc_privacy",
  "rustc_query_impl",
  "rustc_query_system",
@@ -4393,21 +4391,6 @@ dependencies = [
  "rustc_target",
  "rustc_trait_selection",
  "tracing",
-]
-
-[[package]]
-name = "rustc_plugin_impl"
-version = "0.0.0"
-dependencies = [
- "libloading 0.7.4",
- "rustc_ast",
- "rustc_errors",
- "rustc_fluent_macro",
- "rustc_lint",
- "rustc_macros",
- "rustc_metadata",
- "rustc_session",
- "rustc_span",
 ]
 
 [[package]]

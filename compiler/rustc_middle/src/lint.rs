@@ -17,8 +17,7 @@ use crate::ty::TyCtxt;
 /// How a lint level was set.
 #[derive(Clone, Copy, PartialEq, Eq, HashStable, Debug)]
 pub enum LintLevelSource {
-    /// Lint is at the default level as declared
-    /// in rustc or a plugin.
+    /// Lint is at the default level as declared in rustc.
     Default,
 
     /// Lint level was set by an attribute.

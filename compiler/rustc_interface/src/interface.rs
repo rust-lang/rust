@@ -354,7 +354,7 @@ pub struct Config {
     pub hash_untracked_state: Option<Box<dyn FnOnce(&Session, &mut StableHasher) + Send>>,
 
     /// This is a callback from the driver that is called when we're registering lints;
-    /// it is called during plugin registration when we have the LintStore in a non-shared state.
+    /// it is called during lint loading when we have the LintStore in a non-shared state.
     ///
     /// Note that if you find a Some here you probably want to call that function in the new
     /// function being registered.

@@ -417,24 +417,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         naked_functions, experimental!(naked)
     ),
 
-    // Plugins:
-    BuiltinAttribute {
-        name: sym::plugin,
-        only_local: false,
-        type_: CrateLevel,
-        template: template!(List: "name"),
-        duplicates: DuplicatesOk,
-        gate: Gated(
-            Stability::Deprecated(
-                "https://github.com/rust-lang/rust/pull/64675",
-                Some("may be removed in a future compiler version"),
-            ),
-            sym::plugin,
-            "compiler plugins are deprecated",
-            cfg_fn!(plugin)
-        ),
-    },
-
     // Testing:
     gated!(
         test_runner, CrateLevel, template!(List: "path"), ErrorFollowing, custom_test_frameworks,
