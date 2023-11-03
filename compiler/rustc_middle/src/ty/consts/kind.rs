@@ -50,6 +50,8 @@ impl<'tcx> UnevaluatedConst<'tcx> {
                     args: ty::GenericArgs::identity_for_item(tcx, self.def),
                 },
             )
+        } else if self.args.is_empty() && !tcx.features().generic_const_exprs {
+            (param_env.without_caller_bounds(), tcx.erase_regions(self))
         } else {
             (tcx.erase_regions(param_env).with_reveal_all_normalized(tcx), tcx.erase_regions(self))
         }
