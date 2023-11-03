@@ -4255,7 +4255,7 @@ impl Methods {
                         map_clone::check(cx, expr, recv, m_arg, &self.msrv);
                         match method_call(recv) {
                             Some((map_name @ ("iter" | "into_iter"), recv2, _, _, _)) => {
-                                iter_kv_map::check(cx, map_name, expr, recv2, m_arg);
+                                iter_kv_map::check(cx, map_name, expr, recv2, m_arg, &self.msrv);
                             },
                             Some(("cloned", recv2, [], _, _)) => iter_overeager_cloned::check(
                                 cx,
