@@ -1,4 +1,4 @@
-error[E0277]: expected a `FnOnce<({integer},)>` closure, found `Option<usize>`
+error[E0277]: expected a `FnOnce({integer})` closure, found `Option<usize>`
   --> $DIR/ruby_style_closure_successful_parse.rs:3:31
    |
 LL |       let p = Some(45).and_then({|x|
@@ -9,7 +9,7 @@ LL | |         1 + 1;
 LL | |         Some(x * 2)
    | |         ----------- this tail expression is of type `Option<usize>`
 LL | |     });
-   | |_____^ expected an `FnOnce<({integer},)>` closure, found `Option<usize>`
+   | |_____^ expected an `FnOnce({integer})` closure, found `Option<usize>`
    |
    = help: the trait `FnOnce<({integer},)>` is not implemented for `Option<usize>`
 note: required by a bound in `Option::<T>::and_then`
