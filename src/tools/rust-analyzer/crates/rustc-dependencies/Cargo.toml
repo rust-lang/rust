@@ -16,5 +16,10 @@ ra-ap-rustc_parse_format = { version = "0.14.0", default-features = false }
 ra-ap-rustc_index = { version = "0.14.0", default-features = false }
 ra-ap-rustc_abi = { version = "0.14.0", default-features = false }
 
+in-tree-rustc_lexer = { path = "../../../../compiler/rustc_lexer", package = "rustc_lexer" }
+in-tree-rustc_parse_format = { path = "../../../../compiler/rustc_parse_format", package = "rustc_parse_format", default-features = false }
+in-tree-rustc_index = { path = "../../../../compiler/rustc_index", package = "rustc_index", default-features = false }
+in-tree-rustc_abi = { path = "../../../../compiler/rustc_abi", package = "rustc_abi", default-features = false }
+
 [features]
 in-rust-tree = []
