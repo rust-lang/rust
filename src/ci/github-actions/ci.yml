@@ -331,6 +331,8 @@ jobs:
             <<: *job-linux-4c
 
           - name: x86_64-gnu-llvm-15
+            env:
+              ENABLE_GCC_CODEGEN: "1"
             <<: *job-linux-16c
 
           - name: x86_64-gnu-tools
