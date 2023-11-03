@@ -1592,6 +1592,18 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                                 return ProbeResult::NoMatch;
                             }
                         }
+
+                        // Some trait methods are excluded for boxed slices before 2024.
+                        // (`boxed_slice.into_iter()` wants a slice iterator for compatibility.)
+                        if self_ty.is_box()
+                            && self_ty.boxed_ty().is_slice()
+                            && !method_name.span.at_least_rust_2024()
+                        {
+                            let trait_def = self.tcx.trait_def(trait_ref.def_id);
+                            if trait_def.skip_boxed_slice_during_method_dispatch {
+                                return ProbeResult::NoMatch;
+                            }
+                        }
                     }
                     let predicate = ty::Binder::dummy(trait_ref).to_predicate(self.tcx);
                     parent_pred = Some(predicate);

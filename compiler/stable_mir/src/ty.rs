@@ -1193,6 +1193,7 @@ pub struct TraitDecl {
     pub is_marker: bool,
     pub is_coinductive: bool,
     pub skip_array_during_method_dispatch: bool,
+    pub skip_boxed_slice_during_method_dispatch: bool,
     pub specialization_kind: TraitSpecializationKind,
     pub must_implement_one_of: Option<Vec<Ident>>,
     pub implement_via_object: bool,
