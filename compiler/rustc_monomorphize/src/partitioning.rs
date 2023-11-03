@@ -1154,30 +1154,47 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> (&DefIdSet, &[Au
             if !target_attrs.apply_autodiff() {
                 return None;
             }
-            println!("target_id: {:?}", target_id);
+            //println!("target_id: {:?}", target_id);
 
             let target_symbol =
                 symbol_name_for_instance_in_crate(tcx, instance.clone(), LOCAL_CRATE);
             //let range = usage_map.used_map.get(&item).unwrap();
             //TODO: check if last and next line are correct after rebasing
 
-            let source = usage_map.get_user_items(*item)
+            println!("target_symbol: {:?}", target_symbol);
+            println!("target_attrs: {:?}", target_attrs);
+            println!("target_id: {:?}", target_id);
+            //print item
+            println!("item: {:?}", item);
+            let source = usage_map.used_map.get(&item).unwrap()
                 .into_iter()
                 .filter_map(|item| match *item {
                     MonoItem::Fn(ref instance_s) => {
                         let source_id = instance_s.def_id();
+                        println!("source_id_inner: {:?}", source_id);
+                        println!("instance_s: {:?}", instance_s);
 
                         if tcx.autodiff_attrs(source_id).is_active() {
+                            println!("source_id is active");
                             return Some(instance_s);
                         }
+                        //target_symbol: "_ZN14rosenbrock_rev12d_rosenbrock17h3352c4f00c3082daE"
+                        //target_attrs: AutoDiffAttrs { mode: Reverse, ret_activity: Active, input_activity: [Duplicated] }
+                        //target_id: DefId(0:8 ~ rosenbrock_rev[2708]::d_rosenbrock)
+                        //item: Fn(Instance { def: Item(DefId(0:8 ~ rosenbrock_rev[2708]::d_rosenbrock)), args: [] })
+                        //source_id_inner: DefId(0:4 ~ rosenbrock_rev[2708]::main)
+                        //instance_s: Instance { def: Item(DefId(0:4 ~ rosenbrock_rev[2708]::main)), args: [] }
+
 
                         None
                     }
                     _ => None,
                 })
                 .next();
+            println!("source: {:?}", source);
 
             source.map(|inst| {
+                println!("source_id: {:?}", inst.def_id());
                 let (inputs, output) = fnc_typetrees(inst.ty(tcx, ParamEnv::empty()), tcx);
                 let symb = symbol_name_for_instance_in_crate(tcx, inst.clone(), LOCAL_CRATE);
 
