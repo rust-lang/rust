@@ -11,7 +11,7 @@ use rustc_hir::def::Res;
 use rustc_hir::{Closure, Expr, ExprKind, PatKind, PathSegment, QPath, UnOp};
 use rustc_lint::LateContext;
 use rustc_middle::ty::adjustment::Adjust;
-use rustc_span::source_map::Span;
+use rustc_span::Span;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use std::borrow::Cow;
 

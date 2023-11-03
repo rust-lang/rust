@@ -30,8 +30,8 @@ use rustc_resolve::rustdoc::{
 use rustc_session::parse::ParseSess;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::edition::Edition;
-use rustc_span::source_map::{BytePos, FilePathMapping, SourceMap, Span};
-use rustc_span::{sym, FileName, Pos};
+use rustc_span::{sym, BytePos, FileName, Pos, Span};
+use rustc_span::source_map::{FilePathMapping, SourceMap};
 use std::ops::Range;
 use std::{io, thread};
 use url::Url;
