@@ -291,7 +291,7 @@ mod prim_never {}
 /// Surrogate code points, used by UTF-16, are in the range 0xD800 to 0xDFFF.
 ///
 /// No `char` may be constructed, whether as a literal or at runtime, that is not a
-/// Unicode scalar value. Violating this rule causes Undefined Behavior.
+/// Unicode scalar value. Violating this rule causes undefined behavior.
 ///
 /// ```compile_fail
 /// // Each of these is a compiler error
@@ -308,10 +308,10 @@ mod prim_never {}
 /// let _ = unsafe { char::from_u32_unchecked(0x110000) };
 /// ```
 ///
-/// USVs are also the exact set of values that may be encoded in UTF-8. Because `char` values are
-/// USVs and functions may assume [incoming `str` values are valid
-/// UTF-8](primitive.str.html#invariant), it is safe to store any `char` in a `str` or read any
-/// character from a `str` as a `char`.
+/// Unicode scalar values are also the exact set of values that may be encoded in UTF-8. Because
+/// `char` values are Unicode scalar values and functions may assume [incoming `str` values are
+/// valid UTF-8](primitive.str.html#invariant), it is safe to store any `char` in a `str` or read
+/// any character from a `str` as a `char`.
 ///
 /// The gap in valid `char` values is understood by the compiler, so in the
 /// below example the two ranges are understood to cover the whole range of
@@ -325,11 +325,10 @@ mod prim_never {}
 /// };
 /// ```
 ///
-/// All USVs are valid `char` values, but not all of them represent a real
-/// character. Many USVs are not currently assigned to a character, but may be
-/// in the future ("reserved"); some will never be a character
-/// ("noncharacters"); and some may be given different meanings by different
-/// users ("private use").
+/// All Unicode scalar values are valid `char` values, but not all of them represent a real
+/// character. Many Unicode scalar values are not currently assigned to a character, but may be in
+/// the future ("reserved"); some will never be a character ("noncharacters"); and some may be given
+/// different meanings by different users ("private use").
 ///
 /// [Unicode code point]: https://www.unicode.org/glossary/#code_point
 /// [Unicode scalar value]: https://www.unicode.org/glossary/#unicode_scalar_value
@@ -946,9 +945,9 @@ mod prim_slice {}
 ///
 /// Rust libraries may assume that string slices are always valid UTF-8.
 ///
-/// Constructing a non-UTF-8 string slice is not immediate Undefined Behavior, but any function
+/// Constructing a non-UTF-8 string slice is not immediate undefined behavior, but any function
 /// called on a string slice may assume that it is valid UTF-8, which means that a non-UTF-8 string
-/// slice can lead to Undefined Behaviior down the road.
+/// slice can lead to undefined behavior down the road.
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_str {}
 
