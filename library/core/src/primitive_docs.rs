@@ -1393,8 +1393,9 @@ mod prim_usize {}
 /// # Safety
 ///
 /// For all types, `T: ?Sized`, and for all `t: &T` or `t: &mut T`, unsafe code may assume that
-/// the following properties hold. It is undefined behavior to produce a `t: &T` or `t: &mut T`
-/// which violates any of these properties.
+/// the following properties hold. Rust programmers must assume that, unless explicitly stated
+/// otherwise, any Rust code they did not author themselves may rely on these properties, and that
+/// violating them may cause that code to exhibit undefined behavior.
 ///
 /// * `t` is aligned to `align_of_val(t)`
 /// * `t` is dereferenceable for `size_of_val(t)` many bytes
