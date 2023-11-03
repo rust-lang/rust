@@ -92,7 +92,6 @@
 //! source-level module, functions from the same module will be available for
 //! inlining, even when they are not marked `#[inline]`.
 
-// Manuel, fixing rebase
 use rustc_symbol_mangling::symbol_name_for_instance_in_crate;
 use rustc_middle::middle::typetree::{Kind, Type, TypeTree};
 use rustc_target::abi::FieldsShape;
@@ -1143,7 +1142,6 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> (&DefIdSet, &[Au
         })
         .collect();
 
-
     let autodiff_items = items
         .iter()
         .filter_map(|item| match *item {
@@ -1156,6 +1154,7 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> (&DefIdSet, &[Au
             if !target_attrs.apply_autodiff() {
                 return None;
             }
+            println!("target_id: {:?}", target_id);
 
             let target_symbol =
                 symbol_name_for_instance_in_crate(tcx, instance.clone(), LOCAL_CRATE);
@@ -1250,9 +1249,6 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> (&DefIdSet, &[Au
 
     (tcx.arena.alloc(mono_items), autodiff_items, codegen_units)
 }
-//use rustc_middle::ty::{self, Adt, ParamEnvAnd, Ty};
-//use rustc_target::abi::FieldsShape;
-//use std::iter;
 
 pub fn typetree_empty() -> TypeTree {
     TypeTree(vec![])
@@ -1263,19 +1259,14 @@ pub fn typetree_from_ty<'a>(ty: Ty<'a>, tcx: TyCtxt<'a>, depth: usize) -> TypeTr
         if ty.is_fn_ptr() {
             unimplemented!("what to do whith fn ptr?");
         }
-
         let inner_ty = ty.builtin_deref(true).unwrap().ty;
         let child = typetree_from_ty(inner_ty, tcx, depth + 1);
-
         let tt = Type { offset: -1, kind: Kind::Pointer, size: 8, child };
-        //println!("{:depth$} add indirection {:?}", "", tt);
-
         return TypeTree(vec![tt]);
     }
 
     if ty.is_scalar() {
         assert!(!ty.is_any_ptr());
-
         let (kind, size) = if ty.is_integral() {
             (Kind::Integer, 8)
         } else {
@@ -1286,7 +1277,6 @@ pub fn typetree_from_ty<'a>(ty: Ty<'a>, tcx: TyCtxt<'a>, depth: usize) -> TypeTr
                 _ => panic!("floatTy scalar that is neither f32 nor f64"),
             }
         };
-
         return TypeTree(vec![Type { offset: -1, child: typetree_empty(), kind, size }]);
     }
 
@@ -1311,7 +1301,6 @@ pub fn typetree_from_ty<'a>(ty: Ty<'a>, tcx: TyCtxt<'a>, depth: usize) -> TypeTr
                 FieldsShape::Arbitrary { offsets: o, memory_index: m } => (o, m),
                 _ => panic!(""),
             };
-            //println!("{:depth$} combine fields", "");
 
             let fields = adt_def.all_fields();
             let fields = fields
@@ -1336,17 +1325,12 @@ pub fn typetree_from_ty<'a>(ty: Ty<'a>, tcx: TyCtxt<'a>, depth: usize) -> TypeTr
                         }
                     }
 
-                    //inner_tt.offset = offset;
-
-                    //println!("{:depth$} -> {:?}", "", child);
-
                     Some(child)
                 })
                 .flatten()
                 .collect::<Vec<Type>>();
 
             let ret_tt = TypeTree(fields);
-            //println!("{:depth$} into {:?}", "", ret_tt);
             return ret_tt;
         } else {
             unimplemented!("adt that isn't a struct");
@@ -1378,8 +1362,6 @@ pub fn typetree_from_ty<'a>(ty: Ty<'a>, tcx: TyCtxt<'a>, depth: usize) -> TypeTr
                 .collect(),
         );
 
-        //println!("{:depth$} repeated array into {:?}", "", tt);
-
         return tt;
     }
 
@@ -1390,7 +1372,6 @@ pub fn typetree_from_ty<'a>(ty: Ty<'a>, tcx: TyCtxt<'a>, depth: usize) -> TypeTr
         return subtt;
     }
 
-    //println!("Warning: create empty typetree for {}", ty);
     typetree_empty()
 }
 

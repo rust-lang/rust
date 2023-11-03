@@ -1537,8 +1537,6 @@ options! {
         "enables LTO for dylib crate type"),
     emit_stack_sizes: bool = (false, parse_bool, [UNTRACKED],
         "emit a section containing stack size metadata (default: no)"),
-    enzyme_print_activity: bool = (false, parse_bool, [TRACKED],
-        "print type trees for functions passed to enzyme"),
     emit_thin_lto: bool = (true, parse_bool, [TRACKED],
         "emit the bc module with thin LTO info (default: yes)"),
     export_executable_symbols: bool = (false, parse_bool, [TRACKED],

@@ -118,7 +118,6 @@ pub struct ModuleConfig {
     pub inline_threshold: Option<u32>,
     pub emit_lifetime_markers: bool,
     pub llvm_plugins: Vec<String>,
-    pub enzyme_print_activity: bool,
 }
 
 impl ModuleConfig {
@@ -196,7 +195,6 @@ impl ModuleConfig {
                 false
             ),
 
-            enzyme_print_activity: sess.opts.unstable_opts.enzyme_print_activity,
             sanitizer: if_regular!(sess.opts.unstable_opts.sanitizer, SanitizerSet::empty()),
             sanitizer_recover: if_regular!(
                 sess.opts.unstable_opts.sanitizer_recover,
@@ -398,19 +396,19 @@ fn generate_lto_work<B: ExtraBackendMethods>(
 
     if !needs_fat_lto.is_empty() {
         assert!(needs_thin_lto.is_empty());
-        let mut lto_module =
+        let mut module =
             B::run_fat_lto(cgcx, needs_fat_lto, import_only_modules).unwrap_or_else(|e| e.raise());
         if cgcx.lto == Lto::Fat {
             let config = cgcx.config(ModuleKind::Regular);
-            lto_module = unsafe { lto_module.autodiff(cgcx, autodiff, typetrees, config).unwrap() };
+            module = unsafe { module.autodiff(cgcx, autodiff, typetrees, config).unwrap() };
         }
         // We are adding a single work item, so the cost doesn't matter.
-        vec![(WorkItem::LTO(lto_module), 0)]
+        vec![(WorkItem::LTO(module), 0)]
     } else {
         assert!(needs_fat_lto.is_empty());
-        let (lto_modules, copy_jobs) = B::run_thin_lto(cgcx, needs_thin_lto, import_only_modules)
+        let (modules, copy_jobs) = B::run_thin_lto(cgcx, needs_thin_lto, import_only_modules)
             .unwrap_or_else(|e| e.raise());
-        lto_modules
+        modules
             .into_iter()
             .map(|module| {
                 let cost = module.cost();

@@ -88,7 +88,6 @@ impl<B: WriteBackendMethods> LtoModuleCodegen<B> {
     ) -> Result<LtoModuleCodegen<B>, FatalError> {
         match &self {
             LtoModuleCodegen::Fat { ref module, .. } => {
-                //let module = module.take().unwrap();
                 {
                     B::autodiff(cgcx, &module, diff_fncs, typetrees, config)?;
                 }

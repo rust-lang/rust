@@ -273,7 +273,6 @@ fn fat_lto(
         info!("pushing cached module {:?}", wp.cgu_name);
         (buffer, CString::new(wp.cgu_name).unwrap())
     }));
-
     for module in modules {
         match module {
             FatLtoInput::InMemory(m) => in_memory.push(m),

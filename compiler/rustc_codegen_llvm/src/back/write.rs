@@ -628,15 +628,13 @@ fn get_params(fnc: &Value) -> Vec<&Value> {
     }
 }
 
-// TODO: cleanup
+// TODO: Here we could start adding length checks for the shaddow args.
 unsafe fn create_wrapper<'a>(
     llmod: &'a llvm::Module,
-    //module: &'a ModuleCodegen<ModuleLlvm>,
     fnc: &'a Value,
     u_type: &Type,
     fnc_name: String,
 ) -> (&'a Value, &'a BasicBlock, Vec<&'a Value>, Vec<&'a Value>, CString) {
-    //let llmod = module.module_llvm.llmod();
     let context = LLVMGetModuleContext(llmod);
     let inner_fnc_name = "inner_".to_string() + &fnc_name;
     let c_inner_fnc_name = CString::new(inner_fnc_name.clone()).unwrap();
@@ -656,22 +654,13 @@ unsafe fn create_wrapper<'a>(
     (outer_fnc, basic_block, outer_params, inner_params, c_inner_fnc_name)
 }
 
-//pub(crate) fn get_type(t: LLVMTypeRef) -> CString {
-//    unsafe { CString::from_raw(LLVMPrintTypeToString(t)) }
-//}
-
-// TODO: Don't write a wrapper function, just unwrap the struct inside of the same fnc.
-// Might help during debugging, if you have one function less to jump trough
 pub(crate) unsafe fn extract_return_type<'a>(
     llmod: &'a llvm::Module,
     fnc: &'a Value,
     u_type: &Type,
     fnc_name: String,
 ) -> &'a Value {
-    //let llmod = module.module_llvm.llmod();
     let context = llvm::LLVMGetModuleContext(llmod);
-    //dbg!("Unpacking", fnc_name.clone());
-    //dbg!("From: ", f_type, " into ", u_type);
 
     let inner_param_num = LLVMCountParams(fnc);
     let (outer_fnc, outer_bb, mut outer_args, _inner_args, c_inner_fnc_name) =
@@ -697,17 +686,9 @@ pub(crate) unsafe fn extract_return_type<'a>(
     let struct_ret = LLVMBuildExtractValue(builder, struct_ret, 0, c_inner_grad_name.as_ptr());
     let _ret = LLVMBuildRet(builder, struct_ret);
     let _terminator = LLVMGetBasicBlockTerminator(outer_bb);
-    //assert!(LLVMIsNull(terminator)!=0, "no terminator");
     LLVMDisposeBuilder(builder);
-
     let _fnc_ok =
         LLVMVerifyFunction(outer_fnc, llvm::LLVMVerifierFailureAction::LLVMAbortProcessAction);
-    //dbg!(outer_fnc);
-    //assert!(fnc_ok);
-    //if let Err(e) = verify_function(outer_fnc) {
-    //    panic!("Creating a wrapper function failed! {}", e);
-    //}
-
     outer_fnc
 }
 
@@ -792,16 +773,12 @@ pub(crate) unsafe fn enzyme_ad(
 
     let void_type = LLVMVoidTypeInContext(llcx);
     if item.attrs.mode == DiffMode::Reverse && f_return_type != void_type {
-        //dbg!("Reverse Mode sanitizer");
-        //dbg!(f_type);
-        //dbg!(f_return_type);
         let num_elem_in_ret_struct = LLVMCountStructElementTypes(f_return_type);
         if num_elem_in_ret_struct == 1 {
             let u_type = LLVMTypeOf(target_fnc);
             res = extract_return_type(llmod, res, u_type, rust_name2.clone()); // TODO: check if name or name2
         }
     }
-    //dbg!(&target_fnc);
     LLVMSetValueName2(res, name2.as_ptr(), rust_name2.len());
     LLVMReplaceAllUsesWith(target_fnc, res);
     LLVMDeleteFunction(target_fnc);
