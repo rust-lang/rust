@@ -16,13 +16,6 @@ LL |     fn intu(&self) -> &Self::Id {
    |
    = note: cannot satisfy `<T as Default>::Id == _`
 
-error[E0282]: type annotations needed
-  --> $DIR/specialization-transmute.rs:13:23
-   |
-LL |     default type Id = T;
-   |                       ^ cannot infer type for associated type `<T as Default>::Id`
+error: aborting due to previous error; 1 warning emitted
 
-error: aborting due to 2 previous errors; 1 warning emitted
-
-Some errors have detailed explanations: E0282, E0284.
-For more information about an error, try `rustc --explain E0282`.
+For more information about this error, try `rustc --explain E0284`.
