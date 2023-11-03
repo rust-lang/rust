@@ -23,7 +23,7 @@ declare_clippy_lint! {
     ///
     /// ### Known problems
     /// The suggestion may have type inference errors in some cases. e.g.
-    /// ```rust
+    /// ```no_run
     /// let mut map = std::collections::HashMap::new();
     /// let _ = if !map.contains_key(&0) {
     ///     map.insert(0, 0)
@@ -33,7 +33,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # use std::collections::HashMap;
     /// # let mut map = HashMap::new();
     /// # let k = 1;
@@ -43,7 +43,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # use std::collections::HashMap;
     /// # let mut map = HashMap::new();
     /// # let k = 1;

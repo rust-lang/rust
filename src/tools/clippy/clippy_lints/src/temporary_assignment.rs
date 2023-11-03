@@ -14,7 +14,7 @@ declare_clippy_lint! {
     /// updated, why not write the structure you want in the first place?
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// (0, 0).0 = 1
     /// ```
     #[clippy::version = "pre 1.29.0"]

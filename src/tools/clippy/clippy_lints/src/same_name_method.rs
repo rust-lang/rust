@@ -18,7 +18,7 @@ declare_clippy_lint! {
     /// Confusing.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// trait T {
     ///     fn foo(&self) {}
     /// }
@@ -120,9 +120,10 @@ impl<'tcx> LateLintPass<'tcx> for SameNameMethod {
                             }
                         };
 
-                        for impl_item_ref in (*items).iter().filter(|impl_item_ref| {
-                            matches!(impl_item_ref.kind, rustc_hir::AssocItemKind::Fn { .. })
-                        }) {
+                        for impl_item_ref in (*items)
+                            .iter()
+                            .filter(|impl_item_ref| matches!(impl_item_ref.kind, rustc_hir::AssocItemKind::Fn { .. }))
+                        {
                             let method_name = impl_item_ref.ident.name;
                             methods_in_trait.remove(&method_name);
                             check_trait_method(method_name, impl_item_ref.span);
@@ -133,9 +134,10 @@ impl<'tcx> LateLintPass<'tcx> for SameNameMethod {
                         }
                     },
                     None => {
-                        for impl_item_ref in (*items).iter().filter(|impl_item_ref| {
-                            matches!(impl_item_ref.kind, rustc_hir::AssocItemKind::Fn { .. })
-                        }) {
+                        for impl_item_ref in (*items)
+                            .iter()
+                            .filter(|impl_item_ref| matches!(impl_item_ref.kind, rustc_hir::AssocItemKind::Fn { .. }))
+                        {
                             let method_name = impl_item_ref.ident.name;
                             let impl_span = impl_item_ref.span;
                             let hir_id = impl_item_ref.id.hir_id();

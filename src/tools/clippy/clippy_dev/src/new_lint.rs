@@ -346,11 +346,11 @@ fn get_lint_declaration(name_upper: &str, category: &str) -> String {
                 /// ### Why is this bad?
                 ///
                 /// ### Example
-                /// ```rust
+                /// ```no_run
                 /// // example code where clippy issues a warning
                 /// ```
                 /// Use instead:
-                /// ```rust
+                /// ```no_run
                 /// // example code which does not raise clippy warning
                 /// ```
                 #[clippy::version = "{}"]

@@ -15,7 +15,7 @@ declare_clippy_lint! {
     /// avoided.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let foo = 3.14;
     /// ```
     #[clippy::version = "pre 1.29.0"]

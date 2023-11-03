@@ -25,7 +25,7 @@ declare_clippy_lint! {
     /// without deinitializing or copying either variable.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let mut a = 42;
     /// let mut b = 1337;
     ///
@@ -34,7 +34,7 @@ declare_clippy_lint! {
     /// a = t;
     /// ```
     /// Use std::mem::swap():
-    /// ```rust
+    /// ```no_run
     /// let mut a = 1;
     /// let mut b = 2;
     /// std::mem::swap(&mut a, &mut b);
@@ -53,14 +53,14 @@ declare_clippy_lint! {
     /// This looks like a failed attempt to swap.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # let mut a = 1;
     /// # let mut b = 2;
     /// a = b;
     /// b = a;
     /// ```
     /// If swapping is intended, use `swap()` instead:
-    /// ```rust
+    /// ```no_run
     /// # let mut a = 1;
     /// # let mut b = 2;
     /// std::mem::swap(&mut a, &mut b);
@@ -232,7 +232,7 @@ fn is_same(cx: &LateContext<'_>, lhs: ExprOrIdent<'_>, rhs: &Expr<'_>) -> bool {
             } else {
                 false
             }
-        }
+        },
     }
 }
 

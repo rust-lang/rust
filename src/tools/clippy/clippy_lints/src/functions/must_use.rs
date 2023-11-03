@@ -118,9 +118,10 @@ fn check_needless_must_use(
         if sig.header.is_async() {
             let infcx = cx.tcx.infer_ctxt().build();
             if let Some(future_ty) = infcx.get_impl_future_output_ty(return_ty(cx, item_id))
-			&& !is_must_use_ty(cx, future_ty) {
-				return;
-			}
+                && !is_must_use_ty(cx, future_ty)
+            {
+                return;
+            }
         }
 
         span_lint_and_help(

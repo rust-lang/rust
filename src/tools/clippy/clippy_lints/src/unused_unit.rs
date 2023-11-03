@@ -19,13 +19,13 @@ declare_clippy_lint! {
     /// statement look like a function call.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// fn return_unit() -> () {
     ///     ()
     /// }
     /// ```
     /// is equivalent to
-    /// ```rust
+    /// ```no_run
     /// fn return_unit() {}
     /// ```
     #[clippy::version = "1.31.0"]

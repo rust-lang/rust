@@ -58,12 +58,12 @@ declare_clippy_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust
+    /// ```no_run
     /// fn foo(v: &u32) {}
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// fn foo(v: u32) {}
     /// ```
     #[clippy::version = "pre 1.29.0"]
@@ -86,7 +86,7 @@ declare_clippy_lint! {
     /// `memcpy`, which can be expensive.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// #[derive(Clone, Copy)]
     /// struct TooLarge([u8; 2048]);
     ///
@@ -94,7 +94,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # #[derive(Clone, Copy)]
     /// # struct TooLarge([u8; 2048]);
     /// fn foo(v: &TooLarge) {}
@@ -208,7 +208,10 @@ impl<'tcx> PassByRefOrValue {
                             cx,
                             TRIVIALLY_COPY_PASS_BY_REF,
                             input.span,
-                            &format!("this argument ({size} byte) is passed by reference, but would be more efficient if passed by value (limit: {} byte)", self.ref_min_size),
+                            &format!(
+                                "this argument ({size} byte) is passed by reference, but would be more efficient if passed by value (limit: {} byte)",
+                                self.ref_min_size
+                            ),
                             "consider passing by value instead",
                             value_type,
                             Applicability::Unspecified,

@@ -18,7 +18,7 @@ declare_clippy_lint! {
     /// either `T` should be made `Send + Sync` or an `Rc` should be used instead of an `Arc`
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # use std::cell::RefCell;
     /// # use std::sync::Arc;
     ///
@@ -62,19 +62,21 @@ impl<'tcx> LateLintPass<'tcx> for ArcWithNonSendSync {
                 ARC_WITH_NON_SEND_SYNC,
                 expr.span,
                 "usage of an `Arc` that is not `Send` or `Sync`",
-                |diag| with_forced_trimmed_paths!({
-                    if !is_send {
-                        diag.note(format!("the trait `Send` is not implemented for `{arg_ty}`"));
-                    }
-                    if !is_sync {
-                        diag.note(format!("the trait `Sync` is not implemented for `{arg_ty}`"));
-                    }
+                |diag| {
+                    with_forced_trimmed_paths!({
+                        if !is_send {
+                            diag.note(format!("the trait `Send` is not implemented for `{arg_ty}`"));
+                        }
+                        if !is_sync {
+                            diag.note(format!("the trait `Sync` is not implemented for `{arg_ty}`"));
+                        }
 
-                    diag.note(format!("required for `{ty}` to implement `Send` and `Sync`"));
+                        diag.note(format!("required for `{ty}` to implement `Send` and `Sync`"));
 
-                    diag.help("consider using an `Rc` instead or wrapping the inner type with a `Mutex`");
-                }
-            ));
+                        diag.help("consider using an `Rc` instead or wrapping the inner type with a `Mutex`");
+                    });
+                },
+            );
         }
     }
 }

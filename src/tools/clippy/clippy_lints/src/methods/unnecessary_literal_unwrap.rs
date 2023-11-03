@@ -81,7 +81,7 @@ pub(super) fn check(
                 {
                     suggs.extend([
                         (block.span.shrink_to_lo().to(expr.span.shrink_to_lo()), String::new()),
-                        (expr.span.shrink_to_hi().to(block.span.shrink_to_hi()), String::new())
+                        (expr.span.shrink_to_hi().to(block.span.shrink_to_hi()), String::new()),
                     ]);
                 }
                 Some(suggs)

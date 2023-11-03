@@ -19,12 +19,12 @@ declare_clippy_lint! {
     /// be confusing.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let a = "".to_string();
     /// let b: String = "".into();
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let a = String::new();
     /// let b = String::new();
     /// ```
@@ -65,9 +65,9 @@ impl LateLintPass<'_> for ManualStringNew {
 
 /// Checks if an expression's kind corresponds to an empty &str.
 fn is_expr_kind_empty_str(expr_kind: &ExprKind<'_>) -> bool {
-    if  let ExprKind::Lit(lit) = expr_kind &&
-        let LitKind::Str(value, _) = lit.node &&
-        value == symbol::kw::Empty
+    if let ExprKind::Lit(lit) = expr_kind
+        && let LitKind::Str(value, _) = lit.node
+        && value == symbol::kw::Empty
     {
         return true;
     }
@@ -110,23 +110,22 @@ fn parse_call(cx: &LateContext<'_>, span: Span, func: &Expr<'_>, args: &[Expr<'_
     if let ExprKind::Path(qpath) = &func.kind {
         if let QPath::TypeRelative(_, _) = qpath {
             // String::from(...) or String::try_from(...)
-            if  let QPath::TypeRelative(ty, path_seg) = qpath &&
-                [sym::from, sym::try_from].contains(&path_seg.ident.name) &&
-                let TyKind::Path(qpath) = &ty.kind &&
-                let QPath::Resolved(_, path) = qpath &&
-                let [path_seg] = path.segments &&
-                path_seg.ident.name == sym::String &&
-                is_expr_kind_empty_str(arg_kind)
+            if let QPath::TypeRelative(ty, path_seg) = qpath
+                && [sym::from, sym::try_from].contains(&path_seg.ident.name)
+                && let TyKind::Path(qpath) = &ty.kind
+                && let QPath::Resolved(_, path) = qpath
+                && let [path_seg] = path.segments
+                && path_seg.ident.name == sym::String
+                && is_expr_kind_empty_str(arg_kind)
             {
                 warn_then_suggest(cx, span);
             }
         } else if let QPath::Resolved(_, path) = qpath {
             // From::from(...) or TryFrom::try_from(...)
-            if  let [path_seg1, path_seg2] = path.segments &&
-                is_expr_kind_empty_str(arg_kind) && (
-                    (path_seg1.ident.name == sym::From && path_seg2.ident.name == sym::from) ||
-                    (path_seg1.ident.name == sym::TryFrom && path_seg2.ident.name == sym::try_from)
-                )
+            if let [path_seg1, path_seg2] = path.segments
+                && is_expr_kind_empty_str(arg_kind)
+                && ((path_seg1.ident.name == sym::From && path_seg2.ident.name == sym::from)
+                    || (path_seg1.ident.name == sym::TryFrom && path_seg2.ident.name == sym::try_from))
             {
                 warn_then_suggest(cx, span);
             }

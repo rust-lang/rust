@@ -29,14 +29,14 @@ declare_clippy_lint! {
     /// when not part of a method chain.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// use std::ops::Deref;
     /// let a: &mut String = &mut String::from("foo");
     /// let b: &str = a.deref();
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let a: &mut String = &mut String::from("foo");
     /// let b = &*a;
     /// ```
@@ -68,7 +68,7 @@ declare_clippy_lint! {
     /// in such a case can change the semantics of the code.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// fn fun(_a: &i32) {}
     ///
     /// let x: &i32 = &&&&&&5;
@@ -76,7 +76,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # fn fun(_a: &i32) {}
     /// let x: &i32 = &5;
     /// fun(x);
@@ -95,7 +95,7 @@ declare_clippy_lint! {
     /// The address-of operator at the use site is clearer about the need for a reference.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let x = Some("");
     /// if let Some(ref x) = x {
     ///     // use `x` here
@@ -103,7 +103,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let x = Some("");
     /// if let Some(x) = x {
     ///     // use `&x` here
@@ -123,12 +123,12 @@ declare_clippy_lint! {
     /// This unnecessarily complicates the code.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let x = String::new();
     /// let y: &str = &*x;
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let x = String::new();
     /// let y: &str = &x;
     /// ```
@@ -353,23 +353,26 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                                 //   priority.
                                 if let Some(fn_id) = typeck.type_dependent_def_id(hir_id)
                                     && let Some(trait_id) = cx.tcx.trait_of_item(fn_id)
-                                    && let arg_ty
-                                        = cx.tcx.erase_regions(use_cx.adjustments.last().map_or(expr_ty, |a| a.target))
+                                    && let arg_ty = cx
+                                        .tcx
+                                        .erase_regions(use_cx.adjustments.last().map_or(expr_ty, |a| a.target))
                                     && let ty::Ref(_, sub_ty, _) = *arg_ty.kind()
                                     && let args = cx
                                         .typeck_results()
-                                        .node_args_opt(hir_id).map(|args| &args[1..]).unwrap_or_default()
-                                    && let impl_ty = if cx.tcx.fn_sig(fn_id)
-                                        .instantiate_identity()
-                                        .skip_binder()
-                                        .inputs()[0].is_ref()
-                                    {
-                                        // Trait methods taking `&self`
-                                        sub_ty
-                                    } else {
-                                        // Trait methods taking `self`
-                                        arg_ty
-                                    } && impl_ty.is_ref()
+                                        .node_args_opt(hir_id)
+                                        .map(|args| &args[1..])
+                                        .unwrap_or_default()
+                                    && let impl_ty =
+                                        if cx.tcx.fn_sig(fn_id).instantiate_identity().skip_binder().inputs()[0]
+                                            .is_ref()
+                                        {
+                                            // Trait methods taking `&self`
+                                            sub_ty
+                                        } else {
+                                            // Trait methods taking `self`
+                                            arg_ty
+                                        }
+                                    && impl_ty.is_ref()
                                     && implements_trait(
                                         cx,
                                         impl_ty,
@@ -414,9 +417,9 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                         let (required_refs, msg) = if can_auto_borrow {
                             (1, if deref_count == 1 { borrow_msg } else { deref_msg })
                         } else if let Some(&Adjustment {
-                                kind: Adjust::Borrow(AutoBorrow::Ref(_, mutability)),
-                                ..
-                            }) = next_adjust
+                            kind: Adjust::Borrow(AutoBorrow::Ref(_, mutability)),
+                            ..
+                        }) = next_adjust
                             && matches!(mutability, AutoBorrowMutability::Mut { .. })
                             && !stability.is_reborrow_stable()
                         {
@@ -705,9 +708,11 @@ fn in_postfix_position<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'tcx>) -> boo
     {
         match parent.kind {
             ExprKind::Call(child, _) | ExprKind::MethodCall(_, child, _, _) | ExprKind::Index(child, _, _)
-                if child.hir_id == e.hir_id => true,
-            ExprKind::Match(.., MatchSource::TryDesugar(_) | MatchSource::AwaitDesugar)
-                | ExprKind::Field(_, _) => true,
+                if child.hir_id == e.hir_id =>
+            {
+                true
+            },
+            ExprKind::Match(.., MatchSource::TryDesugar(_) | MatchSource::AwaitDesugar) | ExprKind::Field(_, _) => true,
             _ => false,
         }
     } else {

@@ -19,7 +19,7 @@ declare_clippy_lint! {
     ///
     /// ### Known problems
     /// False negative on such code:
-    /// ```
+    /// ```no_run
     /// let x = &12;
     /// let addr_x = &x as *const _ as usize;
     /// let addr_y = &&*x as *const _ as usize; // assert ok now, and lint triggered.
@@ -28,14 +28,14 @@ declare_clippy_lint! {
     /// ```
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let s = &String::new();
     ///
     /// let a: &String = &* s;
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # let s = &String::new();
     /// let a: &String = s;
     /// ```

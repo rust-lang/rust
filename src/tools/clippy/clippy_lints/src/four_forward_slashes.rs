@@ -14,7 +14,7 @@ declare_clippy_lint! {
     /// comment.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// //// My amazing data structure
     /// pub struct Foo {
     ///     // ...
@@ -22,7 +22,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// /// My amazing data structure
     /// pub struct Foo {
     ///     // ...

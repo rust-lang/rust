@@ -20,7 +20,7 @@ declare_clippy_lint! {
     /// benefit as opposed to tuple initializers
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// struct TupleStruct(u8, u16);
     ///
     /// let _ = TupleStruct {

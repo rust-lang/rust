@@ -55,7 +55,7 @@ declare_clippy_lint! {
     /// statement within the THEN block and omitting the else block completely.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # fn condition() -> bool { false }
     /// # fn update_condition() {}
     /// # let x = false;
@@ -72,7 +72,7 @@ declare_clippy_lint! {
     ///
     /// Could be rewritten as
     ///
-    /// ```rust
+    /// ```no_run
     /// # fn condition() -> bool { false }
     /// # fn update_condition() {}
     /// # let x = false;
@@ -87,7 +87,7 @@ declare_clippy_lint! {
     ///
     /// As another example, the following code
     ///
-    /// ```rust
+    /// ```no_run
     /// # fn waiting() -> bool { false }
     /// loop {
     ///     if waiting() {
@@ -100,7 +100,7 @@ declare_clippy_lint! {
     /// ```
     /// Could be rewritten as
     ///
-    /// ```rust
+    /// ```no_run
     /// # fn waiting() -> bool { false }
     /// loop {
     ///     if waiting() {
@@ -408,7 +408,7 @@ fn check_and_warn(cx: &EarlyContext<'_>, expr: &ast::Expr) {
 /// till a non-whitespace character is found.  e.g., the string. If no closing `}` is present, the
 /// string will be preserved.
 ///
-/// ```rust
+/// ```no_run
 /// {
 ///     let x = 5;
 /// }

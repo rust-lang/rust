@@ -43,9 +43,9 @@ pub(super) fn check<'tcx>(
     // by not requiring an explicit reference
     let needs_ref = if let Some(parent) = get_parent_expr(cx, expr)
         && let hir::ExprKind::Unary(hir::UnOp::Deref, _)
-            | hir::ExprKind::MethodCall(..)
-            | hir::ExprKind::Field(..)
-            | hir::ExprKind::Index(..) = parent.kind
+        | hir::ExprKind::MethodCall(..)
+        | hir::ExprKind::Field(..)
+        | hir::ExprKind::Index(..) = parent.kind
     {
         if let hir::ExprKind::Unary(hir::UnOp::Deref, _) = parent.kind {
             // if the user explicitly dereferences the result, we can adjust

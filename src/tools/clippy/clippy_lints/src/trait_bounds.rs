@@ -1,5 +1,5 @@
+use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg};
-use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::{snippet, snippet_opt, snippet_with_applicability};
 use clippy_utils::{is_from_proc_macro, SpanlessEq, SpanlessHash};
 use core::hash::{Hash, Hasher};
@@ -27,12 +27,12 @@ declare_clippy_lint! {
     /// less readable than combining the bounds
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// pub fn foo<T>(t: T) where T: Copy, T: Clone {}
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// pub fn foo<T>(t: T) where T: Copy + Clone {}
     /// ```
     #[clippy::version = "1.38.0"]
@@ -51,12 +51,12 @@ declare_clippy_lint! {
     /// less readable than specifying them only once.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// fn func<T: Clone + Default>(arg: T) where T: Clone + Default {}
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # mod hidden {
     /// fn func<T: Clone + Default>(arg: T) {}
     /// # }
@@ -66,19 +66,19 @@ declare_clippy_lint! {
     /// fn func<T>(arg: T) where T: Clone + Default {}
     /// ```
     ///
-    /// ```rust
+    /// ```no_run
     /// fn foo<T: Default + Default>(bar: T) {}
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// fn foo<T: Default>(bar: T) {}
     /// ```
     ///
-    /// ```rust
+    /// ```no_run
     /// fn foo<T>(bar: T) where T: Default + Default {}
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// fn foo<T>(bar: T) where T: Default {}
     /// ```
     #[clippy::version = "1.47.0"]

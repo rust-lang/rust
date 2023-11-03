@@ -10,12 +10,12 @@ declare_clippy_lint! {
     /// The `ref` keyword can be confusing for people unfamiliar with it, and often
     /// it is more concise to use `&` instead.
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let opt = Some(5);
     /// if let Some(ref foo) = opt {}
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let opt = Some(5);
     /// if let Some(foo) = &opt {}
     /// ```
@@ -29,7 +29,7 @@ declare_lint_pass!(RefPatterns => [REF_PATTERNS]);
 impl EarlyLintPass for RefPatterns {
     fn check_pat(&mut self, cx: &EarlyContext<'_>, pat: &Pat) {
         if let PatKind::Ident(BindingAnnotation::REF, _, _) = pat.kind
-                && !pat.span.from_expansion()
+            && !pat.span.from_expansion()
         {
             span_lint_and_help(
                 cx,

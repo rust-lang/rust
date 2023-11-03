@@ -2444,4 +2444,8 @@ impl<T: core::error::Error> core::error::Error for Box<T> {
     fn source(&self) -> Option<&(dyn core::error::Error + 'static)> {
         core::error::Error::source(&**self)
     }
+
+    fn provide<'b>(&'b self, request: &mut core::error::Request<'b>) {
+        core::error::Error::provide(&**self, request);
+    }
 }

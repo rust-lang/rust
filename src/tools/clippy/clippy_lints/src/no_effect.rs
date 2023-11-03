@@ -23,7 +23,7 @@ declare_clippy_lint! {
     /// readable.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// 0;
     /// ```
     #[clippy::version = "pre 1.29.0"]
@@ -103,11 +103,16 @@ fn check_no_effect(cx: &LateContext<'_>, stmt: &Stmt<'_>) -> bool {
                             && final_stmt.hir_id == stmt.hir_id
                         {
                             let expr_ty = cx.typeck_results().expr_ty(expr);
-                            let mut ret_ty = cx.tcx.fn_sig(item.owner_id).instantiate_identity().output().skip_binder();
+                            let mut ret_ty = cx
+                                .tcx
+                                .fn_sig(item.owner_id)
+                                .instantiate_identity()
+                                .output()
+                                .skip_binder();
 
                             // Remove `impl Future<Output = T>` to get `T`
-                            if cx.tcx.ty_is_opaque_future(ret_ty) &&
-                                let Some(true_ret_ty) = cx.tcx.infer_ctxt().build().get_impl_future_output_ty(ret_ty)
+                            if cx.tcx.ty_is_opaque_future(ret_ty)
+                                && let Some(true_ret_ty) = cx.tcx.infer_ctxt().build().get_impl_future_output_ty(ret_ty)
                             {
                                 ret_ty = true_ret_ty;
                             }

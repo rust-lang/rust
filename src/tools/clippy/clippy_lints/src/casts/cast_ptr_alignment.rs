@@ -26,8 +26,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
             // There probably is no obvious reason to do this, just to be consistent with `as` cases.
             && !is_hir_ty_cfg_dependant(cx, cast_to)
         {
-            let (cast_from, cast_to) =
-                (cx.typeck_results().expr_ty(self_arg), cx.typeck_results().expr_ty(expr));
+            let (cast_from, cast_to) = (cx.typeck_results().expr_ty(self_arg), cx.typeck_results().expr_ty(expr));
             lint_cast_ptr_alignment(cx, expr, cast_from, cast_to);
         }
     }
@@ -81,9 +80,9 @@ fn is_used_as_unaligned(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
                     cx.tcx.get_diagnostic_name(def_id),
                     Some(
                         sym::ptr_write_unaligned
-                        | sym::ptr_read_unaligned
-                        | sym::intrinsics_unaligned_volatile_load
-                        | sym::intrinsics_unaligned_volatile_store
+                            | sym::ptr_read_unaligned
+                            | sym::intrinsics_unaligned_volatile_load
+                            | sym::intrinsics_unaligned_volatile_store
                     )
                 )
             {

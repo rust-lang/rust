@@ -19,8 +19,13 @@ declare_clippy_lint! {
     /// It's not bad, but having them is idiomatic and allows the type to be used in for loops directly
     /// (`for val in &iter {}`), without having to first call `iter()` or `iter_mut()`.
     ///
+    /// ### Limitations
+    /// This lint focuses on providing an idiomatic API. Therefore, it will only
+    /// lint on types which are accessible outside of the crate. For internal types,
+    /// the `IntoIterator` trait can be implemented on demand if it is actually needed.
+    ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// struct MySlice<'a>(&'a [u8]);
     /// impl<'a> MySlice<'a> {
     ///     pub fn iter(&self) -> std::slice::Iter<'a, u8> {
@@ -29,7 +34,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// struct MySlice<'a>(&'a [u8]);
     /// impl<'a> MySlice<'a> {
     ///     pub fn iter(&self) -> std::slice::Iter<'a, u8> {
@@ -61,8 +66,16 @@ declare_clippy_lint! {
     /// by just calling `.iter()`, instead of the more awkward `<&Type>::into_iter` or `(&val).into_iter()` syntax
     /// in case of ambiguity with another `IntoIterator` impl.
     ///
+    /// ### Limitations
+    /// This lint focuses on providing an idiomatic API. Therefore, it will only
+    /// lint on types which are accessible outside of the crate. For internal types,
+    /// these methods can be added on demand if they are actually needed. Otherwise,
+    /// it would trigger the [`dead_code`] lint for the unused method.
+    ///
+    /// [`dead_code`]: https://doc.rust-lang.org/rustc/lints/listing/warn-by-default.html#dead-code
+    ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// struct MySlice<'a>(&'a [u8]);
     /// impl<'a> IntoIterator for &MySlice<'a> {
     ///     type Item = &'a u8;
@@ -73,7 +86,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// struct MySlice<'a>(&'a [u8]);
     /// impl<'a> MySlice<'a> {
     ///     pub fn iter(&self) -> std::slice::Iter<'a, u8> {
@@ -102,6 +115,12 @@ declare_lint_pass!(IterWithoutIntoIter => [ITER_WITHOUT_INTO_ITER, INTO_ITER_WIT
 /// suggest `type IntoIter = impl IntoIterator`.
 fn is_nameable_in_impl_trait(ty: &rustc_hir::Ty<'_>) -> bool {
     !matches!(ty.kind, TyKind::OpaqueDef(..))
+}
+
+fn is_ty_exported(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
+    ty.ty_adt_def()
+        .and_then(|adt| adt.did().as_local())
+        .is_some_and(|did| cx.effective_visibilities.is_exported(did))
 }
 
 /// Returns the deref chain of a type, starting with the type itself.
@@ -136,17 +155,18 @@ impl LateLintPass<'_> for IterWithoutIntoIter {
         if let ItemKind::Impl(imp) = item.kind
             && let TyKind::Ref(_, self_ty_without_ref) = &imp.self_ty.kind
             && let Some(trait_ref) = imp.of_trait
-            && trait_ref.trait_def_id().is_some_and(|did| cx.tcx.is_diagnostic_item(sym::IntoIterator, did))
+            && trait_ref
+                .trait_def_id()
+                .is_some_and(|did| cx.tcx.is_diagnostic_item(sym::IntoIterator, did))
             && let &ty::Ref(_, ty, mtbl) = cx.tcx.type_of(item.owner_id).instantiate_identity().kind()
             && let expected_method_name = match mtbl {
                 Mutability::Mut => sym::iter_mut,
                 Mutability::Not => sym::iter,
             }
-            && !deref_chain(cx, ty)
-                .any(|ty| {
-                    // We can't check inherent impls for slices, but we know that they have an `iter(_mut)` method
-                    ty.peel_refs().is_slice() || adt_has_inherent_method(cx, ty, expected_method_name)
-                })
+            && !deref_chain(cx, ty).any(|ty| {
+                // We can't check inherent impls for slices, but we know that they have an `iter(_mut)` method
+                ty.peel_refs().is_slice() || adt_has_inherent_method(cx, ty, expected_method_name)
+            })
             && let Some(iter_assoc_span) = imp.items.iter().find_map(|item| {
                 if item.ident.name == sym!(IntoIter) {
                     Some(cx.tcx.hir().impl_item(item.id).expect_type().span)
@@ -154,6 +174,7 @@ impl LateLintPass<'_> for IterWithoutIntoIter {
                     None
                 }
             })
+            && is_ty_exported(cx, ty)
         {
             span_lint_and_then(
                 cx,
@@ -165,7 +186,7 @@ impl LateLintPass<'_> for IterWithoutIntoIter {
                     // to avoid name ambiguities, as there might be an inherent into_iter method
                     // that we don't want to call.
                     let sugg = format!(
-"
+                        "
 impl {self_ty_without_ref} {{
     fn {expected_method_name}({ref_self}self) -> {iter_ty} {{
         <{ref_self}Self as IntoIterator>::into_iter(self)
@@ -183,9 +204,9 @@ impl {self_ty_without_ref} {{
                         sugg,
                         // Just like iter_without_into_iter, this suggestion is on a best effort basis
                         // and requires potentially adding lifetimes or moving them around.
-                        Applicability::Unspecified
+                        Applicability::Unspecified,
                     );
-                }
+                },
             );
         }
     }
@@ -221,11 +242,12 @@ impl {self_ty_without_ref} {{
                 cx.tcx,
                 cx.param_env,
                 iterator_did,
-                sym!(Item),
+                sym::Item,
                 [ret_ty],
             )
             // Only lint if the `IntoIterator` impl doesn't actually exist
             && !implements_trait(cx, ref_ty, into_iter_did, &[])
+            && is_ty_exported(cx, ref_ty.peel_refs())
         {
             let self_ty_snippet = format!("{borrow_prefix}{}", snippet(cx, imp.self_ty.span, ".."));
 
@@ -233,22 +255,26 @@ impl {self_ty_without_ref} {{
                 cx,
                 ITER_WITHOUT_INTO_ITER,
                 item.span,
-                &format!("`{}` method without an `IntoIterator` impl for `{self_ty_snippet}`", item.ident),
+                &format!(
+                    "`{}` method without an `IntoIterator` impl for `{self_ty_snippet}`",
+                    item.ident
+                ),
                 |diag| {
                     // Get the lower span of the `impl` block, and insert the suggestion right before it:
                     // impl X {
                     // ^   fn iter(&self) -> impl IntoIterator { ... }
                     // }
-                    let span_behind_impl = cx.tcx
+                    let span_behind_impl = cx
+                        .tcx
                         .def_span(cx.tcx.hir().parent_id(item.hir_id()).owner.def_id)
                         .shrink_to_lo();
 
                     let sugg = format!(
-"
+                        "
 impl IntoIterator for {self_ty_snippet} {{
     type IntoIter = {ret_ty};
-    type Iter = {iter_ty};
-    fn into_iter() -> Self::IntoIter {{
+    type Item = {iter_ty};
+    fn into_iter(self) -> Self::IntoIter {{
         self.iter()
     }}
 }}
@@ -262,7 +288,8 @@ impl IntoIterator for {self_ty_snippet} {{
                         // such as adding some lifetimes in the associated types, or importing types.
                         Applicability::Unspecified,
                     );
-            });
+                },
+            );
         }
     }
 }

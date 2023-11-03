@@ -472,8 +472,9 @@ impl<'a, 'tcx> Visitor<'tcx> for NonminimalBoolVisitor<'a, 'tcx> {
                     self.bool_expr(e);
                 },
                 ExprKind::Unary(UnOp::Not, inner) => {
-                    if let ExprKind::Unary(UnOp::Not, ex) = inner.kind &&
-                    !self.cx.typeck_results().node_types()[ex.hir_id].is_bool() {
+                    if let ExprKind::Unary(UnOp::Not, ex) = inner.kind
+                        && !self.cx.typeck_results().node_types()[ex.hir_id].is_bool()
+                    {
                         return;
                     }
                     if self.cx.typeck_results().node_types()[inner.hir_id].is_bool() {
@@ -500,10 +501,10 @@ struct NotSimplificationVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx> Visitor<'tcx> for NotSimplificationVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
-        if let ExprKind::Unary(UnOp::Not, inner) = &expr.kind &&
-            !inner.span.from_expansion() &&
-            let Some(suggestion) = simplify_not(self.cx, inner)
-			&& self.cx.tcx.lint_level_at_node(NONMINIMAL_BOOL, expr.hir_id).0 != Level::Allow
+        if let ExprKind::Unary(UnOp::Not, inner) = &expr.kind
+            && !inner.span.from_expansion()
+            && let Some(suggestion) = simplify_not(self.cx, inner)
+            && self.cx.tcx.lint_level_at_node(NONMINIMAL_BOOL, expr.hir_id).0 != Level::Allow
         {
             span_lint_and_sugg(
                 self.cx,

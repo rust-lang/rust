@@ -31,13 +31,13 @@ declare_clippy_lint! {
     /// This lint can only be allowed at the function level or above.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let i = 10;
     /// let f = 1.23;
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let i = 10i32;
     /// let f = 1.23f64;
     /// ```

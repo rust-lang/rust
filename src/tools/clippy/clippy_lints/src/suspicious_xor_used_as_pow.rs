@@ -14,11 +14,11 @@ declare_clippy_lint! {
     /// ### Why is this bad?
     /// It's most probably a typo and may lead to unexpected behaviours.
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let x = 3_i32 ^ 4_i32;
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let x = 3_i32.pow(4);
     /// ```
     #[clippy::version = "1.67.0"]
@@ -38,21 +38,18 @@ impl LateLintPass<'_> for ConfusingXorAndPow {
             && let ExprKind::Lit(lit_right) = &right.kind
             && matches!(lit_right.node, LitKind::Int(..) | LitKind::Float(..))
             && matches!(lit_left.node, LitKind::Int(..) | LitKind::Float(..))
-            && NumericLiteral::from_lit_kind(&snippet(cx, lit_right.span, ".."), &lit_right.node).is_some_and(|x| x.is_decimal())
-            {
-                span_lint_and_sugg(
-                    cx,
-                    SUSPICIOUS_XOR_USED_AS_POW,
-                    expr.span,
-                    "`^` is not the exponentiation operator",
-                    "did you mean to write",
-                    format!(
-                        "{}.pow({})",
-                        lit_left.node,
-                        lit_right.node
-                    ),
-                    Applicability::MaybeIncorrect,
-                );
-		}
+            && NumericLiteral::from_lit_kind(&snippet(cx, lit_right.span, ".."), &lit_right.node)
+                .is_some_and(|x| x.is_decimal())
+        {
+            span_lint_and_sugg(
+                cx,
+                SUSPICIOUS_XOR_USED_AS_POW,
+                expr.span,
+                "`^` is not the exponentiation operator",
+                "did you mean to write",
+                format!("{}.pow({})", lit_left.node, lit_right.node),
+                Applicability::MaybeIncorrect,
+            );
+        }
     }
 }

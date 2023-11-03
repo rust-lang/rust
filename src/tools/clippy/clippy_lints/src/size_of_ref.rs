@@ -19,7 +19,7 @@ declare_clippy_lint! {
     /// the reference.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// struct Foo {
     ///     buffer: [u8],
     /// }
@@ -35,7 +35,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// struct Foo {
     ///     buffer: [u8],
     /// }

@@ -43,5 +43,17 @@ error: matching over `()` is more explicit
 LL |     let _ = foo().unwrap();
    |         ^ help: use `()` instead of `_`: `()`
 
-error: aborting due to 7 previous errors
+error: matching over `()` is more explicit
+  --> $DIR/ignored_unit_patterns.rs:45:13
+   |
+LL |         (1, _) => unimplemented!(),
+   |             ^ help: use `()` instead of `_`: `()`
+
+error: matching over `()` is more explicit
+  --> $DIR/ignored_unit_patterns.rs:52:13
+   |
+LL |     for (x, _) in v {
+   |             ^ help: use `()` instead of `_`: `()`
+
+error: aborting due to 9 previous errors
 

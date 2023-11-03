@@ -58,7 +58,7 @@ declare_clippy_lint! {
     /// [#5812](https://github.com/rust-lang/rust-clippy/issues/5812) and
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// use std::sync::atomic::{AtomicUsize, Ordering::SeqCst};
     ///
     /// const CONST_ATOM: AtomicUsize = AtomicUsize::new(12);
@@ -67,7 +67,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # use std::sync::atomic::{AtomicUsize, Ordering::SeqCst};
     /// static STATIC_ATOM: AtomicUsize = AtomicUsize::new(15);
     /// STATIC_ATOM.store(9, SeqCst);
@@ -105,7 +105,7 @@ declare_clippy_lint! {
     /// [#3825](https://github.com/rust-lang/rust-clippy/issues/3825)
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// use std::sync::atomic::{AtomicUsize, Ordering::SeqCst};
     /// const CONST_ATOM: AtomicUsize = AtomicUsize::new(12);
     ///
@@ -114,7 +114,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// use std::sync::atomic::{AtomicUsize, Ordering::SeqCst};
     /// const CONST_ATOM: AtomicUsize = AtomicUsize::new(12);
     ///

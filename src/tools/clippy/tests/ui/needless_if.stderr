@@ -29,10 +29,13 @@ LL +     });
    |
 
 error: this `if` branch is empty
-  --> $DIR/needless_if.rs:45:5
+  --> $DIR/needless_if.rs:49:5
    |
 LL | /     if {
-LL | |         if let true = true && true { true } else { false }
+LL | |         if let true = true
+LL | |             && true
+LL | |         {
+...  |
 LL | |     } && true
 LL | |     {}
    | |______^
@@ -40,24 +43,30 @@ LL | |     {}
 help: you can remove it
    |
 LL ~     ({
-LL +         if let true = true && true { true } else { false }
+LL +         if let true = true
+LL +             && true
+LL +         {
+LL +             true
+LL +         } else {
+LL +             false
+LL +         }
 LL +     } && true);
    |
 
 error: this `if` branch is empty
-  --> $DIR/needless_if.rs:83:5
+  --> $DIR/needless_if.rs:93:5
    |
 LL |     if { maybe_side_effect() } {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can remove it: `({ maybe_side_effect() });`
 
 error: this `if` branch is empty
-  --> $DIR/needless_if.rs:85:5
+  --> $DIR/needless_if.rs:95:5
    |
 LL |     if { maybe_side_effect() } && true {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can remove it: `({ maybe_side_effect() } && true);`
 
 error: this `if` branch is empty
-  --> $DIR/needless_if.rs:89:5
+  --> $DIR/needless_if.rs:99:5
    |
 LL |     if true {}
    |     ^^^^^^^^^^ help: you can remove it: `true;`

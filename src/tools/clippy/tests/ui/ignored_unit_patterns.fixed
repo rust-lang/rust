@@ -38,3 +38,19 @@ pub fn moo(_: ()) {
     let _: () = foo().unwrap();
     let _: () = ();
 }
+
+fn test_unit_ref_1() {
+    let x: (usize, &&&&&()) = (1, &&&&&&());
+    match x {
+        (1, ()) => unimplemented!(),
+        //~^ ERROR: matching over `()` is more explicit
+        _ => unimplemented!(),
+    };
+}
+
+fn test_unit_ref_2(v: &[(usize, ())]) {
+    for (x, ()) in v {
+        //~^ ERROR: matching over `()` is more explicit
+        let _ = x;
+    }
+}

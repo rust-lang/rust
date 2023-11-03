@@ -73,5 +73,11 @@ error: multiply and add expressions can be calculated more efficiently and accur
 LL |     let _ = (a * a + b).sqrt();
    |             ^^^^^^^^^^^ help: consider using: `a.mul_add(a, b)`
 
-error: aborting due to 12 previous errors
+error: multiply and add expressions can be calculated more efficiently and accurately
+  --> $DIR/floating_point_mul_add.rs:37:13
+   |
+LL |     let _ = a - (b * u as f64);
+   |             ^^^^^^^^^^^^^^^^^^ help: consider using: `b.mul_add(-(u as f64), a)`
+
+error: aborting due to 13 previous errors
 

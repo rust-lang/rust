@@ -1,6 +1,6 @@
+use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::macros::root_macro_call;
-use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{higher, in_constant};
 use rustc_ast::ast::RangeLimits;
@@ -23,7 +23,7 @@ declare_clippy_lint! {
     /// clear that it's not a specific subset of characters, but all
     /// ASCII (lowercase|uppercase|digit|hexdigit) characters.
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// fn main() {
     ///     assert!(matches!('x', 'a'..='z'));
     ///     assert!(matches!(b'X', b'A'..=b'Z'));
@@ -37,7 +37,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// fn main() {
     ///     assert!('x'.is_ascii_lowercase());
     ///     assert!(b'X'.is_ascii_uppercase());
@@ -98,15 +98,20 @@ impl<'tcx> LateLintPass<'tcx> for ManualIsAsciiCheck {
         }
 
         if let Some(macro_call) = root_macro_call(expr.span)
-            && is_matches_macro(cx, macro_call.def_id) {
+            && is_matches_macro(cx, macro_call.def_id)
+        {
             if let ExprKind::Match(recv, [arm, ..], _) = expr.kind {
                 let range = check_pat(&arm.pat.kind);
                 check_is_ascii(cx, macro_call.span, recv, &range);
             }
         } else if let ExprKind::MethodCall(path, receiver, [arg], ..) = expr.kind
             && path.ident.name == sym!(contains)
-            && let Some(higher::Range { start: Some(start), end: Some(end), limits: RangeLimits::Closed })
-            = higher::Range::hir(receiver) {
+            && let Some(higher::Range {
+                start: Some(start),
+                end: Some(end),
+                limits: RangeLimits::Closed,
+            }) = higher::Range::hir(receiver)
+        {
             let range = check_range(start, end);
             if let ExprKind::AddrOf(BorrowKind::Ref, _, e) = arg.kind {
                 check_is_ascii(cx, expr.span, e, &range);
@@ -168,7 +173,8 @@ fn check_pat(pat_kind: &PatKind<'_>) -> CharRange {
 
 fn check_range(start: &Expr<'_>, end: &Expr<'_>) -> CharRange {
     if let ExprKind::Lit(start_lit) = &start.kind
-        && let ExprKind::Lit(end_lit) = &end.kind {
+        && let ExprKind::Lit(end_lit) = &end.kind
+    {
         match (&start_lit.node, &end_lit.node) {
             (Char('a'), Char('z')) | (Byte(b'a'), Byte(b'z')) => CharRange::LowerChar,
             (Char('A'), Char('Z')) | (Byte(b'A'), Byte(b'Z')) => CharRange::UpperChar,
