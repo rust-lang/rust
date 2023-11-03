@@ -71,8 +71,7 @@ impl LateLintPass<'_> for LinesFilterMapOk {
                 LINES_FILTER_MAP_OK,
                 fm_span,
                 &format!(
-                    "`{}()` will run forever if the iterator repeatedly produces an `Err`",
-                    fm_method.ident
+                    "`{fm_method_str}()` will run forever if the iterator repeatedly produces an `Err`",
                 ),
                 |diag| {
                     diag.span_note(
