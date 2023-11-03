@@ -1750,7 +1750,7 @@ pub(crate) fn markdown_links<'md, R>(
         }
         // do not actually include braces in the span
         let range = (open_brace + 1)..close_brace;
-        MarkdownLinkRange::Destination(range.clone())
+        MarkdownLinkRange::Destination(range)
     };
 
     let span_for_offset_forward = |span: Range<usize>, open: u8, close: u8| {
@@ -1786,7 +1786,7 @@ pub(crate) fn markdown_links<'md, R>(
         }
         // do not actually include braces in the span
         let range = (open_brace + 1)..close_brace;
-        MarkdownLinkRange::Destination(range.clone())
+        MarkdownLinkRange::Destination(range)
     };
 
     let mut broken_link_callback = |link: BrokenLink<'md>| Some((link.reference, "".into()));
