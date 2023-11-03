@@ -3,8 +3,8 @@ use clippy_utils::ty::is_type_diagnostic_item;
 use rustc_ast::ast::LitKind;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::LateContext;
-use rustc_span::source_map::{Span, Spanned};
-use rustc_span::sym;
+use rustc_span::source_map::Spanned;
+use rustc_span::{sym, Span};
 
 use super::NONSENSICAL_OPEN_OPTIONS;
 

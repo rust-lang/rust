@@ -6,8 +6,7 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_infer::infer::region_constraints::RegionConstraintData;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::{TyCtxt, TypeFoldable};
-use rustc_span::source_map::DUMMY_SP;
-use rustc_span::Span;
+use rustc_span::{Span, DUMMY_SP};
 
 use std::fmt;
 

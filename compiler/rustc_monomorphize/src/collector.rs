@@ -186,8 +186,9 @@ use rustc_middle::{middle::codegen_fn_attrs::CodegenFnAttrFlags, mir::visit::TyC
 use rustc_session::config::EntryFnType;
 use rustc_session::lint::builtin::LARGE_ASSIGNMENTS;
 use rustc_session::Limit;
-use rustc_span::source_map::{dummy_spanned, respan, Span, Spanned, DUMMY_SP};
+use rustc_span::source_map::{dummy_spanned, respan, Spanned};
 use rustc_span::symbol::{sym, Ident};
+use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::Size;
 use std::path::PathBuf;
 

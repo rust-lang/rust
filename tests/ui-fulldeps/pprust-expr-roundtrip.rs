@@ -38,9 +38,9 @@ use rustc_ast::*;
 use rustc_ast_pretty::pprust;
 use rustc_parse::new_parser_from_source_str;
 use rustc_session::parse::ParseSess;
-use rustc_span::source_map::FilePathMapping;
-use rustc_span::source_map::{FileName, Spanned, DUMMY_SP};
+use rustc_span::source_map::{FilePathMapping, Spanned};
 use rustc_span::symbol::Ident;
+use rustc_span::{FileName, DUMMY_SP};
 use thin_vec::{thin_vec, ThinVec};
 
 fn parse_expr(ps: &ParseSess, src: &str) -> Option<P<Expr>> {

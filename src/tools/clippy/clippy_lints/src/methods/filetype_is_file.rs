@@ -4,8 +4,7 @@ use clippy_utils::ty::is_type_diagnostic_item;
 use if_chain::if_chain;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
-use rustc_span::source_map::Span;
-use rustc_span::sym;
+use rustc_span::{sym, Span};
 
 use super::FILETYPE_IS_FILE;
 

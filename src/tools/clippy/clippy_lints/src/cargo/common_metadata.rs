@@ -3,7 +3,7 @@
 use cargo_metadata::Metadata;
 use clippy_utils::diagnostics::span_lint;
 use rustc_lint::LateContext;
-use rustc_span::source_map::DUMMY_SP;
+use rustc_span::DUMMY_SP;
 
 use super::CARGO_COMMON_METADATA;
 

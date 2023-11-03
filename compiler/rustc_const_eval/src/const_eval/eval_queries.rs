@@ -10,7 +10,7 @@ use rustc_middle::traits::Reveal;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_span::source_map::Span;
+use rustc_span::Span;
 use rustc_target::abi::{self, Abi};
 
 use super::{CanAccessStatics, CompileTimeEvalContext, CompileTimeInterpreter};

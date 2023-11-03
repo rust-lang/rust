@@ -10,7 +10,7 @@ use rustc_middle::infer::canonical::CanonicalQueryResponse;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::{self, ParamEnvAnd, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::def_id::CRATE_DEF_ID;
-use rustc_span::source_map::DUMMY_SP;
+use rustc_span::DUMMY_SP;
 use smallvec::{smallvec, SmallVec};
 
 #[derive(Copy, Clone, Debug, HashStable, TypeFoldable, TypeVisitable)]

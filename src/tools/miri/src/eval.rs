@@ -267,7 +267,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     let layout_cx = LayoutCx { tcx, param_env };
     let mut ecx = InterpCx::new(
         tcx,
-        rustc_span::source_map::DUMMY_SP,
+        rustc_span::DUMMY_SP,
         param_env,
         MiriMachine::new(config, layout_cx),
     );

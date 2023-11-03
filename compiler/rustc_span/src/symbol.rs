@@ -20,8 +20,8 @@ mod tests;
 
 // The proc macro code for this is in `compiler/rustc_macros/src/symbols.rs`.
 symbols! {
-    // After modifying this list adjust `is_special`, `is_used_keyword`/`is_unused_keyword`,
-    // this should be rarely necessary though if the keywords are kept in alphabetic order.
+    // If you modify this list, adjust `is_special` and `is_used_keyword`/`is_unused_keyword`.
+    // But this should rarely be necessary if the keywords are kept in alphabetic order.
     Keywords {
         // Special reserved identifiers used internally for elided lifetimes,
         // unnamed method parameters, crate root module, error recovery etc.
@@ -894,7 +894,7 @@ symbols! {
         inline_const_pat,
         inout,
         instruction_set,
-        integer_: "integer",
+        integer_: "integer", // underscore to avoid clashing with the function `sym::integer` below
         integral,
         into_future,
         into_iter,
