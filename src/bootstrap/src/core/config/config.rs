@@ -174,7 +174,6 @@ pub struct Config {
     pub llvm_assertions: bool,
     pub llvm_tests: bool,
     pub llvm_enzyme: bool,
-    pub llvm_enzyme_build: Option<String>,
     pub llvm_plugins: bool,
     pub llvm_optimize: bool,
     pub llvm_thin_lto: bool,
@@ -678,24 +677,24 @@ macro_rules! define_config {
                         A: serde::de::MapAccess<'de>,
                     {
                         $(let mut $field: Option<$field_ty> = None;)*
-                            while let Some(key) =
-                                match serde::de::MapAccess::next_key::<String>(&mut map) {
-                                    Ok(val) => val,
-                                    Err(err) => {
-                                        return Err(err);
-                                    }
+                        while let Some(key) =
+                            match serde::de::MapAccess::next_key::<String>(&mut map) {
+                                Ok(val) => val,
+                                Err(err) => {
+                                    return Err(err);
                                 }
+                            }
                         {
                             match &*key {
                                 $($field_key => {
                                     if $field.is_some() {
                                         return Err(<A::Error as serde::de::Error>::duplicate_field(
-                                                $field_key,
-                                                ));
+                                            $field_key,
+                                        ));
                                     }
                                     $field = match serde::de::MapAccess::next_value::<$field_ty>(
                                         &mut map,
-                                        ) {
+                                    ) {
                                         Ok(val) => Some(val),
                                         Err(err) => {
                                             return Err(err);

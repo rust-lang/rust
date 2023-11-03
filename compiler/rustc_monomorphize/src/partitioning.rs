@@ -1159,9 +1159,10 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> (&DefIdSet, &[Au
 
             let target_symbol =
                 symbol_name_for_instance_in_crate(tcx, instance.clone(), LOCAL_CRATE);
-            let range = usage_map.index.get(&item).unwrap();
+            //let range = usage_map.used_map.get(&item).unwrap();
+            //TODO: check if last and next line are correct after rebasing
 
-            let source = usage_map.targets[range.clone()]
+            let source = usage_map.get_user_items(*item)
                 .into_iter()
                 .filter_map(|item| match *item {
                     MonoItem::Fn(ref instance_s) => {
