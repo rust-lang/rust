@@ -743,7 +743,8 @@ impl Step for Rustc {
             // Sanity check on linked compiler crates
             for krate in &*self.crates {
                 let dir_name = krate.replace("-", "_");
-                assert!(out.join(&*dir_name).exists());
+                // Making sure the directory exists and is not empty.
+                assert!(out.join(&*dir_name).read_dir().unwrap().next().is_some());
             }
         }
 
