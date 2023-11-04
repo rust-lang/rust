@@ -264,11 +264,13 @@ impl<A: Allocator> BufferedWriterSpec for Vec<u8, A> {
     fn copy_from<R: Read + ?Sized>(&mut self, reader: &mut R) -> Result<u64> {
         let mut bytes = 0;
 
-        // avoid allocating before we have determined that there's anything to read
-        if self.capacity() == 0 {
-            bytes = stack_buffer_copy(&mut reader.take(DEFAULT_BUF_SIZE as u64), self)?;
-            if bytes == 0 {
-                return Ok(0);
+        // avoid inflating empty/small vecs before we have determined that there's anything to read
+        if self.capacity() < DEFAULT_BUF_SIZE {
+            let stack_read_limit = DEFAULT_BUF_SIZE as u64;
+            bytes = stack_buffer_copy(&mut reader.take(stack_read_limit), self)?;
+            // fewer bytes than requested -> EOF reached
+            if bytes < stack_read_limit {
+                return Ok(bytes);
             }
         }
 
