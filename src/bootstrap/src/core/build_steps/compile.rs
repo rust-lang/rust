@@ -1809,10 +1809,6 @@ pub fn run_cargo(
     is_check: bool,
     rlib_only_metadata: bool,
 ) -> Vec<PathBuf> {
-    if builder.config.dry_run() {
-        return Vec::new();
-    }
-
     // `target_root_dir` looks like $dir/$target/release
     let target_root_dir = stamp.parent().unwrap();
     // `target_deps_dir` looks like $dir/$target/release/deps
@@ -1919,6 +1915,10 @@ pub fn run_cargo(
         crate::exit!(1);
     }
 
+    if builder.config.dry_run() {
+        return Vec::new();
+    }
+
     // Ok now we need to actually find all the files listed in `toplevel`. We've
     // got a list of prefix/extensions and we basically just need to find the
     // most recent file in the `deps` folder corresponding to each one.
@@ -1974,9 +1974,6 @@ pub fn stream_cargo(
     cb: &mut dyn FnMut(CargoMessage<'_>),
 ) -> bool {
     let mut cargo = Command::from(cargo);
-    if builder.config.dry_run() {
-        return true;
-    }
     // Instruct Cargo to give us json messages on stdout, critically leaving
     // stderr as piped so we can get those pretty colors.
     let mut message_format = if builder.config.json_output {
@@ -1995,6 +1992,11 @@ pub fn stream_cargo(
     }
 
     builder.verbose(&format!("running: {cargo:?}"));
+
+    if builder.config.dry_run() {
+        return true;
+    }
+
     let mut child = match cargo.spawn() {
         Ok(child) => child,
         Err(e) => panic!("failed to execute command: {cargo:?}\nERROR: {e}"),
