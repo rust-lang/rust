@@ -1,5 +1,4 @@
 // run-pass
-// ignore-wasm32-bare: No panic messages
 // compile-flags: -C debug-assertions
 
 struct Misalignment {
@@ -9,7 +8,7 @@ struct Misalignment {
 fn main() {
     let items: [Misalignment; 2] = [Misalignment { a: 0 }, Misalignment { a: 1 }];
     unsafe {
-        let ptr: *const Misalignment = items.as_ptr().cast::<u8>().add(1).cast::<Misalignment>();
+        let ptr: *const Misalignment = items.as_ptr().byte_add(1);
         let _ptr = core::ptr::addr_of!((*ptr).a);
     }
 }

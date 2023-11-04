@@ -5,9 +5,11 @@
 // error-pattern: misaligned pointer dereference: address must be a multiple of 0x4 but is
 
 fn main() {
-    let mut x = [0u32; 2];
-    let ptr: *mut u8 = x.as_mut_ptr().cast::<u8>();
+    let x = [0u32; 2];
+    let ptr = x.as_ptr();
+    let mut dest = 0u32;
+    let dest_ptr = &mut dest as *mut u32;
     unsafe {
-        *(ptr.add(1).cast::<u32>()) = 42;
+        *dest_ptr = *(ptr.byte_add(1));
     }
 }

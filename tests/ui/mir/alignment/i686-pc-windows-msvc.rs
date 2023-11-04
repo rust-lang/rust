@@ -11,9 +11,9 @@
 
 fn main() {
     let mut x = [0u64; 2];
-    let ptr: *mut u8 = x.as_mut_ptr().cast::<u8>();
+    let ptr = x.as_mut_ptr();
     unsafe {
-        let misaligned = ptr.add(4).cast::<u64>();
+        let misaligned = ptr.byte_add(4);
         assert!(misaligned.addr() % 8 != 0);
         assert!(misaligned.addr() % 4 == 0);
         *misaligned = 42;
