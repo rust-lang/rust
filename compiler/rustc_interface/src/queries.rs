@@ -135,7 +135,7 @@ impl<'tcx> Queries<'tcx> {
                 sess.opts.cg.metadata.clone(),
                 sess.cfg_version,
             );
-            let outputs = util::build_output_filenames(sess, crate_name.to_string());
+            let outputs = util::build_output_filenames(&pre_configured_attrs, sess);
             let dep_graph = setup_dep_graph(sess, crate_name, stable_crate_id)?;
 
             let cstore = FreezeLock::new(Box::new(CStore::new(

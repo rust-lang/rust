@@ -492,6 +492,10 @@ fn parse_unstability(sess: &Session, attr: &Attribute) -> Option<(Symbol, Stabil
     }
 }
 
+pub fn find_crate_name(attrs: &[Attribute]) -> Option<Symbol> {
+    attr::first_attr_value_str_by_name(attrs, sym::crate_name)
+}
+
 #[derive(Clone, Debug)]
 pub struct Condition {
     pub name: Symbol,
