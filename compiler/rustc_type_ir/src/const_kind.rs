@@ -1,12 +1,8 @@
 use rustc_data_structures::stable_hasher::HashStable;
 use rustc_data_structures::stable_hasher::StableHasher;
-use rustc_serialize::{Decodable, Decoder, Encodable};
 use std::fmt;
 
-use crate::{
-    DebruijnIndex, DebugWithInfcx, HashStableContext, InferCtxtLike, Interner, TyDecoder,
-    TyEncoder, WithInfcx,
-};
+use crate::{DebruijnIndex, DebugWithInfcx, HashStableContext, InferCtxtLike, Interner, WithInfcx};
 
 use self::ConstKind::*;
 
@@ -20,6 +16,7 @@ use self::ConstKind::*;
     Ord = "feature_allow_slow_enum",
     Hash(bound = "")
 )]
+#[derive(TyEncodable, TyDecodable)]
 pub enum ConstKind<I: Interner> {
     /// A const generic parameter.
     Param(I::ParamConst),
@@ -88,67 +85,6 @@ where
             Value(v) => v.hash_stable(hcx, hasher),
             Error(e) => e.hash_stable(hcx, hasher),
             Expr(e) => e.hash_stable(hcx, hasher),
-        }
-    }
-}
-
-impl<I: Interner, D: TyDecoder<I = I>> Decodable<D> for ConstKind<I>
-where
-    I::ParamConst: Decodable<D>,
-    I::InferConst: Decodable<D>,
-    I::BoundConst: Decodable<D>,
-    I::PlaceholderConst: Decodable<D>,
-    I::AliasConst: Decodable<D>,
-    I::ValueConst: Decodable<D>,
-    I::ErrorGuaranteed: Decodable<D>,
-    I::ExprConst: Decodable<D>,
-{
-    fn decode(d: &mut D) -> Self {
-        match Decoder::read_usize(d) {
-            0 => Param(Decodable::decode(d)),
-            1 => Infer(Decodable::decode(d)),
-            2 => Bound(Decodable::decode(d), Decodable::decode(d)),
-            3 => Placeholder(Decodable::decode(d)),
-            4 => Unevaluated(Decodable::decode(d)),
-            5 => Value(Decodable::decode(d)),
-            6 => Error(Decodable::decode(d)),
-            7 => Expr(Decodable::decode(d)),
-            _ => panic!(
-                "{}",
-                format!(
-                    "invalid enum variant tag while decoding `{}`, expected 0..{}",
-                    "ConstKind", 8,
-                )
-            ),
-        }
-    }
-}
-
-impl<I: Interner, E: TyEncoder<I = I>> Encodable<E> for ConstKind<I>
-where
-    I::ParamConst: Encodable<E>,
-    I::InferConst: Encodable<E>,
-    I::BoundConst: Encodable<E>,
-    I::PlaceholderConst: Encodable<E>,
-    I::AliasConst: Encodable<E>,
-    I::ValueConst: Encodable<E>,
-    I::ErrorGuaranteed: Encodable<E>,
-    I::ExprConst: Encodable<E>,
-{
-    fn encode(&self, e: &mut E) {
-        let disc = const_kind_discriminant(self);
-        match self {
-            Param(p) => e.emit_enum_variant(disc, |e| p.encode(e)),
-            Infer(i) => e.emit_enum_variant(disc, |e| i.encode(e)),
-            Bound(d, b) => e.emit_enum_variant(disc, |e| {
-                d.encode(e);
-                b.encode(e);
-            }),
-            Placeholder(p) => e.emit_enum_variant(disc, |e| p.encode(e)),
-            Unevaluated(u) => e.emit_enum_variant(disc, |e| u.encode(e)),
-            Value(v) => e.emit_enum_variant(disc, |e| v.encode(e)),
-            Error(er) => e.emit_enum_variant(disc, |e| er.encode(e)),
-            Expr(ex) => e.emit_enum_variant(disc, |e| ex.encode(e)),
         }
     }
 }
