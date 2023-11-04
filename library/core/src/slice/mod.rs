@@ -327,8 +327,6 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(slice_first_last_chunk)]
-    ///
     /// let u = [10, 40, 30];
     /// assert_eq!(Some(&[10, 40]), u.first_chunk::<2>());
     ///
@@ -338,9 +336,9 @@ impl<T> [T] {
     /// let w: &[i32] = &[];
     /// assert_eq!(Some(&[]), w.first_chunk::<0>());
     /// ```
-    #[unstable(feature = "slice_first_last_chunk", issue = "111774")]
-    #[rustc_const_unstable(feature = "slice_first_last_chunk", issue = "111774")]
     #[inline]
+    #[stable(feature = "slice_first_last_chunk", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "slice_first_last_chunk", since = "CURRENT_RUSTC_VERSION")]
     pub const fn first_chunk<const N: usize>(&self) -> Option<&[T; N]> {
         if self.len() < N {
             None
@@ -358,8 +356,6 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(slice_first_last_chunk)]
-    ///
     /// let x = &mut [0, 1, 2];
     ///
     /// if let Some(first) = x.first_chunk_mut::<2>() {
@@ -370,9 +366,9 @@ impl<T> [T] {
     ///
     /// assert_eq!(None, x.first_chunk_mut::<4>());
     /// ```
-    #[unstable(feature = "slice_first_last_chunk", issue = "111774")]
-    #[rustc_const_unstable(feature = "slice_first_last_chunk", issue = "111774")]
     #[inline]
+    #[stable(feature = "slice_first_last_chunk", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_unstable(feature = "const_slice_first_last_chunk", issue = "111774")]
     pub const fn first_chunk_mut<const N: usize>(&mut self) -> Option<&mut [T; N]> {
         if self.len() < N {
             None
@@ -391,8 +387,6 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(slice_first_last_chunk)]
-    ///
     /// let x = &[0, 1, 2];
     ///
     /// if let Some((first, elements)) = x.split_first_chunk::<2>() {
@@ -402,9 +396,9 @@ impl<T> [T] {
     ///
     /// assert_eq!(None, x.split_first_chunk::<4>());
     /// ```
-    #[unstable(feature = "slice_first_last_chunk", issue = "111774")]
-    #[rustc_const_unstable(feature = "slice_first_last_chunk", issue = "111774")]
     #[inline]
+    #[stable(feature = "slice_first_last_chunk", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "slice_first_last_chunk", since = "CURRENT_RUSTC_VERSION")]
     pub const fn split_first_chunk<const N: usize>(&self) -> Option<(&[T; N], &[T])> {
         if self.len() < N {
             None
@@ -426,8 +420,6 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(slice_first_last_chunk)]
-    ///
     /// let x = &mut [0, 1, 2];
     ///
     /// if let Some((first, elements)) = x.split_first_chunk_mut::<2>() {
@@ -439,9 +431,9 @@ impl<T> [T] {
     ///
     /// assert_eq!(None, x.split_first_chunk_mut::<4>());
     /// ```
-    #[unstable(feature = "slice_first_last_chunk", issue = "111774")]
-    #[rustc_const_unstable(feature = "slice_first_last_chunk", issue = "111774")]
     #[inline]
+    #[stable(feature = "slice_first_last_chunk", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_unstable(feature = "const_slice_first_last_chunk", issue = "111774")]
     pub const fn split_first_chunk_mut<const N: usize>(
         &mut self,
     ) -> Option<(&mut [T; N], &mut [T])> {
@@ -465,8 +457,6 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(slice_first_last_chunk)]
-    ///
     /// let x = &[0, 1, 2];
     ///
     /// if let Some((elements, last)) = x.split_last_chunk::<2>() {
@@ -476,9 +466,9 @@ impl<T> [T] {
     ///
     /// assert_eq!(None, x.split_last_chunk::<4>());
     /// ```
-    #[unstable(feature = "slice_first_last_chunk", issue = "111774")]
-    #[rustc_const_unstable(feature = "slice_first_last_chunk", issue = "111774")]
     #[inline]
+    #[stable(feature = "slice_first_last_chunk", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "slice_first_last_chunk", since = "CURRENT_RUSTC_VERSION")]
     pub const fn split_last_chunk<const N: usize>(&self) -> Option<(&[T], &[T; N])> {
         if self.len() < N {
             None
@@ -500,8 +490,6 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(slice_first_last_chunk)]
-    ///
     /// let x = &mut [0, 1, 2];
     ///
     /// if let Some((elements, last)) = x.split_last_chunk_mut::<2>() {
@@ -513,9 +501,9 @@ impl<T> [T] {
     ///
     /// assert_eq!(None, x.split_last_chunk_mut::<4>());
     /// ```
-    #[unstable(feature = "slice_first_last_chunk", issue = "111774")]
-    #[rustc_const_unstable(feature = "slice_first_last_chunk", issue = "111774")]
     #[inline]
+    #[stable(feature = "slice_first_last_chunk", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_unstable(feature = "const_slice_first_last_chunk", issue = "111774")]
     pub const fn split_last_chunk_mut<const N: usize>(
         &mut self,
     ) -> Option<(&mut [T], &mut [T; N])> {
@@ -539,8 +527,6 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(slice_first_last_chunk)]
-    ///
     /// let u = [10, 40, 30];
     /// assert_eq!(Some(&[40, 30]), u.last_chunk::<2>());
     ///
@@ -550,9 +536,9 @@ impl<T> [T] {
     /// let w: &[i32] = &[];
     /// assert_eq!(Some(&[]), w.last_chunk::<0>());
     /// ```
-    #[unstable(feature = "slice_first_last_chunk", issue = "111774")]
-    #[rustc_const_unstable(feature = "slice_first_last_chunk", issue = "111774")]
     #[inline]
+    #[stable(feature = "slice_first_last_chunk", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_unstable(feature = "const_slice_first_last_chunk", issue = "111774")]
     pub const fn last_chunk<const N: usize>(&self) -> Option<&[T; N]> {
         if self.len() < N {
             None
@@ -574,8 +560,6 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(slice_first_last_chunk)]
-    ///
     /// let x = &mut [0, 1, 2];
     ///
     /// if let Some(last) = x.last_chunk_mut::<2>() {
@@ -586,9 +570,9 @@ impl<T> [T] {
     ///
     /// assert_eq!(None, x.last_chunk_mut::<4>());
     /// ```
-    #[unstable(feature = "slice_first_last_chunk", issue = "111774")]
-    #[rustc_const_unstable(feature = "slice_first_last_chunk", issue = "111774")]
     #[inline]
+    #[stable(feature = "slice_first_last_chunk", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_unstable(feature = "const_slice_first_last_chunk", issue = "111774")]
     pub const fn last_chunk_mut<const N: usize>(&mut self) -> Option<&mut [T; N]> {
         if self.len() < N {
             None
@@ -1885,7 +1869,6 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "const_slice_split_at_not_mut", since = "1.71.0")]
-    #[rustc_allow_const_fn_unstable(slice_split_at_unchecked)]
     #[inline]
     #[track_caller]
     #[must_use]
@@ -1972,7 +1955,10 @@ impl<T> [T] {
     /// }
     /// ```
     #[unstable(feature = "slice_split_at_unchecked", reason = "new API", issue = "76014")]
-    #[rustc_const_unstable(feature = "slice_split_at_unchecked", issue = "76014")]
+    #[rustc_const_stable(
+        feature = "const_slice_split_at_unchecked",
+        since = "CURRENT_RUSTC_VERSION"
+    )]
     #[inline]
     #[must_use]
     pub const unsafe fn split_at_unchecked(&self, mid: usize) -> (&[T], &[T]) {
