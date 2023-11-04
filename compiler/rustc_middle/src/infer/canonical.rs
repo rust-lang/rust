@@ -23,6 +23,8 @@
 
 use rustc_macros::HashStable;
 use rustc_type_ir::Canonical as IrCanonical;
+use rustc_type_ir::CanonicalVarInfo as IrCanonicalVarInfo;
+pub use rustc_type_ir::{CanonicalTyVarKind, CanonicalVarKind};
 use smallvec::SmallVec;
 use std::ops::Index;
 
@@ -32,6 +34,8 @@ use crate::ty::GenericArg;
 use crate::ty::{self, BoundVar, List, Region, Ty, TyCtxt};
 
 pub type Canonical<'tcx, V> = IrCanonical<TyCtxt<'tcx>, V>;
+
+pub type CanonicalVarInfo<'tcx> = IrCanonicalVarInfo<TyCtxt<'tcx>>;
 
 pub type CanonicalVarInfos<'tcx> = &'tcx List<CanonicalVarInfo<'tcx>>;
 
@@ -138,158 +142,6 @@ impl<'tcx> Default for OriginalQueryValues<'tcx> {
     }
 }
 
-/// Information about a canonical variable that is included with the
-/// canonical value. This is sufficient information for code to create
-/// a copy of the canonical value in some other inference context,
-/// with fresh inference variables replacing the canonical values.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TyDecodable, TyEncodable, HashStable)]
-#[derive(TypeFoldable, TypeVisitable)]
-pub struct CanonicalVarInfo<'tcx> {
-    pub kind: CanonicalVarKind<'tcx>,
-}
-
-impl<'tcx> CanonicalVarInfo<'tcx> {
-    pub fn universe(&self) -> ty::UniverseIndex {
-        self.kind.universe()
-    }
-
-    #[must_use]
-    pub fn with_updated_universe(self, ui: ty::UniverseIndex) -> CanonicalVarInfo<'tcx> {
-        CanonicalVarInfo { kind: self.kind.with_updated_universe(ui) }
-    }
-
-    pub fn is_existential(&self) -> bool {
-        match self.kind {
-            CanonicalVarKind::Ty(_) => true,
-            CanonicalVarKind::PlaceholderTy(_) => false,
-            CanonicalVarKind::Region(_) => true,
-            CanonicalVarKind::PlaceholderRegion(..) => false,
-            CanonicalVarKind::Const(..) => true,
-            CanonicalVarKind::PlaceholderConst(_, _) => false,
-            CanonicalVarKind::Effect => true,
-        }
-    }
-
-    pub fn is_region(&self) -> bool {
-        match self.kind {
-            CanonicalVarKind::Region(_) | CanonicalVarKind::PlaceholderRegion(_) => true,
-            CanonicalVarKind::Ty(_)
-            | CanonicalVarKind::PlaceholderTy(_)
-            | CanonicalVarKind::Const(_, _)
-            | CanonicalVarKind::PlaceholderConst(_, _)
-            | CanonicalVarKind::Effect => false,
-        }
-    }
-
-    pub fn expect_placeholder_index(self) -> usize {
-        match self.kind {
-            CanonicalVarKind::Ty(_)
-            | CanonicalVarKind::Region(_)
-            | CanonicalVarKind::Const(_, _)
-            | CanonicalVarKind::Effect => bug!("expected placeholder: {self:?}"),
-
-            CanonicalVarKind::PlaceholderRegion(placeholder) => placeholder.bound.var.as_usize(),
-            CanonicalVarKind::PlaceholderTy(placeholder) => placeholder.bound.var.as_usize(),
-            CanonicalVarKind::PlaceholderConst(placeholder, _) => placeholder.bound.as_usize(),
-        }
-    }
-}
-
-/// Describes the "kind" of the canonical variable. This is a "kind"
-/// in the type-theory sense of the term -- i.e., a "meta" type system
-/// that analyzes type-like values.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TyDecodable, TyEncodable, HashStable)]
-#[derive(TypeFoldable, TypeVisitable)]
-pub enum CanonicalVarKind<'tcx> {
-    /// Some kind of type inference variable.
-    Ty(CanonicalTyVarKind),
-
-    /// A "placeholder" that represents "any type".
-    PlaceholderTy(ty::PlaceholderType),
-
-    /// Region variable `'?R`.
-    Region(ty::UniverseIndex),
-
-    /// A "placeholder" that represents "any region". Created when you
-    /// are solving a goal like `for<'a> T: Foo<'a>` to represent the
-    /// bound region `'a`.
-    PlaceholderRegion(ty::PlaceholderRegion),
-
-    /// Some kind of const inference variable.
-    Const(ty::UniverseIndex, Ty<'tcx>),
-
-    /// Effect variable `'?E`.
-    Effect,
-
-    /// A "placeholder" that represents "any const".
-    PlaceholderConst(ty::PlaceholderConst, Ty<'tcx>),
-}
-
-impl<'tcx> CanonicalVarKind<'tcx> {
-    pub fn universe(self) -> ty::UniverseIndex {
-        match self {
-            CanonicalVarKind::Ty(CanonicalTyVarKind::General(ui)) => ui,
-            CanonicalVarKind::Ty(CanonicalTyVarKind::Float | CanonicalTyVarKind::Int) => {
-                ty::UniverseIndex::ROOT
-            }
-            CanonicalVarKind::Effect => ty::UniverseIndex::ROOT,
-            CanonicalVarKind::PlaceholderTy(placeholder) => placeholder.universe,
-            CanonicalVarKind::Region(ui) => ui,
-            CanonicalVarKind::PlaceholderRegion(placeholder) => placeholder.universe,
-            CanonicalVarKind::Const(ui, _) => ui,
-            CanonicalVarKind::PlaceholderConst(placeholder, _) => placeholder.universe,
-        }
-    }
-
-    /// Replaces the universe of this canonical variable with `ui`.
-    ///
-    /// In case this is a float or int variable, this causes an ICE if
-    /// the updated universe is not the root.
-    pub fn with_updated_universe(self, ui: ty::UniverseIndex) -> CanonicalVarKind<'tcx> {
-        match self {
-            CanonicalVarKind::Ty(CanonicalTyVarKind::General(_)) => {
-                CanonicalVarKind::Ty(CanonicalTyVarKind::General(ui))
-            }
-            CanonicalVarKind::Ty(CanonicalTyVarKind::Int | CanonicalTyVarKind::Float)
-            | CanonicalVarKind::Effect => {
-                assert_eq!(ui, ty::UniverseIndex::ROOT);
-                self
-            }
-            CanonicalVarKind::PlaceholderTy(placeholder) => {
-                CanonicalVarKind::PlaceholderTy(ty::Placeholder { universe: ui, ..placeholder })
-            }
-            CanonicalVarKind::Region(_) => CanonicalVarKind::Region(ui),
-            CanonicalVarKind::PlaceholderRegion(placeholder) => {
-                CanonicalVarKind::PlaceholderRegion(ty::Placeholder { universe: ui, ..placeholder })
-            }
-            CanonicalVarKind::Const(_, ty) => CanonicalVarKind::Const(ui, ty),
-            CanonicalVarKind::PlaceholderConst(placeholder, ty) => {
-                CanonicalVarKind::PlaceholderConst(
-                    ty::Placeholder { universe: ui, ..placeholder },
-                    ty,
-                )
-            }
-        }
-    }
-}
-
-/// Rust actually has more than one category of type variables;
-/// notably, the type variables we create for literals (e.g., 22 or
-/// 22.) can only be instantiated with integral/float types (e.g.,
-/// usize or f32). In order to faithfully reproduce a type, we need to
-/// know what set of types a given type variable can be unified with.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TyDecodable, TyEncodable, HashStable)]
-pub enum CanonicalTyVarKind {
-    /// General type variable `?T` that can be unified with arbitrary types.
-    General(ty::UniverseIndex),
-
-    /// Integral type variable `?I` (that can only be unified with integral types).
-    Int,
-
-    /// Floating-point type variable `?F` (that can only be unified with float types).
-    Float,
-}
-
 /// After we execute a query with a canonicalized key, we get back a
 /// `Canonical<QueryResponse<..>>`. You can use
 /// `instantiate_query_result` to access the data in this result.
@@ -366,7 +218,6 @@ pub type QueryOutlivesConstraint<'tcx> =
 
 TrivialTypeTraversalImpls! {
     crate::infer::canonical::Certainty,
-    crate::infer::canonical::CanonicalTyVarKind,
 }
 
 impl<'tcx> CanonicalVarValues<'tcx> {
