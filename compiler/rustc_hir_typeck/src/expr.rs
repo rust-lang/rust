@@ -3124,7 +3124,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             sym::offset_of_enum,
                             ident.span,
                             "using enums in offset_of is experimental",
-                            ).emit();
+                        ).emit();
                     }
 
                     let Some((index, variant)) = container_def.variants()
