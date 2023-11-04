@@ -1401,7 +1401,7 @@ pub fn noop_visit_expr<T: MutVisitor>(
         }
         ExprKind::Closure(box Closure {
             binder,
-            capture_clause: _,
+            capture_clause,
             constness,
             asyncness,
             movability: _,
@@ -1413,6 +1413,7 @@ pub fn noop_visit_expr<T: MutVisitor>(
             vis.visit_closure_binder(binder);
             visit_constness(constness, vis);
             vis.visit_asyncness(asyncness);
+            vis.visit_capture_by(capture_clause);
             vis.visit_fn_decl(fn_decl);
             vis.visit_expr(body);
             vis.visit_span(fn_decl_span);
