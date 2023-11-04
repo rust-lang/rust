@@ -228,5 +228,5 @@ fn main() {
     }
 }
 
-#[cfg(target_arch = "x86_64")]
+#[cfg(not(target_arch = "aarch64"))]
 fn main() {}
