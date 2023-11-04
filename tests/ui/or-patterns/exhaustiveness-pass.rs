@@ -35,6 +35,17 @@ fn main() {
         ((0, 0) | (1, 0),) => {}
         _ => {}
     }
+    match ((0, 0),) {
+        // Note how the second one would be redundant without the guard.
+        ((x, y) | (y, x),) if x == 0 => {}
+        _ => {}
+    }
+    match 0 {
+        // We don't warn the second one as redundant in general because of cases like the one above.
+        // We could technically do it if there are no bindings.
+        0 | 0 if 0 == 0 => {}
+        _ => {}
+    }
 
     // This one caused ICE https://github.com/rust-lang/rust/issues/117378
     match (0u8, 0) {
