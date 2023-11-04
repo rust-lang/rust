@@ -415,7 +415,7 @@ Issue #{number} "{title}" has been added.
 """
 
 [no-merges]
-exclude_titles = ["Rollup of", "subtree update"]
+exclude_titles = ["Rollup of", "subtree update", "Subtree update"]
 labels = ["has-merge-commits", "S-waiting-on-author"]
 
 [github-releases]
