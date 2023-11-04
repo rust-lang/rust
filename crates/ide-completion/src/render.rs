@@ -10,9 +10,7 @@ pub(crate) mod variant;
 pub(crate) mod union_literal;
 pub(crate) mod literal;
 
-use core::panic;
-
-use hir::{AsAssocItem, HasAttrs, HirDisplay, ModuleDef, ScopeDef, Type};
+use hir::{AsAssocItem, Function, HasAttrs, HirDisplay, ModuleDef, ScopeDef, Type};
 use ide_db::{
     documentation::{Documentation, HasDocs},
     helpers::item_name,
@@ -395,17 +393,14 @@ fn render_resolution_path(
         ScopeDef::ModuleDef(ModuleDef::Adt(adt)) | ScopeDef::AdtSelfType(adt) => {
             set_item_relevance(adt.ty(db))
         }
-        ScopeDef::ModuleDef(ModuleDef::Function(func)) => {
-            set_item_relevance(func.ty(db).as_callable(db).unwrap().ty)
-        }
-        ScopeDef::ModuleDef(ModuleDef::Variant(variant)) => {
-            set_item_relevance(variant.parent_enum(db).ty(db))
-        }
+        // Functions are handled at the start of the function.
+        ScopeDef::ModuleDef(ModuleDef::Function(_)) => (), // TODO: Should merge with the match case earlier in the function?
+        // Enum variants are handled at the start of the function.
+        ScopeDef::ModuleDef(ModuleDef::Variant(_)) => (),
         ScopeDef::ModuleDef(ModuleDef::Const(konst)) => set_item_relevance(konst.ty(db)),
         ScopeDef::ModuleDef(ModuleDef::Static(stat)) => set_item_relevance(stat.ty(db)),
         ScopeDef::ModuleDef(ModuleDef::BuiltinType(bt)) => set_item_relevance(bt.ty(db)),
         ScopeDef::ImplSelfType(imp) => set_item_relevance(imp.self_ty(db)),
-
         ScopeDef::GenericParam(_)
         | ScopeDef::Label(_)
         | ScopeDef::Unknown
@@ -502,6 +497,20 @@ fn scope_def_is_deprecated(ctx: &RenderContext<'_>, resolution: ScopeDef) -> boo
     }
 }
 
+fn match_types(
+    ctx: &CompletionContext<'_>,
+    ty1: &hir::Type,
+    ty2: &hir::Type,
+) -> Option<CompletionRelevanceTypeMatch> {
+    if ty1 == ty2 {
+        Some(CompletionRelevanceTypeMatch::Exact)
+    } else if ty1.could_unify_with(ctx.db, ty2) {
+        Some(CompletionRelevanceTypeMatch::CouldUnify)
+    } else {
+        None
+    }
+}
+
 fn compute_type_match(
     ctx: &CompletionContext<'_>,
     completion_ty: &hir::Type,
@@ -514,35 +523,42 @@ fn compute_type_match(
         return None;
     }
 
-    if completion_ty == expected_type {
-        Some(CompletionRelevanceTypeMatch::Exact)
-    } else if expected_type.could_unify_with(ctx.db, completion_ty) {
-        Some(CompletionRelevanceTypeMatch::CouldUnify)
-    } else {
-        None
-    }
+    match_types(ctx, expected_type, completion_ty)
 }
 
-fn compute_type_match2(
+fn compute_function_type_match(
     ctx: &CompletionContext<'_>,
-    completion_ty1: &hir::Type,
-    completion_ty2: &hir::Type,
+    func: &Function,
 ) -> Option<CompletionRelevanceTypeMatch> {
-    let expected_type = completion_ty1;
+    // We compute a vec of function parameters + the return type for the expected
+    // type as well as the function we are matching with. Doing this allows for
+    // matching all of the types in one iterator.
 
-    // We don't ever consider unit type to be an exact type match, since
-    // nearly always this is not meaningful to the user.
-    if expected_type.is_unit() {
+    let expected_callable = ctx.expected_type.as_ref()?.as_callable(ctx.db)?;
+    let expected_types = expected_callable.params(ctx.db).into_iter().map(|param| param.1);
+    let actual_types =
+        func.ty(ctx.db).as_callable(ctx.db)?.params(ctx.db).into_iter().map(|param| param.1);
+
+    if expected_types.len() != actual_types.len() {
         return None;
     }
 
-    if completion_ty2 == expected_type {
-        Some(CompletionRelevanceTypeMatch::Exact)
-    } else if expected_type.could_unify_with(ctx.db, completion_ty2) {
-        Some(CompletionRelevanceTypeMatch::CouldUnify)
-    } else {
-        None
+    let mut matches = expected_types
+        .zip(actual_types)
+        .chain([(expected_callable.return_type(), func.ret_type(ctx.db))])
+        .map(|(expected_type, actual_type)| match_types(ctx, &expected_type, &actual_type));
+
+    // Any missing type match indicates that these types can not be unified.
+    if matches.any(|type_match| type_match.is_none()) {
+        return None;
     }
+
+    // If any of the types are unifiable but not exact we consider the function types as a whole
+    // to be unifiable. Otherwise if every pair of types is an exact match the functions are an
+    // exact type match.
+    matches
+        .find(|type_match| matches!(type_match, Some(CompletionRelevanceTypeMatch::CouldUnify)))
+        .unwrap_or(Some(CompletionRelevanceTypeMatch::Exact))
 }
 
 fn compute_exact_name_match(ctx: &CompletionContext<'_>, completion_name: &str) -> bool {
@@ -796,7 +812,7 @@ fn main() {
         );
     }
 
-    // TODO: does this test even make sense?
+    // TODO: How dowe test ModuleDef::Variant(Variant?)
     #[test]
     fn set_enum_variant_type_completion_info() {
         check_relevance(
@@ -820,7 +836,7 @@ pub mod test_mod_a {
 fn test(input: dep::test_mod_b::Enum) { }
 
 fn main() {
-    test(Enum$0);
+    test(Enum::Variant$0);
 }
 "#,
             expect![[r#"
@@ -859,7 +875,7 @@ fn main() {
 }
 "#,
             expect![[r#"
-                fn Function (use dep::test_mod_a::Function) [type_could_unify+requires_import]
+                fn Function (use dep::test_mod_a::Function) [type+requires_import]
                 fn main []
                 fn test []
                 md dep []
@@ -868,7 +884,6 @@ fn main() {
         );
     }
 
-    // TODO This test does not trigger the const case
     #[test]
     fn set_const_type_completion_info() {
         check_relevance(
@@ -933,8 +948,38 @@ fn main() {
         );
     }
 
-    // TODO: seems like something is going wrong here. Exapt type match has no effect
-    // EDIT: maybe it is actually working
+    #[test]
+    fn set_self_type_completion_info_with_params() {
+        check_relevance(
+            r#"
+//- /lib.rs crate:dep
+pub struct Struct;
+
+impl Struct {
+    pub fn Function(&self, input: i32) -> bool {
+                false
+    }
+}
+
+
+//- /main.rs crate:main deps:dep
+
+use dep::Struct;
+
+
+fn test(input: fn(&dep::Struct, i32) -> bool) { }
+
+fn main() {
+    test(Struct::Function$0);
+}
+
+"#,
+            expect![[r#"
+                me Function [type]
+            "#]],
+        );
+    }
+
     #[test]
     fn set_self_type_completion_info() {
         check_relevance(
@@ -964,34 +1009,26 @@ fn func(input: Struct) { }
         );
     }
 
-    // TODO: how do we actually test builtins?
-
     #[test]
     fn set_builtin_type_completion_info() {
         check_relevance(
             r#"
-//- /lib.rs crate:dep
+//- /main.rs crate:main 
 
-pub mod test_mod_b {
-            static STATIC: i32 = 5;
-}
-
-            pub mod test_mod_a {
-            static STATIC: &str = "test";
-}
-
-//- /main.rs crate:main deps:dep
-
-fn test(input: i32) { }
+fn test(input: bool) { }
+    pub Input: bool = false; 
 
 fn main() {
-    test(STATIC$0);
+    let input = false; 
+    let inputbad = 3; 
+    test(inp$0);
 }
 "#,
             expect![[r#"
+                lc input [type+name+local]
+                lc inputbad [local]
                 fn main() []
                 fn test(…) []
-                md dep []
             "#]],
         );
     }
