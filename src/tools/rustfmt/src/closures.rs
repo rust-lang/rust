@@ -264,7 +264,7 @@ fn rewrite_closure_fn_decl(
         ""
     };
     let is_async = if asyncness.is_async() { "async " } else { "" };
-    let mover = if capture == ast::CaptureBy::Value {
+    let mover = if matches!(capture, ast::CaptureBy::Value { .. }) {
         "move "
     } else {
         ""
