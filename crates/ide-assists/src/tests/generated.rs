@@ -1539,6 +1539,41 @@ impl MyStruct {
 }
 
 #[test]
+fn doctest_generate_mut_trait_impl() {
+    check_doc_test(
+        "generate_mut_trait_impl",
+        r#####"
+pub enum Axis { X = 0, Y = 1, Z = 2 }
+
+impl<T> Index$0<Axis> for [T; 3] {
+    type Output = T;
+
+    fn index(&self, index: Axis) -> &Self::Output {
+        &self[index as usize]
+    }
+}
+"#####,
+        r#####"
+pub enum Axis { X = 0, Y = 1, Z = 2 }
+
+$0impl<T> IndexMut<Axis> for [T; 3] {
+    fn index_mut(&mut self, index: Axis) -> &mut Self::Output {
+        &self[index as usize]
+    }
+}
+
+impl<T> Index<Axis> for [T; 3] {
+    type Output = T;
+
+    fn index(&self, index: Axis) -> &Self::Output {
+        &self[index as usize]
+    }
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_generate_new() {
     check_doc_test(
         "generate_new",
