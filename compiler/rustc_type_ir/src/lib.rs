@@ -332,3 +332,10 @@ impl UniverseIndex {
         self.private < other.private
     }
 }
+
+rustc_index::newtype_index! {
+    #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
+    #[debug_format = "{}"]
+    #[gate_rustc_only]
+    pub struct BoundVar {}
+}

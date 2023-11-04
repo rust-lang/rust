@@ -32,6 +32,7 @@ use std::fmt;
 use std::ops::{ControlFlow, Deref, Range};
 use ty::util::IntTypeExt;
 
+use rustc_type_ir::BoundVar;
 use rustc_type_ir::ClauseKind as IrClauseKind;
 use rustc_type_ir::CollectAndApply;
 use rustc_type_ir::ConstKind as IrConstKind;
@@ -1619,12 +1620,6 @@ impl Atom for RegionVid {
     fn index(self) -> usize {
         Idx::index(self)
     }
-}
-
-rustc_index::newtype_index! {
-    #[derive(HashStable)]
-    #[debug_format = "{}"]
-    pub struct BoundVar {}
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, TyEncodable, TyDecodable)]
