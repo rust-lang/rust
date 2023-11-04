@@ -1482,7 +1482,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             hir::CaptureBy::Value { .. } if !place.deref_tys().any(Ty::is_ref) => {
                 ty::UpvarCapture::ByValue
             }
-            hir::CaptureBy::Value { .. } | hir::CaptureBy::Ref => ty::UpvarCapture::ByRef(ty::ImmBorrow),
+            hir::CaptureBy::Value { .. } | hir::CaptureBy::Ref => {
+                ty::UpvarCapture::ByRef(ty::ImmBorrow)
+            }
         }
     }
 

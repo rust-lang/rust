@@ -2310,9 +2310,7 @@ impl<'a> Parser<'a> {
                 Err(errors::AsyncMoveOrderIncorrect { span: move_async_span }
                     .into_diagnostic(&self.sess.span_diagnostic))
             } else {
-                Ok(CaptureBy::Value {
-                    move_kw: move_kw_span,
-                })
+                Ok(CaptureBy::Value { move_kw: move_kw_span })
             }
         } else {
             Ok(CaptureBy::Ref)
