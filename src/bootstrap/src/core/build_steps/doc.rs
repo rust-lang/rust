@@ -685,18 +685,7 @@ impl Step for Rustc {
             target,
         );
 
-        // This uses a shared directory so that librustdoc documentation gets
-        // correctly built and merged with the rustc documentation. This is
-        // needed because rustdoc is built in a different directory from
-        // rustc. rustdoc needs to be able to see everything, for example when
-        // merging the search index, or generating local (relative) links.
         let out_dir = builder.stage_out(compiler, Mode::Rustc).join(target.triple).join("doc");
-        t!(fs::create_dir_all(out_dir.parent().unwrap()));
-        symlink_dir_force(&builder.config, &out, &out_dir);
-        // Cargo puts proc macros in `target/doc` even if you pass `--target`
-        // explicitly (https://github.com/rust-lang/cargo/issues/7677).
-        let proc_macro_out_dir = builder.stage_out(compiler, Mode::Rustc).join("doc");
-        symlink_dir_force(&builder.config, &out, &proc_macro_out_dir);
 
         // Build cargo command.
         let mut cargo = builder.cargo(compiler, Mode::Rustc, SourceType::InTree, target, "doc");
@@ -735,6 +724,18 @@ impl Step for Rustc {
                 to_open = Some(dir_name);
             }
         }
+
+        // This uses a shared directory so that librustdoc documentation gets
+        // correctly built and merged with the rustc documentation.
+        //
+        // This is needed because rustdoc is built in a different directory from
+        // rustc. rustdoc needs to be able to see everything, for example when
+        // merging the search index, or generating local (relative) links.
+        symlink_dir_force(&builder.config, &out, &out_dir);
+        // Cargo puts proc macros in `target/doc` even if you pass `--target`
+        // explicitly (https://github.com/rust-lang/cargo/issues/7677).
+        let proc_macro_out_dir = builder.stage_out(compiler, Mode::Rustc).join("doc");
+        symlink_dir_force(&builder.config, &out, &proc_macro_out_dir);
 
         builder.run(&mut cargo.into());
 
