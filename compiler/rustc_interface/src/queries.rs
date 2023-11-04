@@ -273,8 +273,13 @@ impl Linker {
 
         if sess.opts.unstable_opts.no_link {
             let rlink_file = self.output_filenames.with_extension(config::RLINK_EXT);
-            CodegenResults::serialize_rlink(sess, &rlink_file, &codegen_results)
-                .map_err(|error| sess.emit_fatal(FailedWritingFile { path: &rlink_file, error }))?;
+            CodegenResults::serialize_rlink(
+                sess,
+                &rlink_file,
+                &codegen_results,
+                &*self.output_filenames,
+            )
+            .map_err(|error| sess.emit_fatal(FailedWritingFile { path: &rlink_file, error }))?;
             return Ok(());
         }
 
