@@ -1,6 +1,8 @@
 // Most of these tests are copied from https://github.com/japaric/stdsimd/blob/0f4413d01c4f0c3ffbc5a69e9a37fbc7235b31a9/coresimd/arm/neon.rs
 
 #![feature(portable_simd)]
+
+#[cfg(target_arch = "aarch64")]
 use std::arch::aarch64::*;
 use std::mem::transmute;
 use std::simd::*;
