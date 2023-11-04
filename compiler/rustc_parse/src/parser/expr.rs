@@ -32,10 +32,10 @@ use rustc_macros::Subdiagnostic;
 use rustc_session::errors::{report_lit_error, ExprParenthesesNeeded};
 use rustc_session::lint::builtin::BREAK_WITH_LABEL_AND_LOOP;
 use rustc_session::lint::BuiltinLintDiagnostics;
-use rustc_span::source_map::{self, Span, Spanned};
+use rustc_span::source_map::{self, Spanned};
 use rustc_span::symbol::kw::PathRoot;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{BytePos, Pos};
+use rustc_span::{BytePos, Pos, Span};
 use thin_vec::{thin_vec, ThinVec};
 
 /// Possibly accepts an `token::Interpolated` expression (a pre-parsed expression

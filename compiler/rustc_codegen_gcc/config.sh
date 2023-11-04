@@ -25,7 +25,7 @@ else
     exit 1
 fi
 
-HOST_TRIPLE=$(rustc -vV | grep host | cut -d: -f2 | tr -d " ")
+HOST_TRIPLE=$($RUSTC -vV | grep host | cut -d: -f2 | tr -d " ")
 # TODO: remove $OVERWRITE_TARGET_TRIPLE when config.sh is removed.
 TARGET_TRIPLE="${OVERWRITE_TARGET_TRIPLE:-$HOST_TRIPLE}"
 
@@ -54,6 +54,10 @@ if [[ -z "$BUILTIN_BACKEND" ]]; then
     export RUSTFLAGS="$CG_RUSTFLAGS $linker -Csymbol-mangling-version=v0 -Cdebuginfo=2 $disable_lto_flags -Zcodegen-backend=$(pwd)/target/${CHANNEL:-debug}/librustc_codegen_gcc.$dylib_ext --sysroot $(pwd)/build_sysroot/sysroot $TEST_FLAGS"
 else
     export RUSTFLAGS="$CG_RUSTFLAGS $linker -Csymbol-mangling-version=v0 -Cdebuginfo=2 $disable_lto_flags -Zcodegen-backend=gcc $TEST_FLAGS -Cpanic=abort"
+
+    if [[ ! -z "$RUSTC_SYSROOT" ]]; then
+        export RUSTFLAGS="$RUSTFLAGS --sysroot $RUSTC_SYSROOT"
+    fi
 fi
 
 # FIXME(antoyo): remove once the atomic shim is gone

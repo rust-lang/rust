@@ -4,7 +4,7 @@ use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
-    CoroutineSource, Block, Body, Closure, CoroutineKind, Expr, ExprKind, FnDecl, FnRetTy, GenericArg, GenericBound,
+    Block, Body, Closure, CoroutineKind, CoroutineSource, Expr, ExprKind, FnDecl, FnRetTy, GenericArg, GenericBound,
     ImplItem, Item, ItemKind, LifetimeName, Node, Term, TraitRef, Ty, TyKind, TypeBindingKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
@@ -20,13 +20,13 @@ declare_clippy_lint! {
     /// It's more idiomatic to use the dedicated syntax.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// use std::future::Future;
     ///
     /// fn foo() -> impl Future<Output = i32> { async { 42 } }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// async fn foo() -> i32 { 42 }
     /// ```
     #[clippy::version = "1.45.0"]

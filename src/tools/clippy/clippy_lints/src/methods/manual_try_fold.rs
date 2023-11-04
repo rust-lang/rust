@@ -1,6 +1,6 @@
+use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::is_from_proc_macro;
-use clippy_utils::msrvs::{Msrv, ITERATOR_TRY_FOLD};
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::implements_trait;
 use rustc_errors::Applicability;
@@ -21,7 +21,7 @@ pub(super) fn check<'tcx>(
     msrv: &Msrv,
 ) {
     if !in_external_macro(cx.sess(), fold_span)
-        && msrv.meets(ITERATOR_TRY_FOLD)
+        && msrv.meets(msrvs::ITERATOR_TRY_FOLD)
         && let init_ty = cx.typeck_results().expr_ty(init)
         && let Some(try_trait) = cx.tcx.lang_items().try_trait()
         && implements_trait(cx, init_ty, try_trait, &[])
@@ -44,7 +44,7 @@ pub(super) fn check<'tcx>(
             fold_span,
             "usage of `Iterator::fold` on a type that implements `Try`",
             "use `try_fold` instead",
-            format!("try_fold({init_snip}, {args_snip} ...)", ),
+            format!("try_fold({init_snip}, {args_snip} ...)",),
             Applicability::HasPlaceholders,
         );
     }

@@ -17,7 +17,7 @@ use rustc_middle::traits::solve::{Certainty, Goal};
 use rustc_middle::ty;
 
 use crate::solve::inspect::ProofTreeBuilder;
-use crate::solve::{GenerateProofTree, InferCtxtEvalExt, UseGlobalCache};
+use crate::solve::{GenerateProofTree, InferCtxtEvalExt};
 
 pub struct InspectGoal<'a, 'tcx> {
     infcx: &'a InferCtxt<'tcx>,
@@ -82,8 +82,7 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
                 }
 
                 for &goal in &instantiated_goals {
-                    let (_, proof_tree) =
-                        infcx.evaluate_root_goal(goal, GenerateProofTree::Yes(UseGlobalCache::No));
+                    let (_, proof_tree) = infcx.evaluate_root_goal(goal, GenerateProofTree::Yes);
                     let proof_tree = proof_tree.unwrap();
                     visitor.visit_goal(&InspectGoal::new(
                         infcx,
@@ -169,11 +168,11 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
         let mut candidates = vec![];
         let last_eval_step = match self.evaluation.evaluation.kind {
             inspect::CanonicalGoalEvaluationKind::Overflow
-            | inspect::CanonicalGoalEvaluationKind::CacheHit(_) => {
+            | inspect::CanonicalGoalEvaluationKind::CycleInStack => {
                 warn!("unexpected root evaluation: {:?}", self.evaluation);
                 return vec![];
             }
-            inspect::CanonicalGoalEvaluationKind::Uncached { ref revisions } => {
+            inspect::CanonicalGoalEvaluationKind::Evaluation { ref revisions } => {
                 if let Some(last) = revisions.last() {
                     last
                 } else {
@@ -227,8 +226,7 @@ impl<'tcx> ProofTreeInferCtxtExt<'tcx> for InferCtxt<'tcx> {
         goal: Goal<'tcx, ty::Predicate<'tcx>>,
         visitor: &mut V,
     ) -> ControlFlow<V::BreakTy> {
-        let (_, proof_tree) =
-            self.evaluate_root_goal(goal, GenerateProofTree::Yes(UseGlobalCache::No));
+        let (_, proof_tree) = self.evaluate_root_goal(goal, GenerateProofTree::Yes);
         let proof_tree = proof_tree.unwrap();
         visitor.visit_goal(&InspectGoal::new(self, 0, &proof_tree))
     }

@@ -21,8 +21,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, Binder, ClauseKind, ExistentialPredicate, List, PredicateKind, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::source_map::Span;
-use rustc_span::sym;
+use rustc_span::{sym, Span};
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::infer::InferCtxtExt as _;
@@ -289,10 +288,7 @@ fn check_invalid_ptr_usage<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
             | sym::ptr_write_volatile
             | sym::slice_from_raw_parts
             | sym::slice_from_raw_parts_mut => &[0],
-            sym::ptr_copy
-            | sym::ptr_copy_nonoverlapping
-            | sym::ptr_swap
-            | sym::ptr_swap_nonoverlapping => &[0, 1],
+            sym::ptr_copy | sym::ptr_copy_nonoverlapping | sym::ptr_swap | sym::ptr_swap_nonoverlapping => &[0, 1],
             _ => return,
         };
 
@@ -416,7 +412,6 @@ impl<'tcx> DerefTy<'tcx> {
     }
 }
 
-#[expect(clippy::too_many_lines)]
 fn check_fn_args<'cx, 'tcx: 'cx>(
     cx: &'cx LateContext<'tcx>,
     fn_sig: ty::FnSig<'tcx>,
@@ -438,104 +433,93 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
                 && let [.., name] = path.segments
                 && cx.tcx.item_name(adt.did()) == name.ident.name
             {
-                    let emission_id = params.get(i).map_or(hir_ty.hir_id, |param| param.hir_id);
-                    let (method_renames, deref_ty) = match cx.tcx.get_diagnostic_name(adt.did()) {
-                        Some(sym::Vec) => (
-                            [("clone", ".to_owned()")].as_slice(),
-                            DerefTy::Slice(
-                                name.args
-                                    .and_then(|args| args.args.first())
-                                    .and_then(|arg| if let GenericArg::Type(ty) = arg {
-                                        Some(ty.span)
-                                    } else {
-                                        None
-                                    }),
-                                args.type_at(0),
-                            ),
-                        ),
-                        _ if Some(adt.did()) == cx.tcx.lang_items().string() => (
-                            [("clone", ".to_owned()"), ("as_str", "")].as_slice(),
-                            DerefTy::Str,
-                        ),
-                        Some(sym::PathBuf) => (
-                            [("clone", ".to_path_buf()"), ("as_path", "")].as_slice(),
-                            DerefTy::Path,
-                        ),
-                        Some(sym::Cow) if mutability == Mutability::Not => {
-                            if let Some((lifetime, ty)) = name.args
-                                .and_then(|args| {
-                                    if let [GenericArg::Lifetime(lifetime), ty] = args.args {
-                                        return Some((lifetime, ty));
-                                    }
+                let emission_id = params.get(i).map_or(hir_ty.hir_id, |param| param.hir_id);
+                let (method_renames, deref_ty) = match cx.tcx.get_diagnostic_name(adt.did()) {
+                    Some(sym::Vec) => (
+                        [("clone", ".to_owned()")].as_slice(),
+                        DerefTy::Slice(
+                            name.args.and_then(|args| args.args.first()).and_then(|arg| {
+                                if let GenericArg::Type(ty) = arg {
+                                    Some(ty.span)
+                                } else {
                                     None
-                                })
-                            {
-                                if !lifetime.is_anonymous()
-                                    && fn_sig.output()
-                                        .walk()
-                                        .filter_map(|arg| {
-                                            arg.as_region().and_then(|lifetime| {
-                                                match lifetime.kind() {
-                                                    ty::ReEarlyBound(r) => Some(r.def_id),
-                                                    ty::ReLateBound(_, r) => r.kind.get_id(),
-                                                    ty::ReFree(r) => r.bound_region.get_id(),
-                                                    ty::ReStatic
-                                                    | ty::ReVar(_)
-                                                    | ty::RePlaceholder(_)
-                                                    | ty::ReErased
-                                                    | ty::ReError(_) => None,
-                                                }
-                                            })
-                                        })
-                                        .any(|def_id| {
-                                            matches!(
-                                                lifetime.res,
-                                                LifetimeName::Param(param_def_id) if def_id
-                                                    .as_local()
-                                                    .is_some_and(|def_id| def_id == param_def_id),
-                                            )
-                                        })
-                                {
-                                    // `&Cow<'a, T>` when the return type uses 'a is okay
-                                    return None;
                                 }
-
-                                let ty_name =
-                                    snippet_opt(cx, ty.span()).unwrap_or_else(|| args.type_at(1).to_string());
-
-                                span_lint_hir_and_then(
-                                    cx,
-                                    PTR_ARG,
-                                    emission_id,
-                                    hir_ty.span,
-                                    "using a reference to `Cow` is not recommended",
-                                    |diag| {
-                                        diag.span_suggestion(
-                                            hir_ty.span,
-                                            "change this to",
-                                            format!("&{}{ty_name}", mutability.prefix_str()),
-                                            Applicability::Unspecified,
-                                        );
-                                    }
-                                );
+                            }),
+                            args.type_at(0),
+                        ),
+                    ),
+                    _ if Some(adt.did()) == cx.tcx.lang_items().string() => {
+                        ([("clone", ".to_owned()"), ("as_str", "")].as_slice(), DerefTy::Str)
+                    },
+                    Some(sym::PathBuf) => ([("clone", ".to_path_buf()"), ("as_path", "")].as_slice(), DerefTy::Path),
+                    Some(sym::Cow) if mutability == Mutability::Not => {
+                        if let Some((lifetime, ty)) = name.args.and_then(|args| {
+                            if let [GenericArg::Lifetime(lifetime), ty] = args.args {
+                                return Some((lifetime, ty));
                             }
-                            return None;
-                        },
-                        _ => return None,
-                    };
-                    return Some(PtrArg {
-                        idx: i,
-                        emission_id,
-                        span: hir_ty.span,
-                        ty_did: adt.did(),
-                        ty_name: name.ident.name,
-                        method_renames,
-                        ref_prefix: RefPrefix {
-                            lt: *lt,
-                            mutability,
-                        },
-                        deref_ty,
-                    });
+                            None
+                        }) {
+                            if !lifetime.is_anonymous()
+                                && fn_sig
+                                    .output()
+                                    .walk()
+                                    .filter_map(|arg| {
+                                        arg.as_region().and_then(|lifetime| match lifetime.kind() {
+                                            ty::ReEarlyBound(r) => Some(r.def_id),
+                                            ty::ReLateBound(_, r) => r.kind.get_id(),
+                                            ty::ReFree(r) => r.bound_region.get_id(),
+                                            ty::ReStatic
+                                            | ty::ReVar(_)
+                                            | ty::RePlaceholder(_)
+                                            | ty::ReErased
+                                            | ty::ReError(_) => None,
+                                        })
+                                    })
+                                    .any(|def_id| {
+                                        matches!(
+                                            lifetime.res,
+                                            LifetimeName::Param(param_def_id) if def_id
+                                                .as_local()
+                                                .is_some_and(|def_id| def_id == param_def_id),
+                                        )
+                                    })
+                            {
+                                // `&Cow<'a, T>` when the return type uses 'a is okay
+                                return None;
+                            }
+
+                            let ty_name = snippet_opt(cx, ty.span()).unwrap_or_else(|| args.type_at(1).to_string());
+
+                            span_lint_hir_and_then(
+                                cx,
+                                PTR_ARG,
+                                emission_id,
+                                hir_ty.span,
+                                "using a reference to `Cow` is not recommended",
+                                |diag| {
+                                    diag.span_suggestion(
+                                        hir_ty.span,
+                                        "change this to",
+                                        format!("&{}{ty_name}", mutability.prefix_str()),
+                                        Applicability::Unspecified,
+                                    );
+                                },
+                            );
+                        }
+                        return None;
+                    },
+                    _ => return None,
+                };
+                return Some(PtrArg {
+                    idx: i,
+                    emission_id,
+                    span: hir_ty.span,
+                    ty_did: adt.did(),
+                    ty_name: name.ident.name,
+                    method_renames,
+                    ref_prefix: RefPrefix { lt: *lt, mutability },
+                    deref_ty,
+                });
             }
             None
         })

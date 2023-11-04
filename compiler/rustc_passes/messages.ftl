@@ -589,9 +589,6 @@ passes_pass_by_value =
     `pass_by_value` attribute should be applied to a struct, enum or type alias
     .label = is not a struct, enum or type alias
 
-passes_plugin_registrar =
-    `#[plugin_registrar]` only has an effect on functions
-
 passes_proc_macro_bad_sig = {$kind} has incorrect signature
 
 passes_repr_conflicting =

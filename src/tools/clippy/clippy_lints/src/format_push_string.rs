@@ -21,13 +21,13 @@ declare_clippy_lint! {
     /// While using `write!` in the suggested way should never fail, this isn't necessarily clear to the programmer.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let mut s = String::new();
     /// s += &format!("0x{:X}", 1024);
     /// s.push_str(&format!("0x{:X}", 1024));
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// use std::fmt::Write as _; // import without risk of name clashing
     ///
     /// let mut s = String::new();
@@ -58,7 +58,7 @@ fn is_format(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
                 arms.iter().any(|arm| is_format(cx, arm.body))
             },
             Some(higher::IfLetOrMatch::IfLet(_, _, then, r#else)) => {
-                is_format(cx, then) ||r#else.is_some_and(|e| is_format(cx, e))
+                is_format(cx, then) || r#else.is_some_and(|e| is_format(cx, e))
             },
             _ => false,
         }
@@ -69,17 +69,15 @@ impl<'tcx> LateLintPass<'tcx> for FormatPushString {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         let arg = match expr.kind {
             ExprKind::MethodCall(_, _, [arg], _) => {
-                if let Some(fn_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id) &&
-                match_def_path(cx, fn_def_id, &paths::PUSH_STR) {
+                if let Some(fn_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
+                    && match_def_path(cx, fn_def_id, &paths::PUSH_STR)
+                {
                     arg
                 } else {
                     return;
                 }
-            }
-            ExprKind::AssignOp(op, left, arg)
-            if op.node == BinOpKind::Add && is_string(cx, left) => {
-                arg
             },
+            ExprKind::AssignOp(op, left, arg) if op.node == BinOpKind::Add && is_string(cx, left) => arg,
             _ => return,
         };
         if is_format(cx, arg) {

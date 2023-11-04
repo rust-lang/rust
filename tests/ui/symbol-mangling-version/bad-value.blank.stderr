@@ -1,0 +1,2 @@
+error: incorrect value `` for codegen option `symbol-mangling-version` - either `legacy` or `v0` (RFC 2603) was expected
+

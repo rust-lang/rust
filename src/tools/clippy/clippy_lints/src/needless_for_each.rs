@@ -3,8 +3,7 @@ use rustc_hir::intravisit::{walk_expr, Visitor};
 use rustc_hir::{Closure, Expr, ExprKind, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::source_map::Span;
-use rustc_span::{sym, Symbol};
+use rustc_span::{sym, Span, Symbol};
 
 use if_chain::if_chain;
 
@@ -25,14 +24,14 @@ declare_clippy_lint! {
     /// But when none of these apply, a simple `for` loop is more idiomatic.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let v = vec![0, 1, 2];
     /// v.iter().for_each(|elem| {
     ///     println!("{}", elem);
     /// })
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let v = vec![0, 1, 2];
     /// for elem in v.iter() {
     ///     println!("{}", elem);

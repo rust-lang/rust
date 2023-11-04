@@ -8,7 +8,7 @@ use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, TraitRef, Ty};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::def_id::LocalDefId;
-use rustc_span::source_map::Span;
+use rustc_span::Span;
 use rustc_span::symbol::kw;
 use rustc_target::spec::abi::Abi;
 
@@ -28,12 +28,12 @@ declare_clippy_lint! {
     /// into something.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// fn foo(x: Box<u32>) {}
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// fn foo(x: u32) {}
     /// ```
     #[clippy::version = "pre 1.29.0"]

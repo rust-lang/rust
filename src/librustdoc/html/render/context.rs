@@ -10,8 +10,7 @@ use rustc_hir::def_id::{DefIdMap, LOCAL_CRATE};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::edition::Edition;
-use rustc_span::source_map::FileName;
-use rustc_span::{sym, Symbol};
+use rustc_span::{sym, FileName, Symbol};
 
 use super::print_item::{full_path, item_path, print_item};
 use super::search_index::build_index;

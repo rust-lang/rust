@@ -5,7 +5,7 @@ use clippy_utils::peel_blocks;
 use clippy_utils::source::{snippet, walk_span_to_context};
 use clippy_utils::visitors::for_each_expr;
 use rustc_errors::Applicability;
-use rustc_hir::{CoroutineSource, Closure, CoroutineKind, Expr, ExprKind, MatchSource};
+use rustc_hir::{Closure, CoroutineKind, CoroutineSource, Expr, ExprKind, MatchSource};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::UpvarCapture;
@@ -19,7 +19,7 @@ declare_clippy_lint! {
     /// It is simpler and more efficient to use the future directly.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let f = async {
     ///    1 + 2
     /// };
@@ -28,7 +28,7 @@ declare_clippy_lint! {
     /// };
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let f = async {
     ///    1 + 2
     /// };
@@ -69,12 +69,11 @@ impl<'tcx> LateLintPass<'tcx> for RedundantAsyncBlock {
 /// If `expr` is a desugared `async` block, return the original expression if it does not capture
 /// any variable by ref.
 fn desugar_async_block<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
-    if let ExprKind::Closure(Closure { body, def_id, .. }) = expr.kind &&
-        let body = cx.tcx.hir().body(*body) &&
-        matches!(body.coroutine_kind, Some(CoroutineKind::Async(CoroutineSource::Block)))
+    if let ExprKind::Closure(Closure { body, def_id, .. }) = expr.kind
+        && let body = cx.tcx.hir().body(*body)
+        && matches!(body.coroutine_kind, Some(CoroutineKind::Async(CoroutineSource::Block)))
     {
-        cx
-            .typeck_results()
+        cx.typeck_results()
             .closure_min_captures
             .get(def_id)
             .map_or(true, |m| {
@@ -93,12 +92,13 @@ fn desugar_async_block<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Op
 /// If `expr` is a desugared `.await`, return the original expression if it does not come from a
 /// macro expansion.
 fn desugar_await<'tcx>(expr: &'tcx Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
-    if let ExprKind::Match(match_value, _, MatchSource::AwaitDesugar) = expr.kind &&
-        let ExprKind::Call(_, [into_future_arg]) = match_value.kind &&
-        let ctxt = expr.span.ctxt() &&
-        for_each_expr(into_future_arg, |e|
-            walk_span_to_context(e.span, ctxt)
-                .map_or(ControlFlow::Break(()), |_| ControlFlow::Continue(()))).is_none()
+    if let ExprKind::Match(match_value, _, MatchSource::AwaitDesugar) = expr.kind
+        && let ExprKind::Call(_, [into_future_arg]) = match_value.kind
+        && let ctxt = expr.span.ctxt()
+        && for_each_expr(into_future_arg, |e| {
+            walk_span_to_context(e.span, ctxt).map_or(ControlFlow::Break(()), |_| ControlFlow::Continue(()))
+        })
+        .is_none()
     {
         Some(into_future_arg)
     } else {

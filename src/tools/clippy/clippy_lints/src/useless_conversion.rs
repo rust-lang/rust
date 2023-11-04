@@ -26,13 +26,13 @@ declare_clippy_lint! {
     /// Redundant code.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// // format!() returns a `String`
     /// let s: String = format!("hello").into();
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let s: String = format!("hello");
     /// ```
     #[clippy::version = "1.45.0"]
@@ -215,20 +215,19 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                                     did,
                                     args,
                                     cx.typeck_results().node_args(recv.hir_id),
-                                    MethodOrFunction::Function
+                                    MethodOrFunction::Function,
                                 ))
-                            }
+                            },
                             ExprKind::MethodCall(.., args, _) => {
-                                cx.typeck_results().type_dependent_def_id(parent.hir_id)
-                                    .map(|did| {
-                                        return (
-                                            did,
-                                            args,
-                                            cx.typeck_results().node_args(parent.hir_id),
-                                            MethodOrFunction::Method
-                                        );
-                                    })
-                            }
+                                cx.typeck_results().type_dependent_def_id(parent.hir_id).map(|did| {
+                                    return (
+                                        did,
+                                        args,
+                                        cx.typeck_results().node_args(parent.hir_id),
+                                        MethodOrFunction::Method,
+                                    );
+                                })
+                            },
                             _ => None,
                         };
 
@@ -244,7 +243,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                                 into_iter_did,
                                 cx.typeck_results().expr_ty(into_iter_recv),
                                 param.index,
-                                node_args
+                                node_args,
                             )
                             && self.expn_depth == 0
                         {
@@ -255,26 +254,38 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
 
                             let plural = if depth == 0 { "" } else { "s" };
                             let mut applicability = Applicability::MachineApplicable;
-                            let sugg = snippet_with_applicability(cx, into_iter_recv.span.source_callsite(), "<expr>", &mut applicability).into_owned();
-                            span_lint_and_then(cx, USELESS_CONVERSION, e.span, "explicit call to `.into_iter()` in function argument accepting `IntoIterator`", |diag| {
-                                diag.span_suggestion(
-                                    e.span,
-                                    format!("consider removing the `.into_iter()`{plural}"),
-                                    sugg,
-                                    applicability,
-                                );
-                                diag.span_note(span, "this parameter accepts any `IntoIterator`, so you don't need to call `.into_iter()`");
-                            });
+                            let sugg = snippet_with_applicability(
+                                cx,
+                                into_iter_recv.span.source_callsite(),
+                                "<expr>",
+                                &mut applicability,
+                            )
+                            .into_owned();
+                            span_lint_and_then(
+                                cx,
+                                USELESS_CONVERSION,
+                                e.span,
+                                "explicit call to `.into_iter()` in function argument accepting `IntoIterator`",
+                                |diag| {
+                                    diag.span_suggestion(
+                                        e.span,
+                                        format!("consider removing the `.into_iter()`{plural}"),
+                                        sugg,
+                                        applicability,
+                                    );
+                                    diag.span_note(span, "this parameter accepts any `IntoIterator`, so you don't need to call `.into_iter()`");
+                                },
+                            );
 
                             // Early return to avoid linting again with contradicting suggestions
                             return;
                         }
                     }
 
-                    if let Some(id) = path_to_local(recv) &&
-                       let Node::Pat(pat) = cx.tcx.hir().get(id) &&
-                       let PatKind::Binding(ann, ..) = pat.kind &&
-                       ann != BindingAnnotation::MUT
+                    if let Some(id) = path_to_local(recv)
+                        && let Node::Pat(pat) = cx.tcx.hir().get(id)
+                        && let PatKind::Binding(ann, ..) = pat.kind
+                        && ann != BindingAnnotation::MUT
                     {
                         // Do not remove .into_iter() applied to a non-mutable local variable used in
                         // a larger expression context as it would differ in mutability.

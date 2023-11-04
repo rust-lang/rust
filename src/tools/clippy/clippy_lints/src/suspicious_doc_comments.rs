@@ -32,7 +32,7 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// In this example, the doc comment is attached to the *function*, rather than the *module*.
-    /// ```rust
+    /// ```no_run
     /// pub mod util {
     ///     ///! This module contains utility functions.
     ///
@@ -41,7 +41,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// pub mod util {
     ///     //! This module contains utility functions.
     ///

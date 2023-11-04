@@ -528,8 +528,6 @@ declare_features! (
     (unstable, object_safe_for_dispatch, "1.40.0", Some(43561), None),
     /// Allows using `#[optimize(X)]`.
     (unstable, optimize_attribute, "1.34.0", Some(54882), None),
-    /// Allows using `#![plugin(myplugin)]`.
-    (unstable, plugin, "1.0.0", Some(29597), None),
     /// Allows exhaustive integer pattern matching on `usize` and `isize`.
     (unstable, precise_pointer_size_matching, "1.32.0", Some(56354), None),
     /// Allows macro attributes on expressions, statements and non-inline modules.

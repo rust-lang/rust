@@ -17,7 +17,7 @@ declare_clippy_lint! {
     /// somewhere), and make the code less readable.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # struct Point {
     /// #     x: i32,
     /// #     y: i32,

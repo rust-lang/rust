@@ -26,8 +26,8 @@ use rustc_middle::{bug, span_bug};
 use rustc_session::config::{BranchProtection, CFGuard, CFProtection};
 use rustc_session::config::{CrateType, DebugInfo, PAuthKey, PacRet};
 use rustc_session::Session;
-use rustc_span::source_map::Span;
 use rustc_span::source_map::Spanned;
+use rustc_span::Span;
 use rustc_target::abi::{
     call::FnAbi, HasDataLayout, PointeeInfo, Size, TargetDataLayout, VariantIdx,
 };

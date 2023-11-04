@@ -8,8 +8,8 @@
 //! trait, but since the assignment operator (`=`) has no backing trait, there
 //! is no way of overloading its semantics. Additionally, this module does not
 //! provide any mechanism to create new operators. If traitless overloading or
-//! custom operators are required, you should look toward macros or compiler
-//! plugins to extend Rust's syntax.
+//! custom operators are required, you should look toward macros to extend
+//! Rust's syntax.
 //!
 //! Implementations of operator traits should be unsurprising in their
 //! respective contexts, keeping in mind their usual meanings and

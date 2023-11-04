@@ -4,7 +4,7 @@ use std::num::NonZeroU64;
 use log::trace;
 
 use rustc_errors::DiagnosticMessage;
-use rustc_span::{source_map::DUMMY_SP, SpanData, Symbol};
+use rustc_span::{DUMMY_SP, SpanData, Symbol};
 use rustc_target::abi::{Align, Size};
 
 use crate::borrow_tracker::stacked_borrows::diagnostics::TagHistory;

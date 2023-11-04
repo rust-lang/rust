@@ -3,7 +3,7 @@ use rustc_ast::ast;
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::source_map::{BytePos, Span};
+use rustc_span::{BytePos, Span};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -16,7 +16,7 @@ declare_clippy_lint! {
     /// display settings of the author and reader differ.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// ///
     /// /// Struct to hold two strings:
     /// /// 	- first		one
@@ -34,7 +34,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Will be converted to:
-    /// ```rust
+    /// ```no_run
     /// ///
     /// /// Struct to hold two strings:
     /// ///     - first        one

@@ -196,9 +196,6 @@ metadata_newer_crate_version =
 metadata_no_crate_with_triple =
     couldn't find crate `{$crate_name}` with expected target triple {$locator_triple}{$add_info}
 
-metadata_no_dylib_plugin =
-    plugin `{$crate_name}` only found in rlib format, but must be available in dylib format
-
 metadata_no_link_mod_override =
     overriding linking modifiers from command line is not supported
 

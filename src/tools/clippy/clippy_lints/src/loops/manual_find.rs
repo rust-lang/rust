@@ -10,7 +10,7 @@ use rustc_hir::def::Res;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{BindingAnnotation, Block, Expr, ExprKind, HirId, Node, Pat, PatKind, Stmt, StmtKind};
 use rustc_lint::LateContext;
-use rustc_span::source_map::Span;
+use rustc_span::Span;
 
 pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,

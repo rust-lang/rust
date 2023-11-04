@@ -54,7 +54,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, arg: &
             "use `filter` then `map` instead",
             format!(
                 "filter(|&{param_snippet}| {derefs}{filter}).map(|{param_snippet}| {map})",
-                derefs="*".repeat(needed_derefs)
+                derefs = "*".repeat(needed_derefs)
             ),
             Applicability::MachineApplicable,
         );

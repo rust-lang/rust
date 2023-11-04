@@ -24,11 +24,11 @@ declare_clippy_lint! {
     /// - `Path` to anything else than a primitive type.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let foo: String = String::new();
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let foo = String::new();
     /// ```
     #[clippy::version = "1.72.0"]
@@ -145,8 +145,8 @@ impl LateLintPass<'_> for RedundantTypeAnnotations {
                 hir::ExprKind::Call(init_call, _) => {
                     if let hir::TyKind::Path(ty_path) = &ty.kind
                         && let hir::QPath::Resolved(_, resolved_path_ty) = ty_path
-
-                        && is_redundant_in_func_call(cx, resolved_path_ty.res, init_call) {
+                        && is_redundant_in_func_call(cx, resolved_path_ty.res, init_call)
+                    {
                         span_lint(cx, REDUNDANT_TYPE_ANNOTATIONS, local.span, "redundant type annotation");
                     }
                 },
@@ -164,11 +164,11 @@ impl LateLintPass<'_> for RedundantTypeAnnotations {
                         && let hir::QPath::Resolved(_, resolved_path_ty) = ty_path
                         && let Some(func_ty) = func_hir_id_to_func_ty(cx, init.hir_id)
                         && let Some(return_type) = func_ty_to_return_type(cx, func_ty)
-                        && is_same_type(cx, resolved_path_ty.res, if is_ref {
-                            return_type.peel_refs()
-                        } else {
-                            return_type
-                        })
+                        && is_same_type(
+                            cx,
+                            resolved_path_ty.res,
+                            if is_ref { return_type.peel_refs() } else { return_type },
+                        )
                     {
                         span_lint(cx, REDUNDANT_TYPE_ANNOTATIONS, local.span, "redundant type annotation");
                     }
@@ -177,10 +177,8 @@ impl LateLintPass<'_> for RedundantTypeAnnotations {
                 hir::ExprKind::Path(init_path) => {
                     // TODO: check for non primty
                     if let Some(primty) = extract_primty(&ty.kind)
-
                         && let hir::QPath::TypeRelative(init_ty, _) = init_path
                         && let Some(primty_init) = extract_primty(&init_ty.kind)
-
                         && primty == primty_init
                     {
                         span_lint(cx, REDUNDANT_TYPE_ANNOTATIONS, local.span, "redundant type annotation");
@@ -205,8 +203,8 @@ impl LateLintPass<'_> for RedundantTypeAnnotations {
                         },
                         LitKind::Err => (),
                     }
-                }
-                _ => ()
+                },
+                _ => (),
             }
         };
     }

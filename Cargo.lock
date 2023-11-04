@@ -556,6 +556,7 @@ name = "clippy"
 version = "0.1.75"
 dependencies = [
  "anstream",
+ "clippy_config",
  "clippy_lints",
  "clippy_utils",
  "color-print",
@@ -579,6 +580,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "clippy_config"
+version = "0.1.75"
+dependencies = [
+ "rustc-semver",
+ "serde",
+ "toml 0.7.5",
+ "walkdir",
+]
+
+[[package]]
 name = "clippy_dev"
 version = "0.0.1"
 dependencies = [
@@ -597,6 +608,7 @@ version = "0.1.75"
 dependencies = [
  "arrayvec",
  "cargo_metadata 0.15.4",
+ "clippy_config",
  "clippy_utils",
  "declare_clippy_lint",
  "if_chain",
@@ -621,10 +633,10 @@ name = "clippy_utils"
 version = "0.1.75"
 dependencies = [
  "arrayvec",
+ "clippy_config",
  "if_chain",
  "itertools",
  "rustc-semver",
- "serde",
 ]
 
 [[package]]
@@ -2465,9 +2477,9 @@ dependencies = [
 
 [[package]]
 name = "minifier"
-version = "0.2.3"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5394aa376422b4b2b6c02fd9cfcb657e4ec544ae98e43d7d5d785fd0d042fd6d"
+checksum = "95bbbf96b9ac3482c2a25450b67a15ed851319bc5fabf3b40742ea9066e84282"
 
 [[package]]
 name = "minimal-lexical"
@@ -3512,7 +3524,6 @@ dependencies = [
  "rustc_span",
  "rustc_target",
  "thin-vec",
- "tracing",
 ]
 
 [[package]]
@@ -3785,7 +3796,6 @@ dependencies = [
  "rustc_monomorphize",
  "rustc_parse",
  "rustc_passes",
- "rustc_plugin_impl",
  "rustc_privacy",
  "rustc_query_system",
  "rustc_resolve",
@@ -4074,7 +4084,6 @@ dependencies = [
  "rustc_monomorphize",
  "rustc_parse",
  "rustc_passes",
- "rustc_plugin_impl",
  "rustc_privacy",
  "rustc_query_impl",
  "rustc_query_system",
@@ -4382,21 +4391,6 @@ dependencies = [
  "rustc_target",
  "rustc_trait_selection",
  "tracing",
-]
-
-[[package]]
-name = "rustc_plugin_impl"
-version = "0.0.0"
-dependencies = [
- "libloading 0.7.4",
- "rustc_ast",
- "rustc_errors",
- "rustc_fluent_macro",
- "rustc_lint",
- "rustc_macros",
- "rustc_metadata",
- "rustc_session",
- "rustc_span",
 ]
 
 [[package]]

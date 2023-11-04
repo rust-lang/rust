@@ -30,8 +30,8 @@ use rustc_resolve::rustdoc::{
 use rustc_session::parse::ParseSess;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::edition::Edition;
-use rustc_span::source_map::{BytePos, FilePathMapping, SourceMap, Span};
-use rustc_span::{sym, FileName, Pos};
+use rustc_span::{sym, BytePos, FileName, Pos, Span};
+use rustc_span::source_map::{FilePathMapping, SourceMap};
 use std::ops::Range;
 use std::{io, thread};
 use url::Url;
@@ -58,14 +58,14 @@ declare_clippy_lint! {
     /// would fail.
     ///
     /// ### Examples
-    /// ```rust
+    /// ```no_run
     /// /// Do something with the foo_bar parameter. See also
     /// /// that::other::module::foo.
     /// // ^ `foo_bar` and `that::other::module::foo` should be ticked.
     /// fn doit(foo_bar: usize) {}
     /// ```
     ///
-    /// ```rust
+    /// ```no_run
     /// // Link text with `[]` brackets should be written as following:
     /// /// Consume the array and return the inner
     /// /// [`SmallVec<[T; INLINE_CAPACITY]>`][SmallVec].
@@ -88,7 +88,7 @@ declare_clippy_lint! {
     /// preconditions, so that users can be sure they are using them safely.
     ///
     /// ### Examples
-    /// ```rust
+    /// ```no_run
     ///# type Universe = ();
     /// /// This function should really be documented
     /// pub unsafe fn start_apocalypse(u: &mut Universe) {
@@ -98,7 +98,7 @@ declare_clippy_lint! {
     ///
     /// At least write a line about safety:
     ///
-    /// ```rust
+    /// ```no_run
     ///# type Universe = ();
     /// /// # Safety
     /// ///
@@ -126,7 +126,7 @@ declare_clippy_lint! {
     /// Since the following function returns a `Result` it has an `# Errors` section in
     /// its doc comment:
     ///
-    /// ```rust
+    /// ```no_run
     ///# use std::io;
     /// /// # Errors
     /// ///
@@ -155,7 +155,7 @@ declare_clippy_lint! {
     /// Since the following function may panic it has a `# Panics` section in
     /// its doc comment:
     ///
-    /// ```rust
+    /// ```no_run
     /// /// # Panics
     /// ///
     /// /// Will panic if y is 0
@@ -182,7 +182,7 @@ declare_clippy_lint! {
     /// if the `fn main()` is left implicit.
     ///
     /// ### Examples
-    /// ```rust
+    /// ```no_run
     /// /// An example of a doctest with a `main()` function
     /// ///
     /// /// # Examples
@@ -210,12 +210,12 @@ declare_clippy_lint! {
     /// It is likely a typo when defining an intra-doc link
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// /// See also: ['foo']
     /// fn bar() {}
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// /// See also: [`foo`]
     /// fn bar() {}
     /// ```
@@ -235,7 +235,7 @@ declare_clippy_lint! {
     /// need to describe safety preconditions that users are required to uphold.
     ///
     /// ### Examples
-    /// ```rust
+    /// ```no_run
     ///# type Universe = ();
     /// /// # Safety
     /// ///
@@ -248,7 +248,7 @@ declare_clippy_lint! {
     /// The function is safe, so there shouldn't be any preconditions
     /// that have to be explained for safety reasons.
     ///
-    /// ```rust
+    /// ```no_run
     ///# type Universe = ();
     /// /// This function should really be documented
     /// pub fn start_apocalypse(u: &mut Universe) {
@@ -569,9 +569,7 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                 if let End(Heading(_, _, _)) = event {
                     in_heading = false;
                 }
-                if ticks_unbalanced
-                    && let Some(span) = fragments.span(cx, paragraph_range.clone())
-                {
+                if ticks_unbalanced && let Some(span) = fragments.span(cx, paragraph_range.clone()) {
                     span_lint_and_help(
                         cx,
                         DOC_MARKDOWN,
@@ -617,8 +615,9 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                         check_link_quotes(cx, trimmed_text, range.clone(), fragments);
                     }
                     if let Some(link) = in_link.as_ref()
-                      && let Ok(url) = Url::parse(link)
-                      && (url.scheme() == "https" || url.scheme() == "http") {
+                        && let Ok(url) = Url::parse(link)
+                        && (url.scheme() == "https" || url.scheme() == "http")
+                    {
                         // Don't check the text associated with external URLs
                         continue;
                     }
@@ -716,7 +715,9 @@ fn check_code(cx: &LateContext<'_>, text: &str, edition: Edition, range: Range<u
     // Because of the global session, we need to create a new session in a different thread with
     // the edition we need.
     let text = text.to_owned();
-    if thread::spawn(move || has_needless_main(text, edition)).join().expect("thread::spawn failed")
+    if thread::spawn(move || has_needless_main(text, edition))
+        .join()
+        .expect("thread::spawn failed")
         && let Some(span) = fragments.span(cx, range.start..range.end - trailing_whitespace)
     {
         span_lint(cx, NEEDLESS_DOCTEST_MAIN, span, "needless `fn main` in doctest");
@@ -756,11 +757,12 @@ fn check_text(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, text: &str
 }
 
 fn check_word(cx: &LateContext<'_>, word: &str, span: Span) {
-    /// Checks if a string is camel-case, i.e., contains at least two uppercase
-    /// letters (`Clippy` is ok) and one lower-case letter (`NASA` is ok).
+    /// Checks if a string is upper-camel-case, i.e., starts with an uppercase and
+    /// contains at least two uppercase letters (`Clippy` is ok) and one lower-case
+    /// letter (`NASA` is ok).
     /// Plurals are also excluded (`IDs` is ok).
     fn is_camel_case(s: &str) -> bool {
-        if s.starts_with(|c: char| c.is_ascii_digit()) {
+        if s.starts_with(|c: char| c.is_ascii_digit() | c.is_ascii_lowercase()) {
             return false;
         }
 

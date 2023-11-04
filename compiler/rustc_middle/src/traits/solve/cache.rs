@@ -1,4 +1,4 @@
-use super::{CanonicalInput, QueryResult};
+use super::{inspect, CanonicalInput, QueryResult};
 use crate::ty::TyCtxt;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lock;
@@ -14,8 +14,10 @@ pub struct EvaluationCache<'tcx> {
     map: Lock<FxHashMap<CanonicalInput<'tcx>, CacheEntry<'tcx>>>,
 }
 
+#[derive(PartialEq, Eq)]
 pub struct CacheData<'tcx> {
     pub result: QueryResult<'tcx>,
+    pub proof_tree: Option<&'tcx [inspect::GoalEvaluationStep<'tcx>]>,
     pub reached_depth: usize,
     pub encountered_overflow: bool,
 }
@@ -24,21 +26,32 @@ impl<'tcx> EvaluationCache<'tcx> {
     /// Insert a final result into the global cache.
     pub fn insert(
         &self,
+        tcx: TyCtxt<'tcx>,
         key: CanonicalInput<'tcx>,
+        proof_tree: Option<&'tcx [inspect::GoalEvaluationStep<'tcx>]>,
         reached_depth: usize,
-        did_overflow: bool,
+        encountered_overflow: bool,
         cycle_participants: FxHashSet<CanonicalInput<'tcx>>,
         dep_node: DepNodeIndex,
         result: QueryResult<'tcx>,
     ) {
         let mut map = self.map.borrow_mut();
         let entry = map.entry(key).or_default();
-        let data = WithDepNode::new(dep_node, result);
+        let data = WithDepNode::new(dep_node, QueryData { result, proof_tree });
         entry.cycle_participants.extend(cycle_participants);
-        if did_overflow {
+        if encountered_overflow {
             entry.with_overflow.insert(reached_depth, data);
         } else {
             entry.success = Some(Success { data, reached_depth });
+        }
+
+        if cfg!(debug_assertions) {
+            drop(map);
+            if Some(CacheData { result, proof_tree, reached_depth, encountered_overflow })
+                != self.get(tcx, key, |_| false, Limit(reached_depth))
+            {
+                bug!("unable to retrieve inserted element from cache: {key:?}");
+            }
         }
     }
 
@@ -62,25 +75,37 @@ impl<'tcx> EvaluationCache<'tcx> {
 
         if let Some(ref success) = entry.success {
             if available_depth.value_within_limit(success.reached_depth) {
+                let QueryData { result, proof_tree } = success.data.get(tcx);
                 return Some(CacheData {
-                    result: success.data.get(tcx),
+                    result,
+                    proof_tree,
                     reached_depth: success.reached_depth,
                     encountered_overflow: false,
                 });
             }
         }
 
-        entry.with_overflow.get(&available_depth.0).map(|e| CacheData {
-            result: e.get(tcx),
-            reached_depth: available_depth.0,
-            encountered_overflow: true,
+        entry.with_overflow.get(&available_depth.0).map(|e| {
+            let QueryData { result, proof_tree } = e.get(tcx);
+            CacheData {
+                result,
+                proof_tree,
+                reached_depth: available_depth.0,
+                encountered_overflow: true,
+            }
         })
     }
 }
 
 struct Success<'tcx> {
-    data: WithDepNode<QueryResult<'tcx>>,
+    data: WithDepNode<QueryData<'tcx>>,
     reached_depth: usize,
+}
+
+#[derive(Clone, Copy)]
+pub struct QueryData<'tcx> {
+    pub result: QueryResult<'tcx>,
+    pub proof_tree: Option<&'tcx [inspect::GoalEvaluationStep<'tcx>]>,
 }
 
 /// The cache entry for a goal `CanonicalInput`.
@@ -96,5 +121,5 @@ struct CacheEntry<'tcx> {
     /// See the doc comment of `StackEntry::cycle_participants` for more
     /// details.
     cycle_participants: FxHashSet<CanonicalInput<'tcx>>,
-    with_overflow: FxHashMap<usize, WithDepNode<QueryResult<'tcx>>>,
+    with_overflow: FxHashMap<usize, WithDepNode<QueryData<'tcx>>>,
 }

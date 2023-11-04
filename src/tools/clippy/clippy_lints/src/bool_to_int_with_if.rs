@@ -21,7 +21,7 @@ declare_clippy_lint! {
     /// See https://doc.rust-lang.org/std/primitive.bool.html#impl-From%3Cbool%3E
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # let condition = false;
     /// if condition {
     ///     1_i64
@@ -30,12 +30,12 @@ declare_clippy_lint! {
     /// };
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # let condition = false;
     /// i64::from(condition);
     /// ```
     /// or
-    /// ```rust
+    /// ```no_run
     /// # let condition = false;
     /// condition as i64;
     /// ```
@@ -55,7 +55,11 @@ impl<'tcx> LateLintPass<'tcx> for BoolToIntWithIf {
 }
 
 fn check_if_else<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx rustc_hir::Expr<'tcx>) {
-    if let Some(If { cond, then, r#else: Some(r#else) }) = If::hir(expr)
+    if let Some(If {
+        cond,
+        then,
+        r#else: Some(r#else),
+    }) = If::hir(expr)
         && let Some(then_lit) = int_literal(then)
         && let Some(else_lit) = int_literal(r#else)
     {
@@ -90,19 +94,18 @@ fn check_if_else<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx rustc_hir::Expr<'tcx>
         let into_snippet = snippet.clone().maybe_par();
         let as_snippet = snippet.as_ty(ty);
 
-        span_lint_and_then(cx,
+        span_lint_and_then(
+            cx,
             BOOL_TO_INT_WITH_IF,
             expr.span,
             "boolean to int conversion using if",
             |diag| {
-            diag.span_suggestion(
-                expr.span,
-                "replace with from",
-                suggestion,
-                applicability,
-            );
-            diag.note(format!("`{as_snippet}` or `{into_snippet}.into()` can also be valid options"));
-        });
+                diag.span_suggestion(expr.span, "replace with from", suggestion, applicability);
+                diag.note(format!(
+                    "`{as_snippet}` or `{into_snippet}.into()` can also be valid options"
+                ));
+            },
+        );
     };
 }
 
@@ -110,7 +113,7 @@ fn check_if_else<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx rustc_hir::Expr<'tcx>
 fn int_literal<'tcx>(expr: &'tcx rustc_hir::Expr<'tcx>) -> Option<&'tcx rustc_hir::Expr<'tcx>> {
     if let ExprKind::Block(block, _) = expr.kind
         && let Block {
-            stmts: [],       // Shouldn't lint if statements with side effects
+            stmts: [], // Shouldn't lint if statements with side effects
             expr: Some(expr),
             ..
         } = block

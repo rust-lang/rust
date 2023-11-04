@@ -15,7 +15,7 @@ declare_clippy_lint! {
     /// Simplicity and readability. Instead we can easily use an builtin function.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # let end: u32 = 10;
     /// # let start: u32 = 5;
     /// let mut i: u32 = end - start;
@@ -26,7 +26,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # let end: u32 = 10;
     /// # let start: u32 = 5;
     /// let mut i: u32 = end - start;

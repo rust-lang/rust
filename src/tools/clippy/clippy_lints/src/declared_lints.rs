@@ -6,8 +6,6 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     #[cfg(feature = "internal")]
     crate::utils::internal_lints::almost_standard_lint_formulation::ALMOST_STANDARD_LINT_FORMULATION_INFO,
     #[cfg(feature = "internal")]
-    crate::utils::internal_lints::clippy_lints_internal::CLIPPY_LINTS_INTERNAL_INFO,
-    #[cfg(feature = "internal")]
     crate::utils::internal_lints::collapsible_calls::COLLAPSIBLE_SPAN_LINT_CALLS_INFO,
     #[cfg(feature = "internal")]
     crate::utils::internal_lints::compiler_lint_functions::COMPILER_LINT_FUNCTIONS_INFO,
@@ -30,6 +28,8 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     #[cfg(feature = "internal")]
     crate::utils::internal_lints::lint_without_lint_pass::MISSING_CLIPPY_VERSION_ATTRIBUTE_INFO,
     #[cfg(feature = "internal")]
+    crate::utils::internal_lints::metadata_collector::METADATA_COLLECTOR_INFO,
+    #[cfg(feature = "internal")]
     crate::utils::internal_lints::msrv_attr_impl::MISSING_MSRV_ATTR_IMPL_INFO,
     #[cfg(feature = "internal")]
     crate::utils::internal_lints::outer_expn_data_pass::OUTER_EXPN_EXPN_DATA_INFO,
@@ -37,6 +37,8 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::utils::internal_lints::produce_ice::PRODUCE_ICE_INFO,
     #[cfg(feature = "internal")]
     crate::utils::internal_lints::unnecessary_def_path::UNNECESSARY_DEF_PATH_INFO,
+    #[cfg(feature = "internal")]
+    crate::utils::internal_lints::unsorted_clippy_utils_paths::UNSORTED_CLIPPY_UTILS_PATHS_INFO,
     crate::absolute_paths::ABSOLUTE_PATHS_INFO,
     crate::allow_attributes::ALLOW_ATTRIBUTES_INFO,
     crate::almost_complete_range::ALMOST_COMPLETE_RANGE_INFO,
@@ -272,6 +274,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::loops::NEVER_LOOP_INFO,
     crate::loops::SAME_ITEM_PUSH_INFO,
     crate::loops::SINGLE_ELEMENT_LOOP_INFO,
+    crate::loops::UNUSED_ENUMERATE_INDEX_INFO,
     crate::loops::WHILE_IMMUTABLE_CONDITION_INFO,
     crate::loops::WHILE_LET_LOOP_INFO,
     crate::loops::WHILE_LET_ON_ITERATOR_INFO,
@@ -428,6 +431,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::methods::TYPE_ID_ON_BOX_INFO,
     crate::methods::UNINIT_ASSUMED_INIT_INFO,
     crate::methods::UNIT_HASH_INFO,
+    crate::methods::UNNECESSARY_FALLIBLE_CONVERSIONS_INFO,
     crate::methods::UNNECESSARY_FILTER_MAP_INFO,
     crate::methods::UNNECESSARY_FIND_MAP_INFO,
     crate::methods::UNNECESSARY_FOLD_INFO,
@@ -441,6 +445,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::methods::USELESS_ASREF_INFO,
     crate::methods::VEC_RESIZE_TO_ZERO_INFO,
     crate::methods::VERBOSE_FILE_READS_INFO,
+    crate::methods::WAKER_CLONE_WAKE_INFO,
     crate::methods::WRONG_SELF_CONVENTION_INFO,
     crate::methods::ZST_OFFSET_INFO,
     crate::min_ident_chars::MIN_IDENT_CHARS_INFO,

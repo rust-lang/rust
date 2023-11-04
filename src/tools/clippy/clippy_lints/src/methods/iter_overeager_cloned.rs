@@ -60,9 +60,15 @@ pub(super) fn check<'tcx>(
         }
 
         if let Op::NeedlessMove(_, expr) = op {
-            let rustc_hir::ExprKind::Closure(closure) = expr.kind else { return } ;
-            let body @ Body { params: [p], .. } = cx.tcx.hir().body(closure.body) else { return };
-            let mut delegate = MoveDelegate {used_move : HirIdSet::default()};
+            let rustc_hir::ExprKind::Closure(closure) = expr.kind else {
+                return;
+            };
+            let body @ Body { params: [p], .. } = cx.tcx.hir().body(closure.body) else {
+                return;
+            };
+            let mut delegate = MoveDelegate {
+                used_move: HirIdSet::default(),
+            };
             let infcx = cx.tcx.infer_ctxt().build();
 
             ExprUseVisitor::new(
@@ -77,7 +83,7 @@ pub(super) fn check<'tcx>(
             let mut to_be_discarded = false;
 
             p.pat.walk(|it| {
-                if delegate.used_move.contains(&it.hir_id){
+                if delegate.used_move.contains(&it.hir_id) {
                     to_be_discarded = true;
                     return false;
                 }
@@ -87,8 +93,8 @@ pub(super) fn check<'tcx>(
                     | PatKind::Ref(_, Mutability::Mut) => {
                         to_be_discarded = true;
                         false
-                    }
-                    _ => { true }
+                    },
+                    _ => true,
                 }
             });
 
@@ -99,46 +105,42 @@ pub(super) fn check<'tcx>(
 
         let (lint, msg, trailing_clone) = match op {
             Op::RmCloned | Op::NeedlessMove(_, _) => (REDUNDANT_CLONE, "unneeded cloning of iterator items", ""),
-            Op::LaterCloned | Op::FixClosure(_, _) => (ITER_OVEREAGER_CLONED, "unnecessarily eager cloning of iterator items", ".cloned()"),
+            Op::LaterCloned | Op::FixClosure(_, _) => (
+                ITER_OVEREAGER_CLONED,
+                "unnecessarily eager cloning of iterator items",
+                ".cloned()",
+            ),
         };
 
-        span_lint_and_then(
-            cx,
-            lint,
-            expr.span,
-            msg,
-            |diag| {
-                match op {
-                    Op::RmCloned | Op::LaterCloned => {
-                        let method_span = expr.span.with_lo(cloned_call.span.hi());
-                        if let Some(mut snip) = snippet_opt(cx, method_span) {
-                            snip.push_str(trailing_clone);
-                            let replace_span = expr.span.with_lo(cloned_recv.span.hi());
-                            diag.span_suggestion(replace_span, "try", snip, Applicability::MachineApplicable);
-                        }
-                    }
-                    Op::FixClosure(name, predicate_expr) => {
-                        if let Some(predicate) = snippet_opt(cx, predicate_expr.span) {
-                            let new_closure = if let ExprKind::Closure(_) = predicate_expr.kind {
-                                predicate.replacen('|', "|&", 1)
-                            } else {
-                                format!("|&x| {predicate}(x)")
-                            };
-                            let snip = format!(".{name}({new_closure}).cloned()" );
-                            let replace_span = expr.span.with_lo(cloned_recv.span.hi());
-                            diag.span_suggestion(replace_span, "try", snip, Applicability::MachineApplicable);
-                        }
-                    }
-                    Op::NeedlessMove(_, _) => {
-                        let method_span = expr.span.with_lo(cloned_call.span.hi());
-                        if let Some(snip) = snippet_opt(cx, method_span) {
-                            let replace_span = expr.span.with_lo(cloned_recv.span.hi());
-                            diag.span_suggestion(replace_span, "try", snip, Applicability::MaybeIncorrect);
-                        }
-                    }
+        span_lint_and_then(cx, lint, expr.span, msg, |diag| match op {
+            Op::RmCloned | Op::LaterCloned => {
+                let method_span = expr.span.with_lo(cloned_call.span.hi());
+                if let Some(mut snip) = snippet_opt(cx, method_span) {
+                    snip.push_str(trailing_clone);
+                    let replace_span = expr.span.with_lo(cloned_recv.span.hi());
+                    diag.span_suggestion(replace_span, "try", snip, Applicability::MachineApplicable);
                 }
-            }
-        );
+            },
+            Op::FixClosure(name, predicate_expr) => {
+                if let Some(predicate) = snippet_opt(cx, predicate_expr.span) {
+                    let new_closure = if let ExprKind::Closure(_) = predicate_expr.kind {
+                        predicate.replacen('|', "|&", 1)
+                    } else {
+                        format!("|&x| {predicate}(x)")
+                    };
+                    let snip = format!(".{name}({new_closure}).cloned()");
+                    let replace_span = expr.span.with_lo(cloned_recv.span.hi());
+                    diag.span_suggestion(replace_span, "try", snip, Applicability::MachineApplicable);
+                }
+            },
+            Op::NeedlessMove(_, _) => {
+                let method_span = expr.span.with_lo(cloned_call.span.hi());
+                if let Some(snip) = snippet_opt(cx, method_span) {
+                    let replace_span = expr.span.with_lo(cloned_recv.span.hi());
+                    diag.span_suggestion(replace_span, "try", snip, Applicability::MaybeIncorrect);
+                }
+            },
+        });
     }
 }
 

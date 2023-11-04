@@ -82,7 +82,9 @@ impl EarlyLintPass for Visibility {
         if !in_external_macro(cx.sess(), item.span)
             && let VisibilityKind::Restricted { path, shorthand, .. } = &item.vis.kind
         {
-            if **path == kw::SelfLower && let Some(false) = is_from_proc_macro(cx, item.vis.span) {
+            if **path == kw::SelfLower
+                && let Some(false) = is_from_proc_macro(cx, item.vis.span)
+            {
                 span_lint_and_sugg(
                     cx,
                     NEEDLESS_PUB_SELF,

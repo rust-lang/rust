@@ -3,6 +3,8 @@
 //! This code is *a bit* of a mess and can hopefully be
 //! mostly ignored. For a general overview of how it works,
 //! see the comment on [ProofTreeBuilder].
+use std::mem;
+
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::{
     CanonicalInput, Certainty, Goal, IsNormalizesToHack, QueryInput, QueryResult,
@@ -10,7 +12,6 @@ use rustc_middle::traits::solve::{
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::config::DumpSolverProofTree;
 
-use crate::solve::eval_ctxt::UseGlobalCache;
 use crate::solve::{self, inspect, EvalCtxt, GenerateProofTree};
 
 /// The core data structure when building proof trees.
@@ -34,12 +35,7 @@ use crate::solve::{self, inspect, EvalCtxt, GenerateProofTree};
 /// is called to recursively convert the whole structure to a
 /// finished proof tree.
 pub(in crate::solve) struct ProofTreeBuilder<'tcx> {
-    state: Option<Box<BuilderData<'tcx>>>,
-}
-
-struct BuilderData<'tcx> {
-    tree: DebugSolver<'tcx>,
-    use_global_cache: UseGlobalCache,
+    state: Option<Box<DebugSolver<'tcx>>>,
 }
 
 /// The current state of the proof tree builder, at most places
@@ -118,36 +114,46 @@ pub(in crate::solve) enum WipGoalEvaluationKind<'tcx> {
     Nested { is_normalizes_to_hack: IsNormalizesToHack },
 }
 
-#[derive(Eq, PartialEq, Debug)]
-pub(in crate::solve) enum WipCanonicalGoalEvaluationKind {
+#[derive(Eq, PartialEq)]
+pub(in crate::solve) enum WipCanonicalGoalEvaluationKind<'tcx> {
     Overflow,
-    CacheHit(inspect::CacheHit),
+    CycleInStack,
+    Interned { revisions: &'tcx [inspect::GoalEvaluationStep<'tcx>] },
+}
+
+impl std::fmt::Debug for WipCanonicalGoalEvaluationKind<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Overflow => write!(f, "Overflow"),
+            Self::CycleInStack => write!(f, "CycleInStack"),
+            Self::Interned { revisions: _ } => f.debug_struct("Interned").finish_non_exhaustive(),
+        }
+    }
 }
 
 #[derive(Eq, PartialEq, Debug)]
 struct WipCanonicalGoalEvaluation<'tcx> {
     goal: CanonicalInput<'tcx>,
-    kind: Option<WipCanonicalGoalEvaluationKind>,
+    kind: Option<WipCanonicalGoalEvaluationKind<'tcx>>,
+    /// Only used for uncached goals. After we finished evaluating
+    /// the goal, this is interned and moved into `kind`.
     revisions: Vec<WipGoalEvaluationStep<'tcx>>,
     result: Option<QueryResult<'tcx>>,
 }
 
 impl<'tcx> WipCanonicalGoalEvaluation<'tcx> {
     fn finalize(self) -> inspect::CanonicalGoalEvaluation<'tcx> {
-        let kind = match self.kind {
-            Some(WipCanonicalGoalEvaluationKind::Overflow) => {
+        assert!(self.revisions.is_empty());
+        let kind = match self.kind.unwrap() {
+            WipCanonicalGoalEvaluationKind::Overflow => {
                 inspect::CanonicalGoalEvaluationKind::Overflow
             }
-            Some(WipCanonicalGoalEvaluationKind::CacheHit(hit)) => {
-                inspect::CanonicalGoalEvaluationKind::CacheHit(hit)
+            WipCanonicalGoalEvaluationKind::CycleInStack => {
+                inspect::CanonicalGoalEvaluationKind::CycleInStack
             }
-            None => inspect::CanonicalGoalEvaluationKind::Uncached {
-                revisions: self
-                    .revisions
-                    .into_iter()
-                    .map(WipGoalEvaluationStep::finalize)
-                    .collect(),
-            },
+            WipCanonicalGoalEvaluationKind::Interned { revisions } => {
+                inspect::CanonicalGoalEvaluationKind::Evaluation { revisions }
+            }
         };
 
         inspect::CanonicalGoalEvaluation { goal: self.goal, kind, result: self.result.unwrap() }
@@ -226,45 +232,25 @@ impl<'tcx> WipProbeStep<'tcx> {
 }
 
 impl<'tcx> ProofTreeBuilder<'tcx> {
-    fn new(
-        state: impl Into<DebugSolver<'tcx>>,
-        use_global_cache: UseGlobalCache,
-    ) -> ProofTreeBuilder<'tcx> {
-        ProofTreeBuilder {
-            state: Some(Box::new(BuilderData { tree: state.into(), use_global_cache })),
-        }
+    fn new(state: impl Into<DebugSolver<'tcx>>) -> ProofTreeBuilder<'tcx> {
+        ProofTreeBuilder { state: Some(Box::new(state.into())) }
     }
 
     fn nested<T: Into<DebugSolver<'tcx>>>(&self, state: impl FnOnce() -> T) -> Self {
-        match &self.state {
-            Some(prev_state) => Self {
-                state: Some(Box::new(BuilderData {
-                    tree: state().into(),
-                    use_global_cache: prev_state.use_global_cache,
-                })),
-            },
-            None => Self { state: None },
-        }
+        ProofTreeBuilder { state: self.state.as_ref().map(|_| Box::new(state().into())) }
     }
 
     fn as_mut(&mut self) -> Option<&mut DebugSolver<'tcx>> {
-        self.state.as_mut().map(|boxed| &mut boxed.tree)
+        self.state.as_deref_mut()
     }
 
     pub fn finalize(self) -> Option<inspect::GoalEvaluation<'tcx>> {
-        match self.state?.tree {
+        match *self.state? {
             DebugSolver::GoalEvaluation(wip_goal_evaluation) => {
                 Some(wip_goal_evaluation.finalize())
             }
             root => unreachable!("unexpected proof tree builder root node: {:?}", root),
         }
-    }
-
-    pub fn use_global_cache(&self) -> bool {
-        self.state
-            .as_ref()
-            .map(|state| matches!(state.use_global_cache, UseGlobalCache::Yes))
-            .unwrap_or(true)
     }
 
     pub fn new_maybe_root(
@@ -276,10 +262,7 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
             GenerateProofTree::IfEnabled => {
                 let opts = &tcx.sess.opts.unstable_opts;
                 match opts.dump_solver_proof_tree {
-                    DumpSolverProofTree::Always => {
-                        let use_cache = opts.dump_solver_proof_tree_use_cache.unwrap_or(true);
-                        ProofTreeBuilder::new_root(UseGlobalCache::from_bool(use_cache))
-                    }
+                    DumpSolverProofTree::Always => ProofTreeBuilder::new_root(),
                     // `OnError` is handled by reevaluating goals in error
                     // reporting with `GenerateProofTree::Yes`.
                     DumpSolverProofTree::OnError | DumpSolverProofTree::Never => {
@@ -287,12 +270,12 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
                     }
                 }
             }
-            GenerateProofTree::Yes(use_cache) => ProofTreeBuilder::new_root(use_cache),
+            GenerateProofTree::Yes => ProofTreeBuilder::new_root(),
         }
     }
 
-    pub fn new_root(use_global_cache: UseGlobalCache) -> ProofTreeBuilder<'tcx> {
-        ProofTreeBuilder::new(DebugSolver::Root, use_global_cache)
+    pub fn new_root() -> ProofTreeBuilder<'tcx> {
+        ProofTreeBuilder::new(DebugSolver::Root)
     }
 
     pub fn new_noop() -> ProofTreeBuilder<'tcx> {
@@ -336,9 +319,27 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
         })
     }
 
+    pub fn finalize_evaluation(
+        &mut self,
+        tcx: TyCtxt<'tcx>,
+    ) -> Option<&'tcx [inspect::GoalEvaluationStep<'tcx>]> {
+        self.as_mut().map(|this| match this {
+            DebugSolver::CanonicalGoalEvaluation(evaluation) => {
+                let revisions = mem::take(&mut evaluation.revisions)
+                    .into_iter()
+                    .map(WipGoalEvaluationStep::finalize);
+                let revisions = &*tcx.arena.alloc_from_iter(revisions);
+                let kind = WipCanonicalGoalEvaluationKind::Interned { revisions };
+                assert_eq!(evaluation.kind.replace(kind), None);
+                revisions
+            }
+            _ => unreachable!(),
+        })
+    }
+
     pub fn canonical_goal_evaluation(&mut self, canonical_goal_evaluation: ProofTreeBuilder<'tcx>) {
         if let Some(this) = self.as_mut() {
-            match (this, canonical_goal_evaluation.state.unwrap().tree) {
+            match (this, *canonical_goal_evaluation.state.unwrap()) {
                 (
                     DebugSolver::GoalEvaluation(goal_evaluation),
                     DebugSolver::CanonicalGoalEvaluation(canonical_goal_evaluation),
@@ -348,7 +349,7 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
         }
     }
 
-    pub fn goal_evaluation_kind(&mut self, kind: WipCanonicalGoalEvaluationKind) {
+    pub fn goal_evaluation_kind(&mut self, kind: WipCanonicalGoalEvaluationKind<'tcx>) {
         if let Some(this) = self.as_mut() {
             match this {
                 DebugSolver::CanonicalGoalEvaluation(canonical_goal_evaluation) => {
@@ -372,7 +373,7 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
     }
     pub fn goal_evaluation(&mut self, goal_evaluation: ProofTreeBuilder<'tcx>) {
         if let Some(this) = self.as_mut() {
-            match (this, goal_evaluation.state.unwrap().tree) {
+            match (this, *goal_evaluation.state.unwrap()) {
                 (
                     DebugSolver::AddedGoalsEvaluation(WipAddedGoalsEvaluation {
                         evaluations, ..
@@ -396,7 +397,7 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
     }
     pub fn goal_evaluation_step(&mut self, goal_evaluation_step: ProofTreeBuilder<'tcx>) {
         if let Some(this) = self.as_mut() {
-            match (this, goal_evaluation_step.state.unwrap().tree) {
+            match (this, *goal_evaluation_step.state.unwrap()) {
                 (
                     DebugSolver::CanonicalGoalEvaluation(canonical_goal_evaluations),
                     DebugSolver::GoalEvaluationStep(goal_evaluation_step),
@@ -444,7 +445,7 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
 
     pub fn finish_probe(&mut self, probe: ProofTreeBuilder<'tcx>) {
         if let Some(this) = self.as_mut() {
-            match (this, probe.state.unwrap().tree) {
+            match (this, *probe.state.unwrap()) {
                 (
                     DebugSolver::Probe(WipProbe { steps, .. })
                     | DebugSolver::GoalEvaluationStep(WipGoalEvaluationStep {
@@ -486,7 +487,7 @@ impl<'tcx> ProofTreeBuilder<'tcx> {
 
     pub fn added_goals_evaluation(&mut self, added_goals_evaluation: ProofTreeBuilder<'tcx>) {
         if let Some(this) = self.as_mut() {
-            match (this, added_goals_evaluation.state.unwrap().tree) {
+            match (this, *added_goals_evaluation.state.unwrap()) {
                 (
                     DebugSolver::GoalEvaluationStep(WipGoalEvaluationStep {
                         evaluation: WipProbe { steps, .. },

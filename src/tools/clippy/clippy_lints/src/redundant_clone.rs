@@ -12,8 +12,7 @@ use rustc_middle::mir;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::def_id::LocalDefId;
-use rustc_span::source_map::{BytePos, Span};
-use rustc_span::sym;
+use rustc_span::{sym, BytePos, Span};
 
 macro_rules! unwrap_or_continue {
     ($x:expr) => {
@@ -37,7 +36,7 @@ declare_clippy_lint! {
     /// False-negatives: analysis performed by this lint is conservative and limited.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # use std::path::Path;
     /// # #[derive(Clone)]
     /// # struct Foo;

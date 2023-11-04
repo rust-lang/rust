@@ -1,7 +1,6 @@
 #![warn(clippy::option_if_let_else)]
 #![allow(
     unused_tuple_struct_fields,
-    clippy::redundant_closure,
     clippy::ref_option_ref,
     clippy::equatable_if_let,
     clippy::let_unit_value,
@@ -52,7 +51,7 @@ fn impure_else(arg: Option<i32>) {
         println!("return 1");
         1
     };
-    let _ = arg.map_or_else(|| side_effect(), |x| x);
+    let _ = arg.map_or_else(side_effect, |x| x);
 }
 
 fn test_map_or_else(arg: Option<u32>) {
@@ -223,4 +222,18 @@ mod issue10729 {
 
     fn do_something(_value: &str) {}
     fn do_something2(_value: &mut str) {}
+}
+
+fn issue11429() {
+    use std::collections::HashMap;
+
+    macro_rules! new_map {
+        () => {{ HashMap::new() }};
+    }
+
+    let opt: Option<HashMap<u8, u8>> = None;
+
+    let mut _hashmap = opt.as_ref().map_or_else(HashMap::new, |hm| hm.clone());
+
+    let mut _hm = opt.as_ref().map_or_else(|| new_map!(), |hm| hm.clone());
 }

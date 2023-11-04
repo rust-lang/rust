@@ -25,7 +25,7 @@ declare_clippy_lint! {
     /// way of specifying this without triggering needless_return lint
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let mut twins = vec![(1, 1), (2, 2)];
     /// twins.sort_by_key(|x| { x.1; });
     /// ```

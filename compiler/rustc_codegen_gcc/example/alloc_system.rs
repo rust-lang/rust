@@ -3,7 +3,6 @@
 
 #![no_std]
 #![feature(allocator_api, rustc_private)]
-#![cfg_attr(any(unix, target_os = "redox"), feature(libc))]
 
 // The minimum alignment guaranteed by the architecture. This value is used to
 // add fast paths for low alignment values.
@@ -48,7 +47,18 @@ mod realloc_fallback {
 }
 #[cfg(any(unix, target_os = "redox"))]
 mod platform {
-    extern crate libc;
+    mod libc {
+        use core::ffi::{c_void, c_int};
+
+        #[link(name = "c")]
+        extern "C" {
+            pub fn malloc(size: usize) -> *mut c_void;
+            pub fn realloc(ptr: *mut c_void, size: usize) -> *mut c_void;
+            pub fn calloc(nmemb: usize, size: usize) -> *mut c_void;
+            pub fn free(ptr: *mut u8);
+            pub fn posix_memalign(memptr: *mut *mut c_void, alignment: usize, size: usize) -> c_int;
+        }
+    }
     use core::ptr;
     use MIN_ALIGN;
     use System;
@@ -82,12 +92,12 @@ mod platform {
         }
         #[inline]
         unsafe fn dealloc(&self, ptr: *mut u8, _layout: Layout) {
-            libc::free(ptr as *mut libc::c_void)
+            libc::free(ptr as *mut _)
         }
         #[inline]
         unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
             if layout.align() <= MIN_ALIGN && layout.align() <= new_size {
-                libc::realloc(ptr as *mut libc::c_void, new_size) as *mut u8
+                libc::realloc(ptr as *mut _, new_size) as *mut u8
             } else {
                 self.realloc_fallback(ptr, layout, new_size)
             }

@@ -10,8 +10,8 @@ use rustc_ast::{
     Path, PathSegment, QSelf,
 };
 use rustc_errors::{Applicability, IntoDiagnostic, PResult};
-use rustc_span::source_map::{BytePos, Span};
 use rustc_span::symbol::{kw, sym, Ident};
+use rustc_span::{BytePos, Span};
 use std::mem;
 use thin_vec::ThinVec;
 use tracing::debug;

@@ -1,6 +1,6 @@
+use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::{span_lint_and_then, span_lint_hir_and_then};
 use clippy_utils::is_doc_hidden;
-use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_opt;
 use rustc_ast::ast::{self, VisibilityKind};
 use rustc_ast::attr;
@@ -22,7 +22,7 @@ declare_clippy_lint! {
     /// and allows possible optimizations when applied to enums.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// struct S {
     ///     pub a: i32,
     ///     pub b: i32,
@@ -39,7 +39,7 @@ declare_clippy_lint! {
     /// struct T(pub i32, pub i32, ());
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// #[non_exhaustive]
     /// struct S {
     ///     pub a: i32,
@@ -138,7 +138,7 @@ impl EarlyLintPass for ManualNonExhaustiveStruct {
                             );
                         }
                         diag.span_help(field.span, "remove this field");
-                    }
+                    },
                 );
             }
         }

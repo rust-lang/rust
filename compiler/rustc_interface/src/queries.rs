@@ -148,12 +148,8 @@ impl<'tcx> Queries<'tcx> {
             );
             let dep_graph = setup_dep_graph(sess, crate_name, stable_crate_id)?;
 
-            let lint_store = Lrc::new(passes::create_lint_store(
-                sess,
-                &*self.codegen_backend().metadata_loader(),
-                self.compiler.register_lints.as_deref(),
-                &pre_configured_attrs,
-            ));
+            let lint_store =
+                Lrc::new(passes::create_lint_store(sess, self.compiler.register_lints.as_deref()));
             let cstore = FreezeLock::new(Box::new(CStore::new(
                 self.codegen_backend().metadata_loader(),
                 stable_crate_id,

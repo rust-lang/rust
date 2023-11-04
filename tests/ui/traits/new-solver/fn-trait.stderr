@@ -1,4 +1,4 @@
-error[E0277]: expected a `Fn<()>` closure, found `unsafe fn() -> i32`
+error[E0277]: expected a `Fn()` closure, found `unsafe fn() -> i32`
   --> $DIR/fn-trait.rs:20:16
    |
 LL |     require_fn(f as unsafe fn() -> i32);
@@ -29,11 +29,11 @@ note: required by a bound in `require_fn`
 LL | fn require_fn(_: impl Fn() -> i32) {}
    |                               ^^^ required by this bound in `require_fn`
 
-error[E0277]: expected a `Fn<()>` closure, found `extern "C" fn() -> i32 {g}`
+error[E0277]: expected a `Fn()` closure, found `extern "C" fn() -> i32 {g}`
   --> $DIR/fn-trait.rs:23:16
    |
 LL |     require_fn(g);
-   |     ---------- ^ expected an `Fn<()>` closure, found `extern "C" fn() -> i32 {g}`
+   |     ---------- ^ expected an `Fn()` closure, found `extern "C" fn() -> i32 {g}`
    |     |
    |     required by a bound introduced by this call
    |
@@ -59,11 +59,11 @@ note: required by a bound in `require_fn`
 LL | fn require_fn(_: impl Fn() -> i32) {}
    |                               ^^^ required by this bound in `require_fn`
 
-error[E0277]: expected a `Fn<()>` closure, found `extern "C" fn() -> i32`
+error[E0277]: expected a `Fn()` closure, found `extern "C" fn() -> i32`
   --> $DIR/fn-trait.rs:26:16
    |
 LL |     require_fn(g as extern "C" fn() -> i32);
-   |     ---------- ^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected an `Fn<()>` closure, found `extern "C" fn() -> i32`
+   |     ---------- ^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected an `Fn()` closure, found `extern "C" fn() -> i32`
    |     |
    |     required by a bound introduced by this call
    |
@@ -89,7 +89,7 @@ note: required by a bound in `require_fn`
 LL | fn require_fn(_: impl Fn() -> i32) {}
    |                               ^^^ required by this bound in `require_fn`
 
-error[E0277]: expected a `Fn<()>` closure, found `unsafe fn() -> i32 {h}`
+error[E0277]: expected a `Fn()` closure, found `unsafe fn() -> i32 {h}`
   --> $DIR/fn-trait.rs:29:16
    |
 LL |     require_fn(h);

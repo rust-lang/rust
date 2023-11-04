@@ -13,7 +13,7 @@ use rustc_middle::ty::cast::{CastTy, IntTy};
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, adjustment::PointerCoercion, Instance, Ty, TyCtxt};
 use rustc_session::config::OptLevel;
-use rustc_span::source_map::{Span, DUMMY_SP};
+use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{self, FIRST_VARIANT};
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {

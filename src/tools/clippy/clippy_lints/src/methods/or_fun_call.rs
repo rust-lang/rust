@@ -7,7 +7,7 @@ use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_lint::LateContext;
 use rustc_middle::ty;
-use rustc_span::source_map::Span;
+use rustc_span::Span;
 use rustc_span::symbol::{self, sym, Symbol};
 use {rustc_ast as ast, rustc_hir as hir};
 
@@ -235,10 +235,10 @@ fn closure_body_returns_empty_to_string(cx: &LateContext<'_>, e: &hir::Expr<'_>)
         let body = cx.tcx.hir().body(body);
 
         if body.params.is_empty()
-            && let hir::Expr{ kind, .. } = &body.value
-            && let hir::ExprKind::MethodCall(hir::PathSegment {ident, ..}, self_arg, _, _) = kind
+            && let hir::Expr { kind, .. } = &body.value
+            && let hir::ExprKind::MethodCall(hir::PathSegment { ident, .. }, self_arg, _, _) = kind
             && ident.name == sym::to_string
-            && let hir::Expr{ kind, .. } = self_arg
+            && let hir::Expr { kind, .. } = self_arg
             && let hir::ExprKind::Lit(lit) = kind
             && let ast::LitKind::Str(symbol::kw::Empty, _) = lit.node
         {

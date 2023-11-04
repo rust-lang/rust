@@ -1,8 +1,8 @@
 use std::ops::ControlFlow;
 
+use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::is_copy;
 use clippy_utils::visitors::for_each_local_use_after_expr;
@@ -14,8 +14,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::source_map::Span;
-use rustc_span::sym;
+use rustc_span::{sym, Span};
 
 #[expect(clippy::module_name_repetitions)]
 #[derive(Clone)]
@@ -33,14 +32,14 @@ declare_clippy_lint! {
     /// This is less efficient.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// fn foo(_x: &[u8]) {}
     ///
     /// foo(&vec![1, 2]);
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # fn foo(_x: &[u8]) {}
     /// foo(&[1, 2]);
     /// ```
@@ -110,14 +109,15 @@ impl<'tcx> LateLintPass<'tcx> for UselessVec {
                 } else {
                     ControlFlow::Break(())
                 }
-            }).is_continue();
+            })
+            .is_continue();
 
             if only_slice_uses {
                 self.check_vec_macro(
                     cx,
                     &vec_args,
                     expr.span.ctxt().outer_expn_data().call_site,
-                    SuggestedType::Array
+                    SuggestedType::Array,
                 );
             }
         }

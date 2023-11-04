@@ -119,23 +119,9 @@ impl NestedGoals<'_> {
 
 #[derive(PartialEq, Eq, Debug, Hash, HashStable, Clone, Copy)]
 pub enum GenerateProofTree {
-    Yes(UseGlobalCache),
+    Yes,
     IfEnabled,
     Never,
-}
-
-#[derive(PartialEq, Eq, Debug, Hash, HashStable, Clone, Copy)]
-pub enum UseGlobalCache {
-    Yes,
-    No,
-}
-impl UseGlobalCache {
-    pub fn from_bool(use_cache: bool) -> Self {
-        match use_cache {
-            true => UseGlobalCache::Yes,
-            false => UseGlobalCache::No,
-        }
-    }
 }
 
 pub trait InferCtxtEvalExt<'tcx> {

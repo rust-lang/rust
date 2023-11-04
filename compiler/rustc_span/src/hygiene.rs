@@ -24,16 +24,13 @@
 // because getting it wrong can lead to nested `HygieneData::with` calls that
 // trigger runtime aborts. (Fortunately these are obvious and easy to fix.)
 
+use crate::def_id::{CrateNum, DefId, StableCrateId, CRATE_DEF_ID, LOCAL_CRATE};
 use crate::edition::Edition;
 use crate::symbol::{kw, sym, Symbol};
-use crate::with_session_globals;
-use crate::{HashStableContext, Span, DUMMY_SP};
-
-use crate::def_id::{CrateNum, DefId, StableCrateId, CRATE_DEF_ID, LOCAL_CRATE};
+use crate::{with_session_globals, HashStableContext, Span, DUMMY_SP};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::stable_hasher::HashingControls;
-use rustc_data_structures::stable_hasher::{Hash64, HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{Hash64, HashStable, HashingControls, StableHasher};
 use rustc_data_structures::sync::{Lock, Lrc, WorkerLocal};
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_index::IndexVec;
@@ -130,7 +127,7 @@ impl ExpnHash {
 
     /// Returns the crate-local part of the [ExpnHash].
     ///
-    /// Used for tests.
+    /// Used for assertions.
     #[inline]
     pub fn local_hash(self) -> Hash64 {
         self.0.split().1
@@ -173,7 +170,7 @@ impl LocalExpnId {
     pub const ROOT: LocalExpnId = LocalExpnId::from_u32(0);
 
     #[inline]
-    pub fn from_raw(idx: ExpnIndex) -> LocalExpnId {
+    fn from_raw(idx: ExpnIndex) -> LocalExpnId {
         LocalExpnId::from_u32(idx.as_u32())
     }
 
@@ -202,11 +199,6 @@ impl LocalExpnId {
             debug_assert!(_old_id.is_none());
             expn_id
         })
-    }
-
-    #[inline]
-    pub fn expn_hash(self) -> ExpnHash {
-        HygieneData::with(|data| data.local_expn_hash(self))
     }
 
     #[inline]
@@ -239,25 +231,12 @@ impl LocalExpnId {
         self.to_expn_id().is_descendant_of(ancestor.to_expn_id())
     }
 
-    /// `expn_id.outer_expn_is_descendant_of(ctxt)` is equivalent to but faster than
-    /// `expn_id.is_descendant_of(ctxt.outer_expn())`.
-    #[inline]
-    pub fn outer_expn_is_descendant_of(self, ctxt: SyntaxContext) -> bool {
-        self.to_expn_id().outer_expn_is_descendant_of(ctxt)
-    }
-
     /// Returns span for the macro which originally caused this expansion to happen.
     ///
     /// Stops backtracing at include! boundary.
     #[inline]
     pub fn expansion_cause(self) -> Option<Span> {
         self.to_expn_id().expansion_cause()
-    }
-
-    #[inline]
-    #[track_caller]
-    pub fn parent(self) -> LocalExpnId {
-        self.expn_data().parent.as_local().unwrap()
     }
 }
 
@@ -333,7 +312,7 @@ impl ExpnId {
 }
 
 #[derive(Debug)]
-pub struct HygieneData {
+pub(crate) struct HygieneData {
     /// Each expansion should have an associated expansion data, but sometimes there's a delay
     /// between creation of an expansion ID and obtaining its data (e.g. macros are collected
     /// first and then resolved later), so we use an `Option` here.
@@ -384,13 +363,8 @@ impl HygieneData {
         }
     }
 
-    pub fn with<T, F: FnOnce(&mut HygieneData) -> T>(f: F) -> T {
+    fn with<T, F: FnOnce(&mut HygieneData) -> T>(f: F) -> T {
         with_session_globals(|session_globals| f(&mut session_globals.hygiene_data.borrow_mut()))
-    }
-
-    #[inline]
-    fn local_expn_hash(&self, expn_id: LocalExpnId) -> ExpnHash {
-        self.local_expn_hashes[expn_id]
     }
 
     #[inline]
@@ -746,7 +720,7 @@ impl SyntaxContext {
     }
 
     /// Like `SyntaxContext::adjust`, but also normalizes `self` to macros 2.0.
-    pub fn normalize_to_macros_2_0_and_adjust(&mut self, expn_id: ExpnId) -> Option<ExpnId> {
+    pub(crate) fn normalize_to_macros_2_0_and_adjust(&mut self, expn_id: ExpnId) -> Option<ExpnId> {
         HygieneData::with(|data| {
             *self = data.normalize_to_macros_2_0(*self);
             data.adjust(self, expn_id)
@@ -779,7 +753,11 @@ impl SyntaxContext {
     /// ```
     /// This returns `None` if the context cannot be glob-adjusted.
     /// Otherwise, it returns the scope to use when privacy checking (see `adjust` for details).
-    pub fn glob_adjust(&mut self, expn_id: ExpnId, glob_span: Span) -> Option<Option<ExpnId>> {
+    pub(crate) fn glob_adjust(
+        &mut self,
+        expn_id: ExpnId,
+        glob_span: Span,
+    ) -> Option<Option<ExpnId>> {
         HygieneData::with(|data| {
             let mut scope = None;
             let mut glob_ctxt = data.normalize_to_macros_2_0(glob_span.ctxt());
@@ -803,7 +781,7 @@ impl SyntaxContext {
     ///     assert!(self.glob_adjust(expansion, glob_ctxt) == Some(privacy_checking_scope));
     /// }
     /// ```
-    pub fn reverse_glob_adjust(
+    pub(crate) fn reverse_glob_adjust(
         &mut self,
         expn_id: ExpnId,
         glob_span: Span,
@@ -858,11 +836,11 @@ impl SyntaxContext {
     }
 
     #[inline]
-    pub fn outer_mark(self) -> (ExpnId, Transparency) {
+    fn outer_mark(self) -> (ExpnId, Transparency) {
         HygieneData::with(|data| data.outer_mark(self))
     }
 
-    pub fn dollar_crate_name(self) -> Symbol {
+    pub(crate) fn dollar_crate_name(self) -> Symbol {
         HygieneData::with(|data| data.syntax_context_data[self.0 as usize].dollar_crate_name)
     }
 
@@ -961,12 +939,12 @@ pub struct ExpnData {
     /// The normal module (`mod`) in which the expanded macro was defined.
     pub parent_module: Option<DefId>,
     /// Suppresses the `unsafe_code` lint for code produced by this macro.
-    pub allow_internal_unsafe: bool,
+    pub(crate) allow_internal_unsafe: bool,
     /// Enables the macro helper hack (`ident!(...)` -> `$crate::ident!(...)`) for this macro.
     pub local_inner_macros: bool,
     /// Should debuginfo for the macro be collapsed to the outermost expansion site (in other
     /// words, was the macro definition annotated with `#[collapse_debuginfo]`)?
-    pub collapse_debuginfo: bool,
+    pub(crate) collapse_debuginfo: bool,
 }
 
 impl !PartialEq for ExpnData {}

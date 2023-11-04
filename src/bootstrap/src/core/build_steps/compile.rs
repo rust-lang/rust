@@ -45,15 +45,42 @@ pub struct Std {
     /// When using download-rustc, we need to use a new build of `std` for running unit tests of Std itself,
     /// but we need to use the downloaded copy of std for linking to rustdoc. Allow this to be overriden by `builder.ensure` from other steps.
     force_recompile: bool,
+    extra_rust_args: &'static [&'static str],
 }
 
 impl Std {
     pub fn new(compiler: Compiler, target: TargetSelection) -> Self {
-        Self { target, compiler, crates: Default::default(), force_recompile: false }
+        Self {
+            target,
+            compiler,
+            crates: Default::default(),
+            force_recompile: false,
+            extra_rust_args: &[],
+        }
     }
 
     pub fn force_recompile(compiler: Compiler, target: TargetSelection) -> Self {
-        Self { target, compiler, crates: Default::default(), force_recompile: true }
+        Self {
+            target,
+            compiler,
+            crates: Default::default(),
+            force_recompile: true,
+            extra_rust_args: &[],
+        }
+    }
+
+    pub fn new_with_extra_rust_args(
+        compiler: Compiler,
+        target: TargetSelection,
+        extra_rust_args: &'static [&'static str],
+    ) -> Self {
+        Self {
+            target,
+            compiler,
+            crates: Default::default(),
+            force_recompile: false,
+            extra_rust_args,
+        }
     }
 }
 
@@ -81,6 +108,7 @@ impl Step for Std {
             target: run.target,
             crates,
             force_recompile: false,
+            extra_rust_args: &[],
         });
     }
 
@@ -187,6 +215,9 @@ impl Step for Std {
         // See src/bootstrap/synthetic_targets.rs
         if target.is_synthetic() {
             cargo.env("RUSTC_BOOTSTRAP_SYNTHETIC_TARGET", "1");
+        }
+        for rustflag in self.extra_rust_args.into_iter() {
+            cargo.rustflag(rustflag);
         }
 
         let _guard = builder.msg(

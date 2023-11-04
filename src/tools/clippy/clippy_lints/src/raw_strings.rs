@@ -20,11 +20,11 @@ declare_clippy_lint! {
     /// idiomatic than a string literal, so it's opt-in.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let r = r"Hello, world!";
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let r = "Hello, world!";
     /// ```
     #[clippy::version = "1.72.0"]
@@ -41,11 +41,11 @@ declare_clippy_lint! {
     /// necessary.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let r = r###"Hello, "world"!"###;
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let r = r#"Hello, "world"!"#;
     /// ```
     #[clippy::version = "1.72.0"]

@@ -1,5 +1,5 @@
+use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg, span_lint_and_then};
-use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_non_aggregate_primitive_type;
@@ -11,7 +11,7 @@ use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::source_map::Span;
+use rustc_span::Span;
 use rustc_span::symbol::sym;
 
 declare_clippy_lint! {
@@ -25,14 +25,14 @@ declare_clippy_lint! {
     /// `None`.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// use std::mem;
     ///
     /// let mut an_option = Some(0);
     /// let replaced = mem::replace(&mut an_option, None);
     /// ```
     /// Is better expressed with:
-    /// ```rust
+    /// ```no_run
     /// let mut an_option = Some(0);
     /// let taken = an_option.take();
     /// ```
@@ -53,7 +53,7 @@ declare_clippy_lint! {
     /// observed in the case of a panic.
     ///
     /// ### Example
-    /// ```
+    /// ```no_run
     /// use std::mem;
     ///# fn may_panic(v: Vec<i32>) -> Vec<i32> { v }
     ///
@@ -84,12 +84,12 @@ declare_clippy_lint! {
     /// take the current value and replace it with the default value of that type.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let mut text = String::from("foo");
     /// let replaced = std::mem::replace(&mut text, String::default());
     /// ```
     /// Is better expressed with:
-    /// ```rust
+    /// ```no_run
     /// let mut text = String::from("foo");
     /// let taken = std::mem::take(&mut text);
     /// ```

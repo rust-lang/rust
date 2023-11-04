@@ -523,7 +523,7 @@ fn gather_stats(clippy_warnings: &[ClippyWarning]) -> (String, HashMap<&String, 
         .for_each(|wrn| *counter.entry(&wrn.lint_type).or_insert(0) += 1);
 
     // collect into a tupled list for sorting
-    let mut stats: Vec<(&&String, &usize)> = counter.iter().map(|(lint, count)| (lint, count)).collect();
+    let mut stats: Vec<(&&String, &usize)> = counter.iter().collect();
     // sort by "000{count} {clippy::lintname}"
     // to not have a lint with 200 and 2 warnings take the same spot
     stats.sort_by_key(|(lint, count)| format!("{count:0>4}, {lint}"));

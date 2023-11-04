@@ -22,13 +22,13 @@ declare_clippy_lint! {
     /// be obvious or, rarely, expressible in one character.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// struct DiagnosticCtx<'a> {
     ///     source: &'a str,
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// struct DiagnosticCtx<'src> {
     ///     source: &'src str,
     /// }

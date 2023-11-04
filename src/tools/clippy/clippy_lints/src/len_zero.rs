@@ -15,7 +15,8 @@ use rustc_hir::{
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, AssocKind, FnSig, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::source_map::{Span, Spanned, Symbol};
+use rustc_span::{Span, Symbol};
+use rustc_span::source_map::Spanned;
 use rustc_span::symbol::sym;
 
 declare_clippy_lint! {
@@ -181,8 +182,7 @@ impl<'tcx> LateLintPass<'tcx> for LenZero {
             let mut applicability = Applicability::MachineApplicable;
 
             let lit1 = peel_ref_operators(cx, lt.init);
-            let lit_str =
-                Sugg::hir_with_context(cx, lit1, lt.span.ctxt(), "_", &mut applicability).maybe_par();
+            let lit_str = Sugg::hir_with_context(cx, lit1, lt.span.ctxt(), "_", &mut applicability).maybe_par();
 
             span_lint_and_sugg(
                 cx,
@@ -288,18 +288,26 @@ enum LenOutput {
 }
 
 fn extract_future_output<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<&'tcx PathSegment<'tcx>> {
-    if let ty::Alias(_, alias_ty) = ty.kind() &&
-        let Some(Node::Item(item)) = cx.tcx.hir().get_if_local(alias_ty.def_id) &&
-        let Item { kind: ItemKind::OpaqueTy(opaque), .. } = item &&
-        opaque.bounds.len() == 1 &&
-        let GenericBound::LangItemTrait(LangItem::Future, _, _, generic_args) = &opaque.bounds[0] &&
-        generic_args.bindings.len() == 1 &&
-        let TypeBindingKind::Equality {
-            term: rustc_hir::Term::Ty(rustc_hir::Ty {kind: TyKind::Path(QPath::Resolved(_, path)), .. }),
-        } = &generic_args.bindings[0].kind &&
-        path.segments.len() == 1 {
-            return Some(&path.segments[0]);
-        }
+    if let ty::Alias(_, alias_ty) = ty.kind()
+        && let Some(Node::Item(item)) = cx.tcx.hir().get_if_local(alias_ty.def_id)
+        && let Item {
+            kind: ItemKind::OpaqueTy(opaque),
+            ..
+        } = item
+        && opaque.bounds.len() == 1
+        && let GenericBound::LangItemTrait(LangItem::Future, _, _, generic_args) = &opaque.bounds[0]
+        && generic_args.bindings.len() == 1
+        && let TypeBindingKind::Equality {
+            term:
+                rustc_hir::Term::Ty(rustc_hir::Ty {
+                    kind: TyKind::Path(QPath::Resolved(_, path)),
+                    ..
+                }),
+        } = &generic_args.bindings[0].kind
+        && path.segments.len() == 1
+    {
+        return Some(&path.segments[0]);
+    }
 
     None
 }

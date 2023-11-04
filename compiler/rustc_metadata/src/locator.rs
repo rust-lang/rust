@@ -220,7 +220,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::owned_slice::slice_owned;
 use rustc_data_structures::svh::Svh;
-use rustc_errors::{DiagnosticArgValue, FatalError, IntoDiagnosticArg};
+use rustc_errors::{DiagnosticArgValue, IntoDiagnosticArg};
 use rustc_fs_util::try_canonicalize;
 use rustc_session::config;
 use rustc_session::cstore::{CrateSource, MetadataLoader};
@@ -857,46 +857,6 @@ fn get_metadata_section<'p>(
     }
 }
 
-/// Look for a plugin registrar. Returns its library path and crate disambiguator.
-pub fn find_plugin_registrar(
-    sess: &Session,
-    metadata_loader: &dyn MetadataLoader,
-    span: Span,
-    name: Symbol,
-) -> PathBuf {
-    find_plugin_registrar_impl(sess, metadata_loader, name).unwrap_or_else(|err| {
-        // `core` is always available if we got as far as loading plugins.
-        err.report(sess, span, false);
-        FatalError.raise()
-    })
-}
-
-fn find_plugin_registrar_impl<'a>(
-    sess: &'a Session,
-    metadata_loader: &dyn MetadataLoader,
-    name: Symbol,
-) -> Result<PathBuf, CrateError> {
-    info!("find plugin registrar `{}`", name);
-    let mut locator = CrateLocator::new(
-        sess,
-        metadata_loader,
-        name,
-        false, // is_rlib
-        None,  // hash
-        None,  // extra_filename
-        true,  // is_host
-        PathKind::Crate,
-    );
-
-    match locator.maybe_load_library_crate()? {
-        Some(library) => match library.source.dylib {
-            Some(dylib) => Ok(dylib.0),
-            None => Err(CrateError::NonDylibPlugin(name)),
-        },
-        None => Err(locator.into_error(None)),
-    }
-}
-
 /// A diagnostic function for dumping crate metadata to an output stream.
 pub fn list_file_metadata(
     target: &Target,
@@ -964,7 +924,6 @@ pub(crate) enum CrateError {
     DlOpen(String),
     DlSym(String),
     LocatorCombined(Box<CombinedLocatorError>),
-    NonDylibPlugin(Symbol),
     NotFound(Symbol),
 }
 
@@ -1133,9 +1092,6 @@ impl CrateError {
                         is_ui_testing: sess.opts.unstable_opts.ui_testing,
                     });
                 }
-            }
-            CrateError::NonDylibPlugin(crate_name) => {
-                sess.emit_err(errors::NoDylibPlugin { span, crate_name });
             }
             CrateError::NotFound(crate_name) => {
                 sess.emit_err(errors::CannotFindCrate {

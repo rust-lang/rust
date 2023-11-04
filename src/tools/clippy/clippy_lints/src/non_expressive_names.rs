@@ -6,8 +6,7 @@ use rustc_ast::visit::{walk_block, walk_expr, walk_pat, Visitor};
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::source_map::Span;
-use rustc_span::sym;
+use rustc_span::{sym, Span};
 use rustc_span::symbol::{Ident, Symbol};
 use std::cmp::Ordering;
 
@@ -63,7 +62,7 @@ declare_clippy_lint! {
     /// descriptive name.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let _1 = 1;
     /// let ___1 = 1;
     /// let __1___2 = 11;

@@ -25,91 +25,85 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item) {
                 Some(sp) => sp,
                 None => item.attr_span(tcx),
             };
-            tcx.struct_span_lint_hir(
-                crate::lint::INVALID_HTML_TAGS,
-                hir_id,
-                sp,
-                msg.to_string(),
-                |lint| {
-                    use rustc_lint_defs::Applicability;
-                    // If a tag looks like `<this>`, it might actually be a generic.
-                    // We don't try to detect stuff `<like, this>` because that's not valid HTML,
-                    // and we don't try to detect stuff `<like this>` because that's not valid Rust.
-                    let mut generics_end = range.end;
-                    if let Some(Some(mut generics_start)) = (is_open_tag
-                        && dox[..generics_end].ends_with('>'))
-                    .then(|| extract_path_backwards(&dox, range.start))
+            tcx.struct_span_lint_hir(crate::lint::INVALID_HTML_TAGS, hir_id, sp, msg, |lint| {
+                use rustc_lint_defs::Applicability;
+                // If a tag looks like `<this>`, it might actually be a generic.
+                // We don't try to detect stuff `<like, this>` because that's not valid HTML,
+                // and we don't try to detect stuff `<like this>` because that's not valid Rust.
+                let mut generics_end = range.end;
+                if let Some(Some(mut generics_start)) = (is_open_tag
+                    && dox[..generics_end].ends_with('>'))
+                .then(|| extract_path_backwards(&dox, range.start))
+                {
+                    while generics_start != 0
+                        && generics_end < dox.len()
+                        && dox.as_bytes()[generics_start - 1] == b'<'
+                        && dox.as_bytes()[generics_end] == b'>'
                     {
-                        while generics_start != 0
-                            && generics_end < dox.len()
-                            && dox.as_bytes()[generics_start - 1] == b'<'
-                            && dox.as_bytes()[generics_end] == b'>'
-                        {
-                            generics_end += 1;
-                            generics_start -= 1;
-                            if let Some(new_start) = extract_path_backwards(&dox, generics_start) {
-                                generics_start = new_start;
-                            }
-                            if let Some(new_end) = extract_path_forward(&dox, generics_end) {
-                                generics_end = new_end;
-                            }
+                        generics_end += 1;
+                        generics_start -= 1;
+                        if let Some(new_start) = extract_path_backwards(&dox, generics_start) {
+                            generics_start = new_start;
                         }
                         if let Some(new_end) = extract_path_forward(&dox, generics_end) {
                             generics_end = new_end;
                         }
-                        let generics_sp = match source_span_for_markdown_range(
-                            tcx,
-                            &dox,
-                            &(generics_start..generics_end),
-                            &item.attrs.doc_strings,
-                        ) {
-                            Some(sp) => sp,
-                            None => item.attr_span(tcx),
-                        };
-                        // Sometimes, we only extract part of a path. For example, consider this:
-                        //
-                        //     <[u32] as IntoIter<u32>>::Item
-                        //                       ^^^^^ unclosed HTML tag `u32`
-                        //
-                        // We don't have any code for parsing fully-qualified trait paths.
-                        // In theory, we could add it, but doing it correctly would require
-                        // parsing the entire path grammar, which is problematic because of
-                        // overlap between the path grammar and Markdown.
-                        //
-                        // The example above shows that ambiguity. Is `[u32]` intended to be an
-                        // intra-doc link to the u32 primitive, or is it intended to be a slice?
-                        //
-                        // If the below conditional were removed, we would suggest this, which is
-                        // not what the user probably wants.
-                        //
-                        //     <[u32] as `IntoIter<u32>`>::Item
-                        //
-                        // We know that the user actually wants to wrap the whole thing in a code
-                        // block, but the only reason we know that is because `u32` does not, in
-                        // fact, implement IntoIter. If the example looks like this:
-                        //
-                        //     <[Vec<i32>] as IntoIter<i32>::Item
-                        //
-                        // The ideal fix would be significantly different.
-                        if (generics_start > 0 && dox.as_bytes()[generics_start - 1] == b'<')
-                            || (generics_end < dox.len() && dox.as_bytes()[generics_end] == b'>')
-                        {
-                            return lint;
-                        }
-                        // multipart form is chosen here because ``Vec<i32>`` would be confusing.
-                        lint.multipart_suggestion(
-                            "try marking as source code",
-                            vec![
-                                (generics_sp.shrink_to_lo(), String::from("`")),
-                                (generics_sp.shrink_to_hi(), String::from("`")),
-                            ],
-                            Applicability::MaybeIncorrect,
-                        );
                     }
+                    if let Some(new_end) = extract_path_forward(&dox, generics_end) {
+                        generics_end = new_end;
+                    }
+                    let generics_sp = match source_span_for_markdown_range(
+                        tcx,
+                        &dox,
+                        &(generics_start..generics_end),
+                        &item.attrs.doc_strings,
+                    ) {
+                        Some(sp) => sp,
+                        None => item.attr_span(tcx),
+                    };
+                    // Sometimes, we only extract part of a path. For example, consider this:
+                    //
+                    //     <[u32] as IntoIter<u32>>::Item
+                    //                       ^^^^^ unclosed HTML tag `u32`
+                    //
+                    // We don't have any code for parsing fully-qualified trait paths.
+                    // In theory, we could add it, but doing it correctly would require
+                    // parsing the entire path grammar, which is problematic because of
+                    // overlap between the path grammar and Markdown.
+                    //
+                    // The example above shows that ambiguity. Is `[u32]` intended to be an
+                    // intra-doc link to the u32 primitive, or is it intended to be a slice?
+                    //
+                    // If the below conditional were removed, we would suggest this, which is
+                    // not what the user probably wants.
+                    //
+                    //     <[u32] as `IntoIter<u32>`>::Item
+                    //
+                    // We know that the user actually wants to wrap the whole thing in a code
+                    // block, but the only reason we know that is because `u32` does not, in
+                    // fact, implement IntoIter. If the example looks like this:
+                    //
+                    //     <[Vec<i32>] as IntoIter<i32>::Item
+                    //
+                    // The ideal fix would be significantly different.
+                    if (generics_start > 0 && dox.as_bytes()[generics_start - 1] == b'<')
+                        || (generics_end < dox.len() && dox.as_bytes()[generics_end] == b'>')
+                    {
+                        return lint;
+                    }
+                    // multipart form is chosen here because ``Vec<i32>`` would be confusing.
+                    lint.multipart_suggestion(
+                        "try marking as source code",
+                        vec![
+                            (generics_sp.shrink_to_lo(), String::from("`")),
+                            (generics_sp.shrink_to_hi(), String::from("`")),
+                        ],
+                        Applicability::MaybeIncorrect,
+                    );
+                }
 
-                    lint
-                },
-            );
+                lint
+            });
         };
 
         let mut tags = Vec::new();

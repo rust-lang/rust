@@ -1,4 +1,4 @@
-error[E0277]: expected a `FnMut<(char,)>` closure, found `String`
+error[E0277]: expected a `FnMut(char)` closure, found `String`
   --> $DIR/issue-104961.rs:4:19
    |
 LL |     x.starts_with("hi".to_string() + " you")
@@ -15,7 +15,7 @@ help: consider borrowing here
 LL |     x.starts_with(&("hi".to_string() + " you"))
    |                   ++                         +
 
-error[E0277]: expected a `FnMut<(char,)>` closure, found `String`
+error[E0277]: expected a `FnMut(char)` closure, found `String`
   --> $DIR/issue-104961.rs:9:19
    |
 LL |     x.starts_with("hi".to_string())

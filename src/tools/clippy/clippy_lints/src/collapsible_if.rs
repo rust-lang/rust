@@ -32,7 +32,7 @@ declare_clippy_lint! {
     /// makes code look more complex than it really is.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # let (x, y) = (true, true);
     /// if x {
     ///     if y {
@@ -42,7 +42,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # let (x, y) = (true, true);
     /// if x && y {
     ///     // …

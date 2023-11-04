@@ -20,8 +20,8 @@ use rustc_ast::{AttrStyle, AttrVec, LocalKind, MacCall, MacCallStmt, MacStmtStyl
 use rustc_ast::{Block, BlockCheckMode, Expr, ExprKind, HasAttrs, Local, Stmt};
 use rustc_ast::{StmtKind, DUMMY_NODE_ID};
 use rustc_errors::{Applicability, DiagnosticBuilder, ErrorGuaranteed, PResult};
-use rustc_span::source_map::{BytePos, Span};
 use rustc_span::symbol::{kw, sym, Ident};
+use rustc_span::{BytePos, Span};
 
 use std::borrow::Cow;
 use std::mem;

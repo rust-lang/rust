@@ -9,7 +9,7 @@ declare_clippy_lint! {
     /// Checks for usage of `panic!`.
     ///
     /// ### Why is this bad?
-    /// `panic!` will stop the execution of the executable
+    /// `panic!` will stop the execution of the executable.
     ///
     /// ### Example
     /// ```no_run
@@ -26,7 +26,7 @@ declare_clippy_lint! {
     /// Checks for usage of `unimplemented!`.
     ///
     /// ### Why is this bad?
-    /// This macro should not be present in production code
+    /// This macro should not be present in production code.
     ///
     /// ### Example
     /// ```no_run
@@ -43,11 +43,16 @@ declare_clippy_lint! {
     /// Checks for usage of `todo!`.
     ///
     /// ### Why is this bad?
-    /// This macro should not be present in production code
+    /// The `todo!` macro is often used for unfinished code, and it causes
+    /// code to panic. It should not be present in production code.
     ///
     /// ### Example
     /// ```no_run
     /// todo!();
+    /// ```
+    /// Finish the implementation, or consider marking it as explicitly unimplemented.
+    /// ```no_run
+    /// unimplemented!();
     /// ```
     #[clippy::version = "1.40.0"]
     pub TODO,
@@ -60,7 +65,7 @@ declare_clippy_lint! {
     /// Checks for usage of `unreachable!`.
     ///
     /// ### Why is this bad?
-    /// This macro can cause code to panic
+    /// This macro can cause code to panic.
     ///
     /// ### Example
     /// ```no_run

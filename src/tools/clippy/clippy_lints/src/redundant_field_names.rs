@@ -1,5 +1,5 @@
+use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::msrvs::{self, Msrv};
 use rustc_ast::ast::{Expr, ExprKind};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
@@ -16,7 +16,7 @@ declare_clippy_lint! {
     /// the field name is redundant.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let bar: u8 = 123;
     ///
     /// struct Foo {

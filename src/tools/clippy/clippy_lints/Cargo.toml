@@ -11,6 +11,7 @@ edition = "2021"
 [dependencies]
 arrayvec = { version = "0.7", default-features = false }
 cargo_metadata = "0.15.3"
+clippy_config = { path = "../clippy_config" }
 clippy_utils = { path = "../clippy_utils" }
 declare_clippy_lint = { path = "../declare_clippy_lint" }
 if_chain = "1.0"
@@ -32,9 +33,9 @@ url = "2.2"
 walkdir = "2.3"
 
 [features]
-deny-warnings = ["clippy_utils/deny-warnings"]
+deny-warnings = ["clippy_config/deny-warnings", "clippy_utils/deny-warnings"]
 # build clippy with internal lints enabled, off by default
-internal = ["clippy_utils/internal", "serde_json", "tempfile", "regex"]
+internal = ["serde_json", "tempfile", "regex"]
 
 [package.metadata.rust-analyzer]
 # This crate uses #[feature(rustc_private)]

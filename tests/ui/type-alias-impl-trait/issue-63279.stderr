@@ -1,17 +1,17 @@
-error[E0277]: expected a `FnOnce<()>` closure, found `()`
+error[E0277]: expected a `FnOnce()` closure, found `()`
   --> $DIR/issue-63279.rs:5:11
    |
 LL | fn c() -> Closure {
-   |           ^^^^^^^ expected an `FnOnce<()>` closure, found `()`
+   |           ^^^^^^^ expected an `FnOnce()` closure, found `()`
    |
    = help: the trait `FnOnce<()>` is not implemented for `()`
    = note: wrap the `()` in a closure with no arguments: `|| { /* code */ }`
 
-error[E0277]: expected a `FnOnce<()>` closure, found `()`
+error[E0277]: expected a `FnOnce()` closure, found `()`
   --> $DIR/issue-63279.rs:7:11
    |
 LL |     || -> Closure { || () }
-   |           ^^^^^^^ expected an `FnOnce<()>` closure, found `()`
+   |           ^^^^^^^ expected an `FnOnce()` closure, found `()`
    |
    = help: the trait `FnOnce<()>` is not implemented for `()`
    = note: wrap the `()` in a closure with no arguments: `|| { /* code */ }`

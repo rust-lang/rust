@@ -1,5 +1,5 @@
+use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_hir_and_then;
-use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_opt;
 use clippy_utils::visitors::{is_local_used, local_used_once};
 use clippy_utils::{is_trait_method, path_to_local_id};
@@ -19,7 +19,7 @@ declare_clippy_lint! {
     /// It is more concise to use the `hash_one` method.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// use std::hash::{BuildHasher, Hash, Hasher};
     /// use std::collections::hash_map::RandomState;
     ///
@@ -31,7 +31,7 @@ declare_clippy_lint! {
     /// let hash = hasher.finish();
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// use std::hash::BuildHasher;
     /// use std::collections::hash_map::RandomState;
     ///
@@ -117,12 +117,11 @@ impl LateLintPass<'_> for ManualHashOne {
                                     finish_expr.span,
                                     // `needless_borrows_for_generic_args` will take care of
                                     // removing the `&` when it isn't needed
-                                    format!("{build_hasher}.hash_one(&{hashed_value})")
-                                )
+                                    format!("{build_hasher}.hash_one(&{hashed_value})"),
+                                ),
                             ],
                             Applicability::MachineApplicable,
                         );
-
                     }
                 },
             );

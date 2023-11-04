@@ -1529,8 +1529,6 @@ options! {
     dump_solver_proof_tree: DumpSolverProofTree = (DumpSolverProofTree::Never, parse_dump_solver_proof_tree, [UNTRACKED],
         "dump a proof tree for every goal evaluated by the new trait solver. If the flag is specified without any options after it
         then it defaults to `always`. If the flag is not specified at all it defaults to `on-request`."),
-    dump_solver_proof_tree_use_cache: Option<bool> = (None, parse_opt_bool, [UNTRACKED],
-        "determines whether dumped proof trees use the global cache"),
     dwarf_version: Option<u32> = (None, parse_opt_number, [TRACKED],
         "version of DWARF debug information to emit (default: 2 or 4, depending on platform)"),
     dylib_lto: bool = (false, parse_bool, [UNTRACKED],
@@ -1823,9 +1821,6 @@ written to standard error output)"),
         "control if mem::uninitialized and mem::zeroed panic on more UB"),
     strip: Strip = (Strip::None, parse_strip, [UNTRACKED],
         "tell the linker which information to strip (`none` (default), `debuginfo` or `symbols`)"),
-    symbol_mangling_version: Option<SymbolManglingVersion> = (None,
-        parse_symbol_mangling_version, [TRACKED],
-        "which mangling version to use for symbol names ('legacy' (default) or 'v0')"),
     #[rustc_lint_opt_deny_field_access("use `Session::teach` instead of this field")]
     teach: bool = (false, parse_bool, [TRACKED],
         "show extended diagnostic help (default: no)"),

@@ -18,7 +18,7 @@ declare_clippy_lint! {
     /// The inline attribute is ignored for trait methods without bodies.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// trait Animal {
     ///     #[inline]
     ///     fn name(&self) -> &'static str;

@@ -19,11 +19,17 @@ error: accessing first element with `z.get(0)`
 LL |     let _ = z.get(0);
    |             ^^^^^^^^ help: try: `z.first()`
 
+error: accessing first element with `vecdeque.get(0)`
+  --> $DIR/get_first.rs:35:13
+   |
+LL |     let _ = vecdeque.get(0);
+   |             ^^^^^^^^^^^^^^^ help: try: `vecdeque.front()`
+
 error: accessing first element with `non_primitives.get(0)`
-  --> $DIR/get_first.rs:45:13
+  --> $DIR/get_first.rs:48:13
    |
 LL |     let _ = non_primitives.get(0);
    |             ^^^^^^^^^^^^^^^^^^^^^ help: try: `non_primitives.first()`
 
-error: aborting due to 4 previous errors
+error: aborting due to 5 previous errors
 

@@ -11,7 +11,7 @@ use rustc_hir::def::Res;
 use rustc_hir::{Closure, Expr, ExprKind, PatKind, PathSegment, QPath, UnOp};
 use rustc_lint::LateContext;
 use rustc_middle::ty::adjustment::Adjust;
-use rustc_span::source_map::Span;
+use rustc_span::Span;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use std::borrow::Cow;
 
@@ -159,7 +159,7 @@ impl<'tcx> OffendingFilterExpr<'tcx> {
                             OffendingFilterExpr::IsSome { .. } => CalledMethod::OptionIsSome,
                             OffendingFilterExpr::IsOk { .. } => CalledMethod::ResultIsOk,
                             OffendingFilterExpr::Matches { .. } => unreachable!("only IsSome and IsOk can get here"),
-                        }
+                        },
                     })
                 } else {
                     None
@@ -189,7 +189,8 @@ impl<'tcx> OffendingFilterExpr<'tcx> {
                 //     scrutinee  variant_span  variant_ident        else_
                 let (scrutinee, else_, variant_ident, variant_span) =
                     match higher::IfLetOrMatch::parse(cx, map_body.value) {
-                        // For `if let` we want to check that the variant matching arm references the local created by its pattern
+                        // For `if let` we want to check that the variant matching arm references the local created by
+                        // its pattern
                         Some(higher::IfLetOrMatch::IfLet(sc, pat, then, Some(else_)))
                             if let Some((ident, span)) = expr_uses_local(pat, then) =>
                         {
@@ -211,7 +212,10 @@ impl<'tcx> OffendingFilterExpr<'tcx> {
                     && let Some(mac) = root_macro_call(else_.peel_blocks().span)
                     && (is_panic(cx, mac.def_id) || cx.tcx.opt_item_name(mac.def_id) == Some(sym::unreachable))
                 {
-                    Some(CheckResult::PatternMatching { variant_span, variant_ident })
+                    Some(CheckResult::PatternMatching {
+                        variant_span,
+                        variant_ident,
+                    })
                 } else {
                     None
                 }
@@ -228,18 +232,20 @@ impl<'tcx> OffendingFilterExpr<'tcx> {
             // .filter(|x| effect(x).is_some()).map(|x| effect(x).unwrap())
             // vs.
             // .filter_map(|x| effect(x))
-            // 
+            //
             // the latter only calls `effect` once
             let side_effect_expr_span = receiver.can_have_side_effects().then_some(receiver.span);
 
-            if cx.tcx.is_diagnostic_item(sym::Option, recv_ty.did())
-                && path.ident.name == sym!(is_some)
-            {
-                Some(Self::IsSome { receiver, side_effect_expr_span })
-            } else if cx.tcx.is_diagnostic_item(sym::Result, recv_ty.did())
-                && path.ident.name == sym!(is_ok)
-            {
-                Some(Self::IsOk { receiver, side_effect_expr_span })
+            if cx.tcx.is_diagnostic_item(sym::Option, recv_ty.did()) && path.ident.name == sym!(is_some) {
+                Some(Self::IsSome {
+                    receiver,
+                    side_effect_expr_span,
+                })
+            } else if cx.tcx.is_diagnostic_item(sym::Result, recv_ty.did()) && path.ident.name == sym!(is_ok) {
+                Some(Self::IsOk {
+                    receiver,
+                    side_effect_expr_span,
+                })
             } else {
                 None
             }

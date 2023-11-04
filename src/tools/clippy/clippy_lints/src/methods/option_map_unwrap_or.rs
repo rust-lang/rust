@@ -1,5 +1,5 @@
+use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::{is_copy, is_type_diagnostic_item};
 use rustc_data_structures::fx::FxHashSet;
@@ -9,8 +9,7 @@ use rustc_hir::intravisit::{walk_path, Visitor};
 use rustc_hir::{self, ExprKind, HirId, Node, PatKind, Path, QPath};
 use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter;
-use rustc_span::source_map::Span;
-use rustc_span::sym;
+use rustc_span::{sym, Span};
 
 use super::MAP_UNWRAP_OR;
 

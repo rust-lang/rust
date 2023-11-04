@@ -12,10 +12,4 @@ pub fn foo() -> Foo {
 }
 //~^^ ERROR missing `struct` for struct definition
 
-pub fn bar() -> Foo {
-    fn
-    Foo { text: "".to_string() }
-}
-//~^^ ERROR expected one of `(` or `<`, found `{`
-
 fn main() {}

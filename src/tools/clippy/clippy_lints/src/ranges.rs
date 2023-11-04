@@ -1,6 +1,6 @@
+use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then};
-use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::{snippet, snippet_opt, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{get_parent_expr, higher, in_constant, is_integer_const, path_to_local};
@@ -11,7 +11,8 @@ use rustc_hir::{BinOpKind, Expr, ExprKind, HirId};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::source_map::{Span, Spanned};
+use rustc_span::Span;
+use rustc_span::source_map::Spanned;
 use std::cmp::Ordering;
 
 declare_clippy_lint! {
@@ -39,7 +40,7 @@ declare_clippy_lint! {
     /// ([#3307](https://github.com/rust-lang/rust-clippy/issues/3307)).
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # let x = 0;
     /// # let y = 1;
     /// for i in x..(y+1) {
@@ -48,7 +49,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # let x = 0;
     /// # let y = 1;
     /// for i in x..=y {
@@ -77,7 +78,7 @@ declare_clippy_lint! {
     /// ([#3307](https://github.com/rust-lang/rust-clippy/issues/3307)).
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # let x = 0;
     /// # let y = 1;
     /// for i in x..=(y-1) {
@@ -86,7 +87,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # let x = 0;
     /// # let y = 1;
     /// for i in x..y {
@@ -118,7 +119,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// fn main() {
     ///     (0..=10).rev().for_each(|x| println!("{}", x));
     ///
@@ -142,14 +143,14 @@ declare_clippy_lint! {
     /// failure modes (such as fencepost errors or using `||` instead of `&&`).
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// // given
     /// let x = 6;
     ///
     /// assert!(x >= 3 && x < 8);
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     ///# let x = 6;
     /// assert!((3..8).contains(&x));
     /// ```

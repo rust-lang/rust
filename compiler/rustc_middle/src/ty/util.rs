@@ -1107,8 +1107,10 @@ impl<'tcx> Ty<'tcx> {
                 // This doesn't depend on regions, so try to minimize distinct
                 // query keys used.
                 // If normalization fails, we just use `query_ty`.
-                let query_ty =
-                    tcx.try_normalize_erasing_regions(param_env, query_ty).unwrap_or(query_ty);
+                debug_assert!(!param_env.has_infer());
+                let query_ty = tcx
+                    .try_normalize_erasing_regions(param_env, query_ty)
+                    .unwrap_or_else(|_| tcx.erase_regions(query_ty));
 
                 tcx.needs_drop_raw(param_env.and(query_ty))
             }
@@ -1297,7 +1299,6 @@ pub fn needs_drop_components<'tcx>(
         | ty::FnDef(..)
         | ty::FnPtr(_)
         | ty::Char
-        | ty::CoroutineWitness(..)
         | ty::RawPtr(_)
         | ty::Ref(..)
         | ty::Str => Ok(SmallVec::new()),
@@ -1337,7 +1338,8 @@ pub fn needs_drop_components<'tcx>(
         | ty::Placeholder(..)
         | ty::Infer(_)
         | ty::Closure(..)
-        | ty::Coroutine(..) => Ok(smallvec![ty]),
+        | ty::Coroutine(..)
+        | ty::CoroutineWitness(..) => Ok(smallvec![ty]),
     }
 }
 
