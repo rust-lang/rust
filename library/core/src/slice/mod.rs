@@ -300,7 +300,7 @@ impl<T> [T] {
         if let [.., last] = self { Some(last) } else { None }
     }
 
-    /// Returns a mutable pointer to the last item in the slice.
+    /// Returns a mutable reference to the last item in the slice.
     ///
     /// # Examples
     ///
@@ -320,7 +320,9 @@ impl<T> [T] {
         if let [.., last] = self { Some(last) } else { None }
     }
 
-    /// Returns the first `N` elements of the slice, or `None` if it has fewer than `N` elements.
+    /// Return an array reference to the first `N` items in the slice.
+    ///
+    /// If the slice is not at least `N` in length, this will return `None`.
     ///
     /// # Examples
     ///
@@ -345,12 +347,13 @@ impl<T> [T] {
         } else {
             // SAFETY: We explicitly check for the correct number of elements,
             //   and do not let the reference outlive the slice.
-            Some(unsafe { &*(self.as_ptr() as *const [T; N]) })
+            Some(unsafe { &*(self.as_ptr().cast::<[T; N]>()) })
         }
     }
 
-    /// Returns a mutable reference to the first `N` elements of the slice,
-    /// or `None` if it has fewer than `N` elements.
+    /// Return a mutable array reference to the first `N` items in the slice.
+    ///
+    /// If the slice is not at least `N` in length, this will return `None`.
     ///
     /// # Examples
     ///
@@ -375,12 +378,13 @@ impl<T> [T] {
             // SAFETY: We explicitly check for the correct number of elements,
             //   do not let the reference outlive the slice,
             //   and require exclusive access to the entire slice to mutate the chunk.
-            Some(unsafe { &mut *(self.as_mut_ptr() as *mut [T; N]) })
+            Some(unsafe { &mut *(self.as_mut_ptr().cast::<[T; N]>()) })
         }
     }
 
-    /// Returns the first `N` elements of the slice and the remainder,
-    /// or `None` if it has fewer than `N` elements.
+    /// Return an array reference to the first `N` items in the slice and the remaining slice.
+    ///
+    /// If the slice is not at least `N` in length, this will return `None`.
     ///
     /// # Examples
     ///
@@ -406,12 +410,14 @@ impl<T> [T] {
 
             // SAFETY: We explicitly check for the correct number of elements,
             //   and do not let the references outlive the slice.
-            Some((unsafe { &*(first.as_ptr() as *const [T; N]) }, tail))
+            Some((unsafe { &*(first.as_ptr().cast::<[T; N]>()) }, tail))
         }
     }
 
-    /// Returns a mutable reference to the first `N` elements of the slice and the remainder,
-    /// or `None` if it has fewer than `N` elements.
+    /// Return a mutable array reference to the first `N` items in the slice and the remaining
+    /// slice.
+    ///
+    /// If the slice is not at least `N` in length, this will return `None`.
     ///
     /// # Examples
     ///
@@ -442,12 +448,13 @@ impl<T> [T] {
             // SAFETY: We explicitly check for the correct number of elements,
             //   do not let the reference outlive the slice,
             //   and enforce exclusive mutability of the chunk by the split.
-            Some((unsafe { &mut *(first.as_mut_ptr() as *mut [T; N]) }, tail))
+            Some((unsafe { &mut *(first.as_mut_ptr().cast::<[T; N]>()) }, tail))
         }
     }
 
-    /// Returns the last `N` elements of the slice and the remainder,
-    /// or `None` if it has fewer than `N` elements.
+    /// Return an array reference to the last `N` items in the slice and the remaining slice.
+    ///
+    /// If the slice is not at least `N` in length, this will return `None`.
     ///
     /// # Examples
     ///
@@ -473,11 +480,14 @@ impl<T> [T] {
 
             // SAFETY: We explicitly check for the correct number of elements,
             //   and do not let the references outlive the slice.
-            Some((init, unsafe { &*(last.as_ptr() as *const [T; N]) }))
+            Some((init, unsafe { &*(last.as_ptr().cast::<[T; N]>()) }))
         }
     }
 
-    /// Returns the last and all the rest of the elements of the slice, or `None` if it is empty.
+    /// Return a mutable array reference to the last `N` items in the slice and the remaining
+    /// slice.
+    ///
+    /// If the slice is not at least `N` in length, this will return `None`.
     ///
     /// # Examples
     ///
@@ -508,11 +518,13 @@ impl<T> [T] {
             // SAFETY: We explicitly check for the correct number of elements,
             //   do not let the reference outlive the slice,
             //   and enforce exclusive mutability of the chunk by the split.
-            Some((init, unsafe { &mut *(last.as_mut_ptr() as *mut [T; N]) }))
+            Some((init, unsafe { &mut *(last.as_mut_ptr().cast::<[T; N]>()) }))
         }
     }
 
-    /// Returns the last element of the slice, or `None` if it is empty.
+    /// Return an array reference to the last `N` items in the slice.
+    ///
+    /// If the slice is not at least `N` in length, this will return `None`.
     ///
     /// # Examples
     ///
@@ -541,11 +553,13 @@ impl<T> [T] {
 
             // SAFETY: We explicitly check for the correct number of elements,
             //   and do not let the references outlive the slice.
-            Some(unsafe { &*(last.as_ptr() as *const [T; N]) })
+            Some(unsafe { &*(last.as_ptr().cast::<[T; N]>()) })
         }
     }
 
-    /// Returns a mutable pointer to the last item in the slice.
+    /// Return a mutable array reference to the last `N` items in the slice.
+    ///
+    /// If the slice is not at least `N` in length, this will return `None`.
     ///
     /// # Examples
     ///
@@ -574,7 +588,7 @@ impl<T> [T] {
             // SAFETY: We explicitly check for the correct number of elements,
             //   do not let the reference outlive the slice,
             //   and require exclusive access to the entire slice to mutate the chunk.
-            Some(unsafe { &mut *(last.as_mut_ptr() as *mut [T; N]) })
+            Some(unsafe { &mut *(last.as_mut_ptr().cast::<[T; N]>()) })
         }
     }
 
