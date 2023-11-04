@@ -739,6 +739,14 @@ impl Step for Rustc {
 
         builder.run(&mut cargo.into());
 
+        if !builder.config.dry_run() {
+            // Sanity check on linked compiler crates
+            for krate in &*self.crates {
+                let dir_name = krate.replace("-", "_");
+                assert!(out.join(&*dir_name).exists());
+            }
+        }
+
         if builder.paths.iter().any(|path| path.ends_with("compiler")) {
             // For `x.py doc compiler --open`, open `rustc_middle` by default.
             let index = out.join("rustc_middle").join("index.html");
