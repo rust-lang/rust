@@ -490,7 +490,7 @@ impl Types {
                         // All lints that are being checked in this block are guarded by
                         // the `avoid_breaking_exported_api` configuration. When adding a
                         // new lint, please also add the name to the configuration documentation
-                        // in `clippy_lints::utils::conf.rs`
+                        // in `clippy_config::conf`
 
                         let mut triggered = false;
                         triggered |= box_collection::check(cx, hir_ty, qpath, def_id);
