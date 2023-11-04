@@ -367,6 +367,8 @@ impl<T> [T] {
     ///     first[1] = 4;
     /// }
     /// assert_eq!(x, &[5, 4, 2]);
+    ///
+    /// assert_eq!(None, x.first_chunk_mut::<4>());
     /// ```
     #[unstable(feature = "slice_first_last_chunk", issue = "111774")]
     #[rustc_const_unstable(feature = "slice_first_last_chunk", issue = "111774")]
@@ -397,6 +399,8 @@ impl<T> [T] {
     ///     assert_eq!(first, &[0, 1]);
     ///     assert_eq!(elements, &[2]);
     /// }
+    ///
+    /// assert_eq!(None, x.split_first_chunk::<4>());
     /// ```
     #[unstable(feature = "slice_first_last_chunk", issue = "111774")]
     #[rustc_const_unstable(feature = "slice_first_last_chunk", issue = "111774")]
@@ -432,6 +436,8 @@ impl<T> [T] {
     ///     elements[0] = 5;
     /// }
     /// assert_eq!(x, &[3, 4, 5]);
+    ///
+    /// assert_eq!(None, x.split_first_chunk_mut::<4>());
     /// ```
     #[unstable(feature = "slice_first_last_chunk", issue = "111774")]
     #[rustc_const_unstable(feature = "slice_first_last_chunk", issue = "111774")]
@@ -467,6 +473,8 @@ impl<T> [T] {
     ///     assert_eq!(elements, &[0]);
     ///     assert_eq!(last, &[1, 2]);
     /// }
+    ///
+    /// assert_eq!(None, x.split_last_chunk::<4>());
     /// ```
     #[unstable(feature = "slice_first_last_chunk", issue = "111774")]
     #[rustc_const_unstable(feature = "slice_first_last_chunk", issue = "111774")]
@@ -502,6 +510,8 @@ impl<T> [T] {
     ///     elements[0] = 5;
     /// }
     /// assert_eq!(x, &[5, 3, 4]);
+    ///
+    /// assert_eq!(None, x.split_last_chunk_mut::<4>());
     /// ```
     #[unstable(feature = "slice_first_last_chunk", issue = "111774")]
     #[rustc_const_unstable(feature = "slice_first_last_chunk", issue = "111774")]
@@ -573,6 +583,8 @@ impl<T> [T] {
     ///     last[1] = 20;
     /// }
     /// assert_eq!(x, &[0, 10, 20]);
+    ///
+    /// assert_eq!(None, x.last_chunk_mut::<4>());
     /// ```
     #[unstable(feature = "slice_first_last_chunk", issue = "111774")]
     #[rustc_const_unstable(feature = "slice_first_last_chunk", issue = "111774")]
@@ -2033,164 +2045,6 @@ impl<T> [T] {
             );
             (from_raw_parts_mut(ptr, mid), from_raw_parts_mut(ptr.add(mid), len - mid))
         }
-    }
-
-    /// Divides one slice into an array and a remainder slice at an index.
-    ///
-    /// The array will contain all indices from `[0, N)` (excluding
-    /// the index `N` itself) and the slice will contain all
-    /// indices from `[N, len)` (excluding the index `len` itself).
-    ///
-    /// # Panics
-    ///
-    /// Panics if `N > len`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(split_array)]
-    ///
-    /// let v = &[1, 2, 3, 4, 5, 6][..];
-    ///
-    /// {
-    ///    let (left, right) = v.split_array_ref::<0>();
-    ///    assert_eq!(left, &[]);
-    ///    assert_eq!(right, [1, 2, 3, 4, 5, 6]);
-    /// }
-    ///
-    /// {
-    ///     let (left, right) = v.split_array_ref::<2>();
-    ///     assert_eq!(left, &[1, 2]);
-    ///     assert_eq!(right, [3, 4, 5, 6]);
-    /// }
-    ///
-    /// {
-    ///     let (left, right) = v.split_array_ref::<6>();
-    ///     assert_eq!(left, &[1, 2, 3, 4, 5, 6]);
-    ///     assert_eq!(right, []);
-    /// }
-    /// ```
-    #[unstable(feature = "split_array", reason = "new API", issue = "90091")]
-    #[inline]
-    #[track_caller]
-    #[must_use]
-    pub fn split_array_ref<const N: usize>(&self) -> (&[T; N], &[T]) {
-        let (a, b) = self.split_at(N);
-        // SAFETY: a points to [T; N]? Yes it's [T] of length N (checked by split_at)
-        unsafe { (&*(a.as_ptr() as *const [T; N]), b) }
-    }
-
-    /// Divides one mutable slice into an array and a remainder slice at an index.
-    ///
-    /// The array will contain all indices from `[0, N)` (excluding
-    /// the index `N` itself) and the slice will contain all
-    /// indices from `[N, len)` (excluding the index `len` itself).
-    ///
-    /// # Panics
-    ///
-    /// Panics if `N > len`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(split_array)]
-    ///
-    /// let mut v = &mut [1, 0, 3, 0, 5, 6][..];
-    /// let (left, right) = v.split_array_mut::<2>();
-    /// assert_eq!(left, &mut [1, 0]);
-    /// assert_eq!(right, [3, 0, 5, 6]);
-    /// left[1] = 2;
-    /// right[1] = 4;
-    /// assert_eq!(v, [1, 2, 3, 4, 5, 6]);
-    /// ```
-    #[unstable(feature = "split_array", reason = "new API", issue = "90091")]
-    #[inline]
-    #[track_caller]
-    #[must_use]
-    pub fn split_array_mut<const N: usize>(&mut self) -> (&mut [T; N], &mut [T]) {
-        let (a, b) = self.split_at_mut(N);
-        // SAFETY: a points to [T; N]? Yes it's [T] of length N (checked by split_at_mut)
-        unsafe { (&mut *(a.as_mut_ptr() as *mut [T; N]), b) }
-    }
-
-    /// Divides one slice into an array and a remainder slice at an index from
-    /// the end.
-    ///
-    /// The slice will contain all indices from `[0, len - N)` (excluding
-    /// the index `len - N` itself) and the array will contain all
-    /// indices from `[len - N, len)` (excluding the index `len` itself).
-    ///
-    /// # Panics
-    ///
-    /// Panics if `N > len`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(split_array)]
-    ///
-    /// let v = &[1, 2, 3, 4, 5, 6][..];
-    ///
-    /// {
-    ///    let (left, right) = v.rsplit_array_ref::<0>();
-    ///    assert_eq!(left, [1, 2, 3, 4, 5, 6]);
-    ///    assert_eq!(right, &[]);
-    /// }
-    ///
-    /// {
-    ///     let (left, right) = v.rsplit_array_ref::<2>();
-    ///     assert_eq!(left, [1, 2, 3, 4]);
-    ///     assert_eq!(right, &[5, 6]);
-    /// }
-    ///
-    /// {
-    ///     let (left, right) = v.rsplit_array_ref::<6>();
-    ///     assert_eq!(left, []);
-    ///     assert_eq!(right, &[1, 2, 3, 4, 5, 6]);
-    /// }
-    /// ```
-    #[unstable(feature = "split_array", reason = "new API", issue = "90091")]
-    #[inline]
-    #[must_use]
-    pub fn rsplit_array_ref<const N: usize>(&self) -> (&[T], &[T; N]) {
-        assert!(N <= self.len());
-        let (a, b) = self.split_at(self.len() - N);
-        // SAFETY: b points to [T; N]? Yes it's [T] of length N (checked by split_at)
-        unsafe { (a, &*(b.as_ptr() as *const [T; N])) }
-    }
-
-    /// Divides one mutable slice into an array and a remainder slice at an
-    /// index from the end.
-    ///
-    /// The slice will contain all indices from `[0, len - N)` (excluding
-    /// the index `N` itself) and the array will contain all
-    /// indices from `[len - N, len)` (excluding the index `len` itself).
-    ///
-    /// # Panics
-    ///
-    /// Panics if `N > len`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(split_array)]
-    ///
-    /// let mut v = &mut [1, 0, 3, 0, 5, 6][..];
-    /// let (left, right) = v.rsplit_array_mut::<4>();
-    /// assert_eq!(left, [1, 0]);
-    /// assert_eq!(right, &mut [3, 0, 5, 6]);
-    /// left[1] = 2;
-    /// right[1] = 4;
-    /// assert_eq!(v, [1, 2, 3, 4, 5, 6]);
-    /// ```
-    #[unstable(feature = "split_array", reason = "new API", issue = "90091")]
-    #[inline]
-    #[must_use]
-    pub fn rsplit_array_mut<const N: usize>(&mut self) -> (&mut [T], &mut [T; N]) {
-        assert!(N <= self.len());
-        let (a, b) = self.split_at_mut(self.len() - N);
-        // SAFETY: b points to [T; N]? Yes it's [T] of length N (checked by split_at_mut)
-        unsafe { (a, &mut *(b.as_mut_ptr() as *mut [T; N])) }
     }
 
     /// Returns an iterator over subslices separated by elements that match

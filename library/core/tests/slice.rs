@@ -2399,36 +2399,44 @@ mod swap_panics {
 }
 
 #[test]
-fn slice_split_array_mut() {
+fn slice_split_first_chunk_mut() {
     let v = &mut [1, 2, 3, 4, 5, 6][..];
 
     {
-        let (left, right) = v.split_array_mut::<0>();
+        let (left, right) = v.split_first_chunk_mut::<0>().unwrap();
         assert_eq!(left, &mut []);
         assert_eq!(right, [1, 2, 3, 4, 5, 6]);
     }
 
     {
-        let (left, right) = v.split_array_mut::<6>();
+        let (left, right) = v.split_first_chunk_mut::<6>().unwrap();
         assert_eq!(left, &mut [1, 2, 3, 4, 5, 6]);
         assert_eq!(right, []);
+    }
+
+    {
+        assert!(v.split_first_chunk_mut::<7>().is_none());
     }
 }
 
 #[test]
-fn slice_rsplit_array_mut() {
+fn slice_split_last_chunk_mut() {
     let v = &mut [1, 2, 3, 4, 5, 6][..];
 
     {
-        let (left, right) = v.rsplit_array_mut::<0>();
+        let (left, right) = v.split_last_chunk_mut::<0>().unwrap();
         assert_eq!(left, [1, 2, 3, 4, 5, 6]);
         assert_eq!(right, &mut []);
     }
 
     {
-        let (left, right) = v.rsplit_array_mut::<6>();
+        let (left, right) = v.split_last_chunk_mut::<6>().unwrap();
         assert_eq!(left, []);
         assert_eq!(right, &mut [1, 2, 3, 4, 5, 6]);
+    }
+
+    {
+        assert!(v.split_last_chunk_mut::<7>().is_none());
     }
 }
 
@@ -2442,38 +2450,6 @@ fn split_as_slice() {
     assert!(split.next().is_some());
     assert!(split.next().is_some());
     assert_eq!(split.as_slice(), &[]);
-}
-
-#[should_panic]
-#[test]
-fn slice_split_array_ref_out_of_bounds() {
-    let v = &[1, 2, 3, 4, 5, 6][..];
-
-    let _ = v.split_array_ref::<7>();
-}
-
-#[should_panic]
-#[test]
-fn slice_split_array_mut_out_of_bounds() {
-    let v = &mut [1, 2, 3, 4, 5, 6][..];
-
-    let _ = v.split_array_mut::<7>();
-}
-
-#[should_panic]
-#[test]
-fn slice_rsplit_array_ref_out_of_bounds() {
-    let v = &[1, 2, 3, 4, 5, 6][..];
-
-    let _ = v.rsplit_array_ref::<7>();
-}
-
-#[should_panic]
-#[test]
-fn slice_rsplit_array_mut_out_of_bounds() {
-    let v = &mut [1, 2, 3, 4, 5, 6][..];
-
-    let _ = v.rsplit_array_mut::<7>();
 }
 
 #[test]
