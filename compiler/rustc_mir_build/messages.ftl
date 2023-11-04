@@ -221,6 +221,11 @@ mir_build_non_exhaustive_omitted_pattern = some variants are not matched explici
     .help = ensure that all variants are matched explicitly by adding the suggested match arms
     .note = the matched value is of type `{$scrut_ty}` and the `non_exhaustive_omitted_patterns` attribute was found
 
+mir_build_non_exhaustive_omitted_pattern_lint_on_arm = the lint level must be set on the whole match
+    .help = it no longer has any effect to set the lint level on an individual match arm
+    .label = remove this attribute
+    .suggestion = set the lint level on the whole match
+
 mir_build_non_exhaustive_patterns_type_not_empty = non-exhaustive patterns: type `{$ty}` is non-empty
     .def_note = `{$peeled_ty}` defined here
     .type_note = the matched value is of type `{$ty}`

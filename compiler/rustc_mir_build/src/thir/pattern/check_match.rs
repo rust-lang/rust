@@ -285,7 +285,11 @@ impl<'thir, 'p, 'tcx> MatchVisitor<'thir, 'p, 'tcx> {
         }
     }
 
-    fn new_cx(&self, refutability: RefutableFlag) -> MatchCheckCtxt<'p, 'tcx> {
+    fn new_cx(
+        &self,
+        refutability: RefutableFlag,
+        match_span: Option<Span>,
+    ) -> MatchCheckCtxt<'p, 'tcx> {
         let refutable = match refutability {
             Irrefutable => false,
             Refutable => true,
@@ -295,6 +299,7 @@ impl<'thir, 'p, 'tcx> MatchVisitor<'thir, 'p, 'tcx> {
             param_env: self.param_env,
             module: self.tcx.parent_module(self.lint_level).to_def_id(),
             pattern_arena: &self.pattern_arena,
+            match_span,
             refutable,
         }
     }
@@ -325,7 +330,7 @@ impl<'thir, 'p, 'tcx> MatchVisitor<'thir, 'p, 'tcx> {
         source: hir::MatchSource,
         expr_span: Span,
     ) {
-        let cx = self.new_cx(Refutable);
+        let cx = self.new_cx(Refutable, Some(expr_span));
 
         let mut tarms = Vec::with_capacity(arms.len());
         for &arm in arms {
@@ -448,7 +453,7 @@ impl<'thir, 'p, 'tcx> MatchVisitor<'thir, 'p, 'tcx> {
         pat: &Pat<'tcx>,
         refutability: RefutableFlag,
     ) -> Result<(MatchCheckCtxt<'p, 'tcx>, UsefulnessReport<'p, 'tcx>), ErrorGuaranteed> {
-        let cx = self.new_cx(refutability);
+        let cx = self.new_cx(refutability, None);
         let pat = self.lower_pattern(&cx, pat)?;
         let arms = [MatchArm { pat, hir_id: self.lint_level, has_guard: false }];
         let report = compute_match_usefulness(&cx, &arms, self.lint_level, pat.ty(), pat.span());
