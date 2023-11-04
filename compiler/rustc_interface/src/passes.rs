@@ -554,6 +554,11 @@ fn resolver_for_lowering<'tcx>(
 }
 
 fn write_dep_info(tcx: TyCtxt<'_>, (): ()) {
+    // Make sure name resolution and macro expansion is run for
+    // the side-effect of providing a complete set of all
+    // accessed files and env vars.
+    let _ = tcx.resolver_for_lowering(());
+
     let sess = tcx.sess;
     let _timer = sess.timer("write_dep_info");
     let crate_name = tcx.crate_name(LOCAL_CRATE);
