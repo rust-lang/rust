@@ -265,12 +265,8 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
 ) -> InterpResult<'tcx, InterpCx<'mir, 'tcx, MiriMachine<'mir, 'tcx>>> {
     let param_env = ty::ParamEnv::reveal_all();
     let layout_cx = LayoutCx { tcx, param_env };
-    let mut ecx = InterpCx::new(
-        tcx,
-        rustc_span::DUMMY_SP,
-        param_env,
-        MiriMachine::new(config, layout_cx),
-    );
+    let mut ecx =
+        InterpCx::new(tcx, rustc_span::DUMMY_SP, param_env, MiriMachine::new(config, layout_cx));
 
     // Some parts of initialization require a full `InterpCx`.
     MiriMachine::late_init(&mut ecx, config, {

@@ -223,9 +223,10 @@ degree documented below):
 - All Rust [Tier 1 targets](https://doc.rust-lang.org/rustc/platform-support.html) are supported by
   Miri. They are all checked on Miri's CI, and some (at least one per OS) are even checked on every
   Rust PR, so the shipped Miri should always work on these targets.
-- We also support `s390x-unknown-linux-gnu` as our "big-endian target of choice".
+- `aarch64-apple-darwin` is supported.
+- `s390x-unknown-linux-gnu` is supported as our "big-endian target of choice".
 - For every other target with OS `linux`, `macos`, or `windows`, Miri should generally work, but we
-  make no promises.
+  make no promises and we don't run tests for such targets.
 - For targets on other operating systems, even basic operations such as printing to the standard
   output might not work, and Miri might fail before even reaching the `main` function.
 

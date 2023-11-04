@@ -1,14 +1,15 @@
-error: Undefined Behavior: Race condition detected between (1) 4-byte Atomic Store on thread `<unnamed>` and (2) 2-byte (different-size) Atomic Load on thread `<unnamed>` at ALLOC. (2) just happened here
+error: Undefined Behavior: Race condition detected between (1) 4-byte atomic store on thread `<unnamed>` and (2) 2-byte atomic load on thread `<unnamed>` at ALLOC. (2) just happened here
   --> $DIR/racing_mixed_size.rs:LL:CC
    |
 LL |             std::intrinsics::atomic_load_relaxed(hi);
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Race condition detected between (1) 4-byte Atomic Store on thread `<unnamed>` and (2) 2-byte (different-size) Atomic Load on thread `<unnamed>` at ALLOC. (2) just happened here
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Race condition detected between (1) 4-byte atomic store on thread `<unnamed>` and (2) 2-byte atomic load on thread `<unnamed>` at ALLOC. (2) just happened here
    |
 help: and (1) occurred earlier here
   --> $DIR/racing_mixed_size.rs:LL:CC
    |
 LL |         x.store(1, Relaxed);
    |         ^^^^^^^^^^^^^^^^^^^
+   = help: overlapping unsynchronized atomic accesses must use the same access size
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE (of the first span):

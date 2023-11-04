@@ -40,7 +40,7 @@ pub fn main() {
         let j3 = spawn(move || {
             let c = c; // capture `c`, not just its field.
             if SYNC.load(Ordering::Acquire) == 3 {
-                *c.0 //~ ERROR: Data race detected between (1) Write on thread `<unnamed>` and (2) Read on thread `<unnamed>`
+                *c.0 //~ ERROR: Data race detected between (1) non-atomic write on thread `<unnamed>` and (2) non-atomic read on thread `<unnamed>`
             } else {
                 0
             }

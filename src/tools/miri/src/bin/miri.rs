@@ -241,7 +241,7 @@ fn run_compiler(
     mut args: Vec<String>,
     target_crate: bool,
     callbacks: &mut (dyn rustc_driver::Callbacks + Send),
-    using_internal_features: std::sync::Arc<std::sync::atomic::AtomicBool>
+    using_internal_features: std::sync::Arc<std::sync::atomic::AtomicBool>,
 ) -> ! {
     if target_crate {
         // Miri needs a custom sysroot for target crates.
@@ -275,7 +275,8 @@ fn run_compiler(
     // Invoke compiler, and handle return code.
     let exit_code = rustc_driver::catch_with_exit_code(move || {
         rustc_driver::RunCompiler::new(&args, callbacks)
-            .set_using_internal_features(using_internal_features).run()
+            .set_using_internal_features(using_internal_features)
+            .run()
     });
     std::process::exit(exit_code)
 }
@@ -297,7 +298,8 @@ fn main() {
     // If the environment asks us to actually be rustc, then do that.
     if let Some(crate_kind) = env::var_os("MIRI_BE_RUSTC") {
         // Earliest rustc setup.
-        let using_internal_features = rustc_driver::install_ice_hook(rustc_driver::DEFAULT_BUG_REPORT_URL, |_| ());
+        let using_internal_features =
+            rustc_driver::install_ice_hook(rustc_driver::DEFAULT_BUG_REPORT_URL, |_| ());
         rustc_driver::init_rustc_env_logger(&handler);
 
         let target_crate = if crate_kind == "target" {
@@ -318,7 +320,8 @@ fn main() {
     }
 
     // Add an ICE bug report hook.
-    let using_internal_features = rustc_driver::install_ice_hook("https://github.com/rust-lang/miri/issues/new", |_| ());
+    let using_internal_features =
+        rustc_driver::install_ice_hook("https://github.com/rust-lang/miri/issues/new", |_| ());
 
     // Init loggers the Miri way.
     init_early_loggers(&handler);
@@ -581,5 +584,10 @@ fn main() {
 
     debug!("rustc arguments: {:?}", rustc_args);
     debug!("crate arguments: {:?}", miri_config.args);
-    run_compiler(rustc_args, /* target_crate: */ true, &mut MiriCompilerCalls { miri_config }, using_internal_features)
+    run_compiler(
+        rustc_args,
+        /* target_crate: */ true,
+        &mut MiriCompilerCalls { miri_config },
+        using_internal_features,
+    )
 }
