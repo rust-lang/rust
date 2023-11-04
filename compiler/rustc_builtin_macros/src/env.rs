@@ -108,7 +108,7 @@ pub fn expand_env<'cx>(
 
             return DummyResult::any(sp);
         }
-        Some(value) => cx.expr_str(sp, value),
+        Some(value) => cx.expr_str(span, value),
     };
     MacEager::expr(e)
 }
