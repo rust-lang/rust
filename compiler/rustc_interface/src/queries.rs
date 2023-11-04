@@ -85,7 +85,6 @@ pub struct Queries<'tcx> {
     hir_arena: WorkerLocal<rustc_hir::Arena<'tcx>>,
 
     parse: Query<ast::Crate>,
-    pre_configure: Query<(ast::Crate, ast::AttrVec)>,
     // This just points to what's in `gcx_cell`.
     gcx: Query<&'tcx GlobalCtxt<'tcx>>,
 }
@@ -98,7 +97,6 @@ impl<'tcx> Queries<'tcx> {
             arena: WorkerLocal::new(|_| Arena::default()),
             hir_arena: WorkerLocal::new(|_| rustc_hir::Arena::default()),
             parse: Default::default(),
-            pre_configure: Default::default(),
             gcx: Default::default(),
         }
     }
@@ -113,12 +111,12 @@ impl<'tcx> Queries<'tcx> {
         })
     }
 
-    #[deprecated = "pre_configure may be made private in the future. If you need it please open an issue with your use case."]
-    pub fn pre_configure(&self) -> Result<QueryResult<'_, (ast::Crate, ast::AttrVec)>> {
-        self.pre_configure.compute(|| {
+    pub fn global_ctxt(&'tcx self) -> Result<QueryResult<'_, &'tcx GlobalCtxt<'tcx>>> {
+        self.gcx.compute(|| {
+            let sess = &self.compiler.sess;
+
             let mut krate = self.parse()?.steal();
 
-            let sess = &self.compiler.sess;
             rustc_builtin_macros::cmdline_attrs::inject(
                 &mut krate,
                 &sess.parse_sess,
@@ -127,15 +125,6 @@ impl<'tcx> Queries<'tcx> {
 
             let pre_configured_attrs =
                 rustc_expand::config::pre_configure_attrs(sess, &krate.attrs);
-            Ok((krate, pre_configured_attrs))
-        })
-    }
-
-    pub fn global_ctxt(&'tcx self) -> Result<QueryResult<'_, &'tcx GlobalCtxt<'tcx>>> {
-        self.gcx.compute(|| {
-            let sess = &self.compiler.sess;
-            #[allow(deprecated)]
-            let (krate, pre_configured_attrs) = self.pre_configure()?.steal();
 
             // parse `#[crate_name]` even if `--crate-name` was passed, to make sure it matches.
             let crate_name = find_crate_name(sess, &pre_configured_attrs);
