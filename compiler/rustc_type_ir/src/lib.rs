@@ -51,9 +51,6 @@ pub use region_kind::*;
 pub use ty_info::*;
 pub use ty_kind::*;
 
-/// Needed so we can use #[derive(HashStable_Generic)]
-pub trait HashStableContext {}
-
 rustc_index::newtype_index! {
     /// A [De Bruijn index][dbi] is a standard means of representing
     /// regions (and perhaps later types) in a higher-ranked setting. In
@@ -94,7 +91,7 @@ rustc_index::newtype_index! {
     /// is the outer fn.
     ///
     /// [dbi]: https://en.wikipedia.org/wiki/De_Bruijn_index
-    #[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
+    #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
     #[debug_format = "DebruijnIndex({})"]
     #[gate_rustc_only]
     pub struct DebruijnIndex {
@@ -179,7 +176,7 @@ pub fn debug_bound_var<T: std::fmt::Write>(
 }
 
 #[derive(Copy, Clone, PartialEq, Eq)]
-#[cfg_attr(feature = "nightly", derive(Decodable, Encodable, Hash, HashStable_Generic))]
+#[cfg_attr(feature = "nightly", derive(Decodable, Encodable, Hash, HashStable_NoContext))]
 #[cfg_attr(feature = "nightly", rustc_pass_by_value)]
 pub enum Variance {
     Covariant,     // T<A> <: T<B> iff A <: B -- e.g., function return type
@@ -295,7 +292,7 @@ rustc_index::newtype_index! {
     /// declared, but a type name in a non-zero universe is a placeholder
     /// type -- an idealized representative of "types in general" that we
     /// use for checking generic functions.
-    #[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
+    #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
     #[debug_format = "U{}"]
     #[gate_rustc_only]
     pub struct UniverseIndex {}

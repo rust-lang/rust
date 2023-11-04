@@ -48,6 +48,13 @@ decl_derive!(
     [HashStable_Generic, attributes(stable_hasher)] =>
     hash_stable::hash_stable_generic_derive
 );
+decl_derive!(
+    [HashStable_NoContext] =>
+    /// `HashStable` implementation that has no `HashStableContext` bound and
+    /// which adds `where` bounds for `HashStable` based off of fields and not
+    /// generics. This is suitable for use in crates like `rustc_type_ir`.
+    hash_stable::hash_stable_no_context_derive
+);
 
 decl_derive!([Decodable] => serialize::decodable_derive);
 decl_derive!([Encodable] => serialize::encodable_derive);

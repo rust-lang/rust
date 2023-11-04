@@ -1,5 +1,3 @@
-#[cfg(feature = "nightly")]
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use std::fmt;
 use std::ops::ControlFlow;
 
@@ -11,7 +9,7 @@ use crate::Interner;
 /// by implied bounds.
 #[derive(derivative::Derivative)]
 #[derivative(Clone(bound = ""), Hash(bound = ""))]
-#[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable))]
+#[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
 pub enum ClauseKind<I: Interner> {
     /// Corresponds to `where Foo: Bar<A, B, C>`. `Foo` here would be
     /// the `Self` type of the trait reference and `A`, `B`, and `C`
@@ -68,47 +66,6 @@ impl<I: Interner> PartialEq for ClauseKind<I> {
 
 impl<I: Interner> Eq for ClauseKind<I> {}
 
-#[cfg(feature = "nightly")]
-fn clause_kind_discriminant<I: Interner>(value: &ClauseKind<I>) -> usize {
-    match value {
-        ClauseKind::Trait(_) => 0,
-        ClauseKind::RegionOutlives(_) => 1,
-        ClauseKind::TypeOutlives(_) => 2,
-        ClauseKind::Projection(_) => 3,
-        ClauseKind::ConstArgHasType(_, _) => 4,
-        ClauseKind::WellFormed(_) => 5,
-        ClauseKind::ConstEvaluatable(_) => 6,
-    }
-}
-
-#[cfg(feature = "nightly")]
-impl<CTX: crate::HashStableContext, I: Interner> HashStable<CTX> for ClauseKind<I>
-where
-    I::Ty: HashStable<CTX>,
-    I::Const: HashStable<CTX>,
-    I::GenericArg: HashStable<CTX>,
-    I::TraitPredicate: HashStable<CTX>,
-    I::ProjectionPredicate: HashStable<CTX>,
-    I::TypeOutlivesPredicate: HashStable<CTX>,
-    I::RegionOutlivesPredicate: HashStable<CTX>,
-{
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
-        clause_kind_discriminant(self).hash_stable(hcx, hasher);
-        match self {
-            ClauseKind::Trait(p) => p.hash_stable(hcx, hasher),
-            ClauseKind::RegionOutlives(p) => p.hash_stable(hcx, hasher),
-            ClauseKind::TypeOutlives(p) => p.hash_stable(hcx, hasher),
-            ClauseKind::Projection(p) => p.hash_stable(hcx, hasher),
-            ClauseKind::ConstArgHasType(c, t) => {
-                c.hash_stable(hcx, hasher);
-                t.hash_stable(hcx, hasher);
-            }
-            ClauseKind::WellFormed(t) => t.hash_stable(hcx, hasher),
-            ClauseKind::ConstEvaluatable(c) => c.hash_stable(hcx, hasher),
-        }
-    }
-}
-
 impl<I: Interner> TypeFoldable<I> for ClauseKind<I>
 where
     I::Ty: TypeFoldable<I>,
@@ -164,7 +121,7 @@ where
 
 #[derive(derivative::Derivative)]
 #[derivative(Clone(bound = ""), Hash(bound = ""))]
-#[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable))]
+#[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
 pub enum PredicateKind<I: Interner> {
     /// Prove a clause
     Clause(ClauseKind<I>),
@@ -242,58 +199,6 @@ impl<I: Interner> PartialEq for PredicateKind<I> {
 
 impl<I: Interner> Eq for PredicateKind<I> {}
 
-#[cfg(feature = "nightly")]
-fn predicate_kind_discriminant<I: Interner>(value: &PredicateKind<I>) -> usize {
-    match value {
-        PredicateKind::Clause(_) => 0,
-        PredicateKind::ObjectSafe(_) => 1,
-        PredicateKind::ClosureKind(_, _, _) => 2,
-        PredicateKind::Subtype(_) => 3,
-        PredicateKind::Coerce(_) => 4,
-        PredicateKind::ConstEquate(_, _) => 5,
-        PredicateKind::Ambiguous => 6,
-        PredicateKind::AliasRelate(_, _, _) => 7,
-    }
-}
-
-#[cfg(feature = "nightly")]
-impl<CTX: crate::HashStableContext, I: Interner> HashStable<CTX> for PredicateKind<I>
-where
-    I::DefId: HashStable<CTX>,
-    I::Const: HashStable<CTX>,
-    I::GenericArgs: HashStable<CTX>,
-    I::Term: HashStable<CTX>,
-    I::CoercePredicate: HashStable<CTX>,
-    I::SubtypePredicate: HashStable<CTX>,
-    I::ClosureKind: HashStable<CTX>,
-    ClauseKind<I>: HashStable<CTX>,
-{
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
-        predicate_kind_discriminant(self).hash_stable(hcx, hasher);
-        match self {
-            PredicateKind::Clause(p) => p.hash_stable(hcx, hasher),
-            PredicateKind::ObjectSafe(d) => d.hash_stable(hcx, hasher),
-            PredicateKind::ClosureKind(d, g, k) => {
-                d.hash_stable(hcx, hasher);
-                g.hash_stable(hcx, hasher);
-                k.hash_stable(hcx, hasher);
-            }
-            PredicateKind::Subtype(p) => p.hash_stable(hcx, hasher),
-            PredicateKind::Coerce(p) => p.hash_stable(hcx, hasher),
-            PredicateKind::ConstEquate(c1, c2) => {
-                c1.hash_stable(hcx, hasher);
-                c2.hash_stable(hcx, hasher);
-            }
-            PredicateKind::Ambiguous => {}
-            PredicateKind::AliasRelate(t1, t2, r) => {
-                t1.hash_stable(hcx, hasher);
-                t2.hash_stable(hcx, hasher);
-                r.hash_stable(hcx, hasher);
-            }
-        }
-    }
-}
-
 impl<I: Interner> TypeFoldable<I> for PredicateKind<I>
 where
     I::DefId: TypeFoldable<I>,
@@ -366,7 +271,7 @@ where
 }
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Copy)]
-#[cfg_attr(feature = "nightly", derive(HashStable_Generic, Encodable, Decodable))]
+#[cfg_attr(feature = "nightly", derive(HashStable_NoContext, Encodable, Decodable))]
 pub enum AliasRelationDirection {
     Equate,
     Subtype,

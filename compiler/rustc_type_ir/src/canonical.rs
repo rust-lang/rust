@@ -2,9 +2,6 @@ use std::fmt;
 use std::hash::Hash;
 use std::ops::ControlFlow;
 
-#[cfg(feature = "nightly")]
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-
 use crate::fold::{FallibleTypeFolder, TypeFoldable};
 use crate::visit::{TypeVisitable, TypeVisitor};
 use crate::{Interner, UniverseIndex};
@@ -14,7 +11,7 @@ use crate::{Interner, UniverseIndex};
 /// numbered starting from 0 in order of first appearance.
 #[derive(derivative::Derivative)]
 #[derivative(Clone(bound = "V: Clone"), Hash(bound = "V: Hash"))]
-#[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable))]
+#[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
 pub struct Canonical<I: Interner, V> {
     pub value: V,
     pub max_universe: UniverseIndex,
@@ -58,19 +55,6 @@ impl<I: Interner, V> Canonical<I, V> {
     pub fn unchecked_rebind<W>(self, value: W) -> Canonical<I, W> {
         let Canonical { max_universe, variables, value: _ } = self;
         Canonical { max_universe, variables, value }
-    }
-}
-
-#[cfg(feature = "nightly")]
-impl<CTX: crate::HashStableContext, I: Interner, V: HashStable<CTX>> HashStable<CTX>
-    for Canonical<I, V>
-where
-    I::CanonicalVars: HashStable<CTX>,
-{
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
-        self.value.hash_stable(hcx, hasher);
-        self.max_universe.hash_stable(hcx, hasher);
-        self.variables.hash_stable(hcx, hasher);
     }
 }
 

@@ -14,7 +14,7 @@ use self::TyKind::*;
 /// The movability of a coroutine / closure literal:
 /// whether a coroutine contains self-references, causing it to be `!Unpin`.
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Copy)]
-#[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_Generic))]
+#[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_NoContext))]
 pub enum Movability {
     /// May contain self-references, `!Unpin`.
     Static,
@@ -23,7 +23,7 @@ pub enum Movability {
 }
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Copy)]
-#[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_Generic))]
+#[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_NoContext))]
 pub enum Mutability {
     // N.B. Order is deliberate, so that Not < Mut
     Not,
@@ -75,7 +75,7 @@ impl Mutability {
 
 /// Specifies how a trait object is represented.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-#[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_Generic))]
+#[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_NoContext))]
 pub enum DynKind {
     /// An unsized `dyn Trait` object
     Dyn,
@@ -89,7 +89,7 @@ pub enum DynKind {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-#[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_Generic))]
+#[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_NoContext))]
 pub enum AliasKind {
     /// A projection `<Type as Trait>::AssocType`.
     /// Can get normalized away if monomorphic enough.
@@ -119,7 +119,7 @@ pub enum AliasKind {
     Ord = "feature_allow_slow_enum",
     Hash(bound = "")
 )]
-#[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable))]
+#[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
 pub enum TyKind<I: Interner> {
     /// The primitive boolean type. Written as `bool`.
     Bool,
@@ -472,120 +472,8 @@ impl<I: Interner> fmt::Debug for TyKind<I> {
     }
 }
 
-// This is not a derived impl because a derive would require `I: HashStable`
-#[cfg(feature = "nightly")]
-#[allow(rustc::usage_of_ty_tykind)]
-impl<CTX: crate::HashStableContext, I: Interner> HashStable<CTX> for TyKind<I>
-where
-    I::AdtDef: HashStable<CTX>,
-    I::DefId: HashStable<CTX>,
-    I::GenericArgs: HashStable<CTX>,
-    I::Ty: HashStable<CTX>,
-    I::Const: HashStable<CTX>,
-    I::TypeAndMut: HashStable<CTX>,
-    I::PolyFnSig: HashStable<CTX>,
-    I::BoundExistentialPredicates: HashStable<CTX>,
-    I::Region: HashStable<CTX>,
-    I::Tys: HashStable<CTX>,
-    I::AliasTy: HashStable<CTX>,
-    I::BoundTy: HashStable<CTX>,
-    I::ParamTy: HashStable<CTX>,
-    I::PlaceholderTy: HashStable<CTX>,
-    I::ErrorGuaranteed: HashStable<CTX>,
-{
-    #[inline]
-    fn hash_stable(&self, __hcx: &mut CTX, __hasher: &mut StableHasher) {
-        std::mem::discriminant(self).hash_stable(__hcx, __hasher);
-        match self {
-            Bool => {}
-            Char => {}
-            Int(i) => {
-                i.hash_stable(__hcx, __hasher);
-            }
-            Uint(u) => {
-                u.hash_stable(__hcx, __hasher);
-            }
-            Float(f) => {
-                f.hash_stable(__hcx, __hasher);
-            }
-            Adt(adt, args) => {
-                adt.hash_stable(__hcx, __hasher);
-                args.hash_stable(__hcx, __hasher);
-            }
-            Foreign(def_id) => {
-                def_id.hash_stable(__hcx, __hasher);
-            }
-            Str => {}
-            Array(t, c) => {
-                t.hash_stable(__hcx, __hasher);
-                c.hash_stable(__hcx, __hasher);
-            }
-            Slice(t) => {
-                t.hash_stable(__hcx, __hasher);
-            }
-            RawPtr(tam) => {
-                tam.hash_stable(__hcx, __hasher);
-            }
-            Ref(r, t, m) => {
-                r.hash_stable(__hcx, __hasher);
-                t.hash_stable(__hcx, __hasher);
-                m.hash_stable(__hcx, __hasher);
-            }
-            FnDef(def_id, args) => {
-                def_id.hash_stable(__hcx, __hasher);
-                args.hash_stable(__hcx, __hasher);
-            }
-            FnPtr(polyfnsig) => {
-                polyfnsig.hash_stable(__hcx, __hasher);
-            }
-            Dynamic(l, r, repr) => {
-                l.hash_stable(__hcx, __hasher);
-                r.hash_stable(__hcx, __hasher);
-                repr.hash_stable(__hcx, __hasher);
-            }
-            Closure(def_id, args) => {
-                def_id.hash_stable(__hcx, __hasher);
-                args.hash_stable(__hcx, __hasher);
-            }
-            Coroutine(def_id, args, m) => {
-                def_id.hash_stable(__hcx, __hasher);
-                args.hash_stable(__hcx, __hasher);
-                m.hash_stable(__hcx, __hasher);
-            }
-            CoroutineWitness(def_id, args) => {
-                def_id.hash_stable(__hcx, __hasher);
-                args.hash_stable(__hcx, __hasher);
-            }
-            Never => {}
-            Tuple(args) => {
-                args.hash_stable(__hcx, __hasher);
-            }
-            Alias(k, p) => {
-                k.hash_stable(__hcx, __hasher);
-                p.hash_stable(__hcx, __hasher);
-            }
-            Param(p) => {
-                p.hash_stable(__hcx, __hasher);
-            }
-            Bound(d, b) => {
-                d.hash_stable(__hcx, __hasher);
-                b.hash_stable(__hcx, __hasher);
-            }
-            Placeholder(p) => {
-                p.hash_stable(__hcx, __hasher);
-            }
-            Infer(i) => {
-                i.hash_stable(__hcx, __hasher);
-            }
-            Error(d) => {
-                d.hash_stable(__hcx, __hasher);
-            }
-        }
-    }
-}
-
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_Generic))]
+#[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_NoContext))]
 pub enum IntTy {
     Isize,
     I8,
@@ -643,7 +531,7 @@ impl IntTy {
 }
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Copy)]
-#[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_Generic))]
+#[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_NoContext))]
 pub enum UintTy {
     Usize,
     U8,
@@ -701,7 +589,7 @@ impl UintTy {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_Generic))]
+#[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_NoContext))]
 pub enum FloatTy {
     F32,
     F64,
