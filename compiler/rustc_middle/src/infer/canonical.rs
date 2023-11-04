@@ -222,7 +222,7 @@ pub enum CanonicalVarKind<'tcx> {
     Effect,
 
     /// A "placeholder" that represents "any const".
-    PlaceholderConst(ty::PlaceholderConst<'tcx>, Ty<'tcx>),
+    PlaceholderConst(ty::PlaceholderConst, Ty<'tcx>),
 }
 
 impl<'tcx> CanonicalVarKind<'tcx> {
