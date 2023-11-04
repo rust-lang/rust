@@ -247,7 +247,14 @@ where
             &mut can_be_internalized,
             export_generics,
         );
-        if visibility == Visibility::Hidden && can_be_internalized {
+        //if visibility == Visibility::Hidden && can_be_internalized {
+
+        //dbg!(&characteristic_def_id);
+        let autodiff_active = characteristic_def_id
+            .map(|x| cx.tcx.autodiff_attrs(x).is_active())
+            .unwrap_or(false);
+
+        if !autodiff_active && visibility == Visibility::Hidden && can_be_internalized {
             internalization_candidates.insert(mono_item);
         }
         let size_estimate = mono_item.size_estimate(cx.tcx);

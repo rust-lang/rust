@@ -712,6 +712,9 @@ pub(crate) unsafe fn enzyme_ad(
     let name2 = CString::new(rust_name2.clone()).unwrap();
     let src_fnc = llvm::LLVMGetNamedFunction(llmod, name.as_c_str().as_ptr()).unwrap();
     let target_fnc = llvm::LLVMGetNamedFunction(llmod, name2.as_ptr()).unwrap();
+    let src_num_args = llvm::LLVMCountParams(src_fnc);
+    let target_num_args = llvm::LLVMCountParams(target_fnc);
+    assert!(src_num_args <= target_num_args);
 
     // create enzyme typetrees
     let llvm_data_layout = unsafe { llvm::LLVMGetDataLayoutStr(&*llmod) };
