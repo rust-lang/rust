@@ -401,9 +401,9 @@ fn run_compiler(
                         Ok(())
                     })?;
 
-                    // Make sure the `output_filenames` query is run for its side
+                    // Make sure the `write_dep_info` query is run for its side
                     // effects of writing the dep-info and reporting errors.
-                    queries.global_ctxt()?.enter(|tcx| tcx.output_filenames(()));
+                    queries.global_ctxt()?.enter(|tcx| tcx.write_dep_info(()));
                 } else {
                     let krate = queries.parse()?;
                     pretty::print(
@@ -431,9 +431,9 @@ fn run_compiler(
                 return early_exit();
             }
 
-            // Make sure the `output_filenames` query is run for its side
+            // Make sure the `write_dep_info` query is run for its side
             // effects of writing the dep-info and reporting errors.
-            queries.global_ctxt()?.enter(|tcx| tcx.output_filenames(()));
+            queries.global_ctxt()?.enter(|tcx| tcx.write_dep_info(()));
 
             if sess.opts.output_types.contains_key(&OutputType::DepInfo)
                 && sess.opts.output_types.len() == 1

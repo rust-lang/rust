@@ -135,6 +135,7 @@ impl<'tcx> Queries<'tcx> {
                 sess.opts.cg.metadata.clone(),
                 sess.cfg_version,
             );
+            let outputs = util::build_output_filenames(sess, crate_name.to_string());
             let dep_graph = setup_dep_graph(sess, crate_name, stable_crate_id)?;
 
             let cstore = FreezeLock::new(Box::new(CStore::new(
@@ -169,6 +170,7 @@ impl<'tcx> Queries<'tcx> {
                     crate_name,
                 )));
                 feed.crate_for_resolver(tcx.arena.alloc(Steal::new((krate, pre_configured_attrs))));
+                feed.output_filenames(Arc::new(outputs));
             });
             Ok(qcx)
         })

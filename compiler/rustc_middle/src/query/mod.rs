@@ -1916,6 +1916,11 @@ rustc_queries! {
         arena_cache
     }
 
+    /// Write the dep-info file.
+    query write_dep_info(_: ()) -> () {
+        desc { "writing the dep-info file" }
+    }
+
     /// Do not call this query directly: invoke `normalize` instead.
     query normalize_projection_ty(
         goal: CanonicalProjectionGoal<'tcx>
