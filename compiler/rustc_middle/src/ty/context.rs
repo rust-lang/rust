@@ -106,7 +106,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type Const = ty::Const<'tcx>;
     type InferConst = ty::InferConst;
     type AliasConst = ty::UnevaluatedConst<'tcx>;
-    type PlaceholderConst = ty::PlaceholderConst<'tcx>;
+    type PlaceholderConst = ty::PlaceholderConst;
     type ParamConst = ty::ParamConst;
     type BoundConst = ty::BoundVar;
     type ValueConst = ty::ValTree<'tcx>;
