@@ -99,6 +99,7 @@ const BASE_SYSROOT_SUITE: &[TestCase] = &[
     TestCase::build_bin_and_run("aot.mod_bench", "example/mod_bench.rs", &[]),
     TestCase::build_bin_and_run("aot.issue-72793", "example/issue-72793.rs", &[]),
     TestCase::build_bin("aot.issue-59326", "example/issue-59326.rs"),
+    TestCase::build_bin_and_run("aot.neon", "example/neon.rs", &[]),
 ];
 
 pub(crate) static RAND_REPO: GitRepo = GitRepo::github(
