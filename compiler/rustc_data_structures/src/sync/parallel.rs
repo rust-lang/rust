@@ -77,12 +77,12 @@ mod disabled {
         })
     }
 
-    pub fn try_par_for_each_in<T: IntoIterator, E: Copy>(
+    pub fn try_par_for_each_in<T: IntoIterator, E>(
         t: T,
         mut for_each: impl FnMut(T::Item) -> Result<(), E>,
     ) -> Result<(), E> {
         parallel_guard(|guard| {
-            t.into_iter().fold(Ok(()), |ret, i| guard.run(|| for_each(i)).unwrap_or(ret).and(ret))
+            t.into_iter().filter_map(|i| guard.run(|| for_each(i))).fold(Ok(()), Result::and)
         })
     }
 
@@ -178,7 +178,7 @@ mod enabled {
 
     pub fn try_par_for_each_in<
         T: IntoIterator + IntoParallelIterator<Item = <T as IntoIterator>::Item>,
-        E: Copy + Send,
+        E: Send,
     >(
         t: T,
         for_each: impl Fn(<T as IntoIterator>::Item) -> Result<(), E> + DynSync + DynSend,
@@ -187,11 +187,10 @@ mod enabled {
             if mode::is_dyn_thread_safe() {
                 let for_each = FromDyn::from(for_each);
                 t.into_par_iter()
-                    .fold_with(Ok(()), |ret, i| guard.run(|| for_each(i)).unwrap_or(ret).and(ret))
-                    .reduce(|| Ok(()), |a, b| a.and(b))
+                    .filter_map(|i| guard.run(|| for_each(i)))
+                    .reduce(|| Ok(()), Result::and)
             } else {
-                t.into_iter()
-                    .fold(Ok(()), |ret, i| guard.run(|| for_each(i)).unwrap_or(ret).and(ret))
+                t.into_iter().filter_map(|i| guard.run(|| for_each(i))).fold(Ok(()), Result::and)
             }
         })
     }
