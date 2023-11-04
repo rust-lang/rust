@@ -176,6 +176,13 @@ impl<'tcx> Queries<'tcx> {
         })
     }
 
+    pub fn write_dep_info(&'tcx self) -> Result<()> {
+        self.global_ctxt()?.enter(|tcx| {
+            passes::write_dep_info(tcx);
+        });
+        Ok(())
+    }
+
     /// Check for the `#[rustc_error]` annotation, which forces an error in codegen. This is used
     /// to write UI tests that actually test that compilation succeeds without reporting
     /// an error.

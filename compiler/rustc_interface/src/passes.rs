@@ -553,7 +553,7 @@ fn resolver_for_lowering<'tcx>(
     tcx.arena.alloc(Steal::new((untracked_resolver_for_lowering, Lrc::new(krate))))
 }
 
-fn write_dep_info(tcx: TyCtxt<'_>, (): ()) {
+pub(crate) fn write_dep_info(tcx: TyCtxt<'_>) {
     // Make sure name resolution and macro expansion is run for
     // the side-effect of providing a complete set of all
     // accessed files and env vars.
@@ -606,7 +606,6 @@ pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     let providers = &mut Providers::default();
     providers.analysis = analysis;
     providers.hir_crate = rustc_ast_lowering::lower_to_hir;
-    providers.write_dep_info = write_dep_info;
     providers.resolver_for_lowering = resolver_for_lowering;
     providers.early_lint_checks = early_lint_checks;
     proc_macro_decls::provide(providers);
