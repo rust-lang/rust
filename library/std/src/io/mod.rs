@@ -1960,7 +1960,9 @@ pub trait Seek {
 
     /// Seeks relative to the current position.
     ///
-    /// This is equivalent to `self.seek(SeekFrom::Current(offset))`.
+    /// This is equivalent to `self.seek(SeekFrom::Current(offset))` but
+    /// doesn't return the new position which can allow some implementations
+    /// such as [`BufReader`] to perform more efficient seeks.
     ///
     /// # Example
     ///
@@ -1978,6 +1980,8 @@ pub trait Seek {
     ///     Ok(())
     /// }
     /// ```
+    ///
+    /// [`BufReader`]: crate::io::BufReader
     #[unstable(feature = "seek_seek_relative", issue = "117374")]
     fn seek_relative(&mut self, offset: i64) -> Result<()> {
         self.seek(SeekFrom::Current(offset))?;
