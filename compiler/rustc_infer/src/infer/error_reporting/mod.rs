@@ -2444,18 +2444,22 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 let suggestion =
                     if has_lifetimes { format!(" + {lt_name}") } else { format!(": {lt_name}") };
                 suggs.push((sp, suggestion))
-            } else {
-                let generics = self.tcx.hir().get_generics(suggestion_scope).unwrap();
+            } else if let Some(generics) = self.tcx.hir().get_generics(suggestion_scope) {
                 let pred = format!("{bound_kind}: {lt_name}");
-                let suggestion = format!("{} {}", generics.add_where_or_trailing_comma(), pred,);
+                let suggestion = format!("{} {}", generics.add_where_or_trailing_comma(), pred);
                 suggs.push((generics.tail_span_for_predicate_suggestion(), suggestion))
+            } else {
+                let consider = format!("{msg} `{bound_kind}: {sub}`...");
+                err.help(consider);
             }
 
-            err.multipart_suggestion_verbose(
-                format!("{msg}"),
-                suggs,
-                Applicability::MaybeIncorrect, // Issue #41966
-            );
+            if !suggs.is_empty() {
+                err.multipart_suggestion_verbose(
+                    format!("{msg}"),
+                    suggs,
+                    Applicability::MaybeIncorrect, // Issue #41966
+                );
+            }
         }
 
         err
