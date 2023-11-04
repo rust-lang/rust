@@ -44,7 +44,9 @@ pub(crate) fn codegen_aarch64_llvm_intrinsic_call<'tcx>(
             });
         }
 
-        _ if intrinsic.starts_with("llvm.aarch64.neon.sqadd.v") => {
+        _ if intrinsic.starts_with("llvm.aarch64.neon.sqadd.v")
+            || intrinsic.starts_with("llvm.aarch64.neon.uqadd.v") =>
+        {
             intrinsic_args!(fx, args => (x, y); intrinsic);
 
             simd_pair_for_each_lane_typed(fx, x, y, ret, &|fx, x_lane, y_lane| {
@@ -52,7 +54,9 @@ pub(crate) fn codegen_aarch64_llvm_intrinsic_call<'tcx>(
             });
         }
 
-        _ if intrinsic.starts_with("llvm.aarch64.neon.sqsub.v") => {
+        _ if intrinsic.starts_with("llvm.aarch64.neon.sqsub.v")
+            || intrinsic.starts_with("llvm.aarch64.neon.uqsub.v") =>
+        {
             intrinsic_args!(fx, args => (x, y); intrinsic);
 
             simd_pair_for_each_lane_typed(fx, x, y, ret, &|fx, x_lane, y_lane| {
