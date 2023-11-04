@@ -456,15 +456,15 @@ impl<T> [T] {
     ///
     /// let x = &[0, 1, 2];
     ///
-    /// if let Some((last, elements)) = x.split_last_chunk::<2>() {
-    ///     assert_eq!(last, &[1, 2]);
+    /// if let Some((elements, last)) = x.split_last_chunk::<2>() {
     ///     assert_eq!(elements, &[0]);
+    ///     assert_eq!(last, &[1, 2]);
     /// }
     /// ```
     #[unstable(feature = "slice_first_last_chunk", issue = "111774")]
     #[rustc_const_unstable(feature = "slice_first_last_chunk", issue = "111774")]
     #[inline]
-    pub const fn split_last_chunk<const N: usize>(&self) -> Option<(&[T; N], &[T])> {
+    pub const fn split_last_chunk<const N: usize>(&self) -> Option<(&[T], &[T; N])> {
         if self.len() < N {
             None
         } else {
@@ -473,7 +473,7 @@ impl<T> [T] {
 
             // SAFETY: We explicitly check for the correct number of elements,
             //   and do not let the references outlive the slice.
-            Some((unsafe { &*(last.as_ptr() as *const [T; N]) }, init))
+            Some((init, unsafe { &*(last.as_ptr() as *const [T; N]) }))
         }
     }
 
@@ -486,7 +486,7 @@ impl<T> [T] {
     ///
     /// let x = &mut [0, 1, 2];
     ///
-    /// if let Some((last, elements)) = x.split_last_chunk_mut::<2>() {
+    /// if let Some((elements, last)) = x.split_last_chunk_mut::<2>() {
     ///     last[0] = 3;
     ///     last[1] = 4;
     ///     elements[0] = 5;
@@ -498,7 +498,7 @@ impl<T> [T] {
     #[inline]
     pub const fn split_last_chunk_mut<const N: usize>(
         &mut self,
-    ) -> Option<(&mut [T; N], &mut [T])> {
+    ) -> Option<(&mut [T], &mut [T; N])> {
         if self.len() < N {
             None
         } else {
@@ -508,7 +508,7 @@ impl<T> [T] {
             // SAFETY: We explicitly check for the correct number of elements,
             //   do not let the reference outlive the slice,
             //   and enforce exclusive mutability of the chunk by the split.
-            Some((unsafe { &mut *(last.as_mut_ptr() as *mut [T; N]) }, init))
+            Some((init, unsafe { &mut *(last.as_mut_ptr() as *mut [T; N]) }))
         }
     }
 
