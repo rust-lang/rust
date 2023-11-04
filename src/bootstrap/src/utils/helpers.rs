@@ -46,16 +46,8 @@ macro_rules! t {
 }
 pub use t;
 
-/// Given an executable called `name`, return the filename for the
-/// executable for a particular target.
 pub fn exe(name: &str, target: TargetSelection) -> String {
-    if target.is_windows() {
-        format!("{name}.exe")
-    } else if target.contains("uefi") {
-        format!("{name}.efi")
-    } else {
-        name.to_string()
-    }
+    crate::utils::dylib::exe(name, &target.triple)
 }
 
 /// Returns `true` if the file name given looks like a dynamic library.
