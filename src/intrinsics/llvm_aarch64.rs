@@ -228,6 +228,18 @@ pub(crate) fn codegen_aarch64_llvm_intrinsic_call<'tcx>(
             );
         }
 
+        _ if intrinsic.starts_with("llvm.aarch64.neon.addp.v") => {
+            intrinsic_args!(fx, args => (x, y); intrinsic);
+
+            simd_horizontal_pair_for_each_lane(
+                fx,
+                x,
+                y,
+                ret,
+                &|fx, _lane_ty, _res_lane_ty, x_lane, y_lane| fx.bcx.ins().iadd(x_lane, y_lane),
+            );
+        }
+
         // FIXME generalize vector types
         "llvm.aarch64.neon.tbl1.v16i8" => {
             intrinsic_args!(fx, args => (t, idx); intrinsic);

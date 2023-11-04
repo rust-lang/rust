@@ -132,6 +132,55 @@ unsafe fn test_vpmax_f32() {
 }
 
 #[cfg(target_arch = "aarch64")]
+unsafe fn test_vpadd_s16() {
+    let a = i16x4::from([1, 2, 3, 4]);
+    let b = i16x4::from([0, -1, -2, -3]);
+    let r: i16x4 = transmute(vpadd_s16(transmute(a), transmute(b)));
+    let e = i16x4::from([3, 7, -1, -5]);
+    assert_eq!(r, e);
+}
+#[cfg(target_arch = "aarch64")]
+unsafe fn test_vpadd_s32() {
+    let a = i32x2::from([1, 2]);
+    let b = i32x2::from([0, -1]);
+    let r: i32x2 = transmute(vpadd_s32(transmute(a), transmute(b)));
+    let e = i32x2::from([3, -1]);
+    assert_eq!(r, e);
+}
+#[cfg(target_arch = "aarch64")]
+unsafe fn test_vpadd_s8() {
+    let a = i8x8::from([1, 2, 3, 4, 5, 6, 7, 8]);
+    let b = i8x8::from([0, -1, -2, -3, -4, -5, -6, -7]);
+    let r: i8x8 = transmute(vpadd_s8(transmute(a), transmute(b)));
+    let e = i8x8::from([3, 7, 11, 15, -1, -5, -9, -13]);
+    assert_eq!(r, e);
+}
+#[cfg(target_arch = "aarch64")]
+unsafe fn test_vpadd_u16() {
+    let a = u16x4::from([1, 2, 3, 4]);
+    let b = u16x4::from([30, 31, 32, 33]);
+    let r: u16x4 = transmute(vpadd_u16(transmute(a), transmute(b)));
+    let e = u16x4::from([3, 7, 61, 65]);
+    assert_eq!(r, e);
+}
+#[cfg(target_arch = "aarch64")]
+unsafe fn test_vpadd_u32() {
+    let a = u32x2::from([1, 2]);
+    let b = u32x2::from([30, 31]);
+    let r: u32x2 = transmute(vpadd_u32(transmute(a), transmute(b)));
+    let e = u32x2::from([3, 61]);
+    assert_eq!(r, e);
+}
+#[cfg(target_arch = "aarch64")]
+unsafe fn test_vpadd_u8() {
+    let a = u8x8::from([1, 2, 3, 4, 5, 6, 7, 8]);
+    let b = u8x8::from([30, 31, 32, 33, 34, 35, 36, 37]);
+    let r: u8x8 = transmute(vpadd_u8(transmute(a), transmute(b)));
+    let e = u8x8::from([3, 7, 11, 15, 61, 65, 69, 73]);
+    assert_eq!(r, e);
+}
+
+#[cfg(target_arch = "aarch64")]
 fn main() {
     unsafe {
         test_vpmin_s8();
@@ -148,6 +197,13 @@ fn main() {
         test_vpmax_u16();
         test_vpmax_u32();
         test_vpmax_f32();
+
+        test_vpadd_s16();
+        test_vpadd_s32();
+        test_vpadd_s8();
+        test_vpadd_u16();
+        test_vpadd_u32();
+        test_vpadd_u8();
     }
 }
 
