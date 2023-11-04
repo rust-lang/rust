@@ -34,26 +34,6 @@ impl FlagComputation {
         result.flags
     }
 
-    pub fn bound_var_flags(vars: &ty::List<ty::BoundVariableKind>) -> FlagComputation {
-        let mut computation = FlagComputation::new();
-
-        for bv in vars {
-            match bv {
-                ty::BoundVariableKind::Ty(_) => {
-                    computation.flags |= TypeFlags::HAS_TY_LATE_BOUND;
-                }
-                ty::BoundVariableKind::Region(_) => {
-                    computation.flags |= TypeFlags::HAS_RE_LATE_BOUND;
-                }
-                ty::BoundVariableKind::Const => {
-                    computation.flags |= TypeFlags::HAS_CT_LATE_BOUND;
-                }
-            }
-        }
-
-        computation
-    }
-
     fn add_flags(&mut self, flags: TypeFlags) {
         self.flags = self.flags | flags;
     }
@@ -77,7 +57,11 @@ impl FlagComputation {
     where
         F: FnOnce(&mut Self, T),
     {
-        let mut computation = FlagComputation::bound_var_flags(value.bound_vars());
+        let mut computation = FlagComputation::new();
+
+        if !value.bound_vars().is_empty() {
+            computation.add_flags(TypeFlags::HAS_BINDER_VARS);
+        }
 
         f(&mut computation, value.skip_binder());
 
