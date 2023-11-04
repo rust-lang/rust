@@ -302,6 +302,10 @@ pub trait MutVisitor: Sized {
     fn visit_format_args(&mut self, fmt: &mut FormatArgs) {
         noop_visit_format_args(fmt, self)
     }
+
+    fn visit_capture_by(&mut self, capture_by: &mut CaptureBy) {
+        noop_visit_capture_by(capture_by, self)
+    }
 }
 
 /// Use a map-style function (`FnOnce(T) -> T`) to overwrite a `&mut T`. Useful
@@ -1560,6 +1564,15 @@ pub fn noop_visit_vis<T: MutVisitor>(visibility: &mut Visibility, vis: &mut T) {
         }
     }
     vis.visit_span(&mut visibility.span);
+}
+
+pub fn noop_visit_capture_by<T: MutVisitor>(capture_by: &mut CaptureBy, vis: &mut T) {
+    match capture_by {
+        CaptureBy::Ref => {}
+        CaptureBy::Value { move_kw } => {
+            vis.visit_span(move_kw);
+        }
+    }
 }
 
 /// Some value for the AST node that is valid but possibly meaningless.
