@@ -856,7 +856,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
 
             PatKind::InlineConstant { ref subpattern, .. } => {
-                self.visit_primary_bindings(subpattern, pattern_user_ty.clone(), f)
+                self.visit_primary_bindings(subpattern, pattern_user_ty, f)
             }
 
             PatKind::Leaf { ref subpatterns } => {
