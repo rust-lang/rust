@@ -1493,6 +1493,7 @@ supported_targets! {
     ("mips64-unknown-linux-muslabi64", mips64_unknown_linux_muslabi64),
     ("mips64el-unknown-linux-muslabi64", mips64el_unknown_linux_muslabi64),
     ("hexagon-unknown-linux-musl", hexagon_unknown_linux_musl),
+    ("hexagon-unknown-none-elf", hexagon_unknown_none_elf),
 
     ("mips-unknown-linux-uclibc", mips_unknown_linux_uclibc),
     ("mipsel-unknown-linux-uclibc", mipsel_unknown_linux_uclibc),
