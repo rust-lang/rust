@@ -556,10 +556,9 @@ fn resolver_for_lowering<'tcx>(
 fn output_filenames(tcx: TyCtxt<'_>, (): ()) -> Arc<OutputFilenames> {
     let sess = tcx.sess;
     let _timer = sess.timer("prepare_outputs");
-    let (_, krate) = &*tcx.resolver_for_lowering(()).borrow();
     let crate_name = tcx.crate_name(LOCAL_CRATE);
 
-    let outputs = util::build_output_filenames(&krate.attrs, sess);
+    let outputs = util::build_output_filenames(sess, crate_name.to_string());
     let output_paths =
         generated_output_paths(tcx, &outputs, sess.io.output_file.is_some(), crate_name);
 

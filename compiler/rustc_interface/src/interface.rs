@@ -49,7 +49,10 @@ impl Compiler {
         sess: &Session,
         attrs: &[ast::Attribute],
     ) -> OutputFilenames {
-        util::build_output_filenames(attrs, sess)
+        util::build_output_filenames(
+            sess,
+            rustc_session::output::find_crate_name(sess, attrs).to_string(),
+        )
     }
 }
 
