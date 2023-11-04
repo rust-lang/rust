@@ -22,12 +22,12 @@ declare_clippy_lint! {
     /// in order to support negative numbers.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let x = 6;
     /// let foo = matches!(x, 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10);
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let x = 6;
     /// let foo = matches!(x, 1..=10);
     /// ```

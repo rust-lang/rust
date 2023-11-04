@@ -15,14 +15,14 @@ declare_clippy_lint! {
     /// the value. Also the code misleads about the intent of the call site.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # let mut vec = Vec::new();
     /// # let mut value = 5;
     /// vec.push(&mut value);
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # let mut vec = Vec::new();
     /// # let value = 5;
     /// vec.push(&value);

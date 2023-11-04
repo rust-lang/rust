@@ -8,7 +8,7 @@ use rustc_middle::query::Key;
 use rustc_middle::ty::{Adt, Ty};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::def_id::LocalDefId;
-use rustc_span::source_map::Span;
+use rustc_span::Span;
 use rustc_span::symbol::sym;
 use std::iter;
 
@@ -47,7 +47,7 @@ declare_clippy_lint! {
     /// [#6745](https://github.com/rust-lang/rust-clippy/issues/6745).
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// use std::cmp::{PartialEq, Eq};
     /// use std::collections::HashSet;
     /// use std::hash::{Hash, Hasher};

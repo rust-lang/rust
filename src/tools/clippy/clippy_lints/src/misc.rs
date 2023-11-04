@@ -16,7 +16,7 @@ use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::def_id::LocalDefId;
-use rustc_span::source_map::Span;
+use rustc_span::Span;
 
 use crate::ref_patterns::REF_PATTERNS;
 
@@ -41,12 +41,12 @@ declare_clippy_lint! {
     /// dereferences, e.g., changing `*x` to `x` within the function.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// fn foo(ref _x: u8) {}
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// fn foo(_x: &u8) {}
     /// ```
     #[clippy::version = "pre 1.29.0"]
@@ -70,7 +70,7 @@ declare_clippy_lint! {
     /// macro, it has been allowed in the mean time.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let _x = 0;
     /// let y = _x + 1; // Here we are using `_x`, even though it has a leading
     ///                 // underscore. We should rename `_x` to `x`
@@ -263,7 +263,7 @@ impl<'tcx> LateLintPass<'tcx> for LintPass {
                 ),
                 |diag| {
                     diag.span_note(definition_span, format!("`{name}` is defined here"));
-                }
+                },
             );
         }
     }

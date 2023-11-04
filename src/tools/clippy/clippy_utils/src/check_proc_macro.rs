@@ -292,7 +292,9 @@ fn attr_search_pat(attr: &Attribute) -> (Pat, Pat) {
                 (Pat::Str("#!["), Pat::Str("]"))
             };
 
-            if let Some(ident) = attr.ident() && let Pat::Str(old_pat) = pat.0 {
+            if let Some(ident) = attr.ident()
+                && let Pat::Str(old_pat) = pat.0
+            {
                 // TODO: I feel like it's likely we can use `Cow` instead but this will require quite a bit of
                 // refactoring
                 // NOTE: This will likely have false positives, like `allow = 1`

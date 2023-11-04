@@ -18,13 +18,13 @@ declare_clippy_lint! {
     /// Rust ABI can break this at any point.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     ///  #[no_mangle]
     ///  fn example(arg_one: u32, arg_two: usize) {}
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     ///  #[no_mangle]
     ///  extern "C" fn example(arg_one: u32, arg_two: usize) {}
     /// ```
@@ -48,7 +48,8 @@ impl<'tcx> LateLintPass<'tcx> for NoMangleWithRustAbi {
                     && let Some((fn_attrs, _)) = snippet.split_once("fn")
                     && !fn_attrs.contains("extern")
                 {
-                    let sugg_span = fn_sig.span
+                    let sugg_span = fn_sig
+                        .span
                         .with_lo(fn_sig.span.lo() + BytePos::from_usize(fn_attrs.len()))
                         .shrink_to_lo();
 

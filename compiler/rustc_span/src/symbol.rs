@@ -3,7 +3,7 @@
 //! type, and vice versa.
 
 use rustc_arena::DroplessArena;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
 use rustc_data_structures::sync::Lock;
 use rustc_macros::HashStable_Generic;
@@ -20,8 +20,8 @@ mod tests;
 
 // The proc macro code for this is in `compiler/rustc_macros/src/symbols.rs`.
 symbols! {
-    // After modifying this list adjust `is_special`, `is_used_keyword`/`is_unused_keyword`,
-    // this should be rarely necessary though if the keywords are kept in alphabetic order.
+    // If you modify this list, adjust `is_special` and `is_used_keyword`/`is_unused_keyword`.
+    // But this should rarely be necessary if the keywords are kept in alphabetic order.
     Keywords {
         // Special reserved identifiers used internally for elided lifetimes,
         // unnamed method parameters, crate root module, error recovery etc.
@@ -316,6 +316,7 @@ symbols! {
         ToOwned,
         ToString,
         TokenStream,
+        Trait,
         Try,
         TryCaptureGeneric,
         TryCapturePrintable,
@@ -893,7 +894,7 @@ symbols! {
         inline_const_pat,
         inout,
         instruction_set,
-        integer_: "integer",
+        integer_: "integer", // underscore to avoid clashing with the function `sym::integer` below
         integral,
         into_future,
         into_iter,
@@ -2076,42 +2077,32 @@ impl<CTX> ToStableHashKey<CTX> for Symbol {
     }
 }
 
-#[derive(Default)]
 pub(crate) struct Interner(Lock<InternerInner>);
 
 // The `&'static str`s in this type actually point into the arena.
 //
-// The `FxHashMap`+`Vec` pair could be replaced by `FxIndexSet`, but #75278
-// found that to regress performance up to 2% in some cases. This might be
-// revisited after further improvements to `indexmap`.
-//
 // This type is private to prevent accidentally constructing more than one
 // `Interner` on the same thread, which makes it easy to mix up `Symbol`s
 // between `Interner`s.
-#[derive(Default)]
 struct InternerInner {
     arena: DroplessArena,
-    names: FxHashMap<&'static str, Symbol>,
-    strings: Vec<&'static str>,
+    strings: FxIndexSet<&'static str>,
 }
 
 impl Interner {
     fn prefill(init: &[&'static str]) -> Self {
         Interner(Lock::new(InternerInner {
-            strings: init.into(),
-            names: init.iter().copied().zip((0..).map(Symbol::new)).collect(),
-            ..Default::default()
+            arena: Default::default(),
+            strings: init.iter().copied().collect(),
         }))
     }
 
     #[inline]
     fn intern(&self, string: &str) -> Symbol {
         let mut inner = self.0.lock();
-        if let Some(&name) = inner.names.get(string) {
-            return name;
+        if let Some(idx) = inner.strings.get_index_of(string) {
+            return Symbol::new(idx as u32);
         }
-
-        let name = Symbol::new(inner.strings.len() as u32);
 
         // SAFETY: we convert from `&str` to `&[u8]`, clone it into the arena,
         // and immediately convert the clone back to `&[u8]`, all because there
@@ -2122,20 +2113,21 @@ impl Interner {
         // SAFETY: we can extend the arena allocation to `'static` because we
         // only access these while the arena is still alive.
         let string: &'static str = unsafe { &*(string as *const str) };
-        inner.strings.push(string);
 
         // This second hash table lookup can be avoided by using `RawEntryMut`,
         // but this code path isn't hot enough for it to be worth it. See
         // #91445 for details.
-        inner.names.insert(string, name);
-        name
+        let (idx, is_new) = inner.strings.insert_full(string);
+        debug_assert!(is_new); // due to the get_index_of check above
+
+        Symbol::new(idx as u32)
     }
 
     /// Get the symbol as a string.
     ///
     /// [`Symbol::as_str()`] should be used in preference to this function.
     fn get(&self, symbol: Symbol) -> &str {
-        self.0.lock().strings[symbol.0.as_usize()]
+        self.0.lock().strings.get_index(symbol.0.as_usize()).unwrap()
     }
 }
 

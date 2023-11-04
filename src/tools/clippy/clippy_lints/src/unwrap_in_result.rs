@@ -22,7 +22,7 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// Before:
-    /// ```rust
+    /// ```no_run
     /// fn divisible_by_3(i_str: String) -> Result<(), String> {
     ///     let i = i_str
     ///         .parse::<i32>()
@@ -37,7 +37,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// After:
-    /// ```rust
+    /// ```no_run
     /// fn divisible_by_3(i_str: String) -> Result<(), String> {
     ///     let i = i_str
     ///         .parse::<i32>()

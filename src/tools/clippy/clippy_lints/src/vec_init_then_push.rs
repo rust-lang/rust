@@ -30,13 +30,15 @@ declare_clippy_lint! {
     /// multiple `push` calls.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let mut v = Vec::new();
     /// v.push(0);
+    /// v.push(1);
+    /// v.push(2);
     /// ```
     /// Use instead:
-    /// ```rust
-    /// let v = vec![0];
+    /// ```no_run
+    /// let v = vec![0, 1, 2];
     /// ```
     #[clippy::version = "1.51.0"]
     pub VEC_INIT_THEN_PUSH,
@@ -209,7 +211,7 @@ impl<'tcx> LateLintPass<'tcx> for VecInitThenPush {
                     found: searcher.found + 1,
                     err_span: searcher.err_span.to(stmt.span),
                     last_push_expr: expr.hir_id,
-                    .. searcher
+                    ..searcher
                 });
             } else {
                 searcher.display_err(cx);

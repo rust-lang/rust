@@ -35,8 +35,8 @@ impl<'a, T: 'a> Handle<'a, T, UIView<'a, T>, Result<(), io::Error>> for TUIHandl
         F: FnOnce(&mut UIView<'a, T>) -> Result<(), io::Error> + Send + 'static,
     {
         real_dispatch(f)
-        //~^ ERROR expected a `FnOnce<(&mut UIView<'_, T>,)>` closure, found `F`
-        //~| NOTE expected an `FnOnce<(&mut UIView<'_, T>,)>` closure, found `F`
+        //~^ ERROR expected a `FnOnce(&mut UIView<'_, T>)` closure, found `F`
+        //~| NOTE expected an `FnOnce(&mut UIView<'_, T>)` closure, found `F`
         //~| NOTE expected a closure with arguments
         //~| NOTE required by a bound introduced by this call
     }

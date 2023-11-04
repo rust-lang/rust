@@ -10,12 +10,12 @@ use rustc_hir::{
     ArrayLen, BindingAnnotation, Closure, ExprKind, FnRetTy, HirId, Lit, PatKind, QPath, StmtKind, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::declare_lint_pass;
 use rustc_span::symbol::{Ident, Symbol};
 use std::cell::Cell;
 use std::fmt::{Display, Formatter, Write as _};
 
-declare_clippy_lint! {
+declare_lint_pass!(
     /// ### What it does
     /// Generates clippy code that detects the offending pattern
     ///
@@ -47,12 +47,8 @@ declare_clippy_lint! {
     ///     // report your lint here
     /// }
     /// ```
-    pub LINT_AUTHOR,
-    internal_warn,
-    "helper for writing lints"
-}
-
-declare_lint_pass!(Author => [LINT_AUTHOR]);
+    Author => []
+);
 
 /// Writes a line of output with indentation added
 macro_rules! out {

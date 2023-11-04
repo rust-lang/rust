@@ -683,14 +683,6 @@ impl IntoDiagnostic<'_> for CannotFindCrate {
 }
 
 #[derive(Diagnostic)]
-#[diag(metadata_no_dylib_plugin, code = "E0457")]
-pub struct NoDylibPlugin {
-    #[primary_span]
-    pub span: Span,
-    pub crate_name: Symbol,
-}
-
-#[derive(Diagnostic)]
 #[diag(metadata_crate_location_unknown_type)]
 pub struct CrateLocationUnknownType<'a> {
     #[primary_span]

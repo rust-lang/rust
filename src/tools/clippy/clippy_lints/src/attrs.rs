@@ -1,9 +1,9 @@
 //! checks for attributes
 
+use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::is_from_proc_macro;
 use clippy_utils::macros::{is_panic, macro_backtrace};
-use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::{first_line_of_span, is_present_in_source, snippet_opt, without_block_comments};
 use if_chain::if_chain;
 use rustc_ast::token::{Token, TokenKind};
@@ -19,9 +19,8 @@ use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, Level, 
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint, impl_lint_pass};
-use rustc_span::source_map::Span;
 use rustc_span::symbol::Symbol;
-use rustc_span::{sym, DUMMY_SP};
+use rustc_span::{sym, DUMMY_SP, Span};
 use semver::Version;
 
 static UNIX_SYSTEMS: &[&str] = &[
@@ -129,7 +128,7 @@ declare_clippy_lint! {
     /// a valid semver. Failing that, the contained information is useless.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// #[deprecated(since = "forever")]
     /// fn something_else() { /* ... */ }
     /// ```
@@ -156,14 +155,14 @@ declare_clippy_lint! {
     /// currently works for basic cases but is not perfect.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// #[allow(dead_code)]
     ///
     /// fn not_quite_good_code() { }
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// // Good (as inner attribute)
     /// #![allow(dead_code)]
     ///
@@ -198,25 +197,25 @@ declare_clippy_lint! {
     /// Does not detect empty lines after doc attributes (e.g. `#[doc = ""]`).
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// /// Some doc comment with a blank line after it.
     ///
     /// fn not_quite_good_code() { }
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// /// Good (no blank line)
     /// fn this_is_fine() { }
     /// ```
     ///
-    /// ```rust
+    /// ```no_run
     /// // Good (convert to a regular comment)
     ///
     /// fn this_is_fine_too() { }
     /// ```
     ///
-    /// ```rust
+    /// ```no_run
     /// //! Good (convert to a comment on an inner attribute)
     ///
     /// fn this_is_fine_as_well() { }
@@ -236,12 +235,12 @@ declare_clippy_lint! {
     /// These lints should only be enabled on a lint-by-lint basis and with careful consideration.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// #![deny(clippy::restriction)]
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// #![deny(clippy::as_conversions)]
     /// ```
     #[clippy::version = "1.47.0"]
@@ -265,13 +264,13 @@ declare_clippy_lint! {
     /// [#3123](https://github.com/rust-lang/rust-clippy/pull/3123#issuecomment-422321765)
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// #[cfg_attr(rustfmt, rustfmt_skip)]
     /// fn main() { }
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// #[rustfmt::skip]
     /// fn main() { }
     /// ```
@@ -290,13 +289,13 @@ declare_clippy_lint! {
     /// by the conditional compilation engine.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// #[cfg(linux)]
     /// fn conditional() { }
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # mod hidden {
     /// #[cfg(target_os = "linux")]
     /// fn conditional() { }
@@ -325,14 +324,14 @@ declare_clippy_lint! {
     /// ensure that others understand the reasoning
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// #![feature(lint_reasons)]
     ///
     /// #![allow(clippy::some_lint)]
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// #![feature(lint_reasons)]
     ///
     /// #![allow(clippy::some_lint, reason = "False positive rust-lang/rust-clippy#1002020")]
@@ -352,7 +351,7 @@ declare_clippy_lint! {
     /// panicking with the expected message, and not another unrelated panic.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// fn random() -> i32 { 0 }
     ///
     /// #[should_panic]
@@ -363,7 +362,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// fn random() -> i32 { 0 }
     ///
     /// #[should_panic = "attempt to divide by zero"]
@@ -386,13 +385,13 @@ declare_clippy_lint! {
     /// If there is only one condition, no need to wrap it into `any` or `all` combinators.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// #[cfg(any(unix))]
     /// pub struct Bar;
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// #[cfg(unix)]
     /// pub struct Bar;
     /// ```
@@ -409,16 +408,16 @@ declare_clippy_lint! {
     ///
     /// ### Why is this bad?
     /// Misspelling `feature` as `features` can be sometimes hard to spot. It
-    /// may cause conditional compilation not work quitely.
+    /// may cause conditional compilation not work quietly.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// #[cfg(features = "some-feature")]
     /// fn conditional() { }
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// #[cfg(feature = "some-feature")]
     /// fn conditional() { }
     /// ```
@@ -602,9 +601,26 @@ fn check_should_panic_reason(cx: &LateContext<'_>, attr: &Attribute) {
 
         if let AttrArgs::Delimited(args) = &normal_attr.item.args
             && let mut tt_iter = args.tokens.trees()
-            && let Some(TokenTree::Token(Token { kind: TokenKind::Ident(sym::expected, _), .. }, _)) = tt_iter.next()
-            && let Some(TokenTree::Token(Token { kind: TokenKind::Eq, .. }, _)) = tt_iter.next()
-            && let Some(TokenTree::Token(Token { kind: TokenKind::Literal(_), .. }, _)) = tt_iter.next()
+            && let Some(TokenTree::Token(
+                Token {
+                    kind: TokenKind::Ident(sym::expected, _),
+                    ..
+                },
+                _,
+            )) = tt_iter.next()
+            && let Some(TokenTree::Token(
+                Token {
+                    kind: TokenKind::Eq, ..
+                },
+                _,
+            )) = tt_iter.next()
+            && let Some(TokenTree::Token(
+                Token {
+                    kind: TokenKind::Literal(_),
+                    ..
+                },
+                _,
+            )) = tt_iter.next()
         {
             // `#[should_panic(expected = "..")]` found, good
             return;
@@ -914,7 +930,9 @@ fn check_nested_cfg(cx: &EarlyContext<'_>, items: &[NestedMetaItem]) {
 fn check_nested_misused_cfg(cx: &EarlyContext<'_>, items: &[NestedMetaItem]) {
     for item in items {
         if let NestedMetaItem::MetaItem(meta) = item {
-            if meta.has_name(sym!(features)) && let Some(val) = meta.value_str() {
+            if meta.has_name(sym!(features))
+                && let Some(val) = meta.value_str()
+            {
                 span_lint_and_sugg(
                     cx,
                     MAYBE_MISUSED_CFG,
@@ -933,16 +951,16 @@ fn check_nested_misused_cfg(cx: &EarlyContext<'_>, items: &[NestedMetaItem]) {
 }
 
 fn check_minimal_cfg_condition(cx: &EarlyContext<'_>, attr: &Attribute) {
-    if attr.has_name(sym::cfg) &&
-        let Some(items) = attr.meta_item_list()
+    if attr.has_name(sym::cfg)
+        && let Some(items) = attr.meta_item_list()
     {
         check_nested_cfg(cx, &items);
     }
 }
 
 fn check_misused_cfg(cx: &EarlyContext<'_>, attr: &Attribute) {
-    if attr.has_name(sym::cfg) &&
-        let Some(items) = attr.meta_item_list()
+    if attr.has_name(sym::cfg)
+        && let Some(items) = attr.meta_item_list()
     {
         check_nested_misused_cfg(cx, &items);
     }

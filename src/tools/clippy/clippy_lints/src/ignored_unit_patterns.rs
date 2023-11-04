@@ -15,14 +15,14 @@ declare_clippy_lint! {
     /// would detect a type change that `_` would ignore.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// match std::fs::create_dir("tmp-work-dir") {
     ///    Ok(_) => println!("Working directory created"),
     ///    Err(s) => eprintln!("Could not create directory: {s}"),
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// match std::fs::create_dir("tmp-work-dir") {
     ///    Ok(()) => println!("Working directory created"),
     ///    Err(s) => eprintln!("Could not create directory: {s}"),
@@ -52,7 +52,7 @@ impl<'tcx> LateLintPass<'tcx> for IgnoredUnitPatterns {
             },
             _ => {},
         }
-        if matches!(pat.kind, PatKind::Wild) && cx.typeck_results().pat_ty(pat).is_unit() {
+        if matches!(pat.kind, PatKind::Wild) && cx.typeck_results().pat_ty(pat).peel_refs().is_unit() {
             span_lint_and_sugg(
                 cx,
                 IGNORED_UNIT_PATTERNS,

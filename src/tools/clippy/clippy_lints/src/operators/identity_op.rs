@@ -6,7 +6,7 @@ use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, Node};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
-use rustc_span::source_map::Span;
+use rustc_span::Span;
 
 use super::IDENTITY_OP;
 

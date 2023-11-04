@@ -22,7 +22,7 @@ declare_clippy_lint! {
     /// elimination of unnecessary unsafe blocks through refactoring.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// /// Reads a `char` from the given pointer.
     /// ///
     /// /// # Safety
@@ -36,7 +36,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// /// Reads a `char` from the given pointer.
     /// ///
     /// /// # Safety

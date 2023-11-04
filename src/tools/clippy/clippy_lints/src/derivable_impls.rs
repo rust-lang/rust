@@ -1,5 +1,5 @@
+use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::indent_of;
 use clippy_utils::{is_default_equivalent, peel_blocks};
 use rustc_errors::Applicability;
@@ -21,7 +21,7 @@ declare_clippy_lint! {
     /// It is less concise.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// struct Foo {
     ///     bar: bool
     /// }
@@ -36,7 +36,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// #[derive(Default)]
     /// struct Foo {
     ///     bar: bool

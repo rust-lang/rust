@@ -6,8 +6,7 @@ use rustc_ast::{ast, ClosureBinder};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::source_map::Span;
-use rustc_span::BytePos;
+use rustc_span::{BytePos, Span};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -19,13 +18,13 @@ declare_clippy_lint! {
     /// statement look like a function call.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// fn return_unit() -> () {
     ///     ()
     /// }
     /// ```
     /// is equivalent to
-    /// ```rust
+    /// ```no_run
     /// fn return_unit() {}
     /// ```
     #[clippy::version = "1.31.0"]

@@ -1,6 +1,4 @@
-use std::fmt;
-use std::hash::{Hash, Hasher};
-
+use clippy_config::types::MacroMatcher;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_opt;
 use if_chain::if_chain;
@@ -12,7 +10,6 @@ use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::Span;
-use serde::{de, Deserialize};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -23,11 +20,11 @@ declare_clippy_lint! {
     /// doesn't give you a semicolon in item position, which can be unexpected.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// vec!{1, 2, 3};
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// vec![1, 2, 3];
     /// ```
     #[clippy::version = "1.55.0"]
@@ -35,8 +32,6 @@ declare_clippy_lint! {
     nursery,
     "check consistent use of braces in macro"
 }
-
-const BRACES: &[(&str, &str)] = &[("(", ")"), ("{", "}"), ("[", "]")];
 
 /// The (callsite span, (open brace, close brace), source snippet)
 type MacroInfo<'a> = (Span, &'a (String, String), String);
@@ -195,81 +190,3 @@ macro_rules! macro_matcher {
     };
 }
 pub(crate) use macro_matcher;
-
-#[derive(Clone, Debug)]
-pub struct MacroMatcher {
-    name: String,
-    braces: (String, String),
-}
-
-impl Hash for MacroMatcher {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.name.hash(state);
-    }
-}
-
-impl PartialEq for MacroMatcher {
-    fn eq(&self, other: &Self) -> bool {
-        self.name == other.name
-    }
-}
-impl Eq for MacroMatcher {}
-
-impl<'de> Deserialize<'de> for MacroMatcher {
-    fn deserialize<D>(deser: D) -> Result<Self, D::Error>
-    where
-        D: de::Deserializer<'de>,
-    {
-        #[derive(Deserialize)]
-        #[serde(field_identifier, rename_all = "lowercase")]
-        enum Field {
-            Name,
-            Brace,
-        }
-        struct MacVisitor;
-        impl<'de> de::Visitor<'de> for MacVisitor {
-            type Value = MacroMatcher;
-
-            fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-                formatter.write_str("struct MacroMatcher")
-            }
-
-            fn visit_map<V>(self, mut map: V) -> Result<Self::Value, V::Error>
-            where
-                V: de::MapAccess<'de>,
-            {
-                let mut name = None;
-                let mut brace: Option<String> = None;
-                while let Some(key) = map.next_key()? {
-                    match key {
-                        Field::Name => {
-                            if name.is_some() {
-                                return Err(de::Error::duplicate_field("name"));
-                            }
-                            name = Some(map.next_value()?);
-                        },
-                        Field::Brace => {
-                            if brace.is_some() {
-                                return Err(de::Error::duplicate_field("brace"));
-                            }
-                            brace = Some(map.next_value()?);
-                        },
-                    }
-                }
-                let name = name.ok_or_else(|| de::Error::missing_field("name"))?;
-                let brace = brace.ok_or_else(|| de::Error::missing_field("brace"))?;
-                Ok(MacroMatcher {
-                    name,
-                    braces: BRACES
-                        .iter()
-                        .find(|b| b.0 == brace)
-                        .map(|(o, c)| ((*o).to_owned(), (*c).to_owned()))
-                        .ok_or_else(|| de::Error::custom(format!("expected one of `(`, `{{`, `[` found `{brace}`")))?,
-                })
-            }
-        }
-
-        const FIELDS: &[&str] = &["name", "brace"];
-        deser.deserialize_struct("MacroMatcher", FIELDS, MacVisitor)
-    }
-}

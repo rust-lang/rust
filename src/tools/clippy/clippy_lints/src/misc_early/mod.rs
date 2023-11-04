@@ -17,7 +17,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::source_map::Span;
+use rustc_span::Span;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -28,7 +28,7 @@ declare_clippy_lint! {
     /// the fields that are actually bound.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # struct Foo {
     /// #     a: i32,
     /// #     b: i32,
@@ -43,7 +43,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # struct Foo {
     /// #     a: i32,
     /// #     b: i32,
@@ -71,12 +71,12 @@ declare_clippy_lint! {
     /// It affects code readability.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// fn foo(a: i32, _a: i32) {}
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// fn bar(a: i32, _b: i32) {}
     /// ```
     #[clippy::version = "pre 1.29.0"]
@@ -94,7 +94,7 @@ declare_clippy_lint! {
     /// decremented.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let mut x = 3;
     /// --x;
     /// ```
@@ -113,14 +113,14 @@ declare_clippy_lint! {
     /// It looks confusing.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # let _ =
     /// 0x1a9BAcD
     /// # ;
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # let _ =
     /// 0x1A9BACD
     /// # ;
@@ -142,14 +142,14 @@ declare_clippy_lint! {
     /// Suffix style should be consistent.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # let _ =
     /// 123832i32
     /// # ;
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # let _ =
     /// 123832_i32
     /// # ;
@@ -170,14 +170,14 @@ declare_clippy_lint! {
     /// Suffix style should be consistent.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # let _ =
     /// 123832_i32
     /// # ;
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # let _ =
     /// 123832i32
     /// # ;
@@ -202,7 +202,7 @@ declare_clippy_lint! {
     /// ### Example
     ///
     /// In Rust:
-    /// ```rust
+    /// ```no_run
     /// fn main() {
     ///     let a = 0123;
     ///     println!("{}", a);
@@ -258,7 +258,7 @@ declare_clippy_lint! {
     /// bindings.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # let v = Some("abc");
     /// match v {
     ///     Some(x) => (),
@@ -267,7 +267,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # let v = Some("abc");
     /// match v {
     ///     Some(x) => (),
@@ -295,7 +295,7 @@ declare_clippy_lint! {
     /// can match that element as well.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # struct TupleStruct(u32, u32, u32);
     /// # let t = TupleStruct(1, 2, 3);
     /// match t {
@@ -305,7 +305,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # struct TupleStruct(u32, u32, u32);
     /// # let t = TupleStruct(1, 2, 3);
     /// match t {

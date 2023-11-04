@@ -1,7 +1,7 @@
 use super::implicit_clone::is_clone_like;
 use super::unnecessary_iter_cloned::{self, is_into_iter};
+use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::{get_iterator_item_ty, implements_trait, is_copy, peel_mid_ty_refs};
 use clippy_utils::visitors::find_all_ret_expressions;
@@ -382,10 +382,10 @@ fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<
             Node::Block(..) => continue,
             Node::Item(item) => {
                 if let ItemKind::Fn(_, _, body_id) = &item.kind
-                && let output_ty = return_ty(cx, item.owner_id)
-                && let inherited = Inherited::new(cx.tcx, item.owner_id.def_id)
-                && let fn_ctxt = FnCtxt::new(&inherited, cx.param_env, item.owner_id.def_id)
-                && fn_ctxt.can_coerce(ty, output_ty)
+                    && let output_ty = return_ty(cx, item.owner_id)
+                    && let inherited = Inherited::new(cx.tcx, item.owner_id.def_id)
+                    && let fn_ctxt = FnCtxt::new(&inherited, cx.param_env, item.owner_id.def_id)
+                    && fn_ctxt.can_coerce(ty, output_ty)
                 {
                     if has_lifetime(output_ty) && has_lifetime(ty) {
                         return false;
@@ -393,12 +393,15 @@ fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<
                     let body = cx.tcx.hir().body(*body_id);
                     let body_expr = &body.value;
                     let mut count = 0;
-                    return find_all_ret_expressions(cx, body_expr, |_| { count += 1; count <= 1 });
+                    return find_all_ret_expressions(cx, body_expr, |_| {
+                        count += 1;
+                        count <= 1
+                    });
                 }
-            }
+            },
             Node::Expr(parent_expr) => {
-                if let Some((callee_def_id, call_generic_args, recv, call_args))
-                    = get_callee_generic_args_and_args(cx, parent_expr)
+                if let Some((callee_def_id, call_generic_args, recv, call_args)) =
+                    get_callee_generic_args_and_args(cx, parent_expr)
                 {
                     // FIXME: the `instantiate_identity()` below seems incorrect, since we eventually
                     // call `tcx.try_instantiate_and_normalize_erasing_regions` further down
@@ -420,40 +423,49 @@ fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<
                             return false;
                         }
 
-                        let mut trait_predicates = cx.tcx.param_env(callee_def_id)
-                            .caller_bounds().iter().filter(|predicate| {
-                            if let ClauseKind::Trait(trait_predicate)
-                                    = predicate.kind().skip_binder()
-                                && trait_predicate.trait_ref.self_ty() == *param_ty
-                            {
-                                true
-                            } else {
-                                false
-                            }
-                        });
+                        let mut trait_predicates =
+                            cx.tcx
+                                .param_env(callee_def_id)
+                                .caller_bounds()
+                                .iter()
+                                .filter(|predicate| {
+                                    if let ClauseKind::Trait(trait_predicate) = predicate.kind().skip_binder()
+                                        && trait_predicate.trait_ref.self_ty() == *param_ty
+                                    {
+                                        true
+                                    } else {
+                                        false
+                                    }
+                                });
 
-                        let new_subst = cx.tcx.mk_args_from_iter(
-                            call_generic_args.iter()
-                                .enumerate()
-                                .map(|(i, t)|
-                                     if i == (*param_index as usize) {
-                                         GenericArg::from(ty)
-                                     } else {
-                                         t
-                                     }));
+                        let new_subst = cx
+                            .tcx
+                            .mk_args_from_iter(call_generic_args.iter().enumerate().map(|(i, t)| {
+                                if i == (*param_index as usize) {
+                                    GenericArg::from(ty)
+                                } else {
+                                    t
+                                }
+                            }));
 
                         if trait_predicates.any(|predicate| {
                             let predicate = EarlyBinder::bind(predicate).instantiate(cx.tcx, new_subst);
                             let obligation = Obligation::new(cx.tcx, ObligationCause::dummy(), cx.param_env, predicate);
-                            !cx.tcx.infer_ctxt().build().predicate_must_hold_modulo_regions(&obligation)
+                            !cx.tcx
+                                .infer_ctxt()
+                                .build()
+                                .predicate_must_hold_modulo_regions(&obligation)
                         }) {
                             return false;
                         }
 
                         let output_ty = fn_sig.output();
                         if output_ty.contains(*param_ty) {
-                            if let Ok(new_ty)  = cx.tcx.try_instantiate_and_normalize_erasing_regions(
-                                new_subst, cx.param_env, EarlyBinder::bind(output_ty)) {
+                            if let Ok(new_ty) = cx.tcx.try_instantiate_and_normalize_erasing_regions(
+                                new_subst,
+                                cx.param_env,
+                                EarlyBinder::bind(output_ty),
+                            ) {
                                 expr = parent_expr;
                                 ty = new_ty;
                                 continue;
@@ -515,10 +527,11 @@ fn is_to_string_on_string_like<'a>(
         && let GenericArgKind::Type(ty) = generic_arg.unpack()
         && let Some(deref_trait_id) = cx.tcx.get_diagnostic_item(sym::Deref)
         && let Some(as_ref_trait_id) = cx.tcx.get_diagnostic_item(sym::AsRef)
-        && (cx.get_associated_type(ty, deref_trait_id, "Target") == Some(cx.tcx.types.str_) ||
-            implements_trait(cx, ty, as_ref_trait_id, &[cx.tcx.types.str_.into()])) {
-            true
-        } else {
-            false
-        }
+        && (cx.get_associated_type(ty, deref_trait_id, "Target") == Some(cx.tcx.types.str_)
+            || implements_trait(cx, ty, as_ref_trait_id, &[cx.tcx.types.str_.into()]))
+    {
+        true
+    } else {
+        false
+    }
 }

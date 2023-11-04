@@ -2,7 +2,7 @@ use rustc_ast as ast;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_parse::{new_parser_from_source_str, parser::Parser, source_file_to_stream};
 use rustc_session::parse::ParseSess;
-use rustc_span::create_default_session_if_not_set_then;
+use rustc_span::create_default_session_globals_then;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
 use rustc_span::{BytePos, Span};
 
@@ -181,7 +181,7 @@ impl<T: Write> Write for Shared<T> {
 }
 
 fn test_harness(file_text: &str, span_labels: Vec<SpanLabel>, expected_output: &str) {
-    create_default_session_if_not_set_then(|_| {
+    create_default_session_globals_then(|| {
         let (handler, source_map, output) = create_test_handler();
         source_map.new_source_file(Path::new("test.rs").to_owned().into(), file_text.to_owned());
 

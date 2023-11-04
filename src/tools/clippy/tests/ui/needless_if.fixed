@@ -39,11 +39,21 @@ fn main() {
     }
     // Do not lint `if let` or let chains
     if let true = true {}
-    if let true = true && true {}
-    if true && let true = true {}
+    if let true = true
+        && true
+    {}
+    if true
+        && let true = true
+    {}
     // Can lint nested `if let`s
     ({
-        if let true = true && true { true } else { false }
+        if let true = true
+            && true
+        {
+            true
+        } else {
+            false
+        }
     } && true);
     external! { if (true) {} }
     with_span! {

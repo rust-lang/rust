@@ -8,7 +8,7 @@ publish = false
 resolver = "1"
 
 [dependencies]
-rand = "0.4"
+rand = "0.8"
 
 [lib]
 name = "test_float_parse"

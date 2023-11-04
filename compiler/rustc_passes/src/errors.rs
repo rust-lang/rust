@@ -717,10 +717,6 @@ pub enum MacroExport {
     TooManyItems,
 }
 
-#[derive(LintDiagnostic)]
-#[diag(passes_plugin_registrar)]
-pub struct PluginRegistrar;
-
 #[derive(Subdiagnostic)]
 pub enum UnusedNote {
     #[note(passes_unused_empty_lints_note)]

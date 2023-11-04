@@ -155,12 +155,18 @@ pub trait Sized {
 /// Those implementations are:
 ///
 /// - Arrays `[T; N]` implement `Unsize<[T]>`.
-/// - Types implementing a trait `Trait` also implement `Unsize<dyn Trait>`.
-/// - Structs `Foo<..., T, ...>` implement `Unsize<Foo<..., U, ...>>` if all of these conditions
-///   are met:
-///   - `T: Unsize<U>`.
-///   - Only the last field of `Foo` has a type involving `T`.
-///   - `Bar<T>: Unsize<Bar<U>>`, where `Bar<T>` stands for the actual type of that last field.
+/// - A type implements `Unsize<dyn Trait + 'a>` if all of these conditions are met:
+///   - The type implements `Trait`.
+///   - `Trait` is object safe.
+///   - The type is sized.
+///   - The type outlives `'a`.
+/// - Structs `Foo<..., T1, ..., Tn, ...>` implement `Unsize<Foo<..., U1, ..., Un, ...>>`
+/// where any number of (type and const) parameters may be changed if all of these conditions
+/// are met:
+///   - Only the last field of `Foo` has a type involving the parameters `T1`, ..., `Tn`.
+///   - All other parameters of the struct are equal.
+///   - `Field<T1, ..., Tn>: Unsize<Field<U1, ..., Un>>`, where `Field<...>` stands for the actual
+///     type of the struct's last field.
 ///
 /// `Unsize` is used along with [`ops::CoerceUnsized`] to allow
 /// "user-defined" containers such as [`Rc`] to contain dynamically-sized

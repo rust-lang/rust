@@ -7,7 +7,7 @@ use clippy_utils::str_utils::{camel_case_split, count_match_end, count_match_sta
 use rustc_hir::{EnumDef, FieldDef, Item, ItemKind, OwnerId, Variant, VariantData};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::source_map::Span;
+use rustc_span::Span;
 use rustc_span::symbol::Symbol;
 
 declare_clippy_lint! {
@@ -26,7 +26,7 @@ declare_clippy_lint! {
     /// (the prefixes are `Foo1` and `Foo2` respectively), as also `Bar螃`, `Bar蟹`
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// enum Cake {
     ///     BlackForestCake,
     ///     HummingbirdCake,
@@ -34,7 +34,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// enum Cake {
     ///     BlackForest,
     ///     Hummingbird,
@@ -56,14 +56,14 @@ declare_clippy_lint! {
     /// It requires the user to type the module name twice.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// mod cake {
     ///     struct BlackForestCake;
     /// }
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// mod cake {
     ///     struct BlackForest;
     /// }
@@ -119,7 +119,7 @@ declare_clippy_lint! {
     /// (the prefixes are `foo1` and `foo2` respectively), as also `bar螃`, `bar蟹`
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// struct Cake {
     ///     cake_sugar: u8,
     ///     cake_flour: u8,
@@ -127,7 +127,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// struct Cake {
     ///     sugar: u8,
     ///     flour: u8,
@@ -320,6 +320,11 @@ fn check_variant(cx: &LateContext<'_>, threshold: u64, def: &EnumDef<'_>, item_n
         return;
     }
 
+    for var in def.variants {
+        check_enum_start(cx, item_name, var);
+        check_enum_end(cx, item_name, var);
+    }
+
     let first = match def.variants.first() {
         Some(variant) => variant.ident.name.as_str(),
         None => return,
@@ -328,8 +333,6 @@ fn check_variant(cx: &LateContext<'_>, threshold: u64, def: &EnumDef<'_>, item_n
     let mut post = pre.clone();
     post.reverse();
     for var in def.variants {
-        check_enum_start(cx, item_name, var);
-        check_enum_end(cx, item_name, var);
         let name = var.ident.name.as_str();
 
         let variant_split = camel_case_split(name);

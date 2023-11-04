@@ -32,13 +32,13 @@ declare_clippy_lint! {
     /// can see it.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let one = "\033[1m Bold? \033[0m";  // \033 intended as escape
     /// let two = "\033\0";                 // \033 intended as null-3-3
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let one = "\x1b[1mWill this be bold?\x1b[0m";
     /// let two = "\x0033\x00";
     /// ```

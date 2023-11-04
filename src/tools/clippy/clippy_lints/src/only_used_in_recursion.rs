@@ -30,7 +30,7 @@ declare_clippy_lint! {
     ///
     /// In some cases, this would not catch all useless arguments.
     ///
-    /// ```rust
+    /// ```no_run
     /// fn foo(a: usize, b: usize) -> usize {
     ///     let f = |x| x + 1;
     ///
@@ -53,7 +53,7 @@ declare_clippy_lint! {
     /// Also, when you recurse the function name with path segments, it is not possible to detect.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// fn f(a: usize, b: usize) -> usize {
     ///     if a == 0 {
     ///         1
@@ -66,7 +66,7 @@ declare_clippy_lint! {
     /// # }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// fn f(a: usize) -> usize {
     ///     if a == 0 {
     ///         1
@@ -244,7 +244,10 @@ impl<'tcx> LateLintPass<'tcx> for OnlyUsedInRecursion {
             })) => {
                 #[allow(trivial_casts)]
                 if let Some(Node::Item(item)) = get_parent_node(cx.tcx, owner_id.into())
-                    && let Some(trait_ref) = cx.tcx.impl_trait_ref(item.owner_id).map(EarlyBinder::instantiate_identity)
+                    && let Some(trait_ref) = cx
+                        .tcx
+                        .impl_trait_ref(item.owner_id)
+                        .map(EarlyBinder::instantiate_identity)
                     && let Some(trait_item_id) = cx.tcx.associated_item(owner_id).trait_item_def_id
                 {
                     (
@@ -288,8 +291,7 @@ impl<'tcx> LateLintPass<'tcx> for OnlyUsedInRecursion {
                         // Recursive call. Track which index the parameter is used in.
                         ExprKind::Call(callee, args)
                             if path_def_id(cx, callee).map_or(false, |id| {
-                                id == param.fn_id
-                                    && has_matching_args(param.fn_kind, typeck.node_args(callee.hir_id))
+                                id == param.fn_id && has_matching_args(param.fn_kind, typeck.node_args(callee.hir_id))
                             }) =>
                         {
                             if let Some(idx) = args.iter().position(|arg| arg.hir_id == child_id) {
@@ -299,8 +301,7 @@ impl<'tcx> LateLintPass<'tcx> for OnlyUsedInRecursion {
                         },
                         ExprKind::MethodCall(_, receiver, args, _)
                             if typeck.type_dependent_def_id(parent.hir_id).map_or(false, |id| {
-                                id == param.fn_id
-                                    && has_matching_args(param.fn_kind, typeck.node_args(parent.hir_id))
+                                id == param.fn_id && has_matching_args(param.fn_kind, typeck.node_args(parent.hir_id))
                             }) =>
                         {
                             if let Some(idx) = iter::once(receiver).chain(args).position(|arg| arg.hir_id == child_id) {
@@ -336,8 +337,8 @@ impl<'tcx> LateLintPass<'tcx> for OnlyUsedInRecursion {
                         // Only allow field accesses without auto-deref
                         ExprKind::Field(..) if typeck.adjustments().get(child_id).is_none() => {
                             e = parent;
-                            continue
-                        }
+                            continue;
+                        },
                         _ => (),
                     },
                     _ => (),

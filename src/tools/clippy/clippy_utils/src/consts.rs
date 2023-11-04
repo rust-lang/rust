@@ -405,8 +405,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
                     && let Some(desired_field) = field_of_struct(*adt_def, self.lcx, *constant, field)
                 {
                     mir_to_const(self.lcx, desired_field)
-                }
-                else {
+                } else {
                     result
                 }
             },
@@ -462,11 +461,15 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
                 // Check if this constant is based on `cfg!(..)`,
                 // which is NOT constant for our purposes.
                 if let Some(node) = self.lcx.tcx.hir().get_if_local(def_id)
-                    && let Node::Item(Item { kind: ItemKind::Const(.., body_id), .. }) = node
-                    && let Node::Expr(Expr { kind: ExprKind::Lit(_), span, .. }) = self.lcx
-                        .tcx
-                        .hir()
-                        .get(body_id.hir_id)
+                    && let Node::Item(Item {
+                        kind: ItemKind::Const(.., body_id),
+                        ..
+                    }) = node
+                    && let Node::Expr(Expr {
+                        kind: ExprKind::Lit(_),
+                        span,
+                        ..
+                    }) = self.lcx.tcx.hir().get(body_id.hir_id)
                     && is_direct_expn_of(*span, "cfg").is_some()
                 {
                     return None;
@@ -531,7 +534,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
                     && let Some(src) = get_source_text(self.lcx, span.lo..expr_lo)
                     && let Some(src) = src.as_str()
                 {
-                    use rustc_lexer::TokenKind::{Whitespace, LineComment, BlockComment, Semi, OpenBrace};
+                    use rustc_lexer::TokenKind::{BlockComment, LineComment, OpenBrace, Semi, Whitespace};
                     if !tokenize(src)
                         .map(|t| t.kind)
                         .filter(|t| !matches!(t, Whitespace | LineComment { .. } | BlockComment { .. } | Semi))
@@ -710,15 +713,14 @@ fn field_of_struct<'tcx>(
     field: &Ident,
 ) -> Option<mir::Const<'tcx>> {
     if let mir::Const::Val(result, ty) = result
-        && let Some(dc) = lcx.tcx.try_destructure_mir_constant_for_diagnostics(result, ty)
+        && let Some(dc) = lcx.tcx.try_destructure_mir_constant_for_user_output(result, ty)
         && let Some(dc_variant) = dc.variant
         && let Some(variant) = adt_def.variants().get(dc_variant)
         && let Some(field_idx) = variant.fields.iter().position(|el| el.name == field.name)
         && let Some(&(val, ty)) = dc.fields.get(field_idx)
     {
         Some(mir::Const::Val(val, ty))
-    }
-    else {
+    } else {
         None
     }
 }

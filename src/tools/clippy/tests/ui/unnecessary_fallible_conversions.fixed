@@ -1,0 +1,6 @@
+#![warn(clippy::unnecessary_fallible_conversions)]
+
+fn main() {
+    let _: i64 = 0i32.into();
+    let _: i64 = 0i32.into();
+}

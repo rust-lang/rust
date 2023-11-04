@@ -9,9 +9,8 @@ use rustc_middle::{
     hir::place::PlaceBase,
     mir::{self, BindingForm, Local, LocalDecl, LocalInfo, LocalKind, Location},
 };
-use rustc_span::source_map::DesugaringKind;
 use rustc_span::symbol::{kw, Symbol};
-use rustc_span::{sym, BytePos, Span};
+use rustc_span::{sym, BytePos, DesugaringKind, Span};
 use rustc_target::abi::FieldIdx;
 
 use crate::diagnostics::BorrowedContentSource;

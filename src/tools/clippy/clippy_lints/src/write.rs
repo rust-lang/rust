@@ -22,12 +22,12 @@ declare_clippy_lint! {
     /// You should use `println!()`, which is simpler.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// println!("");
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// println!();
     /// ```
     #[clippy::version = "pre 1.29.0"]
@@ -46,12 +46,12 @@ declare_clippy_lint! {
     /// newline.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # let name = "World";
     /// print!("Hello {}!\n", name);
     /// ```
     /// use println!() instead
-    /// ```rust
+    /// ```no_run
     /// # let name = "World";
     /// println!("Hello {}!", name);
     /// ```
@@ -74,7 +74,7 @@ declare_clippy_lint! {
     /// Only catches `print!` and `println!` calls.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// println!("Hello world!");
     /// ```
     #[clippy::version = "pre 1.29.0"]
@@ -96,7 +96,7 @@ declare_clippy_lint! {
     /// Only catches `eprint!` and `eprintln!` calls.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// eprintln!("Hello world!");
     /// ```
     #[clippy::version = "1.50.0"]
@@ -115,7 +115,7 @@ declare_clippy_lint! {
     /// debugging Rust code. It should not be used in user-facing output.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # let foo = "bar";
     /// println!("{:?}", foo);
     /// ```
@@ -135,11 +135,11 @@ declare_clippy_lint! {
     /// (i.e., just put the literal in the format string)
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// println!("{}", "foo");
     /// ```
     /// use the literal without formatting:
-    /// ```rust
+    /// ```no_run
     /// println!("foo");
     /// ```
     #[clippy::version = "pre 1.29.0"]
@@ -157,14 +157,14 @@ declare_clippy_lint! {
     /// You should use `writeln!(buf)`, which is simpler.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # use std::fmt::Write;
     /// # let mut buf = String::new();
     /// writeln!(buf, "");
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # use std::fmt::Write;
     /// # let mut buf = String::new();
     /// writeln!(buf);
@@ -186,7 +186,7 @@ declare_clippy_lint! {
     /// newline.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # use std::fmt::Write;
     /// # let mut buf = String::new();
     /// # let name = "World";
@@ -194,7 +194,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # use std::fmt::Write;
     /// # let mut buf = String::new();
     /// # let name = "World";
@@ -216,14 +216,14 @@ declare_clippy_lint! {
     /// (i.e., just put the literal in the format string)
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # use std::fmt::Write;
     /// # let mut buf = String::new();
     /// writeln!(buf, "{}", "foo");
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # use std::fmt::Write;
     /// # let mut buf = String::new();
     /// writeln!(buf, "foo");
@@ -342,7 +342,10 @@ impl<'tcx> LateLintPass<'tcx> for Write {
 }
 
 fn is_debug_impl(cx: &LateContext<'_>, item: &Item<'_>) -> bool {
-    if let ItemKind::Impl(Impl { of_trait: Some(trait_ref), .. }) = &item.kind
+    if let ItemKind::Impl(Impl {
+        of_trait: Some(trait_ref),
+        ..
+    }) = &item.kind
         && let Some(trait_id) = trait_ref.trait_def_id()
     {
         cx.tcx.is_diagnostic_item(sym::Debug, trait_id)
@@ -508,7 +511,9 @@ fn check_literal(cx: &LateContext<'_>, format_args: &FormatArgs, name: &str) {
                 _ => continue,
             };
 
-            let Some(format_string_snippet) = snippet_opt(cx, format_args.span) else { continue };
+            let Some(format_string_snippet) = snippet_opt(cx, format_args.span) else {
+                continue;
+            };
             let format_string_is_raw = format_string_snippet.starts_with('r');
 
             let replacement = match (format_string_is_raw, replace_raw) {
@@ -537,7 +542,8 @@ fn check_literal(cx: &LateContext<'_>, format_args: &FormatArgs, name: &str) {
             if let Some(replacement) = replacement
                 // `format!("{}", "a")`, `format!("{named}", named = "b")
                 //              ~~~~~                      ~~~~~~~~~~~~~
-                && let Some(removal_span) = format_arg_removal_span(format_args, index) {
+                && let Some(removal_span) = format_arg_removal_span(format_args, index)
+            {
                 let replacement = escape_braces(&replacement, !format_string_is_raw && !replace_raw);
                 suggestion.push((*placeholder_span, replacement));
                 suggestion.push((removal_span, String::new()));
@@ -549,7 +555,8 @@ fn check_literal(cx: &LateContext<'_>, format_args: &FormatArgs, name: &str) {
     if !suggestion.is_empty() {
         for piece in &format_args.template {
             if let Some((span, index)) = positional_arg_piece_span(piece)
-                && suggestion.iter().all(|(s, _)| *s != span) {
+                && suggestion.iter().all(|(s, _)| *s != span)
+            {
                 let decrement = replaced_position.iter().filter(|i| **i < index).count();
                 suggestion.push((span, format!("{{{}}}", index.saturating_sub(decrement))));
             }

@@ -1,8 +1,8 @@
-error[E0277]: expected a `FnMut<(i32,)>` closure, found `impl FnMut(u32)`
+error[E0277]: expected a `FnMut(i32)` closure, found `impl FnMut(u32)`
   --> $DIR/mismatch-fn-trait.rs:4:10
    |
 LL |     take(f)
-   |     ---- ^ expected an `FnMut<(i32,)>` closure, found `impl FnMut(u32)`
+   |     ---- ^ expected an `FnMut(i32)` closure, found `impl FnMut(u32)`
    |     |
    |     required by a bound introduced by this call
    |
@@ -14,11 +14,11 @@ note: required by a bound in `take`
 LL | fn take(_f: impl FnMut(i32)) {}
    |                  ^^^^^^^^^^ required by this bound in `take`
 
-error[E0277]: expected a `FnMut<(i32,)>` closure, found `impl FnMut(i32, i32)`
+error[E0277]: expected a `FnMut(i32)` closure, found `impl FnMut(i32, i32)`
   --> $DIR/mismatch-fn-trait.rs:9:10
    |
 LL |     take(f)
-   |     ---- ^ expected an `FnMut<(i32,)>` closure, found `impl FnMut(i32, i32)`
+   |     ---- ^ expected an `FnMut(i32)` closure, found `impl FnMut(i32, i32)`
    |     |
    |     required by a bound introduced by this call
    |
@@ -29,11 +29,11 @@ note: required by a bound in `take`
 LL | fn take(_f: impl FnMut(i32)) {}
    |                  ^^^^^^^^^^ required by this bound in `take`
 
-error[E0277]: expected a `FnMut<(i32,)>` closure, found `impl FnMut()`
+error[E0277]: expected a `FnMut(i32)` closure, found `impl FnMut()`
   --> $DIR/mismatch-fn-trait.rs:14:10
    |
 LL |     take(f)
-   |     ---- ^ expected an `FnMut<(i32,)>` closure, found `impl FnMut()`
+   |     ---- ^ expected an `FnMut(i32)` closure, found `impl FnMut()`
    |     |
    |     required by a bound introduced by this call
    |
@@ -44,11 +44,11 @@ note: required by a bound in `take`
 LL | fn take(_f: impl FnMut(i32)) {}
    |                  ^^^^^^^^^^ required by this bound in `take`
 
-error[E0277]: expected a `FnMut<(i32,)>` closure, found `impl FnOnce(i32)`
+error[E0277]: expected a `FnMut(i32)` closure, found `impl FnOnce(i32)`
   --> $DIR/mismatch-fn-trait.rs:19:10
    |
 LL |     take(f)
-   |     ---- ^ expected an `FnMut<(i32,)>` closure, found `impl FnOnce(i32)`
+   |     ---- ^ expected an `FnMut(i32)` closure, found `impl FnOnce(i32)`
    |     |
    |     required by a bound introduced by this call
    |
@@ -59,11 +59,11 @@ note: required by a bound in `take`
 LL | fn take(_f: impl FnMut(i32)) {}
    |                  ^^^^^^^^^^ required by this bound in `take`
 
-error[E0277]: expected a `FnMut<(i32,)>` closure, found `impl FnOnce(u32)`
+error[E0277]: expected a `FnMut(i32)` closure, found `impl FnOnce(u32)`
   --> $DIR/mismatch-fn-trait.rs:24:10
    |
 LL |     take(f)
-   |     ---- ^ expected an `FnMut<(i32,)>` closure, found `impl FnOnce(u32)`
+   |     ---- ^ expected an `FnMut(i32)` closure, found `impl FnOnce(u32)`
    |     |
    |     required by a bound introduced by this call
    |

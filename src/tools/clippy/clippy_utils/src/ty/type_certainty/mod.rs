@@ -267,7 +267,9 @@ fn path_segment_certainty(
 /// For at least some `QPath::TypeRelative`, the path segment's `res` can be `Res::Err`.
 /// `update_res` tries to fix the resolution when `parent_certainty` is `Certain(Some(..))`.
 fn update_res(cx: &LateContext<'_>, parent_certainty: Certainty, path_segment: &PathSegment<'_>) -> Option<Res> {
-    if path_segment.res == Res::Err && let Some(def_id) = parent_certainty.to_def_id() {
+    if path_segment.res == Res::Err
+        && let Some(def_id) = parent_certainty.to_def_id()
+    {
         let mut def_path = cx.get_def_path(def_id);
         def_path.push(path_segment.ident.name);
         let reses = def_path_res(cx, &def_path.iter().map(Symbol::as_str).collect::<Vec<_>>());

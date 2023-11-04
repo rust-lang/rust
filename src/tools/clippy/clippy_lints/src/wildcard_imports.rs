@@ -24,7 +24,7 @@ declare_clippy_lint! {
     /// still around.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// use std::cmp::Ordering::*;
     ///
     /// # fn foo(_: std::cmp::Ordering) {}
@@ -32,7 +32,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// use std::cmp::Ordering;
     ///
     /// # fn foo(_: Ordering) {}

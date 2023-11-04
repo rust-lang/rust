@@ -1,5 +1,6 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then, span_lint_hir_and_then};
 use clippy_utils::source::{snippet_opt, snippet_with_context};
+use clippy_utils::sugg::has_enclosing_paren;
 use clippy_utils::visitors::{for_each_expr_with_closures, Descend};
 use clippy_utils::{fn_def_id, is_from_proc_macro, path_to_local_id, span_find_starting_semi};
 use core::ops::ControlFlow;
@@ -14,8 +15,7 @@ use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, GenericArgKind, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::def_id::LocalDefId;
-use rustc_span::source_map::Span;
-use rustc_span::{BytePos, Pos};
+use rustc_span::{BytePos, Pos, Span};
 use std::borrow::Cow;
 
 declare_clippy_lint! {
@@ -34,14 +34,14 @@ declare_clippy_lint! {
     /// bound without first assigning it to a let-binding.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// fn foo() -> String {
     ///     let x = String::new();
     ///     x
     /// }
     /// ```
     /// instead, use
-    /// ```
+    /// ```no_run
     /// fn foo() -> String {
     ///     String::new()
     /// }
@@ -61,13 +61,13 @@ declare_clippy_lint! {
     /// more rusty.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// fn foo(x: usize) -> usize {
     ///     return x;
     /// }
     /// ```
     /// simplify to
-    /// ```rust
+    /// ```no_run
     /// fn foo(x: usize) -> usize {
     ///     x
     /// }
@@ -213,6 +213,9 @@ impl<'tcx> LateLintPass<'tcx> for Return {
 
                         if let Some(mut snippet) = snippet_opt(cx, initexpr.span) {
                             if !cx.typeck_results().expr_adjustments(retexpr).is_empty() {
+                                if !has_enclosing_paren(&snippet) {
+                                    snippet = format!("({snippet})");
+                                }
                                 snippet.push_str(" as _");
                             }
                             err.multipart_suggestion(

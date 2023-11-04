@@ -22,7 +22,7 @@ declare_clippy_lint! {
     /// Assigning in the `let` statement is less repetitive.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let a;
     /// a = 1;
     ///
@@ -41,7 +41,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let a = 1;
     ///
     /// let b = match 3 {

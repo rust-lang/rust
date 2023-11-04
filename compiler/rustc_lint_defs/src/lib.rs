@@ -321,7 +321,7 @@ pub struct Lint {
 
     pub future_incompatible: Option<FutureIncompatibleInfo>,
 
-    pub is_plugin: bool,
+    pub is_loaded: bool,
 
     /// `Some` if this lint is feature gated, otherwise `None`.
     pub feature_gate: Option<Symbol>,
@@ -399,7 +399,7 @@ impl Lint {
             default_level: Level::Forbid,
             desc: "",
             edition_lint_opts: None,
-            is_plugin: false,
+            is_loaded: false,
             report_in_external_macro: false,
             future_incompatible: None,
             feature_gate: None,
@@ -735,7 +735,7 @@ macro_rules! declare_lint {
             name: stringify!($NAME),
             default_level: $crate::$Level,
             desc: $desc,
-            is_plugin: false,
+            is_loaded: false,
             $($v: true,)*
             $(feature_gate: Some($gate),)?
             $(future_incompatible: Some($crate::FutureIncompatibleInfo {
@@ -777,7 +777,7 @@ macro_rules! declare_tool_lint {
             edition_lint_opts: None,
             report_in_external_macro: $external,
             future_incompatible: None,
-            is_plugin: true,
+            is_loaded: true,
             $(feature_gate: Some($gate),)?
             crate_level_only: false,
             ..$crate::Lint::default_fields_for_macro()

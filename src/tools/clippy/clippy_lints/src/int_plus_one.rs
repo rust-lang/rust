@@ -16,14 +16,14 @@ declare_clippy_lint! {
     /// Readability -- better to use `> y` instead of `>= y + 1`.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # let x = 1;
     /// # let y = 1;
     /// if x >= y + 1 {}
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # let x = 1;
     /// # let y = 1;
     /// if x > y {}

@@ -18,7 +18,7 @@ use rustc_hir::{
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::def_id::LocalDefId;
-use rustc_span::source_map::Span;
+use rustc_span::Span;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -64,7 +64,7 @@ declare_clippy_lint! {
     /// 1st comment).
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// struct X {
     ///     values: Vec<Box<i32>>,
     /// }
@@ -72,7 +72,7 @@ declare_clippy_lint! {
     ///
     /// Better:
     ///
-    /// ```rust
+    /// ```no_run
     /// struct X {
     ///     values: Vec<i32>,
     /// }
@@ -97,7 +97,7 @@ declare_clippy_lint! {
     /// consider a custom `enum` instead, with clear names for each case.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// fn get_data() -> Option<Option<u32>> {
     ///     None
     /// }
@@ -105,7 +105,7 @@ declare_clippy_lint! {
     ///
     /// Better:
     ///
-    /// ```rust
+    /// ```no_run
     /// pub enum Contents {
     ///     Data(Vec<u8>), // Was Some(Some(Vec<u8>))
     ///     NotYetFetched, // Was Some(None)
@@ -152,7 +152,7 @@ declare_clippy_lint! {
     /// `LinkedList` makes sense are few and far between, but they can still happen.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # use std::collections::LinkedList;
     /// let x: LinkedList<usize> = LinkedList::new();
     /// ```
@@ -197,14 +197,14 @@ declare_clippy_lint! {
     /// `Arc<Arc<T>>`, `Arc<Box<T>>`, `Box<&T>`, `Box<Rc<T>>`, `Box<Arc<T>>`, `Box<Box<T>>`, add an unnecessary level of indirection.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # use std::rc::Rc;
     /// fn foo(bar: Rc<&usize>) {}
     /// ```
     ///
     /// Better:
     ///
-    /// ```rust
+    /// ```no_run
     /// fn foo(bar: &usize) {}
     /// ```
     #[clippy::version = "1.44.0"]
@@ -258,7 +258,7 @@ declare_clippy_lint! {
     /// using a `type` definition to simplify them.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # use std::rc::Rc;
     /// struct Foo {
     ///     inner: Rc<Vec<Vec<Box<(u32, u32, u32, u32)>>>>,

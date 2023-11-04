@@ -1,146 +1,146 @@
-error: `iter` method without an `IntoIterator` impl for `&S`
-  --> $DIR/iter_without_into_iter.rs:8:13
+error: `iter` method without an `IntoIterator` impl for `&S1`
+  --> $DIR/iter_without_into_iter.rs:6:5
    |
-LL | /             pub fn iter(&self) -> std::slice::Iter<'_, u8> {
+LL | /     pub fn iter(&self) -> std::slice::Iter<'_, u8> {
 LL | |
-LL | |                 [].iter()
-LL | |             }
-   | |_____________^
+LL | |         [].iter()
+LL | |     }
+   | |_____^
    |
    = note: `-D clippy::iter-without-into-iter` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::iter_without_into_iter)]`
-help: consider implementing `IntoIterator` for `&S`
+help: consider implementing `IntoIterator` for `&S1`
    |
-LL ~         
-LL + impl IntoIterator for &S {
+LL + 
+LL + impl IntoIterator for &S1 {
 LL +     type IntoIter = std::slice::Iter<'_, u8>;
-LL +     type Iter = &u8;
-LL +     fn into_iter() -> Self::IntoIter {
+LL +     type Item = &u8;
+LL +     fn into_iter(self) -> Self::IntoIter {
 LL +         self.iter()
 LL +     }
 LL + }
    |
 
-error: `iter_mut` method without an `IntoIterator` impl for `&mut S`
-  --> $DIR/iter_without_into_iter.rs:12:13
+error: `iter_mut` method without an `IntoIterator` impl for `&mut S1`
+  --> $DIR/iter_without_into_iter.rs:10:5
    |
-LL | /             pub fn iter_mut(&mut self) -> std::slice::IterMut<'_, u8> {
+LL | /     pub fn iter_mut(&mut self) -> std::slice::IterMut<'_, u8> {
 LL | |
-LL | |                 [].iter_mut()
-LL | |             }
-   | |_____________^
+LL | |         [].iter_mut()
+LL | |     }
+   | |_____^
    |
-help: consider implementing `IntoIterator` for `&mut S`
+help: consider implementing `IntoIterator` for `&mut S1`
    |
-LL ~         
-LL + impl IntoIterator for &mut S {
+LL + 
+LL + impl IntoIterator for &mut S1 {
 LL +     type IntoIter = std::slice::IterMut<'_, u8>;
-LL +     type Iter = &mut u8;
-LL +     fn into_iter() -> Self::IntoIter {
+LL +     type Item = &mut u8;
+LL +     fn into_iter(self) -> Self::IntoIter {
 LL +         self.iter()
 LL +     }
 LL + }
    |
 
-error: `iter` method without an `IntoIterator` impl for `&S<'a>`
-  --> $DIR/iter_without_into_iter.rs:30:13
+error: `iter` method without an `IntoIterator` impl for `&S3<'a>`
+  --> $DIR/iter_without_into_iter.rs:26:5
    |
-LL | /             pub fn iter(&self) -> std::slice::Iter<'_, u8> {
+LL | /     pub fn iter(&self) -> std::slice::Iter<'_, u8> {
 LL | |
-LL | |                 self.0.iter()
-LL | |             }
-   | |_____________^
+LL | |         self.0.iter()
+LL | |     }
+   | |_____^
    |
-help: consider implementing `IntoIterator` for `&S<'a>`
+help: consider implementing `IntoIterator` for `&S3<'a>`
    |
-LL ~         
-LL + impl IntoIterator for &S<'a> {
+LL + 
+LL + impl IntoIterator for &S3<'a> {
 LL +     type IntoIter = std::slice::Iter<'_, u8>;
-LL +     type Iter = &u8;
-LL +     fn into_iter() -> Self::IntoIter {
+LL +     type Item = &u8;
+LL +     fn into_iter(self) -> Self::IntoIter {
 LL +         self.iter()
 LL +     }
 LL + }
    |
 
-error: `iter_mut` method without an `IntoIterator` impl for `&mut S<'a>`
-  --> $DIR/iter_without_into_iter.rs:34:13
+error: `iter_mut` method without an `IntoIterator` impl for `&mut S3<'a>`
+  --> $DIR/iter_without_into_iter.rs:30:5
    |
-LL | /             pub fn iter_mut(&mut self) -> std::slice::IterMut<'_, u8> {
+LL | /     pub fn iter_mut(&mut self) -> std::slice::IterMut<'_, u8> {
 LL | |
-LL | |                 self.0.iter_mut()
-LL | |             }
-   | |_____________^
+LL | |         self.0.iter_mut()
+LL | |     }
+   | |_____^
    |
-help: consider implementing `IntoIterator` for `&mut S<'a>`
+help: consider implementing `IntoIterator` for `&mut S3<'a>`
    |
-LL ~         
-LL + impl IntoIterator for &mut S<'a> {
+LL + 
+LL + impl IntoIterator for &mut S3<'a> {
 LL +     type IntoIter = std::slice::IterMut<'_, u8>;
-LL +     type Iter = &mut u8;
-LL +     fn into_iter() -> Self::IntoIter {
+LL +     type Item = &mut u8;
+LL +     fn into_iter(self) -> Self::IntoIter {
 LL +         self.iter()
 LL +     }
 LL + }
    |
 
-error: `iter` method without an `IntoIterator` impl for `&S5<T>`
-  --> $DIR/iter_without_into_iter.rs:68:13
+error: `iter` method without an `IntoIterator` impl for `&S8<T>`
+  --> $DIR/iter_without_into_iter.rs:67:5
    |
-LL | /             pub fn iter(&self) -> std::slice::Iter<'static, T> {
-LL | |                 todo!()
-LL | |             }
-   | |_____________^
+LL | /     pub fn iter(&self) -> std::slice::Iter<'static, T> {
+LL | |         todo!()
+LL | |     }
+   | |_____^
    |
-help: consider implementing `IntoIterator` for `&S5<T>`
+help: consider implementing `IntoIterator` for `&S8<T>`
    |
-LL ~         
-LL + impl IntoIterator for &S5<T> {
+LL + 
+LL + impl IntoIterator for &S8<T> {
 LL +     type IntoIter = std::slice::Iter<'static, T>;
-LL +     type Iter = &T;
-LL +     fn into_iter() -> Self::IntoIter {
+LL +     type Item = &T;
+LL +     fn into_iter(self) -> Self::IntoIter {
 LL +         self.iter()
 LL +     }
 LL + }
    |
 
-error: `iter` method without an `IntoIterator` impl for `&S<T>`
-  --> $DIR/iter_without_into_iter.rs:76:13
+error: `iter` method without an `IntoIterator` impl for `&S9<T>`
+  --> $DIR/iter_without_into_iter.rs:75:5
    |
-LL | /             pub fn iter(&self) -> std::slice::Iter<'_, T> {
+LL | /     pub fn iter(&self) -> std::slice::Iter<'_, T> {
 LL | |
-LL | |                 todo!()
-LL | |             }
-   | |_____________^
+LL | |         todo!()
+LL | |     }
+   | |_____^
    |
-help: consider implementing `IntoIterator` for `&S<T>`
+help: consider implementing `IntoIterator` for `&S9<T>`
    |
-LL ~         
-LL + impl IntoIterator for &S<T> {
+LL + 
+LL + impl IntoIterator for &S9<T> {
 LL +     type IntoIter = std::slice::Iter<'_, T>;
-LL +     type Iter = &T;
-LL +     fn into_iter() -> Self::IntoIter {
+LL +     type Item = &T;
+LL +     fn into_iter(self) -> Self::IntoIter {
 LL +         self.iter()
 LL +     }
 LL + }
    |
 
-error: `iter_mut` method without an `IntoIterator` impl for `&mut S<T>`
-  --> $DIR/iter_without_into_iter.rs:80:13
+error: `iter_mut` method without an `IntoIterator` impl for `&mut S9<T>`
+  --> $DIR/iter_without_into_iter.rs:79:5
    |
-LL | /             pub fn iter_mut(&mut self) -> std::slice::IterMut<'_, T> {
+LL | /     pub fn iter_mut(&mut self) -> std::slice::IterMut<'_, T> {
 LL | |
-LL | |                 todo!()
-LL | |             }
-   | |_____________^
+LL | |         todo!()
+LL | |     }
+   | |_____^
    |
-help: consider implementing `IntoIterator` for `&mut S<T>`
+help: consider implementing `IntoIterator` for `&mut S9<T>`
    |
-LL ~         
-LL + impl IntoIterator for &mut S<T> {
+LL + 
+LL + impl IntoIterator for &mut S9<T> {
 LL +     type IntoIter = std::slice::IterMut<'_, T>;
-LL +     type Iter = &mut T;
-LL +     fn into_iter() -> Self::IntoIter {
+LL +     type Item = &mut T;
+LL +     fn into_iter(self) -> Self::IntoIter {
 LL +         self.iter()
 LL +     }
 LL + }

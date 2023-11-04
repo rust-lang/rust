@@ -22,7 +22,7 @@ declare_clippy_lint! {
     /// order, or which is correct for any evaluation order.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let mut x = 0;
     ///
     /// let a = {
@@ -33,7 +33,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # let mut x = 0;
     /// let tmp = {
     ///     x = 1;

@@ -13,8 +13,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
-use rustc_span::source_map::FileName;
-use rustc_span::sym;
+use rustc_span::{sym, FileName};
 
 use std::cell::RefCell;
 use std::ffi::OsStr;

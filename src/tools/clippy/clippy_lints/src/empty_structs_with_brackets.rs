@@ -15,11 +15,11 @@ declare_clippy_lint! {
     /// Empty brackets after a struct declaration can be omitted.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// struct Cookie {}
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// struct Cookie;
     /// ```
     #[clippy::version = "1.62.0"]
@@ -35,7 +35,8 @@ impl EarlyLintPass for EmptyStructsWithBrackets {
 
         if let ItemKind::Struct(var_data, _) = &item.kind
             && has_brackets(var_data)
-            && has_no_fields(cx, var_data, span_after_ident) {
+            && has_no_fields(cx, var_data, span_after_ident)
+        {
             span_lint_and_then(
                 cx,
                 EMPTY_STRUCTS_WITH_BRACKETS,
@@ -46,8 +47,9 @@ impl EarlyLintPass for EmptyStructsWithBrackets {
                         span_after_ident,
                         "remove the brackets",
                         ";",
-                        Applicability::Unspecified);
-                    },
+                        Applicability::Unspecified,
+                    );
+                },
             );
         }
     }

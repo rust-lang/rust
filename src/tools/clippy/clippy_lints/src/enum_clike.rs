@@ -19,7 +19,7 @@ declare_clippy_lint! {
     /// architectures, but works fine on 64 bit.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # #[cfg(target_pointer_width = "64")]
     /// #[repr(usize)]
     /// enum NonPortable {

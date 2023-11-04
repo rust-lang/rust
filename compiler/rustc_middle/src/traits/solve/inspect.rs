@@ -42,12 +42,6 @@ pub struct State<'tcx, T> {
 
 pub type CanonicalState<'tcx, T> = Canonical<'tcx, State<'tcx, T>>;
 
-#[derive(Debug, Eq, PartialEq)]
-pub enum CacheHit {
-    Provisional,
-    Global,
-}
-
 /// When evaluating the root goals we also store the
 /// original values for the `CanonicalVarValues` of the
 /// canonicalized goal. We use this to map any [CanonicalState]
@@ -78,8 +72,8 @@ pub struct CanonicalGoalEvaluation<'tcx> {
 #[derive(Eq, PartialEq)]
 pub enum CanonicalGoalEvaluationKind<'tcx> {
     Overflow,
-    CacheHit(CacheHit),
-    Uncached { revisions: Vec<GoalEvaluationStep<'tcx>> },
+    CycleInStack,
+    Evaluation { revisions: &'tcx [GoalEvaluationStep<'tcx>] },
 }
 impl Debug for GoalEvaluation<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

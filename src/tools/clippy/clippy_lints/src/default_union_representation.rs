@@ -17,7 +17,7 @@ declare_clippy_lint! {
     /// specified layout. These cases may lead to undefined behavior in unsafe blocks.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// union Foo {
     ///     a: i32,
     ///     b: u32,
@@ -30,7 +30,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// #[repr(C)]
     /// union Foo {
     ///     a: i32,

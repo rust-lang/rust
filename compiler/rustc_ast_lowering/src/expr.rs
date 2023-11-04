@@ -15,9 +15,10 @@ use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::definitions::DefPathData;
 use rustc_session::errors::report_lit_error;
-use rustc_span::source_map::{respan, DesugaringKind, Span, Spanned};
+use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::DUMMY_SP;
+use rustc_span::{DesugaringKind, Span};
 use thin_vec::{thin_vec, ThinVec};
 
 impl<'hir> LoweringContext<'_, 'hir> {

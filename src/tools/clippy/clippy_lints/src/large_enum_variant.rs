@@ -9,7 +9,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{Adt, Ty};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::source_map::Span;
+use rustc_span::Span;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -38,7 +38,7 @@ declare_clippy_lint! {
     /// this may lead to a false positive.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// enum Test {
     ///     A(i32),
     ///     B([i32; 8000]),
@@ -46,7 +46,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// // Possibly better
     /// enum Test2 {
     ///     A(i32),

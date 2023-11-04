@@ -9,20 +9,15 @@
 //! within the `SourceMap`, which upon request can be converted to line and column
 //! information, source code snippets, etc.
 
-pub use crate::hygiene::{ExpnData, ExpnKind};
-pub use crate::*;
-
+use crate::*;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{Hash128, Hash64, StableHasher};
 use rustc_data_structures::sync::{IntoDynSyncSend, Lrc, MappedReadGuard, ReadGuard, RwLock};
 use std::cmp;
-use std::hash::Hash;
-use std::path::{self, Path, PathBuf};
-
 use std::fs;
-use std::io;
-use std::io::BorrowedBuf;
-use std::io::Read;
+use std::hash::Hash;
+use std::io::{self, BorrowedBuf, Read};
+use std::path::{self, Path, PathBuf};
 
 #[cfg(test)]
 mod tests;
@@ -41,7 +36,7 @@ pub fn original_sp(sp: Span, enclosing_sp: Span) -> Span {
     }
 }
 
-pub mod monotonic {
+mod monotonic {
     use std::ops::{Deref, DerefMut};
 
     /// A `MonotonicVec` is a `Vec` which can only be grown.
@@ -51,18 +46,14 @@ pub mod monotonic {
     // field is inaccessible
     pub struct MonotonicVec<T>(Vec<T>);
     impl<T> MonotonicVec<T> {
-        pub fn new(val: Vec<T>) -> MonotonicVec<T> {
-            MonotonicVec(val)
-        }
-
-        pub fn push(&mut self, val: T) {
+        pub(super) fn push(&mut self, val: T) {
             self.0.push(val);
         }
     }
 
     impl<T> Default for MonotonicVec<T> {
         fn default() -> Self {
-            MonotonicVec::new(vec![])
+            MonotonicVec(vec![])
         }
     }
 
@@ -207,7 +198,7 @@ impl StableSourceFileId {
 //
 
 #[derive(Default)]
-pub(super) struct SourceMapFiles {
+struct SourceMapFiles {
     source_files: monotonic::MonotonicVec<Lrc<SourceFile>>,
     stable_id_to_source_file: FxHashMap<StableSourceFileId, Lrc<SourceFile>>,
 }
@@ -464,33 +455,6 @@ impl SourceMap {
     /// Format the span location suitable for embedding in build artifacts
     pub fn span_to_embeddable_string(&self, sp: Span) -> String {
         self.span_to_string(sp, FileNameDisplayPreference::Remapped)
-    }
-
-    /// Format the span location suitable for pretty printing annotations with relative line numbers
-    pub fn span_to_relative_line_string(&self, sp: Span, relative_to: Span) -> String {
-        if self.files.borrow().source_files.is_empty() || sp.is_dummy() || relative_to.is_dummy() {
-            return "no-location".to_string();
-        }
-
-        let lo = self.lookup_char_pos(sp.lo());
-        let hi = self.lookup_char_pos(sp.hi());
-        let offset = self.lookup_char_pos(relative_to.lo());
-
-        if lo.file.name != offset.file.name || !relative_to.contains(sp) {
-            return self.span_to_embeddable_string(sp);
-        }
-
-        let lo_line = lo.line.saturating_sub(offset.line);
-        let hi_line = hi.line.saturating_sub(offset.line);
-
-        format!(
-            "{}:+{}:{}: +{}:{}",
-            lo.file.name.display(FileNameDisplayPreference::Remapped),
-            lo_line,
-            lo.col.to_usize() + 1,
-            hi_line,
-            hi.col.to_usize() + 1,
-        )
     }
 
     /// Format the span location to be printed in diagnostics. Must not be emitted

@@ -152,9 +152,12 @@ declare_features! (
      Some("removed in favor of `#![feature(marker_trait_attr)]`")),
     (removed, panic_implementation, "1.28.0", Some(44489), None,
      Some("subsumed by `#[panic_handler]`")),
+    /// Allows using `#![plugin(myplugin)]`.
+    (removed, plugin, "CURRENT_RUSTC_VERSION", Some(29597), None,
+     Some("plugins are no longer supported")),
     /// Allows using `#[plugin_registrar]` on functions.
     (removed, plugin_registrar, "1.54.0", Some(29597), None,
-     Some("a __rustc_plugin_registrar symbol must now be defined instead")),
+     Some("plugins are no longer supported")),
     (removed, proc_macro_expr, "1.27.0", Some(54727), None,
      Some("subsumed by `#![feature(proc_macro_hygiene)]`")),
     (removed, proc_macro_gen, "1.27.0", Some(54727), None,

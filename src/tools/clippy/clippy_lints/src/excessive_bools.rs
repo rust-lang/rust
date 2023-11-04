@@ -22,7 +22,7 @@ declare_clippy_lint! {
     /// readability and API.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// struct S {
     ///     is_pending: bool,
     ///     is_processing: bool,
@@ -31,7 +31,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// enum S {
     ///     Pending,
     ///     Processing,
@@ -157,7 +157,7 @@ impl<'tcx> LateLintPass<'tcx> for ExcessiveBools {
         // functions with a body are already checked by `check_fn`
         if let TraitItemKind::Fn(fn_sig, TraitFn::Required(_)) = &trait_item.kind
             && fn_sig.header.abi == Abi::Rust
-            {
+        {
             self.check_fn_sig(cx, fn_sig.decl, fn_sig.span);
         }
     }
@@ -174,11 +174,8 @@ impl<'tcx> LateLintPass<'tcx> for ExcessiveBools {
         let hir_id = cx.tcx.hir().local_def_id_to_hir_id(def_id);
         if let Some(fn_header) = fn_kind.header()
             && fn_header.abi == Abi::Rust
-            && get_parent_as_impl(cx.tcx, hir_id)
-                .map_or(true,
-                    |impl_item| impl_item.of_trait.is_none()
-                )
-            {
+            && get_parent_as_impl(cx.tcx, hir_id).map_or(true, |impl_item| impl_item.of_trait.is_none())
+        {
             self.check_fn_sig(cx, fn_decl, span);
         }
     }

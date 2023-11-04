@@ -4,10 +4,12 @@
 //!
 //! - the *span*, represented by [`SpanData`] and related types;
 //! - source code as represented by a [`SourceMap`]; and
-//! - interned strings, represented by [`Symbol`]s, with some common symbols available statically in the [`sym`] module.
+//! - interned strings, represented by [`Symbol`]s, with some common symbols available statically
+//!   in the [`sym`] module.
 //!
-//! Unlike most compilers, the span contains not only the position in the source code, but also various other metadata,
-//! such as the edition and macro hygiene. This metadata is stored in [`SyntaxContext`] and [`ExpnData`].
+//! Unlike most compilers, the span contains not only the position in the source code, but also
+//! various other metadata, such as the edition and macro hygiene. This metadata is stored in
+//! [`SyntaxContext`] and [`ExpnData`].
 //!
 //! ## Note
 //!
@@ -117,7 +119,6 @@ impl SessionGlobals {
     }
 }
 
-#[inline]
 pub fn create_session_globals_then<R>(edition: Edition, f: impl FnOnce() -> R) -> R {
     assert!(
         !SESSION_GLOBALS.is_set(),
@@ -128,7 +129,6 @@ pub fn create_session_globals_then<R>(edition: Edition, f: impl FnOnce() -> R) -
     SESSION_GLOBALS.set(&session_globals, f)
 }
 
-#[inline]
 pub fn set_session_globals_then<R>(session_globals: &SessionGlobals, f: impl FnOnce() -> R) -> R {
     assert!(
         !SESSION_GLOBALS.is_set(),
@@ -138,7 +138,6 @@ pub fn set_session_globals_then<R>(session_globals: &SessionGlobals, f: impl FnO
     SESSION_GLOBALS.set(session_globals, f)
 }
 
-#[inline]
 pub fn create_default_session_if_not_set_then<R, F>(f: F) -> R
 where
     F: FnOnce(&SessionGlobals) -> R,
@@ -146,7 +145,6 @@ where
     create_session_if_not_set_then(edition::DEFAULT_EDITION, f)
 }
 
-#[inline]
 pub fn create_session_if_not_set_then<R, F>(edition: Edition, f: F) -> R
 where
     F: FnOnce(&SessionGlobals) -> R,
@@ -159,7 +157,6 @@ where
     }
 }
 
-#[inline]
 pub fn with_session_globals<R, F>(f: F) -> R
 where
     F: FnOnce(&SessionGlobals) -> R,
@@ -167,7 +164,6 @@ where
     SESSION_GLOBALS.with(f)
 }
 
-#[inline]
 pub fn create_default_session_globals_then<R>(f: impl FnOnce() -> R) -> R {
     create_session_globals_then(edition::DEFAULT_EDITION, f)
 }
@@ -179,8 +175,7 @@ scoped_tls::scoped_thread_local!(static SESSION_GLOBALS: SessionGlobals);
 
 // FIXME: We should use this enum or something like it to get rid of the
 // use of magic `/rust/1.x/...` paths across the board.
-#[derive(Debug, Eq, PartialEq, Clone, Ord, PartialOrd)]
-#[derive(Decodable)]
+#[derive(Debug, Eq, PartialEq, Clone, Ord, PartialOrd, Decodable)]
 pub enum RealFileName {
     LocalPath(PathBuf),
     /// For remapped paths (namely paths into libstd that have been mapped
@@ -217,8 +212,8 @@ impl<S: Encoder> Encodable<S> for RealFileName {
 
             RealFileName::Remapped { ref local_path, ref virtual_name } => encoder
                 .emit_enum_variant(1, |encoder| {
-                    // For privacy and build reproducibility, we must not embed host-dependant path in artifacts
-                    // if they have been remapped by --remap-path-prefix
+                    // For privacy and build reproducibility, we must not embed host-dependant path
+                    // in artifacts if they have been remapped by --remap-path-prefix
                     assert!(local_path.is_none());
                     local_path.encode(encoder);
                     virtual_name.encode(encoder);
@@ -954,7 +949,7 @@ impl Span {
     /// Produces a span with the same location as `self` and context produced by a macro with the
     /// given ID and transparency, assuming that macro was defined directly and not produced by
     /// some other macro (which is the case for built-in and procedural macros).
-    pub fn with_ctxt_from_mark(self, expn_id: ExpnId, transparency: Transparency) -> Span {
+    fn with_ctxt_from_mark(self, expn_id: ExpnId, transparency: Transparency) -> Span {
         self.with_ctxt(SyntaxContext::root().apply_mark(expn_id, transparency))
     }
 
@@ -1529,7 +1524,8 @@ impl SourceFile {
         })
     }
 
-    /// This converts the `lines` field to contain `SourceFileLines::Lines` if needed and freezes it.
+    /// This converts the `lines` field to contain `SourceFileLines::Lines` if needed and freezes
+    /// it.
     fn convert_diffs_to_lines_frozen(&self) {
         let mut guard = if let Some(guard) = self.lines.try_write() { guard } else { return };
 
@@ -2247,6 +2243,9 @@ where
 
 /// Useful type to use with `Result<>` indicate that an error has already
 /// been reported to the user, so no need to continue checking.
+///
+/// The `()` field is necessary: it is non-`pub`, which means values of this
+/// type cannot be constructed outside of this crate.
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[derive(HashStable_Generic)]
 pub struct ErrorGuaranteed(());
@@ -2264,7 +2263,8 @@ impl<E: rustc_serialize::Encoder> Encodable<E> for ErrorGuaranteed {
     #[inline]
     fn encode(&self, _e: &mut E) {
         panic!(
-            "should never serialize an `ErrorGuaranteed`, as we do not write metadata or incremental caches in case errors occurred"
+            "should never serialize an `ErrorGuaranteed`, as we do not write metadata or \
+            incremental caches in case errors occurred"
         )
     }
 }

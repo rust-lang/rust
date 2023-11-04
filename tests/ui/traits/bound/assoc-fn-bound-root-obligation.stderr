@@ -1,8 +1,8 @@
-error[E0277]: expected a `FnMut<(char,)>` closure, found `u8`
+error[E0277]: expected a `FnMut(char)` closure, found `u8`
   --> $DIR/assoc-fn-bound-root-obligation.rs:2:7
    |
 LL |     s.strip_suffix(b'\n').unwrap_or(s)
-   |       ^^^^^^^^^^^^ expected an `FnMut<(char,)>` closure, found `u8`
+   |       ^^^^^^^^^^^^ expected an `FnMut(char)` closure, found `u8`
    |
    = help: the trait `FnMut<(char,)>` is not implemented for `u8`
    = help: the following other types implement trait `Pattern<'a>`:

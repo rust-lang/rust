@@ -6,7 +6,7 @@ use rustc_ast::ast::{BinOpKind, Block, Expr, ExprKind, StmtKind, UnOp};
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::source_map::Span;
+use rustc_span::Span;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -37,7 +37,7 @@ declare_clippy_lint! {
     /// This is either a typo in the binary operator or confusing.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # let foo = true;
     /// # let bar = false;
     /// // &&! looks like a different operator
@@ -45,7 +45,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # let foo = true;
     /// # let bar = false;
     /// if foo && !bar {}

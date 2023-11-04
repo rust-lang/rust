@@ -574,3 +574,22 @@ impl ZyxwvutTrait for ZyxwvutMethodDisambiguation {
         x
     }
 }
+
+pub mod foreign_impl_order {
+    pub trait Foo<const W: usize> {
+        fn f(&mut self, with: [u8; W]);
+    }
+
+    impl Foo<4> for [u8; 4] {
+        fn f(&mut self, fg: [u8; 4]) {}
+    }
+    impl Foo<2> for [u8; 2] {
+        fn f(&mut self, fg: [u8; 2]) {}
+    }
+    impl Foo<1> for [u8; 1] {
+        fn f(&mut self, fg: [u8; 1]) {}
+    }
+    impl Foo<3> for [u8; 3] {
+        fn f(&mut self, fg: [u8; 3]) {}
+    }
+}

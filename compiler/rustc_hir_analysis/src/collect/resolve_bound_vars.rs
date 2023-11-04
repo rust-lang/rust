@@ -880,7 +880,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                             (pair, r)
                         })
                         .unzip();
-                self.record_late_bound_vars(hir_id, binders.clone());
+                self.record_late_bound_vars(hir_id, binders);
                 // Even if there are no lifetimes defined here, we still wrap it in a binder
                 // scope. If there happens to be a nested poly trait ref (an error), that
                 // will be `Concatenating` anyways, so we don't have to worry about the depth

@@ -17,13 +17,13 @@ declare_clippy_lint! {
     /// code, it doesn't require a change in previous last line.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// fn main() {
     ///     println!("Hello world")
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// fn main() {
     ///     println!("Hello world");
     /// }

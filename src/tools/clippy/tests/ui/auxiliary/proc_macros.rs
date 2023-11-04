@@ -379,7 +379,8 @@ impl MacroArm {
                         p.span(),
                     )?;
                     self.add_parenthesized_arg_def(kind, dollar_span, g.span(), out);
-                    self.args.push(TT::Group(group_with_span(Parenthesis, inner.collect(), g.span())))
+                    self.args
+                        .push(TT::Group(group_with_span(Parenthesis, inner.collect(), g.span())))
                 } else {
                     self.add_multi_arg_def(dollar_span, g.span(), out);
                     self.args.push(TT::Group(g));
@@ -436,7 +437,12 @@ impl Expander {
                 && p.as_char() == ESCAPE_CHAR
                 && let Some(arm) = self.arm.as_mut()
             {
-                arm.add_arg(p.span(), mem::replace(&mut input.tt, tt), &mut input.iter, &mut self.expn)?;
+                arm.add_arg(
+                    p.span(),
+                    mem::replace(&mut input.tt, tt),
+                    &mut input.iter,
+                    &mut self.expn,
+                )?;
                 if input.next().is_none() {
                     return Ok(());
                 }

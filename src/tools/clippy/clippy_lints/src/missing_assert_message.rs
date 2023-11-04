@@ -27,14 +27,14 @@ declare_clippy_lint! {
     /// don't provide any extra information.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// # struct Service { ready: bool }
     /// fn call(service: Service) {
     ///     assert!(service.ready);
     /// }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// # struct Service { ready: bool }
     /// fn call(service: Service) {
     ///     assert!(service.ready, "`service.poll_ready()` must be called first to ensure that service is ready to receive requests");

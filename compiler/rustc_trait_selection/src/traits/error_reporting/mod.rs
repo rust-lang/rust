@@ -8,7 +8,7 @@ mod type_err_ctxt_ext;
 
 use super::{Obligation, ObligationCause, ObligationCauseCode, PredicateObligation};
 use crate::infer::InferCtxt;
-use crate::solve::{GenerateProofTree, InferCtxtEvalExt, UseGlobalCache};
+use crate::solve::{GenerateProofTree, InferCtxtEvalExt};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
@@ -173,7 +173,7 @@ pub fn dump_proof_tree<'tcx>(o: &Obligation<'tcx, ty::Predicate<'tcx>>, infcx: &
     infcx.probe(|_| {
         let goal = Goal { predicate: o.predicate, param_env: o.param_env };
         let tree = infcx
-            .evaluate_root_goal(goal, GenerateProofTree::Yes(UseGlobalCache::No))
+            .evaluate_root_goal(goal, GenerateProofTree::Yes)
             .1
             .expect("proof tree should have been generated");
         let mut lock = std::io::stdout().lock();

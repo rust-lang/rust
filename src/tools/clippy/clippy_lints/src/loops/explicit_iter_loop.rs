@@ -1,6 +1,6 @@
 use super::EXPLICIT_ITER_LOOP;
+use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::{
     implements_trait, implements_trait_with_env, is_copy, make_normalized_projection,
@@ -113,7 +113,9 @@ fn is_ref_iterable<'tcx>(
     let typeck = cx.typeck_results();
     if let Some(trait_id) = cx.tcx.get_diagnostic_item(sym::IntoIterator)
         && let Some(fn_id) = typeck.type_dependent_def_id(call_expr.hir_id)
-        && let sig = cx.tcx.liberate_late_bound_regions(fn_id, cx.tcx.fn_sig(fn_id).skip_binder())
+        && let sig = cx
+            .tcx
+            .liberate_late_bound_regions(fn_id, cx.tcx.fn_sig(fn_id).skip_binder())
         && let &[req_self_ty, req_res_ty] = &**sig.inputs_and_output
         && let param_env = cx.tcx.param_env(fn_id)
         && implements_trait_with_env(cx.tcx, param_env, req_self_ty, trait_id, &[])
@@ -131,8 +133,9 @@ fn is_ref_iterable<'tcx>(
             return Some((AdjustKind::None, self_ty));
         }
 
-        let res_ty = cx.tcx.erase_regions(EarlyBinder::bind(req_res_ty)
-            .instantiate(cx.tcx, typeck.node_args(call_expr.hir_id)));
+        let res_ty = cx
+            .tcx
+            .erase_regions(EarlyBinder::bind(req_res_ty).instantiate(cx.tcx, typeck.node_args(call_expr.hir_id)));
         let mutbl = if let ty::Ref(_, _, mutbl) = *req_self_ty.kind() {
             Some(mutbl)
         } else {
@@ -157,7 +160,7 @@ fn is_ref_iterable<'tcx>(
                 let self_ty = if mutbl.is_mut() {
                     self_ty
                 } else {
-                    Ty::new_ref(cx.tcx,region, TypeAndMut { ty, mutbl })
+                    Ty::new_ref(cx.tcx, region, TypeAndMut { ty, mutbl })
                 };
                 if implements_trait(cx, self_ty, trait_id, &[])
                     && let Some(ty) =
@@ -172,10 +175,7 @@ fn is_ref_iterable<'tcx>(
             && !self_ty.is_ref()
         {
             // Attempt to borrow
-            let self_ty = Ty::new_ref(cx.tcx,cx.tcx.lifetimes.re_erased, TypeAndMut {
-                ty: self_ty,
-                mutbl,
-            });
+            let self_ty = Ty::new_ref(cx.tcx, cx.tcx.lifetimes.re_erased, TypeAndMut { ty: self_ty, mutbl });
             if implements_trait(cx, self_ty, trait_id, &[])
                 && let Some(ty) = make_normalized_projection(cx.tcx, cx.param_env, trait_id, sym!(IntoIter), [self_ty])
                 && ty == res_ty
@@ -187,12 +187,14 @@ fn is_ref_iterable<'tcx>(
         match adjustments {
             [] => Some((AdjustKind::None, self_ty)),
             &[
-                Adjustment { kind: Adjust::Deref(_), ..},
+                Adjustment {
+                    kind: Adjust::Deref(_), ..
+                },
                 Adjustment {
                     kind: Adjust::Borrow(AutoBorrow::Ref(_, mutbl)),
                     target,
                 },
-                ..
+                ..,
             ] => {
                 if enforce_iter_loop_reborrow
                     && target != self_ty
@@ -205,8 +207,14 @@ fn is_ref_iterable<'tcx>(
                 } else {
                     None
                 }
-            }
-            &[Adjustment { kind: Adjust::Deref(_), target }, ..] => {
+            },
+            &[
+                Adjustment {
+                    kind: Adjust::Deref(_),
+                    target,
+                },
+                ..,
+            ] => {
                 if is_copy(cx, target)
                     && implements_trait(cx, target, trait_id, &[])
                     && let Some(ty) =
@@ -217,13 +225,13 @@ fn is_ref_iterable<'tcx>(
                 } else {
                     None
                 }
-            }
+            },
             &[
                 Adjustment {
                     kind: Adjust::Borrow(AutoBorrow::Ref(_, mutbl)),
                     target,
                 },
-                ..
+                ..,
             ] => {
                 if self_ty.is_ref()
                     && implements_trait(cx, target, trait_id, &[])
@@ -235,7 +243,7 @@ fn is_ref_iterable<'tcx>(
                 } else {
                     None
                 }
-            }
+            },
             _ => None,
         }
     } else {

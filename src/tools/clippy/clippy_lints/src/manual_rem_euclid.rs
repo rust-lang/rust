@@ -1,6 +1,6 @@
+use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::consts::{constant_full_int, FullInt};
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::{in_constant, path_to_local};
 use rustc_errors::Applicability;
@@ -18,12 +18,12 @@ declare_clippy_lint! {
     /// It's simpler and more readable.
     ///
     /// ### Example
-    /// ```rust
+    /// ```no_run
     /// let x: i32 = 24;
     /// let rem = ((x % 4) + 4) % 4;
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```no_run
     /// let x: i32 = 24;
     /// let rem = x.rem_euclid(4);
     /// ```
@@ -76,30 +76,31 @@ impl<'tcx> LateLintPass<'tcx> for ManualRemEuclid {
             // Also ensures the const is nonzero since zero can't be a divisor
             && const1 == const2 && const2 == const3
             && let Some(hir_id) = path_to_local(expr3)
-            && let Some(Node::Pat(_)) = cx.tcx.hir().find(hir_id) {
-                // Apply only to params or locals with annotated types
-                match cx.tcx.hir().find_parent(hir_id) {
-                    Some(Node::Param(..)) => (),
-                    Some(Node::Local(local)) => {
-                        let Some(ty) = local.ty else { return };
-                        if matches!(ty.kind, TyKind::Infer) {
-                            return;
-                        }
+            && let Some(Node::Pat(_)) = cx.tcx.hir().find(hir_id)
+        {
+            // Apply only to params or locals with annotated types
+            match cx.tcx.hir().find_parent(hir_id) {
+                Some(Node::Param(..)) => (),
+                Some(Node::Local(local)) => {
+                    let Some(ty) = local.ty else { return };
+                    if matches!(ty.kind, TyKind::Infer) {
+                        return;
                     }
-                    _ => return,
-                };
+                },
+                _ => return,
+            };
 
-                let mut app = Applicability::MachineApplicable;
-                let rem_of = snippet_with_context(cx, expr3.span, ctxt, "_", &mut app).0;
-                span_lint_and_sugg(
-                    cx,
-                    MANUAL_REM_EUCLID,
-                    expr.span,
-                    "manual `rem_euclid` implementation",
-                    "consider using",
-                    format!("{rem_of}.rem_euclid({const1})"),
-                    app,
-                );
+            let mut app = Applicability::MachineApplicable;
+            let rem_of = snippet_with_context(cx, expr3.span, ctxt, "_", &mut app).0;
+            span_lint_and_sugg(
+                cx,
+                MANUAL_REM_EUCLID,
+                expr.span,
+                "manual `rem_euclid` implementation",
+                "consider using",
+                format!("{rem_of}.rem_euclid({const1})"),
+                app,
+            );
         }
     }
 

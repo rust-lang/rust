@@ -17,7 +17,7 @@ use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, AssocKind, ClauseKind, EarlyBinder, GenericArg, GenericArgKind, Ty};
 use rustc_span::symbol::Ident;
-use rustc_span::{sym, Span, Symbol};
+use rustc_span::{sym, Span};
 
 const NEEDLESS_COLLECT_MSG: &str = "avoid using `collect()` when not needed";
 
@@ -87,21 +87,17 @@ pub(super) fn check<'tcx>(
                 }
             },
             Node::Local(l) => {
-                if let PatKind::Binding(BindingAnnotation::NONE | BindingAnnotation::MUT, id, _, None)
-                    = l.pat.kind
+                if let PatKind::Binding(BindingAnnotation::NONE | BindingAnnotation::MUT, id, _, None) = l.pat.kind
                     && let ty = cx.typeck_results().expr_ty(collect_expr)
-                    && [sym::Vec, sym::VecDeque, sym::BinaryHeap, sym::LinkedList].into_iter()
+                    && [sym::Vec, sym::VecDeque, sym::BinaryHeap, sym::LinkedList]
+                        .into_iter()
                         .any(|item| is_type_diagnostic_item(cx, ty, item))
                     && let iter_ty = cx.typeck_results().expr_ty(iter_expr)
                     && let Some(block) = get_enclosing_block(cx, l.hir_id)
                     && let Some(iter_calls) = detect_iter_and_into_iters(block, id, cx, get_captured_ids(cx, iter_ty))
                     && let [iter_call] = &*iter_calls
                 {
-                    let mut used_count_visitor = UsedCountVisitor {
-                        cx,
-                        id,
-                        count: 0,
-                    };
+                    let mut used_count_visitor = UsedCountVisitor { cx, id, count: 0 };
                     walk_block(&mut used_count_visitor, block);
                     if used_count_visitor.count > 1 {
                         return;
@@ -117,13 +113,11 @@ pub(super) fn check<'tcx>(
                         span,
                         NEEDLESS_COLLECT_MSG,
                         |diag| {
-                            let iter_replacement = format!("{}{}", Sugg::hir(cx, iter_expr, ".."), iter_call.get_iter_method(cx));
+                            let iter_replacement =
+                                format!("{}{}", Sugg::hir(cx, iter_expr, ".."), iter_call.get_iter_method(cx));
                             diag.multipart_suggestion(
                                 iter_call.get_suggestion_text(),
-                                vec![
-                                    (l.span, String::new()),
-                                    (iter_call.span, iter_replacement)
-                                ],
+                                vec![(l.span, String::new()), (iter_call.span, iter_replacement)],
                                 Applicability::MaybeIncorrect,
                             );
                         },
@@ -175,11 +169,12 @@ fn check_collect_into_intoiterator<'tcx>(
                 .into_iter()
                 .filter_map(|p| {
                     if let ClauseKind::Trait(t) = p.kind().skip_binder()
-                            && cx.tcx.is_diagnostic_item(sym::IntoIterator,t.trait_ref.def_id) {
-                                Some(t.self_ty())
-                            } else {
-                                None
-                            }
+                        && cx.tcx.is_diagnostic_item(sym::IntoIterator, t.trait_ref.def_id)
+                    {
+                        Some(t.self_ty())
+                    } else {
+                        None
+                    }
                 })
                 .any(|ty| ty == inputs[arg_idx])
             {
@@ -207,14 +202,13 @@ fn is_is_empty_sig(cx: &LateContext<'_>, call_id: HirId) -> bool {
 
 /// Checks if `<iter_ty as Iterator>::Item` is the same as `<collect_ty as IntoIter>::Item`
 fn iterates_same_ty<'tcx>(cx: &LateContext<'tcx>, iter_ty: Ty<'tcx>, collect_ty: Ty<'tcx>) -> bool {
-    let item = Symbol::intern("Item");
     if let Some(iter_trait) = cx.tcx.get_diagnostic_item(sym::Iterator)
         && let Some(into_iter_trait) = cx.tcx.get_diagnostic_item(sym::IntoIterator)
-        && let Some(iter_item_ty) = make_normalized_projection(cx.tcx, cx.param_env, iter_trait, item, [iter_ty])
-        && let Some(into_iter_item_proj) = make_projection(cx.tcx, into_iter_trait, item, [collect_ty])
+        && let Some(iter_item_ty) = make_normalized_projection(cx.tcx, cx.param_env, iter_trait, sym::Item, [iter_ty])
+        && let Some(into_iter_item_proj) = make_projection(cx.tcx, into_iter_trait, sym::Item, [collect_ty])
         && let Ok(into_iter_item_ty) = cx.tcx.try_normalize_erasing_regions(
             cx.param_env,
-            Ty::new_projection(cx.tcx,into_iter_item_proj.def_id, into_iter_item_proj.args)
+            Ty::new_projection(cx.tcx, into_iter_item_proj.def_id, into_iter_item_proj.args),
         )
     {
         iter_item_ty == into_iter_item_ty
@@ -233,11 +227,14 @@ fn is_contains_sig(cx: &LateContext<'_>, call_id: HirId, iter_expr: &Expr<'_>) -
         && let [_, search_ty] = *sig.skip_binder().inputs()
         && let ty::Ref(_, search_ty, Mutability::Not) = *cx.tcx.erase_late_bound_regions(sig.rebind(search_ty)).kind()
         && let Some(iter_trait) = cx.tcx.get_diagnostic_item(sym::Iterator)
-        && let Some(iter_item) = cx.tcx
-            .associated_items(iter_trait)
-            .find_by_name_and_kind(cx.tcx, Ident::with_dummy_span(Symbol::intern("Item")), AssocKind::Type, iter_trait)
+        && let Some(iter_item) = cx.tcx.associated_items(iter_trait).find_by_name_and_kind(
+            cx.tcx,
+            Ident::with_dummy_span(sym::Item),
+            AssocKind::Type,
+            iter_trait,
+        )
         && let args = cx.tcx.mk_args(&[GenericArg::from(typeck.expr_ty_adjusted(iter_expr))])
-        && let proj_ty = Ty::new_projection(cx.tcx,iter_item.def_id, args)
+        && let proj_ty = Ty::new_projection(cx.tcx, iter_item.def_id, args)
         && let Ok(item_ty) = cx.tcx.try_normalize_erasing_regions(cx.param_env, proj_ty)
     {
         item_ty == EarlyBinder::bind(search_ty).instantiate(cx.tcx, cx.typeck_results().node_args(call_id))

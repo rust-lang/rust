@@ -1,6 +1,6 @@
+use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
-use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::usage::local_used_after_expr;
 use clippy_utils::visitors::{for_each_expr_with_closures, Descend};
@@ -115,7 +115,7 @@ fn check_manual_split_once(
 
 /// checks for
 ///
-/// ```
+/// ```no_run
 /// let mut iter = "a.b.c".splitn(2, '.');
 /// let a = iter.next();
 /// let b = iter.next();
@@ -133,13 +133,11 @@ fn check_manual_split_once_indirect(
         && let PatKind::Binding(BindingAnnotation::MUT, iter_binding_id, iter_ident, None) = local.pat.kind
         && let (iter_stmt_id, Node::Stmt(_)) = parents.next()?
         && let (_, Node::Block(enclosing_block)) = parents.next()?
-
         && let mut stmts = enclosing_block
             .stmts
             .iter()
             .skip_while(|stmt| stmt.hir_id != iter_stmt_id)
             .skip(1)
-
         && let first = indirect_usage(cx, stmts.next()?, iter_binding_id, ctxt)?
         && let second = indirect_usage(cx, stmts.next()?, iter_binding_id, ctxt)?
         && first.unwrap_kind == second.unwrap_kind
@@ -173,18 +171,8 @@ fn check_manual_split_once_indirect(
             );
 
             let remove_msg = format!("remove the `{iter_ident}` usages");
-            diag.span_suggestion(
-                first.span,
-                remove_msg.clone(),
-                "",
-                app,
-            );
-            diag.span_suggestion(
-                second.span,
-                remove_msg,
-                "",
-                app,
-            );
+            diag.span_suggestion(first.span, remove_msg.clone(), "", app);
+            diag.span_suggestion(second.span, remove_msg, "", app);
         });
     }
 

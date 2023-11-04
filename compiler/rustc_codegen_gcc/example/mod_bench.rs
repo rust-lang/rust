@@ -6,7 +6,7 @@
 extern {}
 
 #[panic_handler]
-fn panic_handler(_: &core::panic::PanicInfo) -> ! {
+fn panic_handler(_: &core::panic::PanicInfo<'_>) -> ! {
     core::intrinsics::abort();
 }
 

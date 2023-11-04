@@ -17,7 +17,7 @@ declare_clippy_lint! {
     /// the main function.
     ///
     /// ### Example
-    /// ```
+    /// ```no_run
     /// std::process::exit(0)
     /// ```
     ///
