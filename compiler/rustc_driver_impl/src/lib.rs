@@ -421,8 +421,12 @@ fn run_compiler(
                     // effects of writing the dep-info and reporting errors.
                     queries.global_ctxt()?.enter(|tcx| tcx.output_filenames(()));
                 } else {
-                    let krate = queries.parse()?.steal();
-                    pretty::print(sess, *ppm, pretty::PrintExtra::AfterParsing { krate });
+                    let krate = queries.parse()?;
+                    pretty::print(
+                        sess,
+                        *ppm,
+                        pretty::PrintExtra::AfterParsing { krate: &*krate.borrow() },
+                    );
                 }
                 trace!("finished pretty-printing");
                 return early_exit();
