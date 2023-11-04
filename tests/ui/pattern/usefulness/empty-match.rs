@@ -30,17 +30,17 @@ union NonEmptyUnion2 {
     bar: (),
 }
 enum NonEmptyEnum1 {
-    Foo(bool),
     //~^ NOTE `NonEmptyEnum1` defined here
     //~| NOTE `NonEmptyEnum1` defined here
-    //~| NOTE not covered
+    Foo(bool),
+    //~^ NOTE not covered
     //~| NOTE not covered
 }
 enum NonEmptyEnum2 {
-    Foo(bool),
     //~^ NOTE `NonEmptyEnum2` defined here
     //~| NOTE `NonEmptyEnum2` defined here
-    //~| NOTE not covered
+    Foo(bool),
+    //~^ NOTE not covered
     //~| NOTE not covered
     Bar,
     //~^ NOTE not covered
@@ -50,6 +50,16 @@ enum NonEmptyEnum5 {
     //~^ NOTE `NonEmptyEnum5` defined here
     //~| NOTE `NonEmptyEnum5` defined here
     V1, V2, V3, V4, V5,
+    //~^ NOTE not covered
+    //~| NOTE not covered
+    //~| NOTE not covered
+    //~| NOTE not covered
+    //~| NOTE not covered
+    //~| NOTE not covered
+    //~| NOTE not covered
+    //~| NOTE not covered
+    //~| NOTE not covered
+    //~| NOTE not covered
 }
 
 fn empty_enum(x: EmptyEnum) {
