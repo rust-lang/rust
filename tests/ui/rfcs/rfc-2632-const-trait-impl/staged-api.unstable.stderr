@@ -14,29 +14,55 @@ LL |     Foo::func();
    |
    = help: add `#![feature(foo)]` to the crate attributes to enable
 
-error: `<staged_api::Unstable as staged_api::MyTrait>::func` is not yet stable as a const fn
-  --> $DIR/staged-api.rs:53:5
+error: const-stable function cannot use `#[feature(unstable)]`
+  --> $DIR/staged-api.rs:55:5
    |
 LL |     Unstable::func();
    |     ^^^^^^^^^^^^^^^^
    |
-   = help: const-stable functions can only call other const-stable functions
+help: if it is not part of the public API, make this function unstably const
+   |
+LL + #[rustc_const_unstable(feature = "...", issue = "...")]
+LL | const fn stable_const_context() {
+   |
+help: otherwise `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks
+   |
+LL + #[rustc_allow_const_fn_unstable(unstable)]
+LL | const fn stable_const_context() {
+   |
 
-error: `<Foo as staged_api::MyTrait>::func` is not yet stable as a const fn
-  --> $DIR/staged-api.rs:55:5
+error: const-stable function cannot use `#[feature(foo)]`
+  --> $DIR/staged-api.rs:57:5
    |
 LL |     Foo::func();
    |     ^^^^^^^^^^^
    |
-   = help: const-stable functions can only call other const-stable functions
+help: if it is not part of the public API, make this function unstably const
+   |
+LL + #[rustc_const_unstable(feature = "...", issue = "...")]
+LL | const fn stable_const_context() {
+   |
+help: otherwise `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks
+   |
+LL + #[rustc_allow_const_fn_unstable(foo)]
+LL | const fn stable_const_context() {
+   |
 
-error: `const_context_not_const_stable` is not yet stable as a const fn
-  --> $DIR/staged-api.rs:57:5
+error: const-stable function cannot use `#[feature(foo)]`
+  --> $DIR/staged-api.rs:59:5
    |
 LL |     const_context_not_const_stable()
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: const-stable functions can only call other const-stable functions
+help: if it is not part of the public API, make this function unstably const
+   |
+LL + #[rustc_const_unstable(feature = "...", issue = "...")]
+LL | const fn stable_const_context() {
+   |
+help: otherwise `#[rustc_allow_const_fn_unstable]` can be used to bypass stability checks
+   |
+LL + #[rustc_allow_const_fn_unstable(foo)]
+LL | const fn stable_const_context() {
+   |
 
 error: aborting due to 5 previous errors
-

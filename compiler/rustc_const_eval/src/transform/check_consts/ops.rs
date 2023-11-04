@@ -317,6 +317,10 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
 pub struct FnCallUnstable(pub DefId, pub Option<Symbol>);
 
 impl<'tcx> NonConstOp<'tcx> for FnCallUnstable {
+    fn status_in_item(&self, _: &ConstCx<'_, 'tcx>) -> Status {
+        if let Some(symbol) = self.1 { Status::Unstable(symbol) } else { Status::Forbidden }
+    }
+
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
         let FnCallUnstable(def_id, feature) = *self;
 
@@ -327,7 +331,11 @@ impl<'tcx> NonConstOp<'tcx> for FnCallUnstable {
         // FIXME: make this translatable
         #[allow(rustc::untranslatable_diagnostic)]
         if ccx.is_const_stable_const_fn() {
-            err.help("const-stable functions can only call other const-stable functions");
+            if self.1.is_some() {
+                bug!("this should be triggering the UnstableInStable lint instead");
+            } else {
+                err.help("const-stable functions can only call other const-stable functions");
+            }
         } else if ccx.tcx.sess.is_nightly_build() {
             if let Some(feature) = feature {
                 err.help(format!("add `#![feature({feature})]` to the crate attributes to enable"));

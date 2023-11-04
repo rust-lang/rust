@@ -51,11 +51,11 @@ pub const fn const_context_not_const_stable() {
 #[rustc_const_stable(feature = "cheese", since = "1.0.0")]
 const fn stable_const_context() {
     Unstable::func();
-    //~^ ERROR not yet stable as a const fn
+    //~^ ERROR const-stable function cannot use `#[feature(unstable)]`
     Foo::func();
-    //[unstable]~^ ERROR not yet stable as a const fn
+    //[unstable]~^ ERROR const-stable function cannot use `#[feature(foo)]`
     const_context_not_const_stable()
-    //[unstable]~^ ERROR not yet stable as a const fn
+    //[unstable]~^ ERROR const-stable function cannot use `#[feature(foo)]`
 }
 
 fn main() {}
