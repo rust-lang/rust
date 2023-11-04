@@ -1,8 +1,8 @@
-error: Undefined Behavior: Data race detected between (1) Write on thread `<unnamed>` and (2) Atomic Store on thread `<unnamed>` at ALLOC. (2) just happened here
+error: Undefined Behavior: Data race detected between (1) non-atomic write on thread `<unnamed>` and (2) atomic store on thread `<unnamed>` at ALLOC. (2) just happened here
   --> $DIR/atomic_write_na_write_race1.rs:LL:CC
    |
 LL |             (&*c.0).store(64, Ordering::SeqCst);
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Data race detected between (1) Write on thread `<unnamed>` and (2) Atomic Store on thread `<unnamed>` at ALLOC. (2) just happened here
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Data race detected between (1) non-atomic write on thread `<unnamed>` and (2) atomic store on thread `<unnamed>` at ALLOC. (2) just happened here
    |
 help: and (1) occurred earlier here
   --> $DIR/atomic_write_na_write_race1.rs:LL:CC
