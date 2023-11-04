@@ -3417,13 +3417,13 @@ impl DumpMonoStatsFormat {
 #[derive(Clone, Copy, PartialEq, Hash, Debug, Default)]
 pub enum Polonius {
     /// The default value: disabled.
-    #[default]
     Off,
 
     /// Legacy version, using datalog and the `polonius-engine` crate. Historical value for `-Zpolonius`.
     Legacy,
 
     /// In-tree prototype, extending the NLL infrastructure.
+    #[default]
     Next,
 }
 
