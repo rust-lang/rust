@@ -774,12 +774,17 @@ impl<T> Option<T> {
         // just needs to be aligned, which it is because `&self` is aligned and
         // the offset used is a multiple of alignment.
         //
-        // In the new version, the intrinsic always returns a pointer to an
+        // In the new version, the `byte_add` always returns a pointer to an
         // in-bounds and correctly aligned position for a `T` (even if in the
         // `None` case it's just padding).
         unsafe {
             slice::from_raw_parts(
+                #[cfg(bootstrap)]
                 crate::intrinsics::option_payload_ptr(crate::ptr::from_ref(self)),
+                #[cfg(not(bootstrap))]
+                crate::ptr::from_ref(self)
+                    .cast::<T>()
+                    .byte_add(crate::mem::offset_of!(Self, Some.0)),
                 usize::from(self.is_some()),
             )
         }
@@ -828,15 +833,20 @@ impl<T> Option<T> {
         // just needs to be aligned, which it is because `&self` is aligned and
         // the offset used is a multiple of alignment.
         //
-        // In the new version, the intrinsic creates a `*const T` from a
+        // In the new version, the `byte_add` creates a `*const T` from a
         // mutable reference  so it is safe to cast back to a mutable pointer
         // here. As with `as_slice`, the intrinsic always returns a pointer to
         // an in-bounds and correctly aligned position for a `T` (even if in
         // the `None` case it's just padding).
         unsafe {
             slice::from_raw_parts_mut(
+                #[cfg(bootstrap)]
                 crate::intrinsics::option_payload_ptr(crate::ptr::from_mut(self).cast_const())
                     .cast_mut(),
+                #[cfg(not(bootstrap))]
+                crate::ptr::from_mut(self)
+                    .cast::<T>()
+                    .byte_add(crate::mem::offset_of!(Option<T>, Some.0)),
                 usize::from(self.is_some()),
             )
         }

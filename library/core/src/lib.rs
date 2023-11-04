@@ -178,6 +178,7 @@
 #![feature(is_ascii_octdigit)]
 #![feature(isqrt)]
 #![feature(maybe_uninit_uninit_array)]
+#![feature(offset_of)]
 #![feature(ptr_alignment_type)]
 #![feature(ptr_metadata)]
 #![feature(set_ptr_value)]
