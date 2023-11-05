@@ -30,8 +30,6 @@ incremental_create_lock =
     incremental compilation: could not create session directory lock file: {$lock_err}
 incremental_create_new = failed to create {$name} at `{$path}`: {$err}
 
-incremental_decode_incr_cache = could not decode incremental cache: {$err}
-
 incremental_delete_full = error deleting incremental compilation session directory `{$path}`: {$err}
 
 incremental_delete_incompatible =

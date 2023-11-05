@@ -30,8 +30,6 @@ pub enum LoadResult<T> {
     DataOutOfDate,
     /// Loading the dep graph failed.
     LoadDepGraph(PathBuf, std::io::Error),
-    /// Decoding loaded incremental cache failed.
-    DecodeIncrCache(Box<dyn std::any::Any + Send>),
 }
 
 impl<T: Default> LoadResult<T> {
@@ -44,9 +42,7 @@ impl<T: Default> LoadResult<T> {
             }
             (
                 Some(IncrementalStateAssertion::Loaded),
-                LoadResult::LoadDepGraph(..)
-                | LoadResult::DecodeIncrCache(..)
-                | LoadResult::DataOutOfDate,
+                LoadResult::LoadDepGraph(..) | LoadResult::DataOutOfDate,
             ) => {
                 sess.emit_fatal(errors::AssertLoaded);
             }
@@ -56,10 +52,6 @@ impl<T: Default> LoadResult<T> {
         match self {
             LoadResult::LoadDepGraph(path, err) => {
                 sess.emit_warning(errors::LoadDepGraph { path, err });
-                Default::default()
-            }
-            LoadResult::DecodeIncrCache(err) => {
-                sess.emit_warning(errors::DecodeIncrCache { err: format!("{err:?}") });
                 Default::default()
             }
             LoadResult::DataOutOfDate => {
@@ -150,7 +142,6 @@ fn load_dep_graph(sess: &Session) -> LoadResult<(SerializedDepGraph, WorkProduct
     match load_data(&path, sess) {
         LoadResult::DataOutOfDate => LoadResult::DataOutOfDate,
         LoadResult::LoadDepGraph(path, err) => LoadResult::LoadDepGraph(path, err),
-        LoadResult::DecodeIncrCache(err) => LoadResult::DecodeIncrCache(err),
         LoadResult::Ok { data: (bytes, start_pos) } => {
             let mut decoder = MemDecoder::new(&bytes, start_pos);
             let prev_commandline_args_hash = u64::decode(&mut decoder);
