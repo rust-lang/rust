@@ -172,8 +172,12 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
                 }
             }
         }
-        "llvm.x86.avx2.vperm2i128" => {
+        "llvm.x86.avx2.vperm2i128"
+        | "llvm.x86.avx.vperm2f128.ps.256"
+        | "llvm.x86.avx.vperm2f128.pd.256" => {
             // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_permute2x128_si256
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_permute2f128_ps
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_permute2f128_pd
             let (a, b, imm8) = match args {
                 [a, b, imm8] => (a, b, imm8),
                 _ => bug!("wrong number of args for intrinsic {intrinsic}"),
@@ -182,19 +186,11 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
             let b = codegen_operand(fx, b);
             let imm8 = codegen_operand(fx, imm8).load_scalar(fx);
 
-            let a_0 = a.value_lane(fx, 0).load_scalar(fx);
-            let a_1 = a.value_lane(fx, 1).load_scalar(fx);
-            let a_low = fx.bcx.ins().iconcat(a_0, a_1);
-            let a_2 = a.value_lane(fx, 2).load_scalar(fx);
-            let a_3 = a.value_lane(fx, 3).load_scalar(fx);
-            let a_high = fx.bcx.ins().iconcat(a_2, a_3);
+            let a_low = a.value_typed_lane(fx, fx.tcx.types.u128, 0).load_scalar(fx);
+            let a_high = a.value_typed_lane(fx, fx.tcx.types.u128, 1).load_scalar(fx);
 
-            let b_0 = b.value_lane(fx, 0).load_scalar(fx);
-            let b_1 = b.value_lane(fx, 1).load_scalar(fx);
-            let b_low = fx.bcx.ins().iconcat(b_0, b_1);
-            let b_2 = b.value_lane(fx, 2).load_scalar(fx);
-            let b_3 = b.value_lane(fx, 3).load_scalar(fx);
-            let b_high = fx.bcx.ins().iconcat(b_2, b_3);
+            let b_low = b.value_typed_lane(fx, fx.tcx.types.u128, 0).load_scalar(fx);
+            let b_high = b.value_typed_lane(fx, fx.tcx.types.u128, 1).load_scalar(fx);
 
             fn select4(
                 fx: &mut FunctionCx<'_, '_, '_>,
@@ -219,16 +215,20 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
 
             let control0 = imm8;
             let res_low = select4(fx, a_high, a_low, b_high, b_low, control0);
-            let (res_0, res_1) = fx.bcx.ins().isplit(res_low);
 
             let control1 = fx.bcx.ins().ushr_imm(imm8, 4);
             let res_high = select4(fx, a_high, a_low, b_high, b_low, control1);
-            let (res_2, res_3) = fx.bcx.ins().isplit(res_high);
 
-            ret.place_lane(fx, 0).to_ptr().store(fx, res_0, MemFlags::trusted());
-            ret.place_lane(fx, 1).to_ptr().store(fx, res_1, MemFlags::trusted());
-            ret.place_lane(fx, 2).to_ptr().store(fx, res_2, MemFlags::trusted());
-            ret.place_lane(fx, 3).to_ptr().store(fx, res_3, MemFlags::trusted());
+            ret.place_typed_lane(fx, fx.tcx.types.u128, 0).to_ptr().store(
+                fx,
+                res_low,
+                MemFlags::trusted(),
+            );
+            ret.place_typed_lane(fx, fx.tcx.types.u128, 1).to_ptr().store(
+                fx,
+                res_high,
+                MemFlags::trusted(),
+            );
         }
         "llvm.x86.ssse3.pabs.b.128" | "llvm.x86.ssse3.pabs.w.128" | "llvm.x86.ssse3.pabs.d.128" => {
             let a = match args {
