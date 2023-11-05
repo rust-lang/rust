@@ -928,7 +928,7 @@ impl<'tcx> WitnessMatrix<'tcx> {
     }
 
     /// Reverses specialization by the `Missing` constructor by pushing a whole new pattern.
-    fn push_pattern(&mut self, pat: &WitnessPat<'tcx>) {
+    fn push_pattern(&mut self, pat: WitnessPat<'tcx>) {
         for witness in self.0.iter_mut() {
             witness.push_pattern(pat.clone())
         }
@@ -940,37 +940,39 @@ impl<'tcx> WitnessMatrix<'tcx> {
         pcx: &PatCtxt<'_, '_, 'tcx>,
         missing_ctors: &[Constructor<'tcx>],
         ctor: &Constructor<'tcx>,
+        report_individual_missing_ctors: bool,
     ) {
         if self.is_empty() {
             return;
         }
-        if matches!(ctor, Constructor::Wildcard) {
-            let pat = WitnessPat::wild_from_ctor(pcx, Constructor::Wildcard);
-            self.push_pattern(&pat);
-        } else if matches!(ctor, Constructor::Missing) {
-            // We got the special `Missing` constructor, so each of the missing constructors gives a
-            // new pattern that is not caught by the match. We list those patterns and push them
-            // onto our current witnesses.
-            if missing_ctors.iter().any(|c| c.is_non_exhaustive()) {
-                // We only report `_` here; listing other constructors would be redundant.
+        if matches!(ctor, Constructor::Missing) {
+            // We got the special `Missing` constructor that stands for the constructors not present
+            // in the match.
+            if !report_individual_missing_ctors {
+                // Report `_` as missing.
+                let pat = WitnessPat::wild_from_ctor(pcx, Constructor::Wildcard);
+                self.push_pattern(pat);
+            } else if missing_ctors.iter().any(|c| c.is_non_exhaustive()) {
+                // We need to report a `_` anyway, so listing other constructors would be redundant.
+                // `NonExhaustive` is displayed as `_` just like `Wildcard`, but it will be picked
+                // up by diagnostics to add a note about why `_` is required here.
                 let pat = WitnessPat::wild_from_ctor(pcx, Constructor::NonExhaustive);
-                self.push_pattern(&pat);
+                self.push_pattern(pat);
             } else {
-                let old_witnesses = std::mem::replace(self, Self::empty());
+                // For each missing constructor `c`, we add a `c(_, _, _)` witness appropriately
+                // filled with wildcards.
+                let mut ret = Self::empty();
                 for ctor in missing_ctors {
                     let pat = WitnessPat::wild_from_ctor(pcx, ctor.clone());
-                    let mut witnesses_with_missing_ctor = old_witnesses.clone();
-                    witnesses_with_missing_ctor.push_pattern(&pat);
-                    self.extend(witnesses_with_missing_ctor)
+                    // Clone `self` and add `c(_, _, _)` to each of its witnesses.
+                    let mut wit_matrix = self.clone();
+                    wit_matrix.push_pattern(pat);
+                    ret.extend(wit_matrix);
                 }
+                *self = ret;
             }
-        } else if !missing_ctors.is_empty() {
-            // `ctor` isn't `Wildcard` or `Missing` and some ctors are missing, so we know
-            // `split_ctors` will contain `Wildcard` or `Missing`.
-            // For diagnostic purposes we choose to discard witnesses we got under `ctor`, which
-            // will let only the `Wildcard` or `Missing` be reported.
-            self.0.clear();
         } else {
+            // Any other constructor we unspecialize as expected.
             for witness in self.0.iter_mut() {
                 witness.apply_constructor(pcx, ctor)
             }
@@ -1027,19 +1029,23 @@ fn compute_exhaustiveness_and_reachability<'p, 'tcx>(
     // Analyze the constructors present in this column.
     let ctors = matrix.heads().map(|p| p.ctor());
     let split_set = ConstructorSet::for_ty(pcx.cx, pcx.ty).split(pcx, ctors);
+
+    let all_missing = split_set.present.is_empty();
+    let always_report_all = is_top_level && !IntRange::is_integral(pcx.ty);
+    // Whether we should report "Enum::A and Enum::C are missing" or "_ is missing".
+    let report_individual_missing_ctors = always_report_all || !all_missing;
+
     let mut split_ctors = split_set.present;
-    // We want to iterate over a full set of constructors, so if any is missing we add a wildcard.
+    let mut only_report_missing = false;
     if !split_set.missing.is_empty() {
-        let all_missing = split_ctors.is_empty();
-        let always_report_missing = is_top_level && !IntRange::is_integral(pcx.ty);
-        let ctor = if all_missing && !always_report_missing {
-            Constructor::Wildcard
-        } else {
-            // Like `Wildcard`, except if it doesn't match a row this will report all the missing
-            // constructors instead of just `_`.
-            Constructor::Missing
-        };
-        split_ctors.push(ctor);
+        // We need to iterate over a full set of constructors, so we add `Missing` to represent the
+        // missing ones. This is explained under "Constructor Splitting" at the top of this file.
+        split_ctors.push(Constructor::Missing);
+        // For diagnostic purposes we choose to only report the constructors that are missing. Since
+        // `Missing` matches only the wildcard rows, it matches fewer rows than any normal
+        // constructor and is therefore guaranteed to result in more witnesses. So skipping the
+        // other constructors does not jeopardize correctness.
+        only_report_missing = true;
     }
 
     let mut ret = WitnessMatrix::empty();
@@ -1050,9 +1056,18 @@ fn compute_exhaustiveness_and_reachability<'p, 'tcx>(
         let mut witnesses = ensure_sufficient_stack(|| {
             compute_exhaustiveness_and_reachability(cx, &mut spec_matrix, false)
         });
-        // Transform witnesses for `spec_matrix` into witnesses for `matrix`.
-        witnesses.apply_constructor(pcx, &split_set.missing, &ctor);
-        ret.extend(witnesses);
+
+        if !only_report_missing || matches!(ctor, Constructor::Missing) {
+            // Transform witnesses for `spec_matrix` into witnesses for `matrix`.
+            witnesses.apply_constructor(
+                pcx,
+                &split_set.missing,
+                &ctor,
+                report_individual_missing_ctors,
+            );
+            // Accumulate the found witnesses.
+            ret.extend(witnesses);
+        }
 
         // A parent row is useful if any of its children is.
         for child_row in spec_matrix.rows() {
@@ -1067,6 +1082,7 @@ fn compute_exhaustiveness_and_reachability<'p, 'tcx>(
             row.head().set_reachable();
         }
     }
+
     ret
 }
 

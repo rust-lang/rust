@@ -72,13 +72,7 @@
 //! The only place where we care about which constructors `Missing` represents is in diagnostics
 //! (see `super::usefulness::WitnessMatrix::apply_constructor`).
 //!
-//! Extra special implementation detail: in fact, in the case where all the constructors are
-//! missing, we replace `Missing` with `Wildcard` to signal this. It only makes a difference for
-//! diagnostics: for `Missing` we list the missing constructors; for `Wildcard` we only output `_`.
-//!
-//! FIXME(Nadrieril): maybe `Missing { report_all: bool }` would be less confusing.
-//!
-//! We choose whether to specialize with `Missing`/`Wildcard` in
+//! We choose whether to specialize with `Missing` in
 //! `super::usefulness::compute_exhaustiveness_and_reachability`.
 //!
 //!
@@ -809,10 +803,16 @@ impl<'tcx> Constructor<'tcx> {
     #[inline]
     pub(super) fn is_covered_by<'p>(&self, pcx: &PatCtxt<'_, 'p, 'tcx>, other: &Self) -> bool {
         match (self, other) {
+            (Wildcard, _) => {
+                span_bug!(
+                    pcx.cx.scrut_span,
+                    "Constructor splitting should not have returned `Wildcard`"
+                )
+            }
             // Wildcards cover anything
             (_, Wildcard) => true,
             // Only a wildcard pattern can match these special constructors.
-            (Wildcard | Missing { .. } | NonExhaustive | Hidden, _) => false,
+            (Missing { .. } | NonExhaustive | Hidden, _) => false,
 
             (Single, Single) => true,
             (Variant(self_id), Variant(other_id)) => self_id == other_id,
