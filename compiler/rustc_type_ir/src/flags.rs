@@ -115,5 +115,8 @@ bitflags! {
 
         /// Does this have `Coroutine` or `CoroutineWitness`?
         const HAS_TY_COROUTINE            = 1 << 23;
+
+        /// Does this have any binders with bound vars (e.g. that need to be anonymized)?
+        const HAS_BINDER_VARS             = 1 << 24;
     }
 }

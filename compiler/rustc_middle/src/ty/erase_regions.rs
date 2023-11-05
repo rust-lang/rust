@@ -20,8 +20,8 @@ impl<'tcx> TyCtxt<'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        // If there's nothing to erase avoid performing the query at all
-        if !value.has_type_flags(TypeFlags::HAS_LATE_BOUND | TypeFlags::HAS_FREE_REGIONS) {
+        // If there's nothing to erase or anonymize, avoid performing the query at all
+        if !value.has_type_flags(TypeFlags::HAS_BINDER_VARS | TypeFlags::HAS_FREE_REGIONS) {
             return value;
         }
         debug!("erase_regions({:?})", value);

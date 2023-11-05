@@ -494,15 +494,11 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for HasTypeFlagsVisitor {
         &mut self,
         t: &Binder<'tcx, T>,
     ) -> ControlFlow<Self::BreakTy> {
-        // If we're looking for any of the HAS_*_LATE_BOUND flags, we need to
-        // additionally consider the bound vars on the binder itself, even if
-        // the contents of a the binder (e.g. a `TraitRef`) doesn't reference
-        // the bound vars.
-        if self.flags.intersects(TypeFlags::HAS_LATE_BOUND) {
-            let bound_var_flags = FlagComputation::bound_var_flags(t.bound_vars());
-            if bound_var_flags.flags.intersects(self.flags) {
-                return ControlFlow::Break(FoundFlags);
-            }
+        // If we're looking for the HAS_BINDER_VARS flag, check if the
+        // binder has vars. This won't be present in the binder's bound
+        // value, so we need to check here too.
+        if self.flags.intersects(TypeFlags::HAS_BINDER_VARS) && !t.bound_vars().is_empty() {
+            return ControlFlow::Break(FoundFlags);
         }
 
         t.super_visit_with(self)
