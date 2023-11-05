@@ -1,3 +1,4 @@
+use ide_db::famous_defs::FamousDefs;
 use syntax::{
     ast::{self, make},
     ted, AstNode,
@@ -5,7 +6,7 @@ use syntax::{
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 
-// Generate proper `index_mut` method body refer to `index` method body may impossible due to the unpredicable case [#15581].
+// FIXME: Generate proper `index_mut` method body refer to `index` method body may impossible due to the unpredicable case [#15581].
 // Here just leave the `index_mut` method body be same as `index` method body, user can modify it manually to meet their need.
 
 // Assist: generate_mut_trait_impl
@@ -13,9 +14,10 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // Adds a IndexMut impl from the `Index` trait.
 //
 // ```
+// # //- minicore: index
 // pub enum Axis { X = 0, Y = 1, Z = 2 }
 //
-// impl<T> Index$0<Axis> for [T; 3] {
+// impl<T> core::ops::Index$0<Axis> for [T; 3] {
 //     type Output = T;
 //
 //     fn index(&self, index: Axis) -> &Self::Output {
@@ -27,13 +29,13 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // ```
 // pub enum Axis { X = 0, Y = 1, Z = 2 }
 //
-// $0impl<T> IndexMut<Axis> for [T; 3] {
+// $0impl<T> core::ops::IndexMut<Axis> for [T; 3] {
 //     fn index_mut(&mut self, index: Axis) -> &mut Self::Output {
 //         &self[index as usize]
 //     }
 // }
 //
-// impl<T> Index<Axis> for [T; 3] {
+// impl<T> core::ops::Index<Axis> for [T; 3] {
 //     type Output = T;
 //
 //     fn index(&self, index: Axis) -> &Self::Output {
@@ -45,9 +47,10 @@ pub(crate) fn generate_mut_trait_impl(acc: &mut Assists, ctx: &AssistContext<'_>
     let impl_def = ctx.find_node_at_offset::<ast::Impl>()?.clone_for_update();
 
     let trait_ = impl_def.trait_()?;
-    if let ast::Type::PathType(trait_type) = trait_.clone() {
-        let trait_name = trait_type.path()?.segment()?.name_ref()?.to_string();
-        if trait_name != "Index" {
+    if let ast::Type::PathType(trait_path) = trait_.clone() {
+        let trait_type = ctx.sema.resolve_trait(&trait_path.path()?)?;
+        let scope = ctx.sema.scope(trait_path.syntax())?;
+        if trait_type != FamousDefs(&ctx.sema, scope.krate()).core_convert_Index()? {
             return None;
         }
     }
@@ -118,9 +121,10 @@ mod tests {
         check_assist(
             generate_mut_trait_impl,
             r#"
+//- minicore: index
 pub enum Axis { X = 0, Y = 1, Z = 2 }
 
-impl<T> Index$0<Axis> for [T; 3] {
+impl<T> core::ops::Index$0<Axis> for [T; 3] {
     type Output = T;
 
     fn index(&self, index: Axis) -> &Self::Output {
@@ -131,13 +135,13 @@ impl<T> Index$0<Axis> for [T; 3] {
             r#"
 pub enum Axis { X = 0, Y = 1, Z = 2 }
 
-$0impl<T> IndexMut<Axis> for [T; 3] {
+$0impl<T> core::ops::IndexMut<Axis> for [T; 3] {
     fn index_mut(&mut self, index: Axis) -> &mut Self::Output {
         &self[index as usize]
     }
 }
 
-impl<T> Index<Axis> for [T; 3] {
+impl<T> core::ops::Index<Axis> for [T; 3] {
     type Output = T;
 
     fn index(&self, index: Axis) -> &Self::Output {
@@ -150,9 +154,10 @@ impl<T> Index<Axis> for [T; 3] {
         check_assist(
             generate_mut_trait_impl,
             r#"
+//- minicore: index
 pub enum Axis { X = 0, Y = 1, Z = 2 }
 
-impl<T> Index$0<Axis> for [T; 3] where T: Copy {
+impl<T> core::ops::Index$0<Axis> for [T; 3] where T: Copy {
     type Output = T;
 
     fn index(&self, index: Axis) -> &Self::Output {
@@ -164,14 +169,14 @@ impl<T> Index$0<Axis> for [T; 3] where T: Copy {
             r#"
 pub enum Axis { X = 0, Y = 1, Z = 2 }
 
-$0impl<T> IndexMut<Axis> for [T; 3] where T: Copy {
+$0impl<T> core::ops::IndexMut<Axis> for [T; 3] where T: Copy {
     fn index_mut(&mut self, index: Axis) -> &mut Self::Output {
         let var_name = &self[index as usize];
         var_name
     }
 }
 
-impl<T> Index<Axis> for [T; 3] where T: Copy {
+impl<T> core::ops::Index<Axis> for [T; 3] where T: Copy {
     type Output = T;
 
     fn index(&self, index: Axis) -> &Self::Output {
@@ -188,7 +193,9 @@ impl<T> Index<Axis> for [T; 3] where T: Copy {
         check_assist_not_applicable(
             generate_mut_trait_impl,
             r#"
-impl<T> Add$0<i32> for [T; 3] {}
+pub trait Index<Idx: ?Sized> {}
+
+impl<T> Index$0<i32> for [T; 3] {}
 "#,
         );
     }

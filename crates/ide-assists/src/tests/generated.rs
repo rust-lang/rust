@@ -1543,9 +1543,10 @@ fn doctest_generate_mut_trait_impl() {
     check_doc_test(
         "generate_mut_trait_impl",
         r#####"
+//- minicore: index
 pub enum Axis { X = 0, Y = 1, Z = 2 }
 
-impl<T> Index$0<Axis> for [T; 3] {
+impl<T> core::ops::Index$0<Axis> for [T; 3] {
     type Output = T;
 
     fn index(&self, index: Axis) -> &Self::Output {
@@ -1556,13 +1557,13 @@ impl<T> Index$0<Axis> for [T; 3] {
         r#####"
 pub enum Axis { X = 0, Y = 1, Z = 2 }
 
-$0impl<T> IndexMut<Axis> for [T; 3] {
+$0impl<T> core::ops::IndexMut<Axis> for [T; 3] {
     fn index_mut(&mut self, index: Axis) -> &mut Self::Output {
         &self[index as usize]
     }
 }
 
-impl<T> Index<Axis> for [T; 3] {
+impl<T> core::ops::Index<Axis> for [T; 3] {
     type Output = T;
 
     fn index(&self, index: Axis) -> &Self::Output {
