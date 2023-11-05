@@ -160,6 +160,7 @@ mod handlers {
     mod generate_getter_or_setter;
     mod generate_impl;
     mod generate_is_empty_from_len;
+    mod generate_mut_trait_impl;
     mod generate_new;
     mod generate_delegate_methods;
     mod generate_trait_from_impl;
@@ -274,6 +275,7 @@ mod handlers {
             generate_function::generate_function,
             generate_impl::generate_impl,
             generate_impl::generate_trait_impl,
+            generate_mut_trait_impl::generate_mut_trait_impl,
             generate_is_empty_from_len::generate_is_empty_from_len,
             generate_new::generate_new,
             generate_trait_from_impl::generate_trait_from_impl,
