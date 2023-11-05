@@ -279,8 +279,10 @@ impl<'thir, 'p, 'tcx> MatchVisitor<'thir, 'p, 'tcx> {
         } else {
             // Check the pattern for some things unrelated to exhaustiveness.
             let refutable = if cx.refutable { Refutable } else { Irrefutable };
-            pat.walk_always(|pat| check_borrow_conflicts_in_at_patterns(self, pat));
-            pat.walk_always(|pat| check_for_bindings_named_same_as_variants(self, pat, refutable));
+            pat.walk_always(|pat| {
+                check_borrow_conflicts_in_at_patterns(self, pat);
+                check_for_bindings_named_same_as_variants(self, pat, refutable);
+            });
             Ok(cx.pattern_arena.alloc(DeconstructedPat::from_pat(cx, pat)))
         }
     }
