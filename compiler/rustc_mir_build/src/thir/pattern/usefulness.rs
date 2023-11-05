@@ -667,16 +667,15 @@ impl<'p, 'tcx> fmt::Debug for PatStack<'p, 'tcx> {
 #[derive(Clone)]
 struct Matrix<'p, 'tcx> {
     rows: Vec<PatStack<'p, 'tcx>>,
+    /// Stores an extra fictitious row full of wildcards. Mostly used to keep track of the type of
+    /// each column. This must obey the same invariants as the real rows.
+    wildcard_row: PatStack<'p, 'tcx>,
 }
 
 impl<'p, 'tcx> Matrix<'p, 'tcx> {
-    /// Make an empty matrix. Internal method, prefer [`Matrix::new`].
-    fn empty() -> Self {
-        Matrix { rows: vec![] }
-    }
     /// Pushes a new row to the matrix. If the row starts with an or-pattern, this recursively
     /// expands it. Internal method, prefer [`Matrix::new`].
-    fn push(&mut self, row: PatStack<'p, 'tcx>) {
+    fn expand_and_push(&mut self, row: PatStack<'p, 'tcx>) {
         if !row.is_empty() && row.head().is_or_pat() {
             // Expand nested or-patterns.
             for new_row in row.expand_or_pat() {
@@ -688,16 +687,46 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
     }
 
     /// Build a new matrix from an iterator of `MatchArm`s.
-    fn new<'a>(iter: impl Iterator<Item = &'a MatchArm<'p, 'tcx>>) -> Self
+    fn new<'a>(
+        cx: &MatchCheckCtxt<'p, 'tcx>,
+        iter: impl Iterator<Item = &'a MatchArm<'p, 'tcx>>,
+        scrut_ty: Ty<'tcx>,
+    ) -> Self
     where
         'p: 'a,
     {
-        let mut matrix = Matrix::empty();
+        let wild_pattern = cx.pattern_arena.alloc(DeconstructedPat::wildcard(scrut_ty, DUMMY_SP));
+        let wildcard_row = PatStack::from_pattern(wild_pattern, usize::MAX, false);
+        let mut matrix = Matrix { rows: vec![], wildcard_row };
         for (row_id, arm) in iter.enumerate() {
             let v = PatStack::from_pattern(arm.pat, row_id, arm.has_guard);
-            matrix.push(v);
+            matrix.expand_and_push(v);
         }
         matrix
+    }
+
+    fn head_ty(&self) -> Option<Ty<'tcx>> {
+        if self.column_count() == 0 {
+            return None;
+        }
+
+        let mut ty = self.wildcard_row.head().ty();
+        // If the type is opaque and it is revealed anywhere in the column, we take the revealed
+        // version. Otherwise we could encounter constructors for the revealed type and crash.
+        let is_opaque = |ty: Ty<'tcx>| matches!(ty.kind(), ty::Alias(ty::Opaque, ..));
+        if is_opaque(ty) {
+            for pat in self.heads() {
+                let pat_ty = pat.ty();
+                if !is_opaque(pat_ty) {
+                    ty = pat_ty;
+                    break;
+                }
+            }
+        }
+        Some(ty)
+    }
+    fn column_count(&self) -> usize {
+        self.wildcard_row.len()
     }
 
     fn rows<'a>(
@@ -726,11 +755,12 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         pcx: &PatCtxt<'_, 'p, 'tcx>,
         ctor: &Constructor<'tcx>,
     ) -> Matrix<'p, 'tcx> {
-        let mut matrix = Matrix::empty();
+        let wildcard_row = self.wildcard_row.pop_head_constructor(pcx, ctor, usize::MAX);
+        let mut matrix = Matrix { rows: vec![], wildcard_row };
         for (i, row) in self.rows().enumerate() {
             if ctor.is_covered_by(pcx, row.head().ctor()) {
                 let new_row = row.pop_head_constructor(pcx, ctor, i);
-                matrix.push(new_row);
+                matrix.expand_and_push(new_row);
             }
         }
         matrix
@@ -965,21 +995,17 @@ impl<'tcx> WitnessMatrix<'tcx> {
 /// - unspecialization, where we lift the results from the previous step into results for this step
 ///     (using `apply_constructor` and by updating `row.reachable` for each parent row).
 /// This is all explained at the top of the file.
-///
-/// `wildcard_row` is a fictitious matrix row that has only wildcards, with the appropriate types to
-/// match what's in the columns of `matrix`.
 #[instrument(level = "debug", skip(cx, is_top_level), ret)]
 fn compute_exhaustiveness_and_reachability<'p, 'tcx>(
     cx: &MatchCheckCtxt<'p, 'tcx>,
     matrix: &mut Matrix<'p, 'tcx>,
-    wildcard_row: &PatStack<'p, 'tcx>,
     is_top_level: bool,
 ) -> WitnessMatrix<'tcx> {
-    debug_assert!(matrix.rows().all(|r| r.len() == wildcard_row.len()));
+    debug_assert!(matrix.rows().all(|r| r.len() == matrix.column_count()));
 
-    if wildcard_row.is_empty() {
-        // The base case. We are morally pattern-matching on (). A row is reachable iff it has no
-        // (unguarded) rows above it.
+    let Some(ty) = matrix.head_ty() else {
+        // The base case: there are no columns in the matrix. We are morally pattern-matching on ().
+        // A row is reachable iff it has no (unguarded) rows above it.
         for row in matrix.rows_mut() {
             // All rows are reachable until we find one without a guard.
             row.reachable = true;
@@ -991,21 +1017,7 @@ fn compute_exhaustiveness_and_reachability<'p, 'tcx>(
         }
         // No (unguarded) rows, so the match is not exhaustive. We return a new witness.
         return WitnessMatrix::unit_witness();
-    }
-
-    let mut ty = wildcard_row.head().ty();
-    // If the type is opaque and it is revealed anywhere in the column, we take the revealed
-    // version. Otherwise we could encounter constructors for the revealed type and crash.
-    let is_opaque = |ty: Ty<'tcx>| matches!(ty.kind(), ty::Alias(ty::Opaque, ..));
-    if is_opaque(ty) {
-        for pat in matrix.heads() {
-            let pat_ty = pat.ty();
-            if !is_opaque(pat_ty) {
-                ty = pat_ty;
-                break;
-            }
-        }
-    }
+    };
 
     debug!("ty: {ty:?}");
     let pcx = &PatCtxt { cx, ty, span: DUMMY_SP, is_top_level };
@@ -1033,9 +1045,8 @@ fn compute_exhaustiveness_and_reachability<'p, 'tcx>(
         debug!("specialize({:?})", ctor);
         // Dig into rows that match `ctor`.
         let mut spec_matrix = matrix.specialize_constructor(pcx, &ctor);
-        let wildcard_row = wildcard_row.pop_head_constructor(pcx, &ctor, usize::MAX);
         let mut witnesses = ensure_sufficient_stack(|| {
-            compute_exhaustiveness_and_reachability(cx, &mut spec_matrix, &wildcard_row, false)
+            compute_exhaustiveness_and_reachability(cx, &mut spec_matrix, false)
         });
         // Transform witnesses for `spec_matrix` into witnesses for `matrix`.
         witnesses.apply_constructor(pcx, &split_set.missing, &ctor);
@@ -1312,11 +1323,9 @@ pub(crate) fn compute_match_usefulness<'p, 'tcx>(
     scrut_ty: Ty<'tcx>,
     scrut_span: Span,
 ) -> UsefulnessReport<'p, 'tcx> {
-    let wild_pattern = cx.pattern_arena.alloc(DeconstructedPat::wildcard(scrut_ty, DUMMY_SP));
-    let wildcard_row = PatStack::from_pattern(wild_pattern, usize::MAX, false);
-    let mut matrix = Matrix::new(arms.iter());
+    let mut matrix = Matrix::new(cx, arms.iter(), scrut_ty);
     let non_exhaustiveness_witnesses =
-        compute_exhaustiveness_and_reachability(cx, &mut matrix, &wildcard_row, true);
+        compute_exhaustiveness_and_reachability(cx, &mut matrix, true);
 
     let non_exhaustiveness_witnesses: Vec<_> = non_exhaustiveness_witnesses.single_column();
     let arm_usefulness: Vec<_> = arms
