@@ -4,6 +4,7 @@ use crate::errors::{
     ParenthesizedFnTraitExpansion,
 };
 use crate::traits::error_reporting::report_object_safety_error;
+use hir::{TraitRef, TypeBinding};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{pluralize, struct_span_err, Applicability, Diagnostic, ErrorGuaranteed};
 use rustc_hir as hir;
@@ -513,6 +514,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         if associated_types.values().all(|v| v.is_empty()) {
             return;
         }
+
         let tcx = self.tcx();
         // FIXME: Marked `mut` so that we can replace the spans further below with a more
         // appropriate one, but this should be handled earlier in the span assignment.
@@ -585,6 +587,19 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
         }
 
+        let bound_names = trait_bounds
+            .iter()
+            .flat_map(|poly_trait_ref| {
+                poly_trait_ref.trait_ref.path.segments.iter().flat_map(|x| {
+                    x.args.iter().flat_map(|args| {
+                        args.bindings.iter().map(|binding| {
+                            (binding.ident.name, (binding, poly_trait_ref.trait_ref))
+                        })
+                    })
+                })
+            })
+            .collect::<FxHashMap<Symbol, (&TypeBinding<'_>, TraitRef<'_>)>>();
+
         let mut names = names
             .into_iter()
             .map(|(trait_, mut assocs)| {
@@ -626,7 +641,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
             let mut dupes = false;
             for item in assoc_items {
-                let prefix = if names[&item.name] > 1 {
+                let prefix = if names[&item.name] > 1 || bound_names.contains_key(&item.name) {
                     let trait_def_id = item.container_id(tcx);
                     dupes = true;
                     format!("{}::", tcx.def_path_str(trait_def_id))
@@ -635,6 +650,18 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 };
                 if let Some(sp) = tcx.hir().span_if_local(item.def_id) {
                     err.span_label(sp, format!("`{}{}` defined here", prefix, item.name));
+                }
+
+                if let Some((shadow, trait_ref)) = bound_names.get(&item.name) {
+                    if let Some(def_id) = trait_ref.path.res.opt_def_id() {
+                        let items = tcx.associated_items(def_id);
+                        for assoc_item in items.filter_by_name_unhygienic(shadow.ident.name) {
+                            err.span_label(
+                                tcx.def_span(assoc_item.def_id),
+                                format!("`{}{}` shadowed here", prefix, item.name),
+                            );
+                        }
+                    }
                 }
             }
             if potential_assoc_types.len() == assoc_items.len() {
