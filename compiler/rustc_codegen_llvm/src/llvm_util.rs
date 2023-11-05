@@ -1,7 +1,7 @@
 use crate::back::write::create_informational_target_machine;
 use crate::errors::{
     PossibleFeature, TargetFeatureDisableOrEnable, UnknownCTargetFeature,
-    UnknownCTargetFeaturePrefix,
+    UnknownCTargetFeaturePrefix, UnstableCTargetFeature,
 };
 use crate::llvm;
 use libc::c_int;
@@ -531,25 +531,34 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
             };
 
             let feature = backend_feature_name(s)?;
-            // Warn against use of LLVM specific feature names on the CLI.
-            if diagnostics && !supported_features.iter().any(|&(v, _)| v == feature) {
-                let rust_feature = supported_features.iter().find_map(|&(rust_feature, _)| {
-                    let llvm_features = to_llvm_features(sess, rust_feature);
-                    if llvm_features.contains(&feature) && !llvm_features.contains(&rust_feature) {
-                        Some(rust_feature)
+            // Warn against use of LLVM specific feature names and unstable features on the CLI.
+            if diagnostics {
+                let feature_state = supported_features.iter().find(|&&(v, _)| v == feature);
+                if feature_state.is_none() {
+                    let rust_feature = supported_features.iter().find_map(|&(rust_feature, _)| {
+                        let llvm_features = to_llvm_features(sess, rust_feature);
+                        if llvm_features.contains(&feature)
+                            && !llvm_features.contains(&rust_feature)
+                        {
+                            Some(rust_feature)
+                        } else {
+                            None
+                        }
+                    });
+                    let unknown_feature = if let Some(rust_feature) = rust_feature {
+                        UnknownCTargetFeature {
+                            feature,
+                            rust_feature: PossibleFeature::Some { rust_feature },
+                        }
                     } else {
-                        None
-                    }
-                });
-                let unknown_feature = if let Some(rust_feature) = rust_feature {
-                    UnknownCTargetFeature {
-                        feature,
-                        rust_feature: PossibleFeature::Some { rust_feature },
-                    }
-                } else {
-                    UnknownCTargetFeature { feature, rust_feature: PossibleFeature::None }
-                };
-                sess.emit_warning(unknown_feature);
+                        UnknownCTargetFeature { feature, rust_feature: PossibleFeature::None }
+                    };
+                    sess.emit_warning(unknown_feature);
+                } else if feature_state.is_some_and(|(_name, feature_gate)| feature_gate.is_some())
+                {
+                    // An unstable feature. Warn about using it.
+                    sess.emit_warning(UnstableCTargetFeature { feature });
+                }
             }
 
             if diagnostics {
