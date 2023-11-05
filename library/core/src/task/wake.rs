@@ -231,6 +231,10 @@ impl fmt::Debug for Context<'_> {
 /// this might be done to wake a future when a blocking function call completes on another
 /// thread.
 ///
+/// Note that it is preferable to use `waker.clone_from(&new_waker)` instead
+/// of `*waker = new_waker.clone()`, as the former will avoid cloning the waker
+/// unnecessarily if the two wakers [wake the same task](Self::will_wake).
+///
 /// [`Future::poll()`]: core::future::Future::poll
 /// [`Poll::Pending`]: core::task::Poll::Pending
 #[cfg_attr(not(doc), repr(transparent))] // work around https://github.com/rust-lang/rust/issues/66401
@@ -302,7 +306,9 @@ impl Waker {
     /// when the `Waker`s would awaken the same task. However, if this function
     /// returns `true`, it is guaranteed that the `Waker`s will awaken the same task.
     ///
-    /// This function is primarily used for optimization purposes.
+    /// This function is primarily used for optimization purposes — for example,
+    /// this type's [`clone_from`](Self::clone_from) implementation uses it to
+    /// avoid cloning the waker when they would wake the same task anyway.
     #[inline]
     #[must_use]
     #[stable(feature = "futures_api", since = "1.36.0")]
@@ -380,6 +386,13 @@ impl Clone for Waker {
             // to initialize `clone` and `data` requiring the user to acknowledge
             // that the contract of [`RawWaker`] is upheld.
             waker: unsafe { (self.waker.vtable.clone)(self.waker.data) },
+        }
+    }
+
+    #[inline]
+    fn clone_from(&mut self, source: &Self) {
+        if !self.will_wake(source) {
+            *self = source.clone();
         }
     }
 }
