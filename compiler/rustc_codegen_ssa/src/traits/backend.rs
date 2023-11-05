@@ -104,11 +104,7 @@ pub trait CodegenBackend {
         outputs: &OutputFilenames,
     ) -> Result<(CodegenResults, FxIndexMap<WorkProductId, WorkProduct>), ErrorGuaranteed>;
 
-    /// This is called on the returned `Box<dyn Any>` from `join_codegen`
-    ///
-    /// # Panics
-    ///
-    /// Panics when the passed `Box<dyn Any>` was not returned by `join_codegen`.
+    /// This is called on the returned `CodegenResults` from `join_codegen`
     fn link(
         &self,
         sess: &Session,
