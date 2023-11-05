@@ -628,7 +628,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         self.infcx.probe(|_snapshot| {
-            if obligation.has_non_region_late_bound() {
+            // FIXME(non_lifetime_binders): Really, we care only to check that we don't
+            // have any non-region *escaping* bound vars, but that's hard to check and
+            // we shouldn't really ever encounter those anyways.
+            if obligation.self_ty().has_non_region_late_bound() {
                 return;
             }
 
