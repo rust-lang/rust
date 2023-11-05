@@ -62,6 +62,14 @@ impl CoverageGraph {
             Self { bcbs, bb_to_bcb, successors, predecessors, dominators: None };
         let dominators = dominators::dominators(&basic_coverage_blocks);
         basic_coverage_blocks.dominators = Some(dominators);
+
+        // The coverage graph's entry-point node (bcb0) always starts with bb0,
+        // which never has predecessors. Any other blocks merged into bcb0 can't
+        // have multiple (coverage-relevant) predecessors, so bcb0 always has
+        // zero in-edges.
+        assert!(basic_coverage_blocks[START_BCB].leader_bb() == mir::START_BLOCK);
+        assert!(basic_coverage_blocks.predecessors[START_BCB].is_empty());
+
         basic_coverage_blocks
     }
 
@@ -211,6 +219,11 @@ impl CoverageGraph {
     /// FIXME: That assumption might not be true for [`TerminatorKind::Yield`]?
     #[inline(always)]
     pub(super) fn bcb_has_multiple_in_edges(&self, bcb: BasicCoverageBlock) -> bool {
+        // Even though bcb0 conceptually has an extra virtual in-edge due to
+        // being the entry point, we've already asserted that it has no _other_
+        // in-edges, so there's no possibility of it having _multiple_ in-edges.
+        // (And since its virtual in-edge doesn't exist in the graph, that edge
+        // can't have a separate counter anyway.)
         self.predecessors[bcb].len() > 1
     }
 }
