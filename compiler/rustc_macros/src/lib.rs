@@ -101,6 +101,7 @@ decl_derive!(
         suggestion_hidden,
         suggestion_verbose)] => diagnostics::session_diagnostic_derive
 );
+
 decl_derive!(
     [LintDiagnostic, attributes(
         // struct attributes

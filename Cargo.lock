@@ -1325,6 +1325,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "fluent"
+version = "0.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "61f69378194459db76abd2ce3952b790db103ceb003008d3d50d97c41ff847a7"
+dependencies = [
+ "fluent-bundle",
+ "unic-langid",
+]
+
+[[package]]
 name = "fluent-bundle"
 version = "0.15.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3772,6 +3782,7 @@ version = "0.0.0"
 dependencies = [
  "annotate-snippets",
  "derive_setters",
+ "fluent",
  "rustc_ast",
  "rustc_ast_pretty",
  "rustc_data_structures",
@@ -3789,6 +3800,7 @@ dependencies = [
  "termcolor",
  "termize",
  "tracing",
+ "unic-langid",
  "unicode-width",
  "windows",
 ]
@@ -4113,6 +4125,7 @@ version = "0.0.0"
 dependencies = [
  "proc-macro2",
  "quote",
+ "regex",
  "syn 2.0.32",
  "synstructure",
 ]

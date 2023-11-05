@@ -4,6 +4,7 @@ use crate::diagnostics::error::{
 use proc_macro::Span;
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote, ToTokens};
+//regex::Regex;
 use std::cell::RefCell;
 use std::collections::{BTreeSet, HashMap};
 use std::fmt;
@@ -27,6 +28,11 @@ pub(crate) fn new_code_ident() -> syn::Ident {
         *count.borrow_mut() += 1;
         ident
     })
+}
+
+pub(crate) fn convert_to_litstr(lit: &proc_macro2::Literal) -> LitStr {
+    let lit_content = format!("{}", lit);
+    LitStr::new(&lit_content[1..lit_content.len() - 1], lit.span())
 }
 
 /// Checks whether the type name of `ty` matches `name`.
@@ -120,6 +126,38 @@ pub(crate) fn report_error_if_not_applied_to_span(
 
     Ok(())
 }
+
+// FIXME(yukang) should use  `build_format` instead?
+// pub(crate) fn format_for_variables(input: &str, map: &HashMap<String, TokenStream>) -> TokenStream {
+//     let re = Regex::new(r"\{\$(.*?)\}").unwrap();
+//     let vars: Vec<String> = re.captures_iter(input).map(|cap| cap[1].to_string()).collect();
+//     if vars.len() > 0 {
+//         let mut result = input.to_string();
+//         for var in vars.iter() {
+//             let old = format!("{{${}}}", var);
+//             let new = format!("{{{}}}", var);
+//             result = result.replace(&old, &new);
+//         }
+//         let padding: Vec<TokenStream> = vars
+//             .iter()
+//             .map(|v| {
+//                 let t =
+//                     if let Some(bind) = map.get(v) { bind.to_owned() } else { quote!("self.{#v}") };
+//                 let field_ident = format_ident!("{}", v);
+//                 quote! {
+//                     #field_ident = #t
+//                 }
+//             })
+//             .collect::<Vec<_>>();
+//         quote! {
+//             format!(#result, #(#padding),*)
+//         }
+//     } else {
+//         quote! {
+//             #input
+//         }
+//     }
+// }
 
 /// Inner type of a field and type of wrapper.
 #[derive(Copy, Clone)]
@@ -601,6 +639,9 @@ pub(super) struct SubdiagnosticVariant {
     pub(super) kind: SubdiagnosticKind,
     pub(super) slug: Option<Path>,
     pub(super) no_span: bool,
+    /// A subdiagnostic can have a text field, e.g. `#[help("some text")]`.
+    /// if `slug` is None, this field need to be set.
+    pub(super) text: Option<LitStr>,
 }
 
 impl SubdiagnosticVariant {
@@ -617,7 +658,6 @@ impl SubdiagnosticVariant {
         }
 
         let span = attr.span().unwrap();
-
         let name = attr.path().segments.last().unwrap().ident.to_string();
         let name = name.as_str();
 
@@ -667,10 +707,25 @@ impl SubdiagnosticVariant {
             }
         };
 
+        // new format without slug: #[label("this is the text")]
+        let keys = vec!["note", "help", "label", "warning"];
+        for key in keys {
+            if attr.path().is_ident(key) {
+                if let Ok(text) = attr.parse_args::<syn::LitStr>() {
+                    return Ok(Some(SubdiagnosticVariant {
+                        kind,
+                        slug: None,
+                        no_span: false,
+                        text: Some(text),
+                    }));
+                }
+            }
+        }
+
         let list = match &attr.meta {
             Meta::List(list) => {
                 // An attribute with properties, such as `#[suggestion(code = "...")]` or
-                // `#[error(some::slug)]`
+                // `#[error(some::slug)]` or `#[error("message")]`
                 list
             }
             Meta::Path(_) => {
@@ -685,7 +740,12 @@ impl SubdiagnosticVariant {
                     | SubdiagnosticKind::Help
                     | SubdiagnosticKind::Warn
                     | SubdiagnosticKind::MultipartSuggestion { .. } => {
-                        return Ok(Some(SubdiagnosticVariant { kind, slug: None, no_span: false }));
+                        return Ok(Some(SubdiagnosticVariant {
+                            kind,
+                            slug: None,
+                            no_span: false,
+                            text: None,
+                        }));
                     }
                     SubdiagnosticKind::Suggestion { .. } => {
                         throw_span_err!(span, "suggestion without `code = \"...\"`")
@@ -699,6 +759,7 @@ impl SubdiagnosticVariant {
 
         let mut code = None;
         let mut suggestion_kind = None;
+        let mut suggestion_label = None;
 
         let mut first = true;
         let mut slug = None;
@@ -740,6 +801,9 @@ impl SubdiagnosticVariant {
             let input = nested.input;
 
             match (nested_name, &mut kind) {
+                ("label", SubdiagnosticKind::Suggestion { .. } | SubdiagnosticKind::MultipartSuggestion { ..}) => {
+                    suggestion_label = Some(get_string!());
+                }
                 ("code", SubdiagnosticKind::Suggestion { code_field, .. }) => {
                     let code_init = build_suggestion_code(
                         code_field,
@@ -840,7 +904,7 @@ impl SubdiagnosticVariant {
             | SubdiagnosticKind::Warn => {}
         }
 
-        Ok(Some(SubdiagnosticVariant { kind, slug, no_span }))
+        Ok(Some(SubdiagnosticVariant { kind, slug, no_span, text: suggestion_label }))
     }
 }
 

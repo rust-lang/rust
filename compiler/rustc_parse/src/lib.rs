@@ -1,5 +1,5 @@
 //! The main parser interface.
-
+//#![feature(pointer_byte_offsets)]
 #![feature(array_windows)]
 #![feature(box_patterns)]
 #![feature(if_let_guard)]

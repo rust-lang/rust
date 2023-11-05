@@ -11,6 +11,7 @@ use crate::diagnostics::utils::{
 };
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
+use syn::LitStr;
 use syn::{spanned::Spanned, Attribute, Meta, MetaList, Path};
 use synstructure::{BindingInfo, Structure, VariantInfo};
 
@@ -183,11 +184,12 @@ impl<'a> FromIterator<&'a SubdiagnosticKind> for KindsStatistics {
 impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
     fn identify_kind(
         &mut self,
-    ) -> Result<Vec<(SubdiagnosticKind, Path, bool)>, DiagnosticDeriveError> {
+    ) -> Result<Vec<(SubdiagnosticKind, Option<Path>, bool, Option<LitStr>)>, DiagnosticDeriveError>
+    {
         let mut kind_slugs = vec![];
 
         for attr in self.variant.ast().attrs {
-            let Some(SubdiagnosticVariant { kind, slug, no_span }) =
+            let Some(SubdiagnosticVariant { kind, slug, no_span, text }) =
                 SubdiagnosticVariant::from_attr(attr, self)?
             else {
                 // Some attributes aren't errors - like documentation comments - but also aren't
@@ -195,19 +197,22 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
                 continue;
             };
 
-            let Some(slug) = slug else {
-                let name = attr.path().segments.last().unwrap().ident.to_string();
-                let name = name.as_str();
-
-                throw_span_err!(
-                    attr.span().unwrap(),
-                    format!(
-                        "diagnostic slug must be first argument of a `#[{name}(...)]` attribute"
-                    )
-                );
-            };
-
-            kind_slugs.push((kind, slug, no_span));
+            match (&slug, &text) {
+                (None, None) => {
+                    throw_span_err!(
+                        attr.span().unwrap(),
+                        "diagnostic slug or text must be first argument of a `#[{name}(...)]` attribute"
+                    );
+                }
+                (Some(_), Some(_)) => {
+                    throw_span_err!(
+                        attr.span().unwrap(),
+                        "diagnostic slug and text cannot both be specified"
+                    );
+                }
+                _ => (),
+            }
+            kind_slugs.push((kind, slug, no_span, text));
         }
 
         Ok(kind_slugs)
@@ -493,7 +498,7 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
         };
 
         let kind_stats: KindsStatistics =
-            kind_slugs.iter().map(|(kind, _slug, _no_span)| kind).collect();
+            kind_slugs.iter().map(|(kind, _slug, _no_span, _text)| kind).collect();
 
         let init = if kind_stats.has_multipart_suggestion {
             quote! { let mut suggestions = Vec::new(); }
@@ -514,11 +519,15 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
         let diag = &self.parent.diag;
         let f = &self.parent.f;
         let mut calls = TokenStream::new();
-        for (kind, slug, no_span) in kind_slugs {
+        for (kind, slug, no_span, text) in kind_slugs {
             let message = format_ident!("__message");
-            calls.extend(
-                quote! { let #message = #f(#diag, crate::fluent_generated::#slug.into()); },
-            );
+            if let Some(slug) = slug {
+                calls.extend(
+                    quote! { let #message = #f(#diag, crate::fluent_generated::#slug.into()); },
+                );
+            } else {
+                calls.extend(quote! { let #message = #f(#diag, #text.into()); });
+            }
 
             let name = format_ident!(
                 "{}{}",
@@ -531,6 +540,7 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
                     applicability,
                     code_init,
                     code_field,
+                    ..
                 } => {
                     self.formatting_init.extend(code_init);
 

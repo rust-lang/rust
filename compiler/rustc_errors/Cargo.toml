@@ -25,6 +25,9 @@ termcolor = "1.2.0"
 termize = "0.1.1"
 tracing = "0.1"
 unicode-width = "0.1.4"
+fluent = "0.16.0"
+unic-langid = {version = "0.9.1", features = ["unic-langid-macros"]}
+
 # tidy-alphabetical-end
 
 [target.'cfg(windows)'.dependencies.windows]
