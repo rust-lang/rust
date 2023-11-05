@@ -5923,7 +5923,6 @@ dependencies = [
 name = "unwind"
 version = "0.0.0"
 dependencies = [
- "cc",
  "cfg-if",
  "compiler_builtins",
  "core",
