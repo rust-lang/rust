@@ -1843,6 +1843,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             let expected_defid = expected_adt.did();
 
                             diagnostic.note(format!("{found_name} and {expected_name} have similar names, but are actually distinct types"));
+                            let have_same_crate_name = self.tcx.crate_name(found_defid.krate)
+                                == self.tcx.crate_name(expected_defid.krate);
                             for (defid, name) in
                                 [(found_defid, found_name), (expected_defid, expected_name)]
                             {
@@ -1862,7 +1864,21 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                                     format!("{name} is defined in the current crate")
                                 } else {
                                     let crate_name = self.tcx.crate_name(defid.krate);
-                                    format!("{name} is defined in crate `{crate_name}`")
+                                    diagnostic.span_note(
+                                        def_span,
+                                        format!("{name} is defined in crate `{crate_name}`"),
+                                    );
+
+                                    // If these are named the same, give a hint about why the compiler thinks they're different.
+                                    if have_same_crate_name {
+                                        let crate_paths = self.tcx.crate_extern_paths(defid.krate);
+                                        diagnostic.note(format!(
+                                            "`{crate_name}` was loaded from {}",
+                                            crate_paths[0].display()
+                                        ));
+                                    }
+
+                                    continue;
                                 };
                                 diagnostic.span_note(def_span, msg);
                             }

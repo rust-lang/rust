@@ -26,6 +26,7 @@ fn test() {
     //[cfail2]~| NOTE arguments to this function are incorrect
     //[cfail2]~| NOTE `Foo` and `circular_dependencies::Foo` have similar names, but are actually distinct types
     //[cfail2]~| NOTE the crate `circular_dependencies` is compiled multiple times, possibly with different configurations
+    //[cfail2]~| NOTE loaded from
     //[cfail2]~| NOTE function defined here
 
     consume_foo(aux::produce_foo());
@@ -33,5 +34,6 @@ fn test() {
     //[cfail2]~| NOTE expected `Foo`, found `circular_dependencies::Foo`
     //[cfail2]~| NOTE arguments to this function are incorrect
     //[cfail2]~| NOTE `circular_dependencies::Foo` and `Foo` have similar names, but are actually distinct types
+    //[cfail2]~| NOTE loaded from
     //[cfail2]~| NOTE the crate `circular_dependencies` is compiled multiple times, possibly with different configurations
 }

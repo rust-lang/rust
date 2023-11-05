@@ -1,0 +1,28 @@
+error[E0308]: mismatched types
+ --> mismatch.rs:5:25
+  |
+5 |     uses_hashbrown::foo(hashbrown::HashMap::default())
+  |     ------------------- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `HashMap`, found `HashMap<_, _, _, _>`
+  |     |
+  |     arguments to this function are incorrect
+  |
+  = note: `hashbrown::HashMap<_, _, _, _>` and `hashbrown::HashMap` have similar names, but are actually distinct types
+note: `hashbrown::HashMap<_, _, _, _>` is defined in crate `hashbrown`
+ --> /rust/deps/hashbrown-VERSION/src/map.rs:190:1
+  = note: `hashbrown` was loaded from BUILD_DIR/HOST/stageN/lib/rustlib/TARGET/lib/libhashbrown.rlib
+note: `hashbrown::HashMap` is defined in crate `hashbrown`
+ --> TEST_DIR/type-mismatch-sysroot-crate/hashbrown.rs:1:1
+  |
+1 | pub struct HashMap;
+  | ^^^^^^^^^^^^^^^^^^
+  = note: `hashbrown` was loaded from BUILD_DIR/HOST/test/run-make/type-mismatch-sysroot-crate/type-mismatch-sysroot-crate/libhashbrown.rlib
+  = note: perhaps two different versions of crate `hashbrown` are being used?
+note: function defined here
+ --> TEST_DIR/type-mismatch-sysroot-crate/uses-hashbrown.rs:1:8
+  |
+1 | pub fn foo(_: hashbrown::HashMap) {}
+  |        ^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

@@ -1798,7 +1798,11 @@ impl<'a> Builder<'a> {
             cargo.env("CFG_VIRTUAL_RUST_SOURCE_BASE_DIR", map_to);
         }
 
-        if self.config.rust_remap_debuginfo {
+        // Users won't have the original cargo registry from the CI builder available, even if they have `rust-src` installed.
+        // Don't show their sources in UI tests even if they're available.
+        // As a happy side-effect, this fixes a few UI tests when download-rustc is enabled.
+        // NOTE: only set this when building std so the error messages are better for rustc itself.
+        if self.config.rust_remap_debuginfo || mode == Mode::Std {
             let mut env_var = OsString::new();
             if self.config.vendor {
                 let vendor = self.build.src.join("vendor");
