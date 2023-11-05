@@ -1114,6 +1114,7 @@ symbols! {
         off,
         offset,
         offset_of,
+        offset_of_enum,
         omit_gdb_pretty_printer_section,
         on,
         on_unimplemented,
