@@ -1404,7 +1404,7 @@ impl<'a> Builder<'a> {
         }
 
         // #[cfg(bootstrap)]
-        let use_new_check_cfg_syntax = self.local_rebuild;
+        let use_new_check_cfg_syntax = stage >= 1;
 
         // Enable compile-time checking of `cfg` names, values and Cargo `features`.
         //
