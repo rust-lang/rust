@@ -647,7 +647,8 @@ pub const fn needs_drop<T: ?Sized>() -> bool {
 #[allow(deprecated)]
 #[rustc_diagnostic_item = "mem_zeroed"]
 #[track_caller]
-pub unsafe fn zeroed<T>() -> T {
+#[rustc_const_stable(feature = "const_mem_zeroed", since = "CURRENT_RUSTC_VERSION")]
+pub const unsafe fn zeroed<T>() -> T {
     // SAFETY: the caller must guarantee that an all-zero value is valid for `T`.
     unsafe {
         intrinsics::assert_zero_valid::<T>();
