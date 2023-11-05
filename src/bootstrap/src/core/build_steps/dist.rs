@@ -1298,10 +1298,18 @@ impl Step for CodegenBackend {
     }
 
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
+        if builder.config.dry_run() {
+            return None;
+        }
+
         // This prevents rustc_codegen_cranelift from being built for "dist"
         // or "install" on the stable/beta channels. It is not yet stable and
         // should not be included.
         if !builder.build.unstable_features() {
+            return None;
+        }
+
+        if !builder.config.rust_codegen_backends.contains(&self.backend) {
             return None;
         }
 
@@ -1343,12 +1351,15 @@ impl Step for CodegenBackend {
         let backends_dst = PathBuf::from("lib").join(&backends_rel);
 
         let backend_name = format!("rustc_codegen_{}", backend);
+        let mut found_backend = false;
         for backend in fs::read_dir(&backends_src).unwrap() {
             let file_name = backend.unwrap().file_name();
             if file_name.to_str().unwrap().contains(&backend_name) {
                 tarball.add_file(backends_src.join(file_name), &backends_dst, 0o644);
+                found_backend = true;
             }
         }
+        assert!(found_backend);
 
         Some(tarball.generate())
     }

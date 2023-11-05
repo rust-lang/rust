@@ -413,11 +413,6 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, car
 
     let mut features = String::new();
 
-    // Cranelift doesn't support `asm`.
-    if stage != 0 && builder.config.default_codegen_backend().unwrap_or_default() == "cranelift" {
-        features += " compiler-builtins-no-asm";
-    }
-
     if builder.no_std(target) == Some(true) {
         features += " compiler-builtins-mem";
         if !target.starts_with("bpf") {

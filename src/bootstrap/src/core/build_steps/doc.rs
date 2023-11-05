@@ -685,19 +685,6 @@ impl Step for Rustc {
             target,
         );
 
-        // This uses a shared directory so that librustdoc documentation gets
-        // correctly built and merged with the rustc documentation. This is
-        // needed because rustdoc is built in a different directory from
-        // rustc. rustdoc needs to be able to see everything, for example when
-        // merging the search index, or generating local (relative) links.
-        let out_dir = builder.stage_out(compiler, Mode::Rustc).join(target.triple).join("doc");
-        t!(fs::create_dir_all(out_dir.parent().unwrap()));
-        symlink_dir_force(&builder.config, &out, &out_dir);
-        // Cargo puts proc macros in `target/doc` even if you pass `--target`
-        // explicitly (https://github.com/rust-lang/cargo/issues/7677).
-        let proc_macro_out_dir = builder.stage_out(compiler, Mode::Rustc).join("doc");
-        symlink_dir_force(&builder.config, &out, &proc_macro_out_dir);
-
         // Build cargo command.
         let mut cargo = builder.cargo(compiler, Mode::Rustc, SourceType::InTree, target, "doc");
         cargo.rustdocflag("--document-private-items");
@@ -724,6 +711,7 @@ impl Step for Rustc {
 
         let mut to_open = None;
 
+        let out_dir = builder.stage_out(compiler, Mode::Rustc).join(target.triple).join("doc");
         for krate in &*self.crates {
             // Create all crate output directories first to make sure rustdoc uses
             // relative links.
@@ -736,7 +724,28 @@ impl Step for Rustc {
             }
         }
 
+        // This uses a shared directory so that librustdoc documentation gets
+        // correctly built and merged with the rustc documentation.
+        //
+        // This is needed because rustdoc is built in a different directory from
+        // rustc. rustdoc needs to be able to see everything, for example when
+        // merging the search index, or generating local (relative) links.
+        symlink_dir_force(&builder.config, &out, &out_dir);
+        // Cargo puts proc macros in `target/doc` even if you pass `--target`
+        // explicitly (https://github.com/rust-lang/cargo/issues/7677).
+        let proc_macro_out_dir = builder.stage_out(compiler, Mode::Rustc).join("doc");
+        symlink_dir_force(&builder.config, &out, &proc_macro_out_dir);
+
         builder.run(&mut cargo.into());
+
+        if !builder.config.dry_run() {
+            // Sanity check on linked compiler crates
+            for krate in &*self.crates {
+                let dir_name = krate.replace("-", "_");
+                // Making sure the directory exists and is not empty.
+                assert!(out.join(&*dir_name).read_dir().unwrap().next().is_some());
+            }
+        }
 
         if builder.paths.iter().any(|path| path.ends_with("compiler")) {
             // For `x.py doc compiler --open`, open `rustc_middle` by default.
@@ -756,10 +765,10 @@ macro_rules! tool_doc {
         $should_run: literal,
         $path: literal,
         $(rustc_tool = $rustc_tool:literal, )?
-        $(in_tree = $in_tree:literal, )?
-        [$($extra_arg: literal),+ $(,)?]
-        $(,)?
-    ) => {
+        $(in_tree = $in_tree:literal ,)?
+        $(is_library = $is_library:expr,)?
+        $(crates = $crates:expr)?
+       ) => {
         #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
         pub struct $tool {
             target: TargetSelection,
@@ -812,17 +821,6 @@ macro_rules! tool_doc {
                     SourceType::Submodule
                 };
 
-                // Symlink compiler docs to the output directory of rustdoc documentation.
-                let out_dirs = [
-                    builder.stage_out(compiler, Mode::ToolRustc).join(target.triple).join("doc"),
-                    // Cargo uses a different directory for proc macros.
-                    builder.stage_out(compiler, Mode::ToolRustc).join("doc"),
-                ];
-                for out_dir in out_dirs {
-                    t!(fs::create_dir_all(&out_dir));
-                    symlink_dir_force(&builder.config, &out, &out_dir);
-                }
-
                 // Build cargo command.
                 let mut cargo = prepare_tool_cargo(
                     builder,
@@ -839,9 +837,13 @@ macro_rules! tool_doc {
                 // Only include compiler crates, no dependencies of those, such as `libc`.
                 cargo.arg("--no-deps");
 
-                $(
-                    cargo.arg($extra_arg);
-                )+
+                if false $(|| $is_library)? {
+                    cargo.arg("--lib");
+                }
+
+                $(for krate in $crates {
+                    cargo.arg("-p").arg(krate);
+                })?
 
                 cargo.rustdocflag("--document-private-items");
                 // Since we always pass --document-private-items, there's no need to warn about linking to private items.
@@ -851,62 +853,69 @@ macro_rules! tool_doc {
                 cargo.rustdocflag("--generate-link-to-definition");
                 cargo.rustdocflag("-Zunstable-options");
 
+                let out_dir = builder.stage_out(compiler, Mode::ToolRustc).join(target.triple).join("doc");
+                $(for krate in $crates {
+                    let dir_name = krate.replace("-", "_");
+                    t!(fs::create_dir_all(out_dir.join(&*dir_name)));
+                })?
+
+                // Symlink compiler docs to the output directory of rustdoc documentation.
+                symlink_dir_force(&builder.config, &out, &out_dir);
+                let proc_macro_out_dir = builder.stage_out(compiler, Mode::ToolRustc).join("doc");
+                symlink_dir_force(&builder.config, &out, &proc_macro_out_dir);
+
                 let _guard = builder.msg_doc(compiler, stringify!($tool).to_lowercase(), target);
                 builder.run(&mut cargo.into());
+
+                if !builder.config.dry_run() {
+                    // Sanity check on linked doc directories
+                    $(for krate in $crates {
+                        let dir_name = krate.replace("-", "_");
+                        // Making sure the directory exists and is not empty.
+                        assert!(out.join(&*dir_name).read_dir().unwrap().next().is_some());
+                    })?
+                }
             }
         }
     }
 }
 
-tool_doc!(
-    Rustdoc,
-    "rustdoc-tool",
-    "src/tools/rustdoc",
-    ["-p", "rustdoc", "-p", "rustdoc-json-types"]
-);
+tool_doc!(Rustdoc, "rustdoc-tool", "src/tools/rustdoc", crates = ["rustdoc", "rustdoc-json-types"]);
 tool_doc!(
     Rustfmt,
     "rustfmt-nightly",
     "src/tools/rustfmt",
-    ["-p", "rustfmt-nightly", "-p", "rustfmt-config_proc_macro"],
+    crates = ["rustfmt-nightly", "rustfmt-config_proc_macro"]
 );
-tool_doc!(Clippy, "clippy", "src/tools/clippy", ["-p", "clippy_utils"]);
-tool_doc!(Miri, "miri", "src/tools/miri", ["-p", "miri"]);
+tool_doc!(Clippy, "clippy", "src/tools/clippy", crates = ["clippy_utils"]);
+tool_doc!(Miri, "miri", "src/tools/miri", crates = ["miri"]);
 tool_doc!(
     Cargo,
     "cargo",
     "src/tools/cargo",
     rustc_tool = false,
     in_tree = false,
-    [
-        "-p",
+    crates = [
         "cargo",
-        "-p",
         "cargo-platform",
-        "-p",
         "cargo-util",
-        "-p",
         "crates-io",
-        "-p",
         "cargo-test-macro",
-        "-p",
         "cargo-test-support",
-        "-p",
         "cargo-credential",
-        "-p",
         "mdman",
         // FIXME: this trips a license check in tidy.
-        // "-p",
         // "resolver-tests",
     ]
 );
-tool_doc!(Tidy, "tidy", "src/tools/tidy", rustc_tool = false, ["-p", "tidy"]);
+tool_doc!(Tidy, "tidy", "src/tools/tidy", rustc_tool = false, crates = ["tidy"]);
 tool_doc!(
     Bootstrap,
     "bootstrap",
     "src/bootstrap",
     rustc_tool = false,
-    ["--lib", "-p", "bootstrap"]
+    is_library = true,
+    crates = ["bootstrap"]
 );
 
 #[derive(Ord, PartialOrd, Debug, Copy, Clone, Hash, PartialEq, Eq)]
