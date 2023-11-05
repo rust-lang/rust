@@ -26,6 +26,9 @@ cfg_if::cfg_if! {
     ))] {
         mod libunwind;
         pub use libunwind::*;
+    } else if #[cfg(target_os = "xous")] {
+        mod unwinding;
+        pub use unwinding::*;
     } else {
         // no unwinder on the system!
         // - wasm32 (not emscripten, which is "unix" family)
