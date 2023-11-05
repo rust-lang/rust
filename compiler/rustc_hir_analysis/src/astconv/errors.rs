@@ -9,7 +9,7 @@ use rustc_errors::{pluralize, struct_span_err, Applicability, Diagnostic, ErrorG
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::traits::FulfillmentError;
-use rustc_middle::ty::{self, suggest_constraining_type_param, Ty, TyCtxt};
+use rustc_middle::ty::{self, suggest_constraining_type_param, AssocItem, AssocKind, Ty, TyCtxt};
 use rustc_session::parse::feature_err;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::symbol::{sym, Ident};
@@ -509,6 +509,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         if associated_types.values().all(|v| v.is_empty()) {
             return;
         }
+
         let tcx = self.tcx();
         // FIXME: Marked `mut` so that we can replace the spans further below with a more
         // appropriate one, but this should be handled earlier in the span assignment.
@@ -581,6 +582,32 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
         }
 
+        // We get all the associated items that _are_ set,
+        // so that we can check if any of their names match one of the ones we are missing.
+        // This would mean that they are shadowing the associated type we are missing,
+        // and we can then use their span to indicate this to the user.
+        let bound_names = trait_bounds
+            .iter()
+            .filter_map(|poly_trait_ref| {
+                let path = poly_trait_ref.trait_ref.path.segments.last()?;
+                let args = path.args?;
+
+                Some(args.bindings.iter().filter_map(|binding| {
+                    let ident = binding.ident;
+                    let trait_def = path.res.def_id();
+                    let assoc_item = tcx.associated_items(trait_def).find_by_name_and_kind(
+                        tcx,
+                        ident,
+                        AssocKind::Type,
+                        trait_def,
+                    );
+
+                    Some((ident.name, assoc_item?))
+                }))
+            })
+            .flatten()
+            .collect::<FxHashMap<Symbol, &AssocItem>>();
+
         let mut names = names
             .into_iter()
             .map(|(trait_, mut assocs)| {
@@ -621,16 +648,42 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 *names.entry(item.name).or_insert(0) += 1;
             }
             let mut dupes = false;
+            let mut shadows = false;
             for item in assoc_items {
                 let prefix = if names[&item.name] > 1 {
                     let trait_def_id = item.container_id(tcx);
                     dupes = true;
                     format!("{}::", tcx.def_path_str(trait_def_id))
+                } else if bound_names.get(&item.name).is_some_and(|x| x != &item) {
+                    let trait_def_id = item.container_id(tcx);
+                    shadows = true;
+                    format!("{}::", tcx.def_path_str(trait_def_id))
                 } else {
                     String::new()
                 };
+
+                let mut is_shadowed = false;
+
+                if let Some(assoc_item) = bound_names.get(&item.name)
+                    && assoc_item != &item
+                {
+                    is_shadowed = true;
+
+                    let rename_message =
+                        if assoc_item.def_id.is_local() { ", consider renaming it" } else { "" };
+                    err.span_label(
+                        tcx.def_span(assoc_item.def_id),
+                        format!("`{}{}` shadowed here{}", prefix, item.name, rename_message),
+                    );
+                }
+
+                let rename_message = if is_shadowed { ", consider renaming it" } else { "" };
+
                 if let Some(sp) = tcx.hir().span_if_local(item.def_id) {
-                    err.span_label(sp, format!("`{}{}` defined here", prefix, item.name));
+                    err.span_label(
+                        sp,
+                        format!("`{}{}` defined here{}", prefix, item.name, rename_message),
+                    );
                 }
             }
             if potential_assoc_types.len() == assoc_items.len() {
@@ -638,8 +691,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 // extra type arguments present. A suggesting to replace the generic args with
                 // associated types is already emitted.
                 already_has_generics_args_suggestion = true;
-            } else if let (Ok(snippet), false) =
-                (tcx.sess.source_map().span_to_snippet(*span), dupes)
+            } else if let (Ok(snippet), false, false) =
+                (tcx.sess.source_map().span_to_snippet(*span), dupes, shadows)
             {
                 let types: Vec<_> =
                     assoc_items.iter().map(|item| format!("{} = Type", item.name)).collect();
@@ -721,6 +774,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 err.span_help(where_constraints, where_msg);
             }
         }
+
         err.emit();
     }
 }
