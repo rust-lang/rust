@@ -304,7 +304,9 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
                 fx.bcx.ins().sshr(a_lane, saturated_count)
             });
         }
-        "llvm.x86.sse2.psad.bw" => {
+        "llvm.x86.sse2.psad.bw" | "llvm.x86.avx2.psad.bw" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_sad_epu8&ig_expand=5770
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_sad_epu8&ig_expand=5771
             intrinsic_args!(fx, args => (a, b); intrinsic);
 
             assert_eq!(a.layout(), b.layout());
@@ -335,7 +337,9 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
                 ret.place_lane(fx, out_lane_idx).write_cvalue(fx, res_lane);
             }
         }
-        "llvm.x86.ssse3.pmadd.ub.sw.128" => {
+        "llvm.x86.ssse3.pmadd.ub.sw.128" | "llvm.x86.avx2.pmadd.ub.sw" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maddubs_epi16&ig_expand=4267
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_maddubs_epi16&ig_expand=4270
             intrinsic_args!(fx, args => (a, b); intrinsic);
 
             let (lane_count, lane_ty) = a.layout().ty.simd_size_and_type(fx.tcx);
@@ -374,7 +378,9 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
                 ret.place_lane(fx, out_lane_idx).write_cvalue(fx, res_lane);
             }
         }
-        "llvm.x86.sse2.pmadd.wd" => {
+        "llvm.x86.sse2.pmadd.wd" | "llvm.x86.avx2.pmadd.wd" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_madd_epi16&ig_expand=4231
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_madd_epi16&ig_expand=4234
             intrinsic_args!(fx, args => (a, b); intrinsic);
 
             assert_eq!(a.layout(), b.layout());
