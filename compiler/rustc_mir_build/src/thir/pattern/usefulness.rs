@@ -521,8 +521,12 @@ pub(crate) struct MatchCheckCtxt<'p, 'tcx> {
     pub(crate) module: DefId,
     pub(crate) param_env: ty::ParamEnv<'tcx>,
     pub(crate) pattern_arena: &'p TypedArena<DeconstructedPat<'p, 'tcx>>,
+    /// Lint level at the match.
+    pub(crate) match_lint_level: HirId,
     /// The span of the whole match, if applicable.
     pub(crate) match_span: Option<Span>,
+    /// Span of the scrutinee.
+    pub(crate) scrut_span: Span,
     /// Only produce `NON_EXHAUSTIVE_OMITTED_PATTERNS` lint on refutable patterns.
     pub(crate) refutable: bool,
 }
@@ -552,8 +556,6 @@ pub(super) struct PatCtxt<'a, 'p, 'tcx> {
     pub(super) cx: &'a MatchCheckCtxt<'p, 'tcx>,
     /// Type of the current column under investigation.
     pub(super) ty: Ty<'tcx>,
-    /// Span of the current pattern under investigation.
-    pub(super) span: Span,
     /// Whether the current pattern is the whole pattern as found in a match arm, or if it's a
     /// subpattern.
     pub(super) is_top_level: bool,
@@ -1020,7 +1022,7 @@ fn compute_exhaustiveness_and_reachability<'p, 'tcx>(
     };
 
     debug!("ty: {ty:?}");
-    let pcx = &PatCtxt { cx, ty, span: DUMMY_SP, is_top_level };
+    let pcx = &PatCtxt { cx, ty, is_top_level };
 
     // Analyze the constructors present in this column.
     let ctors = matrix.heads().map(|p| p.ctor());
@@ -1169,7 +1171,7 @@ fn collect_nonexhaustive_missing_variants<'p, 'tcx>(
     let Some(ty) = column.head_ty() else {
         return Vec::new();
     };
-    let pcx = &PatCtxt { cx, ty, span: DUMMY_SP, is_top_level: false };
+    let pcx = &PatCtxt { cx, ty, is_top_level: false };
 
     let set = column.analyze_ctors(pcx);
     if set.present.is_empty() {
@@ -1210,16 +1212,15 @@ fn collect_nonexhaustive_missing_variants<'p, 'tcx>(
 }
 
 /// Traverse the patterns to warn the user about ranges that overlap on their endpoints.
-#[instrument(level = "debug", skip(cx, lint_root))]
+#[instrument(level = "debug", skip(cx))]
 fn lint_overlapping_range_endpoints<'p, 'tcx>(
     cx: &MatchCheckCtxt<'p, 'tcx>,
     column: &PatternColumn<'p, 'tcx>,
-    lint_root: HirId,
 ) {
     let Some(ty) = column.head_ty() else {
         return;
     };
-    let pcx = &PatCtxt { cx, ty, span: DUMMY_SP, is_top_level: false };
+    let pcx = &PatCtxt { cx, ty, is_top_level: false };
 
     let set = column.analyze_ctors(pcx);
 
@@ -1233,7 +1234,7 @@ fn lint_overlapping_range_endpoints<'p, 'tcx>(
                 .collect();
             cx.tcx.emit_spanned_lint(
                 lint::builtin::OVERLAPPING_RANGE_ENDPOINTS,
-                lint_root,
+                cx.match_lint_level,
                 this_span,
                 OverlappingRangeEndpoints { overlap: overlaps, range: this_span },
             );
@@ -1278,7 +1279,7 @@ fn lint_overlapping_range_endpoints<'p, 'tcx>(
         // Recurse into the fields.
         for ctor in set.present {
             for col in column.specialize(pcx, &ctor) {
-                lint_overlapping_range_endpoints(cx, &col, lint_root);
+                lint_overlapping_range_endpoints(cx, &col);
             }
         }
     }
@@ -1319,9 +1320,7 @@ pub(crate) struct UsefulnessReport<'p, 'tcx> {
 pub(crate) fn compute_match_usefulness<'p, 'tcx>(
     cx: &MatchCheckCtxt<'p, 'tcx>,
     arms: &[MatchArm<'p, 'tcx>],
-    lint_root: HirId,
     scrut_ty: Ty<'tcx>,
-    scrut_span: Span,
 ) -> UsefulnessReport<'p, 'tcx> {
     let mut matrix = Matrix::new(cx, arms.iter(), scrut_ty);
     let non_exhaustiveness_witnesses =
@@ -1345,13 +1344,13 @@ pub(crate) fn compute_match_usefulness<'p, 'tcx>(
 
     let pat_column = PatternColumn::new(matrix.heads().collect());
     // Lint on ranges that overlap on their endpoints, which is likely a mistake.
-    lint_overlapping_range_endpoints(cx, &pat_column, lint_root);
+    lint_overlapping_range_endpoints(cx, &pat_column);
 
     // Run the non_exhaustive_omitted_patterns lint. Only run on refutable patterns to avoid hitting
     // `if let`s. Only run if the match is exhaustive otherwise the error is redundant.
     if cx.refutable && report.non_exhaustiveness_witnesses.is_empty() {
         if !matches!(
-            cx.tcx.lint_level_at_node(NON_EXHAUSTIVE_OMITTED_PATTERNS, lint_root).0,
+            cx.tcx.lint_level_at_node(NON_EXHAUSTIVE_OMITTED_PATTERNS, cx.match_lint_level).0,
             rustc_session::lint::Level::Allow
         ) {
             let witnesses = collect_nonexhaustive_missing_variants(cx, &pat_column);
@@ -1362,11 +1361,11 @@ pub(crate) fn compute_match_usefulness<'p, 'tcx>(
                 // NB: The partner lint for structs lives in `compiler/rustc_hir_analysis/src/check/pat.rs`.
                 cx.tcx.emit_spanned_lint(
                     NON_EXHAUSTIVE_OMITTED_PATTERNS,
-                    lint_root,
-                    scrut_span,
+                    cx.match_lint_level,
+                    cx.scrut_span,
                     NonExhaustiveOmittedPattern {
                         scrut_ty,
-                        uncovered: Uncovered::new(scrut_span, cx, witnesses),
+                        uncovered: Uncovered::new(cx.scrut_span, cx, witnesses),
                     },
                 );
             }

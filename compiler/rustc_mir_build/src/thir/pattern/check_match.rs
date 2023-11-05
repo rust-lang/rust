@@ -291,6 +291,7 @@ impl<'thir, 'p, 'tcx> MatchVisitor<'thir, 'p, 'tcx> {
         &self,
         refutability: RefutableFlag,
         match_span: Option<Span>,
+        scrut_span: Span,
     ) -> MatchCheckCtxt<'p, 'tcx> {
         let refutable = match refutability {
             Irrefutable => false,
@@ -301,7 +302,9 @@ impl<'thir, 'p, 'tcx> MatchVisitor<'thir, 'p, 'tcx> {
             param_env: self.param_env,
             module: self.tcx.parent_module(self.lint_level).to_def_id(),
             pattern_arena: self.pattern_arena,
+            match_lint_level: self.lint_level,
             match_span,
+            scrut_span,
             refutable,
         }
     }
@@ -332,7 +335,8 @@ impl<'thir, 'p, 'tcx> MatchVisitor<'thir, 'p, 'tcx> {
         source: hir::MatchSource,
         expr_span: Span,
     ) {
-        let cx = self.new_cx(Refutable, Some(expr_span));
+        let scrut = &self.thir[scrut];
+        let cx = self.new_cx(Refutable, Some(expr_span), scrut.span);
 
         let mut tarms = Vec::with_capacity(arms.len());
         for &arm in arms {
@@ -348,9 +352,8 @@ impl<'thir, 'p, 'tcx> MatchVisitor<'thir, 'p, 'tcx> {
             }
         }
 
-        let scrut = &self.thir[scrut];
         let scrut_ty = scrut.ty;
-        let report = compute_match_usefulness(&cx, &tarms, self.lint_level, scrut_ty, scrut.span);
+        let report = compute_match_usefulness(&cx, &tarms, scrut_ty);
 
         match source {
             // Don't report arm reachability of desugared `match $iter.into_iter() { iter => .. }`
@@ -455,10 +458,10 @@ impl<'thir, 'p, 'tcx> MatchVisitor<'thir, 'p, 'tcx> {
         pat: &Pat<'tcx>,
         refutability: RefutableFlag,
     ) -> Result<(MatchCheckCtxt<'p, 'tcx>, UsefulnessReport<'p, 'tcx>), ErrorGuaranteed> {
-        let cx = self.new_cx(refutability, None);
+        let cx = self.new_cx(refutability, None, pat.span);
         let pat = self.lower_pattern(&cx, pat)?;
         let arms = [MatchArm { pat, hir_id: self.lint_level, has_guard: false }];
-        let report = compute_match_usefulness(&cx, &arms, self.lint_level, pat.ty(), pat.span());
+        let report = compute_match_usefulness(&cx, &arms, pat.ty());
         Ok((cx, report))
     }
 
