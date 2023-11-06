@@ -676,11 +676,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 already_has_generics_args_suggestion = true;
             } else if shadows {
                 for item in assoc_items {
-                    if let Some(sp) = tcx.hir().span_if_local(item.def_id) {
-                        rename_suggestions.push(sp);
-                    }
-
                     if let Some(Some(assoc_item)) = bound_names.get(&item.name) {
+                        if let Some(sp) = tcx.hir().span_if_local(item.def_id) {
+                            rename_suggestions.push(sp);
+                        }
+
                         if let Some(sp) = tcx.hir().span_if_local(assoc_item.def_id) {
                             rename_suggestions.push(sp);
                         }
