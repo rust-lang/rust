@@ -1248,6 +1248,24 @@ pub(crate) struct ParenthesesInForHeadSugg {
 }
 
 #[derive(Diagnostic)]
+#[diag(parse_unexpected_parentheses_in_match_arm_pattern)]
+pub(crate) struct ParenthesesInMatchPat {
+    #[primary_span]
+    pub span: Vec<Span>,
+    #[subdiagnostic]
+    pub sugg: ParenthesesInMatchPatSugg,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(parse_suggestion, applicability = "machine-applicable")]
+pub(crate) struct ParenthesesInMatchPatSugg {
+    #[suggestion_part(code = "")]
+    pub left: Span,
+    #[suggestion_part(code = "")]
+    pub right: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(parse_doc_comment_on_param_type)]
 pub(crate) struct DocCommentOnParamType {
     #[primary_span]

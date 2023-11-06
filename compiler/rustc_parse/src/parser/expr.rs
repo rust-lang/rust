@@ -9,7 +9,7 @@ use super::{
 use crate::errors;
 use crate::maybe_recover_from_interpolated_ty_qpath;
 use ast::mut_visit::{noop_visit_expr, MutVisitor};
-use ast::{GenBlockKind, Path, PathSegment};
+use ast::{GenBlockKind, Pat, Path, PathSegment};
 use core::mem;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Token, TokenKind};
@@ -2853,47 +2853,10 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn parse_arm(&mut self) -> PResult<'a, Arm> {
-        // Used to check the `let_chains` and `if_let_guard` features mostly by scanning
-        // `&&` tokens.
-        fn check_let_expr(expr: &Expr) -> (bool, bool) {
-            match &expr.kind {
-                ExprKind::Binary(BinOp { node: BinOpKind::And, .. }, lhs, rhs) => {
-                    let lhs_rslt = check_let_expr(lhs);
-                    let rhs_rslt = check_let_expr(rhs);
-                    (lhs_rslt.0 || rhs_rslt.0, false)
-                }
-                ExprKind::Let(..) => (true, true),
-                _ => (false, true),
-            }
-        }
         let attrs = self.parse_outer_attributes()?;
         self.collect_tokens_trailing_token(attrs, ForceCollect::No, |this, attrs| {
             let lo = this.token.span;
-            let pat = this.parse_pat_allow_top_alt(
-                None,
-                RecoverComma::Yes,
-                RecoverColon::Yes,
-                CommaRecoveryMode::EitherTupleOrPipe,
-            )?;
-            let guard = if this.eat_keyword(kw::If) {
-                let if_span = this.prev_token.span;
-                let mut cond = this.parse_match_guard_condition()?;
-
-                CondChecker { parser: this, forbid_let_reason: None }.visit_expr(&mut cond);
-
-                let (has_let_expr, does_not_have_bin_op) = check_let_expr(&cond);
-                if has_let_expr {
-                    if does_not_have_bin_op {
-                        // Remove the last feature gating of a `let` expression since it's stable.
-                        this.sess.gated_spans.ungate_last(sym::let_chains, cond.span);
-                    }
-                    let span = if_span.to(cond.span);
-                    this.sess.gated_spans.gate(sym::if_let_guard, span);
-                }
-                Some(cond)
-            } else {
-                None
-            };
+            let (pat, guard) = this.parse_match_arm_pat_and_guard()?;
             let arrow_span = this.token.span;
             if let Err(mut err) = this.expect(&token::FatArrow) {
                 // We might have a `=>` -> `=` or `->` typo (issue #89396).
@@ -3021,6 +2984,87 @@ impl<'a> Parser<'a> {
                 TrailingToken::None,
             ))
         })
+    }
+
+    fn parse_match_arm_guard(&mut self) -> PResult<'a, Option<P<Expr>>> {
+        // Used to check the `let_chains` and `if_let_guard` features mostly by scanning
+        // `&&` tokens.
+        fn check_let_expr(expr: &Expr) -> (bool, bool) {
+            match &expr.kind {
+                ExprKind::Binary(BinOp { node: BinOpKind::And, .. }, lhs, rhs) => {
+                    let lhs_rslt = check_let_expr(lhs);
+                    let rhs_rslt = check_let_expr(rhs);
+                    (lhs_rslt.0 || rhs_rslt.0, false)
+                }
+                ExprKind::Let(..) => (true, true),
+                _ => (false, true),
+            }
+        }
+        if !self.eat_keyword(kw::If) {
+            // No match arm guard present.
+            return Ok(None);
+        }
+
+        let if_span = self.prev_token.span;
+        let mut cond = self.parse_match_guard_condition()?;
+
+        CondChecker { parser: self, forbid_let_reason: None }.visit_expr(&mut cond);
+
+        let (has_let_expr, does_not_have_bin_op) = check_let_expr(&cond);
+        if has_let_expr {
+            if does_not_have_bin_op {
+                // Remove the last feature gating of a `let` expression since it's stable.
+                self.sess.gated_spans.ungate_last(sym::let_chains, cond.span);
+            }
+            let span = if_span.to(cond.span);
+            self.sess.gated_spans.gate(sym::if_let_guard, span);
+        }
+        Ok(Some(cond))
+    }
+
+    fn parse_match_arm_pat_and_guard(&mut self) -> PResult<'a, (P<Pat>, Option<P<Expr>>)> {
+        if self.token.kind == token::OpenDelim(Delimiter::Parenthesis) {
+            // Detect and recover from `($pat if $cond) => $arm`.
+            let left = self.token.span;
+            match self.parse_pat_allow_top_alt(
+                None,
+                RecoverComma::Yes,
+                RecoverColon::Yes,
+                CommaRecoveryMode::EitherTupleOrPipe,
+            ) {
+                Ok(pat) => Ok((pat, self.parse_match_arm_guard()?)),
+                Err(err) if let prev_sp = self.prev_token.span && let true = self.eat_keyword(kw::If) => {
+                    // We know for certain we've found `($pat if` so far.
+                    let mut cond = match self.parse_match_guard_condition() {
+                        Ok(cond) => cond,
+                        Err(cond_err) => {
+                            cond_err.cancel();
+                            return Err(err);
+                        }
+                    };
+                    err.cancel();
+                    CondChecker { parser: self, forbid_let_reason: None }.visit_expr(&mut cond);
+                    self.eat_to_tokens(&[&token::CloseDelim(Delimiter::Parenthesis)]);
+                    self.expect(&token::CloseDelim(Delimiter::Parenthesis))?;
+                    let right = self.prev_token.span;
+                    self.sess.emit_err(errors::ParenthesesInMatchPat {
+                        span: vec![left, right],
+                        sugg: errors::ParenthesesInMatchPatSugg { left, right },
+                    });
+                    Ok((self.mk_pat(left.to(prev_sp), ast::PatKind::Wild), Some(cond)))
+                }
+                Err(err) => Err(err),
+            }
+        } else {
+            // Regular parser flow:
+            let pat = self.parse_pat_allow_top_alt(
+                None,
+                RecoverComma::Yes,
+                RecoverColon::Yes,
+                CommaRecoveryMode::EitherTupleOrPipe,
+            )?;
+            Ok((pat, self.parse_match_arm_guard()?))
+        }
     }
 
     fn parse_match_guard_condition(&mut self) -> PResult<'a, P<Expr>> {
