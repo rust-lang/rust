@@ -127,7 +127,7 @@ fn configure_and_expand(
     let tcx = resolver.tcx();
     let sess = tcx.sess;
     let features = tcx.features();
-    let lint_store = unerased_lint_store(tcx);
+    let lint_store = unerased_lint_store(&tcx.sess);
     let crate_name = tcx.crate_name(LOCAL_CRATE);
     let lint_check_node = (&krate, pre_configured_attrs);
     pre_expansion_lint(
@@ -319,7 +319,7 @@ fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {
         }
     });
 
-    let lint_store = unerased_lint_store(tcx);
+    let lint_store = unerased_lint_store(&tcx.sess);
     rustc_lint::check_ast_node(
         sess,
         tcx.features(),
@@ -634,7 +634,6 @@ pub fn create_global_ctxt<'tcx>(
     compiler: &'tcx Compiler,
     crate_types: Vec<CrateType>,
     stable_crate_id: StableCrateId,
-    lint_store: Lrc<LintStore>,
     dep_graph: DepGraph,
     untracked: Untracked,
     gcx_cell: &'tcx OnceLock<GlobalCtxt<'tcx>>,
@@ -665,7 +664,6 @@ pub fn create_global_ctxt<'tcx>(
                 sess,
                 crate_types,
                 stable_crate_id,
-                lint_store,
                 arena,
                 hir_arena,
                 untracked,
