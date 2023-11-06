@@ -17,7 +17,7 @@ use crate::typetree::to_enzyme_typetree;
 use crate::LlvmCodegenBackend;
 use crate::ModuleLlvm;
 use crate::DiffTypeTree;
-use llvm::{
+use llvm::{LLVMRustGetEnumAttributeAtIndex, LLVMRustAddEnumAttributeAtIndex, LLVMRustRemoveEnumAttributeAtIndex,
     enzyme_rust_forward_diff, enzyme_rust_reverse_diff, BasicBlock, CreateEnzymeLogic,
     CreateTypeAnalysis, EnzymeLogicRef, EnzymeTypeAnalysisRef, LLVMAddFunction,
     LLVMAppendBasicBlockInContext, LLVMBuildCall2, LLVMBuildExtractValue, LLVMBuildRet,
@@ -25,9 +25,9 @@ use llvm::{
     LLVMDisposeBuilder, LLVMGetBasicBlockTerminator, LLVMGetElementType, LLVMGetModuleContext,
     LLVMGetParams, LLVMGetReturnType, LLVMPositionBuilderAtEnd, LLVMSetValueName2, LLVMTypeOf,
     LLVMVoidTypeInContext, LLVMGlobalGetValueType, LLVMGetStringAttributeAtIndex,
-    LLVMIsStringAttribute, LLVMRemoveStringAttributeAtIndex, LLVMRemoveEnumAttributeAtIndex, AttributeKind,
-    LLVMGetFirstFunction, LLVMGetNextFunction, LLVMGetEnumAttributeAtIndex, LLVMIsEnumAttribute,
-    LLVMCreateStringAttribute, LLVMRustAddFunctionAttributes, LLVMCreateEnumAttribute, LLVMDumpModule,
+    LLVMIsStringAttribute, LLVMRemoveStringAttributeAtIndex, AttributeKind,
+    LLVMGetFirstFunction, LLVMGetNextFunction, LLVMIsEnumAttribute,
+    LLVMCreateStringAttribute, LLVMRustAddFunctionAttributes, LLVMDumpModule,
     LLVMRustLLVMHasZlibCompressionForDebugSymbols, LLVMRustLLVMHasZstdCompressionForDebugSymbols,
 };
 use rustc_codegen_ssa::back::link::ensure_removed;
@@ -831,7 +831,7 @@ pub(crate) unsafe fn differentiate(
         if LLVMIsStringAttribute(attr) {
             LLVMRemoveStringAttributeAtIndex(lf, c_uint::MAX, myhwattr.as_ptr() as *const c_char, myhwattr.as_bytes().len() as c_uint);
         } else {
-            LLVMRemoveEnumAttributeAtIndex(lf, c_uint::MAX, AttributeKind::SanitizeHWAddress);
+            LLVMRustRemoveEnumAttributeAtIndex(lf, c_uint::MAX, AttributeKind::SanitizeHWAddress);
         }
 
 
@@ -876,13 +876,12 @@ pub(crate) unsafe fn optimize(
             f = LLVMGetNextFunction(lf);
             let myhwattr = "enzyme_hw";
             let myhwv = "";
-            let prevattr = LLVMGetEnumAttributeAtIndex(lf, c_uint::MAX, AttributeKind::SanitizeHWAddress);
+            let prevattr = LLVMRustGetEnumAttributeAtIndex(lf, c_uint::MAX, AttributeKind::SanitizeHWAddress);
             if LLVMIsEnumAttribute(prevattr) {
                 let attr = LLVMCreateStringAttribute(llcx, myhwattr.as_ptr() as *const c_char, myhwattr.as_bytes().len() as c_uint, myhwv.as_ptr() as *const c_char, myhwv.as_bytes().len() as c_uint);
                 LLVMRustAddFunctionAttributes(lf, c_uint::MAX, &attr, 1);
             } else {
-                let attr = LLVMCreateEnumAttribute(llcx, AttributeKind::SanitizeHWAddress, 0);
-                LLVMRustAddFunctionAttributes(lf, c_uint::MAX, &attr, 1);
+                LLVMRustAddEnumAttributeAtIndex(llcx, lf, c_uint::MAX, AttributeKind::SanitizeHWAddress);
             }
 
             } else {

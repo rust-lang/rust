@@ -191,7 +191,7 @@ pub enum AttributeKind {
     OptimizeNone = 24,
     ReturnsTwice = 25,
     ReadNone = 26,
-    SanitizeHWAddress = 51,
+    SanitizeHWAddress = 28,
     WillReturn = 29,
     StackProtectReq = 30,
     StackProtectStrong = 31,
@@ -980,19 +980,21 @@ pub type GetSymbolsErrorCallback = unsafe extern "C" fn(*const c_char) -> *mut c
 extern "C" {
 
     // Enzyme
-    //pub fn LLVMReplaceAllUsesWith(old: &Value, new: &Value);
-    pub fn GibtsNicht(M: &Module) -> bool;
     pub fn LLVMIsStructTy(ty: &Type) -> bool;
     pub fn LLVMGetReturnType(T: &Type) -> &Type;
     pub fn LLVMDumpModule(M: &Module);
     pub fn LLVMCountStructElementTypes(T: &Type) -> c_uint;
     pub fn LLVMDeleteFunction(V: &Value);
+
+    pub fn LLVMCreateEnumAttribute(C : &Context, Kind: Attribute, val:u64) -> &Attribute;
     pub fn LLVMRemoveStringAttributeAtIndex(F : &Value, Idx: c_uint, K: *const c_char, KLen : c_uint);
     pub fn LLVMGetStringAttributeAtIndex(F : &Value, Idx: c_uint, K: *const c_char, KLen : c_uint) -> &Attribute;
-    pub fn LLVMRemoveEnumAttributeAtIndex(F : &Value, Idx: c_uint, K: AttributeKind);
-    pub fn LLVMGetEnumAttributeAtIndex(F : &Value, Idx: c_uint, K: AttributeKind) -> &Attribute;
+
+    pub fn LLVMAddAttributeAtIndex(F : &Value, Idx: c_uint, K: &Attribute);
+    pub fn LLVMRemoveEnumAttributeAtIndex(F : &Value, Idx: c_uint, K: Attribute);
+    pub fn LLVMGetEnumAttributeAtIndex(F : &Value, Idx: c_uint, K: Attribute) -> &Attribute;
+
     pub fn LLVMIsEnumAttribute(A : &Attribute) -> bool;
-    pub fn LLVMCreateEnumAttribute(C : &Context, Kind: AttributeKind, val:u64) -> &Attribute;
     pub fn LLVMIsStringAttribute(A : &Attribute) -> bool;
     pub fn LLVMVerifyFunction(V: &Value, action: LLVMVerifierFailureAction) -> bool;
     pub fn LLVMGetParams(Fnc: &Value, parms: *mut &Value);
@@ -1207,6 +1209,9 @@ extern "C" {
 
     // Operations on attributes
     pub fn LLVMRustCreateAttrNoValue(C: &Context, attr: AttributeKind) -> &Attribute;
+    pub fn LLVMRustAddEnumAttributeAtIndex(C: &Context, V: &Value, index: c_uint, attr: AttributeKind);
+    pub fn LLVMRustRemoveEnumAttributeAtIndex(V: &Value, index: c_uint, attr: AttributeKind);
+    pub fn LLVMRustGetEnumAttributeAtIndex(V: &Value, index: c_uint, attr: AttributeKind) ->&Attribute;
     pub fn LLVMCreateStringAttribute(
         C: &Context,
         Name: *const c_char,
