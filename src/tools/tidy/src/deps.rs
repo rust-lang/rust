@@ -211,6 +211,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "perf-event-open-sys",
     "pin-project-lite",
     "polonius-engine",
+    "portable-atomic", // dependency for platforms doesn't support `AtomicU64` in std
     "ppv-lite86",
     "proc-macro-hack",
     "proc-macro2",
