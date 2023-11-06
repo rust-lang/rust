@@ -1545,7 +1545,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let (span, sugg, post) = if let SuggestionTarget::SimilarlyNamed = suggestion.target
             && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span)
             && let Some(span) = suggestion.span
-            && let Some(candidate) = suggestion.candidate.as_str().strip_prefix("_")
+            && let Some(candidate) = suggestion.candidate.as_str().strip_prefix('_')
             && snippet == candidate
         {
             // When the suggested binding change would be from `x` to `_x`, suggest changing the

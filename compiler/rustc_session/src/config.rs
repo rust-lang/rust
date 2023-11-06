@@ -2477,7 +2477,7 @@ pub fn parse_externs(
             let mut error = handler.early_struct_error(format!(
                 "crate name `{name}` passed to `--extern` is not a valid ASCII identifier"
             ));
-            let adjusted_name = name.replace("-", "_");
+            let adjusted_name = name.replace('-', "_");
             if crate::utils::is_ascii_ident(&adjusted_name) {
                 error.help(format!(
                     "consider replacing the dashes with underscores: `{adjusted_name}`"
