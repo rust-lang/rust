@@ -40,7 +40,6 @@ pub type Result<T> = result::Result<T, ErrorGuaranteed>;
 pub struct Compiler {
     pub(crate) sess: Lrc<Session>,
     codegen_backend: Lrc<dyn CodegenBackend>,
-    pub(crate) register_lints: Option<Box<dyn Fn(&Session, &mut LintStore) + Send + Sync>>,
     pub(crate) override_queries: Option<fn(&Session, &mut Providers)>,
 }
 
@@ -50,9 +49,6 @@ impl Compiler {
     }
     pub fn codegen_backend(&self) -> &Lrc<dyn CodegenBackend> {
         &self.codegen_backend
-    }
-    pub fn register_lints(&self) -> &Option<Box<dyn Fn(&Session, &mut LintStore) + Send + Sync>> {
-        &self.register_lints
     }
     pub fn build_output_filenames(
         &self,
@@ -498,7 +494,6 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
             let compiler = Compiler {
                 sess: Lrc::new(sess),
                 codegen_backend: Lrc::from(codegen_backend),
-                register_lints: config.register_lints,
                 override_queries: config.override_queries,
             };
 
