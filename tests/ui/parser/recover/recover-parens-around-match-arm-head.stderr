@@ -4,11 +4,5 @@ error: expected one of `)`, `,`, `...`, `..=`, `..`, or `|`, found keyword `if`
 LL |         (0 if true) => {
    |            ^^ expected one of `)`, `,`, `...`, `..=`, `..`, or `|`
 
-error: expected one of `.`, `=>`, `?`, or an operator, found `)`
-  --> $DIR/recover-parens-around-match-arm-head.rs:4:19
-   |
-LL |         (0 if true) => {
-   |                   ^ expected one of `.`, `=>`, `?`, or an operator
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
