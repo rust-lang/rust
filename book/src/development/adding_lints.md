@@ -436,7 +436,7 @@ need to ensure that the MSRV configured for the project is >= the MSRV of the
 required Rust feature. If multiple features are required, just use the one with
 a lower MSRV.
 
-First, add an MSRV alias for the required feature in [`clippy_utils::msrvs`].
+First, add an MSRV alias for the required feature in [`clippy_config::msrvs`].
 This can be accessed later as `msrvs::STR_STRIP_PREFIX`, for example.
 
 ```rust
@@ -506,7 +506,7 @@ fn msrv_1_45() {
 ```
 
 As a last step, the lint should be added to the lint documentation. This is done
-in `clippy_lints/src/utils/conf.rs`:
+in `clippy_config/src/conf.rs`:
 
 ```rust
 define_Conf! {
@@ -516,7 +516,7 @@ define_Conf! {
 }
 ```
 
-[`clippy_utils::msrvs`]: https://doc.rust-lang.org/nightly/nightly-rustc/clippy_utils/msrvs/index.html
+[`clippy_config::msrvs`]: https://doc.rust-lang.org/nightly/nightly-rustc/clippy_config/msrvs/index.html
 
 ## Author lint
 
@@ -657,7 +657,7 @@ Adding a configuration to a lint can be useful for
 thresholds or to constrain some behavior that can be seen as a false positive
 for some users. Adding a configuration is done in the following steps:
 
-1. Adding a new configuration entry to [`clippy_lints::utils::conf`] like this:
+1. Adding a new configuration entry to [`clippy_config::conf`] like this:
 
    ```rust,ignore
    /// Lint: LINT_NAME.
@@ -736,7 +736,7 @@ for some users. Adding a configuration is done in the following steps:
 
    Run `cargo collect-metadata` to generate documentation changes for the book.
 
-[`clippy_lints::utils::conf`]: https://github.com/rust-lang/rust-clippy/blob/master/clippy_lints/src/utils/conf.rs
+[`clippy_config::conf`]: https://github.com/rust-lang/rust-clippy/blob/master/clippy_config/src/conf.rs
 [`clippy_lints` lib file]: https://github.com/rust-lang/rust-clippy/blob/master/clippy_lints/src/lib.rs
 [`tests/ui`]: https://github.com/rust-lang/rust-clippy/blob/master/tests/ui
 [`tests/ui-toml`]: https://github.com/rust-lang/rust-clippy/blob/master/tests/ui-toml

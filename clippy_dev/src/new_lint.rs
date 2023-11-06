@@ -320,8 +320,8 @@ fn get_lint_file_contents(lint: &LintData<'_>, enable_msrv: bool) -> String {
                 extract_msrv_attr!({context_import});
             }}
 
-            // TODO: Add MSRV level to `clippy_utils/src/msrvs.rs` if needed.
-            // TODO: Update msrv config comment in `clippy_lints/src/utils/conf.rs`
+            // TODO: Add MSRV level to `clippy_config/src/msrvs.rs` if needed.
+            // TODO: Update msrv config comment in `clippy_config/src/conf.rs`
         "#
         )
     } else {
