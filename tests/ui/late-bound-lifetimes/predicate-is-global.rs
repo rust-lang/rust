@@ -29,4 +29,12 @@ impl Inherent {
     fn inherent(&self) {}
 }
 
+// This trivial bound doesn't hold, but the unused lifetime tripped up that check after #117589, and
+// showed up in its crater results (in `soa-derive 0.13.0`).
+fn do_it()
+where
+    for<'a> Inherent: Clone,
+{
+}
+
 fn main() {}
