@@ -734,6 +734,9 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                     self.hash_name(i.ident.name);
                 }
             },
+            ExprKind::Array(v) => {
+                self.hash_exprs(v);
+            },
             ExprKind::Assign(l, r, _) => {
                 self.hash_expr(l);
                 self.hash_expr(r);
@@ -742,6 +745,9 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 std::mem::discriminant(&o.node).hash(&mut self.s);
                 self.hash_expr(l);
                 self.hash_expr(r);
+            },
+            ExprKind::Become(f) => {
+                self.hash_expr(f);
             },
             ExprKind::Block(b, _) => {
                 self.hash_block(b);
@@ -759,9 +765,6 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                     self.hash_expr(j);
                 }
             },
-            ExprKind::DropTemps(e) | ExprKind::Yield(e, _) => {
-                self.hash_expr(e);
-            },
             ExprKind::Call(fun, args) => {
                 self.hash_expr(fun);
                 self.hash_exprs(args);
@@ -776,6 +779,12 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 std::mem::discriminant(&capture_clause).hash(&mut self.s);
                 // closures inherit TypeckResults
                 self.hash_expr(self.cx.tcx.hir().body(body).value);
+            },
+            ExprKind::ConstBlock(ref l_id) => {
+                self.hash_body(l_id.body);
+            },
+            ExprKind::DropTemps(e) | ExprKind::Yield(e, _) => {
+                self.hash_expr(e);
             },
             ExprKind::Field(e, ref f) => {
                 self.hash_expr(e);
@@ -838,12 +847,6 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                     }
                 }
             },
-            ExprKind::OffsetOf(container, fields) => {
-                self.hash_ty(container);
-                for field in fields {
-                    self.hash_name(field.name);
-                }
-            },
             ExprKind::Let(Let { pat, init, ty, .. }) => {
                 self.hash_expr(init);
                 if let Some(ty) = ty {
@@ -851,7 +854,6 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 }
                 self.hash_pat(pat);
             },
-            ExprKind::Err(_) => {},
             ExprKind::Lit(l) => {
                 l.node.hash(&mut self.s);
             },
@@ -886,8 +888,14 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 self.hash_expr(receiver);
                 self.hash_exprs(args);
             },
-            ExprKind::ConstBlock(ref l_id) => {
-                self.hash_body(l_id.body);
+            ExprKind::OffsetOf(container, fields) => {
+                self.hash_ty(container);
+                for field in fields {
+                    self.hash_name(field.name);
+                }
+            },
+            ExprKind::Path(ref qpath) => {
+                self.hash_qpath(qpath);
             },
             ExprKind::Repeat(e, len) => {
                 self.hash_expr(e);
@@ -897,12 +905,6 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 if let Some(e) = *e {
                     self.hash_expr(e);
                 }
-            },
-            ExprKind::Become(f) => {
-                self.hash_expr(f);
-            },
-            ExprKind::Path(ref qpath) => {
-                self.hash_qpath(qpath);
             },
             ExprKind::Struct(path, fields, ref expr) => {
                 self.hash_qpath(path);
@@ -919,13 +921,11 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             ExprKind::Tup(tup) => {
                 self.hash_exprs(tup);
             },
-            ExprKind::Array(v) => {
-                self.hash_exprs(v);
-            },
             ExprKind::Unary(lop, le) => {
                 std::mem::discriminant(&lop).hash(&mut self.s);
                 self.hash_expr(le);
             },
+            ExprKind::Err(_) => {},
         }
     }
 
