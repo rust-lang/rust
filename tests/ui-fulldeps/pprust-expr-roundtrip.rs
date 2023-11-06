@@ -130,7 +130,7 @@ fn iter_exprs(depth: usize, f: &mut dyn FnMut(P<Expr>)) {
                 iter_exprs(depth - 1, &mut |e| {
                     g(ExprKind::Closure(Box::new(Closure {
                         binder: ClosureBinder::NotPresent,
-                        capture_clause: CaptureBy::Value,
+                        capture_clause: CaptureBy::Value { move_kw: DUMMY_SP },
                         constness: Const::No,
                         asyncness: Async::No,
                         movability: Movability::Movable,

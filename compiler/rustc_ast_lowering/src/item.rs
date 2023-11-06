@@ -1201,7 +1201,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
 
             let async_expr = this.make_async_expr(
-                CaptureBy::Value,
+                CaptureBy::Value { move_kw: rustc_span::DUMMY_SP },
                 closure_id,
                 None,
                 body.span,

@@ -2938,7 +2938,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 else {
                     bug!("expected closure in SizedClosureCapture obligation");
                 };
-                if let hir::CaptureBy::Value = closure.capture_clause
+                if let hir::CaptureBy::Value { .. } = closure.capture_clause
                     && let Some(span) = closure.fn_arg_span
                 {
                     err.span_label(span, "this closure captures all values by move");

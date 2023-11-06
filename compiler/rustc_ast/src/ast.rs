@@ -1548,7 +1548,10 @@ pub struct QSelf {
 #[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub enum CaptureBy {
     /// `move |x| y + x`.
-    Value,
+    Value {
+        /// The span of the `move` keyword.
+        move_kw: Span,
+    },
     /// `move` keyword was not specified.
     Ref,
 }

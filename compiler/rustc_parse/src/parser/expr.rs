@@ -2303,13 +2303,14 @@ impl<'a> Parser<'a> {
     /// Parses an optional `move` prefix to a closure-like construct.
     fn parse_capture_clause(&mut self) -> PResult<'a, CaptureBy> {
         if self.eat_keyword(kw::Move) {
+            let move_kw_span = self.prev_token.span;
             // Check for `move async` and recover
             if self.check_keyword(kw::Async) {
                 let move_async_span = self.token.span.with_lo(self.prev_token.span.data().lo);
                 Err(errors::AsyncMoveOrderIncorrect { span: move_async_span }
                     .into_diagnostic(&self.sess.span_diagnostic))
             } else {
-                Ok(CaptureBy::Value)
+                Ok(CaptureBy::Value { move_kw: move_kw_span })
             }
         } else {
             Ok(CaptureBy::Ref)
