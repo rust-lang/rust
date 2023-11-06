@@ -505,6 +505,10 @@ pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
 
 /// Creates a null raw pointer.
 ///
+/// This function is equivalent to zero-initializing the pointer:
+/// `MaybeUninit::<*const T>::zeroed().assume_init()`.
+/// The resulting pointer has the address 0.
+///
 /// # Examples
 ///
 /// ```
@@ -512,6 +516,7 @@ pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
 ///
 /// let p: *const i32 = ptr::null();
 /// assert!(p.is_null());
+/// assert_eq!(p as usize, 0); // this pointer has the address 0
 /// ```
 #[inline(always)]
 #[must_use]
@@ -526,6 +531,10 @@ pub const fn null<T: ?Sized + Thin>() -> *const T {
 
 /// Creates a null mutable raw pointer.
 ///
+/// This function is equivalent to zero-initializing the pointer:
+/// `MaybeUninit::<*mut T>::zeroed().assume_init()`.
+/// The resulting pointer has the address 0.
+///
 /// # Examples
 ///
 /// ```
@@ -533,6 +542,7 @@ pub const fn null<T: ?Sized + Thin>() -> *const T {
 ///
 /// let p: *mut i32 = ptr::null_mut();
 /// assert!(p.is_null());
+/// assert_eq!(p as usize, 0); // this pointer has the address 0
 /// ```
 #[inline(always)]
 #[must_use]
