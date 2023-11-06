@@ -3,18 +3,17 @@ use std::hash::Hash;
 use std::ops::ControlFlow;
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_serialize::{Decodable, Encodable};
 
 use crate::fold::{FallibleTypeFolder, TypeFoldable};
 use crate::visit::{TypeVisitable, TypeVisitor};
-use crate::TyDecoder;
-use crate::{HashStableContext, Interner, TyEncoder, UniverseIndex};
+use crate::{HashStableContext, Interner, UniverseIndex};
 
 /// A "canonicalized" type `V` is one where all free inference
 /// variables have been rewritten to "canonical vars". These are
 /// numbered starting from 0 in order of first appearance.
 #[derive(derivative::Derivative)]
 #[derivative(Clone(bound = "V: Clone"), Hash(bound = "V: Hash"))]
+#[derive(TyEncodable, TyDecodable)]
 pub struct Canonical<I: Interner, V> {
     pub value: V,
     pub max_universe: UniverseIndex,
@@ -125,29 +124,5 @@ where
         self.value.visit_with(folder)?;
         self.max_universe.visit_with(folder)?;
         self.variables.visit_with(folder)
-    }
-}
-
-impl<I: Interner, E: TyEncoder<I = I>, V: Encodable<E>> Encodable<E> for Canonical<I, V>
-where
-    I::CanonicalVars: Encodable<E>,
-{
-    fn encode(&self, s: &mut E) {
-        self.value.encode(s);
-        self.max_universe.encode(s);
-        self.variables.encode(s);
-    }
-}
-
-impl<I: Interner, D: TyDecoder<I = I>, V: Decodable<D>> Decodable<D> for Canonical<I, V>
-where
-    I::CanonicalVars: Decodable<D>,
-{
-    fn decode(d: &mut D) -> Self {
-        Canonical {
-            value: Decodable::decode(d),
-            max_universe: Decodable::decode(d),
-            variables: Decodable::decode(d),
-        }
     }
 }

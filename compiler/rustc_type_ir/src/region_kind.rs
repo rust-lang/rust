@@ -1,12 +1,8 @@
 use rustc_data_structures::stable_hasher::HashStable;
 use rustc_data_structures::stable_hasher::StableHasher;
-use rustc_serialize::{Decodable, Decoder, Encodable};
 use std::fmt;
 
-use crate::{
-    DebruijnIndex, DebugWithInfcx, HashStableContext, InferCtxtLike, Interner, TyDecoder,
-    TyEncoder, WithInfcx,
-};
+use crate::{DebruijnIndex, DebugWithInfcx, HashStableContext, InferCtxtLike, Interner, WithInfcx};
 
 use self::RegionKind::*;
 
@@ -125,6 +121,7 @@ use self::RegionKind::*;
     Ord = "feature_allow_slow_enum",
     Hash(bound = "")
 )]
+#[derive(TyEncodable, TyDecodable)]
 pub enum RegionKind<I: Interner> {
     /// Region bound in a type or fn declaration which will be
     /// substituted 'early' -- that is, at the same time when type
@@ -242,72 +239,6 @@ impl<I: Interner> DebugWithInfcx<I> for RegionKind<I> {
 impl<I: Interner> fmt::Debug for RegionKind<I> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         WithInfcx::with_no_infcx(self).fmt(f)
-    }
-}
-
-// This is manually implemented because a derive would require `I: Encodable`
-impl<I: Interner, E: TyEncoder<I = I>> Encodable<E> for RegionKind<I>
-where
-    I::EarlyBoundRegion: Encodable<E>,
-    I::BoundRegion: Encodable<E>,
-    I::FreeRegion: Encodable<E>,
-    I::InferRegion: Encodable<E>,
-    I::PlaceholderRegion: Encodable<E>,
-{
-    fn encode(&self, e: &mut E) {
-        let disc = regionkind_discriminant(self);
-        match self {
-            ReEarlyBound(a) => e.emit_enum_variant(disc, |e| {
-                a.encode(e);
-            }),
-            ReLateBound(a, b) => e.emit_enum_variant(disc, |e| {
-                a.encode(e);
-                b.encode(e);
-            }),
-            ReFree(a) => e.emit_enum_variant(disc, |e| {
-                a.encode(e);
-            }),
-            ReStatic => e.emit_enum_variant(disc, |_| {}),
-            ReVar(a) => e.emit_enum_variant(disc, |e| {
-                a.encode(e);
-            }),
-            RePlaceholder(a) => e.emit_enum_variant(disc, |e| {
-                a.encode(e);
-            }),
-            ReErased => e.emit_enum_variant(disc, |_| {}),
-            ReError(_) => e.emit_enum_variant(disc, |_| {}),
-        }
-    }
-}
-
-// This is manually implemented because a derive would require `I: Decodable`
-impl<I: Interner, D: TyDecoder<I = I>> Decodable<D> for RegionKind<I>
-where
-    I::EarlyBoundRegion: Decodable<D>,
-    I::BoundRegion: Decodable<D>,
-    I::FreeRegion: Decodable<D>,
-    I::InferRegion: Decodable<D>,
-    I::PlaceholderRegion: Decodable<D>,
-    I::ErrorGuaranteed: Decodable<D>,
-{
-    fn decode(d: &mut D) -> Self {
-        match Decoder::read_usize(d) {
-            0 => ReEarlyBound(Decodable::decode(d)),
-            1 => ReLateBound(Decodable::decode(d), Decodable::decode(d)),
-            2 => ReFree(Decodable::decode(d)),
-            3 => ReStatic,
-            4 => ReVar(Decodable::decode(d)),
-            5 => RePlaceholder(Decodable::decode(d)),
-            6 => ReErased,
-            7 => ReError(Decodable::decode(d)),
-            _ => panic!(
-                "{}",
-                format!(
-                    "invalid enum variant tag while decoding `{}`, expected 0..{}",
-                    "RegionKind", 8,
-                )
-            ),
-        }
     }
 }
 
