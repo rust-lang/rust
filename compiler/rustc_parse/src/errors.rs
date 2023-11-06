@@ -1241,12 +1241,10 @@ pub(crate) struct ParenthesesInForHead {
 #[derive(Subdiagnostic)]
 #[multipart_suggestion(parse_suggestion, applicability = "machine-applicable")]
 pub(crate) struct ParenthesesInForHeadSugg {
-    #[suggestion_part(code = "{left_snippet}")]
+    #[suggestion_part(code = " ")]
     pub left: Span,
-    pub left_snippet: String,
-    #[suggestion_part(code = "{right_snippet}")]
+    #[suggestion_part(code = " ")]
     pub right: Span,
-    pub right_snippet: String,
 }
 
 #[derive(Diagnostic)]
