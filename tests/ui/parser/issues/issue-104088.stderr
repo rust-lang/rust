@@ -22,30 +22,6 @@ help: identifiers cannot start with a number
 LL |     let 23name = 123;
    |         ^^
 
-error: expected identifier, found `2x`
-  --> $DIR/issue-104088.rs:12:9
-   |
-LL |     let 2x: i32 = 123;
-   |         ^^ expected identifier
-   |
-help: identifiers cannot start with a number
-  --> $DIR/issue-104088.rs:12:9
-   |
-LL |     let 2x: i32 = 123;
-   |         ^
-
-error: expected identifier, found `1x`
-  --> $DIR/issue-104088.rs:15:9
-   |
-LL |     let 1x = 123;
-   |         ^^ expected identifier
-   |
-help: identifiers cannot start with a number
-  --> $DIR/issue-104088.rs:15:9
-   |
-LL |     let 1x = 123;
-   |         ^
-
 error[E0308]: mismatched types
   --> $DIR/issue-104088.rs:5:12
    |
@@ -54,6 +30,6 @@ LL |     if let 2e1 = 123 {
    |            |
    |            expected integer, found floating-point number
 
-error: aborting due to 5 previous errors
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0308`.

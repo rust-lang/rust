@@ -829,7 +829,7 @@ impl<'a> Parser<'a> {
         binding_annotation: BindingAnnotation,
         syntax_loc: Option<PatternLocation>,
     ) -> PResult<'a, PatKind> {
-        let ident = self.parse_ident()?;
+        let ident = self.parse_ident_common(false)?;
 
         if self.may_recover()
             && !matches!(syntax_loc, Some(PatternLocation::FunctionParameter))
