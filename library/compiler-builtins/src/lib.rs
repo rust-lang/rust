@@ -1,6 +1,7 @@
 #![cfg_attr(feature = "compiler-builtins", compiler_builtins)]
 #![cfg_attr(not(feature = "no-asm"), feature(asm))]
 #![feature(abi_unadjusted)]
+#![feature(asm_experimental_arch)]
 #![cfg_attr(not(feature = "no-asm"), feature(global_asm))]
 #![feature(cfg_target_has_atomic)]
 #![feature(compiler_builtins)]
@@ -69,6 +70,9 @@ pub mod aarch64_linux;
     target_arch = "arm"
 ))]
 pub mod arm_linux;
+
+#[cfg(target_arch = "hexagon")]
+pub mod hexagon;
 
 #[cfg(any(target_arch = "riscv32", target_arch = "riscv64"))]
 pub mod riscv;
