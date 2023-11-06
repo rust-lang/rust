@@ -41,6 +41,7 @@ use rustc_session::cstore::MetadataLoader;
 use rustc_session::getopts::{self, Matches};
 use rustc_session::lint::{Lint, LintId};
 use rustc_session::{config, EarlyErrorHandler, Session};
+use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::source_map::FileLoader;
 use rustc_span::symbol::sym;
 use rustc_span::FileName;
@@ -421,8 +422,12 @@ fn run_compiler(
                     // effects of writing the dep-info and reporting errors.
                     queries.global_ctxt()?.enter(|tcx| tcx.output_filenames(()));
                 } else {
-                    let krate = queries.parse()?.steal();
-                    pretty::print(sess, *ppm, pretty::PrintExtra::AfterParsing { krate });
+                    let krate = queries.parse()?;
+                    pretty::print(
+                        sess,
+                        *ppm,
+                        pretty::PrintExtra::AfterParsing { krate: &*krate.borrow() },
+                    );
                 }
                 trace!("finished pretty-printing");
                 return early_exit();
@@ -477,8 +482,7 @@ fn run_compiler(
             }
 
             if sess.opts.unstable_opts.print_vtable_sizes {
-                let crate_name =
-                    compiler.session().opts.crate_name.as_deref().unwrap_or("<UNKNOWN_CRATE>");
+                let crate_name = queries.global_ctxt()?.enter(|tcx| tcx.crate_name(LOCAL_CRATE));
 
                 sess.code_stats.print_vtable_sizes(crate_name);
             }
