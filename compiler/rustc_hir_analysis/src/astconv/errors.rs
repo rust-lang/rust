@@ -629,6 +629,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             pluralize!(names_len),
             names,
         );
+        let mut rename_suggestions = vec![];
         let mut suggestions = vec![];
         let mut types_count = 0;
         let mut where_constraints = vec![];
@@ -640,10 +641,15 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 *names.entry(item.name).or_insert(0) += 1;
             }
             let mut dupes = false;
+            let mut shadows = false;
             for item in assoc_items {
-                let prefix = if names[&item.name] > 1 || bound_names.contains_key(&item.name) {
+                let prefix = if names[&item.name] > 1 {
                     let trait_def_id = item.container_id(tcx);
                     dupes = true;
+                    format!("{}::", tcx.def_path_str(trait_def_id))
+                } else if bound_names.contains_key(&item.name) {
+                    let trait_def_id = item.container_id(tcx);
+                    shadows = true;
                     format!("{}::", tcx.def_path_str(trait_def_id))
                 } else {
                     String::new()
@@ -669,6 +675,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 // extra type arguments present. A suggesting to replace the generic args with
                 // associated types is already emitted.
                 already_has_generics_args_suggestion = true;
+            } else if shadows {
+                for item in assoc_items {
+                    if let Some(sp) = tcx.hir().span_if_local(item.def_id) {
+                        rename_suggestions.push(sp);
+                    }
+                }
             } else if let (Ok(snippet), false) =
                 (tcx.sess.source_map().span_to_snippet(*span), dupes)
             {
@@ -751,6 +763,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             if !where_constraints.is_empty() {
                 err.span_help(where_constraints, where_msg);
             }
+        }
+
+        for span in rename_suggestions {
+            err.span_help(span, "consider renaming this associated type");
         }
         err.emit();
     }
