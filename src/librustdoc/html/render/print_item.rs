@@ -633,7 +633,7 @@ fn item_function(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, f: &cle
     let abi = print_abi_with_space(header.abi).to_string();
     let asyncness = header.asyncness.print_with_space();
     let visibility = visibility_print_with_space(it.visibility(tcx), it.item_id, cx).to_string();
-    let name = it.name.unwrap();
+    let name = format!("{}", render_type_name(it.name.unwrap(), "fn"));
 
     let generics_len = format!("{:#}", f.generics.print(cx)).len();
     let header_len = "fn ".len()
@@ -642,7 +642,7 @@ fn item_function(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, f: &cle
         + asyncness.len()
         + unsafety.len()
         + abi.len()
-        + name.as_str().len()
+        + name.len()
         + generics_len;
 
     let notable_traits = notable_traits_button(&f.decl.output, cx);
@@ -692,7 +692,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
             vis = visibility_print_with_space(it.visibility(tcx), it.item_id, cx),
             unsafety = t.unsafety(tcx).print_with_space(),
             is_auto = if t.is_auto(tcx) { "auto " } else { "" },
-            name = it.name.unwrap(),
+            name = render_type_name(it.name.unwrap(), "trait"),
             generics = t.generics.print(cx),
         );
 
@@ -1186,7 +1186,7 @@ fn item_trait_alias(
             w,
             "{attrs}trait {name}{generics}{where_b} = {bounds};",
             attrs = render_attributes_in_pre(it, "", cx),
-            name = it.name.unwrap(),
+            name = render_type_name(it.name.unwrap(), "traitalias"),
             generics = t.generics.print(cx),
             where_b = print_where_clause(&t.generics, cx, 0, Ending::Newline),
             bounds = bounds(&t.bounds, true, cx),
@@ -1214,7 +1214,7 @@ fn item_opaque_ty(
             w,
             "{attrs}type {name}{generics}{where_clause} = impl {bounds};",
             attrs = render_attributes_in_pre(it, "", cx),
-            name = it.name.unwrap(),
+            name = render_type_name(it.name.unwrap(), "type"),
             generics = t.generics.print(cx),
             where_clause = print_where_clause(&t.generics, cx, 0, Ending::Newline),
             bounds = bounds(&t.bounds, false, cx),
@@ -1240,7 +1240,7 @@ fn item_type_alias(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &c
                 "{attrs}{vis}type {name}{generics}{where_clause} = {type_};",
                 attrs = render_attributes_in_pre(it, "", cx),
                 vis = visibility_print_with_space(it.visibility(cx.tcx()), it.item_id, cx),
-                name = it.name.unwrap(),
+                name = render_type_name(it.name.unwrap(), "type"),
                 generics = t.generics.print(cx),
                 where_clause = print_where_clause(&t.generics, cx, 0, Ending::Newline),
                 type_ = t.type_.print(cx),
@@ -1528,7 +1528,7 @@ fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::
             w,
             "{}enum {}{}",
             visibility_print_with_space(it.visibility(tcx), it.item_id, cx),
-            it.name.unwrap(),
+            render_type_name(it.name.unwrap(), "enum"),
             e.generics.print(cx),
         );
 
@@ -1848,7 +1848,7 @@ fn item_constant(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, c: &cle
             w,
             "{vis}const {name}{generics}: {typ}{where_clause}",
             vis = visibility_print_with_space(it.visibility(tcx), it.item_id, cx),
-            name = it.name.unwrap(),
+            name = render_type_name(it.name.unwrap(), "constant"),
             generics = c.generics.print(cx),
             typ = c.type_.print(cx),
             where_clause = print_where_clause(&c.generics, cx, 0, Ending::NoNewline),
@@ -1957,7 +1957,7 @@ fn item_static(w: &mut impl fmt::Write, cx: &mut Context<'_>, it: &clean::Item, 
             "{vis}static {mutability}{name}: {typ}",
             vis = visibility_print_with_space(it.visibility(cx.tcx()), it.item_id, cx),
             mutability = s.mutability.print_with_space(),
-            name = it.name.unwrap(),
+            name = render_type_name(it.name.unwrap(), "static"),
             typ = s.type_.print(cx)
         )
         .unwrap();
@@ -1974,7 +1974,7 @@ fn item_foreign_type(w: &mut impl fmt::Write, cx: &mut Context<'_>, it: &clean::
             buffer,
             "    {}type {};\n}}",
             visibility_print_with_space(it.visibility(cx.tcx()), it.item_id, cx),
-            it.name.unwrap(),
+            render_type_name(it.name.unwrap(), "foreigntype"),
         )
         .unwrap();
     });
@@ -2123,6 +2123,10 @@ fn render_implementor(
     );
 }
 
+fn render_type_name<'a>(name: Symbol, class: &'a str) -> impl fmt::Display + 'a {
+    display_fn(move |f| write!(f, "<a class=\"{class}\" href=\"#\">{name}</a>"))
+}
+
 fn render_union<'a, 'cx: 'a>(
     it: &'a clean::Item,
     g: Option<&'a clean::Generics>,
@@ -2135,7 +2139,7 @@ fn render_union<'a, 'cx: 'a>(
             f,
             "{}union {}",
             visibility_print_with_space(it.visibility(tcx), it.item_id, cx),
-            it.name.unwrap(),
+            render_type_name(it.name.unwrap(), "union"),
         )?;
 
         let where_displayed = g
@@ -2195,13 +2199,22 @@ fn render_struct(
     cx: &Context<'_>,
 ) {
     let tcx = cx.tcx();
-    write!(
-        w,
-        "{}{}{}",
-        visibility_print_with_space(it.visibility(tcx), it.item_id, cx),
-        if structhead { "struct " } else { "" },
-        it.name.unwrap()
-    );
+    if structhead {
+        write!(
+            w,
+            "{}{}{}",
+            visibility_print_with_space(it.visibility(tcx), it.item_id, cx),
+            "struct ",
+            render_type_name(it.name.unwrap(), "struct"),
+        );
+    } else {
+        write!(
+            w,
+            "{}{}",
+            visibility_print_with_space(it.visibility(tcx), it.item_id, cx),
+            it.name.unwrap(),
+        );
+    }
     if let Some(g) = g {
         write!(w, "{}", g.print(cx))
     }

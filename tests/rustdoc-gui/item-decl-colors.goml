@@ -24,6 +24,7 @@ define-function: (
         set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
         reload:
         assert-css: (".item-decl .code-attribute", {"color": |attr_color|}, ALL)
+        assert-css: (".item-decl .struct[href='#']", {"color": |struct_color|}, ALL)
         assert-css: (".item-decl .trait", {"color": |trait_color|}, ALL)
         // We need to add `code` here because otherwise it would select the parent too.
         assert-css: (".item-decl code .struct", {"color": |struct_color|}, ALL)
@@ -41,7 +42,7 @@ call-function: (
     "check-colors",
     {
         "theme": "ayu",
-        "attr_color": "#999",
+        "attr_color": "#e6e1cf",
         "trait_color": "#39afd7",
         "struct_color": "#ffa0a5",
         "enum_color": "#ffa0a5",
@@ -55,7 +56,7 @@ call-function: (
     "check-colors",
     {
         "theme": "dark",
-        "attr_color": "#999",
+        "attr_color": "#ee6868",
         "trait_color": "#b78cf2",
         "struct_color": "#2dbfb8",
         "enum_color": "#2dbfb8",
@@ -69,7 +70,7 @@ call-function: (
     "check-colors",
     {
         "theme": "light",
-        "attr_color": "#999",
+        "attr_color": "#c82829",
         "trait_color": "#6e4fc9",
         "struct_color": "#ad378a",
         "enum_color": "#ad378a",

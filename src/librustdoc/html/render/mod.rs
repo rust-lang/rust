@@ -1075,7 +1075,7 @@ fn render_attributes_in_pre<'a, 'tcx: 'a>(
 // a div to produce a newline after it.
 fn render_attributes_in_code(w: &mut impl fmt::Write, it: &clean::Item, cx: &Context<'_>) {
     for attr in it.attributes(cx.tcx(), cx.cache(), false) {
-        write!(w, "<div class=\"code-attribute\">{attr}</div>").unwrap();
+        write!(w, "<div class=\"code-attribute attr\">{attr}</div>").unwrap();
     }
 }
 
