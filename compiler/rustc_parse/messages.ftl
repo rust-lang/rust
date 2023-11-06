@@ -777,6 +777,9 @@ parse_unexpected_lifetime_in_pattern = unexpected lifetime `{$symbol}` in patter
 parse_unexpected_parentheses_in_for_head = unexpected parentheses surrounding `for` loop head
     .suggestion = remove parentheses in `for` loop
 
+parse_unexpected_parentheses_in_match_arm_pattern = unexpected parentheses surrounding `match` arm pattern
+    .suggestion = remove parentheses surrounding the pattern
+
 parse_unexpected_self_in_generic_parameters = unexpected keyword `Self` in generic parameters
     .note = you cannot use `Self` as a generic parameter because it is reserved for associated items
 
