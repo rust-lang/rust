@@ -608,19 +608,18 @@ cc = ["@nnethercote"]
 [assign]
 warn_non_default_branch = true
 contributing_url = "https://rustc-dev-guide.rust-lang.org/getting-started.html"
-users_on_vacation = ["jyn514", "jackh726", "WaffleLapkin", "oli-obk"]
+users_on_vacation = ["jyn514", "WaffleLapkin", "oli-obk"]
 
 [assign.adhoc_groups]
 compiler-team = [
     "@cjgillot",
+    "@compiler-errors",
     "@petrochenkov",
     "@davidtwco",
     "@oli-obk",
     "@wesleywiser",
 ]
 compiler-team-contributors = [
-    "@compiler-errors",
-    "@jackh726",
     "@TaKO8Ki",
     "@WaffleLapkin",
     "@b-naber",
