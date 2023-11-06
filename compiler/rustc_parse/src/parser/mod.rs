@@ -830,8 +830,8 @@ impl<'a> Parser<'a> {
                             // https://github.com/rust-lang/rust/issues/72373
                             if self.prev_token.is_ident() && self.token.kind == token::DotDot {
                                 let msg = format!(
-                                    "if you meant to bind the contents of \
-                                    the rest of the array pattern into `{}`, use `@`",
+                                    "if you meant to bind the contents of the rest of the array \
+                                     pattern into `{}`, use `@`",
                                     pprust::token_to_string(&self.prev_token)
                                 );
                                 expect_err
