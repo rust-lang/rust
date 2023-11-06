@@ -2608,53 +2608,59 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_for_head(&mut self) -> PResult<'a, (P<Pat>, P<Expr>)> {
-        let pat = if self.token.kind == token::OpenDelim(Delimiter::Parenthesis) {
+        let begin_paren = if self.token.kind == token::OpenDelim(Delimiter::Parenthesis) {
             // Record whether we are about to parse `for (`.
             // This is used below for recovery in case of `for ( $stuff ) $block`
             // in which case we will suggest `for $stuff $block`.
             let start_span = self.token.span;
             let left = self.prev_token.span.between(self.look_ahead(1, |t| t.span));
-            match self.parse_pat_allow_top_alt(
-                None,
-                RecoverComma::Yes,
-                RecoverColon::Yes,
-                CommaRecoveryMode::LikelyTuple,
-            ) {
-                Ok(pat) => pat,
-                Err(err) if self.eat_keyword(kw::In) => {
-                    let expr = match self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL, None) {
-                        Ok(expr) => expr,
-                        Err(expr_err) => {
-                            expr_err.cancel();
-                            return Err(err);
-                        }
-                    };
-                    return if self.token.kind == token::CloseDelim(Delimiter::Parenthesis) {
-                        let span = vec![start_span, self.token.span];
-                        let right = self.prev_token.span.between(self.look_ahead(1, |t| t.span));
-                        self.bump(); // )
-                        err.cancel();
-                        self.sess.emit_err(errors::ParenthesesInForHead {
-                            span,
-                            // With e.g. `for (x) in y)` this would replace `(x) in y)`
-                            // with `x) in y)` which is syntactically invalid.
-                            // However, this is prevented before we get here.
-                            sugg: errors::ParenthesesInForHeadSugg { left, right },
-                        });
-                        Ok((self.mk_pat(start_span.to(right), ast::PatKind::Wild), expr))
-                    } else {
-                        Err(err)
-                    };
-                }
-                Err(err) => return Err(err),
-            }
+            Some((start_span, left))
         } else {
+            None
+        };
+        // Try to parse the pattern `for ($PAT) in $EXPR`.
+        let pat = match (
             self.parse_pat_allow_top_alt(
                 None,
                 RecoverComma::Yes,
                 RecoverColon::Yes,
                 CommaRecoveryMode::LikelyTuple,
-            )?
+            ),
+            begin_paren,
+        ) {
+            (Ok(pat), _) => pat, // Happy path.
+            (Err(err), Some((start_span, left))) if self.eat_keyword(kw::In) => {
+                // We know for sure we have seen `for ($SOMETHING in`. In the happy path this would
+                // happen right before the return of this method.
+                let expr = match self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL, None) {
+                    Ok(expr) => expr,
+                    Err(expr_err) => {
+                        // We don't know what followed the `in`, so cancel and bubble up the
+                        // original error.
+                        expr_err.cancel();
+                        return Err(err);
+                    }
+                };
+                return if self.token.kind == token::CloseDelim(Delimiter::Parenthesis) {
+                    // We know for sure we have seen `for ($SOMETHING in $EXPR)`, so we recover the
+                    // parser state and emit a targetted suggestion.
+                    let span = vec![start_span, self.token.span];
+                    let right = self.prev_token.span.between(self.look_ahead(1, |t| t.span));
+                    self.bump(); // )
+                    err.cancel();
+                    self.sess.emit_err(errors::ParenthesesInForHead {
+                        span,
+                        // With e.g. `for (x) in y)` this would replace `(x) in y)`
+                        // with `x) in y)` which is syntactically invalid.
+                        // However, this is prevented before we get here.
+                        sugg: errors::ParenthesesInForHeadSugg { left, right },
+                    });
+                    Ok((self.mk_pat(start_span.to(right), ast::PatKind::Wild), expr))
+                } else {
+                    Err(err) // Some other error, bubble up.
+                };
+            }
+            (Err(err), _) => return Err(err), // Some other error, bubble up.
         };
         if !self.eat_keyword(kw::In) {
             self.error_missing_in_for_loop();
