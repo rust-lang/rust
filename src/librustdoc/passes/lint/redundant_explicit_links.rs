@@ -87,7 +87,7 @@ fn check_redundant_explicit_link<'md>(
                 let link_data = collect_link_data(&mut offset_iter);
 
                 if let Some(resolvable_link) = link_data.resolvable_link.as_ref() {
-                    if &link_data.display_link.replace("`", "") != resolvable_link {
+                    if &link_data.display_link.replace('`', "") != resolvable_link {
                         // Skips if display link does not match to actual
                         // resolvable link, usually happens if display link
                         // has several segments, e.g.
