@@ -24,7 +24,9 @@ error: expected identifier, found reserved identifier `_`
   --> $DIR/issue-66706.rs:18:26
    |
 LL |     [0; match [|f @ &ref _| () ] {} ]
-   |                          ^ expected identifier, found reserved identifier
+   |         -----            ^ expected identifier, found reserved identifier
+   |         |
+   |         while parsing this `match` expression
 
 error[E0282]: type annotations needed
   --> $DIR/issue-66706.rs:2:11
