@@ -26,7 +26,16 @@ types.
 This is unfortunately broken for `<fndef as FnOnce<..>>::Output` due to implied bounds,
 resulting in [#114936].
 
-### applying inference results from a goal does not change its result ❌
+### Structural equality modulo regions implies semantic equality ✅
+
+If you have a some type and equate it to itself after replacing any regions with unique
+inference variables in both the lhs and rhs, the now potentially structurally different
+types should still be equal to each other.
+
+Needed to prevent goals from succeeding in HIR typeck and then failing in MIR borrowck.
+If this does invariant is broken MIR typeck ends up failing with an ICE.
+
+### Applying inference results from a goal does not change its result ❌
 
 TODO: this invariant is formulated in a weird way and needs to be elaborated.
 Pretty much: I would like this check to only fail if there's a solver bug:
