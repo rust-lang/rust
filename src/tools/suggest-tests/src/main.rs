@@ -6,7 +6,7 @@ use suggest_tests::get_suggestions;
 fn main() -> ExitCode {
     let modified_files = get_git_modified_files(
         &GitConfig {
-            github_repository: &env("SUGGEST_TESTS_GITHUB_REPOSITORY"),
+            git_repository: &env("SUGGEST_TESTS_GIT_REPOSITORY"),
             nightly_branch: &env("SUGGEST_TESTS_NIGHTLY_BRANCH"),
         },
         None,

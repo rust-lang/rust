@@ -2,7 +2,7 @@ use std::process::Stdio;
 use std::{path::Path, process::Command};
 
 pub struct GitConfig<'a> {
-    pub github_repository: &'a str,
+    pub git_repository: &'a str,
     pub nightly_branch: &'a str,
 }
 
@@ -45,8 +45,8 @@ pub fn get_rust_lang_rust_remote(
 
     let rust_lang_remote = stdout
         .lines()
-        .find(|remote| remote.contains(config.github_repository))
-        .ok_or_else(|| format!("{} remote not found", config.github_repository))?;
+        .find(|remote| remote.contains(config.git_repository))
+        .ok_or_else(|| format!("{} remote not found", config.git_repository))?;
 
     let remote_name =
         rust_lang_remote.split('.').nth(1).ok_or_else(|| "remote name not found".to_owned())?;

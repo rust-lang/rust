@@ -373,7 +373,7 @@ pub struct Config {
     pub nocapture: bool,
 
     // Needed both to construct build_helper::git::GitConfig
-    pub github_repository: String,
+    pub git_repository: String,
     pub nightly_branch: String,
 }
 
@@ -449,7 +449,7 @@ impl Config {
 
     pub fn git_config(&self) -> GitConfig<'_> {
         GitConfig {
-            github_repository: &self.github_repository,
+            git_repository: &self.git_repository,
             nightly_branch: &self.nightly_branch,
         }
     }

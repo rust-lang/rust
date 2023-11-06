@@ -126,7 +126,7 @@ impl ConfigBuilder {
             self.host.as_deref().unwrap_or("x86_64-unknown-linux-gnu"),
             "--target",
             self.target.as_deref().unwrap_or("x86_64-unknown-linux-gnu"),
-            "--github-repository=",
+            "--git-repository=",
             "--nightly-branch=",
         ];
         let mut args: Vec<String> = args.iter().map(ToString::to_string).collect();

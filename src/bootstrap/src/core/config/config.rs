@@ -319,7 +319,7 @@ pub struct Stage0Config {
     pub artifacts_server: String,
     pub artifacts_with_llvm_assertions_server: String,
     pub git_merge_commit_email: String,
-    pub github_repository: String,
+    pub git_repository: String,
     pub nightly_branch: String,
 }
 #[derive(Default, Deserialize, Clone)]
@@ -2009,7 +2009,7 @@ impl Config {
 
     pub fn git_config(&self) -> GitConfig<'_> {
         GitConfig {
-            github_repository: &self.stage0_metadata.config.github_repository,
+            git_repository: &self.stage0_metadata.config.git_repository,
             nightly_branch: &self.stage0_metadata.config.nightly_branch,
         }
     }

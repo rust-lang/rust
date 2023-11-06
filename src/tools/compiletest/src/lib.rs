@@ -145,7 +145,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         .reqopt("", "channel", "current Rust channel", "CHANNEL")
         .optflag("", "git-hash", "run tests which rely on commit version being compiled into the binaries")
         .optopt("", "edition", "default Rust edition", "EDITION")
-        .reqopt("", "github-repository", "name of the GitHub repository", "ORG/REPO")
+        .reqopt("", "git-repository", "name of the git repository", "ORG/REPO")
         .reqopt("", "nightly-branch", "name of the git branch for nightly", "BRANCH");
 
     let (argv0, args_) = args.split_first().unwrap();
@@ -310,7 +310,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
 
         nocapture: matches.opt_present("nocapture"),
 
-        github_repository: matches.opt_str("github-repository").unwrap(),
+        git_repository: matches.opt_str("git-repository").unwrap(),
         nightly_branch: matches.opt_str("nightly-branch").unwrap(),
     }
 }

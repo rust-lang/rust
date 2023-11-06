@@ -12,7 +12,7 @@ pub fn suggest(builder: &Builder<'_>, run: bool) {
     let git_config = builder.config.git_config();
     let suggestions = builder
         .tool_cmd(Tool::SuggestTests)
-        .env("SUGGEST_TESTS_GITHUB_REPOSITORY", git_config.github_repository)
+        .env("SUGGEST_TESTS_GIT_REPOSITORY", git_config.git_repository)
         .env("SUGGEST_TESTS_NIGHTLY_BRANCH", git_config.nightly_branch)
         .output()
         .expect("failed to run `suggest-tests` tool");
