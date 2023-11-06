@@ -34,7 +34,7 @@ use core::task::Waker;
 ///
 /// <!-- This impl is reachable from `alloc` but rustdoc only lists it in `std`
 ///      because `alloc` doesn't reexport `Waker` -->
-/// [wi]: ../../std/task/struct.Waker.html#impl-From<Arc<W,+Global>>-for-Waker
+/// [wi]: ../../std/task/struct.Waker.html#impl-From%3CArc%3CW,+Global%3E%3E-for-Waker
 ///
 /// # Examples
 ///
