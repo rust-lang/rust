@@ -1072,6 +1072,7 @@ impl Config {
         config.bindir = "bin".into();
         config.dist_include_mingw_linker = true;
         config.dist_compression_profile = "fast".into();
+        config.rustc_parallel = true;
 
         config.stdout_is_tty = std::io::stdout().is_terminal();
         config.stderr_is_tty = std::io::stderr().is_terminal();
@@ -1429,7 +1430,9 @@ impl Config {
             set(&mut config.use_lld, rust.use_lld);
             set(&mut config.lld_enabled, rust.lld);
             set(&mut config.llvm_tools_enabled, rust.llvm_tools);
-            config.rustc_parallel = rust.parallel_compiler.unwrap_or(false);
+            config.rustc_parallel = rust
+                .parallel_compiler
+                .unwrap_or(config.channel == "dev" || config.channel == "nightly");
             config.rustc_default_linker = rust.default_linker;
             config.musl_root = rust.musl_root.map(PathBuf::from);
             config.save_toolstates = rust.save_toolstates.map(PathBuf::from);

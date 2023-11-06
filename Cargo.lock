@@ -3005,9 +3005,9 @@ dependencies = [
 
 [[package]]
 name = "portable-atomic"
-version = "1.4.2"
+version = "1.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f32154ba0af3a075eefa1eda8bb414ee928f62303a54ea85b8d6638ff1a6ee9e"
+checksum = "3bccab0e7fd7cc19f820a1c8c91720af652d0c88dc9664dd72aef2614f04af3b"
 
 [[package]]
 name = "ppv-lite86"
@@ -3734,6 +3734,7 @@ dependencies = [
  "measureme",
  "memmap2",
  "parking_lot 0.12.1",
+ "portable-atomic",
  "rustc-hash",
  "rustc-rayon",
  "rustc-rayon-core",
