@@ -32,6 +32,7 @@ use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _
 use rustc_trait_selection::traits::{
     self, ObligationCause, ObligationCauseCode, ObligationCtxt, WellFormedLoc,
 };
+use rustc_type_ir::TypeFlags;
 
 use std::cell::LazyCell;
 use std::ops::{ControlFlow, Deref};
@@ -1877,7 +1878,7 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
                 continue;
             }
             // Match the existing behavior.
-            if pred.is_global() && !pred.has_late_bound_vars() {
+            if pred.is_global() && !pred.has_type_flags(TypeFlags::HAS_BINDER_VARS) {
                 let pred = self.normalize(span, None, pred);
                 let hir_node = tcx.hir().find_by_def_id(self.body_def_id);
 
