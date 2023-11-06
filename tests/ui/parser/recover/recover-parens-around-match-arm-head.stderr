@@ -1,5 +1,5 @@
 error: unexpected parentheses surrounding `match` arm pattern
-  --> $DIR/recover-parens-around-match-arm-head.rs:4:9
+  --> $DIR/recover-parens-around-match-arm-head.rs:5:9
    |
 LL |         (0 if true) => {
    |         ^         ^
@@ -11,7 +11,7 @@ LL +         0 if true => {
    |
 
 error[E0308]: mismatched types
-  --> $DIR/recover-parens-around-match-arm-head.rs:10:19
+  --> $DIR/recover-parens-around-match-arm-head.rs:11:19
    |
 LL |     let _y: u32 = x;
    |             ---   ^ expected `u32`, found `u8`
