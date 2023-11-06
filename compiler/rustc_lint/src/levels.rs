@@ -548,10 +548,6 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
         self.features
     }
 
-    pub(crate) fn lint_store(&self) -> &LintStore {
-        self.store
-    }
-
     fn current_specs(&self) -> &FxHashMap<LintId, LevelAndSource> {
         self.provider.current_specs()
     }
