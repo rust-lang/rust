@@ -1,0 +1,49 @@
+error: expected identifier, found keyword `if`
+  --> $DIR/recover-parens-around-match-arm-head.rs:4:12
+   |
+LL |         (0 if true) => {
+   |            ^^ expected identifier, found keyword
+
+error: expected one of `)`, `,`, `...`, `..=`, `..`, or `|`, found keyword `if`
+  --> $DIR/recover-parens-around-match-arm-head.rs:4:12
+   |
+LL |         (0 if true) => {
+   |           -^^ expected one of `)`, `,`, `...`, `..=`, `..`, or `|`
+   |           |
+   |           help: missing `,`
+
+error: expected one of `)`, `,`, `@`, or `|`, found keyword `true`
+  --> $DIR/recover-parens-around-match-arm-head.rs:4:15
+   |
+LL |         (0 if true) => {
+   |              -^^^^ expected one of `)`, `,`, `@`, or `|`
+   |              |
+   |              help: missing `,`
+
+error[E0308]: mismatched types
+  --> $DIR/recover-parens-around-match-arm-head.rs:4:9
+   |
+LL |     let x = match val {
+   |                   --- this expression has type `{integer}`
+LL |         (0 if true) => {
+   |         ^^^^^^^^^^^ expected integer, found `(_, _, _)`
+   |
+   = note: expected type `{integer}`
+             found tuple `(_, _, _)`
+
+error[E0308]: mismatched types
+  --> $DIR/recover-parens-around-match-arm-head.rs:13:19
+   |
+LL |     let _y: u32 = x;
+   |             ---   ^ expected `u32`, found `u8`
+   |             |
+   |             expected due to this
+   |
+help: you can convert a `u8` to a `u32`
+   |
+LL |     let _y: u32 = x.into();
+   |                    +++++++
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0308`.
