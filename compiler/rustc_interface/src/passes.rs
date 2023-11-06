@@ -72,17 +72,6 @@ fn count_nodes(krate: &ast::Crate) -> usize {
     counter.count
 }
 
-pub(crate) fn create_lint_store(
-    sess: &Session,
-    register_lints: Option<impl Fn(&Session, &mut LintStore)>,
-) -> LintStore {
-    let mut lint_store = rustc_lint::new_lint_store(sess.enable_internal_lints());
-    if let Some(register_lints) = register_lints {
-        register_lints(sess, &mut lint_store);
-    }
-    lint_store
-}
-
 fn pre_expansion_lint<'a>(
     sess: &Session,
     features: &Features,
