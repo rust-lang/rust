@@ -379,6 +379,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         (err, output_def_id)
                     }
                 };
+                if self.check_for_missing_semi(expr, &mut err)
+                    && let hir::Node::Expr(expr) = self.tcx.hir().get_parent(expr.hir_id)
+                    && let hir::ExprKind::Assign(..) = expr.kind
+                {
+                    // We defer to the later error produced by `check_lhs_assignable`.
+                    err.delay_as_bug();
+                }
 
                 let suggest_deref_binop =
                     |err: &mut DiagnosticBuilder<'_, _>, lhs_deref_ty: Ty<'tcx>| {
