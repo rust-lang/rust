@@ -698,6 +698,7 @@ pub(crate) unsafe fn extract_return_type<'a>(
 pub(crate) unsafe fn enzyme_ad(
     llmod: &llvm::Module,
     llcx: &llvm::Context,
+    diag_handler: &rustc_errors::Handler,
     item: AutoDiffItem,
 ) -> Result<(), FatalError> {
     let autodiff_mode = item.attrs.mode;
@@ -710,8 +711,28 @@ pub(crate) unsafe fn enzyme_ad(
     // get target and source function
     let name = CString::new(rust_name.to_owned()).unwrap();
     let name2 = CString::new(rust_name2.clone()).unwrap();
-    let src_fnc = llvm::LLVMGetNamedFunction(llmod, name.as_c_str().as_ptr()).unwrap();
-    let target_fnc = llvm::LLVMGetNamedFunction(llmod, name2.as_ptr()).unwrap();
+    let src_fnc_opt = llvm::LLVMGetNamedFunction(llmod, name.as_c_str().as_ptr());
+    let src_fnc = match src_fnc_opt {
+        Some(x) => x,
+        None => {
+            return Err(llvm_err(diag_handler, LlvmError::PrepareAutoDiff{
+                src: rust_name.to_owned(),
+                target: rust_name2.to_owned(),
+                error: "could not find src function".to_owned(),
+            }));
+        }
+    };
+    let target_fnc_opt = llvm::LLVMGetNamedFunction(llmod, name2.as_ptr());
+    let target_fnc = match target_fnc_opt {
+        Some(x) => x,
+        None => {
+            return Err(llvm_err(diag_handler, LlvmError::PrepareAutoDiff{
+                src: rust_name.to_owned(),
+                target: rust_name2.to_owned(),
+                error: "could not find target function".to_owned(),
+            }));
+        }
+    };
     let src_num_args = llvm::LLVMCountParams(src_fnc);
     let target_num_args = llvm::LLVMCountParams(target_fnc);
     assert!(src_num_args <= target_num_args);
@@ -791,13 +812,14 @@ pub(crate) unsafe fn enzyme_ad(
 
 pub(crate) unsafe fn differentiate(
     module: &ModuleCodegen<ModuleLlvm>,
-    _cgcx: &CodegenContext<LlvmCodegenBackend>,
+    cgcx: &CodegenContext<LlvmCodegenBackend>,
     diff_items: Vec<AutoDiffItem>,
     _typetrees: FxHashMap<String, DiffTypeTree>,
     _config: &ModuleConfig,
 ) -> Result<(), FatalError> {
     let llmod = module.module_llvm.llmod();
     let llcx = &module.module_llvm.llcx;
+    let diag_handler = cgcx.create_diag_handler();
 
     llvm::EnzymeSetCLBool(std::ptr::addr_of_mut!(llvm::EnzymeStrictAliasing), 0);
 
@@ -818,7 +840,7 @@ pub(crate) unsafe fn differentiate(
     }
 
     for item in diff_items {
-        let res = enzyme_ad(llmod, llcx, item);
+        let res = enzyme_ad(llmod, llcx, &diag_handler, item);
         assert!(res.is_ok());
     }
 
