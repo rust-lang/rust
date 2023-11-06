@@ -2278,9 +2278,8 @@ pub(crate) enum InvalidMutInPattern {
     #[note(parse_note_mut_pattern_usage)]
     NonIdent {
         #[primary_span]
-        #[suggestion(code = "{pat}", applicability = "machine-applicable")]
+        #[suggestion(code = "", applicability = "machine-applicable")]
         span: Span,
-        pat: String,
     },
 }
 
