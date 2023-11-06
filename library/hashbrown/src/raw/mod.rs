@@ -50,12 +50,35 @@ use self::imp::Group;
 
 // Branch prediction hint. This is currently only available on nightly but it
 // consistently improves performance by 10-15%.
-#[cfg(not(feature = "nightly"))]
-use core::convert::identity as likely;
-#[cfg(not(feature = "nightly"))]
-use core::convert::identity as unlikely;
+// #[cfg(not(feature = "nightly"))]
+// use core::convert::identity as likely;
+// #[cfg(not(feature = "nightly"))]
+// use core::convert::identity as unlikely;
 #[cfg(feature = "nightly")]
 use core::intrinsics::{likely, unlikely};
+
+#[cfg(not(feature = "nightly"))]
+#[inline]
+#[cold]
+fn cold() {}
+
+#[cfg(not(feature = "nightly"))]
+#[inline]
+fn likely(b: bool) -> bool {
+    if !b {
+        cold()
+    }
+    b
+}
+#[cfg(not(feature = "nightly"))]
+#[cold]
+#[inline]
+fn unlikely(b: bool) -> bool {
+    if b {
+        cold()
+    }
+    b
+}
 
 // Use strict provenance functions if available.
 #[cfg(feature = "nightly")]
@@ -3846,6 +3869,41 @@ impl<T> RawIterRange<T> {
             self.next_ctrl = self.next_ctrl.add(Group::WIDTH);
         }
     }
+
+    /// # Safety
+    /// The provided `n` value must match the actual number of items
+    #[allow(clippy::while_let_on_iterator)]
+    #[cfg_attr(feature = "inline-more", inline)]
+    unsafe fn fold_impl<F, B>(mut self, mut n: usize, mut acc: B, mut f: F) -> B
+    where
+        F: FnMut(B, Bucket<T>) -> B,
+    {
+        if n == 0 {
+            return acc;
+        }
+
+        loop {
+            while let Some(index) = self.current_group.next() {
+                debug_assert!(n != 0);
+                let bucket = self.data.next_n(index);
+                acc = f(acc, bucket);
+                n -= 1;
+            }
+
+            if n == 0 {
+                return acc;
+            }
+
+            // We might read past self.end up to the next group boundary,
+            // but this is fine because it only occurs on tables smaller
+            // than the group size where the trailing control bytes are all
+            // EMPTY. On larger tables self.end is guaranteed to be aligned
+            // to the group size (since tables are power-of-two sized).
+            self.current_group = Group::load_aligned(self.next_ctrl).match_full().into_iter();
+            self.data = self.data.next_n(Group::WIDTH);
+            self.next_ctrl = self.next_ctrl.add(Group::WIDTH);
+        }
+    }
 }
 
 // We make raw iterators unconditionally Send and Sync, and let the PhantomData
@@ -4068,6 +4126,15 @@ impl<T> Iterator for RawIter<T> {
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         (self.items, Some(self.items))
+    }
+
+    #[inline]
+    fn fold<B, F>(self, init: B, f: F) -> B
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> B,
+    {
+        unsafe { self.iter.fold_impl(self.items, init, f) }
     }
 }
 
