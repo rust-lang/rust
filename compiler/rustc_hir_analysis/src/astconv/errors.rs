@@ -4,13 +4,12 @@ use crate::errors::{
     ParenthesizedFnTraitExpansion,
 };
 use crate::traits::error_reporting::report_object_safety_error;
-use hir::{TraitRef, TypeBinding};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{pluralize, struct_span_err, Applicability, Diagnostic, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_infer::traits::FulfillmentError;
-use rustc_middle::ty::{self, suggest_constraining_type_param, Ty, TyCtxt};
+use rustc_middle::ty::{self, suggest_constraining_type_param, AssocItem, Ty, TyCtxt};
 use rustc_session::parse::feature_err;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::symbol::{sym, Ident};
@@ -593,12 +592,17 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 poly_trait_ref.trait_ref.path.segments.iter().flat_map(|x| {
                     x.args.iter().flat_map(|args| {
                         args.bindings.iter().map(|binding| {
-                            (binding.ident.name, (binding, poly_trait_ref.trait_ref))
+                            let name = binding.ident.name;
+                            let trait_def = poly_trait_ref.trait_ref.path.res.opt_def_id();
+                            let assoc_item = trait_def.and_then(|did| {
+                                tcx.associated_items(did).filter_by_name_unhygienic(name).next()
+                            });
+                            (name, assoc_item)
                         })
                     })
                 })
             })
-            .collect::<FxHashMap<Symbol, (&TypeBinding<'_>, TraitRef<'_>)>>();
+            .collect::<FxHashMap<Symbol, Option<&AssocItem>>>();
 
         let mut names = names
             .into_iter()
@@ -658,16 +662,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     err.span_label(sp, format!("`{}{}` defined here", prefix, item.name));
                 }
 
-                if let Some((shadow, trait_ref)) = bound_names.get(&item.name) {
-                    if let Some(def_id) = trait_ref.path.res.opt_def_id() {
-                        let items = tcx.associated_items(def_id);
-                        for assoc_item in items.filter_by_name_unhygienic(shadow.ident.name) {
-                            err.span_label(
-                                tcx.def_span(assoc_item.def_id),
-                                format!("`{}{}` shadowed here", prefix, item.name),
-                            );
-                        }
-                    }
+                if let Some(Some(assoc_item)) = bound_names.get(&item.name) {
+                    err.span_label(
+                        tcx.def_span(assoc_item.def_id),
+                        format!("`{}{}` shadowed here", prefix, item.name),
+                    );
                 }
             }
             if potential_assoc_types.len() == assoc_items.len() {
@@ -679,6 +678,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 for item in assoc_items {
                     if let Some(sp) = tcx.hir().span_if_local(item.def_id) {
                         rename_suggestions.push(sp);
+                    }
+
+                    if let Some(Some(assoc_item)) = bound_names.get(&item.name) {
+                        if let Some(sp) = tcx.hir().span_if_local(assoc_item.def_id) {
+                            rename_suggestions.push(sp);
+                        }
                     }
                 }
             } else if let (Ok(snippet), false) =
