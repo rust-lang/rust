@@ -12,7 +12,6 @@ fn main() {
     //~^ ERROR unnecessary parentheses around `if` condition
 
     // reported by parser
-    for(_x in 1..10){}
-    //~^ ERROR expected one of
-    //~| ERROR unexpected parentheses surrounding
+    for _x in 1..10 {}
+    //~^ ERROR unexpected parentheses surrounding
 }

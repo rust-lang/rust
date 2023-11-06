@@ -2609,33 +2609,66 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parses `for <src_pat> in <src_expr> <src_loop_block>` (`for` token already eaten).
-    fn parse_expr_for(&mut self, opt_label: Option<Label>, lo: Span) -> PResult<'a, P<Expr>> {
-        // Record whether we are about to parse `for (`.
-        // This is used below for recovery in case of `for ( $stuff ) $block`
-        // in which case we will suggest `for $stuff $block`.
-        let begin_paren = match self.token.kind {
-            token::OpenDelim(Delimiter::Parenthesis) => Some((
-                self.token.span,
-                self.prev_token.span.between(self.look_ahead(1, |t| t.span)),
-            )),
-            _ => None,
+    fn parse_for_head(&mut self) -> PResult<'a, (P<Pat>, P<Expr>)> {
+        let pat = if self.token.kind == token::OpenDelim(Delimiter::Parenthesis) {
+            // Record whether we are about to parse `for (`.
+            // This is used below for recovery in case of `for ( $stuff ) $block`
+            // in which case we will suggest `for $stuff $block`.
+            let start_span = self.token.span;
+            let left = self.prev_token.span.between(self.look_ahead(1, |t| t.span));
+            match self.parse_pat_allow_top_alt(
+                None,
+                RecoverComma::Yes,
+                RecoverColon::Yes,
+                CommaRecoveryMode::LikelyTuple,
+            ) {
+                Ok(pat) => pat,
+                Err(err) if self.eat_keyword(kw::In) => {
+                    let expr = match self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL, None) {
+                        Ok(expr) => expr,
+                        Err(expr_err) => {
+                            expr_err.cancel();
+                            return Err(err);
+                        }
+                    };
+                    return if self.token.kind == token::CloseDelim(Delimiter::Parenthesis) {
+                        let span = vec![start_span, self.token.span];
+                        let right = self.prev_token.span.between(self.look_ahead(1, |t| t.span));
+                        self.bump(); // )
+                        err.cancel();
+                        self.sess.emit_err(errors::ParenthesesInForHead {
+                            span,
+                            // With e.g. `for (x) in y)` this would replace `(x) in y)`
+                            // with `x) in y)` which is syntactically invalid.
+                            // However, this is prevented before we get here.
+                            sugg: errors::ParenthesesInForHeadSugg { left, right },
+                        });
+                        Ok((self.mk_pat(start_span.to(right), ast::PatKind::Wild), expr))
+                    } else {
+                        Err(err)
+                    };
+                }
+                Err(err) => return Err(err),
+            }
+        } else {
+            self.parse_pat_allow_top_alt(
+                None,
+                RecoverComma::Yes,
+                RecoverColon::Yes,
+                CommaRecoveryMode::LikelyTuple,
+            )?
         };
-
-        let pat = self.parse_pat_allow_top_alt(
-            None,
-            RecoverComma::Yes,
-            RecoverColon::Yes,
-            CommaRecoveryMode::LikelyTuple,
-        )?;
         if !self.eat_keyword(kw::In) {
             self.error_missing_in_for_loop();
         }
         self.check_for_for_in_in_typo(self.prev_token.span);
         let expr = self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL, None)?;
+        Ok((pat, expr))
+    }
 
-        let pat = self.recover_parens_around_for_head(pat, begin_paren);
-
+    /// Parses `for <src_pat> in <src_expr> <src_loop_block>` (`for` token already eaten).
+    fn parse_expr_for(&mut self, opt_label: Option<Label>, lo: Span) -> PResult<'a, P<Expr>> {
+        let (pat, expr) = self.parse_for_head()?;
         // Recover from missing expression in `for` loop
         if matches!(expr.kind, ExprKind::Block(..))
             && !matches!(self.token.kind, token::OpenDelim(Delimiter::Brace))

@@ -1,8 +1,14 @@
-error: expected one of `)`, `,`, `@`, or `|`, found keyword `in`
-  --> $DIR/issue-103435-extra-parentheses.rs:15:12
+error: unexpected parentheses surrounding `for` loop head
+  --> $DIR/issue-103435-extra-parentheses.rs:15:8
    |
-LL |     for(_x in 1..10){}
-   |            ^^ expected one of `)`, `,`, `@`, or `|`
+LL |     for(_x in 1..10) {}
+   |        ^           ^
+   |
+help: remove parentheses in `for` loop
+   |
+LL -     for(_x in 1..10) {}
+LL +     for _x in 1..10 {}
+   |
 
 error: unnecessary parentheses around pattern
   --> $DIR/issue-103435-extra-parentheses.rs:5:11
@@ -36,12 +42,12 @@ LL +     for _x in 1..10 {}
 error: unnecessary parentheses around `if` condition
   --> $DIR/issue-103435-extra-parentheses.rs:11:7
    |
-LL |     if(2 == 1){}
+LL |     if(2 == 1) {}
    |       ^      ^
    |
 help: remove these parentheses
    |
-LL -     if(2 == 1){}
+LL -     if(2 == 1) {}
 LL +     if 2 == 1 {}
    |
 
