@@ -2001,37 +2001,18 @@ impl<'a> Parser<'a> {
     pub(super) fn recover_parens_around_for_head(
         &mut self,
         pat: P<Pat>,
-        begin_paren: Option<Span>,
+        begin_paren: Option<(Span, Span)>,
     ) -> P<Pat> {
         match (&self.token.kind, begin_paren) {
-            (token::CloseDelim(Delimiter::Parenthesis), Some(begin_par_sp)) => {
+            (token::CloseDelim(Delimiter::Parenthesis), Some((begin_par_sp, left))) => {
+                let right = self.prev_token.span.between(self.look_ahead(1, |t| t.span));
                 self.bump();
-
-                let sm = self.sess.source_map();
-                let left = begin_par_sp;
-                let right = self.prev_token.span;
-                let left_snippet = if let Ok(snip) = sm.span_to_prev_source(left)
-                    && !snip.ends_with(' ')
-                {
-                    " ".to_string()
-                } else {
-                    "".to_string()
-                };
-
-                let right_snippet = if let Ok(snip) = sm.span_to_next_source(right)
-                    && !snip.starts_with(' ')
-                {
-                    " ".to_string()
-                } else {
-                    "".to_string()
-                };
-
                 self.sess.emit_err(ParenthesesInForHead {
-                    span: vec![left, right],
+                    span: vec![begin_par_sp, self.prev_token.span],
                     // With e.g. `for (x) in y)` this would replace `(x) in y)`
                     // with `x) in y)` which is syntactically invalid.
                     // However, this is prevented before we get here.
-                    sugg: ParenthesesInForHeadSugg { left, right, left_snippet, right_snippet },
+                    sugg: ParenthesesInForHeadSugg { left, right },
                 });
 
                 // Unwrap `(pat)` into `pat` to avoid the `unused_parens` lint.

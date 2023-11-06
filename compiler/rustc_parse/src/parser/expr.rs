@@ -2615,7 +2615,10 @@ impl<'a> Parser<'a> {
         // This is used below for recovery in case of `for ( $stuff ) $block`
         // in which case we will suggest `for $stuff $block`.
         let begin_paren = match self.token.kind {
-            token::OpenDelim(Delimiter::Parenthesis) => Some(self.token.span),
+            token::OpenDelim(Delimiter::Parenthesis) => Some((
+                self.token.span,
+                self.prev_token.span.between(self.look_ahead(1, |t| t.span)),
+            )),
             _ => None,
         };
 
