@@ -797,6 +797,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         qpath: &'tcx QPath<'tcx>,
         hir_id: hir::HirId,
         span: Span,
+        args: Option<&'tcx [hir::Expr<'tcx>]>,
     ) -> (Res, Option<RawTy<'tcx>>, &'tcx [hir::PathSegment<'tcx>]) {
         debug!(
             "resolve_ty_and_res_fully_qualified_call: qpath={:?} hir_id={:?} span={:?}",
@@ -898,7 +899,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         item_name,
                         SelfSource::QPath(qself),
                         error,
-                        None,
+                        args,
                         Expectation::NoExpectation,
                         trait_missing_method && span.edition().at_least_rust_2021(), // emits missing method for trait only after edition 2021
                     ) {
