@@ -47,7 +47,7 @@ pub type Symbol = String;
 pub type CrateNum = usize;
 
 /// A unique identification number for each item accessible for the current compilation unit.
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct DefId(usize);
 
 impl Debug for DefId {
@@ -240,12 +240,16 @@ pub trait Context {
 // datastructures and stable MIR datastructures
 scoped_thread_local! (static TLV: Cell<*const ()>);
 
-pub fn run(context: &dyn Context, f: impl FnOnce()) {
-    assert!(!TLV.is_set());
-    let ptr: *const () = &context as *const &_ as _;
-    TLV.set(&Cell::new(ptr), || {
-        f();
-    });
+pub fn run<F, T>(context: &dyn Context, f: F) -> Result<T, Error>
+where
+    F: FnOnce() -> T,
+{
+    if TLV.is_set() {
+        Err(Error::from("StableMIR already running"))
+    } else {
+        let ptr: *const () = &context as *const &_ as _;
+        TLV.set(&Cell::new(ptr), || Ok(f()))
+    }
 }
 
 /// Loads the current context and calls a function with it.
@@ -260,7 +264,7 @@ pub fn with<R>(f: impl FnOnce(&dyn Context) -> R) -> R {
 }
 
 /// A type that provides internal information but that can still be used for debug purpose.
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Opaque(String);
 
 impl std::fmt::Display for Opaque {

@@ -13,6 +13,7 @@ use rustc_span::def_id::{CrateNum, DefId};
 use rustc_span::Span;
 use scoped_tls::scoped_thread_local;
 use stable_mir::ty::IndexedVal;
+use stable_mir::Error;
 use std::cell::Cell;
 use std::cell::RefCell;
 use std::fmt::Debug;
@@ -21,11 +22,11 @@ use std::ops::Index;
 
 mod internal;
 
-pub fn stable<'tcx, S: Stable<'tcx>>(item: &S) -> S::T {
+pub fn stable<'tcx, S: Stable<'tcx>>(item: S) -> S::T {
     with_tables(|tables| item.stable(tables))
 }
 
-pub fn internal<'tcx, S: RustcInternal<'tcx>>(item: &S) -> S::T {
+pub fn internal<'tcx, S: RustcInternal<'tcx>>(item: S) -> S::T {
     with_tables(|tables| item.internal(tables))
 }
 
@@ -144,12 +145,13 @@ pub fn crate_num(item: &stable_mir::Crate) -> CrateNum {
 // datastructures and stable MIR datastructures
 scoped_thread_local! (static TLV: Cell<*const ()>);
 
-pub(crate) fn init<'tcx>(tables: &TablesWrapper<'tcx>, f: impl FnOnce()) {
+pub(crate) fn init<'tcx, F, T>(tables: &TablesWrapper<'tcx>, f: F) -> T
+where
+    F: FnOnce() -> T,
+{
     assert!(!TLV.is_set());
     let ptr = tables as *const _ as *const ();
-    TLV.set(&Cell::new(ptr), || {
-        f();
-    });
+    TLV.set(&Cell::new(ptr), || f())
 }
 
 /// Loads the current context and calls a function with it.
@@ -165,7 +167,10 @@ pub(crate) fn with_tables<'tcx, R>(f: impl FnOnce(&mut Tables<'tcx>) -> R) -> R 
     })
 }
 
-pub fn run(tcx: TyCtxt<'_>, f: impl FnOnce()) {
+pub fn run<F, T>(tcx: TyCtxt<'_>, f: F) -> Result<T, Error>
+where
+    F: FnOnce() -> T,
+{
     let tables = TablesWrapper(RefCell::new(Tables {
         tcx,
         def_ids: IndexMap::default(),
@@ -175,7 +180,7 @@ pub fn run(tcx: TyCtxt<'_>, f: impl FnOnce()) {
         instances: IndexMap::default(),
         constants: IndexMap::default(),
     }));
-    stable_mir::run(&tables, || init(&tables, f));
+    stable_mir::run(&tables, || init(&tables, f))
 }
 
 #[macro_export]
@@ -241,7 +246,8 @@ macro_rules! run {
                 queries.global_ctxt().unwrap().enter(|tcx| {
                     rustc_internal::run(tcx, || {
                         self.result = Some((self.callback)(tcx));
-                    });
+                    })
+                    .unwrap();
                     if self.result.as_ref().is_some_and(|val| val.is_continue()) {
                         Compilation::Continue
                     } else {
