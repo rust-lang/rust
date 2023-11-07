@@ -34,7 +34,7 @@ use rustc_middle::ty::{self, GenericArgKind, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::def_id::DefIdSet;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Symbol;
-use rustc_span::{edit_distance, source_map, ExpnKind, FileName, MacroKind, Span};
+use rustc_span::{edit_distance, ExpnKind, FileName, MacroKind, Span};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::error_reporting::on_unimplemented::OnUnimplementedNote;
 use rustc_trait_selection::traits::error_reporting::on_unimplemented::TypeErrCtxtExt as _;
@@ -49,15 +49,6 @@ use super::{CandidateSource, MethodError, NoMatchData};
 use rustc_hir::intravisit::Visitor;
 use std::cmp::{self, Ordering};
 use std::iter;
-
-/// After identifying that `full_expr` is a method call, we use this type to keep the expression's
-/// components readily available to us to point at the right place in diagnostics.
-#[derive(Debug, Clone, Copy)]
-pub struct MethodCallComponents<'tcx> {
-    pub receiver: &'tcx hir::Expr<'tcx>,
-    pub args: &'tcx [hir::Expr<'tcx>],
-    pub full_expr: &'tcx hir::Expr<'tcx>,
-}
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn is_fn_ty(&self, ty: Ty<'tcx>, span: Span) -> bool {
@@ -124,7 +115,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         item_name: Ident,
         source: SelfSource<'tcx>,
         error: MethodError<'tcx>,
-        args: Option<MethodCallComponents<'tcx>>,
+        args: Option<&'tcx [hir::Expr<'tcx>]>,
         expected: Expectation<'tcx>,
         trait_missing_method: bool,
     ) -> Option<DiagnosticBuilder<'_, ErrorGuaranteed>> {
@@ -167,6 +158,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.note_candidates_on_method_error(
                     rcvr_ty,
                     item_name,
+                    source,
                     args,
                     span,
                     &mut err,
@@ -266,23 +258,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn suggest_missing_writer(
         &self,
         rcvr_ty: Ty<'tcx>,
-        args: MethodCallComponents<'tcx>,
+        rcvr_expr: &hir::Expr<'tcx>,
     ) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
         let (ty_str, _ty_file) = self.tcx.short_ty_string(rcvr_ty);
         let mut err = struct_span_err!(
             self.tcx.sess,
-            args.receiver.span,
+            rcvr_expr.span,
             E0599,
             "cannot write into `{}`",
             ty_str
         );
         err.span_note(
-            args.receiver.span,
+            rcvr_expr.span,
             "must implement `io::Write`, `fmt::Write`, or have a `write_fmt` method",
         );
-        if let ExprKind::Lit(_) = args.receiver.kind {
+        if let ExprKind::Lit(_) = rcvr_expr.kind {
             err.span_help(
-                args.receiver.span.shrink_to_lo(),
+                rcvr_expr.span.shrink_to_lo(),
                 "a writer is needed before this format string",
             );
         };
@@ -296,7 +288,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         rcvr_ty: Ty<'tcx>,
         item_name: Ident,
         source: SelfSource<'tcx>,
-        args: Option<MethodCallComponents<'tcx>>,
+        args: Option<&'tcx [hir::Expr<'tcx>]>,
         sugg_span: Span,
         no_match_data: &mut NoMatchData<'tcx>,
         expected: Expectation<'tcx>,
@@ -377,23 +369,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             tcx.is_diagnostic_item(sym::write_macro, def_id)
                 || tcx.is_diagnostic_item(sym::writeln_macro, def_id)
         }) && item_name.name == Symbol::intern("write_fmt");
-        let mut err = if is_write && let Some(args) = args {
-            self.suggest_missing_writer(rcvr_ty, args)
-        } else {
-            tcx.sess.create_err(NoAssociatedItem {
-                span,
-                item_kind,
-                item_name,
-                ty_prefix: if trait_missing_method {
-                    // FIXME(mu001999) E0599 maybe not suitable here because it is for types
-                    Cow::from("trait")
-                } else {
-                    rcvr_ty.prefix_string(self.tcx)
-                },
-                ty_str: ty_str_reported,
-                trait_missing_method,
-            })
-        };
+        let mut err =
+            if is_write && let SelfSource::MethodCall(rcvr_expr) = source
+            {
+                self.suggest_missing_writer(rcvr_ty, rcvr_expr)
+            } else {
+                tcx.sess.create_err(NoAssociatedItem {
+                    span,
+                    item_kind,
+                    item_name,
+                    ty_prefix: if trait_missing_method {
+                        // FIXME(mu001999) E0599 maybe not suitable here because it is for types
+                        Cow::from("trait")
+                    } else {
+                        rcvr_ty.prefix_string(self.tcx)
+                    },
+                    ty_str: ty_str_reported,
+                    trait_missing_method,
+                })
+            };
         if tcx.sess.source_map().is_multiline(sugg_span) {
             err.span_label(sugg_span.with_hi(span.lo()), "");
         }
@@ -409,7 +403,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             err.downgrade_to_delayed_bug();
         }
 
-        self.find_builder_fn(&mut err, rcvr_ty, source);
+        if matches!(source, SelfSource::QPath(_)) && args.is_some() {
+            self.find_builder_fn(&mut err, rcvr_ty);
+        }
+
         if tcx.ty_is_opaque_future(rcvr_ty) && item_name.name == sym::poll {
             err.help(format!(
                 "method `poll` found on `Pin<&mut {ty_str}>`, \
@@ -523,6 +520,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.note_candidates_on_method_error(
                 rcvr_ty,
                 item_name,
+                source,
                 args,
                 span,
                 &mut err,
@@ -533,6 +531,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.note_candidates_on_method_error(
                 rcvr_ty,
                 item_name,
+                source,
                 args,
                 span,
                 &mut err,
@@ -976,7 +975,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 unsatisfied_bounds = true;
             }
         } else if let ty::Adt(def, targs) = rcvr_ty.kind()
-            && let Some(args) = args
+            && let SelfSource::MethodCall(rcvr_expr) = source
         {
             // This is useful for methods on arbitrary self types that might have a simple
             // mutability difference, like calling a method on `Pin<&mut Self>` that is on
@@ -999,8 +998,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         rcvr_ty,
                         &item_segment,
                         span,
-                        args.full_expr,
-                        args.receiver,
+                        tcx.hir().get_parent(rcvr_expr.hir_id).expect_expr(),
+                        rcvr_expr,
                     ) {
                         err.span_note(
                             tcx.def_span(method.def_id),
@@ -1169,7 +1168,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 span,
                 rcvr_ty,
                 item_name,
-                args.map(|MethodCallComponents { args, .. }| args.len() + 1),
+                args.map(|args| args.len() + 1),
                 source,
                 no_match_data.out_of_scope_traits.clone(),
                 &unsatisfied_predicates,
@@ -1250,7 +1249,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         rcvr_ty: Ty<'tcx>,
         item_name: Ident,
-        args: Option<MethodCallComponents<'tcx>>,
+        self_source: SelfSource<'tcx>,
+        args: Option<&'tcx [hir::Expr<'tcx>]>,
         span: Span,
         err: &mut Diagnostic,
         sources: &mut Vec<CandidateSource>,
@@ -1320,38 +1320,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                     if let Some(sugg_span) = sugg_span
                         && let Some(trait_ref) = self.tcx.impl_trait_ref(impl_did)
-                    {
-                        let path = self.tcx.def_path_str(trait_ref.skip_binder().def_id);
-
-                        let ty = match item.kind {
-                            ty::AssocKind::Const | ty::AssocKind::Type => impl_ty,
-                            ty::AssocKind::Fn => self
-                                .tcx
-                                .fn_sig(item.def_id)
-                                .instantiate_identity()
-                                .inputs()
-                                .skip_binder()
-                                .get(0)
-                                .filter(|ty| ty.is_ref() && !rcvr_ty.is_ref())
-                                .copied()
-                                .unwrap_or(rcvr_ty),
-                        };
-                        if let Some(sugg) = print_disambiguation_help(
-                            item_name,
-                            args,
+                        && let Some(sugg) = print_disambiguation_help(
+                            self.tcx,
                             err,
-                            path,
-                            ty,
-                            Some(impl_ty),
-                            item.kind,
-                            self.tcx.def_kind_descr(item.kind.as_def_kind(), item.def_id),
-                            sugg_span,
+                            self_source,
+                            args,
+                            trait_ref.instantiate(
+                                self.tcx,
+                                self.fresh_args_for_item(sugg_span, impl_did)
+                            ).with_self_ty(self.tcx, rcvr_ty),
                             idx,
-                            self.tcx.sess.source_map(),
-                            item.fn_has_self_parameter,
-                        ) {
-                            suggs.push(sugg);
-                        }
+                            sugg_span,
+                            item,
+                        )
+                    {
+                        suggs.push(sugg);
                     }
                 }
                 CandidateSource::Trait(trait_did) => {
@@ -1373,24 +1356,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         err.span_note(item_span, msg);
                         None
                     };
-                    if let Some(sugg_span) = sugg_span {
-                        let path = self.tcx.def_path_str(trait_did);
-                        if let Some(sugg) = print_disambiguation_help(
-                            item_name,
-                            args,
+                    if let Some(sugg_span) = sugg_span
+                        && let Some(sugg) = print_disambiguation_help(
+                            self.tcx,
                             err,
-                            path,
-                            rcvr_ty,
-                            None,
-                            item.kind,
-                            self.tcx.def_kind_descr(item.kind.as_def_kind(), item.def_id),
-                            sugg_span,
+                            self_source,
+                            args,
+                            ty::TraitRef::new(
+                                self.tcx,
+                                trait_did,
+                                self.fresh_args_for_item(sugg_span, trait_did)
+                            ).with_self_ty(self.tcx, rcvr_ty),
                             idx,
-                            self.tcx.sess.source_map(),
-                            item.fn_has_self_parameter,
-                        ) {
-                            suggs.push(sugg);
-                        }
+                            sugg_span,
+                            item,
+                        )
+                    {
+                        suggs.push(sugg);
                     }
                 }
             }
@@ -1410,18 +1392,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Look at all the associated functions without receivers in the type's inherent impls
     /// to look for builders that return `Self`, `Option<Self>` or `Result<Self, _>`.
-    fn find_builder_fn(&self, err: &mut Diagnostic, rcvr_ty: Ty<'tcx>, source: SelfSource<'tcx>) {
+    fn find_builder_fn(&self, err: &mut Diagnostic, rcvr_ty: Ty<'tcx>) {
         let ty::Adt(adt_def, _) = rcvr_ty.kind() else {
             return;
         };
-        let SelfSource::QPath(ty) = source else {
-            return;
-        };
-        let hir = self.tcx.hir();
-        if let Some(Node::Pat(_)) = hir.find(hir.parent_id(ty.hir_id)) {
-            // Do not suggest a fn call when a pattern is expected.
-            return;
-        }
         let mut items = self
             .tcx
             .inherent_impls(adt_def.did())
@@ -1504,7 +1478,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         rcvr_ty: Ty<'tcx>,
         source: SelfSource<'tcx>,
         item_name: Ident,
-        args: Option<MethodCallComponents<'tcx>>,
+        args: Option<&'tcx [hir::Expr<'tcx>]>,
         sugg_span: Span,
     ) {
         let mut has_unsuggestable_args = false;
@@ -1578,38 +1552,40 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 None
             };
             let mut applicability = Applicability::MachineApplicable;
-            let args = if let Some(MethodCallComponents { receiver, args, .. }) = args {
-                // The first arg is the same kind as the receiver
-                let explicit_args = if first_arg.is_some() {
-                    std::iter::once(receiver).chain(args.iter()).collect::<Vec<_>>()
+            let args = if let SelfSource::MethodCall(receiver) = source
+                    && let Some(args) = args
+                {
+                    // The first arg is the same kind as the receiver
+                    let explicit_args = if first_arg.is_some() {
+                        std::iter::once(receiver).chain(args.iter()).collect::<Vec<_>>()
+                    } else {
+                        // There is no `Self` kind to infer the arguments from
+                        if has_unsuggestable_args {
+                            applicability = Applicability::HasPlaceholders;
+                        }
+                        args.iter().collect()
+                    };
+                    format!(
+                        "({}{})",
+                        first_arg.unwrap_or(""),
+                        explicit_args
+                            .iter()
+                            .map(|arg| self
+                                .tcx
+                                .sess
+                                .source_map()
+                                .span_to_snippet(arg.span)
+                                .unwrap_or_else(|_| {
+                                    applicability = Applicability::HasPlaceholders;
+                                    "_".to_owned()
+                                }))
+                            .collect::<Vec<_>>()
+                            .join(", "),
+                    )
                 } else {
-                    // There is no `Self` kind to infer the arguments from
-                    if has_unsuggestable_args {
-                        applicability = Applicability::HasPlaceholders;
-                    }
-                    args.iter().collect()
+                    applicability = Applicability::HasPlaceholders;
+                    "(...)".to_owned()
                 };
-                format!(
-                    "({}{})",
-                    first_arg.unwrap_or(""),
-                    explicit_args
-                        .iter()
-                        .map(|arg| self
-                            .tcx
-                            .sess
-                            .source_map()
-                            .span_to_snippet(arg.span)
-                            .unwrap_or_else(|_| {
-                                applicability = Applicability::HasPlaceholders;
-                                "_".to_owned()
-                            }))
-                        .collect::<Vec<_>>()
-                        .join(", "),
-                )
-            } else {
-                applicability = Applicability::HasPlaceholders;
-                "(...)".to_owned()
-            };
             err.span_suggestion(
                 sugg_span,
                 "use associated function syntax instead",
@@ -3267,56 +3243,59 @@ pub fn all_traits(tcx: TyCtxt<'_>) -> Vec<TraitInfo> {
 }
 
 fn print_disambiguation_help<'tcx>(
-    item_name: Ident,
-    args: Option<MethodCallComponents<'tcx>>,
+    tcx: TyCtxt<'tcx>,
     err: &mut Diagnostic,
-    trait_name: String,
-    rcvr_ty: Ty<'_>,
-    impl_self_ty: Option<Ty<'_>>,
-    kind: ty::AssocKind,
-    def_kind_descr: &'static str,
+    source: SelfSource<'tcx>,
+    args: Option<&'tcx [hir::Expr<'tcx>]>,
+    trait_ref: ty::TraitRef<'tcx>,
+    candidate_idx: Option<usize>,
     span: Span,
-    candidate: Option<usize>,
-    source_map: &source_map::SourceMap,
-    fn_has_self_parameter: bool,
+    item: ty::AssocItem,
 ) -> Option<String> {
+    let trait_ref = if item.fn_has_self_parameter {
+        trait_ref.print_only_trait_name().to_string()
+    } else {
+        format!("<{} as {}>", trait_ref.args[0], trait_ref.print_only_trait_name())
+    };
     Some(
-        if let (ty::AssocKind::Fn, Some(MethodCallComponents { receiver, args, .. })) = (kind, args)
+        if matches!(item.kind, ty::AssocKind::Fn)
+            && let SelfSource::MethodCall(receiver) = source
+            && let Some(args) = args
         {
+            let def_kind_descr = tcx.def_kind_descr(item.kind.as_def_kind(), item.def_id);
+            let item_name = item.ident(tcx);
+            let rcvr_ref = tcx.fn_sig(item.def_id).skip_binder().skip_binder().inputs()[0]
+                .ref_mutability()
+                .map_or("", |mutbl| mutbl.ref_prefix_str());
             let args = format!(
                 "({}{})",
-                rcvr_ty.ref_mutability().map_or("", |mutbl| mutbl.ref_prefix_str()),
+                rcvr_ref,
                 std::iter::once(receiver)
                     .chain(args.iter())
-                    .map(|arg| source_map
+                    .map(|arg| tcx
+                        .sess
+                        .source_map()
                         .span_to_snippet(arg.span)
                         .unwrap_or_else(|_| { "_".to_owned() }))
                     .collect::<Vec<_>>()
                     .join(", "),
             );
-            let trait_name = if !fn_has_self_parameter && let Some(impl_self_ty) = impl_self_ty {
-            format!("<{impl_self_ty} as {trait_name}>")
-        } else {
-            trait_name
-        };
             err.span_suggestion_verbose(
                 span,
                 format!(
                     "disambiguate the {def_kind_descr} for {}",
-                    if let Some(candidate) = candidate {
+                    if let Some(candidate) = candidate_idx {
                         format!("candidate #{candidate}")
                     } else {
                         "the candidate".to_string()
                     },
                 ),
-                format!("{trait_name}::{item_name}{args}"),
+                format!("{trait_ref}::{item_name}{args}"),
                 Applicability::HasPlaceholders,
             );
             return None;
-        } else if let Some(impl_self_ty) = impl_self_ty {
-            format!("<{impl_self_ty} as {trait_name}>::")
         } else {
-            format!("{trait_name}::")
+            format!("{trait_ref}::")
         },
     )
 }

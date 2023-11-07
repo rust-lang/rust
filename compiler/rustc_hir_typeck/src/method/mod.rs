@@ -7,7 +7,7 @@ mod prelude2021;
 pub mod probe;
 mod suggest;
 
-pub use self::suggest::{MethodCallComponents, SelfSource};
+pub use self::suggest::SelfSource;
 pub use self::MethodError::*;
 
 use crate::errors::OpMethodGenericParams;

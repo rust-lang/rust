@@ -13,7 +13,7 @@ use crate::errors::{
     YieldExprOutsideOfCoroutine,
 };
 use crate::fatally_break_rust;
-use crate::method::{MethodCallComponents, SelfSource};
+use crate::method::SelfSource;
 use crate::type_error_struct;
 use crate::Expectation::{self, ExpectCastableToType, ExpectHasType, NoExpectation};
 use crate::{
@@ -512,7 +512,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
         let (res, opt_ty, segs) =
-            self.resolve_ty_and_res_fully_qualified_call(qpath, expr.hir_id, expr.span);
+            self.resolve_ty_and_res_fully_qualified_call(qpath, expr.hir_id, expr.span, Some(args));
         let ty = match res {
             Res::Err => {
                 self.suggest_assoc_method_call(segs);
@@ -1332,7 +1332,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         segment.ident,
                         SelfSource::MethodCall(rcvr),
                         error,
-                        Some(MethodCallComponents { receiver: rcvr, args, full_expr: expr }),
+                        Some(args),
                         expected,
                         false,
                     ) {
