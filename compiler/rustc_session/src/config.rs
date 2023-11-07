@@ -3161,10 +3161,10 @@ impl PpMode {
 pub(crate) mod dep_tracking {
     use super::{
         BranchProtection, CFGuard, CFProtection, CrateType, DebugInfo, DebugInfoCompression,
-        ErrorOutputType, InstrumentCoverage, InstrumentXRay, LinkerPluginLto, LocationDetail,
-        LtoCli, OomStrategy, OptLevel, OutFileName, OutputType, OutputTypes, Polonius,
-        RemapPathScopeComponents, ResolveDocLinks, SourceFileHashAlgorithm, SplitDwarfKind,
-        SwitchWithOptPath, SymbolManglingVersion, TraitSolver, TrimmedDefPaths,
+        ErrorOutputType, InliningThreshold, InstrumentCoverage, InstrumentXRay, LinkerPluginLto,
+        LocationDetail, LtoCli, OomStrategy, OptLevel, OutFileName, OutputType, OutputTypes,
+        Polonius, RemapPathScopeComponents, ResolveDocLinks, SourceFileHashAlgorithm,
+        SplitDwarfKind, SwitchWithOptPath, SymbolManglingVersion, TraitSolver, TrimmedDefPaths,
     };
     use crate::lint;
     use crate::options::WasiExecModel;
@@ -3270,6 +3270,7 @@ pub(crate) mod dep_tracking {
         LanguageIdentifier,
         TraitSolver,
         Polonius,
+        InliningThreshold,
     );
 
     impl<T1, T2> DepTrackingHash for (T1, T2)
@@ -3433,5 +3434,18 @@ impl Polonius {
     /// Returns whether the "next" version of polonius is enabled
     pub fn is_next_enabled(&self) -> bool {
         matches!(self, Polonius::Next)
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Hash, Debug)]
+pub enum InliningThreshold {
+    Always,
+    Sometimes(usize),
+    Never,
+}
+
+impl Default for InliningThreshold {
+    fn default() -> Self {
+        Self::Sometimes(100)
     }
 }
