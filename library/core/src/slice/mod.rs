@@ -68,8 +68,8 @@ pub use iter::{ArrayChunks, ArrayChunksMut};
 #[unstable(feature = "array_windows", issue = "75027")]
 pub use iter::ArrayWindows;
 
-#[unstable(feature = "slice_group_by", issue = "80552")]
-pub use iter::{GroupBy, GroupByMut};
+#[stable(feature = "slice_group_by", since = "CURRENT_RUSTC_VERSION")]
+pub use iter::{ChunkBy, ChunkByMut};
 
 #[stable(feature = "split_inclusive", since = "1.51.0")]
 pub use iter::{SplitInclusive, SplitInclusiveMut};
@@ -1755,11 +1755,9 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(slice_group_by)]
-    ///
     /// let slice = &[1, 1, 1, 3, 3, 2, 2, 2];
     ///
-    /// let mut iter = slice.group_by(|a, b| a == b);
+    /// let mut iter = slice.chunk_by(|a, b| a == b);
     ///
     /// assert_eq!(iter.next(), Some(&[1, 1, 1][..]));
     /// assert_eq!(iter.next(), Some(&[3, 3][..]));
@@ -1770,24 +1768,22 @@ impl<T> [T] {
     /// This method can be used to extract the sorted subslices:
     ///
     /// ```
-    /// #![feature(slice_group_by)]
-    ///
     /// let slice = &[1, 1, 2, 3, 2, 3, 2, 3, 4];
     ///
-    /// let mut iter = slice.group_by(|a, b| a <= b);
+    /// let mut iter = slice.chunk_by(|a, b| a <= b);
     ///
     /// assert_eq!(iter.next(), Some(&[1, 1, 2, 3][..]));
     /// assert_eq!(iter.next(), Some(&[2, 3][..]));
     /// assert_eq!(iter.next(), Some(&[2, 3, 4][..]));
     /// assert_eq!(iter.next(), None);
     /// ```
-    #[unstable(feature = "slice_group_by", issue = "80552")]
+    #[stable(feature = "slice_group_by", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
-    pub fn group_by<F>(&self, pred: F) -> GroupBy<'_, T, F>
+    pub fn chunk_by<F>(&self, pred: F) -> ChunkBy<'_, T, F>
     where
         F: FnMut(&T, &T) -> bool,
     {
-        GroupBy::new(self, pred)
+        ChunkBy::new(self, pred)
     }
 
     /// Returns an iterator over the slice producing non-overlapping mutable
@@ -1800,11 +1796,9 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(slice_group_by)]
-    ///
     /// let slice = &mut [1, 1, 1, 3, 3, 2, 2, 2];
     ///
-    /// let mut iter = slice.group_by_mut(|a, b| a == b);
+    /// let mut iter = slice.chunk_by_mut(|a, b| a == b);
     ///
     /// assert_eq!(iter.next(), Some(&mut [1, 1, 1][..]));
     /// assert_eq!(iter.next(), Some(&mut [3, 3][..]));
@@ -1815,24 +1809,22 @@ impl<T> [T] {
     /// This method can be used to extract the sorted subslices:
     ///
     /// ```
-    /// #![feature(slice_group_by)]
-    ///
     /// let slice = &mut [1, 1, 2, 3, 2, 3, 2, 3, 4];
     ///
-    /// let mut iter = slice.group_by_mut(|a, b| a <= b);
+    /// let mut iter = slice.chunk_by_mut(|a, b| a <= b);
     ///
     /// assert_eq!(iter.next(), Some(&mut [1, 1, 2, 3][..]));
     /// assert_eq!(iter.next(), Some(&mut [2, 3][..]));
     /// assert_eq!(iter.next(), Some(&mut [2, 3, 4][..]));
     /// assert_eq!(iter.next(), None);
     /// ```
-    #[unstable(feature = "slice_group_by", issue = "80552")]
+    #[stable(feature = "slice_group_by", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
-    pub fn group_by_mut<F>(&mut self, pred: F) -> GroupByMut<'_, T, F>
+    pub fn chunk_by_mut<F>(&mut self, pred: F) -> ChunkByMut<'_, T, F>
     where
         F: FnMut(&T, &T) -> bool,
     {
-        GroupByMut::new(self, pred)
+        ChunkByMut::new(self, pred)
     }
 
     /// Divides one slice into two at an index.

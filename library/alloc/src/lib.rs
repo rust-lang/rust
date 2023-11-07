@@ -149,7 +149,6 @@
 #![feature(set_ptr_value)]
 #![feature(sized_type_properties)]
 #![feature(slice_from_ptr_range)]
-#![feature(slice_group_by)]
 #![feature(slice_ptr_get)]
 #![feature(slice_ptr_len)]
 #![feature(slice_range)]
