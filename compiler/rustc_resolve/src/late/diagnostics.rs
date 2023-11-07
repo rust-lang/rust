@@ -15,7 +15,7 @@ use rustc_ast_pretty::pprust::where_bound_predicate_to_string;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{
     pluralize, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
-    MultiSpan,
+    MultiSpan, SuggestionStyle,
 };
 use rustc_hir as hir;
 use rustc_hir::def::{self, CtorKind, CtorOf, DefKind};
@@ -28,6 +28,8 @@ use rustc_span::edition::Edition;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
+
+use rustc_middle::ty;
 
 use std::borrow::Cow;
 use std::iter;
@@ -1593,29 +1595,85 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                         Some(Vec::from(pattern_spans))
                     }
                     // e.g. `let _ = Enum::TupleVariant(field1, field2);`
-                    _ if source.is_call() => {
+                    PathSource::Expr(Some(Expr { kind: ExprKind::Call(_, ref args), .. })) => {
                         err.set_primary_message(
                             "cannot initialize a tuple struct which contains private fields",
                         );
-                        if !def_id.is_local()
-                            && self
+                        if !def_id.is_local() {
+                            // Look at all the associated functions without receivers in the type's
+                            // inherent impls to look for builders that return `Self`
+                            let mut items = self
                                 .r
                                 .tcx
                                 .inherent_impls(def_id)
                                 .iter()
-                                .flat_map(|impl_def_id| {
-                                    self.r.tcx.provided_trait_methods(*impl_def_id)
+                                .flat_map(|i| self.r.tcx.associated_items(i).in_definition_order())
+                                // Only assoc fn with no receivers.
+                                .filter(|item| {
+                                    matches!(item.kind, ty::AssocKind::Fn)
+                                        && !item.fn_has_self_parameter
                                 })
-                                .any(|assoc| !assoc.fn_has_self_parameter && assoc.name == sym::new)
-                        {
-                            // FIXME: look for associated functions with Self return type,
-                            // instead of relying only on the name and lack of self receiver.
-                            err.span_suggestion_verbose(
-                                span.shrink_to_hi(),
-                                "you might have meant to use the `new` associated function",
-                                "::new".to_string(),
-                                Applicability::MaybeIncorrect,
-                            );
+                                .filter_map(|item| {
+                                    // Only assoc fns that return `Self`
+                                    let fn_sig = self.r.tcx.fn_sig(item.def_id).skip_binder();
+                                    let ret_ty = fn_sig.output();
+                                    let ret_ty = self.r.tcx.erase_late_bound_regions(ret_ty);
+                                    let ty::Adt(def, _args) = ret_ty.kind() else {
+                                        return None;
+                                    };
+                                    // Check for `-> Self`
+                                    if def.did() == def_id {
+                                        let order = if item.name.as_str().starts_with("new")
+                                            && fn_sig.inputs().skip_binder().len() == args.len()
+                                        {
+                                            0
+                                        } else if item.name.as_str().starts_with("new")
+                                            || item.name.as_str().starts_with("default")
+                                        {
+                                            // Give higher precedence to functions with a name that
+                                            // imply construction.
+                                            1
+                                        } else if fn_sig.inputs().skip_binder().len() == args.len()
+                                        {
+                                            2
+                                        } else {
+                                            3
+                                        };
+                                        return Some((order, item.name));
+                                    }
+                                    None
+                                })
+                                .collect::<Vec<_>>();
+                            items.sort_by_key(|(order, _)| *order);
+                            match &items[..] {
+                                [] => {}
+                                [(_, name)] => {
+                                    err.span_suggestion_verbose(
+                                        span.shrink_to_hi(),
+                                        format!(
+                                            "you might have meant to use the `{name}` associated \
+                                             function",
+                                        ),
+                                        format!("::{name}"),
+                                        Applicability::MaybeIncorrect,
+                                    );
+                                }
+                                _ => {
+                                    // We use this instead of `span_suggestions` to retain output
+                                    // sort order.
+                                    err.span_suggestions_with_style(
+                                        span.shrink_to_hi(),
+                                        "you might have meant to use an associated function to \
+                                         build this type",
+                                        items
+                                            .iter()
+                                            .map(|(_, name)| format!("::{name}"))
+                                            .collect::<Vec<String>>(),
+                                        Applicability::MaybeIncorrect,
+                                        SuggestionStyle::ShowAlways,
+                                    );
+                                }
+                            }
                         }
                         // Use spans of the tuple struct definition.
                         self.r.field_def_ids(def_id).map(|field_ids| {

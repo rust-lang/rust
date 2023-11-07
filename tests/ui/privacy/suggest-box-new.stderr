@@ -1,5 +1,5 @@
 error[E0423]: cannot initialize a tuple struct which contains private fields
-  --> $DIR/suggest-box-new.rs:9:19
+  --> $DIR/suggest-box-new.rs:8:19
    |
 LL |         wtf: Some(Box(U {
    |                   ^^^
@@ -10,10 +10,17 @@ note: constructor is not visible here due to private fields
    = note: private field
    |
    = note: private field
-help: you might have meant to use the `new` associated function
+help: you might have meant to use an associated function to build this type
    |
 LL |         wtf: Some(Box::new(U {
    |                      +++++
+LL |         wtf: Some(Box::new_uninit_in(U {
+   |                      +++++++++++++++
+LL |         wtf: Some(Box::new_zeroed_in(U {
+   |                      +++++++++++++++
+LL |         wtf: Some(Box::new_uninit_slice(U {
+   |                      ++++++++++++++++++
+     and 10 other candidates
 
 error: aborting due to previous error
 
