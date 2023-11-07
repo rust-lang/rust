@@ -305,9 +305,14 @@ pub enum ObligationCauseCode<'tcx> {
     SizedCoroutineInterior(LocalDefId),
     /// `[expr; N]` requires `type_of(expr): Copy`.
     RepeatElementCopy {
-        /// If element is a `const fn` we display a help message suggesting to move the
-        /// function call to a new `const` item while saying that `T` doesn't implement `Copy`.
-        is_const_fn: bool,
+        /// If element is a `const fn` or const ctor we display a help message suggesting
+        /// to move it to a new `const` item while saying that `T` doesn't implement `Copy`.
+        is_constable: IsConstable,
+        elt_type: Ty<'tcx>,
+        elt_span: Span,
+        /// Span of the statement/item in which the repeat expression occurs. We can use this to
+        /// place a `const` declaration before it
+        elt_stmt_span: Span,
     },
 
     /// Types of fields (other than the last, except for packed structs) in a struct must be sized.
@@ -453,6 +458,21 @@ pub enum ObligationCauseCode<'tcx> {
 
     /// Obligations emitted during the normalization of a weak type alias.
     TypeAlias(InternedObligationCauseCode<'tcx>, Span, DefId),
+}
+
+/// Whether a value can be extracted into a const.
+/// Used for diagnostics around array repeat expressions.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
+pub enum IsConstable {
+    No,
+    /// Call to a const fn
+    Fn,
+    /// Use of a const ctor
+    Ctor,
+}
+
+crate::TrivialTypeTraversalAndLiftImpls! {
+    IsConstable,
 }
 
 /// The 'location' at which we try to perform HIR-based wf checking.
