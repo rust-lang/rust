@@ -88,7 +88,7 @@ use rustc_hir::intravisit::{walk_expr, FnKind, Visitor};
 use rustc_hir::LangItem::{OptionNone, OptionSome, ResultErr, ResultOk};
 use rustc_hir::{
     self as hir, def, Arm, ArrayLen, BindingAnnotation, Block, BlockCheckMode, Body, Closure, Destination, Expr,
-    ExprField, ExprKind, FnDecl, FnRetTy, GenericArgs, HirId, Impl, ImplItem, ImplItemKind, ImplItemRef, Item,
+    ExprField, ExprKind, FnDecl, FnRetTy, GenericArgs, HirId, Impl, ImplItem, ImplItemKind, ImplItemRef, Item, ItemId,
     ItemKind, LangItem, Local, MatchSource, Mutability, Node, OwnerId, Param, Pat, PatKind, Path, PathSegment, PrimTy,
     QPath, Stmt, StmtKind, TraitItem, TraitItemKind, TraitItemRef, TraitRef, TyKind, UnOp,
 };
@@ -117,7 +117,7 @@ use crate::ty::{
     adt_and_variant_of_res, can_partially_move_ty, expr_sig, is_copy, is_recursively_primitive_type,
     ty_is_fn_once_param,
 };
-use crate::visitors::for_each_expr;
+use crate::visitors::{for_each_expr, Descend};
 
 use rustc_middle::hir::nested_filter;
 
@@ -2973,4 +2973,102 @@ pub fn pat_is_wild<'tcx>(cx: &LateContext<'tcx>, pat: &'tcx PatKind<'_>, body: i
         },
         _ => false,
     }
+}
+
+/// Check if the expression either returns, or could be coerced into returning, `!`.
+pub fn is_never_expr(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+    struct V<'cx, 'tcx> {
+        cx: &'cx LateContext<'tcx>,
+        res: ControlFlow<(), Descend>,
+    }
+    impl<'tcx> Visitor<'tcx> for V<'_, '_> {
+        fn visit_expr(&mut self, e: &'tcx Expr<'tcx>) {
+            fn is_never(cx: &LateContext<'_>, expr: &'_ Expr<'_>) -> bool {
+                if let Some(ty) = cx.typeck_results().expr_ty_opt(expr) {
+                    return ty.is_never();
+                }
+                false
+            }
+
+            if self.res.is_break() {
+                return;
+            }
+
+            // We can't just call is_never on expr and be done, because the type system
+            // sometimes coerces the ! type to something different before we can get
+            // our hands on it. So instead, we do a manual search. We do fall back to
+            // is_never in some places when there is no better alternative.
+            self.res = match e.kind {
+                ExprKind::Continue(_) | ExprKind::Break(_, _) | ExprKind::Ret(_) => ControlFlow::Break(()),
+                ExprKind::Call(call, _) => {
+                    if is_never(self.cx, e) || is_never(self.cx, call) {
+                        ControlFlow::Break(())
+                    } else {
+                        ControlFlow::Continue(Descend::Yes)
+                    }
+                },
+                ExprKind::MethodCall(..) => {
+                    if is_never(self.cx, e) {
+                        ControlFlow::Break(())
+                    } else {
+                        ControlFlow::Continue(Descend::Yes)
+                    }
+                },
+                ExprKind::If(if_expr, if_then, if_else) => {
+                    let else_diverges = if_else.map_or(false, |ex| is_never_expr(self.cx, ex));
+                    let diverges =
+                        is_never_expr(self.cx, if_expr) || (else_diverges && is_never_expr(self.cx, if_then));
+                    if diverges {
+                        ControlFlow::Break(())
+                    } else {
+                        ControlFlow::Continue(Descend::No)
+                    }
+                },
+                ExprKind::Match(match_expr, match_arms, _) => {
+                    let diverges = is_never_expr(self.cx, match_expr)
+                        || match_arms.iter().all(|arm| {
+                            let guard_diverges = arm.guard.as_ref().map_or(false, |g| is_never_expr(self.cx, g.body()));
+                            guard_diverges || is_never_expr(self.cx, arm.body)
+                        });
+                    if diverges {
+                        ControlFlow::Break(())
+                    } else {
+                        ControlFlow::Continue(Descend::No)
+                    }
+                },
+
+                // Don't continue into loops or labeled blocks, as they are breakable,
+                // and we'd have to start checking labels.
+                ExprKind::Block(_, Some(_)) | ExprKind::Loop(..) => ControlFlow::Continue(Descend::No),
+
+                // Default: descend
+                _ => ControlFlow::Continue(Descend::Yes),
+            };
+            if let ControlFlow::Continue(Descend::Yes) = self.res {
+                walk_expr(self, e);
+            }
+        }
+
+        fn visit_local(&mut self, local: &'tcx Local<'_>) {
+            // Don't visit the else block of a let/else statement as it will not make
+            // the statement divergent even though the else block is divergent.
+            if let Some(init) = local.init {
+                self.visit_expr(init);
+            }
+        }
+
+        // Avoid unnecessary `walk_*` calls.
+        fn visit_ty(&mut self, _: &'tcx hir::Ty<'tcx>) {}
+        fn visit_pat(&mut self, _: &'tcx Pat<'tcx>) {}
+        fn visit_qpath(&mut self, _: &'tcx QPath<'tcx>, _: HirId, _: Span) {}
+        // Avoid monomorphising all `visit_*` functions.
+        fn visit_nested_item(&mut self, _: ItemId) {}
+    }
+
+    let mut v = V {
+        cx,
+        res: ControlFlow::Continue(Descend::Yes),
+    };
+    expr.visit(&mut v);
+    v.res.is_break()
 }
