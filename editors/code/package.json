@@ -502,6 +502,11 @@
                     "default": true,
                     "type": "boolean"
                 },
+                "rust-analyzer.showRequestFailedErrorNotification": {
+                    "markdownDescription": "Whether to show panic error notifications.",
+                    "default": true,
+                    "type": "boolean"
+                },
                 "rust-analyzer.showDependenciesExplorer": {
                     "markdownDescription": "Whether to show the dependencies view.",
                     "default": true,

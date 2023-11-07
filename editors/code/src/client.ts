@@ -10,7 +10,7 @@ import { type Config, prepareVSCodeConfig } from "./config";
 import { randomUUID } from "crypto";
 import { sep as pathSeparator } from "path";
 import { unwrapUndefinable } from "./undefinable";
-import { RaLanguageClient } from "./base_client";
+import { RaLanguageClient } from "./lang_client";
 
 export interface Env {
     [name: string]: string;
