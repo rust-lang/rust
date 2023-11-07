@@ -1378,6 +1378,34 @@ pub(crate) struct FnPtrWithGenericsSugg {
     pub for_param_list_exists: bool,
 }
 
+pub(crate) struct FnTraitMissingParen {
+    pub span: Span,
+    pub machine_applicable: bool,
+}
+
+impl AddToDiagnostic for FnTraitMissingParen {
+    fn add_to_diagnostic_with<F>(self, diag: &mut rustc_errors::Diagnostic, _: F)
+    where
+        F: Fn(
+            &mut rustc_errors::Diagnostic,
+            rustc_errors::SubdiagnosticMessage,
+        ) -> rustc_errors::SubdiagnosticMessage,
+    {
+        diag.span_label(self.span, crate::fluent_generated::parse_fn_trait_missing_paren);
+        let applicability = if self.machine_applicable {
+            Applicability::MachineApplicable
+        } else {
+            Applicability::MaybeIncorrect
+        };
+        diag.span_suggestion_short(
+            self.span.shrink_to_hi(),
+            crate::fluent_generated::parse_add_paren,
+            "()",
+            applicability,
+        );
+    }
+}
+
 #[derive(Diagnostic)]
 #[diag(parse_unexpected_if_with_if)]
 pub(crate) struct UnexpectedIfWithIf(

@@ -2278,6 +2278,18 @@ impl<'a> Parser<'a> {
                     err.span_label(ident.span, "while parsing this `fn`");
                     err.emit();
                 } else {
+                    // check for typo'd Fn* trait bounds such as
+                    // fn foo<F>() where F: FnOnce -> () {}
+                    if self.token.kind == token::RArrow {
+                        let machine_applicable = [sym::FnOnce, sym::FnMut, sym::Fn]
+                            .into_iter()
+                            .any(|s| self.prev_token.is_ident_named(s));
+
+                        err.subdiagnostic(errors::FnTraitMissingParen {
+                            span: self.prev_token.span,
+                            machine_applicable,
+                        });
+                    }
                     return Err(err);
                 }
             }
