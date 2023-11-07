@@ -11,7 +11,6 @@
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/TargetLibraryInfo.h"
 #include "llvm/Analysis/TargetTransformInfo.h"
-#include "llvm/CodeGen/CommandFlags.h"
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/Object/ObjectFile.h"
 #include "llvm/Passes/PassBuilder.h"
@@ -27,6 +26,7 @@
 #endif
 
 #include "llvm/CodeGen/TargetSubtargetInfo.h"
+#include "llvm/CodeGen/CommandFlags.h"
 #include "llvm/IR/AutoUpgrade.h"
 #include "llvm/IR/AssemblyAnnotationWriter.h"
 #include "llvm/IR/Verifier.h"
