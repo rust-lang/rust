@@ -56,14 +56,6 @@ fn test() -> io::Result<()> {
     f.read(&mut buf)?;
 
     // should not lint
-    let mut empty = vec![];
-    let mut data7 = vec![];
-    f.read(&mut empty);
-
-    // should not lint
-    f.read(&mut data7);
-
-    // should not lint
     let mut data8 = Vec::new();
     data8.resize(100, 0);
     f.read_exact(&mut data8)?;
@@ -71,6 +63,27 @@ fn test() -> io::Result<()> {
     // should not lint
     let mut data9 = vec![1, 2, 3];
     f.read_exact(&mut data9)?;
+
+    Ok(())
+}
+
+fn test_nested() -> io::Result<()> {
+    let cap = 1000;
+    let mut f = File::open("foo.txt").unwrap();
+
+    // Issue #9274
+    // Should not lint
+    let mut v = Vec::new();
+    {
+        v.resize(10, 0);
+        f.read(&mut v)?;
+    }
+
+    let mut v = Vec::new();
+    {
+        f.read(&mut v)?;
+        //~^ ERROR: reading zero byte data to `Vec`
+    }
 
     Ok(())
 }
