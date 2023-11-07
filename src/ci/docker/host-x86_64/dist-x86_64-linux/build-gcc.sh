@@ -3,7 +3,8 @@ set -ex
 
 source shared.sh
 
-GCC=8.5.0
+# Note: in the future when bumping to version 10.1.0, also take care of the sed block below.
+GCC=9.5.0
 
 curl https://ftp.gnu.org/gnu/gcc/gcc-$GCC/gcc-$GCC.tar.xz | xzcat | tar xf -
 cd gcc-$GCC
@@ -21,6 +22,11 @@ cd gcc-$GCC
 # bug: the host `gcc.gnu.org` and `cygwin.com` share the same IP, and the TLS certificate of the
 # latter host is presented to `wget`! Therefore, we choose to download from the insecure HTTP server
 # instead here.
+#
+# Note: in version 10.1.0, the URL used in `download_prerequisites` has changed from using FTP to
+# using HTTP. When bumping to that gcc version, we can likely remove the sed replacement below, or
+# the expression will need to be updated. That new URL is available at:
+# https://github.com/gcc-mirror/gcc/blob/6e6e3f144a33ae504149dc992453b4f6dea12fdb/contrib/download_prerequisites#L35
 #
 sed -i'' 's|ftp://gcc\.gnu\.org/|https://gcc.gnu.org/|g' ./contrib/download_prerequisites
 
