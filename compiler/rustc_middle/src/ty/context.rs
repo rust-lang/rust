@@ -39,7 +39,9 @@ use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sharded::{IntoPointer, ShardedHashMap};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
-use rustc_data_structures::sync::{FreezeReadGuard, Lock, WorkerLocal};
+use rustc_data_structures::sync::{self, FreezeReadGuard, Lock, WorkerLocal};
+#[cfg(parallel_compiler)]
+use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::{
     DecorateLint, DiagnosticBuilder, DiagnosticMessage, ErrorGuaranteed, MultiSpan,
@@ -550,6 +552,16 @@ impl<'tcx> TyCtxtFeed<'tcx, LocalDefId> {
 #[rustc_pass_by_value]
 pub struct TyCtxt<'tcx> {
     gcx: &'tcx GlobalCtxt<'tcx>,
+}
+
+// Explicitly implement `DynSync` and `DynSend` for `TyCtxt` to short circuit trait resolution.
+#[cfg(parallel_compiler)]
+unsafe impl DynSend for TyCtxt<'_> {}
+#[cfg(parallel_compiler)]
+unsafe impl DynSync for TyCtxt<'_> {}
+fn _assert_tcx_fields() {
+    sync::assert_dyn_sync::<&'_ GlobalCtxt<'_>>();
+    sync::assert_dyn_send::<&'_ GlobalCtxt<'_>>();
 }
 
 impl<'tcx> Deref for TyCtxt<'tcx> {
