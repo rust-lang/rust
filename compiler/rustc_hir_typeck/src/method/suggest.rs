@@ -409,6 +409,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             err.downgrade_to_delayed_bug();
         }
 
+        self.find_builder_fn(&mut err, rcvr_ty, source);
         if tcx.ty_is_opaque_future(rcvr_ty) && item_name.name == sym::poll {
             err.help(format!(
                 "method `poll` found on `Pin<&mut {ty_str}>`, \
@@ -1404,6 +1405,93 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
         if sources.len() > limit {
             err.note(format!("and {} others", sources.len() - limit));
+        }
+    }
+
+    /// Look at all the associated functions without receivers in the type's inherent impls
+    /// to look for builders that return `Self`, `Option<Self>` or `Result<Self, _>`.
+    fn find_builder_fn(&self, err: &mut Diagnostic, rcvr_ty: Ty<'tcx>, source: SelfSource<'tcx>) {
+        let ty::Adt(adt_def, _) = rcvr_ty.kind() else {
+            return;
+        };
+        let SelfSource::QPath(ty) = source else {
+            return;
+        };
+        let hir = self.tcx.hir();
+        if let Some(Node::Pat(_)) = hir.find(hir.parent_id(ty.hir_id)) {
+            // Do not suggest a fn call when a pattern is expected.
+            return;
+        }
+        let mut items = self
+            .tcx
+            .inherent_impls(adt_def.did())
+            .iter()
+            .flat_map(|i| self.tcx.associated_items(i).in_definition_order())
+            // Only assoc fn with no receivers.
+            .filter(|item| matches!(item.kind, ty::AssocKind::Fn) && !item.fn_has_self_parameter)
+            .filter_map(|item| {
+                // Only assoc fns that return `Self`, `Option<Self>` or `Result<Self, _>`.
+                let ret_ty = self.tcx.fn_sig(item.def_id).skip_binder().output();
+                let ret_ty = self.tcx.erase_late_bound_regions(ret_ty);
+                let ty::Adt(def, args) = ret_ty.kind() else {
+                    return None;
+                };
+                // Check for `-> Self`
+                if self.can_eq(self.param_env, ret_ty, rcvr_ty) {
+                    return Some((item.def_id, ret_ty));
+                }
+                // Check for `-> Option<Self>` or `-> Result<Self, _>`
+                if ![self.tcx.lang_items().option_type(), self.tcx.get_diagnostic_item(sym::Result)]
+                    .contains(&Some(def.did()))
+                {
+                    return None;
+                }
+                let arg = args.get(0)?.expect_ty();
+                if self.can_eq(self.param_env, rcvr_ty, arg) {
+                    Some((item.def_id, ret_ty))
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
+        let post = if items.len() > 5 {
+            let items_len = items.len();
+            items.truncate(4);
+            format!("\nand {} others", items_len - 4)
+        } else {
+            String::new()
+        };
+        match &items[..] {
+            [] => {}
+            [(def_id, ret_ty)] => {
+                err.span_note(
+                    self.tcx.def_span(def_id),
+                    format!(
+                        "if you're trying to build a new `{rcvr_ty}`, consider using `{}` which \
+                         returns `{ret_ty}`",
+                        self.tcx.def_path_str(def_id),
+                    ),
+                );
+            }
+            _ => {
+                let span: MultiSpan = items
+                    .iter()
+                    .map(|(def_id, _)| self.tcx.def_span(def_id))
+                    .collect::<Vec<Span>>()
+                    .into();
+                err.span_note(
+                    span,
+                    format!(
+                        "if you're trying to build a new `{rcvr_ty}` consider using one of the \
+                         following associated functions:\n{}{post}",
+                        items
+                            .iter()
+                            .map(|(def_id, _ret_ty)| self.tcx.def_path_str(def_id))
+                            .collect::<Vec<String>>()
+                            .join("\n")
+                    ),
+                );
+            }
         }
     }
 

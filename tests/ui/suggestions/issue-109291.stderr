@@ -6,6 +6,13 @@ LL |     println!("Custom backtrace: {}", std::backtrace::Backtrace::forced_capt
    |                                                                 |
    |                                                                 function or associated item not found in `Backtrace`
    |                                                                 help: there is an associated function with a similar name: `force_capture`
+   |
+note: if you're trying to build a new `Backtrace` consider using one of the following associated functions:
+      Backtrace::capture
+      Backtrace::force_capture
+      Backtrace::disabled
+      Backtrace::create
+  --> $SRC_DIR/std/src/backtrace.rs:LL:COL
 
 error: aborting due to previous error
 

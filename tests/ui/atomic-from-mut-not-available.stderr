@@ -3,6 +3,10 @@ error[E0599]: no function or associated item named `from_mut` found for struct `
    |
 LL |     core::sync::atomic::AtomicU64::from_mut(&mut 0u64);
    |                                    ^^^^^^^^ function or associated item not found in `AtomicU64`
+   |
+note: if you're trying to build a new `AtomicU64`, consider using `AtomicU64::new` which returns `AtomicU64`
+  --> $SRC_DIR/core/src/sync/atomic.rs:LL:COL
+   = note: this error originates in the macro `atomic_int` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
 
