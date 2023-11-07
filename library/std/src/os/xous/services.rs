@@ -1,8 +1,14 @@
 use crate::os::xous::ffi::Connection;
 use core::sync::atomic::{AtomicU32, Ordering};
 
+mod dns;
+pub(crate) use dns::*;
+
 mod log;
 pub(crate) use log::*;
+
+mod net;
+pub(crate) use net::*;
 
 mod systime;
 pub(crate) use systime::*;
