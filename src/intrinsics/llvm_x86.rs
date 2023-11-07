@@ -27,6 +27,16 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
             crate::inline_asm::codegen_xgetbv(fx, xcr_no, ret);
         }
 
+        "llvm.x86.sse3.ldu.dq" | "llvm.x86.avx.ldu.dq.256" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_lddqu_si128&ig_expand=4009
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_lddqu_si256&ig_expand=4010
+            intrinsic_args!(fx, args => (ptr); intrinsic);
+
+            // FIXME correctly handle unalignedness
+            let val = CValue::by_ref(Pointer::new(ptr.load_scalar(fx)), ret.layout());
+            ret.write_cvalue(fx, val);
+        }
+
         "llvm.x86.sse.cmp.ps" | "llvm.x86.sse2.cmp.pd" => {
             let (x, y, kind) = match args {
                 [x, y, kind] => (x, y, kind),
