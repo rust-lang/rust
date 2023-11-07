@@ -590,6 +590,44 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
             }
         }
 
+        "llvm.x86.sse41.packusdw" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_packus_epi32&ig_expand=4912
+            intrinsic_args!(fx, args => (a, b); intrinsic);
+
+            assert_eq!(a.layout(), b.layout());
+            let layout = a.layout();
+
+            let (lane_count, lane_ty) = layout.ty.simd_size_and_type(fx.tcx);
+            let (ret_lane_count, ret_lane_ty) = ret.layout().ty.simd_size_and_type(fx.tcx);
+            assert_eq!(lane_ty, fx.tcx.types.i32);
+            assert_eq!(ret_lane_ty, fx.tcx.types.u16);
+            assert_eq!(lane_count * 2, ret_lane_count);
+
+            let min_u16 = fx.bcx.ins().iconst(types::I32, i64::from(u16::MIN));
+            let max_u16 = fx.bcx.ins().iconst(types::I32, i64::from(u16::MAX));
+            let ret_lane_layout = fx.layout_of(fx.tcx.types.u16);
+
+            for idx in 0..lane_count {
+                let lane = a.value_lane(fx, idx).load_scalar(fx);
+                let sat = fx.bcx.ins().umax(lane, min_u16);
+                let sat = fx.bcx.ins().umin(sat, max_u16);
+                let res = fx.bcx.ins().ireduce(types::I16, sat);
+
+                let res_lane = CValue::by_val(res, ret_lane_layout);
+                ret.place_lane(fx, idx).write_cvalue(fx, res_lane);
+            }
+
+            for idx in 0..lane_count {
+                let lane = b.value_lane(fx, idx).load_scalar(fx);
+                let sat = fx.bcx.ins().umax(lane, min_u16);
+                let sat = fx.bcx.ins().umin(sat, max_u16);
+                let res = fx.bcx.ins().ireduce(types::I16, sat);
+
+                let res_lane = CValue::by_val(res, ret_lane_layout);
+                ret.place_lane(fx, lane_count + idx).write_cvalue(fx, res_lane);
+            }
+        }
+
         "llvm.x86.avx2.packssdw" => {
             // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_packs_epi32&ig_expand=4892
             intrinsic_args!(fx, args => (a, b); intrinsic);
@@ -646,6 +684,106 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
                 let res_lane = CValue::by_val(res, ret_lane_layout);
                 ret.place_lane(fx, lane_count / 2 * 3 + idx).write_cvalue(fx, res_lane);
             }
+        }
+
+        "llvm.x86.pclmulqdq" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_clmulepi64_si128&ig_expand=772
+            intrinsic_args!(fx, args => (a, b, imm8); intrinsic);
+
+            assert_eq!(a.layout(), b.layout());
+            let layout = a.layout();
+
+            let (lane_count, lane_ty) = layout.ty.simd_size_and_type(fx.tcx);
+            let (ret_lane_count, ret_lane_ty) = ret.layout().ty.simd_size_and_type(fx.tcx);
+            assert_eq!(lane_ty, fx.tcx.types.i64);
+            assert_eq!(ret_lane_ty, fx.tcx.types.i64);
+            assert_eq!(lane_count, 2);
+            assert_eq!(ret_lane_count, 2);
+
+            let imm8 = imm8.load_scalar(fx);
+
+            let control0 = fx.bcx.ins().band_imm(imm8, 0b0000_0001);
+            let a_lane0 = a.value_lane(fx, 0).load_scalar(fx);
+            let a_lane1 = a.value_lane(fx, 1).load_scalar(fx);
+            let temp1 = fx.bcx.ins().select(control0, a_lane1, a_lane0);
+
+            let control4 = fx.bcx.ins().band_imm(imm8, 0b0001_0000);
+            let b_lane0 = b.value_lane(fx, 0).load_scalar(fx);
+            let b_lane1 = b.value_lane(fx, 1).load_scalar(fx);
+            let temp2 = fx.bcx.ins().select(control4, b_lane1, b_lane0);
+
+            fn extract_bit(fx: &mut FunctionCx<'_, '_, '_>, val: Value, bit: i64) -> Value {
+                let tmp = fx.bcx.ins().ushr_imm(val, bit);
+                fx.bcx.ins().band_imm(tmp, 1)
+            }
+
+            let mut res1 = fx.bcx.ins().iconst(types::I64, 0);
+            for i in 0..=63 {
+                let x = extract_bit(fx, temp1, 0);
+                let y = extract_bit(fx, temp2, i);
+                let mut temp = fx.bcx.ins().band(x, y);
+                for j in 1..=i {
+                    let x = extract_bit(fx, temp1, j);
+                    let y = extract_bit(fx, temp2, i - j);
+                    let z = fx.bcx.ins().band(x, y);
+                    temp = fx.bcx.ins().bxor(temp, z);
+                }
+                let temp = fx.bcx.ins().ishl_imm(temp, i);
+                res1 = fx.bcx.ins().bor(res1, temp);
+            }
+            ret.place_lane(fx, 0).to_ptr().store(fx, res1, MemFlags::trusted());
+
+            let mut res2 = fx.bcx.ins().iconst(types::I64, 0);
+            for i in 64..=127 {
+                let mut temp = fx.bcx.ins().iconst(types::I64, 0);
+                for j in i - 63..=63 {
+                    let x = extract_bit(fx, temp1, j);
+                    let y = extract_bit(fx, temp2, i - j);
+                    let z = fx.bcx.ins().band(x, y);
+                    temp = fx.bcx.ins().bxor(temp, z);
+                }
+                let temp = fx.bcx.ins().ishl_imm(temp, i);
+                res2 = fx.bcx.ins().bor(res2, temp);
+            }
+            ret.place_lane(fx, 1).to_ptr().store(fx, res2, MemFlags::trusted());
+        }
+
+        "llvm.x86.avx.ptestz.256" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_testz_si256&ig_expand=6945
+            intrinsic_args!(fx, args => (a, b); intrinsic);
+
+            assert_eq!(a.layout(), b.layout());
+            let layout = a.layout();
+
+            let (lane_count, lane_ty) = layout.ty.simd_size_and_type(fx.tcx);
+            assert_eq!(lane_ty, fx.tcx.types.i64);
+            assert_eq!(ret.layout().ty, fx.tcx.types.i32);
+            assert_eq!(lane_count, 4);
+
+            let a_lane0 = a.value_lane(fx, 0).load_scalar(fx);
+            let a_lane1 = a.value_lane(fx, 1).load_scalar(fx);
+            let a_lane2 = a.value_lane(fx, 2).load_scalar(fx);
+            let a_lane3 = a.value_lane(fx, 3).load_scalar(fx);
+            let b_lane0 = b.value_lane(fx, 0).load_scalar(fx);
+            let b_lane1 = b.value_lane(fx, 1).load_scalar(fx);
+            let b_lane2 = b.value_lane(fx, 2).load_scalar(fx);
+            let b_lane3 = b.value_lane(fx, 3).load_scalar(fx);
+
+            let zero0 = fx.bcx.ins().band(a_lane0, b_lane0);
+            let zero1 = fx.bcx.ins().band(a_lane1, b_lane1);
+            let zero2 = fx.bcx.ins().band(a_lane2, b_lane2);
+            let zero3 = fx.bcx.ins().band(a_lane3, b_lane3);
+
+            let all_zero0 = fx.bcx.ins().bor(zero0, zero1);
+            let all_zero1 = fx.bcx.ins().bor(zero2, zero3);
+            let all_zero = fx.bcx.ins().bor(all_zero0, all_zero1);
+
+            let res = fx.bcx.ins().icmp_imm(IntCC::Equal, all_zero, 0);
+            let res = CValue::by_val(
+                fx.bcx.ins().uextend(types::I32, res),
+                fx.layout_of(fx.tcx.types.i32),
+            );
+            ret.write_cvalue(fx, res);
         }
 
         _ => {
