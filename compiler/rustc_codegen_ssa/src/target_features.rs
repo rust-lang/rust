@@ -23,6 +23,15 @@ pub const RUSTC_SPECIFIC_FEATURES: &[&str] = &["crt-static"];
 // check whether they're named already elsewhere in rust
 // e.g. in stdarch and whether the given name matches LLVM's
 // if it doesn't, to_llvm_feature in llvm_util in rustc_codegen_llvm needs to be adapted
+//
+// When adding a new feature, be particularly mindful of features that affect function ABIs. Those
+// need to be treated very carefully to avoid introducing unsoundness! This often affects features
+// that enable/disable hardfloat support (see https://github.com/rust-lang/rust/issues/116344 for an
+// example of this going wrong), but features enabling new SIMD registers are also a concern (see
+// https://github.com/rust-lang/rust/issues/116558 for an example of this going wrong).
+//
+// Stabilizing a target feature (setting the 2nd component of the pair to `None`) requires t-lang
+// approval.
 
 const ARM_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     // tidy-alphabetical-start
