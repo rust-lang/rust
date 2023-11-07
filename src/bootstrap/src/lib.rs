@@ -75,8 +75,9 @@ const LLD_FILE_NAMES: &[&str] = &["ld.lld", "ld64.lld", "lld-link", "wasm-ld"];
 /// You can visit `https://github.com/rust-lang/rust/pull/{any-id-from-the-list}` to
 /// check for more details regarding each change.
 ///
-/// If you make any major changes (such as adding new values or changing default values), please
-/// ensure that the associated PR ID is added to the end of this list.
+/// If you make any major changes (such as adding new values or changing default values),
+/// please ensure that the associated PR ID is added to the end of this list.
+/// This is necessary because the list must be sorted by the merge date.
 pub const CONFIG_CHANGE_HISTORY: &[usize] = &[115898, 116998, 117435, 116881];
 
 /// Extra --check-cfg to add when building
@@ -1850,8 +1851,10 @@ fn envify(s: &str) -> String {
 
 pub fn find_recent_config_change_ids(current_id: usize) -> Vec<usize> {
     if !CONFIG_CHANGE_HISTORY.contains(&current_id) {
-        // If the current change-id is greater than the most recent one,
-        // return an empty list; otherwise, return the full list.
+        // If the current change-id is greater than the most recent one, return
+        // an empty list (it may be due to switching from a recent branch to an
+        // older one); otherwise, return the full list (assuming the user provided
+        // the incorrect change-id by accident).
         if let Some(max_id) = CONFIG_CHANGE_HISTORY.iter().max() {
             if &current_id > max_id {
                 return Vec::new();
