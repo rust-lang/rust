@@ -7,7 +7,7 @@ LL | struct AᐸTᐳ(T);
 help: the name of this item includes unicode characters `ᐸ` and `ᐳ` that look like `<` and `>`, but they aren't
    |
 LL | struct A<T>(T);
-   |        ~~~~
+   |         ~~~
 
 warning: identifier contains uncommon Unicode codepoints
   --> $DIR/unicode-ident-looks-like-generics.rs:3:8

@@ -27,7 +27,7 @@ use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::Span;
+use rustc_span::{BytePos, Span};
 
 use std::borrow::Cow;
 use std::iter;
@@ -2201,7 +2201,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         }
 
         if let Some(Item {
-            ident,
+            ident: name,
             kind:
                 ItemKind::Fn(..)
                 | ItemKind::Enum(..)
@@ -2212,10 +2212,10 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             && single_uppercase_char
             && !self.diagnostic_metadata.currently_processing_generics
             && let PathSource::Type = source
-            && let Some(sugg) = looks_like_generics(ident)
+            && let Some((span, sugg)) = looks_like_generics(name, &ident)
         {
             return Some((
-                ident.span,
+                span,
                 "the name of this item includes unicode characters `ᐸ` and `ᐳ` that look like \
                  `<` and `>`, but they aren't",
                 sugg,
@@ -2870,9 +2870,10 @@ fn mk_where_bound_predicate(
 }
 
 /// Detect whether an ident looks like it could have generics, but doesn't.
-fn looks_like_generics(ident: &Ident) -> Option<String> {
+fn looks_like_generics(ident: &Ident, p: &str) -> Option<(Span, String)> {
     // FIXME: look for more unicode characters that are valid parts of identifiers, but that look
     // like generics.
+    let span = ident.span;
     let ident = ident.to_string();
     if !ident.ends_with("ᐳ") || ident.chars().filter(|c| *c == 'ᐳ').count() != 1 {
         return None;
@@ -2880,7 +2881,18 @@ fn looks_like_generics(ident: &Ident) -> Option<String> {
     if ident.chars().filter(|c| *c == 'ᐸ').count() != 1 {
         return None;
     }
-    Some(ident.replace("ᐸ", "<").replace("ᐳ", ">"))
+    let ident = ident.replace("ᐳ", "");
+    let [name, generics] = ident.split('ᐸ').collect::<Vec<_>>()[..] else {
+        return None;
+    };
+    if generics.split(",").map(|s| s.trim()).any(|s| s == p) {
+        Some((
+            span.with_lo(span.lo() + BytePos(name.len() as u32)),
+            ident[name.len()..].replace("ᐸ", "<") + ">",
+        ))
+    } else {
+        None
+    }
 }
 
 /// Report lifetime/lifetime shadowing as an error.
