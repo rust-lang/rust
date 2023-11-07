@@ -2,11 +2,14 @@ use crate::cmp::Ordering;
 use crate::convert::From;
 use crate::fmt;
 use crate::hash;
+use crate::intrinsics;
 use crate::intrinsics::assert_unsafe_precondition;
 use crate::marker::Unsize;
+use crate::mem::SizedTypeProperties;
 use crate::mem::{self, MaybeUninit};
 use crate::num::NonZeroUsize;
 use crate::ops::{CoerceUnsized, DispatchFromDyn};
+use crate::ptr;
 use crate::ptr::Unique;
 use crate::slice::{self, SliceIndex};
 
@@ -471,30 +474,236 @@ impl<T: ?Sized> NonNull<T> {
         unsafe { NonNull::new_unchecked(self.as_ptr() as *mut U) }
     }
 
-    /// See [`pointer::add`] for semantics and safety requirements.
+    /// Reads the value from `self` without moving it. This leaves the
+    /// memory in `self` unchanged.
+    ///
+    /// See [`ptr::read`] for safety concerns and examples.
+    ///
+    /// [`ptr::read`]: crate::ptr::read()
+    #[unstable(feature = "non_null_convenience", issue = "117691")]
+    #[rustc_const_unstable(feature = "non_null_convenience", issue = "117691")]
     #[inline]
-    pub(crate) const unsafe fn add(self, delta: usize) -> Self
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+    pub const unsafe fn read(self) -> T
     where
         T: Sized,
     {
-        // SAFETY: We require that the delta stays in-bounds of the object, and
-        // thus it cannot become null, as that would require wrapping the
-        // address space, which no legal objects are allowed to do.
-        // And the caller promised the `delta` is sound to add.
-        unsafe { NonNull { pointer: self.pointer.add(delta) } }
+        // SAFETY: the caller must uphold the safety contract for `read`.
+        unsafe { ptr::read(self.pointer) }
     }
 
-    /// See [`pointer::sub`] for semantics and safety requirements.
+    /// Performs a volatile read of the value from `self` without moving it. This
+    /// leaves the memory in `self` unchanged.
+    ///
+    /// Volatile operations are intended to act on I/O memory, and are guaranteed
+    /// to not be elided or reordered by the compiler across other volatile
+    /// operations.
+    ///
+    /// See [`ptr::read_volatile`] for safety concerns and examples.
+    ///
+    /// [`ptr::read_volatile`]: crate::ptr::read_volatile()
+    #[unstable(feature = "non_null_convenience", issue = "117691")]
     #[inline]
-    pub(crate) const unsafe fn sub(self, delta: usize) -> Self
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+    pub unsafe fn read_volatile(self) -> T
     where
         T: Sized,
     {
-        // SAFETY: We require that the delta stays in-bounds of the object, and
-        // thus it cannot become null, as no legal objects can be allocated
-        // in such as way that the null address is part of them.
-        // And the caller promised the `delta` is sound to subtract.
-        unsafe { NonNull { pointer: self.pointer.sub(delta) } }
+        // SAFETY: the caller must uphold the safety contract for `read_volatile`.
+        unsafe { ptr::read_volatile(self.pointer) }
+    }
+
+    /// Reads the value from `self` without moving it. This leaves the
+    /// memory in `self` unchanged.
+    ///
+    /// Unlike `read`, the pointer may be unaligned.
+    ///
+    /// See [`ptr::read_unaligned`] for safety concerns and examples.
+    ///
+    /// [`ptr::read_unaligned`]: crate::ptr::read_unaligned()
+    #[unstable(feature = "non_null_convenience", issue = "117691")]
+    #[rustc_const_unstable(feature = "non_null_convenience", issue = "117691")]
+    #[inline]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+    pub const unsafe fn read_unaligned(self) -> T
+    where
+        T: Sized,
+    {
+        // SAFETY: the caller must uphold the safety contract for `read_unaligned`.
+        unsafe { ptr::read_unaligned(self.pointer) }
+    }
+
+    /// Copies `count * size_of<T>` bytes from `self` to `dest`. The source
+    /// and destination may overlap.
+    ///
+    /// NOTE: this has the *same* argument order as [`ptr::copy`].
+    ///
+    /// See [`ptr::copy`] for safety concerns and examples.
+    ///
+    /// [`ptr::copy`]: crate::ptr::copy()
+    #[unstable(feature = "non_null_convenience", issue = "117691")]
+    #[rustc_const_unstable(feature = "non_null_convenience", issue = "117691")]
+    #[inline(always)]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+    pub const unsafe fn copy_to(self, dest: NonNull<T>, count: usize)
+    where
+        T: Sized,
+    {
+        // SAFETY: the caller must uphold the safety contract for `copy`.
+        unsafe { ptr::copy(self.pointer, dest.as_ptr(), count) }
+    }
+
+    /// Copies `count * size_of<T>` bytes from `self` to `dest`. The source
+    /// and destination may *not* overlap.
+    ///
+    /// NOTE: this has the *same* argument order as [`ptr::copy_nonoverlapping`].
+    ///
+    /// See [`ptr::copy_nonoverlapping`] for safety concerns and examples.
+    ///
+    /// [`ptr::copy_nonoverlapping`]: crate::ptr::copy_nonoverlapping()
+    #[unstable(feature = "non_null_convenience", issue = "117691")]
+    #[rustc_const_unstable(feature = "non_null_convenience", issue = "117691")]
+    #[inline(always)]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+    pub const unsafe fn copy_to_nonoverlapping(self, dest: NonNull<T>, count: usize)
+    where
+        T: Sized,
+    {
+        // SAFETY: the caller must uphold the safety contract for `copy_nonoverlapping`.
+        unsafe { ptr::copy_nonoverlapping(self.pointer, dest.as_ptr(), count) }
+    }
+
+    /// Copies `count * size_of<T>` bytes from `src` to `self`. The source
+    /// and destination may overlap.
+    ///
+    /// NOTE: this has the *opposite* argument order of [`ptr::copy`].
+    ///
+    /// See [`ptr::copy`] for safety concerns and examples.
+    ///
+    /// [`ptr::copy`]: crate::ptr::copy()
+    #[unstable(feature = "non_null_convenience", issue = "117691")]
+    #[rustc_const_unstable(feature = "non_null_convenience", issue = "117691")]
+    #[inline(always)]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+    pub const unsafe fn copy_from(self, src: NonNull<T>, count: usize)
+    where
+        T: Sized,
+    {
+        // SAFETY: the caller must uphold the safety contract for `copy`.
+        unsafe { ptr::copy(src.pointer, self.as_ptr(), count) }
+    }
+
+    /// Copies `count * size_of<T>` bytes from `src` to `self`. The source
+    /// and destination may *not* overlap.
+    ///
+    /// NOTE: this has the *opposite* argument order of [`ptr::copy_nonoverlapping`].
+    ///
+    /// See [`ptr::copy_nonoverlapping`] for safety concerns and examples.
+    ///
+    /// [`ptr::copy_nonoverlapping`]: crate::ptr::copy_nonoverlapping()
+    #[unstable(feature = "non_null_convenience", issue = "117691")]
+    #[rustc_const_unstable(feature = "non_null_convenience", issue = "117691")]
+    #[inline(always)]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+    pub const unsafe fn copy_from_nonoverlapping(self, src: NonNull<T>, count: usize)
+    where
+        T: Sized,
+    {
+        // SAFETY: the caller must uphold the safety contract for `copy_nonoverlapping`.
+        unsafe { ptr::copy_nonoverlapping(src.pointer, self.as_ptr(), count) }
+    }
+
+    /// Executes the destructor (if any) of the pointed-to value.
+    ///
+    /// See [`ptr::drop_in_place`] for safety concerns and examples.
+    ///
+    /// [`ptr::drop_in_place`]: crate::ptr::drop_in_place()
+    #[unstable(feature = "non_null_convenience", issue = "117691")]
+    #[inline(always)]
+    pub unsafe fn drop_in_place(self) {
+        // SAFETY: the caller must uphold the safety contract for `drop_in_place`.
+        unsafe { ptr::drop_in_place(self.as_ptr()) }
+    }
+
+    /// Overwrites a memory location with the given value without reading or
+    /// dropping the old value.
+    ///
+    /// See [`ptr::write`] for safety concerns and examples.
+    ///
+    /// [`ptr::write`]: crate::ptr::write()
+    #[unstable(feature = "non_null_convenience", issue = "117691")]
+    #[rustc_const_unstable(feature = "non_null_convenience", issue = "117691")]
+    //#[rustc_const_unstable(feature = "const_ptr_write", issue = "86302")]
+    #[inline(always)]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+    pub const unsafe fn write(self, val: T)
+    where
+        T: Sized,
+    {
+        // SAFETY: the caller must uphold the safety contract for `write`.
+        unsafe { ptr::write(self.as_ptr(), val) }
+    }
+
+    /// Invokes memset on the specified pointer, setting `count * size_of::<T>()`
+    /// bytes of memory starting at `self` to `val`.
+    ///
+    /// See [`ptr::write_bytes`] for safety concerns and examples.
+    ///
+    /// [`ptr::write_bytes`]: crate::ptr::write_bytes()
+    #[doc(alias = "memset")]
+    #[unstable(feature = "non_null_convenience", issue = "117691")]
+    #[rustc_const_unstable(feature = "non_null_convenience", issue = "117691")]
+    //#[rustc_const_unstable(feature = "const_ptr_write", issue = "86302")]
+    #[inline(always)]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+    pub const unsafe fn write_bytes(self, val: u8, count: usize)
+    where
+        T: Sized,
+    {
+        // SAFETY: the caller must uphold the safety contract for `write_bytes`.
+        unsafe { ptr::write_bytes(self.as_ptr(), val, count) }
+    }
+
+    /// Performs a volatile write of a memory location with the given value without
+    /// reading or dropping the old value.
+    ///
+    /// Volatile operations are intended to act on I/O memory, and are guaranteed
+    /// to not be elided or reordered by the compiler across other volatile
+    /// operations.
+    ///
+    /// See [`ptr::write_volatile`] for safety concerns and examples.
+    ///
+    /// [`ptr::write_volatile`]: crate::ptr::write_volatile()
+    #[unstable(feature = "non_null_convenience", issue = "117691")]
+    #[inline(always)]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+    pub unsafe fn write_volatile(self, val: T)
+    where
+        T: Sized,
+    {
+        // SAFETY: the caller must uphold the safety contract for `write_volatile`.
+        unsafe { ptr::write_volatile(self.as_ptr(), val) }
+    }
+
+    /// Overwrites a memory location with the given value without reading or
+    /// dropping the old value.
+    ///
+    /// Unlike `write`, the pointer may be unaligned.
+    ///
+    /// See [`ptr::write_unaligned`] for safety concerns and examples.
+    ///
+    /// [`ptr::write_unaligned`]: crate::ptr::write_unaligned()
+    #[unstable(feature = "non_null_convenience", issue = "117691")]
+    #[rustc_const_unstable(feature = "non_null_convenience", issue = "117691")]
+    //#[rustc_const_unstable(feature = "const_ptr_write", issue = "86302")]
+    #[inline(always)]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+    pub const unsafe fn write_unaligned(self, val: T)
+    where
+        T: Sized,
+    {
+        // SAFETY: the caller must uphold the safety contract for `write_unaligned`.
+        unsafe { ptr::write_unaligned(self.as_ptr(), val) }
     }
 
     /// See [`pointer::sub_ptr`] for semantics and safety requirements.
