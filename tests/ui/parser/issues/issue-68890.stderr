@@ -11,6 +11,8 @@ LL | enum e{A((?'a a+?+l))}
    |      -        ^ expected one of `)`, `+`, or `,`
    |      |
    |      while parsing this enum
+   |
+   = help: enum variants can be `Variant`, `Variant = <integer>`, `Variant(Type, ..., TypeN)` or `Variant { fields: Types }`
 
 error: expected item, found `)`
   --> $DIR/issue-68890.rs:1:21

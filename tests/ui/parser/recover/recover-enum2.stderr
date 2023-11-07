@@ -13,6 +13,8 @@ LL |         enum Test4 {
    |              ----- while parsing this enum
 LL |             Nope(i32 {})
    |                      ^ expected one of 7 possible tokens
+   |
+   = help: enum variants can be `Variant`, `Variant = <integer>`, `Variant(Type, ..., TypeN)` or `Variant { fields: Types }`
 
 error[E0308]: mismatched types
   --> $DIR/recover-enum2.rs:11:9

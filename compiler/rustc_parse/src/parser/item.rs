@@ -1450,6 +1450,8 @@ impl<'a> Parser<'a> {
         self.recover_diff_marker();
         let variant_attrs = self.parse_outer_attributes()?;
         self.recover_diff_marker();
+        let help = "enum variants can be `Variant`, `Variant = <integer>`, \
+                    `Variant(Type, ..., TypeN)` or `Variant { fields: Types }`";
         self.collect_tokens_trailing_token(
             variant_attrs,
             ForceCollect::No,
@@ -1486,6 +1488,7 @@ impl<'a> Parser<'a> {
                                 this.eat_to_tokens(&[&token::CloseDelim(Delimiter::Brace)]);
                                 this.bump(); // }
                                 err.span_label(span, "while parsing this enum");
+                                err.help(help);
                                 err.emit();
                                 (thin_vec![], true)
                             }
@@ -1502,6 +1505,7 @@ impl<'a> Parser<'a> {
                             this.eat_to_tokens(&[&token::CloseDelim(Delimiter::Parenthesis)]);
                             this.bump(); // )
                             err.span_label(span, "while parsing this enum");
+                            err.help(help);
                             err.emit();
                             thin_vec![]
                         }
@@ -1527,8 +1531,9 @@ impl<'a> Parser<'a> {
 
                 Ok((Some(vr), TrailingToken::MaybeComma))
             },
-        ).map_err(|mut err| {
-            err.help("enum variants can be `Variant`, `Variant = <integer>`, `Variant(Type, ..., TypeN)` or `Variant { fields: Types }`");
+        )
+        .map_err(|mut err| {
+            err.help(help);
             err
         })
     }
