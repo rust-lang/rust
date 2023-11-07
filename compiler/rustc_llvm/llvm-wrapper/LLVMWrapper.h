@@ -25,7 +25,6 @@
 #include "llvm/Transforms/IPO.h"
 #include "llvm/Transforms/Instrumentation.h"
 #include "llvm/Transforms/Scalar.h"
-#include "llvm/Transforms/Vectorize.h"
 
 #define LLVM_VERSION_GE(major, minor)                                          \
   (LLVM_VERSION_MAJOR > (major) ||                                             \
