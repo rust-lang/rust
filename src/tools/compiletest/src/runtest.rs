@@ -3962,7 +3962,7 @@ impl<'test> TestCx<'test> {
             // And finally, compile the fixed code and make sure it both
             // succeeds and has no diagnostics.
             let rustc = self.make_compile_args(
-                &self.testpaths.file.with_extension(UI_FIXED),
+                &self.expected_output_path(UI_FIXED),
                 TargetLocation::ThisFile(self.make_exe_name()),
                 emit_metadata,
                 AllowUnused::No,

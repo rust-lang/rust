@@ -10,7 +10,7 @@ extern crate external_unsafe_macro;
 
 unsafe fn unsf() {}
 
-pub unsafe fn foo() {
+pub unsafe fn foo() { unsafe {
     //~^ NOTE an unsafe function restricts its caller, but its body is safe by default
     unsf(); //[mir]~ ERROR call to unsafe function is unsafe
      //[thir]~^ ERROR call to unsafe function `unsf` is unsafe
@@ -20,9 +20,9 @@ pub unsafe fn foo() {
     //[thir]~^ ERROR call to unsafe function `unsf` is unsafe
     //~^^ NOTE
     //~| NOTE
-}
+}}
 
-pub unsafe fn bar(x: *const i32) -> i32 {
+pub unsafe fn bar(x: *const i32) -> i32 { unsafe {
     //~^ NOTE an unsafe function restricts its caller, but its body is safe by default
     let y = *x; //~ ERROR dereference of raw pointer is unsafe and requires unsafe block
     //~^ NOTE
@@ -30,10 +30,10 @@ pub unsafe fn bar(x: *const i32) -> i32 {
     y + *x //~ ERROR dereference of raw pointer is unsafe and requires unsafe block
     //~^ NOTE
     //~| NOTE
-}
+}}
 
 static mut BAZ: i32 = 0;
-pub unsafe fn baz() -> i32 {
+pub unsafe fn baz() -> i32 { unsafe {
     //~^ NOTE an unsafe function restricts its caller, but its body is safe by default
     let y = BAZ; //~ ERROR use of mutable static is unsafe and requires unsafe block
     //~^ NOTE
@@ -41,7 +41,7 @@ pub unsafe fn baz() -> i32 {
     y + BAZ //~ ERROR use of mutable static is unsafe and requires unsafe block
     //~^ NOTE
     //~| NOTE
-}
+}}
 
 macro_rules! unsafe_macro { () => (unsf()) }
 //[mir]~^ ERROR call to unsafe function is unsafe
@@ -53,7 +53,7 @@ macro_rules! unsafe_macro { () => (unsf()) }
 //~| NOTE
 //~| NOTE
 
-pub unsafe fn unsafe_in_macro() {
+pub unsafe fn unsafe_in_macro() { unsafe {
     //~^ NOTE an unsafe function restricts its caller, but its body is safe by default
     unsafe_macro!();
     //~^ NOTE
@@ -61,7 +61,7 @@ pub unsafe fn unsafe_in_macro() {
     unsafe_macro!();
     //~^ NOTE
     //~| NOTE
-}
+}}
 
 pub unsafe fn unsafe_in_external_macro() {
     // FIXME: https://github.com/rust-lang/rust/issues/112504

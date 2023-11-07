@@ -1,30 +1,31 @@
 // revisions: mir thir
 // [thir]compile-flags: -Z thir-unsafeck
 
-use std::mem::ManuallyDrop;
 use std::cell::RefCell;
+use std::mem::ManuallyDrop;
 
 union U1 {
-    a: u8
+    a: u8,
 }
 
 union U2 {
-    a: ManuallyDrop<String>
+    a: ManuallyDrop<String>,
 }
 
 union U3<T> {
-    a: ManuallyDrop<T>
+    a: ManuallyDrop<T>,
 }
 
 union U4<T: Copy> {
-    a: T
+    a: T,
 }
 
 union URef {
     p: &'static mut i32,
 }
 
-union URefCell { // field that does not drop but is not `Copy`, either
+union URefCell {
+    // field that does not drop but is not `Copy`, either
     a: (ManuallyDrop<RefCell<i32>>, i32),
 }
 
@@ -62,6 +63,7 @@ fn main() {
 
     let U1 { a } = u1; //~ ERROR access to union field is unsafe
     if let U1 { a: 12 } = u1 {} //~ ERROR access to union field is unsafe
+    if let Some(U1 { a: 13 }) = Some(u1) {} //~ ERROR access to union field is unsafe
     // let U1 { .. } = u1; // OK
 
     let mut u2 = U2 { a: ManuallyDrop::new(String::from("old")) }; // OK

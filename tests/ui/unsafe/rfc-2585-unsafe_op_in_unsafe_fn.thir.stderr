@@ -5,6 +5,11 @@ LL |     unsf();
    |     ^^^^^^ call to unsafe function
    |
    = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+  --> $DIR/rfc-2585-unsafe_op_in_unsafe_fn.rs:11:1
+   |
+LL | unsafe fn deny_level() {
+   | ^^^^^^^^^^^^^^^^^^^^^^
 note: the lint level is defined here
   --> $DIR/rfc-2585-unsafe_op_in_unsafe_fn.rs:4:9
    |
@@ -46,6 +51,11 @@ LL |     unsf();
    |     ^^^^^^ call to unsafe function
    |
    = note: consult the function's documentation for information on how to avoid undefined behavior
+note: an unsafe function restricts its caller, but its body is safe by default
+  --> $DIR/rfc-2585-unsafe_op_in_unsafe_fn.rs:27:1
+   |
+LL | unsafe fn warning_level() {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
 note: the lint level is defined here
   --> $DIR/rfc-2585-unsafe_op_in_unsafe_fn.rs:26:8
    |
