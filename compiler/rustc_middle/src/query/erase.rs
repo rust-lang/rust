@@ -30,6 +30,13 @@ pub fn erase<T: EraseType>(src: T) -> Erase<T> {
     };
 
     Erased::<<T as EraseType>::Result> {
+        // `transmute_unchecked` is needed here because it does not have `transmute`'s size check
+        // (and thus allows to transmute between `T` and `MaybeUninit<T::Result>`) (we do the size
+        // check ourselves in the `const` block above).
+        //
+        // `transmute_copy` is also commonly used for this (and it would work here since
+        // `EraseType: Copy`), but `transmute_unchecked` better explains the intent.
+        //
         // SAFETY: It is safe to transmute to MaybeUninit for types with the same sizes.
         data: unsafe { transmute_unchecked::<T, MaybeUninit<T::Result>>(src) },
     }
@@ -39,6 +46,8 @@ pub fn erase<T: EraseType>(src: T) -> Erase<T> {
 #[inline(always)]
 pub fn restore<T: EraseType>(value: Erase<T>) -> T {
     let value: Erased<<T as EraseType>::Result> = value;
+    // See comment in `erase` for why we use `transmute_unchecked`.
+    //
     // SAFETY: Due to the use of impl Trait in `Erase` the only way to safely create an instance
     // of `Erase` is to call `erase`, so we know that `value.data` is a valid instance of `T` of
     // the right size.
