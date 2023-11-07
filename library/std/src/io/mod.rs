@@ -770,6 +770,30 @@ pub trait Read {
     /// file.)
     ///
     /// [`std::fs::read`]: crate::fs::read
+    ///
+    /// ## Implementing `read_to_end`
+    ///
+    /// When implementing the `io::Read` trait, it is recommended to allocate
+    /// memory using [`Vec::try_reserve`]. However, this behavior is not guaranteed
+    /// by all implementations, and `read_to_end` may not handle out-of-memory
+    /// situations gracefully.
+    ///
+    /// ```no_run
+    /// # use std::io;
+    /// # struct Example; impl Example {
+    /// # fn read_some_data_for_the_example(&self) -> &'static [u8] { &[] }
+    /// fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
+    ///     let data_read = self.read_some_data_for_the_example();
+    ///
+    ///     buf.try_reserve(data_read.len()).map_err(|_| io::ErrorKind::OutOfMemory)?;
+    ///     buf.extend_from_slice(data_read);
+    ///
+    ///     Ok(data_read.len())
+    /// }
+    /// # }
+    /// ```
+    ///
+    /// [`Vec::try_reserve`]: crate::vec::Vec::try_reserve
     #[stable(feature = "rust1", since = "1.0.0")]
     fn read_to_end(&mut self, buf: &mut Vec<u8>) -> Result<usize> {
         default_read_to_end(self, buf, None)
