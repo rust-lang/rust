@@ -7,12 +7,13 @@
 use crate::rustc_smir::Tables;
 use rustc_middle::ty::{self as rustc_ty, Ty as InternalTy};
 use rustc_span::Symbol;
+use stable_mir::mir::alloc::AllocId;
 use stable_mir::mir::mono::{Instance, MonoItem, StaticDef};
 use stable_mir::ty::{
     AdtDef, Binder, BoundRegionKind, BoundTyKind, BoundVariableKind, ClosureKind, Const, FloatTy,
     GenericArgKind, GenericArgs, IntTy, Region, RigidTy, TraitRef, Ty, UintTy,
 };
-use stable_mir::{AllocId, CrateItem, DefId};
+use stable_mir::{CrateItem, DefId};
 
 use super::RustcInternal;
 
