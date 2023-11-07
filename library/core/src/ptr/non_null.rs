@@ -474,6 +474,279 @@ impl<T: ?Sized> NonNull<T> {
         unsafe { NonNull::new_unchecked(self.as_ptr() as *mut U) }
     }
 
+    /// Calculates the offset from a pointer.
+    ///
+    /// `count` is in units of T; e.g., a `count` of 3 represents a pointer
+    /// offset of `3 * size_of::<T>()` bytes.
+    ///
+    /// # Safety
+    ///
+    /// If any of the following conditions are violated, the result is Undefined
+    /// Behavior:
+    ///
+    /// * Both the starting and resulting pointer must be either in bounds or one
+    ///   byte past the end of the same [allocated object].
+    ///
+    /// * The computed offset, **in bytes**, cannot overflow an `isize`.
+    ///
+    /// * The offset being in bounds cannot rely on "wrapping around" the address
+    ///   space. That is, the infinite-precision sum, **in bytes** must fit in a usize.
+    ///
+    /// The compiler and standard library generally tries to ensure allocations
+    /// never reach a size where an offset is a concern. For instance, `Vec`
+    /// and `Box` ensure they never allocate more than `isize::MAX` bytes, so
+    /// `vec.as_ptr().add(vec.len())` is always safe.
+    ///
+    /// Most platforms fundamentally can't even construct such an allocation.
+    /// For instance, no known 64-bit platform can ever serve a request
+    /// for 2<sup>63</sup> bytes due to page-table limitations or splitting the address space.
+    /// However, some 32-bit and 16-bit platforms may successfully serve a request for
+    /// more than `isize::MAX` bytes with things like Physical Address
+    /// Extension. As such, memory acquired directly from allocators or memory
+    /// mapped files *may* be too large to handle with this function.
+    ///
+    /// [allocated object]: crate::ptr#allocated-object
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(non_null_convenience)]
+    /// use std::ptr::NonNull;
+    ///
+    /// let mut s = [1, 2, 3];
+    /// let ptr: NonNull<u32> = NonNull::new(s.as_mut_ptr()).unwrap();
+    ///
+    /// unsafe {
+    ///     println!("{}", ptr.offset(1).read());
+    ///     println!("{}", ptr.offset(2).read());
+    /// }
+    /// ```
+    #[unstable(feature = "non_null_convenience", issue = "117691")]
+    #[rustc_const_unstable(feature = "non_null_convenience", issue = "117691")]
+    #[must_use = "returns a new pointer rather than modifying its argument"]
+    #[inline(always)]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+    pub const unsafe fn offset(self, count: isize) -> NonNull<T>
+    where
+        T: Sized,
+    {
+        // SAFETY: the caller must uphold the safety contract for `offset`.
+        // Additionally safety contract of `offset` guarantees that the resulting pointer is
+        // pointing to an allocation, there can't be an allocation at null, thus it's safe to
+        // construct `NonNull`.
+        unsafe { NonNull { pointer: intrinsics::offset(self.pointer, count) } }
+    }
+
+    /// Calculates the offset from a pointer in bytes.
+    ///
+    /// `count` is in units of **bytes**.
+    ///
+    /// This is purely a convenience for casting to a `u8` pointer and
+    /// using [offset][pointer::offset] on it. See that method for documentation
+    /// and safety requirements.
+    ///
+    /// For non-`Sized` pointees this operation changes only the data pointer,
+    /// leaving the metadata untouched.
+    #[unstable(feature = "non_null_convenience", issue = "117691")]
+    #[rustc_const_unstable(feature = "non_null_convenience", issue = "117691")]
+    #[must_use]
+    #[inline(always)]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+    pub const unsafe fn byte_offset(self, count: isize) -> Self {
+        // SAFETY: the caller must uphold the safety contract for `offset` and `byte_offset` has
+        // the same safety contract.
+        // Additionally safety contract of `offset` guarantees that the resulting pointer is
+        // pointing to an allocation, there can't be an allocation at null, thus it's safe to
+        // construct `NonNull`.
+        unsafe { NonNull { pointer: self.pointer.byte_offset(count) } }
+    }
+
+    /// Calculates the offset from a pointer (convenience for `.offset(count as isize)`).
+    ///
+    /// `count` is in units of T; e.g., a `count` of 3 represents a pointer
+    /// offset of `3 * size_of::<T>()` bytes.
+    ///
+    /// # Safety
+    ///
+    /// If any of the following conditions are violated, the result is Undefined
+    /// Behavior:
+    ///
+    /// * Both the starting and resulting pointer must be either in bounds or one
+    ///   byte past the end of the same [allocated object].
+    ///
+    /// * The computed offset, **in bytes**, cannot overflow an `isize`.
+    ///
+    /// * The offset being in bounds cannot rely on "wrapping around" the address
+    ///   space. That is, the infinite-precision sum must fit in a `usize`.
+    ///
+    /// The compiler and standard library generally tries to ensure allocations
+    /// never reach a size where an offset is a concern. For instance, `Vec`
+    /// and `Box` ensure they never allocate more than `isize::MAX` bytes, so
+    /// `vec.as_ptr().add(vec.len())` is always safe.
+    ///
+    /// Most platforms fundamentally can't even construct such an allocation.
+    /// For instance, no known 64-bit platform can ever serve a request
+    /// for 2<sup>63</sup> bytes due to page-table limitations or splitting the address space.
+    /// However, some 32-bit and 16-bit platforms may successfully serve a request for
+    /// more than `isize::MAX` bytes with things like Physical Address
+    /// Extension. As such, memory acquired directly from allocators or memory
+    /// mapped files *may* be too large to handle with this function.
+    ///
+    /// [allocated object]: crate::ptr#allocated-object
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(non_null_convenience)]
+    /// use std::ptr::NonNull;
+    ///
+    /// let s: &str = "123";
+    /// let ptr: NonNull<u8> = NonNull::new(s.as_ptr().cast_mut()).unwrap();
+    ///
+    /// unsafe {
+    ///     println!("{}", ptr.add(1).read() as char);
+    ///     println!("{}", ptr.add(2).read() as char);
+    /// }
+    /// ```
+    #[unstable(feature = "non_null_convenience", issue = "117691")]
+    #[rustc_const_unstable(feature = "non_null_convenience", issue = "117691")]
+    #[must_use = "returns a new pointer rather than modifying its argument"]
+    #[inline(always)]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+    pub const unsafe fn add(self, count: usize) -> Self
+    where
+        T: Sized,
+    {
+        // SAFETY: the caller must uphold the safety contract for `offset`.
+        // Additionally safety contract of `offset` guarantees that the resulting pointer is
+        // pointing to an allocation, there can't be an allocation at null, thus it's safe to
+        // construct `NonNull`.
+        unsafe { NonNull { pointer: intrinsics::offset(self.pointer, count) } }
+    }
+
+    /// Calculates the offset from a pointer in bytes (convenience for `.byte_offset(count as isize)`).
+    ///
+    /// `count` is in units of bytes.
+    ///
+    /// This is purely a convenience for casting to a `u8` pointer and
+    /// using [`add`][NonNull::add] on it. See that method for documentation
+    /// and safety requirements.
+    ///
+    /// For non-`Sized` pointees this operation changes only the data pointer,
+    /// leaving the metadata untouched.
+    #[unstable(feature = "non_null_convenience", issue = "117691")]
+    #[rustc_const_unstable(feature = "non_null_convenience", issue = "117691")]
+    #[must_use]
+    #[inline(always)]
+    #[rustc_allow_const_fn_unstable(set_ptr_value)]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+    pub const unsafe fn byte_add(self, count: usize) -> Self {
+        // SAFETY: the caller must uphold the safety contract for `add` and `byte_add` has the same
+        // safety contract.
+        // Additionally safety contract of `add` guarantees that the resulting pointer is pointing
+        // to an allocation, there can't be an allocation at null, thus it's safe to construct
+        // `NonNull`.
+        unsafe { NonNull { pointer: self.pointer.byte_add(count) } }
+    }
+
+    /// Calculates the offset from a pointer (convenience for
+    /// `.offset((count as isize).wrapping_neg())`).
+    ///
+    /// `count` is in units of T; e.g., a `count` of 3 represents a pointer
+    /// offset of `3 * size_of::<T>()` bytes.
+    ///
+    /// # Safety
+    ///
+    /// If any of the following conditions are violated, the result is Undefined
+    /// Behavior:
+    ///
+    /// * Both the starting and resulting pointer must be either in bounds or one
+    ///   byte past the end of the same [allocated object].
+    ///
+    /// * The computed offset cannot exceed `isize::MAX` **bytes**.
+    ///
+    /// * The offset being in bounds cannot rely on "wrapping around" the address
+    ///   space. That is, the infinite-precision sum must fit in a usize.
+    ///
+    /// The compiler and standard library generally tries to ensure allocations
+    /// never reach a size where an offset is a concern. For instance, `Vec`
+    /// and `Box` ensure they never allocate more than `isize::MAX` bytes, so
+    /// `vec.as_ptr().add(vec.len()).sub(vec.len())` is always safe.
+    ///
+    /// Most platforms fundamentally can't even construct such an allocation.
+    /// For instance, no known 64-bit platform can ever serve a request
+    /// for 2<sup>63</sup> bytes due to page-table limitations or splitting the address space.
+    /// However, some 32-bit and 16-bit platforms may successfully serve a request for
+    /// more than `isize::MAX` bytes with things like Physical Address
+    /// Extension. As such, memory acquired directly from allocators or memory
+    /// mapped files *may* be too large to handle with this function.
+    ///
+    /// [allocated object]: crate::ptr#allocated-object
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(non_null_convenience)]
+    /// use std::ptr::NonNull;
+    ///
+    /// let s: &str = "123";
+    ///
+    /// unsafe {
+    ///     let end: NonNull<u8> = NonNull::new(s.as_ptr().cast_mut()).unwrap().add(3);
+    ///     println!("{}", end.sub(1).read() as char);
+    ///     println!("{}", end.sub(2).read() as char);
+    /// }
+    /// ```
+    #[unstable(feature = "non_null_convenience", issue = "117691")]
+    #[rustc_const_unstable(feature = "non_null_convenience", issue = "117691")]
+    #[must_use = "returns a new pointer rather than modifying its argument"]
+    // We could always go back to wrapping if unchecked becomes unacceptable
+    #[rustc_allow_const_fn_unstable(const_int_unchecked_arith)]
+    #[inline(always)]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+    pub const unsafe fn sub(self, count: usize) -> Self
+    where
+        T: Sized,
+    {
+        if T::IS_ZST {
+            // Pointer arithmetic does nothing when the pointee is a ZST.
+            self
+        } else {
+            // SAFETY: the caller must uphold the safety contract for `offset`.
+            // Because the pointee is *not* a ZST, that means that `count` is
+            // at most `isize::MAX`, and thus the negation cannot overflow.
+            unsafe { self.offset(intrinsics::unchecked_sub(0, count as isize)) }
+        }
+    }
+
+    /// Calculates the offset from a pointer in bytes (convenience for
+    /// `.byte_offset((count as isize).wrapping_neg())`).
+    ///
+    /// `count` is in units of bytes.
+    ///
+    /// This is purely a convenience for casting to a `u8` pointer and
+    /// using [`sub`][NonNull::sub] on it. See that method for documentation
+    /// and safety requirements.
+    ///
+    /// For non-`Sized` pointees this operation changes only the data pointer,
+    /// leaving the metadata untouched.
+    #[unstable(feature = "non_null_convenience", issue = "117691")]
+    #[rustc_const_unstable(feature = "non_null_convenience", issue = "117691")]
+    #[must_use]
+    #[inline(always)]
+    #[rustc_allow_const_fn_unstable(set_ptr_value)]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+    pub const unsafe fn byte_sub(self, count: usize) -> Self {
+        // SAFETY: the caller must uphold the safety contract for `sub` and `byte_sub` has the same
+        // safety contract.
+        // Additionally safety contract of `sub` guarantees that the resulting pointer is pointing
+        // to an allocation, there can't be an allocation at null, thus it's safe to construct
+        // `NonNull`.
+        unsafe { NonNull { pointer: self.pointer.byte_sub(count) } }
+    }
+
+    // N.B. `wrapping_offset``, `wrapping_add`, etc are not implemented because they can wrap to null
+
     /// Reads the value from `self` without moving it. This leaves the
     /// memory in `self` unchanged.
     ///
