@@ -620,29 +620,63 @@ fn construct_const<'a, 'tcx>(
 ///
 /// This is required because we may still want to run MIR passes on an item
 /// with type errors, but normal MIR construction can't handle that in general.
-fn construct_error(tcx: TyCtxt<'_>, def: LocalDefId, err: ErrorGuaranteed) -> Body<'_> {
-    let span = tcx.def_span(def);
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def);
-    let coroutine_kind = tcx.coroutine_kind(def);
-    let body_owner_kind = tcx.hir().body_owner_kind(def);
+fn construct_error(tcx: TyCtxt<'_>, def_id: LocalDefId, guar: ErrorGuaranteed) -> Body<'_> {
+    let span = tcx.def_span(def_id);
+    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+    let coroutine_kind = tcx.coroutine_kind(def_id);
 
-    let ty = Ty::new_error(tcx, err);
-    let num_params = match body_owner_kind {
-        hir::BodyOwnerKind::Fn => tcx.fn_sig(def).skip_binder().inputs().skip_binder().len(),
-        hir::BodyOwnerKind::Closure => {
-            let ty = tcx.type_of(def).instantiate_identity();
-            match ty.kind() {
-                ty::Closure(_, args) => 1 + args.as_closure().sig().inputs().skip_binder().len(),
-                ty::Coroutine(..) => 2,
-                _ => bug!("expected closure or coroutine, found {ty:?}"),
-            }
+    let (inputs, output, yield_ty) = match tcx.def_kind(def_id) {
+        DefKind::Const
+        | DefKind::AssocConst
+        | DefKind::AnonConst
+        | DefKind::InlineConst
+        | DefKind::Static(_) => (vec![], tcx.type_of(def_id).instantiate_identity(), None),
+        DefKind::Ctor(..) | DefKind::Fn | DefKind::AssocFn => {
+            let sig = tcx.liberate_late_bound_regions(
+                def_id.to_def_id(),
+                tcx.fn_sig(def_id).instantiate_identity(),
+            );
+            (sig.inputs().to_vec(), sig.output(), None)
         }
-        hir::BodyOwnerKind::Const { .. } => 0,
-        hir::BodyOwnerKind::Static(_) => 0,
+        DefKind::Closure => {
+            let closure_ty = tcx.type_of(def_id).instantiate_identity();
+            let ty::Closure(_, args) = closure_ty.kind() else { bug!() };
+            let args = args.as_closure();
+            let sig = tcx.liberate_late_bound_regions(def_id.to_def_id(), args.sig());
+            let self_ty = match args.kind() {
+                ty::ClosureKind::Fn => Ty::new_imm_ref(tcx, tcx.lifetimes.re_erased, closure_ty),
+                ty::ClosureKind::FnMut => Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, closure_ty),
+                ty::ClosureKind::FnOnce => closure_ty,
+            };
+            ([self_ty].into_iter().chain(sig.inputs().to_vec()).collect(), sig.output(), None)
+        }
+        DefKind::Coroutine => {
+            let coroutine_ty = tcx.type_of(def_id).instantiate_identity();
+            let ty::Coroutine(_, args, _) = coroutine_ty.kind() else { bug!() };
+            let args = args.as_coroutine();
+            let yield_ty = args.yield_ty();
+            let return_ty = args.return_ty();
+            let self_ty = Ty::new_adt(
+                tcx,
+                tcx.adt_def(tcx.lang_items().pin_type().unwrap()),
+                tcx.mk_args(&[Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, coroutine_ty).into()]),
+            );
+            let coroutine_state = Ty::new_adt(
+                tcx,
+                tcx.adt_def(tcx.lang_items().coroutine_state().unwrap()),
+                tcx.mk_args(&[yield_ty.into(), return_ty.into()]),
+            );
+            (vec![self_ty, args.resume_ty()], coroutine_state, Some(yield_ty))
+        }
+        dk => bug!("{:?} is not a body: {:?}", def_id, dk),
     };
+
+    let source_info = SourceInfo { span, scope: OUTERMOST_SOURCE_SCOPE };
+    let local_decls = IndexVec::from_iter(
+        [output].iter().chain(&inputs).map(|ty| LocalDecl::with_source_info(*ty, source_info)),
+    );
     let mut cfg = CFG { basic_blocks: IndexVec::new() };
     let mut source_scopes = IndexVec::new();
-    let mut local_decls = IndexVec::from_elem_n(LocalDecl::new(ty, span), 1);
 
     cfg.start_new_block();
     source_scopes.push(SourceScopeData {
@@ -655,28 +689,24 @@ fn construct_error(tcx: TyCtxt<'_>, def: LocalDefId, err: ErrorGuaranteed) -> Bo
             safety: Safety::Safe,
         }),
     });
-    let source_info = SourceInfo { span, scope: OUTERMOST_SOURCE_SCOPE };
 
-    // Some MIR passes will expect the number of parameters to match the
-    // function declaration.
-    for _ in 0..num_params {
-        local_decls.push(LocalDecl::with_source_info(ty, source_info));
-    }
     cfg.terminate(START_BLOCK, source_info, TerminatorKind::Unreachable);
 
     let mut body = Body::new(
-        MirSource::item(def.to_def_id()),
+        MirSource::item(def_id.to_def_id()),
         cfg.basic_blocks,
         source_scopes,
         local_decls,
         IndexVec::new(),
-        num_params,
+        inputs.len(),
         vec![],
         span,
         coroutine_kind,
-        Some(err),
+        Some(guar),
     );
-    body.coroutine.as_mut().map(|gen| gen.yield_ty = Some(ty));
+
+    body.coroutine.as_mut().map(|gen| gen.yield_ty = yield_ty);
+
     body
 }
 
