@@ -34,7 +34,7 @@ use rustc_middle::ty::{self, GenericArgKind, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::def_id::DefIdSet;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Symbol;
-use rustc_span::{edit_distance, source_map, ExpnKind, FileName, MacroKind, Span};
+use rustc_span::{edit_distance, ExpnKind, FileName, MacroKind, Span};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::error_reporting::on_unimplemented::OnUnimplementedNote;
 use rustc_trait_selection::traits::error_reporting::on_unimplemented::TypeErrCtxtExt as _;
@@ -1320,39 +1320,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                     if let Some(sugg_span) = sugg_span
                         && let Some(trait_ref) = self.tcx.impl_trait_ref(impl_did)
-                    {
-                        let path = self.tcx.def_path_str(trait_ref.skip_binder().def_id);
-
-                        let ty = match item.kind {
-                            ty::AssocKind::Const | ty::AssocKind::Type => impl_ty,
-                            ty::AssocKind::Fn => self
-                                .tcx
-                                .fn_sig(item.def_id)
-                                .instantiate_identity()
-                                .inputs()
-                                .skip_binder()
-                                .get(0)
-                                .filter(|ty| ty.is_ref() && !rcvr_ty.is_ref())
-                                .copied()
-                                .unwrap_or(rcvr_ty),
-                        };
-                        if let Some(sugg) = print_disambiguation_help(
-                            item_name,
-                            args,
-                            self_source,
+                        && let Some(sugg) = print_disambiguation_help(
+                            self.tcx,
                             err,
-                            path,
-                            ty,
-                            Some(impl_ty),
-                            item.kind,
-                            self.tcx.def_kind_descr(item.kind.as_def_kind(), item.def_id),
-                            sugg_span,
+                            self_source,
+                            args,
+                            trait_ref.instantiate(
+                                self.tcx,
+                                self.fresh_args_for_item(sugg_span, impl_did)
+                            ).with_self_ty(self.tcx, rcvr_ty),
                             idx,
-                            self.tcx.sess.source_map(),
-                            item.fn_has_self_parameter,
-                        ) {
-                            suggs.push(sugg);
-                        }
+                            sugg_span,
+                            item,
+                        )
+                    {
+                        suggs.push(sugg);
                     }
                 }
                 CandidateSource::Trait(trait_did) => {
@@ -1374,25 +1356,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         err.span_note(item_span, msg);
                         None
                     };
-                    if let Some(sugg_span) = sugg_span {
-                        let path = self.tcx.def_path_str(trait_did);
-                        if let Some(sugg) = print_disambiguation_help(
-                            item_name,
-                            args,
-                            self_source,
+                    if let Some(sugg_span) = sugg_span
+                        && let Some(sugg) = print_disambiguation_help(
+                            self.tcx,
                             err,
-                            path,
-                            rcvr_ty,
-                            None,
-                            item.kind,
-                            self.tcx.def_kind_descr(item.kind.as_def_kind(), item.def_id),
-                            sugg_span,
+                            self_source,
+                            args,
+                            ty::TraitRef::new(
+                                self.tcx,
+                                trait_did,
+                                self.fresh_args_for_item(sugg_span, trait_did)
+                            ).with_self_ty(self.tcx, rcvr_ty),
                             idx,
-                            self.tcx.sess.source_map(),
-                            item.fn_has_self_parameter,
-                        ) {
-                            suggs.push(sugg);
-                        }
+                            sugg_span,
+                            item,
+                        )
+                    {
+                        suggs.push(sugg);
                     }
                 }
             }
@@ -3263,59 +3243,59 @@ pub fn all_traits(tcx: TyCtxt<'_>) -> Vec<TraitInfo> {
 }
 
 fn print_disambiguation_help<'tcx>(
-    item_name: Ident,
-    args: Option<&'tcx [hir::Expr<'tcx>]>,
-    source: SelfSource<'tcx>,
+    tcx: TyCtxt<'tcx>,
     err: &mut Diagnostic,
-    trait_name: String,
-    rcvr_ty: Ty<'_>,
-    impl_self_ty: Option<Ty<'_>>,
-    kind: ty::AssocKind,
-    def_kind_descr: &'static str,
+    source: SelfSource<'tcx>,
+    args: Option<&'tcx [hir::Expr<'tcx>]>,
+    trait_ref: ty::TraitRef<'tcx>,
+    candidate_idx: Option<usize>,
     span: Span,
-    candidate: Option<usize>,
-    source_map: &source_map::SourceMap,
-    fn_has_self_parameter: bool,
+    item: ty::AssocItem,
 ) -> Option<String> {
+    let trait_ref = if item.fn_has_self_parameter {
+        trait_ref.print_only_trait_name().to_string()
+    } else {
+        format!("<{} as {}>", trait_ref.args[0], trait_ref.print_only_trait_name())
+    };
     Some(
-        if matches!(kind, ty::AssocKind::Fn)
+        if matches!(item.kind, ty::AssocKind::Fn)
             && let SelfSource::MethodCall(receiver) = source
             && let Some(args) = args
         {
+            let def_kind_descr = tcx.def_kind_descr(item.kind.as_def_kind(), item.def_id);
+            let item_name = item.ident(tcx);
+            let rcvr_ref = tcx.fn_sig(item.def_id).skip_binder().skip_binder().inputs()[0]
+                .ref_mutability()
+                .map_or("", |mutbl| mutbl.ref_prefix_str());
             let args = format!(
                 "({}{})",
-                rcvr_ty.ref_mutability().map_or("", |mutbl| mutbl.ref_prefix_str()),
+                rcvr_ref,
                 std::iter::once(receiver)
                     .chain(args.iter())
-                    .map(|arg| source_map
+                    .map(|arg| tcx
+                        .sess
+                        .source_map()
                         .span_to_snippet(arg.span)
                         .unwrap_or_else(|_| { "_".to_owned() }))
                     .collect::<Vec<_>>()
                     .join(", "),
             );
-            let trait_name = if !fn_has_self_parameter && let Some(impl_self_ty) = impl_self_ty {
-            format!("<{impl_self_ty} as {trait_name}>")
-        } else {
-            trait_name
-        };
             err.span_suggestion_verbose(
                 span,
                 format!(
                     "disambiguate the {def_kind_descr} for {}",
-                    if let Some(candidate) = candidate {
+                    if let Some(candidate) = candidate_idx {
                         format!("candidate #{candidate}")
                     } else {
                         "the candidate".to_string()
                     },
                 ),
-                format!("{trait_name}::{item_name}{args}"),
+                format!("{trait_ref}::{item_name}{args}"),
                 Applicability::HasPlaceholders,
             );
             return None;
-        } else if let Some(impl_self_ty) = impl_self_ty {
-            format!("<{impl_self_ty} as {trait_name}>::")
         } else {
-            format!("{trait_name}::")
+            format!("{trait_ref}::")
         },
     )
 }
