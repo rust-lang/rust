@@ -628,15 +628,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         self.infcx.probe(|_snapshot| {
-            if obligation.has_non_region_late_bound() {
-                return;
-            }
+            let poly_trait_predicate = self.infcx.resolve_vars_if_possible(obligation.predicate);
+            let placeholder_trait_predicate =
+                self.infcx.instantiate_binder_with_placeholders(poly_trait_predicate);
 
-            // The code below doesn't care about regions, and the
-            // self-ty here doesn't escape this probe, so just erase
-            // any LBR.
-            let self_ty = self.tcx().erase_late_bound_regions(obligation.self_ty());
-            let poly_trait_ref = match self_ty.kind() {
+            let self_ty = placeholder_trait_predicate.self_ty();
+            let principal_trait_ref = match self_ty.kind() {
                 ty::Dynamic(ref data, ..) => {
                     if data.auto_traits().any(|did| did == obligation.predicate.def_id()) {
                         debug!(
@@ -668,18 +665,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 _ => return,
             };
 
-            debug!(?poly_trait_ref, "assemble_candidates_from_object_ty");
-
-            let poly_trait_predicate = self.infcx.resolve_vars_if_possible(obligation.predicate);
-            let placeholder_trait_predicate =
-                self.infcx.instantiate_binder_with_placeholders(poly_trait_predicate);
+            debug!(?principal_trait_ref, "assemble_candidates_from_object_ty");
 
             // Count only those upcast versions that match the trait-ref
             // we are looking for. Specifically, do not only check for the
             // correct trait, but also the correct type parameters.
             // For example, we may be trying to upcast `Foo` to `Bar<i32>`,
             // but `Foo` is declared as `trait Foo: Bar<u32>`.
-            let candidate_supertraits = util::supertraits(self.tcx(), poly_trait_ref)
+            let candidate_supertraits = util::supertraits(self.tcx(), principal_trait_ref)
                 .enumerate()
                 .filter(|&(_, upcast_trait_ref)| {
                     self.infcx.probe(|_| {
