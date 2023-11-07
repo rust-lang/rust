@@ -1,9 +1,6 @@
 // Regression test for <https://github.com/rust-lang/rust/issues/96161>.
 // ignore-tidy-linelength
 
-#![feature(no_core)]
-#![no_core]
-
 mod secret {
     pub struct Secret;
 }
