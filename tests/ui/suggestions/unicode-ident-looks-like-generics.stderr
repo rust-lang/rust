@@ -1,0 +1,22 @@
+error[E0412]: cannot find type `T` in this scope
+  --> $DIR/unicode-ident-looks-like-generics.rs:3:13
+   |
+LL | struct AᐸTᐳ(T);
+   |             ^ not found in this scope
+   |
+help: the name of this item includes unicode characters `ᐸ` and `ᐳ` that look like `<` and `>`, but they aren't
+   |
+LL | struct A<T>(T);
+   |        ~~~~
+
+warning: identifier contains uncommon Unicode codepoints
+  --> $DIR/unicode-ident-looks-like-generics.rs:3:8
+   |
+LL | struct AᐸTᐳ(T);
+   |        ^^^^
+   |
+   = note: `#[warn(uncommon_codepoints)]` on by default
+
+error: aborting due to previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0412`.

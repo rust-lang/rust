@@ -2199,7 +2199,35 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         if !self.diagnostic_metadata.currently_processing_generics && !single_uppercase_char {
             return None;
         }
-        match (self.diagnostic_metadata.current_item, single_uppercase_char, self.diagnostic_metadata.currently_processing_generics) {
+
+        if let Some(Item {
+            ident,
+            kind:
+                ItemKind::Fn(..)
+                | ItemKind::Enum(..)
+                | ItemKind::Struct(..)
+                | ItemKind::Union(..),
+            ..
+        }) = self.diagnostic_metadata.current_item
+            && single_uppercase_char
+            && !self.diagnostic_metadata.currently_processing_generics
+            && let PathSource::Type = source
+            && let Some(sugg) = looks_like_generics(ident)
+        {
+            return Some((
+                ident.span,
+                "the name of this item includes unicode characters `ᐸ` and `ᐳ` that look like \
+                 `<` and `>`, but they aren't",
+                sugg,
+                Applicability::MaybeIncorrect,
+            ));
+        }
+
+        match (
+            self.diagnostic_metadata.current_item,
+            single_uppercase_char,
+            self.diagnostic_metadata.currently_processing_generics,
+        ) {
             (Some(Item { kind: ItemKind::Fn(..), ident, .. }), _, _) if ident.name == sym::main => {
                 // Ignore `fn main()` as we don't want to suggest `fn main<T>()`
             }
@@ -2839,6 +2867,20 @@ fn mk_where_bound_predicate(
     };
 
     Some(new_where_bound_predicate)
+}
+
+/// Detect whether an ident looks like it could have generics, but doesn't.
+fn looks_like_generics(ident: &Ident) -> Option<String> {
+    // FIXME: look for more unicode characters that are valid parts of identifiers, but that look
+    // like generics.
+    let ident = ident.to_string();
+    if !ident.ends_with("ᐳ") || ident.chars().filter(|c| *c == 'ᐳ').count() != 1 {
+        return None;
+    }
+    if ident.chars().filter(|c| *c == 'ᐸ').count() != 1 {
+        return None;
+    }
+    Some(ident.replace("ᐸ", "<").replace("ᐳ", ">"))
 }
 
 /// Report lifetime/lifetime shadowing as an error.
