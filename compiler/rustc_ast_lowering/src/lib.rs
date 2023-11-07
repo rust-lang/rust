@@ -1575,6 +1575,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     fn_kind.expect("expected RPITs to be lowered with a FnKind"),
                     FnDeclKind::Impl | FnDeclKind::Trait
                 ) || self.tcx.features().lifetime_capture_rules_2024
+                    || span.at_least_rust_2024()
                 {
                     // return-position impl trait in trait was decided to capture all
                     // in-scope lifetimes, which we collect for all opaques during resolution.

@@ -1,23 +1,23 @@
 error: [*]
-  --> $DIR/variance.rs:12:36
+  --> $DIR/variance.rs:14:36
    |
 LL | fn not_captured_early<'a: 'a>() -> impl Sized {}
    |                                    ^^^^^^^^^^
 
 error: [*, o]
-  --> $DIR/variance.rs:16:32
+  --> $DIR/variance.rs:19:32
    |
 LL | fn captured_early<'a: 'a>() -> impl Sized + Captures<'a> {}
    |                                ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: []
-  --> $DIR/variance.rs:18:40
+  --> $DIR/variance.rs:21:40
    |
 LL | fn not_captured_late<'a>(_: &'a ()) -> impl Sized {}
    |                                        ^^^^^^^^^^
 
 error: [o]
-  --> $DIR/variance.rs:22:36
+  --> $DIR/variance.rs:26:36
    |
 LL | fn captured_late<'a>(_: &'a ()) -> impl Sized + Captures<'a> {}
    |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^
