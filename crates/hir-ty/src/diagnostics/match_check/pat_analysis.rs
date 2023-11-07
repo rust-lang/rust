@@ -359,7 +359,7 @@ impl<'p> TypeCx for MatchCheckCtx<'p> {
         &'a self,
         ctor: &'a rustc_pattern_analysis::constructor::Constructor<Self>,
         ty: &'a Self::Ty,
-    ) -> impl Iterator<Item = Self::Ty> + ExactSizeIterator + Captures<'a> {
+    ) -> impl ExactSizeIterator<Item = Self::Ty> + Captures<'a> {
         let single = |ty| smallvec![ty];
         let tys: SmallVec<[_; 2]> = match ctor {
             Struct | Variant(_) | UnionField => match ty.kind(Interner) {

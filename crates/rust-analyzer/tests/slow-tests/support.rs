@@ -9,7 +9,7 @@ use std::{
 use crossbeam_channel::{after, select, Receiver};
 use lsp_server::{Connection, Message, Notification, Request};
 use lsp_types::{notification::Exit, request::Shutdown, TextDocumentIdentifier, Url};
-use rust_analyzer::{config::Config, lsp, main_loop, tracing};
+use rust_analyzer::{config::Config, lsp, main_loop};
 use serde::Serialize;
 use serde_json::{json, to_string_pretty, Value};
 use test_utils::FixtureWithProjectMeta;
@@ -91,7 +91,7 @@ impl Project<'_> {
 
         static INIT: Once = Once::new();
         INIT.call_once(|| {
-            let _ = tracing::Config {
+            let _ = rust_analyzer::tracing::Config {
                 writer: TestWriter::default(),
                 // Deliberately enable all `error` logs if the user has not set RA_LOG, as there is usually
                 // useful information in there for debugging.
@@ -212,6 +212,40 @@ impl Server {
     {
         let r = Notification::new(N::METHOD.to_string(), params);
         self.send_notification(r)
+    }
+
+    pub(crate) fn expect_notification<N>(&self, expected: Value)
+    where
+        N: lsp_types::notification::Notification,
+        N::Params: Serialize,
+    {
+        while let Some(Message::Notification(actual)) =
+            recv_timeout(&self.client.receiver).unwrap_or_else(|_| panic!("timed out"))
+        {
+            if actual.method == N::METHOD {
+                let actual = actual
+                    .clone()
+                    .extract::<Value>(N::METHOD)
+                    .expect("was not able to extract notification");
+
+                tracing::debug!(?actual, "got notification");
+                if let Some((expected_part, actual_part)) = find_mismatch(&expected, &actual) {
+                    panic!(
+                            "JSON mismatch\nExpected:\n{}\nWas:\n{}\nExpected part:\n{}\nActual part:\n{}\n",
+                            to_string_pretty(&expected).unwrap(),
+                            to_string_pretty(&actual).unwrap(),
+                            to_string_pretty(expected_part).unwrap(),
+                            to_string_pretty(actual_part).unwrap(),
+                        );
+                } else {
+                    tracing::debug!("sucessfully matched notification");
+                    return;
+                }
+            } else {
+                continue;
+            }
+        }
+        panic!("never got expected notification");
     }
 
     #[track_caller]
