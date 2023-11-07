@@ -1,7 +1,5 @@
 // ignore-tidy-linelength
 
-#![feature(lang_items)]
-
 // @set loud_id = "$.index[*][?(@.name=='Loud')].id"
 pub trait Loud {}
 
