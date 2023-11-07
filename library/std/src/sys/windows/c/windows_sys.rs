@@ -3498,7 +3498,6 @@ impl ::core::clone::Clone for INIT_ONCE {
 }
 pub const INIT_ONCE_INIT_FAILED: u32 = 4u32;
 pub const INVALID_FILE_ATTRIBUTES: u32 = 4294967295u32;
-pub const INVALID_HANDLE_VALUE: HANDLE = ::core::ptr::invalid_mut(-1i32 as _);
 pub const INVALID_SOCKET: SOCKET = -1i32 as _;
 #[repr(C)]
 pub struct IN_ADDR {
