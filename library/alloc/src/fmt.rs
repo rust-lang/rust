@@ -188,6 +188,10 @@
 //!     * `#X` - precedes the argument with a `0x`
 //!     * `#b` - precedes the argument with a `0b`
 //!     * `#o` - precedes the argument with a `0o`
+//!   
+//!   See [Formatting traits](#formatting-traits) for a description of what the `?`, `x`, `X`,
+//!   `b`, and `o` flags do.
+//!   
 //! * `0` - This is used to indicate for integer formats that the padding to `width` should
 //!         both be done with a `0` character as well as be sign-aware. A format
 //!         like `{:08}` would yield `00000001` for the integer `1`, while the
