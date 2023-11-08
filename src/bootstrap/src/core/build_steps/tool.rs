@@ -422,7 +422,7 @@ impl Step for Rustdoc {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Rustdoc {
-            // Note: this is somewhat unique in that we actually want a *target*
+            // NOTE: this is somewhat unique in that we actually want a *target*
             // compiler here, because rustdoc *is* a compiler. We won't be using
             // this as the compiler to build with, but rather this is "what
             // compiler are we producing"?
@@ -454,7 +454,7 @@ impl Step for Rustdoc {
         // compiler, since you do just as much work.
         if !builder.config.dry_run() && builder.download_rustc() && build_compiler.stage == 0 {
             println!(
-                "warning: `download-rustc` does nothing when building stage1 tools; consider using `--stage 2` instead"
+                "WARNING: `download-rustc` does nothing when building stage1 tools; consider using `--stage 2` instead"
             );
         }
 
@@ -787,9 +787,9 @@ macro_rules! tool_extended {
     }
 }
 
-// Note: tools need to be also added to `Builder::get_step_descriptions` in `builder.rs`
+// NOTE: tools need to be also added to `Builder::get_step_descriptions` in `builder.rs`
 // to make `./x.py build <tool>` work.
-// Note: Most submodule updates for tools are handled by bootstrap.py, since they're needed just to
+// NOTE: Most submodule updates for tools are handled by bootstrap.py, since they're needed just to
 // invoke Cargo to build bootstrap. See the comment there for more details.
 tool_extended!((self, builder),
     Cargofmt, "src/tools/rustfmt", "cargo-fmt", stable=true;

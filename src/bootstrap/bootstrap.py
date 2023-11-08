@@ -211,7 +211,7 @@ def require(cmd, exit=True, exception=False):
         if exception:
             raise
         elif exit:
-            eprint("error: unable to run `{}`: {}".format(' '.join(cmd), exc))
+            eprint("ERROR: unable to run `{}`: {}".format(' '.join(cmd), exc))
             eprint("Please make sure it's installed and in the path.")
             sys.exit(1)
         return None
@@ -681,7 +681,7 @@ class RustBuild(object):
 
         answer = self._should_fix_bins_and_dylibs = get_answer()
         if answer:
-            eprint("info: You seem to be using Nix.")
+            eprint("INFO: You seem to be using Nix.")
         return answer
 
     def fix_bin_or_dylib(self, fname):
@@ -727,7 +727,7 @@ class RustBuild(object):
                     "nix-build", "-E", nix_expr, "-o", nix_deps_dir,
                 ])
             except subprocess.CalledProcessError as reason:
-                eprint("warning: failed to call nix-build:", reason)
+                eprint("WARNING: failed to call nix-build:", reason)
                 return
             self.nix_deps_dir = nix_deps_dir
 
@@ -747,7 +747,7 @@ class RustBuild(object):
         try:
             subprocess.check_output([patchelf] + patchelf_args + [fname])
         except subprocess.CalledProcessError as reason:
-            eprint("warning: failed to call patchelf:", reason)
+            eprint("WARNING: failed to call patchelf:", reason)
             return
 
     def rustc_stamp(self):
@@ -1005,7 +1005,7 @@ class RustBuild(object):
         if 'SUDO_USER' in os.environ and not self.use_vendored_sources:
             if os.getuid() == 0:
                 self.use_vendored_sources = True
-                eprint('info: looks like you\'re trying to run this command as root')
+                eprint('INFO: looks like you\'re trying to run this command as root')
                 eprint('      and so in order to preserve your $HOME this will now')
                 eprint('      use vendored sources by default.')
 
@@ -1017,14 +1017,14 @@ class RustBuild(object):
                             "--sync ./src/tools/rust-analyzer/Cargo.toml " \
                             "--sync ./compiler/rustc_codegen_cranelift/Cargo.toml " \
                             "--sync ./src/bootstrap/Cargo.toml "
-                eprint('error: vendoring required, but vendor directory does not exist.')
+                eprint('ERROR: vendoring required, but vendor directory does not exist.')
                 eprint('       Run `cargo vendor {}` to initialize the '
                       'vendor directory.'.format(sync_dirs))
                 eprint('Alternatively, use the pre-vendored `rustc-src` dist component.')
                 raise Exception("{} not found".format(vendor_dir))
 
             if not os.path.exists(cargo_dir):
-                eprint('error: vendoring required, but .cargo/config does not exist.')
+                eprint('ERROR: vendoring required, but .cargo/config does not exist.')
                 raise Exception("{} not found".format(cargo_dir))
         else:
             if os.path.exists(cargo_dir):
@@ -1125,7 +1125,7 @@ def main():
     # process has to happen before anything is printed out.
     if help_triggered:
         eprint(
-            "info: Downloading and building bootstrap before processing --help command.\n"
+            "INFO: Downloading and building bootstrap before processing --help command.\n"
             "      See src/bootstrap/README.md for help with common commands.")
 
     exit_code = 0

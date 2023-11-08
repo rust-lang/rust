@@ -141,7 +141,7 @@ impl Step for Std {
         if builder.config.keep_stage.contains(&compiler.stage)
             || builder.config.keep_stage_std.contains(&compiler.stage)
         {
-            builder.info("Warning: Using a potentially old libstd. This may not behave well.");
+            builder.info("WARNING: Using a potentially old libstd. This may not behave well.");
 
             copy_third_party_objects(builder, &compiler, target);
             copy_self_contained_objects(builder, &compiler, target);
@@ -817,8 +817,8 @@ impl Step for Rustc {
         builder.ensure(Std::new(compiler, target));
 
         if builder.config.keep_stage.contains(&compiler.stage) {
-            builder.info("Warning: Using a potentially old librustc. This may not behave well.");
-            builder.info("Warning: Use `--keep-stage-std` if you want to rebuild the compiler when it changes");
+            builder.info("WARNING: Using a potentially old librustc. This may not behave well.");
+            builder.info("WARNING: Use `--keep-stage-std` if you want to rebuild the compiler when it changes");
             builder.ensure(RustcLink::from_rustc(self, compiler));
             return;
         }
@@ -1203,8 +1203,8 @@ fn is_codegen_cfg_needed(path: &TaskPath, run: &RunConfig<'_>) -> bool {
         }
         if needs_codegen_backend_config {
             run.builder.info(
-                "Warning: no codegen-backends config matched the requested path to build a codegen backend. \
-                Help: add backend to codegen-backends in config.toml.",
+                "WARNING: no codegen-backends config matched the requested path to build a codegen backend. \
+                HELP: add backend to codegen-backends in config.toml.",
             );
             return true;
         }
@@ -1250,7 +1250,7 @@ impl Step for CodegenBackend {
 
         if builder.config.keep_stage.contains(&compiler.stage) {
             builder.info(
-                "Warning: Using a potentially old codegen backend. \
+                "WARNING: Using a potentially old codegen backend. \
                 This may not behave well.",
             );
             // Codegen backends are linked separately from this step today, so we don't do
@@ -1525,14 +1525,14 @@ impl Step for Sysroot {
         let sysroot_lib_rustlib_src_rust = sysroot_lib_rustlib_src.join("rust");
         if let Err(e) = symlink_dir(&builder.config, &builder.src, &sysroot_lib_rustlib_src_rust) {
             eprintln!(
-                "warning: creating symbolic link `{}` to `{}` failed with {}",
+                "WARNING: creating symbolic link `{}` to `{}` failed with {}",
                 sysroot_lib_rustlib_src_rust.display(),
                 builder.src.display(),
                 e,
             );
             if builder.config.rust_remap_debuginfo {
                 eprintln!(
-                    "warning: some `tests/ui` tests will fail when lacking `{}`",
+                    "WARNING: some `tests/ui` tests will fail when lacking `{}`",
                     sysroot_lib_rustlib_src_rust.display(),
                 );
             }
@@ -1545,7 +1545,7 @@ impl Step for Sysroot {
             symlink_dir(&builder.config, &builder.src, &sysroot_lib_rustlib_rustcsrc_rust)
         {
             eprintln!(
-                "warning: creating symbolic link `{}` to `{}` failed with {}",
+                "WARNING: creating symbolic link `{}` to `{}` failed with {}",
                 sysroot_lib_rustlib_rustcsrc_rust.display(),
                 builder.src.display(),
                 e,
@@ -1986,7 +1986,7 @@ pub fn stream_cargo(
     builder.verbose(&format!("running: {cargo:?}"));
     let mut child = match cargo.spawn() {
         Ok(child) => child,
-        Err(e) => panic!("failed to execute command: {cargo:?}\nerror: {e}"),
+        Err(e) => panic!("failed to execute command: {cargo:?}\nERROR: {e}"),
     };
 
     // Spawn Cargo slurping up its JSON output. We'll start building up the
@@ -2050,7 +2050,7 @@ pub fn strip_debug(builder: &Builder<'_>, target: TargetSelection, path: &Path) 
     }
 
     let previous_mtime = FileTime::from_last_modification_time(&path.metadata().unwrap());
-    // Note: `output` will propagate any errors here.
+    // NOTE: `output` will propagate any errors here.
     output(Command::new("strip").arg("--strip-debug").arg(path));
 
     // After running `strip`, we have to set the file modification time to what it was before,

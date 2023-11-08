@@ -126,7 +126,7 @@ impl Step for Profile {
         if path.exists() {
             eprintln!();
             eprintln!(
-                "error: you asked for a new config file, but one already exists at `{}`",
+                "ERROR: you asked for a new config file, but one already exists at `{}`",
                 t!(path.canonicalize()).display()
             );
 
@@ -212,7 +212,7 @@ pub fn setup(config: &Config, profile: Profile) {
     if profile == Profile::Tools {
         eprintln!();
         eprintln!(
-            "note: the `tools` profile sets up the `stage2` toolchain (use \
+            "NOTE: the `tools` profile sets up the `stage2` toolchain (use \
             `rustup toolchain link 'name' build/host/stage2` to use rustc)"
         )
     }
@@ -414,8 +414,8 @@ pub fn interactive_path() -> io::Result<Profile> {
         break match parse_with_abbrev(&input) {
             Ok(profile) => profile,
             Err(err) => {
-                eprintln!("error: {err}");
-                eprintln!("note: press Ctrl+C to exit");
+                eprintln!("ERROR: {err}");
+                eprintln!("NOTE: press Ctrl+C to exit");
                 continue;
             }
         };
@@ -444,8 +444,8 @@ fn prompt_user(prompt: &str) -> io::Result<Option<PromptResult>> {
             "p" | "print" => return Ok(Some(PromptResult::Print)),
             "" => return Ok(None),
             _ => {
-                eprintln!("error: unrecognized option '{}'", input.trim());
-                eprintln!("note: press Ctrl+C to exit");
+                eprintln!("ERROR: unrecognized option '{}'", input.trim());
+                eprintln!("NOTE: press Ctrl+C to exit");
             }
         };
     }
@@ -512,7 +512,7 @@ undesirable, simply delete the `pre-push` file from .git/hooks."
     match fs::hard_link(src, &dst) {
         Err(e) => {
             eprintln!(
-                "error: could not create hook {}: do you already have the git hook installed?\n{}",
+                "ERROR: could not create hook {}: do you already have the git hook installed?\n{}",
                 dst.display(),
                 e
             );
@@ -578,10 +578,10 @@ fn create_vscode_settings_maybe(config: &Config) -> io::Result<()> {
     );
     match mismatched_settings {
         Some(true) => eprintln!(
-            "warning: existing `.vscode/settings.json` is out of date, x.py will update it"
+            "WARNING: existing `.vscode/settings.json` is out of date, x.py will update it"
         ),
         Some(false) => eprintln!(
-            "warning: existing `.vscode/settings.json` has been modified by user, x.py will back it up and replace it"
+            "WARNING: existing `.vscode/settings.json` has been modified by user, x.py will back it up and replace it"
         ),
         _ => (),
     }
@@ -608,7 +608,7 @@ fn create_vscode_settings_maybe(config: &Config) -> io::Result<()> {
                 // exists and is not current version or outdated, so back it up
                 let mut backup = vscode_settings.clone();
                 backup.set_extension("json.bak");
-                eprintln!("warning: copying `settings.json` to `settings.json.bak`");
+                eprintln!("WARNING: copying `settings.json` to `settings.json.bak`");
                 fs::copy(&vscode_settings, &backup)?;
                 "Updated"
             }

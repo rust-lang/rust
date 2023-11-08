@@ -253,7 +253,7 @@ def parse_args(args):
         if not found:
             unknown_args.append(arg)
 
-    # Note: here and a few other places, we use [-1] to apply the *last* value
+    # NOTE: here and a few other places, we use [-1] to apply the *last* value
     # passed.  But if option-checking is enabled, then the known_args loop will
     # also assert that options are only passed once.
     option_checking = ('option-checking' not in known_args
@@ -477,7 +477,7 @@ def configure_section(lines, config):
             # These are used by rpm, but aren't accepted by x.py.
             # Give a warning that they're ignored, but not a hard error.
             if key in ["infodir", "localstatedir"]:
-                print("warning: {} will be ignored".format(key))
+                print("WARNING: {} will be ignored".format(key))
             else:
                 raise RuntimeError("failed to find config line for {}".format(key))
 

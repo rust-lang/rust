@@ -386,13 +386,13 @@ impl StepDescription {
         }
 
         if !paths.is_empty() {
-            eprintln!("error: no `{}` rules matched {:?}", builder.kind.as_str(), paths,);
+            eprintln!("ERROR: no `{}` rules matched {:?}", builder.kind.as_str(), paths,);
             eprintln!(
-                "help: run `x.py {} --help --verbose` to show a list of available paths",
+                "HELP: run `x.py {} --help --verbose` to show a list of available paths",
                 builder.kind.as_str()
             );
             eprintln!(
-                "note: if you are adding a new Step to bootstrap itself, make sure you register it with `describe!`"
+                "NOTE: if you are adding a new Step to bootstrap itself, make sure you register it with `describe!`"
             );
             crate::exit!(1);
         }
@@ -1360,9 +1360,9 @@ impl<'a> Builder<'a> {
                     }
                 }).unwrap_or_else(|_| {
                     eprintln!(
-                        "error: `x.py clippy` requires a host `rustc` toolchain with the `clippy` component"
+                        "ERROR: `x.py clippy` requires a host `rustc` toolchain with the `clippy` component"
                     );
-                    eprintln!("help: try `rustup component add clippy`");
+                    eprintln!("HELP: try `rustup component add clippy`");
                     crate::exit!(1);
                 });
                 if !t!(std::str::from_utf8(&output.stdout)).contains("nightly") {
