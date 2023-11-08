@@ -2162,7 +2162,7 @@ pub(super) fn check_type_bounds<'tcx>(
     impl_ty: ty::AssocItem,
     impl_trait_ref: ty::TraitRef<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
-    let param_env = param_env_with_gat_bounds(tcx, impl_ty, impl_trait_ref);
+    let param_env = tcx.param_env(impl_ty.def_id);
     debug!(?param_env);
 
     let container_id = impl_ty.container_id(tcx);
@@ -2217,8 +2217,14 @@ pub(super) fn check_type_bounds<'tcx>(
         .collect();
     debug!("check_type_bounds: item_bounds={:?}", obligations);
 
+    // Normalize predicates with the assumption that the GAT may always normalize
+    // to its definition type. This should be the param-env we use to *prove* the
+    // predicate too, but we don't do that because of performance issues.
+    // See <https://github.com/rust-lang/rust/pull/117542#issue-1976337685>.
+    let normalize_param_env = param_env_with_gat_bounds(tcx, impl_ty, impl_trait_ref);
     for mut obligation in util::elaborate(tcx, obligations) {
-        let normalized_predicate = ocx.normalize(&normalize_cause, param_env, obligation.predicate);
+        let normalized_predicate =
+            ocx.normalize(&normalize_cause, normalize_param_env, obligation.predicate);
         debug!("compare_projection_bounds: normalized predicate = {:?}", normalized_predicate);
         obligation.predicate = normalized_predicate;
 
