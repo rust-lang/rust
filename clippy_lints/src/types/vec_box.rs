@@ -23,6 +23,8 @@ pub(super) fn check(
         if let Some(last) = last_path_segment(qpath).args
             // Get the _ part of Vec<_>
             && let Some(GenericArg::Type(ty)) = last.args.first()
+            // extract allocator from the Vec for later
+            && let vec_alloc_ty = last.args.get(1)
             // ty is now _ at this point
             && let TyKind::Path(ref ty_qpath) = ty.kind
             && let res = cx.qpath_res(ty_qpath, ty.hir_id)
@@ -30,12 +32,23 @@ pub(super) fn check(
             && Some(def_id) == cx.tcx.lang_items().owned_box()
             // At this point, we know ty is Box<T>, now get T
             && let Some(last) = last_path_segment(ty_qpath).args
+            // extract allocator from thr Box for later
             && let Some(GenericArg::Type(boxed_ty)) = last.args.first()
+            && let boxed_alloc_ty = last.args.get(1)
             && let ty_ty = hir_ty_to_ty(cx.tcx, boxed_ty)
             && !ty_ty.has_escaping_bound_vars()
             && ty_ty.is_sized(cx.tcx, cx.param_env)
             && let Ok(ty_ty_size) = cx.layout_of(ty_ty).map(|l| l.size.bytes())
             && ty_ty_size < box_size_threshold
+            // https://github.com/rust-lang/rust-clippy/issues/7114
+            // this code also does not consider that Global can be explicitly
+            // defined (yet) as in Vec<_, Global> so a very slight false negative edge case
+            && match (vec_alloc_ty, boxed_alloc_ty) {
+                (None, None) => true,
+                (Some(GenericArg::Type(l)), Some(GenericArg::Type(r))) =>
+                    hir_ty_to_ty(cx.tcx, l) == hir_ty_to_ty(cx.tcx, r),
+                _ => false
+            }
         {
             span_lint_and_sugg(
                 cx,
