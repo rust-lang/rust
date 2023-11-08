@@ -1,3 +1,5 @@
+//@no-rustfix
+
 #![allow(dead_code)]
 #![feature(allocator_api)]
 
