@@ -2219,23 +2219,19 @@ impl Step for RustDev {
         builder.ensure(crate::core::build_steps::llvm::Lld { target });
 
         let src_bindir = builder.llvm_out(target).join("bin");
-        // If updating this list, you likely want to change
+        // If updating this, you likely want to change
         // src/bootstrap/download-ci-llvm-stamp as well, otherwise local users
         // will not pick up the extra file until LLVM gets bumped.
-        for bin in &[
-            "llvm-config",
-            "llvm-ar",
-            "llvm-objdump",
-            "llvm-profdata",
-            "llvm-bcanalyzer",
-            "llvm-cov",
-            "llvm-dwp",
-            "llvm-nm",
-            "llvm-dwarfdump",
-            "llvm-dis",
-            "llvm-tblgen",
-        ] {
-            tarball.add_file(src_bindir.join(exe(bin, target)), "bin", 0o755);
+        // We should include all the build artifacts obtained from a source build,
+        // so that you can use the downloadable LLVM as if you’ve just run a full source build.
+        if src_bindir.exists() {
+            for entry in walkdir::WalkDir::new(&src_bindir) {
+                let entry = t!(entry);
+                if entry.file_type().is_file() && !entry.path_is_symlink() {
+                    let name = entry.file_name().to_str().unwrap();
+                    tarball.add_file(src_bindir.join(name), "bin", 0o755);
+                }
+            }
         }
 
         // We don't build LLD on some platforms, so only add it if it exists
