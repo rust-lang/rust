@@ -642,7 +642,7 @@ impl<T> [T] {
     ///
     /// You can think of this like `.get(index).unwrap_unchecked()`.  It's UB
     /// to call `.get_unchecked(len)`, even if you immediately convert to a
-    /// pointer.  And it's UB to call `.get_unchecked(..len +1)`,
+    /// pointer.  And it's UB to call `.get_unchecked(..len + 1)`,
     /// `.get_unchecked(..=len)`, or similar.
     ///
     /// [`get`]: slice::get
@@ -682,7 +682,7 @@ impl<T> [T] {
     ///
     /// You can think of this like `.get_mut(index).unwrap_unchecked()`.  It's
     /// UB to call `.get_unchecked_mut(len)`, even if you immediately convert
-    /// to a pointer.  And it's UB to call `.get_unchecked_mut(..len +1)`,
+    /// to a pointer.  And it's UB to call `.get_unchecked_mut(..len + 1)`,
     /// `.get_unchecked_mut(..=len)`, or similar.
     ///
     /// [`get_mut`]: slice::get_mut
