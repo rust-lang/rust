@@ -1,13 +1,47 @@
 error[E0277]: the trait bound `String: Copy` is not satisfied
-  --> $DIR/const-fn-in-vec.rs:4:33
+  --> $DIR/const-fn-in-vec.rs:1:47
    |
-LL |     let strings: [String; 5] = [String::new(); 5];
-   |                                 ^^^^^^^^^^^^^ the trait `Copy` is not implemented for `String`
+LL | static _MAYBE_STRINGS: [Option<String>; 5] = [None; 5];
+   |                                               ^^^^ the trait `Copy` is not implemented for `String`
+   |
+   = note: required for `Option<String>` to implement `Copy`
+   = note: the `Copy` trait is required because this value will be copied for each element of the array
+   = help: create an inline `const` block, see RFC #2920 <https://github.com/rust-lang/rfcs/pull/2920> for more information
+help: consider creating a new `const` item and initializing it with the result of the constructor to be used in the repeat position
+   |
+LL + const ARRAY_REPEAT_VALUE: Option<String> = None;
+LL ~ static _MAYBE_STRINGS: [Option<String>; 5] = [ARRAY_REPEAT_VALUE; 5];
+   |
+
+error[E0277]: the trait bound `String: Copy` is not satisfied
+  --> $DIR/const-fn-in-vec.rs:7:34
+   |
+LL |     let _strings: [String; 5] = [String::new(); 5];
+   |                                  ^^^^^^^^^^^^^ the trait `Copy` is not implemented for `String`
    |
    = note: the `Copy` trait is required because this value will be copied for each element of the array
-   = help: consider creating a new `const` item and initializing it with the result of the function call to be used in the repeat position, like `const VAL: Type = const_fn();` and `let x = [VAL; 42];`
    = help: create an inline `const` block, see RFC #2920 <https://github.com/rust-lang/rfcs/pull/2920> for more information
+help: consider creating a new `const` item and initializing it with the result of the function call to be used in the repeat position
+   |
+LL ~     const ARRAY_REPEAT_VALUE: String = String::new();
+LL ~     let _strings: [String; 5] = [ARRAY_REPEAT_VALUE; 5];
+   |
 
-error: aborting due to previous error
+error[E0277]: the trait bound `String: Copy` is not satisfied
+  --> $DIR/const-fn-in-vec.rs:9:48
+   |
+LL |     let _maybe_strings: [Option<String>; 5] = [None; 5];
+   |                                                ^^^^ the trait `Copy` is not implemented for `String`
+   |
+   = note: required for `Option<String>` to implement `Copy`
+   = note: the `Copy` trait is required because this value will be copied for each element of the array
+   = help: create an inline `const` block, see RFC #2920 <https://github.com/rust-lang/rfcs/pull/2920> for more information
+help: consider creating a new `const` item and initializing it with the result of the constructor to be used in the repeat position
+   |
+LL ~     const ARRAY_REPEAT_VALUE: Option<String> = None;
+LL ~     let _maybe_strings: [Option<String>; 5] = [ARRAY_REPEAT_VALUE; 5];
+   |
+
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

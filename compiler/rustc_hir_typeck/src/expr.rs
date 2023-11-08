@@ -13,7 +13,7 @@ use crate::errors::{
     YieldExprOutsideOfCoroutine,
 };
 use crate::fatally_break_rust;
-use crate::method::{MethodCallComponents, SelfSource};
+use crate::method::SelfSource;
 use crate::type_error_struct;
 use crate::Expectation::{self, ExpectCastableToType, ExpectHasType, NoExpectation};
 use crate::{
@@ -512,7 +512,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
         let (res, opt_ty, segs) =
-            self.resolve_ty_and_res_fully_qualified_call(qpath, expr.hir_id, expr.span);
+            self.resolve_ty_and_res_fully_qualified_call(qpath, expr.hir_id, expr.span, Some(args));
         let ty = match res {
             Res::Err => {
                 self.suggest_assoc_method_call(segs);
@@ -1332,7 +1332,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         segment.ident,
                         SelfSource::MethodCall(rcvr),
                         error,
-                        Some(MethodCallComponents { receiver: rcvr, args, full_expr: expr }),
+                        Some(args),
                         expected,
                         false,
                     ) {
@@ -1551,21 +1551,42 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             _ => {}
         }
-        // If someone calls a const fn, they can extract that call out into a separate constant (or a const
-        // block in the future), so we check that to tell them that in the diagnostic. Does not affect typeck.
-        let is_const_fn = match element.kind {
+        // If someone calls a const fn or constructs a const value, they can extract that
+        // out into a separate constant (or a const block in the future), so we check that
+        // to tell them that in the diagnostic. Does not affect typeck.
+        let is_constable = match element.kind {
             hir::ExprKind::Call(func, _args) => match *self.node_ty(func.hir_id).kind() {
-                ty::FnDef(def_id, _) => tcx.is_const_fn(def_id),
-                _ => false,
+                ty::FnDef(def_id, _) if tcx.is_const_fn(def_id) => traits::IsConstable::Fn,
+                _ => traits::IsConstable::No,
             },
-            _ => false,
+            hir::ExprKind::Path(qpath) => {
+                match self.typeck_results.borrow().qpath_res(&qpath, element.hir_id) {
+                    Res::Def(DefKind::Ctor(_, CtorKind::Const), _) => traits::IsConstable::Ctor,
+                    _ => traits::IsConstable::No,
+                }
+            }
+            _ => traits::IsConstable::No,
         };
 
         // If the length is 0, we don't create any elements, so we don't copy any. If the length is 1, we
         // don't copy that one element, we move it. Only check for Copy if the length is larger.
         if count.try_eval_target_usize(tcx, self.param_env).map_or(true, |len| len > 1) {
             let lang_item = self.tcx.require_lang_item(LangItem::Copy, None);
-            let code = traits::ObligationCauseCode::RepeatElementCopy { is_const_fn };
+            let code = traits::ObligationCauseCode::RepeatElementCopy {
+                is_constable,
+                elt_type: element_ty,
+                elt_span: element.span,
+                elt_stmt_span: self
+                    .tcx
+                    .hir()
+                    .parent_iter(element.hir_id)
+                    .find_map(|(_, node)| match node {
+                        hir::Node::Item(it) => Some(it.span),
+                        hir::Node::Stmt(stmt) => Some(stmt.span),
+                        _ => None,
+                    })
+                    .expect("array repeat expressions must be inside an item or statement"),
+            };
             self.require_type_meets(element_ty, element.span, code, lang_item);
         }
     }
