@@ -190,6 +190,12 @@ fn run_server() -> anyhow::Result<()> {
         }
     };
 
+    let mut is_visual_studio_code = false;
+    if let Some(client_info) = client_info {
+        tracing::info!("Client '{}' {}", client_info.name, client_info.version.unwrap_or_default());
+        is_visual_studio_code = client_info.name.starts_with("Visual Studio Code");
+    }
+
     let workspace_roots = workspace_folders
         .map(|workspaces| {
             workspaces
@@ -201,7 +207,7 @@ fn run_server() -> anyhow::Result<()> {
         })
         .filter(|workspaces| !workspaces.is_empty())
         .unwrap_or_else(|| vec![root_path.clone()]);
-    let mut config = Config::new(root_path, capabilities, workspace_roots);
+    let mut config = Config::new(root_path, capabilities, workspace_roots, is_visual_studio_code);
     if let Some(json) = initialization_options {
         if let Err(e) = config.update(json) {
             use lsp_types::{
@@ -230,10 +236,6 @@ fn run_server() -> anyhow::Result<()> {
     let initialize_result = serde_json::to_value(initialize_result).unwrap();
 
     connection.initialize_finish(initialize_id, initialize_result)?;
-
-    if let Some(client_info) = client_info {
-        tracing::info!("Client '{}' {}", client_info.name, client_info.version.unwrap_or_default());
-    }
 
     if !config.has_linked_projects() && config.detached_files().is_empty() {
         config.rediscover_workspaces();

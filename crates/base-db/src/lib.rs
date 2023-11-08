@@ -75,7 +75,7 @@ pub trait SourceDatabase: FileLoader + std::fmt::Debug {
     #[salsa::input]
     fn crate_graph(&self) -> Arc<CrateGraph>;
 
-    /// The crate graph.
+    /// The proc macros.
     #[salsa::input]
     fn proc_macros(&self) -> Arc<ProcMacros>;
 }

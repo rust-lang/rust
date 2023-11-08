@@ -245,7 +245,7 @@ fn traverse(
     let mut macro_highlighter = MacroHighlighter::default();
 
     // FIXME: these are not perfectly accurate, we determine them by the real file's syntax tree
-    // an an attribute nested in a macro call will not emit `inside_attribute`
+    // an attribute nested in a macro call will not emit `inside_attribute`
     let mut inside_attribute = false;
     let mut inside_macro_call = false;
 

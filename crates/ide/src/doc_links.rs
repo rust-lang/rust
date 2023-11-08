@@ -602,7 +602,17 @@ fn filename_and_frag_for_def(
         }
         Definition::Const(c) => format!("const.{}.html", c.name(db)?.display(db.upcast())),
         Definition::Static(s) => format!("static.{}.html", s.name(db).display(db.upcast())),
-        Definition::Macro(mac) => format!("macro.{}.html", mac.name(db).display(db.upcast())),
+        Definition::Macro(mac) => match mac.kind(db) {
+            hir::MacroKind::Declarative
+            | hir::MacroKind::BuiltIn
+            | hir::MacroKind::Attr
+            | hir::MacroKind::ProcMacro => {
+                format!("macro.{}.html", mac.name(db).display(db.upcast()))
+            }
+            hir::MacroKind::Derive => {
+                format!("derive.{}.html", mac.name(db).display(db.upcast()))
+            }
+        },
         Definition::Field(field) => {
             let def = match field.parent_def(db) {
                 hir::VariantDef::Struct(it) => Definition::Adt(it.into()),

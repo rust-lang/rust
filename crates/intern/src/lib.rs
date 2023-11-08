@@ -33,13 +33,10 @@ impl<T: Internable> Interned<T> {
         //   - if not, box it up, insert it, and return a clone
         // This needs to be atomic (locking the shard) to avoid races with other thread, which could
         // insert the same object between us looking it up and inserting it.
-        match shard.raw_entry_mut().from_key_hashed_nocheck(hash as u64, &obj) {
+        match shard.raw_entry_mut().from_key_hashed_nocheck(hash, &obj) {
             RawEntryMut::Occupied(occ) => Self { arc: occ.key().clone() },
             RawEntryMut::Vacant(vac) => Self {
-                arc: vac
-                    .insert_hashed_nocheck(hash as u64, Arc::new(obj), SharedValue::new(()))
-                    .0
-                    .clone(),
+                arc: vac.insert_hashed_nocheck(hash, Arc::new(obj), SharedValue::new(())).0.clone(),
             },
         }
     }
@@ -54,13 +51,10 @@ impl Interned<str> {
         //   - if not, box it up, insert it, and return a clone
         // This needs to be atomic (locking the shard) to avoid races with other thread, which could
         // insert the same object between us looking it up and inserting it.
-        match shard.raw_entry_mut().from_key_hashed_nocheck(hash as u64, s) {
+        match shard.raw_entry_mut().from_key_hashed_nocheck(hash, s) {
             RawEntryMut::Occupied(occ) => Self { arc: occ.key().clone() },
             RawEntryMut::Vacant(vac) => Self {
-                arc: vac
-                    .insert_hashed_nocheck(hash as u64, Arc::from(s), SharedValue::new(()))
-                    .0
-                    .clone(),
+                arc: vac.insert_hashed_nocheck(hash, Arc::from(s), SharedValue::new(())).0.clone(),
             },
         }
     }

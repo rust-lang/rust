@@ -1,7 +1,6 @@
 //! A map of all publicly exported items in a crate.
 
-use std::collections::hash_map::Entry;
-use std::{fmt, hash::BuildHasherDefault};
+use std::{collections::hash_map::Entry, fmt, hash::BuildHasherDefault};
 
 use base_db::CrateId;
 use fst::{self, Streamer};
@@ -11,10 +10,12 @@ use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet, FxHasher};
 use triomphe::Arc;
 
-use crate::item_scope::ImportOrExternCrate;
 use crate::{
-    db::DefDatabase, item_scope::ItemInNs, nameres::DefMap, visibility::Visibility, AssocItemId,
-    ModuleDefId, ModuleId, TraitId,
+    db::DefDatabase,
+    item_scope::{ImportOrExternCrate, ItemInNs},
+    nameres::DefMap,
+    visibility::Visibility,
+    AssocItemId, ModuleDefId, ModuleId, TraitId,
 };
 
 type FxIndexMap<K, V> = IndexMap<K, V, BuildHasherDefault<FxHasher>>;
@@ -94,7 +95,7 @@ fn collect_import_map(db: &dyn DefDatabase, krate: CrateId) -> FxIndexMap<ItemIn
 
     // We look only into modules that are public(ly reexported), starting with the crate root.
     let root = def_map.module_id(DefMap::ROOT);
-    let mut worklist = vec![(root, 0)];
+    let mut worklist = vec![(root, 0u32)];
     // Records items' minimum module depth.
     let mut depth_map = FxHashMap::default();
 
@@ -278,6 +279,8 @@ enum SearchMode {
     /// Import map entry should contain all letters from the query string,
     /// in the same order, but not necessary adjacent.
     Fuzzy,
+    /// Import map entry should match the query string by prefix.
+    Prefix,
 }
 
 /// Three possible ways to search for the name in associated and/or other items.
@@ -319,6 +322,14 @@ impl Query {
         Self { search_mode: SearchMode::Fuzzy, ..self }
     }
 
+    pub fn prefix(self) -> Self {
+        Self { search_mode: SearchMode::Prefix, ..self }
+    }
+
+    pub fn exact(self) -> Self {
+        Self { search_mode: SearchMode::Exact, ..self }
+    }
+
     /// Specifies whether we want to include associated items in the result.
     pub fn assoc_search_mode(self, assoc_mode: AssocSearchMode) -> Self {
         Self { assoc_mode, ..self }
@@ -356,7 +367,8 @@ impl Query {
         let query_string = if case_insensitive { &self.lowercased } else { &self.query };
 
         match self.search_mode {
-            SearchMode::Exact => &input == query_string,
+            SearchMode::Exact => input == *query_string,
+            SearchMode::Prefix => input.starts_with(query_string),
             SearchMode::Fuzzy => {
                 let mut input_chars = input.chars();
                 for query_char in query_string.chars() {

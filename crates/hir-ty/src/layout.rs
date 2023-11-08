@@ -9,6 +9,10 @@ use hir_def::{
     LocalEnumVariantId, LocalFieldId, StructId,
 };
 use la_arena::{Idx, RawIdx};
+use rustc_dependencies::{
+    abi::AddressSpace,
+    index::{IndexSlice, IndexVec},
+};
 use stdx::never;
 use triomphe::Arc;
 
@@ -34,7 +38,7 @@ mod target;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct RustcEnumVariantIdx(pub LocalEnumVariantId);
 
-impl rustc_index::vec::Idx for RustcEnumVariantIdx {
+impl rustc_dependencies::index::Idx for RustcEnumVariantIdx {
     fn new(idx: usize) -> Self {
         RustcEnumVariantIdx(Idx::from_raw(RawIdx::from(idx as u32)))
     }
@@ -44,9 +48,28 @@ impl rustc_index::vec::Idx for RustcEnumVariantIdx {
     }
 }
 
-pub type Layout = LayoutS<RustcEnumVariantIdx>;
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct RustcFieldIdx(pub LocalFieldId);
+
+impl RustcFieldIdx {
+    pub fn new(idx: usize) -> Self {
+        RustcFieldIdx(Idx::from_raw(RawIdx::from(idx as u32)))
+    }
+}
+
+impl rustc_dependencies::index::Idx for RustcFieldIdx {
+    fn new(idx: usize) -> Self {
+        RustcFieldIdx(Idx::from_raw(RawIdx::from(idx as u32)))
+    }
+
+    fn index(self) -> usize {
+        u32::from(self.0.into_raw()) as usize
+    }
+}
+
+pub type Layout = LayoutS<RustcFieldIdx, RustcEnumVariantIdx>;
 pub type TagEncoding = hir_def::layout::TagEncoding<RustcEnumVariantIdx>;
-pub type Variants = hir_def::layout::Variants<RustcEnumVariantIdx>;
+pub type Variants = hir_def::layout::Variants<RustcFieldIdx, RustcEnumVariantIdx>;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum LayoutError {
@@ -66,7 +89,7 @@ struct LayoutCx<'a> {
 impl<'a> LayoutCalculator for LayoutCx<'a> {
     type TargetDataLayoutRef = &'a TargetDataLayout;
 
-    fn delay_bug(&self, txt: &str) {
+    fn delay_bug(&self, txt: String) {
         never!("{}", txt);
     }
 
@@ -145,6 +168,8 @@ fn layout_of_simd_ty(
         largest_niche: e_ly.largest_niche,
         size,
         align,
+        max_repr_align: None,
+        unadjusted_abi_align: align.abi,
     }))
 }
 
@@ -230,7 +255,7 @@ pub fn layout_of_ty_query(
                 .map(|k| db.layout_of_ty(k.assert_ty_ref(Interner).clone(), trait_env.clone()))
                 .collect::<Result<Vec<_>, _>>()?;
             let fields = fields.iter().map(|it| &**it).collect::<Vec<_>>();
-            let fields = fields.iter().collect::<Vec<_>>();
+            let fields = fields.iter().collect::<IndexVec<_, _>>();
             cx.univariant(dl, &fields, &ReprOptions::default(), kind).ok_or(LayoutError::Unknown)?
         }
         TyKind::Array(element, count) => {
@@ -255,6 +280,8 @@ pub fn layout_of_ty_query(
                 largest_niche,
                 align: element.align,
                 size,
+                max_repr_align: None,
+                unadjusted_abi_align: element.align.abi,
             }
         }
         TyKind::Slice(element) => {
@@ -266,11 +293,23 @@ pub fn layout_of_ty_query(
                 largest_niche: None,
                 align: element.align,
                 size: Size::ZERO,
+                max_repr_align: None,
+                unadjusted_abi_align: element.align.abi,
             }
         }
+        TyKind::Str => Layout {
+            variants: Variants::Single { index: struct_variant_idx() },
+            fields: FieldsShape::Array { stride: Size::from_bytes(1), count: 0 },
+            abi: Abi::Aggregate { sized: false },
+            largest_niche: None,
+            align: dl.i8_align,
+            size: Size::ZERO,
+            max_repr_align: None,
+            unadjusted_abi_align: dl.i8_align.abi,
+        },
         // Potentially-wide pointers.
         TyKind::Ref(_, _, pointee) | TyKind::Raw(_, pointee) => {
-            let mut data_ptr = scalar_unit(dl, Primitive::Pointer);
+            let mut data_ptr = scalar_unit(dl, Primitive::Pointer(AddressSpace::DATA));
             if matches!(ty.kind(Interner), TyKind::Ref(..)) {
                 data_ptr.valid_range_mut().start = 1;
             }
@@ -294,7 +333,7 @@ pub fn layout_of_ty_query(
                     scalar_unit(dl, Primitive::Int(dl.ptr_sized_integer(), false))
                 }
                 TyKind::Dyn(..) => {
-                    let mut vtable = scalar_unit(dl, Primitive::Pointer);
+                    let mut vtable = scalar_unit(dl, Primitive::Pointer(AddressSpace::DATA));
                     vtable.valid_range_mut().start = 1;
                     vtable
                 }
@@ -308,22 +347,7 @@ pub fn layout_of_ty_query(
             cx.scalar_pair(data_ptr, metadata)
         }
         TyKind::FnDef(_, _) => layout_of_unit(&cx, dl)?,
-        TyKind::Str => Layout {
-            variants: Variants::Single { index: struct_variant_idx() },
-            fields: FieldsShape::Array { stride: Size::from_bytes(1), count: 0 },
-            abi: Abi::Aggregate { sized: false },
-            largest_niche: None,
-            align: dl.i8_align,
-            size: Size::ZERO,
-        },
-        TyKind::Never => Layout {
-            variants: Variants::Single { index: struct_variant_idx() },
-            fields: FieldsShape::Primitive,
-            abi: Abi::Uninhabited,
-            largest_niche: None,
-            align: dl.i8_align,
-            size: Size::ZERO,
-        },
+        TyKind::Never => cx.layout_of_never_type(),
         TyKind::Dyn(_) | TyKind::Foreign(_) => {
             let mut unit = layout_of_unit(&cx, dl)?;
             match unit.abi {
@@ -333,7 +357,7 @@ pub fn layout_of_ty_query(
             unit
         }
         TyKind::Function(_) => {
-            let mut ptr = scalar_unit(dl, Primitive::Pointer);
+            let mut ptr = scalar_unit(dl, Primitive::Pointer(dl.instruction_address_space));
             ptr.valid_range_mut().start = 1;
             Layout::scalar(dl, ptr)
         }
@@ -363,7 +387,7 @@ pub fn layout_of_ty_query(
                 })
                 .collect::<Result<Vec<_>, _>>()?;
             let fields = fields.iter().map(|it| &**it).collect::<Vec<_>>();
-            let fields = fields.iter().collect::<Vec<_>>();
+            let fields = fields.iter().collect::<IndexVec<_, _>>();
             cx.univariant(dl, &fields, &ReprOptions::default(), StructKind::AlwaysSized)
                 .ok_or(LayoutError::Unknown)?
         }
@@ -398,9 +422,9 @@ pub fn layout_of_ty_recover(
 }
 
 fn layout_of_unit(cx: &LayoutCx<'_>, dl: &TargetDataLayout) -> Result<Layout, LayoutError> {
-    cx.univariant::<RustcEnumVariantIdx, &&Layout>(
+    cx.univariant::<RustcFieldIdx, RustcEnumVariantIdx, &&Layout>(
         dl,
-        &[],
+        IndexSlice::empty(),
         &ReprOptions::default(),
         StructKind::AlwaysSized,
     )

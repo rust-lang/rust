@@ -39,7 +39,7 @@ pub(crate) fn missing_fields(ctx: &DiagnosticsContext<'_>, d: &hir::MissingField
         d.field_list_parent_path
             .clone()
             .map(SyntaxNodePtr::from)
-            .unwrap_or_else(|| d.field_list_parent.clone().either(|it| it.into(), |it| it.into())),
+            .unwrap_or_else(|| d.field_list_parent.clone().into()),
     );
 
     Diagnostic::new_with_syntax_node_ptr(ctx, DiagnosticCode::RustcHardError("E0063"), message, ptr)
@@ -58,10 +58,8 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
 
     let root = ctx.sema.db.parse_or_expand(d.file);
 
-    let current_module = match &d.field_list_parent {
-        Either::Left(ptr) => ctx.sema.scope(ptr.to_node(&root).syntax()).map(|it| it.module()),
-        Either::Right(ptr) => ctx.sema.scope(ptr.to_node(&root).syntax()).map(|it| it.module()),
-    };
+    let current_module =
+        ctx.sema.scope(d.field_list_parent.to_node(&root).syntax()).map(|it| it.module());
 
     let build_text_edit = |parent_syntax, new_syntax: &SyntaxNode, old_syntax| {
         let edit = {
@@ -87,9 +85,8 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
         )])
     };
 
-    match &d.field_list_parent {
-        Either::Left(record_expr) => {
-            let field_list_parent = record_expr.to_node(&root);
+    match &d.field_list_parent.to_node(&root) {
+        Either::Left(field_list_parent) => {
             let missing_fields = ctx.sema.record_literal_missing_fields(&field_list_parent);
 
             let mut locals = FxHashMap::default();
@@ -152,8 +149,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
                 old_field_list.syntax(),
             )
         }
-        Either::Right(record_pat) => {
-            let field_list_parent = record_pat.to_node(&root);
+        Either::Right(field_list_parent) => {
             let missing_fields = ctx.sema.record_pattern_missing_fields(&field_list_parent);
 
             let old_field_list = field_list_parent.record_pat_field_list()?;
@@ -290,6 +286,7 @@ fn x(a: S) {
 struct S { s: u32 }
 fn x(a: S) {
     let S { ref s } = a;
+    _ = s;
 }
 ",
         )
@@ -626,7 +623,7 @@ struct TestStruct { one: i32, two: i64 }
 
 fn test_fn() {
     let one = 1;
-    let s = TestStruct{ one, two: 2 };
+    let _s = TestStruct{ one, two: 2 };
 }
         "#,
         );

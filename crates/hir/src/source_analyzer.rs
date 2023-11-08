@@ -236,9 +236,9 @@ impl SourceAnalyzer {
         _db: &dyn HirDatabase,
         pat: &ast::IdentPat,
     ) -> Option<BindingMode> {
-        let binding_id = self.binding_id_of_pat(pat)?;
+        let id = self.pat_id(&pat.clone().into())?;
         let infer = self.infer.as_ref()?;
-        infer.binding_modes.get(binding_id).map(|bm| match bm {
+        infer.binding_modes.get(id).map(|bm| match bm {
             hir_ty::BindingMode::Move => BindingMode::Move,
             hir_ty::BindingMode::Ref(hir_ty::Mutability::Mut) => BindingMode::Ref(Mutability::Mut),
             hir_ty::BindingMode::Ref(hir_ty::Mutability::Not) => {
@@ -888,7 +888,7 @@ fn scope_for_offset(
         .scope_by_expr()
         .iter()
         .filter_map(|(id, scope)| {
-            let InFile { file_id, value } = source_map.expr_syntax(*id).ok()?;
+            let InFile { file_id, value } = source_map.expr_syntax(id).ok()?;
             if from_file == file_id {
                 return Some((value.text_range(), scope));
             }
@@ -923,7 +923,7 @@ fn adjust(
         .scope_by_expr()
         .iter()
         .filter_map(|(id, scope)| {
-            let source = source_map.expr_syntax(*id).ok()?;
+            let source = source_map.expr_syntax(id).ok()?;
             // FIXME: correctly handle macro expansion
             if source.file_id != from_file {
                 return None;
