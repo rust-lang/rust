@@ -745,7 +745,216 @@ impl<T: ?Sized> NonNull<T> {
         unsafe { NonNull { pointer: self.pointer.byte_sub(count) } }
     }
 
+    /// Calculates the distance between two pointers. The returned value is in
+    /// units of T: the distance in bytes divided by `mem::size_of::<T>()`.
+    ///
+    /// This is equivalent to `(self as isize - origin as isize) / (mem::size_of::<T>() as isize)`,
+    /// except that it has a lot more opportunities for UB, in exchange for the compiler
+    /// better understanding what you are doing.
+    ///
+    /// The primary motivation of this method is for computing the `len` of an array/slice
+    /// of `T` that you are currently representing as a "start" and "end" pointer
+    /// (and "end" is "one past the end" of the array).
+    /// In that case, `end.offset_from(start)` gets you the length of the array.
+    ///
+    /// All of the following safety requirements are trivially satisfied for this usecase.
+    ///
+    /// [`offset`]: #method.offset
+    ///
+    /// # Safety
+    ///
+    /// If any of the following conditions are violated, the result is Undefined
+    /// Behavior:
+    ///
+    /// * Both `self` and `origin` must be either in bounds or one
+    ///   byte past the end of the same [allocated object].
+    ///
+    /// * Both pointers must be *derived from* a pointer to the same object.
+    ///   (See below for an example.)
+    ///
+    /// * The distance between the pointers, in bytes, must be an exact multiple
+    ///   of the size of `T`.
+    ///
+    /// * The distance between the pointers, **in bytes**, cannot overflow an `isize`.
+    ///
+    /// * The distance being in bounds cannot rely on "wrapping around" the address space.
+    ///
+    /// Rust types are never larger than `isize::MAX` and Rust allocations never wrap around the
+    /// address space, so two pointers within some value of any Rust type `T` will always satisfy
+    /// the last two conditions. The standard library also generally ensures that allocations
+    /// never reach a size where an offset is a concern. For instance, `Vec` and `Box` ensure they
+    /// never allocate more than `isize::MAX` bytes, so `ptr_into_vec.offset_from(vec.as_ptr())`
+    /// always satisfies the last two conditions.
+    ///
+    /// Most platforms fundamentally can't even construct such a large allocation.
+    /// For instance, no known 64-bit platform can ever serve a request
+    /// for 2<sup>63</sup> bytes due to page-table limitations or splitting the address space.
+    /// However, some 32-bit and 16-bit platforms may successfully serve a request for
+    /// more than `isize::MAX` bytes with things like Physical Address
+    /// Extension. As such, memory acquired directly from allocators or memory
+    /// mapped files *may* be too large to handle with this function.
+    /// (Note that [`offset`] and [`add`] also have a similar limitation and hence cannot be used on
+    /// such large allocations either.)
+    ///
+    /// The requirement for pointers to be derived from the same allocated object is primarily
+    /// needed for `const`-compatibility: the distance between pointers into *different* allocated
+    /// objects is not known at compile-time. However, the requirement also exists at
+    /// runtime and may be exploited by optimizations. If you wish to compute the difference between
+    /// pointers that are not guaranteed to be from the same allocation, use `(self as isize -
+    /// origin as isize) / mem::size_of::<T>()`.
+    // FIXME: recommend `addr()` instead of `as usize` once that is stable.
+    ///
+    /// [`add`]: #method.add
+    /// [allocated object]: crate::ptr#allocated-object
+    ///
+    /// # Panics
+    ///
+    /// This function panics if `T` is a Zero-Sized Type ("ZST").
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(non_null_convenience)]
+    /// use std::ptr::NonNull;
+    ///
+    /// let a = [0; 5];
+    /// let ptr1: NonNull<u32> = NonNull::from(&a[1]);
+    /// let ptr2: NonNull<u32> = NonNull::from(&a[3]);
+    /// unsafe {
+    ///     assert_eq!(ptr2.offset_from(ptr1), 2);
+    ///     assert_eq!(ptr1.offset_from(ptr2), -2);
+    ///     assert_eq!(ptr1.offset(2), ptr2);
+    ///     assert_eq!(ptr2.offset(-2), ptr1);
+    /// }
+    /// ```
+    ///
+    /// *Incorrect* usage:
+    ///
+    /// ```rust,no_run
+    /// #![feature(non_null_convenience, strict_provenance)]
+    /// use std::ptr::NonNull;
+    ///
+    /// let ptr1 = NonNull::new(Box::into_raw(Box::new(0u8))).unwrap();
+    /// let ptr2 = NonNull::new(Box::into_raw(Box::new(1u8))).unwrap();
+    /// let diff = (ptr2.addr().get() as isize).wrapping_sub(ptr1.addr().get() as isize);
+    /// // Make ptr2_other an "alias" of ptr2, but derived from ptr1.
+    /// let ptr2_other = NonNull::new(ptr1.as_ptr().wrapping_byte_offset(diff)).unwrap();
+    /// assert_eq!(ptr2.addr(), ptr2_other.addr());
+    /// // Since ptr2_other and ptr2 are derived from pointers to different objects,
+    /// // computing their offset is undefined behavior, even though
+    /// // they point to the same address!
+    /// unsafe {
+    ///     let zero = ptr2_other.offset_from(ptr2); // Undefined Behavior
+    /// }
+    /// ```
+    #[unstable(feature = "non_null_convenience", issue = "117691")]
+    #[rustc_const_unstable(feature = "non_null_convenience", issue = "117691")]
+    #[inline]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+    pub const unsafe fn offset_from(self, origin: NonNull<T>) -> isize
+    where
+        T: Sized,
+    {
+        // SAFETY: the caller must uphold the safety contract for `offset_from`.
+        unsafe { self.pointer.offset_from(origin.pointer) }
+    }
+
+    /// Calculates the distance between two pointers. The returned value is in
+    /// units of **bytes**.
+    ///
+    /// This is purely a convenience for casting to a `u8` pointer and
+    /// using [`offset_from`][NonNull::offset_from] on it. See that method for
+    /// documentation and safety requirements.
+    ///
+    /// For non-`Sized` pointees this operation considers only the data pointers,
+    /// ignoring the metadata.
+    #[unstable(feature = "non_null_convenience", issue = "117691")]
+    #[rustc_const_unstable(feature = "non_null_convenience", issue = "117691")]
+    #[inline(always)]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+    pub const unsafe fn byte_offset_from<U: ?Sized>(self, origin: NonNull<U>) -> isize {
+        // SAFETY: the caller must uphold the safety contract for `byte_offset_from`.
+        unsafe { self.pointer.byte_offset_from(origin.pointer) }
+    }
+
     // N.B. `wrapping_offset``, `wrapping_add`, etc are not implemented because they can wrap to null
+
+    /// Calculates the distance between two pointers, *where it's known that
+    /// `self` is equal to or greater than `origin`*. The returned value is in
+    /// units of T: the distance in bytes is divided by `mem::size_of::<T>()`.
+    ///
+    /// This computes the same value that [`offset_from`](#method.offset_from)
+    /// would compute, but with the added precondition that the offset is
+    /// guaranteed to be non-negative.  This method is equivalent to
+    /// `usize::try_from(self.offset_from(origin)).unwrap_unchecked()`,
+    /// but it provides slightly more information to the optimizer, which can
+    /// sometimes allow it to optimize slightly better with some backends.
+    ///
+    /// This method can be though of as recovering the `count` that was passed
+    /// to [`add`](#method.add) (or, with the parameters in the other order,
+    /// to [`sub`](#method.sub)).  The following are all equivalent, assuming
+    /// that their safety preconditions are met:
+    /// ```rust
+    /// # #![feature(non_null_convenience)]
+    /// # unsafe fn blah(ptr: std::ptr::NonNull<u32>, origin: std::ptr::NonNull<u32>, count: usize) -> bool {
+    /// ptr.sub_ptr(origin) == count
+    /// # &&
+    /// origin.add(count) == ptr
+    /// # &&
+    /// ptr.sub(count) == origin
+    /// # }
+    /// ```
+    ///
+    /// # Safety
+    ///
+    /// - The distance between the pointers must be non-negative (`self >= origin`)
+    ///
+    /// - *All* the safety conditions of [`offset_from`](#method.offset_from)
+    ///   apply to this method as well; see it for the full details.
+    ///
+    /// Importantly, despite the return type of this method being able to represent
+    /// a larger offset, it's still *not permitted* to pass pointers which differ
+    /// by more than `isize::MAX` *bytes*.  As such, the result of this method will
+    /// always be less than or equal to `isize::MAX as usize`.
+    ///
+    /// # Panics
+    ///
+    /// This function panics if `T` is a Zero-Sized Type ("ZST").
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(non_null_convenience)]
+    /// use std::ptr::NonNull;
+    ///
+    /// let a = [0; 5];
+    /// let ptr1: NonNull<u32> = NonNull::from(&a[1]);
+    /// let ptr2: NonNull<u32> = NonNull::from(&a[3]);
+    /// unsafe {
+    ///     assert_eq!(ptr2.sub_ptr(ptr1), 2);
+    ///     assert_eq!(ptr1.add(2), ptr2);
+    ///     assert_eq!(ptr2.sub(2), ptr1);
+    ///     assert_eq!(ptr2.sub_ptr(ptr2), 0);
+    /// }
+    ///
+    /// // This would be incorrect, as the pointers are not correctly ordered:
+    /// // ptr1.sub_ptr(ptr2)
+    /// ```
+    #[unstable(feature = "non_null_convenience", issue = "117691")]
+    #[rustc_const_unstable(feature = "non_null_convenience", issue = "117691")]
+    // #[unstable(feature = "ptr_sub_ptr", issue = "95892")]
+    // #[rustc_const_unstable(feature = "const_ptr_sub_ptr", issue = "95892")]
+    #[inline]
+    #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+    pub const unsafe fn sub_ptr(self, subtracted: NonNull<T>) -> usize
+    where
+        T: Sized,
+    {
+        // SAFETY: the caller must uphold the safety contract for `sub_ptr`.
+        unsafe { self.pointer.sub_ptr(subtracted.pointer) }
+    }
 
     /// Reads the value from `self` without moving it. This leaves the
     /// memory in `self` unchanged.
@@ -977,17 +1186,6 @@ impl<T: ?Sized> NonNull<T> {
     {
         // SAFETY: the caller must uphold the safety contract for `write_unaligned`.
         unsafe { ptr::write_unaligned(self.as_ptr(), val) }
-    }
-
-    /// See [`pointer::sub_ptr`] for semantics and safety requirements.
-    #[inline]
-    pub(crate) const unsafe fn sub_ptr(self, subtrahend: Self) -> usize
-    where
-        T: Sized,
-    {
-        // SAFETY: The caller promised that this is safe to do, and
-        // the non-nullness is irrelevant to the operation.
-        unsafe { self.pointer.sub_ptr(subtrahend.pointer) }
     }
 }
 
