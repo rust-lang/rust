@@ -228,17 +228,15 @@ impl<'tcx> ConstToPat<'tcx> {
                         }
                     }
                 }
-            } else if !self.saw_const_match_lint.get() {
-                if !have_valtree {
-                    // The only way valtree construction can fail without the structural match
-                    // checker finding a violation is if there is a pointer somewhere.
-                    self.tcx().emit_spanned_lint(
-                        lint::builtin::POINTER_STRUCTURAL_MATCH,
-                        self.id,
-                        self.span,
-                        PointerPattern,
-                    );
-                }
+            } else if !have_valtree && !self.saw_const_match_lint.get() {
+                // The only way valtree construction can fail without the structural match
+                // checker finding a violation is if there is a pointer somewhere.
+                self.tcx().emit_spanned_lint(
+                    lint::builtin::POINTER_STRUCTURAL_MATCH,
+                    self.id,
+                    self.span,
+                    PointerPattern,
+                );
             }
 
             // Always check for `PartialEq`, even if we emitted other lints. (But not if there were
