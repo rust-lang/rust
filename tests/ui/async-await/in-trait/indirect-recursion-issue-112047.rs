@@ -1,6 +1,5 @@
 // edition: 2021
 // build-fail
-//~^^ ERROR cycle detected when computing layout of
 
 fn main() {
     let _ = async {
@@ -31,6 +30,7 @@ where
     C: First,
 {
     async fn second(self) {
+        //~^ ERROR recursion in an `async fn` requires boxing
         self.first().await.second().await;
     }
 }
