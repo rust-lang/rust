@@ -1722,7 +1722,7 @@ impl Step for Assemble {
             let dst_exe = exe("rust-lld", target_compiler.host);
             builder.copy(&lld_install.join("bin").join(&src_exe), &libdir_bin.join(&dst_exe));
             let self_contained_lld_dir = libdir_bin.join("gcc-ld");
-            t!(fs::create_dir(&self_contained_lld_dir));
+            t!(fs::create_dir_all(&self_contained_lld_dir));
             let lld_wrapper_exe = builder.ensure(crate::core::build_steps::tool::LldWrapper {
                 compiler: build_compiler,
                 target: target_compiler.host,

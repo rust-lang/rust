@@ -1,5 +1,11 @@
-#!/usr/bin/env bash
-hide_output() {
+#!/bin/false
+# shellcheck shell=bash
+
+# This file is intended to be sourced with `. shared.sh` or
+# `source shared.sh`, hence the invalid shebang and not being
+# marked as an executable file in git.
+
+function hide_output {
   { set +x; } 2>/dev/null
   on_err="
 echo ERROR: An error was encountered with the build.
@@ -15,7 +21,8 @@ exit 1
   set -x
 }
 
-# Copied from ../../shared.sh
+# See https://unix.stackexchange.com/questions/82598
+# Duplicated in src/ci/shared.sh
 function retry {
   echo "Attempting with retry:" "$@"
   local n=1
