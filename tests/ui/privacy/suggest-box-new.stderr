@@ -67,6 +67,10 @@ LL |     let _ = std::collections::HashMap::with_hasher(_);
    |                                      ~~~~~~~~~~~~~~~~
 LL |     let _ = std::collections::HashMap::with_capacity_and_hasher(_, _);
    |                                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+help: consider using the `Default` trait
+   |
+LL |     let _ = <std::collections::HashMap as std::default::Default>::default();
+   |             +                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: cannot construct `Box<_, _>` with struct literal syntax due to private fields
   --> $DIR/suggest-box-new.rs:18:13
@@ -86,6 +90,10 @@ LL |     let _ = Box::new_zeroed();
 LL |     let _ = Box::new_in(_, _);
    |                ~~~~~~~~~~~~~~
      and 10 other candidates
+help: consider using the `Default` trait
+   |
+LL |     let _ = <Box as std::default::Default>::default();
+   |             +    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to 4 previous errors
 

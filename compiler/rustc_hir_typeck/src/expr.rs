@@ -2165,6 +2165,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     );
                 }
             }
+            if let Some(default_trait) = self.tcx.get_diagnostic_item(sym::Default)
+                && self.infcx
+                    .type_implements_trait(default_trait, [adt_ty], self.param_env)
+                    .may_apply()
+            {
+                err.multipart_suggestion(
+                    "consider using the `Default` trait",
+                    vec![
+                        (span.shrink_to_lo(), "<".to_string()),
+                        (
+                            span.shrink_to_hi().with_hi(expr_span.hi()),
+                            " as std::default::Default>::default()".to_string(),
+                        ),
+                    ],
+                    Applicability::MaybeIncorrect,
+                );
+            }
         }
 
         err.emit();
