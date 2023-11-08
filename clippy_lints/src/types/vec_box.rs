@@ -1,5 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::last_path_segment;
+use clippy_utils::{last_path_segment, match_def_path};
+use clippy_utils::paths::ALLOCATOR_GLOBAL;
 use clippy_utils::source::snippet;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
@@ -41,10 +42,19 @@ pub(super) fn check(
             && let Ok(ty_ty_size) = cx.layout_of(ty_ty).map(|l| l.size.bytes())
             && ty_ty_size < box_size_threshold
             // https://github.com/rust-lang/rust-clippy/issues/7114
-            // this code also does not consider that Global can be explicitly
-            // defined (yet) as in Vec<_, Global> so a very slight false negative edge case
             && match (vec_alloc_ty, boxed_alloc_ty) {
                 (None, None) => true,
+                // this is in the event that we have something like
+                // Vec<_, Global>, in which case is equivalent to
+                // Vec<_>
+                (None, Some(GenericArg::Type(inner))) | (Some(GenericArg::Type(inner)), None) => {
+                    if let TyKind::Path(path) = inner.kind
+                        && let Some(did) = cx.qpath_res(&path, inner.hir_id).opt_def_id() {
+                        match_def_path(cx, did, &ALLOCATOR_GLOBAL)
+                    } else {
+                        true
+                    }
+                },
                 (Some(GenericArg::Type(l)), Some(GenericArg::Type(r))) =>
                     hir_ty_to_ty(cx.tcx, l) == hir_ty_to_ty(cx.tcx, r),
                 _ => false
@@ -57,7 +67,7 @@ pub(super) fn check(
                 "`Vec<T>` is already on the heap, the boxing is unnecessary",
                 "try",
                 format!("Vec<{}>", snippet(cx, boxed_ty.span, "..")),
-                Applicability::MachineApplicable,
+                Applicability::Unspecified,
             );
             true
         } else {
