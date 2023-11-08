@@ -1,4 +1,5 @@
 #![allow(unused_assignments)]
+// compile-flags: -Coverflow-checks=yes
 // failure-status: 101
 
 fn might_overflow(to_add: u32) -> u32 {
