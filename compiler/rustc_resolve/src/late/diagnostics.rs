@@ -1449,44 +1449,73 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                         ),
                         _ => (": val", "literal", Applicability::HasPlaceholders, None),
                     };
-                    let field_ids = self.r.field_def_ids(def_id);
-                    let (fields, applicability) = match field_ids {
-                        Some(field_ids) => {
-                            let fields = field_ids.iter().map(|&id| self.r.tcx.item_name(id));
 
-                            let fields = if let Some(old_fields) = old_fields {
-                                fields
-                                    .enumerate()
-                                    .map(|(idx, new)| (new, old_fields.get(idx)))
-                                    .map(|(new, old)| {
-                                        let new = new.to_ident_string();
-                                        if let Some(Some(old)) = old
-                                            && new != *old
-                                        {
-                                            format!("{new}: {old}")
-                                        } else {
-                                            new
-                                        }
-                                    })
-                                    .collect::<Vec<String>>()
-                            } else {
-                                fields.map(|f| format!("{f}{tail}")).collect::<Vec<String>>()
-                            };
-
-                            (fields.join(", "), applicability)
+                    let fields = match def_id.as_local() {
+                        Some(def_id) => {
+                            self.r.struct_constructors.get(&def_id).cloned().map(|(_, _, f)| f)
                         }
-                        None => ("/* fields */".to_string(), Applicability::HasPlaceholders),
+                        None => Some(
+                            self.r
+                                .tcx
+                                .associated_item_def_ids(def_id)
+                                .iter()
+                                .map(|field_id| self.r.tcx.visibility(field_id))
+                                .collect(),
+                        ),
                     };
-                    let pad = match field_ids {
-                        Some(field_ids) if field_ids.is_empty() => "",
-                        _ => " ",
-                    };
-                    err.span_suggestion(
-                        span,
-                        format!("use struct {descr} syntax instead"),
-                        format!("{path_str} {{{pad}{fields}{pad}}}"),
-                        applicability,
-                    );
+
+                    let hidden_fields = fields.map_or(false, |fields| {
+                        fields
+                            .iter()
+                            .filter(|vis| {
+                                !self.r.is_accessible_from(**vis, self.parent_scope.module)
+                            })
+                            .next()
+                            .is_some()
+                    });
+
+                    if !hidden_fields {
+                        // If the fields of the type are private, we shouldn't be suggesting using
+                        // the struct literal syntax at all, as that will cause a subsequent error.
+                        let field_ids = self.r.field_def_ids(def_id);
+                        let (fields, applicability) = match field_ids {
+                            Some(field_ids) => {
+                                let fields = field_ids.iter().map(|&id| self.r.tcx.item_name(id));
+
+                                let fields = if let Some(old_fields) = old_fields {
+                                    fields
+                                        .enumerate()
+                                        .map(|(idx, new)| (new, old_fields.get(idx)))
+                                        .map(|(new, old)| {
+                                            let new = new.to_ident_string();
+                                            if let Some(Some(old)) = old
+                                                && new != *old
+                                            {
+                                                format!("{new}: {old}")
+                                            } else {
+                                                new
+                                            }
+                                        })
+                                        .collect::<Vec<String>>()
+                                } else {
+                                    fields.map(|f| format!("{f}{tail}")).collect::<Vec<String>>()
+                                };
+
+                                (fields.join(", "), applicability)
+                            }
+                            None => ("/* fields */".to_string(), Applicability::HasPlaceholders),
+                        };
+                        let pad = match field_ids {
+                            Some(field_ids) if field_ids.is_empty() => "",
+                            _ => " ",
+                        };
+                        err.span_suggestion(
+                            span,
+                            format!("use struct {descr} syntax instead"),
+                            format!("{path_str} {{{pad}{fields}{pad}}}"),
+                            applicability,
+                        );
+                    }
                 }
                 _ => {
                     err.span_label(span, fallback_label.to_string());
