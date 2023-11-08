@@ -106,6 +106,9 @@ jobs:
       - name: install clang
         run: src/ci/scripts/install-clang.sh
         if: success() && !env.SKIP_JOB
+      - name: install tidy
+        run: src/ci/scripts/install-tidy.sh
+        if: success() && !env.SKIP_JOB
       - name: install WIX
         run: src/ci/scripts/install-wix.sh
         if: success() && !env.SKIP_JOB
@@ -370,6 +373,19 @@ jobs:
               NO_OVERFLOW_CHECKS: 1
               DIST_REQUIRE_ALL_TOOLS: 1
             os: macos-13-xlarge
+          - name: aarch64-apple
+            env:
+              SCRIPT: "./x.py --stage 2 test --host=aarch64-apple-darwin --target=aarch64-apple-darwin"
+              RUST_CONFIGURE_ARGS: "--enable-sanitizers --enable-profiler --set rust.jemalloc --set llvm.ninja=false"
+              RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+              SELECT_XCODE: /Applications/Xcode_13.4.1.app
+              USE_XCODE_CLANG: 1
+              MACOSX_DEPLOYMENT_TARGET: 11.0
+              MACOSX_STD_DEPLOYMENT_TARGET: 11.0
+              NO_LLVM_ASSERTIONS: 1
+              NO_DEBUG_ASSERTIONS: 1
+              NO_OVERFLOW_CHECKS: 1
+            os: macos-13-xlarge
           - name: x86_64-msvc
             env:
               RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --enable-profiler"
@@ -482,6 +498,9 @@ jobs:
         if: success() && !env.SKIP_JOB
       - name: install clang
         run: src/ci/scripts/install-clang.sh
+        if: success() && !env.SKIP_JOB
+      - name: install tidy
+        run: src/ci/scripts/install-tidy.sh
         if: success() && !env.SKIP_JOB
       - name: install WIX
         run: src/ci/scripts/install-wix.sh
@@ -606,6 +625,9 @@ jobs:
         if: success() && !env.SKIP_JOB
       - name: install clang
         run: src/ci/scripts/install-clang.sh
+        if: success() && !env.SKIP_JOB
+      - name: install tidy
+        run: src/ci/scripts/install-tidy.sh
         if: success() && !env.SKIP_JOB
       - name: install WIX
         run: src/ci/scripts/install-wix.sh

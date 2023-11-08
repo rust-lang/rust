@@ -173,6 +173,10 @@ x--expand-yaml-anchors--remove:
         run: src/ci/scripts/install-clang.sh
         <<: *step
 
+      - name: install tidy
+        run: src/ci/scripts/install-tidy.sh
+        <<: *step
+
       - name: install WIX
         run: src/ci/scripts/install-wix.sh
         <<: *step
@@ -563,6 +567,25 @@ jobs:
               NO_DEBUG_ASSERTIONS: 1
               NO_OVERFLOW_CHECKS: 1
               DIST_REQUIRE_ALL_TOOLS: 1
+            <<: *job-macos-m1
+
+          # This target only needs to support 11.0 and up as nothing else supports the hardware
+          - name: aarch64-apple
+            env:
+              SCRIPT: ./x.py --stage 2 test --host=aarch64-apple-darwin --target=aarch64-apple-darwin
+              RUST_CONFIGURE_ARGS: >-
+                --enable-sanitizers
+                --enable-profiler
+                --set rust.jemalloc
+                --set llvm.ninja=false
+              RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+              SELECT_XCODE: /Applications/Xcode_13.4.1.app
+              USE_XCODE_CLANG: 1
+              MACOSX_DEPLOYMENT_TARGET: 11.0
+              MACOSX_STD_DEPLOYMENT_TARGET: 11.0
+              NO_LLVM_ASSERTIONS: 1
+              NO_DEBUG_ASSERTIONS: 1
+              NO_OVERFLOW_CHECKS: 1
             <<: *job-macos-m1
 
           ######################
