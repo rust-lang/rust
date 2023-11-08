@@ -124,11 +124,7 @@ pub(crate) fn ty_args_to_args<'tcx>(
             )))
         }
         GenericArgKind::Const(ct) => {
-            // FIXME(effects): this relies on the host effect being called `host`, which users could also name
-            // their const generics.
-            // FIXME(effects): this causes `host = true` and `host = false` generics to also be emitted.
-            if let ty::ConstKind::Param(p) = ct.kind()
-                && p.name == sym::host
+            if let ty::GenericParamDefKind::Const { is_host_effect: true, .. } = params[index].kind
             {
                 return None;
             }

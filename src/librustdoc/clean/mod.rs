@@ -2534,7 +2534,8 @@ fn clean_generic_args<'tcx>(
                     }
                     hir::GenericArg::Lifetime(_) => GenericArg::Lifetime(Lifetime::elided()),
                     hir::GenericArg::Type(ty) => GenericArg::Type(clean_ty(ty, cx)),
-                    // FIXME(effects): This will still emit `<true>` for non-const impls of const traits
+                    // Checking for `#[rustc_host]` on the `AnonConst`  not only accounts for the case
+                    // where the argument is `host` but for all possible cases (e.g., `true`, `false`).
                     hir::GenericArg::Const(ct)
                         if cx.tcx.has_attr(ct.value.def_id, sym::rustc_host) =>
                     {
