@@ -62,12 +62,11 @@ unsafe extern "C" fn tcs_init(secondary: bool) {
 #[no_mangle]
 extern "C" fn entry(p1: u64, p2: u64, p3: u64, secondary: bool, p4: u64, p5: u64) -> EntryReturn {
     // FIXME: how to support TLS in library mode?
-    let tls = Box::new(tls::Tls::new());
-    let tls_guard = unsafe { tls.activate() };
+    let tls = unsafe { tls::Tls::init() };
 
     if secondary {
         let join_notifier = super::thread::Thread::entry();
-        drop(tls_guard);
+        drop(tls);
         drop(join_notifier);
 
         EntryReturn(0, 0)
