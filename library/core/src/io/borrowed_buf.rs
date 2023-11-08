@@ -1,10 +1,6 @@
-#![unstable(feature = "read_buf", issue = "78485")]
-
-#[cfg(test)]
-mod tests;
+#![unstable(feature = "core_io_borrowed_buf", issue = "117693")]
 
 use crate::fmt::{self, Debug, Formatter};
-use crate::io::{Result, Write};
 use crate::mem::{self, MaybeUninit};
 use crate::{cmp, ptr};
 
@@ -301,17 +297,5 @@ impl<'a> BorrowedCursor<'a> {
             self.set_init(buf.len());
         }
         self.buf.filled += buf.len();
-    }
-}
-
-impl<'a> Write for BorrowedCursor<'a> {
-    fn write(&mut self, buf: &[u8]) -> Result<usize> {
-        self.append(buf);
-        Ok(buf.len())
-    }
-
-    #[inline]
-    fn flush(&mut self) -> Result<()> {
-        Ok(())
     }
 }
