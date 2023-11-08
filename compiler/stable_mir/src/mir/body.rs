@@ -64,6 +64,8 @@ type LocalDecls = Vec<LocalDecl>;
 pub struct LocalDecl {
     pub ty: Ty,
     pub span: Span,
+    pub local: Local,
+    pub mutability: Mutability,
 }
 
 #[derive(Clone, Debug)]

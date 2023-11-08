@@ -400,10 +400,12 @@ impl<'tcx> Stable<'tcx> for mir::Body<'tcx> {
                 })
                 .collect(),
             self.local_decls
-                .iter()
-                .map(|decl| stable_mir::mir::LocalDecl {
+                .iter_enumerated()
+                .map(|(local, decl)| stable_mir::mir::LocalDecl {
                     ty: decl.ty.stable(tables),
                     span: decl.source_info.span.stable(tables),
+                    local: local.as_usize(),
+                    mutability: decl.mutability.stable(tables),
                 })
                 .collect(),
             self.arg_count,
