@@ -35,7 +35,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_query_system::dep_graph::SerializedDepNodeIndex;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_query_system::query::{
-    get_query_incr, get_query_non_incr, HashResult, QueryCache, QueryConfig, QueryInfo, QueryMap,
+    get_query_incr, get_query_non_incr, CycleError, HashResult, QueryCache, QueryConfig, QueryMap,
     QueryMode, QueryState,
 };
 use rustc_query_system::HandleCycleError;
@@ -144,10 +144,10 @@ where
     fn value_from_cycle_error(
         self,
         tcx: TyCtxt<'tcx>,
-        cycle: &[QueryInfo],
+        cycle_error: &CycleError,
         guar: ErrorGuaranteed,
     ) -> Self::Value {
-        (self.dynamic.value_from_cycle_error)(tcx, cycle, guar)
+        (self.dynamic.value_from_cycle_error)(tcx, cycle_error, guar)
     }
 
     #[inline(always)]

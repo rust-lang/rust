@@ -556,7 +556,7 @@ pub fn deadlock(query_map: QueryMap, registry: &rayon_core::Registry) {
 
 #[inline(never)]
 #[cold]
-pub(crate) fn report_cycle<'a>(
+pub fn report_cycle<'a>(
     sess: &'a Session,
     CycleError { usage, cycle: stack }: &CycleError,
 ) -> DiagnosticBuilder<'a> {
