@@ -273,20 +273,22 @@ since it will not be called), and adds a new `FunctionCoverage`, with
 
 ## Testing LLVM Coverage
 
-[(See also the compiletest documentation for the `tests/coverage-map` and
-`tests/run-coverage` test suites.)](./tests/compiletest.md#coverage-tests)
+[(See also the compiletest documentation for the `tests/coverage`
+test suite.)](./tests/compiletest.md#coverage-tests)
 
 Coverage instrumentation in the MIR is validated by a `mir-opt` test:
 [`tests/mir-opt/instrument_coverage.rs`].
 
-Coverage instrumentation in LLVM IR is validated by the [`tests/coverage-map`]
-test suite. These tests compile a test program to LLVM IR assembly, and then
+Coverage instrumentation in LLVM IR is validated by the [`tests/coverage`]
+test suite in `coverage-map` mode.
+These tests compile a test program to LLVM IR assembly, and then
 use the [`src/tools/coverage-dump`] tool to extract and pretty-print the
 coverage mappings that would be embedded in the final binary.
 
 End-to-end testing of coverage instrumentation and coverage reporting is
-performed by the [`tests/run-coverage`] and [`tests/run-coverage-rustdoc`]
-test suites. These tests compile and run a test program with coverage
+performed by the [`tests/coverage`] test suite in `coverage-run` mode,
+and by the [`tests/coverage-run-rustdoc`] test suite.
+These tests compile and run a test program with coverage
 instrumentation, then use LLVM tools to convert the coverage data into a
 human-readable coverage report.
 
@@ -296,19 +298,19 @@ expected LLVM IR instructions and structured data for a coverage-enabled
 program, including various checks for Coverage Map-related metadata and the LLVM
 intrinsic calls to increment the runtime counters.
 
-Expected results for the `coverage-map`, `run-coverage`, `run-coverage-rustdoc`,
+Expected results for the `coverage`, `coverage-run-rustdoc`,
 and `mir-opt` tests can be refreshed by running:
 
 ```shell
-./x test tests/*coverage* --bless
+./x test coverage --bless
+./x test coverage-run-rustdoc --bless
 ./x test tests/mir-opt --bless
 ```
 
 [`tests/mir-opt/instrument_coverage.rs`]: https://github.com/rust-lang/rust/blob/master/tests/mir-opt/instrument_coverage.rs
-[`tests/coverage-map`]: https://github.com/rust-lang/rust/tree/master/tests/coverage-map
+[`tests/coverage`]: https://github.com/rust-lang/rust/tree/master/tests/coverage
 [`src/tools/coverage-dump`]: https://github.com/rust-lang/rust/tree/master/src/tools/coverage-dump
-[`tests/run-coverage`]: https://github.com/rust-lang/rust/tree/master/tests/run-coverage
-[`tests/run-coverage-rustdoc`]: https://github.com/rust-lang/rust/tree/master/tests/run-coverage-rustdoc
+[`tests/coverage-run-rustdoc`]: https://github.com/rust-lang/rust/tree/master/tests/coverage-run-rustdoc
 [`coverage-llvmir`]: https://github.com/rust-lang/rust/tree/master/tests/run-make/coverage-llvmir
 
 ## Implementation Details of the `InstrumentCoverage` MIR Pass
