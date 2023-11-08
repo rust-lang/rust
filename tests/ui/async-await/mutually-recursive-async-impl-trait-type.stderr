@@ -5,10 +5,14 @@ LL | async fn rec_1() {
    | ^^^^^^^^^^^^^^^^
 LL |     rec_2().await;
    |     ------------- recursive call here
-...
-LL |     rec_1().await;
-   |     ------------- ...which calls this
    |
+note: which leads to this async fn
+  --> $DIR/mutually-recursive-async-impl-trait-type.rs:9:1
+   |
+LL | async fn rec_2() {
+   | ^^^^^^^^^^^^^^^^
+LL |     rec_1().await;
+   |     ------------- ...leading to this recursive call
    = note: a recursive `async fn` call must introduce indirection such as `Box::pin` to avoid an infinitely sized future
    = note: consider using the `async_recursion` crate: https://crates.io/crates/async_recursion
 

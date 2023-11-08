@@ -1,14 +1,18 @@
 error[E0733]: recursion in an async block requires boxing
   --> $DIR/indirect-recursion-issue-112047.rs:21:9
    |
-LL |     t.recur().await;
-   |     --------------- ...which calls this
-...
 LL |         async move { recur(self).await; }
    |         ^^^^^^^^^^^^^-----------------^^^
    |                      |
    |                      recursive call here
    |
+note: which leads to this async fn
+  --> $DIR/indirect-recursion-issue-112047.rs:13:1
+   |
+LL | async fn recur(t: impl Recur) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     t.recur().await;
+   |     --------------- ...leading to this recursive call
    = note: a recursive `async fn` call must introduce indirection such as `Box::pin` to avoid an infinitely sized future
    = note: consider using the `async_recursion` crate: https://crates.io/crates/async_recursion
 

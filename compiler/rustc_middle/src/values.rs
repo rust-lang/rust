@@ -161,13 +161,6 @@ impl<'tcx, T> Value<TyCtxt<'tcx>> for Result<T, &'_ ty::layout::LayoutError<'_>>
                 tcx.def_kind_descr_article(def_kind, def_id.to_def_id()),
                 tcx.def_kind_descr(def_kind, def_id.to_def_id()),
             );
-            if matches!(coroutine_kind, hir::CoroutineKind::Async(_)) {
-                diag.note("a recursive `async fn` call must introduce indirection such as `Box::pin` to avoid an infinitely sized future");
-                diag.note(
-                    "consider using the `async_recursion` crate: https://crates.io/crates/async_recursion",
-                );
-            }
-            let mut called = false;
             for (i, frame) in cycle_error.cycle.iter().enumerate() {
                 if frame.query.dep_kind != dep_kinds::layout_of {
                     continue;
@@ -175,7 +168,8 @@ impl<'tcx, T> Value<TyCtxt<'tcx>> for Result<T, &'_ ty::layout::LayoutError<'_>>
                 let Some(frame_def_id) = frame.query.ty_def_id else {
                     continue;
                 };
-                if !matches!(tcx.def_kind(frame_def_id), DefKind::Coroutine) {
+                let def_kind = tcx.def_kind(frame_def_id);
+                if !matches!(def_kind, DefKind::Coroutine) {
                     continue;
                 }
                 let frame_span = frame
@@ -184,8 +178,26 @@ impl<'tcx, T> Value<TyCtxt<'tcx>> for Result<T, &'_ ty::layout::LayoutError<'_>>
                 if frame_span.is_dummy() {
                     continue;
                 }
-                diag.span_label(frame_span, if called { "...which calls this" } else { "recursive call here" });
-                called = true;
+                if i == 0 {
+                    diag.span_label(frame_span, "recursive call here");
+                } else {
+                    let coroutine_span: Span = if tcx
+                    .coroutine_kind(frame_def_id)
+                    .expect("expected coroutine to have a coroutine_kind").is_fn_like() {
+                        tcx.def_span(tcx.parent(frame_def_id))
+                    } else {
+                        tcx.def_span(frame_def_id)
+                    };
+                    let mut multispan = MultiSpan::from_span(coroutine_span);
+                    multispan.push_span_label(frame_span, "...leading to this recursive call");
+                    diag.span_note(multispan, format!("which leads to this {}", tcx.def_kind_descr(def_kind, frame_def_id)));
+                }
+            }
+            if matches!(coroutine_kind, hir::CoroutineKind::Async(_)) {
+                diag.note("a recursive `async fn` call must introduce indirection such as `Box::pin` to avoid an infinitely sized future");
+                diag.note(
+                    "consider using the `async_recursion` crate: https://crates.io/crates/async_recursion",
+                );
             }
             diag.emit()
         } else {
