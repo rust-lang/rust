@@ -52,7 +52,7 @@ pub(super) fn check(
                         && let Some(did) = cx.qpath_res(&path, inner.hir_id).opt_def_id() {
                         match_def_path(cx, did, &ALLOCATOR_GLOBAL)
                     } else {
-                        true
+                        false
                     }
                 },
                 (Some(GenericArg::Type(l)), Some(GenericArg::Type(r))) =>
