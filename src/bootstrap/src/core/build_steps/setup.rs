@@ -122,6 +122,17 @@ impl Step for Profile {
             return;
         }
 
+        let path = &run.builder.config.config.clone().unwrap_or(PathBuf::from("config.toml"));
+        if path.exists() {
+            eprintln!();
+            eprintln!(
+                "error: you asked for a new config file, but one already exists at `{}`",
+                t!(path.canonicalize()).display()
+            );
+
+            crate::exit!(1);
+        }
+
         // for Profile, `run.paths` will have 1 and only 1 element
         // this is because we only accept at most 1 path from user input.
         // If user calls `x.py setup` without arguments, the interactive TUI
@@ -203,19 +214,6 @@ pub fn setup(config: &Config, profile: Profile) {
 fn setup_config_toml(path: &PathBuf, profile: Profile, config: &Config) {
     if profile == Profile::None {
         return;
-    }
-    if path.exists() {
-        eprintln!();
-        eprintln!(
-            "error: you asked `x.py` to setup a new config file, but one already exists at `{}`",
-            path.display()
-        );
-        eprintln!("help: try adding `profile = \"{}\"` at the top of {}", profile, path.display());
-        eprintln!(
-            "note: this will use the configuration in {}",
-            profile.include_path(&config.src).display()
-        );
-        crate::exit!(1);
     }
 
     let latest_change_id = CONFIG_CHANGE_HISTORY.last().unwrap();
