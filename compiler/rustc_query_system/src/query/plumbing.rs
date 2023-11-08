@@ -122,7 +122,7 @@ where
     match query.handle_cycle_error() {
         Error => {
             let guar = error.emit();
-            query.value_from_cycle_error(*qcx.dep_context(), &cycle_error.cycle, guar)
+            query.value_from_cycle_error(*qcx.dep_context(), cycle_error, guar)
         }
         Fatal => {
             error.emit();
@@ -131,7 +131,7 @@ where
         }
         DelayBug => {
             let guar = error.delay_as_bug();
-            query.value_from_cycle_error(*qcx.dep_context(), &cycle_error.cycle, guar)
+            query.value_from_cycle_error(*qcx.dep_context(), cycle_error, guar)
         }
         Stash => {
             let guar = if let Some(root) = cycle_error.cycle.first()
@@ -142,7 +142,7 @@ where
             } else {
                 error.emit()
             };
-            query.value_from_cycle_error(*qcx.dep_context(), &cycle_error.cycle, guar)
+            query.value_from_cycle_error(*qcx.dep_context(), cycle_error, guar)
         }
     }
 }
@@ -204,7 +204,7 @@ where
 }
 
 #[derive(Clone)]
-pub(crate) struct CycleError {
+pub struct CycleError {
     /// The query and related span that uses the cycle.
     pub usage: Option<(Span, QueryStackFrame)>,
     pub cycle: Vec<QueryInfo>,

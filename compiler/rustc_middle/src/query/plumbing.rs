@@ -53,7 +53,7 @@ pub struct DynamicQuery<'tcx, C: QueryCache> {
         fn(tcx: TyCtxt<'tcx>, key: &C::Key, index: SerializedDepNodeIndex) -> bool,
     pub hash_result: HashResult<C::Value>,
     pub value_from_cycle_error:
-        fn(tcx: TyCtxt<'tcx>, cycle: &[QueryInfo], guar: ErrorGuaranteed) -> C::Value,
+        fn(tcx: TyCtxt<'tcx>, cycle_error: &CycleError, guar: ErrorGuaranteed) -> C::Value,
     pub format_value: fn(&C::Value) -> String,
 }
 
