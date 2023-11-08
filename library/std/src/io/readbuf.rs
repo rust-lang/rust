@@ -306,8 +306,9 @@ impl<'a> BorrowedCursor<'a> {
 
 impl<'a> Write for BorrowedCursor<'a> {
     fn write(&mut self, buf: &[u8]) -> Result<usize> {
-        self.append(buf);
-        Ok(buf.len())
+        let amt = cmp::min(buf.len(), self.capacity());
+        self.append(&buf[..amt]);
+        Ok(amt)
     }
 
     #[inline]
