@@ -1034,6 +1034,10 @@ pub fn rustc_cargo_env(
         cargo.rustflag("--cfg=parallel_compiler");
         cargo.rustdocflag("--cfg=parallel_compiler");
     }
+    if builder.config.lld_enabled {
+        cargo.rustflag("--cfg=rust_lld");
+        cargo.rustdocflag("--cfg=rust_lld");
+    }
     if builder.config.rust_verify_llvm_ir {
         cargo.env("RUSTC_VERIFY_LLVM_IR", "1");
     }

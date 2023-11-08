@@ -16,6 +16,12 @@ pub fn target() -> Target {
         | SanitizerSet::THREAD;
     base.supports_xray = true;
 
+    #[cfg(rust_lld)]
+    {
+        base.linker_flavor = LinkerFlavor::Gnu(Cc::Yes, Lld::Yes);
+        base.link_self_contained = crate::spec::LinkSelfContainedDefault::with_linker();
+    }
+
     Target {
         llvm_target: "x86_64-unknown-linux-gnu".into(),
         pointer_width: 64,
