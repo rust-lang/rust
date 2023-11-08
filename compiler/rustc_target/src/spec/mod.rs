@@ -57,47 +57,11 @@ use rustc_macros::HashStable_Generic;
 pub mod abi;
 pub mod crt_objects;
 
-mod aix_base;
-mod android_base;
-mod apple_base;
-pub use apple_base::deployment_target as current_apple_deployment_target;
-pub use apple_base::platform as current_apple_platform;
-pub use apple_base::sdk_version as current_apple_sdk_version;
-mod avr_gnu_base;
-pub use avr_gnu_base::ef_avr_arch;
-mod bpf_base;
-mod dragonfly_base;
-mod freebsd_base;
-mod fuchsia_base;
-mod haiku_base;
-mod hermit_base;
-mod hurd_base;
-mod hurd_gnu_base;
-mod illumos_base;
-mod l4re_base;
-mod linux_base;
-mod linux_gnu_base;
-mod linux_musl_base;
-mod linux_ohos_base;
-mod linux_uclibc_base;
-mod msvc_base;
-mod netbsd_base;
-mod nto_qnx_base;
-mod openbsd_base;
-mod redox_base;
-mod solaris_base;
-mod solid_base;
-mod teeos_base;
-mod thumb_base;
-mod uefi_msvc_base;
-mod unikraft_linux_musl_base;
-mod vxworks_base;
-mod wasm_base;
-mod windows_gnu_base;
-mod windows_gnullvm_base;
-mod windows_msvc_base;
-mod windows_uwp_gnu_base;
-mod windows_uwp_msvc_base;
+mod base;
+pub use base::apple::deployment_target as current_apple_deployment_target;
+pub use base::apple::platform as current_apple_platform;
+pub use base::apple::sdk_version as current_apple_sdk_version;
+pub use base::avr_gnu::ef_avr_arch;
 
 /// Linker is called through a C/C++ compiler.
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -1444,14 +1408,16 @@ impl fmt::Display for StackProtector {
 
 macro_rules! supported_targets {
     ( $(($triple:literal, $module:ident),)+ ) => {
-        $(mod $module;)+
+        mod targets {
+            $(pub(crate) mod $module;)+
+        }
 
         /// List of supported targets
         pub const TARGETS: &[&str] = &[$($triple),+];
 
         fn load_builtin(target: &str) -> Option<Target> {
             let mut t = match target {
-                $( $triple => $module::target(), )+
+                $( $triple => targets::$module::target(), )+
                 _ => return None,
             };
             t.is_builtin = true;
@@ -1467,7 +1433,7 @@ macro_rules! supported_targets {
             $(
                 #[test] // `#[test]`
                 fn $module() {
-                    tests_impl::test_target(super::$module::target());
+                    tests_impl::test_target(crate::spec::targets::$module::target());
                 }
             )+
         }
