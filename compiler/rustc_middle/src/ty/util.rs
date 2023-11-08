@@ -896,18 +896,7 @@ impl<'tcx> OpaqueTypeExpander<'tcx> {
         }
         let args = args.fold_with(self);
         if !self.check_recursion || self.seen_opaque_tys.insert(def_id) {
-            let expanded_ty = match self.expanded_cache.get(&(def_id, args)) {
-                Some(expanded_ty) => *expanded_ty,
-                None => {
-                    for bty in self.tcx.coroutine_hidden_types(def_id) {
-                        let hidden_ty = bty.instantiate(self.tcx, args);
-                        self.fold_ty(hidden_ty);
-                    }
-                    let expanded_ty = Ty::new_coroutine_witness(self.tcx, def_id, args);
-                    self.expanded_cache.insert((def_id, args), expanded_ty);
-                    expanded_ty
-                }
-            };
+            let expanded_ty = Ty::new_coroutine_witness(self.tcx, def_id, args);
             if self.check_recursion {
                 self.seen_opaque_tys.remove(&def_id);
             }

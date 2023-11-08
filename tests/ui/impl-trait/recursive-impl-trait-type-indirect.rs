@@ -70,8 +70,8 @@ fn substs_change<T: 'static>() -> impl Sized {
 }
 
 fn coroutine_hold() -> impl Sized {
-    //~^ ERROR
     move || {
+    //~^ ERROR
         let x = coroutine_hold();
         yield;
         x;

@@ -6,7 +6,7 @@ async fn rec_1() { //~ ERROR recursion in an `async fn`
     rec_2().await;
 }
 
-async fn rec_2() { //~ ERROR recursion in an `async fn`
+async fn rec_2() {
     rec_1().await;
 }
 

@@ -239,16 +239,13 @@ impl<'cx, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'cx, 'tcx> 
                         }
 
                         let generic_ty = self.interner().type_of(data.def_id);
-                        let concrete_ty = generic_ty.instantiate(self.interner(), args);
+                        let mut concrete_ty = generic_ty.instantiate(self.interner(), args);
                         self.anon_depth += 1;
                         if concrete_ty == ty {
-                            bug!(
-                                "infinite recursion generic_ty: {:#?}, args: {:#?}, \
-                                 concrete_ty: {:#?}, ty: {:#?}",
-                                generic_ty,
-                                args,
-                                concrete_ty,
-                                ty
+                            concrete_ty = Ty::new_error_with_message(
+                                self.interner(),
+                                DUMMY_SP,
+                                "recursive opaque type",
                             );
                         }
                         let folded_ty = ensure_sufficient_stack(|| self.try_fold_ty(concrete_ty));

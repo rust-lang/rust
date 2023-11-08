@@ -109,14 +109,14 @@ LL |
 LL |     (substs_change::<&T>(),)
    |     ------------------------ returning here with type `(impl Sized,)`
 
-error[E0720]: cannot resolve opaque type
-  --> $DIR/recursive-impl-trait-type-indirect.rs:72:24
+error[E0733]: recursion in an `async fn` requires boxing
+  --> $DIR/recursive-impl-trait-type-indirect.rs:73:5
    |
-LL | fn coroutine_hold() -> impl Sized {
-   |                        ^^^^^^^^^^ recursive opaque type
-...
-LL |         let x = coroutine_hold();
-   |             - coroutine captures itself here
+LL |     move || {
+   |     ^^^^^^^ recursive `async fn`
+   |
+   = note: a recursive `async fn` must be rewritten to return a boxed `dyn Future`
+   = note: consider using the `async_recursion` crate: https://crates.io/crates/async_recursion
 
 error[E0720]: cannot resolve opaque type
   --> $DIR/recursive-impl-trait-type-indirect.rs:86:26
@@ -144,4 +144,5 @@ LL |     mutual_recursion()
 
 error: aborting due to 14 previous errors
 
-For more information about this error, try `rustc --explain E0720`.
+Some errors have detailed explanations: E0720, E0733.
+For more information about an error, try `rustc --explain E0720`.

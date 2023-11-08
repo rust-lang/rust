@@ -6,7 +6,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_middle::ty::Representability;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_query_system::query::CycleError;
+use rustc_query_system::query::{report_cycle, CycleError};
 use rustc_query_system::Value;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{ErrorGuaranteed, Span};
@@ -97,7 +97,7 @@ impl<'tcx> Value<TyCtxt<'tcx>> for Representability {
         }
         for info in &cycle_error.cycle {
             if info.query.dep_kind == dep_kinds::representability_adt_ty
-                && let Some(def_id) = info.query.ty_adt_id
+                && let Some(def_id) = info.query.ty_def_id
                 && let Some(def_id) = def_id.as_local()
                 && !item_and_field_ids.iter().any(|&(id, _)| id == def_id)
             {
@@ -131,10 +131,36 @@ impl<'tcx> Value<TyCtxt<'tcx>> for ty::EarlyBinder<ty::Binder<'_, ty::FnSig<'_>>
 
 impl<'tcx, T> Value<TyCtxt<'tcx>> for Result<T, &'_ ty::layout::LayoutError<'_>> {
     fn from_cycle_error(
-        _tcx: TyCtxt<'tcx>,
-        _cycle_error: &CycleError,
-        guar: ErrorGuaranteed,
+        tcx: TyCtxt<'tcx>,
+        cycle_error: &CycleError,
+        _guar: ErrorGuaranteed,
     ) -> Self {
+        let guar = if cycle_error.cycle[0].query.dep_kind == dep_kinds::layout_of
+            && let Some(def_id) = cycle_error.cycle[0].query.ty_def_id
+            && let Some(def_id) = def_id.as_local()
+            && matches!(tcx.def_kind(def_id), DefKind::Closure)
+            && let Some(coroutine_kind) = tcx.coroutine_kind(def_id)
+        {
+            // FIXME: `def_span` for an fn-like coroutine will point to the fn's body
+            // due to interactions between the desugaring into a closure expr and the
+            // def_span code. I'm not motivated to fix it, because I tried and it was
+            // not working, so just hack around it by grabbing the parent fn's span.
+            let span = if coroutine_kind.is_fn_like() {
+                tcx.def_span(tcx.local_parent(def_id))
+            } else {
+                tcx.def_span(def_id)
+            };
+            struct_span_err!(tcx.sess.dcx(), span, E0733, "recursion in an `async fn` requires boxing")
+                .span_label(span, "recursive `async fn`")
+                .note("a recursive `async fn` must be rewritten to return a boxed `dyn Future`")
+                .note(
+                    "consider using the `async_recursion` crate: https://crates.io/crates/async_recursion",
+                )
+                .emit()
+        } else {
+            report_cycle(tcx.sess, cycle_error).emit()
+        };
+
         // tcx.arena.alloc cannot be used because we are not allowed to use &'tcx LayoutError under
         // min_specialization. Since this is an error path anyways, leaking doesn't matter (and really,
         // tcx.arena.alloc is pretty much equal to leaking).

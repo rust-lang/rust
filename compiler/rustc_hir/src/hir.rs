@@ -1361,6 +1361,12 @@ impl CoroutineKind {
     }
 }
 
+impl CoroutineKind {
+    pub fn is_fn_like(self) -> bool {
+        matches!(self, CoroutineKind::Desugared(_, CoroutineSource::Fn))
+    }
+}
+
 impl fmt::Display for CoroutineKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {

@@ -342,9 +342,9 @@ pub(crate) fn create_query_frame<
             hasher.finish::<Hash64>()
         })
     };
-    let ty_adt_id = key.ty_adt_id();
+    let ty_def_id = key.ty_def_id();
 
-    QueryStackFrame::new(description, span, def_id, def_kind, kind, ty_adt_id, hash)
+    QueryStackFrame::new(description, span, def_id, def_kind, kind, ty_def_id, hash)
 }
 
 pub(crate) fn encode_query_results<'a, 'tcx, Q>(
