@@ -5,7 +5,7 @@
 // changes (list in `armv7a_none_eabi.rs`) to bring it closer to the bare-metal
 // `thumb` & `aarch64` targets.
 
-use super::{Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetOptions};
+use crate::spec::{Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetOptions};
 
 pub fn target() -> Target {
     let opts = TargetOptions {

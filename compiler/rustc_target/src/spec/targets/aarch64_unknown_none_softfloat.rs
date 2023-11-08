@@ -6,7 +6,7 @@
 //
 // For example, `-C target-cpu=cortex-a53`.
 
-use super::{Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetOptions};
+use crate::spec::{Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetOptions};
 
 pub fn target() -> Target {
     let opts = TargetOptions {

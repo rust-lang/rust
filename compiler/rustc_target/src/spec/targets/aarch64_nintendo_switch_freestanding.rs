@@ -1,4 +1,4 @@
-use super::{Cc, LinkerFlavor, Lld, PanicStrategy, RelroLevel, Target, TargetOptions};
+use crate::spec::{Cc, LinkerFlavor, Lld, PanicStrategy, RelroLevel, Target, TargetOptions};
 
 const LINKER_SCRIPT: &str = include_str!("./aarch64_nintendo_switch_freestanding_linker_script.ld");
 

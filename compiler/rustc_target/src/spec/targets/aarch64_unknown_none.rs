@@ -6,7 +6,7 @@
 //
 // For example, `-C target-cpu=cortex-a53`.
 
-use super::{
+use crate::spec::{
     Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, SanitizerSet, Target, TargetOptions,
 };
 

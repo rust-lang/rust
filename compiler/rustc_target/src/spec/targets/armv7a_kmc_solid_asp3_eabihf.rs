@@ -1,4 +1,4 @@
-use super::{base, RelocModel, Target, TargetOptions};
+use crate::spec::{base, RelocModel, Target, TargetOptions};
 
 pub fn target() -> Target {
     let base = base::solid::opts("asp3");

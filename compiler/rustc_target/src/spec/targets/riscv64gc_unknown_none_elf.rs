@@ -1,7 +1,6 @@
+use crate::spec::SanitizerSet;
 use crate::spec::{Cc, CodeModel, LinkerFlavor, Lld, PanicStrategy};
 use crate::spec::{RelocModel, Target, TargetOptions};
-
-use super::SanitizerSet;
 
 pub fn target() -> Target {
     Target {

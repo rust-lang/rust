@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use super::{cvs, Cc, LinkerFlavor, Lld, Target, TargetOptions};
+use crate::spec::{cvs, Cc, LinkerFlavor, Lld, Target, TargetOptions};
 
 pub fn target() -> Target {
     let pre_link_args = TargetOptions::link_args(

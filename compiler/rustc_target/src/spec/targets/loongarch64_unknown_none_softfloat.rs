@@ -1,5 +1,5 @@
-use super::{Cc, CodeModel, LinkerFlavor, Lld, PanicStrategy, RelocModel};
-use super::{Target, TargetOptions};
+use crate::spec::{Cc, CodeModel, LinkerFlavor, Lld, PanicStrategy, RelocModel};
+use crate::spec::{Target, TargetOptions};
 
 pub fn target() -> Target {
     Target {
@@ -9,10 +9,11 @@ pub fn target() -> Target {
         arch: "loongarch64".into(),
         options: TargetOptions {
             cpu: "generic".into(),
-            features: "+f,+d".into(),
+            features: "-f,-d".into(),
+            abi: "softfloat".into(),
             linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
             linker: Some("rust-lld".into()),
-            llvm_abiname: "lp64d".into(),
+            llvm_abiname: "lp64s".into(),
             max_atomic_width: Some(64),
             relocation_model: RelocModel::Static,
             panic_strategy: PanicStrategy::Abort,
