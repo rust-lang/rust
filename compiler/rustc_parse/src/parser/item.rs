@@ -2401,22 +2401,39 @@ impl<'a> Parser<'a> {
                         Misplaced(Span),
                     }
 
+                    // We may be able to recover
+                    let mut recover_constness = constness;
+                    let mut recover_asyncness = asyncness;
+                    let mut recover_unsafety = unsafety;
                     // This will allow the machine fix to directly place the keyword in the correct place or to indicate
                     // that the keyword is already present and the second instance should be removed.
                     let wrong_kw = if self.check_keyword(kw::Const) {
                         match constness {
                             Const::Yes(sp) => Some(WrongKw::Duplicated(sp)),
-                            Const::No => Some(WrongKw::Misplaced(async_start_sp)),
+                            Const::No => {
+                                recover_constness = Const::Yes(self.token.span);
+                                Some(WrongKw::Misplaced(async_start_sp))
+                            }
                         }
                     } else if self.check_keyword(kw::Async) {
                         match asyncness {
                             Async::Yes { span, .. } => Some(WrongKw::Duplicated(span)),
-                            Async::No => Some(WrongKw::Misplaced(unsafe_start_sp)),
+                            Async::No => {
+                                recover_asyncness = Async::Yes {
+                                    span: self.token.span,
+                                    closure_id: DUMMY_NODE_ID,
+                                    return_impl_trait_id: DUMMY_NODE_ID,
+                                };
+                                Some(WrongKw::Misplaced(unsafe_start_sp))
+                            }
                         }
                     } else if self.check_keyword(kw::Unsafe) {
                         match unsafety {
                             Unsafe::Yes(sp) => Some(WrongKw::Duplicated(sp)),
-                            Unsafe::No => Some(WrongKw::Misplaced(ext_start_sp)),
+                            Unsafe::No => {
+                                recover_unsafety = Unsafe::Yes(self.token.span);
+                                Some(WrongKw::Misplaced(ext_start_sp))
+                            }
                         }
                     } else {
                         None
@@ -2486,6 +2503,23 @@ impl<'a> Parser<'a> {
                             }
                         }
                     }
+
+                    if wrong_kw.is_some()
+                        && self.may_recover()
+                        && self.look_ahead(1, |tok| tok.is_keyword_case(kw::Fn, case))
+                    {
+                        // Advance past the misplaced keyword and `fn`
+                        self.bump();
+                        self.bump();
+                        err.emit();
+                        return Ok(FnHeader {
+                            constness: recover_constness,
+                            unsafety: recover_unsafety,
+                            asyncness: recover_asyncness,
+                            ext,
+                        });
+                    }
+
                     return Err(err);
                 }
             }

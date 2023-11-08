@@ -13,5 +13,14 @@ note: `const` first seen here
 LL | const async const fn test() {}
    | ^^^^^
 
-error: aborting due to previous error
+error: functions cannot be both `const` and `async`
+  --> $DIR/const-async-const.rs:5:1
+   |
+LL | const async const fn test() {}
+   | ^^^^^-^^^^^-------------------
+   | |     |
+   | |     `async` because of this
+   | `const` because of this
+
+error: aborting due to 2 previous errors
 
