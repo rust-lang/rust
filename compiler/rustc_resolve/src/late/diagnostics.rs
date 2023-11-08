@@ -1639,9 +1639,10 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                                         } else {
                                             3
                                         };
-                                        return Some((order, item.name));
+                                        Some((order, item.name))
+                                    } else {
+                                        None
                                     }
-                                    None
                                 })
                                 .collect::<Vec<_>>();
                             items.sort_by_key(|(order, _)| *order);
@@ -2147,11 +2148,12 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         if suggest_only_tuple_variants {
             // Suggest only tuple variants regardless of whether they have fields and do not
             // suggest path with added parentheses.
-            let suggestable_variants = variants
+            let mut suggestable_variants = variants
                 .iter()
                 .filter(|(.., kind)| *kind == CtorKind::Fn)
                 .map(|(variant, ..)| path_names_to_string(variant))
                 .collect::<Vec<_>>();
+            suggestable_variants.sort();
 
             let non_suggestable_variant_count = variants.len() - suggestable_variants.len();
 
@@ -2202,7 +2204,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 }
             };
 
-            let suggestable_variants = variants
+            let mut suggestable_variants = variants
                 .iter()
                 .filter(|(_, def_id, kind)| !needs_placeholder(*def_id, *kind))
                 .map(|(variant, _, kind)| (path_names_to_string(variant), kind))
@@ -2211,6 +2213,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                     CtorKind::Fn => format!("({variant}())"),
                 })
                 .collect::<Vec<_>>();
+            suggestable_variants.sort();
             let no_suggestable_variant = suggestable_variants.is_empty();
 
             if !no_suggestable_variant {
@@ -2228,7 +2231,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 );
             }
 
-            let suggestable_variants_with_placeholders = variants
+            let mut suggestable_variants_with_placeholders = variants
                 .iter()
                 .filter(|(_, def_id, kind)| needs_placeholder(*def_id, *kind))
                 .map(|(variant, _, kind)| (path_names_to_string(variant), kind))
@@ -2237,6 +2240,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                     _ => None,
                 })
                 .collect::<Vec<_>>();
+            suggestable_variants_with_placeholders.sort();
 
             if !suggestable_variants_with_placeholders.is_empty() {
                 let msg =

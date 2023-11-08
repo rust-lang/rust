@@ -6,10 +6,10 @@ LL | fn foo(_: *()) {
    |
 help: add `mut` or `const` here
    |
-LL | fn foo(_: *const ()) {
-   |            +++++
 LL | fn foo(_: *mut ()) {
    |            +++
+LL | fn foo(_: *const ()) {
+   |            +++++
 
 error: aborting due to previous error
 

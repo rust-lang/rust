@@ -442,12 +442,10 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
 
                 self.formatting_init.extend(code_init);
                 Ok(quote! {
-                    let mut code: Vec<_> = #code_field.into_iter().collect();
-                    code.sort();
                     #diag.span_suggestions_with_style(
                         #span_field,
                         crate::fluent_generated::#slug,
-                        code,
+                        #code_field,
                         #applicability,
                         #style
                     );

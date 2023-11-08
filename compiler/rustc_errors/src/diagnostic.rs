@@ -759,9 +759,6 @@ impl Diagnostic {
         suggestions: impl IntoIterator<Item = String>,
         applicability: Applicability,
     ) -> &mut Self {
-        let mut suggestions: Vec<_> = suggestions.into_iter().collect();
-        suggestions.sort();
-
         self.span_suggestions_with_style(
             sp,
             msg,
@@ -771,9 +768,7 @@ impl Diagnostic {
         )
     }
 
-    /// [`Diagnostic::span_suggestions()`] but you can set the [`SuggestionStyle`]. This version
-    /// *doesn't* sort the suggestions, so the caller has control of the order in which they are
-    /// presented.
+    /// [`Diagnostic::span_suggestions()`] but you can set the [`SuggestionStyle`].
     pub fn span_suggestions_with_style(
         &mut self,
         sp: Span,

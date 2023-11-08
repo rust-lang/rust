@@ -2703,7 +2703,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.get_field_candidates_considering_privacy(span, ty, mod_id, id)
         {
             let field_names = found_fields.iter().map(|field| field.name).collect::<Vec<_>>();
-            let candidate_fields: Vec<_> = found_fields
+            let mut candidate_fields: Vec<_> = found_fields
                 .into_iter()
                 .filter_map(|candidate_field| {
                     self.check_for_nested_field_satisfying(
@@ -2724,6 +2724,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .collect::<String>()
                 })
                 .collect::<Vec<_>>();
+            candidate_fields.sort();
 
             let len = candidate_fields.len();
             if len > 0 {

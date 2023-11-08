@@ -186,6 +186,7 @@ fn emit_malformed_attribute(
         msg.push_str(&format!("`{code}`"));
         suggestions.push(code);
     }
+    suggestions.sort();
     if should_warn(name) {
         sess.buffer_lint(&ILL_FORMED_ATTRIBUTE_INPUT, span, ast::CRATE_NODE_ID, msg);
     } else {
