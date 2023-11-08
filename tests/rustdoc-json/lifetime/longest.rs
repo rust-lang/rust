@@ -1,8 +1,5 @@
 // ignore-tidy-linelength
 
-#![feature(no_core)]
-#![no_core]
-
 // @is "$.index[*][?(@.name=='longest')].inner.function.generics.params[0].name"  \"\'a\"
 // @is "$.index[*][?(@.name=='longest')].inner.function.generics.params[0].kind"  '{"lifetime": {"outlives": []}}'
 // @is "$.index[*][?(@.name=='longest')].inner.function.generics.params[0].kind"  '{"lifetime": {"outlives": []}}'
@@ -26,5 +23,9 @@
 // @is "$.index[*][?(@.name=='longest')].inner.function.decl.output.borrowed_ref.type.primitive" \"str\"
 
 pub fn longest<'a>(l: &'a str, r: &'a str) -> &'a str {
-    if l.len() > r.len() { l } else { r }
+    if l.len() > r.len() {
+        l
+    } else {
+        r
+    }
 }

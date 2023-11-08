@@ -2,9 +2,7 @@
 
 // Regression test for <https://github.com/rust-lang/rust/issues/97432>.
 
-#![feature(no_core)]
 #![no_std]
-#![no_core]
 
 mod inner {
     // @set trait_id = "$.index[*][?(@.name=='Trait')].id"
