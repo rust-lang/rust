@@ -7,7 +7,7 @@ mod dnf;
 #[cfg(test)]
 mod tests;
 
-use std::fmt;
+use std::{collections::HashSet, fmt};
 
 use rustc_hash::FxHashSet;
 use tt::SmolStr;
@@ -56,6 +56,10 @@ impl CfgOptions {
 
     pub fn insert_key_value(&mut self, key: SmolStr, value: SmolStr) {
         self.enabled.insert(CfgAtom::KeyValue { key, value });
+    }
+
+    pub fn diff<'a>(&'a self, other: &'a CfgOptions) -> HashSet<&CfgAtom> {
+        self.enabled.difference(&other.enabled).collect()
     }
 
     pub fn apply_diff(&mut self, diff: CfgDiff) {

@@ -8,7 +8,7 @@
 
 use std::{fmt, mem, ops, panic::RefUnwindSafe, str::FromStr, sync};
 
-use cfg::{CfgDiff, CfgOptions};
+use cfg::CfgOptions;
 use la_arena::{Arena, Idx};
 use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::SmolStr;
@@ -330,7 +330,7 @@ pub struct CrateData {
 
 impl CrateData {
     /// Check if [`other`] is almost equal to [`self`] ignoring `CrateOrigin` value.
-    pub fn eq_ignoring_origin(&self, other: &CrateData) -> bool {
+    pub fn eq_ignoring_origin_and_deps(&self, other: &CrateData, ignore_dev_deps: bool) -> bool {
         // This method has some obscure bits. These are mostly there to be compliant with
         // some patches. References to the patches are given.
         if self.root_file_id != other.root_file_id {
@@ -353,69 +353,36 @@ impl CrateData {
             return false;
         }
 
-        let mut opts = self.cfg_options.clone();
-        opts.apply_diff(
-            CfgDiff::new(vec![], other.cfg_options.clone().into_iter().collect())
-                .expect("CfgOptions were expected to contain no duplicates."),
-        );
-
-        let mut cfgs = opts.into_iter();
-        if let Some(cfg) = cfgs.next() {
-            // Don't care if rust_analyzer CfgAtom is the only cfg in the difference set of self's and other's cfgs.
-            // https://github.com/rust-lang/rust-analyzer/blob/0840038f02daec6ba3238f05d8caa037d28701a0/crates/project-model/src/workspace.rs#L894
-            if cfgs.next().is_some() || cfg.to_string() != "rust_analyzer" {
-                return false;
-            }
-        }
-
-        let mut itself = self.dependencies.iter();
-        let mut otself = other.dependencies.iter();
-        let (mut anx, mut bnx) = (itself.next(), otself.next());
-        loop {
-            match (anx, bnx) {
-                (None, None) => {
-                    break;
-                }
-                (None, Some(b)) => {
-                    if b.kind != DependencyKind::Normal {
-                        bnx = otself.next();
-                    } else {
-                        break;
-                    }
-                }
-                (Some(a), None) => {
-                    if a.kind != DependencyKind::Normal {
-                        anx = itself.next();
-                    } else {
-                        break;
-                    }
-                }
-                (Some(a), Some(b)) => {
-                    if a.kind != DependencyKind::Normal {
-                        anx = itself.next();
-                        continue;
-                    }
-
-                    if b.kind != DependencyKind::Normal {
-                        bnx = otself.next();
-                        continue;
-                    }
-
-                    if a != b {
+        let mut opts = self.cfg_options.diff(&other.cfg_options).into_iter();
+        match opts.len() {
+            0 => (),
+            1 => {
+                // Don't care if rust_analyzer CfgAtom is the only cfg in the difference set of self's and other's cfgs.
+                // https://github.com/rust-lang/rust-analyzer/blob/0840038f02daec6ba3238f05d8caa037d28701a0/crates/project-model/src/workspace.rs#L894
+                if let Some(cfg) = opts.next() {
+                    if cfg.to_string() != "rust_analyzer" {
                         return false;
                     }
-
-                    anx = itself.next();
-                    bnx = otself.next();
                 }
             }
-        }
+            _ => return false,
+        };
 
         if self.env != other.env {
             return false;
         }
 
-        true
+        let slf_deps = self.dependencies.iter();
+        let other_deps = other.dependencies.iter();
+
+        if ignore_dev_deps {
+            slf_deps
+                .clone()
+                .filter(|it| it.kind == DependencyKind::Normal)
+                .eq(other_deps.clone().filter(|it| it.kind == DependencyKind::Normal));
+        }
+
+        slf_deps.eq(other_deps)
     }
 }
 
@@ -446,7 +413,7 @@ impl Env {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum DependencyKind {
     Normal,
     Dev,
@@ -480,8 +447,8 @@ impl Dependency {
         self.prelude
     }
 
-    pub fn kind(&self) -> &DependencyKind {
-        &self.kind
+    pub fn kind(&self) -> DependencyKind {
+        self.kind
     }
 }
 
@@ -692,14 +659,27 @@ impl CrateGraph {
             crate_data.dependencies.iter_mut().for_each(|dep| dep.crate_id = id_map[&dep.crate_id]);
             crate_data.dependencies.sort_by_key(|dep| dep.crate_id);
             let res = self.arena.iter().find_map(|(id, data)| {
-                if data.eq_ignoring_origin(crate_data) {
-                    if data.origin.is_lib() && crate_data.origin.is_local() {
-                        // See #15656 for a relevant example.
-                        return Some((id, true));
+                match (&data.origin, &crate_data.origin) {
+                    (a, b) if a == b => {
+                        if data.eq_ignoring_origin_and_deps(&crate_data, false) {
+                            return Some((id, false));
+                        }
                     }
-
-                    return Some((id, false));
+                    (CrateOrigin::Local { .. }, CrateOrigin::Library { .. }) => {
+                        // See #15656 for a relevant example.
+                        if data.eq_ignoring_origin_and_deps(&crate_data, true) {
+                            return Some((id, false));
+                        }
+                    }
+                    (CrateOrigin::Library { .. }, CrateOrigin::Local { .. }) => {
+                        // See #15656 for a relevant example.
+                        if data.eq_ignoring_origin_and_deps(&crate_data, true) {
+                            return Some((id, true));
+                        }
+                    }
+                    (_, _) => return None,
                 }
+
                 None
             });
 
