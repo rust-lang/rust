@@ -1222,6 +1222,66 @@ impl<T: ?Sized> NonNull<T> {
         // SAFETY: the caller must uphold the safety contract for `swap`.
         unsafe { ptr::swap(self.as_ptr(), with.as_ptr()) }
     }
+
+    /// Computes the offset that needs to be applied to the pointer in order to make it aligned to
+    /// `align`.
+    ///
+    /// If it is not possible to align the pointer, the implementation returns
+    /// `usize::MAX`. It is permissible for the implementation to *always*
+    /// return `usize::MAX`. Only your algorithm's performance can depend
+    /// on getting a usable offset here, not its correctness.
+    ///
+    /// The offset is expressed in number of `T` elements, and not bytes.
+    ///
+    /// There are no guarantees whatsoever that offsetting the pointer will not overflow or go
+    /// beyond the allocation that the pointer points into. It is up to the caller to ensure that
+    /// the returned offset is correct in all terms other than alignment.
+    ///
+    /// # Panics
+    ///
+    /// The function panics if `align` is not a power-of-two.
+    ///
+    /// # Examples
+    ///
+    /// Accessing adjacent `u8` as `u16`
+    ///
+    /// ```
+    /// #![feature(non_null_convenience)]
+    /// use std::mem::align_of;
+    /// use std::ptr::NonNull;
+    ///
+    /// # unsafe {
+    /// let x = [5_u8, 6, 7, 8, 9];
+    /// let ptr = NonNull::new(x.as_ptr() as *mut u8).unwrap();
+    /// let offset = ptr.align_offset(align_of::<u16>());
+    ///
+    /// if offset < x.len() - 1 {
+    ///     let u16_ptr = ptr.add(offset).cast::<u16>();
+    ///     assert!(u16_ptr.read() == u16::from_ne_bytes([5, 6]) || u16_ptr.read() == u16::from_ne_bytes([6, 7]));
+    /// } else {
+    ///     // while the pointer can be aligned via `offset`, it would point
+    ///     // outside the allocation
+    /// }
+    /// # }
+    /// ```
+    #[unstable(feature = "non_null_convenience", issue = "117691")]
+    #[rustc_const_unstable(feature = "non_null_convenience", issue = "117691")]
+    //#[rustc_const_unstable(feature = "const_align_offset", issue = "90962")]
+    #[must_use]
+    #[inline]
+    pub const fn align_offset(self, align: usize) -> usize
+    where
+        T: Sized,
+    {
+        if !align.is_power_of_two() {
+            panic!("align_offset: align is not a power-of-two");
+        }
+
+        {
+            // SAFETY: `align` has been checked to be a power of 2 above.
+            unsafe { ptr::align_offset(self.pointer, align) }
+        }
+    }
 }
 
 impl<T> NonNull<[T]> {
