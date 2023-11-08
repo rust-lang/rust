@@ -109,31 +109,35 @@ fn check_version(config: &Config) -> Option<String> {
     }
 
     let latest_config_id = CONFIG_CHANGE_HISTORY.last().unwrap();
-    let suggestion = if let Some(id) = config.change_id {
-        if &id != latest_config_id {
-            msg.push_str("WARNING: there have been changes to x.py since you last updated.\n");
-            let change_links: Vec<String> = find_recent_config_change_ids(id)
-                .iter()
-                .map(|id| format!("https://github.com/rust-lang/rust/pull/{id}"))
-                .collect();
-            if !change_links.is_empty() {
-                msg.push_str("To see more detail about these changes, visit the following PRs:\n");
-                for link in change_links {
-                    msg.push_str(&format!("  - {link}\n"));
-                }
-            }
-            msg.push_str("WARNING: there have been changes to x.py since you last updated.\n");
-            format!("update `config.toml` to use `change-id = {latest_config_id}` instead")
-        } else {
+    if let Some(id) = config.change_id {
+        if &id == latest_config_id {
             return None;
+        }
+
+        let change_links: Vec<String> = find_recent_config_change_ids(id)
+            .iter()
+            .map(|id| format!("https://github.com/rust-lang/rust/pull/{id}"))
+            .collect();
+        if !change_links.is_empty() {
+            msg.push_str("WARNING: there have been changes to x.py since you last updated.\n");
+            msg.push_str("To see more detail about these changes, visit the following PRs:\n");
+
+            for link in change_links {
+                msg.push_str(&format!("  - {link}\n"));
+            }
+
+            msg.push_str("WARNING: there have been changes to x.py since you last updated.\n");
+
+            msg.push_str("note: to silence this warning, ");
+            msg.push_str(&format!(
+                "update `config.toml` to use `change-id = {latest_config_id}` instead"
+            ));
         }
     } else {
         msg.push_str("WARNING: The `change-id` is missing in the `config.toml`. This means that you will not be able to track the major changes made to the bootstrap configurations.\n");
-        format!("add `change-id = {latest_config_id}` at the top of `config.toml`")
+        msg.push_str("note: to silence this warning, ");
+        msg.push_str(&format!("add `change-id = {latest_config_id}` at the top of `config.toml`"));
     };
-
-    msg.push_str("note: to silence this warning, ");
-    msg.push_str(&suggestion);
 
     Some(msg)
 }
