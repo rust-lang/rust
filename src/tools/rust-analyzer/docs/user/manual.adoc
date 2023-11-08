@@ -237,13 +237,22 @@ To use `rust-analyzer`, you need to install and enable one of the two popular LS
 
 ==== Eglot
 
-Eglot is the more minimalistic and lightweight LSP client for Emacs, integrates well with existing Emacs functionality and will be built into Emacs starting from release 29.
+Eglot is the more minimalistic and lightweight LSP client for Emacs, integrates well with existing Emacs functionality and is built into Emacs starting from release 29.
 
 After installing Eglot, e.g. via `M-x package-install` (not needed from Emacs 29), you can enable it via the `M-x eglot` command or load it automatically in `rust-mode` via
 
 [source,emacs-lisp]
 ----
 (add-hook 'rust-mode-hook 'eglot-ensure)
+----
+
+To enable clippy, you will need to configure the initialization options to pass the `check.command` setting.
+
+[source,emacs-lisp]
+----
+(add-to-list 'eglot-server-programs
+             '((rust-ts-mode rust-mode) .
+               ("rust-analyzer" :initializationOptions (:check (:command "clippy")))))
 ----
 
 For more detailed instructions and options see the https://joaotavora.github.io/eglot[Eglot manual] (also available from Emacs via `M-x info`) and the
@@ -554,6 +563,11 @@ Unfortunately, it downloads an old version of `rust-analyzer`, but you can set t
 There is a package named `ra_ap_rust_analyzer` available on https://crates.io/crates/ra_ap_rust-analyzer[crates.io], for someone who wants to use it programmatically.
 
 For more details, see https://github.com/rust-lang/rust-analyzer/blob/master/.github/workflows/publish.yml[the publish workflow].
+
+=== Zed
+
+https://zed.dev[Zed] has native `rust-analyzer` support.
+If the LSP binary is not available, Zed can install it when opening a Rust file.
 
 == Troubleshooting
 

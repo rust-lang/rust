@@ -23,12 +23,7 @@ pub(crate) fn mismatched_tuple_struct_pat_arg_count(
     Diagnostic::new(
         DiagnosticCode::RustcHardError("E0023"),
         message,
-        invalid_args_range(
-            ctx,
-            d.expr_or_pat.clone().map(|it| it.either(Into::into, Into::into)),
-            d.expected,
-            d.found,
-        ),
+        invalid_args_range(ctx, d.expr_or_pat.clone().map(Into::into), d.expected, d.found),
     )
 }
 
@@ -131,7 +126,7 @@ fn f() { zero(); }
     fn simple_free_fn_one() {
         check_diagnostics(
             r#"
-fn one(arg: u8) {}
+fn one(_arg: u8) {}
 fn f() { one(); }
           //^^ error: expected 1 argument, found 0
 "#,
@@ -139,7 +134,7 @@ fn f() { one(); }
 
         check_diagnostics(
             r#"
-fn one(arg: u8) {}
+fn one(_arg: u8) {}
 fn f() { one(1); }
 "#,
         );
@@ -176,7 +171,7 @@ fn f() {
         check_diagnostics(
             r#"
 struct S;
-impl S { fn method(&self, arg: u8) {} }
+impl S { fn method(&self, _arg: u8) {} }
 
             fn f() {
                 S.method();
@@ -187,7 +182,7 @@ impl S { fn method(&self, arg: u8) {} }
         check_diagnostics(
             r#"
 struct S;
-impl S { fn method(&self, arg: u8) {} }
+impl S { fn method(&self, _arg: u8) {} }
 
 fn f() {
     S::method(&S, 0);
@@ -335,8 +330,8 @@ struct S;
 
 impl S {
     fn method(#[cfg(NEVER)] self) {}
-    fn method2(#[cfg(NEVER)] self, arg: u8) {}
-    fn method3(self, #[cfg(NEVER)] arg: u8) {}
+    fn method2(#[cfg(NEVER)] self, _arg: u8) {}
+    fn method3(self, #[cfg(NEVER)] _arg: u8) {}
 }
 
 extern "C" {
@@ -365,8 +360,8 @@ fn main() {
             r#"
 #[rustc_legacy_const_generics(1, 3)]
 fn mixed<const N1: &'static str, const N2: bool>(
-    a: u8,
-    b: i8,
+    _a: u8,
+    _b: i8,
 ) {}
 
 fn f() {
@@ -376,8 +371,8 @@ fn f() {
 
 #[rustc_legacy_const_generics(1, 3)]
 fn b<const N1: u8, const N2: u8>(
-    a: u8,
-    b: u8,
+    _a: u8,
+    _b: u8,
 ) {}
 
 fn g() {
@@ -403,7 +398,7 @@ fn f(
   // ^^ error: this pattern has 0 fields, but the corresponding tuple struct has 2 fields
     S(e, f, .., g, d): S
   //        ^^^^^^^^^ error: this pattern has 4 fields, but the corresponding tuple struct has 2 fields
-) {}
+) { _ = (a, b, c, d, e, f, g); }
 "#,
         )
     }

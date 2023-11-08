@@ -36,29 +36,25 @@ pub(crate) fn unmerge_use(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
     let old_parent_range = use_.syntax().parent()?.text_range();
     let new_parent = use_.syntax().parent()?;
 
+    // If possible, explain what is going to be done.
+    let label = match tree.path().and_then(|path| path.first_segment()) {
+        Some(name) => format!("Unmerge use of `{name}`"),
+        None => "Unmerge use".into(),
+    };
+
     let target = tree.syntax().text_range();
-    acc.add(
-        AssistId("unmerge_use", AssistKind::RefactorRewrite),
-        "Unmerge use",
-        target,
-        |builder| {
-            let new_use = make::use_(
-                use_.visibility(),
-                make::use_tree(
-                    path,
-                    tree.use_tree_list(),
-                    tree.rename(),
-                    tree.star_token().is_some(),
-                ),
-            )
-            .clone_for_update();
+    acc.add(AssistId("unmerge_use", AssistKind::RefactorRewrite), label, target, |builder| {
+        let new_use = make::use_(
+            use_.visibility(),
+            make::use_tree(path, tree.use_tree_list(), tree.rename(), tree.star_token().is_some()),
+        )
+        .clone_for_update();
 
-            tree.remove();
-            ted::insert(Position::after(use_.syntax()), new_use.syntax());
+        tree.remove();
+        ted::insert(Position::after(use_.syntax()), new_use.syntax());
 
-            builder.replace(old_parent_range, new_parent.to_string());
-        },
-    )
+        builder.replace(old_parent_range, new_parent.to_string());
+    })
 }
 
 fn resolve_full_path(tree: &ast::UseTree) -> Option<ast::Path> {

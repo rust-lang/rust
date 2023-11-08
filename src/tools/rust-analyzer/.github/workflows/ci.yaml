@@ -8,6 +8,7 @@ on:
     branches:
       - auto
       - try
+      - automation/bors/try
 
 env:
   CARGO_INCREMENTAL: 0
@@ -84,6 +85,7 @@ jobs:
         run: cargo build --quiet ${{ env.USE_SYSROOT_ABI }}
 
       - name: Test
+        if: matrix.os == 'ubuntu-latest' || github.event_name == 'push'
         run: cargo test ${{ env.USE_SYSROOT_ABI }} -- --nocapture --quiet
 
       - name: Switch to stable toolchain

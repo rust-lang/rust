@@ -9,6 +9,7 @@
 //! - constants (e.g. `const FOO: u8 = 10;`)
 //! - static items (e.g. `static FOO: u8 = 10;`)
 //! - match arm bindings (e.g. `foo @ Some(_)`)
+//! - modules (e.g. `mod foo { ... }` or `mod foo;`)
 
 mod case_conv;
 
@@ -19,7 +20,7 @@ use hir_def::{
     hir::{Pat, PatId},
     src::HasSource,
     AdtId, AttrDefId, ConstId, DefWithBodyId, EnumId, EnumVariantId, FunctionId, ItemContainerId,
-    Lookup, ModuleDefId, StaticId, StructId,
+    Lookup, ModuleDefId, ModuleId, StaticId, StructId,
 };
 use hir_expand::{
     name::{AsName, Name},
@@ -83,6 +84,7 @@ pub enum IdentType {
     Structure,
     Variable,
     Variant,
+    Module,
 }
 
 impl fmt::Display for IdentType {
@@ -97,6 +99,7 @@ impl fmt::Display for IdentType {
             IdentType::Structure => "Structure",
             IdentType::Variable => "Variable",
             IdentType::Variant => "Variant",
+            IdentType::Module => "Module",
         };
 
         repr.fmt(f)
@@ -132,6 +135,7 @@ impl<'a> DeclValidator<'a> {
 
     pub(super) fn validate_item(&mut self, item: ModuleDefId) {
         match item {
+            ModuleDefId::ModuleId(module_id) => self.validate_module(module_id),
             ModuleDefId::FunctionId(func) => self.validate_func(func),
             ModuleDefId::AdtId(adt) => self.validate_adt(adt),
             ModuleDefId::ConstId(const_id) => self.validate_const(const_id),
@@ -228,6 +232,55 @@ impl<'a> DeclValidator<'a> {
             || file_id_is_derive()
             // go upwards one step or give up
             || parent()
+    }
+
+    fn validate_module(&mut self, module_id: ModuleId) {
+        // Check whether non-snake case identifiers are allowed for this module.
+        if self.allowed(module_id.into(), allow::NON_SNAKE_CASE, false) {
+            return;
+        }
+
+        // Check the module name.
+        let Some(module_name) = module_id.name(self.db.upcast()) else { return };
+        let module_name_replacement =
+            module_name.as_str().and_then(to_lower_snake_case).map(|new_name| Replacement {
+                current_name: module_name,
+                suggested_text: new_name,
+                expected_case: CaseType::LowerSnakeCase,
+            });
+
+        if let Some(module_name_replacement) = module_name_replacement {
+            let module_data = &module_id.def_map(self.db.upcast())[module_id.local_id];
+            let module_src = module_data.declaration_source(self.db.upcast());
+
+            if let Some(module_src) = module_src {
+                let ast_ptr = match module_src.value.name() {
+                    Some(name) => name,
+                    None => {
+                        never!(
+                            "Replacement ({:?}) was generated for a module without a name: {:?}",
+                            module_name_replacement,
+                            module_src
+                        );
+                        return;
+                    }
+                };
+
+                let diagnostic = IncorrectCase {
+                    file: module_src.file_id,
+                    ident_type: IdentType::Module,
+                    ident: AstPtr::new(&ast_ptr),
+                    expected_case: module_name_replacement.expected_case,
+                    ident_text: module_name_replacement
+                        .current_name
+                        .display(self.db.upcast())
+                        .to_string(),
+                    suggested_text: module_name_replacement.suggested_text,
+                };
+
+                self.sink.push(diagnostic);
+            }
+        }
     }
 
     fn validate_func(&mut self, func: FunctionId) {
@@ -336,48 +389,44 @@ impl<'a> DeclValidator<'a> {
 
         for (id, replacement) in pats_replacements {
             if let Ok(source_ptr) = source_map.pat_syntax(id) {
-                if let Some(expr) = source_ptr.value.as_ref().left() {
+                if let Some(ptr) = source_ptr.value.clone().cast::<ast::IdentPat>() {
                     let root = source_ptr.file_syntax(self.db.upcast());
-                    if let ast::Pat::IdentPat(ident_pat) = expr.to_node(&root) {
-                        let parent = match ident_pat.syntax().parent() {
-                            Some(parent) => parent,
-                            None => continue,
-                        };
-                        let name_ast = match ident_pat.name() {
-                            Some(name_ast) => name_ast,
-                            None => continue,
-                        };
+                    let ident_pat = ptr.to_node(&root);
+                    let parent = match ident_pat.syntax().parent() {
+                        Some(parent) => parent,
+                        None => continue,
+                    };
+                    let name_ast = match ident_pat.name() {
+                        Some(name_ast) => name_ast,
+                        None => continue,
+                    };
 
-                        let is_param = ast::Param::can_cast(parent.kind());
+                    let is_param = ast::Param::can_cast(parent.kind());
 
-                        // We have to check that it's either `let var = ...` or `var @ Variant(_)` statement,
-                        // because e.g. match arms are patterns as well.
-                        // In other words, we check that it's a named variable binding.
-                        let is_binding = ast::LetStmt::can_cast(parent.kind())
-                            || (ast::MatchArm::can_cast(parent.kind())
-                                && ident_pat.at_token().is_some());
-                        if !(is_param || is_binding) {
-                            // This pattern is not an actual variable declaration, e.g. `Some(val) => {..}` match arm.
-                            continue;
-                        }
-
-                        let ident_type =
-                            if is_param { IdentType::Parameter } else { IdentType::Variable };
-
-                        let diagnostic = IncorrectCase {
-                            file: source_ptr.file_id,
-                            ident_type,
-                            ident: AstPtr::new(&name_ast),
-                            expected_case: replacement.expected_case,
-                            ident_text: replacement
-                                .current_name
-                                .display(self.db.upcast())
-                                .to_string(),
-                            suggested_text: replacement.suggested_text,
-                        };
-
-                        self.sink.push(diagnostic);
+                    // We have to check that it's either `let var = ...` or `var @ Variant(_)` statement,
+                    // because e.g. match arms are patterns as well.
+                    // In other words, we check that it's a named variable binding.
+                    let is_binding = ast::LetStmt::can_cast(parent.kind())
+                        || (ast::MatchArm::can_cast(parent.kind())
+                            && ident_pat.at_token().is_some());
+                    if !(is_param || is_binding) {
+                        // This pattern is not an actual variable declaration, e.g. `Some(val) => {..}` match arm.
+                        continue;
                     }
+
+                    let ident_type =
+                        if is_param { IdentType::Parameter } else { IdentType::Variable };
+
+                    let diagnostic = IncorrectCase {
+                        file: source_ptr.file_id,
+                        ident_type,
+                        ident: AstPtr::new(&name_ast),
+                        expected_case: replacement.expected_case,
+                        ident_text: replacement.current_name.display(self.db.upcast()).to_string(),
+                        suggested_text: replacement.suggested_text,
+                    };
+
+                    self.sink.push(diagnostic);
                 }
             }
         }

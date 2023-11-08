@@ -89,7 +89,7 @@ impl fmt::Debug for CompletionItem {
         let mut s = f.debug_struct("CompletionItem");
         s.field("label", &self.label).field("source_range", &self.source_range);
         if self.text_edit.len() == 1 {
-            let atom = &self.text_edit.iter().next().unwrap();
+            let atom = self.text_edit.iter().next().unwrap();
             s.field("delete", &atom.delete);
             s.field("insert", &atom.insert);
         } else {

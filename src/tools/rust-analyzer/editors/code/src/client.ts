@@ -389,6 +389,7 @@ class ExperimentalFeatures implements lc.StaticFeature {
             serverStatusNotification: true,
             colorDiagnosticOutput: true,
             openServerLogs: true,
+            localDocs: true,
             commands: {
                 commands: [
                     "rust-analyzer.runSingle",

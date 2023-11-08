@@ -161,8 +161,8 @@ impl IdentClass {
                 ast::AwaitExpr(await_expr) => OperatorClass::classify_await(sema, &await_expr).map(IdentClass::Operator),
                 ast::BinExpr(bin_expr) => OperatorClass::classify_bin(sema, &bin_expr).map(IdentClass::Operator),
                 ast::IndexExpr(index_expr) => OperatorClass::classify_index(sema, &index_expr).map(IdentClass::Operator),
-                ast::PrefixExpr(prefix_expr) => OperatorClass::classify_prefix(sema,&prefix_expr).map(IdentClass::Operator),
-                ast::TryExpr(try_expr) => OperatorClass::classify_try(sema,&try_expr).map(IdentClass::Operator),
+                ast::PrefixExpr(prefix_expr) => OperatorClass::classify_prefix(sema, &prefix_expr).map(IdentClass::Operator),
+                ast::TryExpr(try_expr) => OperatorClass::classify_try(sema, &try_expr).map(IdentClass::Operator),
                 _ => None,
             }
         }
