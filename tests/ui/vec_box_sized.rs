@@ -3,7 +3,7 @@
 #![allow(dead_code)]
 #![feature(allocator_api)]
 
-use std::alloc::{Layout, AllocError, Allocator};
+use std::alloc::{AllocError, Allocator, Layout};
 use std::ptr::NonNull;
 
 struct SizedStruct(i32);
@@ -22,7 +22,7 @@ unsafe impl Allocator for DummyAllocator {
 
 /// The following should trigger the lint
 mod should_trigger {
-    use super::{SizedStruct, DummyAllocator};
+    use super::{DummyAllocator, SizedStruct};
     const C: Vec<Box<i32>> = Vec::new();
     static S: Vec<Box<i32>> = Vec::new();
 
@@ -46,7 +46,7 @@ mod should_trigger {
 
 /// The following should not trigger the lint
 mod should_not_trigger {
-    use super::{BigStruct, UnsizedStruct, DummyAllocator};
+    use super::{BigStruct, DummyAllocator, UnsizedStruct};
 
     struct C(Vec<Box<UnsizedStruct>>);
     struct D(Vec<Box<BigStruct>>);
