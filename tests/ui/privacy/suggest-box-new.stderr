@@ -21,6 +21,10 @@ LL |         wtf: Some(Box::new_zeroed_in(U {
 LL |         wtf: Some(Box::new_uninit_slice(U {
    |                      ++++++++++++++++++
      and 10 other candidates
+help: consider using the `Default` trait
+   |
+LL |         wtf: Some(<Box as std::default::Default>::default()),
+   |                   +    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to previous error
 

@@ -1,6 +1,7 @@
 use crate::diagnostics::{ImportSuggestion, LabelSuggestion, TypoSuggestion};
 use crate::late::{AliasPossibility, LateResolutionVisitor, RibKind};
 use crate::late::{LifetimeBinderKind, LifetimeRes, LifetimeRibKind, LifetimeUseSet};
+use crate::ty::fast_reject::SimplifiedType;
 use crate::{errors, path_names_to_string};
 use crate::{Module, ModuleKind, ModuleOrUniformRoot};
 use crate::{PathResult, PathSource, Segment};
@@ -1595,7 +1596,11 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                         Some(Vec::from(pattern_spans))
                     }
                     // e.g. `let _ = Enum::TupleVariant(field1, field2);`
-                    PathSource::Expr(Some(Expr { kind: ExprKind::Call(_, ref args), .. })) => {
+                    PathSource::Expr(Some(Expr {
+                        kind: ExprKind::Call(path, ref args),
+                        span: call_span,
+                        ..
+                    })) => {
                         err.set_primary_message(
                             "cannot initialize a tuple struct which contains private fields",
                         );
@@ -1674,6 +1679,56 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                                         SuggestionStyle::ShowAlways,
                                     );
                                 }
+                            }
+                            // We'd ideally use `type_implements_trait` but don't have access to
+                            // the trait solver here.  We can't use `get_diagnostic_item` or
+                            // `all_traits` in resolve either. So instead we abuse the import
+                            // suggestion machinery to get `std::default::Default` and perform some
+                            // checks to confirm that we got *only* that trait. We then see if the
+                            // Adt we have has a direct implementation of `Default`. If so, we
+                            // provide a structured suggestion.
+                            let default_trait = self
+                                .r
+                                .lookup_import_candidates(
+                                    Ident::with_dummy_span(sym::Default),
+                                    Namespace::TypeNS,
+                                    &self.parent_scope,
+                                    &|res: Res| matches!(res, Res::Def(DefKind::Trait, _)),
+                                )
+                                .iter()
+                                .filter_map(|candidate| candidate.did)
+                                .filter(|did| {
+                                    self.r
+                                        .tcx
+                                        .get_attrs(*did, sym::rustc_diagnostic_item)
+                                        .any(|attr| attr.value_str() == Some(sym::Default))
+                                })
+                                .next();
+                            if let Some(default_trait) = default_trait
+                                && self.r.extern_crate_map.iter().flat_map(|(_, crate_)| {
+                                    self
+                                        .r
+                                        .tcx
+                                        .implementations_of_trait((*crate_, default_trait))
+                                })
+                                .filter_map(|(_, simplified_self_ty)| *simplified_self_ty)
+                                .filter_map(|simplified_self_ty| match simplified_self_ty {
+                                    SimplifiedType::Adt(did) => Some(did),
+                                    _ => None
+                                })
+                                .any(|did| did == def_id)
+                            {
+                                err.multipart_suggestion(
+                                    "consider using the `Default` trait",
+                                    vec![
+                                        (path.span.shrink_to_lo(), "<".to_string()),
+                                        (
+                                            path.span.shrink_to_hi().with_hi(call_span.hi()),
+                                            " as std::default::Default>::default()".to_string(),
+                                        ),
+                                    ],
+                                    Applicability::MaybeIncorrect,
+                                );
                             }
                         }
                         // Use spans of the tuple struct definition.
