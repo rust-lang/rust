@@ -3,6 +3,7 @@ use crate::spec::{Cc, FramePointer, LinkerFlavor, Lld, Target};
 pub fn target() -> Target {
     let mut base = super::windows_gnullvm_base::opts();
     base.cpu = "pentium4".into();
+    base.features = "+x87,+sse,+sse2".into();
     base.max_atomic_width = Some(64);
     base.frame_pointer = FramePointer::Always; // Required for backtraces
     base.linker = Some("i686-w64-mingw32-clang".into());

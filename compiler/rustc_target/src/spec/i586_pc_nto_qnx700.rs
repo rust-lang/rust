@@ -11,6 +11,7 @@ pub fn target() -> Target {
         arch: "x86".into(),
         options: TargetOptions {
             cpu: "pentium4".into(),
+            features: "+x87".into(),
             max_atomic_width: Some(64),
             pre_link_args: TargetOptions::link_args(
                 LinkerFlavor::Gnu(Cc::Yes, Lld::No),
