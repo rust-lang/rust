@@ -201,6 +201,7 @@
 //!         and before the digits. When used together with the `#` flag, a similar
 //!         rule applies: padding zeros are inserted after the prefix but before
 //!         the digits. The prefix is included in the total width.
+//!         This flag overrides the [fill character and alignment flag](#fillalignment).
 //!
 //! ## Precision
 //!
