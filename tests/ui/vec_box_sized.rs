@@ -1,4 +1,5 @@
 #![allow(dead_code)]
+#![feature(allocator_api)]
 
 struct SizedStruct(i32);
 struct UnsizedStruct([i32]);
@@ -21,6 +22,8 @@ mod should_trigger {
 /// The following should not trigger the lint
 mod should_not_trigger {
     use super::{BigStruct, UnsizedStruct};
+    use std::alloc::{Layout, AllocError, Allocator};
+    use std::ptr::NonNull;
 
     struct C(Vec<Box<UnsizedStruct>>);
     struct D(Vec<Box<BigStruct>>);
@@ -32,6 +35,20 @@ mod should_not_trigger {
     struct TraitVec<T: ?Sized> {
         // Regression test for #3720. This was causing an ICE.
         inner: Vec<Box<T>>,
+    }
+
+    struct DummyAllocator;
+    unsafe impl Allocator for DummyAllocator {
+        fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+            todo!()
+        }
+        unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
+            todo!()
+        }
+    }
+
+    fn allocator_mismatch() -> Vec<Box<i32, DummyAllocator>> {
+        vec![]
     }
 }
 

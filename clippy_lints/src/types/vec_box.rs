@@ -32,8 +32,8 @@ pub(super) fn check(
             && Some(def_id) == cx.tcx.lang_items().owned_box()
             // At this point, we know ty is Box<T>, now get T
             && let Some(last) = last_path_segment(ty_qpath).args
-            // extract allocator from thr Box for later
             && let Some(GenericArg::Type(boxed_ty)) = last.args.first()
+            // extract allocator from the Box for later
             && let boxed_alloc_ty = last.args.get(1)
             && let ty_ty = hir_ty_to_ty(cx.tcx, boxed_ty)
             && !ty_ty.has_escaping_bound_vars()
