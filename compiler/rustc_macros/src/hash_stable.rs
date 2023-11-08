@@ -38,7 +38,9 @@ fn parse_attributes(field: &syn::Field) -> Attributes {
     attrs
 }
 
-pub fn hash_stable_generic_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStream {
+pub(crate) fn hash_stable_generic_derive(
+    mut s: synstructure::Structure<'_>,
+) -> proc_macro2::TokenStream {
     let generic: syn::GenericParam = parse_quote!(__CTX);
     s.add_bounds(synstructure::AddBounds::Generics);
     s.add_impl_generic(generic);
@@ -81,7 +83,7 @@ pub fn hash_stable_generic_derive(mut s: synstructure::Structure<'_>) -> proc_ma
     )
 }
 
-pub fn hash_stable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStream {
+pub(crate) fn hash_stable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStream {
     let generic: syn::GenericParam = parse_quote!('__ctx);
     s.add_bounds(synstructure::AddBounds::Generics);
     s.add_impl_generic(generic);
