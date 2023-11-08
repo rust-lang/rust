@@ -1,8 +1,5 @@
 // Regression test for <https://github.com/rust-lang/rust/issues/106379>
 
-#![feature(no_core)]
-#![no_core]
-
 mod repeat_n {
     #[doc(hidden)]
     pub struct RepeatN {}

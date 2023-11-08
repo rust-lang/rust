@@ -1,6 +1,3 @@
-#![feature(no_core)]
-#![no_core]
-
 // @set AlwaysNone = "$.index[*][?(@.name == 'AlwaysNone')].id"
 pub enum AlwaysNone {
     // @set None = "$.index[*][?(@.name == 'None')].id"

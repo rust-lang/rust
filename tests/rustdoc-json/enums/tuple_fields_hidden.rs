@@ -1,9 +1,3 @@
-#![feature(no_core, lang_items)]
-#![no_core]
-
-#[lang = "sized"]
-trait Sized {}
-
 // @set 1.1.0 = "$.index[*][?(@.docs=='1.1.0')].id"
 // @set 2.1.0 = "$.index[*][?(@.docs=='2.1.0')].id"
 // @set 2.1.1 = "$.index[*][?(@.docs=='2.1.1')].id"

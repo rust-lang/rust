@@ -1,8 +1,5 @@
 // ignore-tidy-linelength
 
-#![feature(no_core)]
-#![no_core]
-
 // @set foo = "$.index[*][?(@.name=='Foo')].id"
 pub trait Foo {}
 
