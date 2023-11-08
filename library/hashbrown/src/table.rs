@@ -1862,8 +1862,10 @@ impl<'a, T> Iterator for Iter<'a, T> {
 
     fn next(&mut self) -> Option<Self::Item> {
         // Avoid `Option::map` because it bloats LLVM IR.
-        let bucket = self.inner.next()?;
-        Some(unsafe { bucket.as_ref() })
+        match self.inner.next() {
+            Some(bucket) => Some(unsafe { bucket.as_ref() }),
+            None => None,
+        }
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -1906,8 +1908,10 @@ impl<'a, T> Iterator for IterMut<'a, T> {
 
     fn next(&mut self) -> Option<Self::Item> {
         // Avoid `Option::map` because it bloats LLVM IR.
-        let bucket = self.inner.next()?;
-        Some(unsafe { bucket.as_mut() })
+        match self.inner.next() {
+            Some(bucket) => Some(unsafe { bucket.as_mut() }),
+            None => None,
+        }
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
