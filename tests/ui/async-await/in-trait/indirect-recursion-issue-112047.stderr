@@ -2,9 +2,9 @@ error[E0733]: recursion in an `async fn` requires boxing
   --> $DIR/indirect-recursion-issue-112047.rs:32:5
    |
 LL |     async fn second(self) {
-   |     ^^^^^^^^^^^^^^^^^^^^^ recursive `async fn`
+   |     ^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: a recursive `async fn` must be rewritten to return a boxed `dyn Future`
+   = note: a recursive `async fn` call must introduce indirection such as `Box::pin` to avoid an infinitely sized future
    = note: consider using the `async_recursion` crate: https://crates.io/crates/async_recursion
 
 error: aborting due to previous error

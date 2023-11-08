@@ -136,9 +136,9 @@ impl<'tcx, T> Value<TyCtxt<'tcx>> for Result<T, &'_ ty::layout::LayoutError<'_>>
         _guar: ErrorGuaranteed,
     ) -> Self {
         let guar = if cycle_error.cycle[0].query.dep_kind == dep_kinds::layout_of
-            && let Some(def_id) = cycle_error.cycle[0].query.ty_def_id
-            && let Some(def_id) = def_id.as_local()
-            && matches!(tcx.def_kind(def_id), DefKind::Coroutine)
+              && let Some(def_id) = cycle_error.cycle[0].query.ty_def_id
+              && let Some(def_id) = def_id.as_local()
+              && matches!(tcx.def_kind(def_id), DefKind::Coroutine)
         {
             let hir = tcx.hir();
             let coroutine_kind = hir
@@ -154,13 +154,37 @@ impl<'tcx, T> Value<TyCtxt<'tcx>> for Result<T, &'_ ty::layout::LayoutError<'_>>
             } else {
                 tcx.def_span(def_id)
             };
-            struct_span_err!(tcx.sess, span, E0733, "recursion in an `async fn` requires boxing")
-                .span_label(span, "recursive `async fn`")
-                .note("a recursive `async fn` must be rewritten to return a boxed `dyn Future`")
-                .note(
-                    "consider using the `async_recursion` crate: https://crates.io/crates/async_recursion",
-                )
-                .emit()
+            let mut diag = struct_span_err!(
+                tcx.sess,
+                span,
+                E0733,
+                "recursion in an `async fn` requires boxing"
+            );
+            diag.note("a recursive `async fn` call must introduce indirection such as `Box::pin` to avoid an infinitely sized future");
+            diag.note(
+                "consider using the `async_recursion` crate: https://crates.io/crates/async_recursion",
+            );
+            let mut called = false;
+            for (i, frame) in cycle_error.cycle.iter().enumerate() {
+                if frame.query.dep_kind != dep_kinds::layout_of {
+                    continue;
+                }
+                let Some(frame_def_id) = frame.query.ty_def_id else {
+                    continue;
+                };
+                if !matches!(tcx.def_kind(frame_def_id), DefKind::Coroutine) {
+                    continue;
+                }
+                let frame_span = frame
+                    .query
+                    .default_span(cycle_error.cycle[(i + 1) % cycle_error.cycle.len()].span);
+                if frame_span.is_dummy() {
+                    continue;
+                }
+                diag.span_label(frame_span, if called { "...which calls this" } else { "recursive call here" });
+                called = true;
+            }
+            diag.emit()
         } else {
             report_cycle(tcx.sess, cycle_error).emit()
         };

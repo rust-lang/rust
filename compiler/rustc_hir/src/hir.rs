@@ -1496,7 +1496,10 @@ pub enum CoroutineKind {
 
 impl CoroutineKind {
     pub fn is_fn_like(self) -> bool {
-        matches!(self, CoroutineKind::Async(CoroutineSource::Fn) | CoroutineKind::Gen(CoroutineSource::Fn))
+        matches!(
+            self,
+            CoroutineKind::Async(CoroutineSource::Fn) | CoroutineKind::Gen(CoroutineSource::Fn)
+        )
     }
 }
 
