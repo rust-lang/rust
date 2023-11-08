@@ -247,7 +247,7 @@ mir_build_overlapping_range_endpoints = multiple patterns overlap on their endpo
 mir_build_pattern_not_covered = refutable pattern in {$origin}
     .pattern_ty = the matched value is of type `{$pattern_ty}`
 
-mir_build_pointer_pattern = function pointers and unsized pointers in patterns behave unpredictably and should not be relied upon. See https://github.com/rust-lang/rust/issues/70861 for details.
+mir_build_pointer_pattern = function pointers and raw pointers not derived from integers in patterns behave unpredictably and should not be relied upon. See https://github.com/rust-lang/rust/issues/70861 for details.
 
 mir_build_privately_uninhabited = pattern `{$witness_1}` is currently uninhabited, but this variant contains private fields which may become inhabited in the future
 

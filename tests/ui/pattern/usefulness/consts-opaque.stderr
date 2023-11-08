@@ -91,24 +91,96 @@ LL |         BAZ => {}
    = note: the traits must be derived, manual `impl`s are not sufficient
    = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralEq.html for details
 
+warning: function pointers and raw pointers not derived from integers in patterns behave unpredictably and should not be relied upon. See https://github.com/rust-lang/rust/issues/70861 for details.
+  --> $DIR/consts-opaque.rs:98:9
+   |
+LL |         QUUX => {}
+   |         ^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #62411 <https://github.com/rust-lang/rust/issues/70861>
+   = note: `#[warn(pointer_structural_match)]` on by default
+
+warning: function pointers and raw pointers not derived from integers in patterns behave unpredictably and should not be relied upon. See https://github.com/rust-lang/rust/issues/70861 for details.
+  --> $DIR/consts-opaque.rs:100:9
+   |
+LL |         QUUX => {}
+   |         ^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #62411 <https://github.com/rust-lang/rust/issues/70861>
+
+warning: function pointers and raw pointers not derived from integers in patterns behave unpredictably and should not be relied upon. See https://github.com/rust-lang/rust/issues/70861 for details.
+  --> $DIR/consts-opaque.rs:110:9
+   |
+LL |         WRAPQUUX => {}
+   |         ^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #62411 <https://github.com/rust-lang/rust/issues/70861>
+
+warning: function pointers and raw pointers not derived from integers in patterns behave unpredictably and should not be relied upon. See https://github.com/rust-lang/rust/issues/70861 for details.
+  --> $DIR/consts-opaque.rs:112:9
+   |
+LL |         WRAPQUUX => {}
+   |         ^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #62411 <https://github.com/rust-lang/rust/issues/70861>
+
+warning: function pointers and raw pointers not derived from integers in patterns behave unpredictably and should not be relied upon. See https://github.com/rust-lang/rust/issues/70861 for details.
+  --> $DIR/consts-opaque.rs:119:9
+   |
+LL |         WRAPQUUX => {}
+   |         ^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #62411 <https://github.com/rust-lang/rust/issues/70861>
+
+warning: function pointers and raw pointers not derived from integers in patterns behave unpredictably and should not be relied upon. See https://github.com/rust-lang/rust/issues/70861 for details.
+  --> $DIR/consts-opaque.rs:129:9
+   |
+LL |         WRAPQUUX => {}
+   |         ^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #62411 <https://github.com/rust-lang/rust/issues/70861>
+
+warning: function pointers and raw pointers not derived from integers in patterns behave unpredictably and should not be relied upon. See https://github.com/rust-lang/rust/issues/70861 for details.
+  --> $DIR/consts-opaque.rs:141:9
+   |
+LL |         WHOKNOWSQUUX => {}
+   |         ^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #62411 <https://github.com/rust-lang/rust/issues/70861>
+
+warning: function pointers and raw pointers not derived from integers in patterns behave unpredictably and should not be relied upon. See https://github.com/rust-lang/rust/issues/70861 for details.
+  --> $DIR/consts-opaque.rs:144:9
+   |
+LL |         WHOKNOWSQUUX => {}
+   |         ^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #62411 <https://github.com/rust-lang/rust/issues/70861>
+
 error[E0004]: non-exhaustive patterns: `Wrap(_)` not covered
-  --> $DIR/consts-opaque.rs:122:11
+  --> $DIR/consts-opaque.rs:127:11
    |
 LL |     match WRAPQUUX {
    |           ^^^^^^^^ pattern `Wrap(_)` not covered
    |
 note: `Wrap<fn(usize, usize) -> usize>` defined here
-  --> $DIR/consts-opaque.rs:104:12
+  --> $DIR/consts-opaque.rs:106:12
    |
 LL |     struct Wrap<T>(T);
    |            ^^^^
    = note: the matched value is of type `Wrap<fn(usize, usize) -> usize>`
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
-LL ~         WRAPQUUX => {},
-LL +         Wrap(_) => todo!()
-   |
+LL |         WRAPQUUX => {}, Wrap(_) => todo!()
+   |                       ++++++++++++++++++++
 
-error: aborting due to 10 previous errors; 1 warning emitted
+error: aborting due to 10 previous errors; 9 warnings emitted
 
 For more information about this error, try `rustc --explain E0004`.
