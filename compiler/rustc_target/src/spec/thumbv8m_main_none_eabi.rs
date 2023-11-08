@@ -1,7 +1,7 @@
 // Targets the Cortex-M33 processor (Armv8-M Mainline architecture profile),
 // without the Floating Point extension.
 
-use crate::spec::{Target, TargetOptions};
+use crate::spec::{base, Target, TargetOptions};
 
 pub fn target() -> Target {
     Target {
@@ -13,7 +13,7 @@ pub fn target() -> Target {
         options: TargetOptions {
             abi: "eabi".into(),
             max_atomic_width: Some(32),
-            ..super::thumb_base::opts()
+            ..base::thumb::opts()
         },
     }
 }

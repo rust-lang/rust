@@ -1,8 +1,8 @@
 use crate::abi::Endian;
-use crate::spec::{Target, TargetOptions};
+use crate::spec::{base, Target, TargetOptions};
 
 pub fn target() -> Target {
-    let mut base = super::linux_gnu_base::opts();
+    let mut base = base::linux_gnu::opts();
     base.cpu = "M68020".into();
     base.max_atomic_width = Some(32);
 

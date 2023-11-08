@@ -1,4 +1,4 @@
-use crate::spec::{Target, TargetOptions};
+use crate::spec::{base, Target, TargetOptions};
 
 pub fn target() -> Target {
     Target {
@@ -17,7 +17,7 @@ pub fn target() -> Target {
             max_atomic_width: Some(32),
             mcount: "\u{1}mcount".into(),
             has_thumb_interworking: true,
-            ..super::linux_musl_base::opts()
+            ..base::linux_musl::opts()
         },
     }
 }

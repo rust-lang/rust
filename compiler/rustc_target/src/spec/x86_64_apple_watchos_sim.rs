@@ -1,4 +1,4 @@
-use super::apple_base::{opts, watchos_sim_llvm_target, Arch};
+use crate::spec::base::apple::{opts, watchos_sim_llvm_target, Arch};
 use crate::spec::{StackProbeType, Target, TargetOptions};
 
 pub fn target() -> Target {

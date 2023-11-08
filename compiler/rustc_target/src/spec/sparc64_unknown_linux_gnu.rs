@@ -1,8 +1,8 @@
 use crate::abi::Endian;
-use crate::spec::Target;
+use crate::spec::{base, Target};
 
 pub fn target() -> Target {
-    let mut base = super::linux_gnu_base::opts();
+    let mut base = base::linux_gnu::opts();
     base.endian = Endian::Big;
     base.cpu = "v9".into();
     base.max_atomic_width = Some(64);

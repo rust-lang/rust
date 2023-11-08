@@ -1,4 +1,4 @@
-use super::apple_base::{ios_llvm_target, opts, Arch};
+use crate::spec::base::apple::{ios_llvm_target, opts, Arch};
 use crate::spec::{Target, TargetOptions};
 
 pub fn target() -> Target {

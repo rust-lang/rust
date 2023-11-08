@@ -1,6 +1,6 @@
 // Targets the Cortex-M3 processor (ARMv7-M)
 
-use crate::spec::{Target, TargetOptions};
+use crate::spec::{base, Target, TargetOptions};
 
 pub fn target() -> Target {
     Target {
@@ -12,7 +12,7 @@ pub fn target() -> Target {
         options: TargetOptions {
             abi: "eabi".into(),
             max_atomic_width: Some(32),
-            ..super::thumb_base::opts()
+            ..base::thumb::opts()
         },
     }
 }

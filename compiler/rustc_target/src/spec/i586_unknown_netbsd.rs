@@ -1,7 +1,7 @@
-use crate::spec::{StackProbeType, Target, TargetOptions};
+use crate::spec::{base, StackProbeType, Target, TargetOptions};
 
 pub fn target() -> Target {
-    let mut base = super::netbsd_base::opts();
+    let mut base = base::netbsd::opts();
     base.cpu = "pentium".into();
     base.max_atomic_width = Some(64);
     base.stack_probes = StackProbeType::Call;

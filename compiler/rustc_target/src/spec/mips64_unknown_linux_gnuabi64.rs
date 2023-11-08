@@ -1,5 +1,5 @@
 use crate::abi::Endian;
-use crate::spec::{Target, TargetOptions};
+use crate::spec::{base, Target, TargetOptions};
 
 pub fn target() -> Target {
     Target {
@@ -16,7 +16,7 @@ pub fn target() -> Target {
             max_atomic_width: Some(64),
             mcount: "_mcount".into(),
 
-            ..super::linux_gnu_base::opts()
+            ..base::linux_gnu::opts()
         },
     }
 }

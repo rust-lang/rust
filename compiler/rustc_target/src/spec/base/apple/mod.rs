@@ -1,10 +1,10 @@
 use std::{borrow::Cow, env};
 
+use crate::spec::{add_link_args, add_link_args_iter};
 use crate::spec::{cvs, Cc, DebuginfoKind, FramePointer, LinkArgs};
 use crate::spec::{LinkerFlavor, Lld, SplitDebuginfo, StaticCow, Target, TargetOptions};
 
 #[cfg(test)]
-#[path = "apple/tests.rs"]
 mod tests;
 
 use Arch::*;
@@ -102,13 +102,13 @@ fn pre_link_args(os: &'static str, arch: Arch, abi: &'static str) -> LinkArgs {
         LinkerFlavor::Darwin(Cc::No, Lld::No),
         &["-arch", arch, "-platform_version"],
     );
-    super::add_link_args_iter(
+    add_link_args_iter(
         &mut args,
         LinkerFlavor::Darwin(Cc::No, Lld::No),
         [platform_name, platform_version.clone(), platform_version].into_iter(),
     );
     if abi != "macabi" {
-        super::add_link_args(&mut args, LinkerFlavor::Darwin(Cc::Yes, Lld::No), &["-arch", arch]);
+        add_link_args(&mut args, LinkerFlavor::Darwin(Cc::Yes, Lld::No), &["-arch", arch]);
     }
 
     args

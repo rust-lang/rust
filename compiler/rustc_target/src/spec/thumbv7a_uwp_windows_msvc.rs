@@ -1,4 +1,4 @@
-use crate::spec::{PanicStrategy, Target, TargetOptions};
+use crate::spec::{base, PanicStrategy, Target, TargetOptions};
 
 pub fn target() -> Target {
     Target {
@@ -12,7 +12,7 @@ pub fn target() -> Target {
             // FIXME(jordanrh): use PanicStrategy::Unwind when SEH is
             // implemented for windows/arm in LLVM
             panic_strategy: PanicStrategy::Abort,
-            ..super::windows_uwp_msvc_base::opts()
+            ..base::windows_uwp_msvc::opts()
         },
     }
 }

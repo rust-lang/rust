@@ -1,4 +1,4 @@
-use super::apple_base::{ios_sim_llvm_target, opts, Arch};
+use crate::spec::base::apple::{ios_sim_llvm_target, opts, Arch};
 use crate::spec::{FramePointer, SanitizerSet, Target, TargetOptions};
 
 pub fn target() -> Target {

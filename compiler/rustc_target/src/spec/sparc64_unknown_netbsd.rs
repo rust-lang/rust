@@ -1,8 +1,8 @@
 use crate::abi::Endian;
-use crate::spec::{Cc, LinkerFlavor, Lld, Target, TargetOptions};
+use crate::spec::{base, Cc, LinkerFlavor, Lld, Target, TargetOptions};
 
 pub fn target() -> Target {
-    let mut base = super::netbsd_base::opts();
+    let mut base = base::netbsd::opts();
     base.cpu = "v9".into();
     base.add_pre_link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-m64"]);
     base.max_atomic_width = Some(64);

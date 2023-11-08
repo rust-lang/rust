@@ -72,12 +72,12 @@
 //! best we can with this target. Don't start relying on too much here unless
 //! you know what you're getting in to!
 
-use super::crt_objects;
-use super::LinkSelfContainedDefault;
-use super::{wasm_base, Cc, LinkerFlavor, Target};
+use crate::spec::crt_objects;
+use crate::spec::LinkSelfContainedDefault;
+use crate::spec::{base, Cc, LinkerFlavor, Target};
 
 pub fn target() -> Target {
-    let mut options = wasm_base::options();
+    let mut options = base::wasm::options();
 
     options.os = "wasi".into();
     options.add_pre_link_args(LinkerFlavor::WasmLld(Cc::Yes), &["--target=wasm32-wasi"]);

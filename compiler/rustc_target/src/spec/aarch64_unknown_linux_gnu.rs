@@ -1,4 +1,4 @@
-use crate::spec::{SanitizerSet, Target, TargetOptions};
+use crate::spec::{base, SanitizerSet, Target, TargetOptions};
 
 pub fn target() -> Target {
     Target {
@@ -18,7 +18,7 @@ pub fn target() -> Target {
                 | SanitizerSet::THREAD
                 | SanitizerSet::HWADDRESS,
             supports_xray: true,
-            ..super::linux_gnu_base::opts()
+            ..base::linux_gnu::opts()
         },
     }
 }

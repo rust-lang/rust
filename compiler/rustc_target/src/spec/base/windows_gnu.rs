@@ -1,5 +1,5 @@
-use crate::spec::crt_objects;
 use crate::spec::LinkSelfContainedDefault;
+use crate::spec::{add_link_args, crt_objects};
 use crate::spec::{cvs, Cc, DebuginfoKind, LinkerFlavor, Lld, SplitDebuginfo, TargetOptions};
 use std::borrow::Cow;
 
@@ -13,7 +13,7 @@ pub fn opts() -> TargetOptions {
             "--disable-auto-image-base",
         ],
     );
-    super::add_link_args(
+    add_link_args(
         &mut pre_link_args,
         LinkerFlavor::Gnu(Cc::Yes, Lld::No),
         &[
@@ -45,14 +45,14 @@ pub fn opts() -> TargetOptions {
     ];
     let mut late_link_args =
         TargetOptions::link_args(LinkerFlavor::Gnu(Cc::No, Lld::No), mingw_libs);
-    super::add_link_args(&mut late_link_args, LinkerFlavor::Gnu(Cc::Yes, Lld::No), mingw_libs);
+    add_link_args(&mut late_link_args, LinkerFlavor::Gnu(Cc::Yes, Lld::No), mingw_libs);
     // If any of our crates are dynamically linked then we need to use
     // the shared libgcc_s-dw2-1.dll. This is required to support
     // unwinding across DLL boundaries.
     let dynamic_unwind_libs = &["-lgcc_s"];
     let mut late_link_args_dynamic =
         TargetOptions::link_args(LinkerFlavor::Gnu(Cc::No, Lld::No), dynamic_unwind_libs);
-    super::add_link_args(
+    add_link_args(
         &mut late_link_args_dynamic,
         LinkerFlavor::Gnu(Cc::Yes, Lld::No),
         dynamic_unwind_libs,
@@ -65,7 +65,7 @@ pub fn opts() -> TargetOptions {
     let static_unwind_libs = &["-lgcc_eh", "-l:libpthread.a"];
     let mut late_link_args_static =
         TargetOptions::link_args(LinkerFlavor::Gnu(Cc::No, Lld::No), static_unwind_libs);
-    super::add_link_args(
+    add_link_args(
         &mut late_link_args_static,
         LinkerFlavor::Gnu(Cc::Yes, Lld::No),
         static_unwind_libs,

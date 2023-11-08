@@ -1,8 +1,8 @@
 use crate::abi::Endian;
-use crate::spec::{Cc, LinkerFlavor, Lld, StackProbeType, Target, TargetOptions};
+use crate::spec::{base, Cc, LinkerFlavor, Lld, StackProbeType, Target, TargetOptions};
 
 pub fn target() -> Target {
-    let mut base = super::freebsd_base::opts();
+    let mut base = base::freebsd::opts();
     // Extra hint to linker that we are generating secure-PLT code.
     base.add_pre_link_args(
         LinkerFlavor::Gnu(Cc::Yes, Lld::No),

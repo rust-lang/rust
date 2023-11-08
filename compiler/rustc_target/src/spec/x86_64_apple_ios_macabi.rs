@@ -1,4 +1,4 @@
-use super::apple_base::{opts, Arch};
+use crate::spec::base::apple::{opts, Arch};
 use crate::spec::{Cc, LinkerFlavor, Lld, SanitizerSet, StackProbeType, Target, TargetOptions};
 
 pub fn target() -> Target {

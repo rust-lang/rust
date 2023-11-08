@@ -1,4 +1,4 @@
-use super::apple_base::{macos_llvm_target, opts, Arch};
+use crate::spec::base::apple::{macos_llvm_target, opts, Arch};
 use crate::spec::{Cc, FramePointer, LinkerFlavor, Lld, StackProbeType, Target, TargetOptions};
 
 pub fn target() -> Target {

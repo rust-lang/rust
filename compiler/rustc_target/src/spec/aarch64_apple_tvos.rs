@@ -1,4 +1,4 @@
-use super::apple_base::{opts, tvos_llvm_target, Arch};
+use crate::spec::base::apple::{opts, tvos_llvm_target, Arch};
 use crate::spec::{FramePointer, Target, TargetOptions};
 
 pub fn target() -> Target {
