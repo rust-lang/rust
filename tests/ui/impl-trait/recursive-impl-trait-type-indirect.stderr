@@ -109,7 +109,7 @@ LL |
 LL |     (substs_change::<&T>(),)
    |     ------------------------ returning here with type `(impl Sized,)`
 
-error[E0733]: recursion in an `async fn` requires boxing
+error[E0733]: recursion in a coroutine requires boxing
   --> $DIR/recursive-impl-trait-type-indirect.rs:73:5
    |
 LL |     move || {
@@ -117,9 +117,6 @@ LL |     move || {
 LL |
 LL |         let x = coroutine_hold();
    |             - recursive call here
-   |
-   = note: a recursive `async fn` call must introduce indirection such as `Box::pin` to avoid an infinitely sized future
-   = note: consider using the `async_recursion` crate: https://crates.io/crates/async_recursion
 
 error[E0720]: cannot resolve opaque type
   --> $DIR/recursive-impl-trait-type-indirect.rs:86:26

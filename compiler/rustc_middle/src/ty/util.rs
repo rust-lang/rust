@@ -749,9 +749,13 @@ impl<'tcx> TyCtxt<'tcx> {
         match def_kind {
             DefKind::AssocFn if self.associated_item(def_id).fn_has_self_parameter => "method",
             DefKind::Coroutine => match self.coroutine_kind(def_id).unwrap() {
-                rustc_hir::CoroutineKind::Async(..) => "async closure",
-                rustc_hir::CoroutineKind::Coroutine => "coroutine",
-                rustc_hir::CoroutineKind::Gen(..) => "gen closure",
+                hir::CoroutineKind::Async(hir::CoroutineSource::Fn) => "async fn",
+                hir::CoroutineKind::Async(hir::CoroutineSource::Block) => "async block",
+                hir::CoroutineKind::Async(hir::CoroutineSource::Closure) => "async closure",
+                hir::CoroutineKind::Gen(hir::CoroutineSource::Fn) => "gen fn",
+                hir::CoroutineKind::Gen(hir::CoroutineSource::Block) => "gen block",
+                hir::CoroutineKind::Gen(hir::CoroutineSource::Closure) => "gen closure",
+                hir::CoroutineKind::Coroutine => "coroutine",
             },
             _ => def_kind.descr(def_id),
         }
@@ -767,9 +771,9 @@ impl<'tcx> TyCtxt<'tcx> {
         match def_kind {
             DefKind::AssocFn if self.associated_item(def_id).fn_has_self_parameter => "a",
             DefKind::Coroutine => match self.coroutine_kind(def_id).unwrap() {
-                rustc_hir::CoroutineKind::Async(..) => "an",
-                rustc_hir::CoroutineKind::Coroutine => "a",
-                rustc_hir::CoroutineKind::Gen(..) => "a",
+                hir::CoroutineKind::Async(..) => "an",
+                hir::CoroutineKind::Coroutine => "a",
+                hir::CoroutineKind::Gen(..) => "a",
             },
             _ => def_kind.article(),
         }

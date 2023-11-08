@@ -1,4 +1,4 @@
-error[E0733]: recursion in an `async fn` requires boxing
+error[E0733]: recursion in an async fn requires boxing
   --> $DIR/mutually-recursive-async-impl-trait-type.rs:5:1
    |
 LL | async fn rec_1() {

@@ -30,7 +30,7 @@ where
     C: First,
 {
     async fn second(self) {
-        //~^ ERROR recursion in an `async fn` requires boxing
+        //~^ ERROR recursion in an async fn requires boxing
         self.first().await.second().await;
     }
 }

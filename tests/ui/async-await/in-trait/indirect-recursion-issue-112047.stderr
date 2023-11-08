@@ -1,4 +1,4 @@
-error[E0733]: recursion in an `async fn` requires boxing
+error[E0733]: recursion in an async fn requires boxing
   --> $DIR/indirect-recursion-issue-112047.rs:32:5
    |
 LL |     async fn second(self) {

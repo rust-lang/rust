@@ -138,12 +138,11 @@ impl<'tcx, T> Value<TyCtxt<'tcx>> for Result<T, &'_ ty::layout::LayoutError<'_>>
         let guar = if cycle_error.cycle[0].query.dep_kind == dep_kinds::layout_of
               && let Some(def_id) = cycle_error.cycle[0].query.ty_def_id
               && let Some(def_id) = def_id.as_local()
-              && matches!(tcx.def_kind(def_id), DefKind::Coroutine)
+              && let def_kind = tcx.def_kind(def_id)
+              && matches!(def_kind, DefKind::Coroutine)
         {
-            let hir = tcx.hir();
-            let coroutine_kind = hir
-                .body(hir.body_owned_by(def_id))
-                .coroutine_kind
+            let coroutine_kind = tcx
+                .coroutine_kind(def_id)
                 .expect("expected coroutine to have a coroutine_kind");
             // FIXME: `def_span` for an fn-like coroutine will point to the fn's body
             // due to interactions between the desugaring into a closure expr and the
@@ -158,12 +157,16 @@ impl<'tcx, T> Value<TyCtxt<'tcx>> for Result<T, &'_ ty::layout::LayoutError<'_>>
                 tcx.sess,
                 span,
                 E0733,
-                "recursion in an `async fn` requires boxing"
+                "recursion in {} {} requires boxing",
+                tcx.def_kind_descr_article(def_kind, def_id.to_def_id()),
+                tcx.def_kind_descr(def_kind, def_id.to_def_id()),
             );
-            diag.note("a recursive `async fn` call must introduce indirection such as `Box::pin` to avoid an infinitely sized future");
-            diag.note(
-                "consider using the `async_recursion` crate: https://crates.io/crates/async_recursion",
-            );
+            if matches!(coroutine_kind, hir::CoroutineKind::Async(_)) {
+                diag.note("a recursive `async fn` call must introduce indirection such as `Box::pin` to avoid an infinitely sized future");
+                diag.note(
+                    "consider using the `async_recursion` crate: https://crates.io/crates/async_recursion",
+                );
+            }
             let mut called = false;
             for (i, frame) in cycle_error.cycle.iter().enumerate() {
                 if frame.query.dep_kind != dep_kinds::layout_of {
