@@ -1,8 +1,5 @@
 // check that associated consts can assume the impl header is well-formed.
 
-// FIXME(aliemjay): we should check the impl header is WF at the use site
-// but we currently don't in some cases. This is *unsound*.
-
 trait Foo<'a, 'b, T>: Sized {
     const EVIL: fn(u: &'b u32) -> &'a u32;
 }
@@ -27,11 +24,13 @@ impl<'a, 'b> Evil<'a, 'b> {
 // *check* that it holds at the use site.
 
 fn evil<'a, 'b>(b: &'b u32) -> &'a u32 {
-    <()>::EVIL(b) // FIXME: should be an error
+    <()>::EVIL(b)
+    //~^ ERROR lifetime may not live long enough
 }
 
 fn indirect_evil<'a, 'b>(b: &'b u32) -> &'a u32 {
-    <IndirectEvil>::EVIL(b) // FIXME: should be an error
+    <IndirectEvil>::EVIL(b)
+    //~^ ERROR lifetime may not live long enough
 }
 
 fn inherent_evil<'a, 'b>(b: &'b u32) -> &'a u32 {
