@@ -50,35 +50,12 @@ use self::imp::Group;
 
 // Branch prediction hint. This is currently only available on nightly but it
 // consistently improves performance by 10-15%.
-// #[cfg(not(feature = "nightly"))]
-// use core::convert::identity as likely;
-// #[cfg(not(feature = "nightly"))]
-// use core::convert::identity as unlikely;
+#[cfg(not(feature = "nightly"))]
+use core::convert::identity as likely;
+#[cfg(not(feature = "nightly"))]
+use core::convert::identity as unlikely;
 #[cfg(feature = "nightly")]
 use core::intrinsics::{likely, unlikely};
-
-#[cfg(not(feature = "nightly"))]
-#[inline]
-#[cold]
-fn cold() {}
-
-#[cfg(not(feature = "nightly"))]
-#[inline]
-fn likely(b: bool) -> bool {
-    if !b {
-        cold()
-    }
-    b
-}
-#[cfg(not(feature = "nightly"))]
-#[cold]
-#[inline]
-fn unlikely(b: bool) -> bool {
-    if b {
-        cold()
-    }
-    b
-}
 
 // Use strict provenance functions if available.
 #[cfg(feature = "nightly")]
