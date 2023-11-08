@@ -19,7 +19,7 @@ impl Recur for () {
 
     fn recur(self) -> Self::Recur {
         async move { recur(self).await; }
-        //~^ ERROR recursion in an `async fn` requires boxing
+        //~^ ERROR recursion in an async block requires boxing
     }
 }
 
