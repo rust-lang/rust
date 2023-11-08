@@ -1,8 +1,5 @@
 // Regression test for https://github.com/rust-lang/rust/issues/100973
 
-#![feature(no_core)]
-#![no_core]
-
 // @set m1 = "$.index[*][?(@.name == 'm1' && @.inner.module)].id"
 // @is "$.index[*][?(@.name == 'm1')].inner.module.items" []
 // @is "$.index[*][?(@.name == 'm1')].inner.module.is_stripped" true

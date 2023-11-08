@@ -1,8 +1,6 @@
 // ignore-tidy-linelength
 
 #![feature(abi_vectorcall)]
-#![feature(no_core)]
-#![no_core]
 
 // @has "$.index[*][?(@.name=='Foo')]"
 pub struct Foo;

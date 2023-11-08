@@ -9,5 +9,14 @@ LL | async unsafe const fn test() {}
    |
    = note: keyword order for functions declaration is `pub`, `default`, `const`, `async`, `unsafe`, `extern`
 
-error: aborting due to previous error
+error: functions cannot be both `const` and `async`
+  --> $DIR/several-kw-jump.rs:9:1
+   |
+LL | async unsafe const fn test() {}
+   | ^^^^^--------^^^^^-------------
+   | |            |
+   | |            `const` because of this
+   | `async` because of this
+
+error: aborting due to 2 previous errors
 

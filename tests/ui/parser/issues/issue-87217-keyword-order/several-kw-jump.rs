@@ -12,3 +12,8 @@ async unsafe const fn test() {}
 //~| HELP `const` must come before `async unsafe`
 //~| SUGGESTION const async unsafe
 //~| NOTE keyword order for functions declaration is `pub`, `default`, `const`, `async`, `unsafe`, `extern`
+//~| ERROR functions cannot be both `const` and `async`
+//~| NOTE `const` because of this
+//~| NOTE `async` because of this
+
+fn main() {}

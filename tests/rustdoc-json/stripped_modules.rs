@@ -1,6 +1,3 @@
-#![no_core]
-#![feature(no_core)]
-
 // @!has "$.index[*][?(@.name=='no_pub_inner')]"
 mod no_pub_inner {
     fn priv_inner() {}

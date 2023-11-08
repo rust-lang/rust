@@ -1,14 +1,12 @@
 // https://github.com/rust-lang/rust/issues/100252
 
-#![feature(no_core)]
-#![no_core]
-
 mod bar {
-    // @set baz = "$.index[*][?(@.inner.struct)].id"
+    // @set baz = "$.index[*][?(@.name == 'Baz')].id"
     pub struct Baz;
-    // @set impl = "$.index[*][?(@.inner.impl)].id"
+    // @set impl = "$.index[*][?(@.docs == 'impl')].id"
+    /// impl
     impl Baz {
-        // @set doit = "$.index[*][?(@.inner.function)].id"
+        // @set doit = "$.index[*][?(@.name == 'doit')].id"
         pub fn doit() {}
     }
 }
@@ -18,5 +16,5 @@ pub use bar::Baz;
 
 // @is "$.index[*].inner.module.items[*]" $import
 // @is "$.index[*].inner.import.id" $baz
-// @is "$.index[*].inner.struct.impls[*]" $impl
-// @is "$.index[*].inner.impl.items[*]" $doit
+// @has "$.index[*][?(@.name == 'Baz')].inner.struct.impls[*]" $impl
+// @is "$.index[*][?(@.docs=='impl')].inner.impl.items[*]" $doit

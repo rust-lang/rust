@@ -1,7 +1,5 @@
-#![feature(no_core)]
-#![no_core]
-
-// @count "$.index[*][?(@.inner.impl)]" 1
+// @has "$.index[*][?(@.docs=='Here')]"
+// @!has "$.index[*][?(@.docs=='Not Here')]"
 // @!has "$.index[*][?(@.name == 'HiddenPubStruct')]"
 // @has "$.index[*][?(@.name == 'NotHiddenPubStruct')]"
 // @has "$.index[*][?(@.name=='PubTrait')]"
@@ -11,5 +9,7 @@ pub trait PubTrait {}
 pub struct HiddenPubStruct;
 pub struct NotHiddenPubStruct;
 
+/// Not Here
 impl PubTrait for HiddenPubStruct {}
+/// Here
 impl PubTrait for NotHiddenPubStruct {}
