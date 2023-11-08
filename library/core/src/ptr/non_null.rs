@@ -1187,6 +1187,41 @@ impl<T: ?Sized> NonNull<T> {
         // SAFETY: the caller must uphold the safety contract for `write_unaligned`.
         unsafe { ptr::write_unaligned(self.as_ptr(), val) }
     }
+
+    /// Replaces the value at `self` with `src`, returning the old
+    /// value, without dropping either.
+    ///
+    /// See [`ptr::replace`] for safety concerns and examples.
+    ///
+    /// [`ptr::replace`]: crate::ptr::replace()
+    #[unstable(feature = "non_null_convenience", issue = "117691")]
+    #[inline(always)]
+    pub unsafe fn replace(self, src: T) -> T
+    where
+        T: Sized,
+    {
+        // SAFETY: the caller must uphold the safety contract for `replace`.
+        unsafe { ptr::replace(self.as_ptr(), src) }
+    }
+
+    /// Swaps the values at two mutable locations of the same type, without
+    /// deinitializing either. They may overlap, unlike `mem::swap` which is
+    /// otherwise equivalent.
+    ///
+    /// See [`ptr::swap`] for safety concerns and examples.
+    ///
+    /// [`ptr::swap`]: crate::ptr::swap()
+    #[unstable(feature = "non_null_convenience", issue = "117691")]
+    #[rustc_const_unstable(feature = "non_null_convenience", issue = "117691")]
+    //#[rustc_const_unstable(feature = "const_swap", issue = "83163")]
+    #[inline(always)]
+    pub const unsafe fn swap(self, with: NonNull<T>)
+    where
+        T: Sized,
+    {
+        // SAFETY: the caller must uphold the safety contract for `swap`.
+        unsafe { ptr::swap(self.as_ptr(), with.as_ptr()) }
+    }
 }
 
 impl<T> NonNull<[T]> {
