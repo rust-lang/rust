@@ -4,7 +4,7 @@
 //!
 //!   - [`AscribeUserType`]
 //!   - [`FakeRead`]
-//!   - [`Assign`] statements with a [`Shallow`] borrow
+//!   - [`Assign`] statements with a [`Fake`] borrow
 //!
 //! [`AscribeUserType`]: rustc_middle::mir::StatementKind::AscribeUserType
 //! [`Assign`]: rustc_middle::mir::StatementKind::Assign
