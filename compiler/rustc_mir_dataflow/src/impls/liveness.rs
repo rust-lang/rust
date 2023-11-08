@@ -201,7 +201,7 @@ impl DefUse {
                 | NonMutatingUseContext::Inspect
                 | NonMutatingUseContext::Move
                 | NonMutatingUseContext::PlaceMention
-                | NonMutatingUseContext::ShallowBorrow
+                | NonMutatingUseContext::FakeBorrow
                 | NonMutatingUseContext::SharedBorrow,
             ) => Some(DefUse::Use),
 
