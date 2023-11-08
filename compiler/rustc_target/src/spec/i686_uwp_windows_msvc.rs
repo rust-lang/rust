@@ -4,6 +4,7 @@ pub fn target() -> Target {
     let mut base = super::windows_uwp_msvc_base::opts();
     base.cpu = "pentium4".into();
     base.max_atomic_width = Some(64);
+    base.x86_use_xmm0 = true;
 
     Target {
         llvm_target: "i686-pc-windows-msvc".into(),
