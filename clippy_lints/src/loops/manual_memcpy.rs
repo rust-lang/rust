@@ -178,7 +178,9 @@ fn build_manual_memcpy_suggestion<'tcx>(
     let dst_base_str = snippet(cx, dst.base.span, "???");
     let src_base_str = snippet(cx, src.base.span, "???");
 
-    let dst = if dst_offset == sugg::EMPTY && dst_limit == sugg::EMPTY {
+    let dst = if (dst_offset == sugg::EMPTY && dst_limit == sugg::EMPTY)
+        || is_array_length_equal_to_range(cx, start, end, dst.base)
+    {
         dst_base_str
     } else {
         format!("{dst_base_str}[{}..{}]", dst_offset.maybe_par(), dst_limit.maybe_par()).into()
@@ -190,11 +192,13 @@ fn build_manual_memcpy_suggestion<'tcx>(
         "clone_from_slice"
     };
 
-    format!(
-        "{dst}.{method_str}(&{src_base_str}[{}..{}]);",
-        src_offset.maybe_par(),
-        src_limit.maybe_par()
-    )
+    let src = if is_array_length_equal_to_range(cx, start, end, src.base) {
+        src_base_str
+    } else {
+        format!("{src_base_str}[{}..{}]", src_offset.maybe_par(), src_limit.maybe_par()).into()
+    };
+
+    format!("{dst}.{method_str}(&{src});")
 }
 
 /// a wrapper of `Sugg`. Besides what `Sugg` do, this removes unnecessary `0`;
@@ -451,4 +455,35 @@ fn get_loop_counters<'a, 'tcx>(
             })
             .into()
     })
+}
+
+fn is_array_length_equal_to_range(cx: &LateContext<'_>, start: &Expr<'_>, end: &Expr<'_>, arr: &Expr<'_>) -> bool {
+    fn extract_lit_value(expr: &Expr<'_>) -> Option<u128> {
+        if let ExprKind::Lit(lit) = expr.kind
+            && let ast::LitKind::Int(value, _) = lit.node
+        {
+            Some(value)
+        } else {
+            None
+        }
+    }
+
+    let arr_ty = cx.typeck_results().expr_ty(arr).peel_refs();
+
+    if let ty::Array(_, s) = arr_ty.kind() {
+        let size: u128 = if let Some(size) = s.try_eval_target_usize(cx.tcx, cx.param_env) {
+            size.into()
+        } else {
+            return false;
+        };
+
+        let range = match (extract_lit_value(start), extract_lit_value(end)) {
+            (Some(start_value), Some(end_value)) => end_value - start_value,
+            _ => return false,
+        };
+
+        size == range
+    } else {
+        false
+    }
 }
