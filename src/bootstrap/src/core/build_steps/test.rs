@@ -1434,7 +1434,7 @@ impl Step for Coverage {
 
     fn run(self, builder: &Builder<'_>) {
         self.run_unified_suite(builder, CoverageMap::MODE);
-        self.run_unified_suite(builder, RunCoverage::MODE);
+        self.run_unified_suite(builder, CoverageRun::MODE);
     }
 }
 
@@ -1444,16 +1444,16 @@ coverage_test_alias!(CoverageMap {
     default: true,
     only_hosts: false,
 });
-coverage_test_alias!(RunCoverage {
-    alias_and_mode: "run-coverage",
+coverage_test_alias!(CoverageRun {
+    alias_and_mode: "coverage-run",
     default: true,
     only_hosts: true,
 });
 
-host_test!(RunCoverageRustdoc {
-    path: "tests/run-coverage-rustdoc",
-    mode: "run-coverage",
-    suite: "run-coverage-rustdoc"
+host_test!(CoverageRunRustdoc {
+    path: "tests/coverage-run-rustdoc",
+    mode: "coverage-run",
+    suite: "coverage-run-rustdoc"
 });
 
 // For the mir-opt suite we do not use macros, as we need custom behavior when blessing.
@@ -1640,7 +1640,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
             || (mode == "ui" && is_rustdoc)
             || mode == "js-doc-test"
             || mode == "rustdoc-json"
-            || suite == "run-coverage-rustdoc"
+            || suite == "coverage-run-rustdoc"
         {
             cmd.arg("--rustdoc-path").arg(builder.rustdoc(compiler));
         }
@@ -1662,7 +1662,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
             cmd.arg("--coverage-dump-path").arg(coverage_dump);
         }
 
-        if mode == "run-coverage" {
+        if mode == "coverage-run" {
             // The demangler doesn't need the current compiler, so we can avoid
             // unnecessary rebuilds by using the bootstrap compiler instead.
             let rust_demangler = builder
@@ -1854,11 +1854,11 @@ note: if you're sure you want to do this, please open an issue as to why. In the
             }
 
             if !builder.config.dry_run()
-                && (matches!(suite, "run-make" | "run-make-fulldeps") || mode == "run-coverage")
+                && (matches!(suite, "run-make" | "run-make-fulldeps") || mode == "coverage-run")
             {
                 // The llvm/bin directory contains many useful cross-platform
                 // tools. Pass the path to run-make tests so they can use them.
-                // (The run-coverage tests also need these tools to process
+                // (The coverage-run tests also need these tools to process
                 // coverage reports.)
                 let llvm_bin_path = llvm_config
                     .parent()

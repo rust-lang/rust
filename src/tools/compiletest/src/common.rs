@@ -67,7 +67,7 @@ string_enum! {
         MirOpt => "mir-opt",
         Assembly => "assembly",
         CoverageMap => "coverage-map",
-        RunCoverage => "run-coverage",
+        CoverageRun => "coverage-run",
     }
 }
 
@@ -91,7 +91,7 @@ impl Mode {
         // Coverage tests use the same test files for multiple test modes,
         // so each mode should have a separate output directory.
         match self {
-            CoverageMap | RunCoverage => self.to_str(),
+            CoverageMap | CoverageRun => self.to_str(),
             _ => "",
         }
     }
