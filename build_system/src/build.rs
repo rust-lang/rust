@@ -1,7 +1,5 @@
-use crate::config::{set_config, ConfigInfo};
-use crate::utils::{
-    get_gcc_path, run_command, run_command_with_output_and_env, walk_dir,
-};
+use crate::config::ConfigInfo;
+use crate::utils::{get_gcc_path, run_command, run_command_with_output_and_env, walk_dir};
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fs;
@@ -10,10 +8,9 @@ use std::path::Path;
 #[derive(Default)]
 struct BuildArg {
     codegen_release_channel: bool,
-    sysroot_release_channel: bool,
-    sysroot_panic_abort: bool,
     flags: Vec<String>,
     gcc_path: String,
+    config_info: ConfigInfo,
 }
 
 impl BuildArg {
@@ -29,13 +26,9 @@ impl BuildArg {
         while let Some(arg) = args.next() {
             match arg.as_str() {
                 "--release" => build_arg.codegen_release_channel = true,
-                "--release-sysroot" => build_arg.sysroot_release_channel = true,
                 "--no-default-features" => {
                     build_arg.flags.push("--no-default-features".to_string());
                 }
-                "--sysroot-panic-abort" => {
-                    build_arg.sysroot_panic_abort = true;
-                },
                 "--features" => {
                     if let Some(arg) = args.next() {
                         build_arg.flags.push("--features".to_string());
@@ -63,12 +56,14 @@ impl BuildArg {
                     if args.next().is_some() {
                         // Handled in config.rs.
                     } else {
-                        return Err(
-                            "Expected a value after `--target`, found nothing".to_string()
-                        );
+                        return Err("Expected a value after `--target`, found nothing".to_string());
                     }
                 }
-                arg => return Err(format!("Unknown argument `{}`", arg)),
+                arg => {
+                    if !build_arg.config_info.parse_argument(arg, &mut args)? {
+                        return Err(format!("Unknown argument `{}`", arg));
+                    }
+                }
             }
         }
         Ok(Some(build_arg))
@@ -80,28 +75,26 @@ impl BuildArg {
 `build` command help:
 
     --release              : Build codegen in release mode
-    --release-sysroot      : Build sysroot in release mode
-    --sysroot-panic-abort  : Build the sysroot without unwinding support.
     --no-default-features  : Add `--no-default-features` flag
-    --features [arg]       : Add a new feature [arg]
-    --target-triple [arg]  : Set the target triple to [arg]
-    --help                 : Show this help
-"#
-        )
+    --features [arg]       : Add a new feature [arg]"#
+        );
+        ConfigInfo::show_usage();
+        println!("    --help                 : Show this help");
     }
 }
 
-fn build_sysroot(
-    env: &mut HashMap<String, String>,
-    args: &BuildArg,
+fn build_sysroot_inner(
+    env: &HashMap<String, String>,
+    sysroot_panic_abort: bool,
+    sysroot_release_channel: bool,
     config: &ConfigInfo,
+    start_dir: Option<&Path>,
 ) -> Result<(), String> {
-    std::env::set_current_dir("build_sysroot")
-        .map_err(|error| format!("Failed to go to `build_sysroot` directory: {:?}", error))?;
+    let start_dir = start_dir.unwrap_or_else(|| Path::new("."));
     // Cleanup for previous run
     // Clean target dir except for build scripts and incremental cache
     let _ = walk_dir(
-        "target",
+        start_dir.join("target"),
         |dir: &Path| {
             for top in &["debug", "release"] {
                 let _ = fs::remove_dir_all(dir.join(top).join("build"));
@@ -138,23 +131,22 @@ fn build_sysroot(
         |_| Ok(()),
     );
 
-    let _ = fs::remove_file("Cargo.lock");
-    let _ = fs::remove_file("test_target/Cargo.lock");
-    let _ = fs::remove_dir_all("sysroot");
+    let _ = fs::remove_file(start_dir.join("Cargo.lock"));
+    let _ = fs::remove_file(start_dir.join("test_target/Cargo.lock"));
+    let _ = fs::remove_dir_all(start_dir.join("sysroot"));
 
     // Builds libs
-    let mut rustflags = env
-        .get("RUSTFLAGS")
-        .cloned()
-        .unwrap_or_default();
-    if args.sysroot_panic_abort {
+    let mut rustflags = env.get("RUSTFLAGS").cloned().unwrap_or_default();
+    if sysroot_panic_abort {
         rustflags.push_str(" -Cpanic=abort -Zpanic-abort-tests");
     }
-    env.insert(
-        "RUSTFLAGS".to_string(),
-        format!("{} -Zmir-opt-level=3", rustflags),
-    );
-    let channel = if args.sysroot_release_channel {
+    rustflags.push_str(" -Z force-unstable-if-unmarked");
+    let channel = if sysroot_release_channel {
+        let mut env = env.clone();
+        env.insert(
+            "RUSTFLAGS".to_string(),
+            format!("{} -Zmir-opt-level=3", rustflags),
+        );
         run_command_with_output_and_env(
             &[
                 &"cargo",
@@ -163,33 +155,34 @@ fn build_sysroot(
                 &config.target,
                 &"--release",
             ],
-            None,
+            Some(start_dir),
             Some(&env),
         )?;
         "release"
     } else {
         run_command_with_output_and_env(
-            &[
-                &"cargo",
-                &"build",
-                &"--target",
-                &config.target,
-            ],
-            None,
+            &[&"cargo", &"build", &"--target", &config.target],
+            Some(start_dir),
             Some(env),
         )?;
         "debug"
     };
 
     // Copy files to sysroot
-    let sysroot_path = format!("sysroot/lib/rustlib/{}/lib/", config.target_triple);
-    fs::create_dir_all(&sysroot_path)
-        .map_err(|error| format!("Failed to create directory `{}`: {:?}", sysroot_path, error))?;
+    let sysroot_path = start_dir.join(format!("sysroot/lib/rustlib/{}/lib/", config.target_triple));
+    fs::create_dir_all(&sysroot_path).map_err(|error| {
+        format!(
+            "Failed to create directory `{}`: {:?}",
+            sysroot_path.display(),
+            error
+        )
+    })?;
     let copier = |dir_to_copy: &Path| {
+        // FIXME: should not use shell command!
         run_command(&[&"cp", &"-r", &dir_to_copy, &sysroot_path], None).map(|_| ())
     };
     walk_dir(
-        &format!("target/{}/{}/deps", config.target_triple, channel),
+        start_dir.join(&format!("target/{}/{}/deps", config.target_triple, channel)),
         copier,
         copier,
     )?;
@@ -203,7 +196,22 @@ fn build_sysroot(
     Ok(())
 }
 
-fn build_codegen(args: &BuildArg) -> Result<(), String> {
+pub fn build_sysroot(
+    env: &HashMap<String, String>,
+    sysroot_panic_abort: bool,
+    sysroot_release_channel: bool,
+    config: &ConfigInfo,
+) -> Result<(), String> {
+    build_sysroot_inner(
+        env,
+        sysroot_panic_abort,
+        sysroot_release_channel,
+        config,
+        Some(Path::new("build_sysroot")),
+    )
+}
+
+fn build_codegen(args: &mut BuildArg) -> Result<(), String> {
     let mut env = HashMap::new();
 
     env.insert("LD_LIBRARY_PATH".to_string(), args.gcc_path.clone());
@@ -223,7 +231,8 @@ fn build_codegen(args: &BuildArg) -> Result<(), String> {
     }
     run_command_with_output_and_env(&command, None, Some(&env))?;
 
-    let config = set_config(&mut env, &[], Some(&args.gcc_path))?;
+    args.config_info
+        .setup(&mut env, &[], Some(&args.gcc_path))?;
 
     // We voluntarily ignore the error.
     let _ = fs::remove_dir_all("target/out");
@@ -237,18 +246,19 @@ fn build_codegen(args: &BuildArg) -> Result<(), String> {
 
     println!("[BUILD] sysroot");
     build_sysroot(
-        &mut env,
-        args,
-        &config,
+        &env,
+        args.config_info.sysroot_panic_abort,
+        args.config_info.sysroot_release_channel,
+        &args.config_info,
     )?;
     Ok(())
 }
 
 pub fn run() -> Result<(), String> {
-    let args = match BuildArg::new()? {
+    let mut args = match BuildArg::new()? {
         Some(args) => args,
         None => return Ok(()),
     };
-    build_codegen(&args)?;
+    build_codegen(&mut args)?;
     Ok(())
 }

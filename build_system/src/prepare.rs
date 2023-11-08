@@ -4,7 +4,11 @@ use crate::utils::{cargo_install, git_clone, run_command, run_command_with_outpu
 use std::fs;
 use std::path::Path;
 
-fn prepare_libcore(sysroot_path: &Path, libgccjit12_patches: bool, cross_compile: bool) -> Result<(), String> {
+fn prepare_libcore(
+    sysroot_path: &Path,
+    libgccjit12_patches: bool,
+    cross_compile: bool,
+) -> Result<(), String> {
     let rustc_path = match get_rustc_path() {
         Some(path) => path,
         None => return Err("`rustc` path not found".to_string()),
@@ -88,10 +92,14 @@ fn prepare_libcore(sysroot_path: &Path, libgccjit12_patches: bool, cross_compile
         },
     )?;
     if cross_compile {
-        walk_dir("cross_patches", |_| Ok(()), |file_path: &Path| {
-            patches.push(file_path.to_path_buf());
-            Ok(())
-        })?;
+        walk_dir(
+            "cross_patches",
+            |_| Ok(()),
+            |file_path: &Path| {
+                patches.push(file_path.to_path_buf());
+                Ok(())
+            },
+        )?;
     }
     if libgccjit12_patches {
         walk_dir(

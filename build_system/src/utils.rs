@@ -143,17 +143,56 @@ pub fn get_os_name() -> Result<String, String> {
     }
 }
 
-pub fn get_rustc_host_triple() -> Result<String, String> {
-    let output = run_command(&[&"rustc", &"-vV"], None)?;
+#[derive(Default)]
+pub struct RustcVersionInfo {
+    pub version: String,
+    pub host: Option<String>,
+    pub commit_hash: Option<String>,
+    pub commit_date: Option<String>,
+}
+
+pub fn rustc_version_info(rustc: Option<&str>) -> Result<RustcVersionInfo, String> {
+    let output = run_command(&[&rustc.unwrap_or("rustc"), &"-vV"], None)?;
     let content = std::str::from_utf8(&output.stdout).unwrap_or("");
 
+    let mut info = RustcVersionInfo::default();
+
     for line in content.split('\n').map(|line| line.trim()) {
-        if !line.starts_with("host:") {
-            continue;
+        match line.split_once(':') {
+            Some(("host", data)) => info.host = Some(data.trim().to_string()),
+            Some(("release", data)) => info.version = data.trim().to_string(),
+            Some(("commit-hash", data)) => info.commit_hash = Some(data.trim().to_string()),
+            Some(("commit-date", data)) => info.commit_date = Some(data.trim().to_string()),
+            _ => {}
         }
-        return Ok(line.split(':').nth(1).unwrap().trim().to_string());
     }
-    Err("Cannot find host triple".to_string())
+    if info.version.is_empty() {
+        Err("failed to retrieve rustc version".to_string())
+    } else {
+        Ok(info)
+    }
+}
+
+pub fn get_toolchain() -> Result<String, String> {
+    let content = match fs::read_to_string("rust-toolchain") {
+        Ok(content) => content,
+        Err(_) => return Err("No `rust-toolchain` file found".to_string()),
+    };
+    match content
+        .split('\n')
+        .map(|line| line.trim())
+        .filter(|line| !line.is_empty())
+        .filter_map(|line| {
+            if !line.starts_with("channel") {
+                return None;
+            }
+            line.split('"').skip(1).next()
+        })
+        .next()
+    {
+        Some(toolchain) => Ok(toolchain.to_string()),
+        None => Err("Couldn't find `channel` in `rust-toolchain` file".to_string()),
+    }
 }
 
 pub fn get_gcc_path() -> Result<String, String> {
@@ -237,4 +276,57 @@ where
         }
     }
     Ok(())
+}
+
+pub fn split_args(args: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut start = 0;
+    let mut iter = args.char_indices().peekable();
+
+    while iter.peek().is_some() {
+        while let Some((pos, c)) = iter.next() {
+            if c == ' ' {
+                if pos != 0 {
+                    out.push(args[start..pos].to_string());
+                }
+                let mut found_start = false;
+                while let Some((pos, c)) = iter.peek() {
+                    if *c != ' ' {
+                        start = *pos;
+                        found_start = true;
+                        break;
+                    } else {
+                        iter.next();
+                    }
+                }
+                if !found_start {
+                    return out;
+                }
+            } else if c == '"' || c == '\'' {
+                let end = c;
+                let mut found_end = false;
+                while let Some((_, c)) = iter.next() {
+                    if c == end {
+                        found_end = true;
+                        break;
+                    } else if c == '\\' {
+                        // We skip the escaped character.
+                        iter.next();
+                    }
+                }
+                if !found_end {
+                    out.push(args[start..].to_string());
+                    return out;
+                }
+            } else if c == '\\' {
+                // We skip the escaped character.
+                iter.next();
+            }
+        }
+    }
+    let s = args[start..].trim();
+    if !s.is_empty() {
+        out.push(s.to_string());
+    }
+    out
 }
