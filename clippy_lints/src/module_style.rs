@@ -153,8 +153,11 @@ fn process_paths_for_mod_files<'a>(
 }
 
 /// Checks every path for the presence of `mod.rs` files and emits the lint if found.
+/// We should not emit a lint for test modules in the presence of `mod.rs`.
+/// Using `mod.rs` in integration tests is a [common pattern](https://doc.rust-lang.org/book/ch11-03-test-organization.html#submodules-in-integration-test)
+/// for code-sharing between tests.
 fn check_self_named_mod_exists(cx: &EarlyContext<'_>, path: &Path, file: &SourceFile) {
-    if path.ends_with("mod.rs") {
+    if path.ends_with("mod.rs") && !path.starts_with("tests") {
         let mut mod_file = path.to_path_buf();
         mod_file.pop();
         mod_file.set_extension("rs");
