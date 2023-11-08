@@ -887,7 +887,7 @@ tool_doc!(
     "src/tools/rustfmt",
     crates = ["rustfmt-nightly", "rustfmt-config_proc_macro"]
 );
-tool_doc!(Clippy, "clippy", "src/tools/clippy", crates = ["clippy_utils"]);
+tool_doc!(Clippy, "clippy", "src/tools/clippy", crates = ["clippy_config", "clippy_utils"]);
 tool_doc!(Miri, "miri", "src/tools/miri", crates = ["miri"]);
 tool_doc!(
     Cargo,
