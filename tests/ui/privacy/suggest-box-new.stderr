@@ -1,3 +1,27 @@
+error[E0423]: expected function, tuple struct or tuple variant, found struct `std::collections::HashMap`
+  --> $DIR/suggest-box-new.rs:14:13
+   |
+LL |     let _ = std::collections::HashMap();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  --> $SRC_DIR/std/src/collections/hash/map.rs:LL:COL
+   |
+   = note: `std::collections::HashMap` defined here
+   |
+help: you might have meant to use an associated function to build this type
+   |
+LL |     let _ = std::collections::HashMap::new();
+   |                                      +++++
+LL |     let _ = std::collections::HashMap::with_capacity();
+   |                                      +++++++++++++++
+LL |     let _ = std::collections::HashMap::with_hasher();
+   |                                      +++++++++++++
+LL |     let _ = std::collections::HashMap::with_capacity_and_hasher();
+   |                                      ++++++++++++++++++++++++++
+help: consider using the `Default` trait
+   |
+LL |     let _ = <std::collections::HashMap as std::default::Default>::default();
+   |             +                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 error[E0423]: cannot initialize a tuple struct which contains private fields
   --> $DIR/suggest-box-new.rs:8:19
    |
@@ -14,18 +38,18 @@ help: you might have meant to use an associated function to build this type
    |
 LL |         wtf: Some(Box::new(U {
    |                      +++++
-LL |         wtf: Some(Box::new_uninit_in(U {
-   |                      +++++++++++++++
-LL |         wtf: Some(Box::new_zeroed_in(U {
-   |                      +++++++++++++++
-LL |         wtf: Some(Box::new_uninit_slice(U {
-   |                      ++++++++++++++++++
+LL |         wtf: Some(Box::new_uninit(U {
+   |                      ++++++++++++
+LL |         wtf: Some(Box::new_zeroed(U {
+   |                      ++++++++++++
+LL |         wtf: Some(Box::new_in(U {
+   |                      ++++++++
      and 10 other candidates
 help: consider using the `Default` trait
    |
 LL |         wtf: Some(<Box as std::default::Default>::default()),
    |                   +    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-error: aborting due to previous error
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0423`.

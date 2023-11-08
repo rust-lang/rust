@@ -11,4 +11,6 @@ fn main() {
         })),
         x: ()
     };
+    let _ = std::collections::HashMap();
+    //~^ ERROR expected function, tuple struct or tuple variant, found struct `std::collections::HashMap`
 }
