@@ -130,7 +130,17 @@ impl Step for Profile {
                 t!(path.canonicalize()).display()
             );
 
-            crate::exit!(1);
+            match prompt_user(
+                "Do you wish to override the existing configuration (which will allow the setup process to continue)?: [y/N]",
+            ) {
+                Ok(Some(PromptResult::Yes)) => {
+                    t!(fs::remove_file(path));
+                }
+                _ => {
+                    println!("Exiting.");
+                    crate::exit!(1);
+                }
+            }
         }
 
         // for Profile, `run.paths` will have 1 and only 1 element
