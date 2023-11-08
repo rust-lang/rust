@@ -437,9 +437,10 @@ pub enum BorrowKind {
     Shared,
 
     /// The immediately borrowed place must be immutable, but projections from
-    /// it don't need to be. For example, a shallow borrow of `a.b` doesn't
+    /// it don't need to be. This is used to prevent match guards from replacing
+    /// the scrutinee. For example, a fake borrow of `a.b` doesn't
     /// conflict with a mutable borrow of `a.b.c`.
-    Shallow,
+    Fake,
 
     /// Data is mutable and not aliasable.
     Mut {

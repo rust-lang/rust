@@ -455,7 +455,7 @@ impl<'tcx> Stable<'tcx> for mir::BorrowKind {
         use mir::BorrowKind::*;
         match *self {
             Shared => stable_mir::mir::BorrowKind::Shared,
-            Shallow => stable_mir::mir::BorrowKind::Shallow,
+            Fake => stable_mir::mir::BorrowKind::Fake,
             Mut { kind } => stable_mir::mir::BorrowKind::Mut { kind: kind.stable(tables) },
         }
     }

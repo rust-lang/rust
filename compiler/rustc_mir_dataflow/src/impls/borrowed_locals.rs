@@ -102,7 +102,7 @@ where
             }
 
             Rvalue::Cast(..)
-            | Rvalue::Ref(_, BorrowKind::Shallow, _)
+            | Rvalue::Ref(_, BorrowKind::Fake, _)
             | Rvalue::ShallowInitBox(..)
             | Rvalue::Use(..)
             | Rvalue::ThreadLocalRef(..)

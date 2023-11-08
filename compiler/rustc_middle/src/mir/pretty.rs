@@ -942,7 +942,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             Ref(region, borrow_kind, ref place) => {
                 let kind_str = match borrow_kind {
                     BorrowKind::Shared => "",
-                    BorrowKind::Shallow => "shallow ",
+                    BorrowKind::Fake => "fake ",
                     BorrowKind::Mut { .. } => "mut ",
                 };
 
