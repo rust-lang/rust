@@ -139,7 +139,6 @@ fn clean_specific_stage(build: &Build, stage: u32) {
 fn clean_default(build: &Build) {
     rm_rf(&build.out.join("tmp"));
     rm_rf(&build.out.join("dist"));
-    rm_rf(&build.out.join("bootstrap"));
     rm_rf(&build.out.join("rustfmt.stamp"));
 
     for host in &build.hosts {
