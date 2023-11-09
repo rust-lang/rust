@@ -71,6 +71,7 @@ pub use self::hir_utils::{
     both, count_eq, eq_expr_value, hash_expr, hash_stmt, is_bool, over, HirEqInterExpr, SpanlessEq, SpanlessHash,
 };
 
+use core::mem;
 use core::ops::ControlFlow;
 use std::collections::hash_map::Entry;
 use std::hash::BuildHasherDefault;
@@ -88,7 +89,7 @@ use rustc_hir::intravisit::{walk_expr, FnKind, Visitor};
 use rustc_hir::LangItem::{OptionNone, OptionSome, ResultErr, ResultOk};
 use rustc_hir::{
     self as hir, def, Arm, ArrayLen, BindingAnnotation, Block, BlockCheckMode, Body, Closure, Destination, Expr,
-    ExprField, ExprKind, FnDecl, FnRetTy, GenericArgs, HirId, Impl, ImplItem, ImplItemKind, ImplItemRef, Item, ItemId,
+    ExprField, ExprKind, FnDecl, FnRetTy, GenericArgs, HirId, Impl, ImplItem, ImplItemKind, ImplItemRef, Item,
     ItemKind, LangItem, Local, MatchSource, Mutability, Node, OwnerId, Param, Pat, PatKind, Path, PathSegment, PrimTy,
     QPath, Stmt, StmtKind, TraitItem, TraitItemKind, TraitItemRef, TraitRef, TyKind, UnOp,
 };
@@ -117,7 +118,7 @@ use crate::ty::{
     adt_and_variant_of_res, can_partially_move_ty, expr_sig, is_copy, is_recursively_primitive_type,
     ty_is_fn_once_param,
 };
-use crate::visitors::{for_each_expr, Descend};
+use crate::visitors::for_each_expr;
 
 use rustc_middle::hir::nested_filter;
 
@@ -2975,100 +2976,247 @@ pub fn pat_is_wild<'tcx>(cx: &LateContext<'tcx>, pat: &'tcx PatKind<'_>, body: i
     }
 }
 
-/// Check if the expression either returns, or could be coerced into returning, `!`.
-pub fn is_never_expr(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+#[derive(Clone, Copy)]
+pub enum RequiresSemi {
+    Yes,
+    No,
+}
+impl RequiresSemi {
+    pub fn requires_semi(self) -> bool {
+        matches!(self, Self::Yes)
+    }
+}
+
+/// Check if the expression return `!`, a type coerced from `!`, or could return `!` if the final
+/// expression were turned into a statement.
+#[expect(clippy::too_many_lines)]
+pub fn is_never_expr<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> Option<RequiresSemi> {
+    struct BreakTarget {
+        id: HirId,
+        unused: bool,
+    }
+
     struct V<'cx, 'tcx> {
         cx: &'cx LateContext<'tcx>,
-        res: ControlFlow<(), Descend>,
+        break_targets: Vec<BreakTarget>,
+        break_targets_for_result_ty: u32,
+        in_final_expr: bool,
+        requires_semi: bool,
+        is_never: bool,
     }
-    impl<'tcx> Visitor<'tcx> for V<'_, '_> {
-        fn visit_expr(&mut self, e: &'tcx Expr<'tcx>) {
-            fn is_never(cx: &LateContext<'_>, expr: &'_ Expr<'_>) -> bool {
-                if let Some(ty) = cx.typeck_results().expr_ty_opt(expr) {
-                    return ty.is_never();
-                }
-                false
-            }
 
-            if self.res.is_break() {
+    impl<'tcx> V<'_, 'tcx> {
+        fn push_break_target(&mut self, id: HirId) {
+            self.break_targets.push(BreakTarget { id, unused: true });
+            self.break_targets_for_result_ty += u32::from(self.in_final_expr);
+        }
+    }
+
+    impl<'tcx> Visitor<'tcx> for V<'_, 'tcx> {
+        fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
+            // Note: Part of the complexity here comes from the fact that
+            // coercions are applied to the innermost expression.
+            // e.g. In `let x: u32 = { break () };` the never-to-any coercion
+            // is applied to the break expression. This means we can't just
+            // check the block's type as it will be `u32` despite the fact
+            // that the block always diverges.
+
+            // The rest of the complexity comes from checking blocks which
+            // syntactically return a value, but will always diverge before
+            // reaching that point.
+            // e.g. In `let x = { foo(panic!()) };` the block's type will be the
+            // return type of `foo` even though it will never actually run. This
+            // can be trivially fixed by adding a semicolon after the call, but
+            // we must first detect that a semicolon is needed to make that
+            // suggestion.
+
+            if self.is_never && self.break_targets.is_empty() {
+                if self.in_final_expr && !self.requires_semi {
+                    // This expression won't ever run, but we still need to check
+                    // if it can affect the type of the final expression.
+                    match e.kind {
+                        ExprKind::DropTemps(e) => self.visit_expr(e),
+                        ExprKind::If(_, then, Some(else_)) => {
+                            self.visit_expr(then);
+                            self.visit_expr(else_);
+                        },
+                        ExprKind::Match(_, arms, _) => {
+                            for arm in arms {
+                                self.visit_expr(arm.body);
+                            }
+                        },
+                        ExprKind::Loop(b, ..) => {
+                            self.push_break_target(e.hir_id);
+                            self.in_final_expr = false;
+                            self.visit_block(b);
+                            self.break_targets.pop();
+                        },
+                        ExprKind::Block(b, _) => {
+                            if b.targeted_by_break {
+                                self.push_break_target(b.hir_id);
+                                self.visit_block(b);
+                                self.break_targets.pop();
+                            } else {
+                                self.visit_block(b);
+                            }
+                        },
+                        _ => {
+                            self.requires_semi = !self.cx.typeck_results().expr_ty(e).is_never();
+                        },
+                    }
+                }
                 return;
             }
+            match e.kind {
+                ExprKind::DropTemps(e) => self.visit_expr(e),
+                ExprKind::Ret(None) | ExprKind::Continue(_) => self.is_never = true,
+                ExprKind::Ret(Some(e)) | ExprKind::Become(e) => {
+                    self.in_final_expr = false;
+                    self.visit_expr(e);
+                    self.is_never = true;
+                },
+                ExprKind::Break(dest, e) => {
+                    if let Some(e) = e {
+                        self.in_final_expr = false;
+                        self.visit_expr(e);
+                    }
+                    if let Ok(id) = dest.target_id
+                        && let Some((i, target)) = self
+                            .break_targets
+                            .iter_mut()
+                            .enumerate()
+                            .find(|(_, target)| target.id == id)
+                    {
+                        target.unused &= self.is_never;
+                        if i < self.break_targets_for_result_ty as usize {
+                            self.requires_semi = true;
+                        }
+                    }
+                    self.is_never = true;
+                },
+                ExprKind::If(cond, then, else_) => {
+                    let in_final_expr = mem::replace(&mut self.in_final_expr, false);
+                    self.visit_expr(cond);
+                    self.in_final_expr = in_final_expr;
 
-            // We can't just call is_never on expr and be done, because the type system
-            // sometimes coerces the ! type to something different before we can get
-            // our hands on it. So instead, we do a manual search. We do fall back to
-            // is_never in some places when there is no better alternative.
-            self.res = match e.kind {
-                ExprKind::Continue(_) | ExprKind::Break(_, _) | ExprKind::Ret(_) => ControlFlow::Break(()),
-                ExprKind::Call(call, _) => {
-                    if is_never(self.cx, e) || is_never(self.cx, call) {
-                        ControlFlow::Break(())
+                    if self.is_never {
+                        self.visit_expr(then);
+                        if let Some(else_) = else_ {
+                            self.visit_expr(else_);
+                        }
                     } else {
-                        ControlFlow::Continue(Descend::Yes)
+                        self.visit_expr(then);
+                        let is_never = mem::replace(&mut self.is_never, false);
+                        if let Some(else_) = else_ {
+                            self.visit_expr(else_);
+                            self.is_never &= is_never;
+                        }
                     }
                 },
-                ExprKind::MethodCall(..) => {
-                    if is_never(self.cx, e) {
-                        ControlFlow::Break(())
-                    } else {
-                        ControlFlow::Continue(Descend::Yes)
-                    }
-                },
-                ExprKind::If(if_expr, if_then, if_else) => {
-                    let else_diverges = if_else.map_or(false, |ex| is_never_expr(self.cx, ex));
-                    let diverges =
-                        is_never_expr(self.cx, if_expr) || (else_diverges && is_never_expr(self.cx, if_then));
-                    if diverges {
-                        ControlFlow::Break(())
-                    } else {
-                        ControlFlow::Continue(Descend::No)
-                    }
-                },
-                ExprKind::Match(match_expr, match_arms, _) => {
-                    let diverges = is_never_expr(self.cx, match_expr)
-                        || match_arms.iter().all(|arm| {
-                            let guard_diverges = arm.guard.as_ref().map_or(false, |g| is_never_expr(self.cx, g.body()));
-                            guard_diverges || is_never_expr(self.cx, arm.body)
-                        });
-                    if diverges {
-                        ControlFlow::Break(())
-                    } else {
-                        ControlFlow::Continue(Descend::No)
-                    }
-                },
+                ExprKind::Match(scrutinee, arms, _) => {
+                    let in_final_expr = mem::replace(&mut self.in_final_expr, false);
+                    self.visit_expr(scrutinee);
+                    self.in_final_expr = in_final_expr;
 
-                // Don't continue into loops or labeled blocks, as they are breakable,
-                // and we'd have to start checking labels.
-                ExprKind::Block(_, Some(_)) | ExprKind::Loop(..) => ControlFlow::Continue(Descend::No),
-
-                // Default: descend
-                _ => ControlFlow::Continue(Descend::Yes),
-            };
-            if let ControlFlow::Continue(Descend::Yes) = self.res {
-                walk_expr(self, e);
+                    if self.is_never {
+                        for arm in arms {
+                            self.visit_arm(arm);
+                        }
+                    } else {
+                        let mut is_never = true;
+                        for arm in arms {
+                            self.is_never = false;
+                            if let Some(guard) = arm.guard {
+                                let in_final_expr = mem::replace(&mut self.in_final_expr, false);
+                                self.visit_expr(guard.body());
+                                self.in_final_expr = in_final_expr;
+                                // The compiler doesn't consider diverging guards as causing the arm to diverge.
+                                self.is_never = false;
+                            }
+                            self.visit_expr(arm.body);
+                            is_never &= self.is_never;
+                        }
+                        self.is_never = is_never;
+                    }
+                },
+                ExprKind::Loop(b, _, _, _) => {
+                    self.push_break_target(e.hir_id);
+                    self.in_final_expr = false;
+                    self.visit_block(b);
+                    self.is_never = self.break_targets.pop().unwrap().unused;
+                },
+                ExprKind::Block(b, _) => {
+                    if b.targeted_by_break {
+                        self.push_break_target(b.hir_id);
+                        self.visit_block(b);
+                        self.is_never &= self.break_targets.pop().unwrap().unused;
+                    } else {
+                        self.visit_block(b);
+                    }
+                },
+                _ => {
+                    self.in_final_expr = false;
+                    walk_expr(self, e);
+                    self.is_never |= self.cx.typeck_results().expr_ty(e).is_never();
+                },
             }
         }
 
-        fn visit_local(&mut self, local: &'tcx Local<'_>) {
-            // Don't visit the else block of a let/else statement as it will not make
-            // the statement divergent even though the else block is divergent.
-            if let Some(init) = local.init {
-                self.visit_expr(init);
+        fn visit_block(&mut self, b: &'tcx Block<'_>) {
+            let in_final_expr = mem::replace(&mut self.in_final_expr, false);
+            for s in b.stmts {
+                self.visit_stmt(s);
+            }
+            self.in_final_expr = in_final_expr;
+            if let Some(e) = b.expr {
+                self.visit_expr(e);
             }
         }
 
-        // Avoid unnecessary `walk_*` calls.
-        fn visit_ty(&mut self, _: &'tcx hir::Ty<'tcx>) {}
-        fn visit_pat(&mut self, _: &'tcx Pat<'tcx>) {}
-        fn visit_qpath(&mut self, _: &'tcx QPath<'tcx>, _: HirId, _: Span) {}
-        // Avoid monomorphising all `visit_*` functions.
-        fn visit_nested_item(&mut self, _: ItemId) {}
+        fn visit_local(&mut self, l: &'tcx Local<'_>) {
+            if let Some(e) = l.init {
+                self.visit_expr(e);
+            }
+            if let Some(else_) = l.els {
+                let is_never = self.is_never;
+                self.visit_block(else_);
+                self.is_never = is_never;
+            }
+        }
+
+        fn visit_arm(&mut self, arm: &Arm<'tcx>) {
+            if let Some(guard) = arm.guard {
+                let in_final_expr = mem::replace(&mut self.in_final_expr, false);
+                self.visit_expr(guard.body());
+                self.in_final_expr = in_final_expr;
+            }
+            self.visit_expr(arm.body);
+        }
     }
 
-    let mut v = V {
-        cx,
-        res: ControlFlow::Continue(Descend::Yes),
-    };
-    expr.visit(&mut v);
-    v.res.is_break()
+    if cx.typeck_results().expr_ty(e).is_never() {
+        Some(RequiresSemi::No)
+    } else if let ExprKind::Block(b, _) = e.kind
+        && !b.targeted_by_break
+        && b.expr.is_none()
+    {
+        // If a block diverges without a final expression then it's type is `!`.
+        None
+    } else {
+        let mut v = V {
+            cx,
+            break_targets: Vec::new(),
+            break_targets_for_result_ty: 0,
+            in_final_expr: true,
+            requires_semi: false,
+            is_never: false,
+        };
+        v.visit_expr(e);
+        v.is_never
+            .then_some(if v.requires_semi && matches!(e.kind, ExprKind::Block(..)) {
+                RequiresSemi::Yes
+            } else {
+                RequiresSemi::No
+            })
+    }
 }

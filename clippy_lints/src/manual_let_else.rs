@@ -64,7 +64,7 @@ impl<'tcx> QuestionMark {
                 IfLetOrMatch::IfLet(if_let_expr, let_pat, if_then, if_else) => {
                     if let Some(ident_map) = expr_simple_identity_map(local.pat, let_pat, if_then)
                         && let Some(if_else) = if_else
-                        && is_never_expr(cx, if_else)
+                        && is_never_expr(cx, if_else).is_some()
                         && let qm_allowed = is_lint_allowed(cx, QUESTION_MARK, stmt.hir_id)
                         && (qm_allowed || pat_and_expr_can_be_question_mark(cx, let_pat, if_else).is_none())
                     {
@@ -88,10 +88,9 @@ impl<'tcx> QuestionMark {
                         return;
                     }
                     let check_types = self.matches_behaviour == MatchLintBehaviour::WellKnownTypes;
-                    let diverging_arm_opt = arms
-                        .iter()
-                        .enumerate()
-                        .find(|(_, arm)| is_never_expr(cx, arm.body) && pat_allowed_for_else(cx, arm.pat, check_types));
+                    let diverging_arm_opt = arms.iter().enumerate().find(|(_, arm)| {
+                        is_never_expr(cx, arm.body).is_some() && pat_allowed_for_else(cx, arm.pat, check_types)
+                    });
                     let Some((idx, diverging_arm)) = diverging_arm_opt else {
                         return;
                     };
