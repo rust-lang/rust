@@ -1,5 +1,5 @@
 error[E0720]: cannot resolve opaque type
-  --> $DIR/recursive-coroutine.rs:5:13
+  --> $DIR/recursive-coroutine.rs:7:13
    |
 LL | fn foo() -> impl Coroutine<Yield = (), Return = ()> {
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ recursive opaque type

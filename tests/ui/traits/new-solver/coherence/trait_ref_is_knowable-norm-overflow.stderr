@@ -1,7 +1,3 @@
-WARN rustc_trait_selection::traits::coherence expected an unknowable trait ref: <<LocalTy as Overflow>::Assoc as std::marker::Sized>
-WARN rustc_trait_selection::traits::coherence expected an unknowable trait ref: <<LocalTy as Overflow>::Assoc as std::marker::Sized>
-WARN rustc_trait_selection::traits::coherence expected an unknowable trait ref: <<LocalTy as Overflow>::Assoc as std::marker::Sized>
-WARN rustc_trait_selection::traits::coherence expected an unknowable trait ref: <<LocalTy as Overflow>::Assoc as std::marker::Sized>
 error[E0119]: conflicting implementations of trait `Trait` for type `<LocalTy as Overflow>::Assoc`
   --> $DIR/trait_ref_is_knowable-norm-overflow.rs:17:1
    |
@@ -11,7 +7,8 @@ LL | struct LocalTy;
 LL | impl Trait for <LocalTy as Overflow>::Assoc {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `<LocalTy as Overflow>::Assoc`
    |
-   = note: upstream crates may add a new impl of trait `std::marker::Copy` for type `<LocalTy as Overflow>::Assoc` in future versions
+   = note: downstream crates may implement trait `std::marker::Sized` for type `<LocalTy as Overflow>::Assoc`
+   = note: downstream crates may implement trait `std::marker::Copy` for type `<LocalTy as Overflow>::Assoc`
 
 error: aborting due to previous error
 
