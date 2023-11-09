@@ -1991,6 +1991,8 @@ written to standard error output)"),
         "adds unstable command line options to rustc interface (default: no)"),
     use_ctors_section: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "use legacy .ctors section for initializers rather than .init_array"),
+    use_sync_unwind: Option<bool> = (None, parse_opt_bool, [TRACKED],
+        "Generate sync unwind tables instead of async unwind tables (default: no)"),
     validate_mir: bool = (false, parse_bool, [UNTRACKED],
         "validate MIR after each transformation"),
     #[rustc_lint_opt_deny_field_access("use `Session::verbose_internals` instead of this field")]

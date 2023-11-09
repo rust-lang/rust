@@ -95,11 +95,12 @@ pub fn sanitize_attrs<'ll>(
 
 /// Tell LLVM to emit or not emit the information necessary to unwind the stack for the function.
 #[inline]
-pub fn uwtable_attr(llcx: &llvm::Context) -> &Attribute {
+pub fn uwtable_attr(llcx: &llvm::Context, use_sync_unwind: Option<bool>) -> &Attribute {
     // NOTE: We should determine if we even need async unwind tables, as they
     // take have more overhead and if we can use sync unwind tables we
     // probably should.
-    llvm::CreateUWTableAttr(llcx, true)
+    let async_unwind = !use_sync_unwind.unwrap_or(false);
+    llvm::CreateUWTableAttr(llcx, async_unwind)
 }
 
 pub fn frame_pointer_type_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attribute> {
@@ -333,7 +334,7 @@ pub fn from_fn_attrs<'ll, 'tcx>(
     // You can also find more info on why Windows always requires uwtables here:
     //      https://bugzilla.mozilla.org/show_bug.cgi?id=1302078
     if cx.sess().must_emit_unwind_tables() {
-        to_add.push(uwtable_attr(cx.llcx));
+        to_add.push(uwtable_attr(cx.llcx, cx.sess().opts.unstable_opts.use_sync_unwind));
     }
 
     if cx.sess().opts.unstable_opts.profile_sample_use.is_some() {
