@@ -418,7 +418,11 @@ const ICU4X_UNICODE_LICENSE_DEPENDENCIES: &[&str] = &[
     "tinystr",
     "writeable",
     "yoke",
+    "yoke-derive",
+    "zerofrom",
+    "zerofrom-derive",
     "zerovec",
+    "zerovec-derive",
     // tidy-alphabetical-end
 ];
 
