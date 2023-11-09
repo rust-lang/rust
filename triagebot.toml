@@ -579,7 +579,7 @@ Otherwise, you can ignore this comment.
 message = "`src/tools/x` was changed. Bump version of Cargo.toml in `src/tools/x` so tidy will suggest installing the new version."
 
 [mentions."src/tools/tidy/src/deps.rs"]
-message = "Third-party dependency whitelist may have been modified! You must ensure that any new dependencies have compatible licenses before merging."
+message = "The list of allowed third-party dependencies may have been modified! You must ensure that any new dependencies have compatible licenses before merging."
 cc = ["@davidtwco", "@wesleywiser"]
 
 [mentions."src/bootstrap/src/core/config"]

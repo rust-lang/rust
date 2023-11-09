@@ -2389,12 +2389,21 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                         )
                     });
 
-                let obligation = Obligation::new(
-                    self.tcx(),
-                    cause.clone(),
-                    param_env,
-                    ty::TraitRef::new(self.tcx(), trait_def_id, [normalized_ty]),
-                );
+                let tcx = self.tcx();
+                let trait_ref = if tcx.generics_of(trait_def_id).params.len() == 1 {
+                    ty::TraitRef::new(tcx, trait_def_id, [normalized_ty])
+                } else {
+                    // If this is an ill-formed auto/built-in trait, then synthesize
+                    // new error args for the missing generics.
+                    let err_args = ty::GenericArgs::extend_with_error(
+                        tcx,
+                        trait_def_id,
+                        &[normalized_ty.into()],
+                    );
+                    ty::TraitRef::new(tcx, trait_def_id, err_args)
+                };
+
+                let obligation = Obligation::new(self.tcx(), cause.clone(), param_env, trait_ref);
                 obligations.push(obligation);
                 obligations
             })

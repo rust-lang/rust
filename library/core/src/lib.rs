@@ -369,6 +369,8 @@ pub mod async_iter;
 pub mod cell;
 pub mod char;
 pub mod ffi;
+#[unstable(feature = "core_io_borrowed_buf", issue = "117693")]
+pub mod io;
 pub mod iter;
 pub mod net;
 pub mod option;

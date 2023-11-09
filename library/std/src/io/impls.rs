@@ -528,3 +528,17 @@ impl<A: Allocator> Write for VecDeque<u8, A> {
         Ok(())
     }
 }
+
+#[unstable(feature = "read_buf", issue = "78485")]
+impl<'a> io::Write for core::io::BorrowedCursor<'a> {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        let amt = cmp::min(buf.len(), self.capacity());
+        self.append(&buf[..amt]);
+        Ok(amt)
+    }
+
+    #[inline]
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
+    }
+}
