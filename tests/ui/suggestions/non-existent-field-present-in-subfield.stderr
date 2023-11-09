@@ -2,7 +2,7 @@ error[E0609]: no field `c` on type `Foo`
   --> $DIR/non-existent-field-present-in-subfield.rs:37:24
    |
 LL |     let _test = &fooer.c;
-   |                        ^
+   |                        ^ unknown field
    |
 help: one of the expressions' fields has a field of the same name
    |
@@ -13,7 +13,7 @@ error[E0609]: no field `test` on type `Foo`
   --> $DIR/non-existent-field-present-in-subfield.rs:40:24
    |
 LL |     let _test2 = fooer.test;
-   |                        ^^^^
+   |                        ^^^^ unknown field
    |
 help: one of the expressions' fields has a field of the same name
    |

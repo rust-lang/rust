@@ -16,7 +16,7 @@ error[E0609]: no field `inocently_mispellable` on type `Demo`
   --> $DIR/issue-42599_available_fields_note.rs:32:41
    |
 LL |     let innocent_field_misaccess = demo.inocently_mispellable;
-   |                                         ^^^^^^^^^^^^^^^^^^^^^
+   |                                         ^^^^^^^^^^^^^^^^^^^^^ unknown field
    |
 help: a field with a similar name exists
    |
@@ -27,7 +27,7 @@ error[E0609]: no field `egregiously_nonexistent_field` on type `Demo`
   --> $DIR/issue-42599_available_fields_note.rs:35:42
    |
 LL |     let egregious_field_misaccess = demo.egregiously_nonexistent_field;
-   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unknown field
    |
    = note: available fields are: `favorite_integer`, `innocently_misspellable`
 

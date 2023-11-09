@@ -21,15 +21,18 @@ fn main() {
     // `doc(hidden)` because it's defined in this crate.
     A::default().hey;
     //~^ ERROR no field `hey` on type `A`
+    //~| NOTE unknown field
     //~| NOTE available fields are: `hello`, `bye`
 
     // Here we want to hide the field `hello` since it's marked
     // `doc(hidden)` and comes from an external crate.
     doc_hidden_fields::B::default().hey;
     //~^ ERROR no field `hey` on type `B`
+    //~| NOTE unknown field
     //~| NOTE available field is: `bye`
 
     C::default().hey;
     //~^ ERROR no field `hey` on type `C`
+    //~| NOTE unknown field
     //~| NOTE available fields are: `hello`, `bye`
 }

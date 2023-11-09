@@ -2,7 +2,7 @@ error[E0609]: no field `longname` on type `Arc<S>`
   --> $DIR/suggest-field-through-deref.rs:10:15
    |
 LL |     let _ = x.longname;
-   |               ^^^^^^^^
+   |               ^^^^^^^^ unknown field
    |
 help: a field with a similar name exists
    |
@@ -13,7 +13,7 @@ error[E0609]: no field `longname` on type `S`
   --> $DIR/suggest-field-through-deref.rs:12:15
    |
 LL |     let _ = y.longname;
-   |               ^^^^^^^^
+   |               ^^^^^^^^ unknown field
    |
 help: a field with a similar name exists
    |
@@ -24,7 +24,7 @@ error[E0609]: no field `longname` on type `Option<Arc<S>>`
   --> $DIR/suggest-field-through-deref.rs:14:15
    |
 LL |     let _ = a.longname;
-   |               ^^^^^^^^
+   |               ^^^^^^^^ unknown field
    |
 help: a field with a similar name exists
    |
@@ -35,7 +35,7 @@ error[E0609]: no field `long_name` on type `Option<S>`
   --> $DIR/suggest-field-through-deref.rs:16:15
    |
 LL |     let _ = b.long_name;
-   |               ^^^^^^^^^
+   |               ^^^^^^^^^ unknown field
    |
 help: one of the expressions' fields has a field of the same name
    |
@@ -46,7 +46,7 @@ error[E0609]: no field `longname` on type `Result<Arc<S>, ()>`
   --> $DIR/suggest-field-through-deref.rs:18:15
    |
 LL |     let _ = c.longname;
-   |               ^^^^^^^^
+   |               ^^^^^^^^ unknown field
    |
 help: a field with a similar name exists
    |
@@ -57,7 +57,7 @@ error[E0609]: no field `long_name` on type `Result<S, ()>`
   --> $DIR/suggest-field-through-deref.rs:20:15
    |
 LL |     let _ = d.long_name;
-   |               ^^^^^^^^^
+   |               ^^^^^^^^^ unknown field
    |
 help: one of the expressions' fields has a field of the same name
    |

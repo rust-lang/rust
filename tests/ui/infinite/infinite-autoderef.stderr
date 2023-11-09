@@ -29,7 +29,7 @@ error[E0609]: no field `foo` on type `Foo`
   --> $DIR/infinite-autoderef.rs:24:9
    |
 LL |     Foo.foo;
-   |         ^^^
+   |         ^^^ unknown field
 
 error[E0055]: reached the recursion limit while auto-dereferencing `Foo`
   --> $DIR/infinite-autoderef.rs:25:9

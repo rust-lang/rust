@@ -8,7 +8,7 @@ error[E0609]: no field `principial` on type `U`
   --> $DIR/union-suggest-field.rs:17:15
    |
 LL |     let w = u.principial;
-   |               ^^^^^^^^^^
+   |               ^^^^^^^^^^ unknown field
    |
 help: a field with a similar name exists
    |

@@ -8,7 +8,7 @@ error[E0609]: no field `nonexistent_field` on type `fn(_) -> Option<_> {Option::
   --> $DIR/issue-96738.rs:3:10
    |
 LL |     Some.nonexistent_field;
-   |          ^^^^^^^^^^^^^^^^^
+   |          ^^^^^^^^^^^^^^^^^ unknown field
 
 error: aborting due to 2 previous errors
 

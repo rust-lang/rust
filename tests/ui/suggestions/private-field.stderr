@@ -2,7 +2,7 @@ error[E0609]: no field `cap` on type `S`
   --> $DIR/private-field.rs:7:12
    |
 LL |     dbg!(s.cap)
-   |            ^^^
+   |            ^^^ unknown field
    |
    = note: available field is: `val`
 
