@@ -1790,7 +1790,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             }
         }
         // We'd ideally use `type_implements_trait` but don't have access to
-        // the trait solver here.  We can't use `get_diagnostic_item` or
+        // the trait solver here. We can't use `get_diagnostic_item` or
         // `all_traits` in resolve either. So instead we abuse the import
         // suggestion machinery to get `std::default::Default` and perform some
         // checks to confirm that we got *only* that trait. We then see if the
