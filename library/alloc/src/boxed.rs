@@ -165,6 +165,8 @@ use core::pin::Pin;
 use core::ptr::{self, NonNull, Unique};
 use core::task::{Context, Poll};
 
+use crate::alloc::failure_handling::Fallible;
+
 #[cfg(not(no_global_oom_handling))]
 use crate::alloc::{handle_alloc_error, WriteCloneIntoRaw};
 use crate::alloc::{AllocError, Allocator, Global, Layout};
@@ -692,7 +694,7 @@ impl<T> Box<[T]> {
             };
             Global.allocate(layout)?.cast()
         };
-        unsafe { Ok(RawVec::from_raw_parts_in(ptr.as_ptr(), len, Global).into_box(len)) }
+        unsafe { Ok(RawVec::<_, _, Fallible>::from_raw_parts_in(ptr.as_ptr(), len, Global).into_box(len)) }
     }
 
     /// Constructs a new boxed slice with uninitialized contents, with the memory
@@ -726,7 +728,7 @@ impl<T> Box<[T]> {
             };
             Global.allocate_zeroed(layout)?.cast()
         };
-        unsafe { Ok(RawVec::from_raw_parts_in(ptr.as_ptr(), len, Global).into_box(len)) }
+        unsafe { Ok(RawVec::<_, _, Fallible>::from_raw_parts_in(ptr.as_ptr(), len, Global).into_box(len)) }
     }
 }
 

@@ -22,6 +22,7 @@ use core::slice;
 #[allow(unused_imports)]
 use core::mem;
 
+use crate::alloc::failure_handling::Fatal;
 use crate::alloc::{Allocator, Global};
 use crate::collections::TryReserveError;
 use crate::collections::TryReserveErrorKind;
@@ -102,7 +103,7 @@ pub struct VecDeque<
     // if `len == 0`, the exact value of `head` is unimportant.
     // if `T` is zero-Sized, then `self.len <= usize::MAX`, otherwise `self.len <= isize::MAX as usize`.
     len: usize,
-    buf: RawVec<T, A>,
+    buf: RawVec<T, A, Fatal>,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

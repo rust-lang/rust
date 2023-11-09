@@ -1,3 +1,4 @@
+use crate::alloc::failure_handling::{FailureHandling, DefaultFailureHandling};
 use crate::alloc::{Allocator, Global};
 use core::ptr;
 use core::slice;
@@ -25,10 +26,11 @@ pub struct ExtractIf<
     T,
     F,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+    #[unstable(feature = "allocator_api", issue = "32838")] FH: FailureHandling = DefaultFailureHandling,
 > where
     F: FnMut(&mut T) -> bool,
 {
-    pub(super) vec: &'a mut Vec<T, A>,
+    pub(super) vec: &'a mut Vec<T, A, FH>,
     /// The index of the item that will be inspected by the next call to `next`.
     pub(super) idx: usize,
     /// The number of items that have been drained (removed) thus far.
@@ -39,7 +41,7 @@ pub struct ExtractIf<
     pub(super) pred: F,
 }
 
-impl<T, F, A: Allocator> ExtractIf<'_, T, F, A>
+impl<T, F, A: Allocator, FH: FailureHandling> ExtractIf<'_, T, F, A, FH>
 where
     F: FnMut(&mut T) -> bool,
 {
@@ -52,7 +54,7 @@ where
 }
 
 #[unstable(feature = "extract_if", reason = "recently added", issue = "43244")]
-impl<T, F, A: Allocator> Iterator for ExtractIf<'_, T, F, A>
+impl<T, F, A: Allocator, FH: FailureHandling> Iterator for ExtractIf<'_, T, F, A, FH>
 where
     F: FnMut(&mut T) -> bool,
 {
@@ -88,7 +90,7 @@ where
 }
 
 #[unstable(feature = "extract_if", reason = "recently added", issue = "43244")]
-impl<T, F, A: Allocator> Drop for ExtractIf<'_, T, F, A>
+impl<T, F, A: Allocator, FH: FailureHandling> Drop for ExtractIf<'_, T, F, A, FH>
 where
     F: FnMut(&mut T) -> bool,
 {

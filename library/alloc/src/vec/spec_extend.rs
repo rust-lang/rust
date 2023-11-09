@@ -1,4 +1,5 @@
 use crate::alloc::Allocator;
+use crate::alloc::failure_handling::Fatal;
 use core::iter::TrustedLen;
 use core::slice::{self};
 
@@ -9,7 +10,7 @@ pub(super) trait SpecExtend<T, I> {
     fn spec_extend(&mut self, iter: I);
 }
 
-impl<T, I, A: Allocator> SpecExtend<T, I> for Vec<T, A>
+impl<T, I, A: Allocator> SpecExtend<T, I> for Vec<T, A, Fatal>
 where
     I: Iterator<Item = T>,
 {
@@ -18,7 +19,7 @@ where
     }
 }
 
-impl<T, I, A: Allocator> SpecExtend<T, I> for Vec<T, A>
+impl<T, I, A: Allocator> SpecExtend<T, I> for Vec<T, A, Fatal>
 where
     I: TrustedLen<Item = T>,
 {
@@ -27,7 +28,7 @@ where
     }
 }
 
-impl<T, A: Allocator> SpecExtend<T, IntoIter<T>> for Vec<T, A> {
+impl<T, A: Allocator> SpecExtend<T, IntoIter<T>> for Vec<T, A, Fatal> {
     fn spec_extend(&mut self, mut iterator: IntoIter<T>) {
         unsafe {
             self.append_elements(iterator.as_slice() as _);
@@ -36,7 +37,7 @@ impl<T, A: Allocator> SpecExtend<T, IntoIter<T>> for Vec<T, A> {
     }
 }
 
-impl<'a, T: 'a, I, A: Allocator> SpecExtend<&'a T, I> for Vec<T, A>
+impl<'a, T: 'a, I, A: Allocator> SpecExtend<&'a T, I> for Vec<T, A, Fatal>
 where
     I: Iterator<Item = &'a T>,
     T: Clone,
@@ -46,7 +47,7 @@ where
     }
 }
 
-impl<'a, T: 'a, A: Allocator> SpecExtend<&'a T, slice::Iter<'a, T>> for Vec<T, A>
+impl<'a, T: 'a, A: Allocator> SpecExtend<&'a T, slice::Iter<'a, T>> for Vec<T, A, Fatal>
 where
     T: Copy,
 {

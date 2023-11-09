@@ -1,3 +1,4 @@
+use crate::alloc::failure_handling::Fatal;
 use crate::alloc::{Allocator, Global};
 use core::ptr::{self};
 use core::slice::{self};
@@ -23,7 +24,7 @@ pub struct Splice<
     I: Iterator + 'a,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator + 'a = Global,
 > {
-    pub(super) drain: Drain<'a, I::Item, A>,
+    pub(super) drain: Drain<'a, I::Item, A, Fatal>,
     pub(super) replace_with: I,
 }
 

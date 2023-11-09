@@ -1,5 +1,6 @@
 #[cfg(not(no_global_oom_handling))]
 use super::AsVecIntoIter;
+use crate::alloc::failure_handling::Fallible;
 use crate::alloc::{Allocator, Global};
 #[cfg(not(no_global_oom_handling))]
 use crate::collections::VecDeque;
@@ -356,7 +357,7 @@ where
     /// assert_eq!(iter.as_slice(), &[]);
     /// ```
     fn default() -> Self {
-        super::Vec::new_in(Default::default()).into_iter()
+        super::Vec::<_, _, Fallible>::new_in(Default::default()).into_iter()
     }
 }
 
@@ -405,7 +406,7 @@ unsafe impl<#[may_dangle] T, A: Allocator> Drop for IntoIter<T, A> {
                     // `IntoIter::alloc` is not used anymore after this and will be dropped by RawVec
                     let alloc = ManuallyDrop::take(&mut self.0.alloc);
                     // RawVec handles deallocation
-                    let _ = RawVec::from_raw_parts_in(self.0.buf.as_ptr(), self.0.cap, alloc);
+                    let _ = RawVec::<_, _, Fallible>::from_raw_parts_in(self.0.buf.as_ptr(), self.0.cap, alloc);
                 }
             }
         }

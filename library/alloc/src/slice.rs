@@ -91,13 +91,14 @@ pub use hack::to_vec;
 pub(crate) mod hack {
     use core::alloc::Allocator;
 
+    use crate::alloc::failure_handling::Fatal;
     use crate::boxed::Box;
     use crate::vec::Vec;
 
     // We shouldn't add inline attribute to this since this is used in
     // `vec!` macro mostly and causes perf regression. See #71204 for
     // discussion and perf results.
-    pub fn into_vec<T, A: Allocator>(b: Box<[T], A>) -> Vec<T, A> {
+    pub fn into_vec<T, A: Allocator>(b: Box<[T], A>) -> Vec<T, A, Fatal> {
         unsafe {
             let len = b.len();
             let (b, alloc) = Box::into_raw_with_allocator(b);
@@ -107,13 +108,13 @@ pub(crate) mod hack {
 
     #[cfg(not(no_global_oom_handling))]
     #[inline]
-    pub fn to_vec<T: ConvertVec, A: Allocator>(s: &[T], alloc: A) -> Vec<T, A> {
+    pub fn to_vec<T: ConvertVec, A: Allocator>(s: &[T], alloc: A) -> Vec<T, A, Fatal> {
         T::to_vec(s, alloc)
     }
 
     #[cfg(not(no_global_oom_handling))]
     pub trait ConvertVec {
-        fn to_vec<A: Allocator>(s: &[Self], alloc: A) -> Vec<Self, A>
+        fn to_vec<A: Allocator>(s: &[Self], alloc: A) -> Vec<Self, A, Fatal>
         where
             Self: Sized;
     }
@@ -121,9 +122,9 @@ pub(crate) mod hack {
     #[cfg(not(no_global_oom_handling))]
     impl<T: Clone> ConvertVec for T {
         #[inline]
-        default fn to_vec<A: Allocator>(s: &[Self], alloc: A) -> Vec<Self, A> {
+        default fn to_vec<A: Allocator>(s: &[Self], alloc: A) -> Vec<Self, A, Fatal> {
             struct DropGuard<'a, T, A: Allocator> {
-                vec: &'a mut Vec<T, A>,
+                vec: &'a mut Vec<T, A, Fatal>,
                 num_init: usize,
             }
             impl<'a, T, A: Allocator> Drop for DropGuard<'a, T, A> {
@@ -158,7 +159,7 @@ pub(crate) mod hack {
     #[cfg(not(no_global_oom_handling))]
     impl<T: Copy> ConvertVec for T {
         #[inline]
-        fn to_vec<A: Allocator>(s: &[Self], alloc: A) -> Vec<Self, A> {
+        fn to_vec<A: Allocator>(s: &[Self], alloc: A) -> Vec<Self, A, Fatal> {
             let mut v = Vec::with_capacity_in(s.len(), alloc);
             // SAFETY:
             // allocated above with the capacity of `s`, and initialize to `s.len()` in
