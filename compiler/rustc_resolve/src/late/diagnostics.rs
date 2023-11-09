@@ -1762,16 +1762,16 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                     } else {
                         3
                     };
-                    Some((order, item.name))
+                    Some((order, item.name, input_len))
                 } else {
                     None
                 }
             })
             .collect::<Vec<_>>();
-        items.sort_by_key(|(order, _)| *order);
+        items.sort_by_key(|(order, _, _)| *order);
         match &items[..] {
             [] => {}
-            [(_, name)] => {
+            [(_, name, len)] if *len == args.len() => {
                 err.span_suggestion_verbose(
                     path_span.shrink_to_hi(),
                     format!("you might have meant to use the `{name}` associated function",),
@@ -1779,11 +1779,30 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                     Applicability::MaybeIncorrect,
                 );
             }
+            [(_, name, len)] => {
+                err.span_suggestion_verbose(
+                    path_span.shrink_to_hi().with_hi(call_span.hi()),
+                    format!("you might have meant to use the `{name}` associated function",),
+                    format!(
+                        "::{name}({})",
+                        std::iter::repeat("_").take(*len).collect::<Vec<_>>().join(", ")
+                    ),
+                    Applicability::MaybeIncorrect,
+                );
+            }
             _ => {
                 err.span_suggestions_with_style(
-                    path_span.shrink_to_hi(),
+                    path_span.shrink_to_hi().with_hi(call_span.hi()),
                     "you might have meant to use an associated function to build this type",
-                    items.iter().map(|(_, name)| format!("::{name}")).collect::<Vec<String>>(),
+                    items
+                        .iter()
+                        .map(|(_, name, len)| {
+                            format!(
+                                "::{name}({})",
+                                std::iter::repeat("_").take(*len).collect::<Vec<_>>().join(", ")
+                            )
+                        })
+                        .collect::<Vec<String>>(),
                     Applicability::MaybeIncorrect,
                     SuggestionStyle::ShowAlways,
                 );

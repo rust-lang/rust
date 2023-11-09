@@ -10,13 +10,13 @@ LL |     let _ = std::collections::HashMap();
 help: you might have meant to use an associated function to build this type
    |
 LL |     let _ = std::collections::HashMap::new();
-   |                                      +++++
-LL |     let _ = std::collections::HashMap::with_capacity();
-   |                                      +++++++++++++++
-LL |     let _ = std::collections::HashMap::with_hasher();
-   |                                      +++++++++++++
-LL |     let _ = std::collections::HashMap::with_capacity_and_hasher();
-   |                                      ++++++++++++++++++++++++++
+   |                                      ~~~~~~~
+LL |     let _ = std::collections::HashMap::with_capacity(_);
+   |                                      ~~~~~~~~~~~~~~~~~~
+LL |     let _ = std::collections::HashMap::with_hasher(_);
+   |                                      ~~~~~~~~~~~~~~~~
+LL |     let _ = std::collections::HashMap::with_capacity_and_hasher(_, _);
+   |                                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 help: consider using the `Default` trait
    |
 LL |     let _ = <std::collections::HashMap as std::default::Default>::default();
@@ -36,14 +36,14 @@ note: constructor is not visible here due to private fields
    = note: private field
 help: you might have meant to use an associated function to build this type
    |
-LL |         wtf: Some(Box::new(U {
-   |                      +++++
-LL |         wtf: Some(Box::new_uninit(U {
-   |                      ++++++++++++
-LL |         wtf: Some(Box::new_zeroed(U {
-   |                      ++++++++++++
-LL |         wtf: Some(Box::new_in(U {
-   |                      ++++++++
+LL |         wtf: Some(Box::new(_)),
+   |                      ~~~~~~~~
+LL |         wtf: Some(Box::new_uninit()),
+   |                      ~~~~~~~~~~~~~~
+LL |         wtf: Some(Box::new_zeroed()),
+   |                      ~~~~~~~~~~~~~~
+LL |         wtf: Some(Box::new_in(_, _)),
+   |                      ~~~~~~~~~~~~~~
      and 10 other candidates
 help: consider using the `Default` trait
    |
