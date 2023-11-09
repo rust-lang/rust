@@ -134,9 +134,11 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBorrowsForGenericArgs<'tcx> {
     }
 
     fn check_body_post(&mut self, cx: &LateContext<'tcx>, body: &Body<'_>) {
-        if self.possible_borrowers.last().map_or(false, |&(local_def_id, _)| {
-            local_def_id == cx.tcx.hir().body_owner_def_id(body.id())
-        }) {
+        if self
+            .possible_borrowers
+            .last()
+            .is_some_and(|&(local_def_id, _)| local_def_id == cx.tcx.hir().body_owner_def_id(body.id()))
+        {
             self.possible_borrowers.pop();
         }
     }
@@ -232,7 +234,7 @@ fn needless_borrow_count<'tcx>(
     let mut check_reference_and_referent = |reference: &Expr<'tcx>, referent: &Expr<'tcx>| {
         if let ExprKind::Field(base, _) = &referent.kind {
             let base_ty = cx.typeck_results().expr_ty(base);
-            if drop_trait_def_id.map_or(false, |id| implements_trait(cx, base_ty, id, &[])) {
+            if drop_trait_def_id.is_some_and(|id| implements_trait(cx, base_ty, id, &[])) {
                 return false;
             }
         }

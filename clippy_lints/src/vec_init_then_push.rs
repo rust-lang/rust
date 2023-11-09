@@ -98,7 +98,7 @@ impl VecPushSearcher {
                     needs_mut |= cx.typeck_results().expr_ty_adjusted(last_place).ref_mutability()
                         == Some(Mutability::Mut)
                         || get_parent_expr(cx, last_place)
-                            .map_or(false, |e| matches!(e.kind, ExprKind::AddrOf(_, Mutability::Mut, _)));
+                            .is_some_and(|e| matches!(e.kind, ExprKind::AddrOf(_, Mutability::Mut, _)));
                 },
                 ExprKind::MethodCall(_, recv, ..)
                     if recv.hir_id == e.hir_id

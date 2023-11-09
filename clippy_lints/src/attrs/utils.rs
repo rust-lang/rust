@@ -50,7 +50,7 @@ fn is_relevant_block(cx: &LateContext<'_>, typeck_results: &ty::TypeckResults<'_
         block
             .expr
             .as_ref()
-            .map_or(false, |e| is_relevant_expr(cx, typeck_results, e)),
+            .is_some_and(|e| is_relevant_expr(cx, typeck_results, e)),
         |stmt| match &stmt.kind {
             StmtKind::Let(_) => true,
             StmtKind::Expr(expr) | StmtKind::Semi(expr) => is_relevant_expr(cx, typeck_results, expr),
@@ -60,7 +60,7 @@ fn is_relevant_block(cx: &LateContext<'_>, typeck_results: &ty::TypeckResults<'_
 }
 
 fn is_relevant_expr(cx: &LateContext<'_>, typeck_results: &ty::TypeckResults<'_>, expr: &Expr<'_>) -> bool {
-    if macro_backtrace(expr.span).last().map_or(false, |macro_call| {
+    if macro_backtrace(expr.span).last().is_some_and(|macro_call| {
         is_panic(cx, macro_call.def_id) || cx.tcx.item_name(macro_call.def_id) == sym::unreachable
     }) {
         return false;

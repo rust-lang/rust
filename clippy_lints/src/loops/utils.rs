@@ -256,9 +256,10 @@ fn is_conditional(expr: &Expr<'_>) -> bool {
 /// If `arg` was the argument to a `for` loop, return the "cleanest" way of writing the
 /// actual `Iterator` that the loop uses.
 pub(super) fn make_iterator_snippet(cx: &LateContext<'_>, arg: &Expr<'_>, applic_ref: &mut Applicability) -> String {
-    let impls_iterator = cx.tcx.get_diagnostic_item(sym::Iterator).map_or(false, |id| {
-        implements_trait(cx, cx.typeck_results().expr_ty(arg), id, &[])
-    });
+    let impls_iterator = cx
+        .tcx
+        .get_diagnostic_item(sym::Iterator)
+        .is_some_and(|id| implements_trait(cx, cx.typeck_results().expr_ty(arg), id, &[]));
     if impls_iterator {
         format!(
             "{}",
