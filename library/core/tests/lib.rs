@@ -23,6 +23,7 @@
 #![feature(const_likely)]
 #![feature(const_location_fields)]
 #![feature(core_intrinsics)]
+#![feature(core_io_borrowed_buf)]
 #![feature(core_private_bignum)]
 #![feature(core_private_diy_float)]
 #![feature(dec2flt)]
@@ -135,6 +136,7 @@ mod fmt;
 mod future;
 mod hash;
 mod intrinsics;
+mod io;
 mod iter;
 mod lazy;
 #[cfg(test)]

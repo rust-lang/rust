@@ -1,5 +1,5 @@
-use super::BorrowedBuf;
-use crate::mem::MaybeUninit;
+use core::io::BorrowedBuf;
+use core::mem::MaybeUninit;
 
 /// Test that BorrowedBuf has the correct numbers when created with new
 #[test]
