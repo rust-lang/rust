@@ -127,6 +127,9 @@ impl<F: FnOnce()> Drop for OnDrop<F> {
     }
 }
 
+/// This is a marker for a fatal compiler error used with `resume_unwind`.
+pub struct FatalErrorMarker;
+
 /// Turns a closure that takes an `&mut Formatter` into something that can be display-formatted.
 pub fn make_display(f: impl Fn(&mut fmt::Formatter<'_>) -> fmt::Result) -> impl fmt::Display {
     struct Printer<F> {
