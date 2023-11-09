@@ -1033,7 +1033,7 @@ fn link_natively<'a>(
         SplitDebuginfo::Packed => link_dwarf_object(sess, codegen_results, out_filename),
     }
 
-    let strip = strip_value(sess);
+    let strip = sess.opts.cg.strip;
 
     if sess.target.is_like_osx {
         match (strip, crate_type) {
@@ -1068,14 +1068,6 @@ fn link_natively<'a>(
     }
 
     Ok(())
-}
-
-// Temporarily support both -Z strip and -C strip
-fn strip_value(sess: &Session) -> Strip {
-    match (sess.opts.unstable_opts.strip, sess.opts.cg.strip) {
-        (s, Strip::None) => s,
-        (_, s) => s,
-    }
 }
 
 fn strip_symbols_with_external_utility<'a>(
@@ -2370,7 +2362,7 @@ fn add_order_independent_options(
     );
 
     // Pass debuginfo, NatVis debugger visualizers and strip flags down to the linker.
-    cmd.debuginfo(strip_value(sess), &natvis_visualizers);
+    cmd.debuginfo(sess.opts.cg.strip, &natvis_visualizers);
 
     // We want to prevent the compiler from accidentally leaking in any system libraries,
     // so by default we tell linkers not to link to any default libraries.
