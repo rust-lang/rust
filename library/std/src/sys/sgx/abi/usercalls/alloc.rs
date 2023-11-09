@@ -185,6 +185,12 @@ pub struct UserRef<T: ?Sized>(UnsafeCell<T>);
 #[unstable(feature = "sgx_platform", issue = "56975")]
 pub struct User<T: UserSafe + ?Sized>(NonNull<UserRef<T>>);
 
+#[unstable(feature = "sgx_platform", issue = "56975")]
+unsafe impl<T: UserSafeSized> Send for User<T> {}
+
+#[unstable(feature = "sgx_platform", issue = "56975")]
+unsafe impl<T: UserSafeSized> Send for User<[T]> {}
+
 trait NewUserRef<T: ?Sized> {
     unsafe fn new_userref(v: T) -> Self;
 }
