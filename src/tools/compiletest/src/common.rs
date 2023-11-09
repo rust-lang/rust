@@ -448,10 +448,7 @@ impl Config {
     }
 
     pub fn git_config(&self) -> GitConfig<'_> {
-        GitConfig {
-            git_repository: &self.git_repository,
-            nightly_branch: &self.nightly_branch,
-        }
+        GitConfig { git_repository: &self.git_repository, nightly_branch: &self.nightly_branch }
     }
 }
 
