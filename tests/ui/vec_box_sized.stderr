@@ -50,7 +50,7 @@ LL |     fn allocator_match() -> Vec<Box<i32, DummyAllocator>, DummyAllocator> {
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Vec<i32>`
 
 error: `Vec<T>` is already on the heap, the boxing is unnecessary
-  --> $DIR/vec_box_sized.rs:76:23
+  --> $DIR/vec_box_sized.rs:79:23
    |
 LL |         pub fn f() -> Vec<Box<S>> {
    |                       ^^^^^^^^^^^ help: try: `Vec<S>`

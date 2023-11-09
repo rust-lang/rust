@@ -63,6 +63,9 @@ mod should_not_trigger {
     fn allocator_mismatch() -> Vec<Box<i32, DummyAllocator>> {
         Vec::new()
     }
+    fn allocator_mismatch_2() -> Vec<Box<i32>, DummyAllocator> {
+        Vec::new_in(DummyAllocator)
+    }
 }
 
 mod inner_mod {
