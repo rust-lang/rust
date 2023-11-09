@@ -263,6 +263,27 @@ pub mod __export {
     pub use core::format_args;
 }
 
+// HACK: so `std::vec::Vec` doesn't inherit the third `FailureHandling` parameter
+#[cfg(not(test))]
+#[doc(hidden)]
+#[unstable(feature = "std_internals", issue = "none", reason = "implementation detail")]
+pub mod std_vec {
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub mod __export {
+        // FIXME: include `vec` module docs here
+
+        #[stable(feature = "rust1", since = "1.0.0")]
+        pub use crate::vec::*;
+        
+        // FIXME: include `Vec` docs here
+        #[stable(feature = "rust1", since = "1.0.0")]
+        pub type Vec<T, #[unstable(feature = "allocator_api", issue = "32838")] A = crate::alloc::Global> = crate::vec::Vec<T, A, crate::alloc::failure_handling::DefaultFailureHandling>;
+    }
+
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub use vec as __export;
+}
+
 #[cfg(test)]
 #[allow(dead_code)] // Not used in all configurations
 pub(crate) mod test_helpers {

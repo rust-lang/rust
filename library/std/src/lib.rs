@@ -472,7 +472,7 @@ pub use alloc_crate::str;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc_crate::string;
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use alloc_crate::vec;
+pub use alloc_crate::std_vec::__export as vec;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::any;
 #[stable(feature = "core_array", since = "1.36.0")]
