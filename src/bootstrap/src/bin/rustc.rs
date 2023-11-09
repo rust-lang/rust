@@ -245,7 +245,7 @@ fn main() {
 
     if status.success() {
         std::process::exit(0);
-        // note: everything below here is unreachable. do not put code that
+        // NOTE: everything below here is unreachable. do not put code that
         // should run on success, after this block.
     }
     if verbose > 0 {

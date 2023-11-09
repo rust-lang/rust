@@ -156,9 +156,9 @@ pub(crate) fn detect_llvm_sha(config: &Config, is_git: bool) -> String {
 
     if llvm_sha.is_empty() {
         eprintln!("error: could not find commit hash for downloading LLVM");
-        eprintln!("help: maybe your repository history is too shallow?");
-        eprintln!("help: consider disabling `download-ci-llvm`");
-        eprintln!("help: or fetch enough history to include one upstream commit");
+        eprintln!("HELP: maybe your repository history is too shallow?");
+        eprintln!("HELP: consider disabling `download-ci-llvm`");
+        eprintln!("HELP: or fetch enough history to include one upstream commit");
         panic!();
     }
 

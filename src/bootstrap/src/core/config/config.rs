@@ -1464,7 +1464,7 @@ impl Config {
                         if available_backends.contains(&backend) {
                             panic!("Invalid value '{s}' for 'rust.codegen-backends'. Instead, please use '{backend}'.");
                         } else {
-                            println!("help: '{s}' for 'rust.codegen-backends' might fail. \
+                            println!("HELP: '{s}' for 'rust.codegen-backends' might fail. \
                                 Codegen backends are mostly defined without the '{CODEGEN_BACKEND_PREFIX}' prefix. \
                                 In this case, it would be referred to as '{backend}'.");
                         }
@@ -1808,9 +1808,9 @@ impl Config {
                 }
                 (channel, version) => {
                     let src = self.src.display();
-                    eprintln!("error: failed to determine artifact channel and/or version");
+                    eprintln!("ERROR: failed to determine artifact channel and/or version");
                     eprintln!(
-                        "help: consider using a git checkout or ensure these files are readable"
+                        "HELP: consider using a git checkout or ensure these files are readable"
                     );
                     if let Err(channel) = channel {
                         eprintln!("reading {src}/src/ci/channel failed: {channel:?}");
@@ -2073,10 +2073,10 @@ impl Config {
         );
         let commit = merge_base.trim_end();
         if commit.is_empty() {
-            println!("error: could not find commit hash for downloading rustc");
-            println!("help: maybe your repository history is too shallow?");
-            println!("help: consider disabling `download-rustc`");
-            println!("help: or fetch enough history to include one upstream commit");
+            println!("ERROR: could not find commit hash for downloading rustc");
+            println!("HELP: maybe your repository history is too shallow?");
+            println!("HELP: consider disabling `download-rustc`");
+            println!("HELP: or fetch enough history to include one upstream commit");
             crate::exit!(1);
         }
 
@@ -2090,14 +2090,14 @@ impl Config {
             if if_unchanged {
                 if self.verbose > 0 {
                     println!(
-                        "warning: saw changes to compiler/ or library/ since {commit}; \
+                        "WARNING: saw changes to compiler/ or library/ since {commit}; \
                             ignoring `download-rustc`"
                     );
                 }
                 return None;
             }
             println!(
-                "warning: `download-rustc` is enabled, but there are changes to \
+                "WARNING: `download-rustc` is enabled, but there are changes to \
                     compiler/ or library/"
             );
         }

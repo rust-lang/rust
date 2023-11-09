@@ -177,7 +177,7 @@ fn rm_rf(path: &Path) {
                             && p.file_name().and_then(std::ffi::OsStr::to_str)
                                 == Some("bootstrap.exe")
                         {
-                            eprintln!("warning: failed to delete '{}'.", p.display());
+                            eprintln!("WARNING: failed to delete '{}'.", p.display());
                             return Ok(());
                         }
                         Err(e)

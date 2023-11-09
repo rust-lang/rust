@@ -73,6 +73,6 @@ pub fn suggest(builder: &Builder<'_>, run: bool) {
             build.build();
         }
     } else {
-        println!("help: consider using the `--run` flag to automatically run suggested tests");
+        println!("HELP: consider using the `--run` flag to automatically run suggested tests");
     }
 }

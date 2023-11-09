@@ -1568,7 +1568,7 @@ impl Build {
 
         if !stamp.exists() {
             eprintln!(
-                "Error: Unable to find the stamp file {}, did you try to keep a nonexistent build stage?",
+                "ERROR: Unable to find the stamp file {}, did you try to keep a nonexistent build stage?",
                 stamp.display()
             );
             crate::exit!(1);
@@ -1697,7 +1697,7 @@ impl Build {
         self.verbose_than(1, &format!("Install {src:?} to {dst:?}"));
         t!(fs::create_dir_all(dstdir));
         if !src.exists() {
-            panic!("Error: File \"{}\" not found!", src.display());
+            panic!("ERROR: File \"{}\" not found!", src.display());
         }
         self.copy_internal(src, &dst, true);
         chmod(&dst, perms);
