@@ -312,25 +312,9 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             return None;
         }
 
-        let ty::Alias(kind, projection_ty) = *ty.kind() else {
+        let ty::Alias(_, projection_ty) = *ty.kind() else {
             return Some(ty);
         };
-
-        // We do no always define opaque types eagerly to allow non-defining uses in the defining scope.
-        if let (DefineOpaqueTypes::No, ty::AliasKind::Opaque) = (define_opaque_types, kind) {
-            if let Some(def_id) = projection_ty.def_id.as_local() {
-                if self
-                    .unify_existing_opaque_tys(
-                        param_env,
-                        OpaqueTypeKey { def_id, args: projection_ty.args },
-                        self.next_ty_infer(),
-                    )
-                    .is_empty()
-                {
-                    return Some(ty);
-                }
-            }
-        }
 
         // FIXME(@lcnr): If the normalization of the alias adds an inference constraint which
         // causes a previously added goal to fail, then we treat the alias as rigid.
