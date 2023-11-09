@@ -6,5 +6,18 @@ LL | struct Foo<'a, T: Iterator> {
    |
    = note: <T as Iterator>::Item: 'a
 
-error: aborting due to previous error
+error[E0640]: rustc_outlives
+  --> $DIR/projection.rs:4:1
+   |
+LL | struct Foo<'a, T: Iterator> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: <T as Iterator>::Item: 'a
+  --> $DIR/projection.rs:6:5
+   |
+LL |     bar: &'a T::Item
+   |     ^^^^^^^^^^^^^^^^
 
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0640`.

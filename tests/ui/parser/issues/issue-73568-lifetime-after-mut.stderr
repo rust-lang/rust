@@ -33,7 +33,13 @@ error[E0224]: at least one trait is required for an object type
 LL | fn y<'a>(y: &mut 'a + Send) {
    |                  ^^
 
-error: aborting due to 5 previous errors
+error[E0224]: at least one trait is required for an object type
+  --> $DIR/issue-73568-lifetime-after-mut.rs:17:23
+   |
+LL |     let z = y as &mut 'a + Send;
+   |                       ^^
+
+error: aborting due to 6 previous errors
 
 Some errors have detailed explanations: E0178, E0224, E0423.
 For more information about an error, try `rustc --explain E0178`.

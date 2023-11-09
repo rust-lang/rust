@@ -7,7 +7,7 @@ LL | enum Foo<'a, T> {
    = note: T: 'a
 
 error: rustc_outlives
-  --> $DIR/enum.rs:13:1
+  --> $DIR/enum.rs:14:1
    |
 LL | struct Bar<'b, U> {
    | ^^^^^^^^^^^^^^^^^
@@ -15,12 +15,49 @@ LL | struct Bar<'b, U> {
    = note: U: 'b
 
 error: rustc_outlives
-  --> $DIR/enum.rs:19:1
+  --> $DIR/enum.rs:21:1
    |
 LL | enum Ying<'c, K> {
    | ^^^^^^^^^^^^^^^^
    |
    = note: K: 'c
 
-error: aborting due to 3 previous errors
+error[E0640]: rustc_outlives
+  --> $DIR/enum.rs:7:1
+   |
+LL | enum Foo<'a, T> {
+   | ^^^^^^^^^^^^^^^
+   |
+note: T: 'a
+  --> $DIR/enum.rs:16:5
+   |
+LL |     field2: &'b U
+   |     ^^^^^^^^^^^^^
 
+error[E0640]: rustc_outlives
+  --> $DIR/enum.rs:14:1
+   |
+LL | struct Bar<'b, U> {
+   | ^^^^^^^^^^^^^^^^^
+   |
+note: U: 'b
+  --> $DIR/enum.rs:16:5
+   |
+LL |     field2: &'b U
+   |     ^^^^^^^^^^^^^
+
+error[E0640]: rustc_outlives
+  --> $DIR/enum.rs:21:1
+   |
+LL | enum Ying<'c, K> {
+   | ^^^^^^^^^^^^^^^^
+   |
+note: K: 'c
+  --> $DIR/enum.rs:23:9
+   |
+LL |     One(&'c Yang<K>)
+   |         ^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0640`.

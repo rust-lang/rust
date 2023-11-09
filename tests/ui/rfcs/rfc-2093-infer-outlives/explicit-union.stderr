@@ -6,5 +6,18 @@ LL | union Foo<'b, U: Copy> {
    |
    = note: U: 'b
 
-error: aborting due to previous error
+error[E0640]: rustc_outlives
+  --> $DIR/explicit-union.rs:4:1
+   |
+LL | union Foo<'b, U: Copy> {
+   | ^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: U: 'b
+  --> $DIR/explicit-union.rs:10:33
+   |
+LL | union Bar<'a, T: Copy> where T: 'a {
+   |                                 ^^
 
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0640`.

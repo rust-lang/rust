@@ -6,5 +6,18 @@ LL | struct Foo<'b, U> {
    |
    = note: U: 'b
 
-error: aborting due to previous error
+error[E0640]: rustc_outlives
+  --> $DIR/explicit-struct.rs:4:1
+   |
+LL | struct Foo<'b, U> {
+   | ^^^^^^^^^^^^^^^^^
+   |
+note: U: 'b
+  --> $DIR/explicit-struct.rs:9:28
+   |
+LL | struct Bar<'a, T> where T: 'a {
+   |                            ^^
 
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0640`.

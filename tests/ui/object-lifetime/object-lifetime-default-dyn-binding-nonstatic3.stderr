@@ -4,6 +4,20 @@ error[E0228]: the lifetime bound for this object type cannot be deduced from con
 LL | fn bar(x: &str) -> &dyn Foo<Item = dyn Bar> { &() }
    |                                    ^^^^^^^
 
-error: aborting due to previous error
+error[E0277]: the trait bound `(): Foo<'_>` is not satisfied
+  --> $DIR/object-lifetime-default-dyn-binding-nonstatic3.rs:16:47
+   |
+LL | fn bar(x: &str) -> &dyn Foo<Item = dyn Bar> { &() }
+   |                                               ^^^ the trait `Foo<'_>` is not implemented for `()`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/object-lifetime-default-dyn-binding-nonstatic3.rs:4:1
+   |
+LL | trait Foo<'a> {
+   | ^^^^^^^^^^^^^
+   = note: required for the cast from `&()` to `&dyn Foo<'_, Item = dyn Bar>`
 
-For more information about this error, try `rustc --explain E0228`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0228, E0277.
+For more information about an error, try `rustc --explain E0228`.

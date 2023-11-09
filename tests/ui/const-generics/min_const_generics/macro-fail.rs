@@ -14,6 +14,7 @@ impl<const N: usize> Marker<N> for Example<N> {}
 fn make_marker() -> impl Marker<gimme_a_const!(marker)> {
   //~^ ERROR: type provided when a constant was expected
   Example::<gimme_a_const!(marker)>
+  //~^ ERROR: type provided when a constant was expected
 }
 
 fn from_marker(_: impl Marker<{
@@ -33,7 +34,9 @@ fn main() {
   }>;
 
   let _fail = Example::<external_macro!()>;
+  //~^ ERROR: type provided when a constant was expected
 
   let _fail = Example::<gimme_a_const!()>;
   //~^ ERROR unexpected end of macro invocation
+  //~| ERROR: type provided when a constant was expected
 }

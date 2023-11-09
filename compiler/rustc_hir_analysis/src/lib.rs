@@ -163,17 +163,15 @@ pub fn provide(providers: &mut Providers) {
     hir_wf_check::provide(providers);
 }
 
+// FIXME(matthewjasper) We shouldn't need to use `track_errors` in this function.
 pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
     let _prof_timer = tcx.sess.timer("type_check_crate");
 
     // this ensures that later parts of type checking can assume that items
     // have valid types and not error
-    // FIXME(matthewjasper) We shouldn't need to use `track_errors`.
-    tcx.sess.track_errors(|| {
-        tcx.sess.time("type_collecting", || {
-            tcx.hir().for_each_module(|module| tcx.ensure().collect_mod_item_types(module))
-        });
-    })?;
+    tcx.sess.time("type_collecting", || {
+        tcx.hir().for_each_module(|module| tcx.ensure().collect_mod_item_types(module))
+    });
 
     if tcx.features().rustc_attrs {
         tcx.sess.track_errors(|| {

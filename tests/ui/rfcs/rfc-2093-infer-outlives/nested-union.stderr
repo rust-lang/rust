@@ -6,5 +6,18 @@ LL | union Foo<'a, T: Copy> {
    |
    = note: T: 'a
 
-error: aborting due to previous error
+error[E0640]: rustc_outlives
+  --> $DIR/nested-union.rs:4:1
+   |
+LL | union Foo<'a, T: Copy> {
+   | ^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: T: 'a
+  --> $DIR/nested-union.rs:12:5
+   |
+LL |     field2: &'b U
+   |     ^^^^^^^^^^^^^
 
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0640`.

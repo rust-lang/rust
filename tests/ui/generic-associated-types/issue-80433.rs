@@ -4,7 +4,7 @@ struct E<T> {
 }
 
 trait TestMut {
-    type Output<'a>;
+    type Output<'a>; //~ ERROR missing required bound
     fn test_mut<'a>(&'a mut self) -> Self::Output<'a>;
 }
 

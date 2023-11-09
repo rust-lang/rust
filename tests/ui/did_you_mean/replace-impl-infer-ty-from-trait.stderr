@@ -13,6 +13,13 @@ help: try replacing `_` with the types in the corresponding trait method signatu
 LL |     fn bar(i: i32, t: usize, s: &()) -> (usize, i32) {
    |               ~~~     ~~~~~     ~~~     ~~~~~~~~~~~~
 
-error: aborting due to previous error
+error[E0282]: type annotations needed
+  --> $DIR/replace-impl-infer-ty-from-trait.rs:9:12
+   |
+LL |     fn bar(i: _, t: _, s: _) -> _ {
+   |            ^ cannot infer type
 
-For more information about this error, try `rustc --explain E0121`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0121, E0282.
+For more information about an error, try `rustc --explain E0121`.

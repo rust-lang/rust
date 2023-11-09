@@ -10,6 +10,14 @@ LL | type X = impl for<T> Fn() -> Lexer<T>::Cursor;
    = note: the associated type was found for
            - `Lexer<i32>`
 
-error: aborting due to previous error
+error: unconstrained opaque type
+  --> $DIR/issue-109299-1.rs:10:10
+   |
+LL | type X = impl for<T> Fn() -> Lexer<T>::Cursor;
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `X` must be used in combination with a concrete type within the same module
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0220`.

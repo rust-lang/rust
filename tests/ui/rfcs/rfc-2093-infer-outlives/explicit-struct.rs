@@ -2,6 +2,7 @@
 
 #[rustc_outlives]
 struct Foo<'b, U> { //~ ERROR rustc_outlives
+    //~^ ERROR rustc_outlives
     bar: Bar<'b, U>
 }
 

@@ -86,6 +86,8 @@ static A: () = ();
 //~^ ERROR attribute should be applied to a function
 impl Quux for u8 {}
 //~^ NOTE not a function
+//~| NOTE missing `foo` in implementation
+//~| ERROR missing: `foo`
 
 #[target_feature(enable = "sse2")]
 //~^ ERROR attribute should be applied to a function
@@ -93,7 +95,7 @@ impl Foo {}
 //~^ NOTE not a function
 
 trait Quux {
-    fn foo();
+    fn foo(); //~ NOTE `foo` from trait
 }
 
 impl Quux for Foo {

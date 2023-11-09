@@ -11,6 +11,7 @@ pub trait Parse {
 pub trait CoolStuff: Parse<MODE = Mode::Cool> {}
 //~^ ERROR expected associated constant bound
 //~| ERROR expected associated constant bound
+//~| ERROR expected associated constant bound
 //~| ERROR expected type
 
 fn no_help() -> Mode::Cool {}
