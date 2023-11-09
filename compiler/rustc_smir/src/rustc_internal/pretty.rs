@@ -7,20 +7,23 @@ use stable_mir::{
     CrateItem,
 };
 
-use super::{run, RustcInternal};
+use super::{internal, run};
 
 pub fn write_smir_pretty<'tcx>(tcx: TyCtxt<'tcx>, w: &mut dyn io::Write) -> io::Result<()> {
+    writeln!(w, "// WARNING: This is highly experimental output it's intended for stable-mir developers only.").unwrap();
+    writeln!(w, "// If you find a bug or want to improve the output open a issue at https://github.com/rust-lang/project-stable-mir.").unwrap();
     run(tcx, || {
         let items = stable_mir::all_local_items();
         items.iter().for_each(|item| {
             // Because we can't return a Result from a closure, we have to unwrap here.
             writeln!(w, "{}", function_name(*item, tcx)).unwrap();
             writeln!(w, "{}", function_body(*item, tcx)).unwrap();
-            writeln!(w, "------------------").unwrap();
-            item.body().blocks.iter().for_each(|block| {
+            item.body().blocks.iter().enumerate().for_each(|(index, block)| {
+                writeln!(w, "    bb{}: {{", index).unwrap();
                 block.statements.iter().for_each(|statement| {
                     writeln!(w, "{}", pretty_statement(&statement.kind, tcx)).unwrap();
                 });
+                writeln!(w, "    }}").unwrap();
             })
         })
     });
@@ -76,8 +79,8 @@ pub fn pretty_statement(statement: &StatementKind, tcx: TyCtxt<'_>) -> String {
     let mut pretty = String::new();
     match statement {
         StatementKind::Assign(place, rval) => {
-            pretty.push_str(format!("_{} = ", place.local).as_str());
-            pretty.push_str(&pretty_rvalue(rval, tcx))
+            pretty.push_str(format!("        _{} = ", place.local).as_str());
+            pretty.push_str(format!("{}", &pretty_rvalue(rval, tcx)).as_str());
         }
         StatementKind::FakeRead(_, _) => todo!(),
         StatementKind::SetDiscriminant { .. } => todo!(),
@@ -103,12 +106,12 @@ pub fn pretty_operand(operand: &Operand, _tcx: TyCtxt<'_>) -> String {
             pretty.push_str(format!("{}", copy.local).as_str());
         }
         Operand::Move(mv) => {
-            pretty.push_str("move");
-            pretty.push_str(format!("{}", mv.local).as_str());
+            pretty.push_str("move ");
+            pretty.push_str(format!("_{}", mv.local).as_str());
         }
         Operand::Constant(cnst) => {
             pretty.push_str("const ");
-            pretty.push_str(cnst.literal.internal_via_tls().to_string().as_str());
+            pretty.push_str(internal(&cnst.literal).to_string().as_str());
         }
     }
     pretty
@@ -118,9 +121,9 @@ pub fn pretty_rvalue(rval: &Rvalue, tcx: TyCtxt<'_>) -> String {
     let mut pretty = String::new();
     match rval {
         Rvalue::AddressOf(muta, addr) => {
-            pretty.push_str("address_of");
+            pretty.push_str("&raw ");
             pretty.push_str(&ret_mutability(&muta));
-            pretty.push_str(format!("{}", addr.local).as_str());
+            pretty.push_str(format!("(*_{})", addr.local).as_str());
         }
         Rvalue::Aggregate(aggregatekind, operands) => {
             pretty.push_str(format!("{:#?}", aggregatekind).as_str());
@@ -222,21 +225,45 @@ pub fn pretty_ty(ty: TyKind, tcx: TyCtxt<'_>) -> String {
                 stable_mir::ty::FloatTy::F64 => "f64".to_string(),
             },
             RigidTy::Adt(def, _) => {
-                format!("{:#?}", tcx.type_of(def.0.internal_via_tls()).instantiate_identity())
+                format!("{}", tcx.type_of(internal(&def.0)).instantiate_identity())
             }
             RigidTy::Foreign(_) => format!("{:#?}", rigid_ty),
             RigidTy::Str => "str".to_string(),
-            RigidTy::Array(_ty, len) => {
-                format!("[{};{:#?}]", 1, len.internal_via_tls())
+            RigidTy::Array(ty, len) => {
+                format!(
+                    "[{}; {}]",
+                    pretty_ty(ty.kind(), tcx),
+                    internal(&len).try_to_scalar().unwrap()
+                )
             }
-            RigidTy::Slice(ty) => pretty_ty(ty.kind(), tcx),
-            RigidTy::RawPtr(_, _) => format!("{:#?}", rigid_ty),
+            RigidTy::Slice(ty) => {
+                format!("[{}]", pretty_ty(ty.kind(), tcx))
+            }
+            RigidTy::RawPtr(ty, mutability) => {
+                pretty.push_str("*");
+                match mutability {
+                    Mutability::Not => pretty.push_str("const "),
+                    Mutability::Mut => pretty.push_str("mut "),
+                }
+                pretty.push_str(&pretty_ty(ty.kind(), tcx));
+                pretty
+            }
             RigidTy::Ref(_, ty, _) => pretty_ty(ty.kind(), tcx),
             RigidTy::FnDef(_, _) => format!("{:#?}", rigid_ty),
             RigidTy::FnPtr(_) => format!("{:#?}", rigid_ty),
             RigidTy::Closure(_, _) => format!("{:#?}", rigid_ty),
             RigidTy::Coroutine(_, _, _) => format!("{:#?}", rigid_ty),
-            RigidTy::Dynamic(_, _, _) => format!("{:#?}", rigid_ty),
+            RigidTy::Dynamic(data, region, repr) => {
+                // FIXME: Fix binder printing, it looks ugly now
+                pretty.push_str("(");
+                match repr {
+                    stable_mir::ty::DynKind::Dyn => pretty.push_str("dyn "),
+                    stable_mir::ty::DynKind::DynStar => pretty.push_str("dyn* "),
+                }
+                pretty.push_str(format!("{:#?}", data).as_str());
+                pretty.push_str(format!(" +  {:#?} )", region).as_str());
+                pretty
+            }
             RigidTy::Never => "!".to_string(),
             RigidTy::Tuple(tuple) => {
                 if tuple.is_empty() {
@@ -256,7 +283,9 @@ pub fn pretty_ty(ty: TyKind, tcx: TyCtxt<'_>) -> String {
             }
         },
         TyKind::Alias(_, _) => format!("{:#?}", ty),
-        TyKind::Param(_) => format!("{:#?}", ty),
+        TyKind::Param(param_ty) => {
+            format!("{:#?}", param_ty.name)
+        }
         TyKind::Bound(_, _) => format!("{:#?}", ty),
     }
 }

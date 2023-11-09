@@ -300,10 +300,4 @@ impl<K: PartialEq + Hash + Eq, V: Copy + Debug + PartialEq + IndexedVal> Index<V
 pub trait RustcInternal<'tcx> {
     type T;
     fn internal(&self, tables: &mut Tables<'tcx>) -> Self::T;
-
-    /// Use this when you want to convert to a rustc counterpart in user-code.
-    /// Do not use this within the smir crates themselves.
-    fn internal_via_tls(&self) -> Self::T {
-        with_tables(|tables| self.internal(tables))
-    }
 }
