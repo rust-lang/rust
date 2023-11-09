@@ -89,7 +89,7 @@ fn get_modified_rs_files(build: &Builder<'_>) -> Result<Option<Vec<String>>, Str
         return Ok(None);
     }
 
-    get_git_modified_files(Some(&build.config.src), &vec!["rs"])
+    get_git_modified_files(&build.config.git_config(), Some(&build.config.src), &vec!["rs"])
 }
 
 #[derive(serde_derive::Deserialize)]

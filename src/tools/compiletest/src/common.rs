@@ -8,6 +8,7 @@ use std::process::Command;
 use std::str::FromStr;
 
 use crate::util::{add_dylib_path, PathBufExt};
+use build_helper::git::GitConfig;
 use lazycell::AtomicLazyCell;
 use serde::de::{Deserialize, Deserializer, Error as _};
 use std::collections::{HashMap, HashSet};
@@ -379,6 +380,10 @@ pub struct Config {
     pub target_cfgs: AtomicLazyCell<TargetCfgs>,
 
     pub nocapture: bool,
+
+    // Needed both to construct build_helper::git::GitConfig
+    pub git_repository: String,
+    pub nightly_branch: String,
 }
 
 impl Config {
@@ -449,6 +454,10 @@ impl Config {
             // "nvptx64", "hexagon", "mips", "mips64", "spirv", "wasm32",
         ];
         ASM_SUPPORTED_ARCHS.contains(&self.target_cfg().arch.as_str())
+    }
+
+    pub fn git_config(&self) -> GitConfig<'_> {
+        GitConfig { git_repository: &self.git_repository, nightly_branch: &self.nightly_branch }
     }
 }
 

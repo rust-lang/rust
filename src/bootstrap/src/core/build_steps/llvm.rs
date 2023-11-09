@@ -132,8 +132,8 @@ pub(crate) fn detect_llvm_sha(config: &Config, is_git: bool) -> String {
         // walk back further to the last bors merge commit that actually changed LLVM. The first
         // step will fail on CI because only the `auto` branch exists; we just fall back to `HEAD`
         // in that case.
-        let closest_upstream =
-            get_git_merge_base(Some(&config.src)).unwrap_or_else(|_| "HEAD".into());
+        let closest_upstream = get_git_merge_base(&config.git_config(), Some(&config.src))
+            .unwrap_or_else(|_| "HEAD".into());
         let mut rev_list = config.git();
         rev_list.args(&[
             PathBuf::from("rev-list"),
