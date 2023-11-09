@@ -352,7 +352,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         let &ty::Alias(_, projection_ty) = goal.predicate.self_ty().kind() else { return };
 
         candidates.extend(self.probe(|_| ProbeKind::NormalizedSelfTyAssembly).enter(|ecx| {
-            if num_steps < ecx.local_overflow_limit() {
+            if tcx.recursion_limit().value_within_limit(num_steps) {
                 let normalized_ty = ecx.next_ty_infer();
                 let normalizes_to_goal = goal.with(
                     tcx,

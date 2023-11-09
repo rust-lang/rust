@@ -310,7 +310,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         depth: usize,
         ty: Ty<'tcx>,
     ) -> Option<Ty<'tcx>> {
-        if depth >= self.local_overflow_limit() {
+        if !self.tcx().recursion_limit().value_within_limit(depth) {
             return None;
         }
 
