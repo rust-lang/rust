@@ -1,4 +1,4 @@
-use syntax::{ast, AstNode};
+use syntax::{ast, AstNode, SyntaxKind, T};
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 
@@ -34,12 +34,27 @@ pub(crate) fn remove_parentheses(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
         return None;
     }
 
+    // we should use `find_node_at_offset` at `SourceFile` level to get expectant `Between`
+    let token_at_offset = ctx
+        .find_node_at_offset::<ast::SourceFile>()?
+        .syntax()
+        .token_at_offset(parens.syntax().text_range().start());
+    let need_to_add_ws = match token_at_offset {
+        syntax::TokenAtOffset::Between(before, _after) => {
+            // anyother `SyntaxKind` we missing here?
+            let tokens = vec![T![&], T![!], T!['('], T!['['], T!['{']];
+            before.kind() != SyntaxKind::WHITESPACE && !tokens.contains(&before.kind())
+        }
+        _ => false,
+    };
+    let expr = if need_to_add_ws { format!(" {}", expr) } else { expr.to_string() };
+
     let target = parens.syntax().text_range();
     acc.add(
         AssistId("remove_parentheses", AssistKind::Refactor),
         "Remove redundant parentheses",
         target,
-        |builder| builder.replace_ast(parens.into(), expr),
+        |builder| builder.replace(parens.syntax().text_range(), expr),
     )
 }
 
@@ -48,6 +63,15 @@ mod tests {
     use crate::tests::{check_assist, check_assist_not_applicable};
 
     use super::*;
+
+    #[test]
+    fn remove_parens_space() {
+        check_assist(
+            remove_parentheses,
+            r#"fn f() { match$0(true) {} }"#,
+            r#"fn f() { match true {} }"#,
+        );
+    }
 
     #[test]
     fn remove_parens_simple() {
@@ -94,8 +118,8 @@ mod tests {
         check_assist(remove_parentheses, r#"fn f() { f(($02 + 2)); }"#, r#"fn f() { f(2 + 2); }"#);
         check_assist(
             remove_parentheses,
-            r#"fn f() { (1<2)&&$0(3>4); }"#,
-            r#"fn f() { (1<2)&&3>4; }"#,
+            r#"fn f() { (1<2) &&$0(3>4); }"#,
+            r#"fn f() { (1<2) && 3>4; }"#,
         );
     }
 
@@ -164,8 +188,8 @@ mod tests {
     fn remove_parens_weird_places() {
         check_assist(
             remove_parentheses,
-            r#"fn f() { match () { _=>$0(()) } }"#,
-            r#"fn f() { match () { _=>() } }"#,
+            r#"fn f() { match () { _ =>$0(()) } }"#,
+            r#"fn f() { match () { _ => () } }"#,
         );
 
         check_assist(
