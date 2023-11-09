@@ -11,17 +11,11 @@
 //! * bidirectional-normalizes-to: If `A` and `B` are both projections, and both
 //!   may apply, then we can compute the "intersection" of both normalizes-to by
 //!   performing them together. This is used specifically to resolve ambiguities.
-use super::{EvalCtxt, SolverMode};
+use super::EvalCtxt;
+use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_infer::traits::query::NoSolution;
 use rustc_middle::traits::solve::{Certainty, Goal, QueryResult};
 use rustc_middle::ty;
-
-/// We may need to invert the alias relation direction if dealing an alias on the RHS.
-#[derive(Debug)]
-enum Invert {
-    No,
-    Yes,
-}
 
 impl<'tcx> EvalCtxt<'_, 'tcx> {
     #[instrument(level = "debug", skip(self), ret)]
@@ -31,187 +25,130 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     ) -> QueryResult<'tcx> {
         let tcx = self.tcx();
         let Goal { param_env, predicate: (lhs, rhs, direction) } = goal;
-        if lhs.is_infer() || rhs.is_infer() {
-            bug!(
-                "`AliasRelate` goal with an infer var on lhs or rhs which should have been instantiated"
-            );
-        }
+
+        let Some(lhs) = self.try_normalize_term(param_env, lhs)? else {
+            return self.evaluate_added_goals_and_make_canonical_response(Certainty::OVERFLOW);
+        };
+
+        let Some(rhs) = self.try_normalize_term(param_env, rhs)? else {
+            return self.evaluate_added_goals_and_make_canonical_response(Certainty::OVERFLOW);
+        };
+
+        let variance = match direction {
+            ty::AliasRelationDirection::Equate => ty::Variance::Invariant,
+            ty::AliasRelationDirection::Subtype => ty::Variance::Covariant,
+        };
 
         match (lhs.to_alias_ty(tcx), rhs.to_alias_ty(tcx)) {
-            (None, None) => bug!("`AliasRelate` goal without an alias on either lhs or rhs"),
+            (None, None) => {
+                self.relate(param_env, lhs, variance, rhs)?;
+                self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+            }
 
-            // RHS is not a projection, only way this is true is if LHS normalizes-to RHS
-            (Some(alias_lhs), None) => self.assemble_normalizes_to_candidate(
-                param_env,
-                alias_lhs,
-                rhs,
-                direction,
-                Invert::No,
-            ),
-
-            // LHS is not a projection, only way this is true is if RHS normalizes-to LHS
-            (None, Some(alias_rhs)) => self.assemble_normalizes_to_candidate(
-                param_env,
-                alias_rhs,
-                lhs,
-                direction,
-                Invert::Yes,
-            ),
+            (Some(alias), None) => {
+                if rhs.is_infer() {
+                    self.relate(param_env, lhs, variance, rhs)?;
+                    self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                } else if alias.is_opaque(tcx) {
+                    self.define_opaque(param_env, alias, rhs)
+                } else {
+                    Err(NoSolution)
+                }
+            }
+            (None, Some(alias)) => {
+                if lhs.is_infer() {
+                    self.relate(param_env, lhs, variance, rhs)?;
+                    self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                } else if alias.is_opaque(tcx) {
+                    self.define_opaque(param_env, alias, lhs)
+                } else {
+                    Err(NoSolution)
+                }
+            }
 
             (Some(alias_lhs), Some(alias_rhs)) => {
-                debug!("both sides are aliases");
+                self.relate_rigid_alias_or_opaque(param_env, alias_lhs, variance, alias_rhs)
+            }
+        }
+    }
 
-                let mut candidates = Vec::new();
-                // LHS normalizes-to RHS
-                candidates.extend(self.assemble_normalizes_to_candidate(
-                    param_env,
-                    alias_lhs,
-                    rhs,
-                    direction,
-                    Invert::No,
-                ));
-                // RHS normalizes-to RHS
-                candidates.extend(self.assemble_normalizes_to_candidate(
-                    param_env,
-                    alias_rhs,
-                    lhs,
-                    direction,
-                    Invert::Yes,
-                ));
-                // Relate via args
-                candidates.extend(
-                    self.assemble_subst_relate_candidate(
-                        param_env, alias_lhs, alias_rhs, direction,
-                    ),
-                );
-                debug!(?candidates);
-
-                if let Some(merged) = self.try_merge_responses(&candidates) {
-                    Ok(merged)
+    /// Normalize the `term` to equate it later. This does not define opaque types.
+    #[instrument(level = "debug", skip(self, param_env), ret)]
+    fn try_normalize_term(
+        &mut self,
+        param_env: ty::ParamEnv<'tcx>,
+        term: ty::Term<'tcx>,
+    ) -> Result<Option<ty::Term<'tcx>>, NoSolution> {
+        match term.unpack() {
+            ty::TermKind::Ty(ty) => {
+                // We do no define opaque types here but instead do so in `relate_rigid_alias_or_opaque`.
+                Ok(self
+                    .try_normalize_ty_recur(param_env, DefineOpaqueTypes::No, 0, ty)
+                    .map(Into::into))
+            }
+            ty::TermKind::Const(_) => {
+                if let Some(alias) = term.to_alias_ty(self.tcx()) {
+                    let term = self.next_term_infer_of_kind(term);
+                    self.add_goal(Goal::new(
+                        self.tcx(),
+                        param_env,
+                        ty::ProjectionPredicate { projection_ty: alias, term },
+                    ));
+                    self.try_evaluate_added_goals()?;
+                    Ok(Some(self.resolve_vars_if_possible(term)))
                 } else {
-                    // When relating two aliases and we have ambiguity, if both
-                    // aliases can be normalized to something, we prefer
-                    // "bidirectionally normalizing" both of them within the same
-                    // candidate.
-                    //
-                    // See <https://github.com/rust-lang/trait-system-refactor-initiative/issues/25>.
-                    //
-                    // As this is incomplete, we must not do so during coherence.
-                    match self.solver_mode() {
-                        SolverMode::Normal => {
-                            if let Ok(bidirectional_normalizes_to_response) = self
-                                .assemble_bidirectional_normalizes_to_candidate(
-                                    param_env, lhs, rhs, direction,
-                                )
-                            {
-                                Ok(bidirectional_normalizes_to_response)
-                            } else {
-                                self.flounder(&candidates)
-                            }
-                        }
-                        SolverMode::Coherence => self.flounder(&candidates),
-                    }
+                    Ok(Some(term))
                 }
             }
         }
     }
 
-    #[instrument(level = "debug", skip(self), ret)]
-    fn assemble_normalizes_to_candidate(
+    fn define_opaque(
         &mut self,
         param_env: ty::ParamEnv<'tcx>,
-        alias: ty::AliasTy<'tcx>,
-        other: ty::Term<'tcx>,
-        direction: ty::AliasRelationDirection,
-        invert: Invert,
+        opaque: ty::AliasTy<'tcx>,
+        term: ty::Term<'tcx>,
     ) -> QueryResult<'tcx> {
-        self.probe_misc_candidate("normalizes-to").enter(|ecx| {
-            ecx.normalizes_to_inner(param_env, alias, other, direction, invert)?;
-            ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-        })
-    }
-
-    // Computes the normalizes-to branch, with side-effects. This must be performed
-    // in a probe in order to not taint the evaluation context.
-    fn normalizes_to_inner(
-        &mut self,
-        param_env: ty::ParamEnv<'tcx>,
-        alias: ty::AliasTy<'tcx>,
-        other: ty::Term<'tcx>,
-        direction: ty::AliasRelationDirection,
-        invert: Invert,
-    ) -> Result<(), NoSolution> {
-        let other = match direction {
-            // This is purely an optimization. No need to instantiate a new
-            // infer var and equate the RHS to it.
-            ty::AliasRelationDirection::Equate => other,
-
-            // Instantiate an infer var and subtype our RHS to it, so that we
-            // properly represent a subtype relation between the LHS and RHS
-            // of the goal.
-            ty::AliasRelationDirection::Subtype => {
-                let fresh = self.next_term_infer_of_kind(other);
-                let (sub, sup) = match invert {
-                    Invert::No => (fresh, other),
-                    Invert::Yes => (other, fresh),
-                };
-                self.sub(param_env, sub, sup)?;
-                fresh
-            }
-        };
         self.add_goal(Goal::new(
             self.tcx(),
             param_env,
-            ty::ProjectionPredicate { projection_ty: alias, term: other },
+            ty::ProjectionPredicate { projection_ty: opaque, term },
         ));
-
-        Ok(())
+        self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }
 
-    fn assemble_subst_relate_candidate(
+    fn relate_rigid_alias_or_opaque(
         &mut self,
         param_env: ty::ParamEnv<'tcx>,
-        alias_lhs: ty::AliasTy<'tcx>,
-        alias_rhs: ty::AliasTy<'tcx>,
-        direction: ty::AliasRelationDirection,
+        lhs: ty::AliasTy<'tcx>,
+        variance: ty::Variance,
+        rhs: ty::AliasTy<'tcx>,
     ) -> QueryResult<'tcx> {
-        self.probe_misc_candidate("args relate").enter(|ecx| {
-            match direction {
-                ty::AliasRelationDirection::Equate => {
-                    ecx.eq(param_env, alias_lhs, alias_rhs)?;
-                }
-                ty::AliasRelationDirection::Subtype => {
-                    ecx.sub(param_env, alias_lhs, alias_rhs)?;
-                }
-            }
+        let tcx = self.tcx();
+        let mut candidates = vec![];
+        if lhs.is_opaque(tcx) {
+            candidates.extend(
+                self.probe_misc_candidate("define-lhs-opaque")
+                    .enter(|ecx| ecx.define_opaque(param_env, lhs, rhs.to_ty(tcx).into())),
+            );
+        }
 
-            ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-        })
-    }
+        if rhs.is_opaque(tcx) {
+            candidates.extend(
+                self.probe_misc_candidate("define-rhs-opaque")
+                    .enter(|ecx| ecx.define_opaque(param_env, rhs, lhs.to_ty(tcx).into())),
+            );
+        }
 
-    fn assemble_bidirectional_normalizes_to_candidate(
-        &mut self,
-        param_env: ty::ParamEnv<'tcx>,
-        lhs: ty::Term<'tcx>,
-        rhs: ty::Term<'tcx>,
-        direction: ty::AliasRelationDirection,
-    ) -> QueryResult<'tcx> {
-        self.probe_misc_candidate("bidir normalizes-to").enter(|ecx| {
-            ecx.normalizes_to_inner(
-                param_env,
-                lhs.to_alias_ty(ecx.tcx()).unwrap(),
-                rhs,
-                direction,
-                Invert::No,
-            )?;
-            ecx.normalizes_to_inner(
-                param_env,
-                rhs.to_alias_ty(ecx.tcx()).unwrap(),
-                lhs,
-                direction,
-                Invert::Yes,
-            )?;
+        candidates.extend(self.probe_misc_candidate("args-relate").enter(|ecx| {
+            ecx.relate(param_env, lhs, variance, rhs)?;
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-        })
+        }));
+
+        if let Some(result) = self.try_merge_responses(&candidates) {
+            Ok(result)
+        } else {
+            self.flounder(&candidates)
+        }
     }
 }

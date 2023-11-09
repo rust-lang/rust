@@ -751,6 +751,26 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             })
     }
 
+    #[instrument(level = "debug", skip(self, param_env), ret)]
+    pub(super) fn relate<T: ToTrace<'tcx>>(
+        &mut self,
+        param_env: ty::ParamEnv<'tcx>,
+        lhs: T,
+        variance: ty::Variance,
+        rhs: T,
+    ) -> Result<(), NoSolution> {
+        self.infcx
+            .at(&ObligationCause::dummy(), param_env)
+            .relate(DefineOpaqueTypes::No, lhs, variance, rhs)
+            .map(|InferOk { value: (), obligations }| {
+                self.add_goals(obligations.into_iter().map(|o| o.into()));
+            })
+            .map_err(|e| {
+                debug!(?e, "failed to relate");
+                NoSolution
+            })
+    }
+
     /// Equates two values returning the nested goals without adding them
     /// to the nested goals of the `EvalCtxt`.
     ///
