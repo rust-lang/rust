@@ -721,9 +721,7 @@ pub enum PatKind<'tcx> {
     Binding {
         mutability: Mutability,
         name: Symbol,
-        #[type_visitable(ignore)]
         mode: BindingMode,
-        #[type_visitable(ignore)]
         var: LocalVarId,
         ty: Ty<'tcx>,
         subpattern: Option<Box<Pat<'tcx>>>,
@@ -818,7 +816,6 @@ pub enum PatKind<'tcx> {
 pub struct PatRange<'tcx> {
     pub lo: PatRangeBoundary<'tcx>,
     pub hi: PatRangeBoundary<'tcx>,
-    #[type_visitable(ignore)]
     pub end: RangeEnd,
     pub ty: Ty<'tcx>,
 }
