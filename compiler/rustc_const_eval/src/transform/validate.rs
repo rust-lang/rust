@@ -848,11 +848,11 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
         }
         match rvalue {
             Rvalue::Use(_) | Rvalue::CopyForDeref(_) | Rvalue::Aggregate(..) => {}
-            Rvalue::Ref(_, BorrowKind::Shallow, _) => {
+            Rvalue::Ref(_, BorrowKind::Fake, _) => {
                 if self.mir_phase >= MirPhase::Runtime(RuntimePhase::Initial) {
                     self.fail(
                         location,
-                        "`Assign` statement with a `Shallow` borrow should have been removed in runtime MIR",
+                        "`Assign` statement with a `Fake` borrow should have been removed in runtime MIR",
                     );
                 }
             }

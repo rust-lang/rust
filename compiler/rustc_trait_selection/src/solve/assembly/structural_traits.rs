@@ -14,6 +14,7 @@ use crate::solve::EvalCtxt;
 //
 // For types with an "existential" binder, i.e. coroutine witnesses, we also
 // instantiate the binder with placeholders eagerly.
+#[instrument(level = "debug", skip(ecx), ret)]
 pub(in crate::solve) fn instantiate_constituent_tys_for_auto_trait<'tcx>(
     ecx: &EvalCtxt<'_, 'tcx>,
     ty: Ty<'tcx>,
@@ -107,6 +108,7 @@ pub(in crate::solve) fn replace_erased_lifetimes_with_bound_vars<'tcx>(
     ty::Binder::bind_with_vars(ty, bound_vars)
 }
 
+#[instrument(level = "debug", skip(ecx), ret)]
 pub(in crate::solve) fn instantiate_constituent_tys_for_sized_trait<'tcx>(
     ecx: &EvalCtxt<'_, 'tcx>,
     ty: Ty<'tcx>,
@@ -152,6 +154,7 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_sized_trait<'tcx>(
     }
 }
 
+#[instrument(level = "debug", skip(ecx), ret)]
 pub(in crate::solve) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
     ecx: &EvalCtxt<'_, 'tcx>,
     ty: Ty<'tcx>,

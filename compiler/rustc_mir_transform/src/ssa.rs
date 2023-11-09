@@ -234,7 +234,7 @@ impl<'tcx> Visitor<'tcx> for SsaVisitor<'_> {
             // so we have to remove them too.
             PlaceContext::NonMutatingUse(
                 NonMutatingUseContext::SharedBorrow
-                | NonMutatingUseContext::ShallowBorrow
+                | NonMutatingUseContext::FakeBorrow
                 | NonMutatingUseContext::AddressOf,
             )
             | PlaceContext::MutatingUse(_) => {

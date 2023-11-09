@@ -219,7 +219,7 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
             | PlaceContext::NonMutatingUse(
                 NonMutatingUseContext::Inspect
                 | NonMutatingUseContext::SharedBorrow
-                | NonMutatingUseContext::ShallowBorrow
+                | NonMutatingUseContext::FakeBorrow
                 | NonMutatingUseContext::AddressOf
                 | NonMutatingUseContext::Projection,
             ) => {

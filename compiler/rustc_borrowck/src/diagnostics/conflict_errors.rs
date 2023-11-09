@@ -1022,7 +1022,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 self.cannot_uniquely_borrow_by_two_closures(span, &desc_place, issued_span, None)
             }
 
-            (BorrowKind::Mut { .. }, BorrowKind::Shallow) => {
+            (BorrowKind::Mut { .. }, BorrowKind::Fake) => {
                 if let Some(immutable_section_description) =
                     self.classify_immutable_section(issued_borrow.assigned_place)
                 {
@@ -1114,11 +1114,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 )
             }
 
-            (BorrowKind::Shared, BorrowKind::Shared | BorrowKind::Shallow)
-            | (
-                BorrowKind::Shallow,
-                BorrowKind::Mut { .. } | BorrowKind::Shared | BorrowKind::Shallow,
-            ) => unreachable!(),
+            (BorrowKind::Shared, BorrowKind::Shared | BorrowKind::Fake)
+            | (BorrowKind::Fake, BorrowKind::Mut { .. } | BorrowKind::Shared | BorrowKind::Fake) => {
+                unreachable!()
+            }
         };
 
         if issued_spans == borrow_spans {
@@ -2806,7 +2805,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let loan_span = loan_spans.args_or_use();
 
         let descr_place = self.describe_any_place(place.as_ref());
-        if loan.kind == BorrowKind::Shallow {
+        if loan.kind == BorrowKind::Fake {
             if let Some(section) = self.classify_immutable_section(loan.assigned_place) {
                 let mut err = self.cannot_mutate_in_immutable_section(
                     span,

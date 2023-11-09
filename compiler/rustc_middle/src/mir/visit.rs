@@ -649,8 +649,8 @@ macro_rules! make_mir_visitor {
                             BorrowKind::Shared => PlaceContext::NonMutatingUse(
                                 NonMutatingUseContext::SharedBorrow
                             ),
-                            BorrowKind::Shallow => PlaceContext::NonMutatingUse(
-                                NonMutatingUseContext::ShallowBorrow
+                            BorrowKind::Fake => PlaceContext::NonMutatingUse(
+                                NonMutatingUseContext::FakeBorrow
                             ),
                             BorrowKind::Mut { .. } =>
                                 PlaceContext::MutatingUse(MutatingUseContext::Borrow),
@@ -1261,8 +1261,8 @@ pub enum NonMutatingUseContext {
     Move,
     /// Shared borrow.
     SharedBorrow,
-    /// Shallow borrow.
-    ShallowBorrow,
+    /// A fake borrow.
+    FakeBorrow,
     /// AddressOf for *const pointer.
     AddressOf,
     /// PlaceMention statement.
@@ -1341,7 +1341,7 @@ impl PlaceContext {
         matches!(
             self,
             PlaceContext::NonMutatingUse(
-                NonMutatingUseContext::SharedBorrow | NonMutatingUseContext::ShallowBorrow
+                NonMutatingUseContext::SharedBorrow | NonMutatingUseContext::FakeBorrow
             ) | PlaceContext::MutatingUse(MutatingUseContext::Borrow)
         )
     }
