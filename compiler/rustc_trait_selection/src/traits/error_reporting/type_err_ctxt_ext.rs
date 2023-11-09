@@ -2729,7 +2729,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         Some(format!("{cannot_do_this} in const contexts"))
                     }
                     // overridden post message
-                    (true, Some(AppendConstMessage::Custom(custom_msg))) => {
+                    (true, Some(AppendConstMessage::Custom(custom_msg, _))) => {
                         Some(format!("{cannot_do_this}{custom_msg}"))
                     }
                     // fallback to generic message
