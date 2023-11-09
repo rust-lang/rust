@@ -212,12 +212,11 @@ static DEC_DIGITS_LUT: &[u8; 200] = b"0001020304050607080910111213141516171819\
 
 macro_rules! impl_Display {
     ($($t:ident),* as $u:ident via $conv_fn:ident named $name:ident) => {
-        fn $name(n: $u, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fn $name(mut n: $u, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             // u64::MAX requires 20 digits of space ("18446744073709551615".len())
             let mut buf = [MaybeUninit::<u8>::uninit(); 20];
             let mut curr = buf.len();
             let buf_ptr = MaybeUninit::slice_as_mut_ptr(&mut buf);
-            let lut_ptr = DEC_DIGITS_LUT.as_ptr();
 
             // SAFETY: Since `d1` and `d2` are always less than or equal to `198`, we
             // can copy from `lut_ptr[d1..d1 + 1]` and `lut_ptr[d2..d2 + 1]`. To show
@@ -227,25 +226,14 @@ macro_rules! impl_Display {
             // non-negative, this means that `curr > 0` so `buf_ptr[curr..curr + 1]`
             // is safe to access.
             unsafe {
-                // if we reach here numbers are <= 9999, so at most 4 chars long
-                let mut n = n as u64; // possibly reduce 64bit math
-
-                // decode 2 more chars, if > 2 chars
-                while n >= 100 {
-                    let d1 = (n % 100) << 1;
-                    n /= 100;
-                    curr -= 2;
-                    ptr::copy_nonoverlapping(lut_ptr.add(d1 as usize), buf_ptr.add(curr), 2);
-                }
-
-                // decode last 1 or 2 chars
-                if n < 10 {
+                loop {
                     curr -= 1;
-                    *buf_ptr.add(curr) = (n as u8) + b'0';
-                } else {
-                    let d1 = n << 1;
-                    curr -= 2;
-                    ptr::copy_nonoverlapping(lut_ptr.add(d1 as usize), buf_ptr.add(curr), 2);
+                    let d1 = n % 10;
+                    *buf_ptr.add(curr) = (d1 as u8) + b'0';
+                    n /= 10;
+                    if n == 0 {
+                        break;
+                    }
                 }
             }
 
