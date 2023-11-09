@@ -33,7 +33,7 @@ pub fn expand_deriving_debug(
             explicit_self: true,
             nonself_args: vec![(fmtr, sym::f)],
             ret_ty: Path(path_std!(fmt::Result)),
-            attributes: ast::AttrVec::new(),
+            attributes: thin_vec![cx.attr_word(sym::inline, span)],
             fieldless_variants_strategy:
                 FieldlessVariantsStrategy::SpecializeIfAllVariantsFieldless,
             combine_substructure: combine_substructure(Box::new(|a, b, c| {
