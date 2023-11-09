@@ -4,17 +4,11 @@ use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::{self, ParamEnvAnd, TyCtxt, TypeFoldable, TypeVisitableExt};
 use rustc_trait_selection::traits::query::normalize::QueryNormalizeExt;
 use rustc_trait_selection::traits::{Normalized, ObligationCause};
-use std::sync::atomic::Ordering;
 
 pub(crate) fn provide(p: &mut Providers) {
     *p = Providers {
         try_normalize_generic_arg_after_erasing_regions: |tcx, goal| {
             debug!("try_normalize_generic_arg_after_erasing_regions(goal={:#?}", goal);
-
-            tcx.sess
-                .perf_stats
-                .normalize_generic_arg_after_erasing_regions
-                .fetch_add(1, Ordering::Relaxed);
 
             try_normalize_after_erasing_regions(tcx, goal)
         },

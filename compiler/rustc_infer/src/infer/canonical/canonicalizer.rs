@@ -13,7 +13,6 @@ use rustc_middle::ty::flags::FlagComputation;
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::GenericArg;
 use rustc_middle::ty::{self, BoundVar, InferConst, List, Ty, TyCtxt, TypeFlags, TypeVisitableExt};
-use std::sync::atomic::Ordering;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::Idx;
@@ -43,8 +42,6 @@ impl<'tcx> InferCtxt<'tcx> {
     where
         V: TypeFoldable<TyCtxt<'tcx>>,
     {
-        self.tcx.sess.perf_stats.queries_canonicalized.fetch_add(1, Ordering::Relaxed);
-
         Canonicalizer::canonicalize(value, self, self.tcx, &CanonicalizeAllFreeRegions, query_state)
     }
 
@@ -62,8 +59,6 @@ impl<'tcx> InferCtxt<'tcx> {
     where
         V: TypeFoldable<TyCtxt<'tcx>>,
     {
-        self.tcx.sess.perf_stats.queries_canonicalized.fetch_add(1, Ordering::Relaxed);
-
         Canonicalizer::canonicalize(
             value,
             self,
@@ -138,8 +133,6 @@ impl<'tcx> InferCtxt<'tcx> {
     where
         V: TypeFoldable<TyCtxt<'tcx>>,
     {
-        self.tcx.sess.perf_stats.queries_canonicalized.fetch_add(1, Ordering::Relaxed);
-
         Canonicalizer::canonicalize(
             value,
             self,
