@@ -1971,6 +1971,10 @@ note: if you're sure you want to do this, please open an issue as to why. In the
             cmd.arg("--git-hash");
         }
 
+        let git_config = builder.config.git_config();
+        cmd.arg("--git-repository").arg(git_config.git_repository);
+        cmd.arg("--nightly-branch").arg(git_config.nightly_branch);
+
         builder.ci_env.force_coloring_in_ci(&mut cmd);
 
         #[cfg(feature = "build-metrics")]
