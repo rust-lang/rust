@@ -12,8 +12,8 @@ use rustc_span::Span;
 use crate::errors::{ParamKindInEnumDiscriminant, ParamKindInNonTrivialAnonConst};
 use crate::late::{ConstantHasGenerics, NoConstantGenericsReason, PathSource, Rib, RibKind};
 use crate::macros::{sub_namespace_match, MacroRulesScope};
-use crate::BindingKey;
 use crate::{errors, AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, Determinacy, Finalize};
+use crate::{BindingKey, Used};
 use crate::{ImportKind, LexicalScopeBinding, Module, ModuleKind, ModuleOrUniformRoot};
 use crate::{NameBinding, NameBindingKind, ParentScope, PathResult, PrivacyError, Res};
 use crate::{ResolutionError, Resolver, Scope, ScopeSet, Segment, ToNameBinding, Weak};
@@ -339,7 +339,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 ident,
                 ns,
                 parent_scope,
-                finalize,
+                finalize.map(|finalize| Finalize { used: Used::Scope, ..finalize }),
                 ignore_binding,
             );
             if let Ok(binding) = item {
@@ -506,7 +506,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             ns,
                             adjusted_parent_scope,
                             !matches!(scope_set, ScopeSet::Late(..)),
-                            finalize,
+                            finalize.map(|finalize| Finalize { used: Used::Scope, ..finalize }),
                             ignore_binding,
                         );
                         match binding {
@@ -857,7 +857,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             .into_iter()
             .find_map(|binding| if binding == ignore_binding { None } else { binding });
 
-        if let Some(Finalize { path_span, report_private, .. }) = finalize {
+        if let Some(Finalize { path_span, report_private, used, .. }) = finalize {
             let Some(binding) = binding else {
                 return Err((Determined, Weak::No));
             };
@@ -901,7 +901,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 }
             }
 
-            self.record_use(ident, binding, restricted_shadowing);
+            self.record_use(ident, binding, used);
             return Ok(binding);
         }
 

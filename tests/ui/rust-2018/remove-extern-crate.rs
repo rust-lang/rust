@@ -6,6 +6,7 @@
 
 #![warn(rust_2018_idioms)]
 #![allow(dropping_copy_types)]
+#![allow(unused_imports)]
 
 extern crate core; //~ WARNING unused extern crate
 // Shouldn't suggest changing to `use`, as `another_name`

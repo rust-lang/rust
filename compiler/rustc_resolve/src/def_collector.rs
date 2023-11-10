@@ -1,5 +1,5 @@
 use crate::{ImplTraitContext, Resolver};
-use rustc_ast::visit::{self, FnKind};
+use rustc_ast::visit::FnKind;
 use rustc_ast::*;
 use rustc_expand::expand::AstFragment;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind};
