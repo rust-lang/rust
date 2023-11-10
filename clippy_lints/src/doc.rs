@@ -4,7 +4,6 @@ use clippy_utils::macros::{is_panic, root_macro_call_first_node};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
 use clippy_utils::{is_entrypoint_fn, method_chain_args, return_ty};
-use if_chain::if_chain;
 use pulldown_cmark::Event::{
     Code, End, FootnoteReference, HardBreak, Html, Rule, SoftBreak, Start, TaskListMarker, Text,
 };
@@ -428,25 +427,21 @@ fn lint_for_missing_headers(
                 span,
                 "docs for function returning `Result` missing `# Errors` section",
             );
-        } else {
-            if_chain! {
-                if let Some(body_id) = body_id;
-                if let Some(future) = cx.tcx.lang_items().future_trait();
-                let typeck = cx.tcx.typeck_body(body_id);
-                let body = cx.tcx.hir().body(body_id);
-                let ret_ty = typeck.expr_ty(body.value);
-                if implements_trait(cx, ret_ty, future, &[]);
-                if let ty::Coroutine(_, subs, _) = ret_ty.kind();
-                if is_type_diagnostic_item(cx, subs.as_coroutine().return_ty(), sym::Result);
-                then {
-                    span_lint(
-                        cx,
-                        MISSING_ERRORS_DOC,
-                        span,
-                        "docs for function returning `Result` missing `# Errors` section",
-                    );
-                }
-            }
+        } else if let Some(body_id) = body_id
+            && let Some(future) = cx.tcx.lang_items().future_trait()
+            && let typeck = cx.tcx.typeck_body(body_id)
+            && let body = cx.tcx.hir().body(body_id)
+            && let ret_ty = typeck.expr_ty(body.value)
+            && implements_trait(cx, ret_ty, future, &[])
+            && let ty::Coroutine(_, subs, _) = ret_ty.kind()
+            && is_type_diagnostic_item(cx, subs.as_coroutine().return_ty(), sym::Result)
+        {
+            span_lint(
+                cx,
+                MISSING_ERRORS_DOC,
+                span,
+                "docs for function returning `Result` missing `# Errors` section",
+            );
         }
     }
 }

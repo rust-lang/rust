@@ -76,7 +76,6 @@ use std::collections::hash_map::Entry;
 use std::hash::BuildHasherDefault;
 use std::sync::{Mutex, MutexGuard, OnceLock};
 
-use if_chain::if_chain;
 use itertools::Itertools;
 use rustc_ast::ast::{self, LitKind, RangeLimits};
 use rustc_data_structures::fx::FxHashMap;
@@ -176,14 +175,12 @@ pub fn expr_or_init<'a, 'b, 'tcx: 'b>(cx: &LateContext<'tcx>, mut expr: &'a Expr
 /// canonical binding `HirId`.
 pub fn find_binding_init<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Option<&'tcx Expr<'tcx>> {
     let hir = cx.tcx.hir();
-    if_chain! {
-        if let Some(Node::Pat(pat)) = hir.find(hir_id);
-        if matches!(pat.kind, PatKind::Binding(BindingAnnotation::NONE, ..));
-        let parent = hir.parent_id(hir_id);
-        if let Some(Node::Local(local)) = hir.find(parent);
-        then {
-            return local.init;
-        }
+    if let Some(Node::Pat(pat)) = hir.find(hir_id)
+        && matches!(pat.kind, PatKind::Binding(BindingAnnotation::NONE, ..))
+        && let parent = hir.parent_id(hir_id)
+        && let Some(Node::Local(local)) = hir.find(parent)
+    {
+        return local.init;
     }
     None
 }
@@ -713,13 +710,11 @@ pub fn trait_ref_of_method<'tcx>(cx: &LateContext<'tcx>, def_id: LocalDefId) -> 
     // Get the implemented trait for the current function
     let hir_id = cx.tcx.hir().local_def_id_to_hir_id(def_id);
     let parent_impl = cx.tcx.hir().get_parent_item(hir_id);
-    if_chain! {
-        if parent_impl != hir::CRATE_OWNER_ID;
-        if let hir::Node::Item(item) = cx.tcx.hir().get_by_def_id(parent_impl.def_id);
-        if let hir::ItemKind::Impl(impl_) = &item.kind;
-        then {
-            return impl_.of_trait.as_ref();
-        }
+    if parent_impl != hir::CRATE_OWNER_ID
+        && let hir::Node::Item(item) = cx.tcx.hir().get_by_def_id(parent_impl.def_id)
+        && let hir::ItemKind::Impl(impl_) = &item.kind
+    {
+        return impl_.of_trait.as_ref();
     }
     None
 }
@@ -823,12 +818,14 @@ fn is_default_equivalent_ctor(cx: &LateContext<'_>, def_id: DefId, path: &QPath<
 
 /// Returns true if the expr is equal to `Default::default` when evaluated.
 pub fn is_default_equivalent_call(cx: &LateContext<'_>, repl_func: &Expr<'_>) -> bool {
-    if_chain! {
-        if let hir::ExprKind::Path(ref repl_func_qpath) = repl_func.kind;
-        if let Some(repl_def_id) = cx.qpath_res(repl_func_qpath, repl_func.hir_id).opt_def_id();
-        if is_diag_trait_item(cx, repl_def_id, sym::Default)
-            || is_default_equivalent_ctor(cx, repl_def_id, repl_func_qpath);
-        then { true } else { false }
+    if let hir::ExprKind::Path(ref repl_func_qpath) = repl_func.kind
+        && let Some(repl_def_id) = cx.qpath_res(repl_func_qpath, repl_func.hir_id).opt_def_id()
+        && (is_diag_trait_item(cx, repl_def_id, sym::Default)
+            || is_default_equivalent_ctor(cx, repl_def_id, repl_func_qpath))
+    {
+        true
+    } else {
+        false
     }
 }
 
@@ -843,14 +840,14 @@ pub fn is_default_equivalent(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
             _ => false,
         },
         ExprKind::Tup(items) | ExprKind::Array(items) => items.iter().all(|x| is_default_equivalent(cx, x)),
-        ExprKind::Repeat(x, ArrayLen::Body(len)) => if_chain! {
-            if let ExprKind::Lit(const_lit) = cx.tcx.hir().body(len.body).value.kind;
-            if let LitKind::Int(v, _) = const_lit.node;
-            if v <= 32 && is_default_equivalent(cx, x);
-            then {
+        ExprKind::Repeat(x, ArrayLen::Body(len)) => {
+            if let ExprKind::Lit(const_lit) = cx.tcx.hir().body(len.body).value.kind
+                && let LitKind::Int(v, _) = const_lit.node
+                && v <= 32
+                && is_default_equivalent(cx, x)
+            {
                 true
-            }
-            else {
+            } else {
                 false
             }
         },
@@ -1736,15 +1733,13 @@ pub fn iter_input_pats<'tcx>(decl: &FnDecl<'_>, body: &'tcx Body<'_>) -> impl It
 /// operator or the `try` macro.
 pub fn is_try<'tcx>(cx: &LateContext<'_>, expr: &'tcx Expr<'tcx>) -> Option<&'tcx Expr<'tcx>> {
     fn is_ok(cx: &LateContext<'_>, arm: &Arm<'_>) -> bool {
-        if_chain! {
-            if let PatKind::TupleStruct(ref path, pat, ddpos) = arm.pat.kind;
-            if ddpos.as_opt_usize().is_none();
-            if is_res_lang_ctor(cx, cx.qpath_res(path, arm.pat.hir_id), ResultOk);
-            if let PatKind::Binding(_, hir_id, _, None) = pat[0].kind;
-            if path_to_local_id(arm.body, hir_id);
-            then {
-                return true;
-            }
+        if let PatKind::TupleStruct(ref path, pat, ddpos) = arm.pat.kind
+            && ddpos.as_opt_usize().is_none()
+            && is_res_lang_ctor(cx, cx.qpath_res(path, arm.pat.hir_id), ResultOk)
+            && let PatKind::Binding(_, hir_id, _, None) = pat[0].kind
+            && path_to_local_id(arm.body, hir_id)
+        {
+            return true;
         }
         false
     }
@@ -1763,14 +1758,12 @@ pub fn is_try<'tcx>(cx: &LateContext<'_>, expr: &'tcx Expr<'tcx>) -> Option<&'tc
             return Some(expr);
         }
 
-        if_chain! {
-            if arms.len() == 2;
-            if arms[0].guard.is_none();
-            if arms[1].guard.is_none();
-            if (is_ok(cx, &arms[0]) && is_err(cx, &arms[1])) || (is_ok(cx, &arms[1]) && is_err(cx, &arms[0]));
-            then {
-                return Some(expr);
-            }
+        if arms.len() == 2
+            && arms[0].guard.is_none()
+            && arms[1].guard.is_none()
+            && ((is_ok(cx, &arms[0]) && is_err(cx, &arms[1])) || (is_ok(cx, &arms[1]) && is_err(cx, &arms[0])))
+        {
+            return Some(expr);
         }
     }
 
@@ -1887,14 +1880,12 @@ pub fn match_function_call<'tcx>(
     expr: &'tcx Expr<'_>,
     path: &[&str],
 ) -> Option<&'tcx [Expr<'tcx>]> {
-    if_chain! {
-        if let ExprKind::Call(fun, args) = expr.kind;
-        if let ExprKind::Path(ref qpath) = fun.kind;
-        if let Some(fun_def_id) = cx.qpath_res(qpath, fun.hir_id).opt_def_id();
-        if match_def_path(cx, fun_def_id, path);
-        then {
-            return Some(args);
-        }
+    if let ExprKind::Call(fun, args) = expr.kind
+        && let ExprKind::Path(ref qpath) = fun.kind
+        && let Some(fun_def_id) = cx.qpath_res(qpath, fun.hir_id).opt_def_id()
+        && match_def_path(cx, fun_def_id, path)
+    {
+        return Some(args);
     };
     None
 }
@@ -1904,13 +1895,11 @@ pub fn match_function_call_with_def_id<'tcx>(
     expr: &'tcx Expr<'_>,
     fun_def_id: DefId,
 ) -> Option<&'tcx [Expr<'tcx>]> {
-    if_chain! {
-        if let ExprKind::Call(fun, args) = expr.kind;
-        if let ExprKind::Path(ref qpath) = fun.kind;
-        if cx.qpath_res(qpath, fun.hir_id).opt_def_id() == Some(fun_def_id);
-        then {
-            return Some(args);
-        }
+    if let ExprKind::Call(fun, args) = expr.kind
+        && let ExprKind::Path(ref qpath) = fun.kind
+        && cx.qpath_res(qpath, fun.hir_id).opt_def_id() == Some(fun_def_id)
+    {
+        return Some(args);
     };
     None
 }
@@ -2008,10 +1997,10 @@ pub fn get_async_fn_body<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'_>) -> Option<&'t
 // check if expr is calling method or function with #[must_use] attribute
 pub fn is_must_use_func_call(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     let did = match expr.kind {
-        ExprKind::Call(path, _) => if_chain! {
-            if let ExprKind::Path(ref qpath) = path.kind;
-            if let def::Res::Def(_, did) = cx.qpath_res(qpath, path.hir_id);
-            then {
+        ExprKind::Call(path, _) => {
+            if let ExprKind::Path(ref qpath) = path.kind
+                && let def::Res::Def(_, did) = cx.qpath_res(qpath, path.hir_id)
+            {
                 Some(did)
             } else {
                 None
@@ -2071,14 +2060,12 @@ fn is_body_identity_function(cx: &LateContext<'_>, func: &Body<'_>) -> bool {
                 },
                 _,
             ) => {
-                if_chain! {
-                    if let StmtKind::Semi(e) | StmtKind::Expr(e) = stmt.kind;
-                    if let ExprKind::Ret(Some(ret_val)) = e.kind;
-                    then {
-                        expr = ret_val;
-                    } else {
-                        return false;
-                    }
+                if let StmtKind::Semi(e) | StmtKind::Expr(e) = stmt.kind
+                    && let ExprKind::Ret(Some(ret_val)) = e.kind
+                {
+                    expr = ret_val;
+                } else {
+                    return false;
                 }
             },
             _ => return check_pat(cx, param.pat, expr),

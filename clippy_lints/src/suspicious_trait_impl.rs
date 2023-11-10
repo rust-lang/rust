@@ -2,7 +2,6 @@ use clippy_utils::diagnostics::span_lint;
 use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{binop_traits, trait_ref_of_method, BINOP_TRAITS, OP_ASSIGN_TRAITS};
 use core::ops::ControlFlow;
-use if_chain::if_chain;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -57,37 +56,39 @@ declare_lint_pass!(SuspiciousImpl => [SUSPICIOUS_ARITHMETIC_IMPL, SUSPICIOUS_OP_
 
 impl<'tcx> LateLintPass<'tcx> for SuspiciousImpl {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
-        if_chain! {
-            if let hir::ExprKind::Binary(binop, _, _) | hir::ExprKind::AssignOp(binop, ..) = expr.kind;
-            if let Some((binop_trait_lang, op_assign_trait_lang)) = binop_traits(binop.node);
-            if let Some(binop_trait_id) = cx.tcx.lang_items().get(binop_trait_lang);
-            if let Some(op_assign_trait_id) = cx.tcx.lang_items().get(op_assign_trait_lang);
+        if let hir::ExprKind::Binary(binop, _, _) | hir::ExprKind::AssignOp(binop, ..) = expr.kind
+            && let Some((binop_trait_lang, op_assign_trait_lang)) = binop_traits(binop.node)
+            && let Some(binop_trait_id) = cx.tcx.lang_items().get(binop_trait_lang)
+            && let Some(op_assign_trait_id) = cx.tcx.lang_items().get(op_assign_trait_lang)
 
             // Check for more than one binary operation in the implemented function
             // Linting when multiple operations are involved can result in false positives
-            let parent_fn = cx.tcx.hir().get_parent_item(expr.hir_id).def_id;
-            if let hir::Node::ImplItem(impl_item) = cx.tcx.hir().get_by_def_id(parent_fn);
-            if let hir::ImplItemKind::Fn(_, body_id) = impl_item.kind;
-            let body = cx.tcx.hir().body(body_id);
-            let parent_fn = cx.tcx.hir().get_parent_item(expr.hir_id).def_id;
-            if let Some(trait_ref) = trait_ref_of_method(cx, parent_fn);
-            let trait_id = trait_ref.path.res.def_id();
-            if ![binop_trait_id, op_assign_trait_id].contains(&trait_id);
-            if let Some(&(_, lint)) = [
+            && let parent_fn = cx.tcx.hir().get_parent_item(expr.hir_id).def_id
+            && let hir::Node::ImplItem(impl_item) = cx.tcx.hir().get_by_def_id(parent_fn)
+            && let hir::ImplItemKind::Fn(_, body_id) = impl_item.kind
+            && let body = cx.tcx.hir().body(body_id)
+            && let parent_fn = cx.tcx.hir().get_parent_item(expr.hir_id).def_id
+            && let Some(trait_ref) = trait_ref_of_method(cx, parent_fn)
+            && let trait_id = trait_ref.path.res.def_id()
+            && ![binop_trait_id, op_assign_trait_id].contains(&trait_id)
+            && let Some(&(_, lint)) = [
                 (&BINOP_TRAITS, SUSPICIOUS_ARITHMETIC_IMPL),
                 (&OP_ASSIGN_TRAITS, SUSPICIOUS_OP_ASSIGN_IMPL),
             ]
                 .iter()
-                .find(|&(ts, _)| ts.iter().any(|&t| Some(trait_id) == cx.tcx.lang_items().get(t)));
-            if count_binops(body.value) == 1;
-            then {
-                span_lint(
-                    cx,
-                    lint,
-                    binop.span,
-                    &format!("suspicious use of `{}` in `{}` impl", binop.node.as_str(), cx.tcx.item_name(trait_id)),
-                );
-            }
+                .find(|&(ts, _)| ts.iter().any(|&t| Some(trait_id) == cx.tcx.lang_items().get(t)))
+            && count_binops(body.value) == 1
+        {
+            span_lint(
+                cx,
+                lint,
+                binop.span,
+                &format!(
+                    "suspicious use of `{}` in `{}` impl",
+                    binop.node.as_str(),
+                    cx.tcx.item_name(trait_id)
+                ),
+            );
         }
     }
 }

@@ -1,7 +1,6 @@
 use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source;
-use if_chain::if_chain;
 use rustc_ast::Mutability;
 use rustc_hir::{Expr, ExprKind, Node};
 use rustc_lint::LateContext;
@@ -69,26 +68,24 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>, msrv: &Msrv
 
 fn is_child_of_cast(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     let map = cx.tcx.hir();
-    if_chain! {
-        if let Some(parent_id) = map.opt_parent_id(expr.hir_id);
-        if let Some(parent) = map.find(parent_id);
-        then {
-            let expr = match parent {
-                Node::Block(block) => {
-                    if let Some(parent_expr) = block.expr {
-                        parent_expr
-                    } else {
-                        return false;
-                    }
-                },
-                Node::Expr(expr) => expr,
-                _ => return false,
-            };
+    if let Some(parent_id) = map.opt_parent_id(expr.hir_id)
+        && let Some(parent) = map.find(parent_id)
+    {
+        let expr = match parent {
+            Node::Block(block) => {
+                if let Some(parent_expr) = block.expr {
+                    parent_expr
+                } else {
+                    return false;
+                }
+            },
+            Node::Expr(expr) => expr,
+            _ => return false,
+        };
 
-            matches!(expr.kind, ExprKind::Cast(..))
-        } else {
-            false
-        }
+        matches!(expr.kind, ExprKind::Cast(..))
+    } else {
+        false
     }
 }
 

@@ -1,7 +1,6 @@
 use clippy_config::types::MacroMatcher;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_opt;
-use if_chain::if_chain;
 use rustc_ast::ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::Applicability;
@@ -93,24 +92,22 @@ fn is_offending_macro<'a>(cx: &EarlyContext<'_>, span: Span, mac_braces: &'a Mac
                 .map_or(false, |e| e.macro_def_id.map_or(false, DefId::is_local))
     };
     let span_call_site = span.ctxt().outer_expn_data().call_site;
-    if_chain! {
-        if let ExpnKind::Macro(MacroKind::Bang, mac_name) = span.ctxt().outer_expn_data().kind;
-        let name = mac_name.as_str();
-        if let Some(braces) = mac_braces.macro_braces.get(name);
-        if let Some(snip) = snippet_opt(cx, span_call_site);
+    if let ExpnKind::Macro(MacroKind::Bang, mac_name) = span.ctxt().outer_expn_data().kind
+        && let name = mac_name.as_str()
+        && let Some(braces) = mac_braces.macro_braces.get(name)
+        && let Some(snip) = snippet_opt(cx, span_call_site)
         // we must check only invocation sites
         // https://github.com/rust-lang/rust-clippy/issues/7422
-        if snip.starts_with(&format!("{name}!"));
-        if unnested_or_local();
+        && snip.starts_with(&format!("{name}!"))
+        && unnested_or_local()
         // make formatting consistent
-        let c = snip.replace(' ', "");
-        if !c.starts_with(&format!("{name}!{}", braces.0));
-        if !mac_braces.done.contains(&span_call_site);
-        then {
-            Some((span_call_site, braces, snip))
-        } else {
-            None
-        }
+        && let c = snip.replace(' ', "")
+        && !c.starts_with(&format!("{name}!{}", braces.0))
+        && !mac_braces.done.contains(&span_call_site)
+    {
+        Some((span_call_site, braces, snip))
+    } else {
+        None
     }
 }
 

@@ -5,7 +5,6 @@ use clippy_utils::{
     get_enclosing_block, is_expr_path_def_path, is_integer_literal, is_path_diagnostic_item, path_to_local,
     path_to_local_id, paths, SpanlessEq,
 };
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_block, walk_expr, walk_stmt, Visitor};
 use rustc_hir::{BindingAnnotation, Block, Expr, ExprKind, HirId, PatKind, Stmt, StmtKind};
@@ -103,41 +102,35 @@ enum InitializationType<'tcx> {
 impl<'tcx> LateLintPass<'tcx> for SlowVectorInit {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         // Matches initialization on reassignments. For example: `vec = Vec::with_capacity(100)`
-        if_chain! {
-            if let ExprKind::Assign(left, right, _) = expr.kind;
-            if let Some(local_id) = path_to_local(left);
-            if let Some(size_expr) = Self::as_vec_initializer(cx, right);
+        if let ExprKind::Assign(left, right, _) = expr.kind
+            && let Some(local_id) = path_to_local(left)
+            && let Some(size_expr) = Self::as_vec_initializer(cx, right)
+        {
+            let vi = VecAllocation {
+                local_id,
+                allocation_expr: right,
+                size_expr,
+            };
 
-            then {
-                let vi = VecAllocation {
-                    local_id,
-                    allocation_expr: right,
-                    size_expr,
-                };
-
-                Self::search_initialization(cx, vi, expr.hir_id);
-            }
+            Self::search_initialization(cx, vi, expr.hir_id);
         }
     }
 
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
         // Matches statements which initializes vectors. For example: `let mut vec = Vec::with_capacity(10)`
         // or `Vec::new()`
-        if_chain! {
-            if let StmtKind::Local(local) = stmt.kind;
-            if let PatKind::Binding(BindingAnnotation::MUT, local_id, _, None) = local.pat.kind;
-            if let Some(init) = local.init;
-            if let Some(size_expr) = Self::as_vec_initializer(cx, init);
+        if let StmtKind::Local(local) = stmt.kind
+            && let PatKind::Binding(BindingAnnotation::MUT, local_id, _, None) = local.pat.kind
+            && let Some(init) = local.init
+            && let Some(size_expr) = Self::as_vec_initializer(cx, init)
+        {
+            let vi = VecAllocation {
+                local_id,
+                allocation_expr: init,
+                size_expr,
+            };
 
-            then {
-                let vi = VecAllocation {
-                    local_id,
-                    allocation_expr: init,
-                    size_expr,
-                };
-
-                Self::search_initialization(cx, vi, stmt.hir_id);
-            }
+            Self::search_initialization(cx, vi, stmt.hir_id);
         }
     }
 }
@@ -242,16 +235,13 @@ struct VectorInitializationVisitor<'a, 'tcx> {
 impl<'a, 'tcx> VectorInitializationVisitor<'a, 'tcx> {
     /// Checks if the given expression is extending a vector with `repeat(0).take(..)`
     fn search_slow_extend_filling(&mut self, expr: &'tcx Expr<'_>) {
-        if_chain! {
-            if self.initialization_found;
-            if let ExprKind::MethodCall(path, self_arg, [extend_arg], _) = expr.kind;
-            if path_to_local_id(self_arg, self.vec_alloc.local_id);
-            if path.ident.name == sym!(extend);
-            if self.is_repeat_take(extend_arg);
-
-            then {
-                self.slow_expression = Some(InitializationType::Extend(expr));
-            }
+        if self.initialization_found
+            && let ExprKind::MethodCall(path, self_arg, [extend_arg], _) = expr.kind
+            && path_to_local_id(self_arg, self.vec_alloc.local_id)
+            && path.ident.name == sym!(extend)
+            && self.is_repeat_take(extend_arg)
+        {
+            self.slow_expression = Some(InitializationType::Extend(expr));
         }
     }
 
@@ -281,21 +271,19 @@ impl<'a, 'tcx> VectorInitializationVisitor<'a, 'tcx> {
 
     /// Returns `true` if give expression is `repeat(0).take(...)`
     fn is_repeat_take(&mut self, expr: &'tcx Expr<'tcx>) -> bool {
-        if_chain! {
-            if let ExprKind::MethodCall(take_path, recv, [len_arg, ..], _) = expr.kind;
-            if take_path.ident.name == sym!(take);
+        if let ExprKind::MethodCall(take_path, recv, [len_arg, ..], _) = expr.kind
+            && take_path.ident.name == sym!(take)
             // Check that take is applied to `repeat(0)`
-            if self.is_repeat_zero(recv);
-            then {
-                if let InitializedSize::Initialized(size_expr) = self.vec_alloc.size_expr {
-                    // Check that len expression is equals to `with_capacity` expression
-                    return SpanlessEq::new(self.cx).eq_expr(len_arg, size_expr)
-                        || matches!(len_arg.kind, ExprKind::MethodCall(path, ..) if path.ident.as_str() == "capacity")
-                }
-
-                self.vec_alloc.size_expr = InitializedSize::Initialized(len_arg);
-                return true;
+            && self.is_repeat_zero(recv)
+        {
+            if let InitializedSize::Initialized(size_expr) = self.vec_alloc.size_expr {
+                // Check that len expression is equals to `with_capacity` expression
+                return SpanlessEq::new(self.cx).eq_expr(len_arg, size_expr)
+                    || matches!(len_arg.kind, ExprKind::MethodCall(path, ..) if path.ident.as_str() == "capacity");
             }
+
+            self.vec_alloc.size_expr = InitializedSize::Initialized(len_arg);
+            return true;
         }
 
         false
@@ -303,15 +291,13 @@ impl<'a, 'tcx> VectorInitializationVisitor<'a, 'tcx> {
 
     /// Returns `true` if given expression is `repeat(0)`
     fn is_repeat_zero(&self, expr: &Expr<'_>) -> bool {
-        if_chain! {
-            if let ExprKind::Call(fn_expr, [repeat_arg]) = expr.kind;
-            if is_path_diagnostic_item(self.cx, fn_expr, sym::iter_repeat);
-            if is_integer_literal(repeat_arg, 0);
-            then {
-                true
-            } else {
-                false
-            }
+        if let ExprKind::Call(fn_expr, [repeat_arg]) = expr.kind
+            && is_path_diagnostic_item(self.cx, fn_expr, sym::iter_repeat)
+            && is_integer_literal(repeat_arg, 0)
+        {
+            true
+        } else {
+            false
         }
     }
 }

@@ -55,20 +55,18 @@ impl LateLintPass<'_> for TestsOutsideTestModule {
         sp: Span,
         _: LocalDefId,
     ) {
-        if_chain! {
-            if !matches!(kind, FnKind::Closure);
-            if is_in_test_function(cx.tcx, body.id().hir_id);
-            if !is_in_cfg_test(cx.tcx, body.id().hir_id);
-            then {
-                span_lint_and_note(
-                    cx,
-                    TESTS_OUTSIDE_TEST_MODULE,
-                    sp,
-                    "this function marked with #[test] is outside a #[cfg(test)] module",
-                    None,
-                    "move it to a testing module marked with #[cfg(test)]",
-                );
-            }
+        if !matches!(kind, FnKind::Closure)
+            && is_in_test_function(cx.tcx, body.id().hir_id)
+            && !is_in_cfg_test(cx.tcx, body.id().hir_id)
+        {
+            span_lint_and_note(
+                cx,
+                TESTS_OUTSIDE_TEST_MODULE,
+                sp,
+                "this function marked with #[test] is outside a #[cfg(test)] module",
+                None,
+                "move it to a testing module marked with #[cfg(test)]",
+            );
         }
     }
 }

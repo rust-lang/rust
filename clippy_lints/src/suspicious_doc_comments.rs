@@ -1,5 +1,4 @@
 use clippy_utils::diagnostics::{multispan_sugg_with_applicability, span_lint_and_then};
-use if_chain::if_chain;
 use rustc_ast::token::CommentKind;
 use rustc_ast::{AttrKind, AttrStyle, Attribute, Item};
 use rustc_errors::Applicability;
@@ -76,19 +75,17 @@ fn collect_doc_comment_replacements(attrs: &[Attribute]) -> Vec<(Span, String)> 
     attrs
         .iter()
         .filter_map(|attr| {
-            if_chain! {
-                if let AttrKind::DocComment(com_kind, sym) = attr.kind;
-                if let AttrStyle::Outer = attr.style;
-                if let Some(com) = sym.as_str().strip_prefix('!');
-                then {
-                    let sugg = match com_kind {
-                        CommentKind::Line => format!("//!{com}"),
-                        CommentKind::Block => format!("/*!{com}*/")
-                    };
-                    Some((attr.span, sugg))
-                } else {
-                    None
-                }
+            if let AttrKind::DocComment(com_kind, sym) = attr.kind
+                && let AttrStyle::Outer = attr.style
+                && let Some(com) = sym.as_str().strip_prefix('!')
+            {
+                let sugg = match com_kind {
+                    CommentKind::Line => format!("//!{com}"),
+                    CommentKind::Block => format!("/*!{com}*/"),
+                };
+                Some((attr.span, sugg))
+            } else {
+                None
             }
         })
         .collect()

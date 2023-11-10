@@ -14,7 +14,6 @@ use clippy_config::{get_configuration_metadata, ClippyConfiguration};
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::ty::{match_type, walk_ptrs_ty_depth};
 use clippy_utils::{last_path_segment, match_def_path, match_function_call, match_path, paths};
-use if_chain::if_chain;
 use itertools::Itertools;
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
@@ -543,49 +542,45 @@ impl<'hir> LateLintPass<'hir> for MetadataCollector {
     fn check_item(&mut self, cx: &LateContext<'hir>, item: &'hir Item<'_>) {
         if let ItemKind::Static(ty, Mutability::Not, _) = item.kind {
             // Normal lint
-            if_chain! {
+            if is_lint_ref_type(cx, ty)
                 // item validation
-                if is_lint_ref_type(cx, ty);
                 // disallow check
-                let lint_name = sym_to_string(item.ident.name).to_ascii_lowercase();
+                && let lint_name = sym_to_string(item.ident.name).to_ascii_lowercase()
                 // metadata extraction
-                if let Some((group, level)) = get_lint_group_and_level_or_lint(cx, &lint_name, item);
-                if let Some(mut raw_docs) = extract_attr_docs_or_lint(cx, item);
-                then {
-                    if let Some(configuration_section) = self.get_lint_configs(&lint_name) {
-                        raw_docs.push_str(&configuration_section);
-                    }
-                    let version = get_lint_version(cx, item);
-
-                    self.lints.push(LintMetadata::new(
-                        lint_name,
-                        SerializableSpan::from_item(cx, item),
-                        group,
-                        level,
-                        version,
-                        raw_docs,
-                    ));
+                && let Some((group, level)) = get_lint_group_and_level_or_lint(cx, &lint_name, item)
+                && let Some(mut raw_docs) = extract_attr_docs_or_lint(cx, item)
+            {
+                if let Some(configuration_section) = self.get_lint_configs(&lint_name) {
+                    raw_docs.push_str(&configuration_section);
                 }
+                let version = get_lint_version(cx, item);
+
+                self.lints.push(LintMetadata::new(
+                    lint_name,
+                    SerializableSpan::from_item(cx, item),
+                    group,
+                    level,
+                    version,
+                    raw_docs,
+                ));
             }
 
-            if_chain! {
-                if is_deprecated_lint(cx, ty);
+            if is_deprecated_lint(cx, ty)
                 // disallow check
-                let lint_name = sym_to_string(item.ident.name).to_ascii_lowercase();
+                && let lint_name = sym_to_string(item.ident.name).to_ascii_lowercase()
                 // Metadata the little we can get from a deprecated lint
-                if let Some(raw_docs) = extract_attr_docs_or_lint(cx, item);
-                then {
-                    let version = get_lint_version(cx, item);
+                && let Some(raw_docs) = extract_attr_docs_or_lint(cx, item)
+            {
+                let version = get_lint_version(cx, item);
 
-                    self.lints.push(LintMetadata::new(
-                        lint_name,
-                        SerializableSpan::from_item(cx, item),
-                        DEPRECATED_LINT_GROUP_STR.to_string(),
-                        DEPRECATED_LINT_LEVEL,
-                        version,
-                        raw_docs,
-                    ));
-                }
+                self.lints.push(LintMetadata::new(
+                    lint_name,
+                    SerializableSpan::from_item(cx, item),
+                    DEPRECATED_LINT_GROUP_STR.to_string(),
+                    DEPRECATED_LINT_LEVEL,
+                    version,
+                    raw_docs,
+                ));
             }
         }
     }
@@ -789,15 +784,13 @@ fn collect_renames(lints: &mut Vec<LintMetadata>) {
         loop {
             if let Some(lint_name) = names.pop() {
                 for (k, v) in RENAMED_LINTS {
-                    if_chain! {
-                        if let Some(name) = v.strip_prefix(CLIPPY_LINT_GROUP_PREFIX);
-                        if name == lint_name;
-                        if let Some(past_name) = k.strip_prefix(CLIPPY_LINT_GROUP_PREFIX);
-                        then {
-                            lint.former_ids.insert(past_name.to_owned());
-                            writeln!(collected, "* `{past_name}`").unwrap();
-                            names.push(past_name.to_string());
-                        }
+                    if let Some(name) = v.strip_prefix(CLIPPY_LINT_GROUP_PREFIX)
+                        && name == lint_name
+                        && let Some(past_name) = k.strip_prefix(CLIPPY_LINT_GROUP_PREFIX)
+                    {
+                        lint.former_ids.insert(past_name.to_owned());
+                        writeln!(collected, "* `{past_name}`").unwrap();
+                        names.push(past_name.to_string());
                     }
                 }
 
@@ -927,20 +920,17 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for LintResolver<'a, 'hir> {
     }
 
     fn visit_expr(&mut self, expr: &'hir hir::Expr<'hir>) {
-        if_chain! {
-            if let ExprKind::Path(qpath) = &expr.kind;
-            if let QPath::Resolved(_, path) = qpath;
-
-            let (expr_ty, _) = walk_ptrs_ty_depth(self.cx.typeck_results().expr_ty(expr));
-            if match_type(self.cx, expr_ty, &paths::LINT);
-            then {
-                if let hir::def::Res::Def(DefKind::Static(..), _) = path.res {
-                    let lint_name = last_path_segment(qpath).ident.name;
-                    self.lints.push(sym_to_string(lint_name).to_ascii_lowercase());
-                } else if let Some(local) = get_parent_local(self.cx, expr) {
-                    if let Some(local_init) = local.init {
-                        intravisit::walk_expr(self, local_init);
-                    }
+        if let ExprKind::Path(qpath) = &expr.kind
+            && let QPath::Resolved(_, path) = qpath
+            && let (expr_ty, _) = walk_ptrs_ty_depth(self.cx.typeck_results().expr_ty(expr))
+            && match_type(self.cx, expr_ty, &paths::LINT)
+        {
+            if let hir::def::Res::Def(DefKind::Static(..), _) = path.res {
+                let lint_name = last_path_segment(qpath).ident.name;
+                self.lints.push(sym_to_string(lint_name).to_ascii_lowercase());
+            } else if let Some(local) = get_parent_local(self.cx, expr) {
+                if let Some(local_init) = local.init {
+                    intravisit::walk_expr(self, local_init);
                 }
             }
         }
@@ -992,13 +982,11 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for ApplicabilityResolver<'a, 'hir> {
     fn visit_expr(&mut self, expr: &'hir hir::Expr<'hir>) {
         let (expr_ty, _) = walk_ptrs_ty_depth(self.cx.typeck_results().expr_ty(expr));
 
-        if_chain! {
-            if match_type(self.cx, expr_ty, &paths::APPLICABILITY);
-            if let Some(local) = get_parent_local(self.cx, expr);
-            if let Some(local_init) = local.init;
-            then {
-                intravisit::walk_expr(self, local_init);
-            }
+        if match_type(self.cx, expr_ty, &paths::APPLICABILITY)
+            && let Some(local) = get_parent_local(self.cx, expr)
+            && let Some(local_init) = local.init
+        {
+            intravisit::walk_expr(self, local_init);
         };
 
         intravisit::walk_expr(self, expr);

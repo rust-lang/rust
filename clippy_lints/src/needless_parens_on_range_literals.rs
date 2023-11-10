@@ -53,21 +53,23 @@ fn check_for_parens(cx: &LateContext<'_>, e: &Expr<'_>, is_start: bool) {
         // don't check floating point literals on the start expression of a range
         return;
     }
-    if_chain! {
-        if let ExprKind::Lit(literal) = e.kind;
+    if let ExprKind::Lit(literal) = e.kind
         // the indicator that parenthesis surround the literal is that the span of the expression and the literal differ
-        if (literal.span.data().hi - literal.span.data().lo) != (e.span.data().hi - e.span.data().lo);
+        && (literal.span.data().hi - literal.span.data().lo) != (e.span.data().hi - e.span.data().lo)
         // inspect the source code of the expression for parenthesis
-        if snippet_enclosed_in_parenthesis(&snippet(cx, e.span, ""));
-        then {
-            let mut applicability = Applicability::MachineApplicable;
-            span_lint_and_then(cx, NEEDLESS_PARENS_ON_RANGE_LITERALS, e.span,
-                "needless parenthesis on range literals can be removed",
-                |diag| {
-                    let suggestion = snippet_with_applicability(cx, literal.span, "_", &mut applicability);
-                    diag.span_suggestion(e.span, "try", suggestion, applicability);
-                });
-        }
+        && snippet_enclosed_in_parenthesis(&snippet(cx, e.span, ""))
+    {
+        let mut applicability = Applicability::MachineApplicable;
+        span_lint_and_then(
+            cx,
+            NEEDLESS_PARENS_ON_RANGE_LITERALS,
+            e.span,
+            "needless parenthesis on range literals can be removed",
+            |diag| {
+                let suggestion = snippet_with_applicability(cx, literal.span, "_", &mut applicability);
+                diag.span_suggestion(e.span, "try", suggestion, applicability);
+            },
+        );
     }
 }
 

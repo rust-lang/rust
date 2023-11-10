@@ -2,7 +2,6 @@
 //! expecting a count of T
 
 use clippy_utils::diagnostics::span_lint_and_help;
-use if_chain::if_chain;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, Ty, TypeAndMut};
@@ -39,16 +38,17 @@ declare_lint_pass!(SizeOfInElementCount => [SIZE_OF_IN_ELEMENT_COUNT]);
 fn get_size_of_ty<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, inverted: bool) -> Option<Ty<'tcx>> {
     match expr.kind {
         ExprKind::Call(count_func, _func_args) => {
-            if_chain! {
-                if !inverted;
-                if let ExprKind::Path(ref count_func_qpath) = count_func.kind;
-                if let Some(def_id) = cx.qpath_res(count_func_qpath, count_func.hir_id).opt_def_id();
-                if matches!(cx.tcx.get_diagnostic_name(def_id), Some(sym::mem_size_of | sym::mem_size_of_val));
-                then {
-                    cx.typeck_results().node_args(count_func.hir_id).types().next()
-                } else {
-                    None
-                }
+            if !inverted
+                && let ExprKind::Path(ref count_func_qpath) = count_func.kind
+                && let Some(def_id) = cx.qpath_res(count_func_qpath, count_func.hir_id).opt_def_id()
+                && matches!(
+                    cx.tcx.get_diagnostic_name(def_id),
+                    Some(sym::mem_size_of | sym::mem_size_of_val)
+                )
+            {
+                cx.typeck_results().node_args(count_func.hir_id).types().next()
+            } else {
+                None
             }
         },
         ExprKind::Binary(op, left, right) if BinOpKind::Mul == op.node => {
@@ -80,13 +80,12 @@ fn get_pointee_ty_and_count_expr<'tcx>(
         "wrapping_offset",
     ];
 
-    if_chain! {
+    if let ExprKind::Call(func, [.., count]) = expr.kind
         // Find calls to ptr::{copy, copy_nonoverlapping}
         // and ptr::{swap_nonoverlapping, write_bytes},
-        if let ExprKind::Call(func, [.., count]) = expr.kind;
-        if let ExprKind::Path(ref func_qpath) = func.kind;
-        if let Some(def_id) = cx.qpath_res(func_qpath, func.hir_id).opt_def_id();
-        if matches!(cx.tcx.get_diagnostic_name(def_id), Some(
+        && let ExprKind::Path(ref func_qpath) = func.kind
+        && let Some(def_id) = cx.qpath_res(func_qpath, func.hir_id).opt_def_id()
+        && matches!(cx.tcx.get_diagnostic_name(def_id), Some(
             sym::ptr_copy
             | sym::ptr_copy_nonoverlapping
             | sym::ptr_slice_from_raw_parts
@@ -95,26 +94,23 @@ fn get_pointee_ty_and_count_expr<'tcx>(
             | sym::ptr_write_bytes
             | sym::slice_from_raw_parts
             | sym::slice_from_raw_parts_mut
-        ));
+        ))
 
         // Get the pointee type
-        if let Some(pointee_ty) = cx.typeck_results().node_args(func.hir_id).types().next();
-        then {
-            return Some((pointee_ty, count));
-        }
+        && let Some(pointee_ty) = cx.typeck_results().node_args(func.hir_id).types().next()
+    {
+        return Some((pointee_ty, count));
     };
-    if_chain! {
+    if let ExprKind::MethodCall(method_path, ptr_self, [.., count], _) = expr.kind
         // Find calls to copy_{from,to}{,_nonoverlapping} and write_bytes methods
-        if let ExprKind::MethodCall(method_path, ptr_self, [.., count], _) = expr.kind;
-        let method_ident = method_path.ident.as_str();
-        if METHODS.iter().any(|m| *m == method_ident);
+        && let method_ident = method_path.ident.as_str()
+        && METHODS.iter().any(|m| *m == method_ident)
 
         // Get the pointee type
-        if let ty::RawPtr(TypeAndMut { ty: pointee_ty, .. }) =
-            cx.typeck_results().expr_ty(ptr_self).kind();
-        then {
-            return Some((*pointee_ty, count));
-        }
+        && let ty::RawPtr(TypeAndMut { ty: pointee_ty, .. }) =
+            cx.typeck_results().expr_ty(ptr_self).kind()
+    {
+        return Some((*pointee_ty, count));
     };
     None
 }
@@ -127,25 +123,16 @@ impl<'tcx> LateLintPass<'tcx> for SizeOfInElementCount {
         const LINT_MSG: &str = "found a count of bytes \
              instead of a count of elements of `T`";
 
-        if_chain! {
+        if let Some((pointee_ty, count_expr)) = get_pointee_ty_and_count_expr(cx, expr)
             // Find calls to functions with an element count parameter and get
             // the pointee type and count parameter expression
-            if let Some((pointee_ty, count_expr)) = get_pointee_ty_and_count_expr(cx, expr);
 
             // Find a size_of call in the count parameter expression and
             // check that it's the same type
-            if let Some(ty_used_for_size_of) = get_size_of_ty(cx, count_expr, false);
-            if pointee_ty == ty_used_for_size_of;
-            then {
-                span_lint_and_help(
-                    cx,
-                    SIZE_OF_IN_ELEMENT_COUNT,
-                    count_expr.span,
-                    LINT_MSG,
-                    None,
-                    HELP_MSG
-                );
-            }
+            && let Some(ty_used_for_size_of) = get_size_of_ty(cx, count_expr, false)
+            && pointee_ty == ty_used_for_size_of
+        {
+            span_lint_and_help(cx, SIZE_OF_IN_ELEMENT_COUNT, count_expr.span, LINT_MSG, None, HELP_MSG);
         };
     }
 }

@@ -5,7 +5,6 @@ use clippy_utils::{
     any_parent_is_automatically_derived, fulfill_or_allowed, get_parent_expr, is_lint_allowed, iter_input_pats,
     last_path_segment, SpanlessEq,
 };
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::intravisit::FnKind;
@@ -143,73 +142,64 @@ impl<'tcx> LateLintPass<'tcx> for LintPass {
     }
 
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
-        if_chain! {
-            if !in_external_macro(cx.tcx.sess, stmt.span);
-            if let StmtKind::Local(local) = stmt.kind;
-            if let PatKind::Binding(BindingAnnotation(ByRef::Yes, mutabl), .., name, None) = local.pat.kind;
-            if let Some(init) = local.init;
+        if !in_external_macro(cx.tcx.sess, stmt.span)
+            && let StmtKind::Local(local) = stmt.kind
+            && let PatKind::Binding(BindingAnnotation(ByRef::Yes, mutabl), .., name, None) = local.pat.kind
+            && let Some(init) = local.init
             // Do not emit if clippy::ref_patterns is not allowed to avoid having two lints for the same issue.
-            if is_lint_allowed(cx, REF_PATTERNS, local.pat.hir_id);
-            then {
-                let ctxt = local.span.ctxt();
-                let mut app = Applicability::MachineApplicable;
-                let sugg_init = Sugg::hir_with_context(cx, init, ctxt, "..", &mut app);
-                let (mutopt, initref) = if mutabl == Mutability::Mut {
-                    ("mut ", sugg_init.mut_addr())
-                } else {
-                    ("", sugg_init.addr())
-                };
-                let tyopt = if let Some(ty) = local.ty {
-                    let ty_snip = snippet_with_context(cx, ty.span, ctxt, "_", &mut app).0;
-                    format!(": &{mutopt}{ty_snip}")
-                } else {
-                    String::new()
-                };
-                span_lint_hir_and_then(
-                    cx,
-                    TOPLEVEL_REF_ARG,
-                    init.hir_id,
-                    local.pat.span,
-                    "`ref` on an entire `let` pattern is discouraged, take a reference with `&` instead",
-                    |diag| {
-                        diag.span_suggestion(
-                            stmt.span,
-                            "try",
-                            format!(
-                                "let {name}{tyopt} = {initref};",
-                                name=snippet(cx, name.span, ".."),
-                            ),
-                            app,
-                        );
-                    }
-                );
-            }
+            && is_lint_allowed(cx, REF_PATTERNS, local.pat.hir_id)
+        {
+            let ctxt = local.span.ctxt();
+            let mut app = Applicability::MachineApplicable;
+            let sugg_init = Sugg::hir_with_context(cx, init, ctxt, "..", &mut app);
+            let (mutopt, initref) = if mutabl == Mutability::Mut {
+                ("mut ", sugg_init.mut_addr())
+            } else {
+                ("", sugg_init.addr())
+            };
+            let tyopt = if let Some(ty) = local.ty {
+                let ty_snip = snippet_with_context(cx, ty.span, ctxt, "_", &mut app).0;
+                format!(": &{mutopt}{ty_snip}")
+            } else {
+                String::new()
+            };
+            span_lint_hir_and_then(
+                cx,
+                TOPLEVEL_REF_ARG,
+                init.hir_id,
+                local.pat.span,
+                "`ref` on an entire `let` pattern is discouraged, take a reference with `&` instead",
+                |diag| {
+                    diag.span_suggestion(
+                        stmt.span,
+                        "try",
+                        format!("let {name}{tyopt} = {initref};", name = snippet(cx, name.span, ".."),),
+                        app,
+                    );
+                },
+            );
         };
-        if_chain! {
-            if let StmtKind::Semi(expr) = stmt.kind;
-            if let ExprKind::Binary(ref binop, a, b) = expr.kind;
-            if binop.node == BinOpKind::And || binop.node == BinOpKind::Or;
-            if let Some(sugg) = Sugg::hir_opt(cx, a);
-            then {
-                span_lint_hir_and_then(
-                    cx,
-                    SHORT_CIRCUIT_STATEMENT,
-                    expr.hir_id,
-                    stmt.span,
-                    "boolean short circuit operator in statement may be clearer using an explicit test",
-                    |diag| {
-                        let sugg = if binop.node == BinOpKind::Or { !sugg } else { sugg };
-                        diag.span_suggestion(
-                            stmt.span,
-                            "replace it with",
-                            format!(
-                                "if {sugg} {{ {}; }}",
-                                &snippet(cx, b.span, ".."),
-                            ),
-                            Applicability::MachineApplicable, // snippet
-                        );
-                    });
-            }
+        if let StmtKind::Semi(expr) = stmt.kind
+            && let ExprKind::Binary(ref binop, a, b) = expr.kind
+            && (binop.node == BinOpKind::And || binop.node == BinOpKind::Or)
+            && let Some(sugg) = Sugg::hir_opt(cx, a)
+        {
+            span_lint_hir_and_then(
+                cx,
+                SHORT_CIRCUIT_STATEMENT,
+                expr.hir_id,
+                stmt.span,
+                "boolean short circuit operator in statement may be clearer using an explicit test",
+                |diag| {
+                    let sugg = if binop.node == BinOpKind::Or { !sugg } else { sugg };
+                    diag.span_suggestion(
+                        stmt.span,
+                        "replace it with",
+                        format!("if {sugg} {{ {}; }}", &snippet(cx, b.span, ".."),),
+                        Applicability::MachineApplicable, // snippet
+                    );
+                },
+            );
         };
     }
 
