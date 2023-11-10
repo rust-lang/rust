@@ -243,6 +243,34 @@ impl<'tcx> CValue<'tcx> {
         let (lane_count, lane_ty) = layout.ty.simd_size_and_type(fx.tcx);
         let lane_layout = fx.layout_of(lane_ty);
         assert!(lane_idx < lane_count);
+
+        match self.0 {
+            CValueInner::ByVal(_) | CValueInner::ByValPair(_, _) => unreachable!(),
+            CValueInner::ByRef(ptr, None) => {
+                let field_offset = lane_layout.size * lane_idx;
+                let field_ptr = ptr.offset_i64(fx, i64::try_from(field_offset.bytes()).unwrap());
+                CValue::by_ref(field_ptr, lane_layout)
+            }
+            CValueInner::ByRef(_, Some(_)) => unreachable!(),
+        }
+    }
+
+    /// Like [`CValue::value_field`] except using the passed type as lane type instead of the one
+    /// specified by the vector type.
+    pub(crate) fn value_typed_lane(
+        self,
+        fx: &mut FunctionCx<'_, '_, 'tcx>,
+        lane_ty: Ty<'tcx>,
+        lane_idx: u64,
+    ) -> CValue<'tcx> {
+        let layout = self.1;
+        assert!(layout.ty.is_simd());
+        let (orig_lane_count, orig_lane_ty) = layout.ty.simd_size_and_type(fx.tcx);
+        let lane_layout = fx.layout_of(lane_ty);
+        assert!(
+            (lane_idx + 1) * lane_layout.size <= orig_lane_count * fx.layout_of(orig_lane_ty).size
+        );
+
         match self.0 {
             CValueInner::ByVal(_) | CValueInner::ByValPair(_, _) => unreachable!(),
             CValueInner::ByRef(ptr, None) => {
@@ -721,6 +749,34 @@ impl<'tcx> CPlace<'tcx> {
         let (lane_count, lane_ty) = layout.ty.simd_size_and_type(fx.tcx);
         let lane_layout = fx.layout_of(lane_ty);
         assert!(lane_idx < lane_count);
+
+        match self.inner {
+            CPlaceInner::Var(_, _) => unreachable!(),
+            CPlaceInner::VarPair(_, _, _) => unreachable!(),
+            CPlaceInner::Addr(ptr, None) => {
+                let field_offset = lane_layout.size * lane_idx;
+                let field_ptr = ptr.offset_i64(fx, i64::try_from(field_offset.bytes()).unwrap());
+                CPlace::for_ptr(field_ptr, lane_layout)
+            }
+            CPlaceInner::Addr(_, Some(_)) => unreachable!(),
+        }
+    }
+
+    /// Like [`CPlace::place_field`] except using the passed type as lane type instead of the one
+    /// specified by the vector type.
+    pub(crate) fn place_typed_lane(
+        self,
+        fx: &mut FunctionCx<'_, '_, 'tcx>,
+        lane_ty: Ty<'tcx>,
+        lane_idx: u64,
+    ) -> CPlace<'tcx> {
+        let layout = self.layout();
+        assert!(layout.ty.is_simd());
+        let (orig_lane_count, orig_lane_ty) = layout.ty.simd_size_and_type(fx.tcx);
+        let lane_layout = fx.layout_of(lane_ty);
+        assert!(
+            (lane_idx + 1) * lane_layout.size <= orig_lane_count * fx.layout_of(orig_lane_ty).size
+        );
 
         match self.inner {
             CPlaceInner::Var(_, _) => unreachable!(),

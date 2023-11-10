@@ -51,6 +51,21 @@ pub(crate) fn codegen_llvm_intrinsic_call<'tcx>(
             });
         }
 
+        _ if intrinsic.starts_with("llvm.fma.v") => {
+            intrinsic_args!(fx, args => (x,y,z); intrinsic);
+
+            simd_trio_for_each_lane(
+                fx,
+                x,
+                y,
+                z,
+                ret,
+                &|fx, _lane_ty, _res_lane_ty, lane_x, lane_y, lane_z| {
+                    fx.bcx.ins().fma(lane_x, lane_y, lane_z)
+                },
+            );
+        }
+
         _ => {
             fx.tcx
                 .sess
