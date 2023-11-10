@@ -181,7 +181,7 @@ gate is removed when the feature is stabilized.
 make your changes/improvements.
 
 When you open a PR on the [rust-lang/rust], a bot will assign your PR to a
-review. If there is a particular Rust team member you are working with, you can
+reviewer. If there is a particular Rust team member you are working with, you can
 request that reviewer by leaving a comment on the thread with `r?
 @reviewer-github-id` (e.g. `r? @eddyb`). If you don't know who to request,
 don't request anyone; the bot will assign someone automatically based on which files you changed.
