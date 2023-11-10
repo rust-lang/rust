@@ -1,0 +1,42 @@
+error: this file contains an unclosed delimiter
+  --> $DIR/brace-in-let-chain.rs:28:54
+   |
+LL | fn main() {
+   |           - unclosed delimiter
+...
+LL | fn foo() {
+   |          - unclosed delimiter
+...
+LL | fn bar() {
+   |          - unclosed delimiter
+...
+LL | fn baz() {
+   |          - unclosed delimiter
+LL |     if false {
+LL |         {
+   |         - this delimiter might not be properly closed...
+LL |             && let () = ()
+LL |     }
+   |     - ...as it matches this but it has different indentation
+LL | }
+   |                                                      ^
+
+error: found a `{` in the middle of a let-chain
+  --> $DIR/brace-in-let-chain.rs:6:24
+   |
+LL |         && let () = () {
+   |                        ^
+   |
+note: you might have meant to continue the let-chain here
+  --> $DIR/brace-in-let-chain.rs:7:9
+   |
+LL |         && let () = ()
+   |         ^^^^^^
+help: consider removing this brace to parse the `let` as part of the same chain
+   |
+LL -         && let () = () {
+LL +         && let () = ()
+   |
+
+error: aborting due to 2 previous errors
+
