@@ -18,7 +18,10 @@ error[E0599]: no method named `sort` found for unit type `()` in the current sco
   --> $DIR/chain-method-call-mutation-in-place.rs:3:72
    |
 LL |     vec![1, 2, 3].into_iter().collect::<Vec<i32>>().sort_by_key(|i| i).sort();
-   |                                                                        ^^^^ method not found in `()`
+   |     -------------             ---------------------                    ^^^^ method not found in `()`
+   |     |                         |
+   |     |                         method `sort` is available on `&mut [i32]`
+   |     method `sort` is available on `Vec<i32>`
    |
 note: method `sort_by_key` modifies its receiver in-place, it is not meant to be used in method chains.
   --> $DIR/chain-method-call-mutation-in-place.rs:3:53
