@@ -129,7 +129,7 @@ impl<'a> TokenTreesReader<'a> {
             while parser.token != token::Eof {
                 if let Err(diff_err) = parser.err_diff_marker() {
                     diff_errs.push(diff_err);
-                } else if parser.token.is_keyword(kw::If) {
+                } else if parser.is_keyword_ahead(0, &[kw::If, kw::While]) {
                     in_cond = true;
                 } else if matches!(
                     parser.token.kind,

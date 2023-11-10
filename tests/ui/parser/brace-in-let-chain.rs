@@ -9,6 +9,27 @@ fn main() {
     }
 }
 
+fn quux() {
+    while let () = ()
+        && let () = () { //~ERROR: found a `{` in the middle of a let-chain
+        && let () = ()
+    {
+    }
+}
+
+fn foobar() {
+    while false {}
+    {
+        && let () = ()
+}
+
+fn fubar() {
+    while false {
+        {
+            && let () = ()
+    }
+}
+
 fn qux() {
     let foo = false;
     match foo {
