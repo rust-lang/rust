@@ -57,7 +57,6 @@ tests/ui/coroutine/panic-safe.rs
 tests/ui/issues/issue-14875.rs
 tests/ui/issues/issue-29948.rs
 tests/ui/panics/nested_panic_caught.rs
-tests/ui/simd/intrinsic/generic-bswap-byte.rs
 tests/ui/const_prop/ice-issue-111353.rs
 tests/ui/process/println-with-broken-pipe.rs
 tests/ui/panic-runtime/lto-abort.rs
