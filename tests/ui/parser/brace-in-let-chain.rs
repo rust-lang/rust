@@ -9,6 +9,15 @@ fn main() {
     }
 }
 
+fn qux() {
+    let foo = false;
+    match foo {
+        _ if foo => {
+            && let () = ()
+        _ => {}
+    }
+}
+
 fn foo() {
     {
     && let () = ()

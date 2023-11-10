@@ -1,8 +1,11 @@
 error: this file contains an unclosed delimiter
-  --> $DIR/brace-in-let-chain.rs:28:54
+  --> $DIR/brace-in-let-chain.rs:37:54
    |
 LL | fn main() {
    |           - unclosed delimiter
+...
+LL | fn qux() {
+   |          - unclosed delimiter
 ...
 LL | fn foo() {
    |          - unclosed delimiter

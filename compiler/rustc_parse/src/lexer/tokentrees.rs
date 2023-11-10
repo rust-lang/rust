@@ -131,7 +131,11 @@ impl<'a> TokenTreesReader<'a> {
                     diff_errs.push(diff_err);
                 } else if parser.token.is_keyword(kw::If) {
                     in_cond = true;
-                } else if parser.token == token::CloseDelim(Delimiter::Brace) {
+                } else if matches!(
+                    parser.token.kind,
+                    token::CloseDelim(Delimiter::Brace) | token::FatArrow
+                ) {
+                    // end of the `if`/`while` body, or the end of a `match` guard
                     in_cond = false;
                 } else if in_cond && parser.token == token::OpenDelim(Delimiter::Brace) {
                     // Store the `&&` and `let` to use their spans later when creating the diagnostic
