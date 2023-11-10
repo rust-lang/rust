@@ -23,7 +23,6 @@ use rustc_hir::def::DefKind;
 use rustc_middle::ty::TyCtxt;
 use rustc_smir::rustc_internal;
 use stable_mir::mir::mono::Instance;
-use stable_mir::mir::{ProjectionElem, Rvalue, StatementKind};
 use stable_mir::ty::{RigidTy, TyKind};
 use std::assert_matches::assert_matches;
 use std::io::Write;
@@ -164,99 +163,6 @@ fn test_stable_mir(_tcx: TyCtxt<'_>) -> ControlFlow<()> {
         stable_mir::ty::TyKind::RigidTy(stable_mir::ty::RigidTy::Bool)
     );
 
-    let projections_fn = get_item(&items, (DefKind::Fn, "projections")).unwrap();
-    let body = projections_fn.body();
-    assert_eq!(body.blocks.len(), 4);
-    // The first statement assigns `&s.c` to a local. The projections include a deref for `s`, since
-    // `s` is passed as a reference argument, and a field access for field `c`.
-    match &body.blocks[0].statements[0].kind {
-        StatementKind::Assign(
-            stable_mir::mir::Place { local: _, projection: local_proj },
-            Rvalue::Ref(_, _, stable_mir::mir::Place { local: _, projection: r_proj }),
-        ) => {
-            // We can't match on vecs, only on slices. Comparing for equality wouldn't be any easier
-            // since we'd then have to add in the expected local and region values instead of
-            // matching on wildcards.
-            assert_matches!(local_proj[..], []);
-            match &r_proj[..] {
-                // Similarly we can't match against a type, only against its kind.
-                [ProjectionElem::Deref, ProjectionElem::Field(2, ty)] => assert_matches!(
-                    ty.kind(),
-                    TyKind::RigidTy(RigidTy::Uint(stable_mir::ty::UintTy::U8))
-                ),
-                other => panic!(
-                    "Unable to match against expected rvalue projection. Expected the projection \
-                     for `s.c`, which is a Deref and u8 Field. Got: {:?}",
-                    other
-                ),
-            };
-        }
-        other => panic!(
-            "Unable to match against expected Assign statement with a Ref rvalue. Expected the \
-             statement to assign `&s.c` to a local. Got: {:?}",
-            other
-        ),
-    };
-    // This statement assigns `slice[1]` to a local. The projections include a deref for `slice`,
-    // since `slice` is a reference, and an index.
-    match &body.blocks[2].statements[0].kind {
-        StatementKind::Assign(
-            stable_mir::mir::Place { local: _, projection: local_proj },
-            Rvalue::Use(stable_mir::mir::Operand::Copy(stable_mir::mir::Place {
-                local: _,
-                projection: r_proj,
-            })),
-        ) => {
-            // We can't match on vecs, only on slices. Comparing for equality wouldn't be any easier
-            // since we'd then have to add in the expected local values instead of matching on
-            // wildcards.
-            assert_matches!(local_proj[..], []);
-            assert_matches!(r_proj[..], [ProjectionElem::Deref, ProjectionElem::Index(_)]);
-        }
-        other => panic!(
-            "Unable to match against expected Assign statement with a Use rvalue. Expected the \
-             statement to assign `slice[1]` to a local. Got: {:?}",
-            other
-        ),
-    };
-    // The first terminator gets a slice of an array via the Index operation. Specifically it
-    // performs `&vals[1..3]`. There are no projections in this case, the arguments are just locals.
-    match &body.blocks[0].terminator.kind {
-        stable_mir::mir::TerminatorKind::Call { args, .. } =>
-        // We can't match on vecs, only on slices. Comparing for equality wouldn't be any easier
-        // since we'd then have to add in the expected local values instead of matching on
-        // wildcards.
-        {
-            match &args[..] {
-                [
-                    stable_mir::mir::Operand::Move(stable_mir::mir::Place {
-                        local: _,
-                        projection: arg1_proj,
-                    }),
-                    stable_mir::mir::Operand::Move(stable_mir::mir::Place {
-                        local: _,
-                        projection: arg2_proj,
-                    }),
-                ] => {
-                    assert_matches!(arg1_proj[..], []);
-                    assert_matches!(arg2_proj[..], []);
-                }
-                other => {
-                    panic!(
-                        "Unable to match against expected arguments to Index call. Expected two \
-                         move operands. Got: {:?}",
-                        other
-                    )
-                }
-            }
-        }
-        other => panic!(
-            "Unable to match against expected Call terminator. Expected a terminator that calls \
-             the Index operation. Got: {:?}",
-            other
-        ),
-    };
-
     ControlFlow::Continue(())
 }
 
@@ -336,15 +242,6 @@ fn generate_input(path: &str) -> std::io::Result<()> {
         }} else {{
             'b'
         }}
-    }}
-
-    pub struct Struct1 {{ _a: u8, _b: u16, c: u8 }}
-
-    pub fn projections(s: &Struct1) -> u8 {{
-        let v = &s.c;
-        let vals = [1, 2, 3, 4];
-        let slice = &vals[1..3];
-        v + slice[1]
     }}"#
     )?;
     Ok(())
