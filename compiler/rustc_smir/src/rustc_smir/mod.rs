@@ -327,8 +327,7 @@ impl<'tcx> Tables<'tcx> {
 
     fn has_body(&self, instance: Instance<'tcx>) -> bool {
         let def_id = instance.def_id();
-        !self.tcx.is_foreign_item(def_id)
-            && self.tcx.is_mir_available(def_id)
+        self.tcx.is_mir_available(def_id)
             && !matches!(
                 instance.def,
                 ty::InstanceDef::Virtual(..) | ty::InstanceDef::Intrinsic(..)

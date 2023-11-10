@@ -61,7 +61,7 @@ impl Instance {
         with(|cx| cx.resolve_drop_in_place(ty))
     }
 
-    /// Resolve the drop in place for a given type.
+    /// Resolve an instance for a given function pointer.
     pub fn resolve_for_fn_ptr(def: FnDef, args: &GenericArgs) -> Result<Instance, crate::Error> {
         with(|context| {
             context.resolve_for_fn_ptr(def, args).ok_or_else(|| {
@@ -70,7 +70,7 @@ impl Instance {
         })
     }
 
-    /// Resolve a closure (do we need kind? -- most cases use FnOnce)
+    /// Resolve a closure with the expected kind.
     pub fn resolve_closure(
         def: ClosureDef,
         args: &GenericArgs,
