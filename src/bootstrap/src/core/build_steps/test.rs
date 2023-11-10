@@ -2960,6 +2960,9 @@ impl Step for TestHelpers {
                 cfg.archiver(ar);
             }
             cfg.compiler(builder.cc(target));
+            for flag in builder.cflags(target, GitRepo::Rustc, CLang::C) {
+                cfg.flag(&flag);
+            }
         }
         cfg.cargo_metadata(false)
             .out_dir(&dst)
