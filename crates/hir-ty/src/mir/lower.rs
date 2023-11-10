@@ -1,6 +1,6 @@
 //! This module generates a polymorphic MIR from a hir body
 
-use std::{fmt::Write, iter, mem};
+use std::{fmt::Write, mem};
 
 use base_db::{salsa::Cycle, FileId};
 use chalk_ir::{BoundVar, ConstData, DebruijnIndex, TyKind};
@@ -14,23 +14,19 @@ use hir_def::{
     lang_item::{LangItem, LangItemTarget},
     path::Path,
     resolver::{resolver_for_expr, HasResolver, ResolveValueResult, ValueNs},
-    AdtId, DefWithBodyId, EnumVariantId, GeneralConstId, HasModule, ItemContainerId, LocalFieldId,
+    AdtId, EnumVariantId, GeneralConstId, HasModule, ItemContainerId, LocalFieldId,
     Lookup, TraitId, TupleId, TypeOrConstParamId,
 };
 use hir_expand::name::Name;
-use la_arena::ArenaMap;
-use rustc_hash::FxHashMap;
 use syntax::TextRange;
 use triomphe::Arc;
 
 use crate::{
     consteval::ConstEvalError,
-    db::{HirDatabase, InternedClosure},
-    display::HirDisplay,
+    db::InternedClosure,
     infer::{CaptureKind, CapturedItem, TypeMismatch},
     inhabitedness::is_ty_uninhabited_from,
     layout::LayoutError,
-    mapping::ToChalk,
     static_lifetime,
     traits::FnTrait,
     utils::{generics, ClosureSubst},
