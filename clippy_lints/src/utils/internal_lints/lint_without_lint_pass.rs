@@ -309,15 +309,13 @@ fn check_invalid_clippy_version_attribute(cx: &LateContext<'_>, item: &'_ Item<'
 pub(super) fn extract_clippy_version_value(cx: &LateContext<'_>, item: &'_ Item<'_>) -> Option<Symbol> {
     let attrs = cx.tcx.hir().attrs(item.hir_id());
     attrs.iter().find_map(|attr| {
-        if_chain! {
+        if let ast::AttrKind::Normal(ref attr_kind) = &attr.kind
             // Identify attribute
-            if let ast::AttrKind::Normal(ref attr_kind) = &attr.kind;
-            if let [tool_name, attr_name] = &attr_kind.item.path.segments[..];
-            if tool_name.ident.name == sym::clippy;
-            if attr_name.ident.name == sym::version;
-            if let Some(version) = attr.value_str();
-            then { Some(version) } else { None }
-        }
+            && let [tool_name, attr_name] = &attr_kind.item.path.segments[..]
+            && tool_name.ident.name == sym::clippy
+            && attr_name.ident.name == sym::version
+            && let Some(version) = attr.value_str()
+        { Some(version) } else { None }
     })
 }
 

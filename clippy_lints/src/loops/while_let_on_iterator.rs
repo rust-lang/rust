@@ -15,23 +15,21 @@ use rustc_span::symbol::sym;
 use rustc_span::Symbol;
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-    let (scrutinee_expr, iter_expr_struct, iter_expr, some_pat, loop_expr) = if_chain! {
-        if let Some(higher::WhileLet { if_then, let_pat, let_expr }) = higher::WhileLet::hir(expr);
+    let (scrutinee_expr, iter_expr_struct, iter_expr, some_pat, loop_expr) = if let Some(higher::WhileLet { if_then, let_pat, let_expr }) = higher::WhileLet::hir(expr)
         // check for `Some(..)` pattern
-        if let PatKind::TupleStruct(ref pat_path, some_pat, _) = let_pat.kind;
-        if is_res_lang_ctor(cx, cx.qpath_res(pat_path, let_pat.hir_id), LangItem::OptionSome);
+        && let PatKind::TupleStruct(ref pat_path, some_pat, _) = let_pat.kind
+        && is_res_lang_ctor(cx, cx.qpath_res(pat_path, let_pat.hir_id), LangItem::OptionSome)
         // check for call to `Iterator::next`
-        if let ExprKind::MethodCall(method_name, iter_expr, [], _) = let_expr.kind;
-        if method_name.ident.name == sym::next;
-        if is_trait_method(cx, let_expr, sym::Iterator);
-        if let Some(iter_expr_struct) = try_parse_iter_expr(cx, iter_expr);
+        && let ExprKind::MethodCall(method_name, iter_expr, [], _) = let_expr.kind
+        && method_name.ident.name == sym::next
+        && is_trait_method(cx, let_expr, sym::Iterator)
+        && let Some(iter_expr_struct) = try_parse_iter_expr(cx, iter_expr)
         // get the loop containing the match expression
-        if !uses_iter(cx, &iter_expr_struct, if_then);
-        then {
-            (let_expr, iter_expr_struct, iter_expr, some_pat, expr)
-        } else {
-            return;
-        }
+        && !uses_iter(cx, &iter_expr_struct, if_then)
+    {
+        (let_expr, iter_expr_struct, iter_expr, some_pat, expr)
+    } else {
+        return;
     };
 
     let mut applicability = Applicability::MachineApplicable;

@@ -20,21 +20,19 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr
     let verb: &str;
     let lint_unary: &str;
     let help_unary: &str;
-    if_chain! {
-        if let Some(parent) = get_parent_expr(cx, expr);
-        if let hir::ExprKind::Unary(op, _) = parent.kind;
-        if op == hir::UnOp::Not;
-        then {
-            lint_unary = "!";
-            verb = "denies";
-            help_unary = "";
-            span = parent.span;
-        } else {
-            lint_unary = "";
-            verb = "covers";
-            help_unary = "!";
-            span = expr.span;
-        }
+    if let Some(parent) = get_parent_expr(cx, expr)
+        && let hir::ExprKind::Unary(op, _) = parent.kind
+        && op == hir::UnOp::Not
+    {
+        lint_unary = "!";
+        verb = "denies";
+        help_unary = "";
+        span = parent.span;
+    } else {
+        lint_unary = "";
+        verb = "covers";
+        help_unary = "!";
+        span = expr.span;
     }
     let lint_msg = format!("`{lint_unary}FileType::is_file()` only {verb} regular files");
     let help_msg = format!("use `{help_unary}FileType::is_dir()` instead");

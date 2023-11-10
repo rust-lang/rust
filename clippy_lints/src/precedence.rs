@@ -118,25 +118,23 @@ impl EarlyLintPass for Precedence {
                 arg = receiver;
             }
 
-            if_chain! {
-                if !all_odd;
-                if let ExprKind::Lit(lit) = &arg.kind;
-                if let token::LitKind::Integer | token::LitKind::Float = &lit.kind;
-                then {
-                    let mut applicability = Applicability::MachineApplicable;
-                    span_lint_and_sugg(
-                        cx,
-                        PRECEDENCE,
-                        expr.span,
-                        "unary minus has lower precedence than method call",
-                        "consider adding parentheses to clarify your intent",
-                        format!(
-                            "-({})",
-                            snippet_with_applicability(cx, operand.span, "..", &mut applicability)
-                        ),
-                        applicability,
-                    );
-                }
+            if !all_odd
+                && let ExprKind::Lit(lit) = &arg.kind
+                && let token::LitKind::Integer | token::LitKind::Float = &lit.kind
+            {
+                let mut applicability = Applicability::MachineApplicable;
+                span_lint_and_sugg(
+                    cx,
+                    PRECEDENCE,
+                    expr.span,
+                    "unary minus has lower precedence than method call",
+                    "consider adding parentheses to clarify your intent",
+                    format!(
+                        "-({})",
+                        snippet_with_applicability(cx, operand.span, "..", &mut applicability)
+                    ),
+                    applicability,
+                );
             }
         }
     }

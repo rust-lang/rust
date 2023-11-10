@@ -46,52 +46,50 @@ declare_lint_pass!(FromStrRadix10 => [FROM_STR_RADIX_10]);
 
 impl<'tcx> LateLintPass<'tcx> for FromStrRadix10 {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, exp: &Expr<'tcx>) {
-        if_chain! {
-            if let ExprKind::Call(maybe_path, [src, radix]) = &exp.kind;
-            if let ExprKind::Path(QPath::TypeRelative(ty, pathseg)) = &maybe_path.kind;
+        if let ExprKind::Call(maybe_path, [src, radix]) = &exp.kind
+            && let ExprKind::Path(QPath::TypeRelative(ty, pathseg)) = &maybe_path.kind
 
             // check if the first part of the path is some integer primitive
-            if let TyKind::Path(ty_qpath) = &ty.kind;
-            let ty_res = cx.qpath_res(ty_qpath, ty.hir_id);
-            if let def::Res::PrimTy(prim_ty) = ty_res;
-            if matches!(prim_ty, PrimTy::Int(_) | PrimTy::Uint(_));
+            && let TyKind::Path(ty_qpath) = &ty.kind
+            && let ty_res = cx.qpath_res(ty_qpath, ty.hir_id)
+            && let def::Res::PrimTy(prim_ty) = ty_res
+            && matches!(prim_ty, PrimTy::Int(_) | PrimTy::Uint(_))
 
             // check if the second part of the path indeed calls the associated
             // function `from_str_radix`
-            if pathseg.ident.name.as_str() == "from_str_radix";
+            && pathseg.ident.name.as_str() == "from_str_radix"
 
             // check if the second argument is a primitive `10`
-            if is_integer_literal(radix, 10);
+            && is_integer_literal(radix, 10)
 
-            then {
-                let expr = if let ExprKind::AddrOf(_, _, expr) = &src.kind {
-                    let ty = cx.typeck_results().expr_ty(expr);
-                    if is_ty_stringish(cx, ty) {
-                        expr
-                    } else {
-                        &src
-                    }
+        {
+            let expr = if let ExprKind::AddrOf(_, _, expr) = &src.kind {
+                let ty = cx.typeck_results().expr_ty(expr);
+                if is_ty_stringish(cx, ty) {
+                    expr
                 } else {
                     &src
-                };
+                }
+            } else {
+                &src
+            };
 
-                let sugg = Sugg::hir_with_applicability(
-                    cx,
-                    expr,
-                    "<string>",
-                    &mut Applicability::MachineApplicable
-                ).maybe_par();
+            let sugg = Sugg::hir_with_applicability(
+                cx,
+                expr,
+                "<string>",
+                &mut Applicability::MachineApplicable
+            ).maybe_par();
 
-                span_lint_and_sugg(
-                    cx,
-                    FROM_STR_RADIX_10,
-                    exp.span,
-                    "this call to `from_str_radix` can be replaced with a call to `str::parse`",
-                    "try",
-                    format!("{sugg}.parse::<{}>()", prim_ty.name_str()),
-                    Applicability::MaybeIncorrect
-                );
-            }
+            span_lint_and_sugg(
+                cx,
+                FROM_STR_RADIX_10,
+                exp.span,
+                "this call to `from_str_radix` can be replaced with a call to `str::parse`",
+                "try",
+                format!("{sugg}.parse::<{}>()", prim_ty.name_str()),
+                Applicability::MaybeIncorrect
+            );
         }
     }
 }

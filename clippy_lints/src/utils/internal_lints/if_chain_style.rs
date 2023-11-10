@@ -18,11 +18,9 @@ declare_lint_pass!(IfChainStyle => [IF_CHAIN_STYLE]);
 
 impl<'tcx> LateLintPass<'tcx> for IfChainStyle {
     fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx hir::Block<'_>) {
-        let (local, after, if_chain_span) = if_chain! {
-            if let [Stmt { kind: StmtKind::Local(local), .. }, after @ ..] = block.stmts;
-            if let Some(if_chain_span) = is_expn_of(block.span, "if_chain");
-            then { (local, after, if_chain_span) } else { return }
-        };
+        let (local, after, if_chain_span) = if let [Stmt { kind: StmtKind::Local(local), .. }, after @ ..] = block.stmts
+            && let Some(if_chain_span) = is_expn_of(block.span, "if_chain")
+        { (local, after, if_chain_span) } else { return };
         if is_first_if_chain_expr(cx, block.hir_id, if_chain_span) {
             span_lint(
                 cx,
@@ -55,13 +53,11 @@ impl<'tcx> LateLintPass<'tcx> for IfChainStyle {
         }
         let Some(if_chain_span) = if_chain_span else { return };
         // check for `if a && b;`
-        if_chain! {
-            if let ExprKind::Binary(op, _, _) = cond.kind;
-            if op.node == BinOpKind::And;
-            if cx.sess().source_map().is_multiline(cond.span);
-            then {
-                span_lint(cx, IF_CHAIN_STYLE, cond.span, "`if a && b;` should be `if a; if b;`");
-            }
+        if let ExprKind::Binary(op, _, _) = cond.kind
+            && op.node == BinOpKind::And
+            && cx.sess().source_map().is_multiline(cond.span)
+        {
+            span_lint(cx, IF_CHAIN_STYLE, cond.span, "`if a && b;` should be `if a; if b;`");
         }
         if is_first_if_chain_expr(cx, expr.hir_id, if_chain_span)
             && is_if_chain_then(then_block.stmts, then_block.expr, if_chain_span)
@@ -89,17 +85,15 @@ fn check_nested_if_chains(
         } => (head, tail),
         _ => return,
     };
-    if_chain! {
-        if let Some(higher::IfOrIfLet { r#else: None, .. }) = higher::IfOrIfLet::hir(tail);
-        let sm = cx.sess().source_map();
-        if head
+    if let Some(higher::IfOrIfLet { r#else: None, .. }) = higher::IfOrIfLet::hir(tail)
+        && let sm = cx.sess().source_map()
+        && head
             .iter()
-            .all(|stmt| matches!(stmt.kind, StmtKind::Local(..)) && !sm.is_multiline(stmt.span));
-        if if_chain_span.is_some() || !is_else_clause(cx.tcx, if_expr);
-        then {
-        } else {
-            return;
-        }
+            .all(|stmt| matches!(stmt.kind, StmtKind::Local(..)) && !sm.is_multiline(stmt.span))
+        && (if_chain_span.is_some() || !is_else_clause(cx.tcx, if_expr))
+    {
+    } else {
+        return;
     }
     let (span, msg) = match (if_chain_span, is_expn_of(tail.span, "if_chain")) {
         (None, Some(_)) => (if_expr.span, "this `if` can be part of the inner `if_chain!`"),

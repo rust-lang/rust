@@ -155,34 +155,32 @@ fn check_binops(cx: &EarlyContext<'_>, binops: &[&BinaryOp<'_>]) {
         match (no_difference_info, double_difference_info) {
             (Some(i), None) => attempt_to_emit_no_difference_lint(cx, binops, i, expected_loc),
             (None, Some((double_difference_index, ident_loc1, ident_loc2))) => {
-                if_chain! {
-                    if one_ident_difference_count == binop_count - 1;
-                    if let Some(binop) = binops.get(double_difference_index);
-                    then {
-                        let changed_loc = if ident_loc1 == expected_loc {
-                            ident_loc2
-                        } else if ident_loc2 == expected_loc {
-                            ident_loc1
-                        } else {
-                            // This expression doesn't match the form we're
-                            // looking for.
-                            return;
-                        };
+                if one_ident_difference_count == binop_count - 1
+                    && let Some(binop) = binops.get(double_difference_index)
+                {
+                    let changed_loc = if ident_loc1 == expected_loc {
+                        ident_loc2
+                    } else if ident_loc2 == expected_loc {
+                        ident_loc1
+                    } else {
+                        // This expression doesn't match the form we're
+                        // looking for.
+                        return;
+                    };
 
-                        if let Some(sugg) = ident_swap_sugg(
+                    if let Some(sugg) = ident_swap_sugg(
+                        cx,
+                        &paired_identifiers,
+                        binop,
+                        changed_loc,
+                        &mut applicability,
+                    ) {
+                        emit_suggestion(
                             cx,
-                            &paired_identifiers,
-                            binop,
-                            changed_loc,
-                            &mut applicability,
-                        ) {
-                            emit_suggestion(
-                                cx,
-                                binop.span,
-                                sugg,
-                                applicability,
-                            );
-                        }
+                            binop.span,
+                            sugg,
+                            applicability,
+                        );
                     }
                 }
             },
@@ -212,48 +210,44 @@ fn attempt_to_emit_no_difference_lint(
         let old_right_ident = get_ident(binop.right, expected_loc);
 
         for b in skip_index(binops.iter(), i) {
-            if_chain! {
-                if let (Some(old_ident), Some(new_ident)) =
-                (old_left_ident, get_ident(b.left, expected_loc));
-                if old_ident != new_ident;
-                if let Some(sugg) = suggestion_with_swapped_ident(
+            if let (Some(old_ident), Some(new_ident)) =
+                (old_left_ident, get_ident(b.left, expected_loc))
+                && old_ident != new_ident
+                && let Some(sugg) = suggestion_with_swapped_ident(
                     cx,
                     binop.left,
                     expected_loc,
                     new_ident,
                     &mut applicability,
+                )
+            {
+                emit_suggestion(
+                    cx,
+                    binop.span,
+                    replace_left_sugg(cx, binop, &sugg, &mut applicability),
+                    applicability,
                 );
-                then {
-                    emit_suggestion(
-                        cx,
-                        binop.span,
-                        replace_left_sugg(cx, binop, &sugg, &mut applicability),
-                        applicability,
-                    );
-                    return;
-                }
+                return;
             }
 
-            if_chain! {
-                if let (Some(old_ident), Some(new_ident)) =
-                    (old_right_ident, get_ident(b.right, expected_loc));
-                if old_ident != new_ident;
-                if let Some(sugg) = suggestion_with_swapped_ident(
+            if let (Some(old_ident), Some(new_ident)) =
+                    (old_right_ident, get_ident(b.right, expected_loc))
+                && old_ident != new_ident
+                && let Some(sugg) = suggestion_with_swapped_ident(
                     cx,
                     binop.right,
                     expected_loc,
                     new_ident,
                     &mut applicability,
+                )
+            {
+                emit_suggestion(
+                    cx,
+                    binop.span,
+                    replace_right_sugg(cx, binop, &sugg, &mut applicability),
+                    applicability,
                 );
-                then {
-                    emit_suggestion(
-                        cx,
-                        binop.span,
-                        replace_right_sugg(cx, binop, &sugg, &mut applicability),
-                        applicability,
-                    );
-                    return;
-                }
+                return;
             }
         }
     }

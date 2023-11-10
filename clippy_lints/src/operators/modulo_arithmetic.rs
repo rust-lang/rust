@@ -19,15 +19,13 @@ pub(super) fn check<'tcx>(
     if op == BinOpKind::Rem {
         let lhs_operand = analyze_operand(lhs, cx, e);
         let rhs_operand = analyze_operand(rhs, cx, e);
-        if_chain! {
-            if let Some(lhs_operand) = lhs_operand;
-            if let Some(rhs_operand) = rhs_operand;
-            then {
-                check_const_operands(cx, e, &lhs_operand, &rhs_operand);
-            }
-            else {
-                check_non_const_operands(cx, e, lhs);
-            }
+        if let Some(lhs_operand) = lhs_operand
+            && let Some(rhs_operand) = rhs_operand
+        {
+            check_const_operands(cx, e, &lhs_operand, &rhs_operand);
+        }
+        else {
+            check_non_const_operands(cx, e, lhs);
         }
     };
 }

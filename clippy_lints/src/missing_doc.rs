@@ -64,16 +64,14 @@ impl MissingDoc {
     }
 
     fn has_include(meta: Option<MetaItem>) -> bool {
-        if_chain! {
-            if let Some(meta) = meta;
-            if let MetaItemKind::List(list) = meta.kind;
-            if let Some(meta) = list.first();
-            if let Some(name) = meta.ident();
-            then {
-                name.name == sym::include
-            } else {
-                false
-            }
+        if let Some(meta) = meta
+            && let MetaItemKind::List(list) = meta.kind
+            && let Some(meta) = list.first()
+            && let Some(name) = meta.ident()
+        {
+            name.name == sym::include
+        } else {
+            false
         }
     }
 

@@ -44,38 +44,34 @@ impl<'tcx> LateLintPass<'tcx> for NonOctalUnixPermissions {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         match &expr.kind {
             ExprKind::MethodCall(path, func, [param], _) => {
-                if_chain! {
-                    if let Some(adt) = cx.typeck_results().expr_ty(func).peel_refs().ty_adt_def();
-                    if (path.ident.name == sym!(mode)
+                if let Some(adt) = cx.typeck_results().expr_ty(func).peel_refs().ty_adt_def()
+                    && ((path.ident.name == sym!(mode)
                         && matches!(cx.tcx.get_diagnostic_name(adt.did()), Some(sym::FsOpenOptions | sym::DirBuilder)))
                         || (path.ident.name == sym!(set_mode)
-                            && cx.tcx.is_diagnostic_item(sym::FsPermissions, adt.did()));
-                    if let ExprKind::Lit(_) = param.kind;
-                    if param.span.eq_ctxt(expr.span);
+                            && cx.tcx.is_diagnostic_item(sym::FsPermissions, adt.did())))
+                    && let ExprKind::Lit(_) = param.kind
+                    && param.span.eq_ctxt(expr.span)
 
-                    then {
-                        let Some(snip) = snippet_opt(cx, param.span) else {
-                            return
-                        };
+                {
+                    let Some(snip) = snippet_opt(cx, param.span) else {
+                        return
+                    };
 
-                        if !snip.starts_with("0o") {
-                            show_error(cx, param);
-                        }
+                    if !snip.starts_with("0o") {
+                        show_error(cx, param);
                     }
                 }
             },
             ExprKind::Call(func, [param]) => {
-                if_chain! {
-                    if let ExprKind::Path(ref path) = func.kind;
-                    if let Some(def_id) = cx.qpath_res(path, func.hir_id).opt_def_id();
-                    if match_def_path(cx, def_id, &paths::PERMISSIONS_FROM_MODE);
-                    if let ExprKind::Lit(_) = param.kind;
-                    if param.span.eq_ctxt(expr.span);
-                    if let Some(snip) = snippet_opt(cx, param.span);
-                    if !snip.starts_with("0o");
-                    then {
-                        show_error(cx, param);
-                    }
+                if let ExprKind::Path(ref path) = func.kind
+                    && let Some(def_id) = cx.qpath_res(path, func.hir_id).opt_def_id()
+                    && match_def_path(cx, def_id, &paths::PERMISSIONS_FROM_MODE)
+                    && let ExprKind::Lit(_) = param.kind
+                    && param.span.eq_ctxt(expr.span)
+                    && let Some(snip) = snippet_opt(cx, param.span)
+                    && !snip.starts_with("0o")
+                {
+                    show_error(cx, param);
                 }
             },
             _ => {},

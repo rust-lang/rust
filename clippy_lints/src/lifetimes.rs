@@ -310,20 +310,18 @@ fn elision_suggestions(
 
 // elision doesn't work for explicit self types, see rust-lang/rust#69064
 fn explicit_self_type<'tcx>(cx: &LateContext<'tcx>, func: &FnDecl<'tcx>, ident: Option<Ident>) -> bool {
-    if_chain! {
-        if let Some(ident) = ident;
-        if ident.name == kw::SelfLower;
-        if !func.implicit_self.has_implicit_self();
+    if let Some(ident) = ident
+        && ident.name == kw::SelfLower
+        && !func.implicit_self.has_implicit_self()
 
-        if let Some(self_ty) = func.inputs.first();
-        then {
-            let mut visitor = RefVisitor::new(cx);
-            visitor.visit_ty(self_ty);
+        && let Some(self_ty) = func.inputs.first()
+    {
+        let mut visitor = RefVisitor::new(cx);
+        visitor.visit_ty(self_ty);
 
-            !visitor.all_lts().is_empty()
-        } else {
-            false
-        }
+        !visitor.all_lts().is_empty()
+    } else {
+        false
     }
 }
 

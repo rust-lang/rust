@@ -80,12 +80,10 @@ declare_lint_pass!(EvalOrderDependence => [MIXED_READ_WRITE_IN_EXPRESSION, DIVER
 impl<'tcx> LateLintPass<'tcx> for EvalOrderDependence {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         // Find a write to a local variable.
-        let var = if_chain! {
-            if let ExprKind::Assign(lhs, ..) | ExprKind::AssignOp(_, lhs, _) = expr.kind;
-            if let Some(var) = path_to_local(lhs);
-            if expr.span.desugaring_kind().is_none();
-            then { var } else { return; }
-        };
+        let var = if let ExprKind::Assign(lhs, ..) | ExprKind::AssignOp(_, lhs, _) = expr.kind
+            && let Some(var) = path_to_local(lhs)
+            && expr.span.desugaring_kind().is_none()
+        { var } else { return; };
         let mut visitor = ReadVisitor {
             cx,
             var,

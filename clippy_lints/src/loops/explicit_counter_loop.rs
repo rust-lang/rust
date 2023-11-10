@@ -30,59 +30,57 @@ pub(super) fn check<'tcx>(
             let mut initialize_visitor = InitializeVisitor::new(cx, expr, id);
             walk_block(&mut initialize_visitor, block);
 
-            if_chain! {
-                if let Some((name, ty, initializer)) = initialize_visitor.get_result();
-                if is_integer_const(cx, initializer, 0);
-                then {
-                    let mut applicability = Applicability::MaybeIncorrect;
-                    let span = expr.span.with_hi(arg.span.hi());
+            if let Some((name, ty, initializer)) = initialize_visitor.get_result()
+                && is_integer_const(cx, initializer, 0)
+            {
+                let mut applicability = Applicability::MaybeIncorrect;
+                let span = expr.span.with_hi(arg.span.hi());
 
-                    let int_name = match ty.map(Ty::kind) {
-                        // usize or inferred
-                        Some(ty::Uint(UintTy::Usize)) | None => {
-                            span_lint_and_sugg(
-                                cx,
-                                EXPLICIT_COUNTER_LOOP,
-                                span,
-                                &format!("the variable `{name}` is used as a loop counter"),
-                                "consider using",
-                                format!(
-                                    "for ({name}, {}) in {}.enumerate()",
-                                    snippet_with_applicability(cx, pat.span, "item", &mut applicability),
-                                    make_iterator_snippet(cx, arg, &mut applicability),
-                                ),
-                                applicability,
-                            );
-                            return;
-                        }
-                        Some(ty::Int(int_ty)) => int_ty.name_str(),
-                        Some(ty::Uint(uint_ty)) => uint_ty.name_str(),
-                        _ => return,
-                    };
+                let int_name = match ty.map(Ty::kind) {
+                    // usize or inferred
+                    Some(ty::Uint(UintTy::Usize)) | None => {
+                        span_lint_and_sugg(
+                            cx,
+                            EXPLICIT_COUNTER_LOOP,
+                            span,
+                            &format!("the variable `{name}` is used as a loop counter"),
+                            "consider using",
+                            format!(
+                                "for ({name}, {}) in {}.enumerate()",
+                                snippet_with_applicability(cx, pat.span, "item", &mut applicability),
+                                make_iterator_snippet(cx, arg, &mut applicability),
+                            ),
+                            applicability,
+                        );
+                        return;
+                    }
+                    Some(ty::Int(int_ty)) => int_ty.name_str(),
+                    Some(ty::Uint(uint_ty)) => uint_ty.name_str(),
+                    _ => return,
+                };
 
-                    span_lint_and_then(
-                        cx,
-                        EXPLICIT_COUNTER_LOOP,
-                        span,
-                        &format!("the variable `{name}` is used as a loop counter"),
-                        |diag| {
-                            diag.span_suggestion(
-                                span,
-                                "consider using",
-                                format!(
-                                    "for ({name}, {}) in (0_{int_name}..).zip({})",
-                                    snippet_with_applicability(cx, pat.span, "item", &mut applicability),
-                                    make_iterator_snippet(cx, arg, &mut applicability),
-                                ),
-                                applicability,
-                            );
+                span_lint_and_then(
+                    cx,
+                    EXPLICIT_COUNTER_LOOP,
+                    span,
+                    &format!("the variable `{name}` is used as a loop counter"),
+                    |diag| {
+                        diag.span_suggestion(
+                            span,
+                            "consider using",
+                            format!(
+                                "for ({name}, {}) in (0_{int_name}..).zip({})",
+                                snippet_with_applicability(cx, pat.span, "item", &mut applicability),
+                                make_iterator_snippet(cx, arg, &mut applicability),
+                            ),
+                            applicability,
+                        );
 
-                            diag.note(format!(
-                                "`{name}` is of type `{int_name}`, making it ineligible for `Iterator::enumerate`"
-                            ));
-                        },
-                    );
-                }
+                        diag.note(format!(
+                            "`{name}` is of type `{int_name}`, making it ineligible for `Iterator::enumerate`"
+                        ));
+                    },
+                );
             }
         }
     }

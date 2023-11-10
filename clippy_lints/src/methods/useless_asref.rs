@@ -22,13 +22,11 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, call_name: &str,
         let (base_rcv_ty, rcv_depth) = walk_ptrs_ty_depth(rcv_ty);
         if base_rcv_ty == base_res_ty && rcv_depth >= res_depth {
             // allow the `as_ref` or `as_mut` if it is followed by another method call
-            if_chain! {
-                if let Some(parent) = get_parent_expr(cx, expr);
-                if let hir::ExprKind::MethodCall(segment, ..) = parent.kind;
-                if segment.ident.span != expr.span;
-                then {
-                    return;
-                }
+            if let Some(parent) = get_parent_expr(cx, expr)
+                && let hir::ExprKind::MethodCall(segment, ..) = parent.kind
+                && segment.ident.span != expr.span
+            {
+                return;
             }
 
             let mut applicability = Applicability::MachineApplicable;

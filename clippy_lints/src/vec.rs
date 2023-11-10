@@ -72,21 +72,19 @@ fn is_allowed_vec_method(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
 impl<'tcx> LateLintPass<'tcx> for UselessVec {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         // search for `&vec![_]` or `vec![_]` expressions where the adjusted type is `&[_]`
-        if_chain! {
-            if adjusts_to_slice(cx, expr);
-            if let Some(vec_args) = higher::VecArgs::hir(cx, expr.peel_borrows());
-            then {
-                let (suggest_slice, span) = if let ExprKind::AddrOf(BorrowKind::Ref, mutability, _) = expr.kind {
-                    // `expr` is `&vec![_]`, so suggest `&[_]` (or `&mut[_]` resp.)
-                    (SuggestedType::SliceRef(mutability), expr.span)
-                } else {
-                    // `expr` is the `vec![_]` expansion, so suggest `[_]`
-                    // and also use the span of the actual `vec![_]` expression
-                    (SuggestedType::Array, expr.span.ctxt().outer_expn_data().call_site)
-                };
+        if adjusts_to_slice(cx, expr)
+            && let Some(vec_args) = higher::VecArgs::hir(cx, expr.peel_borrows())
+        {
+            let (suggest_slice, span) = if let ExprKind::AddrOf(BorrowKind::Ref, mutability, _) = expr.kind {
+                // `expr` is `&vec![_]`, so suggest `&[_]` (or `&mut[_]` resp.)
+                (SuggestedType::SliceRef(mutability), expr.span)
+            } else {
+                // `expr` is the `vec![_]` expansion, so suggest `[_]`
+                // and also use the span of the actual `vec![_]` expression
+                (SuggestedType::Array, expr.span.ctxt().outer_expn_data().call_site)
+            };
 
-                self.check_vec_macro(cx, &vec_args, span, suggest_slice);
-            }
+            self.check_vec_macro(cx, &vec_args, span, suggest_slice);
         }
 
         // search for `let foo = vec![_]` expressions where all uses of `foo`
@@ -124,15 +122,13 @@ impl<'tcx> LateLintPass<'tcx> for UselessVec {
         }
 
         // search for `for _ in vec![…]`
-        if_chain! {
-            if let Some(higher::ForLoop { arg, .. }) = higher::ForLoop::hir(expr);
-            if let Some(vec_args) = higher::VecArgs::hir(cx, arg);
-            if self.msrv.meets(msrvs::ARRAY_INTO_ITERATOR);
-            then {
-                // report the error around the `vec!` not inside `<std macros>:`
-                let span = arg.span.ctxt().outer_expn_data().call_site;
-                self.check_vec_macro(cx, &vec_args, span, SuggestedType::Array);
-            }
+        if let Some(higher::ForLoop { arg, .. }) = higher::ForLoop::hir(expr)
+            && let Some(vec_args) = higher::VecArgs::hir(cx, arg)
+            && self.msrv.meets(msrvs::ARRAY_INTO_ITERATOR)
+        {
+            // report the error around the `vec!` not inside `<std macros>:`
+            let span = arg.span.ctxt().outer_expn_data().call_site;
+            self.check_vec_macro(cx, &vec_args, span, SuggestedType::Array);
         }
     }
 

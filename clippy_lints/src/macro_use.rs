@@ -90,29 +90,27 @@ impl MacroUseImports {
 
 impl<'tcx> LateLintPass<'tcx> for MacroUseImports {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &hir::Item<'_>) {
-        if_chain! {
-            if cx.sess().opts.edition >= Edition::Edition2018;
-            if let hir::ItemKind::Use(path, _kind) = &item.kind;
-            let hir_id = item.hir_id();
-            let attrs = cx.tcx.hir().attrs(hir_id);
-            if let Some(mac_attr) = attrs.iter().find(|attr| attr.has_name(sym::macro_use));
-            if let Some(id) = path.res.iter().find_map(|res| match res {
+        if cx.sess().opts.edition >= Edition::Edition2018
+            && let hir::ItemKind::Use(path, _kind) = &item.kind
+            && let hir_id = item.hir_id()
+            && let attrs = cx.tcx.hir().attrs(hir_id)
+            && let Some(mac_attr) = attrs.iter().find(|attr| attr.has_name(sym::macro_use))
+            && let Some(id) = path.res.iter().find_map(|res| match res {
                 Res::Def(DefKind::Mod, id) => Some(id),
                 _ => None,
-            });
-            if !id.is_local();
-            then {
-                for kid in cx.tcx.module_children(id) {
-                    if let Res::Def(DefKind::Macro(_mac_type), mac_id) = kid.res {
-                        let span = mac_attr.span;
-                        let def_path = cx.tcx.def_path_str(mac_id);
-                        self.imports.push((def_path, span, hir_id));
-                    }
+            })
+            && !id.is_local()
+        {
+            for kid in cx.tcx.module_children(id) {
+                if let Res::Def(DefKind::Macro(_mac_type), mac_id) = kid.res {
+                    let span = mac_attr.span;
+                    let def_path = cx.tcx.def_path_str(mac_id);
+                    self.imports.push((def_path, span, hir_id));
                 }
-            } else {
-                if item.span.from_expansion() {
-                    self.push_unique_macro_pat_ty(cx, item.span);
-                }
+            }
+        } else {
+            if item.span.from_expansion() {
+                self.push_unique_macro_pat_ty(cx, item.span);
             }
         }
     }

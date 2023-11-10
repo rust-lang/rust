@@ -19,17 +19,15 @@ pub(super) fn check<'tcx>(
         return;
     }
 
-    if_chain! {
-        if let ExprKind::Lit(spanned) = &arg1.kind;
-        if let Some(param1) = lit_string_value(&spanned.node);
+    if let ExprKind::Lit(spanned) = &arg1.kind
+        && let Some(param1) = lit_string_value(&spanned.node)
 
-        if let ExprKind::Lit(spanned) = &arg2.kind;
-        if let LitKind::Str(param2, _) = &spanned.node;
-        if param1 == param2.as_str();
+        && let ExprKind::Lit(spanned) = &arg2.kind
+        && let LitKind::Str(param2, _) = &spanned.node
+        && param1 == param2.as_str()
 
-        then {
-            span_lint(cx, NO_EFFECT_REPLACE, expr.span, "replacing text with itself");
-        }
+    {
+        span_lint(cx, NO_EFFECT_REPLACE, expr.span, "replacing text with itself");
     }
 
     if SpanlessEq::new(cx).eq_expr(arg1, arg2) {

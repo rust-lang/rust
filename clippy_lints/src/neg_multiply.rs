@@ -53,28 +53,26 @@ impl<'tcx> LateLintPass<'tcx> for NegMultiply {
 }
 
 fn check_mul(cx: &LateContext<'_>, span: Span, lit: &Expr<'_>, exp: &Expr<'_>) {
-    if_chain! {
-        if let ExprKind::Lit(l) = lit.kind;
-        if consts::lit_to_mir_constant(&l.node, cx.typeck_results().expr_ty_opt(lit)) == Constant::Int(1);
-        if cx.typeck_results().expr_ty(exp).is_integral();
+    if let ExprKind::Lit(l) = lit.kind
+        && consts::lit_to_mir_constant(&l.node, cx.typeck_results().expr_ty_opt(lit)) == Constant::Int(1)
+        && cx.typeck_results().expr_ty(exp).is_integral()
 
-        then {
-            let mut applicability = Applicability::MachineApplicable;
-            let (snip, from_macro) = snippet_with_context(cx, exp.span, span.ctxt(), "..", &mut applicability);
-            let suggestion = if !from_macro && exp.precedence().order() < PREC_PREFIX && !has_enclosing_paren(&snip) {
-                format!("-({snip})")
-            } else {
-                format!("-{snip}")
-            };
-            span_lint_and_sugg(
-                    cx,
-                    NEG_MULTIPLY,
-                    span,
-                    "this multiplication by -1 can be written more succinctly",
-                    "consider using",
-                    suggestion,
-                    applicability,
-                );
-        }
+    {
+        let mut applicability = Applicability::MachineApplicable;
+        let (snip, from_macro) = snippet_with_context(cx, exp.span, span.ctxt(), "..", &mut applicability);
+        let suggestion = if !from_macro && exp.precedence().order() < PREC_PREFIX && !has_enclosing_paren(&snip) {
+            format!("-({snip})")
+        } else {
+            format!("-{snip}")
+        };
+        span_lint_and_sugg(
+                cx,
+                NEG_MULTIPLY,
+                span,
+                "this multiplication by -1 can be written more succinctly",
+                "consider using",
+                suggestion,
+                applicability,
+            );
     }
 }

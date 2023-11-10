@@ -201,14 +201,12 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClosureCall {
                 type NestedFilter = nested_filter::OnlyBodies;
 
                 fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
-                    if_chain! {
-                        if let hir::ExprKind::Call(closure, _) = expr.kind;
-                        if let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = closure.kind;
-                        if self.path.segments[0].ident == path.segments[0].ident;
-                        if self.path.res == path.res;
-                        then {
-                            self.count += 1;
-                        }
+                    if let hir::ExprKind::Call(closure, _) = expr.kind
+                        && let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = closure.kind
+                        && self.path.segments[0].ident == path.segments[0].ident
+                        && self.path.res == path.res
+                    {
+                        self.count += 1;
                     }
                     hir_visit::walk_expr(self, expr);
                 }
@@ -223,25 +221,23 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClosureCall {
         }
 
         for w in block.stmts.windows(2) {
-            if_chain! {
-                if let hir::StmtKind::Local(local) = w[0].kind;
-                if let Option::Some(t) = local.init;
-                if let hir::ExprKind::Closure { .. } = t.kind;
-                if let hir::PatKind::Binding(_, _, ident, _) = local.pat.kind;
-                if let hir::StmtKind::Semi(second) = w[1].kind;
-                if let hir::ExprKind::Assign(_, call, _) = second.kind;
-                if let hir::ExprKind::Call(closure, _) = call.kind;
-                if let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = closure.kind;
-                if ident == path.segments[0].ident;
-                if count_closure_usage(cx, block, path) == 1;
-                then {
-                    span_lint(
-                        cx,
-                        REDUNDANT_CLOSURE_CALL,
-                        second.span,
-                        "closure called just once immediately after it was declared",
-                    );
-                }
+            if let hir::StmtKind::Local(local) = w[0].kind
+                && let Option::Some(t) = local.init
+                && let hir::ExprKind::Closure { .. } = t.kind
+                && let hir::PatKind::Binding(_, _, ident, _) = local.pat.kind
+                && let hir::StmtKind::Semi(second) = w[1].kind
+                && let hir::ExprKind::Assign(_, call, _) = second.kind
+                && let hir::ExprKind::Call(closure, _) = call.kind
+                && let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = closure.kind
+                && ident == path.segments[0].ident
+                && count_closure_usage(cx, block, path) == 1
+            {
+                span_lint(
+                    cx,
+                    REDUNDANT_CLOSURE_CALL,
+                    second.span,
+                    "closure called just once immediately after it was declared",
+                );
             }
         }
     }

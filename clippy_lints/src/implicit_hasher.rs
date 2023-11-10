@@ -337,42 +337,40 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'a, 'b, 't
     }
 
     fn visit_expr(&mut self, e: &'tcx Expr<'_>) {
-        if_chain! {
-            if let ExprKind::Call(fun, args) = e.kind;
-            if let ExprKind::Path(QPath::TypeRelative(ty, method)) = fun.kind;
-            if let TyKind::Path(QPath::Resolved(None, ty_path)) = ty.kind;
-            if let Some(ty_did) = ty_path.res.opt_def_id();
-            then {
-                if self.target.ty() != self.maybe_typeck_results.unwrap().expr_ty(e) {
-                    return;
-                }
+        if let ExprKind::Call(fun, args) = e.kind
+            && let ExprKind::Path(QPath::TypeRelative(ty, method)) = fun.kind
+            && let TyKind::Path(QPath::Resolved(None, ty_path)) = ty.kind
+            && let Some(ty_did) = ty_path.res.opt_def_id()
+        {
+            if self.target.ty() != self.maybe_typeck_results.unwrap().expr_ty(e) {
+                return;
+            }
 
-                if self.cx.tcx.is_diagnostic_item(sym::HashMap, ty_did) {
-                    if method.ident.name == sym::new {
-                        self.suggestions
-                            .insert(e.span, "HashMap::default()".to_string());
-                    } else if method.ident.name == sym!(with_capacity) {
-                        self.suggestions.insert(
-                            e.span,
-                            format!(
-                                "HashMap::with_capacity_and_hasher({}, Default::default())",
-                                snippet(self.cx, args[0].span, "capacity"),
-                            ),
-                        );
-                    }
-                } else if self.cx.tcx.is_diagnostic_item(sym::HashSet, ty_did) {
-                    if method.ident.name == sym::new {
-                        self.suggestions
-                            .insert(e.span, "HashSet::default()".to_string());
-                    } else if method.ident.name == sym!(with_capacity) {
-                        self.suggestions.insert(
-                            e.span,
-                            format!(
-                                "HashSet::with_capacity_and_hasher({}, Default::default())",
-                                snippet(self.cx, args[0].span, "capacity"),
-                            ),
-                        );
-                    }
+            if self.cx.tcx.is_diagnostic_item(sym::HashMap, ty_did) {
+                if method.ident.name == sym::new {
+                    self.suggestions
+                        .insert(e.span, "HashMap::default()".to_string());
+                } else if method.ident.name == sym!(with_capacity) {
+                    self.suggestions.insert(
+                        e.span,
+                        format!(
+                            "HashMap::with_capacity_and_hasher({}, Default::default())",
+                            snippet(self.cx, args[0].span, "capacity"),
+                        ),
+                    );
+                }
+            } else if self.cx.tcx.is_diagnostic_item(sym::HashSet, ty_did) {
+                if method.ident.name == sym::new {
+                    self.suggestions
+                        .insert(e.span, "HashSet::default()".to_string());
+                } else if method.ident.name == sym!(with_capacity) {
+                    self.suggestions.insert(
+                        e.span,
+                        format!(
+                            "HashSet::with_capacity_and_hasher({}, Default::default())",
+                            snippet(self.cx, args[0].span, "capacity"),
+                        ),
+                    );
                 }
             }
         }

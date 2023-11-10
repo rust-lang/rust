@@ -255,56 +255,54 @@ impl LiteralDigitGrouping {
     }
 
     fn check_lit(self, cx: &EarlyContext<'_>, lit: token::Lit, span: Span) {
-        if_chain! {
-            if let Some(src) = snippet_opt(cx, span);
-            if let Ok(lit_kind) = LitKind::from_token_lit(lit);
-            if let Some(mut num_lit) = NumericLiteral::from_lit_kind(&src, &lit_kind);
-            then {
-                if !Self::check_for_mistyped_suffix(cx, span, &mut num_lit) {
-                    return;
-                }
+        if let Some(src) = snippet_opt(cx, span)
+            && let Ok(lit_kind) = LitKind::from_token_lit(lit)
+            && let Some(mut num_lit) = NumericLiteral::from_lit_kind(&src, &lit_kind)
+        {
+            if !Self::check_for_mistyped_suffix(cx, span, &mut num_lit) {
+                return;
+            }
 
-                if Self::is_literal_uuid_formatted(&num_lit) {
-                    return;
-                }
+            if Self::is_literal_uuid_formatted(&num_lit) {
+                return;
+            }
 
-                let result = (|| {
+            let result = (|| {
 
-                    let integral_group_size = Self::get_group_size(num_lit.integer.split('_'), num_lit.radix, true)?;
-                    if let Some(fraction) = num_lit.fraction {
-                        let fractional_group_size = Self::get_group_size(
-                            fraction.rsplit('_'),
-                            num_lit.radix,
-                            self.lint_fraction_readability)?;
+                let integral_group_size = Self::get_group_size(num_lit.integer.split('_'), num_lit.radix, true)?;
+                if let Some(fraction) = num_lit.fraction {
+                    let fractional_group_size = Self::get_group_size(
+                        fraction.rsplit('_'),
+                        num_lit.radix,
+                        self.lint_fraction_readability)?;
 
-                        let consistent = Self::parts_consistent(integral_group_size,
-                                                                fractional_group_size,
-                                                                num_lit.integer.len(),
-                                                                fraction.len());
-                        if !consistent {
-                            return Err(WarningType::InconsistentDigitGrouping);
-                        };
-                    }
-
-                    Ok(())
-                })();
-
-
-                if let Err(warning_type) = result {
-                    let should_warn = match warning_type {
-                        | WarningType::UnreadableLiteral
-                        | WarningType::InconsistentDigitGrouping
-                        | WarningType::UnusualByteGroupings
-                        | WarningType::LargeDigitGroups => {
-                            !span.from_expansion()
-                        }
-                        WarningType::DecimalRepresentation | WarningType::MistypedLiteralSuffix => {
-                            true
-                        }
+                    let consistent = Self::parts_consistent(integral_group_size,
+                                                            fractional_group_size,
+                                                            num_lit.integer.len(),
+                                                            fraction.len());
+                    if !consistent {
+                        return Err(WarningType::InconsistentDigitGrouping);
                     };
-                    if should_warn {
-                        warning_type.display(num_lit.format(), cx, span);
+                }
+
+                Ok(())
+            })();
+
+
+            if let Err(warning_type) = result {
+                let should_warn = match warning_type {
+                    | WarningType::UnreadableLiteral
+                    | WarningType::InconsistentDigitGrouping
+                    | WarningType::UnusualByteGroupings
+                    | WarningType::LargeDigitGroups => {
+                        !span.from_expansion()
                     }
+                    WarningType::DecimalRepresentation | WarningType::MistypedLiteralSuffix => {
+                        true
+                    }
+                };
+                if should_warn {
+                    warning_type.display(num_lit.format(), cx, span);
                 }
             }
         }
@@ -478,20 +476,18 @@ impl DecimalLiteralRepresentation {
     }
     fn check_lit(self, cx: &EarlyContext<'_>, lit: token::Lit, span: Span) {
         // Lint integral literals.
-        if_chain! {
-            if let Ok(lit_kind) = LitKind::from_token_lit(lit);
-            if let LitKind::Int(val, _) = lit_kind;
-            if let Some(src) = snippet_opt(cx, span);
-            if let Some(num_lit) = NumericLiteral::from_lit_kind(&src, &lit_kind);
-            if num_lit.radix == Radix::Decimal;
-            if val >= u128::from(self.threshold);
-            then {
-                let hex = format!("{val:#X}");
-                let num_lit = NumericLiteral::new(&hex, num_lit.suffix, false);
-                let _: Result<(), ()> = Self::do_lint(num_lit.integer).map_err(|warning_type| {
-                    warning_type.display(num_lit.format(), cx, span);
-                });
-            }
+        if let Ok(lit_kind) = LitKind::from_token_lit(lit)
+            && let LitKind::Int(val, _) = lit_kind
+            && let Some(src) = snippet_opt(cx, span)
+            && let Some(num_lit) = NumericLiteral::from_lit_kind(&src, &lit_kind)
+            && num_lit.radix == Radix::Decimal
+            && val >= u128::from(self.threshold)
+        {
+            let hex = format!("{val:#X}");
+            let num_lit = NumericLiteral::new(&hex, num_lit.suffix, false);
+            let _: Result<(), ()> = Self::do_lint(num_lit.integer).map_err(|warning_type| {
+                warning_type.display(num_lit.format(), cx, span);
+            });
         }
     }
 

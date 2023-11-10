@@ -131,54 +131,52 @@ pub(super) fn check<'tcx>(
             (sym::Result, true, &["or", "unwrap_or"], "else"),
         ];
 
-        if_chain! {
-            if KNOW_TYPES.iter().any(|k| k.2.contains(&name));
+        if KNOW_TYPES.iter().any(|k| k.2.contains(&name))
 
-            if switch_to_lazy_eval(cx, arg);
-            if !contains_return(arg);
+            && switch_to_lazy_eval(cx, arg)
+            && !contains_return(arg)
 
-            let self_ty = cx.typeck_results().expr_ty(self_expr);
+            && let self_ty = cx.typeck_results().expr_ty(self_expr)
 
-            if let Some(&(_, fn_has_arguments, poss, suffix)) =
-                KNOW_TYPES.iter().find(|&&i| is_type_diagnostic_item(cx, self_ty, i.0));
+            && let Some(&(_, fn_has_arguments, poss, suffix)) =
+                KNOW_TYPES.iter().find(|&&i| is_type_diagnostic_item(cx, self_ty, i.0))
 
-            if poss.contains(&name);
+            && poss.contains(&name)
 
-            then {
-                let ctxt = span.ctxt();
-                let mut app = Applicability::HasPlaceholders;
-                let sugg = {
-                    let (snippet_span, use_lambda) = match (fn_has_arguments, fun_span) {
-                        (false, Some(fun_span)) => (fun_span, false),
-                        _ => (arg.span, true),
-                    };
-
-                    let snip = snippet_with_context(cx, snippet_span, ctxt, "..", &mut app).0;
-                    let snip = if use_lambda {
-                        let l_arg = if fn_has_arguments { "_" } else { "" };
-                        format!("|{l_arg}| {snip}")
-                    } else {
-                        snip.into_owned()
-                    };
-
-                    if let Some(f) = second_arg {
-                        let f = snippet_with_context(cx, f.span, ctxt, "..", &mut app).0;
-                        format!("{snip}, {f}")
-                    } else {
-                        snip
-                    }
+        {
+            let ctxt = span.ctxt();
+            let mut app = Applicability::HasPlaceholders;
+            let sugg = {
+                let (snippet_span, use_lambda) = match (fn_has_arguments, fun_span) {
+                    (false, Some(fun_span)) => (fun_span, false),
+                    _ => (arg.span, true),
                 };
-                let span_replace_word = method_span.with_hi(span.hi());
-                span_lint_and_sugg(
-                    cx,
-                    OR_FUN_CALL,
-                    span_replace_word,
-                    &format!("use of `{name}` followed by a function call"),
-                    "try",
-                    format!("{name}_{suffix}({sugg})"),
-                    app,
-                );
-            }
+
+                let snip = snippet_with_context(cx, snippet_span, ctxt, "..", &mut app).0;
+                let snip = if use_lambda {
+                    let l_arg = if fn_has_arguments { "_" } else { "" };
+                    format!("|{l_arg}| {snip}")
+                } else {
+                    snip.into_owned()
+                };
+
+                if let Some(f) = second_arg {
+                    let f = snippet_with_context(cx, f.span, ctxt, "..", &mut app).0;
+                    format!("{snip}, {f}")
+                } else {
+                    snip
+                }
+            };
+            let span_replace_word = method_span.with_hi(span.hi());
+            span_lint_and_sugg(
+                cx,
+                OR_FUN_CALL,
+                span_replace_word,
+                &format!("use of `{name}` followed by a function call"),
+                "try",
+                format!("{name}_{suffix}({sugg})"),
+                app,
+            );
         }
     }
 

@@ -114,15 +114,13 @@ impl<'tcx> LateLintPass<'tcx> for BlocksInIfConditions {
                 let _: Option<!> = for_each_expr(cond, |e| {
                     if let ExprKind::Closure(closure) = e.kind {
                         // do not lint if the closure is called using an iterator (see #1141)
-                        if_chain! {
-                            if let Some(parent) = get_parent_expr(cx, e);
-                            if let ExprKind::MethodCall(_, self_arg, _, _) = &parent.kind;
-                            let caller = cx.typeck_results().expr_ty(self_arg);
-                            if let Some(iter_id) = cx.tcx.get_diagnostic_item(sym::Iterator);
-                            if implements_trait(cx, caller, iter_id, &[]);
-                            then {
-                                return ControlFlow::Continue(Descend::No);
-                            }
+                        if let Some(parent) = get_parent_expr(cx, e)
+                            && let ExprKind::MethodCall(_, self_arg, _, _) = &parent.kind
+                            && let caller = cx.typeck_results().expr_ty(self_arg)
+                            && let Some(iter_id) = cx.tcx.get_diagnostic_item(sym::Iterator)
+                            && implements_trait(cx, caller, iter_id, &[])
+                        {
+                            return ControlFlow::Continue(Descend::No);
                         }
 
                         let body = cx.tcx.hir().body(closure.body);

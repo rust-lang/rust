@@ -3977,44 +3977,40 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             return;
         }
 
-        if_chain! {
-            if let TraitItemKind::Fn(ref sig, _) = item.kind;
-            if sig.decl.implicit_self.has_implicit_self();
-            if let Some(first_arg_hir_ty) = sig.decl.inputs.first();
-            if let Some(&first_arg_ty) = cx.tcx.fn_sig(item.owner_id)
+        if let TraitItemKind::Fn(ref sig, _) = item.kind
+            && sig.decl.implicit_self.has_implicit_self()
+            && let Some(first_arg_hir_ty) = sig.decl.inputs.first()
+            && let Some(&first_arg_ty) = cx.tcx.fn_sig(item.owner_id)
                 .instantiate_identity()
                 .inputs()
                 .skip_binder()
-                .first();
-            then {
-                let self_ty = TraitRef::identity(cx.tcx, item.owner_id.to_def_id()).self_ty();
-                wrong_self_convention::check(
-                    cx,
-                    item.ident.name.as_str(),
-                    self_ty,
-                    first_arg_ty,
-                    first_arg_hir_ty.span,
-                    false,
-                    true,
-                );
-            }
+                .first()
+        {
+            let self_ty = TraitRef::identity(cx.tcx, item.owner_id.to_def_id()).self_ty();
+            wrong_self_convention::check(
+                cx,
+                item.ident.name.as_str(),
+                self_ty,
+                first_arg_ty,
+                first_arg_hir_ty.span,
+                false,
+                true,
+            );
         }
 
-        if_chain! {
-            if item.ident.name == sym::new;
-            if let TraitItemKind::Fn(_, _) = item.kind;
-            let ret_ty = return_ty(cx, item.owner_id);
-            let self_ty = TraitRef::identity(cx.tcx, item.owner_id.to_def_id()).self_ty();
-            if !ret_ty.contains(self_ty);
+        if item.ident.name == sym::new
+            && let TraitItemKind::Fn(_, _) = item.kind
+            && let ret_ty = return_ty(cx, item.owner_id)
+            && let self_ty = TraitRef::identity(cx.tcx, item.owner_id.to_def_id()).self_ty()
+            && !ret_ty.contains(self_ty)
 
-            then {
-                span_lint(
-                    cx,
-                    NEW_RET_NO_SELF,
-                    item.span,
-                    "methods called `new` usually return `Self`",
-                );
-            }
+        {
+            span_lint(
+                cx,
+                NEW_RET_NO_SELF,
+                item.span,
+                "methods called `new` usually return `Self`",
+            );
         }
     }
 

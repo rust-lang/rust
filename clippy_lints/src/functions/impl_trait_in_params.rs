@@ -52,54 +52,48 @@ fn report(
 }
 
 pub(super) fn check_fn<'tcx>(cx: &LateContext<'_>, kind: &'tcx FnKind<'_>, body: &'tcx Body<'_>, hir_id: HirId) {
-    if_chain! {
-        if let FnKind::ItemFn(ident, generics, _) = kind;
-        if cx.tcx.visibility(cx.tcx.hir().body_owner_def_id(body.id())).is_public();
-        if !is_in_test_function(cx.tcx, hir_id);
-        then {
-            for param in generics.params {
-                if param.is_impl_trait() {
-                    report(cx, param, ident, generics, body.params[0].span);
-                };
-            }
+    if let FnKind::ItemFn(ident, generics, _) = kind
+        && cx.tcx.visibility(cx.tcx.hir().body_owner_def_id(body.id())).is_public()
+        && !is_in_test_function(cx.tcx, hir_id)
+    {
+        for param in generics.params {
+            if param.is_impl_trait() {
+                report(cx, param, ident, generics, body.params[0].span);
+            };
         }
     }
 }
 
 pub(super) fn check_impl_item(cx: &LateContext<'_>, impl_item: &ImplItem<'_>) {
-    if_chain! {
-        if let ImplItemKind::Fn(_, body_id) = impl_item.kind;
-        if let hir::Node::Item(item) = cx.tcx.hir().get_parent(impl_item.hir_id());
-        if let hir::ItemKind::Impl(impl_) = item.kind;
-        if let hir::Impl { of_trait, .. } = *impl_;
-        if of_trait.is_none();
-        let body = cx.tcx.hir().body(body_id);
-        if cx.tcx.visibility(cx.tcx.hir().body_owner_def_id(body.id())).is_public();
-        if !is_in_test_function(cx.tcx, impl_item.hir_id());
-        then {
-            for param in impl_item.generics.params {
-                if param.is_impl_trait() {
-                    report(cx, param, &impl_item.ident, impl_item.generics, body.params[0].span);
-                }
+    if let ImplItemKind::Fn(_, body_id) = impl_item.kind
+        && let hir::Node::Item(item) = cx.tcx.hir().get_parent(impl_item.hir_id())
+        && let hir::ItemKind::Impl(impl_) = item.kind
+        && let hir::Impl { of_trait, .. } = *impl_
+        && of_trait.is_none()
+        && let body = cx.tcx.hir().body(body_id)
+        && cx.tcx.visibility(cx.tcx.hir().body_owner_def_id(body.id())).is_public()
+        && !is_in_test_function(cx.tcx, impl_item.hir_id())
+    {
+        for param in impl_item.generics.params {
+            if param.is_impl_trait() {
+                report(cx, param, &impl_item.ident, impl_item.generics, body.params[0].span);
             }
         }
     }
 }
 
 pub(super) fn check_trait_item(cx: &LateContext<'_>, trait_item: &TraitItem<'_>, avoid_breaking_exported_api: bool) {
-    if_chain! {
-        if !avoid_breaking_exported_api;
-        if let TraitItemKind::Fn(_, _) = trait_item.kind;
-        if let hir::Node::Item(item) = cx.tcx.hir().get_parent(trait_item.hir_id());
+    if !avoid_breaking_exported_api
+        && let TraitItemKind::Fn(_, _) = trait_item.kind
+        && let hir::Node::Item(item) = cx.tcx.hir().get_parent(trait_item.hir_id())
         // ^^ (Will always be a trait)
-        if !item.vis_span.is_empty(); // Is public
-        if !is_in_test_function(cx.tcx, trait_item.hir_id());
-        then {
-            for param in trait_item.generics.params {
-                if param.is_impl_trait() {
-                    let sp = trait_item.ident.span.with_hi(trait_item.ident.span.hi() + BytePos(1));
-                    report(cx, param, &trait_item.ident, trait_item.generics, sp.shrink_to_hi());
-                }
+        && !item.vis_span.is_empty() // Is public
+        && !is_in_test_function(cx.tcx, trait_item.hir_id())
+    {
+        for param in trait_item.generics.params {
+            if param.is_impl_trait() {
+                let sp = trait_item.ident.span.with_hi(trait_item.ident.span.hi() + BytePos(1));
+                report(cx, param, &trait_item.ident, trait_item.generics, sp.shrink_to_hi());
             }
         }
     }

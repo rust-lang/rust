@@ -55,32 +55,30 @@ pub(super) fn get_hint_if_single_char_arg(
     arg: &hir::Expr<'_>,
     applicability: &mut Applicability,
 ) -> Option<String> {
-    if_chain! {
-        if let hir::ExprKind::Lit(lit) = &arg.kind;
-        if let ast::LitKind::Str(r, style) = lit.node;
-        let string = r.as_str();
-        if string.chars().count() == 1;
-        then {
-            let snip = snippet_with_applicability(cx, arg.span, string, applicability);
-            let ch = if let ast::StrStyle::Raw(nhash) = style {
-                let nhash = nhash as usize;
-                // for raw string: r##"a"##
-                &snip[(nhash + 2)..(snip.len() - 1 - nhash)]
-            } else {
-                // for regular string: "a"
-                &snip[1..(snip.len() - 1)]
-            };
-
-            let hint = format!("'{}'", match ch {
-                "'" => "\\'" ,
-                r"\" => "\\\\",
-                _ => ch,
-            });
-
-            Some(hint)
+    if let hir::ExprKind::Lit(lit) = &arg.kind
+        && let ast::LitKind::Str(r, style) = lit.node
+        && let string = r.as_str()
+        && string.chars().count() == 1
+    {
+        let snip = snippet_with_applicability(cx, arg.span, string, applicability);
+        let ch = if let ast::StrStyle::Raw(nhash) = style {
+            let nhash = nhash as usize;
+            // for raw string: r##"a"##
+            &snip[(nhash + 2)..(snip.len() - 1 - nhash)]
         } else {
-            None
-        }
+            // for regular string: "a"
+            &snip[1..(snip.len() - 1)]
+        };
+
+        let hint = format!("'{}'", match ch {
+            "'" => "\\'" ,
+            r"\" => "\\\\",
+            _ => ch,
+        });
+
+        Some(hint)
+    } else {
+        None
     }
 }
 
@@ -140,15 +138,13 @@ impl<'cx, 'tcx> Visitor<'tcx> for CloneOrCopyVisitor<'cx, 'tcx> {
                         return;
                     },
                     ExprKind::MethodCall(.., args, _) => {
-                        if_chain! {
-                            if args.iter().all(|arg| !self.is_binding(arg));
-                            if let Some(method_def_id) = self.cx.typeck_results().type_dependent_def_id(parent.hir_id);
-                            let method_ty = self.cx.tcx.type_of(method_def_id).instantiate_identity();
-                            let self_ty = method_ty.fn_sig(self.cx.tcx).input(0).skip_binder();
-                            if matches!(self_ty.kind(), ty::Ref(_, _, Mutability::Not));
-                            then {
-                                return;
-                            }
+                        if args.iter().all(|arg| !self.is_binding(arg))
+                            && let Some(method_def_id) = self.cx.typeck_results().type_dependent_def_id(parent.hir_id)
+                            && let method_ty = self.cx.tcx.type_of(method_def_id).instantiate_identity()
+                            && let self_ty = method_ty.fn_sig(self.cx.tcx).input(0).skip_binder()
+                            && matches!(self_ty.kind(), ty::Ref(_, _, Mutability::Not))
+                        {
+                            return;
                         }
                     },
                     _ => {},

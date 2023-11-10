@@ -31,13 +31,12 @@ impl<'tcx> LateLintPass<'tcx> for InvalidPaths {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         let local_def_id = &cx.tcx.parent_module(item.hir_id());
         let mod_name = &cx.tcx.item_name(local_def_id.to_def_id());
-        if_chain! {
-            if mod_name.as_str() == "paths";
-            if let hir::ItemKind::Const(.., body_id) = item.kind;
-            let body = cx.tcx.hir().body(body_id);
-            let typeck_results = cx.tcx.typeck_body(body_id);
-            if let Some(Constant::Vec(path)) = constant_simple(cx, typeck_results, body.value);
-            if let Some(path) = path
+        if mod_name.as_str() == "paths"
+            && let hir::ItemKind::Const(.., body_id) = item.kind
+            && let body = cx.tcx.hir().body(body_id)
+            && let typeck_results = cx.tcx.typeck_body(body_id)
+            && let Some(Constant::Vec(path)) = constant_simple(cx, typeck_results, body.value)
+            && let Some(path) = path
                 .iter()
                 .map(|x| {
                     if let Constant::Str(s) = x {
@@ -46,11 +45,10 @@ impl<'tcx> LateLintPass<'tcx> for InvalidPaths {
                         None
                     }
                 })
-                .collect::<Option<Vec<&str>>>();
-            if !check_path(cx, &path[..]);
-            then {
-                span_lint(cx, INVALID_PATHS, item.span, "invalid path");
-            }
+                .collect::<Option<Vec<&str>>>()
+            && !check_path(cx, &path[..])
+        {
+            span_lint(cx, INVALID_PATHS, item.span, "invalid path");
         }
     }
 }

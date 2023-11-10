@@ -16,57 +16,53 @@ use rustc_span::{sym, Span};
 use super::MAP_CLONE;
 
 pub(super) fn check(cx: &LateContext<'_>, e: &hir::Expr<'_>, recv: &hir::Expr<'_>, arg: &hir::Expr<'_>, msrv: &Msrv) {
-    if_chain! {
-        if let Some(method_id) = cx.typeck_results().type_dependent_def_id(e.hir_id);
-        if cx.tcx.impl_of_method(method_id)
+    if let Some(method_id) = cx.typeck_results().type_dependent_def_id(e.hir_id)
+        && (cx.tcx.impl_of_method(method_id)
             .map_or(false, |id| is_type_diagnostic_item(cx, cx.tcx.type_of(id).instantiate_identity(), sym::Option))
-            || is_diag_trait_item(cx, method_id, sym::Iterator);
-        if let hir::ExprKind::Closure(&hir::Closure{ body, .. }) = arg.kind;
-        then {
-            let closure_body = cx.tcx.hir().body(body);
-            let closure_expr = peel_blocks(closure_body.value);
-            match closure_body.params[0].pat.kind {
-                hir::PatKind::Ref(inner, hir::Mutability::Not) => if let hir::PatKind::Binding(
-                    hir::BindingAnnotation::NONE, .., name, None
-                ) = inner.kind {
-                    if ident_eq(name, closure_expr) {
-                        lint_explicit_closure(cx, e.span, recv.span, true, msrv);
-                    }
-                },
-                hir::PatKind::Binding(hir::BindingAnnotation::NONE, .., name, None) => {
-                    match closure_expr.kind {
-                        hir::ExprKind::Unary(hir::UnOp::Deref, inner) => {
-                            if ident_eq(name, inner) {
-                                if let ty::Ref(.., Mutability::Not) = cx.typeck_results().expr_ty(inner).kind() {
-                                    lint_explicit_closure(cx, e.span, recv.span, true, msrv);
-                                }
+            || is_diag_trait_item(cx, method_id, sym::Iterator))
+        && let hir::ExprKind::Closure(&hir::Closure{ body, .. }) = arg.kind
+    {
+        let closure_body = cx.tcx.hir().body(body);
+        let closure_expr = peel_blocks(closure_body.value);
+        match closure_body.params[0].pat.kind {
+            hir::PatKind::Ref(inner, hir::Mutability::Not) => if let hir::PatKind::Binding(
+                hir::BindingAnnotation::NONE, .., name, None
+            ) = inner.kind {
+                if ident_eq(name, closure_expr) {
+                    lint_explicit_closure(cx, e.span, recv.span, true, msrv);
+                }
+            },
+            hir::PatKind::Binding(hir::BindingAnnotation::NONE, .., name, None) => {
+                match closure_expr.kind {
+                    hir::ExprKind::Unary(hir::UnOp::Deref, inner) => {
+                        if ident_eq(name, inner) {
+                            if let ty::Ref(.., Mutability::Not) = cx.typeck_results().expr_ty(inner).kind() {
+                                lint_explicit_closure(cx, e.span, recv.span, true, msrv);
                             }
-                        },
-                        hir::ExprKind::MethodCall(method, obj, [], _) => if_chain! {
-                            if ident_eq(name, obj) && method.ident.name == sym::clone;
-                            if let Some(fn_id) = cx.typeck_results().type_dependent_def_id(closure_expr.hir_id);
-                            if let Some(trait_id) = cx.tcx.trait_of_item(fn_id);
-                            if cx.tcx.lang_items().clone_trait().map_or(false, |id| id == trait_id);
-                            // no autoderefs
-                            if !cx.typeck_results().expr_adjustments(obj).iter()
-                                .any(|a| matches!(a.kind, Adjust::Deref(Some(..))));
-                            then {
-                                let obj_ty = cx.typeck_results().expr_ty(obj);
-                                if let ty::Ref(_, ty, mutability) = obj_ty.kind() {
-                                    if matches!(mutability, Mutability::Not) {
-                                        let copy = is_copy(cx, *ty);
-                                        lint_explicit_closure(cx, e.span, recv.span, copy, msrv);
-                                    }
-                                } else {
-                                    lint_needless_cloning(cx, e.span, recv.span);
-                                }
+                        }
+                    },
+                    hir::ExprKind::MethodCall(method, obj, [], _) => if ident_eq(name, obj) && method.ident.name == sym::clone
+                        && let Some(fn_id) = cx.typeck_results().type_dependent_def_id(closure_expr.hir_id)
+                        && let Some(trait_id) = cx.tcx.trait_of_item(fn_id)
+                        && cx.tcx.lang_items().clone_trait().map_or(false, |id| id == trait_id)
+                        // no autoderefs
+                        && !cx.typeck_results().expr_adjustments(obj).iter()
+                            .any(|a| matches!(a.kind, Adjust::Deref(Some(..))))
+                    {
+                        let obj_ty = cx.typeck_results().expr_ty(obj);
+                        if let ty::Ref(_, ty, mutability) = obj_ty.kind() {
+                            if matches!(mutability, Mutability::Not) {
+                                let copy = is_copy(cx, *ty);
+                                lint_explicit_closure(cx, e.span, recv.span, copy, msrv);
                             }
-                        },
-                        _ => {},
-                    }
-                },
-                _ => {},
-            }
+                        } else {
+                            lint_needless_cloning(cx, e.span, recv.span);
+                        }
+                    },
+                    _ => {},
+                }
+            },
+            _ => {},
         }
     }
 }

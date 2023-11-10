@@ -10,39 +10,35 @@ use rustc_span::sym;
 use super::MATCH_ON_VEC_ITEMS;
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, scrutinee: &'tcx Expr<'_>) {
-    if_chain! {
-        if let Some(idx_expr) = is_vec_indexing(cx, scrutinee);
-        if let ExprKind::Index(vec, idx, _) = idx_expr.kind;
+    if let Some(idx_expr) = is_vec_indexing(cx, scrutinee)
+        && let ExprKind::Index(vec, idx, _) = idx_expr.kind
 
-        then {
-            // FIXME: could be improved to suggest surrounding every pattern with Some(_),
-            // but only when `or_patterns` are stabilized.
-            span_lint_and_sugg(
-                cx,
-                MATCH_ON_VEC_ITEMS,
-                scrutinee.span,
-                "indexing into a vector may panic",
-                "try",
-                format!(
-                    "{}.get({})",
-                    snippet(cx, vec.span, ".."),
-                    snippet(cx, idx.span, "..")
-                ),
-                Applicability::MaybeIncorrect
-            );
-        }
+    {
+        // FIXME: could be improved to suggest surrounding every pattern with Some(_),
+        // but only when `or_patterns` are stabilized.
+        span_lint_and_sugg(
+            cx,
+            MATCH_ON_VEC_ITEMS,
+            scrutinee.span,
+            "indexing into a vector may panic",
+            "try",
+            format!(
+                "{}.get({})",
+                snippet(cx, vec.span, ".."),
+                snippet(cx, idx.span, "..")
+            ),
+            Applicability::MaybeIncorrect
+        );
     }
 }
 
 fn is_vec_indexing<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> Option<&'tcx Expr<'tcx>> {
-    if_chain! {
-        if let ExprKind::Index(array, index, _) = expr.kind;
-        if is_vector(cx, array);
-        if !is_full_range(cx, index);
+    if let ExprKind::Index(array, index, _) = expr.kind
+        && is_vector(cx, array)
+        && !is_full_range(cx, index)
 
-        then {
-            return Some(expr);
-        }
+    {
+        return Some(expr);
     }
 
     None

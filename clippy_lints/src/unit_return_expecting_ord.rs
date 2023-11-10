@@ -44,14 +44,12 @@ fn get_trait_predicates_for_trait_id<'tcx>(
 ) -> Vec<TraitPredicate<'tcx>> {
     let mut preds = Vec::new();
     for (pred, _) in generics.predicates {
-        if_chain! {
-            if let ClauseKind::Trait(poly_trait_pred) = pred.kind().skip_binder();
-            let trait_pred = cx.tcx.erase_late_bound_regions(pred.kind().rebind(poly_trait_pred));
-            if let Some(trait_def_id) = trait_id;
-            if trait_def_id == trait_pred.trait_ref.def_id;
-            then {
-                preds.push(trait_pred);
-            }
+        if let ClauseKind::Trait(poly_trait_pred) = pred.kind().skip_binder()
+            && let trait_pred = cx.tcx.erase_late_bound_regions(pred.kind().rebind(poly_trait_pred))
+            && let Some(trait_def_id) = trait_id
+            && trait_def_id == trait_pred.trait_ref.def_id
+        {
+            preds.push(trait_pred);
         }
     }
     preds
@@ -94,21 +92,19 @@ fn get_args_to_check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> Ve
             .enumerate()
             .for_each(|(i, inp)| {
                 for trait_pred in &fn_mut_preds {
-                    if_chain! {
-                        if trait_pred.self_ty() == inp;
-                        if let Some(return_ty_pred) = get_projection_pred(cx, generics, *trait_pred);
-                        then {
-                            if ord_preds
-                                .iter()
-                                .any(|ord| Some(ord.self_ty()) == return_ty_pred.term.ty())
-                            {
-                                args_to_check.push((i, "Ord".to_string()));
-                            } else if partial_ord_preds
-                                .iter()
-                                .any(|pord| pord.self_ty() == return_ty_pred.term.ty().unwrap())
-                            {
-                                args_to_check.push((i, "PartialOrd".to_string()));
-                            }
+                    if trait_pred.self_ty() == inp
+                        && let Some(return_ty_pred) = get_projection_pred(cx, generics, *trait_pred)
+                    {
+                        if ord_preds
+                            .iter()
+                            .any(|ord| Some(ord.self_ty()) == return_ty_pred.term.ty())
+                        {
+                            args_to_check.push((i, "Ord".to_string()));
+                        } else if partial_ord_preds
+                            .iter()
+                            .any(|pord| pord.self_ty() == return_ty_pred.term.ty().unwrap())
+                        {
+                            args_to_check.push((i, "PartialOrd".to_string()));
                         }
                     }
                 }
@@ -118,30 +114,26 @@ fn get_args_to_check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> Ve
 }
 
 fn check_arg<'tcx>(cx: &LateContext<'tcx>, arg: &'tcx Expr<'tcx>) -> Option<(Span, Option<Span>)> {
-    if_chain! {
-        if let ExprKind::Closure(&Closure { body, fn_decl_span, .. }) = arg.kind;
-        if let ty::Closure(_def_id, args) = &cx.typeck_results().node_type(arg.hir_id).kind();
-        let ret_ty = args.as_closure().sig().output();
-        let ty = cx.tcx.erase_late_bound_regions(ret_ty);
-        if ty.is_unit();
-        then {
-            let body = cx.tcx.hir().body(body);
-            if_chain! {
-                if let ExprKind::Block(block, _) = body.value.kind;
-                if block.expr.is_none();
-                if let Some(stmt) = block.stmts.last();
-                if let StmtKind::Semi(_) = stmt.kind;
-                then {
-                    let data = stmt.span.data();
-                    // Make a span out of the semicolon for the help message
-                    Some((fn_decl_span, Some(data.with_lo(data.hi-BytePos(1)))))
-                } else {
-                    Some((fn_decl_span, None))
-                }
-            }
+    if let ExprKind::Closure(&Closure { body, fn_decl_span, .. }) = arg.kind
+        && let ty::Closure(_def_id, args) = &cx.typeck_results().node_type(arg.hir_id).kind()
+        && let ret_ty = args.as_closure().sig().output()
+        && let ty = cx.tcx.erase_late_bound_regions(ret_ty)
+        && ty.is_unit()
+    {
+        let body = cx.tcx.hir().body(body);
+        if let ExprKind::Block(block, _) = body.value.kind
+            && block.expr.is_none()
+            && let Some(stmt) = block.stmts.last()
+            && let StmtKind::Semi(_) = stmt.kind
+        {
+            let data = stmt.span.data();
+            // Make a span out of the semicolon for the help message
+            Some((fn_decl_span, Some(data.with_lo(data.hi-BytePos(1)))))
         } else {
-            None
+            Some((fn_decl_span, None))
         }
+    } else {
+        None
     }
 }
 

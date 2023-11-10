@@ -66,36 +66,34 @@ pub(super) fn check<'tcx>(
         ExprKind::Array([arg]) if cx.tcx.sess.edition() >= Edition::Edition2021 => (arg, ""),
         _ => return,
     };
-    if_chain! {
-        if let ExprKind::Block(block, _) = body.kind;
-        if !block.stmts.is_empty();
-        if !contains_break_or_continue(body);
-        then {
-            let mut applicability = Applicability::MachineApplicable;
-            let pat_snip = snippet_with_applicability(cx, pat.span, "..", &mut applicability);
-            let mut arg_snip = snippet_with_applicability(cx, arg_expression.span, "..", &mut applicability);
-            let mut block_str = snippet_with_applicability(cx, block.span, "..", &mut applicability).into_owned();
-            block_str.remove(0);
-            block_str.pop();
-            let indent = " ".repeat(indent_of(cx, block.stmts[0].span).unwrap_or(0));
+    if let ExprKind::Block(block, _) = body.kind
+        && !block.stmts.is_empty()
+        && !contains_break_or_continue(body)
+    {
+        let mut applicability = Applicability::MachineApplicable;
+        let pat_snip = snippet_with_applicability(cx, pat.span, "..", &mut applicability);
+        let mut arg_snip = snippet_with_applicability(cx, arg_expression.span, "..", &mut applicability);
+        let mut block_str = snippet_with_applicability(cx, block.span, "..", &mut applicability).into_owned();
+        block_str.remove(0);
+        block_str.pop();
+        let indent = " ".repeat(indent_of(cx, block.stmts[0].span).unwrap_or(0));
 
-            // Reference iterator from `&(mut) []` or `[].iter(_mut)()`.
-            if !prefix.is_empty() && (
-                // Precedence of internal expression is less than or equal to precedence of `&expr`.
-                arg_expression.precedence().order() <= PREC_PREFIX || is_range_literal(arg_expression)
-            ) {
-                arg_snip = format!("({arg_snip})").into();
-            }
-
-            span_lint_and_sugg(
-                cx,
-                SINGLE_ELEMENT_LOOP,
-                expr.span,
-                "for loop over a single element",
-                "try",
-                format!("{{\n{indent}let {pat_snip} = {prefix}{arg_snip};{block_str}}}"),
-                applicability,
-            )
+        // Reference iterator from `&(mut) []` or `[].iter(_mut)()`.
+        if !prefix.is_empty() && (
+            // Precedence of internal expression is less than or equal to precedence of `&expr`.
+            arg_expression.precedence().order() <= PREC_PREFIX || is_range_literal(arg_expression)
+        ) {
+            arg_snip = format!("({arg_snip})").into();
         }
+
+        span_lint_and_sugg(
+            cx,
+            SINGLE_ELEMENT_LOOP,
+            expr.span,
+            "for loop over a single element",
+            "try",
+            format!("{{\n{indent}let {pat_snip} = {prefix}{arg_snip};{block_str}}}"),
+            applicability,
+        )
     }
 }
