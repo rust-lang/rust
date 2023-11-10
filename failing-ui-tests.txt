@@ -13,7 +13,6 @@ tests/ui/sepcomp/sepcomp-extern.rs
 tests/ui/sepcomp/sepcomp-fns-backwards.rs
 tests/ui/sepcomp/sepcomp-fns.rs
 tests/ui/sepcomp/sepcomp-statics.rs
-tests/ui/simd/intrinsic/generic-arithmetic-pass.rs
 tests/ui/asm/x86_64/may_unwind.rs
 tests/ui/backtrace.rs
 tests/ui/catch-unwind-bang.rs
