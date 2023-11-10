@@ -1,6 +1,6 @@
 name: Rust CI
 
-on: 
+on:
   push:
     branches:
     - master
@@ -13,7 +13,7 @@ jobs:
   build:
     name: Rust Integration CI LLVM ${{ matrix.llvm }} ${{ matrix.build }} ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
-    
+
     strategy:
       fail-fast: false
       matrix:
@@ -29,7 +29,7 @@ jobs:
         run: |
           mkdir build
           cd build
-          ../configure --enable-llvm-link-shared --enable-llvm-plugins --enable-llvm-enzyme --release-channel=nightly --enable-llvm-assertions --enable-clang --enable-lld --enable-option-checking --enable-ninja --disable-docs
+          ../configure --enable-llvm-link-shared --enable-llvm-plugins --enable-llvm-enzyme --release-channel=nightly --enable-llvm-assertions --enable-lld --enable-option-checking --enable-ninja --disable-docs
           ../x.py build --stage 1 library/std library/proc_macro library/test tools/rustdoc
           rustup toolchain link enzyme `pwd`/build/`rustup target list --installed`/stage1
           rustup toolchain install nightly # enables -Z unstable-options
