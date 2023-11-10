@@ -24,7 +24,7 @@ use rustc_incremental::{
 use rustc_metadata::fs::copy_to_stdout;
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
-use rustc_middle::middle::autodiff_attrs::AutoDiffItem;
+use rustc_ast::expand::autodiff_attrs::AutoDiffItem;
 use rustc_middle::middle::exported_symbols::SymbolExportInfo;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{self, CrateType, Lto, OutFileName, OutputFilenames, OutputType};

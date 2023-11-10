@@ -93,7 +93,7 @@
 //! inlining, even when they are not marked `#[inline]`.
 
 use rustc_symbol_mangling::symbol_name_for_instance_in_crate;
-use rustc_middle::middle::typetree::{Kind, Type, TypeTree};
+use rustc_ast::expand::typetree::{Kind, Type, TypeTree};
 use rustc_target::abi::FieldsShape;
 
 use std::cmp;
@@ -107,7 +107,7 @@ use rustc_data_structures::sync;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdSet, LOCAL_CRATE};
 use rustc_hir::definitions::DefPathDataName;
-use rustc_middle::middle::autodiff_attrs::AutoDiffItem;
+use rustc_ast::expand::autodiff_attrs::AutoDiffItem;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::exported_symbols::{SymbolExportInfo, SymbolExportLevel};
 use rustc_middle::mir::mono::{

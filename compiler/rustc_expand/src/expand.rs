@@ -406,6 +406,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
     }
 
     /// Recursively expand all macro invocations in this AST fragment.
+    /// Manuel: Add autodiff
     pub fn fully_expand_fragment(&mut self, input_fragment: AstFragment) -> AstFragment {
         let orig_expansion_data = self.cx.current_expansion.clone();
         let orig_force_mode = self.cx.force_mode;

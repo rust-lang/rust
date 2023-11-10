@@ -1,5 +1,5 @@
 use crate::llvm;
-use rustc_middle::middle::typetree::{Kind, TypeTree};
+use rustc_ast::expand::typetree::{Kind, TypeTree};
 
 pub fn to_enzyme_typetree(
     tree: TypeTree,

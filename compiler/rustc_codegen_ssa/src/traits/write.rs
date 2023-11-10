@@ -5,7 +5,7 @@ use crate::{CompiledModule, ModuleCodegen};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{FatalError, Handler};
 use rustc_middle::dep_graph::WorkProduct;
-use rustc_middle::middle::autodiff_attrs::AutoDiffItem;
+use rustc_ast::expand::autodiff_attrs::AutoDiffItem;
 
 pub trait WriteBackendMethods: 'static + Sized + Clone {
     type Module: Send + Sync;

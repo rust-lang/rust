@@ -1592,11 +1592,13 @@ impl MacCall {
     }
 }
 
+/// Manuel
 /// Arguments passed to an attribute macro.
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub enum AttrArgs {
     /// No arguments: `#[attr]`.
     Empty,
+    /// Manuel autodiff
     /// Delimited arguments: `#[attr()/[]/{}]`.
     Delimited(DelimArgs),
     /// Arguments of a key-value attribute: `#[attr = "value"]`.

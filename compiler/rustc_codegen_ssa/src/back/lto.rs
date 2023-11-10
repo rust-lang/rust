@@ -5,7 +5,7 @@ use crate::ModuleCodegen;
 
 use rustc_data_structures::{fx::FxHashMap, memmap::Mmap};
 use rustc_errors::FatalError;
-use rustc_middle::middle::autodiff_attrs::AutoDiffItem;
+use rustc_ast::expand::autodiff_attrs::AutoDiffItem;
 
 use std::ffi::CString;
 use std::sync::Arc;

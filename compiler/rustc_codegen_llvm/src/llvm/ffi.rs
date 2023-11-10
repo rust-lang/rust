@@ -1,7 +1,7 @@
 #![allow(non_camel_case_types)]
 #![allow(non_upper_case_globals)]
 
-use rustc_middle::middle::autodiff_attrs::DiffActivity;
+use rustc_ast::expand::autodiff_attrs::DiffActivity;
 
 use super::debuginfo::{
     DIArray, DIBasicType, DIBuilder, DICompositeType, DIDerivedType, DIDescriptor, DIEnumerator,

@@ -1,6 +1,8 @@
 builtin_macros_alloc_error_must_be_fn = alloc_error_handler must be a function
 builtin_macros_alloc_must_statics = allocators must be statics
 
+builtin_macros_autodiff = autodiff must be applied to function
+
 builtin_macros_asm_clobber_abi = clobber_abi
 builtin_macros_asm_clobber_no_reg = asm with `clobber_abi` must specify explicit registers for outputs
 builtin_macros_asm_clobber_outputs = generic outputs

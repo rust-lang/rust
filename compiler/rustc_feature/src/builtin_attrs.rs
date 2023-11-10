@@ -359,6 +359,11 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         template!(Word, List: r#""...""#),
         DuplicatesOk,
     ),
+    ungated!(
+        autodiff, Normal,
+        template!(List: r#""...""#),
+        DuplicatesOk,
+    ),
 
     // Limits:
     ungated!(recursion_limit, CrateLevel, template!(NameValueStr: "N"), FutureWarnFollowing),

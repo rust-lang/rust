@@ -5,7 +5,7 @@ use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId, LOCAL_CRATE};
 use rustc_hir::{lang_items, weak_lang_items::WEAK_LANG_ITEMS, LangItem};
-use rustc_middle::middle::autodiff_attrs::{AutoDiffAttrs, DiffActivity, DiffMode};
+use rustc_ast::expand::autodiff_attrs::{AutoDiffAttrs, DiffActivity, DiffMode};
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::mir::mono::Linkage;
 use rustc_middle::query::Providers;

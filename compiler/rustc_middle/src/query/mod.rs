@@ -10,7 +10,7 @@ use crate::dep_graph;
 use crate::infer::canonical::{self, Canonical};
 use crate::lint::LintExpectation;
 use crate::metadata::ModChild;
-use crate::middle::autodiff_attrs::{AutoDiffAttrs, AutoDiffItem};
+use rustc_ast::expand::autodiff_attrs::{AutoDiffAttrs, AutoDiffItem};
 use crate::middle::codegen_fn_attrs::CodegenFnAttrs;
 use crate::middle::debugger_visualizer::DebuggerVisualizerFile;
 use crate::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
