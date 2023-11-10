@@ -48,7 +48,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 
     pub fn gcc_neg(&self, a: RValue<'gcc>) -> RValue<'gcc> {
         let a_type = a.get_type();
-        if self.is_native_int_type(a_type) {
+        if self.is_native_int_type(a_type) || a_type.is_vector() {
             self.cx.context.new_unary_op(None, UnaryOp::Minus, a.get_type(), a)
         }
         else {
