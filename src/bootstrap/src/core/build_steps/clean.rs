@@ -68,6 +68,12 @@ macro_rules! clean_crate_tree {
                 let compiler = self.compiler;
                 let target = compiler.host;
                 let mut cargo = builder.bare_cargo(compiler, $mode, target, "clean");
+
+                // Since https://github.com/rust-lang/rust/pull/111076 enables
+                // unstable cargo feature (`public-dependency`), we need to ensure
+                // that unstable features are enabled before reading libstd Cargo.toml.
+                cargo.env("RUSTC_BOOTSTRAP", "1");
+
                 for krate in &*self.crates {
                     cargo.arg("-p");
                     cargo.arg(krate);
