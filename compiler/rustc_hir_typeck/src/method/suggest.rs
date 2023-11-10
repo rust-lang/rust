@@ -481,7 +481,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
                 probe.is_ok()
             });
-
             self.note_internal_mutation_in_method(
                 &mut err,
                 rcvr_expr,
@@ -1240,7 +1239,40 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
         }
+        // If an appropriate error source is not found, check method chain for possible candiates
+        if unsatisfied_predicates.is_empty() && let Mode::MethodCall = mode && let SelfSource::MethodCall(mut source_expr) = source {
+            let mut stack_methods = vec![];
+            while let hir::ExprKind::MethodCall(_path_segment, rcvr_expr, _args, method_span) =
+            source_expr.kind
+            {
+                 // Pop the matching receiver, to align on it's notional span
+                 if let Some(prev_match) = stack_methods.pop() {
+                    err.span_label(method_span, format!("{item_kind} `{item_name}` is available on `{prev_match}`"));
+                }
+                let rcvr_ty = self.resolve_vars_if_possible(
+                    self.typeck_results
+                        .borrow()
+                        .expr_ty_adjusted_opt(rcvr_expr)
+                        .unwrap_or(Ty::new_misc_error(self.tcx)),);
 
+                for _matched_method in self.probe_for_name_many(
+                    Mode::MethodCall,
+                    item_name,
+                    None,
+                    IsSuggestion(true),
+                    rcvr_ty,
+                    source_expr.hir_id,
+                    ProbeScope::TraitsInScope,) {
+                        // found a match, push to stack
+                        stack_methods.push(rcvr_ty);
+                }
+                source_expr = rcvr_expr;
+            }
+            // If there is a match at the start of the chain, add a label for it too!
+            if let Some(prev_match) = stack_methods.pop() {
+                err.span_label(source_expr.span, format!("{item_kind} `{item_name}` is available on `{prev_match}`"));
+            }
+        }
         self.note_derefed_ty_has_method(&mut err, source, rcvr_ty, item_name, expected);
         return Some(err);
     }
