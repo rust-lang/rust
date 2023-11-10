@@ -160,6 +160,10 @@ fn space_between(tt1: &TokenTree, tt2: &TokenTree) -> bool {
     use TokenTree::Delimited as Del;
     use TokenTree::Token as Tok;
 
+    fn is_punct(tt: &TokenTree) -> bool {
+        matches!(tt, TokenTree::Token(tok, _) if tok.is_punct())
+    }
+
     // Each match arm has one or more examples in comments. The default is to
     // insert space between adjacent tokens, except for the cases listed in
     // this match.
@@ -179,6 +183,9 @@ fn space_between(tt1: &TokenTree, tt2: &TokenTree) -> bool {
         // - Logical not: `x =! y`, `if! x { f(); }`
         // - Never type: `Fn() ->!`
         (_, Tok(Token { kind: Comma | Dot | Not, .. }, _)) => false,
+
+        // NON-PUNCT + `;`: `x = 3;`, `[T; 3]`
+        (tt1, Tok(Token { kind: Semi, .. }, _)) if !is_punct(tt1) => false,
 
         // IDENT + `(`: `f(3)`
         //
