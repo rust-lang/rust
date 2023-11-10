@@ -2,8 +2,6 @@
 
 #![feature(unboxed_closures, fn_traits)]
 
-use std::ops::FnMut;
-
 struct S {
     x: i32,
     y: i32,

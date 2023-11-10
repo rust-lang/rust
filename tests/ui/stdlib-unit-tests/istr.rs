@@ -1,7 +1,5 @@
 // run-pass
 
-use std::string::String;
-
 fn test_stack_assign() {
     let s: String = "a".to_string();
     println!("{}", s.clone());

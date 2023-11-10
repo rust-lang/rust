@@ -1,6 +1,6 @@
 use super::LoweringContext;
 use rustc_ast as ast;
-use rustc_ast::visit::{self, Visitor};
+use rustc_ast::visit::Visitor;
 use rustc_ast::*;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir as hir;

@@ -1,8 +1,4 @@
 use super::*;
-use crate::sys_common::{AsInner, IntoInner};
-
-use crate::rc::Rc;
-use crate::sync::Arc;
 
 #[test]
 fn test_os_string_with_capacity() {

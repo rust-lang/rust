@@ -6,7 +6,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::intravisit::{walk_path, Visitor};
-use rustc_hir::{self, ExprKind, HirId, Node, PatKind, Path, QPath};
+use rustc_hir::{ExprKind, HirId, Node, PatKind, Path, QPath};
 use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter;
 use rustc_span::{sym, Span};

@@ -1,6 +1,4 @@
 use super::*;
-use crate::rc::Rc;
-use crate::sync::Arc;
 use core::assert_matches::assert_matches;
 use core::ffi::FromBytesUntilNulError;
 use core::hash::{Hash, Hasher};

@@ -1,5 +1,3 @@
-use std::convert::TryFrom;
-
 fn empty_array() -> [u16; 0] {
     []
 }

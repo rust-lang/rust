@@ -1,6 +1,6 @@
 // Formatting and tools for comments.
 
-use std::{self, borrow::Cow, iter};
+use std::{borrow::Cow, iter};
 
 use itertools::{multipeek, MultiPeek};
 use lazy_static::lazy_static;
@@ -1847,7 +1847,6 @@ fn remove_comment_header(comment: &str) -> &str {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::shape::{Indent, Shape};
 
     #[test]
     fn char_classes() {

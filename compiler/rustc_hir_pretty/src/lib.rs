@@ -16,7 +16,7 @@ use rustc_hir::{BindingAnnotation, ByRef, GenericArg, GenericParam, GenericParam
 use rustc_hir::{GenericBound, PatKind, RangeEnd, TraitBoundModifier};
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{kw, Ident, Symbol};
-use rustc_span::{self, FileName};
+use rustc_span::FileName;
 use rustc_target::spec::abi::Abi;
 
 use std::cell::Cell;

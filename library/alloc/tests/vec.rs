@@ -1,7 +1,5 @@
-use alloc::vec::Vec;
 use core::alloc::{Allocator, Layout};
 use core::{assert_eq, assert_ne};
-use core::iter::{IntoIterator, Iterator};
 use core::num::NonZeroUsize;
 use core::ptr::NonNull;
 use std::alloc::System;

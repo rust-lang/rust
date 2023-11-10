@@ -32,7 +32,7 @@ extern crate thin_vec;
 #[allow(unused_extern_crates)]
 extern crate rustc_driver;
 
-use rustc_ast::mut_visit::{self, visit_clobber, MutVisitor};
+use rustc_ast::mut_visit::{visit_clobber, MutVisitor};
 use rustc_ast::ptr::P;
 use rustc_ast::*;
 use rustc_ast_pretty::pprust;

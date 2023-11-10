@@ -1,6 +1,5 @@
 mod sip;
 
-use std::default::Default;
 use std::hash::{BuildHasher, Hash, Hasher};
 use std::ptr;
 use std::rc::Rc;

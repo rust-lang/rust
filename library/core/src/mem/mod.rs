@@ -10,7 +10,7 @@ use crate::cmp;
 use crate::fmt;
 use crate::hash;
 use crate::intrinsics;
-use crate::marker::{Copy, DiscriminantKind, Sized};
+use crate::marker::DiscriminantKind;
 use crate::ptr;
 
 mod manually_drop;

@@ -33,7 +33,7 @@ use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{self, IsSuggestable, Ty, TyCtxt};
 use rustc_session::Session;
 use rustc_span::symbol::{kw, Ident};
-use rustc_span::{self, sym, BytePos, Span};
+use rustc_span::{sym, BytePos, Span};
 use rustc_trait_selection::traits::{self, ObligationCauseCode, SelectionContext};
 
 use std::iter;

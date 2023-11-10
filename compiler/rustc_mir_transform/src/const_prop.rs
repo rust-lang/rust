@@ -18,7 +18,6 @@ use rustc_target::abi::{self, HasDataLayout, Size, TargetDataLayout};
 use rustc_target::spec::abi::Abi as CallAbi;
 
 use crate::dataflow_const_prop::Patch;
-use crate::MirPass;
 use rustc_const_eval::interpret::{
     self, compile_time_machine, AllocId, ConstAllocation, FnArg, Frame, ImmTy, Immediate, InterpCx,
     InterpResult, MemoryKind, OpTy, PlaceTy, Pointer, Scalar, StackPopCleanup,

@@ -35,7 +35,7 @@ use rustc_data_structures::graph::WithSuccessors;
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::mir::*;
 use rustc_middle::ty;
-use rustc_span::{self, BytePos, Pos, Span, DUMMY_SP};
+use rustc_span::{BytePos, Pos, Span, DUMMY_SP};
 
 // All `TEMP_BLOCK` targets should be replaced before calling `to_body() -> mir::Body`.
 const TEMP_BLOCK: BasicBlock = BasicBlock::MAX;

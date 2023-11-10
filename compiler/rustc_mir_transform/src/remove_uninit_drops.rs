@@ -4,9 +4,7 @@ use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt, VariantDef};
 use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
 use rustc_mir_dataflow::move_paths::{LookupResult, MoveData, MovePathIndex};
-use rustc_mir_dataflow::{
-    self, move_path_children_matching, Analysis, MaybeReachable, MoveDataParamEnv,
-};
+use rustc_mir_dataflow::{move_path_children_matching, Analysis, MaybeReachable, MoveDataParamEnv};
 use rustc_target::abi::FieldIdx;
 
 use crate::MirPass;
