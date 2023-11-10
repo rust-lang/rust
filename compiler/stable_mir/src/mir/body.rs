@@ -646,8 +646,10 @@ impl Constant {
 }
 
 impl Place {
-    // TODO(klinvill): What is the expected behavior of this function? Should it resolve down the
-    // chain of projections so that `*(_1.f)` would end up returning the type referenced by `f`?
+    // FIXME(klinvill): This function is expected to resolve down the chain of projections to get
+    // the type referenced at the end of it. E.g. calling `ty()` on `*(_1.f)` should end up
+    // returning the type referenced by `f`. The information needed to do this may not currently be
+    // present in Stable MIR since at least an implementation for AdtDef is probably needed.
     pub fn ty(&self, locals: &[LocalDecl]) -> Ty {
         let _start_ty = locals[self.local].ty;
         todo!("Implement projection")
