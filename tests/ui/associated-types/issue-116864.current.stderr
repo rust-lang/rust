@@ -1,0 +1,86 @@
+error[E0277]: expected a `FnMut(&'any i32)` closure, found `impl for<'any> FnMutFut<&'any BAZ::Param, ()>`
+  --> $DIR/issue-116864.rs:25:1
+   |
+LL | / pub async fn does_not_work<BAZ>(_: BAZ, mut cb: impl for<'any> FnMutFut<&'any BAZ::Param, ()>)
+LL | |
+LL | | where
+LL | |     BAZ: Baz<Param = i32>,
+   | |__________________________^ expected an `FnMut(&'any i32)` closure, found `impl for<'any> FnMutFut<&'any BAZ::Param, ()>`
+   |
+   = note: expected a closure with arguments `(&<BAZ as Baz>::Param,)`
+              found a closure with arguments `(&'any i32,)`
+note: required for `impl for<'any> FnMutFut<&'any BAZ::Param, ()>` to implement `for<'any> FnMutFut<&'any i32, ()>`
+  --> $DIR/issue-116864.rs:17:20
+   |
+LL | impl<P, F, FUT, R> FnMutFut<P, R> for F
+   |                    ^^^^^^^^^^^^^^     ^
+LL | where
+LL |     F: FnMut(P) -> FUT,
+   |        --------------- unsatisfied trait bound introduced here
+
+error[E0277]: expected a `FnMut(&i32)` closure, found `impl for<'any> FnMutFut<&'any BAZ::Param, ()>`
+  --> $DIR/issue-116864.rs:31:5
+   |
+LL |     cb(&1i32).await;
+   |     ^^^^^^^^^ expected an `FnMut(&i32)` closure, found `impl for<'any> FnMutFut<&'any BAZ::Param, ()>`
+   |
+   = note: expected a closure with arguments `(&<BAZ as Baz>::Param,)`
+              found a closure with arguments `(&i32,)`
+note: required for `impl for<'any> FnMutFut<&'any BAZ::Param, ()>` to implement `FnMutFut<&i32, ()>`
+  --> $DIR/issue-116864.rs:17:20
+   |
+LL | impl<P, F, FUT, R> FnMutFut<P, R> for F
+   |                    ^^^^^^^^^^^^^^     ^
+LL | where
+LL |     F: FnMut(P) -> FUT,
+   |        --------------- unsatisfied trait bound introduced here
+
+error[E0277]: expected a `FnMut(&'any i32)` closure, found `impl for<'any> FnMutFut<&'any BAZ::Param, ()>`
+  --> $DIR/issue-116864.rs:29:1
+   |
+LL | / {
+LL | |
+LL | |     cb(&1i32).await;
+LL | |
+LL | |
+LL | |
+LL | | }
+   | |_^ expected an `FnMut(&'any i32)` closure, found `impl for<'any> FnMutFut<&'any BAZ::Param, ()>`
+   |
+   = note: expected a closure with arguments `(&<BAZ as Baz>::Param,)`
+              found a closure with arguments `(&'any i32,)`
+note: required for `impl for<'any> FnMutFut<&'any BAZ::Param, ()>` to implement `for<'any> FnMutFut<&'any i32, ()>`
+  --> $DIR/issue-116864.rs:17:20
+   |
+LL | impl<P, F, FUT, R> FnMutFut<P, R> for F
+   |                    ^^^^^^^^^^^^^^     ^
+LL | where
+LL |     F: FnMut(P) -> FUT,
+   |        --------------- unsatisfied trait bound introduced here
+
+error[E0308]: mismatched types
+  --> $DIR/issue-116864.rs:31:8
+   |
+LL |     cb(&1i32).await;
+   |     -- ^^^^^ expected `&<BAZ as Baz>::Param`, found `&i32`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected reference `&<BAZ as Baz>::Param`
+              found reference `&i32`
+   = help: consider constraining the associated type `<BAZ as Baz>::Param` to `i32`
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
+note: type parameter defined here
+  --> $DIR/issue-116864.rs:25:49
+   |
+LL | pub async fn does_not_work<BAZ>(_: BAZ, mut cb: impl for<'any> FnMutFut<&'any BAZ::Param, ()>)
+   |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: call `Into::into` on this expression to convert `&i32` into `&<BAZ as Baz>::Param`
+   |
+LL |     cb((&1i32).into()).await;
+   |        +     ++++++++
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0277, E0308.
+For more information about an error, try `rustc --explain E0277`.

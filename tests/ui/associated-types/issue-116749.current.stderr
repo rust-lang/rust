@@ -1,0 +1,90 @@
+error[E0277]: the trait bound `T: Foo<()>` is not satisfied
+  --> $DIR/issue-116749.rs:21:5
+   |
+LL | /     fn send<T>()
+LL | |
+LL | |
+LL | |
+...  |
+LL | |
+LL | |         T::FooAssociatedTy: Send,
+   | |_________________________________^ the trait `Foo<()>` is not implemented for `T`
+   |
+help: consider further restricting this bound
+   |
+LL |         T: Foo<Self::BarAssociatedTy> + Foo<()>,
+   |                                       +++++++++
+
+error[E0277]: the trait bound `T: Foo<()>` is not satisfied
+  --> $DIR/issue-116749.rs:21:8
+   |
+LL |     fn send<T>()
+   |        ^^^^ the trait `Foo<()>` is not implemented for `T`
+   |
+help: consider further restricting this bound
+   |
+LL |         T: Foo<Self::BarAssociatedTy> + Foo<()>,
+   |                                       +++++++++
+
+error[E0277]: the trait bound `T: Foo<()>` is not satisfied
+  --> $DIR/issue-116749.rs:21:5
+   |
+LL | /     fn send<T>()
+LL | |
+LL | |
+LL | |
+...  |
+LL | |
+LL | |         T::FooAssociatedTy: Send,
+   | |_________________________________^ the trait `Foo<()>` is not implemented for `T`
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: consider further restricting this bound
+   |
+LL |         T: Foo<Self::BarAssociatedTy> + Foo<()>,
+   |                                       +++++++++
+
+error[E0276]: impl has stricter requirements than trait
+  --> $DIR/issue-116749.rs:26:12
+   |
+LL | /     fn send<T>()
+LL | |     where
+LL | |         T: Foo<Self::BarAssociatedTy>,
+LL | |         T::FooAssociatedTy: Send;
+   | |_________________________________- definition of `send` from trait
+...
+LL |           T: Foo<Self::BarAssociatedTy>,
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ impl has extra requirement `T: Foo<()>`
+
+error[E0277]: the trait bound `T: Foo<()>` is not satisfied
+  --> $DIR/issue-116749.rs:36:5
+   |
+LL | /     fn send<T>()
+LL | |
+LL | |     where
+LL | |         T: Foo<()>,
+LL | |
+LL | |         T::FooAssociatedTy: Send,
+   | |_________________________________^ the trait `Foo<()>` is not implemented for `T`
+   |
+help: consider further restricting this bound
+   |
+LL |         T: Foo<()> + Foo<()>,
+   |                    +++++++++
+
+error[E0276]: impl has stricter requirements than trait
+  --> $DIR/issue-116749.rs:39:12
+   |
+LL | /     fn send<T>()
+LL | |     where
+LL | |         T: Foo<Self::BarAssociatedTy>,
+LL | |         T::FooAssociatedTy: Send;
+   | |_________________________________- definition of `send` from trait
+...
+LL |           T: Foo<()>,
+   |              ^^^^^^^ impl has extra requirement `T: Foo<()>`
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0276, E0277.
+For more information about an error, try `rustc --explain E0276`.

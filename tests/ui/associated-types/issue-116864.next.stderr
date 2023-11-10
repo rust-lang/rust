@@ -1,0 +1,14 @@
+error[E0282]: type annotations needed
+  --> $DIR/issue-116864.rs:31:5
+   |
+LL |     cb(&1i32).await;
+   |     ^^^^^^^^^^^^^^^ cannot infer type
+
+error[E0275]: overflow evaluating the requirement `<impl for<'any> FnMutFut<&'any BAZ::Param, ()> as FnMutFut<&<BAZ as Baz>::Param, ()>>::Future`
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`issue_116864`)
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0275, E0282.
+For more information about an error, try `rustc --explain E0275`.
