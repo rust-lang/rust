@@ -38,8 +38,6 @@ error: method `hash` can be confused for the standard trait method `std::hash::H
    |
 LL | /     pub fn hash(&self, state: &mut T) {
 LL | |
-LL | |
-LL | |
 LL | |         unimplemented!()
 LL | |     }
    | |_____^
@@ -47,7 +45,7 @@ LL | |     }
    = help: consider implementing the trait `std::hash::Hash` or choosing a less ambiguous method name
 
 error: method `index` can be confused for the standard trait method `std::ops::Index::index`
-  --> $DIR/method_list_2.rs:48:5
+  --> $DIR/method_list_2.rs:46:5
    |
 LL | /     pub fn index(&self, index: usize) -> &Self {
 LL | |
@@ -58,7 +56,7 @@ LL | |     }
    = help: consider implementing the trait `std::ops::Index` or choosing a less ambiguous method name
 
 error: method `index_mut` can be confused for the standard trait method `std::ops::IndexMut::index_mut`
-  --> $DIR/method_list_2.rs:53:5
+  --> $DIR/method_list_2.rs:51:5
    |
 LL | /     pub fn index_mut(&mut self, index: usize) -> &mut Self {
 LL | |
@@ -69,7 +67,7 @@ LL | |     }
    = help: consider implementing the trait `std::ops::IndexMut` or choosing a less ambiguous method name
 
 error: method `into_iter` can be confused for the standard trait method `std::iter::IntoIterator::into_iter`
-  --> $DIR/method_list_2.rs:58:5
+  --> $DIR/method_list_2.rs:56:5
    |
 LL | /     pub fn into_iter(self) -> Self {
 LL | |
@@ -80,7 +78,7 @@ LL | |     }
    = help: consider implementing the trait `std::iter::IntoIterator` or choosing a less ambiguous method name
 
 error: method `mul` can be confused for the standard trait method `std::ops::Mul::mul`
-  --> $DIR/method_list_2.rs:63:5
+  --> $DIR/method_list_2.rs:61:5
    |
 LL | /     pub fn mul(self, rhs: Self) -> Self {
 LL | |
@@ -91,7 +89,7 @@ LL | |     }
    = help: consider implementing the trait `std::ops::Mul` or choosing a less ambiguous method name
 
 error: method `neg` can be confused for the standard trait method `std::ops::Neg::neg`
-  --> $DIR/method_list_2.rs:68:5
+  --> $DIR/method_list_2.rs:66:5
    |
 LL | /     pub fn neg(self) -> Self {
 LL | |
@@ -102,7 +100,7 @@ LL | |     }
    = help: consider implementing the trait `std::ops::Neg` or choosing a less ambiguous method name
 
 error: method `next` can be confused for the standard trait method `std::iter::Iterator::next`
-  --> $DIR/method_list_2.rs:73:5
+  --> $DIR/method_list_2.rs:71:5
    |
 LL | /     pub fn next(&mut self) -> Option<Self> {
 LL | |
@@ -113,7 +111,7 @@ LL | |     }
    = help: consider implementing the trait `std::iter::Iterator` or choosing a less ambiguous method name
 
 error: method `not` can be confused for the standard trait method `std::ops::Not::not`
-  --> $DIR/method_list_2.rs:78:5
+  --> $DIR/method_list_2.rs:76:5
    |
 LL | /     pub fn not(self) -> Self {
 LL | |
@@ -124,7 +122,7 @@ LL | |     }
    = help: consider implementing the trait `std::ops::Not` or choosing a less ambiguous method name
 
 error: method `rem` can be confused for the standard trait method `std::ops::Rem::rem`
-  --> $DIR/method_list_2.rs:83:5
+  --> $DIR/method_list_2.rs:81:5
    |
 LL | /     pub fn rem(self, rhs: Self) -> Self {
 LL | |
@@ -135,7 +133,7 @@ LL | |     }
    = help: consider implementing the trait `std::ops::Rem` or choosing a less ambiguous method name
 
 error: method `shl` can be confused for the standard trait method `std::ops::Shl::shl`
-  --> $DIR/method_list_2.rs:88:5
+  --> $DIR/method_list_2.rs:86:5
    |
 LL | /     pub fn shl(self, rhs: Self) -> Self {
 LL | |
@@ -146,7 +144,7 @@ LL | |     }
    = help: consider implementing the trait `std::ops::Shl` or choosing a less ambiguous method name
 
 error: method `shr` can be confused for the standard trait method `std::ops::Shr::shr`
-  --> $DIR/method_list_2.rs:93:5
+  --> $DIR/method_list_2.rs:91:5
    |
 LL | /     pub fn shr(self, rhs: Self) -> Self {
 LL | |
@@ -157,7 +155,7 @@ LL | |     }
    = help: consider implementing the trait `std::ops::Shr` or choosing a less ambiguous method name
 
 error: method `sub` can be confused for the standard trait method `std::ops::Sub::sub`
-  --> $DIR/method_list_2.rs:98:5
+  --> $DIR/method_list_2.rs:96:5
    |
 LL | /     pub fn sub(self, rhs: Self) -> Self {
 LL | |
@@ -167,15 +165,5 @@ LL | |     }
    |
    = help: consider implementing the trait `std::ops::Sub` or choosing a less ambiguous method name
 
-error: this argument is a mutable reference, but not used mutably
-  --> $DIR/method_list_2.rs:41:31
-   |
-LL |     pub fn hash(&self, state: &mut T) {
-   |                               ^^^^^^ help: consider changing to: `&T`
-   |
-   = warning: changing this function will impact semver compatibility
-   = note: `-D clippy::needless-pass-by-ref-mut` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::needless_pass_by_ref_mut)]`
-
-error: aborting due to 16 previous errors
+error: aborting due to 15 previous errors
 

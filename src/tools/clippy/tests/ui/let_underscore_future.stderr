@@ -1,5 +1,5 @@
 error: non-binding `let` on a future
-  --> $DIR/let_underscore_future.rs:16:5
+  --> $DIR/let_underscore_future.rs:14:5
    |
 LL |     let _ = some_async_fn();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -9,7 +9,7 @@ LL |     let _ = some_async_fn();
    = help: to override `-D warnings` add `#[allow(clippy::let_underscore_future)]`
 
 error: non-binding `let` on a future
-  --> $DIR/let_underscore_future.rs:18:5
+  --> $DIR/let_underscore_future.rs:16:5
    |
 LL |     let _ = custom();
    |     ^^^^^^^^^^^^^^^^^
@@ -17,21 +17,12 @@ LL |     let _ = custom();
    = help: consider awaiting the future or dropping explicitly with `std::mem::drop`
 
 error: non-binding `let` on a future
-  --> $DIR/let_underscore_future.rs:23:5
+  --> $DIR/let_underscore_future.rs:21:5
    |
 LL |     let _ = future;
    |     ^^^^^^^^^^^^^^^
    |
    = help: consider awaiting the future or dropping explicitly with `std::mem::drop`
 
-error: this argument is a mutable reference, but not used mutably
-  --> $DIR/let_underscore_future.rs:11:35
-   |
-LL | fn do_something_to_future(future: &mut impl Future<Output = ()>) {}
-   |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider changing to: `&impl Future<Output = ()>`
-   |
-   = note: `-D clippy::needless-pass-by-ref-mut` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::needless_pass_by_ref_mut)]`
-
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 
