@@ -1,6 +1,5 @@
 use super::*;
 use crate::rustfmt_diff::{make_diff, ModifiedLines};
-use std::io::Write;
 
 #[derive(Debug, Default)]
 pub(crate) struct ModifiedLinesEmitter;

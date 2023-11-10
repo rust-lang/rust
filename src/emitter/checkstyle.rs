@@ -1,7 +1,6 @@
 use self::xml::XmlEscaped;
 use super::*;
 use crate::rustfmt_diff::{make_diff, DiffLine, Mismatch};
-use std::io::{self, Write};
 
 mod xml;
 
