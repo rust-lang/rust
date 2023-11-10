@@ -121,6 +121,7 @@ const EXCEPTIONS_CARGO: ExceptionList = &[
     ("similar", "Apache-2.0"),
     ("sized-chunks", "MPL-2.0+"),
     ("subtle", "BSD-3-Clause"),
+    ("supports-hyperlinks", "Apache-2.0"),
     ("unicode-bom", "Apache-2.0"),
     // tidy-alphabetical-end
 ];
