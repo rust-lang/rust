@@ -1991,7 +1991,7 @@ impl<F: FnPtr> fmt::Debug for F {
 ///
 /// The `expr` in `addr_of!(expr)` is evaluated as a place expression, but never loads
 /// from the place or requires the place to be dereferenceable. This means that
-/// `addr_of!(*ptr)` is defined behavior even if `ptr` is dangling or misaligned.
+/// `addr_of!(*ptr)` is defined behavior even if `ptr` is null, dangling, or misaligned.
 /// Note however that `addr_of!((*ptr).field)` still requires the projection to
 /// `field` to be in-bounds, using the same rules as [`offset`].
 ///
@@ -2040,7 +2040,7 @@ pub macro addr_of($place:expr) {
 ///
 /// The `expr` in `addr_of_mut!(expr)` is evaluated as a place expression, but never loads
 /// from the place or requires the place to be dereferenceable. This means that
-/// `addr_of_mut!(*ptr)` is defined behavior even if `ptr` is dangling or misaligned.
+/// `addr_of_mut!(*ptr)` is defined behavior even if `ptr` is null, dangling, or misaligned.
 /// Note however that `addr_of_mut!((*ptr).field)` still requires the projection to
 /// `field` to be in-bounds, using the same rules as [`offset`].
 ///
