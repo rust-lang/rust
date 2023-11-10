@@ -692,10 +692,12 @@ Fuchsia's test runner interacts with the Fuchsia emulator and is located at
 test environment with:
 
 ```sh
-src/ci/docker/scripts/fuchsia-test-runner.py start                            \
+( \
+    src/ci/docker/scripts/fuchsia-test-runner.py start                        \
     --rust-build ${RUST_SRC_PATH}/build                                       \
     --sdk ${SDK_PATH}                                                         \
     --target {x86_64-unknown-fuchsia|aarch64-unknown-fuchsia}                 \
+)
 ```
 
 Where `${RUST_SRC_PATH}/build` is the `build-dir` set in `config.toml` and
