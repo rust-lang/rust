@@ -1,7 +1,6 @@
 // run-pass
 
 use std::fmt::Debug;
-use std::default::Default;
 
 trait MyTrait<T> {
     fn get(&self) -> T;

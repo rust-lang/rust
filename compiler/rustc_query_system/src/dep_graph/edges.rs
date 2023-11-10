@@ -1,7 +1,6 @@
 use crate::dep_graph::DepNodeIndex;
 use smallvec::SmallVec;
 use std::hash::{Hash, Hasher};
-use std::iter::Extend;
 use std::ops::Deref;
 
 #[derive(Default, Debug)]

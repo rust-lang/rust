@@ -1,51 +1,37 @@
 use crate::errors::{FailCreateFileEncoder, FailWriteFile};
-use crate::rmeta::def_path_hash_map::DefPathHashMapRef;
-use crate::rmeta::table::TableBuilder;
 use crate::rmeta::*;
 
-use rustc_ast::expand::StrippedCfgItem;
 use rustc_ast::Attribute;
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::memmap::{Mmap, MmapMut};
 use rustc_data_structures::stable_hasher::{Hash128, HashStable, StableHasher};
 use rustc_data_structures::sync::{join, par_for_each_in, Lrc};
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_hir as hir;
-use rustc_hir::def::DefKind;
-use rustc_hir::def_id::{
-    CrateNum, DefId, DefIndex, LocalDefId, LocalDefIdSet, CRATE_DEF_ID, CRATE_DEF_INDEX,
-    LOCAL_CRATE,
-};
+use rustc_hir::def_id::{LocalDefId, LocalDefIdSet, CRATE_DEF_ID, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::definitions::DefPathData;
-use rustc_hir::lang_items::LangItem;
 use rustc_hir_pretty::id_to_string;
-use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::dependency_format::Linkage;
-use rustc_middle::middle::exported_symbols::{
-    metadata_symbol_name, ExportedSymbol, SymbolExportInfo,
-};
-use rustc_middle::middle::lib_features::FeatureStability;
+use rustc_middle::middle::exported_symbols::metadata_symbol_name;
 use rustc_middle::mir::interpret;
 use rustc_middle::query::LocalCrate;
 use rustc_middle::query::Providers;
 use rustc_middle::traits::specialization_graph;
 use rustc_middle::ty::codec::TyEncoder;
-use rustc_middle::ty::fast_reject::{self, SimplifiedType, TreatParams};
-use rustc_middle::ty::{self, AssocItemContainer, SymbolName, Ty, TyCtxt};
+use rustc_middle::ty::fast_reject::{self, TreatParams};
+use rustc_middle::ty::{AssocItemContainer, SymbolName};
 use rustc_middle::util::common::to_readable_str;
 use rustc_serialize::{opaque, Decodable, Decoder, Encodable, Encoder};
 use rustc_session::config::{CrateType, OptLevel};
-use rustc_session::cstore::{ForeignModule, LinkagePreference, NativeLib};
-use rustc_span::hygiene::{ExpnIndex, HygieneEncodeContext, MacroKind};
-use rustc_span::symbol::{sym, Symbol};
-use rustc_span::{self, ExternalSource, FileName, SourceFile, Span, SpanData, SyntaxContext};
+use rustc_span::hygiene::HygieneEncodeContext;
+use rustc_span::symbol::sym;
+use rustc_span::{ExternalSource, FileName, SourceFile, SpanData, SyntaxContext};
 use std::borrow::Borrow;
 use std::collections::hash_map::Entry;
 use std::fs::File;
 use std::hash::Hash;
 use std::io::{Read, Seek, Write};
-use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
 
 pub(super) struct EncodeContext<'a, 'tcx> {

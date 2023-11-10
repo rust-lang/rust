@@ -1,4 +1,4 @@
-use super::{From, TryFrom};
+use super::TryFrom;
 use crate::num::TryFromIntError;
 
 mod private {

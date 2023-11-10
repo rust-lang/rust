@@ -2,9 +2,8 @@
 use rustc_hir::LangItem;
 use smallvec::SmallVec;
 
-use super::{BasicBlock, InlineAsmOperand, Operand, SourceInfo, TerminatorKind, UnwindAction};
+use super::TerminatorKind;
 use rustc_macros::HashStable;
-use std::iter;
 use std::slice;
 
 use super::*;

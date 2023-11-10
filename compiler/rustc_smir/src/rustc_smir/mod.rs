@@ -14,7 +14,7 @@ use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_span::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use stable_mir::mir::mono::InstanceDef;
 use stable_mir::ty::{ConstId, Span};
-use stable_mir::{self, ItemKind};
+use stable_mir::ItemKind;
 use tracing::debug;
 
 use crate::rustc_internal::IndexMap;

@@ -1,6 +1,5 @@
 //! impl char {}
 
-use crate::ascii;
 use crate::slice;
 use crate::str::from_utf8_unchecked_mut;
 use crate::unicode::printable::is_printable;

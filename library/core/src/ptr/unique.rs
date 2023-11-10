@@ -1,4 +1,3 @@
-use crate::convert::From;
 use crate::fmt;
 use crate::marker::{PhantomData, Unsize};
 use crate::ops::{CoerceUnsized, DispatchFromDyn};

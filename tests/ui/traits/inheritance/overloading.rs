@@ -1,5 +1,4 @@
 // run-pass
-use std::cmp::PartialEq;
 use std::ops::{Add, Sub, Mul};
 
 trait MyNum : Add<Output=Self> + Sub<Output=Self> + Mul<Output=Self> + PartialEq + Clone { }

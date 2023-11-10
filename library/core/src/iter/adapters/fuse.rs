@@ -2,8 +2,7 @@ use crate::intrinsics;
 use crate::iter::adapters::zip::try_get_unchecked;
 use crate::iter::adapters::SourceIter;
 use crate::iter::{
-    DoubleEndedIterator, ExactSizeIterator, FusedIterator, TrustedFused, TrustedLen,
-    TrustedRandomAccess, TrustedRandomAccessNoCoerce,
+    FusedIterator, TrustedFused, TrustedLen, TrustedRandomAccess, TrustedRandomAccessNoCoerce,
 };
 use crate::ops::Try;
 

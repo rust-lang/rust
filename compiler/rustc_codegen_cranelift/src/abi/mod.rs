@@ -6,7 +6,7 @@ mod returning;
 
 use std::borrow::Cow;
 
-use cranelift_codegen::ir::{AbiParam, SigRef};
+use cranelift_codegen::ir::SigRef;
 use cranelift_module::ModuleError;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::ty::layout::FnAbiOf;

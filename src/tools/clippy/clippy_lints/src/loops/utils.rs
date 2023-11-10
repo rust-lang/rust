@@ -9,7 +9,6 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{sym, Symbol};
-use std::iter::Iterator;
 
 #[derive(Debug, PartialEq, Eq)]
 enum IncrementVisitorVarState {

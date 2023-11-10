@@ -3,7 +3,6 @@ use std::ffi::{OsStr, OsString};
 use std::io::ErrorKind;
 use std::mem;
 
-use rustc_const_eval::interpret::Pointer;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::Ty;

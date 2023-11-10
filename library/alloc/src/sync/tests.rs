@@ -1,20 +1,11 @@
 use super::*;
 
-use std::boxed::Box;
 use std::clone::Clone;
-use std::convert::{From, TryInto};
-use std::mem::drop;
-use std::ops::Drop;
-use std::option::Option::{self, None, Some};
-use std::sync::atomic::{
-    self,
-    Ordering::{Acquire, SeqCst},
-};
+use std::option::Option::None;
+use std::sync::atomic::Ordering::SeqCst;
 use std::sync::mpsc::channel;
 use std::sync::Mutex;
 use std::thread;
-
-use crate::vec::Vec;
 
 struct Canary(*mut atomic::AtomicUsize);
 

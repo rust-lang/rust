@@ -8,8 +8,6 @@
 #![allow(missing_copy_implementations)]
 #![allow(unused_variables)]
 
-use std::borrow::ToOwned;
-
 pub struct CFGNode;
 
 pub type Node<'a> = &'a CFGNode;

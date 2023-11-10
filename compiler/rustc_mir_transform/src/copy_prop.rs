@@ -6,7 +6,6 @@ use rustc_middle::ty::TyCtxt;
 use rustc_mir_dataflow::impls::borrowed_locals;
 
 use crate::ssa::SsaLocals;
-use crate::MirPass;
 
 /// Unify locals that copy each other.
 ///

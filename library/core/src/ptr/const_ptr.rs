@@ -1,7 +1,7 @@
 use super::*;
-use crate::cmp::Ordering::{self, Equal, Greater, Less};
-use crate::intrinsics::{self, const_eval_select};
-use crate::mem::{self, SizedTypeProperties};
+use crate::cmp::Ordering::{Equal, Greater, Less};
+use crate::intrinsics::const_eval_select;
+use crate::mem::SizedTypeProperties;
 use crate::slice::{self, SliceIndex};
 
 impl<T: ?Sized> *const T {

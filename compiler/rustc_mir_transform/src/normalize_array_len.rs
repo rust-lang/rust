@@ -2,7 +2,6 @@
 //! is taken using `.len()` method. Handy to preserve information in MIR for const prop
 
 use crate::ssa::SsaLocals;
-use crate::MirPass;
 use rustc_index::IndexVec;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
