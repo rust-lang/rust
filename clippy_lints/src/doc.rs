@@ -268,9 +268,9 @@ pub struct DocMarkdown {
 }
 
 impl DocMarkdown {
-    pub fn new(valid_idents: FxHashSet<String>) -> Self {
+    pub fn new(valid_idents: &[String]) -> Self {
         Self {
-            valid_idents,
+            valid_idents: valid_idents.iter().cloned().collect(),
             in_trait_impl: false,
         }
     }

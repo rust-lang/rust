@@ -270,7 +270,7 @@ When using `cargo dev new_lint`, the lint is automatically registered and
 nothing more has to be done.
 
 When declaring a new lint by hand and `cargo dev update_lints` is used, the lint
-pass may have to be registered manually in the `register_plugins` function in
+pass may have to be registered manually in the `register_lints` function in
 `clippy_lints/src/lib.rs`:
 
 ```rust,ignore
