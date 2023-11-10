@@ -156,6 +156,7 @@ pub enum RigidTy {
     Dynamic(Vec<Binder<ExistentialPredicate>>, Region, DynKind),
     Never,
     Tuple(Vec<Ty>),
+    CoroutineWitness(CoroutineWitnessDef, GenericArgs),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -234,6 +235,9 @@ pub struct ImplDef(pub DefId);
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct RegionDef(pub DefId);
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct CoroutineWitnessDef(pub DefId);
 
 /// A list of generic arguments.
 #[derive(Clone, Debug, Eq, PartialEq)]
