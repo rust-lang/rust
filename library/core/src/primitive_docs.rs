@@ -1537,18 +1537,18 @@ mod prim_ref {}
 ///
 /// The following types are guaranteed to be ABI-compatible:
 ///
-/// - `*const T`, `*mut T`, `&T`, `&mut T`, `Box<T>` (specifically, only `Box<T, Global>`),
-///   `NonNull<T>` are all ABI-compatible with each other for all `T`. Two of these pointer types
-///   with different `T` are ABI-compatible if they have the same metadata type (`<T as
+/// - `*const T`, `*mut T`, `&T`, `&mut T`, `Box<T>` (specifically, only `Box<T, Global>`), and
+///   `NonNull<T>` are all ABI-compatible with each other for all `T`. They are also ABI-compatible
+///   with each other for _different_ `T` if they have the same metadata type (`<T as
 ///   Pointee>::Metadata`).
 /// - `usize` is ABI-compatible with the `uN` integer type of the same size, and likewise `isize` is
 ///   ABI-compatible with the `iN` integer type of the same size.
-/// - Any two `fn` types are ABI-compatible with each other if they have the same ABI string or the
-///   ABI string only differs in a trailing `-unwind`, independent of the rest of their signature.
-///   (Note that this is about the case of passing a function pointer as an argument to a function.
-///   The two pointers being ABI-compatible here means that the call successfully passes the
-///   pointer. When actually calling the pointer, of course the rest of the signature becomes
-///   relevant as well, according to the rules in this section.)
+/// - Any two `fn` (function pointer) types are ABI-compatible with each other if they have the same
+///   ABI string or the ABI string only differs in a trailing `-unwind`, independent of the rest of
+///   their signature. (This means you can pass `fn()` to a function expecting `fn(i32)`, and the
+///   call will be valid ABI-wise. The callee receives the result of transmuting the function pointer
+///   from `fn()` to `fn(i32)`; that transmutation is itself a well-defined operation, it's just
+///   almost certainly UB to later call that function pointer.)
 /// - Any two types with size 0 and alignment 1 are ABI-compatible.
 /// - A `repr(transparent)` type `T` is ABI-compatible with its unique non-trivial field, i.e., the
 ///   unique field that doesn't have size 0 and alignment 1 (if there is such a field).
