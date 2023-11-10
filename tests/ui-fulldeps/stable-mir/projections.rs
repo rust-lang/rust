@@ -30,11 +30,9 @@ use std::ops::ControlFlow;
 
 const CRATE_NAME: &str = "input";
 
-/// This function uses the Stable MIR APIs to get information about the test crate.
-fn test_projections(_tcx: TyCtxt<'_>) -> ControlFlow<()> {
-    // Find items in the local crate.
+/// Tests projections within Place objects
+fn test_place_projections(_tcx: TyCtxt<'_>) -> ControlFlow<()> {
     let items = stable_mir::all_local_items();
-
     let body = get_item(&items, (DefKind::Fn, "projections")).unwrap().body();
     assert_eq!(body.blocks.len(), 4);
     // The first statement assigns `&s.c` to a local. The projections include a deref for `s`, since
@@ -47,7 +45,7 @@ fn test_projections(_tcx: TyCtxt<'_>) -> ControlFlow<()> {
             // We can't match on vecs, only on slices. Comparing statements for equality wouldn't be
             // any easier since we'd then have to add in the expected local and region values
             // instead of matching on wildcards.
-            assert_matches!(local_proj[..], []);
+            assert!(local_proj.is_empty());
             match &r_proj[..] {
                 // Similarly we can't match against a type, only against its kind.
                 [ProjectionElem::Deref, ProjectionElem::Field(2, ty)] => assert_matches!(
@@ -80,7 +78,7 @@ fn test_projections(_tcx: TyCtxt<'_>) -> ControlFlow<()> {
             // We can't match on vecs, only on slices. Comparing for equality wouldn't be any easier
             // since we'd then have to add in the expected local values instead of matching on
             // wildcards.
-            assert_matches!(local_proj[..], []);
+            assert!(local_proj.is_empty());
             assert_matches!(r_proj[..], [ProjectionElem::Deref, ProjectionElem::Index(_)]);
         }
         other => panic!(
@@ -108,8 +106,8 @@ fn test_projections(_tcx: TyCtxt<'_>) -> ControlFlow<()> {
                         projection: arg2_proj,
                     }),
                 ] => {
-                    assert_matches!(arg1_proj[..], []);
-                    assert_matches!(arg2_proj[..], []);
+                    assert!(arg1_proj.is_empty());
+                    assert!(arg2_proj.is_empty());
                 }
                 other => {
                     panic!(
