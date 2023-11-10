@@ -398,22 +398,23 @@ pub enum Operand {
 pub struct Place {
     pub local: Local,
     /// projection out of a place (access a field, deref a pointer, etc)
-    pub projection: Vec<ProjectionElem<Local, Ty>>,
+    pub projection: Vec<ProjectionElem>,
 }
 
-// TODO(klinvill): in MIR ProjectionElem is parameterized on the second Field argument and the Index
-// argument. This is so it can be used for both the rust provided Places (for which the projection
-// elements are of type ProjectionElem<Local, Ty>) and user-provided type annotations (for which the
-// projection elements are of type ProjectionElem<(), ()>). Should we do the same thing in Stable MIR?
+// In MIR ProjectionElem is parameterized on the second Field argument and the Index argument. This
+// is so it can be used for both Places (for which the projection elements are of type
+// ProjectionElem<Local, Ty>) and user-provided type annotations (for which the projection elements
+// are of type ProjectionElem<(), ()>). In SMIR we don't need this generality, so we just use
+// ProjectionElem for Places.
 #[derive(Clone, Debug)]
-pub enum ProjectionElem<V, T> {
+pub enum ProjectionElem {
     /// Dereference projections (e.g. `*_1`) project to the address referenced by the base place.
     Deref,
 
     /// A field projection (e.g., `f` in `_1.f`) project to a field in the base place. The field is
     /// referenced by source-order index rather than the name of the field. The fields type is also
     /// given.
-    Field(FieldIdx, T),
+    Field(FieldIdx, Ty),
 
     /// Index into a slice/array. The value of the index is computed at runtime using the `V`
     /// argument.
@@ -429,7 +430,7 @@ pub enum ProjectionElem<V, T> {
     ///
     /// The `x[i]` is turned into a `Deref` followed by an `Index`, not just an `Index`. The same
     /// thing is true of the `ConstantIndex` and `Subslice` projections below.
-    Index(V),
+    Index(Local),
 
     /// Index into a slice/array given by offsets.
     ///
@@ -472,7 +473,7 @@ pub enum ProjectionElem<V, T> {
 
     /// Like an explicit cast from an opaque type to a concrete type, but without
     /// requiring an intermediate variable.
-    OpaqueCast(T),
+    OpaqueCast(Ty),
 
     /// A `Subtype(T)` projection is applied to any `StatementKind::Assign` where
     /// type of lvalue doesn't match the type of rvalue, the primary goal is making subtyping
@@ -480,16 +481,14 @@ pub enum ProjectionElem<V, T> {
     ///
     /// This projection doesn't impact the runtime behavior of the program except for potentially changing
     /// some type metadata of the interpreter or codegen backend.
-    Subtype(T),
+    Subtype(Ty),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct UserTypeProjection {
     pub base: UserTypeAnnotationIndex,
 
-    /// `UserTypeProjection` projections need neither the `V` parameter for `Index` nor the `T` for
-    /// `Field`.
-    pub projection: Vec<ProjectionElem<(), ()>>,
+    pub projection: String,
 }
 
 pub type Local = usize;

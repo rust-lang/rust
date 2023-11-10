@@ -152,7 +152,7 @@ fn main() {
         CRATE_NAME.to_string(),
         path.to_string(),
     ];
-    run!(args, tcx, test_projections(tcx)).unwrap();
+    run!(args, tcx, test_place_projections(tcx)).unwrap();
 }
 
 fn generate_input(path: &str) -> std::io::Result<()> {
