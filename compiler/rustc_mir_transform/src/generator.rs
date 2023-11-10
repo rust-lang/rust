@@ -583,6 +583,14 @@ struct LivenessInfo {
     storage_liveness: IndexVec<BasicBlock, Option<BitSet<Local>>>,
 }
 
+/// Computes which locals have to be stored in the state-machine for the
+/// given coroutine.
+///
+/// The basic idea is as follows:
+/// - a local is live until we encounter a `StorageDead` statement. In
+///   case none exist, the local is considered to be always live.
+/// - a local has to be stored if it is either directly used after the
+///   the suspend point, or if it is live and has been previously borrowed.
 fn locals_live_across_suspend_points<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
@@ -1392,16 +1400,15 @@ pub(crate) fn mir_generator_witnesses<'tcx>(
     // The first argument is the generator type passed by value
     let gen_ty = body.local_decls[ty::CAPTURE_STRUCT_LOCAL].ty;
 
-    // Get the interior types and args which typeck computed
     let movable = match *gen_ty.kind() {
         ty::Generator(_, _, movability) => movability == hir::Movability::Movable,
         ty::Error(_) => return None,
         _ => span_bug!(body.span, "unexpected generator type {}", gen_ty),
     };
 
-    // When first entering the generator, move the resume argument into its new local.
-    let always_live_locals = always_storage_live_locals(&body);
+    // The witness simply contains all locals live across suspend points.
 
+    let always_live_locals = always_storage_live_locals(&body);
     let liveness_info = locals_live_across_suspend_points(tcx, body, &always_live_locals, movable);
 
     // Extract locals which are live across suspension point into `layout`

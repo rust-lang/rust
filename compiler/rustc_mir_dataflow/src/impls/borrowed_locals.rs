@@ -5,7 +5,8 @@ use rustc_middle::mir::*;
 use crate::{AnalysisDomain, GenKill, GenKillAnalysis};
 
 /// A dataflow analysis that tracks whether a pointer or reference could possibly exist that points
-/// to a given local.
+/// to a given local. This analysis ignores fake borrows, so it should not be used by
+/// borrowck.
 ///
 /// At present, this is used as a very limited form of alias analysis. For example,
 /// `MaybeBorrowedLocals` is used to compute which locals are live during a yield expression for
@@ -91,13 +92,17 @@ where
         self.super_rvalue(rvalue, location);
 
         match rvalue {
-            Rvalue::AddressOf(_, borrowed_place) | Rvalue::Ref(_, _, borrowed_place) => {
+            // We ignore fake borrows as these get removed after analysis and shouldn't effect
+            // the layout of generators.
+            Rvalue::AddressOf(_, borrowed_place)
+            | Rvalue::Ref(_, BorrowKind::Mut { .. } | BorrowKind::Shared, borrowed_place) => {
                 if !borrowed_place.is_indirect() {
                     self.trans.gen(borrowed_place.local);
                 }
             }
 
             Rvalue::Cast(..)
+            | Rvalue::Ref(_, BorrowKind::Fake, _)
             | Rvalue::ShallowInitBox(..)
             | Rvalue::Use(..)
             | Rvalue::ThreadLocalRef(..)
