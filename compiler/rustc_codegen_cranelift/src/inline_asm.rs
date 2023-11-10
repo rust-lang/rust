@@ -13,7 +13,7 @@ use crate::prelude::*;
 enum CInlineAsmOperand<'tcx> {
     In {
         reg: InlineAsmRegOrRegClass,
-        value: CValue<'tcx>,
+        value: Value,
     },
     Out {
         reg: InlineAsmRegOrRegClass,
@@ -23,7 +23,7 @@ enum CInlineAsmOperand<'tcx> {
     InOut {
         reg: InlineAsmRegOrRegClass,
         _late: bool,
-        in_value: CValue<'tcx>,
+        in_value: Value,
         out_place: Option<CPlace<'tcx>>,
     },
     Const {
@@ -47,7 +47,9 @@ pub(crate) fn codegen_inline_asm<'tcx>(
     // Used by panic_abort on Windows, but uses a syntax which only happens to work with
     // asm!() by accident and breaks with the GNU assembler as well as global_asm!() for
     // the LLVM backend.
-    if template[0] == InlineAsmTemplatePiece::String("int $$0x29".to_string()) {
+    if template.len() == 1
+        && template[0] == InlineAsmTemplatePiece::String("int $$0x29".to_string())
+    {
         fx.bcx.ins().trap(TrapCode::User(1));
         return;
     }
@@ -55,9 +57,10 @@ pub(crate) fn codegen_inline_asm<'tcx>(
     let operands = operands
         .into_iter()
         .map(|operand| match *operand {
-            InlineAsmOperand::In { reg, ref value } => {
-                CInlineAsmOperand::In { reg, value: crate::base::codegen_operand(fx, value) }
-            }
+            InlineAsmOperand::In { reg, ref value } => CInlineAsmOperand::In {
+                reg,
+                value: crate::base::codegen_operand(fx, value).load_scalar(fx),
+            },
             InlineAsmOperand::Out { reg, late, ref place } => CInlineAsmOperand::Out {
                 reg,
                 late,
@@ -67,7 +70,7 @@ pub(crate) fn codegen_inline_asm<'tcx>(
                 CInlineAsmOperand::InOut {
                     reg,
                     _late: late,
-                    in_value: crate::base::codegen_operand(fx, in_value),
+                    in_value: crate::base::codegen_operand(fx, in_value).load_scalar(fx),
                     out_place: out_place.map(|place| crate::base::codegen_place(fx, place)),
                 }
             }
@@ -165,7 +168,7 @@ pub(crate) fn codegen_inline_asm<'tcx>(
     for (i, operand) in operands.iter().enumerate() {
         match operand {
             CInlineAsmOperand::In { reg: _, value } => {
-                inputs.push((asm_gen.stack_slots_input[i].unwrap(), value.load_scalar(fx)));
+                inputs.push((asm_gen.stack_slots_input[i].unwrap(), *value));
             }
             CInlineAsmOperand::Out { reg: _, late: _, place } => {
                 if let Some(place) = place {
@@ -173,7 +176,7 @@ pub(crate) fn codegen_inline_asm<'tcx>(
                 }
             }
             CInlineAsmOperand::InOut { reg: _, _late: _, in_value, out_place } => {
-                inputs.push((asm_gen.stack_slots_input[i].unwrap(), in_value.load_scalar(fx)));
+                inputs.push((asm_gen.stack_slots_input[i].unwrap(), *in_value));
                 if let Some(out_place) = out_place {
                     outputs.push((asm_gen.stack_slots_output[i].unwrap(), *out_place));
                 }
@@ -725,4 +728,84 @@ fn call_inline_asm<'tcx>(
         );
         place.write_cvalue(fx, CValue::by_val(value, place.layout()));
     }
+}
+
+pub(crate) fn codegen_xgetbv<'tcx>(
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
+    xcr_no: Value,
+    ret: CPlace<'tcx>,
+) {
+    // FIXME add .eh_frame unwind info directives
+
+    let operands = vec![
+        CInlineAsmOperand::In {
+            reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::cx)),
+            value: xcr_no,
+        },
+        CInlineAsmOperand::Out {
+            reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::ax)),
+            late: true,
+            place: Some(ret),
+        },
+        CInlineAsmOperand::Out {
+            reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::dx)),
+            late: true,
+            place: None,
+        },
+    ];
+    let options = InlineAsmOptions::NOSTACK | InlineAsmOptions::PURE | InlineAsmOptions::NOMEM;
+
+    let mut inputs = Vec::new();
+    let mut outputs = Vec::new();
+
+    let mut asm_gen = InlineAssemblyGenerator {
+        tcx: fx.tcx,
+        arch: fx.tcx.sess.asm_arch.unwrap(),
+        enclosing_def_id: fx.instance.def_id(),
+        template: &[InlineAsmTemplatePiece::String(
+            "
+            xgetbv
+            // out = rdx << 32 | rax
+            shl rdx, 32
+            or rax, rdx
+            "
+            .to_string(),
+        )],
+        operands: &operands,
+        options,
+        registers: Vec::new(),
+        stack_slots_clobber: Vec::new(),
+        stack_slots_input: Vec::new(),
+        stack_slots_output: Vec::new(),
+        stack_slot_size: Size::from_bytes(0),
+    };
+    asm_gen.allocate_registers();
+    asm_gen.allocate_stack_slots();
+
+    let inline_asm_index = fx.cx.inline_asm_index.get();
+    fx.cx.inline_asm_index.set(inline_asm_index + 1);
+    let asm_name = format!(
+        "__inline_asm_{}_n{}",
+        fx.cx.cgu_name.as_str().replace('.', "__").replace('-', "_"),
+        inline_asm_index
+    );
+
+    let generated_asm = asm_gen.generate_asm_wrapper(&asm_name);
+    fx.cx.global_asm.push_str(&generated_asm);
+
+    for (i, operand) in operands.iter().enumerate() {
+        match operand {
+            CInlineAsmOperand::In { reg: _, value } => {
+                inputs.push((asm_gen.stack_slots_input[i].unwrap(), *value));
+            }
+            CInlineAsmOperand::Out { reg: _, late: _, place } => {
+                if let Some(place) = place {
+                    outputs.push((asm_gen.stack_slots_output[i].unwrap(), *place));
+                }
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    call_inline_asm(fx, &asm_name, asm_gen.stack_slot_size, inputs, outputs);
 }
