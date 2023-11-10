@@ -1792,6 +1792,7 @@ impl<T: ?Sized> Eq for NonNull<T> {}
 #[stable(feature = "nonnull", since = "1.25.0")]
 impl<T: ?Sized> PartialEq for NonNull<T> {
     #[inline]
+    #[cfg_attr(not(bootstrap), allow(ambiguous_wide_pointer_comparisons))]
     fn eq(&self, other: &Self) -> bool {
         self.as_ptr() == other.as_ptr()
     }
