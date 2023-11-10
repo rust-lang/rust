@@ -1515,11 +1515,14 @@ mod prim_ref {}
 /// alignment, they might be passed in different registers and hence not be ABI-compatible.
 ///
 /// ABI compatibility as a concern only arises in code that alters the type of function pointers,
-/// and in code that combines `#[target_feature]` with `extern fn`. Altering the type of
-/// function pointers is wildly unsafe (as in, a lot more unsafe than even
-/// [`transmute_copy`][mem::transmute_copy]), and should only occur in the most exceptional
-/// circumstances. `#[target_feature]` is also used rarely. But assuming such circumstances, what
-/// are the rules?
+/// code that imports functions via `extern` blocks, and in code that combines `#[target_feature]`
+/// with `extern fn`. Altering the type of function pointers is wildly unsafe (as in, a lot more
+/// unsafe than even [`transmute_copy`][mem::transmute_copy]), and should only occur in the most
+/// exceptional circumstances. Most Rust code just imports functions via `use`. `#[target_feature]`
+/// is also used rarely. So, most likely you do not have to worry about ABI compatibility.
+///
+/// But assuming such circumstances, what are the rules? For this section, we are specifically
+/// concerned with the case where both the caller and the callee are defined in Rust.
 ///
 /// For two signatures to be considered *ABI-compatible*, they must use a compatible ABI string,
 /// must take the same number of arguments, the individual argument types and the return types must
