@@ -353,6 +353,8 @@ config_data! {
         imports_merge_glob: bool           = "true",
         /// Prefer to unconditionally use imports of the core and alloc crate, over the std crate.
         imports_prefer_no_std: bool                     = "false",
+        /// Whether to prefer import paths containing a `prelude` module.
+        imports_prefer_prelude: bool                     = "false",
         /// The path structure for newly inserted paths to use.
         imports_prefix: ImportPrefixDef               = "\"plain\"",
 
@@ -1118,6 +1120,7 @@ impl Config {
             },
             insert_use: self.insert_use_config(),
             prefer_no_std: self.data.imports_prefer_no_std,
+            prefer_prelude: self.data.imports_prefer_prelude,
         }
     }
 
@@ -1487,6 +1490,7 @@ impl Config {
             },
             insert_use: self.insert_use_config(),
             prefer_no_std: self.data.imports_prefer_no_std,
+            prefer_prelude: self.data.imports_prefer_prelude,
             snippet_cap: SnippetCap::new(try_or_def!(
                 self.caps
                     .text_document
@@ -1516,6 +1520,7 @@ impl Config {
             allowed: None,
             insert_use: self.insert_use_config(),
             prefer_no_std: self.data.imports_prefer_no_std,
+            prefer_prelude: self.data.imports_prefer_prelude,
             assist_emit_must_use: self.data.assist_emitMustUse,
         }
     }

@@ -205,6 +205,7 @@ fn augment_references_with_imports(
                         ModuleDef::Module(*target_module),
                         ctx.config.insert_use.prefix_kind,
                         ctx.config.prefer_no_std,
+                        ctx.config.prefer_prelude,
                     )
                     .map(|mod_path| {
                         make::path_concat(

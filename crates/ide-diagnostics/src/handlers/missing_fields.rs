@@ -122,6 +122,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
                             ctx.sema.db,
                             item_for_path_search(ctx.sema.db, item_in_ns)?,
                             ctx.config.prefer_no_std,
+                            ctx.config.prefer_prelude,
                         )?;
 
                         use_trivial_constructor(

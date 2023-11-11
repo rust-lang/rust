@@ -30,6 +30,7 @@ pub(crate) const TEST_CONFIG: AssistConfig = AssistConfig {
         skip_glob_imports: true,
     },
     prefer_no_std: false,
+    prefer_prelude: true,
     assist_emit_must_use: false,
 };
 
@@ -44,6 +45,7 @@ pub(crate) const TEST_CONFIG_NO_SNIPPET_CAP: AssistConfig = AssistConfig {
         skip_glob_imports: true,
     },
     prefer_no_std: false,
+    prefer_prelude: true,
     assist_emit_must_use: false,
 };
 

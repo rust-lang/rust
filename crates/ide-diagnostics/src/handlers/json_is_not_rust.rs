@@ -136,6 +136,7 @@ pub(crate) fn json_in_items(
                                     it,
                                     config.insert_use.prefix_kind,
                                     config.prefer_no_std,
+                                    config.prefer_prelude,
                                 ) {
                                     insert_use(&scope, mod_path_to_ast(&it), &config.insert_use);
                                 }
@@ -148,6 +149,7 @@ pub(crate) fn json_in_items(
                                     it,
                                     config.insert_use.prefix_kind,
                                     config.prefer_no_std,
+                                    config.prefer_prelude,
                                 ) {
                                     insert_use(&scope, mod_path_to_ast(&it), &config.insert_use);
                                 }

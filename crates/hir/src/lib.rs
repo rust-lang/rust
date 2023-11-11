@@ -664,8 +664,15 @@ impl Module {
         db: &dyn DefDatabase,
         item: impl Into<ItemInNs>,
         prefer_no_std: bool,
+        prefer_prelude: bool,
     ) -> Option<ModPath> {
-        hir_def::find_path::find_path(db, item.into().into(), self.into(), prefer_no_std)
+        hir_def::find_path::find_path(
+            db,
+            item.into().into(),
+            self.into(),
+            prefer_no_std,
+            prefer_prelude,
+        )
     }
 
     /// Finds a path that can be used to refer to the given item from within
@@ -676,6 +683,7 @@ impl Module {
         item: impl Into<ItemInNs>,
         prefix_kind: PrefixKind,
         prefer_no_std: bool,
+        prefer_prelude: bool,
     ) -> Option<ModPath> {
         hir_def::find_path::find_path_prefixed(
             db,
@@ -683,6 +691,7 @@ impl Module {
             self.into(),
             prefix_kind,
             prefer_no_std,
+            prefer_prelude,
         )
     }
 }

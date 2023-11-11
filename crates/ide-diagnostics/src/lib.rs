@@ -225,6 +225,7 @@ pub struct DiagnosticsConfig {
     // FIXME: We may want to include a whole `AssistConfig` here
     pub insert_use: InsertUseConfig,
     pub prefer_no_std: bool,
+    pub prefer_prelude: bool,
 }
 
 impl DiagnosticsConfig {
@@ -247,6 +248,7 @@ impl DiagnosticsConfig {
                 skip_glob_imports: false,
             },
             prefer_no_std: false,
+            prefer_prelude: true,
         }
     }
 }
