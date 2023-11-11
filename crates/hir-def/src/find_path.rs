@@ -367,18 +367,18 @@ fn calculate_best_path(
         // too (unless we can't name it at all). It could *also* be (re)exported by the same crate
         // that wants to import it here, but we always prefer to use the external path here.
 
-        let crate_graph = db.crate_graph();
-        let extern_paths = crate_graph[from.krate].dependencies.iter().filter_map(|dep| {
+        for dep in &db.crate_graph()[from.krate].dependencies {
             let import_map = db.import_map(dep.crate_id);
-            import_map.import_info_for(item).and_then(|info| {
+            let Some(import_info_for) = import_map.import_info_for(item) else { continue };
+            for info in import_info_for {
                 if info.is_doc_hidden {
                     // the item or import is `#[doc(hidden)]`, so skip it as it is in an external crate
-                    return None;
+                    continue;
                 }
 
                 // Determine best path for containing module and append last segment from `info`.
                 // FIXME: we should guide this to look up the path locally, or from the same crate again?
-                let (mut path, path_stability) = find_path_for_module(
+                let Some((mut path, path_stability)) = find_path_for_module(
                     db,
                     def_map,
                     visited_modules,
@@ -388,22 +388,23 @@ fn calculate_best_path(
                     max_len - 1,
                     prefixed,
                     prefer_no_std,
-                )?;
+                ) else {
+                    continue;
+                };
                 cov_mark::hit!(partially_imported);
                 path.push_segment(info.name.clone());
-                Some((
+
+                let path_with_stab = (
                     path,
                     zip_stability(path_stability, if info.is_unstable { Unstable } else { Stable }),
-                ))
-            })
-        });
+                );
 
-        for path in extern_paths {
-            let new_path = match best_path.take() {
-                Some(best_path) => select_best_path(best_path, path, prefer_no_std),
-                None => path,
-            };
-            update_best_path(&mut best_path, new_path);
+                let new_path_with_stab = match best_path.take() {
+                    Some(best_path) => select_best_path(best_path, path_with_stab, prefer_no_std),
+                    None => path_with_stab,
+                };
+                update_best_path(&mut best_path, new_path_with_stab);
+            }
         }
     }
     if let Some(module) = item.module(db) {
@@ -593,7 +594,7 @@ mod tests {
 
         let found_path =
             find_path_inner(&db, ItemInNs::Types(resolved), module, prefix_kind, false);
-        assert_eq!(found_path, Some(mod_path), "{prefix_kind:?}");
+        assert_eq!(found_path, Some(mod_path), "on kind: {prefix_kind:?}");
     }
 
     fn check_found_path(
