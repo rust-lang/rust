@@ -19,8 +19,7 @@ use rustc_span::SourceFileHashAlgorithm;
 
 use std::collections::BTreeMap;
 
-use std::collections::hash_map::DefaultHasher;
-use std::hash::Hasher;
+use std::hash::{DefaultHasher, Hasher};
 use std::num::{IntErrorKind, NonZeroUsize};
 use std::path::PathBuf;
 use std::str;

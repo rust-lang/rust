@@ -20,12 +20,11 @@ use regex::{Captures, Regex};
 use rustfix::{apply_suggestions, get_suggestions_from_json, Filter};
 
 use std::borrow::Cow;
-use std::collections::hash_map::DefaultHasher;
 use std::collections::{HashMap, HashSet};
 use std::env;
 use std::ffi::{OsStr, OsString};
 use std::fs::{self, create_dir_all, File, OpenOptions};
-use std::hash::{Hash, Hasher};
+use std::hash::{DefaultHasher, Hash, Hasher};
 use std::io::prelude::*;
 use std::io::{self, BufReader};
 use std::iter;

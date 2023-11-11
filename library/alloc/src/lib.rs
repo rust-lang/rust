@@ -270,7 +270,7 @@ pub(crate) mod test_helpers {
     /// seed not being the same for every RNG invocation too.
     pub(crate) fn test_rng() -> rand_xorshift::XorShiftRng {
         use std::hash::{BuildHasher, Hash, Hasher};
-        let mut hasher = std::collections::hash_map::RandomState::new().build_hasher();
+        let mut hasher = std::hash::RandomState::new().build_hasher();
         std::panic::Location::caller().hash(&mut hasher);
         let hc64 = hasher.finish();
         let seed_vec =

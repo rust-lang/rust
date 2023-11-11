@@ -3178,9 +3178,8 @@ pub(crate) mod dep_tracking {
     use rustc_target::spec::{
         RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, TargetTriple, TlsModel,
     };
-    use std::collections::hash_map::DefaultHasher;
     use std::collections::BTreeMap;
-    use std::hash::Hash;
+    use std::hash::{DefaultHasher, Hash};
     use std::num::NonZeroUsize;
     use std::path::PathBuf;
 

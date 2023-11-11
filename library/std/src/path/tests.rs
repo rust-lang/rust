@@ -1,8 +1,7 @@
 use super::*;
 
-use crate::collections::hash_map::DefaultHasher;
 use crate::collections::{BTreeSet, HashSet};
-use crate::hash::Hasher;
+use crate::hash::{DefaultHasher, Hasher};
 use crate::rc::Rc;
 use crate::sync::Arc;
 use core::hint::black_box;
@@ -1461,8 +1460,7 @@ fn test_eq_receivers() {
 
 #[test]
 pub fn test_compare() {
-    use crate::collections::hash_map::DefaultHasher;
-    use crate::hash::{Hash, Hasher};
+    use crate::hash::{DefaultHasher, Hash, Hasher};
 
     fn hash<T: Hash>(t: T) -> u64 {
         let mut s = DefaultHasher::new();

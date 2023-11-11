@@ -3503,7 +3503,7 @@ impl TargetTriple {
     /// If this target is a path, a hash of the path is appended to the triple returned
     /// by `triple()`.
     pub fn debug_triple(&self) -> String {
-        use std::collections::hash_map::DefaultHasher;
+        use std::hash::DefaultHasher;
 
         match self {
             TargetTriple::TargetTriple(triple) => triple.to_owned(),

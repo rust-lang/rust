@@ -1921,8 +1921,7 @@ pub fn addr_eq<T: ?Sized, U: ?Sized>(p: *const T, q: *const U) -> bool {
 /// # Examples
 ///
 /// ```
-/// use std::collections::hash_map::DefaultHasher;
-/// use std::hash::{Hash, Hasher};
+/// use std::hash::{DefaultHasher, Hash, Hasher};
 /// use std::ptr;
 ///
 /// let five = 5;

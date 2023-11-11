@@ -12,8 +12,7 @@
 //! # Examples
 //!
 //! ```rust
-//! use std::collections::hash_map::DefaultHasher;
-//! use std::hash::{Hash, Hasher};
+//! use std::hash::{DefaultHasher, Hash, Hasher};
 //!
 //! #[derive(Hash)]
 //! struct Person {
@@ -46,8 +45,7 @@
 //! the [`Hash`] trait:
 //!
 //! ```rust
-//! use std::collections::hash_map::DefaultHasher;
-//! use std::hash::{Hash, Hasher};
+//! use std::hash::{DefaultHasher, Hash, Hasher};
 //!
 //! struct Person {
 //!     id: u32,
@@ -194,8 +192,7 @@ pub trait Hash {
     /// # Examples
     ///
     /// ```
-    /// use std::collections::hash_map::DefaultHasher;
-    /// use std::hash::{Hash, Hasher};
+    /// use std::hash::{DefaultHasher, Hash, Hasher};
     ///
     /// let mut hasher = DefaultHasher::new();
     /// 7920.hash(&mut hasher);
@@ -224,8 +221,7 @@ pub trait Hash {
     /// # Examples
     ///
     /// ```
-    /// use std::collections::hash_map::DefaultHasher;
-    /// use std::hash::{Hash, Hasher};
+    /// use std::hash::{DefaultHasher, Hash, Hasher};
     ///
     /// let mut hasher = DefaultHasher::new();
     /// let numbers = [6, 28, 496, 8128];
@@ -300,8 +296,7 @@ pub use macros::Hash;
 /// # Examples
 ///
 /// ```
-/// use std::collections::hash_map::DefaultHasher;
-/// use std::hash::Hasher;
+/// use std::hash::{DefaultHasher, Hasher};
 ///
 /// let mut hasher = DefaultHasher::new();
 ///
@@ -329,8 +324,7 @@ pub trait Hasher {
     /// # Examples
     ///
     /// ```
-    /// use std::collections::hash_map::DefaultHasher;
-    /// use std::hash::Hasher;
+    /// use std::hash::{DefaultHasher, Hasher};
     ///
     /// let mut hasher = DefaultHasher::new();
     /// hasher.write(b"Cool!");
@@ -347,8 +341,7 @@ pub trait Hasher {
     /// # Examples
     ///
     /// ```
-    /// use std::collections::hash_map::DefaultHasher;
-    /// use std::hash::Hasher;
+    /// use std::hash::{DefaultHasher, Hasher};
     ///
     /// let mut hasher = DefaultHasher::new();
     /// let data = [0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef];
@@ -627,8 +620,7 @@ impl<H: Hasher + ?Sized> Hasher for &mut H {
 /// # Examples
 ///
 /// ```
-/// use std::collections::hash_map::RandomState;
-/// use std::hash::{BuildHasher, Hasher};
+/// use std::hash::{BuildHasher, Hasher, RandomState};
 ///
 /// let s = RandomState::new();
 /// let mut hasher_1 = s.build_hasher();
@@ -656,8 +648,7 @@ pub trait BuildHasher {
     /// # Examples
     ///
     /// ```
-    /// use std::collections::hash_map::RandomState;
-    /// use std::hash::BuildHasher;
+    /// use std::hash::{BuildHasher, RandomState};
     ///
     /// let s = RandomState::new();
     /// let new_s = s.build_hasher();
@@ -690,7 +681,7 @@ pub trait BuildHasher {
     /// }
     ///
     /// // Then later, in a `#[test]` for the type...
-    /// let bh = std::collections::hash_map::RandomState::new();
+    /// let bh = std::hash::RandomState::new();
     /// assert_eq!(
     ///     bh.hash_one(OrderAmbivalentPair(1, 2)),
     ///     bh.hash_one(OrderAmbivalentPair(2, 1))

@@ -7,8 +7,7 @@ use rustc_hir::def_id::DefId;
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::abi;
 use std::borrow::Cow;
-use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hash, Hasher};
+use std::hash::{DefaultHasher, Hash, Hasher};
 use std::path::PathBuf;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, TypeFoldable, TypeVisitable)]
