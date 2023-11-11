@@ -58,11 +58,10 @@
 use std::fmt;
 use std::io::Write;
 
-use cranelift_codegen::{
-    entity::SecondaryMap,
-    ir::entities::AnyEntity,
-    write::{FuncWriter, PlainWriter},
-};
+use cranelift_codegen::entity::SecondaryMap;
+use cranelift_codegen::ir::entities::AnyEntity;
+use cranelift_codegen::ir::Fact;
+use cranelift_codegen::write::{FuncWriter, PlainWriter};
 use rustc_middle::ty::layout::FnAbiOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_session::config::{OutputFilenames, OutputType};
@@ -155,8 +154,13 @@ impl FuncWriter for &'_ CommentWriter {
         _func: &Function,
         entity: AnyEntity,
         value: &dyn fmt::Display,
+        maybe_fact: Option<&Fact>,
     ) -> fmt::Result {
-        write!(w, "    {} = {}", entity, value)?;
+        if let Some(fact) = maybe_fact {
+            write!(w, "    {} ! {} = {}", entity, fact, value)?;
+        } else {
+            write!(w, "    {} = {}", entity, value)?;
+        }
 
         if let Some(comment) = self.entity_comments.get(&entity) {
             writeln!(w, " ; {}", comment.replace('\n', "\n; "))
