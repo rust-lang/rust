@@ -257,7 +257,12 @@ fn import_on_the_fly(
     let user_input_lowercased = potential_import_name.to_lowercase();
 
     import_assets
-        .search_for_imports(&ctx.sema, ctx.config.insert_use.prefix_kind, ctx.config.prefer_no_std)
+        .search_for_imports(
+            &ctx.sema,
+            ctx.config.insert_use.prefix_kind,
+            ctx.config.prefer_no_std,
+            ctx.config.prefer_prelude,
+        )
         .into_iter()
         .filter(ns_filter)
         .filter(|import| {
@@ -299,7 +304,12 @@ fn import_on_the_fly_pat_(
     let user_input_lowercased = potential_import_name.to_lowercase();
 
     import_assets
-        .search_for_imports(&ctx.sema, ctx.config.insert_use.prefix_kind, ctx.config.prefer_no_std)
+        .search_for_imports(
+            &ctx.sema,
+            ctx.config.insert_use.prefix_kind,
+            ctx.config.prefer_no_std,
+            ctx.config.prefer_prelude,
+        )
         .into_iter()
         .filter(ns_filter)
         .filter(|import| {
@@ -336,7 +346,12 @@ fn import_on_the_fly_method(
     let user_input_lowercased = potential_import_name.to_lowercase();
 
     import_assets
-        .search_for_imports(&ctx.sema, ctx.config.insert_use.prefix_kind, ctx.config.prefer_no_std)
+        .search_for_imports(
+            &ctx.sema,
+            ctx.config.insert_use.prefix_kind,
+            ctx.config.prefer_no_std,
+            ctx.config.prefer_prelude,
+        )
         .into_iter()
         .filter(|import| {
             !ctx.is_item_hidden(&import.item_to_import)
