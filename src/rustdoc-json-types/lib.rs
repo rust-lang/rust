@@ -669,9 +669,24 @@ pub struct Import {
     /// May be different from the last segment of `source` when renaming imports:
     /// `use source as name;`
     pub name: String,
-    /// The ID of the item being imported. Will be `None` in case of re-exports of primitives:
-    /// ```rust
+    /// The ID of the item being imported. Will be `None` in case of re-exports of primitives or
+    /// if the reexported item is `#[doc(hidden)]` or inherits it from one of its parents.
+    ///
+    /// Example of reexported primitive type:
+    ///
+    /// ```
     /// pub use i32 as my_i32;
+    /// ```
+    ///
+    /// Example of reexported item which inherits `doc(hidden)`:
+    ///
+    /// ```
+    /// #[doc(hidden)]
+    /// pub mod foo {
+    ///     pub struct Bar;
+    /// }
+    ///
+    /// pub use foo::Bar;
     /// ```
     pub id: Option<Id>,
     /// Whether this import uses a glob: `use source::*;`
