@@ -78,6 +78,9 @@ const LLD_FILE_NAMES: &[&str] = &["ld.lld", "ld64.lld", "lld-link", "wasm-ld"];
 /// If you make any major changes (such as adding new values or changing default values),
 /// please ensure that the associated PR ID is added to the end of this list.
 /// This is necessary because the list must be sorted by the merge date.
+/// Also make sure that your PR description tells people what they need to do
+/// to migrate their configuration. (If there's nothing to migrate, consider whether
+/// having *every rustc developer* open your PR page is really necessary.)
 pub const CONFIG_CHANGE_HISTORY: &[usize] = &[115898, 116998, 117435, 116881];
 
 /// Extra --check-cfg to add when building
