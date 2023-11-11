@@ -79,6 +79,7 @@ impl<'a> Parser<'a> {
 
     #[must_use]
     /// Read the next character from the input if it matches the target.
+    #[inline]
     fn read_given_char(&mut self, target: char) -> Option<()> {
         self.read_atomically(|p| {
             p.read_char().and_then(|c| if c == target { Some(()) } else { None })
@@ -89,6 +90,7 @@ impl<'a> Parser<'a> {
     /// character iff index > 0, then runs the parser. When used in a loop,
     /// the separator character will only be read on index > 0 (see
     /// read_ipv4_addr for an example)
+    #[inline]
     fn read_separator<T, F>(&mut self, sep: char, index: usize, inner: F) -> Option<T>
     where
         F: FnOnce(&mut Parser<'_>) -> Option<T>,
@@ -228,6 +230,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Read a `:` followed by a port in base 10.
+    #[inline]
     fn read_port(&mut self) -> Option<u16> {
         self.read_atomically(|p| {
             p.read_given_char(':')?;
@@ -236,6 +239,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Read a `%` followed by a scope ID in base 10.
+    #[inline]
     fn read_scope_id(&mut self) -> Option<u32> {
         self.read_atomically(|p| {
             p.read_given_char('%')?;
