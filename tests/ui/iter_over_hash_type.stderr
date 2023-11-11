@@ -1,0 +1,53 @@
+error: iterating over unordered hash-based type
+  --> $DIR/iter_over_hash_type.rs:13:5
+   |
+LL | /     for x in &hash_set {
+LL | |         let _ = x;
+LL | |     }
+   | |_____^
+   |
+   = note: `-D clippy::iter-over-hash-type` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::iter_over_hash_type)]`
+
+error: iterating over unordered hash-based type
+  --> $DIR/iter_over_hash_type.rs:16:5
+   |
+LL | /     for x in hash_set.iter() {
+LL | |         let _ = x;
+LL | |     }
+   | |_____^
+
+error: iterating over unordered hash-based type
+  --> $DIR/iter_over_hash_type.rs:19:5
+   |
+LL | /     for x in hash_set {
+LL | |         let _ = x;
+LL | |     }
+   | |_____^
+
+error: iterating over unordered hash-based type
+  --> $DIR/iter_over_hash_type.rs:22:5
+   |
+LL | /     for (x, y) in &hash_map {
+LL | |         let _ = (x, y);
+LL | |     }
+   | |_____^
+
+error: iterating over unordered hash-based type
+  --> $DIR/iter_over_hash_type.rs:25:5
+   |
+LL | /     for x in hash_map.keys() {
+LL | |         let _ = x;
+LL | |     }
+   | |_____^
+
+error: iterating over unordered hash-based type
+  --> $DIR/iter_over_hash_type.rs:28:5
+   |
+LL | /     for x in hash_map.values() {
+LL | |         let _ = x;
+LL | |     }
+   | |_____^
+
+error: aborting due to 6 previous errors
+
