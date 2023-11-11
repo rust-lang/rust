@@ -79,8 +79,6 @@ fn main() {
             "HELP: consider running `./x.py setup` or copying `config.example.toml` by running \
             `cp config.example.toml config.toml`"
         );
-    } else if let Some(suggestion) = &changelog_suggestion {
-        println!("{suggestion}");
     }
 
     // Give a warning if the pre-commit script is in pre-commit and not pre-push.
@@ -96,7 +94,7 @@ fn main() {
         );
     }
 
-    if suggest_setup || changelog_suggestion.is_some() {
+    if suggest_setup {
         println!("NOTE: this message was printed twice to make it more likely to be seen");
     }
 }
