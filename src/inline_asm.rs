@@ -10,7 +10,7 @@ use target_lexicon::BinaryFormat;
 
 use crate::prelude::*;
 
-enum CInlineAsmOperand<'tcx> {
+pub(crate) enum CInlineAsmOperand<'tcx> {
     In {
         reg: InlineAsmRegOrRegClass,
         value: Value,
@@ -146,7 +146,7 @@ pub(crate) fn codegen_inline_asm_terminator<'tcx>(
     }
 }
 
-fn codegen_inline_asm_inner<'tcx>(
+pub(crate) fn codegen_inline_asm_inner<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     template: &[InlineAsmTemplatePiece],
     operands: &[CInlineAsmOperand<'tcx>],
@@ -736,45 +736,4 @@ fn call_inline_asm<'tcx>(
         );
         place.write_cvalue(fx, CValue::by_val(value, place.layout()));
     }
-}
-
-pub(crate) fn codegen_xgetbv<'tcx>(
-    fx: &mut FunctionCx<'_, '_, 'tcx>,
-    xcr_no: Value,
-    ret: CPlace<'tcx>,
-) {
-    // FIXME add .eh_frame unwind info directives
-
-    let operands = vec![
-        CInlineAsmOperand::In {
-            reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::cx)),
-            value: xcr_no,
-        },
-        CInlineAsmOperand::Out {
-            reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::ax)),
-            late: true,
-            place: Some(ret),
-        },
-        CInlineAsmOperand::Out {
-            reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::dx)),
-            late: true,
-            place: None,
-        },
-    ];
-    let options = InlineAsmOptions::NOSTACK | InlineAsmOptions::PURE | InlineAsmOptions::NOMEM;
-
-    codegen_inline_asm_inner(
-        fx,
-        &[InlineAsmTemplatePiece::String(
-            "
-            xgetbv
-            // out = rdx << 32 | rax
-            shl rdx, 32
-            or rax, rdx
-            "
-            .to_string(),
-        )],
-        &operands,
-        options,
-    );
 }

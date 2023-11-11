@@ -1,7 +1,10 @@
 //! Emulate x86 LLVM intrinsics
 
+use rustc_ast::ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_middle::ty::GenericArgsRef;
+use rustc_target::asm::*;
 
+use crate::inline_asm::{codegen_inline_asm_inner, CInlineAsmOperand};
 use crate::intrinsics::*;
 use crate::prelude::*;
 
@@ -24,7 +27,35 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
 
             let xcr_no = xcr_no.load_scalar(fx);
 
-            crate::inline_asm::codegen_xgetbv(fx, xcr_no, ret);
+            codegen_inline_asm_inner(
+                fx,
+                &[InlineAsmTemplatePiece::String(
+                    "
+                    xgetbv
+                    // out = rdx << 32 | rax
+                    shl rdx, 32
+                    or rax, rdx
+                    "
+                    .to_string(),
+                )],
+                &[
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::cx)),
+                        value: xcr_no,
+                    },
+                    CInlineAsmOperand::Out {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::ax)),
+                        late: true,
+                        place: Some(ret),
+                    },
+                    CInlineAsmOperand::Out {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::dx)),
+                        late: true,
+                        place: None,
+                    },
+                ],
+                InlineAsmOptions::NOSTACK | InlineAsmOptions::PURE | InlineAsmOptions::NOMEM,
+            );
         }
 
         "llvm.x86.sse3.ldu.dq" | "llvm.x86.avx.ldu.dq.256" => {
