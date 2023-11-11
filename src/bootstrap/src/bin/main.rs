@@ -108,11 +108,11 @@ fn check_version(config: &Config) -> Option<String> {
         msg.push_str("WARNING: The use of `changelog-seen` is deprecated. Please refer to `change-id` option in `config.example.toml` instead.\n");
     }
 
-    let latest_config_id = CONFIG_CHANGE_HISTORY.last().unwrap();
+    let latest_change_id = CONFIG_CHANGE_HISTORY.last().unwrap().change_id;
     let warned_id_path = config.out.join("bootstrap").join(".last-warned-change-id");
 
     if let Some(id) = config.change_id {
-        if &id == latest_config_id {
+        if id == latest_change_id {
             return None;
         }
 
@@ -122,23 +122,22 @@ fn check_version(config: &Config) -> Option<String> {
             }
         }
 
-        let change_links: Vec<String> = find_recent_config_change_ids(id)
-            .iter()
-            .map(|id| format!("https://github.com/rust-lang/rust/pull/{id}"))
-            .collect();
-        if !change_links.is_empty() {
-            msg.push_str("WARNING: there have been changes to x.py since you last updated.\n");
-            msg.push_str("To see more detail about these changes, visit the following PRs:\n");
+        let changes = find_recent_config_change_ids(id);
 
-            for link in change_links {
-                msg.push_str(&format!("  - {link}\n"));
+        if !changes.is_empty() {
+            msg.push_str("There have been changes to x.py since you last updated:\n");
+
+            for change in changes {
+                msg.push_str(&format!("  [{}] {}\n", change.severity.to_string(), change.summary));
+                msg.push_str(&format!(
+                    "    - PR Link https://github.com/rust-lang/rust/pull/{}\n",
+                    change.change_id
+                ));
             }
-
-            msg.push_str("WARNING: there have been changes to x.py since you last updated.\n");
 
             msg.push_str("NOTE: to silence this warning, ");
             msg.push_str(&format!(
-                "update `config.toml` to use `change-id = {latest_config_id}` instead"
+                "update `config.toml` to use `change-id = {latest_change_id}` instead"
             ));
 
             t!(fs::write(warned_id_path, id.to_string()));
@@ -146,7 +145,7 @@ fn check_version(config: &Config) -> Option<String> {
     } else {
         msg.push_str("WARNING: The `change-id` is missing in the `config.toml`. This means that you will not be able to track the major changes made to the bootstrap configurations.\n");
         msg.push_str("NOTE: to silence this warning, ");
-        msg.push_str(&format!("add `change-id = {latest_config_id}` at the top of `config.toml`"));
+        msg.push_str(&format!("add `change-id = {latest_change_id}` at the top of `config.toml`"));
     };
 
     Some(msg)
