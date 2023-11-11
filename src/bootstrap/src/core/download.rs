@@ -208,7 +208,10 @@ impl Config {
             Some(other) => panic!("unsupported protocol {other} in {url}"),
             None => panic!("no protocol in {url}"),
         }
-        t!(std::fs::rename(&tempfile, dest_path));
+        t!(
+            std::fs::rename(&tempfile, dest_path),
+            format!("failed to rename {tempfile:?} to {dest_path:?}")
+        );
     }
 
     fn download_http_with_retries(&self, tempfile: &Path, url: &str, help_on_error: &str) {
@@ -544,6 +547,10 @@ impl Config {
         key: &str,
         destination: &str,
     ) {
+        if self.dry_run() {
+            return;
+        }
+
         let cache_dst = self.out.join("cache");
         let cache_dir = cache_dst.join(key);
         if !cache_dir.exists() {
