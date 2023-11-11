@@ -1,6 +1,7 @@
-use clippy_utils::paths::{HASHMAP_KEYS, HASHMAP_VALUES, HASHSET_ITER_TY};
-use clippy_utils::{diagnostics::span_lint, match_def_path};
+use clippy_utils::diagnostics::span_lint;
 use clippy_utils::higher::ForLoop;
+use clippy_utils::match_def_path;
+use clippy_utils::paths::{HASHMAP_KEYS, HASHMAP_VALUES, HASHSET_ITER_TY};
 use clippy_utils::ty::is_type_diagnostic_item;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -18,16 +19,16 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```no_run
-    ///     let my_map = new Hashmap<i32, String>();
+    ///     let my_map = std::collections::HashMap::<i32, String>::new();
     ///     for (key, value) in my_map { /* ... */ }
     /// ```
     /// Use instead:
     /// ```no_run
-    ///     let my_map = new Hashmap<i32, String>();
-    ///     let mut keys = my_map.keys().clone().collect::<Vec<_>();
+    ///     let my_map = std::collections::HashMap::<i32, String>::new();
+    ///     let mut keys = my_map.keys().clone().collect::<Vec<_>>();
     ///     keys.sort();
     ///     for key in keys {
-    ///         let value = &my_map[value];
+    ///         let value = &my_map[key];
     ///     }
     /// ```
     #[clippy::version = "1.75.0"]
@@ -45,10 +46,10 @@ impl LateLintPass<'_> for IterOverHashType {
             && let ty = cx.typeck_results().expr_ty(for_loop.arg).peel_refs()
             && let Some(adt) = ty.ty_adt_def()
             && let did = adt.did()
-            && (match_def_path(cx, did, &HASHMAP_KEYS) 
+            && (match_def_path(cx, did, &HASHMAP_KEYS)
                 || match_def_path(cx, did, &HASHMAP_VALUES)
                 || match_def_path(cx, did, &HASHSET_ITER_TY)
-                || is_type_diagnostic_item(cx, ty, sym::HashMap) 
+                || is_type_diagnostic_item(cx, ty, sym::HashMap)
                 || is_type_diagnostic_item(cx, ty, sym::HashSet))
         {
             span_lint(
@@ -60,4 +61,3 @@ impl LateLintPass<'_> for IterOverHashType {
         };
     }
 }
-
