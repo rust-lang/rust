@@ -668,6 +668,14 @@ pub fn for_each_unconsumed_temporary<'tcx, B>(
                     helper(typeck, false, default, f)?;
                 }
             },
+            ExprKind::InferStruct(fields, default) => {
+                for field in fields {
+                    helper(typeck, true, field.expr, f)?;
+                }
+                if let Some(default) = default {
+                    helper(typeck, false, default, f)?;
+                }
+            },
             ExprKind::If(cond, then, else_expr) => {
                 helper(typeck, true, cond, f)?;
                 helper(typeck, true, then, f)?;

@@ -866,6 +866,16 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                     self.hash_expr(e);
                 }
             },
+            ExprKind::InferStruct(fields, ref expr) => {
+                for f in fields {
+                    self.hash_name(f.ident.name);
+                    self.hash_expr(f.expr);
+                }
+
+                if let Some(e) = *expr {
+                    self.hash_expr(e);
+                }
+            },
             ExprKind::Tup(tup) => {
                 self.hash_exprs(tup);
             },

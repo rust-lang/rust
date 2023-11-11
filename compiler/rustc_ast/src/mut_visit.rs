@@ -1491,6 +1491,15 @@ pub fn noop_visit_expr<T: MutVisitor>(
                 StructRest::None => {}
             }
         }
+        ExprKind::InferStruct(se) => {
+            let InferStructExpr { fields, rest } = se.deref_mut();
+            fields.flat_map_in_place(|field| vis.flat_map_expr_field(field));
+            match rest {
+                StructRest::Base(expr) => vis.visit_expr(expr),
+                StructRest::Rest(_span) => {}
+                StructRest::None => {}
+            }
+        }
         ExprKind::Paren(expr) => {
             vis.visit_expr(expr);
         }

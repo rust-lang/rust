@@ -1459,6 +1459,11 @@ impl<'a> Parser<'a> {
     pub fn approx_token_stream_pos(&self) -> usize {
         self.num_bump_calls
     }
+
+    fn check_struct_infer(&mut self) -> bool {
+        self.check(&token::Dot)
+            && self.look_ahead(1, |t| {*t == token::OpenDelim(Delimiter::Brace)})
+    }
 }
 
 pub(crate) fn make_unclosed_delims_error(

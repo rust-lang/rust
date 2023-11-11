@@ -242,6 +242,7 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
                 | ExprKind::Field(..)
                 | ExprKind::AddrOf(..)
                 | ExprKind::Struct(..)
+                | ExprKind::InferStruct(..)
                 | ExprKind::Repeat(..)
                 | ExprKind::Block(Block { stmts: [], .. }, _)
                 | ExprKind::OffsetOf(..) => (),

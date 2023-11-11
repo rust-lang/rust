@@ -286,6 +286,11 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
                     self.visit_field_id(field.hir_id);
                 }
             }
+            hir::ExprKind::InferStruct(fields, _) => {
+                for field in fields {
+                    self.visit_field_id(field.hir_id);
+                }
+            }
             hir::ExprKind::Field(..) | hir::ExprKind::OffsetOf(..) => {
                 self.visit_field_id(e.hir_id);
             }

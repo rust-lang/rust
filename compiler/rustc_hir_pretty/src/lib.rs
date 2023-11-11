@@ -1091,6 +1091,29 @@ impl<'a> State<'a> {
         self.word("}");
     }
 
+    fn print_expr_infer_struct(
+        &mut self,
+        fields: &[hir::ExprField<'_>],
+        wth: Option<&hir::Expr<'_>>,
+    ) {
+        self.word(".{");
+        self.commasep_cmnt(Consistent, fields, |s, field| s.print_expr_field(field), |f| f.span);
+        if let Some(expr) = wth {
+            self.ibox(INDENT_UNIT);
+            if !fields.is_empty() {
+                self.word(",");
+                self.space();
+            }
+            self.word("..");
+            self.print_expr(expr);
+            self.end();
+        } else if !fields.is_empty() {
+            self.word(",");
+        }
+
+        self.word("}");
+    }
+
     fn print_expr_field(&mut self, field: &hir::ExprField<'_>) {
         if self.attrs(field.hir_id).is_empty() {
             self.space();
@@ -1331,6 +1354,9 @@ impl<'a> State<'a> {
             }
             hir::ExprKind::Struct(qpath, fields, wth) => {
                 self.print_expr_struct(qpath, fields, wth);
+            }
+            hir::ExprKind::InferStruct(fields, wth) => {
+                self.print_expr_infer_struct(fields, wth);
             }
             hir::ExprKind::Tup(exprs) => {
                 self.print_expr_tup(exprs);

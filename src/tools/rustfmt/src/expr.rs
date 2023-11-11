@@ -129,6 +129,20 @@ pub(crate) fn format_expr(
                 shape,
             )
         }
+        ast::ExprKind::InferStruct(ref infer_struct_expr) => {
+            let ast::InferStructExpr {
+                fields,
+                rest,
+            } = &**infer_struct_expr;
+            rewrite_infer_struct_lit(
+                context,
+                fields,
+                rest,
+                &expr.attrs,
+                expr.span,
+                shape,
+            )
+        }
         ast::ExprKind::Tup(ref items) => {
             rewrite_tuple(context, items.iter(), expr.span, shape, items.len() == 1)
         }
@@ -1684,6 +1698,122 @@ fn rewrite_struct_lit<'a>(
     let fields_str =
         wrap_struct_field(context, attrs, &fields_str, shape, v_shape, one_line_width)?;
     Some(format!("{path_str} {{{fields_str}}}"))
+
+    // FIXME if context.config.indent_style() == Visual, but we run out
+    // of space, we should fall back to BlockIndent.
+}
+
+fn rewrite_infer_struct_lit<'a>(
+    context: &RewriteContext<'_>,
+    fields: &'a [ast::ExprField],
+    struct_rest: &ast::StructRest,
+    attrs: &[ast::Attribute],
+    span: Span,
+    shape: Shape,
+) -> Option<String> {
+    debug!("rewrite_struct_lit: shape {:?}", shape);
+
+    enum StructLitField<'a> {
+        Regular(&'a ast::ExprField),
+        Base(&'a ast::Expr),
+        Rest(Span),
+    }
+
+    let has_base_or_rest = match struct_rest {
+        ast::StructRest::None if fields.is_empty() => return Some(format!(".{{}}")),
+        ast::StructRest::Rest(_) if fields.is_empty() => {
+            return Some(format!(".{{ .. }}"));
+        }
+        ast::StructRest::Rest(_) | ast::StructRest::Base(_) => true,
+        _ => false,
+    };
+
+    // Foo { a: Foo } - indent is +3, width is -5.
+    let (h_shape, v_shape) = struct_lit_shape(shape, context, 4, 2)?;
+
+    let one_line_width = h_shape.map_or(0, |shape| shape.width);
+    let body_lo = context.snippet_provider.span_after(span, "{");
+    let fields_str = if struct_lit_can_be_aligned(fields, has_base_or_rest)
+        && context.config.struct_field_align_threshold() > 0
+    {
+        rewrite_with_alignment(
+            fields,
+            context,
+            v_shape,
+            mk_sp(body_lo, span.hi()),
+            one_line_width,
+        )?
+    } else {
+        let field_iter = fields.iter().map(StructLitField::Regular).chain(
+            match struct_rest {
+                ast::StructRest::Base(expr) => Some(StructLitField::Base(&**expr)),
+                ast::StructRest::Rest(span) => Some(StructLitField::Rest(*span)),
+                ast::StructRest::None => None,
+            }
+            .into_iter(),
+        );
+
+        let span_lo = |item: &StructLitField<'_>| match *item {
+            StructLitField::Regular(field) => field.span().lo(),
+            StructLitField::Base(expr) => {
+                let last_field_hi = fields.last().map_or(span.lo(), |field| field.span.hi());
+                let snippet = context.snippet(mk_sp(last_field_hi, expr.span.lo()));
+                let pos = snippet.find_uncommented("..").unwrap();
+                last_field_hi + BytePos(pos as u32)
+            }
+            StructLitField::Rest(span) => span.lo(),
+        };
+        let span_hi = |item: &StructLitField<'_>| match *item {
+            StructLitField::Regular(field) => field.span().hi(),
+            StructLitField::Base(expr) => expr.span.hi(),
+            StructLitField::Rest(span) => span.hi(),
+        };
+        let rewrite = |item: &StructLitField<'_>| match *item {
+            StructLitField::Regular(field) => {
+                // The 1 taken from the v_budget is for the comma.
+                rewrite_field(context, field, v_shape.sub_width(1)?, 0)
+            }
+            StructLitField::Base(expr) => {
+                // 2 = ..
+                expr.rewrite(context, v_shape.offset_left(2)?)
+                    .map(|s| format!("..{}", s))
+            }
+            StructLitField::Rest(_) => Some("..".to_owned()),
+        };
+
+        let items = itemize_list(
+            context.snippet_provider,
+            field_iter,
+            "}",
+            ",",
+            span_lo,
+            span_hi,
+            rewrite,
+            body_lo,
+            span.hi(),
+            false,
+        );
+        let item_vec = items.collect::<Vec<_>>();
+
+        let tactic = struct_lit_tactic(h_shape, context, &item_vec);
+        let nested_shape = shape_for_tactic(tactic, h_shape, v_shape);
+
+        let ends_with_comma = span_ends_with_comma(context, span);
+        let force_no_trailing_comma = context.inside_macro() && !ends_with_comma;
+
+        let fmt = struct_lit_formatting(
+            nested_shape,
+            tactic,
+            context,
+            force_no_trailing_comma || has_base_or_rest || !context.use_block_indent(),
+        );
+
+        write_list(&item_vec, &fmt)?
+    };
+
+    let fields_str =
+        wrap_struct_field(context, attrs, &fields_str, shape, v_shape, one_line_width)?;
+    Some(format!(".{{{fields_str}}}"))
 
     // FIXME if context.config.indent_style() == Visual, but we run out
     // of space, we should fall back to BlockIndent.

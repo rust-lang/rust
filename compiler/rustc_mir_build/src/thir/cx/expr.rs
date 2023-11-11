@@ -564,6 +564,38 @@ impl<'tcx> Cx<'tcx> {
                 }
             },
 
+            hir::ExprKind::InferStruct(ref fields, ref base) => match expr_ty.kind() {
+                ty::Adt(adt, args) => match adt.adt_kind() {
+                    AdtKind::Struct | AdtKind::Union => {
+                        let user_provided_types = self.typeck_results().user_provided_types();
+                        let user_ty = user_provided_types.get(expr.hir_id).copied().map(Box::new);
+                        debug!("make_mirror_unadjusted: (inferred struct/union) user_ty={:?}", user_ty);
+                        let base = base.map(|base| FruInfo {
+                            base: self.mirror_expr(base),
+                            field_types: self.typeck_results().fru_field_types()[expr.hir_id]
+                                .iter()
+                                .copied()
+                                .collect(),
+                        });
+                        let fields = self.field_refs(fields);
+                        ExprKind::Adt(Box::new(AdtExpr {
+                            adt_def: *adt,
+                            variant_index: FIRST_VARIANT,
+                            args,
+                            user_ty,
+                            fields,
+                            base,
+                        }))
+                    }
+                    AdtKind::Enum => {
+                        span_bug!(expr.span, "Enums struct initializations cannot be inferred yet");
+                    }
+                },
+                _ => {
+                    span_bug!(expr.span, "unexpected type for inferred struct literal: {:?}", expr_ty);
+                }
+            },
+
             hir::ExprKind::Closure { .. } => {
                 let closure_ty = self.typeck_results().expr_ty(expr);
                 let (def_id, args, movability) = match *closure_ty.kind() {

@@ -347,6 +347,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ExprKind::Struct(qpath, fields, ref base_expr) => {
                 self.check_expr_struct(expr, expected, qpath, fields, base_expr)
             }
+            ExprKind::InferStruct(fields, ref base_expr) => {
+                self.check_expr_infer_struct(expr, expected, fields, base_expr)
+            }
             ExprKind::Field(base, field) => self.check_field(expr, &base, field, expected),
             ExprKind::Index(base, idx, brackets_span) => {
                 self.check_expr_index(base, idx, expr, brackets_span)
@@ -1652,6 +1655,43 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             expected,
             expr,
             qpath.span(),
+            variant,
+            fields,
+            base_expr,
+        );
+
+        self.require_type_is_sized(adt_ty, expr.span, traits::StructInitializerSized);
+        adt_ty
+    }
+
+    fn check_expr_infer_struct(
+        &self,
+        expr: &hir::Expr<'_>,
+        expected: Expectation<'tcx>,
+        fields: &'tcx [hir::ExprField<'tcx>],
+        base_expr: &'tcx Option<&'tcx hir::Expr<'tcx>>,
+    ) -> Ty<'tcx> {
+        let adt_ty = match expected.only_has_type(self) {
+            Some(t) => t,
+            None => {
+                return Ty::new_error_with_message(self.tcx, expr.span, "Could not convert expectation into type contraint.");
+            },
+        };
+
+        // Prohibit struct expressions when non-exhaustive flag is set.
+        let adt = adt_ty.ty_adt_def().expect("`check_struct_path` returned non-ADT type");
+        let variant = adt.variant(FIRST_VARIANT);
+        if !adt.did().is_local() && variant.is_field_list_non_exhaustive() {
+            self.tcx
+                .sess
+                .emit_err(StructExprNonExhaustive { span: expr.span, what: adt.variant_descr() });
+        }
+
+        self.check_expr_struct_fields(
+            adt_ty,
+            expected,
+            expr,
+            expr.span,
             variant,
             fields,
             base_expr,

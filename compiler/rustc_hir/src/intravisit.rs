@@ -708,6 +708,10 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
             walk_list!(visitor, visit_expr_field, fields);
             walk_list!(visitor, visit_expr, optional_base);
         }
+        ExprKind::InferStruct(fields, ref optional_base) => {
+            walk_list!(visitor, visit_expr_field, fields);
+            walk_list!(visitor, visit_expr, optional_base);
+        }
         ExprKind::Tup(subexpressions) => {
             walk_list!(visitor, visit_expr, subexpressions);
         }

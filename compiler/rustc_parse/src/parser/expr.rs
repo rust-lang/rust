@@ -1377,6 +1377,8 @@ impl<'a> Parser<'a> {
                 this.parse_expr_builtin()
             } else if this.check_path() {
                 this.parse_expr_path_start()
+            } else if this.check_struct_infer() {
+                this.parse_expr_infer_struct(true)
             } else if this.check_keyword(kw::Move)
                 || this.check_keyword(kw::Static)
                 || this.check_const_closure()
@@ -3302,6 +3304,29 @@ impl<'a> Parser<'a> {
         Ok(self.mk_expr(span, expr))
     }
 
+    pub(super) fn parse_expr_infer_struct(
+        &mut self,
+        recover: bool,
+    ) -> PResult<'a, P<Expr>> {
+        let lo = self.token.span;
+        self.expect(&token::Dot)?;
+        self.expect(&token::OpenDelim(Delimiter::Brace))?;
+
+        let (fields, base, _) =
+            self.parse_struct_fields(
+                ast::Path{
+                    span: lo,
+                    segments: ThinVec::new(),
+                    tokens: None,
+                },
+                recover,
+                Delimiter::Brace,
+            )?;
+        let span = lo.to(self.token.span);
+        self.expect(&token::CloseDelim(Delimiter::Brace))?;
+        Ok(self.mk_expr(span, ExprKind::InferStruct(P(ast::InferStructExpr { fields, rest: base }))))
+    }
+
     /// Use in case of error after field-looking code: `S { foo: () with a }`.
     fn find_struct_error_after_field_looking_code(&self) -> Option<ExprField> {
         match self.token.ident() {
@@ -3636,6 +3661,7 @@ impl MutVisitor for CondChecker<'_> {
             | ExprKind::OffsetOf(_, _)
             | ExprKind::MacCall(_)
             | ExprKind::Struct(_)
+            | ExprKind::InferStruct(_)
             | ExprKind::Repeat(_, _)
             | ExprKind::Yield(_)
             | ExprKind::Yeet(_)

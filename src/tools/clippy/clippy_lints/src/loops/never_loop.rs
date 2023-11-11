@@ -173,6 +173,14 @@ fn never_loop_expr<'tcx>(
                 fields
             }
         },
+        ExprKind::InferStruct(fields, base) => {
+            let fields = never_loop_expr_all(cx, fields.iter().map(|f| f.expr), local_labels, main_loop_id);
+            if let Some(base) = base {
+                combine_seq(fields, || never_loop_expr(cx, base, local_labels, main_loop_id))
+            } else {
+                fields
+            }
+        },
         ExprKind::Call(e, es) => never_loop_expr_all(cx, once(e).chain(es.iter()), local_labels, main_loop_id),
         ExprKind::Binary(_, e1, e2)
         | ExprKind::Assign(e1, e2, _)

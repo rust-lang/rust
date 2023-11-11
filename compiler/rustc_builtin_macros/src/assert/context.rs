@@ -278,6 +278,14 @@ impl<'cx, 'a> Context<'cx, 'a> {
                     self.manage_cond_expr(local_expr);
                 }
             }
+            ExprKind::InferStruct(elem) => {
+                for field in &mut elem.fields {
+                    self.manage_cond_expr(&mut field.expr);
+                }
+                if let StructRest::Base(local_expr) = &mut elem.rest {
+                    self.manage_cond_expr(local_expr);
+                }
+            }
             ExprKind::Tup(local_exprs) => {
                 for local_expr in local_exprs {
                     self.manage_cond_expr(local_expr);

@@ -807,6 +807,14 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
                 StructRest::None => {}
             }
         }
+        ExprKind::InferStruct(se) => {
+            walk_list!(visitor, visit_expr_field, &se.fields);
+            match &se.rest {
+                StructRest::Base(expr) => visitor.visit_expr(expr),
+                StructRest::Rest(_span) => {}
+                StructRest::None => {}
+            }
+        }
         ExprKind::Tup(subexpressions) => {
             walk_list!(visitor, visit_expr, subexpressions);
         }

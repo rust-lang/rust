@@ -1252,6 +1252,7 @@ impl Expr {
             ExprKind::OffsetOf(..) => ExprPrecedence::OffsetOf,
             ExprKind::MacCall(..) => ExprPrecedence::Mac,
             ExprKind::Struct(..) => ExprPrecedence::Struct,
+            ExprKind::InferStruct(..) => ExprPrecedence::Struct,
             ExprKind::Repeat(..) => ExprPrecedence::Repeat,
             ExprKind::Paren(..) => ExprPrecedence::Paren,
             ExprKind::Try(..) => ExprPrecedence::Try,
@@ -1344,6 +1345,12 @@ pub enum StructRest {
 pub struct StructExpr {
     pub qself: Option<P<QSelf>>,
     pub path: Path,
+    pub fields: ThinVec<ExprField>,
+    pub rest: StructRest,
+}
+
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub struct InferStructExpr {
     pub fields: ThinVec<ExprField>,
     pub rest: StructRest,
 }
@@ -1459,6 +1466,7 @@ pub enum ExprKind {
     ///
     /// E.g., `Foo {x: 1, y: 2}`, or `Foo {x: 1, .. rest}`.
     Struct(P<StructExpr>),
+    InferStruct(P<InferStructExpr>),
 
     /// An array literal constructed from one repeated element.
     ///

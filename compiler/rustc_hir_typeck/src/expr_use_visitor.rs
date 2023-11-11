@@ -233,6 +233,10 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                 self.walk_struct_expr(fields, opt_with);
             }
 
+            hir::ExprKind::InferStruct(fields, ref opt_with) => {
+                self.walk_struct_expr(fields, opt_with);
+            }
+
             hir::ExprKind::Tup(exprs) => {
                 self.consume_exprs(exprs);
             }

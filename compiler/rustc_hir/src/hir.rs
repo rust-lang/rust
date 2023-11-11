@@ -1736,6 +1736,7 @@ impl Expr<'_> {
             ExprKind::InlineAsm(..) => ExprPrecedence::InlineAsm,
             ExprKind::OffsetOf(..) => ExprPrecedence::OffsetOf,
             ExprKind::Struct(..) => ExprPrecedence::Struct,
+            ExprKind::InferStruct(..) => ExprPrecedence::Struct,
             ExprKind::Repeat(..) => ExprPrecedence::Repeat,
             ExprKind::Yield(..) => ExprPrecedence::Yield,
             ExprKind::Err(_) => ExprPrecedence::Err,
@@ -1780,6 +1781,7 @@ impl Expr<'_> {
             | ExprKind::Call(..)
             | ExprKind::MethodCall(..)
             | ExprKind::Struct(..)
+            | ExprKind::InferStruct(..)
             | ExprKind::Tup(..)
             | ExprKind::If(..)
             | ExprKind::Match(..)
@@ -1853,6 +1855,11 @@ impl Expr<'_> {
                 base.can_have_side_effects()
             }
             ExprKind::Struct(_, fields, init) => fields
+                .iter()
+                .map(|field| field.expr)
+                .chain(init.into_iter())
+                .any(|e| e.can_have_side_effects()),
+            ExprKind::InferStruct(fields, init) => fields
                 .iter()
                 .map(|field| field.expr)
                 .chain(init.into_iter())
@@ -2057,6 +2064,8 @@ pub enum ExprKind<'hir> {
     /// E.g., `Foo {x: 1, y: 2}`, or `Foo {x: 1, .. base}`,
     /// where `base` is the `Option<Expr>`.
     Struct(&'hir QPath<'hir>, &'hir [ExprField<'hir>], Option<&'hir Expr<'hir>>),
+
+    InferStruct(&'hir [ExprField<'hir>], Option<&'hir Expr<'hir>>),
 
     /// An array literal constructed from one repeated element.
     ///

@@ -278,7 +278,10 @@ impl<'tcx> TypeckResults<'tcx> {
     }
 
     pub fn field_index(&self, id: hir::HirId) -> FieldIdx {
-        self.field_indices().get(id).cloned().expect("no index for a field")
+        match self.field_indices().get(id).cloned() {
+            Some(id) => id,
+            None => panic!("No index for hir {}", id.to_string())
+        }
     }
 
     pub fn opt_field_index(&self, id: hir::HirId) -> Option<FieldIdx> {

@@ -584,6 +584,16 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 });
                 base.if_some(|e| self.expr(e));
             },
+            ExprKind::InferStruct(fields, base) => {
+                bind!(self, fields);
+                opt_bind!(self, base);
+                kind!("InferStruct({fields}, {base})");
+                self.slice(fields, |field| {
+                    self.ident(field!(field.ident));
+                    self.expr(field!(field.expr));
+                });
+                base.if_some(|e| self.expr(e));
+            },
             ExprKind::ConstBlock(_) => kind!("ConstBlock(_)"),
             ExprKind::Repeat(value, length) => {
                 bind!(self, value, length);

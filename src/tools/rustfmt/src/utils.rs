@@ -469,6 +469,7 @@ pub(crate) fn is_block_expr(context: &RewriteContext<'_>, expr: &ast::Expr, repr
         | ast::ExprKind::MethodCall(..)
         | ast::ExprKind::Array(..)
         | ast::ExprKind::Struct(..)
+        | ast::ExprKind::InferStruct(..)
         | ast::ExprKind::While(..)
         | ast::ExprKind::If(..)
         | ast::ExprKind::Block(..)

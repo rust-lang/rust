@@ -181,6 +181,53 @@ impl<'a> State<'a> {
         self.word("}");
     }
 
+    fn print_expr_infer_struct(
+        &mut self,
+        fields: &[ast::ExprField],
+        rest: &ast::StructRest,
+    ) {
+        self.word(".{");
+        let has_rest = match rest {
+            ast::StructRest::Base(_) | ast::StructRest::Rest(_) => true,
+            ast::StructRest::None => false,
+        };
+        if fields.is_empty() && !has_rest {
+            self.word("}");
+            return;
+        }
+        self.cbox(0);
+        for field in fields.iter().delimited() {
+            self.maybe_print_comment(field.span.hi());
+            self.print_outer_attributes(&field.attrs);
+            if field.is_first {
+                self.space_if_not_bol();
+            }
+            if !field.is_shorthand {
+                self.print_ident(field.ident);
+                self.word_nbsp(":");
+            }
+            self.print_expr(&field.expr);
+            if !field.is_last || has_rest {
+                self.word_space(",");
+            } else {
+                self.trailing_comma_or_space();
+            }
+        }
+        if has_rest {
+            if fields.is_empty() {
+                self.space();
+            }
+            self.word("..");
+            if let ast::StructRest::Base(expr) = rest {
+                self.print_expr(expr);
+            }
+            self.space();
+        }
+        self.offset(-INDENT_UNIT);
+        self.end();
+        self.word("}");
+    }
+
     fn print_expr_tup(&mut self, exprs: &[P<ast::Expr>]) {
         self.popen();
         self.commasep_exprs(Inconsistent, exprs);
@@ -307,6 +354,9 @@ impl<'a> State<'a> {
             }
             ast::ExprKind::Struct(se) => {
                 self.print_expr_struct(&se.qself, &se.path, &se.fields, &se.rest);
+            }
+            ast::ExprKind::InferStruct(se) => {
+                self.print_expr_infer_struct(&se.fields, &se.rest);
             }
             ast::ExprKind::Tup(exprs) => {
                 self.print_expr_tup(exprs);
