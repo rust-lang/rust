@@ -56,13 +56,13 @@ impl LocationTable {
     pub fn start_index(&self, location: Location) -> LocationIndex {
         let Location { block, statement_index } = location;
         let start_index = self.statements_before_block[block];
-        LocationIndex::from_usize(start_index + statement_index * 2)
+        LocationIndex::from_usize(start_index + statement_index as usize * 2)
     }
 
     pub fn mid_index(&self, location: Location) -> LocationIndex {
         let Location { block, statement_index } = location;
         let start_index = self.statements_before_block[block];
-        LocationIndex::from_usize(start_index + statement_index * 2 + 1)
+        LocationIndex::from_usize(start_index + statement_index as usize * 2 + 1)
     }
 
     pub fn to_location(&self, index: LocationIndex) -> RichLocation {
@@ -92,9 +92,9 @@ impl LocationTable {
 
         let statement_index = (point_index - first_index) / 2;
         if index.is_start() {
-            RichLocation::Start(Location { block, statement_index })
+            RichLocation::Start(Location { block, statement_index: statement_index as u32 })
         } else {
-            RichLocation::Mid(Location { block, statement_index })
+            RichLocation::Mid(Location { block, statement_index: statement_index as u32 })
         }
     }
 }

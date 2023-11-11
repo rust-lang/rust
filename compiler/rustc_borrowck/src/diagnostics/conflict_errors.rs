@@ -2666,8 +2666,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             }
 
             // check for moves
-            let stmt_kind =
-                self.body[location.block].statements.get(location.statement_index).map(|s| &s.kind);
+            let stmt_kind = self.body[location.block]
+                .statements
+                .get(location.statement_index as usize)
+                .map(|s| &s.kind);
             if let Some(StatementKind::StorageDead(..)) = stmt_kind {
                 // this analysis only tries to find moves explicitly
                 // written by the user, so we ignore the move-outs
@@ -3059,7 +3061,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let location = borrow.reserve_location;
         debug!("annotate_argument_and_return_for_borrow: location={:?}", location);
         if let Some(Statement { kind: StatementKind::Assign(box (reservation, _)), .. }) =
-            &self.body[location.block].statements.get(location.statement_index)
+            &self.body[location.block].statements.get(location.statement_index as usize)
         {
             debug!("annotate_argument_and_return_for_borrow: reservation={:?}", reservation);
             // Check that the initial assignment of the reserve location is into a temporary.
@@ -3071,7 +3073,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             // Next, look through the rest of the block, checking if we are assigning the
             // `target` (that is, the place that contains our borrow) to anything.
             let mut annotated_closure = None;
-            for stmt in &self.body[location.block].statements[location.statement_index + 1..] {
+            for stmt in
+                &self.body[location.block].statements[(location.statement_index as usize) + 1..]
+            {
                 debug!(
                     "annotate_argument_and_return_for_borrow: target={:?} stmt={:?}",
                     target, stmt

@@ -121,7 +121,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
 
             let loc = mir::Location {
                 block: bb,
-                statement_index: bbdata.statements.len(),
+                statement_index: bbdata.statements.len() as u32,
             };
 
             // `Local` to be cloned, and a local of `clone` call's destination
@@ -163,7 +163,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
                     unwrap_or_continue!(find_stmt_assigns_to(cx, mir, pred_arg, true, ps[0]));
                 let loc = mir::Location {
                     block: bb,
-                    statement_index: mir.basic_blocks[bb].statements.len(),
+                    statement_index: mir.basic_blocks[bb].statements.len() as u32,
                 };
 
                 // This can be turned into `res = move local` if `arg` and `cloned` are not borrowed
@@ -362,7 +362,7 @@ fn visit_clone_usage(cloned: mir::Local, clone: mir::Local, mir: &mir::Body<'_>,
         mir,
         mir::Location {
             block: bb,
-            statement_index: mir.basic_blocks[bb].statements.len(),
+            statement_index: mir.basic_blocks[bb].statements.len() as u32,
         },
     )
     .map(|mut vec| (vec.remove(0), vec.remove(0)))

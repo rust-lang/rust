@@ -306,11 +306,11 @@ pub(super) fn gather_moves<'tcx>(
 
     for (bb, block) in body.basic_blocks.iter_enumerated() {
         for (i, stmt) in block.statements.iter().enumerate() {
-            let source = Location { block: bb, statement_index: i };
+            let source = Location { block: bb, statement_index: i as u32 };
             builder.gather_statement(source, stmt);
         }
 
-        let terminator_loc = Location { block: bb, statement_index: block.statements.len() };
+        let terminator_loc = Location { block: bb, statement_index: block.statements.len() as u32 };
         builder.gather_terminator(terminator_loc, block.terminator());
     }
 

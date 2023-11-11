@@ -163,7 +163,7 @@ pub fn local_assignments(mir: &Body<'_>, local: Local) -> Vec<Location> {
     let mut locations = Vec::new();
     for (block, data) in mir.basic_blocks.iter_enumerated() {
         for statement_index in 0..=data.statements.len() {
-            let location = Location { block, statement_index };
+            let location = Location { block, statement_index: statement_index as u32 };
             if is_local_assignment(mir, local, location) {
                 locations.push(location);
             }
@@ -177,8 +177,8 @@ pub fn local_assignments(mir: &Body<'_>, local: Local) -> Vec<Location> {
 fn is_local_assignment(mir: &Body<'_>, local: Local, location: Location) -> bool {
     let Location { block, statement_index } = location;
     let basic_block = &mir.basic_blocks[block];
-    if statement_index < basic_block.statements.len() {
-        let statement = &basic_block.statements[statement_index];
+    if (statement_index as usize) < basic_block.statements.len() {
+        let statement = &basic_block.statements[statement_index as usize];
         if let StatementKind::Assign(box (place, _)) = statement.kind {
             place.as_local() == Some(local)
         } else {

@@ -116,8 +116,8 @@ impl<D: Direction> MockAnalysis<'_, D> {
             Effect::Primary => loc.statement_index * 2 + 1,
         };
 
-        assert!(idx < Self::BASIC_BLOCK_OFFSET, "Too many statements in basic block");
-        idx
+        assert!((idx as usize) < Self::BASIC_BLOCK_OFFSET, "Too many statements in basic block");
+        idx as usize
     }
 
     /// Returns the expected state at the given `SeekTarget`.
@@ -143,7 +143,7 @@ impl<D: Direction> MockAnalysis<'_, D> {
         let mut pos = if D::IS_FORWARD {
             Effect::Before.at_index(0)
         } else {
-            Effect::Before.at_index(self.body[block].statements.len())
+            Effect::Before.at_index(self.body[block].statements.len() as u32)
         };
 
         loop {
@@ -251,7 +251,7 @@ impl SeekTarget {
         let statements_and_terminator = (0..=body[block].statements.len())
             .flat_map(|i| (0..2).map(move |j| (i, j)))
             .map(move |(i, kind)| {
-                let loc = Location { block, statement_index: i };
+                let loc = Location { block, statement_index: i as u32 };
                 match kind {
                     0 => SeekTarget::Before(loc),
                     1 => SeekTarget::After(loc),

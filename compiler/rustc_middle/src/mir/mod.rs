@@ -510,10 +510,10 @@ impl<'tcx> Body<'tcx> {
         let block = &self[location.block];
         let stmts = &block.statements;
         let idx = location.statement_index;
-        if idx < stmts.len() {
-            &stmts[idx].source_info
+        if (idx as usize) < stmts.len() {
+            &stmts[idx as usize].source_info
         } else {
-            assert_eq!(idx, stmts.len());
+            assert_eq!(idx as usize, stmts.len());
             &block.terminator().source_info
         }
     }
@@ -533,7 +533,7 @@ impl<'tcx> Body<'tcx> {
     /// Gets the location of the terminator for the given block.
     #[inline]
     pub fn terminator_loc(&self, bb: BasicBlock) -> Location {
-        Location { block: bb, statement_index: self[bb].statements.len() }
+        Location { block: bb, statement_index: self[bb].statements.len() as u32 }
     }
 
     pub fn stmt_at(&self, location: Location) -> Either<&Statement<'tcx>, &Terminator<'tcx>> {
@@ -541,7 +541,7 @@ impl<'tcx> Body<'tcx> {
         let block_data = &self.basic_blocks[block];
         block_data
             .statements
-            .get(statement_index)
+            .get(statement_index as usize)
             .map(Either::Left)
             .unwrap_or_else(|| Either::Right(block_data.terminator()))
     }
@@ -1545,7 +1545,7 @@ pub struct Location {
     /// The block that the location is within.
     pub block: BasicBlock,
 
-    pub statement_index: usize,
+    pub statement_index: u32,
 }
 
 impl fmt::Debug for Location {

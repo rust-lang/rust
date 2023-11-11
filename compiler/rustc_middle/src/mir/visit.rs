@@ -941,13 +941,13 @@ macro_rules! make_mir_visitor {
                 location: Location
             ) {
                 let basic_block = & $($mutability)? basic_blocks!(body, $($mutability, true)?)[location.block];
-                if basic_block.statements.len() == location.statement_index {
+                if basic_block.statements.len() == (location.statement_index as usize) {
                     if let Some(ref $($mutability)? terminator) = basic_block.terminator {
                         self.visit_terminator(terminator, location)
                     }
                 } else {
                     let statement = & $($mutability)?
-                        basic_block.statements[location.statement_index];
+                        basic_block.statements[location.statement_index as usize];
                     self.visit_statement(statement, location)
                 }
             }

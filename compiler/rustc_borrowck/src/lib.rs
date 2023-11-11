@@ -1429,7 +1429,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
                         let body = self.body;
                         let bbd = &body[loc.block];
-                        let stmt = &bbd.statements[loc.statement_index];
+                        let stmt = &bbd.statements[loc.statement_index as usize];
                         debug!("temporary assigned in: stmt={:?}", stmt);
 
                         if let StatementKind::Assign(box (_, Rvalue::Ref(_, _, source))) = stmt.kind

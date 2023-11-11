@@ -83,7 +83,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     ) -> bool {
         debug!("add_moved_or_invoked_closure_note: location={:?} place={:?}", location, place);
         let mut target = place.local_or_deref_local();
-        for stmt in &self.body[location.block].statements[location.statement_index..] {
+        for stmt in &self.body[location.block].statements[(location.statement_index as usize)..] {
             debug!("add_moved_or_invoked_closure_note: stmt={:?} target={:?}", stmt, target);
             if let StatementKind::Assign(box (into, Rvalue::Use(from))) = &stmt.kind {
                 debug!("add_fnonce_closure_note: into={:?} from={:?}", into, from);
@@ -411,7 +411,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     let InitLocation::Statement(loc) = init.location else { continue };
 
                     let bbd = &self.body[loc.block];
-                    let is_terminator = bbd.statements.len() == loc.statement_index;
+                    let is_terminator = bbd.statements.len() == loc.statement_index as usize;
                     debug!(
                         "borrowed_content_source: loc={:?} is_terminator={:?}",
                         loc, is_terminator,
@@ -777,7 +777,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     ) -> UseSpans<'tcx> {
         use self::UseSpans::*;
 
-        let Some(stmt) = self.body[location.block].statements.get(location.statement_index) else {
+        let Some(stmt) =
+            self.body[location.block].statements.get(location.statement_index as usize)
+        else {
             return OtherUse(self.body.source_info(location).span);
         };
 
@@ -886,16 +888,17 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         use self::UseSpans::*;
         debug!("borrow_spans: use_span={:?} location={:?}", use_span, location);
 
-        let target = match self.body[location.block].statements.get(location.statement_index) {
-            Some(Statement { kind: StatementKind::Assign(box (place, _)), .. }) => {
-                if let Some(local) = place.as_local() {
-                    local
-                } else {
-                    return OtherUse(use_span);
+        let target =
+            match self.body[location.block].statements.get(location.statement_index as usize) {
+                Some(Statement { kind: StatementKind::Assign(box (place, _)), .. }) => {
+                    if let Some(local) = place.as_local() {
+                        local
+                    } else {
+                        return OtherUse(use_span);
+                    }
                 }
-            }
-            _ => return OtherUse(use_span),
-        };
+                _ => return OtherUse(use_span),
+            };
 
         if self.body.local_kind(target) != LocalKind::Temp {
             // operands are always temporaries.
@@ -913,7 +916,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             };
 
         let statements =
-            self.body[location.block].statements[location.statement_index + 1..].iter();
+            self.body[location.block].statements[location.statement_index as usize + 1..].iter();
 
         for stmt in statements.chain(maybe_additional_statement) {
             if let StatementKind::Assign(box (_, Rvalue::Aggregate(kind, places))) = &stmt.kind {

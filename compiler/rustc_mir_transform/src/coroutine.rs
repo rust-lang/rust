@@ -689,7 +689,7 @@ fn locals_live_across_suspend_points<'tcx>(
 
     for (block, data) in body.basic_blocks.iter_enumerated() {
         if let TerminatorKind::Yield { .. } = data.terminator().kind {
-            let loc = Location { block, statement_index: data.statements.len() };
+            let loc = Location { block, statement_index: data.statements.len() as u32 };
 
             liveness.seek_to_block_end(block);
             let mut live_locals: BitSet<_> = BitSet::new_empty(body.local_decls.len());

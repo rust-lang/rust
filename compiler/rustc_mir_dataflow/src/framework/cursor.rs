@@ -264,7 +264,7 @@ where
             )
         } else {
             self.pos.curr_effect_index.map_or_else(
-                || Effect::Before.at_index(block_data.statements.len()),
+                || Effect::Before.at_index(block_data.statements.len() as u32),
                 EffectIndex::next_in_backward_order,
             )
         };

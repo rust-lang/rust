@@ -72,12 +72,12 @@ fn find_optimization_opportunities<'tcx>(body: &Body<'tcx>) -> Vec<(Local, Const
             let bb = &body[location.block];
 
             // The value is assigned as the result of a call, not a constant
-            if bb.statements.len() == location.statement_index {
+            if bb.statements.len() == location.statement_index as usize {
                 continue;
             }
 
             if let StatementKind::Assign(box (p, Rvalue::Use(Operand::Constant(box c)))) =
-                &bb.statements[location.statement_index].kind
+                &bb.statements[location.statement_index as usize].kind
             {
                 if let Some(local) = p.as_local() {
                     eligible_locals.push((local, *c));

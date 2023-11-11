@@ -127,7 +127,7 @@ pub fn sanity_check_via_rustc_peek<'tcx, A>(
                 PeekCallKind::ByVal,
                 mir::Rvalue::Use(mir::Operand::Move(place) | mir::Operand::Copy(place)),
             ) => {
-                let loc = Location { block: bb, statement_index };
+                let loc = Location { block: bb, statement_index: statement_index as u32 };
                 cursor.seek_before_primary_effect(loc);
                 let (state, analysis) = cursor.get_with_analysis();
                 analysis.peek_at(tcx, *place, state, call);

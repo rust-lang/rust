@@ -50,7 +50,7 @@ impl<'cx, 'tcx> UseFinder<'cx, 'tcx> {
 
             let block_data = &self.body[p.block];
 
-            match self.def_use(p, block_data.visitable(p.statement_index)) {
+            match self.def_use(p, block_data.visitable(p.statement_index as usize)) {
                 Some(DefUseResult::Def) => {}
 
                 Some(DefUseResult::UseLive { local }) => {
@@ -62,7 +62,7 @@ impl<'cx, 'tcx> UseFinder<'cx, 'tcx> {
                 }
 
                 None => {
-                    if p.statement_index < block_data.statements.len() {
+                    if (p.statement_index as usize) < block_data.statements.len() {
                         queue.push_back(p.successor_within_block());
                     } else {
                         queue.extend(

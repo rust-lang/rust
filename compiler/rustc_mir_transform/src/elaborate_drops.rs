@@ -490,7 +490,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                         }
                     }
                 }
-                let loc = Location { block: bb, statement_index: i };
+                let loc = Location { block: bb, statement_index: i as u32 };
                 rustc_mir_dataflow::drop_flag_effects_for_location(
                     self.tcx,
                     self.body,
@@ -513,7 +513,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
             {
                 assert!(!self.patch.is_patched(bb));
 
-                let loc = Location { block: bb, statement_index: data.statements.len() };
+                let loc = Location { block: bb, statement_index: data.statements.len() as u32 };
                 let path = self.move_data().rev_lookup.find(destination.as_ref());
                 on_lookup_result_bits(self.tcx, self.body, self.move_data(), path, |child| {
                     self.set_drop_flag(loc, child, DropFlagState::Present)

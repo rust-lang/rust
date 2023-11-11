@@ -38,8 +38,8 @@ impl<'tcx> MirPass<'tcx> for CheckAlignment {
         for block in (0..basic_blocks.len()).rev() {
             let block = block.into();
             for statement_index in (0..basic_blocks[block].statements.len()).rev() {
-                let location = Location { block, statement_index };
-                let statement = &basic_blocks[block].statements[statement_index];
+                let location = Location { block, statement_index: statement_index as u32 };
+                let statement = &basic_blocks[block].statements[statement_index as usize];
                 let source_info = statement.source_info;
 
                 let mut finder =
@@ -140,7 +140,7 @@ fn split_block(
 
     // Drain every statement after this one and move the current terminator to a new basic block
     let new_block = BasicBlockData {
-        statements: block_data.statements.split_off(location.statement_index),
+        statements: block_data.statements.split_off(location.statement_index as usize),
         terminator: block_data.terminator.take(),
         is_cleanup: block_data.is_cleanup,
     };

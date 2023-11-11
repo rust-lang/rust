@@ -131,7 +131,7 @@ pub enum ScopeData {
 
 rustc_index::newtype_index! {
     /// Represents a subscope of `block` for a binding that is introduced
-    /// by `block.stmts[first_statement_index]`. Such subscopes represent
+    /// by `block.stmts[first_statement_index as usize]`. Such subscopes represent
     /// a suffix of the block. Note that each subscope does not include
     /// the initializer expression, if any, for the statement indexed by
     /// `first_statement_index`.

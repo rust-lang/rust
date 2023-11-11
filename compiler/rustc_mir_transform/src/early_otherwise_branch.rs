@@ -131,7 +131,7 @@ impl<'tcx> MirPass<'tcx> for EarlyOtherwiseBranch {
             };
             let parent_ty = parent_op.ty(body.local_decls(), tcx);
             let statements_before = bbs[parent].statements.len();
-            let parent_end = Location { block: parent, statement_index: statements_before };
+            let parent_end = Location { block: parent, statement_index: statements_before as u32 };
 
             let mut patch = MirPatch::new(body);
 

@@ -197,13 +197,13 @@ pub struct LocationMap<T> {
 impl<T> Index<Location> for LocationMap<T> {
     type Output = T;
     fn index(&self, index: Location) -> &Self::Output {
-        &self.map[index.block][index.statement_index]
+        &self.map[index.block][index.statement_index as usize]
     }
 }
 
 impl<T> IndexMut<Location> for LocationMap<T> {
     fn index_mut(&mut self, index: Location) -> &mut Self::Output {
-        &mut self.map[index.block][index.statement_index]
+        &mut self.map[index.block][index.statement_index as usize]
     }
 }
 

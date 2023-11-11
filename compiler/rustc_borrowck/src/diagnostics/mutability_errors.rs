@@ -296,7 +296,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                             ),
                         )),
                     ..
-                }) = &self.body[location.block].statements.get(location.statement_index)
+                }) = &self.body[location.block].statements.get(location.statement_index as usize)
                 {
                     match *decl.local_info() {
                         LocalInfo::User(BindingForm::Var(mir::VarBindingForm {
@@ -1107,7 +1107,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                                     _,
                                     mir::Rvalue::Use(mir::Operand::Copy(place)),
                                 )),
-                        }) = self.body[location.block].statements.get(location.statement_index)
+                        }) = self.body[location.block]
+                            .statements
+                            .get(location.statement_index as usize)
                         {
                             self.body.local_decls[place.local].source_info.span
                         } else {

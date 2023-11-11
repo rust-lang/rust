@@ -340,7 +340,7 @@ fn referent_used_exactly_once<'tcx>(
         && let Some(local) = expr_local(cx.tcx, reference)
         && let [location] = *local_assignments(mir, local).as_slice()
         && let block_data = &mir.basic_blocks[location.block]
-        && let Some(statement) = block_data.statements.get(location.statement_index)
+        && let Some(statement) = block_data.statements.get(location.statement_index as usize)
         && let StatementKind::Assign(box (_, Rvalue::Ref(_, _, place))) = statement.kind
         && !place.is_indirect_first_projection()
     {

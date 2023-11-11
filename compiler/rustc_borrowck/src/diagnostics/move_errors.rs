@@ -117,7 +117,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         if let Some(StatementKind::Assign(box (place, Rvalue::Use(Operand::Move(move_from))))) =
             self.body.basic_blocks[location.block]
                 .statements
-                .get(location.statement_index)
+                .get(location.statement_index as usize)
                 .map(|stmt| &stmt.kind)
         {
             if let Some(local) = place.as_local() {

@@ -32,7 +32,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         };
         let basic_block = &self.body().basic_blocks[loc.block];
 
-        if let Some(stmt) = basic_block.statements.get(loc.statement_index) {
+        if let Some(stmt) = basic_block.statements.get(loc.statement_index as usize) {
             let old_frames = self.frame_idx();
             self.statement(stmt)?;
             // Make sure we are not updating `statement_index` of the wrong frame.

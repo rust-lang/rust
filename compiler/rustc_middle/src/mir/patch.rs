@@ -126,7 +126,7 @@ impl<'tcx> MirPatch<'tcx> {
             Some(index) => self.new_blocks[index].statements.len(),
             None => body[bb].statements.len(),
         };
-        Location { block: bb, statement_index: offset }
+        Location { block: bb, statement_index: offset as u32 }
     }
 
     pub fn new_local_with_info(
@@ -214,13 +214,13 @@ impl<'tcx> MirPatch<'tcx> {
             let source_info = Self::source_info_for_index(&body[loc.block], loc);
             body[loc.block]
                 .statements
-                .insert(loc.statement_index, Statement { source_info, kind: stmt });
+                .insert(loc.statement_index as usize, Statement { source_info, kind: stmt });
             delta += 1;
         }
     }
 
     pub fn source_info_for_index(data: &BasicBlockData<'_>, loc: Location) -> SourceInfo {
-        match data.statements.get(loc.statement_index) {
+        match data.statements.get(loc.statement_index as usize) {
             Some(stmt) => stmt.source_info,
             None => data.terminator().source_info,
         }

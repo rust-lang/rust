@@ -78,14 +78,14 @@ impl Direction for Backward {
         A: Analysis<'tcx>,
     {
         let terminator = block_data.terminator();
-        let location = Location { block, statement_index: block_data.statements.len() };
+        let location = Location { block, statement_index: block_data.statements.len() as u32 };
         analysis.apply_before_terminator_effect(state, terminator, location);
         let edges = analysis.apply_terminator_effect(state, terminator, location);
         if let Some(statement_effect) = statement_effect {
             statement_effect(block, state)
         } else {
             for (statement_index, statement) in block_data.statements.iter().enumerate().rev() {
-                let location = Location { block, statement_index };
+                let location = Location { block, statement_index: statement_index as u32 };
                 analysis.apply_before_statement_effect(state, statement, location);
                 analysis.apply_statement_effect(state, statement, location);
             }
@@ -102,7 +102,7 @@ impl Direction for Backward {
         A: GenKillAnalysis<'tcx>,
     {
         for (statement_index, statement) in block_data.statements.iter().enumerate().rev() {
-            let location = Location { block, statement_index };
+            let location = Location { block, statement_index: statement_index as u32 };
             analysis.before_statement_effect(trans, statement, location);
             analysis.statement_effect(trans, statement, location);
         }
@@ -120,26 +120,26 @@ impl Direction for Backward {
         let (from, to) = (*effects.start(), *effects.end());
         let terminator_index = block_data.statements.len();
 
-        assert!(from.statement_index <= terminator_index);
+        assert!((from.statement_index as usize) <= terminator_index);
         assert!(!to.precedes_in_backward_order(from));
 
         // Handle the statement (or terminator) at `from`.
 
         let next_effect = match from.effect {
             // If we need to apply the terminator effect in all or in part, do so now.
-            _ if from.statement_index == terminator_index => {
+            _ if (from.statement_index as usize) == terminator_index => {
                 let location = Location { block, statement_index: from.statement_index };
                 let terminator = block_data.terminator();
 
                 if from.effect == Effect::Before {
                     analysis.apply_before_terminator_effect(state, terminator, location);
-                    if to == Effect::Before.at_index(terminator_index) {
+                    if to == Effect::Before.at_index(terminator_index as u32) {
                         return;
                     }
                 }
 
                 analysis.apply_terminator_effect(state, terminator, location);
-                if to == Effect::Primary.at_index(terminator_index) {
+                if to == Effect::Primary.at_index(terminator_index as u32) {
                     return;
                 }
 
@@ -150,7 +150,7 @@ impl Direction for Backward {
 
             Effect::Primary => {
                 let location = Location { block, statement_index: from.statement_index };
-                let statement = &block_data.statements[from.statement_index];
+                let statement = &block_data.statements[from.statement_index as usize];
 
                 analysis.apply_statement_effect(state, statement, location);
                 if to == Effect::Primary.at_index(from.statement_index) {
@@ -167,7 +167,7 @@ impl Direction for Backward {
 
         for statement_index in (to.statement_index..next_effect).rev().map(|i| i + 1) {
             let location = Location { block, statement_index };
-            let statement = &block_data.statements[statement_index];
+            let statement = &block_data.statements[statement_index as usize];
             analysis.apply_before_statement_effect(state, statement, location);
             analysis.apply_statement_effect(state, statement, location);
         }
@@ -175,7 +175,7 @@ impl Direction for Backward {
         // Handle the statement at `to`.
 
         let location = Location { block, statement_index: to.statement_index };
-        let statement = &block_data.statements[to.statement_index];
+        let statement = &block_data.statements[to.statement_index as usize];
         analysis.apply_before_statement_effect(state, statement, location);
 
         if to.effect == Effect::Before {
@@ -199,7 +199,7 @@ impl Direction for Backward {
         vis.visit_block_end(results, &state, block_data, block);
 
         // Terminator
-        let loc = Location { block, statement_index: block_data.statements.len() };
+        let loc = Location { block, statement_index: block_data.statements.len() as u32 };
         let term = block_data.terminator();
         results.reconstruct_before_terminator_effect(state, term, loc);
         vis.visit_terminator_before_primary_effect(results, state, term, loc);
@@ -207,7 +207,7 @@ impl Direction for Backward {
         vis.visit_terminator_after_primary_effect(results, state, term, loc);
 
         for (statement_index, stmt) in block_data.statements.iter().enumerate().rev() {
-            let loc = Location { block, statement_index };
+            let loc = Location { block, statement_index: statement_index as u32 };
             results.reconstruct_before_statement_effect(state, stmt, loc);
             vis.visit_statement_before_primary_effect(results, state, stmt, loc);
             results.reconstruct_statement_effect(state, stmt, loc);
@@ -338,14 +338,14 @@ impl Direction for Forward {
             statement_effect(block, state)
         } else {
             for (statement_index, statement) in block_data.statements.iter().enumerate() {
-                let location = Location { block, statement_index };
+                let location = Location { block, statement_index: statement_index as u32 };
                 analysis.apply_before_statement_effect(state, statement, location);
                 analysis.apply_statement_effect(state, statement, location);
             }
         }
 
         let terminator = block_data.terminator();
-        let location = Location { block, statement_index: block_data.statements.len() };
+        let location = Location { block, statement_index: block_data.statements.len() as u32 };
         analysis.apply_before_terminator_effect(state, terminator, location);
         analysis.apply_terminator_effect(state, terminator, location)
     }
@@ -359,7 +359,7 @@ impl Direction for Forward {
         A: GenKillAnalysis<'tcx>,
     {
         for (statement_index, statement) in block_data.statements.iter().enumerate() {
-            let location = Location { block, statement_index };
+            let location = Location { block, statement_index: statement_index as u32 };
             analysis.before_statement_effect(trans, statement, location);
             analysis.statement_effect(trans, statement, location);
         }
@@ -377,7 +377,7 @@ impl Direction for Forward {
         let (from, to) = (*effects.start(), *effects.end());
         let terminator_index = block_data.statements.len();
 
-        assert!(to.statement_index <= terminator_index);
+        assert!((to.statement_index as usize) <= terminator_index);
         assert!(!to.precedes_in_forward_order(from));
 
         // If we have applied the before affect of the statement or terminator at `from` but not its
@@ -386,10 +386,10 @@ impl Direction for Forward {
         let first_unapplied_index = match from.effect {
             Effect::Before => from.statement_index,
 
-            Effect::Primary if from.statement_index == terminator_index => {
+            Effect::Primary if (from.statement_index as usize) == terminator_index => {
                 debug_assert_eq!(from, to);
 
-                let location = Location { block, statement_index: terminator_index };
+                let location = Location { block, statement_index: terminator_index as u32 };
                 let terminator = block_data.terminator();
                 analysis.apply_terminator_effect(state, terminator, location);
                 return;
@@ -397,7 +397,7 @@ impl Direction for Forward {
 
             Effect::Primary => {
                 let location = Location { block, statement_index: from.statement_index };
-                let statement = &block_data.statements[from.statement_index];
+                let statement = &block_data.statements[from.statement_index as usize];
                 analysis.apply_statement_effect(state, statement, location);
 
                 // If we only needed to apply the after effect of the statement at `idx`, we are done.
@@ -412,8 +412,8 @@ impl Direction for Forward {
         // Handle all statements between `from` and `to` whose effects must be applied in full.
 
         for statement_index in first_unapplied_index..to.statement_index {
-            let location = Location { block, statement_index };
-            let statement = &block_data.statements[statement_index];
+            let location = Location { block, statement_index: statement_index as u32 };
+            let statement = &block_data.statements[statement_index as usize];
             analysis.apply_before_statement_effect(state, statement, location);
             analysis.apply_statement_effect(state, statement, location);
         }
@@ -421,7 +421,7 @@ impl Direction for Forward {
         // Handle the statement or terminator at `to`.
 
         let location = Location { block, statement_index: to.statement_index };
-        if to.statement_index == terminator_index {
+        if (to.statement_index as usize) == terminator_index {
             let terminator = block_data.terminator();
             analysis.apply_before_terminator_effect(state, terminator, location);
 
@@ -429,7 +429,7 @@ impl Direction for Forward {
                 analysis.apply_terminator_effect(state, terminator, location);
             }
         } else {
-            let statement = &block_data.statements[to.statement_index];
+            let statement = &block_data.statements[to.statement_index as usize];
             analysis.apply_before_statement_effect(state, statement, location);
 
             if to.effect == Effect::Primary {
@@ -452,14 +452,14 @@ impl Direction for Forward {
         vis.visit_block_start(results, state, block_data, block);
 
         for (statement_index, stmt) in block_data.statements.iter().enumerate() {
-            let loc = Location { block, statement_index };
+            let loc = Location { block, statement_index: statement_index as u32 };
             results.reconstruct_before_statement_effect(state, stmt, loc);
             vis.visit_statement_before_primary_effect(results, state, stmt, loc);
             results.reconstruct_statement_effect(state, stmt, loc);
             vis.visit_statement_after_primary_effect(results, state, stmt, loc);
         }
 
-        let loc = Location { block, statement_index: block_data.statements.len() };
+        let loc = Location { block, statement_index: block_data.statements.len() as u32 };
         let term = block_data.terminator();
         results.reconstruct_before_terminator_effect(state, term, loc);
         vis.visit_terminator_before_primary_effect(results, state, term, loc);

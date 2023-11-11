@@ -136,9 +136,9 @@ impl SsaLocals {
                 ),
                 Set1::One(DefLocation::Body(loc)) => {
                     let bb = &mut basic_blocks[loc.block];
-                    let value = if loc.statement_index < bb.statements.len() {
+                    let value = if (loc.statement_index as usize) < bb.statements.len() {
                         // `loc` must point to a direct assignment to `local`.
-                        let stmt = &mut bb.statements[loc.statement_index];
+                        let stmt = &mut bb.statements[loc.statement_index as usize];
                         let StatementKind::Assign(box (target, ref mut rvalue)) = stmt.kind else {
                             bug!()
                         };
@@ -358,8 +358,10 @@ impl StorageLiveLocals {
         for (block, bbdata) in body.basic_blocks.iter_enumerated() {
             for (statement_index, statement) in bbdata.statements.iter().enumerate() {
                 if let StatementKind::StorageLive(local) = statement.kind {
-                    storage_live[local]
-                        .insert(DefLocation::Body(Location { block, statement_index }));
+                    storage_live[local].insert(DefLocation::Body(Location {
+                        block,
+                        statement_index: statement_index as u32,
+                    }));
                 }
             }
         }

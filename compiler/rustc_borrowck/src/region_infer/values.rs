@@ -55,7 +55,7 @@ impl RegionValueElements {
     pub(crate) fn point_from_location(&self, location: Location) -> PointIndex {
         let Location { block, statement_index } = location;
         let start_index = self.statements_before_block[block];
-        PointIndex::new(start_index + statement_index)
+        PointIndex::new(start_index + statement_index as usize)
     }
 
     /// Converts a `Location` into a `PointIndex`. O(1).
@@ -75,7 +75,7 @@ impl RegionValueElements {
         let block = self.basic_blocks[index];
         let start_index = self.statements_before_block[block];
         let statement_index = index.index() - start_index;
-        Location { block, statement_index }
+        Location { block, statement_index: statement_index as u32 }
     }
 
     /// Sometimes we get point-indices back from bitsets that may be

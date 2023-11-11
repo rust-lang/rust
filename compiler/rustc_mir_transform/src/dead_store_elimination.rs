@@ -46,7 +46,7 @@ pub fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 
     for (bb, bb_data) in traversal::preorder(body) {
         if let TerminatorKind::Call { ref args, .. } = bb_data.terminator().kind {
-            let loc = Location { block: bb, statement_index: bb_data.statements.len() };
+            let loc = Location { block: bb, statement_index: bb_data.statements.len() as u32 };
 
             // Position ourselves between the evaluation of `args` and the write to `destination`.
             live.seek_to_block_end(bb);
@@ -74,7 +74,7 @@ pub fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         }
 
         for (statement_index, statement) in bb_data.statements.iter().enumerate().rev() {
-            let loc = Location { block: bb, statement_index };
+            let loc = Location { block: bb, statement_index: statement_index as u32 };
             if let StatementKind::Assign(assign) = &statement.kind {
                 if !assign.1.is_safe_to_remove() {
                     continue;
@@ -113,7 +113,7 @@ pub fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 
     let bbs = body.basic_blocks.as_mut_preserves_cfg();
     for Location { block, statement_index } in patch {
-        bbs[block].statements[statement_index].make_nop();
+        bbs[block].statements[statement_index as usize].make_nop();
     }
     for (block, argument_index) in call_operands_to_move {
         let TerminatorKind::Call { ref mut args, .. } = bbs[block].terminator_mut().kind else {

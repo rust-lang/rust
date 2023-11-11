@@ -223,7 +223,10 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
                 return;
             }
 
-            cost.visit_statement(stmt, Location { block: bb, statement_index });
+            cost.visit_statement(
+                stmt,
+                Location { block: bb, statement_index: statement_index as u32 },
+            );
             if cost.cost() > MAX_COST {
                 return;
             }

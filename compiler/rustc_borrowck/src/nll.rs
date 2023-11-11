@@ -104,7 +104,8 @@ fn populate_polonius_move_facts(
         match init.location {
             InitLocation::Statement(location) => {
                 let block_data = &body[location.block];
-                let is_terminator = location.statement_index == block_data.statements.len();
+                let is_terminator =
+                    location.statement_index as usize == block_data.statements.len();
 
                 if is_terminator && init.kind == InitKind::NonPanicPathOnly {
                     // We are at the terminator of an init that has a panic path,

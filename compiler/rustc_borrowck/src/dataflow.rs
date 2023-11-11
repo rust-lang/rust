@@ -166,10 +166,10 @@ impl<'tcx> OutOfScopePrecomputer<'_, 'tcx> {
         if let Some(kill_stmt) = self.regioncx.first_non_contained_inclusive(
             borrow_region,
             first_block,
-            first_lo,
+            first_lo as usize,
             first_hi,
         ) {
-            let kill_location = Location { block: first_block, statement_index: kill_stmt };
+            let kill_location = Location { block: first_block, statement_index: kill_stmt as u32 };
             // If region does not contain a point at the location, then add to list and skip
             // successor locations.
             debug!("borrow {:?} gets killed at {:?}", borrow_index, kill_location);
@@ -198,7 +198,7 @@ impl<'tcx> OutOfScopePrecomputer<'_, 'tcx> {
             if let Some(kill_stmt) =
                 self.regioncx.first_non_contained_inclusive(borrow_region, block, 0, num_stmts)
             {
-                let kill_location = Location { block, statement_index: kill_stmt };
+                let kill_location = Location { block, statement_index: kill_stmt as u32 };
                 // If region does not contain a point at the location, then add to list and skip
                 // successor locations.
                 debug!("borrow {:?} gets killed at {:?}", borrow_index, kill_location);
@@ -313,9 +313,13 @@ impl<'tcx> PoloniusOutOfScopePrecomputer<'_, 'tcx> {
         let first_lo = loan_issued_at.statement_index;
         let first_hi = first_bb_data.statements.len();
 
-        if let Some(kill_location) =
-            self.loan_kill_location(loan_idx, loan_issued_at, first_block, first_lo, first_hi)
-        {
+        if let Some(kill_location) = self.loan_kill_location(
+            loan_idx,
+            loan_issued_at,
+            first_block,
+            first_lo as usize,
+            first_hi,
+        ) {
             debug!("loan {:?} gets killed at {:?}", loan_idx, kill_location);
             self.loans_out_of_scope_at_location.entry(kill_location).or_default().push(loan_idx);
 
@@ -373,7 +377,7 @@ impl<'tcx> PoloniusOutOfScopePrecomputer<'_, 'tcx> {
         end: usize,
     ) -> Option<Location> {
         for statement_index in start..=end {
-            let location = Location { block, statement_index };
+            let location = Location { block, statement_index: statement_index as u32 };
 
             // Check whether the issuing region can reach local regions that are live at this point:
             // - a loan is always live at its issuing location because it can reach the issuing

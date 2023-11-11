@@ -336,6 +336,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             NllRegionVariableOrigin::FreeRegion,
             |r| self.regioncx.provides_universal_region(r, borrow_region, outlived_region),
         );
+
         let BlameConstraint { category, from_closure, cause, .. } = blame_constraint;
 
         let outlived_fr_name = self.give_region_a_name(outlived_region);
@@ -479,7 +480,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 let kind = if let Some(&Statement {
                     kind: StatementKind::FakeRead(box (FakeReadCause::ForLet(_), place)),
                     ..
-                }) = block.statements.get(location.statement_index)
+                }) = block.statements.get(location.statement_index as usize)
                 {
                     if let Some(l) = place.as_local()
                         && let local_decl = &self.body.local_decls[l]
@@ -491,7 +492,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     }
                 } else if self.was_captured_by_trait_object(borrow) {
                     LaterUseKind::TraitCapture
-                } else if location.statement_index == block.statements.len() {
+                } else if location.statement_index as usize == block.statements.len() {
                     if let TerminatorKind::Call { func, call_source: CallSource::Normal, .. } =
                         &block.terminator().kind
                     {
@@ -531,7 +532,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         // Start at the reserve location, find the place that we want to see cast to a trait object.
         let location = borrow.reserve_location;
         let block = &self.body[location.block];
-        let stmt = block.statements.get(location.statement_index);
+        let stmt = block.statements.get(location.statement_index as usize);
         debug!("was_captured_by_trait_object: location={:?} stmt={:?}", location, stmt);
 
         // We make a `queue` vector that has the locations we want to visit. As of writing, this
@@ -554,9 +555,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             debug!("was_captured_by_trait: target={:?}", target);
             let block = &self.body[current_location.block];
             // We need to check the current location to find out if it is a terminator.
-            let is_terminator = current_location.statement_index == block.statements.len();
+            let is_terminator = current_location.statement_index as usize == block.statements.len();
             if !is_terminator {
-                let stmt = &block.statements[current_location.statement_index];
+                let stmt = &block.statements[current_location.statement_index as usize];
                 debug!("was_captured_by_trait_object: stmt={:?}", stmt);
 
                 // The only kind of statement that we care about is assignments...

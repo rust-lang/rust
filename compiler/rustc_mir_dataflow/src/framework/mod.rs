@@ -532,14 +532,14 @@ pub enum Effect {
 }
 
 impl Effect {
-    pub const fn at_index(self, statement_index: usize) -> EffectIndex {
+    pub const fn at_index(self, statement_index: u32) -> EffectIndex {
         EffectIndex { effect: self, statement_index }
     }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct EffectIndex {
-    statement_index: usize,
+    statement_index: u32,
     effect: Effect,
 }
 

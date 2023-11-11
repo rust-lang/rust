@@ -197,7 +197,7 @@ struct Unpromotable;
 impl<'tcx> Validator<'_, 'tcx> {
     fn validate_candidate(&mut self, candidate: Candidate) -> Result<(), Unpromotable> {
         let loc = candidate.location;
-        let statement = &self.body[loc.block].statements[loc.statement_index];
+        let statement = &self.body[loc.block].statements[loc.statement_index as usize];
         match &statement.kind {
             StatementKind::Assign(box (_, Rvalue::Ref(_, kind, place))) => {
                 // We can only promote interior borrows of promotable temps (non-temps
@@ -225,8 +225,8 @@ impl<'tcx> Validator<'_, 'tcx> {
         if let TempState::Defined { location: loc, .. } = self.temps[local] {
             let num_stmts = self.body[loc.block].statements.len();
 
-            if loc.statement_index < num_stmts {
-                let statement = &self.body[loc.block].statements[loc.statement_index];
+            if (loc.statement_index as usize) < num_stmts {
+                let statement = &self.body[loc.block].statements[loc.statement_index as usize];
                 match &statement.kind {
                     StatementKind::Assign(box (_, rhs)) => qualifs::in_rvalue::<Q, _>(
                         &self.ccx,
@@ -270,8 +270,8 @@ impl<'tcx> Validator<'_, 'tcx> {
                     let block = &self.body[loc.block];
                     let num_stmts = block.statements.len();
 
-                    if loc.statement_index < num_stmts {
-                        let statement = &block.statements[loc.statement_index];
+                    if (loc.statement_index as usize) < num_stmts {
+                        let statement = &block.statements[loc.statement_index as usize];
                         match &statement.kind {
                             StatementKind::Assign(box (_, rhs)) => self.validate_rvalue(rhs),
                             _ => {
@@ -325,7 +325,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                             if let TempState::Defined { location, .. } = self.temps[local] {
                                 let def_stmt = self.body[location.block]
                                     .statements
-                                    .get(location.statement_index);
+                                    .get(location.statement_index as usize);
                                 if let Some(Statement {
                                     kind:
                                         StatementKind::Assign(box (
@@ -368,8 +368,8 @@ impl<'tcx> Validator<'_, 'tcx> {
                             self.temps[local]
                         {
                             let block = &self.body[loc.block];
-                            if loc.statement_index < block.statements.len() {
-                                let statement = &block.statements[loc.statement_index];
+                            if (loc.statement_index as usize) < block.statements.len() {
+                                let statement = &block.statements[loc.statement_index as usize];
                                 match &statement.kind {
                                     StatementKind::Assign(box (
                                         _,
@@ -757,9 +757,10 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
 
         // First, take the Rvalue or Call out of the source MIR,
         // or duplicate it, depending on keep_original.
-        if loc.statement_index < num_stmts {
+        if (loc.statement_index as usize) < num_stmts {
             let (mut rvalue, source_info) = {
-                let statement = &mut self.source[loc.block].statements[loc.statement_index];
+                let statement =
+                    &mut self.source[loc.block].statements[loc.statement_index as usize];
                 let StatementKind::Assign(box (_, rhs)) = &mut statement.kind else {
                     span_bug!(statement.source_info.span, "{:?} is not an assignment", statement);
                 };
@@ -856,7 +857,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             let blocks = self.source.basic_blocks.as_mut();
             let local_decls = &mut self.source.local_decls;
             let loc = candidate.location;
-            let statement = &mut blocks[loc.block].statements[loc.statement_index];
+            let statement = &mut blocks[loc.block].statements[loc.statement_index as usize];
             let StatementKind::Assign(box (_, Rvalue::Ref(region, borrow_kind, place))) =
                 &mut statement.kind
             else {
@@ -907,10 +908,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         };
 
         assert_eq!(self.new_block(), START_BLOCK);
-        self.visit_rvalue(
-            &mut rvalue,
-            Location { block: START_BLOCK, statement_index: usize::MAX },
-        );
+        self.visit_rvalue(&mut rvalue, Location { block: START_BLOCK, statement_index: u32::MAX });
 
         let span = self.promoted.span;
         self.assign(RETURN_PLACE, rvalue, span);
@@ -945,7 +943,8 @@ pub fn promote_candidates<'tcx>(
     let mut extra_statements = vec![];
     for candidate in candidates.into_iter().rev() {
         let Location { block, statement_index } = candidate.location;
-        if let StatementKind::Assign(box (place, _)) = &body[block].statements[statement_index].kind
+        if let StatementKind::Assign(box (place, _)) =
+            &body[block].statements[statement_index as usize].kind
         {
             if let Some(local) = place.as_local() {
                 if temps[local] == TempState::PromotedOut {
@@ -993,7 +992,7 @@ pub fn promote_candidates<'tcx>(
     // has to be done in reverse location order, to not invalidate the rest.
     extra_statements.sort_by_key(|&(loc, _)| cmp::Reverse(loc));
     for (loc, statement) in extra_statements {
-        body[loc.block].statements.insert(loc.statement_index, statement);
+        body[loc.block].statements.insert(loc.statement_index as usize, statement);
     }
 
     // Eliminate assignments to, and drops of promoted temps.

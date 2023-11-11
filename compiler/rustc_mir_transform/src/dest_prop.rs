@@ -480,13 +480,13 @@ impl<'a, 'body, 'alloc, 'tcx> FilterInformation<'a, 'body, 'alloc, 'tcx> {
 
     fn internal_filter_liveness(&mut self) {
         for (block, data) in traversal::preorder(self.body) {
-            self.at = Location { block, statement_index: data.statements.len() };
+            self.at = Location { block, statement_index: data.statements.len() as u32 };
             self.live.seek_after_primary_effect(self.at);
             self.write_info.for_terminator(&data.terminator().kind);
             self.apply_conflicts();
 
             for (i, statement) in data.statements.iter().enumerate().rev() {
-                self.at = Location { block, statement_index: i };
+                self.at = Location { block, statement_index: i as u32 };
                 self.live.seek_after_primary_effect(self.at);
                 self.write_info.for_statement(&statement.kind, self.body);
                 self.apply_conflicts();
