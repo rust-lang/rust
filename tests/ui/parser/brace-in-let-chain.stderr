@@ -38,12 +38,9 @@ error: found a `{` in the middle of a let-chain
    |
 LL |         && let () = () {
    |                        ^
-   |
-note: you might have meant to continue the let-chain here
-  --> $DIR/brace-in-let-chain.rs:15:9
-   |
 LL |         && let () = ()
-   |         ^^^^^^
+   |         ------ you might have meant to continue the let-chain here
+   |
 help: consider removing this brace to parse the `let` as part of the same chain
    |
 LL -         && let () = () {
@@ -55,12 +52,9 @@ error: found a `{` in the middle of a let-chain
    |
 LL |         && let () = () {
    |                        ^
-   |
-note: you might have meant to continue the let-chain here
-  --> $DIR/brace-in-let-chain.rs:7:9
-   |
 LL |         && let () = ()
-   |         ^^^^^^
+   |         ------ you might have meant to continue the let-chain here
+   |
 help: consider removing this brace to parse the `let` as part of the same chain
    |
 LL -         && let () = () {
