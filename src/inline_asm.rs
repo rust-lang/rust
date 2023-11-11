@@ -42,8 +42,6 @@ pub(crate) fn codegen_inline_asm_terminator<'tcx>(
     options: InlineAsmOptions,
     destination: Option<mir::BasicBlock>,
 ) {
-    // FIXME add .eh_frame unwind info directives
-
     // Used by panic_abort on Windows, but uses a syntax which only happens to work with
     // asm!() by accident and breaks with the GNU assembler as well as global_asm!() for
     // the LLVM backend.
@@ -135,12 +133,33 @@ pub(crate) fn codegen_inline_asm_terminator<'tcx>(
         })
         .collect::<Vec<_>>();
 
+    codegen_inline_asm_inner(fx, template, &operands, options);
+
+    match destination {
+        Some(destination) => {
+            let destination_block = fx.get_block(destination);
+            fx.bcx.ins().jump(destination_block, &[]);
+        }
+        None => {
+            fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
+        }
+    }
+}
+
+fn codegen_inline_asm_inner<'tcx>(
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
+    template: &[InlineAsmTemplatePiece],
+    operands: &[CInlineAsmOperand<'tcx>],
+    options: InlineAsmOptions,
+) {
+    // FIXME add .eh_frame unwind info directives
+
     let mut asm_gen = InlineAssemblyGenerator {
         tcx: fx.tcx,
         arch: fx.tcx.sess.asm_arch.unwrap(),
         enclosing_def_id: fx.instance.def_id(),
         template,
-        operands: &operands,
+        operands,
         options,
         registers: Vec::new(),
         stack_slots_clobber: Vec::new(),
@@ -185,16 +204,6 @@ pub(crate) fn codegen_inline_asm_terminator<'tcx>(
     }
 
     call_inline_asm(fx, &asm_name, asm_gen.stack_slot_size, inputs, outputs);
-
-    match destination {
-        Some(destination) => {
-            let destination_block = fx.get_block(destination);
-            fx.bcx.ins().jump(destination_block, &[]);
-        }
-        None => {
-            fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
-        }
-    }
 }
 
 struct InlineAssemblyGenerator<'a, 'tcx> {
@@ -754,14 +763,9 @@ pub(crate) fn codegen_xgetbv<'tcx>(
     ];
     let options = InlineAsmOptions::NOSTACK | InlineAsmOptions::PURE | InlineAsmOptions::NOMEM;
 
-    let mut inputs = Vec::new();
-    let mut outputs = Vec::new();
-
-    let mut asm_gen = InlineAssemblyGenerator {
-        tcx: fx.tcx,
-        arch: fx.tcx.sess.asm_arch.unwrap(),
-        enclosing_def_id: fx.instance.def_id(),
-        template: &[InlineAsmTemplatePiece::String(
+    codegen_inline_asm_inner(
+        fx,
+        &[InlineAsmTemplatePiece::String(
             "
             xgetbv
             // out = rdx << 32 | rax
@@ -770,41 +774,7 @@ pub(crate) fn codegen_xgetbv<'tcx>(
             "
             .to_string(),
         )],
-        operands: &operands,
+        &operands,
         options,
-        registers: Vec::new(),
-        stack_slots_clobber: Vec::new(),
-        stack_slots_input: Vec::new(),
-        stack_slots_output: Vec::new(),
-        stack_slot_size: Size::from_bytes(0),
-    };
-    asm_gen.allocate_registers();
-    asm_gen.allocate_stack_slots();
-
-    let inline_asm_index = fx.cx.inline_asm_index.get();
-    fx.cx.inline_asm_index.set(inline_asm_index + 1);
-    let asm_name = format!(
-        "__inline_asm_{}_n{}",
-        fx.cx.cgu_name.as_str().replace('.', "__").replace('-', "_"),
-        inline_asm_index
     );
-
-    let generated_asm = asm_gen.generate_asm_wrapper(&asm_name);
-    fx.cx.global_asm.push_str(&generated_asm);
-
-    for (i, operand) in operands.iter().enumerate() {
-        match operand {
-            CInlineAsmOperand::In { reg: _, value } => {
-                inputs.push((asm_gen.stack_slots_input[i].unwrap(), *value));
-            }
-            CInlineAsmOperand::Out { reg: _, late: _, place } => {
-                if let Some(place) = place {
-                    outputs.push((asm_gen.stack_slots_output[i].unwrap(), *place));
-                }
-            }
-            _ => unreachable!(),
-        }
-    }
-
-    call_inline_asm(fx, &asm_name, asm_gen.stack_slot_size, inputs, outputs);
 }
