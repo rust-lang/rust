@@ -3,7 +3,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use base_db::{CrateGraph, FileId, ProcMacroPaths};
+use base_db::{CrateGraph, DependencyKind, FileId, ProcMacroPaths};
 use cfg::{CfgAtom, CfgDiff};
 use expect_test::{expect_file, ExpectFile};
 use paths::{AbsPath, AbsPathBuf};
@@ -272,7 +272,9 @@ fn test_deduplicate_crate_differing_in_origin() {
     }
 
     assert!(crates_named_p1.len() == 1);
-    assert!(crates_named_p1[0].origin.is_local());
+    let p1 = crates_named_p1[0];
+    assert!(p1.dependencies.iter().filter(|dep| dep.kind() == DependencyKind::Dev).count() == 1);
+    assert!(p1.origin.is_local());
 }
 
 #[test]
@@ -297,5 +299,7 @@ fn test_deduplicate_crate_differing_in_origin_in_rev_resolution_order() {
     }
 
     assert!(crates_named_p1.len() == 1);
-    assert!(crates_named_p1[0].origin.is_local());
+    let p1 = crates_named_p1[0];
+    assert!(p1.dependencies.iter().filter(|dep| dep.kind() == DependencyKind::Dev).count() == 1);
+    assert!(p1.origin.is_local());
 }
