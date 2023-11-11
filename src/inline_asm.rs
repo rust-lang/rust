@@ -34,7 +34,7 @@ enum CInlineAsmOperand<'tcx> {
     },
 }
 
-pub(crate) fn codegen_inline_asm<'tcx>(
+pub(crate) fn codegen_inline_asm_terminator<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     span: Span,
     template: &[InlineAsmTemplatePiece],
@@ -135,9 +135,6 @@ pub(crate) fn codegen_inline_asm<'tcx>(
         })
         .collect::<Vec<_>>();
 
-    let mut inputs = Vec::new();
-    let mut outputs = Vec::new();
-
     let mut asm_gen = InlineAssemblyGenerator {
         tcx: fx.tcx,
         arch: fx.tcx.sess.asm_arch.unwrap(),
@@ -165,6 +162,8 @@ pub(crate) fn codegen_inline_asm<'tcx>(
     let generated_asm = asm_gen.generate_asm_wrapper(&asm_name);
     fx.cx.global_asm.push_str(&generated_asm);
 
+    let mut inputs = Vec::new();
+    let mut outputs = Vec::new();
     for (i, operand) in operands.iter().enumerate() {
         match operand {
             CInlineAsmOperand::In { reg: _, value } => {
