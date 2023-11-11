@@ -106,6 +106,7 @@ impl [u8] {
     #[must_use = "this returns the escaped bytes as an iterator, \
                   without modifying the original"]
     #[stable(feature = "inherent_ascii_escape", since = "1.60.0")]
+    #[inline]
     pub fn escape_ascii(&self) -> EscapeAscii<'_> {
         EscapeAscii { inner: self.iter().flat_map(EscapeByte) }
     }
@@ -241,6 +242,7 @@ impl<'a> iter::Iterator for EscapeAscii<'a> {
 
 #[stable(feature = "inherent_ascii_escape", since = "1.60.0")]
 impl<'a> iter::DoubleEndedIterator for EscapeAscii<'a> {
+    #[inline]
     fn next_back(&mut self) -> Option<u8> {
         self.inner.next_back()
     }

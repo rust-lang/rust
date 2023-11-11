@@ -630,6 +630,7 @@ impl TypeId {
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_type_id", issue = "77125")]
+    #[inline]
     pub const fn of<T: ?Sized + 'static>() -> TypeId {
         let t: u128 = intrinsics::type_id::<T>();
         TypeId { t }

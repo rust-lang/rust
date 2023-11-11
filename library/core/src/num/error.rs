@@ -11,6 +11,7 @@ pub struct TryFromIntError(pub(crate) ());
 
 #[stable(feature = "try_from", since = "1.34.0")]
 impl fmt::Display for TryFromIntError {
+    #[inline]
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         #[allow(deprecated)]
         self.description().fmt(fmt)

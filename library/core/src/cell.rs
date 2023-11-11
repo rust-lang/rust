@@ -722,6 +722,7 @@ impl Debug for BorrowError {
 
 #[stable(feature = "try_borrow", since = "1.13.0")]
 impl Display for BorrowError {
+    #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         Display::fmt("already mutably borrowed", f)
     }
@@ -749,6 +750,7 @@ impl Debug for BorrowMutError {
 
 #[stable(feature = "try_borrow", since = "1.13.0")]
 impl Display for BorrowMutError {
+    #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         Display::fmt("already borrowed", f)
     }

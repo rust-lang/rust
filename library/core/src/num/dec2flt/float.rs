@@ -148,6 +148,7 @@ impl RawFloat for f32 {
         (mantissa as u64, exponent, sign)
     }
 
+    #[inline]
     fn classify(self) -> FpCategory {
         self.classify()
     }

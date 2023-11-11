@@ -22,6 +22,7 @@ impl<'a, T> IntoIterator for &'a [T] {
     type Item = &'a T;
     type IntoIter = Iter<'a, T>;
 
+    #[inline]
     fn into_iter(self) -> Iter<'a, T> {
         self.iter()
     }
@@ -32,6 +33,7 @@ impl<'a, T> IntoIterator for &'a mut [T] {
     type Item = &'a mut T;
     type IntoIter = IterMut<'a, T>;
 
+    #[inline]
     fn into_iter(self) -> IterMut<'a, T> {
         self.iter_mut()
     }

@@ -155,6 +155,7 @@ macro_rules! int_base {
     (fmt::$Trait:ident for $T:ident as $U:ident -> $Radix:ident) => {
         #[stable(feature = "rust1", since = "1.0.0")]
         impl fmt::$Trait for $T {
+            #[inline]
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 $Radix.fmt_int(*self as $U, f)
             }
@@ -572,6 +573,7 @@ fn parse_u64_into<const N: usize>(mut n: u64, buf: &mut [MaybeUninit<u8>; N], cu
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for u128 {
+    #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt_u128(*self, true, f)
     }

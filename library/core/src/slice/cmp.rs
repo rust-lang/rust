@@ -12,6 +12,7 @@ impl<A, B> PartialEq<[B]> for [A]
 where
     A: PartialEq<B>,
 {
+    #[inline]
     fn eq(&self, other: &[B]) -> bool {
         SlicePartialEq::equal(self, other)
     }

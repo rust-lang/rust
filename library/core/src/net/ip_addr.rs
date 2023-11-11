@@ -986,6 +986,7 @@ impl fmt::Display for IpAddr {
 
 #[stable(feature = "ip_addr", since = "1.7.0")]
 impl fmt::Debug for IpAddr {
+    #[inline]
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(self, fmt)
     }
@@ -1058,6 +1059,7 @@ impl fmt::Display for Ipv4Addr {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for Ipv4Addr {
+    #[inline]
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(self, fmt)
     }
@@ -1929,6 +1931,7 @@ impl fmt::Display for Ipv6Addr {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for Ipv6Addr {
+    #[inline]
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(self, fmt)
     }
@@ -2191,6 +2194,7 @@ macro_rules! bitop_impls {
 
             $(#[$attr])*
             impl $BitOpAssign<&'_ $ty> for $ty {
+                #[inline]
                 fn $bitop_assign(&mut self, rhs: &'_ $ty) {
                     self.$bitop_assign(*rhs);
                 }

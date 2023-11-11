@@ -198,6 +198,7 @@ macro_rules! floating {
     ($ty:ident) => {
         #[stable(feature = "rust1", since = "1.0.0")]
         impl Debug for $ty {
+            #[inline]
             fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
                 float_to_general_debug(fmt, self)
             }
@@ -205,6 +206,7 @@ macro_rules! floating {
 
         #[stable(feature = "rust1", since = "1.0.0")]
         impl Display for $ty {
+            #[inline]
             fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
                 float_to_decimal_display(fmt, self)
             }
@@ -212,6 +214,7 @@ macro_rules! floating {
 
         #[stable(feature = "rust1", since = "1.0.0")]
         impl LowerExp for $ty {
+            #[inline]
             fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
                 float_to_exponential_common(fmt, self, false)
             }
@@ -219,6 +222,7 @@ macro_rules! floating {
 
         #[stable(feature = "rust1", since = "1.0.0")]
         impl UpperExp for $ty {
+            #[inline]
             fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
                 float_to_exponential_common(fmt, self, true)
             }

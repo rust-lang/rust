@@ -578,6 +578,7 @@ impl fmt::Display for SocketAddr {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for SocketAddr {
+    #[inline]
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(self, fmt)
     }
@@ -604,6 +605,7 @@ impl fmt::Display for SocketAddrV4 {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for SocketAddrV4 {
+    #[inline]
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(self, fmt)
     }
@@ -638,6 +640,7 @@ impl fmt::Display for SocketAddrV6 {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for SocketAddrV6 {
+    #[inline]
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(self, fmt)
     }

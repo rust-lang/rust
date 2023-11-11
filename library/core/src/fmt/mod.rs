@@ -191,6 +191,7 @@ pub trait Write {
     /// assert_eq!(&buf, "world");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     fn write_fmt(&mut self, args: Arguments<'_>) -> Result {
         // We use a specialization for `Sized` types to avoid an indirection
         // through `&mut self`
@@ -434,6 +435,7 @@ impl<'a> Arguments<'a> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Debug for Arguments<'_> {
+    #[inline]
     fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
         Display::fmt(self, fmt)
     }
@@ -441,6 +443,7 @@ impl Debug for Arguments<'_> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Display for Arguments<'_> {
+    #[inline]
     fn fmt(&self, fmt: &mut Formatter<'_>) -> Result {
         write(fmt.buf, *self)
     }
@@ -1203,6 +1206,7 @@ impl PostPadding {
 }
 
 impl<'a> Formatter<'a> {
+    #[inline]
     fn wrap_buf<'b, 'c, F>(&'b mut self, wrap: F) -> Formatter<'c>
     where
         'b: 'c,
@@ -1492,6 +1496,7 @@ impl<'a> Formatter<'a> {
     ///
     /// Any `numfmt::Part::Copy` parts in `formatted` must contain valid UTF-8.
     unsafe fn write_formatted_parts(&mut self, formatted: &numfmt::Formatted<'_>) -> Result {
+        #[inline]
         unsafe fn write_bytes(buf: &mut dyn Write, s: &[u8]) -> Result {
             // SAFETY: This is used for `numfmt::Part::Num` and `numfmt::Part::Copy`.
             // It's safe to use for `numfmt::Part::Num` since every char `c` is between
@@ -1559,6 +1564,7 @@ impl<'a> Formatter<'a> {
     /// assert_eq!(format!("{Foo:0>8}"), "Foo");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn write_str(&mut self, data: &str) -> Result {
         self.buf.write_str(data)
     }
@@ -1582,6 +1588,7 @@ impl<'a> Formatter<'a> {
     /// assert_eq!(format!("{:0>8}", Foo(2)), "Foo 2");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn write_fmt(&mut self, fmt: Arguments<'_>) -> Result {
         write(self.buf, fmt)
     }
@@ -1894,6 +1901,7 @@ impl<'a> Formatter<'a> {
     /// );
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
+    #[inline]
     pub fn debug_struct<'b>(&'b mut self, name: &str) -> DebugStruct<'b, 'a> {
         builders::debug_struct_new(self, name)
     }
@@ -2048,6 +2056,7 @@ impl<'a> Formatter<'a> {
     /// );
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
+    #[inline]
     pub fn debug_tuple<'b>(&'b mut self, name: &str) -> DebugTuple<'b, 'a> {
         builders::debug_tuple_new(self, name)
     }
@@ -2173,6 +2182,7 @@ impl<'a> Formatter<'a> {
     /// assert_eq!(format!("{:?}", Foo(vec![10, 11])), "[10, 11]");
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
+    #[inline]
     pub fn debug_list<'b>(&'b mut self) -> DebugList<'b, 'a> {
         builders::debug_list_new(self)
     }
@@ -2231,6 +2241,7 @@ impl<'a> Formatter<'a> {
     /// }
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
+    #[inline]
     pub fn debug_set<'b>(&'b mut self) -> DebugSet<'b, 'a> {
         builders::debug_set_new(self)
     }
@@ -2257,6 +2268,7 @@ impl<'a> Formatter<'a> {
     ///  );
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
+    #[inline]
     pub fn debug_map<'b>(&'b mut self) -> DebugMap<'b, 'a> {
         builders::debug_map_new(self)
     }
@@ -2264,14 +2276,17 @@ impl<'a> Formatter<'a> {
 
 #[stable(since = "1.2.0", feature = "formatter_write")]
 impl Write for Formatter<'_> {
+    #[inline]
     fn write_str(&mut self, s: &str) -> Result {
         self.buf.write_str(s)
     }
 
+    #[inline]
     fn write_char(&mut self, c: char) -> Result {
         self.buf.write_char(c)
     }
 
+    #[inline]
     fn write_fmt(&mut self, args: Arguments<'_>) -> Result {
         write(self.buf, args)
     }
@@ -2279,6 +2294,7 @@ impl Write for Formatter<'_> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Display for Error {
+    #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         Display::fmt("an error occurred when formatting an argument", f)
     }
@@ -2361,6 +2377,7 @@ impl Debug for str {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Display for str {
+    #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         f.pad(self)
     }

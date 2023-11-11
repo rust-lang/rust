@@ -91,6 +91,7 @@ impl Assume {
 impl core::ops::Add for Assume {
     type Output = Assume;
 
+    #[inline]
     fn add(self, other_assumptions: Assume) -> Assume {
         self.and(other_assumptions)
     }
@@ -102,6 +103,7 @@ impl core::ops::Add for Assume {
 impl core::ops::Sub for Assume {
     type Output = Assume;
 
+    #[inline]
     fn sub(self, other_assumptions: Assume) -> Assume {
         self.but_not(other_assumptions)
     }

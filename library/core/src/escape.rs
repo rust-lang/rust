@@ -82,10 +82,12 @@ impl<const N: usize> EscapeIterInner<N> {
         Self::new(data, 0..M as u8)
     }
 
+    #[inline]
     pub fn as_ascii(&self) -> &[ascii::Char] {
         &self.data[usize::from(self.alive.start)..usize::from(self.alive.end)]
     }
 
+    #[inline]
     pub fn as_str(&self) -> &str {
         self.as_ascii().as_str()
     }

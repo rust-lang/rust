@@ -46,6 +46,7 @@ macro_rules! integer_sum_product {
     (@impls $zero:expr, $one:expr, #[$attr:meta], $($a:ty)*) => ($(
         #[$attr]
         impl Sum for $a {
+            #[inline]
             fn sum<I: Iterator<Item=Self>>(iter: I) -> Self {
                 iter.fold(
                     $zero,

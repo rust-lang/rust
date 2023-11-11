@@ -18,6 +18,7 @@ impl Default for PadAdapterState {
 }
 
 impl<'buf, 'state> PadAdapter<'buf, 'state> {
+    #[inline]
     fn wrap<'slot, 'fmt: 'buf + 'slot>(
         fmt: &'fmt mut fmt::Formatter<'_>,
         slot: &'slot mut Option<Self>,
@@ -91,6 +92,7 @@ pub struct DebugStruct<'a, 'b: 'a> {
     has_fields: bool,
 }
 
+#[inline]
 pub(super) fn debug_struct_new<'a, 'b>(
     fmt: &'a mut fmt::Formatter<'b>,
     name: &str,
@@ -138,6 +140,7 @@ impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
     /// This method is equivalent to [`DebugStruct::field`], but formats the
     /// value using a provided closure rather than by calling [`Debug::fmt`].
     #[unstable(feature = "debug_closure_helpers", issue = "117729")]
+    #[inline]
     pub fn field_with<F>(&mut self, name: &str, value_fmt: F) -> &mut Self
     where
         F: FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result,
@@ -293,6 +296,7 @@ pub struct DebugTuple<'a, 'b: 'a> {
     empty_name: bool,
 }
 
+#[inline]
 pub(super) fn debug_tuple_new<'a, 'b>(
     fmt: &'a mut fmt::Formatter<'b>,
     name: &str,
@@ -326,6 +330,7 @@ impl<'a, 'b: 'a> DebugTuple<'a, 'b> {
     /// );
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
+    #[inline]
     pub fn field(&mut self, value: &dyn fmt::Debug) -> &mut Self {
         self.field_with(|f| value.fmt(f))
     }
@@ -409,6 +414,7 @@ struct DebugInner<'a, 'b: 'a> {
 }
 
 impl<'a, 'b: 'a> DebugInner<'a, 'b> {
+    #[inline]
     fn entry_with<F>(&mut self, entry_fmt: F)
     where
         F: FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result,
@@ -471,6 +477,7 @@ pub struct DebugSet<'a, 'b: 'a> {
     inner: DebugInner<'a, 'b>,
 }
 
+#[inline]
 pub(super) fn debug_set_new<'a, 'b>(fmt: &'a mut fmt::Formatter<'b>) -> DebugSet<'a, 'b> {
     let result = fmt.write_str("{");
     DebugSet { inner: DebugInner { fmt, result, has_fields: false } }
@@ -614,6 +621,7 @@ pub struct DebugList<'a, 'b: 'a> {
     inner: DebugInner<'a, 'b>,
 }
 
+#[inline]
 pub(super) fn debug_list_new<'a, 'b>(fmt: &'a mut fmt::Formatter<'b>) -> DebugList<'a, 'b> {
     let result = fmt.write_str("[");
     DebugList { inner: DebugInner { fmt, result, has_fields: false } }
@@ -762,6 +770,7 @@ pub struct DebugMap<'a, 'b: 'a> {
     state: PadAdapterState,
 }
 
+#[inline]
 pub(super) fn debug_map_new<'a, 'b>(fmt: &'a mut fmt::Formatter<'b>) -> DebugMap<'a, 'b> {
     let result = fmt.write_str("{");
     DebugMap { fmt, result, has_fields: false, has_key: false, state: Default::default() }
@@ -836,6 +845,7 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     /// This method is equivalent to [`DebugMap::key`], but formats the
     /// key using a provided closure rather than by calling [`Debug::fmt`].
     #[unstable(feature = "debug_closure_helpers", issue = "117729")]
+    #[inline]
     pub fn key_with<F>(&mut self, key_fmt: F) -> &mut Self
     where
         F: FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result,
@@ -912,6 +922,7 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     /// This method is equivalent to [`DebugMap::value`], but formats the
     /// value using a provided closure rather than by calling [`Debug::fmt`].
     #[unstable(feature = "debug_closure_helpers", issue = "117729")]
+    #[inline]
     pub fn value_with<F>(&mut self, value_fmt: F) -> &mut Self
     where
         F: FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result,

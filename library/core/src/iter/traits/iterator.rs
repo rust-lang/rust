@@ -3627,6 +3627,7 @@ pub trait Iterator {
     /// ```
     #[stable(feature = "iter_arith", since = "1.11.0")]
     #[rustc_do_not_const_check]
+    #[inline]
     fn sum<S>(self) -> S
     where
         Self: Sized,
@@ -3682,6 +3683,7 @@ pub trait Iterator {
     /// ```
     #[stable(feature = "iter_order", since = "1.5.0")]
     #[rustc_do_not_const_check]
+    #[inline]
     fn cmp<I>(self, other: I) -> Ordering
     where
         I: IntoIterator<Item = Self::Item>,

@@ -321,6 +321,7 @@ impl<'a, T, const N: usize> IntoIterator for &'a [T; N] {
     type Item = &'a T;
     type IntoIter = Iter<'a, T>;
 
+    #[inline]
     fn into_iter(self) -> Iter<'a, T> {
         self.iter()
     }

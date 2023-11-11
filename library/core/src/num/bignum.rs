@@ -111,6 +111,7 @@ macro_rules! define_bignum {
             /// Returns the internal digits as a slice `[a, b, c, ...]` such that the numeric
             /// value is `a + b * 2^W + c * 2^(2W) + ...` where `W` is the number of bits in
             /// the digit type.
+            #[inline]
             pub fn digits(&self) -> &[$ty] {
                 &self.base[..self.size]
             }
@@ -378,6 +379,7 @@ macro_rules! define_bignum {
         }
 
         impl crate::cmp::PartialEq for $name {
+            #[inline]
             fn eq(&self, other: &$name) -> bool {
                 self.base[..] == other.base[..]
             }
@@ -386,6 +388,7 @@ macro_rules! define_bignum {
         impl crate::cmp::Eq for $name {}
 
         impl crate::cmp::PartialOrd for $name {
+            #[inline]
             fn partial_cmp(&self, other: &$name) -> crate::option::Option<crate::cmp::Ordering> {
                 crate::option::Option::Some(self.cmp(other))
             }

@@ -15,6 +15,7 @@ pub struct FlatMap<I, U: IntoIterator, F> {
 }
 
 impl<I: Iterator, U: IntoIterator, F: FnMut(I::Item) -> U> FlatMap<I, U, F> {
+    #[inline]
     pub(in crate::iter) fn new(iter: I, f: F) -> FlatMap<I, U, F> {
         FlatMap { inner: FlattenCompat::new(iter.map(f)) }
     }
@@ -25,6 +26,7 @@ impl<I: Clone, U, F: Clone> Clone for FlatMap<I, U, F>
 where
     U: Clone + IntoIterator<IntoIter: Clone>,
 {
+    #[inline]
     fn clone(&self) -> Self {
         FlatMap { inner: self.inner.clone() }
     }
@@ -159,6 +161,7 @@ pub struct Flatten<I: Iterator<Item: IntoIterator>> {
 }
 
 impl<I: Iterator<Item: IntoIterator>> Flatten<I> {
+    #[inline]
     pub(in super::super) fn new(iter: I) -> Flatten<I> {
         Flatten { inner: FlattenCompat::new(iter) }
     }
@@ -321,6 +324,7 @@ where
     I: Iterator,
 {
     /// Adapts an iterator by flattening it, for use in `flatten()` and `flat_map()`.
+    #[inline]
     fn new(iter: I) -> FlattenCompat<I, U> {
         FlattenCompat { iter: iter.fuse(), frontiter: None, backiter: None }
     }

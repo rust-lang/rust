@@ -1027,6 +1027,7 @@ impl str {
     #[must_use = "this returns the encoded string as an iterator, \
                   without modifying the original"]
     #[stable(feature = "encode_utf16", since = "1.8.0")]
+    #[inline]
     pub fn encode_utf16(&self) -> EncodeUtf16<'_> {
         EncodeUtf16 { chars: self.chars(), extra: 0 }
     }
@@ -1100,6 +1101,7 @@ impl str {
     /// assert!(!bananas.ends_with("nana"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn ends_with<'a, P>(&'a self, pat: P) -> bool
     where
         P: Pattern<'a, Searcher: ReverseSearcher<'a>>,
@@ -2506,6 +2508,7 @@ impl str {
     #[must_use = "this returns the escaped string as an iterator, \
                   without modifying the original"]
     #[stable(feature = "str_escape", since = "1.34.0")]
+    #[inline]
     pub fn escape_default(&self) -> EscapeDefault<'_> {
         EscapeDefault { inner: self.chars().flat_map(CharEscapeDefault) }
     }
@@ -2544,6 +2547,7 @@ impl str {
     #[must_use = "this returns the escaped string as an iterator, \
                   without modifying the original"]
     #[stable(feature = "str_escape", since = "1.34.0")]
+    #[inline]
     pub fn escape_unicode(&self) -> EscapeUnicode<'_> {
         EscapeUnicode { inner: self.chars().flat_map(CharEscapeUnicode) }
     }

@@ -219,11 +219,13 @@ impl fmt::Display for EscapeUnicode {
 pub struct EscapeDefault(escape::EscapeIterInner<10>);
 
 impl EscapeDefault {
+    #[inline]
     fn printable(chr: ascii::Char) -> Self {
         let data = [chr];
         Self(escape::EscapeIterInner::from_array(data))
     }
 
+    #[inline]
     fn backslash(chr: ascii::Char) -> Self {
         let data = [ascii::Char::ReverseSolidus, chr];
         Self(escape::EscapeIterInner::from_array(data))
@@ -308,6 +310,7 @@ impl EscapeDebug {
         Self(EscapeDebugInner::Char(chr))
     }
 
+    #[inline]
     fn backslash(chr: ascii::Char) -> Self {
         let data = [ascii::Char::ReverseSolidus, chr];
         let iter = escape::EscapeIterInner::from_array(data);
@@ -318,6 +321,7 @@ impl EscapeDebug {
         Self(EscapeDebugInner::Bytes(esc.0))
     }
 
+    #[inline]
     fn clear(&mut self) {
         let bytes = escape::EscapeIterInner::from_array([]);
         self.0 = EscapeDebugInner::Bytes(bytes);
@@ -386,6 +390,7 @@ pub struct ToLowercase(CaseMappingIter);
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Iterator for ToLowercase {
     type Item = char;
+    #[inline]
     fn next(&mut self) -> Option<char> {
         self.0.next()
     }
@@ -396,6 +401,7 @@ impl Iterator for ToLowercase {
 
 #[stable(feature = "case_mapping_double_ended", since = "1.59.0")]
 impl DoubleEndedIterator for ToLowercase {
+    #[inline]
     fn next_back(&mut self) -> Option<char> {
         self.0.next_back()
     }
@@ -420,6 +426,7 @@ pub struct ToUppercase(CaseMappingIter);
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Iterator for ToUppercase {
     type Item = char;
+    #[inline]
     fn next(&mut self) -> Option<char> {
         self.0.next()
     }
@@ -430,6 +437,7 @@ impl Iterator for ToUppercase {
 
 #[stable(feature = "case_mapping_double_ended", since = "1.59.0")]
 impl DoubleEndedIterator for ToUppercase {
+    #[inline]
     fn next_back(&mut self) -> Option<char> {
         self.0.next_back()
     }
@@ -534,6 +542,7 @@ impl fmt::Display for CaseMappingIter {
 
 #[stable(feature = "char_struct_display", since = "1.16.0")]
 impl fmt::Display for ToLowercase {
+    #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&self.0, f)
     }
@@ -541,6 +550,7 @@ impl fmt::Display for ToLowercase {
 
 #[stable(feature = "char_struct_display", since = "1.16.0")]
 impl fmt::Display for ToUppercase {
+    #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&self.0, f)
     }
@@ -553,6 +563,7 @@ pub struct TryFromCharError(pub(crate) ());
 
 #[stable(feature = "u8_from_char", since = "1.59.0")]
 impl fmt::Display for TryFromCharError {
+    #[inline]
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         "unicode code point out of range".fmt(fmt)
     }
