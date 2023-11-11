@@ -320,7 +320,7 @@ impl<'a> Arguments<'a> {
     #[rustc_const_unstable(feature = "const_fmt_arguments_new", issue = "none")]
     pub const fn new_const(pieces: &'a [&'static str]) -> Self {
         if pieces.len() > 1 {
-            panic!("invalid args");
+            crate::panicking::panic("invalid args");
         }
         Arguments { pieces, fmt: None, args: &[] }
     }
@@ -330,7 +330,7 @@ impl<'a> Arguments<'a> {
     #[inline]
     pub fn new_v1(pieces: &'a [&'static str], args: &'a [rt::Argument<'a>]) -> Arguments<'a> {
         if pieces.len() < args.len() || pieces.len() > args.len() + 1 {
-            panic!("invalid args");
+            crate::panicking::panic("invalid args");
         }
         Arguments { pieces, fmt: None, args }
     }
