@@ -1,11 +1,11 @@
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::higher::ForLoop;
+use clippy_utils::match_any_def_paths;
 use clippy_utils::paths::{
     HASHMAP_DRAIN, HASHMAP_ITER, HASHMAP_ITER_MUT, HASHMAP_KEYS, HASHMAP_VALUES, HASHMAP_VALUES_MUT, HASHSET_DRAIN,
     HASHSET_ITER_TY,
 };
 use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::match_any_def_paths;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::sym;
