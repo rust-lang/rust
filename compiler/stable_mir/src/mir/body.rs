@@ -498,7 +498,7 @@ pub const RETURN_LOCAL: Local = 0;
 /// The source-order index of a field in a variant.
 ///
 /// For example, in the following types,
-/// ```rust
+/// ```ignore(illustrative)
 /// enum Demo1 {
 ///    Variant0 { a: bool, b: i32 },
 ///    Variant1 { c: u8, d: u64 },
@@ -514,7 +514,7 @@ type FieldIdx = usize;
 /// The source-order index of a variant in a type.
 ///
 /// For example, in the following types,
-/// ```rust
+/// ```ignore(illustrative)
 /// enum Demo1 {
 ///    Variant0 { a: bool, b: i32 },
 ///    Variant1 { c: u8, d: u64 },
