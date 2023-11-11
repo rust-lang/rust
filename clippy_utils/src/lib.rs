@@ -2023,6 +2023,18 @@ pub fn is_must_use_func_call(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
 /// Consider calling [`is_expr_untyped_identity_function`] or [`is_expr_identity_function`] instead.
 fn is_body_identity_function(cx: &LateContext<'_>, func: &Body<'_>) -> bool {
     fn check_pat(cx: &LateContext<'_>, pat: &Pat<'_>, expr: &Expr<'_>) -> bool {
+        if cx
+            .typeck_results()
+            .pat_binding_modes()
+            .get(pat.hir_id)
+            .is_some_and(|mode| matches!(mode, BindingMode::BindByReference(_)))
+        {
+            // If a tuple `(x, y)` is of type `&(i32, i32)`, then due to match ergonomics,
+            // the inner patterns become references. Don't consider this the identity function
+            // as that changes types.
+            return false;
+        }
+
         match (pat.kind, expr.kind) {
             (PatKind::Binding(_, id, _, _), _) => {
                 path_to_local_id(expr, id) && cx.typeck_results().expr_adjustments(expr).is_empty()
