@@ -9,7 +9,10 @@
 use std::io::Write;
 #[cfg(all(any(unix, windows), not(target_os = "solaris")))]
 use std::process;
-use std::{env, fs};
+use std::{
+    env, fs,
+    io::{self, IsTerminal},
+};
 
 #[cfg(all(any(unix, windows), not(target_os = "solaris")))]
 use bootstrap::t;
@@ -140,7 +143,9 @@ fn check_version(config: &Config) -> Option<String> {
                 "update `config.toml` to use `change-id = {latest_change_id}` instead"
             ));
 
-            t!(fs::write(warned_id_path, id.to_string()));
+            if io::stdout().is_terminal() {
+                t!(fs::write(warned_id_path, id.to_string()));
+            }
         }
     } else {
         msg.push_str("WARNING: The `change-id` is missing in the `config.toml`. This means that you will not be able to track the major changes made to the bootstrap configurations.\n");
