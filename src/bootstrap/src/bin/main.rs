@@ -109,9 +109,17 @@ fn check_version(config: &Config) -> Option<String> {
     }
 
     let latest_config_id = CONFIG_CHANGE_HISTORY.last().unwrap();
+    let warned_id_path = config.out.join("bootstrap").join(".last-warned-change-id");
+
     if let Some(id) = config.change_id {
         if &id == latest_config_id {
             return None;
+        }
+
+        if let Ok(last_warned_id) = fs::read_to_string(&warned_id_path) {
+            if id.to_string() == last_warned_id {
+                return None;
+            }
         }
 
         let change_links: Vec<String> = find_recent_config_change_ids(id)
@@ -132,6 +140,8 @@ fn check_version(config: &Config) -> Option<String> {
             msg.push_str(&format!(
                 "update `config.toml` to use `change-id = {latest_config_id}` instead"
             ));
+
+            t!(fs::write(warned_id_path, id.to_string()));
         }
     } else {
         msg.push_str("WARNING: The `change-id` is missing in the `config.toml`. This means that you will not be able to track the major changes made to the bootstrap configurations.\n");
