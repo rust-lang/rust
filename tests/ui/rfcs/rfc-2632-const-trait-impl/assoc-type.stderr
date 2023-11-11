@@ -1,8 +1,16 @@
+error: `~const` is not allowed here
+  --> $DIR/assoc-type.rs:17:15
+   |
+LL |     type Bar: ~const std::ops::Add;
+   |               ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this item cannot have `~const` trait bounds
+
 error: ~const can only be applied to `#[const_trait]` traits
   --> $DIR/assoc-type.rs:17:22
    |
 LL |     type Bar: ~const std::ops::Add;
    |                      ^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 2 previous errors
 
