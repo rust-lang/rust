@@ -645,8 +645,21 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
     ) {
         match arch {
             InlineAsmArch::X86_64 => {
-                write!(generated_asm, "    mov [rbx+0x{:x}], ", offset.bytes()).unwrap();
-                reg.emit(generated_asm, InlineAsmArch::X86_64, None).unwrap();
+                match reg {
+                    InlineAsmReg::X86(reg)
+                        if reg as u32 >= X86InlineAsmReg::xmm0 as u32
+                            && reg as u32 <= X86InlineAsmReg::xmm15 as u32 =>
+                    {
+                        // rustc emits x0 rather than xmm0
+                        write!(generated_asm, "    movups [rbx+0x{:x}], ", offset.bytes()).unwrap();
+                        write!(generated_asm, "xmm{}", reg as u32 - X86InlineAsmReg::xmm0 as u32)
+                            .unwrap();
+                    }
+                    _ => {
+                        write!(generated_asm, "    mov [rbx+0x{:x}], ", offset.bytes()).unwrap();
+                        reg.emit(generated_asm, InlineAsmArch::X86_64, None).unwrap();
+                    }
+                }
                 generated_asm.push('\n');
             }
             InlineAsmArch::AArch64 => {
@@ -671,8 +684,24 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
     ) {
         match arch {
             InlineAsmArch::X86_64 => {
-                generated_asm.push_str("    mov ");
-                reg.emit(generated_asm, InlineAsmArch::X86_64, None).unwrap();
+                match reg {
+                    InlineAsmReg::X86(reg)
+                        if reg as u32 >= X86InlineAsmReg::xmm0 as u32
+                            && reg as u32 <= X86InlineAsmReg::xmm15 as u32 =>
+                    {
+                        // rustc emits x0 rather than xmm0
+                        write!(
+                            generated_asm,
+                            "    movups xmm{}",
+                            reg as u32 - X86InlineAsmReg::xmm0 as u32
+                        )
+                        .unwrap();
+                    }
+                    _ => {
+                        generated_asm.push_str("    mov ");
+                        reg.emit(generated_asm, InlineAsmArch::X86_64, None).unwrap()
+                    }
+                }
                 writeln!(generated_asm, ", [rbx+0x{:x}]", offset.bytes()).unwrap();
             }
             InlineAsmArch::AArch64 => {
@@ -728,7 +757,12 @@ fn call_inline_asm<'tcx>(
     fx.bcx.ins().call(inline_asm_func, &[stack_slot_addr]);
 
     for (offset, place) in outputs {
-        let ty = fx.clif_type(place.layout().ty).unwrap();
+        let ty = if place.layout().ty.is_simd() {
+            let (lane_count, lane_type) = place.layout().ty.simd_size_and_type(fx.tcx);
+            fx.clif_type(lane_type).unwrap().by(lane_count.try_into().unwrap()).unwrap()
+        } else {
+            fx.clif_type(place.layout().ty).unwrap()
+        };
         let value = stack_slot.offset(fx, i32::try_from(offset.bytes()).unwrap().into()).load(
             fx,
             ty,

@@ -383,6 +383,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
                 args,
                 ret_place,
                 target,
+                source_info.span,
             );
             return;
         }
