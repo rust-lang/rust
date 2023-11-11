@@ -1,14 +1,14 @@
 //! A map of all publicly exported items in a crate.
 
-use std::{collections::hash_map::Entry, fmt, hash::BuildHasherDefault};
+use std::{fmt, hash::BuildHasherDefault};
 
 use base_db::CrateId;
 use fst::{self, raw::IndexedValue, Streamer};
 use hir_expand::name::Name;
 use indexmap::IndexMap;
 use itertools::Itertools;
-use rustc_hash::{FxHashMap, FxHashSet, FxHasher};
-use smallvec::{smallvec, SmallVec};
+use rustc_hash::{FxHashSet, FxHasher};
+use smallvec::SmallVec;
 use triomphe::Arc;
 
 use crate::{
@@ -103,11 +103,13 @@ fn collect_import_map(db: &dyn DefDatabase, krate: CrateId) -> ImportMapIndex {
 
     // We look only into modules that are public(ly reexported), starting with the crate root.
     let root = def_map.module_id(DefMap::ROOT);
-    let mut worklist = vec![(root, 0u32)];
-    // Records items' minimum module depth.
-    let mut depth_map = FxHashMap::default();
+    let mut worklist = vec![root];
+    let mut visited = FxHashSet::default();
 
-    while let Some((module, depth)) = worklist.pop() {
+    while let Some(module) = worklist.pop() {
+        if !visited.insert(module) {
+            continue;
+        }
         let ext_def_map;
         let mod_data = if module.krate == krate {
             &def_map[module.local_id]
@@ -126,6 +128,7 @@ fn collect_import_map(db: &dyn DefDatabase, krate: CrateId) -> ImportMapIndex {
             }
         });
 
+        // FIXME: This loop might add the same entry up to 3 times per item! dedup
         for (name, per_ns) in visible_items {
             for (item, import) in per_ns.iter_items() {
                 let attr_id = if let Some(import) = import {
@@ -139,11 +142,10 @@ fn collect_import_map(db: &dyn DefDatabase, krate: CrateId) -> ImportMapIndex {
                         ItemInNs::Macros(id) => Some(id.into()),
                     }
                 };
-                let status @ (is_doc_hidden, is_unstable) =
-                    attr_id.map_or((false, false), |attr_id| {
-                        let attrs = db.attrs(attr_id);
-                        (attrs.has_doc_hidden(), attrs.is_unstable())
-                    });
+                let (is_doc_hidden, is_unstable) = attr_id.map_or((false, false), |attr_id| {
+                    let attrs = db.attrs(attr_id);
+                    (attrs.has_doc_hidden(), attrs.is_unstable())
+                });
 
                 let import_info = ImportInfo {
                     name: name.clone(),
@@ -151,50 +153,6 @@ fn collect_import_map(db: &dyn DefDatabase, krate: CrateId) -> ImportMapIndex {
                     is_doc_hidden,
                     is_unstable,
                 };
-
-                match depth_map.entry(item) {
-                    Entry::Vacant(entry) => _ = entry.insert((depth, status)),
-                    Entry::Occupied(mut entry) => {
-                        let &(occ_depth, (occ_is_doc_hidden, occ_is_unstable)) = entry.get();
-                        (depth, occ_depth);
-                        let overwrite = match (
-                            is_doc_hidden,
-                            occ_is_doc_hidden,
-                            is_unstable,
-                            occ_is_unstable,
-                        ) {
-                            // no change of hiddeness or unstableness
-                            (true, true, true, true)
-                            | (true, true, false, false)
-                            | (false, false, true, true)
-                            | (false, false, false, false) => depth < occ_depth,
-
-                            // either less hidden or less unstable, accept
-                            (true, true, false, true)
-                            | (false, true, true, true)
-                            | (false, true, false, true)
-                            | (false, true, false, false)
-                            | (false, false, false, true) => true,
-                            // more hidden or unstable, discard
-                            (true, true, true, false)
-                            | (true, false, true, true)
-                            | (true, false, true, false)
-                            | (true, false, false, false)
-                            | (false, false, true, false) => false,
-
-                            // exchanges doc(hidden) for unstable (and vice-versa),
-                            (true, false, false, true) | (false, true, true, false) => {
-                                depth < occ_depth
-                            }
-                        };
-                        // FIXME: Remove the overwrite rules as we can now record exports and
-                        // aliases for the same item
-                        if !overwrite {
-                            continue;
-                        }
-                        entry.insert((depth, status));
-                    }
-                }
 
                 if let Some(ModuleDefId::TraitId(tr)) = item.as_module_def_id() {
                     collect_trait_assoc_items(
@@ -206,13 +164,14 @@ fn collect_import_map(db: &dyn DefDatabase, krate: CrateId) -> ImportMapIndex {
                     );
                 }
 
-                map.insert(item, (smallvec![import_info], IsTraitAssocItem::No));
+                map.entry(item)
+                    .or_insert_with(|| (SmallVec::new(), IsTraitAssocItem::No))
+                    .0
+                    .push(import_info);
 
-                // If we've just added a module, descend into it. We might traverse modules
-                // multiple times, but only if the module depth is smaller (else we `continue`
-                // above).
+                // If we've just added a module, descend into it.
                 if let Some(ModuleDefId::ModuleId(mod_id)) = item.as_module_def_id() {
-                    worklist.push((mod_id, depth + 1));
+                    worklist.push(mod_id);
                 }
             }
         }
@@ -253,7 +212,11 @@ fn collect_trait_assoc_items(
             is_doc_hidden: attrs.has_doc_hidden(),
             is_unstable: attrs.is_unstable(),
         };
-        map.insert(assoc_item, (smallvec![assoc_item_info], IsTraitAssocItem::Yes));
+
+        map.entry(assoc_item)
+            .or_insert_with(|| (SmallVec::new(), IsTraitAssocItem::Yes))
+            .0
+            .push(assoc_item_info);
     }
 }
 
@@ -284,7 +247,7 @@ impl fmt::Debug for ImportMap {
 }
 
 /// A way to match import map contents against the search query.
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 enum SearchMode {
     /// Import map entry should strictly match the query string.
     Exact,
@@ -426,7 +389,7 @@ pub fn search_dependencies(
     while let Some((_, indexed_values)) = stream.next() {
         for &IndexedValue { index, value } in indexed_values {
             let import_map = &import_maps[index];
-            let [importable, importables @ ..] = &import_map.importables[value as usize..] else {
+            let importables @ [importable, ..] = &import_map.importables[value as usize..] else {
                 continue;
             };
 
@@ -441,38 +404,32 @@ pub fn search_dependencies(
             else {
                 continue;
             };
-            res.insert(*importable);
 
-            if !importables.is_empty() {
-                // FIXME: so many allocs...
-                // Name shared by the importable items in this group.
-                let common_importable_name =
-                    common_importable_data.name.to_smol_str().to_ascii_lowercase();
-                // Add the items from this name group. Those are all subsequent items in
-                // `importables` whose name match `common_importable_name`.
-                let iter = importables
-                    .iter()
-                    .copied()
-                    .take_while(|item| {
+            // FIXME: so many allocs...
+            // Name shared by the importable items in this group.
+            let common_importable_name =
+                common_importable_data.name.to_smol_str().to_ascii_lowercase();
+            // Add the items from this name group. Those are all subsequent items in
+            // `importables` whose name match `common_importable_name`.
+            let iter = importables
+                .iter()
+                .copied()
+                .take_while(|item| {
+                    let &(ref import_infos, assoc_mode) = &import_map.map[item];
+                    query.matches_assoc_mode(assoc_mode)
+                        && import_infos.iter().any(|info| {
+                            info.name.to_smol_str().to_ascii_lowercase() == common_importable_name
+                        })
+                })
+                .filter(|item| {
+                    !query.case_sensitive || {
+                        // we've already checked the common importables name case-insensitively
                         let &(ref import_infos, assoc_mode) = &import_map.map[item];
                         query.matches_assoc_mode(assoc_mode)
-                            && import_infos.iter().any(|info| {
-                                info.name.to_smol_str().to_ascii_lowercase()
-                                    == common_importable_name
-                            })
-                    })
-                    .filter(|item| {
-                        !query.case_sensitive || {
-                            // we've already checked the common importables name case-insensitively
-                            let &(ref import_infos, assoc_mode) = &import_map.map[item];
-                            query.matches_assoc_mode(assoc_mode)
-                                && import_infos
-                                    .iter()
-                                    .any(|info| query.import_matches(db, info, false))
-                        }
-                    });
-                res.extend(iter);
-            }
+                            && import_infos.iter().any(|info| query.import_matches(db, info, false))
+                    }
+                });
+            res.extend(iter);
 
             if res.len() >= query.limit {
                 return res;
@@ -665,6 +622,7 @@ mod tests {
                 main:
                 - publ1 (t)
                 - real_pu2 (t)
+                - real_pu2::Pub (t)
                 - real_pub (t)
                 - real_pub::Pub (t)
             "#]],
@@ -690,6 +648,7 @@ mod tests {
                 - sub (t)
                 - sub::Def (t)
                 - sub::subsub (t)
+                - sub::subsub::Def (t)
             "#]],
         );
     }
@@ -789,7 +748,9 @@ mod tests {
                 - module (t)
                 - module::S (t)
                 - module::S (v)
+                - module::module (t)
                 - sub (t)
+                - sub::module (t)
             "#]],
         );
     }
