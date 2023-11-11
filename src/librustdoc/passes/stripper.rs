@@ -245,7 +245,7 @@ pub(crate) struct ImportStripper<'tcx> {
 
 impl<'tcx> ImportStripper<'tcx> {
     fn import_should_be_hidden(&self, i: &Item, imp: &clean::Import) -> bool {
-        if self.is_json_output {
+        if self.is_json_output && imp.kind.is_glob() {
             // FIXME: This should be handled the same way as for HTML output.
             imp.imported_item_is_doc_hidden(self.tcx)
         } else {

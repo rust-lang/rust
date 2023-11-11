@@ -17,7 +17,7 @@ use rustc_target::spec::abi::Abi as RustcAbi;
 
 use rustdoc_json_types::*;
 
-use crate::clean::{self, ItemId};
+use crate::clean::{self, ImportKind, ItemId};
 use crate::formats::item_type::ItemType;
 use crate::formats::FormatRenderer;
 use crate::json::JsonRenderer;
@@ -761,20 +761,22 @@ impl FromWithTcx<clean::Discriminant> for Discriminant {
 
 impl FromWithTcx<clean::Import> for Import {
     fn from_tcx(import: clean::Import, tcx: TyCtxt<'_>) -> Self {
-        use clean::ImportKind::*;
-        let (name, glob) = match import.kind {
-            Simple(s) => (s.to_string(), false),
-            Glob => (
+        let (name, glob, id) = match import.kind {
+            ImportKind::Simple(s) => {
+                let id = if import.inherits_doc_hidden(tcx) {
+                    None
+                } else {
+                    import.source.did.map(ItemId::from).map(|i| id_from_item_default(i, tcx))
+                };
+                (s.to_string(), false, id)
+            }
+            ImportKind::Glob => (
                 import.source.path.last_opt().unwrap_or_else(|| Symbol::intern("*")).to_string(),
                 true,
+                import.source.did.map(ItemId::from).map(|i| id_from_item_default(i, tcx)),
             ),
         };
-        Import {
-            source: import.source.path.whole_name(),
-            name,
-            id: import.source.did.map(ItemId::from).map(|i| id_from_item_default(i, tcx)),
-            glob,
-        }
+        Import { source: import.source.path.whole_name(), name, id, glob }
     }
 }
 
