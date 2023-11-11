@@ -6,8 +6,8 @@ use std::collections::{HashMap, HashSet};
 extern crate proc_macros;
 
 fn main() {
-    let hash_set = HashSet::<i32>::new();
-    let hash_map = HashMap::<i32, i32>::new();
+    let mut hash_set = HashSet::<i32>::new();
+    let mut hash_map = HashMap::<i32, i32>::new();
     let vec = Vec::<i32>::new();
 
     for x in &hash_set {
@@ -16,7 +16,10 @@ fn main() {
     for x in hash_set.iter() {
         let _ = x;
     }
-    for x in hash_set {
+    for x in hash_set.clone() {
+        let _ = x;
+    }
+    for x in hash_set.drain() {
         let _ = x;
     }
     for (x, y) in &hash_map {
@@ -26,6 +29,18 @@ fn main() {
         let _ = x;
     }
     for x in hash_map.values() {
+        let _ = x;
+    }
+    for x in hash_map.values_mut() {
+        *x += 1;
+    }
+    for x in hash_map.iter() {
+        let _ = x;
+    }
+    for x in hash_map.clone() {
+        let _ = x;
+    }
+    for x in hash_map.drain() {
         let _ = x;
     }
 

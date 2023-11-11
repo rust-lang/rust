@@ -1,8 +1,11 @@
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::higher::ForLoop;
-use clippy_utils::match_def_path;
-use clippy_utils::paths::{HASHMAP_KEYS, HASHMAP_VALUES, HASHSET_ITER_TY};
+use clippy_utils::paths::{
+    HASHMAP_DRAIN, HASHMAP_ITER, HASHMAP_ITER_MUT, HASHMAP_KEYS, HASHMAP_VALUES, HASHMAP_VALUES_MUT, HASHSET_DRAIN,
+    HASHSET_ITER_TY,
+};
 use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::match_any_def_paths;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::sym;
@@ -13,7 +16,7 @@ declare_clippy_lint! {
     ///
     /// ### Why is this bad?
     /// Because hash types are unordered, when iterated through such as in a for loop, the values are returned in
-    /// a pseudo-random order. As a result, on redundant systems this may cause inconsistencies and anomalies.
+    /// an undefined order. As a result, on redundant systems this may cause inconsistencies and anomalies.
     /// In addition, the unknown order of the elements may reduce readability or introduce other undesired
     /// side effects.
     ///
@@ -46,9 +49,21 @@ impl LateLintPass<'_> for IterOverHashType {
             && let ty = cx.typeck_results().expr_ty(for_loop.arg).peel_refs()
             && let Some(adt) = ty.ty_adt_def()
             && let did = adt.did()
-            && (match_def_path(cx, did, &HASHMAP_KEYS)
-                || match_def_path(cx, did, &HASHMAP_VALUES)
-                || match_def_path(cx, did, &HASHSET_ITER_TY)
+            && (match_any_def_paths(
+                cx,
+                did,
+                &[
+                    &HASHMAP_KEYS,
+                    &HASHMAP_VALUES,
+                    &HASHMAP_VALUES_MUT,
+                    &HASHMAP_ITER,
+                    &HASHMAP_ITER_MUT,
+                    &HASHMAP_DRAIN,
+                    &HASHSET_ITER_TY,
+                    &HASHSET_DRAIN,
+                ],
+            )
+            .is_some()
                 || is_type_diagnostic_item(cx, ty, sym::HashMap)
                 || is_type_diagnostic_item(cx, ty, sym::HashSet))
         {
@@ -56,7 +71,7 @@ impl LateLintPass<'_> for IterOverHashType {
                 cx,
                 ITER_OVER_HASH_TYPE,
                 expr.span,
-                "iterating over unordered hash-based type",
+                "iteration over unordered hash-based type",
             );
         };
     }
