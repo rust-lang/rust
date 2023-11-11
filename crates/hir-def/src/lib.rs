@@ -152,7 +152,7 @@ impl TryFrom<ModuleId> for CrateRootModuleId {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct ModuleId {
     krate: CrateId,
     /// If this `ModuleId` was derived from a `DefMap` for a block expression, this stores the

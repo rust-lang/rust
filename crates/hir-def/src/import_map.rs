@@ -22,7 +22,7 @@ use crate::{
 type FxIndexMap<K, V> = IndexMap<K, V, BuildHasherDefault<FxHasher>>;
 
 /// Item import details stored in the `ImportMap`.
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ImportInfo {
     /// A name that can be used to import the item, relative to the crate's root.
     pub name: Name,
@@ -78,7 +78,8 @@ impl ImportMap {
 
         // Build the FST, taking care not to insert duplicate values.
         let mut builder = fst::MapBuilder::memory();
-        let iter = importables.iter().enumerate().dedup_by(|lhs, rhs| lhs.1 .1 == rhs.1 .1);
+        let iter =
+            importables.iter().enumerate().dedup_by(|(_, (_, lhs)), (_, (_, rhs))| lhs == rhs);
         for (start_idx, (_, name)) in iter {
             let _ = builder.insert(name, start_idx as u64);
         }
@@ -128,7 +129,6 @@ fn collect_import_map(db: &dyn DefDatabase, krate: CrateId) -> ImportMapIndex {
             }
         });
 
-        // FIXME: This loop might add the same entry up to 3 times per item! dedup
         for (name, per_ns) in visible_items {
             for (item, import) in per_ns.iter_items() {
                 let attr_id = if let Some(import) = import {
@@ -164,10 +164,10 @@ fn collect_import_map(db: &dyn DefDatabase, krate: CrateId) -> ImportMapIndex {
                     );
                 }
 
-                map.entry(item)
-                    .or_insert_with(|| (SmallVec::new(), IsTraitAssocItem::No))
-                    .0
-                    .push(import_info);
+                let (infos, _) =
+                    map.entry(item).or_insert_with(|| (SmallVec::new(), IsTraitAssocItem::No));
+                infos.reserve_exact(1);
+                infos.push(import_info);
 
                 // If we've just added a module, descend into it.
                 if let Some(ModuleDefId::ModuleId(mod_id)) = item.as_module_def_id() {
@@ -213,10 +213,10 @@ fn collect_trait_assoc_items(
             is_unstable: attrs.is_unstable(),
         };
 
-        map.entry(assoc_item)
-            .or_insert_with(|| (SmallVec::new(), IsTraitAssocItem::Yes))
-            .0
-            .push(assoc_item_info);
+        let (infos, _) =
+            map.entry(assoc_item).or_insert_with(|| (SmallVec::new(), IsTraitAssocItem::Yes));
+        infos.reserve_exact(1);
+        infos.push(assoc_item_info);
     }
 }
 
@@ -234,10 +234,13 @@ impl fmt::Debug for ImportMap {
         let mut importable_names: Vec<_> = self
             .map
             .iter()
-            .map(|(item, _)| match item {
-                ItemInNs::Types(it) => format!("- {it:?} (t)",),
-                ItemInNs::Values(it) => format!("- {it:?} (v)",),
-                ItemInNs::Macros(it) => format!("- {it:?} (m)",),
+            .map(|(item, (infos, _))| {
+                let l = infos.len();
+                match item {
+                    ItemInNs::Types(it) => format!("- {it:?} (t) [{l}]",),
+                    ItemInNs::Values(it) => format!("- {it:?} (v) [{l}]",),
+                    ItemInNs::Macros(it) => format!("- {it:?} (m) [{l}]",),
+                }
             })
             .collect();
 
@@ -368,7 +371,7 @@ impl Query {
 pub fn search_dependencies(
     db: &dyn DefDatabase,
     krate: CrateId,
-    query: Query,
+    ref query: Query,
 ) -> FxHashSet<ItemInNs> {
     let _p = profile::span("search_dependencies").detail(|| format!("{query:?}"));
 
@@ -386,6 +389,7 @@ pub fn search_dependencies(
     let mut stream = op.union();
 
     let mut res = FxHashSet::default();
+    let mut common_importable_data_scratch = vec![];
     while let Some((_, indexed_values)) = stream.next() {
         for &IndexedValue { index, value } in indexed_values {
             let import_map = &import_maps[index];
@@ -398,36 +402,45 @@ pub fn search_dependencies(
                 continue;
             }
 
-            // FIXME: We probably need to account for other possible matches in this alias group?
-            let Some(common_importable_data) =
-                importable_data.iter().find(|&info| query.import_matches(db, info, true))
-            else {
+            common_importable_data_scratch.extend(
+                importable_data
+                    .iter()
+                    .filter(|&info| query.import_matches(db, info, true))
+                    // Name shared by the importable items in this group.
+                    .map(|info| info.name.to_smol_str()),
+            );
+            if common_importable_data_scratch.is_empty() {
                 continue;
-            };
+            }
+            common_importable_data_scratch.sort();
+            common_importable_data_scratch.dedup();
 
-            // FIXME: so many allocs...
-            // Name shared by the importable items in this group.
-            let common_importable_name =
-                common_importable_data.name.to_smol_str().to_ascii_lowercase();
-            // Add the items from this name group. Those are all subsequent items in
-            // `importables` whose name match `common_importable_name`.
-            let iter = importables
-                .iter()
-                .copied()
-                .take_while(|item| {
-                    let &(ref import_infos, assoc_mode) = &import_map.map[item];
-                    query.matches_assoc_mode(assoc_mode)
-                        && import_infos.iter().any(|info| {
-                            info.name.to_smol_str().to_ascii_lowercase() == common_importable_name
+            let iter =
+                common_importable_data_scratch.drain(..).flat_map(|common_importable_name| {
+                    // Add the items from this name group. Those are all subsequent items in
+                    // `importables` whose name match `common_importable_name`.
+                    importables
+                        .iter()
+                        .copied()
+                        .take_while(move |item| {
+                            let &(ref import_infos, assoc_mode) = &import_map.map[item];
+                            query.matches_assoc_mode(assoc_mode)
+                                && import_infos.iter().any(|info| {
+                                    info.name
+                                        .to_smol_str()
+                                        .eq_ignore_ascii_case(&common_importable_name)
+                                })
                         })
-                })
-                .filter(|item| {
-                    !query.case_sensitive || {
-                        // we've already checked the common importables name case-insensitively
-                        let &(ref import_infos, assoc_mode) = &import_map.map[item];
-                        query.matches_assoc_mode(assoc_mode)
-                            && import_infos.iter().any(|info| query.import_matches(db, info, false))
-                    }
+                        .filter(move |item| {
+                            !query.case_sensitive || {
+                                // we've already checked the common importables name case-insensitively
+                                let &(ref import_infos, assoc_mode) = &import_map.map[item];
+                                query.matches_assoc_mode(assoc_mode)
+                                    && import_infos
+                                        .iter()
+                                        .any(|info| query.import_matches(db, info, false))
+                            }
+                        })
                 });
             res.extend(iter);
 
