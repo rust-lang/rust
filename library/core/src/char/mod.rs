@@ -152,6 +152,7 @@ pub const fn from_digit(num: u32, radix: u32) -> Option<char> {
 pub struct EscapeUnicode(escape::EscapeIterInner<10>);
 
 impl EscapeUnicode {
+    #[inline]
     fn new(chr: char) -> Self {
         let mut data = [ascii::Char::Null; 10];
         let range = escape::escape_unicode_into(&mut data, chr);

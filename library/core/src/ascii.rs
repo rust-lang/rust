@@ -90,6 +90,7 @@ pub struct EscapeDefault(escape::EscapeIterInner<4>);
 /// assert_eq!(b'd', escaped.next().unwrap());
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
+#[inline]
 pub fn escape_default(c: u8) -> EscapeDefault {
     let mut data = [Char::Null; 4];
     let range = escape::escape_ascii_into(&mut data, c);

@@ -340,6 +340,7 @@ impl<'a, 'b: 'a> DebugTuple<'a, 'b> {
     /// This method is equivalent to [`DebugTuple::field`], but formats the
     /// value using a provided closure rather than by calling [`Debug::fmt`].
     #[unstable(feature = "debug_closure_helpers", issue = "117729")]
+    #[inline]
     pub fn field_with<F>(&mut self, value_fmt: F) -> &mut Self
     where
         F: FnOnce(&mut fmt::Formatter<'_>) -> fmt::Result,

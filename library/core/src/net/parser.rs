@@ -137,6 +137,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Read an IPv4 address.
+    #[inline]
     fn read_ipv4_addr(&mut self) -> Option<Ipv4Addr> {
         self.read_atomically(|p| {
             let mut groups = [0; 4];
@@ -154,6 +155,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Read an IPv6 Address.
+    #[inline]
     fn read_ipv6_addr(&mut self) -> Option<Ipv6Addr> {
         /// Read a chunk of an IPv6 address into `groups`. Returns the number
         /// of groups read, along with a bool indicating if an embedded
@@ -242,6 +244,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Read an IPv4 address with a port.
+    #[inline]
     fn read_socket_addr_v4(&mut self) -> Option<SocketAddrV4> {
         self.read_atomically(|p| {
             let ip = p.read_ipv4_addr()?;
@@ -251,6 +254,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Read an IPv6 address with a port.
+    #[inline]
     fn read_socket_addr_v6(&mut self) -> Option<SocketAddrV6> {
         self.read_atomically(|p| {
             p.read_given_char('[')?;
