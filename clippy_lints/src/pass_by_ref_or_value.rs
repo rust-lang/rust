@@ -19,7 +19,6 @@ use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{sym, Span};
 use rustc_target::spec::abi::Abi;
-use rustc_target::spec::Target;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -116,10 +115,10 @@ impl<'tcx> PassByRefOrValue {
         ref_min_size: Option<u64>,
         value_max_size: u64,
         avoid_breaking_exported_api: bool,
-        target: &Target,
+        pointer_width: u32,
     ) -> Self {
         let ref_min_size = ref_min_size.unwrap_or_else(|| {
-            let bit_width = u64::from(target.pointer_width);
+            let bit_width = u64::from(pointer_width);
             // Cap the calculated bit width at 32-bits to reduce
             // portability problems between 32 and 64-bit targets
             let bit_width = cmp::min(bit_width, 32);

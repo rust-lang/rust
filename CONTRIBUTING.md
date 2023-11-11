@@ -146,16 +146,10 @@ For example, the [`else_if_without_else`][else_if_without_else] lint is register
 pub mod else_if_without_else;
 // ...
 
-pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf: &Conf) {
+pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     // ...
     store.register_early_pass(|| Box::new(else_if_without_else::ElseIfWithoutElse));
     // ...
-
-    store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
-        // ...
-        LintId::of(&else_if_without_else::ELSE_IF_WITHOUT_ELSE),
-        // ...
-    ]);
 }
 ```
 

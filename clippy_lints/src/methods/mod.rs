@@ -3697,8 +3697,10 @@ impl Methods {
         msrv: Msrv,
         allow_expect_in_tests: bool,
         allow_unwrap_in_tests: bool,
-        allowed_dotfiles: FxHashSet<String>,
+        mut allowed_dotfiles: FxHashSet<String>,
     ) -> Self {
+        allowed_dotfiles.extend(DEFAULT_ALLOWED_DOTFILES.iter().map(ToString::to_string));
+
         Self {
             avoid_breaking_exported_api,
             msrv,
