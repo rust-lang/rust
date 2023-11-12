@@ -11,8 +11,10 @@ set -euo pipefail
 IFS=$'\n\t'
 
 echo MAJAHA
-ls /home/
-mkdir /home/runneradmin
-ls /home/
+cygpath -w /
+echo MAJAHA2
+ls /
+# mkdir /home/runneradmin
+# ls /home/
 
 git config --replace-all --global core.autocrlf false
