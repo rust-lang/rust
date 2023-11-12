@@ -1934,7 +1934,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             *ty,
                             ty_fn_ptr_from,
                             location.to_locations(),
-                            ConstraintCategory::Cast,
+                            ConstraintCategory::Cast { unsize_to: None },
                         ) {
                             span_mirbug!(
                                 self,
@@ -1959,7 +1959,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             *ty,
                             ty_fn_ptr_from,
                             location.to_locations(),
-                            ConstraintCategory::Cast,
+                            ConstraintCategory::Cast { unsize_to: None },
                         ) {
                             span_mirbug!(
                                 self,
@@ -1988,7 +1988,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             *ty,
                             ty_fn_ptr_from,
                             location.to_locations(),
-                            ConstraintCategory::Cast,
+                            ConstraintCategory::Cast { unsize_to: None },
                         ) {
                             span_mirbug!(
                                 self,
@@ -2013,7 +2013,15 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         self.prove_trait_ref(
                             trait_ref,
                             location.to_locations(),
-                            ConstraintCategory::Cast,
+                            ConstraintCategory::Cast {
+                                unsize_to: Some(tcx.fold_regions(ty, |r, _| {
+                                    if let ty::ReVar(_) = r.kind() {
+                                        tcx.lifetimes.re_erased
+                                    } else {
+                                        r
+                                    }
+                                })),
+                            },
                         );
                     }
 
@@ -2033,7 +2041,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                                 .iter()
                                 .map(|predicate| predicate.with_self_ty(tcx, self_ty)),
                             location.to_locations(),
-                            ConstraintCategory::Cast,
+                            ConstraintCategory::Cast { unsize_to: None },
                         );
 
                         let outlives_predicate = tcx.mk_predicate(Binder::dummy(
@@ -2044,7 +2052,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         self.prove_predicate(
                             outlives_predicate,
                             location.to_locations(),
-                            ConstraintCategory::Cast,
+                            ConstraintCategory::Cast { unsize_to: None },
                         );
                     }
 
@@ -2065,7 +2073,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             *ty_from,
                             *ty_to,
                             location.to_locations(),
-                            ConstraintCategory::Cast,
+                            ConstraintCategory::Cast { unsize_to: None },
                         ) {
                             span_mirbug!(
                                 self,
@@ -2131,7 +2139,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             *ty_elem,
                             *ty_to,
                             location.to_locations(),
-                            ConstraintCategory::Cast,
+                            ConstraintCategory::Cast { unsize_to: None },
                         ) {
                             span_mirbug!(
                                 self,

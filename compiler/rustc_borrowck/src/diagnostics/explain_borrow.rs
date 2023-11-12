@@ -5,12 +5,13 @@ use rustc_hir as hir;
 use rustc_hir::intravisit::Visitor;
 use rustc_index::IndexSlice;
 use rustc_infer::infer::NllRegionVariableOrigin;
+use rustc_middle::middle::resolve_bound_vars::ObjectLifetimeDefault;
 use rustc_middle::mir::{
     Body, CallSource, CastKind, ConstraintCategory, FakeReadCause, Local, LocalInfo, Location,
     Operand, Place, Rvalue, Statement, StatementKind, TerminatorKind,
 };
 use rustc_middle::ty::adjustment::PointerCoercion;
-use rustc_middle::ty::{self, RegionVid, TyCtxt};
+use rustc_middle::ty::{self, RegionVid, Ty, TyCtxt};
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::{sym, DesugaringKind, Span};
 use rustc_trait_selection::traits::error_reporting::FindExprBySpan;
@@ -290,9 +291,66 @@ impl<'tcx> BorrowExplanation<'tcx> {
                     }
                 }
 
+                if let ConstraintCategory::Cast { unsize_to: Some(unsize_ty) } = category {
+                    self.add_object_lifetime_default_note(tcx, err, unsize_ty);
+                }
                 self.add_lifetime_bound_suggestion_to_diagnostic(err, &category, span, region_name);
             }
             _ => {}
+        }
+    }
+
+    fn add_object_lifetime_default_note(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        err: &mut Diagnostic,
+        unsize_ty: Ty<'tcx>,
+    ) {
+        if let ty::Adt(def, args) = unsize_ty.kind() {
+            // We try to elaborate the object lifetime defaults and present those to the user. This should
+            // make it clear where the region constraint is coming from.
+            let generics = tcx.generics_of(def.did());
+
+            let mut has_dyn = false;
+            let mut failed = false;
+
+            let elaborated_args = std::iter::zip(*args, &generics.params).map(|(arg, param)| {
+                if let Some(ty::Dynamic(obj, _, ty::DynKind::Dyn)) = arg.as_type().map(Ty::kind) {
+                    let default = tcx.object_lifetime_default(param.def_id);
+
+                    let re_static = tcx.lifetimes.re_static;
+
+                    let implied_region = match default {
+                        // This is not entirely precise.
+                        ObjectLifetimeDefault::Empty => re_static,
+                        ObjectLifetimeDefault::Ambiguous => {
+                            failed = true;
+                            re_static
+                        }
+                        ObjectLifetimeDefault::Param(param_def_id) => {
+                            let index = generics.param_def_id_to_index[&param_def_id] as usize;
+                            args.get(index).and_then(|arg| arg.as_region()).unwrap_or_else(|| {
+                                failed = true;
+                                re_static
+                            })
+                        }
+                        ObjectLifetimeDefault::Static => re_static,
+                    };
+
+                    has_dyn = true;
+
+                    Ty::new_dynamic(tcx, obj, implied_region, ty::DynKind::Dyn).into()
+                } else {
+                    arg
+                }
+            });
+            let elaborated_ty = Ty::new_adt(tcx, *def, tcx.mk_args_from_iter(elaborated_args));
+
+            if has_dyn && !failed {
+                err.note(format!(
+                    "due to object lifetime defaults, `{unsize_ty}` actually means `{elaborated_ty}`"
+                ));
+            }
         }
     }
 
