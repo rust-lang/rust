@@ -1,4 +1,5 @@
-//! Check that destructors of the thread locals are executed on all OSes.
+//! Check that destructors of the thread locals are executed on all OSes
+//! (even when we do not support concurrency, and cannot run the other test).
 
 use std::cell::RefCell;
 
