@@ -36,7 +36,6 @@ pub trait Interner: Sized {
 
     // Kinds of consts
     type Const: Clone + DebugWithInfcx<Self> + Hash + Ord;
-    type InferConst: Clone + DebugWithInfcx<Self> + Hash + Ord;
     type AliasConst: Clone + DebugWithInfcx<Self> + Hash + Ord;
     type PlaceholderConst: Clone + Debug + Hash + Ord;
     type ParamConst: Clone + Debug + Hash + Ord;

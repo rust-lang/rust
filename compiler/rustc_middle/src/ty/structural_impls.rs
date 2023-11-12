@@ -202,34 +202,6 @@ impl<'tcx> DebugWithInfcx<TyCtxt<'tcx>> for AliasTy<'tcx> {
     }
 }
 
-impl fmt::Debug for ty::InferConst {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            InferConst::Var(var) => write!(f, "{var:?}"),
-            InferConst::EffectVar(var) => write!(f, "{var:?}"),
-            InferConst::Fresh(var) => write!(f, "Fresh({var:?})"),
-        }
-    }
-}
-impl<'tcx> DebugWithInfcx<TyCtxt<'tcx>> for ty::InferConst {
-    fn fmt<Infcx: InferCtxtLike<Interner = TyCtxt<'tcx>>>(
-        this: WithInfcx<'_, Infcx, &Self>,
-        f: &mut core::fmt::Formatter<'_>,
-    ) -> core::fmt::Result {
-        use ty::InferConst::*;
-        match this.infcx.universe_of_ct(*this.data) {
-            None => write!(f, "{:?}", this.data),
-            Some(universe) => match *this.data {
-                Var(vid) => write!(f, "?{}_{}c", vid.index(), universe.index()),
-                EffectVar(vid) => write!(f, "?{}_{}e", vid.index(), universe.index()),
-                Fresh(_) => {
-                    unreachable!()
-                }
-            },
-        }
-    }
-}
-
 impl<'tcx> fmt::Debug for ty::consts::Expr<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         WithInfcx::with_no_infcx(self).fmt(f)
