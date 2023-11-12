@@ -301,24 +301,47 @@ fn main() {
     };
 
     // Issue #11474
-    pub struct Variant {
-        pub anonymous: Variant0,
+    #[derive(Clone, Copy)]
+    struct Wrap<T>(T);
+    impl<T> core::ops::Deref for Wrap<T> {
+        type Target = T;
+        fn deref(&self) -> &T {
+            &self.0
+        }
+    }
+    impl<T> core::ops::DerefMut for Wrap<T> {
+        fn deref_mut(&mut self) -> &mut T {
+            &mut self.0
+        }
     }
 
-    pub union Variant0 {
-        pub anonymous: std::mem::ManuallyDrop<Variant00>,
+    union U<T: Copy> {
+        u: T,
     }
 
-    pub struct Variant00 {
-        pub anonymous: Variant000,
-    }
-
-    pub union Variant000 {
-        pub val: i32,
+    #[derive(Clone, Copy)]
+    struct S8 {
+        x: &'static str,
     }
 
     unsafe {
-        let mut p = core::mem::zeroed::<Variant>();
-        (*p.anonymous.anonymous).anonymous.val = 1;
+        let mut x = U {
+            u: core::mem::ManuallyDrop::new(S8 { x: "" }),
+        };
+        let _ = &mut (*x.u).x;
+        let _ = &mut (*{ x.u }).x;
+        let _ = &mut ({ *x.u }).x;
+
+        let mut x = U {
+            u: Wrap(core::mem::ManuallyDrop::new(S8 { x: "" })),
+        };
+        let _ = &mut (**x.u).x;
+        let _ = &mut (**{ x.u }).x;
+        let _ = &mut ({ **x.u }).x;
+
+        let mut x = U { u: Wrap(S8 { x: "" }) };
+        let _ = &mut (*x.u).x;
+        let _ = &mut (*{ x.u }).x;
+        let _ = &mut ({ *x.u }).x;
     }
 }
