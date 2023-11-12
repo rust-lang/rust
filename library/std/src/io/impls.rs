@@ -476,7 +476,7 @@ impl<A: Allocator> Read for VecDeque<u8, A> {
 }
 
 /// BufRead is implemented for `VecDeque<u8>` by reading bytes from the front of the `VecDeque`.
-#[stable(feature = "vecdeque_buf_read", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "vecdeque_buf_read", since = "1.75.0")]
 impl<A: Allocator> BufRead for VecDeque<u8, A> {
     /// Returns the contents of the "front" slice as returned by
     /// [`as_slices`][`VecDeque::as_slices`]. If the contained byte slices of the `VecDeque` are

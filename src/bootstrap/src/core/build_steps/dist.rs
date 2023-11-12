@@ -1630,13 +1630,10 @@ impl Step for Extended {
             prepare("rust-analysis");
             prepare("clippy");
             prepare("rust-analyzer");
-            for tool in &["rust-docs", "rust-demangler", "miri"] {
+            for tool in &["rust-docs", "rust-demangler", "miri", "rustc-codegen-cranelift"] {
                 if built_tools.contains(tool) {
                     prepare(tool);
                 }
-            }
-            if builder.config.rust_codegen_backends.contains(&INTERNER.intern_str("cranelift")) {
-                prepare("rustc-codegen-cranelift");
             }
             // create an 'uninstall' package
             builder.install(&etc.join("pkg/postinstall"), &pkg.join("uninstall"), 0o755);
