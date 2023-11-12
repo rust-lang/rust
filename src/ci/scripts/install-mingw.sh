@@ -13,6 +13,8 @@ MINGW_ARCHIVE_32="i686-12.2.0-release-posix-dwarf-rt_v10-rev0.7z"
 MINGW_ARCHIVE_64="x86_64-12.2.0-release-posix-seh-rt_v10-rev0.7z"
 
 if isWindows; then
+    echo "MAJAHA 3: $(cygpath -w $(which git))"
+    echo "MAJAHA 3: $(cygpath -w $(which python))"
     case "${CI_JOB_NAME}" in
         *i686*)
             bits=32
@@ -41,13 +43,15 @@ if isWindows; then
     if [[ "${CUSTOM_MINGW-0}" -ne 1 ]]; then
         pacman -S --noconfirm --needed mingw-w64-$arch-toolchain mingw-w64-$arch-cmake \
             mingw-w64-$arch-gcc \
-            mingw-w64-$arch-python # the python package is actually for python3
+            mingw-w64-$arch-python # the python package is actually for python3 #suspect, is this python even used?
         ciCommandAddPath "$(ciCheckoutPath)/msys2/mingw${bits}/bin"
+        echo "CUSTOM MINGW PATH 0"
     else
         mingw_dir="mingw${bits}"
 
         curl -o mingw.7z "${MIRRORS_BASE}/${mingw_archive}"
         7z x -y mingw.7z > /dev/null
         ciCommandAddPath "$(pwd)/${mingw_dir}/bin"
+        echo "CUSTOM MINGW PATH 1"
     fi
 fi
