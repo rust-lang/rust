@@ -87,8 +87,6 @@ jobs:
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     steps:
-      - name: disable git crlf conversion
-        run: src/ci/scripts/disable-git-crlf-conversion.sh
       - name: checkout the source code
         uses: actions/checkout@v4
         with:
@@ -480,8 +478,6 @@ jobs:
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     steps:
-      - name: disable git crlf conversion
-        run: src/ci/scripts/disable-git-crlf-conversion.sh
       - name: checkout the source code
         uses: actions/checkout@v4
         with:
@@ -607,8 +603,6 @@ jobs:
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     steps:
-      - name: disable git crlf conversion
-        run: src/ci/scripts/disable-git-crlf-conversion.sh
       - name: checkout the source code
         uses: actions/checkout@v4
         with:

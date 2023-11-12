@@ -114,8 +114,8 @@ x--expand-yaml-anchors--remove:
     runs-on: "${{ matrix.os }}"
     env: *shared-ci-variables
     steps:
-      - name: disable git crlf conversion
-        run: src/ci/scripts/disable-git-crlf-conversion.sh
+      # - name: disable git crlf conversion
+      #   run: src/ci/scripts/disable-git-crlf-conversion.sh
 
       - name: checkout the source code
         uses: actions/checkout@v4
