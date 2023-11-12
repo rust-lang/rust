@@ -73,114 +73,342 @@ unsafe fn test_sse41() {
     test_mm_dp_ps();
 
     #[target_feature(enable = "sse4.1")]
-    unsafe fn test_mm_floor_sd() {
-        let a = _mm_setr_pd(2.5, 4.5);
-        let b = _mm_setr_pd(-1.5, -3.5);
-        let r = _mm_floor_sd(a, b);
-        let e = _mm_setr_pd(-2.0, 4.5);
-        assert_eq_m128d(r, e);
-    }
-    test_mm_floor_sd();
+    unsafe fn test_round_nearest_f32() {
+        #[target_feature(enable = "sse4.1")]
+        unsafe fn test(x: f32, res: f32) {
+            let a = _mm_setr_ps(3.5, 2.5, 1.5, 4.5);
+            let b = _mm_setr_ps(x, -1.5, -3.5, -2.5);
+            let e = _mm_setr_ps(res, 2.5, 1.5, 4.5);
+            let r = _mm_round_ss::<_MM_FROUND_TO_NEAREST_INT>(a, b);
+            assert_eq_m128(r, e);
+            // Assume round-to-nearest by default
+            let r = _mm_round_ss::<_MM_FROUND_CUR_DIRECTION>(a, b);
+            assert_eq_m128(r, e);
 
-    #[target_feature(enable = "sse4.1")]
-    unsafe fn test_mm_floor_ss() {
-        let a = _mm_setr_ps(2.5, 4.5, 8.5, 16.5);
-        let b = _mm_setr_ps(-1.5, -3.5, -7.5, -15.5);
-        let r = _mm_floor_ss(a, b);
-        let e = _mm_setr_ps(-2.0, 4.5, 8.5, 16.5);
+            let a = _mm_set1_ps(x);
+            let e = _mm_set1_ps(res);
+            let r = _mm_round_ps::<_MM_FROUND_TO_NEAREST_INT>(a);
+            assert_eq_m128(r, e);
+            // Assume round-to-nearest by default
+            let r = _mm_round_ps::<_MM_FROUND_CUR_DIRECTION>(a);
+            assert_eq_m128(r, e);
+        }
+
+        // Test rounding direction
+        test(-2.5, -2.0);
+        test(-1.75, -2.0);
+        test(-1.5, -2.0);
+        test(-1.25, -1.0);
+        test(-1.0, -1.0);
+        test(0.0, 0.0);
+        test(1.0, 1.0);
+        test(1.25, 1.0);
+        test(1.5, 2.0);
+        test(1.75, 2.0);
+        test(2.5, 2.0);
+
+        // Test that each element is rounded
+        let a = _mm_setr_ps(1.5, 3.5, 5.5, 7.5);
+        let e = _mm_setr_ps(2.0, 4.0, 6.0, 8.0);
+        let r = _mm_round_ps::<_MM_FROUND_TO_NEAREST_INT>(a);
         assert_eq_m128(r, e);
-    }
-    test_mm_floor_ss();
-
-    #[target_feature(enable = "sse4.1")]
-    unsafe fn test_mm_ceil_sd() {
-        let a = _mm_setr_pd(1.5, 3.5);
-        let b = _mm_setr_pd(-2.5, -4.5);
-        let r = _mm_ceil_sd(a, b);
-        let e = _mm_setr_pd(-2.0, 3.5);
-        assert_eq_m128d(r, e);
-    }
-    test_mm_ceil_sd();
-
-    #[target_feature(enable = "sse4.1")]
-    unsafe fn test_mm_ceil_ss() {
-        let a = _mm_setr_ps(1.5, 3.5, 7.5, 15.5);
-        let b = _mm_setr_ps(-2.5, -4.5, -8.5, -16.5);
-        let r = _mm_ceil_ss(a, b);
-        let e = _mm_setr_ps(-2.0, 3.5, 7.5, 15.5);
-        assert_eq_m128(r, e);
-    }
-    test_mm_ceil_ss();
-
-    #[target_feature(enable = "sse4.1")]
-    unsafe fn test_mm_round_sd() {
-        let a = _mm_setr_pd(1.5, 3.5);
-        let b = _mm_setr_pd(-2.5, -4.5);
-        let r = _mm_round_sd::<_MM_FROUND_TO_NEAREST_INT>(a, b);
-        let e = _mm_setr_pd(-2.0, 3.5);
-        assert_eq_m128d(r, e);
-
-        let a = _mm_setr_pd(1.5, 3.5);
-        let b = _mm_setr_pd(-2.5, -4.5);
-        let r = _mm_round_sd::<_MM_FROUND_TO_NEG_INF>(a, b);
-        let e = _mm_setr_pd(-3.0, 3.5);
-        assert_eq_m128d(r, e);
-
-        let a = _mm_setr_pd(1.5, 3.5);
-        let b = _mm_setr_pd(-2.5, -4.5);
-        let r = _mm_round_sd::<_MM_FROUND_TO_POS_INF>(a, b);
-        let e = _mm_setr_pd(-2.0, 3.5);
-        assert_eq_m128d(r, e);
-
-        let a = _mm_setr_pd(1.5, 3.5);
-        let b = _mm_setr_pd(-2.5, -4.5);
-        let r = _mm_round_sd::<_MM_FROUND_TO_ZERO>(a, b);
-        let e = _mm_setr_pd(-2.0, 3.5);
-        assert_eq_m128d(r, e);
-
         // Assume round-to-nearest by default
-        let a = _mm_setr_pd(1.5, 3.5);
-        let b = _mm_setr_pd(-2.5, -4.5);
-        let r = _mm_round_sd::<_MM_FROUND_CUR_DIRECTION>(a, b);
-        let e = _mm_setr_pd(-2.0, 3.5);
-        assert_eq_m128d(r, e);
+        let r = _mm_round_ps::<_MM_FROUND_CUR_DIRECTION>(a);
+        assert_eq_m128(r, e);
     }
-    test_mm_round_sd();
+    test_round_nearest_f32();
 
     #[target_feature(enable = "sse4.1")]
-    unsafe fn test_mm_round_ss() {
-        let a = _mm_setr_ps(1.5, 3.5, 7.5, 15.5);
-        let b = _mm_setr_ps(-1.75, -4.5, -8.5, -16.5);
-        let r = _mm_round_ss::<_MM_FROUND_TO_NEAREST_INT>(a, b);
-        let e = _mm_setr_ps(-2.0, 3.5, 7.5, 15.5);
-        assert_eq_m128(r, e);
+    unsafe fn test_round_floor_f32() {
+        #[target_feature(enable = "sse4.1")]
+        unsafe fn test(x: f32, res: f32) {
+            let a = _mm_setr_ps(3.5, 2.5, 1.5, 4.5);
+            let b = _mm_setr_ps(x, -1.5, -3.5, -2.5);
+            let e = _mm_setr_ps(res, 2.5, 1.5, 4.5);
+            let r = _mm_floor_ss(a, b);
+            assert_eq_m128(r, e);
+            let r = _mm_round_ss::<_MM_FROUND_TO_NEG_INF>(a, b);
+            assert_eq_m128(r, e);
 
-        let a = _mm_setr_ps(1.5, 3.5, 7.5, 15.5);
-        let b = _mm_setr_ps(-1.75, -4.5, -8.5, -16.5);
-        let r = _mm_round_ss::<_MM_FROUND_TO_NEG_INF>(a, b);
-        let e = _mm_setr_ps(-2.0, 3.5, 7.5, 15.5);
-        assert_eq_m128(r, e);
+            let a = _mm_set1_ps(x);
+            let e = _mm_set1_ps(res);
+            let r = _mm_floor_ps(a);
+            assert_eq_m128(r, e);
+            let r = _mm_round_ps::<_MM_FROUND_TO_NEG_INF>(a);
+            assert_eq_m128(r, e);
+        }
 
-        let a = _mm_setr_ps(1.5, 3.5, 7.5, 15.5);
-        let b = _mm_setr_ps(-1.75, -4.5, -8.5, -16.5);
-        let r = _mm_round_ss::<_MM_FROUND_TO_POS_INF>(a, b);
-        let e = _mm_setr_ps(-1.0, 3.5, 7.5, 15.5);
-        assert_eq_m128(r, e);
+        // Test rounding direction
+        test(-2.5, -3.0);
+        test(-1.75, -2.0);
+        test(-1.5, -2.0);
+        test(-1.25, -2.0);
+        test(-1.0, -1.0);
+        test(0.0, 0.0);
+        test(1.0, 1.0);
+        test(1.25, 1.0);
+        test(1.5, 1.0);
+        test(1.75, 1.0);
+        test(2.5, 2.0);
 
-        let a = _mm_setr_ps(1.5, 3.5, 7.5, 15.5);
-        let b = _mm_setr_ps(-1.75, -4.5, -8.5, -16.5);
-        let r = _mm_round_ss::<_MM_FROUND_TO_ZERO>(a, b);
-        let e = _mm_setr_ps(-1.0, 3.5, 7.5, 15.5);
+        // Test that each element is rounded
+        let a = _mm_setr_ps(1.5, 3.5, 5.5, 7.5);
+        let e = _mm_setr_ps(1.0, 3.0, 5.0, 7.0);
+        let r = _mm_floor_ps(a);
         assert_eq_m128(r, e);
-
-        // Assume round-to-nearest by default
-        let a = _mm_setr_ps(1.5, 3.5, 7.5, 15.5);
-        let b = _mm_setr_ps(-1.75, -4.5, -8.5, -16.5);
-        let r = _mm_round_ss::<_MM_FROUND_CUR_DIRECTION>(a, b);
-        let e = _mm_setr_ps(-2.0, 3.5, 7.5, 15.5);
+        let r = _mm_round_ps::<_MM_FROUND_TO_NEG_INF>(a);
         assert_eq_m128(r, e);
     }
-    test_mm_round_ss();
+    test_round_floor_f32();
+
+    #[target_feature(enable = "sse4.1")]
+    unsafe fn test_round_ceil_f32() {
+        #[target_feature(enable = "sse4.1")]
+        unsafe fn test(x: f32, res: f32) {
+            let a = _mm_setr_ps(3.5, 2.5, 1.5, 4.5);
+            let b = _mm_setr_ps(x, -1.5, -3.5, -2.5);
+            let e = _mm_setr_ps(res, 2.5, 1.5, 4.5);
+            let r = _mm_ceil_ss(a, b);
+            assert_eq_m128(r, e);
+            let r = _mm_round_ss::<_MM_FROUND_TO_POS_INF>(a, b);
+            assert_eq_m128(r, e);
+
+            let a = _mm_set1_ps(x);
+            let e = _mm_set1_ps(res);
+            let r = _mm_ceil_ps(a);
+            assert_eq_m128(r, e);
+            let r = _mm_round_ps::<_MM_FROUND_TO_POS_INF>(a);
+            assert_eq_m128(r, e);
+        }
+
+        // Test rounding direction
+        test(-2.5, -2.0);
+        test(-1.75, -1.0);
+        test(-1.5, -1.0);
+        test(-1.25, -1.0);
+        test(-1.0, -1.0);
+        test(0.0, 0.0);
+        test(1.0, 1.0);
+        test(1.25, 2.0);
+        test(1.5, 2.0);
+        test(1.75, 2.0);
+        test(2.5, 3.0);
+
+        // Test that each element is rounded
+        let a = _mm_setr_ps(1.5, 3.5, 5.5, 7.5);
+        let e = _mm_setr_ps(2.0, 4.0, 6.0, 8.0);
+        let r = _mm_ceil_ps(a);
+        assert_eq_m128(r, e);
+        let r = _mm_round_ps::<_MM_FROUND_TO_POS_INF>(a);
+        assert_eq_m128(r, e);
+    }
+    test_round_ceil_f32();
+
+    #[target_feature(enable = "sse4.1")]
+    unsafe fn test_round_trunc_f32() {
+        #[target_feature(enable = "sse4.1")]
+        unsafe fn test(x: f32, res: f32) {
+            let a = _mm_setr_ps(3.5, 2.5, 1.5, 4.5);
+            let b = _mm_setr_ps(x, -1.5, -3.5, -2.5);
+            let e = _mm_setr_ps(res, 2.5, 1.5, 4.5);
+            let r = _mm_round_ss::<_MM_FROUND_TO_ZERO>(a, b);
+            assert_eq_m128(r, e);
+
+            let a = _mm_set1_ps(x);
+            let e = _mm_set1_ps(res);
+            let r = _mm_round_ps::<_MM_FROUND_TO_ZERO>(a);
+            assert_eq_m128(r, e);
+        }
+
+        // Test rounding direction
+        test(-2.5, -2.0);
+        test(-1.75, -1.0);
+        test(-1.5, -1.0);
+        test(-1.25, -1.0);
+        test(-1.0, -1.0);
+        test(0.0, 0.0);
+        test(1.0, 1.0);
+        test(1.25, 1.0);
+        test(1.5, 1.0);
+        test(1.75, 1.0);
+        test(2.5, 2.0);
+
+        // Test that each element is rounded
+        let a = _mm_setr_ps(1.5, 3.5, 5.5, 7.5);
+        let e = _mm_setr_ps(1.0, 3.0, 5.0, 7.0);
+        let r = _mm_round_ps::<_MM_FROUND_TO_ZERO>(a);
+        assert_eq_m128(r, e);
+    }
+    test_round_trunc_f32();
+
+    #[target_feature(enable = "sse4.1")]
+    unsafe fn test_round_nearest_f64() {
+        #[target_feature(enable = "sse4.1")]
+        unsafe fn test(x: f64, res: f64) {
+            let a = _mm_setr_pd(3.5, 2.5);
+            let b = _mm_setr_pd(x, -1.5);
+            let e = _mm_setr_pd(res, 2.5);
+            let r = _mm_round_sd::<_MM_FROUND_TO_NEAREST_INT>(a, b);
+            assert_eq_m128d(r, e);
+            // Assume round-to-nearest by default
+            let r = _mm_round_sd::<_MM_FROUND_CUR_DIRECTION>(a, b);
+            assert_eq_m128d(r, e);
+
+            let a = _mm_set1_pd(x);
+            let e = _mm_set1_pd(res);
+            let r = _mm_round_pd::<_MM_FROUND_TO_NEAREST_INT>(a);
+            assert_eq_m128d(r, e);
+            // Assume round-to-nearest by default
+            let r = _mm_round_pd::<_MM_FROUND_CUR_DIRECTION>(a);
+            assert_eq_m128d(r, e);
+        }
+
+        // Test rounding direction
+        test(-2.5, -2.0);
+        test(-1.75, -2.0);
+        test(-1.5, -2.0);
+        test(-1.25, -1.0);
+        test(-1.0, -1.0);
+        test(0.0, 0.0);
+        test(1.0, 1.0);
+        test(1.25, 1.0);
+        test(1.5, 2.0);
+        test(1.75, 2.0);
+        test(2.5, 2.0);
+
+        // Test that each element is rounded
+        let a = _mm_setr_pd(1.5, 3.5);
+        let e = _mm_setr_pd(2.0, 4.0);
+        let r = _mm_round_pd::<_MM_FROUND_TO_NEAREST_INT>(a);
+        assert_eq_m128d(r, e);
+        // Assume round-to-nearest by default
+        let r = _mm_round_pd::<_MM_FROUND_CUR_DIRECTION>(a);
+        assert_eq_m128d(r, e);
+    }
+    test_round_nearest_f64();
+
+    #[target_feature(enable = "sse4.1")]
+    unsafe fn test_round_floor_f64() {
+        #[target_feature(enable = "sse4.1")]
+        unsafe fn test(x: f64, res: f64) {
+            let a = _mm_setr_pd(3.5, 2.5);
+            let b = _mm_setr_pd(x, -1.5);
+            let e = _mm_setr_pd(res, 2.5);
+            let r = _mm_floor_sd(a, b);
+            assert_eq_m128d(r, e);
+            let r = _mm_round_sd::<_MM_FROUND_TO_NEG_INF>(a, b);
+            assert_eq_m128d(r, e);
+
+            let a = _mm_set1_pd(x);
+            let e = _mm_set1_pd(res);
+            let r = _mm_floor_pd(a);
+            assert_eq_m128d(r, e);
+            let r = _mm_round_pd::<_MM_FROUND_TO_NEG_INF>(a);
+            assert_eq_m128d(r, e);
+        }
+
+        // Test rounding direction
+        test(-2.5, -3.0);
+        test(-1.75, -2.0);
+        test(-1.5, -2.0);
+        test(-1.25, -2.0);
+        test(-1.0, -1.0);
+        test(0.0, 0.0);
+        test(1.0, 1.0);
+        test(1.25, 1.0);
+        test(1.5, 1.0);
+        test(1.75, 1.0);
+        test(2.5, 2.0);
+
+        // Test that each element is rounded
+        let a = _mm_setr_pd(1.5, 3.5);
+        let e = _mm_setr_pd(1.0, 3.0);
+        let r = _mm_floor_pd(a);
+        assert_eq_m128d(r, e);
+        let r = _mm_round_pd::<_MM_FROUND_TO_NEG_INF>(a);
+        assert_eq_m128d(r, e);
+    }
+    test_round_floor_f64();
+
+    #[target_feature(enable = "sse4.1")]
+    unsafe fn test_round_ceil_f64() {
+        #[target_feature(enable = "sse4.1")]
+        unsafe fn test(x: f64, res: f64) {
+            let a = _mm_setr_pd(3.5, 2.5);
+            let b = _mm_setr_pd(x, -1.5);
+            let e = _mm_setr_pd(res, 2.5);
+            let r = _mm_ceil_sd(a, b);
+            assert_eq_m128d(r, e);
+            let r = _mm_round_sd::<_MM_FROUND_TO_POS_INF>(a, b);
+            assert_eq_m128d(r, e);
+
+            let a = _mm_set1_pd(x);
+            let e = _mm_set1_pd(res);
+            let r = _mm_ceil_pd(a);
+            assert_eq_m128d(r, e);
+            let r = _mm_round_pd::<_MM_FROUND_TO_POS_INF>(a);
+            assert_eq_m128d(r, e);
+        }
+
+        // Test rounding direction
+        test(-2.5, -2.0);
+        test(-1.75, -1.0);
+        test(-1.5, -1.0);
+        test(-1.25, -1.0);
+        test(-1.0, -1.0);
+        test(0.0, 0.0);
+        test(1.0, 1.0);
+        test(1.25, 2.0);
+        test(1.5, 2.0);
+        test(1.75, 2.0);
+        test(2.5, 3.0);
+
+        // Test that each element is rounded
+        let a = _mm_setr_pd(1.5, 3.5);
+        let e = _mm_setr_pd(2.0, 4.0);
+        let r = _mm_ceil_pd(a);
+        assert_eq_m128d(r, e);
+        let r = _mm_round_pd::<_MM_FROUND_TO_POS_INF>(a);
+        assert_eq_m128d(r, e);
+    }
+    test_round_ceil_f64();
+
+    #[target_feature(enable = "sse4.1")]
+    unsafe fn test_round_trunc_f64() {
+        #[target_feature(enable = "sse4.1")]
+        unsafe fn test(x: f64, res: f64) {
+            let a = _mm_setr_pd(3.5, 2.5);
+            let b = _mm_setr_pd(x, -1.5);
+            let e = _mm_setr_pd(res, 2.5);
+            let r = _mm_round_sd::<_MM_FROUND_TO_ZERO>(a, b);
+            assert_eq_m128d(r, e);
+
+            let a = _mm_set1_pd(x);
+            let e = _mm_set1_pd(res);
+            let r = _mm_round_pd::<_MM_FROUND_TO_ZERO>(a);
+            assert_eq_m128d(r, e);
+        }
+
+        // Test rounding direction
+        test(-2.5, -2.0);
+        test(-1.75, -1.0);
+        test(-1.5, -1.0);
+        test(-1.25, -1.0);
+        test(-1.0, -1.0);
+        test(0.0, 0.0);
+        test(1.0, 1.0);
+        test(1.25, 1.0);
+        test(1.5, 1.0);
+        test(1.75, 1.0);
+        test(2.5, 2.0);
+
+        // Test that each element is rounded
+        let a = _mm_setr_pd(1.5, 3.5);
+        let e = _mm_setr_pd(1.0, 3.0);
+        let r = _mm_round_pd::<_MM_FROUND_TO_ZERO>(a);
+        assert_eq_m128d(r, e);
+    }
+    test_round_trunc_f64();
 
     #[target_feature(enable = "sse4.1")]
     unsafe fn test_mm_minpos_epu16() {
