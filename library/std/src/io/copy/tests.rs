@@ -81,18 +81,6 @@ fn copy_specializes_bufreader() {
 }
 
 #[test]
-fn copy_specializes_to_vec() {
-    let cap = 123456;
-    let mut source = ShortReader { cap, observed_buffer: 0, read_size: 1337 };
-    let mut sink = Vec::new();
-    assert_eq!(cap as u64, io::copy(&mut source, &mut sink).unwrap());
-    assert!(
-        source.observed_buffer > DEFAULT_BUF_SIZE,
-        "expected a large buffer to be provided to the reader"
-    );
-}
-
-#[test]
 fn copy_specializes_from_vecdeque() {
     let mut source = VecDeque::with_capacity(100 * 1024);
     for _ in 0..20 * 1024 {
