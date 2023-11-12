@@ -470,3 +470,22 @@ pub fn extract_beta_rev(version: &str) -> Option<String> {
 
     count
 }
+
+pub fn add_rustdoc_lld_flags(
+    cmd: &mut Command,
+    builder: &Builder<'_>,
+    target: TargetSelection,
+    single_threaded: bool,
+) {
+    if let Some(linker) = builder.linker(target) {
+        let mut flag = std::ffi::OsString::from("-Clinker=");
+        flag.push(linker);
+        cmd.arg(flag);
+    }
+    if builder.is_fuse_ld_lld(target) {
+        cmd.arg("-Clink-arg=-fuse-ld=lld");
+        if single_threaded {
+            cmd.arg(format!("-Clink-arg=-Wl,{}", lld_flag_no_threads(target.contains("windows"))));
+        }
+    }
+}

@@ -29,7 +29,7 @@ use crate::utils;
 use crate::utils::cache::{Interned, INTERNER};
 use crate::utils::exec::BootstrapCommand;
 use crate::utils::helpers::{
-    self, add_link_lib_path, dylib_path, dylib_path_var, output, t,
+    self, add_link_lib_path, add_rustdoc_lld_flags, dylib_path, dylib_path_var, output, t,
     target_supports_cranelift_backend, up_to_date,
 };
 use crate::utils::render_tests::{add_flags_and_try_run_tests, try_run_tests};
@@ -862,15 +862,8 @@ impl Step for RustdocTheme {
             .env("CFG_RELEASE_CHANNEL", &builder.config.channel)
             .env("RUSTDOC_REAL", builder.rustdoc(self.compiler))
             .env("RUSTC_BOOTSTRAP", "1");
-        if let Some(linker) = builder.linker(self.compiler.host) {
-            cmd.env("RUSTDOC_LINKER", linker);
-        }
-        if builder.is_fuse_ld_lld(self.compiler.host) {
-            cmd.env(
-                "RUSTDOC_LLD_NO_THREADS",
-                helpers::lld_flag_no_threads(self.compiler.host.contains("windows")),
-            );
-        }
+        add_rustdoc_lld_flags(&mut cmd, builder, self.compiler.host, true);
+
         builder.run_delaying_failure(&mut cmd);
     }
 }
