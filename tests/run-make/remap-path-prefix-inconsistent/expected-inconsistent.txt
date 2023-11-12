@@ -1,0 +1,16 @@
+error[E0061]: this function takes 1 argument but 0 arguments were supplied
+ --> main.rs:2:5
+  |
+2 |     is_true::query();
+  |     ^^^^^^^^^^^^^^-- an argument of type `bool` is missing
+  |
+note: function defined here
+ --> /TEST_DIR1/is_true.rs:1:8
+help: provide the argument
+  |
+2 |     is_true::query(/* bool */);
+  |                   ~~~~~~~~~~~~
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0061`.

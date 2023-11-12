@@ -1726,6 +1726,12 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 // on `try_to_translate_virtual_to_real`).
                 try_to_translate_virtual_to_real(&mut name);
 
+                // We may have had different remap-path-prefix flags at the time this file was loaded.
+                // Apply the remapping for the current session.
+                // NOTE: this does not "undo and redo" the mapping - any existing remapping from the old
+                // crate is retained unmodified. Only files which were never remapped are considered.
+                name = sess.source_map().path_mapping().map_filename_prefix(&name).0;
+
                 let local_version = sess.source_map().new_imported_source_file(
                     name,
                     src_hash,

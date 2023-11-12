@@ -1147,9 +1147,12 @@ impl FilePathMapping {
         }
     }
 
-    fn map_filename_prefix(&self, file: &FileName) -> (FileName, bool) {
+    /// Given a `file`, map it using the `remap-path-prefix` options for the current `Session`.
+    ///
+    /// Public for use in rustc_metadata::decoder
+    pub fn map_filename_prefix(&self, file: &FileName) -> (FileName, bool) {
         match file {
-            FileName::Real(realfile) if let RealFileName::LocalPath(local_path) = realfile => {
+            FileName::Real(realfile @ RealFileName::LocalPath(local_path)) => {
                 let (mapped_path, mapped) = self.map_prefix(local_path);
                 let realfile = if mapped {
                     RealFileName::Remapped {
@@ -1161,7 +1164,13 @@ impl FilePathMapping {
                 };
                 (FileName::Real(realfile), mapped)
             }
-            FileName::Real(_) => unreachable!("attempted to remap an already remapped filename"),
+            existing @ FileName::Real(RealFileName::Remapped { .. }) => {
+                // This can happen if we are remapping the name of file that was loaded in a
+                // different Session, and inconsistent `remap-path-prefix` flags were passed between
+                // sessions. It's unclear what to do here. For now, respect the original flag, not
+                // the flag from the current session.
+                (existing.clone(), false)
+            }
             other => (other.clone(), false),
         }
     }
