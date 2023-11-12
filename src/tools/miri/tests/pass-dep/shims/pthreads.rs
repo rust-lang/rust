@@ -5,6 +5,8 @@ use std::ffi::CString;
 use std::thread;
 
 fn main() {
+    test_named_thread_truncation();
+
     #[cfg(not(target_os = "freebsd"))]
     test_mutex_libc_init_recursive();
     #[cfg(not(target_os = "freebsd"))]
@@ -13,8 +15,6 @@ fn main() {
     test_mutex_libc_init_errorcheck();
     #[cfg(not(target_os = "freebsd"))]
     test_rwlock_libc_static_initializer();
-
-    test_named_thread_truncation();
 
     #[cfg(target_os = "linux")]
     test_mutex_libc_static_initializer_recursive();
@@ -150,12 +150,10 @@ fn test_named_thread_truncation() {
         return unsafe { libc::pthread_setname_np(libc::pthread_self(), name.as_ptr().cast()) };
         #[cfg(target_os = "freebsd")]
         unsafe {
-            // pthread_set_name_np does not return anything only it can fail if the
-            // thread id is invalid
-            libc::pthread_set_name_np(libc::pthread_self(), name.as_ptr().cast())
+            // pthread_set_name_np does not return anything
+            libc::pthread_set_name_np(libc::pthread_self(), name.as_ptr().cast());
+            return 0;
         };
-        #[cfg(target_os = "freebsd")]
-        return 0;
         #[cfg(target_os = "macos")]
         return unsafe { libc::pthread_setname_np(name.as_ptr().cast()) };
     }
@@ -172,8 +170,6 @@ fn test_named_thread_truncation() {
         };
         #[cfg(target_os = "freebsd")]
         unsafe {
-            // pthread_get_name_np does not return anything only it can fail if the
-            // thread id is invalid
             libc::pthread_get_name_np(libc::pthread_self(), buf.as_mut_ptr().cast(), buf.len())
         };
         let cstr = CStr::from_bytes_until_nul(&buf).unwrap();
