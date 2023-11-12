@@ -270,7 +270,8 @@ pub fn report_error<'tcx, 'mir>(
             DataRace { op1, extra, .. } => {
                 let mut helps = vec![(Some(op1.span), format!("and (1) occurred earlier here"))];
                 if let Some(extra) = extra {
-                    helps.push((None, format!("{extra}")))
+                    helps.push((None, format!("{extra}")));
+                    helps.push((None, format!("see https://doc.rust-lang.org/nightly/std/sync/atomic/index.html#memory-model-for-atomic-accesses for more information about the Rust memory model")));
                 }
                 helps.push((None, format!("this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior")));
                 helps.push((None, format!("see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information")));

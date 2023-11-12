@@ -1,18 +1,26 @@
 //@ignore-target-windows: No libc on Windows
-use std::ffi::{CStr, CString};
+use std::ffi::CStr;
+#[cfg(not(target_os = "freebsd"))]
+use std::ffi::CString;
 use std::thread;
 
 fn main() {
-    test_mutex_libc_init_recursive();
-    test_mutex_libc_init_normal();
-    test_mutex_libc_init_errorcheck();
-    test_rwlock_libc_static_initializer();
     test_named_thread_truncation();
+
+    #[cfg(not(target_os = "freebsd"))]
+    test_mutex_libc_init_recursive();
+    #[cfg(not(target_os = "freebsd"))]
+    test_mutex_libc_init_normal();
+    #[cfg(not(target_os = "freebsd"))]
+    test_mutex_libc_init_errorcheck();
+    #[cfg(not(target_os = "freebsd"))]
+    test_rwlock_libc_static_initializer();
 
     #[cfg(target_os = "linux")]
     test_mutex_libc_static_initializer_recursive();
 }
 
+#[cfg(not(target_os = "freebsd"))]
 fn test_mutex_libc_init_recursive() {
     unsafe {
         let mut attr: libc::pthread_mutexattr_t = std::mem::zeroed();
@@ -37,6 +45,7 @@ fn test_mutex_libc_init_recursive() {
     }
 }
 
+#[cfg(not(target_os = "freebsd"))]
 fn test_mutex_libc_init_normal() {
     unsafe {
         let mut mutexattr: libc::pthread_mutexattr_t = std::mem::zeroed();
@@ -59,6 +68,7 @@ fn test_mutex_libc_init_normal() {
     }
 }
 
+#[cfg(not(target_os = "freebsd"))]
 fn test_mutex_libc_init_errorcheck() {
     unsafe {
         let mut mutexattr: libc::pthread_mutexattr_t = std::mem::zeroed();
@@ -104,6 +114,7 @@ fn test_mutex_libc_static_initializer_recursive() {
 // Testing the behavior of std::sync::RwLock does not fully exercise the pthread rwlock shims, we
 // need to go a layer deeper and test the behavior of the libc functions, because
 // std::sys::unix::rwlock::RWLock itself keeps track of write_locked and num_readers.
+#[cfg(not(target_os = "freebsd"))]
 fn test_rwlock_libc_static_initializer() {
     let rw = std::cell::UnsafeCell::new(libc::PTHREAD_RWLOCK_INITIALIZER);
     unsafe {
@@ -137,6 +148,12 @@ fn test_named_thread_truncation() {
     fn set_thread_name(name: &CStr) -> i32 {
         #[cfg(target_os = "linux")]
         return unsafe { libc::pthread_setname_np(libc::pthread_self(), name.as_ptr().cast()) };
+        #[cfg(target_os = "freebsd")]
+        unsafe {
+            // pthread_set_name_np does not return anything
+            libc::pthread_set_name_np(libc::pthread_self(), name.as_ptr().cast());
+            return 0;
+        };
         #[cfg(target_os = "macos")]
         return unsafe { libc::pthread_setname_np(name.as_ptr().cast()) };
     }
@@ -147,16 +164,23 @@ fn test_named_thread_truncation() {
 
         // But the system is limited -- make sure we successfully set a truncation.
         let mut buf = vec![0u8; long_name.len() + 1];
+        #[cfg(not(target_os = "freebsd"))]
         unsafe {
             libc::pthread_getname_np(libc::pthread_self(), buf.as_mut_ptr().cast(), buf.len())
         };
+        #[cfg(target_os = "freebsd")]
+        unsafe {
+            libc::pthread_get_name_np(libc::pthread_self(), buf.as_mut_ptr().cast(), buf.len())
+        };
         let cstr = CStr::from_bytes_until_nul(&buf).unwrap();
-        assert!(cstr.to_bytes().len() >= 15); // POSIX seems to promise at least 15 chars
+        assert!(cstr.to_bytes().len() >= 15, "name is too short: len={}", cstr.to_bytes().len()); // POSIX seems to promise at least 15 chars
         assert!(long_name.as_bytes().starts_with(cstr.to_bytes()));
 
         // Also test directly calling pthread_setname to check its return value.
         assert_eq!(set_thread_name(&cstr), 0);
-        // But with a too long name it should fail.
+        // But with a too long name it should fail (except on FreeBSD where the
+        // function has no return, hence cannot indicate failure).
+        #[cfg(not(target_os = "freebsd"))]
         assert_ne!(set_thread_name(&CString::new(long_name).unwrap()), 0);
     });
     result.unwrap().join().unwrap();

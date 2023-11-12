@@ -148,6 +148,14 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
 
                 round_first::<rustc_apfloat::ieee::Single>(this, left, right, rounding, dest)?;
             }
+            // Used to implement the _mm_floor_ps, _mm_ceil_ps and _mm_round_ps
+            // functions. Rounds the elements of `op` according to `rounding`.
+            "round.ps" => {
+                let [op, rounding] =
+                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+
+                round_all::<rustc_apfloat::ieee::Single>(this, op, rounding, dest)?;
+            }
             // Used to implement the _mm_floor_sd, _mm_ceil_sd and _mm_round_sd
             // functions. Rounds the first element of `right` according to `rounding`
             // and copies the remaining elements from `left`.
@@ -156,6 +164,14 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
 
                 round_first::<rustc_apfloat::ieee::Double>(this, left, right, rounding, dest)?;
+            }
+            // Used to implement the _mm_floor_pd, _mm_ceil_pd and _mm_round_pd
+            // functions. Rounds the elements of `op` according to `rounding`.
+            "round.pd" => {
+                let [op, rounding] =
+                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+
+                round_all::<rustc_apfloat::ieee::Double>(this, op, rounding, dest)?;
             }
             // Used to implement the _mm_minpos_epu16 function.
             // Find the minimum unsinged 16-bit integer in `op` and
@@ -283,22 +299,7 @@ fn round_first<'tcx, F: rustc_apfloat::Float>(
     assert_eq!(dest_len, left_len);
     assert_eq!(dest_len, right_len);
 
-    // The fourth bit of `rounding` only affects the SSE status
-    // register, which cannot be accessed from Miri (or from Rust,
-    // for that matter), so we can ignore it.
-    let rounding = match this.read_scalar(rounding)?.to_i32()? & !0b1000 {
-        // When the third bit is 0, the rounding mode is determined by the
-        // first two bits.
-        0b000 => rustc_apfloat::Round::NearestTiesToEven,
-        0b001 => rustc_apfloat::Round::TowardNegative,
-        0b010 => rustc_apfloat::Round::TowardPositive,
-        0b011 => rustc_apfloat::Round::TowardZero,
-        // When the third bit is 1, the rounding mode is determined by the
-        // SSE status register. Since we do not support modifying it from
-        // Miri (or Rust), we assume it to be at its default mode (round-to-nearest).
-        0b100..=0b111 => rustc_apfloat::Round::NearestTiesToEven,
-        rounding => throw_unsup_format!("unsupported rounding mode 0x{rounding:02x}"),
-    };
+    let rounding = rounding_from_imm(this.read_scalar(rounding)?.to_i32()?)?;
 
     let op0: F = this.read_scalar(&this.project_index(&right, 0)?)?.to_float()?;
     let res = op0.round_to_integral(rounding).value;
@@ -316,4 +317,51 @@ fn round_first<'tcx, F: rustc_apfloat::Float>(
     }
 
     Ok(())
+}
+
+// Rounds all elements of `op` according to `rounding`.
+fn round_all<'tcx, F: rustc_apfloat::Float>(
+    this: &mut crate::MiriInterpCx<'_, 'tcx>,
+    op: &OpTy<'tcx, Provenance>,
+    rounding: &OpTy<'tcx, Provenance>,
+    dest: &PlaceTy<'tcx, Provenance>,
+) -> InterpResult<'tcx, ()> {
+    let (op, op_len) = this.operand_to_simd(op)?;
+    let (dest, dest_len) = this.place_to_simd(dest)?;
+
+    assert_eq!(dest_len, op_len);
+
+    let rounding = rounding_from_imm(this.read_scalar(rounding)?.to_i32()?)?;
+
+    for i in 0..dest_len {
+        let op: F = this.read_scalar(&this.project_index(&op, i)?)?.to_float()?;
+        let res = op.round_to_integral(rounding).value;
+        this.write_scalar(
+            Scalar::from_uint(res.to_bits(), Size::from_bits(F::BITS)),
+            &this.project_index(&dest, i)?,
+        )?;
+    }
+
+    Ok(())
+}
+
+/// Gets equivalent `rustc_apfloat::Round` from rounding mode immediate of
+/// `round.{ss,sd,ps,pd}` intrinsics.
+fn rounding_from_imm<'tcx>(rounding: i32) -> InterpResult<'tcx, rustc_apfloat::Round> {
+    // The fourth bit of `rounding` only affects the SSE status
+    // register, which cannot be accessed from Miri (or from Rust,
+    // for that matter), so we can ignore it.
+    match rounding & !0b1000 {
+        // When the third bit is 0, the rounding mode is determined by the
+        // first two bits.
+        0b000 => Ok(rustc_apfloat::Round::NearestTiesToEven),
+        0b001 => Ok(rustc_apfloat::Round::TowardNegative),
+        0b010 => Ok(rustc_apfloat::Round::TowardPositive),
+        0b011 => Ok(rustc_apfloat::Round::TowardZero),
+        // When the third bit is 1, the rounding mode is determined by the
+        // SSE status register. Since we do not support modifying it from
+        // Miri (or Rust), we assume it to be at its default mode (round-to-nearest).
+        0b100..=0b111 => Ok(rustc_apfloat::Round::NearestTiesToEven),
+        rounding => throw_unsup_format!("unsupported rounding mode 0x{rounding:02x}"),
+    }
 }
