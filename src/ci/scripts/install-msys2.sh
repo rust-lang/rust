@@ -10,6 +10,7 @@ source "$(cd "$(dirname "$0")" && pwd)/../shared.sh"
 # There are two different windows gits at C:\Program Files\Git\mingw64\bin\git.exe
 # and C:\Program Files\Git\bin\git.exe ?!
 if isWindows; then
+    echo "Path of / : $(cygpath -w /)"
     echo "PATH: $PATH"
     echo "MAJAHA PWD: $(pwd) | $(cygpath -w $(pwd))"
     echo "MSYSTEM: ${MSYSTEM-unset}"
