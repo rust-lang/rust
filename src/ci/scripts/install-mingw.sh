@@ -49,7 +49,7 @@ if isWindows; then
             mingw-w64-$arch-gcc \
             mingw-w64-$arch-python # the python package is actually for python3 #suspect, is this python even used?
         ciCommandAddPath "$(ciCheckoutPath)/msys2/mingw${bits}/bin"
-        echo "CUSTOM MINGW PATH 0"
+        echo "CUSTOM MINGW PATH 0: $(ciCheckoutPath)/msys2/mingw${bits}/bin | $(cygpath -w "$(ciCheckoutPath)/msys2/mingw${bits}/bin")"
     else
         mingw_dir="mingw${bits}"
 
@@ -61,5 +61,4 @@ if isWindows; then
     echo "MAJAHA 4: $(cygpath -w $(which git))"
     echo "MAJAHA 4: $(cygpath -w $(which python))"
     echo "LS: $(ls)"
-    echo "PATH: $PATH"
 fi
