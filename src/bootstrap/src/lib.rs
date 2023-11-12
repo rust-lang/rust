@@ -81,7 +81,10 @@ pub struct ChangeInfo {
 
 #[derive(Clone, Debug)]
 pub enum ChangeSeverity {
+    /// Used when build configurations continue working as before.
     Info,
+    /// Used when the default value of an option changes, or support for an option is removed entirely,
+    /// potentially requiring developers to update their build configurations.
     Warning,
 }
 
@@ -95,7 +98,6 @@ impl ToString for ChangeSeverity {
 }
 
 /// Keeps track of major changes made to the bootstrap configuration.
-///
 ///
 /// If you make any major changes (such as adding new values or changing default values),
 /// please ensure adding `ChangeInfo` to the end(because the list must be sorted by the merge date)
