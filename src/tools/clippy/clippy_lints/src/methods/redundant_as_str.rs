@@ -4,7 +4,6 @@ use clippy_utils::source::snippet_with_applicability;
 use rustc_errors::Applicability;
 use rustc_hir::Expr;
 use rustc_lint::LateContext;
-use rustc_middle::query::Key;
 use rustc_span::Span;
 
 pub(super) fn check(
@@ -14,11 +13,7 @@ pub(super) fn check(
     as_str_span: Span,
     other_method_span: Span,
 ) {
-    if cx
-        .tcx
-        .lang_items()
-        .string()
-        .is_some_and(|id| Some(id) == cx.typeck_results().expr_ty(recv).ty_adt_id())
+    if cx.typeck_results().expr_ty(recv).ty_adt_def().is_some_and(|adt| Some(adt.did()) == cx.tcx.lang_items().string())
     {
         let mut applicability = Applicability::MachineApplicable;
         span_lint_and_sugg(
