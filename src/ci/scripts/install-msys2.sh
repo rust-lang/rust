@@ -6,7 +6,9 @@ set -euo pipefail
 IFS=$'\n\t'
 
 source "$(cd "$(dirname "$0")" && pwd)/../shared.sh"
-
+# should try to remove windows git from the path.
+# There are two different windows gits at C:\Program Files\Git\mingw64\bin\git.exe
+# and C:\Program Files\Git\bin\git.exe ?!
 if isWindows; then
     echo "MAJAHA PWD: $(pwd)"
     echo "MAJAHA 1: $(cygpath -w $(which git))"
@@ -31,7 +33,7 @@ if isWindows; then
         cp "${python_home}/python.exe" "${python_home}/python3.exe"
     fi
     echo "MAJAHA 1: $(cygpath -w $(which python))"
-    ciCommandAddPath "C:\\hostedtoolcache\\windows\\Python\\${native_python_version}\\x64"
-    ciCommandAddPath "C:\\hostedtoolcache\\windows\\Python\\${native_python_version}\\x64\\Scripts" # should try to remove windows git from the path.
+    #ciCommandAddPath "C:\\hostedtoolcache\\windows\\Python\\${native_python_version}\\x64"
+    #ciCommandAddPath "C:\\hostedtoolcache\\windows\\Python\\${native_python_version}\\x64\\Scripts"
     echo "MAJAHA 2: $(cygpath -w $(which python))"
 fi

@@ -52,7 +52,7 @@ if isWindows; then
         curl -o mingw.7z "${MIRRORS_BASE}/${mingw_archive}"
         7z x -y mingw.7z > /dev/null
         ciCommandAddPath "$(pwd)/${mingw_dir}/bin"
-        echo "CUSTOM MINGW PATH 1"
+        echo "CUSTOM MINGW PATH 1: $(pwd)/${mingw_dir}/bin"
     fi
     echo "MAJAHA 4: $(cygpath -w $(which git))"
     echo "MAJAHA 4: $(cygpath -w $(which python))"
