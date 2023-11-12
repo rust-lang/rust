@@ -13,6 +13,9 @@ MINGW_ARCHIVE_32="i686-12.2.0-release-posix-dwarf-rt_v10-rev0.7z"
 MINGW_ARCHIVE_64="x86_64-12.2.0-release-posix-seh-rt_v10-rev0.7z"
 
 if isWindows; then
+    echo "PATH: $PATH"
+    echo "MAJAHA PWD: $(pwd) | $(cygpath -w $(pwd))"
+    echo "MSYSTEM: $MSYSTEM"
     echo "MAJAHA 3: $(cygpath -w $(which git))"
     echo "MAJAHA 3: $(cygpath -w $(which python))"
     case "${CI_JOB_NAME}" in
@@ -52,7 +55,7 @@ if isWindows; then
         curl -o mingw.7z "${MIRRORS_BASE}/${mingw_archive}"
         7z x -y mingw.7z > /dev/null
         ciCommandAddPath "$(pwd)/${mingw_dir}/bin"
-        echo "CUSTOM MINGW PATH 1: $(pwd)/${mingw_dir}/bin"
+        echo "CUSTOM MINGW PATH 1: $(pwd)/${mingw_dir}/bin | $(cygpath -w $(pwd)/${mingw_dir}/bin"
     fi
     echo "MAJAHA 4: $(cygpath -w $(which git))"
     echo "MAJAHA 4: $(cygpath -w $(which python))"
