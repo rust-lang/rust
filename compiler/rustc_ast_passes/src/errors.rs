@@ -551,8 +551,6 @@ pub struct TildeConstDisallowed {
 
 #[derive(Subdiagnostic)]
 pub enum TildeConstReason {
-    #[note(ast_passes_trait)]
-    TraitObject,
     #[note(ast_passes_closure)]
     Closure,
     #[note(ast_passes_function)]
@@ -560,6 +558,20 @@ pub enum TildeConstReason {
         #[primary_span]
         ident: Span,
     },
+    #[note(ast_passes_trait)]
+    Trait {
+        #[primary_span]
+        span: Span,
+    },
+    #[note(ast_passes_impl)]
+    Impl {
+        #[primary_span]
+        span: Span,
+    },
+    #[note(ast_passes_object)]
+    TraitObject,
+    #[note(ast_passes_item)]
+    Item,
 }
 
 #[derive(Diagnostic)]

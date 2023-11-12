@@ -218,9 +218,12 @@ ast_passes_static_without_body =
     .suggestion = provide a definition for the static
 
 ast_passes_tilde_const_disallowed = `~const` is not allowed here
-    .trait = trait objects cannot have `~const` trait bounds
     .closure = closures cannot have `~const` trait bounds
     .function = this function is not `const`, so it cannot have `~const` trait bounds
+    .trait = this trait is not a `#[const_trait]`, so it cannot have `~const` trait bounds
+    .impl = this impl is not `const`, so it cannot have `~const` trait bounds
+    .object = trait objects cannot have `~const` trait bounds
+    .item = this item cannot have `~const` trait bounds
 
 ast_passes_trait_fn_const =
     functions in traits cannot be declared const

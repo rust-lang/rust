@@ -40,6 +40,9 @@ enum SelfSemantic {
 enum DisallowTildeConstContext<'a> {
     TraitObject,
     Fn(FnKind<'a>),
+    Trait(Span),
+    Impl(Span),
+    Item,
 }
 
 struct AstValidator<'a> {
@@ -110,18 +113,6 @@ impl<'a> AstValidator<'a> {
         self.disallow_tilde_const = old;
     }
 
-    fn with_tilde_const_allowed(&mut self, f: impl FnOnce(&mut Self)) {
-        self.with_tilde_const(None, f)
-    }
-
-    fn with_banned_tilde_const(
-        &mut self,
-        ctx: DisallowTildeConstContext<'a>,
-        f: impl FnOnce(&mut Self),
-    ) {
-        self.with_tilde_const(Some(ctx), f)
-    }
-
     fn check_type_alias_where_clause_location(
         &mut self,
         ty_alias: &TyAlias,
@@ -173,7 +164,7 @@ impl<'a> AstValidator<'a> {
                 self.with_impl_trait(Some(t.span), |this| visit::walk_ty(this, t))
             }
             TyKind::TraitObject(..) => self
-                .with_banned_tilde_const(DisallowTildeConstContext::TraitObject, |this| {
+                .with_tilde_const(Some(DisallowTildeConstContext::TraitObject), |this| {
                     visit::walk_ty(this, t)
                 }),
             TyKind::Path(qself, path) => {
@@ -845,11 +836,9 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
                     this.visit_vis(&item.vis);
                     this.visit_ident(item.ident);
-                    if let Const::Yes(_) = constness {
-                        this.with_tilde_const_allowed(|this| this.visit_generics(generics));
-                    } else {
-                        this.visit_generics(generics);
-                    }
+                    let disallowed = matches!(constness, Const::No)
+                        .then(|| DisallowTildeConstContext::Impl(item.span));
+                    this.with_tilde_const(disallowed, |this| this.visit_generics(generics));
                     this.visit_trait_ref(t);
                     this.visit_ty(self_ty);
 
@@ -863,10 +852,10 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 polarity,
                 defaultness,
                 constness,
-                generics: _,
+                generics,
                 of_trait: None,
                 self_ty,
-                items: _,
+                items,
             }) => {
                 let error =
                     |annotation_span, annotation, only_trait: bool| errors::InherentImplCannot {
@@ -898,6 +887,14 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 if let &Const::Yes(span) = constness {
                     self.err_handler().emit_err(error(span, "`const`", true));
                 }
+
+                self.visit_vis(&item.vis);
+                self.visit_ident(item.ident);
+                self.with_tilde_const(None, |this| this.visit_generics(generics));
+                self.visit_ty(self_ty);
+                walk_list!(self, visit_assoc_item, items, AssocCtxt::Impl);
+                walk_list!(self, visit_attribute, &item.attrs);
+                return; // Avoid visiting again.
             }
             ItemKind::Fn(box Fn { defaultness, sig, generics, body }) => {
                 self.check_defaultness(item.span, *defaultness);
@@ -978,8 +975,10 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     // context for the supertraits.
                     this.visit_vis(&item.vis);
                     this.visit_ident(item.ident);
-                    this.visit_generics(generics);
-                    this.with_tilde_const_allowed(|this| {
+                    let disallowed =
+                        (!is_const_trait).then(|| DisallowTildeConstContext::Trait(item.span));
+                    this.with_tilde_const(disallowed, |this| {
+                        this.visit_generics(generics);
                         walk_list!(this, visit_param_bound, bounds, BoundKind::SuperTraits)
                     });
                     walk_list!(this, visit_assoc_item, items, AssocCtxt::Trait);
@@ -999,16 +998,11 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 }
             }
             ItemKind::Struct(vdata, generics) => match vdata {
-                // Duplicating the `Visitor` logic allows catching all cases
-                // of `Anonymous(Struct, Union)` outside of a field struct or union.
-                //
-                // Inside `visit_ty` the validator catches every `Anonymous(Struct, Union)` it
-                // encounters, and only on `ItemKind::Struct` and `ItemKind::Union`
-                // it uses `visit_ty_common`, which doesn't contain that specific check.
                 VariantData::Struct(fields, ..) => {
                     self.visit_vis(&item.vis);
                     self.visit_ident(item.ident);
                     self.visit_generics(generics);
+                    // Permit `Anon{Struct,Union}` as field type.
                     walk_list!(self, visit_struct_field_def, fields);
                     walk_list!(self, visit_attribute, &item.attrs);
                     return;
@@ -1024,6 +1018,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         self.visit_vis(&item.vis);
                         self.visit_ident(item.ident);
                         self.visit_generics(generics);
+                        // Permit `Anon{Struct,Union}` as field type.
                         walk_list!(self, visit_struct_field_def, fields);
                         walk_list!(self, visit_attribute, &item.attrs);
                         return;
@@ -1212,15 +1207,18 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     if let Some(reason) = &self.disallow_tilde_const =>
                 {
                     let reason = match reason {
-                        DisallowTildeConstContext::TraitObject => {
-                            errors::TildeConstReason::TraitObject
-                        }
                         DisallowTildeConstContext::Fn(FnKind::Closure(..)) => {
                             errors::TildeConstReason::Closure
                         }
                         DisallowTildeConstContext::Fn(FnKind::Fn(_, ident, ..)) => {
                             errors::TildeConstReason::Function { ident: ident.span }
                         }
+                        &DisallowTildeConstContext::Trait(span) => errors::TildeConstReason::Trait { span },
+                        &DisallowTildeConstContext::Impl(span) => errors::TildeConstReason::Impl { span },
+                        DisallowTildeConstContext::TraitObject => {
+                            errors::TildeConstReason::TraitObject
+                        }
+                        DisallowTildeConstContext::Item => errors::TildeConstReason::Item,
                     };
                     self.err_handler()
                         .emit_err(errors::TildeConstDisallowed { span: bound.span(), reason });
@@ -1328,7 +1326,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 || matches!(fk.ctxt(), Some(FnCtxt::Assoc(_)) if self.in_const_trait_or_impl);
 
         let disallowed = (!tilde_const_allowed).then(|| DisallowTildeConstContext::Fn(fk));
-
         self.with_tilde_const(disallowed, |this| visit::walk_fn(this, fk));
     }
 
@@ -1397,18 +1394,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         }
 
         match &item.kind {
-            AssocItemKind::Type(box TyAlias { generics, bounds, ty, .. })
-                if ctxt == AssocCtxt::Trait =>
-            {
-                self.visit_vis(&item.vis);
-                self.visit_ident(item.ident);
-                walk_list!(self, visit_attribute, &item.attrs);
-                self.with_tilde_const_allowed(|this| {
-                    this.visit_generics(generics);
-                    walk_list!(this, visit_param_bound, bounds, BoundKind::Bound);
-                });
-                walk_list!(self, visit_ty, ty);
-            }
             AssocItemKind::Fn(box Fn { sig, generics, body, .. })
                 if self.in_const_trait_or_impl
                     || ctxt == AssocCtxt::Trait
@@ -1552,7 +1537,7 @@ pub fn check_crate(
         in_const_trait_or_impl: false,
         has_proc_macro_decls: false,
         outer_impl_trait: None,
-        disallow_tilde_const: None,
+        disallow_tilde_const: Some(DisallowTildeConstContext::Item),
         is_impl_trait_banned: false,
         lint_buffer: lints,
     };
