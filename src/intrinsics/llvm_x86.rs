@@ -720,6 +720,104 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
             }
         }
 
+        "llvm.x86.sse42.pcmpestri128" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cmpestri&ig_expand=939
+            intrinsic_args!(fx, args => (a, la, b, lb, _imm8); intrinsic);
+
+            let a = a.load_scalar(fx);
+            let la = la.load_scalar(fx);
+            let b = b.load_scalar(fx);
+            let lb = lb.load_scalar(fx);
+
+            let imm8 = if let Some(imm8) = crate::constant::mir_operand_get_const_val(fx, &args[4])
+            {
+                imm8
+            } else {
+                fx.tcx.sess.span_fatal(span, "Index argument for `_mm_cmpestri` is not a constant");
+            };
+
+            let imm8 = imm8.try_to_u8().unwrap_or_else(|_| panic!("kind not scalar: {:?}", imm8));
+
+            codegen_inline_asm_inner(
+                fx,
+                &[InlineAsmTemplatePiece::String(format!("pcmpestri xmm0, xmm1, {imm8}"))],
+                &[
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm0)),
+                        value: a,
+                    },
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm1)),
+                        value: b,
+                    },
+                    // Implicit argument to the pcmpestri intrinsic
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::ax)),
+                        value: la,
+                    },
+                    // Implicit argument to the pcmpestri intrinsic
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::dx)),
+                        value: lb,
+                    },
+                    // Implicit result of the pcmpestri intrinsic
+                    CInlineAsmOperand::Out {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::cx)),
+                        late: true,
+                        place: Some(ret),
+                    },
+                ],
+                InlineAsmOptions::NOSTACK | InlineAsmOptions::PURE | InlineAsmOptions::NOMEM,
+            );
+        }
+
+        "llvm.x86.sse42.pcmpestrm128" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cmpestrm&ig_expand=940
+            intrinsic_args!(fx, args => (a, la, b, lb, _imm8); intrinsic);
+
+            let a = a.load_scalar(fx);
+            let la = la.load_scalar(fx);
+            let b = b.load_scalar(fx);
+            let lb = lb.load_scalar(fx);
+
+            let imm8 = if let Some(imm8) = crate::constant::mir_operand_get_const_val(fx, &args[4])
+            {
+                imm8
+            } else {
+                fx.tcx.sess.span_fatal(span, "Index argument for `_mm_cmpestrm` is not a constant");
+            };
+
+            let imm8 = imm8.try_to_u8().unwrap_or_else(|_| panic!("kind not scalar: {:?}", imm8));
+
+            codegen_inline_asm_inner(
+                fx,
+                &[InlineAsmTemplatePiece::String(format!("pcmpestrm xmm0, xmm1, {imm8}"))],
+                &[
+                    CInlineAsmOperand::InOut {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm0)),
+                        _late: true,
+                        in_value: a,
+                        out_place: Some(ret),
+                    },
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm1)),
+                        value: b,
+                    },
+                    // Implicit argument to the pcmpestri intrinsic
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::ax)),
+                        value: la,
+                    },
+                    // Implicit argument to the pcmpestri intrinsic
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::dx)),
+                        value: lb,
+                    },
+                ],
+                InlineAsmOptions::NOSTACK | InlineAsmOptions::PURE | InlineAsmOptions::NOMEM,
+            );
+        }
+
         "llvm.x86.pclmulqdq" => {
             // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_clmulepi64_si128&ig_expand=772
             intrinsic_args!(fx, args => (a, b, _imm8); intrinsic);
