@@ -19,6 +19,8 @@ if isWindows; then
     mkdir -p "${msys2Path}/home/${USERNAME}"
     ciCommandAddPath "${msys2Path}/usr/bin" # This is what rotates the CI shell from Git bash to msys bash i think
     echo "MAJAHA 2: $(cygpath -w $(which git))"
+    echo "GITHUB_PATH: $GITHUB_PATH"
+    cat "$GITHUB_PATH"
 
     # Detect the native Python version installed on the agent. On GitHub
     # Actions, the C:\hostedtoolcache\windows\Python directory contains a
@@ -36,8 +38,10 @@ if isWindows; then
         cp "${python_home}/python.exe" "${python_home}/python3.exe"
     fi
     echo "MAJAHA 1: $(cygpath -w $(which python))"
-    #ciCommandAddPath "C:\\hostedtoolcache\\windows\\Python\\${native_python_version}\\x64"
+    ciCommandAddPath "C:\\hostedtoolcache\\windows\\Python\\${native_python_version}\\x64"
     #ciCommandAddPath "C:\\hostedtoolcache\\windows\\Python\\${native_python_version}\\x64\\Scripts"
     echo "MAJAHA 2: $(cygpath -w $(which python))"
     echo "LS: $(ls)"
+    echo "GITHUB_PATH: $GITHUB_PATH"
+    cat "$GITHUB_PATH"
 fi

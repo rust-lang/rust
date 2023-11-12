@@ -19,6 +19,8 @@ if isWindows; then
     echo "MSYSTEM: ${MSYSTEM-unset}"
     echo "MAJAHA 3: $(cygpath -w $(which git))"
     echo "MAJAHA 3: $(cygpath -w $(which python))"
+    echo "GITHUB_PATH: $GITHUB_PATH"
+    cat "$GITHUB_PATH"
     case "${CI_JOB_NAME}" in
         *i686*)
             bits=32
@@ -45,6 +47,7 @@ if isWindows; then
     esac
 
     if [[ "${CUSTOM_MINGW-0}" -ne 1 ]]; then
+        pacman -Syu --noconfirm
         pacman -S --noconfirm --needed mingw-w64-$arch-toolchain mingw-w64-$arch-cmake \
             mingw-w64-$arch-gcc \
             mingw-w64-$arch-python # the python package is actually for python3 #suspect, is this python even used?
@@ -61,4 +64,6 @@ if isWindows; then
     echo "MAJAHA 4: $(cygpath -w $(which git))"
     echo "MAJAHA 4: $(cygpath -w $(which python))"
     echo "LS: $(ls)"
+    echo "GITHUB_PATH: $GITHUB_PATH"
+    cat "$GITHUB_PATH"
 fi
