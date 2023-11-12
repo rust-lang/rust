@@ -38,4 +38,5 @@ if isWindows; then
     #ciCommandAddPath "C:\\hostedtoolcache\\windows\\Python\\${native_python_version}\\x64"
     #ciCommandAddPath "C:\\hostedtoolcache\\windows\\Python\\${native_python_version}\\x64\\Scripts"
     echo "MAJAHA 2: $(cygpath -w $(which python))"
+    echo "LS: $(ls)"
 fi

@@ -52,11 +52,12 @@ if isWindows; then
     else
         mingw_dir="mingw${bits}"
 
-        curl -o mingw.7z "${MIRRORS_BASE}/${mingw_archive}"
+        curl -o mingw.7z "${MIRRORS_BASE}/${mingw_archive}" # This doesn't seem to include python. Should install in msys2 step instead?
         7z x -y mingw.7z > /dev/null
         ciCommandAddPath "$(pwd)/${mingw_dir}/bin"
         echo "CUSTOM MINGW PATH 1: $(pwd)/${mingw_dir}/bin | $(cygpath -w $(pwd)/${mingw_dir}/bin)"
     fi
     echo "MAJAHA 4: $(cygpath -w $(which git))"
     echo "MAJAHA 4: $(cygpath -w $(which python))"
+    echo "LS: $(ls)"
 fi
