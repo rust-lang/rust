@@ -53,7 +53,7 @@ if isWindows; then
         pacman -S --noconfirm --needed mingw-w64-$arch-toolchain mingw-w64-$arch-cmake \
             mingw-w64-$arch-gcc \
             mingw-w64-$arch-python # the python package is actually for python3 #suspect, is this python even used?
-        ciCommandAddPath "/mingw${bits}/bin" # alternatively, could maybe run bash without --noprofile and --norc in ci.yml
+        #ciCommandAddPath "/mingw${bits}/bin" # alternatively, could maybe run bash without --noprofile and --norc in ci.yml
         echo "CUSTOM MINGW PATH 0: /mingw${bits}/bin | $(cygpath -w "/mingw${bits}/bin")"
         echo "2pacman -Qg mingw-w64-x86_64-toolchain:"
         pacman -Qg mingw-w64-x86_64-toolchain

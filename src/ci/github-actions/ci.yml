@@ -325,6 +325,9 @@ jobs:
       PR_CI_JOB: 1
     if: github.event_name == 'pull_request'
     continue-on-error: ${{ matrix.name == 'mingw-check-tidy' }}
+    defaults:
+      run:
+        shell: msys2bash.cmd
     strategy:
       fail-fast: false
       matrix:
