@@ -10,4 +10,6 @@
 set -euo pipefail
 IFS=$'\n\t'
 
+ls /home
+
 git config --replace-all --global core.autocrlf false
