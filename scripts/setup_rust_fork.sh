@@ -11,7 +11,7 @@ export CG_CLIF_FORCE_GNU_AS=1
 CG_CLIF_STDLIB_REMAP_PATH_PREFIX=/rustc/FAKE_PREFIX ./y.sh build
 
 echo "[SETUP] Rust fork"
-git clone https://github.com/rust-lang/rust.git || true
+git clone https://github.com/rust-lang/rust.git --filter=tree:0 || true
 pushd rust
 git fetch
 git checkout -- .
