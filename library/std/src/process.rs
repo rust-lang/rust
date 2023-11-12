@@ -1961,7 +1961,7 @@ impl ExitCode {
 }
 
 /// The default value is [`ExitCode::SUCCESS`]
-#[stable(feature = "process_exitcode_default", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "process_exitcode_default", since = "1.75.0")]
 impl Default for ExitCode {
     fn default() -> Self {
         ExitCode::SUCCESS

@@ -457,7 +457,7 @@ declare_features! (
     /// Allows using `#[repr(align(...))]` on function items
     (unstable, fn_align, "1.53.0", Some(82232), None),
     /// Allows defining gen blocks and `gen fn`.
-    (unstable, gen_blocks, "CURRENT_RUSTC_VERSION", Some(117078), None),
+    (unstable, gen_blocks, "1.75.0", Some(117078), None),
     /// Infer generic args for both consts and types.
     (unstable, generic_arg_infer, "1.55.0", Some(85077), None),
     /// An extension to the `generic_associated_types` feature, allowing incomplete features.
@@ -527,7 +527,7 @@ declare_features! (
     /// casts in safe Rust to `dyn Trait` for such a `Trait` is also forbidden.
     (unstable, object_safe_for_dispatch, "1.40.0", Some(43561), None),
     /// Allows using enums in offset_of!
-    (unstable, offset_of_enum, "CURRENT_RUSTC_VERSION", Some(106655), None),
+    (unstable, offset_of_enum, "1.75.0", Some(106655), None),
     /// Allows using `#[optimize(X)]`.
     (unstable, optimize_attribute, "1.34.0", Some(54882), None),
     /// Allows exhaustive integer pattern matching on `usize` and `isize`.

@@ -647,7 +647,7 @@ pub const fn needs_drop<T: ?Sized>() -> bool {
 #[allow(deprecated)]
 #[rustc_diagnostic_item = "mem_zeroed"]
 #[track_caller]
-#[rustc_const_stable(feature = "const_mem_zeroed", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_const_stable(feature = "const_mem_zeroed", since = "1.75.0")]
 pub const unsafe fn zeroed<T>() -> T {
     // SAFETY: the caller must guarantee that an all-zero value is valid for `T`.
     unsafe {
@@ -1208,7 +1208,7 @@ impl<T> fmt::Debug for Discriminant<T> {
 /// // assert_eq!(0, unsafe { std::mem::transmute::<_, u8>(std::mem::discriminant(&unit_like)) });
 /// ```
 #[stable(feature = "discriminant_value", since = "1.21.0")]
-#[rustc_const_stable(feature = "const_discriminant", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_const_stable(feature = "const_discriminant", since = "1.75.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "mem_discriminant")]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 pub const fn discriminant<T>(v: &T) -> Discriminant<T> {
