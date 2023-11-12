@@ -48,6 +48,7 @@ jobs:
     if: "github.event_name == 'pull_request'"
     continue-on-error: "${{ matrix.name == 'mingw-check-tidy' }}"
     strategy:
+      fail-fast: false
       matrix:
         include:
           - name: i686-mingw
