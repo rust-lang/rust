@@ -153,7 +153,7 @@ declare_features! (
     (removed, panic_implementation, "1.28.0", Some(44489), None,
      Some("subsumed by `#[panic_handler]`")),
     /// Allows using `#![plugin(myplugin)]`.
-    (removed, plugin, "CURRENT_RUSTC_VERSION", Some(29597), None,
+    (removed, plugin, "1.75.0", Some(29597), None,
      Some("plugins are no longer supported")),
     /// Allows using `#[plugin_registrar]` on functions.
     (removed, plugin_registrar, "1.54.0", Some(29597), None,

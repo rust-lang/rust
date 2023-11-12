@@ -398,7 +398,7 @@ impl<T> MaybeUninit<T> {
     #[rustc_allow_const_fn_unstable(const_mut_refs)]
     #[rustc_allow_const_fn_unstable(const_ptr_write)]
     #[rustc_allow_const_fn_unstable(const_maybe_uninit_as_mut_ptr)]
-    #[rustc_const_stable(feature = "const_maybe_uninit_zeroed", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_maybe_uninit_zeroed", since = "1.75.0")]
     pub const fn zeroed() -> MaybeUninit<T> {
         let mut u = MaybeUninit::<T>::uninit();
         // SAFETY: `u.as_mut_ptr()` points to allocated memory.
@@ -693,7 +693,7 @@ impl<T> MaybeUninit<T> {
     #[stable(feature = "maybe_uninit_extra", since = "1.60.0")]
     #[rustc_const_stable(
         feature = "const_maybe_uninit_assume_init_read",
-        since = "CURRENT_RUSTC_VERSION"
+        since = "1.75.0"
     )]
     #[inline(always)]
     #[track_caller]
