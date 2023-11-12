@@ -3868,6 +3868,18 @@ impl<T> [T] {
         } else {
             let (left, rest) = self.split_at(offset);
             let (us_len, ts_len) = rest.align_to_offsets::<U>();
+            // Inform Miri that we want to consider the "middle" pointer to be suitably aligned.
+            #[cfg(miri)]
+            {
+                extern "Rust" {
+                    pub fn miri_promise_symbolic_alignment(ptr: *const (), align: usize);
+                }
+
+                // SAFETY: this call is always safe.
+                unsafe {
+                    miri_promise_symbolic_alignment(rest.as_ptr().cast(), mem::align_of::<U>());
+                }
+            }
             // SAFETY: now `rest` is definitely aligned, so `from_raw_parts` below is okay,
             // since the caller guarantees that we can transmute `T` to `U` safely.
             unsafe {
@@ -3938,6 +3950,21 @@ impl<T> [T] {
             let (us_len, ts_len) = rest.align_to_offsets::<U>();
             let rest_len = rest.len();
             let mut_ptr = rest.as_mut_ptr();
+            // Inform Miri that we want to consider the "middle" pointer to be suitably aligned.
+            #[cfg(miri)]
+            {
+                extern "Rust" {
+                    pub fn miri_promise_symbolic_alignment(ptr: *const (), align: usize);
+                }
+
+                // SAFETY: this call is always safe.
+                unsafe {
+                    miri_promise_symbolic_alignment(
+                        mut_ptr.cast() as *const (),
+                        mem::align_of::<U>(),
+                    );
+                }
+            }
             // We can't use `rest` again after this, that would invalidate its alias `mut_ptr`!
             // SAFETY: see comments for `align_to`.
             unsafe {
