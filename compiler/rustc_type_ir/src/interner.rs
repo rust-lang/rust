@@ -27,7 +27,6 @@ pub trait Interner: Sized {
     type ParamTy: Clone + Debug + Hash + Ord;
     type BoundTy: Clone + Debug + Hash + Ord;
     type PlaceholderTy: Clone + Debug + Hash + Ord;
-    type InferTy: Clone + DebugWithInfcx<Self> + Hash + Ord;
 
     // Things stored inside of tys
     type ErrorGuaranteed: Clone + Debug + Hash + Ord;

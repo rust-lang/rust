@@ -281,7 +281,7 @@ pub enum TyKind<I: Interner> {
     /// correctly deal with higher ranked types. Though unlike placeholders,
     /// that universe is stored in the `InferCtxt` instead of directly
     /// inside of the type.
-    Infer(I::InferTy),
+    Infer(InferTy),
 
     /// A placeholder for a type which could not be computed; this is
     /// propagated to avoid useless error messages.
@@ -491,7 +491,6 @@ where
     I::BoundTy: HashStable<CTX>,
     I::ParamTy: HashStable<CTX>,
     I::PlaceholderTy: HashStable<CTX>,
-    I::InferTy: HashStable<CTX>,
     I::ErrorGuaranteed: HashStable<CTX>,
 {
     #[inline]
@@ -922,7 +921,7 @@ impl fmt::Debug for InferTy {
     }
 }
 
-impl<I: Interner<InferTy = InferTy>> DebugWithInfcx<I> for InferTy {
+impl<I: Interner> DebugWithInfcx<I> for InferTy {
     fn fmt<Infcx: InferCtxtLike<Interner = I>>(
         this: WithInfcx<'_, Infcx, &Self>,
         f: &mut fmt::Formatter<'_>,

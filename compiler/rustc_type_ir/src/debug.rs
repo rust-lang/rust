@@ -1,4 +1,4 @@
-use crate::{Interner, UniverseIndex};
+use crate::{InferTy, Interner, UniverseIndex};
 
 use core::fmt;
 use std::marker::PhantomData;
@@ -6,7 +6,7 @@ use std::marker::PhantomData;
 pub trait InferCtxtLike {
     type Interner: Interner;
 
-    fn universe_of_ty(&self, ty: <Self::Interner as Interner>::InferTy) -> Option<UniverseIndex>;
+    fn universe_of_ty(&self, ty: InferTy) -> Option<UniverseIndex>;
 
     fn universe_of_lt(
         &self,
@@ -22,7 +22,7 @@ pub struct NoInfcx<I>(PhantomData<I>);
 impl<I: Interner> InferCtxtLike for NoInfcx<I> {
     type Interner = I;
 
-    fn universe_of_ty(&self, _ty: <I as Interner>::InferTy) -> Option<UniverseIndex> {
+    fn universe_of_ty(&self, _ty: InferTy) -> Option<UniverseIndex> {
         None
     }
 
