@@ -61,4 +61,5 @@ if isWindows; then
     echo "MAJAHA 4: $(cygpath -w $(which git))"
     echo "MAJAHA 4: $(cygpath -w $(which python))"
     echo "LS: $(ls)"
+    echo "PATH: $PATH"
 fi
