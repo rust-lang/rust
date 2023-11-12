@@ -10,6 +10,6 @@
 set -euo pipefail
 IFS=$'\n\t'
 
-ls /home
+mkdir /home/runneradmin
 
 git config --replace-all --global core.autocrlf false
