@@ -148,6 +148,36 @@ unsafe fn test_sse41() {
     test_mm_round_sd();
 
     #[target_feature(enable = "sse4.1")]
+    unsafe fn test_mm_round_pd() {
+        let a = _mm_setr_pd(-1.75, -4.25);
+        let r = _mm_round_pd::<_MM_FROUND_TO_NEAREST_INT>(a);
+        let e = _mm_setr_pd(-2.0, -4.0);
+        assert_eq_m128d(r, e);
+
+        let a = _mm_setr_pd(-1.75, -4.25);
+        let r = _mm_round_pd::<_MM_FROUND_TO_NEG_INF>(a);
+        let e = _mm_setr_pd(-2.0, -5.0);
+        assert_eq_m128d(r, e);
+
+        let a = _mm_setr_pd(-1.75, -4.25);
+        let r = _mm_round_pd::<_MM_FROUND_TO_POS_INF>(a);
+        let e = _mm_setr_pd(-1.0, -4.0);
+        assert_eq_m128d(r, e);
+
+        let a = _mm_setr_pd(-1.75, -4.25);
+        let r = _mm_round_pd::<_MM_FROUND_TO_ZERO>(a);
+        let e = _mm_setr_pd(-1.0, -4.0);
+        assert_eq_m128d(r, e);
+
+        // Assume round-to-nearest by default
+        let a = _mm_setr_pd(-1.75, -4.25);
+        let r = _mm_round_pd::<_MM_FROUND_CUR_DIRECTION>(a);
+        let e = _mm_setr_pd(-2.0, -4.0);
+        assert_eq_m128d(r, e);
+    }
+    test_mm_round_pd();
+
+    #[target_feature(enable = "sse4.1")]
     unsafe fn test_mm_round_ss() {
         let a = _mm_setr_ps(1.5, 3.5, 7.5, 15.5);
         let b = _mm_setr_ps(-1.75, -4.5, -8.5, -16.5);
@@ -181,6 +211,36 @@ unsafe fn test_sse41() {
         assert_eq_m128(r, e);
     }
     test_mm_round_ss();
+
+    #[target_feature(enable = "sse4.1")]
+    unsafe fn test_mm_round_ps() {
+        let a = _mm_setr_ps(-1.75, -4.25, -8.5, -16.5);
+        let r = _mm_round_ps::<_MM_FROUND_TO_NEAREST_INT>(a);
+        let e = _mm_setr_ps(-2.0, -4.0, -8.0, -16.0);
+        assert_eq_m128(r, e);
+
+        let a = _mm_setr_ps(-1.75, -4.25, -8.5, -16.5);
+        let r = _mm_round_ps::<_MM_FROUND_TO_NEG_INF>(a);
+        let e = _mm_setr_ps(-2.0, -5.0, -9.0, -17.0);
+        assert_eq_m128(r, e);
+
+        let a = _mm_setr_ps(-1.75, -4.25, -8.5, -16.5);
+        let r = _mm_round_ps::<_MM_FROUND_TO_POS_INF>(a);
+        let e = _mm_setr_ps(-1.0, -4.0, -8.0, -16.0);
+        assert_eq_m128(r, e);
+
+        let a = _mm_setr_ps(-1.75, -4.25, -8.5, -16.5);
+        let r = _mm_round_ps::<_MM_FROUND_TO_ZERO>(a);
+        let e = _mm_setr_ps(-1.0, -4.0, -8.0, -16.0);
+        assert_eq_m128(r, e);
+
+        // Assume round-to-nearest by default
+        let a = _mm_setr_ps(-1.75, -4.25, -8.5, -16.5);
+        let r = _mm_round_ps::<_MM_FROUND_CUR_DIRECTION>(a);
+        let e = _mm_setr_ps(-2.0, -4.0, -8.0, -16.0);
+        assert_eq_m128(r, e);
+    }
+    test_mm_round_ps();
 
     #[target_feature(enable = "sse4.1")]
     unsafe fn test_mm_minpos_epu16() {
