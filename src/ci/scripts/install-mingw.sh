@@ -54,4 +54,6 @@ if isWindows; then
         ciCommandAddPath "$(pwd)/${mingw_dir}/bin"
         echo "CUSTOM MINGW PATH 1"
     fi
+    echo "MAJAHA 4: $(cygpath -w $(which git))"
+    echo "MAJAHA 4: $(cygpath -w $(which python))"
 fi

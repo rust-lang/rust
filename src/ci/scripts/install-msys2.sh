@@ -8,6 +8,7 @@ IFS=$'\n\t'
 source "$(cd "$(dirname "$0")" && pwd)/../shared.sh"
 
 if isWindows; then
+    echo "MAJAHA PWD: $(pwd)"
     echo "MAJAHA 1: $(cygpath -w $(which git))"
     msys2Path="c:/msys64"
     mkdir -p "${msys2Path}/home/${USERNAME}"
