@@ -463,10 +463,6 @@ macro_rules! tool_check_step {
                     cargo.arg("--all-targets");
                 }
 
-                // Enable internal lints for clippy and rustdoc
-                // NOTE: this doesn't enable lints for any other tools unless they explicitly add `#![warn(rustc::internal)]`
-                // See https://github.com/rust-lang/rust/pull/80573#issuecomment-754010776
-                cargo.rustflag("-Zunstable-options");
                 let _guard = builder.msg_check(&concat!(stringify!($name), " artifacts").to_lowercase(), target);
                 run_cargo(
                     builder,
