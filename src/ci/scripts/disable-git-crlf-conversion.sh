@@ -10,6 +10,8 @@
 set -euo pipefail
 IFS=$'\n\t'
 
+echo MAJAHA
 mkdir /home/runneradmin
+ls /home/
 
 git config --replace-all --global core.autocrlf false
