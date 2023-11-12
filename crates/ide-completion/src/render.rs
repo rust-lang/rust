@@ -21,7 +21,7 @@ use syntax::{AstNode, SmolStr, SyntaxKind, TextRange};
 use text_edit::TextEdit;
 
 use crate::{
-    context::{DotAccess, PathCompletionCtx, PathKind, PatternContext},
+    context::{DotAccess, DotAccessKind, PathCompletionCtx, PathKind, PatternContext},
     item::{Builder, CompletionRelevanceTypeMatch},
     render::{
         function::render_fn,
@@ -150,17 +150,34 @@ pub(crate) fn render_field(
         .lookup_by(name);
     if ty.is_fn() || ty.is_closure() {
         let mut builder = TextEdit::builder();
-        // Use TextEdit to insert / replace the ranges:
-        // 1. Insert one character ('(') before start of struct name
-        // 2. Insert one character (')') before call parens
-        // 3. Variable character of the actual field name
-        // 4. Optionally, two character ('()') for fn call
-        //
-        // TODO: Find a way to get the above ranges, especially the first two
+        // Using TextEdit, insert '(' before the struct name and ')' before the
+        // dot access, then comes the field name and optionally insert function
+        // call parens.
+
+        if let Some(receiver) = &dot_access.receiver {
+            let range = receiver.syntax().text_range();
+            builder.insert(range.start(), "(".to_string());
+            builder.insert(range.end(), ")".to_string());
+        }
         builder.replace(
             ctx.source_range(),
             field_with_receiver(db, receiver.as_ref(), &escaped_name).into(),
         );
+
+        let is_fn_expected =
+            ctx.completion.expected_type.as_ref().map_or(false, |ty| ty.is_fn() || ty.is_closure());
+
+        // This could be refactored as method of DotAccessKind
+        let is_parens_needed = if let DotAccessKind::Method { has_parens } = dot_access.kind {
+            !has_parens
+        } else {
+            true
+        };
+
+        if !is_fn_expected && is_parens_needed {
+            builder.insert(ctx.source_range().end(), "()".to_string());
+        }
+
         item.text_edit(builder.finish());
     } else {
         item.insert_text(field_with_receiver(db, receiver.as_ref(), &escaped_name));
