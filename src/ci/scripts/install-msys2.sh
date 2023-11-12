@@ -12,7 +12,7 @@ source "$(cd "$(dirname "$0")" && pwd)/../shared.sh"
 if isWindows; then
     echo "PATH: $PATH"
     echo "MAJAHA PWD: $(pwd) | $(cygpath -w $(pwd))"
-    echo "MSYSTEM: $MSYSTEM"
+    echo "MSYSTEM: ${MSYSTEM-unset}"
     echo "MAJAHA 1: $(cygpath -w $(which git))"
     msys2Path="c:/msys64"
     mkdir -p "${msys2Path}/home/${USERNAME}"

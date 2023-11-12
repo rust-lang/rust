@@ -15,7 +15,7 @@ MINGW_ARCHIVE_64="x86_64-12.2.0-release-posix-seh-rt_v10-rev0.7z"
 if isWindows; then
     echo "PATH: $PATH"
     echo "MAJAHA PWD: $(pwd) | $(cygpath -w $(pwd))"
-    echo "MSYSTEM: $MSYSTEM"
+    echo "MSYSTEM: ${MSYSTEM-unset}"
     echo "MAJAHA 3: $(cygpath -w $(which git))"
     echo "MAJAHA 3: $(cygpath -w $(which python))"
     case "${CI_JOB_NAME}" in
