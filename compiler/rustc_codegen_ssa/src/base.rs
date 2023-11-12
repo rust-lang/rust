@@ -322,8 +322,13 @@ pub fn cast_shift_expr_rhs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     if lhs_sz < rhs_sz {
         bx.trunc(rhs, lhs_llty)
     } else if lhs_sz > rhs_sz {
-        // FIXME (#1877: If in the future shifting by negative
-        // values is no longer undefined then this is wrong.
+        // We zero-extend even if the RHS is signed. So e.g. `(x: i32) << -1i8` will zero-extend the
+        // RHS to `255i32`. But then we mask the shift amount to be within the size of the LHS
+        // anyway so the result is `31` as it should be. All the extra bits introduced by zext
+        // are masked off so their value does not matter.
+        // FIXME: if we ever support 512bit integers, this will be wrong! For such large integers,
+        // the extra bits introduced by zext are *not* all masked away any more.
+        assert!(lhs_sz <= 256);
         bx.zext(rhs, lhs_llty)
     } else {
         rhs
