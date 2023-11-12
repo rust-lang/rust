@@ -57,8 +57,9 @@ export interface TextDocumentEdit {
 }
 ```
 
-When applying such code action or text edit, the editor should insert snippet, with tab stops and placeholder.
-At the moment, rust-analyzer guarantees that only a single edit will have `InsertTextFormat.Snippet`.
+When applying such code action or text edit, the editor should insert snippet, with tab stops and placeholders.
+At the moment, rust-analyzer guarantees that only a single `TextDocumentEdit` will have edits which can be `InsertTextFormat.Snippet`.
+Any additional `TextDocumentEdit`s will only have edits which are `InsertTextFormat.PlainText`.
 
 ### Example
 
