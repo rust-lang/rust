@@ -11,6 +11,7 @@ set -euo pipefail
 IFS=$'\n\t'
 
 echo MAJAHA
+ls /home/
 mkdir /home/runneradmin
 ls /home/
 

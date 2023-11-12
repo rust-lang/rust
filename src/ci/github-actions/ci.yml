@@ -115,7 +115,7 @@ x--expand-yaml-anchors--remove:
     env: *shared-ci-variables
     steps:
       - name: disable git crlf conversion
-        run: git config --global core.autocrlf false
+        run: src/ci/scripts/disable-git-crlf-conversion.sh
 
       - name: checkout the source code
         uses: actions/checkout@v4
