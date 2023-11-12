@@ -10,7 +10,7 @@ LL |         __rust_alloc(layout.size(), layout.align())
    = note: inside `alloc::alloc::exchange_malloc` at RUSTLIB/alloc/src/alloc.rs:LL:CC
    = note: inside `std::boxed::Box::<i32>::new` at RUSTLIB/alloc/src/boxed.rs:LL:CC
 note: inside closure
-  --> $DIR/leak_in_static_tls.rs:LL:CC
+  --> $DIR/tls_static_leak.rs:LL:CC
    |
 LL |         TLS.set(Some(Box::leak(Box::new(123))));
    |                                ^^^^^^^^^^^^^
