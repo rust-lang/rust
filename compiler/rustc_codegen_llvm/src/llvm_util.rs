@@ -293,7 +293,7 @@ pub fn target_features(sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
     supported_target_features(sess)
         .iter()
         .filter_map(|&(feature, gate)| {
-            if sess.is_nightly_build() || allow_unstable || gate.is_none() {
+            if sess.is_nightly_build() || allow_unstable || gate.is_stable() {
                 Some(feature)
             } else {
                 None
@@ -554,7 +554,8 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
                         UnknownCTargetFeature { feature, rust_feature: PossibleFeature::None }
                     };
                     sess.emit_warning(unknown_feature);
-                } else if feature_state.is_some_and(|(_name, feature_gate)| feature_gate.is_some())
+                } else if feature_state
+                    .is_some_and(|(_name, feature_gate)| !feature_gate.is_stable())
                 {
                     // An unstable feature. Warn about using it.
                     sess.emit_warning(UnstableCTargetFeature { feature });
