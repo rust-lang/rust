@@ -36,7 +36,7 @@ PathSegment =
   '::'? NameRef
 | NameRef GenericArgList?
 | NameRef ParamList RetType?
-| '<' PathType ('as' PathType)? '>'
+| '<' Type ('as' PathType)? '>'
 
 GenericArgList =
   '::'? '<' (GenericArg (',' GenericArg)* ','?)? '>'
