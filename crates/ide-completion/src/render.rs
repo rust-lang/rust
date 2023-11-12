@@ -1634,7 +1634,7 @@ fn main() {
     fn struct_field_method_ref() {
         check_kinds(
             r#"
-struct Foo { bar: u32 }
+struct Foo { bar: u32, qux: fn() }
 impl Foo { fn baz(&self) -> u32 { 0 } }
 
 fn foo(f: Foo) { let _: &u32 = f.b$0 }
@@ -1644,24 +1644,48 @@ fn foo(f: Foo) { let _: &u32 = f.b$0 }
                 [
                     CompletionItem {
                         label: "baz()",
-                        source_range: 98..99,
-                        delete: 98..99,
+                        source_range: 109..110,
+                        delete: 109..110,
                         insert: "baz()$0",
                         kind: Method,
                         lookup: "baz",
                         detail: "fn(&self) -> u32",
-                        ref_match: "&@96",
+                        ref_match: "&@107",
                     },
                     CompletionItem {
                         label: "bar",
-                        source_range: 98..99,
-                        delete: 98..99,
+                        source_range: 109..110,
+                        delete: 109..110,
                         insert: "bar",
                         kind: SymbolKind(
                             Field,
                         ),
                         detail: "u32",
-                        ref_match: "&@96",
+                        ref_match: "&@107",
+                    },
+                    CompletionItem {
+                        label: "qux",
+                        source_range: 109..110,
+                        text_edit: TextEdit {
+                            indels: [
+                                Indel {
+                                    insert: "(",
+                                    delete: 107..107,
+                                },
+                                Indel {
+                                    insert: ")",
+                                    delete: 108..108,
+                                },
+                                Indel {
+                                    insert: "qux()",
+                                    delete: 109..110,
+                                },
+                            ],
+                        },
+                        kind: SymbolKind(
+                            Field,
+                        ),
+                        detail: "fn()",
                     },
                 ]
             "#]],

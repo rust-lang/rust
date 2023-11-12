@@ -1206,4 +1206,17 @@ impl<B: Bar, F: core::ops::Deref<Target = B>> Foo<F> {
         "#]],
         );
     }
+
+    #[test]
+    fn test_struct_function_field_completion() {
+        check(
+            r#"
+struct S { field: fn() }
+fn foo() { S { field: || {} }.fi$0() }
+"#,
+            expect![[r#"
+                fd field fn()
+            "#]],
+        );
+    }
 }
