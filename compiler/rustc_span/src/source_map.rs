@@ -320,7 +320,7 @@ impl SourceMap {
         // Note that filename may not be a valid path, eg it may be `<anon>` etc,
         // but this is okay because the directory determined by `path.pop()` will
         // be empty, so the working directory will be used.
-        let (filename, _) = self.path_mapping.map_filename_prefix(&filename);
+        let filename = self.path_mapping.map_filename_prefix(&filename);
 
         let file_id = StableSourceFileId::new_from_name(&filename, LOCAL_CRATE);
         match self.source_file_by_stable_id(file_id) {
@@ -995,7 +995,7 @@ impl SourceMap {
 
     pub fn get_source_file(&self, filename: &FileName) -> Option<Lrc<SourceFile>> {
         // Remap filename before lookup
-        let filename = self.path_mapping().map_filename_prefix(filename).0;
+        let filename = self.path_mapping().map_filename_prefix(filename);
         for sf in self.files.borrow().source_files.iter() {
             if filename == sf.name {
                 return Some(sf.clone());
@@ -1150,7 +1150,7 @@ impl FilePathMapping {
     /// Given a `file`, map it using the `remap-path-prefix` options for the current `Session`.
     ///
     /// Public for use in rustc_metadata::decoder
-    pub fn map_filename_prefix(&self, file: &FileName) -> (FileName, bool) {
+    pub fn map_filename_prefix(&self, file: &FileName) -> FileName {
         match file {
             FileName::Real(realfile @ RealFileName::LocalPath(local_path)) => {
                 let (mapped_path, mapped) = self.map_prefix(local_path);
@@ -1162,16 +1162,16 @@ impl FilePathMapping {
                 } else {
                     realfile.clone()
                 };
-                (FileName::Real(realfile), mapped)
+                FileName::Real(realfile)
             }
             existing @ FileName::Real(RealFileName::Remapped { .. }) => {
                 // This can happen if we are remapping the name of file that was loaded in a
                 // different Session, and inconsistent `remap-path-prefix` flags were passed between
                 // sessions. It's unclear what to do here. For now, respect the original flag, not
                 // the flag from the current session.
-                (existing.clone(), false)
+                existing.clone()
             }
-            other => (other.clone(), false),
+            other => other.clone(),
         }
     }
 
