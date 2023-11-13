@@ -158,19 +158,25 @@ impl<N: Idx> LivenessValues<N> {
         self.points.row(region).is_some_and(|r| r.contains(point))
     }
 
-    /// Returns an iterator of all the elements contained by `region`.
-    pub(crate) fn get_elements(&self, region: N) -> impl Iterator<Item = Location> + '_ {
+    /// Returns whether `region` is marked live at any location.
+    pub(crate) fn is_live_anywhere(&self, region: N) -> bool {
+        self.live_points(region).next().is_some()
+    }
+
+    /// Returns an iterator of all the points where `region` is live.
+    fn live_points(&self, region: N) -> impl Iterator<Item = PointIndex> + '_ {
         self.points
             .row(region)
             .into_iter()
             .flat_map(|set| set.iter())
-            .take_while(move |&p| self.elements.point_in_range(p))
-            .map(move |p| self.elements.to_location(p))
+            .take_while(|&p| self.elements.point_in_range(p))
     }
 
     /// Returns a "pretty" string value of the region. Meant for debugging.
     pub(crate) fn region_value_str(&self, region: N) -> String {
-        region_value_str(self.get_elements(region).map(RegionElement::Location))
+        region_value_str(
+            self.live_points(region).map(|p| RegionElement::Location(self.elements.to_location(p))),
+        )
     }
 
     #[inline]
