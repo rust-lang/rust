@@ -70,17 +70,17 @@ These APIs are now stable in const contexts:
 Cargo
 -----
 
-- [config: merge lists in precedence order](https://github.com/rust-lang/cargo/pull/12515/)
-- [fix(update): Clarify meaning of --aggressive as --recursive](https://github.com/rust-lang/cargo/pull/12544/)
-- [fix(update): Make `-p` more convenient by being positional](https://github.com/rust-lang/cargo/pull/12545/)
-- [feat(help): Add styling to help output ](https://github.com/rust-lang/cargo/pull/12578/)
-- [feat(pkgid): Allow incomplete versions when unambigious](https://github.com/rust-lang/cargo/pull/12614/)
-- [feat: stabilize credential-process and registry-auth](https://github.com/rust-lang/cargo/pull/12649/)
-- [feat(cli): Add '-n' to dry-run](https://github.com/rust-lang/cargo/pull/12660/)
-- [Added `--dry-run` flag and summary line at the end for `cargo clean`](https://github.com/rust-lang/cargo/pull/12638)
+- [In `.cargo/config.toml`, merge lists in precedence order](https://github.com/rust-lang/cargo/pull/12515/)
+- [For `cargo update`, clarify meaning of --aggressive as --recursive](https://github.com/rust-lang/cargo/pull/12544/)
+- [For `cargo update`, make `--package` more convenient by being positional](https://github.com/rust-lang/cargo/pull/12545/)
+- [Add styling to `--help` output](https://github.com/rust-lang/cargo/pull/12578/)
+- [Allow version-prefixes in pkgid's (e.g. `--package` flags) to resolve ambiguities](https://github.com/rust-lang/cargo/pull/12614/)
+- [Stabilize credential-process and registry-auth](https://github.com/rust-lang/cargo/pull/12649/)
+- [Add '-n' as an alias for `--dry-run`](https://github.com/rust-lang/cargo/pull/12660/)
+- [For `cargo clean`, add `--dry-run` flag and summary line at the end](https://github.com/rust-lang/cargo/pull/12638)
 - [Add support for `target.'cfg(..)'.linker`](https://github.com/rust-lang/cargo/pull/12535/)
-- [Stabilize `--keep-going`](https://github.com/rust-lang/cargo/pull/12568/)
-- [feat: Stabilize lints](https://github.com/rust-lang/cargo/pull/12648/)
+- [Stabilize `--keep-going` build flag](https://github.com/rust-lang/cargo/pull/12568/)
+- [In `Cargo.toml`, stabilize `[lints]`](https://github.com/rust-lang/cargo/pull/12648/)
 
 <a id="1.74.0-Rustdoc"></a>
 
