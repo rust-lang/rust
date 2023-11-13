@@ -138,34 +138,34 @@ impl<N: Idx> LivenessValues<N> {
 
     /// Adds the given element to the value for the given region. Returns whether
     /// the element is newly added (i.e., was not already present).
-    pub(crate) fn add_element(&mut self, row: N, location: Location) -> bool {
-        debug!("LivenessValues::add(r={:?}, location={:?})", row, location);
+    pub(crate) fn add_element(&mut self, region: N, location: Location) -> bool {
+        debug!("LivenessValues::add_element(region={:?}, location={:?})", region, location);
         let index = self.elements.point_from_location(location);
-        self.points.insert(row, index)
+        self.points.insert(region, index)
     }
 
     /// Adds all the elements in the given bit array into the given
     /// region. Returns whether any of them are newly added.
-    pub(crate) fn add_elements(&mut self, row: N, locations: &IntervalSet<PointIndex>) -> bool {
-        debug!("LivenessValues::add_elements(row={:?}, locations={:?})", row, locations);
-        self.points.union_row(row, locations)
+    pub(crate) fn add_elements(&mut self, region: N, locations: &IntervalSet<PointIndex>) -> bool {
+        debug!("LivenessValues::add_elements(region={:?}, locations={:?})", region, locations);
+        self.points.union_row(region, locations)
     }
 
-    /// Adds all the control-flow points to the values for `r`.
-    pub(crate) fn add_all_points(&mut self, row: N) {
-        self.points.insert_all_into_row(row);
+    /// Records `region` as being live at all the control-flow points.
+    pub(crate) fn add_all_points(&mut self, region: N) {
+        self.points.insert_all_into_row(region);
     }
 
-    /// Returns `true` if the region `r` contains the given element.
-    pub(crate) fn contains(&self, row: N, location: Location) -> bool {
+    /// Returns `true` if the region `region` contains the given element.
+    pub(crate) fn contains(&self, region: N, location: Location) -> bool {
         let index = self.elements.point_from_location(location);
-        self.points.row(row).is_some_and(|r| r.contains(index))
+        self.points.row(region).is_some_and(|r| r.contains(index))
     }
 
-    /// Returns an iterator of all the elements contained by the region `r`
-    pub(crate) fn get_elements(&self, row: N) -> impl Iterator<Item = Location> + '_ {
+    /// Returns an iterator of all the elements contained by `region`.
+    pub(crate) fn get_elements(&self, region: N) -> impl Iterator<Item = Location> + '_ {
         self.points
-            .row(row)
+            .row(region)
             .into_iter()
             .flat_map(|set| set.iter())
             .take_while(move |&p| self.elements.point_in_range(p))
@@ -173,8 +173,8 @@ impl<N: Idx> LivenessValues<N> {
     }
 
     /// Returns a "pretty" string value of the region. Meant for debugging.
-    pub(crate) fn region_value_str(&self, r: N) -> String {
-        region_value_str(self.get_elements(r).map(RegionElement::Location))
+    pub(crate) fn region_value_str(&self, region: N) -> String {
+        region_value_str(self.get_elements(region).map(RegionElement::Location))
     }
 
     #[inline]
