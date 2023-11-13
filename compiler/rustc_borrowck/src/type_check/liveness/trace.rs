@@ -618,7 +618,7 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
                     .borrowck_context
                     .constraints
                     .liveness_constraints
-                    .add_elements(live_region_vid, live_at);
+                    .add_points(live_region_vid, live_at);
 
                 // There can only be inflowing loans for this region when we are using
                 // `-Zpolonius=next`.

@@ -143,11 +143,10 @@ impl<N: Idx> LivenessValues<N> {
         self.points.insert(region, point);
     }
 
-    /// Adds all the elements in the given bit array into the given
-    /// region. Returns whether any of them are newly added.
-    pub(crate) fn add_elements(&mut self, region: N, locations: &IntervalSet<PointIndex>) -> bool {
-        debug!("LivenessValues::add_elements(region={:?}, locations={:?})", region, locations);
-        self.points.union_row(region, locations)
+    /// Records `region` as being live at all the given `points`.
+    pub(crate) fn add_points(&mut self, region: N, points: &IntervalSet<PointIndex>) {
+        debug!("LivenessValues::add_points(region={:?}, points={:?})", region, points);
+        self.points.union_row(region, points);
     }
 
     /// Records `region` as being live at all the control-flow points.
