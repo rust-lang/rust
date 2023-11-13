@@ -1991,54 +1991,6 @@ impl std::fmt::Debug for FiniteBitSet<u32> {
     }
 }
 
-impl FiniteBitSetTy for u64 {
-    const DOMAIN_SIZE: u32 = 64;
-
-    const FILLED: Self = Self::MAX;
-    const EMPTY: Self = Self::MIN;
-
-    const ONE: Self = 1u64;
-    const ZERO: Self = 0u64;
-
-    fn checked_shl(self, rhs: u32) -> Option<Self> {
-        self.checked_shl(rhs)
-    }
-
-    fn checked_shr(self, rhs: u32) -> Option<Self> {
-        self.checked_shr(rhs)
-    }
-}
-
-impl std::fmt::Debug for FiniteBitSet<u64> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:064b}", self.0)
-    }
-}
-
-impl FiniteBitSetTy for u128 {
-    const DOMAIN_SIZE: u32 = 128;
-
-    const FILLED: Self = Self::MAX;
-    const EMPTY: Self = Self::MIN;
-
-    const ONE: Self = 1u128;
-    const ZERO: Self = 0u128;
-
-    fn checked_shl(self, rhs: u32) -> Option<Self> {
-        self.checked_shl(rhs)
-    }
-
-    fn checked_shr(self, rhs: u32) -> Option<Self> {
-        self.checked_shr(rhs)
-    }
-}
-
-impl std::fmt::Debug for FiniteBitSet<u128> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:0128b}", self.0)
-    }
-}
-
 /// A fixed-sized bitset type represented by an integer type. Indices outwith than the range
 /// representable by `T` are considered set.
 #[derive(Copy, Clone, Eq, PartialEq, Decodable, Encodable)]
