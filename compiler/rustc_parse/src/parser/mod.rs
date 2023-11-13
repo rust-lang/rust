@@ -1115,7 +1115,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Returns whether any of the given keywords are `dist` tokens ahead of the current one.
-    fn is_keyword_ahead(&self, dist: usize, kws: &[Symbol]) -> bool {
+    pub(crate) fn is_keyword_ahead(&self, dist: usize, kws: &[Symbol]) -> bool {
         self.look_ahead(dist, |t| kws.iter().any(|&kw| t.is_keyword(kw)))
     }
 
