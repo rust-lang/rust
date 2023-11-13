@@ -172,9 +172,10 @@ impl LivenessValues {
             .take_while(|&p| self.elements.point_in_range(p))
     }
 
-    /// Returns a "pretty" string value of the region. Meant for debugging.
-    pub(crate) fn region_value_str(&self, region: RegionVid) -> String {
-        region_value_str(
+    /// For debugging purposes, returns a pretty-printed string of the points where the `region` is
+    /// live.
+    pub(crate) fn pretty_print_live_points(&self, region: RegionVid) -> String {
+        pretty_print_region_elements(
             self.live_points(region).map(|p| RegionElement::Location(self.elements.to_location(p))),
         )
     }
@@ -378,7 +379,7 @@ impl<N: Idx> RegionValues<N> {
 
     /// Returns a "pretty" string value of the region. Meant for debugging.
     pub(crate) fn region_value_str(&self, r: N) -> String {
-        region_value_str(self.elements_contained_in(r))
+        pretty_print_region_elements(self.elements_contained_in(r))
     }
 }
 
@@ -422,11 +423,12 @@ impl ToElementIndex for ty::PlaceholderRegion {
     }
 }
 
-pub(crate) fn location_set_str(
+/// For debugging purposes, returns a pretty-printed string of the given points.
+pub(crate) fn pretty_print_points(
     elements: &RegionValueElements,
     points: impl IntoIterator<Item = PointIndex>,
 ) -> String {
-    region_value_str(
+    pretty_print_region_elements(
         points
             .into_iter()
             .take_while(|&p| elements.point_in_range(p))
@@ -435,7 +437,8 @@ pub(crate) fn location_set_str(
     )
 }
 
-fn region_value_str(elements: impl IntoIterator<Item = RegionElement>) -> String {
+/// For debugging purposes, returns a pretty-printed string of the given region elements.
+fn pretty_print_region_elements(elements: impl IntoIterator<Item = RegionElement>) -> String {
     let mut result = String::new();
     result.push('{');
 

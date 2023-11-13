@@ -1970,7 +1970,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         trace!(universe = ?self.scc_universes[self.constraint_sccs.scc(fr1)]);
         self.find_constraint_paths_between_regions(fr1, |r| {
             // First look for some `r` such that `fr1: r` and `r` is live at `location`
-            trace!(?r, liveness_constraints=?self.liveness_constraints.region_value_str(r));
+            trace!(?r, liveness_constraints=?self.liveness_constraints.pretty_print_live_points(r));
             self.liveness_constraints.is_live_at(r, location)
         })
         .or_else(|| {
