@@ -49,6 +49,7 @@ impl<'a> DiagnosticDerive<'a> {
                     return DiagnosticDeriveError::ErrorHandled.to_compile_error();
                 }
                 (Some(slug), None) => {
+                    slugs.borrow_mut().push(slug.clone());
                     quote! {
                         let mut diag = rustc_errors::DiagnosticBuilder::new(
                             dcx,
@@ -57,13 +58,13 @@ impl<'a> DiagnosticDerive<'a> {
                         );
                     }
                 }
-                (None, Some(text)) => {
+                (None, Some(raw_label)) => {
                     quote! {
-                        let mut #diag = #handler.struct_diagnostic(DiagnosticMessage::Str(#text.into()));
+                        let mut #diag = #handler.struct_diagnostic(DiagnosticMessage::Str(#raw_label.into()));
                     }
                 }
-                (Some(_slug), Some(_text)) => {
-                    unreachable!("BUG: slug and text specified");
+                (Some(_slug), Some(_raw_label)) => {
+                    unreachable!("BUG: slug and raw label specified");
                 }
             };
 
@@ -77,10 +78,20 @@ impl<'a> DiagnosticDerive<'a> {
             }
         });
 
+<<<<<<< HEAD
         // A lifetime of `'a` causes conflicts, but `_sess` is fine.
         let mut imp = structure.gen_impl(quote! {
             gen impl<'_sess, G>
                     rustc_errors::IntoDiagnostic<'_sess, G>
+=======
+        let DiagnosticDeriveKind::Diagnostic { handler } = &builder.kind else {
+            unreachable!();
+        };
+
+        let mut imp = structure.gen_impl(quote! {
+            gen impl<'__diagnostic_handler_sess, G>
+                    rustc_errors::IntoDiagnostic<'__diagnostic_handler_sess, G>
+>>>>>>> bd3289ea826 (more cleanup on diags)
                     for @Self
                 where G: rustc_errors::EmissionGuarantee
             {
@@ -95,6 +106,10 @@ impl<'a> DiagnosticDerive<'a> {
                 }
             }
         });
+
+        for test in slugs.borrow().iter().map(|s| generate_test(s, &structure)) {
+            imp.extend(test);
+        }
         imp
     }
 }

@@ -1,3 +1,4 @@
+// ignore-tidy-filelength
 use std::borrow::Cow;
 
 use rustc_ast::token::Token;

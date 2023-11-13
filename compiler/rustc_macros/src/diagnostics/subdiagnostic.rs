@@ -189,7 +189,7 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
         let mut kind_slugs = vec![];
 
         for attr in self.variant.ast().attrs {
-            let Some(SubdiagnosticVariant { kind, slug, no_span, text }) =
+            let Some(SubdiagnosticVariant { kind, slug, no_span, raw_label }) =
                 SubdiagnosticVariant::from_attr(attr, self)?
             else {
                 // Some attributes aren't errors - like documentation comments - but also aren't
@@ -197,22 +197,22 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
                 continue;
             };
 
-            match (&slug, &text) {
+            match (&slug, &raw_label) {
                 (None, None) => {
                     throw_span_err!(
                         attr.span().unwrap(),
-                        "diagnostic slug or text must be first argument of a `#[{name}(...)]` attribute"
+                        "diagnostic slug or raw_label must be first argument of a `#[{name}(...)]` attribute"
                     );
                 }
                 (Some(_), Some(_)) => {
                     throw_span_err!(
                         attr.span().unwrap(),
-                        "diagnostic slug and text cannot both be specified"
+                        "diagnostic slug and raw_label cannot both be specified"
                     );
                 }
                 _ => (),
             }
-            kind_slugs.push((kind, slug, no_span, text));
+            kind_slugs.push((kind, slug, no_span, raw_label));
         }
 
         Ok(kind_slugs)
@@ -519,14 +519,14 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
         let diag = &self.parent.diag;
         let f = &self.parent.f;
         let mut calls = TokenStream::new();
-        for (kind, slug, no_span, text) in kind_slugs {
+        for (kind, slug, no_span, raw_label) in kind_slugs {
             let message = format_ident!("__message");
             if let Some(slug) = slug {
                 calls.extend(
                     quote! { let #message = #f(#diag, crate::fluent_generated::#slug.into()); },
                 );
             } else {
-                calls.extend(quote! { let #message = #f(#diag, #text.into()); });
+                calls.extend(quote! { let #message = #f(#diag, #raw_label.into()); });
             }
 
             let name = format_ident!(

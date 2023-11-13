@@ -10,7 +10,7 @@ proc-macro = true
 # tidy-alphabetical-start
 proc-macro2 = "1"
 quote = "1"
+regex = "1.3.3"
 syn = { version = "2.0.9", features = ["full"] }
 synstructure = "0.13.0"
-regex = "1.3.3"
 # tidy-alphabetical-end

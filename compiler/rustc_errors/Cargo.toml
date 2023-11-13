@@ -7,6 +7,7 @@ edition = "2021"
 # tidy-alphabetical-start
 annotate-snippets = "0.9"
 derive_setters = "0.1.6"
+fluent = "0.16.0"
 rustc_ast = { path = "../rustc_ast" }
 rustc_ast_pretty = { path = "../rustc_ast_pretty" }
 rustc_data_structures = { path = "../rustc_data_structures" }
@@ -24,10 +25,8 @@ serde_json = "1.0.59"
 termcolor = "1.2.0"
 termize = "0.1.1"
 tracing = "0.1"
-unicode-width = "0.1.4"
-fluent = "0.16.0"
 unic-langid = {version = "0.9.1", features = ["unic-langid-macros"]}
-
+unicode-width = "0.1.4"
 # tidy-alphabetical-end
 
 [target.'cfg(windows)'.dependencies.windows]
