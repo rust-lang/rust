@@ -1815,7 +1815,7 @@ impl<'tcx> Region<'tcx> {
                 flags = flags | TypeFlags::HAS_FREE_REGIONS;
             }
             ty::ReBound(..) => {
-                flags = flags | TypeFlags::HAS_RE_LATE_BOUND;
+                flags = flags | TypeFlags::HAS_RE_BOUND;
             }
             ty::ReErased => {
                 flags = flags | TypeFlags::HAS_RE_ERASED;

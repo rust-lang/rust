@@ -1277,7 +1277,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     let tcx = self.tcx();
                     stack.extend(tcx.coroutine_hidden_types(def_id).map(|bty| {
                         let ty = bty.instantiate(tcx, args);
-                        debug_assert!(!ty.has_late_bound_regions());
+                        debug_assert!(!ty.has_bound_regions());
                         ty
                     }))
                 }

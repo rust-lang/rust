@@ -290,7 +290,7 @@ fn has_late_bound_to_non_late_bound_regions(from_sig: FnSig<'_>, to_sig: FnSig<'
                         .zip(to_tys)
                         .any(|(from_ty, to_ty)| check_ty(from_ty, to_ty))
             },
-            _ => from_ty.has_late_bound_regions(),
+            _ => from_ty.has_bound_regions(),
         }
     }
 

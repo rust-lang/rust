@@ -111,16 +111,16 @@ pub trait TypeVisitableExt<'tcx>: TypeVisitable<TyCtxt<'tcx>> {
     }
 
     /// True if there are any late-bound regions
-    fn has_late_bound_regions(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_RE_LATE_BOUND)
+    fn has_bound_regions(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_RE_BOUND)
     }
     /// True if there are any late-bound non-region variables
-    fn has_non_region_late_bound(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_LATE_BOUND - TypeFlags::HAS_RE_LATE_BOUND)
+    fn has_non_region_bound_vars(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_BOUND_VARS - TypeFlags::HAS_RE_BOUND)
     }
-    /// True if there are any late-bound variables
-    fn has_late_bound_vars(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_LATE_BOUND)
+    /// True if there are any bound variables
+    fn has_bound_vars(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_BOUND_VARS)
     }
 
     /// Indicates whether this value still has parameters/placeholders/inference variables

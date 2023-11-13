@@ -799,7 +799,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     // A global type with no free lifetimes or generic parameters
                     // outlives anything.
                     if pred.0.has_free_regions()
-                        || pred.0.has_late_bound_regions()
+                        || pred.0.has_bound_regions()
                         || pred.0.has_non_region_infer()
                         || pred.0.has_non_region_infer()
                     {
@@ -1841,7 +1841,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         // the param_env so that it can be given the lowest priority. See
         // #50825 for the motivation for this.
         let is_global =
-            |cand: &ty::PolyTraitPredicate<'tcx>| cand.is_global() && !cand.has_late_bound_vars();
+            |cand: &ty::PolyTraitPredicate<'tcx>| cand.is_global() && !cand.has_bound_vars();
 
         // (*) Prefer `BuiltinCandidate { has_nested: false }`, `PointeeCandidate`,
         // `DiscriminantKindCandidate`, `ConstDestructCandidate`

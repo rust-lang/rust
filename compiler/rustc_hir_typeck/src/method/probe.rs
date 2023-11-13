@@ -801,7 +801,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         // a `&self` method will wind up with an argument type like `&dyn Trait`.
         let trait_ref = principal.with_self_ty(self.tcx, self_ty);
         self.elaborate_bounds(iter::once(trait_ref), |this, new_trait_ref, item| {
-            if new_trait_ref.has_non_region_late_bound() {
+            if new_trait_ref.has_non_region_bound_vars() {
                 this.tcx.sess.delay_span_bug(
                     this.span,
                     "tried to select method from HRTB with non-lifetime bound vars",
