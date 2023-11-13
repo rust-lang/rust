@@ -51,7 +51,12 @@ impl Stability {
 // When adding features to the below lists
 // check whether they're named already elsewhere in rust
 // e.g. in stdarch and whether the given name matches LLVM's
-// if it doesn't, to_llvm_feature in llvm_util in rustc_codegen_llvm needs to be adapted
+// if it doesn't, to_llvm_feature in llvm_util in rustc_codegen_llvm needs to be adapted.
+//
+// Also note that all target features listed here must be purely additive: for target_feature 1.1 to
+// be sound, we can never allow features like `+soft-float` (on x86) to be controlled on a
+// per-function level, since we would then allow safe calls from functions with `+soft-float` to
+// functions without that feature!
 //
 // When adding a new feature, be particularly mindful of features that affect function ABIs. Those
 // need to be treated very carefully to avoid introducing unsoundness! This often affects features
