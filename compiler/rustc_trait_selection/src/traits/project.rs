@@ -18,7 +18,7 @@ use rustc_middle::traits::ImplSourceUserDefinedData;
 
 use crate::errors::InherentProjectionNormalizationOverflow;
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use crate::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime};
+use crate::infer::{BoundRegionConversionTime, InferCtxt, InferOk};
 use crate::traits::error_reporting::TypeErrCtxtExt as _;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use crate::traits::select::ProjectionMatchesProjection;
@@ -2319,7 +2319,7 @@ fn confirm_param_env_candidate<'cx, 'tcx>(
 
     let cache_entry = infcx.instantiate_binder_with_fresh_vars(
         cause.span,
-        LateBoundRegionConversionTime::HigherRankedType,
+        BoundRegionConversionTime::HigherRankedType,
         poly_cache_entry,
     );
 

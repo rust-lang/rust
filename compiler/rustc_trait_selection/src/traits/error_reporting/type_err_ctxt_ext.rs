@@ -1377,7 +1377,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             {
                 let data = self.instantiate_binder_with_fresh_vars(
                     obligation.cause.span,
-                    infer::LateBoundRegionConversionTime::HigherRankedType,
+                    infer::BoundRegionConversionTime::HigherRankedType,
                     bound_predicate.rebind(data),
                 );
                 let unnormalized_term = match data.term.unpack() {

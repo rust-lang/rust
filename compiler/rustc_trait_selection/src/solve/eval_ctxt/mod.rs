@@ -4,7 +4,7 @@ use rustc_infer::infer::at::ToTrace;
 use rustc_infer::infer::canonical::CanonicalVarValues;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{
-    DefineOpaqueTypes, InferCtxt, InferOk, LateBoundRegionConversionTime, TyCtxtInferExt,
+    BoundRegionConversionTime, DefineOpaqueTypes, InferCtxt, InferOk, TyCtxtInferExt,
 };
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::ObligationCause;
@@ -780,7 +780,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     ) -> T {
         self.infcx.instantiate_binder_with_fresh_vars(
             DUMMY_SP,
-            LateBoundRegionConversionTime::HigherRankedType,
+            BoundRegionConversionTime::HigherRankedType,
             value,
         )
     }

@@ -7,7 +7,7 @@
 //! `RETURN_PLACE` the MIR arguments) are always fully normalized (and
 //! contain revealed `impl Trait` values).
 
-use rustc_infer::infer::LateBoundRegionConversionTime;
+use rustc_infer::infer::BoundRegionConversionTime;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::Span;
@@ -35,7 +35,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             .instantiate_canonical_with_fresh_inference_vars(body.span, &user_provided_poly_sig);
         let user_provided_sig = self.infcx.instantiate_binder_with_fresh_vars(
             body.span,
-            LateBoundRegionConversionTime::FnCall,
+            BoundRegionConversionTime::FnCall,
             user_provided_sig,
         );
 

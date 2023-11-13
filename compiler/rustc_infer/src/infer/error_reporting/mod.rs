@@ -2768,13 +2768,13 @@ impl<'tcx> InferCtxt<'tcx> {
             infer::AddrOfRegion(_) => " for borrow expression".to_string(),
             infer::Autoref(_) => " for autoref".to_string(),
             infer::Coercion(_) => " for automatic coercion".to_string(),
-            infer::LateBoundRegion(_, br, infer::FnCall) => {
+            infer::BoundRegion(_, br, infer::FnCall) => {
                 format!(" for lifetime parameter {}in function call", br_string(br))
             }
-            infer::LateBoundRegion(_, br, infer::HigherRankedType) => {
+            infer::BoundRegion(_, br, infer::HigherRankedType) => {
                 format!(" for lifetime parameter {}in generic type", br_string(br))
             }
-            infer::LateBoundRegion(_, br, infer::AssocTypeProjection(def_id)) => format!(
+            infer::BoundRegion(_, br, infer::AssocTypeProjection(def_id)) => format!(
                 " for lifetime parameter {}in trait containing associated type `{}`",
                 br_string(br),
                 self.tcx.associated_item(def_id).name

@@ -9,7 +9,7 @@
 use rustc_ast::Mutability;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::lang_items::LangItem;
-use rustc_infer::infer::LateBoundRegionConversionTime::HigherRankedType;
+use rustc_infer::infer::BoundRegionConversionTime::HigherRankedType;
 use rustc_infer::infer::{DefineOpaqueTypes, InferOk};
 use rustc_middle::traits::{BuiltinImplSource, SelectionOutputTypeParameterMismatch};
 use rustc_middle::ty::{

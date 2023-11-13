@@ -32,8 +32,8 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::Diagnostic;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_infer::infer::BoundRegionConversionTime;
 use rustc_infer::infer::DefineOpaqueTypes;
-use rustc_infer::infer::LateBoundRegionConversionTime;
 use rustc_infer::traits::TraitObligation;
 use rustc_middle::dep_graph::dep_kinds;
 use rustc_middle::dep_graph::DepNodeIndex;
@@ -1751,7 +1751,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let mut nested_obligations = Vec::new();
         let infer_predicate = self.infcx.instantiate_binder_with_fresh_vars(
             obligation.cause.span,
-            LateBoundRegionConversionTime::HigherRankedType,
+            BoundRegionConversionTime::HigherRankedType,
             env_predicate,
         );
         let infer_projection = if potentially_unnormalized_candidates {

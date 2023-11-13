@@ -853,7 +853,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         self.elaborate_bounds(bounds, |this, poly_trait_ref, item| {
             let trait_ref = this.instantiate_binder_with_fresh_vars(
                 this.span,
-                infer::LateBoundRegionConversionTime::FnCall,
+                infer::BoundRegionConversionTime::FnCall,
                 poly_trait_ref,
             );
 
@@ -971,7 +971,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     } else {
                         let new_trait_ref = self.instantiate_binder_with_fresh_vars(
                             self.span,
-                            infer::LateBoundRegionConversionTime::FnCall,
+                            infer::BoundRegionConversionTime::FnCall,
                             bound_trait_ref,
                         );
 
