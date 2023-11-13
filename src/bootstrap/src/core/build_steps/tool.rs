@@ -635,7 +635,7 @@ impl Step for RustAnalyzer {
             compiler: self.compiler,
             target: self.target,
             tool: "rust-analyzer",
-            mode: Mode::ToolStd,
+            mode: Mode::ToolRustc,
             path: "src/tools/rust-analyzer",
             extra_features: vec!["rust-analyzer/in-rust-tree".to_owned()],
             is_optional_tool: false,

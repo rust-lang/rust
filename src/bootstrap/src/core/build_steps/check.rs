@@ -376,12 +376,12 @@ impl Step for RustAnalyzer {
         let compiler = builder.compiler(builder.top_stage, builder.config.build);
         let target = self.target;
 
-        builder.ensure(Std::new(target));
+        builder.ensure(Rustc::new(target, builder));
 
         let mut cargo = prepare_tool_cargo(
             builder,
             compiler,
-            Mode::ToolStd,
+            Mode::ToolRustc,
             target,
             cargo_subcommand(builder.kind),
             "src/tools/rust-analyzer",
@@ -414,7 +414,7 @@ impl Step for RustAnalyzer {
         /// Cargo's output path in a given stage, compiled by a particular
         /// compiler for the specified target.
         fn stamp(builder: &Builder<'_>, compiler: Compiler, target: TargetSelection) -> PathBuf {
-            builder.cargo_out(compiler, Mode::ToolStd, target).join(".rust-analyzer-check.stamp")
+            builder.cargo_out(compiler, Mode::ToolRustc, target).join(".rust-analyzer-check.stamp")
         }
     }
 }

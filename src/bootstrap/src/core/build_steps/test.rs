@@ -369,7 +369,7 @@ impl Step for RustAnalyzer {
 
         // We don't need to build the whole Rust Analyzer for the proc-macro-srv test suite,
         // but we do need the standard library to be present.
-        builder.ensure(compile::Std::new(compiler, host));
+        builder.ensure(compile::Rustc::new(compiler, host));
 
         let workspace_path = "src/tools/rust-analyzer";
         // until the whole RA test suite runs on `i686`, we only run
@@ -378,7 +378,7 @@ impl Step for RustAnalyzer {
         let mut cargo = tool::prepare_tool_cargo(
             builder,
             compiler,
-            Mode::ToolStd,
+            Mode::ToolRustc,
             host,
             "test",
             crate_path,
