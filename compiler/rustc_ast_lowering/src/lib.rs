@@ -443,11 +443,6 @@ pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> hir::Crate<'_> {
     drop(ast_index);
     sess.time("drop_ast", || drop(krate));
 
-    // Discard hygiene data, which isn't required after lowering to HIR.
-    if !sess.opts.unstable_opts.keep_hygiene_data {
-        rustc_span::hygiene::clear_syntax_context_map();
-    }
-
     // Don't hash unless necessary, because it's expensive.
     let opt_hir_hash =
         if tcx.needs_crate_hash() { Some(compute_hir_hash(tcx, &owners)) } else { None };
