@@ -70,7 +70,6 @@ These APIs are now stable in const contexts:
 Cargo
 -----
 
-- [fix: Set MSRV for internal packages](https://github.com/rust-lang/cargo/pull/12381/)
 - [config: merge lists in precedence order](https://github.com/rust-lang/cargo/pull/12515/)
 - [fix(update): Clarify meaning of --aggressive as --recursive](https://github.com/rust-lang/cargo/pull/12544/)
 - [fix(update): Make `-p` more convenient by being positional](https://github.com/rust-lang/cargo/pull/12545/)
