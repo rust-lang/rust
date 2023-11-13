@@ -87,7 +87,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     | (ty::Alias(ty::Projection, proj), ty::Param(p))
                         if !tcx.is_impl_trait_in_trait(proj.def_id) =>
                     {
-                        let parent = tcx.generics_of(body_owner_def_id)
+                        let parent = tcx
+                            .generics_of(body_owner_def_id)
                             .opt_type_param(p, tcx)
                             .and_then(|param| {
                                 let p_def_id = param.def_id;

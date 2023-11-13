@@ -114,9 +114,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         use rustc_middle::mir::BinOp::*;
 
         // Performs appropriate non-deterministic adjustments of NaN results.
-        let adjust_nan = |f: F| -> F {
-            if f.is_nan() { M::generate_nan(self, &[l, r]) } else { f }
-        };
+        let adjust_nan =
+            |f: F| -> F { if f.is_nan() { M::generate_nan(self, &[l, r]) } else { f } };
 
         let val = match bin_op {
             Eq => ImmTy::from_bool(l == r, *self.tcx),

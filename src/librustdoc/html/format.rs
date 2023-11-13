@@ -1166,13 +1166,17 @@ fn fmt_type<'cx>(
             // we need to surround them with angle brackets in some cases (e.g. `<dyn …>::P`).
 
             if f.alternate() {
-                if let Some(trait_) = trait_ && should_show_cast {
+                if let Some(trait_) = trait_
+                    && should_show_cast
+                {
                     write!(f, "<{:#} as {:#}>::", self_type.print(cx), trait_.print(cx))?
                 } else {
                     write!(f, "{:#}::", self_type.print(cx))?
                 }
             } else {
-                if let Some(trait_) = trait_ && should_show_cast {
+                if let Some(trait_) = trait_
+                    && should_show_cast
+                {
                     write!(f, "&lt;{} as {}&gt;::", self_type.print(cx), trait_.print(cx))?
                 } else {
                     write!(f, "{}::", self_type.print(cx))?
@@ -1268,16 +1272,23 @@ impl clean::Impl {
                 write!(f, " for ")?;
             }
 
-            if let clean::Type::Tuple(types) = &self.for_ &&
-                let [clean::Type::Generic(name)] = &types[..] &&
-                (self.kind.is_fake_variadic() || self.kind.is_auto())
+            if let clean::Type::Tuple(types) = &self.for_
+                && let [clean::Type::Generic(name)] = &types[..]
+                && (self.kind.is_fake_variadic() || self.kind.is_auto())
             {
                 // Hardcoded anchor library/core/src/primitive_docs.rs
                 // Link should match `# Trait implementations`
-                primitive_link_fragment(f, PrimitiveType::Tuple, format_args!("({name}₁, {name}₂, …, {name}ₙ)"), "#trait-implementations-1", cx)?;
-            } else if let clean::BareFunction(bare_fn) = &self.for_ &&
-                let [clean::Argument { type_: clean::Type::Generic(name), .. }] = &bare_fn.decl.inputs.values[..] &&
-                (self.kind.is_fake_variadic() || self.kind.is_auto())
+                primitive_link_fragment(
+                    f,
+                    PrimitiveType::Tuple,
+                    format_args!("({name}₁, {name}₂, …, {name}ₙ)"),
+                    "#trait-implementations-1",
+                    cx,
+                )?;
+            } else if let clean::BareFunction(bare_fn) = &self.for_
+                && let [clean::Argument { type_: clean::Type::Generic(name), .. }] =
+                    &bare_fn.decl.inputs.values[..]
+                && (self.kind.is_fake_variadic() || self.kind.is_auto())
             {
                 // Hardcoded anchor library/core/src/primitive_docs.rs
                 // Link should match `# Trait implementations`
@@ -1286,22 +1297,18 @@ impl clean::Impl {
                 let unsafety = bare_fn.unsafety.print_with_space();
                 let abi = print_abi_with_space(bare_fn.abi);
                 if f.alternate() {
-                    write!(
-                        f,
-                        "{hrtb:#}{unsafety}{abi:#}",
-                    )?;
+                    write!(f, "{hrtb:#}{unsafety}{abi:#}",)?;
                 } else {
-                    write!(
-                        f,
-                        "{hrtb}{unsafety}{abi}",
-                    )?;
+                    write!(f, "{hrtb}{unsafety}{abi}",)?;
                 }
-                let ellipsis = if bare_fn.decl.c_variadic {
-                    ", ..."
-                } else {
-                    ""
-                };
-                primitive_link_fragment(f, PrimitiveType::Tuple, format_args!("fn ({name}₁, {name}₂, …, {name}ₙ{ellipsis})"), "#trait-implementations-1", cx)?;
+                let ellipsis = if bare_fn.decl.c_variadic { ", ..." } else { "" };
+                primitive_link_fragment(
+                    f,
+                    PrimitiveType::Tuple,
+                    format_args!("fn ({name}₁, {name}₂, …, {name}ₙ{ellipsis})"),
+                    "#trait-implementations-1",
+                    cx,
+                )?;
                 // Write output.
                 if !bare_fn.decl.output.is_unit() {
                     write!(f, " -> ")?;
@@ -1447,7 +1454,9 @@ impl clean::FnDecl {
         let amp = if f.alternate() { "&" } else { "&amp;" };
 
         write!(f, "(")?;
-        if let Some(n) = line_wrapping_indent && !self.inputs.values.is_empty() {
+        if let Some(n) = line_wrapping_indent
+            && !self.inputs.values.is_empty()
+        {
             write!(f, "\n{}", Indent(n + 4))?;
         }
         for (i, input) in self.inputs.values.iter().enumerate() {

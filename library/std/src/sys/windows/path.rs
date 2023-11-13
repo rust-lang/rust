@@ -104,7 +104,9 @@ pub fn parse_prefix(path: &OsStr) -> Option<Prefix<'_>> {
 
         // The meaning of verbatim paths can change when they use a different
         // separator.
-        if let Some(parser) = parser.strip_prefix(r"?\") && !parser.prefix_bytes().iter().any(|&x| x == b'/') {
+        if let Some(parser) = parser.strip_prefix(r"?\")
+            && !parser.prefix_bytes().iter().any(|&x| x == b'/')
+        {
             // \\?\
             if let Some(parser) = parser.strip_prefix(r"UNC\") {
                 // \\?\UNC\server\share

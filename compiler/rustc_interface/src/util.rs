@@ -415,7 +415,9 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<C
     let mut base = session.opts.crate_types.clone();
     if base.is_empty() {
         let attr_types = attrs.iter().filter_map(|a| {
-            if a.has_name(sym::crate_type) && let Some(s) = a.value_str() {
+            if a.has_name(sym::crate_type)
+                && let Some(s) = a.value_str()
+            {
                 categorize_crate_type(s)
             } else {
                 None

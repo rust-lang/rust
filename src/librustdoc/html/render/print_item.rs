@@ -974,8 +974,9 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
         // if any Types with the same name but different DefId have been found.
         let mut implementor_dups: FxHashMap<Symbol, (DefId, bool)> = FxHashMap::default();
         for implementor in implementors {
-            if let Some(did) = implementor.inner_impl().for_.without_borrowed_ref().def_id(cache) &&
-                !did.is_local() {
+            if let Some(did) = implementor.inner_impl().for_.without_borrowed_ref().def_id(cache)
+                && !did.is_local()
+            {
                 extern_crates.insert(did.krate);
             }
             match implementor.inner_impl().for_.without_borrowed_ref() {
@@ -1152,9 +1153,10 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
         .take(cx.current.len())
         .chain(std::iter::once("trait.impl"))
         .collect();
-    if let Some(did) = it.item_id.as_def_id() &&
-        let get_extern = { || cache.external_paths.get(&did).map(|s| &s.0) } &&
-        let Some(fqp) = cache.exact_paths.get(&did).or_else(get_extern) {
+    if let Some(did) = it.item_id.as_def_id()
+        && let get_extern = { || cache.external_paths.get(&did).map(|s| &s.0) }
+        && let Some(fqp) = cache.exact_paths.get(&did).or_else(get_extern)
+    {
         js_src_path.extend(fqp[..fqp.len() - 1].iter().copied());
         js_src_path.push_fmt(format_args!("{}.{}.js", it.type_(), fqp.last().unwrap()));
     } else {
@@ -1564,8 +1566,8 @@ fn should_show_enum_discriminant(
 ) -> bool {
     let mut has_variants_with_value = false;
     for variant in variants {
-        if let clean::VariantItem(ref var) = *variant.kind &&
-            matches!(var.kind, clean::VariantKind::CLike)
+        if let clean::VariantItem(ref var) = *variant.kind
+            && matches!(var.kind, clean::VariantKind::CLike)
         {
             has_variants_with_value |= var.discriminant.is_some();
         } else {
@@ -1706,8 +1708,8 @@ fn item_variants(
             " rightside",
         );
         w.write_str("<h3 class=\"code-header\">");
-        if let clean::VariantItem(ref var) = *variant.kind &&
-            let clean::VariantKind::CLike = var.kind
+        if let clean::VariantItem(ref var) = *variant.kind
+            && let clean::VariantKind::CLike = var.kind
         {
             display_c_like_variant(
                 w,

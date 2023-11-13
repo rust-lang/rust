@@ -928,10 +928,8 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     }
 
     fn fn_arg_obligation(&self, obligation: &PredicateObligation<'tcx>) -> bool {
-        if let ObligationCauseCode::FunctionArgumentObligation {
-            arg_hir_id,
-            ..
-        } = obligation.cause.code()
+        if let ObligationCauseCode::FunctionArgumentObligation { arg_hir_id, .. } =
+            obligation.cause.code()
             && let Some(Node::Expr(arg)) = self.tcx.hir().find(*arg_hir_id)
             && let arg = arg.peel_borrows()
             && let hir::ExprKind::Path(hir::QPath::Resolved(

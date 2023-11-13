@@ -2723,11 +2723,14 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 .collect::<Vec<_>>();
                             if !impls.is_empty() {
                                 let len = impls.len();
-                                let mut types = impls.iter()
-                                    .map(|t| with_no_trimmed_paths!(format!(
-                                        "  {}",
-                                        tcx.type_of(*t).instantiate_identity(),
-                                    )))
+                                let mut types = impls
+                                    .iter()
+                                    .map(|t| {
+                                        with_no_trimmed_paths!(format!(
+                                            "  {}",
+                                            tcx.type_of(*t).instantiate_identity(),
+                                        ))
+                                    })
                                     .collect::<Vec<_>>();
                                 let post = if types.len() > 9 {
                                     types.truncate(8);
@@ -2769,30 +2772,47 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     ));
                 }
             }
-            ObligationCauseCode::RepeatElementCopy { is_constable, elt_type, elt_span, elt_stmt_span } => {
+            ObligationCauseCode::RepeatElementCopy {
+                is_constable,
+                elt_type,
+                elt_span,
+                elt_stmt_span,
+            } => {
                 err.note(
                     "the `Copy` trait is required because this value will be copied for each element of the array",
                 );
                 let value_kind = match is_constable {
                     IsConstable::Fn => Some("the result of the function call"),
                     IsConstable::Ctor => Some("the result of the constructor"),
-                    _ => None
+                    _ => None,
                 };
                 let sm = tcx.sess.source_map();
-                if let Some(value_kind) = value_kind &&
-                    let Ok(snip) = sm.span_to_snippet(elt_span)
+                if let Some(value_kind) = value_kind
+                    && let Ok(snip) = sm.span_to_snippet(elt_span)
                 {
                     let help_msg = format!(
                         "consider creating a new `const` item and initializing it with {value_kind} \
-                        to be used in the repeat position");
+                        to be used in the repeat position"
+                    );
                     let indentation = sm.indentation_before(elt_stmt_span).unwrap_or_default();
-                    err.multipart_suggestion(help_msg, vec![
-                        (elt_stmt_span.shrink_to_lo(), format!("const ARRAY_REPEAT_VALUE: {elt_type} = {snip};\n{indentation}")),
-                        (elt_span, "ARRAY_REPEAT_VALUE".to_string())
-                    ], Applicability::MachineApplicable);
+                    err.multipart_suggestion(
+                        help_msg,
+                        vec![
+                            (
+                                elt_stmt_span.shrink_to_lo(),
+                                format!(
+                                    "const ARRAY_REPEAT_VALUE: {elt_type} = {snip};\n{indentation}"
+                                ),
+                            ),
+                            (elt_span, "ARRAY_REPEAT_VALUE".to_string()),
+                        ],
+                        Applicability::MachineApplicable,
+                    );
                 }
 
-                if self.tcx.sess.is_nightly_build() && matches!(is_constable, IsConstable::Fn|IsConstable::Ctor) {
+                if self.tcx.sess.is_nightly_build()
+                    && matches!(is_constable, IsConstable::Fn | IsConstable::Ctor)
+                {
                     err.help(
                         "create an inline `const` block, see RFC #2920 \
                          <https://github.com/rust-lang/rfcs/pull/2920> for more information",
@@ -2957,7 +2977,9 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             }
             ObligationCauseCode::SizedCoroutineInterior(coroutine_def_id) => {
                 let what = match self.tcx.coroutine_kind(coroutine_def_id) {
-                    None | Some(hir::CoroutineKind::Coroutine) | Some(hir::CoroutineKind::Gen(_)) => "yield",
+                    None
+                    | Some(hir::CoroutineKind::Coroutine)
+                    | Some(hir::CoroutineKind::Gen(_)) => "yield",
                     Some(hir::CoroutineKind::Async(..)) => "await",
                 };
                 err.note(format!(
@@ -3519,7 +3541,8 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         {
             if let hir::Expr { kind: hir::ExprKind::Block(block, _), .. } = expr {
                 let inner_expr = expr.peel_blocks();
-                let ty = typeck_results.expr_ty_adjusted_opt(inner_expr)
+                let ty = typeck_results
+                    .expr_ty_adjusted_opt(inner_expr)
                     .unwrap_or(Ty::new_misc_error(tcx));
                 let span = inner_expr.span;
                 if Some(span) != err.span.primary_span() {
@@ -3538,14 +3561,13 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             tcx.lang_items().fn_once_trait(),
                             tcx.lang_items().fn_mut_trait(),
                             tcx.lang_items().fn_trait(),
-                        ].contains(&Some(pred.def_id()))
+                        ]
+                        .contains(&Some(pred.def_id()))
                     {
                         if let [stmt, ..] = block.stmts
                             && let hir::StmtKind::Semi(value) = stmt.kind
                             && let hir::ExprKind::Closure(hir::Closure {
-                                body,
-                                fn_decl_span,
-                                ..
+                                body, fn_decl_span, ..
                             }) = value.kind
                             && let body = hir.body(*body)
                             && !matches!(body.value.kind, hir::ExprKind::Block(..))
@@ -3568,9 +3590,11 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 "you might have meant to create the closure instead of a block",
                                 format!(
                                     "|{}| ",
-                                    (0..pred.trait_ref.args.len() - 1).map(|_| "_")
+                                    (0..pred.trait_ref.args.len() - 1)
+                                        .map(|_| "_")
                                         .collect::<Vec<_>>()
-                                        .join(", ")),
+                                        .join(", ")
+                                ),
                                 Applicability::MaybeIncorrect,
                             );
                         }

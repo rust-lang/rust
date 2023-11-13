@@ -28,7 +28,9 @@ impl SwitchTargets {
 
     /// Inverse of `SwitchTargets::static_if`.
     pub fn as_static_if(&self) -> Option<(u128, BasicBlock, BasicBlock)> {
-        if let &[value] = &self.values[..] && let &[then, else_] = &self.targets[..] {
+        if let &[value] = &self.values[..]
+            && let &[then, else_] = &self.targets[..]
+        {
             Some((value, then, else_))
         } else {
             None

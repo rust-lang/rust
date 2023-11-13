@@ -112,7 +112,9 @@ where
                     };
 
                     for (idx, s) in args.iter().enumerate() {
-                        if variances.map(|variances| variances[idx]) != Some(ty::Variance::Bivariant) {
+                        if variances.map(|variances| variances[idx])
+                            != Some(ty::Variance::Bivariant)
+                        {
                             s.visit_with(self)?;
                         }
                     }

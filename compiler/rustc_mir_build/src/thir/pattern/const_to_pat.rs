@@ -200,7 +200,9 @@ impl<'tcx> ConstToPat<'tcx> {
                     // We errored. Signal that in the pattern, so that follow up errors can be silenced.
                     let kind = PatKind::Error(e);
                     return Box::new(Pat { span: self.span, ty: cv.ty(), kind });
-                } else if let ty::Adt(..) = cv.ty().kind() && matches!(cv, mir::Const::Val(..)) {
+                } else if let ty::Adt(..) = cv.ty().kind()
+                    && matches!(cv, mir::Const::Val(..))
+                {
                     // This branch is only entered when the current `cv` is `mir::Const::Val`.
                     // This is because `mir::Const::ty` has already been handled by `Self::recur`
                     // and the invalid types may be ignored.

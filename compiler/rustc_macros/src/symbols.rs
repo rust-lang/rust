@@ -85,7 +85,9 @@ impl Parse for Value {
                 }
             }
             Expr::Macro(expr) => {
-                if expr.mac.path.is_ident("env") && let Ok(lit) = expr.mac.parse_body() {
+                if expr.mac.path.is_ident("env")
+                    && let Ok(lit) = expr.mac.parse_body()
+                {
                     return Ok(Value::Env(lit, expr.mac.clone()));
                 }
             }
