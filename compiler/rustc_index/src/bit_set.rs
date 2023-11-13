@@ -243,12 +243,6 @@ impl<T: Idx> BitSet<T> {
         BitIter::new(&self.words)
     }
 
-    /// Duplicates the set as a hybrid set.
-    pub fn to_hybrid(&self) -> HybridBitSet<T> {
-        // Note: we currently don't bother trying to make a Sparse set.
-        HybridBitSet::Dense(self.to_owned())
-    }
-
     /// Set `self = self | other`. In contrast to `union` returns `true` if the set contains at
     /// least one bit that is not in `other` (i.e. `other` is not a superset of `self`).
     ///
