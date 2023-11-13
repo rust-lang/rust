@@ -70,17 +70,17 @@ These APIs are now stable in const contexts:
 Cargo
 -----
 
-- [In `.cargo/config.toml`, merge lists in precedence order](https://github.com/rust-lang/cargo/pull/12515/)
-- [For `cargo update`, clarify meaning of --aggressive as --recursive](https://github.com/rust-lang/cargo/pull/12544/)
-- [For `cargo update`, make `--package` more convenient by being positional](https://github.com/rust-lang/cargo/pull/12545/)
-- [Add styling to `--help` output](https://github.com/rust-lang/cargo/pull/12578/)
-- [Allow version-prefixes in pkgid's (e.g. `--package` flags) to resolve ambiguities](https://github.com/rust-lang/cargo/pull/12614/)
-- [Stabilize credential-process and registry-auth](https://github.com/rust-lang/cargo/pull/12649/)
-- [Add '-n' as an alias for `--dry-run`](https://github.com/rust-lang/cargo/pull/12660/)
-- [For `cargo clean`, add `--dry-run` flag and summary line at the end](https://github.com/rust-lang/cargo/pull/12638)
-- [Add support for `target.'cfg(..)'.linker`](https://github.com/rust-lang/cargo/pull/12535/)
-- [Stabilize `--keep-going` build flag](https://github.com/rust-lang/cargo/pull/12568/)
 - [In `Cargo.toml`, stabilize `[lints]`](https://github.com/rust-lang/cargo/pull/12648/)
+- [Stabilize credential-process and registry-auth](https://github.com/rust-lang/cargo/pull/12649/)
+- [Stabilize `--keep-going` build flag](https://github.com/rust-lang/cargo/pull/12568/)
+- [Add styling to `--help` output](https://github.com/rust-lang/cargo/pull/12578/)
+- [For `cargo clean`, add `--dry-run` flag and summary line at the end](https://github.com/rust-lang/cargo/pull/12638)
+- [For `cargo update`, make `--package` more convenient by being positional](https://github.com/rust-lang/cargo/pull/12545/)
+- [For `cargo update`, clarify meaning of --aggressive as --recursive](https://github.com/rust-lang/cargo/pull/12544/)
+- [Add '-n' as an alias for `--dry-run`](https://github.com/rust-lang/cargo/pull/12660/)
+- [Allow version-prefixes in pkgid's (e.g. `--package` flags) to resolve ambiguities](https://github.com/rust-lang/cargo/pull/12614/)
+- [In `.cargo/config.toml`, merge lists in precedence order](https://github.com/rust-lang/cargo/pull/12515/)
+- [Add support for `target.'cfg(..)'.linker`](https://github.com/rust-lang/cargo/pull/12535/)
 
 <a id="1.74.0-Rustdoc"></a>
 
