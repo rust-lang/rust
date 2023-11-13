@@ -281,7 +281,7 @@ impl<'a> State<'a> {
         self.print_expr_maybe_paren(expr, parser::PREC_PREFIX)
     }
 
-    pub fn print_expr(&mut self, expr: &ast::Expr) {
+    pub(super) fn print_expr(&mut self, expr: &ast::Expr) {
         self.print_expr_outer_attr_style(expr, true)
     }
 
@@ -681,7 +681,7 @@ impl<'a> State<'a> {
     }
 }
 
-pub fn reconstruct_format_args_template_string(pieces: &[FormatArgsPiece]) -> String {
+fn reconstruct_format_args_template_string(pieces: &[FormatArgsPiece]) -> String {
     let mut template = "\"".to_string();
     for piece in pieces {
         match piece {
