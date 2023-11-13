@@ -452,7 +452,13 @@ fn lint_auto_trait_impl<'tcx>(
     trait_ref: ty::TraitRef<'tcx>,
     impl_def_id: LocalDefId,
 ) {
-    assert_eq!(trait_ref.args.len(), 1);
+    if trait_ref.args.len() != 1 {
+        tcx.sess.diagnostic().delay_span_bug(
+            tcx.def_span(impl_def_id),
+            "auto traits cannot have generic parameters",
+        );
+        return;
+    }
     let self_ty = trait_ref.self_ty();
     let (self_type_did, args) = match self_ty.kind() {
         ty::Adt(def, args) => (def.did(), args),
