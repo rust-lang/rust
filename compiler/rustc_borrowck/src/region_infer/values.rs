@@ -116,17 +116,15 @@ pub(crate) enum RegionElement {
     PlaceholderRegion(ty::PlaceholderRegion),
 }
 
-/// When we initially compute liveness, we use an interval matrix storing
-/// liveness ranges for each region-vid.
+/// Records the CFG locations where each region is live. When we initially compute liveness, we use
+/// an interval matrix storing liveness ranges for each region-vid.
 pub(crate) struct LivenessValues<N: Idx> {
     elements: Rc<RegionValueElements>,
     points: SparseIntervalMatrix<N, PointIndex>,
 }
 
 impl<N: Idx> LivenessValues<N> {
-    /// Creates a new set of "region values" that tracks causal information.
-    /// Each of the regions in num_region_variables will be initialized with an
-    /// empty set of points and no causal information.
+    /// Create an empty map of regions to locations where they're live.
     pub(crate) fn new(elements: Rc<RegionValueElements>) -> Self {
         Self { points: SparseIntervalMatrix::new(elements.num_points), elements }
     }
