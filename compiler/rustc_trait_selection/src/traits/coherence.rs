@@ -100,7 +100,7 @@ pub fn overlapping_impls(
     let impl1_ref = tcx.impl_trait_ref(impl1_def_id);
     let impl2_ref = tcx.impl_trait_ref(impl2_def_id);
     let may_overlap = match (impl1_ref, impl2_ref) {
-        (Some(a), Some(b)) => drcx.args_refs_may_unify(a.skip_binder().args, b.skip_binder().args),
+        (Some(a), Some(b)) => drcx.args_may_unify(a.skip_binder().args, b.skip_binder().args),
         (None, None) => {
             let self_ty1 = tcx.type_of(impl1_def_id).skip_binder();
             let self_ty2 = tcx.type_of(impl2_def_id).skip_binder();
