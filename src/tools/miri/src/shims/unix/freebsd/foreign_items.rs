@@ -47,6 +47,23 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     this.read_scalar(len)?,
                 )?;
             }
+            "getentropy" => {
+                let [buf, bufsize] =
+                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let buf = this.read_pointer(buf)?;
+                let bufsize = this.read_target_usize(bufsize)?;
+
+                // getentropy sets errno to EIO when the buffer size exceeds 256 bytes.
+                // https://man.freebsd.org/cgi/man.cgi?query=getentropy&sektion=3&format=html
+                if bufsize > 256 {
+                    let err = this.eval_libc("EIO");
+                    this.set_last_error(err)?;
+                    this.write_scalar(Scalar::from_i32(-1), dest)?
+                } else {
+                    this.gen_random(buf, bufsize)?;
+                    this.write_scalar(Scalar::from_i32(0), dest)?;
+                }
+            }
 
             // errno
             "__error" => {
