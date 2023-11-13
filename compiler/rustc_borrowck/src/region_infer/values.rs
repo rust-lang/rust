@@ -154,10 +154,10 @@ impl<N: Idx> LivenessValues<N> {
         self.points.insert_all_into_row(region);
     }
 
-    /// Returns `true` if the region `region` contains the given element.
-    pub(crate) fn contains(&self, region: N, location: Location) -> bool {
-        let index = self.elements.point_from_location(location);
-        self.points.row(region).is_some_and(|r| r.contains(index))
+    /// Returns whether `region` is marked live at the given `location`.
+    pub(crate) fn is_live_at(&self, region: N, location: Location) -> bool {
+        let point = self.elements.point_from_location(location);
+        self.points.row(region).is_some_and(|r| r.contains(point))
     }
 
     /// Returns an iterator of all the elements contained by `region`.

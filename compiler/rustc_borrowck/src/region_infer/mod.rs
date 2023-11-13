@@ -1963,15 +1963,15 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         None
     }
 
-    /// Finds some region R such that `fr1: R` and `R` is live at `elem`.
+    /// Finds some region R such that `fr1: R` and `R` is live at `location`.
     #[instrument(skip(self), level = "trace", ret)]
-    pub(crate) fn find_sub_region_live_at(&self, fr1: RegionVid, elem: Location) -> RegionVid {
+    pub(crate) fn find_sub_region_live_at(&self, fr1: RegionVid, location: Location) -> RegionVid {
         trace!(scc = ?self.constraint_sccs.scc(fr1));
         trace!(universe = ?self.scc_universes[self.constraint_sccs.scc(fr1)]);
         self.find_constraint_paths_between_regions(fr1, |r| {
-            // First look for some `r` such that `fr1: r` and `r` is live at `elem`
+            // First look for some `r` such that `fr1: r` and `r` is live at `location`
             trace!(?r, liveness_constraints=?self.liveness_constraints.region_value_str(r));
-            self.liveness_constraints.contains(r, elem)
+            self.liveness_constraints.is_live_at(r, location)
         })
         .or_else(|| {
             // If we fail to find that, we may find some `r` such that
