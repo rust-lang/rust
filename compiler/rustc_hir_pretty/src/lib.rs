@@ -49,8 +49,8 @@ pub trait PpAnn {
 }
 
 pub struct NoAnn;
+
 impl PpAnn for NoAnn {}
-pub const NO_ANN: &dyn PpAnn = &NoAnn;
 
 impl PpAnn for &dyn rustc_hir::intravisit::Map<'_> {
     fn nested(&self, state: &mut State<'_>, nested: Nested) {
@@ -183,15 +183,15 @@ where
 }
 
 pub fn ty_to_string(ty: &hir::Ty<'_>) -> String {
-    to_string(NO_ANN, |s| s.print_type(ty))
+    to_string(&NoAnn, |s| s.print_type(ty))
 }
 
 pub fn qpath_to_string(segment: &hir::QPath<'_>) -> String {
-    to_string(NO_ANN, |s| s.print_qpath(segment, false))
+    to_string(&NoAnn, |s| s.print_qpath(segment, false))
 }
 
 pub fn pat_to_string(pat: &hir::Pat<'_>) -> String {
-    to_string(NO_ANN, |s| s.print_pat(pat))
+    to_string(&NoAnn, |s| s.print_pat(pat))
 }
 
 impl<'a> State<'a> {
