@@ -913,20 +913,15 @@ pub fn object_region_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
     existential_predicates: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
 ) -> Vec<ty::Region<'tcx>> {
-    // Since we don't actually *know* the self type for an object,
-    // this "open(err)" serves as a kind of dummy standin -- basically
-    // a placeholder type.
-    let open_ty = Ty::new_fresh(tcx, 0);
-
     let predicates = existential_predicates.iter().filter_map(|predicate| {
         if let ty::ExistentialPredicate::Projection(_) = predicate.skip_binder() {
             None
         } else {
-            Some(predicate.with_self_ty(tcx, open_ty))
+            Some(predicate.with_self_ty(tcx, tcx.types.trait_object_dummy_self))
         }
     });
 
-    required_region_bounds(tcx, open_ty, predicates)
+    required_region_bounds(tcx, tcx.types.trait_object_dummy_self, predicates)
 }
 
 /// Given a set of predicates that apply to an object type, returns

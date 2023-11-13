@@ -2845,6 +2845,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     /// provided, if they provided one, and otherwise search the supertypes of trait bounds
     /// for region bounds. It may be that we can derive no bound at all, in which case
     /// we return `None`.
+    #[instrument(level = "debug", skip(self, span), ret)]
     fn compute_object_lifetime_bound(
         &self,
         span: Span,
@@ -2852,8 +2853,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     ) -> Option<ty::Region<'tcx>> // if None, use the default
     {
         let tcx = self.tcx();
-
-        debug!("compute_opt_region_bound(existential_predicates={:?})", existential_predicates);
 
         // No explicit region bound specified. Therefore, examine trait
         // bounds and see if we can derive region bounds from those.
