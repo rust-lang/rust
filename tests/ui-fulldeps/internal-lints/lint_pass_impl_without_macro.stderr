@@ -12,7 +12,7 @@ LL | #![deny(rustc::lint_pass_impl_without_macro)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: implementing `LintPass` by hand
-  --> $DIR/lint_pass_impl_without_macro.rs:30:14
+  --> $DIR/lint_pass_impl_without_macro.rs:34:14
    |
 LL |         impl LintPass for Custom {
    |              ^^^^^^^^
