@@ -54,7 +54,7 @@ function setMobileTopbar() {
     if (mobileTopbar) {
         const mobileTitle = document.createElement("h2");
         mobileTitle.className = "location";
-        if (hasClass(document.body, "crate")) {
+        if (hasClass(document.querySelector(".rustdoc"), "crate")) {
             mobileTitle.innerText = `Crate ${window.currentCrate}`;
         } else if (locationTitle) {
             mobileTitle.innerHTML = locationTitle.innerHTML;
@@ -485,7 +485,7 @@ function preLoadCss(cssUrl) {
                 return;
             }
 
-            const modpath = hasClass(document.body, "mod") ? "../" : "";
+            const modpath = hasClass(document.querySelector(".rustdoc"), "mod") ? "../" : "";
 
             const h3 = document.createElement("h3");
             h3.innerHTML = `<a href="${modpath}index.html#${id}">${longty}</a>`;
