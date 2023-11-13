@@ -177,7 +177,7 @@ pub struct BeginToken {
     breaks: Breaks,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(PartialEq)]
 pub enum Token {
     // In practice a string token contains either a `&'static str` or a
     // `String`. `Cow` is overkill for this because we never modify the data,
@@ -229,7 +229,6 @@ pub struct Printer {
     last_printed: Option<Token>,
 }
 
-#[derive(Clone)]
 struct BufEntry {
     token: Token,
     size: isize,
