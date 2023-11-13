@@ -341,6 +341,18 @@ jobs:
 
           - name: x86_64-gnu-tools
             <<: *job-linux-16c
+          
+          - name: x86_64-apple-1
+            env: &env-x86_64-apple-tests
+              SCRIPT: ./x.py --stage 2 test --skip tests/ui --skip tests/rustdoc --skip tests/run-make-fulldeps
+              RUST_CONFIGURE_ARGS: --build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc --set llvm.ninja=false
+              RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+              MACOSX_DEPLOYMENT_TARGET: 10.12
+              MACOSX_STD_DEPLOYMENT_TARGET: 10.12
+              NO_LLVM_ASSERTIONS: 1
+              NO_DEBUG_ASSERTIONS: 1
+              NO_OVERFLOW_CHECKS: 1
+            <<: *job-macos-xl
 
   auto:
     <<: *base-ci-job
