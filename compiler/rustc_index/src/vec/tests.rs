@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 // Allows the macro invocation below to work
 use crate as rustc_index;
 
