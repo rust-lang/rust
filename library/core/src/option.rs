@@ -1079,8 +1079,6 @@ impl<T> Option<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(result_option_inspect)]
-    ///
     /// let v = vec![1, 2, 3, 4, 5];
     ///
     /// // prints "got: 4"
@@ -1090,11 +1088,8 @@ impl<T> Option<T> {
     /// let x: Option<&usize> = v.get(5).inspect(|x| println!("got: {x}"));
     /// ```
     #[inline]
-    #[unstable(feature = "result_option_inspect", issue = "91345")]
-    pub fn inspect<F>(self, f: F) -> Self
-    where
-        F: FnOnce(&T),
-    {
+    #[stable(feature = "result_option_inspect", since = "CURRENT_RUSTC_VERSION")]
+    pub fn inspect<F: FnOnce(&T)>(self, f: F) -> Self {
         if let Some(ref x) = self {
             f(x);
         }

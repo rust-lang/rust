@@ -59,7 +59,6 @@
 #![feature(extract_if)]
 #![feature(intra_doc_pointers)]
 #![feature(yeet_expr)]
-#![feature(result_option_inspect)]
 #![feature(const_option)]
 #![feature(trait_alias)]
 #![feature(ptr_alignment_type)]
