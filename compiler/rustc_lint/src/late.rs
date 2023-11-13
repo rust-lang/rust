@@ -326,6 +326,9 @@ impl LintPass for RuntimeCombinedLateLintPass<'_, '_> {
     fn name(&self) -> &'static str {
         panic!()
     }
+    fn get_lints(&self) -> crate::LintVec {
+        panic!()
+    }
 }
 
 macro_rules! impl_late_lint_pass {
@@ -361,13 +364,38 @@ pub fn late_lint_mod<'tcx, T: LateLintPass<'tcx> + 'tcx>(
     // Note: `passes` is often empty. In that case, it's faster to run
     // `builtin_lints` directly rather than bundling it up into the
     // `RuntimeCombinedLateLintPass`.
-    let late_module_passes = &unerased_lint_store(tcx.sess).late_module_passes;
-    if late_module_passes.is_empty() {
+    let store = unerased_lint_store(tcx.sess);
+
+    if store.late_module_passes.is_empty() {
         late_lint_mod_inner(tcx, module_def_id, context, builtin_lints);
     } else {
-        let mut passes: Vec<_> = late_module_passes.iter().map(|mk_pass| (mk_pass)(tcx)).collect();
-        passes.push(Box::new(builtin_lints));
-        let pass = RuntimeCombinedLateLintPass { passes: &mut passes[..] };
+        let passes: Vec<_> =
+            store.late_module_passes.iter().map(|mk_pass| (mk_pass)(tcx)).collect();
+
+        // Filter unused lints
+        let (lints_to_emit, lints_allowed) = &**tcx.lints_that_can_emit(());
+        // let lints_to_emit = &lints_that_can_emit.0;
+        // let lints_allowed = &lints_that_can_emit.1;
+
+        // Now, we'll filtered passes in a way that discards any lint that won't trigger.
+        // If any lint is a given pass is detected to be emitted, we will keep that pass.
+        // Otherwise, we don't
+        let mut filtered_passes: Vec<Box<dyn LateLintPass<'tcx>>> = passes
+            .into_iter()
+            .filter(|pass| {
+                let pass = LintPass::get_lints(pass);
+                pass.iter().any(|&lint| {
+                    let lint_name = name_without_tool(&lint.name.to_lowercase()).to_string();
+                    lints_to_emit.contains(&lint_name)
+                        || (!lints_allowed.contains(&lint_name)
+                            && lint.default_level != crate::Level::Allow)
+                })
+            })
+            .collect();
+
+        filtered_passes.push(Box::new(builtin_lints));
+
+        let pass = RuntimeCombinedLateLintPass { passes: &mut filtered_passes[..] };
         late_lint_mod_inner(tcx, module_def_id, context, pass);
     }
 }
@@ -453,4 +481,11 @@ pub fn check_crate<'tcx>(tcx: TyCtxt<'tcx>) {
             });
         },
     );
+}
+
+/// Format name ignoring the name, useful for filtering non-used lints.
+/// For example, 'clippy::my_lint' will turn into 'my_lint'
+pub(crate) fn name_without_tool(name: &str) -> &str {
+    // Doing some calculations here to account for those separators
+    name.rsplit("::").next().unwrap_or(name)
 }
