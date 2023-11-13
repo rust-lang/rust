@@ -359,7 +359,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let mut scc_values =
             RegionValues::new(elements, universal_regions.len(), &placeholder_indices);
 
-        for region in liveness_constraints.rows() {
+        for region in liveness_constraints.regions() {
             let scc = constraint_sccs.scc(region);
             scc_values.merge_liveness(scc, region, &liveness_constraints);
         }

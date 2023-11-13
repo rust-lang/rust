@@ -592,7 +592,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
             }
             self.cx.borrowck_context.constraints.outlives_constraints.push(constraint)
         }
-        for region in liveness_constraints.rows() {
+        for region in liveness_constraints.regions() {
             // If the region is live at at least one location in the promoted MIR,
             // then add a liveness constraint to the main MIR for this region
             // at the location provided as an argument to this method

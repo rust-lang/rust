@@ -132,7 +132,7 @@ impl<N: Idx> LivenessValues<N> {
     }
 
     /// Iterate through each region that has a value in this set.
-    pub(crate) fn rows(&self) -> impl Iterator<Item = N> {
+    pub(crate) fn regions(&self) -> impl Iterator<Item = N> {
         self.points.rows()
     }
 
