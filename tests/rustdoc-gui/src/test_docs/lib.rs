@@ -593,3 +593,21 @@ pub mod foreign_impl_order {
         fn f(&mut self, fg: [u8; 3]) {}
     }
 }
+
+pub mod private {
+    pub struct Tuple(u32, u8);
+    pub struct Struct {
+        a: u8,
+    }
+
+    pub union Union {
+        a: u8,
+        b: u16,
+    }
+
+    pub enum Enum {
+        A,
+        #[doc(hidden)]
+        B,
+    }
+}
