@@ -120,6 +120,7 @@ fn to_llvm_tls_model(tls_model: TlsModel) -> llvm::ThreadLocalMode {
         TlsModel::LocalDynamic => llvm::ThreadLocalMode::LocalDynamic,
         TlsModel::InitialExec => llvm::ThreadLocalMode::InitialExec,
         TlsModel::LocalExec => llvm::ThreadLocalMode::LocalExec,
+        TlsModel::Emulated => llvm::ThreadLocalMode::GeneralDynamic,
     }
 }
 

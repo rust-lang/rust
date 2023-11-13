@@ -2159,7 +2159,7 @@ extern "C" {
         SplitDwarfFile: *const c_char,
         OutputObjFile: *const c_char,
         DebugInfoCompression: *const c_char,
-        ForceEmulatedTls: bool,
+        UseEmulatedTls: bool,
         ArgsCstrBuff: *const c_char,
         ArgsCstrBuffLen: usize,
     ) -> *mut TargetMachine;

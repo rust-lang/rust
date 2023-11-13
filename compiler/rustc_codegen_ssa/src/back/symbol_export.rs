@@ -16,7 +16,7 @@ use rustc_middle::ty::{self, SymbolName, TyCtxt};
 use rustc_middle::ty::{GenericArgKind, GenericArgsRef};
 use rustc_middle::util::Providers;
 use rustc_session::config::{CrateType, OomStrategy};
-use rustc_target::spec::SanitizerSet;
+use rustc_target::spec::{SanitizerSet, TlsModel};
 
 pub fn threshold(tcx: TyCtxt<'_>) -> SymbolExportLevel {
     crates_export_threshold(tcx.crate_types())
@@ -552,6 +552,12 @@ pub fn linking_symbol_name_for_instance_in_crate<'tcx>(
 
     let mut undecorated = symbol_name_for_instance_in_crate(tcx, symbol, instantiating_crate);
 
+    // thread local will not be a function call,
+    // so it is safe to return before windows symbol decoration check.
+    if let Some(name) = maybe_emutls_symbol_name(tcx, symbol, &undecorated) {
+        return name;
+    }
+
     let target = &tcx.sess.target;
     if !target.is_like_windows {
         // Mach-O has a global "_" suffix and `object` crate will handle it.
@@ -610,6 +616,32 @@ pub fn linking_symbol_name_for_instance_in_crate<'tcx>(
         .map(|abi| abi.layout.size.bytes().next_multiple_of(target.pointer_width as u64 / 8))
         .sum();
     format!("{prefix}{undecorated}{suffix}{args_in_bytes}")
+}
+
+pub fn exporting_symbol_name_for_instance_in_crate<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    symbol: ExportedSymbol<'tcx>,
+    cnum: CrateNum,
+) -> String {
+    let undecorated = symbol_name_for_instance_in_crate(tcx, symbol, cnum);
+    maybe_emutls_symbol_name(tcx, symbol, &undecorated).unwrap_or(undecorated)
+}
+
+fn maybe_emutls_symbol_name<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    symbol: ExportedSymbol<'tcx>,
+    undecorated: &str,
+) -> Option<String> {
+    if matches!(tcx.sess.tls_model(), TlsModel::Emulated)
+        && let ExportedSymbol::NonGeneric(def_id) = symbol
+        && tcx.is_thread_local_static(def_id)
+    {
+        // When using emutls, LLVM will add the `__emutls_v.` prefix to thread local symbols,
+        // and exported symbol name need to match this.
+        Some(format!("__emutls_v.{undecorated}"))
+    } else {
+        None
+    }
 }
 
 fn wasm_import_module_map(tcx: TyCtxt<'_>, cnum: CrateNum) -> FxHashMap<DefId, String> {
