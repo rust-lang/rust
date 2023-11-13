@@ -117,7 +117,7 @@ impl ShallowLintLevelMap {
     /// This lint level is not usable for diagnostics, it needs to be corrected by
     /// `reveal_actual_level` beforehand.
     #[instrument(level = "trace", skip(self, tcx), ret)]
-    fn probe_for_lint_level(
+    pub fn probe_for_lint_level(
         &self,
         tcx: TyCtxt<'_>,
         id: LintId,

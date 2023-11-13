@@ -3,7 +3,7 @@ use std::fmt;
 use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_ast::ast::{Expr, ExprKind, InlineAsmOptions};
 use rustc_ast::{InlineAsm, Item, ItemKind};
-use rustc_lint::{EarlyContext, EarlyLintPass, Lint, LintContext};
+use rustc_lint::{EarlyContext, EarlyLintPass, Lint, LintPass, LintContext};
 use rustc_session::declare_lint_pass;
 use rustc_span::Span;
 use rustc_target::asm::InlineAsmArch;
