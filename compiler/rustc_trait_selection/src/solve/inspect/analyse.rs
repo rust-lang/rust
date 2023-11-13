@@ -58,7 +58,7 @@ impl<'a, 'tcx> InspectCandidate<'a, 'tcx> {
         visitor: &mut V,
     ) -> ControlFlow<V::BreakTy> {
         // HACK: An arbitrary cutoff to avoid dealing with overflow and cycles.
-        if self.goal.depth >= 10 {
+        if self.goal.depth <= 10 {
             let infcx = self.goal.infcx;
             infcx.probe(|_| {
                 let mut instantiated_goals = vec![];
