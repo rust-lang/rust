@@ -1409,34 +1409,8 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
     ) -> InterpResult<'tcx> {
         // We want this *before* the return value copy, because the return place itself is protected
         // until we do `end_call` here.
-        if let Some(global_borrow_tracker) = &ecx.machine.borrow_tracker {
-            // The body of this loop needs `global_borrow_tracker` immutably
-            // so we can't move this code inside the following `end_call`.
-            for (alloc_id, tag) in &frame
-                .extra
-                .borrow_tracker
-                .as_ref()
-                .expect("we should have borrow tracking data")
-                .protected_tags
-            {
-                // Just because the tag is protected doesn't guarantee that
-                // the allocation still exists (weak protectors allow deallocations)
-                // so we must check that the allocation exists.
-                // If it does exist, then we have the guarantee that the
-                // pointer is readable, and the implicit read access inserted
-                // will never cause UB on the pointer itself.
-                let (_, _, kind) = ecx.get_alloc_info(*alloc_id);
-                if matches!(kind, AllocKind::LiveData) {
-                    let alloc_extra = ecx.get_alloc_extra(*alloc_id).unwrap();
-                    let alloc_borrow_tracker = &alloc_extra.borrow_tracker.as_ref().unwrap();
-                    alloc_borrow_tracker.release_protector(
-                        &ecx.machine,
-                        global_borrow_tracker,
-                        *tag,
-                    )?;
-                }
-            }
-            global_borrow_tracker.borrow_mut().end_call(&frame.extra);
+        if ecx.machine.borrow_tracker.is_some() {
+            ecx.on_stack_pop(frame)?;
         }
         Ok(())
     }
