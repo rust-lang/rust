@@ -59,7 +59,7 @@ impl fmt::Debug for BorTag {
 #[derive(Debug)]
 pub struct FrameState {
     /// The ID of the call this frame corresponds to.
-    pub call_id: CallId,
+    call_id: CallId,
 
     /// If this frame is protecting any tags, they are listed here. We use this list to do
     /// incremental updates of the global list of protected tags stored in the
@@ -72,7 +72,7 @@ pub struct FrameState {
     ///
     /// This will contain one tag per reference passed to the function, so
     /// a size of 2 is enough for the vast majority of functions.
-    pub protected_tags: SmallVec<[(AllocId, BorTag); 2]>,
+    protected_tags: SmallVec<[(AllocId, BorTag); 2]>,
 }
 
 impl VisitTags for FrameState {
@@ -85,29 +85,29 @@ impl VisitTags for FrameState {
 #[derive(Debug)]
 pub struct GlobalStateInner {
     /// Borrow tracker method currently in use.
-    pub borrow_tracker_method: BorrowTrackerMethod,
+    borrow_tracker_method: BorrowTrackerMethod,
     /// Next unused pointer ID (tag).
-    pub next_ptr_tag: BorTag,
+    next_ptr_tag: BorTag,
     /// Table storing the "base" tag for each allocation.
     /// The base tag is the one used for the initial pointer.
     /// We need this in a separate table to handle cyclic statics.
-    pub base_ptr_tags: FxHashMap<AllocId, BorTag>,
+    base_ptr_tags: FxHashMap<AllocId, BorTag>,
     /// Next unused call ID (for protectors).
-    pub next_call_id: CallId,
+    next_call_id: CallId,
     /// All currently protected tags.
     /// An item is protected if its tag is in this set, *and* it has the "protected" bit set.
     /// We add tags to this when they are created with a protector in `reborrow`, and
     /// we remove tags from this when the call which is protecting them returns, in
     /// `GlobalStateInner::end_call`. See `Stack::item_popped` for more details.
-    pub protected_tags: FxHashMap<BorTag, ProtectorKind>,
+    protected_tags: FxHashMap<BorTag, ProtectorKind>,
     /// The pointer ids to trace
-    pub tracked_pointer_tags: FxHashSet<BorTag>,
+    tracked_pointer_tags: FxHashSet<BorTag>,
     /// The call ids to trace
-    pub tracked_call_ids: FxHashSet<CallId>,
+    tracked_call_ids: FxHashSet<CallId>,
     /// Whether to recurse into datatypes when searching for pointers to retag.
-    pub retag_fields: RetagFields,
+    retag_fields: RetagFields,
     /// Whether `core::ptr::Unique` gets special (`Box`-like) handling.
-    pub unique_is_unique: bool,
+    unique_is_unique: bool,
 }
 
 impl VisitTags for GlobalStateInner {
@@ -194,7 +194,7 @@ impl GlobalStateInner {
     }
 
     /// Generates a new pointer tag. Remember to also check track_pointer_tags and log its creation!
-    pub fn new_ptr(&mut self) -> BorTag {
+    fn new_ptr(&mut self) -> BorTag {
         let id = self.next_ptr_tag;
         self.next_ptr_tag = id.succ().unwrap();
         id
@@ -210,7 +210,7 @@ impl GlobalStateInner {
         FrameState { call_id, protected_tags: SmallVec::new() }
     }
 
-    pub fn end_call(&mut self, frame: &machine::FrameExtra<'_>) {
+    fn end_call(&mut self, frame: &machine::FrameExtra<'_>) {
         for (_, tag) in &frame
             .borrow_tracker
             .as_ref()
@@ -354,6 +354,38 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             BorrowTrackerMethod::StackedBorrows => this.print_stacks(alloc_id),
             BorrowTrackerMethod::TreeBorrows => this.print_tree(alloc_id, show_unnamed),
         }
+    }
+
+    fn on_stack_pop(
+        &self,
+        frame: &Frame<'mir, 'tcx, Provenance, FrameExtra<'tcx>>,
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_ref();
+        let borrow_tracker = this.machine.borrow_tracker.as_ref().unwrap();
+        // The body of this loop needs `borrow_tracker` immutably
+        // so we can't move this code inside the following `end_call`.
+        for (alloc_id, tag) in &frame
+            .extra
+            .borrow_tracker
+            .as_ref()
+            .expect("we should have borrow tracking data")
+            .protected_tags
+        {
+            // Just because the tag is protected doesn't guarantee that
+            // the allocation still exists (weak protectors allow deallocations)
+            // so we must check that the allocation exists.
+            // If it does exist, then we have the guarantee that the
+            // pointer is readable, and the implicit read access inserted
+            // will never cause UB on the pointer itself.
+            let (_, _, kind) = this.get_alloc_info(*alloc_id);
+            if matches!(kind, AllocKind::LiveData) {
+                let alloc_extra = this.get_alloc_extra(*alloc_id).unwrap();
+                let alloc_borrow_tracker = &alloc_extra.borrow_tracker.as_ref().unwrap();
+                alloc_borrow_tracker.release_protector(&this.machine, borrow_tracker, *tag)?;
+            }
+        }
+        borrow_tracker.borrow_mut().end_call(&frame.extra);
+        Ok(())
     }
 }
 
