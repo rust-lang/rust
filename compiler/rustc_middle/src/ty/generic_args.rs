@@ -604,13 +604,6 @@ impl<T> EarlyBinder<Option<T>> {
     }
 }
 
-impl<T, U> EarlyBinder<(T, U)> {
-    pub fn transpose_tuple2(self) -> (EarlyBinder<T>, EarlyBinder<U>) {
-        let EarlyBinder { value: (lhs, rhs) } = self;
-        (EarlyBinder { value: lhs }, EarlyBinder { value: rhs })
-    }
-}
-
 impl<'tcx, 's, I: IntoIterator> EarlyBinder<I>
 where
     I::Item: TypeFoldable<TyCtxt<'tcx>>,

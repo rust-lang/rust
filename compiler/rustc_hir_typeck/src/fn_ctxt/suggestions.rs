@@ -609,6 +609,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return false;
         }
         let pin_did = self.tcx.lang_items().pin_type();
+        // FIXME: replace mk_box with?
         // This guards the `unwrap` and `mk_box` below.
         if pin_did.is_none() || self.tcx.lang_items().owned_box().is_none() {
             return false;
