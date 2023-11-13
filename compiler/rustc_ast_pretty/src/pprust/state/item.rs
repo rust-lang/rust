@@ -1,8 +1,8 @@
 use crate::pp::Breaks::Inconsistent;
-use crate::pprust::state::delimited::IterDelimited;
 use crate::pprust::state::{AnnNode, PrintState, State, INDENT_UNIT};
 
 use ast::StaticItem;
+use itertools::{Itertools, Position};
 use rustc_ast as ast;
 use rustc_ast::GenericBound;
 use rustc_ast::ModKind;
@@ -712,9 +712,10 @@ impl<'a> State<'a> {
                     self.word("{");
                     self.zerobreak();
                     self.ibox(0);
-                    for use_tree in items.iter().delimited() {
+                    for (pos, use_tree) in items.iter().with_position() {
+                        let is_last = matches!(pos, Position::Last | Position::Only);
                         self.print_use_tree(&use_tree.0);
-                        if !use_tree.is_last {
+                        if !is_last {
                             self.word(",");
                             if let ast::UseTreeKind::Nested(_) = use_tree.0.kind {
                                 self.hardbreak();

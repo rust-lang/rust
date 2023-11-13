@@ -3471,6 +3471,7 @@ dependencies = [
 name = "rustc_ast_pretty"
 version = "0.0.0"
 dependencies = [
+ "itertools",
  "rustc_ast",
  "rustc_span",
  "thin-vec",
