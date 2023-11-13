@@ -227,7 +227,7 @@
     test(no_crate_inject, attr(deny(warnings))),
     test(attr(allow(dead_code, deprecated, unused_variables, unused_mut)))
 )]
-#![cfg_attr(not(bootstrap), doc(rust_logo))]
+#![doc(rust_logo)]
 #![doc(cfg_hide(
     not(test),
     not(any(test, bootstrap)),

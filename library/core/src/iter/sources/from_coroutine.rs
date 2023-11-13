@@ -11,8 +11,7 @@ use crate::pin::Pin;
 /// # Examples
 ///
 /// ```
-/// #![cfg_attr(bootstrap, feature(generators))]
-/// #![cfg_attr(not(bootstrap), feature(coroutines))]
+/// #![feature(coroutines)]
 /// #![feature(iter_from_coroutine)]
 ///
 /// let it = std::iter::from_coroutine(|| {

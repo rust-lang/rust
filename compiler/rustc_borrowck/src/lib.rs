@@ -1,8 +1,8 @@
 //! This query borrow-checks the MIR to (further) ensure it is not broken.
 
 #![allow(internal_features)]
-#![cfg_attr(not(bootstrap), feature(rustdoc_internals))]
-#![cfg_attr(not(bootstrap), doc(rust_logo))]
+#![feature(rustdoc_internals)]
+#![doc(rust_logo)]
 #![feature(associated_type_bounds)]
 #![feature(box_patterns)]
 #![feature(let_chains)]

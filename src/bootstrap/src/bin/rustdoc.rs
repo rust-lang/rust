@@ -70,9 +70,7 @@ fn main() {
         cmd.arg("--cfg=bootstrap");
     }
     cmd.arg("-Zunstable-options");
-    // #[cfg(bootstrap)]
-    cmd.arg("--check-cfg=values(bootstrap)");
-    // cmd.arg("--check-cfg=cfg(bootstrap)");
+    cmd.arg("--check-cfg=cfg(bootstrap)");
 
     if verbose > 1 {
         eprintln!(
