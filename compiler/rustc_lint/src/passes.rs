@@ -108,7 +108,7 @@ macro_rules! declare_combined_late_lint_pass {
 
             $v fn get_lints() -> $crate::LintVec {
                 let mut lints = Vec::new();
-                $(lints.extend_from_slice(&$pass::get_lints());)*
+                $(lints.extend_from_slice(&$pass::default().get_lints());)*
                 lints
             }
         }
@@ -120,6 +120,9 @@ macro_rules! declare_combined_late_lint_pass {
         #[allow(rustc::lint_pass_impl_without_macro)]
         impl $crate::LintPass for $name {
             fn name(&self) -> &'static str {
+                panic!()
+            }
+            fn get_lints(&self) -> LintVec {
                 panic!()
             }
         }
@@ -218,7 +221,7 @@ macro_rules! declare_combined_early_lint_pass {
 
             $v fn get_lints() -> $crate::LintVec {
                 let mut lints = Vec::new();
-                $(lints.extend_from_slice(&$pass::get_lints());)*
+                $(lints.extend_from_slice(&$pass::default().get_lints());)*
                 lints
             }
         }
@@ -230,6 +233,9 @@ macro_rules! declare_combined_early_lint_pass {
         #[allow(rustc::lint_pass_impl_without_macro)]
         impl $crate::LintPass for $name {
             fn name(&self) -> &'static str {
+                panic!()
+            }
+            fn get_lints(&self) -> LintVec {
                 panic!()
             }
         }

@@ -651,6 +651,8 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
         store.register_late_pass(|_| {
             Box::new(utils::internal_lints::almost_standard_lint_formulation::AlmostStandardFormulation::new())
         });
+        store.register_late_pass(|_| Box::new(utils::author::Author));
+
     }
 
     store.register_late_pass(move |_| {
@@ -668,7 +670,6 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
         ))
     });
     store.register_late_pass(|_| Box::new(utils::dump_hir::DumpHir));
-    store.register_late_pass(|_| Box::new(utils::author::Author));
     store.register_late_pass(move |_| {
         Box::new(await_holding_invalid::AwaitHolding::new(
             await_holding_invalid_types.clone(),

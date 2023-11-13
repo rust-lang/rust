@@ -4176,6 +4176,7 @@ dependencies = [
  "rustc_hir",
  "rustc_hir_pretty",
  "rustc_index",
+ "rustc_lint_defs",
  "rustc_macros",
  "rustc_next_trait_solver",
  "rustc_query_system",
