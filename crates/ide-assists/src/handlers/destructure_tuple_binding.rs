@@ -177,10 +177,12 @@ fn edit_tuple_assignment(
 
     if let Some(cap) = ctx.config.snippet_cap {
         // place cursor on first tuple name
-        let ast::Pat::IdentPat(first_pat) = tuple_pat.fields().next().unwrap() else {
-            unreachable!()
-        };
-        edit.add_tabstop_before(cap, first_pat.name().unwrap())
+        if let Some(ast::Pat::IdentPat(first_pat)) = tuple_pat.fields().next() {
+            edit.add_tabstop_before(
+                cap,
+                first_pat.name().expect("first ident pattern should have a name"),
+            )
+        }
     }
 
     AssignmentEdit { ident_pat, tuple_pat, in_sub_pattern }
