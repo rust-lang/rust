@@ -37,7 +37,7 @@ toml = "0.7.3"
 walkdir = "2.3"
 # This is used by the `collect-metadata` alias.
 filetime = "0.2"
-itertools = "0.10.1"
+itertools = "0.11"
 
 # UI test dependencies
 clippy_utils = { path = "clippy_utils" }
