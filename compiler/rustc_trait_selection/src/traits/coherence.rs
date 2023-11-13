@@ -330,6 +330,7 @@ fn equate_impl_headers<'tcx>(
                 impl1.self_ty,
                 impl2.self_ty,
             ),
+            // FIXME: mk_eq_impl_headers fn not exist
             _ => bug!("mk_eq_impl_headers given mismatched impl kinds"),
         };
 
