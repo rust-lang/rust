@@ -34,6 +34,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Use `||` to give these suggestions a precedence
         let suggested = self.suggest_missing_parentheses(err, expr)
+            || self.suggest_missing_unwrap_expect(err, expr, expected, expr_ty)
             || self.suggest_remove_last_method_call(err, expr, expected)
             || self.suggest_associated_const(err, expr, expected)
             || self.suggest_deref_ref_or_into(err, expr, expected, expr_ty, expected_ty_expr)
@@ -49,8 +50,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             || self.suggest_into(err, expr, expr_ty, expected)
             || self.suggest_floating_point_literal(err, expr, expected)
             || self.suggest_null_ptr_for_literal_zero_given_to_ptr_arg(err, expr, expected)
-            || self.suggest_coercing_result_via_try_operator(err, expr, expected, expr_ty)
-            || self.suggest_missing_unwrap_expect(err, expr, expected, expr_ty);
+            || self.suggest_coercing_result_via_try_operator(err, expr, expected, expr_ty);
 
         if !suggested {
             self.note_source_of_type_mismatch_constraint(
