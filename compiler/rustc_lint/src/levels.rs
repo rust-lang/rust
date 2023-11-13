@@ -1,6 +1,6 @@
 use rustc_ast_pretty::pprust;
-use rustc_data_structures::fx::FxIndexMap;
-use rustc_errors::{Diag, LintDiagnostic, MultiSpan};
+use rustc_data_structures::{fx::FxIndexMap, sync::Lrc};
+use rustc_errors::{Diag, DiagMessage, LintDiagnostic, MultiSpan};
 use rustc_feature::{Features, GateIssue};
 use rustc_hir::HirId;
 use rustc_hir::intravisit::{self, Visitor};
@@ -31,7 +31,7 @@ use crate::errors::{
     OverruledAttributeSub, RequestedLevel, UnknownToolInScopedLint, UnsupportedGroup,
 };
 use crate::fluent_generated as fluent;
-use crate::late::unerased_lint_store;
+use crate::late::{unerased_lint_store, name_without_tool};
 use crate::lints::{
     DeprecatedLintName, DeprecatedLintNameFromCommandLine, IgnoredUnlessCrateSpecified,
     OverruledAttributeLint, RemovedLint, RemovedLintFromCommandLine, RenamedLint,
@@ -113,6 +113,36 @@ impl LintLevelSets {
             idx = parent;
         }
     }
+}
+
+/// Walk the whole crate collecting nodes where lint levels change
+/// (e.g. `#[allow]` attributes), and joins that list with the warn-by-default
+/// (and not allowed in the crate) and CLI lints. The returned value is a tuple
+/// of 1. The lints that will emit (or at least, should run), and 2.
+/// The lints that are allowed at the crate level and will not emit.
+pub fn lints_that_can_emit(tcx: TyCtxt<'_>, (): ()) -> Lrc<(Vec<String>, Vec<String>)> {
+    let mut visitor = LintLevelMinimum::new(tcx);
+    visitor.process_opts();
+    tcx.hir().walk_attributes(&mut visitor);
+
+    let store = unerased_lint_store(&tcx.sess);
+
+    let lint_groups = store.get_lint_groups();
+    for group in lint_groups {
+        let binding = group.0.to_lowercase();
+        let group_name = name_without_tool(&binding).to_string();
+        if visitor.lints_to_emit.contains(&group_name) {
+            for lint in group.1 {
+                visitor.lints_to_emit.push(name_without_tool(&lint.to_string()).to_string());
+            }
+        } else if visitor.lints_allowed.contains(&group_name) {
+            for lint in &group.1 {
+                visitor.lints_allowed.push(name_without_tool(&lint.to_string()).to_string());
+            }
+        }
+    }
+
+    Lrc::new((visitor.lints_to_emit, visitor.lints_allowed))
 }
 
 #[instrument(level = "trace", skip(tcx), ret)]
@@ -298,6 +328,88 @@ impl<'tcx> Visitor<'tcx> for LintLevelsBuilder<'_, LintLevelQueryMap<'tcx>> {
     fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) {
         self.add_id(impl_item.hir_id());
         intravisit::walk_impl_item(self, impl_item);
+    }
+}
+
+/// Visitor with the only function of visiting every item-like in a crate and
+/// computing the highest level that every lint gets put to.
+///
+/// E.g., if a crate has a global #![allow(lint)] attribute, but a single item
+/// uses #[warn(lint)], this visitor will set that lint level as `Warn`
+struct LintLevelMinimum<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    /// The actual list of detected lints.
+    lints_to_emit: Vec<String>,
+    lints_allowed: Vec<String>,
+}
+
+impl<'tcx> LintLevelMinimum<'tcx> {
+    pub fn new(tcx: TyCtxt<'tcx>) -> Self {
+        Self {
+            tcx,
+            // That magic number is the current number of lints + some more for possible future lints
+            lints_to_emit: Vec::with_capacity(230),
+            lints_allowed: Vec::with_capacity(100),
+        }
+    }
+
+    fn process_opts(&mut self) {
+        for (lint, level) in &self.tcx.sess.opts.lint_opts {
+            if *level == Level::Allow {
+                self.lints_allowed.push(lint.clone());
+            } else {
+                self.lints_to_emit.push(lint.to_string());
+            }
+        }
+    }
+}
+
+impl<'tcx> Visitor<'tcx> for LintLevelMinimum<'tcx> {
+    type NestedFilter = nested_filter::All;
+
+    fn nested_visit_map(&mut self) -> Self::Map {
+        self.tcx.hir()
+    }
+
+    fn visit_attribute(&mut self, attribute: &'tcx ast::Attribute) {
+        if let Some(meta) = attribute.meta() {
+            if [sym::warn, sym::deny, sym::forbid, sym::expect]
+                .iter()
+                .any(|kind| meta.has_name(*kind))
+            {
+                // SAFETY: Lint attributes are always a metalist inside a
+                // metalist (even with just one lint).
+                for meta_list in meta.meta_item_list().unwrap() {
+                    // If it's a tool lint (e.g. clippy::my_clippy_lint)
+                    if let ast::NestedMetaItem::MetaItem(meta_item) = meta_list {
+                        if meta_item.path.segments.len() == 1 {
+                            self.lints_to_emit.push(
+                                // SAFETY: Lint attributes can only have literals
+                                meta_list.ident().unwrap().name.as_str().to_string(),
+                            );
+                        } else {
+                            self.lints_to_emit
+                                .push(meta_item.path.segments[1].ident.name.as_str().to_string());
+                        }
+                    }
+                }
+            // We handle #![allow]s differently, as these remove checking rather than adding.
+            } else if meta.has_name(sym::allow)
+                && let ast::AttrStyle::Inner = attribute.style
+            {
+                for meta_list in meta.meta_item_list().unwrap() {
+                    // If it's a tool lint (e.g. clippy::my_clippy_lint)
+                    if let ast::NestedMetaItem::MetaItem(meta_item) = meta_list {
+                        if meta_item.path.segments.len() == 1 {
+                            self.lints_allowed.push(meta_list.name_or_empty().as_str().to_string())
+                        } else {
+                            self.lints_allowed
+                                .push(meta_item.path.segments[1].ident.name.as_str().to_string());
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -931,7 +1043,8 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
 }
 
 pub(crate) fn provide(providers: &mut Providers) {
-    *providers = Providers { shallow_lint_levels_on, ..*providers };
+    *providers =
+        Providers { shallow_lint_levels_on, lints_that_can_emit, ..*providers };
 }
 
 pub(crate) fn parse_lint_and_tool_name(lint_name: &str) -> (Option<Symbol>, &str) {

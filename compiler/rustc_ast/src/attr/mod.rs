@@ -223,7 +223,7 @@ impl AttrItem {
         self.args.span().map_or(self.path.span, |args_span| self.path.span.to(args_span))
     }
 
-    fn meta_item_list(&self) -> Option<ThinVec<MetaItemInner>> {
+    pub fn meta_item_list(&self) -> Option<ThinVec<MetaItemInner>> {
         match &self.args {
             AttrArgs::Delimited(args) if args.delim == Delimiter::Parenthesis => {
                 MetaItemKind::list_from_tokens(args.tokens.clone())

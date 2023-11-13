@@ -12,7 +12,7 @@ use rustc_span::symbol::{Ident, Symbol};
 use std::cell::Cell;
 use std::fmt::{Display, Formatter, Write as _};
 
-declare_lint_pass!(
+declare_clippy_lint!{
     /// ### What it does
     /// Generates clippy code that detects the offending pattern
     ///
@@ -44,8 +44,13 @@ declare_lint_pass!(
     ///     // report your lint here
     /// }
     /// ```
-    Author => []
-);
+    #[clippy::version = "1.0.0"]
+    pub AUTHOR,
+    internal,
+    "The author lint, see documentation at <https://doc.rust-lang.org/nightly/clippy/development/adding_lints.html#author-lint>"
+};
+
+declare_lint_pass! { Author => [AUTHOR] }
 
 /// Writes a line of output with indentation added
 macro_rules! out {

@@ -378,7 +378,8 @@ declare_lint! {
     /// will not overflow.
     pub ARITHMETIC_OVERFLOW,
     Deny,
-    "arithmetic operation overflows"
+    "arithmetic operation overflows",
+    [loadbearing: true]
 }
 
 declare_lint! {
@@ -633,7 +634,8 @@ declare_lint! {
     /// is only available in a newer version.
     pub UNKNOWN_LINTS,
     Warn,
-    "unrecognized lint attribute"
+    "unrecognized lint attribute",
+    [loadbearing: true]
 }
 
 declare_lint! {
