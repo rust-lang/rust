@@ -2958,7 +2958,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // two-phase not needed because index_ty is never mutable
                     self.demand_coerce(idx, idx_t, index_ty, None, AllowTwoPhase::No);
                     self.select_obligations_where_possible(|errors| {
-                        self.point_at_index(errors, idx.span);
+                        self.point_at_index(errors, idx, expr, base, base_t);
                     });
                     element_ty
                 }
@@ -3131,7 +3131,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         .ok()
     }
 
-    fn point_at_index(&self, errors: &mut Vec<traits::FulfillmentError<'tcx>>, span: Span) {
+    fn point_at_index(
+        &self,
+        errors: &mut Vec<traits::FulfillmentError<'tcx>>,
+        idx: &'tcx hir::Expr<'tcx>,
+        expr: &'tcx hir::Expr<'tcx>,
+        base: &'tcx hir::Expr<'tcx>,
+        base_t: Ty<'tcx>,
+    ) {
+        let idx_span = idx.span;
         let mut seen_preds = FxHashSet::default();
         // We re-sort here so that the outer most root obligations comes first, as we have the
         // subsequent weird logic to identify *every* relevant obligation for proper deduplication
@@ -3155,7 +3163,39 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 (root, pred) if seen_preds.contains(&pred) || seen_preds.contains(&root) => {}
                 _ => continue,
             }
-            error.obligation.cause.span = span;
+            error.obligation.cause.span = idx_span;
+
+            // If the index value is a double borrow, that can cause typeck errors
+            // that can be easily resolved by removing the borrow from the expression.
+            // We check for that here and provide a suggestion in a custom obligation
+            // cause code.
+            if let hir::ExprKind::AddrOf(_, _, idx) = idx.kind {
+                let idx_t = self.typeck_results.borrow().expr_ty(idx);
+                if let Some((index_ty, _element_ty)) =
+                    self.lookup_indexing(expr, base, base_t, idx, idx_t)
+                {
+                    let (_ty, err) =
+                        self.demand_coerce_diag(idx, idx_t, index_ty, None, AllowTwoPhase::No);
+                    if let Some(err) = err {
+                        err.cancel();
+                    } else if self
+                        .fulfillment_cx
+                        .borrow_mut()
+                        .select_where_possible(self)
+                        .is_empty()
+                    {
+                        if let Some(pred) = error.obligation.predicate.to_opt_poly_trait_pred() {
+                            error.obligation.cause =
+                                error.obligation.cause.clone().derived_cause(pred, |cause| {
+                                    ObligationCauseCode::IndexExprDerivedObligation(Box::new((
+                                        cause,
+                                        idx_span.with_hi(idx.span.lo()),
+                                    )))
+                                });
+                        }
+                    }
+                }
+            }
         }
     }
 

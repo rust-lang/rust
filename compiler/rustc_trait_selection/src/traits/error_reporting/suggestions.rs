@@ -3399,6 +3399,25 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     )
                 });
             }
+            ObligationCauseCode::IndexExprDerivedObligation(ref data) => {
+                ensure_sufficient_stack(|| {
+                    self.note_obligation_cause_code(
+                        body_id,
+                        err,
+                        predicate,
+                        param_env,
+                        &data.0.parent_code,
+                        obligated_types,
+                        seen_requirements,
+                    )
+                });
+                err.span_suggestion_verbose(
+                    data.1,
+                    "remove this borrow",
+                    String::new(),
+                    Applicability::MaybeIncorrect,
+                );
+            }
             ObligationCauseCode::TypeAlias(ref nested, span, def_id) => {
                 // #74711: avoid a stack overflow
                 ensure_sufficient_stack(|| {

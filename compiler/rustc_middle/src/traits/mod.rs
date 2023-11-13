@@ -331,6 +331,8 @@ pub enum ObligationCauseCode<'tcx> {
 
     DerivedObligation(DerivedObligationCause<'tcx>),
 
+    IndexExprDerivedObligation(Box<(DerivedObligationCause<'tcx>, Span)>),
+
     FunctionArgumentObligation {
         /// The node of the relevant argument in the function call.
         arg_hir_id: hir::HirId,
