@@ -250,7 +250,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     var: ty::BoundVar::from_u32(index),
                     kind: ty::BrNamed(def_id, name),
                 };
-                ty::Region::new_late_bound(tcx, debruijn, br)
+                ty::Region::new_bound(tcx, debruijn, br)
             }
 
             Some(rbv::ResolvedArg::EarlyBound(def_id)) => {
@@ -1622,7 +1622,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 }
 
                 fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-                    if r.is_late_bound() { self.tcx.lifetimes.re_erased } else { r }
+                    // FIXME(@lcnr): This is broken, erasing bound regions
+                    // impacts selection as it results in different types.
+                    if r.is_bound() { self.tcx.lifetimes.re_erased } else { r }
                 }
 
                 fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {

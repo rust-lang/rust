@@ -3103,7 +3103,7 @@ fn bind_coroutine_hidden_types_above<'tcx>(
                                 kind: ty::BrAnon,
                             };
                             counter += 1;
-                            ty::Region::new_late_bound(tcx, current_depth, br)
+                            ty::Region::new_bound(tcx, current_depth, br)
                         }
                         r => bug!("unexpected region: {r:?}"),
                     })

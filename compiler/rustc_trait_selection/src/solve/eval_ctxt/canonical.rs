@@ -262,7 +262,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                     }
                 }
                 GenericArgKind::Lifetime(r) => {
-                    if let ty::ReLateBound(debruijn, br) = *r {
+                    if let ty::ReBound(debruijn, br) = *r {
                         assert_eq!(debruijn, ty::INNERMOST);
                         opt_values[br.var] = Some(*original_value);
                     }

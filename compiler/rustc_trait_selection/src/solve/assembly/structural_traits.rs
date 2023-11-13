@@ -97,7 +97,7 @@ pub(in crate::solve) fn replace_erased_lifetimes_with_bound_vars<'tcx>(
         ty::ReErased => {
             let br = ty::BoundRegion { var: ty::BoundVar::from_u32(counter), kind: ty::BrAnon };
             counter += 1;
-            ty::Region::new_late_bound(tcx, current_depth, br)
+            ty::Region::new_bound(tcx, current_depth, br)
         }
         // All free regions should be erased here.
         r => bug!("unexpected region: {r:?}"),

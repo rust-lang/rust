@@ -740,7 +740,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             }
 
             // We `erase_late_bound_regions` here because `make_subregion` does not handle
-            // `ReLateBound`, and we don't particularly care about the regions.
+            // `ReBound`, and we don't particularly care about the regions.
             let real_ty = self.tcx.erase_late_bound_regions(real_trait_pred.self_ty());
             if !self.can_eq(obligation.param_env, real_ty, arg_ty) {
                 continue;

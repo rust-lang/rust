@@ -416,7 +416,7 @@ impl<'tcx> ClosureOutlivesSubjectTy<'tcx> {
         let inner = tcx.fold_regions(ty, |r, depth| match r.kind() {
             ty::ReVar(vid) => {
                 let br = ty::BoundRegion { var: ty::BoundVar::new(vid.index()), kind: ty::BrAnon };
-                ty::Region::new_late_bound(tcx, depth, br)
+                ty::Region::new_bound(tcx, depth, br)
             }
             _ => bug!("unexpected region in ClosureOutlivesSubjectTy: {r:?}"),
         });
@@ -430,7 +430,7 @@ impl<'tcx> ClosureOutlivesSubjectTy<'tcx> {
         mut map: impl FnMut(ty::RegionVid) -> ty::Region<'tcx>,
     ) -> Ty<'tcx> {
         tcx.fold_regions(self.inner, |r, depth| match r.kind() {
-            ty::ReLateBound(debruijn, br) => {
+            ty::ReBound(debruijn, br) => {
                 debug_assert_eq!(debruijn, depth);
                 map(ty::RegionVid::new(br.var.index()))
             }

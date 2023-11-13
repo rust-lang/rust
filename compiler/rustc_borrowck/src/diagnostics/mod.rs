@@ -462,7 +462,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         // lifetimes without names with the value `'0`.
         if let ty::Ref(region, ..) = ty.kind() {
             match **region {
-                ty::ReLateBound(_, ty::BoundRegion { kind: br, .. })
+                ty::ReBound(_, ty::BoundRegion { kind: br, .. })
                 | ty::RePlaceholder(ty::PlaceholderRegion {
                     bound: ty::BoundRegion { kind: br, .. },
                     ..
@@ -482,7 +482,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         let region = if let ty::Ref(region, ..) = ty.kind() {
             match **region {
-                ty::ReLateBound(_, ty::BoundRegion { kind: br, .. })
+                ty::ReBound(_, ty::BoundRegion { kind: br, .. })
                 | ty::RePlaceholder(ty::PlaceholderRegion {
                     bound: ty::BoundRegion { kind: br, .. },
                     ..

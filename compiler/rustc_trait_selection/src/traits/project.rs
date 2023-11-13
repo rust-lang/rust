@@ -894,16 +894,16 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for BoundVarReplacer<'_, 'tcx> {
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         match *r {
-            ty::ReLateBound(debruijn, _)
-                if debruijn.as_usize() + 1
-                    > self.current_index.as_usize() + self.universe_indices.len() =>
+            ty::ReBound(debruijn, _)
+                if debruijn.as_usize()
+                    >= self.current_index.as_usize() + self.universe_indices.len() =>
             {
                 bug!(
                     "Bound vars {r:#?} outside of `self.universe_indices`: {:#?}",
                     self.universe_indices
                 );
             }
-            ty::ReLateBound(debruijn, br) if debruijn >= self.current_index => {
+            ty::ReBound(debruijn, br) if debruijn >= self.current_index => {
                 let universe = self.universe_for(debruijn);
                 let p = ty::PlaceholderRegion { universe, bound: br };
                 self.mapped_regions.insert(p, br);
@@ -1034,7 +1034,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for PlaceholderReplacer<'_, 'tcx> {
                         let db = ty::DebruijnIndex::from_usize(
                             self.universe_indices.len() - index + self.current_index.as_usize() - 1,
                         );
-                        ty::Region::new_late_bound(self.interner(), db, *replace_var)
+                        ty::Region::new_bound(self.interner(), db, *replace_var)
                     }
                     None => r1,
                 }

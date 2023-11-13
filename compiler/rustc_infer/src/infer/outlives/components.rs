@@ -213,8 +213,8 @@ pub(super) fn compute_alias_components_recursive<'tcx>(
                 compute_components(tcx, ty, out, visited);
             }
             GenericArgKind::Lifetime(lt) => {
-                // Ignore late-bound regions.
-                if !lt.is_late_bound() {
+                // Ignore higher ranked regions.
+                if !lt.is_bound() {
                     out.push(Component::Region(lt));
                 }
             }
@@ -241,8 +241,8 @@ fn compute_components_recursive<'tcx>(
                 compute_components(tcx, ty, out, visited);
             }
             GenericArgKind::Lifetime(lt) => {
-                // Ignore late-bound regions.
-                if !lt.is_late_bound() {
+                // Ignore higher ranked regions.
+                if !lt.is_bound() {
                     out.push(Component::Region(lt));
                 }
             }

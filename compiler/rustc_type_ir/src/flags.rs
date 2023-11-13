@@ -85,10 +85,10 @@ bitflags! {
         const HAS_ERROR                   = 1 << 14;
 
         /// Does this have any region that "appears free" in the type?
-        /// Basically anything but `ReLateBound` and `ReErased`.
+        /// Basically anything but `ReBound` and `ReErased`.
         const HAS_FREE_REGIONS            = 1 << 15;
 
-        /// Does this have any `ReLateBound` regions?
+        /// Does this have any `ReBound` regions?
         const HAS_RE_LATE_BOUND           = 1 << 16;
         /// Does this have any `Bound` types?
         const HAS_TY_LATE_BOUND           = 1 << 17;

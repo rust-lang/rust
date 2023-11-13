@@ -592,7 +592,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             let kind = ty::BoundRegionKind::BrNamed(param.def_id, param.name);
                             let bound_var = ty::BoundVariableKind::Region(kind);
                             bound_vars.push(bound_var);
-                            ty::Region::new_late_bound(
+                            ty::Region::new_bound(
                                 tcx,
                                 ty::INNERMOST,
                                 ty::BoundRegion {

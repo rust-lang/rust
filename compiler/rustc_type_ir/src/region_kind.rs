@@ -128,9 +128,16 @@ pub enum RegionKind<I: Interner> {
     /// parameters are substituted.
     ReEarlyBound(I::EarlyBoundRegion),
 
-    /// Region bound in a function scope, which will be substituted when the
-    /// function is called.
-    ReLateBound(DebruijnIndex, I::BoundRegion),
+    /// A higher-ranked region. These represent either late-bound function parameters
+    /// or bound variables from a `for<'a>`-binder.
+    ///
+    /// While inside of a function, e.g. during typeck, the late-bound function parameters
+    /// can be converted to `ReFree` by calling `tcx.liberate_late_bound_regions`.
+    ///
+    /// Bound regions inside of types **must not** be erased, as they impact trait
+    /// selection and the `TypeId` of that type. `for<'a> fn(&'a ())` and
+    /// `fn(&'static ())` are different types and have to be treated as such.
+    ReBound(DebruijnIndex, I::BoundRegion),
 
     /// When checking a function body, the types of all arguments and so forth
     /// that refer to bound region parameters are modified to refer to free
@@ -160,7 +167,7 @@ pub enum RegionKind<I: Interner> {
 const fn regionkind_discriminant<I: Interner>(value: &RegionKind<I>) -> usize {
     match value {
         ReEarlyBound(_) => 0,
-        ReLateBound(_, _) => 1,
+        ReBound(_, _) => 1,
         ReFree(_) => 2,
         ReStatic => 3,
         ReVar(_) => 4,
@@ -189,7 +196,7 @@ impl<I: Interner> PartialEq for RegionKind<I> {
         regionkind_discriminant(self) == regionkind_discriminant(other)
             && match (self, other) {
                 (ReEarlyBound(a_r), ReEarlyBound(b_r)) => a_r == b_r,
-                (ReLateBound(a_d, a_r), ReLateBound(b_d, b_r)) => a_d == b_d && a_r == b_r,
+                (ReBound(a_d, a_r), ReBound(b_d, b_r)) => a_d == b_d && a_r == b_r,
                 (ReFree(a_r), ReFree(b_r)) => a_r == b_r,
                 (ReStatic, ReStatic) => true,
                 (ReVar(a_r), ReVar(b_r)) => a_r == b_r,
@@ -218,8 +225,8 @@ impl<I: Interner> DebugWithInfcx<I> for RegionKind<I> {
         match this.data {
             ReEarlyBound(data) => write!(f, "ReEarlyBound({data:?})"),
 
-            ReLateBound(binder_id, bound_region) => {
-                write!(f, "ReLateBound({binder_id:?}, {bound_region:?})")
+            ReBound(binder_id, bound_region) => {
+                write!(f, "ReBound({binder_id:?}, {bound_region:?})")
             }
 
             ReFree(fr) => write!(f, "{fr:?}"),
@@ -258,7 +265,7 @@ where
             ReErased | ReStatic | ReError(_) => {
                 // No variant fields to hash for these ...
             }
-            ReLateBound(d, r) => {
+            ReBound(d, r) => {
                 d.hash_stable(hcx, hasher);
                 r.hash_stable(hcx, hasher);
             }
