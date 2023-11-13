@@ -361,15 +361,12 @@ impl ast::Impl {
     }
 }
 
-// for `PathSegment` '<i32 as core::ops::Add>', call `first_path_type` will get `i32` and `last_path_type` will get `core::ops::Add`
-// for '<&i32 as core::ops::Add>', call `first_path_type` and `last_path_type` will both get `core::ops::Add` cause `&i32` is `Type(RefType)`
+// [#15778](https://github.com/rust-lang/rust-analyzer/issues/15778)
 impl ast::PathSegment {
-    pub fn first_path_type(&self) -> Option<ast::PathType> {
-        self.syntax().children().find_map(ast::PathType::cast)
-    }
-
-    pub fn last_path_type(&self) -> Option<ast::PathType> {
-        self.syntax().children().filter_map(ast::PathType::cast).last()
+    pub fn qualifying_trait(&self) -> Option<ast::PathType> {
+        let mut path_types = support::children(self.syntax());
+        let first = path_types.next()?;
+        path_types.next().or(Some(first))
     }
 }
 
