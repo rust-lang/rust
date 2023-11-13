@@ -14,7 +14,6 @@ use rustc_span::edition::{Edition, LATEST_STABLE_EDITION};
 use rustc_span::symbol::Ident;
 use rustc_span::{Span, Symbol};
 
-use crate::fluent_generated as fluent;
 use crate::parser::{ForbiddenLetReason, TokenDescription};
 
 #[derive(Diagnostic)]
@@ -501,7 +500,7 @@ pub(crate) struct ExpectedExpressionFoundLet {
 
 #[derive(Subdiagnostic, Clone, Copy)]
 #[multipart_suggestion(
-    parse_maybe_missing_let,
+    label = "you might have meant to continue the let-chain",
     applicability = "maybe-incorrect",
     style = "verbose"
 )]
@@ -512,7 +511,7 @@ pub(crate) struct MaybeMissingLet {
 
 #[derive(Subdiagnostic, Clone, Copy)]
 #[multipart_suggestion(
-    parse_maybe_comparison,
+    label = "you might have meant to compare for equality",
     applicability = "maybe-incorrect",
     style = "verbose"
 )]
@@ -1245,25 +1244,21 @@ impl<'a> IntoDiagnostic<'a> for ExpectedIdentifier {
     fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> DiagnosticBuilder<'a> {
         let token_descr = TokenDescription::from_token(&self.token);
 
-        let mut diag = DiagnosticBuilder::new(
-            dcx,
-            level,
-            match token_descr {
-                Some(TokenDescription::ReservedIdentifier) => {
-                    fluent::parse_expected_identifier_found_reserved_identifier_str
-                }
-                Some(TokenDescription::Keyword) => {
-                    fluent::parse_expected_identifier_found_keyword_str
-                }
-                Some(TokenDescription::ReservedKeyword) => {
-                    fluent::parse_expected_identifier_found_reserved_keyword_str
-                }
-                Some(TokenDescription::DocComment) => {
-                    fluent::parse_expected_identifier_found_doc_comment_str
-                }
-                None => fluent::parse_expected_identifier_found_str,
-            },
-        );
+        let mut diag = handler.struct_diagnostic(match token_descr {
+            Some(TokenDescription::ReservedIdentifier) => {
+                "expected identifier, found reserved identifier `{$token}`"
+            }
+            Some(TokenDescription::Keyword) => "expected identifier, found keyword `{$token}`",
+            Some(TokenDescription::ReservedKeyword) => {
+                "expected identifier, found reserved keyword `{$token}`"
+            }
+
+            Some(TokenDescription::DocComment) => {
+                "expected identifier, found doc comment `{$token}`"
+            }
+
+            None => "expected identifier, found `{$token}`",
+        });
         diag.set_span(self.span);
         diag.set_arg("token", self.token);
 
@@ -1306,28 +1301,21 @@ impl<'a> IntoDiagnostic<'a> for ExpectedSemi {
         let token_descr = TokenDescription::from_token(&self.token);
 
         let mut diag = handler.struct_diagnostic(match token_descr {
-            Some(TokenDescription::ReservedIdentifier) => DiagnosticMessage::Str(Cow::from(
-                "expected `;`, found reserved identifier `{$token}`",
-            )),
-            Some(TokenDescription::Keyword) => {
-                DiagnosticMessage::Str(Cow::from("expected `;`, found keyword `{$token}`"))
+            Some(TokenDescription::ReservedIdentifier) => {
+                "expected `;`, found reserved identifier `{$token}`"
             }
+            Some(TokenDescription::Keyword) => "expected `;`, found keyword `{$token}`",
             Some(TokenDescription::ReservedKeyword) => {
-                DiagnosticMessage::Str(Cow::from("expected `;`, found reserved keyword `{$token}`"))
+                "expected `;`, found reserved keyword `{$token}`"
             }
-            Some(TokenDescription::DocComment) => {
-                DiagnosticMessage::Str(Cow::from("expected `;`, found doc comment `{$token}`"))
-            }
-            None => DiagnosticMessage::Str(Cow::from("expected `;`, found `{$token}`")),
+            Some(TokenDescription::DocComment) => "expected `;`, found doc comment `{$token}`",
+            None => "expected `;`, found `{$token}`",
         });
         diag.set_span(self.span);
         diag.set_arg("token", self.token);
 
         if let Some(unexpected_token_label) = self.unexpected_token_label {
-            diag.span_label(
-                unexpected_token_label,
-                DiagnosticMessage::Str(Cow::from("unexpected token")),
-            );
+            diag.span_label(unexpected_token_label, "unexpected token");
         }
 
         self.sugg.add_to_diagnostic(&mut diag);
@@ -1521,7 +1509,7 @@ pub(crate) struct ParenthesesInForHeadSugg {
 }
 
 #[derive(Diagnostic)]
-#[diag(parse_unexpected_parentheses_in_match_arm_pattern)]
+#[diag("unexpected parentheses surrounding `match` arm pattern")]
 pub(crate) struct ParenthesesInMatchPat {
     #[primary_span]
     pub span: Vec<Span>,
@@ -1530,7 +1518,7 @@ pub(crate) struct ParenthesesInMatchPat {
 }
 
 #[derive(Subdiagnostic)]
-#[multipart_suggestion(parse_suggestion, applicability = "machine-applicable")]
+#[multipart_suggestion(label = "remove parentheses surrounding the pattern", applicability = "machine-applicable")]
 pub(crate) struct ParenthesesInMatchPatSugg {
     #[suggestion_part(code = "")]
     pub left: Span,
@@ -1709,7 +1697,7 @@ impl AddToDiagnostic for FnTraitMissingParen {
     where
         F: Fn(&mut rustc_errors::Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
     {
-        diag.span_label(self.span, crate::fluent_generated::parse_fn_trait_missing_paren);
+        diag.span_label(self.span, "`Fn` bounds require arguments in parentheses");
         let applicability = if self.machine_applicable {
             Applicability::MachineApplicable
         } else {
@@ -1717,7 +1705,7 @@ impl AddToDiagnostic for FnTraitMissingParen {
         };
         diag.span_suggestion_short(
             self.span.shrink_to_hi(),
-            crate::fluent_generated::parse_add_paren,
+            "try adding parentheses",
             "()",
             applicability,
         );
@@ -3057,18 +3045,11 @@ pub(crate) struct AssocLifetime {
 }
 
 #[derive(Diagnostic)]
-#[diag("`~const` may only modify trait bounds, not lifetime bounds")]
-pub(crate) struct TildeConstLifetime {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("`{$sigil}` may only modify trait bounds, not lifetime bounds")]
+#[diag("`{$modifier}` may only modify trait bounds, not lifetime bounds")]
 pub(crate) struct ModifierLifetime {
     #[primary_span]
     #[suggestion(
-        label = "remove the `{$sigil}`",
+        label = "remove the `{$modifier}`",
         style = "tool-only",
         applicability = "maybe-incorrect",
         code = ""
@@ -3090,15 +3071,6 @@ pub(crate) struct ParenthesizedLifetime {
     )]
     pub sugg: Option<Span>,
     pub snippet: String,
-}
-
-#[derive(Diagnostic)]
-#[diag("const bounds must start with `~`")]
-pub(crate) struct ConstMissingTilde {
-    #[primary_span]
-    pub span: Span,
-    #[suggestion(label = "add `~`", code = "~", applicability = "machine-applicable")]
-    pub start: Span,
 }
 
 #[derive(Diagnostic)]
@@ -3467,7 +3439,7 @@ pub(crate) struct GenericArgsInPatRequireTurbofishSyntax {
 }
 
 #[derive(Diagnostic)]
-#[diag(parse_transpose_dyn_or_impl)]
+#[diag("`for<...>` expected after `{$kw}`, not before")]
 pub(crate) struct TransposeDynOrImpl<'a> {
     #[primary_span]
     pub span: Span,
@@ -3477,7 +3449,7 @@ pub(crate) struct TransposeDynOrImpl<'a> {
 }
 
 #[derive(Subdiagnostic)]
-#[multipart_suggestion(parse_suggestion, applicability = "machine-applicable")]
+#[multipart_suggestion(label = "move `{$kw}` before the `for<...>`", applicability = "machine-applicable")]
 pub(crate) struct TransposeDynOrImplSugg<'a> {
     #[suggestion_part(code = "")]
     pub removal_span: Span,

@@ -3,6 +3,7 @@ use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{AttrWrapper, FollowedByType, ForceCollect, Parser, PathStyle, TrailingToken};
 use crate::errors::{self, MacroExpandsToAdtField};
 use crate::fluent_generated as fluent;
+use ast::StaticItem;
 use rustc_ast::ast::*;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, TokenKind};
@@ -1455,7 +1456,7 @@ impl<'a> Parser<'a> {
 
                 if this.token == token::Not {
                     if let Err(mut err) = this.unexpected::<()>() {
-                        err.note(fluent::parse_macro_expands_to_enum_variant).emit();
+                        err.note("macros cannot expand to enum variants").emit();
                     }
 
                     this.bump();

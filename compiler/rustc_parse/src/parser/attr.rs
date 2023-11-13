@@ -1,7 +1,5 @@
-use crate::errors::{InvalidMetaItem, SuffixedLiteralInAttribute};
-use crate::fluent_generated as fluent;
-
 use super::{AttrWrapper, Capturing, FnParseMode, ForceCollect, Parser, PathStyle};
+use crate::errors::{InvalidMetaItem, SuffixedLiteralInAttribute};
 use rustc_ast as ast;
 use rustc_ast::attr;
 use rustc_ast::token::{self, Delimiter, Nonterminal};
@@ -57,9 +55,10 @@ impl<'a> Parser<'a> {
                     let span = self.token.span;
                     let mut err = self.dcx().struct_span_err_with_code(
                         span,
-                        fluent::parse_inner_doc_comment_not_permitted,
+                        "expected outer doc comment",
                         error_code!(E0753),
                     );
+                    err.set_arg("item_type", "doc comment");
                     if let Some(replacement_span) = self.annotate_following_item_if_applicable(
                         &mut err,
                         span,
@@ -68,10 +67,10 @@ impl<'a> Parser<'a> {
                             token::CommentKind::Block => OuterAttributeType::DocBlockComment,
                         },
                     ) {
-                        err.note(fluent::parse_note);
+                        err.note("inner doc comments like this (starting with `//!` or `/*!`) can only appear before items");
                         err.span_suggestion_verbose(
                             replacement_span,
-                            fluent::parse_suggestion,
+                            "you might have meant to write a regular comment",
                             "",
                             rustc_errors::Applicability::MachineApplicable,
                         );
@@ -175,10 +174,10 @@ impl<'a> Parser<'a> {
             Ok(Some(item)) => {
                 // FIXME(#100717)
                 err.set_arg("item", item.kind.descr());
-                err.span_label(item.span, fluent::parse_label_does_not_annotate_this);
+                err.span_label(item.span, "the inner {$item_type} doesn't annotate this {$item}");
                 err.span_suggestion_verbose(
                     replacement_span,
-                    fluent::parse_sugg_change_inner_to_outer,
+                    "to annotate the {$item}, change the {$item_type} from inner to outer style",
                     match attr_type {
                         OuterAttributeType::Attribute => "",
                         OuterAttributeType::DocBlockComment => "*",
@@ -202,27 +201,29 @@ impl<'a> Parser<'a> {
                 Some(InnerAttrForbiddenReason::AfterOuterDocComment { prev_doc_comment_span }) => {
                     let mut diag = self.dcx().struct_span_err(
                         attr_sp,
-                        fluent::parse_inner_attr_not_permitted_after_outer_doc_comment,
+                        "an inner attribute is not permitted following an outer doc comment",
                     );
-                    diag.span_label(attr_sp, fluent::parse_label_attr)
-                        .span_label(prev_doc_comment_span, fluent::parse_label_prev_doc_comment);
+                    diag.span_label(attr_sp, "not permitted following an outer doc comment")
+                        .span_label(prev_doc_comment_span, "previous doc comment");
                     diag
                 }
                 Some(InnerAttrForbiddenReason::AfterOuterAttribute { prev_outer_attr_sp }) => {
                     let mut diag = self.dcx().struct_span_err(
                         attr_sp,
-                        fluent::parse_inner_attr_not_permitted_after_outer_attr,
+                        "an inner attribute is not permitted following an outer attribute",
                     );
-                    diag.span_label(attr_sp, fluent::parse_label_attr)
-                        .span_label(prev_outer_attr_sp, fluent::parse_label_prev_attr);
+                    diag.span_label(attr_sp, "not permitted following an outer attribute")
+                        .span_label(prev_outer_attr_sp, "previous outer attribute");
                     diag
                 }
-                Some(InnerAttrForbiddenReason::InCodeBlock) | None => {
-                    self.dcx().struct_span_err(attr_sp, fluent::parse_inner_attr_not_permitted)
-                }
+                Some(InnerAttrForbiddenReason::InCodeBlock) | None => self.struct_span_err(
+                    attr_sp,
+                    "an inner attribute is not permitted in this context",
+                ),
             };
 
-            diag.note(fluent::parse_inner_attr_explanation);
+            diag.set_arg("item_type", "attribute");
+            diag.note("inner attributes, like `#![no_std]`, annotate the item enclosing them, and are usually found at the beginning of source files");
             if self
                 .annotate_following_item_if_applicable(
                     &mut diag,
@@ -231,7 +232,7 @@ impl<'a> Parser<'a> {
                 )
                 .is_some()
             {
-                diag.note(fluent::parse_outer_attr_explanation);
+                diag.note("outer attributes, like `#[test]`, annotate the item following them");
             };
             diag.emit();
         }

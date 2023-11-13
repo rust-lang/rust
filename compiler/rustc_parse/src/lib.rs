@@ -22,7 +22,6 @@ use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Diagnostic, FatalError, Level, PResult};
 use rustc_session::parse::ParseSess;
 use rustc_span::{FileName, SourceFile, Span};
-
 use std::path::Path;
 
 pub const MACRO_ARGUMENTS: Option<&str> = Some("macro arguments");
@@ -34,8 +33,6 @@ pub mod lexer;
 pub mod validate_attr;
 
 mod errors;
-
-rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
 // A bunch of utility functions of the form `parse_<thing>_from_<source>`
 // where <thing> includes crate, expr, item, stmt, tts, and one that
