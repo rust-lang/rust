@@ -318,7 +318,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                 .borrowck_context
                 .constraints
                 .liveness_constraints
-                .add_element(live_region_vid, location);
+                .add_location(live_region_vid, location);
         });
 
         // HACK(compiler-errors): Constants that are gathered into Body.required_consts
@@ -601,7 +601,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                     .borrowck_context
                     .constraints
                     .liveness_constraints
-                    .add_element(region, location);
+                    .add_location(region, location);
             }
         }
     }
@@ -1443,7 +1443,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     self.borrowck_context
                         .constraints
                         .liveness_constraints
-                        .add_element(region_vid, term_location);
+                        .add_location(region_vid, term_location);
                 }
 
                 self.check_call_inputs(body, term, func, &sig, args, term_location, *call_source);

@@ -136,12 +136,11 @@ impl<N: Idx> LivenessValues<N> {
         self.points.rows()
     }
 
-    /// Adds the given element to the value for the given region. Returns whether
-    /// the element is newly added (i.e., was not already present).
-    pub(crate) fn add_element(&mut self, region: N, location: Location) -> bool {
-        debug!("LivenessValues::add_element(region={:?}, location={:?})", region, location);
-        let index = self.elements.point_from_location(location);
-        self.points.insert(region, index)
+    /// Records `region` as being live at the given `location`.
+    pub(crate) fn add_location(&mut self, region: N, location: Location) {
+        debug!("LivenessValues::add_location(region={:?}, location={:?})", region, location);
+        let point = self.elements.point_from_location(location);
+        self.points.insert(region, point);
     }
 
     /// Adds all the elements in the given bit array into the given

@@ -167,7 +167,7 @@ impl<'cx, 'tcx> ConstraintGeneration<'cx, 'tcx> {
 
         self.infcx.tcx.for_each_free_region(&live_ty, |live_region| {
             let vid = live_region.as_var();
-            self.liveness_constraints.add_element(vid, location);
+            self.liveness_constraints.add_location(vid, location);
         });
     }
 
