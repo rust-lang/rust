@@ -16,8 +16,8 @@ use rustc_data_structures::intern::Interned;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{ReBound, RePlaceholder, ReVar};
 use rustc_middle::ty::{ReEarlyBound, ReErased, ReError, ReFree, ReStatic};
-use rustc_middle::ty::{ReLateBound, RePlaceholder, ReVar};
 use rustc_middle::ty::{Region, RegionVid};
 use rustc_span::Span;
 use std::fmt;
@@ -378,7 +378,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                     // so it doesn't really matter if it's shorter or longer than an empty region
                     ReError(_) => false,
 
-                    ReLateBound(..) | ReErased => {
+                    ReBound(..) | ReErased => {
                         bug!("cannot relate region: {:?}", a);
                     }
 
@@ -411,7 +411,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                     // so it doesn't really matter if it's shorter or longer than an empty region
                     ReError(_) => false,
 
-                    ReLateBound(..) | ReErased => {
+                    ReBound(..) | ReErased => {
                         bug!("cannot relate region: {:?}", b);
                     }
 
@@ -478,7 +478,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
     #[instrument(level = "trace", skip(self), ret)]
     fn lub_concrete_regions(&self, a: Region<'tcx>, b: Region<'tcx>) -> Region<'tcx> {
         match (*a, *b) {
-            (ReLateBound(..), _) | (_, ReLateBound(..)) | (ReErased, _) | (_, ReErased) => {
+            (ReBound(..), _) | (_, ReBound(..)) | (ReErased, _) | (_, ReErased) => {
                 bug!("cannot relate region: LUB({:?}, {:?})", a, b);
             }
 

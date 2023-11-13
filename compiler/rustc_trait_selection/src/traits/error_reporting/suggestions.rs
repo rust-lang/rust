@@ -26,7 +26,7 @@ use rustc_hir::{CoroutineKind, CoroutineSource, Node};
 use rustc_hir::{Expr, HirId};
 use rustc_infer::infer::error_reporting::TypeErrCtxt;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc_infer::infer::{DefineOpaqueTypes, InferOk, LateBoundRegionConversionTime};
+use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferOk};
 use rustc_middle::hir::map;
 use rustc_middle::traits::IsConstable;
 use rustc_middle::ty::error::TypeError::{self, Sorts};
@@ -740,7 +740,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             }
 
             // We `erase_late_bound_regions` here because `make_subregion` does not handle
-            // `ReLateBound`, and we don't particularly care about the regions.
+            // `ReBound`, and we don't particularly care about the regions.
             let real_ty = self.tcx.erase_late_bound_regions(real_trait_pred.self_ty());
             if !self.can_eq(obligation.param_env, real_ty, arg_ty) {
                 continue;
@@ -908,7 +908,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
         let self_ty = self.instantiate_binder_with_fresh_vars(
             DUMMY_SP,
-            LateBoundRegionConversionTime::FnCall,
+            BoundRegionConversionTime::FnCall,
             trait_pred.self_ty(),
         );
 
@@ -1237,7 +1237,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
         let output = self.instantiate_binder_with_fresh_vars(
             DUMMY_SP,
-            LateBoundRegionConversionTime::FnCall,
+            BoundRegionConversionTime::FnCall,
             output,
         );
         let inputs = inputs
@@ -1246,7 +1246,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             .map(|ty| {
                 self.instantiate_binder_with_fresh_vars(
                     DUMMY_SP,
-                    LateBoundRegionConversionTime::FnCall,
+                    BoundRegionConversionTime::FnCall,
                     inputs.rebind(*ty),
                 )
             })
@@ -3595,7 +3595,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     let where_pred = self.instantiate_binder_with_placeholders(where_pred);
                     let failed_pred = self.instantiate_binder_with_fresh_vars(
                         expr.span,
-                        LateBoundRegionConversionTime::FnCall,
+                        BoundRegionConversionTime::FnCall,
                         failed_pred,
                     );
 

@@ -1696,7 +1696,7 @@ impl<'tcx> Stable<'tcx> for ty::RegionKind<'tcx> {
                 index: early_reg.index,
                 name: early_reg.name.to_string(),
             }),
-            ty::ReLateBound(db_index, bound_reg) => RegionKind::ReLateBound(
+            ty::ReBound(db_index, bound_reg) => RegionKind::ReBound(
                 db_index.as_u32(),
                 BoundRegion { var: bound_reg.var.as_u32(), kind: bound_reg.kind.stable(tables) },
             ),

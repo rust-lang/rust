@@ -340,7 +340,7 @@ impl<'tcx, O: Elaboratable<'tcx>> Elaborator<'tcx, O> {
                 // consider this as evidence that `T: 'static`, but
                 // I'm a bit wary of such constructions and so for now
                 // I want to be conservative. --nmatsakis
-                if r_min.is_late_bound() {
+                if r_min.is_bound() {
                     return;
                 }
 
@@ -351,7 +351,7 @@ impl<'tcx, O: Elaboratable<'tcx>> Elaborator<'tcx, O> {
                         .into_iter()
                         .filter_map(|component| match component {
                             Component::Region(r) => {
-                                if r.is_late_bound() {
+                                if r.is_bound() {
                                     None
                                 } else {
                                     Some(ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(

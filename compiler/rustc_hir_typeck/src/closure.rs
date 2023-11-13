@@ -7,7 +7,7 @@ use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir_analysis::astconv::AstConv;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc_infer::infer::{DefineOpaqueTypes, LateBoundRegionConversionTime};
+use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes};
 use rustc_infer::infer::{InferOk, InferResult};
 use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::ty::visit::{TypeVisitable, TypeVisitableExt};
@@ -558,7 +558,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Instantiate (this part of..) S to S', i.e., with fresh variables.
                 self.instantiate_binder_with_fresh_vars(
                     hir_ty.span,
-                    LateBoundRegionConversionTime::FnCall,
+                    BoundRegionConversionTime::FnCall,
                     // (*) binder moved to here
                     supplied_sig.inputs().rebind(supplied_ty),
                 )
@@ -583,7 +583,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             let supplied_output_ty = self.instantiate_binder_with_fresh_vars(
                 decl.output.span(),
-                LateBoundRegionConversionTime::FnCall,
+                BoundRegionConversionTime::FnCall,
                 supplied_sig.output(),
             );
             let cause = &self.misc(decl.output.span());

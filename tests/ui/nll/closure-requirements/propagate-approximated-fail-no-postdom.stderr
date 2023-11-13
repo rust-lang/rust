@@ -6,7 +6,7 @@ LL |         |_outlives1, _outlives2, _outlives3, x, y| {
    |
    = note: defining type: supply::{closure#0} with closure args [
                i16,
-               for<Region(BrAnon), Region(BrAnon)> extern "rust-call" fn((std::cell::Cell<&'?1 &ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon }) u32>, std::cell::Cell<&'?2 &ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon }) u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrAnon }) &'?3 u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon }) u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrAnon }) u32>)),
+               for<Region(BrAnon), Region(BrAnon)> extern "rust-call" fn((std::cell::Cell<&'?1 &ReBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon }) u32>, std::cell::Cell<&'?2 &ReBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon }) u32>, std::cell::Cell<&ReBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrAnon }) &'?3 u32>, std::cell::Cell<&ReBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon }) u32>, std::cell::Cell<&ReBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrAnon }) u32>)),
                (),
            ]
    = note: late-bound region is '?4

@@ -350,7 +350,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
             let args =
                 candidate.skip_binder().args.extend_to(tcx, assoc_item.def_id, |param, _| {
                     let subst = match param.kind {
-                        ty::GenericParamDefKind::Lifetime => ty::Region::new_late_bound(
+                        ty::GenericParamDefKind::Lifetime => ty::Region::new_bound(
                             tcx,
                             ty::INNERMOST,
                             ty::BoundRegion {

@@ -784,7 +784,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for EraseEarlyRegions<'tcx> {
         }
     }
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        if r.is_late_bound() { r } else { self.tcx.lifetimes.re_erased }
+        if r.is_bound() { r } else { self.tcx.lifetimes.re_erased }
     }
 }
 
@@ -822,7 +822,7 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Resolver<'cx, 'tcx> {
     }
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        debug_assert!(!r.is_late_bound(), "Should not be resolving bound region.");
+        debug_assert!(!r.is_bound(), "Should not be resolving bound region.");
         self.fcx.tcx.lifetimes.re_erased
     }
 

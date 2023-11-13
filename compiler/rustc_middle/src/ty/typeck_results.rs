@@ -638,7 +638,7 @@ impl<'tcx> IsIdentity for CanonicalUserType<'tcx> {
                         },
 
                         GenericArgKind::Lifetime(r) => match *r {
-                            ty::ReLateBound(debruijn, br) => {
+                            ty::ReBound(debruijn, br) => {
                                 // We only allow a `ty::INNERMOST` index in substitutions.
                                 assert_eq!(debruijn, ty::INNERMOST);
                                 cvar == br.var

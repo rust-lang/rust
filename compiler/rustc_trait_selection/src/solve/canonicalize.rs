@@ -222,7 +222,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'_, 'tcx> {
         }
 
         let kind = match *r {
-            ty::ReLateBound(..) => return r,
+            ty::ReBound(..) => return r,
 
             // We may encounter `ReStatic` in item signatures or the hidden type
             // of an opaque. `ReErased` should only be encountered in the hidden
@@ -278,7 +278,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'_, 'tcx> {
             var
         });
         let br = ty::BoundRegion { var, kind: BrAnon };
-        ty::Region::new_late_bound(self.interner(), self.binder_index, br)
+        ty::Region::new_bound(self.interner(), self.binder_index, br)
     }
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {

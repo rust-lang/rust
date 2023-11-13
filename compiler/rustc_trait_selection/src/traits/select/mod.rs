@@ -32,8 +32,8 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::Diagnostic;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_infer::infer::BoundRegionConversionTime;
 use rustc_infer::infer::DefineOpaqueTypes;
-use rustc_infer::infer::LateBoundRegionConversionTime;
 use rustc_infer::traits::TraitObligation;
 use rustc_middle::dep_graph::dep_kinds;
 use rustc_middle::dep_graph::DepNodeIndex;
@@ -799,7 +799,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     // A global type with no free lifetimes or generic parameters
                     // outlives anything.
                     if pred.0.has_free_regions()
-                        || pred.0.has_late_bound_regions()
+                        || pred.0.has_bound_regions()
                         || pred.0.has_non_region_infer()
                         || pred.0.has_non_region_infer()
                     {
@@ -1751,7 +1751,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let mut nested_obligations = Vec::new();
         let infer_predicate = self.infcx.instantiate_binder_with_fresh_vars(
             obligation.cause.span,
-            LateBoundRegionConversionTime::HigherRankedType,
+            BoundRegionConversionTime::HigherRankedType,
             env_predicate,
         );
         let infer_projection = if potentially_unnormalized_candidates {
@@ -1841,7 +1841,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         // the param_env so that it can be given the lowest priority. See
         // #50825 for the motivation for this.
         let is_global =
-            |cand: &ty::PolyTraitPredicate<'tcx>| cand.is_global() && !cand.has_late_bound_vars();
+            |cand: &ty::PolyTraitPredicate<'tcx>| cand.is_global() && !cand.has_bound_vars();
 
         // (*) Prefer `BuiltinCandidate { has_nested: false }`, `PointeeCandidate`,
         // `DiscriminantKindCandidate`, `ConstDestructCandidate`
@@ -3103,7 +3103,7 @@ fn bind_coroutine_hidden_types_above<'tcx>(
                                 kind: ty::BrAnon,
                             };
                             counter += 1;
-                            ty::Region::new_late_bound(tcx, current_depth, br)
+                            ty::Region::new_bound(tcx, current_depth, br)
                         }
                         r => bug!("unexpected region: {r:?}"),
                     })

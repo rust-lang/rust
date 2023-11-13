@@ -48,7 +48,7 @@ pub fn extract_verify_if_eq<'tcx>(
     let verify_if_eq = verify_if_eq_b.skip_binder();
     m.relate(verify_if_eq.ty, test_ty).ok()?;
 
-    if let ty::RegionKind::ReLateBound(depth, br) = verify_if_eq.bound.kind() {
+    if let ty::RegionKind::ReBound(depth, br) = verify_if_eq.bound.kind() {
         assert!(depth == ty::INNERMOST);
         match m.map.get(&br) {
             Some(&r) => Some(r),
@@ -177,7 +177,7 @@ impl<'tcx> TypeRelation<'tcx> for MatchAgainstHigherRankedOutlives<'tcx> {
         value: ty::Region<'tcx>,
     ) -> RelateResult<'tcx, ty::Region<'tcx>> {
         debug!("self.pattern_depth = {:?}", self.pattern_depth);
-        if let ty::RegionKind::ReLateBound(depth, br) = pattern.kind()
+        if let ty::RegionKind::ReBound(depth, br) = pattern.kind()
             && depth == self.pattern_depth
         {
             self.bind(br, value)

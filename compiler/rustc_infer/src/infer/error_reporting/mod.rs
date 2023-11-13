@@ -175,10 +175,10 @@ pub(super) fn note_and_explain_region<'tcx>(
         ty::ReError(_) => return,
 
         // We shouldn't really be having unification failures with ReVar
-        // and ReLateBound though.
-        ty::ReVar(_) | ty::ReLateBound(..) | ty::ReErased => {
-            (format!("lifetime `{region}`"), alt_span)
-        }
+        // and ReBound though.
+        //
+        // FIXME(@lcnr): Figure out whether this is reachable and if so, why.
+        ty::ReVar(_) | ty::ReBound(..) | ty::ReErased => (format!("lifetime `{region}`"), alt_span),
     };
 
     emit_msg_span(err, prefix, description, span, suffix);
@@ -1285,7 +1285,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         if lifetimes.0 != lifetimes.1 {
                             values.0.push_highlighted(l1);
                             values.1.push_highlighted(l2);
-                        } else if lifetimes.0.is_late_bound() {
+                        } else if lifetimes.0.is_bound() {
                             values.0.push_normal(l1);
                             values.1.push_normal(l2);
                         } else {
@@ -2768,13 +2768,13 @@ impl<'tcx> InferCtxt<'tcx> {
             infer::AddrOfRegion(_) => " for borrow expression".to_string(),
             infer::Autoref(_) => " for autoref".to_string(),
             infer::Coercion(_) => " for automatic coercion".to_string(),
-            infer::LateBoundRegion(_, br, infer::FnCall) => {
+            infer::BoundRegion(_, br, infer::FnCall) => {
                 format!(" for lifetime parameter {}in function call", br_string(br))
             }
-            infer::LateBoundRegion(_, br, infer::HigherRankedType) => {
+            infer::BoundRegion(_, br, infer::HigherRankedType) => {
                 format!(" for lifetime parameter {}in generic type", br_string(br))
             }
-            infer::LateBoundRegion(_, br, infer::AssocTypeProjection(def_id)) => format!(
+            infer::BoundRegion(_, br, infer::AssocTypeProjection(def_id)) => format!(
                 " for lifetime parameter {}in trait containing associated type `{}`",
                 br_string(br),
                 self.tcx.associated_item(def_id).name

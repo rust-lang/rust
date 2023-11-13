@@ -419,9 +419,11 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
 
             ty::ReStatic => {}
 
-            ty::ReLateBound(..) => {
-                // Late-bound regions do not get substituted the same
-                // way early-bound regions do, so we skip them here.
+            ty::ReBound(..) => {
+                // Either a higher-ranked region inside of a type or a
+                // late-bound function parameter.
+                //
+                // We do not compute constraints for either of these.
             }
 
             ty::ReError(_) => {}

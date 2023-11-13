@@ -327,7 +327,7 @@ pub struct CommonLifetimes<'tcx> {
     pub re_vars: Vec<Region<'tcx>>,
 
     /// Pre-interned values of the form:
-    /// `ReLateBound(DebruijnIndex(i), BoundRegion { var: v, kind: BrAnon })`
+    /// `ReBound(DebruijnIndex(i), BoundRegion { var: v, kind: BrAnon })`
     /// for small values of `i` and `v`.
     pub re_late_bounds: Vec<Vec<Region<'tcx>>>,
 }
@@ -402,7 +402,7 @@ impl<'tcx> CommonLifetimes<'tcx> {
             .map(|i| {
                 (0..NUM_PREINTERNED_RE_LATE_BOUNDS_V)
                     .map(|v| {
-                        mk(ty::ReLateBound(
+                        mk(ty::ReBound(
                             ty::DebruijnIndex::from(i),
                             ty::BoundRegion { var: ty::BoundVar::from(v), kind: ty::BrAnon },
                         ))

@@ -2160,7 +2160,7 @@ impl<'tcx> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx> {
         match *region {
             ty::ReEarlyBound(ref data) => data.has_name(),
 
-            ty::ReLateBound(_, ty::BoundRegion { kind: br, .. })
+            ty::ReBound(_, ty::BoundRegion { kind: br, .. })
             | ty::ReFree(ty::FreeRegion { bound_region: br, .. })
             | ty::RePlaceholder(ty::Placeholder {
                 bound: ty::BoundRegion { kind: br, .. }, ..
@@ -2234,7 +2234,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                     return Ok(());
                 }
             }
-            ty::ReLateBound(_, ty::BoundRegion { kind: br, .. })
+            ty::ReBound(_, ty::BoundRegion { kind: br, .. })
             | ty::ReFree(ty::FreeRegion { bound_region: br, .. })
             | ty::RePlaceholder(ty::Placeholder {
                 bound: ty::BoundRegion { kind: br, .. }, ..
@@ -2315,7 +2315,7 @@ impl<'a, 'tcx> ty::TypeFolder<TyCtxt<'tcx>> for RegionFolder<'a, 'tcx> {
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         let name = &mut self.name;
         let region = match *r {
-            ty::ReLateBound(db, br) if db >= self.current_index => {
+            ty::ReBound(db, br) if db >= self.current_index => {
                 *self.region_map.entry(br).or_insert_with(|| name(Some(db), self.current_index, br))
             }
             ty::RePlaceholder(ty::PlaceholderRegion {
@@ -2338,9 +2338,9 @@ impl<'a, 'tcx> ty::TypeFolder<TyCtxt<'tcx>> for RegionFolder<'a, 'tcx> {
             }
             _ => return r,
         };
-        if let ty::ReLateBound(debruijn1, br) = *region {
+        if let ty::ReBound(debruijn1, br) = *region {
             assert_eq!(debruijn1, ty::INNERMOST);
-            ty::Region::new_late_bound(self.tcx, self.current_index, br)
+            ty::Region::new_bound(self.tcx, self.current_index, br)
         } else {
             region
         }
@@ -2450,7 +2450,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                         if let Some(lt_idx) = lifetime_idx {
                             if lt_idx > binder_level_idx {
                                 let kind = ty::BrNamed(CRATE_DEF_ID.to_def_id(), name);
-                                return ty::Region::new_late_bound(
+                                return ty::Region::new_bound(
                                     tcx,
                                     ty::INNERMOST,
                                     ty::BoundRegion { var: br.var, kind },
@@ -2466,7 +2466,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                         if let Some(lt_idx) = lifetime_idx {
                             if lt_idx > binder_level_idx {
                                 let kind = ty::BrNamed(def_id, name);
-                                return ty::Region::new_late_bound(
+                                return ty::Region::new_bound(
                                     tcx,
                                     ty::INNERMOST,
                                     ty::BoundRegion { var: br.var, kind },
@@ -2480,7 +2480,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                         if let Some(lt_idx) = lifetime_idx {
                             if lt_idx > binder_level_idx {
                                 let kind = br.kind;
-                                return ty::Region::new_late_bound(
+                                return ty::Region::new_bound(
                                     tcx,
                                     ty::INNERMOST,
                                     ty::BoundRegion { var: br.var, kind },
@@ -2496,11 +2496,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                     start_or_continue(self, "for<", ", ");
                     do_continue(self, name);
                 }
-                ty::Region::new_late_bound(
-                    tcx,
-                    ty::INNERMOST,
-                    ty::BoundRegion { var: br.var, kind },
-                )
+                ty::Region::new_bound(tcx, ty::INNERMOST, ty::BoundRegion { var: br.var, kind })
             };
             let mut folder = RegionFolder {
                 tcx,

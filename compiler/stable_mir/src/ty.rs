@@ -62,7 +62,7 @@ pub struct Region {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum RegionKind {
     ReEarlyBound(EarlyBoundRegion),
-    ReLateBound(DebruijnIndex, BoundRegion),
+    ReBound(DebruijnIndex, BoundRegion),
     ReStatic,
     RePlaceholder(Placeholder<BoundRegion>),
     ReErased,

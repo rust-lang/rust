@@ -63,7 +63,7 @@ impl CanonicalVarValues<'_> {
     pub fn is_identity(&self) -> bool {
         self.var_values.iter().enumerate().all(|(bv, arg)| match arg.unpack() {
             ty::GenericArgKind::Lifetime(r) => {
-                matches!(*r, ty::ReLateBound(ty::INNERMOST, br) if br.var.as_usize() == bv)
+                matches!(*r, ty::ReBound(ty::INNERMOST, br) if br.var.as_usize() == bv)
             }
             ty::GenericArgKind::Type(ty) => {
                 matches!(*ty.kind(), ty::Bound(ty::INNERMOST, bt) if bt.var.as_usize() == bv)
@@ -79,7 +79,7 @@ impl CanonicalVarValues<'_> {
         for arg in self.var_values {
             match arg.unpack() {
                 ty::GenericArgKind::Lifetime(r) => {
-                    if let ty::ReLateBound(ty::INNERMOST, br) = *r
+                    if let ty::ReBound(ty::INNERMOST, br) = *r
                         && var == br.var
                     {
                         var = var + 1;
@@ -389,7 +389,7 @@ impl<'tcx> CanonicalVarValues<'tcx> {
                                 var: ty::BoundVar::from_usize(i),
                                 kind: ty::BrAnon,
                             };
-                            ty::Region::new_late_bound(tcx, ty::INNERMOST, br).into()
+                            ty::Region::new_bound(tcx, ty::INNERMOST, br).into()
                         }
                         CanonicalVarKind::Effect => ty::Const::new_bound(
                             tcx,

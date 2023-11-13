@@ -843,7 +843,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for ArgFolder<'a, 'tcx> {
                     None => region_param_out_of_range(data, self.args),
                 }
             }
-            ty::ReLateBound(..)
+            ty::ReBound(..)
             | ty::ReFree(_)
             | ty::ReStatic
             | ty::RePlaceholder(_)

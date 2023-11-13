@@ -111,16 +111,16 @@ pub trait TypeVisitableExt<'tcx>: TypeVisitable<TyCtxt<'tcx>> {
     }
 
     /// True if there are any late-bound regions
-    fn has_late_bound_regions(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_RE_LATE_BOUND)
+    fn has_bound_regions(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_RE_BOUND)
     }
     /// True if there are any late-bound non-region variables
-    fn has_non_region_late_bound(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_LATE_BOUND - TypeFlags::HAS_RE_LATE_BOUND)
+    fn has_non_region_bound_vars(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_BOUND_VARS - TypeFlags::HAS_RE_BOUND)
     }
-    /// True if there are any late-bound variables
-    fn has_late_bound_vars(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_LATE_BOUND)
+    /// True if there are any bound variables
+    fn has_bound_vars(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_BOUND_VARS)
     }
 
     /// Indicates whether this value still has parameters/placeholders/inference variables
@@ -204,7 +204,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
             fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
                 match *r {
-                    ty::ReLateBound(debruijn, _) if debruijn < self.outer_index => {
+                    ty::ReBound(debruijn, _) if debruijn < self.outer_index => {
                         ControlFlow::Continue(())
                     }
                     _ => {
@@ -337,7 +337,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ValidateBoundVars<'tcx> {
 
     fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
         match *r {
-            ty::ReLateBound(index, br) if index == self.binder_index => {
+            ty::ReBound(index, br) if index == self.binder_index => {
                 if self.bound_vars.len() <= br.var.as_usize() {
                     bug!("Not enough bound vars: {:?} not found in {:?}", br, self.bound_vars);
                 }
@@ -613,7 +613,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for LateBoundRegionsCollector {
     }
 
     fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
-        if let ty::ReLateBound(debruijn, br) = *r {
+        if let ty::ReBound(debruijn, br) = *r {
             if debruijn == self.current_index {
                 self.regions.insert(br.kind);
             }

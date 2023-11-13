@@ -564,7 +564,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let span = args.get(i).map(|a| a.span).unwrap_or(expr.span);
                     let input = self.instantiate_binder_with_fresh_vars(
                         span,
-                        infer::LateBoundRegionConversionTime::FnCall,
+                        infer::BoundRegionConversionTime::FnCall,
                         fn_sig.input(i),
                     );
                     self.require_type_is_sized_deferred(
@@ -582,7 +582,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // with fresh vars.
             let output = self.instantiate_binder_with_fresh_vars(
                 expr.span,
-                infer::LateBoundRegionConversionTime::FnCall,
+                infer::BoundRegionConversionTime::FnCall,
                 fn_sig.output(),
             );
             self.require_type_is_sized_deferred(output, expr.span, traits::SizedReturnType);

@@ -10,7 +10,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, Namespace};
 use rustc_hir::CoroutineKind;
 use rustc_index::IndexSlice;
-use rustc_infer::infer::LateBoundRegionConversionTime;
+use rustc_infer::infer::BoundRegionConversionTime;
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::{
     AggregateKind, CallSource, ConstOperand, FakeReadCause, Local, LocalInfo, LocalKind, Location,
@@ -462,7 +462,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         // lifetimes without names with the value `'0`.
         if let ty::Ref(region, ..) = ty.kind() {
             match **region {
-                ty::ReLateBound(_, ty::BoundRegion { kind: br, .. })
+                ty::ReBound(_, ty::BoundRegion { kind: br, .. })
                 | ty::RePlaceholder(ty::PlaceholderRegion {
                     bound: ty::BoundRegion { kind: br, .. },
                     ..
@@ -482,7 +482,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         let region = if let ty::Ref(region, ..) = ty.kind() {
             match **region {
-                ty::ReLateBound(_, ty::BoundRegion { kind: br, .. })
+                ty::ReBound(_, ty::BoundRegion { kind: br, .. })
                 | ty::RePlaceholder(ty::PlaceholderRegion {
                     bound: ty::BoundRegion { kind: br, .. },
                     ..
@@ -1113,7 +1113,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             && let ty::Ref(_, _, hir::Mutability::Mut) = args.type_at(0).kind()
                             && let self_ty = self.infcx.instantiate_binder_with_fresh_vars(
                                 fn_call_span,
-                                LateBoundRegionConversionTime::FnCall,
+                                BoundRegionConversionTime::FnCall,
                                 tcx.fn_sig(method_did).instantiate(tcx, method_args).input(0),
                             )
                             && self.infcx.can_eq(self.param_env, ty, self_ty)
