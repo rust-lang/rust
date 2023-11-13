@@ -237,11 +237,6 @@ impl<T: Idx> BitSet<T> {
         new_word != word
     }
 
-    /// Gets a slice of the underlying words.
-    pub fn words(&self) -> &[Word] {
-        &self.words
-    }
-
     /// Iterates over the indices of set bits in a sorted order.
     #[inline]
     pub fn iter(&self) -> BitIter<'_, T> {
@@ -1601,11 +1596,11 @@ impl<R: Idx, C: Idx> BitMatrix<R, C> {
     pub fn from_row_n(row: &BitSet<C>, num_rows: usize) -> BitMatrix<R, C> {
         let num_columns = row.domain_size();
         let words_per_row = num_words(num_columns);
-        assert_eq!(words_per_row, row.words().len());
+        assert_eq!(words_per_row, row.words.len());
         BitMatrix {
             num_rows,
             num_columns,
-            words: iter::repeat(row.words()).take(num_rows).flatten().cloned().collect(),
+            words: iter::repeat(&row.words).take(num_rows).flatten().cloned().collect(),
             marker: PhantomData,
         }
     }
@@ -1700,9 +1695,9 @@ impl<R: Idx, C: Idx> BitMatrix<R, C> {
         assert_eq!(with.domain_size(), self.num_columns);
         let (write_start, write_end) = self.range(write);
         let mut changed = false;
-        for (read_index, write_index) in iter::zip(0..with.words().len(), write_start..write_end) {
+        for (read_index, write_index) in iter::zip(0..with.words.len(), write_start..write_end) {
             let word = self.words[write_index];
-            let new_word = word | with.words()[read_index];
+            let new_word = word | with.words[read_index];
             self.words[write_index] = new_word;
             changed |= word != new_word;
         }
