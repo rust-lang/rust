@@ -702,6 +702,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         def_id: DefId,
         args: GenericArgsRef<'tcx>,
+        inspect_coroutine_fields: InspectCoroutineFields,
     ) -> Result<Ty<'tcx>, Ty<'tcx>> {
         let mut visitor = OpaqueTypeExpander {
             seen_opaque_tys: FxHashSet::default(),
@@ -712,6 +713,7 @@ impl<'tcx> TyCtxt<'tcx> {
             check_recursion: true,
             expand_coroutines: true,
             tcx: self,
+            inspect_coroutine_fields,
         };
 
         let expanded_type = visitor.expand_opaque_ty(def_id, args).unwrap();
@@ -885,6 +887,13 @@ struct OpaqueTypeExpander<'tcx> {
     /// recursion, and 'false' otherwise to avoid unnecessary work.
     check_recursion: bool,
     tcx: TyCtxt<'tcx>,
+    inspect_coroutine_fields: InspectCoroutineFields,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+pub enum InspectCoroutineFields {
+    No,
+    Yes,
 }
 
 impl<'tcx> OpaqueTypeExpander<'tcx> {
@@ -923,7 +932,20 @@ impl<'tcx> OpaqueTypeExpander<'tcx> {
         }
         let args = args.fold_with(self);
         if !self.check_recursion || self.seen_opaque_tys.insert(def_id) {
-            let expanded_ty = Ty::new_coroutine_witness(self.tcx, def_id, args);
+            let expanded_ty = match self.expanded_cache.get(&(def_id, args)) {
+                Some(expanded_ty) => *expanded_ty,
+                None => {
+                    if matches!(self.inspect_coroutine_fields, InspectCoroutineFields::Yes) {
+                        for bty in self.tcx.coroutine_hidden_types(def_id) {
+                            let hidden_ty = bty.instantiate(self.tcx, args);
+                            self.fold_ty(hidden_ty);
+                        }
+                    }
+                    let expanded_ty = Ty::new_coroutine_witness(self.tcx, def_id, args);
+                    self.expanded_cache.insert((def_id, args), expanded_ty);
+                    expanded_ty
+                }
+            };
             if self.check_recursion {
                 self.seen_opaque_tys.remove(&def_id);
             }
@@ -1495,6 +1517,7 @@ pub fn reveal_opaque_types_in_bounds<'tcx>(
         check_recursion: false,
         expand_coroutines: false,
         tcx,
+        inspect_coroutine_fields: InspectCoroutineFields::No,
     };
     val.fold_with(&mut visitor)
 }
