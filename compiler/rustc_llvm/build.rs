@@ -242,6 +242,7 @@ fn main() {
     }
 
     // We need libkstat for getHostCPUName on SPARC builds.
+    // See also: https://github.com/llvm/llvm-project/issues/64186
     if target.starts_with("sparcv9") && target.contains("solaris") {
         println!("cargo:rustc-link-lib=kstat");
     }
