@@ -77,6 +77,7 @@ Cargo
 - [feat(pkgid): Allow incomplete versions when unambigious](https://github.com/rust-lang/cargo/pull/12614/)
 - [feat: stabilize credential-process and registry-auth](https://github.com/rust-lang/cargo/pull/12649/)
 - [feat(cli): Add '-n' to dry-run](https://github.com/rust-lang/cargo/pull/12660/)
+- [Added `--dry-run` flag and summary line at the end for `cargo clean`](https://github.com/rust-lang/cargo/pull/12638)
 - [Add support for `target.'cfg(..)'.linker`](https://github.com/rust-lang/cargo/pull/12535/)
 - [Stabilize `--keep-going`](https://github.com/rust-lang/cargo/pull/12568/)
 - [feat: Stabilize lints](https://github.com/rust-lang/cargo/pull/12648/)
