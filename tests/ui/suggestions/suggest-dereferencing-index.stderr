@@ -8,6 +8,8 @@ LL |     let one_item_please: i32 = [1, 2, 3][i];
    = help: the trait `SliceIndex<[{integer}]>` is implemented for `usize`
    = help: for that trait implementation, expected `usize`, found `&usize`
    = note: required for `[{integer}]` to implement `Index<&usize>`
+   = note: 1 redundant requirement hidden
+   = note: required for `[{integer}; 3]` to implement `Index<&usize>`
 help: dereference this index
    |
 LL |     let one_item_please: i32 = [1, 2, 3][*i];
