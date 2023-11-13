@@ -118,53 +118,53 @@ pub(crate) enum RegionElement {
 
 /// Records the CFG locations where each region is live. When we initially compute liveness, we use
 /// an interval matrix storing liveness ranges for each region-vid.
-pub(crate) struct LivenessValues<N: Idx> {
+pub(crate) struct LivenessValues {
     elements: Rc<RegionValueElements>,
-    points: SparseIntervalMatrix<N, PointIndex>,
+    points: SparseIntervalMatrix<RegionVid, PointIndex>,
 }
 
-impl<N: Idx> LivenessValues<N> {
+impl LivenessValues {
     /// Create an empty map of regions to locations where they're live.
     pub(crate) fn new(elements: Rc<RegionValueElements>) -> Self {
         Self { points: SparseIntervalMatrix::new(elements.num_points), elements }
     }
 
     /// Iterate through each region that has a value in this set.
-    pub(crate) fn regions(&self) -> impl Iterator<Item = N> {
+    pub(crate) fn regions(&self) -> impl Iterator<Item = RegionVid> {
         self.points.rows()
     }
 
     /// Records `region` as being live at the given `location`.
-    pub(crate) fn add_location(&mut self, region: N, location: Location) {
+    pub(crate) fn add_location(&mut self, region: RegionVid, location: Location) {
         debug!("LivenessValues::add_location(region={:?}, location={:?})", region, location);
         let point = self.elements.point_from_location(location);
         self.points.insert(region, point);
     }
 
     /// Records `region` as being live at all the given `points`.
-    pub(crate) fn add_points(&mut self, region: N, points: &IntervalSet<PointIndex>) {
+    pub(crate) fn add_points(&mut self, region: RegionVid, points: &IntervalSet<PointIndex>) {
         debug!("LivenessValues::add_points(region={:?}, points={:?})", region, points);
         self.points.union_row(region, points);
     }
 
     /// Records `region` as being live at all the control-flow points.
-    pub(crate) fn add_all_points(&mut self, region: N) {
+    pub(crate) fn add_all_points(&mut self, region: RegionVid) {
         self.points.insert_all_into_row(region);
     }
 
     /// Returns whether `region` is marked live at the given `location`.
-    pub(crate) fn is_live_at(&self, region: N, location: Location) -> bool {
+    pub(crate) fn is_live_at(&self, region: RegionVid, location: Location) -> bool {
         let point = self.elements.point_from_location(location);
         self.points.row(region).is_some_and(|r| r.contains(point))
     }
 
     /// Returns whether `region` is marked live at any location.
-    pub(crate) fn is_live_anywhere(&self, region: N) -> bool {
+    pub(crate) fn is_live_anywhere(&self, region: RegionVid) -> bool {
         self.live_points(region).next().is_some()
     }
 
     /// Returns an iterator of all the points where `region` is live.
-    fn live_points(&self, region: N) -> impl Iterator<Item = PointIndex> + '_ {
+    fn live_points(&self, region: RegionVid) -> impl Iterator<Item = PointIndex> + '_ {
         self.points
             .row(region)
             .into_iter()
@@ -173,7 +173,7 @@ impl<N: Idx> LivenessValues<N> {
     }
 
     /// Returns a "pretty" string value of the region. Meant for debugging.
-    pub(crate) fn region_value_str(&self, region: N) -> String {
+    pub(crate) fn region_value_str(&self, region: RegionVid) -> String {
         region_value_str(
             self.live_points(region).map(|p| RegionElement::Location(self.elements.to_location(p))),
         )
@@ -309,7 +309,7 @@ impl<N: Idx> RegionValues<N> {
     /// `self[to] |= values[from]`, essentially: that is, take all the
     /// elements for the region `from` from `values` and add them to
     /// the region `to` in `self`.
-    pub(crate) fn merge_liveness<M: Idx>(&mut self, to: N, from: M, values: &LivenessValues<M>) {
+    pub(crate) fn merge_liveness(&mut self, to: N, from: RegionVid, values: &LivenessValues) {
         if let Some(set) = values.points.row(from) {
             self.points.union_row(to, set);
         }

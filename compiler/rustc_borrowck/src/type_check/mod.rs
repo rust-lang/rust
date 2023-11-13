@@ -899,7 +899,7 @@ pub(crate) struct MirTypeckRegionConstraints<'tcx> {
     /// not otherwise appear in the MIR -- in particular, the
     /// late-bound regions that it instantiates at call-sites -- and
     /// hence it must report on their liveness constraints.
-    pub(crate) liveness_constraints: LivenessValues<RegionVid>,
+    pub(crate) liveness_constraints: LivenessValues,
 
     pub(crate) outlives_constraints: OutlivesConstraintSet<'tcx>,
 

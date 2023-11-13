@@ -59,7 +59,7 @@ pub struct RegionInferenceContext<'tcx> {
     /// regions, these start out empty and steadily grow, though for
     /// each universally quantified region R they start out containing
     /// the entire CFG and `end(R)`.
-    liveness_constraints: LivenessValues<RegionVid>,
+    liveness_constraints: LivenessValues,
 
     /// The outlives constraints computed by the type-check.
     constraints: Frozen<OutlivesConstraintSet<'tcx>>,
@@ -332,7 +332,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         member_constraints_in: MemberConstraintSet<'tcx, RegionVid>,
         universe_causes: FxIndexMap<ty::UniverseIndex, UniverseInfo<'tcx>>,
         type_tests: Vec<TypeTest<'tcx>>,
-        liveness_constraints: LivenessValues<RegionVid>,
+        liveness_constraints: LivenessValues,
         elements: &Rc<RegionValueElements>,
         live_loans: SparseBitMatrix<PointIndex, BorrowIndex>,
     ) -> Self {
