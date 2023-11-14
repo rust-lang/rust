@@ -55,6 +55,7 @@ impl fmt::Display for RecursiveMemoryLayout {
     }
 }
 
+#[derive(Copy, Clone)]
 enum FieldOrTupleIdx {
     Field(Field),
     TupleIdx(usize),
@@ -69,13 +70,6 @@ impl FieldOrTupleIdx {
                 .map(|s| s.to_owned())
                 .unwrap_or_else(|| format!(".{}", f.name(db).as_tuple_index().unwrap())),
             FieldOrTupleIdx::TupleIdx(i) => format!(".{i}").to_owned(),
-        }
-    }
-
-    fn index(&self) -> usize {
-        match *self {
-            FieldOrTupleIdx::Field(f) => f.index(),
-            FieldOrTupleIdx::TupleIdx(i) => i,
         }
     }
 }
@@ -138,7 +132,10 @@ pub(crate) fn view_memory_layout(
             return;
         }
 
-        fields.sort_by_key(|(f, _)| layout.field_offset(f.index()).unwrap());
+        fields.sort_by_key(|&(f, _)| match f {
+            FieldOrTupleIdx::Field(f) => layout.field_offset(f).unwrap_or(0),
+            FieldOrTupleIdx::TupleIdx(f) => layout.tuple_field_offset(f).unwrap_or(0),
+        });
 
         let children_start = nodes.len();
         nodes[parent_idx].children_start = children_start as i64;
@@ -151,7 +148,10 @@ pub(crate) fn view_memory_layout(
                     typename: child_ty.display(db).to_string(),
                     size: child_layout.size(),
                     alignment: child_layout.align(),
-                    offset: layout.field_offset(field.index()).unwrap_or(0),
+                    offset: match *field {
+                        FieldOrTupleIdx::Field(f) => layout.field_offset(f).unwrap_or(0),
+                        FieldOrTupleIdx::TupleIdx(f) => layout.tuple_field_offset(f).unwrap_or(0),
+                    },
                     parent_idx: parent_idx as i64,
                     children_start: -1,
                     children_len: 0,

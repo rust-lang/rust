@@ -603,8 +603,7 @@ pub struct RustAnalyzer {
 }
 
 impl RustAnalyzer {
-    pub const ALLOW_FEATURES: &'static str =
-        "proc_macro_internals,proc_macro_diagnostic,proc_macro_span,proc_macro_span_shrink";
+    pub const ALLOW_FEATURES: &'static str = "rustc_private,proc_macro_internals,proc_macro_diagnostic,proc_macro_span,proc_macro_span_shrink";
 }
 
 impl Step for RustAnalyzer {
@@ -636,7 +635,7 @@ impl Step for RustAnalyzer {
             compiler: self.compiler,
             target: self.target,
             tool: "rust-analyzer",
-            mode: Mode::ToolStd,
+            mode: Mode::ToolRustc,
             path: "src/tools/rust-analyzer",
             extra_features: vec!["rust-analyzer/in-rust-tree".to_owned()],
             is_optional_tool: false,

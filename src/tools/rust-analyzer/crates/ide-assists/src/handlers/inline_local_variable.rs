@@ -96,8 +96,7 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext<'_>) 
             );
             let parent = matches!(
                 usage_parent,
-                ast::Expr::CallExpr(_)
-                    | ast::Expr::TupleExpr(_)
+                ast::Expr::TupleExpr(_)
                     | ast::Expr::ArrayExpr(_)
                     | ast::Expr::ParenExpr(_)
                     | ast::Expr::ForExpr(_)
@@ -948,6 +947,24 @@ struct S;
 fn f() {
     let S$0 = S;
     S;
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_inline_closure() {
+        check_assist(
+            inline_local_variable,
+            r#"
+fn main() {
+    let $0f = || 2;
+    let _ = f();
+}
+"#,
+            r#"
+fn main() {
+    let _ = (|| 2)();
 }
 "#,
         );

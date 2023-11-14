@@ -272,7 +272,7 @@ several times, with different sets of `cfg`s enabled. The IDE-specific task of
 mapping source code into a semantic model is inherently imprecise for
 this reason and gets handled by the [`source_binder`].
 
-[`source_binder`]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/hir/src/source_binder.rs
+[`source_binder`]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/source_binder.rs
 
 The semantic interface is declared in the [`code_model_api`] module. Each entity is
 identified by an integer ID and has a bunch of methods which take a salsa database
@@ -280,8 +280,8 @@ as an argument and returns other entities (which are also IDs). Internally, thes
 methods invoke various queries on the database to build the model on demand.
 Here's [the list of queries].
 
-[`code_model_api`]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/hir/src/code_model_api.rs
-[the list of queries]: https://github.com/rust-lang/rust-analyzer/blob/7e84440e25e19529e4ff8a66e521d1b06349c6ec/crates/hir/src/db.rs#L20-L106
+[`code_model_api`]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/code_model_api.rs
+[the list of queries]: https://github.com/rust-lang/rust-analyzer/blob/7e84440e25e19529e4ff8a66e521d1b06349c6ec/crates/ra_hir/src/db.rs#L20-L106
 
 The first step of building the model is parsing the source code.
 

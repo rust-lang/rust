@@ -224,7 +224,6 @@ pub(crate) fn inline_call(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
         syntax.text_range(),
         |builder| {
             let replacement = inline(&ctx.sema, file_id, function, &fn_body, &params, &call_info);
-
             builder.replace_ast(
                 match call_info.node {
                     ast::CallableExpr::Call(it) => ast::Expr::CallExpr(it),
@@ -363,16 +362,22 @@ fn inline(
         .collect();
 
     if function.self_param(sema.db).is_some() {
-        let this = || make::name_ref("this").syntax().clone_for_update().first_token().unwrap();
+        let this = || {
+            make::name_ref("this")
+                .syntax()
+                .clone_for_update()
+                .first_token()
+                .expect("NameRef should have had a token.")
+        };
         if let Some(self_local) = params[0].2.as_local(sema.db) {
             usages_for_locals(self_local)
                 .filter_map(|FileReference { name, range, .. }| match name {
                     ast::NameLike::NameRef(_) => Some(body.syntax().covering_element(range)),
                     _ => None,
                 })
-                .for_each(|it| {
-                    ted::replace(it, &this());
-                })
+                .for_each(|usage| {
+                    ted::replace(usage, &this());
+                });
         }
     }
 
@@ -470,7 +475,9 @@ fn inline(
         }
     } else if let Some(stmt_list) = body.stmt_list() {
         ted::insert_all(
-            ted::Position::after(stmt_list.l_curly_token().unwrap()),
+            ted::Position::after(
+                stmt_list.l_curly_token().expect("L_CURLY for StatementList is missing."),
+            ),
             let_stmts.into_iter().map(|stmt| stmt.syntax().clone().into()).collect(),
         );
     }
@@ -481,8 +488,12 @@ fn inline(
     };
     body.reindent_to(original_indentation);
 
+    let no_stmts = body.statements().next().is_none();
     match body.tail_expr() {
-        Some(expr) if !is_async_fn && body.statements().next().is_none() => expr,
+        Some(expr) if matches!(expr, ast::Expr::ClosureExpr(_)) && no_stmts => {
+            make::expr_paren(expr).clone_for_update()
+        }
+        Some(expr) if !is_async_fn && no_stmts => expr,
         _ => match node
             .syntax()
             .parent()
@@ -1470,6 +1481,31 @@ fn main() {
             y + y + *z
         }
     });
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn inline_call_closure_body() {
+        check_assist(
+            inline_call,
+            r#"
+fn f() -> impl Fn() -> i32 {
+    || 2
+}
+
+fn main() {
+    let _ = $0f()();
+}
+"#,
+            r#"
+fn f() -> impl Fn() -> i32 {
+    || 2
+}
+
+fn main() {
+    let _ = (|| 2)();
 }
 "#,
         );

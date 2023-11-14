@@ -128,7 +128,6 @@ const EXCEPTIONS_CARGO: ExceptionList = &[
 
 const EXCEPTIONS_RUST_ANALYZER: ExceptionList = &[
     // tidy-alphabetical-start
-    ("anymap", "BlueOak-1.0.0 OR MIT OR Apache-2.0"), // BlueOak is not acceptable, but we use it under MIT OR Apache-2 .0
     ("dissimilar", "Apache-2.0"),
     ("instant", "BSD-3-Clause"),
     ("notify", "CC0-1.0"),

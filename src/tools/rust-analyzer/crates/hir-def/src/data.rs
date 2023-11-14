@@ -15,9 +15,7 @@ use crate::{
     attr::Attrs,
     db::DefDatabase,
     expander::{Expander, Mark},
-    item_tree::{
-        self, AssocItem, FnFlags, ItemTree, ItemTreeId, MacroCall, ModItem, Param, TreeId,
-    },
+    item_tree::{self, AssocItem, FnFlags, ItemTree, ItemTreeId, MacroCall, ModItem, TreeId},
     macro_call_as_call_id, macro_id_to_def_id,
     nameres::{
         attr_resolution::ResolvedAttr,
@@ -69,7 +67,7 @@ impl FunctionData {
         let is_varargs = enabled_params
             .clone()
             .next_back()
-            .map_or(false, |param| matches!(item_tree[param], Param::Varargs));
+            .map_or(false, |param| item_tree[param].type_ref.is_none());
 
         let mut flags = func.flags;
         if is_varargs {
@@ -105,10 +103,7 @@ impl FunctionData {
             name: func.name.clone(),
             params: enabled_params
                 .clone()
-                .filter_map(|id| match &item_tree[id] {
-                    Param::Normal(ty) => Some(ty.clone()),
-                    Param::Varargs => None,
-                })
+                .filter_map(|id| item_tree[id].type_ref.clone())
                 .collect(),
             ret_type: func.ret_type.clone(),
             attrs: item_tree.attrs(db, krate, ModItem::from(loc.id.value).into()),

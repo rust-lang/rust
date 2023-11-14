@@ -142,8 +142,8 @@ fn t<T>() -> T { loop {} }
         check_diagnostics(
             r#"
 fn main() {
-    let x = [(); _];
-    let y: [(); 10] = [(); _];
+    let _x = [(); _];
+    let _y: [(); 10] = [(); _];
     _ = 0;
     (_,) = (1,);
 }

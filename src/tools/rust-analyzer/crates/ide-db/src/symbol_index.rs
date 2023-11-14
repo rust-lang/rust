@@ -43,13 +43,20 @@ use triomphe::Arc;
 
 use crate::RootDatabase;
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+enum SearchMode {
+    Fuzzy,
+    Exact,
+    Prefix,
+}
+
 #[derive(Debug)]
 pub struct Query {
     query: String,
     lowercased: String,
     only_types: bool,
     libs: bool,
-    exact: bool,
+    mode: SearchMode,
     case_sensitive: bool,
     limit: usize,
 }
@@ -62,7 +69,7 @@ impl Query {
             lowercased,
             only_types: false,
             libs: false,
-            exact: false,
+            mode: SearchMode::Fuzzy,
             case_sensitive: false,
             limit: usize::max_value(),
         }
@@ -76,8 +83,16 @@ impl Query {
         self.libs = true;
     }
 
+    pub fn fuzzy(&mut self) {
+        self.mode = SearchMode::Fuzzy;
+    }
+
     pub fn exact(&mut self) {
-        self.exact = true;
+        self.mode = SearchMode::Exact;
+    }
+
+    pub fn prefix(&mut self) {
+        self.mode = SearchMode::Prefix;
     }
 
     pub fn case_sensitive(&mut self) {
@@ -329,13 +344,23 @@ impl Query {
                     {
                         continue;
                     }
-                    if self.exact {
-                        if symbol.name != self.query {
-                            continue;
+                    let skip = match self.mode {
+                        SearchMode::Fuzzy => {
+                            self.case_sensitive
+                                && self.query.chars().any(|c| !symbol.name.contains(c))
                         }
-                    } else if self.case_sensitive
-                        && self.query.chars().any(|c| !symbol.name.contains(c))
-                    {
+                        SearchMode::Exact => symbol.name != self.query,
+                        SearchMode::Prefix if self.case_sensitive => {
+                            !symbol.name.starts_with(&self.query)
+                        }
+                        SearchMode::Prefix => symbol
+                            .name
+                            .chars()
+                            .zip(self.lowercased.chars())
+                            .all(|(n, q)| n.to_lowercase().next() == Some(q)),
+                    };
+
+                    if skip {
                         continue;
                     }
 
