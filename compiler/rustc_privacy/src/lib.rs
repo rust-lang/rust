@@ -1756,7 +1756,7 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'tcx, '_> {
                     //     fn from(_: Priv) -> Pub {...}
                     // }
                     //
-                    // lints shouldn't be emmited even if `from` effective visibility
+                    // lints shouldn't be emitted even if `from` effective visibility
                     // is larger than `Priv` nominal visibility and if `Priv` can leak
                     // in some scenarios due to type inference.
                     let impl_ev = EffectiveVisibility::of_impl::<false>(

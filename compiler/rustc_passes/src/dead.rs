@@ -314,7 +314,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                 // for the `#[expect]` case.
                 //
                 // Note that an item can and will be duplicated on the worklist with different
-                // `ComesFromAllowExpect`, particulary if it was added from the
+                // `ComesFromAllowExpect`, particularly if it was added from the
                 // `effective_visibilities` query or from the `#[allow]`/`#[expect]` checks,
                 // this "duplication" is essential as otherwise a function with `#[expect]`
                 // called from a `pub fn` may be falsely reported as not live, falsely

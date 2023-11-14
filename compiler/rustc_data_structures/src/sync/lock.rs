@@ -38,7 +38,7 @@ mod maybe_sync {
         lock: &'a Lock<T>,
         marker: PhantomData<&'a mut T>,
 
-        /// The syncronization mode of the lock. This is explicitly passed to let LLVM relate it
+        /// The synchronization mode of the lock. This is explicitly passed to let LLVM relate it
         /// to the original lock operation.
         mode: Mode,
     }
@@ -142,7 +142,7 @@ mod maybe_sync {
             .then(|| LockGuard { lock: self, marker: PhantomData, mode })
         }
 
-        /// This acquires the lock assuming syncronization is in a specific mode.
+        /// This acquires the lock assuming synchronization is in a specific mode.
         ///
         /// Safety
         /// This method must only be called with `Mode::Sync` if `might_be_dyn_thread_safe` was
