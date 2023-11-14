@@ -656,17 +656,7 @@ fn construct_error(tcx: TyCtxt<'_>, def_id: LocalDefId, guar: ErrorGuaranteed) -
             let args = args.as_coroutine();
             let yield_ty = args.yield_ty();
             let return_ty = args.return_ty();
-            let self_ty = Ty::new_adt(
-                tcx,
-                tcx.adt_def(tcx.lang_items().pin_type().unwrap()),
-                tcx.mk_args(&[Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, coroutine_ty).into()]),
-            );
-            let coroutine_state = Ty::new_adt(
-                tcx,
-                tcx.adt_def(tcx.lang_items().coroutine_state().unwrap()),
-                tcx.mk_args(&[yield_ty.into(), return_ty.into()]),
-            );
-            (vec![self_ty, args.resume_ty()], coroutine_state, Some(yield_ty))
+            (vec![coroutine_ty, args.resume_ty()], return_ty, Some(yield_ty))
         }
         dk => bug!("{:?} is not a body: {:?}", def_id, dk),
     };
