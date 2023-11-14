@@ -301,9 +301,9 @@ pub fn diagnostics(
         )
     }));
 
-    let parse = sema.parse(file_id);
+    let parse = parse.syntax_node();
 
-    for node in parse.syntax().descendants() {
+    for node in parse.descendants() {
         handlers::useless_braces::useless_braces(&mut res, file_id, &node);
         handlers::field_shorthand::field_shorthand(&mut res, file_id, &node);
         handlers::json_is_not_rust::json_in_items(&sema, &mut res, file_id, &node, config);
@@ -386,7 +386,7 @@ pub fn diagnostics(
 
     handle_lint_attributes(
         &ctx.sema,
-        parse.syntax(),
+        &parse,
         &mut rustc_stack,
         &mut clippy_stack,
         &mut diagnostics_of_range,

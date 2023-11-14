@@ -396,14 +396,7 @@ impl<'a> Ctx<'a> {
         let bounds = self.lower_type_bounds(type_alias);
         let generic_params = self.lower_generic_params(HasImplicitSelf::No, type_alias);
         let ast_id = self.source_ast_id_map.ast_id(type_alias);
-        let res = TypeAlias {
-            name,
-            visibility,
-            bounds: bounds.into_boxed_slice(),
-            generic_params,
-            type_ref,
-            ast_id,
-        };
+        let res = TypeAlias { name, visibility, bounds, generic_params, type_ref, ast_id };
         Some(id(self.data().type_aliases.alloc(res)))
     }
 
@@ -637,13 +630,13 @@ impl<'a> Ctx<'a> {
         Interned::new(generics)
     }
 
-    fn lower_type_bounds(&mut self, node: &dyn ast::HasTypeBounds) -> Vec<Interned<TypeBound>> {
+    fn lower_type_bounds(&mut self, node: &dyn ast::HasTypeBounds) -> Box<[Interned<TypeBound>]> {
         match node.type_bound_list() {
             Some(bound_list) => bound_list
                 .bounds()
                 .map(|it| Interned::new(TypeBound::from_ast(&self.body_ctx, it)))
                 .collect(),
-            None => Vec::new(),
+            None => Box::default(),
         }
     }
 

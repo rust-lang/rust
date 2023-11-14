@@ -44,7 +44,7 @@
 //!     panic: fmt
 //!     phantom_data:
 //!     pin:
-//!     pointee:
+//!     pointee: copy, send, sync, ord, hash, unpin
 //!     range:
 //!     result:
 //!     send: sized
@@ -54,6 +54,7 @@
 //!     sync: sized
 //!     transmute:
 //!     try: infallible
+//!     unpin: sized
 //!     unsize: sized
 
 #![rustc_coherence_is_core]
@@ -88,6 +89,11 @@ pub mod marker {
     #[lang = "unsize"]
     pub trait Unsize<T: ?Sized> {}
     // endregion:unsize
+
+    // region:unpin
+    #[lang = "unpin"]
+    pub auto trait Unpin {}
+    // endregion:unpin
 
     // region:copy
     #[lang = "copy"]
@@ -387,9 +393,10 @@ pub mod ptr {
 
     // region:pointee
     #[lang = "pointee_trait"]
+    #[rustc_deny_explicit_impl(implement_via_object = false)]
     pub trait Pointee {
         #[lang = "metadata_type"]
-        type Metadata;
+        type Metadata: Copy + Send + Sync + Ord + Hash + Unpin;
     }
     // endregion:pointee
     // region:non_null

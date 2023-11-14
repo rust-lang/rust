@@ -1383,51 +1383,50 @@ pub(crate) fn generic_predicates_for_param_query(
     let ctx = TyLoweringContext::new(db, &resolver, def.into())
         .with_type_param_mode(ParamLoweringMode::Variable);
     let generics = generics(db.upcast(), def);
+
+    // we have to filter out all other predicates *first*, before attempting to lower them
+    let predicate = |pred: &&_| match pred {
+        WherePredicate::ForLifetime { target, bound, .. }
+        | WherePredicate::TypeBound { target, bound, .. } => {
+            let invalid_target = match target {
+                WherePredicateTypeTarget::TypeRef(type_ref) => {
+                    ctx.lower_ty_only_param(type_ref) != Some(param_id)
+                }
+                &WherePredicateTypeTarget::TypeOrConstParam(local_id) => {
+                    let target_id = TypeOrConstParamId { parent: def, local_id };
+                    target_id != param_id
+                }
+            };
+            if invalid_target {
+                return false;
+            }
+
+            match &**bound {
+                TypeBound::ForLifetime(_, path) | TypeBound::Path(path, _) => {
+                    // Only lower the bound if the trait could possibly define the associated
+                    // type we're looking for.
+
+                    let Some(assoc_name) = &assoc_name else { return true };
+                    let Some(TypeNs::TraitId(tr)) =
+                        resolver.resolve_path_in_type_ns_fully(db.upcast(), path)
+                    else {
+                        return false;
+                    };
+
+                    all_super_traits(db.upcast(), tr).iter().any(|tr| {
+                        db.trait_data(*tr).items.iter().any(|(name, item)| {
+                            matches!(item, AssocItemId::TypeAliasId(_)) && name == assoc_name
+                        })
+                    })
+                }
+                TypeBound::Lifetime(_) | TypeBound::Error => false,
+            }
+        }
+        WherePredicate::Lifetime { .. } => false,
+    };
     let mut predicates: Vec<_> = resolver
         .where_predicates_in_scope()
-        // we have to filter out all other predicates *first*, before attempting to lower them
-        .filter(|pred| match pred {
-            WherePredicate::ForLifetime { target, bound, .. }
-            | WherePredicate::TypeBound { target, bound, .. } => {
-                match target {
-                    WherePredicateTypeTarget::TypeRef(type_ref) => {
-                        if ctx.lower_ty_only_param(type_ref) != Some(param_id) {
-                            return false;
-                        }
-                    }
-                    &WherePredicateTypeTarget::TypeOrConstParam(local_id) => {
-                        let target_id = TypeOrConstParamId { parent: def, local_id };
-                        if target_id != param_id {
-                            return false;
-                        }
-                    }
-                };
-
-                match &**bound {
-                    TypeBound::ForLifetime(_, path) | TypeBound::Path(path, _) => {
-                        // Only lower the bound if the trait could possibly define the associated
-                        // type we're looking for.
-
-                        let assoc_name = match &assoc_name {
-                            Some(it) => it,
-                            None => return true,
-                        };
-                        let tr = match resolver.resolve_path_in_type_ns_fully(db.upcast(), path) {
-                            Some(TypeNs::TraitId(tr)) => tr,
-                            _ => return false,
-                        };
-
-                        all_super_traits(db.upcast(), tr).iter().any(|tr| {
-                            db.trait_data(*tr).items.iter().any(|(name, item)| {
-                                matches!(item, AssocItemId::TypeAliasId(_)) && name == assoc_name
-                            })
-                        })
-                    }
-                    TypeBound::Lifetime(_) | TypeBound::Error => false,
-                }
-            }
-            WherePredicate::Lifetime { .. } => false,
-        })
+        .filter(predicate)
         .flat_map(|pred| {
             ctx.lower_where_predicate(pred, true).map(|p| make_binders(db, &generics, p))
         })
@@ -1519,7 +1518,12 @@ pub(crate) fn trait_environment_query(
 
     let env = chalk_ir::Environment::new(Interner).add_clauses(Interner, clauses);
 
-    Arc::new(TraitEnvironment { krate, block: None, traits_from_clauses: traits_in_scope, env })
+    Arc::new(TraitEnvironment {
+        krate,
+        block: None,
+        traits_from_clauses: traits_in_scope.into_boxed_slice(),
+        env,
+    })
 }
 
 /// Resolve the where clause(s) of an item with generics.

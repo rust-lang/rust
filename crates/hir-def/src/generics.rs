@@ -227,7 +227,7 @@ impl GenericParams {
                 let mut expander = Lazy::new(|| {
                     (module.def_map(db), Expander::new(db, loc.source(db).file_id, module))
                 });
-                for param in &func_data.params {
+                for param in func_data.params.iter() {
                     generic_params.fill_implicit_impl_trait_args(db, &mut expander, param);
                 }
 
