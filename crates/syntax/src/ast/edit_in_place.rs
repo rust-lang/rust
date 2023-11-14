@@ -846,6 +846,53 @@ fn normalize_ws_between_braces(node: &SyntaxNode) -> Option<()> {
     Some(())
 }
 
+impl ast::IdentPat {
+    pub fn set_pat(&self, pat: Option<ast::Pat>) {
+        match pat {
+            None => {
+                if let Some(at_token) = self.at_token() {
+                    // Remove `@ Pat`
+                    let start = at_token.clone().into();
+                    let end = self
+                        .pat()
+                        .map(|it| it.syntax().clone().into())
+                        .unwrap_or_else(|| at_token.into());
+
+                    ted::remove_all(start..=end);
+
+                    // Remove any trailing ws
+                    if let Some(last) =
+                        self.syntax().last_token().filter(|it| it.kind() == WHITESPACE)
+                    {
+                        last.detach();
+                    }
+                }
+            }
+            Some(pat) => {
+                if let Some(old_pat) = self.pat() {
+                    // Replace existing pattern
+                    ted::replace(old_pat.syntax(), pat.syntax())
+                } else if let Some(at_token) = self.at_token() {
+                    // Have an `@` token but not a pattern yet
+                    ted::insert(ted::Position::after(at_token), pat.syntax());
+                } else {
+                    // Don't have an `@`, should have a name
+                    let name = self.name().unwrap();
+
+                    ted::insert_all(
+                        ted::Position::after(name.syntax()),
+                        vec![
+                            make::token(T![@]).into(),
+                            make::tokens::single_space().into(),
+                            pat.syntax().clone().into(),
+                        ],
+                    )
+                }
+            }
+        }
+    }
+}
+
 pub trait HasVisibilityEdit: ast::HasVisibility {
     fn set_visibility(&self, visbility: ast::Visibility) {
         match self.visibility() {
@@ -945,6 +992,34 @@ mod tests {
             ;
         }",
         );
+    }
+
+    #[test]
+    fn test_ident_pat_set_pat() {
+        #[track_caller]
+        fn check(before: &str, expected: &str, pat: Option<ast::Pat>) {
+            let pat = pat.map(|it| it.clone_for_update());
+
+            let ident_pat = ast_mut_from_text::<ast::IdentPat>(&format!("fn f() {{ {before} }}"));
+            ident_pat.set_pat(pat);
+
+            let after = ast_mut_from_text::<ast::IdentPat>(&format!("fn f() {{ {expected} }}"));
+            assert_eq!(ident_pat.to_string(), after.to_string());
+        }
+
+        // replacing
+        check("let a @ _;", "let a @ ();", Some(make::tuple_pat([]).into()));
+
+        // note: no trailing semicolon is added for the below tests since it
+        // seems to be picked up by the ident pat during error recovery?
+
+        // adding
+        check("let a ", "let a @ ()", Some(make::tuple_pat([]).into()));
+        check("let a @ ", "let a @ ()", Some(make::tuple_pat([]).into()));
+
+        // removing
+        check("let a @ ()", "let a", None);
+        check("let a @ ", "let a", None);
     }
 
     #[test]

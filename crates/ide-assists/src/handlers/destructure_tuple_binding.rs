@@ -197,15 +197,7 @@ impl AssignmentEdit {
     fn apply(self) {
         // with sub_pattern: keep original tuple and add subpattern: `tup @ (_0, _1)`
         if self.in_sub_pattern {
-            ted::insert_all_raw(
-                ted::Position::after(self.ident_pat.syntax()),
-                vec![
-                    make::tokens::single_space().into(),
-                    make::token(T![@]).into(),
-                    make::tokens::single_space().into(),
-                    self.tuple_pat.syntax().clone().into(),
-                ],
-            )
+            self.ident_pat.set_pat(Some(self.tuple_pat.into()))
         } else {
             ted::replace(self.ident_pat.syntax(), self.tuple_pat.syntax())
         }
