@@ -2121,27 +2121,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if !self.can_eq(self.param_env, ret_ty, adt_ty) {
                         return None;
                     }
-                    // Check for `-> Self`
                     let input_len = fn_sig.inputs().skip_binder().len();
-                    if def.did() == def_id {
-                        let order = if item.name.as_str().starts_with("new") { 0 } else { 1 };
-                        Some((order, item.name, input_len))
-                    } else {
-                        None
-                    }
+                    let order = !item.name.as_str().starts_with("new");
+                    Some((order, item.name, input_len))
                 })
                 .collect::<Vec<_>>();
             items.sort_by_key(|(order, _, _)| *order);
+            let suggestion = |name, args| {
+                format!(
+                    "::{name}({})",
+                    std::iter::repeat("_").take(args).collect::<Vec<_>>().join(", ")
+                )
+            };
             match &items[..] {
                 [] => {}
                 [(_, name, args)] => {
                     err.span_suggestion_verbose(
                         span.shrink_to_hi().with_hi(expr_span.hi()),
-                        format!("you might have meant to use the `{name}` associated function",),
-                        format!(
-                            "::{name}({})",
-                            std::iter::repeat("_").take(*args).collect::<Vec<_>>().join(", ")
-                        ),
+                        format!("you might have meant to use the `{name}` associated function"),
+                        suggestion(name, *args),
                         Applicability::MaybeIncorrect,
                     );
                 }
@@ -2151,15 +2149,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         "you might have meant to use an associated function to build this type",
                         items
                             .iter()
-                            .map(|(_, name, args)| {
-                                format!(
-                                    "::{name}({})",
-                                    std::iter::repeat("_")
-                                        .take(*args)
-                                        .collect::<Vec<_>>()
-                                        .join(", ")
-                                )
-                            })
+                            .map(|(_, name, args)| suggestion(name, *args))
                             .collect::<Vec<String>>(),
                         Applicability::MaybeIncorrect,
                     );

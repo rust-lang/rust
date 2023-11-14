@@ -1732,6 +1732,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         args: &[P<Expr>],
     ) {
         if def_id.is_local() {
+            // Doing analysis on local `DefId`s would cause infinite recursion.
             return;
         }
         // Look at all the associated functions without receivers in the type's
@@ -1752,23 +1753,21 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 let ty::Adt(def, _args) = ret_ty.kind() else {
                     return None;
                 };
-                // Check for `-> Self`
                 let input_len = fn_sig.inputs().skip_binder().len();
-                if def.did() == def_id {
-                    let order = if item.name.as_str().starts_with("new") {
-                        0
-                    } else if input_len == args.len() {
-                        2
-                    } else {
-                        3
-                    };
-                    Some((order, item.name, input_len))
-                } else {
-                    None
+                if def.did() != def_id {
+                    return None;
                 }
+                let order = !item.name.as_str().starts_with("new");
+                Some((order, item.name, input_len))
             })
             .collect::<Vec<_>>();
         items.sort_by_key(|(order, _, _)| *order);
+        let suggestion = |name, args| {
+            format!(
+                "::{name}({})",
+                std::iter::repeat("_").take(args).collect::<Vec<_>>().join(", ")
+            )
+        };
         match &items[..] {
             [] => {}
             [(_, name, len)] if *len == args.len() => {
@@ -1783,10 +1782,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 err.span_suggestion_verbose(
                     path_span.shrink_to_hi().with_hi(call_span.hi()),
                     format!("you might have meant to use the `{name}` associated function",),
-                    format!(
-                        "::{name}({})",
-                        std::iter::repeat("_").take(*len).collect::<Vec<_>>().join(", ")
-                    ),
+                    suggestion(name, *len),
                     Applicability::MaybeIncorrect,
                 );
             }
@@ -1796,12 +1792,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                     "you might have meant to use an associated function to build this type",
                     items
                         .iter()
-                        .map(|(_, name, len)| {
-                            format!(
-                                "::{name}({})",
-                                std::iter::repeat("_").take(*len).collect::<Vec<_>>().join(", ")
-                            )
-                        })
+                        .map(|(_, name, len)| suggestion(name, *len))
                         .collect::<Vec<String>>(),
                     Applicability::MaybeIncorrect,
                     SuggestionStyle::ShowAlways,
