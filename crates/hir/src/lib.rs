@@ -53,10 +53,10 @@ use hir_def::{
     resolver::{HasResolver, Resolver},
     src::HasSource as _,
     AssocItemId, AssocItemLoc, AttrDefId, ConstId, ConstParamId, CrateRootModuleId, DefWithBodyId,
-    EnumId, EnumVariantId, ExternCrateId, FunctionId, GenericDefId, HasModule, ImplId,
-    InTypeConstId, ItemContainerId, LifetimeParamId, LocalEnumVariantId, LocalFieldId, Lookup,
-    MacroExpander, MacroId, ModuleId, StaticId, StructId, TraitAliasId, TraitId, TypeAliasId,
-    TypeOrConstParamId, TypeParamId, UnionId,
+    EnumId, EnumVariantId, ExternCrateId, FunctionId, GenericDefId, GenericParamId, HasModule,
+    ImplId, InTypeConstId, ItemContainerId, LifetimeParamId, LocalEnumVariantId, LocalFieldId,
+    Lookup, MacroExpander, MacroId, ModuleId, StaticId, StructId, TraitAliasId, TraitId,
+    TypeAliasId, TypeOrConstParamId, TypeParamId, UnionId,
 };
 use hir_expand::{name::name, MacroCallKind};
 use hir_ty::{
@@ -89,17 +89,7 @@ use crate::db::{DefDatabase, HirDatabase};
 
 pub use crate::{
     attrs::{resolve_doc_path_on, HasAttrs},
-    diagnostics::{
-        AnyDiagnostic, BreakOutsideOfLoop, CaseType, ExpectedFunction, InactiveCode,
-        IncoherentImpl, IncorrectCase, InvalidDeriveTarget, MacroDefError, MacroError,
-        MacroExpansionParseError, MalformedDerive, MismatchedArgCount,
-        MismatchedTupleStructPatArgCount, MissingFields, MissingMatchArms, MissingUnsafe,
-        MovedOutOfRef, NeedMut, NoSuchField, PrivateAssocItem, PrivateField,
-        ReplaceFilterMapNextWithFindMap, TraitImplOrphan, TypeMismatch, TypedHole, UndeclaredLabel,
-        UnimplementedBuiltinMacro, UnreachableLabel, UnresolvedExternCrate, UnresolvedField,
-        UnresolvedImport, UnresolvedMacroCall, UnresolvedMethodCall, UnresolvedModule,
-        UnresolvedProcMacro, UnusedMut, UnusedVariable,
-    },
+    diagnostics::*,
     has_source::HasSource,
     semantics::{PathResolution, Semantics, SemanticsScope, TypeInfo, VisibleTraits},
 };
@@ -613,21 +603,63 @@ impl Module {
                 // FIXME: Once we diagnose the inputs to builtin derives, we should at least extract those diagnostics somehow
                 continue;
             }
+            let ast_id_map = db.ast_id_map(file_id);
 
             for diag in db.impl_data_with_diagnostics(impl_def.id).1.iter() {
                 emit_def_diagnostic(db, acc, diag);
             }
 
             if inherent_impls.invalid_impls().contains(&impl_def.id) {
-                let ast_id_map = db.ast_id_map(file_id);
-
                 acc.push(IncoherentImpl { impl_: ast_id_map.get(node.ast_id()), file_id }.into())
             }
 
             if !impl_def.check_orphan_rules(db) {
-                let ast_id_map = db.ast_id_map(file_id);
                 acc.push(TraitImplOrphan { impl_: ast_id_map.get(node.ast_id()), file_id }.into())
             }
+
+            let trait_ = impl_def.trait_(db);
+            let trait_is_unsafe = trait_.map_or(false, |t| t.is_unsafe(db));
+            let impl_is_negative = impl_def.is_negative(db);
+            let impl_is_unsafe = impl_def.is_unsafe(db);
+
+            let drop_maybe_dangle = (|| {
+                // FIXME: This can be simplified a lot by exposing hir-ty's utils.rs::Generics helper
+                let trait_ = trait_?;
+                let drop_trait = db.lang_item(self.krate().into(), LangItem::Drop)?.as_trait()?;
+                if drop_trait != trait_.into() {
+                    return None;
+                }
+                let parent = impl_def.id.into();
+                let generic_params = db.generic_params(parent);
+                let lifetime_params = generic_params.lifetimes.iter().map(|(local_id, _)| {
+                    GenericParamId::LifetimeParamId(LifetimeParamId { parent, local_id })
+                });
+                let type_params = generic_params
+                    .iter()
+                    .filter(|(_, it)| it.type_param().is_some())
+                    .map(|(local_id, _)| {
+                        GenericParamId::TypeParamId(TypeParamId::from_unchecked(
+                            TypeOrConstParamId { parent, local_id },
+                        ))
+                    });
+                let res = type_params
+                    .chain(lifetime_params)
+                    .any(|p| db.attrs(AttrDefId::GenericParamId(p)).by_key("may_dangle").exists());
+                Some(res)
+            })()
+            .unwrap_or(false);
+
+            match (impl_is_unsafe, trait_is_unsafe, impl_is_negative, drop_maybe_dangle) {
+                // unsafe negative impl
+                (true, _, true, _) |
+                // unsafe impl for safe trait
+                (true, false, _, false) => acc.push(TraitImplIncorrectSafety { impl_: ast_id_map.get(node.ast_id()), file_id, should_be_safe: true }.into()),
+                // safe impl for unsafe trait
+                (false, true, false, _) |
+                // safe impl of dangling drop
+                (false, false, _, true) => acc.push(TraitImplIncorrectSafety { impl_: ast_id_map.get(node.ast_id()), file_id, should_be_safe: false }.into()),
+                _ => (),
+            };
 
             for item in impl_def.items(db) {
                 let def: DefWithBody = match item {
@@ -3404,7 +3436,7 @@ impl Impl {
     }
 
     pub fn is_unsafe(self, db: &dyn HirDatabase) -> bool {
-        db.impl_data(self.id).is_unique()
+        db.impl_data(self.id).is_unsafe
     }
 
     pub fn module(self, db: &dyn HirDatabase) -> Module {

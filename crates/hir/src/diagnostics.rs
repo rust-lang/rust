@@ -38,7 +38,6 @@ diagnostics![
     IncorrectCase,
     InvalidDeriveTarget,
     IncoherentImpl,
-    TraitImplOrphan,
     MacroDefError,
     MacroError,
     MacroExpansionParseError,
@@ -54,6 +53,8 @@ diagnostics![
     PrivateAssocItem,
     PrivateField,
     ReplaceFilterMapNextWithFindMap,
+    TraitImplIncorrectSafety,
+    TraitImplOrphan,
     TypedHole,
     TypeMismatch,
     UndeclaredLabel,
@@ -292,4 +293,12 @@ pub struct IncoherentImpl {
 pub struct TraitImplOrphan {
     pub file_id: HirFileId,
     pub impl_: AstPtr<ast::Impl>,
+}
+
+// FIXME: Split this off into the corresponding 4 rustc errors
+#[derive(Debug, PartialEq, Eq)]
+pub struct TraitImplIncorrectSafety {
+    pub file_id: HirFileId,
+    pub impl_: AstPtr<ast::Impl>,
+    pub should_be_safe: bool,
 }
