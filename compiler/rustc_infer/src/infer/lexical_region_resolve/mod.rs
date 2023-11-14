@@ -17,7 +17,7 @@ use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::ty::{ReBound, RePlaceholder, ReVar};
-use rustc_middle::ty::{ReEarlyBound, ReErased, ReError, ReFree, ReStatic};
+use rustc_middle::ty::{ReEarlyParam, ReErased, ReError, ReLateParam, ReStatic};
 use rustc_middle::ty::{Region, RegionVid};
 use rustc_span::Span;
 use std::fmt;
@@ -390,7 +390,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                         );
                     }
 
-                    ReStatic | ReEarlyBound(_) | ReFree(_) => {
+                    ReStatic | ReEarlyParam(_) | ReLateParam(_) => {
                         // nothing lives longer than `'static`
 
                         // All empty regions are less than early-bound, free,
@@ -423,9 +423,9 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                         );
                     }
 
-                    ReStatic | ReEarlyBound(_) | ReFree(_) => {
+                    ReStatic | ReEarlyParam(_) | ReLateParam(_) => {
                         // nothing lives longer than `'static`
-                        // All empty regions are less than early-bound, free,
+                        // All empty regions are less than early-bound, late-bound,
                         // and scope regions.
                         true
                     }
@@ -450,8 +450,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
 
         // Check for the case where we know that `'b: 'static` -- in that case,
         // `a <= b` for all `a`.
-        let b_free_or_static = b.is_free_or_static();
-        if b_free_or_static && sub_free_regions(tcx.lifetimes.re_static, b) {
+        if b.is_free() && sub_free_regions(tcx.lifetimes.re_static, b) {
             return true;
         }
 
@@ -460,8 +459,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         // `lub` relationship defined below, since sometimes the "lub"
         // is actually the `postdom_upper_bound` (see
         // `TransitiveRelation` for more details).
-        let a_free_or_static = a.is_free_or_static();
-        if a_free_or_static && b_free_or_static {
+        if a.is_free() && b.is_free() {
             return sub_free_regions(a, b);
         }
 
@@ -501,8 +499,8 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                 self.tcx().lifetimes.re_static
             }
 
-            (ReEarlyBound(_) | ReFree(_), ReEarlyBound(_) | ReFree(_)) => {
-                self.region_rels.lub_free_regions(a, b)
+            (ReEarlyParam(_) | ReLateParam(_), ReEarlyParam(_) | ReLateParam(_)) => {
+                self.region_rels.lub_param_regions(a, b)
             }
 
             // For these types, we cannot define any additional
@@ -723,13 +721,13 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
             return;
         }
 
-        // We place free regions first because we are special casing
-        // SubSupConflict(ReFree, ReFree) when reporting error, and so
+        // We place late-bound regions first because we are special casing
+        // SubSupConflict(ReLateParam, ReLateParam) when reporting error, and so
         // the user will more likely get a specific suggestion.
         fn region_order_key(x: &RegionAndOrigin<'_>) -> u8 {
             match *x.region {
-                ReEarlyBound(_) => 0,
-                ReFree(_) => 1,
+                ReEarlyParam(_) => 0,
+                ReLateParam(_) => 1,
                 _ => 2,
             }
         }

@@ -98,11 +98,12 @@ pub use self::sty::BoundRegionKind::*;
 pub use self::sty::{
     AliasTy, Article, Binder, BoundRegion, BoundRegionKind, BoundTy, BoundTyKind, BoundVar,
     BoundVariableKind, CanonicalPolyFnSig, ClauseKind, ClosureArgs, ClosureArgsParts, ConstKind,
-    ConstVid, CoroutineArgs, CoroutineArgsParts, EarlyBoundRegion, EffectVid, ExistentialPredicate,
-    ExistentialProjection, ExistentialTraitRef, FnSig, FreeRegion, GenSig, InlineConstArgs,
-    InlineConstArgsParts, ParamConst, ParamTy, PolyExistentialPredicate, PolyExistentialProjection,
-    PolyExistentialTraitRef, PolyFnSig, PolyGenSig, PolyTraitRef, PredicateKind, Region,
-    RegionKind, RegionVid, TraitRef, TyKind, TypeAndMut, UpvarArgs, VarianceDiagInfo,
+    ConstVid, CoroutineArgs, CoroutineArgsParts, EarlyParamRegion, EffectVid, ExistentialPredicate,
+    ExistentialProjection, ExistentialTraitRef, FnSig, GenSig, InlineConstArgs,
+    InlineConstArgsParts, LateParamRegion, ParamConst, ParamTy, PolyExistentialPredicate,
+    PolyExistentialProjection, PolyExistentialTraitRef, PolyFnSig, PolyGenSig, PolyTraitRef,
+    PredicateKind, Region, RegionKind, RegionVid, TraitRef, TyKind, TypeAndMut, UpvarArgs,
+    VarianceDiagInfo,
 };
 pub use self::trait_def::TraitDef;
 pub use self::typeck_results::{
@@ -463,7 +464,7 @@ pub struct CReaderCacheKey {
 #[rustc_pass_by_value]
 pub struct Ty<'tcx>(Interned<'tcx, WithCachedTypeInfo<TyKind<'tcx>>>);
 
-impl ty::EarlyBoundRegion {
+impl EarlyParamRegion {
     /// Does this early bound region have a name? Early bound regions normally
     /// always have names except when using anonymous lifetimes (`'_`).
     pub fn has_name(&self) -> bool {

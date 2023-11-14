@@ -6,7 +6,7 @@ use rustc_hir::def_id::DefId;
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::Span;
 
-use super::{Clause, EarlyBoundRegion, InstantiatedPredicates, ParamConst, ParamTy, Ty, TyCtxt};
+use super::{Clause, InstantiatedPredicates, ParamConst, ParamTy, Ty, TyCtxt};
 
 #[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable)]
 pub enum GenericParamDefKind {
@@ -62,9 +62,9 @@ pub struct GenericParamDef {
 }
 
 impl GenericParamDef {
-    pub fn to_early_bound_region_data(&self) -> ty::EarlyBoundRegion {
+    pub fn to_early_bound_region_data(&self) -> ty::EarlyParamRegion {
         if let GenericParamDefKind::Lifetime = self.kind {
-            ty::EarlyBoundRegion { def_id: self.def_id, index: self.index, name: self.name }
+            ty::EarlyParamRegion { def_id: self.def_id, index: self.index, name: self.name }
         } else {
             bug!("cannot convert a non-lifetime parameter def to an early bound region")
         }
@@ -260,10 +260,10 @@ impl<'tcx> Generics {
         }
     }
 
-    /// Returns the `GenericParamDef` associated with this `EarlyBoundRegion`.
+    /// Returns the `GenericParamDef` associated with this `EarlyParamRegion`.
     pub fn region_param(
         &'tcx self,
-        param: &EarlyBoundRegion,
+        param: &ty::EarlyParamRegion,
         tcx: TyCtxt<'tcx>,
     ) -> &'tcx GenericParamDef {
         let param = self.param_at(param.index as usize, tcx);

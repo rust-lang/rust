@@ -146,11 +146,11 @@ fn is_free_region(region: Region<'_>) -> bool {
         // These correspond to `T: 'a` relationships:
         //
         //     struct Foo<'a, T> {
-        //         field: &'a T, // this would generate a ReEarlyBound referencing `'a`
+        //         field: &'a T, // this would generate a ReEarlyParam referencing `'a`
         //     }
         //
         // We care about these, so fall through.
-        ty::ReEarlyBound(_) => true,
+        ty::ReEarlyParam(_) => true,
 
         // These correspond to `T: 'static` relationships which can be
         // rather surprising.
@@ -173,7 +173,7 @@ fn is_free_region(region: Region<'_>) -> bool {
         ty::ReError(_) => false,
 
         // These regions don't appear in types from type declarations:
-        ty::ReErased | ty::ReVar(..) | ty::RePlaceholder(..) | ty::ReFree(..) => {
+        ty::ReErased | ty::ReVar(..) | ty::RePlaceholder(..) | ty::ReLateParam(..) => {
             bug!("unexpected region in outlives inference: {:?}", region);
         }
     }

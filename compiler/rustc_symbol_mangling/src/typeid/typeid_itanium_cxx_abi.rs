@@ -282,12 +282,12 @@ fn encode_region<'tcx>(
             s.push('E');
             compress(dict, DictKey::Region(region), &mut s);
         }
-        // FIXME(@lcnr): Why is `ReEarlyBound` reachable here.
-        RegionKind::ReEarlyBound(..) | RegionKind::ReErased => {
+        // FIXME(@lcnr): Why is `ReEarlyParam` reachable here.
+        RegionKind::ReEarlyParam(..) | RegionKind::ReErased => {
             s.push_str("u6region");
             compress(dict, DictKey::Region(region), &mut s);
         }
-        RegionKind::ReFree(..)
+        RegionKind::ReLateParam(..)
         | RegionKind::ReStatic
         | RegionKind::ReError(_)
         | RegionKind::ReVar(..)

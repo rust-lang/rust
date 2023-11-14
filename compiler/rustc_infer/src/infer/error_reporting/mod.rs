@@ -168,7 +168,7 @@ pub(super) fn note_and_explain_region<'tcx>(
     alt_span: Option<Span>,
 ) {
     let (description, span) = match *region {
-        ty::ReEarlyBound(_) | ty::ReFree(_) | ty::RePlaceholder(_) | ty::ReStatic => {
+        ty::ReEarlyParam(_) | ty::ReLateParam(_) | ty::RePlaceholder(_) | ty::ReStatic => {
             msg_span_from_named_region(tcx, region, alt_span)
         }
 
@@ -202,7 +202,7 @@ fn msg_span_from_named_region<'tcx>(
     alt_span: Option<Span>,
 ) -> (String, Option<Span>) {
     match *region {
-        ty::ReEarlyBound(ref br) => {
+        ty::ReEarlyParam(ref br) => {
             let scope = region.free_region_binding_scope(tcx).expect_local();
             let span = if let Some(param) =
                 tcx.hir().get_generics(scope).and_then(|generics| generics.get_named(br.name))
@@ -218,7 +218,7 @@ fn msg_span_from_named_region<'tcx>(
             };
             (text, Some(span))
         }
-        ty::ReFree(ref fr) => {
+        ty::ReLateParam(ref fr) => {
             if !fr.bound_region.is_named()
                 && let Some((ty, _)) = find_anon_type(tcx, region, &fr.bound_region)
             {
@@ -315,7 +315,7 @@ pub fn unexpected_hidden_region_diagnostic<'tcx>(
 
     // Explain the region we are capturing.
     match *hidden_region {
-        ty::ReEarlyBound(_) | ty::ReFree(_) | ty::ReStatic => {
+        ty::ReEarlyParam(_) | ty::ReLateParam(_) | ty::ReStatic => {
             // Assuming regionck succeeded (*), we ought to always be
             // capturing *some* region from the fn header, and hence it
             // ought to be free. So under normal circumstances, we will go
@@ -2364,7 +2364,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             span,
             format!("{labeled_user_string} may not live long enough"),
             match sub.kind() {
-                ty::ReEarlyBound(_) | ty::ReFree(_) if sub.has_name() => error_code!(E0309),
+                ty::ReEarlyParam(_) | ty::ReLateParam(_) if sub.has_name() => error_code!(E0309),
                 ty::ReStatic => error_code!(E0310),
                 _ => error_code!(E0311),
             },
@@ -2372,7 +2372,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
         '_explain: {
             let (description, span) = match sub.kind() {
-                ty::ReEarlyBound(_) | ty::ReFree(_) | ty::ReStatic => {
+                ty::ReEarlyParam(_) | ty::ReLateParam(_) | ty::ReStatic => {
                     msg_span_from_named_region(self.tcx, sub, Some(span))
                 }
                 _ => (format!("lifetime `{sub}`"), Some(span)),
@@ -2515,7 +2515,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
         let (lifetime_def_id, lifetime_scope) = match self.tcx.is_suitable_region(lifetime) {
             Some(info) if !lifetime.has_name() => {
-                (info.boundregion.get_id().unwrap().expect_local(), info.def_id)
+                (info.bound_region.get_id().unwrap().expect_local(), info.def_id)
             }
             _ => return lifetime.get_name_or_anon().to_string(),
         };
@@ -2714,8 +2714,8 @@ impl<'tcx> TypeRelation<'tcx> for SameTypeModuloInfer<'_, 'tcx> {
         a: ty::Region<'tcx>,
         b: ty::Region<'tcx>,
     ) -> RelateResult<'tcx, ty::Region<'tcx>> {
-        if (a.is_var() && b.is_free_or_static())
-            || (b.is_var() && a.is_free_or_static())
+        if (a.is_var() && b.is_free())
+            || (b.is_var() && a.is_free())
             || (a.is_var() && b.is_var())
             || a == b
         {
@@ -2779,7 +2779,9 @@ impl<'tcx> InferCtxt<'tcx> {
                 br_string(br),
                 self.tcx.associated_item(def_id).name
             ),
-            infer::EarlyBoundRegion(_, name) => format!(" for lifetime parameter `{name}`"),
+            infer::RegionParameterDefinition(_, name) => {
+                format!(" for lifetime parameter `{name}`")
+            }
             infer::UpvarRegion(ref upvar_id, _) => {
                 let var_name = self.tcx.hir().name(upvar_id.var_path.hir_id);
                 format!(" for capture of `{var_name}` by closure")

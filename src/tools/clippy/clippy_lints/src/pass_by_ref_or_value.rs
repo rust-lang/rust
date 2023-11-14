@@ -175,7 +175,7 @@ impl<'tcx> PassByRefOrValue {
                         },
                         // Early bound regions on functions are either from the containing item, are bounded by another
                         // lifetime, or are used as a bound for a type or lifetime.
-                        RegionKind::ReEarlyBound(..) => continue,
+                        RegionKind::ReEarlyParam(..) => continue,
                         _ => (),
                     }
 

@@ -23,14 +23,14 @@ pub(crate) struct RegionName {
 }
 
 /// Denotes the source of a region that is named by a `RegionName`. For example, a free region that
-/// was named by the user would get `NamedFreeRegion` and `'static` lifetime would get `Static`.
+/// was named by the user would get `NamedLateParamRegion` and `'static` lifetime would get `Static`.
 /// This helps to print the right kinds of diagnostics.
 #[derive(Debug, Clone)]
 pub(crate) enum RegionNameSource {
     /// A bound (not free) region that was instantiated at the def site (not an HRTB).
-    NamedEarlyBoundRegion(Span),
+    NamedEarlyParamRegion(Span),
     /// A free region that the user has a name (`'a`) for.
-    NamedFreeRegion(Span),
+    NamedLateParamRegion(Span),
     /// The `'static` region.
     Static,
     /// The free region corresponding to the environment of a closure.
@@ -69,8 +69,8 @@ pub(crate) enum RegionNameHighlight {
 impl RegionName {
     pub(crate) fn was_named(&self) -> bool {
         match self.source {
-            RegionNameSource::NamedEarlyBoundRegion(..)
-            | RegionNameSource::NamedFreeRegion(..)
+            RegionNameSource::NamedEarlyParamRegion(..)
+            | RegionNameSource::NamedLateParamRegion(..)
             | RegionNameSource::Static => true,
             RegionNameSource::SynthesizedFreeEnvRegion(..)
             | RegionNameSource::AnonRegionFromArgument(..)
@@ -85,8 +85,8 @@ impl RegionName {
     pub(crate) fn span(&self) -> Option<Span> {
         match self.source {
             RegionNameSource::Static => None,
-            RegionNameSource::NamedEarlyBoundRegion(span)
-            | RegionNameSource::NamedFreeRegion(span)
+            RegionNameSource::NamedEarlyParamRegion(span)
+            | RegionNameSource::NamedLateParamRegion(span)
             | RegionNameSource::SynthesizedFreeEnvRegion(span, _)
             | RegionNameSource::AnonRegionFromUpvar(span, _)
             | RegionNameSource::AnonRegionFromYieldTy(span, _)
@@ -104,8 +104,8 @@ impl RegionName {
 
     pub(crate) fn highlight_region_name(&self, diag: &mut Diagnostic) {
         match &self.source {
-            RegionNameSource::NamedFreeRegion(span)
-            | RegionNameSource::NamedEarlyBoundRegion(span) => {
+            RegionNameSource::NamedLateParamRegion(span)
+            | RegionNameSource::NamedEarlyParamRegion(span) => {
                 diag.span_label(*span, format!("lifetime `{self}` defined here"));
             }
             RegionNameSource::SynthesizedFreeEnvRegion(span, note) => {
@@ -280,28 +280,31 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
 
         debug!("give_region_a_name: error_region = {:?}", error_region);
         match *error_region {
-            ty::ReEarlyBound(ebr) => ebr.has_name().then(|| {
+            ty::ReEarlyParam(ebr) => ebr.has_name().then(|| {
                 let span = tcx.hir().span_if_local(ebr.def_id).unwrap_or(DUMMY_SP);
-                RegionName { name: ebr.name, source: RegionNameSource::NamedEarlyBoundRegion(span) }
+                RegionName { name: ebr.name, source: RegionNameSource::NamedEarlyParamRegion(span) }
             }),
 
             ty::ReStatic => {
                 Some(RegionName { name: kw::StaticLifetime, source: RegionNameSource::Static })
             }
 
-            ty::ReFree(free_region) => match free_region.bound_region {
+            ty::ReLateParam(late_param) => match late_param.bound_region {
                 ty::BoundRegionKind::BrNamed(region_def_id, name) => {
                     // Get the span to point to, even if we don't use the name.
                     let span = tcx.hir().span_if_local(region_def_id).unwrap_or(DUMMY_SP);
                     debug!(
                         "bound region named: {:?}, is_named: {:?}",
                         name,
-                        free_region.bound_region.is_named()
+                        late_param.bound_region.is_named()
                     );
 
-                    if free_region.bound_region.is_named() {
+                    if late_param.bound_region.is_named() {
                         // A named region that is actually named.
-                        Some(RegionName { name, source: RegionNameSource::NamedFreeRegion(span) })
+                        Some(RegionName {
+                            name,
+                            source: RegionNameSource::NamedLateParamRegion(span),
+                        })
                     } else if tcx.asyncness(self.mir_hir_id().owner).is_async() {
                         // If we spuriously thought that the region is named, we should let the
                         // system generate a true name for error messages. Currently this can
@@ -847,7 +850,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         &self,
         fr: RegionVid,
     ) -> Option<RegionName> {
-        let ty::ReEarlyBound(region) = *self.to_error_region(fr)? else {
+        let ty::ReEarlyParam(region) = *self.to_error_region(fr)? else {
             return None;
         };
         if region.has_name() {
@@ -862,7 +865,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
 
         let found = tcx
             .any_free_region_meets(&tcx.type_of(region_parent).instantiate_identity(), |r| {
-                *r == ty::ReEarlyBound(region)
+                *r == ty::ReEarlyParam(region)
             });
 
         Some(RegionName {
@@ -881,7 +884,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         &self,
         fr: RegionVid,
     ) -> Option<RegionName> {
-        let ty::ReEarlyBound(region) = *self.to_error_region(fr)? else {
+        let ty::ReEarlyParam(region) = *self.to_error_region(fr)? else {
             return None;
         };
         if region.has_name() {
@@ -943,7 +946,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         &self,
         clauses: &[ty::Clause<'tcx>],
         ty: Ty<'tcx>,
-        region: ty::EarlyBoundRegion,
+        region: ty::EarlyParamRegion,
     ) -> bool {
         let tcx = self.infcx.tcx;
         ty.walk().any(|arg| {
@@ -956,7 +959,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                         ty::ClauseKind::Projection(data) if data.projection_ty.self_ty() == ty => {}
                         _ => return false,
                     }
-                    tcx.any_free_region_meets(pred, |r| *r == ty::ReEarlyBound(region))
+                    tcx.any_free_region_meets(pred, |r| *r == ty::ReEarlyParam(region))
                 })
             } else {
                 false

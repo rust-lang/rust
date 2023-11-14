@@ -340,8 +340,8 @@ where
             ty::RePlaceholder(..)
             | ty::ReVar(..)
             | ty::ReStatic
-            | ty::ReEarlyBound(..)
-            | ty::ReFree(..) => {
+            | ty::ReEarlyParam(..)
+            | ty::ReLateParam(..) => {
                 // see common code below
             }
         }

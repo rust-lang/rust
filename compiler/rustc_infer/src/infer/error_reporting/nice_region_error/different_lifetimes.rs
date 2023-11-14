@@ -70,9 +70,9 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
 
         let anon_reg_sub = self.tcx().is_suitable_region(sub)?;
         let scope_def_id_sup = anon_reg_sup.def_id;
-        let bregion_sup = anon_reg_sup.boundregion;
+        let bregion_sup = anon_reg_sup.bound_region;
         let scope_def_id_sub = anon_reg_sub.def_id;
-        let bregion_sub = anon_reg_sub.boundregion;
+        let bregion_sub = anon_reg_sub.bound_region;
 
         let ty_sup = find_anon_type(self.tcx(), sup, &bregion_sup)?;
 

@@ -465,9 +465,9 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
                                     .walk()
                                     .filter_map(|arg| {
                                         arg.as_region().and_then(|lifetime| match lifetime.kind() {
-                                            ty::ReEarlyBound(r) => Some(r.def_id),
+                                            ty::ReEarlyParam(r) => Some(r.def_id),
                                             ty::ReBound(_, r) => r.kind.get_id(),
-                                            ty::ReFree(r) => r.bound_region.get_id(),
+                                            ty::ReLateParam(r) => r.bound_region.get_id(),
                                             ty::ReStatic
                                             | ty::ReVar(_)
                                             | ty::RePlaceholder(_)

@@ -35,12 +35,14 @@ pub struct Discr<'tcx> {
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum CheckRegions {
     No,
-    /// Only permit early bound regions. This is useful for Adts which
-    /// can never have late bound regions.
-    OnlyEarlyBound,
-    /// Permit both late bound and early bound regions. Use this for functions,
-    /// which frequently have late bound regions.
-    Bound,
+    /// Only permit parameter regions. This should be used
+    /// for everything apart from functions, which may use
+    /// `ReBound` to represent late-bound regions.
+    OnlyParam,
+    /// Check region parameters from a function definition.
+    /// Allows `ReEarlyParam` and `ReBound` to handle early
+    /// and late-bound region parameters.
+    FromFunction,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -431,7 +433,7 @@ impl<'tcx> TyCtxt<'tcx> {
             .filter(|&(_, k)| {
                 match k.unpack() {
                     GenericArgKind::Lifetime(region) => match region.kind() {
-                        ty::ReEarlyBound(ref ebr) => {
+                        ty::ReEarlyParam(ref ebr) => {
                             !impl_generics.region_param(ebr, self).pure_wrt_drop
                         }
                         // Error: not a region param
@@ -468,17 +470,17 @@ impl<'tcx> TyCtxt<'tcx> {
         for arg in args {
             match arg.unpack() {
                 GenericArgKind::Lifetime(lt) => match (ignore_regions, lt.kind()) {
-                    (CheckRegions::Bound, ty::ReBound(di, reg)) => {
+                    (CheckRegions::FromFunction, ty::ReBound(di, reg)) => {
                         if !seen_late.insert((di, reg)) {
                             return Err(NotUniqueParam::DuplicateParam(lt.into()));
                         }
                     }
-                    (CheckRegions::OnlyEarlyBound | CheckRegions::Bound, ty::ReEarlyBound(p)) => {
+                    (CheckRegions::OnlyParam | CheckRegions::FromFunction, ty::ReEarlyParam(p)) => {
                         if !seen.insert(p.index) {
                             return Err(NotUniqueParam::DuplicateParam(lt.into()));
                         }
                     }
-                    (CheckRegions::OnlyEarlyBound | CheckRegions::Bound, _) => {
+                    (CheckRegions::OnlyParam | CheckRegions::FromFunction, _) => {
                         return Err(NotUniqueParam::NotParam(lt.into()));
                     }
                     (CheckRegions::No, _) => {}

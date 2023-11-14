@@ -9,7 +9,7 @@
 
 use crate::rustc_internal::{IndexMap, RustcInternal};
 use crate::rustc_smir::hir::def::DefKind;
-use crate::rustc_smir::stable_mir::ty::{BoundRegion, EarlyBoundRegion, Region};
+use crate::rustc_smir::stable_mir::ty::{BoundRegion, EarlyParamRegion, Region};
 use rustc_hir as hir;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{alloc_range, AllocId};
@@ -1691,7 +1691,7 @@ impl<'tcx> Stable<'tcx> for ty::RegionKind<'tcx> {
     fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
         use stable_mir::ty::RegionKind;
         match self {
-            ty::ReEarlyBound(early_reg) => RegionKind::ReEarlyBound(EarlyBoundRegion {
+            ty::ReEarlyParam(early_reg) => RegionKind::ReEarlyParam(EarlyParamRegion {
                 def_id: tables.region_def(early_reg.def_id),
                 index: early_reg.index,
                 name: early_reg.name.to_string(),
