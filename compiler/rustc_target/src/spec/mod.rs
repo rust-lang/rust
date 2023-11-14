@@ -1604,6 +1604,7 @@ supported_targets! {
     ("aarch64-uwp-windows-msvc", aarch64_uwp_windows_msvc),
     ("x86_64-pc-windows-msvc", x86_64_pc_windows_msvc),
     ("x86_64-uwp-windows-msvc", x86_64_uwp_windows_msvc),
+    ("x86_64-win7-windows-msvc", x86_64_win7_windows_msvc),
     ("i686-pc-windows-msvc", i686_pc_windows_msvc),
     ("i686-uwp-windows-msvc", i686_uwp_windows_msvc),
     ("i586-pc-windows-msvc", i586_pc_windows_msvc),
