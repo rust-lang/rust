@@ -12,7 +12,7 @@ use rustc_hir::LifetimeParamKind;
 use rustc_hir::{BindingAnnotation, ByRef, GenericArg, GenericParam, GenericParamKind, Node, Term};
 use rustc_hir::{GenericBound, PatKind, RangeEnd, TraitBoundModifier};
 use rustc_span::source_map::SourceMap;
-use rustc_span::symbol::{kw, Ident, IdentPrinter, Symbol};
+use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::{self, FileName};
 use rustc_target::spec::abi::Abi;
 
@@ -136,9 +136,8 @@ impl<'a> PrintState<'a> for State<'a> {
         &mut self.comments
     }
 
-    fn print_ident(&mut self, ident: Ident) {
-        self.word(IdentPrinter::for_ast_ident(ident, ident.is_raw_guess()).to_string());
-        self.ann.post(self, AnnNode::Name(&ident.name))
+    fn ann_post(&mut self, ident: Ident) {
+        self.ann.post(self, AnnNode::Name(&ident.name));
     }
 
     fn print_generic_args(&mut self, _: &ast::GenericArgs, _colons_before_params: bool) {

@@ -258,8 +258,13 @@ impl std::ops::DerefMut for State<'_> {
 
 pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::DerefMut {
     fn comments(&mut self) -> &mut Option<Comments<'a>>;
-    fn print_ident(&mut self, ident: Ident);
+    fn ann_post(&mut self, ident: Ident);
     fn print_generic_args(&mut self, args: &ast::GenericArgs, colons_before_params: bool);
+
+    fn print_ident(&mut self, ident: Ident) {
+        self.word(IdentPrinter::for_ast_ident(ident, ident.is_raw_guess()).to_string());
+        self.ann_post(ident)
+    }
 
     fn strsep<T, F>(
         &mut self,
@@ -837,9 +842,8 @@ impl<'a> PrintState<'a> for State<'a> {
         &mut self.comments
     }
 
-    fn print_ident(&mut self, ident: Ident) {
-        self.word(IdentPrinter::for_ast_ident(ident, ident.is_raw_guess()).to_string());
-        self.ann.post(self, AnnNode::Ident(&ident))
+    fn ann_post(&mut self, ident: Ident) {
+        self.ann.post(self, AnnNode::Ident(&ident));
     }
 
     fn print_generic_args(&mut self, args: &ast::GenericArgs, colons_before_params: bool) {
