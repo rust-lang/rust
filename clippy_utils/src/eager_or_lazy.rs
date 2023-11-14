@@ -9,7 +9,7 @@
 //!  - or-fun-call
 //!  - option-if-let-else
 
-use crate::consts::{constant, FullInt};
+use crate::consts::constant;
 use crate::ty::{all_predicates_of, is_copy};
 use crate::visitors::is_const_evaluatable;
 use rustc_hir::def::{DefKind, Res};
@@ -195,8 +195,8 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
                     }
                 },
 
-                // `-i32::MIN` panics with overflow checks, but `constant` lets us rule out some simple cases
-                ExprKind::Unary(UnOp::Neg, _) if constant(self.cx, self.cx.typeck_results(), e).is_none() => {
+                // `-i32::MIN` panics with overflow checks
+                ExprKind::Unary(UnOp::Neg, right) if constant(self.cx, self.cx.typeck_results(), right).is_none() => {
                     self.eagerness |= NoChange;
                 },
 
@@ -216,31 +216,28 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
                     ) => {},
 
                 // `>>` and `<<` panic when the right-hand side is greater than or equal to the number of bits in the
-                // type of the left-hand side, or is negative. Doesn't need `constant` on the whole expression
-                // because only the right side matters.
-                ExprKind::Binary(op, left, right)
+                // type of the left-hand side, or is negative.
+                // We intentionally only check if the right-hand isn't a constant, because even if the suggestion would
+                // overflow with constants, the compiler emits an error for it and the programmer will have to fix it.
+                // Thus, we would realistically only delay the lint.
+                ExprKind::Binary(op, _, right)
                     if matches!(op.node, BinOpKind::Shl | BinOpKind::Shr)
-                        && let left_ty = self.cx.typeck_results().expr_ty(left)
-                        && let left_bits = left_ty.int_size_and_signed(self.cx.tcx).0.bits()
-                        && constant(self.cx, self.cx.typeck_results(), right)
-                            .and_then(|c| c.int_value(self.cx, left_ty))
-                            .map_or(true, |c| match c {
-                                FullInt::S(i) => i >= i128::from(left_bits) || i.is_negative(),
-                                FullInt::U(i) => i >= u128::from(left_bits),
-                            }) =>
+                        && constant(self.cx, self.cx.typeck_results(), right).is_none() =>
                 {
                     self.eagerness |= NoChange;
                 },
 
-                // Arithmetic operations panic on under-/overflow with overflow checks, so don't suggest changing it:
-                // https://doc.rust-lang.org/stable/reference/expressions/operator-expr.html#overflow
-                // Using `constant` lets us allow some simple cases where we know for sure it can't overflow
-                ExprKind::Binary(op, ..)
+                // Similar to `>>` and `<<`, we only want to avoid linting entirely if both sides are unknown and the
+                // compiler can't emit an error for an overflowing expression.
+                // Suggesting eagerness for `true.then(|| i32::MAX + 1)` is okay because the compiler will emit an
+                // error and it's good to have the eagerness warning up front when the user fixes the logic error.
+                ExprKind::Binary(op, left, right)
                     if matches!(
                         op.node,
-                        BinOpKind::Add | BinOpKind::Mul | BinOpKind::Sub | BinOpKind::Div | BinOpKind::Rem
+                        BinOpKind::Add | BinOpKind::Sub | BinOpKind::Mul | BinOpKind::Div | BinOpKind::Rem
                     ) && !self.cx.typeck_results().expr_ty(e).is_floating_point()
-                        && constant(self.cx, self.cx.typeck_results(), e).is_none() =>
+                        && (constant(self.cx, self.cx.typeck_results(), left).is_none()
+                            || constant(self.cx, self.cx.typeck_results(), right).is_none()) =>
                 {
                     self.eagerness |= NoChange;
                 },

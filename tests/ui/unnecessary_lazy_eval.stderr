@@ -329,7 +329,23 @@ LL | |     or_else(|_| Ok(ext_str.some_field));
    |       help: use `or(..)` instead: `or(Ok(ext_str.some_field))`
 
 error: unnecessary closure used with `bool::then`
-  --> $DIR/unnecessary_lazy_eval.rs:208:14
+  --> $DIR/unnecessary_lazy_eval.rs:210:14
+   |
+LL |     let _x = false.then(|| i32::MAX + 1);
+   |              ^^^^^^---------------------
+   |                    |
+   |                    help: use `then_some(..)` instead: `then_some(i32::MAX + 1)`
+
+error: unnecessary closure used with `bool::then`
+  --> $DIR/unnecessary_lazy_eval.rs:212:14
+   |
+LL |     let _x = false.then(|| i32::MAX * 2);
+   |              ^^^^^^---------------------
+   |                    |
+   |                    help: use `then_some(..)` instead: `then_some(i32::MAX * 2)`
+
+error: unnecessary closure used with `bool::then`
+  --> $DIR/unnecessary_lazy_eval.rs:214:14
    |
 LL |     let _x = false.then(|| i32::MAX - 1);
    |              ^^^^^^---------------------
@@ -337,7 +353,15 @@ LL |     let _x = false.then(|| i32::MAX - 1);
    |                    help: use `then_some(..)` instead: `then_some(i32::MAX - 1)`
 
 error: unnecessary closure used with `bool::then`
-  --> $DIR/unnecessary_lazy_eval.rs:212:14
+  --> $DIR/unnecessary_lazy_eval.rs:216:14
+   |
+LL |     let _x = false.then(|| i32::MIN - 1);
+   |              ^^^^^^---------------------
+   |                    |
+   |                    help: use `then_some(..)` instead: `then_some(i32::MIN - 1)`
+
+error: unnecessary closure used with `bool::then`
+  --> $DIR/unnecessary_lazy_eval.rs:218:14
    |
 LL |     let _x = false.then(|| (1 + 2 * 3 - 2 / 3 + 9) << 2);
    |              ^^^^^^-------------------------------------
@@ -345,7 +369,7 @@ LL |     let _x = false.then(|| (1 + 2 * 3 - 2 / 3 + 9) << 2);
    |                    help: use `then_some(..)` instead: `then_some((1 + 2 * 3 - 2 / 3 + 9) << 2)`
 
 error: unnecessary closure used with `bool::then`
-  --> $DIR/unnecessary_lazy_eval.rs:214:14
+  --> $DIR/unnecessary_lazy_eval.rs:220:14
    |
 LL |     let _x = false.then(|| 255u8 << 7);
    |              ^^^^^^-------------------
@@ -353,7 +377,31 @@ LL |     let _x = false.then(|| 255u8 << 7);
    |                    help: use `then_some(..)` instead: `then_some(255u8 << 7)`
 
 error: unnecessary closure used with `bool::then`
-  --> $DIR/unnecessary_lazy_eval.rs:220:14
+  --> $DIR/unnecessary_lazy_eval.rs:222:14
+   |
+LL |     let _x = false.then(|| 255u8 << 8);
+   |              ^^^^^^-------------------
+   |                    |
+   |                    help: use `then_some(..)` instead: `then_some(255u8 << 8)`
+
+error: unnecessary closure used with `bool::then`
+  --> $DIR/unnecessary_lazy_eval.rs:224:14
+   |
+LL |     let _x = false.then(|| 255u8 >> 8);
+   |              ^^^^^^-------------------
+   |                    |
+   |                    help: use `then_some(..)` instead: `then_some(255u8 >> 8)`
+
+error: unnecessary closure used with `bool::then`
+  --> $DIR/unnecessary_lazy_eval.rs:227:14
+   |
+LL |     let _x = false.then(|| i32::MIN / -1);
+   |              ^^^^^^----------------------
+   |                    |
+   |                    help: use `then_some(..)` instead: `then_some(i32::MIN / -1)`
+
+error: unnecessary closure used with `bool::then`
+  --> $DIR/unnecessary_lazy_eval.rs:229:14
    |
 LL |     let _x = false.then(|| i32::MAX + -1);
    |              ^^^^^^----------------------
@@ -361,7 +409,7 @@ LL |     let _x = false.then(|| i32::MAX + -1);
    |                    help: use `then_some(..)` instead: `then_some(i32::MAX + -1)`
 
 error: unnecessary closure used with `bool::then`
-  --> $DIR/unnecessary_lazy_eval.rs:222:14
+  --> $DIR/unnecessary_lazy_eval.rs:231:14
    |
 LL |     let _x = false.then(|| -i32::MAX);
    |              ^^^^^^------------------
@@ -369,7 +417,47 @@ LL |     let _x = false.then(|| -i32::MAX);
    |                    help: use `then_some(..)` instead: `then_some(-i32::MAX)`
 
 error: unnecessary closure used with `bool::then`
-  --> $DIR/unnecessary_lazy_eval.rs:229:14
+  --> $DIR/unnecessary_lazy_eval.rs:233:14
+   |
+LL |     let _x = false.then(|| -i32::MIN);
+   |              ^^^^^^------------------
+   |                    |
+   |                    help: use `then_some(..)` instead: `then_some(-i32::MIN)`
+
+error: unnecessary closure used with `bool::then`
+  --> $DIR/unnecessary_lazy_eval.rs:236:14
+   |
+LL |     let _x = false.then(|| 255 >> -7);
+   |              ^^^^^^------------------
+   |                    |
+   |                    help: use `then_some(..)` instead: `then_some(255 >> -7)`
+
+error: unnecessary closure used with `bool::then`
+  --> $DIR/unnecessary_lazy_eval.rs:238:14
+   |
+LL |     let _x = false.then(|| 255 << -1);
+   |              ^^^^^^------------------
+   |                    |
+   |                    help: use `then_some(..)` instead: `then_some(255 << -1)`
+
+error: unnecessary closure used with `bool::then`
+  --> $DIR/unnecessary_lazy_eval.rs:240:14
+   |
+LL |     let _x = false.then(|| 1 / 0);
+   |              ^^^^^^--------------
+   |                    |
+   |                    help: use `then_some(..)` instead: `then_some(1 / 0)`
+
+error: unnecessary closure used with `bool::then`
+  --> $DIR/unnecessary_lazy_eval.rs:242:14
+   |
+LL |     let _x = false.then(|| x << -1);
+   |              ^^^^^^----------------
+   |                    |
+   |                    help: use `then_some(..)` instead: `then_some(x << -1)`
+
+error: unnecessary closure used with `bool::then`
+  --> $DIR/unnecessary_lazy_eval.rs:244:14
    |
 LL |     let _x = false.then(|| x << 2);
    |              ^^^^^^---------------
@@ -377,12 +465,12 @@ LL |     let _x = false.then(|| x << 2);
    |                    help: use `then_some(..)` instead: `then_some(x << 2)`
 
 error: unnecessary closure used with `bool::then`
-  --> $DIR/unnecessary_lazy_eval.rs:236:14
+  --> $DIR/unnecessary_lazy_eval.rs:258:14
    |
 LL |     let _x = false.then(|| f1 + f2);
    |              ^^^^^^----------------
    |                    |
    |                    help: use `then_some(..)` instead: `then_some(f1 + f2)`
 
-error: aborting due to 47 previous errors
+error: aborting due to 58 previous errors
 
