@@ -12,6 +12,7 @@ Language
 - [Allow explicit `#[repr(Rust)]`](https://github.com/rust-lang/rust/pull/114201/)
 - [closure field capturing: don't depend on alignment of packed fields](https://github.com/rust-lang/rust/pull/115315/)
 - [Enable MIR-based drop-tracking for `async` blocks](https://github.com/rust-lang/rust/pull/107421/)
+- [Stabilize `impl_trait_projections`](https://github.com/rust-lang/rust/pull/115659)
 
 <a id="1.74.0-Compiler"></a>
 
@@ -101,6 +102,7 @@ Compatibility Notes
 - [make Cell::swap panic if the Cells partially overlap](https://github.com/rust-lang/rust/pull/114795/)
 - [Reject invalid crate names in `--extern`](https://github.com/rust-lang/rust/pull/116001/)
 - [Don't resolve generic impls that may be shadowed by dyn built-in impls](https://github.com/rust-lang/rust/pull/114941/)
+- [The new `impl From<{&,&mut} [T; N]> for Vec<T>` is known to cause some inference failures with overly-generic code.](https://github.com/rust-lang/rust/issues/117054) In those examples using the `tui` crate, the combination of `AsRef<_>` and `Into<Vec>` leaves the middle type ambiguous, and the new `impl` adds another possibility, so it now requires an explicit type annotation.
 
 <a id="1.74.0-Internal-Changes"></a>
 
