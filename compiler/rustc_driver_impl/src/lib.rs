@@ -496,10 +496,6 @@ fn run_compiler(
             linker.link()?
         }
 
-        if sess.opts.unstable_opts.perf_stats {
-            sess.print_perf_stats();
-        }
-
         if sess.opts.unstable_opts.print_fuel.is_some() {
             eprintln!(
                 "Fuel used by {}: {}",

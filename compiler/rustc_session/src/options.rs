@@ -1708,8 +1708,6 @@ options! {
         "panic strategy for panics in drops"),
     parse_only: bool = (false, parse_bool, [UNTRACKED],
         "parse only; do not compile, assemble, or link (default: no)"),
-    perf_stats: bool = (false, parse_bool, [UNTRACKED],
-        "print some performance-related statistics (default: no)"),
     plt: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "whether to use the PLT when calling into shared libraries;
         only has effect for PIC code on systems with ELF binaries

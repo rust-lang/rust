@@ -10,7 +10,6 @@ use rustc_trait_selection::traits::query::{
 use rustc_trait_selection::traits::{
     self, FulfillmentErrorCode, ObligationCause, SelectionContext,
 };
-use std::sync::atomic::Ordering;
 
 pub(crate) fn provide(p: &mut Providers) {
     *p = Providers {
@@ -27,7 +26,6 @@ fn normalize_projection_ty<'tcx>(
 ) -> Result<&'tcx Canonical<'tcx, QueryResponse<'tcx, NormalizationResult<'tcx>>>, NoSolution> {
     debug!("normalize_provider(goal={:#?})", goal);
 
-    tcx.sess.perf_stats.normalize_projection_ty.fetch_add(1, Ordering::Relaxed);
     tcx.infer_ctxt().enter_canonical_trait_query(
         &goal,
         |ocx, ParamEnvAnd { param_env, value: goal }| {
@@ -78,7 +76,6 @@ fn normalize_weak_ty<'tcx>(
 ) -> Result<&'tcx Canonical<'tcx, QueryResponse<'tcx, NormalizationResult<'tcx>>>, NoSolution> {
     debug!("normalize_provider(goal={:#?})", goal);
 
-    tcx.sess.perf_stats.normalize_projection_ty.fetch_add(1, Ordering::Relaxed);
     tcx.infer_ctxt().enter_canonical_trait_query(
         &goal,
         |ocx, ParamEnvAnd { param_env, value: goal }| {
