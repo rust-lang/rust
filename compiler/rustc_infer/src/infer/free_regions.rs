@@ -87,8 +87,8 @@ impl<'tcx> FreeRegionMap<'tcx> {
         r_b: Region<'tcx>,
     ) -> Region<'tcx> {
         debug!("lub_param_regions(r_a={:?}, r_b={:?})", r_a, r_b);
-        assert!(r_a.is_late_or_early_param());
-        assert!(r_b.is_late_or_early_param());
+        assert!(r_a.is_param());
+        assert!(r_b.is_param());
         let result = if r_a == r_b {
             r_a
         } else {

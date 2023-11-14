@@ -1858,7 +1858,7 @@ impl<'tcx> Region<'tcx> {
     }
 
     /// True for free regions other than `'static`.
-    pub fn is_late_or_early_param(self) -> bool {
+    pub fn is_param(self) -> bool {
         matches!(*self, ty::ReEarlyParam(_) | ty::ReLateParam(_))
     }
 
