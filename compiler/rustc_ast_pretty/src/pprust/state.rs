@@ -397,15 +397,6 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         }
     }
 
-    fn print_meta_item_lit(&mut self, lit: &ast::MetaItemLit) {
-        self.print_token_literal(lit.as_token_lit(), lit.span)
-    }
-
-    fn print_token_literal(&mut self, token_lit: token::Lit, span: Span) {
-        self.maybe_print_comment(span.lo());
-        self.word(token_lit.to_string())
-    }
-
     fn print_string(&mut self, st: &str, style: ast::StrStyle) {
         let st = match style {
             ast::StrStyle::Cooked => format!("\"{}\"", st.escape_debug()),
@@ -416,28 +407,12 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         self.word(st)
     }
 
-    fn print_symbol(&mut self, sym: Symbol, style: ast::StrStyle) {
-        self.print_string(sym.as_str(), style);
-    }
-
     fn print_inner_attributes(&mut self, attrs: &[ast::Attribute]) -> bool {
         self.print_either_attributes(attrs, ast::AttrStyle::Inner, false, true)
     }
 
-    fn print_inner_attributes_no_trailing_hardbreak(&mut self, attrs: &[ast::Attribute]) -> bool {
-        self.print_either_attributes(attrs, ast::AttrStyle::Inner, false, false)
-    }
-
     fn print_outer_attributes(&mut self, attrs: &[ast::Attribute]) -> bool {
         self.print_either_attributes(attrs, ast::AttrStyle::Outer, false, true)
-    }
-
-    fn print_inner_attributes_inline(&mut self, attrs: &[ast::Attribute]) -> bool {
-        self.print_either_attributes(attrs, ast::AttrStyle::Inner, true, true)
-    }
-
-    fn print_outer_attributes_inline(&mut self, attrs: &[ast::Attribute]) -> bool {
-        self.print_either_attributes(attrs, ast::AttrStyle::Outer, true, true)
     }
 
     fn print_either_attributes(
@@ -461,10 +436,6 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             self.hardbreak_if_not_bol();
         }
         printed
-    }
-
-    fn print_attribute(&mut self, attr: &ast::Attribute) {
-        self.print_attribute_inline(attr, false)
     }
 
     fn print_attribute_inline(&mut self, attr: &ast::Attribute, is_inline: bool) {
@@ -516,33 +487,6 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                 self.word_space("=");
                 let token_str = self.meta_item_lit_to_string(lit);
                 self.word(token_str);
-            }
-        }
-        self.end();
-    }
-
-    fn print_meta_list_item(&mut self, item: &ast::NestedMetaItem) {
-        match item {
-            ast::NestedMetaItem::MetaItem(mi) => self.print_meta_item(mi),
-            ast::NestedMetaItem::Lit(lit) => self.print_meta_item_lit(lit),
-        }
-    }
-
-    fn print_meta_item(&mut self, item: &ast::MetaItem) {
-        self.ibox(INDENT_UNIT);
-        match &item.kind {
-            ast::MetaItemKind::Word => self.print_path(&item.path, false, 0),
-            ast::MetaItemKind::NameValue(value) => {
-                self.print_path(&item.path, false, 0);
-                self.space();
-                self.word_space("=");
-                self.print_meta_item_lit(value);
-            }
-            ast::MetaItemKind::List(items) => {
-                self.print_path(&item.path, false, 0);
-                self.popen();
-                self.commasep(Consistent, items, |s, i| s.print_meta_list_item(i));
-                self.pclose();
             }
         }
         self.end();
@@ -839,17 +783,6 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         Self::to_string(|s| s.print_type(ty))
     }
 
-    fn bounds_to_string(&self, bounds: &[ast::GenericBound]) -> String {
-        Self::to_string(|s| s.print_type_bounds(bounds))
-    }
-
-    fn where_bound_predicate_to_string(
-        &self,
-        where_bound_predicate: &ast::WhereBoundPredicate,
-    ) -> String {
-        Self::to_string(|s| s.print_where_bound_predicate(where_bound_predicate))
-    }
-
     fn pat_to_string(&self, pat: &ast::Pat) -> String {
         Self::to_string(|s| s.print_pat(pat))
     }
@@ -862,14 +795,6 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         Self::to_string(|s| s.print_meta_item_lit(lit))
     }
 
-    fn tt_to_string(&self, tt: &TokenTree) -> String {
-        Self::to_string(|s| s.print_tt(tt, false))
-    }
-
-    fn tts_to_string(&self, tokens: &TokenStream) -> String {
-        Self::to_string(|s| s.print_tts(tokens, false))
-    }
-
     fn stmt_to_string(&self, stmt: &ast::Stmt) -> String {
         Self::to_string(|s| s.print_stmt(stmt))
     }
@@ -878,20 +803,8 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         Self::to_string(|s| s.print_item(i))
     }
 
-    fn assoc_item_to_string(&self, i: &ast::AssocItem) -> String {
-        Self::to_string(|s| s.print_assoc_item(i))
-    }
-
-    fn foreign_item_to_string(&self, i: &ast::ForeignItem) -> String {
-        Self::to_string(|s| s.print_foreign_item(i))
-    }
-
     fn path_to_string(&self, p: &ast::Path) -> String {
         Self::to_string(|s| s.print_path(p, false, 0))
-    }
-
-    fn path_segment_to_string(&self, p: &ast::PathSegment) -> String {
-        Self::to_string(|s| s.print_path_segment(p, false))
     }
 
     fn vis_to_string(&self, v: &ast::Visibility) -> String {
@@ -908,20 +821,8 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         })
     }
 
-    fn meta_list_item_to_string(&self, li: &ast::NestedMetaItem) -> String {
-        Self::to_string(|s| s.print_meta_list_item(li))
-    }
-
     fn attr_item_to_string(&self, ai: &ast::AttrItem) -> String {
         Self::to_string(|s| s.print_attr_item(ai, ai.path.span))
-    }
-
-    fn attribute_to_string(&self, attr: &ast::Attribute) -> String {
-        Self::to_string(|s| s.print_attribute(attr))
-    }
-
-    fn param_to_string(&self, arg: &ast::Param) -> String {
-        Self::to_string(|s| s.print_param(arg, false))
     }
 
     fn to_string(f: impl FnOnce(&mut State<'_>)) -> String {
@@ -1811,5 +1712,88 @@ impl<'a> State<'a> {
             ast::IsAuto::Yes => self.word_nbsp("auto"),
             ast::IsAuto::No => {}
         }
+    }
+
+    fn print_meta_item_lit(&mut self, lit: &ast::MetaItemLit) {
+        self.print_token_literal(lit.as_token_lit(), lit.span)
+    }
+
+    fn print_token_literal(&mut self, token_lit: token::Lit, span: Span) {
+        self.maybe_print_comment(span.lo());
+        self.word(token_lit.to_string())
+    }
+
+    fn print_symbol(&mut self, sym: Symbol, style: ast::StrStyle) {
+        self.print_string(sym.as_str(), style);
+    }
+
+    fn print_inner_attributes_no_trailing_hardbreak(&mut self, attrs: &[ast::Attribute]) -> bool {
+        self.print_either_attributes(attrs, ast::AttrStyle::Inner, false, false)
+    }
+
+    fn print_outer_attributes_inline(&mut self, attrs: &[ast::Attribute]) -> bool {
+        self.print_either_attributes(attrs, ast::AttrStyle::Outer, true, true)
+    }
+
+    fn print_attribute(&mut self, attr: &ast::Attribute) {
+        self.print_attribute_inline(attr, false)
+    }
+
+    fn print_meta_list_item(&mut self, item: &ast::NestedMetaItem) {
+        match item {
+            ast::NestedMetaItem::MetaItem(mi) => self.print_meta_item(mi),
+            ast::NestedMetaItem::Lit(lit) => self.print_meta_item_lit(lit),
+        }
+    }
+
+    fn print_meta_item(&mut self, item: &ast::MetaItem) {
+        self.ibox(INDENT_UNIT);
+        match &item.kind {
+            ast::MetaItemKind::Word => self.print_path(&item.path, false, 0),
+            ast::MetaItemKind::NameValue(value) => {
+                self.print_path(&item.path, false, 0);
+                self.space();
+                self.word_space("=");
+                self.print_meta_item_lit(value);
+            }
+            ast::MetaItemKind::List(items) => {
+                self.print_path(&item.path, false, 0);
+                self.popen();
+                self.commasep(Consistent, items, |s, i| s.print_meta_list_item(i));
+                self.pclose();
+            }
+        }
+        self.end();
+    }
+
+    pub(crate) fn bounds_to_string(&self, bounds: &[ast::GenericBound]) -> String {
+        Self::to_string(|s| s.print_type_bounds(bounds))
+    }
+
+    pub(crate) fn where_bound_predicate_to_string(
+        &self,
+        where_bound_predicate: &ast::WhereBoundPredicate,
+    ) -> String {
+        Self::to_string(|s| s.print_where_bound_predicate(where_bound_predicate))
+    }
+
+    pub(crate) fn tt_to_string(&self, tt: &TokenTree) -> String {
+        Self::to_string(|s| s.print_tt(tt, false))
+    }
+
+    pub(crate) fn tts_to_string(&self, tokens: &TokenStream) -> String {
+        Self::to_string(|s| s.print_tts(tokens, false))
+    }
+
+    pub(crate) fn path_segment_to_string(&self, p: &ast::PathSegment) -> String {
+        Self::to_string(|s| s.print_path_segment(p, false))
+    }
+
+    pub(crate) fn meta_list_item_to_string(&self, li: &ast::NestedMetaItem) -> String {
+        Self::to_string(|s| s.print_meta_list_item(li))
+    }
+
+    pub(crate) fn attribute_to_string(&self, attr: &ast::Attribute) -> String {
+        Self::to_string(|s| s.print_attribute(attr))
     }
 }
