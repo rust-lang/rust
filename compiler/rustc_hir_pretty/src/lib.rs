@@ -1,3 +1,6 @@
+//! HIR pretty-printing is layered on top of AST pretty-printing. A number of
+//! the definitions in this file have equivalents in `rustc_ast_pretty`.
+
 #![recursion_limit = "256"]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]

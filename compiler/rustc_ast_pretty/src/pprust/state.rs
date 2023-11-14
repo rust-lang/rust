@@ -1,3 +1,7 @@
+//! AST pretty printing.
+//!
+//! Note that HIR pretty printing is layered on top of this crate.
+
 mod expr;
 mod item;
 
@@ -256,6 +260,7 @@ impl std::ops::DerefMut for State<'_> {
     }
 }
 
+/// This trait is used for both AST and HIR pretty-printing.
 pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::DerefMut {
     fn comments(&mut self) -> &mut Option<Comments<'a>>;
     fn ann_post(&mut self, ident: Ident);
