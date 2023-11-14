@@ -13,7 +13,7 @@ help: instead, you are more likely to want to change one of the arguments to be 
    |
 LL |     x: &usize,
    |        +
-help: ...or alternatively, to want to return an owned value
+help: ...or alternatively, you might want to return an owned value
    |
 LL - ) -> &usize {
 LL + ) -> usize {

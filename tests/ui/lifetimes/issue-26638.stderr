@@ -25,7 +25,7 @@ help: instead, you are more likely to want to change the argument to be borrowed
    |
 LL | fn parse_type_2(iter: &fn(&u8)->&u8) -> &str { iter() }
    |                       +
-help: ...or alternatively, to want to return an owned value
+help: ...or alternatively, you might want to return an owned value
    |
 LL | fn parse_type_2(iter: fn(&u8)->&u8) -> String { iter() }
    |                                        ~~~~~~

@@ -54,7 +54,7 @@ help: instead, you are more likely to want to change the argument to be borrowed
    |
 LL | fn i(_x: &isize) -> &isize {
    |          +
-help: ...or alternatively, to want to return an owned value
+help: ...or alternatively, you might want to return an owned value
    |
 LL - fn i(_x: isize) -> &isize {
 LL + fn i(_x: isize) -> isize {
@@ -75,7 +75,7 @@ help: instead, you are more likely to want to change the argument to be borrowed
    |
 LL | fn j(_x: &StaticStr) -> &isize {
    |          +
-help: ...or alternatively, to want to return an owned value
+help: ...or alternatively, you might want to return an owned value
    |
 LL - fn j(_x: StaticStr) -> &isize {
 LL + fn j(_x: StaticStr) -> isize {
@@ -96,7 +96,7 @@ help: instead, you are more likely to want to change the argument to be borrowed
    |
 LL | fn k<'a, T: WithLifetime<'a>>(_x: &T::Output) -> &isize {
    |                                   +
-help: ...or alternatively, to want to return an owned value
+help: ...or alternatively, you might want to return an owned value
    |
 LL - fn k<'a, T: WithLifetime<'a>>(_x: T::Output) -> &isize {
 LL + fn k<'a, T: WithLifetime<'a>>(_x: T::Output) -> isize {
@@ -117,7 +117,7 @@ help: instead, you are more likely to want to change one of the arguments to be 
    |
 LL | fn l<'a>(_: &&'a str, _: &&'a str) -> &str { "" }
    |             +            +
-help: ...or alternatively, to want to return an owned value
+help: ...or alternatively, you might want to return an owned value
    |
 LL | fn l<'a>(_: &'a str, _: &'a str) -> String { "" }
    |                                     ~~~~~~

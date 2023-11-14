@@ -3012,7 +3012,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                                 sugg,
                                 Applicability::MaybeIncorrect,
                             );
-                            "...or alternatively,"
+                            "...or alternatively, you might want"
                         } else if let Some((kind, _span)) =
                             self.diagnostic_metadata.current_function
                             && let FnKind::Fn(_, _, sig, _, _, _) = kind
@@ -3070,9 +3070,9 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                                     higher_ranked
                                 },
                             );
-                            "...or alternatively,"
+                            "alternatively, you might want"
                         } else {
-                            "instead, you are more likely"
+                            "instead, you are more likely to want"
                         };
                         let mut sugg = vec![(lt.span, String::new())];
                         if let Some((kind, _span)) =
@@ -3105,7 +3105,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                             }
                         };
                         err.multipart_suggestion_verbose(
-                            format!("{pre} to want to return an owned value"),
+                            format!("{pre} to return an owned value"),
                             sugg,
                             Applicability::MaybeIncorrect,
                         );

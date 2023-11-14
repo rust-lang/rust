@@ -29,7 +29,7 @@ help: instead, you are more likely to want to change the argument to be borrowed
    |
 LL | fn wrap(self: &Wrap<{ fn bar(&self) {} }>) -> &() {
    |               +
-help: ...or alternatively, to want to return an owned value
+help: ...or alternatively, you might want to return an owned value
    |
 LL - fn wrap(self: Wrap<{ fn bar(&self) {} }>) -> &() {
 LL + fn wrap(self: Wrap<{ fn bar(&self) {} }>) -> () {
