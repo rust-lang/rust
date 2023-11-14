@@ -198,7 +198,6 @@ These APIs are now stable in const contexts:
 Cargo
 -----
 
-- [Encode URL params correctly for `SourceId` in `Cargo.lock`.](https://github.com/rust-lang/cargo/pull/12280/)
 - [Bail out an error when using `cargo::` in custom build script.](https://github.com/rust-lang/cargo/pull/12332/)
 
 <a id="1.73.0-Misc"></a>
