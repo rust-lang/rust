@@ -12,20 +12,25 @@ use super::{internal, run};
 pub fn write_smir_pretty<'tcx>(tcx: TyCtxt<'tcx>, w: &mut dyn io::Write) -> io::Result<()> {
     writeln!(w, "// WARNING: This is highly experimental output it's intended for stable-mir developers only.").unwrap();
     writeln!(w, "// If you find a bug or want to improve the output open a issue at https://github.com/rust-lang/project-stable-mir.").unwrap();
+
     run(tcx, || {
         let items = stable_mir::all_local_items();
-        items.iter().for_each(|item| {
+        let _ = items.iter().map(|item| -> io::Result<()> {
             // Because we can't return a Result from a closure, we have to unwrap here.
-            writeln!(w, "{}", function_name(*item, tcx)).unwrap();
-            writeln!(w, "{}", function_body(*item, tcx)).unwrap();
-            item.body().blocks.iter().enumerate().for_each(|(index, block)| {
-                writeln!(w, "    bb{}: {{", index).unwrap();
-                block.statements.iter().for_each(|statement| {
-                    writeln!(w, "{}", pretty_statement(&statement.kind, tcx)).unwrap();
-                });
+            writeln!(w, "{}", function_name(*item, tcx))?;
+            writeln!(w, "{}", function_body(*item, tcx))?;
+            let _ = item.body().blocks.iter().enumerate().map(|(index, block)| -> io::Result<()> {
+                writeln!(w, "    bb{}: {{", index)?;
+                let _ = block.statements.iter().map(|statement| -> io::Result<()> {
+                    writeln!(w, "{}", pretty_statement(&statement.kind, tcx))?;
+                    Ok(())
+                }).collect::<Vec<_>>();
                 writeln!(w, "    }}").unwrap();
-            })
-        })
+                Ok(())
+            }).collect::<Vec<_>>();
+            Ok(())
+        }).collect::<Vec<_>>();
+        
     });
     Ok(())
 }
