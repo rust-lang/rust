@@ -1,6 +1,7 @@
 use hir::InFile;
+use syntax::ast;
 
-use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext, Severity};
+use crate::{adjusted_display_range, Diagnostic, DiagnosticCode, DiagnosticsContext, Severity};
 
 // Diagnostic: trait-impl-incorrect-safety
 //
@@ -9,15 +10,28 @@ pub(crate) fn trait_impl_incorrect_safety(
     ctx: &DiagnosticsContext<'_>,
     d: &hir::TraitImplIncorrectSafety,
 ) -> Diagnostic {
-    Diagnostic::new_with_syntax_node_ptr(
-        ctx,
+    Diagnostic::new(
         DiagnosticCode::Ra("trait-impl-incorrect-safety", Severity::Error),
         if d.should_be_safe {
             "unsafe impl for safe trait"
         } else {
             "impl for unsafe trait needs to be unsafe"
         },
-        InFile::new(d.file_id, d.impl_.clone().into()),
+        adjusted_display_range::<ast::Impl>(
+            ctx,
+            InFile { file_id: d.file_id, value: d.impl_.syntax_node_ptr() },
+            &|impl_| {
+                if d.should_be_safe {
+                    Some(match (impl_.unsafe_token(), impl_.impl_token()) {
+                        (None, None) => return None,
+                        (None, Some(t)) | (Some(t), None) => t.text_range(),
+                        (Some(t1), Some(t2)) => t1.text_range().cover(t2.text_range()),
+                    })
+                } else {
+                    impl_.impl_token().map(|t| t.text_range())
+                }
+            },
+        ),
     )
 }
 
@@ -35,10 +49,10 @@ unsafe trait Unsafe {}
   impl Safe for () {}
 
   impl Unsafe for () {}
-//^^^^^^^^^^^^^^^^^^^^^ error: impl for unsafe trait needs to be unsafe
+//^^^^  error: impl for unsafe trait needs to be unsafe
 
   unsafe impl Safe for () {}
-//^^^^^^^^^^^^^^^^^^^^^^^^^^ error: unsafe impl for safe trait
+//^^^^^^^^^^^ error: unsafe impl for safe trait
 
   unsafe impl Unsafe for () {}
 "#,
@@ -57,20 +71,20 @@ struct L<'l>;
   impl<T> Drop for S<T> {}
 
   impl<#[may_dangle] T> Drop for S<T> {}
-//^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ error: impl for unsafe trait needs to be unsafe
+//^^^^ error: impl for unsafe trait needs to be unsafe
 
   unsafe impl<T> Drop for S<T> {}
-//^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ error: unsafe impl for safe trait
+//^^^^^^^^^^^ error: unsafe impl for safe trait
 
   unsafe impl<#[may_dangle] T> Drop for S<T> {}
 
   impl<'l> Drop for L<'l> {}
 
   impl<#[may_dangle] 'l> Drop for L<'l> {}
-//^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ error: impl for unsafe trait needs to be unsafe
+//^^^^ error: impl for unsafe trait needs to be unsafe
 
   unsafe impl<'l> Drop for L<'l> {}
-//^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ error: unsafe impl for safe trait
+//^^^^^^^^^^^ error: unsafe impl for safe trait
 
   unsafe impl<#[may_dangle] 'l> Drop for L<'l> {}
 "#,
@@ -86,14 +100,14 @@ trait Trait {}
   impl !Trait for () {}
 
   unsafe impl !Trait for () {}
-//^^^^^^^^^^^^^^^^^^^^^^^^^^^^ error: unsafe impl for safe trait
+//^^^^^^^^^^^ error: unsafe impl for safe trait
 
 unsafe trait UnsafeTrait {}
 
   impl !UnsafeTrait for () {}
 
   unsafe impl !UnsafeTrait for () {}
-//^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ error: unsafe impl for safe trait
+//^^^^^^^^^^^ error: unsafe impl for safe trait
 
 "#,
         );
@@ -108,7 +122,7 @@ struct S;
   impl S {}
 
   unsafe impl S {}
-//^^^^^^^^^^^^^^^^ error: unsafe impl for safe trait
+//^^^^^^^^^^^ error: unsafe impl for safe trait
 "#,
         );
     }

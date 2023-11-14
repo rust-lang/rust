@@ -278,6 +278,7 @@ struct Foo;
 struct Bar;
 impl core::ops::Deref for Foo {
     type Target = Bar;
+    fn deref(&self) -> &Self::Target { loop {} }
 }
 
 fn main() {
@@ -290,6 +291,7 @@ struct Foo;
 struct Bar;
 impl core::ops::Deref for Foo {
     type Target = Bar;
+    fn deref(&self) -> &Self::Target { loop {} }
 }
 
 fn main() {
