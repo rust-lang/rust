@@ -1292,7 +1292,11 @@ impl<'tcx> Stable<'tcx> for ty::TyKind<'tcx> {
             ty::Bound(debruijn_idx, bound_ty) => {
                 TyKind::Bound(debruijn_idx.as_usize(), bound_ty.stable(tables))
             }
-            ty::Placeholder(..) | ty::CoroutineWitness(..) | ty::Infer(_) | ty::Error(_) => {
+            ty::CoroutineWitness(def_id, args) => TyKind::RigidTy(RigidTy::CoroutineWitness(
+                tables.coroutine_witness_def(*def_id),
+                args.stable(tables),
+            )),
+            ty::Placeholder(..) | ty::Infer(_) | ty::Error(_) => {
                 unreachable!();
             }
         }
