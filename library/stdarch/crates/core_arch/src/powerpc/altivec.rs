@@ -571,7 +571,6 @@ mod sealed {
 
                 // Workaround ptr::copy_nonoverlapping not being inlined
                 extern "rust-intrinsic" {
-                    #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
                     #[rustc_nounwind]
                     pub fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
                 }
