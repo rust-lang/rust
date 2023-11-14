@@ -457,6 +457,8 @@ impl<'a> TestRunner<'a> {
         cmd.arg("--target");
         cmd.arg(&self.target_compiler.triple);
         cmd.arg("-Cpanic=abort");
+        cmd.arg("--check-cfg=cfg(no_unstable_features)");
+        cmd.arg("--check-cfg=cfg(jit)");
         cmd.args(args);
         cmd
     }
