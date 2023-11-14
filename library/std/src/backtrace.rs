@@ -95,7 +95,7 @@ use crate::fmt;
 use crate::panic::UnwindSafe;
 use crate::sync::atomic::{AtomicUsize, Ordering::Relaxed};
 use crate::sync::LazyLock;
-use crate::sys_common::backtrace::{lock, output_filename};
+use crate::sys_common::backtrace::{lock, output_filename, set_image_base};
 use crate::vec::Vec;
 
 /// A captured OS thread stack backtrace.
@@ -327,11 +327,7 @@ impl Backtrace {
         let _lock = lock();
         let mut frames = Vec::new();
         let mut actual_start = None;
-        #[cfg(all(target_vendor = "fortanix", target_env = "sgx"))]
-        {
-            let image_base = crate::os::fortanix_sgx::mem::image_base();
-            backtrace_rs::set_image_base(crate::ptr::from_exposed_addr_mut(image_base as _));
-        }
+        set_image_base();
         unsafe {
             backtrace_rs::trace_unsynchronized(|frame| {
                 frames.push(BacktraceFrame {

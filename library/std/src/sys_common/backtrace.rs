@@ -64,11 +64,7 @@ unsafe fn _print_fmt(fmt: &mut fmt::Formatter<'_>, print_fmt: PrintFmt) -> fmt::
     let mut first_omit = true;
     // Start immediately if we're not using a short backtrace.
     let mut start = print_fmt != PrintFmt::Short;
-    #[cfg(all(target_vendor = "fortanix", target_env = "sgx"))]
-    {
-        let image_base = crate::os::fortanix_sgx::mem::image_base();
-        backtrace_rs::set_image_base(crate::ptr::from_exposed_addr_mut(image_base as _));
-    }
+    set_image_base();
     backtrace_rs::trace_unsynchronized(|frame| {
         if print_fmt == PrintFmt::Short && idx > MAX_NB_FRAMES {
             return false;
@@ -217,4 +213,15 @@ pub fn output_filename(
         }
     }
     fmt::Display::fmt(&file.display(), fmt)
+}
+
+#[cfg(all(target_vendor = "fortanix", target_env = "sgx"))]
+pub fn set_image_base() {
+    let image_base = crate::os::fortanix_sgx::mem::image_base();
+    backtrace_rs::set_image_base(crate::ptr::from_exposed_addr_mut(image_base as _));
+}
+
+#[cfg(not(all(target_vendor = "fortanix", target_env = "sgx")))]
+pub fn set_image_base() {
+    // nothing to do for platforms other than SGX
 }
