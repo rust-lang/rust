@@ -31,10 +31,7 @@ pub fn main() {
 }
 
 fn parse() {
-    let parse_session = ParseSess::new(
-        vec![rustc_parse::DEFAULT_LOCALE_RESOURCE],
-        FilePathMapping::empty()
-    );
+    let parse_session = ParseSess::new(vec![], FilePathMapping::empty());
 
     let path = Path::new(file!());
     let path = path.canonicalize().unwrap();
