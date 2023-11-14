@@ -15,22 +15,34 @@ pub fn write_smir_pretty<'tcx>(tcx: TyCtxt<'tcx>, w: &mut dyn io::Write) -> io::
 
     run(tcx, || {
         let items = stable_mir::all_local_items();
-        let _ = items.iter().map(|item| -> io::Result<()> {
-            // Because we can't return a Result from a closure, we have to unwrap here.
-            writeln!(w, "{}", function_name(*item, tcx))?;
-            writeln!(w, "{}", function_body(*item, tcx))?;
-            let _ = item.body().blocks.iter().enumerate().map(|(index, block)| -> io::Result<()> {
-                writeln!(w, "    bb{}: {{", index)?;
-                let _ = block.statements.iter().map(|statement| -> io::Result<()> {
-                    writeln!(w, "{}", pretty_statement(&statement.kind, tcx))?;
-                    Ok(())
-                }).collect::<Vec<_>>();
-                writeln!(w, "    }}").unwrap();
+        let _ = items
+            .iter()
+            .map(|item| -> io::Result<()> {
+                // Because we can't return a Result from a closure, we have to unwrap here.
+                writeln!(w, "{}", function_name(*item, tcx))?;
+                writeln!(w, "{}", function_body(*item, tcx))?;
+                let _ = item
+                    .body()
+                    .blocks
+                    .iter()
+                    .enumerate()
+                    .map(|(index, block)| -> io::Result<()> {
+                        writeln!(w, "    bb{}: {{", index)?;
+                        let _ = block
+                            .statements
+                            .iter()
+                            .map(|statement| -> io::Result<()> {
+                                writeln!(w, "{}", pretty_statement(&statement.kind, tcx))?;
+                                Ok(())
+                            })
+                            .collect::<Vec<_>>();
+                        writeln!(w, "    }}").unwrap();
+                        Ok(())
+                    })
+                    .collect::<Vec<_>>();
                 Ok(())
-            }).collect::<Vec<_>>();
-            Ok(())
-        }).collect::<Vec<_>>();
-        
+            })
+            .collect::<Vec<_>>();
     });
     Ok(())
 }

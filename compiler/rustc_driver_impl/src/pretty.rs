@@ -326,7 +326,7 @@ pub fn print<'tcx>(sess: &Session, ppm: PpMode, ex: PrintExtra<'tcx>) {
             write_mir_graphviz(ex.tcx(), None, &mut out).unwrap();
             String::from_utf8(out).unwrap()
         }
-        Smir => {
+        StableMir => {
             let mut out = Vec::new();
             write_smir_pretty(ex.tcx(), &mut out).unwrap();
             String::from_utf8(out).unwrap()
