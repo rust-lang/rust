@@ -287,6 +287,7 @@ impl<'a> Parser<'a> {
             // Function pointer type
             self.parse_ty_bare_fn(lo, ThinVec::new(), None, recover_return_sign)?
         } else if self.check_keyword(kw::For) {
+            let for_span = self.token.span;
             // Function pointer type or bound list (trait object type) starting with a poly-trait.
             //   `for<'lt> [unsafe] [extern "ABI"] fn (&'lt S) -> T`
             //   `for<'lt> Trait1<'lt> + Trait2 + 'a`
@@ -299,9 +300,42 @@ impl<'a> Parser<'a> {
                     recover_return_sign,
                 )?
             } else {
-                let path = self.parse_path(PathStyle::Type)?;
-                let parse_plus = allow_plus == AllowPlus::Yes && self.check_plus();
-                self.parse_remaining_bounds_path(lifetime_defs, path, lo, parse_plus)?
+                // Try to recover `for<'a> dyn Trait` or `for<'a> impl Trait`.
+                if self.may_recover()
+                    && (self.eat_keyword_noexpect(kw::Impl) || self.eat_keyword_noexpect(kw::Dyn))
+                {
+                    let kw = self.prev_token.ident().unwrap().0.name;
+                    let mut err = self.sess.create_err(errors::TransposeDynOrImpl {
+                        span: self.prev_token.span,
+                        kw: kw.as_str(),
+                        sugg: errors::TransposeDynOrImplSugg {
+                            removal_span: self.prev_token.span.with_hi(self.token.span.lo()),
+                            insertion_span: for_span.shrink_to_lo(),
+                            kw: kw.as_str(),
+                        },
+                    });
+                    let path = self.parse_path(PathStyle::Type)?;
+                    let parse_plus = allow_plus == AllowPlus::Yes && self.check_plus();
+                    let kind =
+                        self.parse_remaining_bounds_path(lifetime_defs, path, lo, parse_plus)?;
+                    // Take the parsed bare trait object and turn it either
+                    // into a `dyn` object or an `impl Trait`.
+                    let kind = match (kind, kw) {
+                        (TyKind::TraitObject(bounds, _), kw::Dyn) => {
+                            TyKind::TraitObject(bounds, TraitObjectSyntax::Dyn)
+                        }
+                        (TyKind::TraitObject(bounds, _), kw::Impl) => {
+                            TyKind::ImplTrait(ast::DUMMY_NODE_ID, bounds)
+                        }
+                        _ => return Err(err),
+                    };
+                    err.emit();
+                    kind
+                } else {
+                    let path = self.parse_path(PathStyle::Type)?;
+                    let parse_plus = allow_plus == AllowPlus::Yes && self.check_plus();
+                    self.parse_remaining_bounds_path(lifetime_defs, path, lo, parse_plus)?
+                }
             }
         } else if self.eat_keyword(kw::Impl) {
             self.parse_impl_ty(&mut impl_dyn_multi)?
