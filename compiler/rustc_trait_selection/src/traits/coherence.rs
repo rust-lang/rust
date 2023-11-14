@@ -20,6 +20,7 @@ use crate::traits::{
 };
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::Diagnostic;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::{util, TraitEngine};
@@ -1002,7 +1003,12 @@ impl<'a, 'tcx> ProofTreeVisitor<'tcx> for AmbiguityCausesVisitor<'a> {
         // and then prove the resulting predicate as a nested goal.
         let trait_ref = match predicate.kind().no_bound_vars() {
             Some(ty::PredicateKind::Clause(ty::ClauseKind::Trait(tr))) => tr.trait_ref,
-            Some(ty::PredicateKind::Clause(ty::ClauseKind::Projection(proj))) => {
+            Some(ty::PredicateKind::Clause(ty::ClauseKind::Projection(proj)))
+                if matches!(
+                    infcx.tcx.def_kind(proj.projection_ty.def_id),
+                    DefKind::AssocTy | DefKind::AssocConst
+                ) =>
+            {
                 proj.projection_ty.trait_ref(infcx.tcx)
             }
             _ => return ControlFlow::Continue(()),
