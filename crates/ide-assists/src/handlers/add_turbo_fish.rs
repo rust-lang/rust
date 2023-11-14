@@ -85,6 +85,10 @@ pub(crate) fn add_turbo_fish(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
 
     if let Some(let_stmt) = ctx.find_node_at_offset::<ast::LetStmt>() {
         if let_stmt.colon_token().is_none() {
+            if let_stmt.pat().is_none() {
+                return None;
+            }
+
             acc.add(
                 AssistId("add_type_ascription", AssistKind::RefactorRewrite),
                 "Add `: _` before assignment operator",
@@ -157,7 +161,10 @@ fn get_fish_head(number_of_arguments: usize) -> ast::GenericArgList {
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::{check_assist, check_assist_by_label, check_assist_not_applicable};
+    use crate::tests::{
+        check_assist, check_assist_by_label, check_assist_not_applicable,
+        check_assist_not_applicable_by_label,
+    };
 
     use super::*;
 
@@ -400,18 +407,12 @@ fn main() {
 
     #[test]
     fn add_type_ascription_missing_pattern() {
-        check_assist_by_label(
+        check_assist_not_applicable_by_label(
             add_turbo_fish,
             r#"
 fn make<T>() -> T {}
 fn main() {
     let = make$0()
-}
-"#,
-            r#"
-fn make<T>() -> T {}
-fn main() {
-    let : ${0:_} = make();
 }
 "#,
             "Add `: _` before assignment operator",
