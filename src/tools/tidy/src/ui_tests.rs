@@ -10,7 +10,7 @@ use std::path::{Path, PathBuf};
 
 const ENTRY_LIMIT: usize = 900;
 // FIXME: The following limits should be reduced eventually.
-const ISSUES_ENTRY_LIMIT: usize = 1854;
+const ISSUES_ENTRY_LIMIT: usize = 1852;
 const ROOT_ENTRY_LIMIT: usize = 867;
 
 const EXPECTED_TEST_FILE_EXTENSIONS: &[&str] = &[
