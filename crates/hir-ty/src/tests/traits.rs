@@ -4473,7 +4473,7 @@ impl B for u16 {
 fn ttt() {
     let inp = Y;
     x::<u16>(&inp);
-            //^^^^ expected &X, got &Y
+           //^^^^ expected &X, got &Y
 }
 "#,
     );
