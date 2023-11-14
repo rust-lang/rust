@@ -3403,6 +3403,10 @@ impl Impl {
         db.impl_data(self.id).is_negative
     }
 
+    pub fn is_unsafe(self, db: &dyn HirDatabase) -> bool {
+        db.impl_data(self.id).is_unique()
+    }
+
     pub fn module(self, db: &dyn HirDatabase) -> Module {
         self.id.lookup(db.upcast()).container.into()
     }
