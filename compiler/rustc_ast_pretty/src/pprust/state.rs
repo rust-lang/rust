@@ -886,10 +886,6 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         Self::to_string(|s| s.print_foreign_item(i))
     }
 
-    fn generic_params_to_string(&self, generic_params: &[ast::GenericParam]) -> String {
-        Self::to_string(|s| s.print_generic_params(generic_params))
-    }
-
     fn path_to_string(&self, p: &ast::Path) -> String {
         Self::to_string(|s| s.print_path(p, false, 0))
     }
