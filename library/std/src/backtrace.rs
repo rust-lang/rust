@@ -327,6 +327,11 @@ impl Backtrace {
         let _lock = lock();
         let mut frames = Vec::new();
         let mut actual_start = None;
+        #[cfg(all(target_vendor = "fortanix", target_env = "sgx"))]
+        {
+            let image_base = crate::os::fortanix_sgx::mem::image_base();
+            backtrace_rs::set_image_base(crate::ptr::from_exposed_addr_mut(image_base as _));
+        }
         unsafe {
             backtrace_rs::trace_unsynchronized(|frame| {
                 frames.push(BacktraceFrame {
