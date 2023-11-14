@@ -60,7 +60,7 @@ use hir_def::{
 };
 use hir_expand::{name::name, MacroCallKind};
 use hir_ty::{
-    all_super_traits, autoderef,
+    all_super_traits, autoderef, check_orphan_rules,
     consteval::{try_const_usize, unknown_const_as_generic, ConstEvalError, ConstExt},
     diagnostics::BodyValidationDiagnostic,
     known_const_to_ast,
@@ -95,7 +95,7 @@ pub use crate::{
         MacroExpansionParseError, MalformedDerive, MismatchedArgCount,
         MismatchedTupleStructPatArgCount, MissingFields, MissingMatchArms, MissingUnsafe,
         MovedOutOfRef, NeedMut, NoSuchField, PrivateAssocItem, PrivateField,
-        ReplaceFilterMapNextWithFindMap, TypeMismatch, TypedHole, UndeclaredLabel,
+        ReplaceFilterMapNextWithFindMap, TraitImplOrphan, TypeMismatch, TypedHole, UndeclaredLabel,
         UnimplementedBuiltinMacro, UnreachableLabel, UnresolvedExternCrate, UnresolvedField,
         UnresolvedImport, UnresolvedMacroCall, UnresolvedMethodCall, UnresolvedModule,
         UnresolvedProcMacro, UnusedMut, UnusedVariable,
@@ -622,6 +622,11 @@ impl Module {
                 let ast_id_map = db.ast_id_map(file_id);
 
                 acc.push(IncoherentImpl { impl_: ast_id_map.get(node.ast_id()), file_id }.into())
+            }
+
+            if !impl_def.check_orphan_rules(db) {
+                let ast_id_map = db.ast_id_map(file_id);
+                acc.push(TraitImplOrphan { impl_: ast_id_map.get(node.ast_id()), file_id }.into())
             }
 
             for item in impl_def.items(db) {
@@ -3398,6 +3403,10 @@ impl Impl {
         db.impl_data(self.id).is_negative
     }
 
+    pub fn is_unsafe(self, db: &dyn HirDatabase) -> bool {
+        db.impl_data(self.id).is_unique()
+    }
+
     pub fn module(self, db: &dyn HirDatabase) -> Module {
         self.id.lookup(db.upcast()).container.into()
     }
@@ -3405,6 +3414,10 @@ impl Impl {
     pub fn as_builtin_derive(self, db: &dyn HirDatabase) -> Option<InFile<ast::Attr>> {
         let src = self.source(db)?;
         src.file_id.as_builtin_derive_attr_node(db.upcast())
+    }
+
+    pub fn check_orphan_rules(self, db: &dyn HirDatabase) -> bool {
+        check_orphan_rules(db, self.id)
     }
 }
 
