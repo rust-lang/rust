@@ -2988,6 +2988,9 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                                     } else if let TyKind::CVarArgs = param.ty.kind {
                                         // Don't suggest `&...` for ffi fn with varargs
                                         None
+                                    } else if let TyKind::ImplTrait(..) = &param.ty.kind {
+                                        // We handle these in the next `else if` branch.
+                                        None
                                     } else {
                                         Some((param.ty.span.shrink_to_lo(), "&".to_string()))
                                     }
@@ -3010,6 +3013,64 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                                 Applicability::MaybeIncorrect,
                             );
                             "...or alternatively,"
+                        } else if let Some((kind, _span)) =
+                            self.diagnostic_metadata.current_function
+                            && let FnKind::Fn(_, _, sig, _, _, _) = kind
+                            && let ast::FnRetTy::Ty(ret_ty) = &sig.decl.output
+                            && !sig.decl.inputs.is_empty()
+                            && let arg_refs = sig
+                                .decl
+                                .inputs
+                                .iter()
+                                .filter_map(|param| match &param.ty.kind {
+                                    TyKind::ImplTrait(_, bounds) => Some(bounds),
+                                    _ => None,
+                                })
+                                .flat_map(|bounds| bounds.into_iter())
+                                .collect::<Vec<_>>()
+                            && !arg_refs.is_empty()
+                        {
+                            // We have a situation like
+                            // fn g(mut x: impl Iterator<Item = &()>) -> Option<&()>
+                            // So we look at every ref in the trait bound. If there's any, we
+                            // suggest
+                            // fn g<'a>(mut x: impl Iterator<Item = &'a ()>) -> Option<&'a ()>
+                            let mut lt_finder = LifetimeFinder {
+                                lifetime: lt.span,
+                                found: None,
+                                seen: vec![],
+                            };
+                            for bound in arg_refs {
+                                if let ast::GenericBound::Trait(trait_ref, _) = bound {
+                                    lt_finder.visit_trait_ref(&trait_ref.trait_ref);
+                                }
+                            }
+                            lt_finder.visit_ty(ret_ty);
+                            let spans_suggs: Vec<_> = lt_finder.seen.iter().filter_map(|ty| {
+                                match &ty.kind {
+                                    TyKind::Ref(_, mut_ty) => {
+                                        let span = ty.span.with_hi(mut_ty.ty.span.lo());
+                                        Some((span, "&'a ".to_string()))
+                                    }
+                                    _ => None
+                                }
+                            }).collect();
+                            self.suggest_introducing_lifetime(
+                                err,
+                                None,
+                                |err, higher_ranked, span, message, intro_sugg| {
+                                    info!(?span, ?message, ?intro_sugg);
+                                    err.multipart_suggestion_verbose(
+                                        message,
+                                        std::iter::once((span, intro_sugg))
+                                            .chain(spans_suggs.iter().cloned())
+                                            .collect(),
+                                        Applicability::MaybeIncorrect,
+                                    );
+                                    higher_ranked
+                                },
+                            );
+                            "...or alternatively,"
                         } else {
                             "instead, you are more likely"
                         };
@@ -3019,7 +3080,11 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                             && let FnKind::Fn(_, _, sig, _, _, _) = kind
                             && let ast::FnRetTy::Ty(ty) = &sig.decl.output
                         {
-                            let mut lt_finder = LifetimeFinder { lifetime: lt.span, found: None };
+                            let mut lt_finder = LifetimeFinder {
+                                lifetime: lt.span,
+                                found: None,
+                                seen: vec![],
+                            };
                             lt_finder.visit_ty(&ty);
 
                             if let Some(ty) = lt_finder.found {
@@ -3155,14 +3220,16 @@ pub(super) fn signal_lifetime_shadowing(sess: &Session, orig: Ident, shadower: I
 struct LifetimeFinder<'ast> {
     lifetime: Span,
     found: Option<&'ast Ty>,
+    seen: Vec<&'ast Ty>,
 }
 
 impl<'ast> Visitor<'ast> for LifetimeFinder<'ast> {
     fn visit_ty(&mut self, t: &'ast Ty) {
-        if t.span.lo() == self.lifetime.lo()
-            && let TyKind::Ref(_, mut_ty) = &t.kind
-        {
-            self.found = Some(&mut_ty.ty);
+        if let TyKind::Ref(_, mut_ty) = &t.kind {
+            self.seen.push(t);
+            if t.span.lo() == self.lifetime.lo() {
+                self.found = Some(&mut_ty.ty);
+            }
         }
         walk_ty(self, t)
     }
