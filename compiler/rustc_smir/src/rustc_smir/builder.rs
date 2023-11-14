@@ -21,10 +21,7 @@ impl<'tcx> BodyBuilder<'tcx> {
 
     pub fn build(mut self, tables: &mut Tables<'tcx>) -> stable_mir::mir::Body {
         let mut body = self.tcx.instance_mir(self.instance.def).clone();
-        let generics = self.tcx.generics_of(self.instance.def_id());
-        if generics.requires_monomorphization(self.tcx) {
-            self.visit_body(&mut body);
-        }
+        self.visit_body(&mut body);
         body.stable(tables)
     }
 
