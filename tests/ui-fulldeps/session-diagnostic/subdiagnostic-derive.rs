@@ -56,7 +56,7 @@ struct C {
 
 #[derive(Subdiagnostic)]
 #[label]
-//~^ ERROR diagnostic slug must be first argument
+//~^ ERROR diagnostic slug or raw_label must be first argument of
 struct D {
     #[primary_span]
     span: Span,
@@ -85,7 +85,7 @@ struct F {
 #[derive(Subdiagnostic)]
 #[label(bug = "...")]
 //~^ ERROR only `no_span` is a valid nested attribute
-//~| ERROR diagnostic slug must be first argument
+//~| ERROR diagnostic slug or raw_label must be first argument of
 struct G {
     #[primary_span]
     span: Span,
@@ -94,8 +94,6 @@ struct G {
 
 #[derive(Subdiagnostic)]
 #[label("...")]
-//~^ ERROR failed to resolve: maybe a missing crate `core`?
-//~| NOTE maybe a missing crate `core`?
 struct H {
     #[primary_span]
     span: Span,
@@ -105,7 +103,7 @@ struct H {
 #[derive(Subdiagnostic)]
 #[label(slug = 4)]
 //~^ ERROR only `no_span` is a valid nested attribute
-//~| ERROR diagnostic slug must be first argument
+//~| ERROR diagnostic slug or raw_label must be first argument of
 struct J {
     #[primary_span]
     span: Span,
@@ -115,7 +113,7 @@ struct J {
 #[derive(Subdiagnostic)]
 #[label(slug("..."))]
 //~^ ERROR only `no_span` is a valid nested attribute
-//~| ERROR diagnostic slug must be first argument
+//~| ERROR diagnostic slug or raw_label must be first argument of
 struct K {
     #[primary_span]
     span: Span,
@@ -134,7 +132,7 @@ struct L {
 
 #[derive(Subdiagnostic)]
 #[label()]
-//~^ ERROR diagnostic slug must be first argument of a `#[label(...)]` attribute
+//~^ ERROR diagnostic slug or raw_label must be first argument of a attribute
 struct M {
     #[primary_span]
     span: Span,
@@ -223,7 +221,7 @@ enum T {
 #[derive(Subdiagnostic)]
 enum U {
     #[label(code = "...")]
-    //~^ ERROR diagnostic slug must be first argument of a `#[label(...)]` attribute
+    //~^ ERROR diagnostic slug or raw_label must be first argument of a attribute
     //~| ERROR only `no_span` is a valid nested attribute
     A {
         #[primary_span]

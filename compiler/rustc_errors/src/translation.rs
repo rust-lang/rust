@@ -65,10 +65,9 @@ pub trait Translate {
         trace!(?message, ?args);
         let (identifier, attr) = match message {
             DiagnosticMessage::Str(msg) | DiagnosticMessage::Eager(msg) => {
-                if args.iter().next().is_none() || (!msg.contains("$") && !msg.contains("`{")) {
-                    return Ok(Cow::Borrowed(msg));
-                } else {
-                    // FIXME(yukang): A hack for raw fluent content for new diagnostics proc format
+                // FIXME(yukang): A hack for raw fluent content for new diagnostics proc format
+                let trimed = msg.replace(" ", "");
+                if trimed.contains("$") || trimed.contains("{\"") || trimed.contains("\"}") {
                     let fluent_text = format!("dummy = {}", msg);
                     if let Ok(resource) = FluentResource::try_new(fluent_text) {
                         let mut bundle = RawFluentBundle::new(vec![langid!("en-US")]);
@@ -79,11 +78,9 @@ pub trait Translate {
                         return Ok(Cow::Owned(
                             res.to_string().replace("\u{2068}", "").replace("\u{2069}", ""),
                         ));
-                    } else {
-                        // If the message is not a valid Fluent resource, just return the original
-                        return Ok(Cow::Borrowed(msg));
                     }
                 }
+                return Ok(Cow::Borrowed(msg));
             }
             DiagnosticMessage::FluentIdentifier(identifier, attr) => (identifier, attr),
         };

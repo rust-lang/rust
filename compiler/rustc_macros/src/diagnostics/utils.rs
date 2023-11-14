@@ -30,8 +30,14 @@ pub(crate) fn new_code_ident() -> syn::Ident {
 }
 
 pub(crate) fn convert_to_litstr(lit: &proc_macro2::Literal) -> LitStr {
-    let lit_content = format!("{}", lit);
-    LitStr::new(&lit_content[1..lit_content.len() - 1], lit.span())
+    let s = format!("{}", lit);
+    let s = if s.starts_with("r#\"") && s.ends_with("\"#") && s.len() >= 5 {
+        s[3..s.len() - 2].to_string()
+    } else {
+        s[1..s.len() - 1].to_string()
+    };
+
+    LitStr::new(&s, lit.span())
 }
 
 /// Checks whether the type name of `ty` matches `name`.

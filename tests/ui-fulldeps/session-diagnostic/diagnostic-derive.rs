@@ -44,9 +44,9 @@ struct HelloWarn {}
 //~^ ERROR unsupported type attribute for diagnostic derive enum
 enum DiagnosticOnEnum {
     Foo,
-    //~^ ERROR diagnostic slug not specified
+    //~^ ERROR diagnostic slug or label is not specified
     Bar,
-    //~^ ERROR diagnostic slug not specified
+    //~^ ERROR diagnostic slug or label is not specified
 }
 
 #[derive(Diagnostic)]
@@ -58,13 +58,12 @@ struct WrongStructAttrStyle {}
 #[derive(Diagnostic)]
 #[nonsense(no_crate_example, code = "E0123")]
 //~^ ERROR `#[nonsense(...)]` is not a valid attribute
-//~^^ ERROR diagnostic slug not specified
+//~^^ ERROR diagnostic slug or label is not specified
 //~^^^ ERROR cannot find attribute `nonsense` in this scope
 struct InvalidStructAttr {}
 
 #[derive(Diagnostic)]
 #[diag("E0123")]
-//~^ ERROR diagnostic slug not specified
 struct InvalidLitNestedAttr {}
 
 #[derive(Diagnostic)]
@@ -74,20 +73,20 @@ struct InvalidNestedStructAttr {}
 
 #[derive(Diagnostic)]
 #[diag(nonsense("foo"), code = "E0123", slug = "foo")]
-//~^ ERROR diagnostic slug must be the first argument
-//~| ERROR diagnostic slug not specified
+//~^ ERROR diagnostic slug or label is not specified
+//~| ERROR diagnostic slug must be the first argument
 struct InvalidNestedStructAttr1 {}
 
 #[derive(Diagnostic)]
 #[diag(nonsense = "...", code = "E0123", slug = "foo")]
 //~^ ERROR unknown argument
-//~| ERROR diagnostic slug not specified
+//~| ERROR diagnostic slug or label is not specified
 struct InvalidNestedStructAttr2 {}
 
 #[derive(Diagnostic)]
 #[diag(nonsense = 4, code = "E0123", slug = "foo")]
 //~^ ERROR unknown argument
-//~| ERROR diagnostic slug not specified
+//~| ERROR diagnostic slug or label is not specified
 struct InvalidNestedStructAttr3 {}
 
 #[derive(Diagnostic)]
@@ -121,11 +120,11 @@ struct CodeSpecifiedTwice {}
 struct SlugSpecifiedTwice {}
 
 #[derive(Diagnostic)]
-struct KindNotProvided {} //~ ERROR diagnostic slug not specified
+struct KindNotProvided {} //~ ERROR diagnostic slug or label is not specified
 
 #[derive(Diagnostic)]
 #[diag(code = "E0456")]
-//~^ ERROR diagnostic slug not specified
+//~^ ERROR diagnostic slug or label is not specified
 struct SlugNotProvided {}
 
 #[derive(Diagnostic)]
@@ -578,21 +577,21 @@ struct ErrorWithWarn {
 #[derive(Diagnostic)]
 #[error(no_crate_example, code = "E0123")]
 //~^ ERROR `#[error(...)]` is not a valid attribute
-//~| ERROR diagnostic slug not specified
+//~| ERROR diagnostic slug or label is not specified
 //~| ERROR cannot find attribute `error` in this scope
 struct ErrorAttribute {}
 
 #[derive(Diagnostic)]
 #[warn_(no_crate_example, code = "E0123")]
 //~^ ERROR `#[warn_(...)]` is not a valid attribute
-//~| ERROR diagnostic slug not specified
+//~| ERROR diagnostic slug or label is not specified
 //~| ERROR cannot find attribute `warn_` in this scope
 struct WarnAttribute {}
 
 #[derive(Diagnostic)]
 #[lint(no_crate_example, code = "E0123")]
 //~^ ERROR `#[lint(...)]` is not a valid attribute
-//~| ERROR diagnostic slug not specified
+//~| ERROR diagnostic slug or label is not specified
 //~| ERROR cannot find attribute `lint` in this scope
 struct LintAttributeOnSessionDiag {}
 
