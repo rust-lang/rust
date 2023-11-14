@@ -7,6 +7,8 @@ import type { CtxInit } from "./ctx";
 import { makeDebugConfig } from "./debug";
 import type { Config, RunnableEnvCfg, RunnableEnvCfgItem } from "./config";
 import { unwrapUndefinable } from "./undefinable";
+import type { LanguageClient } from "vscode-languageclient/node";
+import type { RustEditor } from "./util";
 
 const quickPickButtons = [
     { iconPath: new vscode.ThemeIcon("save"), tooltip: "Save as a launch.json configuration." },
@@ -21,73 +23,36 @@ export async function selectRunnable(
     const editor = ctx.activeRustEditor;
     if (!editor) return;
 
-    const client = ctx.client;
-    const textDocument: lc.TextDocumentIdentifier = {
-        uri: editor.document.uri.toString(),
-    };
-
-    const runnables = await client.sendRequest(ra.runnables, {
-        textDocument,
-        position: client.code2ProtocolConverter.asPosition(editor.selection.active),
-    });
-    const items: RunnableQuickPick[] = [];
-    if (prevRunnable) {
-        items.push(prevRunnable);
+    // show a placeholder while we get the runnables from the server
+    const quickPick = vscode.window.createQuickPick();
+    quickPick.title = "Select Runnable";
+    if (showButtons) {
+        quickPick.buttons = quickPickButtons;
     }
-    for (const r of runnables) {
-        if (prevRunnable && JSON.stringify(prevRunnable.runnable) === JSON.stringify(r)) {
-            continue;
-        }
+    quickPick.items = [{ label: "Looking for runnables..." }];
+    quickPick.activeItems = [];
+    quickPick.show();
 
-        if (debuggeeOnly && (r.label.startsWith("doctest") || r.label.startsWith("cargo"))) {
-            continue;
-        }
-        items.push(new RunnableQuickPick(r));
-    }
+    const runnables = await getRunnables(ctx.client, editor, prevRunnable, debuggeeOnly);
 
-    if (items.length === 0) {
+    if (runnables.length === 0) {
         // it is the debug case, run always has at least 'cargo check ...'
         // see crates\rust-analyzer\src\main_loop\handlers.rs, handle_runnables
         await vscode.window.showErrorMessage("There's no debug target!");
+        quickPick.dispose();
         return;
     }
 
-    return await new Promise((resolve) => {
-        const disposables: vscode.Disposable[] = [];
-        const close = (result?: RunnableQuickPick) => {
-            resolve(result);
-            disposables.forEach((d) => d.dispose());
-        };
+    // clear the list before we hook up listeners to to avoid invoking them
+    // if the user happens to accept the placeholder item
+    quickPick.items = [];
 
-        const quickPick = vscode.window.createQuickPick<RunnableQuickPick>();
-        quickPick.items = items;
-        quickPick.title = "Select Runnable";
-        if (showButtons) {
-            quickPick.buttons = quickPickButtons;
-        }
-        disposables.push(
-            quickPick.onDidHide(() => close()),
-            quickPick.onDidAccept(() => close(quickPick.selectedItems[0])),
-            quickPick.onDidTriggerButton(async (_button) => {
-                const runnable = unwrapUndefinable(quickPick.activeItems[0]).runnable;
-                await makeDebugConfig(ctx, runnable);
-                close();
-            }),
-            quickPick.onDidChangeActive((activeList) => {
-                if (showButtons && activeList.length > 0) {
-                    const active = unwrapUndefinable(activeList[0]);
-                    if (active.label.startsWith("cargo")) {
-                        // save button makes no sense for `cargo test` or `cargo check`
-                        quickPick.buttons = [];
-                    } else if (quickPick.buttons.length === 0) {
-                        quickPick.buttons = quickPickButtons;
-                    }
-                }
-            }),
-            quickPick,
-        );
-        quickPick.show();
-    });
+    return await populateAndGetSelection(
+        quickPick as vscode.QuickPick<RunnableQuickPick>,
+        runnables,
+        ctx,
+        showButtons,
+    );
 }
 
 export class RunnableQuickPick implements vscode.QuickPickItem {
@@ -186,4 +151,76 @@ export function createArgs(runnable: ra.Runnable): string[] {
         args.push("--", ...runnable.args.executableArgs);
     }
     return args;
+}
+
+async function getRunnables(
+    client: LanguageClient,
+    editor: RustEditor,
+    prevRunnable?: RunnableQuickPick,
+    debuggeeOnly = false,
+): Promise<RunnableQuickPick[]> {
+    const textDocument: lc.TextDocumentIdentifier = {
+        uri: editor.document.uri.toString(),
+    };
+
+    const runnables = await client.sendRequest(ra.runnables, {
+        textDocument,
+        position: client.code2ProtocolConverter.asPosition(editor.selection.active),
+    });
+    const items: RunnableQuickPick[] = [];
+    if (prevRunnable) {
+        items.push(prevRunnable);
+    }
+    for (const r of runnables) {
+        if (prevRunnable && JSON.stringify(prevRunnable.runnable) === JSON.stringify(r)) {
+            continue;
+        }
+
+        if (debuggeeOnly && (r.label.startsWith("doctest") || r.label.startsWith("cargo"))) {
+            continue;
+        }
+        items.push(new RunnableQuickPick(r));
+    }
+
+    return items;
+}
+
+async function populateAndGetSelection(
+    quickPick: vscode.QuickPick<RunnableQuickPick>,
+    runnables: RunnableQuickPick[],
+    ctx: CtxInit,
+    showButtons: boolean,
+): Promise<RunnableQuickPick | undefined> {
+    return new Promise((resolve) => {
+        const disposables: vscode.Disposable[] = [];
+        const close = (result?: RunnableQuickPick) => {
+            resolve(result);
+            disposables.forEach((d) => d.dispose());
+        };
+        disposables.push(
+            quickPick.onDidHide(() => close()),
+            quickPick.onDidAccept(() => close(quickPick.selectedItems[0] as RunnableQuickPick)),
+            quickPick.onDidTriggerButton(async (_button) => {
+                const runnable = unwrapUndefinable(
+                    quickPick.activeItems[0] as RunnableQuickPick,
+                ).runnable;
+                await makeDebugConfig(ctx, runnable);
+                close();
+            }),
+            quickPick.onDidChangeActive((activeList) => {
+                if (showButtons && activeList.length > 0) {
+                    const active = unwrapUndefinable(activeList[0]);
+                    if (active.label.startsWith("cargo")) {
+                        // save button makes no sense for `cargo test` or `cargo check`
+                        quickPick.buttons = [];
+                    } else if (quickPick.buttons.length === 0) {
+                        quickPick.buttons = quickPickButtons;
+                    }
+                }
+            }),
+            quickPick,
+        );
+        // populate the list with the actual runnables
+        quickPick.items = runnables;
+    });
 }
