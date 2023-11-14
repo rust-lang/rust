@@ -33,7 +33,7 @@ pub mod symbols;
 
 mod display;
 
-use std::{iter, ops::ControlFlow};
+use std::{iter, mem::discriminant, ops::ControlFlow};
 
 use arrayvec::ArrayVec;
 use base_db::{CrateDisplayName, CrateId, CrateOrigin, Edition, FileId, ProcMacroKind};
@@ -593,6 +593,7 @@ impl Module {
 
         let inherent_impls = db.inherent_impls_in_crate(self.id.krate());
 
+        let mut impl_assoc_items_scratch = vec![];
         for impl_def in self.impl_defs(db) {
             let loc = impl_def.id.lookup(db.upcast());
             let tree = loc.id.item_tree(db.upcast());
@@ -661,8 +662,51 @@ impl Module {
                 _ => (),
             };
 
-            for item in impl_def.items(db) {
-                let def: DefWithBody = match item {
+            if let Some(trait_) = trait_ {
+                let items = &db.trait_data(trait_.into()).items;
+                let required_items = items.iter().filter(|&(_, assoc)| match *assoc {
+                    AssocItemId::FunctionId(it) => !db.function_data(it).has_body(),
+                    AssocItemId::ConstId(_) => true,
+                    AssocItemId::TypeAliasId(it) => db.type_alias_data(it).type_ref.is_none(),
+                });
+                impl_assoc_items_scratch.extend(db.impl_data(impl_def.id).items.iter().map(
+                    |&item| {
+                        (
+                            item,
+                            match item {
+                                AssocItemId::FunctionId(it) => db.function_data(it).name.clone(),
+                                AssocItemId::ConstId(it) => {
+                                    db.const_data(it).name.as_ref().unwrap().clone()
+                                }
+                                AssocItemId::TypeAliasId(it) => db.type_alias_data(it).name.clone(),
+                            },
+                        )
+                    },
+                ));
+
+                let missing: Vec<_> = required_items
+                    .filter(|(name, id)| {
+                        !impl_assoc_items_scratch.iter().any(|(impl_item, impl_name)| {
+                            discriminant(impl_item) == discriminant(id) && impl_name == name
+                        })
+                    })
+                    .map(|(name, item)| (name.clone(), AssocItem::from(*item)))
+                    .collect();
+                if !missing.is_empty() {
+                    acc.push(
+                        TraitImplMissingAssocItems {
+                            impl_: ast_id_map.get(node.ast_id()),
+                            file_id,
+                            missing,
+                        }
+                        .into(),
+                    )
+                }
+                impl_assoc_items_scratch.clear();
+            }
+
+            for &item in &db.impl_data(impl_def.id).items {
+                let def: DefWithBody = match AssocItem::from(item) {
                     AssocItem::Function(it) => it.into(),
                     AssocItem::Const(it) => it.into(),
                     AssocItem::TypeAlias(_) => continue,

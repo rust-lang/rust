@@ -54,6 +54,7 @@ diagnostics![
     PrivateField,
     ReplaceFilterMapNextWithFindMap,
     TraitImplIncorrectSafety,
+    TraitImplMissingAssocItems,
     TraitImplOrphan,
     TypedHole,
     TypeMismatch,
@@ -301,4 +302,11 @@ pub struct TraitImplIncorrectSafety {
     pub file_id: HirFileId,
     pub impl_: AstPtr<ast::Impl>,
     pub should_be_safe: bool,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct TraitImplMissingAssocItems {
+    pub file_id: HirFileId,
+    pub impl_: AstPtr<ast::Impl>,
+    pub missing: Vec<(Name, AssocItem)>,
 }

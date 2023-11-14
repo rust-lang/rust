@@ -46,6 +46,7 @@ mod handlers {
     pub(crate) mod replace_filter_map_next_with_find_map;
     pub(crate) mod trait_impl_orphan;
     pub(crate) mod trait_impl_incorrect_safety;
+    pub(crate) mod trait_impl_missing_assoc_item;
     pub(crate) mod typed_hole;
     pub(crate) mod type_mismatch;
     pub(crate) mod unimplemented_builtin_macro;
@@ -360,8 +361,9 @@ pub fn diagnostics(
             AnyDiagnostic::PrivateAssocItem(d) => handlers::private_assoc_item::private_assoc_item(&ctx, &d),
             AnyDiagnostic::PrivateField(d) => handlers::private_field::private_field(&ctx, &d),
             AnyDiagnostic::ReplaceFilterMapNextWithFindMap(d) => handlers::replace_filter_map_next_with_find_map::replace_filter_map_next_with_find_map(&ctx, &d),
-            AnyDiagnostic::TraitImplOrphan(d) => handlers::trait_impl_orphan::trait_impl_orphan(&ctx, &d),
             AnyDiagnostic::TraitImplIncorrectSafety(d) => handlers::trait_impl_incorrect_safety::trait_impl_incorrect_safety(&ctx, &d),
+            AnyDiagnostic::TraitImplMissingAssocItems(d) => handlers::trait_impl_missing_assoc_item::trait_impl_missing_assoc_item(&ctx, &d),
+            AnyDiagnostic::TraitImplOrphan(d) => handlers::trait_impl_orphan::trait_impl_orphan(&ctx, &d),
             AnyDiagnostic::TypedHole(d) => handlers::typed_hole::typed_hole(&ctx, &d),
             AnyDiagnostic::TypeMismatch(d) => handlers::type_mismatch::type_mismatch(&ctx, &d),
             AnyDiagnostic::UndeclaredLabel(d) => handlers::undeclared_label::undeclared_label(&ctx, &d),
