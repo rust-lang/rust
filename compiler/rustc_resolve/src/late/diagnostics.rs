@@ -8,7 +8,7 @@ use crate::{PathResult, PathSource, Segment};
 use rustc_hir::def::Namespace::{self, *};
 
 use rustc_ast::ptr::P;
-use rustc_ast::visit::{FnCtxt, FnKind, LifetimeCtxt};
+use rustc_ast::visit::{walk_ty, FnCtxt, FnKind, LifetimeCtxt, Visitor};
 use rustc_ast::{
     self as ast, AssocItemKind, Expr, ExprKind, GenericParam, GenericParamKind, Item, ItemKind,
     MethodCall, NodeId, Path, Ty, TyKind, DUMMY_NODE_ID,
@@ -2811,6 +2811,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             .collect();
         debug!(?in_scope_lifetimes);
 
+        let mut maybe_static = false;
         debug!(?function_param_lifetimes);
         if let Some((param_lifetimes, params)) = &function_param_lifetimes {
             let elided_len = param_lifetimes.len();
@@ -2849,9 +2850,10 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
 
             if num_params == 0 {
                 err.help(
-                    "this function's return type contains a borrowed value, \
-                 but there is no value for it to be borrowed from",
+                    "this function's return type contains a borrowed value, but there is no value \
+                     for it to be borrowed from",
                 );
+                maybe_static = true;
                 if in_scope_lifetimes.is_empty() {
                     in_scope_lifetimes = vec![(
                         Ident::with_dummy_span(kw::StaticLifetime),
@@ -2860,10 +2862,10 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 }
             } else if elided_len == 0 {
                 err.help(
-                    "this function's return type contains a borrowed value with \
-                 an elided lifetime, but the lifetime cannot be derived from \
-                 the arguments",
+                    "this function's return type contains a borrowed value with an elided \
+                     lifetime, but the lifetime cannot be derived from the arguments",
                 );
+                maybe_static = true;
                 if in_scope_lifetimes.is_empty() {
                     in_scope_lifetimes = vec![(
                         Ident::with_dummy_span(kw::StaticLifetime),
@@ -2872,13 +2874,13 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 }
             } else if num_params == 1 {
                 err.help(format!(
-                    "this function's return type contains a borrowed value, \
-                 but the signature does not say which {m} it is borrowed from"
+                    "this function's return type contains a borrowed value, but the signature does \
+                     not say which {m} it is borrowed from",
                 ));
             } else {
                 err.help(format!(
-                    "this function's return type contains a borrowed value, \
-                 but the signature does not say whether it is borrowed from {m}"
+                    "this function's return type contains a borrowed value, but the signature does \
+                     not say whether it is borrowed from {m}",
                 ));
             }
         }
@@ -2943,11 +2945,107 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 );
             }
             1 => {
+                let post = if maybe_static {
+                    let owned = if let [lt] = &lifetime_refs[..]
+                        && lt.kind != MissingLifetimeKind::Ampersand
+                    {
+                        ", or if you will only have owned values"
+                    } else {
+                        ""
+                    };
+                    format!(
+                        ", but this is uncommon unless you're returning a borrowed value from a \
+                         `const` or a `static`{owned}",
+                    )
+                } else {
+                    String::new()
+                };
                 err.multipart_suggestion_verbose(
-                    format!("consider using the `{existing_name}` lifetime"),
+                    format!("consider using the `{existing_name}` lifetime{post}"),
                     spans_suggs,
                     Applicability::MaybeIncorrect,
                 );
+                if maybe_static {
+                    // FIXME: what follows are general suggestions, but we'd want to perform some
+                    // minimal flow analysis to provide more accurate suggestions. For example, if
+                    // we identified that the return expression references only one argument, we
+                    // would suggest borrowing only that argument, and we'd skip the prior
+                    // "use `'static`" suggestion entirely.
+                    if let [lt] = &lifetime_refs[..] && lt.kind == MissingLifetimeKind::Ampersand {
+                        let pre = if let Some((kind, _span)) =
+                            self.diagnostic_metadata.current_function
+                            && let FnKind::Fn(_, _, sig, _, _, _) = kind
+                            && !sig.decl.inputs.is_empty()
+                            && let sugg = sig
+                                .decl
+                                .inputs
+                                .iter()
+                                .filter_map(|param| {
+                                    if param.ty.span.contains(lt.span) {
+                                        // We don't want to suggest `fn elision(_: &fn() -> &i32)`
+                                        // when we have `fn elision(_: fn() -> &i32)`
+                                        None
+                                    } else if let TyKind::CVarArgs = param.ty.kind {
+                                        // Don't suggest `&...` for ffi fn with varargs
+                                        None
+                                    } else {
+                                        Some((param.ty.span.shrink_to_lo(), "&".to_string()))
+                                    }
+                                })
+                                .collect::<Vec<_>>()
+                            && !sugg.is_empty()
+                        {
+
+                            let (the, s) = if sig.decl.inputs.len() == 1 {
+                                ("the", "")
+                            } else {
+                                ("one of the", "s")
+                            };
+                            err.multipart_suggestion_verbose(
+                                format!(
+                                    "instead, you are more likely to want to change {the} \
+                                     argument{s} to be borrowed...",
+                                ),
+                                sugg,
+                                Applicability::MaybeIncorrect,
+                            );
+                            "...or alternatively,"
+                        } else {
+                            "instead, you are more likely"
+                        };
+                        let mut sugg = vec![(lt.span, String::new())];
+                        if let Some((kind, _span)) =
+                            self.diagnostic_metadata.current_function
+                            && let FnKind::Fn(_, _, sig, _, _, _) = kind
+                            && let ast::FnRetTy::Ty(ty) = &sig.decl.output
+                        {
+                            let mut lt_finder = LifetimeFinder { lifetime: lt.span, found: None };
+                            lt_finder.visit_ty(&ty);
+
+                            if let Some(ty) = lt_finder.found {
+                                if let TyKind::Path(None, Path { segments, .. }) = &ty.kind
+                                    && segments.len() == 1
+                                    && segments[0].ident.name == sym::str
+                                {
+                                    // Don't suggest `-> str`, suggest `-> String`.
+                                    sugg = vec![(lt.span.with_hi(ty.span.hi()), "String".to_string())];
+                                }
+                                if let TyKind::Slice(inner_ty) = &ty.kind {
+                                    // Don't suggest `-> [T]`, suggest `-> Vec<T>`.
+                                    sugg = vec![
+                                        (lt.span.with_hi(inner_ty.span.lo()), "Vec<".to_string()),
+                                        (ty.span.with_lo(inner_ty.span.hi()), ">".to_string()),
+                                    ];
+                                }
+                            }
+                        };
+                        err.multipart_suggestion_verbose(
+                            format!("{pre} to want to return an owned value"),
+                            sugg,
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+                }
 
                 // Record as using the suggested resolution.
                 let (_, (_, res)) = in_scope_lifetimes[0];
@@ -2977,7 +3075,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
 fn mk_where_bound_predicate(
     path: &Path,
     poly_trait_ref: &ast::PolyTraitRef,
-    ty: &ast::Ty,
+    ty: &Ty,
 ) -> Option<ast::WhereBoundPredicate> {
     use rustc_span::DUMMY_SP;
     let modified_segments = {
@@ -3052,6 +3150,22 @@ pub(super) fn signal_lifetime_shadowing(sess: &Session, orig: Ident, shadower: I
     err.span_label(orig.span, "first declared here");
     err.span_label(shadower.span, format!("lifetime `{}` already in scope", orig.name));
     err.emit();
+}
+
+struct LifetimeFinder<'ast> {
+    lifetime: Span,
+    found: Option<&'ast Ty>,
+}
+
+impl<'ast> Visitor<'ast> for LifetimeFinder<'ast> {
+    fn visit_ty(&mut self, t: &'ast Ty) {
+        if t.span.lo() == self.lifetime.lo()
+            && let TyKind::Ref(_, mut_ty) = &t.kind
+        {
+            self.found = Some(&mut_ty.ty);
+        }
+        walk_ty(self, t)
+    }
 }
 
 /// Shadowing involving a label is only a warning for historical reasons.

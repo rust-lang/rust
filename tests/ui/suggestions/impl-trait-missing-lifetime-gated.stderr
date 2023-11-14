@@ -5,10 +5,19 @@ LL |     fn g(mut x: impl Iterator<Item = &()>) -> Option<&()> { x.next() }
    |                                                      ^ expected named lifetime parameter
    |
    = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
-help: consider using the `'static` lifetime
+help: consider using the `'static` lifetime, but this is uncommon unless you're returning a borrowed value from a `const` or a `static`
    |
 LL |     fn g(mut x: impl Iterator<Item = &()>) -> Option<&'static ()> { x.next() }
    |                                                       +++++++
+help: instead, you are more likely to want to change the argument to be borrowed...
+   |
+LL |     fn g(mut x: &impl Iterator<Item = &()>) -> Option<&()> { x.next() }
+   |                 +
+help: ...or alternatively, to want to return an owned value
+   |
+LL -     fn g(mut x: impl Iterator<Item = &()>) -> Option<&()> { x.next() }
+LL +     fn g(mut x: impl Iterator<Item = &()>) -> Option<()> { x.next() }
+   |
 
 error[E0106]: missing lifetime specifier
   --> $DIR/impl-trait-missing-lifetime-gated.rs:19:60
@@ -17,10 +26,19 @@ LL |     async fn i(mut x: impl Iterator<Item = &()>) -> Option<&()> { x.next() 
    |                                                            ^ expected named lifetime parameter
    |
    = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
-help: consider using the `'static` lifetime
+help: consider using the `'static` lifetime, but this is uncommon unless you're returning a borrowed value from a `const` or a `static`
    |
 LL |     async fn i(mut x: impl Iterator<Item = &()>) -> Option<&'static ()> { x.next() }
    |                                                             +++++++
+help: instead, you are more likely to want to change the argument to be borrowed...
+   |
+LL |     async fn i(mut x: &impl Iterator<Item = &()>) -> Option<&()> { x.next() }
+   |                       +
+help: ...or alternatively, to want to return an owned value
+   |
+LL -     async fn i(mut x: impl Iterator<Item = &()>) -> Option<&()> { x.next() }
+LL +     async fn i(mut x: impl Iterator<Item = &()>) -> Option<()> { x.next() }
+   |
 
 error[E0106]: missing lifetime specifier
   --> $DIR/impl-trait-missing-lifetime-gated.rs:27:58
@@ -29,7 +47,7 @@ LL |     fn g(mut x: impl Iterator<Item = &'_ ()>) -> Option<&'_ ()> { x.next() 
    |                                                          ^^ expected named lifetime parameter
    |
    = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
-help: consider using the `'static` lifetime
+help: consider using the `'static` lifetime, but this is uncommon unless you're returning a borrowed value from a `const` or a `static`, or if you will only have owned values
    |
 LL |     fn g(mut x: impl Iterator<Item = &'_ ()>) -> Option<&'static ()> { x.next() }
    |                                                          ~~~~~~~
@@ -41,7 +59,7 @@ LL |     async fn i(mut x: impl Iterator<Item = &'_ ()>) -> Option<&'_ ()> { x.n
    |                                                                ^^ expected named lifetime parameter
    |
    = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
-help: consider using the `'static` lifetime
+help: consider using the `'static` lifetime, but this is uncommon unless you're returning a borrowed value from a `const` or a `static`, or if you will only have owned values
    |
 LL |     async fn i(mut x: impl Iterator<Item = &'_ ()>) -> Option<&'static ()> { x.next() }
    |                                                                ~~~~~~~
@@ -53,10 +71,19 @@ LL |     fn g(mut x: impl Foo) -> Option<&()> { x.next() }
    |                                     ^ expected named lifetime parameter
    |
    = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
-help: consider using the `'static` lifetime
+help: consider using the `'static` lifetime, but this is uncommon unless you're returning a borrowed value from a `const` or a `static`
    |
 LL |     fn g(mut x: impl Foo) -> Option<&'static ()> { x.next() }
    |                                      +++++++
+help: instead, you are more likely to want to change the argument to be borrowed...
+   |
+LL |     fn g(mut x: &impl Foo) -> Option<&()> { x.next() }
+   |                 +
+help: ...or alternatively, to want to return an owned value
+   |
+LL -     fn g(mut x: impl Foo) -> Option<&()> { x.next() }
+LL +     fn g(mut x: impl Foo) -> Option<()> { x.next() }
+   |
 
 error[E0106]: missing lifetime specifier
   --> $DIR/impl-trait-missing-lifetime-gated.rs:58:41
@@ -65,10 +92,19 @@ LL |     fn g(mut x: impl Foo<()>) -> Option<&()> { x.next() }
    |                                         ^ expected named lifetime parameter
    |
    = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
-help: consider using the `'static` lifetime
+help: consider using the `'static` lifetime, but this is uncommon unless you're returning a borrowed value from a `const` or a `static`
    |
 LL |     fn g(mut x: impl Foo<()>) -> Option<&'static ()> { x.next() }
    |                                          +++++++
+help: instead, you are more likely to want to change the argument to be borrowed...
+   |
+LL |     fn g(mut x: &impl Foo<()>) -> Option<&()> { x.next() }
+   |                 +
+help: ...or alternatively, to want to return an owned value
+   |
+LL -     fn g(mut x: impl Foo<()>) -> Option<&()> { x.next() }
+LL +     fn g(mut x: impl Foo<()>) -> Option<()> { x.next() }
+   |
 
 error[E0658]: anonymous lifetimes in `impl Trait` are unstable
   --> $DIR/impl-trait-missing-lifetime-gated.rs:6:35
