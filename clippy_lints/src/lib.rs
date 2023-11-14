@@ -164,6 +164,7 @@ mod item_name_repetitions;
 mod items_after_statements;
 mod items_after_test_module;
 mod iter_not_returning_iterator;
+mod iter_over_hash_type;
 mod iter_without_into_iter;
 mod large_const_arrays;
 mod large_enum_variant;
@@ -1064,6 +1065,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     });
     store.register_late_pass(move |_| Box::new(manual_hash_one::ManualHashOne::new(msrv())));
     store.register_late_pass(|_| Box::new(iter_without_into_iter::IterWithoutIntoIter));
+    store.register_late_pass(|_| Box::new(iter_over_hash_type::IterOverHashType));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
