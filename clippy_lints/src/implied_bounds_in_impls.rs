@@ -43,7 +43,7 @@ declare_clippy_lint! {
     ///     Box::new(123)
     /// }
     /// ```
-    #[clippy::version = "1.73.0"]
+    #[clippy::version = "1.74.0"]
     pub IMPLIED_BOUNDS_IN_IMPLS,
     nursery,
     "specifying bounds that are implied by other bounds in `impl Trait` type"

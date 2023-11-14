@@ -371,7 +371,7 @@ declare_clippy_lint! {
     ///     let _ = 1 / random();
     /// }
     /// ```
-    #[clippy::version = "1.73.0"]
+    #[clippy::version = "1.74.0"]
     pub SHOULD_PANIC_WITHOUT_EXPECT,
     pedantic,
     "ensures that all `should_panic` attributes specify its expected panic message"
