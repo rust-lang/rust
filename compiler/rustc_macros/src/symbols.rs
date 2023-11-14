@@ -19,7 +19,9 @@
 //! ```bash
 //! cargo install cargo-expand          # this is necessary only once
 //! cd compiler/rustc_span
-//! cargo expand > /tmp/rustc_span.rs   # it's a big file
+//! # The specific version number in CFG_RELEASE doesn't matter.
+//! # The output is large.
+//! CFG_RELEASE="0.0.0" cargo +nightly expand > /tmp/rustc_span.rs
 //! ```
 
 use proc_macro2::{Span, TokenStream};
@@ -318,13 +320,4 @@ fn symbols_with_errors(input: TokenStream) -> (TokenStream, Vec<syn::Error>) {
     };
 
     (output, errors.list)
-
-    // To see the generated code, use the "cargo expand" command.
-    // Do this once to install:
-    //      cargo install cargo-expand
-    //
-    // Then, cd to rustc_span and run:
-    //      cargo expand > /tmp/rustc_span_expanded.rs
-    //
-    // and read that file.
 }

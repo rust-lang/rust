@@ -478,7 +478,7 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
         }
     }
 
-    pub fn into_tokens(&mut self) -> Result<TokenStream, DiagnosticDeriveError> {
+    pub(crate) fn into_tokens(&mut self) -> Result<TokenStream, DiagnosticDeriveError> {
         let kind_slugs = self.identify_kind()?;
         if kind_slugs.is_empty() {
             if self.is_enum {

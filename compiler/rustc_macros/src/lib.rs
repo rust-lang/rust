@@ -26,6 +26,9 @@ mod symbols;
 mod type_foldable;
 mod type_visitable;
 
+// Reads the rust version (e.g. "1.75.0") from the CFG_RELEASE env var and
+// produces a `RustcVersion` literal containing that version (e.g.
+// `RustcVersion { major: 1, minor: 75, patch: 0 }`).
 #[proc_macro]
 pub fn current_rustc_version(input: TokenStream) -> TokenStream {
     current_version::current_version(input)
