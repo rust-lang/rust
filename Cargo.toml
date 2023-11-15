@@ -101,7 +101,7 @@ smallvec = { version = "1.10.0", features = [
   "const_generics",
 ] }
 tracing = "0.1.40"
-tracing-tree = "0.2.5"
+tracing-tree = "0.3.0"
 tracing-subscriber = { version = "0.3.18", default-features = false, features = [
     "registry",
     "fmt",
