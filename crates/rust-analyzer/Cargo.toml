@@ -77,7 +77,7 @@ jemallocator = { version = "0.5.0", package = "tikv-jemallocator", optional = tr
 
 [dev-dependencies]
 expect-test = "1.4.0"
-xshell = "0.2.2"
+xshell.workspace = true
 
 test-utils.workspace = true
 sourcegen.workspace = true

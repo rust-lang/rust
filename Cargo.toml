@@ -117,3 +117,4 @@ triomphe = { version = "0.1.8", default-features = false, features = ["std"] }
 hashbrown = { version = "0.12.3", features = [
   "inline-more",
 ], default-features = false }
+xshell = "0.2.5"
