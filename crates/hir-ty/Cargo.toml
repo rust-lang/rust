@@ -20,7 +20,7 @@ smallvec.workspace = true
 ena = "0.14.0"
 either = "1.7.0"
 oorandom = "11.1.3"
-tracing = "0.1.35"
+tracing.workspace = true
 rustc-hash = "1.1.0"
 scoped-tls = "1.0.0"
 chalk-solve = { version = "0.93.0", default-features = false }
@@ -47,7 +47,7 @@ limit.workspace = true
 
 [dev-dependencies]
 expect-test = "1.4.0"
-tracing = "0.1.35"
+tracing.workspace = true
 tracing-subscriber = { version = "0.3.16", default-features = false, features = [
     "registry",
 ] }

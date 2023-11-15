@@ -13,7 +13,7 @@ doctest = false
 
 [dependencies]
 cov-mark = "2.0.0-pre.1"
-tracing = "0.1.35"
+tracing.workspace = true
 rayon = "1.6.1"
 fst = { version = "0.4.7", default-features = false }
 rustc-hash = "1.1.0"

@@ -14,7 +14,7 @@ authors.workspace = true
 anyhow.workspace = true
 crossbeam-channel = "0.5.5"
 itertools.workspace = true
-tracing = "0.1.35"
+tracing.workspace = true
 
 ide.workspace = true
 ide-db.workspace = true
