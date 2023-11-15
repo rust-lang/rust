@@ -3296,8 +3296,12 @@ fn print_disambiguation_help<'tcx>(
         {
             let def_kind_descr = tcx.def_kind_descr(item.kind.as_def_kind(), item.def_id);
             let item_name = item.ident(tcx);
-            let rcvr_ref = tcx.fn_sig(item.def_id).skip_binder().skip_binder().inputs()[0]
-                .ref_mutability()
+            let rcvr_ref = tcx.fn_sig(item.def_id)
+                .skip_binder()
+                .skip_binder()
+                .inputs()
+                .get(0)
+                .and_then(|ty| ty.ref_mutability())
                 .map_or("", |mutbl| mutbl.ref_prefix_str());
             let args = format!(
                 "({}{})",
