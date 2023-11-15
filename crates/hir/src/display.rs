@@ -616,7 +616,7 @@ impl HirDisplay for TypeAlias {
         write_where_clause(def_id, f)?;
         if !data.bounds.is_empty() {
             f.write_str(": ")?;
-            f.write_joined(&data.bounds, " + ")?;
+            f.write_joined(data.bounds.iter(), " + ")?;
         }
         if let Some(ty) = &data.type_ref {
             f.write_str(" = ")?;

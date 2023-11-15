@@ -145,7 +145,7 @@ pub fn layout_of_adt_recover(
     _: &Substitution,
     _: &Arc<TraitEnvironment>,
 ) -> Result<Arc<Layout>, LayoutError> {
-    user_error!("infinite sized recursive type");
+    Err(LayoutError::RecursiveTypeWithoutIndirection)
 }
 
 /// Finds the appropriate Integer type and signedness for the given
@@ -169,11 +169,7 @@ fn repr_discr(
         let discr = Integer::from_attr(dl, ity);
         let fit = if ity.is_signed() { signed_fit } else { unsigned_fit };
         if discr < fit {
-            return Err(LayoutError::UserError(
-                "Integer::repr_discr: `#[repr]` hint too small for \
-                      discriminant range of enum "
-                    .into(),
-            ));
+            return Err(LayoutError::UserReprTooSmall);
         }
         return Ok((discr, ity.is_signed()));
     }
