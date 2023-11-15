@@ -47,9 +47,6 @@ jobs:
       CACHE_DOMAIN: ci-caches.rust-lang.org
     if: "github.event_name == 'pull_request'"
     continue-on-error: "${{ matrix.name == 'mingw-check-tidy' }}"
-    defaults:
-      run:
-        shell: "C:\\msys64\\msys2_shell.cmd -mingw64 -here -eo pipefail {0}"
     strategy:
       fail-fast: false
       matrix:
@@ -84,6 +81,9 @@ jobs:
               CUSTOM_MINGW: 0
               DIST_REQUIRE_ALL_TOOLS: 1
             os: windows-2019-8core-32gb
+    defaults:
+      run:
+        shell: "mysys2 {0}"
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     steps:
@@ -480,6 +480,9 @@ jobs:
               RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --enable-extended --enable-profiler"
               SCRIPT: python x.py dist bootstrap --include-default-paths
             os: windows-2019-8core-32gb
+    defaults:
+      run:
+        shell: "mysys2 {0}"
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     steps:
@@ -610,6 +613,9 @@ jobs:
             env:
               CODEGEN_BACKENDS: "llvm,cranelift"
             os: ubuntu-20.04-16core-64gb
+    defaults:
+      run:
+        shell: "mysys2 {0}"
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     steps:

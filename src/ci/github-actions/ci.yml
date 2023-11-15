@@ -110,6 +110,9 @@ x--expand-yaml-anchors--remove:
     if: success() && !env.SKIP_JOB
 
   - &base-ci-job
+    defaults:
+      run:
+        shell: mysys2 {0}
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     env: *shared-ci-variables
@@ -333,9 +336,6 @@ jobs:
       PR_CI_JOB: 1
     if: github.event_name == 'pull_request'
     continue-on-error: ${{ matrix.name == 'mingw-check-tidy' }}
-    defaults:
-      run:
-        shell: C:\msys64\msys2_shell.cmd -mingw64 -here -eo pipefail {0}
     strategy:
       fail-fast: false
       matrix:
