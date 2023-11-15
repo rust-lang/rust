@@ -100,6 +100,11 @@ pub(crate) fn check_assist_not_applicable(assist: Handler, ra_fixture: &str) {
     check(assist, ra_fixture, ExpectedResult::NotApplicable, None);
 }
 
+#[track_caller]
+pub(crate) fn check_assist_not_applicable_by_label(assist: Handler, ra_fixture: &str, label: &str) {
+    check(assist, ra_fixture, ExpectedResult::NotApplicable, Some(label));
+}
+
 /// Check assist in unresolved state. Useful to check assists for lazy computation.
 #[track_caller]
 pub(crate) fn check_assist_unresolved(assist: Handler, ra_fixture: &str) {
