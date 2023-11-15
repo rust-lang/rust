@@ -117,7 +117,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub IF_SAME_THEN_ELSE,
-    correctness,
+    style,
     "`if` with the same `then` and `else` blocks"
 }
 
