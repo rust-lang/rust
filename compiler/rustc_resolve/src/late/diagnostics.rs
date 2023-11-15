@@ -2971,9 +2971,13 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                     // we identified that the return expression references only one argument, we
                     // would suggest borrowing only that argument, and we'd skip the prior
                     // "use `'static`" suggestion entirely.
-                    if let [lt] = &lifetime_refs[..] && lt.kind == MissingLifetimeKind::Ampersand {
-                        let pre = if let Some((kind, _span)) =
-                            self.diagnostic_metadata.current_function
+                    if let [lt] = &lifetime_refs[..]
+                        && (lt.kind == MissingLifetimeKind::Ampersand
+                            || lt.kind == MissingLifetimeKind::Underscore)
+                    {
+                        let pre = if lt.kind == MissingLifetimeKind::Ampersand
+                            && let Some((kind, _span)) =
+                                self.diagnostic_metadata.current_function
                             && let FnKind::Fn(_, _, sig, _, _, _) = kind
                             && !sig.decl.inputs.is_empty()
                             && let sugg = sig
@@ -3013,8 +3017,10 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                                 Applicability::MaybeIncorrect,
                             );
                             "...or alternatively, you might want"
-                        } else if let Some((kind, _span)) =
-                            self.diagnostic_metadata.current_function
+                        } else if (lt.kind == MissingLifetimeKind::Ampersand
+                                || lt.kind == MissingLifetimeKind::Underscore)
+                            && let Some((kind, _span)) =
+                                self.diagnostic_metadata.current_function
                             && let FnKind::Fn(_, _, sig, _, _, _) = kind
                             && let ast::FnRetTy::Ty(ret_ty) = &sig.decl.output
                             && !sig.decl.inputs.is_empty()
@@ -3059,7 +3065,6 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                                 err,
                                 None,
                                 |err, higher_ranked, span, message, intro_sugg| {
-                                    info!(?span, ?message, ?intro_sugg);
                                     err.multipart_suggestion_verbose(
                                         message,
                                         std::iter::once((span, intro_sugg))
@@ -3093,7 +3098,9 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                                     && segments[0].ident.name == sym::str
                                 {
                                     // Don't suggest `-> str`, suggest `-> String`.
-                                    sugg = vec![(lt.span.with_hi(ty.span.hi()), "String".to_string())];
+                                    sugg = vec![
+                                        (lt.span.with_hi(ty.span.hi()), "String".to_string()),
+                                    ];
                                 }
                                 if let TyKind::Slice(inner_ty) = &ty.kind {
                                     // Don't suggest `-> [T]`, suggest `-> Vec<T>`.
@@ -3104,11 +3111,13 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                                 }
                             }
                         };
-                        err.multipart_suggestion_verbose(
-                            format!("{pre} to return an owned value"),
-                            sugg,
-                            Applicability::MaybeIncorrect,
-                        );
+                        if lt.kind == MissingLifetimeKind::Ampersand {
+                            err.multipart_suggestion_verbose(
+                                format!("{pre} to return an owned value"),
+                                sugg,
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
                     }
                 }
 
