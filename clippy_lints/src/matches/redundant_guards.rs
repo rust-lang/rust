@@ -102,22 +102,48 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'tcx>]) {
                 None,
             );
         } else if let Guard::If(if_expr) = guard
-            && let ExprKind::MethodCall(path, recv, ..) = if_expr.kind
+            && let ExprKind::MethodCall(path, recv, args, ..) = if_expr.kind
             && let Some(binding) = get_pat_binding(cx, recv, outer_arm)
         {
             let ty = cx.typeck_results().expr_ty(recv).peel_refs();
             let slice_like = ty.is_slice() || ty.is_array();
 
-            if path.ident.name == sym!(is_empty) {
+            let sugg = if path.ident.name == sym!(is_empty) {
                 // `s if s.is_empty()` becomes ""
                 // `arr if arr.is_empty()` becomes []
 
                 if ty.is_str() {
-                    emit_redundant_guards(cx, outer_arm, if_expr.span, r#""""#.into(), &binding, None)
+                    r#""""#.into()
                 } else if slice_like {
-                    emit_redundant_guards(cx, outer_arm, if_expr.span, "[]".into(), &binding, None)
+                    "[]".into()
+                } else {
+                    continue;
                 }
-            }
+            } else if slice_like
+                && let Some(needle) = args.first()
+                && let ExprKind::AddrOf(.., needle) = needle.kind
+                && let ExprKind::Array(needles) = needle.kind
+                && needles.iter().all(|needle| expr_can_be_pat(cx, needle))
+            {
+                // `arr if arr.starts_with(&[123])` becomes [123, ..]
+                // `arr if arr.ends_with(&[123])` becomes [.., 123]
+
+                let mut sugg = snippet(cx, needle.span, "<needle>").into_owned();
+
+                if path.ident.name == sym!(starts_with) {
+                    sugg.insert_str(sugg.len() - 1, ", ..");
+                } else if path.ident.name == sym!(ends_with) {
+                    sugg.insert_str(1, ".., ");
+                } else {
+                    continue;
+                }
+
+                sugg.into()
+            } else {
+                continue;
+            };
+
+            emit_redundant_guards(cx, outer_arm, if_expr.span, sugg, &binding, None);
         }
     }
 }
