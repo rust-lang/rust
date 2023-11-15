@@ -847,7 +847,7 @@ pub struct float32x4x4_t(
     pub float32x4_t,
 );
 
-/// ARM-specific type containing four `int64x1_t` vectors.
+/// ARM-specific type containing two `int64x1_t` vectors.
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
@@ -859,7 +859,7 @@ pub struct float32x4x4_t(
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub struct int64x1x2_t(pub int64x1_t, pub int64x1_t);
-/// ARM-specific type containing four `int64x1_t` vectors.
+/// ARM-specific type containing three `int64x1_t` vectors.
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
@@ -884,7 +884,7 @@ pub struct int64x1x3_t(pub int64x1_t, pub int64x1_t, pub int64x1_t);
 )]
 pub struct int64x1x4_t(pub int64x1_t, pub int64x1_t, pub int64x1_t, pub int64x1_t);
 
-/// ARM-specific type containing four `int64x2_t` vectors.
+/// ARM-specific type containing two `int64x2_t` vectors.
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
@@ -896,7 +896,7 @@ pub struct int64x1x4_t(pub int64x1_t, pub int64x1_t, pub int64x1_t, pub int64x1_
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub struct int64x2x2_t(pub int64x2_t, pub int64x2_t);
-/// ARM-specific type containing four `int64x2_t` vectors.
+/// ARM-specific type containing three `int64x2_t` vectors.
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
@@ -921,7 +921,7 @@ pub struct int64x2x3_t(pub int64x2_t, pub int64x2_t, pub int64x2_t);
 )]
 pub struct int64x2x4_t(pub int64x2_t, pub int64x2_t, pub int64x2_t, pub int64x2_t);
 
-/// ARM-specific type containing four `uint64x1_t` vectors.
+/// ARM-specific type containing two `uint64x1_t` vectors.
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
@@ -933,7 +933,7 @@ pub struct int64x2x4_t(pub int64x2_t, pub int64x2_t, pub int64x2_t, pub int64x2_
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub struct uint64x1x2_t(pub uint64x1_t, pub uint64x1_t);
-/// ARM-specific type containing four `uint64x1_t` vectors.
+/// ARM-specific type containing three `uint64x1_t` vectors.
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
@@ -963,7 +963,7 @@ pub struct uint64x1x4_t(
     pub uint64x1_t,
 );
 
-/// ARM-specific type containing four `uint64x2_t` vectors.
+/// ARM-specific type containing two `uint64x2_t` vectors.
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
@@ -975,7 +975,7 @@ pub struct uint64x1x4_t(
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub struct uint64x2x2_t(pub uint64x2_t, pub uint64x2_t);
-/// ARM-specific type containing four `uint64x2_t` vectors.
+/// ARM-specific type containing three `uint64x2_t` vectors.
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
@@ -1005,7 +1005,7 @@ pub struct uint64x2x4_t(
     pub uint64x2_t,
 );
 
-/// ARM-specific type containing four `poly64x1_t` vectors.
+/// ARM-specific type containing two `poly64x1_t` vectors.
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
@@ -1017,7 +1017,7 @@ pub struct uint64x2x4_t(
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub struct poly64x1x2_t(pub poly64x1_t, pub poly64x1_t);
-/// ARM-specific type containing four `poly64x1_t` vectors.
+/// ARM-specific type containing three `poly64x1_t` vectors.
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
@@ -1047,7 +1047,7 @@ pub struct poly64x1x4_t(
     pub poly64x1_t,
 );
 
-/// ARM-specific type containing four `poly64x2_t` vectors.
+/// ARM-specific type containing two `poly64x2_t` vectors.
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
@@ -1059,7 +1059,7 @@ pub struct poly64x1x4_t(
     unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
 )]
 pub struct poly64x2x2_t(pub poly64x2_t, pub poly64x2_t);
-/// ARM-specific type containing four `poly64x2_t` vectors.
+/// ARM-specific type containing three `poly64x2_t` vectors.
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(
