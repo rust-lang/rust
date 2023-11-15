@@ -2418,11 +2418,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         field_ident: Ident,
         base: &'tcx hir::Expr<'tcx>,
         ty: Ty<'tcx>,
-    ) -> bool {
+    ) {
         let Some(output_ty) = self.get_impl_future_output_ty(ty) else {
-            return false;
+            return;
         };
-        let mut add_label = true;
         if let ty::Adt(def, _) = output_ty.kind() {
             // no field access on enum type
             if !def.is_enum() {
@@ -2432,7 +2431,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .iter()
                     .any(|field| field.ident(self.tcx) == field_ident)
                 {
-                    add_label = false;
                     err.span_label(
                         field_ident.span,
                         "field not available in `impl Future`, but it is available in its `Output`",
@@ -2446,10 +2444,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
         }
-        if add_label {
-            err.span_label(field_ident.span, format!("field not found in `{ty}`"));
-        }
-        true
     }
 
     fn ban_nonexisting_field(
@@ -2465,28 +2459,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
         let mut err = self.no_such_field_err(ident, base_ty, base.hir_id);
 
-        let has_label = match *base_ty.peel_refs().kind() {
+        match *base_ty.peel_refs().kind() {
             ty::Array(_, len) => {
                 self.maybe_suggest_array_indexing(&mut err, expr, base, ident, len);
-                false
             }
             ty::RawPtr(..) => {
                 self.suggest_first_deref_field(&mut err, expr, base, ident);
-                false
             }
             ty::Param(param_ty) => {
                 self.point_at_param_definition(&mut err, param_ty);
-                false
             }
             ty::Alias(ty::Opaque, _) => {
-                self.suggest_await_on_field_access(&mut err, ident, base, base_ty.peel_refs())
+                self.suggest_await_on_field_access(&mut err, ident, base, base_ty.peel_refs());
             }
-            _ => false,
-        };
-
-        if !has_label {
-            err.span_label(ident.span, "unknown field");
+            _ => {}
         }
+
+        err.span_label(ident.span, "unknown field");
 
         self.suggest_fn_call(&mut err, base, base_ty, |output_ty| {
             if let ty::Adt(def, _) = output_ty.kind()
