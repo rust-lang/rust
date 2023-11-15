@@ -1106,7 +1106,7 @@ impl<T> fmt::Debug for Discriminant<T> {
     }
 }
 
-#[stable(feature = "discriminant_value", since = "1.21.0")]
+#[stable(feature = "discriminant_value", since = "CURRENT_RUSTC_VERSION")]
 impl<T> cmp::PartialOrd for Discriminant<T> {
     fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
         self.0.partial_cmp(&other.0)
