@@ -37,7 +37,7 @@ mimalloc = { version = "0.1.30", default-features = false, optional = true }
 lsp-server.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
-tracing-log = "0.1.3"
+tracing-log = "0.2.0"
 tracing-tree.workspace = true
 triomphe.workspace = true
 nohash-hasher.workspace = true
