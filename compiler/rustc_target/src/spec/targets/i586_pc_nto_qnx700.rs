@@ -16,7 +16,7 @@ pub fn target() -> Target {
                 &["-Vgcc_ntox86_cxx"],
             ),
             env: "nto70".into(),
-            stack_probes: StackProbeType::X86,
+            stack_probes: StackProbeType::Inline,
             ..base::nto_qnx::opts()
         },
     }

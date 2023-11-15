@@ -10,7 +10,7 @@ pub fn target() -> Target {
     base.features = "+mmx,+sse,+sse2,+sse3,+ssse3,+sse4.1,+sse4.2,+popcnt".into();
     base.max_atomic_width = Some(64);
     base.add_pre_link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-m64"]);
-    base.stack_probes = StackProbeType::X86;
+    base.stack_probes = StackProbeType::Inline;
     base.supports_xray = true;
 
     Target {

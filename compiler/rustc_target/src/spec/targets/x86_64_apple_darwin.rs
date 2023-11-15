@@ -8,7 +8,7 @@ pub fn target() -> Target {
     base.max_atomic_width = Some(128); // penryn+ supports cmpxchg16b
     base.frame_pointer = FramePointer::Always;
     base.add_pre_link_args(LinkerFlavor::Darwin(Cc::Yes, Lld::No), &["-m64"]);
-    base.stack_probes = StackProbeType::X86;
+    base.stack_probes = StackProbeType::Inline;
     base.supported_sanitizers =
         SanitizerSet::ADDRESS | SanitizerSet::CFI | SanitizerSet::LEAK | SanitizerSet::THREAD;
 
