@@ -91,6 +91,7 @@ lsp-server = { version = "0.7.4" }
 
 # non-local crates
 anyhow = "1.0.75"
+cargo_metadata = "0.18.1"
 dissimilar = "1.0.7"
 either = "1.9.0"
 indexmap = "2.1.0"

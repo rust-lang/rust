@@ -12,13 +12,13 @@ rust-version.workspace = true
 doctest = false
 
 [dependencies]
-tracing.workspace = true
-rustc-hash = "1.1.0"
-cargo_metadata = "0.15.0"
-semver = "1.0.14"
 anyhow.workspace = true
+cargo_metadata.workspace = true
+rustc-hash = "1.1.0"
+semver = "1.0.14"
 serde_json.workspace = true
 serde.workspace = true
+tracing.workspace = true
 triomphe.workspace = true
 la-arena.workspace = true
 itertools.workspace = true
