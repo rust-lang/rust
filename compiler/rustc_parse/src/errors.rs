@@ -1676,7 +1676,7 @@ pub(crate) struct ExternItemCannotBeConst {
     #[primary_span]
     pub ident_span: Span,
     #[suggestion(code = "static ", applicability = "machine-applicable")]
-    pub const_span: Span,
+    pub const_span: Option<Span>,
 }
 
 #[derive(Diagnostic)]
