@@ -5,18 +5,10 @@ use rustc_hir as hir;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, GenericParam, Generics, HirId, ImplItem, ImplItemKind, TraitItem, TraitItemKind};
 use rustc_lint::LateContext;
-use rustc_span::symbol::Ident;
-use rustc_span::{BytePos, Span};
 
 use super::IMPL_TRAIT_IN_PARAMS;
 
-fn report(
-    cx: &LateContext<'_>,
-    param: &GenericParam<'_>,
-    ident: &Ident,
-    generics: &Generics<'_>,
-    first_param_span: Span,
-) {
+fn report(cx: &LateContext<'_>, param: &GenericParam<'_>, generics: &Generics<'_>) {
     // No generics with nested generics, and no generics like FnMut(x)
     span_lint_and_then(
         cx,
@@ -35,12 +27,7 @@ fn report(
                 );
             } else {
                 diag.span_suggestion_with_style(
-                    Span::new(
-                        first_param_span.lo() - rustc_span::BytePos(1),
-                        ident.span.hi(),
-                        ident.span.ctxt(),
-                        ident.span.parent(),
-                    ),
+                    generics.span,
                     "add a type parameter",
                     format!("<{{ /* Generic name */ }}: {}>", &param.name.ident().as_str()[5..]),
                     rustc_errors::Applicability::HasPlaceholders,
@@ -52,13 +39,13 @@ fn report(
 }
 
 pub(super) fn check_fn<'tcx>(cx: &LateContext<'_>, kind: &'tcx FnKind<'_>, body: &'tcx Body<'_>, hir_id: HirId) {
-    if let FnKind::ItemFn(ident, generics, _) = kind
+    if let FnKind::ItemFn(_, generics, _) = kind
         && cx.tcx.visibility(cx.tcx.hir().body_owner_def_id(body.id())).is_public()
         && !is_in_test_function(cx.tcx, hir_id)
     {
         for param in generics.params {
             if param.is_impl_trait() {
-                report(cx, param, ident, generics, body.params[0].span);
+                report(cx, param, generics);
             };
         }
     }
@@ -76,7 +63,7 @@ pub(super) fn check_impl_item(cx: &LateContext<'_>, impl_item: &ImplItem<'_>) {
     {
         for param in impl_item.generics.params {
             if param.is_impl_trait() {
-                report(cx, param, &impl_item.ident, impl_item.generics, body.params[0].span);
+                report(cx, param, impl_item.generics);
             }
         }
     }
@@ -92,8 +79,7 @@ pub(super) fn check_trait_item(cx: &LateContext<'_>, trait_item: &TraitItem<'_>,
     {
         for param in trait_item.generics.params {
             if param.is_impl_trait() {
-                let sp = trait_item.ident.span.with_hi(trait_item.ident.span.hi() + BytePos(1));
-                report(cx, param, &trait_item.ident, trait_item.generics, sp.shrink_to_hi());
+                report(cx, param, trait_item.generics);
             }
         }
     }
