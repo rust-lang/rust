@@ -155,26 +155,24 @@ pub(crate) fn render_field(
         // call parens.
 
         if let Some(receiver) = &dot_access.receiver {
-            let range = receiver.syntax().text_range();
-            builder.insert(range.start(), "(".to_string());
-            builder.insert(range.end(), ")".to_string());
+            if let Some(receiver) = ctx.completion.sema.original_ast_node(receiver.clone()) {
+                let range = receiver.syntax().text_range();
+                builder.insert(range.start(), "(".to_string());
+                builder.insert(range.end(), ")".to_string());
+            }
         }
         builder.replace(
             ctx.source_range(),
             field_with_receiver(db, receiver.as_ref(), &escaped_name).into(),
         );
 
-        let is_fn_expected =
-            ctx.completion.expected_type.as_ref().map_or(false, |ty| ty.is_fn() || ty.is_closure());
+        let expected_fn_type =
+            ctx.completion.expected_type.as_ref().is_some_and(|ty| ty.is_fn() || ty.is_closure());
 
-        // This could be refactored as method of DotAccessKind
-        let is_parens_needed = if let DotAccessKind::Method { has_parens } = dot_access.kind {
-            !has_parens
-        } else {
-            true
-        };
+        let is_parens_needed =
+            !matches!(dot_access.kind, DotAccessKind::Method { has_parens: true });
 
-        if !is_fn_expected && is_parens_needed {
+        if !expected_fn_type && is_parens_needed {
             builder.insert(ctx.source_range().end(), "()".to_string());
         }
 
