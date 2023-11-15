@@ -57,14 +57,12 @@ use core::convert::identity as unlikely;
 #[cfg(feature = "nightly")]
 use core::intrinsics::{likely, unlikely};
 
-// Use strict provenance functions if available.
-#[cfg(feature = "nightly")]
-use core::ptr::invalid_mut;
-// Implement it with a cast otherwise.
-#[cfg(not(feature = "nightly"))]
+// FIXME: use strict provenance functions once they are stable.
+// Implement it with a transmute for now.
 #[inline(always)]
+#[allow(clippy::useless_transmute)] // clippy is wrong, cast and transmute are different here
 fn invalid_mut<T>(addr: usize) -> *mut T {
-    addr as *mut T
+    unsafe { core::mem::transmute(addr) }
 }
 
 #[inline]
