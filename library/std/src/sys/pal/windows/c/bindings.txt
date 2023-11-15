@@ -2593,4 +2593,3 @@ Windows.Win32.System.Threading.WakeConditionVariable
 Windows.Win32.System.WindowsProgramming.PROGRESS_CONTINUE
 Windows.Win32.UI.Shell.GetUserProfileDirectoryW
 // tidy-alphabetical-end
-
