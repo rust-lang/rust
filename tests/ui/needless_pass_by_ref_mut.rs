@@ -1,4 +1,9 @@
-#![allow(clippy::if_same_then_else, clippy::no_effect, clippy::redundant_closure_call)]
+#![allow(
+    clippy::if_same_then_else,
+    clippy::no_effect,
+    clippy::redundant_closure_call,
+    clippy::ptr_arg
+)]
 #![warn(clippy::needless_pass_by_ref_mut)]
 #![feature(lint_reasons)]
 //@no-rustfix

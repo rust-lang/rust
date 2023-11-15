@@ -29,6 +29,8 @@ use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use std::{fmt, iter};
 
+use crate::vec::is_allowed_vec_method;
+
 declare_clippy_lint! {
     /// ### What it does
     /// This lint checks for function arguments of type `&String`, `&Vec`,
@@ -661,7 +663,7 @@ fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &'tcx Body<'_>, args:
                             },
                             // If the types match check for methods which exist on both types. e.g. `Vec::len` and
                             // `slice::len`
-                            ty::Adt(def, _) if def.did() == args.ty_did => {
+                            ty::Adt(def, _) if def.did() == args.ty_did && !is_allowed_vec_method(self.cx, e) => {
                                 set_skip_flag();
                             },
                             _ => (),

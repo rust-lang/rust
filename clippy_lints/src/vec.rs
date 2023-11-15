@@ -58,7 +58,7 @@ fn adjusts_to_slice(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
 /// Checks if the given expression is a method call to a `Vec` method
 /// that also exists on slices. If this returns true, it means that
 /// this expression does not actually require a `Vec` and could just work with an array.
-fn is_allowed_vec_method(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
+pub fn is_allowed_vec_method(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
     const ALLOWED_METHOD_NAMES: &[&str] = &["len", "as_ptr", "is_empty"];
 
     if let ExprKind::MethodCall(path, ..) = e.kind {
