@@ -88,19 +88,10 @@ LL | fn k<'a, T: WithLifetime<'a>>(_x: T::Output) -> &isize {
    |                                                 ^ expected named lifetime parameter
    |
    = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
-help: consider using the `'a` lifetime, but this is uncommon unless you're returning a borrowed value from a `const` or a `static`
+help: consider using the `'a` lifetime
    |
 LL | fn k<'a, T: WithLifetime<'a>>(_x: T::Output) -> &'a isize {
    |                                                  ++
-help: instead, you are more likely to want to change the argument to be borrowed...
-   |
-LL | fn k<'a, T: WithLifetime<'a>>(_x: &T::Output) -> &isize {
-   |                                   +
-help: ...or alternatively, you might want to return an owned value
-   |
-LL - fn k<'a, T: WithLifetime<'a>>(_x: T::Output) -> &isize {
-LL + fn k<'a, T: WithLifetime<'a>>(_x: T::Output) -> isize {
-   |
 
 error[E0106]: missing lifetime specifier
   --> $DIR/lifetime-elision-return-type-requires-explicit-lifetime.rs:45:37
@@ -109,18 +100,10 @@ LL | fn l<'a>(_: &'a str, _: &'a str) -> &str { "" }
    |             -------     -------     ^ expected named lifetime parameter
    |
    = help: this function's return type contains a borrowed value with an elided lifetime, but the lifetime cannot be derived from the arguments
-help: consider using the `'a` lifetime, but this is uncommon unless you're returning a borrowed value from a `const` or a `static`
+help: consider using the `'a` lifetime
    |
 LL | fn l<'a>(_: &'a str, _: &'a str) -> &'a str { "" }
    |                                      ++
-help: instead, you are more likely to want to change one of the arguments to be borrowed...
-   |
-LL | fn l<'a>(_: &&'a str, _: &&'a str) -> &str { "" }
-   |             +            +
-help: ...or alternatively, you might want to return an owned value
-   |
-LL | fn l<'a>(_: &'a str, _: &'a str) -> String { "" }
-   |                                     ~~~~~~
 
 error: aborting due to 7 previous errors
 

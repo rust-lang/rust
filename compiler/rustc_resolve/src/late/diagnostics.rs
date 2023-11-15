@@ -2853,8 +2853,8 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                     "this function's return type contains a borrowed value, but there is no value \
                      for it to be borrowed from",
                 );
-                maybe_static = true;
                 if in_scope_lifetimes.is_empty() {
+                    maybe_static = true;
                     in_scope_lifetimes = vec![(
                         Ident::with_dummy_span(kw::StaticLifetime),
                         (DUMMY_NODE_ID, LifetimeRes::Static),
@@ -2865,8 +2865,8 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                     "this function's return type contains a borrowed value with an elided \
                      lifetime, but the lifetime cannot be derived from the arguments",
                 );
-                maybe_static = true;
                 if in_scope_lifetimes.is_empty() {
+                    maybe_static = true;
                     in_scope_lifetimes = vec![(
                         Ident::with_dummy_span(kw::StaticLifetime),
                         (DUMMY_NODE_ID, LifetimeRes::Static),
