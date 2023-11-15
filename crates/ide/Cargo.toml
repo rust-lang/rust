@@ -14,7 +14,7 @@ doctest = false
 [dependencies]
 cov-mark = "2.0.0-pre.1"
 crossbeam-channel = "0.5.5"
-either = "1.7.0"
+either.workspace = true
 itertools.workspace = true
 tracing.workspace = true
 oorandom = "11.1.3"
