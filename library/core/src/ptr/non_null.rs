@@ -827,6 +827,8 @@ impl<T: ?Sized> From<&mut T> for NonNull<T> {
     /// Converts a `&mut T` to a `NonNull<T>`.
     ///
     /// This conversion is safe and infallible since references cannot be null.
+    /// This implementation is guaranteed to preserve *[pointer provenance]*.
+    /// [pointer provenance]: <https://rust-lang.github.io/unsafe-code-guidelines/glossary.html#pointer-provenance>
     #[inline]
     fn from(reference: &mut T) -> Self {
         // SAFETY: A mutable reference cannot be null.
@@ -839,6 +841,8 @@ impl<T: ?Sized> From<&T> for NonNull<T> {
     /// Converts a `&T` to a `NonNull<T>`.
     ///
     /// This conversion is safe and infallible since references cannot be null.
+    /// This implementation is guaranteed to preserve *[pointer provenance]*.
+    /// [pointer provenance]: <https://rust-lang.github.io/unsafe-code-guidelines/glossary.html#pointer-provenance>
     #[inline]
     fn from(reference: &T) -> Self {
         // SAFETY: A reference cannot be null, so the conditions for
