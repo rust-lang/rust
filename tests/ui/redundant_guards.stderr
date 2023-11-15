@@ -203,5 +203,89 @@ LL -             B { ref c, .. } if matches!(c, &1) => {},
 LL +             B { c: 1, .. } => {},
    |
 
-error: aborting due to 17 previous errors
+error: redundant guard
+  --> $DIR/redundant_guards.rs:201:26
+   |
+LL |         Some(Some(x)) if x.is_empty() => {},
+   |                          ^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -         Some(Some(x)) if x.is_empty() => {},
+LL +         Some(Some("")) => {},
+   |
+
+error: redundant guard
+  --> $DIR/redundant_guards.rs:212:26
+   |
+LL |         Some(Some(x)) if x.is_empty() => {},
+   |                          ^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -         Some(Some(x)) if x.is_empty() => {},
+LL +         Some(Some([])) => {},
+   |
+
+error: redundant guard
+  --> $DIR/redundant_guards.rs:217:26
+   |
+LL |         Some(Some(x)) if x.is_empty() => {},
+   |                          ^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -         Some(Some(x)) if x.is_empty() => {},
+LL +         Some(Some([])) => {},
+   |
+
+error: redundant guard
+  --> $DIR/redundant_guards.rs:228:26
+   |
+LL |         Some(Some(x)) if x.starts_with(&[]) => {},
+   |                          ^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -         Some(Some(x)) if x.starts_with(&[]) => {},
+LL +         Some(Some([..])) => {},
+   |
+
+error: redundant guard
+  --> $DIR/redundant_guards.rs:233:26
+   |
+LL |         Some(Some(x)) if x.starts_with(&[1]) => {},
+   |                          ^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -         Some(Some(x)) if x.starts_with(&[1]) => {},
+LL +         Some(Some([1, ..])) => {},
+   |
+
+error: redundant guard
+  --> $DIR/redundant_guards.rs:238:26
+   |
+LL |         Some(Some(x)) if x.starts_with(&[1, 2]) => {},
+   |                          ^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -         Some(Some(x)) if x.starts_with(&[1, 2]) => {},
+LL +         Some(Some([1, 2, ..])) => {},
+   |
+
+error: redundant guard
+  --> $DIR/redundant_guards.rs:243:26
+   |
+LL |         Some(Some(x)) if x.ends_with(&[1, 2]) => {},
+   |                          ^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -         Some(Some(x)) if x.ends_with(&[1, 2]) => {},
+LL +         Some(Some([.., 1, 2])) => {},
+   |
+
+error: aborting due to 24 previous errors
 

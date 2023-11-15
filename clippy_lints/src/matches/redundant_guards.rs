@@ -127,10 +127,13 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'tcx>]) {
             {
                 // `arr if arr.starts_with(&[123])` becomes [123, ..]
                 // `arr if arr.ends_with(&[123])` becomes [.., 123]
+                // `arr if arr.starts_with(&[])` becomes [..]  (why would anyone write this?)
 
                 let mut sugg = snippet(cx, needle.span, "<needle>").into_owned();
 
-                if path.ident.name == sym!(starts_with) {
+                if needles.is_empty() {
+                    sugg.insert_str(1, "..");
+                } else if path.ident.name == sym!(starts_with) {
                     sugg.insert_str(sugg.len() - 1, ", ..");
                 } else if path.ident.name == sym!(ends_with) {
                     sugg.insert_str(1, ".., ");
