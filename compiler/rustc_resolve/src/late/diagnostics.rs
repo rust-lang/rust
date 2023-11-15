@@ -3105,59 +3105,64 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                                 owned_sugg = true;
                             }
                             if let Some(ty) = lt_finder.found {
-                                if let TyKind::Path(None, path @ Path { segments, .. }) = &ty.kind
-                                    && segments.len() == 1
-                                {
-                                    if segments[0].ident.name == sym::str {
-                                        // Don't suggest `-> str`, suggest `-> String`.
-                                        sugg = vec![
-                                            (lt.span.with_hi(ty.span.hi()), "String".to_string()),
-                                        ];
-                                    } else {
-                                        // Check if the path being borrowed is likely to be owned.
-                                        let path: Vec<_> = Segment::from_path(path);
-                                        match self.resolve_path(&path, Some(TypeNS), None) {
-                                            PathResult::Module(
-                                                ModuleOrUniformRoot::Module(module),
-                                            ) => {
-                                                match module.res() {
-                                                    Some(Res::PrimTy(..)) => {}
-                                                    Some(Res::Def(
-                                                        DefKind::Struct
-                                                        | DefKind::Union
-                                                        | DefKind::Enum
-                                                        | DefKind::ForeignTy
-                                                        | DefKind::AssocTy
-                                                        | DefKind::OpaqueTy
-                                                        | DefKind::TyParam,
-                                                        _,
-                                                    )) => {}
-                                                    _ => { // Do not suggest in all other cases.
-                                                        owned_sugg = false;
-                                                    }
+                                if let TyKind::Path(None, path) = &ty.kind {
+                                    // Check if the path being borrowed is likely to be owned.
+                                    let path: Vec<_> = Segment::from_path(path);
+                                    match self.resolve_path(&path, Some(TypeNS), None) {
+                                        PathResult::Module(
+                                            ModuleOrUniformRoot::Module(module),
+                                        ) => {
+                                            match module.res() {
+                                                Some(Res::PrimTy(PrimTy::Str)) => {
+                                                    // Don't suggest `-> str`, suggest `-> String`.
+                                                    sugg = vec![(
+                                                        lt.span.with_hi(ty.span.hi()),
+                                                        "String".to_string(),
+                                                    )];
+                                                }
+                                                Some(Res::PrimTy(..)) => {}
+                                                Some(Res::Def(
+                                                    DefKind::Struct
+                                                    | DefKind::Union
+                                                    | DefKind::Enum
+                                                    | DefKind::ForeignTy
+                                                    | DefKind::AssocTy
+                                                    | DefKind::OpaqueTy
+                                                    | DefKind::TyParam,
+                                                    _,
+                                                )) => {}
+                                                _ => { // Do not suggest in all other cases.
+                                                    owned_sugg = false;
                                                 }
                                             }
-                                            PathResult::NonModule(res) => {
-                                                match res.base_res() {
-                                                    Res::PrimTy(..) => {}
-                                                    Res::Def(
-                                                        DefKind::Struct
-                                                        | DefKind::Union
-                                                        | DefKind::Enum
-                                                        | DefKind::ForeignTy
-                                                        | DefKind::AssocTy
-                                                        | DefKind::OpaqueTy
-                                                        | DefKind::TyParam,
-                                                        _,
-                                                    ) => {}
-                                                    _ => { // Do not suggest in all other cases.
-                                                        owned_sugg = false;
-                                                    }
+                                        }
+                                        PathResult::NonModule(res) => {
+                                            match res.base_res() {
+                                                Res::PrimTy(PrimTy::Str) => {
+                                                    // Don't suggest `-> str`, suggest `-> String`.
+                                                    sugg = vec![(
+                                                        lt.span.with_hi(ty.span.hi()),
+                                                        "String".to_string(),
+                                                    )];
+                                                }
+                                                Res::PrimTy(..) => {}
+                                                Res::Def(
+                                                    DefKind::Struct
+                                                    | DefKind::Union
+                                                    | DefKind::Enum
+                                                    | DefKind::ForeignTy
+                                                    | DefKind::AssocTy
+                                                    | DefKind::OpaqueTy
+                                                    | DefKind::TyParam,
+                                                    _,
+                                                ) => {}
+                                                _ => { // Do not suggest in all other cases.
+                                                    owned_sugg = false;
                                                 }
                                             }
-                                            _ => { // Do not suggest in all other cases.
-                                                owned_sugg = false;
-                                            }
+                                        }
+                                        _ => { // Do not suggest in all other cases.
+                                            owned_sugg = false;
                                         }
                                     }
                                 }
