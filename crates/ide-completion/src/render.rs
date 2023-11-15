@@ -1691,6 +1691,62 @@ fn foo(f: Foo) { let _: &u32 = f.b$0 }
     }
 
     #[test]
+    fn expected_fn_type_ref() {
+        check_kinds(
+            r#"
+struct S { field: fn() }
+
+fn foo() {
+    let foo: fn() = S { fields: || {}}.fi$0;
+}
+"#,
+            &[CompletionItemKind::SymbolKind(SymbolKind::Field)],
+            expect![[r#"
+                [
+                    CompletionItem {
+                        label: "field",
+                        source_range: 76..78,
+                        text_edit: TextEdit {
+                            indels: [
+                                Indel {
+                                    insert: "(",
+                                    delete: 57..57,
+                                },
+                                Indel {
+                                    insert: ")",
+                                    delete: 75..75,
+                                },
+                                Indel {
+                                    insert: "field",
+                                    delete: 76..78,
+                                },
+                            ],
+                        },
+                        kind: SymbolKind(
+                            Field,
+                        ),
+                        detail: "fn()",
+                        relevance: CompletionRelevance {
+                            exact_name_match: false,
+                            type_match: Some(
+                                Exact,
+                            ),
+                            is_local: false,
+                            is_item_from_trait: false,
+                            is_name_already_imported: false,
+                            requires_import: false,
+                            is_op_method: false,
+                            is_private_editable: false,
+                            postfix_match: None,
+                            is_definite: false,
+                        },
+                    },
+                ]
+            "#]],
+        )
+    }
+
+    #[test]
     fn qualified_path_ref() {
         check_kinds(
             r#"

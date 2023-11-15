@@ -1219,4 +1219,20 @@ fn foo() { S { field: || {} }.fi$0() }
             "#]],
         );
     }
+
+    #[test]
+    fn test_tuple_function_field_completion() {
+        check(
+            r#"
+struct B(u32, fn())
+fn foo() {
+   let b = B(0, || {});
+   b.$0()
+}
+"#,
+            expect![[r#"
+                fd 1 fn()
+            "#]],
+        );
+    }
 }
