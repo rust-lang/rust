@@ -1113,7 +1113,7 @@ impl<T> cmp::PartialOrd for Discriminant<T> {
     }
 }
 
-#[stable(feature = "discriminant_value", since = "1.21.0")]
+#[stable(feature = "discriminant_value", since = "CURRENT_RUSTC_VERSION")]
 impl<T> cmp::Ord for Discriminant<T> {
     fn cmp(&self, other: &Self) -> cmp::Ordering {
         self.0.cmp(&other.0)
