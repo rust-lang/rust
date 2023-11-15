@@ -113,10 +113,7 @@ use visitors::Visitable;
 
 use crate::consts::{constant, mir_to_const, Constant};
 use crate::higher::Range;
-use crate::ty::{
-    adt_and_variant_of_res, can_partially_move_ty, expr_sig, is_copy, is_recursively_primitive_type,
-    ty_is_fn_once_param,
-};
+use crate::ty::{adt_and_variant_of_res, can_partially_move_ty, expr_sig, is_copy, is_recursively_primitive_type};
 use crate::visitors::for_each_expr;
 
 use rustc_middle::hir::nested_filter;
@@ -1345,46 +1342,12 @@ pub fn get_enclosing_loop_or_multi_call_closure<'tcx>(
     for (_, node) in cx.tcx.hir().parent_iter(expr.hir_id) {
         match node {
             Node::Expr(e) => match e.kind {
-                ExprKind::Closure { .. } => {
+                ExprKind::Closure { .. }
                     if let rustc_ty::Closure(_, subs) = cx.typeck_results().expr_ty(e).kind()
-                        && subs.as_closure().kind() == ClosureKind::FnOnce
-                    {
-                        continue;
-                    }
-                    let is_once = walk_to_expr_usage(cx, e, |node, id| {
-                        let Node::Expr(e) = node else {
-                            return None;
-                        };
-                        match e.kind {
-                            ExprKind::Call(f, _) if f.hir_id == id => Some(()),
-                            ExprKind::Call(f, args) => {
-                                let i = args.iter().position(|arg| arg.hir_id == id)?;
-                                let sig = expr_sig(cx, f)?;
-                                let predicates = sig
-                                    .predicates_id()
-                                    .map_or(cx.param_env, |id| cx.tcx.param_env(id))
-                                    .caller_bounds();
-                                sig.input(i).and_then(|ty| {
-                                    ty_is_fn_once_param(cx.tcx, ty.skip_binder(), predicates).then_some(())
-                                })
-                            },
-                            ExprKind::MethodCall(_, receiver, args, _) => {
-                                let i = std::iter::once(receiver)
-                                    .chain(args.iter())
-                                    .position(|arg| arg.hir_id == id)?;
-                                let id = cx.typeck_results().type_dependent_def_id(e.hir_id)?;
-                                let ty = cx.tcx.fn_sig(id).instantiate_identity().skip_binder().inputs()[i];
-                                ty_is_fn_once_param(cx.tcx, ty, cx.tcx.param_env(id).caller_bounds()).then_some(())
-                            },
-                            _ => None,
-                        }
-                    })
-                    .is_some();
-                    if !is_once {
-                        return Some(e);
-                    }
-                },
-                ExprKind::Loop(..) => return Some(e),
+                        && subs.as_closure().kind() == ClosureKind::FnOnce => {},
+
+                // Note: A closure's kind is determined by how it's used, not it's captures.
+                ExprKind::Closure { .. } | ExprKind::Loop(..) => return Some(e),
                 _ => (),
             },
             Node::Stmt(_) | Node::Block(_) | Node::Local(_) | Node::Arm(_) => (),
