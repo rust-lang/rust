@@ -50,8 +50,8 @@ impl OutlivesSuggestionBuilder {
     // naming the `'self` lifetime in methods, etc.
     fn region_name_is_suggestable(name: &RegionName) -> bool {
         match name.source {
-            RegionNameSource::NamedEarlyBoundRegion(..)
-            | RegionNameSource::NamedFreeRegion(..)
+            RegionNameSource::NamedEarlyParamRegion(..)
+            | RegionNameSource::NamedLateParamRegion(..)
             | RegionNameSource::Static => true,
 
             // Don't give suggestions for upvars, closure return types, or other unnameable

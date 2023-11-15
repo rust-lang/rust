@@ -77,7 +77,7 @@ use std::ops::Deref;
 /// picture, but rather the ending point.
 //
 // FIXME(pnkfelix): this currently derives `PartialOrd` and `Ord` to
-// placate the same deriving in `ty::FreeRegion`, but we may want to
+// placate the same deriving in `ty::LateParamRegion`, but we may want to
 // actually attach a more meaningful ordering to scopes than the one
 // generated via deriving here.
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, Copy, TyEncodable, TyDecodable)]

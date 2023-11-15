@@ -532,8 +532,8 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for RemapLateBound<'_, 'tcx> {
     }
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        if let ty::ReFree(fr) = *r {
-            ty::Region::new_free(
+        if let ty::ReLateParam(fr) = *r {
+            ty::Region::new_late_param(
                 self.tcx,
                 fr.scope,
                 self.mapping.get(&fr.bound_region).copied().unwrap_or(fr.bound_region),
@@ -1078,20 +1078,20 @@ impl<'tcx> ty::FallibleTypeFolder<TyCtxt<'tcx>> for RemapHiddenTyRegions<'tcx> {
         region: ty::Region<'tcx>,
     ) -> Result<ty::Region<'tcx>, Self::Error> {
         match region.kind() {
-            // Remap all free regions, which correspond to late-bound regions in the function.
-            ty::ReFree(_) => {}
+            // Remap late-bound regions from the function.
+            ty::ReLateParam(_) => {}
             // Remap early-bound regions as long as they don't come from the `impl` itself,
             // in which case we don't really need to renumber them.
-            ty::ReEarlyBound(ebr) if self.tcx.parent(ebr.def_id) != self.impl_def_id => {}
+            ty::ReEarlyParam(ebr) if self.tcx.parent(ebr.def_id) != self.impl_def_id => {}
             _ => return Ok(region),
         }
 
         let e = if let Some(region) = self.map.get(&region) {
-            if let ty::ReEarlyBound(e) = region.kind() { e } else { bug!() }
+            if let ty::ReEarlyParam(e) = region.kind() { e } else { bug!() }
         } else {
             let guar = match region.kind() {
-                ty::ReEarlyBound(ty::EarlyBoundRegion { def_id, .. })
-                | ty::ReFree(ty::FreeRegion {
+                ty::ReEarlyParam(ty::EarlyParamRegion { def_id, .. })
+                | ty::ReLateParam(ty::LateParamRegion {
                     bound_region: ty::BoundRegionKind::BrNamed(def_id, _),
                     ..
                 }) => {
@@ -1119,9 +1119,9 @@ impl<'tcx> ty::FallibleTypeFolder<TyCtxt<'tcx>> for RemapHiddenTyRegions<'tcx> {
             return Err(guar);
         };
 
-        Ok(ty::Region::new_early_bound(
+        Ok(ty::Region::new_early_param(
             self.tcx,
-            ty::EarlyBoundRegion {
+            ty::EarlyParamRegion {
                 def_id: e.def_id,
                 name: e.name,
                 index: (e.index as usize - self.num_trait_args + self.num_impl_args) as u32,

@@ -1910,7 +1910,7 @@ impl ExplicitOutlivesRequirements {
             .iter()
             .filter_map(|(clause, _)| match clause.kind().skip_binder() {
                 ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(a, b)) => match *a {
-                    ty::ReEarlyBound(ebr) if ebr.def_id == def_id => Some(b),
+                    ty::ReEarlyParam(ebr) if ebr.def_id == def_id => Some(b),
                     _ => None,
                 },
                 _ => None,
@@ -1953,7 +1953,7 @@ impl ExplicitOutlivesRequirements {
                 let is_inferred = match tcx.named_bound_var(lifetime.hir_id) {
                     Some(ResolvedArg::EarlyBound(def_id)) => inferred_outlives
                         .iter()
-                        .any(|r| matches!(**r, ty::ReEarlyBound(ebr) if { ebr.def_id == def_id })),
+                        .any(|r| matches!(**r, ty::ReEarlyParam(ebr) if { ebr.def_id == def_id })),
                     _ => false,
                 };
 

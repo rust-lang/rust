@@ -1,17 +1,17 @@
-error[E0700]: hidden type for `Opaque(DefId(0:13 ~ impl_trait_captures[aeb9]::foo::{opaque#0}), [ReEarlyBound(DefId(0:9 ~ impl_trait_captures[aeb9]::foo::'a), 0, 'a), T, ReEarlyBound(DefId(0:9 ~ impl_trait_captures[aeb9]::foo::'a), 0, 'a)])` captures lifetime that does not appear in bounds
+error[E0700]: hidden type for `Opaque(DefId(0:13 ~ impl_trait_captures[aeb9]::foo::{opaque#0}), [ReEarlyParam(DefId(0:9 ~ impl_trait_captures[aeb9]::foo::'a), 0, 'a), T, ReEarlyParam(DefId(0:9 ~ impl_trait_captures[aeb9]::foo::'a), 0, 'a)])` captures lifetime that does not appear in bounds
   --> $DIR/impl-trait-captures.rs:11:5
    |
 LL | fn foo<'a, T>(x: &T) -> impl Foo<'a> {
    |                  --     ------------ opaque type defined here
    |                  |
-   |                  hidden type `&ReFree(DefId(0:8 ~ impl_trait_captures[aeb9]::foo), BrNamed(DefId(0:12 ~ impl_trait_captures[aeb9]::foo::'_), '_)) T` captures the anonymous lifetime defined here
+   |                  hidden type `&ReLateParam(DefId(0:8 ~ impl_trait_captures[aeb9]::foo), BrNamed(DefId(0:12 ~ impl_trait_captures[aeb9]::foo::'_), '_)) T` captures the anonymous lifetime defined here
 LL |     x
    |     ^
    |
-help: to declare that `Opaque(DefId(0:13 ~ impl_trait_captures[aeb9]::foo::{opaque#0}), [ReEarlyBound(DefId(0:9 ~ impl_trait_captures[aeb9]::foo::'a), 0, 'a), T, ReEarlyBound(DefId(0:14 ~ impl_trait_captures[aeb9]::foo::{opaque#0}::'a), 2, 'a)])` captures `ReFree(DefId(0:8 ~ impl_trait_captures[aeb9]::foo), BrNamed(DefId(0:12 ~ impl_trait_captures[aeb9]::foo::'_), '_))`, you can add an explicit `ReFree(DefId(0:8 ~ impl_trait_captures[aeb9]::foo), BrNamed(DefId(0:12 ~ impl_trait_captures[aeb9]::foo::'_), '_))` lifetime bound
+help: to declare that `Opaque(DefId(0:13 ~ impl_trait_captures[aeb9]::foo::{opaque#0}), [ReEarlyParam(DefId(0:9 ~ impl_trait_captures[aeb9]::foo::'a), 0, 'a), T, ReEarlyParam(DefId(0:14 ~ impl_trait_captures[aeb9]::foo::{opaque#0}::'a), 2, 'a)])` captures `ReLateParam(DefId(0:8 ~ impl_trait_captures[aeb9]::foo), BrNamed(DefId(0:12 ~ impl_trait_captures[aeb9]::foo::'_), '_))`, you can add an explicit `ReLateParam(DefId(0:8 ~ impl_trait_captures[aeb9]::foo), BrNamed(DefId(0:12 ~ impl_trait_captures[aeb9]::foo::'_), '_))` lifetime bound
    |
-LL | fn foo<'a, T>(x: &T) -> impl Foo<'a> + ReFree(DefId(0:8 ~ impl_trait_captures[aeb9]::foo), BrNamed(DefId(0:12 ~ impl_trait_captures[aeb9]::foo::'_), '_)) {
-   |                                      ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+LL | fn foo<'a, T>(x: &T) -> impl Foo<'a> + ReLateParam(DefId(0:8 ~ impl_trait_captures[aeb9]::foo), BrNamed(DefId(0:12 ~ impl_trait_captures[aeb9]::foo::'_), '_)) {
+   |                                      +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 error: aborting due to previous error
 

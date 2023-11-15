@@ -237,7 +237,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'_, 'tcx> {
                 CanonicalizeMode::Response { .. } => return r,
             },
 
-            ty::ReFree(_) | ty::ReEarlyBound(_) => match self.canonicalize_mode {
+            ty::ReLateParam(_) | ty::ReEarlyParam(_) => match self.canonicalize_mode {
                 CanonicalizeMode::Input => CanonicalVarKind::Region(ty::UniverseIndex::ROOT),
                 CanonicalizeMode::Response { .. } => bug!("unexpected region in response: {r:?}"),
             },

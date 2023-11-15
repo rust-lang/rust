@@ -258,12 +258,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let item_def_id = tcx.hir().ty_param_owner(def_id.expect_local());
                 let generics = tcx.generics_of(item_def_id);
                 let index = generics.param_def_id_to_index[&def_id];
-                ty::Region::new_early_bound(tcx, ty::EarlyBoundRegion { def_id, index, name })
+                ty::Region::new_early_param(tcx, ty::EarlyParamRegion { def_id, index, name })
             }
 
             Some(rbv::ResolvedArg::Free(scope, id)) => {
                 let name = lifetime_name(id.expect_local());
-                ty::Region::new_free(tcx, scope, ty::BrNamed(id, name))
+                ty::Region::new_late_param(tcx, scope, ty::BrNamed(id, name))
 
                 // (*) -- not late-bound, won't change
             }

@@ -126,7 +126,7 @@ pub struct TypeckResults<'tcx> {
     /// fn(&'a u32) -> u32
     /// ```
     ///
-    /// Note that `'a` is not bound (it would be an `ReFree`) and
+    /// Note that `'a` is not bound (it would be an `ReLateParam`) and
     /// that the `Foo` opaque type is replaced by its hidden type.
     liberated_fn_sigs: ItemLocalMap<ty::FnSig<'tcx>>,
 

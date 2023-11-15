@@ -115,8 +115,8 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for TypeFreshener<'a, 'tcx> {
                 r
             }
 
-            ty::ReEarlyBound(..)
-            | ty::ReFree(_)
+            ty::ReEarlyParam(..)
+            | ty::ReLateParam(_)
             | ty::ReVar(_)
             | ty::RePlaceholder(..)
             | ty::ReStatic

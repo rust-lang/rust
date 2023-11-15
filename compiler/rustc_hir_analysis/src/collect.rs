@@ -443,7 +443,7 @@ impl<'tcx> AstConv<'tcx> for ItemCtxt<'tcx> {
                                     self.tcx.replace_late_bound_regions_uncached(
                                         poly_trait_ref,
                                         |_| {
-                                            ty::Region::new_early_bound(self.tcx, ty::EarlyBoundRegion {
+                                            ty::Region::new_early_param(self.tcx, ty::EarlyParamRegion {
                                                 def_id: item_def_id,
                                                 index: 0,
                                                 name: Symbol::intern(&lt_name),
