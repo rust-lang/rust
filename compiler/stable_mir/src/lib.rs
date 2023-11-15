@@ -19,9 +19,9 @@
 
 use crate::mir::mono::InstanceDef;
 use crate::mir::Body;
-use std::cell::Cell;
 use std::fmt;
 use std::fmt::Debug;
+use std::{cell::Cell, io};
 
 use self::ty::{
     GenericPredicates, Generics, ImplDef, ImplTrait, IndexedVal, LineInfo, Span, TraitDecl,
@@ -37,6 +37,8 @@ pub mod ty;
 pub mod visitor;
 
 use crate::ty::{AdtDef, AdtKind, ClosureDef, ClosureKind};
+use crate::mir::pretty::function_name;
+use crate::mir::Mutability;
 pub use error::*;
 use mir::mono::Instance;
 use ty::{FnDef, GenericArgs};
@@ -136,6 +138,11 @@ impl CrateItem {
 
     pub fn ty(&self) -> Ty {
         with(|cx| cx.def_ty(self.0))
+    }
+    
+    pub fn dump<W: io::Write>(&self, w: &mut W) -> io::Result<()> {
+        writeln!(w, "{}", function_name(*self))?;
+        self.body().dump(w)
     }
 }
 
