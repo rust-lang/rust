@@ -180,7 +180,7 @@ impl BuildMetrics {
                     t!(serde_json::from_slice::<JsonRoot>(&contents)).invocations
                 } else {
                     println!(
-                        "warning: overriding existing build/metrics.json, as it's not \
+                        "WARNING: overriding existing build/metrics.json, as it's not \
                          compatible with build metrics format version {CURRENT_FORMAT_VERSION}."
                     );
                     Vec::new()

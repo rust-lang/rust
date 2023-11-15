@@ -18,12 +18,11 @@ pub(crate) fn parse_rustc_verbose() -> usize {
 /// Parses the value of the "RUSTC_STAGE" environment variable and returns it as a `String`.
 ///
 /// If "RUSTC_STAGE" was not set, the program will be terminated with 101.
-#[allow(unused)]
 pub(crate) fn parse_rustc_stage() -> String {
     std::env::var("RUSTC_STAGE").unwrap_or_else(|_| {
         // Don't panic here; it's reasonable to try and run these shims directly. Give a helpful error instead.
-        eprintln!("rustc shim: fatal: RUSTC_STAGE was not set");
-        eprintln!("rustc shim: note: use `x.py build -vvv` to see all environment variables set by bootstrap");
+        eprintln!("rustc shim: FATAL: RUSTC_STAGE was not set");
+        eprintln!("rustc shim: NOTE: use `x.py build -vvv` to see all environment variables set by bootstrap");
         std::process::exit(101);
     })
 }

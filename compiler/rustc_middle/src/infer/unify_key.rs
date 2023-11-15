@@ -58,8 +58,7 @@ impl<'tcx> UnifyValue for UnifiedRegion<'tcx> {
 
     fn unify_values(value1: &Self, value2: &Self) -> Result<Self, NoError> {
         // We pick the value of the least universe because it is compatible with more variables.
-        // This is *not* necessary for soundness, but it allows more region variables to be
-        // resolved to the said value.
+        // This is *not* necessary for completeness.
         #[cold]
         fn min_universe<'tcx>(r1: Region<'tcx>, r2: Region<'tcx>) -> Region<'tcx> {
             cmp::min_by_key(r1, r2, |r| match r.kind() {
@@ -69,7 +68,7 @@ impl<'tcx> UnifyValue for UnifiedRegion<'tcx> {
                 | ty::ReEarlyBound(..)
                 | ty::ReError(_) => ty::UniverseIndex::ROOT,
                 ty::RePlaceholder(placeholder) => placeholder.universe,
-                ty::ReVar(..) | ty::ReLateBound(..) => bug!("not a universal region"),
+                ty::ReVar(..) | ty::ReBound(..) => bug!("not a universal region"),
             })
         }
 

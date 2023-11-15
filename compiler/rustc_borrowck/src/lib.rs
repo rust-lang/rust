@@ -846,7 +846,7 @@ use self::ReadOrWrite::{Activation, Read, Reservation, Write};
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 enum ArtificialField {
     ArrayLength,
-    ShallowBorrow,
+    FakeBorrow,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
@@ -1085,18 +1085,18 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     Control::Continue
                 }
 
-                (Read(_), BorrowKind::Shared | BorrowKind::Shallow)
-                | (Read(ReadKind::Borrow(BorrowKind::Shallow)), BorrowKind::Mut { .. }) => {
+                (Read(_), BorrowKind::Shared | BorrowKind::Fake)
+                | (Read(ReadKind::Borrow(BorrowKind::Fake)), BorrowKind::Mut { .. }) => {
                     Control::Continue
                 }
 
-                (Reservation(_), BorrowKind::Shallow | BorrowKind::Shared) => {
+                (Reservation(_), BorrowKind::Fake | BorrowKind::Shared) => {
                     // This used to be a future compatibility warning (to be
                     // disallowed on NLL). See rust-lang/rust#56254
                     Control::Continue
                 }
 
-                (Write(WriteKind::Move), BorrowKind::Shallow) => {
+                (Write(WriteKind::Move), BorrowKind::Fake) => {
                     // Handled by initialization checks.
                     Control::Continue
                 }
@@ -1204,8 +1204,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         match rvalue {
             &Rvalue::Ref(_ /*rgn*/, bk, place) => {
                 let access_kind = match bk {
-                    BorrowKind::Shallow => {
-                        (Shallow(Some(ArtificialField::ShallowBorrow)), Read(ReadKind::Borrow(bk)))
+                    BorrowKind::Fake => {
+                        (Shallow(Some(ArtificialField::FakeBorrow)), Read(ReadKind::Borrow(bk)))
                     }
                     BorrowKind::Shared => (Deep, Read(ReadKind::Borrow(bk))),
                     BorrowKind::Mut { .. } => {
@@ -1226,7 +1226,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     flow_state,
                 );
 
-                let action = if bk == BorrowKind::Shallow {
+                let action = if bk == BorrowKind::Fake {
                     InitializationRequiringAction::MatchOn
                 } else {
                     InitializationRequiringAction::Borrow
@@ -1583,7 +1583,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
             // only mutable borrows should be 2-phase
             assert!(match borrow.kind {
-                BorrowKind::Shared | BorrowKind::Shallow => false,
+                BorrowKind::Shared | BorrowKind::Fake => false,
                 BorrowKind::Mut { .. } => true,
             });
 
@@ -2142,14 +2142,14 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 | WriteKind::Replace
                 | WriteKind::StorageDeadOrDrop
                 | WriteKind::MutableBorrow(BorrowKind::Shared)
-                | WriteKind::MutableBorrow(BorrowKind::Shallow),
+                | WriteKind::MutableBorrow(BorrowKind::Fake),
             )
             | Write(
                 WriteKind::Move
                 | WriteKind::Replace
                 | WriteKind::StorageDeadOrDrop
                 | WriteKind::MutableBorrow(BorrowKind::Shared)
-                | WriteKind::MutableBorrow(BorrowKind::Shallow),
+                | WriteKind::MutableBorrow(BorrowKind::Fake),
             ) => {
                 if self.is_mutable(place.as_ref(), is_local_mutation_allowed).is_err()
                     && !self.has_buffered_errors()
@@ -2173,7 +2173,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 return false;
             }
             Read(
-                ReadKind::Borrow(BorrowKind::Mut { .. } | BorrowKind::Shared | BorrowKind::Shallow)
+                ReadKind::Borrow(BorrowKind::Mut { .. } | BorrowKind::Shared | BorrowKind::Fake)
                 | ReadKind::Copy,
             ) => {
                 // Access authorized

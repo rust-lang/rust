@@ -423,8 +423,8 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                         BorrowKind::Shared => {
                             PlaceContext::NonMutatingUse(NonMutatingUseContext::SharedBorrow)
                         }
-                        BorrowKind::Shallow => {
-                            PlaceContext::NonMutatingUse(NonMutatingUseContext::ShallowBorrow)
+                        BorrowKind::Fake => {
+                            PlaceContext::NonMutatingUse(NonMutatingUseContext::FakeBorrow)
                         }
                         BorrowKind::Mut { .. } => {
                             PlaceContext::MutatingUse(MutatingUseContext::Borrow)
@@ -500,7 +500,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 self.check_mut_borrow(place.local, hir::BorrowKind::Raw)
             }
 
-            Rvalue::Ref(_, BorrowKind::Shared | BorrowKind::Shallow, place)
+            Rvalue::Ref(_, BorrowKind::Shared | BorrowKind::Fake, place)
             | Rvalue::AddressOf(Mutability::Not, place) => {
                 let borrowed_place_has_mut_interior = qualifs::in_place::<HasMutInterior, _>(
                     &self.ccx,

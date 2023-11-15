@@ -195,7 +195,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
             // bounds of the RPITIT. Shift these binders back out when
             // constructing the top-level projection predicate.
             let shifted_alias_ty = self.tcx.fold_regions(unshifted_alias_ty, |re, depth| {
-                if let ty::ReLateBound(index, bv) = re.kind() {
+                if let ty::ReBound(index, bv) = re.kind() {
                     if depth != ty::INNERMOST {
                         return ty::Region::new_error_with_message(
                             self.tcx,
@@ -203,7 +203,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
                             "we shouldn't walk non-predicate binders with `impl Trait`...",
                         );
                     }
-                    ty::Region::new_late_bound(
+                    ty::Region::new_bound(
                         self.tcx,
                         index.shifted_out_to_binder(self.depth),
                         bv,

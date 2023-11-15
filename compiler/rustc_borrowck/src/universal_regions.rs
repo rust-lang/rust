@@ -665,7 +665,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                     var: ty::BoundVar::from_usize(bound_vars.len() - 1),
                     kind: ty::BrEnv,
                 };
-                let env_region = ty::Region::new_late_bound(tcx, ty::INNERMOST, br);
+                let env_region = ty::Region::new_bound(tcx, ty::INNERMOST, br);
                 let closure_ty = tcx.closure_env_ty(def_id, args, env_region).unwrap();
 
                 // The "inputs" of the closure in the

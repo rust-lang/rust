@@ -4,11 +4,11 @@ use rustc_data_structures::profiling::TimePassesFormat;
 use rustc_errors::{emitter::HumanReadableErrorType, registry, ColorConfig};
 use rustc_session::config::{
     build_configuration, build_session_options, rustc_optgroups, BranchProtection, CFGuard, Cfg,
-    DebugInfo, DumpMonoStatsFormat, ErrorOutputType, ExternEntry, ExternLocation, Externs, Input,
-    InstrumentCoverage, InstrumentXRay, LinkSelfContained, LinkerPluginLto, LocationDetail, LtoCli,
-    MirSpanview, OomStrategy, Options, OutFileName, OutputType, OutputTypes, PAuthKey, PacRet,
-    Passes, Polonius, ProcMacroExecutionStrategy, Strip, SwitchWithOptPath, SymbolManglingVersion,
-    TraitSolver, WasiExecModel,
+    DebugInfo, DumpMonoStatsFormat, ErrorOutputType, ExternEntry, ExternLocation, Externs,
+    InliningThreshold, Input, InstrumentCoverage, InstrumentXRay, LinkSelfContained,
+    LinkerPluginLto, LocationDetail, LtoCli, MirSpanview, OomStrategy, Options, OutFileName,
+    OutputType, OutputTypes, PAuthKey, PacRet, Passes, Polonius, ProcMacroExecutionStrategy, Strip,
+    SwitchWithOptPath, SymbolManglingVersion, TraitSolver, WasiExecModel,
 };
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
@@ -679,7 +679,6 @@ fn test_unstable_options_tracking_hash() {
     untracked!(incremental_info, true);
     untracked!(incremental_verify_ich, true);
     untracked!(input_stats, true);
-    untracked!(keep_hygiene_data, true);
     untracked!(link_native_libraries, false);
     untracked!(llvm_time_trace, true);
     untracked!(ls, vec!["all".to_owned()]);
@@ -691,7 +690,6 @@ fn test_unstable_options_tracking_hash() {
     untracked!(no_leak_check, true);
     untracked!(no_parallel_llvm, true);
     untracked!(parse_only, true);
-    untracked!(perf_stats, true);
     // `pre_link_arg` is omitted because it just forwards to `pre_link_args`.
     untracked!(pre_link_args, vec![String::from("abc"), String::from("def")]);
     untracked!(print_codegen_stats, true);
@@ -748,7 +746,7 @@ fn test_unstable_options_tracking_hash() {
     );
     tracked!(codegen_backend, Some("abc".to_string()));
     tracked!(crate_attr, vec!["abc".to_string()]);
-    tracked!(cross_crate_inline_threshold, Some(200));
+    tracked!(cross_crate_inline_threshold, InliningThreshold::Always);
     tracked!(debug_info_for_profiling, true);
     tracked!(debug_macros, true);
     tracked!(dep_info_omit_d_target, true);

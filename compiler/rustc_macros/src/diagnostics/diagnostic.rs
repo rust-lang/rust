@@ -229,8 +229,8 @@ fn generate_test(slug: &syn::Path, structure: &Structure<'_>) -> TokenStream {
         }
     }
     use std::sync::atomic::{AtomicUsize, Ordering};
-    // We need to make sure that the same diagnostic slug can be used multiple times without causing an
-    // error, so just have a global counter here.
+    // We need to make sure that the same diagnostic slug can be used multiple times without
+    // causing an error, so just have a global counter here.
     static COUNTER: AtomicUsize = AtomicUsize::new(0);
     let slug = slug.get_ident().unwrap();
     let ident = quote::format_ident!("verify_{slug}_{}", COUNTER.fetch_add(1, Ordering::Relaxed));

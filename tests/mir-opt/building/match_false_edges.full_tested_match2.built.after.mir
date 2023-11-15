@@ -58,7 +58,7 @@ fn full_tested_match2() -> () {
     bb5: {
         StorageLive(_6);
         _6 = &((_2 as Some).0: i32);
-        _4 = &shallow _2;
+        _4 = &fake _2;
         StorageLive(_7);
         _7 = guard() -> [return: bb6, unwind: bb12];
     }

@@ -180,26 +180,24 @@ fn hover_simple(
             descended()
                 .filter_map(|token| {
                     let node = token.parent()?;
-                    let class = IdentClass::classify_token(sema, token)?;
-                    if let IdentClass::Operator(OperatorClass::Await(_)) = class {
+                    match IdentClass::classify_node(sema, &node)? {
                         // It's better for us to fall back to the keyword hover here,
                         // rendering poll is very confusing
-                        return None;
+                        IdentClass::Operator(OperatorClass::Await(_)) => None,
+
+                        IdentClass::NameRefClass(NameRefClass::ExternCrateShorthand {
+                            decl,
+                            ..
+                        }) => Some(vec![(Definition::ExternCrateDecl(decl), node)]),
+
+                        class => Some(
+                            class
+                                .definitions()
+                                .into_iter()
+                                .zip(iter::repeat(node))
+                                .collect::<Vec<_>>(),
+                        ),
                     }
-                    if let IdentClass::NameRefClass(NameRefClass::ExternCrateShorthand {
-                        decl,
-                        ..
-                    }) = class
-                    {
-                        return Some(vec![(Definition::ExternCrateDecl(decl), node)]);
-                    }
-                    Some(
-                        class
-                            .definitions()
-                            .into_iter()
-                            .zip(iter::once(node).cycle())
-                            .collect::<Vec<_>>(),
-                    )
                 })
                 .flatten()
                 .unique_by(|&(def, _)| def)

@@ -356,15 +356,12 @@ if (typeof exports !== 'undefined') {exports.searchIndex = searchIndex};
 
             let content = format!(
                 "<h1>List of all crates</h1><ul class=\"all-items\">{}</ul>",
-                krates
-                    .iter()
-                    .map(|s| {
-                        format!(
-                            "<li><a href=\"{trailing_slash}index.html\">{s}</a></li>",
-                            trailing_slash = ensure_trailing_slash(s),
-                        )
-                    })
-                    .collect::<String>()
+                krates.iter().format_with("", |k, f| {
+                    f(&format_args!(
+                        "<li><a href=\"{trailing_slash}index.html\">{k}</a></li>",
+                        trailing_slash = ensure_trailing_slash(k),
+                    ))
+                })
             );
             let v = layout::render(&shared.layout, &page, "", content, &shared.style_files);
             shared.fs.write(dst, v)?;

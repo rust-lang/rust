@@ -242,6 +242,12 @@ fn main() {
         cmd.arg("--system-libs");
     }
 
+    // We need libkstat for getHostCPUName on SPARC builds.
+    // See also: https://github.com/llvm/llvm-project/issues/64186
+    if target.starts_with("sparcv9") && target.contains("solaris") {
+        println!("cargo:rustc-link-lib=kstat");
+    }
+
     if (target.starts_with("arm") && !target.contains("freebsd"))
         || target.starts_with("mips-")
         || target.starts_with("mipsel-")

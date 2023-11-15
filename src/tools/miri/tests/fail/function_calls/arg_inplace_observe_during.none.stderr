@@ -11,8 +11,8 @@ LL |     unsafe { ptr.read() };
 note: inside `main`
   --> $DIR/arg_inplace_observe_during.rs:LL:CC
    |
-LL |             Call(_unit = change_arg(Move(*ptr), ptr), after_call)
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |             Call(_unit = change_arg(Move(*ptr), ptr), after_call, UnwindContinue())
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

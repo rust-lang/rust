@@ -96,6 +96,8 @@ pub struct CargoConfig {
     pub extra_env: FxHashMap<String, String>,
     pub invocation_strategy: InvocationStrategy,
     pub invocation_location: InvocationLocation,
+    /// Optional path to use instead of `target` when building
+    pub target_dir: Option<PathBuf>,
 }
 
 pub type Package = Idx<PackageData>;

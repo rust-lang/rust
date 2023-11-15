@@ -308,11 +308,7 @@ pub(crate) fn runnable_fn(
     sema: &Semantics<'_, RootDatabase>,
     def: hir::Function,
 ) -> Option<Runnable> {
-    let name = def.name(sema.db).to_smol_str();
-
-    let root = def.module(sema.db).krate().root_module();
-
-    let kind = if name == "main" && def.module(sema.db) == root {
+    let kind = if def.is_main(sema.db) {
         RunnableKind::Bin
     } else {
         let test_id = || {
@@ -320,7 +316,9 @@ pub(crate) fn runnable_fn(
                 let def: hir::ModuleDef = def.into();
                 def.canonical_path(sema.db)
             };
-            canonical_path.map(TestId::Path).unwrap_or(TestId::Name(name))
+            canonical_path
+                .map(TestId::Path)
+                .unwrap_or(TestId::Name(def.name(sema.db).to_smol_str()))
         };
 
         if def.is_test(sema.db) {
@@ -587,6 +585,9 @@ mod tests {
 $0
 fn main() {}
 
+#[export_name = "main"]
+fn __cortex_m_rt_main_trampoline() {}
+
 #[test]
 fn test_foo() {}
 
@@ -604,7 +605,7 @@ mod not_a_root {
     fn main() {}
 }
 "#,
-            &[TestMod, Bin, Test, Test, Test, Bench],
+            &[TestMod, Bin, Bin, Test, Test, Test, Bench],
             expect![[r#"
                 [
                     Runnable {
@@ -613,7 +614,7 @@ mod not_a_root {
                             file_id: FileId(
                                 0,
                             ),
-                            full_range: 0..190,
+                            full_range: 0..253,
                             name: "",
                             kind: Module,
                         },
@@ -642,8 +643,22 @@ mod not_a_root {
                             file_id: FileId(
                                 0,
                             ),
-                            full_range: 15..39,
-                            focus_range: 26..34,
+                            full_range: 15..76,
+                            focus_range: 42..71,
+                            name: "__cortex_m_rt_main_trampoline",
+                            kind: Function,
+                        },
+                        kind: Bin,
+                        cfg: None,
+                    },
+                    Runnable {
+                        use_name_in_title: false,
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                0,
+                            ),
+                            full_range: 78..102,
+                            focus_range: 89..97,
                             name: "test_foo",
                             kind: Function,
                         },
@@ -663,8 +678,8 @@ mod not_a_root {
                             file_id: FileId(
                                 0,
                             ),
-                            full_range: 41..92,
-                            focus_range: 73..87,
+                            full_range: 104..155,
+                            focus_range: 136..150,
                             name: "test_full_path",
                             kind: Function,
                         },
@@ -684,8 +699,8 @@ mod not_a_root {
                             file_id: FileId(
                                 0,
                             ),
-                            full_range: 94..128,
-                            focus_range: 115..123,
+                            full_range: 157..191,
+                            focus_range: 178..186,
                             name: "test_foo",
                             kind: Function,
                         },
@@ -705,8 +720,8 @@ mod not_a_root {
                             file_id: FileId(
                                 0,
                             ),
-                            full_range: 130..152,
-                            focus_range: 142..147,
+                            full_range: 193..215,
+                            focus_range: 205..210,
                             name: "bench",
                             kind: Function,
                         },
@@ -1655,12 +1670,18 @@ macro_rules! gen2 {
         }
     }
 }
+macro_rules! gen_main {
+    () => {
+        fn main() {}
+    }
+}
 mod tests {
     gen!();
 }
 gen2!();
+gen_main!();
 "#,
-            &[TestMod, TestMod, Test, Test, TestMod],
+            &[TestMod, TestMod, Test, Test, TestMod, Bin],
             expect![[r#"
                 [
                     Runnable {
@@ -1669,7 +1690,7 @@ gen2!();
                             file_id: FileId(
                                 0,
                             ),
-                            full_range: 0..237,
+                            full_range: 0..315,
                             name: "",
                             kind: Module,
                         },
@@ -1684,8 +1705,8 @@ gen2!();
                             file_id: FileId(
                                 0,
                             ),
-                            full_range: 202..227,
-                            focus_range: 206..211,
+                            full_range: 267..292,
+                            focus_range: 271..276,
                             name: "tests",
                             kind: Module,
                             description: "mod tests",
@@ -1701,7 +1722,7 @@ gen2!();
                             file_id: FileId(
                                 0,
                             ),
-                            full_range: 218..225,
+                            full_range: 283..290,
                             name: "foo_test",
                             kind: Function,
                         },
@@ -1721,7 +1742,7 @@ gen2!();
                             file_id: FileId(
                                 0,
                             ),
-                            full_range: 228..236,
+                            full_range: 293..301,
                             name: "foo_test2",
                             kind: Function,
                         },
@@ -1741,7 +1762,7 @@ gen2!();
                             file_id: FileId(
                                 0,
                             ),
-                            full_range: 228..236,
+                            full_range: 293..301,
                             name: "tests2",
                             kind: Module,
                             description: "mod tests2",
@@ -1749,6 +1770,19 @@ gen2!();
                         kind: TestMod {
                             path: "tests2",
                         },
+                        cfg: None,
+                    },
+                    Runnable {
+                        use_name_in_title: false,
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                0,
+                            ),
+                            full_range: 302..314,
+                            name: "main",
+                            kind: Function,
+                        },
+                        kind: Bin,
                         cfg: None,
                     },
                 ]

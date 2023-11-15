@@ -374,6 +374,9 @@ impl<T> MaybeUninit<T> {
     /// assert_eq!(x, (0, false));
     /// ```
     ///
+    /// This can be used in const contexts, such as to indicate the end of static arrays for
+    /// plugin registration.
+    ///
     /// *Incorrect* usage of this function: calling `x.zeroed().assume_init()`
     /// when `0` is not a valid bit-pattern for the type:
     ///
@@ -387,17 +390,19 @@ impl<T> MaybeUninit<T> {
     /// // Inside a pair, we create a `NotZero` that does not have a valid discriminant.
     /// // This is undefined behavior. ⚠️
     /// ```
-    #[stable(feature = "maybe_uninit", since = "1.36.0")]
-    #[rustc_const_unstable(feature = "const_maybe_uninit_zeroed", issue = "91850")]
-    #[must_use]
     #[inline]
+    #[must_use]
     #[rustc_diagnostic_item = "maybe_uninit_zeroed"]
+    #[stable(feature = "maybe_uninit", since = "1.36.0")]
+    // These are OK to allow since we do not leak &mut to user-visible API
+    #[rustc_allow_const_fn_unstable(const_mut_refs)]
+    #[rustc_allow_const_fn_unstable(const_ptr_write)]
+    #[rustc_allow_const_fn_unstable(const_maybe_uninit_as_mut_ptr)]
+    #[rustc_const_stable(feature = "const_maybe_uninit_zeroed", since = "CURRENT_RUSTC_VERSION")]
     pub const fn zeroed() -> MaybeUninit<T> {
         let mut u = MaybeUninit::<T>::uninit();
         // SAFETY: `u.as_mut_ptr()` points to allocated memory.
-        unsafe {
-            u.as_mut_ptr().write_bytes(0u8, 1);
-        }
+        unsafe { u.as_mut_ptr().write_bytes(0u8, 1) };
         u
     }
 

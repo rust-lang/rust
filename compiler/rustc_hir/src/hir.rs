@@ -3566,6 +3566,15 @@ impl<'hir> OwnerNode<'hir> {
         }
     }
 
+    pub fn fn_sig(self) -> Option<&'hir FnSig<'hir>> {
+        match self {
+            OwnerNode::TraitItem(TraitItem { kind: TraitItemKind::Fn(fn_sig, _), .. })
+            | OwnerNode::ImplItem(ImplItem { kind: ImplItemKind::Fn(fn_sig, _), .. })
+            | OwnerNode::Item(Item { kind: ItemKind::Fn(fn_sig, _, _), .. }) => Some(fn_sig),
+            _ => None,
+        }
+    }
+
     pub fn fn_decl(self) -> Option<&'hir FnDecl<'hir>> {
         match self {
             OwnerNode::TraitItem(TraitItem { kind: TraitItemKind::Fn(fn_sig, _), .. })

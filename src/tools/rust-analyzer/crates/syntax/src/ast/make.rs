@@ -433,7 +433,6 @@ pub fn record_field(
     ast_from_text(&format!("struct S {{ {visibility}{name}: {ty}, }}"))
 }
 
-// TODO
 pub fn block_expr(
     stmts: impl IntoIterator<Item = ast::Stmt>,
     tail_expr: Option<ast::Expr>,
@@ -853,6 +852,10 @@ pub fn self_param() -> ast::SelfParam {
     ast_from_text("fn f(&self) { }")
 }
 
+pub fn mut_self_param() -> ast::SelfParam {
+    ast_from_text("fn f(&mut self) { }")
+}
+
 pub fn ret_type(ty: ast::Type) -> ast::RetType {
     ast_from_text(&format!("fn f() -> {ty} {{ }}"))
 }
@@ -973,6 +976,11 @@ pub fn tuple_field(visibility: Option<ast::Visibility>, ty: ast::Type) -> ast::T
     ast_from_text(&format!("struct f({visibility}{ty});"))
 }
 
+pub fn variant_list(variants: impl IntoIterator<Item = ast::Variant>) -> ast::VariantList {
+    let variants = variants.into_iter().join(", ");
+    ast_from_text(&format!("enum f {{ {variants} }}"))
+}
+
 pub fn variant(name: ast::Name, field_list: Option<ast::FieldList>) -> ast::Variant {
     let field_list = match field_list {
         None => String::new(),
@@ -1035,6 +1043,19 @@ pub fn struct_(
     };
 
     ast_from_text(&format!("{visibility}struct {strukt_name}{type_params}{field_list}{semicolon}",))
+}
+
+pub fn enum_(
+    visibility: Option<ast::Visibility>,
+    enum_name: ast::Name,
+    variant_list: ast::VariantList,
+) -> ast::Enum {
+    let visibility = match visibility {
+        None => String::new(),
+        Some(it) => format!("{it} "),
+    };
+
+    ast_from_text(&format!("{visibility}enum {enum_name} {variant_list}"))
 }
 
 pub fn attr_outer(meta: ast::Meta) -> ast::Attr {
@@ -1147,6 +1168,16 @@ pub mod tokens {
         assert_eq!(text.trim(), text);
         let lit: ast::Literal = super::ast_from_text(&format!("fn f() {{ let _ = {text}; }}"));
         lit.syntax().first_child_or_token().unwrap().into_token().unwrap()
+    }
+
+    pub fn ident(text: &str) -> SyntaxToken {
+        assert_eq!(text.trim(), text);
+        let path: ast::Path = super::ext::ident_path(text);
+        path.syntax()
+            .descendants_with_tokens()
+            .filter_map(|it| it.into_token())
+            .find(|it| it.kind() == IDENT)
+            .unwrap()
     }
 
     pub fn single_newline() -> SyntaxToken {

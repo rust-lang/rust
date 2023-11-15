@@ -10,6 +10,8 @@
 #![deny(rustc::diagnostic_outside_of_impl)]
 #![allow(internal_features)]
 
+extern crate self as rustc_type_ir;
+
 #[macro_use]
 extern crate bitflags;
 #[macro_use]

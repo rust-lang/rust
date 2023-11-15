@@ -329,7 +329,7 @@ fn super_predicates_have_non_lifetime_binders(
     tcx.super_predicates_of(trait_def_id)
         .predicates
         .iter()
-        .filter_map(|(pred, span)| pred.has_non_region_late_bound().then_some(*span))
+        .filter_map(|(pred, span)| pred.has_non_region_bound_vars().then_some(*span))
         .collect()
 }
 

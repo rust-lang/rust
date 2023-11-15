@@ -368,7 +368,7 @@ pub(crate) fn format_expr(
             }
         }
         ast::ExprKind::Gen(capture_by, ref block, ref kind) => {
-            let mover = if capture_by == ast::CaptureBy::Value {
+            let mover = if matches!(capture_by, ast::CaptureBy::Value { .. }) {
                 "move "
             } else {
                 ""

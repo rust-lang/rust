@@ -9,7 +9,7 @@ pub struct RustcVersion {
 }
 
 impl RustcVersion {
-    pub const CURRENT: Self = current_rustc_version!(env!("CFG_RELEASE"));
+    pub const CURRENT: Self = current_rustc_version!();
 }
 
 impl Display for RustcVersion {

@@ -54,7 +54,7 @@ fn ty_const<'tcx>(constant: &Const, tables: &mut Tables<'tcx>) -> rustc_ty::Cons
     match constant.internal(tables) {
         rustc_middle::mir::Const::Ty(c) => c,
         cnst => {
-            panic!("Trying to covert constant `{constant:?}` to type constant, but found {cnst:?}")
+            panic!("Trying to convert constant `{constant:?}` to type constant, but found {cnst:?}")
         }
     }
 }

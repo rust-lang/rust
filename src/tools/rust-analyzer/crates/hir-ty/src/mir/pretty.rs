@@ -233,6 +233,11 @@ impl<'a> MirPrettyCtx<'a> {
                             this.place(p);
                             wln!(this, ");");
                         }
+                        StatementKind::FakeRead(p) => {
+                            w!(this, "FakeRead(");
+                            this.place(p);
+                            wln!(this, ");");
+                        }
                         StatementKind::Nop => wln!(this, "Nop;"),
                     }
                 }

@@ -792,8 +792,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // debuggers and debugger extensions expect it to be called `__awaitee`. They use
         // this name to identify what is being awaited by a suspended async functions.
         let awaitee_ident = Ident::with_dummy_span(sym::__awaitee);
-        let (awaitee_pat, awaitee_pat_hid) =
-            self.pat_ident_binding_mode(span, awaitee_ident, hir::BindingAnnotation::MUT);
+        let (awaitee_pat, awaitee_pat_hid) = self.pat_ident_binding_mode(
+            gen_future_span,
+            awaitee_ident,
+            hir::BindingAnnotation::MUT,
+        );
 
         let task_context_ident = Ident::with_dummy_span(sym::_task_context);
 

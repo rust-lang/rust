@@ -64,6 +64,7 @@ pub(crate) const TEST_CONFIG: CompletionConfig = CompletionConfig {
     enable_imports_on_the_fly: true,
     enable_self_on_the_fly: true,
     enable_private_editable: false,
+    full_function_signatures: false,
     callable: Some(CallableSnippets::FillArguments),
     snippet_cap: SnippetCap::new(true),
     prefer_no_std: false,

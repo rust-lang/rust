@@ -138,7 +138,6 @@ cfg_match! {
             [std::sync::atomic::AtomicUsize]
             [std::sync::atomic::AtomicU8]
             [std::sync::atomic::AtomicU32]
-            [std::sync::atomic::AtomicU64]
             [std::backtrace::Backtrace]
             [std::io::Error]
             [std::fs::File]
@@ -146,6 +145,18 @@ cfg_match! {
             [crate::memmap::Mmap]
             [crate::profiling::SelfProfiler]
             [crate::owned_slice::OwnedSlice]
+        );
+
+        // PowerPC and MIPS platforms with 32-bit pointers do not
+        // have AtomicU64 type.
+        #[cfg(not(any(target_arch = "powerpc", target_arch = "mips")))]
+        already_sync!(
+            [std::sync::atomic::AtomicU64]
+        );
+
+        #[cfg(any(target_arch = "powerpc", target_arch = "mips"))]
+        already_sync!(
+            [portable_atomic::AtomicU64]
         );
 
         macro_rules! impl_dyn_sync {

@@ -13,7 +13,6 @@ use rustc_middle::ty::flags::FlagComputation;
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::GenericArg;
 use rustc_middle::ty::{self, BoundVar, InferConst, List, Ty, TyCtxt, TypeFlags, TypeVisitableExt};
-use std::sync::atomic::Ordering;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::Idx;
@@ -43,8 +42,6 @@ impl<'tcx> InferCtxt<'tcx> {
     where
         V: TypeFoldable<TyCtxt<'tcx>>,
     {
-        self.tcx.sess.perf_stats.queries_canonicalized.fetch_add(1, Ordering::Relaxed);
-
         Canonicalizer::canonicalize(value, self, self.tcx, &CanonicalizeAllFreeRegions, query_state)
     }
 
@@ -62,8 +59,6 @@ impl<'tcx> InferCtxt<'tcx> {
     where
         V: TypeFoldable<TyCtxt<'tcx>>,
     {
-        self.tcx.sess.perf_stats.queries_canonicalized.fetch_add(1, Ordering::Relaxed);
-
         Canonicalizer::canonicalize(
             value,
             self,
@@ -138,8 +133,6 @@ impl<'tcx> InferCtxt<'tcx> {
     where
         V: TypeFoldable<TyCtxt<'tcx>>,
     {
-        self.tcx.sess.perf_stats.queries_canonicalized.fetch_add(1, Ordering::Relaxed);
-
         Canonicalizer::canonicalize(
             value,
             self,
@@ -232,7 +225,7 @@ impl CanonicalizeMode for CanonicalizeUserTypeAnnotation {
         match *r {
             ty::ReEarlyBound(_) | ty::ReFree(_) | ty::ReErased | ty::ReStatic | ty::ReError(_) => r,
             ty::ReVar(_) => canonicalizer.canonical_var_for_region_in_root_universe(r),
-            ty::RePlaceholder(..) | ty::ReLateBound(..) => {
+            ty::RePlaceholder(..) | ty::ReBound(..) => {
                 // We only expect region names that the user can type.
                 bug!("unexpected region in query response: `{:?}`", r)
             }
@@ -343,7 +336,7 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'cx, 'tcx> {
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         match *r {
-            ty::ReLateBound(index, ..) => {
+            ty::ReBound(index, ..) => {
                 if index >= self.binder_index {
                     bug!("escaping late-bound region during canonicalization");
                 } else {
@@ -776,7 +769,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
     ) -> ty::Region<'tcx> {
         let var = self.canonical_var(info, r.into());
         let br = ty::BoundRegion { var, kind: ty::BrAnon };
-        ty::Region::new_late_bound(self.interner(), self.binder_index, br)
+        ty::Region::new_bound(self.interner(), self.binder_index, br)
     }
 
     /// Given a type variable `ty_var` of the given kind, first check

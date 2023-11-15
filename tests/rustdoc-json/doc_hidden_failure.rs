@@ -1,8 +1,5 @@
 // Regression test for <https://github.com/rust-lang/rust/issues/98007>.
 
-#![feature(no_core)]
-#![no_core]
-
 mod auto {
     mod action_row {
         pub struct ActionRowBuilder;

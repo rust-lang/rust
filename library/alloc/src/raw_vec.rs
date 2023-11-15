@@ -305,10 +305,13 @@ impl<T, A: Allocator> RawVec<T, A> {
     /// The same as `reserve`, but returns on errors instead of panicking or aborting.
     pub fn try_reserve(&mut self, len: usize, additional: usize) -> Result<(), TryReserveError> {
         if self.needs_to_grow(len, additional) {
-            self.grow_amortized(len, additional)
-        } else {
-            Ok(())
+            self.grow_amortized(len, additional)?;
         }
+        unsafe {
+            // Inform the optimizer that the reservation has succeeded or wasn't needed
+            core::intrinsics::assume(!self.needs_to_grow(len, additional));
+        }
+        Ok(())
     }
 
     /// Ensures that the buffer contains at least enough space to hold `len +
@@ -339,7 +342,14 @@ impl<T, A: Allocator> RawVec<T, A> {
         len: usize,
         additional: usize,
     ) -> Result<(), TryReserveError> {
-        if self.needs_to_grow(len, additional) { self.grow_exact(len, additional) } else { Ok(()) }
+        if self.needs_to_grow(len, additional) {
+            self.grow_exact(len, additional)?;
+        }
+        unsafe {
+            // Inform the optimizer that the reservation has succeeded or wasn't needed
+            core::intrinsics::assume(!self.needs_to_grow(len, additional));
+        }
+        Ok(())
     }
 
     /// Shrinks the buffer down to the specified capacity. If the given amount

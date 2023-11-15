@@ -1848,8 +1848,8 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         }
     }
 
+    #[instrument(level = "debug", skip(self))]
     fn resolve_object_lifetime_default(&mut self, lifetime_ref: &'tcx hir::Lifetime) {
-        debug!("resolve_object_lifetime_default(lifetime_ref={:?})", lifetime_ref);
         let mut late_depth = 0;
         let mut scope = self.scope;
         let lifetime = loop {

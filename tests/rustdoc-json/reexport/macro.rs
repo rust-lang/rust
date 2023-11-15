@@ -1,8 +1,5 @@
 // edition:2018
 
-#![no_core]
-#![feature(no_core)]
-
 // @set repro_id = "$.index[*][?(@.name=='repro')].id"
 #[macro_export]
 macro_rules! repro {

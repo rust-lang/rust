@@ -131,7 +131,7 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
         let observes_address = match ctxt {
             PlaceContext::NonMutatingUse(
                 NonMutatingUseContext::SharedBorrow
-                | NonMutatingUseContext::ShallowBorrow
+                | NonMutatingUseContext::FakeBorrow
                 | NonMutatingUseContext::AddressOf,
             ) => true,
             // For debuginfo, merging locals is ok.

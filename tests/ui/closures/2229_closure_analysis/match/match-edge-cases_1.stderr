@@ -1,0 +1,12 @@
+warning: function pointers and raw pointers not derived from integers in patterns behave unpredictably and should not be relied upon. See https://github.com/rust-lang/rust/issues/70861 for details.
+  --> $DIR/match-edge-cases_1.rs:29:13
+   |
+LL |             NUMBER_POINTER => (),
+   |             ^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #62411 <https://github.com/rust-lang/rust/issues/70861>
+   = note: `#[warn(pointer_structural_match)]` on by default
+
+warning: 1 warning emitted
+

@@ -2303,13 +2303,14 @@ impl<'a> Parser<'a> {
     /// Parses an optional `move` prefix to a closure-like construct.
     fn parse_capture_clause(&mut self) -> PResult<'a, CaptureBy> {
         if self.eat_keyword(kw::Move) {
+            let move_kw_span = self.prev_token.span;
             // Check for `move async` and recover
             if self.check_keyword(kw::Async) {
                 let move_async_span = self.token.span.with_lo(self.prev_token.span.data().lo);
                 Err(errors::AsyncMoveOrderIncorrect { span: move_async_span }
                     .into_diagnostic(&self.sess.span_diagnostic))
             } else {
-                Ok(CaptureBy::Value)
+                Ok(CaptureBy::Value { move_kw: move_kw_span })
             }
         } else {
             Ok(CaptureBy::Ref)
@@ -2440,10 +2441,26 @@ impl<'a> Parser<'a> {
                     self.error_on_extra_if(&cond)?;
                     // Parse block, which will always fail, but we can add a nice note to the error
                     self.parse_block().map_err(|mut err| {
-                        err.span_note(
-                            cond_span,
-                            "the `if` expression is missing a block after this condition",
-                        );
+                        if self.prev_token == token::Semi
+                            && self.token == token::AndAnd
+                            && let maybe_let = self.look_ahead(1, |t| t.clone())
+                            && maybe_let.is_keyword(kw::Let)
+                        {
+                            err.span_suggestion(
+                                self.prev_token.span,
+                                "consider removing this semicolon to parse the `let` as part of the same chain",
+                                "",
+                                Applicability::MachineApplicable,
+                            ).span_note(
+                                self.token.span.to(maybe_let.span),
+                                "you likely meant to continue parsing the let-chain starting here",
+                            );
+                        } else {
+                            err.span_note(
+                                cond_span,
+                                "the `if` expression is missing a block after this condition",
+                            );
+                        }
                         err
                     })?
                 }

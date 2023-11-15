@@ -6,6 +6,14 @@ LL |     let y = &mut x.0;
    |
    = note: mutating layout constrained fields cannot statically be checked for valid values
 
-error: aborting due to previous error
+error[E0133]: mutation of layout constrained field is unsafe and requires unsafe function or block
+  --> $DIR/ranged_ints2.rs:12:25
+   |
+LL |     if let Some(NonZero(ref mut y)) = Some(x) {}
+   |                         ^^^^^^^^^ mutation of layout constrained field
+   |
+   = note: mutating layout constrained fields cannot statically be checked for valid values
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0133`.

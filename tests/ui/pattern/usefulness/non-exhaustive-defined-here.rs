@@ -1,10 +1,15 @@
+#![feature(custom_inner_attributes)]
+#![rustfmt::skip]
 // Test the "defined here" and "not covered" diagnostic hints.
 // We also make sure that references are peeled off from the scrutinee type
 // so that the diagnostics work better with default binding modes.
 
 #[derive(Clone)]
 enum E {
-    //~^ NOTE
+    //~^ NOTE `E` defined here
+    //~| NOTE `E` defined here
+    //~| NOTE `E` defined here
+    //~| NOTE
     //~| NOTE
     //~| NOTE
     //~| NOTE
@@ -12,10 +17,7 @@ enum E {
     //~| NOTE
     A,
     B,
-    //~^ NOTE `E` defined here
-    //~| NOTE `E` defined here
-    //~| NOTE `E` defined here
-    //~| NOTE  not covered
+    //~^ NOTE  not covered
     //~| NOTE  not covered
     //~| NOTE  not covered
     //~| NOTE  not covered
@@ -79,12 +81,12 @@ fn by_ref_thrice(e: & &mut &E) {
 }
 
 enum Opt {
-    //~^ NOTE
+    //~^ NOTE `Opt` defined here
+    //~| NOTE
     //~| NOTE
     Some(u8),
     None,
-    //~^ NOTE `Opt` defined here
-    //~| NOTE not covered
+    //~^ NOTE not covered
     //~| NOTE not covered
 }
 

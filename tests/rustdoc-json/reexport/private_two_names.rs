@@ -3,9 +3,6 @@
 // Test for the ICE in https://github.com/rust-lang/rust/issues/83720
 // A pub-in-private type re-exported under two different names shouldn't cause an error
 
-#![no_core]
-#![feature(no_core)]
-
 // @!has "$.index[*][?(@.name=='style')]"
 mod style {
     // @set color_struct_id = "$.index[*][?(@.inner.struct && @.name=='Color')].id"

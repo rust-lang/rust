@@ -1,4 +1,4 @@
-// check-pass
+// known-bug: #117606
 
 #![feature(associated_type_defaults)]
 

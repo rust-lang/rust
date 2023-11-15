@@ -115,7 +115,6 @@
 #![feature(const_eval_select)]
 #![feature(const_maybe_uninit_as_mut_ptr)]
 #![feature(const_maybe_uninit_write)]
-#![feature(const_maybe_uninit_zeroed)]
 #![feature(const_pin)]
 #![feature(const_refs_to_cell)]
 #![feature(const_size_of_val)]
@@ -271,7 +270,7 @@ pub(crate) mod test_helpers {
     /// seed not being the same for every RNG invocation too.
     pub(crate) fn test_rng() -> rand_xorshift::XorShiftRng {
         use std::hash::{BuildHasher, Hash, Hasher};
-        let mut hasher = std::collections::hash_map::RandomState::new().build_hasher();
+        let mut hasher = std::hash::RandomState::new().build_hasher();
         std::panic::Location::caller().hash(&mut hasher);
         let hc64 = hasher.finish();
         let seed_vec =

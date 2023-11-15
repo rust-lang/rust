@@ -243,16 +243,16 @@ impl Default for ProjectionStore {
 }
 
 impl ProjectionStore {
-    fn shrink_to_fit(&mut self) {
+    pub fn shrink_to_fit(&mut self) {
         self.id_to_proj.shrink_to_fit();
         self.proj_to_id.shrink_to_fit();
     }
 
-    fn intern_if_exist(&self, projection: &[PlaceElem]) -> Option<ProjectionId> {
+    pub fn intern_if_exist(&self, projection: &[PlaceElem]) -> Option<ProjectionId> {
         self.proj_to_id.get(projection).copied()
     }
 
-    fn intern(&mut self, projection: Box<[PlaceElem]>) -> ProjectionId {
+    pub fn intern(&mut self, projection: Box<[PlaceElem]>) -> ProjectionId {
         let new_id = ProjectionId(self.proj_to_id.len() as u32);
         match self.proj_to_id.entry(projection) {
             Entry::Occupied(id) => *id.get(),
@@ -267,20 +267,20 @@ impl ProjectionStore {
 }
 
 impl ProjectionId {
-    const EMPTY: ProjectionId = ProjectionId(0);
+    pub const EMPTY: ProjectionId = ProjectionId(0);
 
-    fn lookup(self, store: &ProjectionStore) -> &[PlaceElem] {
+    pub fn lookup(self, store: &ProjectionStore) -> &[PlaceElem] {
         store.id_to_proj.get(&self).unwrap()
     }
 
-    fn project(self, projection: PlaceElem, store: &mut ProjectionStore) -> ProjectionId {
+    pub fn project(self, projection: PlaceElem, store: &mut ProjectionStore) -> ProjectionId {
         let mut current = self.lookup(store).to_vec();
         current.push(projection);
         store.intern(current.into())
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Place {
     pub local: LocalId,
     pub projection: ProjectionId,
@@ -1007,7 +1007,7 @@ pub enum Rvalue {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum StatementKind {
     Assign(Place, Rvalue),
-    //FakeRead(Box<(FakeReadCause, Place)>),
+    FakeRead(Place),
     //SetDiscriminant {
     //    place: Box<Place>,
     //    variant_index: VariantIdx,
@@ -1109,7 +1109,9 @@ impl MirBody {
                             }
                         }
                     }
-                    StatementKind::Deinit(p) => f(p, &mut self.projection_store),
+                    StatementKind::FakeRead(p) | StatementKind::Deinit(p) => {
+                        f(p, &mut self.projection_store)
+                    }
                     StatementKind::StorageLive(_)
                     | StatementKind::StorageDead(_)
                     | StatementKind::Nop => (),

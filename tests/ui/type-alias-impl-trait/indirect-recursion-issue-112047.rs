@@ -1,6 +1,5 @@
 // edition: 2021
 // build-fail
-//~^^ ERROR cycle detected when computing layout of
 
 #![feature(impl_trait_in_assoc_type)]
 
@@ -21,6 +20,7 @@ impl Recur for () {
 
     fn recur(self) -> Self::Recur {
         async move { recur(self).await; }
+        //~^ ERROR cycle detected when computing layout of
     }
 }
 

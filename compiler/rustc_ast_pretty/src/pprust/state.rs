@@ -146,37 +146,49 @@ pub fn print_crate<'a>(
     s.s.eof()
 }
 
-/// This makes printed token streams look slightly nicer,
-/// and also addresses some specific regressions described in #63896 and #73345.
-fn space_between(prev: &TokenTree, curr: &TokenTree) -> bool {
-    if let TokenTree::Token(token, _) = prev {
-        // No space after these tokens, e.g. `x.y`, `$e`
-        // (The carets point to `prev`.)       ^     ^
-        if matches!(token.kind, token::Dot | token::Dollar) {
-            return false;
-        }
-        if let token::DocComment(comment_kind, ..) = token.kind {
-            return comment_kind != CommentKind::Line;
-        }
-    }
-    match curr {
-        // No space before these tokens, e.g. `foo,`, `println!`, `x.y`
-        // (The carets point to `curr`.)          ^           ^     ^
+/// Should two consecutive tokens be printed with a space between them?
+///
+/// Note: some old proc macros parse pretty-printed output, so changes here can
+/// break old code. For example:
+/// - #63896: `#[allow(unused,` must be printed rather than `#[allow(unused ,`
+/// - #73345: `#[allow(unused)] must be printed rather than `# [allow(unused)]
+///
+fn space_between(tt1: &TokenTree, tt2: &TokenTree) -> bool {
+    use token::*;
+    use Delimiter::*;
+    use TokenTree::Delimited as Del;
+    use TokenTree::Token as Tok;
+
+    // Each match arm has one or more examples in comments. The default is to
+    // insert space between adjacent tokens, except for the cases listed in
+    // this match.
+    match (tt1, tt2) {
+        // No space after line doc comments.
+        (Tok(Token { kind: DocComment(CommentKind::Line, ..), .. }, _), _) => false,
+
+        // `.` + ANYTHING: `x.y`, `tup.0`
+        // `$` + ANYTHING: `$e`
+        (Tok(Token { kind: Dot | Dollar, .. }, _), _) => false,
+
+        // ANYTHING + `,`: `foo,`
+        // ANYTHING + `.`: `x.y`, `tup.0`
+        // ANYTHING + `!`: `foo! { ... }`
         //
-        // FIXME: having `Not` here works well for macro invocations like
-        // `println!()`, but is bad when `!` means "logical not" or "the never
-        // type", where the lack of space causes ugliness like this:
-        // `Fn() ->!`, `x =! y`, `if! x { f(); }`.
-        TokenTree::Token(token, _) => !matches!(token.kind, token::Comma | token::Not | token::Dot),
-        // No space before parentheses if preceded by these tokens, e.g. `foo(...)`
-        TokenTree::Delimited(_, Delimiter::Parenthesis, _) => {
-            !matches!(prev, TokenTree::Token(Token { kind: token::Ident(..), .. }, _))
-        }
-        // No space before brackets if preceded by these tokens, e.g. `#[...]`
-        TokenTree::Delimited(_, Delimiter::Bracket, _) => {
-            !matches!(prev, TokenTree::Token(Token { kind: token::Pound, .. }, _))
-        }
-        TokenTree::Delimited(..) => true,
+        // FIXME: Incorrect cases:
+        // - Logical not: `x =! y`, `if! x { f(); }`
+        // - Never type: `Fn() ->!`
+        (_, Tok(Token { kind: Comma | Dot | Not, .. }, _)) => false,
+
+        // IDENT + `(`: `f(3)`
+        //
+        // FIXME: Incorrect cases:
+        // - Let: `let(a, b) = (1, 2)`
+        (Tok(Token { kind: Ident(..), .. }, _), Del(_, Parenthesis, _)) => false,
+
+        // `#` + `[`: `#[attr]`
+        (Tok(Token { kind: Pound, .. }, _), Del(_, Bracket, _)) => false,
+
+        _ => true,
     }
 }
 

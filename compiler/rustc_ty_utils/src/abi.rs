@@ -82,7 +82,7 @@ fn fn_sig_for_fn_abi<'tcx>(
                 var: ty::BoundVar::from_usize(bound_vars.len() - 1),
                 kind: ty::BoundRegionKind::BrEnv,
             };
-            let env_region = ty::Region::new_late_bound(tcx, ty::INNERMOST, br);
+            let env_region = ty::Region::new_bound(tcx, ty::INNERMOST, br);
             let env_ty = tcx.closure_env_ty(def_id, args, env_region).unwrap();
 
             let sig = sig.skip_binder();
@@ -107,8 +107,7 @@ fn fn_sig_for_fn_abi<'tcx>(
                 var: ty::BoundVar::from_usize(bound_vars.len() - 1),
                 kind: ty::BoundRegionKind::BrEnv,
             };
-            let env_ty =
-                Ty::new_mut_ref(tcx, ty::Region::new_late_bound(tcx, ty::INNERMOST, br), ty);
+            let env_ty = Ty::new_mut_ref(tcx, ty::Region::new_bound(tcx, ty::INNERMOST, br), ty);
 
             let pin_did = tcx.require_lang_item(LangItem::Pin, None);
             let pin_adt_ref = tcx.adt_def(pin_did);

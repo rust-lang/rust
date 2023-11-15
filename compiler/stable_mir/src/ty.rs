@@ -62,7 +62,7 @@ pub struct Region {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum RegionKind {
     ReEarlyBound(EarlyBoundRegion),
-    ReLateBound(DebruijnIndex, BoundRegion),
+    ReBound(DebruijnIndex, BoundRegion),
     ReStatic,
     RePlaceholder(Placeholder<BoundRegion>),
     ReErased,
@@ -156,6 +156,7 @@ pub enum RigidTy {
     Dynamic(Vec<Binder<ExistentialPredicate>>, Region, DynKind),
     Never,
     Tuple(Vec<Ty>),
+    CoroutineWitness(CoroutineWitnessDef, GenericArgs),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -234,6 +235,9 @@ pub struct ImplDef(pub DefId);
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct RegionDef(pub DefId);
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct CoroutineWitnessDef(pub DefId);
 
 /// A list of generic arguments.
 #[derive(Clone, Debug, Eq, PartialEq)]

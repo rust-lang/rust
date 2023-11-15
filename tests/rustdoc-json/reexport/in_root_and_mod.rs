@@ -1,6 +1,3 @@
-#![feature(no_core)]
-#![no_core]
-
 // @!has "$.index[*][?(@.name=='foo')]"
 mod foo {
     // @has "$.index[*][?(@.name=='Foo')]"

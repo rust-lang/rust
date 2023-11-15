@@ -1,0 +1,16 @@
+Function name: unused_mod::main
+Raw bytes (9): 0x[01, 02, 00, 01, 01, 04, 01, 02, 02]
+Number of files: 1
+- file 0 => global file 2
+Number of expressions: 0
+Number of file 0 mappings: 1
+- Code(Counter(0)) at (prev + 4, 1) to (start + 2, 2)
+
+Function name: unused_mod::unused_module::never_called_function (unused)
+Raw bytes (9): 0x[01, 01, 00, 01, 00, 02, 01, 02, 02]
+Number of files: 1
+- file 0 => global file 1
+Number of expressions: 0
+Number of file 0 mappings: 1
+- Code(Zero) at (prev + 2, 1) to (start + 2, 2)
+

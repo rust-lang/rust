@@ -327,7 +327,7 @@ where
         match *r {
             // Never make variables for regions bound within the type itself,
             // nor for erased regions.
-            ty::ReLateBound(..) | ty::ReErased => {
+            ty::ReBound(..) | ty::ReErased => {
                 return Ok(r);
             }
 

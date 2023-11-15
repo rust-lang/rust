@@ -75,9 +75,10 @@ const LLD_FILE_NAMES: &[&str] = &["ld.lld", "ld64.lld", "lld-link", "wasm-ld"];
 /// You can visit `https://github.com/rust-lang/rust/pull/{any-id-from-the-list}` to
 /// check for more details regarding each change.
 ///
-/// If you make any major changes (such as adding new values or changing default values), please
-/// ensure that the associated PR ID is added to the end of this list.
-pub const CONFIG_CHANGE_HISTORY: &[usize] = &[115898, 116998];
+/// If you make any major changes (such as adding new values or changing default values),
+/// please ensure that the associated PR ID is added to the end of this list.
+/// This is necessary because the list must be sorted by the merge date.
+pub const CONFIG_CHANGE_HISTORY: &[usize] = &[115898, 116998, 117435, 116881];
 
 /// Extra --check-cfg to add when building
 /// (Mode restriction, config name, config values (if any))
@@ -1197,11 +1198,10 @@ impl Build {
             .filter(|s| !s.starts_with("-O") && !s.starts_with("/O"))
             .collect::<Vec<String>>();
 
-        // If we're compiling on macOS then we add a few unconditional flags
-        // indicating that we want libc++ (more filled out than libstdc++) and
-        // we want to compile for 10.7. This way we can ensure that
+        // If we're compiling C++ on macOS then we add a flag indicating that
+        // we want libc++ (more filled out than libstdc++), ensuring that
         // LLVM/etc are all properly compiled.
-        if target.contains("apple-darwin") {
+        if matches!(c, CLang::Cxx) && target.contains("apple-darwin") {
             base.push("-stdlib=libc++".into());
         }
 
@@ -1568,7 +1568,7 @@ impl Build {
 
         if !stamp.exists() {
             eprintln!(
-                "Error: Unable to find the stamp file {}, did you try to keep a nonexistent build stage?",
+                "ERROR: Unable to find the stamp file {}, did you try to keep a nonexistent build stage?",
                 stamp.display()
             );
             crate::exit!(1);
@@ -1697,7 +1697,7 @@ impl Build {
         self.verbose_than(1, &format!("Install {src:?} to {dst:?}"));
         t!(fs::create_dir_all(dstdir));
         if !src.exists() {
-            panic!("Error: File \"{}\" not found!", src.display());
+            panic!("ERROR: File \"{}\" not found!", src.display());
         }
         self.copy_internal(src, &dst, true);
         chmod(&dst, perms);
@@ -1850,10 +1850,21 @@ fn envify(s: &str) -> String {
 }
 
 pub fn find_recent_config_change_ids(current_id: usize) -> Vec<usize> {
-    let index = CONFIG_CHANGE_HISTORY
-        .iter()
-        .position(|&id| id == current_id)
-        .expect(&format!("Value `{}` was not found in `CONFIG_CHANGE_HISTORY`.", current_id));
+    if !CONFIG_CHANGE_HISTORY.contains(&current_id) {
+        // If the current change-id is greater than the most recent one, return
+        // an empty list (it may be due to switching from a recent branch to an
+        // older one); otherwise, return the full list (assuming the user provided
+        // the incorrect change-id by accident).
+        if let Some(max_id) = CONFIG_CHANGE_HISTORY.iter().max() {
+            if &current_id > max_id {
+                return Vec::new();
+            }
+        }
+
+        return CONFIG_CHANGE_HISTORY.to_vec();
+    }
+
+    let index = CONFIG_CHANGE_HISTORY.iter().position(|&id| id == current_id).unwrap();
 
     CONFIG_CHANGE_HISTORY
         .iter()

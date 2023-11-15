@@ -19,6 +19,7 @@ use std::process::Command;
 use std::str::FromStr;
 
 use crate::core::build_steps::compile::CODEGEN_BACKEND_PREFIX;
+use crate::core::build_steps::llvm;
 use crate::core::config::flags::{Color, Flags, Warnings};
 use crate::utils::cache::{Interned, INTERNER};
 use crate::utils::channel::{self, GitInfo};
@@ -30,6 +31,7 @@ use serde::{Deserialize, Deserializer};
 use serde_derive::Deserialize;
 
 pub use crate::core::config::flags::Subcommand;
+use build_helper::git::GitConfig;
 
 macro_rules! check_ci_llvm {
     ($name:expr) => {
@@ -318,6 +320,7 @@ pub struct Stage0Config {
     pub artifacts_server: String,
     pub artifacts_with_llvm_assertions_server: String,
     pub git_merge_commit_email: String,
+    pub git_repository: String,
     pub nightly_branch: String,
 }
 #[derive(Default, Deserialize, Clone)]
@@ -1072,6 +1075,7 @@ impl Config {
         config.bindir = "bin".into();
         config.dist_include_mingw_linker = true;
         config.dist_compression_profile = "fast".into();
+        config.rustc_parallel = true;
 
         config.stdout_is_tty = std::io::stdout().is_terminal();
         config.stderr_is_tty = std::io::stderr().is_terminal();
@@ -1429,7 +1433,9 @@ impl Config {
             set(&mut config.use_lld, rust.use_lld);
             set(&mut config.lld_enabled, rust.lld);
             set(&mut config.llvm_tools_enabled, rust.llvm_tools);
-            config.rustc_parallel = rust.parallel_compiler.unwrap_or(false);
+            config.rustc_parallel = rust
+                .parallel_compiler
+                .unwrap_or(config.channel == "dev" || config.channel == "nightly");
             config.rustc_default_linker = rust.default_linker;
             config.musl_root = rust.musl_root.map(PathBuf::from);
             config.save_toolstates = rust.save_toolstates.map(PathBuf::from);
@@ -1458,7 +1464,7 @@ impl Config {
                         if available_backends.contains(&backend) {
                             panic!("Invalid value '{s}' for 'rust.codegen-backends'. Instead, please use '{backend}'.");
                         } else {
-                            println!("help: '{s}' for 'rust.codegen-backends' might fail. \
+                            println!("HELP: '{s}' for 'rust.codegen-backends' might fail. \
                                 Codegen backends are mostly defined without the '{CODEGEN_BACKEND_PREFIX}' prefix. \
                                 In this case, it would be referred to as '{backend}'.");
                         }
@@ -1527,17 +1533,7 @@ impl Config {
             config.llvm_build_config = llvm.build_config.clone().unwrap_or(Default::default());
 
             let asserts = llvm_assertions.unwrap_or(false);
-            config.llvm_from_ci = match llvm.download_ci_llvm {
-                Some(StringOrBool::String(s)) => {
-                    assert_eq!(s, "if-available", "unknown option `{s}` for download-ci-llvm");
-                    crate::core::build_steps::llvm::is_ci_llvm_available(&config, asserts)
-                }
-                Some(StringOrBool::Bool(b)) => b,
-                None => {
-                    config.channel == "dev"
-                        && crate::core::build_steps::llvm::is_ci_llvm_available(&config, asserts)
-                }
-            };
+            config.llvm_from_ci = config.parse_download_ci_llvm(llvm.download_ci_llvm, asserts);
 
             if config.llvm_from_ci {
                 // None of the LLVM options, except assertions, are supported
@@ -1812,9 +1808,9 @@ impl Config {
                 }
                 (channel, version) => {
                     let src = self.src.display();
-                    eprintln!("error: failed to determine artifact channel and/or version");
+                    eprintln!("ERROR: failed to determine artifact channel and/or version");
                     eprintln!(
-                        "help: consider using a git checkout or ensure these files are readable"
+                        "HELP: consider using a git checkout or ensure these files are readable"
                     );
                     if let Err(channel) = channel {
                         eprintln!("reading {src}/src/ci/channel failed: {channel:?}");
@@ -2006,6 +2002,13 @@ impl Config {
         self.rust_codegen_backends.get(0).cloned()
     }
 
+    pub fn git_config(&self) -> GitConfig<'_> {
+        GitConfig {
+            git_repository: &self.stage0_metadata.config.git_repository,
+            nightly_branch: &self.stage0_metadata.config.nightly_branch,
+        }
+    }
+
     pub fn check_build_rustc_version(&self, rustc_path: &str) {
         if self.dry_run() {
             return;
@@ -2070,10 +2073,10 @@ impl Config {
         );
         let commit = merge_base.trim_end();
         if commit.is_empty() {
-            println!("error: could not find commit hash for downloading rustc");
-            println!("help: maybe your repository history is too shallow?");
-            println!("help: consider disabling `download-rustc`");
-            println!("help: or fetch enough history to include one upstream commit");
+            println!("ERROR: could not find commit hash for downloading rustc");
+            println!("HELP: maybe your repository history is too shallow?");
+            println!("HELP: consider disabling `download-rustc`");
+            println!("HELP: or fetch enough history to include one upstream commit");
             crate::exit!(1);
         }
 
@@ -2087,15 +2090,103 @@ impl Config {
             if if_unchanged {
                 if self.verbose > 0 {
                     println!(
-                        "warning: saw changes to compiler/ or library/ since {commit}; \
+                        "WARNING: saw changes to compiler/ or library/ since {commit}; \
                             ignoring `download-rustc`"
                     );
                 }
                 return None;
             }
             println!(
-                "warning: `download-rustc` is enabled, but there are changes to \
+                "WARNING: `download-rustc` is enabled, but there are changes to \
                     compiler/ or library/"
+            );
+        }
+
+        Some(commit.to_string())
+    }
+
+    fn parse_download_ci_llvm(
+        &self,
+        download_ci_llvm: Option<StringOrBool>,
+        asserts: bool,
+    ) -> bool {
+        match download_ci_llvm {
+            None => self.channel == "dev" && llvm::is_ci_llvm_available(&self, asserts),
+            Some(StringOrBool::Bool(b)) => b,
+            Some(StringOrBool::String(s)) if s == "if-available" => {
+                llvm::is_ci_llvm_available(&self, asserts)
+            }
+            Some(StringOrBool::String(s)) if s == "if-unchanged" => {
+                // Git is needed to track modifications here, but tarball source is not available.
+                // If not modified here or built through tarball source, we maintain consistency
+                // with '"if available"'.
+                if !self.rust_info.is_from_tarball()
+                    && self
+                        .last_modified_commit(&["src/llvm-project"], "download-ci-llvm", true)
+                        .is_none()
+                {
+                    // there are some untracked changes in the the given paths.
+                    false
+                } else {
+                    llvm::is_ci_llvm_available(&self, asserts)
+                }
+            }
+            Some(StringOrBool::String(other)) => {
+                panic!("unrecognized option for download-ci-llvm: {:?}", other)
+            }
+        }
+    }
+
+    /// Returns the last commit in which any of `modified_paths` were changed,
+    /// or `None` if there are untracked changes in the working directory and `if_unchanged` is true.
+    pub fn last_modified_commit(
+        &self,
+        modified_paths: &[&str],
+        option_name: &str,
+        if_unchanged: bool,
+    ) -> Option<String> {
+        // Handle running from a directory other than the top level
+        let top_level = output(self.git().args(&["rev-parse", "--show-toplevel"]));
+        let top_level = top_level.trim_end();
+
+        // Look for a version to compare to based on the current commit.
+        // Only commits merged by bors will have CI artifacts.
+        let merge_base = output(
+            self.git()
+                .arg("rev-list")
+                .arg(format!("--author={}", self.stage0_metadata.config.git_merge_commit_email))
+                .args(&["-n1", "--first-parent", "HEAD"]),
+        );
+        let commit = merge_base.trim_end();
+        if commit.is_empty() {
+            println!("error: could not find commit hash for downloading components from CI");
+            println!("help: maybe your repository history is too shallow?");
+            println!("help: consider disabling `{option_name}`");
+            println!("help: or fetch enough history to include one upstream commit");
+            crate::exit!(1);
+        }
+
+        // Warn if there were changes to the compiler or standard library since the ancestor commit.
+        let mut git = self.git();
+        git.args(&["diff-index", "--quiet", &commit, "--"]);
+
+        for path in modified_paths {
+            git.arg(format!("{top_level}/{path}"));
+        }
+
+        let has_changes = !t!(git.status()).success();
+        if has_changes {
+            if if_unchanged {
+                if self.verbose > 0 {
+                    println!(
+                        "warning: saw changes to one of {modified_paths:?} since {commit}; \
+                            ignoring `{option_name}`"
+                    );
+                }
+                return None;
+            }
+            println!(
+                "warning: `{option_name}` is enabled, but there are changes to one of {modified_paths:?}"
             );
         }
 

@@ -11,10 +11,8 @@ use ide::{
     TokenStaticData,
 };
 use ide_db::LineIndexDatabase;
-use load_cargo::{load_workspace, LoadCargoConfig, ProcMacroServerChoice};
-use project_model::{CargoConfig, ProjectManifest, ProjectWorkspace, RustLibSource};
+use load_cargo::{load_workspace_at, LoadCargoConfig, ProcMacroServerChoice};
 use scip::types as scip_types;
-use std::env;
 
 use crate::{
     cli::flags,
@@ -25,8 +23,6 @@ impl flags::Scip {
     pub fn run(self) -> anyhow::Result<()> {
         eprintln!("Generating SCIP start...");
         let now = Instant::now();
-        let mut cargo_config = CargoConfig::default();
-        cargo_config.sysroot = Some(RustLibSource::Discover);
 
         let no_progress = &|s| (eprintln!("rust-analyzer: Loading {s}"));
         let load_cargo_config = LoadCargoConfig {
@@ -34,14 +30,27 @@ impl flags::Scip {
             with_proc_macro_server: ProcMacroServerChoice::Sysroot,
             prefill_caches: true,
         };
-        let path = vfs::AbsPathBuf::assert(env::current_dir()?.join(&self.path));
-        let rootpath = path.normalize();
-        let manifest = ProjectManifest::discover_single(&path)?;
+        let root = vfs::AbsPathBuf::assert(std::env::current_dir()?.join(&self.path)).normalize();
 
-        let workspace = ProjectWorkspace::load(manifest, &cargo_config, no_progress)?;
+        let mut config = crate::config::Config::new(
+            root.clone(),
+            lsp_types::ClientCapabilities::default(),
+            /* workspace_roots = */ vec![],
+            /* is_visual_studio_code = */ false,
+        );
 
-        let (host, vfs, _) =
-            load_workspace(workspace, &cargo_config.extra_env, &load_cargo_config)?;
+        if let Some(p) = self.config_path {
+            let mut file = std::io::BufReader::new(std::fs::File::open(p)?);
+            let json = serde_json::from_reader(&mut file)?;
+            config.update(json)?;
+        }
+        let cargo_config = config.cargo();
+        let (host, vfs, _) = load_workspace_at(
+            root.as_path().as_ref(),
+            &cargo_config,
+            &load_cargo_config,
+            &no_progress,
+        )?;
         let db = host.raw_database();
         let analysis = host.analysis();
 
@@ -58,8 +67,7 @@ impl flags::Scip {
             .into(),
             project_root: format!(
                 "file://{}",
-                path.normalize()
-                    .as_os_str()
+                root.as_os_str()
                     .to_str()
                     .ok_or(anyhow::format_err!("Unable to normalize project_root path"))?
             ),
@@ -80,7 +88,7 @@ impl flags::Scip {
                 new_symbol
             };
 
-            let relative_path = match get_relative_filepath(&vfs, &rootpath, file_id) {
+            let relative_path = match get_relative_filepath(&vfs, &root, file_id) {
                 Some(relative_path) => relative_path,
                 None => continue,
             };
@@ -125,6 +133,10 @@ impl flags::Scip {
                             documentation: documentation.unwrap_or_default(),
                             relationships: Vec::new(),
                             special_fields: Default::default(),
+                            kind: Default::default(),
+                            display_name: String::new(),
+                            signature_documentation: Default::default(),
+                            enclosing_symbol: String::new(),
                         };
 
                         symbols.push(symbol_info)
@@ -139,6 +151,7 @@ impl flags::Scip {
                     syntax_kind: Default::default(),
                     diagnostics: Vec::new(),
                     special_fields: Default::default(),
+                    enclosing_range: Vec::new(),
                 });
             });
 
@@ -152,6 +165,7 @@ impl flags::Scip {
                 occurrences,
                 symbols,
                 special_fields: Default::default(),
+                text: String::new(),
             });
         }
 

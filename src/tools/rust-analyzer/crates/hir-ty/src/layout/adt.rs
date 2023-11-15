@@ -8,6 +8,7 @@ use hir_def::{
     AdtId, EnumVariantId, LocalEnumVariantId, VariantId,
 };
 use la_arena::RawIdx;
+use rustc_dependencies::index::IndexVec;
 use smallvec::SmallVec;
 use triomphe::Arc;
 
@@ -20,8 +21,8 @@ use crate::{
 
 use super::LayoutCx;
 
-pub(crate) fn struct_variant_idx() -> RustcEnumVariantIdx {
-    RustcEnumVariantIdx(LocalEnumVariantId::from_raw(RawIdx::from(0)))
+pub(crate) const fn struct_variant_idx() -> RustcEnumVariantIdx {
+    RustcEnumVariantIdx(LocalEnumVariantId::from_raw(RawIdx::from_u32(0)))
 }
 
 pub fn layout_of_adt_query(
@@ -74,7 +75,7 @@ pub fn layout_of_adt_query(
         .iter()
         .map(|it| it.iter().map(|it| &**it).collect::<Vec<_>>())
         .collect::<SmallVec<[_; 1]>>();
-    let variants = variants.iter().map(|it| it.iter().collect()).collect();
+    let variants = variants.iter().map(|it| it.iter().collect()).collect::<IndexVec<_, _>>();
     let result = if matches!(def, AdtId::UnionId(..)) {
         cx.layout_of_union(&repr, &variants).ok_or(LayoutError::Unknown)?
     } else {
@@ -105,7 +106,7 @@ pub fn layout_of_adt_query(
                 && variants
                     .iter()
                     .next()
-                    .and_then(|it| it.last().map(|it| !it.is_unsized()))
+                    .and_then(|it| it.iter().last().map(|it| !it.is_unsized()))
                     .unwrap_or(true),
         )
         .ok_or(LayoutError::SizeOverflow)?
@@ -119,7 +120,15 @@ fn layout_scalar_valid_range(db: &dyn HirDatabase, def: AdtId) -> (Bound<u128>, 
         let attr = attrs.by_key(name).tt_values();
         for tree in attr {
             if let Some(it) = tree.token_trees.first() {
-                if let Ok(it) = it.to_string().parse() {
+                let text = it.to_string().replace('_', "");
+                let (text, base) = match text.as_bytes() {
+                    [b'0', b'x', ..] => (&text[2..], 16),
+                    [b'0', b'o', ..] => (&text[2..], 8),
+                    [b'0', b'b', ..] => (&text[2..], 2),
+                    _ => (&*text, 10),
+                };
+
+                if let Ok(it) = u128::from_str_radix(text, base) {
                     return Bound::Included(it);
                 }
             }

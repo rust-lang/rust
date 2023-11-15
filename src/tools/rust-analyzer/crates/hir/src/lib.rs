@@ -18,6 +18,7 @@
 //! <https://www.tedinski.com/2018/02/06/system-boundaries.html>.
 
 #![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]
+#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
 #![recursion_limit = "512"]
 
 mod semantics;
@@ -64,7 +65,7 @@ use hir_ty::{
     consteval::{try_const_usize, unknown_const_as_generic, ConstEvalError, ConstExt},
     diagnostics::BodyValidationDiagnostic,
     known_const_to_ast,
-    layout::{Layout as TyLayout, RustcEnumVariantIdx, TagEncoding},
+    layout::{Layout as TyLayout, RustcEnumVariantIdx, RustcFieldIdx, TagEncoding},
     method_resolution::{self, TyFingerprint},
     mir::{self, interpret_mir},
     primitive::UintTy,
@@ -98,7 +99,7 @@ pub use crate::{
         ReplaceFilterMapNextWithFindMap, TypeMismatch, TypedHole, UndeclaredLabel,
         UnimplementedBuiltinMacro, UnreachableLabel, UnresolvedExternCrate, UnresolvedField,
         UnresolvedImport, UnresolvedMacroCall, UnresolvedMethodCall, UnresolvedModule,
-        UnresolvedProcMacro, UnusedMut,
+        UnresolvedProcMacro, UnusedMut, UnusedVariable,
     },
     has_source::HasSource,
     semantics::{PathResolution, Semantics, SemanticsScope, TypeInfo, VisibleTraits},
@@ -452,15 +453,7 @@ impl HasVisibility for ModuleDef {
 impl Module {
     /// Name of this module.
     pub fn name(self, db: &dyn HirDatabase) -> Option<Name> {
-        let def_map = self.id.def_map(db.upcast());
-        let parent = def_map[self.id.local_id].parent?;
-        def_map[parent].children.iter().find_map(|(name, module_id)| {
-            if *module_id == self.id.local_id {
-                Some(name.clone())
-            } else {
-                None
-            }
-        })
+        self.id.name(db.upcast())
     }
 
     /// Returns the crate this module is part of.
@@ -571,6 +564,7 @@ impl Module {
                     if def_map[m.id.local_id].origin.is_inline() {
                         m.diagnostics(db, acc)
                     }
+                    acc.extend(def.diagnostics(db))
                 }
                 ModuleDef::Trait(t) => {
                     for diag in db.trait_data_with_diagnostics(t.id).1.iter() {
@@ -1509,10 +1503,10 @@ impl DefWithBody {
                 &hir_ty::InferenceDiagnostic::NoSuchField { field: expr, private } => {
                     let expr_or_pat = match expr {
                         ExprOrPatId::ExprId(expr) => {
-                            source_map.field_syntax(expr).map(Either::Left)
+                            source_map.field_syntax(expr).map(AstPtr::wrap_left)
                         }
                         ExprOrPatId::PatId(pat) => {
-                            source_map.pat_field_syntax(pat).map(Either::Right)
+                            source_map.pat_field_syntax(pat).map(AstPtr::wrap_right)
                         }
                     };
                     acc.push(NoSuchField { field: expr_or_pat, private }.into())
@@ -1530,8 +1524,8 @@ impl DefWithBody {
                 }
                 &hir_ty::InferenceDiagnostic::PrivateAssocItem { id, item } => {
                     let expr_or_pat = match id {
-                        ExprOrPatId::ExprId(expr) => expr_syntax(expr).map(Either::Left),
-                        ExprOrPatId::PatId(pat) => pat_syntax(pat).map(Either::Right),
+                        ExprOrPatId::ExprId(expr) => expr_syntax(expr).map(AstPtr::wrap_left),
+                        ExprOrPatId::PatId(pat) => pat_syntax(pat).map(AstPtr::wrap_right),
                     };
                     let item = item.into();
                     acc.push(PrivateAssocItem { expr_or_pat, item }.into())
@@ -1609,12 +1603,17 @@ impl DefWithBody {
                     found,
                 } => {
                     let expr_or_pat = match pat {
-                        ExprOrPatId::ExprId(expr) => expr_syntax(expr).map(Either::Left),
-                        ExprOrPatId::PatId(pat) => source_map
-                            .pat_syntax(pat)
-                            .expect("unexpected synthetic")
-                            .map(|it| it.unwrap_left())
-                            .map(Either::Right),
+                        ExprOrPatId::ExprId(expr) => expr_syntax(expr).map(AstPtr::wrap_left),
+                        ExprOrPatId::PatId(pat) => {
+                            let InFile { file_id, value } =
+                                source_map.pat_syntax(pat).expect("unexpected synthetic");
+
+                            // cast from Either<Pat, SelfParam> -> Either<_, Pat>
+                            let Some(ptr) = AstPtr::try_from_raw(value.syntax_node_ptr()) else {
+                                continue;
+                            };
+                            InFile { file_id, value: ptr }
+                        }
                     };
                     acc.push(
                         MismatchedTupleStructPatArgCount { expr_or_pat, expected, found }.into(),
@@ -1628,11 +1627,15 @@ impl DefWithBody {
                 ExprOrPatId::PatId(pat) => source_map.pat_syntax(pat).map(Either::Right),
             };
             let expr_or_pat = match expr_or_pat {
-                Ok(Either::Left(expr)) => Either::Left(expr),
-                Ok(Either::Right(InFile { file_id, value: Either::Left(pat) })) => {
-                    Either::Right(InFile { file_id, value: pat })
+                Ok(Either::Left(expr)) => expr.map(AstPtr::wrap_left),
+                Ok(Either::Right(InFile { file_id, value: pat })) => {
+                    // cast from Either<Pat, SelfParam> -> Either<_, Pat>
+                    let Some(ptr) = AstPtr::try_from_raw(pat.syntax_node_ptr()) else {
+                        continue;
+                    };
+                    InFile { file_id, value: ptr }
                 }
-                Ok(Either::Right(_)) | Err(SyntheticSyntax) => continue,
+                Err(SyntheticSyntax) => continue,
             };
 
             acc.push(
@@ -1667,10 +1670,7 @@ impl DefWithBody {
                             Err(_) => continue,
                         },
                         mir::MirSpan::PatId(p) => match source_map.pat_syntax(p) {
-                            Ok(s) => s.map(|it| match it {
-                                Either::Left(e) => e.into(),
-                                Either::Right(e) => e.into(),
-                            }),
+                            Ok(s) => s.map(|it| it.into()),
                             Err(_) => continue,
                         },
                         mir::MirSpan::Unknown => continue,
@@ -1697,9 +1697,20 @@ impl DefWithBody {
                         // Skip synthetic bindings
                         continue;
                     }
-                    let need_mut = &mol[local];
+                    let mut need_mut = &mol[local];
+                    if body[binding_id].name.as_str() == Some("self")
+                        && need_mut == &mir::MutabilityReason::Unused
+                    {
+                        need_mut = &mir::MutabilityReason::Not;
+                    }
                     let local = Local { parent: self.into(), binding_id };
                     match (need_mut, local.is_mut(db)) {
+                        (mir::MutabilityReason::Unused, _) => {
+                            let should_ignore = matches!(body[binding_id].name.as_str(), Some(it) if it.starts_with("_"));
+                            if !should_ignore {
+                                acc.push(UnusedVariable { local }.into())
+                            }
+                        }
                         (mir::MutabilityReason::Mut { .. }, true)
                         | (mir::MutabilityReason::Not, false) => (),
                         (mir::MutabilityReason::Mut { spans }, false) => {
@@ -1710,10 +1721,7 @@ impl DefWithBody {
                                         Err(_) => continue,
                                     },
                                     mir::MirSpan::PatId(p) => match source_map.pat_syntax(*p) {
-                                        Ok(s) => s.map(|it| match it {
-                                            Either::Left(e) => e.into(),
-                                            Either::Right(e) => e.into(),
-                                        }),
+                                        Ok(s) => s.map(|it| it.into()),
                                         Err(_) => continue,
                                     },
                                     mir::MirSpan::Unknown => continue,
@@ -1752,18 +1760,18 @@ impl DefWithBody {
                             Ok(source_ptr) => {
                                 let root = source_ptr.file_syntax(db.upcast());
                                 if let ast::Expr::RecordExpr(record_expr) =
-                                    &source_ptr.value.to_node(&root)
+                                    source_ptr.value.to_node(&root)
                                 {
                                     if record_expr.record_expr_field_list().is_some() {
+                                        let field_list_parent_path =
+                                            record_expr.path().map(|path| AstPtr::new(&path));
                                         acc.push(
                                             MissingFields {
                                                 file: source_ptr.file_id,
-                                                field_list_parent: Either::Left(AstPtr::new(
+                                                field_list_parent: AstPtr::new(&Either::Left(
                                                     record_expr,
                                                 )),
-                                                field_list_parent_path: record_expr
-                                                    .path()
-                                                    .map(|path| AstPtr::new(&path)),
+                                                field_list_parent_path,
                                                 missed_fields,
                                             }
                                             .into(),
@@ -1775,24 +1783,24 @@ impl DefWithBody {
                         },
                         Either::Right(record_pat) => match source_map.pat_syntax(record_pat) {
                             Ok(source_ptr) => {
-                                if let Some(expr) = source_ptr.value.as_ref().left() {
+                                if let Some(ptr) = source_ptr.value.clone().cast::<ast::RecordPat>()
+                                {
                                     let root = source_ptr.file_syntax(db.upcast());
-                                    if let ast::Pat::RecordPat(record_pat) = expr.to_node(&root) {
-                                        if record_pat.record_pat_field_list().is_some() {
-                                            acc.push(
-                                                MissingFields {
-                                                    file: source_ptr.file_id,
-                                                    field_list_parent: Either::Right(AstPtr::new(
-                                                        &record_pat,
-                                                    )),
-                                                    field_list_parent_path: record_pat
-                                                        .path()
-                                                        .map(|path| AstPtr::new(&path)),
-                                                    missed_fields,
-                                                }
-                                                .into(),
-                                            )
-                                        }
+                                    let record_pat = ptr.to_node(&root);
+                                    if record_pat.record_pat_field_list().is_some() {
+                                        let field_list_parent_path =
+                                            record_pat.path().map(|path| AstPtr::new(&path));
+                                        acc.push(
+                                            MissingFields {
+                                                file: source_ptr.file_id,
+                                                field_list_parent: AstPtr::new(&Either::Right(
+                                                    record_pat,
+                                                )),
+                                                field_list_parent_path,
+                                                missed_fields,
+                                            }
+                                            .into(),
+                                        )
                                     }
                                 }
                             }
@@ -1958,6 +1966,17 @@ impl Function {
     /// Does this function have `#[test]` attribute?
     pub fn is_test(self, db: &dyn HirDatabase) -> bool {
         db.function_data(self.id).attrs.is_test()
+    }
+
+    /// is this a `fn main` or a function with an `export_name` of `main`?
+    pub fn is_main(self, db: &dyn HirDatabase) -> bool {
+        if !self.module(db).is_crate_root() {
+            return false;
+        }
+        let data = db.function_data(self.id);
+
+        data.name.to_smol_str() == "main"
+            || data.attrs.export_name().map(core::ops::Deref::deref) == Some("main")
     }
 
     /// Does this function have the ignore attribute?
@@ -2926,10 +2945,10 @@ impl Local {
             .map(|&definition| {
                 let src = source_map.pat_syntax(definition).unwrap(); // Hmm...
                 let root = src.file_syntax(db.upcast());
-                src.map(|ast| match ast {
-                    // Suspicious unwrap
-                    Either::Left(it) => Either::Left(it.cast().unwrap().to_node(&root)),
-                    Either::Right(it) => Either::Right(it.to_node(&root)),
+                src.map(|ast| match ast.to_node(&root) {
+                    Either::Left(ast::Pat::IdentPat(it)) => Either::Left(it),
+                    Either::Left(_) => unreachable!("local with non ident-pattern"),
+                    Either::Right(it) => Either::Right(it),
                 })
             })
             .map(move |source| LocalSource { local: self, source })
@@ -4515,15 +4534,31 @@ impl Layout {
         Some(self.0.largest_niche?.available(&*self.1))
     }
 
-    pub fn field_offset(&self, idx: usize) -> Option<u64> {
+    pub fn field_offset(&self, field: Field) -> Option<u64> {
         match self.0.fields {
             layout::FieldsShape::Primitive => None,
             layout::FieldsShape::Union(_) => Some(0),
             layout::FieldsShape::Array { stride, count } => {
-                let i = u64::try_from(idx).ok()?;
+                let i = u64::try_from(field.index()).ok()?;
                 (i < count).then_some((stride * i).bytes())
             }
-            layout::FieldsShape::Arbitrary { ref offsets, .. } => Some(offsets.get(idx)?.bytes()),
+            layout::FieldsShape::Arbitrary { ref offsets, .. } => {
+                Some(offsets.get(RustcFieldIdx(field.id))?.bytes())
+            }
+        }
+    }
+
+    pub fn tuple_field_offset(&self, field: usize) -> Option<u64> {
+        match self.0.fields {
+            layout::FieldsShape::Primitive => None,
+            layout::FieldsShape::Union(_) => Some(0),
+            layout::FieldsShape::Array { stride, count } => {
+                let i = u64::try_from(field).ok()?;
+                (i < count).then_some((stride * i).bytes())
+            }
+            layout::FieldsShape::Arbitrary { ref offsets, .. } => {
+                Some(offsets.get(RustcFieldIdx::new(field))?.bytes())
+            }
         }
     }
 

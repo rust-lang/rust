@@ -2,6 +2,8 @@
 
 use std::borrow::Cow;
 
+use rustc_dependencies::lexer as rustc_lexer;
+
 use rustc_lexer::unescape::{
     unescape_byte, unescape_c_string, unescape_char, unescape_literal, CStrUnit, Mode,
 };

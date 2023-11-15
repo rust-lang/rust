@@ -79,7 +79,7 @@ impl<T> Sharded<T> {
     pub fn lock_shard_by_value<K: Hash + ?Sized>(&self, _val: &K) -> LockGuard<'_, T> {
         match self {
             Self::Single(single) => {
-                // Syncronization is disabled so use the `lock_assume_no_sync` method optimized
+                // Synchronization is disabled so use the `lock_assume_no_sync` method optimized
                 // for that case.
 
                 // SAFETY: We know `is_dyn_thread_safe` was false when creating the lock thus
@@ -102,7 +102,7 @@ impl<T> Sharded<T> {
     pub fn lock_shard_by_index(&self, _i: usize) -> LockGuard<'_, T> {
         match self {
             Self::Single(single) => {
-                // Syncronization is disabled so use the `lock_assume_no_sync` method optimized
+                // Synchronization is disabled so use the `lock_assume_no_sync` method optimized
                 // for that case.
 
                 // SAFETY: We know `is_dyn_thread_safe` was false when creating the lock thus
@@ -111,7 +111,7 @@ impl<T> Sharded<T> {
             }
             #[cfg(parallel_compiler)]
             Self::Shards(shards) => {
-                // Syncronization is enabled so use the `lock_assume_sync` method optimized
+                // Synchronization is enabled so use the `lock_assume_sync` method optimized
                 // for that case.
 
                 // SAFETY (get_unchecked): The index gets ANDed with the shard mask, ensuring it is

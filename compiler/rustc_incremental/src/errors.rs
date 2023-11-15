@@ -271,12 +271,6 @@ pub struct LoadDepGraph {
 }
 
 #[derive(Diagnostic)]
-#[diag(incremental_decode_incr_cache)]
-pub struct DecodeIncrCache {
-    pub err: String,
-}
-
-#[derive(Diagnostic)]
 #[diag(incremental_write_dep_graph)]
 pub struct WriteDepGraph<'a> {
     pub path: &'a Path,

@@ -8,6 +8,7 @@
 //! actually true.
 
 #![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]
+#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
 
 #[allow(unused)]
 macro_rules! eprintln {
@@ -48,7 +49,7 @@ pub mod visibility;
 pub mod find_path;
 pub mod import_map;
 
-pub use rustc_abi as layout;
+pub use rustc_dependencies::abi as layout;
 use triomphe::Arc;
 
 #[cfg(test)]
@@ -72,6 +73,7 @@ use hir_expand::{
     db::ExpandDatabase,
     eager::expand_eager_macro_input,
     hygiene::Hygiene,
+    name::Name,
     proc_macro::ProcMacroExpander,
     AstId, ExpandError, ExpandResult, ExpandTo, HirFileId, InFile, MacroCallId, MacroCallKind,
     MacroDefId, MacroDefKind, UnresolvedMacro,
@@ -171,6 +173,18 @@ impl ModuleId {
 
     pub fn krate(self) -> CrateId {
         self.krate
+    }
+
+    pub fn name(self, db: &dyn db::DefDatabase) -> Option<Name> {
+        let def_map = self.def_map(db);
+        let parent = def_map[self.local_id].parent?;
+        def_map[parent].children.iter().find_map(|(name, module_id)| {
+            if *module_id == self.local_id {
+                Some(name.clone())
+            } else {
+                None
+            }
+        })
     }
 
     pub fn containing_module(self, db: &dyn db::DefDatabase) -> Option<ModuleId> {
@@ -498,10 +512,7 @@ impl_from!(Macro2Id, MacroRulesId, ProcMacroId for MacroId);
 
 impl MacroId {
     pub fn is_attribute(self, db: &dyn db::DefDatabase) -> bool {
-        match self {
-            MacroId::ProcMacroId(it) => it.lookup(db).kind == ProcMacroKind::Attr,
-            _ => false,
-        }
+        matches!(self, MacroId::ProcMacroId(it) if it.lookup(db).kind == ProcMacroKind::Attr)
     }
 }
 

@@ -329,6 +329,10 @@ export class Config {
     get showDependenciesExplorer() {
         return this.get<boolean>("showDependenciesExplorer");
     }
+
+    get statusBarClickAction() {
+        return this.get<string>("statusBar.clickAction");
+    }
 }
 
 // the optional `cb?` parameter is meant to be used to add additional

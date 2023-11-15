@@ -217,7 +217,7 @@ fn write_or_print(out: &str, sess: &Session) {
 // Extra data for pretty-printing, the form of which depends on what kind of
 // pretty-printing we are doing.
 pub enum PrintExtra<'tcx> {
-    AfterParsing { krate: ast::Crate },
+    AfterParsing { krate: &'tcx ast::Crate },
     NeedsAstMap { tcx: TyCtxt<'tcx> },
 }
 

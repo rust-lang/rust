@@ -1,9 +1,5 @@
 // ignore-tidy-linelength
 
-#![feature(no_core)]
-#![no_core]
-
-
 // @!has "$.index[*][?(@.name == 'sealed')]"
 mod sealed {
     // @set sealed_id = "$.index[*][?(@.name=='Sealed')].id"

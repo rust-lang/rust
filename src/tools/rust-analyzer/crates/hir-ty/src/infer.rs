@@ -420,7 +420,19 @@ pub struct InferenceResult {
     standard_types: InternedStandardTypes,
     /// Stores the types which were implicitly dereferenced in pattern binding modes.
     pub pat_adjustments: FxHashMap<PatId, Vec<Ty>>,
-    pub binding_modes: ArenaMap<BindingId, BindingMode>,
+    /// Stores the binding mode (`ref` in `let ref x = 2`) of bindings.
+    ///
+    /// This one is tied to the `PatId` instead of `BindingId`, because in some rare cases, a binding in an
+    /// or pattern can have multiple binding modes. For example:
+    /// ```
+    /// fn foo(mut slice: &[u32]) -> usize {
+    ///    slice = match slice {
+    ///        [0, rest @ ..] | rest => rest,
+    ///    };
+    /// }
+    /// ```
+    /// the first `rest` has implicit `ref` binding mode, but the second `rest` binding mode is `move`.
+    pub binding_modes: ArenaMap<PatId, BindingMode>,
     pub expr_adjustments: FxHashMap<ExprId, Vec<Adjustment>>,
     pub(crate) closure_info: FxHashMap<ClosureId, (Vec<CapturedItem>, FnTrait)>,
     // FIXME: remove this field

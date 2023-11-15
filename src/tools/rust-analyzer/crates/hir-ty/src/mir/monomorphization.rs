@@ -248,6 +248,7 @@ impl Filler<'_> {
                         | Rvalue::CopyForDeref(_) => (),
                     },
                     StatementKind::Deinit(_)
+                    | StatementKind::FakeRead(_)
                     | StatementKind::StorageLive(_)
                     | StatementKind::StorageDead(_)
                     | StatementKind::Nop => (),

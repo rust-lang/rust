@@ -75,6 +75,12 @@ LL |     👀::full_of✨()
    |         |
    |         function or associated item not found in `👀`
    |         help: there is an associated function with a similar name: `full_of_✨`
+   |
+note: if you're trying to build a new `👀`, consider using `👀::full_of_✨` which returns `👀`
+  --> $DIR/emoji-identifiers.rs:4:5
+   |
+LL |     fn full_of_✨() -> 👀 {
+   |     ^^^^^^^^^^^^^^^^^^^^^
 
 error[E0425]: cannot find function `i_like_to_😄_a_lot` in this scope
   --> $DIR/emoji-identifiers.rs:13:13

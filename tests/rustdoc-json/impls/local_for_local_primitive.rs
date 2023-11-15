@@ -1,6 +1,4 @@
-#![feature(no_core)]
 #![feature(rustc_attrs)]
-#![no_core]
 
 // @set Local = "$.index[*][?(@.name=='Local')].id"
 pub trait Local {}

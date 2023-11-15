@@ -369,7 +369,7 @@ impl Step for RustAnalyzer {
 
         // We don't need to build the whole Rust Analyzer for the proc-macro-srv test suite,
         // but we do need the standard library to be present.
-        builder.ensure(compile::Std::new(compiler, host));
+        builder.ensure(compile::Rustc::new(compiler, host));
 
         let workspace_path = "src/tools/rust-analyzer";
         // until the whole RA test suite runs on `i686`, we only run
@@ -378,7 +378,7 @@ impl Step for RustAnalyzer {
         let mut cargo = tool::prepare_tool_cargo(
             builder,
             compiler,
-            Mode::ToolStd,
+            Mode::ToolRustc,
             host,
             "test",
             crate_path,
@@ -1127,10 +1127,10 @@ impl Step for Tidy {
                 let inferred_rustfmt_dir = builder.initial_rustc.parent().unwrap();
                 eprintln!(
                     "\
-error: no `rustfmt` binary found in {PATH}
-info: `rust.channel` is currently set to \"{CHAN}\"
-help: if you are testing a beta branch, set `rust.channel` to \"beta\" in the `config.toml` file
-help: to skip test's attempt to check tidiness, pass `--skip src/tools/tidy` to `x.py test`",
+ERROR: no `rustfmt` binary found in {PATH}
+INFO: `rust.channel` is currently set to \"{CHAN}\"
+HELP: if you are testing a beta branch, set `rust.channel` to \"beta\" in the `config.toml` file
+HELP: to skip test's attempt to check tidiness, pass `--skip src/tools/tidy` to `x.py test`",
                     PATH = inferred_rustfmt_dir.display(),
                     CHAN = builder.config.channel,
                 );
@@ -1183,7 +1183,7 @@ impl Step for ExpandYamlAnchors {
     /// appropriate configuration for all our CI providers. This step ensures the tool was called
     /// by the user before committing CI changes.
     fn run(self, builder: &Builder<'_>) {
-        // Note: `.github/` is not included in dist-src tarballs
+        // NOTE: `.github/` is not included in dist-src tarballs
         if !builder.src.join(".github/workflows/ci.yml").exists() {
             builder.info("Skipping YAML anchors check: GitHub Actions config not found");
             return;
@@ -1305,6 +1305,47 @@ macro_rules! test_definitions {
     };
 }
 
+/// Declares an alias for running the [`Coverage`] tests in only one mode.
+/// Adapted from [`test_definitions`].
+macro_rules! coverage_test_alias {
+    ($name:ident {
+        alias_and_mode: $alias_and_mode:expr,
+        default: $default:expr,
+        only_hosts: $only_hosts:expr $(,)?
+    }) => {
+        #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+        pub struct $name {
+            pub compiler: Compiler,
+            pub target: TargetSelection,
+        }
+
+        impl $name {
+            const MODE: &'static str = $alias_and_mode;
+        }
+
+        impl Step for $name {
+            type Output = ();
+            const DEFAULT: bool = $default;
+            const ONLY_HOSTS: bool = $only_hosts;
+
+            fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+                run.alias($alias_and_mode)
+            }
+
+            fn make_run(run: RunConfig<'_>) {
+                let compiler = run.builder.compiler(run.builder.top_stage, run.build_triple());
+
+                run.builder.ensure($name { compiler, target: run.target });
+            }
+
+            fn run(self, builder: &Builder<'_>) {
+                Coverage { compiler: self.compiler, target: self.target }
+                    .run_unified_suite(builder, Self::MODE)
+            }
+        }
+    };
+}
+
 default_test!(Ui { path: "tests/ui", mode: "ui", suite: "ui" });
 
 default_test!(RunPassValgrind {
@@ -1349,17 +1390,70 @@ host_test!(RunMakeFullDeps {
 
 default_test!(Assembly { path: "tests/assembly", mode: "assembly", suite: "assembly" });
 
-default_test!(CoverageMap {
-    path: "tests/coverage-map",
-    mode: "coverage-map",
-    suite: "coverage-map"
+/// Custom test step that is responsible for running the coverage tests
+/// in multiple different modes.
+///
+/// Each individual mode also has its own alias that will run the tests in
+/// just that mode.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct Coverage {
+    pub compiler: Compiler,
+    pub target: TargetSelection,
+}
+
+impl Coverage {
+    const PATH: &'static str = "tests/coverage";
+    const SUITE: &'static str = "coverage";
+
+    fn run_unified_suite(&self, builder: &Builder<'_>, mode: &'static str) {
+        builder.ensure(Compiletest {
+            compiler: self.compiler,
+            target: self.target,
+            mode,
+            suite: Self::SUITE,
+            path: Self::PATH,
+            compare_mode: None,
+        })
+    }
+}
+
+impl Step for Coverage {
+    type Output = ();
+    const DEFAULT: bool = false;
+    const ONLY_HOSTS: bool = false;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.suite_path(Self::PATH)
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        let compiler = run.builder.compiler(run.builder.top_stage, run.build_triple());
+
+        run.builder.ensure(Coverage { compiler, target: run.target });
+    }
+
+    fn run(self, builder: &Builder<'_>) {
+        self.run_unified_suite(builder, CoverageMap::MODE);
+        self.run_unified_suite(builder, CoverageRun::MODE);
+    }
+}
+
+// Aliases for running the coverage tests in only one mode.
+coverage_test_alias!(CoverageMap {
+    alias_and_mode: "coverage-map",
+    default: true,
+    only_hosts: false,
+});
+coverage_test_alias!(CoverageRun {
+    alias_and_mode: "coverage-run",
+    default: true,
+    only_hosts: true,
 });
 
-host_test!(RunCoverage { path: "tests/run-coverage", mode: "run-coverage", suite: "run-coverage" });
-host_test!(RunCoverageRustdoc {
-    path: "tests/run-coverage-rustdoc",
-    mode: "run-coverage",
-    suite: "run-coverage-rustdoc"
+host_test!(CoverageRunRustdoc {
+    path: "tests/coverage-run-rustdoc",
+    mode: "coverage-run",
+    suite: "coverage-run-rustdoc"
 });
 
 // For the mir-opt suite we do not use macros, as we need custom behavior when blessing.
@@ -1472,10 +1566,10 @@ impl Step for Compiletest {
     fn run(self, builder: &Builder<'_>) {
         if builder.top_stage == 0 && env::var("COMPILETEST_FORCE_STAGE0").is_err() {
             eprintln!("\
-error: `--stage 0` runs compiletest on the beta compiler, not your local changes, and will almost always cause tests to fail
-help: to test the compiler, use `--stage 1` instead
-help: to test the standard library, use `--stage 0 library/std` instead
-note: if you're sure you want to do this, please open an issue as to why. In the meantime, you can override this with `COMPILETEST_FORCE_STAGE0=1`."
+ERROR: `--stage 0` runs compiletest on the beta compiler, not your local changes, and will almost always cause tests to fail
+HELP: to test the compiler, use `--stage 1` instead
+HELP: to test the standard library, use `--stage 0 library/std` instead
+NOTE: if you're sure you want to do this, please open an issue as to why. In the meantime, you can override this with `COMPILETEST_FORCE_STAGE0=1`."
             );
             crate::exit!(1);
         }
@@ -1546,7 +1640,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
             || (mode == "ui" && is_rustdoc)
             || mode == "js-doc-test"
             || mode == "rustdoc-json"
-            || suite == "run-coverage-rustdoc"
+            || suite == "coverage-run-rustdoc"
         {
             cmd.arg("--rustdoc-path").arg(builder.rustdoc(compiler));
         }
@@ -1568,7 +1662,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
             cmd.arg("--coverage-dump-path").arg(coverage_dump);
         }
 
-        if mode == "run-coverage" {
+        if mode == "coverage-run" {
             // The demangler doesn't need the current compiler, so we can avoid
             // unnecessary rebuilds by using the bootstrap compiler instead.
             let rust_demangler = builder
@@ -1760,11 +1854,11 @@ note: if you're sure you want to do this, please open an issue as to why. In the
             }
 
             if !builder.config.dry_run()
-                && (matches!(suite, "run-make" | "run-make-fulldeps") || mode == "run-coverage")
+                && (matches!(suite, "run-make" | "run-make-fulldeps") || mode == "coverage-run")
             {
                 // The llvm/bin directory contains many useful cross-platform
                 // tools. Pass the path to run-make tests so they can use them.
-                // (The run-coverage tests also need these tools to process
+                // (The coverage-run tests also need these tools to process
                 // coverage reports.)
                 let llvm_bin_path = llvm_config
                     .parent()
@@ -1876,6 +1970,10 @@ note: if you're sure you want to do this, please open an issue as to why. In the
         if !builder.config.omit_git_hash {
             cmd.arg("--git-hash");
         }
+
+        let git_config = builder.config.git_config();
+        cmd.arg("--git-repository").arg(git_config.git_repository);
+        cmd.arg("--nightly-branch").arg(git_config.nightly_branch);
 
         builder.ci_env.force_coloring_in_ci(&mut cmd);
 

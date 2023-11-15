@@ -4,13 +4,13 @@
 //!
 //!   - [`AscribeUserType`]
 //!   - [`FakeRead`]
-//!   - [`Assign`] statements with a [`Shallow`] borrow
+//!   - [`Assign`] statements with a [`Fake`] borrow
 //!
 //! [`AscribeUserType`]: rustc_middle::mir::StatementKind::AscribeUserType
 //! [`Assign`]: rustc_middle::mir::StatementKind::Assign
 //! [`FakeRead`]: rustc_middle::mir::StatementKind::FakeRead
 //! [`Nop`]: rustc_middle::mir::StatementKind::Nop
-//! [`Shallow`]: rustc_middle::mir::BorrowKind::Shallow
+//! [`Fake`]: rustc_middle::mir::BorrowKind::Fake
 
 use crate::MirPass;
 use rustc_middle::mir::{Body, BorrowKind, Rvalue, StatementKind, TerminatorKind};
@@ -24,7 +24,7 @@ impl<'tcx> MirPass<'tcx> for CleanupPostBorrowck {
             for statement in basic_block.statements.iter_mut() {
                 match statement.kind {
                     StatementKind::AscribeUserType(..)
-                    | StatementKind::Assign(box (_, Rvalue::Ref(_, BorrowKind::Shallow, _)))
+                    | StatementKind::Assign(box (_, Rvalue::Ref(_, BorrowKind::Fake, _)))
                     | StatementKind::FakeRead(..) => statement.make_nop(),
                     _ => (),
                 }

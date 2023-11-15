@@ -238,9 +238,9 @@ pub enum TokenKind {
     EqEq,
     /// `!=`
     Ne,
-    /// `>`
-    Ge,
     /// `>=`
+    Ge,
+    /// `>`
     Gt,
     /// `&&`
     AndAnd,

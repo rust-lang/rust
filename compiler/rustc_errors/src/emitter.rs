@@ -2362,11 +2362,7 @@ impl FileWithAnnotatedLines {
 
                 let label = label.as_ref().map(|m| {
                     normalize_whitespace(
-                        &emitter
-                            .translate_message(m, &args)
-                            .map_err(Report::new)
-                            .unwrap()
-                            .to_string(),
+                        &emitter.translate_message(m, &args).map_err(Report::new).unwrap(),
                     )
                 });
 

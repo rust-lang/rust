@@ -114,12 +114,11 @@ impl<'tcx> Value<TyCtxt<'tcx>> for ty::EarlyBinder<ty::Binder<'_, ty::FnSig<'_>>
 }
 
 impl<'tcx, T> Value<TyCtxt<'tcx>> for Result<T, &'_ ty::layout::LayoutError<'_>> {
-    fn from_cycle_error(_tcx: TyCtxt<'tcx>, _cycle: &[QueryInfo], _guar: ErrorGuaranteed) -> Self {
+    fn from_cycle_error(_tcx: TyCtxt<'tcx>, _cycle: &[QueryInfo], guar: ErrorGuaranteed) -> Self {
         // tcx.arena.alloc cannot be used because we are not allowed to use &'tcx LayoutError under
         // min_specialization. Since this is an error path anyways, leaking doesn't matter (and really,
         // tcx.arena.alloc is pretty much equal to leaking).
-        // FIXME: `Cycle` should carry the ErrorGuaranteed
-        Err(Box::leak(Box::new(ty::layout::LayoutError::Cycle)))
+        Err(Box::leak(Box::new(ty::layout::LayoutError::Cycle(guar))))
     }
 }
 

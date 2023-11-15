@@ -214,7 +214,7 @@ fn check_panic_info_fn(tcx: TyCtxt<'_>, fn_id: LocalDefId, fn_sig: ty::FnSig<'_>
     // build type `for<'a, 'b> fn(&'a PanicInfo<'b>) -> !`
     let panic_info_ty = tcx.type_of(panic_info_did).instantiate(
         tcx,
-        &[ty::GenericArg::from(ty::Region::new_late_bound(
+        &[ty::GenericArg::from(ty::Region::new_bound(
             tcx,
             ty::INNERMOST,
             ty::BoundRegion { var: ty::BoundVar::from_u32(1), kind: ty::BrAnon },
@@ -222,7 +222,7 @@ fn check_panic_info_fn(tcx: TyCtxt<'_>, fn_id: LocalDefId, fn_sig: ty::FnSig<'_>
     );
     let panic_info_ref_ty = Ty::new_imm_ref(
         tcx,
-        ty::Region::new_late_bound(
+        ty::Region::new_bound(
             tcx,
             ty::INNERMOST,
             ty::BoundRegion { var: ty::BoundVar::from_u32(0), kind: ty::BrAnon },

@@ -265,7 +265,15 @@ cfg_match! {
 
         pub use std::sync::OnceLock;
 
-        pub use std::sync::atomic::{AtomicBool, AtomicUsize, AtomicU32, AtomicU64};
+        pub use std::sync::atomic::{AtomicBool, AtomicUsize, AtomicU32};
+
+        // PowerPC and MIPS platforms with 32-bit pointers do not
+        // have AtomicU64 type.
+        #[cfg(not(any(target_arch = "powerpc", target_arch = "mips")))]
+        pub use std::sync::atomic::AtomicU64;
+
+        #[cfg(any(target_arch = "powerpc", target_arch = "mips"))]
+        pub use portable_atomic::AtomicU64;
 
         pub use std::sync::Arc as Lrc;
         pub use std::sync::Weak as Weak;

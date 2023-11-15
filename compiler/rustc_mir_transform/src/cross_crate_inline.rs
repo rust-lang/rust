@@ -7,6 +7,7 @@ use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
+use rustc_session::config::InliningThreshold;
 use rustc_session::config::OptLevel;
 
 pub fn provide(providers: &mut Providers) {
@@ -54,6 +55,12 @@ fn cross_crate_inlinable(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
         return false;
     }
 
+    let threshold = match tcx.sess.opts.unstable_opts.cross_crate_inline_threshold {
+        InliningThreshold::Always => return true,
+        InliningThreshold::Sometimes(threshold) => threshold,
+        InliningThreshold::Never => return false,
+    };
+
     let mir = tcx.optimized_mir(def_id);
     let mut checker =
         CostChecker { tcx, callee_body: mir, calls: 0, statements: 0, landing_pads: 0, resumes: 0 };
@@ -61,8 +68,7 @@ fn cross_crate_inlinable(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     checker.calls == 0
         && checker.resumes == 0
         && checker.landing_pads == 0
-        && checker.statements
-            <= tcx.sess.opts.unstable_opts.cross_crate_inline_threshold.unwrap_or(100)
+        && checker.statements <= threshold
 }
 
 struct CostChecker<'b, 'tcx> {

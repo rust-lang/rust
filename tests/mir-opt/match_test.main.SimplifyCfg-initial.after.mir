@@ -68,7 +68,7 @@ fn main() -> () {
     }
 
     bb9: {
-        _8 = &shallow _1;
+        _8 = &fake _1;
         StorageLive(_9);
         _9 = _2;
         switchInt(move _9) -> [0: bb11, otherwise: bb10];

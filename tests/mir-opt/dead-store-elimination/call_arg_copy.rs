@@ -28,7 +28,7 @@ struct Packed {
 fn move_packed(packed: Packed) {
     mir!(
         {
-            Call(RET = use_both(0, packed.y), ret)
+            Call(RET = use_both(0, packed.y), ret, UnwindContinue())
         }
         ret = {
             Return()

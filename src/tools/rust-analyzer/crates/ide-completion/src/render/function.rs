@@ -98,9 +98,14 @@ fn render(
         _ => (),
     }
 
+    let detail = if ctx.completion.config.full_function_signatures {
+        detail_full(db, func)
+    } else {
+        detail(db, func)
+    };
     item.set_documentation(ctx.docs(func))
         .set_deprecated(ctx.is_deprecated(func) || ctx.is_deprecated_assoc_item(func))
-        .detail(detail(db, func))
+        .detail(detail)
         .lookup_by(name.unescaped().to_smol_str());
 
     match ctx.completion.config.snippet_cap {
@@ -260,6 +265,21 @@ fn detail(db: &dyn HirDatabase, func: hir::Function) -> String {
     if !ret_ty.is_unit() {
         format_to!(detail, " -> {}", ret_ty.display(db));
     }
+    detail
+}
+
+fn detail_full(db: &dyn HirDatabase, func: hir::Function) -> String {
+    let signature = format!("{}", func.display(db));
+    let mut detail = String::with_capacity(signature.len());
+
+    for segment in signature.split_whitespace() {
+        if !detail.is_empty() {
+            detail.push(' ');
+        }
+
+        detail.push_str(segment);
+    }
+
     detail
 }
 

@@ -8,6 +8,7 @@
 #![cfg_attr(not(bootstrap), feature(coroutines))]
 #![feature(iter_from_coroutine)]
 #![feature(let_chains)]
+#![feature(if_let_guard)]
 #![feature(proc_macro_internals)]
 #![feature(macro_metavar_expr)]
 #![feature(min_specialization)]
