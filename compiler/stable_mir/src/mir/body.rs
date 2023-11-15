@@ -465,10 +465,6 @@ pub enum ProjectionElem {
     },
 
     /// "Downcast" to a variant of an enum or a coroutine.
-    //
-    // TODO(klinvill): MIR includes an Option<Symbol> argument that is the name of the variant, used
-    // for printing MIR. However I don't see it used anywhere. Is such a field needed or can we just
-    // include the VariantIdx which could be used to recover the field name if needed?
     Downcast(VariantIdx),
 
     /// Like an explicit cast from an opaque type to a concrete type, but without
@@ -488,7 +484,7 @@ pub enum ProjectionElem {
 pub struct UserTypeProjection {
     pub base: UserTypeAnnotationIndex,
 
-    pub projection: String,
+    pub projection: Opaque,
 }
 
 pub type Local = usize;

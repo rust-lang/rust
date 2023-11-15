@@ -712,6 +712,11 @@ impl<'tcx> Stable<'tcx> for mir::PlaceElem<'tcx> {
                 to: *to,
                 from_end: *from_end,
             },
+            // MIR includes an `Option<Symbol>` argument for `Downcast` that is the name of the
+            // variant, used for printing MIR. However this information should also be accessible
+            // via a lookup using the `VariantIdx`. The `Option<Symbol>` argument is therefore
+            // dropped when converting to Stable MIR. A brief justification for this decision can be
+            // found at https://github.com/rust-lang/rust/pull/117517#issuecomment-1811683486
             Downcast(_, idx) => stable_mir::mir::ProjectionElem::Downcast(idx.stable(tables)),
             OpaqueCast(ty) => stable_mir::mir::ProjectionElem::OpaqueCast(ty.stable(tables)),
             Subtype(ty) => stable_mir::mir::ProjectionElem::Subtype(ty.stable(tables)),
@@ -723,7 +728,7 @@ impl<'tcx> Stable<'tcx> for mir::UserTypeProjection {
     type T = stable_mir::mir::UserTypeProjection;
 
     fn stable(&self, _tables: &mut Tables<'tcx>) -> Self::T {
-        UserTypeProjection { base: self.base.as_usize(), projection: format!("{:?}", self.projs) }
+        UserTypeProjection { base: self.base.as_usize(), projection: opaque(&self.projs) }
     }
 }
 
