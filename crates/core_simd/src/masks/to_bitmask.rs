@@ -7,16 +7,16 @@ mod sealed {
 }
 pub use sealed::Sealed;
 
-impl<T, const LANES: usize> Sealed for Mask<T, LANES>
+impl<T, const N: usize> Sealed for Mask<T, N>
 where
     T: MaskElement,
-    LaneCount<LANES>: SupportedLaneCount,
+    LaneCount<N>: SupportedLaneCount,
 {
 }
 
 /// Converts masks to and from integer bitmasks.
 ///
-/// Each bit of the bitmask corresponds to a mask lane, starting with the LSB.
+/// Each bit of the bitmask corresponds to a mask element, starting with the LSB.
 pub trait ToBitMask: Sealed {
     /// The integer bitmask type.
     type BitMask;
@@ -30,7 +30,7 @@ pub trait ToBitMask: Sealed {
 
 /// Converts masks to and from byte array bitmasks.
 ///
-/// Each bit of the bitmask corresponds to a mask lane, starting with the LSB of the first byte.
+/// Each bit of the bitmask corresponds to a mask element, starting with the LSB of the first byte.
 pub trait ToBitMaskArray: Sealed {
     /// The bitmask array.
     type BitMaskArray: Copy

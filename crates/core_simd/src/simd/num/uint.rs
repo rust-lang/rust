@@ -57,25 +57,25 @@ pub trait SimdUint: Copy + Sealed {
     /// assert_eq!(sat, Simd::splat(0));
     fn saturating_sub(self, second: Self) -> Self;
 
-    /// Returns the sum of the lanes of the vector, with wrapping addition.
+    /// Returns the sum of the elements of the vector, with wrapping addition.
     fn reduce_sum(self) -> Self::Scalar;
 
-    /// Returns the product of the lanes of the vector, with wrapping multiplication.
+    /// Returns the product of the elements of the vector, with wrapping multiplication.
     fn reduce_product(self) -> Self::Scalar;
 
-    /// Returns the maximum lane in the vector.
+    /// Returns the maximum element in the vector.
     fn reduce_max(self) -> Self::Scalar;
 
-    /// Returns the minimum lane in the vector.
+    /// Returns the minimum element in the vector.
     fn reduce_min(self) -> Self::Scalar;
 
-    /// Returns the cumulative bitwise "and" across the lanes of the vector.
+    /// Returns the cumulative bitwise "and" across the elements of the vector.
     fn reduce_and(self) -> Self::Scalar;
 
-    /// Returns the cumulative bitwise "or" across the lanes of the vector.
+    /// Returns the cumulative bitwise "or" across the elements of the vector.
     fn reduce_or(self) -> Self::Scalar;
 
-    /// Returns the cumulative bitwise "xor" across the lanes of the vector.
+    /// Returns the cumulative bitwise "xor" across the elements of the vector.
     fn reduce_xor(self) -> Self::Scalar;
 
     /// Reverses the byte order of each element.
@@ -101,18 +101,18 @@ pub trait SimdUint: Copy + Sealed {
 macro_rules! impl_trait {
     { $($ty:ident ($signed:ident)),* } => {
         $(
-        impl<const LANES: usize> Sealed for Simd<$ty, LANES>
+        impl<const N: usize> Sealed for Simd<$ty, N>
         where
-            LaneCount<LANES>: SupportedLaneCount,
+            LaneCount<N>: SupportedLaneCount,
         {
         }
 
-        impl<const LANES: usize> SimdUint for Simd<$ty, LANES>
+        impl<const N: usize> SimdUint for Simd<$ty, N>
         where
-            LaneCount<LANES>: SupportedLaneCount,
+            LaneCount<N>: SupportedLaneCount,
         {
             type Scalar = $ty;
-            type Cast<T: SimdElement> = Simd<T, LANES>;
+            type Cast<T: SimdElement> = Simd<T, N>;
 
             #[inline]
             fn cast<T: SimdCast>(self) -> Self::Cast<T> {

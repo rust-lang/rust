@@ -5,22 +5,22 @@ use crate::simd::intrinsics;
 use crate::simd::{LaneCount, Simd, SupportedLaneCount, ToBitMask};
 
 #[repr(transparent)]
-pub struct Mask<T, const LANES: usize>(Simd<T, LANES>)
+pub struct Mask<T, const N: usize>(Simd<T, N>)
 where
     T: MaskElement,
-    LaneCount<LANES>: SupportedLaneCount;
+    LaneCount<N>: SupportedLaneCount;
 
-impl<T, const LANES: usize> Copy for Mask<T, LANES>
+impl<T, const N: usize> Copy for Mask<T, N>
 where
     T: MaskElement,
-    LaneCount<LANES>: SupportedLaneCount,
+    LaneCount<N>: SupportedLaneCount,
 {
 }
 
-impl<T, const LANES: usize> Clone for Mask<T, LANES>
+impl<T, const N: usize> Clone for Mask<T, N>
 where
     T: MaskElement,
-    LaneCount<LANES>: SupportedLaneCount,
+    LaneCount<N>: SupportedLaneCount,
 {
     #[inline]
     #[must_use = "method returns a new mask and does not mutate the original value"]
@@ -29,10 +29,10 @@ where
     }
 }
 
-impl<T, const LANES: usize> PartialEq for Mask<T, LANES>
+impl<T, const N: usize> PartialEq for Mask<T, N>
 where
     T: MaskElement + PartialEq,
-    LaneCount<LANES>: SupportedLaneCount,
+    LaneCount<N>: SupportedLaneCount,
 {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
@@ -40,10 +40,10 @@ where
     }
 }
 
-impl<T, const LANES: usize> PartialOrd for Mask<T, LANES>
+impl<T, const N: usize> PartialOrd for Mask<T, N>
 where
     T: MaskElement + PartialOrd,
-    LaneCount<LANES>: SupportedLaneCount,
+    LaneCount<N>: SupportedLaneCount,
 {
     #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
@@ -51,17 +51,17 @@ where
     }
 }
 
-impl<T, const LANES: usize> Eq for Mask<T, LANES>
+impl<T, const N: usize> Eq for Mask<T, N>
 where
     T: MaskElement + Eq,
-    LaneCount<LANES>: SupportedLaneCount,
+    LaneCount<N>: SupportedLaneCount,
 {
 }
 
-impl<T, const LANES: usize> Ord for Mask<T, LANES>
+impl<T, const N: usize> Ord for Mask<T, N>
 where
     T: MaskElement + Ord,
-    LaneCount<LANES>: SupportedLaneCount,
+    LaneCount<N>: SupportedLaneCount,
 {
     #[inline]
     fn cmp(&self, other: &Self) -> core::cmp::Ordering {
@@ -98,10 +98,10 @@ macro_rules! impl_reverse_bits {
 
 impl_reverse_bits! { u8, u16, u32, u64 }
 
-impl<T, const LANES: usize> Mask<T, LANES>
+impl<T, const N: usize> Mask<T, N>
 where
     T: MaskElement,
-    LaneCount<LANES>: SupportedLaneCount,
+    LaneCount<N>: SupportedLaneCount,
 {
     #[inline]
     #[must_use = "method returns a new mask and does not mutate the original value"]
@@ -122,19 +122,19 @@ where
 
     #[inline]
     #[must_use = "method returns a new vector and does not mutate the original value"]
-    pub fn to_int(self) -> Simd<T, LANES> {
+    pub fn to_int(self) -> Simd<T, N> {
         self.0
     }
 
     #[inline]
     #[must_use = "method returns a new mask and does not mutate the original value"]
-    pub unsafe fn from_int_unchecked(value: Simd<T, LANES>) -> Self {
+    pub unsafe fn from_int_unchecked(value: Simd<T, N>) -> Self {
         Self(value)
     }
 
     #[inline]
     #[must_use = "method returns a new mask and does not mutate the original value"]
-    pub fn convert<U>(self) -> Mask<U, LANES>
+    pub fn convert<U>(self) -> Mask<U, N>
     where
         U: MaskElement,
     {
@@ -144,18 +144,18 @@ where
 
     #[inline]
     #[must_use = "method returns a new array and does not mutate the original value"]
-    pub fn to_bitmask_array<const N: usize>(self) -> [u8; N]
+    pub fn to_bitmask_array<const M: usize>(self) -> [u8; M]
     where
-        super::Mask<T, LANES>: ToBitMaskArray,
+        super::Mask<T, N>: ToBitMaskArray,
     {
         // Safety: Bytes is the right size array
         unsafe {
             // Compute the bitmask
-            let bitmask: <super::Mask<T, LANES> as ToBitMaskArray>::BitMaskArray =
+            let bitmask: <super::Mask<T, N> as ToBitMaskArray>::BitMaskArray =
                 intrinsics::simd_bitmask(self.0);
 
             // Transmute to the return type
-            let mut bitmask: [u8; N] = core::mem::transmute_copy(&bitmask);
+            let mut bitmask: [u8; M] = core::mem::transmute_copy(&bitmask);
 
             // LLVM assumes bit order should match endianness
             if cfg!(target_endian = "big") {
@@ -170,9 +170,9 @@ where
 
     #[inline]
     #[must_use = "method returns a new mask and does not mutate the original value"]
-    pub fn from_bitmask_array<const N: usize>(mut bitmask: [u8; N]) -> Self
+    pub fn from_bitmask_array<const M: usize>(mut bitmask: [u8; M]) -> Self
     where
-        super::Mask<T, LANES>: ToBitMaskArray,
+        super::Mask<T, N>: ToBitMaskArray,
     {
         // Safety: Bytes is the right size array
         unsafe {
@@ -184,7 +184,7 @@ where
             }
 
             // Transmute to the bitmask
-            let bitmask: <super::Mask<T, LANES> as ToBitMaskArray>::BitMaskArray =
+            let bitmask: <super::Mask<T, N> as ToBitMaskArray>::BitMaskArray =
                 core::mem::transmute_copy(&bitmask);
 
             // Compute the regular mask
@@ -199,14 +199,14 @@ where
     #[inline]
     pub(crate) fn to_bitmask_integer<U: ReverseBits>(self) -> U
     where
-        super::Mask<T, LANES>: ToBitMask<BitMask = U>,
+        super::Mask<T, N>: ToBitMask<BitMask = U>,
     {
         // Safety: U is required to be the appropriate bitmask type
         let bitmask: U = unsafe { intrinsics::simd_bitmask(self.0) };
 
         // LLVM assumes bit order should match endianness
         if cfg!(target_endian = "big") {
-            bitmask.reverse_bits(LANES)
+            bitmask.reverse_bits(N)
         } else {
             bitmask
         }
@@ -215,11 +215,11 @@ where
     #[inline]
     pub(crate) fn from_bitmask_integer<U: ReverseBits>(bitmask: U) -> Self
     where
-        super::Mask<T, LANES>: ToBitMask<BitMask = U>,
+        super::Mask<T, N>: ToBitMask<BitMask = U>,
     {
         // LLVM assumes bit order should match endianness
         let bitmask = if cfg!(target_endian = "big") {
-            bitmask.reverse_bits(LANES)
+            bitmask.reverse_bits(N)
         } else {
             bitmask
         };
@@ -249,21 +249,21 @@ where
     }
 }
 
-impl<T, const LANES: usize> From<Mask<T, LANES>> for Simd<T, LANES>
+impl<T, const N: usize> From<Mask<T, N>> for Simd<T, N>
 where
     T: MaskElement,
-    LaneCount<LANES>: SupportedLaneCount,
+    LaneCount<N>: SupportedLaneCount,
 {
     #[inline]
-    fn from(value: Mask<T, LANES>) -> Self {
+    fn from(value: Mask<T, N>) -> Self {
         value.0
     }
 }
 
-impl<T, const LANES: usize> core::ops::BitAnd for Mask<T, LANES>
+impl<T, const N: usize> core::ops::BitAnd for Mask<T, N>
 where
     T: MaskElement,
-    LaneCount<LANES>: SupportedLaneCount,
+    LaneCount<N>: SupportedLaneCount,
 {
     type Output = Self;
     #[inline]
@@ -274,10 +274,10 @@ where
     }
 }
 
-impl<T, const LANES: usize> core::ops::BitOr for Mask<T, LANES>
+impl<T, const N: usize> core::ops::BitOr for Mask<T, N>
 where
     T: MaskElement,
-    LaneCount<LANES>: SupportedLaneCount,
+    LaneCount<N>: SupportedLaneCount,
 {
     type Output = Self;
     #[inline]
@@ -288,10 +288,10 @@ where
     }
 }
 
-impl<T, const LANES: usize> core::ops::BitXor for Mask<T, LANES>
+impl<T, const N: usize> core::ops::BitXor for Mask<T, N>
 where
     T: MaskElement,
-    LaneCount<LANES>: SupportedLaneCount,
+    LaneCount<N>: SupportedLaneCount,
 {
     type Output = Self;
     #[inline]
@@ -302,10 +302,10 @@ where
     }
 }
 
-impl<T, const LANES: usize> core::ops::Not for Mask<T, LANES>
+impl<T, const N: usize> core::ops::Not for Mask<T, N>
 where
     T: MaskElement,
-    LaneCount<LANES>: SupportedLaneCount,
+    LaneCount<N>: SupportedLaneCount,
 {
     type Output = Self;
     #[inline]

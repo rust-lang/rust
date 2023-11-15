@@ -63,64 +63,64 @@ pub trait SimdFloat: Copy + Sealed {
         Self::Scalar: core::convert::FloatToInt<I>;
 
     /// Raw transmutation to an unsigned integer vector type with the
-    /// same size and number of lanes.
+    /// same size and number of elements.
     #[must_use = "method returns a new vector and does not mutate the original value"]
     fn to_bits(self) -> Self::Bits;
 
     /// Raw transmutation from an unsigned integer vector type with the
-    /// same size and number of lanes.
+    /// same size and number of elements.
     #[must_use = "method returns a new vector and does not mutate the original value"]
     fn from_bits(bits: Self::Bits) -> Self;
 
-    /// Produces a vector where every lane has the absolute value of the
-    /// equivalently-indexed lane in `self`.
+    /// Produces a vector where every element has the absolute value of the
+    /// equivalently-indexed element in `self`.
     #[must_use = "method returns a new vector and does not mutate the original value"]
     fn abs(self) -> Self;
 
-    /// Takes the reciprocal (inverse) of each lane, `1/x`.
+    /// Takes the reciprocal (inverse) of each element, `1/x`.
     #[must_use = "method returns a new vector and does not mutate the original value"]
     fn recip(self) -> Self;
 
-    /// Converts each lane from radians to degrees.
+    /// Converts each element from radians to degrees.
     #[must_use = "method returns a new vector and does not mutate the original value"]
     fn to_degrees(self) -> Self;
 
-    /// Converts each lane from degrees to radians.
+    /// Converts each element from degrees to radians.
     #[must_use = "method returns a new vector and does not mutate the original value"]
     fn to_radians(self) -> Self;
 
-    /// Returns true for each lane if it has a positive sign, including
+    /// Returns true for each element if it has a positive sign, including
     /// `+0.0`, `NaN`s with positive sign bit and positive infinity.
     #[must_use = "method returns a new mask and does not mutate the original value"]
     fn is_sign_positive(self) -> Self::Mask;
 
-    /// Returns true for each lane if it has a negative sign, including
+    /// Returns true for each element if it has a negative sign, including
     /// `-0.0`, `NaN`s with negative sign bit and negative infinity.
     #[must_use = "method returns a new mask and does not mutate the original value"]
     fn is_sign_negative(self) -> Self::Mask;
 
-    /// Returns true for each lane if its value is `NaN`.
+    /// Returns true for each element if its value is `NaN`.
     #[must_use = "method returns a new mask and does not mutate the original value"]
     fn is_nan(self) -> Self::Mask;
 
-    /// Returns true for each lane if its value is positive infinity or negative infinity.
+    /// Returns true for each element if its value is positive infinity or negative infinity.
     #[must_use = "method returns a new mask and does not mutate the original value"]
     fn is_infinite(self) -> Self::Mask;
 
-    /// Returns true for each lane if its value is neither infinite nor `NaN`.
+    /// Returns true for each element if its value is neither infinite nor `NaN`.
     #[must_use = "method returns a new mask and does not mutate the original value"]
     fn is_finite(self) -> Self::Mask;
 
-    /// Returns true for each lane if its value is subnormal.
+    /// Returns true for each element if its value is subnormal.
     #[must_use = "method returns a new mask and does not mutate the original value"]
     fn is_subnormal(self) -> Self::Mask;
 
-    /// Returns true for each lane if its value is neither zero, infinite,
+    /// Returns true for each element if its value is neither zero, infinite,
     /// subnormal, nor `NaN`.
     #[must_use = "method returns a new mask and does not mutate the original value"]
     fn is_normal(self) -> Self::Mask;
 
-    /// Replaces each lane with a number that represents its sign.
+    /// Replaces each element with a number that represents its sign.
     ///
     /// * `1.0` if the number is positive, `+0.0`, or `INFINITY`
     /// * `-1.0` if the number is negative, `-0.0`, or `NEG_INFINITY`
@@ -128,33 +128,33 @@ pub trait SimdFloat: Copy + Sealed {
     #[must_use = "method returns a new vector and does not mutate the original value"]
     fn signum(self) -> Self;
 
-    /// Returns each lane with the magnitude of `self` and the sign of `sign`.
+    /// Returns each element with the magnitude of `self` and the sign of `sign`.
     ///
-    /// For any lane containing a `NAN`, a `NAN` with the sign of `sign` is returned.
+    /// For any element containing a `NAN`, a `NAN` with the sign of `sign` is returned.
     #[must_use = "method returns a new vector and does not mutate the original value"]
     fn copysign(self, sign: Self) -> Self;
 
-    /// Returns the minimum of each lane.
+    /// Returns the minimum of each element.
     ///
     /// If one of the values is `NAN`, then the other value is returned.
     #[must_use = "method returns a new vector and does not mutate the original value"]
     fn simd_min(self, other: Self) -> Self;
 
-    /// Returns the maximum of each lane.
+    /// Returns the maximum of each element.
     ///
     /// If one of the values is `NAN`, then the other value is returned.
     #[must_use = "method returns a new vector and does not mutate the original value"]
     fn simd_max(self, other: Self) -> Self;
 
-    /// Restrict each lane to a certain interval unless it is NaN.
+    /// Restrict each element to a certain interval unless it is NaN.
     ///
-    /// For each lane in `self`, returns the corresponding lane in `max` if the lane is
-    /// greater than `max`, and the corresponding lane in `min` if the lane is less
-    /// than `min`.  Otherwise returns the lane in `self`.
+    /// For each element in `self`, returns the corresponding element in `max` if the element is
+    /// greater than `max`, and the corresponding element in `min` if the element is less
+    /// than `min`.  Otherwise returns the element in `self`.
     #[must_use = "method returns a new vector and does not mutate the original value"]
     fn simd_clamp(self, min: Self, max: Self) -> Self;
 
-    /// Returns the sum of the lanes of the vector.
+    /// Returns the sum of the elements of the vector.
     ///
     /// # Examples
     ///
@@ -168,7 +168,7 @@ pub trait SimdFloat: Copy + Sealed {
     /// ```
     fn reduce_sum(self) -> Self::Scalar;
 
-    /// Reducing multiply.  Returns the product of the lanes of the vector.
+    /// Reducing multiply.  Returns the product of the elements of the vector.
     ///
     /// # Examples
     ///
@@ -182,12 +182,12 @@ pub trait SimdFloat: Copy + Sealed {
     /// ```
     fn reduce_product(self) -> Self::Scalar;
 
-    /// Returns the maximum lane in the vector.
+    /// Returns the maximum element in the vector.
     ///
     /// Returns values based on equality, so a vector containing both `0.` and `-0.` may
     /// return either.
     ///
-    /// This function will not return `NaN` unless all lanes are `NaN`.
+    /// This function will not return `NaN` unless all elements are `NaN`.
     ///
     /// # Examples
     ///
@@ -209,12 +209,12 @@ pub trait SimdFloat: Copy + Sealed {
     /// ```
     fn reduce_max(self) -> Self::Scalar;
 
-    /// Returns the minimum lane in the vector.
+    /// Returns the minimum element in the vector.
     ///
     /// Returns values based on equality, so a vector containing both `0.` and `-0.` may
     /// return either.
     ///
-    /// This function will not return `NaN` unless all lanes are `NaN`.
+    /// This function will not return `NaN` unless all elements are `NaN`.
     ///
     /// # Examples
     ///
@@ -240,20 +240,20 @@ pub trait SimdFloat: Copy + Sealed {
 macro_rules! impl_trait {
     { $($ty:ty { bits: $bits_ty:ty, mask: $mask_ty:ty }),* } => {
         $(
-        impl<const LANES: usize> Sealed for Simd<$ty, LANES>
+        impl<const N: usize> Sealed for Simd<$ty, N>
         where
-            LaneCount<LANES>: SupportedLaneCount,
+            LaneCount<N>: SupportedLaneCount,
         {
         }
 
-        impl<const LANES: usize> SimdFloat for Simd<$ty, LANES>
+        impl<const N: usize> SimdFloat for Simd<$ty, N>
         where
-            LaneCount<LANES>: SupportedLaneCount,
+            LaneCount<N>: SupportedLaneCount,
         {
-            type Mask = Mask<<$mask_ty as SimdElement>::Mask, LANES>;
+            type Mask = Mask<<$mask_ty as SimdElement>::Mask, N>;
             type Scalar = $ty;
-            type Bits = Simd<$bits_ty, LANES>;
-            type Cast<T: SimdElement> = Simd<T, LANES>;
+            type Bits = Simd<$bits_ty, N>;
+            type Cast<T: SimdElement> = Simd<T, N>;
 
             #[inline]
             fn cast<T: SimdCast>(self) -> Self::Cast<T>
@@ -273,14 +273,14 @@ macro_rules! impl_trait {
             }
 
             #[inline]
-            fn to_bits(self) -> Simd<$bits_ty, LANES> {
+            fn to_bits(self) -> Simd<$bits_ty, N> {
                 assert_eq!(core::mem::size_of::<Self>(), core::mem::size_of::<Self::Bits>());
                 // Safety: transmuting between vector types is safe
                 unsafe { core::mem::transmute_copy(&self) }
             }
 
             #[inline]
-            fn from_bits(bits: Simd<$bits_ty, LANES>) -> Self {
+            fn from_bits(bits: Simd<$bits_ty, N>) -> Self {
                 assert_eq!(core::mem::size_of::<Self>(), core::mem::size_of::<Self::Bits>());
                 // Safety: transmuting between vector types is safe
                 unsafe { core::mem::transmute_copy(&bits) }
@@ -376,7 +376,7 @@ macro_rules! impl_trait {
             fn simd_clamp(self, min: Self, max: Self) -> Self {
                 assert!(
                     min.simd_le(max).all(),
-                    "each lane in `min` must be less than or equal to the corresponding lane in `max`",
+                    "each element in `min` must be less than or equal to the corresponding element in `max`",
                 );
                 let mut x = self;
                 x = x.simd_lt(min).select(min, x);
