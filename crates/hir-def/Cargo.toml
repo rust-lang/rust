@@ -20,7 +20,7 @@ dashmap = { version = "=5.4.0", features = ["raw-api"] }
 drop_bomb = "0.1.5"
 either.workspace = true
 fst = { version = "0.4.7", default-features = false }
-indexmap = "2.0.0"
+indexmap.workspace = true
 itertools.workspace = true
 la-arena.workspace = true
 once_cell = "1.17.0"

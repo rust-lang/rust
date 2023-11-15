@@ -444,9 +444,9 @@ checksum = "8a9ee70c43aaf417c914396645a0fa852624801b24ebb7ae78fe8272889ac888"
 
 [[package]]
 name = "hashbrown"
-version = "0.14.0"
+version = "0.14.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2c6201b9ff9fd90a5a3bac2e56a830d0caa509576f0e503818ee82c181b3437a"
+checksum = "f93e7192158dbcda357bdec5fb5788eebf8bbac027f3f33e719d29135ae84156"
 
 [[package]]
 name = "heck"
@@ -504,7 +504,7 @@ dependencies = [
  "fst",
  "hashbrown 0.12.3",
  "hir-expand",
- "indexmap 2.0.0",
+ "indexmap 2.1.0",
  "intern",
  "itertools 0.12.0",
  "la-arena 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -679,7 +679,7 @@ dependencies = [
  "expect-test",
  "fst",
  "hir",
- "indexmap 2.0.0",
+ "indexmap 2.1.0",
  "itertools 0.12.0",
  "limit",
  "line-index 0.1.0-pre.1",
@@ -762,12 +762,12 @@ dependencies = [
 
 [[package]]
 name = "indexmap"
-version = "2.0.0"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d5477fe2230a79769d8dc68e0eabf5437907c0457a5614a9e8dddb67f65eb65d"
+checksum = "d530e1a18b1cb4c484e6e34556a0d948706958449fca0cab753d649f2bce3d1f"
 dependencies = [
  "equivalent",
- "hashbrown 0.14.0",
+ "hashbrown 0.14.2",
 ]
 
 [[package]]
@@ -1734,7 +1734,7 @@ version = "1.0.108"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3d1c7e3eac408d115102c4c24ad393e0821bb3a5df4d506a80f85f7a742a526b"
 dependencies = [
- "indexmap 2.0.0",
+ "indexmap 2.1.0",
  "itoa",
  "ryu",
  "serde",
@@ -1848,7 +1848,7 @@ dependencies = [
  "cov-mark",
  "either",
  "expect-test",
- "indexmap 2.0.0",
+ "indexmap 2.1.0",
  "itertools 0.12.0",
  "once_cell",
  "parser",
@@ -2173,7 +2173,7 @@ name = "vfs"
 version = "0.0.0"
 dependencies = [
  "fst",
- "indexmap 2.0.0",
+ "indexmap 2.1.0",
  "nohash-hasher",
  "paths",
  "rustc-hash",
