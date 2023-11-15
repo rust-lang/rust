@@ -108,7 +108,7 @@ tracing-subscriber = { version = "0.3.18", default-features = false, features = 
 ] }
 smol_str = "0.2.0"
 nohash-hasher = "0.2.0"
-text-size = "1.1.0"
+text-size = "1.1.1"
 serde = { version = "1.0.192", features = ["derive"] }
 serde_json = "1.0.108"
 triomphe = { version = "0.1.8", default-features = false, features = ["std"] }
