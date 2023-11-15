@@ -3079,6 +3079,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                         } else {
                             "instead, you are more likely to want"
                         };
+                        let mut owned_sugg = lt.kind == MissingLifetimeKind::Ampersand;
                         let mut sugg = vec![(lt.span, String::new())];
                         if let Some((kind, _span)) =
                             self.diagnostic_metadata.current_function
@@ -3092,6 +3093,17 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                             };
                             lt_finder.visit_ty(&ty);
 
+                            if let [Ty { span, kind: TyKind::Ref(_, mut_ty), ..}]
+                                = &lt_finder.seen[..]
+                            {
+                                // We might have a situation like
+                                // fn g(mut x: impl Iterator<Item = &'_ ()>) -> Option<&'_ ()>
+                                // but `lt.span` only points at `'_`, so to suggest `-> Option<()>`
+                                // we need to find a more accurate span to end up with
+                                // fn g<'a>(mut x: impl Iterator<Item = &'_ ()>) -> Option<()>
+                                sugg = vec![(span.with_hi(mut_ty.ty.span.lo()), String::new())];
+                                owned_sugg = true;
+                            }
                             if let Some(ty) = lt_finder.found {
                                 if let TyKind::Path(None, Path { segments, .. }) = &ty.kind
                                     && segments.len() == 1
@@ -3101,8 +3113,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                                     sugg = vec![
                                         (lt.span.with_hi(ty.span.hi()), "String".to_string()),
                                     ];
-                                }
-                                if let TyKind::Slice(inner_ty) = &ty.kind {
+                                } else if let TyKind::Slice(inner_ty) = &ty.kind {
                                     // Don't suggest `-> [T]`, suggest `-> Vec<T>`.
                                     sugg = vec![
                                         (lt.span.with_hi(inner_ty.span.lo()), "Vec<".to_string()),
@@ -3110,8 +3121,8 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                                     ];
                                 }
                             }
-                        };
-                        if lt.kind == MissingLifetimeKind::Ampersand {
+                        }
+                        if owned_sugg {
                             err.multipart_suggestion_verbose(
                                 format!("{pre} to return an owned value"),
                                 sugg,
