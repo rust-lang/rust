@@ -19,7 +19,7 @@ name = "rust-analyzer"
 path = "src/bin/main.rs"
 
 [dependencies]
-anyhow = "1.0.62"
+anyhow.workspace = true
 crossbeam-channel = "0.5.5"
 dissimilar = "1.0.4"
 itertools = "0.10.5"

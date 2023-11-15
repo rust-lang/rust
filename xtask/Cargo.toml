@@ -7,7 +7,7 @@ edition = "2021"
 rust-version.workspace = true
 
 [dependencies]
-anyhow = "1.0.62"
+anyhow.workspace = true
 flate2 = "1.0.24"
 write-json = "0.1.2"
 xshell = "0.2.2"
