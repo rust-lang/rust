@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::path_to_local;
-use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::source::snippet;
 use clippy_utils::visitors::{for_each_expr, is_local_used};
 use rustc_ast::{BorrowKind, LitKind};
 use rustc_errors::Applicability;
@@ -9,6 +9,7 @@ use rustc_hir::{Arm, BinOpKind, Expr, ExprKind, Guard, MatchSource, Node, Pat, P
 use rustc_lint::LateContext;
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
+use std::borrow::Cow;
 use std::ops::ControlFlow;
 
 use super::REDUNDANT_GUARDS;
@@ -41,7 +42,14 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'tcx>]) {
                 (PatKind::Ref(..), None) | (_, Some(_)) => continue,
                 _ => arm.pat.span,
             };
-            emit_redundant_guards(cx, outer_arm, if_expr.span, pat_span, &binding, arm.guard);
+            emit_redundant_guards(
+                cx,
+                outer_arm,
+                if_expr.span,
+                snippet(cx, pat_span, "<binding>"),
+                &binding,
+                arm.guard,
+            );
         }
         // `Some(x) if let Some(2) = x`
         else if let Guard::IfLet(let_expr) = guard
@@ -52,7 +60,14 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'tcx>]) {
                 (PatKind::Ref(..), None) | (_, Some(_)) => continue,
                 _ => let_expr.pat.span,
             };
-            emit_redundant_guards(cx, outer_arm, let_expr.span, pat_span, &binding, None);
+            emit_redundant_guards(
+                cx,
+                outer_arm,
+                let_expr.span,
+                snippet(cx, pat_span, "<binding>"),
+                &binding,
+                None,
+            );
         }
         // `Some(x) if x == Some(2)`
         // `Some(x) if Some(2) == x`
@@ -78,7 +93,25 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'tcx>]) {
                 (ExprKind::AddrOf(..), None) | (_, Some(_)) => continue,
                 _ => pat.span,
             };
-            emit_redundant_guards(cx, outer_arm, if_expr.span, pat_span, &binding, None);
+            emit_redundant_guards(
+                cx,
+                outer_arm,
+                if_expr.span,
+                snippet(cx, pat_span, "<binding>"),
+                &binding,
+                None,
+            );
+        } else if let Guard::If(if_expr) = guard
+            && let ExprKind::MethodCall(path, recv, ..) = if_expr.kind
+            && let Some(binding) = get_pat_binding(cx, recv, outer_arm)
+        {
+            let ty = cx.typeck_results().expr_ty(recv).peel_refs();
+
+            if path.ident.name == sym!(is_empty) && ty.is_str() {
+                // `s if s.is_empty()` becomes ""
+
+                emit_redundant_guards(cx, outer_arm, if_expr.span, r#""""#.into(), &binding, None)
+            }
         }
     }
 }
@@ -134,19 +167,16 @@ fn emit_redundant_guards<'tcx>(
     cx: &LateContext<'tcx>,
     outer_arm: &Arm<'tcx>,
     guard_span: Span,
-    pat_span: Span,
+    binding_replacement: Cow<'static, str>,
     pat_binding: &PatBindingInfo,
     inner_guard: Option<Guard<'_>>,
 ) {
-    let mut app = Applicability::MaybeIncorrect;
-
     span_lint_and_then(
         cx,
         REDUNDANT_GUARDS,
         guard_span.source_callsite(),
         "redundant guard",
         |diag| {
-            let binding_replacement = snippet_with_applicability(cx, pat_span, "<binding_repl>", &mut app);
             let suggestion_span = match *pat_binding {
                 PatBindingInfo {
                     span,
@@ -170,14 +200,11 @@ fn emit_redundant_guards<'tcx>(
                                 Guard::IfLet(l) => ("if let", l.span),
                             };
 
-                            format!(
-                                " {prefix} {}",
-                                snippet_with_applicability(cx, span, "<guard>", &mut app),
-                            )
+                            format!(" {prefix} {}", snippet(cx, span, "<guard>"))
                         }),
                     ),
                 ],
-                app,
+                Applicability::MaybeIncorrect,
             );
         },
     );
