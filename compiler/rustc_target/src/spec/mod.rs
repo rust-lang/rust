@@ -1544,6 +1544,7 @@ supported_targets! {
     ("i686-unknown-hurd-gnu", i686_unknown_hurd_gnu),
 
     ("aarch64-apple-darwin", aarch64_apple_darwin),
+    ("arm64e-apple-darwin", arm64e_apple_darwin),
     ("x86_64-apple-darwin", x86_64_apple_darwin),
     ("x86_64h-apple-darwin", x86_64h_apple_darwin),
     ("i686-apple-darwin", i686_apple_darwin),
