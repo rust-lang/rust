@@ -1536,9 +1536,7 @@ impl DefWithBody {
         let (body, source_map) = db.body_with_source_map(self.into());
 
         for (_, def_map) in body.blocks(db.upcast()) {
-            for diag in def_map.diagnostics() {
-                emit_def_diagnostic(db, acc, diag);
-            }
+            Module { id: def_map.module_id(DefMap::ROOT) }.diagnostics(db, acc);
         }
 
         for diag in source_map.diagnostics() {
