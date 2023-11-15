@@ -114,7 +114,7 @@ impl LintStoreExpand for LintStoreExpandImpl<'_> {
     }
 }
 
-/// Runs the "early phases" of the compiler: initial `cfg` processing, loading compiler plugins,
+/// Runs the "early phases" of the compiler: initial `cfg` processing,
 /// syntax expansion, secondary `cfg` expansion, synthesis of a test
 /// harness if one is to be provided, injection of a dependency on the
 /// standard library and prelude, and name resolution.
