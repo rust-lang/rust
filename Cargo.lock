@@ -215,7 +215,7 @@ dependencies = [
  "chalk-ir",
  "ena",
  "indexmap 1.9.3",
- "itertools",
+ "itertools 0.10.5",
  "petgraph",
  "rustc-hash",
  "tracing",
@@ -497,7 +497,7 @@ dependencies = [
  "hir-def",
  "hir-expand",
  "hir-ty",
- "itertools",
+ "itertools 0.12.0",
  "once_cell",
  "profile",
  "rustc-hash",
@@ -526,7 +526,7 @@ dependencies = [
  "hir-expand",
  "indexmap 2.0.0",
  "intern",
- "itertools",
+ "itertools 0.12.0",
  "la-arena 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "limit",
  "mbe",
@@ -554,7 +554,7 @@ dependencies = [
  "expect-test",
  "hashbrown 0.12.3",
  "intern",
- "itertools",
+ "itertools 0.12.0",
  "la-arena 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "limit",
  "mbe",
@@ -586,7 +586,7 @@ dependencies = [
  "hir-def",
  "hir-expand",
  "intern",
- "itertools",
+ "itertools 0.12.0",
  "la-arena 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "limit",
  "nohash-hasher",
@@ -633,7 +633,7 @@ dependencies = [
  "ide-db",
  "ide-diagnostics",
  "ide-ssr",
- "itertools",
+ "itertools 0.12.0",
  "nohash-hasher",
  "oorandom",
  "profile",
@@ -659,7 +659,7 @@ dependencies = [
  "expect-test",
  "hir",
  "ide-db",
- "itertools",
+ "itertools 0.12.0",
  "profile",
  "smallvec",
  "sourcegen",
@@ -678,7 +678,7 @@ dependencies = [
  "expect-test",
  "hir",
  "ide-db",
- "itertools",
+ "itertools 0.12.0",
  "once_cell",
  "profile",
  "smallvec",
@@ -700,7 +700,7 @@ dependencies = [
  "fst",
  "hir",
  "indexmap 2.0.0",
- "itertools",
+ "itertools 0.12.0",
  "limit",
  "line-index 0.1.0-pre.1",
  "memchr",
@@ -731,7 +731,7 @@ dependencies = [
  "expect-test",
  "hir",
  "ide-db",
- "itertools",
+ "itertools 0.12.0",
  "once_cell",
  "profile",
  "serde_json",
@@ -750,7 +750,7 @@ dependencies = [
  "expect-test",
  "hir",
  "ide-db",
- "itertools",
+ "itertools 0.12.0",
  "nohash-hasher",
  "parser",
  "stdx",
@@ -834,6 +834,15 @@ name = "itertools"
 version = "0.10.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b0fd2260e829bddf4cb6ea802289de2f86d6a7a690192fbe91b3f46e0f2c8473"
+dependencies = [
+ "either",
+]
+
+[[package]]
+name = "itertools"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "25db6b064527c5d482d0423354fcd07a89a2dfe07b67892e62411946db7f07b0"
 dependencies = [
  "either",
 ]
@@ -942,7 +951,7 @@ dependencies = [
  "crossbeam-channel",
  "ide",
  "ide-db",
- "itertools",
+ "itertools 0.12.0",
  "proc-macro-api",
  "project-model",
  "tracing",
@@ -1389,7 +1398,7 @@ dependencies = [
  "cargo_metadata",
  "cfg",
  "expect-test",
- "itertools",
+ "itertools 0.12.0",
  "la-arena 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "paths",
  "profile",
@@ -1583,7 +1592,7 @@ dependencies = [
  "ide",
  "ide-db",
  "ide-ssr",
- "itertools",
+ "itertools 0.12.0",
  "load-cargo",
  "lsp-server 0.7.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "lsp-types",
@@ -1860,7 +1869,7 @@ dependencies = [
  "either",
  "expect-test",
  "indexmap 2.0.0",
- "itertools",
+ "itertools 0.12.0",
  "once_cell",
  "parser",
  "proc-macro2",
@@ -1894,7 +1903,7 @@ dependencies = [
 name = "text-edit"
 version = "0.0.0"
 dependencies = [
- "itertools",
+ "itertools 0.12.0",
  "text-size",
 ]
 

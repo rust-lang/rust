@@ -21,7 +21,7 @@ drop_bomb = "0.1.5"
 either = "1.7.0"
 fst = { version = "0.4.7", default-features = false }
 indexmap = "2.0.0"
-itertools = "0.10.5"
+itertools.workspace = true
 la-arena.workspace = true
 once_cell = "1.17.0"
 rustc-hash = "1.1.0"

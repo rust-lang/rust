@@ -91,6 +91,7 @@ lsp-server = { version = "0.7.4" }
 
 # non-local crates
 anyhow = "1.0.75"
+itertools = "0.12.0"
 smallvec = { version = "1.10.0", features = [
   "const_new",
   "union",

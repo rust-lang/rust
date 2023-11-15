@@ -21,7 +21,7 @@ serde_json.workspace = true
 serde.workspace = true
 triomphe.workspace = true
 la-arena.workspace = true
-itertools = "0.10.5"
+itertools.workspace = true
 
 # local deps
 base-db.workspace = true

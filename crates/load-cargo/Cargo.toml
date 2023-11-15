@@ -13,7 +13,7 @@ authors.workspace = true
 [dependencies]
 anyhow.workspace = true
 crossbeam-channel = "0.5.5"
-itertools = "0.10.5"
+itertools.workspace = true
 tracing = "0.1.35"
 
 ide.workspace = true
