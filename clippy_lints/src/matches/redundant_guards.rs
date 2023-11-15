@@ -8,7 +8,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Arm, BinOpKind, Expr, ExprKind, Guard, MatchSource, Node, Pat, PatKind};
 use rustc_lint::LateContext;
 use rustc_span::symbol::Ident;
-use rustc_span::Span;
+use rustc_span::{Span, Symbol};
 use std::borrow::Cow;
 use std::ops::ControlFlow;
 
@@ -105,50 +105,62 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'tcx>]) {
             && let ExprKind::MethodCall(path, recv, args, ..) = if_expr.kind
             && let Some(binding) = get_pat_binding(cx, recv, outer_arm)
         {
-            let ty = cx.typeck_results().expr_ty(recv).peel_refs();
-            let slice_like = ty.is_slice() || ty.is_array();
-
-            let sugg = if path.ident.name == sym!(is_empty) {
-                // `s if s.is_empty()` becomes ""
-                // `arr if arr.is_empty()` becomes []
-
-                if ty.is_str() {
-                    r#""""#.into()
-                } else if slice_like {
-                    "[]".into()
-                } else {
-                    continue;
-                }
-            } else if slice_like
-                && let Some(needle) = args.first()
-                && let ExprKind::AddrOf(.., needle) = needle.kind
-                && let ExprKind::Array(needles) = needle.kind
-                && needles.iter().all(|needle| expr_can_be_pat(cx, needle))
-            {
-                // `arr if arr.starts_with(&[123])` becomes [123, ..]
-                // `arr if arr.ends_with(&[123])` becomes [.., 123]
-                // `arr if arr.starts_with(&[])` becomes [..]  (why would anyone write this?)
-
-                let mut sugg = snippet(cx, needle.span, "<needle>").into_owned();
-
-                if needles.is_empty() {
-                    sugg.insert_str(1, "..");
-                } else if path.ident.name == sym!(starts_with) {
-                    sugg.insert_str(sugg.len() - 1, ", ..");
-                } else if path.ident.name == sym!(ends_with) {
-                    sugg.insert_str(1, ".., ");
-                } else {
-                    continue;
-                }
-
-                sugg.into()
-            } else {
-                continue;
-            };
-
-            emit_redundant_guards(cx, outer_arm, if_expr.span, sugg, &binding, None);
+            check_method_calls(cx, outer_arm, path.ident.name, recv, args, if_expr, &binding);
         }
     }
+}
+
+fn check_method_calls<'tcx>(
+    cx: &LateContext<'tcx>,
+    arm: &Arm<'tcx>,
+    method: Symbol,
+    recv: &Expr<'_>,
+    args: &[Expr<'_>],
+    if_expr: &Expr<'_>,
+    binding: &PatBindingInfo,
+) {
+    let ty = cx.typeck_results().expr_ty(recv).peel_refs();
+    let slice_like = ty.is_slice() || ty.is_array();
+
+    let sugg = if method == sym!(is_empty) {
+        // `s if s.is_empty()` becomes ""
+        // `arr if arr.is_empty()` becomes []
+
+        if ty.is_str() {
+            r#""""#.into()
+        } else if slice_like {
+            "[]".into()
+        } else {
+            return;
+        }
+    } else if slice_like
+        && let Some(needle) = args.first()
+        && let ExprKind::AddrOf(.., needle) = needle.kind
+        && let ExprKind::Array(needles) = needle.kind
+        && needles.iter().all(|needle| expr_can_be_pat(cx, needle))
+    {
+        // `arr if arr.starts_with(&[123])` becomes [123, ..]
+        // `arr if arr.ends_with(&[123])` becomes [.., 123]
+        // `arr if arr.starts_with(&[])` becomes [..]  (why would anyone write this?)
+
+        let mut sugg = snippet(cx, needle.span, "<needle>").into_owned();
+
+        if needles.is_empty() {
+            sugg.insert_str(1, "..");
+        } else if method == sym!(starts_with) {
+            sugg.insert_str(sugg.len() - 1, ", ..");
+        } else if method == sym!(ends_with) {
+            sugg.insert_str(1, ".., ");
+        } else {
+            return;
+        }
+
+        sugg.into()
+    } else {
+        return;
+    };
+
+    emit_redundant_guards(cx, arm, if_expr.span, sugg, binding, None);
 }
 
 struct PatBindingInfo {
