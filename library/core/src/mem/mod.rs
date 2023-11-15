@@ -1130,7 +1130,7 @@ impl<T> cmp::Ord for Discriminant<T> {
 /// `Discriminant` is an opaque wrapper around the enum discriminant, therefore it's value will
 /// change when the enum definition changes. See the [Reference] for more information.
 ///
-/// [Reference]: ../../reference/items/enumerations.html#discriminants
+/// [Reference]: ../../reference/items/enumerations.html#custom-discriminant-values-for-fieldless-enumerations
 ///
 /// # Examples
 ///
