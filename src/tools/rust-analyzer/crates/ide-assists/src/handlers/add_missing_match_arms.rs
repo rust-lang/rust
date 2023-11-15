@@ -273,9 +273,10 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
                     syntax::SyntaxElement::Token(it) => {
                         // Don't have a way to make tokens mut, so instead make the parent mut
                         // and find the token again
-                        let parent = edit.make_syntax_mut(it.parent().unwrap());
+                        let parent =
+                            edit.make_syntax_mut(it.parent().expect("Token must have a parent."));
                         let mut_token =
-                            parent.covering_element(it.text_range()).into_token().unwrap();
+                            parent.covering_element(it.text_range()).into_token().expect("Covering element cannot be found. Range may be beyond the current node's range");
 
                         syntax::SyntaxElement::from(mut_token)
                     }
@@ -446,21 +447,23 @@ fn build_pat(
                 mod_path_to_ast(&module.find_use_path(db, ModuleDef::from(var), prefer_no_std)?);
 
             // FIXME: use HIR for this; it doesn't currently expose struct vs. tuple vs. unit variants though
-            let pat: ast::Pat = match var.source(db)?.value.kind() {
+            Some(match var.source(db)?.value.kind() {
                 ast::StructKind::Tuple(field_list) => {
                     let pats =
                         iter::repeat(make::wildcard_pat().into()).take(field_list.fields().count());
                     make::tuple_struct_pat(path, pats).into()
                 }
                 ast::StructKind::Record(field_list) => {
-                    let pats = field_list
-                        .fields()
-                        .map(|f| make::ext::simple_ident_pat(f.name().unwrap()).into());
+                    let pats = field_list.fields().map(|f| {
+                        make::ext::simple_ident_pat(
+                            f.name().expect("Record field must have a name"),
+                        )
+                        .into()
+                    });
                     make::record_pat(path, pats).into()
                 }
                 ast::StructKind::Unit => make::path_pat(path),
-            };
-            Some(pat)
+            })
         }
         ExtendedVariant::True => Some(ast::Pat::from(make::literal_pat("true"))),
         ExtendedVariant::False => Some(ast::Pat::from(make::literal_pat("false"))),
@@ -1940,5 +1943,36 @@ fn main() {
 }
 "#,
         );
+    }
+
+    /// See [`discussion`](https://github.com/rust-lang/rust-analyzer/pull/15594#discussion_r1322960614)
+    #[test]
+    fn missing_field_name() {
+        check_assist(
+            add_missing_match_arms,
+            r#"
+enum A {
+    A,
+    Missing { a: u32, : u32, c: u32 }
+}
+
+fn a() {
+    let b = A::A;
+    match b$0 {}
+}"#,
+            r#"
+enum A {
+    A,
+    Missing { a: u32, : u32, c: u32 }
+}
+
+fn a() {
+    let b = A::A;
+    match b {
+        $0A::A => todo!(),
+        A::Missing { a, u32, c } => todo!(),
+    }
+}"#,
+        )
     }
 }

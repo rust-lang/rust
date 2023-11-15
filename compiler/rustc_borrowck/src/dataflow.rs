@@ -273,11 +273,10 @@ impl<'tcx> PoloniusOutOfScopePrecomputer<'_, 'tcx> {
     ) {
         let sccs = self.regioncx.constraint_sccs();
         let universal_regions = self.regioncx.universal_regions();
-        let issuing_region_scc = sccs.scc(issuing_region);
 
         // We first handle the cases where the loan doesn't go out of scope, depending on the issuing
         // region's successors.
-        for scc in sccs.depth_first_search(issuing_region_scc) {
+        for successor in self.regioncx.region_graph().depth_first_search(issuing_region) {
             // 1. Via applied member constraints
             //
             // The issuing region can flow into the choice regions, and they are either:
@@ -290,6 +289,7 @@ impl<'tcx> PoloniusOutOfScopePrecomputer<'_, 'tcx> {
             // For additional insurance via fuzzing and crater, we verify that the constraint's min
             // choice indeed escapes the function. In the future, we could e.g. turn this check into
             // a debug assert and early return as an optimization.
+            let scc = sccs.scc(successor);
             for constraint in self.regioncx.applied_member_constraints(scc) {
                 if universal_regions.is_universal_region(constraint.min_choice) {
                     return;
@@ -300,7 +300,7 @@ impl<'tcx> PoloniusOutOfScopePrecomputer<'_, 'tcx> {
             //
             // If the issuing region outlives such a region, its loan escapes the function and
             // cannot go out of scope. We can early return.
-            if self.regioncx.scc_is_live_at_all_points(scc) {
+            if self.regioncx.is_region_live_at_all_points(successor) {
                 return;
             }
         }

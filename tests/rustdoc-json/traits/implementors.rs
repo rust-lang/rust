@@ -1,19 +1,18 @@
-#![feature(no_core)]
-#![no_core]
-
-// @set wham = "$.index[*][?(@.name=='Wham')].id"
-// @count "$.index[*][?(@.name=='Wham')].inner.trait.implementations[*]" 1
-// @set gmWham = "$.index[*][?(@.name=='Wham')].inner.trait.implementations[0]"
 pub trait Wham {}
-
-// @count "$.index[*][?(@.name=='GeorgeMichael')].inner.struct.impls[*]" 1
-// @is "$.index[*][?(@.name=='GeorgeMichael')].inner.struct.impls[0]" $gmWham
-// @set gm = "$.index[*][?(@.name=='Wham')].id"
-
-// jsonpath_lib isnt expressive enough (for now) to get the "impl" item, so we
-// just check it isn't pointing to the type, but when you port to jsondocck-ng
-// check what the impl item is
-// @!is "$.index[*][?(@.name=='Wham')].inner.trait.implementations[0]" $gm
 pub struct GeorgeMichael {}
 
+/// Wham for George Michael
 impl Wham for GeorgeMichael {}
+
+// Find IDs.
+// @set wham = "$.index[*][?(@.name=='Wham')].id"
+// @set gmWham = "$.index[*][?(@.docs=='Wham for George Michael')].id"
+// @set gm = "$.index[*][?(@.name=='GeorgeMichael')].id"
+
+// Both struct and trait point to impl.
+// @has "$.index[*][?(@.name=='GeorgeMichael')].inner.struct.impls[*]" $gmWham
+// @is "$.index[*][?(@.name=='Wham')].inner.trait.implementations[*]" $gmWham
+
+// Impl points to both struct and trait.
+// @is "$.index[*][?(@.docs == 'Wham for George Michael')].inner.impl.trait.id" $wham
+// @is "$.index[*][?(@.docs == 'Wham for George Michael')].inner.impl.for.resolved_path.id" $gm

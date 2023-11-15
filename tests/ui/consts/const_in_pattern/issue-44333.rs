@@ -16,9 +16,9 @@ const BAR: Func = bar;
 
 fn main() {
     match test(std::env::consts::ARCH.len()) {
-        FOO => println!("foo"), //~ WARN pointers in patterns behave unpredictably
+        FOO => println!("foo"), //~ WARN behave unpredictably
         //~^ WARN will become a hard error
-        BAR => println!("bar"), //~ WARN pointers in patterns behave unpredictably
+        BAR => println!("bar"), //~ WARN behave unpredictably
         //~^ WARN will become a hard error
         _ => unreachable!(),
     }

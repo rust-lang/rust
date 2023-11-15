@@ -35,8 +35,8 @@ LL |     x.0 = 0;
 note: inside `main`
   --> $DIR/arg_inplace_observe_during.rs:LL:CC
    |
-LL |             Call(_unit = change_arg(Move(*ptr), ptr), after_call)
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |             Call(_unit = change_arg(Move(*ptr), ptr), after_call, UnwindContinue())
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this error originates in the macro `::core::intrinsics::mir::__internal_remove_let` which comes from the expansion of the macro `mir` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace

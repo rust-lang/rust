@@ -1,8 +1,8 @@
 error[E0015]: cannot call non-const fn `<T as Create>::create` in constants
-  --> $DIR/const-trait-impl.rs:11:37
+  --> $DIR/const-trait-impl.rs:11:30
    |
-LL | const CREATE<T: ~const Create>: T = T::create();
-   |                                     ^^^^^^^^^^^
+LL | const CREATE<T: Create>: T = T::create();
+   |                              ^^^^^^^^^^^
    |
    = note: calls in constants are limited to constant functions, tuple structs and tuple variants
 

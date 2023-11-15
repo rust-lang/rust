@@ -295,8 +295,12 @@ impl<'a> Ctx<'a> {
                         }
                     }
                 };
-                let ty = Interned::new(self_type);
-                let idx = self.data().params.alloc(Param::Normal(ty));
+                let type_ref = Interned::new(self_type);
+                let ast_id = self.source_ast_id_map.ast_id(&self_param);
+                let idx = self.data().params.alloc(Param {
+                    type_ref: Some(type_ref),
+                    ast_id: ParamAstId::SelfParam(ast_id),
+                });
                 self.add_attrs(
                     idx.into(),
                     RawAttrs::new(self.db.upcast(), &self_param, self.hygiene()),
@@ -305,11 +309,19 @@ impl<'a> Ctx<'a> {
             }
             for param in param_list.params() {
                 let idx = match param.dotdotdot_token() {
-                    Some(_) => self.data().params.alloc(Param::Varargs),
+                    Some(_) => {
+                        let ast_id = self.source_ast_id_map.ast_id(&param);
+                        self.data()
+                            .params
+                            .alloc(Param { type_ref: None, ast_id: ParamAstId::Param(ast_id) })
+                    }
                     None => {
                         let type_ref = TypeRef::from_ast_opt(&self.body_ctx, param.ty());
                         let ty = Interned::new(type_ref);
-                        self.data().params.alloc(Param::Normal(ty))
+                        let ast_id = self.source_ast_id_map.ast_id(&param);
+                        self.data()
+                            .params
+                            .alloc(Param { type_ref: Some(ty), ast_id: ParamAstId::Param(ast_id) })
                     }
                 };
                 self.add_attrs(idx.into(), RawAttrs::new(self.db.upcast(), &param, self.hygiene()));

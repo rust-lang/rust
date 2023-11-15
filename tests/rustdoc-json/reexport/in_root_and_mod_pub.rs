@@ -1,6 +1,3 @@
-#![feature(no_core)]
-#![no_core]
-
 pub mod foo {
     // @set bar_id = "$.index[*][?(@.name=='Bar')].id"
     // @ismany "$.index[*][?(@.name=='foo')].inner.module.items[*]" $bar_id

@@ -104,6 +104,10 @@ impl<'tcx> Tables<'tcx> {
         stable_mir::ty::RegionDef(self.create_def_id(did))
     }
 
+    pub fn coroutine_witness_def(&mut self, did: DefId) -> stable_mir::ty::CoroutineWitnessDef {
+        stable_mir::ty::CoroutineWitnessDef(self.create_def_id(did))
+    }
+
     pub fn prov(&mut self, aid: AllocId) -> stable_mir::ty::Prov {
         stable_mir::ty::Prov(self.create_alloc_id(aid))
     }

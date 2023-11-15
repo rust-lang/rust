@@ -38,33 +38,16 @@ fn parse_attributes(field: &syn::Field) -> Attributes {
     attrs
 }
 
-pub fn hash_stable_generic_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStream {
+pub(crate) fn hash_stable_generic_derive(
+    mut s: synstructure::Structure<'_>,
+) -> proc_macro2::TokenStream {
     let generic: syn::GenericParam = parse_quote!(__CTX);
     s.add_bounds(synstructure::AddBounds::Generics);
     s.add_impl_generic(generic);
     s.add_where_predicate(parse_quote! { __CTX: crate::HashStableContext });
-    let body = s.each(|bi| {
-        let attrs = parse_attributes(bi.ast());
-        if attrs.ignore {
-            quote! {}
-        } else if let Some(project) = attrs.project {
-            quote! {
-                (&#bi.#project).hash_stable(__hcx, __hasher);
-            }
-        } else {
-            quote! {
-                #bi.hash_stable(__hcx, __hasher);
-            }
-        }
-    });
 
-    let discriminant = match s.ast().data {
-        syn::Data::Enum(_) => quote! {
-            ::std::mem::discriminant(self).hash_stable(__hcx, __hasher);
-        },
-        syn::Data::Struct(_) => quote! {},
-        syn::Data::Union(_) => panic!("cannot derive on union"),
-    };
+    let discriminant = hash_stable_discriminant(&mut s);
+    let body = hash_stable_body(&mut s);
 
     s.bound_impl(
         quote!(::rustc_data_structures::stable_hasher::HashStable<__CTX>),
@@ -81,32 +64,13 @@ pub fn hash_stable_generic_derive(mut s: synstructure::Structure<'_>) -> proc_ma
     )
 }
 
-pub fn hash_stable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStream {
+pub(crate) fn hash_stable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStream {
     let generic: syn::GenericParam = parse_quote!('__ctx);
     s.add_bounds(synstructure::AddBounds::Generics);
     s.add_impl_generic(generic);
-    let body = s.each(|bi| {
-        let attrs = parse_attributes(bi.ast());
-        if attrs.ignore {
-            quote! {}
-        } else if let Some(project) = attrs.project {
-            quote! {
-                (&#bi.#project).hash_stable(__hcx, __hasher);
-            }
-        } else {
-            quote! {
-                #bi.hash_stable(__hcx, __hasher);
-            }
-        }
-    });
 
-    let discriminant = match s.ast().data {
-        syn::Data::Enum(_) => quote! {
-            ::std::mem::discriminant(self).hash_stable(__hcx, __hasher);
-        },
-        syn::Data::Struct(_) => quote! {},
-        syn::Data::Union(_) => panic!("cannot derive on union"),
-    };
+    let discriminant = hash_stable_discriminant(&mut s);
+    let body = hash_stable_body(&mut s);
 
     s.bound_impl(
         quote!(
@@ -125,4 +89,31 @@ pub fn hash_stable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::To
             }
         },
     )
+}
+
+fn hash_stable_discriminant(s: &mut synstructure::Structure<'_>) -> proc_macro2::TokenStream {
+    match s.ast().data {
+        syn::Data::Enum(_) => quote! {
+            ::std::mem::discriminant(self).hash_stable(__hcx, __hasher);
+        },
+        syn::Data::Struct(_) => quote! {},
+        syn::Data::Union(_) => panic!("cannot derive on union"),
+    }
+}
+
+fn hash_stable_body(s: &mut synstructure::Structure<'_>) -> proc_macro2::TokenStream {
+    s.each(|bi| {
+        let attrs = parse_attributes(bi.ast());
+        if attrs.ignore {
+            quote! {}
+        } else if let Some(project) = attrs.project {
+            quote! {
+                (&#bi.#project).hash_stable(__hcx, __hasher);
+            }
+        } else {
+            quote! {
+                #bi.hash_stable(__hcx, __hasher);
+            }
+        }
+    })
 }

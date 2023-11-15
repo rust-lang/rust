@@ -743,7 +743,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for RegionReplacer<'a, 'tcx> {
         match *r {
             // These are the regions that can be seen in the AST.
             ty::ReVar(vid) => self.vid_to_region.get(&vid).cloned().unwrap_or(r),
-            ty::ReEarlyBound(_) | ty::ReStatic | ty::ReLateBound(..) | ty::ReError(_) => r,
+            ty::ReEarlyBound(_) | ty::ReStatic | ty::ReBound(..) | ty::ReError(_) => r,
             r => bug!("unexpected region: {r:?}"),
         }
     }

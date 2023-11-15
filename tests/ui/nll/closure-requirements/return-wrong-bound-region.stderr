@@ -6,7 +6,7 @@ LL |     expect_sig(|a, b| b); // ought to return `a`
    |
    = note: defining type: test::{closure#0} with closure args [
                i16,
-               for<Region(BrAnon), Region(BrAnon)> extern "rust-call" fn((&ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon }) i32, &ReLateBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrAnon }) i32)) -> &ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon }) i32,
+               for<Region(BrAnon), Region(BrAnon)> extern "rust-call" fn((&ReBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon }) i32, &ReBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrAnon }) i32)) -> &ReBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon }) i32,
                (),
            ]
 

@@ -330,7 +330,7 @@ pub use self::{
 };
 
 #[unstable(feature = "read_buf", issue = "78485")]
-pub use self::readbuf::{BorrowedBuf, BorrowedCursor};
+pub use core::io::{BorrowedBuf, BorrowedCursor};
 pub(crate) use error::const_io_error;
 
 mod buffered;
@@ -339,7 +339,6 @@ mod cursor;
 mod error;
 mod impls;
 pub mod prelude;
-mod readbuf;
 mod stdio;
 mod util;
 

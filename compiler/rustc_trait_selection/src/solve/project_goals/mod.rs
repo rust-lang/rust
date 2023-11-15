@@ -160,7 +160,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
         let goal_trait_ref = goal.predicate.projection_ty.trait_ref(tcx);
         let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
         let drcx = DeepRejectCtxt { treat_obligation_params: TreatParams::ForLookup };
-        if !drcx.args_refs_may_unify(goal_trait_ref.args, impl_trait_ref.skip_binder().args) {
+        if !drcx.args_may_unify(goal_trait_ref.args, impl_trait_ref.skip_binder().args) {
             return Err(NoSolution);
         }
 

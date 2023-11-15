@@ -76,13 +76,9 @@ cfg_if::cfg_if! {
 cfg_if::cfg_if! {
     if #[cfg(feature = "llvm-libunwind")] {
         compile_error!("`llvm-libunwind` is not supported for Android targets");
-    } else if #[cfg(feature = "system-llvm-libunwind")] {
+    } else {
         #[link(name = "unwind", kind = "static", modifiers = "-bundle", cfg(target_feature = "crt-static"))]
         #[link(name = "unwind", cfg(not(target_feature = "crt-static")))]
-        extern "C" {}
-    } else {
-        #[link(name = "gcc", kind = "static", modifiers = "-bundle", cfg(target_feature = "crt-static"))]
-        #[link(name = "gcc", cfg(not(target_feature = "crt-static")))]
         extern "C" {}
     }
 }

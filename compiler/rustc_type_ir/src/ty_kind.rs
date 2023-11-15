@@ -2,14 +2,11 @@
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::unify::{EqUnifyValue, UnifyKey};
-use rustc_serialize::{Decodable, Decoder, Encodable};
 use std::fmt;
 use std::mem::discriminant;
 
 use crate::HashStableContext;
 use crate::Interner;
-use crate::TyDecoder;
-use crate::TyEncoder;
 use crate::{DebruijnIndex, DebugWithInfcx, InferCtxtLike, WithInfcx};
 
 use self::TyKind::*;
@@ -122,6 +119,7 @@ pub enum AliasKind {
     Ord = "feature_allow_slow_enum",
     Hash(bound = "")
 )]
+#[derive(TyEncodable, TyDecodable)]
 pub enum TyKind<I: Interner> {
     /// The primitive boolean type. Written as `bool`.
     Bool,
@@ -469,178 +467,6 @@ impl<I: Interner> DebugWithInfcx<I> for TyKind<I> {
 impl<I: Interner> fmt::Debug for TyKind<I> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         WithInfcx::with_no_infcx(self).fmt(f)
-    }
-}
-
-// This is manually implemented because a derive would require `I: Encodable`
-impl<I: Interner, E: TyEncoder<I = I>> Encodable<E> for TyKind<I>
-where
-    I::ErrorGuaranteed: Encodable<E>,
-    I::AdtDef: Encodable<E>,
-    I::GenericArgs: Encodable<E>,
-    I::DefId: Encodable<E>,
-    I::Ty: Encodable<E>,
-    I::Const: Encodable<E>,
-    I::Region: Encodable<E>,
-    I::TypeAndMut: Encodable<E>,
-    I::PolyFnSig: Encodable<E>,
-    I::BoundExistentialPredicates: Encodable<E>,
-    I::Tys: Encodable<E>,
-    I::AliasTy: Encodable<E>,
-    I::ParamTy: Encodable<E>,
-    I::BoundTy: Encodable<E>,
-    I::PlaceholderTy: Encodable<E>,
-    I::InferTy: Encodable<E>,
-    I::AllocId: Encodable<E>,
-{
-    fn encode(&self, e: &mut E) {
-        let disc = tykind_discriminant(self);
-        match self {
-            Bool => e.emit_enum_variant(disc, |_| {}),
-            Char => e.emit_enum_variant(disc, |_| {}),
-            Int(i) => e.emit_enum_variant(disc, |e| {
-                i.encode(e);
-            }),
-            Uint(u) => e.emit_enum_variant(disc, |e| {
-                u.encode(e);
-            }),
-            Float(f) => e.emit_enum_variant(disc, |e| {
-                f.encode(e);
-            }),
-            Adt(adt, args) => e.emit_enum_variant(disc, |e| {
-                adt.encode(e);
-                args.encode(e);
-            }),
-            Foreign(def_id) => e.emit_enum_variant(disc, |e| {
-                def_id.encode(e);
-            }),
-            Str => e.emit_enum_variant(disc, |_| {}),
-            Array(t, c) => e.emit_enum_variant(disc, |e| {
-                t.encode(e);
-                c.encode(e);
-            }),
-            Slice(t) => e.emit_enum_variant(disc, |e| {
-                t.encode(e);
-            }),
-            RawPtr(tam) => e.emit_enum_variant(disc, |e| {
-                tam.encode(e);
-            }),
-            Ref(r, t, m) => e.emit_enum_variant(disc, |e| {
-                r.encode(e);
-                t.encode(e);
-                m.encode(e);
-            }),
-            FnDef(def_id, args) => e.emit_enum_variant(disc, |e| {
-                def_id.encode(e);
-                args.encode(e);
-            }),
-            FnPtr(polyfnsig) => e.emit_enum_variant(disc, |e| {
-                polyfnsig.encode(e);
-            }),
-            Dynamic(l, r, repr) => e.emit_enum_variant(disc, |e| {
-                l.encode(e);
-                r.encode(e);
-                repr.encode(e);
-            }),
-            Closure(def_id, args) => e.emit_enum_variant(disc, |e| {
-                def_id.encode(e);
-                args.encode(e);
-            }),
-            Coroutine(def_id, args, m) => e.emit_enum_variant(disc, |e| {
-                def_id.encode(e);
-                args.encode(e);
-                m.encode(e);
-            }),
-            CoroutineWitness(def_id, args) => e.emit_enum_variant(disc, |e| {
-                def_id.encode(e);
-                args.encode(e);
-            }),
-            Never => e.emit_enum_variant(disc, |_| {}),
-            Tuple(args) => e.emit_enum_variant(disc, |e| {
-                args.encode(e);
-            }),
-            Alias(k, p) => e.emit_enum_variant(disc, |e| {
-                k.encode(e);
-                p.encode(e);
-            }),
-            Param(p) => e.emit_enum_variant(disc, |e| {
-                p.encode(e);
-            }),
-            Bound(d, b) => e.emit_enum_variant(disc, |e| {
-                d.encode(e);
-                b.encode(e);
-            }),
-            Placeholder(p) => e.emit_enum_variant(disc, |e| {
-                p.encode(e);
-            }),
-            Infer(i) => e.emit_enum_variant(disc, |e| {
-                i.encode(e);
-            }),
-            Error(d) => e.emit_enum_variant(disc, |e| {
-                d.encode(e);
-            }),
-        }
-    }
-}
-
-// This is manually implemented because a derive would require `I: Decodable`
-impl<I: Interner, D: TyDecoder<I = I>> Decodable<D> for TyKind<I>
-where
-    I::ErrorGuaranteed: Decodable<D>,
-    I::AdtDef: Decodable<D>,
-    I::GenericArgs: Decodable<D>,
-    I::DefId: Decodable<D>,
-    I::Ty: Decodable<D>,
-    I::Const: Decodable<D>,
-    I::Region: Decodable<D>,
-    I::TypeAndMut: Decodable<D>,
-    I::PolyFnSig: Decodable<D>,
-    I::BoundExistentialPredicates: Decodable<D>,
-    I::Tys: Decodable<D>,
-    I::AliasTy: Decodable<D>,
-    I::ParamTy: Decodable<D>,
-    I::AliasTy: Decodable<D>,
-    I::BoundTy: Decodable<D>,
-    I::PlaceholderTy: Decodable<D>,
-    I::InferTy: Decodable<D>,
-    I::AllocId: Decodable<D>,
-{
-    fn decode(d: &mut D) -> Self {
-        match Decoder::read_usize(d) {
-            0 => Bool,
-            1 => Char,
-            2 => Int(Decodable::decode(d)),
-            3 => Uint(Decodable::decode(d)),
-            4 => Float(Decodable::decode(d)),
-            5 => Adt(Decodable::decode(d), Decodable::decode(d)),
-            6 => Foreign(Decodable::decode(d)),
-            7 => Str,
-            8 => Array(Decodable::decode(d), Decodable::decode(d)),
-            9 => Slice(Decodable::decode(d)),
-            10 => RawPtr(Decodable::decode(d)),
-            11 => Ref(Decodable::decode(d), Decodable::decode(d), Decodable::decode(d)),
-            12 => FnDef(Decodable::decode(d), Decodable::decode(d)),
-            13 => FnPtr(Decodable::decode(d)),
-            14 => Dynamic(Decodable::decode(d), Decodable::decode(d), Decodable::decode(d)),
-            15 => Closure(Decodable::decode(d), Decodable::decode(d)),
-            16 => Coroutine(Decodable::decode(d), Decodable::decode(d), Decodable::decode(d)),
-            17 => CoroutineWitness(Decodable::decode(d), Decodable::decode(d)),
-            18 => Never,
-            19 => Tuple(Decodable::decode(d)),
-            20 => Alias(Decodable::decode(d), Decodable::decode(d)),
-            21 => Param(Decodable::decode(d)),
-            22 => Bound(Decodable::decode(d), Decodable::decode(d)),
-            23 => Placeholder(Decodable::decode(d)),
-            24 => Infer(Decodable::decode(d)),
-            25 => Error(Decodable::decode(d)),
-            _ => panic!(
-                "{}",
-                format!(
-                    "invalid enum variant tag while decoding `{}`, expected 0..{}",
-                    "TyKind", 26,
-                )
-            ),
-        }
     }
 }
 

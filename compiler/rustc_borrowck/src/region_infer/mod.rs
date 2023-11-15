@@ -22,11 +22,10 @@ use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::{self, RegionVid, Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
 use rustc_span::Span;
 
+use crate::constraints::graph::{self, NormalConstraintGraph, RegionGraph};
 use crate::dataflow::BorrowIndex;
 use crate::{
-    constraints::{
-        graph::NormalConstraintGraph, ConstraintSccIndex, OutlivesConstraint, OutlivesConstraintSet,
-    },
+    constraints::{ConstraintSccIndex, OutlivesConstraint, OutlivesConstraintSet},
     diagnostics::{RegionErrorKind, RegionErrors, UniverseInfo},
     member_constraints::{MemberConstraintSet, NllMemberConstraintIndex},
     nll::PoloniusOutput,
@@ -2293,19 +2292,21 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         self.constraint_sccs.as_ref()
     }
 
-    /// Returns whether the given SCC is live at all points: whether the representative is a
+    /// Access to the region graph, built from the outlives constraints.
+    pub(crate) fn region_graph(&self) -> RegionGraph<'_, 'tcx, graph::Normal> {
+        self.constraint_graph.region_graph(&self.constraints, self.universal_regions.fr_static)
+    }
+
+    /// Returns whether the given region is considered live at all points: whether it is a
     /// placeholder or a free region.
-    pub(crate) fn scc_is_live_at_all_points(&self, scc: ConstraintSccIndex) -> bool {
+    pub(crate) fn is_region_live_at_all_points(&self, region: RegionVid) -> bool {
         // FIXME: there must be a cleaner way to find this information. At least, when
         // higher-ranked subtyping is abstracted away from the borrowck main path, we'll only
         // need to check whether this is a universal region.
-        let representative = self.scc_representatives[scc];
-        let origin = self.var_infos[representative].origin;
+        let origin = self.region_definition(region).origin;
         let live_at_all_points = matches!(
             origin,
-            RegionVariableOrigin::Nll(
-                NllRegionVariableOrigin::Placeholder(_) | NllRegionVariableOrigin::FreeRegion
-            )
+            NllRegionVariableOrigin::Placeholder(_) | NllRegionVariableOrigin::FreeRegion
         );
         live_at_all_points
     }

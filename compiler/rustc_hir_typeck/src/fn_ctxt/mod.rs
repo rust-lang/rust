@@ -289,7 +289,7 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
     ) -> Ty<'tcx> {
         let trait_ref = self.instantiate_binder_with_fresh_vars(
             span,
-            infer::LateBoundRegionConversionTime::AssocTypeProjection(item_def_id),
+            infer::BoundRegionConversionTime::AssocTypeProjection(item_def_id),
             poly_trait_ref,
         );
 

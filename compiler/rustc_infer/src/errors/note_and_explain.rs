@@ -73,8 +73,11 @@ impl<'a> DescriptionCtx<'a> {
             // ReFree rather than dumping Debug output on the user.
             //
             // We shouldn't really be having unification failures with ReVar
-            // and ReLateBound though.
-            ty::ReVar(_) | ty::ReLateBound(..) | ty::ReErased => {
+            // and ReBound though.
+            //
+            // FIXME(@lcnr): figure out why we `ReBound` have to handle `ReBound`
+            // here, this feels somewhat off.
+            ty::ReVar(_) | ty::ReBound(..) | ty::ReErased => {
                 (alt_span, "revar", format!("{region:?}"))
             }
         };

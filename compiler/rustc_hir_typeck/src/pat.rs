@@ -166,9 +166,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn check_pat(&self, pat: &'tcx Pat<'tcx>, expected: Ty<'tcx>, pat_info: PatInfo<'tcx, '_>) {
         let PatInfo { binding_mode: def_bm, top_info: ti, .. } = pat_info;
         let path_res = match &pat.kind {
-            PatKind::Path(qpath) => {
-                Some(self.resolve_ty_and_res_fully_qualified_call(qpath, pat.hir_id, pat.span))
-            }
+            PatKind::Path(qpath) => Some(
+                self.resolve_ty_and_res_fully_qualified_call(qpath, pat.hir_id, pat.span, None),
+            ),
             _ => None,
         };
         let adjust_mode = self.calc_adjust_mode(pat, path_res.map(|(res, ..)| res));
@@ -1060,7 +1060,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Resolve the path and check the definition for errors.
         let (res, opt_ty, segments) =
-            self.resolve_ty_and_res_fully_qualified_call(qpath, pat.hir_id, pat.span);
+            self.resolve_ty_and_res_fully_qualified_call(qpath, pat.hir_id, pat.span, None);
         if res == Res::Err {
             let e = tcx.sess.delay_span_bug(pat.span, "`Res::Err` but no error emitted");
             self.set_tainted_by_errors(e);

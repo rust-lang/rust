@@ -381,6 +381,12 @@ impl<'a> CoverageSpansGenerator<'a> {
 
         let merged_prefix_len = self.curr_original_span.lo() - curr.span.lo();
         let after_macro_bang = merged_prefix_len + BytePos(visible_macro.as_str().len() as u32 + 1);
+        if self.curr().span.lo() + after_macro_bang > self.curr().span.hi() {
+            // Something is wrong with the macro name span;
+            // return now to avoid emitting malformed mappings.
+            // FIXME(#117788): Track down why this happens.
+            return;
+        }
         let mut macro_name_cov = curr.clone();
         self.curr_mut().span = curr.span.with_lo(curr.span.lo() + after_macro_bang);
         macro_name_cov.span =

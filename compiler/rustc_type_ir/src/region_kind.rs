@@ -1,12 +1,8 @@
 use rustc_data_structures::stable_hasher::HashStable;
 use rustc_data_structures::stable_hasher::StableHasher;
-use rustc_serialize::{Decodable, Decoder, Encodable};
 use std::fmt;
 
-use crate::{
-    DebruijnIndex, DebugWithInfcx, HashStableContext, InferCtxtLike, Interner, TyDecoder,
-    TyEncoder, WithInfcx,
-};
+use crate::{DebruijnIndex, DebugWithInfcx, HashStableContext, InferCtxtLike, Interner, WithInfcx};
 
 use self::RegionKind::*;
 
@@ -125,15 +121,23 @@ use self::RegionKind::*;
     Ord = "feature_allow_slow_enum",
     Hash(bound = "")
 )]
+#[derive(TyEncodable, TyDecodable)]
 pub enum RegionKind<I: Interner> {
     /// Region bound in a type or fn declaration which will be
     /// substituted 'early' -- that is, at the same time when type
     /// parameters are substituted.
     ReEarlyBound(I::EarlyBoundRegion),
 
-    /// Region bound in a function scope, which will be substituted when the
-    /// function is called.
-    ReLateBound(DebruijnIndex, I::BoundRegion),
+    /// A higher-ranked region. These represent either late-bound function parameters
+    /// or bound variables from a `for<'a>`-binder.
+    ///
+    /// While inside of a function, e.g. during typeck, the late-bound function parameters
+    /// can be converted to `ReFree` by calling `tcx.liberate_late_bound_regions`.
+    ///
+    /// Bound regions inside of types **must not** be erased, as they impact trait
+    /// selection and the `TypeId` of that type. `for<'a> fn(&'a ())` and
+    /// `fn(&'static ())` are different types and have to be treated as such.
+    ReBound(DebruijnIndex, I::BoundRegion),
 
     /// When checking a function body, the types of all arguments and so forth
     /// that refer to bound region parameters are modified to refer to free
@@ -163,7 +167,7 @@ pub enum RegionKind<I: Interner> {
 const fn regionkind_discriminant<I: Interner>(value: &RegionKind<I>) -> usize {
     match value {
         ReEarlyBound(_) => 0,
-        ReLateBound(_, _) => 1,
+        ReBound(_, _) => 1,
         ReFree(_) => 2,
         ReStatic => 3,
         ReVar(_) => 4,
@@ -192,7 +196,7 @@ impl<I: Interner> PartialEq for RegionKind<I> {
         regionkind_discriminant(self) == regionkind_discriminant(other)
             && match (self, other) {
                 (ReEarlyBound(a_r), ReEarlyBound(b_r)) => a_r == b_r,
-                (ReLateBound(a_d, a_r), ReLateBound(b_d, b_r)) => a_d == b_d && a_r == b_r,
+                (ReBound(a_d, a_r), ReBound(b_d, b_r)) => a_d == b_d && a_r == b_r,
                 (ReFree(a_r), ReFree(b_r)) => a_r == b_r,
                 (ReStatic, ReStatic) => true,
                 (ReVar(a_r), ReVar(b_r)) => a_r == b_r,
@@ -221,8 +225,8 @@ impl<I: Interner> DebugWithInfcx<I> for RegionKind<I> {
         match this.data {
             ReEarlyBound(data) => write!(f, "ReEarlyBound({data:?})"),
 
-            ReLateBound(binder_id, bound_region) => {
-                write!(f, "ReLateBound({binder_id:?}, {bound_region:?})")
+            ReBound(binder_id, bound_region) => {
+                write!(f, "ReBound({binder_id:?}, {bound_region:?})")
             }
 
             ReFree(fr) => write!(f, "{fr:?}"),
@@ -245,72 +249,6 @@ impl<I: Interner> fmt::Debug for RegionKind<I> {
     }
 }
 
-// This is manually implemented because a derive would require `I: Encodable`
-impl<I: Interner, E: TyEncoder<I = I>> Encodable<E> for RegionKind<I>
-where
-    I::EarlyBoundRegion: Encodable<E>,
-    I::BoundRegion: Encodable<E>,
-    I::FreeRegion: Encodable<E>,
-    I::InferRegion: Encodable<E>,
-    I::PlaceholderRegion: Encodable<E>,
-{
-    fn encode(&self, e: &mut E) {
-        let disc = regionkind_discriminant(self);
-        match self {
-            ReEarlyBound(a) => e.emit_enum_variant(disc, |e| {
-                a.encode(e);
-            }),
-            ReLateBound(a, b) => e.emit_enum_variant(disc, |e| {
-                a.encode(e);
-                b.encode(e);
-            }),
-            ReFree(a) => e.emit_enum_variant(disc, |e| {
-                a.encode(e);
-            }),
-            ReStatic => e.emit_enum_variant(disc, |_| {}),
-            ReVar(a) => e.emit_enum_variant(disc, |e| {
-                a.encode(e);
-            }),
-            RePlaceholder(a) => e.emit_enum_variant(disc, |e| {
-                a.encode(e);
-            }),
-            ReErased => e.emit_enum_variant(disc, |_| {}),
-            ReError(_) => e.emit_enum_variant(disc, |_| {}),
-        }
-    }
-}
-
-// This is manually implemented because a derive would require `I: Decodable`
-impl<I: Interner, D: TyDecoder<I = I>> Decodable<D> for RegionKind<I>
-where
-    I::EarlyBoundRegion: Decodable<D>,
-    I::BoundRegion: Decodable<D>,
-    I::FreeRegion: Decodable<D>,
-    I::InferRegion: Decodable<D>,
-    I::PlaceholderRegion: Decodable<D>,
-    I::ErrorGuaranteed: Decodable<D>,
-{
-    fn decode(d: &mut D) -> Self {
-        match Decoder::read_usize(d) {
-            0 => ReEarlyBound(Decodable::decode(d)),
-            1 => ReLateBound(Decodable::decode(d), Decodable::decode(d)),
-            2 => ReFree(Decodable::decode(d)),
-            3 => ReStatic,
-            4 => ReVar(Decodable::decode(d)),
-            5 => RePlaceholder(Decodable::decode(d)),
-            6 => ReErased,
-            7 => ReError(Decodable::decode(d)),
-            _ => panic!(
-                "{}",
-                format!(
-                    "invalid enum variant tag while decoding `{}`, expected 0..{}",
-                    "RegionKind", 8,
-                )
-            ),
-        }
-    }
-}
-
 // This is not a derived impl because a derive would require `I: HashStable`
 impl<CTX: HashStableContext, I: Interner> HashStable<CTX> for RegionKind<I>
 where
@@ -327,7 +265,7 @@ where
             ReErased | ReStatic | ReError(_) => {
                 // No variant fields to hash for these ...
             }
-            ReLateBound(d, r) => {
+            ReBound(d, r) => {
                 d.hash_stable(hcx, hasher);
                 r.hash_stable(hcx, hasher);
             }

@@ -14,7 +14,7 @@ fn main() {
             let ptr = std::ptr::addr_of_mut!(non_copy);
             // Inside `callee`, the first argument and `*ptr` are basically
             // aliasing places!
-            Call(_unit = callee(Move(*ptr), ptr), after_call)
+            Call(_unit = callee(Move(*ptr), ptr), after_call, UnwindContinue())
         }
         after_call = {
             Return()

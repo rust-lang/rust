@@ -14,7 +14,7 @@
                 Static,
             ),
             source_info: SourceInfo {
-                span: $DIR/async_await.rs:16:9: 16:14 (#8),
+                span: $DIR/async_await.rs:16:5: 16:14 (#9),
                 scope: scope[0],
             },
             ignore_for_traits: false,
@@ -32,7 +32,7 @@
                 Static,
             ),
             source_info: SourceInfo {
-                span: $DIR/async_await.rs:17:9: 17:14 (#10),
+                span: $DIR/async_await.rs:17:5: 17:14 (#11),
                 scope: scope[0],
             },
             ignore_for_traits: false,

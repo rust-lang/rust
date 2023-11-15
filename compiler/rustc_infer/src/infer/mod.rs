@@ -1,7 +1,7 @@
 pub use self::at::DefineOpaqueTypes;
 pub use self::freshen::TypeFreshener;
 pub use self::lexical_region_resolve::RegionResolutionError;
-pub use self::LateBoundRegionConversionTime::*;
+pub use self::BoundRegionConversionTime::*;
 pub use self::RegionVariableOrigin::*;
 pub use self::SubregionOrigin::*;
 pub use self::ValuePairs::*;
@@ -472,9 +472,9 @@ impl<'tcx> SubregionOrigin<'tcx> {
     }
 }
 
-/// Times when we replace late-bound regions with variables:
+/// Times when we replace bound regions with existentials:
 #[derive(Clone, Copy, Debug)]
-pub enum LateBoundRegionConversionTime {
+pub enum BoundRegionConversionTime {
     /// when a fn is called
     FnCall,
 
@@ -510,9 +510,9 @@ pub enum RegionVariableOrigin {
     /// Region variables created as the values for early-bound regions.
     EarlyBoundRegion(Span, Symbol),
 
-    /// Region variables created for bound regions
-    /// in a function or method that is called.
-    LateBoundRegion(Span, ty::BoundRegionKind, LateBoundRegionConversionTime),
+    /// Region variables created when instantiating a binder with
+    /// existential variables, e.g. when calling a function or method.
+    BoundRegion(Span, ty::BoundRegionKind, BoundRegionConversionTime),
 
     UpvarRegion(ty::UpvarId, Span),
 
@@ -1456,13 +1456,13 @@ impl<'tcx> InferCtxt<'tcx> {
     // variables in the current universe.
     //
     // Use this method if you'd like to find some substitution of the binder's
-    // variables (e.g. during a method call). If there isn't a [`LateBoundRegionConversionTime`]
+    // variables (e.g. during a method call). If there isn't a [`BoundRegionConversionTime`]
     // that corresponds to your use case, consider whether or not you should
     // use [`InferCtxt::instantiate_binder_with_placeholders`] instead.
     pub fn instantiate_binder_with_fresh_vars<T>(
         &self,
         span: Span,
-        lbrct: LateBoundRegionConversionTime,
+        lbrct: BoundRegionConversionTime,
         value: ty::Binder<'tcx, T>,
     ) -> T
     where
@@ -1475,7 +1475,7 @@ impl<'tcx> InferCtxt<'tcx> {
         struct ToFreshVars<'a, 'tcx> {
             infcx: &'a InferCtxt<'tcx>,
             span: Span,
-            lbrct: LateBoundRegionConversionTime,
+            lbrct: BoundRegionConversionTime,
             map: FxHashMap<ty::BoundVar, ty::GenericArg<'tcx>>,
         }
 
@@ -1485,7 +1485,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     .entry(br.var)
                     .or_insert_with(|| {
                         self.infcx
-                            .next_region_var(LateBoundRegion(self.span, br.kind, self.lbrct))
+                            .next_region_var(BoundRegion(self.span, br.kind, self.lbrct))
                             .into()
                     })
                     .expect_region()
@@ -2042,7 +2042,7 @@ impl RegionVariableOrigin {
             | Autoref(a)
             | Coercion(a)
             | EarlyBoundRegion(a, ..)
-            | LateBoundRegion(a, ..)
+            | BoundRegion(a, ..)
             | UpvarRegion(_, a) => a,
             Nll(..) => bug!("NLL variable used with `span`"),
         }

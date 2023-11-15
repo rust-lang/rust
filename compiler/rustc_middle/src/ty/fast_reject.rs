@@ -189,14 +189,14 @@ pub struct DeepRejectCtxt {
 }
 
 impl DeepRejectCtxt {
-    pub fn args_refs_may_unify<'tcx>(
+    pub fn args_may_unify<'tcx>(
         self,
         obligation_args: GenericArgsRef<'tcx>,
         impl_args: GenericArgsRef<'tcx>,
     ) -> bool {
         iter::zip(obligation_args, impl_args).all(|(obl, imp)| {
             match (obl.unpack(), imp.unpack()) {
-                // We don't fast reject based on regions for now.
+                // We don't fast reject based on regions.
                 (GenericArgKind::Lifetime(_), GenericArgKind::Lifetime(_)) => true,
                 (GenericArgKind::Type(obl), GenericArgKind::Type(imp)) => {
                     self.types_may_unify(obl, imp)
@@ -231,7 +231,7 @@ impl DeepRejectCtxt {
             | ty::Never
             | ty::Tuple(..)
             | ty::FnPtr(..)
-            | ty::Foreign(..) => {}
+            | ty::Foreign(..) => debug_assert!(impl_ty.is_known_rigid()),
             ty::FnDef(..)
             | ty::Closure(..)
             | ty::Coroutine(..)
@@ -260,7 +260,7 @@ impl DeepRejectCtxt {
             },
             ty::Adt(obl_def, obl_args) => match k {
                 &ty::Adt(impl_def, impl_args) => {
-                    obl_def == impl_def && self.args_refs_may_unify(obl_args, impl_args)
+                    obl_def == impl_def && self.args_may_unify(obl_args, impl_args)
                 }
                 _ => false,
             },

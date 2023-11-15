@@ -146,6 +146,11 @@ rm tests/ui/process/nofile-limit.rs # TODO some AArch64 linking issue
 
 rm tests/ui/stdio-is-blocking.rs # really slow with unoptimized libstd
 
+# rustc bugs
+# ==========
+# https://github.com/rust-lang/rust/pull/116447#issuecomment-1790451463
+rm tests/ui/coroutine/gen_block_*.rs
+
 cp ../dist/bin/rustdoc-clif ../dist/bin/rustdoc # some tests expect bin/rustdoc to exist
 
 # prevent $(RUSTDOC) from picking up the sysroot built by x.py. It conflicts with the one used by

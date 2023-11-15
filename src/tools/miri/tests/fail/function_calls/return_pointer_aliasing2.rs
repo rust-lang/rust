@@ -15,7 +15,7 @@ pub fn main() {
             let ptr = &raw mut _x;
             // We arrange for `myfun` to have a pointer that aliases
             // its return place. Even just reading from that pointer is UB.
-            Call(_x = myfun(ptr), after_call)
+            Call(_x = myfun(ptr), after_call, UnwindContinue())
         }
 
         after_call = {

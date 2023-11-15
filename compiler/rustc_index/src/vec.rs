@@ -137,10 +137,6 @@ impl<I: Idx, T> IndexVec<I, T> {
         self.raw.truncate(a)
     }
 
-    pub fn convert_index_type<Ix: Idx>(self) -> IndexVec<Ix, T> {
-        IndexVec::from_raw(self.raw)
-    }
-
     /// Grows the index vector so that it contains an entry for
     /// `elem`; if that is already true, then has no
     /// effect. Otherwise, inserts new values as needed by invoking

@@ -21,7 +21,6 @@
 #![feature(let_chains)]
 #![feature(if_let_guard)]
 #![feature(never_type)]
-#![feature(result_option_inspect)]
 #![feature(type_alias_impl_trait)]
 #![feature(min_specialization)]
 #![recursion_limit = "512"] // For rustdoc

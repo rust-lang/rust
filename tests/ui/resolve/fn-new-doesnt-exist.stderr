@@ -1,0 +1,14 @@
+error[E0599]: no function or associated item named `new` found for struct `TcpStream` in the current scope
+  --> $DIR/fn-new-doesnt-exist.rs:4:28
+   |
+LL |    let stream = TcpStream::new();
+   |                            ^^^ function or associated item not found in `TcpStream`
+   |
+note: if you're trying to build a new `TcpStream` consider using one of the following associated functions:
+      TcpStream::connect
+      TcpStream::connect_timeout
+  --> $SRC_DIR/std/src/net/tcp.rs:LL:COL
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0599`.

@@ -20,16 +20,21 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
 
         // Used by is_x86_feature_detected!();
         "llvm.x86.xgetbv" => {
-            // FIXME use the actual xgetbv instruction
-            intrinsic_args!(fx, args => (v); intrinsic);
+            intrinsic_args!(fx, args => (xcr_no); intrinsic);
 
-            let v = v.load_scalar(fx);
+            let xcr_no = xcr_no.load_scalar(fx);
 
-            // As of writing on XCR0 exists
-            fx.bcx.ins().trapnz(v, TrapCode::UnreachableCodeReached);
+            crate::inline_asm::codegen_xgetbv(fx, xcr_no, ret);
+        }
 
-            let res = fx.bcx.ins().iconst(types::I64, 1 /* bit 0 must be set */);
-            ret.write_cvalue(fx, CValue::by_val(res, fx.layout_of(fx.tcx.types.i64)));
+        "llvm.x86.sse3.ldu.dq" | "llvm.x86.avx.ldu.dq.256" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_lddqu_si128&ig_expand=4009
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_lddqu_si256&ig_expand=4010
+            intrinsic_args!(fx, args => (ptr); intrinsic);
+
+            // FIXME correctly handle unalignedness
+            let val = CValue::by_ref(Pointer::new(ptr.load_scalar(fx)), ret.layout());
+            ret.write_cvalue(fx, val);
         }
 
         "llvm.x86.sse.cmp.ps" | "llvm.x86.sse2.cmp.pd" => {
@@ -177,8 +182,12 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
                 }
             }
         }
-        "llvm.x86.avx2.vperm2i128" => {
+        "llvm.x86.avx2.vperm2i128"
+        | "llvm.x86.avx.vperm2f128.ps.256"
+        | "llvm.x86.avx.vperm2f128.pd.256" => {
             // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_permute2x128_si256
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_permute2f128_ps
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_permute2f128_pd
             let (a, b, imm8) = match args {
                 [a, b, imm8] => (a, b, imm8),
                 _ => bug!("wrong number of args for intrinsic {intrinsic}"),
@@ -187,19 +196,11 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
             let b = codegen_operand(fx, b);
             let imm8 = codegen_operand(fx, imm8).load_scalar(fx);
 
-            let a_0 = a.value_lane(fx, 0).load_scalar(fx);
-            let a_1 = a.value_lane(fx, 1).load_scalar(fx);
-            let a_low = fx.bcx.ins().iconcat(a_0, a_1);
-            let a_2 = a.value_lane(fx, 2).load_scalar(fx);
-            let a_3 = a.value_lane(fx, 3).load_scalar(fx);
-            let a_high = fx.bcx.ins().iconcat(a_2, a_3);
+            let a_low = a.value_typed_lane(fx, fx.tcx.types.u128, 0).load_scalar(fx);
+            let a_high = a.value_typed_lane(fx, fx.tcx.types.u128, 1).load_scalar(fx);
 
-            let b_0 = b.value_lane(fx, 0).load_scalar(fx);
-            let b_1 = b.value_lane(fx, 1).load_scalar(fx);
-            let b_low = fx.bcx.ins().iconcat(b_0, b_1);
-            let b_2 = b.value_lane(fx, 2).load_scalar(fx);
-            let b_3 = b.value_lane(fx, 3).load_scalar(fx);
-            let b_high = fx.bcx.ins().iconcat(b_2, b_3);
+            let b_low = b.value_typed_lane(fx, fx.tcx.types.u128, 0).load_scalar(fx);
+            let b_high = b.value_typed_lane(fx, fx.tcx.types.u128, 1).load_scalar(fx);
 
             fn select4(
                 fx: &mut FunctionCx<'_, '_, '_>,
@@ -224,16 +225,20 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
 
             let control0 = imm8;
             let res_low = select4(fx, a_high, a_low, b_high, b_low, control0);
-            let (res_0, res_1) = fx.bcx.ins().isplit(res_low);
 
             let control1 = fx.bcx.ins().ushr_imm(imm8, 4);
             let res_high = select4(fx, a_high, a_low, b_high, b_low, control1);
-            let (res_2, res_3) = fx.bcx.ins().isplit(res_high);
 
-            ret.place_lane(fx, 0).to_ptr().store(fx, res_0, MemFlags::trusted());
-            ret.place_lane(fx, 1).to_ptr().store(fx, res_1, MemFlags::trusted());
-            ret.place_lane(fx, 2).to_ptr().store(fx, res_2, MemFlags::trusted());
-            ret.place_lane(fx, 3).to_ptr().store(fx, res_3, MemFlags::trusted());
+            ret.place_typed_lane(fx, fx.tcx.types.u128, 0).to_ptr().store(
+                fx,
+                res_low,
+                MemFlags::trusted(),
+            );
+            ret.place_typed_lane(fx, fx.tcx.types.u128, 1).to_ptr().store(
+                fx,
+                res_high,
+                MemFlags::trusted(),
+            );
         }
         "llvm.x86.ssse3.pabs.b.128" | "llvm.x86.ssse3.pabs.w.128" | "llvm.x86.ssse3.pabs.d.128" => {
             let a = match args {
@@ -309,7 +314,9 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
                 fx.bcx.ins().sshr(a_lane, saturated_count)
             });
         }
-        "llvm.x86.sse2.psad.bw" => {
+        "llvm.x86.sse2.psad.bw" | "llvm.x86.avx2.psad.bw" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_sad_epu8&ig_expand=5770
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_sad_epu8&ig_expand=5771
             intrinsic_args!(fx, args => (a, b); intrinsic);
 
             assert_eq!(a.layout(), b.layout());
@@ -340,7 +347,9 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
                 ret.place_lane(fx, out_lane_idx).write_cvalue(fx, res_lane);
             }
         }
-        "llvm.x86.ssse3.pmadd.ub.sw.128" => {
+        "llvm.x86.ssse3.pmadd.ub.sw.128" | "llvm.x86.avx2.pmadd.ub.sw" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maddubs_epi16&ig_expand=4267
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_maddubs_epi16&ig_expand=4270
             intrinsic_args!(fx, args => (a, b); intrinsic);
 
             let (lane_count, lane_ty) = a.layout().ty.simd_size_and_type(fx.tcx);
@@ -379,7 +388,9 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
                 ret.place_lane(fx, out_lane_idx).write_cvalue(fx, res_lane);
             }
         }
-        "llvm.x86.sse2.pmadd.wd" => {
+        "llvm.x86.sse2.pmadd.wd" | "llvm.x86.avx2.pmadd.wd" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_madd_epi16&ig_expand=4231
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_madd_epi16&ig_expand=4234
             intrinsic_args!(fx, args => (a, b); intrinsic);
 
             assert_eq!(a.layout(), b.layout());
@@ -412,6 +423,369 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
                 ret.place_lane(fx, out_lane_idx).write_cvalue(fx, res_lane);
             }
         }
+
+        "llvm.x86.ssse3.pmul.hr.sw.128" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mulhrs_epi16&ig_expand=4782
+            intrinsic_args!(fx, args => (a, b); intrinsic);
+
+            assert_eq!(a.layout(), b.layout());
+            let layout = a.layout();
+
+            let (lane_count, lane_ty) = layout.ty.simd_size_and_type(fx.tcx);
+            let (ret_lane_count, ret_lane_ty) = ret.layout().ty.simd_size_and_type(fx.tcx);
+            assert_eq!(lane_ty, fx.tcx.types.i16);
+            assert_eq!(ret_lane_ty, fx.tcx.types.i16);
+            assert_eq!(lane_count, ret_lane_count);
+
+            let ret_lane_layout = fx.layout_of(fx.tcx.types.i16);
+            for out_lane_idx in 0..lane_count {
+                let a_lane = a.value_lane(fx, out_lane_idx).load_scalar(fx);
+                let a_lane = fx.bcx.ins().sextend(types::I32, a_lane);
+                let b_lane = b.value_lane(fx, out_lane_idx).load_scalar(fx);
+                let b_lane = fx.bcx.ins().sextend(types::I32, b_lane);
+
+                let mul: Value = fx.bcx.ins().imul(a_lane, b_lane);
+                let shifted = fx.bcx.ins().ushr_imm(mul, 14);
+                let incremented = fx.bcx.ins().iadd_imm(shifted, 1);
+                let shifted_again = fx.bcx.ins().ushr_imm(incremented, 1);
+
+                let res_lane = fx.bcx.ins().ireduce(types::I16, shifted_again);
+                let res_lane = CValue::by_val(res_lane, ret_lane_layout);
+
+                ret.place_lane(fx, out_lane_idx).write_cvalue(fx, res_lane);
+            }
+        }
+
+        "llvm.x86.sse2.packuswb.128" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_packus_epi16&ig_expand=4903
+            intrinsic_args!(fx, args => (a, b); intrinsic);
+
+            assert_eq!(a.layout(), b.layout());
+            let layout = a.layout();
+
+            let (lane_count, lane_ty) = layout.ty.simd_size_and_type(fx.tcx);
+            let (ret_lane_count, ret_lane_ty) = ret.layout().ty.simd_size_and_type(fx.tcx);
+            assert_eq!(lane_ty, fx.tcx.types.i16);
+            assert_eq!(ret_lane_ty, fx.tcx.types.u8);
+            assert_eq!(lane_count * 2, ret_lane_count);
+
+            let zero = fx.bcx.ins().iconst(types::I16, 0);
+            let max_u8 = fx.bcx.ins().iconst(types::I16, 255);
+            let ret_lane_layout = fx.layout_of(fx.tcx.types.u8);
+
+            for idx in 0..lane_count {
+                let lane = a.value_lane(fx, idx).load_scalar(fx);
+                let sat = fx.bcx.ins().smax(lane, zero);
+                let sat = fx.bcx.ins().umin(sat, max_u8);
+                let res = fx.bcx.ins().ireduce(types::I8, sat);
+
+                let res_lane = CValue::by_val(res, ret_lane_layout);
+                ret.place_lane(fx, idx).write_cvalue(fx, res_lane);
+            }
+
+            for idx in 0..lane_count {
+                let lane = b.value_lane(fx, idx).load_scalar(fx);
+                let sat = fx.bcx.ins().smax(lane, zero);
+                let sat = fx.bcx.ins().umin(sat, max_u8);
+                let res = fx.bcx.ins().ireduce(types::I8, sat);
+
+                let res_lane = CValue::by_val(res, ret_lane_layout);
+                ret.place_lane(fx, lane_count + idx).write_cvalue(fx, res_lane);
+            }
+        }
+
+        "llvm.x86.avx2.packuswb" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_packus_epi16&ig_expand=4906
+            intrinsic_args!(fx, args => (a, b); intrinsic);
+
+            assert_eq!(a.layout(), b.layout());
+            let layout = a.layout();
+
+            let (lane_count, lane_ty) = layout.ty.simd_size_and_type(fx.tcx);
+            let (ret_lane_count, ret_lane_ty) = ret.layout().ty.simd_size_and_type(fx.tcx);
+            assert_eq!(lane_ty, fx.tcx.types.i16);
+            assert_eq!(ret_lane_ty, fx.tcx.types.u8);
+            assert_eq!(lane_count * 2, ret_lane_count);
+
+            let zero = fx.bcx.ins().iconst(types::I16, 0);
+            let max_u8 = fx.bcx.ins().iconst(types::I16, 255);
+            let ret_lane_layout = fx.layout_of(fx.tcx.types.u8);
+
+            for idx in 0..lane_count / 2 {
+                let lane = a.value_lane(fx, idx).load_scalar(fx);
+                let sat = fx.bcx.ins().smax(lane, zero);
+                let sat = fx.bcx.ins().umin(sat, max_u8);
+                let res = fx.bcx.ins().ireduce(types::I8, sat);
+
+                let res_lane = CValue::by_val(res, ret_lane_layout);
+                ret.place_lane(fx, idx).write_cvalue(fx, res_lane);
+            }
+
+            for idx in 0..lane_count / 2 {
+                let lane = b.value_lane(fx, idx).load_scalar(fx);
+                let sat = fx.bcx.ins().smax(lane, zero);
+                let sat = fx.bcx.ins().umin(sat, max_u8);
+                let res = fx.bcx.ins().ireduce(types::I8, sat);
+
+                let res_lane = CValue::by_val(res, ret_lane_layout);
+                ret.place_lane(fx, lane_count / 2 + idx).write_cvalue(fx, res_lane);
+            }
+
+            for idx in 0..lane_count / 2 {
+                let lane = a.value_lane(fx, idx).load_scalar(fx);
+                let sat = fx.bcx.ins().smax(lane, zero);
+                let sat = fx.bcx.ins().umin(sat, max_u8);
+                let res = fx.bcx.ins().ireduce(types::I8, sat);
+
+                let res_lane = CValue::by_val(res, ret_lane_layout);
+                ret.place_lane(fx, lane_count / 2 * 2 + idx).write_cvalue(fx, res_lane);
+            }
+
+            for idx in 0..lane_count / 2 {
+                let lane = b.value_lane(fx, idx).load_scalar(fx);
+                let sat = fx.bcx.ins().smax(lane, zero);
+                let sat = fx.bcx.ins().umin(sat, max_u8);
+                let res = fx.bcx.ins().ireduce(types::I8, sat);
+
+                let res_lane = CValue::by_val(res, ret_lane_layout);
+                ret.place_lane(fx, lane_count / 2 * 3 + idx).write_cvalue(fx, res_lane);
+            }
+        }
+
+        "llvm.x86.sse2.packssdw.128" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_packs_epi32&ig_expand=4889
+            intrinsic_args!(fx, args => (a, b); intrinsic);
+
+            assert_eq!(a.layout(), b.layout());
+            let layout = a.layout();
+
+            let (lane_count, lane_ty) = layout.ty.simd_size_and_type(fx.tcx);
+            let (ret_lane_count, ret_lane_ty) = ret.layout().ty.simd_size_and_type(fx.tcx);
+            assert_eq!(lane_ty, fx.tcx.types.i32);
+            assert_eq!(ret_lane_ty, fx.tcx.types.i16);
+            assert_eq!(lane_count * 2, ret_lane_count);
+
+            let min_i16 = fx.bcx.ins().iconst(types::I32, i64::from(i16::MIN as u16));
+            let max_i16 = fx.bcx.ins().iconst(types::I32, i64::from(i16::MAX as u16));
+            let ret_lane_layout = fx.layout_of(fx.tcx.types.i16);
+
+            for idx in 0..lane_count {
+                let lane = a.value_lane(fx, idx).load_scalar(fx);
+                let sat = fx.bcx.ins().smax(lane, min_i16);
+                let sat = fx.bcx.ins().umin(sat, max_i16);
+                let res = fx.bcx.ins().ireduce(types::I16, sat);
+
+                let res_lane = CValue::by_val(res, ret_lane_layout);
+                ret.place_lane(fx, idx).write_cvalue(fx, res_lane);
+            }
+
+            for idx in 0..lane_count {
+                let lane = b.value_lane(fx, idx).load_scalar(fx);
+                let sat = fx.bcx.ins().smax(lane, min_i16);
+                let sat = fx.bcx.ins().umin(sat, max_i16);
+                let res = fx.bcx.ins().ireduce(types::I16, sat);
+
+                let res_lane = CValue::by_val(res, ret_lane_layout);
+                ret.place_lane(fx, lane_count + idx).write_cvalue(fx, res_lane);
+            }
+        }
+
+        "llvm.x86.sse41.packusdw" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_packus_epi32&ig_expand=4912
+            intrinsic_args!(fx, args => (a, b); intrinsic);
+
+            assert_eq!(a.layout(), b.layout());
+            let layout = a.layout();
+
+            let (lane_count, lane_ty) = layout.ty.simd_size_and_type(fx.tcx);
+            let (ret_lane_count, ret_lane_ty) = ret.layout().ty.simd_size_and_type(fx.tcx);
+            assert_eq!(lane_ty, fx.tcx.types.i32);
+            assert_eq!(ret_lane_ty, fx.tcx.types.u16);
+            assert_eq!(lane_count * 2, ret_lane_count);
+
+            let min_u16 = fx.bcx.ins().iconst(types::I32, i64::from(u16::MIN));
+            let max_u16 = fx.bcx.ins().iconst(types::I32, i64::from(u16::MAX));
+            let ret_lane_layout = fx.layout_of(fx.tcx.types.u16);
+
+            for idx in 0..lane_count {
+                let lane = a.value_lane(fx, idx).load_scalar(fx);
+                let sat = fx.bcx.ins().umax(lane, min_u16);
+                let sat = fx.bcx.ins().umin(sat, max_u16);
+                let res = fx.bcx.ins().ireduce(types::I16, sat);
+
+                let res_lane = CValue::by_val(res, ret_lane_layout);
+                ret.place_lane(fx, idx).write_cvalue(fx, res_lane);
+            }
+
+            for idx in 0..lane_count {
+                let lane = b.value_lane(fx, idx).load_scalar(fx);
+                let sat = fx.bcx.ins().umax(lane, min_u16);
+                let sat = fx.bcx.ins().umin(sat, max_u16);
+                let res = fx.bcx.ins().ireduce(types::I16, sat);
+
+                let res_lane = CValue::by_val(res, ret_lane_layout);
+                ret.place_lane(fx, lane_count + idx).write_cvalue(fx, res_lane);
+            }
+        }
+
+        "llvm.x86.avx2.packssdw" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_packs_epi32&ig_expand=4892
+            intrinsic_args!(fx, args => (a, b); intrinsic);
+
+            assert_eq!(a.layout(), b.layout());
+            let layout = a.layout();
+
+            let (lane_count, lane_ty) = layout.ty.simd_size_and_type(fx.tcx);
+            let (ret_lane_count, ret_lane_ty) = ret.layout().ty.simd_size_and_type(fx.tcx);
+            assert_eq!(lane_ty, fx.tcx.types.i32);
+            assert_eq!(ret_lane_ty, fx.tcx.types.i16);
+            assert_eq!(lane_count * 2, ret_lane_count);
+
+            let min_i16 = fx.bcx.ins().iconst(types::I32, i64::from(i16::MIN as u16));
+            let max_i16 = fx.bcx.ins().iconst(types::I32, i64::from(i16::MAX as u16));
+            let ret_lane_layout = fx.layout_of(fx.tcx.types.i16);
+
+            for idx in 0..lane_count / 2 {
+                let lane = a.value_lane(fx, idx).load_scalar(fx);
+                let sat = fx.bcx.ins().smax(lane, min_i16);
+                let sat = fx.bcx.ins().umin(sat, max_i16);
+                let res = fx.bcx.ins().ireduce(types::I16, sat);
+
+                let res_lane = CValue::by_val(res, ret_lane_layout);
+                ret.place_lane(fx, idx).write_cvalue(fx, res_lane);
+            }
+
+            for idx in 0..lane_count / 2 {
+                let lane = b.value_lane(fx, idx).load_scalar(fx);
+                let sat = fx.bcx.ins().smax(lane, min_i16);
+                let sat = fx.bcx.ins().umin(sat, max_i16);
+                let res = fx.bcx.ins().ireduce(types::I16, sat);
+
+                let res_lane = CValue::by_val(res, ret_lane_layout);
+                ret.place_lane(fx, lane_count / 2 + idx).write_cvalue(fx, res_lane);
+            }
+
+            for idx in 0..lane_count / 2 {
+                let lane = a.value_lane(fx, idx).load_scalar(fx);
+                let sat = fx.bcx.ins().smax(lane, min_i16);
+                let sat = fx.bcx.ins().umin(sat, max_i16);
+                let res = fx.bcx.ins().ireduce(types::I16, sat);
+
+                let res_lane = CValue::by_val(res, ret_lane_layout);
+                ret.place_lane(fx, lane_count / 2 * 2 + idx).write_cvalue(fx, res_lane);
+            }
+
+            for idx in 0..lane_count / 2 {
+                let lane = b.value_lane(fx, idx).load_scalar(fx);
+                let sat = fx.bcx.ins().smax(lane, min_i16);
+                let sat = fx.bcx.ins().umin(sat, max_i16);
+                let res = fx.bcx.ins().ireduce(types::I16, sat);
+
+                let res_lane = CValue::by_val(res, ret_lane_layout);
+                ret.place_lane(fx, lane_count / 2 * 3 + idx).write_cvalue(fx, res_lane);
+            }
+        }
+
+        "llvm.x86.pclmulqdq" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_clmulepi64_si128&ig_expand=772
+            intrinsic_args!(fx, args => (a, b, imm8); intrinsic);
+
+            assert_eq!(a.layout(), b.layout());
+            let layout = a.layout();
+
+            let (lane_count, lane_ty) = layout.ty.simd_size_and_type(fx.tcx);
+            let (ret_lane_count, ret_lane_ty) = ret.layout().ty.simd_size_and_type(fx.tcx);
+            assert_eq!(lane_ty, fx.tcx.types.i64);
+            assert_eq!(ret_lane_ty, fx.tcx.types.i64);
+            assert_eq!(lane_count, 2);
+            assert_eq!(ret_lane_count, 2);
+
+            let imm8 = imm8.load_scalar(fx);
+
+            let control0 = fx.bcx.ins().band_imm(imm8, 0b0000_0001);
+            let a_lane0 = a.value_lane(fx, 0).load_scalar(fx);
+            let a_lane1 = a.value_lane(fx, 1).load_scalar(fx);
+            let temp1 = fx.bcx.ins().select(control0, a_lane1, a_lane0);
+
+            let control4 = fx.bcx.ins().band_imm(imm8, 0b0001_0000);
+            let b_lane0 = b.value_lane(fx, 0).load_scalar(fx);
+            let b_lane1 = b.value_lane(fx, 1).load_scalar(fx);
+            let temp2 = fx.bcx.ins().select(control4, b_lane1, b_lane0);
+
+            fn extract_bit(fx: &mut FunctionCx<'_, '_, '_>, val: Value, bit: i64) -> Value {
+                let tmp = fx.bcx.ins().ushr_imm(val, bit);
+                fx.bcx.ins().band_imm(tmp, 1)
+            }
+
+            let mut res1 = fx.bcx.ins().iconst(types::I64, 0);
+            for i in 0..=63 {
+                let x = extract_bit(fx, temp1, 0);
+                let y = extract_bit(fx, temp2, i);
+                let mut temp = fx.bcx.ins().band(x, y);
+                for j in 1..=i {
+                    let x = extract_bit(fx, temp1, j);
+                    let y = extract_bit(fx, temp2, i - j);
+                    let z = fx.bcx.ins().band(x, y);
+                    temp = fx.bcx.ins().bxor(temp, z);
+                }
+                let temp = fx.bcx.ins().ishl_imm(temp, i);
+                res1 = fx.bcx.ins().bor(res1, temp);
+            }
+            ret.place_lane(fx, 0).to_ptr().store(fx, res1, MemFlags::trusted());
+
+            let mut res2 = fx.bcx.ins().iconst(types::I64, 0);
+            for i in 64..=127 {
+                let mut temp = fx.bcx.ins().iconst(types::I64, 0);
+                for j in i - 63..=63 {
+                    let x = extract_bit(fx, temp1, j);
+                    let y = extract_bit(fx, temp2, i - j);
+                    let z = fx.bcx.ins().band(x, y);
+                    temp = fx.bcx.ins().bxor(temp, z);
+                }
+                let temp = fx.bcx.ins().ishl_imm(temp, i);
+                res2 = fx.bcx.ins().bor(res2, temp);
+            }
+            ret.place_lane(fx, 1).to_ptr().store(fx, res2, MemFlags::trusted());
+        }
+
+        "llvm.x86.avx.ptestz.256" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_testz_si256&ig_expand=6945
+            intrinsic_args!(fx, args => (a, b); intrinsic);
+
+            assert_eq!(a.layout(), b.layout());
+            let layout = a.layout();
+
+            let (lane_count, lane_ty) = layout.ty.simd_size_and_type(fx.tcx);
+            assert_eq!(lane_ty, fx.tcx.types.i64);
+            assert_eq!(ret.layout().ty, fx.tcx.types.i32);
+            assert_eq!(lane_count, 4);
+
+            let a_lane0 = a.value_lane(fx, 0).load_scalar(fx);
+            let a_lane1 = a.value_lane(fx, 1).load_scalar(fx);
+            let a_lane2 = a.value_lane(fx, 2).load_scalar(fx);
+            let a_lane3 = a.value_lane(fx, 3).load_scalar(fx);
+            let b_lane0 = b.value_lane(fx, 0).load_scalar(fx);
+            let b_lane1 = b.value_lane(fx, 1).load_scalar(fx);
+            let b_lane2 = b.value_lane(fx, 2).load_scalar(fx);
+            let b_lane3 = b.value_lane(fx, 3).load_scalar(fx);
+
+            let zero0 = fx.bcx.ins().band(a_lane0, b_lane0);
+            let zero1 = fx.bcx.ins().band(a_lane1, b_lane1);
+            let zero2 = fx.bcx.ins().band(a_lane2, b_lane2);
+            let zero3 = fx.bcx.ins().band(a_lane3, b_lane3);
+
+            let all_zero0 = fx.bcx.ins().bor(zero0, zero1);
+            let all_zero1 = fx.bcx.ins().bor(zero2, zero3);
+            let all_zero = fx.bcx.ins().bor(all_zero0, all_zero1);
+
+            let res = fx.bcx.ins().icmp_imm(IntCC::Equal, all_zero, 0);
+            let res = CValue::by_val(
+                fx.bcx.ins().uextend(types::I32, res),
+                fx.layout_of(fx.tcx.types.i32),
+            );
+            ret.write_cvalue(fx, res);
+        }
+
         _ => {
             fx.tcx
                 .sess

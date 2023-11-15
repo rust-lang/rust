@@ -66,6 +66,7 @@ diagnostics![
     UnresolvedModule,
     UnresolvedProcMacro,
     UnusedMut,
+    UnusedVariable,
 ];
 
 #[derive(Debug)]
@@ -173,20 +174,19 @@ pub struct MalformedDerive {
 
 #[derive(Debug)]
 pub struct NoSuchField {
-    pub field: InFile<Either<AstPtr<ast::RecordExprField>, AstPtr<ast::RecordPatField>>>,
+    pub field: InFile<AstPtr<Either<ast::RecordExprField, ast::RecordPatField>>>,
     pub private: bool,
 }
 
 #[derive(Debug)]
 pub struct PrivateAssocItem {
-    pub expr_or_pat:
-        InFile<Either<AstPtr<ast::Expr>, Either<AstPtr<ast::Pat>, AstPtr<ast::SelfParam>>>>,
+    pub expr_or_pat: InFile<AstPtr<Either<ast::Expr, Either<ast::Pat, ast::SelfParam>>>>,
     pub item: AssocItem,
 }
 
 #[derive(Debug)]
 pub struct MismatchedTupleStructPatArgCount {
-    pub expr_or_pat: InFile<Either<AstPtr<ast::Expr>, AstPtr<ast::Pat>>>,
+    pub expr_or_pat: InFile<AstPtr<Either<ast::Expr, ast::Pat>>>,
     pub expected: usize,
     pub found: usize,
 }
@@ -227,7 +227,7 @@ pub struct MissingUnsafe {
 #[derive(Debug)]
 pub struct MissingFields {
     pub file: HirFileId,
-    pub field_list_parent: Either<AstPtr<ast::RecordExpr>, AstPtr<ast::RecordPat>>,
+    pub field_list_parent: AstPtr<Either<ast::RecordExpr, ast::RecordPat>>,
     pub field_list_parent_path: Option<AstPtr<ast::Path>>,
     pub missed_fields: Vec<Name>,
 }
@@ -254,7 +254,7 @@ pub struct MissingMatchArms {
 
 #[derive(Debug)]
 pub struct TypeMismatch {
-    pub expr_or_pat: Either<InFile<AstPtr<ast::Expr>>, InFile<AstPtr<ast::Pat>>>,
+    pub expr_or_pat: InFile<AstPtr<Either<ast::Expr, ast::Pat>>>,
     pub expected: Type,
     pub actual: Type,
 }
@@ -267,6 +267,11 @@ pub struct NeedMut {
 
 #[derive(Debug)]
 pub struct UnusedMut {
+    pub local: Local,
+}
+
+#[derive(Debug)]
+pub struct UnusedVariable {
     pub local: Local,
 }
 

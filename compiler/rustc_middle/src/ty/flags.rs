@@ -34,26 +34,6 @@ impl FlagComputation {
         result.flags
     }
 
-    pub fn bound_var_flags(vars: &ty::List<ty::BoundVariableKind>) -> FlagComputation {
-        let mut computation = FlagComputation::new();
-
-        for bv in vars {
-            match bv {
-                ty::BoundVariableKind::Ty(_) => {
-                    computation.flags |= TypeFlags::HAS_TY_LATE_BOUND;
-                }
-                ty::BoundVariableKind::Region(_) => {
-                    computation.flags |= TypeFlags::HAS_RE_LATE_BOUND;
-                }
-                ty::BoundVariableKind::Const => {
-                    computation.flags |= TypeFlags::HAS_CT_LATE_BOUND;
-                }
-            }
-        }
-
-        computation
-    }
-
     fn add_flags(&mut self, flags: TypeFlags) {
         self.flags = self.flags | flags;
     }
@@ -77,7 +57,11 @@ impl FlagComputation {
     where
         F: FnOnce(&mut Self, T),
     {
-        let mut computation = FlagComputation::bound_var_flags(value.bound_vars());
+        let mut computation = FlagComputation::new();
+
+        if !value.bound_vars().is_empty() {
+            computation.add_flags(TypeFlags::HAS_BINDER_VARS);
+        }
 
         f(&mut computation, value.skip_binder());
 
@@ -153,7 +137,7 @@ impl FlagComputation {
 
             &ty::Bound(debruijn, _) => {
                 self.add_bound_var(debruijn);
-                self.add_flags(TypeFlags::HAS_TY_LATE_BOUND);
+                self.add_flags(TypeFlags::HAS_TY_BOUND);
             }
 
             &ty::Placeholder(..) => {
@@ -310,7 +294,7 @@ impl FlagComputation {
 
     fn add_region(&mut self, r: ty::Region<'_>) {
         self.add_flags(r.type_flags());
-        if let ty::ReLateBound(debruijn, _) = *r {
+        if let ty::ReBound(debruijn, _) = *r {
             self.add_bound_var(debruijn);
         }
     }
@@ -333,7 +317,7 @@ impl FlagComputation {
             }
             ty::ConstKind::Bound(debruijn, _) => {
                 self.add_bound_var(debruijn);
-                self.add_flags(TypeFlags::HAS_CT_LATE_BOUND);
+                self.add_flags(TypeFlags::HAS_CT_BOUND);
             }
             ty::ConstKind::Param(_) => {
                 self.add_flags(TypeFlags::HAS_CT_PARAM);

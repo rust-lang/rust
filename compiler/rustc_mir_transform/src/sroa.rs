@@ -7,7 +7,7 @@ use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_mir_dataflow::value_analysis::{excluded_locals, iter_fields};
-use rustc_target::abi::{FieldIdx, ReprFlags, FIRST_VARIANT};
+use rustc_target::abi::{FieldIdx, FIRST_VARIANT};
 
 pub struct ScalarReplacementOfAggregates;
 
@@ -66,7 +66,7 @@ fn escaping_locals<'tcx>(
             return true;
         }
         if let ty::Adt(def, _args) = ty.kind() {
-            if def.repr().flags.contains(ReprFlags::IS_SIMD) {
+            if def.repr().simd() {
                 // Exclude #[repr(simd)] types so that they are not de-optimized into an array
                 return true;
             }

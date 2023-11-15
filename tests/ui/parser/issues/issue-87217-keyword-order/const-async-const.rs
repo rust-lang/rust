@@ -7,3 +7,8 @@ const async const fn test() {}
 //~| NOTE expected one of `extern`, `fn`, or `unsafe`
 //~| HELP `const` already used earlier, remove this one
 //~| NOTE `const` first seen here
+//~| ERROR functions cannot be both `const` and `async`
+//~| NOTE `const` because of this
+//~| NOTE `async` because of this
+
+fn main() {}

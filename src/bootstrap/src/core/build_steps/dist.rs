@@ -1298,10 +1298,18 @@ impl Step for CodegenBackend {
     }
 
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
+        if builder.config.dry_run() {
+            return None;
+        }
+
         // This prevents rustc_codegen_cranelift from being built for "dist"
         // or "install" on the stable/beta channels. It is not yet stable and
         // should not be included.
         if !builder.build.unstable_features() {
+            return None;
+        }
+
+        if !builder.config.rust_codegen_backends.contains(&self.backend) {
             return None;
         }
 
@@ -1343,12 +1351,15 @@ impl Step for CodegenBackend {
         let backends_dst = PathBuf::from("lib").join(&backends_rel);
 
         let backend_name = format!("rustc_codegen_{}", backend);
+        let mut found_backend = false;
         for backend in fs::read_dir(&backends_src).unwrap() {
             let file_name = backend.unwrap().file_name();
             if file_name.to_str().unwrap().contains(&backend_name) {
                 tarball.add_file(backends_src.join(file_name), &backends_dst, 0o644);
+                found_backend = true;
             }
         }
+        assert!(found_backend);
 
         Some(tarball.generate())
     }
@@ -1619,13 +1630,10 @@ impl Step for Extended {
             prepare("rust-analysis");
             prepare("clippy");
             prepare("rust-analyzer");
-            for tool in &["rust-docs", "rust-demangler", "miri"] {
+            for tool in &["rust-docs", "rust-demangler", "miri", "rustc-codegen-cranelift"] {
                 if built_tools.contains(tool) {
                     prepare(tool);
                 }
-            }
-            if builder.config.rust_codegen_backends.contains(&INTERNER.intern_str("cranelift")) {
-                prepare("rustc-codegen-cranelift");
             }
             // create an 'uninstall' package
             builder.install(&etc.join("pkg/postinstall"), &pkg.join("uninstall"), 0o755);
@@ -2208,23 +2216,19 @@ impl Step for RustDev {
         builder.ensure(crate::core::build_steps::llvm::Lld { target });
 
         let src_bindir = builder.llvm_out(target).join("bin");
-        // If updating this list, you likely want to change
+        // If updating this, you likely want to change
         // src/bootstrap/download-ci-llvm-stamp as well, otherwise local users
         // will not pick up the extra file until LLVM gets bumped.
-        for bin in &[
-            "llvm-config",
-            "llvm-ar",
-            "llvm-objdump",
-            "llvm-profdata",
-            "llvm-bcanalyzer",
-            "llvm-cov",
-            "llvm-dwp",
-            "llvm-nm",
-            "llvm-dwarfdump",
-            "llvm-dis",
-            "llvm-tblgen",
-        ] {
-            tarball.add_file(src_bindir.join(exe(bin, target)), "bin", 0o755);
+        // We should include all the build artifacts obtained from a source build,
+        // so that you can use the downloadable LLVM as if you’ve just run a full source build.
+        if src_bindir.exists() {
+            for entry in walkdir::WalkDir::new(&src_bindir) {
+                let entry = t!(entry);
+                if entry.file_type().is_file() && !entry.path_is_symlink() {
+                    let name = entry.file_name().to_str().unwrap();
+                    tarball.add_file(src_bindir.join(name), "bin", 0o755);
+                }
+            }
         }
 
         // We don't build LLD on some platforms, so only add it if it exists

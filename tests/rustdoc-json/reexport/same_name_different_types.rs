@@ -1,8 +1,5 @@
 // Regression test for <https://github.com/rust-lang/rust/issues/107677>.
 
-#![feature(no_core)]
-#![no_core]
-
 pub mod nested {
     // @set foo_struct = "$.index[*][?(@.docs == 'Foo the struct')].id"
 

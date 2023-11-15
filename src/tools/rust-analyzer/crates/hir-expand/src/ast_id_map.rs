@@ -99,7 +99,7 @@ register_ast_id_node! {
         TraitAlias,
         TypeAlias,
         Use,
-    AssocItem, BlockExpr, Variant, RecordField, TupleField, ConstArg
+    AssocItem, BlockExpr, Variant, RecordField, TupleField, ConstArg, Param, SelfParam
 }
 
 /// Maps items' `SyntaxNode`s to `ErasedFileAstId`s and back.

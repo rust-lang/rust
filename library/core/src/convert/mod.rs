@@ -138,7 +138,7 @@ pub const fn identity<T>(x: T) -> T {
 ///
 /// [dereferenceable types]: core::ops::Deref
 /// [pointed-to value]: core::ops::Deref::Target
-/// ['`Deref` coercion']: core::ops::Deref#more-on-deref-coercion
+/// ['`Deref` coercion']: core::ops::Deref#deref-coercion
 ///
 /// ```
 /// let x = Box::new(5i32);
@@ -244,7 +244,7 @@ pub trait AsRef<T: ?Sized> {
 ///
 /// [mutably dereferenceable types]: core::ops::DerefMut
 /// [pointed-to value]: core::ops::Deref::Target
-/// ['`Deref` coercion']: core::ops::DerefMut#more-on-deref-coercion
+/// ['`Deref` coercion']: core::ops::DerefMut#mutable-deref-coercion
 ///
 /// ```
 /// let mut x = Box::new(5i32);

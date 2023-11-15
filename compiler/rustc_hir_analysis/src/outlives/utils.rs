@@ -167,8 +167,8 @@ fn is_free_region(region: Region<'_>) -> bool {
         //     }
         //
         // The type above might generate a `T: 'b` bound, but we can
-        // ignore it. We can't put it on the struct header anyway.
-        ty::ReLateBound(..) => false,
+        // ignore it. We can't name this lifetime pn the struct header anyway.
+        ty::ReBound(..) => false,
 
         ty::ReError(_) => false,
 

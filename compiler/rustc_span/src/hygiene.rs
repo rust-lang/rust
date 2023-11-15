@@ -569,10 +569,6 @@ impl HygieneData {
     }
 }
 
-pub fn clear_syntax_context_map() {
-    HygieneData::with(|data| data.syntax_context_map = FxHashMap::default());
-}
-
 pub fn walk_chain(span: Span, to: SyntaxContext) -> Span {
     HygieneData::with(|data| data.walk_chain(span, to))
 }

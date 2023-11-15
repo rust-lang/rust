@@ -274,7 +274,7 @@ pub fn suggest_constraining_type_params<'a>(
                 span,
                 if span_to_replace.is_some() {
                     constraint.clone()
-                } else if constraint.starts_with("<") {
+                } else if constraint.starts_with('<') {
                     constraint.to_string()
                 } else if bound_list_non_empty {
                     format!(" + {constraint}")

@@ -2477,7 +2477,7 @@ pub fn parse_externs(
             let mut error = handler.early_struct_error(format!(
                 "crate name `{name}` passed to `--extern` is not a valid ASCII identifier"
             ));
-            let adjusted_name = name.replace("-", "_");
+            let adjusted_name = name.replace('-', "_");
             if crate::utils::is_ascii_ident(&adjusted_name) {
                 error.help(format!(
                     "consider replacing the dashes with underscores: `{adjusted_name}`"
@@ -3161,10 +3161,10 @@ impl PpMode {
 pub(crate) mod dep_tracking {
     use super::{
         BranchProtection, CFGuard, CFProtection, CrateType, DebugInfo, DebugInfoCompression,
-        ErrorOutputType, InstrumentCoverage, InstrumentXRay, LinkerPluginLto, LocationDetail,
-        LtoCli, OomStrategy, OptLevel, OutFileName, OutputType, OutputTypes, Polonius,
-        RemapPathScopeComponents, ResolveDocLinks, SourceFileHashAlgorithm, SplitDwarfKind,
-        SwitchWithOptPath, SymbolManglingVersion, TraitSolver, TrimmedDefPaths,
+        ErrorOutputType, InliningThreshold, InstrumentCoverage, InstrumentXRay, LinkerPluginLto,
+        LocationDetail, LtoCli, OomStrategy, OptLevel, OutFileName, OutputType, OutputTypes,
+        Polonius, RemapPathScopeComponents, ResolveDocLinks, SourceFileHashAlgorithm,
+        SplitDwarfKind, SwitchWithOptPath, SymbolManglingVersion, TraitSolver, TrimmedDefPaths,
     };
     use crate::lint;
     use crate::options::WasiExecModel;
@@ -3178,9 +3178,8 @@ pub(crate) mod dep_tracking {
     use rustc_target::spec::{
         RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, TargetTriple, TlsModel,
     };
-    use std::collections::hash_map::DefaultHasher;
     use std::collections::BTreeMap;
-    use std::hash::Hash;
+    use std::hash::{DefaultHasher, Hash};
     use std::num::NonZeroUsize;
     use std::path::PathBuf;
 
@@ -3270,6 +3269,7 @@ pub(crate) mod dep_tracking {
         LanguageIdentifier,
         TraitSolver,
         Polonius,
+        InliningThreshold,
     );
 
     impl<T1, T2> DepTrackingHash for (T1, T2)
@@ -3433,5 +3433,18 @@ impl Polonius {
     /// Returns whether the "next" version of polonius is enabled
     pub fn is_next_enabled(&self) -> bool {
         matches!(self, Polonius::Next)
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Hash, Debug)]
+pub enum InliningThreshold {
+    Always,
+    Sometimes(usize),
+    Never,
+}
+
+impl Default for InliningThreshold {
+    fn default() -> Self {
+        Self::Sometimes(100)
     }
 }

@@ -79,6 +79,7 @@ toolchain = { path = "./crates/toolchain", version = "0.0.0" }
 tt = { path = "./crates/tt", version = "0.0.0" }
 vfs-notify = { path = "./crates/vfs-notify", version = "0.0.0" }
 vfs = { path = "./crates/vfs", version = "0.0.0" }
+rustc-dependencies = { path = "./crates/rustc-dependencies", version = "0.0.0" }
 
 # local crates that aren't published to crates.io. These should not have versions.
 proc-macro-test = { path = "./crates/proc-macro-test" }
@@ -101,11 +102,6 @@ serde = { version = "1.0.156", features = ["derive"] }
 serde_json = "1.0.96"
 triomphe = { version = "0.1.8", default-features = false, features = ["std"] }
 # can't upgrade due to dashmap depending on 0.12.3 currently
-hashbrown = { version = "0.12.3", features = ["inline-more"], default-features = false }
-
-rustc_lexer = { version = "0.10.0", package = "ra-ap-rustc_lexer" }
-rustc_parse_format = { version = "0.10.0", package = "ra-ap-rustc_parse_format", default-features = false }
-
-# Upstream broke this for us so we can't update it
-rustc_abi = { version = "0.0.20221221", package = "hkalbasi-rustc-ap-rustc_abi", default-features = false }
-rustc_index = { version = "0.0.20221221", package = "hkalbasi-rustc-ap-rustc_index", default-features = false }
+hashbrown = { version = "0.12.3", features = [
+  "inline-more",
+], default-features = false }

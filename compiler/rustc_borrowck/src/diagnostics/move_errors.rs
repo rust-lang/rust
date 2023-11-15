@@ -2,7 +2,7 @@ use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty};
 use rustc_mir_dataflow::move_paths::{LookupResult, MovePathIndex};
-use rustc_span::{BytePos, Span};
+use rustc_span::{BytePos, ExpnKind, MacroKind, Span};
 
 use crate::diagnostics::CapturedMessageOpt;
 use crate::diagnostics::{DescribePlaceOpt, UseSpans};
@@ -488,6 +488,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         args_span,
                     }
                 });
+
+                self.add_note_for_packed_struct_derive(err, original_path.local);
             }
         }
     }
@@ -592,6 +594,22 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 "move occurs because these variables have types that don't implement the `Copy` \
                  trait",
             );
+        }
+    }
+
+    /// Adds an explanatory note if the move error occurs in a derive macro
+    /// expansion of a packed struct.
+    /// Such errors happen because derive macro expansions shy away from taking
+    /// references to the struct's fields since doing so would be undefined behaviour
+    fn add_note_for_packed_struct_derive(&self, err: &mut Diagnostic, local: Local) {
+        let local_place: PlaceRef<'tcx> = local.into();
+        let local_ty = local_place.ty(self.body.local_decls(), self.infcx.tcx).ty.peel_refs();
+
+        if let Some(adt) = local_ty.ty_adt_def()
+            && adt.repr().packed()
+            && let ExpnKind::Macro(MacroKind::Derive, name) = self.body.span.ctxt().outer_expn_data().kind
+        {
+            err.note(format!("`#[derive({name})]` triggers a move because taking references to the fields of a packed struct is undefined behaviour"));
         }
     }
 }

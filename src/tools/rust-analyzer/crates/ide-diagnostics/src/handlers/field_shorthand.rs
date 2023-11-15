@@ -166,7 +166,7 @@ fn main() {
         check_diagnostics(
             r#"
 struct A { a: &'static str }
-fn f(a: A) { let A { a: hello } = a; }
+fn f(a: A) { let A { a: _hello } = a; }
 "#,
         );
         check_diagnostics(
@@ -181,12 +181,14 @@ fn f(a: A) { let A { 0: 0 } = a; }
 struct A { a: &'static str }
 fn f(a: A) {
     let A { a$0: a } = a;
+    _ = a;
 }
 "#,
             r#"
 struct A { a: &'static str }
 fn f(a: A) {
     let A { a } = a;
+    _ = a;
 }
 "#,
         );
@@ -196,12 +198,14 @@ fn f(a: A) {
 struct A { a: &'static str, b: &'static str }
 fn f(a: A) {
     let A { a$0: a, b } = a;
+    _ = (a, b);
 }
 "#,
             r#"
 struct A { a: &'static str, b: &'static str }
 fn f(a: A) {
     let A { a, b } = a;
+    _ = (a, b);
 }
 "#,
         );

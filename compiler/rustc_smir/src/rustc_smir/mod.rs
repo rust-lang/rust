@@ -455,7 +455,7 @@ impl<'tcx> Stable<'tcx> for mir::BorrowKind {
         use mir::BorrowKind::*;
         match *self {
             Shared => stable_mir::mir::BorrowKind::Shared,
-            Shallow => stable_mir::mir::BorrowKind::Shallow,
+            Fake => stable_mir::mir::BorrowKind::Fake,
             Mut { kind } => stable_mir::mir::BorrowKind::Mut { kind: kind.stable(tables) },
         }
     }
@@ -1292,7 +1292,11 @@ impl<'tcx> Stable<'tcx> for ty::TyKind<'tcx> {
             ty::Bound(debruijn_idx, bound_ty) => {
                 TyKind::Bound(debruijn_idx.as_usize(), bound_ty.stable(tables))
             }
-            ty::Placeholder(..) | ty::CoroutineWitness(..) | ty::Infer(_) | ty::Error(_) => {
+            ty::CoroutineWitness(def_id, args) => TyKind::RigidTy(RigidTy::CoroutineWitness(
+                tables.coroutine_witness_def(*def_id),
+                args.stable(tables),
+            )),
+            ty::Placeholder(..) | ty::Infer(_) | ty::Error(_) => {
                 unreachable!();
             }
         }
@@ -1696,7 +1700,7 @@ impl<'tcx> Stable<'tcx> for ty::RegionKind<'tcx> {
                 index: early_reg.index,
                 name: early_reg.name.to_string(),
             }),
-            ty::ReLateBound(db_index, bound_reg) => RegionKind::ReLateBound(
+            ty::ReBound(db_index, bound_reg) => RegionKind::ReBound(
                 db_index.as_u32(),
                 BoundRegion { var: bound_reg.var.as_u32(), kind: bound_reg.kind.stable(tables) },
             ),

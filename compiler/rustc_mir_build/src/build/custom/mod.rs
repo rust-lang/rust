@@ -162,6 +162,19 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
             expected: expected.to_string(),
         }
     }
+
+    fn stmt_error(&self, stmt: StmtId, expected: &'static str) -> ParseError {
+        let stmt = &self.thir[stmt];
+        let span = match stmt.kind {
+            StmtKind::Expr { expr, .. } => self.thir[expr].span,
+            StmtKind::Let { span, .. } => span,
+        };
+        ParseError {
+            span,
+            item_description: format!("{:?}", stmt.kind),
+            expected: expected.to_string(),
+        }
+    }
 }
 
 type PResult<T> = Result<T, ParseError>;

@@ -1,6 +1,4 @@
 // edition:2018
-#![no_core]
-#![feature(no_core)]
 
 // @!has "$.index[*][?(@.name=='inner')]"
 mod inner {

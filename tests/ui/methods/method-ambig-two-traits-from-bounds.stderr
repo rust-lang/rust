@@ -16,12 +16,12 @@ LL | trait B { fn foo(&self); }
    |           ^^^^^^^^^^^^^^
 help: disambiguate the method for candidate #1
    |
-LL |     A::foo(t);
-   |     ~~~~~~~~~
+LL |     A::foo(&t);
+   |     ~~~~~~~~~~
 help: disambiguate the method for candidate #2
    |
-LL |     B::foo(t);
-   |     ~~~~~~~~~
+LL |     B::foo(&t);
+   |     ~~~~~~~~~~
 
 error: aborting due to previous error
 

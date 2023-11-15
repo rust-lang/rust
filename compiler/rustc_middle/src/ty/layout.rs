@@ -215,7 +215,7 @@ pub enum LayoutError<'tcx> {
     SizeOverflow(Ty<'tcx>),
     NormalizationFailure(Ty<'tcx>, NormalizationError<'tcx>),
     ReferencesError(ErrorGuaranteed),
-    Cycle,
+    Cycle(ErrorGuaranteed),
 }
 
 impl<'tcx> LayoutError<'tcx> {
@@ -226,7 +226,7 @@ impl<'tcx> LayoutError<'tcx> {
             Unknown(_) => middle_unknown_layout,
             SizeOverflow(_) => middle_values_too_big,
             NormalizationFailure(_, _) => middle_cannot_be_normalized,
-            Cycle => middle_cycle,
+            Cycle(_) => middle_cycle,
             ReferencesError(_) => middle_layout_references_error,
         }
     }
@@ -240,7 +240,7 @@ impl<'tcx> LayoutError<'tcx> {
             NormalizationFailure(ty, e) => {
                 E::NormalizationFailure { ty, failure_ty: e.get_type_for_failure() }
             }
-            Cycle => E::Cycle,
+            Cycle(_) => E::Cycle,
             ReferencesError(_) => E::ReferencesError,
         }
     }
@@ -261,7 +261,7 @@ impl<'tcx> fmt::Display for LayoutError<'tcx> {
                 t,
                 e.get_type_for_failure()
             ),
-            LayoutError::Cycle => write!(f, "a cycle occurred during layout computation"),
+            LayoutError::Cycle(_) => write!(f, "a cycle occurred during layout computation"),
             LayoutError::ReferencesError(_) => write!(f, "the type has an unknown layout"),
         }
     }
@@ -333,7 +333,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
             Err(err @ LayoutError::Unknown(_)) => err,
             // We can't extract SizeSkeleton info from other layout errors
             Err(
-                e @ LayoutError::Cycle
+                e @ LayoutError::Cycle(_)
                 | e @ LayoutError::SizeOverflow(_)
                 | e @ LayoutError::NormalizationFailure(..)
                 | e @ LayoutError::ReferencesError(_),

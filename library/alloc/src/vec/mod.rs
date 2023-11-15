@@ -2706,7 +2706,7 @@ impl<T: Clone, A: Allocator + Clone> Clone for Vec<T, A> {
 /// ```
 /// use std::hash::BuildHasher;
 ///
-/// let b = std::collections::hash_map::RandomState::new();
+/// let b = std::hash::RandomState::new();
 /// let v: Vec<u8> = vec![0xa8, 0x3c, 0x09];
 /// let s: &[u8] = &[0xa8, 0x3c, 0x09];
 /// assert_eq!(b.hash_one(v), b.hash_one(s));

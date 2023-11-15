@@ -286,11 +286,9 @@ pub(crate) fn clean_middle_region<'tcx>(region: ty::Region<'tcx>) -> Option<Life
     match *region {
         ty::ReStatic => Some(Lifetime::statik()),
         _ if !region.has_name() => None,
-        ty::ReLateBound(_, ty::BoundRegion { kind: ty::BrNamed(_, name), .. }) => {
-            Some(Lifetime(name))
-        }
+        ty::ReBound(_, ty::BoundRegion { kind: ty::BrNamed(_, name), .. }) => Some(Lifetime(name)),
         ty::ReEarlyBound(ref data) => Some(Lifetime(data.name)),
-        ty::ReLateBound(..)
+        ty::ReBound(..)
         | ty::ReFree(..)
         | ty::ReVar(..)
         | ty::ReError(_)
@@ -1931,13 +1929,11 @@ fn clean_trait_object_lifetime_bound<'tcx>(
     match *region {
         ty::ReStatic => Some(Lifetime::statik()),
         ty::ReEarlyBound(region) if region.name != kw::Empty => Some(Lifetime(region.name)),
-        ty::ReLateBound(_, ty::BoundRegion { kind: ty::BrNamed(_, name), .. })
-            if name != kw::Empty =>
-        {
+        ty::ReBound(_, ty::BoundRegion { kind: ty::BrNamed(_, name), .. }) if name != kw::Empty => {
             Some(Lifetime(name))
         }
         ty::ReEarlyBound(_)
-        | ty::ReLateBound(..)
+        | ty::ReBound(..)
         | ty::ReFree(_)
         | ty::ReVar(_)
         | ty::RePlaceholder(_)
@@ -2534,7 +2530,8 @@ fn clean_generic_args<'tcx>(
                     }
                     hir::GenericArg::Lifetime(_) => GenericArg::Lifetime(Lifetime::elided()),
                     hir::GenericArg::Type(ty) => GenericArg::Type(clean_ty(ty, cx)),
-                    // FIXME(effects): This will still emit `<true>` for non-const impls of const traits
+                    // Checking for `#[rustc_host]` on the `AnonConst`  not only accounts for the case
+                    // where the argument is `host` but for all possible cases (e.g., `true`, `false`).
                     hir::GenericArg::Const(ct)
                         if cx.tcx.has_attr(ct.value.def_id, sym::rustc_host) =>
                     {

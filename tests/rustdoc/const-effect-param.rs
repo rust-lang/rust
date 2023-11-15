@@ -1,3 +1,5 @@
+// Check that we don't render host effect parameters & arguments.
+
 #![crate_name = "foo"]
 #![feature(effects, const_trait_impl)]
 

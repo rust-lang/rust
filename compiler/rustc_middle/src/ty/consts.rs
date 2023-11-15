@@ -84,7 +84,7 @@ impl<'tcx> Const<'tcx> {
     #[inline]
     pub fn new_placeholder(
         tcx: TyCtxt<'tcx>,
-        placeholder: ty::PlaceholderConst<'tcx>,
+        placeholder: ty::PlaceholderConst,
         ty: Ty<'tcx>,
     ) -> Const<'tcx> {
         Const::new(tcx, ty::ConstKind::Placeholder(placeholder), ty)

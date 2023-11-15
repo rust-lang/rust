@@ -76,8 +76,8 @@ codegen_llvm_target_machine = could not create LLVM TargetMachine for triple: {$
 codegen_llvm_target_machine_with_llvm_err = could not create LLVM TargetMachine for triple: {$triple}: {$llvm_err}
 
 codegen_llvm_unknown_ctarget_feature =
-    unknown feature specified for `-Ctarget-feature`: `{$feature}`
-    .note = it is still passed through to the codegen backend
+    unknown and unstable feature specified for `-Ctarget-feature`: `{$feature}`
+    .note = it is still passed through to the codegen backend, but use of this feature might be unsound and the behavior of this feature can change in the future
     .possible_feature = you might have meant: `{$rust_feature}`
     .consider_filing_feature_request = consider filing a feature request
 
@@ -86,6 +86,10 @@ codegen_llvm_unknown_ctarget_feature_prefix =
     .note = features must begin with a `+` to enable or `-` to disable it
 
 codegen_llvm_unknown_debuginfo_compression = unknown debuginfo compression algorithm {$algorithm} - will fall back to uncompressed debuginfo
+
+codegen_llvm_unstable_ctarget_feature =
+    unstable feature specified for `-Ctarget-feature`: `{$feature}`
+    .note = this feature is not stably supported; its behavior can change in the future
 
 codegen_llvm_write_bytecode = failed to write bytecode to {$path}: {$err}
 

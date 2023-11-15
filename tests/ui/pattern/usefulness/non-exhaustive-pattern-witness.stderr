@@ -23,12 +23,12 @@ LL |     match Color::Red {
    |           ^^^^^^^^^^ pattern `Color::Red` not covered
    |
 note: `Color` defined here
-  --> $DIR/non-exhaustive-pattern-witness.rs:17:5
+  --> $DIR/non-exhaustive-pattern-witness.rs:16:6
    |
 LL | enum Color {
-   |      -----
+   |      ^^^^^
 LL |     Red,
-   |     ^^^ not covered
+   |     --- not covered
    = note: the matched value is of type `Color`
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
@@ -43,17 +43,17 @@ LL |     match Direction::North {
    |           ^^^^^^^^^^^^^^^^ patterns `Direction::East`, `Direction::South` and `Direction::West` not covered
    |
 note: `Direction` defined here
-  --> $DIR/non-exhaustive-pattern-witness.rs:32:5
+  --> $DIR/non-exhaustive-pattern-witness.rs:30:6
    |
 LL | enum Direction {
-   |      ---------
+   |      ^^^^^^^^^
 LL |     North,
 LL |     East,
-   |     ^^^^ not covered
+   |     ---- not covered
 LL |     South,
-   |     ^^^^^ not covered
+   |     ----- not covered
 LL |     West,
-   |     ^^^^ not covered
+   |     ---- not covered
    = note: the matched value is of type `Direction`
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
    |
@@ -72,6 +72,17 @@ note: `ExcessiveEnum` defined here
    |
 LL | enum ExcessiveEnum {
    |      ^^^^^^^^^^^^^
+LL |     First,
+LL |     Second,
+   |     ------ not covered
+LL |     Third,
+   |     ----- not covered
+LL |     Fourth,
+   |     ------ not covered
+LL |     Fifth,
+   |     ----- not covered
+LL |     Sixth,
+   |     ----- not covered
    = note: the matched value is of type `ExcessiveEnum`
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern as shown, or multiple match arms
    |
@@ -86,13 +97,13 @@ LL |     match Color::Red {
    |           ^^^^^^^^^^ pattern `Color::CustomRGBA { a: true, .. }` not covered
    |
 note: `Color` defined here
-  --> $DIR/non-exhaustive-pattern-witness.rs:19:5
+  --> $DIR/non-exhaustive-pattern-witness.rs:16:6
    |
 LL | enum Color {
-   |      -----
+   |      ^^^^^
 ...
 LL |     CustomRGBA { a: bool, r: u8, g: u8, b: u8 },
-   |     ^^^^^^^^^^ not covered
+   |     ---------- not covered
    = note: the matched value is of type `Color`
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |

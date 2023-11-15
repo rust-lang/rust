@@ -357,7 +357,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                 ty::BoundRegionKind::BrAnon => None,
             },
 
-            ty::ReLateBound(..)
+            ty::ReBound(..)
             | ty::ReVar(..)
             | ty::RePlaceholder(..)
             | ty::ReErased

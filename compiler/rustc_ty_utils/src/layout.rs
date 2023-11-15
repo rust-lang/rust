@@ -740,11 +740,11 @@ fn coroutine_layout<'tcx>(
     };
     let tag_layout = cx.tcx.mk_layout(LayoutS::scalar(cx, tag));
 
-    let promoted_layouts = ineligible_locals
-        .iter()
-        .map(|local| subst_field(info.field_tys[local].ty))
-        .map(|ty| Ty::new_maybe_uninit(tcx, ty))
-        .map(|ty| Ok(cx.layout_of(ty)?.layout));
+    let promoted_layouts = ineligible_locals.iter().map(|local| {
+        let field_ty = subst_field(info.field_tys[local].ty);
+        let uninit_ty = Ty::new_maybe_uninit(tcx, field_ty);
+        Ok(cx.spanned_layout_of(uninit_ty, info.field_tys[local].source_info.span)?.layout)
+    });
     let prefix_layouts = args
         .as_coroutine()
         .prefix_tys()

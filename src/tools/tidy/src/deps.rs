@@ -107,7 +107,6 @@ const EXCEPTIONS_CARGO: ExceptionList = &[
     // tidy-alphabetical-start
     ("bitmaps", "MPL-2.0+"),
     ("bytesize", "Apache-2.0"),
-    ("byteyarn", "Apache-2.0"),
     ("ciborium", "Apache-2.0"),
     ("ciborium-io", "Apache-2.0"),
     ("ciborium-ll", "Apache-2.0"),
@@ -122,13 +121,13 @@ const EXCEPTIONS_CARGO: ExceptionList = &[
     ("similar", "Apache-2.0"),
     ("sized-chunks", "MPL-2.0+"),
     ("subtle", "BSD-3-Clause"),
+    ("supports-hyperlinks", "Apache-2.0"),
     ("unicode-bom", "Apache-2.0"),
     // tidy-alphabetical-end
 ];
 
 const EXCEPTIONS_RUST_ANALYZER: ExceptionList = &[
     // tidy-alphabetical-start
-    ("anymap", "BlueOak-1.0.0 OR MIT OR Apache-2.0"), // BlueOak is not acceptable, but we use it under MIT OR Apache-2 .0
     ("dissimilar", "Apache-2.0"),
     ("instant", "BSD-3-Clause"),
     ("notify", "CC0-1.0"),
@@ -229,7 +228,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "ena",
     "equivalent",
     "errno",
-    "errno-dragonfly",
     "expect-test",
     "fallible-iterator", // dependency of `thorin`
     "fastrand",
@@ -248,7 +246,10 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "hashbrown",
     "hermit-abi",
     "icu_list",
+    "icu_list_data",
     "icu_locid",
+    "icu_locid_transform",
+    "icu_locid_transform_data",
     "icu_provider",
     "icu_provider_adapters",
     "icu_provider_macros",
@@ -288,6 +289,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "perf-event-open-sys",
     "pin-project-lite",
     "polonius-engine",
+    "portable-atomic", // dependency for platforms doesn't support `AtomicU64` in std
     "ppv-lite86",
     "proc-macro-hack",
     "proc-macro2",
@@ -389,6 +391,32 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "windows_x86_64_msvc",
     "writeable",
     "yansi-term", // this is a false-positive: it's only used by rustfmt, but because it's enabled through a feature, tidy thinks it's used by rustc as well.
+    "yoke",
+    "yoke-derive",
+    "zerofrom",
+    "zerofrom-derive",
+    "zerovec",
+    "zerovec-derive",
+    // tidy-alphabetical-end
+];
+
+// These crates come from ICU4X and are licensed under the unicode license.
+// It currently doesn't have an SPDX identifier, so they cannot put one there.
+// See https://github.com/unicode-org/icu4x/pull/3875
+// FIXME: This should be removed once ICU4X crates update.
+const ICU4X_UNICODE_LICENSE_DEPENDENCIES: &[&str] = &[
+    // tidy-alphabetical-start
+    "icu_list",
+    "icu_list_data",
+    "icu_locid",
+    "icu_locid_transform",
+    "icu_locid_transform_data",
+    "icu_provider",
+    "icu_provider_adapters",
+    "icu_provider_macros",
+    "litemap",
+    "tinystr",
+    "writeable",
     "yoke",
     "yoke-derive",
     "zerofrom",
@@ -590,6 +618,10 @@ fn check_license_exceptions(metadata: &Metadata, exceptions: &[(&str, &str)], ba
         let license = match &pkg.license {
             Some(license) => license,
             None => {
+                if ICU4X_UNICODE_LICENSE_DEPENDENCIES.contains(&pkg.name.as_str()) {
+                    // See the comment on ICU4X_UNICODE_LICENSE_DEPENDENCIES.
+                    continue;
+                }
                 tidy_error!(bad, "dependency `{}` does not define a license expression", pkg.id);
                 continue;
             }

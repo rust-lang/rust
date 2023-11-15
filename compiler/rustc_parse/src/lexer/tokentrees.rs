@@ -5,7 +5,8 @@ use super::{StringReader, UnmatchedDelim};
 use rustc_ast::token::{self, Delimiter, Token};
 use rustc_ast::tokenstream::{DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_ast_pretty::pprust::token_to_string;
-use rustc_errors::PErr;
+use rustc_errors::{Applicability, PErr};
+use rustc_span::symbol::kw;
 
 pub(super) struct TokenTreesReader<'a> {
     string_reader: StringReader<'a>,
@@ -116,24 +117,8 @@ impl<'a> TokenTreesReader<'a> {
         // We stop at any delimiter so we can try to recover if the user
         // uses an incorrect delimiter.
         let (tts, res) = self.parse_token_trees(/* is_delimited */ true);
-        if let Err(mut errs) = res {
-            // If there are unclosed delims, see if there are diff markers and if so, point them
-            // out instead of complaining about the unclosed delims.
-            let mut parser = crate::stream_to_parser(self.string_reader.sess, tts, None);
-            let mut diff_errs = vec![];
-            while parser.token != token::Eof {
-                if let Err(diff_err) = parser.err_diff_marker() {
-                    diff_errs.push(diff_err);
-                }
-                parser.bump();
-            }
-            if !diff_errs.is_empty() {
-                errs.iter_mut().for_each(|err| {
-                    err.delay_as_bug();
-                });
-                return Err(diff_errs);
-            }
-            return Err(errs);
+        if let Err(errs) = res {
+            return Err(self.unclosed_delim_err(tts, errs));
         }
 
         // Expand to cover the entire delimited token tree
@@ -218,6 +203,62 @@ impl<'a> TokenTreesReader<'a> {
         }
 
         Ok(TokenTree::Delimited(delim_span, open_delim, tts))
+    }
+
+    fn unclosed_delim_err(&mut self, tts: TokenStream, mut errs: Vec<PErr<'a>>) -> Vec<PErr<'a>> {
+        // If there are unclosed delims, see if there are diff markers and if so, point them
+        // out instead of complaining about the unclosed delims.
+        let mut parser = crate::stream_to_parser(self.string_reader.sess, tts, None);
+        let mut diff_errs = vec![];
+        // Suggest removing a `{` we think appears in an `if`/`while` condition
+        // We want to suggest removing a `{` only if we think we're in an `if`/`while` condition, but
+        // we have no way of tracking this in the lexer itself, so we piggyback on the parser
+        let mut in_cond = false;
+        while parser.token != token::Eof {
+            if let Err(diff_err) = parser.err_diff_marker() {
+                diff_errs.push(diff_err);
+            } else if parser.is_keyword_ahead(0, &[kw::If, kw::While]) {
+                in_cond = true;
+            } else if matches!(
+                parser.token.kind,
+                token::CloseDelim(Delimiter::Brace) | token::FatArrow
+            ) {
+                // end of the `if`/`while` body, or the end of a `match` guard
+                in_cond = false;
+            } else if in_cond && parser.token == token::OpenDelim(Delimiter::Brace) {
+                // Store the `&&` and `let` to use their spans later when creating the diagnostic
+                let maybe_andand = parser.look_ahead(1, |t| t.clone());
+                let maybe_let = parser.look_ahead(2, |t| t.clone());
+                if maybe_andand == token::OpenDelim(Delimiter::Brace) {
+                    // This might be the beginning of the `if`/`while` body (i.e., the end of the condition)
+                    in_cond = false;
+                } else if maybe_andand == token::AndAnd && maybe_let.is_keyword(kw::Let) {
+                    let mut err = parser.struct_span_err(
+                        parser.token.span,
+                        "found a `{` in the middle of a let-chain",
+                    );
+                    err.span_suggestion(
+                        parser.token.span,
+                        "consider removing this brace to parse the `let` as part of the same chain",
+                        "",
+                        Applicability::MachineApplicable,
+                    );
+                    err.span_label(
+                        maybe_andand.span.to(maybe_let.span),
+                        "you might have meant to continue the let-chain here",
+                    );
+                    errs.push(err);
+                }
+            }
+            parser.bump();
+        }
+        if !diff_errs.is_empty() {
+            errs.iter_mut().for_each(|err| {
+                err.delay_as_bug();
+            });
+            return diff_errs;
+        }
+        return errs;
     }
 
     fn close_delim_err(&mut self, delim: Delimiter) -> PErr<'a> {

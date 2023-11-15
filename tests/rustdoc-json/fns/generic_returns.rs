@@ -1,8 +1,5 @@
 // ignore-tidy-linelength
 
-#![feature(no_core)]
-#![no_core]
-
 // @count "$.index[*][?(@.name=='generic_returns')].inner.module.items[*]" 2
 
 // @set foo = "$.index[*][?(@.name=='Foo')].id"

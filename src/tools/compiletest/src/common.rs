@@ -8,6 +8,7 @@ use std::process::Command;
 use std::str::FromStr;
 
 use crate::util::{add_dylib_path, PathBufExt};
+use build_helper::git::GitConfig;
 use lazycell::AtomicLazyCell;
 use serde::de::{Deserialize, Deserializer, Error as _};
 use std::collections::{HashMap, HashSet};
@@ -67,7 +68,7 @@ string_enum! {
         MirOpt => "mir-opt",
         Assembly => "assembly",
         CoverageMap => "coverage-map",
-        RunCoverage => "run-coverage",
+        CoverageRun => "coverage-run",
     }
 }
 
@@ -78,11 +79,20 @@ impl Default for Mode {
 }
 
 impl Mode {
-    pub fn disambiguator(self) -> &'static str {
+    pub fn aux_dir_disambiguator(self) -> &'static str {
         // Pretty-printing tests could run concurrently, and if they do,
         // they need to keep their output segregated.
         match self {
             Pretty => ".pretty",
+            _ => "",
+        }
+    }
+
+    pub fn output_dir_disambiguator(self) -> &'static str {
+        // Coverage tests use the same test files for multiple test modes,
+        // so each mode should have a separate output directory.
+        match self {
+            CoverageMap | CoverageRun => self.to_str(),
             _ => "",
         }
     }
@@ -370,6 +380,10 @@ pub struct Config {
     pub target_cfgs: AtomicLazyCell<TargetCfgs>,
 
     pub nocapture: bool,
+
+    // Needed both to construct build_helper::git::GitConfig
+    pub git_repository: String,
+    pub nightly_branch: String,
 }
 
 impl Config {
@@ -440,6 +454,10 @@ impl Config {
             // "nvptx64", "hexagon", "mips", "mips64", "spirv", "wasm32",
         ];
         ASM_SUPPORTED_ARCHS.contains(&self.target_cfg().arch.as_str())
+    }
+
+    pub fn git_config(&self) -> GitConfig<'_> {
+        GitConfig { git_repository: &self.git_repository, nightly_branch: &self.nightly_branch }
     }
 }
 
@@ -699,6 +717,7 @@ pub fn output_testname_unique(
     let mode = config.compare_mode.as_ref().map_or("", |m| m.to_str());
     let debugger = config.debugger.as_ref().map_or("", |m| m.to_str());
     PathBuf::from(&testpaths.file.file_stem().unwrap())
+        .with_extra_extension(config.mode.output_dir_disambiguator())
         .with_extra_extension(revision.unwrap_or(""))
         .with_extra_extension(mode)
         .with_extra_extension(debugger)

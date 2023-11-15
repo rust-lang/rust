@@ -2,9 +2,14 @@
 
 use expect_test::{expect, Expect};
 
-use crate::tests::{
-    check_edit, completion_list, completion_list_no_kw, completion_list_with_trigger_character,
+use crate::{
+    tests::{
+        check_edit, completion_list, completion_list_no_kw, completion_list_with_trigger_character,
+    },
+    CompletionItemKind,
 };
+
+use super::{do_completion_with_config, TEST_CONFIG};
 
 fn check_no_kw(ra_fixture: &str, expect: Expect) {
     let actual = completion_list_no_kw(ra_fixture);
@@ -1301,5 +1306,178 @@ trait PartialOrd {}
 
 struct Foo<T: PartialOrd
 "#,
+    );
+}
+
+fn check_signatures(src: &str, kind: CompletionItemKind, reduced: Expect, full: Expect) {
+    const FULL_SIGNATURES_CONFIG: crate::CompletionConfig = {
+        let mut x = TEST_CONFIG;
+        x.full_function_signatures = true;
+        x
+    };
+
+    // reduced signature
+    let completion = do_completion_with_config(TEST_CONFIG, src, kind);
+    assert!(completion[0].detail.is_some());
+    reduced.assert_eq(completion[0].detail.as_ref().unwrap());
+
+    // full signature
+    let completion = do_completion_with_config(FULL_SIGNATURES_CONFIG, src, kind);
+    assert!(completion[0].detail.is_some());
+    full.assert_eq(completion[0].detail.as_ref().unwrap());
+}
+
+#[test]
+fn respects_full_function_signatures() {
+    check_signatures(
+        r#"
+pub fn foo<'x, T>(x: &'x mut T) -> u8 where T: Clone, { 0u8 }
+fn main() { fo$0 }
+"#,
+        CompletionItemKind::SymbolKind(ide_db::SymbolKind::Function),
+        expect!("fn(&mut T) -> u8"),
+        expect!("pub fn foo<'x, T>(x: &'x mut T) -> u8 where T: Clone,"),
+    );
+
+    check_signatures(
+        r#"
+struct Foo;
+struct Bar;
+impl Bar {
+    pub const fn baz(x: Foo) -> ! { loop {} };
+}
+
+fn main() { Bar::b$0 }
+"#,
+        CompletionItemKind::SymbolKind(ide_db::SymbolKind::Function),
+        expect!("const fn(Foo) -> !"),
+        expect!("pub const fn baz(x: Foo) -> !"),
+    );
+
+    check_signatures(
+        r#"
+struct Foo;
+struct Bar;
+impl Bar {
+    pub const fn baz<'foo>(&'foo mut self, x: &'foo Foo) -> ! { loop {} };
+}
+
+fn main() {
+    let mut bar = Bar;
+    bar.b$0
+}
+"#,
+        CompletionItemKind::Method,
+        expect!("const fn(&'foo mut self, &Foo) -> !"),
+        expect!("pub const fn baz<'foo>(&'foo mut self, x: &'foo Foo) -> !"),
+    );
+}
+
+#[test]
+fn skips_underscore() {
+    check_with_trigger_character(
+        r#"
+fn foo(_$0) { }
+"#,
+        Some('_'),
+        expect![[r#""#]],
+    );
+    check_with_trigger_character(
+        r#"
+fn foo(_: _$0) { }
+"#,
+        Some('_'),
+        expect![[r#""#]],
+    );
+    check_with_trigger_character(
+        r#"
+fn foo<T>() {
+    foo::<_$0>();
+}
+"#,
+        Some('_'),
+        expect![[r#""#]],
+    );
+    // underscore expressions are fine, they are invalid so the user definitely meant to type an
+    // underscored name here
+    check_with_trigger_character(
+        r#"
+fn foo() {
+    _$0
+}
+"#,
+        Some('_'),
+        expect![[r#"
+            fn foo()       fn()
+            bt u32
+            kw const
+            kw crate::
+            kw enum
+            kw extern
+            kw false
+            kw fn
+            kw for
+            kw if
+            kw if let
+            kw impl
+            kw let
+            kw loop
+            kw match
+            kw mod
+            kw return
+            kw self::
+            kw static
+            kw struct
+            kw trait
+            kw true
+            kw type
+            kw union
+            kw unsafe
+            kw use
+            kw while
+            kw while let
+            sn macro_rules
+            sn pd
+            sn ppd
+        "#]],
+    );
+}
+
+#[test]
+fn no_skip_underscore_ident() {
+    check_with_trigger_character(
+        r#"
+fn foo(a_$0) { }
+"#,
+        Some('_'),
+        expect![[r#"
+            kw mut
+            kw ref
+        "#]],
+    );
+    check_with_trigger_character(
+        r#"
+fn foo(_: a_$0) { }
+"#,
+        Some('_'),
+        expect![[r#"
+            bt u32
+            kw crate::
+            kw self::
+        "#]],
+    );
+    check_with_trigger_character(
+        r#"
+fn foo<T>() {
+    foo::<a_$0>();
+}
+"#,
+        Some('_'),
+        expect![[r#"
+            tp T
+            bt u32
+            kw crate::
+            kw self::
+        "#]],
     );
 }

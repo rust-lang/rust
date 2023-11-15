@@ -3,6 +3,8 @@
 
 #![allow(dead_code)]
 
+use crate::sync::IntoDynSyncSend;
+use crate::FatalErrorMarker;
 use parking_lot::Mutex;
 use std::any::Any;
 use std::panic::{catch_unwind, resume_unwind, AssertUnwindSafe};
@@ -18,14 +20,17 @@ pub use enabled::*;
 /// continuing with unwinding. It's also used for the non-parallel code to ensure error message
 /// output match the parallel compiler for testing purposes.
 pub struct ParallelGuard {
-    panic: Mutex<Option<Box<dyn Any + Send + 'static>>>,
+    panic: Mutex<Option<IntoDynSyncSend<Box<dyn Any + Send + 'static>>>>,
 }
 
 impl ParallelGuard {
     pub fn run<R>(&self, f: impl FnOnce() -> R) -> Option<R> {
         catch_unwind(AssertUnwindSafe(f))
             .map_err(|err| {
-                *self.panic.lock() = Some(err);
+                let mut panic = self.panic.lock();
+                if panic.is_none() || !(*err).is::<FatalErrorMarker>() {
+                    *panic = Some(IntoDynSyncSend(err));
+                }
             })
             .ok()
     }
@@ -37,7 +42,7 @@ impl ParallelGuard {
 pub fn parallel_guard<R>(f: impl FnOnce(&ParallelGuard) -> R) -> R {
     let guard = ParallelGuard { panic: Mutex::new(None) };
     let ret = f(&guard);
-    if let Some(panic) = guard.panic.into_inner() {
+    if let Some(IntoDynSyncSend(panic)) = guard.panic.into_inner() {
         resume_unwind(panic);
     }
     ret
@@ -77,12 +82,12 @@ mod disabled {
         })
     }
 
-    pub fn try_par_for_each_in<T: IntoIterator, E: Copy>(
+    pub fn try_par_for_each_in<T: IntoIterator, E>(
         t: T,
         mut for_each: impl FnMut(T::Item) -> Result<(), E>,
     ) -> Result<(), E> {
         parallel_guard(|guard| {
-            t.into_iter().fold(Ok(()), |ret, i| guard.run(|| for_each(i)).unwrap_or(ret).and(ret))
+            t.into_iter().filter_map(|i| guard.run(|| for_each(i))).fold(Ok(()), Result::and)
         })
     }
 
@@ -106,14 +111,20 @@ mod enabled {
             parallel!(impl $fblock [$block, $($c,)*] [$($rest),*])
         };
         (impl $fblock:block [$($blocks:expr,)*] []) => {
-            ::rustc_data_structures::sync::scope(|s| {
-                $(let block = rustc_data_structures::sync::FromDyn::from(|| $blocks);
-                s.spawn(move |_| block.into_inner()());)*
-                (|| $fblock)();
+            $crate::sync::parallel_guard(|guard| {
+                $crate::sync::scope(|s| {
+                    $(
+                        let block = $crate::sync::FromDyn::from(|| $blocks);
+                        s.spawn(move |_| {
+                            guard.run(move || block.into_inner()());
+                        });
+                    )*
+                    guard.run(|| $fblock);
+                });
             });
         };
         ($fblock:block, $($blocks:block),*) => {
-            if rustc_data_structures::sync::is_dyn_thread_safe() {
+            if $crate::sync::is_dyn_thread_safe() {
                 // Reverse the order of the later blocks since Rayon executes them in reverse order
                 // when using a single thread. This ensures the execution order matches that
                 // of a single threaded rustc.
@@ -146,11 +157,13 @@ mod enabled {
         if mode::is_dyn_thread_safe() {
             let oper_a = FromDyn::from(oper_a);
             let oper_b = FromDyn::from(oper_b);
-            let (a, b) = rayon::join(
-                move || FromDyn::from(oper_a.into_inner()()),
-                move || FromDyn::from(oper_b.into_inner()()),
-            );
-            (a.into_inner(), b.into_inner())
+            let (a, b) = parallel_guard(|guard| {
+                rayon::join(
+                    move || guard.run(move || FromDyn::from(oper_a.into_inner()())),
+                    move || guard.run(move || FromDyn::from(oper_b.into_inner()())),
+                )
+            });
+            (a.unwrap().into_inner(), b.unwrap().into_inner())
         } else {
             super::disabled::join(oper_a, oper_b)
         }
@@ -178,7 +191,7 @@ mod enabled {
 
     pub fn try_par_for_each_in<
         T: IntoIterator + IntoParallelIterator<Item = <T as IntoIterator>::Item>,
-        E: Copy + Send,
+        E: Send,
     >(
         t: T,
         for_each: impl Fn(<T as IntoIterator>::Item) -> Result<(), E> + DynSync + DynSend,
@@ -187,11 +200,10 @@ mod enabled {
             if mode::is_dyn_thread_safe() {
                 let for_each = FromDyn::from(for_each);
                 t.into_par_iter()
-                    .fold_with(Ok(()), |ret, i| guard.run(|| for_each(i)).unwrap_or(ret).and(ret))
-                    .reduce(|| Ok(()), |a, b| a.and(b))
+                    .filter_map(|i| guard.run(|| for_each(i)))
+                    .reduce(|| Ok(()), Result::and)
             } else {
-                t.into_iter()
-                    .fold(Ok(()), |ret, i| guard.run(|| for_each(i)).unwrap_or(ret).and(ret))
+                t.into_iter().filter_map(|i| guard.run(|| for_each(i))).fold(Ok(()), Result::and)
             }
         })
     }

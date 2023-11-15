@@ -63,6 +63,7 @@ mod t {
         fn foo() {}
     }
 
+    // FIXME(effects): This should be a `const` bound instead of a `~const` one.
     pub struct ConstDropWithBound<T: ~const SomeTrait>(pub core::marker::PhantomData<T>);
 
     impl<T: ~const SomeTrait> const Drop for ConstDropWithBound<T> {

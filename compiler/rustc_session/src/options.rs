@@ -19,8 +19,7 @@ use rustc_span::SourceFileHashAlgorithm;
 
 use std::collections::BTreeMap;
 
-use std::collections::hash_map::DefaultHasher;
-use std::hash::Hasher;
+use std::hash::{DefaultHasher, Hasher};
 use std::num::{IntErrorKind, NonZeroUsize};
 use std::path::PathBuf;
 use std::str;
@@ -428,6 +427,8 @@ mod desc {
         "one of supported execution strategies (`same-thread`, or `cross-thread`)";
     pub const parse_dump_solver_proof_tree: &str = "one of: `always`, `on-request`, `on-error`";
     pub const parse_remap_path_scope: &str = "comma separated list of scopes: `macro`, `diagnostics`, `unsplit-debuginfo`, `split-debuginfo`, `split-debuginfo-path`, `object`, `all`";
+    pub const parse_inlining_threshold: &str =
+        "either a boolean (`yes`, `no`, `on`, `off`, etc), or a non-negative number";
 }
 
 mod parse {
@@ -1310,6 +1311,26 @@ mod parse {
         };
         true
     }
+
+    pub(crate) fn parse_inlining_threshold(slot: &mut InliningThreshold, v: Option<&str>) -> bool {
+        match v {
+            Some("always" | "yes") => {
+                *slot = InliningThreshold::Always;
+            }
+            Some("never") => {
+                *slot = InliningThreshold::Never;
+            }
+            Some(v) => {
+                if let Ok(threshold) = v.parse() {
+                    *slot = InliningThreshold::Sometimes(threshold);
+                } else {
+                    return false;
+                }
+            }
+            None => return false,
+        }
+        true
+    }
 }
 
 options! {
@@ -1479,7 +1500,7 @@ options! {
         "combine CGUs into a single one"),
     crate_attr: Vec<String> = (Vec::new(), parse_string_push, [TRACKED],
         "inject the given attribute in the crate"),
-    cross_crate_inline_threshold: Option<usize> = (None, parse_opt_number, [TRACKED],
+    cross_crate_inline_threshold: InliningThreshold = (InliningThreshold::Sometimes(100), parse_inlining_threshold, [TRACKED],
         "threshold to allow cross crate inlining of functions"),
     debug_info_for_profiling: bool = (false, parse_bool, [TRACKED],
         "emit discriminators and other data necessary for AutoFDO"),
@@ -1600,8 +1621,6 @@ options! {
          `=skip-entry`
          `=skip-exit`
          Multiple options can be combined with commas."),
-    keep_hygiene_data: bool = (false, parse_bool, [UNTRACKED],
-        "keep hygiene data after analysis (default: no)"),
     layout_seed: Option<u64> = (None, parse_opt_number, [TRACKED],
         "seed layout randomization"),
     link_directives: bool = (true, parse_bool, [TRACKED],
@@ -1689,8 +1708,6 @@ options! {
         "panic strategy for panics in drops"),
     parse_only: bool = (false, parse_bool, [UNTRACKED],
         "parse only; do not compile, assemble, or link (default: no)"),
-    perf_stats: bool = (false, parse_bool, [UNTRACKED],
-        "print some performance-related statistics (default: no)"),
     plt: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "whether to use the PLT when calling into shared libraries;
         only has effect for PIC code on systems with ELF binaries
@@ -1819,8 +1836,6 @@ written to standard error output)"),
         "prefer dynamic linking to static linking for staticlibs (default: no)"),
     strict_init_checks: bool = (false, parse_bool, [TRACKED],
         "control if mem::uninitialized and mem::zeroed panic on more UB"),
-    strip: Strip = (Strip::None, parse_strip, [UNTRACKED],
-        "tell the linker which information to strip (`none` (default), `debuginfo` or `symbols`)"),
     #[rustc_lint_opt_deny_field_access("use `Session::teach` instead of this field")]
     teach: bool = (false, parse_bool, [TRACKED],
         "show extended diagnostic help (default: no)"),

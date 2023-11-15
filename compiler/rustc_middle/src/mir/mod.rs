@@ -1611,14 +1611,29 @@ impl Location {
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum DefLocation {
     Argument,
-    Body(Location),
+    Assignment(Location),
+    CallReturn { call: BasicBlock, target: Option<BasicBlock> },
 }
 
 impl DefLocation {
     pub fn dominates(self, location: Location, dominators: &Dominators<BasicBlock>) -> bool {
         match self {
             DefLocation::Argument => true,
-            DefLocation::Body(def) => def.successor_within_block().dominates(location, dominators),
+            DefLocation::Assignment(def) => {
+                def.successor_within_block().dominates(location, dominators)
+            }
+            DefLocation::CallReturn { target: None, .. } => false,
+            DefLocation::CallReturn { call, target: Some(target) } => {
+                // The definition occurs on the call -> target edge. The definition dominates a use
+                // if and only if the edge is on all paths from the entry to the use.
+                //
+                // Note that a call terminator has only one edge that can reach the target, so when
+                // the call strongly dominates the target, all paths from the entry to the target
+                // go through the call -> target edge.
+                call != target
+                    && dominators.dominates(call, target)
+                    && dominators.dominates(target, location.block)
+            }
         }
     }
 }

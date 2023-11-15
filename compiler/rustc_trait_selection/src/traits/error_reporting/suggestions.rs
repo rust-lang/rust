@@ -26,8 +26,9 @@ use rustc_hir::{CoroutineKind, CoroutineSource, Node};
 use rustc_hir::{Expr, HirId};
 use rustc_infer::infer::error_reporting::TypeErrCtxt;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc_infer::infer::{DefineOpaqueTypes, InferOk, LateBoundRegionConversionTime};
+use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferOk};
 use rustc_middle::hir::map;
+use rustc_middle::traits::IsConstable;
 use rustc_middle::ty::error::TypeError::{self, Sorts};
 use rustc_middle::ty::{
     self, suggest_arbitrary_trait_bound, suggest_constraining_type_param, AdtKind, GenericArgs,
@@ -739,7 +740,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             }
 
             // We `erase_late_bound_regions` here because `make_subregion` does not handle
-            // `ReLateBound`, and we don't particularly care about the regions.
+            // `ReBound`, and we don't particularly care about the regions.
             let real_ty = self.tcx.erase_late_bound_regions(real_trait_pred.self_ty());
             if !self.can_eq(obligation.param_env, real_ty, arg_ty) {
                 continue;
@@ -907,7 +908,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
         let self_ty = self.instantiate_binder_with_fresh_vars(
             DUMMY_SP,
-            LateBoundRegionConversionTime::FnCall,
+            BoundRegionConversionTime::FnCall,
             trait_pred.self_ty(),
         );
 
@@ -1236,7 +1237,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
         let output = self.instantiate_binder_with_fresh_vars(
             DUMMY_SP,
-            LateBoundRegionConversionTime::FnCall,
+            BoundRegionConversionTime::FnCall,
             output,
         );
         let inputs = inputs
@@ -1245,7 +1246,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             .map(|ty| {
                 self.instantiate_binder_with_fresh_vars(
                     DUMMY_SP,
-                    LateBoundRegionConversionTime::FnCall,
+                    BoundRegionConversionTime::FnCall,
                     inputs.rebind(*ty),
                 )
             })
@@ -2768,20 +2769,30 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     ));
                 }
             }
-            ObligationCauseCode::RepeatElementCopy { is_const_fn } => {
+            ObligationCauseCode::RepeatElementCopy { is_constable, elt_type, elt_span, elt_stmt_span } => {
                 err.note(
                     "the `Copy` trait is required because this value will be copied for each element of the array",
                 );
-
-                if is_const_fn {
-                    err.help(
-                        "consider creating a new `const` item and initializing it with the result \
-                        of the function call to be used in the repeat position, like \
-                        `const VAL: Type = const_fn();` and `let x = [VAL; 42];`",
-                    );
+                let value_kind = match is_constable {
+                    IsConstable::Fn => Some("the result of the function call"),
+                    IsConstable::Ctor => Some("the result of the constructor"),
+                    _ => None
+                };
+                let sm = tcx.sess.source_map();
+                if let Some(value_kind) = value_kind &&
+                    let Ok(snip) = sm.span_to_snippet(elt_span)
+                {
+                    let help_msg = format!(
+                        "consider creating a new `const` item and initializing it with {value_kind} \
+                        to be used in the repeat position");
+                    let indentation = sm.indentation_before(elt_stmt_span).unwrap_or_default();
+                    err.multipart_suggestion(help_msg, vec![
+                        (elt_stmt_span.shrink_to_lo(), format!("const ARRAY_REPEAT_VALUE: {elt_type} = {snip};\n{indentation}")),
+                        (elt_span, "ARRAY_REPEAT_VALUE".to_string())
+                    ], Applicability::MachineApplicable);
                 }
 
-                if self.tcx.sess.is_nightly_build() && is_const_fn {
+                if self.tcx.sess.is_nightly_build() && matches!(is_constable, IsConstable::Fn|IsConstable::Ctor) {
                     err.help(
                         "create an inline `const` block, see RFC #2920 \
                          <https://github.com/rust-lang/rfcs/pull/2920> for more information",
@@ -2938,7 +2949,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 else {
                     bug!("expected closure in SizedClosureCapture obligation");
                 };
-                if let hir::CaptureBy::Value = closure.capture_clause
+                if let hir::CaptureBy::Value { .. } = closure.capture_clause
                     && let Some(span) = closure.fn_arg_span
                 {
                     err.span_label(span, "this closure captures all values by move");
@@ -3584,7 +3595,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     let where_pred = self.instantiate_binder_with_placeholders(where_pred);
                     let failed_pred = self.instantiate_binder_with_fresh_vars(
                         expr.span,
-                        LateBoundRegionConversionTime::FnCall,
+                        BoundRegionConversionTime::FnCall,
                         failed_pred,
                     );
 

@@ -13,7 +13,7 @@ use crate::errors::{
     YieldExprOutsideOfCoroutine,
 };
 use crate::fatally_break_rust;
-use crate::method::{MethodCallComponents, SelfSource};
+use crate::method::SelfSource;
 use crate::type_error_struct;
 use crate::Expectation::{self, ExpectCastableToType, ExpectHasType, NoExpectation};
 use crate::{
@@ -21,7 +21,7 @@ use crate::{
     TupleArgumentsFlag::DontTupleArguments,
 };
 use rustc_ast as ast;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{
     pluralize, struct_span_err, AddToDiagnostic, Applicability, Diagnostic, DiagnosticBuilder,
@@ -512,7 +512,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
         let (res, opt_ty, segs) =
-            self.resolve_ty_and_res_fully_qualified_call(qpath, expr.hir_id, expr.span);
+            self.resolve_ty_and_res_fully_qualified_call(qpath, expr.hir_id, expr.span, Some(args));
         let ty = match res {
             Res::Err => {
                 self.suggest_assoc_method_call(segs);
@@ -564,7 +564,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let span = args.get(i).map(|a| a.span).unwrap_or(expr.span);
                     let input = self.instantiate_binder_with_fresh_vars(
                         span,
-                        infer::LateBoundRegionConversionTime::FnCall,
+                        infer::BoundRegionConversionTime::FnCall,
                         fn_sig.input(i),
                     );
                     self.require_type_is_sized_deferred(
@@ -582,7 +582,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // with fresh vars.
             let output = self.instantiate_binder_with_fresh_vars(
                 expr.span,
-                infer::LateBoundRegionConversionTime::FnCall,
+                infer::BoundRegionConversionTime::FnCall,
                 fn_sig.output(),
             );
             self.require_type_is_sized_deferred(output, expr.span, traits::SizedReturnType);
@@ -959,10 +959,37 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Applicability::MachineApplicable,
             );
         });
+        self.check_for_missing_semi(lhs, &mut err);
 
         adjust_err(&mut err);
 
         err.emit();
+    }
+
+    /// Check if the expression that could not be assigned to was a typoed expression that
+    pub fn check_for_missing_semi(
+        &self,
+        expr: &'tcx hir::Expr<'tcx>,
+        err: &mut DiagnosticBuilder<'_, ErrorGuaranteed>,
+    ) -> bool {
+        if let hir::ExprKind::Binary(binop, lhs, rhs) = expr.kind
+            && let hir::BinOpKind::Mul = binop.node
+            && self.tcx.sess.source_map().is_multiline(lhs.span.between(rhs.span))
+            && rhs.is_syntactic_place_expr()
+        {
+            //      v missing semicolon here
+            // foo()
+            // *bar = baz;
+            // (#80446).
+            err.span_suggestion_verbose(
+                lhs.span.shrink_to_hi(),
+                "you might have meant to write a semicolon here",
+                ";".to_string(),
+                Applicability::MachineApplicable,
+            );
+            return true;
+        }
+        false
     }
 
     // Check if an expression `original_expr_id` comes from the condition of a while loop,
@@ -1305,7 +1332,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         segment.ident,
                         SelfSource::MethodCall(rcvr),
                         error,
-                        Some(MethodCallComponents { receiver: rcvr, args, full_expr: expr }),
+                        Some(args),
                         expected,
                         false,
                     ) {
@@ -1524,21 +1551,42 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             _ => {}
         }
-        // If someone calls a const fn, they can extract that call out into a separate constant (or a const
-        // block in the future), so we check that to tell them that in the diagnostic. Does not affect typeck.
-        let is_const_fn = match element.kind {
+        // If someone calls a const fn or constructs a const value, they can extract that
+        // out into a separate constant (or a const block in the future), so we check that
+        // to tell them that in the diagnostic. Does not affect typeck.
+        let is_constable = match element.kind {
             hir::ExprKind::Call(func, _args) => match *self.node_ty(func.hir_id).kind() {
-                ty::FnDef(def_id, _) => tcx.is_const_fn(def_id),
-                _ => false,
+                ty::FnDef(def_id, _) if tcx.is_const_fn(def_id) => traits::IsConstable::Fn,
+                _ => traits::IsConstable::No,
             },
-            _ => false,
+            hir::ExprKind::Path(qpath) => {
+                match self.typeck_results.borrow().qpath_res(&qpath, element.hir_id) {
+                    Res::Def(DefKind::Ctor(_, CtorKind::Const), _) => traits::IsConstable::Ctor,
+                    _ => traits::IsConstable::No,
+                }
+            }
+            _ => traits::IsConstable::No,
         };
 
         // If the length is 0, we don't create any elements, so we don't copy any. If the length is 1, we
         // don't copy that one element, we move it. Only check for Copy if the length is larger.
         if count.try_eval_target_usize(tcx, self.param_env).map_or(true, |len| len > 1) {
             let lang_item = self.tcx.require_lang_item(LangItem::Copy, None);
-            let code = traits::ObligationCauseCode::RepeatElementCopy { is_const_fn };
+            let code = traits::ObligationCauseCode::RepeatElementCopy {
+                is_constable,
+                elt_type: element_ty,
+                elt_span: element.span,
+                elt_stmt_span: self
+                    .tcx
+                    .hir()
+                    .parent_iter(element.hir_id)
+                    .find_map(|(_, node)| match node {
+                        hir::Node::Item(it) => Some(it.span),
+                        hir::Node::Stmt(stmt) => Some(stmt.span),
+                        _ => None,
+                    })
+                    .expect("array repeat expressions must be inside an item or statement"),
+            };
             self.require_type_meets(element_ty, element.span, code, lang_item);
         }
     }
@@ -2829,7 +2877,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // two-phase not needed because index_ty is never mutable
                     self.demand_coerce(idx, idx_t, index_ty, None, AllowTwoPhase::No);
                     self.select_obligations_where_possible(|errors| {
-                        self.point_at_index_if_possible(errors, idx.span)
+                        self.point_at_index(errors, idx.span);
                     });
                     element_ty
                 }
@@ -2988,16 +3036,28 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         .ok()
     }
 
-    fn point_at_index_if_possible(
-        &self,
-        errors: &mut Vec<traits::FulfillmentError<'tcx>>,
-        span: Span,
-    ) {
+    fn point_at_index(&self, errors: &mut Vec<traits::FulfillmentError<'tcx>>, span: Span) {
+        let mut seen_preds = FxHashSet::default();
+        // We re-sort here so that the outer most root obligations comes first, as we have the
+        // subsequent weird logic to identify *every* relevant obligation for proper deduplication
+        // of diagnostics.
+        errors.sort_by_key(|error| error.root_obligation.recursion_depth);
         for error in errors {
-            match error.obligation.predicate.kind().skip_binder() {
-                ty::PredicateKind::Clause(ty::ClauseKind::Trait(predicate))
-                    if self.tcx.is_diagnostic_item(sym::SliceIndex, predicate.trait_ref.def_id) => {
+            match (
+                error.root_obligation.predicate.kind().skip_binder(),
+                error.obligation.predicate.kind().skip_binder(),
+            ) {
+                (ty::PredicateKind::Clause(ty::ClauseKind::Trait(predicate)), _)
+                    if self.tcx.lang_items().index_trait() == Some(predicate.trait_ref.def_id) =>
+                {
+                    seen_preds.insert(error.obligation.predicate.kind().skip_binder());
                 }
+                (_, ty::PredicateKind::Clause(ty::ClauseKind::Trait(predicate)))
+                    if self.tcx.is_diagnostic_item(sym::SliceIndex, predicate.trait_ref.def_id) =>
+                {
+                    seen_preds.insert(error.obligation.predicate.kind().skip_binder());
+                }
+                (root, pred) if seen_preds.contains(&pred) || seen_preds.contains(&root) => {}
                 _ => continue,
             }
             error.obligation.cause.span = span;
@@ -3118,6 +3178,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let block = self.tcx.hir().local_def_id_to_hir_id(self.body_id);
                     let (ident, _def_scope) =
                         self.tcx.adjust_ident_and_get_scope(field, container_def.did(), block);
+
+                    if !self.tcx.features().offset_of_enum {
+                        rustc_session::parse::feature_err(
+                            &self.tcx.sess.parse_sess,
+                            sym::offset_of_enum,
+                            ident.span,
+                            "using enums in offset_of is experimental",
+                        ).emit();
+                    }
 
                     let Some((index, variant)) = container_def.variants()
                         .iter_enumerated()

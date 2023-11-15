@@ -1,3 +1,11 @@
+error: `~const` is not allowed here
+  --> $DIR/assoc-type-const-bound-usage.rs:7:17
+   |
+LL |     type Assoc: ~const Foo;
+   |                 ^^^^^^^^^^
+   |
+   = note: this item cannot have `~const` trait bounds
+
 error[E0308]: mismatched types
   --> $DIR/assoc-type-const-bound-usage.rs:12:5
    |
@@ -7,6 +15,6 @@ LL |     <T as Foo>::Assoc::foo();
    = note: expected constant `host`
               found constant `true`
 
-error: aborting due to previous error
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0308`.

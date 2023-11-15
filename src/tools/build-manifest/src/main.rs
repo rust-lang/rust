@@ -266,6 +266,29 @@ impl Builder {
             // channel-rust-1.XX.toml
             let major_minor = rust_version.split('.').take(2).collect::<Vec<_>>().join(".");
             self.write_channel_files(&major_minor, &manifest);
+        } else if channel == "beta" {
+            // channel-rust-1.XX.YY-beta.Z.toml
+            let rust_version = self
+                .versions
+                .version(&PkgType::Rust)
+                .expect("missing Rust tarball")
+                .version
+                .expect("missing Rust version")
+                .split(' ')
+                .next()
+                .unwrap()
+                .to_string();
+            self.write_channel_files(&rust_version, &manifest);
+
+            // channel-rust-1.XX.YY-beta.toml
+            let major_minor_patch_beta =
+                rust_version.split('.').take(3).collect::<Vec<_>>().join(".");
+            self.write_channel_files(&major_minor_patch_beta, &manifest);
+
+            // channel-rust-1.XX-beta.toml
+            let major_minor_beta =
+                format!("{}-beta", rust_version.split('.').take(2).collect::<Vec<_>>().join("."));
+            self.write_channel_files(&major_minor_beta, &manifest);
         }
 
         if let Some(path) = std::env::var_os("BUILD_MANIFEST_SHIPPED_FILES_PATH") {

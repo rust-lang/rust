@@ -1,11 +1,5 @@
 // ignore-tidy-linelength
 
-#![feature(no_core, lang_items)]
-#![no_core]
-
-#[lang = "sized"]
-trait Sized {}
-
 pub enum Foo {
     // @set Unit = "$.index[*][?(@.name=='Unit')].id"
     // @is "$.index[*][?(@.name=='Unit')].inner.variant.kind" '"plain"'

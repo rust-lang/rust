@@ -572,8 +572,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
                 if let ty::Ref(expected_region, _, _) = expected.kind()
                     && let ty::Ref(found_region, _, _) = found.kind()
-                    && expected_region.is_late_bound()
-                    && !found_region.is_late_bound()
+                    && expected_region.is_bound()
+                    && !found_region.is_bound()
                     && let hir::TyKind::Infer = arg_hir.kind
                 {
                     // If the expected region is late bound, the found region is not, and users are asking compiler

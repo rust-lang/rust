@@ -17,6 +17,11 @@ impl<'tcx> MirPass<'tcx> for RemoveZsts {
         if tcx.type_of(body.source.def_id()).instantiate_identity().is_coroutine() {
             return;
         }
+
+        if !tcx.consider_optimizing(|| format!("RemoveZsts - {:?}", body.source.def_id())) {
+            return;
+        }
+
         let param_env = tcx.param_env_reveal_all_normalized(body.source.def_id());
         let local_decls = &body.local_decls;
         let mut replacer = Replacer { tcx, param_env, local_decls };
@@ -125,12 +130,6 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
         if let Some(place_for_ty) = place_for_ty
             && let ty = place_for_ty.ty(self.local_decls, self.tcx).ty
             && self.known_to_be_zst(ty)
-            && self.tcx.consider_optimizing(|| {
-                format!(
-                    "RemoveZsts - Place: {:?} SourceInfo: {:?}",
-                    place_for_ty, statement.source_info
-                )
-            })
         {
             statement.make_nop();
         } else {

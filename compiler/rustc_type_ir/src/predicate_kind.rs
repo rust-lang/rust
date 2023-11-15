@@ -1,18 +1,16 @@
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_serialize::Decoder;
-use rustc_serialize::{Decodable, Encodable};
 use std::fmt;
 use std::ops::ControlFlow;
 
 use crate::fold::{FallibleTypeFolder, TypeFoldable};
 use crate::visit::{TypeVisitable, TypeVisitor};
 use crate::{HashStableContext, Interner};
-use crate::{TyDecoder, TyEncoder};
 
 /// A clause is something that can appear in where bounds or be inferred
 /// by implied bounds.
 #[derive(derivative::Derivative)]
 #[derivative(Clone(bound = ""), Hash(bound = ""))]
+#[derive(TyEncodable, TyDecodable)]
 pub enum ClauseKind<I: Interner> {
     /// Corresponds to `where Foo: Bar<A, B, C>`. `Foo` here would be
     /// the `Self` type of the trait reference and `A`, `B`, and `C`
@@ -161,65 +159,9 @@ where
     }
 }
 
-impl<I: Interner, D: TyDecoder<I = I>> Decodable<D> for ClauseKind<I>
-where
-    I::Ty: Decodable<D>,
-    I::Const: Decodable<D>,
-    I::GenericArg: Decodable<D>,
-    I::TraitPredicate: Decodable<D>,
-    I::ProjectionPredicate: Decodable<D>,
-    I::TypeOutlivesPredicate: Decodable<D>,
-    I::RegionOutlivesPredicate: Decodable<D>,
-{
-    fn decode(d: &mut D) -> Self {
-        match Decoder::read_usize(d) {
-            0 => ClauseKind::Trait(Decodable::decode(d)),
-            1 => ClauseKind::RegionOutlives(Decodable::decode(d)),
-            2 => ClauseKind::TypeOutlives(Decodable::decode(d)),
-            3 => ClauseKind::Projection(Decodable::decode(d)),
-            4 => ClauseKind::ConstArgHasType(Decodable::decode(d), Decodable::decode(d)),
-            5 => ClauseKind::WellFormed(Decodable::decode(d)),
-            6 => ClauseKind::ConstEvaluatable(Decodable::decode(d)),
-            _ => panic!(
-                "{}",
-                format!(
-                    "invalid enum variant tag while decoding `{}`, expected 0..{}",
-                    "ClauseKind", 7,
-                )
-            ),
-        }
-    }
-}
-
-impl<I: Interner, E: TyEncoder> Encodable<E> for ClauseKind<I>
-where
-    I::Ty: Encodable<E>,
-    I::Const: Encodable<E>,
-    I::GenericArg: Encodable<E>,
-    I::TraitPredicate: Encodable<E>,
-    I::ProjectionPredicate: Encodable<E>,
-    I::TypeOutlivesPredicate: Encodable<E>,
-    I::RegionOutlivesPredicate: Encodable<E>,
-{
-    fn encode(&self, s: &mut E) {
-        let discriminant = clause_kind_discriminant(self);
-        match self {
-            ClauseKind::Trait(p) => s.emit_enum_variant(discriminant, |s| p.encode(s)),
-            ClauseKind::RegionOutlives(p) => s.emit_enum_variant(discriminant, |s| p.encode(s)),
-            ClauseKind::TypeOutlives(p) => s.emit_enum_variant(discriminant, |s| p.encode(s)),
-            ClauseKind::Projection(p) => s.emit_enum_variant(discriminant, |s| p.encode(s)),
-            ClauseKind::ConstArgHasType(c, t) => s.emit_enum_variant(discriminant, |s| {
-                c.encode(s);
-                t.encode(s);
-            }),
-            ClauseKind::WellFormed(p) => s.emit_enum_variant(discriminant, |s| p.encode(s)),
-            ClauseKind::ConstEvaluatable(p) => s.emit_enum_variant(discriminant, |s| p.encode(s)),
-        }
-    }
-}
-
 #[derive(derivative::Derivative)]
 #[derivative(Clone(bound = ""), Hash(bound = ""))]
+#[derive(TyEncodable, TyDecodable)]
 pub enum PredicateKind<I: Interner> {
     /// Prove a clause
     Clause(ClauseKind<I>),
@@ -414,83 +356,6 @@ where
                 b.visit_with(visitor)?;
                 d.visit_with(visitor)
             }
-        }
-    }
-}
-
-impl<I: Interner, D: TyDecoder<I = I>> Decodable<D> for PredicateKind<I>
-where
-    I::DefId: Decodable<D>,
-    I::Const: Decodable<D>,
-    I::GenericArgs: Decodable<D>,
-    I::Term: Decodable<D>,
-    I::CoercePredicate: Decodable<D>,
-    I::SubtypePredicate: Decodable<D>,
-    I::ClosureKind: Decodable<D>,
-    ClauseKind<I>: Decodable<D>,
-{
-    fn decode(d: &mut D) -> Self {
-        match Decoder::read_usize(d) {
-            0 => PredicateKind::Clause(Decodable::decode(d)),
-            1 => PredicateKind::ObjectSafe(Decodable::decode(d)),
-            2 => PredicateKind::ClosureKind(
-                Decodable::decode(d),
-                Decodable::decode(d),
-                Decodable::decode(d),
-            ),
-            3 => PredicateKind::Subtype(Decodable::decode(d)),
-            4 => PredicateKind::Coerce(Decodable::decode(d)),
-            5 => PredicateKind::ConstEquate(Decodable::decode(d), Decodable::decode(d)),
-            6 => PredicateKind::Ambiguous,
-            7 => PredicateKind::AliasRelate(
-                Decodable::decode(d),
-                Decodable::decode(d),
-                Decodable::decode(d),
-            ),
-            _ => panic!(
-                "{}",
-                format!(
-                    "invalid enum variant tag while decoding `{}`, expected 0..{}",
-                    "PredicateKind", 8,
-                )
-            ),
-        }
-    }
-}
-
-impl<I: Interner, E: TyEncoder> Encodable<E> for PredicateKind<I>
-where
-    I::DefId: Encodable<E>,
-    I::Const: Encodable<E>,
-    I::GenericArgs: Encodable<E>,
-    I::Term: Encodable<E>,
-    I::CoercePredicate: Encodable<E>,
-    I::SubtypePredicate: Encodable<E>,
-    I::ClosureKind: Encodable<E>,
-    ClauseKind<I>: Encodable<E>,
-{
-    fn encode(&self, s: &mut E) {
-        let discriminant = predicate_kind_discriminant(self);
-        match self {
-            PredicateKind::Clause(c) => s.emit_enum_variant(discriminant, |s| c.encode(s)),
-            PredicateKind::ObjectSafe(d) => s.emit_enum_variant(discriminant, |s| d.encode(s)),
-            PredicateKind::ClosureKind(d, g, k) => s.emit_enum_variant(discriminant, |s| {
-                d.encode(s);
-                g.encode(s);
-                k.encode(s);
-            }),
-            PredicateKind::Subtype(c) => s.emit_enum_variant(discriminant, |s| c.encode(s)),
-            PredicateKind::Coerce(c) => s.emit_enum_variant(discriminant, |s| c.encode(s)),
-            PredicateKind::ConstEquate(a, b) => s.emit_enum_variant(discriminant, |s| {
-                a.encode(s);
-                b.encode(s);
-            }),
-            PredicateKind::Ambiguous => s.emit_enum_variant(discriminant, |_s| {}),
-            PredicateKind::AliasRelate(a, b, d) => s.emit_enum_variant(discriminant, |s| {
-                a.encode(s);
-                b.encode(s);
-                d.encode(s);
-            }),
         }
     }
 }

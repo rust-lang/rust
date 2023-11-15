@@ -47,6 +47,9 @@ features = [
 memmap2 = "0.2.1"
 # tidy-alphabetical-end
 
+[target.'cfg(any(target_arch = "powerpc", target_arch = "mips"))'.dependencies]
+portable-atomic = "1.5.1"
+
 [features]
 # tidy-alphabetical-start
 rustc_use_parallel_compiler = ["indexmap/rustc-rayon", "rustc-rayon", "rustc-rayon-core"]

@@ -16,7 +16,6 @@ rayon = "1.0"
 tar = "0.4.38"
 walkdir = "2"
 xz2 = "0.1.4"
-num_cpus = "1"
 
 [dependencies.clap]
 features = ["derive"]

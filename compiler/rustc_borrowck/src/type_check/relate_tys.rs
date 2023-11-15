@@ -107,12 +107,12 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> 
     fn next_existential_region_var(
         &mut self,
         from_forall: bool,
-        _name: Option<Symbol>,
+        name: Option<Symbol>,
     ) -> ty::Region<'tcx> {
         let origin = NllRegionVariableOrigin::Existential { from_forall };
 
         let reg_var =
-            self.type_checker.infcx.next_nll_region_var(origin, || RegionCtxt::Existential(_name));
+            self.type_checker.infcx.next_nll_region_var(origin, || RegionCtxt::Existential(name));
 
         reg_var
     }

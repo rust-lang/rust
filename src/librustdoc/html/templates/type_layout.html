@@ -54,7 +54,7 @@
             <strong>Note:</strong> Encountered an error during type layout; {#+ #}
             the type failed to be normalized. {# #}
         </p> {# #}
-        {% when Err(LayoutError::Cycle) %}
+        {% when Err(LayoutError::Cycle(_)) %}
         <p> {# #}
             <strong>Note:</strong> Encountered an error during type layout; {#+ #}
             the type's layout depended on the type's layout itself. {# #}

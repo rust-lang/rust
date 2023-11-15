@@ -679,7 +679,7 @@ impl InferenceContext<'_> {
             | Pat::Range { .. } => {
                 update_result(CaptureKind::ByRef(BorrowKind::Shared));
             }
-            Pat::Bind { id, .. } => match self.result.binding_modes[*id] {
+            Pat::Bind { id, .. } => match self.result.binding_modes[p] {
                 crate::BindingMode::Move => {
                     if self.is_ty_copy(self.result.type_of_binding[*id].clone()) {
                         update_result(CaptureKind::ByRef(BorrowKind::Shared));
@@ -838,8 +838,8 @@ impl InferenceContext<'_> {
             | Pat::ConstBlock(_)
             | Pat::Path(_)
             | Pat::Lit(_) => self.consume_place(place, pat.into()),
-            Pat::Bind { id, subpat: _ } => {
-                let mode = self.result.binding_modes[*id];
+            Pat::Bind { id: _, subpat: _ } => {
+                let mode = self.result.binding_modes[pat];
                 let capture_kind = match mode {
                     BindingMode::Move => {
                         self.consume_place(place, pat.into());

@@ -1,4 +1,3 @@
-use either::Either;
 use hir::{db::ExpandDatabase, ClosureStyle, HirDisplay, InFile, Type};
 use ide_db::{famous_defs::FamousDefs, source_change::SourceChange};
 use syntax::{
@@ -14,9 +13,11 @@ use crate::{adjusted_display_range, fix, Assist, Diagnostic, DiagnosticCode, Dia
 // This diagnostic is triggered when the type of an expression or pattern does not match
 // the expected type.
 pub(crate) fn type_mismatch(ctx: &DiagnosticsContext<'_>, d: &hir::TypeMismatch) -> Diagnostic {
-    let display_range = match &d.expr_or_pat {
-        Either::Left(expr) => {
-            adjusted_display_range::<ast::Expr>(ctx, expr.clone().map(|it| it.into()), &|expr| {
+    let display_range = match &d.expr_or_pat.value {
+        expr if ast::Expr::can_cast(expr.kind()) => adjusted_display_range::<ast::Expr>(
+            ctx,
+            InFile { file_id: d.expr_or_pat.file_id, value: expr.syntax_node_ptr() },
+            &|expr| {
                 let salient_token_range = match expr {
                     ast::Expr::IfExpr(it) => it.if_token()?.text_range(),
                     ast::Expr::LoopExpr(it) => it.loop_token()?.text_range(),
@@ -32,10 +33,15 @@ pub(crate) fn type_mismatch(ctx: &DiagnosticsContext<'_>, d: &hir::TypeMismatch)
 
                 cov_mark::hit!(type_mismatch_range_adjustment);
                 Some(salient_token_range)
-            })
-        }
-        Either::Right(pat) => {
-            ctx.sema.diagnostics_display_range(pat.clone().map(|it| it.into())).range
+            },
+        ),
+        pat => {
+            ctx.sema
+                .diagnostics_display_range(InFile {
+                    file_id: d.expr_or_pat.file_id,
+                    value: pat.syntax_node_ptr(),
+                })
+                .range
         }
     };
     let mut diag = Diagnostic::new(
@@ -57,14 +63,12 @@ pub(crate) fn type_mismatch(ctx: &DiagnosticsContext<'_>, d: &hir::TypeMismatch)
 fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::TypeMismatch) -> Option<Vec<Assist>> {
     let mut fixes = Vec::new();
 
-    match &d.expr_or_pat {
-        Either::Left(expr_ptr) => {
-            add_reference(ctx, d, expr_ptr, &mut fixes);
-            add_missing_ok_or_some(ctx, d, expr_ptr, &mut fixes);
-            remove_semicolon(ctx, d, expr_ptr, &mut fixes);
-            str_ref_to_owned(ctx, d, expr_ptr, &mut fixes);
-        }
-        Either::Right(_pat_ptr) => {}
+    if let Some(expr_ptr) = d.expr_or_pat.value.clone().cast::<ast::Expr>() {
+        let expr_ptr = &InFile { file_id: d.expr_or_pat.file_id, value: expr_ptr.clone() };
+        add_reference(ctx, d, expr_ptr, &mut fixes);
+        add_missing_ok_or_some(ctx, d, expr_ptr, &mut fixes);
+        remove_semicolon(ctx, d, expr_ptr, &mut fixes);
+        str_ref_to_owned(ctx, d, expr_ptr, &mut fixes);
     }
 
     if fixes.is_empty() {
@@ -205,7 +209,7 @@ fn main() {
     test(123);
        //^^^ 💡 error: expected &i32, found i32
 }
-fn test(arg: &i32) {}
+fn test(_arg: &i32) {}
 "#,
         );
     }
@@ -217,13 +221,13 @@ fn test(arg: &i32) {}
 fn main() {
     test(123$0);
 }
-fn test(arg: &i32) {}
+fn test(_arg: &i32) {}
             "#,
             r#"
 fn main() {
     test(&123);
 }
-fn test(arg: &i32) {}
+fn test(_arg: &i32) {}
             "#,
         );
     }
@@ -235,13 +239,13 @@ fn test(arg: &i32) {}
 fn main() {
     test($0123);
 }
-fn test(arg: &mut i32) {}
+fn test(_arg: &mut i32) {}
             "#,
             r#"
 fn main() {
     test(&mut 123);
 }
-fn test(arg: &mut i32) {}
+fn test(_arg: &mut i32) {}
             "#,
         );
     }
@@ -254,13 +258,13 @@ fn test(arg: &mut i32) {}
 fn main() {
     test($0[1, 2, 3]);
 }
-fn test(arg: &[i32]) {}
+fn test(_arg: &[i32]) {}
             "#,
             r#"
 fn main() {
     test(&[1, 2, 3]);
 }
-fn test(arg: &[i32]) {}
+fn test(_arg: &[i32]) {}
             "#,
         );
     }
@@ -279,7 +283,7 @@ impl core::ops::Deref for Foo {
 fn main() {
     test($0Foo);
 }
-fn test(arg: &Bar) {}
+fn test(_arg: &Bar) {}
             "#,
             r#"
 struct Foo;
@@ -291,7 +295,7 @@ impl core::ops::Deref for Foo {
 fn main() {
     test(&Foo);
 }
-fn test(arg: &Bar) {}
+fn test(_arg: &Bar) {}
             "#,
         );
     }
@@ -305,7 +309,7 @@ fn main() {
 }
 struct Test;
 impl Test {
-    fn call_by_ref(&self, arg: &i32) {}
+    fn call_by_ref(&self, _arg: &i32) {}
 }
             "#,
             r#"
@@ -314,7 +318,7 @@ fn main() {
 }
 struct Test;
 impl Test {
-    fn call_by_ref(&self, arg: &i32) {}
+    fn call_by_ref(&self, _arg: &i32) {}
 }
             "#,
         );
@@ -345,7 +349,7 @@ macro_rules! thousand {
         1000_u64
     };
 }
-fn test(foo: &u64) {}
+fn test(_foo: &u64) {}
 fn main() {
     test($0thousand!());
 }
@@ -356,7 +360,7 @@ macro_rules! thousand {
         1000_u64
     };
 }
-fn test(foo: &u64) {}
+fn test(_foo: &u64) {}
 fn main() {
     test(&thousand!());
 }
@@ -369,12 +373,12 @@ fn main() {
         check_fix(
             r#"
 fn main() {
-    let test: &mut i32 = $0123;
+    let _test: &mut i32 = $0123;
 }
             "#,
             r#"
 fn main() {
-    let test: &mut i32 = &mut 123;
+    let _test: &mut i32 = &mut 123;
 }
             "#,
         );
@@ -411,7 +415,7 @@ fn div(x: i32, y: i32) -> Option<i32> {
             fn f<const N: u64>() -> Rate<N> { // FIXME: add some error
                 loop {}
             }
-            fn run(t: Rate<5>) {
+            fn run(_t: Rate<5>) {
             }
             fn main() {
                 run(f()) // FIXME: remove this error
@@ -426,7 +430,7 @@ fn div(x: i32, y: i32) -> Option<i32> {
         check_diagnostics(
             r#"
             pub struct Rate<T, const NOM: u32, const DENOM: u32>(T);
-            fn run(t: Rate<u32, 1, 1>) {
+            fn run(_t: Rate<u32, 1, 1>) {
             }
             fn main() {
                 run(Rate::<_, _, _>(5));
@@ -650,7 +654,7 @@ fn h() {
             r#"
 struct X<T>(T);
 
-fn foo(x: X<Unknown>) {}
+fn foo(_x: X<Unknown>) {}
 fn test1() {
     // Unknown might be `i32`, so we should not emit type mismatch here.
     foo(X(42));

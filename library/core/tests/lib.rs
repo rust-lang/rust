@@ -23,6 +23,7 @@
 #![feature(const_likely)]
 #![feature(const_location_fields)]
 #![feature(core_intrinsics)]
+#![feature(core_io_borrowed_buf)]
 #![feature(core_private_bignum)]
 #![feature(core_private_diy_float)]
 #![feature(dec2flt)]
@@ -135,6 +136,7 @@ mod fmt;
 mod future;
 mod hash;
 mod intrinsics;
+mod io;
 mod iter;
 mod lazy;
 #[cfg(test)]
@@ -167,7 +169,7 @@ mod waker;
 #[allow(dead_code)] // Not used in all configurations.
 pub(crate) fn test_rng() -> rand_xorshift::XorShiftRng {
     use core::hash::{BuildHasher, Hash, Hasher};
-    let mut hasher = std::collections::hash_map::RandomState::new().build_hasher();
+    let mut hasher = std::hash::RandomState::new().build_hasher();
     core::panic::Location::caller().hash(&mut hasher);
     let hc64 = hasher.finish();
     let seed_vec = hc64.to_le_bytes().into_iter().chain(0u8..8).collect::<Vec<u8>>();

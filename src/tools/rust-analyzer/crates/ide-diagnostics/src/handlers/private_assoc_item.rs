@@ -1,5 +1,3 @@
-use either::Either;
-
 use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext};
 
 // Diagnostic: private-assoc-item
@@ -28,13 +26,7 @@ pub(crate) fn private_assoc_item(
             },
             name,
         ),
-        d.expr_or_pat.clone().map(|it| match it {
-            Either::Left(it) => it.into(),
-            Either::Right(it) => match it {
-                Either::Left(it) => it.into(),
-                Either::Right(it) => it.into(),
-            },
-        }),
+        d.expr_or_pat.clone().map(Into::into),
     )
 }
 

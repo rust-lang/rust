@@ -76,15 +76,14 @@ pub struct ReprOptions {
     pub align: Option<Align>,
     pub pack: Option<Align>,
     pub flags: ReprFlags,
-    #[cfg(feature = "randomize")]
     /// The seed to be used for randomizing a type's layout
     ///
-    /// Note: This could technically be a `Hash128` which would
+    /// Note: This could technically be a `u128` which would
     /// be the "most accurate" hash as it'd encompass the item and crate
     /// hash without loss, but it does pay the price of being larger.
     /// Everything's a tradeoff, a 64-bit seed should be sufficient for our
     /// purposes (primarily `-Z randomize-layout`)
-    pub field_shuffle_seed: rustc_data_structures::stable_hasher::Hash64,
+    pub field_shuffle_seed: u64,
 }
 
 impl ReprOptions {

@@ -23,7 +23,7 @@ anyhow = "1.0.62"
 crossbeam-channel = "0.5.5"
 dissimilar = "1.0.4"
 itertools = "0.10.5"
-scip = "0.1.1"
+scip = "0.3.1"
 lsp-types = { version = "=0.94.0", features = ["proposed"] }
 parking_lot = "0.12.1"
 xflags = "0.3.0"
@@ -57,6 +57,7 @@ flycheck.workspace = true
 hir-def.workspace = true
 hir-ty.workspace = true
 hir.workspace = true
+rustc-dependencies.workspace = true
 ide-db.workspace = true
 # This should only be used in CLI
 ide-ssr.workspace = true
@@ -67,6 +68,7 @@ profile.workspace = true
 project-model.workspace = true
 stdx.workspace = true
 syntax.workspace = true
+parser.workspace = true
 toolchain.workspace = true
 vfs-notify.workspace = true
 vfs.workspace = true
@@ -89,4 +91,13 @@ mbe.workspace = true
 jemalloc = ["jemallocator", "profile/jemalloc"]
 force-always-assert = ["always-assert/force"]
 sysroot-abi = []
-in-rust-tree = ["sysroot-abi", "ide/in-rust-tree", "syntax/in-rust-tree"]
+in-rust-tree = [
+    "sysroot-abi",
+    "ide/in-rust-tree",
+    "syntax/in-rust-tree",
+    "parser/in-rust-tree",
+    "rustc-dependencies/in-rust-tree",
+    "hir/in-rust-tree",
+    "hir-def/in-rust-tree",
+    "hir-ty/in-rust-tree",
+]

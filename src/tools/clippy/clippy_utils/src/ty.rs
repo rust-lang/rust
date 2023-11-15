@@ -890,7 +890,7 @@ pub fn for_each_top_level_late_bound_region<B>(
     impl<'tcx, B, F: FnMut(BoundRegion) -> ControlFlow<B>> TypeVisitor<TyCtxt<'tcx>> for V<F> {
         type BreakTy = B;
         fn visit_region(&mut self, r: Region<'tcx>) -> ControlFlow<Self::BreakTy> {
-            if let RegionKind::ReLateBound(idx, bound) = r.kind()
+            if let RegionKind::ReBound(idx, bound) = r.kind()
                 && idx.as_u32() == self.index
             {
                 (self.f)(bound)
@@ -1160,7 +1160,7 @@ pub fn make_normalized_projection<'tcx>(
 ) -> Option<Ty<'tcx>> {
     fn helper<'tcx>(tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>, ty: AliasTy<'tcx>) -> Option<Ty<'tcx>> {
         #[cfg(debug_assertions)]
-        if let Some((i, arg)) = ty.args.iter().enumerate().find(|(_, arg)| arg.has_late_bound_regions()) {
+        if let Some((i, arg)) = ty.args.iter().enumerate().find(|(_, arg)| arg.has_bound_regions()) {
             debug_assert!(
                 false,
                 "args contain late-bound region at index `{i}` which can't be normalized.\n\
@@ -1233,7 +1233,7 @@ pub fn make_normalized_projection_with_regions<'tcx>(
 ) -> Option<Ty<'tcx>> {
     fn helper<'tcx>(tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>, ty: AliasTy<'tcx>) -> Option<Ty<'tcx>> {
         #[cfg(debug_assertions)]
-        if let Some((i, arg)) = ty.args.iter().enumerate().find(|(_, arg)| arg.has_late_bound_regions()) {
+        if let Some((i, arg)) = ty.args.iter().enumerate().find(|(_, arg)| arg.has_bound_regions()) {
             debug_assert!(
                 false,
                 "args contain late-bound region at index `{i}` which can't be normalized.\n\

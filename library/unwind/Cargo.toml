@@ -19,9 +19,6 @@ libc = { version = "0.2.79", features = ['rustc-dep-of-std'], default-features =
 compiler_builtins = "0.1.0"
 cfg-if = "1.0"
 
-[build-dependencies]
-cc = "1.0.76"
-
 [features]
 
 # Only applies for Linux and Fuchsia targets

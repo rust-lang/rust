@@ -309,7 +309,6 @@ macro_rules! impl_Exp {
                     n /= 10;
                     exponent += 1;
                 }
-
                 let (added_precision, subtracted_precision) = match f.precision() {
                     Some(fmt_prec) => {
                         // number of decimal digits minus 1
@@ -331,9 +330,15 @@ macro_rules! impl_Exp {
                     let rem = n % 10;
                     n /= 10;
                     exponent += 1;
-                    // round up last digit
-                    if rem >= 5 {
+                    // round up last digit, round to even on a tie
+                    if rem > 5 || (rem == 5 && (n % 2 != 0 || subtracted_precision > 1 )) {
                         n += 1;
+                        // if the digit is rounded to the next power
+                        // instead adjust the exponent
+                        if n.ilog10() > (n - 1).ilog10() {
+                            n /= 10;
+                            exponent += 1;
+                        }
                     }
                 }
                 (n, exponent, exponent, added_precision)

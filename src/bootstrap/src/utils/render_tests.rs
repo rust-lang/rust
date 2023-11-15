@@ -197,7 +197,7 @@ impl<'a> Renderer<'a> {
                         println!("{stdout}");
                     }
                     if let Some(message) = &failure.message {
-                        println!("note: {message}");
+                        println!("NOTE: {message}");
                     }
                 }
             }

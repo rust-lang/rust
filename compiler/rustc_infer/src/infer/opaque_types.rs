@@ -432,7 +432,7 @@ where
     fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
         match *r {
             // ignore bound regions, keep visiting
-            ty::ReLateBound(_, _) => ControlFlow::Continue(()),
+            ty::ReBound(_, _) => ControlFlow::Continue(()),
             _ => {
                 (self.op)(r);
                 ControlFlow::Continue(())

@@ -439,6 +439,11 @@ pub mod hash_map {
     //! A hash map implemented with quadratic probing and SIMD lookup.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub use super::hash::map::*;
+
+    #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
+    pub use crate::hash::random::DefaultHasher;
+    #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
+    pub use crate::hash::random::RandomState;
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

@@ -76,8 +76,6 @@ configuration options.
 
 ## Not yet supported
 
-* Inline assembly ([no cranelift support](https://github.com/bytecodealliance/wasmtime/issues/1041))
-    * On UNIX there is support for invoking an external assembler for `global_asm!` and `asm!`.
 * SIMD ([tracked here](https://github.com/rust-lang/rustc_codegen_cranelift/issues/171), `std::simd` fully works, `std::arch` is partially supported)
 * Unwinding on panics ([no cranelift support](https://github.com/bytecodealliance/wasmtime/issues/1677), `-Cpanic=abort` is enabled by default)
 

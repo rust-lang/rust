@@ -2386,31 +2386,32 @@ pub fn rendered_const<'tcx>(tcx: TyCtxt<'tcx>, body: hir::BodyId) -> String {
         }
     }
 
-    let classification = classify(value);
-
-    if classification == Literal
-        && !value.span.from_expansion()
-        && let Ok(snippet) = tcx.sess.source_map().span_to_snippet(value.span)
-    {
-        // For literals, we avoid invoking the pretty-printer and use the source snippet instead to
-        // preserve certain stylistic choices the user likely made for the sake legibility like
+    match classify(value) {
+        // For non-macro literals, we avoid invoking the pretty-printer and use the source snippet
+        // instead to preserve certain stylistic choices the user likely made for the sake of
+        // legibility, like:
         //
         // * hexadecimal notation
         // * underscores
         // * character escapes
         //
         // FIXME: This passes through `-/*spacer*/0` verbatim.
-        snippet
-    } else if classification == Simple {
+        Literal if !value.span.from_expansion()
+            && let Ok(snippet) = tcx.sess.source_map().span_to_snippet(value.span) => {
+            snippet
+        }
+
         // Otherwise we prefer pretty-printing to get rid of extraneous whitespace, comments and
         // other formatting artifacts.
-        id_to_string(&hir, body.hir_id)
-    } else if tcx.def_kind(hir.body_owner_def_id(body).to_def_id()) == DefKind::AnonConst {
+        Literal | Simple => id_to_string(&hir, body.hir_id),
+
         // FIXME: Omit the curly braces if the enclosing expression is an array literal
         //        with a repeated element (an `ExprKind::Repeat`) as in such case it
         //        would not actually need any disambiguation.
-        "{ _ }".to_owned()
-    } else {
-        "_".to_owned()
+        Complex => if tcx.def_kind(hir.body_owner_def_id(body).to_def_id()) == DefKind::AnonConst {
+            "{ _ }".to_owned()
+        } else {
+            "_".to_owned()
+        }
     }
 }

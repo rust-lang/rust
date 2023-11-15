@@ -233,7 +233,7 @@ pub fn check_run(cmd: &mut Command, print_cmd_on_fail: bool) -> bool {
     let status = match cmd.status() {
         Ok(status) => status,
         Err(e) => {
-            println!("failed to execute command: {cmd:?}\nerror: {e}");
+            println!("failed to execute command: {cmd:?}\nERROR: {e}");
             return false;
         }
     };
@@ -262,7 +262,7 @@ pub fn make(host: &str) -> PathBuf {
 pub fn output(cmd: &mut Command) -> String {
     let output = match cmd.stderr(Stdio::inherit()).output() {
         Ok(status) => status,
-        Err(e) => fail(&format!("failed to execute command: {cmd:?}\nerror: {e}")),
+        Err(e) => fail(&format!("failed to execute command: {cmd:?}\nERROR: {e}")),
     };
     if !output.status.success() {
         panic!(
@@ -327,7 +327,7 @@ pub(crate) fn absolute(path: &Path) -> PathBuf {
     }
     #[cfg(not(any(unix, windows)))]
     {
-        println!("warning: bootstrap is not supported on non-unix platforms");
+        println!("WARNING: bootstrap is not supported on non-unix platforms");
         t!(std::fs::canonicalize(t!(std::env::current_dir()))).join(path)
     }
 }
