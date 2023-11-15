@@ -2132,13 +2132,15 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             // Handle `self` specially.
             if index == 0 && has_self {
                 let self_lifetime = self.find_lifetime_for_self(ty);
-                if let Set1::One(lifetime) = self_lifetime {
+                elision_lifetime = match self_lifetime {
                     // We found `self` elision.
-                    elision_lifetime = Elision::Self_(lifetime);
-                } else {
+                    Set1::One(lifetime) => Elision::Self_(lifetime),
+                    // `self` itself had ambiguous lifetimes, e.g.
+                    // &Box<&Self>
+                    Set1::Many => Elision::None,
                     // We do not have `self` elision: disregard the `Elision::Param` that we may
                     // have found.
-                    elision_lifetime = Elision::None;
+                    Set1::Empty => Elision::None,
                 }
             }
             debug!("(resolving function / closure) recorded parameter");
@@ -2162,6 +2164,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             r: &'r Resolver<'a, 'tcx>,
             impl_self: Option<Res>,
             lifetime: Set1<LifetimeRes>,
+            self_found: bool,
         }
 
         impl SelfVisitor<'_, '_, '_> {
@@ -2185,9 +2188,11 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         impl<'a> Visitor<'a> for SelfVisitor<'_, '_, '_> {
             fn visit_ty(&mut self, ty: &'a Ty) {
                 trace!("SelfVisitor considering ty={:?}", ty);
-                if let TyKind::Ref(lt, ref mt) = ty.kind
-                    && self.is_self_ty(&mt.ty)
-                {
+                if self.is_self_ty(ty) {
+                    trace!("SelfVisitor found Self");
+                    self.self_found = true;
+                }
+                if let TyKind::Ref(lt, _) = ty.kind {
                     let lt_id = if let Some(lt) = lt {
                         lt.id
                     } else {
@@ -2228,10 +2233,11 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                     Res::Def(DefKind::Struct | DefKind::Union | DefKind::Enum, _,) | Res::PrimTy(_)
                 )
             });
-        let mut visitor = SelfVisitor { r: self.r, impl_self, lifetime: Set1::Empty };
+        let mut visitor =
+            SelfVisitor { r: self.r, impl_self, lifetime: Set1::Empty, self_found: false };
         visitor.visit_ty(ty);
-        trace!("SelfVisitor found={:?}", visitor.lifetime);
-        visitor.lifetime
+        trace!("SelfVisitor found={:?}, self_found={:?}", visitor.lifetime, visitor.self_found);
+        if visitor.self_found { visitor.lifetime } else { Set1::Empty }
     }
 
     /// Searches the current set of local scopes for labels. Returns the `NodeId` of the resolved
