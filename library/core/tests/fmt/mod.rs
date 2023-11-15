@@ -43,3 +43,37 @@ fn pad_integral_resets() {
 
     assert_eq!(format!("{Bar:<03}"), "1  0051  ");
 }
+
+#[test]
+fn write_cursor() {
+    use core::fmt::WriteCursor;
+
+    let mut buf = [0u8; 5];
+
+    {
+        let mut c = WriteCursor::new(&mut buf);
+        assert!(write!(c, "{}", 12345).is_ok());
+        assert_eq!(c.as_bytes(), b"12345");
+        assert_eq!(c.as_str(), "12345");
+    }
+
+    // Writes either fully succeed or leave the cursor unchanged. A cursor that
+    // failed to write remains valid for smaller writes.
+    {
+        let mut c = WriteCursor::new(&mut buf);
+        assert!(write!(c, "{}", 123456).is_err());
+        assert_eq!(c.written(), 0);
+        assert_eq!(c.as_str(), "");
+
+        assert!(write!(c, "{}", 1234).is_ok());
+        assert_eq!(c.written(), 4);
+        assert_eq!(c.as_str(), "1234");
+
+        assert!(write!(c, "{}", 1).is_ok());
+        assert_eq!(c.written(), 5);
+        assert_eq!(c.as_str(), "12341");
+
+        assert!(write!(c, "{}", 1).is_err());
+        assert_eq!(c.written(), 5);
+    }
+}

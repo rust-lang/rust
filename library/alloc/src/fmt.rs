@@ -557,6 +557,8 @@ pub use core::fmt::Alignment;
 pub use core::fmt::Error;
 #[unstable(feature = "debug_closure_helpers", issue = "117729")]
 pub use core::fmt::FormatterFn;
+#[unstable(feature = "fmt_write_cursor", issue = "none")]
+pub use core::fmt::WriteCursor;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::fmt::{write, Arguments};
 #[stable(feature = "rust1", since = "1.0.0")]

@@ -34,6 +34,7 @@
 #![feature(extern_types)]
 #![feature(flt2dec)]
 #![feature(fmt_internals)]
+#![feature(fmt_write_cursor)]
 #![feature(float_minimum_maximum)]
 #![feature(future_join)]
 #![feature(generic_assert_internals)]

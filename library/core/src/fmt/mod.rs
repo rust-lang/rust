@@ -231,6 +231,134 @@ impl<W: Write + ?Sized> Write for &mut W {
     }
 }
 
+/// A `WriteCursor` implements [`fmt::Write`] by writing to an in-memory buffer.
+///
+/// [`fmt::Write`]: self::Write
+///
+/// # Examples
+///
+/// ```
+/// #![feature(fmt_write_cursor)]
+/// use std::fmt::WriteCursor;
+///
+/// # fn test_write_cursor() -> std::fmt::Result {
+/// let mut buf = [0u8; 5];
+/// let mut cursor = WriteCursor::new(&mut buf);
+/// write!(cursor, "{}", 12345)?;
+/// assert_eq!(cursor.as_str(), "12345");
+/// assert_eq!(&buf, b"12345");
+/// # Ok(())
+/// # }
+/// ```
+#[doc(alias = "sprintf")]
+#[doc(alias = "snprintf")]
+#[unstable(feature = "fmt_write_cursor", issue = "none")]
+pub struct WriteCursor<'a> {
+    buf: &'a mut [mem::MaybeUninit<u8>],
+    utf8_len: usize,
+}
+
+#[unstable(feature = "fmt_write_cursor", issue = "none")]
+impl Debug for WriteCursor<'_> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        f.debug_struct("WriteCursor")
+            .field("capacity", &self.capacity())
+            .field("written", &self.written())
+            .finish()
+    }
+}
+
+impl<'a> WriteCursor<'a> {
+    /// Creates a new cursor wrapping the provided buffer.
+    #[unstable(feature = "fmt_write_cursor", issue = "none")]
+    pub fn new(buf: &'a mut [u8]) -> WriteCursor<'a> {
+        // SAFETY: [T] and [MaybeUninit<T>] have the same layout, and this
+        // code never writes uninitialized data to the buffer.
+        Self::new_uninit(unsafe { mem::transmute(buf) })
+    }
+
+    /// Creates a new cursor wrapping the provided uninitialized buffer.
+    #[unstable(feature = "fmt_write_cursor", issue = "none")]
+    pub fn new_uninit(buf: &'a mut [mem::MaybeUninit<u8>]) -> WriteCursor<'a> {
+        WriteCursor { buf, utf8_len: 0 }
+    }
+
+    /// Returns the total capacity of the cursor's underlying buffer, in bytes.
+    #[unstable(feature = "fmt_write_cursor", issue = "none")]
+    pub fn capacity(&self) -> usize {
+        self.buf.len()
+    }
+
+    /// Returns how many bytes have been written to the cursor's underlying buffer.
+    #[unstable(feature = "fmt_write_cursor", issue = "none")]
+    pub fn written(&self) -> usize {
+        self.utf8_len
+    }
+
+    /// Returns the written portion of the cursor's underlying buffer as a
+    /// byte slice.
+    ///
+    /// The returned slice contains valid UTF-8.
+    #[unstable(feature = "fmt_write_cursor", issue = "none")]
+    pub fn as_bytes(&self) -> &[u8] {
+        let utf8 = &self.buf[..self.utf8_len];
+        // SAFETY: The buffer is incrementally initialized by `write_str`, which
+        // updates `utf8_len`.
+        unsafe { mem::MaybeUninit::slice_assume_init_ref(utf8) }
+    }
+
+    /// Consumes the cursor and returns the written portion of the cursor's
+    /// underlying buffer as a byte slice.
+    ///
+    /// The returned slice contains valid UTF-8.
+    #[unstable(feature = "fmt_write_cursor", issue = "none")]
+    pub fn into_bytes(self) -> &'a mut [u8] {
+        let utf8 = &mut self.buf[..self.utf8_len];
+        // SAFETY: The buffer is incrementally initialized by `write_str`, which
+        // updates `utf8_len`.
+        unsafe { mem::MaybeUninit::slice_assume_init_mut(utf8) }
+    }
+
+    /// Returns the written portion of the cursor's underlying buffer as a `&str`.
+    #[unstable(feature = "fmt_write_cursor", issue = "none")]
+    pub fn as_str(&self) -> &str {
+        // SAFETY: The buffer is only initialized by copying from `str` values.
+        unsafe { str::from_utf8_unchecked(self.as_bytes()) }
+    }
+
+    /// Consumes the cursor and returns the written portion of the cursor's
+    /// underlying buffer as a `&str`.
+    #[unstable(feature = "fmt_write_cursor", issue = "none")]
+    pub fn into_str(self) -> &'a mut str {
+        // SAFETY: The buffer is only initialized by copying from `str` values.
+        unsafe { str::from_utf8_unchecked_mut(self.into_bytes()) }
+    }
+
+    /// Allows the [`write!`] macro to write to a `WriteCursor`.
+    ///
+    /// This method should generally not be invoked manually. It exists so that
+    /// the `write!` macro can write to a `WriteCursor` without needing a
+    /// `use std::fmt::Write` declaration.
+    #[unstable(feature = "fmt_write_cursor", issue = "none")]
+    pub fn write_fmt(&mut self, args: Arguments<'_>) -> Result {
+        Write::write_fmt(self, args)
+    }
+}
+
+#[unstable(feature = "fmt_write_cursor", issue = "none")]
+impl Write for WriteCursor<'_> {
+    fn write_str(&mut self, s: &str) -> Result {
+        let b = s.as_bytes();
+        let avail = &mut self.buf[self.utf8_len..];
+        if b.len() > avail.len() {
+            return Err(Error);
+        }
+        mem::MaybeUninit::write_slice(&mut avail[..b.len()], b);
+        self.utf8_len += b.len();
+        Ok(())
+    }
+}
+
 /// Configuration for formatting.
 ///
 /// A `Formatter` represents various options related to formatting. Users do not
