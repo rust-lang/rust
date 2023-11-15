@@ -36,11 +36,7 @@ num_cpus = "1.15.0"
 mimalloc = { version = "0.1.30", default-features = false, optional = true }
 lsp-server.workspace = true
 tracing.workspace = true
-tracing-subscriber = { version = "0.3.16", default-features = false, features = [
-    "registry",
-    "fmt",
-    "tracing-log",
-] }
+tracing-subscriber.workspace = true
 tracing-log = "0.1.3"
 tracing-tree.workspace = true
 triomphe.workspace = true

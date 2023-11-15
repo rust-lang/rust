@@ -99,6 +99,11 @@ smallvec = { version = "1.10.0", features = [
 ] }
 tracing = "0.1.40"
 tracing-tree = "0.2.5"
+tracing-subscriber = { version = "0.3.18", default-features = false, features = [
+    "registry",
+    "fmt",
+    "tracing-log",
+] }
 smol_str = "0.2.0"
 nohash-hasher = "0.2.0"
 text-size = "1.1.0"

@@ -48,9 +48,7 @@ limit.workspace = true
 [dev-dependencies]
 expect-test = "1.4.0"
 tracing.workspace = true
-tracing-subscriber = { version = "0.3.16", default-features = false, features = [
-    "registry",
-] }
+tracing-subscriber.workspace = true
 tracing-tree.workspace = true
 project-model = { path = "../project-model" }
 
