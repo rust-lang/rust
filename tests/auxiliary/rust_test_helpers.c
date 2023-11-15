@@ -271,7 +271,7 @@ float get_c_exhaust_sysv64_ints(
 // Variadic arguments are broken when using clang to compile nvptx-nvidia-cuda,
 // causing clang to ICE. As no test run on CI currently relies on these
 // functions, we don't compile them when building for nvptx-nvidia-cuda.
-#ifdef __CUDA_ARCH__
+#ifndef __CUDA_ARCH__
 
 // Calculates the average of `(x + y) / n` where x: i64, y: f64. There must be exactly n pairs
 // passed as variadic arguments. There are two versions of this function: the
