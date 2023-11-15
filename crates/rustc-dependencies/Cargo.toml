@@ -13,8 +13,8 @@ authors.workspace = true
 [dependencies]
 ra-ap-rustc_lexer = { version = "0.19.0" }
 ra-ap-rustc_parse_format = { version = "0.14.0", default-features = false }
-ra-ap-rustc_index = { version = "0.18.0", default-features = false }
-ra-ap-rustc_abi = { version = "0.18.0", default-features = false }
+ra-ap-rustc_index = { version = "0.19.0", default-features = false }
+ra-ap-rustc_abi = { version = "0.19.0", default-features = false }
 
 [features]
 in-rust-tree = []
