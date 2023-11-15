@@ -252,6 +252,37 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 this.write_scalar(result, dest)?;
             }
 
+            "reallocarray" => {
+                // Currently this function does not exist on all Unixes, e.g. on macOS.
+                if !matches!(&*this.tcx.sess.target.os, "linux" | "freebsd") {
+                    throw_unsup_format!(
+                        "`reallocarray` is not supported on {}",
+                        this.tcx.sess.target.os
+                    );
+                }
+                let [ptr, nmemb, size] =
+                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let ptr = this.read_pointer(ptr)?;
+                let nmemb = this.read_target_usize(nmemb)?;
+                let size = this.read_target_usize(size)?;
+                // reallocarray checks a possible overflow and returns ENOMEM
+                // if that happens.
+                //
+                // Linux: https://www.unix.com/man-page/linux/3/reallocarray/
+                // FreeBSD: https://man.freebsd.org/cgi/man.cgi?query=reallocarray
+                match nmemb.checked_mul(size) {
+                    None => {
+                        let einval = this.eval_libc("ENOMEM");
+                        this.set_last_error(einval)?;
+                        this.write_null(dest)?;
+                    }
+                    Some(len) => {
+                        let res = this.realloc(ptr, len, MiriMemoryKind::C)?;
+                        this.write_pointer(res, dest)?;
+                    }
+                }
+            }
+
             // Dynamic symbol loading
             "dlsym" => {
                 let [handle, symbol] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
