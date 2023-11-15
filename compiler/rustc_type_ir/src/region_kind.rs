@@ -149,7 +149,7 @@ pub enum RegionKind<I: Interner> {
     /// parameters via `tcx.liberate_late_bound_regions`. They are then treated
     /// the same way as `ReEarlyParam` while inside of the function.
     ///
-    /// See https://rustc-dev-guide.rust-lang.org/early-late-bound-summary.html for
+    /// See <https://rustc-dev-guide.rust-lang.org/early-late-bound-summary.html> for
     /// more info about early and late bound lifetime parameters.
     ReLateParam(I::LateParamRegion),
 
