@@ -599,12 +599,12 @@ fn main() {
              //^^^ 💡 warn: Static variable `bar` should have UPPER_SNAKE_CASE name, e.g. `BAR`
         fn BAZ() {
          //^^^ 💡 warn: Function `BAZ` should have snake_case name, e.g. `baz`
-            let INNER_INNER = 42;
-              //^^^^^^^^^^^ 💡 warn: Variable `INNER_INNER` should have snake_case name, e.g. `inner_inner`
+            let _INNER_INNER = 42;
+              //^^^^^^^^^^^^ 💡 warn: Variable `_INNER_INNER` should have snake_case name, e.g. `_inner_inner`
         }
 
-        let INNER_LOCAL = 42;
-          //^^^^^^^^^^^ 💡 warn: Variable `INNER_LOCAL` should have snake_case name, e.g. `inner_local`
+        let _INNER_LOCAL = 42;
+          //^^^^^^^^^^^^ 💡 warn: Variable `_INNER_LOCAL` should have snake_case name, e.g. `_inner_local`
     }
 }
 "#,

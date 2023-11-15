@@ -742,4 +742,19 @@ fn g() { return; }
 "#,
         );
     }
+
+    #[test]
+    fn smoke_test_inner_items() {
+        check_diagnostics(
+            r#"
+fn f() {
+    fn inner() -> i32 {
+        return;
+     // ^^^^^^ error: expected i32, found ()
+        0
+    }
+}
+"#,
+        );
+    }
 }
