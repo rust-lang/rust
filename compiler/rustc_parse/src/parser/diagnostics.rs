@@ -674,15 +674,6 @@ impl<'a> Parser<'a> {
             );
         }
 
-        // Add suggestion for a missing closing angle bracket if '>' is included in expected_tokens
-        // there are unclosed angle brackets
-        if self.unmatched_angle_bracket_count > 0
-            && self.token.kind == TokenKind::Eq
-            && expected.iter().any(|tok| matches!(tok, TokenType::Token(TokenKind::Gt)))
-        {
-            err.span_label(self.prev_token.span, "maybe try to close unmatched angle bracket");
-        }
-
         let sp = if self.token == token::Eof {
             // This is EOF; don't want to point at the following char, but rather the last token.
             self.prev_token.span
@@ -819,6 +810,7 @@ impl<'a> Parser<'a> {
         }
         err.emit();
     }
+
     fn check_too_many_raw_str_terminators(&mut self, err: &mut Diagnostic) -> bool {
         let sm = self.sess.source_map();
         match (&self.prev_token.kind, &self.token.kind) {
@@ -1992,6 +1984,39 @@ impl<'a> Parser<'a> {
         } else {
             Err(self.expected_expression_found()) // The user isn't trying to invoke the try! macro
         }
+    }
+
+    /// When trying to close a generics list and encountering code like
+    /// ```text
+    /// impl<S: Into<std::borrow::Cow<'static, str>> From<S> for Canonical {}
+    ///                                          // ^ missing > here
+    /// ```
+    /// we provide a structured suggestion on the error from `expect_gt`.
+    pub(super) fn expect_gt_or_maybe_suggest_closing_generics(
+        &mut self,
+        params: &[ast::GenericParam],
+    ) -> PResult<'a, ()> {
+        let Err(mut err) = self.expect_gt() else {
+            return Ok(());
+        };
+        // Attempt to find places where a missing `>` might belong.
+        if let [.., ast::GenericParam { bounds, .. }] = params
+            && let Some(poly) = bounds
+                .iter()
+                .filter_map(|bound| match bound {
+                    ast::GenericBound::Trait(poly, _) => Some(poly),
+                    _ => None,
+                })
+                .last()
+        {
+            err.span_suggestion_verbose(
+                poly.span.shrink_to_hi(),
+                "you might have meant to end the type parameters here",
+                ">",
+                Applicability::MaybeIncorrect,
+            );
+        }
+        Err(err)
     }
 
     pub(super) fn recover_seq_parse_error(
