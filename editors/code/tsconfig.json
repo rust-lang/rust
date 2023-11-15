@@ -2,14 +2,14 @@
     "extends": "@tsconfig/strictest/tsconfig.json",
     "compilerOptions": {
         "esModuleInterop": false,
-        "module": "commonjs",
-        "moduleResolution": "node16",
-        "target": "es2021",
+        "module": "CommonJS",
+        "moduleResolution": "Node16",
+        "target": "ES2021",
         "outDir": "out",
-        "lib": ["es2021"],
+        "lib": ["ES2021"],
         "sourceMap": true,
         "rootDir": ".",
-        "newLine": "LF",
+        "newLine": "lf",
 
         // FIXME: https://github.com/rust-lang/rust-analyzer/issues/15253
         "exactOptionalPropertyTypes": false
