@@ -1127,11 +1127,10 @@ impl<T> cmp::Ord for Discriminant<T> {
 ///
 /// # Stability
 ///
-/// The discriminant of an enum variant may change if the enum definition changes. A discriminant
-/// of some variant will not change between compilations with the same compiler. See the [Reference]
-/// for more information.
+/// `Discriminant` is an opaque wrapper around the enum discriminant, therefore it's value will
+/// change when the enum definition changes. See the [Reference] for more information.
 ///
-/// [Reference]: ../../reference/items/enumerations.html#custom-discriminant-values-for-fieldless-enumerations
+/// [Reference]: ../../reference/items/enumerations.html#discriminants
 ///
 /// # Examples
 ///
