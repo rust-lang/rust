@@ -7,7 +7,7 @@ Language
 --------
 
 - [Codify that `std::mem::Discriminant<T>` does not depend on any lifetimes in T](https://github.com/rust-lang/rust/pull/104299/)
-- [Replace `private_in_public` lint with `private_interfaces` and `private_bounds` per RFC 2145](https://github.com/rust-lang/rust/pull/113126/)
+- [Replace `private_in_public` lint with `private_interfaces` and `private_bounds` per RFC 2145.](https://github.com/rust-lang/rust/pull/113126/)
   Read more in [RFC 2145](https://rust-lang.github.io/rfcs/2145-type-privacy.html).
 - [Allow explicit `#[repr(Rust)]`](https://github.com/rust-lang/rust/pull/114201/)
 - [closure field capturing: don't depend on alignment of packed fields](https://github.com/rust-lang/rust/pull/115315/)
