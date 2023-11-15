@@ -106,11 +106,17 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'tcx>]) {
             && let Some(binding) = get_pat_binding(cx, recv, outer_arm)
         {
             let ty = cx.typeck_results().expr_ty(recv).peel_refs();
+            let slice_like = ty.is_slice() || ty.is_array();
 
-            if path.ident.name == sym!(is_empty) && ty.is_str() {
+            if path.ident.name == sym!(is_empty) {
                 // `s if s.is_empty()` becomes ""
+                // `arr if arr.is_empty()` becomes []
 
-                emit_redundant_guards(cx, outer_arm, if_expr.span, r#""""#.into(), &binding, None)
+                if ty.is_str() {
+                    emit_redundant_guards(cx, outer_arm, if_expr.span, r#""""#.into(), &binding, None)
+                } else if slice_like {
+                    emit_redundant_guards(cx, outer_arm, if_expr.span, "[]".into(), &binding, None)
+                }
             }
         }
     }
