@@ -327,7 +327,7 @@ jobs:
     continue-on-error: ${{ matrix.name == 'mingw-check-tidy' }}
     defaults:
       run:
-        shell: C:\msys64\usr\bin\bash.exe -eo pipefail {0} # specifically include /etc/profile
+        shell: C:\msys64\msys2_shell.cmd -mingw64 -here -eo pipefail {0}
     strategy:
       fail-fast: false
       matrix:
