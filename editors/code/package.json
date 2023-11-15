@@ -503,7 +503,7 @@
                     "type": "boolean"
                 },
                 "rust-analyzer.showRequestFailedErrorNotification": {
-                    "markdownDescription": "Whether to show panic error notifications.",
+                    "markdownDescription": "Whether to show error notifications for failing requests.",
                     "default": true,
                     "type": "boolean"
                 },
