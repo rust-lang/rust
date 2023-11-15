@@ -2,15 +2,25 @@ import * as lc from "vscode-languageclient/node";
 import * as vscode from "vscode";
 
 export class RaLanguageClient extends lc.LanguageClient {
-    override error(message: string, data?: any, showNotification?: boolean | "force"): void {
-        // ignore `Request TYPE failed.` errors
+    override handleFailedRequest<T>(
+        type: lc.MessageSignature,
+        token: vscode.CancellationToken | undefined,
+        error: any,
+        defaultValue: T,
+        showNotification?: boolean | undefined,
+    ): T {
         const showError = vscode.workspace
             .getConfiguration("rust-analyzer")
             .get("showRequestFailedErrorNotification");
-        if (!showError && message.startsWith("Request") && message.endsWith("failed.")) {
-            return;
+        if (
+            !showError &&
+            error instanceof lc.ResponseError &&
+            error.code === lc.ErrorCodes.InternalError
+        ) {
+            // Don't show notification for internal errors, these are emitted by r-a when a request fails.
+            showNotification = false;
         }
 
-        super.error(message, data, showNotification);
+        return super.handleFailedRequest(type, token, error, defaultValue, showNotification);
     }
 }
