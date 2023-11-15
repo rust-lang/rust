@@ -1,3 +1,4 @@
+use clippy_utils::diagnostics::span_lint_and_help;
 use rustc_ast::ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_lint::{EarlyContext, EarlyLintPass, Level, LintContext};
@@ -124,11 +125,13 @@ impl EarlyLintPass for ModStyle {
                     correct.pop();
                     correct.push(folder);
                     correct.push("mod.rs");
-                    cx.struct_span_lint(
+                    span_lint_and_help(
+                        cx,
                         SELF_NAMED_MODULE_FILES,
                         Span::new(file.start_pos, file.start_pos, SyntaxContext::root(), None),
-                        format!("`mod.rs` files are required, found `{}`", path.display()),
-                        |lint| lint.help(format!("move `{}` to `{}`", path.display(), correct.display(),)),
+                        &format!("`mod.rs` files are required, found `{}`", path.display()),
+                        None,
+                        &format!("move `{}` to `{}`", path.display(), correct.display(),),
                     );
                 }
             }
@@ -162,11 +165,13 @@ fn check_self_named_mod_exists(cx: &EarlyContext<'_>, path: &Path, file: &Source
         mod_file.pop();
         mod_file.set_extension("rs");
 
-        cx.struct_span_lint(
+        span_lint_and_help(
+            cx,
             MOD_MODULE_FILES,
             Span::new(file.start_pos, file.start_pos, SyntaxContext::root(), None),
-            format!("`mod.rs` files are not allowed, found `{}`", path.display()),
-            |lint| lint.help(format!("move `{}` to `{}`", path.display(), mod_file.display())),
+            &format!("`mod.rs` files are not allowed, found `{}`", path.display()),
+            None,
+            &format!("move `{}` to `{}`", path.display(), mod_file.display()),
         );
     }
 }
