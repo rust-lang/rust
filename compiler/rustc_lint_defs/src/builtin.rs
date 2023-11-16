@@ -4236,44 +4236,10 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `implied_bounds_entailment` lint detects cases where the arguments of an impl method
-    /// have stronger implied bounds than those from the trait method it's implementing.
-    ///
-    /// ### Example
-    ///
-    /// ```rust,compile_fail
-    /// #![deny(implied_bounds_entailment)]
-    ///
-    /// trait Trait {
-    ///     fn get<'s>(s: &'s str, _: &'static &'static ()) -> &'static str;
-    /// }
-    ///
-    /// impl Trait for () {
-    ///     fn get<'s>(s: &'s str, _: &'static &'s ()) -> &'static str {
-    ///         s
-    ///     }
-    /// }
-    ///
-    /// let val = <() as Trait>::get(&String::from("blah blah blah"), &&());
-    /// println!("{}", val);
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// Neither the trait method, which provides no implied bounds about `'s`, nor the impl,
-    /// requires the main function to prove that 's: 'static, but the impl method is allowed
-    /// to assume that `'s: 'static` within its own body.
-    ///
-    /// This can be used to implement an unsound API if used incorrectly.
+    /// This lint has been removed in favor of a hard error.
     pub IMPLIED_BOUNDS_ENTAILMENT,
     Deny,
     "impl method assumes more implied bounds than its corresponding trait method",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
-        reference: "issue #105572 <https://github.com/rust-lang/rust/issues/105572>",
-    };
 }
 
 declare_lint! {
