@@ -172,6 +172,7 @@ fn test_thread_local_errno() {
 }
 
 /// Tests whether clock support exists at all
+#[cfg(not(target_os = "freebsd"))]
 fn test_clocks() {
     let mut tp = std::mem::MaybeUninit::<libc::timespec>::uninit();
     let is_error = unsafe { libc::clock_gettime(libc::CLOCK_REALTIME, tp.as_mut_ptr()) };
@@ -237,6 +238,7 @@ fn test_isatty() {
     }
 }
 
+#[cfg(not(target_os = "freebsd"))]
 fn test_posix_mkstemp() {
     use std::ffi::CString;
     use std::ffi::OsStr;
@@ -390,6 +392,8 @@ fn test_dlsym() {
 
 fn main() {
     test_posix_gettimeofday();
+
+    #[cfg(not(target_os = "freebsd"))] // FIXME we should support this on FreeBSD as well
     test_posix_mkstemp();
 
     test_posix_realpath_alloc();
@@ -399,7 +403,10 @@ fn main() {
     test_thread_local_errno();
 
     test_isatty();
+
+    #[cfg(not(target_os = "freebsd"))] // FIXME we should support this on FreeBSD as well
     test_clocks();
+
     test_dlsym();
 
     test_memcpy();
