@@ -8,7 +8,7 @@ bitflags! {
         // required.
         /// Does this have `Param`?
         const HAS_TY_PARAM                = 1 << 0;
-        /// Does this have `ReEarlyBound`?
+        /// Does this have `ReEarlyParam`?
         const HAS_RE_PARAM                = 1 << 1;
         /// Does this have `ConstKind::Param`?
         const HAS_CT_PARAM                = 1 << 2;

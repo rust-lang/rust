@@ -326,7 +326,7 @@ impl<'tcx> TyCtxt<'tcx> {
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
         self.replace_late_bound_regions_uncached(value, |br| {
-            ty::Region::new_free(self, all_outlive_scope, br.kind)
+            ty::Region::new_late_param(self, all_outlive_scope, br.kind)
         })
     }
 

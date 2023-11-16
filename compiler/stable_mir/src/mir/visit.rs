@@ -76,6 +76,15 @@ pub trait MirVisitor {
         self.super_place(place, ptx, location)
     }
 
+    fn visit_projection_elem(
+        &mut self,
+        elem: &ProjectionElem,
+        ptx: PlaceContext,
+        location: Location,
+    ) {
+        self.super_projection_elem(elem, ptx, location);
+    }
+
     fn visit_local(&mut self, local: &Local, ptx: PlaceContext, location: Location) {
         let _ = (local, ptx, location);
     }
@@ -264,7 +273,29 @@ pub trait MirVisitor {
     fn super_place(&mut self, place: &Place, ptx: PlaceContext, location: Location) {
         let _ = location;
         let _ = ptx;
-        visit_opaque(&Opaque(place.projection.clone()));
+        self.visit_local(&place.local, ptx, location);
+
+        for elem in &place.projection {
+            self.visit_projection_elem(elem, ptx, location);
+        }
+    }
+
+    fn super_projection_elem(
+        &mut self,
+        elem: &ProjectionElem,
+        ptx: PlaceContext,
+        location: Location,
+    ) {
+        match elem {
+            ProjectionElem::Deref => {}
+            ProjectionElem::Field(_idx, ty) => self.visit_ty(ty, location),
+            ProjectionElem::Index(local) => self.visit_local(local, ptx, location),
+            ProjectionElem::ConstantIndex { offset: _, min_length: _, from_end: _ } => {}
+            ProjectionElem::Subslice { from: _, to: _, from_end: _ } => {}
+            ProjectionElem::Downcast(_idx) => {}
+            ProjectionElem::OpaqueCast(ty) => self.visit_ty(ty, location),
+            ProjectionElem::Subtype(ty) => self.visit_ty(ty, location),
+        }
     }
 
     fn super_rvalue(&mut self, rvalue: &Rvalue, location: Location) {

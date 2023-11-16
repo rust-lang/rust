@@ -287,9 +287,9 @@ pub(crate) fn clean_middle_region<'tcx>(region: ty::Region<'tcx>) -> Option<Life
         ty::ReStatic => Some(Lifetime::statik()),
         _ if !region.has_name() => None,
         ty::ReBound(_, ty::BoundRegion { kind: ty::BrNamed(_, name), .. }) => Some(Lifetime(name)),
-        ty::ReEarlyBound(ref data) => Some(Lifetime(data.name)),
+        ty::ReEarlyParam(ref data) => Some(Lifetime(data.name)),
         ty::ReBound(..)
-        | ty::ReFree(..)
+        | ty::ReLateParam(..)
         | ty::ReVar(..)
         | ty::ReError(_)
         | ty::RePlaceholder(..)
@@ -1928,13 +1928,13 @@ fn clean_trait_object_lifetime_bound<'tcx>(
     // latter contrary to `clean_middle_region`.
     match *region {
         ty::ReStatic => Some(Lifetime::statik()),
-        ty::ReEarlyBound(region) if region.name != kw::Empty => Some(Lifetime(region.name)),
+        ty::ReEarlyParam(region) if region.name != kw::Empty => Some(Lifetime(region.name)),
         ty::ReBound(_, ty::BoundRegion { kind: ty::BrNamed(_, name), .. }) if name != kw::Empty => {
             Some(Lifetime(name))
         }
-        ty::ReEarlyBound(_)
+        ty::ReEarlyParam(_)
         | ty::ReBound(..)
-        | ty::ReFree(_)
+        | ty::ReLateParam(_)
         | ty::ReVar(_)
         | ty::RePlaceholder(_)
         | ty::ReErased

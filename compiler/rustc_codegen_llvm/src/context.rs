@@ -368,6 +368,24 @@ pub unsafe fn create_module<'ll>(
         llvm::LLVMMDNodeInContext(llcx, &name_metadata, 1),
     );
 
+    // Add module flags specified via -Z llvm_module_flag
+    for (key, value, behavior) in &sess.opts.unstable_opts.llvm_module_flag {
+        let key = format!("{key}\0");
+        let behavior = match behavior.as_str() {
+            "error" => llvm::LLVMModFlagBehavior::Error,
+            "warning" => llvm::LLVMModFlagBehavior::Warning,
+            "require" => llvm::LLVMModFlagBehavior::Require,
+            "override" => llvm::LLVMModFlagBehavior::Override,
+            "append" => llvm::LLVMModFlagBehavior::Append,
+            "appendunique" => llvm::LLVMModFlagBehavior::AppendUnique,
+            "max" => llvm::LLVMModFlagBehavior::Max,
+            "min" => llvm::LLVMModFlagBehavior::Min,
+            // We already checked this during option parsing
+            _ => unreachable!(),
+        };
+        llvm::LLVMRustAddModuleFlag(llmod, behavior, key.as_ptr().cast(), *value)
+    }
+
     llmod
 }
 

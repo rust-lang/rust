@@ -113,7 +113,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReverseMapper<'tcx> {
             ty::ReError(_) => return r,
 
             // The regions that we expect from borrow checking.
-            ty::ReEarlyBound(_) | ty::ReFree(_) => {}
+            ty::ReEarlyParam(_) | ty::ReLateParam(_) => {}
 
             ty::RePlaceholder(_) | ty::ReVar(_) => {
                 // All of the regions in the type should either have been

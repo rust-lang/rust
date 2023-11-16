@@ -13,8 +13,8 @@ impl From<ty::ParamTy> for Parameter {
     }
 }
 
-impl From<ty::EarlyBoundRegion> for Parameter {
-    fn from(param: ty::EarlyBoundRegion) -> Self {
+impl From<ty::EarlyParamRegion> for Parameter {
+    fn from(param: ty::EarlyParamRegion) -> Self {
         Parameter(param.index)
     }
 }
@@ -73,7 +73,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ParameterCollector {
     }
 
     fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
-        if let ty::ReEarlyBound(data) = *r {
+        if let ty::ReEarlyParam(data) = *r {
             self.parameters.push(Parameter::from(data));
         }
         ControlFlow::Continue(())

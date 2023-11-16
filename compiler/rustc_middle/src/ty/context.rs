@@ -113,9 +113,9 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type ExprConst = ty::Expr<'tcx>;
 
     type Region = Region<'tcx>;
-    type EarlyBoundRegion = ty::EarlyBoundRegion;
+    type EarlyParamRegion = ty::EarlyParamRegion;
     type BoundRegion = ty::BoundRegion;
-    type FreeRegion = ty::FreeRegion;
+    type LateParamRegion = ty::LateParamRegion;
     type InferRegion = ty::RegionVid;
     type PlaceholderRegion = ty::PlaceholderRegion;
 
@@ -445,14 +445,14 @@ impl<'tcx> CommonConsts<'tcx> {
     }
 }
 
-/// This struct contains information regarding the `ReFree(FreeRegion)` corresponding to a lifetime
-/// conflict.
+/// This struct contains information regarding a free parameter region,
+/// either a `ReEarlyParam` or `ReLateParam`.
 #[derive(Debug)]
 pub struct FreeRegionInfo {
-    /// `LocalDefId` corresponding to FreeRegion
+    /// `LocalDefId` of the free region.
     pub def_id: LocalDefId,
-    /// the bound region corresponding to FreeRegion
-    pub boundregion: ty::BoundRegionKind,
+    /// the bound region corresponding to free region.
+    pub bound_region: ty::BoundRegionKind,
     /// checks if bound region is in Impl Item
     pub is_impl_item: bool,
 }
@@ -1080,8 +1080,8 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn is_suitable_region(self, mut region: Region<'tcx>) -> Option<FreeRegionInfo> {
         let (suitable_region_binding_scope, bound_region) = loop {
             let def_id = match region.kind() {
-                ty::ReFree(fr) => fr.bound_region.get_id()?.as_local()?,
-                ty::ReEarlyBound(ebr) => ebr.def_id.expect_local(),
+                ty::ReLateParam(fr) => fr.bound_region.get_id()?.as_local()?,
+                ty::ReEarlyParam(ebr) => ebr.def_id.expect_local(),
                 _ => return None, // not a free region
             };
             let scope = self.local_parent(def_id);
@@ -1102,11 +1102,7 @@ impl<'tcx> TyCtxt<'tcx> {
             _ => false,
         };
 
-        Some(FreeRegionInfo {
-            def_id: suitable_region_binding_scope,
-            boundregion: bound_region,
-            is_impl_item,
-        })
+        Some(FreeRegionInfo { def_id: suitable_region_binding_scope, bound_region, is_impl_item })
     }
 
     /// Given a `DefId` for an `fn`, return all the `dyn` and `impl` traits in its return type.
@@ -1743,7 +1739,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn mk_param_from_def(self, param: &ty::GenericParamDef) -> GenericArg<'tcx> {
         match param.kind {
             GenericParamDefKind::Lifetime => {
-                ty::Region::new_early_bound(self, param.to_early_bound_region_data()).into()
+                ty::Region::new_early_param(self, param.to_early_bound_region_data()).into()
             }
             GenericParamDefKind::Type { .. } => Ty::new_param(self, param.index, param.name).into(),
             GenericParamDefKind::Const { .. } => ty::Const::new_param(
@@ -2040,7 +2036,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Given the def-id of an early-bound lifetime on an RPIT corresponding to
     /// a duplicated captured lifetime, map it back to the early- or late-bound
     /// lifetime of the function from which it originally as captured. If it is
-    /// a late-bound lifetime, this will represent the liberated (`ReFree`) lifetime
+    /// a late-bound lifetime, this will represent the liberated (`ReLateParam`) lifetime
     /// of the signature.
     // FIXME(RPITIT): if we ever synthesize new lifetimes for RPITITs and not just
     // re-use the generics of the opaque, this function will need to be tweaked slightly.
@@ -2079,9 +2075,9 @@ impl<'tcx> TyCtxt<'tcx> {
                     }
 
                     let generics = self.generics_of(new_parent);
-                    return ty::Region::new_early_bound(
+                    return ty::Region::new_early_param(
                         self,
-                        ty::EarlyBoundRegion {
+                        ty::EarlyParamRegion {
                             def_id: ebv,
                             index: generics
                                 .param_def_id_to_index(self, ebv)
@@ -2092,7 +2088,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 }
                 Some(resolve_bound_vars::ResolvedArg::LateBound(_, _, lbv)) => {
                     let new_parent = self.parent(lbv);
-                    return ty::Region::new_free(
+                    return ty::Region::new_late_param(
                         self,
                         new_parent,
                         ty::BoundRegionKind::BrNamed(

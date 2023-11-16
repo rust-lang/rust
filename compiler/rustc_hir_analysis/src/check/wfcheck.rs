@@ -595,9 +595,9 @@ fn gather_gat_bounds<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
                 // Same for the region. In our example, 'a corresponds
                 // to the 'me parameter.
                 let region_param = gat_generics.param_at(*region_a_idx, tcx);
-                let region_param = ty::Region::new_early_bound(
+                let region_param = ty::Region::new_early_param(
                     tcx,
-                    ty::EarlyBoundRegion {
+                    ty::EarlyParamRegion {
                         def_id: region_param.def_id,
                         index: region_param.index,
                         name: region_param.name,
@@ -628,9 +628,9 @@ fn gather_gat_bounds<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
                 debug!("required clause: {region_a} must outlive {region_b}");
                 // Translate into the generic parameters of the GAT.
                 let region_a_param = gat_generics.param_at(*region_a_idx, tcx);
-                let region_a_param = ty::Region::new_early_bound(
+                let region_a_param = ty::Region::new_early_param(
                     tcx,
-                    ty::EarlyBoundRegion {
+                    ty::EarlyParamRegion {
                         def_id: region_a_param.def_id,
                         index: region_a_param.index,
                         name: region_a_param.name,
@@ -638,9 +638,9 @@ fn gather_gat_bounds<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
                 );
                 // Same for the region.
                 let region_b_param = gat_generics.param_at(*region_b_idx, tcx);
-                let region_b_param = ty::Region::new_early_bound(
+                let region_b_param = ty::Region::new_early_param(
                     tcx,
-                    ty::EarlyBoundRegion {
+                    ty::EarlyParamRegion {
                         def_id: region_b_param.def_id,
                         index: region_b_param.index,
                         name: region_b_param.name,

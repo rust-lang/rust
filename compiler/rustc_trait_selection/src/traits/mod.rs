@@ -484,7 +484,7 @@ fn is_impossible_associated_item(
             t.super_visit_with(self)
         }
         fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
-            if let ty::ReEarlyBound(param) = r.kind()
+            if let ty::ReEarlyParam(param) = r.kind()
                 && let param_def_id = self.generics.region_param(&param, self.tcx).def_id
                 && self.tcx.parent(param_def_id) == self.trait_item_def_id
             {

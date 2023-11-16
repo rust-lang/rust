@@ -81,8 +81,7 @@ fn ensure_drop_params_and_item_params_correspond<'tcx>(
     self_type_did: DefId,
     adt_to_impl_args: GenericArgsRef<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
-    let Err(arg) = tcx.uses_unique_generic_params(adt_to_impl_args, CheckRegions::OnlyEarlyBound)
-    else {
+    let Err(arg) = tcx.uses_unique_generic_params(adt_to_impl_args, CheckRegions::OnlyParam) else {
         return Ok(());
     };
 

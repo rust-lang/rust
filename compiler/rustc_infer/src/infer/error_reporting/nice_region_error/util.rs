@@ -41,8 +41,8 @@ pub fn find_param_with_region<'tcx>(
     replace_region: Region<'tcx>,
 ) -> Option<AnonymousParamInfo<'tcx>> {
     let (id, bound_region) = match *anon_region {
-        ty::ReFree(ref free_region) => (free_region.scope, free_region.bound_region),
-        ty::ReEarlyBound(ebr) => {
+        ty::ReLateParam(late_param) => (late_param.scope, late_param.bound_region),
+        ty::ReEarlyParam(ebr) => {
             (tcx.parent(ebr.def_id), ty::BoundRegionKind::BrNamed(ebr.def_id, ebr.name))
         }
         _ => return None, // not a free region
