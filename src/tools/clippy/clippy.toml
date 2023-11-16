@@ -1,1 +1,7 @@
 avoid-breaking-exported-api = false
+
+# use the various `span_lint_*` methods instead, which also add a link to the docs
+disallowed-methods = [
+    "rustc_lint::context::LintContext::struct_span_lint",
+    "rustc_middle::ty::context::TyCtxt::struct_span_lint_hir"
+]

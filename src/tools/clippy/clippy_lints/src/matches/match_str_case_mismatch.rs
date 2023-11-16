@@ -20,21 +20,16 @@ enum CaseMethod {
 }
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, scrutinee: &'tcx Expr<'_>, arms: &'tcx [Arm<'_>]) {
-    if_chain! {
-        if let ty::Ref(_, ty, _) = cx.typeck_results().expr_ty(scrutinee).kind();
-        if let ty::Str = ty.kind();
-        then {
-            let mut visitor = MatchExprVisitor {
-                cx,
-                case_method: None,
-            };
+    if let ty::Ref(_, ty, _) = cx.typeck_results().expr_ty(scrutinee).kind()
+        && let ty::Str = ty.kind()
+    {
+        let mut visitor = MatchExprVisitor { cx, case_method: None };
 
-            visitor.visit_expr(scrutinee);
+        visitor.visit_expr(scrutinee);
 
-            if let Some(case_method) = visitor.case_method {
-                if let Some((bad_case_span, bad_case_sym)) = verify_case(&case_method, arms) {
-                    lint(cx, &case_method, bad_case_span, bad_case_sym.as_str());
-                }
+        if let Some(case_method) = visitor.case_method {
+            if let Some((bad_case_span, bad_case_sym)) = verify_case(&case_method, arms) {
+                lint(cx, &case_method, bad_case_span, bad_case_sym.as_str());
             }
         }
     }
@@ -88,17 +83,15 @@ fn verify_case<'a>(case_method: &'a CaseMethod, arms: &'a [Arm<'_>]) -> Option<(
     };
 
     for arm in arms {
-        if_chain! {
-            if let PatKind::Lit(Expr {
-                                kind: ExprKind::Lit(lit),
-                                ..
-                            }) = arm.pat.kind;
-            if let LitKind::Str(symbol, _) = lit.node;
-            let input = symbol.as_str();
-            if !case_check(input);
-            then {
-                return Some((lit.span, symbol));
-            }
+        if let PatKind::Lit(Expr {
+            kind: ExprKind::Lit(lit),
+            ..
+        }) = arm.pat.kind
+            && let LitKind::Str(symbol, _) = lit.node
+            && let input = symbol.as_str()
+            && !case_check(input)
+        {
+            return Some((lit.span, symbol));
         }
     }
 

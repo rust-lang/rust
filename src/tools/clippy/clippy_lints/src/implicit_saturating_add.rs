@@ -2,7 +2,6 @@ use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::get_parent_expr;
 use clippy_utils::source::snippet_with_context;
-use if_chain::if_chain;
 use rustc_ast::ast::{LitIntType, LitKind};
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Block, Expr, ExprKind, Stmt, StmtKind};
@@ -40,42 +39,58 @@ declare_lint_pass!(ImplicitSaturatingAdd => [IMPLICIT_SATURATING_ADD]);
 
 impl<'tcx> LateLintPass<'tcx> for ImplicitSaturatingAdd {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
-        if_chain! {
-            if let ExprKind::If(cond, then, None) = expr.kind;
-            if let ExprKind::DropTemps(expr1) = cond.kind;
-            if let Some((c, op_node, l)) = get_const(cx, expr1);
-            if let BinOpKind::Ne | BinOpKind::Lt = op_node;
-            if let ExprKind::Block(block, None) = then.kind;
-            if let Block {
+        if let ExprKind::If(cond, then, None) = expr.kind
+            && let ExprKind::DropTemps(expr1) = cond.kind
+            && let Some((c, op_node, l)) = get_const(cx, expr1)
+            && let BinOpKind::Ne | BinOpKind::Lt = op_node
+            && let ExprKind::Block(block, None) = then.kind
+            && let Block {
                 stmts:
-                    [Stmt
-                        { kind: StmtKind::Expr(ex) | StmtKind::Semi(ex), .. }],
-                        expr: None, ..} |
-                        Block { stmts: [], expr: Some(ex), ..} = block;
-            if let ExprKind::AssignOp(op1, target, value) = ex.kind;
-            let ty = cx.typeck_results().expr_ty(target);
-            if Some(c) == get_int_max(ty);
-            let ctxt = expr.span.ctxt();
-            if ex.span.ctxt() == ctxt;
-            if expr1.span.ctxt() == ctxt;
-            if clippy_utils::SpanlessEq::new(cx).eq_expr(l, target);
-            if BinOpKind::Add == op1.node;
-            if let ExprKind::Lit(lit) = value.kind;
-            if let LitKind::Int(1, LitIntType::Unsuffixed) = lit.node;
-            if block.expr.is_none();
-            then {
-                let mut app = Applicability::MachineApplicable;
-                let code = snippet_with_context(cx, target.span, ctxt, "_", &mut app).0;
-                let sugg = if let Some(parent) = get_parent_expr(cx, expr)
-                    && let ExprKind::If(_cond, _then, Some(else_)) = parent.kind
-                    && else_.hir_id == expr.hir_id
-                {
-                    format!("{{{code} = {code}.saturating_add(1); }}")
-                } else {
-                    format!("{code} = {code}.saturating_add(1);")
-                };
-                span_lint_and_sugg(cx, IMPLICIT_SATURATING_ADD, expr.span, "manual saturating add detected", "use instead", sugg, app);
+                    [
+                        Stmt {
+                            kind: StmtKind::Expr(ex) | StmtKind::Semi(ex),
+                            ..
+                        },
+                    ],
+                expr: None,
+                ..
             }
+            | Block {
+                stmts: [],
+                expr: Some(ex),
+                ..
+            } = block
+            && let ExprKind::AssignOp(op1, target, value) = ex.kind
+            && let ty = cx.typeck_results().expr_ty(target)
+            && Some(c) == get_int_max(ty)
+            && let ctxt = expr.span.ctxt()
+            && ex.span.ctxt() == ctxt
+            && expr1.span.ctxt() == ctxt
+            && clippy_utils::SpanlessEq::new(cx).eq_expr(l, target)
+            && BinOpKind::Add == op1.node
+            && let ExprKind::Lit(lit) = value.kind
+            && let LitKind::Int(1, LitIntType::Unsuffixed) = lit.node
+            && block.expr.is_none()
+        {
+            let mut app = Applicability::MachineApplicable;
+            let code = snippet_with_context(cx, target.span, ctxt, "_", &mut app).0;
+            let sugg = if let Some(parent) = get_parent_expr(cx, expr)
+                && let ExprKind::If(_cond, _then, Some(else_)) = parent.kind
+                && else_.hir_id == expr.hir_id
+            {
+                format!("{{{code} = {code}.saturating_add(1); }}")
+            } else {
+                format!("{code} = {code}.saturating_add(1);")
+            };
+            span_lint_and_sugg(
+                cx,
+                IMPLICIT_SATURATING_ADD,
+                expr.span,
+                "manual saturating add detected",
+                "use instead",
+                sugg,
+                app,
+            );
         }
     }
 }

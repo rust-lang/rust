@@ -1,7 +1,6 @@
 use serde::de::{self, Deserializer, Visitor};
 use serde::{ser, Deserialize, Serialize};
 use std::fmt;
-use std::hash::{Hash, Hasher};
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct Rename {
@@ -33,31 +32,18 @@ impl DisallowedPath {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub enum MatchLintBehaviour {
     AllTypes,
     WellKnownTypes,
     Never,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct MacroMatcher {
     pub name: String,
-    pub braces: (String, String),
+    pub braces: (char, char),
 }
-
-impl Hash for MacroMatcher {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.name.hash(state);
-    }
-}
-
-impl PartialEq for MacroMatcher {
-    fn eq(&self, other: &Self) -> bool {
-        self.name == other.name
-    }
-}
-impl Eq for MacroMatcher {}
 
 impl<'de> Deserialize<'de> for MacroMatcher {
     fn deserialize<D>(deser: D) -> Result<Self, D::Error>
@@ -83,7 +69,7 @@ impl<'de> Deserialize<'de> for MacroMatcher {
                 V: de::MapAccess<'de>,
             {
                 let mut name = None;
-                let mut brace: Option<String> = None;
+                let mut brace: Option<char> = None;
                 while let Some(key) = map.next_key()? {
                     match key {
                         Field::Name => {
@@ -104,7 +90,7 @@ impl<'de> Deserialize<'de> for MacroMatcher {
                 let brace = brace.ok_or_else(|| de::Error::missing_field("brace"))?;
                 Ok(MacroMatcher {
                     name,
-                    braces: [("(", ")"), ("{", "}"), ("[", "]")]
+                    braces: [('(', ')'), ('{', '}'), ('[', ']')]
                         .into_iter()
                         .find(|b| b.0 == brace)
                         .map(|(o, c)| (o.to_owned(), c.to_owned()))

@@ -1,13 +1,12 @@
 [package]
 name = "clippy_utils"
-version = "0.1.75"
+version = "0.1.76"
 edition = "2021"
 publish = false
 
 [dependencies]
 clippy_config = { path = "../clippy_config" }
 arrayvec = { version = "0.7", default-features = false }
-if_chain = "1.0"
 itertools = "0.10.1"
 rustc-semver = "1.1"
 

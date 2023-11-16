@@ -1,7 +1,6 @@
 use super::MUT_RANGE_BOUND;
 use clippy_utils::diagnostics::span_lint_and_note;
 use clippy_utils::{get_enclosing_block, higher, path_to_local};
-use if_chain::if_chain;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{BindingAnnotation, Expr, ExprKind, HirId, Node, PatKind};
 use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
@@ -12,19 +11,17 @@ use rustc_middle::ty;
 use rustc_span::Span;
 
 pub(super) fn check(cx: &LateContext<'_>, arg: &Expr<'_>, body: &Expr<'_>) {
-    if_chain! {
-        if let Some(higher::Range {
-            start: Some(start),
-            end: Some(end),
-            ..
-        }) = higher::Range::hir(arg);
-        let (mut_id_start, mut_id_end) = (check_for_mutability(cx, start), check_for_mutability(cx, end));
-        if mut_id_start.is_some() || mut_id_end.is_some();
-        then {
-            let (span_low, span_high) = check_for_mutation(cx, body, mut_id_start, mut_id_end);
-            mut_warn_with_span(cx, span_low);
-            mut_warn_with_span(cx, span_high);
-        }
+    if let Some(higher::Range {
+        start: Some(start),
+        end: Some(end),
+        ..
+    }) = higher::Range::hir(arg)
+        && let (mut_id_start, mut_id_end) = (check_for_mutability(cx, start), check_for_mutability(cx, end))
+        && (mut_id_start.is_some() || mut_id_end.is_some())
+    {
+        let (span_low, span_high) = check_for_mutation(cx, body, mut_id_start, mut_id_end);
+        mut_warn_with_span(cx, span_low);
+        mut_warn_with_span(cx, span_high);
     }
 }
 
@@ -42,13 +39,11 @@ fn mut_warn_with_span(cx: &LateContext<'_>, span: Option<Span>) {
 }
 
 fn check_for_mutability(cx: &LateContext<'_>, bound: &Expr<'_>) -> Option<HirId> {
-    if_chain! {
-        if let Some(hir_id) = path_to_local(bound);
-        if let Node::Pat(pat) = cx.tcx.hir().get(hir_id);
-        if let PatKind::Binding(BindingAnnotation::MUT, ..) = pat.kind;
-        then {
-            return Some(hir_id);
-        }
+    if let Some(hir_id) = path_to_local(bound)
+        && let Node::Pat(pat) = cx.tcx.hir().get(hir_id)
+        && let PatKind::Binding(BindingAnnotation::MUT, ..) = pat.kind
+    {
+        return Some(hir_id);
     }
     None
 }

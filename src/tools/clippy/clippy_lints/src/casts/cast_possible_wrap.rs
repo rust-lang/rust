@@ -1,5 +1,6 @@
+use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_hir::Expr;
-use rustc_lint::{LateContext, LintContext};
+use rustc_lint::LateContext;
 use rustc_middle::ty::Ty;
 
 use super::{utils, CAST_POSSIBLE_WRAP};
@@ -78,13 +79,11 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_from: Ty<'_>, ca
         ),
     };
 
-    cx.struct_span_lint(CAST_POSSIBLE_WRAP, expr.span, message, |diag| {
+    span_lint_and_then(cx, CAST_POSSIBLE_WRAP, expr.span, &message, |diag| {
         if let EmitState::LintOnPtrSize(16) = should_lint {
             diag
-            .note("`usize` and `isize` may be as small as 16 bits on some platforms")
-            .note("for more information see https://doc.rust-lang.org/reference/types/numeric.html#machine-dependent-integer-types")
-        } else {
-            diag
-        }
+                .note("`usize` and `isize` may be as small as 16 bits on some platforms")
+                .note("for more information see https://doc.rust-lang.org/reference/types/numeric.html#machine-dependent-integer-types");
+        };
     });
 }

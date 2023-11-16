@@ -4,7 +4,6 @@ use clippy_utils::source::snippet;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_copy;
 use clippy_utils::{get_enclosing_block, higher, path_to_local, sugg};
-use if_chain::if_chain;
 use rustc_ast::ast;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::walk_block;
@@ -59,22 +58,31 @@ pub(super) fn check<'tcx>(
                 .map(|o| {
                     o.and_then(|(lhs, rhs)| {
                         let rhs = fetch_cloned_expr(rhs);
-                        if_chain! {
-                            if let ExprKind::Index(base_left, idx_left, _) = lhs.kind;
-                            if let ExprKind::Index(base_right, idx_right, _) = rhs.kind;
-                            if let Some(ty) = get_slice_like_element_ty(cx, cx.typeck_results().expr_ty(base_left));
-                            if get_slice_like_element_ty(cx, cx.typeck_results().expr_ty(base_right)).is_some();
-                            if let Some((start_left, offset_left)) = get_details_from_idx(cx, idx_left, &starts);
-                            if let Some((start_right, offset_right)) = get_details_from_idx(cx, idx_right, &starts);
+                        if let ExprKind::Index(base_left, idx_left, _) = lhs.kind
+                            && let ExprKind::Index(base_right, idx_right, _) = rhs.kind
+                            && let Some(ty) = get_slice_like_element_ty(cx, cx.typeck_results().expr_ty(base_left))
+                            && get_slice_like_element_ty(cx, cx.typeck_results().expr_ty(base_right)).is_some()
+                            && let Some((start_left, offset_left)) = get_details_from_idx(cx, idx_left, &starts)
+                            && let Some((start_right, offset_right)) = get_details_from_idx(cx, idx_right, &starts)
 
                             // Source and destination must be different
-                            if path_to_local(base_left) != path_to_local(base_right);
-                            then {
-                                Some((ty, IndexExpr { base: base_left, idx: start_left, idx_offset: offset_left },
-                                    IndexExpr { base: base_right, idx: start_right, idx_offset: offset_right }))
-                            } else {
-                                None
-                            }
+                            && path_to_local(base_left) != path_to_local(base_right)
+                        {
+                            Some((
+                                ty,
+                                IndexExpr {
+                                    base: base_left,
+                                    idx: start_left,
+                                    idx_offset: offset_left,
+                                },
+                                IndexExpr {
+                                    base: base_right,
+                                    idx: start_right,
+                                    idx_offset: offset_right,
+                                },
+                            ))
+                        } else {
+                            None
                         }
                     })
                 })
@@ -118,23 +126,19 @@ fn build_manual_memcpy_suggestion<'tcx>(
     }
 
     let print_limit = |end: &Expr<'_>, end_str: &str, base: &Expr<'_>, sugg: MinifyingSugg<'static>| {
-        if_chain! {
-            if let ExprKind::MethodCall(method, recv, [], _) = end.kind;
-            if method.ident.name == sym::len;
-            if path_to_local(recv) == path_to_local(base);
-            then {
-                if sugg.to_string() == end_str {
-                    sugg::EMPTY.into()
-                } else {
-                    sugg
-                }
+        if let ExprKind::MethodCall(method, recv, [], _) = end.kind
+            && method.ident.name == sym::len
+            && path_to_local(recv) == path_to_local(base)
+        {
+            if sugg.to_string() == end_str {
+                sugg::EMPTY.into()
             } else {
-                match limits {
-                    ast::RangeLimits::Closed => {
-                        sugg + &sugg::ONE.into()
-                    },
-                    ast::RangeLimits::HalfOpen => sugg,
-                }
+                sugg
+            }
+        } else {
+            match limits {
+                ast::RangeLimits::Closed => sugg + &sugg::ONE.into(),
+                ast::RangeLimits::HalfOpen => sugg,
             }
         }
     };
@@ -174,7 +178,9 @@ fn build_manual_memcpy_suggestion<'tcx>(
     let dst_base_str = snippet(cx, dst.base.span, "???");
     let src_base_str = snippet(cx, src.base.span, "???");
 
-    let dst = if dst_offset == sugg::EMPTY && dst_limit == sugg::EMPTY {
+    let dst = if (dst_offset == sugg::EMPTY && dst_limit == sugg::EMPTY)
+        || is_array_length_equal_to_range(cx, start, end, dst.base)
+    {
         dst_base_str
     } else {
         format!("{dst_base_str}[{}..{}]", dst_offset.maybe_par(), dst_limit.maybe_par()).into()
@@ -186,11 +192,13 @@ fn build_manual_memcpy_suggestion<'tcx>(
         "clone_from_slice"
     };
 
-    format!(
-        "{dst}.{method_str}(&{src_base_str}[{}..{}]);",
-        src_offset.maybe_par(),
-        src_limit.maybe_par()
-    )
+    let src = if is_array_length_equal_to_range(cx, start, end, src.base) {
+        src_base_str
+    } else {
+        format!("{src_base_str}[{}..{}]", src_offset.maybe_par(), src_limit.maybe_par()).into()
+    };
+
+    format!("{dst}.{method_str}(&{src});")
 }
 
 /// a wrapper of `Sugg`. Besides what `Sugg` do, this removes unnecessary `0`;
@@ -331,10 +339,12 @@ fn get_slice_like_element_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Opti
 }
 
 fn fetch_cloned_expr<'tcx>(expr: &'tcx Expr<'tcx>) -> &'tcx Expr<'tcx> {
-    if_chain! {
-        if let ExprKind::MethodCall(method, arg, [], _) = expr.kind;
-        if method.ident.name == sym::clone;
-        then { arg } else { expr }
+    if let ExprKind::MethodCall(method, arg, [], _) = expr.kind
+        && method.ident.name == sym::clone
+    {
+        arg
+    } else {
+        expr
     }
 }
 
@@ -445,4 +455,35 @@ fn get_loop_counters<'a, 'tcx>(
             })
             .into()
     })
+}
+
+fn is_array_length_equal_to_range(cx: &LateContext<'_>, start: &Expr<'_>, end: &Expr<'_>, arr: &Expr<'_>) -> bool {
+    fn extract_lit_value(expr: &Expr<'_>) -> Option<u128> {
+        if let ExprKind::Lit(lit) = expr.kind
+            && let ast::LitKind::Int(value, _) = lit.node
+        {
+            Some(value)
+        } else {
+            None
+        }
+    }
+
+    let arr_ty = cx.typeck_results().expr_ty(arr).peel_refs();
+
+    if let ty::Array(_, s) = arr_ty.kind() {
+        let size: u128 = if let Some(size) = s.try_eval_target_usize(cx.tcx, cx.param_env) {
+            size.into()
+        } else {
+            return false;
+        };
+
+        let range = match (extract_lit_value(start), extract_lit_value(end)) {
+            (Some(start_value), Some(end_value)) => end_value - start_value,
+            _ => return false,
+        };
+
+        size == range
+    } else {
+        false
+    }
 }

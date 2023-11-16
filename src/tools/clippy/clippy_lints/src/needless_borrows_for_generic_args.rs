@@ -50,7 +50,7 @@ declare_clippy_lint! {
     /// let x = "foo";
     /// f(x);
     /// ```
-    #[clippy::version = "pre 1.29.0"]
+    #[clippy::version = "1.74.0"]
     pub NEEDLESS_BORROWS_FOR_GENERIC_ARGS,
     style,
     "taking a reference that is going to be automatically dereferenced"

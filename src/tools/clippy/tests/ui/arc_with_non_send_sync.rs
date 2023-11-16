@@ -33,16 +33,16 @@ fn main() {
     let _ = Arc::new(42);
 
     let _ = Arc::new(RefCell::new(42));
-    //~^ ERROR: usage of an `Arc` that is not `Send` or `Sync`
+    //~^ ERROR: usage of an `Arc` that is not `Send` and `Sync`
     //~| NOTE: the trait `Sync` is not implemented for `RefCell<i32>`
 
     let mutex = Mutex::new(1);
     let _ = Arc::new(mutex.lock().unwrap());
-    //~^ ERROR: usage of an `Arc` that is not `Send` or `Sync`
+    //~^ ERROR: usage of an `Arc` that is not `Send` and `Sync`
     //~| NOTE: the trait `Send` is not implemented for `MutexGuard<'_, i32>`
 
     let _ = Arc::new(&42 as *const i32);
-    //~^ ERROR: usage of an `Arc` that is not `Send` or `Sync`
+    //~^ ERROR: usage of an `Arc` that is not `Send` and `Sync`
     //~| NOTE: the trait `Send` is not implemented for `*const i32`
     //~| NOTE: the trait `Sync` is not implemented for `*const i32`
 }

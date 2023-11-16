@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::ty::is_type_lang_item;
 use clippy_utils::SpanlessEq;
-use if_chain::if_chain;
 use rustc_ast::LitKind;
 use rustc_hir::{ExprKind, LangItem};
 use rustc_lint::LateContext;
@@ -19,17 +18,13 @@ pub(super) fn check<'tcx>(
         return;
     }
 
-    if_chain! {
-        if let ExprKind::Lit(spanned) = &arg1.kind;
-        if let Some(param1) = lit_string_value(&spanned.node);
-
-        if let ExprKind::Lit(spanned) = &arg2.kind;
-        if let LitKind::Str(param2, _) = &spanned.node;
-        if param1 == param2.as_str();
-
-        then {
-            span_lint(cx, NO_EFFECT_REPLACE, expr.span, "replacing text with itself");
-        }
+    if let ExprKind::Lit(spanned) = &arg1.kind
+        && let Some(param1) = lit_string_value(&spanned.node)
+        && let ExprKind::Lit(spanned) = &arg2.kind
+        && let LitKind::Str(param2, _) = &spanned.node
+        && param1 == param2.as_str()
+    {
+        span_lint(cx, NO_EFFECT_REPLACE, expr.span, "replacing text with itself");
     }
 
     if SpanlessEq::new(cx).eq_expr(arg1, arg2) {

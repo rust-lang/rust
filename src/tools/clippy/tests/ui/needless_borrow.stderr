@@ -133,5 +133,29 @@ error: this expression borrows a value the compiler would automatically borrow
 LL |             (&mut self.f)()
    |             ^^^^^^^^^^^^^ help: change this to: `(self.f)`
 
-error: aborting due to 22 previous errors
+error: this expression borrows a value the compiler would automatically borrow
+  --> $DIR/needless_borrow.rs:221:22
+   |
+LL |         let _ = &mut (&mut { x.u }).x;
+   |                      ^^^^^^^^^^^^^^ help: change this to: `{ x.u }`
+
+error: this expression borrows a value the compiler would automatically borrow
+  --> $DIR/needless_borrow.rs:228:22
+   |
+LL |         let _ = &mut (&mut { x.u }).x;
+   |                      ^^^^^^^^^^^^^^ help: change this to: `{ x.u }`
+
+error: this expression borrows a value the compiler would automatically borrow
+  --> $DIR/needless_borrow.rs:232:22
+   |
+LL |         let _ = &mut (&mut x.u).x;
+   |                      ^^^^^^^^^^ help: change this to: `x.u`
+
+error: this expression borrows a value the compiler would automatically borrow
+  --> $DIR/needless_borrow.rs:233:22
+   |
+LL |         let _ = &mut (&mut { x.u }).x;
+   |                      ^^^^^^^^^^^^^^ help: change this to: `{ x.u }`
+
+error: aborting due to 26 previous errors
 

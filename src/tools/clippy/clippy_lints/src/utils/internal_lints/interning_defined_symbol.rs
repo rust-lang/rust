@@ -3,7 +3,6 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::match_type;
 use clippy_utils::{def_path_def_ids, is_expn_of, match_def_path, paths};
-use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
@@ -77,15 +76,13 @@ impl<'tcx> LateLintPass<'tcx> for InterningDefinedSymbol {
         for &module in &[&paths::KW_MODULE, &paths::SYM_MODULE] {
             for def_id in def_path_def_ids(cx, module) {
                 for item in cx.tcx.module_children(def_id) {
-                    if_chain! {
-                        if let Res::Def(DefKind::Const, item_def_id) = item.res;
-                        let ty = cx.tcx.type_of(item_def_id).instantiate_identity();
-                        if match_type(cx, ty, &paths::SYMBOL);
-                        if let Ok(ConstValue::Scalar(value)) = cx.tcx.const_eval_poly(item_def_id);
-                        if let Ok(value) = value.to_u32();
-                        then {
-                            self.symbol_map.insert(value, item_def_id);
-                        }
+                    if let Res::Def(DefKind::Const, item_def_id) = item.res
+                        && let ty = cx.tcx.type_of(item_def_id).instantiate_identity()
+                        && match_type(cx, ty, &paths::SYMBOL)
+                        && let Ok(ConstValue::Scalar(value)) = cx.tcx.const_eval_poly(item_def_id)
+                        && let Ok(value) = value.to_u32()
+                    {
+                        self.symbol_map.insert(value, item_def_id);
                     }
                 }
             }
@@ -93,24 +90,22 @@ impl<'tcx> LateLintPass<'tcx> for InterningDefinedSymbol {
     }
 
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if_chain! {
-            if let ExprKind::Call(func, [arg]) = &expr.kind;
-            if let ty::FnDef(def_id, _) = cx.typeck_results().expr_ty(func).kind();
-            if match_def_path(cx, *def_id, &paths::SYMBOL_INTERN);
-            if let Some(Constant::Str(arg)) = constant_simple(cx, cx.typeck_results(), arg);
-            let value = Symbol::intern(&arg).as_u32();
-            if let Some(&def_id) = self.symbol_map.get(&value);
-            then {
-                span_lint_and_sugg(
-                    cx,
-                    INTERNING_DEFINED_SYMBOL,
-                    is_expn_of(expr.span, "sym").unwrap_or(expr.span),
-                    "interning a defined symbol",
-                    "try",
-                    cx.tcx.def_path_str(def_id),
-                    Applicability::MachineApplicable,
-                );
-            }
+        if let ExprKind::Call(func, [arg]) = &expr.kind
+            && let ty::FnDef(def_id, _) = cx.typeck_results().expr_ty(func).kind()
+            && match_def_path(cx, *def_id, &paths::SYMBOL_INTERN)
+            && let Some(Constant::Str(arg)) = constant_simple(cx, cx.typeck_results(), arg)
+            && let value = Symbol::intern(&arg).as_u32()
+            && let Some(&def_id) = self.symbol_map.get(&value)
+        {
+            span_lint_and_sugg(
+                cx,
+                INTERNING_DEFINED_SYMBOL,
+                is_expn_of(expr.span, "sym").unwrap_or(expr.span),
+                "interning a defined symbol",
+                "try",
+                cx.tcx.def_path_str(def_id),
+                Applicability::MachineApplicable,
+            );
         }
         if let ExprKind::Binary(op, left, right) = expr.kind {
             if matches!(op.node, BinOpKind::Eq | BinOpKind::Ne) {
@@ -163,27 +158,28 @@ impl InterningDefinedSymbol {
     fn symbol_str_expr<'tcx>(&self, expr: &'tcx Expr<'tcx>, cx: &LateContext<'tcx>) -> Option<SymbolStrExpr<'tcx>> {
         static IDENT_STR_PATHS: &[&[&str]] = &[&paths::IDENT_AS_STR];
         static SYMBOL_STR_PATHS: &[&[&str]] = &[&paths::SYMBOL_AS_STR, &paths::SYMBOL_TO_IDENT_STRING];
-        let call = if_chain! {
-            if let ExprKind::AddrOf(_, _, e) = expr.kind;
-            if let ExprKind::Unary(UnOp::Deref, e) = e.kind;
-            then { e } else { expr }
+        let call = if let ExprKind::AddrOf(_, _, e) = expr.kind
+            && let ExprKind::Unary(UnOp::Deref, e) = e.kind
+        {
+            e
+        } else {
+            expr
         };
-        if_chain! {
+        if let ExprKind::MethodCall(_, item, [], _) = call.kind
             // is a method call
-            if let ExprKind::MethodCall(_, item, [], _) = call.kind;
-            if let Some(did) = cx.typeck_results().type_dependent_def_id(call.hir_id);
-            let ty = cx.typeck_results().expr_ty(item);
+            && let Some(did) = cx.typeck_results().type_dependent_def_id(call.hir_id)
+            && let ty = cx.typeck_results().expr_ty(item)
             // ...on either an Ident or a Symbol
-            if let Some(is_ident) = if match_type(cx, ty, &paths::SYMBOL) {
+            && let Some(is_ident) = if match_type(cx, ty, &paths::SYMBOL) {
                 Some(false)
             } else if match_type(cx, ty, &paths::IDENT) {
                 Some(true)
             } else {
                 None
-            };
+            }
             // ...which converts it to a string
-            let paths = if is_ident { IDENT_STR_PATHS } else { SYMBOL_STR_PATHS };
-            if let Some(is_to_owned) = paths
+            && let paths = if is_ident { IDENT_STR_PATHS } else { SYMBOL_STR_PATHS }
+            && let Some(is_to_owned) = paths
                 .iter()
                 .find_map(|path| if match_def_path(cx, did, path) {
                     Some(path == &paths::SYMBOL_TO_IDENT_STRING)
@@ -194,14 +190,13 @@ impl InterningDefinedSymbol {
                     Some(true)
                 } else {
                     None
-                });
-            then {
-                return Some(SymbolStrExpr::Expr {
-                    item,
-                    is_ident,
-                    is_to_owned,
-                });
-            }
+                })
+        {
+            return Some(SymbolStrExpr::Expr {
+                item,
+                is_ident,
+                is_to_owned,
+            });
         }
         // is a string constant
         if let Some(Constant::Str(s)) = constant_simple(cx, cx.typeck_results(), expr) {
