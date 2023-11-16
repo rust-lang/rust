@@ -13,6 +13,8 @@ mod from_mir;
 pub(super) enum BcbMappingKind {
     /// Associates an ordinary executable code span with its corresponding BCB.
     Code(BasicCoverageBlock),
+    /// Associates a branch span with BCBs for its true and false arms.
+    Branch { true_bcb: BasicCoverageBlock, false_bcb: BasicCoverageBlock },
 }
 
 #[derive(Debug)]
@@ -66,6 +68,12 @@ pub(super) fn generate_coverage_spans(
             // Each span produced by the generator represents an ordinary code region.
             BcbMapping { kind: BcbMappingKind::Code(bcb), span }
         }));
+
+        mappings.extend(from_mir::extract_branch_mappings(
+            mir_body,
+            hir_info.body_span,
+            basic_coverage_blocks,
+        ));
     }
 
     if mappings.is_empty() {
@@ -80,6 +88,10 @@ pub(super) fn generate_coverage_spans(
     for &BcbMapping { kind, span: _ } in &mappings {
         match kind {
             BcbMappingKind::Code(bcb) => insert(bcb),
+            BcbMappingKind::Branch { true_bcb, false_bcb } => {
+                insert(true_bcb);
+                insert(false_bcb);
+            }
         }
     }
 

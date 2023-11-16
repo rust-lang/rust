@@ -179,14 +179,18 @@ pub struct Expression {
 pub enum MappingKind {
     /// Associates a normal region of code with a counter/expression/zero.
     Code(CovTerm),
+    /// Associates a branch region with separate counters for true and false.
+    Branch { true_term: CovTerm, false_term: CovTerm },
 }
 
 impl MappingKind {
     /// Iterator over all coverage terms in this mapping kind.
     pub fn terms(&self) -> impl Iterator<Item = CovTerm> {
-        let one = |a| std::iter::once(a);
+        let one = |a| std::iter::once(a).chain(None);
+        let two = |a, b| std::iter::once(a).chain(Some(b));
         match *self {
             Self::Code(term) => one(term),
+            Self::Branch { true_term, false_term } => two(true_term, false_term),
         }
     }
 
@@ -195,6 +199,9 @@ impl MappingKind {
     pub fn map_terms(&self, map_fn: impl Fn(CovTerm) -> CovTerm) -> Self {
         match *self {
             Self::Code(term) => Self::Code(map_fn(term)),
+            Self::Branch { true_term, false_term } => {
+                Self::Branch { true_term: map_fn(true_term), false_term: map_fn(false_term) }
+            }
         }
     }
 }
