@@ -1309,36 +1309,6 @@ function initSearch(rawSearchIndex) {
         }
 
         /**
-         * This function checks generics in search query `queryElem` can all be found in the
-         * search index (`fnType`),
-         *
-         * This function returns `true` if it matches, and also writes the results to mgensInout.
-         * It returns `false` if no match is found, and leaves mgensInout untouched.
-         *
-         * @param {FunctionType} fnType                - The object to check.
-         * @param {QueryElement} queryElem             - The element from the parsed query.
-         * @param {[FunctionType]} whereClause         - Trait bounds for generic items.
-         * @param {Map<number,number>|null} mgensInout - Map functions generics to query generics.
-         *
-         * @return {boolean} - Returns true if a match, false otherwise.
-         */
-        function checkGenerics(fnType, queryElem, whereClause, mgensInout) {
-            return unifyFunctionTypes(
-                fnType.generics,
-                queryElem.generics,
-                whereClause,
-                mgensInout,
-                mgens => {
-                    if (mgensInout) {
-                        for (const [fid, qid] of mgens.entries()) {
-                            mgensInout.set(fid, qid);
-                        }
-                    }
-                    return true;
-                }
-            );
-        }
-        /**
          * This function checks if a list of search query `queryElems` can all be found in the
          * search index (`fnTypes`).
          *
@@ -1561,7 +1531,7 @@ function initSearch(rawSearchIndex) {
                 ) {
                     // [] matches primitive:array or primitive:slice
                     // if it matches, then we're fine, and this is an appropriate match candidate
-                } else if (fnType.id !== queryElem.id) {
+                } else if (fnType.id !== queryElem.id || queryElem.id === null) {
                     return false;
                 }
                 // If the query elem has generics, and the function doesn't,
@@ -1649,38 +1619,17 @@ function initSearch(rawSearchIndex) {
           * @return {boolean} - Returns true if the type matches, false otherwise.
           */
         function checkType(row, elem, whereClause) {
-            if (row.id === null) {
-                // This is a pure "generic" search, no need to run other checks.
-                return row.generics.length > 0
-                    ? checkIfInList(row.generics, elem, whereClause)
-                    : false;
+            if (elem.id < 0) {
+                return row.id < 0 || checkIfInList(row.generics, elem, whereClause);
             }
-
-            if (row.id < 0 && elem.id >= 0) {
-                const gid = (-row.id) - 1;
-                return checkIfInList(whereClause[gid], elem, whereClause);
+            if (row.id > 0 && elem.id > 0 && elem.pathWithoutLast.length === 0 &&
+                typePassesFilter(elem.typeFilter, row.ty) && elem.generics.length === 0 &&
+                // special case
+                elem.id !== typeNameIdOfArrayOrSlice
+            ) {
+                return row.id === elem.id || checkIfInList(row.generics, elem, whereClause);
             }
-
-            if (row.id < 0 && elem.id < 0) {
-                return true;
-            }
-
-            const matchesExact = row.id === elem.id;
-            const matchesArrayOrSlice = elem.id === typeNameIdOfArrayOrSlice &&
-                (row.id === typeNameIdOfSlice || row.id === typeNameIdOfArray);
-
-            if ((matchesExact || matchesArrayOrSlice) &&
-                typePassesFilter(elem.typeFilter, row.ty)) {
-                if (elem.generics.length > 0) {
-                    return checkGenerics(row, elem, whereClause, new Map());
-                }
-                return true;
-            }
-
-            // If the current item does not match, try [unboxing] the generic.
-            // [unboxing]:
-            //   https://ndmitchell.com/downloads/slides-hoogle_fast_type_searching-09_aug_2008.pdf
-            return checkIfInList(row.generics, elem, whereClause);
+            return unifyFunctionTypes([row], [elem], whereClause);
         }
 
         function checkPath(contains, ty, maxEditDistance) {
