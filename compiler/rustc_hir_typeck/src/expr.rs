@@ -2685,8 +2685,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mod_id = self.tcx.parent_module(id).to_def_id();
         let (ty, unwrap) = if let ty::Adt(def, args) = expr_t.kind()
             && (self.tcx.is_diagnostic_item(sym::Result, def.did())
-                || self.tcx.is_diagnostic_item(sym::Option, def.did())
-            )
+                || self.tcx.is_diagnostic_item(sym::Option, def.did()))
             && let Some(arg) = args.get(0)
             && let Some(ty) = arg.as_type()
         {
