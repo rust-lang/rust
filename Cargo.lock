@@ -553,7 +553,7 @@ checksum = "2da6da31387c7e4ef160ffab6d5e7f00c42626fe39aea70a7b0f1773f7dd6c1b"
 
 [[package]]
 name = "clippy"
-version = "0.1.75"
+version = "0.1.76"
 dependencies = [
  "anstream",
  "clippy_config",
@@ -581,7 +581,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_config"
-version = "0.1.75"
+version = "0.1.76"
 dependencies = [
  "rustc-semver",
  "serde",
@@ -604,14 +604,13 @@ dependencies = [
 
 [[package]]
 name = "clippy_lints"
-version = "0.1.75"
+version = "0.1.76"
 dependencies = [
  "arrayvec",
  "cargo_metadata 0.15.4",
  "clippy_config",
  "clippy_utils",
  "declare_clippy_lint",
- "if_chain",
  "itertools",
  "quine-mc_cluskey",
  "regex",
@@ -630,11 +629,10 @@ dependencies = [
 
 [[package]]
 name = "clippy_utils"
-version = "0.1.75"
+version = "0.1.76"
 dependencies = [
  "arrayvec",
  "clippy_config",
- "if_chain",
  "itertools",
  "rustc-semver",
 ]
@@ -1016,7 +1014,7 @@ checksum = "a0afaad2b26fa326569eb264b1363e8ae3357618c43982b3f285f0774ce76b69"
 
 [[package]]
 name = "declare_clippy_lint"
-version = "0.1.75"
+version = "0.1.76"
 dependencies = [
  "itertools",
  "quote",
