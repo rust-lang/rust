@@ -946,6 +946,19 @@ fn check_nested_misused_cfg(cx: &EarlyContext<'_>, items: &[NestedMetaItem]) {
             }
             if let MetaItemKind::List(list) = &meta.kind {
                 check_nested_misused_cfg(cx, list);
+            // If this is not a list, then we check for `cfg(test)`.
+            } else if let Some(ident) = meta.ident()
+                && matches!(ident.name.as_str(), "tests" | "Test")
+            {
+                span_lint_and_sugg(
+                    cx,
+                    MAYBE_MISUSED_CFG,
+                    meta.span,
+                    &format!("'test' may be misspelled as '{}'", ident.name.as_str()),
+                    "do you mean",
+                    "test".to_string(),
+                    Applicability::MaybeIncorrect,
+                );
             }
         }
     }
