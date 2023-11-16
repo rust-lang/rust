@@ -9,7 +9,7 @@
 //!  - or-fun-call
 //!  - option-if-let-else
 
-use crate::consts::constant;
+use crate::consts::{constant, FullInt};
 use crate::ty::{all_predicates_of, is_copy};
 use crate::visitors::is_const_evaluatable;
 use rustc_hir::def::{DefKind, Res};
@@ -227,15 +227,34 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
                     self.eagerness |= NoChange;
                 },
 
-                // Similar to `>>` and `<<`, we only want to avoid linting entirely if both sides are unknown and the
+                ExprKind::Binary(op, left, right)
+                    if matches!(op.node, BinOpKind::Div | BinOpKind::Rem)
+                        && let left_ty = self.cx.typeck_results().expr_ty(left)
+                        && let right_ty = self.cx.typeck_results().expr_ty(right)
+                        && let left = constant(self.cx, self.cx.typeck_results(), left)
+                            .and_then(|c| c.int_value(self.cx, left_ty))
+                        && let right = constant(self.cx, self.cx.typeck_results(), right)
+                            .and_then(|c| c.int_value(self.cx, right_ty))
+                        && match (left, right) {
+                            // `1 / x` -- x might be zero
+                            (_, None) => true,
+                            // `x / -1` -- x might be T::MIN = panic
+                            #[expect(clippy::match_same_arms)]
+                            (None, Some(FullInt::S(-1))) => true,
+                            // anything else is either fine or checked by the compiler
+                            _ => false,
+                        } =>
+                {
+                    self.eagerness |= NoChange;
+                },
+
+                // Similar to `>>` and `<<`, we only want to avoid linting entirely if either side is unknown and the
                 // compiler can't emit an error for an overflowing expression.
                 // Suggesting eagerness for `true.then(|| i32::MAX + 1)` is okay because the compiler will emit an
                 // error and it's good to have the eagerness warning up front when the user fixes the logic error.
                 ExprKind::Binary(op, left, right)
-                    if matches!(
-                        op.node,
-                        BinOpKind::Add | BinOpKind::Sub | BinOpKind::Mul | BinOpKind::Div | BinOpKind::Rem
-                    ) && !self.cx.typeck_results().expr_ty(e).is_floating_point()
+                    if matches!(op.node, BinOpKind::Add | BinOpKind::Sub | BinOpKind::Mul)
+                        && !self.cx.typeck_results().expr_ty(e).is_floating_point()
                         && (constant(self.cx, self.cx.typeck_results(), left).is_none()
                             || constant(self.cx, self.cx.typeck_results(), right).is_none()) =>
                 {

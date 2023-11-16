@@ -201,11 +201,7 @@ fn issue9422(x: usize) -> Option<usize> {
 fn panicky_arithmetic_ops(x: usize, y: isize) {
     #![allow(clippy::identity_op, clippy::eq_op)]
 
-    // Even though some of these expressions overflow, they're entirely dependent on constants.
-    // So, the compiler already emits a warning about overflowing expressions.
-    // It's a logic error and we want both warnings up front.
-    // ONLY when a binop side that "matters" for overflow (for `>>`, that is always the right side and
-    // never the left side) has a non-constant value, avoid linting
+    // See comments in `eager_or_lazy.rs` for the rules that this is meant to follow
 
     let _x = false.then_some(i32::MAX + 1);
     //~^ ERROR: unnecessary closure used with `bool::then`
@@ -224,8 +220,6 @@ fn panicky_arithmetic_ops(x: usize, y: isize) {
     let _x = false.then_some(255u8 >> 8);
     //~^ ERROR: unnecessary closure used with `bool::then`
     let _x = false.then(|| 255u8 >> x);
-    let _x = false.then_some(i32::MIN / -1);
-    //~^ ERROR: unnecessary closure used with `bool::then`
     let _x = false.then_some(i32::MAX + -1);
     //~^ ERROR: unnecessary closure used with `bool::then`
     let _x = false.then_some(-i32::MAX);
@@ -250,6 +244,22 @@ fn panicky_arithmetic_ops(x: usize, y: isize) {
     let _x = false.then(|| x % x);
     let _x = false.then(|| x + 1);
     let _x = false.then(|| 1 + x);
+
+    let _x = false.then_some(x / 0);
+    //~^ ERROR: unnecessary closure used with `bool::then`
+    let _x = false.then_some(x % 0);
+    //~^ ERROR: unnecessary closure used with `bool::then`
+    let _x = false.then(|| y / -1);
+    let _x = false.then_some(1 / -1);
+    //~^ ERROR: unnecessary closure used with `bool::then`
+    let _x = false.then_some(i32::MIN / -1);
+    //~^ ERROR: unnecessary closure used with `bool::then`
+    let _x = false.then(|| i32::MIN / x as i32);
+    let _x = false.then_some(i32::MIN / 0);
+    //~^ ERROR: unnecessary closure used with `bool::then`
+    let _x = false.then_some(4 / 2);
+    //~^ ERROR: unnecessary closure used with `bool::then`
+    let _x = false.then(|| 1 / x);
 
     // const eval doesn't read variables, but floating point math never panics, so we can still emit a
     // warning
