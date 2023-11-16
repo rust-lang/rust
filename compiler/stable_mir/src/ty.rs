@@ -1,7 +1,7 @@
 use super::{
     mir::Safety,
     mir::{Body, Mutability},
-    with, AllocId, DefId, Symbol,
+    with, AllocId, DefId, Error, Symbol,
 };
 use crate::{Filename, Opaque};
 use std::fmt::{self, Debug, Display, Formatter};
@@ -12,6 +12,21 @@ pub struct Ty(pub usize);
 impl Debug for Ty {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         f.debug_struct("Ty").field("id", &self.0).field("kind", &self.kind()).finish()
+    }
+}
+
+/// Constructors for `Ty`.
+impl Ty {
+    /// Create a new type from a given kind.
+    ///
+    /// Note that not all types may be supported at this point.
+    fn from_rigid_kind(kind: RigidTy) -> Ty {
+        with(|cx| cx.new_rigid_ty(kind))
+    }
+
+    /// Create a new array type.
+    pub fn try_new_array(elem_ty: Ty, size: u64) -> Result<Ty, Error> {
+        Ok(Ty::from_rigid_kind(RigidTy::Array(elem_ty, Const::try_from_target_usize(size)?)))
     }
 }
 
@@ -46,6 +61,16 @@ impl Const {
     /// Get the constant type.
     pub fn ty(&self) -> Ty {
         self.ty
+    }
+
+    /// Creates an interned usize constant.
+    fn try_from_target_usize(val: u64) -> Result<Self, Error> {
+        with(|cx| cx.usize_to_const(val))
+    }
+
+    /// Try to evaluate to a target `usize`.
+    pub fn eval_target_usize(&self) -> Result<u64, Error> {
+        with(|cx| cx.eval_target_usize(self))
     }
 }
 
@@ -173,6 +198,38 @@ impl TyKind {
             None
         }
     }
+
+    /// Returns the type of `ty[i]` for builtin types.
+    pub fn builtin_index(&self) -> Option<Ty> {
+        match self.rigid()? {
+            RigidTy::Array(ty, _) | RigidTy::Slice(ty) => Some(*ty),
+            _ => None,
+        }
+    }
+
+    /// Returns the type and mutability of `*ty` for builtin types.
+    ///
+    /// The parameter `explicit` indicates if this is an *explicit* dereference.
+    /// Some types -- notably unsafe ptrs -- can only be dereferenced explicitly.
+    pub fn builtin_deref(&self, explicit: bool) -> Option<TypeAndMut> {
+        match self.rigid()? {
+            RigidTy::Adt(def, args) if def.is_box() => {
+                Some(TypeAndMut { ty: *args.0.first()?.ty()?, mutability: Mutability::Not })
+            }
+            RigidTy::Ref(_, ty, mutability) => {
+                Some(TypeAndMut { ty: *ty, mutability: *mutability })
+            }
+            RigidTy::RawPtr(ty, mutability) if explicit => {
+                Some(TypeAndMut { ty: *ty, mutability: *mutability })
+            }
+            _ => None,
+        }
+    }
+}
+
+pub struct TypeAndMut {
+    pub ty: Ty,
+    pub mutability: Mutability,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -197,6 +254,12 @@ pub enum RigidTy {
     Never,
     Tuple(Vec<Ty>),
     CoroutineWitness(CoroutineWitnessDef, GenericArgs),
+}
+
+impl From<RigidTy> for TyKind {
+    fn from(value: RigidTy) -> Self {
+        TyKind::RigidTy(value)
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -268,6 +331,10 @@ pub enum AdtKind {
 impl AdtDef {
     pub fn kind(&self) -> AdtKind {
         with(|cx| cx.adt_kind(*self))
+    }
+
+    pub fn is_box(&self) -> bool {
+        with(|cx| cx.adt_is_box(*self))
     }
 }
 
@@ -361,6 +428,14 @@ impl GenericArgKind {
         match self {
             GenericArgKind::Const(c) => c,
             _ => panic!("{self:?}"),
+        }
+    }
+
+    /// Return the generic argument type if applicable, otherwise return `None`.
+    pub fn ty(&self) -> Option<&Ty> {
+        match self {
+            GenericArgKind::Type(ty) => Some(ty),
+            _ => None,
         }
     }
 }

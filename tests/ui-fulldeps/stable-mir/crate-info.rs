@@ -124,7 +124,8 @@ fn test_stable_mir(_tcx: TyCtxt<'_>) -> ControlFlow<()> {
     for block in instance.body().unwrap().blocks {
         match &block.terminator.kind {
             stable_mir::mir::TerminatorKind::Call { func, .. } => {
-                let TyKind::RigidTy(ty) = func.ty(&body.locals()).kind() else { unreachable!() };
+                let TyKind::RigidTy(ty) = func.ty(&body.locals()).unwrap().kind() else {
+                    unreachable!() };
                 let RigidTy::FnDef(def, args) = ty else { unreachable!() };
                 let next_func = Instance::resolve(def, &args).unwrap();
                 match next_func.body().unwrap().locals()[1].ty.kind() {

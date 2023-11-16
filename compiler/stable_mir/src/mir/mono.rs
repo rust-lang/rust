@@ -1,7 +1,7 @@
 use crate::mir::Body;
 use crate::ty::{ClosureDef, ClosureKind, FnDef, GenericArgs, IndexedVal, Ty};
 use crate::{with, CrateItem, DefId, Error, ItemKind, Opaque};
-use std::fmt::Debug;
+use std::fmt::{Debug, Formatter};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum MonoItem {
@@ -10,7 +10,7 @@ pub enum MonoItem {
     GlobalAsm(Opaque),
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Instance {
     /// The type of instance.
     pub kind: InstanceKind,
@@ -80,6 +80,15 @@ impl Instance {
                 crate::Error::new(format!("Failed to resolve `{def:?}` with `{args:?}`"))
             })
         })
+    }
+}
+
+impl Debug for Instance {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Instance")
+            .field("kind", &self.kind)
+            .field("def", &self.mangled_name())
+            .finish()
     }
 }
 
