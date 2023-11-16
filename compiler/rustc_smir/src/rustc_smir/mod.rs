@@ -18,7 +18,10 @@ use rustc_middle::ty::{self, Instance, ParamEnv, ScalarInt, Ty, TyCtxt, Variance
 use rustc_span::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_target::abi::FieldIdx;
 use stable_mir::mir::mono::InstanceDef;
-use stable_mir::mir::{Body, CopyNonOverlapping, Statement, UserTypeProjection, VariantIdx};
+use stable_mir::mir::{
+    Body, ConstOperand, CopyNonOverlapping, Statement, UserTypeProjection, VarDebugInfoFragment,
+    VariantIdx,
+};
 use stable_mir::ty::{
     AdtDef, AdtKind, ClosureDef, ClosureKind, Const, ConstId, ConstantKind, EarlyParamRegion,
     FloatTy, FnDef, GenericArgs, GenericParamDef, IntTy, LineInfo, Movability, RigidTy, Span,
@@ -444,7 +447,47 @@ impl<'tcx> Stable<'tcx> for mir::Body<'tcx> {
                 })
                 .collect(),
             self.arg_count,
+            self.var_debug_info.iter().map(|info| info.stable(tables)).collect(),
         )
+    }
+}
+
+impl<'tcx> Stable<'tcx> for mir::VarDebugInfo<'tcx> {
+    type T = stable_mir::mir::VarDebugInfo;
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        stable_mir::mir::VarDebugInfo {
+            name: self.name.to_string(),
+            source_info: stable_mir::mir::SourceInfo {
+                span: self.source_info.span.stable(tables),
+                scope: self.source_info.scope.into(),
+            },
+            composite: {
+                if let Some(composite) = &self.composite {
+                    Some(VarDebugInfoFragment {
+                        ty: composite.ty.stable(tables),
+                        projection: composite.projection.iter().map(|e| e.stable(tables)).collect(),
+                    })
+                } else {
+                    None
+                }
+            },
+            value: {
+                match self.value {
+                    mir::VarDebugInfoContents::Place(place) => {
+                        stable_mir::mir::VarDebugInfoContents::Place(place.stable(tables))
+                    }
+                    mir::VarDebugInfoContents::Const(const_operand) => {
+                        let op = ConstOperand {
+                            span: const_operand.span.stable(tables),
+                            user_ty: const_operand.user_ty.map(|index| index.as_usize()),
+                            const_: const_operand.const_.stable(tables),
+                        };
+                        stable_mir::mir::VarDebugInfoContents::Const(op)
+                    }
+                }
+            },
+            argument_index: self.argument_index,
+        }
     }
 }
 
