@@ -139,6 +139,10 @@ fn create_mappings<'tcx>(
         .filter_map(|&BcbMapping { kind: bcb_mapping_kind, span }| {
             let kind = match bcb_mapping_kind {
                 BcbMappingKind::Code(bcb) => MappingKind::Code(term_for_bcb(bcb)),
+                BcbMappingKind::Branch { true_bcb, false_bcb } => MappingKind::Branch {
+                    true_term: term_for_bcb(true_bcb),
+                    false_term: term_for_bcb(false_bcb),
+                },
             };
             let code_region = make_code_region(source_map, file_name, span, body_span)?;
             Some(Mapping { kind, code_region })
