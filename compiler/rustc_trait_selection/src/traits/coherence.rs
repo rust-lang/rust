@@ -542,14 +542,14 @@ fn try_prove_negated_where_clause<'tcx>(
     };
 
     // FIXME(with_negative_coherence): the infcx has region contraints from equating
-    // the impl headers as requirements. Given that the only region constraints we
-    // get are involving inference regions in the root, it shouldn't matter, but
-    // still sus.
+    // the impl headers as requirements.
     //
-    // We probably should just throw away the region obligations registered up until
-    // now, or ideally use them as assumptions when proving the region obligations
-    // that we get from proving the negative predicate below.
+    // We ideally should use these region constraints as assumptions when proving
+    // the region obligations that we get from proving the negative predicate below.
     let ref infcx = root_infcx.fork();
+    let _ = infcx.take_registered_region_obligations();
+    let _ = infcx.take_and_reset_region_constraints();
+
     let ocx = ObligationCtxt::new(infcx);
 
     ocx.register_obligation(Obligation::new(
