@@ -5,7 +5,7 @@ use clippy_utils::diagnostics::span_lint;
 use itertools::Itertools;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_lint::LateContext;
-use rustc_span::source_map::DUMMY_SP;
+use rustc_span::DUMMY_SP;
 
 use super::MULTIPLE_CRATE_VERSIONS;
 

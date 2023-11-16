@@ -3,8 +3,7 @@ use rustc_hir::intravisit::{walk_expr, Visitor};
 use rustc_hir::{Closure, Expr, ExprKind, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::source_map::Span;
-use rustc_span::{sym, Symbol};
+use rustc_span::{sym, Span, Symbol};
 
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_trait_method;

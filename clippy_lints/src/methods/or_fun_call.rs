@@ -6,8 +6,8 @@ use clippy_utils::{contains_return, is_default_equivalent, is_default_equivalent
 use rustc_errors::Applicability;
 use rustc_lint::LateContext;
 use rustc_middle::ty;
-use rustc_span::source_map::Span;
 use rustc_span::symbol::{self, sym, Symbol};
+use rustc_span::Span;
 use {rustc_ast as ast, rustc_hir as hir};
 
 use super::{OR_FUN_CALL, UNWRAP_OR_DEFAULT};

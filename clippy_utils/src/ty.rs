@@ -890,7 +890,7 @@ pub fn for_each_top_level_late_bound_region<B>(
     impl<'tcx, B, F: FnMut(BoundRegion) -> ControlFlow<B>> TypeVisitor<TyCtxt<'tcx>> for V<F> {
         type BreakTy = B;
         fn visit_region(&mut self, r: Region<'tcx>) -> ControlFlow<Self::BreakTy> {
-            if let RegionKind::ReLateBound(idx, bound) = r.kind()
+            if let RegionKind::ReBound(idx, bound) = r.kind()
                 && idx.as_u32() == self.index
             {
                 (self.f)(bound)

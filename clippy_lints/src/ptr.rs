@@ -21,9 +21,8 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, Binder, ClauseKind, ExistentialPredicate, List, PredicateKind, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::source_map::Span;
-use rustc_span::sym;
 use rustc_span::symbol::Symbol;
+use rustc_span::{sym, Span};
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
@@ -466,9 +465,9 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
                                     .walk()
                                     .filter_map(|arg| {
                                         arg.as_region().and_then(|lifetime| match lifetime.kind() {
-                                            ty::ReEarlyBound(r) => Some(r.def_id),
-                                            ty::ReLateBound(_, r) => r.kind.get_id(),
-                                            ty::ReFree(r) => r.bound_region.get_id(),
+                                            ty::ReEarlyParam(r) => Some(r.def_id),
+                                            ty::ReBound(_, r) => r.kind.get_id(),
+                                            ty::ReLateParam(r) => r.bound_region.get_id(),
                                             ty::ReStatic
                                             | ty::ReVar(_)
                                             | ty::RePlaceholder(_)

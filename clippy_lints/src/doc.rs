@@ -31,8 +31,8 @@ use rustc_resolve::rustdoc::{
 use rustc_session::parse::ParseSess;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::edition::Edition;
-use rustc_span::source_map::{BytePos, FilePathMapping, SourceMap, Span};
-use rustc_span::{sym, FileName, Pos};
+use rustc_span::source_map::{FilePathMapping, SourceMap};
+use rustc_span::{sym, BytePos, FileName, Pos, Span};
 use std::ops::Range;
 use std::{io, thread};
 use url::Url;
@@ -733,11 +733,12 @@ fn check_code(cx: &LateContext<'_>, text: &str, edition: Edition, range: Range<u
             rustc_span::create_session_globals_then(edition, || {
                 let filename = FileName::anon_source_code(&code);
 
-                let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
                 let fallback_bundle =
                     rustc_errors::fallback_fluent_bundle(rustc_driver::DEFAULT_LOCALE_RESOURCES.to_vec(), false);
                 let emitter = EmitterWriter::new(Box::new(io::sink()), fallback_bundle);
                 let handler = Handler::with_emitter(Box::new(emitter)).disable_warnings();
+                #[expect(clippy::arc_with_non_send_sync)] // `Lrc` is expected by with_span_handler
+                let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
                 let sess = ParseSess::with_span_handler(handler, sm);
 
                 let mut parser = match maybe_new_parser_from_source_str(&sess, filename, code) {

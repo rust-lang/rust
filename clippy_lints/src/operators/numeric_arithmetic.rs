@@ -3,7 +3,7 @@ use clippy_utils::consts::constant_simple;
 use clippy_utils::diagnostics::span_lint;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
-use rustc_span::source_map::Span;
+use rustc_span::Span;
 
 #[derive(Default)]
 pub struct Context {

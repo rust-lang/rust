@@ -11,7 +11,7 @@
 use rustc_errors::{Applicability, Diagnostic, MultiSpan};
 use rustc_hir::HirId;
 use rustc_lint::{LateContext, Lint, LintContext};
-use rustc_span::source_map::Span;
+use rustc_span::Span;
 use std::env;
 
 fn docs_link(diag: &mut Diagnostic, lint: &'static Lint) {

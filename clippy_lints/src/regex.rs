@@ -9,7 +9,7 @@ use rustc_hir::def_id::DefIdMap;
 use rustc_hir::{BorrowKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::source_map::{BytePos, Span};
+use rustc_span::{BytePos, Span};
 
 declare_clippy_lint! {
     /// ### What it does

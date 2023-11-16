@@ -166,14 +166,14 @@ impl<'tcx> PassByRefOrValue {
             match *ty.skip_binder().kind() {
                 ty::Ref(lt, ty, Mutability::Not) => {
                     match lt.kind() {
-                        RegionKind::ReLateBound(index, region)
+                        RegionKind::ReBound(index, region)
                             if index.as_u32() == 0 && output_regions.contains(&region) =>
                         {
                             continue;
                         },
                         // Early bound regions on functions are either from the containing item, are bounded by another
                         // lifetime, or are used as a bound for a type or lifetime.
-                        RegionKind::ReEarlyBound(..) => continue,
+                        RegionKind::ReEarlyParam(..) => continue,
                         _ => (),
                     }
 
