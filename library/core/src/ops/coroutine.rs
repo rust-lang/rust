@@ -7,8 +7,7 @@ use crate::pin::Pin;
 /// possible return values of a coroutine. Currently this corresponds to either
 /// a suspension point (`Yielded`) or a termination point (`Complete`).
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
-#[cfg_attr(bootstrap, lang = "generator_state")]
-#[cfg_attr(not(bootstrap), lang = "coroutine_state")]
+#[lang = "coroutine_state"]
 #[unstable(feature = "coroutine_trait", issue = "43122")]
 pub enum CoroutineState<Y, R> {
     /// The coroutine suspended with a value.
@@ -40,8 +39,7 @@ pub enum CoroutineState<Y, R> {
 /// closure-like:
 ///
 /// ```rust
-/// #![cfg_attr(bootstrap, feature(generators))]
-/// #![cfg_attr(not(bootstrap), feature(coroutines))]
+/// #![feature(coroutines)]
 /// #![feature(coroutine_trait)]
 ///
 /// use std::ops::{Coroutine, CoroutineState};
@@ -68,8 +66,7 @@ pub enum CoroutineState<Y, R> {
 ///
 /// [RFC 2033]: https://github.com/rust-lang/rfcs/pull/2033
 /// [unstable book]: ../../unstable-book/language-features/coroutines.html
-#[cfg_attr(bootstrap, lang = "generator")]
-#[cfg_attr(not(bootstrap), lang = "coroutine")]
+#[lang = "coroutine"]
 #[unstable(feature = "coroutine_trait", issue = "43122")]
 #[fundamental]
 pub trait Coroutine<R = ()> {

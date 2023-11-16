@@ -765,7 +765,7 @@ impl<T> Option<T> {
     /// ```
     #[inline]
     #[must_use]
-    #[stable(feature = "option_as_slice", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "option_as_slice", since = "1.75.0")]
     pub fn as_slice(&self) -> &[T] {
         // SAFETY: When the `Option` is `Some`, we're using the actual pointer
         // to the payload, with a length of 1, so this is equivalent to
@@ -819,7 +819,7 @@ impl<T> Option<T> {
     /// ```
     #[inline]
     #[must_use]
-    #[stable(feature = "option_as_slice", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "option_as_slice", since = "1.75.0")]
     pub fn as_mut_slice(&mut self) -> &mut [T] {
         // SAFETY: When the `Option` is `Some`, we're using the actual pointer
         // to the payload, with a length of 1, so this is equivalent to

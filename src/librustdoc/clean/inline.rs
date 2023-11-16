@@ -374,15 +374,17 @@ pub(crate) fn build_impl(
 
     // Only inline impl if the implemented trait is
     // reachable in rustdoc generated documentation
-    if !did.is_local() && let Some(traitref) = associated_trait {
+    if !did.is_local()
+        && let Some(traitref) = associated_trait
+    {
         let did = traitref.def_id;
         if !cx.cache.effective_visibilities.is_directly_public(tcx, did) {
             return;
         }
 
-        if let Some(stab) = tcx.lookup_stability(did) &&
-            stab.is_unstable() &&
-            stab.feature == sym::rustc_private
+        if let Some(stab) = tcx.lookup_stability(did)
+            && stab.is_unstable()
+            && stab.feature == sym::rustc_private
         {
             return;
         }
@@ -514,7 +516,10 @@ pub(crate) fn build_impl(
     }
 
     while let Some(ty) = stack.pop() {
-        if let Some(did) = ty.def_id(&cx.cache) && !document_hidden && tcx.is_doc_hidden(did) {
+        if let Some(did) = ty.def_id(&cx.cache)
+            && !document_hidden
+            && tcx.is_doc_hidden(did)
+        {
             return;
         }
         if let Some(generics) = ty.generics() {
@@ -580,7 +585,8 @@ fn build_module_items(
             let res = item.res.expect_non_local();
             if let Some(def_id) = res.opt_def_id()
                 && let Some(allowed_def_ids) = allowed_def_ids
-                && !allowed_def_ids.contains(&def_id) {
+                && !allowed_def_ids.contains(&def_id)
+            {
                 continue;
             }
             if let Some(def_id) = res.mod_def_id() {

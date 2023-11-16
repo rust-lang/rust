@@ -3185,19 +3185,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             sym::offset_of_enum,
                             ident.span,
                             "using enums in offset_of is experimental",
-                        ).emit();
+                        )
+                        .emit();
                     }
 
-                    let Some((index, variant)) = container_def.variants()
+                    let Some((index, variant)) = container_def
+                        .variants()
                         .iter_enumerated()
-                        .find(|(_, v)| v.ident(self.tcx).normalize_to_macros_2_0() == ident) else {
+                        .find(|(_, v)| v.ident(self.tcx).normalize_to_macros_2_0() == ident)
+                    else {
                         let mut err = type_error_struct!(
                             self.tcx().sess,
                             ident.span,
                             container,
                             E0599,
                             "no variant named `{ident}` found for enum `{container}`",
-                            );
+                        );
                         err.span_label(field.span, "variant not found");
                         err.emit();
                         break;
@@ -3209,7 +3212,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             container,
                             E0795,
                             "`{ident}` is an enum variant; expected field at end of `offset_of`",
-                            );
+                        );
                         err.span_label(field.span, "enum variant");
                         err.emit();
                         break;
@@ -3217,16 +3220,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let (subident, sub_def_scope) =
                         self.tcx.adjust_ident_and_get_scope(subfield, variant.def_id, block);
 
-                    let Some((subindex, field)) = variant.fields
+                    let Some((subindex, field)) = variant
+                        .fields
                         .iter_enumerated()
-                        .find(|(_, f)| f.ident(self.tcx).normalize_to_macros_2_0() == subident) else {
+                        .find(|(_, f)| f.ident(self.tcx).normalize_to_macros_2_0() == subident)
+                    else {
                         let mut err = type_error_struct!(
                             self.tcx().sess,
                             ident.span,
                             container,
                             E0609,
                             "no field named `{subfield}` on enum variant `{container}::{ident}`",
-                            );
+                        );
                         err.span_label(field.span, "this enum variant...");
                         err.span_label(subident.span, "...does not have this field");
                         err.emit();

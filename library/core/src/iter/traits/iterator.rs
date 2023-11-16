@@ -69,7 +69,7 @@ fn _assert_is_object_safe(_: &dyn Iterator<Item = ()>) {}
     message = "`{Self}` is not an iterator"
 )]
 #[doc(notable_trait)]
-#[cfg_attr(not(bootstrap), lang = "iterator")]
+#[lang = "iterator"]
 #[rustc_diagnostic_item = "Iterator"]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 pub trait Iterator {

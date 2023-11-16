@@ -303,7 +303,9 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             Res::Def(DefKind::Enum, did) => match tcx.type_of(did).instantiate_identity().kind() {
                 ty::Adt(def, _) if def.is_enum() => {
                     if let Some(variant) = def.variants().iter().find(|v| v.name == variant_name)
-                        && let Some(field) = variant.fields.iter().find(|f| f.name == variant_field_name) {
+                        && let Some(field) =
+                            variant.fields.iter().find(|f| f.name == variant_field_name)
+                    {
                         Ok((ty_res, field.did))
                     } else {
                         Err(UnresolvedPath {
@@ -973,7 +975,8 @@ impl LinkCollector<'_, '_> {
             && let Some(def_id) = item.item_id.as_def_id()
             && let Some(def_id) = def_id.as_local()
             && !self.cx.tcx.effective_visibilities(()).is_exported(def_id)
-            && !has_primitive_or_keyword_docs(&item.attrs.other_attrs) {
+            && !has_primitive_or_keyword_docs(&item.attrs.other_attrs)
+        {
             // Skip link resolution for non-exported items.
             return;
         }
@@ -1250,9 +1253,10 @@ impl LinkCollector<'_, '_> {
 
         // FIXME: it would be nice to check that the feature gate was enabled in the original crate, not just ignore it altogether.
         // However I'm not sure how to check that across crates.
-        if let Some(candidate) = candidates.get(0) &&
-            candidate.0 == Res::Primitive(PrimitiveType::RawPointer) &&
-            key.path_str.contains("::") // We only want to check this if this is an associated item.
+        if let Some(candidate) = candidates.get(0)
+            && candidate.0 == Res::Primitive(PrimitiveType::RawPointer)
+            && key.path_str.contains("::")
+        // We only want to check this if this is an associated item.
         {
             if key.item_id.is_local() && !self.cx.tcx.features().intra_doc_pointers {
                 self.report_rawptr_assoc_feature_gate(diag.dox, &diag.link_range, diag.item);
@@ -1318,8 +1322,8 @@ impl LinkCollector<'_, '_> {
                         for other_ns in [TypeNS, ValueNS, MacroNS] {
                             if other_ns != expected_ns {
                                 if let Ok(res) =
-                                    self.resolve(path_str, other_ns, item_id, module_id) &&
-                                    !res.is_empty()
+                                    self.resolve(path_str, other_ns, item_id, module_id)
+                                    && !res.is_empty()
                                 {
                                     err = ResolutionFailure::WrongNamespace {
                                         res: full_res(self.cx.tcx, res[0]),
@@ -1892,8 +1896,10 @@ fn resolution_failure(
                     };
                     let is_struct_variant = |did| {
                         if let ty::Adt(def, _) = tcx.type_of(did).instantiate_identity().kind()
-                        && def.is_enum()
-                        && let Some(variant) = def.variants().iter().find(|v| v.name == res.name(tcx)) {
+                            && def.is_enum()
+                            && let Some(variant) =
+                                def.variants().iter().find(|v| v.name == res.name(tcx))
+                        {
                             // ctor is `None` if variant is a struct
                             variant.ctor.is_none()
                         } else {

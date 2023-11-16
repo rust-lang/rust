@@ -10,6 +10,8 @@ use rustc_infer::infer::RegionVariableOrigin;
 use rustc_infer::infer::{InferCtxt, RegionResolutionError, SubregionOrigin, TyCtxtInferExt as _};
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::ty::error::TypeError;
+use rustc_middle::ty::RePlaceholder;
+use rustc_middle::ty::Region;
 use rustc_middle::ty::RegionVid;
 use rustc_middle::ty::UniverseIndex;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
@@ -204,6 +206,8 @@ trait TypeOpInfo<'tcx> {
 
         let span = cause.span;
         let nice_error = self.nice_error(mbcx, cause, placeholder_region, error_region);
+
+        debug!(?nice_error);
 
         if let Some(nice_error) = nice_error {
             mbcx.buffer_error(nice_error);
@@ -404,19 +408,41 @@ fn try_extract_error_from_region_constraints<'tcx>(
     mut region_var_origin: impl FnMut(RegionVid) -> RegionVariableOrigin,
     mut universe_of_region: impl FnMut(RegionVid) -> UniverseIndex,
 ) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
-    let (sub_region, cause) =
-        region_constraints.constraints.iter().find_map(|(constraint, cause)| {
-            match *constraint {
-                Constraint::RegSubReg(sub, sup) if sup == placeholder_region && sup != sub => {
-                    Some((sub, cause.clone()))
-                }
-                // FIXME: Should this check the universe of the var?
-                Constraint::VarSubReg(vid, sup) if sup == placeholder_region => {
-                    Some((ty::Region::new_var(infcx.tcx, vid), cause.clone()))
-                }
-                _ => None,
+    let matches =
+        |a_region: Region<'tcx>, b_region: Region<'tcx>| match (a_region.kind(), b_region.kind()) {
+            (RePlaceholder(a_p), RePlaceholder(b_p)) => a_p.bound == b_p.bound,
+            _ => a_region == b_region,
+        };
+    let check = |constraint: &Constraint<'tcx>, cause: &SubregionOrigin<'tcx>, exact| {
+        match *constraint {
+            Constraint::RegSubReg(sub, sup)
+                if ((exact && sup == placeholder_region)
+                    || (!exact && matches(sup, placeholder_region)))
+                    && sup != sub =>
+            {
+                Some((sub, cause.clone()))
             }
-        })?;
+            // FIXME: Should this check the universe of the var?
+            Constraint::VarSubReg(vid, sup)
+                if ((exact && sup == placeholder_region)
+                    || (!exact && matches(sup, placeholder_region))) =>
+            {
+                Some((ty::Region::new_var(infcx.tcx, vid), cause.clone()))
+            }
+            _ => None,
+        }
+    };
+    let mut info = region_constraints
+        .constraints
+        .iter()
+        .find_map(|(constraint, cause)| check(constraint, cause, true));
+    if info.is_none() {
+        info = region_constraints
+            .constraints
+            .iter()
+            .find_map(|(constraint, cause)| check(constraint, cause, false));
+    }
+    let (sub_region, cause) = info?;
 
     debug!(?sub_region, "cause = {:#?}", cause);
     let error = match (error_region, *sub_region) {

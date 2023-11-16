@@ -138,7 +138,9 @@ impl CoverageCounters {
         // If the BCB has an edge counter (to be injected into a new `BasicBlock`), it can also
         // have an expression (to be injected into an existing `BasicBlock` represented by this
         // `BasicCoverageBlock`).
-        if let Some(node_counter) = self.bcb_counter(to_bcb) && !node_counter.is_expression() {
+        if let Some(node_counter) = self.bcb_counter(to_bcb)
+            && !node_counter.is_expression()
+        {
             bug!(
                 "attempt to add an incoming edge counter from {from_bcb:?} \
                 when the target BCB already has {node_counter:?}"

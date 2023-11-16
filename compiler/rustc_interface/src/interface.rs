@@ -178,7 +178,9 @@ pub(crate) fn parse_check_cfg(handler: &EarlyErrorHandler, specs: Vec<String>) -
 
             check_cfg.exhaustive_names = true;
             for arg in args {
-                if arg.is_word() && let Some(ident) = arg.ident() {
+                if arg.is_word()
+                    && let Some(ident) = arg.ident()
+                {
                     check_cfg.expecteds.entry(ident.name).or_insert(ExpectedValues::Any);
                 } else {
                     error!("`names()` arguments must be simple identifiers");
@@ -188,7 +190,9 @@ pub(crate) fn parse_check_cfg(handler: &EarlyErrorHandler, specs: Vec<String>) -
             set_old_syntax();
 
             if let Some((name, values)) = args.split_first() {
-                if name.is_word() && let Some(ident) = name.ident() {
+                if name.is_word()
+                    && let Some(ident) = name.ident()
+                {
                     let expected_values = check_cfg
                         .expecteds
                         .entry(ident.name)
@@ -236,12 +240,16 @@ pub(crate) fn parse_check_cfg(handler: &EarlyErrorHandler, specs: Vec<String>) -
             let mut values_any_specified = false;
 
             for arg in args {
-                if arg.is_word() && let Some(ident) = arg.ident() {
+                if arg.is_word()
+                    && let Some(ident) = arg.ident()
+                {
                     if values_specified {
                         error!("`cfg()` names cannot be after values");
                     }
                     names.push(ident);
-                } else if arg.has_name(sym::any) && let Some(args) = arg.meta_item_list() {
+                } else if arg.has_name(sym::any)
+                    && let Some(args) = arg.meta_item_list()
+                {
                     if any_specified {
                         error!("`any()` cannot be specified multiple times");
                     }
@@ -249,7 +257,9 @@ pub(crate) fn parse_check_cfg(handler: &EarlyErrorHandler, specs: Vec<String>) -
                     if !args.is_empty() {
                         error!("`any()` must be empty");
                     }
-                } else if arg.has_name(sym::values) && let Some(args) = arg.meta_item_list() {
+                } else if arg.has_name(sym::values)
+                    && let Some(args) = arg.meta_item_list()
+                {
                     if names.is_empty() {
                         error!("`values()` cannot be specified before the names");
                     } else if values_specified {
@@ -260,7 +270,9 @@ pub(crate) fn parse_check_cfg(handler: &EarlyErrorHandler, specs: Vec<String>) -
                     for arg in args {
                         if let Some(LitKind::Str(s, _)) = arg.lit().map(|lit| &lit.kind) {
                             values.insert(Some(*s));
-                        } else if arg.has_name(sym::any) && let Some(args) = arg.meta_item_list() {
+                        } else if arg.has_name(sym::any)
+                            && let Some(args) = arg.meta_item_list()
+                        {
                             if values_any_specified {
                                 error!("`any()` in `values()` cannot be specified multiple times");
                             }

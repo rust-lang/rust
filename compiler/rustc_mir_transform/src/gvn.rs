@@ -461,7 +461,9 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             }
             NullaryOp(null_op, ty) => {
                 let layout = self.ecx.layout_of(ty).ok()?;
-                if let NullOp::SizeOf | NullOp::AlignOf = null_op && layout.is_unsized() {
+                if let NullOp::SizeOf | NullOp::AlignOf = null_op
+                    && layout.is_unsized()
+                {
                     return None;
                 }
                 let val = match null_op {
@@ -865,7 +867,9 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             .collect();
         let fields = fields?;
 
-        if let AggregateTy::Array = ty && fields.len() > 4 {
+        if let AggregateTy::Array = ty
+            && fields.len() > 4
+        {
             let first = fields[0];
             if fields.iter().all(|&v| v == first) {
                 let len = ty::Const::from_target_usize(self.tcx, fields.len().try_into().unwrap());
@@ -1008,8 +1012,7 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, 'tcx> {
             // Do not try to simplify a constant, it's already in canonical shape.
             && !matches!(rvalue, Rvalue::Use(Operand::Constant(_)))
         {
-            if let Some(value) = self.simplify_rvalue(rvalue, location)
-            {
+            if let Some(value) = self.simplify_rvalue(rvalue, location) {
                 if let Some(const_) = self.try_as_constant(value) {
                     *rvalue = Rvalue::Use(Operand::Constant(Box::new(const_)));
                 } else if let Some(local) = self.try_as_local(value, location)

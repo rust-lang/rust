@@ -2396,8 +2396,10 @@ pub fn rendered_const<'tcx>(tcx: TyCtxt<'tcx>, body: hir::BodyId) -> String {
         // * character escapes
         //
         // FIXME: This passes through `-/*spacer*/0` verbatim.
-        Literal if !value.span.from_expansion()
-            && let Ok(snippet) = tcx.sess.source_map().span_to_snippet(value.span) => {
+        Literal
+            if !value.span.from_expansion()
+                && let Ok(snippet) = tcx.sess.source_map().span_to_snippet(value.span) =>
+        {
             snippet
         }
 
@@ -2408,10 +2410,12 @@ pub fn rendered_const<'tcx>(tcx: TyCtxt<'tcx>, body: hir::BodyId) -> String {
         // FIXME: Omit the curly braces if the enclosing expression is an array literal
         //        with a repeated element (an `ExprKind::Repeat`) as in such case it
         //        would not actually need any disambiguation.
-        Complex => if tcx.def_kind(hir.body_owner_def_id(body).to_def_id()) == DefKind::AnonConst {
-            "{ _ }".to_owned()
-        } else {
-            "_".to_owned()
+        Complex => {
+            if tcx.def_kind(hir.body_owner_def_id(body).to_def_id()) == DefKind::AnonConst {
+                "{ _ }".to_owned()
+            } else {
+                "_".to_owned()
+            }
         }
     }
 }

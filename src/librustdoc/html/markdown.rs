@@ -1119,10 +1119,10 @@ impl<'a, 'tcx> TagIterator<'a, 'tcx> {
                     return None;
                 }
                 let indices = self.parse_string(pos)?;
-                if let Some((_, c)) = self.inner.peek().copied() &&
-                    c != '{' &&
-                    !is_separator(c) &&
-                    c != '('
+                if let Some((_, c)) = self.inner.peek().copied()
+                    && c != '{'
+                    && !is_separator(c)
+                    && c != '('
                 {
                     self.emit_error(format!("expected ` `, `{{` or `,` after `\"`, found `{c}`"));
                     return None;

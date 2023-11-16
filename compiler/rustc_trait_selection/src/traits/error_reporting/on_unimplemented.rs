@@ -187,11 +187,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         if let Some(kind) = self.tcx.fn_trait_kind_from_def_id(trait_ref.def_id)
             && let ty::Tuple(args) = trait_ref.args.type_at(1).kind()
         {
-            let args = args
-                .iter()
-                .map(|ty| ty.to_string())
-                .collect::<Vec<_>>()
-                .join(", ");
+            let args = args.iter().map(|ty| ty.to_string()).collect::<Vec<_>>().join(", ");
             flags.push((sym::Trait, Some(format!("{}({args})", kind.as_str()))));
         } else {
             flags.push((sym::Trait, Some(trait_ref.print_only_trait_path().to_string())));
@@ -636,7 +632,9 @@ impl<'tcx> OnUnimplementedDirective {
                         let value = cfg.value.map(|v| {
                             // `with_no_visible_paths` is also used when generating the options,
                             // so we need to match it here.
-                            ty::print::with_no_visible_paths!(OnUnimplementedFormatString(v).format(tcx, trait_ref, &options_map))
+                            ty::print::with_no_visible_paths!(
+                                OnUnimplementedFormatString(v).format(tcx, trait_ref, &options_map)
+                            )
                         });
 
                         options.contains(&(cfg.name, value))

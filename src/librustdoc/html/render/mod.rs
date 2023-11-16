@@ -180,7 +180,9 @@ impl Serialize for IndexItemFunctionType {
                 _ => seq.serialize_element(&self.output)?,
             }
             for constraint in &self.where_clause {
-                if let [one] = &constraint[..] && one.generics.is_none() {
+                if let [one] = &constraint[..]
+                    && one.generics.is_none()
+                {
                     seq.serialize_element(one)?;
                 } else {
                     seq.serialize_element(constraint)?;
@@ -915,7 +917,9 @@ fn render_stability_since_raw_with_extra(
     containing_const_ver: Option<StableSince>,
     extra_class: &str,
 ) -> bool {
-    let stable_version = if ver != containing_ver && let Some(ver) = &ver {
+    let stable_version = if ver != containing_ver
+        && let Some(ver) = &ver
+    {
         since_to_string(ver)
     } else {
         None

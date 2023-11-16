@@ -1213,8 +1213,12 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         DisallowTildeConstContext::Fn(FnKind::Fn(_, ident, ..)) => {
                             errors::TildeConstReason::Function { ident: ident.span }
                         }
-                        &DisallowTildeConstContext::Trait(span) => errors::TildeConstReason::Trait { span },
-                        &DisallowTildeConstContext::Impl(span) => errors::TildeConstReason::Impl { span },
+                        &DisallowTildeConstContext::Trait(span) => {
+                            errors::TildeConstReason::Trait { span }
+                        }
+                        &DisallowTildeConstContext::Impl(span) => {
+                            errors::TildeConstReason::Impl { span }
+                        }
                         DisallowTildeConstContext::TraitObject => {
                             errors::TildeConstReason::TraitObject
                         }
@@ -1446,9 +1450,7 @@ fn deny_equality_constraints(
                     id: rustc_ast::node_id::DUMMY_NODE_ID,
                     ident: *ident,
                     gen_args,
-                    kind: AssocConstraintKind::Equality {
-                        term: predicate.rhs_ty.clone().into(),
-                    },
+                    kind: AssocConstraintKind::Equality { term: predicate.rhs_ty.clone().into() },
                     span: ident.span,
                 });
                 // Add `<Bar = RhsTy>` to `Foo`.
@@ -1461,11 +1463,7 @@ fn deny_equality_constraints(
                     },
                     empty_args => {
                         *empty_args = Some(
-                            AngleBracketedArgs {
-                                span: ident.span,
-                                args: thin_vec![arg],
-                            }
-                            .into(),
+                            AngleBracketedArgs { span: ident.span, args: thin_vec![arg] }.into(),
                         );
                     }
                 }

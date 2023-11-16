@@ -206,15 +206,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     && let parent = hir.get_parent_item(hir.local_def_id_to_hir_id(def_id))
                     && let Some(generics) = hir.get_generics(parent.def_id)
                 {
-                    if generics.bounds_for_param(def_id)
-                        .flat_map(|pred| pred.bounds.iter())
-                        .any(|b| match b {
+                    if generics.bounds_for_param(def_id).flat_map(|pred| pred.bounds.iter()).any(
+                        |b| match b {
                             hir::GenericBound::Trait(t, ..) => {
                                 t.trait_ref.trait_def_id().as_ref() == Some(best_trait)
                             }
                             _ => false,
-                        })
-                    {
+                        },
+                    ) {
                         // The type param already has a bound for `trait_name`, we just need to
                         // change the associated type.
                         err.span_suggestion_verbose(
@@ -227,15 +226,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             Applicability::MaybeIncorrect,
                         );
                     } else if suggest_constraining_type_param(
-                            self.tcx(),
-                            generics,
-                            &mut err,
-                            &ty_param_name,
-                            &trait_name,
-                            None,
-                            None,
-                        )
-                        && suggested_name != assoc_name.name
+                        self.tcx(),
+                        generics,
+                        &mut err,
+                        &ty_param_name,
+                        &trait_name,
+                        None,
+                        None,
+                    ) && suggested_name != assoc_name.name
                     {
                         // We suggested constraining a type parameter, but the associated type on it
                         // was also not an exact match, so we also suggest changing it.

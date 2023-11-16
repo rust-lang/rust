@@ -228,10 +228,11 @@ pub(crate) fn build_index<'tcx>(
     let mut associated_item_duplicates = FxHashMap::<(isize, ItemType, Symbol), usize>::default();
 
     for &item in &crate_items {
-        if item.impl_id.is_some() && let Some(parent_idx) = item.parent_idx {
-            let count = associated_item_duplicates
-                .entry((parent_idx, item.ty, item.name))
-                .or_insert(0);
+        if item.impl_id.is_some()
+            && let Some(parent_idx) = item.parent_idx
+        {
+            let count =
+                associated_item_duplicates.entry((parent_idx, item.ty, item.name)).or_insert(0);
             *count += 1;
         }
     }

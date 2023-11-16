@@ -90,7 +90,9 @@ impl LocalSourcesCollector<'_, '_> {
         );
 
         let mut href = href.into_inner().to_string_lossy().into_owned();
-        if let Some(c) = href.as_bytes().last() && *c != b'/' {
+        if let Some(c) = href.as_bytes().last()
+            && *c != b'/'
+        {
             href.push('/');
         }
         let mut src_fname = p.file_name().expect("source has no filename").to_os_string();
@@ -212,7 +214,9 @@ impl SourceCollector<'_, '_> {
 
         let root_path = PathBuf::from("../../").join(root_path.into_inner());
         let mut root_path = root_path.to_string_lossy();
-        if let Some(c) = root_path.as_bytes().last() && *c != b'/' {
+        if let Some(c) = root_path.as_bytes().last()
+            && *c != b'/'
+        {
             root_path += "/";
         }
         let mut cur = self.dst.join(cur.into_inner());

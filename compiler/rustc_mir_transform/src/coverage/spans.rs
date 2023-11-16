@@ -475,7 +475,9 @@ impl<'a> CoverageSpansGenerator<'a> {
         }
         while let Some(curr) = self.sorted_spans_iter.next() {
             debug!("FOR curr={:?}", curr);
-            if let Some(prev) = &self.some_prev && prev.span.lo() > curr.span.lo() {
+            if let Some(prev) = &self.some_prev
+                && prev.span.lo() > curr.span.lo()
+            {
                 // Skip curr because prev has already advanced beyond the end of curr.
                 // This can only happen if a prior iteration updated `prev` to skip past
                 // a region of code, such as skipping past a closure.
