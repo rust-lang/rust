@@ -240,7 +240,7 @@ impl<'tcx> Queries<'tcx> {
         self.global_ctxt()?.enter(|tcx| {
             Ok(Linker {
                 dep_graph: tcx.dep_graph.clone(),
-                prepare_outputs: tcx.output_filenames(()).clone(),
+                output_filenames: tcx.output_filenames(()).clone(),
                 crate_hash: if tcx.needs_crate_hash() {
                     Some(tcx.crate_hash(LOCAL_CRATE))
                 } else {
@@ -254,7 +254,7 @@ impl<'tcx> Queries<'tcx> {
 
 pub struct Linker {
     dep_graph: DepGraph,
-    prepare_outputs: Arc<OutputFilenames>,
+    output_filenames: Arc<OutputFilenames>,
     // Only present when incr. comp. is enabled.
     crate_hash: Option<Svh>,
     ongoing_codegen: Box<dyn Any>,
@@ -263,7 +263,7 @@ pub struct Linker {
 impl Linker {
     pub fn link(self, sess: &Session, codegen_backend: &dyn CodegenBackend) -> Result<()> {
         let (codegen_results, work_products) =
-            codegen_backend.join_codegen(self.ongoing_codegen, sess, &self.prepare_outputs)?;
+            codegen_backend.join_codegen(self.ongoing_codegen, sess, &self.output_filenames)?;
 
         sess.compile_status()?;
 
@@ -289,14 +289,14 @@ impl Linker {
         }
 
         if sess.opts.unstable_opts.no_link {
-            let rlink_file = self.prepare_outputs.with_extension(config::RLINK_EXT);
+            let rlink_file = self.output_filenames.with_extension(config::RLINK_EXT);
             CodegenResults::serialize_rlink(sess, &rlink_file, &codegen_results)
                 .map_err(|error| sess.emit_fatal(FailedWritingFile { path: &rlink_file, error }))?;
             return Ok(());
         }
 
         let _timer = sess.prof.verbose_generic_activity("link_crate");
-        codegen_backend.link(sess, codegen_results, &self.prepare_outputs)
+        codegen_backend.link(sess, codegen_results, &self.output_filenames)
     }
 }
 
