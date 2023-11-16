@@ -47,7 +47,6 @@ declare_lint_pass! {
         HIDDEN_GLOB_REEXPORTS,
         ILL_FORMED_ATTRIBUTE_INPUT,
         ILLEGAL_FLOATING_POINT_LITERAL_PATTERN,
-        IMPLIED_BOUNDS_ENTAILMENT,
         INCOMPLETE_INCLUDE,
         INDIRECT_STRUCTURAL_MATCH,
         INEFFECTIVE_UNSTABLE_TRAIT_IMPL,
@@ -4233,13 +4232,6 @@ declare_lint! {
     pub NAMED_ARGUMENTS_USED_POSITIONALLY,
     Warn,
     "named arguments in format used positionally"
-}
-
-declare_lint! {
-    /// This lint has been removed in favor of a hard error.
-    pub IMPLIED_BOUNDS_ENTAILMENT,
-    Deny,
-    "impl method assumes more implied bounds than its corresponding trait method",
 }
 
 declare_lint! {
