@@ -56,8 +56,7 @@ impl Instance {
     }
 
     /// Resolve the drop in place for a given type.
-    /// Return `None` if the drop is a no-op.
-    pub fn resolve_drop_in_place(ty: Ty) -> Option<Instance> {
+    pub fn resolve_drop_in_place(ty: Ty) -> Instance {
         with(|cx| cx.resolve_drop_in_place(ty))
     }
 

@@ -253,7 +253,7 @@ pub trait Context {
     fn resolve_instance(&self, def: FnDef, args: &GenericArgs) -> Option<Instance>;
 
     /// Resolve an instance for drop_in_place for the given type.
-    fn resolve_drop_in_place(&self, ty: Ty) -> Option<Instance>;
+    fn resolve_drop_in_place(&self, ty: Ty) -> Instance;
 
     /// Resolve instance for a function pointer.
     fn resolve_for_fn_ptr(&self, def: FnDef, args: &GenericArgs) -> Option<Instance>;

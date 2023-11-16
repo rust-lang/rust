@@ -19,9 +19,17 @@ impl<'tcx> BodyBuilder<'tcx> {
         BodyBuilder { tcx, instance }
     }
 
+    /// Build a stable monomorphic body for a given instance based on the MIR body.
+    ///
+    /// Note that we skip instantiation for static and constants. Trying to do so can cause ICE.
+    ///
+    /// We do monomorphize non-generic functions to eval unevaluated constants.
     pub fn build(mut self, tables: &mut Tables<'tcx>) -> stable_mir::mir::Body {
         let mut body = self.tcx.instance_mir(self.instance.def).clone();
-        self.visit_body(&mut body);
+        if self.tcx.def_kind(self.instance.def_id()).is_fn_like() || !self.instance.args.is_empty()
+        {
+            self.visit_body(&mut body);
+        }
         body.stable(tables)
     }
 

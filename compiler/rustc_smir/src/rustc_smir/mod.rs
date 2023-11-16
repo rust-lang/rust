@@ -267,15 +267,11 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         }
     }
 
-    fn resolve_drop_in_place(
-        &self,
-        ty: stable_mir::ty::Ty,
-    ) -> Option<stable_mir::mir::mono::Instance> {
+    fn resolve_drop_in_place(&self, ty: stable_mir::ty::Ty) -> stable_mir::mir::mono::Instance {
         let mut tables = self.0.borrow_mut();
         let internal_ty = ty.internal(&mut *tables);
         let instance = Instance::resolve_drop_in_place(tables.tcx, internal_ty);
-        matches!(instance.def, ty::InstanceDef::DropGlue(_, Some(_)))
-            .then(|| instance.stable(&mut *tables))
+        instance.stable(&mut *tables)
     }
 
     fn resolve_for_fn_ptr(
@@ -328,9 +324,11 @@ impl<'tcx> Tables<'tcx> {
     fn has_body(&self, instance: Instance<'tcx>) -> bool {
         let def_id = instance.def_id();
         self.tcx.is_mir_available(def_id)
-            && !matches!(
+            || !matches!(
                 instance.def,
-                ty::InstanceDef::Virtual(..) | ty::InstanceDef::Intrinsic(..)
+                ty::InstanceDef::Virtual(..)
+                    | ty::InstanceDef::Intrinsic(..)
+                    | ty::InstanceDef::Item(..)
             )
     }
 }
@@ -364,15 +362,12 @@ fn new_item_kind(kind: DefKind) -> ItemKind {
         | DefKind::OpaqueTy
         | DefKind::Field
         | DefKind::LifetimeParam
+        | DefKind::Impl { .. }
+        | DefKind::Ctor(_, _)
         | DefKind::GlobalAsm => {
             unreachable!("Not a valid item kind: {kind:?}");
         }
-        DefKind::Closure
-        | DefKind::Coroutine
-        | DefKind::Ctor(_, _)
-        | DefKind::AssocFn
-        | DefKind::Impl { .. }
-        | DefKind::Fn => ItemKind::Fn,
+        DefKind::Closure | DefKind::Coroutine | DefKind::AssocFn | DefKind::Fn => ItemKind::Fn,
         DefKind::Const | DefKind::InlineConst | DefKind::AssocConst | DefKind::AnonConst => {
             ItemKind::Const
         }
