@@ -3135,7 +3135,7 @@ declare_lint! {
     /// ### Example
     ///
     /// ```text
-    /// rustc --check-cfg 'names()'
+    /// rustc --check-cfg 'cfg()'
     /// ```
     ///
     /// ```rust,ignore (needs command line option)
@@ -3146,7 +3146,7 @@ declare_lint! {
     /// This will produce:
     ///
     /// ```text
-    /// warning: unknown condition name used
+    /// warning: unexpected `cfg` condition name: `widnows`
     ///  --> lint_example.rs:1:7
     ///   |
     /// 1 | #[cfg(widnows)]
@@ -3157,9 +3157,10 @@ declare_lint! {
     ///
     /// ### Explanation
     ///
-    /// This lint is only active when a `--check-cfg='names(...)'` option has been passed
-    /// to the compiler and triggers whenever an unknown condition name or value is used.
-    /// The known condition include names or values passed in `--check-cfg`, `--cfg`, and some
+    /// This lint is only active when `--check-cfg` arguments are being passed
+    /// to the compiler and triggers whenever an unexpected condition name or value is used.
+    ///
+    /// The known condition include names or values passed in `--check-cfg`, and some
     /// well-knows names and values built into the compiler.
     pub UNEXPECTED_CFGS,
     Warn,
