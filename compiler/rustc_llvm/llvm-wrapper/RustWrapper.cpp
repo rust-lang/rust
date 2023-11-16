@@ -983,6 +983,9 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateStaticMemberType(
     unwrapDI<DIType>(Ty),
     fromRust(Flags),
     unwrap<llvm::ConstantInt>(val),
+#if LLVM_VERSION_GE(18, 0)
+    llvm::dwarf::DW_TAG_member,
+#endif
     AlignInBits
   ));
 }
