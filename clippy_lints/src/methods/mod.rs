@@ -3609,7 +3609,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usage of `as_str()` on a `String`` chained with a method available on the `String` itself.
+    /// Checks for usage of `as_str()` on a `String` chained with a method available on the `String` itself.
     ///
     /// ### Why is this bad?
     /// The `as_str()` conversion is pointless and can be removed for simplicity and cleanliness.
@@ -3618,14 +3618,16 @@ declare_clippy_lint! {
     /// ```no_run
     /// # #![allow(unused)]
     /// let owned_string = "This is a string".to_owned();
-    /// owned_string.as_str().as_bytes();
+    /// owned_string.as_str().as_bytes()
+    /// # ;
     /// ```
     ///
     /// Use instead:
     /// ```no_run
     /// # #![allow(unused)]
     /// let owned_string = "This is a string".to_owned();
-    /// owned_string.as_bytes();
+    /// owned_string.as_bytes()
+    /// # ;
     /// ```
     #[clippy::version = "1.74.0"]
     pub REDUNDANT_AS_STR,
