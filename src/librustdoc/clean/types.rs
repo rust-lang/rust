@@ -1269,8 +1269,8 @@ impl GenericBound {
 
     pub(crate) fn is_sized_bound(&self, cx: &DocContext<'_>) -> bool {
         use rustc_hir::TraitBoundModifier as TBM;
-        if let GenericBound::TraitBound(PolyTrait { ref trait_, .. }, TBM::None) = *self &&
-            Some(trait_.def_id()) == cx.tcx.lang_items().sized_trait()
+        if let GenericBound::TraitBound(PolyTrait { ref trait_, .. }, TBM::None) = *self
+            && Some(trait_.def_id()) == cx.tcx.lang_items().sized_trait()
         {
             return true;
         }
@@ -1623,7 +1623,7 @@ impl Type {
     /// functions.
     pub(crate) fn sugared_async_return_type(self) -> Type {
         if let Type::ImplTrait(mut v) = self
-            && let Some(GenericBound::TraitBound(PolyTrait { mut trait_, .. }, _ )) = v.pop()
+            && let Some(GenericBound::TraitBound(PolyTrait { mut trait_, .. }, _)) = v.pop()
             && let Some(segment) = trait_.segments.pop()
             && let GenericArgs::AngleBracketed { mut bindings, .. } = segment.args
             && let Some(binding) = bindings.pop()

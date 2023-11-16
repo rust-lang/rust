@@ -274,15 +274,19 @@ pub fn current_exe() -> io::Result<PathBuf> {
         return path.canonicalize();
     }
     // Search PWD to infer current_exe.
-    if let Some(pstr) = path.to_str() && pstr.contains("/") {
+    if let Some(pstr) = path.to_str()
+        && pstr.contains("/")
+    {
         return getcwd().map(|cwd| cwd.join(path))?.canonicalize();
     }
     // Search PATH to infer current_exe.
     if let Some(p) = getenv(OsStr::from_bytes("PATH".as_bytes())) {
         for search_path in split_paths(&p) {
             let pb = search_path.join(&path);
-            if pb.is_file() && let Ok(metadata) = crate::fs::metadata(&pb) &&
-               metadata.permissions().mode() & 0o111 != 0 {
+            if pb.is_file()
+                && let Ok(metadata) = crate::fs::metadata(&pb)
+                && metadata.permissions().mode() & 0o111 != 0
+            {
                 return pb.canonicalize();
             }
         }

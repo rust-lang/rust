@@ -12,9 +12,9 @@
  * TODO(antoyo): remove the patches.
  */
 
-#![cfg_attr(not(bootstrap), allow(internal_features))]
-#![cfg_attr(not(bootstrap), doc(rust_logo))]
-#![cfg_attr(not(bootstrap), feature(rustdoc_internals))]
+#![allow(internal_features)]
+#![doc(rust_logo)]
+#![feature(rustdoc_internals)]
 #![feature(
     rustc_private,
     decl_macro,

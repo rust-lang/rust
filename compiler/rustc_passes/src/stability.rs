@@ -196,7 +196,10 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
             }
         }
 
-        if let Some((depr, span)) = &depr && depr.is_since_rustc_version() && stab.is_none() {
+        if let Some((depr, span)) = &depr
+            && depr.is_since_rustc_version()
+            && stab.is_none()
+        {
             self.tcx.sess.emit_err(errors::DeprecatedAttribute { span: *span });
         }
 

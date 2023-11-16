@@ -655,7 +655,9 @@ impl<'tcx> Pat<'tcx> {
     pub fn pat_error_reported(&self) -> Result<(), ErrorGuaranteed> {
         let mut error = None;
         self.walk(|pat| {
-            if let PatKind::Error(e) = pat.kind && error.is_none() {
+            if let PatKind::Error(e) = pat.kind
+                && error.is_none()
+            {
                 error = Some(e);
             }
             error.is_none()

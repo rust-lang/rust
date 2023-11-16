@@ -507,11 +507,7 @@ fn write_span<W>(
 where
     W: Write,
 {
-    let maybe_alt_class = if layer > 0 {
-        if alt { " odd" } else { " even" }
-    } else {
-        ""
-    };
+    let maybe_alt_class = if layer > 0 { if alt { " odd" } else { " even" } } else { "" };
     let maybe_title_attr = if !tooltip.is_empty() {
         format!(" title=\"{}\"", escape_attr(tooltip))
     } else {

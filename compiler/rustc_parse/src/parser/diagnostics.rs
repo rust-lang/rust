@@ -506,7 +506,9 @@ impl<'a> Parser<'a> {
         if expected.contains(&TokenType::Token(token::Semi)) {
             // If the user is trying to write a ternary expression, recover it and
             // return an Err to prevent a cascade of irrelevant diagnostics
-            if self.prev_token == token::Question && let Err(e) = self.maybe_recover_from_ternary_operator() {
+            if self.prev_token == token::Question
+                && let Err(e) = self.maybe_recover_from_ternary_operator()
+            {
                 return Err(e);
             }
 

@@ -617,10 +617,17 @@ fn report_missing_placeholders(
     let placeholders = pieces
         .iter()
         .filter_map(|piece| {
-            if let parse::Piece::NextArgument(argument) = piece && let ArgumentNamed(binding) = argument.position {
-                let span = fmt_span.from_inner(InnerSpan::new(argument.position_span.start, argument.position_span.end));
+            if let parse::Piece::NextArgument(argument) = piece
+                && let ArgumentNamed(binding) = argument.position
+            {
+                let span = fmt_span.from_inner(InnerSpan::new(
+                    argument.position_span.start,
+                    argument.position_span.end,
+                ));
                 Some((span, binding))
-            } else { None }
+            } else {
+                None
+            }
         })
         .collect::<Vec<_>>();
 

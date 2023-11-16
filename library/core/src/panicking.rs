@@ -170,9 +170,8 @@ pub fn unreachable_display<T: fmt::Display>(x: &T) -> ! {
 #[inline]
 #[track_caller]
 #[rustc_do_not_const_check] // hooked by const-eval
-#[cfg_attr(bootstrap, lang = "panic_display")]
 // enforce a &&str argument in const-check and hook this by const-eval
-#[cfg_attr(not(bootstrap), rustc_const_panic_str)]
+#[rustc_const_panic_str]
 #[rustc_const_unstable(feature = "core_panic", issue = "none")]
 pub const fn panic_display<T: fmt::Display>(x: &T) -> ! {
     panic_fmt(format_args!("{}", *x));

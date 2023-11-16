@@ -607,7 +607,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
         if let Some(adt) = local_ty.ty_adt_def()
             && adt.repr().packed()
-            && let ExpnKind::Macro(MacroKind::Derive, name) = self.body.span.ctxt().outer_expn_data().kind
+            && let ExpnKind::Macro(MacroKind::Derive, name) =
+                self.body.span.ctxt().outer_expn_data().kind
         {
             err.note(format!("`#[derive({name})]` triggers a move because taking references to the fields of a packed struct is undefined behaviour"));
         }

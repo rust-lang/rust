@@ -79,9 +79,9 @@ pub(crate) fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -
     let def_id = item.item_id.expect_def_id().expect_local();
 
     // check if parent is trait impl
-    if let Some(parent_def_id) = cx.tcx.opt_local_parent(def_id) &&
-        let Some(parent_node) = cx.tcx.hir().find_by_def_id(parent_def_id) &&
-        matches!(
+    if let Some(parent_def_id) = cx.tcx.opt_local_parent(def_id)
+        && let Some(parent_node) = cx.tcx.hir().find_by_def_id(parent_def_id)
+        && matches!(
             parent_node,
             hir::Node::Item(hir::Item {
                 kind: hir::ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }),

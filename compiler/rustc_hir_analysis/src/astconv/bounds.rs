@@ -194,8 +194,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
 
         self.add_bounds(
             param_ty,
-            ast_bounds.iter().filter(|bound| {
-                match filter {
+            ast_bounds.iter().filter(|bound| match filter {
                 PredicateFilter::All
                 | PredicateFilter::SelfOnly
                 | PredicateFilter::SelfAndAssociatedTypeBounds => true,
@@ -209,7 +208,6 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                         false
                     }
                 }
-            }
             }),
             &mut bounds,
             ty::List::empty(),

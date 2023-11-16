@@ -203,11 +203,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
                             "we shouldn't walk non-predicate binders with `impl Trait`...",
                         );
                     }
-                    ty::Region::new_bound(
-                        self.tcx,
-                        index.shifted_out_to_binder(self.depth),
-                        bv,
-                    )
+                    ty::Region::new_bound(self.tcx, index.shifted_out_to_binder(self.depth), bv)
                 } else {
                     re
                 }

@@ -176,9 +176,9 @@ impl<'tcx> Context<'tcx> {
         let mut render_redirect_pages = self.render_redirect_pages;
         // If the item is stripped but inlined, links won't point to the item so no need to generate
         // a file for it.
-        if it.is_stripped() &&
-            let Some(def_id) = it.def_id() &&
-            def_id.is_local()
+        if it.is_stripped()
+            && let Some(def_id) = it.def_id()
+            && def_id.is_local()
         {
             if self.is_inside_inlined_module || self.shared.cache.inlined_items.contains(&def_id) {
                 // For now we're forced to generate a redirect page for stripped items until
@@ -371,7 +371,9 @@ impl<'tcx> Context<'tcx> {
 
             path = href.into_inner().to_string_lossy().into_owned();
 
-            if let Some(c) = path.as_bytes().last() && *c != b'/' {
+            if let Some(c) = path.as_bytes().last()
+                && *c != b'/'
+            {
                 path.push('/');
             }
 
@@ -741,9 +743,10 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             shared.fs.write(scrape_examples_help_file, v)?;
         }
 
-        if let Some(ref redirections) = shared.redirections && !redirections.borrow().is_empty() {
-            let redirect_map_path =
-                self.dst.join(crate_name.as_str()).join("redirect-map.json");
+        if let Some(ref redirections) = shared.redirections
+            && !redirections.borrow().is_empty()
+        {
+            let redirect_map_path = self.dst.join(crate_name.as_str()).join("redirect-map.json");
             let paths = serde_json::to_string(&*redirections.borrow()).unwrap();
             shared.ensure_dir(&self.dst.join(crate_name.as_str()))?;
             shared.fs.write(redirect_map_path, paths)?;
@@ -790,7 +793,9 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             }
         }
         if !self.is_inside_inlined_module {
-            if let Some(def_id) = item.def_id() && self.cache().inlined_items.contains(&def_id) {
+            if let Some(def_id) = item.def_id()
+                && self.cache().inlined_items.contains(&def_id)
+            {
                 self.is_inside_inlined_module = true;
             }
         } else if !self.cache().document_hidden && item.is_doc_hidden() {

@@ -74,7 +74,9 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute], crate_name: Symbol) -
     // - E.g. enable `test_2018_feature` if `features_edition` is 2018 or higher
     let mut edition_enabled_features = FxHashSet::default();
     for f in UNSTABLE_FEATURES {
-        if let Some(edition) = f.feature.edition && edition <= features_edition {
+        if let Some(edition) = f.feature.edition
+            && edition <= features_edition
+        {
             // FIXME(Manishearth) there is currently no way to set lib features by
             // edition.
             edition_enabled_features.insert(f.feature.name);
@@ -251,8 +253,7 @@ impl<'a> StripUnconfigured<'a> {
         let trees: Vec<_> = stream
             .0
             .iter()
-            .flat_map(|tree| {
-                match tree.clone() {
+            .flat_map(|tree| match tree.clone() {
                 AttrTokenTree::Attributes(mut data) => {
                     data.attrs.flat_map_in_place(|attr| self.process_cfg_attr(&attr));
 
@@ -277,7 +278,6 @@ impl<'a> StripUnconfigured<'a> {
                 AttrTokenTree::Token(token, spacing) => {
                     Some(AttrTokenTree::Token(token, spacing)).into_iter()
                 }
-            }
             })
             .collect();
         AttrTokenStream::new(trees)

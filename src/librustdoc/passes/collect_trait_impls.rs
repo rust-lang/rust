@@ -154,9 +154,9 @@ pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
 
     // scan through included items ahead of time to splice in Deref targets to the "valid" sets
     for it in new_items_external.iter().chain(new_items_local.iter()) {
-        if let ImplItem(box Impl { ref for_, ref trait_, ref items, .. }) = *it.kind &&
-            trait_.as_ref().map(|t| t.def_id()) == tcx.lang_items().deref_trait() &&
-            cleaner.keep_impl(for_, true)
+        if let ImplItem(box Impl { ref for_, ref trait_, ref items, .. }) = *it.kind
+            && trait_.as_ref().map(|t| t.def_id()) == tcx.lang_items().deref_trait()
+            && cleaner.keep_impl(for_, true)
         {
             let target = items
                 .iter()
@@ -250,8 +250,8 @@ impl<'cache> DocVisitor for ItemAndAliasCollector<'cache> {
     fn visit_item(&mut self, i: &Item) {
         self.items.insert(i.item_id);
 
-        if let TypeAliasItem(alias) = &*i.kind &&
-            let Some(did) = alias.type_.def_id(self.cache)
+        if let TypeAliasItem(alias) = &*i.kind
+            && let Some(did) = alias.type_.def_id(self.cache)
         {
             self.items.insert(ItemId::DefId(did));
         }
