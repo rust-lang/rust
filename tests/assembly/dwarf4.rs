@@ -20,5 +20,5 @@ pub struct X;
 // CHECK-NOT: .short 2
 // CHECK-NOT: .short 5
 // CHECK: .short 4
-// CHECK: .section .debug_pubnames
-// CHECK: .section .debug_pubtypes
+// CHECK-NOT: .section .debug_pubnames
+// CHECK-NOT: .section .debug_pubtypes

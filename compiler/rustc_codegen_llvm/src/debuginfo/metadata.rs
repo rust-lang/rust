@@ -17,6 +17,7 @@ use crate::debuginfo::utils::FatPtrKind;
 use crate::llvm;
 use crate::llvm::debuginfo::{
     DIDescriptor, DIFile, DIFlags, DILexicalBlock, DIScope, DIType, DebugEmissionKind,
+    DebugNameTableKind,
 };
 use crate::value::Value;
 
@@ -878,6 +879,12 @@ pub fn build_compile_unit_di_node<'ll, 'tcx>(
     let split_name = split_name.to_str().unwrap();
     let kind = DebugEmissionKind::from_generic(tcx.sess.opts.debuginfo);
 
+    let dwarf_version =
+        tcx.sess.opts.unstable_opts.dwarf_version.unwrap_or(tcx.sess.target.default_dwarf_version);
+    // Don't emit `.debug_pubnames` and `.debug_pubtypes` on DWARFv4 or lower.
+    let debug_name_table_kind =
+        if dwarf_version > 4 { DebugNameTableKind::Default } else { DebugNameTableKind::None };
+
     unsafe {
         let compile_unit_file = llvm::LLVMRustDIBuilderCreateFile(
             debug_context.builder,
@@ -907,6 +914,7 @@ pub fn build_compile_unit_di_node<'ll, 'tcx>(
             kind,
             0,
             tcx.sess.opts.unstable_opts.split_dwarf_inlining,
+            debug_name_table_kind,
         );
 
         if tcx.sess.opts.unstable_opts.profile {
