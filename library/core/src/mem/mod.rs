@@ -520,7 +520,7 @@ pub const fn align_of_val<T: ?Sized>(val: &T) -> usize {
 /// [extern types]: ../../unstable-book/language-features/extern-types.html
 ///
 /// It is important to note that the last point means that it would be *unsound*
-/// to implement `size_of_val` as an unconditional call to `size_of_val_raw`.
+/// to implement `align_of_val` as an unconditional call to `align_of_val_raw`.
 ///
 /// # Examples
 ///
