@@ -236,25 +236,19 @@ impl<'tcx> Queries<'tcx> {
     }
 
     pub fn linker(&'tcx self, ongoing_codegen: Box<dyn Any>) -> Result<Linker> {
-        let sess = self.session().clone();
-        let codegen_backend = self.codegen_backend().clone();
-
-        let (crate_hash, prepare_outputs, dep_graph) = self.global_ctxt()?.enter(|tcx| {
-            (
-                if tcx.needs_crate_hash() { Some(tcx.crate_hash(LOCAL_CRATE)) } else { None },
-                tcx.output_filenames(()).clone(),
-                tcx.dep_graph.clone(),
-            )
-        });
-
-        Ok(Linker {
-            sess,
-            codegen_backend,
-
-            dep_graph,
-            prepare_outputs,
-            crate_hash,
-            ongoing_codegen,
+        self.global_ctxt()?.enter(|tcx| {
+            Ok(Linker {
+                sess: self.session().clone(),
+                codegen_backend: self.codegen_backend().clone(),
+                dep_graph: tcx.dep_graph.clone(),
+                prepare_outputs: tcx.output_filenames(()).clone(),
+                crate_hash: if tcx.needs_crate_hash() {
+                    Some(tcx.crate_hash(LOCAL_CRATE))
+                } else {
+                    None
+                },
+                ongoing_codegen,
+            })
         })
     }
 }
