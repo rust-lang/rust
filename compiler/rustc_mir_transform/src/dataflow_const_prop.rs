@@ -597,7 +597,9 @@ fn propagatable_scalar(
     state: &State<FlatSet<Scalar>>,
     map: &Map,
 ) -> Option<Scalar> {
-    if let FlatSet::Elem(value) = state.get_idx(place, map) && value.try_to_int().is_ok() {
+    if let FlatSet::Elem(value) = state.get_idx(place, map)
+        && value.try_to_int().is_ok()
+    {
         // Do not attempt to propagate pointers, as we may fail to preserve their identity.
         Some(value)
     } else {
@@ -836,7 +838,8 @@ impl<'tcx> Visitor<'tcx> for OperandCollector<'tcx, '_, '_, '_> {
         location: Location,
     ) {
         if let PlaceElem::Index(local) = elem
-            && let Some(value) = self.visitor.try_make_constant(self.ecx, local.into(), self.state, self.map)
+            && let Some(value) =
+                self.visitor.try_make_constant(self.ecx, local.into(), self.state, self.map)
         {
             self.visitor.patch.before_effect.insert((location, local.into()), value);
         }

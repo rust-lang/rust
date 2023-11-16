@@ -247,7 +247,9 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
         let last_non_rec = self.opportunities.len();
 
         let predecessors = &self.body.basic_blocks.predecessors()[bb];
-        if let &[pred] = &predecessors[..] && bb != START_BLOCK {
+        if let &[pred] = &predecessors[..]
+            && bb != START_BLOCK
+        {
             let term = self.body.basic_blocks[pred].terminator();
             match term.kind {
                 TerminatorKind::SwitchInt { ref discr, ref targets } => {
@@ -419,8 +421,10 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
                                 // Do not support unions.
                                 AggregateKind::Adt(.., Some(_)) => return None,
                                 AggregateKind::Adt(_, variant_index, ..) if agg_ty.is_enum() => {
-                                    if let Some(discr_target) = self.map.apply(lhs, TrackElem::Discriminant)
-                                        && let Some(discr_value) = discriminant_for_variant(agg_ty, *variant_index)
+                                    if let Some(discr_target) =
+                                        self.map.apply(lhs, TrackElem::Discriminant)
+                                        && let Some(discr_value) =
+                                            discriminant_for_variant(agg_ty, *variant_index)
                                     {
                                         self.process_operand(bb, discr_target, &discr_value, state);
                                     }

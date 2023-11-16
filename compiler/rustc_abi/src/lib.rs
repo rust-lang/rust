@@ -1,7 +1,7 @@
 #![cfg_attr(feature = "nightly", feature(step_trait))]
 #![cfg_attr(feature = "nightly", allow(internal_features))]
-#![cfg_attr(all(not(bootstrap), feature = "nightly"), doc(rust_logo))]
-#![cfg_attr(all(not(bootstrap), feature = "nightly"), feature(rustdoc_internals))]
+#![cfg_attr(feature = "nightly", doc(rust_logo))]
+#![cfg_attr(feature = "nightly", feature(rustdoc_internals))]
 
 use std::fmt;
 use std::num::{NonZeroUsize, ParseIntError};

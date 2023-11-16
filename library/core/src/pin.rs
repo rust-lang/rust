@@ -1088,8 +1088,7 @@ impl<P, U> DispatchFromDyn<Pin<U>> for Pin<P> where P: DispatchFromDyn<U> {}
 /// ### With `Coroutine`s
 ///
 /// ```rust
-/// #![cfg_attr(bootstrap, feature(generators))]
-/// #![cfg_attr(not(bootstrap), feature(coroutines))]
+/// #![feature(coroutines)]
 /// #![feature(coroutine_trait)]
 /// use core::{
 ///     ops::{Coroutine, CoroutineState},

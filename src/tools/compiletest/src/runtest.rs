@@ -3701,9 +3701,7 @@ impl<'test> TestCx<'test> {
         let stderr_bits = format!("{}bit.stderr", self.config.get_pointer_width());
         let (stderr_kind, stdout_kind) = match output_kind {
             TestOutput::Compile => (
-                {
-                    if self.props.stderr_per_bitwidth { &stderr_bits } else { UI_STDERR }
-                },
+                { if self.props.stderr_per_bitwidth { &stderr_bits } else { UI_STDERR } },
                 UI_STDOUT,
             ),
             TestOutput::Run => (UI_RUN_STDERR, UI_RUN_STDOUT),

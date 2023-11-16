@@ -192,10 +192,10 @@ impl<'tcx> Cx<'tcx> {
                 cast: PointerCoercion::ArrayToPointer,
             }
         } else if let hir::ExprKind::Path(ref qpath) = source.kind
-           && let res = self.typeck_results().qpath_res(qpath, source.hir_id)
-           && let ty = self.typeck_results().node_type(source.hir_id)
-           && let ty::Adt(adt_def, args) = ty.kind()
-           && let Res::Def(DefKind::Ctor(CtorOf::Variant, CtorKind::Const), variant_ctor_id) = res
+            && let res = self.typeck_results().qpath_res(qpath, source.hir_id)
+            && let ty = self.typeck_results().node_type(source.hir_id)
+            && let ty::Adt(adt_def, args) = ty.kind()
+            && let Res::Def(DefKind::Ctor(CtorOf::Variant, CtorKind::Const), variant_ctor_id) = res
         {
             // Check whether this is casting an enum variant discriminant.
             // To prevent cycles, we refer to the discriminant initializer,

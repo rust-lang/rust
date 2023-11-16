@@ -78,8 +78,8 @@
     not(no_sync),
     target_has_atomic = "ptr"
 ))]
-#![cfg_attr(not(bootstrap), doc(rust_logo))]
-#![cfg_attr(not(bootstrap), feature(rustdoc_internals))]
+#![doc(rust_logo)]
+#![feature(rustdoc_internals)]
 #![no_std]
 #![needs_allocator]
 // Lints:

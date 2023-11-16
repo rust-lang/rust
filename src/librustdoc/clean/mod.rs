@@ -54,7 +54,9 @@ pub(crate) fn clean_doc_module<'tcx>(doc: &DocModule<'tcx>, cx: &mut DocContext<
     let mut inserted = FxHashSet::default();
     items.extend(doc.foreigns.iter().map(|(item, renamed)| {
         let item = clean_maybe_renamed_foreign_item(cx, item, *renamed);
-        if let Some(name) = item.name && (cx.render_options.document_hidden || !item.is_doc_hidden()) {
+        if let Some(name) = item.name
+            && (cx.render_options.document_hidden || !item.is_doc_hidden())
+        {
             inserted.insert((item.type_(), name));
         }
         item
@@ -85,7 +87,9 @@ pub(crate) fn clean_doc_module<'tcx>(doc: &DocModule<'tcx>, cx: &mut DocContext<
         }
         let v = clean_maybe_renamed_item(cx, item, *renamed, *import_id);
         for item in &v {
-            if let Some(name) = item.name && (cx.render_options.document_hidden || !item.is_doc_hidden()) {
+            if let Some(name) = item.name
+                && (cx.render_options.document_hidden || !item.is_doc_hidden())
+            {
                 inserted.insert((item.type_(), name));
             }
         }
@@ -817,12 +821,7 @@ fn clean_ty_generics<'tcx>(
             {
                 let pred = clean_predicate(*pred, cx)?;
 
-                bounds.extend(
-                    pred.get_bounds()
-                        .into_iter()
-                        .flatten()
-                        .cloned()
-                );
+                bounds.extend(pred.get_bounds().into_iter().flatten().cloned());
 
                 if let Some(proj) = projection
                     && let lhs = clean_projection(proj.map_bound(|p| p.projection_ty), cx, None)
@@ -989,10 +988,8 @@ fn clean_proc_macro<'tcx>(
     cx: &mut DocContext<'tcx>,
 ) -> ItemKind {
     let attrs = cx.tcx.hir().attrs(item.hir_id());
-    if kind == MacroKind::Derive &&
-        let Some(derive_name) = attrs
-            .lists(sym::proc_macro_derive)
-            .find_map(|mi| mi.ident())
+    if kind == MacroKind::Derive
+        && let Some(derive_name) = attrs.lists(sym::proc_macro_derive).find_map(|mi| mi.ident())
     {
         *name = derive_name.name;
     }
@@ -1154,7 +1151,9 @@ fn clean_fn_decl_with_args<'tcx>(
         hir::FnRetTy::Return(typ) => clean_ty(typ, cx),
         hir::FnRetTy::DefaultReturn(..) => Type::Tuple(Vec::new()),
     };
-    if let Some(header) = header && header.is_async() {
+    if let Some(header) = header
+        && header.is_async()
+    {
         output = output.sugared_async_return_type();
     }
     FnDecl { inputs: args, output, c_variadic: decl.c_variadic }
@@ -1606,14 +1605,16 @@ fn first_non_private<'tcx>(
             continue;
         }
 
-        if let Some(def_id) = child.res.opt_def_id() && target_def_id == def_id {
+        if let Some(def_id) = child.res.opt_def_id()
+            && target_def_id == def_id
+        {
             let mut last_path_res = None;
             'reexps: for reexp in child.reexport_chain.iter() {
-                if let Some(use_def_id) = reexp.id() &&
-                    let Some(local_use_def_id) = use_def_id.as_local() &&
-                    let Some(hir::Node::Item(item)) = hir.find_by_def_id(local_use_def_id) &&
-                    !item.ident.name.is_empty() &&
-                    let hir::ItemKind::Use(path, _) = item.kind
+                if let Some(use_def_id) = reexp.id()
+                    && let Some(local_use_def_id) = use_def_id.as_local()
+                    && let Some(hir::Node::Item(item)) = hir.find_by_def_id(local_use_def_id)
+                    && !item.ident.name.is_empty()
+                    && let hir::ItemKind::Use(path, _) = item.kind
                 {
                     for res in &path.res {
                         if let Res::Def(DefKind::Ctor(..), _) | Res::SelfCtor(..) = res {
@@ -1624,7 +1625,8 @@ fn first_non_private<'tcx>(
                             // We never check for "cx.render_options.document_private"
                             // because if a re-export is not fully public, it's never
                             // documented.
-                            cx.tcx.local_visibility(local_use_def_id).is_public() {
+                            cx.tcx.local_visibility(local_use_def_id).is_public()
+                        {
                             break 'reexps;
                         }
                         last_path_res = Some((path, res));
@@ -1639,7 +1641,12 @@ fn first_non_private<'tcx>(
                 // 1. We found a public reexport.
                 // 2. We didn't find a public reexport so it's the "end type" path.
                 if let Some((new_path, _)) = last_path_res {
-                    return Some(first_non_private_clean_path(cx, path, new_path.segments, new_path.span));
+                    return Some(first_non_private_clean_path(
+                        cx,
+                        path,
+                        new_path.segments,
+                        new_path.span,
+                    ));
                 }
                 // If `last_path_res` is `None`, it can mean two things:
                 //
@@ -2304,7 +2311,9 @@ fn clean_middle_opaque_bounds<'tcx>(
                 _ => return None,
             };
 
-            if let Some(sized) = cx.tcx.lang_items().sized_trait() && trait_ref.def_id() == sized {
+            if let Some(sized) = cx.tcx.lang_items().sized_trait()
+                && trait_ref.def_id() == sized
+            {
                 has_sized = true;
                 return None;
             }
@@ -2680,28 +2689,27 @@ fn add_without_unwanted_attributes<'hir>(
         let mut attr = attr.clone();
         match attr.kind {
             ast::AttrKind::Normal(ref mut normal) => {
-                if let [ident] = &*normal.item.path.segments &&
-                    let ident = ident.ident.name &&
-                    ident == sym::doc
+                if let [ident] = &*normal.item.path.segments
+                    && let ident = ident.ident.name
+                    && ident == sym::doc
                 {
                     match normal.item.args {
                         ast::AttrArgs::Delimited(ref mut args) => {
-                            let tokens =
-                                filter_tokens_from_list(&args.tokens, |token| {
-                                    !matches!(
-                                        token,
-                                        TokenTree::Token(
-                                            Token {
-                                                kind: TokenKind::Ident(
-                                                    sym::hidden | sym::inline | sym::no_inline,
-                                                    _,
-                                                ),
-                                                ..
-                                            },
-                                            _,
-                                        ),
-                                    )
-                                });
+                            let tokens = filter_tokens_from_list(&args.tokens, |token| {
+                                !matches!(
+                                    token,
+                                    TokenTree::Token(
+                                        Token {
+                                            kind: TokenKind::Ident(
+                                                sym::hidden | sym::inline | sym::no_inline,
+                                                _,
+                                            ),
+                                            ..
+                                        },
+                                        _,
+                                    ),
+                                )
+                            });
                             args.tokens = TokenStream::new(tokens);
                             attrs.push((Cow::Owned(attr), import_parent));
                         }

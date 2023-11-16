@@ -23,8 +23,8 @@
 //! This API is completely unstable and subject to change.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
-#![cfg_attr(not(bootstrap), doc(rust_logo))]
-#![cfg_attr(not(bootstrap), feature(rustdoc_internals))]
+#![doc(rust_logo)]
+#![feature(rustdoc_internals)]
 #![feature(allocator_api)]
 #![feature(array_windows)]
 #![feature(assert_matches)]
@@ -32,8 +32,7 @@
 #![feature(core_intrinsics)]
 #![feature(discriminant_kind)]
 #![feature(exhaustive_patterns)]
-#![cfg_attr(bootstrap, feature(generators))]
-#![cfg_attr(not(bootstrap), feature(coroutines))]
+#![feature(coroutines)]
 #![feature(get_mut_unchecked)]
 #![feature(if_let_guard)]
 #![feature(inline_const)]

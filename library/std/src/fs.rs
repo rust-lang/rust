@@ -189,7 +189,7 @@ pub struct OpenOptions(fs_imp::OpenOptions);
 
 /// Representation of the various timestamps on a file.
 #[derive(Copy, Clone, Debug, Default)]
-#[stable(feature = "file_set_times", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "file_set_times", since = "1.75.0")]
 pub struct FileTimes(fs_imp::FileTimes);
 
 /// Representation of the various permissions on a file.
@@ -688,7 +688,7 @@ impl File {
     ///     Ok(())
     /// }
     /// ```
-    #[stable(feature = "file_set_times", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "file_set_times", since = "1.75.0")]
     #[doc(alias = "futimens")]
     #[doc(alias = "futimes")]
     #[doc(alias = "SetFileTime")]
@@ -699,7 +699,7 @@ impl File {
     /// Changes the modification time of the underlying file.
     ///
     /// This is an alias for `set_times(FileTimes::new().set_modified(time))`.
-    #[stable(feature = "file_set_times", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "file_set_times", since = "1.75.0")]
     #[inline]
     pub fn set_modified(&self, time: SystemTime) -> io::Result<()> {
         self.set_times(FileTimes::new().set_modified(time))
@@ -1413,20 +1413,20 @@ impl FileTimes {
     /// Create a new `FileTimes` with no times set.
     ///
     /// Using the resulting `FileTimes` in [`File::set_times`] will not modify any timestamps.
-    #[stable(feature = "file_set_times", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "file_set_times", since = "1.75.0")]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Set the last access time of a file.
-    #[stable(feature = "file_set_times", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "file_set_times", since = "1.75.0")]
     pub fn set_accessed(mut self, t: SystemTime) -> Self {
         self.0.set_accessed(t.into_inner());
         self
     }
 
     /// Set the last modified time of a file.
-    #[stable(feature = "file_set_times", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "file_set_times", since = "1.75.0")]
     pub fn set_modified(mut self, t: SystemTime) -> Self {
         self.0.set_modified(t.into_inner());
         self
@@ -1440,7 +1440,7 @@ impl AsInnerMut<fs_imp::FileTimes> for FileTimes {
 }
 
 // For implementing OS extension traits in `std::os`
-#[stable(feature = "file_set_times", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "file_set_times", since = "1.75.0")]
 impl Sealed for FileTimes {}
 
 impl Permissions {

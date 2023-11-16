@@ -47,7 +47,7 @@ pub macro panic_2015 {
 #[allow_internal_unstable(core_panic, const_format_args)]
 #[rustc_diagnostic_item = "core_panic_2021_macro"]
 #[rustc_macro_transparency = "semitransparent"]
-#[cfg(any(bootstrap, feature = "panic_immediate_abort"))]
+#[cfg(feature = "panic_immediate_abort")]
 pub macro panic_2021 {
     () => (
         $crate::panicking::panic("explicit panic")
@@ -75,7 +75,7 @@ pub macro panic_2021 {
 )]
 #[rustc_diagnostic_item = "core_panic_2021_macro"]
 #[rustc_macro_transparency = "semitransparent"]
-#[cfg(not(any(bootstrap, feature = "panic_immediate_abort")))]
+#[cfg(not(feature = "panic_immediate_abort"))]
 pub macro panic_2021 {
     () => ({
         // Create a function so that the argument for `track_caller`

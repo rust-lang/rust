@@ -983,6 +983,9 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateStaticMemberType(
     unwrapDI<DIType>(Ty),
     fromRust(Flags),
     unwrap<llvm::ConstantInt>(val),
+#if LLVM_VERSION_GE(18, 0)
+    llvm::dwarf::DW_TAG_member,
+#endif
     AlignInBits
   ));
 }
@@ -1105,7 +1108,11 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateEnumerationType(
       unwrapDI<DIDescriptor>(Scope), StringRef(Name, NameLen),
       unwrapDI<DIFile>(File), LineNumber,
       SizeInBits, AlignInBits, DINodeArray(unwrapDI<MDTuple>(Elements)),
-      unwrapDI<DIType>(ClassTy), "", IsScoped));
+      unwrapDI<DIType>(ClassTy),
+#if LLVM_VERSION_GE(18, 0)
+      /* RunTimeLang */ 0,
+#endif
+      "", IsScoped));
 }
 
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateUnionType(

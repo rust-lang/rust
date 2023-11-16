@@ -1404,9 +1404,6 @@ impl<'a> Builder<'a> {
             rustflags.arg("-Zunstable-options");
         }
 
-        // #[cfg(bootstrap)]
-        let use_new_check_cfg_syntax = self.local_rebuild;
-
         // Enable compile-time checking of `cfg` names, values and Cargo `features`.
         //
         // Note: `std`, `alloc` and `core` imports some dependencies by #[path] (like
@@ -1414,17 +1411,9 @@ impl<'a> Builder<'a> {
         // features but cargo isn't involved in the #[path] process and so cannot pass the
         // complete list of features, so for that reason we don't enable checking of
         // features for std crates.
-        if use_new_check_cfg_syntax {
-            cargo.arg("-Zcheck-cfg");
-            if mode == Mode::Std {
-                rustflags.arg("--check-cfg=cfg(feature,values(any()))");
-            }
-        } else {
-            cargo.arg(if mode != Mode::Std {
-                "-Zcheck-cfg=names,values,output,features"
-            } else {
-                "-Zcheck-cfg=names,values,output"
-            });
+        cargo.arg("-Zcheck-cfg");
+        if mode == Mode::Std {
+            rustflags.arg("--check-cfg=cfg(feature,values(any()))");
         }
 
         // Add extra cfg not defined in/by rustc
@@ -1445,12 +1434,8 @@ impl<'a> Builder<'a> {
                         .collect::<String>(),
                     None => String::new(),
                 };
-                if use_new_check_cfg_syntax {
-                    let values = values.strip_prefix(",").unwrap_or(&values); // remove the first `,`
-                    rustflags.arg(&format!("--check-cfg=cfg({name},values({values}))"));
-                } else {
-                    rustflags.arg(&format!("--check-cfg=values({name}{values})"));
-                }
+                let values = values.strip_prefix(",").unwrap_or(&values); // remove the first `,`
+                rustflags.arg(&format!("--check-cfg=cfg({name},values({values}))"));
             }
         }
 
@@ -1466,11 +1451,7 @@ impl<'a> Builder<'a> {
         // We also declare that the flag is expected, which we need to do to not
         // get warnings about it being unexpected.
         hostflags.arg("-Zunstable-options");
-        if use_new_check_cfg_syntax {
-            hostflags.arg("--check-cfg=cfg(bootstrap)");
-        } else {
-            hostflags.arg("--check-cfg=values(bootstrap)");
-        }
+        hostflags.arg("--check-cfg=cfg(bootstrap)");
 
         // FIXME: It might be better to use the same value for both `RUSTFLAGS` and `RUSTDOCFLAGS`,
         // but this breaks CI. At the very least, stage0 `rustdoc` needs `--cfg bootstrap`. See

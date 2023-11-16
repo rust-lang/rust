@@ -1072,7 +1072,7 @@ extern "rust-intrinsic" {
     /// zero-initialization: This will statically either panic, or do nothing.
     ///
     /// This intrinsic does not have a stable counterpart.
-    #[rustc_const_stable(feature = "const_assert_type2", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_assert_type2", since = "1.75.0")]
     #[rustc_safe_intrinsic]
     #[rustc_nounwind]
     pub fn assert_zero_valid<T>();
@@ -1080,7 +1080,7 @@ extern "rust-intrinsic" {
     /// A guard for `std::mem::uninitialized`. This will statically either panic, or do nothing.
     ///
     /// This intrinsic does not have a stable counterpart.
-    #[rustc_const_stable(feature = "const_assert_type2", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_assert_type2", since = "1.75.0")]
     #[rustc_safe_intrinsic]
     #[rustc_nounwind]
     pub fn assert_mem_uninitialized_valid<T>();
@@ -2279,7 +2279,7 @@ extern "rust-intrinsic" {
     /// any safety invariants.
     ///
     /// The stabilized version of this intrinsic is [`core::mem::discriminant`].
-    #[rustc_const_stable(feature = "const_discriminant", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_discriminant", since = "1.75.0")]
     #[rustc_safe_intrinsic]
     #[rustc_nounwind]
     pub fn discriminant_value<T>(v: &T) -> <T as DiscriminantKind>::Discriminant;

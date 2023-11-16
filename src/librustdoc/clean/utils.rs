@@ -443,8 +443,8 @@ pub(crate) fn is_literal_expr(tcx: TyCtxt<'_>, hir_id: hir::HirId) -> bool {
             return true;
         }
 
-        if let hir::ExprKind::Unary(hir::UnOp::Neg, expr) = &expr.kind &&
-            let hir::ExprKind::Lit(_) = &expr.kind
+        if let hir::ExprKind::Unary(hir::UnOp::Neg, expr) = &expr.kind
+            && let hir::ExprKind::Lit(_) = &expr.kind
         {
             return true;
         }
@@ -643,17 +643,16 @@ pub(crate) fn inherits_doc_hidden(
 ) -> bool {
     let hir = tcx.hir();
     while let Some(id) = tcx.opt_local_parent(def_id) {
-        if let Some(stop_at) = stop_at && id == stop_at {
+        if let Some(stop_at) = stop_at
+            && id == stop_at
+        {
             return false;
         }
         def_id = id;
         if tcx.is_doc_hidden(def_id.to_def_id()) {
             return true;
-        } else if let Some(node) = hir.find_by_def_id(def_id) &&
-            matches!(
-                node,
-                hir::Node::Item(hir::Item { kind: hir::ItemKind::Impl(_), .. }),
-            )
+        } else if let Some(node) = hir.find_by_def_id(def_id)
+            && matches!(node, hir::Node::Item(hir::Item { kind: hir::ItemKind::Impl(_), .. }),)
         {
             // `impl` blocks stand a bit on their own: unless they have `#[doc(hidden)]` directly
             // on them, they don't inherit it from the parent context.
