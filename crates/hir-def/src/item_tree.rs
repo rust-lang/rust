@@ -38,7 +38,6 @@ mod tests;
 use std::{
     fmt::{self, Debug},
     hash::{Hash, Hasher},
-    marker::PhantomData,
     ops::Index,
 };
 
@@ -340,34 +339,37 @@ pub trait ItemTreeNode: Clone {
     fn id_to_mod_item(id: FileItemTreeId<Self>) -> ModItem;
 }
 
-pub struct FileItemTreeId<N: ItemTreeNode> {
-    index: Idx<N>,
-    _p: PhantomData<N>,
+pub struct FileItemTreeId<N: ItemTreeNode>(Idx<N>);
+
+impl<N: ItemTreeNode> FileItemTreeId<N> {
+    pub fn index(&self) -> Idx<N> {
+        self.0
+    }
 }
 
 impl<N: ItemTreeNode> Clone for FileItemTreeId<N> {
     fn clone(&self) -> Self {
-        Self { index: self.index, _p: PhantomData }
+        Self(self.0)
     }
 }
 impl<N: ItemTreeNode> Copy for FileItemTreeId<N> {}
 
 impl<N: ItemTreeNode> PartialEq for FileItemTreeId<N> {
     fn eq(&self, other: &FileItemTreeId<N>) -> bool {
-        self.index == other.index
+        self.0 == other.0
     }
 }
 impl<N: ItemTreeNode> Eq for FileItemTreeId<N> {}
 
 impl<N: ItemTreeNode> Hash for FileItemTreeId<N> {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.index.hash(state)
+        self.0.hash(state)
     }
 }
 
 impl<N: ItemTreeNode> fmt::Debug for FileItemTreeId<N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.index.fmt(f)
+        self.0.fmt(f)
     }
 }
 
@@ -548,7 +550,7 @@ impl Index<RawVisibilityId> for ItemTree {
 impl<N: ItemTreeNode> Index<FileItemTreeId<N>> for ItemTree {
     type Output = N;
     fn index(&self, id: FileItemTreeId<N>) -> &N {
-        N::lookup(self, id.index)
+        N::lookup(self, id.index())
     }
 }
 
@@ -925,23 +927,23 @@ impl ModItem {
 
     pub fn ast_id(&self, tree: &ItemTree) -> FileAstId<ast::Item> {
         match self {
-            ModItem::Use(it) => tree[it.index].ast_id().upcast(),
-            ModItem::ExternCrate(it) => tree[it.index].ast_id().upcast(),
-            ModItem::ExternBlock(it) => tree[it.index].ast_id().upcast(),
-            ModItem::Function(it) => tree[it.index].ast_id().upcast(),
-            ModItem::Struct(it) => tree[it.index].ast_id().upcast(),
-            ModItem::Union(it) => tree[it.index].ast_id().upcast(),
-            ModItem::Enum(it) => tree[it.index].ast_id().upcast(),
-            ModItem::Const(it) => tree[it.index].ast_id().upcast(),
-            ModItem::Static(it) => tree[it.index].ast_id().upcast(),
-            ModItem::Trait(it) => tree[it.index].ast_id().upcast(),
-            ModItem::TraitAlias(it) => tree[it.index].ast_id().upcast(),
-            ModItem::Impl(it) => tree[it.index].ast_id().upcast(),
-            ModItem::TypeAlias(it) => tree[it.index].ast_id().upcast(),
-            ModItem::Mod(it) => tree[it.index].ast_id().upcast(),
-            ModItem::MacroCall(it) => tree[it.index].ast_id().upcast(),
-            ModItem::MacroRules(it) => tree[it.index].ast_id().upcast(),
-            ModItem::MacroDef(it) => tree[it.index].ast_id().upcast(),
+            ModItem::Use(it) => tree[it.index()].ast_id().upcast(),
+            ModItem::ExternCrate(it) => tree[it.index()].ast_id().upcast(),
+            ModItem::ExternBlock(it) => tree[it.index()].ast_id().upcast(),
+            ModItem::Function(it) => tree[it.index()].ast_id().upcast(),
+            ModItem::Struct(it) => tree[it.index()].ast_id().upcast(),
+            ModItem::Union(it) => tree[it.index()].ast_id().upcast(),
+            ModItem::Enum(it) => tree[it.index()].ast_id().upcast(),
+            ModItem::Const(it) => tree[it.index()].ast_id().upcast(),
+            ModItem::Static(it) => tree[it.index()].ast_id().upcast(),
+            ModItem::Trait(it) => tree[it.index()].ast_id().upcast(),
+            ModItem::TraitAlias(it) => tree[it.index()].ast_id().upcast(),
+            ModItem::Impl(it) => tree[it.index()].ast_id().upcast(),
+            ModItem::TypeAlias(it) => tree[it.index()].ast_id().upcast(),
+            ModItem::Mod(it) => tree[it.index()].ast_id().upcast(),
+            ModItem::MacroCall(it) => tree[it.index()].ast_id().upcast(),
+            ModItem::MacroRules(it) => tree[it.index()].ast_id().upcast(),
+            ModItem::MacroDef(it) => tree[it.index()].ast_id().upcast(),
         }
     }
 }
