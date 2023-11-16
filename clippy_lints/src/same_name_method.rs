@@ -55,11 +55,11 @@ impl<'tcx> LateLintPass<'tcx> for SameNameMethod {
             if matches!(cx.tcx.def_kind(id.owner_id), DefKind::Impl { .. })
                 && let item = cx.tcx.hir().item(id)
                 && let ItemKind::Impl(Impl {
-                  items,
-                  of_trait,
-                  self_ty,
-                  ..
-                                      }) = &item.kind
+                    items,
+                    of_trait,
+                    self_ty,
+                    ..
+                }) = &item.kind
                 && let TyKind::Path(QPath::Resolved(_, Path { res, .. })) = self_ty.kind
             {
                 if !map.contains_key(res) {
@@ -75,26 +75,23 @@ impl<'tcx> LateLintPass<'tcx> for SameNameMethod {
 
                 match of_trait {
                     Some(trait_ref) => {
-                        let mut methods_in_trait: BTreeSet<Symbol> = if_chain! {
-                            if let Some(Node::TraitRef(TraitRef { path, .. })) =
-                                cx.tcx.hir().find(trait_ref.hir_ref_id);
-                            if let Res::Def(DefKind::Trait, did) = path.res;
-                            then{
-                                // FIXME: if
-                                // `rustc_middle::ty::assoc::AssocItems::items` is public,
-                                // we can iterate its keys instead of `in_definition_order`,
-                                // which's more efficient
-                                cx.tcx
-                                    .associated_items(did)
-                                    .in_definition_order()
-                                    .filter(|assoc_item| {
-                                        matches!(assoc_item.kind, AssocKind::Fn)
-                                    })
-                                    .map(|assoc_item| assoc_item.name)
-                                    .collect()
-                            }else{
-                                BTreeSet::new()
-                            }
+                        let mut methods_in_trait: BTreeSet<Symbol> = if let Some(Node::TraitRef(TraitRef {
+                            path, ..
+                        })) = cx.tcx.hir().find(trait_ref.hir_ref_id)
+                            && let Res::Def(DefKind::Trait, did) = path.res
+                        {
+                            // FIXME: if
+                            // `rustc_middle::ty::assoc::AssocItems::items` is public,
+                            // we can iterate its keys instead of `in_definition_order`,
+                            // which's more efficient
+                            cx.tcx
+                                .associated_items(did)
+                                .in_definition_order()
+                                .filter(|assoc_item| matches!(assoc_item.kind, AssocKind::Fn))
+                                .map(|assoc_item| assoc_item.name)
+                                .collect()
+                        } else {
+                            BTreeSet::new()
                         };
 
                         let mut check_trait_method = |method_name: Symbol, trait_method_span: Span| {

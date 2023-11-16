@@ -10,8 +10,6 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     #[cfg(feature = "internal")]
     crate::utils::internal_lints::compiler_lint_functions::COMPILER_LINT_FUNCTIONS_INFO,
     #[cfg(feature = "internal")]
-    crate::utils::internal_lints::if_chain_style::IF_CHAIN_STYLE_INFO,
-    #[cfg(feature = "internal")]
     crate::utils::internal_lints::interning_defined_symbol::INTERNING_DEFINED_SYMBOL_INFO,
     #[cfg(feature = "internal")]
     crate::utils::internal_lints::interning_defined_symbol::UNNECESSARY_SYMBOL_STR_INFO,
@@ -141,6 +139,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::doc::MISSING_PANICS_DOC_INFO,
     crate::doc::MISSING_SAFETY_DOC_INFO,
     crate::doc::NEEDLESS_DOCTEST_MAIN_INFO,
+    crate::doc::SUSPICIOUS_DOC_COMMENTS_INFO,
     crate::doc::UNNECESSARY_SAFETY_DOC_INFO,
     crate::double_parens::DOUBLE_PARENS_INFO,
     crate::drop_forget_ref::DROP_NON_DROP_INFO,
@@ -232,6 +231,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::items_after_statements::ITEMS_AFTER_STATEMENTS_INFO,
     crate::items_after_test_module::ITEMS_AFTER_TEST_MODULE_INFO,
     crate::iter_not_returning_iterator::ITER_NOT_RETURNING_ITERATOR_INFO,
+    crate::iter_over_hash_type::ITER_OVER_HASH_TYPE_INFO,
     crate::iter_without_into_iter::INTO_ITER_WITHOUT_ITER_INFO,
     crate::iter_without_into_iter::ITER_WITHOUT_INTO_ITER_INFO,
     crate::large_const_arrays::LARGE_CONST_ARRAYS_INFO,
@@ -628,7 +628,6 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::strings::STR_TO_STRING_INFO,
     crate::strings::TRIM_SPLIT_WHITESPACE_INFO,
     crate::strlen_on_c_strings::STRLEN_ON_C_STRINGS_INFO,
-    crate::suspicious_doc_comments::SUSPICIOUS_DOC_COMMENTS_INFO,
     crate::suspicious_operation_groupings::SUSPICIOUS_OPERATION_GROUPINGS_INFO,
     crate::suspicious_trait_impl::SUSPICIOUS_ARITHMETIC_IMPL_INFO,
     crate::suspicious_trait_impl::SUSPICIOUS_OP_ASSIGN_IMPL_INFO,

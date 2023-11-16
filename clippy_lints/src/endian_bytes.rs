@@ -114,27 +114,23 @@ impl LateLintPass<'_> for EndianBytes {
             return;
         }
 
-        if_chain! {
-            if let ExprKind::MethodCall(method_name, receiver, args, ..) = expr.kind;
-            if args.is_empty();
-            let ty = cx.typeck_results().expr_ty(receiver);
-            if ty.is_primitive_ty();
-            if maybe_lint_endian_bytes(cx, expr, Prefix::To, method_name.ident.name, ty);
-            then {
-                return;
-            }
+        if let ExprKind::MethodCall(method_name, receiver, args, ..) = expr.kind
+            && args.is_empty()
+            && let ty = cx.typeck_results().expr_ty(receiver)
+            && ty.is_primitive_ty()
+            && maybe_lint_endian_bytes(cx, expr, Prefix::To, method_name.ident.name, ty)
+        {
+            return;
         }
 
-        if_chain! {
-            if let ExprKind::Call(function, ..) = expr.kind;
-            if let ExprKind::Path(qpath) = function.kind;
-            if let Some(def_id) = cx.qpath_res(&qpath, function.hir_id).opt_def_id();
-            if let Some(function_name) = cx.get_def_path(def_id).last();
-            let ty = cx.typeck_results().expr_ty(expr);
-            if ty.is_primitive_ty();
-            then {
-                maybe_lint_endian_bytes(cx, expr, Prefix::From, *function_name, ty);
-            }
+        if let ExprKind::Call(function, ..) = expr.kind
+            && let ExprKind::Path(qpath) = function.kind
+            && let Some(def_id) = cx.qpath_res(&qpath, function.hir_id).opt_def_id()
+            && let Some(function_name) = cx.get_def_path(def_id).last()
+            && let ty = cx.typeck_results().expr_ty(expr)
+            && ty.is_primitive_ty()
+        {
+            maybe_lint_endian_bytes(cx, expr, Prefix::From, *function_name, ty);
         }
     }
 }

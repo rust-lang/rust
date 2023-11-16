@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_note, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::ty::{implements_trait, implements_trait_with_env, is_copy};
 use clippy_utils::{is_lint_allowed, match_def_path, paths};
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{walk_expr, walk_fn, walk_item, FnKind, Visitor};
@@ -232,42 +231,37 @@ fn check_hash_peq<'tcx>(
     ty: Ty<'tcx>,
     hash_is_automatically_derived: bool,
 ) {
-    if_chain! {
-        if let Some(peq_trait_def_id) = cx.tcx.lang_items().eq_trait();
-        if let Some(def_id) = trait_ref.trait_def_id();
-        if cx.tcx.is_diagnostic_item(sym::Hash, def_id);
-        then {
-            // Look for the PartialEq implementations for `ty`
-            cx.tcx.for_each_relevant_impl(peq_trait_def_id, ty, |impl_id| {
-                let peq_is_automatically_derived = cx.tcx.has_attr(impl_id, sym::automatically_derived);
+    if let Some(peq_trait_def_id) = cx.tcx.lang_items().eq_trait()
+        && let Some(def_id) = trait_ref.trait_def_id()
+        && cx.tcx.is_diagnostic_item(sym::Hash, def_id)
+    {
+        // Look for the PartialEq implementations for `ty`
+        cx.tcx.for_each_relevant_impl(peq_trait_def_id, ty, |impl_id| {
+            let peq_is_automatically_derived = cx.tcx.has_attr(impl_id, sym::automatically_derived);
 
-                if !hash_is_automatically_derived || peq_is_automatically_derived {
-                    return;
-                }
+            if !hash_is_automatically_derived || peq_is_automatically_derived {
+                return;
+            }
 
-                let trait_ref = cx.tcx.impl_trait_ref(impl_id).expect("must be a trait implementation");
+            let trait_ref = cx.tcx.impl_trait_ref(impl_id).expect("must be a trait implementation");
 
-                // Only care about `impl PartialEq<Foo> for Foo`
-                // For `impl PartialEq<B> for A, input_types is [A, B]
-                if trait_ref.instantiate_identity().args.type_at(1) == ty {
-                    span_lint_and_then(
-                        cx,
-                        DERIVED_HASH_WITH_MANUAL_EQ,
-                        span,
-                        "you are deriving `Hash` but have implemented `PartialEq` explicitly",
-                        |diag| {
-                            if let Some(local_def_id) = impl_id.as_local() {
-                                let hir_id = cx.tcx.hir().local_def_id_to_hir_id(local_def_id);
-                                diag.span_note(
-                                    cx.tcx.hir().span(hir_id),
-                                    "`PartialEq` implemented here"
-                                );
-                            }
+            // Only care about `impl PartialEq<Foo> for Foo`
+            // For `impl PartialEq<B> for A, input_types is [A, B]
+            if trait_ref.instantiate_identity().args.type_at(1) == ty {
+                span_lint_and_then(
+                    cx,
+                    DERIVED_HASH_WITH_MANUAL_EQ,
+                    span,
+                    "you are deriving `Hash` but have implemented `PartialEq` explicitly",
+                    |diag| {
+                        if let Some(local_def_id) = impl_id.as_local() {
+                            let hir_id = cx.tcx.hir().local_def_id_to_hir_id(local_def_id);
+                            diag.span_note(cx.tcx.hir().span(hir_id), "`PartialEq` implemented here");
                         }
-                    );
-                }
-            });
-        }
+                    },
+                );
+            }
+        });
     }
 }
 
@@ -279,49 +273,38 @@ fn check_ord_partial_ord<'tcx>(
     ty: Ty<'tcx>,
     ord_is_automatically_derived: bool,
 ) {
-    if_chain! {
-        if let Some(ord_trait_def_id) = cx.tcx.get_diagnostic_item(sym::Ord);
-        if let Some(partial_ord_trait_def_id) = cx.tcx.lang_items().partial_ord_trait();
-        if let Some(def_id) = &trait_ref.trait_def_id();
-        if *def_id == ord_trait_def_id;
-        then {
-            // Look for the PartialOrd implementations for `ty`
-            cx.tcx.for_each_relevant_impl(partial_ord_trait_def_id, ty, |impl_id| {
-                let partial_ord_is_automatically_derived = cx.tcx.has_attr(impl_id, sym::automatically_derived);
+    if let Some(ord_trait_def_id) = cx.tcx.get_diagnostic_item(sym::Ord)
+        && let Some(partial_ord_trait_def_id) = cx.tcx.lang_items().partial_ord_trait()
+        && let Some(def_id) = &trait_ref.trait_def_id()
+        && *def_id == ord_trait_def_id
+    {
+        // Look for the PartialOrd implementations for `ty`
+        cx.tcx.for_each_relevant_impl(partial_ord_trait_def_id, ty, |impl_id| {
+            let partial_ord_is_automatically_derived = cx.tcx.has_attr(impl_id, sym::automatically_derived);
 
-                if partial_ord_is_automatically_derived == ord_is_automatically_derived {
-                    return;
-                }
+            if partial_ord_is_automatically_derived == ord_is_automatically_derived {
+                return;
+            }
 
-                let trait_ref = cx.tcx.impl_trait_ref(impl_id).expect("must be a trait implementation");
+            let trait_ref = cx.tcx.impl_trait_ref(impl_id).expect("must be a trait implementation");
 
-                // Only care about `impl PartialOrd<Foo> for Foo`
-                // For `impl PartialOrd<B> for A, input_types is [A, B]
-                if trait_ref.instantiate_identity().args.type_at(1) == ty {
-                    let mess = if partial_ord_is_automatically_derived {
-                        "you are implementing `Ord` explicitly but have derived `PartialOrd`"
-                    } else {
-                        "you are deriving `Ord` but have implemented `PartialOrd` explicitly"
-                    };
+            // Only care about `impl PartialOrd<Foo> for Foo`
+            // For `impl PartialOrd<B> for A, input_types is [A, B]
+            if trait_ref.instantiate_identity().args.type_at(1) == ty {
+                let mess = if partial_ord_is_automatically_derived {
+                    "you are implementing `Ord` explicitly but have derived `PartialOrd`"
+                } else {
+                    "you are deriving `Ord` but have implemented `PartialOrd` explicitly"
+                };
 
-                    span_lint_and_then(
-                        cx,
-                        DERIVE_ORD_XOR_PARTIAL_ORD,
-                        span,
-                        mess,
-                        |diag| {
-                            if let Some(local_def_id) = impl_id.as_local() {
-                                let hir_id = cx.tcx.hir().local_def_id_to_hir_id(local_def_id);
-                                diag.span_note(
-                                    cx.tcx.hir().span(hir_id),
-                                    "`PartialOrd` implemented here"
-                                );
-                            }
-                        }
-                    );
-                }
-            });
-        }
+                span_lint_and_then(cx, DERIVE_ORD_XOR_PARTIAL_ORD, span, mess, |diag| {
+                    if let Some(local_def_id) = impl_id.as_local() {
+                        let hir_id = cx.tcx.hir().local_def_id_to_hir_id(local_def_id);
+                        diag.span_note(cx.tcx.hir().span(hir_id), "`PartialOrd` implemented here");
+                    }
+                });
+            }
+        });
     }
 }
 
@@ -394,27 +377,27 @@ fn check_unsafe_derive_deserialize<'tcx>(
         visitor.has_unsafe
     }
 
-    if_chain! {
-        if let Some(trait_def_id) = trait_ref.trait_def_id();
-        if match_def_path(cx, trait_def_id, &paths::SERDE_DESERIALIZE);
-        if let ty::Adt(def, _) = ty.kind();
-        if let Some(local_def_id) = def.did().as_local();
-        let adt_hir_id = cx.tcx.hir().local_def_id_to_hir_id(local_def_id);
-        if !is_lint_allowed(cx, UNSAFE_DERIVE_DESERIALIZE, adt_hir_id);
-        if cx.tcx.inherent_impls(def.did())
+    if let Some(trait_def_id) = trait_ref.trait_def_id()
+        && match_def_path(cx, trait_def_id, &paths::SERDE_DESERIALIZE)
+        && let ty::Adt(def, _) = ty.kind()
+        && let Some(local_def_id) = def.did().as_local()
+        && let adt_hir_id = cx.tcx.hir().local_def_id_to_hir_id(local_def_id)
+        && !is_lint_allowed(cx, UNSAFE_DERIVE_DESERIALIZE, adt_hir_id)
+        && cx
+            .tcx
+            .inherent_impls(def.did())
             .iter()
             .map(|imp_did| cx.tcx.hir().expect_item(imp_did.expect_local()))
-            .any(|imp| has_unsafe(cx, imp));
-        then {
-            span_lint_and_help(
-                cx,
-                UNSAFE_DERIVE_DESERIALIZE,
-                item.span,
-                "you are deriving `serde::Deserialize` on a type that has methods using `unsafe`",
-                None,
-                "consider implementing `serde::Deserialize` manually. See https://serde.rs/impl-deserialize.html"
-            );
-        }
+            .any(|imp| has_unsafe(cx, imp))
+    {
+        span_lint_and_help(
+            cx,
+            UNSAFE_DERIVE_DESERIALIZE,
+            item.span,
+            "you are deriving `serde::Deserialize` on a type that has methods using `unsafe`",
+            None,
+            "consider implementing `serde::Deserialize` manually. See https://serde.rs/impl-deserialize.html",
+        );
     }
 }
 
@@ -431,12 +414,10 @@ impl<'tcx> Visitor<'tcx> for UnsafeVisitor<'_, 'tcx> {
             return;
         }
 
-        if_chain! {
-            if let Some(header) = kind.header();
-            if header.unsafety == Unsafety::Unsafe;
-            then {
-                self.has_unsafe = true;
-            }
+        if let Some(header) = kind.header()
+            && header.unsafety == Unsafety::Unsafe
+        {
+            self.has_unsafe = true;
         }
 
         walk_fn(self, kind, decl, body_id, id);
@@ -463,30 +444,28 @@ impl<'tcx> Visitor<'tcx> for UnsafeVisitor<'_, 'tcx> {
 
 /// Implementation of the `DERIVE_PARTIAL_EQ_WITHOUT_EQ` lint.
 fn check_partial_eq_without_eq<'tcx>(cx: &LateContext<'tcx>, span: Span, trait_ref: &hir::TraitRef<'_>, ty: Ty<'tcx>) {
-    if_chain! {
-        if let ty::Adt(adt, args) = ty.kind();
-        if cx.tcx.visibility(adt.did()).is_public();
-        if let Some(eq_trait_def_id) = cx.tcx.get_diagnostic_item(sym::Eq);
-        if let Some(def_id) = trait_ref.trait_def_id();
-        if cx.tcx.is_diagnostic_item(sym::PartialEq, def_id);
-        let param_env = param_env_for_derived_eq(cx.tcx, adt.did(), eq_trait_def_id);
-        if !implements_trait_with_env(cx.tcx, param_env, ty, eq_trait_def_id, &[]);
+    if let ty::Adt(adt, args) = ty.kind()
+        && cx.tcx.visibility(adt.did()).is_public()
+        && let Some(eq_trait_def_id) = cx.tcx.get_diagnostic_item(sym::Eq)
+        && let Some(def_id) = trait_ref.trait_def_id()
+        && cx.tcx.is_diagnostic_item(sym::PartialEq, def_id)
+        && let param_env = param_env_for_derived_eq(cx.tcx, adt.did(), eq_trait_def_id)
+        && !implements_trait_with_env(cx.tcx, param_env, ty, eq_trait_def_id, &[])
         // If all of our fields implement `Eq`, we can implement `Eq` too
-        if adt
+        && adt
             .all_fields()
             .map(|f| f.ty(cx.tcx, args))
-            .all(|ty| implements_trait_with_env(cx.tcx, param_env, ty, eq_trait_def_id, &[]));
-        then {
-            span_lint_and_sugg(
-                cx,
-                DERIVE_PARTIAL_EQ_WITHOUT_EQ,
-                span.ctxt().outer_expn_data().call_site,
-                "you are deriving `PartialEq` and can implement `Eq`",
-                "consider deriving `Eq` as well",
-                "PartialEq, Eq".to_string(),
-                Applicability::MachineApplicable,
-            )
-        }
+            .all(|ty| implements_trait_with_env(cx.tcx, param_env, ty, eq_trait_def_id, &[]))
+    {
+        span_lint_and_sugg(
+            cx,
+            DERIVE_PARTIAL_EQ_WITHOUT_EQ,
+            span.ctxt().outer_expn_data().call_site,
+            "you are deriving `PartialEq` and can implement `Eq`",
+            "consider deriving `Eq` as well",
+            "PartialEq, Eq".to_string(),
+            Applicability::MachineApplicable,
+        );
     }
 }
 

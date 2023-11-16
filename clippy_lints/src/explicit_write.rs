@@ -2,7 +2,6 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::macros::{find_format_args, format_args_inputs_span};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::{is_expn_of, path_def_id};
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::{BindingAnnotation, Block, BlockCheckMode, Expr, ExprKind, Node, PatKind, QPath, Stmt, StmtKind};
@@ -101,30 +100,28 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitWrite {
 /// If `kind` is a block that looks like `{ let result = $expr; result }` then
 /// returns $expr. Otherwise returns `kind`.
 fn look_in_block<'tcx, 'hir>(cx: &LateContext<'tcx>, kind: &'tcx ExprKind<'hir>) -> &'tcx ExprKind<'hir> {
-    if_chain! {
-        if let ExprKind::Block(block, _label @ None) = kind;
-        if let Block {
+    if let ExprKind::Block(block, _label @ None) = kind
+        && let Block {
             stmts: [Stmt { kind: StmtKind::Local(local), .. }],
             expr: Some(expr_end_of_block),
             rules: BlockCheckMode::DefaultBlock,
             ..
-        } = block;
+        } = block
 
         // Find id of the local that expr_end_of_block resolves to
-        if let ExprKind::Path(QPath::Resolved(None, expr_path)) = expr_end_of_block.kind;
-        if let Res::Local(expr_res) = expr_path.res;
-        if let Some(Node::Pat(res_pat)) = cx.tcx.hir().find(expr_res);
+        && let ExprKind::Path(QPath::Resolved(None, expr_path)) = expr_end_of_block.kind
+        && let Res::Local(expr_res) = expr_path.res
+        && let Some(Node::Pat(res_pat)) = cx.tcx.hir().find(expr_res)
 
         // Find id of the local we found in the block
-        if let PatKind::Binding(BindingAnnotation::NONE, local_hir_id, _ident, None) = local.pat.kind;
+        && let PatKind::Binding(BindingAnnotation::NONE, local_hir_id, _ident, None) = local.pat.kind
 
         // If those two are the same hir id
-        if res_pat.hir_id == local_hir_id;
+        && res_pat.hir_id == local_hir_id
 
-        if let Some(init) = local.init;
-        then {
-            return &init.kind;
-        }
+        && let Some(init) = local.init
+    {
+        return &init.kind;
     }
     kind
 }

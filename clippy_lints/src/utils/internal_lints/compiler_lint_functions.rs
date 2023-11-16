@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::ty::match_type;
 use clippy_utils::{is_lint_allowed, paths};
-use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -56,22 +55,20 @@ impl<'tcx> LateLintPass<'tcx> for CompilerLintFunctions {
             return;
         }
 
-        if_chain! {
-            if let ExprKind::MethodCall(path, self_arg, _, _) = &expr.kind;
-            let fn_name = path.ident;
-            if let Some(sugg) = self.map.get(fn_name.as_str());
-            let ty = cx.typeck_results().expr_ty(self_arg).peel_refs();
-            if match_type(cx, ty, &paths::EARLY_CONTEXT) || match_type(cx, ty, &paths::LATE_CONTEXT);
-            then {
-                span_lint_and_help(
-                    cx,
-                    COMPILER_LINT_FUNCTIONS,
-                    path.ident.span,
-                    "usage of a compiler lint function",
-                    None,
-                    &format!("please use the Clippy variant of this function: `{sugg}`"),
-                );
-            }
+        if let ExprKind::MethodCall(path, self_arg, _, _) = &expr.kind
+            && let fn_name = path.ident
+            && let Some(sugg) = self.map.get(fn_name.as_str())
+            && let ty = cx.typeck_results().expr_ty(self_arg).peel_refs()
+            && (match_type(cx, ty, &paths::EARLY_CONTEXT) || match_type(cx, ty, &paths::LATE_CONTEXT))
+        {
+            span_lint_and_help(
+                cx,
+                COMPILER_LINT_FUNCTIONS,
+                path.ident.span,
+                "usage of a compiler lint function",
+                None,
+                &format!("please use the Clippy variant of this function: `{sugg}`"),
+            );
         }
     }
 }

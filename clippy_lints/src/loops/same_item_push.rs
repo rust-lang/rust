@@ -3,7 +3,6 @@ use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::path_to_local;
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
-use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
@@ -44,54 +43,50 @@ pub(super) fn check<'tcx>(
     // Determine whether it is safe to lint the body
     let mut same_item_push_visitor = SameItemPushVisitor::new(cx);
     walk_expr(&mut same_item_push_visitor, body);
-    if_chain! {
-        if same_item_push_visitor.should_lint();
-        if let Some((vec, pushed_item, ctxt)) = same_item_push_visitor.vec_push;
-        let vec_ty = cx.typeck_results().expr_ty(vec);
-        let ty = vec_ty.walk().nth(1).unwrap().expect_ty();
-        if cx
+    if same_item_push_visitor.should_lint()
+        && let Some((vec, pushed_item, ctxt)) = same_item_push_visitor.vec_push
+        && let vec_ty = cx.typeck_results().expr_ty(vec)
+        && let ty = vec_ty.walk().nth(1).unwrap().expect_ty()
+        && cx
             .tcx
             .lang_items()
             .clone_trait()
-            .map_or(false, |id| implements_trait(cx, ty, id, &[]));
-        then {
-            // Make sure that the push does not involve possibly mutating values
-            match pushed_item.kind {
-                ExprKind::Path(ref qpath) => {
-                    match cx.qpath_res(qpath, pushed_item.hir_id) {
-                        // immutable bindings that are initialized with literal or constant
-                        Res::Local(hir_id) => {
-                            let node = cx.tcx.hir().get(hir_id);
-                            if_chain! {
-                                if let Node::Pat(pat) = node;
-                                if let PatKind::Binding(bind_ann, ..) = pat.kind;
-                                if !matches!(bind_ann, BindingAnnotation(_, Mutability::Mut));
-                                let parent_node = cx.tcx.hir().parent_id(hir_id);
-                                if let Some(Node::Local(parent_let_expr)) = cx.tcx.hir().find(parent_node);
-                                if let Some(init) = parent_let_expr.init;
-                                then {
-                                    match init.kind {
-                                        // immutable bindings that are initialized with literal
-                                        ExprKind::Lit(..) => emit_lint(cx, vec, pushed_item, ctxt),
-                                        // immutable bindings that are initialized with constant
-                                        ExprKind::Path(ref path) => {
-                                            if let Res::Def(DefKind::Const, ..) = cx.qpath_res(path, init.hir_id) {
-                                                emit_lint(cx, vec, pushed_item, ctxt);
-                                            }
-                                        }
-                                        _ => {},
+            .map_or(false, |id| implements_trait(cx, ty, id, &[]))
+    {
+        // Make sure that the push does not involve possibly mutating values
+        match pushed_item.kind {
+            ExprKind::Path(ref qpath) => {
+                match cx.qpath_res(qpath, pushed_item.hir_id) {
+                    // immutable bindings that are initialized with literal or constant
+                    Res::Local(hir_id) => {
+                        let node = cx.tcx.hir().get(hir_id);
+                        if let Node::Pat(pat) = node
+                            && let PatKind::Binding(bind_ann, ..) = pat.kind
+                            && !matches!(bind_ann, BindingAnnotation(_, Mutability::Mut))
+                            && let parent_node = cx.tcx.hir().parent_id(hir_id)
+                            && let Some(Node::Local(parent_let_expr)) = cx.tcx.hir().find(parent_node)
+                            && let Some(init) = parent_let_expr.init
+                        {
+                            match init.kind {
+                                // immutable bindings that are initialized with literal
+                                ExprKind::Lit(..) => emit_lint(cx, vec, pushed_item, ctxt),
+                                // immutable bindings that are initialized with constant
+                                ExprKind::Path(ref path) => {
+                                    if let Res::Def(DefKind::Const, ..) = cx.qpath_res(path, init.hir_id) {
+                                        emit_lint(cx, vec, pushed_item, ctxt);
                                     }
-                                }
+                                },
+                                _ => {},
                             }
-                        },
-                        // constant
-                        Res::Def(DefKind::Const, ..) => emit_lint(cx, vec, pushed_item, ctxt),
-                        _ => {},
-                    }
-                },
-                ExprKind::Lit(..) => emit_lint(cx, vec, pushed_item, ctxt),
-                _ => {},
-            }
+                        }
+                    },
+                    // constant
+                    Res::Def(DefKind::Const, ..) => emit_lint(cx, vec, pushed_item, ctxt),
+                    _ => {},
+                }
+            },
+            ExprKind::Lit(..) => emit_lint(cx, vec, pushed_item, ctxt),
+            _ => {},
         }
     }
 }
@@ -118,16 +113,14 @@ impl<'a, 'tcx> SameItemPushVisitor<'a, 'tcx> {
     }
 
     fn should_lint(&self) -> bool {
-        if_chain! {
-            if !self.non_deterministic_expr;
-            if !self.multiple_pushes;
-            if let Some((vec, _, _)) = self.vec_push;
-            if let Some(hir_id) = path_to_local(vec);
-            then {
-                !self.used_locals.contains(&hir_id)
-            } else {
-                false
-            }
+        if !self.non_deterministic_expr
+            && !self.multiple_pushes
+            && let Some((vec, _, _)) = self.vec_push
+            && let Some(hir_id) = path_to_local(vec)
+        {
+            !self.used_locals.contains(&hir_id)
+        } else {
+            false
         }
     }
 }
@@ -180,18 +173,16 @@ fn get_vec_push<'tcx>(
     cx: &LateContext<'tcx>,
     stmt: &'tcx Stmt<'_>,
 ) -> Option<(&'tcx Expr<'tcx>, &'tcx Expr<'tcx>, SyntaxContext)> {
-    if_chain! {
+    if let StmtKind::Semi(semi_stmt) = &stmt.kind
             // Extract method being called
-            if let StmtKind::Semi(semi_stmt) = &stmt.kind;
-            if let ExprKind::MethodCall(path, self_expr, args, _) = &semi_stmt.kind;
+            && let ExprKind::MethodCall(path, self_expr, args, _) = &semi_stmt.kind
             // Figure out the parameters for the method call
-            if let Some(pushed_item) = args.first();
+            && let Some(pushed_item) = args.first()
             // Check that the method being called is push() on a Vec
-            if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(self_expr), sym::Vec);
-            if path.ident.name.as_str() == "push";
-            then {
-                return Some((self_expr, pushed_item, semi_stmt.span.ctxt()))
-            }
+            && is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(self_expr), sym::Vec)
+            && path.ident.name.as_str() == "push"
+    {
+        return Some((self_expr, pushed_item, semi_stmt.span.ctxt()));
     }
     None
 }

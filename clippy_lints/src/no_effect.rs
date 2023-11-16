@@ -132,24 +132,22 @@ fn check_no_effect(cx: &LateContext<'_>, stmt: &Stmt<'_>) -> bool {
             return true;
         }
     } else if let StmtKind::Local(local) = stmt.kind {
-        if_chain! {
-            if !is_lint_allowed(cx, NO_EFFECT_UNDERSCORE_BINDING, local.hir_id);
-            if let Some(init) = local.init;
-            if local.els.is_none();
-            if !local.pat.span.from_expansion();
-            if has_no_effect(cx, init);
-            if let PatKind::Binding(_, _, ident, _) = local.pat.kind;
-            if ident.name.to_ident_string().starts_with('_');
-            then {
-                span_lint_hir(
-                    cx,
-                    NO_EFFECT_UNDERSCORE_BINDING,
-                    init.hir_id,
-                    stmt.span,
-                    "binding to `_` prefixed variable with no side-effect"
-                );
-                return true;
-            }
+        if !is_lint_allowed(cx, NO_EFFECT_UNDERSCORE_BINDING, local.hir_id)
+            && let Some(init) = local.init
+            && local.els.is_none()
+            && !local.pat.span.from_expansion()
+            && has_no_effect(cx, init)
+            && let PatKind::Binding(_, _, ident, _) = local.pat.kind
+            && ident.name.to_ident_string().starts_with('_')
+        {
+            span_lint_hir(
+                cx,
+                NO_EFFECT_UNDERSCORE_BINDING,
+                init.hir_id,
+                stmt.span,
+                "binding to `_` prefixed variable with no side-effect",
+            );
+            return true;
         }
     }
     false
@@ -199,63 +197,60 @@ fn has_no_effect(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
 }
 
 fn check_unnecessary_operation(cx: &LateContext<'_>, stmt: &Stmt<'_>) {
-    if_chain! {
-        if let StmtKind::Semi(expr) = stmt.kind;
-        let ctxt = stmt.span.ctxt();
-        if expr.span.ctxt() == ctxt;
-        if let Some(reduced) = reduce_expression(cx, expr);
-        if !in_external_macro(cx.sess(), stmt.span);
-        if reduced.iter().all(|e| e.span.ctxt() == ctxt);
-        then {
-            if let ExprKind::Index(..) = &expr.kind {
-                let snippet = if let (Some(arr), Some(func)) =
-                    (snippet_opt(cx, reduced[0].span), snippet_opt(cx, reduced[1].span))
-                {
+    if let StmtKind::Semi(expr) = stmt.kind
+        && let ctxt = stmt.span.ctxt()
+        && expr.span.ctxt() == ctxt
+        && let Some(reduced) = reduce_expression(cx, expr)
+        && !in_external_macro(cx.sess(), stmt.span)
+        && reduced.iter().all(|e| e.span.ctxt() == ctxt)
+    {
+        if let ExprKind::Index(..) = &expr.kind {
+            let snippet =
+                if let (Some(arr), Some(func)) = (snippet_opt(cx, reduced[0].span), snippet_opt(cx, reduced[1].span)) {
                     format!("assert!({}.len() > {});", &arr, &func)
                 } else {
                     return;
                 };
-                span_lint_hir_and_then(
-                    cx,
-                    UNNECESSARY_OPERATION,
-                    expr.hir_id,
-                    stmt.span,
-                    "unnecessary operation",
-                    |diag| {
-                        diag.span_suggestion(
-                            stmt.span,
-                            "statement can be written as",
-                            snippet,
-                            Applicability::MaybeIncorrect,
-                        );
-                    },
-                );
-            } else {
-                let mut snippet = String::new();
-                for e in reduced {
-                    if let Some(snip) = snippet_opt(cx, e.span) {
-                        snippet.push_str(&snip);
-                        snippet.push(';');
-                    } else {
-                        return;
-                    }
+            span_lint_hir_and_then(
+                cx,
+                UNNECESSARY_OPERATION,
+                expr.hir_id,
+                stmt.span,
+                "unnecessary operation",
+                |diag| {
+                    diag.span_suggestion(
+                        stmt.span,
+                        "statement can be written as",
+                        snippet,
+                        Applicability::MaybeIncorrect,
+                    );
+                },
+            );
+        } else {
+            let mut snippet = String::new();
+            for e in reduced {
+                if let Some(snip) = snippet_opt(cx, e.span) {
+                    snippet.push_str(&snip);
+                    snippet.push(';');
+                } else {
+                    return;
                 }
-                span_lint_hir_and_then(
-                    cx,
-                    UNNECESSARY_OPERATION,
-                    expr.hir_id,
-                    stmt.span,
-                    "unnecessary operation",
-                    |diag| {
-                        diag.span_suggestion(
-                            stmt.span,
-                            "statement can be reduced to",
-                            snippet,
-                            Applicability::MachineApplicable,
-                        );
-                    },
-                );
             }
+            span_lint_hir_and_then(
+                cx,
+                UNNECESSARY_OPERATION,
+                expr.hir_id,
+                stmt.span,
+                "unnecessary operation",
+                |diag| {
+                    diag.span_suggestion(
+                        stmt.span,
+                        "statement can be reduced to",
+                        snippet,
+                        Applicability::MachineApplicable,
+                    );
+                },
+            );
         }
     }
 }

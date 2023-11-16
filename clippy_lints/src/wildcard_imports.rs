@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::is_test_module_or_function;
 use clippy_utils::source::{snippet, snippet_with_applicability};
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Item, ItemKind, PathSegment, UseKind};
@@ -127,70 +126,55 @@ impl LateLintPass<'_> for WildcardImports {
         if cx.tcx.visibility(item.owner_id.def_id) != ty::Visibility::Restricted(module.to_def_id()) {
             return;
         }
-        if_chain! {
-            if let ItemKind::Use(use_path, UseKind::Glob) = &item.kind;
-            if self.warn_on_all || !self.check_exceptions(item, use_path.segments);
-            let used_imports = cx.tcx.names_imported_by_glob_use(item.owner_id.def_id);
-            if !used_imports.is_empty(); // Already handled by `unused_imports`
-            if !used_imports.contains(&kw::Underscore);
-            then {
-                let mut applicability = Applicability::MachineApplicable;
-                let import_source_snippet = snippet_with_applicability(cx, use_path.span, "..", &mut applicability);
-                let (span, braced_glob) = if import_source_snippet.is_empty() {
-                    // This is a `_::{_, *}` import
-                    // In this case `use_path.span` is empty and ends directly in front of the `*`,
-                    // so we need to extend it by one byte.
-                    (
-                        use_path.span.with_hi(use_path.span.hi() + BytePos(1)),
-                        true,
-                    )
-                } else {
-                    // In this case, the `use_path.span` ends right before the `::*`, so we need to
-                    // extend it up to the `*`. Since it is hard to find the `*` in weird
-                    // formattings like `use _ ::  *;`, we extend it up to, but not including the
-                    // `;`. In nested imports, like `use _::{inner::*, _}` there is no `;` and we
-                    // can just use the end of the item span
-                    let mut span = use_path.span.with_hi(item.span.hi());
-                    if snippet(cx, span, "").ends_with(';') {
-                        span = use_path.span.with_hi(item.span.hi() - BytePos(1));
-                    }
-                    (
-                        span, false,
-                    )
-                };
+        if let ItemKind::Use(use_path, UseKind::Glob) = &item.kind
+            && (self.warn_on_all || !self.check_exceptions(item, use_path.segments))
+            && let used_imports = cx.tcx.names_imported_by_glob_use(item.owner_id.def_id)
+            && !used_imports.is_empty() // Already handled by `unused_imports`
+            && !used_imports.contains(&kw::Underscore)
+        {
+            let mut applicability = Applicability::MachineApplicable;
+            let import_source_snippet = snippet_with_applicability(cx, use_path.span, "..", &mut applicability);
+            let (span, braced_glob) = if import_source_snippet.is_empty() {
+                // This is a `_::{_, *}` import
+                // In this case `use_path.span` is empty and ends directly in front of the `*`,
+                // so we need to extend it by one byte.
+                (use_path.span.with_hi(use_path.span.hi() + BytePos(1)), true)
+            } else {
+                // In this case, the `use_path.span` ends right before the `::*`, so we need to
+                // extend it up to the `*`. Since it is hard to find the `*` in weird
+                // formattings like `use _ ::  *;`, we extend it up to, but not including the
+                // `;`. In nested imports, like `use _::{inner::*, _}` there is no `;` and we
+                // can just use the end of the item span
+                let mut span = use_path.span.with_hi(item.span.hi());
+                if snippet(cx, span, "").ends_with(';') {
+                    span = use_path.span.with_hi(item.span.hi() - BytePos(1));
+                }
+                (span, false)
+            };
 
-                let mut imports = used_imports.items().map(ToString::to_string).into_sorted_stable_ord();
-                let imports_string = if imports.len() == 1 {
-                    imports.pop().unwrap()
-                } else if braced_glob {
-                    imports.join(", ")
-                } else {
-                    format!("{{{}}}", imports.join(", "))
-                };
+            let mut imports = used_imports.items().map(ToString::to_string).into_sorted_stable_ord();
+            let imports_string = if imports.len() == 1 {
+                imports.pop().unwrap()
+            } else if braced_glob {
+                imports.join(", ")
+            } else {
+                format!("{{{}}}", imports.join(", "))
+            };
 
-                let sugg = if braced_glob {
-                    imports_string
-                } else {
-                    format!("{import_source_snippet}::{imports_string}")
-                };
+            let sugg = if braced_glob {
+                imports_string
+            } else {
+                format!("{import_source_snippet}::{imports_string}")
+            };
 
-                // Glob imports always have a single resolution.
-                let (lint, message) = if let Res::Def(DefKind::Enum, _) = use_path.res[0] {
-                    (ENUM_GLOB_USE, "usage of wildcard import for enum variants")
-                } else {
-                    (WILDCARD_IMPORTS, "usage of wildcard import")
-                };
+            // Glob imports always have a single resolution.
+            let (lint, message) = if let Res::Def(DefKind::Enum, _) = use_path.res[0] {
+                (ENUM_GLOB_USE, "usage of wildcard import for enum variants")
+            } else {
+                (WILDCARD_IMPORTS, "usage of wildcard import")
+            };
 
-                span_lint_and_sugg(
-                    cx,
-                    lint,
-                    span,
-                    message,
-                    "try",
-                    sugg,
-                    applicability,
-                );
-            }
+            span_lint_and_sugg(cx, lint, span, message, "try", sugg, applicability);
         }
     }
 

@@ -57,7 +57,7 @@ declare_clippy_lint! {
     ///     v[0] + v[1] + v[2] + v[3]
     /// }
     /// ```
-    #[clippy::version = "1.70.0"]
+    #[clippy::version = "1.74.0"]
     pub MISSING_ASSERTS_FOR_INDEXING,
     restriction,
     "indexing into a slice multiple times without an `assert`"

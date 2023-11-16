@@ -1,7 +1,6 @@
 use clippy_config::types::MacroMatcher;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_opt;
-use if_chain::if_chain;
 use rustc_ast::ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::Applicability;
@@ -34,17 +33,17 @@ declare_clippy_lint! {
 }
 
 /// The (callsite span, (open brace, close brace), source snippet)
-type MacroInfo<'a> = (Span, &'a (String, String), String);
+type MacroInfo = (Span, (char, char), String);
 
-#[derive(Clone, Debug, Default)]
+#[derive(Debug)]
 pub struct MacroBraces {
-    macro_braces: FxHashMap<String, (String, String)>,
+    macro_braces: FxHashMap<String, (char, char)>,
     done: FxHashSet<Span>,
 }
 
 impl MacroBraces {
-    pub fn new(conf: &FxHashSet<MacroMatcher>) -> Self {
-        let macro_braces = macro_braces(conf.clone());
+    pub fn new(conf: &[MacroMatcher]) -> Self {
+        let macro_braces = macro_braces(conf);
         Self {
             macro_braces,
             done: FxHashSet::default(),
@@ -84,7 +83,7 @@ impl EarlyLintPass for MacroBraces {
     }
 }
 
-fn is_offending_macro<'a>(cx: &EarlyContext<'_>, span: Span, mac_braces: &'a MacroBraces) -> Option<MacroInfo<'a>> {
+fn is_offending_macro(cx: &EarlyContext<'_>, span: Span, mac_braces: &MacroBraces) -> Option<MacroInfo> {
     let unnested_or_local = || {
         !span.ctxt().outer_expn_data().call_site.from_expansion()
             || span
@@ -93,28 +92,26 @@ fn is_offending_macro<'a>(cx: &EarlyContext<'_>, span: Span, mac_braces: &'a Mac
                 .map_or(false, |e| e.macro_def_id.map_or(false, DefId::is_local))
     };
     let span_call_site = span.ctxt().outer_expn_data().call_site;
-    if_chain! {
-        if let ExpnKind::Macro(MacroKind::Bang, mac_name) = span.ctxt().outer_expn_data().kind;
-        let name = mac_name.as_str();
-        if let Some(braces) = mac_braces.macro_braces.get(name);
-        if let Some(snip) = snippet_opt(cx, span_call_site);
+    if let ExpnKind::Macro(MacroKind::Bang, mac_name) = span.ctxt().outer_expn_data().kind
+        && let name = mac_name.as_str()
+        && let Some(&braces) = mac_braces.macro_braces.get(name)
+        && let Some(snip) = snippet_opt(cx, span_call_site)
         // we must check only invocation sites
         // https://github.com/rust-lang/rust-clippy/issues/7422
-        if snip.starts_with(&format!("{name}!"));
-        if unnested_or_local();
+        && snip.starts_with(&format!("{name}!"))
+        && unnested_or_local()
         // make formatting consistent
-        let c = snip.replace(' ', "");
-        if !c.starts_with(&format!("{name}!{}", braces.0));
-        if !mac_braces.done.contains(&span_call_site);
-        then {
-            Some((span_call_site, braces, snip))
-        } else {
-            None
-        }
+        && let c = snip.replace(' ', "")
+        && !c.starts_with(&format!("{name}!{}", braces.0))
+        && !mac_braces.done.contains(&span_call_site)
+    {
+        Some((span_call_site, braces, snip))
+    } else {
+        None
     }
 }
 
-fn emit_help(cx: &EarlyContext<'_>, snip: &str, braces: &(String, String), span: Span) {
+fn emit_help(cx: &EarlyContext<'_>, snip: &str, (open, close): (char, char), span: Span) {
     if let Some((macro_name, macro_args_str)) = snip.split_once('!') {
         let mut macro_args = macro_args_str.trim().to_string();
         // now remove the wrong braces
@@ -126,67 +123,31 @@ fn emit_help(cx: &EarlyContext<'_>, snip: &str, braces: &(String, String), span:
             span,
             &format!("use of irregular braces for `{macro_name}!` macro"),
             "consider writing",
-            format!("{macro_name}!{}{macro_args}{}", braces.0, braces.1),
+            format!("{macro_name}!{open}{macro_args}{close}"),
             Applicability::MachineApplicable,
         );
     }
 }
 
-fn macro_braces(conf: FxHashSet<MacroMatcher>) -> FxHashMap<String, (String, String)> {
-    let mut braces = vec![
-        macro_matcher!(
-            name: "print",
-            braces: ("(", ")"),
-        ),
-        macro_matcher!(
-            name: "println",
-            braces: ("(", ")"),
-        ),
-        macro_matcher!(
-            name: "eprint",
-            braces: ("(", ")"),
-        ),
-        macro_matcher!(
-            name: "eprintln",
-            braces: ("(", ")"),
-        ),
-        macro_matcher!(
-            name: "write",
-            braces: ("(", ")"),
-        ),
-        macro_matcher!(
-            name: "writeln",
-            braces: ("(", ")"),
-        ),
-        macro_matcher!(
-            name: "format",
-            braces: ("(", ")"),
-        ),
-        macro_matcher!(
-            name: "format_args",
-            braces: ("(", ")"),
-        ),
-        macro_matcher!(
-            name: "vec",
-            braces: ("[", "]"),
-        ),
-        macro_matcher!(
-            name: "matches",
-            braces: ("(", ")"),
-        ),
-    ]
-    .into_iter()
-    .collect::<FxHashMap<_, _>>();
+fn macro_braces(conf: &[MacroMatcher]) -> FxHashMap<String, (char, char)> {
+    let mut braces = FxHashMap::from_iter(
+        [
+            ("print", ('(', ')')),
+            ("println", ('(', ')')),
+            ("eprint", ('(', ')')),
+            ("eprintln", ('(', ')')),
+            ("write", ('(', ')')),
+            ("writeln", ('(', ')')),
+            ("format", ('(', ')')),
+            ("format_args", ('(', ')')),
+            ("vec", ('[', ']')),
+            ("matches", ('(', ')')),
+        ]
+        .map(|(k, v)| (k.to_string(), v)),
+    );
     // We want users items to override any existing items
     for it in conf {
-        braces.insert(it.name, it.braces);
+        braces.insert(it.name.clone(), it.braces);
     }
     braces
 }
-
-macro_rules! macro_matcher {
-    (name: $name:expr, braces: ($open:expr, $close:expr) $(,)?) => {
-        ($name.to_owned(), ($open.to_owned(), $close.to_owned()))
-    };
-}
-pub(crate) use macro_matcher;
