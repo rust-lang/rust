@@ -1,12 +1,13 @@
 // check-pass
-// revisions: names_before names_after
+//
+// revisions: values_before values_after
 // compile-flags: -Z unstable-options
-// compile-flags: --check-cfg=names(names_before,names_after)
-// [names_before]compile-flags: --check-cfg=names(a) --check-cfg=values(a,"b")
-// [names_after]compile-flags: --check-cfg=values(a,"b") --check-cfg=names(a)
+// compile-flags: --check-cfg=cfg(values_before,values_after)
+//
+// [values_before]compile-flags: --check-cfg=cfg(a,values("b")) --check-cfg=cfg(a)
+// [values_after]compile-flags: --check-cfg=cfg(a) --check-cfg=cfg(a,values("b"))
 
 #[cfg(a)]
-//~^ WARNING unexpected `cfg` condition value
 fn my_cfg() {}
 
 #[cfg(a = "unk")]

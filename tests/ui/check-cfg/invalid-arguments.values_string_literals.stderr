@@ -1,2 +1,0 @@
-error: invalid `--check-cfg` argument: `values(test,12)` (`values()` arguments must be string literals)
-

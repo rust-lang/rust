@@ -1,9 +1,8 @@
 // Check warning for unexpected cfg in the code.
 //
 // check-pass
-// revisions: empty_names_values empty_cfg feature full
+// revisions: empty_cfg feature full
 // compile-flags: -Z unstable-options
-// [empty_names_values]compile-flags: --check-cfg=names() --check-cfg=values()
 // [empty_cfg]compile-flags: --check-cfg=cfg()
 // [feature]compile-flags: --check-cfg=cfg(feature,values("std"))
 // [full]compile-flags: --check-cfg=cfg(feature,values("std")) --check-cfg=cfg()
