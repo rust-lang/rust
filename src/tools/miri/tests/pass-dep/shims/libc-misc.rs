@@ -390,6 +390,19 @@ fn test_dlsym() {
     assert_eq!(errno, libc::EBADF);
 }
 
+#[cfg(not(target_os = "macos"))]
+fn test_reallocarray() {
+    unsafe {
+        let mut p = libc::reallocarray(std::ptr::null_mut(), 4096, 2);
+        assert!(!p.is_null());
+        libc::free(p);
+        p = libc::malloc(16);
+        let r = libc::reallocarray(p, 2, 32);
+        assert!(!r.is_null());
+        libc::free(r);
+    }
+}
+
 fn main() {
     test_posix_gettimeofday();
 
@@ -412,6 +425,10 @@ fn main() {
     test_memcpy();
     test_strcpy();
 
+    #[cfg(not(target_os = "macos"))] // reallocarray does not exist on macOS
+    test_reallocarray();
+
+    // These are Linux-specific
     #[cfg(target_os = "linux")]
     {
         test_posix_fadvise();
