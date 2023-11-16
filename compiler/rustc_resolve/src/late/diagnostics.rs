@@ -2202,11 +2202,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
 
         if let Some(Item {
             ident: name,
-            kind:
-                ItemKind::Fn(..)
-                | ItemKind::Enum(..)
-                | ItemKind::Struct(..)
-                | ItemKind::Union(..),
+            kind: ItemKind::Fn(..) | ItemKind::Enum(..) | ItemKind::Struct(..) | ItemKind::Union(..),
             ..
         }) = self.diagnostic_metadata.current_item
             && single_uppercase_char
