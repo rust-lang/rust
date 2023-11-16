@@ -2156,7 +2156,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
             if let Some(default_trait) = self.tcx.get_diagnostic_item(sym::Default)
-                && self.infcx
+                && self
+                    .infcx
                     .type_implements_trait(default_trait, [adt_ty], self.param_env)
                     .may_apply()
             {
