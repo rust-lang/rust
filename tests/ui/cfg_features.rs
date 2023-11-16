@@ -14,4 +14,16 @@ fn main() {
     //~^ ERROR: feature may misspelled as features
     //~| ERROR: feature may misspelled as features
     let _ = 1 + 2;
+
+    #[cfg(tests)]
+    //~^ ERROR: 'test' may be misspelled as 'tests'
+    let _ = 2;
+    #[cfg(Test)]
+    //~^ ERROR: 'test' may be misspelled as 'Test'
+    let _ = 2;
+
+    #[cfg(all(tests, Test))]
+    //~^ ERROR: 'test' may be misspelled as 'tests'
+    //~| ERROR: 'test' may be misspelled as 'Test'
+    let _ = 2;
 }

@@ -25,5 +25,29 @@ error: feature may misspelled as features
 LL |     #[cfg(all(features = "wrong1", any(feature = "right", features = "wrong2", feature, features)))]
    |                                                           ^^^^^^^^^^^^^^^^^^^ help: use: `feature = "wrong2"`
 
-error: aborting due to 4 previous errors
+error: 'test' may be misspelled as 'tests'
+  --> $DIR/cfg_features.rs:18:11
+   |
+LL |     #[cfg(tests)]
+   |           ^^^^^ help: do you mean: `test`
+
+error: 'test' may be misspelled as 'Test'
+  --> $DIR/cfg_features.rs:21:11
+   |
+LL |     #[cfg(Test)]
+   |           ^^^^ help: do you mean: `test`
+
+error: 'test' may be misspelled as 'tests'
+  --> $DIR/cfg_features.rs:25:15
+   |
+LL |     #[cfg(all(tests, Test))]
+   |               ^^^^^ help: do you mean: `test`
+
+error: 'test' may be misspelled as 'Test'
+  --> $DIR/cfg_features.rs:25:22
+   |
+LL |     #[cfg(all(tests, Test))]
+   |                      ^^^^ help: do you mean: `test`
+
+error: aborting due to 8 previous errors
 
