@@ -887,7 +887,9 @@ impl Step for Rustc {
         } else if let Some(path) = &builder.config.rust_profile_use {
             if compiler.stage == 1 {
                 cargo.rustflag(&format!("-Cprofile-use={path}"));
-                cargo.rustflag("-Cllvm-args=-pgo-warn-missing-function");
+                if builder.is_verbose() {
+                    cargo.rustflag("-Cllvm-args=-pgo-warn-missing-function");
+                }
                 true
             } else {
                 false
