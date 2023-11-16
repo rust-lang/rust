@@ -61,9 +61,9 @@ pub struct TypeAndMut<'tcx> {
 
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, TyEncodable, TyDecodable, Copy)]
 #[derive(HashStable)]
-/// A "free" region `fr` can be interpreted as "some region
+/// The parameter representation of late-bound function parameters, "some region
 /// at least as big as the scope `fr.scope`".
-pub struct FreeRegion {
+pub struct LateParamRegion {
     pub scope: DefId,
     pub bound_region: BoundRegionKind,
 }
@@ -1468,11 +1468,11 @@ pub struct Region<'tcx>(pub Interned<'tcx, RegionKind<'tcx>>);
 
 impl<'tcx> Region<'tcx> {
     #[inline]
-    pub fn new_early_bound(
+    pub fn new_early_param(
         tcx: TyCtxt<'tcx>,
-        early_bound_region: ty::EarlyBoundRegion,
+        early_bound_region: ty::EarlyParamRegion,
     ) -> Region<'tcx> {
-        tcx.intern_region(ty::ReEarlyBound(early_bound_region))
+        tcx.intern_region(ty::ReEarlyParam(early_bound_region))
     }
 
     #[inline]
@@ -1493,12 +1493,12 @@ impl<'tcx> Region<'tcx> {
     }
 
     #[inline]
-    pub fn new_free(
+    pub fn new_late_param(
         tcx: TyCtxt<'tcx>,
         scope: DefId,
         bound_region: ty::BoundRegionKind,
     ) -> Region<'tcx> {
-        tcx.intern_region(ty::ReFree(ty::FreeRegion { scope, bound_region }))
+        tcx.intern_region(ty::ReLateParam(ty::LateParamRegion { scope, bound_region }))
     }
 
     #[inline]
@@ -1549,10 +1549,10 @@ impl<'tcx> Region<'tcx> {
     /// to avoid the cost of the `match`.
     pub fn new_from_kind(tcx: TyCtxt<'tcx>, kind: RegionKind<'tcx>) -> Region<'tcx> {
         match kind {
-            ty::ReEarlyBound(region) => Region::new_early_bound(tcx, region),
+            ty::ReEarlyParam(region) => Region::new_early_param(tcx, region),
             ty::ReBound(debruijn, region) => Region::new_bound(tcx, debruijn, region),
-            ty::ReFree(ty::FreeRegion { scope, bound_region }) => {
-                Region::new_free(tcx, scope, bound_region)
+            ty::ReLateParam(ty::LateParamRegion { scope, bound_region }) => {
+                Region::new_late_param(tcx, scope, bound_region)
             }
             ty::ReStatic => tcx.lifetimes.re_static,
             ty::ReVar(vid) => Region::new_var(tcx, vid),
@@ -1574,13 +1574,13 @@ impl<'tcx> Deref for Region<'tcx> {
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable, PartialOrd, Ord)]
 #[derive(HashStable)]
-pub struct EarlyBoundRegion {
+pub struct EarlyParamRegion {
     pub def_id: DefId,
     pub index: u32,
     pub name: Symbol,
 }
 
-impl fmt::Debug for EarlyBoundRegion {
+impl fmt::Debug for EarlyParamRegion {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}, {}, {}", self.def_id, self.index, self.name)
     }
@@ -1722,9 +1722,9 @@ impl<'tcx> Region<'tcx> {
     pub fn get_name(self) -> Option<Symbol> {
         if self.has_name() {
             match *self {
-                ty::ReEarlyBound(ebr) => Some(ebr.name),
+                ty::ReEarlyParam(ebr) => Some(ebr.name),
                 ty::ReBound(_, br) => br.kind.get_name(),
-                ty::ReFree(fr) => fr.bound_region.get_name(),
+                ty::ReLateParam(fr) => fr.bound_region.get_name(),
                 ty::ReStatic => Some(kw::StaticLifetime),
                 ty::RePlaceholder(placeholder) => placeholder.bound.kind.get_name(),
                 _ => None,
@@ -1744,9 +1744,9 @@ impl<'tcx> Region<'tcx> {
     /// Is this region named by the user?
     pub fn has_name(self) -> bool {
         match *self {
-            ty::ReEarlyBound(ebr) => ebr.has_name(),
+            ty::ReEarlyParam(ebr) => ebr.has_name(),
             ty::ReBound(_, br) => br.kind.is_named(),
-            ty::ReFree(fr) => fr.bound_region.is_named(),
+            ty::ReLateParam(fr) => fr.bound_region.is_named(),
             ty::ReStatic => true,
             ty::ReVar(..) => false,
             ty::RePlaceholder(placeholder) => placeholder.bound.kind.is_named(),
@@ -1802,12 +1802,12 @@ impl<'tcx> Region<'tcx> {
                 flags = flags | TypeFlags::HAS_FREE_LOCAL_REGIONS;
                 flags = flags | TypeFlags::HAS_RE_PLACEHOLDER;
             }
-            ty::ReEarlyBound(..) => {
+            ty::ReEarlyParam(..) => {
                 flags = flags | TypeFlags::HAS_FREE_REGIONS;
                 flags = flags | TypeFlags::HAS_FREE_LOCAL_REGIONS;
                 flags = flags | TypeFlags::HAS_RE_PARAM;
             }
-            ty::ReFree { .. } => {
+            ty::ReLateParam { .. } => {
                 flags = flags | TypeFlags::HAS_FREE_REGIONS;
                 flags = flags | TypeFlags::HAS_FREE_LOCAL_REGIONS;
             }
@@ -1851,22 +1851,28 @@ impl<'tcx> Region<'tcx> {
     /// function might return the `DefId` of a closure.
     pub fn free_region_binding_scope(self, tcx: TyCtxt<'_>) -> DefId {
         match *self {
-            ty::ReEarlyBound(br) => tcx.parent(br.def_id),
-            ty::ReFree(fr) => fr.scope,
+            ty::ReEarlyParam(br) => tcx.parent(br.def_id),
+            ty::ReLateParam(fr) => fr.scope,
             _ => bug!("free_region_binding_scope invoked on inappropriate region: {:?}", self),
         }
     }
 
     /// True for free regions other than `'static`.
-    pub fn is_free(self) -> bool {
-        matches!(*self, ty::ReEarlyBound(_) | ty::ReFree(_))
+    pub fn is_param(self) -> bool {
+        matches!(*self, ty::ReEarlyParam(_) | ty::ReLateParam(_))
     }
 
-    /// True if `self` is a free region or static.
-    pub fn is_free_or_static(self) -> bool {
+    /// True for free region in the current context.
+    ///
+    /// This is the case for `'static` and param regions.
+    pub fn is_free(self) -> bool {
         match *self {
-            ty::ReStatic => true,
-            _ => self.is_free(),
+            ty::ReStatic | ty::ReEarlyParam(..) | ty::ReLateParam(..) => true,
+            ty::ReVar(..)
+            | ty::RePlaceholder(..)
+            | ty::ReBound(..)
+            | ty::ReErased
+            | ty::ReError(..) => false,
         }
     }
 

@@ -36,7 +36,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// call `infer_opaque_definition_from_instantiation` to get the inferred
     /// type of `_Return<'_a>`. `infer_opaque_definition_from_instantiation`
     /// compares lifetimes directly, so we need to map the inference variables
-    /// back to concrete lifetimes: `'static`, `ReEarlyBound` or `ReFree`.
+    /// back to concrete lifetimes: `'static`, `ReEarlyParam` or `ReLateParam`.
     ///
     /// First we map all the lifetimes in the concrete type to an equal
     /// universal region that occurs in the concrete type's args, in this case
@@ -386,7 +386,7 @@ fn check_opaque_type_parameter_valid(
         let arg_is_param = match arg.unpack() {
             GenericArgKind::Type(ty) => matches!(ty.kind(), ty::Param(_)),
             GenericArgKind::Lifetime(lt) if is_ty_alias => {
-                matches!(*lt, ty::ReEarlyBound(_) | ty::ReFree(_))
+                matches!(*lt, ty::ReEarlyParam(_) | ty::ReLateParam(_))
             }
             // FIXME(#113916): we can't currently check for unique lifetime params,
             // see that issue for more. We will also have to ignore unused lifetime

@@ -61,7 +61,7 @@ pub struct Region {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum RegionKind {
-    ReEarlyBound(EarlyBoundRegion),
+    ReEarlyParam(EarlyParamRegion),
     ReBound(DebruijnIndex, BoundRegion),
     ReStatic,
     RePlaceholder(Placeholder<BoundRegion>),
@@ -71,7 +71,7 @@ pub enum RegionKind {
 pub(crate) type DebruijnIndex = u32;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct EarlyBoundRegion {
+pub struct EarlyParamRegion {
     pub def_id: RegionDef,
     pub index: u32,
     pub name: Symbol,

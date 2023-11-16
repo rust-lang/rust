@@ -138,8 +138,8 @@ impl<'tcx> OutlivesEnvironmentBuilder<'tcx> {
                 }
                 OutlivesBound::RegionSubRegion(r_a, r_b) => match (*r_a, *r_b) {
                     (
-                        ty::ReStatic | ty::ReEarlyBound(_) | ty::ReFree(_),
-                        ty::ReStatic | ty::ReEarlyBound(_) | ty::ReFree(_),
+                        ty::ReStatic | ty::ReEarlyParam(_) | ty::ReLateParam(_),
+                        ty::ReStatic | ty::ReEarlyParam(_) | ty::ReLateParam(_),
                     ) => self.region_relation.add(r_a, r_b),
                     (ty::ReError(_), _) | (_, ty::ReError(_)) => {}
                     // FIXME(#109628): We shouldn't have existential variables in implied bounds.

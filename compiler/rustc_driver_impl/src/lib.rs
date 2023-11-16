@@ -1520,14 +1520,14 @@ fn report_ice(
 /// This allows tools to enable rust logging without having to magically match rustc's
 /// tracing crate version.
 pub fn init_rustc_env_logger(handler: &EarlyErrorHandler) {
-    init_env_logger(handler, "RUSTC_LOG");
+    init_logger(handler, rustc_log::LoggerConfig::from_env("RUSTC_LOG"));
 }
 
 /// This allows tools to enable rust logging without having to magically match rustc's
-/// tracing crate version. In contrast to `init_rustc_env_logger` it allows you to choose an env var
-/// other than `RUSTC_LOG`.
-pub fn init_env_logger(handler: &EarlyErrorHandler, env: &str) {
-    if let Err(error) = rustc_log::init_env_logger(env) {
+/// tracing crate version. In contrast to `init_rustc_env_logger` it allows you to choose
+/// the values directly rather than having to set an environment variable.
+pub fn init_logger(handler: &EarlyErrorHandler, cfg: rustc_log::LoggerConfig) {
+    if let Err(error) = rustc_log::init_logger(cfg) {
         handler.early_error(error.to_string());
     }
 }

@@ -362,10 +362,10 @@ fn compute_bidirectional_outlives_predicates<'tcx>(
 ) {
     for param in opaque_own_params {
         let orig_lifetime = tcx.map_rpit_lifetime_to_fn_lifetime(param.def_id.expect_local());
-        if let ty::ReEarlyBound(..) = *orig_lifetime {
-            let dup_lifetime = ty::Region::new_early_bound(
+        if let ty::ReEarlyParam(..) = *orig_lifetime {
+            let dup_lifetime = ty::Region::new_early_param(
                 tcx,
-                ty::EarlyBoundRegion { def_id: param.def_id, index: param.index, name: param.name },
+                ty::EarlyParamRegion { def_id: param.def_id, index: param.index, name: param.name },
             );
             let span = tcx.def_span(param.def_id);
             predicates.push((

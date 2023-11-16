@@ -53,6 +53,7 @@ extern crate rustc_interface;
 extern crate rustc_lexer;
 extern crate rustc_lint;
 extern crate rustc_lint_defs;
+extern crate rustc_log;
 extern crate rustc_macros;
 extern crate rustc_metadata;
 extern crate rustc_middle;
@@ -175,7 +176,7 @@ pub fn main() {
     // in the sysroot), and all of rustdoc's logging goes to its version (the one in Cargo.toml).
 
     init_logging(&handler);
-    rustc_driver::init_env_logger(&handler, "RUSTDOC_LOG");
+    rustc_driver::init_logger(&handler, rustc_log::LoggerConfig::from_env("RUSTDOC_LOG"));
 
     let exit_code = rustc_driver::catch_with_exit_code(|| match get_args(&handler) {
         Some(args) => main_args(&mut handler, &args, using_internal_features),

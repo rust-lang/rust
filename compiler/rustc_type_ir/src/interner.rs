@@ -47,9 +47,9 @@ pub trait Interner: Sized {
 
     // Kinds of regions
     type Region: Clone + DebugWithInfcx<Self> + Hash + Ord;
-    type EarlyBoundRegion: Clone + Debug + Hash + Ord;
+    type EarlyParamRegion: Clone + Debug + Hash + Ord;
     type BoundRegion: Clone + Debug + Hash + Ord;
-    type FreeRegion: Clone + Debug + Hash + Ord;
+    type LateParamRegion: Clone + Debug + Hash + Ord;
     type InferRegion: Clone + DebugWithInfcx<Self> + Hash + Ord;
     type PlaceholderRegion: Clone + Debug + Hash + Ord;
 

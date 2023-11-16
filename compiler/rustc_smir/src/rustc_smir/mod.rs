@@ -9,7 +9,7 @@
 
 use crate::rustc_internal::{IndexMap, RustcInternal};
 use crate::rustc_smir::hir::def::DefKind;
-use crate::rustc_smir::stable_mir::ty::{BoundRegion, EarlyBoundRegion, Region};
+use crate::rustc_smir::stable_mir::ty::{BoundRegion, EarlyParamRegion, Region};
 use rustc_hir as hir;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{alloc_range, AllocId};
@@ -682,10 +682,44 @@ impl<'tcx> Stable<'tcx> for mir::ConstOperand<'tcx> {
 
 impl<'tcx> Stable<'tcx> for mir::Place<'tcx> {
     type T = stable_mir::mir::Place;
-    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
         stable_mir::mir::Place {
             local: self.local.as_usize(),
-            projection: format!("{:?}", self.projection),
+            projection: self.projection.iter().map(|e| e.stable(tables)).collect(),
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for mir::PlaceElem<'tcx> {
+    type T = stable_mir::mir::ProjectionElem;
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        use mir::ProjectionElem::*;
+        match self {
+            Deref => stable_mir::mir::ProjectionElem::Deref,
+            Field(idx, ty) => {
+                stable_mir::mir::ProjectionElem::Field(idx.stable(tables), ty.stable(tables))
+            }
+            Index(local) => stable_mir::mir::ProjectionElem::Index(local.stable(tables)),
+            ConstantIndex { offset, min_length, from_end } => {
+                stable_mir::mir::ProjectionElem::ConstantIndex {
+                    offset: *offset,
+                    min_length: *min_length,
+                    from_end: *from_end,
+                }
+            }
+            Subslice { from, to, from_end } => stable_mir::mir::ProjectionElem::Subslice {
+                from: *from,
+                to: *to,
+                from_end: *from_end,
+            },
+            // MIR includes an `Option<Symbol>` argument for `Downcast` that is the name of the
+            // variant, used for printing MIR. However this information should also be accessible
+            // via a lookup using the `VariantIdx`. The `Option<Symbol>` argument is therefore
+            // dropped when converting to Stable MIR. A brief justification for this decision can be
+            // found at https://github.com/rust-lang/rust/pull/117517#issuecomment-1811683486
+            Downcast(_, idx) => stable_mir::mir::ProjectionElem::Downcast(idx.stable(tables)),
+            OpaqueCast(ty) => stable_mir::mir::ProjectionElem::OpaqueCast(ty.stable(tables)),
+            Subtype(ty) => stable_mir::mir::ProjectionElem::Subtype(ty.stable(tables)),
         }
     }
 }
@@ -693,8 +727,8 @@ impl<'tcx> Stable<'tcx> for mir::Place<'tcx> {
 impl<'tcx> Stable<'tcx> for mir::UserTypeProjection {
     type T = stable_mir::mir::UserTypeProjection;
 
-    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
-        UserTypeProjection { base: self.base.as_usize(), projection: format!("{:?}", self.projs) }
+    fn stable(&self, _tables: &mut Tables<'tcx>) -> Self::T {
+        UserTypeProjection { base: self.base.as_usize(), projection: opaque(&self.projs) }
     }
 }
 
@@ -1695,7 +1729,7 @@ impl<'tcx> Stable<'tcx> for ty::RegionKind<'tcx> {
     fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
         use stable_mir::ty::RegionKind;
         match self {
-            ty::ReEarlyBound(early_reg) => RegionKind::ReEarlyBound(EarlyBoundRegion {
+            ty::ReEarlyParam(early_reg) => RegionKind::ReEarlyParam(EarlyParamRegion {
                 def_id: tables.region_def(early_reg.def_id),
                 index: early_reg.index,
                 name: early_reg.name.to_string(),

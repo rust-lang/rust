@@ -64,8 +64,8 @@ impl<'tcx> UnifyValue for UnifiedRegion<'tcx> {
             cmp::min_by_key(r1, r2, |r| match r.kind() {
                 ty::ReStatic
                 | ty::ReErased
-                | ty::ReFree(..)
-                | ty::ReEarlyBound(..)
+                | ty::ReLateParam(..)
+                | ty::ReEarlyParam(..)
                 | ty::ReError(_) => ty::UniverseIndex::ROOT,
                 ty::RePlaceholder(placeholder) => placeholder.universe,
                 ty::ReVar(..) | ty::ReBound(..) => bug!("not a universal region"),

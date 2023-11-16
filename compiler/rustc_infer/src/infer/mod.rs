@@ -508,7 +508,10 @@ pub enum RegionVariableOrigin {
     Coercion(Span),
 
     /// Region variables created as the values for early-bound regions.
-    EarlyBoundRegion(Span, Symbol),
+    ///
+    /// FIXME(@lcnr): This can also store a `DefId`, similar to
+    /// `TypeVariableOriginKind::TypeParameterDefinition`.
+    RegionParameterDefinition(Span, Symbol),
 
     /// Region variables created when instantiating a binder with
     /// existential variables, e.g. when calling a function or method.
@@ -1165,7 +1168,7 @@ impl<'tcx> InferCtxt<'tcx> {
             GenericParamDefKind::Lifetime => {
                 // Create a region inference variable for the given
                 // region parameter definition.
-                self.next_region_var(EarlyBoundRegion(span, param.name)).into()
+                self.next_region_var(RegionParameterDefinition(span, param.name)).into()
             }
             GenericParamDefKind::Type { .. } => {
                 // Create a type inference variable for the given
@@ -2041,7 +2044,7 @@ impl RegionVariableOrigin {
             | AddrOfRegion(a)
             | Autoref(a)
             | Coercion(a)
-            | EarlyBoundRegion(a, ..)
+            | RegionParameterDefinition(a, ..)
             | BoundRegion(a, ..)
             | UpvarRegion(_, a) => a,
             Nll(..) => bug!("NLL variable used with `span`"),

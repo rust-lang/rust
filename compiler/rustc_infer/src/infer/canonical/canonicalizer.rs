@@ -172,7 +172,7 @@ impl CanonicalizeMode for CanonicalizeQueryResponse {
         r: ty::Region<'tcx>,
     ) -> ty::Region<'tcx> {
         match *r {
-            ty::ReFree(_) | ty::ReErased | ty::ReStatic | ty::ReEarlyBound(..) => r,
+            ty::ReLateParam(_) | ty::ReErased | ty::ReStatic | ty::ReEarlyParam(..) => r,
 
             ty::RePlaceholder(placeholder) => canonicalizer.canonical_var_for_region(
                 CanonicalVarInfo { kind: CanonicalVarKind::PlaceholderRegion(placeholder) },
@@ -223,7 +223,11 @@ impl CanonicalizeMode for CanonicalizeUserTypeAnnotation {
         r: ty::Region<'tcx>,
     ) -> ty::Region<'tcx> {
         match *r {
-            ty::ReEarlyBound(_) | ty::ReFree(_) | ty::ReErased | ty::ReStatic | ty::ReError(_) => r,
+            ty::ReEarlyParam(_)
+            | ty::ReLateParam(_)
+            | ty::ReErased
+            | ty::ReStatic
+            | ty::ReError(_) => r,
             ty::ReVar(_) => canonicalizer.canonical_var_for_region_in_root_universe(r),
             ty::RePlaceholder(..) | ty::ReBound(..) => {
                 // We only expect region names that the user can type.
@@ -359,9 +363,9 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'cx, 'tcx> {
             }
 
             ty::ReStatic
-            | ty::ReEarlyBound(..)
+            | ty::ReEarlyParam(..)
             | ty::ReError(_)
-            | ty::ReFree(_)
+            | ty::ReLateParam(_)
             | ty::RePlaceholder(..)
             | ty::ReErased => self.canonicalize_mode.canonicalize_free_region(self, r),
         }

@@ -106,7 +106,7 @@ fn variance_of_opaque(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[ty::Varianc
     impl<'tcx> ty::TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeLifetimeCollector<'tcx> {
         #[instrument(level = "trace", skip(self), ret)]
         fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
-            if let ty::RegionKind::ReEarlyBound(ebr) = r.kind() {
+            if let ty::RegionKind::ReEarlyParam(ebr) = r.kind() {
                 self.variances[ebr.index as usize] = ty::Invariant;
             }
             ControlFlow::Continue(())

@@ -2012,7 +2012,7 @@ fn is_late_bound_map(
 
         fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<!> {
             debug!("r={:?}", r.kind());
-            if let ty::RegionKind::ReEarlyBound(region) = r.kind() {
+            if let ty::RegionKind::ReEarlyParam(region) = r.kind() {
                 self.arg_is_constrained[region.index as usize] = true;
             }
 

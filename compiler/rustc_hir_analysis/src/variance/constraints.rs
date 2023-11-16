@@ -413,7 +413,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
         variance: VarianceTermPtr<'a>,
     ) {
         match *region {
-            ty::ReEarlyBound(ref data) => {
+            ty::ReEarlyParam(ref data) => {
                 self.add_constraint(current, data.index, variance);
             }
 
@@ -428,7 +428,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
 
             ty::ReError(_) => {}
 
-            ty::ReFree(..) | ty::ReVar(..) | ty::RePlaceholder(..) | ty::ReErased => {
+            ty::ReLateParam(..) | ty::ReVar(..) | ty::RePlaceholder(..) | ty::ReErased => {
                 // We don't expect to see anything but 'static or bound
                 // regions when visiting member types or method types.
                 bug!(

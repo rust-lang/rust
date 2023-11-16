@@ -79,9 +79,9 @@ impl fmt::Debug for ty::BoundRegionKind {
     }
 }
 
-impl fmt::Debug for ty::FreeRegion {
+impl fmt::Debug for ty::LateParamRegion {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "ReFree({:?}, {:?})", self.scope, self.bound_region)
+        write!(f, "ReLateParam({:?}, {:?})", self.scope, self.bound_region)
     }
 }
 
@@ -444,7 +444,7 @@ TrivialTypeTraversalImpls! {
     crate::ty::Placeholder<crate::ty::BoundRegion>,
     crate::ty::Placeholder<crate::ty::BoundTy>,
     crate::ty::Placeholder<ty::BoundVar>,
-    crate::ty::FreeRegion,
+    crate::ty::LateParamRegion,
     crate::ty::InferTy,
     crate::ty::IntVarValue,
     crate::ty::adjustment::PointerCoercion,

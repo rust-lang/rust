@@ -1,6 +1,7 @@
 #![feature(rustc_private)]
 
 extern crate rustc_driver;
+extern crate rustc_log;
 extern crate rustc_session;
 
 use std::env;
@@ -173,7 +174,7 @@ fn parse_args() -> (OutputFormat, PathBuf) {
 fn main() {
     let handler =
         rustc_session::EarlyErrorHandler::new(rustc_session::config::ErrorOutputType::default());
-    rustc_driver::init_env_logger(&handler, "RUST_LOG");
+    rustc_driver::init_logger(&handler, rustc_log::LoggerConfig::from_env("RUST_LOG"));
     let (format, dst) = parse_args();
     let result = main_with_result(format, &dst);
     if let Err(e) = result {

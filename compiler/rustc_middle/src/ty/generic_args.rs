@@ -809,7 +809,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for ArgFolder<'a, 'tcx> {
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         #[cold]
         #[inline(never)]
-        fn region_param_out_of_range(data: ty::EarlyBoundRegion, args: &[GenericArg<'_>]) -> ! {
+        fn region_param_out_of_range(data: ty::EarlyParamRegion, args: &[GenericArg<'_>]) -> ! {
             bug!(
                 "Region parameter out of range when substituting in region {} (index={}, args = {:?})",
                 data.name,
@@ -820,7 +820,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for ArgFolder<'a, 'tcx> {
 
         #[cold]
         #[inline(never)]
-        fn region_param_invalid(data: ty::EarlyBoundRegion, other: GenericArgKind<'_>) -> ! {
+        fn region_param_invalid(data: ty::EarlyParamRegion, other: GenericArgKind<'_>) -> ! {
             bug!(
                 "Unexpected parameter {:?} when substituting in region {} (index={})",
                 other,
@@ -835,7 +835,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for ArgFolder<'a, 'tcx> {
         // regions that appear in a function signature is done using
         // the specialized routine `ty::replace_late_regions()`.
         match *r {
-            ty::ReEarlyBound(data) => {
+            ty::ReEarlyParam(data) => {
                 let rk = self.args.get(data.index as usize).map(|k| k.unpack());
                 match rk {
                     Some(GenericArgKind::Lifetime(lt)) => self.shift_region_through_binders(lt),
@@ -844,7 +844,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for ArgFolder<'a, 'tcx> {
                 }
             }
             ty::ReBound(..)
-            | ty::ReFree(_)
+            | ty::ReLateParam(_)
             | ty::ReStatic
             | ty::RePlaceholder(_)
             | ty::ReErased

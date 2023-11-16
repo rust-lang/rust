@@ -2158,10 +2158,10 @@ impl<'tcx> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx> {
         let identify_regions = self.tcx.sess.opts.unstable_opts.identify_regions;
 
         match *region {
-            ty::ReEarlyBound(ref data) => data.has_name(),
+            ty::ReEarlyParam(ref data) => data.has_name(),
 
             ty::ReBound(_, ty::BoundRegion { kind: br, .. })
-            | ty::ReFree(ty::FreeRegion { bound_region: br, .. })
+            | ty::ReLateParam(ty::LateParamRegion { bound_region: br, .. })
             | ty::RePlaceholder(ty::Placeholder {
                 bound: ty::BoundRegion { kind: br, .. }, ..
             }) => {
@@ -2228,14 +2228,14 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
         // to fit that into a short string. Hence the recommendation to use
         // `explain_region()` or `note_and_explain_region()`.
         match *region {
-            ty::ReEarlyBound(ref data) => {
+            ty::ReEarlyParam(ref data) => {
                 if data.name != kw::Empty {
                     p!(write("{}", data.name));
                     return Ok(());
                 }
             }
             ty::ReBound(_, ty::BoundRegion { kind: br, .. })
-            | ty::ReFree(ty::FreeRegion { bound_region: br, .. })
+            | ty::ReLateParam(ty::LateParamRegion { bound_region: br, .. })
             | ty::RePlaceholder(ty::Placeholder {
                 bound: ty::BoundRegion { kind: br, .. }, ..
             }) => {

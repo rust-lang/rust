@@ -53,9 +53,9 @@ fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx [(Ty<'
         DefKind::AssocTy if let Some(data) = tcx.opt_rpitit_info(def_id.to_def_id()) => {
             match data {
                 ty::ImplTraitInTraitData::Trait { fn_def_id, .. } => {
-                    // We need to remap all of the late-bound lifetimes in theassumed wf types
-                    // of the fn (which are represented as ReFree) to the early-bound lifetimes
-                    // of the RPITIT (which are represented by ReEarlyBound owned by the opaque).
+                    // We need to remap all of the late-bound lifetimes in the assumed wf types
+                    // of the fn (which are represented as ReLateParam) to the early-bound lifetimes
+                    // of the RPITIT (which are represented by ReEarlyParam owned by the opaque).
                     // Luckily, this is very easy to do because we already have that mapping
                     // stored in the HIR of this RPITIT.
                     //
@@ -65,19 +65,19 @@ fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx [(Ty<'
                     let mut mapping = FxHashMap::default();
                     let generics = tcx.generics_of(def_id);
 
-                    // For each captured opaque lifetime, if it's late-bound (`ReFree` in this case,
-                    // since it has been liberated), map it back to the early-bound lifetime of
+                    // For each captured opaque lifetime, if it's late-bound (`ReLateParam` in this
+                    // case, since it has been liberated), map it back to the early-bound lifetime of
                     // the GAT. Since RPITITs also have all of the fn's generics, we slice only
                     // the end of the list corresponding to the opaque's generics.
                     for param in &generics.params[tcx.generics_of(fn_def_id).params.len()..] {
                         let orig_lt =
                             tcx.map_rpit_lifetime_to_fn_lifetime(param.def_id.expect_local());
-                        if matches!(*orig_lt, ty::ReFree(..)) {
+                        if matches!(*orig_lt, ty::ReLateParam(..)) {
                             mapping.insert(
                                 orig_lt,
-                                ty::Region::new_early_bound(
+                                ty::Region::new_early_param(
                                     tcx,
-                                    ty::EarlyBoundRegion {
+                                    ty::EarlyParamRegion {
                                         def_id: param.def_id,
                                         index: param.index,
                                         name: param.name,
@@ -90,7 +90,7 @@ fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx [(Ty<'
                     let remapped_wf_tys = tcx.fold_regions(
                         tcx.assumed_wf_types(fn_def_id.expect_local()).to_vec(),
                         |region, _| {
-                            // If `region` is a `ReFree` that is captured by the
+                            // If `region` is a `ReLateParam` that is captured by the
                             // opaque, remap it to its corresponding the early-
                             // bound region.
                             if let Some(remapped_region) = mapping.get(&region) {
