@@ -79,6 +79,11 @@ fn test_config(target: &str, path: &str, mode: Mode, with_dependencies: bool) ->
         program.args.push(flag);
     }
 
+    // Add a test env var to do environment communication tests.
+    program.envs.push(("MIRI_ENV_VAR_TEST".into(), Some("0".into())));
+    // Let the tests know where to store temp files (they might run for a different target, which can make this hard to find).
+    program.envs.push(("MIRI_TEMP".into(), Some(env::temp_dir().into())));
+
     let mut config = Config {
         target: Some(target.to_owned()),
         stderr_filters: STDERR.clone(),
@@ -231,11 +236,6 @@ fn main() -> Result<()> {
             return run_dep_mode(target, args);
         }
     }
-
-    // Add a test env var to do environment communication tests.
-    env::set_var("MIRI_ENV_VAR_TEST", "0");
-    // Let the tests know where to store temp files (they might run for a different target, which can make this hard to find).
-    env::set_var("MIRI_TEMP", env::temp_dir());
 
     ui(Mode::Pass, "tests/pass", &target, WithoutDependencies)?;
     ui(Mode::Pass, "tests/pass-dep", &target, WithDependencies)?;
