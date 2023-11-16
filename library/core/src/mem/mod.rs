@@ -495,6 +495,8 @@ pub const fn align_of_val<T: ?Sized>(val: &T) -> usize {
 /// This is an unchecked version of [`align_of_val`] which takes a raw pointer
 /// instead of a reference.
 ///
+/// [ABI]: https://en.wikipedia.org/wiki/Application_binary_interface
+///
 /// # Safety
 ///
 /// The provided (possibly wide) pointer must describe a valid value layout.
