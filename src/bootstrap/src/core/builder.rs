@@ -2093,6 +2093,12 @@ impl<'a> Builder<'a> {
             // break when incremental compilation is enabled. So this overrides the "no inlining
             // during incremental builds" heuristic for the standard library.
             rustflags.arg("-Zinline-mir");
+
+            // Compress the debuginfo in the standard library on linux, to reduce its size, and
+            // speed up linking.
+            if target.contains("linux") && compiler.stage >= 1 {
+                rustflags.arg("-Zdebuginfo-compression=zlib");
+            }
         }
 
         // set rustc args passed from command line
