@@ -407,20 +407,26 @@ declare_clippy_lint! {
     /// Checks for `#[cfg(features = "...")]` and suggests to replace it with
     /// `#[cfg(feature = "...")]`.
     ///
+    /// It also checks if `cfg(test)` was misspelled.
+    ///
     /// ### Why is this bad?
-    /// Misspelling `feature` as `features` can be sometimes hard to spot. It
+    /// Misspelling `feature` as `features` or `test` as `tests` can be sometimes hard to spot. It
     /// may cause conditional compilation not work quietly.
     ///
     /// ### Example
     /// ```no_run
     /// #[cfg(features = "some-feature")]
     /// fn conditional() { }
+    /// #[cfg(tests)]
+    /// mod tests { }
     /// ```
     ///
     /// Use instead:
     /// ```no_run
     /// #[cfg(feature = "some-feature")]
     /// fn conditional() { }
+    /// #[cfg(test)]
+    /// mod tests { }
     /// ```
     #[clippy::version = "1.69.0"]
     pub MAYBE_MISUSED_CFG,
