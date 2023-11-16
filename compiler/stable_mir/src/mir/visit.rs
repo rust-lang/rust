@@ -128,8 +128,12 @@ pub trait MirVisitor {
         self.super_assert_msg(msg, location)
     }
 
+    fn visit_var_debug_info(&mut self, var_debug_info: &VarDebugInfo) {
+        self.super_var_debug_info(var_debug_info);
+    }
+
     fn super_body(&mut self, body: &Body) {
-        let Body { blocks, locals: _, arg_count } = body;
+        let Body { blocks, locals: _, arg_count, var_debug_info } = body;
 
         for bb in blocks {
             self.visit_basic_block(bb);
@@ -144,6 +148,10 @@ pub trait MirVisitor {
         let local_start = arg_count + 1;
         for (idx, arg) in body.inner_locals().iter().enumerate() {
             self.visit_local_decl(idx + local_start, arg)
+        }
+
+        for info in var_debug_info.iter() {
+            self.visit_var_debug_info(info);
         }
     }
 
@@ -380,6 +388,22 @@ pub trait MirVisitor {
 
     fn super_args(&mut self, args: &GenericArgs) {
         let _ = args;
+    }
+
+    fn super_var_debug_info(&mut self, var_debug_info: &VarDebugInfo) {
+        self.visit_span(&var_debug_info.source_info.span);
+        let location = Location(var_debug_info.source_info.span);
+        if let Some(composite) = &var_debug_info.composite {
+            self.visit_ty(&composite.ty, location);
+        }
+        match &var_debug_info.value {
+            VarDebugInfoContents::Place(place) => {
+                self.visit_place(place, PlaceContext::NON_USE, location);
+            }
+            VarDebugInfoContents::Const(constant) => {
+                self.visit_const(&constant.const_, location);
+            }
+        }
     }
 
     fn super_assert_msg(&mut self, msg: &AssertMessage, location: Location) {
