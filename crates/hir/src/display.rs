@@ -595,6 +595,30 @@ impl HirDisplay for Trait {
         let def_id = GenericDefId::TraitId(self.id);
         write_generic_params(def_id, f)?;
         write_where_clause(def_id, f)?;
+
+        let assoc_items = self.items(f.db);
+        if assoc_items.is_empty() {
+            f.write_str(" {}")?;
+        } else {
+            f.write_str(" {\n")?;
+            for item in assoc_items {
+                f.write_str("    ")?;
+                match item {
+                    AssocItem::Function(func) => {
+                        func.hir_fmt(f)?;
+                    }
+                    AssocItem::Const(cst) => {
+                        cst.hir_fmt(f)?;
+                    }
+                    AssocItem::TypeAlias(type_alias) => {
+                        type_alias.hir_fmt(f)?;
+                    }
+                };
+                f.write_str(",\n")?;
+            }
+            f.write_str("}")?;
+        }
+
         Ok(())
     }
 }

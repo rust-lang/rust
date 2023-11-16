@@ -2685,7 +2685,7 @@ fn main() { let s$0t = foo(); }
                                     focus_range: 6..9,
                                     name: "Foo",
                                     kind: Trait,
-                                    description: "trait Foo",
+                                    description: "trait Foo {}",
                                 },
                             },
                         ],
@@ -2719,7 +2719,7 @@ fn main() { let s$0t = foo(); }
                                     focus_range: 6..9,
                                     name: "Foo",
                                     kind: Trait,
-                                    description: "trait Foo<T>",
+                                    description: "trait Foo<T> {}",
                                 },
                             },
                             HoverGotoTypeData {
@@ -2886,7 +2886,7 @@ fn foo(ar$0g: &impl Foo) {}
                                     focus_range: 6..9,
                                     name: "Foo",
                                     kind: Trait,
-                                    description: "trait Foo",
+                                    description: "trait Foo {}",
                                 },
                             },
                         ],
@@ -2988,7 +2988,7 @@ pub mod future {
                                 name: "Future",
                                 kind: Trait,
                                 container_name: "future",
-                                description: "pub trait Future",
+                                description: "pub trait Future {}",
                             },
                         },
                         HoverGotoTypeData {
@@ -3033,7 +3033,7 @@ fn foo(ar$0g: &impl Foo<S>) {}
                                     focus_range: 6..9,
                                     name: "Foo",
                                     kind: Trait,
-                                    description: "trait Foo<T>",
+                                    description: "trait Foo<T> {}",
                                 },
                             },
                             HoverGotoTypeData {
@@ -3096,7 +3096,7 @@ fn main() { let s$0t = foo(); }
                                     focus_range: 6..9,
                                     name: "Foo",
                                     kind: Trait,
-                                    description: "trait Foo",
+                                    description: "trait Foo {}",
                                 },
                             },
                         ],
@@ -3127,7 +3127,7 @@ fn foo(ar$0g: &dyn Foo) {}
                                     focus_range: 6..9,
                                     name: "Foo",
                                     kind: Trait,
-                                    description: "trait Foo",
+                                    description: "trait Foo {}",
                                 },
                             },
                         ],
@@ -3159,7 +3159,7 @@ fn foo(ar$0g: &dyn Foo<S>) {}
                                     focus_range: 6..9,
                                     name: "Foo",
                                     kind: Trait,
-                                    description: "trait Foo<T>",
+                                    description: "trait Foo<T> {}",
                                 },
                             },
                             HoverGotoTypeData {
@@ -3288,7 +3288,7 @@ fn main() { let s$0t = test().get(); }
                                     focus_range: 6..9,
                                     name: "Foo",
                                     kind: Trait,
-                                    description: "trait Foo",
+                                    description: "trait Foo {\n    type Item,\n    fn get(self) -> Self::Item,\n}",
                                 },
                             },
                         ],
@@ -3353,7 +3353,7 @@ fn foo<T: Foo>(t: T$0){}
                                     focus_range: 6..9,
                                     name: "Foo",
                                     kind: Trait,
-                                    description: "trait Foo",
+                                    description: "trait Foo {}",
                                 },
                             },
                         ],
@@ -6248,6 +6248,99 @@ impl T for () {
             ---
 
             Trait docs
+        "#]],
+    );
+}
+
+#[test]
+fn hover_trait_show_assoc_items() {
+    check(
+        r#"
+trait T {}
+impl T$0 for () {}
+"#,
+        expect![[r#"
+        *T*
+
+        ```rust
+        test
+        ```
+
+        ```rust
+        trait T {}
+        ```
+        "#]],
+    );
+
+    check(
+        r#"
+trait T {
+    fn func() {}
+}
+impl T$0 for () {}
+"#,
+        expect![[r#"
+        *T*
+
+        ```rust
+        test
+        ```
+
+        ```rust
+        trait T {
+            fn func(),
+        }
+        ```
+        "#]],
+    );
+
+    check(
+        r#"
+trait T {
+    fn func() {}
+    const FLAG: i32 = 34;
+}
+impl T$0 for () {}
+"#,
+        expect![[r#"
+        *T*
+
+        ```rust
+        test
+        ```
+
+        ```rust
+        trait T {
+            fn func(),
+            const FLAG: i32,
+        }
+        ```
+        "#]],
+    );
+
+    check(
+        r#"
+trait T {
+    fn func() {}
+    const FLAG: i32 = 34;
+    type Bar;
+}
+impl T$0 for () {}
+"#,
+        expect![[r#"
+        *T*
+
+        ```rust
+        test
+        ```
+
+        ```rust
+        trait T {
+            fn func(),
+            const FLAG: i32,
+            type Bar,
+        }
+        ```
         "#]],
     );
 }
