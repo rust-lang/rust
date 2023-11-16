@@ -1667,6 +1667,12 @@ impl<'a> Builder<'a> {
             }
         }
 
+        cargo.env(profile_var("STRIP"), self.config.rust_strip.to_string());
+
+        if let Some(stack_protector) = &self.config.rust_stack_protector {
+            rustflags.arg(&format!("-Zstack-protector={stack_protector}"));
+        }
+
         if let Some(host_linker) = self.linker(compiler.host) {
             hostflags.arg(format!("-Clinker={}", host_linker.display()));
         }
