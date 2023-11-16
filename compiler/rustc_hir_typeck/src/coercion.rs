@@ -1738,6 +1738,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         // label pointing out the cause for the type coercion will be wrong
         // as prior return coercions would not be relevant (#57664).
         let fn_decl = if let (Some(expr), Some(blk_id)) = (expression, blk_id) {
+            self.explain_self_literal(fcx, &mut err, expr);
             let pointing_at_return_type =
                 fcx.suggest_mismatched_types_on_tail(&mut err, expr, expected, found, blk_id);
             if let (Some(cond_expr), true, false) = (
@@ -1808,6 +1809,43 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         }
 
         err
+    }
+
+    fn explain_self_literal(
+        &self,
+        fcx: &FnCtxt<'_, 'tcx>,
+        err: &mut Diagnostic,
+        expr: &'tcx hir::Expr<'tcx>,
+    ) {
+        match expr.peel_drop_temps().kind {
+            hir::ExprKind::Struct(
+                hir::QPath::Resolved(
+                    None,
+                    hir::Path { res: hir::def::Res::SelfTyAlias { alias_to, .. }, .. },
+                ),
+                ..,
+            )
+            | hir::ExprKind::Call(
+                hir::Expr {
+                    kind:
+                        hir::ExprKind::Path(hir::QPath::Resolved(
+                            None,
+                            hir::Path { res: hir::def::Res::SelfTyAlias { alias_to, .. }, .. },
+                        )),
+                    ..
+                },
+                ..,
+            ) => {
+                if let Some(hir::Node::Item(hir::Item {
+                    kind: hir::ItemKind::Impl(hir::Impl { self_ty, .. }),
+                    ..
+                })) = fcx.tcx.hir().get_if_local(*alias_to)
+                {
+                    err.span_label(self_ty.span, "this is the type of the `Self` literal");
+                }
+            }
+            _ => {}
+        }
     }
 
     /// Checks whether the return type is unsized via an obligation, which makes
