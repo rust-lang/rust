@@ -54,20 +54,18 @@ impl<'tcx> LateLintPass<'tcx> for TrailingEmptyArray {
 }
 
 fn is_struct_with_trailing_zero_sized_array(cx: &LateContext<'_>, item: &Item<'_>) -> bool {
-    if_chain! {
+    if let ItemKind::Struct(data, _) = &item.kind
         // First check if last field is an array
-        if let ItemKind::Struct(data, _) = &item.kind;
-        if let Some(last_field) = data.fields().last();
-        if let rustc_hir::TyKind::Array(_, rustc_hir::ArrayLen::Body(length)) = last_field.ty.kind;
+        && let Some(last_field) = data.fields().last()
+        && let rustc_hir::TyKind::Array(_, rustc_hir::ArrayLen::Body(length)) = last_field.ty.kind
 
         // Then check if that array is zero-sized
-        let length = Const::from_anon_const(cx.tcx, length.def_id);
-        let length = length.try_eval_target_usize(cx.tcx, cx.param_env);
-        if let Some(length) = length;
-        then {
-            length == 0
-        } else {
-            false
-        }
+        && let length = Const::from_anon_const(cx.tcx, length.def_id)
+        && let length = length.try_eval_target_usize(cx.tcx, cx.param_env)
+        && let Some(length) = length
+    {
+        length == 0
+    } else {
+        false
     }
 }

@@ -127,32 +127,30 @@ where
 
     let closure_expr_snip = some_expr.to_snippet_with_context(cx, expr_ctxt, &mut app);
     let body_str = if let PatKind::Binding(annotation, id, some_binding, None) = some_pat.kind {
-        if_chain! {
-            if !some_expr.needs_unsafe_block;
-            if let Some(func) = can_pass_as_func(cx, id, some_expr.expr);
-            if func.span.eq_ctxt(some_expr.expr.span);
-            then {
-                snippet_with_applicability(cx, func.span, "..", &mut app).into_owned()
+        if !some_expr.needs_unsafe_block
+            && let Some(func) = can_pass_as_func(cx, id, some_expr.expr)
+            && func.span.eq_ctxt(some_expr.expr.span)
+        {
+            snippet_with_applicability(cx, func.span, "..", &mut app).into_owned()
+        } else {
+            if path_to_local_id(some_expr.expr, id)
+                && !is_lint_allowed(cx, MATCH_AS_REF, expr.hir_id)
+                && binding_ref.is_some()
+            {
+                return None;
+            }
+
+            // `ref` and `ref mut` annotations were handled earlier.
+            let annotation = if matches!(annotation, BindingAnnotation::MUT) {
+                "mut "
             } else {
-                if path_to_local_id(some_expr.expr, id)
-                    && !is_lint_allowed(cx, MATCH_AS_REF, expr.hir_id)
-                    && binding_ref.is_some()
-                {
-                    return None;
-                }
+                ""
+            };
 
-                // `ref` and `ref mut` annotations were handled earlier.
-                let annotation = if matches!(annotation, BindingAnnotation::MUT) {
-                    "mut "
-                } else {
-                    ""
-                };
-
-                if some_expr.needs_unsafe_block {
-                    format!("|{annotation}{some_binding}| unsafe {{ {closure_expr_snip} }}")
-                } else {
-                    format!("|{annotation}{some_binding}| {closure_expr_snip}")
-                }
+            if some_expr.needs_unsafe_block {
+                format!("|{annotation}{some_binding}| unsafe {{ {closure_expr_snip} }}")
+            } else {
+                format!("|{annotation}{some_binding}| {closure_expr_snip}")
             }
         }
     } else if !is_wild_none && explicit_ref.is_none() {

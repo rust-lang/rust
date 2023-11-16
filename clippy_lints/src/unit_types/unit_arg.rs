@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_from_proc_macro;
 use clippy_utils::source::{indent_of, reindent_multiline, snippet_opt};
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{self as hir, Block, Expr, ExprKind, MatchSource, Node, StmtKind};
 use rustc_lint::LateContext;
@@ -22,12 +21,10 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
     }
     let map = &cx.tcx.hir();
     let opt_parent_node = map.find_parent(expr.hir_id);
-    if_chain! {
-        if let Some(hir::Node::Expr(parent_expr)) = opt_parent_node;
-        if is_questionmark_desugar_marked_call(parent_expr);
-        then {
-            return;
-        }
+    if let Some(hir::Node::Expr(parent_expr)) = opt_parent_node
+        && is_questionmark_desugar_marked_call(parent_expr)
+    {
+        return;
     }
 
     let args: Vec<_> = match expr.kind {
@@ -80,21 +77,15 @@ fn lint_unit_args(cx: &LateContext<'_>, expr: &Expr<'_>, args_to_recover: &[&Exp
             args_to_recover
                 .iter()
                 .filter_map(|arg| {
-                    if_chain! {
-                        if let ExprKind::Block(block, _) = arg.kind;
-                        if block.expr.is_none();
-                        if let Some(last_stmt) = block.stmts.iter().last();
-                        if let StmtKind::Semi(last_expr) = last_stmt.kind;
-                        if let Some(snip) = snippet_opt(cx, last_expr.span);
-                        then {
-                            Some((
-                                last_stmt.span,
-                                snip,
-                            ))
-                        }
-                        else {
-                            None
-                        }
+                    if let ExprKind::Block(block, _) = arg.kind
+                        && block.expr.is_none()
+                        && let Some(last_stmt) = block.stmts.iter().last()
+                        && let StmtKind::Semi(last_expr) = last_stmt.kind
+                        && let Some(snip) = snippet_opt(cx, last_expr.span)
+                    {
+                        Some((last_stmt.span, snip))
+                    } else {
+                        None
                     }
                 })
                 .for_each(|(span, sugg)| {

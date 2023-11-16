@@ -83,41 +83,39 @@ fn handle_uninit_vec_pair<'tcx>(
     maybe_init_or_reserve: &'tcx Stmt<'tcx>,
     maybe_set_len: &'tcx Expr<'tcx>,
 ) {
-    if_chain! {
-        if let Some(vec) = extract_init_or_reserve_target(cx, maybe_init_or_reserve);
-        if let Some((set_len_self, call_span)) = extract_set_len_self(cx, maybe_set_len);
-        if vec.location.eq_expr(cx, set_len_self);
-        if let ty::Ref(_, vec_ty, _) = cx.typeck_results().expr_ty_adjusted(set_len_self).kind();
-        if let ty::Adt(_, args) = vec_ty.kind();
+    if let Some(vec) = extract_init_or_reserve_target(cx, maybe_init_or_reserve)
+        && let Some((set_len_self, call_span)) = extract_set_len_self(cx, maybe_set_len)
+        && vec.location.eq_expr(cx, set_len_self)
+        && let ty::Ref(_, vec_ty, _) = cx.typeck_results().expr_ty_adjusted(set_len_self).kind()
+        && let ty::Adt(_, args) = vec_ty.kind()
         // `#[allow(...)]` attribute can be set on enclosing unsafe block of `set_len()`
-        if !is_lint_allowed(cx, UNINIT_VEC, maybe_set_len.hir_id);
-        then {
-            if vec.has_capacity() {
-                // with_capacity / reserve -> set_len
+        && !is_lint_allowed(cx, UNINIT_VEC, maybe_set_len.hir_id)
+    {
+        if vec.has_capacity() {
+            // with_capacity / reserve -> set_len
 
-                // Check T of Vec<T>
-                if !is_uninit_value_valid_for_ty(cx, args.type_at(0)) {
-                    // FIXME: #7698, false positive of the internal lints
-                    #[expect(clippy::collapsible_span_lint_calls)]
-                    span_lint_and_then(
-                        cx,
-                        UNINIT_VEC,
-                        vec![call_span, maybe_init_or_reserve.span],
-                        "calling `set_len()` immediately after reserving a buffer creates uninitialized values",
-                        |diag| {
-                            diag.help("initialize the buffer or wrap the content in `MaybeUninit`");
-                        },
-                    );
-                }
-            } else {
-                // new / default -> set_len
-                span_lint(
+            // Check T of Vec<T>
+            if !is_uninit_value_valid_for_ty(cx, args.type_at(0)) {
+                // FIXME: #7698, false positive of the internal lints
+                #[expect(clippy::collapsible_span_lint_calls)]
+                span_lint_and_then(
                     cx,
                     UNINIT_VEC,
                     vec![call_span, maybe_init_or_reserve.span],
-                    "calling `set_len()` on empty `Vec` creates out-of-bound values",
+                    "calling `set_len()` immediately after reserving a buffer creates uninitialized values",
+                    |diag| {
+                        diag.help("initialize the buffer or wrap the content in `MaybeUninit`");
+                    },
                 );
             }
+        } else {
+            // new / default -> set_len
+            span_lint(
+                cx,
+                UNINIT_VEC,
+                vec![call_span, maybe_init_or_reserve.span],
+                "calling `set_len()` on empty `Vec` creates out-of-bound values",
+            );
         }
     }
 }
@@ -156,16 +154,14 @@ impl<'tcx> VecLocation<'tcx> {
 fn extract_init_or_reserve_target<'tcx>(cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'tcx>) -> Option<TargetVec<'tcx>> {
     match stmt.kind {
         StmtKind::Local(local) => {
-            if_chain! {
-                if let Some(init_expr) = local.init;
-                if let PatKind::Binding(_, hir_id, _, None) = local.pat.kind;
-                if let Some(init_kind) = get_vec_init_kind(cx, init_expr);
-                then {
-                    return Some(TargetVec {
-                        location: VecLocation::Local(hir_id),
-                        init_kind: Some(init_kind),
-                    })
-                }
+            if let Some(init_expr) = local.init
+                && let PatKind::Binding(_, hir_id, _, None) = local.pat.kind
+                && let Some(init_kind) = get_vec_init_kind(cx, init_expr)
+            {
+                return Some(TargetVec {
+                    location: VecLocation::Local(hir_id),
+                    init_kind: Some(init_kind),
+                });
             }
         },
         StmtKind::Expr(expr) | StmtKind::Semi(expr) => match expr.kind {

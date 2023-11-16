@@ -5,8 +5,6 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::{sym, Span, Symbol};
 
-use if_chain::if_chain;
-
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_trait_method;
 use clippy_utils::source::snippet_with_applicability;
@@ -51,65 +49,63 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessForEach {
             return;
         };
 
-        if_chain! {
+        if let ExprKind::MethodCall(method_name, for_each_recv, [for_each_arg], _) = expr.kind
             // Check the method name is `for_each`.
-            if let ExprKind::MethodCall(method_name, for_each_recv, [for_each_arg], _) = expr.kind;
-            if method_name.ident.name == Symbol::intern("for_each");
+            && method_name.ident.name == Symbol::intern("for_each")
             // Check `for_each` is an associated function of `Iterator`.
-            if is_trait_method(cx, expr, sym::Iterator);
+            && is_trait_method(cx, expr, sym::Iterator)
             // Checks the receiver of `for_each` is also a method call.
-            if let ExprKind::MethodCall(_, iter_recv, [], _) = for_each_recv.kind;
+            && let ExprKind::MethodCall(_, iter_recv, [], _) = for_each_recv.kind
             // Skip the lint if the call chain is too long. e.g. `v.field.iter().for_each()` or
             // `v.foo().iter().for_each()` must be skipped.
-            if matches!(
+            && matches!(
                 iter_recv.kind,
                 ExprKind::Array(..) | ExprKind::Call(..) | ExprKind::Path(..)
-            );
+            )
             // Checks the type of the `iter` method receiver is NOT a user defined type.
-            if has_iter_method(cx, cx.typeck_results().expr_ty(iter_recv)).is_some();
+            && has_iter_method(cx, cx.typeck_results().expr_ty(iter_recv)).is_some()
             // Skip the lint if the body is not block because this is simpler than `for` loop.
             // e.g. `v.iter().for_each(f)` is simpler and clearer than using `for` loop.
-            if let ExprKind::Closure(&Closure { body, .. }) = for_each_arg.kind;
-            let body = cx.tcx.hir().body(body);
-            if let ExprKind::Block(..) = body.value.kind;
-            then {
-                let mut ret_collector = RetCollector::default();
-                ret_collector.visit_expr(body.value);
+            && let ExprKind::Closure(&Closure { body, .. }) = for_each_arg.kind
+            && let body = cx.tcx.hir().body(body)
+            && let ExprKind::Block(..) = body.value.kind
+        {
+            let mut ret_collector = RetCollector::default();
+            ret_collector.visit_expr(body.value);
 
-                // Skip the lint if `return` is used in `Loop` in order not to suggest using `'label`.
-                if ret_collector.ret_in_loop {
-                    return;
-                }
-
-                let (mut applicability, ret_suggs) = if ret_collector.spans.is_empty() {
-                    (Applicability::MachineApplicable, None)
-                } else {
-                    (
-                        Applicability::MaybeIncorrect,
-                        Some(
-                            ret_collector
-                                .spans
-                                .into_iter()
-                                .map(|span| (span, "continue".to_string()))
-                                .collect(),
-                        ),
-                    )
-                };
-
-                let sugg = format!(
-                    "for {} in {} {}",
-                    snippet_with_applicability(cx, body.params[0].pat.span, "..", &mut applicability),
-                    snippet_with_applicability(cx, for_each_recv.span, "..", &mut applicability),
-                    snippet_with_applicability(cx, body.value.span, "..", &mut applicability),
-                );
-
-                span_lint_and_then(cx, NEEDLESS_FOR_EACH, stmt.span, "needless use of `for_each`", |diag| {
-                    diag.span_suggestion(stmt.span, "try", sugg, applicability);
-                    if let Some(ret_suggs) = ret_suggs {
-                        diag.multipart_suggestion("...and replace `return` with `continue`", ret_suggs, applicability);
-                    }
-                })
+            // Skip the lint if `return` is used in `Loop` in order not to suggest using `'label`.
+            if ret_collector.ret_in_loop {
+                return;
             }
+
+            let (mut applicability, ret_suggs) = if ret_collector.spans.is_empty() {
+                (Applicability::MachineApplicable, None)
+            } else {
+                (
+                    Applicability::MaybeIncorrect,
+                    Some(
+                        ret_collector
+                            .spans
+                            .into_iter()
+                            .map(|span| (span, "continue".to_string()))
+                            .collect(),
+                    ),
+                )
+            };
+
+            let sugg = format!(
+                "for {} in {} {}",
+                snippet_with_applicability(cx, body.params[0].pat.span, "..", &mut applicability),
+                snippet_with_applicability(cx, for_each_recv.span, "..", &mut applicability),
+                snippet_with_applicability(cx, body.value.span, "..", &mut applicability),
+            );
+
+            span_lint_and_then(cx, NEEDLESS_FOR_EACH, stmt.span, "needless use of `for_each`", |diag| {
+                diag.span_suggestion(stmt.span, "try", sugg, applicability);
+                if let Some(ret_suggs) = ret_suggs {
+                    diag.multipart_suggestion("...and replace `return` with `continue`", ret_suggs, applicability);
+                }
+            });
         }
     }
 }

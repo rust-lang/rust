@@ -27,27 +27,25 @@ declare_lint_pass!(UnderscoreTyped => [LET_WITH_TYPE_UNDERSCORE]);
 
 impl LateLintPass<'_> for UnderscoreTyped {
     fn check_local(&mut self, cx: &LateContext<'_>, local: &Local<'_>) {
-        if_chain! {
-            if !in_external_macro(cx.tcx.sess, local.span);
-            if let Some(ty) = local.ty; // Ensure that it has a type defined
-            if let TyKind::Infer = &ty.kind; // that type is '_'
-            if local.span.eq_ctxt(ty.span);
-            then {
-                // NOTE: Using `is_from_proc_macro` on `init` will require that it's initialized,
-                // this doesn't. Alternatively, `WithSearchPat` can be implemented for `Ty`
-                if snippet(cx, ty.span, "_").trim() != "_" {
-                    return;
-                }
-
-                span_lint_and_help(
-                    cx,
-                    LET_WITH_TYPE_UNDERSCORE,
-                    local.span,
-                    "variable declared with type underscore",
-                    Some(ty.span.with_lo(local.pat.span.hi())),
-                    "remove the explicit type `_` declaration"
-                )
+        if !in_external_macro(cx.tcx.sess, local.span)
+            && let Some(ty) = local.ty // Ensure that it has a type defined
+            && let TyKind::Infer = &ty.kind // that type is '_'
+            && local.span.eq_ctxt(ty.span)
+        {
+            // NOTE: Using `is_from_proc_macro` on `init` will require that it's initialized,
+            // this doesn't. Alternatively, `WithSearchPat` can be implemented for `Ty`
+            if snippet(cx, ty.span, "_").trim() != "_" {
+                return;
             }
+
+            span_lint_and_help(
+                cx,
+                LET_WITH_TYPE_UNDERSCORE,
+                local.span,
+                "variable declared with type underscore",
+                Some(ty.span.with_lo(local.pat.span.hi())),
+                "remove the explicit type `_` declaration",
+            );
         };
     }
 }

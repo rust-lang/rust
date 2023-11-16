@@ -1,6 +1,6 @@
 [package]
 name = "clippy_lints"
-version = "0.1.75"
+version = "0.1.76"
 description = "A bunch of helpful lints to avoid common pitfalls in Rust"
 repository = "https://github.com/rust-lang/rust-clippy"
 readme = "README.md"
@@ -14,7 +14,6 @@ cargo_metadata = "0.15.3"
 clippy_config = { path = "../clippy_config" }
 clippy_utils = { path = "../clippy_utils" }
 declare_clippy_lint = { path = "../declare_clippy_lint" }
-if_chain = "1.0"
 itertools = "0.10.1"
 quine-mc_cluskey = "0.2"
 regex-syntax = "0.7"

@@ -31,9 +31,9 @@ pub struct DisallowedNames {
 }
 
 impl DisallowedNames {
-    pub fn new(disallow: FxHashSet<String>) -> Self {
+    pub fn new(disallowed_names: &[String]) -> Self {
         Self {
-            disallow,
+            disallow: disallowed_names.iter().cloned().collect(),
             test_modules_deep: 0,
         }
     }

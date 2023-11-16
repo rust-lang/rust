@@ -3,7 +3,6 @@ use clippy_utils::numeric_literal::NumericLiteral;
 use clippy_utils::source::snippet_opt;
 use clippy_utils::visitors::{for_each_expr, Visitable};
 use clippy_utils::{get_parent_expr, get_parent_node, is_hir_ty_cfg_dependant, is_ty_alias, path_to_local};
-use if_chain::if_chain;
 use rustc_ast::{LitFloatType, LitIntType, LitKind};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
@@ -25,40 +24,40 @@ pub(super) fn check<'tcx>(
 ) -> bool {
     let cast_str = snippet_opt(cx, cast_expr.span).unwrap_or_default();
 
-    if_chain! {
-        if let ty::RawPtr(..) = cast_from.kind();
+    if let ty::RawPtr(..) = cast_from.kind()
         // check both mutability and type are the same
-        if cast_from.kind() == cast_to.kind();
-        if let ExprKind::Cast(_, cast_to_hir) = expr.kind;
+        && cast_from.kind() == cast_to.kind()
+        && let ExprKind::Cast(_, cast_to_hir) = expr.kind
         // Ignore casts to e.g. type aliases and infer types
         // - p as pointer_alias
         // - p as _
-        if let TyKind::Ptr(to_pointee) = cast_to_hir.kind;
-        then {
-            match to_pointee.ty.kind {
-                // Ignore casts to pointers that are aliases or cfg dependant, e.g.
-                // - p as *const std::ffi::c_char (alias)
-                // - p as *const std::os::raw::c_char (cfg dependant)
-                TyKind::Path(qpath) => {
-                    if is_ty_alias(&qpath) || is_hir_ty_cfg_dependant(cx, to_pointee.ty) {
-                        return false;
-                    }
-                },
-                // Ignore `p as *const _`
-                TyKind::Infer => return false,
-                _ => {},
-            }
-
-            span_lint_and_sugg(
-                cx,
-                UNNECESSARY_CAST,
-                expr.span,
-                &format!("casting raw pointers to the same type and constness is unnecessary (`{cast_from}` -> `{cast_to}`)"),
-                "try",
-                cast_str.clone(),
-                Applicability::MaybeIncorrect,
-            );
+        && let TyKind::Ptr(to_pointee) = cast_to_hir.kind
+    {
+        match to_pointee.ty.kind {
+            // Ignore casts to pointers that are aliases or cfg dependant, e.g.
+            // - p as *const std::ffi::c_char (alias)
+            // - p as *const std::os::raw::c_char (cfg dependant)
+            TyKind::Path(qpath) => {
+                if is_ty_alias(&qpath) || is_hir_ty_cfg_dependant(cx, to_pointee.ty) {
+                    return false;
+                }
+            },
+            // Ignore `p as *const _`
+            TyKind::Infer => return false,
+            _ => {},
         }
+
+        span_lint_and_sugg(
+            cx,
+            UNNECESSARY_CAST,
+            expr.span,
+            &format!(
+                "casting raw pointers to the same type and constness is unnecessary (`{cast_from}` -> `{cast_to}`)"
+            ),
+            "try",
+            cast_str.clone(),
+            Applicability::MaybeIncorrect,
+        );
     }
 
     // skip cast of local that is a type alias
@@ -86,14 +85,12 @@ pub(super) fn check<'tcx>(
     }
 
     // skip cast to non-primitive type
-    if_chain! {
-        if let ExprKind::Cast(_, cast_to) = expr.kind;
-        if let TyKind::Path(QPath::Resolved(_, path)) = &cast_to.kind;
-        if let Res::PrimTy(_) = path.res;
-        then {}
-        else {
-            return false;
-        }
+    if let ExprKind::Cast(_, cast_to) = expr.kind
+        && let TyKind::Path(QPath::Resolved(_, path)) = &cast_to.kind
+        && let Res::PrimTy(_) = path.res
+    {
+    } else {
+        return false;
     }
 
     // skip cast of fn call that returns type alias
@@ -106,18 +103,19 @@ pub(super) fn check<'tcx>(
     if let Some(lit) = get_numeric_literal(cast_expr) {
         let literal_str = &cast_str;
 
-        if_chain! {
-            if let LitKind::Int(n, _) = lit.node;
-            if let Some(src) = snippet_opt(cx, cast_expr.span);
-            if cast_to.is_floating_point();
-            if let Some(num_lit) = NumericLiteral::from_lit_kind(&src, &lit.node);
-            let from_nbits = 128 - n.leading_zeros();
-            let to_nbits = fp_ty_mantissa_nbits(cast_to);
-            if from_nbits != 0 && to_nbits != 0 && from_nbits <= to_nbits && num_lit.is_decimal();
-            then {
-                lint_unnecessary_cast(cx, expr, num_lit.integer, cast_from, cast_to);
-                return true
-            }
+        if let LitKind::Int(n, _) = lit.node
+            && let Some(src) = snippet_opt(cx, cast_expr.span)
+            && cast_to.is_floating_point()
+            && let Some(num_lit) = NumericLiteral::from_lit_kind(&src, &lit.node)
+            && let from_nbits = 128 - n.leading_zeros()
+            && let to_nbits = fp_ty_mantissa_nbits(cast_to)
+            && from_nbits != 0
+            && to_nbits != 0
+            && from_nbits <= to_nbits
+            && num_lit.is_decimal()
+        {
+            lint_unnecessary_cast(cx, expr, num_lit.integer, cast_from, cast_to);
+            return true;
         }
 
         match lit.node {

@@ -247,7 +247,7 @@ impl HirEqInterExpr<'_, '_, '_> {
         res
     }
 
-    #[expect(clippy::similar_names)]
+    #[expect(clippy::similar_names, clippy::too_many_lines)]
     pub fn eq_expr(&mut self, left: &Expr<'_>, right: &Expr<'_>) -> bool {
         if !self.check_ctxt(left.span.ctxt(), right.span.ctxt()) {
             return false;
@@ -271,9 +271,7 @@ impl HirEqInterExpr<'_, '_, '_> {
             (&ExprKind::AddrOf(lb, l_mut, le), &ExprKind::AddrOf(rb, r_mut, re)) => {
                 lb == rb && l_mut == r_mut && self.eq_expr(le, re)
             },
-            (&ExprKind::Continue(li), &ExprKind::Continue(ri)) => {
-                both(&li.label, &ri.label, |l, r| l.ident.name == r.ident.name)
-            },
+            (&ExprKind::Array(l), &ExprKind::Array(r)) => self.eq_exprs(l, r),
             (&ExprKind::Assign(ll, lr, _), &ExprKind::Assign(rl, rr, _)) => {
                 self.inner.allow_side_effects && self.eq_expr(ll, rl) && self.eq_expr(lr, rr)
             },
@@ -294,9 +292,15 @@ impl HirEqInterExpr<'_, '_, '_> {
             (&ExprKind::Call(l_fun, l_args), &ExprKind::Call(r_fun, r_args)) => {
                 self.inner.allow_side_effects && self.eq_expr(l_fun, r_fun) && self.eq_exprs(l_args, r_args)
             },
-            (&ExprKind::Cast(lx, lt), &ExprKind::Cast(rx, rt)) | (&ExprKind::Type(lx, lt), &ExprKind::Type(rx, rt)) => {
+            (&ExprKind::Cast(lx, lt), &ExprKind::Cast(rx, rt)) => {
                 self.eq_expr(lx, rx) && self.eq_ty(lt, rt)
             },
+            (&ExprKind::Closure(_l), &ExprKind::Closure(_r)) => false,
+            (&ExprKind::ConstBlock(lb), &ExprKind::ConstBlock(rb)) => self.eq_body(lb.body, rb.body),
+            (&ExprKind::Continue(li), &ExprKind::Continue(ri)) => {
+                both(&li.label, &ri.label, |l, r| l.ident.name == r.ident.name)
+            },
+            (&ExprKind::DropTemps(le), &ExprKind::DropTemps(re)) => self.eq_expr(le, re),
             (&ExprKind::Field(l_f_exp, ref l_f_ident), &ExprKind::Field(r_f_exp, ref r_f_ident)) => {
                 l_f_ident.name == r_f_ident.name && self.eq_expr(l_f_exp, r_f_exp)
             },
@@ -329,24 +333,70 @@ impl HirEqInterExpr<'_, '_, '_> {
                     && self.eq_expr(l_receiver, r_receiver)
                     && self.eq_exprs(l_args, r_args)
             },
+            (&ExprKind::OffsetOf(l_container, l_fields), &ExprKind::OffsetOf(r_container, r_fields)) => {
+                self.eq_ty(l_container, r_container) && over(l_fields, r_fields, |l, r| l.name == r.name)
+            },
+            (ExprKind::Path(l), ExprKind::Path(r)) => self.eq_qpath(l, r),
             (&ExprKind::Repeat(le, ll), &ExprKind::Repeat(re, rl)) => {
                 self.eq_expr(le, re) && self.eq_array_length(ll, rl)
             },
             (ExprKind::Ret(l), ExprKind::Ret(r)) => both(l, r, |l, r| self.eq_expr(l, r)),
-            (ExprKind::Path(l), ExprKind::Path(r)) => self.eq_qpath(l, r),
             (&ExprKind::Struct(l_path, lf, ref lo), &ExprKind::Struct(r_path, rf, ref ro)) => {
                 self.eq_qpath(l_path, r_path)
                     && both(lo, ro, |l, r| self.eq_expr(l, r))
                     && over(lf, rf, |l, r| self.eq_expr_field(l, r))
             },
             (&ExprKind::Tup(l_tup), &ExprKind::Tup(r_tup)) => self.eq_exprs(l_tup, r_tup),
+            (&ExprKind::Type(le, lt), &ExprKind::Type(re, rt)) => self.eq_expr(le, re) && self.eq_ty(lt, rt),
             (&ExprKind::Unary(l_op, le), &ExprKind::Unary(r_op, re)) => l_op == r_op && self.eq_expr(le, re),
-            (&ExprKind::Array(l), &ExprKind::Array(r)) => self.eq_exprs(l, r),
-            (&ExprKind::DropTemps(le), &ExprKind::DropTemps(re)) => self.eq_expr(le, re),
-            (&ExprKind::OffsetOf(l_container, l_fields), &ExprKind::OffsetOf(r_container, r_fields)) => {
-                self.eq_ty(l_container, r_container) && over(l_fields, r_fields, |l, r| l.name == r.name)
-            },
-            _ => false,
+            (&ExprKind::Yield(le, _), &ExprKind::Yield(re, _)) => return self.eq_expr(le, re),
+            (
+                // Else branches for branches above, grouped as per `match_same_arms`.
+                | &ExprKind::AddrOf(..)
+                | &ExprKind::Array(..)
+                | &ExprKind::Assign(..)
+                | &ExprKind::AssignOp(..)
+                | &ExprKind::Binary(..)
+                | &ExprKind::Become(..)
+                | &ExprKind::Block(..)
+                | &ExprKind::Break(..)
+                | &ExprKind::Call(..)
+                | &ExprKind::Cast(..)
+                | &ExprKind::ConstBlock(..)
+                | &ExprKind::Continue(..)
+                | &ExprKind::DropTemps(..)
+                | &ExprKind::Field(..)
+                | &ExprKind::Index(..)
+                | &ExprKind::If(..)
+                | &ExprKind::Let(..)
+                | &ExprKind::Lit(..)
+                | &ExprKind::Loop(..)
+                | &ExprKind::Match(..)
+                | &ExprKind::MethodCall(..)
+                | &ExprKind::OffsetOf(..)
+                | &ExprKind::Path(..)
+                | &ExprKind::Repeat(..)
+                | &ExprKind::Ret(..)
+                | &ExprKind::Struct(..)
+                | &ExprKind::Tup(..)
+                | &ExprKind::Type(..)
+                | &ExprKind::Unary(..)
+                | &ExprKind::Yield(..)
+
+                // --- Special cases that do not have a positive branch.
+
+                // `Err` represents an invalid expression, so let's never assume that
+                // an invalid expressions is equal to anything.
+                | &ExprKind::Err(..)
+
+                // For the time being, we always consider that two closures are unequal.
+                // This behavior may change in the future.
+                | &ExprKind::Closure(..)
+                // For the time being, we always consider that two instances of InlineAsm are different.
+                // This behavior may change in the future.
+                | &ExprKind::InlineAsm(_)
+                , _
+            ) => false,
         };
         (is_eq && (!self.should_ignore(left) || !self.should_ignore(right)))
             || self.inner.expr_fallback.as_mut().map_or(false, |f| f(left, right))
@@ -684,6 +734,9 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                     self.hash_name(i.ident.name);
                 }
             },
+            ExprKind::Array(v) => {
+                self.hash_exprs(v);
+            },
             ExprKind::Assign(l, r, _) => {
                 self.hash_expr(l);
                 self.hash_expr(r);
@@ -692,6 +745,9 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 std::mem::discriminant(&o.node).hash(&mut self.s);
                 self.hash_expr(l);
                 self.hash_expr(r);
+            },
+            ExprKind::Become(f) => {
+                self.hash_expr(f);
             },
             ExprKind::Block(b, _) => {
                 self.hash_block(b);
@@ -709,9 +765,6 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                     self.hash_expr(j);
                 }
             },
-            ExprKind::DropTemps(e) | ExprKind::Yield(e, _) => {
-                self.hash_expr(e);
-            },
             ExprKind::Call(fun, args) => {
                 self.hash_expr(fun);
                 self.hash_exprs(args);
@@ -726,6 +779,12 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 std::mem::discriminant(&capture_clause).hash(&mut self.s);
                 // closures inherit TypeckResults
                 self.hash_expr(self.cx.tcx.hir().body(body).value);
+            },
+            ExprKind::ConstBlock(ref l_id) => {
+                self.hash_body(l_id.body);
+            },
+            ExprKind::DropTemps(e) | ExprKind::Yield(e, _) => {
+                self.hash_expr(e);
             },
             ExprKind::Field(e, ref f) => {
                 self.hash_expr(e);
@@ -788,12 +847,6 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                     }
                 }
             },
-            ExprKind::OffsetOf(container, fields) => {
-                self.hash_ty(container);
-                for field in fields {
-                    self.hash_name(field.name);
-                }
-            },
             ExprKind::Let(Let { pat, init, ty, .. }) => {
                 self.hash_expr(init);
                 if let Some(ty) = ty {
@@ -801,7 +854,6 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 }
                 self.hash_pat(pat);
             },
-            ExprKind::Err(_) => {},
             ExprKind::Lit(l) => {
                 l.node.hash(&mut self.s);
             },
@@ -836,8 +888,14 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 self.hash_expr(receiver);
                 self.hash_exprs(args);
             },
-            ExprKind::ConstBlock(ref l_id) => {
-                self.hash_body(l_id.body);
+            ExprKind::OffsetOf(container, fields) => {
+                self.hash_ty(container);
+                for field in fields {
+                    self.hash_name(field.name);
+                }
+            },
+            ExprKind::Path(ref qpath) => {
+                self.hash_qpath(qpath);
             },
             ExprKind::Repeat(e, len) => {
                 self.hash_expr(e);
@@ -847,12 +905,6 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 if let Some(e) = *e {
                     self.hash_expr(e);
                 }
-            },
-            ExprKind::Become(f) => {
-                self.hash_expr(f);
-            },
-            ExprKind::Path(ref qpath) => {
-                self.hash_qpath(qpath);
             },
             ExprKind::Struct(path, fields, ref expr) => {
                 self.hash_qpath(path);
@@ -869,13 +921,11 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             ExprKind::Tup(tup) => {
                 self.hash_exprs(tup);
             },
-            ExprKind::Array(v) => {
-                self.hash_exprs(v);
-            },
             ExprKind::Unary(lop, le) => {
                 std::mem::discriminant(&lop).hash(&mut self.s);
                 self.hash_expr(le);
             },
+            ExprKind::Err(_) => {},
         }
     }
 

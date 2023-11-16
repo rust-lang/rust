@@ -2,7 +2,6 @@ use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::return_ty;
 use clippy_utils::source::snippet;
 use clippy_utils::sugg::DiagnosticExt;
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::HirIdSet;
@@ -93,73 +92,69 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
                             // an impl of `Default`
                             return;
                         }
-                        if_chain! {
-                            if sig.decl.inputs.is_empty();
-                            if name == sym::new;
-                            if cx.effective_visibilities.is_reachable(impl_item.owner_id.def_id);
-                            let self_def_id = cx.tcx.hir().get_parent_item(id.into());
-                            let self_ty = cx.tcx.type_of(self_def_id).instantiate_identity();
-                            if self_ty == return_ty(cx, id);
-                            if let Some(default_trait_id) = cx.tcx.get_diagnostic_item(sym::Default);
-                            then {
-                                if self.impling_types.is_none() {
-                                    let mut impls = HirIdSet::default();
-                                    cx.tcx.for_each_impl(default_trait_id, |d| {
-                                        let ty = cx.tcx.type_of(d).instantiate_identity();
-                                        if let Some(ty_def) = ty.ty_adt_def() {
-                                            if let Some(local_def_id) = ty_def.did().as_local() {
-                                                impls.insert(cx.tcx.hir().local_def_id_to_hir_id(local_def_id));
-                                            }
+                        if sig.decl.inputs.is_empty()
+                            && name == sym::new
+                            && cx.effective_visibilities.is_reachable(impl_item.owner_id.def_id)
+                            && let self_def_id = cx.tcx.hir().get_parent_item(id.into())
+                            && let self_ty = cx.tcx.type_of(self_def_id).instantiate_identity()
+                            && self_ty == return_ty(cx, id)
+                            && let Some(default_trait_id) = cx.tcx.get_diagnostic_item(sym::Default)
+                        {
+                            if self.impling_types.is_none() {
+                                let mut impls = HirIdSet::default();
+                                cx.tcx.for_each_impl(default_trait_id, |d| {
+                                    let ty = cx.tcx.type_of(d).instantiate_identity();
+                                    if let Some(ty_def) = ty.ty_adt_def() {
+                                        if let Some(local_def_id) = ty_def.did().as_local() {
+                                            impls.insert(cx.tcx.hir().local_def_id_to_hir_id(local_def_id));
                                         }
-                                    });
-                                    self.impling_types = Some(impls);
-                                }
-
-                                // Check if a Default implementation exists for the Self type, regardless of
-                                // generics
-                                if_chain! {
-                                    if let Some(ref impling_types) = self.impling_types;
-                                    let self_def = cx.tcx.type_of(self_def_id).instantiate_identity();
-                                    if let Some(self_def) = self_def.ty_adt_def();
-                                    if let Some(self_local_did) = self_def.did().as_local();
-                                    let self_id = cx.tcx.hir().local_def_id_to_hir_id(self_local_did);
-                                    if impling_types.contains(&self_id);
-                                    then {
-                                        return;
                                     }
-                                }
-
-                                let generics_sugg = snippet(cx, generics.span, "");
-                                let where_clause_sugg = if generics.has_where_clause_predicates {
-                                    format!("\n{}\n", snippet(cx, generics.where_clause_span, ""))
-                                } else {
-                                    String::new()
-                                };
-                                let self_ty_fmt = self_ty.to_string();
-                                let self_type_snip = snippet(cx, impl_self_ty.span, &self_ty_fmt);
-                                span_lint_hir_and_then(
-                                    cx,
-                                    NEW_WITHOUT_DEFAULT,
-                                    id.into(),
-                                    impl_item.span,
-                                    &format!(
-                                        "you should consider adding a `Default` implementation for `{self_type_snip}`"
-                                    ),
-                                    |diag| {
-                                        diag.suggest_prepend_item(
-                                            cx,
-                                            item.span,
-                                            "try adding this",
-                                            &create_new_without_default_suggest_msg(
-                                                &self_type_snip,
-                                                &generics_sugg,
-                                                &where_clause_sugg
-                                            ),
-                                            Applicability::MachineApplicable,
-                                        );
-                                    },
-                                );
+                                });
+                                self.impling_types = Some(impls);
                             }
+
+                            // Check if a Default implementation exists for the Self type, regardless of
+                            // generics
+                            if let Some(ref impling_types) = self.impling_types
+                                && let self_def = cx.tcx.type_of(self_def_id).instantiate_identity()
+                                && let Some(self_def) = self_def.ty_adt_def()
+                                && let Some(self_local_did) = self_def.did().as_local()
+                                && let self_id = cx.tcx.hir().local_def_id_to_hir_id(self_local_did)
+                                && impling_types.contains(&self_id)
+                            {
+                                return;
+                            }
+
+                            let generics_sugg = snippet(cx, generics.span, "");
+                            let where_clause_sugg = if generics.has_where_clause_predicates {
+                                format!("\n{}\n", snippet(cx, generics.where_clause_span, ""))
+                            } else {
+                                String::new()
+                            };
+                            let self_ty_fmt = self_ty.to_string();
+                            let self_type_snip = snippet(cx, impl_self_ty.span, &self_ty_fmt);
+                            span_lint_hir_and_then(
+                                cx,
+                                NEW_WITHOUT_DEFAULT,
+                                id.into(),
+                                impl_item.span,
+                                &format!(
+                                    "you should consider adding a `Default` implementation for `{self_type_snip}`"
+                                ),
+                                |diag| {
+                                    diag.suggest_prepend_item(
+                                        cx,
+                                        item.span,
+                                        "try adding this",
+                                        &create_new_without_default_suggest_msg(
+                                            &self_type_snip,
+                                            &generics_sugg,
+                                            &where_clause_sugg,
+                                        ),
+                                        Applicability::MachineApplicable,
+                                    );
+                                },
+                            );
                         }
                     }
                 }
