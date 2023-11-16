@@ -397,7 +397,11 @@ fn impl_intersection_has_negative_obligation(
 ) -> bool {
     debug!("negative_impl(impl1_def_id={:?}, impl2_def_id={:?})", impl1_def_id, impl2_def_id);
 
-    let ref infcx = tcx.infer_ctxt().intercrate(true).with_next_trait_solver(true).build();
+    // N.B. We don't need to use intercrate mode here because we're trying to prove
+    // the *existence* of a negative goal, not the non-existence of a positive goal.
+    // Without this, we over-eagerly register coherence ambiguity candidates when
+    // impl candidates do exist.
+    let ref infcx = tcx.infer_ctxt().with_next_trait_solver(true).build();
     let universe = infcx.universe();
 
     let impl1_header = fresh_impl_header(infcx, impl1_def_id);
