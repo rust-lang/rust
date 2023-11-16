@@ -78,7 +78,9 @@ mod tests {
     use expect_test::expect;
 
     use crate::{
-        inlay_hints::tests::{check_expect, check_with_config, DISABLED_CONFIG, TEST_CONFIG},
+        inlay_hints::tests::{
+            check_expect, check_expect_clear_loc, check_with_config, DISABLED_CONFIG, TEST_CONFIG,
+        },
         InlayHintsConfig,
     };
 
@@ -444,7 +446,7 @@ fn main() {
 
     #[test]
     fn shorten_iterator_chaining_hints() {
-        check_expect(
+        check_expect_clear_loc(
             InlayHintsConfig { chaining_hints: true, ..DISABLED_CONFIG },
             r#"
 //- minicore: iterators
@@ -484,7 +486,7 @@ fn main() {
                                         file_id: FileId(
                                             1,
                                         ),
-                                        range: 10752..10760,
+                                        range: 0..0,
                                     },
                                 ),
                                 tooltip: "",
@@ -497,7 +499,7 @@ fn main() {
                                         file_id: FileId(
                                             1,
                                         ),
-                                        range: 10784..10788,
+                                        range: 0..0,
                                     },
                                 ),
                                 tooltip: "",
@@ -522,7 +524,7 @@ fn main() {
                                         file_id: FileId(
                                             1,
                                         ),
-                                        range: 10752..10760,
+                                        range: 0..0,
                                     },
                                 ),
                                 tooltip: "",
@@ -535,7 +537,7 @@ fn main() {
                                         file_id: FileId(
                                             1,
                                         ),
-                                        range: 10784..10788,
+                                        range: 0..0,
                                     },
                                 ),
                                 tooltip: "",
@@ -560,7 +562,7 @@ fn main() {
                                         file_id: FileId(
                                             1,
                                         ),
-                                        range: 10752..10760,
+                                        range: 0..0,
                                     },
                                 ),
                                 tooltip: "",
@@ -573,7 +575,7 @@ fn main() {
                                         file_id: FileId(
                                             1,
                                         ),
-                                        range: 10784..10788,
+                                        range: 0..0,
                                     },
                                 ),
                                 tooltip: "",
@@ -598,7 +600,7 @@ fn main() {
                                         file_id: FileId(
                                             0,
                                         ),
-                                        range: 24..30,
+                                        range: 0..0,
                                     },
                                 ),
                                 tooltip: "",

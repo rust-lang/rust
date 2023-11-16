@@ -19,8 +19,8 @@ use hir_def::{
     data::adt::VariantData,
     hir::{Pat, PatId},
     src::HasSource,
-    AdtId, AttrDefId, ConstId, DefWithBodyId, EnumId, EnumVariantId, FunctionId, ItemContainerId,
-    Lookup, ModuleDefId, ModuleId, StaticId, StructId,
+    AdtId, AttrDefId, ConstId, EnumId, FunctionId, ItemContainerId, Lookup, ModuleDefId, ModuleId,
+    StaticId, StructId,
 };
 use hir_expand::{
     name::{AsName, Name},
@@ -289,8 +289,6 @@ impl<'a> DeclValidator<'a> {
             cov_mark::hit!(extern_func_incorrect_case_ignored);
             return;
         }
-
-        self.validate_body_inner_items(func.into());
 
         // Check whether non-snake case identifiers are allowed for this function.
         if self.allowed(func.into(), allow::NON_SNAKE_CASE, false) {
@@ -568,11 +566,6 @@ impl<'a> DeclValidator<'a> {
     fn validate_enum(&mut self, enum_id: EnumId) {
         let data = self.db.enum_data(enum_id);
 
-        for (local_id, _) in data.variants.iter() {
-            let variant_id = EnumVariantId { parent: enum_id, local_id };
-            self.validate_body_inner_items(variant_id.into());
-        }
-
         // Check whether non-camel case names are allowed for this enum.
         if self.allowed(enum_id.into(), allow::NON_CAMEL_CASE_TYPES, false) {
             return;
@@ -697,8 +690,6 @@ impl<'a> DeclValidator<'a> {
     fn validate_const(&mut self, const_id: ConstId) {
         let data = self.db.const_data(const_id);
 
-        self.validate_body_inner_items(const_id.into());
-
         if self.allowed(const_id.into(), allow::NON_UPPER_CASE_GLOBAL, false) {
             return;
         }
@@ -747,8 +738,6 @@ impl<'a> DeclValidator<'a> {
             return;
         }
 
-        self.validate_body_inner_items(static_id.into());
-
         if self.allowed(static_id.into(), allow::NON_UPPER_CASE_GLOBAL, false) {
             return;
         }
@@ -785,18 +774,5 @@ impl<'a> DeclValidator<'a> {
         };
 
         self.sink.push(diagnostic);
-    }
-
-    // FIXME: We don't currently validate names within `DefWithBodyId::InTypeConstId`.
-    /// Recursively validates inner scope items, such as static variables and constants.
-    fn validate_body_inner_items(&mut self, body_id: DefWithBodyId) {
-        let body = self.db.body(body_id);
-        for (_, block_def_map) in body.blocks(self.db.upcast()) {
-            for (_, module) in block_def_map.modules() {
-                for def_id in module.scope.declarations() {
-                    self.validate_item(def_id);
-                }
-            }
-        }
     }
 }
