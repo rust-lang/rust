@@ -62,7 +62,8 @@ pub trait TypeCx: Sized + Clone + fmt::Debug {
     /// patterns during analysis.
     type PatData: Clone + Default;
 
-    fn is_opaque_ty(ty: Self::Ty) -> bool;
+    /// FIXME(Nadrieril): `Cx` should only give us revealed types.
+    fn reveal_opaque_ty(&self, ty: Self::Ty) -> Self::Ty;
     fn is_exhaustive_patterns_feature_on(&self) -> bool;
 
     /// The number of fields for this constructor.

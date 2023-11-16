@@ -14,7 +14,7 @@ enum Void {}
 fn return_never_rpit(x: Void) -> impl Copy {
     if false {
         match return_never_rpit(x) {
-            _ => {}
+            _ => {} //~ ERROR unreachable
         }
     }
     x
@@ -28,7 +28,7 @@ type T = impl Copy;
 fn return_never_tait(x: Void) -> T {
     if false {
         match return_never_tait(x) {
-            _ => {}
+            _ => {} //~ ERROR unreachable
         }
     }
     x
@@ -42,7 +42,7 @@ fn option_never(x: Void) -> Option<impl Copy> {
     if false {
         match option_never(x) {
             None => {}
-            Some(_) => {}
+            Some(_) => {} //~ ERROR unreachable
         }
         match option_never(x) {
             None => {}
@@ -75,7 +75,7 @@ fn inner_never(x: Void) {
     type T = impl Copy;
     let y: T = x;
     match y {
-        _ => {}
+        _ => {} //~ ERROR unreachable
     }
 }
 
@@ -93,7 +93,7 @@ type U = impl Copy;
 fn unify_never(x: Void, u: U) -> U {
     if false {
         match u {
-            _ => {}
+            _ => {} //~ ERROR unreachable
         }
     }
     x
