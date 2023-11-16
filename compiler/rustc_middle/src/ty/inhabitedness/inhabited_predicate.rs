@@ -1,7 +1,7 @@
 use smallvec::SmallVec;
 
 use crate::ty::context::TyCtxt;
-use crate::ty::{self, DefId, ParamEnv, Ty};
+use crate::ty::{self, DefId, OpaqueTypeKey, ParamEnv, Ty};
 
 /// Represents whether some type is inhabited in a given context.
 /// Examples of uninhabited types are `!`, `enum Void {}`, or a struct
@@ -23,6 +23,8 @@ pub enum InhabitedPredicate<'tcx> {
     /// Inhabited if some generic type is inhabited.
     /// These are replaced by calling [`Self::instantiate`].
     GenericType(Ty<'tcx>),
+    /// Inhabited if either we don't know the hidden type or we know it and it is inhabited.
+    OpaqueType(OpaqueTypeKey<'tcx>),
     /// A AND B
     And(&'tcx [InhabitedPredicate<'tcx>; 2]),
     /// A OR B
@@ -30,35 +32,53 @@ pub enum InhabitedPredicate<'tcx> {
 }
 
 impl<'tcx> InhabitedPredicate<'tcx> {
-    /// Returns true if the corresponding type is inhabited in the given
-    /// `ParamEnv` and module
+    /// Returns true if the corresponding type is inhabited in the given `ParamEnv` and module.
     pub fn apply(self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>, module_def_id: DefId) -> bool {
-        let Ok(result) = self.apply_inner::<!>(tcx, param_env, &mut Default::default(), &|id| {
-            Ok(tcx.is_descendant_of(module_def_id, id))
-        });
+        self.apply_revealing_opaque(tcx, param_env, module_def_id, &|_| None)
+    }
+
+    /// Returns true if the corresponding type is inhabited in the given `ParamEnv` and module,
+    /// revealing opaques when possible.
+    pub fn apply_revealing_opaque(
+        self,
+        tcx: TyCtxt<'tcx>,
+        param_env: ParamEnv<'tcx>,
+        module_def_id: DefId,
+        reveal_opaque: &impl Fn(OpaqueTypeKey<'tcx>) -> Option<Ty<'tcx>>,
+    ) -> bool {
+        let Ok(result) = self.apply_inner::<!>(
+            tcx,
+            param_env,
+            &mut Default::default(),
+            &|id| Ok(tcx.is_descendant_of(module_def_id, id)),
+            reveal_opaque,
+        );
         result
     }
 
     /// Same as `apply`, but returns `None` if self contains a module predicate
     pub fn apply_any_module(self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> Option<bool> {
-        self.apply_inner(tcx, param_env, &mut Default::default(), &|_| Err(())).ok()
+        self.apply_inner(tcx, param_env, &mut Default::default(), &|_| Err(()), &|_| None).ok()
     }
 
     /// Same as `apply`, but `NotInModule(_)` predicates yield `false`. That is,
     /// privately uninhabited types are considered always uninhabited.
     pub fn apply_ignore_module(self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> bool {
         let Ok(result) =
-            self.apply_inner::<!>(tcx, param_env, &mut Default::default(), &|_| Ok(true));
+            self.apply_inner::<!>(tcx, param_env, &mut Default::default(), &|_| Ok(true), &|_| {
+                None
+            });
         result
     }
 
-    #[instrument(level = "debug", skip(tcx, param_env, in_module), ret)]
+    #[instrument(level = "debug", skip(tcx, param_env, in_module, reveal_opaque), ret)]
     fn apply_inner<E: std::fmt::Debug>(
         self,
         tcx: TyCtxt<'tcx>,
         param_env: ParamEnv<'tcx>,
         eval_stack: &mut SmallVec<[Ty<'tcx>; 1]>, // for cycle detection
         in_module: &impl Fn(DefId) -> Result<bool, E>,
+        reveal_opaque: &impl Fn(OpaqueTypeKey<'tcx>) -> Option<Ty<'tcx>>,
     ) -> Result<bool, E> {
         match self {
             Self::False => Ok(false),
@@ -84,18 +104,41 @@ impl<'tcx> InhabitedPredicate<'tcx> {
                             return Ok(true); // Recover; this will error later.
                         }
                         eval_stack.push(t);
-                        let ret = pred.apply_inner(tcx, param_env, eval_stack, in_module);
+                        let ret =
+                            pred.apply_inner(tcx, param_env, eval_stack, in_module, reveal_opaque);
                         eval_stack.pop();
                         ret
                     }
                 }
             }
-            Self::And([a, b]) => {
-                try_and(a, b, |x| x.apply_inner(tcx, param_env, eval_stack, in_module))
-            }
-            Self::Or([a, b]) => {
-                try_or(a, b, |x| x.apply_inner(tcx, param_env, eval_stack, in_module))
-            }
+            Self::OpaqueType(key) => match reveal_opaque(key) {
+                // Unknown opaque is assumed inhabited.
+                None => Ok(true),
+                // Known opaque type is inspected recursively.
+                Some(t) => {
+                    // A cyclic opaque type can happen in corner cases that would only error later.
+                    // See e.g. `tests/ui/type-alias-impl-trait/recursive-tait-conflicting-defn.rs`.
+                    if eval_stack.contains(&t) {
+                        return Ok(true); // Recover; this will error later.
+                    }
+                    eval_stack.push(t);
+                    let ret = t.inhabited_predicate(tcx).apply_inner(
+                        tcx,
+                        param_env,
+                        eval_stack,
+                        in_module,
+                        reveal_opaque,
+                    );
+                    eval_stack.pop();
+                    ret
+                }
+            },
+            Self::And([a, b]) => try_and(a, b, |x| {
+                x.apply_inner(tcx, param_env, eval_stack, in_module, reveal_opaque)
+            }),
+            Self::Or([a, b]) => try_or(a, b, |x| {
+                x.apply_inner(tcx, param_env, eval_stack, in_module, reveal_opaque)
+            }),
         }
     }
 

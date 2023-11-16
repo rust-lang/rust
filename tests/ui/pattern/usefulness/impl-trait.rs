@@ -46,9 +46,7 @@ fn option_never(x: Void) -> Option<impl Copy> {
         }
         match option_never(x) {
             None => {}
-            // FIXME: Unreachable not detected because `is_uninhabited` does not look into opaque
-            // types.
-            _ => {}
+            _ => {} //~ ERROR unreachable
         }
     }
     Some(x)
@@ -137,10 +135,21 @@ fn nested_empty_opaque(x: Void) -> X {
         let opaque_void = nested_empty_opaque(x);
         let secretely_void = SecretelyVoid(opaque_void);
         match secretely_void {
-            // FIXME: Unreachable not detected because `is_uninhabited` does not look into opaque
-            // types.
-            _ => {}
+            _ => {} //~ ERROR unreachable
         }
     }
     x
+}
+
+type Y = (impl Copy, impl Copy);
+struct SecretelyDoubleVoid(Y);
+fn super_nested_empty_opaque(x: Void) -> Y {
+    if false {
+        let opaque_void = super_nested_empty_opaque(x);
+        let secretely_void = SecretelyDoubleVoid(opaque_void);
+        match secretely_void {
+            _ => {} //~ ERROR unreachable
+        }
+    }
+    (x, x)
 }
