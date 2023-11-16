@@ -36,9 +36,7 @@
 //! ```
 
 use crate::FnCtxt;
-use rustc_errors::{
-    struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, MultiSpan,
-};
+use rustc_errors::{struct_span_err, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, Visitor};
@@ -1740,7 +1738,6 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         // label pointing out the cause for the type coercion will be wrong
         // as prior return coercions would not be relevant (#57664).
         let fn_decl = if let (Some(expr), Some(blk_id)) = (expression, blk_id) {
-            self.explain_self_literal(fcx, &mut err, expr, expected, found);
             let pointing_at_return_type =
                 fcx.suggest_mismatched_types_on_tail(&mut err, expr, expected, found, blk_id);
             if let (Some(cond_expr), true, false) = (
@@ -1811,60 +1808,6 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         }
 
         err
-    }
-
-    fn explain_self_literal(
-        &self,
-        fcx: &FnCtxt<'_, 'tcx>,
-        err: &mut Diagnostic,
-        expr: &'tcx hir::Expr<'tcx>,
-        expected: Ty<'tcx>,
-        found: Ty<'tcx>,
-    ) {
-        match expr.peel_drop_temps().kind {
-            hir::ExprKind::Struct(
-                hir::QPath::Resolved(
-                    None,
-                    hir::Path { res: hir::def::Res::SelfTyAlias { alias_to, .. }, span, .. },
-                ),
-                ..,
-            )
-            | hir::ExprKind::Call(
-                hir::Expr {
-                    kind:
-                        hir::ExprKind::Path(hir::QPath::Resolved(
-                            None,
-                            hir::Path {
-                                res: hir::def::Res::SelfTyAlias { alias_to, .. },
-                                span,
-                                ..
-                            },
-                        )),
-                    ..
-                },
-                ..,
-            ) => {
-                if let Some(hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::Impl(hir::Impl { self_ty, .. }),
-                    ..
-                })) = fcx.tcx.hir().get_if_local(*alias_to)
-                {
-                    err.span_label(self_ty.span, "this is the type of the `Self` literal");
-                }
-                if let ty::Adt(e_def, e_args) = expected.kind()
-                    && let ty::Adt(f_def, _f_args) = found.kind()
-                    && e_def == f_def
-                {
-                    err.span_suggestion_verbose(
-                        *span,
-                        "use the type name directly",
-                        fcx.tcx.value_path_str_with_args(*alias_to, e_args),
-                        Applicability::MaybeIncorrect,
-                    );
-                }
-            }
-            _ => {}
-        }
     }
 
     /// Checks whether the return type is unsized via an obligation, which makes
