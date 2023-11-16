@@ -39,6 +39,6 @@ fn has_structural_eq_impls<'tcx>(tcx: TyCtxt<'tcx>, adt_ty: Ty<'tcx>) -> bool {
     ocx.select_all_or_error().is_empty()
 }
 
-pub fn provide(providers: &mut Providers) {
+pub(crate) fn provide(providers: &mut Providers) {
     providers.has_structural_eq_impls = has_structural_eq_impls;
 }

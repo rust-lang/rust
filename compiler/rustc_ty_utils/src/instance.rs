@@ -328,6 +328,6 @@ fn resolve_associated_item<'tcx>(
     })
 }
 
-pub fn provide(providers: &mut Providers) {
+pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers { resolve_instance, ..*providers };
 }

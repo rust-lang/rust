@@ -24,7 +24,7 @@ use crate::errors::{
 };
 use crate::layout_sanity_check::sanity_check_layout;
 
-pub fn provide(providers: &mut Providers) {
+pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers { layout_of, ..*providers };
 }
 
