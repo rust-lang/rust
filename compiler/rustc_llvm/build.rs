@@ -102,7 +102,7 @@ fn output(cmd: &mut Command) -> String {
 
 fn main() {
     for component in REQUIRED_COMPONENTS.iter().chain(OPTIONAL_COMPONENTS.iter()) {
-        println!("cargo:rustc-check-cfg=values(llvm_component,\"{component}\")");
+        println!("cargo:rustc-check-cfg=cfg(llvm_component,values(\"{component}\"))");
     }
 
     if tracked_env_var_os("RUST_CHECK").is_some() {
