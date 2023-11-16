@@ -267,13 +267,12 @@ impl Linker {
 
         sess.compile_status()?;
 
-        let dep_graph = self.dep_graph;
         sess.time("serialize_work_products", || {
-            rustc_incremental::save_work_product_index(sess, &dep_graph, work_products)
+            rustc_incremental::save_work_product_index(sess, &self.dep_graph, work_products)
         });
 
         let prof = sess.prof.clone();
-        prof.generic_activity("drop_dep_graph").run(move || drop(dep_graph));
+        prof.generic_activity("drop_dep_graph").run(move || drop(self.dep_graph));
 
         // Now that we won't touch anything in the incremental compilation directory
         // any more, we can finalize it (which involves renaming it)
