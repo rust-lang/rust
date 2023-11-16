@@ -124,7 +124,7 @@ jobs:
     - name: Run tests
       run: |
         # TODO: remove --features master when it is back to the default.
-        ./test.sh --features master --release --clean --build-sysroot ${{ matrix.commands }}
+        ./y.sh test --features master --release --clean --build-sysroot ${{ matrix.commands }}
 
   duplicates:
     runs-on: ubuntu-latest

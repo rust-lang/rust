@@ -105,4 +105,4 @@ jobs:
     - name: Run tests
       run: |
         # TODO: remove --features master when it is back to the default.
-        EMBED_LTO_BITCODE=1 ./test.sh --release --clean --release-sysroot --build-sysroot ${{ matrix.commands }} --features master
+        EMBED_LTO_BITCODE=1 ./y.sh test --release --clean --release-sysroot --build-sysroot ${{ matrix.commands }} --features master

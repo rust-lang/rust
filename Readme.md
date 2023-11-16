@@ -65,7 +65,7 @@ $ LIBRARY_PATH=$(cat gcc_path) LD_LIBRARY_PATH=$(cat gcc_path) ./y.sh build --re
 To run the tests:
 
 ```bash
-$ ./test.sh --release --features master
+$ ./y.sh test --release --features master
 ```
 
 ## Usage
@@ -82,7 +82,7 @@ export CG_GCCJIT_DIR=[the full path to rustc_codegen_gcc]
 $ CHANNEL="release" $CG_GCCJIT_DIR/cargo.sh run
 ```
 
-If you compiled cg_gccjit in debug mode (aka you didn't pass `--release` to `./test.sh`) you should use `CHANNEL="debug"` instead or omit `CHANNEL="release"` completely.
+If you compiled cg_gccjit in debug mode (aka you didn't pass `--release` to `./y.sh test`) you should use `CHANNEL="debug"` instead or omit `CHANNEL="release"` completely.
 
 ### LTO
 

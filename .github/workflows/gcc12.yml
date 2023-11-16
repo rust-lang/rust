@@ -112,4 +112,4 @@ jobs:
 
     - name: Run tests
       run: |
-        ./test.sh --release --clean --build-sysroot ${{ matrix.commands }} --no-default-features
+        ./y.sh test --release --clean --build-sysroot ${{ matrix.commands }} --no-default-features

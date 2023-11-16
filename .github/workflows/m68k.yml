@@ -139,4 +139,4 @@ jobs:
     - name: Run tests
       run: |
         # TODO: remove --features master when it is back to the default.
-        ./test.sh --release --features master --clean --build-sysroot ${{ matrix.commands }}
+        ./y.sh test --release --features master --clean --build-sysroot ${{ matrix.commands }}
