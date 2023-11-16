@@ -380,7 +380,6 @@ impl GlobalState {
                         ws
                     })
                     .collect::<Vec<_>>();
-
                 // Workspaces are the same, but we've updated build data.
                 self.workspaces = Arc::new(workspaces);
             } else {

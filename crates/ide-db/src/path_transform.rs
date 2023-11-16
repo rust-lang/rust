@@ -277,6 +277,7 @@ impl Ctx<'_> {
                                 self.source_scope.db.upcast(),
                                 hir::ModuleDef::Trait(trait_ref),
                                 false,
+                                true,
                             )?;
                             match make::ty_path(mod_path_to_ast(&found_path)) {
                                 ast::Type::PathType(path_ty) => Some(path_ty),
@@ -311,8 +312,12 @@ impl Ctx<'_> {
                     }
                 }
 
-                let found_path =
-                    self.target_module.find_use_path(self.source_scope.db.upcast(), def, false)?;
+                let found_path = self.target_module.find_use_path(
+                    self.source_scope.db.upcast(),
+                    def,
+                    false,
+                    true,
+                )?;
                 let res = mod_path_to_ast(&found_path).clone_for_update();
                 if let Some(args) = path.segment().and_then(|it| it.generic_arg_list()) {
                     if let Some(segment) = res.segment() {

@@ -493,10 +493,15 @@ Group inserted imports by the https://rust-analyzer.github.io/manual.html#auto-i
 --
 Whether to allow import insertion to merge new imports into single path glob imports like `use std::fmt::*;`.
 --
-[[rust-analyzer.imports.prefer.no.std]]rust-analyzer.imports.prefer.no.std (default: `false`)::
+[[rust-analyzer.imports.preferNoStd]]rust-analyzer.imports.preferNoStd (default: `false`)::
 +
 --
 Prefer to unconditionally use imports of the core and alloc crate, over the std crate.
+--
+[[rust-analyzer.imports.preferPrelude]]rust-analyzer.imports.preferPrelude (default: `false`)::
++
+--
+Whether to prefer import paths containing a `prelude` module.
 --
 [[rust-analyzer.imports.prefix]]rust-analyzer.imports.prefix (default: `"plain"`)::
 +

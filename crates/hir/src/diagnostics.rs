@@ -3,7 +3,7 @@
 //!
 //! This probably isn't the best way to do this -- ideally, diagnostics should
 //! be expressed in terms of hir types themselves.
-pub use hir_ty::diagnostics::{CaseType, IncoherentImpl, IncorrectCase};
+pub use hir_ty::diagnostics::{CaseType, IncorrectCase};
 
 use base_db::CrateId;
 use cfg::{CfgExpr, CfgOptions};
@@ -53,6 +53,9 @@ diagnostics![
     PrivateAssocItem,
     PrivateField,
     ReplaceFilterMapNextWithFindMap,
+    TraitImplIncorrectSafety,
+    TraitImplMissingAssocItems,
+    TraitImplOrphan,
     TypedHole,
     TypeMismatch,
     UndeclaredLabel,
@@ -279,4 +282,31 @@ pub struct UnusedVariable {
 pub struct MovedOutOfRef {
     pub ty: Type,
     pub span: InFile<SyntaxNodePtr>,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct IncoherentImpl {
+    pub file_id: HirFileId,
+    pub impl_: AstPtr<ast::Impl>,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct TraitImplOrphan {
+    pub file_id: HirFileId,
+    pub impl_: AstPtr<ast::Impl>,
+}
+
+// FIXME: Split this off into the corresponding 4 rustc errors
+#[derive(Debug, PartialEq, Eq)]
+pub struct TraitImplIncorrectSafety {
+    pub file_id: HirFileId,
+    pub impl_: AstPtr<ast::Impl>,
+    pub should_be_safe: bool,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct TraitImplMissingAssocItems {
+    pub file_id: HirFileId,
+    pub impl_: AstPtr<ast::Impl>,
+    pub missing: Vec<(Name, AssocItem)>,
 }

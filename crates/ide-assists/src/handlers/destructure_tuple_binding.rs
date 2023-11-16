@@ -3,10 +3,12 @@ use ide_db::{
     defs::Definition,
     search::{FileReference, SearchScope, UsageSearchResult},
 };
+use itertools::Itertools;
 use syntax::{
-    ast::{self, AstNode, FieldExpr, HasName, IdentPat, MethodCallExpr},
-    TextRange,
+    ast::{self, make, AstNode, FieldExpr, HasName, IdentPat, MethodCallExpr},
+    ted, T,
 };
+use text_edit::TextRange;
 
 use crate::assist_context::{AssistContext, Assists, SourceChangeBuilder};
 
@@ -61,25 +63,34 @@ pub(crate) fn destructure_tuple_binding_impl(
         acc.add(
             AssistId("destructure_tuple_binding_in_sub_pattern", AssistKind::RefactorRewrite),
             "Destructure tuple in sub-pattern",
-            data.range,
-            |builder| {
-                edit_tuple_assignment(ctx, builder, &data, true);
-                edit_tuple_usages(&data, builder, ctx, true);
-            },
+            data.ident_pat.syntax().text_range(),
+            |edit| destructure_tuple_edit_impl(ctx, edit, &data, true),
         );
     }
 
     acc.add(
         AssistId("destructure_tuple_binding", AssistKind::RefactorRewrite),
         if with_sub_pattern { "Destructure tuple in place" } else { "Destructure tuple" },
-        data.range,
-        |builder| {
-            edit_tuple_assignment(ctx, builder, &data, false);
-            edit_tuple_usages(&data, builder, ctx, false);
-        },
+        data.ident_pat.syntax().text_range(),
+        |edit| destructure_tuple_edit_impl(ctx, edit, &data, false),
     );
 
     Some(())
+}
+
+fn destructure_tuple_edit_impl(
+    ctx: &AssistContext<'_>,
+    edit: &mut SourceChangeBuilder,
+    data: &TupleData,
+    in_sub_pattern: bool,
+) {
+    let assignment_edit = edit_tuple_assignment(ctx, edit, &data, in_sub_pattern);
+    let current_file_usages_edit = edit_tuple_usages(&data, edit, ctx, in_sub_pattern);
+
+    assignment_edit.apply();
+    if let Some(usages_edit) = current_file_usages_edit {
+        usages_edit.into_iter().for_each(|usage_edit| usage_edit.apply(edit))
+    }
 }
 
 fn collect_data(ident_pat: IdentPat, ctx: &AssistContext<'_>) -> Option<TupleData> {
@@ -109,7 +120,6 @@ fn collect_data(ident_pat: IdentPat, ctx: &AssistContext<'_>) -> Option<TupleDat
     }
 
     let name = ident_pat.name()?.to_string();
-    let range = ident_pat.syntax().text_range();
 
     let usages = ctx.sema.to_def(&ident_pat).map(|def| {
         Definition::Local(def)
@@ -122,7 +132,7 @@ fn collect_data(ident_pat: IdentPat, ctx: &AssistContext<'_>) -> Option<TupleDat
         .map(|i| generate_name(ctx, i, &name, &ident_pat, &usages))
         .collect::<Vec<_>>();
 
-    Some(TupleData { ident_pat, range, ref_type, field_names, usages })
+    Some(TupleData { ident_pat, ref_type, field_names, usages })
 }
 
 fn generate_name(
@@ -142,72 +152,100 @@ enum RefType {
 }
 struct TupleData {
     ident_pat: IdentPat,
-    // name: String,
-    range: TextRange,
     ref_type: Option<RefType>,
     field_names: Vec<String>,
-    // field_types: Vec<Type>,
     usages: Option<UsageSearchResult>,
 }
 fn edit_tuple_assignment(
     ctx: &AssistContext<'_>,
-    builder: &mut SourceChangeBuilder,
+    edit: &mut SourceChangeBuilder,
     data: &TupleData,
     in_sub_pattern: bool,
-) {
+) -> AssignmentEdit {
+    let ident_pat = edit.make_mut(data.ident_pat.clone());
+
     let tuple_pat = {
         let original = &data.ident_pat;
         let is_ref = original.ref_token().is_some();
         let is_mut = original.mut_token().is_some();
-        let fields = data.field_names.iter().map(|name| {
-            ast::Pat::from(ast::make::ident_pat(is_ref, is_mut, ast::make::name(name)))
-        });
-        ast::make::tuple_pat(fields)
+        let fields = data
+            .field_names
+            .iter()
+            .map(|name| ast::Pat::from(make::ident_pat(is_ref, is_mut, make::name(name))));
+        make::tuple_pat(fields).clone_for_update()
     };
 
-    let add_cursor = |text: &str| {
-        // place cursor on first tuple item
-        let first_tuple = &data.field_names[0];
-        text.replacen(first_tuple, &format!("$0{first_tuple}"), 1)
-    };
+    if let Some(cap) = ctx.config.snippet_cap {
+        // place cursor on first tuple name
+        if let Some(ast::Pat::IdentPat(first_pat)) = tuple_pat.fields().next() {
+            edit.add_tabstop_before(
+                cap,
+                first_pat.name().expect("first ident pattern should have a name"),
+            )
+        }
+    }
 
-    // with sub_pattern: keep original tuple and add subpattern: `tup @ (_0, _1)`
-    if in_sub_pattern {
-        let text = format!(" @ {tuple_pat}");
-        match ctx.config.snippet_cap {
-            Some(cap) => {
-                let snip = add_cursor(&text);
-                builder.insert_snippet(cap, data.range.end(), snip);
-            }
-            None => builder.insert(data.range.end(), text),
-        };
-    } else {
-        let text = tuple_pat.to_string();
-        match ctx.config.snippet_cap {
-            Some(cap) => {
-                let snip = add_cursor(&text);
-                builder.replace_snippet(cap, data.range, snip);
-            }
-            None => builder.replace(data.range, text),
-        };
+    AssignmentEdit { ident_pat, tuple_pat, in_sub_pattern }
+}
+struct AssignmentEdit {
+    ident_pat: ast::IdentPat,
+    tuple_pat: ast::TuplePat,
+    in_sub_pattern: bool,
+}
+
+impl AssignmentEdit {
+    fn apply(self) {
+        // with sub_pattern: keep original tuple and add subpattern: `tup @ (_0, _1)`
+        if self.in_sub_pattern {
+            self.ident_pat.set_pat(Some(self.tuple_pat.into()))
+        } else {
+            ted::replace(self.ident_pat.syntax(), self.tuple_pat.syntax())
+        }
     }
 }
 
 fn edit_tuple_usages(
     data: &TupleData,
-    builder: &mut SourceChangeBuilder,
+    edit: &mut SourceChangeBuilder,
     ctx: &AssistContext<'_>,
     in_sub_pattern: bool,
-) {
-    if let Some(usages) = data.usages.as_ref() {
-        for (file_id, refs) in usages.iter() {
-            builder.edit_file(*file_id);
+) -> Option<Vec<EditTupleUsage>> {
+    let mut current_file_usages = None;
 
-            for r in refs {
-                edit_tuple_usage(ctx, builder, r, data, in_sub_pattern);
+    if let Some(usages) = data.usages.as_ref() {
+        // We need to collect edits first before actually applying them
+        // as mapping nodes to their mutable node versions requires an
+        // unmodified syntax tree.
+        //
+        // We also defer editing usages in the current file first since
+        // tree mutation in the same file breaks when `builder.edit_file`
+        // is called
+
+        if let Some((_, refs)) = usages.iter().find(|(file_id, _)| **file_id == ctx.file_id()) {
+            current_file_usages = Some(
+                refs.iter()
+                    .filter_map(|r| edit_tuple_usage(ctx, edit, r, data, in_sub_pattern))
+                    .collect_vec(),
+            );
+        }
+
+        for (file_id, refs) in usages.iter() {
+            if *file_id == ctx.file_id() {
+                continue;
             }
+
+            edit.edit_file(*file_id);
+
+            let tuple_edits = refs
+                .iter()
+                .filter_map(|r| edit_tuple_usage(ctx, edit, r, data, in_sub_pattern))
+                .collect_vec();
+
+            tuple_edits.into_iter().for_each(|tuple_edit| tuple_edit.apply(edit))
         }
     }
+
+    current_file_usages
 }
 fn edit_tuple_usage(
     ctx: &AssistContext<'_>,
@@ -215,25 +253,14 @@ fn edit_tuple_usage(
     usage: &FileReference,
     data: &TupleData,
     in_sub_pattern: bool,
-) {
+) -> Option<EditTupleUsage> {
     match detect_tuple_index(usage, data) {
-        Some(index) => edit_tuple_field_usage(ctx, builder, data, index),
-        None => {
-            if in_sub_pattern {
-                cov_mark::hit!(destructure_tuple_call_with_subpattern);
-                return;
-            }
-
-            // no index access -> make invalid -> requires handling by user
-            // -> put usage in block comment
-            //
-            // Note: For macro invocations this might result in still valid code:
-            //   When a macro accepts the tuple as argument, as well as no arguments at all,
-            //   uncommenting the tuple still leaves the macro call working (see `tests::in_macro_call::empty_macro`).
-            //   But this is an unlikely case. Usually the resulting macro call will become erroneous.
-            builder.insert(usage.range.start(), "/*");
-            builder.insert(usage.range.end(), "*/");
+        Some(index) => Some(edit_tuple_field_usage(ctx, builder, data, index)),
+        None if in_sub_pattern => {
+            cov_mark::hit!(destructure_tuple_call_with_subpattern);
+            return None;
         }
+        None => Some(EditTupleUsage::NoIndex(usage.range)),
     }
 }
 
@@ -242,19 +269,47 @@ fn edit_tuple_field_usage(
     builder: &mut SourceChangeBuilder,
     data: &TupleData,
     index: TupleIndex,
-) {
+) -> EditTupleUsage {
     let field_name = &data.field_names[index.index];
+    let field_name = make::expr_path(make::ext::ident_path(field_name));
 
     if data.ref_type.is_some() {
-        let ref_data = handle_ref_field_usage(ctx, &index.field_expr);
-        builder.replace(ref_data.range, ref_data.format(field_name));
+        let (replace_expr, ref_data) = handle_ref_field_usage(ctx, &index.field_expr);
+        let replace_expr = builder.make_mut(replace_expr);
+        EditTupleUsage::ReplaceExpr(replace_expr, ref_data.wrap_expr(field_name))
     } else {
-        builder.replace(index.range, field_name);
+        let field_expr = builder.make_mut(index.field_expr);
+        EditTupleUsage::ReplaceExpr(field_expr.into(), field_name)
     }
 }
+enum EditTupleUsage {
+    /// no index access -> make invalid -> requires handling by user
+    /// -> put usage in block comment
+    ///
+    /// Note: For macro invocations this might result in still valid code:
+    ///   When a macro accepts the tuple as argument, as well as no arguments at all,
+    ///   uncommenting the tuple still leaves the macro call working (see `tests::in_macro_call::empty_macro`).
+    ///   But this is an unlikely case. Usually the resulting macro call will become erroneous.
+    NoIndex(TextRange),
+    ReplaceExpr(ast::Expr, ast::Expr),
+}
+
+impl EditTupleUsage {
+    fn apply(self, edit: &mut SourceChangeBuilder) {
+        match self {
+            EditTupleUsage::NoIndex(range) => {
+                edit.insert(range.start(), "/*");
+                edit.insert(range.end(), "*/");
+            }
+            EditTupleUsage::ReplaceExpr(target_expr, replace_with) => {
+                ted::replace(target_expr.syntax(), replace_with.clone_for_update().syntax())
+            }
+        }
+    }
+}
+
 struct TupleIndex {
     index: usize,
-    range: TextRange,
     field_expr: FieldExpr,
 }
 fn detect_tuple_index(usage: &FileReference, data: &TupleData) -> Option<TupleIndex> {
@@ -296,7 +351,7 @@ fn detect_tuple_index(usage: &FileReference, data: &TupleData) -> Option<TupleIn
                 return None;
             }
 
-            Some(TupleIndex { index: idx, range: field_expr.syntax().text_range(), field_expr })
+            Some(TupleIndex { index: idx, field_expr })
         } else {
             // tuple index out of range
             None
@@ -307,32 +362,34 @@ fn detect_tuple_index(usage: &FileReference, data: &TupleData) -> Option<TupleIn
 }
 
 struct RefData {
-    range: TextRange,
     needs_deref: bool,
     needs_parentheses: bool,
 }
 impl RefData {
-    fn format(&self, field_name: &str) -> String {
-        match (self.needs_deref, self.needs_parentheses) {
-            (true, true) => format!("(*{field_name})"),
-            (true, false) => format!("*{field_name}"),
-            (false, true) => format!("({field_name})"),
-            (false, false) => field_name.to_string(),
+    fn wrap_expr(&self, mut expr: ast::Expr) -> ast::Expr {
+        if self.needs_deref {
+            expr = make::expr_prefix(T![*], expr);
         }
+
+        if self.needs_parentheses {
+            expr = make::expr_paren(expr);
+        }
+
+        return expr;
     }
 }
-fn handle_ref_field_usage(ctx: &AssistContext<'_>, field_expr: &FieldExpr) -> RefData {
+fn handle_ref_field_usage(ctx: &AssistContext<'_>, field_expr: &FieldExpr) -> (ast::Expr, RefData) {
     let s = field_expr.syntax();
-    let mut ref_data =
-        RefData { range: s.text_range(), needs_deref: true, needs_parentheses: true };
+    let mut ref_data = RefData { needs_deref: true, needs_parentheses: true };
+    let mut target_node = field_expr.clone().into();
 
     let parent = match s.parent().map(ast::Expr::cast) {
         Some(Some(parent)) => parent,
         Some(None) => {
             ref_data.needs_parentheses = false;
-            return ref_data;
+            return (target_node, ref_data);
         }
-        None => return ref_data,
+        None => return (target_node, ref_data),
     };
 
     match parent {
@@ -342,7 +399,7 @@ fn handle_ref_field_usage(ctx: &AssistContext<'_>, field_expr: &FieldExpr) -> Re
             // there might be a ref outside: `&(t.0)` -> can be removed
             if let Some(it) = it.syntax().parent().and_then(ast::RefExpr::cast) {
                 ref_data.needs_deref = false;
-                ref_data.range = it.syntax().text_range();
+                target_node = it.into();
             }
         }
         ast::Expr::RefExpr(it) => {
@@ -351,8 +408,8 @@ fn handle_ref_field_usage(ctx: &AssistContext<'_>, field_expr: &FieldExpr) -> Re
             ref_data.needs_parentheses = false;
             // might be surrounded by parens -> can be removed too
             match it.syntax().parent().and_then(ast::ParenExpr::cast) {
-                Some(parent) => ref_data.range = parent.syntax().text_range(),
-                None => ref_data.range = it.syntax().text_range(),
+                Some(parent) => target_node = parent.into(),
+                None => target_node = it.into(),
             };
         }
         // higher precedence than deref `*`
@@ -414,7 +471,7 @@ fn handle_ref_field_usage(ctx: &AssistContext<'_>, field_expr: &FieldExpr) -> Re
         }
     };
 
-    ref_data
+    (target_node, ref_data)
 }
 
 #[cfg(test)]

@@ -1136,7 +1136,9 @@ impl Thing {
                 ```
 
                 ```rust
-                struct Thing
+                struct Thing {
+                    x: u32,
+                }
                 ```
             "#]],
     );
@@ -1155,7 +1157,9 @@ impl Thing {
                 ```
 
                 ```rust
-                struct Thing
+                struct Thing {
+                    x: u32,
+                }
                 ```
             "#]],
     );
@@ -1174,7 +1178,9 @@ impl Thing {
                 ```
 
                 ```rust
-                enum Thing
+                enum Thing {
+                    A,
+                }
                 ```
             "#]],
     );
@@ -1193,7 +1199,9 @@ impl Thing {
                 ```
 
                 ```rust
-                enum Thing
+                enum Thing {
+                    A,
+                }
                 ```
             "#]],
     );
@@ -2005,7 +2013,10 @@ fn test_hover_layout_of_enum() {
             ```
 
             ```rust
-            enum Foo // size = 16 (0x10), align = 8, niches = 254
+            enum Foo {
+                Variant1(u8, u16),
+                Variant2(i32, u8, i64),
+            } // size = 16 (0x10), align = 8, niches = 254
             ```
         "#]],
     );
@@ -2346,7 +2357,7 @@ fn main() { let s$0t = S{ f1:0 }; }
                                     focus_range: 7..8,
                                     name: "S",
                                     kind: Struct,
-                                    description: "struct S",
+                                    description: "struct S {\n    f1: u32,\n}",
                                 },
                             },
                         ],
@@ -2379,7 +2390,7 @@ fn main() { let s$0t = S{ f1:Arg(0) }; }
                                     focus_range: 24..25,
                                     name: "S",
                                     kind: Struct,
-                                    description: "struct S<T>",
+                                    description: "struct S<T> {\n    f1: T,\n}",
                                 },
                             },
                             HoverGotoTypeData {
@@ -2392,7 +2403,7 @@ fn main() { let s$0t = S{ f1:Arg(0) }; }
                                     focus_range: 7..10,
                                     name: "Arg",
                                     kind: Struct,
-                                    description: "struct Arg",
+                                    description: "struct Arg(u32);",
                                 },
                             },
                         ],
@@ -2438,7 +2449,7 @@ fn main() { let s$0t = S{ f1: S{ f1: Arg(0) } }; }
                                     focus_range: 24..25,
                                     name: "S",
                                     kind: Struct,
-                                    description: "struct S<T>",
+                                    description: "struct S<T> {\n    f1: T,\n}",
                                 },
                             },
                             HoverGotoTypeData {
@@ -2451,7 +2462,7 @@ fn main() { let s$0t = S{ f1: S{ f1: Arg(0) } }; }
                                     focus_range: 7..10,
                                     name: "Arg",
                                     kind: Struct,
-                                    description: "struct Arg",
+                                    description: "struct Arg(u32);",
                                 },
                             },
                         ],
@@ -2487,7 +2498,7 @@ fn main() { let s$0t = (A(1), B(2), M::C(3) ); }
                                 focus_range: 7..8,
                                 name: "A",
                                 kind: Struct,
-                                description: "struct A",
+                                description: "struct A(u32);",
                             },
                         },
                         HoverGotoTypeData {
@@ -2500,7 +2511,7 @@ fn main() { let s$0t = (A(1), B(2), M::C(3) ); }
                                 focus_range: 22..23,
                                 name: "B",
                                 kind: Struct,
-                                description: "struct B",
+                                description: "struct B(u32);",
                             },
                         },
                         HoverGotoTypeData {
@@ -2514,7 +2525,7 @@ fn main() { let s$0t = (A(1), B(2), M::C(3) ); }
                                 name: "C",
                                 kind: Struct,
                                 container_name: "M",
-                                description: "pub struct C",
+                                description: "pub struct C(u32);",
                             },
                         },
                     ],
@@ -2704,7 +2715,7 @@ fn main() { let s$0t = foo(); }
                                     focus_range: 39..41,
                                     name: "S1",
                                     kind: Struct,
-                                    description: "struct S1",
+                                    description: "struct S1 {}",
                                 },
                             },
                             HoverGotoTypeData {
@@ -2717,7 +2728,7 @@ fn main() { let s$0t = foo(); }
                                     focus_range: 52..54,
                                     name: "S2",
                                     kind: Struct,
-                                    description: "struct S2",
+                                    description: "struct S2 {}",
                                 },
                             },
                         ],
@@ -2808,7 +2819,7 @@ fn foo(ar$0g: &impl Foo + Bar<S>) {}
                                     focus_range: 36..37,
                                     name: "S",
                                     kind: Struct,
-                                    description: "struct S",
+                                    description: "struct S {}",
                                 },
                             },
                         ],
@@ -2908,7 +2919,7 @@ fn foo(ar$0g: &impl Foo<S>) {}
                                     focus_range: 23..24,
                                     name: "S",
                                     kind: Struct,
-                                    description: "struct S",
+                                    description: "struct S {}",
                                 },
                             },
                         ],
@@ -2945,7 +2956,7 @@ fn main() { let s$0t = foo(); }
                                     focus_range: 49..50,
                                     name: "B",
                                     kind: Struct,
-                                    description: "struct B<T>",
+                                    description: "struct B<T> {}",
                                 },
                             },
                             HoverGotoTypeData {
@@ -3034,7 +3045,7 @@ fn foo(ar$0g: &dyn Foo<S>) {}
                                     focus_range: 23..24,
                                     name: "S",
                                     kind: Struct,
-                                    description: "struct S",
+                                    description: "struct S {}",
                                 },
                             },
                         ],
@@ -3082,7 +3093,7 @@ fn foo(a$0rg: &impl ImplTrait<B<dyn DynTrait<B<S>>>>) {}
                                     focus_range: 50..51,
                                     name: "B",
                                     kind: Struct,
-                                    description: "struct B<T>",
+                                    description: "struct B<T> {}",
                                 },
                             },
                             HoverGotoTypeData {
@@ -3108,7 +3119,7 @@ fn foo(a$0rg: &impl ImplTrait<B<dyn DynTrait<B<S>>>>) {}
                                     focus_range: 65..66,
                                     name: "S",
                                     kind: Struct,
-                                    description: "struct S",
+                                    description: "struct S {}",
                                 },
                             },
                         ],
@@ -3335,7 +3346,7 @@ struct S$0T<const C: usize = 1, T = Foo>(T);
             ```
 
             ```rust
-            struct ST<const C: usize = 1, T = Foo>
+            struct ST<const C: usize = 1, T = Foo>(T);
             ```
         "#]],
     );
@@ -3356,7 +3367,7 @@ struct S$0T<const C: usize = {40 + 2}, T = Foo>(T);
             ```
 
             ```rust
-            struct ST<const C: usize = {const}, T = Foo>
+            struct ST<const C: usize = {const}, T = Foo>(T);
             ```
         "#]],
     );
@@ -3378,7 +3389,7 @@ struct S$0T<const C: usize = VAL, T = Foo>(T);
             ```
 
             ```rust
-            struct ST<const C: usize = VAL, T = Foo>
+            struct ST<const C: usize = VAL, T = Foo>(T);
             ```
         "#]],
     );
@@ -5935,7 +5946,7 @@ pub struct Foo(i32);
             ```
 
             ```rust
-            pub struct Foo // size = 4, align = 4
+            pub struct Foo(i32); // size = 4, align = 4
             ```
 
             ---

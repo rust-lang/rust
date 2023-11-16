@@ -220,9 +220,10 @@ impl ImportAssets {
         sema: &Semantics<'_, RootDatabase>,
         prefix_kind: PrefixKind,
         prefer_no_std: bool,
+        prefer_prelude: bool,
     ) -> Vec<LocatedImport> {
         let _p = profile::span("import_assets::search_for_imports");
-        self.search_for(sema, Some(prefix_kind), prefer_no_std)
+        self.search_for(sema, Some(prefix_kind), prefer_no_std, prefer_prelude)
     }
 
     /// This may return non-absolute paths if a part of the returned path is already imported into scope.
@@ -230,9 +231,10 @@ impl ImportAssets {
         &self,
         sema: &Semantics<'_, RootDatabase>,
         prefer_no_std: bool,
+        prefer_prelude: bool,
     ) -> Vec<LocatedImport> {
         let _p = profile::span("import_assets::search_for_relative_paths");
-        self.search_for(sema, None, prefer_no_std)
+        self.search_for(sema, None, prefer_no_std, prefer_prelude)
     }
 
     /// Requires imports to by prefix instead of fuzzily.
@@ -270,6 +272,7 @@ impl ImportAssets {
         sema: &Semantics<'_, RootDatabase>,
         prefixed: Option<PrefixKind>,
         prefer_no_std: bool,
+        prefer_prelude: bool,
     ) -> Vec<LocatedImport> {
         let _p = profile::span("import_assets::search_for");
 
@@ -281,6 +284,7 @@ impl ImportAssets {
                 &self.module_with_candidate,
                 prefixed,
                 prefer_no_std,
+                prefer_prelude,
             )
         };
 
@@ -594,11 +598,18 @@ fn get_mod_path(
     module_with_candidate: &Module,
     prefixed: Option<PrefixKind>,
     prefer_no_std: bool,
+    prefer_prelude: bool,
 ) -> Option<ModPath> {
     if let Some(prefix_kind) = prefixed {
-        module_with_candidate.find_use_path_prefixed(db, item_to_search, prefix_kind, prefer_no_std)
+        module_with_candidate.find_use_path_prefixed(
+            db,
+            item_to_search,
+            prefix_kind,
+            prefer_no_std,
+            prefer_prelude,
+        )
     } else {
-        module_with_candidate.find_use_path(db, item_to_search, prefer_no_std)
+        module_with_candidate.find_use_path(db, item_to_search, prefer_no_std, prefer_prelude)
     }
 }
 

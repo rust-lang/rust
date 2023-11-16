@@ -1,5 +1,7 @@
 //! Compute the binary representation of a type
 
+use std::fmt;
+
 use chalk_ir::{AdtId, FloatTy, IntTy, TyKind, UintTy};
 use hir_def::{
     layout::{
@@ -25,12 +27,6 @@ pub use self::{
     adt::{layout_of_adt_query, layout_of_adt_recover},
     target::target_data_layout_query,
 };
-
-macro_rules! user_error {
-    ($it: expr) => {
-        return Err(LayoutError::UserError(format!($it).into()))
-    };
-}
 
 mod adt;
 mod target;
@@ -73,13 +69,38 @@ pub type Variants = hir_def::layout::Variants<RustcFieldIdx, RustcEnumVariantIdx
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum LayoutError {
-    UserError(Box<str>),
+    HasErrorConst,
+    HasErrorType,
+    HasPlaceholder,
+    InvalidSimdType,
+    NotImplemented,
+    RecursiveTypeWithoutIndirection,
     SizeOverflow,
     TargetLayoutNotAvailable,
-    HasPlaceholder,
-    HasErrorType,
-    NotImplemented,
     Unknown,
+    UserReprTooSmall,
+}
+
+impl std::error::Error for LayoutError {}
+impl fmt::Display for LayoutError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            LayoutError::HasErrorConst => write!(f, "type contains an unevaluatable const"),
+            LayoutError::HasErrorType => write!(f, "type contains an error"),
+            LayoutError::HasPlaceholder => write!(f, "type contains placeholders"),
+            LayoutError::InvalidSimdType => write!(f, "invalid simd type definition"),
+            LayoutError::NotImplemented => write!(f, "not implemented"),
+            LayoutError::RecursiveTypeWithoutIndirection => {
+                write!(f, "recursive type without indirection")
+            }
+            LayoutError::SizeOverflow => write!(f, "size overflow"),
+            LayoutError::TargetLayoutNotAvailable => write!(f, "target layout not available"),
+            LayoutError::Unknown => write!(f, "unknown"),
+            LayoutError::UserReprTooSmall => {
+                write!(f, "the `#[repr]` hint is too small to hold the discriminants of the enum")
+            }
+        }
+    }
 }
 
 struct LayoutCx<'a> {
@@ -118,9 +139,7 @@ fn layout_of_simd_ty(
 
     let f0_ty = match fields.iter().next() {
         Some(it) => it.1.clone().substitute(Interner, subst),
-        None => {
-            user_error!("simd type with zero fields");
-        }
+        None => return Err(LayoutError::InvalidSimdType),
     };
 
     // The element type and number of elements of the SIMD vector
@@ -134,7 +153,7 @@ fn layout_of_simd_ty(
         // Extract the number of elements from the layout of the array field:
         let FieldsShape::Array { count, .. } = db.layout_of_ty(f0_ty.clone(), env.clone())?.fields
         else {
-            user_error!("Array with non array layout");
+            return Err(LayoutError::Unknown);
         };
 
         (e_ty.clone(), count, true)
@@ -146,7 +165,7 @@ fn layout_of_simd_ty(
     // Compute the ABI of the element type:
     let e_ly = db.layout_of_ty(e_ty, env.clone())?;
     let Abi::Scalar(e_abi) = e_ly.abi else {
-        user_error!("simd type with inner non scalar type");
+        return Err(LayoutError::Unknown);
     };
 
     // Compute the size and alignment of the vector:
@@ -259,9 +278,7 @@ pub fn layout_of_ty_query(
             cx.univariant(dl, &fields, &ReprOptions::default(), kind).ok_or(LayoutError::Unknown)?
         }
         TyKind::Array(element, count) => {
-            let count = try_const_usize(db, &count).ok_or(LayoutError::UserError(Box::from(
-                "unevaluated or mistyped const generic parameter",
-            )))? as u64;
+            let count = try_const_usize(db, &count).ok_or(LayoutError::HasErrorConst)? as u64;
             let element = db.layout_of_ty(element.clone(), trait_env.clone())?;
             let size = element.size.checked_mul(count, dl).ok_or(LayoutError::SizeOverflow)?;
 
@@ -352,7 +369,7 @@ pub fn layout_of_ty_query(
             let mut unit = layout_of_unit(&cx, dl)?;
             match unit.abi {
                 Abi::Aggregate { ref mut sized } => *sized = false,
-                _ => user_error!("bug"),
+                _ => return Err(LayoutError::Unknown),
             }
             unit
         }
@@ -418,7 +435,7 @@ pub fn layout_of_ty_recover(
     _: &Ty,
     _: &Arc<TraitEnvironment>,
 ) -> Result<Arc<Layout>, LayoutError> {
-    user_error!("infinite sized recursive type");
+    Err(LayoutError::RecursiveTypeWithoutIndirection)
 }
 
 fn layout_of_unit(cx: &LayoutCx<'_>, dl: &TargetDataLayout) -> Result<Layout, LayoutError> {
