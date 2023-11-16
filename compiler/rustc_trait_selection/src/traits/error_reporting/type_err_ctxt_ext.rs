@@ -1116,7 +1116,9 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 && let Some(parent) = self.tcx.hir().find_parent(binding.hir_id)
             {
                 // We've reached the root of the method call chain...
-                if let hir::Node::Local(local) = parent && let Some(binding_expr) = local.init {
+                if let hir::Node::Local(local) = parent
+                    && let Some(binding_expr) = local.init
+                {
                     // ...and it is a binding. Get the binding creation and continue the chain.
                     expr = binding_expr;
                 }
