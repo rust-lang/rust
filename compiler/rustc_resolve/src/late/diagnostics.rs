@@ -2976,8 +2976,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                             || lt.kind == MissingLifetimeKind::Underscore)
                     {
                         let pre = if lt.kind == MissingLifetimeKind::Ampersand
-                            && let Some((kind, _span)) =
-                                self.diagnostic_metadata.current_function
+                            && let Some((kind, _span)) = self.diagnostic_metadata.current_function
                             && let FnKind::Fn(_, _, sig, _, _, _) = kind
                             && !sig.decl.inputs.is_empty()
                             && let sugg = sig
@@ -3002,7 +3001,6 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                                 .collect::<Vec<_>>()
                             && !sugg.is_empty()
                         {
-
                             let (the, s) = if sig.decl.inputs.len() == 1 {
                                 ("the", "")
                             } else {
@@ -3018,9 +3016,8 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                             );
                             "...or alternatively, you might want"
                         } else if (lt.kind == MissingLifetimeKind::Ampersand
-                                || lt.kind == MissingLifetimeKind::Underscore)
-                            && let Some((kind, _span)) =
-                                self.diagnostic_metadata.current_function
+                            || lt.kind == MissingLifetimeKind::Underscore)
+                            && let Some((kind, _span)) = self.diagnostic_metadata.current_function
                             && let FnKind::Fn(_, _, sig, _, _, _) = kind
                             && let ast::FnRetTy::Ty(ret_ty) = &sig.decl.output
                             && !sig.decl.inputs.is_empty()
@@ -3041,26 +3038,25 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                             // So we look at every ref in the trait bound. If there's any, we
                             // suggest
                             // fn g<'a>(mut x: impl Iterator<Item = &'a ()>) -> Option<&'a ()>
-                            let mut lt_finder = LifetimeFinder {
-                                lifetime: lt.span,
-                                found: None,
-                                seen: vec![],
-                            };
+                            let mut lt_finder =
+                                LifetimeFinder { lifetime: lt.span, found: None, seen: vec![] };
                             for bound in arg_refs {
                                 if let ast::GenericBound::Trait(trait_ref, _) = bound {
                                     lt_finder.visit_trait_ref(&trait_ref.trait_ref);
                                 }
                             }
                             lt_finder.visit_ty(ret_ty);
-                            let spans_suggs: Vec<_> = lt_finder.seen.iter().filter_map(|ty| {
-                                match &ty.kind {
+                            let spans_suggs: Vec<_> = lt_finder
+                                .seen
+                                .iter()
+                                .filter_map(|ty| match &ty.kind {
                                     TyKind::Ref(_, mut_ty) => {
                                         let span = ty.span.with_hi(mut_ty.ty.span.lo());
                                         Some((span, "&'a ".to_string()))
                                     }
-                                    _ => None
-                                }
-                            }).collect();
+                                    _ => None,
+                                })
+                                .collect();
                             self.suggest_introducing_lifetime(
                                 err,
                                 None,
@@ -3081,20 +3077,16 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                         };
                         let mut owned_sugg = lt.kind == MissingLifetimeKind::Ampersand;
                         let mut sugg = vec![(lt.span, String::new())];
-                        if let Some((kind, _span)) =
-                            self.diagnostic_metadata.current_function
+                        if let Some((kind, _span)) = self.diagnostic_metadata.current_function
                             && let FnKind::Fn(_, _, sig, _, _, _) = kind
                             && let ast::FnRetTy::Ty(ty) = &sig.decl.output
                         {
-                            let mut lt_finder = LifetimeFinder {
-                                lifetime: lt.span,
-                                found: None,
-                                seen: vec![],
-                            };
+                            let mut lt_finder =
+                                LifetimeFinder { lifetime: lt.span, found: None, seen: vec![] };
                             lt_finder.visit_ty(&ty);
 
-                            if let [Ty { span, kind: TyKind::Ref(_, mut_ty), ..}]
-                                = &lt_finder.seen[..]
+                            if let [Ty { span, kind: TyKind::Ref(_, mut_ty), .. }] =
+                                &lt_finder.seen[..]
                             {
                                 // We might have a situation like
                                 // fn g(mut x: impl Iterator<Item = &'_ ()>) -> Option<&'_ ()>
@@ -3109,9 +3101,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                                     // Check if the path being borrowed is likely to be owned.
                                     let path: Vec<_> = Segment::from_path(path);
                                     match self.resolve_path(&path, Some(TypeNS), None) {
-                                        PathResult::Module(
-                                            ModuleOrUniformRoot::Module(module),
-                                        ) => {
+                                        PathResult::Module(ModuleOrUniformRoot::Module(module)) => {
                                             match module.res() {
                                                 Some(Res::PrimTy(PrimTy::Str)) => {
                                                     // Don't suggest `-> str`, suggest `-> String`.
@@ -3131,7 +3121,8 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                                                     | DefKind::TyParam,
                                                     _,
                                                 )) => {}
-                                                _ => { // Do not suggest in all other cases.
+                                                _ => {
+                                                    // Do not suggest in all other cases.
                                                     owned_sugg = false;
                                                 }
                                             }
@@ -3156,12 +3147,14 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                                                     | DefKind::TyParam,
                                                     _,
                                                 ) => {}
-                                                _ => { // Do not suggest in all other cases.
+                                                _ => {
+                                                    // Do not suggest in all other cases.
                                                     owned_sugg = false;
                                                 }
                                             }
                                         }
-                                        _ => { // Do not suggest in all other cases.
+                                        _ => {
+                                            // Do not suggest in all other cases.
                                             owned_sugg = false;
                                         }
                                     }
