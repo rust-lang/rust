@@ -7,7 +7,7 @@ use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::CodegenResults;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::svh::Svh;
-use rustc_data_structures::sync::{AppendOnlyIndexVec, FreezeLock, Lrc, OnceLock, WorkerLocal};
+use rustc_data_structures::sync::{AppendOnlyIndexVec, FreezeLock, OnceLock, WorkerLocal};
 use rustc_hir::def_id::{StableCrateId, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::definitions::Definitions;
 use rustc_incremental::setup_dep_graph;
@@ -105,7 +105,7 @@ impl<'tcx> Queries<'tcx> {
         &self.compiler.sess
     }
 
-    fn codegen_backend(&self) -> &Lrc<dyn CodegenBackend> {
+    fn codegen_backend(&self) -> &dyn CodegenBackend {
         self.compiler.codegen_backend()
     }
 
@@ -198,7 +198,7 @@ impl<'tcx> Queries<'tcx> {
             // Hook for UI tests.
             Self::check_for_rustc_errors_attr(tcx);
 
-            Ok(passes::start_codegen(&**self.codegen_backend(), tcx))
+            Ok(passes::start_codegen(self.codegen_backend(), tcx))
         })
     }
 
@@ -239,7 +239,6 @@ impl<'tcx> Queries<'tcx> {
     pub fn linker(&'tcx self, ongoing_codegen: Box<dyn Any>) -> Result<Linker> {
         self.global_ctxt()?.enter(|tcx| {
             Ok(Linker {
-                codegen_backend: self.codegen_backend().clone(),
                 dep_graph: tcx.dep_graph.clone(),
                 prepare_outputs: tcx.output_filenames(()).clone(),
                 crate_hash: if tcx.needs_crate_hash() {
@@ -254,10 +253,6 @@ impl<'tcx> Queries<'tcx> {
 }
 
 pub struct Linker {
-    // compilation inputs
-    codegen_backend: Lrc<dyn CodegenBackend>,
-
-    // compilation outputs
     dep_graph: DepGraph,
     prepare_outputs: Arc<OutputFilenames>,
     // Only present when incr. comp. is enabled.
@@ -266,9 +261,9 @@ pub struct Linker {
 }
 
 impl Linker {
-    pub fn link(self, sess: &Session) -> Result<()> {
+    pub fn link(self, sess: &Session, codegen_backend: &dyn CodegenBackend) -> Result<()> {
         let (codegen_results, work_products) =
-            self.codegen_backend.join_codegen(self.ongoing_codegen, sess, &self.prepare_outputs)?;
+            codegen_backend.join_codegen(self.ongoing_codegen, sess, &self.prepare_outputs)?;
 
         sess.compile_status()?;
 
@@ -301,7 +296,7 @@ impl Linker {
         }
 
         let _timer = sess.prof.verbose_generic_activity("link_crate");
-        self.codegen_backend.link(sess, codegen_results, &self.prepare_outputs)
+        codegen_backend.link(sess, codegen_results, &self.prepare_outputs)
     }
 }
 
