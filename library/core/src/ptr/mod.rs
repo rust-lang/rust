@@ -1898,14 +1898,15 @@ pub fn eq<T: ?Sized>(a: *const T, b: *const T) -> bool {
 /// # Examples
 ///
 /// ```
-/// #![feature(ptr_addr_eq)]
+/// use std::ptr;
 ///
 /// let whole: &[i32; 3] = &[1, 2, 3];
 /// let first: &i32 = &whole[0];
-/// assert!(std::ptr::addr_eq(whole, first));
-/// assert!(!std::ptr::eq::<dyn std::fmt::Debug>(whole, first));
+///
+/// assert!(ptr::addr_eq(whole, first));
+/// assert!(!ptr::eq::<dyn std::fmt::Debug>(whole, first));
 /// ```
-#[unstable(feature = "ptr_addr_eq", issue = "116324")]
+#[stable(feature = "ptr_addr_eq", since = "CURRENT_RUSTC_VERSION")]
 #[inline(always)]
 #[must_use = "pointer comparison produces a value"]
 pub fn addr_eq<T: ?Sized, U: ?Sized>(p: *const T, q: *const U) -> bool {
