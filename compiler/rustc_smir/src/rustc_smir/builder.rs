@@ -49,6 +49,20 @@ impl<'tcx> MutVisitor<'tcx> for BodyBuilder<'tcx> {
         *ty = self.monomorphize(*ty);
     }
 
+    fn visit_constant(&mut self, constant: &mut mir::ConstOperand<'tcx>, location: mir::Location) {
+        let const_ = self.monomorphize(constant.const_);
+        let val = match const_.eval(self.tcx, ty::ParamEnv::reveal_all(), None) {
+            Ok(v) => v,
+            Err(mir::interpret::ErrorHandled::Reported(..)) => return,
+            Err(mir::interpret::ErrorHandled::TooGeneric(..)) => {
+                unreachable!("Failed to evaluate instance constant: {:?}", const_)
+            }
+        };
+        let ty = constant.ty();
+        constant.const_ = mir::Const::Val(val, ty);
+        self.super_constant(constant, location);
+    }
+
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
