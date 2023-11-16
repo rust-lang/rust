@@ -787,7 +787,7 @@ pub struct Process {
     // On Linux, stores the pidfd created for this child.
     // This is None if the user did not request pidfd creation,
     // or if the pidfd could not be created for some reason
-    // (e.g. the `clone3` syscall was not available).
+    // (e.g. the `pidfd_open` syscall was not available).
     #[cfg(target_os = "linux")]
     pidfd: Option<PidFd>,
 }
