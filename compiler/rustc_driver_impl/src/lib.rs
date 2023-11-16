@@ -482,7 +482,7 @@ fn run_compiler(
 
         if let Some(linker) = linker {
             let _timer = sess.timer("link");
-            linker.link()?
+            linker.link(sess)?
         }
 
         if sess.opts.unstable_opts.print_fuel.is_some() {

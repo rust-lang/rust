@@ -101,9 +101,10 @@ impl<'tcx> Queries<'tcx> {
         }
     }
 
-    fn session(&self) -> &Lrc<Session> {
+    fn session(&self) -> &Session {
         &self.compiler.sess
     }
+
     fn codegen_backend(&self) -> &Lrc<dyn CodegenBackend> {
         self.compiler.codegen_backend()
     }
@@ -238,7 +239,6 @@ impl<'tcx> Queries<'tcx> {
     pub fn linker(&'tcx self, ongoing_codegen: Box<dyn Any>) -> Result<Linker> {
         self.global_ctxt()?.enter(|tcx| {
             Ok(Linker {
-                sess: self.session().clone(),
                 codegen_backend: self.codegen_backend().clone(),
                 dep_graph: tcx.dep_graph.clone(),
                 prepare_outputs: tcx.output_filenames(()).clone(),
@@ -255,7 +255,6 @@ impl<'tcx> Queries<'tcx> {
 
 pub struct Linker {
     // compilation inputs
-    sess: Lrc<Session>,
     codegen_backend: Lrc<dyn CodegenBackend>,
 
     // compilation outputs
@@ -267,30 +266,25 @@ pub struct Linker {
 }
 
 impl Linker {
-    pub fn link(self) -> Result<()> {
-        let (codegen_results, work_products) = self.codegen_backend.join_codegen(
-            self.ongoing_codegen,
-            &self.sess,
-            &self.prepare_outputs,
-        )?;
+    pub fn link(self, sess: &Session) -> Result<()> {
+        let (codegen_results, work_products) =
+            self.codegen_backend.join_codegen(self.ongoing_codegen, sess, &self.prepare_outputs)?;
 
-        self.sess.compile_status()?;
+        sess.compile_status()?;
 
-        let sess = &self.sess;
         let dep_graph = self.dep_graph;
         sess.time("serialize_work_products", || {
             rustc_incremental::save_work_product_index(sess, &dep_graph, work_products)
         });
 
-        let prof = self.sess.prof.clone();
+        let prof = sess.prof.clone();
         prof.generic_activity("drop_dep_graph").run(move || drop(dep_graph));
 
         // Now that we won't touch anything in the incremental compilation directory
         // any more, we can finalize it (which involves renaming it)
-        rustc_incremental::finalize_session_directory(&self.sess, self.crate_hash);
+        rustc_incremental::finalize_session_directory(sess, self.crate_hash);
 
-        if !self
-            .sess
+        if !sess
             .opts
             .output_types
             .keys()
@@ -307,7 +301,7 @@ impl Linker {
         }
 
         let _timer = sess.prof.verbose_generic_activity("link_crate");
-        self.codegen_backend.link(&self.sess, codegen_results, &self.prepare_outputs)
+        self.codegen_backend.link(sess, codegen_results, &self.prepare_outputs)
     }
 }
 

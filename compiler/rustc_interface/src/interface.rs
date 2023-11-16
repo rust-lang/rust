@@ -38,13 +38,13 @@ pub type Result<T> = result::Result<T, ErrorGuaranteed>;
 /// Can be used to run `rustc_interface` queries.
 /// Created by passing [`Config`] to [`run_compiler`].
 pub struct Compiler {
-    pub(crate) sess: Lrc<Session>,
+    pub(crate) sess: Session,
     codegen_backend: Lrc<dyn CodegenBackend>,
     pub(crate) override_queries: Option<fn(&Session, &mut Providers)>,
 }
 
 impl Compiler {
-    pub fn session(&self) -> &Lrc<Session> {
+    pub fn session(&self) -> &Session {
         &self.sess
     }
     pub fn codegen_backend(&self) -> &Lrc<dyn CodegenBackend> {
@@ -492,7 +492,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
             sess.lint_store = Some(Lrc::new(lint_store));
 
             let compiler = Compiler {
-                sess: Lrc::new(sess),
+                sess,
                 codegen_backend: Lrc::from(codegen_backend),
                 override_queries: config.override_queries,
             };
