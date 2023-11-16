@@ -748,7 +748,7 @@ impl Command {
             msg.msg_controllen = mem::size_of::<Cmsg>() as _;
             msg.msg_control = &mut cmsg as *mut _ as *mut _;
 
-            match cvt_r(|| libc::recvmsg(sock.as_raw(), &mut msg, 0)) {
+            match cvt_r(|| libc::recvmsg(sock.as_raw(), &mut msg, libc::MSG_CMSG_CLOEXEC)) {
                 Err(_) => return -1,
                 Ok(_) => {}
             }

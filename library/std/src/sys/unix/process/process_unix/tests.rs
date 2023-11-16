@@ -64,7 +64,7 @@ fn test_command_fork_no_unwind() {
 #[test]
 #[cfg(target_os = "linux")]
 fn test_command_pidfd() {
-    use crate::os::fd::RawFd;
+    use crate::os::fd::{AsRawFd, RawFd};
     use crate::os::linux::process::{ChildExt, CommandExt};
     use crate::process::Command;
 
@@ -82,6 +82,10 @@ fn test_command_pidfd() {
 
     // but only check if we know that the kernel supports pidfds
     if pidfd_open_available {
-        assert!(child.pidfd().is_ok())
+        assert!(child.pidfd().is_ok());
+    }
+    if let Ok(pidfd) = child.pidfd() {
+        let flags = super::cvt(unsafe { libc::fcntl(pidfd.as_raw_fd(), libc::F_GETFD) }).unwrap();
+        assert!(flags & libc::FD_CLOEXEC != 0);
     }
 }
