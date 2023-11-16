@@ -18,6 +18,17 @@ static_suggestions! {
         sug!("test", 1, ["tests/ui", "tests/run-make"]),
     ],
 
+    ["compiler/rustc_mir_transform/*"] => [
+        sug!("test", 1, ["mir-opt"]),
+    ],
+
+    [
+        "compiler/rustc_mir_transform/src/coverage/*",
+        "compiler/rustc_codegen_llvm/src/coverageinfo/*",
+    ] => [
+        sug!("test", 1, ["coverage"]),
+    ],
+
     ["src/librustdoc/*"] => [
         sug!("test", 1, ["rustdoc"]),
     ],
