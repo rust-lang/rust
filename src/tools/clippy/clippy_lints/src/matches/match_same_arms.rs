@@ -66,25 +66,23 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>]) {
 
         let mut local_map: HirIdMap<HirId> = HirIdMap::default();
         let eq_fallback = |a: &Expr<'_>, b: &Expr<'_>| {
-            if_chain! {
-                if let Some(a_id) = path_to_local(a);
-                if let Some(b_id) = path_to_local(b);
-                let entry = match local_map.entry(a_id) {
+            if let Some(a_id) = path_to_local(a)
+                && let Some(b_id) = path_to_local(b)
+                && let entry = match local_map.entry(a_id) {
                     HirIdMapEntry::Vacant(entry) => entry,
                     // check if using the same bindings as before
                     HirIdMapEntry::Occupied(entry) => return *entry.get() == b_id,
-                };
-                // the names technically don't have to match; this makes the lint more conservative
-                if cx.tcx.hir().name(a_id) == cx.tcx.hir().name(b_id);
-                if cx.typeck_results().expr_ty(a) == cx.typeck_results().expr_ty(b);
-                if pat_contains_local(lhs.pat, a_id);
-                if pat_contains_local(rhs.pat, b_id);
-                then {
-                    entry.insert(b_id);
-                    true
-                } else {
-                    false
                 }
+                // the names technically don't have to match; this makes the lint more conservative
+                && cx.tcx.hir().name(a_id) == cx.tcx.hir().name(b_id)
+                && cx.typeck_results().expr_ty(a) == cx.typeck_results().expr_ty(b)
+                && pat_contains_local(lhs.pat, a_id)
+                && pat_contains_local(rhs.pat, b_id)
+            {
+                entry.insert(b_id);
+                true
+            } else {
+                false
             }
         };
         // Arms with a guard are ignored, those can’t always be merged together

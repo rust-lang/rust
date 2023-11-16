@@ -1,6 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::ty::{is_normalizable, is_type_diagnostic_item};
-use if_chain::if_chain;
 use rustc_hir::{self as hir, HirId, ItemKind, Node};
 use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_lint::{LateContext, LateLintPass};
@@ -46,23 +45,28 @@ declare_lint_pass!(ZeroSizedMapValues => [ZERO_SIZED_MAP_VALUES]);
 
 impl LateLintPass<'_> for ZeroSizedMapValues {
     fn check_ty(&mut self, cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>) {
-        if_chain! {
-            if !hir_ty.span.from_expansion();
-            if !in_trait_impl(cx, hir_ty.hir_id);
-            let ty = ty_from_hir_ty(cx, hir_ty);
-            if is_type_diagnostic_item(cx, ty, sym::HashMap) || is_type_diagnostic_item(cx, ty, sym::BTreeMap);
-            if let Adt(_, args) = ty.kind();
-            let ty = args.type_at(1);
+        if !hir_ty.span.from_expansion()
+            && !in_trait_impl(cx, hir_ty.hir_id)
+            && let ty = ty_from_hir_ty(cx, hir_ty)
+            && (is_type_diagnostic_item(cx, ty, sym::HashMap) || is_type_diagnostic_item(cx, ty, sym::BTreeMap))
+            && let Adt(_, args) = ty.kind()
+            && let ty = args.type_at(1)
             // Fixes https://github.com/rust-lang/rust-clippy/issues/7447 because of
             // https://github.com/rust-lang/rust/blob/master/compiler/rustc_middle/src/ty/sty.rs#L968
-            if !ty.has_escaping_bound_vars();
+            && !ty.has_escaping_bound_vars()
             // Do this to prevent `layout_of` crashing, being unable to fully normalize `ty`.
-            if is_normalizable(cx, cx.param_env, ty);
-            if let Ok(layout) = cx.layout_of(ty);
-            if layout.is_zst();
-            then {
-                span_lint_and_help(cx, ZERO_SIZED_MAP_VALUES, hir_ty.span, "map with zero-sized value type", None, "consider using a set instead");
-            }
+            && is_normalizable(cx, cx.param_env, ty)
+            && let Ok(layout) = cx.layout_of(ty)
+            && layout.is_zst()
+        {
+            span_lint_and_help(
+                cx,
+                ZERO_SIZED_MAP_VALUES,
+                hir_ty.span,
+                "map with zero-sized value type",
+                None,
+                "consider using a set instead",
+            );
         }
     }
 }

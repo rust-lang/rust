@@ -148,83 +148,65 @@ fn check_struct<'tcx>(
 }
 
 fn check_enum<'tcx>(cx: &LateContext<'tcx>, item: &'tcx Item<'_>, func_expr: &Expr<'_>, adt_def: AdtDef<'_>) {
-    if_chain! {
-        if let ExprKind::Path(QPath::Resolved(None, p)) = &peel_blocks(func_expr).kind;
-        if let Res::Def(DefKind::Ctor(CtorOf::Variant, CtorKind::Const), id) = p.res;
-        if let variant_id = cx.tcx.parent(id);
-        if let Some(variant_def) = adt_def.variants().iter().find(|v| v.def_id == variant_id);
-        if variant_def.fields.is_empty();
-        if !variant_def.is_field_list_non_exhaustive();
-
-        then {
-            let enum_span = cx.tcx.def_span(adt_def.did());
-            let indent_enum = indent_of(cx, enum_span).unwrap_or(0);
-            let variant_span = cx.tcx.def_span(variant_def.def_id);
-            let indent_variant = indent_of(cx, variant_span).unwrap_or(0);
-            span_lint_and_then(
-                cx,
-                DERIVABLE_IMPLS,
+    if let ExprKind::Path(QPath::Resolved(None, p)) = &peel_blocks(func_expr).kind
+        && let Res::Def(DefKind::Ctor(CtorOf::Variant, CtorKind::Const), id) = p.res
+        && let variant_id = cx.tcx.parent(id)
+        && let Some(variant_def) = adt_def.variants().iter().find(|v| v.def_id == variant_id)
+        && variant_def.fields.is_empty()
+        && !variant_def.is_field_list_non_exhaustive()
+    {
+        let enum_span = cx.tcx.def_span(adt_def.did());
+        let indent_enum = indent_of(cx, enum_span).unwrap_or(0);
+        let variant_span = cx.tcx.def_span(variant_def.def_id);
+        let indent_variant = indent_of(cx, variant_span).unwrap_or(0);
+        span_lint_and_then(cx, DERIVABLE_IMPLS, item.span, "this `impl` can be derived", |diag| {
+            diag.span_suggestion_hidden(
                 item.span,
-                "this `impl` can be derived",
-                |diag| {
-                    diag.span_suggestion_hidden(
-                        item.span,
-                        "remove the manual implementation...",
-                        String::new(),
-                        Applicability::MachineApplicable
-                    );
-                    diag.span_suggestion(
-                        enum_span.shrink_to_lo(),
-                        "...and instead derive it...",
-                        format!(
-                            "#[derive(Default)]\n{indent}",
-                            indent = " ".repeat(indent_enum),
-                        ),
-                        Applicability::MachineApplicable
-                    );
-                    diag.span_suggestion(
-                        variant_span.shrink_to_lo(),
-                        "...and mark the default variant",
-                        format!(
-                            "#[default]\n{indent}",
-                            indent = " ".repeat(indent_variant),
-                        ),
-                        Applicability::MachineApplicable
-                    );
-                }
+                "remove the manual implementation...",
+                String::new(),
+                Applicability::MachineApplicable,
             );
-        }
+            diag.span_suggestion(
+                enum_span.shrink_to_lo(),
+                "...and instead derive it...",
+                format!("#[derive(Default)]\n{indent}", indent = " ".repeat(indent_enum),),
+                Applicability::MachineApplicable,
+            );
+            diag.span_suggestion(
+                variant_span.shrink_to_lo(),
+                "...and mark the default variant",
+                format!("#[default]\n{indent}", indent = " ".repeat(indent_variant),),
+                Applicability::MachineApplicable,
+            );
+        });
     }
 }
 
 impl<'tcx> LateLintPass<'tcx> for DerivableImpls {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
-        if_chain! {
-            if let ItemKind::Impl(Impl {
-                of_trait: Some(ref trait_ref),
-                items: [child],
-                self_ty,
-                ..
-            }) = item.kind;
-            if !cx.tcx.has_attr(item.owner_id, sym::automatically_derived);
-            if !item.span.from_expansion();
-            if let Some(def_id) = trait_ref.trait_def_id();
-            if cx.tcx.is_diagnostic_item(sym::Default, def_id);
-            if let impl_item_hir = child.id.hir_id();
-            if let Some(Node::ImplItem(impl_item)) = cx.tcx.hir().find(impl_item_hir);
-            if let ImplItemKind::Fn(_, b) = &impl_item.kind;
-            if let Body { value: func_expr, .. } = cx.tcx.hir().body(*b);
-            if let &Adt(adt_def, args) = cx.tcx.type_of(item.owner_id).instantiate_identity().kind();
-            if let attrs = cx.tcx.hir().attrs(item.hir_id());
-            if !attrs.iter().any(|attr| attr.doc_str().is_some());
-            if cx.tcx.hir().attrs(impl_item_hir).is_empty();
-
-            then {
-                if adt_def.is_struct() {
-                    check_struct(cx, item, self_ty, func_expr, adt_def, args, cx.tcx.typeck_body(*b));
-                } else if adt_def.is_enum() && self.msrv.meets(msrvs::DEFAULT_ENUM_ATTRIBUTE) {
-                    check_enum(cx, item, func_expr, adt_def);
-                }
+        if let ItemKind::Impl(Impl {
+            of_trait: Some(ref trait_ref),
+            items: [child],
+            self_ty,
+            ..
+        }) = item.kind
+            && !cx.tcx.has_attr(item.owner_id, sym::automatically_derived)
+            && !item.span.from_expansion()
+            && let Some(def_id) = trait_ref.trait_def_id()
+            && cx.tcx.is_diagnostic_item(sym::Default, def_id)
+            && let impl_item_hir = child.id.hir_id()
+            && let Some(Node::ImplItem(impl_item)) = cx.tcx.hir().find(impl_item_hir)
+            && let ImplItemKind::Fn(_, b) = &impl_item.kind
+            && let Body { value: func_expr, .. } = cx.tcx.hir().body(*b)
+            && let &Adt(adt_def, args) = cx.tcx.type_of(item.owner_id).instantiate_identity().kind()
+            && let attrs = cx.tcx.hir().attrs(item.hir_id())
+            && !attrs.iter().any(|attr| attr.doc_str().is_some())
+            && cx.tcx.hir().attrs(impl_item_hir).is_empty()
+        {
+            if adt_def.is_struct() {
+                check_struct(cx, item, self_ty, func_expr, adt_def, args, cx.tcx.typeck_body(*b));
+            } else if adt_def.is_enum() && self.msrv.meets(msrvs::DEFAULT_ENUM_ATTRIBUTE) {
+                check_enum(cx, item, func_expr, adt_def);
             }
         }
     }

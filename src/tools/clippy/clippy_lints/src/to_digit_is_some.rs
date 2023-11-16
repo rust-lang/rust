@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::match_def_path;
 use clippy_utils::source::snippet_with_applicability;
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
@@ -38,59 +37,57 @@ declare_lint_pass!(ToDigitIsSome => [TO_DIGIT_IS_SOME]);
 
 impl<'tcx> LateLintPass<'tcx> for ToDigitIsSome {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
-        if_chain! {
-            if let hir::ExprKind::MethodCall(is_some_path, to_digit_expr, [], _) = &expr.kind;
-            if is_some_path.ident.name.as_str() == "is_some";
-            then {
-                let match_result = match &to_digit_expr.kind {
-                    hir::ExprKind::MethodCall(to_digits_path, char_arg, [radix_arg], _) => {
-                        if_chain! {
-                            if to_digits_path.ident.name.as_str() == "to_digit";
-                            let char_arg_ty = cx.typeck_results().expr_ty_adjusted(char_arg);
-                            if *char_arg_ty.kind() == ty::Char;
-                            then {
-                                Some((true, *char_arg, radix_arg))
-                            } else {
-                                None
-                            }
-                        }
+        if let hir::ExprKind::MethodCall(is_some_path, to_digit_expr, [], _) = &expr.kind
+            && is_some_path.ident.name.as_str() == "is_some"
+        {
+            let match_result = match &to_digit_expr.kind {
+                hir::ExprKind::MethodCall(to_digits_path, char_arg, [radix_arg], _) => {
+                    if to_digits_path.ident.name.as_str() == "to_digit"
+                        && let char_arg_ty = cx.typeck_results().expr_ty_adjusted(char_arg)
+                        && *char_arg_ty.kind() == ty::Char
+                    {
+                        Some((true, *char_arg, radix_arg))
+                    } else {
+                        None
                     }
-                    hir::ExprKind::Call(to_digits_call, to_digit_args) => {
-                        if_chain! {
-                            if let [char_arg, radix_arg] = *to_digit_args;
-                            if let hir::ExprKind::Path(to_digits_path) = &to_digits_call.kind;
-                            if let to_digits_call_res = cx.qpath_res(to_digits_path, to_digits_call.hir_id);
-                            if let Some(to_digits_def_id) = to_digits_call_res.opt_def_id();
-                            if match_def_path(cx, to_digits_def_id, &["core", "char", "methods", "<impl char>", "to_digit"]);
-                            then {
-                                Some((false, char_arg, radix_arg))
-                            } else {
-                                None
-                            }
-                        }
+                },
+                hir::ExprKind::Call(to_digits_call, to_digit_args) => {
+                    if let [char_arg, radix_arg] = *to_digit_args
+                        && let hir::ExprKind::Path(to_digits_path) = &to_digits_call.kind
+                        && let to_digits_call_res = cx.qpath_res(to_digits_path, to_digits_call.hir_id)
+                        && let Some(to_digits_def_id) = to_digits_call_res.opt_def_id()
+                        && match_def_path(
+                            cx,
+                            to_digits_def_id,
+                            &["core", "char", "methods", "<impl char>", "to_digit"],
+                        )
+                    {
+                        Some((false, char_arg, radix_arg))
+                    } else {
+                        None
                     }
-                    _ => None
-                };
+                },
+                _ => None,
+            };
 
-                if let Some((is_method_call, char_arg, radix_arg)) = match_result {
-                    let mut applicability = Applicability::MachineApplicable;
-                    let char_arg_snip = snippet_with_applicability(cx, char_arg.span, "_", &mut applicability);
-                    let radix_snip = snippet_with_applicability(cx, radix_arg.span, "_", &mut applicability);
+            if let Some((is_method_call, char_arg, radix_arg)) = match_result {
+                let mut applicability = Applicability::MachineApplicable;
+                let char_arg_snip = snippet_with_applicability(cx, char_arg.span, "_", &mut applicability);
+                let radix_snip = snippet_with_applicability(cx, radix_arg.span, "_", &mut applicability);
 
-                    span_lint_and_sugg(
-                        cx,
-                        TO_DIGIT_IS_SOME,
-                        expr.span,
-                        "use of `.to_digit(..).is_some()`",
-                        "try",
-                        if is_method_call {
-                            format!("{char_arg_snip}.is_digit({radix_snip})")
-                        } else {
-                            format!("char::is_digit({char_arg_snip}, {radix_snip})")
-                        },
-                        applicability,
-                    );
-                }
+                span_lint_and_sugg(
+                    cx,
+                    TO_DIGIT_IS_SOME,
+                    expr.span,
+                    "use of `.to_digit(..).is_some()`",
+                    "try",
+                    if is_method_call {
+                        format!("{char_arg_snip}.is_digit({radix_snip})")
+                    } else {
+                        format!("char::is_digit({char_arg_snip}, {radix_snip})")
+                    },
+                    applicability,
+                );
             }
         }
     }

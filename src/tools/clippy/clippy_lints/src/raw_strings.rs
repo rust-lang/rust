@@ -56,7 +56,7 @@ declare_clippy_lint! {
 impl_lint_pass!(RawStrings => [NEEDLESS_RAW_STRINGS, NEEDLESS_RAW_STRING_HASHES]);
 
 pub struct RawStrings {
-    pub needless_raw_string_hashes_allow_one: bool,
+    pub allow_one_hash_in_raw_strings: bool,
 }
 
 impl EarlyLintPass for RawStrings {

@@ -2,10 +2,12 @@
 
 #![warn(clippy::dbg_macro)]
 
+#[path = "auxiliary/submodule.rs"]
+mod submodule;
+
 fn foo(n: u32) -> u32 {
     if let Some(n) = dbg!(n.checked_sub(4)) { n } else { n }
     //~^ ERROR: the `dbg!` macro is intended as a debugging tool
-    //~| NOTE: `-D clippy::dbg-macro` implied by `-D warnings`
 }
 fn bar(_: ()) {}
 

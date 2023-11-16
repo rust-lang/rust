@@ -14,7 +14,9 @@ declare_clippy_lint! {
     /// This lint warns when you use `Arc` with a type that does not implement `Send` or `Sync`.
     ///
     /// ### Why is this bad?
-    /// `Arc<T>` is only `Send`/`Sync` when `T` is [both `Send` and `Sync`](https://doc.rust-lang.org/std/sync/struct.Arc.html#impl-Send-for-Arc%3CT%3E),
+    /// `Arc<T>` is an Atomic `RC<T>` and guarantees that updates to the reference counter are
+    /// Atomic. This is useful in multiprocessing scenarios. To send an `Arc<T>` across processes
+    /// and make use of the atomic ref counter, `T` must be [both `Send` and `Sync`](https://doc.rust-lang.org/std/sync/struct.Arc.html#impl-Send-for-Arc%3CT%3E),
     /// either `T` should be made `Send + Sync` or an `Rc` should be used instead of an `Arc`
     ///
     /// ### Example
@@ -34,7 +36,7 @@ declare_clippy_lint! {
     #[clippy::version = "1.72.0"]
     pub ARC_WITH_NON_SEND_SYNC,
     suspicious,
-    "using `Arc` with a type that does not implement `Send` or `Sync`"
+    "using `Arc` with a type that does not implement `Send` and `Sync`"
 }
 declare_lint_pass!(ArcWithNonSendSync => [ARC_WITH_NON_SEND_SYNC]);
 
@@ -61,19 +63,25 @@ impl<'tcx> LateLintPass<'tcx> for ArcWithNonSendSync {
                 cx,
                 ARC_WITH_NON_SEND_SYNC,
                 expr.span,
-                "usage of an `Arc` that is not `Send` or `Sync`",
+                "usage of an `Arc` that is not `Send` and `Sync`",
                 |diag| {
                     with_forced_trimmed_paths!({
+                        diag.note(format!("`Arc<{arg_ty}>` is not `Send` and `Sync` as:"));
+
                         if !is_send {
-                            diag.note(format!("the trait `Send` is not implemented for `{arg_ty}`"));
+                            diag.note(format!("- the trait `Send` is not implemented for `{arg_ty}`"));
                         }
                         if !is_sync {
-                            diag.note(format!("the trait `Sync` is not implemented for `{arg_ty}`"));
+                            diag.note(format!("- the trait `Sync` is not implemented for `{arg_ty}`"));
                         }
 
-                        diag.note(format!("required for `{ty}` to implement `Send` and `Sync`"));
+                        diag.help("consider using an `Rc` instead. `Arc` does not provide benefits for non `Send` and `Sync` types");
 
-                        diag.help("consider using an `Rc` instead or wrapping the inner type with a `Mutex`");
+                        diag.note("if you intend to use `Arc` with `Send` and `Sync` traits");
+
+                        diag.note(format!(
+                            "wrap the inner type with a `Mutex` or implement `Send` and `Sync` for `{arg_ty}`"
+                        ));
                     });
                 },
             );
