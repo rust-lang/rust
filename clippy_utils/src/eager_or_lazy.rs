@@ -229,21 +229,17 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
 
                 ExprKind::Binary(op, left, right)
                     if matches!(op.node, BinOpKind::Div | BinOpKind::Rem)
-                        && let left_ty = self.cx.typeck_results().expr_ty(left)
                         && let right_ty = self.cx.typeck_results().expr_ty(right)
                         && let left = constant(self.cx, self.cx.typeck_results(), left)
-                            .and_then(|c| c.int_value(self.cx, left_ty))
                         && let right = constant(self.cx, self.cx.typeck_results(), right)
                             .and_then(|c| c.int_value(self.cx, right_ty))
-                        && match (left, right) {
-                            // `1 / x` -- x might be zero
-                            (_, None) => true,
-                            // `x / -1` -- x might be T::MIN = panic
-                            #[expect(clippy::match_same_arms)]
-                            (None, Some(FullInt::S(-1))) => true,
-                            // anything else is either fine or checked by the compiler
-                            _ => false,
-                        } =>
+                        && matches!(
+                            (left, right),
+                            // `1 / x`: x might be zero
+                            (_, None)
+                            // `x / -1`: x might be T::MIN
+                            | (None, Some(FullInt::S(-1)))
+                        ) =>
                 {
                     self.eagerness |= NoChange;
                 },
