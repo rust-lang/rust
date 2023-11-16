@@ -3073,7 +3073,10 @@ impl<'a> Parser<'a> {
                 CommaRecoveryMode::EitherTupleOrPipe,
             ) {
                 Ok(pat) => Ok((pat, self.parse_match_arm_guard()?)),
-                Err(err) if let prev_sp = self.prev_token.span && let true = self.eat_keyword(kw::If) => {
+                Err(err)
+                    if let prev_sp = self.prev_token.span
+                        && let true = self.eat_keyword(kw::If) =>
+                {
                     // We know for certain we've found `($pat if` so far.
                     let mut cond = match self.parse_match_guard_condition() {
                         Ok(cond) => cond,
