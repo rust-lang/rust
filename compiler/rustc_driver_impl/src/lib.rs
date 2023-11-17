@@ -338,41 +338,14 @@ fn run_compiler(
         expanded_args: args,
     };
 
-    match make_input(&default_handler, &matches.free) {
+    let has_input = match make_input(&default_handler, &matches.free) {
         Err(reported) => return Err(reported),
         Ok(Some(input)) => {
             config.input = input;
-
-            callbacks.config(&mut config);
+            true // has input: normal compilation
         }
         Ok(None) => match matches.free.len() {
-            0 => {
-                callbacks.config(&mut config);
-
-                default_handler.abort_if_errors();
-
-                interface::run_compiler(config, |compiler| {
-                    let sopts = &compiler.session().opts;
-                    let handler = EarlyErrorHandler::new(sopts.error_format);
-
-                    if sopts.describe_lints {
-                        describe_lints(compiler.session());
-                        return;
-                    }
-                    let should_stop = print_crate_info(
-                        &handler,
-                        compiler.codegen_backend(),
-                        compiler.session(),
-                        false,
-                    );
-
-                    if should_stop == Compilation::Stop {
-                        return;
-                    }
-                    handler.early_error("no input filename given")
-                });
-                return Ok(());
-            }
+            0 => false, // no input: we will exit early
             1 => panic!("make_input should have provided valid inputs"),
             _ => default_handler.early_error(format!(
                 "multiple input filenames provided (first two filenames are `{}` and `{}`)",
@@ -381,12 +354,27 @@ fn run_compiler(
         },
     };
 
+    callbacks.config(&mut config);
+
     default_handler.abort_if_errors();
+    drop(default_handler);
 
     interface::run_compiler(config, |compiler| {
         let sess = compiler.session();
         let codegen_backend = compiler.codegen_backend();
         let handler = EarlyErrorHandler::new(sess.opts.error_format);
+
+        if !has_input {
+            if sess.opts.describe_lints {
+                describe_lints(sess);
+                return sess.compile_status();
+            }
+            let should_stop = print_crate_info(&handler, codegen_backend, sess, false);
+            if should_stop == Compilation::Continue {
+                handler.early_error("no input filename given")
+            }
+            return sess.compile_status();
+        }
 
         let should_stop = print_crate_info(&handler, codegen_backend, sess, true)
             .and_then(|| list_metadata(&handler, sess, &*codegen_backend.metadata_loader()))
