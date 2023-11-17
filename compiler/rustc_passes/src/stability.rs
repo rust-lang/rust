@@ -9,7 +9,7 @@ use rustc_attr::{
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{LocalDefId, LocalModDefId, CRATE_DEF_ID};
+use rustc_hir::def_id::{LocalDefId, LocalModDefId, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::hir_id::CRATE_HIR_ID;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{FieldDef, Item, ItemKind, TraitRef, Ty, TyKind, Variant};
@@ -1008,12 +1008,11 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
     }
 
     // All local crate implications need to have the feature that implies it confirmed to exist.
-    let mut remaining_implications =
-        tcx.stability_implications(rustc_hir::def_id::LOCAL_CRATE).clone();
+    let mut remaining_implications = tcx.stability_implications(LOCAL_CRATE).clone();
 
     // We always collect the lib features declared in the current crate, even if there are
     // no unknown features, because the collection also does feature attribute validation.
-    let local_defined_features = tcx.lib_features(rustc_hir::def_id::LOCAL_CRATE);
+    let local_defined_features = tcx.lib_features(LOCAL_CRATE);
     if !remaining_lib_features.is_empty() || !remaining_implications.is_empty() {
         // Loading the implications of all crates is unavoidable to be able to emit the partial
         // stabilization diagnostic, but it can be avoided when there are no
@@ -1050,13 +1049,12 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
     }
 
     for (implied_by, feature) in remaining_implications {
-        let local_defined_features = tcx.lib_features(rustc_hir::def_id::LOCAL_CRATE);
-        let span = *local_defined_features
-            .stable
+        let local_defined_features = tcx.lib_features(LOCAL_CRATE);
+        let span = local_defined_features
+            .stability
             .get(&feature)
-            .map(|(_, span)| span)
-            .or_else(|| local_defined_features.unstable.get(&feature))
-            .expect("feature that implied another does not exist");
+            .expect("feature that implied another does not exist")
+            .1;
         tcx.sess.emit_err(errors::ImpliedFeatureNotExist { span, feature, implied_by });
     }
 

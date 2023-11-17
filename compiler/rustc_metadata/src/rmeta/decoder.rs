@@ -1177,19 +1177,15 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     }
 
     /// Iterates over all the stability attributes in the given crate.
-    fn get_lib_features(self, _tcx: TyCtxt<'tcx>) -> LibFeatures {
-        let mut features = LibFeatures::default();
-        for (symbol, stability) in self.root.lib_features.decode(self) {
-            match stability {
-                FeatureStability::AcceptedSince(since) => {
-                    features.stable.insert(symbol, (since, DUMMY_SP));
-                }
-                FeatureStability::Unstable => {
-                    features.unstable.insert(symbol, DUMMY_SP);
-                }
-            }
+    fn get_lib_features(self) -> LibFeatures {
+        LibFeatures {
+            stability: self
+                .root
+                .lib_features
+                .decode(self)
+                .map(|(sym, stab)| (sym, (stab, DUMMY_SP)))
+                .collect(),
         }
-        features
     }
 
     /// Iterates over the stability implications in the given crate (when a `#[unstable]` attribute

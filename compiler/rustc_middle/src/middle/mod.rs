@@ -16,20 +16,14 @@ pub mod lib_features {
 
     #[derive(HashStable, Debug, Default)]
     pub struct LibFeatures {
-        /// A map from feature to stabilisation version.
-        pub stable: FxHashMap<Symbol, (Symbol, Span)>,
-        pub unstable: FxHashMap<Symbol, Span>,
+        pub stability: FxHashMap<Symbol, (FeatureStability, Span)>,
     }
 
     impl LibFeatures {
         pub fn to_vec(&self) -> Vec<(Symbol, FeatureStability)> {
-            let mut all_features: Vec<_> = self
-                .stable
-                .iter()
-                .map(|(f, (s, _))| (*f, FeatureStability::AcceptedSince(*s)))
-                .chain(self.unstable.iter().map(|(f, _)| (*f, FeatureStability::Unstable)))
-                .collect();
-            all_features.sort_unstable_by(|a, b| a.0.as_str().partial_cmp(b.0.as_str()).unwrap());
+            let mut all_features: Vec<_> =
+                self.stability.iter().map(|(&sym, &(stab, _))| (sym, stab)).collect();
+            all_features.sort_unstable_by(|(a, _), (b, _)| a.as_str().cmp(b.as_str()));
             all_features
         }
     }

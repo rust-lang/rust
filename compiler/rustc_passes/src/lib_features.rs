@@ -86,26 +86,21 @@ impl<'tcx> LibFeatureCollector<'tcx> {
     }
 
     fn collect_feature(&mut self, feature: Symbol, stability: FeatureStability, span: Span) {
-        let already_in_stable = self.lib_features.stable.contains_key(&feature);
-        let already_in_unstable = self.lib_features.unstable.contains_key(&feature);
+        let existing_stability = self.lib_features.stability.get(&feature).cloned();
 
-        match (stability, already_in_stable, already_in_unstable) {
-            (FeatureStability::AcceptedSince(since), _, false) => {
-                if let Some((prev_since, _)) = self.lib_features.stable.get(&feature)
-                    && *prev_since != since
-                {
-                    self.tcx.sess.emit_err(FeatureStableTwice {
-                        span,
-                        feature,
-                        since,
-                        prev_since: *prev_since,
-                    });
-                    return;
-                }
-
-                self.lib_features.stable.insert(feature, (since, span));
+        match (stability, existing_stability) {
+            (_, None) => {
+                self.lib_features.stability.insert(feature, (stability, span));
             }
-            (FeatureStability::AcceptedSince(_), _, true) => {
+            (
+                FeatureStability::AcceptedSince(since),
+                Some((FeatureStability::AcceptedSince(prev_since), _)),
+            ) => {
+                if prev_since != since {
+                    self.tcx.sess.emit_err(FeatureStableTwice { span, feature, since, prev_since });
+                }
+            }
+            (FeatureStability::AcceptedSince(_), Some((FeatureStability::Unstable, _))) => {
                 self.tcx.sess.emit_err(FeaturePreviouslyDeclared {
                     span,
                     feature,
@@ -113,10 +108,7 @@ impl<'tcx> LibFeatureCollector<'tcx> {
                     prev_declared: "unstable",
                 });
             }
-            (FeatureStability::Unstable, false, _) => {
-                self.lib_features.unstable.insert(feature, span);
-            }
-            (FeatureStability::Unstable, true, _) => {
+            (FeatureStability::Unstable, Some((FeatureStability::AcceptedSince(_), _))) => {
                 self.tcx.sess.emit_err(FeaturePreviouslyDeclared {
                     span,
                     feature,
@@ -124,6 +116,8 @@ impl<'tcx> LibFeatureCollector<'tcx> {
                     prev_declared: "stable",
                 });
             }
+            // duplicate `unstable` feature is ok.
+            (FeatureStability::Unstable, Some((FeatureStability::Unstable, _))) => {}
         }
     }
 }
