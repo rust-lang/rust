@@ -27,6 +27,8 @@ fn is_dyn_sym(name: &str, target_os: &str) -> bool {
         // `signal` is set up as a weak symbol in `init_extern_statics` (on Android) so we might as
         // well allow it in `dlsym`.
         "signal" => true,
+        // needed at least on macOS to avoid file-based fallback in getrandom
+        "getentropy" => true,
         // Give specific OSes a chance to allow their symbols.
         _ =>
             match target_os {
@@ -248,6 +250,37 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let [addr, length] = this.check_shim(abi, Abi::C {unwind: false}, link_name, args)?;
                 let result = this.munmap(addr, length)?;
                 this.write_scalar(result, dest)?;
+            }
+
+            "reallocarray" => {
+                // Currently this function does not exist on all Unixes, e.g. on macOS.
+                if !matches!(&*this.tcx.sess.target.os, "linux" | "freebsd") {
+                    throw_unsup_format!(
+                        "`reallocarray` is not supported on {}",
+                        this.tcx.sess.target.os
+                    );
+                }
+                let [ptr, nmemb, size] =
+                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let ptr = this.read_pointer(ptr)?;
+                let nmemb = this.read_target_usize(nmemb)?;
+                let size = this.read_target_usize(size)?;
+                // reallocarray checks a possible overflow and returns ENOMEM
+                // if that happens.
+                //
+                // Linux: https://www.unix.com/man-page/linux/3/reallocarray/
+                // FreeBSD: https://man.freebsd.org/cgi/man.cgi?query=reallocarray
+                match nmemb.checked_mul(size) {
+                    None => {
+                        let einval = this.eval_libc("ENOMEM");
+                        this.set_last_error(einval)?;
+                        this.write_null(dest)?;
+                    }
+                    Some(len) => {
+                        let res = this.realloc(ptr, len, MiriMemoryKind::C)?;
+                        this.write_pointer(res, dest)?;
+                    }
+                }
             }
 
             // Dynamic symbol loading
@@ -525,6 +558,34 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let result = this.getpid()?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
+            "getentropy" => {
+                // This function is non-standard but exists with the same signature and behavior on
+                // Linux, macOS, and FreeBSD.
+                if !matches!(&*this.tcx.sess.target.os, "linux" | "macos" | "freebsd") {
+                    throw_unsup_format!(
+                        "`getentropy` is not supported on {}",
+                        this.tcx.sess.target.os
+                    );
+                }
+
+                let [buf, bufsize] =
+                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let buf = this.read_pointer(buf)?;
+                let bufsize = this.read_target_usize(bufsize)?;
+
+                // getentropy sets errno to EIO when the buffer size exceeds 256 bytes.
+                // FreeBSD: https://man.freebsd.org/cgi/man.cgi?query=getentropy&sektion=3&format=html
+                // Linux: https://man7.org/linux/man-pages/man3/getentropy.3.html
+                // macOS: https://keith.github.io/xcode-man-pages/getentropy.2.html
+                if bufsize > 256 {
+                    let err = this.eval_libc("EIO");
+                    this.set_last_error(err)?;
+                    this.write_scalar(Scalar::from_i32(-1), dest)?
+                } else {
+                    this.gen_random(buf, bufsize)?;
+                    this.write_scalar(Scalar::from_i32(0), dest)?;
+                }
+            }
 
             // Incomplete shims that we "stub out" just to get pre-main initialization code to work.
             // These shims are enabled only when the caller is in the standard library.
@@ -594,7 +655,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 this.write_int(super::UID, dest)?;
             }
 
-            "getpwuid_r" if this.frame_in_std() => {
+            "getpwuid_r"
+            if this.frame_in_std() => {
                 let [uid, pwd, buf, buflen, result] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 this.check_no_isolation("`getpwuid_r`")?;

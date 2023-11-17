@@ -7,7 +7,7 @@
 //!
 //! For now, we are developing everything inside `rustc`, thus, we keep this module private.
 
-use crate::rustc_internal::{IndexMap, RustcInternal};
+use crate::rustc_internal::{internal, IndexMap, RustcInternal};
 use crate::rustc_smir::stable_mir::ty::{BoundRegion, Region};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
@@ -103,6 +103,10 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
     fn def_ty(&self, item: stable_mir::DefId) -> stable_mir::ty::Ty {
         let mut tables = self.0.borrow_mut();
         tables.tcx.type_of(item.internal(&mut *tables)).instantiate_identity().stable(&mut *tables)
+    }
+
+    fn const_literal(&self, cnst: &stable_mir::ty::Const) -> String {
+        internal(cnst).to_string()
     }
 
     fn span_of_an_item(&self, def_id: stable_mir::DefId) -> Span {
@@ -404,6 +408,7 @@ impl<'tcx> Stable<'tcx> for mir::Body<'tcx> {
                 .map(|decl| stable_mir::mir::LocalDecl {
                     ty: decl.ty.stable(tables),
                     span: decl.source_info.span.stable(tables),
+                    mutability: decl.mutability.stable(tables),
                 })
                 .collect(),
             self.arg_count,

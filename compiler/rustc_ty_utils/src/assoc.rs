@@ -43,7 +43,7 @@ fn associated_item_def_ids(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &[DefId] {
                                     trait_fn_def_id,
                                 )
                             })
-                            .map(|def_id| *def_id),
+                            .copied(),
                     ),
             )
         }
@@ -69,7 +69,7 @@ fn associated_item_def_ids(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &[DefId] {
                                     impl_fn_def_id,
                                 )
                             })
-                            .map(|def_id| *def_id)
+                            .copied()
                     })),
             )
         }
