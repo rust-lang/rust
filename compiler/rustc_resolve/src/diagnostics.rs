@@ -2028,7 +2028,19 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     },
                 )
             });
-            (format!("use of undeclared crate or module `{ident}`"), suggestion)
+            if let Ok(binding) = self.early_resolve_ident_in_lexical_scope(
+                ident,
+                ScopeSet::All(ValueNS),
+                parent_scope,
+                None,
+                false,
+                ignore_binding,
+            ) {
+                let descr = binding.res().descr();
+                (format!("{descr} `{ident}` is not a crate or module"), suggestion)
+            } else {
+                (format!("use of undeclared crate or module `{ident}`"), suggestion)
+            }
         }
     }
 
