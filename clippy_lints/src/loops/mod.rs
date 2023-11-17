@@ -3,6 +3,7 @@ mod explicit_counter_loop;
 mod explicit_into_iter_loop;
 mod explicit_iter_loop;
 mod for_kv_map;
+mod infinite_loops;
 mod iter_next_loop;
 mod manual_find;
 mod manual_flatten;
@@ -22,7 +23,7 @@ mod while_let_on_iterator;
 
 use clippy_config::msrvs::Msrv;
 use clippy_utils::higher;
-use rustc_hir::{Expr, ExprKind, LoopSource, Pat};
+use rustc_hir::{self as hir, Expr, ExprKind, LoopSource, Pat};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Span;
@@ -635,20 +636,64 @@ declare_clippy_lint! {
     "checking for emptiness of a `Vec` in the loop condition and popping an element in the body"
 }
 
-pub struct Loops {
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for infinite loops in a function where the return type is not `!`
+    /// and lint accordingly.
+    ///
+    /// ### Why is this bad?
+    /// A loop should be gently exited somewhere, or at lease mark its parent function as
+    /// never return (`!`).
+    ///
+    /// ### Example
+    /// ```no_run,ignore
+    /// fn run_forever() {
+    ///     loop {
+    ///         // do something
+    ///     }
+    /// }
+    /// ```
+    /// If infinite loops are as intended:
+    /// ```no_run,ignore
+    /// fn run_forever() -> ! {
+    ///     loop {
+    ///         // do something
+    ///     }
+    /// }
+    /// ```
+    /// Otherwise add a `break` or `return` condition:
+    /// ```no_run,ignore
+    /// fn run_forever() {
+    ///     loop {
+    ///         // do something
+    ///         if condition {
+    ///             break;
+    ///         }
+    ///     }
+    /// }
+    /// ```
+    #[clippy::version = "1.75.0"]
+    pub INFINITE_LOOPS,
+    restriction,
+    "possibly unintended infinite loops"
+}
+
+pub struct Loops<'tcx> {
     msrv: Msrv,
     enforce_iter_loop_reborrow: bool,
+    parent_fn_ret_ty: Option<hir::FnRetTy<'tcx>>,
 }
-impl Loops {
+impl<'tcx> Loops<'tcx> {
     pub fn new(msrv: Msrv, enforce_iter_loop_reborrow: bool) -> Self {
         Self {
             msrv,
             enforce_iter_loop_reborrow,
+            parent_fn_ret_ty: None,
         }
     }
 }
 
-impl_lint_pass!(Loops => [
+impl_lint_pass!(Loops<'_> => [
     MANUAL_MEMCPY,
     MANUAL_FLATTEN,
     NEEDLESS_RANGE_LOOP,
@@ -669,9 +714,10 @@ impl_lint_pass!(Loops => [
     MANUAL_FIND,
     MANUAL_WHILE_LET_SOME,
     UNUSED_ENUMERATE_INDEX,
+    INFINITE_LOOPS,
 ]);
 
-impl<'tcx> LateLintPass<'tcx> for Loops {
+impl<'tcx> LateLintPass<'tcx> for Loops<'tcx> {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         let for_loop = higher::ForLoop::hir(expr);
         if let Some(higher::ForLoop {
@@ -707,10 +753,13 @@ impl<'tcx> LateLintPass<'tcx> for Loops {
         // check for `loop { if let {} else break }` that could be `while let`
         // (also matches an explicit "match" instead of "if let")
         // (even if the "match" or "if let" is used for declaration)
-        if let ExprKind::Loop(block, _, LoopSource::Loop, _) = expr.kind {
+        if let ExprKind::Loop(block, label, LoopSource::Loop, _) = expr.kind {
             // also check for empty `loop {}` statements, skipping those in #[panic_handler]
             empty_loop::check(cx, expr, block);
             while_let_loop::check(cx, expr, block);
+            if let Some(parent_fn_ret_ty) = self.parent_fn_ret_ty {
+                infinite_loops::check(cx, expr, block, label, parent_fn_ret_ty);
+            }
         }
 
         while_let_on_iterator::check(cx, expr);
@@ -722,11 +771,25 @@ impl<'tcx> LateLintPass<'tcx> for Loops {
         }
     }
 
+    fn check_fn(
+        &mut self,
+        _: &LateContext<'tcx>,
+        kind: hir::intravisit::FnKind<'tcx>,
+        decl: &'tcx hir::FnDecl<'tcx>,
+        _: &'tcx hir::Body<'tcx>,
+        _: Span,
+        _: rustc_span::def_id::LocalDefId,
+    ) {
+        if let hir::intravisit::FnKind::ItemFn(..) = kind {
+            self.parent_fn_ret_ty = Some(decl.output);
+        }
+    }
+
     extract_msrv_attr!(LateContext);
 }
 
-impl Loops {
-    fn check_for_loop<'tcx>(
+impl<'tcx> Loops<'tcx> {
+    fn check_for_loop(
         &self,
         cx: &LateContext<'tcx>,
         pat: &'tcx Pat<'_>,
