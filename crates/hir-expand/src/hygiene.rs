@@ -2,32 +2,31 @@
 //!
 //! Specifically, `ast` + `Hygiene` allows you to create a `Name`. Note that, at
 //! this moment, this is horribly incomplete and handles only `$crate`.
-use base_db::{span::SyntaxContextId, CrateId};
-use either::Either;
-use syntax::{
-    ast::{self},
-    TextRange,
-};
-use triomphe::Arc;
+use base_db::span::{MacroCallId, SyntaxContextId};
 
-use crate::{
-    db::ExpandDatabase,
-    name::{AsName, Name},
-    HirFileId, InFile,
-};
+use crate::db::ExpandDatabase;
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct SyntaxContextData {
-    // FIXME: This might only need to be Option<MacroCallId>?
-    outer_expn: HirFileId,
-    outer_transparency: Transparency,
-    parent: SyntaxContextId,
+    pub outer_expn: Option<MacroCallId>,
+    pub outer_transparency: Transparency,
+    pub parent: SyntaxContextId,
     /// This context, but with all transparent and semi-transparent expansions filtered away.
-    opaque: SyntaxContextId,
+    pub opaque: SyntaxContextId,
     /// This context, but with all transparent expansions filtered away.
-    opaque_and_semitransparent: SyntaxContextId,
-    /// Name of the crate to which `$crate` with this context would resolve.
-    dollar_crate_name: Name,
+    pub opaque_and_semitransparent: SyntaxContextId,
+}
+
+impl SyntaxContextData {
+    pub fn root() -> Self {
+        SyntaxContextData {
+            outer_expn: None,
+            outer_transparency: Transparency::Opaque,
+            parent: SyntaxContextId::ROOT,
+            opaque: SyntaxContextId::ROOT,
+            opaque_and_semitransparent: SyntaxContextId::ROOT,
+        }
+    }
 }
 
 /// A property of a macro expansion that determines how identifiers
@@ -50,12 +49,130 @@ pub enum Transparency {
 }
 
 pub(super) fn apply_mark(
-    _db: &dyn ExpandDatabase,
-    _ctxt: SyntaxContextData,
-    _file_id: HirFileId,
-    _transparency: Transparency,
+    db: &dyn ExpandDatabase,
+    ctxt: SyntaxContextId,
+    call_id: MacroCallId,
+    transparency: Transparency,
 ) -> SyntaxContextId {
-    _db.intern_syntax_context(_ctxt)
+    if transparency == Transparency::Opaque {
+        return apply_mark_internal(db, ctxt, Some(call_id), transparency);
+    }
+
+    let call_site_ctxt = db.lookup_intern_macro_call(call_id).call_site;
+    let mut call_site_ctxt = if transparency == Transparency::SemiTransparent {
+        call_site_ctxt.normalize_to_macros_2_0(db)
+    } else {
+        call_site_ctxt.normalize_to_macro_rules(db)
+    };
+
+    if call_site_ctxt.is_root(db) {
+        return apply_mark_internal(db, ctxt, Some(call_id), transparency);
+    }
+
+    // Otherwise, `expn_id` is a macros 1.0 definition and the call site is in a
+    // macros 2.0 expansion, i.e., a macros 1.0 invocation is in a macros 2.0 definition.
+    //
+    // In this case, the tokens from the macros 1.0 definition inherit the hygiene
+    // at their invocation. That is, we pretend that the macros 1.0 definition
+    // was defined at its invocation (i.e., inside the macros 2.0 definition)
+    // so that the macros 2.0 definition remains hygienic.
+    //
+    // See the example at `test/ui/hygiene/legacy_interaction.rs`.
+    for (call_id, transparency) in ctxt.marks(db) {
+        call_site_ctxt = apply_mark_internal(db, call_site_ctxt, call_id, transparency);
+    }
+    apply_mark_internal(db, call_site_ctxt, Some(call_id), transparency)
+}
+
+fn apply_mark_internal(
+    db: &dyn ExpandDatabase,
+    ctxt: SyntaxContextId,
+    call_id: Option<MacroCallId>,
+    transparency: Transparency,
+) -> SyntaxContextId {
+    let syntax_context_data = db.lookup_intern_syntax_context(ctxt);
+    let mut opaque = syntax_context_data.opaque;
+    let mut opaque_and_semitransparent = syntax_context_data.opaque_and_semitransparent;
+
+    if transparency >= Transparency::Opaque {
+        let parent = opaque;
+        let new_opaque = SyntaxContextId::SELF_REF;
+        // But we can't just grab the to be allocated ID either as that would not deduplicate
+        // things!
+        // So we need a new salsa store type here ...
+        opaque = db.intern_syntax_context(SyntaxContextData {
+            outer_expn: call_id,
+            outer_transparency: transparency,
+            parent,
+            opaque: new_opaque,
+            opaque_and_semitransparent: new_opaque,
+        });
+    }
+
+    if transparency >= Transparency::SemiTransparent {
+        let parent = opaque_and_semitransparent;
+        let new_opaque_and_semitransparent = SyntaxContextId::SELF_REF;
+        opaque_and_semitransparent = db.intern_syntax_context(SyntaxContextData {
+            outer_expn: call_id,
+            outer_transparency: transparency,
+            parent,
+            opaque,
+            opaque_and_semitransparent: new_opaque_and_semitransparent,
+        });
+    }
+
+    let parent = ctxt;
+    db.intern_syntax_context(SyntaxContextData {
+        outer_expn: call_id,
+        outer_transparency: transparency,
+        parent,
+        opaque,
+        opaque_and_semitransparent,
+    })
+}
+pub trait SyntaxContextExt {
+    fn is_root(self, db: &dyn ExpandDatabase) -> bool;
+    fn normalize_to_macro_rules(self, db: &dyn ExpandDatabase) -> Self;
+    fn normalize_to_macros_2_0(self, db: &dyn ExpandDatabase) -> Self;
+    fn parent_ctxt(self, db: &dyn ExpandDatabase) -> Self;
+    fn outer_mark(self, db: &dyn ExpandDatabase) -> (Option<MacroCallId>, Transparency);
+    fn marks(self, db: &dyn ExpandDatabase) -> Vec<(Option<MacroCallId>, Transparency)>;
+}
+
+#[inline(always)]
+fn handle_self_ref(p: SyntaxContextId, n: SyntaxContextId) -> SyntaxContextId {
+    match n {
+        SyntaxContextId::SELF_REF => p,
+        _ => n,
+    }
+}
+
+impl SyntaxContextExt for SyntaxContextId {
+    fn is_root(self, db: &dyn ExpandDatabase) -> bool {
+        db.lookup_intern_syntax_context(self).outer_expn.is_none()
+    }
+    fn normalize_to_macro_rules(self, db: &dyn ExpandDatabase) -> Self {
+        handle_self_ref(self, db.lookup_intern_syntax_context(self).opaque_and_semitransparent)
+    }
+    fn normalize_to_macros_2_0(self, db: &dyn ExpandDatabase) -> Self {
+        handle_self_ref(self, db.lookup_intern_syntax_context(self).opaque)
+    }
+    fn parent_ctxt(self, db: &dyn ExpandDatabase) -> Self {
+        db.lookup_intern_syntax_context(self).parent
+    }
+    fn outer_mark(self, db: &dyn ExpandDatabase) -> (Option<MacroCallId>, Transparency) {
+        let data = db.lookup_intern_syntax_context(self);
+        (data.outer_expn, data.outer_transparency)
+    }
+    fn marks(mut self, db: &dyn ExpandDatabase) -> Vec<(Option<MacroCallId>, Transparency)> {
+        let mut marks = Vec::new();
+        while self != SyntaxContextId::ROOT {
+            marks.push(self.outer_mark(db));
+            self = self.parent_ctxt(db);
+        }
+        marks.reverse();
+        marks
+    }
 }
 
 // pub(super) fn with_ctxt_from_mark(db: &ExpandDatabase, file_id: HirFileId) {
@@ -64,50 +181,3 @@ pub(super) fn apply_mark(
 // pub(super) fn with_call_site_ctxt(db: &ExpandDatabase, file_id: HirFileId) {
 //     self.with_ctxt_from_mark(expn_id, Transparency::Transparent)
 // }
-
-#[derive(Clone, Debug)]
-pub struct Hygiene {}
-
-impl Hygiene {
-    pub fn new(_: &dyn ExpandDatabase, _: HirFileId) -> Hygiene {
-        Hygiene {}
-    }
-
-    pub fn new_unhygienic() -> Hygiene {
-        Hygiene {}
-    }
-
-    // FIXME: this should just return name
-    pub fn name_ref_to_name(
-        &self,
-        _: &dyn ExpandDatabase,
-        name_ref: ast::NameRef,
-    ) -> Either<Name, CrateId> {
-        Either::Left(name_ref.as_name())
-    }
-
-    pub fn local_inner_macros(&self, _: &dyn ExpandDatabase, _: ast::Path) -> Option<CrateId> {
-        None
-    }
-}
-
-#[derive(Clone, Debug)]
-struct HygieneFrames(Arc<HygieneFrame>);
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct HygieneFrame {}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct HygieneInfo {}
-
-impl HygieneInfo {
-    fn _map_ident_up(&self, _: &dyn ExpandDatabase, _: TextRange) -> Option<InFile<TextRange>> {
-        None
-    }
-}
-
-impl HygieneFrame {
-    pub(crate) fn new(_: &dyn ExpandDatabase, _: HirFileId) -> HygieneFrame {
-        HygieneFrame {}
-    }
-}

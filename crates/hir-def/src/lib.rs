@@ -63,7 +63,7 @@ use std::{
     panic::{RefUnwindSafe, UnwindSafe},
 };
 
-use base_db::{impl_intern_key, salsa, CrateId, ProcMacroKind};
+use base_db::{impl_intern_key, salsa, span::SyntaxContextId, CrateId, ProcMacroKind};
 use hir_expand::{
     ast_id_map::{AstIdNode, FileAstId},
     attrs::{Attr, AttrId, AttrInput},
@@ -72,7 +72,6 @@ use hir_expand::{
     builtin_fn_macro::{BuiltinFnLikeExpander, EagerExpander},
     db::ExpandDatabase,
     eager::expand_eager_macro_input,
-    hygiene::Hygiene,
     name::Name,
     proc_macro::ProcMacroExpander,
     AstId, ExpandError, ExpandResult, ExpandTo, HirFileId, InFile, MacroCallId, MacroCallKind,
@@ -82,7 +81,7 @@ use item_tree::ExternBlock;
 use la_arena::Idx;
 use nameres::DefMap;
 use stdx::impl_from;
-use syntax::ast;
+use syntax::{ast, AstNode};
 
 pub use hir_expand::tt;
 
@@ -1166,16 +1165,21 @@ impl AsMacroCall for InFile<&ast::MacroCall> {
     ) -> Result<ExpandResult<Option<MacroCallId>>, UnresolvedMacro> {
         let expands_to = hir_expand::ExpandTo::from_call_site(self.value);
         let ast_id = AstId::new(self.file_id, db.ast_id_map(self.file_id).ast_id(self.value));
-        let h = Hygiene::new(db, self.file_id);
-        let path = self.value.path().and_then(|path| path::ModPath::from_src(db, path, &h));
+        let span_map = db.span_map(self.file_id);
+        let path = self.value.path().and_then(|path| path::ModPath::from_src(db, path, &span_map));
 
         let Some(path) = path else {
             return Ok(ExpandResult::only_err(ExpandError::other("malformed macro invocation")));
         };
 
+        let call_site = span_map
+            .span_for_range(self.value.syntax().text_range())
+            .map_or(SyntaxContextId::ROOT, |s| s.ctx);
+
         macro_call_as_call_id_with_eager(
             db,
             &AstIdWithPath::new(ast_id.file_id, ast_id.value, path),
+            call_site,
             expands_to,
             krate,
             resolver,
@@ -1200,17 +1204,19 @@ impl<T: AstIdNode> AstIdWithPath<T> {
 fn macro_call_as_call_id(
     db: &dyn ExpandDatabase,
     call: &AstIdWithPath<ast::MacroCall>,
+    call_site: SyntaxContextId,
     expand_to: ExpandTo,
     krate: CrateId,
     resolver: impl Fn(path::ModPath) -> Option<MacroDefId> + Copy,
 ) -> Result<Option<MacroCallId>, UnresolvedMacro> {
-    macro_call_as_call_id_with_eager(db, call, expand_to, krate, resolver, resolver)
+    macro_call_as_call_id_with_eager(db, call, call_site, expand_to, krate, resolver, resolver)
         .map(|res| res.value)
 }
 
 fn macro_call_as_call_id_with_eager(
     db: &dyn ExpandDatabase,
     call: &AstIdWithPath<ast::MacroCall>,
+    call_site: SyntaxContextId,
     expand_to: ExpandTo,
     krate: CrateId,
     resolver: impl FnOnce(path::ModPath) -> Option<MacroDefId>,
@@ -1231,6 +1237,7 @@ fn macro_call_as_call_id_with_eager(
                 db,
                 krate,
                 MacroCallKind::FnLike { ast_id: call.ast_id, expand_to },
+                call_site,
             )),
             err: None,
         },
@@ -1329,6 +1336,8 @@ fn derive_macro_as_call_id(
             derive_index: derive_pos,
             derive_attr_index,
         },
+        //FIXME
+        SyntaxContextId::ROOT,
     );
     Ok((macro_id, def_id, call_id))
 }
@@ -1358,6 +1367,8 @@ fn attr_macro_as_call_id(
             attr_args: Arc::new(arg),
             invoc_attr_index: macro_attr.id,
         },
+        //FIXME
+        SyntaxContextId::ROOT,
     )
 }
 intern::impl_internable!(

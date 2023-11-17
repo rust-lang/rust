@@ -208,7 +208,6 @@ impl RootDatabase {
             hir_db::DeclMacroExpanderQuery
             // hir_db::MacroExpandQuery
             hir_db::ExpandProcMacroQuery
-            hir_db::HygieneFrameQuery
             hir_db::ParseMacroExpansionErrorQuery
 
             // DefDatabase

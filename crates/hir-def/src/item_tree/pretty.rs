@@ -457,7 +457,7 @@ impl Printer<'_> {
                 }
             }
             ModItem::MacroCall(it) => {
-                let MacroCall { path, ast_id: _, expand_to: _ } = &self.tree[it];
+                let MacroCall { path, ast_id: _, expand_to: _, call_site: _ } = &self.tree[it];
                 wln!(self, "{}!(...);", path.display(self.db.upcast()));
             }
             ModItem::MacroRules(it) => {

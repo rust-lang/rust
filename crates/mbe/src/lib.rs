@@ -72,6 +72,7 @@ impl fmt::Display for ParseError {
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum ExpandError {
     BindingError(Box<Box<str>>),
+    UnresolvedBinding(Box<Box<str>>),
     LeftoverTokens,
     ConversionError,
     LimitExceeded,
@@ -94,6 +95,10 @@ impl fmt::Display for ExpandError {
             ExpandError::NoMatchingRule => f.write_str("no rule matches input tokens"),
             ExpandError::UnexpectedToken => f.write_str("unexpected token in input"),
             ExpandError::BindingError(e) => f.write_str(e),
+            ExpandError::UnresolvedBinding(binding) => {
+                f.write_str("could not find binding ")?;
+                f.write_str(binding)
+            }
             ExpandError::ConversionError => f.write_str("could not convert tokens"),
             ExpandError::LimitExceeded => f.write_str("Expand exceed limit"),
             ExpandError::LeftoverTokens => f.write_str("leftover tokens"),
@@ -233,8 +238,12 @@ impl<S: Span> DeclarativeMacro<S> {
         self.err.as_deref()
     }
 
-    pub fn expand(&self, tt: &tt::Subtree<S>) -> ExpandResult<tt::Subtree<S>> {
-        expander::expand_rules(&self.rules, &tt, self.is_2021)
+    pub fn expand(
+        &self,
+        tt: &tt::Subtree<S>,
+        marker: impl Fn(&mut S) + Copy,
+    ) -> ExpandResult<tt::Subtree<S>> {
+        expander::expand_rules(&self.rules, &tt, marker, self.is_2021)
     }
 }
 

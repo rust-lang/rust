@@ -56,6 +56,7 @@ pub trait SpanAnchor: std::fmt::Debug + Copy + Sized + Eq {
     const DUMMY: Self;
 }
 
+// FIXME: Get rid of this trait?
 pub trait Span: std::fmt::Debug + Copy + Sized + Eq {
     const DUMMY: Self;
 }
@@ -72,7 +73,16 @@ pub enum TokenTree<S> {
 impl_from!(Leaf<S>, Subtree<S> for TokenTree);
 impl<S: Span> TokenTree<S> {
     pub const fn empty() -> Self {
-        Self::Subtree(Subtree { delimiter: Delimiter::unspecified(), token_trees: vec![] })
+        Self::Subtree(Subtree { delimiter: Delimiter::UNSPECIFIED, token_trees: vec![] })
+    }
+
+    pub fn subtree_or_wrap(self) -> Subtree<S> {
+        match self {
+            TokenTree::Leaf(_) => {
+                Subtree { delimiter: Delimiter::UNSPECIFIED, token_trees: vec![self] }
+            }
+            TokenTree::Subtree(s) => s,
+        }
     }
 }
 

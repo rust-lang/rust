@@ -155,10 +155,7 @@ pub fn parse_exprs_with_sep<S: Span>(tt: &tt::Subtree<S>, sep: char) -> Vec<tt::
 
         res.push(match expanded.value {
             None => break,
-            Some(tt @ tt::TokenTree::Leaf(_)) => {
-                tt::Subtree { delimiter: tt::Delimiter::unspecified(), token_trees: vec![tt] }
-            }
-            Some(tt::TokenTree::Subtree(tt)) => tt,
+            Some(tt) => tt.subtree_or_wrap(),
         });
 
         let mut fork = iter.clone();
@@ -720,6 +717,7 @@ where
     /// Parses a float literal as if it was a one to two name ref nodes with a dot inbetween.
     /// This occurs when a float literal is used as a field access.
     fn float_split(&mut self, has_pseudo_dot: bool) {
+        // TODO: FIXME this breaks the hygiene map
         let (text, _span) = match self.cursor.token_tree() {
             Some(tt::buffer::TokenTreeRef::Leaf(tt::Leaf::Literal(lit), _)) => {
                 (lit.text.as_str(), lit.span)

@@ -53,7 +53,7 @@ fn benchmark_expand_macro_rules() {
         invocations
             .into_iter()
             .map(|(id, tt)| {
-                let res = rules[&id].expand(&tt);
+                let res = rules[&id].expand(&tt, |_| ());
                 assert!(res.err.is_none());
                 res.value.token_trees.len()
             })
@@ -124,7 +124,7 @@ fn invocation_fixtures(
                     for op in rule.lhs.iter() {
                         collect_from_op(op, &mut subtree, &mut seed);
                     }
-                    if it.expand(&subtree).err.is_none() {
+                    if it.expand(&subtree, |_| ()).err.is_none() {
                         res.push((name.clone(), subtree));
                         break;
                     }

@@ -13,10 +13,9 @@ use triomphe::Arc;
 
 use crate::{
     db::ExpandDatabase,
-    hygiene::Hygiene,
     mod_path::ModPath,
     tt::{self, Subtree},
-    InFile,
+    InFile, SpanMap,
 };
 
 /// Syntactical attributes, without filtering of `cfg_attr`s.
@@ -44,7 +43,7 @@ impl RawAttrs {
         db: &dyn ExpandDatabase,
         span_anchor: SpanAnchor,
         owner: &dyn ast::HasAttrs,
-        hygiene: &Hygiene,
+        hygiene: &SpanMap,
     ) -> Self {
         let entries = collect_attrs(owner)
             .filter_map(|(id, attr)| match attr {
@@ -69,8 +68,7 @@ impl RawAttrs {
         span_anchor: SpanAnchor,
         owner: InFile<&dyn ast::HasAttrs>,
     ) -> Self {
-        let hygiene = Hygiene::new(db, owner.file_id);
-        Self::new(db, span_anchor, owner.value, &hygiene)
+        Self::new(db, span_anchor, owner.value, &db.span_map(owner.file_id))
     }
 
     pub fn merge(&self, other: Self) -> Self {
@@ -135,9 +133,7 @@ impl RawAttrs {
                                 delimiter: tt::Delimiter::unspecified(),
                                 token_trees: attr.to_vec(),
                             };
-                            // FIXME hygiene
-                            let hygiene = Hygiene::new_unhygienic();
-                            Attr::from_tt(db, &tree, &hygiene, index.with_cfg_attr(idx))
+                            Attr::from_tt(db, &tree, index.with_cfg_attr(idx))
                         },
                     );
 
@@ -220,7 +216,7 @@ impl Attr {
         db: &dyn ExpandDatabase,
         span_anchor: SpanAnchor,
         ast: ast::Meta,
-        hygiene: &Hygiene,
+        hygiene: &SpanMap,
         id: AttrId,
     ) -> Option<Attr> {
         let path = Interned::new(ModPath::from_src(db, ast.path()?, hygiene)?);
@@ -234,9 +230,7 @@ impl Attr {
             // FIXME: We could also allocate ids for attributes and use the attribute itself as an anchor
             let offset =
                 db.ast_id_map(span_anchor.file_id).get_raw(span_anchor.ast_id).text_range().start();
-            // FIXME: Spanmap
-            let tree =
-                syntax_node_to_token_tree(tt.syntax(), span_anchor, offset, &Default::default());
+            let tree = syntax_node_to_token_tree(tt.syntax(), span_anchor, offset, hygiene);
             Some(Interned::new(AttrInput::TokenTree(Box::new(tree))))
         } else {
             None
@@ -244,18 +238,13 @@ impl Attr {
         Some(Attr { id, path, input })
     }
 
-    fn from_tt(
-        db: &dyn ExpandDatabase,
-        tt: &tt::Subtree,
-        hygiene: &Hygiene,
-        id: AttrId,
-    ) -> Option<Attr> {
+    fn from_tt(db: &dyn ExpandDatabase, tt: &tt::Subtree, id: AttrId) -> Option<Attr> {
         // FIXME: Unecessary roundtrip tt -> ast -> tt
         let (parse, _map) = mbe::token_tree_to_syntax_node(tt, mbe::TopEntryPoint::MetaItem);
         let ast = ast::Meta::cast(parse.syntax_node())?;
 
         // FIXME: we discard spans here!
-        Self::from_src(db, SpanAnchor::DUMMY, ast, hygiene, id)
+        Self::from_src(db, SpanAnchor::DUMMY, ast, &SpanMap::default(), id)
     }
 
     pub fn path(&self) -> &ModPath {
@@ -295,9 +284,9 @@ impl Attr {
     pub fn parse_path_comma_token_tree<'a>(
         &'a self,
         db: &'a dyn ExpandDatabase,
-        hygiene: &'a Hygiene,
     ) -> Option<impl Iterator<Item = ModPath> + 'a> {
         let args = self.token_tree_value()?;
+        dbg!(args);
 
         if args.delimiter.kind != DelimiterKind::Parenthesis {
             return None;
@@ -309,12 +298,13 @@ impl Attr {
                 if tts.is_empty() {
                     return None;
                 }
-                // FIXME: This is necessarily a hack. It'd be nice if we could avoid allocation here.
+                // FIXME: This is necessarily a hack. It'd be nice if we could avoid allocation
+                // here.
                 let subtree = tt::Subtree {
                     delimiter: tt::Delimiter::unspecified(),
-                    token_trees: tts.into_iter().cloned().collect(),
+                    token_trees: tts.to_vec(),
                 };
-                let (parse, _) =
+                let (parse, span_map) =
                     mbe::token_tree_to_syntax_node(&subtree, mbe::TopEntryPoint::MetaItem);
                 let meta = ast::Meta::cast(parse.syntax_node())?;
                 // Only simple paths are allowed.
@@ -323,7 +313,7 @@ impl Attr {
                     return None;
                 }
                 let path = meta.path()?;
-                ModPath::from_src(db, path, hygiene)
+                ModPath::from_src(db, path, &span_map)
             });
 
         Some(paths)

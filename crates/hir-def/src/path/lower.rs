@@ -4,8 +4,11 @@ use std::iter;
 
 use crate::{lower::LowerCtx, type_ref::ConstRef};
 
-use either::Either;
-use hir_expand::name::{name, AsName};
+use base_db::span::SyntaxContextId;
+use hir_expand::{
+    mod_path::resolve_crate_root,
+    name::{name, AsName},
+};
 use intern::Interned;
 use syntax::ast::{self, AstNode, HasTypeBounds};
 
@@ -14,14 +17,17 @@ use crate::{
     type_ref::{LifetimeRef, TypeBound, TypeRef},
 };
 
+// fn resolve_crate_root
+
 /// Converts an `ast::Path` to `Path`. Works with use trees.
 /// It correctly handles `$crate` based path from macro call.
+// FIXME: flip the params
 pub(super) fn lower_path(mut path: ast::Path, ctx: &LowerCtx<'_>) -> Option<Path> {
     let mut kind = PathKind::Plain;
     let mut type_anchor = None;
     let mut segments = Vec::new();
     let mut generic_args = Vec::new();
-    let hygiene = ctx.hygiene();
+    let hygiene = ctx.span_map();
     loop {
         let segment = path.segment()?;
 
@@ -31,31 +37,34 @@ pub(super) fn lower_path(mut path: ast::Path, ctx: &LowerCtx<'_>) -> Option<Path
 
         match segment.kind()? {
             ast::PathSegmentKind::Name(name_ref) => {
-                // FIXME: this should just return name
-                match hygiene.name_ref_to_name(ctx.db.upcast(), name_ref) {
-                    Either::Left(name) => {
-                        let args = segment
-                            .generic_arg_list()
-                            .and_then(|it| lower_generic_args(ctx, it))
-                            .or_else(|| {
-                                lower_generic_args_from_fn_path(
-                                    ctx,
-                                    segment.param_list(),
-                                    segment.ret_type(),
-                                )
-                            })
-                            .map(Interned::new);
-                        if let Some(_) = args {
-                            generic_args.resize(segments.len(), None);
-                            generic_args.push(args);
-                        }
-                        segments.push(name);
-                    }
-                    Either::Right(crate_id) => {
-                        kind = PathKind::DollarCrate(crate_id);
-                        break;
-                    }
+                let name = if name_ref.text() == "$crate" {
+                    kind = resolve_crate_root(
+                        ctx.db.upcast(),
+                        hygiene
+                            .span_for_range(name_ref.syntax().text_range())
+                            .map_or(SyntaxContextId::ROOT, |s| s.ctx),
+                    )
+                    .map(PathKind::DollarCrate)?;
+                    break;
+                } else {
+                    name_ref.as_name()
+                };
+                let args = segment
+                    .generic_arg_list()
+                    .and_then(|it| lower_generic_args(ctx, it))
+                    .or_else(|| {
+                        lower_generic_args_from_fn_path(
+                            ctx,
+                            segment.param_list(),
+                            segment.ret_type(),
+                        )
+                    })
+                    .map(Interned::new);
+                if let Some(_) = args {
+                    generic_args.resize(segments.len(), None);
+                    generic_args.push(args);
                 }
+                segments.push(name);
             }
             ast::PathSegmentKind::SelfTypeKw => {
                 segments.push(name![Self]);
@@ -151,8 +160,16 @@ pub(super) fn lower_path(mut path: ast::Path, ctx: &LowerCtx<'_>) -> Option<Path
     // We follow what it did anyway :)
     if segments.len() == 1 && kind == PathKind::Plain {
         if let Some(_macro_call) = path.syntax().parent().and_then(ast::MacroCall::cast) {
-            if let Some(crate_id) = hygiene.local_inner_macros(ctx.db.upcast(), path) {
-                kind = PathKind::DollarCrate(crate_id);
+            let syn_ctxt = hygiene
+                .span_for_range(path.segment()?.syntax().text_range())
+                .map_or(SyntaxContextId::ROOT, |s| s.ctx);
+            if let Some(macro_call_id) = ctx.db.lookup_intern_syntax_context(syn_ctxt).outer_expn {
+                if ctx.db.lookup_intern_macro_call(macro_call_id).def.local_inner {
+                    dbg!("local_inner_macros");
+                    if let Some(crate_root) = resolve_crate_root(ctx.db.upcast(), syn_ctxt) {
+                        kind = PathKind::DollarCrate(crate_root);
+                    }
+                }
             }
         }
     }

@@ -20,11 +20,12 @@ pub struct TokenMap<S> {
     // then a bin search on the ast id
     pub span_map: Vec<(TextRange, S)>,
     // span_map2: rustc_hash::FxHashMap<TextRange, usize>,
+    pub real_file: bool,
 }
 
 impl<S> Default for TokenMap<S> {
     fn default() -> Self {
-        Self { span_map: Vec::new() }
+        Self { span_map: Vec::new(), real_file: true }
     }
 }
 
@@ -49,8 +50,21 @@ impl<S: Span> TokenMap<S> {
         )
     }
 
+    // FIXME: Should be infallible
     pub fn span_for_range(&self, range: TextRange) -> Option<S> {
-        self.span_map.iter().find_map(|(r, s)| if r == &range { Some(s.clone()) } else { None })
+        // TODO FIXME: make this proper
+        self.span_map
+            .iter()
+            .filter_map(|(r, s)| Some((r, s, r.intersect(range)?)))
+            .max_by_key(|(_, _, intersection)| intersection.len())
+            .map(|(_, &s, _)| s)
+            .or_else(|| {
+                if self.real_file {
+                    None
+                } else {
+                    panic!("no span for range {range:?} in {:#?}", self.span_map)
+                }
+            })
     }
 
     // pub fn ranges_by_token(

@@ -7,11 +7,12 @@ use base_db::{
 use cfg::CfgOptions;
 use drop_bomb::DropBomb;
 use hir_expand::{
-    attrs::RawAttrs, hygiene::Hygiene, mod_path::ModPath, ExpandError, ExpandResult, HirFileId,
-    InFile, MacroCallId, UnresolvedMacro,
+    attrs::RawAttrs, mod_path::ModPath, ExpandError, ExpandResult, HirFileId, InFile, MacroCallId,
+    SpanMap, UnresolvedMacro,
 };
 use limit::Limit;
 use syntax::{ast, Parse, SyntaxNode};
+use triomphe::Arc;
 
 use crate::{
     attr::Attrs, db::DefDatabase, lower::LowerCtx, macro_id_to_def_id, path::Path, AsMacroCall,
@@ -21,7 +22,7 @@ use crate::{
 #[derive(Debug)]
 pub struct Expander {
     cfg_options: CfgOptions,
-    hygiene: Hygiene,
+    hygiene: Arc<SpanMap>,
     krate: CrateId,
     pub(crate) current_file_id: HirFileId,
     pub(crate) module: ModuleId,
@@ -44,7 +45,7 @@ impl Expander {
             recursion_depth: 0,
             recursion_limit,
             cfg_options: db.crate_graph()[module.krate].cfg_options.clone(),
-            hygiene: Hygiene::new(db.upcast(), current_file_id),
+            hygiene: db.span_map(current_file_id),
             krate: module.krate,
         }
     }
@@ -98,7 +99,7 @@ impl Expander {
     }
 
     pub fn exit(&mut self, db: &dyn DefDatabase, mut mark: Mark) {
-        self.hygiene = Hygiene::new(db.upcast(), mark.file_id);
+        self.hygiene = db.span_map(mark.file_id);
         self.current_file_id = mark.file_id;
         if self.recursion_depth == u32::MAX {
             // Recursion limit has been reached somewhere in the macro expansion tree. Reset the
@@ -113,7 +114,7 @@ impl Expander {
     }
 
     pub fn ctx<'a>(&self, db: &'a dyn DefDatabase) -> LowerCtx<'a> {
-        LowerCtx::new(db, &self.hygiene, self.current_file_id)
+        LowerCtx::new(db, self.hygiene.clone(), self.current_file_id)
     }
 
     pub(crate) fn to_source<T>(&self, value: T) -> InFile<T> {
@@ -143,7 +144,7 @@ impl Expander {
     }
 
     pub(crate) fn parse_path(&mut self, db: &dyn DefDatabase, path: ast::Path) -> Option<Path> {
-        let ctx = LowerCtx::new(db, &self.hygiene, self.current_file_id);
+        let ctx = LowerCtx::new(db, self.hygiene.clone(), self.current_file_id);
         Path::from_src(path, &ctx)
     }
 
@@ -187,7 +188,7 @@ impl Expander {
                     let parse = value.cast::<T>()?;
 
                     self.recursion_depth += 1;
-                    self.hygiene = Hygiene::new(db.upcast(), file_id);
+                    self.hygiene = db.span_map(file_id);
                     let old_file_id = std::mem::replace(&mut self.current_file_id, file_id);
                     let mark = Mark {
                         file_id: old_file_id,

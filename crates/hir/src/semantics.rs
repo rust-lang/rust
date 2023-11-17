@@ -842,8 +842,8 @@ impl<'db> SemanticsImpl<'db> {
 
     pub fn resolve_trait(&self, path: &ast::Path) -> Option<Trait> {
         let analyze = self.analyze(path.syntax())?;
-        let hygiene = hir_expand::hygiene::Hygiene::new(self.db.upcast(), analyze.file_id);
-        let ctx = LowerCtx::with_hygiene(self.db.upcast(), &hygiene);
+        let hygiene = self.db.span_map(analyze.file_id);
+        let ctx = LowerCtx::with_hygiene(self.db.upcast(), hygiene);
         let hir_path = Path::from_src(path.clone(), &ctx)?;
         match analyze.resolver.resolve_path_in_type_ns_fully(self.db.upcast(), &hir_path)? {
             TypeNs::TraitId(id) => Some(Trait { id }),

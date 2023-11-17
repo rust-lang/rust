@@ -123,8 +123,9 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
         } else {
             assert!(
                 parse.errors().is_empty(),
-                "parse errors in expansion: \n{:#?}",
-                parse.errors()
+                "parse errors in expansion: \n{:#?}\n```\n{}\n```",
+                parse.errors(),
+                parse.syntax_node(),
             );
         }
         let pp = pretty_print_macro_expansion(

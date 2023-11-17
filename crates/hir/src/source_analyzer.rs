@@ -26,7 +26,6 @@ use hir_def::{
 };
 use hir_expand::{
     builtin_fn_macro::BuiltinFnLikeExpander,
-    hygiene::Hygiene,
     mod_path::path,
     name,
     name::{AsName, Name},
@@ -596,8 +595,7 @@ impl SourceAnalyzer {
         }
 
         // This must be a normal source file rather than macro file.
-        let hygiene = Hygiene::new(db.upcast(), self.file_id);
-        let ctx = LowerCtx::with_hygiene(db.upcast(), &hygiene);
+        let ctx = LowerCtx::with_hygiene(db.upcast(), db.span_map(self.file_id));
         let hir_path = Path::from_src(path.clone(), &ctx)?;
 
         // Case where path is a qualifier of a use tree, e.g. foo::bar::{Baz, Qux} where we are

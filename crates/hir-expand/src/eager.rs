@@ -19,7 +19,7 @@
 //!
 //! See the full discussion : <https://rust-lang.zulipchat.com/#narrow/stream/131828-t-compiler/topic/Eager.20expansion.20of.20built-in.20macros>
 use base_db::{
-    span::{SpanAnchor, ROOT_ERASED_FILE_AST_ID},
+    span::{SpanAnchor, SyntaxContextId, ROOT_ERASED_FILE_AST_ID},
     CrateId,
 };
 use rustc_hash::FxHashMap;
@@ -29,7 +29,6 @@ use triomphe::Arc;
 use crate::{
     ast::{self, AstNode},
     db::ExpandDatabase,
-    hygiene::Hygiene,
     mod_path::ModPath,
     EagerCallInfo, ExpandError, ExpandResult, ExpandTo, InFile, MacroCallId, MacroCallKind,
     MacroCallLoc, MacroDefId, MacroDefKind, SpanMap,
@@ -56,8 +55,10 @@ pub fn expand_eager_macro_input(
         krate,
         eager: None,
         kind: MacroCallKind::FnLike { ast_id: call_id, expand_to: ExpandTo::Expr },
+        // FIXME
+        call_site: SyntaxContextId::ROOT,
     });
-    let ExpandResult { value: (arg_exp, _arg_exp_map), err: parse_err } =
+    let ExpandResult { value: (arg_exp, arg_exp_map), err: parse_err } =
         db.parse_macro_expansion(arg_id.as_macro_file());
     // we need this map here as the expansion of the eager input fake file loses whitespace ...
     // let mut ws_mapping = FxHashMap::default();
@@ -70,7 +71,7 @@ pub fn expand_eager_macro_input(
     let ExpandResult { value: expanded_eager_input, err } = {
         eager_macro_recur(
             db,
-            &Hygiene::new(db, macro_call.file_id),
+            &arg_exp_map,
             InFile::new(arg_id.as_file(), arg_exp.syntax_node()),
             krate,
             resolver,
@@ -131,6 +132,8 @@ pub fn expand_eager_macro_input(
             error: err.clone(),
         })),
         kind: MacroCallKind::FnLike { ast_id: call_id, expand_to },
+        // FIXME
+        call_site: SyntaxContextId::ROOT,
     };
 
     ExpandResult { value: Some(db.intern_macro_call(loc)), err }
@@ -146,7 +149,13 @@ fn lazy_expand(
 
     let expand_to = ExpandTo::from_call_site(&macro_call.value);
     let ast_id = macro_call.with_value(ast_id);
-    let id = def.as_lazy_macro(db, krate, MacroCallKind::FnLike { ast_id, expand_to });
+    let id = def.as_lazy_macro(
+        db,
+        krate,
+        MacroCallKind::FnLike { ast_id, expand_to },
+        // FIXME
+        SyntaxContextId::ROOT,
+    );
     let macro_file = id.as_macro_file();
 
     db.parse_macro_expansion(macro_file)
@@ -155,7 +164,7 @@ fn lazy_expand(
 
 fn eager_macro_recur(
     db: &dyn ExpandDatabase,
-    hygiene: &Hygiene,
+    hygiene: &SpanMap,
     curr: InFile<SyntaxNode>,
     krate: CrateId,
     macro_resolver: &dyn Fn(ModPath) -> Option<MacroDefId>,
@@ -250,14 +259,13 @@ fn eager_macro_recur(
             | MacroDefKind::BuiltInAttr(..)
             | MacroDefKind::BuiltInDerive(..)
             | MacroDefKind::ProcMacro(..) => {
-                let ExpandResult { value: (parse, _tm), err } =
+                let ExpandResult { value: (parse, tm), err } =
                     lazy_expand(db, &def, curr.with_value(call.clone()), krate);
 
                 // replace macro inside
-                let hygiene = Hygiene::new(db, parse.file_id);
                 let ExpandResult { value, err: error } = eager_macro_recur(
                     db,
-                    &hygiene,
+                    &tm,
                     // FIXME: We discard parse errors here
                     parse.as_ref().map(|it| it.syntax_node()),
                     krate,

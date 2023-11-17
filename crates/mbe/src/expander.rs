@@ -14,6 +14,7 @@ use crate::{parser::MetaVarKind, ExpandError, ExpandResult};
 pub(crate) fn expand_rules<S: Span>(
     rules: &[crate::Rule<S>],
     input: &tt::Subtree<S>,
+    marker: impl Fn(&mut S) + Copy,
     is_2021: bool,
 ) -> ExpandResult<tt::Subtree<S>> {
     let mut match_: Option<(matcher::Match<S>, &crate::Rule<S>)> = None;
@@ -25,7 +26,7 @@ pub(crate) fn expand_rules<S: Span>(
             // Unconditionally returning the transcription here makes the
             // `test_repeat_bad_var` test fail.
             let ExpandResult { value, err: transcribe_err } =
-                transcriber::transcribe(&rule.rhs, &new_match.bindings);
+                transcriber::transcribe(&rule.rhs, &new_match.bindings, marker);
             if transcribe_err.is_none() {
                 return ExpandResult::ok(value);
             }
@@ -44,7 +45,7 @@ pub(crate) fn expand_rules<S: Span>(
     if let Some((match_, rule)) = match_ {
         // if we got here, there was no match without errors
         let ExpandResult { value, err: transcribe_err } =
-            transcriber::transcribe(&rule.rhs, &match_.bindings);
+            transcriber::transcribe(&rule.rhs, &match_.bindings, marker);
         ExpandResult { value, err: match_.err.or(transcribe_err) }
     } else {
         ExpandResult::new(
@@ -129,7 +130,7 @@ enum Fragment<S> {
     /// At one point in time, we tried to use "fake" delimiters here à la
     /// proc-macro delimiter=none. As we later discovered, "none" delimiters are
     /// tricky to handle in the parser, and rustc doesn't handle those either.
-    Expr(tt::TokenTree<S>),
+    Expr(tt::Subtree<S>),
     /// There are roughly two types of paths: paths in expression context, where a
     /// separator `::` between an identifier and its following generic argument list
     /// is mandatory, and paths in type context, where `::` can be omitted.
@@ -139,5 +140,5 @@ enum Fragment<S> {
     /// and is trasncribed as an expression-context path, verbatim transcription
     /// would cause a syntax error. We need to fix it up just before transcribing;
     /// see `transcriber::fix_up_and_push_path_tt()`.
-    Path(tt::TokenTree<S>),
+    Path(tt::Subtree<S>),
 }

@@ -6,7 +6,7 @@
 use std::{cmp::Ordering, iter, mem};
 
 use ::tt::Span;
-use base_db::{CrateId, Dependency, Edition, FileId};
+use base_db::{span::SyntaxContextId, CrateId, Dependency, Edition, FileId};
 use cfg::{CfgExpr, CfgOptions};
 use either::Either;
 use hir_expand::{
@@ -15,7 +15,6 @@ use hir_expand::{
     builtin_attr_macro::find_builtin_attr,
     builtin_derive_macro::find_builtin_derive,
     builtin_fn_macro::find_builtin_macro,
-    hygiene::Hygiene,
     name::{name, AsName, Name},
     proc_macro::ProcMacroExpander,
     ExpandResult, ExpandTo, HirFileId, InFile, MacroCallId, MacroCallKind, MacroCallLoc,
@@ -112,7 +111,6 @@ pub(super) fn collect_defs(db: &dyn DefDatabase, def_map: DefMap, tree_id: TreeI
         from_glob_import: Default::default(),
         skip_attrs: Default::default(),
         is_proc_macro,
-        hygienes: FxHashMap::default(),
     };
     if tree_id.is_block() {
         collector.seed_with_inner(tree_id);
@@ -212,9 +210,22 @@ struct MacroDirective {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 enum MacroDirectiveKind {
-    FnLike { ast_id: AstIdWithPath<ast::MacroCall>, expand_to: ExpandTo },
-    Derive { ast_id: AstIdWithPath<ast::Adt>, derive_attr: AttrId, derive_pos: usize },
-    Attr { ast_id: AstIdWithPath<ast::Item>, attr: Attr, mod_item: ModItem, tree: TreeId },
+    FnLike {
+        ast_id: AstIdWithPath<ast::MacroCall>,
+        expand_to: ExpandTo,
+        call_site: SyntaxContextId,
+    },
+    Derive {
+        ast_id: AstIdWithPath<ast::Adt>,
+        derive_attr: AttrId,
+        derive_pos: usize,
+    },
+    Attr {
+        ast_id: AstIdWithPath<ast::Item>,
+        attr: Attr,
+        mod_item: ModItem,
+        /* is this needed? */ tree: TreeId,
+    },
 }
 
 /// Walks the tree of module recursively
@@ -242,12 +253,6 @@ struct DefCollector<'a> {
     /// This also stores the attributes to skip when we resolve derive helpers and non-macro
     /// non-builtin attributes in general.
     skip_attrs: FxHashMap<InFile<ModItem>, AttrId>,
-    /// `Hygiene` cache, because `Hygiene` construction is expensive.
-    ///
-    /// Almost all paths should have been lowered to `ModPath` during `ItemTree` construction.
-    /// However, `DefCollector` still needs to lower paths in attributes, in particular those in
-    /// derive meta item list.
-    hygienes: FxHashMap<HirFileId, Hygiene>,
 }
 
 impl DefCollector<'_> {
@@ -315,9 +320,8 @@ impl DefCollector<'_> {
             }
 
             if *attr_name == hir_expand::name![feature] {
-                let hygiene = &Hygiene::new_unhygienic();
                 let features = attr
-                    .parse_path_comma_token_tree(self.db.upcast(), hygiene)
+                    .parse_path_comma_token_tree(self.db.upcast())
                     .into_iter()
                     .flatten()
                     .filter_map(|feat| match feat.segments() {
@@ -1119,10 +1123,11 @@ impl DefCollector<'_> {
             let resolver_def_id = |path| resolver(path).map(|(_, it)| it);
 
             match &directive.kind {
-                MacroDirectiveKind::FnLike { ast_id, expand_to } => {
+                MacroDirectiveKind::FnLike { ast_id, expand_to, call_site } => {
                     let call_id = macro_call_as_call_id(
                         self.db.upcast(),
                         ast_id,
+                        *call_site,
                         *expand_to,
                         self.def_map.krate,
                         resolver_def_id,
@@ -1234,19 +1239,7 @@ impl DefCollector<'_> {
                         };
                         let ast_id = ast_id.with_value(ast_adt_id);
 
-                        let extend_unhygenic;
-                        let hygiene = if file_id.is_macro() {
-                            self.hygienes
-                                .entry(file_id)
-                                .or_insert_with(|| Hygiene::new(self.db.upcast(), file_id))
-                        } else {
-                            // Avoid heap allocation (`Hygiene` embraces `Arc`) and hash map entry
-                            // when we're in an oridinary (non-macro) file.
-                            extend_unhygenic = Hygiene::new_unhygienic();
-                            &extend_unhygenic
-                        };
-
-                        match attr.parse_path_comma_token_tree(self.db.upcast(), hygiene) {
+                        match attr.parse_path_comma_token_tree(self.db.upcast()) {
                             Some(derive_macros) => {
                                 let mut len = 0;
                                 for (idx, path) in derive_macros.enumerate() {
@@ -1414,11 +1407,12 @@ impl DefCollector<'_> {
 
         for directive in &self.unresolved_macros {
             match &directive.kind {
-                MacroDirectiveKind::FnLike { ast_id, expand_to } => {
+                MacroDirectiveKind::FnLike { ast_id, expand_to, call_site } => {
                     // FIXME: we shouldn't need to re-resolve the macro here just to get the unresolved error!
                     let macro_call_as_call_id = macro_call_as_call_id(
                         self.db.upcast(),
                         ast_id,
+                        *call_site,
                         *expand_to,
                         self.def_map.krate,
                         |path| {
@@ -1823,9 +1817,8 @@ impl ModCollector<'_, '_> {
         cov_mark::hit!(macro_rules_from_other_crates_are_visible_with_macro_use);
 
         let mut single_imports = Vec::new();
-        let hygiene = Hygiene::new_unhygienic();
         for attr in macro_use_attrs {
-            let Some(paths) = attr.parse_path_comma_token_tree(db.upcast(), &hygiene) else {
+            let Some(paths) = attr.parse_path_comma_token_tree(db.upcast()) else {
                 // `#[macro_use]` (without any paths) found, forget collected names and just import
                 // all visible macros.
                 self.def_collector.import_macros_from_extern_crate(
@@ -2209,8 +2202,12 @@ impl ModCollector<'_, '_> {
         }
     }
 
-    fn collect_macro_call(&mut self, mac: &MacroCall, container: ItemContainerId) {
-        let ast_id = AstIdWithPath::new(self.file_id(), mac.ast_id, ModPath::clone(&mac.path));
+    fn collect_macro_call(
+        &mut self,
+        &MacroCall { ref path, ast_id, expand_to, call_site }: &MacroCall,
+        container: ItemContainerId,
+    ) {
+        let ast_id = AstIdWithPath::new(self.file_id(), ast_id, ModPath::clone(&path));
         let db = self.def_collector.db;
 
         // FIXME: Immediately expanding in "Case 1" is insufficient since "Case 2" may also define
@@ -2221,7 +2218,8 @@ impl ModCollector<'_, '_> {
         if let Ok(res) = macro_call_as_call_id_with_eager(
             db.upcast(),
             &ast_id,
-            mac.expand_to,
+            call_site,
+            expand_to,
             self.def_collector.def_map.krate,
             |path| {
                 path.as_ident().and_then(|name| {
@@ -2275,7 +2273,7 @@ impl ModCollector<'_, '_> {
         self.def_collector.unresolved_macros.push(MacroDirective {
             module_id: self.module_id,
             depth: self.macro_depth + 1,
-            kind: MacroDirectiveKind::FnLike { ast_id, expand_to: mac.expand_to },
+            kind: MacroDirectiveKind::FnLike { ast_id, expand_to: expand_to, call_site },
             container,
         });
     }
@@ -2362,7 +2360,6 @@ mod tests {
             from_glob_import: Default::default(),
             skip_attrs: Default::default(),
             is_proc_macro: false,
-            hygienes: FxHashMap::default(),
         };
         collector.seed_with_top_level();
         collector.collect();

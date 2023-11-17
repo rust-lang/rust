@@ -103,7 +103,6 @@ impl RootDatabase {
             hir::db::DeclMacroExpanderQuery
             hir::db::MacroExpandQuery
             hir::db::ExpandProcMacroQuery
-            hir::db::HygieneFrameQuery
 
             // DefDatabase
             hir::db::FileItemTreeQuery

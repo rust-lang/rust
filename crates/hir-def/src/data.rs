@@ -706,7 +706,7 @@ impl<'a> AssocItemCollector<'a> {
             }
             AssocItem::MacroCall(call) => {
                 let file_id = self.expander.current_file_id();
-                let MacroCall { ast_id, expand_to, ref path } = item_tree[call];
+                let MacroCall { ast_id, expand_to, call_site, ref path } = item_tree[call];
                 let module = self.expander.module.local_id;
 
                 let resolver = |path| {
@@ -725,6 +725,7 @@ impl<'a> AssocItemCollector<'a> {
                 match macro_call_as_call_id(
                     self.db.upcast(),
                     &AstIdWithPath::new(file_id, ast_id, Clone::clone(path)),
+                    call_site,
                     expand_to,
                     self.expander.module.krate(),
                     resolver,

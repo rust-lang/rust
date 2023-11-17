@@ -24,7 +24,10 @@ use triomphe::Arc;
 
 use std::{fmt, hash::Hash, iter};
 
-use base_db::{span::HirFileIdRepr, CrateId, FileId, FileRange, ProcMacroKind};
+use base_db::{
+    span::{HirFileIdRepr, SyntaxContextId},
+    CrateId, FileId, FileRange, ProcMacroKind,
+};
 use either::Either;
 use syntax::{
     algo::{self, skip_trivia_token},
@@ -105,6 +108,7 @@ pub struct MacroCallLoc {
     /// for the eager input macro file.
     eager: Option<Box<EagerCallInfo>>,
     pub kind: MacroCallKind,
+    pub call_site: SyntaxContextId,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -330,8 +334,9 @@ impl MacroDefId {
         db: &dyn db::ExpandDatabase,
         krate: CrateId,
         kind: MacroCallKind,
+        call_site: SyntaxContextId,
     ) -> MacroCallId {
-        db.intern_macro_call(MacroCallLoc { def: self, krate, eager: None, kind })
+        db.intern_macro_call(MacroCallLoc { def: self, krate, eager: None, kind, call_site })
     }
 
     pub fn ast_id(&self) -> Either<AstId<ast::Macro>, AstId<ast::Fn>> {

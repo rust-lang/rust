@@ -8,7 +8,7 @@ use hir_def::{
     resolver::{HasResolver, Resolver, TypeNs},
     AssocItemId, AttrDefId, ModuleDefId,
 };
-use hir_expand::{hygiene::Hygiene, name::Name};
+use hir_expand::name::Name;
 use hir_ty::db::HirDatabase;
 use syntax::{ast, AstNode};
 
@@ -234,7 +234,7 @@ fn modpath_from_str(db: &dyn HirDatabase, link: &str) -> Option<ModPath> {
         if ast_path.syntax().text() != link {
             return None;
         }
-        ModPath::from_src(db.upcast(), ast_path, &Hygiene::new_unhygienic())
+        ModPath::from_src(db.upcast(), ast_path, &Default::default())
     };
 
     let full = try_get_modpath(link);

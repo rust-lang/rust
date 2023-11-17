@@ -765,7 +765,7 @@ fn match_meta_var<S: Span>(
         MetaVarKind::Path => {
             return input
                 .expect_fragment(parser::PrefixEntryPoint::Path)
-                .map(|it| it.map(Fragment::Path));
+                .map(|it| it.map(tt::TokenTree::subtree_or_wrap).map(Fragment::Path));
         }
         MetaVarKind::Ty => parser::PrefixEntryPoint::Ty,
         MetaVarKind::Pat if is_2021 => parser::PrefixEntryPoint::PatTop,
@@ -793,7 +793,7 @@ fn match_meta_var<S: Span>(
             };
             return input
                 .expect_fragment(parser::PrefixEntryPoint::Expr)
-                .map(|tt| tt.map(Fragment::Expr));
+                .map(|tt| tt.map(tt::TokenTree::subtree_or_wrap).map(Fragment::Expr));
         }
         MetaVarKind::Ident | MetaVarKind::Tt | MetaVarKind::Lifetime | MetaVarKind::Literal => {
             let tt_result = match kind {

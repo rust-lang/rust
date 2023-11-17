@@ -17,9 +17,18 @@ pub struct SyntaxContextId(InternId);
 crate::impl_intern_key!(SyntaxContextId);
 
 impl SyntaxContext for SyntaxContextId {
+    const DUMMY: Self = Self::ROOT;
+    // veykril(HACK): salsa doesn't allow us fetching the id of the current input to be allocated so
+    // we need a special value that behaves as the current context.
+}
+// inherent trait impls please tyvm
+impl SyntaxContextId {
     // FIXME: This is very much UB, salsa exposes no way to create an InternId in a const context
     // currently (which kind of makes sense but we need it here!)
-    const DUMMY: Self = SyntaxContextId(unsafe { core::mem::transmute(1) });
+    pub const ROOT: Self = SyntaxContextId(unsafe { core::mem::transmute(1) });
+    // FIXME: This is very much UB, salsa exposes no way to create an InternId in a const context
+    // currently (which kind of makes sense but we need it here!)
+    pub const SELF_REF: Self = SyntaxContextId(unsafe { core::mem::transmute(!0u32) });
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]

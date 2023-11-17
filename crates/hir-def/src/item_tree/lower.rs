@@ -3,7 +3,7 @@
 use std::collections::hash_map::Entry;
 
 use base_db::span::ErasedFileAstId;
-use hir_expand::{ast_id_map::AstIdMap, hygiene::Hygiene, HirFileId};
+use hir_expand::{ast_id_map::AstIdMap, HirFileId, SpanMap};
 use syntax::ast::{self, HasModuleItem, HasTypeBounds};
 
 use crate::{
@@ -37,8 +37,8 @@ impl<'a> Ctx<'a> {
         }
     }
 
-    pub(super) fn hygiene(&self) -> &Hygiene {
-        self.body_ctx.hygiene()
+    pub(super) fn span_map(&self) -> &SpanMap {
+        self.body_ctx.span_map()
     }
 
     pub(super) fn lower_module_items(mut self, item_owner: &dyn HasModuleItem) -> ItemTree {
@@ -90,7 +90,7 @@ impl<'a> Ctx<'a> {
                     ast_id: self.source_ast_id_map.ast_id(block).erase(),
                 },
                 block,
-                self.hygiene(),
+                self.span_map(),
             ),
         );
         self.tree.top_level = block
@@ -145,7 +145,7 @@ impl<'a> Ctx<'a> {
             self.db.upcast(),
             SpanAnchor { file_id: self.file, ast_id: mod_item.ast_id(&self.tree).erase() },
             item,
-            self.hygiene(),
+            self.span_map(),
         );
         self.add_attrs(mod_item.into(), attrs);
 
@@ -174,7 +174,7 @@ impl<'a> Ctx<'a> {
             self.db.upcast(),
             SpanAnchor { file_id: self.file, ast_id: item.ast_id(&self.tree).erase() },
             item_node,
-            self.hygiene(),
+            self.span_map(),
         );
         self.add_attrs(
             match item {
@@ -227,7 +227,7 @@ impl<'a> Ctx<'a> {
                         self.db.upcast(),
                         SpanAnchor { file_id: self.file, ast_id },
                         &field,
-                        self.hygiene(),
+                        self.span_map(),
                     ),
                 );
             }
@@ -260,7 +260,7 @@ impl<'a> Ctx<'a> {
                     self.db.upcast(),
                     SpanAnchor { file_id: self.file, ast_id },
                     &field,
-                    self.hygiene(),
+                    self.span_map(),
                 ),
             );
         }
@@ -314,7 +314,7 @@ impl<'a> Ctx<'a> {
                         self.db.upcast(),
                         SpanAnchor { file_id: self.file, ast_id },
                         &variant,
-                        self.hygiene(),
+                        self.span_map(),
                     ),
                 );
             }
@@ -370,7 +370,7 @@ impl<'a> Ctx<'a> {
                         self.db.upcast(),
                         SpanAnchor { file_id: self.file, ast_id: ast_id.erase() },
                         &self_param,
-                        self.hygiene(),
+                        self.span_map(),
                     ),
                 );
                 has_self_param = true;
@@ -396,7 +396,7 @@ impl<'a> Ctx<'a> {
                         self.db.upcast(),
                         SpanAnchor { file_id: self.file, ast_id: ast_id.erase() },
                         &param,
-                        self.hygiene(),
+                        self.span_map(),
                     ),
                 );
             }
@@ -585,7 +585,7 @@ impl<'a> Ctx<'a> {
     fn lower_use(&mut self, use_item: &ast::Use) -> Option<FileItemTreeId<Use>> {
         let visibility = self.lower_visibility(use_item);
         let ast_id = self.source_ast_id_map.ast_id(use_item);
-        let (use_tree, _) = lower_use_tree(self.db, self.hygiene(), use_item.use_tree()?)?;
+        let (use_tree, _) = lower_use_tree(self.db, self.span_map(), use_item.use_tree()?)?;
 
         let res = Use { visibility, ast_id, use_tree };
         Some(id(self.data().uses.alloc(res)))
@@ -607,10 +607,18 @@ impl<'a> Ctx<'a> {
     }
 
     fn lower_macro_call(&mut self, m: &ast::MacroCall) -> Option<FileItemTreeId<MacroCall>> {
-        let path = Interned::new(ModPath::from_src(self.db.upcast(), m.path()?, self.hygiene())?);
+        let span_map = self.span_map();
+        let path = Interned::new(ModPath::from_src(self.db.upcast(), m.path()?, span_map)?);
         let ast_id = self.source_ast_id_map.ast_id(m);
         let expand_to = hir_expand::ExpandTo::from_call_site(m);
-        let res = MacroCall { path, ast_id, expand_to };
+        let res = MacroCall {
+            path,
+            ast_id,
+            expand_to,
+            call_site: span_map
+                .span_for_range(m.syntax().text_range())
+                .map_or(SyntaxContextId::ROOT, |s| s.ctx),
+        };
         Some(id(self.data().macro_calls.alloc(res)))
     }
 
@@ -655,7 +663,7 @@ impl<'a> Ctx<'a> {
                             ast_id: mod_item.ast_id(&self.tree).erase(),
                         },
                         &item,
-                        self.hygiene(),
+                        self.span_map(),
                     );
                     self.add_attrs(mod_item.into(), attrs);
                     Some(mod_item)
@@ -697,7 +705,7 @@ impl<'a> Ctx<'a> {
                 self.db.upcast(),
                 SpanAnchor { file_id: self.file, ast_id: owner_ast_id },
                 &param,
-                self.body_ctx.hygiene(),
+                self.body_ctx.span_map(),
             );
             // This is identical to the body of `Ctx::add_attrs()` but we can't call that here
             // because it requires `&mut self` and the call to `generics.fill()` below also
@@ -731,7 +739,7 @@ impl<'a> Ctx<'a> {
     }
 
     fn lower_visibility(&mut self, item: &dyn ast::HasVisibility) -> RawVisibilityId {
-        let vis = RawVisibility::from_ast_with_hygiene(self.db, item.visibility(), self.hygiene());
+        let vis = RawVisibility::from_ast_with_hygiene(self.db, item.visibility(), self.span_map());
         self.data().vis.alloc(vis)
     }
 
@@ -809,7 +817,7 @@ fn lower_abi(abi: ast::Abi) -> Interned<str> {
 
 struct UseTreeLowering<'a> {
     db: &'a dyn DefDatabase,
-    hygiene: &'a Hygiene,
+    hygiene: &'a SpanMap,
     mapping: Arena<ast::UseTree>,
 }
 
@@ -877,7 +885,7 @@ impl UseTreeLowering<'_> {
 
 pub(crate) fn lower_use_tree(
     db: &dyn DefDatabase,
-    hygiene: &Hygiene,
+    hygiene: &SpanMap,
     tree: ast::UseTree,
 ) -> Option<(UseTree, Arena<ast::UseTree>)> {
     let mut lowering = UseTreeLowering { db, hygiene, mapping: Arena::new() };

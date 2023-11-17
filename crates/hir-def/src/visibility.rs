@@ -2,7 +2,7 @@
 
 use std::iter;
 
-use hir_expand::{hygiene::Hygiene, InFile};
+use hir_expand::{InFile, SpanMap};
 use la_arena::ArenaMap;
 use syntax::ast;
 use triomphe::Arc;
@@ -34,13 +34,13 @@ impl RawVisibility {
         db: &dyn DefDatabase,
         node: InFile<Option<ast::Visibility>>,
     ) -> RawVisibility {
-        Self::from_ast_with_hygiene(db, node.value, &Hygiene::new(db.upcast(), node.file_id))
+        Self::from_ast_with_hygiene(db, node.value, &db.span_map(node.file_id))
     }
 
     pub(crate) fn from_ast_with_hygiene(
         db: &dyn DefDatabase,
         node: Option<ast::Visibility>,
-        hygiene: &Hygiene,
+        hygiene: &SpanMap,
     ) -> RawVisibility {
         Self::from_ast_with_hygiene_and_default(db, node, RawVisibility::private(), hygiene)
     }
@@ -49,7 +49,7 @@ impl RawVisibility {
         db: &dyn DefDatabase,
         node: Option<ast::Visibility>,
         default: RawVisibility,
-        hygiene: &Hygiene,
+        hygiene: &SpanMap,
     ) -> RawVisibility {
         let node = match node {
             None => return default,

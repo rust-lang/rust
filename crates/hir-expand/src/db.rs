@@ -1,6 +1,6 @@
 //! Defines database & queries for macro expansion.
 
-use ::tt::SyntaxContext;
+use ::tt::{SpanAnchor as _, SyntaxContext};
 use base_db::{
     salsa,
     span::{SpanAnchor, SyntaxContextId, ROOT_ERASED_FILE_AST_ID},
@@ -17,9 +17,10 @@ use triomphe::Arc;
 
 use crate::{
     ast_id_map::AstIdMap,
+    attrs::RawAttrs,
     builtin_attr_macro::pseudo_derive_attr_expansion,
     builtin_fn_macro::EagerExpander,
-    hygiene::{self, HygieneFrame, SyntaxContextData},
+    hygiene::{self, SyntaxContextData, Transparency},
     tt, AstId, BuiltinAttrExpander, BuiltinDeriveExpander, BuiltinFnLikeExpander, EagerCallInfo,
     ExpandError, ExpandResult, ExpandTo, HirFileId, HirFileIdRepr, MacroCallId, MacroCallKind,
     MacroCallLoc, MacroDefId, MacroDefKind, MacroFile, ProcMacroExpander, SpanMap,
@@ -37,16 +38,35 @@ static TOKEN_LIMIT: Limit = Limit::new(1_048_576);
 /// Old-style `macro_rules` or the new macros 2.0
 pub struct DeclarativeMacroExpander {
     pub mac: mbe::DeclarativeMacro<base_db::span::SpanData>,
+    pub transparency: Transparency,
 }
 
 impl DeclarativeMacroExpander {
-    pub fn expand(&self, tt: tt::Subtree) -> ExpandResult<tt::Subtree> {
+    pub fn expand(
+        &self,
+        db: &dyn ExpandDatabase,
+        tt: tt::Subtree,
+        call_id: MacroCallId,
+    ) -> ExpandResult<tt::Subtree> {
         match self.mac.err() {
             Some(e) => ExpandResult::new(
                 tt::Subtree::empty(),
                 ExpandError::other(format!("invalid macro definition: {e}")),
             ),
-            None => self.mac.expand(&tt).map_err(Into::into),
+            None => self
+                .mac
+                .expand(&tt, |s| s.ctx = db.apply_mark(s.ctx, call_id, self.transparency))
+                .map_err(Into::into),
+        }
+    }
+
+    pub fn expand_unhygienic(&self, tt: tt::Subtree) -> ExpandResult<tt::Subtree> {
+        match self.mac.err() {
+            Some(e) => ExpandResult::new(
+                tt::Subtree::empty(),
+                ExpandError::other(format!("invalid macro definition: {e}")),
+            ),
+            None => self.mac.expand(&tt, |_| ()).map_err(Into::into),
         }
     }
 }
@@ -83,6 +103,9 @@ pub trait ExpandDatabase: SourceDatabase {
         &self,
         macro_file: MacroFile,
     ) -> ExpandResult<(Parse<SyntaxNode>, Arc<SpanMap>)>;
+    // TODO: transparent?
+    #[salsa::transparent]
+    fn span_map(&self, file_id: HirFileId) -> Arc<SpanMap>;
 
     /// Macro ids. That's probably the tricksiest bit in rust-analyzer, and the
     /// reason why we use salsa at all.
@@ -97,8 +120,8 @@ pub trait ExpandDatabase: SourceDatabase {
     #[salsa::invoke(hygiene::apply_mark)]
     fn apply_mark(
         &self,
-        ctxt: SyntaxContextData,
-        file_id: HirFileId,
+        ctxt: SyntaxContextId,
+        call_id: MacroCallId,
         transparency: hygiene::Transparency,
     ) -> SyntaxContextId;
 
@@ -137,8 +160,13 @@ pub trait ExpandDatabase: SourceDatabase {
         &self,
         macro_call: MacroCallId,
     ) -> ExpandResult<Box<[SyntaxError]>>;
+}
 
-    fn hygiene_frame(&self, file_id: HirFileId) -> Arc<HygieneFrame>;
+fn span_map(db: &dyn ExpandDatabase, file_id: HirFileId) -> Arc<SpanMap> {
+    match file_id.repr() {
+        HirFileIdRepr::FileId(_) => Arc::new(Default::default()),
+        HirFileIdRepr::MacroFile(m) => db.parse_macro_expansion(m).value.1,
+    }
 }
 
 /// This expands the given macro call, but with different arguments. This is
@@ -220,7 +248,9 @@ pub fn expand_speculative(
                 ),
             )
         }
-        MacroDefKind::Declarative(it) => db.decl_macro_expander(loc.krate, it).expand(tt),
+        MacroDefKind::Declarative(it) => {
+            db.decl_macro_expander(loc.krate, it).expand_unhygienic(tt)
+        }
         MacroDefKind::BuiltIn(it, _) => it.expand(db, actual_macro_call, &tt).map_err(Into::into),
         MacroDefKind::BuiltInEager(it, _) => {
             it.expand(db, actual_macro_call, &tt).map_err(Into::into)
@@ -229,7 +259,9 @@ pub fn expand_speculative(
     };
 
     let expand_to = macro_expand_to(db, actual_macro_call);
-    let (node, rev_tmap) = token_tree_to_syntax_node(db, &speculative_expansion.value, expand_to);
+    let (node, mut rev_tmap) =
+        token_tree_to_syntax_node(db, &speculative_expansion.value, expand_to);
+    rev_tmap.real_file = false;
 
     let syntax_node = node.syntax_node();
     let token = rev_tmap
@@ -285,7 +317,8 @@ fn parse_macro_expansion(
     tracing::debug!("expanded = {}", tt.as_debug_string());
     tracing::debug!("kind = {:?}", expand_to);
 
-    let (parse, rev_token_map) = token_tree_to_syntax_node(db, &tt, expand_to);
+    let (parse, mut rev_token_map) = token_tree_to_syntax_node(db, &tt, expand_to);
+    rev_token_map.real_file = false;
 
     ExpandResult { value: (parse, Arc::new(rev_token_map)), err }
 }
@@ -464,41 +497,70 @@ fn decl_macro_expander(
             (parse.syntax_node(), map)
         }
     };
-    let mac = match id.to_ptr(db).to_node(&root) {
-        ast::Macro::MacroRules(macro_rules) => match macro_rules.token_tree() {
-            Some(arg) => {
-                let tt = mbe::syntax_node_to_token_tree(
-                    arg.syntax(),
-                    SpanAnchor { file_id: id.file_id, ast_id: id.value.erase() },
-                    macro_rules.syntax().text_range().start(),
-                    &map,
-                );
-                let mac = mbe::DeclarativeMacro::parse_macro_rules(&tt, is_2021);
-                mac
-            }
-            None => mbe::DeclarativeMacro::from_err(
-                mbe::ParseError::Expected("expected a token tree".into()),
-                is_2021,
-            ),
-        },
-        ast::Macro::MacroDef(macro_def) => match macro_def.body() {
-            Some(arg) => {
-                let tt = mbe::syntax_node_to_token_tree(
-                    arg.syntax(),
-                    SpanAnchor { file_id: id.file_id, ast_id: id.value.erase() },
-                    macro_def.syntax().text_range().start(),
-                    &map,
-                );
-                let mac = mbe::DeclarativeMacro::parse_macro2(&tt, is_2021);
-                mac
-            }
-            None => mbe::DeclarativeMacro::from_err(
-                mbe::ParseError::Expected("expected a token tree".into()),
-                is_2021,
-            ),
-        },
+
+    let transparency = |node| {
+        // ... would be nice to have the item tree here
+        let attrs =
+            RawAttrs::new(db, SpanAnchor::DUMMY, node, &Default::default()).filter(db, def_crate);
+        match &*attrs
+            .iter()
+            .find(|it| {
+                it.path.as_ident().and_then(|it| it.as_str()) == Some("rustc_macro_transparency")
+            })?
+            .token_tree_value()?
+            .token_trees
+        {
+            [tt::TokenTree::Leaf(tt::Leaf::Ident(i)), ..] => match &*i.text {
+                "transparent" => Some(Transparency::Transparent),
+                "semitransparent" => Some(Transparency::SemiTransparent),
+                "opaque" => Some(Transparency::Opaque),
+                _ => None,
+            },
+            _ => None,
+        }
     };
-    Arc::new(DeclarativeMacroExpander { mac })
+
+    let (mac, transparency) = match id.to_ptr(db).to_node(&root) {
+        ast::Macro::MacroRules(macro_rules) => (
+            match macro_rules.token_tree() {
+                Some(arg) => {
+                    let tt = mbe::syntax_node_to_token_tree(
+                        arg.syntax(),
+                        SpanAnchor { file_id: id.file_id, ast_id: id.value.erase() },
+                        macro_rules.syntax().text_range().start(),
+                        &map,
+                    );
+                    let mac = mbe::DeclarativeMacro::parse_macro_rules(&tt, is_2021);
+                    mac
+                }
+                None => mbe::DeclarativeMacro::from_err(
+                    mbe::ParseError::Expected("expected a token tree".into()),
+                    is_2021,
+                ),
+            },
+            transparency(&macro_rules).unwrap_or(Transparency::SemiTransparent),
+        ),
+        ast::Macro::MacroDef(macro_def) => (
+            match macro_def.body() {
+                Some(arg) => {
+                    let tt = mbe::syntax_node_to_token_tree(
+                        arg.syntax(),
+                        SpanAnchor { file_id: id.file_id, ast_id: id.value.erase() },
+                        macro_def.syntax().text_range().start(),
+                        &map,
+                    );
+                    let mac = mbe::DeclarativeMacro::parse_macro2(&tt, is_2021);
+                    mac
+                }
+                None => mbe::DeclarativeMacro::from_err(
+                    mbe::ParseError::Expected("expected a token tree".into()),
+                    is_2021,
+                ),
+            },
+            transparency(&macro_def).unwrap_or(Transparency::Opaque),
+        ),
+    };
+    Arc::new(DeclarativeMacroExpander { mac, transparency })
 }
 
 fn macro_expander(db: &dyn ExpandDatabase, id: MacroDefId) -> TokenExpander {
@@ -514,12 +576,15 @@ fn macro_expander(db: &dyn ExpandDatabase, id: MacroDefId) -> TokenExpander {
     }
 }
 
-fn macro_expand(db: &dyn ExpandDatabase, id: MacroCallId) -> ExpandResult<Arc<tt::Subtree>> {
+fn macro_expand(
+    db: &dyn ExpandDatabase,
+    macro_call_id: MacroCallId,
+) -> ExpandResult<Arc<tt::Subtree>> {
     let _p = profile::span("macro_expand");
-    let loc = db.lookup_intern_macro_call(id);
+    let loc = db.lookup_intern_macro_call(macro_call_id);
 
     let ExpandResult { value: tt, mut err } = match loc.def.kind {
-        MacroDefKind::ProcMacro(..) => return db.expand_proc_macro(id),
+        MacroDefKind::ProcMacro(..) => return db.expand_proc_macro(macro_call_id),
         MacroDefKind::BuiltInDerive(expander, ..) => {
             // FIXME: add firewall query for this?
             let hir_file_id = loc.kind.file_id();
@@ -538,7 +603,7 @@ fn macro_expand(db: &dyn ExpandDatabase, id: MacroCallId) -> ExpandResult<Arc<tt
             let _t;
             expander.expand(
                 db,
-                id,
+                macro_call_id,
                 &node,
                 match &map {
                     Some(map) => map,
@@ -554,7 +619,7 @@ fn macro_expand(db: &dyn ExpandDatabase, id: MacroCallId) -> ExpandResult<Arc<tt
             )
         }
         _ => {
-            let ValueResult { value, err } = db.macro_arg(id);
+            let ValueResult { value, err } = db.macro_arg(macro_call_id);
             let Some(macro_arg) = value else {
                 return ExpandResult {
                     value: Arc::new(tt::Subtree {
@@ -570,9 +635,11 @@ fn macro_expand(db: &dyn ExpandDatabase, id: MacroCallId) -> ExpandResult<Arc<tt
             let arg = &*macro_arg;
             match loc.def.kind {
                 MacroDefKind::Declarative(id) => {
-                    db.decl_macro_expander(loc.def.krate, id).expand(arg.clone())
+                    db.decl_macro_expander(loc.def.krate, id).expand(db, arg.clone(), macro_call_id)
                 }
-                MacroDefKind::BuiltIn(it, _) => it.expand(db, id, &arg).map_err(Into::into),
+                MacroDefKind::BuiltIn(it, _) => {
+                    it.expand(db, macro_call_id, &arg).map_err(Into::into)
+                }
                 // This might look a bit odd, but we do not expand the inputs to eager macros here.
                 // Eager macros inputs are expanded, well, eagerly when we collect the macro calls.
                 // That kind of expansion uses the ast id map of an eager macros input though which goes through
@@ -594,8 +661,10 @@ fn macro_expand(db: &dyn ExpandDatabase, id: MacroCallId) -> ExpandResult<Arc<tt
                         }),
                     };
                 }
-                MacroDefKind::BuiltInEager(it, _) => it.expand(db, id, &arg).map_err(Into::into),
-                MacroDefKind::BuiltInAttr(it, _) => it.expand(db, id, &arg),
+                MacroDefKind::BuiltInEager(it, _) => {
+                    it.expand(db, macro_call_id, &arg).map_err(Into::into)
+                }
+                MacroDefKind::BuiltInAttr(it, _) => it.expand(db, macro_call_id, &arg),
                 _ => unreachable!(),
             }
         }
@@ -651,10 +720,6 @@ fn expand_proc_macro(db: &dyn ExpandDatabase, id: MacroCallId) -> ExpandResult<A
     }
 
     ExpandResult { value: Arc::new(tt), err }
-}
-
-fn hygiene_frame(db: &dyn ExpandDatabase, file_id: HirFileId) -> Arc<HygieneFrame> {
-    Arc::new(HygieneFrame::new(db, file_id))
 }
 
 fn macro_expand_to(db: &dyn ExpandDatabase, id: MacroCallId) -> ExpandTo {

@@ -26,6 +26,7 @@ macro_rules! f {
 // +tokenids
 f!(struct MyTraitMap2);
 "#,
+        // FIXME: #SpanAnchor(FileId(0), 1)@91..92 why is there whitespace annotated with a span here?
         expect![[r#"
 macro_rules! f {
     ( struct $ident:ident ) => {
@@ -36,7 +37,7 @@ macro_rules! f {
 }
 
 struct#SpanAnchor(FileId(0), 1)@58..64 MyTraitMap2#SpanAnchor(FileId(0), 2)@23..34 {#SpanAnchor(FileId(0), 1)@72..73
-    map#SpanAnchor(FileId(0), 1)@86..89:#SpanAnchor(FileId(0), 1)@89..90 ::std#SpanAnchor(FileId(0), 1)@93..96::collections#SpanAnchor(FileId(0), 1)@98..109::HashSet#SpanAnchor(FileId(0), 1)@111..118<#SpanAnchor(FileId(0), 1)@118..119(#SpanAnchor(FileId(0), 1)@119..120)#SpanAnchor(FileId(0), 1)@120..121>#SpanAnchor(FileId(0), 1)@121..122,#SpanAnchor(FileId(0), 1)@122..123
+    map#SpanAnchor(FileId(0), 1)@86..89:#SpanAnchor(FileId(0), 1)@89..90 #SpanAnchor(FileId(0), 1)@91..92::#SpanAnchor(FileId(0), 1)@92..93std#SpanAnchor(FileId(0), 1)@93..96::#SpanAnchor(FileId(0), 1)@97..98collections#SpanAnchor(FileId(0), 1)@98..109::#SpanAnchor(FileId(0), 1)@110..111HashSet#SpanAnchor(FileId(0), 1)@111..118<#SpanAnchor(FileId(0), 1)@118..119(#SpanAnchor(FileId(0), 1)@119..120)#SpanAnchor(FileId(0), 1)@120..121>#SpanAnchor(FileId(0), 1)@121..122,#SpanAnchor(FileId(0), 1)@122..123
 }#SpanAnchor(FileId(0), 1)@132..133
 "#]],
     );
@@ -938,9 +939,9 @@ macro_rules! vec {
 fn f() {
      {
         let mut v = Vec::new();
-        v.push(1);
-        v.push(2);
-        v.push(3);
+        v.push((1));
+        v.push((2));
+        v.push((3));
         v
     };
 }
@@ -1409,8 +1410,8 @@ macro_rules! matches {
     };
 }
 fn main() {
-    match 0 {
-        0|1 if true =>true , _=>false
+    match (0) {
+        0|1 if (true )=>true , _=>false
     };
 }
  "#]],
