@@ -12,9 +12,6 @@
 )]
 mod mask_impl;
 
-mod to_bitmask;
-pub use to_bitmask::{ToBitMask, ToBitMaskArray};
-
 use crate::simd::{
     cmp::SimdPartialEq, intrinsics, LaneCount, Simd, SimdElement, SupportedLaneCount,
 };
@@ -261,6 +258,45 @@ where
     #[must_use = "method returns a new bool and does not mutate the original value"]
     pub fn all(self) -> bool {
         self.0.all()
+    }
+
+    /// Create a bitmask from a mask.
+    ///
+    /// Each bit is set if the corresponding element in the mask is `true`.
+    /// If the mask contains more than 64 elements, the bitmask is truncated to the first 64.
+    #[inline]
+    #[must_use = "method returns a new integer and does not mutate the original value"]
+    pub fn to_bitmask(self) -> u64 {
+        self.0.to_bitmask_integer()
+    }
+
+    /// Create a mask from a bitmask.
+    ///
+    /// For each bit, if it is set, the corresponding element in the mask is set to `true`.
+    /// If the mask contains more than 64 elements, the remainder are set to `false`.
+    #[inline]
+    #[must_use = "method returns a new mask and does not mutate the original value"]
+    pub fn from_bitmask(bitmask: u64) -> Self {
+        Self(mask_impl::Mask::from_bitmask_integer(bitmask))
+    }
+
+    /// Create a bitmask vector from a mask.
+    ///
+    /// Each bit is set if the corresponding element in the mask is `true`.
+    /// The remaining bits are unset.
+    #[inline]
+    #[must_use = "method returns a new integer and does not mutate the original value"]
+    pub fn to_bitmask_vector(self) -> Simd<T, N> {
+        self.0.to_bitmask_vector()
+    }
+
+    /// Create a mask from a bitmask vector.
+    ///
+    /// For each bit, if it is set, the corresponding element in the mask is set to `true`.
+    #[inline]
+    #[must_use = "method returns a new mask and does not mutate the original value"]
+    pub fn from_bitmask_vector(bitmask: Simd<T, N>) -> Self {
+        Self(mask_impl::Mask::from_bitmask_vector(bitmask))
     }
 }
 

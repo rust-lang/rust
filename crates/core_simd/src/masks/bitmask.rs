@@ -1,7 +1,7 @@
 #![allow(unused_imports)]
 use super::MaskElement;
 use crate::simd::intrinsics;
-use crate::simd::{LaneCount, Simd, SupportedLaneCount, ToBitMask};
+use crate::simd::{LaneCount, Simd, SupportedLaneCount};
 use core::marker::PhantomData;
 
 /// A mask where each lane is represented by a single bit.
@@ -120,39 +120,64 @@ where
     }
 
     #[inline]
-    #[must_use = "method returns a new array and does not mutate the original value"]
-    pub fn to_bitmask_array<const M: usize>(self) -> [u8; M] {
-        assert!(core::mem::size_of::<Self>() == M);
+    #[must_use = "method returns a new vector and does not mutate the original value"]
+    pub fn to_bitmask_vector(self) -> Simd<T, N> {
+        let mut bitmask = Self::splat(false).to_int();
 
-        // Safety: converting an integer to an array of bytes of the same size is safe
-        unsafe { core::mem::transmute_copy(&self.0) }
+        assert!(
+            core::mem::size_of::<Simd<T, N>>()
+                >= core::mem::size_of::<<LaneCount<N> as SupportedLaneCount>::BitMask>()
+        );
+
+        // Safety: the bitmask vector is big enough to hold the bitmask
+        unsafe {
+            core::ptr::copy_nonoverlapping(
+                self.0.as_ref().as_ptr(),
+                bitmask.as_mut_array().as_mut_ptr() as _,
+                self.0.as_ref().len(),
+            );
+        }
+
+        bitmask
     }
 
     #[inline]
     #[must_use = "method returns a new mask and does not mutate the original value"]
-    pub fn from_bitmask_array<const M: usize>(bitmask: [u8; M]) -> Self {
-        assert!(core::mem::size_of::<Self>() == M);
+    pub fn from_bitmask_vector(bitmask: Simd<T, N>) -> Self {
+        let mut bytes = <LaneCount<N> as SupportedLaneCount>::BitMask::default();
 
-        // Safety: converting an array of bytes to an integer of the same size is safe
-        Self(unsafe { core::mem::transmute_copy(&bitmask) }, PhantomData)
+        assert!(
+            core::mem::size_of::<Simd<T, N>>()
+                >= core::mem::size_of::<<LaneCount<N> as SupportedLaneCount>::BitMask>()
+        );
+
+        // Safety: the bitmask vector is big enough to hold the bitmask
+        unsafe {
+            core::ptr::copy_nonoverlapping(
+                bitmask.as_array().as_ptr() as _,
+                bytes.as_mut().as_mut_ptr(),
+                bytes.as_ref().len(),
+            );
+        }
+
+        Self(bytes, PhantomData)
     }
 
     #[inline]
-    pub fn to_bitmask_integer<U>(self) -> U
-    where
-        super::Mask<T, N>: ToBitMask<BitMask = U>,
-    {
-        // Safety: these are the same types
-        unsafe { core::mem::transmute_copy(&self.0) }
+    pub fn to_bitmask_integer(self) -> u64 {
+        let mut bitmask = [0u8; 8];
+        bitmask[..self.0.as_ref().len()].copy_from_slice(self.0.as_ref());
+        u64::from_ne_bytes(bitmask)
     }
 
     #[inline]
-    pub fn from_bitmask_integer<U>(bitmask: U) -> Self
-    where
-        super::Mask<T, N>: ToBitMask<BitMask = U>,
-    {
-        // Safety: these are the same types
-        unsafe { Self(core::mem::transmute_copy(&bitmask), PhantomData) }
+    pub fn from_bitmask_integer(bitmask: u64) -> Self {
+        let mut bytes = <LaneCount<N> as SupportedLaneCount>::BitMask::default();
+        let len = bytes.as_mut().len();
+        bytes
+            .as_mut()
+            .copy_from_slice(&bitmask.to_ne_bytes()[..len]);
+        Self(bytes, PhantomData)
     }
 
     #[inline]

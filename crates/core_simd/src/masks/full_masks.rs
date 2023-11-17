@@ -1,8 +1,7 @@
 //! Masks that take up full SIMD vector registers.
 
-use super::{to_bitmask::ToBitMaskArray, MaskElement};
 use crate::simd::intrinsics;
-use crate::simd::{LaneCount, Simd, SupportedLaneCount, ToBitMask};
+use crate::simd::{LaneCount, MaskElement, Simd, SupportedLaneCount};
 
 #[repr(transparent)]
 pub struct Mask<T, const N: usize>(Simd<T, N>)
@@ -143,53 +142,64 @@ where
     }
 
     #[inline]
-    #[must_use = "method returns a new array and does not mutate the original value"]
-    pub fn to_bitmask_array<const M: usize>(self) -> [u8; M]
-    where
-        super::Mask<T, N>: ToBitMaskArray,
-    {
+    #[must_use = "method returns a new vector and does not mutate the original value"]
+    pub fn to_bitmask_vector(self) -> Simd<T, N> {
+        let mut bitmask = Self::splat(false).to_int();
+
         // Safety: Bytes is the right size array
         unsafe {
             // Compute the bitmask
-            let bitmask: <super::Mask<T, N> as ToBitMaskArray>::BitMaskArray =
+            let mut bytes: <LaneCount<N> as SupportedLaneCount>::BitMask =
                 intrinsics::simd_bitmask(self.0);
-
-            // Transmute to the return type
-            let mut bitmask: [u8; M] = core::mem::transmute_copy(&bitmask);
 
             // LLVM assumes bit order should match endianness
             if cfg!(target_endian = "big") {
-                for x in bitmask.as_mut() {
-                    *x = x.reverse_bits();
+                for x in bytes.as_mut() {
+                    *x = x.reverse_bits()
                 }
-            };
+            }
 
-            bitmask
+            assert!(
+                core::mem::size_of::<Simd<T, N>>()
+                    >= core::mem::size_of::<<LaneCount<N> as SupportedLaneCount>::BitMask>()
+            );
+            core::ptr::copy_nonoverlapping(
+                bytes.as_ref().as_ptr(),
+                bitmask.as_mut_array().as_mut_ptr() as _,
+                bytes.as_ref().len(),
+            );
         }
+
+        bitmask
     }
 
     #[inline]
     #[must_use = "method returns a new mask and does not mutate the original value"]
-    pub fn from_bitmask_array<const M: usize>(mut bitmask: [u8; M]) -> Self
-    where
-        super::Mask<T, N>: ToBitMaskArray,
-    {
+    pub fn from_bitmask_vector(bitmask: Simd<T, N>) -> Self {
+        let mut bytes = <LaneCount<N> as SupportedLaneCount>::BitMask::default();
+
         // Safety: Bytes is the right size array
         unsafe {
+            assert!(
+                core::mem::size_of::<Simd<T, N>>()
+                    >= core::mem::size_of::<<LaneCount<N> as SupportedLaneCount>::BitMask>()
+            );
+            core::ptr::copy_nonoverlapping(
+                bitmask.as_array().as_ptr() as _,
+                bytes.as_mut().as_mut_ptr(),
+                bytes.as_mut().len(),
+            );
+
             // LLVM assumes bit order should match endianness
             if cfg!(target_endian = "big") {
-                for x in bitmask.as_mut() {
+                for x in bytes.as_mut() {
                     *x = x.reverse_bits();
                 }
             }
 
-            // Transmute to the bitmask
-            let bitmask: <super::Mask<T, N> as ToBitMaskArray>::BitMaskArray =
-                core::mem::transmute_copy(&bitmask);
-
             // Compute the regular mask
             Self::from_int_unchecked(intrinsics::simd_select_bitmask(
-                bitmask,
+                bytes,
                 Self::splat(true).to_int(),
                 Self::splat(false).to_int(),
             ))
@@ -197,41 +207,40 @@ where
     }
 
     #[inline]
-    pub(crate) fn to_bitmask_integer<U: ReverseBits>(self) -> U
-    where
-        super::Mask<T, N>: ToBitMask<BitMask = U>,
-    {
-        // Safety: U is required to be the appropriate bitmask type
-        let bitmask: U = unsafe { intrinsics::simd_bitmask(self.0) };
+    pub(crate) fn to_bitmask_integer(self) -> u64 {
+        let resized = self.to_int().extend::<64>(T::FALSE);
+
+        // SAFETY: `resized` is an integer vector with length 64
+        let bitmask: u64 = unsafe { intrinsics::simd_bitmask(resized) };
 
         // LLVM assumes bit order should match endianness
         if cfg!(target_endian = "big") {
-            bitmask.reverse_bits(N)
+            bitmask.reverse_bits()
         } else {
             bitmask
         }
     }
 
     #[inline]
-    pub(crate) fn from_bitmask_integer<U: ReverseBits>(bitmask: U) -> Self
-    where
-        super::Mask<T, N>: ToBitMask<BitMask = U>,
-    {
+    pub(crate) fn from_bitmask_integer(bitmask: u64) -> Self {
         // LLVM assumes bit order should match endianness
         let bitmask = if cfg!(target_endian = "big") {
-            bitmask.reverse_bits(N)
+            bitmask.reverse_bits()
         } else {
             bitmask
         };
 
-        // Safety: U is required to be the appropriate bitmask type
-        unsafe {
-            Self::from_int_unchecked(intrinsics::simd_select_bitmask(
+        // SAFETY: `mask` is the correct bitmask type for a u64 bitmask
+        let mask: Simd<T, 64> = unsafe {
+            intrinsics::simd_select_bitmask(
                 bitmask,
-                Self::splat(true).to_int(),
-                Self::splat(false).to_int(),
-            ))
-        }
+                Simd::<T, 64>::splat(T::TRUE),
+                Simd::<T, 64>::splat(T::FALSE),
+            )
+        };
+
+        // SAFETY: `mask` only contains `T::TRUE` or `T::FALSE`
+        unsafe { Self::from_int_unchecked(mask.extend::<N>(T::FALSE)) }
     }
 
     #[inline]
