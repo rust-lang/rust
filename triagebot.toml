@@ -713,6 +713,13 @@ style-team = [
     "@yaahc",
 ]
 
+project-stable-mir = [
+    "@celinval",
+    "@oli-obk",
+    "@spastorino",
+    "@ouz-a",
+]
+
 [assign.owners]
 "/.github/workflows" =                       ["infra-ci"]
 "/Cargo.lock" =                              ["@Mark-Simulacrum"]
@@ -729,6 +736,7 @@ style-team = [
 "/compiler/rustc_const_eval/src/interpret" = ["compiler", "mir"]
 "/compiler/rustc_const_eval/src/transform" = ["compiler", "mir-opt"]
 "/compiler/rustc_mir_build/src/build" =      ["compiler", "mir"]
+"/compiler/rustc_smir" =                     ["project-stable-mir"]
 "/compiler/rustc_parse" =                    ["compiler", "parser"]
 "/compiler/rustc_parse/src/lexer" =          ["compiler", "lexer"]
 "/compiler/rustc_query_impl" =               ["compiler", "query-system"]
@@ -736,6 +744,7 @@ style-team = [
 "/compiler/rustc_trait_selection" =          ["compiler", "types"]
 "/compiler/rustc_traits" =                   ["compiler", "types"]
 "/compiler/rustc_type_ir" =                  ["compiler", "types"]
+"/compiler/stable_mir" =                     ["project-stable-mir"]
 "/library/alloc" =                           ["libs"]
 "/library/core" =                            ["libs"]
 "/library/panic_abort" =                     ["libs"]
