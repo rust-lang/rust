@@ -40,7 +40,6 @@ pub type Result<T> = result::Result<T, ErrorGuaranteed>;
 pub struct Compiler {
     pub(crate) sess: Lrc<Session>,
     codegen_backend: Lrc<dyn CodegenBackend>,
-    pub(crate) register_lints: Option<Box<dyn Fn(&Session, &mut LintStore) + Send + Sync>>,
     pub(crate) override_queries: Option<fn(&Session, &mut Providers)>,
 }
 
@@ -50,9 +49,6 @@ impl Compiler {
     }
     pub fn codegen_backend(&self) -> &Lrc<dyn CodegenBackend> {
         &self.codegen_backend
-    }
-    pub fn register_lints(&self) -> &Option<Box<dyn Fn(&Session, &mut LintStore) + Send + Sync>> {
-        &self.register_lints
     }
     pub fn build_output_filenames(
         &self,
@@ -485,10 +481,19 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
                 sess.opts.untracked_state_hash = hasher.finish()
             }
 
+            // Even though the session holds the lint store, we can't build the
+            // lint store until after the session exists. And we wait until now
+            // so that `register_lints` sees the fully initialized session.
+            let mut lint_store = rustc_lint::new_lint_store(sess.enable_internal_lints());
+            if let Some(register_lints) = config.register_lints.as_deref() {
+                register_lints(&sess, &mut lint_store);
+                sess.registered_lints = true;
+            }
+            sess.lint_store = Some(Lrc::new(lint_store));
+
             let compiler = Compiler {
                 sess: Lrc::new(sess),
                 codegen_backend: Lrc::from(codegen_backend),
-                register_lints: config.register_lints,
                 override_queries: config.override_queries,
             };
 
