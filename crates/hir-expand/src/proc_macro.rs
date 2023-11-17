@@ -31,6 +31,16 @@ pub trait ProcMacroExpander: fmt::Debug + Send + Sync + RefUnwindSafe {
         call_site: Span,
         mixed_site: Span,
     ) -> Result<tt::Subtree, ProcMacroExpansionError>;
+
+    /// If this returns `false`, expansions via [`expand`](ProcMacroExpander::expand) will always
+    /// return the input subtree or will always return an error.
+    ///
+    /// This is used to skip any additional expansion-related work,
+    /// e.g. to make sure we do not touch the syntax tree in any way
+    /// if a proc macro will never be expanded.
+    fn should_expand(&self) -> bool {
+        true
+    }
 }
 
 #[derive(Debug)]
@@ -57,6 +67,7 @@ pub struct CustomProcMacroExpander {
 }
 
 const DUMMY_ID: u32 = !0;
+const DISABLED_ID: u32 = !1;
 
 impl CustomProcMacroExpander {
     pub fn new(proc_macro_id: ProcMacroId) -> Self {
@@ -68,8 +79,18 @@ impl CustomProcMacroExpander {
         Self { proc_macro_id: ProcMacroId(DUMMY_ID) }
     }
 
+    /// The macro was not yet resolved.
     pub fn is_dummy(&self) -> bool {
         self.proc_macro_id.0 == DUMMY_ID
+    }
+
+    pub fn disabled() -> Self {
+        Self { proc_macro_id: ProcMacroId(DISABLED_ID) }
+    }
+
+    /// The macro is explicitly disabled and cannot be expanded.
+    pub fn is_disabled(&self) -> bool {
+        self.proc_macro_id.0 == DISABLED_ID
     }
 
     pub fn expand(
@@ -87,6 +108,10 @@ impl CustomProcMacroExpander {
             ProcMacroId(DUMMY_ID) => ExpandResult::new(
                 tt::Subtree::empty(tt::DelimSpan { open: call_site, close: call_site }),
                 ExpandError::UnresolvedProcMacro(def_crate),
+            ),
+            ProcMacroId(DISABLED_ID) => ExpandResult::new(
+                tt::Subtree::empty(tt::DelimSpan { open: call_site, close: call_site }),
+                ExpandError::MacroDisabled,
             ),
             ProcMacroId(id) => {
                 let proc_macros = db.proc_macros();

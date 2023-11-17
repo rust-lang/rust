@@ -98,9 +98,13 @@ pub(super) fn collect_defs(db: &dyn DefDatabase, def_map: DefMap, tree_id: TreeI
                         };
                         (
                             name.as_name(),
-                            CustomProcMacroExpander::new(hir_expand::proc_macro::ProcMacroId(
-                                idx as u32,
-                            )),
+                            if it.expander.should_expand() {
+                                CustomProcMacroExpander::new(hir_expand::proc_macro::ProcMacroId(
+                                    idx as u32,
+                                ))
+                            } else {
+                                CustomProcMacroExpander::disabled()
+                            },
                         )
                     })
                     .collect())
@@ -1156,6 +1160,28 @@ impl DefCollector<'_> {
                         self.def_map.modules[directive.module_id]
                             .scope
                             .add_macro_invoc(ast_id.ast_id, call_id);
+
+                        let loc: MacroCallLoc = self.db.lookup_intern_macro_call(call_id);
+
+                        if let MacroDefKind::ProcMacro(expander, _, _) = loc.def.kind {
+                            if expander.is_dummy() || expander.is_disabled() {
+                                // If there's no expander for the proc macro (e.g.
+                                // because proc macros are disabled, or building the
+                                // proc macro crate failed), report this and skip
+                                // expansion like we would if it was disabled
+                                self.def_map.diagnostics.push(
+                                    DefDiagnostic::unresolved_proc_macro(
+                                        directive.module_id,
+                                        loc.kind,
+                                        loc.def.krate,
+                                    ),
+                                );
+
+                                res = ReachedFixedPoint::No;
+                                return false;
+                            }
+                        }
+
                         push_resolved(directive, call_id);
 
                         res = ReachedFixedPoint::No;
@@ -1348,6 +1374,8 @@ impl DefCollector<'_> {
                                 def.krate,
                             ));
 
+                            return recollect_without(self);
+                        } else if exp.is_disabled() {
                             return recollect_without(self);
                         }
                     }

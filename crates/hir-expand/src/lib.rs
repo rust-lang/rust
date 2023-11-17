@@ -129,6 +129,8 @@ pub type ExpandResult<T> = ValueResult<T, ExpandError>;
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub enum ExpandError {
     UnresolvedProcMacro(CrateId),
+    /// The macro expansion is disabled.
+    MacroDisabled,
     Mbe(mbe::ExpandError),
     RecursionOverflowPoisoned,
     Other(Box<Box<str>>),
@@ -160,6 +162,7 @@ impl fmt::Display for ExpandError {
                 f.write_str(it)
             }
             ExpandError::Other(it) => f.write_str(it),
+            ExpandError::MacroDisabled => f.write_str("macro disabled"),
         }
     }
 }

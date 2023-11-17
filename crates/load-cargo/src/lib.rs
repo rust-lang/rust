@@ -273,7 +273,7 @@ impl SourceRootConfig {
 pub fn load_proc_macro(
     server: &ProcMacroServer,
     path: &AbsPath,
-    dummy_replace: &[Box<str>],
+    ignored_macros: &[Box<str>],
 ) -> ProcMacroLoadResult {
     let res: Result<Vec<_>, String> = (|| {
         let dylib = MacroDylib::new(path.to_path_buf());
@@ -283,7 +283,7 @@ pub fn load_proc_macro(
         }
         Ok(vec
             .into_iter()
-            .map(|expander| expander_to_proc_macro(expander, dummy_replace))
+            .map(|expander| expander_to_proc_macro(expander, ignored_macros))
             .collect())
     })();
     match res {
@@ -349,7 +349,7 @@ fn load_crate_graph(
 
 fn expander_to_proc_macro(
     expander: proc_macro_api::ProcMacro,
-    dummy_replace: &[Box<str>],
+    ignored_macros: &[Box<str>],
 ) -> ProcMacro {
     let name = From::from(expander.name());
     let kind = match expander.kind() {
@@ -358,7 +358,7 @@ fn expander_to_proc_macro(
         proc_macro_api::ProcMacroKind::Attr => ProcMacroKind::Attr,
     };
     let expander: sync::Arc<dyn ProcMacroExpander> =
-        if dummy_replace.iter().any(|replace| **replace == name) {
+        if ignored_macros.iter().any(|replace| &**replace == name) {
             match kind {
                 ProcMacroKind::Attr => sync::Arc::new(IdentityExpander),
                 _ => sync::Arc::new(EmptyExpander),
@@ -407,6 +407,9 @@ impl ProcMacroExpander for IdentityExpander {
     ) -> Result<tt::Subtree<Span>, ProcMacroExpansionError> {
         Ok(subtree.clone())
     }
+    fn should_expand(&self) -> bool {
+        false
+    }
 }
 
 /// Empty expander, used for proc-macros that are deliberately ignored by the user.
@@ -424,6 +427,9 @@ impl ProcMacroExpander for EmptyExpander {
         _: Span,
     ) -> Result<tt::Subtree<Span>, ProcMacroExpansionError> {
         Ok(tt::Subtree::empty(DelimSpan { open: call_site, close: call_site }))
+    }
+    fn should_expand(&self) -> bool {
+        false
     }
 }
 
