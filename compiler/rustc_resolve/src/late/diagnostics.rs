@@ -431,6 +431,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             code,
         );
 
+        self.suggest_at_operator_in_slice_pat_with_range(&mut err, path);
         self.suggest_swapping_misplaced_self_ty_and_trait(&mut err, source, res, base_error.span);
 
         if let Some((span, label)) = base_error.span_label {
@@ -1061,6 +1062,32 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             );
         }
         true
+    }
+
+    fn suggest_at_operator_in_slice_pat_with_range(
+        &mut self,
+        err: &mut Diagnostic,
+        path: &[Segment],
+    ) {
+        if let Some(pat) = self.diagnostic_metadata.current_pat
+            && let ast::PatKind::Range(Some(start), None, range) = &pat.kind
+            && let ExprKind::Path(None, range_path) = &start.kind
+            && let [segment] = &range_path.segments[..]
+            && let [s] = path
+            && segment.ident == s.ident
+        {
+            // We've encountered `[first, rest..]` where the user might have meant
+            // `[first, rest @ ..]` (#88404).
+            err.span_suggestion_verbose(
+                segment.ident.span.between(range.span),
+                format!(
+                    "if you meant to collect the rest of the slice in `{}`, use the at operator",
+                    segment.ident,
+                ),
+                " @ ",
+                Applicability::MaybeIncorrect,
+            );
+        }
     }
 
     fn suggest_swapping_misplaced_self_ty_and_trait(
