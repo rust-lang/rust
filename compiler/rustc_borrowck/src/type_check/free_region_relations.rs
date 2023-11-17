@@ -7,7 +7,7 @@ use rustc_infer::infer::region_constraints::GenericKind;
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::traits::query::OutlivesBound;
-use rustc_middle::ty::{self, RegionVid, Ty};
+use rustc_middle::ty::{self, RegionVid, Ty, TypeVisitableExt};
 use rustc_span::{ErrorGuaranteed, Span, DUMMY_SP};
 use rustc_trait_selection::traits::query::type_op::{self, TypeOp};
 use std::rc::Rc;
@@ -321,6 +321,9 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
             .map_err(|_: ErrorGuaranteed| debug!("failed to compute implied bounds {:?}", ty))
             .ok()?;
         debug!(?bounds, ?constraints);
+        // Because of #109628, we may have unexpected placeholders. Ignore them!
+        // FIXME(#109628): panic in this case once the issue is fixed.
+        let bounds = bounds.into_iter().filter(|bound| !bound.has_placeholders());
         self.add_outlives_bounds(bounds);
         constraints
     }
