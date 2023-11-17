@@ -970,3 +970,37 @@ builtin #format_args ("{}", &[0 2]);
 "##]],
     );
 }
+
+#[test]
+fn eager_concat_line() {
+    check(
+        r#"
+#[rustc_builtin_macro]
+#[macro_export]
+macro_rules! concat {}
+
+#[rustc_builtin_macro]
+#[macro_export]
+macro_rules! line {}
+
+fn main() {
+    concat!("event ", line!());
+}
+
+"#,
+        expect![[r##"
+#[rustc_builtin_macro]
+#[macro_export]
+macro_rules! concat {}
+
+#[rustc_builtin_macro]
+#[macro_export]
+macro_rules! line {}
+
+fn main() {
+    "event 0u32";
+}
+
+"##]],
+    );
+}

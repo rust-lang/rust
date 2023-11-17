@@ -17,7 +17,7 @@ fn main() { column!(); }
 #[rustc_builtin_macro]
 macro_rules! column {() => {}}
 
-fn main() { 0 as u32; }
+fn main() { 0u32; }
 "#]],
     );
 }
@@ -74,7 +74,7 @@ fn main() { line!() }
 #[rustc_builtin_macro]
 macro_rules! line {() => {}}
 
-fn main() { 0 as u32 }
+fn main() { 0u32 }
 "#]],
     );
 }

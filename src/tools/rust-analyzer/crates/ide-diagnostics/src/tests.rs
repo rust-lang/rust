@@ -5,7 +5,7 @@ use expect_test::Expect;
 use ide_db::{
     assists::AssistResolveStrategy,
     base_db::{fixture::WithFixture, SourceDatabaseExt},
-    RootDatabase,
+    LineIndexDatabase, RootDatabase,
 };
 use stdx::trim_indent;
 use test_utils::{assert_eq_text, extract_annotations, MiniCore};
@@ -43,7 +43,8 @@ fn check_nth_fix(nth: usize, ra_fixture_before: &str, ra_fixture_after: &str) {
         super::diagnostics(&db, &conf, &AssistResolveStrategy::All, file_position.file_id)
             .pop()
             .expect("no diagnostics");
-    let fix = &diagnostic.fixes.expect("diagnostic misses fixes")[nth];
+    let fix =
+        &diagnostic.fixes.expect(&format!("{:?} diagnostic misses fixes", diagnostic.code))[nth];
     let actual = {
         let source_change = fix.source_change.as_ref().unwrap();
         let file_id = *source_change.source_file_edits.keys().next().unwrap();
@@ -103,6 +104,7 @@ pub(crate) fn check_diagnostics(ra_fixture: &str) {
 pub(crate) fn check_diagnostics_with_config(config: DiagnosticsConfig, ra_fixture: &str) {
     let (db, files) = RootDatabase::with_many_files(ra_fixture);
     for file_id in files {
+        let line_index = db.line_index(file_id);
         let diagnostics = super::diagnostics(&db, &config, &AssistResolveStrategy::All, file_id);
 
         let expected = extract_annotations(&db.file_text(file_id));
@@ -136,8 +138,16 @@ pub(crate) fn check_diagnostics_with_config(config: DiagnosticsConfig, ra_fixtur
             }
         }
         if expected != actual {
-            let fneg = expected.iter().filter(|x| !actual.contains(x)).collect::<Vec<_>>();
-            let fpos = actual.iter().filter(|x| !expected.contains(x)).collect::<Vec<_>>();
+            let fneg = expected
+                .iter()
+                .filter(|x| !actual.contains(x))
+                .map(|(range, s)| (line_index.line_col(range.start()), range, s))
+                .collect::<Vec<_>>();
+            let fpos = actual
+                .iter()
+                .filter(|x| !expected.contains(x))
+                .map(|(range, s)| (line_index.line_col(range.start()), range, s))
+                .collect::<Vec<_>>();
 
             panic!("Diagnostic test failed.\nFalse negatives: {fneg:?}\nFalse positives: {fpos:?}");
         }

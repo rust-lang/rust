@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import type * as lc from "vscode-languageclient/node";
+import * as lc from "vscode-languageclient/node";
 import * as ra from "./lsp_ext";
 
 import { Config, prepareVSCodeConfig } from "./config";
@@ -22,6 +22,7 @@ import {
 import { execRevealDependency } from "./commands";
 import { PersistentState } from "./persistent_state";
 import { bootstrap } from "./bootstrap";
+import type { RustAnalyzerExtensionApi } from "./main";
 
 // We only support local folders, not eg. Live Share (`vlsl:` scheme), so don't activate if
 // only those are in use. We use "Empty" to represent these scenarios
@@ -64,7 +65,7 @@ export type CtxInit = Ctx & {
     readonly client: lc.LanguageClient;
 };
 
-export class Ctx {
+export class Ctx implements RustAnalyzerExtensionApi {
     readonly statusBar: vscode.StatusBarItem;
     config: Config;
     readonly workspace: Workspace;
@@ -189,8 +190,11 @@ export class Ctx {
             if (this.config.discoverProjectRunner) {
                 const command = `${this.config.discoverProjectRunner}.discoverWorkspaceCommand`;
                 log.info(`running command: ${command}`);
-                const project: JsonProject = await vscode.commands.executeCommand(command);
-                this.addToDiscoveredWorkspaces([project]);
+                const uris = vscode.workspace.textDocuments
+                    .filter(isRustDocument)
+                    .map((document) => document.uri);
+                const projects: JsonProject[] = await vscode.commands.executeCommand(command, uris);
+                this.setWorkspaces(projects);
             }
 
             if (this.workspace.kind === "Detached Files") {
@@ -342,15 +346,17 @@ export class Ctx {
         return this._serverPath;
     }
 
-    addToDiscoveredWorkspaces(workspaces: JsonProject[]) {
-        for (const workspace of workspaces) {
-            const index = this.config.discoveredWorkspaces.indexOf(workspace);
-            if (~index) {
-                this.config.discoveredWorkspaces[index] = workspace;
-            } else {
-                this.config.discoveredWorkspaces.push(workspace);
-            }
-        }
+    setWorkspaces(workspaces: JsonProject[]) {
+        this.config.discoveredWorkspaces = workspaces;
+    }
+
+    async notifyRustAnalyzer(): Promise<void> {
+        // this is a workaround to avoid needing writing the `rust-project.json` into
+        // a workspace-level VS Code-specific settings folder. We'd like to keep the
+        // `rust-project.json` entirely in-memory.
+        await this.client?.sendNotification(lc.DidChangeConfigurationNotification.type, {
+            settings: "",
+        });
     }
 
     private updateCommands(forceDisable?: "disable") {

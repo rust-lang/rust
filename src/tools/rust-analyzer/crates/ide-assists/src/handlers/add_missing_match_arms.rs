@@ -88,7 +88,13 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
             .into_iter()
             .filter_map(|variant| {
                 Some((
-                    build_pat(ctx.db(), module, variant, ctx.config.prefer_no_std)?,
+                    build_pat(
+                        ctx.db(),
+                        module,
+                        variant,
+                        ctx.config.prefer_no_std,
+                        ctx.config.prefer_prelude,
+                    )?,
                     variant.should_be_hidden(ctx.db(), module.krate()),
                 ))
             })
@@ -140,7 +146,13 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
                     .iter()
                     .any(|variant| variant.should_be_hidden(ctx.db(), module.krate()));
                 let patterns = variants.into_iter().filter_map(|variant| {
-                    build_pat(ctx.db(), module, variant, ctx.config.prefer_no_std)
+                    build_pat(
+                        ctx.db(),
+                        module,
+                        variant,
+                        ctx.config.prefer_no_std,
+                        ctx.config.prefer_prelude,
+                    )
                 });
 
                 (ast::Pat::from(make::tuple_pat(patterns)), is_hidden)
@@ -173,7 +185,13 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
                     .iter()
                     .any(|variant| variant.should_be_hidden(ctx.db(), module.krate()));
                 let patterns = variants.into_iter().filter_map(|variant| {
-                    build_pat(ctx.db(), module, variant.clone(), ctx.config.prefer_no_std)
+                    build_pat(
+                        ctx.db(),
+                        module,
+                        variant.clone(),
+                        ctx.config.prefer_no_std,
+                        ctx.config.prefer_prelude,
+                    )
                 });
                 (ast::Pat::from(make::slice_pat(patterns)), is_hidden)
             })
@@ -440,11 +458,16 @@ fn build_pat(
     module: hir::Module,
     var: ExtendedVariant,
     prefer_no_std: bool,
+    prefer_prelude: bool,
 ) -> Option<ast::Pat> {
     match var {
         ExtendedVariant::Variant(var) => {
-            let path =
-                mod_path_to_ast(&module.find_use_path(db, ModuleDef::from(var), prefer_no_std)?);
+            let path = mod_path_to_ast(&module.find_use_path(
+                db,
+                ModuleDef::from(var),
+                prefer_no_std,
+                prefer_prelude,
+            )?);
 
             // FIXME: use HIR for this; it doesn't currently expose struct vs. tuple vs. unit variants though
             Some(match var.source(db)?.value.kind() {
