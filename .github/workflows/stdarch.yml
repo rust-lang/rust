@@ -92,7 +92,8 @@ jobs:
     - name: Build
       run: |
         ./y.sh prepare --only-libcore
-        ./y.sh build --release --release-sysroot
+        # TODO: remove --features master when it is back to the default.
+        ./y.sh build --release --release-sysroot --features master
         cargo test
 
     - name: Clean
