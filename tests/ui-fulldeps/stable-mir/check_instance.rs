@@ -49,7 +49,7 @@ fn test_stable_mir(_tcx: TyCtxt<'_>) -> ControlFlow<()> {
     assert!(generic.iter().all(|item| mir::mono::Instance::try_from(*item).is_err()));
 
     for instance in instances {
-        test_body(instance.body())
+        test_body(instance.body().unwrap())
     }
     ControlFlow::Continue(())
 }
@@ -61,8 +61,10 @@ fn test_body(body: mir::Body) {
             Call { func, .. } => {
                 let TyKind::RigidTy(ty) = func.ty(body.locals()).kind() else { unreachable!() };
                 let RigidTy::FnDef(def, args) = ty else { unreachable!() };
-                let result = Instance::resolve(def, &args);
-                assert!(result.is_ok());
+                let instance = Instance::resolve(def, &args).unwrap();
+                let mangled_name = instance.mangled_name();
+                let body = instance.body();
+                assert!(body.is_some() || mangled_name == "setpwent", "Failed: {func:?}");
             }
             Goto { .. } | Assert { .. } | SwitchInt { .. } | Return | Drop { .. } => {
                 /* Do nothing */
@@ -105,10 +107,16 @@ fn generate_input(path: &str) -> std::io::Result<()> {
         LEN > 0 && a[0]
     }}
 
+    extern "C" {{
+        // Body should not be available.
+        fn setpwent();
+    }}
+
     pub fn monomorphic() {{
         let v = vec![10];
         let dup = ty_param(&v);
         assert_eq!(v, dup);
+        unsafe {{ setpwent() }};
     }}
 
     pub mod foo {{

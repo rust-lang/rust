@@ -231,8 +231,7 @@ macro_rules! test_abi_compatible {
     };
 }
 
-// Compatibility of pointers is probably de-facto guaranteed,
-// but that does not seem to be documented.
+// Compatibility of pointers.
 test_abi_compatible!(ptr_mut, *const i32, *mut i32);
 test_abi_compatible!(ptr_pointee, *const i32, *const Vec<i32>);
 test_abi_compatible!(ref_mut, &i32, &mut i32);
@@ -241,14 +240,15 @@ test_abi_compatible!(box_ptr, Box<i32>, *const i32);
 test_abi_compatible!(nonnull_ptr, NonNull<i32>, *const i32);
 test_abi_compatible!(fn_fn, fn(), fn(i32) -> i32);
 
-// Some further guarantees we will likely (have to) make.
+// Compatibility of 1-ZST.
 test_abi_compatible!(zst_unit, Zst, ());
 #[cfg(not(any(target_arch = "sparc64")))]
 test_abi_compatible!(zst_array, Zst, [u8; 0]);
 test_abi_compatible!(nonzero_int, NonZeroI32, i32);
 
 // `DispatchFromDyn` relies on ABI compatibility.
-// This is interesting since these types are not `repr(transparent)`.
+// This is interesting since these types are not `repr(transparent)`. So this is not part of our
+// public ABI guarantees, but is relied on by the compiler.
 test_abi_compatible!(rc, Rc<i32>, *mut i32);
 test_abi_compatible!(arc, Arc<i32>, *mut i32);
 
