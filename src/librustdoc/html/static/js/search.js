@@ -1349,24 +1349,16 @@ function initSearch(rawSearchIndex) {
                         continue;
                     }
                     if (fnType.id < 0 && queryElem.id < 0) {
-                        if (mgens === null) {
-                            mgens = new Map();
+                        if (mgens && mgens.has(fnType.id) &&
+                            mgens.get(fnType.id) !== queryElem.id) {
+                            continue;
                         }
-                        const alreadyAssigned = mgens.has(fnType.id);
-                        if (alreadyAssigned) {
-                            if (mgens.get(fnType.id) !== queryElem.id) {
-                                continue;
-                            }
-                        } else {
-                            mgens.set(fnType.id, queryElem.id);
-                        }
-                        if (!solutionCb || solutionCb(mgens)) {
+                        const mgensScratch = new Map(mgens);
+                        mgensScratch.set(fnType.id, queryElem.id);
+                        if (!solutionCb || solutionCb(mgensScratch)) {
                             return true;
                         }
-                        if (!alreadyAssigned) {
-                            mgens.delete(fnType.id);
-                        }
-                    } else if (!solutionCb || solutionCb(mgens)) {
+                    } else if (!solutionCb || solutionCb(mgens ? new Map(mgens) : null)) {
                         // unifyFunctionTypeIsMatchCandidate already checks that ids match
                         return true;
                     }
@@ -1376,34 +1368,26 @@ function initSearch(rawSearchIndex) {
                         continue;
                     }
                     if (fnType.id < 0) {
-                        if (mgens === null) {
-                            mgens = new Map();
+                        if (mgens && mgens.has(fnType.id) &&
+                            mgens.get(fnType.id) !== 0) {
+                            continue;
                         }
-                        const alreadyAssigned = mgens.has(fnType.id);
-                        if (alreadyAssigned) {
-                            if (mgens.get(fnType.id) !== 0) {
-                                continue;
-                            }
-                        } else {
-                            mgens.set(fnType.id, 0);
-                        }
+                        const mgensScratch = new Map(mgens);
+                        mgensScratch.set(fnType.id, 0);
                         if (unifyFunctionTypes(
                             whereClause[(-fnType.id) - 1],
                             queryElems,
                             whereClause,
-                            mgens,
+                            mgensScratch,
                             solutionCb
                         )) {
                             return true;
-                        }
-                        if (!alreadyAssigned) {
-                            mgens.delete(fnType.id);
                         }
                     } else if (unifyFunctionTypes(
                         fnType.generics,
                         queryElems,
                         whereClause,
-                        mgens,
+                        mgens ? new Map(mgens) : null,
                         solutionCb
                     )) {
                         return true;
