@@ -1,7 +1,8 @@
+use crate::mir::pretty::{function_body, pretty_statement};
 use crate::ty::{AdtDef, ClosureDef, Const, CoroutineDef, GenericArgs, Movability, Region, Ty};
 use crate::Opaque;
 use crate::Span;
-
+use std::io;
 /// The SMIR representation of a single function.
 #[derive(Clone, Debug)]
 pub struct Body {
@@ -56,6 +57,28 @@ impl Body {
     pub fn locals(&self) -> &[LocalDecl] {
         &self.locals
     }
+
+    pub fn dump<W: io::Write>(&self, w: &mut W) -> io::Result<()> {
+        writeln!(w, "{}", function_body(self))?;
+        self.blocks
+            .iter()
+            .enumerate()
+            .map(|(index, block)| -> io::Result<()> {
+                writeln!(w, "    bb{}: {{", index)?;
+                let _ = block
+                    .statements
+                    .iter()
+                    .map(|statement| -> io::Result<()> {
+                        writeln!(w, "{}", pretty_statement(&statement.kind))?;
+                        Ok(())
+                    })
+                    .collect::<Vec<_>>();
+                writeln!(w, "    }}").unwrap();
+                Ok(())
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(())
+    }
 }
 
 type LocalDecls = Vec<LocalDecl>;
@@ -64,6 +87,7 @@ type LocalDecls = Vec<LocalDecl>;
 pub struct LocalDecl {
     pub ty: Ty,
     pub span: Span,
+    pub mutability: Mutability,
 }
 
 #[derive(Clone, Debug)]
