@@ -1521,8 +1521,9 @@ mod prim_ref {}
 /// exceptional circumstances. Most Rust code just imports functions via `use`. `#[target_feature]`
 /// is also used rarely. So, most likely you do not have to worry about ABI compatibility.
 ///
-/// But assuming such circumstances, what are the rules? For this section, we are specifically
-/// concerned with the case where both the caller and the callee are defined in Rust.
+/// But assuming such circumstances, what are the rules? For this section, we are only considering
+/// the ABI of direct Rust-to-Rust calls, not linking in general -- once functions are imported via
+/// `extern` blocks, there are more things to consider that we do not go into here.
 ///
 /// For two signatures to be considered *ABI-compatible*, they must use a compatible ABI string,
 /// must take the same number of arguments, the individual argument types and the return types must
