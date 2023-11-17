@@ -1,7 +1,10 @@
 //! Emulate x86 LLVM intrinsics
 
+use rustc_ast::ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_middle::ty::GenericArgsRef;
+use rustc_target::asm::*;
 
+use crate::inline_asm::{codegen_inline_asm_inner, CInlineAsmOperand};
 use crate::intrinsics::*;
 use crate::prelude::*;
 
@@ -12,6 +15,7 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
     args: &[mir::Operand<'tcx>],
     ret: CPlace<'tcx>,
     target: Option<BasicBlock>,
+    span: Span,
 ) {
     match intrinsic {
         "llvm.x86.sse2.pause" | "llvm.aarch64.isb" => {
@@ -24,7 +28,35 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
 
             let xcr_no = xcr_no.load_scalar(fx);
 
-            crate::inline_asm::codegen_xgetbv(fx, xcr_no, ret);
+            codegen_inline_asm_inner(
+                fx,
+                &[InlineAsmTemplatePiece::String(
+                    "
+                    xgetbv
+                    // out = rdx << 32 | rax
+                    shl rdx, 32
+                    or rax, rdx
+                    "
+                    .to_string(),
+                )],
+                &[
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::cx)),
+                        value: xcr_no,
+                    },
+                    CInlineAsmOperand::Out {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::ax)),
+                        late: true,
+                        place: Some(ret),
+                    },
+                    CInlineAsmOperand::Out {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::dx)),
+                        late: true,
+                        place: None,
+                    },
+                ],
+                InlineAsmOptions::NOSTACK | InlineAsmOptions::PURE | InlineAsmOptions::NOMEM,
+            );
         }
 
         "llvm.x86.sse3.ldu.dq" | "llvm.x86.avx.ldu.dq.256" => {
@@ -688,64 +720,278 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
 
         "llvm.x86.pclmulqdq" => {
             // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_clmulepi64_si128&ig_expand=772
-            intrinsic_args!(fx, args => (a, b, imm8); intrinsic);
+            intrinsic_args!(fx, args => (a, b, _imm8); intrinsic);
 
-            assert_eq!(a.layout(), b.layout());
-            let layout = a.layout();
+            let a = a.load_scalar(fx);
+            let b = b.load_scalar(fx);
 
-            let (lane_count, lane_ty) = layout.ty.simd_size_and_type(fx.tcx);
-            let (ret_lane_count, ret_lane_ty) = ret.layout().ty.simd_size_and_type(fx.tcx);
-            assert_eq!(lane_ty, fx.tcx.types.i64);
-            assert_eq!(ret_lane_ty, fx.tcx.types.i64);
-            assert_eq!(lane_count, 2);
-            assert_eq!(ret_lane_count, 2);
+            let imm8 = if let Some(imm8) = crate::constant::mir_operand_get_const_val(fx, &args[2])
+            {
+                imm8
+            } else {
+                fx.tcx.sess.span_fatal(
+                    span,
+                    "Index argument for `_mm_clmulepi64_si128` is not a constant",
+                );
+            };
 
-            let imm8 = imm8.load_scalar(fx);
+            let imm8 = imm8.try_to_u8().unwrap_or_else(|_| panic!("kind not scalar: {:?}", imm8));
 
-            let control0 = fx.bcx.ins().band_imm(imm8, 0b0000_0001);
-            let a_lane0 = a.value_lane(fx, 0).load_scalar(fx);
-            let a_lane1 = a.value_lane(fx, 1).load_scalar(fx);
-            let temp1 = fx.bcx.ins().select(control0, a_lane1, a_lane0);
+            codegen_inline_asm_inner(
+                fx,
+                &[InlineAsmTemplatePiece::String(format!("pclmulqdq xmm0, xmm1, {imm8}"))],
+                &[
+                    CInlineAsmOperand::InOut {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm0)),
+                        _late: true,
+                        in_value: a,
+                        out_place: Some(ret),
+                    },
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm1)),
+                        value: b,
+                    },
+                ],
+                InlineAsmOptions::NOSTACK | InlineAsmOptions::PURE | InlineAsmOptions::NOMEM,
+            );
+        }
 
-            let control4 = fx.bcx.ins().band_imm(imm8, 0b0001_0000);
-            let b_lane0 = b.value_lane(fx, 0).load_scalar(fx);
-            let b_lane1 = b.value_lane(fx, 1).load_scalar(fx);
-            let temp2 = fx.bcx.ins().select(control4, b_lane1, b_lane0);
+        "llvm.x86.aesni.aeskeygenassist" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_aeskeygenassist_si128&ig_expand=261
+            intrinsic_args!(fx, args => (a, _imm8); intrinsic);
 
-            fn extract_bit(fx: &mut FunctionCx<'_, '_, '_>, val: Value, bit: i64) -> Value {
-                let tmp = fx.bcx.ins().ushr_imm(val, bit);
-                fx.bcx.ins().band_imm(tmp, 1)
-            }
+            let a = a.load_scalar(fx);
 
-            let mut res1 = fx.bcx.ins().iconst(types::I64, 0);
-            for i in 0..=63 {
-                let x = extract_bit(fx, temp1, 0);
-                let y = extract_bit(fx, temp2, i);
-                let mut temp = fx.bcx.ins().band(x, y);
-                for j in 1..=i {
-                    let x = extract_bit(fx, temp1, j);
-                    let y = extract_bit(fx, temp2, i - j);
-                    let z = fx.bcx.ins().band(x, y);
-                    temp = fx.bcx.ins().bxor(temp, z);
-                }
-                let temp = fx.bcx.ins().ishl_imm(temp, i);
-                res1 = fx.bcx.ins().bor(res1, temp);
-            }
-            ret.place_lane(fx, 0).to_ptr().store(fx, res1, MemFlags::trusted());
+            let imm8 = if let Some(imm8) = crate::constant::mir_operand_get_const_val(fx, &args[1])
+            {
+                imm8
+            } else {
+                fx.tcx.sess.span_fatal(
+                    span,
+                    "Index argument for `_mm_aeskeygenassist_si128` is not a constant",
+                );
+            };
 
-            let mut res2 = fx.bcx.ins().iconst(types::I64, 0);
-            for i in 64..=127 {
-                let mut temp = fx.bcx.ins().iconst(types::I64, 0);
-                for j in i - 63..=63 {
-                    let x = extract_bit(fx, temp1, j);
-                    let y = extract_bit(fx, temp2, i - j);
-                    let z = fx.bcx.ins().band(x, y);
-                    temp = fx.bcx.ins().bxor(temp, z);
-                }
-                let temp = fx.bcx.ins().ishl_imm(temp, i);
-                res2 = fx.bcx.ins().bor(res2, temp);
-            }
-            ret.place_lane(fx, 1).to_ptr().store(fx, res2, MemFlags::trusted());
+            let imm8 = imm8.try_to_u8().unwrap_or_else(|_| panic!("kind not scalar: {:?}", imm8));
+
+            codegen_inline_asm_inner(
+                fx,
+                &[InlineAsmTemplatePiece::String(format!("aeskeygenassist xmm0, xmm0, {imm8}"))],
+                &[CInlineAsmOperand::InOut {
+                    reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm0)),
+                    _late: true,
+                    in_value: a,
+                    out_place: Some(ret),
+                }],
+                InlineAsmOptions::NOSTACK | InlineAsmOptions::PURE | InlineAsmOptions::NOMEM,
+            );
+        }
+
+        "llvm.x86.aesni.aesimc" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_aesimc_si128&ig_expand=260
+            intrinsic_args!(fx, args => (a); intrinsic);
+
+            let a = a.load_scalar(fx);
+
+            codegen_inline_asm_inner(
+                fx,
+                &[InlineAsmTemplatePiece::String("aesimc xmm0, xmm0".to_string())],
+                &[CInlineAsmOperand::InOut {
+                    reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm0)),
+                    _late: true,
+                    in_value: a,
+                    out_place: Some(ret),
+                }],
+                InlineAsmOptions::NOSTACK | InlineAsmOptions::PURE | InlineAsmOptions::NOMEM,
+            );
+        }
+
+        "llvm.x86.aesni.aesenc" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_aesenc_si128&ig_expand=252
+            intrinsic_args!(fx, args => (a, round_key); intrinsic);
+
+            let a = a.load_scalar(fx);
+            let round_key = round_key.load_scalar(fx);
+
+            codegen_inline_asm_inner(
+                fx,
+                &[InlineAsmTemplatePiece::String("aesenc xmm0, xmm1".to_string())],
+                &[
+                    CInlineAsmOperand::InOut {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm0)),
+                        _late: true,
+                        in_value: a,
+                        out_place: Some(ret),
+                    },
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm1)),
+                        value: round_key,
+                    },
+                ],
+                InlineAsmOptions::NOSTACK | InlineAsmOptions::PURE | InlineAsmOptions::NOMEM,
+            );
+        }
+
+        "llvm.x86.aesni.aesenclast" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_aesenclast_si128&ig_expand=257
+            intrinsic_args!(fx, args => (a, round_key); intrinsic);
+
+            let a = a.load_scalar(fx);
+            let round_key = round_key.load_scalar(fx);
+
+            codegen_inline_asm_inner(
+                fx,
+                &[InlineAsmTemplatePiece::String("aesenclast xmm0, xmm1".to_string())],
+                &[
+                    CInlineAsmOperand::InOut {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm0)),
+                        _late: true,
+                        in_value: a,
+                        out_place: Some(ret),
+                    },
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm1)),
+                        value: round_key,
+                    },
+                ],
+                InlineAsmOptions::NOSTACK | InlineAsmOptions::PURE | InlineAsmOptions::NOMEM,
+            );
+        }
+
+        "llvm.x86.aesni.aesdec" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_aesdec_si128&ig_expand=242
+            intrinsic_args!(fx, args => (a, round_key); intrinsic);
+
+            let a = a.load_scalar(fx);
+            let round_key = round_key.load_scalar(fx);
+
+            codegen_inline_asm_inner(
+                fx,
+                &[InlineAsmTemplatePiece::String("aesdec xmm0, xmm1".to_string())],
+                &[
+                    CInlineAsmOperand::InOut {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm0)),
+                        _late: true,
+                        in_value: a,
+                        out_place: Some(ret),
+                    },
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm1)),
+                        value: round_key,
+                    },
+                ],
+                InlineAsmOptions::NOSTACK | InlineAsmOptions::PURE | InlineAsmOptions::NOMEM,
+            );
+        }
+
+        "llvm.x86.aesni.aesdeclast" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_aesdeclast_si128&ig_expand=247
+            intrinsic_args!(fx, args => (a, round_key); intrinsic);
+
+            let a = a.load_scalar(fx);
+            let round_key = round_key.load_scalar(fx);
+
+            codegen_inline_asm_inner(
+                fx,
+                &[InlineAsmTemplatePiece::String("aesdeclast xmm0, xmm1".to_string())],
+                &[
+                    CInlineAsmOperand::InOut {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm0)),
+                        _late: true,
+                        in_value: a,
+                        out_place: Some(ret),
+                    },
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm1)),
+                        value: round_key,
+                    },
+                ],
+                InlineAsmOptions::NOSTACK | InlineAsmOptions::PURE | InlineAsmOptions::NOMEM,
+            );
+        }
+
+        "llvm.x86.sha256rnds2" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_sha256rnds2_epu32&ig_expand=5977
+            intrinsic_args!(fx, args => (a, b, k); intrinsic);
+
+            let a = a.load_scalar(fx);
+            let b = b.load_scalar(fx);
+            let k = k.load_scalar(fx);
+
+            codegen_inline_asm_inner(
+                fx,
+                &[InlineAsmTemplatePiece::String("sha256rnds2 xmm1, xmm2".to_string())],
+                &[
+                    CInlineAsmOperand::InOut {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm1)),
+                        _late: true,
+                        in_value: a,
+                        out_place: Some(ret),
+                    },
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm2)),
+                        value: b,
+                    },
+                    // Implicit argument to the sha256rnds2 instruction
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm0)),
+                        value: k,
+                    },
+                ],
+                InlineAsmOptions::NOSTACK | InlineAsmOptions::PURE | InlineAsmOptions::NOMEM,
+            );
+        }
+
+        "llvm.x86.sha256msg1" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_sha256msg1_epu32&ig_expand=5975
+            intrinsic_args!(fx, args => (a, b); intrinsic);
+
+            let a = a.load_scalar(fx);
+            let b = b.load_scalar(fx);
+
+            codegen_inline_asm_inner(
+                fx,
+                &[InlineAsmTemplatePiece::String("sha256msg1 xmm1, xmm2".to_string())],
+                &[
+                    CInlineAsmOperand::InOut {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm1)),
+                        _late: true,
+                        in_value: a,
+                        out_place: Some(ret),
+                    },
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm2)),
+                        value: b,
+                    },
+                ],
+                InlineAsmOptions::NOSTACK | InlineAsmOptions::PURE | InlineAsmOptions::NOMEM,
+            );
+        }
+
+        "llvm.x86.sha256msg2" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_sha256msg2_epu32&ig_expand=5976
+            intrinsic_args!(fx, args => (a, b); intrinsic);
+
+            let a = a.load_scalar(fx);
+            let b = b.load_scalar(fx);
+
+            codegen_inline_asm_inner(
+                fx,
+                &[InlineAsmTemplatePiece::String("sha256msg2 xmm1, xmm2".to_string())],
+                &[
+                    CInlineAsmOperand::InOut {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm1)),
+                        _late: true,
+                        in_value: a,
+                        out_place: Some(ret),
+                    },
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm2)),
+                        value: b,
+                    },
+                ],
+                InlineAsmOptions::NOSTACK | InlineAsmOptions::PURE | InlineAsmOptions::NOMEM,
+            );
         }
 
         "llvm.x86.avx.ptestz.256" => {
