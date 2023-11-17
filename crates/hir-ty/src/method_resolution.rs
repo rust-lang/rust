@@ -27,8 +27,9 @@ use crate::{
     primitive::{FloatTy, IntTy, UintTy},
     static_lifetime, to_chalk_trait_id,
     utils::all_super_traits,
-    AdtId, Canonical, CanonicalVarKinds, DebruijnIndex, DynTyExt, ForeignDefId, InEnvironment,
-    Interner, Scalar, Substitution, TraitEnvironment, TraitRef, TraitRefExt, Ty, TyBuilder, TyExt,
+    AdtId, Canonical, CanonicalVarKinds, DebruijnIndex, DynTyExt, ForeignDefId, Goal, Guidance,
+    InEnvironment, Interner, Scalar, Solution, Substitution, TraitEnvironment, TraitRef,
+    TraitRefExt, Ty, TyBuilder, TyExt,
 };
 
 /// This is used as a key for indexing impls.
@@ -1478,11 +1479,8 @@ fn is_valid_fn_candidate(
             // We need to consider the bounds on the impl to distinguish functions of the same name
             // for a type.
             let predicates = db.generic_predicates(impl_id.into());
-            let mut alias = Vec::new();
-            let mut other_predicate = Vec::new();
-
-            for predicate in predicates.iter() {
-                let (p, b) = predicate
+            let goals = predicates.iter().map(|p| {
+                let (p, b) = p
                     .clone()
                     .substitute(Interner, &impl_subst)
                     // Skipping the inner binders is ok, as we don't handle quantified where
@@ -1490,21 +1488,38 @@ fn is_valid_fn_candidate(
                     .into_value_and_skipped_binders();
                 stdx::always!(b.len(Interner) == 0);
 
-                if let WhereClause::AliasEq(_) = p {
-                    alias.push(p);
-                } else {
-                    other_predicate.push(p);
+                p.cast::<Goal>(Interner)
+            });
+
+            for goal in goals.clone() {
+                let in_env = InEnvironment::new(&table.trait_env.env, goal);
+                let canonicalized = table.canonicalize(in_env);
+                let solution = table.db.trait_solve(
+                    table.trait_env.krate,
+                    table.trait_env.block,
+                    canonicalized.value.clone(),
+                );
+
+                match solution {
+                    Some(Solution::Unique(canonical_subst)) => {
+                        canonicalized.apply_solution(
+                            table,
+                            Canonical {
+                                binders: canonical_subst.binders,
+                                value: canonical_subst.value.subst,
+                            },
+                        );
+                    }
+                    Some(Solution::Ambig(Guidance::Definite(substs))) => {
+                        canonicalized.apply_solution(table, substs);
+                    }
+                    Some(_) => (),
+                    None => return IsValidCandidate::No,
                 }
             }
 
-            for p in alias {
-                if !table.try_resolve_alias(p.cast(Interner)) {
-                    return IsValidCandidate::No;
-                }
-            }
-
-            for p in other_predicate {
-                if table.try_obligation(p.cast(Interner)).is_none() {
+            for goal in goals {
+                if table.try_obligation(goal).is_none() {
                     return IsValidCandidate::No;
                 }
             }
