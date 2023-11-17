@@ -16,13 +16,22 @@ impl<F: Future> Task<F> {
     }
 }
 
-fn main() {
-    async fn cb() {
-        let a = Foo; //~ ERROR cannot find value `Foo` in this scope
-    }
+mod helper {
+    use super::*;
+    pub type F = impl Future;
+    fn foo()
+    where
+        F:,
+    {
+        async fn cb() {
+            let a = Foo; //~ ERROR cannot find value `Foo` in this scope
+        }
 
-    type F = impl Future;
-    // Check that statics are inhabited computes they layout.
-    static POOL: Task<F> = Task::new();
-    Task::spawn(&POOL, || cb());
+        Task::spawn(&POOL, || cb());
+    }
 }
+
+// Check that statics are inhabited computes they layout.
+static POOL: Task<helper::F> = Task::new();
+
+fn main() {}

@@ -1,5 +1,5 @@
 error: ~const can only be applied to `#[const_trait]` traits
-  --> $DIR/normalize-tait-in-const.rs:25:42
+  --> $DIR/normalize-tait-in-const.rs:28:42
    |
 LL | const fn with_positive<F: ~const for<'a> Fn(&'a Alias<'a>) + ~const Destruct>(fun: F) {
    |                                          ^^^^^^^^^^^^^^^^^

@@ -106,7 +106,8 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
                 let id = id.owner_id.def_id;
                 if let DefKind::TyAlias = self.collector.tcx.def_kind(id) {
                     let items = self.collector.tcx.opaque_types_defined_by(id);
-                    self.collector.opaques.extend(items);
+                    assert_eq!(&items.in_body[..], []);
+                    self.collector.opaques.extend(items.in_signature);
                 }
             }
             #[instrument(level = "trace", skip(self))]
@@ -272,14 +273,12 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
     }
 }
 
-fn opaque_types_defined_by<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    item: LocalDefId,
-) -> &'tcx ty::List<LocalDefId> {
+fn opaque_types_defined_by<'tcx>(tcx: TyCtxt<'tcx>, item: LocalDefId) -> ty::OpaqueTypes<'tcx> {
     let kind = tcx.def_kind(item);
     trace!(?kind);
-    let mut collector = OpaqueTypeCollector::new(tcx, item);
-    super::sig_types::walk_types(tcx, item, &mut collector);
+    let mut in_signature = OpaqueTypeCollector::new(tcx, item);
+    let mut in_body = OpaqueTypeCollector::new(tcx, item);
+    super::sig_types::walk_types(tcx, item, &mut in_signature);
     match kind {
         DefKind::AssocFn
         | DefKind::Fn
@@ -287,7 +286,7 @@ fn opaque_types_defined_by<'tcx>(
         | DefKind::Const
         | DefKind::AssocConst
         | DefKind::AnonConst => {
-            collector.collect_taits_declared_in_body();
+            in_body.collect_taits_declared_in_body();
         }
         DefKind::OpaqueTy
         | DefKind::TyAlias
@@ -314,10 +313,15 @@ fn opaque_types_defined_by<'tcx>(
         // Closures and coroutines are type checked with their parent, so we need to allow all
         // opaques from the closure signature *and* from the parent body.
         DefKind::Closure | DefKind::Coroutine | DefKind::InlineConst => {
-            collector.opaques.extend(tcx.opaque_types_defined_by(tcx.local_parent(item)));
+            let nested = tcx.opaque_types_defined_by(tcx.local_parent(item));
+            in_signature.opaques.extend(nested.in_signature);
+            in_body.opaques.extend(nested.in_body);
         }
     }
-    tcx.mk_local_def_ids(&collector.opaques)
+    ty::OpaqueTypes {
+        in_signature: tcx.mk_local_def_ids(&in_signature.opaques),
+        in_body: tcx.mk_local_def_ids(&in_body.opaques),
+    }
 }
 
 pub(super) fn provide(providers: &mut Providers) {

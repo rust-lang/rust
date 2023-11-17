@@ -3,11 +3,19 @@
 #![feature(type_alias_impl_trait)]
 #![allow(dead_code)]
 
-pub trait MyTrait {}
+mod foo {
+    pub trait MyTrait {}
 
-impl MyTrait for bool {}
+    impl MyTrait for bool {}
 
-type Foo = impl MyTrait;
+    pub type Foo = impl MyTrait;
+
+    pub fn make_foo() -> Foo {
+        true
+    }
+}
+
+use foo::*;
 
 struct Blah {
     my_foo: Foo,
@@ -21,10 +29,6 @@ impl Blah {
     fn into_inner(self) -> (Foo, u8, Foo) {
         (self.my_foo, self.my_u8, make_foo())
     }
-}
-
-fn make_foo() -> Foo {
-    true
 }
 
 fn main() {}

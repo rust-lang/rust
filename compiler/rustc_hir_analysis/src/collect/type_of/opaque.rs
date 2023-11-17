@@ -7,7 +7,7 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::{sym, DUMMY_SP};
 
-use crate::errors::{TaitForwardCompat, TypeOf, UnconstrainedOpaqueType};
+use crate::errors::{TaitForwardCompat, TaitForwardCompat2, TypeOf, UnconstrainedOpaqueType};
 
 pub fn test_opaque_hidden_types(tcx: TyCtxt<'_>) {
     if tcx.has_attr(CRATE_DEF_ID, sym::rustc_hidden_type_of_opaques) {
@@ -151,13 +151,17 @@ impl TaitConstraintLocator<'_> {
             return;
         }
 
+        let opaques = self.tcx.opaque_types_defined_by(item_def_id);
+        let opaque_type_must_be_defined = opaques.in_signature.contains(&self.def_id);
+        let opaque_type_may_be_defined = opaques.in_body.contains(&self.def_id);
+
         let mut constrained = false;
         for (&opaque_type_key, &hidden_type) in &tables.concrete_opaque_types {
             if opaque_type_key.def_id != self.def_id {
                 continue;
             }
             constrained = true;
-            if !self.tcx.opaque_types_defined_by(item_def_id).contains(&self.def_id) {
+            if !opaque_type_must_be_defined && !opaque_type_may_be_defined {
                 self.tcx.sess.emit_err(TaitForwardCompat {
                     span: hidden_type.span,
                     item_span: self
@@ -179,6 +183,16 @@ impl TaitConstraintLocator<'_> {
 
         if !constrained {
             debug!("no constraints in typeck results");
+            if opaque_type_must_be_defined {
+                self.tcx.sess.emit_err(TaitForwardCompat2 {
+                    span: self
+                        .tcx
+                        .def_ident_span(item_def_id)
+                        .unwrap_or_else(|| self.tcx.def_span(item_def_id)),
+                    opaque_type_span: self.tcx.def_span(self.def_id),
+                    opaque_type: self.tcx.def_path_str(self.def_id),
+                });
+            }
             return;
         };
 

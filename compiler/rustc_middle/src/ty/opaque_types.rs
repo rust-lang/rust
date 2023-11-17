@@ -3,7 +3,7 @@ use crate::ty::fold::{TypeFolder, TypeSuperFoldable};
 use crate::ty::{self, Ty, TyCtxt, TypeFoldable};
 use crate::ty::{GenericArg, GenericArgKind};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_span::def_id::DefId;
+use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::Span;
 
 /// Converts generic params of a TypeFoldable from one
@@ -223,4 +223,14 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReverseMapper<'tcx> {
             _ => ct,
         }
     }
+}
+
+/// The opaque types defined by an item.
+#[derive(Copy, Clone, Debug, HashStable)]
+pub struct OpaqueTypes<'tcx> {
+    /// Opaque types in the signature *must* be defined by the item itself.
+    pub in_signature: &'tcx ty::List<LocalDefId>,
+    /// Opaque types declared in the body are not required to be defined by
+    /// the item itself, they could be defined by other nested items.
+    pub in_body: &'tcx ty::List<LocalDefId>,
 }
