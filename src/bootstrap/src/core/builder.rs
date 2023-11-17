@@ -2178,11 +2178,7 @@ impl<'a> Builder<'a> {
         }
 
         // Only execute if it's supposed to run as default
-        if desc.default && should_run.is_really_default() {
-            self.ensure(step)
-        } else {
-            None
-        }
+        if desc.default && should_run.is_really_default() { self.ensure(step) } else { None }
     }
 
     /// Checks if any of the "should_run" paths is in the `Builder` paths.
