@@ -91,7 +91,7 @@ jobs:
         with:
           msystem: MINGW64
           update: true
-          install: "git mingw-w64-x86_64-toolchain mingw-w64-x86_64-cmake mingw-w64-x86_64-python mingw-w64-x86_64-jq mingw-w64-x86_64-7zip dos2unix make mingw-w64-x86_64-sccache\n"
+          install: "git mingw-w64-x86_64-toolchain mingw-w64-x86_64-cmake mingw-w64-x86_64-python # mingw-w64-x86_64-jq # mingw-w64-x86_64-7zip dos2unix make # mingw-w64-x86_64-sccache\n"
       - name: checkout the source code
         uses: actions/checkout@v4
         with:
@@ -490,7 +490,7 @@ jobs:
         with:
           msystem: MINGW64
           update: true
-          install: "git mingw-w64-x86_64-toolchain mingw-w64-x86_64-cmake mingw-w64-x86_64-python mingw-w64-x86_64-jq mingw-w64-x86_64-7zip dos2unix make mingw-w64-x86_64-sccache\n"
+          install: "git mingw-w64-x86_64-toolchain mingw-w64-x86_64-cmake mingw-w64-x86_64-python # mingw-w64-x86_64-jq # mingw-w64-x86_64-7zip dos2unix make # mingw-w64-x86_64-sccache\n"
       - name: checkout the source code
         uses: actions/checkout@v4
         with:
@@ -623,7 +623,7 @@ jobs:
         with:
           msystem: MINGW64
           update: true
-          install: "git mingw-w64-x86_64-toolchain mingw-w64-x86_64-cmake mingw-w64-x86_64-python mingw-w64-x86_64-jq mingw-w64-x86_64-7zip dos2unix make mingw-w64-x86_64-sccache\n"
+          install: "git mingw-w64-x86_64-toolchain mingw-w64-x86_64-cmake mingw-w64-x86_64-python # mingw-w64-x86_64-jq # mingw-w64-x86_64-7zip dos2unix make # mingw-w64-x86_64-sccache\n"
       - name: checkout the source code
         uses: actions/checkout@v4
         with:

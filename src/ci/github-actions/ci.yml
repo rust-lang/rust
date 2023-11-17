@@ -115,7 +115,9 @@ x--expand-yaml-anchors--remove:
         shell: msys2 {0}
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
-    env: *shared-ci-variables
+    env:
+      <<: *shared-ci-variables
+      MSYS2_PATH_TYPE: inherit
     steps:
       - uses: msys2/setup-msys2@v2
         with:
@@ -123,9 +125,9 @@ x--expand-yaml-anchors--remove:
           update: true
           install: >
             git mingw-w64-x86_64-toolchain mingw-w64-x86_64-cmake
-            mingw-w64-x86_64-python mingw-w64-x86_64-jq
-            mingw-w64-x86_64-7zip dos2unix make
-            mingw-w64-x86_64-sccache
+            mingw-w64-x86_64-python # mingw-w64-x86_64-jq
+            # mingw-w64-x86_64-7zip dos2unix make
+            # mingw-w64-x86_64-sccache
       
       # - name: disable git crlf conversion
       #   run: src/ci/scripts/disable-git-crlf-conversion.sh
