@@ -1609,7 +1609,6 @@ supported_targets! {
     ("thumbv7a-pc-windows-msvc", thumbv7a_pc_windows_msvc),
     ("thumbv7a-uwp-windows-msvc", thumbv7a_uwp_windows_msvc),
 
-    ("asmjs-unknown-emscripten", asmjs_unknown_emscripten),
     ("wasm32-unknown-emscripten", wasm32_unknown_emscripten),
     ("wasm32-unknown-unknown", wasm32_unknown_unknown),
     ("wasm32-wasi", wasm32_wasi),
@@ -2242,10 +2241,6 @@ impl TargetOptions {
 
     fn add_pre_link_args(&mut self, flavor: LinkerFlavor, args: &[&'static str]) {
         add_link_args(&mut self.pre_link_args, flavor, args);
-    }
-
-    fn add_post_link_args(&mut self, flavor: LinkerFlavor, args: &[&'static str]) {
-        add_link_args(&mut self.post_link_args, flavor, args);
     }
 
     fn update_from_cli(&mut self) {
