@@ -2243,9 +2243,9 @@ fn linker_with_args<'a>(
     // ------------ Late order-dependent options ------------
 
     // Doesn't really make sense.
-    // FIXME: In practice built-in target specs use this for arbitrary order-independent options,
-    // introduce a target spec option for order-independent linker options, migrate built-in specs
-    // to it and remove the option.
+    // FIXME: In practice built-in target specs use this for arbitrary order-independent options.
+    // Introduce a target spec option for order-independent linker options, migrate built-in specs
+    // to it and remove the option. Currently the last holdout is wasm32-unknown-emscripten.
     add_post_link_args(cmd, sess, flavor);
 
     Ok(cmd.take_cmd())
