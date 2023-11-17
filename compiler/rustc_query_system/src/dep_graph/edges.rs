@@ -5,7 +5,7 @@ use std::iter::Extend;
 use std::ops::Deref;
 
 #[derive(Default, Debug)]
-pub struct EdgesVec {
+pub(crate) struct EdgesVec {
     max: u32,
     edges: SmallVec<[DepNodeIndex; EdgesVec::INLINE_CAPACITY]>,
 }
@@ -18,21 +18,21 @@ impl Hash for EdgesVec {
 }
 
 impl EdgesVec {
-    pub const INLINE_CAPACITY: usize = 8;
+    pub(crate) const INLINE_CAPACITY: usize = 8;
 
     #[inline]
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self::default()
     }
 
     #[inline]
-    pub fn push(&mut self, edge: DepNodeIndex) {
+    pub(crate) fn push(&mut self, edge: DepNodeIndex) {
         self.max = self.max.max(edge.as_u32());
         self.edges.push(edge);
     }
 
     #[inline]
-    pub fn max_index(&self) -> u32 {
+    pub(crate) fn max_index(&self) -> u32 {
         self.max
     }
 }
