@@ -93,7 +93,7 @@ pub enum TrailingToken {
 macro_rules! maybe_whole {
     ($p:expr, $constructor:ident, |$x:ident| $e:expr) => {
         if let token::Interpolated(nt) = &$p.token.kind {
-            if let token::$constructor(x) = &**nt {
+            if let token::$constructor(x) = &nt.0 {
                 let $x = x.clone();
                 $p.bump();
                 return Ok($e);
@@ -110,7 +110,7 @@ macro_rules! maybe_recover_from_interpolated_ty_qpath {
             && $self.may_recover()
             && $self.look_ahead(1, |t| t == &token::ModSep)
             && let token::Interpolated(nt) = &$self.token.kind
-            && let token::NtTy(ty) = &**nt
+            && let token::NtTy(ty) = &nt.0
         {
             let ty = ty.clone();
             $self.bump();
@@ -367,12 +367,14 @@ impl TokenDescription {
 pub(super) fn token_descr(token: &Token) -> String {
     let name = pprust::token_to_string(token).to_string();
 
-    let kind = TokenDescription::from_token(token).map(|kind| match kind {
-        TokenDescription::ReservedIdentifier => "reserved identifier",
-        TokenDescription::Keyword => "keyword",
-        TokenDescription::ReservedKeyword => "reserved keyword",
-        TokenDescription::DocComment => "doc comment",
-    });
+    let kind = match (TokenDescription::from_token(token), &token.kind) {
+        (Some(TokenDescription::ReservedIdentifier), _) => Some("reserved identifier"),
+        (Some(TokenDescription::Keyword), _) => Some("keyword"),
+        (Some(TokenDescription::ReservedKeyword), _) => Some("reserved keyword"),
+        (Some(TokenDescription::DocComment), _) => Some("doc comment"),
+        (None, TokenKind::Interpolated(node)) => Some(node.0.descr()),
+        (None, _) => None,
+    };
 
     if let Some(kind) = kind { format!("{kind} `{name}`") } else { format!("`{name}`") }
 }
@@ -662,7 +664,7 @@ impl<'a> Parser<'a> {
     fn check_inline_const(&self, dist: usize) -> bool {
         self.is_keyword_ahead(dist, &[kw::Const])
             && self.look_ahead(dist + 1, |t| match &t.kind {
-                token::Interpolated(nt) => matches!(**nt, token::NtBlock(..)),
+                token::Interpolated(nt) => matches!(&nt.0, token::NtBlock(..)),
                 token::OpenDelim(Delimiter::Brace) => true,
                 _ => false,
             })

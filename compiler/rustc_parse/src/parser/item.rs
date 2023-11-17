@@ -123,7 +123,7 @@ impl<'a> Parser<'a> {
         // Don't use `maybe_whole` so that we have precise control
         // over when we bump the parser
         if let token::Interpolated(nt) = &self.token.kind
-            && let token::NtItem(item) = &**nt
+            && let token::NtItem(item) = &nt.0
         {
             let mut item = item.clone();
             self.bump();
@@ -2750,7 +2750,7 @@ impl<'a> Parser<'a> {
 
     fn is_named_param(&self) -> bool {
         let offset = match &self.token.kind {
-            token::Interpolated(nt) => match **nt {
+            token::Interpolated(nt) => match &nt.0 {
                 token::NtPat(..) => return self.look_ahead(1, |t| t == &token::Colon),
                 _ => 0,
             },
