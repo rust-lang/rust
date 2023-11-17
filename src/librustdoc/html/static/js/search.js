@@ -1329,9 +1329,9 @@ function initSearch(rawSearchIndex) {
          */
         function unifyFunctionTypes(fnTypesIn, queryElems, whereClause, mgensIn, solutionCb) {
             /**
-             * @type Map<integer, integer>
+             * @type Map<integer, integer>|null
              */
-            let mgens = new Map(mgensIn);
+            let mgens = mgensIn === null ? null : new Map(mgensIn);
             if (queryElems.length === 0) {
                 return !solutionCb || solutionCb(mgens);
             }
@@ -1382,12 +1382,14 @@ function initSearch(rawSearchIndex) {
                         fnTypesOffset,
                         unbox,
                     } = backtracking.pop();
-                    mgens = new Map(mgensScratch);
+                    mgens = mgensScratch !== null ? new Map(mgensScratch) : null;
                     const fnType = fnTypesScratch[fnTypesOffset];
                     const queryElem = queryElems[queryElemsOffset];
                     if (unbox) {
                         if (fnType.id < 0) {
-                            if (mgens.has(fnType.id) && mgens.get(fnType.id) !== 0) {
+                            if (mgens === null) {
+                                mgens = new Map();
+                            } else if (mgens.has(fnType.id) && mgens.get(fnType.id) !== 0) {
                                 continue;
                             }
                             mgens.set(fnType.id, 0);
@@ -1401,7 +1403,9 @@ function initSearch(rawSearchIndex) {
                         i = queryElemsOffset - 1;
                     } else {
                         if (fnType.id < 0) {
-                            if (mgens.has(fnType.id) && mgens.get(fnType.id) !== queryElem.id) {
+                            if (mgens === null) {
+                                mgens = new Map();
+                            } else if (mgens.has(fnType.id) && mgens.get(fnType.id) !== queryElem.id) {
                                 continue;
                             }
                             mgens.set(fnType.id, queryElem.id);
@@ -1456,7 +1460,7 @@ function initSearch(rawSearchIndex) {
                         if (!fnTypesScratch) {
                             fnTypesScratch = fnTypes.slice();
                         }
-                        if (!mgensScratch) {
+                        if (!mgensScratch && mgens !== null) {
                             mgensScratch = new Map(mgens);
                         }
                         backtracking.push({
@@ -1478,10 +1482,19 @@ function initSearch(rawSearchIndex) {
                 // use the current candidate
                 const {fnTypesOffset: candidate, mgensScratch: mgensNew} = matchCandidates.pop();
                 if (fnTypes[candidate].id < 0 && queryElems[i].id < 0) {
+                    if (mgens === null) {
+                        mgens = new Map();
+                    }
                     mgens.set(fnTypes[candidate].id, queryElems[i].id);
                 }
-                for (const [fid, qid] of mgensNew) {
-                    mgens.set(fid, qid);
+                if (mgensNew !== null) {
+                    if (mgens === null) {
+                        mgens = mgensNew;
+                    } else {
+                        for (const [fid, qid] of mgensNew) {
+                            mgens.set(fid, qid);
+                        }
+                    }
                 }
                 // `i` and `j` are paired off
                 // `queryElems[i]` is left in place
@@ -1514,15 +1527,17 @@ function initSearch(rawSearchIndex) {
             // or, if mgens[fnType.id] = 0, then we've matched this generic with a bare trait
             // and should make that same decision everywhere it appears
             if (fnType.id < 0 && queryElem.id < 0) {
-                if (mgens.has(fnType.id) && mgens.get(fnType.id) !== queryElem.id) {
-                    return false;
-                }
-                for (const [fid, qid] of mgens.entries()) {
-                    if (fnType.id !== fid && queryElem.id === qid) {
+                if (mgens !== null) {
+                    if (mgens.has(fnType.id) && mgens.get(fnType.id) !== queryElem.id) {
                         return false;
                     }
-                    if (fnType.id === fid && queryElem.id !== qid) {
-                        return false;
+                    for (const [fid, qid] of mgens.entries()) {
+                        if (fnType.id !== fid && queryElem.id === qid) {
+                            return false;
+                        }
+                        if (fnType.id === fid && queryElem.id !== qid) {
+                            return false;
+                        }
                     }
                 }
             } else {
@@ -1575,7 +1590,7 @@ function initSearch(rawSearchIndex) {
                 }
                 // mgens[fnType.id] === 0 indicates that we committed to unboxing this generic
                 // mgens[fnType.id] === null indicates that we haven't decided yet
-                if (mgens.has(fnType.id) && mgens.get(fnType.id) !== 0) {
+                if (mgens !== null && mgens.has(fnType.id) && mgens.get(fnType.id) !== 0) {
                     return false;
                 }
                 // This is only a potential unbox if the search query appears in the where clause
