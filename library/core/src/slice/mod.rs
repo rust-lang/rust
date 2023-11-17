@@ -1748,9 +1748,9 @@ impl<T> [T] {
     /// Returns an iterator over the slice producing non-overlapping runs
     /// of elements using the predicate to separate them.
     ///
-    /// The predicate is called on two elements following themselves,
-    /// it means the predicate is called on `slice[0]` and `slice[1]`
-    /// then on `slice[1]` and `slice[2]` and so on.
+    /// The predicate is called for every pair of consecutive elements,
+    /// meaning that it is called on `slice[0]` and `slice[1]`,
+    /// followed by `slice[1]` and `slice[2]`, and so on.
     ///
     /// # Examples
     ///
@@ -1789,9 +1789,9 @@ impl<T> [T] {
     /// Returns an iterator over the slice producing non-overlapping mutable
     /// runs of elements using the predicate to separate them.
     ///
-    /// The predicate is called on two elements following themselves,
-    /// it means the predicate is called on `slice[0]` and `slice[1]`
-    /// then on `slice[1]` and `slice[2]` and so on.
+    /// The predicate is called for every pair of consecutive elements,
+    /// meaning that it is called on `slice[0]` and `slice[1]`,
+    /// followed by `slice[1]` and `slice[2]`, and so on.
     ///
     /// # Examples
     ///
