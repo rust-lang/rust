@@ -373,15 +373,16 @@ fn run_compiler(
 
         let handler = EarlyErrorHandler::new(sess.opts.error_format);
 
+        let should_stop = print_crate_info(&handler, codegen_backend, sess, has_input);
+
         if !has_input {
-            let should_stop = print_crate_info(&handler, codegen_backend, sess, false);
             if should_stop == Compilation::Continue {
                 handler.early_error("no input filename given")
             }
             return sess.compile_status();
         }
 
-        let should_stop = print_crate_info(&handler, codegen_backend, sess, true)
+        let should_stop = should_stop
             .and_then(|| list_metadata(&handler, sess, &*codegen_backend.metadata_loader()))
             .and_then(|| try_process_rlink(sess, compiler));
 
