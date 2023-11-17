@@ -83,7 +83,7 @@ jobs:
             os: windows-2019-8core-32gb
     defaults:
       run:
-        shell: "mysys2 {0}"
+        shell: "msys2 {0}"
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     steps:
@@ -482,7 +482,7 @@ jobs:
             os: windows-2019-8core-32gb
     defaults:
       run:
-        shell: "mysys2 {0}"
+        shell: "msys2 {0}"
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     steps:
@@ -615,7 +615,7 @@ jobs:
             os: ubuntu-20.04-16core-64gb
     defaults:
       run:
-        shell: "mysys2 {0}"
+        shell: "msys2 {0}"
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     steps:

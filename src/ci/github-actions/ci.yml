@@ -112,7 +112,7 @@ x--expand-yaml-anchors--remove:
   - &base-ci-job
     defaults:
       run:
-        shell: mysys2 {0}
+        shell: msys2 {0}
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     env: *shared-ci-variables
