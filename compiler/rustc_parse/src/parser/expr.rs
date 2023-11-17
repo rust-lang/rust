@@ -2904,15 +2904,16 @@ impl<'a> Parser<'a> {
                         "=>",
                         Applicability::MachineApplicable,
                     );
-                    err.emit();
-                    this.bump();
-                } else if matches!(
-                    (&this.prev_token.kind, &this.token.kind),
-                    (token::DotDotEq, token::Gt)
-                ) {
-                    // `error_inclusive_range_match_arrow` handles cases like `0..=> {}`,
-                    // so we suppress the error here
-                    err.delay_as_bug();
+                    if matches!(
+                        (&this.prev_token.kind, &this.token.kind),
+                        (token::DotDotEq, token::Gt)
+                    ) {
+                        // `error_inclusive_range_match_arrow` handles cases like `0..=> {}`,
+                        // so we suppress the error here
+                        err.delay_as_bug();
+                    } else {
+                        err.emit();
+                    }
                     this.bump();
                 } else {
                     return Err(err);

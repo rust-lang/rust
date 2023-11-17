@@ -638,13 +638,13 @@ impl<'a> Parser<'a> {
 
     /// Error on `mut $pat` where `$pat` is not an ident.
     fn ban_mut_general_pat(&self, lo: Span, pat: &Pat, changed_any_binding: bool) {
-        let span = lo.to(pat.span);
-        let pat = pprust::pat_to_string(&pat);
-
         self.sess.emit_err(if changed_any_binding {
-            InvalidMutInPattern::NestedIdent { span, pat }
+            InvalidMutInPattern::NestedIdent {
+                span: lo.to(pat.span),
+                pat: pprust::pat_to_string(&pat),
+            }
         } else {
-            InvalidMutInPattern::NonIdent { span, pat }
+            InvalidMutInPattern::NonIdent { span: lo.until(pat.span) }
         });
     }
 
