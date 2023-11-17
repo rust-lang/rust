@@ -469,7 +469,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             let a_ty = goal.predicate.self_ty();
             // We need to normalize the b_ty since it's destructured as a `dyn Trait`.
             let Some(b_ty) =
-                ecx.try_normalize_ty(goal.param_env, goal.predicate.trait_ref.args.type_at(1))?
+                ecx.try_normalize_ty(goal.param_env, goal.predicate.trait_ref.args.type_at(1))
             else {
                 return ecx.evaluate_added_goals_and_make_canonical_response(Certainty::OVERFLOW);
             };
@@ -536,9 +536,8 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             let b_ty = match ecx
                 .try_normalize_ty(goal.param_env, goal.predicate.trait_ref.args.type_at(1))
             {
-                Ok(Some(b_ty)) => b_ty,
-                Ok(None) => return vec![misc_candidate(ecx, Certainty::OVERFLOW)],
-                Err(_) => return vec![],
+                Some(b_ty) => b_ty,
+                None => return vec![misc_candidate(ecx, Certainty::OVERFLOW)],
             };
 
             let goal = goal.with(ecx.tcx(), (a_ty, b_ty));

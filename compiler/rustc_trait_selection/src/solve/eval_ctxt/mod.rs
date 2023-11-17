@@ -34,6 +34,7 @@ use super::{search_graph::SearchGraph, Goal};
 pub use select::InferCtxtSelectExt;
 
 mod canonical;
+mod commit_if_ok;
 mod probe;
 mod select;
 
@@ -332,7 +333,6 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         let (orig_values, canonical_goal) = self.canonicalize_goal(goal);
         let mut goal_evaluation =
             self.inspect.new_goal_evaluation(goal, &orig_values, goal_evaluation_kind);
-        let encountered_overflow = self.search_graph.encountered_overflow();
         let canonical_response = EvalCtxt::evaluate_canonical_goal(
             self.tcx(),
             self.search_graph,
@@ -367,73 +367,17 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
             bug!("an unchanged goal shouldn't have any side-effects on instantiation");
         }
 
-        // Check that rerunning this query with its inference constraints applied
-        // doesn't result in new inference constraints and has the same result.
+        // FIXME: We previously had an assert here that checked that recomputing
+        // a goal after applying its constraints did not change its response.
         //
-        // If we have projection goals like `<T as Trait>::Assoc == u32` we recursively
-        // call `exists<U> <T as Trait>::Assoc == U` to enable better caching. This goal
-        // could constrain `U` to `u32` which would cause this check to result in a
-        // solver cycle.
-        if cfg!(debug_assertions)
-            && has_changed
-            && !matches!(
-                goal_evaluation_kind,
-                GoalEvaluationKind::Nested { is_normalizes_to_hack: IsNormalizesToHack::Yes }
-            )
-            && !self.search_graph.in_cycle()
-        {
-            // The nested evaluation has to happen with the original state
-            // of `encountered_overflow`.
-            let from_original_evaluation =
-                self.search_graph.reset_encountered_overflow(encountered_overflow);
-            self.check_evaluate_goal_stable_result(goal, canonical_goal, canonical_response);
-            // In case the evaluation was unstable, we manually make sure that this
-            // debug check does not influence the result of the parent goal.
-            self.search_graph.reset_encountered_overflow(from_original_evaluation);
-        }
+        // This assert was removed as it did not hold for goals constraining
+        // an inference variable to a recursive alias, e.g. in
+        // tests/ui/traits/new-solver/overflow/recursive-self-normalization.rs.
+        //
+        // Once we have decided on how to handle trait-system-refactor-initiative#75,
+        // we should re-add an assert here.
 
         Ok((has_changed, certainty, nested_goals))
-    }
-
-    fn check_evaluate_goal_stable_result(
-        &mut self,
-        goal: Goal<'tcx, ty::Predicate<'tcx>>,
-        original_input: CanonicalInput<'tcx>,
-        original_result: CanonicalResponse<'tcx>,
-    ) {
-        let (_orig_values, canonical_goal) = self.canonicalize_goal(goal);
-        let result = EvalCtxt::evaluate_canonical_goal(
-            self.tcx(),
-            self.search_graph,
-            canonical_goal,
-            // FIXME(-Ztrait-solver=next): we do not track what happens in `evaluate_canonical_goal`
-            &mut ProofTreeBuilder::new_noop(),
-        );
-
-        macro_rules! fail {
-            ($msg:expr) => {{
-                let msg = $msg;
-                warn!(
-                    "unstable result: {msg}\n\
-                    original goal: {original_input:?},\n\
-                    original result: {original_result:?}\n\
-                    re-canonicalized goal: {canonical_goal:?}\n\
-                    second response: {result:?}"
-                );
-                return;
-            }};
-        }
-
-        let Ok(new_canonical_response) = result else { fail!("second response was error") };
-        // We only check for modulo regions as we convert all regions in
-        // the input to new existentials, even if they're expected to be
-        // `'static` or a placeholder region.
-        if !new_canonical_response.value.var_values.is_identity_modulo_regions() {
-            fail!("additional constraints from second response")
-        }
-        if original_result.value.certainty != new_canonical_response.value.certainty {
-            fail!("unstable certainty")
-        }
     }
 
     fn compute_goal(&mut self, goal: Goal<'tcx, ty::Predicate<'tcx>>) -> QueryResult<'tcx> {
@@ -746,6 +690,26 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             })
             .map_err(|e| {
                 debug!(?e, "failed to subtype");
+                NoSolution
+            })
+    }
+
+    #[instrument(level = "debug", skip(self, param_env), ret)]
+    pub(super) fn relate<T: ToTrace<'tcx>>(
+        &mut self,
+        param_env: ty::ParamEnv<'tcx>,
+        lhs: T,
+        variance: ty::Variance,
+        rhs: T,
+    ) -> Result<(), NoSolution> {
+        self.infcx
+            .at(&ObligationCause::dummy(), param_env)
+            .relate(DefineOpaqueTypes::No, lhs, variance, rhs)
+            .map(|InferOk { value: (), obligations }| {
+                self.add_goals(obligations.into_iter().map(|o| o.into()));
+            })
+            .map_err(|e| {
+                debug!(?e, "failed to relate");
                 NoSolution
             })
     }

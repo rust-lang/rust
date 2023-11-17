@@ -1245,6 +1245,28 @@ impl<'tcx> AliasTy<'tcx> {
         }
     }
 
+    /// Whether this alias type is an opaque.
+    pub fn is_opaque(self, tcx: TyCtxt<'tcx>) -> bool {
+        matches!(self.opt_kind(tcx), Some(ty::AliasKind::Opaque))
+    }
+
+    /// FIXME: rename `AliasTy` to `AliasTerm` and always handle
+    /// constants. This function can then be removed.
+    pub fn opt_kind(self, tcx: TyCtxt<'tcx>) -> Option<ty::AliasKind> {
+        match tcx.def_kind(self.def_id) {
+            DefKind::AssocTy
+                if let DefKind::Impl { of_trait: false } =
+                    tcx.def_kind(tcx.parent(self.def_id)) =>
+            {
+                Some(ty::Inherent)
+            }
+            DefKind::AssocTy => Some(ty::Projection),
+            DefKind::OpaqueTy => Some(ty::Opaque),
+            DefKind::TyAlias => Some(ty::Weak),
+            _ => None,
+        }
+    }
+
     pub fn to_ty(self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         Ty::new_alias(tcx, self.kind(tcx), self)
     }

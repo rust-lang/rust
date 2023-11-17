@@ -44,6 +44,10 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                 // Prefer opaques registered already.
                 let opaque_type_key =
                     ty::OpaqueTypeKey { def_id: opaque_ty_def_id, args: opaque_ty.args };
+                // FIXME: This also unifies the previous hidden type with the expected.
+                //
+                // If that fails, we insert `expected` as a new hidden type instead of
+                // eagerly emitting an error.
                 let matches =
                     self.unify_existing_opaque_tys(goal.param_env, opaque_type_key, expected);
                 if !matches.is_empty() {
@@ -53,6 +57,23 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                         return self.flounder(&matches);
                     }
                 }
+
+                let expected = match self.try_normalize_ty(goal.param_env, expected) {
+                    Some(ty) => {
+                        if ty.is_ty_var() {
+                            return self.evaluate_added_goals_and_make_canonical_response(
+                                Certainty::AMBIGUOUS,
+                            );
+                        } else {
+                            ty
+                        }
+                    }
+                    None => {
+                        return self
+                            .evaluate_added_goals_and_make_canonical_response(Certainty::OVERFLOW);
+                    }
+                };
+
                 // Otherwise, define a new opaque type
                 self.insert_hidden_type(opaque_type_key, goal.param_env, expected)?;
                 self.add_item_bounds_for_hidden_type(
