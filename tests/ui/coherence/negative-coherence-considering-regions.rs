@@ -1,5 +1,5 @@
 // revisions: any_lt static_lt
-//[static_lt] known-bug: unknown
+//[static_lt] check-pass
 
 // This fails because we currently perform negative coherence in coherence mode.
 // This means that when looking for a negative predicate, we also assemble a
