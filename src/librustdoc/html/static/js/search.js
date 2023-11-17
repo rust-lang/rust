@@ -1318,7 +1318,7 @@ function initSearch(rawSearchIndex) {
          * then this function will try with a different solution, or bail with false if it
          * runs out of candidates.
          *
-         * @param {Array<FunctionType>} fnTypes - The objects to check.
+         * @param {Array<FunctionType>} fnTypesIn - The objects to check.
          * @param {Array<QueryElement>} queryElems - The elements from the parsed query.
          * @param {[FunctionType]} whereClause - Trait bounds for generic items.
          * @param {Map<number,number>|null} mgensIn
@@ -1340,6 +1340,79 @@ function initSearch(rawSearchIndex) {
             }
             const ql = queryElems.length;
             let fl = fnTypesIn.length;
+
+            // Fast path
+            if (queryElems.length === 1 && queryElems[0].generics.length === 0) {
+                const queryElem = queryElems[0];
+                for (const fnType of fnTypesIn) {
+                    if (!unifyFunctionTypeIsMatchCandidate(fnType, queryElem, whereClause, mgens)) {
+                        continue;
+                    }
+                    if (fnType.id < 0 && queryElem.id < 0) {
+                        if (mgens === null) {
+                            mgens = new Map();
+                        }
+                        const alreadyAssigned = mgens.has(fnType.id);
+                        if (alreadyAssigned) {
+                            if (mgens.get(fnType.id) !== queryElem.id) {
+                                continue;
+                            }
+                        } else {
+                            mgens.set(fnType.id, queryElem.id);
+                        }
+                        if (!solutionCb || solutionCb(mgens)) {
+                            return true;
+                        }
+                        if (!alreadyAssigned) {
+                            mgens.delete(fnType.id);
+                        }
+                    } else if (!solutionCb || solutionCb(mgens)) {
+                        // unifyFunctionTypeIsMatchCandidate already checks that ids match
+                        return true;
+                    }
+                }
+                for (const fnType of fnTypesIn) {
+                    if (!unifyFunctionTypeIsUnboxCandidate(fnType, queryElem, whereClause, mgens)) {
+                        continue;
+                    }
+                    if (fnType.id < 0) {
+                        if (mgens === null) {
+                            mgens = new Map();
+                        }
+                        const alreadyAssigned = mgens.has(fnType.id);
+                        if (alreadyAssigned) {
+                            if (mgens.get(fnType.id) !== 0) {
+                                continue;
+                            }
+                        } else {
+                            mgens.set(fnType.id, 0);
+                        }
+                        if (unifyFunctionTypes(
+                            whereClause[(-fnType.id) - 1],
+                            queryElems,
+                            whereClause,
+                            mgens,
+                            solutionCb
+                        )) {
+                            return true;
+                        }
+                        if (!alreadyAssigned) {
+                            mgens.delete(fnType.id);
+                        }
+                    } else if (unifyFunctionTypes(
+                        fnType.generics,
+                        queryElems,
+                        whereClause,
+                        mgens,
+                        solutionCb
+                    )) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            // Slow path
             /**
              * @type Array<FunctionType>
              */
@@ -1405,7 +1478,8 @@ function initSearch(rawSearchIndex) {
                         if (fnType.id < 0) {
                             if (mgens === null) {
                                 mgens = new Map();
-                            } else if (mgens.has(fnType.id) && mgens.get(fnType.id) !== queryElem.id) {
+                            } else if (mgens.has(fnType.id) &&
+                                mgens.get(fnType.id) !== queryElem.id) {
                                 continue;
                             }
                             mgens.set(fnType.id, queryElem.id);
