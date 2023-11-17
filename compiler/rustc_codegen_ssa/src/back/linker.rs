@@ -185,6 +185,7 @@ pub trait Linker {
     fn optimize(&mut self);
     fn pgo_gen(&mut self);
     fn control_flow_guard(&mut self);
+    fn ehcont_guard(&mut self);
     fn debuginfo(&mut self, strip: Strip, natvis_debugger_visualizers: &[PathBuf]);
     fn no_crt_objects(&mut self);
     fn no_default_libraries(&mut self);
@@ -605,6 +606,8 @@ impl<'a> Linker for GccLinker<'a> {
 
     fn control_flow_guard(&mut self) {}
 
+    fn ehcont_guard(&mut self) {}
+
     fn debuginfo(&mut self, strip: Strip, _: &[PathBuf]) {
         // MacOS linker doesn't support stripping symbols directly anymore.
         if self.sess.target.is_like_osx {
@@ -914,6 +917,12 @@ impl<'a> Linker for MsvcLinker<'a> {
         self.cmd.arg("/guard:cf");
     }
 
+    fn ehcont_guard(&mut self) {
+        if self.sess.target.pointer_width == 64 {
+            self.cmd.arg("/guard:ehcont");
+        }
+    }
+
     fn debuginfo(&mut self, strip: Strip, natvis_debugger_visualizers: &[PathBuf]) {
         match strip {
             Strip::None => {
@@ -1127,6 +1136,8 @@ impl<'a> Linker for EmLinker<'a> {
 
     fn control_flow_guard(&mut self) {}
 
+    fn ehcont_guard(&mut self) {}
+
     fn debuginfo(&mut self, _strip: Strip, _: &[PathBuf]) {
         // Preserve names or generate source maps depending on debug info
         // For more information see https://emscripten.org/docs/tools_reference/emcc.html#emcc-g
@@ -1319,6 +1330,8 @@ impl<'a> Linker for WasmLd<'a> {
 
     fn control_flow_guard(&mut self) {}
 
+    fn ehcont_guard(&mut self) {}
+
     fn no_crt_objects(&mut self) {}
 
     fn no_default_libraries(&mut self) {}
@@ -1472,6 +1485,8 @@ impl<'a> Linker for L4Bender<'a> {
 
     fn control_flow_guard(&mut self) {}
 
+    fn ehcont_guard(&mut self) {}
+
     fn no_crt_objects(&mut self) {}
 }
 
@@ -1612,6 +1627,8 @@ impl<'a> Linker for AixLinker<'a> {
     fn pgo_gen(&mut self) {}
 
     fn control_flow_guard(&mut self) {}
+
+    fn ehcont_guard(&mut self) {}
 
     fn debuginfo(&mut self, strip: Strip, _: &[PathBuf]) {
         match strip {
@@ -1835,6 +1852,8 @@ impl<'a> Linker for PtxLinker<'a> {
 
     fn control_flow_guard(&mut self) {}
 
+    fn ehcont_guard(&mut self) {}
+
     fn export_symbols(&mut self, _tmpdir: &Path, _crate_type: CrateType, _symbols: &[String]) {}
 
     fn subsystem(&mut self, _subsystem: &str) {}
@@ -1930,6 +1949,8 @@ impl<'a> Linker for BpfLinker<'a> {
     fn no_default_libraries(&mut self) {}
 
     fn control_flow_guard(&mut self) {}
+
+    fn ehcont_guard(&mut self) {}
 
     fn export_symbols(&mut self, tmpdir: &Path, _crate_type: CrateType, symbols: &[String]) {
         let path = tmpdir.join("symbols");

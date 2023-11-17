@@ -1387,6 +1387,8 @@ options! {
         "allow the linker to link its default libraries (default: no)"),
     dlltool: Option<PathBuf> = (None, parse_opt_pathbuf, [UNTRACKED],
         "import library generation tool (ignored except when targeting windows-gnu)"),
+    ehcont_guard: bool = (false, parse_bool, [TRACKED],
+        "generate Windows EHCont Guard tables"),
     embed_bitcode: bool = (true, parse_bool, [TRACKED],
         "emit bitcode in rlibs (default: yes)"),
     extra_filename: String = (String::new(), parse_string, [UNTRACKED],

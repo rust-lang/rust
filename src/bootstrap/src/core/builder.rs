@@ -1964,6 +1964,12 @@ impl<'a> Builder<'a> {
             rustflags.arg("-Ccontrol-flow-guard");
         }
 
+        // Same for EHCont Guard (this is not combined with the previous if-statement to make
+        // merges with upstream easier).
+        if cfg!(windows) && mode == Mode::Std && self.config.ehcont_guard && compiler.stage >= 1 {
+            rustflags.arg("-Cehcont-guard");
+        }
+
         // For `cargo doc` invocations, make rustdoc print the Rust version into the docs
         // This replaces spaces with tabs because RUSTDOCFLAGS does not
         // support arguments with regular spaces. Hopefully someday Cargo will
@@ -2172,7 +2178,11 @@ impl<'a> Builder<'a> {
         }
 
         // Only execute if it's supposed to run as default
-        if desc.default && should_run.is_really_default() { self.ensure(step) } else { None }
+        if desc.default && should_run.is_really_default() {
+            self.ensure(step)
+        } else {
+            None
+        }
     }
 
     /// Checks if any of the "should_run" paths is in the `Builder` paths.
