@@ -391,12 +391,14 @@ pub trait MirVisitor {
     }
 
     fn super_var_debug_info(&mut self, var_debug_info: &VarDebugInfo) {
-        self.visit_span(&var_debug_info.source_info.span);
-        let location = Location(var_debug_info.source_info.span);
-        if let Some(composite) = &var_debug_info.composite {
+        let VarDebugInfo { source_info, composite, value, name: _, argument_index: _ } =
+            var_debug_info;
+        self.visit_span(&source_info.span);
+        let location = Location(source_info.span);
+        if let Some(composite) = composite {
             self.visit_ty(&composite.ty, location);
         }
-        match &var_debug_info.value {
+        match value {
             VarDebugInfoContents::Place(place) => {
                 self.visit_place(place, PlaceContext::NON_USE, location);
             }
