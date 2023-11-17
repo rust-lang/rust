@@ -645,34 +645,22 @@ impl<'tcx> Cx<'tcx> {
                             out_expr: out_expr.map(|expr| self.mirror_expr(expr)),
                         },
                         hir::InlineAsmOperand::Const { ref anon_const } => {
-                            let value = mir::Const::Unevaluated(
-                                mir::UnevaluatedConst {
-                                    def: anon_const.def_id.to_def_id(),
-                                    args: GenericArgs::identity_for_item(
-                                        self.tcx,
-                                        anon_const.def_id,
-                                    ),
-                                    promoted: None,
-                                },
-                                tcx.type_of(anon_const.def_id).instantiate_identity(),
+                            let value = mir::Const::identity_unevaluated(
+                                tcx,
+                                anon_const.def_id.to_def_id(),
                             )
+                            .instantiate_identity()
                             .normalize(tcx, self.param_env);
                             let span = tcx.def_span(anon_const.def_id);
 
                             InlineAsmOperand::Const { value, span }
                         }
                         hir::InlineAsmOperand::SymFn { ref anon_const } => {
-                            let value = mir::Const::Unevaluated(
-                                mir::UnevaluatedConst {
-                                    def: anon_const.def_id.to_def_id(),
-                                    args: GenericArgs::identity_for_item(
-                                        self.tcx,
-                                        anon_const.def_id,
-                                    ),
-                                    promoted: None,
-                                },
-                                tcx.type_of(anon_const.def_id).instantiate_identity(),
+                            let value = mir::Const::identity_unevaluated(
+                                tcx,
+                                anon_const.def_id.to_def_id(),
                             )
+                            .instantiate_identity()
                             .normalize(tcx, self.param_env);
                             let span = tcx.def_span(anon_const.def_id);
 
