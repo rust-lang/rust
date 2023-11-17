@@ -361,7 +361,7 @@ fn run_compiler(
                     }
                     let should_stop = print_crate_info(
                         &handler,
-                        &**compiler.codegen_backend(),
+                        compiler.codegen_backend(),
                         compiler.session(),
                         false,
                     );
@@ -385,12 +385,11 @@ fn run_compiler(
 
     interface::run_compiler(config, |compiler| {
         let sess = compiler.session();
+        let codegen_backend = compiler.codegen_backend();
         let handler = EarlyErrorHandler::new(sess.opts.error_format);
 
-        let should_stop = print_crate_info(&handler, &**compiler.codegen_backend(), sess, true)
-            .and_then(|| {
-                list_metadata(&handler, sess, &*compiler.codegen_backend().metadata_loader())
-            })
+        let should_stop = print_crate_info(&handler, codegen_backend, sess, true)
+            .and_then(|| list_metadata(&handler, sess, &*codegen_backend.metadata_loader()))
             .and_then(|| try_process_rlink(sess, compiler));
 
         if should_stop == Compilation::Stop {
@@ -482,7 +481,7 @@ fn run_compiler(
 
         if let Some(linker) = linker {
             let _timer = sess.timer("link");
-            linker.link()?
+            linker.link(sess, codegen_backend)?
         }
 
         if sess.opts.unstable_opts.print_fuel.is_some() {
