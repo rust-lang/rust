@@ -3897,7 +3897,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
         let implements_trait = matches!(item.kind, hir::ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }));
         if let hir::ImplItemKind::Fn(ref sig, id) = impl_item.kind {
             let method_sig = cx.tcx.fn_sig(impl_item.owner_id).instantiate_identity();
-            let method_sig = cx.tcx.erase_late_bound_regions(method_sig);
+            let method_sig = cx.tcx.instantiate_bound_regions_with_erased(method_sig);
             let first_arg_ty_opt = method_sig.inputs().iter().next().copied();
             // if this impl block implements a trait, lint in trait definition instead
             if !implements_trait && cx.effective_visibilities.is_exported(impl_item.owner_id.def_id) {

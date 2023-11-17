@@ -1454,7 +1454,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .filter_map(|item| {
                 // Only assoc fns that return `Self`, `Option<Self>` or `Result<Self, _>`.
                 let ret_ty = self.tcx.fn_sig(item.def_id).skip_binder().output();
-                let ret_ty = self.tcx.erase_late_bound_regions(ret_ty);
+                let ret_ty = self.tcx.instantiate_bound_regions_with_erased(ret_ty);
                 let ty::Adt(def, args) = ret_ty.kind() else {
                     return None;
                 };

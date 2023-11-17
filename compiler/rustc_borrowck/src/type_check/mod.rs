@@ -1387,7 +1387,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         return;
                     }
                 };
-                let (sig, map) = tcx.replace_late_bound_regions(sig, |br| {
+                let (sig, map) = tcx.instantiate_bound_regions(sig, |br| {
                     use crate::renumber::RegionCtxt;
 
                     let region_ctxt_fn = || {

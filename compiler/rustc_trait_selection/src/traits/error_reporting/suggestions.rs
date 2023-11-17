@@ -739,9 +739,9 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 real_trait_pred = parent_trait_pred;
             }
 
-            // We `erase_late_bound_regions` here because `make_subregion` does not handle
+            // We `instantiate_bound_regions_with_erased` here because `make_subregion` does not handle
             // `ReBound`, and we don't particularly care about the regions.
-            let real_ty = self.tcx.erase_late_bound_regions(real_trait_pred.self_ty());
+            let real_ty = self.tcx.instantiate_bound_regions_with_erased(real_trait_pred.self_ty());
             if !self.can_eq(obligation.param_env, real_ty, arg_ty) {
                 continue;
             }
@@ -2287,8 +2287,8 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             // represent regions that are part of the suspended
             // coroutine frame. Bound regions are preserved by
             // `erase_regions` and so we must also call
-            // `erase_late_bound_regions`.
-            let ty_erased = self.tcx.erase_late_bound_regions(ty);
+            // `instantiate_bound_regions_with_erased`.
+            let ty_erased = self.tcx.instantiate_bound_regions_with_erased(ty);
             let ty_erased = self.tcx.erase_regions(ty_erased);
             let eq = ty_erased == target_ty_erased;
             debug!(?ty_erased, ?target_ty_erased, ?eq);
@@ -3374,7 +3374,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 let self_ty = self.resolve_vars_if_possible(trait_pred.self_ty());
                 let impls_future = self.type_implements_trait(
                     future_trait,
-                    [self.tcx.erase_late_bound_regions(self_ty)],
+                    [self.tcx.instantiate_bound_regions_with_erased(self_ty)],
                     obligation.param_env,
                 );
                 if !impls_future.must_apply_modulo_regions() {
