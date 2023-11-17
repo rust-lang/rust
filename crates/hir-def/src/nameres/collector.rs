@@ -1164,7 +1164,7 @@ impl DefCollector<'_> {
                         let loc: MacroCallLoc = self.db.lookup_intern_macro_call(call_id);
 
                         if let MacroDefKind::ProcMacro(expander, _, _) = loc.def.kind {
-                            if expander.is_dummy() || expander.is_disabled() {
+                            if expander.is_dummy() {
                                 // If there's no expander for the proc macro (e.g.
                                 // because proc macros are disabled, or building the
                                 // proc macro crate failed), report this and skip
@@ -1177,6 +1177,9 @@ impl DefCollector<'_> {
                                     ),
                                 );
 
+                                res = ReachedFixedPoint::No;
+                                return false;
+                            } else if expander.is_disabled() {
                                 res = ReachedFixedPoint::No;
                                 return false;
                             }
