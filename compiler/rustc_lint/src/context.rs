@@ -703,7 +703,7 @@ pub trait LintContext {
                     db.note("see the asm section of Rust By Example <https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html#labels> for more information");
                 },
                 BuiltinLintDiagnostics::UnexpectedCfgName((name, name_span), value) => {
-                    let possibilities: Vec<Symbol> = sess.parse_sess.check_config.expecteds.keys().map(|s| *s).collect();
+                    let possibilities: Vec<Symbol> = sess.parse_sess.check_config.expecteds.keys().copied().collect();
 
                     // Suggest the most probable if we found one
                     if let Some(best_match) = find_best_match_for_name(&possibilities, name, None) {
