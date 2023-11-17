@@ -30,8 +30,9 @@ use rustc_span::Span;
 use std::any::Any;
 use std::cell::Cell;
 
-/// Extract the `LintStore` from the query context.
-/// This function exists because we've erased `LintStore` as `dyn Any` in the session.
+/// Extract the [`LintStore`] from [`Session`].
+///
+/// This function exists because [`Session::lint_store`] is type-erased.
 pub fn unerased_lint_store(sess: &Session) -> &LintStore {
     let store: &Lrc<_> = sess.lint_store.as_ref().unwrap();
     let store: &dyn Any = &**store;
