@@ -13,7 +13,7 @@ macro_rules! test_mask_api {
             #[cfg(target_arch = "wasm32")]
             use wasm_bindgen_test::*;
 
-            use core_simd::simd::{Mask, Simd};
+            use core_simd::simd::Mask;
 
             #[test]
             #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
@@ -124,17 +124,14 @@ macro_rules! test_mask_api {
 
             #[test]
             fn roundtrip_bitmask_vector_conversion() {
+                use core_simd::simd::ToBytes;
                 let values = [
                     true, false, false, true, false, false, true, false,
                     true, true, false, false, false, false, false, true,
                 ];
                 let mask = Mask::<$type, 16>::from_array(values);
                 let bitmask = mask.to_bitmask_vector();
-                if core::mem::size_of::<$type>() == 1 {
-                    assert_eq!(bitmask, Simd::from_array([0b01001001 as _, 0b10000011 as _, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ]));
-                } else {
-                    assert_eq!(bitmask, Simd::from_array([0b1000001101001001 as _, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]));
-                }
+                assert_eq!(bitmask.resize::<2>(0).to_ne_bytes()[..2], [0b01001001, 0b10000011]);
                 assert_eq!(Mask::<$type, 16>::from_bitmask_vector(bitmask), mask);
             }
         }

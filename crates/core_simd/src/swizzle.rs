@@ -350,9 +350,9 @@ where
         )
     }
 
-    /// Extend a vector.
+    /// Resize a vector.
     ///
-    /// Extends the length of a vector, setting the new elements to `value`.
+    /// If `M` > `N`, extends the length of a vector, setting the new elements to `value`.
     /// If `M` < `N`, truncates the vector to the first `M` elements.
     ///
     /// ```
@@ -361,17 +361,17 @@ where
     /// # #[cfg(not(feature = "as_crate"))] use core::simd;
     /// # use simd::u32x4;
     /// let x = u32x4::from_array([0, 1, 2, 3]);
-    /// assert_eq!(x.extend::<8>(9).to_array(), [0, 1, 2, 3, 9, 9, 9, 9]);
-    /// assert_eq!(x.extend::<2>(9).to_array(), [0, 1]);
+    /// assert_eq!(x.resize::<8>(9).to_array(), [0, 1, 2, 3, 9, 9, 9, 9]);
+    /// assert_eq!(x.resize::<2>(9).to_array(), [0, 1]);
     /// ```
     #[inline]
     #[must_use = "method returns a new vector and does not mutate the original inputs"]
-    pub fn extend<const M: usize>(self, value: T) -> Simd<T, M>
+    pub fn resize<const M: usize>(self, value: T) -> Simd<T, M>
     where
         LaneCount<M>: SupportedLaneCount,
     {
-        struct Extend<const N: usize>;
-        impl<const N: usize, const M: usize> Swizzle<M> for Extend<N> {
+        struct Resize<const N: usize>;
+        impl<const N: usize, const M: usize> Swizzle<M> for Resize<N> {
             const INDEX: [usize; M] = const {
                 let mut index = [0; M];
                 let mut i = 0;
@@ -382,6 +382,6 @@ where
                 index
             };
         }
-        Extend::<N>::concat_swizzle(self, Simd::splat(value))
+        Resize::<N>::concat_swizzle(self, Simd::splat(value))
     }
 }
