@@ -365,6 +365,11 @@ impl<'tcx, O: Elaboratable<'tcx>> Elaborator<'tcx, O> {
                                 Some(ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(ty, r_min)))
                             }
 
+                            Component::Placeholder(p) => {
+                                let ty = Ty::new_placeholder(tcx, p);
+                                Some(ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(ty, r_min)))
+                            }
+
                             Component::UnresolvedInferenceVariable(_) => None,
 
                             Component::Alias(alias_ty) => {

@@ -208,6 +208,9 @@ fn implied_bounds_from_components<'tcx>(
                 Component::Region(r) => Some(OutlivesBound::RegionSubRegion(sub_region, r)),
                 Component::Param(p) => Some(OutlivesBound::RegionSubParam(sub_region, p)),
                 Component::Alias(p) => Some(OutlivesBound::RegionSubAlias(sub_region, p)),
+                Component::Placeholder(_) => {
+                    unimplemented!("Shouldn't expect a placeholder type in implied bounds (yet)")
+                }
                 Component::EscapingAlias(_) =>
                 // If the projection has escaping regions, don't
                 // try to infer any implied bounds even for its
