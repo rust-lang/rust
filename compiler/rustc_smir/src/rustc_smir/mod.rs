@@ -425,35 +425,9 @@ impl<'tcx> Stable<'tcx> for mir::VarDebugInfo<'tcx> {
     fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
         stable_mir::mir::VarDebugInfo {
             name: self.name.to_string(),
-            source_info: stable_mir::mir::SourceInfo {
-                span: self.source_info.span.stable(tables),
-                scope: self.source_info.scope.into(),
-            },
-            composite: {
-                if let Some(composite) = &self.composite {
-                    Some(VarDebugInfoFragment {
-                        ty: composite.ty.stable(tables),
-                        projection: composite.projection.iter().map(|e| e.stable(tables)).collect(),
-                    })
-                } else {
-                    None
-                }
-            },
-            value: {
-                match self.value {
-                    mir::VarDebugInfoContents::Place(place) => {
-                        stable_mir::mir::VarDebugInfoContents::Place(place.stable(tables))
-                    }
-                    mir::VarDebugInfoContents::Const(const_operand) => {
-                        let op = ConstOperand {
-                            span: const_operand.span.stable(tables),
-                            user_ty: const_operand.user_ty.map(|index| index.as_usize()),
-                            const_: const_operand.const_.stable(tables),
-                        };
-                        stable_mir::mir::VarDebugInfoContents::Const(op)
-                    }
-                }
-            },
+            source_info: self.source_info.stable(tables),
+            composite: self.composite.as_ref().map(|composite| composite.stable(tables)),
+            value: self.value.stable(tables),
             argument_index: self.argument_index,
         }
     }
@@ -463,6 +437,42 @@ impl<'tcx> Stable<'tcx> for mir::Statement<'tcx> {
     type T = stable_mir::mir::Statement;
     fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
         Statement { kind: self.kind.stable(tables), span: self.source_info.span.stable(tables) }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for mir::SourceInfo {
+    type T = stable_mir::mir::SourceInfo;
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        stable_mir::mir::SourceInfo { span: self.span.stable(tables), scope: self.scope.into() }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for mir::VarDebugInfoFragment<'tcx> {
+    type T = stable_mir::mir::VarDebugInfoFragment;
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        VarDebugInfoFragment {
+            ty: self.ty.stable(tables),
+            projection: self.projection.iter().map(|e| e.stable(tables)).collect(),
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for mir::VarDebugInfoContents<'tcx> {
+    type T = stable_mir::mir::VarDebugInfoContents;
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        match self {
+            mir::VarDebugInfoContents::Place(place) => {
+                stable_mir::mir::VarDebugInfoContents::Place(place.stable(tables))
+            }
+            mir::VarDebugInfoContents::Const(const_operand) => {
+                let op = ConstOperand {
+                    span: const_operand.span.stable(tables),
+                    user_ty: const_operand.user_ty.map(|index| index.as_usize()),
+                    const_: const_operand.const_.stable(tables),
+                };
+                stable_mir::mir::VarDebugInfoContents::Const(op)
+            }
+        }
     }
 }
 
