@@ -291,6 +291,9 @@ pub trait Context {
 
     /// Retrieve global allocation for the given allocation ID.
     fn global_alloc(&self, id: AllocId) -> GlobalAlloc;
+
+    /// Retrieve the id for the virtual table.
+    fn vtable_allocation(&self, global_alloc: &GlobalAlloc) -> Option<AllocId>;
 }
 
 // A thread local variable that stores a pointer to the tables mapping between TyCtxt

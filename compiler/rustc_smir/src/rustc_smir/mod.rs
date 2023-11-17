@@ -331,6 +331,18 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         tables.tcx.global_alloc(alloc_id).stable(&mut *tables)
     }
 
+    fn vtable_allocation(
+        &self,
+        global_alloc: &GlobalAlloc,
+    ) -> Option<stable_mir::mir::alloc::AllocId> {
+        let mut tables = self.0.borrow_mut();
+        let GlobalAlloc::VTable(ty, trait_ref) = global_alloc else { return None };
+        let alloc_id = tables
+            .tcx
+            .vtable_allocation((ty.internal(&mut *tables), trait_ref.internal(&mut *tables)));
+        Some(alloc_id.stable(&mut *tables))
+    }
+
     fn usize_to_const(&self, val: u64) -> Result<Const, Error> {
         let mut tables = self.0.borrow_mut();
         let ty = tables.tcx.types.usize;
@@ -1620,6 +1632,13 @@ impl<'tcx> Stable<'tcx> for mir::interpret::Allocation {
             alloc_range(rustc_target::abi::Size::ZERO, self.size()),
             tables,
         )
+    }
+}
+
+impl<'tcx> Stable<'tcx> for mir::interpret::AllocId {
+    type T = stable_mir::mir::alloc::AllocId;
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        tables.create_alloc_id(*self)
     }
 }
 
