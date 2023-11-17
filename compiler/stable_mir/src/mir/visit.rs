@@ -142,7 +142,7 @@ pub trait MirVisitor {
         }
 
         let local_start = arg_count + 1;
-        for (idx, arg) in body.arg_locals().iter().enumerate() {
+        for (idx, arg) in body.inner_locals().iter().enumerate() {
             self.visit_local_decl(idx + local_start, arg)
         }
     }
@@ -417,7 +417,7 @@ pub trait MirVisitor {
 fn visit_opaque(_: &Opaque) {}
 
 /// The location of a statement / terminator in the code and the CFG.
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct Location(Span);
 
 impl Location {

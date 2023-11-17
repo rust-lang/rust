@@ -36,6 +36,7 @@ pub mod mir;
 pub mod ty;
 pub mod visitor;
 
+use crate::ty::{AdtDef, AdtKind, ClosureDef, ClosureKind};
 pub use error::*;
 use mir::mono::Instance;
 use ty::{FnDef, GenericArgs};
@@ -47,7 +48,7 @@ pub type Symbol = String;
 pub type CrateNum = usize;
 
 /// A unique identification number for each item accessible for the current compilation unit.
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct DefId(usize);
 
 impl Debug for DefId {
@@ -99,7 +100,13 @@ pub struct Crate {
     pub is_local: bool,
 }
 
-pub type DefKind = Opaque;
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
+pub enum ItemKind {
+    Fn,
+    Static,
+    Const,
+}
+
 pub type Filename = Opaque;
 
 /// Holds information about an item in the crate.
@@ -119,12 +126,16 @@ impl CrateItem {
         with(|cx| cx.name_of_def_id(self.0))
     }
 
-    pub fn kind(&self) -> DefKind {
-        with(|cx| cx.def_kind(self.0))
+    pub fn kind(&self) -> ItemKind {
+        with(|cx| cx.item_kind(*self))
     }
 
     pub fn requires_monomorphization(&self) -> bool {
         with(|cx| cx.requires_monomorphization(self.0))
+    }
+
+    pub fn ty(&self) -> Ty {
+        with(|cx| cx.def_ty(self.0))
     }
 }
 
@@ -204,7 +215,13 @@ pub trait Context {
     fn get_lines(&self, span: &Span) -> LineInfo;
 
     /// Returns the `kind` of given `DefId`
-    fn def_kind(&self, def_id: DefId) -> DefKind;
+    fn item_kind(&self, item: CrateItem) -> ItemKind;
+
+    /// Returns the kind of a given algebraic data type
+    fn adt_kind(&self, def: AdtDef) -> AdtKind;
+
+    /// Returns the type of given crate item.
+    fn def_ty(&self, item: DefId) -> Ty;
 
     /// `Span` of an item
     fn span_of_an_item(&self, def_id: DefId) -> Span;
@@ -214,7 +231,7 @@ pub trait Context {
 
     /// Get the body of an Instance.
     /// FIXME: Monomorphize the body.
-    fn instance_body(&self, instance: InstanceDef) -> Body;
+    fn instance_body(&self, instance: InstanceDef) -> Option<Body>;
 
     /// Get the instance type with generic substitutions applied and lifetimes erased.
     fn instance_ty(&self, instance: InstanceDef) -> Ty;
@@ -234,18 +251,36 @@ pub trait Context {
 
     /// Resolve an instance from the given function definition and generic arguments.
     fn resolve_instance(&self, def: FnDef, args: &GenericArgs) -> Option<Instance>;
+
+    /// Resolve an instance for drop_in_place for the given type.
+    fn resolve_drop_in_place(&self, ty: Ty) -> Instance;
+
+    /// Resolve instance for a function pointer.
+    fn resolve_for_fn_ptr(&self, def: FnDef, args: &GenericArgs) -> Option<Instance>;
+
+    /// Resolve instance for a closure with the requested type.
+    fn resolve_closure(
+        &self,
+        def: ClosureDef,
+        args: &GenericArgs,
+        kind: ClosureKind,
+    ) -> Option<Instance>;
 }
 
 // A thread local variable that stores a pointer to the tables mapping between TyCtxt
 // datastructures and stable MIR datastructures
 scoped_thread_local! (static TLV: Cell<*const ()>);
 
-pub fn run(context: &dyn Context, f: impl FnOnce()) {
-    assert!(!TLV.is_set());
-    let ptr: *const () = &context as *const &_ as _;
-    TLV.set(&Cell::new(ptr), || {
-        f();
-    });
+pub fn run<F, T>(context: &dyn Context, f: F) -> Result<T, Error>
+where
+    F: FnOnce() -> T,
+{
+    if TLV.is_set() {
+        Err(Error::from("StableMIR already running"))
+    } else {
+        let ptr: *const () = &context as *const &_ as _;
+        TLV.set(&Cell::new(ptr), || Ok(f()))
+    }
 }
 
 /// Loads the current context and calls a function with it.
@@ -260,7 +295,7 @@ pub fn with<R>(f: impl FnOnce(&dyn Context) -> R) -> R {
 }
 
 /// A type that provides internal information but that can still be used for debug purpose.
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Opaque(String);
 
 impl std::fmt::Display for Opaque {

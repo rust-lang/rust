@@ -4,7 +4,7 @@ use super::{
     with, AllocId, DefId, Symbol,
 };
 use crate::{Filename, Opaque};
-use std::fmt::{self, Debug, Formatter};
+use std::fmt::{self, Debug, Display, Formatter};
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
 pub struct Ty(pub usize);
@@ -135,6 +135,46 @@ pub enum TyKind {
     Bound(usize, BoundTy),
 }
 
+impl TyKind {
+    pub fn rigid(&self) -> Option<&RigidTy> {
+        if let TyKind::RigidTy(inner) = self { Some(inner) } else { None }
+    }
+
+    pub fn is_unit(&self) -> bool {
+        matches!(self, TyKind::RigidTy(RigidTy::Tuple(data)) if data.len() == 0)
+    }
+
+    pub fn is_trait(&self) -> bool {
+        matches!(self, TyKind::RigidTy(RigidTy::Dynamic(_, _, DynKind::Dyn)))
+    }
+
+    pub fn is_enum(&self) -> bool {
+        matches!(self, TyKind::RigidTy(RigidTy::Adt(def, _)) if def.kind() == AdtKind::Enum)
+    }
+
+    pub fn is_struct(&self) -> bool {
+        matches!(self, TyKind::RigidTy(RigidTy::Adt(def, _)) if def.kind() == AdtKind::Struct)
+    }
+
+    pub fn is_union(&self) -> bool {
+        matches!(self, TyKind::RigidTy(RigidTy::Adt(def, _)) if def.kind() == AdtKind::Union)
+    }
+
+    pub fn trait_principal(&self) -> Option<Binder<ExistentialTraitRef>> {
+        if let TyKind::RigidTy(RigidTy::Dynamic(predicates, _, _)) = self {
+            if let Some(Binder { value: ExistentialPredicate::Trait(trait_ref), bound_vars }) =
+                predicates.first()
+            {
+                Some(Binder { value: trait_ref.clone(), bound_vars: bound_vars.clone() })
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum RigidTy {
     Bool,
@@ -217,6 +257,43 @@ pub struct BrNamedDef(pub DefId);
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct AdtDef(pub DefId);
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
+pub enum AdtKind {
+    Enum,
+    Union,
+    Struct,
+}
+
+impl AdtDef {
+    pub fn kind(&self) -> AdtKind {
+        with(|cx| cx.adt_kind(*self))
+    }
+}
+
+impl Display for AdtKind {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            AdtKind::Enum => "enum",
+            AdtKind::Union => "union",
+            AdtKind::Struct => "struct",
+        })
+    }
+}
+
+impl AdtKind {
+    pub fn is_enum(&self) -> bool {
+        matches!(self, AdtKind::Enum)
+    }
+
+    pub fn is_struct(&self) -> bool {
+        matches!(self, AdtKind::Struct)
+    }
+
+    pub fn is_union(&self) -> bool {
+        matches!(self, AdtKind::Union)
+    }
+}
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct AliasDef(pub DefId);
@@ -355,6 +432,30 @@ pub struct Binder<T> {
     pub bound_vars: Vec<BoundVariableKind>,
 }
 
+impl<T> Binder<T> {
+    pub fn skip_binder(self) -> T {
+        self.value
+    }
+
+    pub fn map_bound_ref<F, U>(&self, f: F) -> Binder<U>
+    where
+        F: FnOnce(&T) -> U,
+    {
+        let Binder { value, bound_vars } = self;
+        let new_value = f(value);
+        Binder { value: new_value, bound_vars: bound_vars.clone() }
+    }
+
+    pub fn map_bound<F, U>(self, f: F) -> Binder<U>
+    where
+        F: FnOnce(T) -> U,
+    {
+        let Binder { value, bound_vars } = self;
+        let new_value = f(value);
+        Binder { value: new_value, bound_vars }
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct EarlyBinder<T> {
     pub value: T,
@@ -393,10 +494,25 @@ pub enum ExistentialPredicate {
     AutoTrait(TraitDef),
 }
 
+/// An existential reference to a trait where `Self` is not included.
+///
+/// The `generic_args` will include any other known argument.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ExistentialTraitRef {
     pub def_id: TraitDef,
     pub generic_args: GenericArgs,
+}
+
+impl Binder<ExistentialTraitRef> {
+    pub fn with_self_ty(&self, self_ty: Ty) -> Binder<TraitRef> {
+        self.map_bound_ref(|trait_ref| trait_ref.with_self_ty(self_ty))
+    }
+}
+
+impl ExistentialTraitRef {
+    pub fn with_self_ty(&self, self_ty: Ty) -> TraitRef {
+        TraitRef::new(self.def_id, self_ty, &self.generic_args)
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -504,10 +620,39 @@ impl TraitDecl {
 
 pub type ImplTrait = EarlyBinder<TraitRef>;
 
+/// A complete reference to a trait, i.e., one where `Self` is known.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct TraitRef {
     pub def_id: TraitDef,
-    pub args: GenericArgs,
+    /// The generic arguments for this definition.
+    /// The first element must always be type, and it represents `Self`.
+    args: GenericArgs,
+}
+
+impl TraitRef {
+    pub fn new(def_id: TraitDef, self_ty: Ty, gen_args: &GenericArgs) -> TraitRef {
+        let mut args = vec![GenericArgKind::Type(self_ty)];
+        args.extend_from_slice(&gen_args.0);
+        TraitRef { def_id, args: GenericArgs(args) }
+    }
+
+    pub fn try_new(def_id: TraitDef, args: GenericArgs) -> Result<TraitRef, ()> {
+        match &args.0[..] {
+            [GenericArgKind::Type(_), ..] => Ok(TraitRef { def_id, args }),
+            _ => Err(()),
+        }
+    }
+
+    pub fn args(&self) -> &GenericArgs {
+        &self.args
+    }
+
+    pub fn self_ty(&self) -> Ty {
+        let GenericArgKind::Type(self_ty) = self.args.0[0] else {
+            panic!("Self must be a type, but found: {:?}", self.args.0[0])
+        };
+        self_ty
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

@@ -40,7 +40,7 @@ fn test_visitor(_tcx: TyCtxt<'_>) -> ControlFlow<()> {
     let exit_fn = main_visitor.calls.last().unwrap();
     assert!(exit_fn.mangled_name().contains("exit_fn"), "Unexpected last function: {exit_fn:?}");
 
-    let exit_body = exit_fn.body();
+    let exit_body = exit_fn.body().unwrap();
     let exit_visitor = TestVisitor::collect(&exit_body);
     assert!(exit_visitor.ret_val.is_some());
     assert_eq!(exit_visitor.args.len(), 1);

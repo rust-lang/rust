@@ -22,6 +22,7 @@ extern crate stable_mir;
 use rustc_hir::def::DefKind;
 use rustc_middle::ty::TyCtxt;
 use rustc_smir::rustc_internal;
+use stable_mir::ItemKind;
 use stable_mir::mir::mono::Instance;
 use stable_mir::ty::{RigidTy, TyKind};
 use std::assert_matches::assert_matches;
@@ -120,13 +121,13 @@ fn test_stable_mir(_tcx: TyCtxt<'_>) -> ControlFlow<()> {
 
     let monomorphic = get_item(&items, (DefKind::Fn, "monomorphic")).unwrap();
     let instance = Instance::try_from(monomorphic.clone()).unwrap();
-    for block in instance.body().blocks {
+    for block in instance.body().unwrap().blocks {
         match &block.terminator.kind {
             stable_mir::mir::TerminatorKind::Call { func, .. } => {
                 let TyKind::RigidTy(ty) = func.ty(&body.locals()).kind() else { unreachable!() };
                 let RigidTy::FnDef(def, args) = ty else { unreachable!() };
                 let next_func = Instance::resolve(def, &args).unwrap();
-                match next_func.body().locals()[1].ty.kind() {
+                match next_func.body().unwrap().locals()[1].ty.kind() {
                     TyKind::RigidTy(RigidTy::Uint(_)) | TyKind::RigidTy(RigidTy::Tuple(_)) => {}
                     other => panic!("{other:?}"),
                 }
@@ -172,7 +173,8 @@ fn get_item<'a>(
     item: (DefKind, &str),
 ) -> Option<&'a stable_mir::CrateItem> {
     items.iter().find(|crate_item| {
-        crate_item.kind().to_string() == format!("{:?}", item.0) && crate_item.name() == item.1
+        matches!((item.0, crate_item.kind()), (DefKind::Fn, ItemKind::Fn) | (DefKind::Const,
+            ItemKind::Const)) && crate_item.name() == item.1
     })
 }
 
