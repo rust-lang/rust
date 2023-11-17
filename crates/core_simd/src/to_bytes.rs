@@ -68,7 +68,10 @@ macro_rules! impl_to_bytes {
             #[inline]
             fn to_ne_bytes(self) -> Self::Bytes {
                 // Safety: transmuting between vectors is safe
-                unsafe { core::mem::transmute(self) }
+                unsafe {
+                    #![allow(clippy::useless_transmute)]
+                    core::mem::transmute(self)
+                }
             }
 
             #[inline]
@@ -90,7 +93,10 @@ macro_rules! impl_to_bytes {
             #[inline]
             fn from_ne_bytes(bytes: Self::Bytes) -> Self {
                 // Safety: transmuting between vectors is safe
-                unsafe { core::mem::transmute(bytes) }
+                unsafe {
+                    #![allow(clippy::useless_transmute)]
+                    core::mem::transmute(bytes)
+                }
             }
 
             #[inline]

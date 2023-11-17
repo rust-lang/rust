@@ -1,4 +1,5 @@
 #![feature(portable_simd)]
+#![allow(clippy::excessive_precision)]
 extern crate std_float;
 
 /// Benchmarks game nbody code

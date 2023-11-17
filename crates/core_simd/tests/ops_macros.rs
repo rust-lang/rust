@@ -68,6 +68,7 @@ macro_rules! impl_binary_checked_op_test {
 
             test_helpers::test_lanes! {
                 fn normal<const LANES: usize>() {
+                    #![allow(clippy::redundant_closure_call)]
                     test_helpers::test_binary_elementwise(
                         &<Simd<$scalar, LANES> as core::ops::$trait>::$fn,
                         &$scalar_fn,
@@ -76,6 +77,7 @@ macro_rules! impl_binary_checked_op_test {
                 }
 
                 fn assign<const LANES: usize>() {
+                    #![allow(clippy::redundant_closure_call)]
                     test_helpers::test_binary_elementwise(
                         &|mut a, b| { <Simd<$scalar, LANES> as core::ops::$trait_assign>::$fn_assign(&mut a, b); a },
                         &$scalar_fn,

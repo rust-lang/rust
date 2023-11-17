@@ -127,6 +127,7 @@ where
     /// assert_eq!(v.len(), 4);
     /// ```
     #[inline]
+    #[allow(clippy::len_without_is_empty)]
     pub const fn len(&self) -> usize {
         Self::LEN
     }
