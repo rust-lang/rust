@@ -9,9 +9,11 @@ use rustc_infer::traits::{ImplSource, Obligation, ObligationCause};
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::traits::BuiltinImplSource;
+use rustc_middle::ty::FnDef;
 use rustc_middle::ty::GenericArgs;
 use rustc_middle::ty::{self, adjustment::PointerCoercion, Instance, InstanceDef, Ty, TyCtxt};
 use rustc_middle::ty::{TraitRef, TypeVisitableExt};
+use rustc_middle::util::call_kind;
 use rustc_mir_dataflow::{self, Analysis};
 use rustc_span::{sym, Span, Symbol};
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
@@ -846,6 +848,22 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             {
                                 nonconst_call_permission = true;
                             }
+                            let call_kind = call_kind(
+                                tcx,
+                                self.param_env,
+                                callee,
+                                fn_args,
+                                *fn_span,
+                                call_source.from_hir_call(),
+                                None,
+                            );
+                            if let call_kind::CallKind::FnCall { fn_trait_id: _, self_ty } =
+                                call_kind
+                                && let FnDef(def_id, ..) = self_ty.kind()
+                                && tcx.is_const_fn_raw(*def_id)
+                            {
+                                return;
+                            }
 
                             if !nonconst_call_permission {
                                 let obligation = Obligation::new(
@@ -865,7 +883,6 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                                         &e,
                                     );
                                 }
-
                                 self.check_op(ops::FnCallNonConst {
                                     caller,
                                     callee,
