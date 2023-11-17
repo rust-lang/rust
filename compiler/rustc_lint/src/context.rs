@@ -497,9 +497,6 @@ pub struct LateContext<'tcx> {
     /// Items accessible from the crate being checked.
     pub effective_visibilities: &'tcx EffectiveVisibilities,
 
-    /// The store of registered lints and the lint levels.
-    pub lint_store: &'tcx LintStore,
-
     pub last_node_with_lint_attrs: hir::HirId,
 
     /// Generic type parameters in scope for the item we are in.
@@ -515,21 +512,14 @@ pub struct EarlyContext<'a> {
     pub buffered: LintBuffer,
 }
 
-pub trait LintPassObject: Sized {}
-
-impl LintPassObject for EarlyLintPassObject {}
-
-impl LintPassObject for LateLintPassObject<'_> {}
-
-pub trait LintContext: Sized {
-    type PassObject: LintPassObject;
-
+pub trait LintContext {
     fn sess(&self) -> &Session;
-    fn lints(&self) -> &LintStore;
 
-    /// Emit a lint at the appropriate level, with an optional associated span and an existing diagnostic.
+    /// Emit a lint at the appropriate level, with an optional associated span and an existing
+    /// diagnostic.
     ///
-    /// Return value of the `decorate` closure is ignored, see [`struct_lint_level`] for a detailed explanation.
+    /// Return value of the `decorate` closure is ignored, see [`struct_lint_level`] for a detailed
+    /// explanation.
     ///
     /// [`struct_lint_level`]: rustc_middle::lint::struct_lint_level#decorate-signature
     #[rustc_lint_diagnostics]
@@ -1059,15 +1049,9 @@ impl<'a> EarlyContext<'a> {
 }
 
 impl<'tcx> LintContext for LateContext<'tcx> {
-    type PassObject = LateLintPassObject<'tcx>;
-
     /// Gets the overall compiler `Session` object.
     fn sess(&self) -> &Session {
         &self.tcx.sess
-    }
-
-    fn lints(&self) -> &LintStore {
-        &*self.lint_store
     }
 
     #[rustc_lint_diagnostics]
@@ -1094,15 +1078,9 @@ impl<'tcx> LintContext for LateContext<'tcx> {
 }
 
 impl LintContext for EarlyContext<'_> {
-    type PassObject = EarlyLintPassObject;
-
     /// Gets the overall compiler `Session` object.
     fn sess(&self) -> &Session {
         &self.builder.sess()
-    }
-
-    fn lints(&self) -> &LintStore {
-        self.builder.lint_store()
     }
 
     #[rustc_lint_diagnostics]

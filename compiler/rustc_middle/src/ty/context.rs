@@ -39,7 +39,7 @@ use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sharded::{IntoPointer, ShardedHashMap};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
-use rustc_data_structures::sync::{self, FreezeReadGuard, Lock, Lrc, WorkerLocal};
+use rustc_data_structures::sync::{FreezeReadGuard, Lock, WorkerLocal};
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::{
     DecorateLint, DiagnosticBuilder, DiagnosticMessage, ErrorGuaranteed, MultiSpan,
@@ -69,7 +69,6 @@ use rustc_type_ir::TyKind::*;
 use rustc_type_ir::WithCachedTypeInfo;
 use rustc_type_ir::{CollectAndApply, Interner, TypeFlags};
 
-use std::any::Any;
 use std::borrow::Borrow;
 use std::cmp::Ordering;
 use std::fmt;
@@ -544,12 +543,6 @@ pub struct GlobalCtxt<'tcx> {
     /// `rustc_symbol_mangling` crate for more information.
     stable_crate_id: StableCrateId,
 
-    /// This only ever stores a `LintStore` but we don't want a dependency on that type here.
-    ///
-    /// FIXME(Centril): consider `dyn LintStoreMarker` once
-    /// we can upcast to `Any` for some additional type safety.
-    pub lint_store: Lrc<dyn Any + sync::DynSync + sync::DynSend>,
-
     pub dep_graph: DepGraph,
 
     pub prof: SelfProfilerRef,
@@ -709,7 +702,6 @@ impl<'tcx> TyCtxt<'tcx> {
         s: &'tcx Session,
         crate_types: Vec<CrateType>,
         stable_crate_id: StableCrateId,
-        lint_store: Lrc<dyn Any + sync::DynSend + sync::DynSync>,
         arena: &'tcx WorkerLocal<Arena<'tcx>>,
         hir_arena: &'tcx WorkerLocal<hir::Arena<'tcx>>,
         untracked: Untracked,
@@ -730,7 +722,6 @@ impl<'tcx> TyCtxt<'tcx> {
             sess: s,
             crate_types,
             stable_crate_id,
-            lint_store,
             arena,
             hir_arena,
             interners,

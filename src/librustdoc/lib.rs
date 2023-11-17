@@ -797,14 +797,7 @@ fn main_args(
         let sess = compiler.session();
 
         if sess.opts.describe_lints {
-            let mut lint_store = rustc_lint::new_lint_store(sess.enable_internal_lints());
-            let registered_lints = if let Some(register_lints) = compiler.register_lints() {
-                register_lints(sess, &mut lint_store);
-                true
-            } else {
-                false
-            };
-            rustc_driver::describe_lints(sess, &lint_store, registered_lints);
+            rustc_driver::describe_lints(sess);
             return Ok(());
         }
 

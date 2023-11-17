@@ -18,7 +18,7 @@ use std::sync::atomic::Ordering::Relaxed;
 use super::query::DepGraphQuery;
 use super::serialized::{GraphEncoder, SerializedDepGraph, SerializedDepNodeIndex};
 use super::{DepContext, DepKind, DepNode, Deps, HasDepContext, WorkProductId};
-use crate::dep_graph::EdgesVec;
+use crate::dep_graph::edges::EdgesVec;
 use crate::ich::StableHashingContext;
 use crate::query::{QueryContext, QuerySideEffects};
 
@@ -41,8 +41,7 @@ rustc_index::newtype_index! {
 }
 
 impl DepNodeIndex {
-    pub const INVALID: DepNodeIndex = DepNodeIndex::MAX;
-    pub const SINGLETON_DEPENDENCYLESS_ANON_NODE: DepNodeIndex = DepNodeIndex::from_u32(0);
+    const SINGLETON_DEPENDENCYLESS_ANON_NODE: DepNodeIndex = DepNodeIndex::from_u32(0);
     pub const FOREVER_RED_NODE: DepNodeIndex = DepNodeIndex::from_u32(1);
 }
 
@@ -53,20 +52,20 @@ impl From<DepNodeIndex> for QueryInvocationId {
     }
 }
 
-pub struct MarkFrame<'a> {
+pub(crate) struct MarkFrame<'a> {
     index: SerializedDepNodeIndex,
     parent: Option<&'a MarkFrame<'a>>,
 }
 
 #[derive(PartialEq)]
-pub enum DepNodeColor {
+enum DepNodeColor {
     Red,
     Green(DepNodeIndex),
 }
 
 impl DepNodeColor {
     #[inline]
-    pub fn is_green(self) -> bool {
+    fn is_green(self) -> bool {
         match self {
             DepNodeColor::Red => false,
             DepNodeColor::Green(_) => true,
@@ -74,7 +73,7 @@ impl DepNodeColor {
     }
 }
 
-pub struct DepGraphData<D: Deps> {
+pub(crate) struct DepGraphData<D: Deps> {
     /// The new encoding of the dependency graph, optimized for red/green
     /// tracking. The `current` field is the dependency graph of only the
     /// current compilation session: We don't merge the previous dep-graph into
@@ -185,7 +184,7 @@ impl<D: Deps> DepGraph<D> {
     }
 
     #[inline]
-    pub fn data(&self) -> Option<&DepGraphData<D>> {
+    pub(crate) fn data(&self) -> Option<&DepGraphData<D>> {
         self.data.as_deref()
     }
 
@@ -333,7 +332,7 @@ impl<D: Deps> DepGraphData<D> {
     ///
     /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/queries/incremental-compilation.html
     #[inline(always)]
-    pub fn with_task<Ctxt: HasDepContext<Deps = D>, A: Debug, R>(
+    pub(crate) fn with_task<Ctxt: HasDepContext<Deps = D>, A: Debug, R>(
         &self,
         key: DepNode,
         cx: Ctxt,
@@ -398,7 +397,7 @@ impl<D: Deps> DepGraphData<D> {
 
     /// Executes something within an "anonymous" task, that is, a task the
     /// `DepNode` of which is determined by the list of inputs it read from.
-    pub fn with_anon_task<Tcx: DepContext<Deps = D>, OP, R>(
+    pub(crate) fn with_anon_task<Tcx: DepContext<Deps = D>, OP, R>(
         &self,
         cx: Tcx,
         dep_kind: DepKind,
@@ -618,7 +617,7 @@ impl<D: Deps> DepGraph<D> {
 
 impl<D: Deps> DepGraphData<D> {
     #[inline]
-    pub fn dep_node_index_of_opt(&self, dep_node: &DepNode) -> Option<DepNodeIndex> {
+    fn dep_node_index_of_opt(&self, dep_node: &DepNode) -> Option<DepNodeIndex> {
         if let Some(prev_index) = self.previous.node_to_index_opt(dep_node) {
             self.current.prev_index_to_index.lock()[prev_index]
         } else {
@@ -627,7 +626,7 @@ impl<D: Deps> DepGraphData<D> {
     }
 
     #[inline]
-    pub fn dep_node_exists(&self, dep_node: &DepNode) -> bool {
+    fn dep_node_exists(&self, dep_node: &DepNode) -> bool {
         self.dep_node_index_of_opt(dep_node).is_some()
     }
 
@@ -643,21 +642,21 @@ impl<D: Deps> DepGraphData<D> {
     /// Returns true if the given node has been marked as green during the
     /// current compilation session. Used in various assertions
     #[inline]
-    pub fn is_index_green(&self, prev_index: SerializedDepNodeIndex) -> bool {
+    pub(crate) fn is_index_green(&self, prev_index: SerializedDepNodeIndex) -> bool {
         self.colors.get(prev_index).is_some_and(|c| c.is_green())
     }
 
     #[inline]
-    pub fn prev_fingerprint_of(&self, prev_index: SerializedDepNodeIndex) -> Fingerprint {
+    pub(crate) fn prev_fingerprint_of(&self, prev_index: SerializedDepNodeIndex) -> Fingerprint {
         self.previous.fingerprint_by_index(prev_index)
     }
 
     #[inline]
-    pub fn prev_node_of(&self, prev_index: SerializedDepNodeIndex) -> DepNode {
+    pub(crate) fn prev_node_of(&self, prev_index: SerializedDepNodeIndex) -> DepNode {
         self.previous.index_to_node(prev_index)
     }
 
-    pub fn mark_debug_loaded_from_disk(&self, dep_node: DepNode) {
+    pub(crate) fn mark_debug_loaded_from_disk(&self, dep_node: DepNode) {
         self.debug_loaded_from_disk.lock().insert(dep_node);
     }
 }
@@ -684,8 +683,9 @@ impl<D: Deps> DepGraph<D> {
         self.data.as_ref().unwrap().debug_loaded_from_disk.lock().contains(&dep_node)
     }
 
+    #[cfg(debug_assertions)]
     #[inline(always)]
-    pub fn register_dep_node_debug_str<F>(&self, dep_node: DepNode, debug_str_gen: F)
+    pub(crate) fn register_dep_node_debug_str<F>(&self, dep_node: DepNode, debug_str_gen: F)
     where
         F: FnOnce() -> String,
     {
@@ -725,7 +725,7 @@ impl<D: Deps> DepGraphData<D> {
     /// A node will have an index, when it's already been marked green, or when we can mark it
     /// green. This function will mark the current task as a reader of the specified node, when
     /// a node index can be found for that node.
-    pub fn try_mark_green<Qcx: QueryContext<Deps = D>>(
+    pub(crate) fn try_mark_green<Qcx: QueryContext<Deps = D>>(
         &self,
         qcx: Qcx,
         dep_node: &DepNode,

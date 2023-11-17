@@ -16,7 +16,9 @@ use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::jobserver::{self, Client};
 use rustc_data_structures::profiling::{SelfProfiler, SelfProfilerRef};
-use rustc_data_structures::sync::{AtomicU64, Lock, Lrc, OneThread, Ordering::SeqCst};
+use rustc_data_structures::sync::{
+    AtomicU64, DynSend, DynSync, Lock, Lrc, OneThread, Ordering::SeqCst,
+};
 use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitterWriter;
 use rustc_errors::emitter::{DynEmitter, EmitterWriter, HumanReadableErrorType};
 use rustc_errors::json::JsonEmitter;
@@ -37,6 +39,7 @@ use rustc_target::spec::{
     DebuginfoKind, SanitizerSet, SplitDebuginfo, StackProtector, Target, TargetTriple, TlsModel,
 };
 
+use std::any::Any;
 use std::cell::{self, RefCell};
 use std::env;
 use std::fmt;
@@ -166,6 +169,15 @@ pub struct Session {
     /// Loaded up early on in the initialization of this `Session` to avoid
     /// false positives about a job server in our environment.
     pub jobserver: Client,
+
+    /// This only ever stores a `LintStore` but we don't want a dependency on that type here.
+    ///
+    /// FIXME(Centril): consider `dyn LintStoreMarker` once
+    /// we can upcast to `Any` for some additional type safety.
+    pub lint_store: Option<Lrc<dyn Any + DynSync + DynSend>>,
+
+    /// Should be set if any lints are registered in `lint_store`.
+    pub registered_lints: bool,
 
     /// Cap lint level specified by a driver specifically.
     pub driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
@@ -1483,6 +1495,8 @@ pub fn build_session(
         optimization_fuel,
         print_fuel,
         jobserver: jobserver::client(),
+        lint_store: None,
+        registered_lints: false,
         driver_lint_caps,
         ctfe_backtrace,
         miri_unleashed_features: Lock::new(Default::default()),

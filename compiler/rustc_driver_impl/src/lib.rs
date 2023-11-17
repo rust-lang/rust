@@ -33,7 +33,7 @@ use rustc_feature::find_gated_cfg;
 use rustc_fluent_macro::fluent_messages;
 use rustc_interface::util::{self, collect_crate_types, get_codegen_backend};
 use rustc_interface::{interface, Queries};
-use rustc_lint::{unerased_lint_store, LintStore};
+use rustc_lint::unerased_lint_store;
 use rustc_metadata::locator;
 use rustc_session::config::{nightly_options, CG_OPTIONS, Z_OPTIONS};
 use rustc_session::config::{ErrorOutputType, Input, OutFileName, OutputType, TrimmedDefPaths};
@@ -356,16 +356,7 @@ fn run_compiler(
                     let handler = EarlyErrorHandler::new(sopts.error_format);
 
                     if sopts.describe_lints {
-                        let mut lint_store =
-                            rustc_lint::new_lint_store(compiler.session().enable_internal_lints());
-                        let registered_lints =
-                            if let Some(register_lints) = compiler.register_lints() {
-                                register_lints(compiler.session(), &mut lint_store);
-                                true
-                            } else {
-                                false
-                            };
-                        describe_lints(compiler.session(), &lint_store, registered_lints);
+                        describe_lints(compiler.session());
                         return;
                     }
                     let should_stop = print_crate_info(
@@ -442,9 +433,7 @@ fn run_compiler(
             }
 
             if sess.opts.describe_lints {
-                queries
-                    .global_ctxt()?
-                    .enter(|tcx| describe_lints(sess, unerased_lint_store(tcx), true));
+                describe_lints(sess);
                 return early_exit();
             }
 
@@ -991,7 +980,7 @@ the command line flag directly.
 }
 
 /// Write to stdout lint command options, together with a list of all available lints
-pub fn describe_lints(sess: &Session, lint_store: &LintStore, loaded_lints: bool) {
+pub fn describe_lints(sess: &Session) {
     safe_println!(
         "
 Available lint options:
@@ -1017,6 +1006,7 @@ Available lint options:
         lints
     }
 
+    let lint_store = unerased_lint_store(sess);
     let (loaded, builtin): (Vec<_>, _) =
         lint_store.get_lints().iter().cloned().partition(|&lint| lint.is_loaded);
     let loaded = sort_lints(sess, loaded);
@@ -1094,7 +1084,7 @@ Available lint options:
 
     print_lint_groups(builtin_groups, true);
 
-    match (loaded_lints, loaded.len(), loaded_groups.len()) {
+    match (sess.registered_lints, loaded.len(), loaded_groups.len()) {
         (false, 0, _) | (false, _, 0) => {
             safe_println!("Lint tools like Clippy can load additional lints and lint groups.");
         }
