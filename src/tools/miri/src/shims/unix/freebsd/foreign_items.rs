@@ -47,6 +47,21 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     this.read_scalar(len)?,
                 )?;
             }
+            "getrandom" => {
+                let [ptr, len, flags] =
+                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let ptr = this.read_pointer(ptr)?;
+                let len = this.read_target_usize(len)?;
+                let _flags = this.read_scalar(flags)?.to_i32()?;
+                // flags on freebsd does not really matter
+                // in practice, GRND_RANDOM does not particularly draw from /dev/random
+                // since it is the same as to /dev/urandom.
+                // GRND_INSECURE is only an alias of GRND_NONBLOCK, which
+                // does not affect the RNG.
+                // https://man.freebsd.org/cgi/man.cgi?query=getrandom&sektion=2&n=1
+                this.gen_random(ptr, len)?;
+                this.write_scalar(Scalar::from_target_usize(len, this), dest)?;
+            }
 
             // errno
             "__error" => {

@@ -1,10 +1,13 @@
 //@compile-flags: -Zmiri-strict-provenance
-use rand::{rngs::SmallRng, Rng, SeedableRng};
+use rand::prelude::*;
 
+// Test using the `rand` crate to generate randomness.
 fn main() {
-    // Test `getrandom` directly.
-    let mut data = vec![0; 16];
-    getrandom::getrandom(&mut data).unwrap();
+    // Fully deterministic seeding.
+    let mut rng = SmallRng::seed_from_u64(42);
+    let _val = rng.gen::<i32>();
+    let _val = rng.gen::<isize>();
+    let _val = rng.gen::<i128>();
 
     // Try seeding with "real" entropy.
     let mut rng = SmallRng::from_entropy();

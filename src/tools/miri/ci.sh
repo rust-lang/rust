@@ -108,7 +108,7 @@ case $HOST_TARGET in
     MIRI_TEST_TARGET=aarch64-unknown-linux-gnu run_tests
     MIRI_TEST_TARGET=aarch64-apple-darwin run_tests
     MIRI_TEST_TARGET=i686-pc-windows-gnu run_tests
-    MIRI_TEST_TARGET=x86_64-unknown-freebsd run_tests_minimal hello integer vec panic/panic concurrency/simple pthreads atomic env/var
+    MIRI_TEST_TARGET=x86_64-unknown-freebsd run_tests_minimal hello integer vec panic/panic concurrency/simple pthread-threadname libc-getentropy libc-getrandom libc-misc atomic env align
     MIRI_TEST_TARGET=aarch64-linux-android run_tests_minimal hello integer vec panic/panic
     MIRI_TEST_TARGET=wasm32-wasi run_tests_minimal no_std integer strings wasm
     MIRI_TEST_TARGET=wasm32-unknown-unknown run_tests_minimal no_std integer strings wasm
