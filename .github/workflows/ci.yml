@@ -87,15 +87,15 @@ jobs:
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     steps:
-      - name: checkout the source code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
       - uses: msys2/setup-msys2@v2
         with:
           msystem: MINGW64
           update: true
-          install: "git mingw-w64-x86_64-toolchain mingw-w64-x86_64-cmake mingw-w64-x86_64-python\n"
+          install: "git mingw-w64-x86_64-toolchain mingw-w64-x86_64-cmake mingw-w64-x86_64-python mingw-w64-jq\n"
+      - name: checkout the source code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
       - name: configure the PR in which the error message will be posted
         run: "echo \"[CI_PR_NUMBER=$num]\""
         env:
@@ -486,15 +486,15 @@ jobs:
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     steps:
-      - name: checkout the source code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
       - uses: msys2/setup-msys2@v2
         with:
           msystem: MINGW64
           update: true
-          install: "git mingw-w64-x86_64-toolchain mingw-w64-x86_64-cmake mingw-w64-x86_64-python\n"
+          install: "git mingw-w64-x86_64-toolchain mingw-w64-x86_64-cmake mingw-w64-x86_64-python mingw-w64-jq\n"
+      - name: checkout the source code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
       - name: configure the PR in which the error message will be posted
         run: "echo \"[CI_PR_NUMBER=$num]\""
         env:
@@ -619,15 +619,15 @@ jobs:
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     steps:
-      - name: checkout the source code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
       - uses: msys2/setup-msys2@v2
         with:
           msystem: MINGW64
           update: true
-          install: "git mingw-w64-x86_64-toolchain mingw-w64-x86_64-cmake mingw-w64-x86_64-python\n"
+          install: "git mingw-w64-x86_64-toolchain mingw-w64-x86_64-cmake mingw-w64-x86_64-python mingw-w64-jq\n"
+      - name: checkout the source code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
       - name: configure the PR in which the error message will be posted
         run: "echo \"[CI_PR_NUMBER=$num]\""
         env:
