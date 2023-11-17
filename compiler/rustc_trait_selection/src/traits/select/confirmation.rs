@@ -327,8 +327,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // care about other regions. Erasing late-bound regions is equivalent
         // to instantiating the binder with placeholders then erasing those
         // placeholder regions.
-        let predicate =
-            self.tcx().erase_regions(self.tcx().erase_late_bound_regions(obligation.predicate));
+        let predicate = self
+            .tcx()
+            .erase_regions(self.tcx().instantiate_bound_regions_with_erased(obligation.predicate));
 
         let Some(assume) = rustc_transmute::Assume::from_const(
             self.infcx.tcx,

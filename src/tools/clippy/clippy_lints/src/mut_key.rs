@@ -143,7 +143,7 @@ impl MutableKeyType {
         for (hir_ty, ty) in iter::zip(decl.inputs, fn_sig.inputs().skip_binder()) {
             self.check_ty_(cx, hir_ty.span, *ty);
         }
-        self.check_ty_(cx, decl.output.span(), cx.tcx.erase_late_bound_regions(fn_sig.output()));
+        self.check_ty_(cx, decl.output.span(), cx.tcx.instantiate_bound_regions_with_erased(fn_sig.output()));
     }
 
     // We want to lint 1. sets or maps with 2. not immutable key types and 3. no unerased

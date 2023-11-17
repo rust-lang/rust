@@ -846,7 +846,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let bound_vars = self.tcx.late_bound_vars(hir_ty.hir_id.owner.into());
                     let ty = Binder::bind_with_vars(ty, bound_vars);
                     let ty = self.normalize(hir_ty.span, ty);
-                    let ty = self.tcx.erase_late_bound_regions(ty);
+                    let ty = self.tcx.instantiate_bound_regions_with_erased(ty);
                     if self.can_coerce(expected, ty) {
                         err.subdiagnostic(errors::ExpectedReturnTypeLabel::Other {
                             span: hir_ty.span,
@@ -1023,7 +1023,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let hir::FnRetTy::Return(ty) = fn_decl.output {
             let ty = self.astconv().ast_ty_to_ty(ty);
             let bound_vars = self.tcx.late_bound_vars(fn_id);
-            let ty = self.tcx.erase_late_bound_regions(Binder::bind_with_vars(ty, bound_vars));
+            let ty = self
+                .tcx
+                .instantiate_bound_regions_with_erased(Binder::bind_with_vars(ty, bound_vars));
             let ty = match self.tcx.asyncness(fn_id.owner) {
                 ty::Asyncness::Yes => self.get_impl_future_output_ty(ty).unwrap_or_else(|| {
                     span_bug!(fn_decl.output.span(), "failed to get output type of async function")

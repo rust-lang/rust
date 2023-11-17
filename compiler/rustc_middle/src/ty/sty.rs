@@ -1036,7 +1036,7 @@ impl<'tcx, T> Binder<'tcx, T> {
     /// risky thing to do because it's easy to get confused about
     /// De Bruijn indices and the like. It is usually better to
     /// discharge the binder using `no_bound_vars` or
-    /// `replace_late_bound_regions` or something like
+    /// `instantiate_bound_regions` or something like
     /// that. `skip_binder` is only valid when you are either
     /// extracting data that has nothing to do with bound vars, you
     /// are doing some sort of test that does not involve bound

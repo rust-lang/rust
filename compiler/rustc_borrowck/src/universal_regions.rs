@@ -738,13 +738,13 @@ trait InferCtxtExt<'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>;
 
-    fn replace_late_bound_regions_with_nll_infer_vars_in_recursive_scope(
+    fn instantiate_bound_regions_with_nll_infer_vars_in_recursive_scope(
         &self,
         mir_def_id: LocalDefId,
         indices: &mut UniversalRegionIndices<'tcx>,
     );
 
-    fn replace_late_bound_regions_with_nll_infer_vars_in_item(
+    fn instantiate_bound_regions_with_nll_infer_vars_in_item(
         &self,
         mir_def_id: LocalDefId,
         indices: &mut UniversalRegionIndices<'tcx>,
@@ -780,7 +780,7 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for BorrowckInferCtxt<'cx, 'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        let (value, _map) = self.tcx.replace_late_bound_regions(value, |br| {
+        let (value, _map) = self.tcx.instantiate_bound_regions(value, |br| {
             debug!(?br);
             let liberated_region =
                 ty::Region::new_late_param(self.tcx, all_outlive_scope.to_def_id(), br.kind);
@@ -810,7 +810,7 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for BorrowckInferCtxt<'cx, 'tcx> {
     /// set of late-bound regions and checks for any that we have not yet seen, adding them to the
     /// inputs vector.
     #[instrument(skip(self, indices))]
-    fn replace_late_bound_regions_with_nll_infer_vars_in_recursive_scope(
+    fn instantiate_bound_regions_with_nll_infer_vars_in_recursive_scope(
         &self,
         mir_def_id: LocalDefId,
         indices: &mut UniversalRegionIndices<'tcx>,
@@ -830,7 +830,7 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for BorrowckInferCtxt<'cx, 'tcx> {
     }
 
     #[instrument(skip(self, indices))]
-    fn replace_late_bound_regions_with_nll_infer_vars_in_item(
+    fn instantiate_bound_regions_with_nll_infer_vars_in_item(
         &self,
         mir_def_id: LocalDefId,
         indices: &mut UniversalRegionIndices<'tcx>,
