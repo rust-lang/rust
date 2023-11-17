@@ -293,7 +293,7 @@ fn run_compiler(
     >,
     using_internal_features: Arc<std::sync::atomic::AtomicBool>,
 ) -> interface::Result<()> {
-    let mut early_error_handler = EarlyErrorHandler::new(ErrorOutputType::default());
+    let mut default_handler = EarlyErrorHandler::new(ErrorOutputType::default());
 
     // Throw away the first argument, the name of the binary.
     // In case of at_args being empty, as might be the case by
@@ -305,14 +305,14 @@ fn run_compiler(
     // the compiler with @empty_file as argv[0] and no more arguments.
     let at_args = at_args.get(1..).unwrap_or_default();
 
-    let args = args::arg_expand_all(&early_error_handler, at_args);
+    let args = args::arg_expand_all(&default_handler, at_args);
 
-    let Some(matches) = handle_options(&early_error_handler, &args) else { return Ok(()) };
+    let Some(matches) = handle_options(&default_handler, &args) else { return Ok(()) };
 
-    let sopts = config::build_session_options(&mut early_error_handler, &matches);
+    let sopts = config::build_session_options(&mut default_handler, &matches);
 
     if let Some(ref code) = matches.opt_str("explain") {
-        handle_explain(&early_error_handler, diagnostics_registry(), code, sopts.color);
+        handle_explain(&default_handler, diagnostics_registry(), code, sopts.color);
         return Ok(());
     }
 
@@ -338,7 +338,7 @@ fn run_compiler(
         expanded_args: args,
     };
 
-    match make_input(&early_error_handler, &matches.free) {
+    match make_input(&default_handler, &matches.free) {
         Err(reported) => return Err(reported),
         Ok(Some(input)) => {
             config.input = input;
@@ -349,7 +349,7 @@ fn run_compiler(
             0 => {
                 callbacks.config(&mut config);
 
-                early_error_handler.abort_if_errors();
+                default_handler.abort_if_errors();
 
                 interface::run_compiler(config, |compiler| {
                     let sopts = &compiler.session().opts;
@@ -374,14 +374,14 @@ fn run_compiler(
                 return Ok(());
             }
             1 => panic!("make_input should have provided valid inputs"),
-            _ => early_error_handler.early_error(format!(
+            _ => default_handler.early_error(format!(
                 "multiple input filenames provided (first two filenames are `{}` and `{}`)",
                 matches.free[0], matches.free[1],
             )),
         },
     };
 
-    early_error_handler.abort_if_errors();
+    default_handler.abort_if_errors();
 
     interface::run_compiler(config, |compiler| {
         let sess = compiler.session();
