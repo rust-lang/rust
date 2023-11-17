@@ -771,7 +771,7 @@ impl TyCoercionStability {
             DefinedTy::Mir(ty) => Self::for_mir_ty(
                 cx.tcx,
                 ty.param_env,
-                cx.tcx.erase_late_bound_regions(ty.value),
+                cx.tcx.instantiate_bound_regions_with_erased(ty.value),
                 for_return,
             ),
         }

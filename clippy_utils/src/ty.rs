@@ -1169,7 +1169,7 @@ pub fn make_normalized_projection<'tcx>(
             debug_assert!(
                 false,
                 "args contain late-bound region at index `{i}` which can't be normalized.\n\
-                    use `TyCtxt::erase_late_bound_regions`\n\
+                    use `TyCtxt::instantiate_bound_regions_with_erased`\n\
                     note: arg is `{arg:#?}`",
             );
             return None;
@@ -1247,7 +1247,7 @@ pub fn make_normalized_projection_with_regions<'tcx>(
             debug_assert!(
                 false,
                 "args contain late-bound region at index `{i}` which can't be normalized.\n\
-                    use `TyCtxt::erase_late_bound_regions`\n\
+                    use `TyCtxt::instantiate_bound_regions_with_erased`\n\
                     note: arg is `{arg:#?}`",
             );
             return None;
