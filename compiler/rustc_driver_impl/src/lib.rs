@@ -362,13 +362,18 @@ fn run_compiler(
     interface::run_compiler(config, |compiler| {
         let sess = compiler.session();
         let codegen_backend = compiler.codegen_backend();
+
+        // This implements `-Whelp`. It should be handled very early, like
+        // `--help`/`-Zhelp`/`-Chelp`. This is the earliest it can run, because
+        // it must happen after lints are registered, during session creation.
+        if sess.opts.describe_lints {
+            describe_lints(sess);
+            return sess.compile_status();
+        }
+
         let handler = EarlyErrorHandler::new(sess.opts.error_format);
 
         if !has_input {
-            if sess.opts.describe_lints {
-                describe_lints(sess);
-                return sess.compile_status();
-            }
             let should_stop = print_crate_info(&handler, codegen_backend, sess, false);
             if should_stop == Compilation::Continue {
                 handler.early_error("no input filename given")
@@ -416,11 +421,6 @@ fn run_compiler(
             }
 
             if sess.opts.unstable_opts.parse_only || sess.opts.unstable_opts.show_span.is_some() {
-                return early_exit();
-            }
-
-            if sess.opts.describe_lints {
-                describe_lints(sess);
                 return early_exit();
             }
 
