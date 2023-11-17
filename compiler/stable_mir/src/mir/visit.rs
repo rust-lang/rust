@@ -157,7 +157,7 @@ pub trait MirVisitor {
 
     fn super_local_decl(&mut self, local: Local, decl: &LocalDecl) {
         let _ = local;
-        let LocalDecl { ty, span } = decl;
+        let LocalDecl { ty, span, .. } = decl;
         self.visit_ty(ty, Location(*span));
     }
 

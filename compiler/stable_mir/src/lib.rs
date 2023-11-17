@@ -19,9 +19,9 @@
 
 use crate::mir::mono::InstanceDef;
 use crate::mir::Body;
-use std::cell::Cell;
 use std::fmt;
 use std::fmt::Debug;
+use std::{cell::Cell, io};
 
 use self::ty::{
     GenericPredicates, Generics, ImplDef, ImplTrait, IndexedVal, LineInfo, Span, TraitDecl,
@@ -36,10 +36,12 @@ pub mod mir;
 pub mod ty;
 pub mod visitor;
 
+use crate::mir::pretty::function_name;
+use crate::mir::Mutability;
 use crate::ty::{AdtDef, AdtKind, ClosureDef, ClosureKind};
 pub use error::*;
 use mir::mono::Instance;
-use ty::{FnDef, GenericArgs};
+use ty::{Const, FnDef, GenericArgs};
 
 /// Use String for now but we should replace it.
 pub type Symbol = String;
@@ -137,6 +139,11 @@ impl CrateItem {
     pub fn ty(&self) -> Ty {
         with(|cx| cx.def_ty(self.0))
     }
+
+    pub fn dump<W: io::Write>(&self, w: &mut W) -> io::Result<()> {
+        writeln!(w, "{}", function_name(*self))?;
+        self.body().dump(w)
+    }
 }
 
 /// Return the function where execution starts if the current
@@ -222,6 +229,9 @@ pub trait Context {
 
     /// Returns the type of given crate item.
     fn def_ty(&self, item: DefId) -> Ty;
+
+    /// Returns literal value of a const as a string.
+    fn const_literal(&self, cnst: &Const) -> String;
 
     /// `Span` of an item
     fn span_of_an_item(&self, def_id: DefId) -> Span;

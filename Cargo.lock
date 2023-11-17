@@ -3815,6 +3815,7 @@ dependencies = [
  "rustc_query_system",
  "rustc_resolve",
  "rustc_session",
+ "rustc_smir",
  "rustc_span",
  "rustc_symbol_mangling",
  "rustc_target",

@@ -21,6 +21,7 @@ use std::hash::Hash;
 use std::ops::Index;
 
 mod internal;
+pub mod pretty;
 
 pub fn stable<'tcx, S: Stable<'tcx>>(item: S) -> S::T {
     with_tables(|tables| item.stable(tables))
