@@ -603,6 +603,8 @@ struct DiagnosticMetadata<'ast> {
     /// Only used for better errors on `let <pat>: <expr, not type>;`.
     current_let_binding: Option<(Span, Option<Span>, Option<Span>)>,
 
+    current_pat: Option<&'ast Pat>,
+
     /// Used to detect possible `if let` written without `let` and to provide structured suggestion.
     in_if_condition: Option<&'ast Expr>,
 
@@ -702,6 +704,12 @@ impl<'a: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast,
     }
     fn visit_expr(&mut self, expr: &'ast Expr) {
         self.resolve_expr(expr, None);
+    }
+    fn visit_pat(&mut self, p: &'ast Pat) {
+        let prev = self.diagnostic_metadata.current_pat;
+        self.diagnostic_metadata.current_pat = Some(p);
+        visit::walk_pat(self, p);
+        self.diagnostic_metadata.current_pat = prev;
     }
     fn visit_local(&mut self, local: &'ast Local) {
         let local_spans = match local.pat.kind {
