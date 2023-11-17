@@ -1,6 +1,6 @@
 use crate::mir::{Operand, Rvalue, StatementKind};
 use crate::ty::{DynKind, FloatTy, IntTy, RigidTy, TyKind, UintTy};
-use crate::{Body, CrateItem, Mutability};
+use crate::{with, Body, CrateItem, Mutability};
 
 pub fn function_name(item: CrateItem) -> String {
     let mut pretty_name = String::new();
@@ -80,10 +80,9 @@ pub fn pretty_operand(operand: &Operand) -> String {
             pretty.push_str("move ");
             pretty.push_str(format!("_{}", mv.local).as_str());
         }
-        Operand::Constant(_) => {
-            // FIXME: Once https://github.com/rust-lang/rust/pull/117688 we will have ability to replace this
+        Operand::Constant(cnst) => {
             pretty.push_str("const ");
-            //pretty.push_str(internal(&cnst.literal).to_string().as_str());
+            pretty.push_str(with(|cx| cx.const_literal(&cnst.literal)).as_str());
         }
     }
     pretty
@@ -196,14 +195,12 @@ pub fn pretty_ty(ty: TyKind) -> String {
                 FloatTy::F32 => "f32".to_string(),
                 FloatTy::F64 => "f64".to_string(),
             },
-            RigidTy::Adt(_, _) => {
-                // FIXME: Once https://github.com/rust-lang/rust/pull/117688 we will have ability to replace this
-                format!("{rigid_ty:#?}")
+            RigidTy::Adt(def, _) => {
+                format!("{:#?}", with(|cx| cx.def_ty(def.0)))
             }
             RigidTy::Str => "str".to_string(),
             RigidTy::Array(ty, len) => {
-                // FIXME: Once https://github.com/rust-lang/rust/pull/117688 we will have ability to replace this
-                format!("[{}; {:#?}]", pretty_ty(ty.kind()), len)
+                format!("[{}; {}]", pretty_ty(ty.kind()), with(|cx| cx.const_literal(&len)))
             }
             RigidTy::Slice(ty) => {
                 format!("[{}]", pretty_ty(ty.kind()))

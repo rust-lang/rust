@@ -60,8 +60,7 @@ impl Body {
 
     pub fn dump<W: io::Write>(&self, w: &mut W) -> io::Result<()> {
         writeln!(w, "{}", function_body(self))?;
-        let _ = self
-            .blocks
+        self.blocks
             .iter()
             .enumerate()
             .map(|(index, block)| -> io::Result<()> {
@@ -77,7 +76,7 @@ impl Body {
                 writeln!(w, "    }}").unwrap();
                 Ok(())
             })
-            .collect::<Vec<_>>();
+            .collect::<Result<Vec<_>, _>>()?;
         Ok(())
     }
 }

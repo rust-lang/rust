@@ -12,7 +12,7 @@ pub fn write_smir_pretty<'tcx, W: io::Write>(tcx: TyCtxt<'tcx>, w: &mut W) -> io
         w,
         "// If you find a bug or want to improve the output open a issue at https://github.com/rust-lang/project-stable-mir."
     )?;
-    run(tcx, || {
+    let _ = run(tcx, || {
         let items = stable_mir::all_local_items();
         let _ = items.iter().map(|item| -> io::Result<()> { item.dump(w) }).collect::<Vec<_>>();
     });
