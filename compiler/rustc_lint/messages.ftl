@@ -491,8 +491,9 @@ lint_requested_level = requested on the command line with `{$level} {$lint_name}
 lint_span_use_eq_ctxt = use `.eq_ctxt()` instead of `.ctxt() == .ctxt()`
 
 lint_supertrait_as_deref_target = this `Deref` implementation is covered by an implicit supertrait coercion
+    .label = `{$self_ty}` implements `Deref<Target = dyn {$target_principal}>` which conflicts with supertrait `{$supertrait_principal}`
+    .label2 = target type is a supertrait of `{$self_ty}`
     .help = consider removing this implementation or replacing it with a method instead
-    .label = target type is a supertrait of `{$t}`
 
 lint_suspicious_double_ref_clone =
     using `.clone()` on a double reference, which returns `{$ty}` instead of cloning the inner type
