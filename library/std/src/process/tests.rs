@@ -1,6 +1,6 @@
 use crate::io::prelude::*;
 
-use super::{Command, Output, Stdio};
+use super::{Child, Command, Output, Stdio};
 use crate::io::{BorrowedBuf, ErrorKind};
 use crate::mem::MaybeUninit;
 use crate::str;
@@ -61,11 +61,13 @@ fn exit_reported_right() {
 fn signal_reported_right() {
     use crate::os::unix::process::ExitStatusExt;
 
-    let mut p = shell_cmd().arg("-c").arg("read a").stdin(Stdio::piped()).spawn().unwrap();
-    p.kill().unwrap();
-    match p.wait().unwrap().signal() {
-        Some(9) => {}
-        result => panic!("not terminated by signal 9 (instead, {result:?})"),
+    for (kill, signal) in [Child::kill, Child::terminate].into_iter().zip([9, 15]) {
+        let mut p = shell_cmd().arg("-c").arg("read a").stdin(Stdio::piped()).spawn().unwrap();
+        kill(&mut p).unwrap();
+        match p.wait().unwrap().signal() {
+            Some(got) if got == signal => {}
+            result => panic!("not terminated by signal {signal} (instead, {result:?})"),
+        }
     }
 }
 
@@ -715,15 +717,17 @@ fn run_canonical_bat_script() {
 
 #[test]
 fn terminate_exited_process() {
-    let mut cmd = if cfg!(target_os = "android") {
-        let mut p = shell_cmd();
-        p.args(&["-c", "true"]);
-        p
-    } else {
-        known_command()
-    };
-    let mut p = cmd.stdout(Stdio::null()).spawn().unwrap();
-    p.wait().unwrap();
-    assert!(p.kill().is_ok());
-    assert!(p.kill().is_ok());
+    for kill in [Child::kill, Child::terminate] {
+        let mut cmd = if cfg!(target_os = "android") {
+            let mut p = shell_cmd();
+            p.args(&["-c", "true"]);
+            p
+        } else {
+            known_command()
+        };
+        let mut p = cmd.stdout(Stdio::null()).spawn().unwrap();
+        p.wait().unwrap();
+        assert!(kill(&mut p).is_ok());
+        assert!(kill(&mut p).is_ok());
+    }
 }

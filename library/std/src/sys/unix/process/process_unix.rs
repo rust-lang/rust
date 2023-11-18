@@ -812,13 +812,21 @@ impl Process {
     }
 
     pub fn kill(&mut self) -> io::Result<()> {
+        self.send_signal(libc::SIGKILL)
+    }
+
+    pub fn terminate(&mut self) -> io::Result<()> {
+        self.send_signal(libc::SIGTERM)
+    }
+
+    fn send_signal(&mut self, signal: c_int) -> io::Result<()> {
         // If we've already waited on this process then the pid can be recycled
         // and used for another process, and we probably shouldn't be killing
         // random processes, so return Ok because the process has exited already.
         if self.status.is_some() {
             Ok(())
         } else {
-            cvt(unsafe { libc::kill(self.pid, libc::SIGKILL) }).map(drop)
+            cvt(unsafe { libc::kill(self.pid, signal) }).map(drop)
         }
     }
 

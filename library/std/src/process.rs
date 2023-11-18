@@ -2019,6 +2019,47 @@ impl Child {
         self.handle.kill()
     }
 
+    /// Ask a child process to exit.
+    ///
+    /// On Unix platforms this sends SIGTERM, which can be blocked, handled, or ignored.
+    ///
+    /// On Windows, and other platforms where there isn't something analogous to SIGTERM, this just
+    /// executes `Child::kill`.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```no_run
+    /// #![feature(process_terminate)]
+    /// use std::process::{Child, Command};
+    /// use std::thread::sleep;
+    /// use std::time::Duration;
+    ///
+    /// let mut command = Command::new("yes");
+    /// let Ok(mut child) = command.spawn() else {
+    ///     println!("yes command didn't start");
+    ///     return;
+    /// };
+    /// 'outer: for kill in [Child::terminate, Child::kill] {
+    ///     kill(&mut child).expect("unable to send signal");
+    ///     for _ in 0..3 {
+    ///         if child.try_wait().unwrap().is_none() {
+    ///             sleep(Duration::from_secs(1));
+    ///             continue;
+    ///         }
+    ///         break 'outer;
+    ///     }
+    /// }
+    /// if child.try_wait().unwrap().is_none() {
+    ///     println!("child still hasn't exited");
+    /// }
+    /// ```
+    #[unstable(feature = "process_terminate", issue = "none")]
+    pub fn terminate(&mut self) -> io::Result<()> {
+        self.handle.terminate()
+    }
+
     /// Returns the OS-assigned process identifier associated with this child.
     ///
     /// # Examples

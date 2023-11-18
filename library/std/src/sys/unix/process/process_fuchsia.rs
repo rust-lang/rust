@@ -165,6 +165,10 @@ impl Process {
         Ok(())
     }
 
+    pub fn terminate(&mut self) -> io::Result<()> {
+        self.kill()
+    }
+
     pub fn wait(&mut self) -> io::Result<ExitStatus> {
         use crate::sys::process::zircon::*;
 

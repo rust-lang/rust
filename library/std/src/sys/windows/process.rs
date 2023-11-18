@@ -656,6 +656,10 @@ impl Process {
         Ok(())
     }
 
+    pub fn terminate(&mut self) -> io::Result<()> {
+        self.kill()
+    }
+
     pub fn id(&self) -> u32 {
         unsafe { c::GetProcessId(self.handle.as_raw_handle()) as u32 }
     }
