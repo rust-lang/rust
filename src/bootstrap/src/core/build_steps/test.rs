@@ -25,6 +25,7 @@ use crate::core::builder::{Builder, Compiler, Kind, RunConfig, ShouldRun, Step};
 use crate::core::config::flags::get_completion;
 use crate::core::config::flags::Subcommand;
 use crate::core::config::TargetSelection;
+use crate::core::sanity::Finder;
 use crate::utils;
 use crate::utils::cache::{Interned, INTERNER};
 use crate::utils::exec::BootstrapCommand;
@@ -1527,6 +1528,16 @@ You can add that mapping by changing MIR_OPT_BLESS_TARGET_MAPPING in src/bootstr
                 });
 
             for target in targets {
+                if !builder.config.dry_run() {
+                    let mut cmd_finder = Finder::new();
+
+                    cmd_finder.must_have(builder.cc(target));
+
+                    if let Some(ar) = builder.ar(target) {
+                        cmd_finder.must_have(ar);
+                    }
+                }
+
                 run(target);
 
                 let panic_abort_target = builder.ensure(MirOptPanicAbortSyntheticTarget {
