@@ -22,14 +22,14 @@ fn main() {
 
     match x {
         &[] => (),
-        &[..] => (), //~ ERROR unreachable pattern
+        &[..] => (),
     };
 
     let x: Result<Box<NotSoSecretlyEmpty>, &[Result<!, !>]> = Err(&[]);
     match x {
         Ok(box _) => (), //~ ERROR unreachable pattern
         Err(&[]) => (),
-        Err(&[..]) => (), //~ ERROR unreachable pattern
+        Err(&[..]) => (),
     }
 
     let x: Result<foo::SecretlyEmpty, Result<NotSoSecretlyEmpty, u32>> = Err(Err(123));

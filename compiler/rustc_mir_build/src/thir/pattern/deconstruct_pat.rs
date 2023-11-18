@@ -787,9 +787,6 @@ pub(super) enum Constructor<'tcx> {
 }
 
 impl<'tcx> Constructor<'tcx> {
-    pub(super) fn is_wildcard(&self) -> bool {
-        matches!(self, Wildcard)
-    }
     pub(super) fn is_non_exhaustive(&self) -> bool {
         matches!(self, NonExhaustive)
     }
@@ -973,15 +970,17 @@ pub(super) enum ConstructorSet {
 /// constructors that exist in the type but are not present in the column.
 ///
 /// More formally, if we discard wildcards from the column, this respects the following constraints:
-/// 1. the union of `present` and `missing` covers the whole type
+/// 1. the union of `present`, `missing` and `missing_empty` covers all the constructors of the type
 /// 2. each constructor in `present` is covered by something in the column
-/// 3. no constructor in `missing` is covered by anything in the column
+/// 3. no constructor in `missing` or `missing_empty` is covered by anything in the column
 /// 4. each constructor in the column is equal to the union of one or more constructors in `present`
 /// 5. `missing` does not contain empty constructors (see discussion about emptiness at the top of
 ///    the file);
-/// 6. constructors in `present` and `missing` are split for the column; in other words, they are
-///    either fully included in or fully disjoint from each constructor in the column. In other
-///    words, there are no non-trivial intersections like between `0..10` and `5..15`.
+/// 6. `missing_empty` contains only empty constructors
+/// 7. constructors in `present`, `missing` and `missing_empty` are split for the column; in other
+///    words, they are either fully included in or fully disjoint from each constructor in the
+///    column. In yet other words, there are no non-trivial intersections like between `0..10` and
+///    `5..15`.
 ///
 /// We must be particularly careful with weird constructors like `Opaque`: they're not formally part
 /// of the `ConstructorSet` for the type, yet if we forgot to include them in `present` we would be
@@ -990,6 +989,7 @@ pub(super) enum ConstructorSet {
 pub(super) struct SplitConstructorSet<'tcx> {
     pub(super) present: SmallVec<[Constructor<'tcx>; 1]>,
     pub(super) missing: Vec<Constructor<'tcx>>,
+    pub(super) missing_empty: Vec<Constructor<'tcx>>,
 }
 
 impl ConstructorSet {
@@ -1132,10 +1132,10 @@ impl ConstructorSet {
         // Constructors in `ctors`, except wildcards and opaques.
         let mut seen = Vec::new();
         for ctor in ctors.cloned() {
-            if let Constructor::Opaque(..) = ctor {
-                present.push(ctor);
-            } else if !ctor.is_wildcard() {
-                seen.push(ctor);
+            match ctor {
+                Opaque(..) => present.push(ctor),
+                Wildcard => {} // discard wildcards
+                _ => seen.push(ctor),
             }
         }
 
@@ -1239,16 +1239,24 @@ impl ConstructorSet {
                 missing.push(NonExhaustive);
             }
             ConstructorSet::NoConstructors => {
-                if !pcx.is_top_level {
-                    missing_empty.push(NonExhaustive);
-                }
+                // In a `MaybeInvalid` place even an empty pattern may be reachable. We therefore
+                // add a dummy empty constructor here, which will be ignored if the place is
+                // `ValidOnly`.
+                missing_empty.push(NonExhaustive);
             }
         }
 
-        if !pcx.cx.tcx.features().exhaustive_patterns {
-            missing.extend(missing_empty);
+        // We have now grouped all the constructors into 3 buckets: present, missing, missing_empty.
+        // In the absence of the `exhaustive_patterns` feature however, we don't count nested empty
+        // types as empty. Only non-nested `!` or `enum Foo {}` are considered empty.
+        if !pcx.cx.tcx.features().exhaustive_patterns
+            && !(pcx.is_top_level && matches!(self, Self::NoConstructors))
+        {
+            // Treat all missing constructors as nonempty.
+            missing.extend(missing_empty.drain(..));
         }
-        SplitConstructorSet { present, missing }
+
+        SplitConstructorSet { present, missing, missing_empty }
     }
 }
 

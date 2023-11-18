@@ -637,12 +637,18 @@ impl<'a, 'p, 'tcx> fmt::Debug for PatCtxt<'a, 'p, 'tcx> {
     }
 }
 
-/// In the matrix, tracks whether a given place (aka column) is known to contain a valid value or
-/// not.
+/// Serves two purposes:
+/// - in a wildcard, tracks whether the wildcard matches only valid values (i.e. is a binding `_a`)
+///     or also invalid values (i.e. is a true `_` pattern).
+/// - in the matrix, track whether a given place (aka column) is known to contain a valid value or
+///     not.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub(super) enum ValidityConstraint {
     ValidOnly,
     MaybeInvalid,
+    /// Option for backwards compatibility: the place is not known to be valid but we allow omitting
+    /// `useful && !reachable` arms anyway.
+    MaybeInvalidButAllowOmittingArms,
 }
 
 impl ValidityConstraint {
@@ -650,19 +656,37 @@ impl ValidityConstraint {
         if is_valid_only { ValidOnly } else { MaybeInvalid }
     }
 
+    fn allow_omitting_side_effecting_arms(self) -> Self {
+        match self {
+            MaybeInvalid | MaybeInvalidButAllowOmittingArms => MaybeInvalidButAllowOmittingArms,
+            // There are no side-effecting empty arms here, nothing to do.
+            ValidOnly => ValidOnly,
+        }
+    }
+
+    pub(super) fn is_known_valid(self) -> bool {
+        matches!(self, ValidOnly)
+    }
+    pub(super) fn allows_omitting_empty_arms(self) -> bool {
+        matches!(self, ValidOnly | MaybeInvalidButAllowOmittingArms)
+    }
+
     /// If the place has validity given by `self` and we read that the value at the place has
     /// constructor `ctor`, this computes what we can assume about the validity of the constructor
     /// fields.
     ///
     /// Pending further opsem decisions, the current behavior is: validity is preserved, except
-    /// under `&` where validity is reset to `MaybeInvalid`.
+    /// inside `&` and union fields where validity is reset to `MaybeInvalid`.
     pub(super) fn specialize<'tcx>(
         self,
         pcx: &PatCtxt<'_, '_, 'tcx>,
         ctor: &Constructor<'tcx>,
     ) -> Self {
-        // We preserve validity except when we go under a reference.
-        if matches!(ctor, Constructor::Single) && matches!(pcx.ty.kind(), ty::Ref(..)) {
+        // We preserve validity except when we go inside a reference or a union field.
+        if matches!(ctor, Constructor::Single)
+            && (matches!(pcx.ty.kind(), ty::Ref(..))
+                || matches!(pcx.ty.kind(), ty::Adt(def, ..) if def.is_union()))
+        {
             // Validity of `x: &T` does not imply validity of `*x: T`.
             MaybeInvalid
         } else {
@@ -675,7 +699,7 @@ impl fmt::Display for ValidityConstraint {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s = match self {
             ValidOnly => "✓",
-            MaybeInvalid => "?",
+            MaybeInvalid | MaybeInvalidButAllowOmittingArms => "?",
         };
         write!(f, "{s}")
     }
@@ -1202,9 +1226,9 @@ fn compute_exhaustiveness_and_usefulness<'p, 'tcx>(
         for row in matrix.rows_mut() {
             // All rows are useful until they're not.
             row.useful = true;
+            // When there's an unguarded row, the match is exhaustive and any subsequent row is not
+            // useful.
             if !row.is_under_guard {
-                // There's an unguarded row, so the match is exhaustive, and any subsequent row is
-                // unreachable.
                 return WitnessMatrix::empty();
             }
         }
@@ -1215,26 +1239,37 @@ fn compute_exhaustiveness_and_usefulness<'p, 'tcx>(
     debug!("ty: {ty:?}");
     let pcx = &PatCtxt { cx, ty, is_top_level };
 
+    // Whether the place/column we are inspecting is known to contain valid data.
+    let place_validity = matrix.place_validity[0];
+    // For backwards compability we allow omitting some empty arms that we ideally shouldn't.
+    let place_validity = place_validity.allow_omitting_side_effecting_arms();
+
     // Analyze the constructors present in this column.
     let ctors = matrix.heads().map(|p| p.ctor());
-    let split_set = ConstructorSet::for_ty(pcx.cx, pcx.ty).split(pcx, ctors);
-
+    let split_set = ConstructorSet::for_ty(cx, ty).split(pcx, ctors);
     let all_missing = split_set.present.is_empty();
-    let always_report_all = is_top_level && !IntRange::is_integral(pcx.ty);
-    // Whether we should report "Enum::A and Enum::C are missing" or "_ is missing".
-    let report_individual_missing_ctors = always_report_all || !all_missing;
 
+    // Build the set of constructors we will specialize with. It must cover the whole type.
     let mut split_ctors = split_set.present;
-    let mut only_report_missing = false;
     if !split_set.missing.is_empty() {
         // We need to iterate over a full set of constructors, so we add `Missing` to represent the
         // missing ones. This is explained under "Constructor Splitting" at the top of this file.
         split_ctors.push(Constructor::Missing);
-        // For diagnostic purposes we choose to only report the constructors that are missing. Since
-        // `Missing` matches only the wildcard rows, it matches fewer rows than any normal
-        // constructor and is therefore guaranteed to result in more witnesses. So skipping the
-        // other constructors does not jeopardize correctness.
-        only_report_missing = true;
+    } else if !split_set.missing_empty.is_empty() && !place_validity.is_known_valid() {
+        // The missing empty constructors are reachable if the place can contain invalid data.
+        split_ctors.push(Constructor::Missing);
+    }
+
+    // Decide what constructors to report.
+    let always_report_all = is_top_level && !IntRange::is_integral(pcx.ty);
+    // Whether we should report "Enum::A and Enum::C are missing" or "_ is missing".
+    let report_individual_missing_ctors = always_report_all || !all_missing;
+    // Which constructors are considered missing. We ensure that `!missing_ctors.is_empty() =>
+    // split_ctors.contains(Missing)`. The converse usually holds except in the
+    // `MaybeInvalidButAllowOmittingArms` backwards-compatibility case.
+    let mut missing_ctors = split_set.missing;
+    if !place_validity.allows_omitting_empty_arms() {
+        missing_ctors.extend(split_set.missing_empty);
     }
 
     let mut ret = WitnessMatrix::empty();
@@ -1246,11 +1281,19 @@ fn compute_exhaustiveness_and_usefulness<'p, 'tcx>(
             compute_exhaustiveness_and_usefulness(cx, &mut spec_matrix, false)
         });
 
-        if !only_report_missing || matches!(ctor, Constructor::Missing) {
+        let counts_for_exhaustiveness = match ctor {
+            Constructor::Missing => !missing_ctors.is_empty(),
+            // If there are missing constructors we'll report those instead. Since `Missing` matches
+            // only the wildcard rows, it matches fewer rows than this constructor, and is therefore
+            // guaranteed to result in the same or more witnesses. So skipping this does not
+            // jeopardize correctness.
+            _ => missing_ctors.is_empty(),
+        };
+        if counts_for_exhaustiveness {
             // Transform witnesses for `spec_matrix` into witnesses for `matrix`.
             witnesses.apply_constructor(
                 pcx,
-                &split_set.missing,
+                &missing_ctors,
                 &ctor,
                 report_individual_missing_ctors,
             );

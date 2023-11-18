@@ -234,12 +234,6 @@ LL ~             None => {},
 LL +             Some(_) => todo!()
    |
 
-error: unreachable pattern
-  --> $DIR/empty-types.rs:158:13
-   |
-LL |             _ => {}
-   |             ^
-
 error[E0004]: non-exhaustive patterns: `Some(_)` not covered
   --> $DIR/empty-types.rs:161:15
    |
@@ -257,18 +251,6 @@ help: ensure that all possible cases are being handled by adding a match arm wit
 LL ~             None => {},
 LL +             Some(_) => todo!()
    |
-
-error: unreachable pattern
-  --> $DIR/empty-types.rs:180:13
-   |
-LL |             _ => {}
-   |             ^
-
-error: unreachable pattern
-  --> $DIR/empty-types.rs:185:13
-   |
-LL |             _ => {}
-   |             ^
 
 error: unreachable pattern
   --> $DIR/empty-types.rs:204:13
@@ -296,48 +278,6 @@ LL |             _ => {}
 
 error: unreachable pattern
   --> $DIR/empty-types.rs:225:13
-   |
-LL |             _ => {}
-   |             ^
-
-error: unreachable pattern
-  --> $DIR/empty-types.rs:234:13
-   |
-LL |             _ => {}
-   |             ^
-
-error: unreachable pattern
-  --> $DIR/empty-types.rs:239:13
-   |
-LL |             _ => {}
-   |             ^
-
-error: unreachable pattern
-  --> $DIR/empty-types.rs:245:13
-   |
-LL |             _ => {}
-   |             ^
-
-error: unreachable pattern
-  --> $DIR/empty-types.rs:251:13
-   |
-LL |             _ => {}
-   |             ^
-
-error: unreachable pattern
-  --> $DIR/empty-types.rs:256:13
-   |
-LL |             _ => {}
-   |             ^
-
-error: unreachable pattern
-  --> $DIR/empty-types.rs:262:13
-   |
-LL |             _ => {}
-   |             ^
-
-error: unreachable pattern
-  --> $DIR/empty-types.rs:268:13
    |
 LL |             _ => {}
    |             ^
@@ -448,8 +388,9 @@ LL |     match slice_never {
    = note: the matched value is of type `&[!]`
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
    |
-LL |         [_, _, _, ..] => {}, &[] | &[_] | &[_, _] => todo!()
-   |                            +++++++++++++++++++++++++++++++++
+LL ~         [_, _, _, ..] => {},
+LL +         &[] | &[_] | &[_, _] => todo!()
+   |
 
 error[E0004]: non-exhaustive patterns: `&[]` and `&[_, ..]` not covered
   --> $DIR/empty-types.rs:347:11
@@ -545,24 +486,6 @@ LL ~         &None => {},
 LL +         &Some(_) => todo!()
    |
 
-error: unreachable pattern
-  --> $DIR/empty-types.rs:475:9
-   |
-LL |         _ => {}
-   |         ^
-
-error: unreachable pattern
-  --> $DIR/empty-types.rs:479:9
-   |
-LL |         _a => {}
-   |         ^^
-
-error: unreachable pattern
-  --> $DIR/empty-types.rs:485:9
-   |
-LL |         ref _a => {}
-   |         ^^^^^^
-
 error[E0004]: non-exhaustive patterns: `Some(_)` not covered
   --> $DIR/empty-types.rs:487:11
    |
@@ -595,8 +518,9 @@ note: `Result<!, !>` defined here
    = note: the matched value is of type `Result<!, !>`
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
-LL |         Ok(_) => {}, Err(_) => todo!()
-   |                    +++++++++++++++++++
+LL ~         Ok(_) => {},
+LL +         Err(_) => todo!()
+   |
 
 error[E0004]: non-exhaustive patterns: `Err(_)` not covered
   --> $DIR/empty-types.rs:546:11
@@ -612,8 +536,9 @@ note: `Result<!, !>` defined here
    = note: the matched value is of type `Result<!, !>`
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
-LL |         Ok(_a) => {}, Err(_) => todo!()
-   |                     +++++++++++++++++++
+LL ~         Ok(_a) => {},
+LL +         Err(_) => todo!()
+   |
 
 error[E0004]: non-exhaustive patterns: type `(u32, !)` is non-empty
   --> $DIR/empty-types.rs:565:11
@@ -653,36 +578,6 @@ error: unreachable pattern
 LL |         _x if false => {}
    |         ^^
 
-error: unreachable pattern
-  --> $DIR/empty-types.rs:613:9
-   |
-LL |         _ if false => {}
-   |         ^
-
-error: unreachable pattern
-  --> $DIR/empty-types.rs:615:9
-   |
-LL |         _ => {}
-   |         ^
-
-error: unreachable pattern
-  --> $DIR/empty-types.rs:622:9
-   |
-LL |         _a if false => {}
-   |         ^^
-
-error: unreachable pattern
-  --> $DIR/empty-types.rs:624:9
-   |
-LL |         _ => {}
-   |         ^
-
-error: unreachable pattern
-  --> $DIR/empty-types.rs:629:9
-   |
-LL |         _a if false => {}
-   |         ^^
-
 error[E0004]: non-exhaustive patterns: `&_` not covered
   --> $DIR/empty-types.rs:631:11
    |
@@ -694,8 +589,9 @@ LL |     match ref_never {
    = note: match arms with guards don't count towards exhaustivity
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
-LL |         &_a if false => {}, &_ => todo!()
-   |                           +++++++++++++++
+LL ~         &_a if false => {},
+LL +         &_ => todo!()
+   |
 
 error[E0004]: non-exhaustive patterns: `Some(_)` not covered
   --> $DIR/empty-types.rs:659:11
@@ -715,7 +611,7 @@ LL ~         None => {},
 LL +         Some(_) => todo!()
    |
 
-error: aborting due to 66 previous errors
+error: aborting due to 48 previous errors
 
 Some errors have detailed explanations: E0004, E0005.
 For more information about an error, try `rustc --explain E0004`.
