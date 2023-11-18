@@ -71,12 +71,10 @@ async fn baz() -> Result<(), ()> {
     let _: i32 = tuple().0; //~ ERROR no field `0`
     //~^ HELP consider `await`ing on the `Future`
     //~| NOTE field not available in `impl Future`
-    //~| NOTE unknown field
 
     let _: i32 = struct_().a; //~ ERROR no field `a`
     //~^ HELP consider `await`ing on the `Future`
     //~| NOTE field not available in `impl Future`
-    //~| NOTE unknown field
 
     struct_().method(); //~ ERROR no method named
     //~^ NOTE method not found in `impl Future<Output = Struct>`
