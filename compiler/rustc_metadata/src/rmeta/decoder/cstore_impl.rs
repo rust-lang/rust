@@ -11,7 +11,7 @@ use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
 use rustc_middle::arena::ArenaAllocatable;
-use rustc_middle::metadata::ModChild;
+use rustc_middle::metadata::{AmbiguityModChild, ModChild};
 use rustc_middle::middle::exported_symbols::ExportedSymbol;
 use rustc_middle::middle::stability::DeprecationEntry;
 use rustc_middle::query::ExternProviders;
@@ -580,6 +580,16 @@ impl CStore {
             }
             self.get_crate_data_mut(cnum).dependencies = dependencies;
         }
+    }
+
+    pub fn ambiguity_module_children_untracked(
+        &self,
+        def_id: DefId,
+        sess: &Session,
+    ) -> Vec<AmbiguityModChild> {
+        self.get_crate_data(def_id.krate)
+            .get_ambiguity_module_children(def_id.index, sess)
+            .collect()
     }
 }
 

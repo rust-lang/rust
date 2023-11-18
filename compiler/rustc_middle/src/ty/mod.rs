@@ -18,7 +18,7 @@ pub use self::BorrowKind::*;
 pub use self::IntVarValue::*;
 pub use self::Variance::*;
 use crate::error::{OpaqueHiddenTypeMismatch, TypeMismatchReason};
-use crate::metadata::ModChild;
+use crate::metadata::{AmbiguityModChild, ModChild};
 use crate::middle::privacy::EffectiveVisibilities;
 use crate::mir::{Body, CoroutineLayout};
 use crate::query::Providers;
@@ -160,6 +160,7 @@ pub struct ResolverGlobalCtxt {
     pub extern_crate_map: FxHashMap<LocalDefId, CrateNum>,
     pub maybe_unused_trait_imports: FxIndexSet<LocalDefId>,
     pub module_children: LocalDefIdMap<Vec<ModChild>>,
+    pub ambiguity_module_children: LocalDefIdMap<Vec<AmbiguityModChild>>,
     pub glob_map: FxHashMap<LocalDefId, FxHashSet<Symbol>>,
     pub main_def: Option<MainDefinition>,
     pub trait_impls: FxIndexMap<DefId, Vec<LocalDefId>>,

@@ -19,8 +19,8 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::intern::Interned;
 use rustc_errors::{pluralize, struct_span_err, Applicability, MultiSpan};
 use rustc_hir::def::{self, DefKind, PartialRes};
-use rustc_middle::metadata::ModChild;
 use rustc_middle::metadata::Reexport;
+use rustc_middle::metadata::{AmbiguityModChild, ModChild};
 use rustc_middle::span_bug;
 use rustc_middle::ty;
 use rustc_session::lint::builtin::{
@@ -311,8 +311,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 }
                 match (old_binding.is_glob_import(), binding.is_glob_import()) {
                     (true, true) => {
+                        let is_ambiguity = binding.is_ambiguity();
                         // FIXME: remove `!binding.is_ambiguity()` after delete the warning ambiguity.
-                        if !binding.is_ambiguity()
+                        if !is_ambiguity
                             && let NameBindingKind::Import { import: old_import, .. } =
                                 old_binding.kind
                             && let NameBindingKind::Import { import, .. } = binding.kind
@@ -323,7 +324,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             // imported from the same glob-import statement.
                             resolution.binding = Some(binding);
                         } else if res != old_binding.res() {
-                            let binding = if warn_ambiguity {
+                            let binding = if old_binding.is_ambiguity_in_extern_crate() {
+                                // eliminate this ambiguous binding which is defined in the external crate for better compatibility
+                                this.warn_ambiguity(AmbiguityKind::GlobVsGlob, binding, old_binding)
+                            } else if warn_ambiguity {
                                 this.warn_ambiguity(AmbiguityKind::GlobVsGlob, old_binding, binding)
                             } else {
                                 this.ambiguity(AmbiguityKind::GlobVsGlob, old_binding, binding)
@@ -332,7 +336,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         } else if !old_binding.vis.is_at_least(binding.vis, this.tcx) {
                             // We are glob-importing the same item but with greater visibility.
                             resolution.binding = Some(binding);
-                        } else if binding.is_ambiguity() {
+                        } else if is_ambiguity {
                             resolution.binding =
                                 Some(self.arenas.alloc_name_binding(NameBindingData {
                                     warn_ambiguity: true,
@@ -1432,25 +1436,37 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         if let Some(def_id) = module.opt_def_id() {
             let mut children = Vec::new();
+            let mut ambiguity_children = Vec::new();
 
             module.for_each_child(self, |this, ident, _, binding| {
                 let res = binding.res().expect_non_local();
-                let error_ambiguity = binding.is_ambiguity() && !binding.warn_ambiguity;
-                if res != def::Res::Err && !error_ambiguity {
+                if res != def::Res::Err {
                     let mut reexport_chain = SmallVec::new();
                     let mut next_binding = binding;
                     while let NameBindingKind::Import { binding, import, .. } = next_binding.kind {
                         reexport_chain.push(import.simplify(this));
                         next_binding = binding;
                     }
-
-                    children.push(ModChild { ident, res, vis: binding.vis, reexport_chain });
+                    let ambiguity = binding.is_ambiguity() && !binding.warn_ambiguity;
+                    if ambiguity {
+                        ambiguity_children.push(AmbiguityModChild {
+                            ident,
+                            res,
+                            vis: binding.vis,
+                            reexport_chain,
+                        })
+                    } else {
+                        children.push(ModChild { ident, res, vis: binding.vis, reexport_chain });
+                    }
                 }
             });
 
             if !children.is_empty() {
                 // Should be fine because this code is only called for local modules.
                 self.module_children.insert(def_id.expect_local(), children);
+            }
+            if !ambiguity_children.is_empty() {
+                self.ambiguity_module_children.insert(def_id.expect_local(), ambiguity_children);
             }
         }
     }

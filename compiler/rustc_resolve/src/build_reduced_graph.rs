@@ -9,7 +9,7 @@ use crate::def_collector::collect_definitions;
 use crate::imports::{ImportData, ImportKind};
 use crate::macros::{MacroRulesBinding, MacroRulesScope, MacroRulesScopeRef};
 use crate::Namespace::{self, MacroNS, TypeNS, ValueNS};
-use crate::{errors, BindingKey, MacroData, NameBindingData};
+use crate::{errors, AmbiguityKind, BindingKey, MacroData, NameBindingData};
 use crate::{Determinacy, ExternPreludeEntry, Finalize, Module, ModuleKind, ModuleOrUniformRoot};
 use crate::{NameBinding, NameBindingKind, ParentScope, PathResult, PerNS, ResolutionError};
 use crate::{Resolver, ResolverArenas, Segment, ToNameBinding, VisResolutionError};
@@ -34,31 +34,45 @@ use std::cell::Cell;
 
 type Res = def::Res<NodeId>;
 
+type IsAmbiguity = bool;
+
 impl<'a, Id: Into<DefId>> ToNameBinding<'a>
-    for (Module<'a>, ty::Visibility<Id>, Span, LocalExpnId)
+    for (Module<'a>, ty::Visibility<Id>, Span, LocalExpnId, IsAmbiguity)
 {
     fn to_name_binding(self, arenas: &'a ResolverArenas<'a>) -> NameBinding<'a> {
-        arenas.alloc_name_binding(NameBindingData {
+        let mut binding = NameBindingData {
             kind: NameBindingKind::Module(self.0),
             ambiguity: None,
             warn_ambiguity: false,
             vis: self.1.to_def_id(),
             span: self.2,
             expansion: self.3,
-        })
+        };
+        if self.4 {
+            binding.ambiguity =
+                Some((arenas.alloc_name_binding(binding.clone()), AmbiguityKind::External));
+        }
+        arenas.alloc_name_binding(binding)
     }
 }
 
-impl<'a, Id: Into<DefId>> ToNameBinding<'a> for (Res, ty::Visibility<Id>, Span, LocalExpnId) {
+impl<'a, Id: Into<DefId>> ToNameBinding<'a>
+    for (Res, ty::Visibility<Id>, Span, LocalExpnId, IsAmbiguity)
+{
     fn to_name_binding(self, arenas: &'a ResolverArenas<'a>) -> NameBinding<'a> {
-        arenas.alloc_name_binding(NameBindingData {
+        let mut binding = NameBindingData {
             kind: NameBindingKind::Res(self.0),
             ambiguity: None,
             warn_ambiguity: false,
             vis: self.1.to_def_id(),
             span: self.2,
             expansion: self.3,
-        })
+        };
+        if self.4 {
+            binding.ambiguity =
+                Some((arenas.alloc_name_binding(binding.clone()), AmbiguityKind::External));
+        }
+        arenas.alloc_name_binding(binding)
     }
 }
 
@@ -190,10 +204,17 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     }
 
     pub(crate) fn build_reduced_graph_external(&mut self, module: Module<'a>) {
-        for child in self.tcx.module_children(module.def_id()) {
+        let def_id = module.def_id();
+        for child in self.tcx.module_children(def_id) {
             let parent_scope = ParentScope::module(module, self);
             BuildReducedGraphVisitor { r: self, parent_scope }
-                .build_reduced_graph_for_external_crate_res(child);
+                .build_reduced_graph_for_external_crate_res(child, false);
+        }
+        let children = self.cstore().ambiguity_module_children_untracked(def_id, self.tcx.sess);
+        for child in &children {
+            let parent_scope = ParentScope::module(module, self);
+            BuildReducedGraphVisitor { r: self, parent_scope }
+                .build_reduced_graph_for_external_crate_res(child, true);
         }
     }
 }
@@ -679,7 +700,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                     parent.no_implicit_prelude
                         || attr::contains_name(&item.attrs, sym::no_implicit_prelude),
                 );
-                self.r.define(parent, ident, TypeNS, (module, vis, sp, expansion));
+                self.r.define(parent, ident, TypeNS, (module, vis, sp, expansion, false));
 
                 // Descend into the module.
                 self.parent_scope.module = module;
@@ -687,13 +708,13 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
 
             // These items live in the value namespace.
             ItemKind::Static(..) => {
-                self.r.define(parent, ident, ValueNS, (res, vis, sp, expansion));
+                self.r.define(parent, ident, ValueNS, (res, vis, sp, expansion, false));
             }
             ItemKind::Const(..) => {
-                self.r.define(parent, ident, ValueNS, (res, vis, sp, expansion));
+                self.r.define(parent, ident, ValueNS, (res, vis, sp, expansion, false));
             }
             ItemKind::Fn(..) => {
-                self.r.define(parent, ident, ValueNS, (res, vis, sp, expansion));
+                self.r.define(parent, ident, ValueNS, (res, vis, sp, expansion, false));
 
                 // Functions introducing procedural macros reserve a slot
                 // in the macro namespace as well (see #52225).
@@ -702,7 +723,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
 
             // These items live in the type namespace.
             ItemKind::TyAlias(..) => {
-                self.r.define(parent, ident, TypeNS, (res, vis, sp, expansion));
+                self.r.define(parent, ident, TypeNS, (res, vis, sp, expansion, false));
             }
 
             ItemKind::Enum(_, _) => {
@@ -713,18 +734,18 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                     item.span,
                     parent.no_implicit_prelude,
                 );
-                self.r.define(parent, ident, TypeNS, (module, vis, sp, expansion));
+                self.r.define(parent, ident, TypeNS, (module, vis, sp, expansion, false));
                 self.parent_scope.module = module;
             }
 
             ItemKind::TraitAlias(..) => {
-                self.r.define(parent, ident, TypeNS, (res, vis, sp, expansion));
+                self.r.define(parent, ident, TypeNS, (res, vis, sp, expansion, false));
             }
 
             // These items live in both the type and value namespaces.
             ItemKind::Struct(ref vdata, _) => {
                 // Define a name in the type namespace.
-                self.r.define(parent, ident, TypeNS, (res, vis, sp, expansion));
+                self.r.define(parent, ident, TypeNS, (res, vis, sp, expansion, false));
 
                 // Record field names for error reporting.
                 self.insert_field_def_ids(local_def_id, vdata);
@@ -759,7 +780,12 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                     }
                     let ctor_def_id = self.r.local_def_id(ctor_node_id);
                     let ctor_res = self.res(ctor_def_id);
-                    self.r.define(parent, ident, ValueNS, (ctor_res, ctor_vis, sp, expansion));
+                    self.r.define(
+                        parent,
+                        ident,
+                        ValueNS,
+                        (ctor_res, ctor_vis, sp, expansion, false),
+                    );
                     self.r.feed_visibility(ctor_def_id, ctor_vis);
                     // We need the field visibility spans also for the constructor for E0603.
                     self.insert_field_visibilities_local(ctor_def_id.to_def_id(), vdata);
@@ -771,7 +797,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
             }
 
             ItemKind::Union(ref vdata, _) => {
-                self.r.define(parent, ident, TypeNS, (res, vis, sp, expansion));
+                self.r.define(parent, ident, TypeNS, (res, vis, sp, expansion, false));
 
                 // Record field names for error reporting.
                 self.insert_field_def_ids(local_def_id, vdata);
@@ -787,7 +813,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                     item.span,
                     parent.no_implicit_prelude,
                 );
-                self.r.define(parent, ident, TypeNS, (module, vis, sp, expansion));
+                self.r.define(parent, ident, TypeNS, (module, vis, sp, expansion, false));
                 self.parent_scope.module = module;
             }
 
@@ -841,7 +867,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
         .map(|module| {
             let used = self.process_macro_use_imports(item, module);
             let vis = ty::Visibility::<LocalDefId>::Public;
-            let binding = (module, vis, sp, expansion).to_name_binding(self.r.arenas);
+            let binding = (module, vis, sp, expansion, false).to_name_binding(self.r.arenas);
             (used, Some(ModuleOrUniformRoot::Module(module)), binding)
         })
         .unwrap_or((true, None, self.r.dummy_binding));
@@ -902,7 +928,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
         let parent = self.parent_scope.module;
         let expansion = self.parent_scope.expansion;
         let vis = self.resolve_visibility(&item.vis);
-        self.r.define(parent, item.ident, ns, (self.res(def_id), vis, item.span, expansion));
+        self.r.define(parent, item.ident, ns, (self.res(def_id), vis, item.span, expansion, false));
         self.r.feed_visibility(local_def_id, vis);
     }
 
@@ -923,9 +949,9 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
     }
 
     /// Builds the reduced graph for a single item in an external crate.
-    fn build_reduced_graph_for_external_crate_res(&mut self, child: &ModChild) {
-        let parent = self.parent_scope.module;
+    fn build_reduced_graph_for_external_crate_res(&mut self, child: &ModChild, ambiguity: bool) {
         let ModChild { ident, res, vis, ref reexport_chain } = *child;
+        let parent = self.parent_scope.module;
         let span = self.r.def_span(
             reexport_chain
                 .first()
@@ -938,7 +964,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
         match res {
             Res::Def(DefKind::Mod | DefKind::Enum | DefKind::Trait, def_id) => {
                 let module = self.r.expect_module(def_id);
-                self.r.define(parent, ident, TypeNS, (module, vis, span, expansion));
+                self.r.define(parent, ident, TypeNS, (module, vis, span, expansion, ambiguity));
             }
             Res::Def(
                 DefKind::Struct
@@ -952,7 +978,9 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                 _,
             )
             | Res::PrimTy(..)
-            | Res::ToolMod => self.r.define(parent, ident, TypeNS, (res, vis, span, expansion)),
+            | Res::ToolMod => {
+                self.r.define(parent, ident, TypeNS, (res, vis, span, expansion, ambiguity))
+            }
             Res::Def(
                 DefKind::Fn
                 | DefKind::AssocFn
@@ -961,9 +989,9 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                 | DefKind::AssocConst
                 | DefKind::Ctor(..),
                 _,
-            ) => self.r.define(parent, ident, ValueNS, (res, vis, span, expansion)),
+            ) => self.r.define(parent, ident, ValueNS, (res, vis, span, expansion, ambiguity)),
             Res::Def(DefKind::Macro(..), _) | Res::NonMacroAttr(..) => {
-                self.r.define(parent, ident, MacroNS, (res, vis, span, expansion))
+                self.r.define(parent, ident, MacroNS, (res, vis, span, expansion, ambiguity))
             }
             Res::Def(
                 DefKind::TyParam
@@ -1198,7 +1226,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
             } else {
                 ty::Visibility::Restricted(CRATE_DEF_ID)
             };
-            let binding = (res, vis, span, expansion).to_name_binding(self.r.arenas);
+            let binding = (res, vis, span, expansion, false).to_name_binding(self.r.arenas);
             self.r.set_binding_parent_module(binding, parent_scope.module);
             self.r.all_macro_rules.insert(ident.name, res);
             if is_macro_export {
@@ -1245,7 +1273,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
             if !vis.is_public() {
                 self.insert_unused_macro(ident, def_id, item.id);
             }
-            self.r.define(module, ident, MacroNS, (res, vis, span, expansion));
+            self.r.define(module, ident, MacroNS, (res, vis, span, expansion, false));
             self.r.feed_visibility(def_id, vis);
             self.parent_scope.macro_rules
         }
@@ -1366,7 +1394,12 @@ impl<'a, 'b, 'tcx> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b, 'tcx> {
 
             let parent = self.parent_scope.module;
             let expansion = self.parent_scope.expansion;
-            self.r.define(parent, item.ident, ns, (self.res(def_id), vis, item.span, expansion));
+            self.r.define(
+                parent,
+                item.ident,
+                ns,
+                (self.res(def_id), vis, item.span, expansion, false),
+            );
         }
 
         visit::walk_assoc_item(self, item, ctxt);
@@ -1446,7 +1479,7 @@ impl<'a, 'b, 'tcx> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b, 'tcx> {
         // Define a name in the type namespace.
         let def_id = self.r.local_def_id(variant.id);
         let vis = self.resolve_visibility(&variant.vis);
-        self.r.define(parent, ident, TypeNS, (self.res(def_id), vis, variant.span, expn_id));
+        self.r.define(parent, ident, TypeNS, (self.res(def_id), vis, variant.span, expn_id, false));
         self.r.feed_visibility(def_id, vis);
 
         // If the variant is marked as non_exhaustive then lower the visibility to within the crate.
@@ -1461,7 +1494,12 @@ impl<'a, 'b, 'tcx> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b, 'tcx> {
         if let Some(ctor_node_id) = variant.data.ctor_node_id() {
             let ctor_def_id = self.r.local_def_id(ctor_node_id);
             let ctor_res = self.res(ctor_def_id);
-            self.r.define(parent, ident, ValueNS, (ctor_res, ctor_vis, variant.span, expn_id));
+            self.r.define(
+                parent,
+                ident,
+                ValueNS,
+                (ctor_res, ctor_vis, variant.span, expn_id, false),
+            );
             self.r.feed_visibility(ctor_def_id, ctor_vis);
         }
 

@@ -1695,6 +1695,9 @@ pub fn report_ambiguity_error<'a, G: EmissionGuarantee>(
     for help_msg in ambiguity.b1_help_msgs {
         db.help(help_msg);
     }
+    if ambiguity.extern_crate {
+        return;
+    }
     db.span_note(ambiguity.b2_span, ambiguity.b2_note_msg);
     for help_msg in ambiguity.b2_help_msgs {
         db.help(help_msg);

@@ -1,0 +1,29 @@
+error[E0659]: `f` is ambiguous
+  --> $DIR/glob-conflict-cross-crate-1.rs:6:20
+   |
+LL |     glob_conflict::f();
+   |                    ^ ambiguous name
+   |
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `f` could refer to the function defined here
+  --> $DIR/auxiliary/glob-conflict.rs:10:9
+   |
+LL | pub use m1::*;
+   |         ^^
+
+error[E0659]: `f` is ambiguous
+  --> $DIR/glob-conflict-cross-crate-1.rs:7:26
+   |
+LL |     glob_conflict::glob::f();
+   |                          ^ ambiguous name
+   |
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `f` could refer to the function defined here
+  --> $DIR/auxiliary/glob-conflict.rs:14:13
+   |
+LL |     pub use *;
+   |             ^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0659`.

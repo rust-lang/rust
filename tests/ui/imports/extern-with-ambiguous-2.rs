@@ -1,4 +1,3 @@
-// check-pass
 // edition: 2021
 // aux-build: extern-with-ambiguous-2-extern.rs
 
@@ -12,5 +11,6 @@ mod s {
 use s::*;
 use extern_with_ambiguous_2_extern::*;
 use error::*;
+//~^ ERROR `error` is ambiguous
 
 fn main() {}
