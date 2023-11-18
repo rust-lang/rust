@@ -22,6 +22,10 @@ trait_selection_dump_vtable_entries = vtable entries for `{$trait_ref}`: {$entri
 trait_selection_empty_on_clause_in_rustc_on_unimplemented = empty `on`-clause in `#[rustc_on_unimplemented]`
     .label = empty on-clause here
 
+trait_selection_ignored_diagnostic_option = `{$option_name}` is ignored due to previous definition of `{$option_name}`
+    .other_label = `{$option_name}` is first declared here
+    .label = `{$option_name}` is already declared here
+
 trait_selection_inherent_projection_normalization_overflow = overflow evaluating associated type `{$ty}`
 
 trait_selection_invalid_on_clause_in_rustc_on_unimplemented = invalid `on`-clause in `#[rustc_on_unimplemented]`
