@@ -2,7 +2,12 @@ error[E0609]: no field `c` on type `&Foo`
   --> $DIR/issue-30580.rs:12:11
    |
 LL |         b.c;
-   |           ^ help: a field with a similar name exists: `a`
+   |           ^ unknown field
+   |
+help: a field with a similar name exists
+   |
+LL |         b.a;
+   |           ~
 
 error: aborting due to previous error
 
