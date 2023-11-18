@@ -2,7 +2,7 @@ error[E0609]: no field `a` on type `Foo`
   --> $DIR/issue-23253.rs:4:14
    |
 LL |     Foo::Bar.a;
-   |              ^
+   |              ^ unknown field
 
 error: aborting due to previous error
 
