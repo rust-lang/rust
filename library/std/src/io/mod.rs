@@ -1957,6 +1957,36 @@ pub trait Seek {
     fn stream_position(&mut self) -> Result<u64> {
         self.seek(SeekFrom::Current(0))
     }
+
+    /// Seeks relative to the current position.
+    ///
+    /// This is equivalent to `self.seek(SeekFrom::Current(offset))` but
+    /// doesn't return the new position which can allow some implementations
+    /// such as [`BufReader`] to perform more efficient seeks.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// #![feature(seek_seek_relative)]
+    /// use std::{
+    ///     io::{self, Seek},
+    ///     fs::File,
+    /// };
+    ///
+    /// fn main() -> io::Result<()> {
+    ///     let mut f = File::open("foo.txt")?;
+    ///     f.seek_relative(10)?;
+    ///     assert_eq!(f.stream_position()?, 10);
+    ///     Ok(())
+    /// }
+    /// ```
+    ///
+    /// [`BufReader`]: crate::io::BufReader
+    #[unstable(feature = "seek_seek_relative", issue = "117374")]
+    fn seek_relative(&mut self, offset: i64) -> Result<()> {
+        self.seek(SeekFrom::Current(offset))?;
+        Ok(())
+    }
 }
 
 /// Enumeration of possible methods to seek within an I/O object.
