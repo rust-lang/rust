@@ -1339,7 +1339,8 @@ pub(crate) struct DeconstructedPat<'p, 'tcx> {
     fields: Fields<'p, 'tcx>,
     ty: Ty<'tcx>,
     span: Span,
-    reachable: Cell<bool>,
+    /// Whether removing this arm would change the behavior of the match expression.
+    useful: Cell<bool>,
 }
 
 impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
@@ -1353,7 +1354,7 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
         ty: Ty<'tcx>,
         span: Span,
     ) -> Self {
-        DeconstructedPat { ctor, fields, ty, span, reachable: Cell::new(false) }
+        DeconstructedPat { ctor, fields, ty, span, useful: Cell::new(false) }
     }
 
     /// Note: the input patterns must have been lowered through
@@ -1634,38 +1635,38 @@ impl<'p, 'tcx> DeconstructedPat<'p, 'tcx> {
         }
     }
 
-    /// We keep track for each pattern if it was ever reachable during the analysis. This is used
-    /// with `unreachable_spans` to report unreachable subpatterns arising from or patterns.
-    pub(super) fn set_reachable(&self) {
-        self.reachable.set(true)
+    /// We keep track for each pattern if it was ever useful during the analysis. This is used
+    /// with `redundant_spans` to report redundant subpatterns arising from or patterns.
+    pub(super) fn set_useful(&self) {
+        self.useful.set(true)
     }
-    pub(super) fn is_reachable(&self) -> bool {
-        if self.reachable.get() {
+    pub(super) fn is_useful(&self) -> bool {
+        if self.useful.get() {
             true
-        } else if self.is_or_pat() && self.iter_fields().any(|f| f.is_reachable()) {
+        } else if self.is_or_pat() && self.iter_fields().any(|f| f.is_useful()) {
             // We always expand or patterns in the matrix, so we will never see the actual
             // or-pattern (the one with constructor `Or`) in the column. As such, it will not be
-            // marked as reachable itself, only its children will. We recover this information here.
-            self.set_reachable();
+            // marked as useful itself, only its children will. We recover this information here.
+            self.set_useful();
             true
         } else {
             false
         }
     }
 
-    /// Report the spans of subpatterns that were not reachable, if any.
-    pub(super) fn unreachable_spans(&self) -> Vec<Span> {
+    /// Report the spans of subpatterns that were not useful, if any.
+    pub(super) fn redundant_spans(&self) -> Vec<Span> {
         let mut spans = Vec::new();
-        self.collect_unreachable_spans(&mut spans);
+        self.collect_redundant_spans(&mut spans);
         spans
     }
-    fn collect_unreachable_spans(&self, spans: &mut Vec<Span>) {
-        // We don't look at subpatterns if we already reported the whole pattern as unreachable.
-        if !self.is_reachable() {
+    fn collect_redundant_spans(&self, spans: &mut Vec<Span>) {
+        // We don't look at subpatterns if we already reported the whole pattern as redundant.
+        if !self.is_useful() {
             spans.push(self.span);
         } else {
             for p in self.iter_fields() {
-                p.collect_unreachable_spans(spans);
+                p.collect_redundant_spans(spans);
             }
         }
     }

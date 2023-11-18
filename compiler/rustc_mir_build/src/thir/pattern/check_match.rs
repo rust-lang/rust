@@ -1,6 +1,6 @@
 use super::deconstruct_pat::{Constructor, DeconstructedPat, WitnessPat};
 use super::usefulness::{
-    compute_match_usefulness, MatchArm, MatchCheckCtxt, Reachability, UsefulnessReport,
+    compute_match_usefulness, MatchArm, MatchCheckCtxt, Usefulness, UsefulnessReport,
 };
 
 use crate::errors::*;
@@ -749,18 +749,18 @@ fn report_arm_reachability<'p, 'tcx>(
         );
     };
 
-    use Reachability::*;
+    use Usefulness::*;
     let mut catchall = None;
     for (arm, is_useful) in report.arm_usefulness.iter() {
         match is_useful {
-            Unreachable => report_unreachable_pattern(arm.pat.span(), arm.hir_id, catchall),
-            Reachable(unreachables) if unreachables.is_empty() => {}
-            // The arm is reachable, but contains unreachable subpatterns (from or-patterns).
-            Reachable(unreachables) => {
-                let mut unreachables = unreachables.clone();
+            Redundant => report_unreachable_pattern(arm.pat.span(), arm.hir_id, catchall),
+            Useful(redundant_spans) if redundant_spans.is_empty() => {}
+            // The arm is reachable, but contains redundant subpatterns (from or-patterns).
+            Useful(redundant_spans) => {
+                let mut redundant_spans = redundant_spans.clone();
                 // Emit lints in the order in which they occur in the file.
-                unreachables.sort_unstable();
-                for span in unreachables {
+                redundant_spans.sort_unstable();
+                for span in redundant_spans {
                     report_unreachable_pattern(span, arm.hir_id, None);
                 }
             }
