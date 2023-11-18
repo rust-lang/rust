@@ -84,7 +84,7 @@ extern "Rust" {
     ///
     /// The format of what this emits is unstable and may change at any time. In particular, users should be
     /// aware that Miri will periodically attempt to garbage collect the contents of all stacks. Callers of
-    /// this function may wish to pass `-Zmiri-tag-gc=0` to disable the GC.
+    /// this function may wish to pass `-Zmiri-provenance-gc=0` to disable the GC.
     ///
     /// This function is extremely unstable. At any time the format of its output may change, its signature may
     /// change, or it may be removed entirely.
