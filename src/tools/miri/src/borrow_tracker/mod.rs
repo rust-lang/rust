@@ -75,8 +75,8 @@ pub struct FrameState {
     protected_tags: SmallVec<[(AllocId, BorTag); 2]>,
 }
 
-impl VisitTags for FrameState {
-    fn visit_tags(&self, _visit: &mut dyn FnMut(BorTag)) {
+impl VisitProvenance for FrameState {
+    fn visit_provenance(&self, _visit: &mut VisitWith<'_>) {
         // `protected_tags` are already recorded by `GlobalStateInner`.
     }
 }
@@ -110,10 +110,10 @@ pub struct GlobalStateInner {
     unique_is_unique: bool,
 }
 
-impl VisitTags for GlobalStateInner {
-    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
+impl VisitProvenance for GlobalStateInner {
+    fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
         for &tag in self.protected_tags.keys() {
-            visit(tag);
+            visit(None, Some(tag));
         }
         // The only other candidate is base_ptr_tags, and that does not need visiting since we don't ever
         // GC the bottommost/root tag.
@@ -235,6 +235,10 @@ impl GlobalStateInner {
             self.base_ptr_tags.try_insert(id, tag).unwrap();
             tag
         })
+    }
+
+    pub fn remove_unreachable_allocs(&mut self, allocs: &LiveAllocs<'_, '_, '_>) {
+        self.base_ptr_tags.retain(|id, _| allocs.is_live(*id));
     }
 }
 
@@ -503,11 +507,11 @@ impl AllocState {
     }
 }
 
-impl VisitTags for AllocState {
-    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
+impl VisitProvenance for AllocState {
+    fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
         match self {
-            AllocState::StackedBorrows(sb) => sb.visit_tags(visit),
-            AllocState::TreeBorrows(tb) => tb.visit_tags(visit),
+            AllocState::StackedBorrows(sb) => sb.visit_provenance(visit),
+            AllocState::TreeBorrows(tb) => tb.visit_provenance(visit),
         }
     }
 }

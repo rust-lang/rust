@@ -181,10 +181,10 @@ pub(crate) struct SynchronizationState<'mir, 'tcx> {
     pub(super) init_onces: IndexVec<InitOnceId, InitOnce<'mir, 'tcx>>,
 }
 
-impl<'mir, 'tcx> VisitTags for SynchronizationState<'mir, 'tcx> {
-    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
+impl<'mir, 'tcx> VisitProvenance for SynchronizationState<'mir, 'tcx> {
+    fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
         for init_once in self.init_onces.iter() {
-            init_once.visit_tags(visit);
+            init_once.visit_provenance(visit);
         }
     }
 }
