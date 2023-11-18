@@ -92,7 +92,6 @@ jobs:
           msystem: MINGW64
           update: true
           path-type: inherit
-          install: "git mingw-w64-x86_64-toolchain\n"
       - name: checkout the source code
         uses: actions/checkout@v4
         with:
@@ -492,7 +491,6 @@ jobs:
           msystem: MINGW64
           update: true
           path-type: inherit
-          install: "git mingw-w64-x86_64-toolchain\n"
       - name: checkout the source code
         uses: actions/checkout@v4
         with:
@@ -626,7 +624,6 @@ jobs:
           msystem: MINGW64
           update: true
           path-type: inherit
-          install: "git mingw-w64-x86_64-toolchain\n"
       - name: checkout the source code
         uses: actions/checkout@v4
         with:
