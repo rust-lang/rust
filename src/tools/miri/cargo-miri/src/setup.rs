@@ -2,6 +2,7 @@
 
 use std::env;
 use std::ffi::OsStr;
+use std::fmt::Write;
 use std::path::PathBuf;
 use std::process::{self, Command};
 
@@ -140,12 +141,20 @@ pub fn setup(
     // Do the build.
     if print_sysroot {
         // Be silent.
-    } else if only_setup {
-        // We want to be explicit.
-        eprintln!("Preparing a sysroot for Miri (target: {target})...");
     } else {
-        // We want to be quiet, but still let the user know that something is happening.
-        eprint!("Preparing a sysroot for Miri (target: {target})... ");
+        let mut msg = String::new();
+        write!(msg, "Preparing a sysroot for Miri (target: {target})").unwrap();
+        if verbose > 0 {
+            write!(msg, " in {}", sysroot_dir.display()).unwrap();
+        }
+        write!(msg, "...").unwrap();
+        if only_setup {
+            // We want to be explicit.
+            eprintln!("{msg}");
+        } else {
+            // We want to be quiet, but still let the user know that something is happening.
+            eprint!("{msg} ");
+        }
     }
     SysrootBuilder::new(&sysroot_dir, target)
         .build_mode(BuildMode::Check)
