@@ -851,7 +851,7 @@ pub unsafe fn _mm256_cvtepi32_pd(a: __m128i) -> __m256d {
 #[cfg_attr(test, assert_instr(vcvtdq2ps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_cvtepi32_ps(a: __m256i) -> __m256 {
-    vcvtdq2ps(a.as_i32x8())
+    simd_cast(a.as_i32x8())
 }
 
 /// Converts packed double-precision (64-bit) floating-point elements in `a`
@@ -863,7 +863,7 @@ pub unsafe fn _mm256_cvtepi32_ps(a: __m256i) -> __m256 {
 #[cfg_attr(test, assert_instr(vcvtpd2ps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_cvtpd_ps(a: __m256d) -> __m128 {
-    vcvtpd2ps(a)
+    simd_cast(a)
 }
 
 /// Converts packed single-precision (32-bit) floating-point elements in `a`
@@ -1237,7 +1237,7 @@ pub unsafe fn _mm256_broadcast_sd(f: &f64) -> __m256d {
 #[cfg_attr(test, assert_instr(vbroadcastf128))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_broadcast_ps(a: &__m128) -> __m256 {
-    vbroadcastf128ps256(a)
+    simd_shuffle!(*a, _mm_setzero_ps(), [0, 1, 2, 3, 0, 1, 2, 3])
 }
 
 /// Broadcasts 128 bits from memory (composed of 2 packed double-precision
@@ -1249,7 +1249,7 @@ pub unsafe fn _mm256_broadcast_ps(a: &__m128) -> __m256 {
 #[cfg_attr(test, assert_instr(vbroadcastf128))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_broadcast_pd(a: &__m128d) -> __m256d {
-    vbroadcastf128pd256(a)
+    simd_shuffle!(*a, _mm_setzero_pd(), [0, 1, 0, 1])
 }
 
 /// Copies `a` to result, then inserts 128 bits (composed of 4 packed
@@ -2948,10 +2948,6 @@ extern "C" {
     fn vcmpsd(a: __m128d, b: __m128d, imm8: i8) -> __m128d;
     #[link_name = "llvm.x86.sse.cmp.ss"]
     fn vcmpss(a: __m128, b: __m128, imm8: i8) -> __m128;
-    #[link_name = "llvm.x86.avx.cvtdq2.ps.256"]
-    fn vcvtdq2ps(a: i32x8) -> __m256;
-    #[link_name = "llvm.x86.avx.cvt.pd2.ps.256"]
-    fn vcvtpd2ps(a: __m256d) -> __m128;
     #[link_name = "llvm.x86.avx.cvt.ps2dq.256"]
     fn vcvtps2dq(a: __m256) -> i32x8;
     #[link_name = "llvm.x86.avx.cvtt.pd2dq.256"]
@@ -2978,10 +2974,6 @@ extern "C" {
     fn vperm2f128pd256(a: __m256d, b: __m256d, imm8: i8) -> __m256d;
     #[link_name = "llvm.x86.avx.vperm2f128.si.256"]
     fn vperm2f128si256(a: i32x8, b: i32x8, imm8: i8) -> i32x8;
-    #[link_name = "llvm.x86.avx.vbroadcastf128.ps.256"]
-    fn vbroadcastf128ps256(a: &__m128) -> __m256;
-    #[link_name = "llvm.x86.avx.vbroadcastf128.pd.256"]
-    fn vbroadcastf128pd256(a: &__m128d) -> __m256d;
     #[link_name = "llvm.x86.avx.maskload.pd.256"]
     fn maskloadpd256(mem_addr: *const i8, mask: i64x4) -> __m256d;
     #[link_name = "llvm.x86.avx.maskstore.pd.256"]
