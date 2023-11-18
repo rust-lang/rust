@@ -15,6 +15,7 @@ use rustc_errors::{Applicability, Diagnostic, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind};
+use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{
     CoroutineKind, CoroutineSource, Expr, ExprKind, GenericBound, HirId, Node, Path, QPath, Stmt,
@@ -1731,14 +1732,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    /// Returns `true` if the given `field` can be suggested in diagnostics.
+    ///
+    /// The `span` represents the precise expected usage site, normalized to
+    /// macros 2.0 and adjusted to the expansion that defined the scope.
     pub(crate) fn is_field_suggestable(
         &self,
         field: &ty::FieldDef,
-        hir_id: HirId,
+        def_scope: DefId,
         span: Span,
     ) -> bool {
-        // The field must be visible in the containing module.
-        field.vis.is_accessible_from(self.tcx.parent_module(hir_id), self.tcx)
+        // The field must be visible in the containing scope.
+        field.vis.is_accessible_from(def_scope, self.tcx)
             // The field must not be unstable.
             && !matches!(
                 self.tcx.eval_stability(field.did, None, rustc_span::DUMMY_SP, None),

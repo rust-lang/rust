@@ -1,0 +1,23 @@
+error[E0432]: unresolved import `module::Strukt`
+  --> $DIR/unresolved-imports-dont-suggest-hygienic-names.rs:13:5
+   |
+LL | use module::Strukt;
+   |     ^^^^^^^^^^^^^^ no `Strukt` in `module`
+
+error[E0432]: unresolved import `crate::Typ`
+  --> $DIR/unresolved-imports-dont-suggest-hygienic-names.rs:22:9
+   |
+LL | environment!();
+   | -------------- in this macro invocation
+...
+LL |     use crate::Typ;
+   |         ^^^^^^^---
+   |         |      |
+   |         |      help: a similar name exists in the module: `Type`
+   |         no `Typ` in the root
+   |
+   = note: this error originates in the macro `environment` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0432`.
