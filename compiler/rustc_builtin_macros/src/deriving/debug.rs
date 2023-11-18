@@ -3,6 +3,8 @@ use crate::deriving::generic::*;
 use crate::deriving::path_std;
 
 use ast::EnumDef;
+use rustc_ast::ItemKind;
+use rustc_ast::VariantData;
 use rustc_ast::{self as ast, MetaItem};
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::{sym, Ident, Symbol};
@@ -20,6 +22,23 @@ pub fn expand_deriving_debug(
     // &mut ::std::fmt::Formatter
     let fmtr = Ref(Box::new(Path(path_std!(fmt::Formatter))), ast::Mutability::Mut);
 
+    // We default to applying #[inline]
+    let mut attributes = thin_vec![cx.attr_word(sym::inline, span)];
+    if let Annotatable::Item(item) = item {
+        match &item.kind {
+            ItemKind::Struct(VariantData::Struct(fields, _) | VariantData::Tuple(fields, _), _) => {
+                // Except that we drop it for structs with more than 5 fields, because with less
+                // than 5 fields we implement Debug with a single function call, which makes
+                // Debug::fmt a trivial wrapper that always should be optimized away. But with more
+                // than 5 fields, Debug::fmt has a complicated body.
+                if fields.len() > 5 {
+                    attributes = ThinVec::new();
+                }
+            }
+            _ => {}
+        }
+    }
+
     let trait_def = TraitDef {
         span,
         path: path_std!(fmt::Debug),
@@ -33,7 +52,7 @@ pub fn expand_deriving_debug(
             explicit_self: true,
             nonself_args: vec![(fmtr, sym::f)],
             ret_ty: Path(path_std!(fmt::Result)),
-            attributes: thin_vec![cx.attr_word(sym::inline, span)],
+            attributes,
             fieldless_variants_strategy:
                 FieldlessVariantsStrategy::SpecializeIfAllVariantsFieldless,
             combine_substructure: combine_substructure(Box::new(|a, b, c| {
