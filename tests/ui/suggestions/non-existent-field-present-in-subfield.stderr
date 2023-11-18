@@ -4,7 +4,6 @@ error[E0609]: no field `c` on type `Foo`
 LL |     let _test = &fooer.c;
    |                        ^ unknown field
    |
-   = note: available fields are: `first`, `_second`, `_third`
 help: one of the expressions' fields has a field of the same name
    |
 LL |     let _test = &fooer.first.bar.c;
@@ -16,7 +15,6 @@ error[E0609]: no field `test` on type `Foo`
 LL |     let _test2 = fooer.test;
    |                        ^^^^ unknown field
    |
-   = note: available fields are: `first`, `_second`, `_third`
 help: one of the expressions' fields has a field of the same name
    |
 LL |     let _test2 = fooer.first.bar.c.test;

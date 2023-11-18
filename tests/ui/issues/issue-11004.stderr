@@ -3,7 +3,8 @@ error[E0609]: no field `x` on type `*mut A`
    |
 LL |     let x : i32 = n.x;
    |                   --^
-   |                   |
+   |                   | |
+   |                   | unknown field
    |                   help: `n` is a raw pointer; try dereferencing it: `(*n).x`
 
 error[E0609]: no field `y` on type `*mut A`
@@ -11,7 +12,8 @@ error[E0609]: no field `y` on type `*mut A`
    |
 LL |     let y : f64 = n.y;
    |                   --^
-   |                   |
+   |                   | |
+   |                   | unknown field
    |                   help: `n` is a raw pointer; try dereferencing it: `(*n).y`
 
 error: aborting due to 2 previous errors

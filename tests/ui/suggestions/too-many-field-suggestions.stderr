@@ -25,7 +25,6 @@ error[E0609]: no field `field` on type `Thing`
 LL |     t.field;
    |       ^^^^^ unknown field
    |
-   = note: available fields are: `a0`, `a1`, `a2`, `a3`, `a4` ... and 5 others
 help: some of the expressions' fields have a field of the same name
    |
 LL |     t.a0.field;
