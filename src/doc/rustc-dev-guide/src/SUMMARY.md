@@ -130,6 +130,7 @@
         - [Coinduction](./solve/coinduction.md)
         - [Proof trees](./solve/proof-trees.md)
         - [Normalization](./solve/normalization.md)
+    - [`Unsize` and `CoerceUnsized` traits](./traits/unsize.md)
 - [Type checking](./type-checking.md)
     - [Method Lookup](./method-lookup.md)
     - [Variance](./variance.md)
