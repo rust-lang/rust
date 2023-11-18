@@ -39,15 +39,9 @@ impl<'tcx> MirPass<'tcx> for InstrumentCoverage {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, mir_body: &mut mir::Body<'tcx>) {
         let mir_source = mir_body.source;
 
-        // If the InstrumentCoverage pass is called on promoted MIRs, skip them.
-        // See: https://github.com/rust-lang/rust/pull/73011#discussion_r438317601
-        if mir_source.promoted.is_some() {
-            trace!(
-                "InstrumentCoverage skipped for {:?} (already promoted for Miri evaluation)",
-                mir_source.def_id()
-            );
-            return;
-        }
+        // This pass runs after MIR promotion, but before promoted MIR starts to
+        // be transformed, so it should never see promoted MIR.
+        assert!(mir_source.promoted.is_none());
 
         let is_fn_like =
             tcx.hir_node_by_def_id(mir_source.def_id().expect_local()).fn_kind().is_some();
