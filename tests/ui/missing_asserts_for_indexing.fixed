@@ -118,4 +118,19 @@ fn index_different_slice_in_same_expr(v1: &[u8], v2: &[u8]) {
     let _ = v1[0] + v2[1];
 }
 
+fn issue11835(v1: &[u8], v2: &[u8], v3: &[u8], v4: &[u8]) {
+    assert!(v1.len() == 3);
+    assert!(v2.len() == 4);
+    assert!(v3.len() == 3);
+    assert!(4 == v4.len());
+
+    let _ = v1[0] + v1[1] + v1[2];
+    //~^ ERROR: indexing into a slice multiple times with an `assert` that does not cover the
+    let _ = v2[0] + v2[1] + v2[2];
+
+    let _ = v3[0] + v3[1] + v3[2];
+    //~^ ERROR: indexing into a slice multiple times with an `assert` that does not cover the
+    let _ = v4[0] + v4[1] + v4[2];
+}
+
 fn main() {}

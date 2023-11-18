@@ -52,7 +52,7 @@ declare_clippy_lint! {
     /// Use instead:
     /// ```no_run
     /// fn sum(v: &[u8]) -> u8 {
-    ///     assert!(v.len() > 4);
+    ///     assert!(v.len() > 3);
     ///     // no bounds checks
     ///     v[0] + v[1] + v[2] + v[3]
     /// }
@@ -87,6 +87,9 @@ enum LengthComparison {
     LengthLessThanOrEqualInt,
     /// `5 <= v.len()`
     IntLessThanOrEqualLength,
+    /// `5 == v.len()`
+    /// `v.len() == 5`
+    LengthEqualInt,
 }
 
 /// Extracts parts out of a length comparison expression.
@@ -114,6 +117,8 @@ fn len_comparison<'hir>(
         (Rel::Lt, _, int_lit_pat!(right)) => Some((LengthComparison::LengthLessThanInt, *right as usize, left)),
         (Rel::Le, int_lit_pat!(left), _) => Some((LengthComparison::IntLessThanOrEqualLength, *left as usize, right)),
         (Rel::Le, _, int_lit_pat!(right)) => Some((LengthComparison::LengthLessThanOrEqualInt, *right as usize, left)),
+        (Rel::Eq, int_lit_pat!(left), _) => Some((LengthComparison::LengthEqualInt, *left as usize, right)),
+        (Rel::Eq, _, int_lit_pat!(right)) => Some((LengthComparison::LengthEqualInt, *right as usize, left)),
         _ => None,
     }
 }
@@ -316,11 +321,11 @@ fn report_indexes(cx: &LateContext<'_>, map: &UnhashMap<u64, Vec<IndexEntry<'_>>
                 continue;
             };
 
-            match entry {
+            match *entry {
                 IndexEntry::AssertWithIndex {
                     highest_index,
                     asserted_len,
-                    indexes,
+                    ref indexes,
                     comparison,
                     assert_span,
                     slice,
@@ -343,6 +348,12 @@ fn report_indexes(cx: &LateContext<'_>, map: &UnhashMap<u64, Vec<IndexEntry<'_>>
                             "assert!({}.len() > {highest_index})",
                             snippet(cx, slice.span, "..")
                         )),
+                        // `highest_index` here is rather a length, so we need to add 1 to it
+                        LengthComparison::LengthEqualInt if asserted_len < highest_index + 1 => Some(format!(
+                            "assert!({}.len() == {})",
+                            snippet(cx, slice.span, ".."),
+                            highest_index + 1
+                        )),
                         _ => None,
                     };
 
@@ -354,7 +365,7 @@ fn report_indexes(cx: &LateContext<'_>, map: &UnhashMap<u64, Vec<IndexEntry<'_>>
                             indexes,
                             |diag| {
                                 diag.span_suggestion(
-                                    *assert_span,
+                                    assert_span,
                                     "provide the highest index that is indexed with",
                                     sugg,
                                     Applicability::MachineApplicable,
@@ -364,7 +375,7 @@ fn report_indexes(cx: &LateContext<'_>, map: &UnhashMap<u64, Vec<IndexEntry<'_>>
                     }
                 },
                 IndexEntry::IndexWithoutAssert {
-                    indexes,
+                    ref indexes,
                     highest_index,
                     slice,
                 } if indexes.len() > 1 => {
