@@ -293,7 +293,7 @@ fn run_compiler(
     >,
     using_internal_features: Arc<std::sync::atomic::AtomicBool>,
 ) -> interface::Result<()> {
-    let mut early_error_handler = EarlyErrorHandler::new(ErrorOutputType::default());
+    let mut default_handler = EarlyErrorHandler::new(ErrorOutputType::default());
 
     // Throw away the first argument, the name of the binary.
     // In case of at_args being empty, as might be the case by
@@ -305,14 +305,14 @@ fn run_compiler(
     // the compiler with @empty_file as argv[0] and no more arguments.
     let at_args = at_args.get(1..).unwrap_or_default();
 
-    let args = args::arg_expand_all(&early_error_handler, at_args);
+    let args = args::arg_expand_all(&default_handler, at_args);
 
-    let Some(matches) = handle_options(&early_error_handler, &args) else { return Ok(()) };
+    let Some(matches) = handle_options(&default_handler, &args) else { return Ok(()) };
 
-    let sopts = config::build_session_options(&mut early_error_handler, &matches);
+    let sopts = config::build_session_options(&mut default_handler, &matches);
 
     if let Some(ref code) = matches.opt_str("explain") {
-        handle_explain(&early_error_handler, diagnostics_registry(), code, sopts.color);
+        handle_explain(&default_handler, diagnostics_registry(), code, sopts.color);
         return Ok(());
     }
 
@@ -338,61 +338,56 @@ fn run_compiler(
         expanded_args: args,
     };
 
-    match make_input(&early_error_handler, &matches.free) {
+    let has_input = match make_input(&default_handler, &matches.free) {
         Err(reported) => return Err(reported),
         Ok(Some(input)) => {
             config.input = input;
-
-            callbacks.config(&mut config);
+            true // has input: normal compilation
         }
         Ok(None) => match matches.free.len() {
-            0 => {
-                callbacks.config(&mut config);
-
-                early_error_handler.abort_if_errors();
-
-                interface::run_compiler(config, |compiler| {
-                    let sopts = &compiler.session().opts;
-                    let handler = EarlyErrorHandler::new(sopts.error_format);
-
-                    if sopts.describe_lints {
-                        describe_lints(compiler.session());
-                        return;
-                    }
-                    let should_stop = print_crate_info(
-                        &handler,
-                        compiler.codegen_backend(),
-                        compiler.session(),
-                        false,
-                    );
-
-                    if should_stop == Compilation::Stop {
-                        return;
-                    }
-                    handler.early_error("no input filename given")
-                });
-                return Ok(());
-            }
+            0 => false, // no input: we will exit early
             1 => panic!("make_input should have provided valid inputs"),
-            _ => early_error_handler.early_error(format!(
+            _ => default_handler.early_error(format!(
                 "multiple input filenames provided (first two filenames are `{}` and `{}`)",
                 matches.free[0], matches.free[1],
             )),
         },
     };
 
-    early_error_handler.abort_if_errors();
+    callbacks.config(&mut config);
+
+    default_handler.abort_if_errors();
+    drop(default_handler);
 
     interface::run_compiler(config, |compiler| {
         let sess = compiler.session();
         let codegen_backend = compiler.codegen_backend();
+
+        // This implements `-Whelp`. It should be handled very early, like
+        // `--help`/`-Zhelp`/`-Chelp`. This is the earliest it can run, because
+        // it must happen after lints are registered, during session creation.
+        if sess.opts.describe_lints {
+            describe_lints(sess);
+            return sess.compile_status();
+        }
+
         let handler = EarlyErrorHandler::new(sess.opts.error_format);
 
-        let should_stop = print_crate_info(&handler, codegen_backend, sess, true)
-            .and_then(|| list_metadata(&handler, sess, &*codegen_backend.metadata_loader()))
-            .and_then(|| try_process_rlink(sess, compiler));
+        if print_crate_info(&handler, codegen_backend, sess, has_input) == Compilation::Stop {
+            return sess.compile_status();
+        }
 
-        if should_stop == Compilation::Stop {
+        if !has_input {
+            handler.early_error("no input filename given"); // this is fatal
+        }
+
+        if !sess.opts.unstable_opts.ls.is_empty() {
+            list_metadata(&handler, sess, &*codegen_backend.metadata_loader());
+            return sess.compile_status();
+        }
+
+        if sess.opts.unstable_opts.link_only {
+            process_rlink(sess, compiler);
             return sess.compile_status();
         }
 
@@ -428,11 +423,6 @@ fn run_compiler(
             }
 
             if sess.opts.unstable_opts.parse_only || sess.opts.unstable_opts.show_span.is_some() {
-                return early_exit();
-            }
-
-            if sess.opts.describe_lints {
-                describe_lints(sess);
                 return early_exit();
             }
 
@@ -550,15 +540,6 @@ pub enum Compilation {
     Continue,
 }
 
-impl Compilation {
-    fn and_then<F: FnOnce() -> Compilation>(self, next: F) -> Compilation {
-        match self {
-            Compilation::Stop => Compilation::Stop,
-            Compilation::Continue => next(),
-        }
-    }
-}
-
 fn handle_explain(handler: &EarlyErrorHandler, registry: Registry, code: &str, color: ColorConfig) {
     let upper_cased_code = code.to_ascii_uppercase();
     let normalised =
@@ -663,44 +644,34 @@ fn show_md_content_with_pager(content: &str, color: ColorConfig) {
     }
 }
 
-fn try_process_rlink(sess: &Session, compiler: &interface::Compiler) -> Compilation {
-    if sess.opts.unstable_opts.link_only {
-        if let Input::File(file) = &sess.io.input {
-            let outputs = compiler.build_output_filenames(sess, &[]);
-            let rlink_data = fs::read(file).unwrap_or_else(|err| {
-                sess.emit_fatal(RlinkUnableToRead { err });
-            });
-            let codegen_results = match CodegenResults::deserialize_rlink(sess, rlink_data) {
-                Ok(codegen) => codegen,
-                Err(err) => {
-                    match err {
-                        CodegenErrors::WrongFileType => sess.emit_fatal(RLinkWrongFileType),
-                        CodegenErrors::EmptyVersionNumber => {
-                            sess.emit_fatal(RLinkEmptyVersionNumber)
-                        }
-                        CodegenErrors::EncodingVersionMismatch { version_array, rlink_version } => {
-                            sess.emit_fatal(RLinkEncodingVersionMismatch {
-                                version_array,
-                                rlink_version,
-                            })
-                        }
-                        CodegenErrors::RustcVersionMismatch { rustc_version } => {
-                            sess.emit_fatal(RLinkRustcVersionMismatch {
-                                rustc_version,
-                                current_version: sess.cfg_version,
-                            })
-                        }
-                    };
-                }
-            };
-            let result = compiler.codegen_backend().link(sess, codegen_results, &outputs);
-            abort_on_err(result, sess);
-        } else {
-            sess.emit_fatal(RlinkNotAFile {})
-        }
-        Compilation::Stop
+fn process_rlink(sess: &Session, compiler: &interface::Compiler) {
+    assert!(sess.opts.unstable_opts.link_only);
+    if let Input::File(file) = &sess.io.input {
+        let outputs = compiler.build_output_filenames(sess, &[]);
+        let rlink_data = fs::read(file).unwrap_or_else(|err| {
+            sess.emit_fatal(RlinkUnableToRead { err });
+        });
+        let codegen_results = match CodegenResults::deserialize_rlink(sess, rlink_data) {
+            Ok(codegen) => codegen,
+            Err(err) => {
+                match err {
+                    CodegenErrors::WrongFileType => sess.emit_fatal(RLinkWrongFileType),
+                    CodegenErrors::EmptyVersionNumber => sess.emit_fatal(RLinkEmptyVersionNumber),
+                    CodegenErrors::EncodingVersionMismatch { version_array, rlink_version } => sess
+                        .emit_fatal(RLinkEncodingVersionMismatch { version_array, rlink_version }),
+                    CodegenErrors::RustcVersionMismatch { rustc_version } => {
+                        sess.emit_fatal(RLinkRustcVersionMismatch {
+                            rustc_version,
+                            current_version: sess.cfg_version,
+                        })
+                    }
+                };
+            }
+        };
+        let result = compiler.codegen_backend().link(sess, codegen_results, &outputs);
+        abort_on_err(result, sess);
     } else {
-        Compilation::Continue
+        sess.emit_fatal(RlinkNotAFile {})
     }
 }
 
@@ -708,25 +679,25 @@ fn list_metadata(
     handler: &EarlyErrorHandler,
     sess: &Session,
     metadata_loader: &dyn MetadataLoader,
-) -> Compilation {
-    let ls_kinds = &sess.opts.unstable_opts.ls;
-    if !ls_kinds.is_empty() {
-        match sess.io.input {
-            Input::File(ref ifile) => {
-                let path = &(*ifile);
-                let mut v = Vec::new();
-                locator::list_file_metadata(&sess.target, path, metadata_loader, &mut v, ls_kinds)
-                    .unwrap();
-                safe_println!("{}", String::from_utf8(v).unwrap());
-            }
-            Input::Str { .. } => {
-                handler.early_error("cannot list metadata for stdin");
-            }
+) {
+    match sess.io.input {
+        Input::File(ref ifile) => {
+            let path = &(*ifile);
+            let mut v = Vec::new();
+            locator::list_file_metadata(
+                &sess.target,
+                path,
+                metadata_loader,
+                &mut v,
+                &sess.opts.unstable_opts.ls,
+            )
+            .unwrap();
+            safe_println!("{}", String::from_utf8(v).unwrap());
         }
-        return Compilation::Stop;
+        Input::Str { .. } => {
+            handler.early_error("cannot list metadata for stdin");
+        }
     }
-
-    Compilation::Continue
 }
 
 fn print_crate_info(
