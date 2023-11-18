@@ -80,7 +80,8 @@ jobs:
         ./y.sh prepare --only-libcore
         # TODO: remove --features master when it is back to the default.
         EMBED_LTO_BITCODE=1 ./y.sh build --release --release-sysroot --features master
-        cargo test
+        # TODO: remove --features master when it is back to the default.
+        cargo test --features master
         ./clean_all.sh
 
     - name: Prepare dependencies

@@ -101,7 +101,8 @@ jobs:
         ./y.sh prepare --only-libcore
         # TODO: remove --features master when it is back to the default.
         ./y.sh build --features master
-        cargo test
+        # TODO: remove --features master when it is back to the default.
+        cargo test --features master
         ./clean_all.sh
 
     - name: Prepare dependencies

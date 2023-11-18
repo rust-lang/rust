@@ -116,7 +116,8 @@ jobs:
         ./y.sh prepare --only-libcore --cross
         # TODO: remove --features master when it is back to the default.
         ./y.sh build --target-triple m68k-unknown-linux-gnu --features master
-        CG_GCC_TEST_TARGET=m68k-unknown-linux-gnu cargo test
+        # TODO: remove --features master when it is back to the default.
+        CG_GCC_TEST_TARGET=m68k-unknown-linux-gnu cargo test --features master
         ./clean_all.sh
 
     - name: Prepare dependencies
