@@ -72,13 +72,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let result = this.lseek64(fd, offset, whence)?;
                 this.write_scalar(result, dest)?;
             }
-            "ftruncate" => {
-                let [fd, length] =
-                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                // macOS is 64bit-only, so this is ftruncate64
-                let result = this.ftruncate64(fd, length)?;
-                this.write_scalar(result, dest)?;
-            }
             "realpath$DARWIN_EXTSN" => {
                 let [path, resolved_path] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
