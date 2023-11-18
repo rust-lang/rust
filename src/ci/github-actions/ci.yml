@@ -125,7 +125,8 @@ x--expand-yaml-anchors--remove:
           update: true
           path-type: inherit
           install: >
-            git mingw-w64-x86_64-toolchain mingw-w64-x86_64-cmake
+            git mingw-w64-x86_64-toolchain
+          #mingw-w64-x86_64-cmake
           #mingw-w64-x86_64-python
           #mingw-w64-x86_64-7zip dos2unix make
           #mingw-w64-x86_64-sccache
