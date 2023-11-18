@@ -10,11 +10,11 @@ use rustc_span::sym;
 declare_clippy_lint! {
     /// ### What it does
     /// Suggests removing the use of a `map()` (or `map_err()`) method when an `Option` or `Result`
-    ///  is being constructed.
+    /// is being constructed.
     ///
     /// ### Why is this bad?
-    /// It introduces unnecessary complexity. In this case the function can be used directly and
-    /// construct the `Option` or `Result` from the output.
+    /// It introduces unnecessary complexity. Instead, the function can be called before
+    /// constructing the `Option` or `Result` from its return value.
     ///
     /// ### Example
     /// ```no_run
