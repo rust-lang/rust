@@ -154,13 +154,6 @@ pub(crate) fn render_field(
         // dot access, then comes the field name and optionally insert function
         // call parens.
 
-        if let Some(receiver) = &dot_access.receiver {
-            if let Some(receiver) = ctx.completion.sema.original_ast_node(receiver.clone()) {
-                let range = receiver.syntax().text_range();
-                builder.insert(range.start(), "(".to_string());
-                builder.insert(range.end(), ")".to_string());
-            }
-        }
         builder.replace(
             ctx.source_range(),
             field_with_receiver(db, receiver.as_ref(), &escaped_name).into(),
@@ -169,11 +162,21 @@ pub(crate) fn render_field(
         let expected_fn_type =
             ctx.completion.expected_type.as_ref().is_some_and(|ty| ty.is_fn() || ty.is_closure());
 
-        let is_parens_needed =
-            !matches!(dot_access.kind, DotAccessKind::Method { has_parens: true });
+        if !expected_fn_type {
+            if let Some(receiver) = &dot_access.receiver {
+                if let Some(receiver) = ctx.completion.sema.original_ast_node(receiver.clone()) {
+                    let range = receiver.syntax().text_range();
+                    builder.insert(range.start(), "(".to_string());
+                    builder.insert(range.end(), ")".to_string());
+                }
+            }
 
-        if !expected_fn_type && is_parens_needed {
-            builder.insert(ctx.source_range().end(), "()".to_string());
+            let is_parens_needed =
+                !matches!(dot_access.kind, DotAccessKind::Method { has_parens: true });
+
+            if is_parens_needed {
+                builder.insert(ctx.source_range().end(), "()".to_string());
+            }
         }
 
         item.text_edit(builder.finish());
@@ -1706,22 +1709,8 @@ fn foo() {
                     CompletionItem {
                         label: "field",
                         source_range: 76..78,
-                        text_edit: TextEdit {
-                            indels: [
-                                Indel {
-                                    insert: "(",
-                                    delete: 57..57,
-                                },
-                                Indel {
-                                    insert: ")",
-                                    delete: 75..75,
-                                },
-                                Indel {
-                                    insert: "field",
-                                    delete: 76..78,
-                                },
-                            ],
-                        },
+                        delete: 76..78,
+                        insert: "field",
                         kind: SymbolKind(
                             Field,
                         ),
