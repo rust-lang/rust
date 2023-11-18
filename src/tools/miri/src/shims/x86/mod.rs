@@ -119,53 +119,32 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
     }
 }
 
-/// Floating point comparison operation
-///
-/// <https://www.felixcloutier.com/x86/cmpss>
-/// <https://www.felixcloutier.com/x86/cmpps>
-/// <https://www.felixcloutier.com/x86/cmpsd>
-/// <https://www.felixcloutier.com/x86/cmppd>
-#[derive(Copy, Clone)]
-enum FloatCmpOp {
-    Eq,
-    Lt,
-    Le,
-    Unord,
-    Neq,
-    /// Not less-than
-    Nlt,
-    /// Not less-or-equal
-    Nle,
-    /// Ordered, i.e. neither of them is NaN
-    Ord,
-}
-
-impl FloatCmpOp {
-    /// Convert from the `imm` argument used to specify the comparison
-    /// operation in intrinsics such as `llvm.x86.sse.cmp.ss`.
-    fn from_intrinsic_imm(imm: i8, intrinsic: &str) -> InterpResult<'_, Self> {
-        match imm {
-            0 => Ok(Self::Eq),
-            1 => Ok(Self::Lt),
-            2 => Ok(Self::Le),
-            3 => Ok(Self::Unord),
-            4 => Ok(Self::Neq),
-            5 => Ok(Self::Nlt),
-            6 => Ok(Self::Nle),
-            7 => Ok(Self::Ord),
-            imm => {
-                throw_unsup_format!("invalid `imm` parameter of {intrinsic}: {imm}");
-            }
-        }
-    }
-}
-
 #[derive(Copy, Clone)]
 enum FloatBinOp {
     /// Arithmetic operation
     Arith(mir::BinOp),
     /// Comparison
-    Cmp(FloatCmpOp),
+    ///
+    /// The semantics of this operator is a case distinction: we compare the two operands,
+    /// and then we return one of the four booleans `gt`, `lt`, `eq`, `unord` depending on
+    /// which class they fall into.
+    ///
+    /// AVX supports all 16 combinations, SSE only a subset
+    ///
+    /// <https://www.felixcloutier.com/x86/cmpss>
+    /// <https://www.felixcloutier.com/x86/cmpps>
+    /// <https://www.felixcloutier.com/x86/cmpsd>
+    /// <https://www.felixcloutier.com/x86/cmppd>
+    Cmp {
+        /// Result when lhs < rhs
+        gt: bool,
+        /// Result when lhs > rhs
+        lt: bool,
+        /// Result when lhs == rhs
+        eq: bool,
+        /// Result when lhs is NaN or rhs is NaN
+        unord: bool,
+    },
     /// Minimum value (with SSE semantics)
     ///
     /// <https://www.felixcloutier.com/x86/minss>
@@ -182,6 +161,44 @@ enum FloatBinOp {
     Max,
 }
 
+impl FloatBinOp {
+    /// Convert from the `imm` argument used to specify the comparison
+    /// operation in intrinsics such as `llvm.x86.sse.cmp.ss`.
+    fn cmp_from_imm(imm: i8, intrinsic: &str) -> InterpResult<'_, Self> {
+        // Only bits 0..=4 are used, remaining should be zero.
+        if imm & !0b1_1111 != 0 {
+            throw_unsup_format!("invalid `imm` parameter of {intrinsic}: 0x{imm:x}");
+        }
+        // Bit 4 specifies whether the operation is quiet or signaling, which
+        // we do not care in Miri.
+        // Bits 0..=2 specifies the operation.
+        // `gt` indicates the result to be returned when the LHS is strictly
+        // greater than the RHS, and so on.
+        let (gt, lt, eq, unord) = match imm & 0b111 {
+            // Equal
+            0x0 => (false, false, true, false),
+            // Less-than
+            0x1 => (false, true, false, false),
+            // Less-or-equal
+            0x2 => (false, true, true, false),
+            // Unordered (either is NaN)
+            0x3 => (false, false, false, true),
+            // Not equal
+            0x4 => (true, true, false, true),
+            // Not less-than
+            0x5 => (true, false, true, true),
+            // Not less-or-equal
+            0x6 => (true, false, false, true),
+            // Ordered (neither is NaN)
+            0x7 => (true, true, true, false),
+            _ => unreachable!(),
+        };
+        // When bit 3 is 1 (only possible in AVX), unord is toggled.
+        let unord = unord ^ (imm & 0b1000 != 0);
+        Ok(Self::Cmp { gt, lt, eq, unord })
+    }
+}
+
 /// Performs `which` scalar operation on `left` and `right` and returns
 /// the result.
 fn bin_op_float<'tcx, F: rustc_apfloat::Float>(
@@ -195,20 +212,15 @@ fn bin_op_float<'tcx, F: rustc_apfloat::Float>(
             let res = this.wrapping_binary_op(which, left, right)?;
             Ok(res.to_scalar())
         }
-        FloatBinOp::Cmp(which) => {
+        FloatBinOp::Cmp { gt, lt, eq, unord } => {
             let left = left.to_scalar().to_float::<F>()?;
             let right = right.to_scalar().to_float::<F>()?;
-            // FIXME: Make sure that these operations match the semantics
-            // of cmpps/cmpss/cmppd/cmpsd
-            let res = match which {
-                FloatCmpOp::Eq => left == right,
-                FloatCmpOp::Lt => left < right,
-                FloatCmpOp::Le => left <= right,
-                FloatCmpOp::Unord => left.is_nan() || right.is_nan(),
-                FloatCmpOp::Neq => left != right,
-                FloatCmpOp::Nlt => !(left < right),
-                FloatCmpOp::Nle => !(left <= right),
-                FloatCmpOp::Ord => !left.is_nan() && !right.is_nan(),
+
+            let res = match left.partial_cmp(&right) {
+                None => unord,
+                Some(std::cmp::Ordering::Less) => lt,
+                Some(std::cmp::Ordering::Equal) => eq,
+                Some(std::cmp::Ordering::Greater) => gt,
             };
             Ok(bool_to_simd_element(res, Size::from_bits(F::BITS)))
         }
