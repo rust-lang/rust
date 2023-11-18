@@ -354,7 +354,7 @@ jobs:
               # We are intentionally allowing an old toolchain on this builder (and that's
               # incompatible with LLVM downloads today).
               NO_DOWNLOAD_CI_LLVM: 1
-              CUSTOM_MINGW: 0
+              CUSTOM_MINGW: 1
             <<: *job-windows-8c
 
           - name: x86_64-mingw
@@ -366,7 +366,7 @@ jobs:
               # We are intentionally allowing an old toolchain on this builder (and that's
               # incompatible with LLVM downloads today).
               NO_DOWNLOAD_CI_LLVM: 1
-              CUSTOM_MINGW: 0
+              CUSTOM_MINGW: 1
             <<: *job-windows-8c
           
           - name: dist-i686-mingw
@@ -379,7 +379,7 @@ jobs:
               # incompatible with LLVM downloads today).
               NO_DOWNLOAD_CI_LLVM: 1
               SCRIPT: python x.py dist bootstrap --include-default-paths
-              CUSTOM_MINGW: 0
+              CUSTOM_MINGW: 1
               DIST_REQUIRE_ALL_TOOLS: 1
             <<: *job-windows-8c
 
@@ -393,7 +393,7 @@ jobs:
               # We are intentionally allowing an old toolchain on this builder (and that's
               # incompatible with LLVM downloads today).
               NO_DOWNLOAD_CI_LLVM: 1
-              CUSTOM_MINGW: 0
+              CUSTOM_MINGW: 1
               DIST_REQUIRE_ALL_TOOLS: 1
             <<: *job-windows-8c
 
