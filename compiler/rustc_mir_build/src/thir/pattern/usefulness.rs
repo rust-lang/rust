@@ -551,6 +551,7 @@
 //! I (Nadrieril) prefer to put new tests in `ui/pattern/usefulness` unless there's a specific
 //! reason not to, for example if they crucially depend on a particular feature like `or_patterns`.
 
+use self::ValidityConstraint::*;
 use super::deconstruct_pat::{
     Constructor, ConstructorSet, DeconstructedPat, IntRange, MaybeInfiniteInt, SplitConstructorSet,
     WitnessPat,
@@ -587,11 +588,14 @@ pub(crate) struct MatchCheckCtxt<'p, 'tcx> {
     /// Lint level at the match.
     pub(crate) match_lint_level: HirId,
     /// The span of the whole match, if applicable.
-    pub(crate) match_span: Option<Span>,
+    pub(crate) whole_match_span: Option<Span>,
     /// Span of the scrutinee.
     pub(crate) scrut_span: Span,
     /// Only produce `NON_EXHAUSTIVE_OMITTED_PATTERNS` lint on refutable patterns.
     pub(crate) refutable: bool,
+    /// Whether the data at the scrutinee is known to be valid. This is false if the scrutinee comes
+    /// from a union field, a pointer deref, or a reference deref (pending opsem decisions).
+    pub(crate) known_valid_scrutinee: bool,
 }
 
 impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
@@ -620,9 +624,60 @@ pub(super) struct PatCtxt<'a, 'p, 'tcx> {
     pub(super) is_top_level: bool,
 }
 
+impl<'a, 'p, 'tcx> PatCtxt<'a, 'p, 'tcx> {
+    /// A `PatCtxt` when code other than `is_useful` needs one.
+    fn new_dummy(cx: &'a MatchCheckCtxt<'p, 'tcx>, ty: Ty<'tcx>) -> Self {
+        PatCtxt { cx, ty, is_top_level: false }
+    }
+}
+
 impl<'a, 'p, 'tcx> fmt::Debug for PatCtxt<'a, 'p, 'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("PatCtxt").field("ty", &self.ty).finish()
+    }
+}
+
+/// In the matrix, tracks whether a given place (aka column) is known to contain a valid value or
+/// not.
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub(super) enum ValidityConstraint {
+    ValidOnly,
+    MaybeInvalid,
+}
+
+impl ValidityConstraint {
+    pub(super) fn from_bool(is_valid_only: bool) -> Self {
+        if is_valid_only { ValidOnly } else { MaybeInvalid }
+    }
+
+    /// If the place has validity given by `self` and we read that the value at the place has
+    /// constructor `ctor`, this computes what we can assume about the validity of the constructor
+    /// fields.
+    ///
+    /// Pending further opsem decisions, the current behavior is: validity is preserved, except
+    /// under `&` where validity is reset to `MaybeInvalid`.
+    pub(super) fn specialize<'tcx>(
+        self,
+        pcx: &PatCtxt<'_, '_, 'tcx>,
+        ctor: &Constructor<'tcx>,
+    ) -> Self {
+        // We preserve validity except when we go under a reference.
+        if matches!(ctor, Constructor::Single) && matches!(pcx.ty.kind(), ty::Ref(..)) {
+            // Validity of `x: &T` does not imply validity of `*x: T`.
+            MaybeInvalid
+        } else {
+            self
+        }
+    }
+}
+
+impl fmt::Display for ValidityConstraint {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            ValidOnly => "✓",
+            MaybeInvalid => "?",
+        };
+        write!(f, "{s}")
     }
 }
 
@@ -770,10 +825,15 @@ impl<'p, 'tcx> fmt::Debug for MatrixRow<'p, 'tcx> {
 /// the matrix will correspond to `scrutinee.0.Some.0` and the second column to `scrutinee.1`.
 #[derive(Clone)]
 struct Matrix<'p, 'tcx> {
+    /// Vector of rows. The rows must form a rectangular 2D array. Moreover, all the patterns of
+    /// each column must have the same type. Each column corresponds to a place within the
+    /// scrutinee.
     rows: Vec<MatrixRow<'p, 'tcx>>,
     /// Stores an extra fictitious row full of wildcards. Mostly used to keep track of the type of
     /// each column. This must obey the same invariants as the real rows.
     wildcard_row: PatStack<'p, 'tcx>,
+    /// Track for each column/place whether it contains a known valid value.
+    place_validity: SmallVec<[ValidityConstraint; 2]>,
 }
 
 impl<'p, 'tcx> Matrix<'p, 'tcx> {
@@ -791,10 +851,22 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
     }
 
     /// Build a new matrix from an iterator of `MatchArm`s.
-    fn new(cx: &MatchCheckCtxt<'p, 'tcx>, arms: &[MatchArm<'p, 'tcx>], scrut_ty: Ty<'tcx>) -> Self {
+    fn new<'a>(
+        cx: &MatchCheckCtxt<'p, 'tcx>,
+        arms: &[MatchArm<'p, 'tcx>],
+        scrut_ty: Ty<'tcx>,
+        scrut_validity: ValidityConstraint,
+    ) -> Self
+    where
+        'p: 'a,
+    {
         let wild_pattern = cx.pattern_arena.alloc(DeconstructedPat::wildcard(scrut_ty, DUMMY_SP));
         let wildcard_row = PatStack::from_pattern(wild_pattern);
-        let mut matrix = Matrix { rows: Vec::with_capacity(arms.len()), wildcard_row };
+        let mut matrix = Matrix {
+            rows: Vec::with_capacity(arms.len()),
+            wildcard_row,
+            place_validity: smallvec![scrut_validity],
+        };
         for (row_id, arm) in arms.iter().enumerate() {
             let v = MatrixRow {
                 pats: PatStack::from_pattern(arm.pat),
@@ -858,7 +930,13 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         ctor: &Constructor<'tcx>,
     ) -> Matrix<'p, 'tcx> {
         let wildcard_row = self.wildcard_row.pop_head_constructor(pcx, ctor);
-        let mut matrix = Matrix { rows: Vec::new(), wildcard_row };
+        let new_validity = self.place_validity[0].specialize(pcx, ctor);
+        let new_place_validity = std::iter::repeat(new_validity)
+            .take(ctor.arity(pcx))
+            .chain(self.place_validity[1..].iter().copied())
+            .collect();
+        let mut matrix =
+            Matrix { rows: Vec::new(), wildcard_row, place_validity: new_place_validity };
         for (i, row) in self.rows().enumerate() {
             if ctor.is_covered_by(pcx, row.head().ctor()) {
                 let new_row = row.pop_head_constructor(pcx, ctor, i);
@@ -877,27 +955,38 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
 /// + true  + [Second(true)]    +
 /// + false + [_]               +
 /// + _     + [_, _, tail @ ..] +
+/// | ✓     | ?                 | // column validity
 /// ```
 impl<'p, 'tcx> fmt::Debug for Matrix<'p, 'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "\n")?;
 
-        let Matrix { rows, .. } = self;
-        let pretty_printed_matrix: Vec<Vec<String>> =
-            rows.iter().map(|row| row.iter().map(|pat| format!("{pat:?}")).collect()).collect();
+        let mut pretty_printed_matrix: Vec<Vec<String>> = self
+            .rows
+            .iter()
+            .map(|row| row.iter().map(|pat| format!("{pat:?}")).collect())
+            .collect();
+        pretty_printed_matrix
+            .push(self.place_validity.iter().map(|validity| format!("{validity}")).collect());
 
-        let column_count = rows.iter().map(|row| row.len()).next().unwrap_or(0);
-        assert!(rows.iter().all(|row| row.len() == column_count));
+        let column_count = self.column_count();
+        assert!(self.rows.iter().all(|row| row.len() == column_count));
+        assert!(self.place_validity.len() == column_count);
         let column_widths: Vec<usize> = (0..column_count)
             .map(|col| pretty_printed_matrix.iter().map(|row| row[col].len()).max().unwrap_or(0))
             .collect();
 
-        for row in pretty_printed_matrix {
-            write!(f, "+")?;
+        for (row_i, row) in pretty_printed_matrix.into_iter().enumerate() {
+            let is_validity_row = row_i == self.rows.len();
+            let sep = if is_validity_row { "|" } else { "+" };
+            write!(f, "{sep}")?;
             for (column, pat_str) in row.into_iter().enumerate() {
                 write!(f, " ")?;
                 write!(f, "{:1$}", pat_str, column_widths[column])?;
-                write!(f, " +")?;
+                write!(f, " {sep}")?;
+            }
+            if is_validity_row {
+                write!(f, " // column validity")?;
             }
             write!(f, "\n")?;
         }
@@ -1287,7 +1376,7 @@ fn collect_nonexhaustive_missing_variants<'p, 'tcx>(
     let Some(ty) = column.head_ty() else {
         return Vec::new();
     };
-    let pcx = &PatCtxt { cx, ty, is_top_level: false };
+    let pcx = &PatCtxt::new_dummy(cx, ty);
 
     let set = column.analyze_ctors(pcx);
     if set.present.is_empty() {
@@ -1336,7 +1425,7 @@ fn lint_overlapping_range_endpoints<'p, 'tcx>(
     let Some(ty) = column.head_ty() else {
         return;
     };
-    let pcx = &PatCtxt { cx, ty, is_top_level: false };
+    let pcx = &PatCtxt::new_dummy(cx, ty);
 
     let set = column.analyze_ctors(pcx);
 
@@ -1439,7 +1528,8 @@ pub(crate) fn compute_match_usefulness<'p, 'tcx>(
     arms: &[MatchArm<'p, 'tcx>],
     scrut_ty: Ty<'tcx>,
 ) -> UsefulnessReport<'p, 'tcx> {
-    let mut matrix = Matrix::new(cx, arms, scrut_ty);
+    let scrut_validity = ValidityConstraint::from_bool(cx.known_valid_scrutinee);
+    let mut matrix = Matrix::new(cx, arms, scrut_ty, scrut_validity);
     let non_exhaustiveness_witnesses = compute_exhaustiveness_and_usefulness(cx, &mut matrix, true);
 
     let non_exhaustiveness_witnesses: Vec<_> = non_exhaustiveness_witnesses.single_column();
@@ -1496,7 +1586,7 @@ pub(crate) fn compute_match_usefulness<'p, 'tcx>(
                 if !matches!(lint_level, rustc_session::lint::Level::Allow) {
                     let decorator = NonExhaustiveOmittedPatternLintOnArm {
                         lint_span: lint_level_source.span(),
-                        suggest_lint_on_match: cx.match_span.map(|span| span.shrink_to_lo()),
+                        suggest_lint_on_match: cx.whole_match_span.map(|span| span.shrink_to_lo()),
                         lint_level: lint_level.as_str(),
                         lint_name: "non_exhaustive_omitted_patterns",
                     };
