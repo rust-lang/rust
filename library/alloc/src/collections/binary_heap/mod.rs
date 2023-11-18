@@ -1003,6 +1003,33 @@ impl<T, A: Allocator> BinaryHeap<T, A> {
         self.data.get(0)
     }
 
+    /// Returns the smallest item in the binary heap, or `None` if it is empty.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use std::collections::BinaryHeap;
+    /// let mut heap = BinaryHeap::new();
+    /// assert_eq!(heap.peek_end(), None);
+    ///
+    /// heap.push(1);
+    /// heap.push(5);
+    /// heap.push(2);
+    /// assert_eq!(heap.peek_end(), Some(&1));
+    ///
+    /// ```
+    ///
+    /// # Time complexity
+    ///
+    /// Cost is *O*(1) in the worst case.
+    #[must_use]
+    #[stable(feature = "peek_end", since = "1.76.0")]
+    pub fn peek_end(&self) -> Option<&T> {
+        self.data.last()
+    }
+
     /// Returns the number of elements the binary heap can hold without reallocating.
     ///
     /// # Examples
