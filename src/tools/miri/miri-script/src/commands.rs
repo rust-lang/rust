@@ -286,7 +286,7 @@ impl Command {
                 "This will pull a copy of the rust-lang/rust history into this Miri checkout, growing it by about 1GB."
             );
             print!(
-                "To avoid that, abort now and set the `--rustc-git` flag to an existing rustc checkout. Proceed? [y/N] "
+                "To avoid that, abort now and set the `RUSTC_GIT` environment variable to an existing rustc checkout. Proceed? [y/N] "
             );
             std::io::stdout().flush()?;
             let mut answer = String::new();
