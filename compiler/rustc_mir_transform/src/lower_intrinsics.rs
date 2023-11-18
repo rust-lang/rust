@@ -4,7 +4,6 @@ use crate::MirPass;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::symbol::sym;
-use rustc_target::abi::{FieldIdx, VariantIdx};
 
 pub struct LowerIntrinsics;
 
@@ -250,37 +249,6 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                             ))),
                         });
                         terminator.kind = TerminatorKind::Goto { target };
-                    }
-                    sym::option_payload_ptr => {
-                        if let (Some(target), Some(arg)) = (*target, args[0].place()) {
-                            let ty::RawPtr(ty::TypeAndMut { ty: dest_ty, .. }) =
-                                destination.ty(local_decls, tcx).ty.kind()
-                            else {
-                                bug!();
-                            };
-
-                            block.statements.push(Statement {
-                                source_info: terminator.source_info,
-                                kind: StatementKind::Assign(Box::new((
-                                    *destination,
-                                    Rvalue::AddressOf(
-                                        Mutability::Not,
-                                        arg.project_deeper(
-                                            &[
-                                                PlaceElem::Deref,
-                                                PlaceElem::Downcast(
-                                                    Some(sym::Some),
-                                                    VariantIdx::from_u32(1),
-                                                ),
-                                                PlaceElem::Field(FieldIdx::from_u32(0), *dest_ty),
-                                            ],
-                                            tcx,
-                                        ),
-                                    ),
-                                ))),
-                            });
-                            terminator.kind = TerminatorKind::Goto { target };
-                        }
                     }
                     sym::transmute | sym::transmute_unchecked => {
                         let dst_ty = destination.ty(local_decls, tcx).ty;

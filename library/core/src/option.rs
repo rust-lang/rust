@@ -780,7 +780,7 @@ impl<T> Option<T> {
         // `None` case it's just padding).
         unsafe {
             slice::from_raw_parts(
-                crate::intrinsics::option_payload_ptr(crate::ptr::from_ref(self)),
+                (self as *const Self).byte_add(core::mem::offset_of!(Self, Some.0)).cast(),
                 usize::from(self.is_some()),
             )
         }
@@ -836,8 +836,7 @@ impl<T> Option<T> {
         // the `None` case it's just padding).
         unsafe {
             slice::from_raw_parts_mut(
-                crate::intrinsics::option_payload_ptr(crate::ptr::from_mut(self).cast_const())
-                    .cast_mut(),
+                (self as *mut Self).byte_add(core::mem::offset_of!(Self, Some.0)).cast(),
                 usize::from(self.is_some()),
             )
         }
