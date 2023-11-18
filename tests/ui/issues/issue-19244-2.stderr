@@ -4,7 +4,7 @@ error[E0609]: no field `nonexistent_field` on type `MyStruct`
 LL |     let a: [isize; STRUCT.nonexistent_field];
    |                           ^^^^^^^^^^^^^^^^^ unknown field
    |
-   = note: available fields are: `field`
+   = note: available field is: `field`
 
 error: aborting due to previous error
 

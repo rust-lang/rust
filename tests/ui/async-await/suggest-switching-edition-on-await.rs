@@ -21,6 +21,7 @@ fn await_on_struct_similar() {
     let x = S { awai: 42 };
     x.await;
     //~^ ERROR no field `await` on type
+    //~| NOTE unknown field
     //~| HELP a field with a similar name exists
     //~| NOTE to `.await` a `Future`, switch to Rust 2018
     //~| HELP pass `--edition 2021` to `rustc`
@@ -39,6 +40,7 @@ fn await_on_63533(x: Pin<&mut dyn Future<Output = ()>>) {
 fn await_on_apit(x: impl Future<Output = ()>) {
     x.await;
     //~^ ERROR no field `await` on type
+    //~| NOTE unknown field
     //~| NOTE to `.await` a `Future`, switch to Rust 2018
     //~| HELP pass `--edition 2021` to `rustc`
     //~| NOTE for more on editions, read https://doc.rust-lang.org/edition-guide
