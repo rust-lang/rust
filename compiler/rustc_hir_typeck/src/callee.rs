@@ -625,6 +625,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             );
         }
 
+        if let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = callee_expr.kind
+            && let Res::Local(_) = path.res
+            && let [segment] = &path.segments[..]
+        {
+            for id in self.tcx.hir().items() {
+                if let Some(node) = self.tcx.hir().get_if_local(id.owner_id.into())
+                    && let hir::Node::Item(item) = node
+                    && let hir::ItemKind::Fn(..) = item.kind
+                    && item.ident.name == segment.ident.name
+                {
+                    err.span_label(
+                        self.tcx.def_span(id.owner_id),
+                        "this function of the same name is available here, but it's shadowed by \
+                         the local binding",
+                    );
+                }
+            }
+        }
+
         let mut inner_callee_path = None;
         let def = match callee_expr.kind {
             hir::ExprKind::Path(ref qpath) => {
