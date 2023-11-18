@@ -384,10 +384,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
 
         // Compatible integer types (in particular, usize vs ptr-sized-u32/u64).
+        // `char` counts as `u32.`
         let int_ty = |ty: Ty<'tcx>| {
             Some(match ty.kind() {
                 ty::Int(ity) => (Integer::from_int_ty(&self.tcx, *ity), /* signed */ true),
                 ty::Uint(uty) => (Integer::from_uint_ty(&self.tcx, *uty), /* signed */ false),
+                ty::Char => (Integer::I32, /* signed */ false),
                 _ => return None,
             })
         };
