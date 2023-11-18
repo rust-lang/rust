@@ -143,8 +143,8 @@ where
 
     #[inline]
     #[must_use = "method returns a new vector and does not mutate the original value"]
-    pub fn to_bitmask_vector(self) -> Simd<T, N> {
-        let mut bitmask = Self::splat(false).to_int();
+    pub fn to_bitmask_vector(self) -> Simd<u8, N> {
+        let mut bitmask = Simd::splat(0);
 
         // Safety: Bytes is the right size array
         unsafe {
@@ -159,15 +159,7 @@ where
                 }
             }
 
-            assert!(
-                core::mem::size_of::<Simd<T, N>>()
-                    >= core::mem::size_of::<<LaneCount<N> as SupportedLaneCount>::BitMask>()
-            );
-            core::ptr::copy_nonoverlapping(
-                bytes.as_ref().as_ptr(),
-                bitmask.as_mut_array().as_mut_ptr() as _,
-                bytes.as_ref().len(),
-            );
+            bitmask.as_mut_array()[..bytes.as_ref().len()].copy_from_slice(bytes.as_ref());
         }
 
         bitmask
@@ -175,20 +167,13 @@ where
 
     #[inline]
     #[must_use = "method returns a new mask and does not mutate the original value"]
-    pub fn from_bitmask_vector(bitmask: Simd<T, N>) -> Self {
+    pub fn from_bitmask_vector(bitmask: Simd<u8, N>) -> Self {
         let mut bytes = <LaneCount<N> as SupportedLaneCount>::BitMask::default();
 
         // Safety: Bytes is the right size array
         unsafe {
-            assert!(
-                core::mem::size_of::<Simd<T, N>>()
-                    >= core::mem::size_of::<<LaneCount<N> as SupportedLaneCount>::BitMask>()
-            );
-            core::ptr::copy_nonoverlapping(
-                bitmask.as_array().as_ptr() as _,
-                bytes.as_mut().as_mut_ptr(),
-                bytes.as_mut().len(),
-            );
+            let len = bytes.as_ref().len();
+            bytes.as_mut().copy_from_slice(&bitmask.as_array()[..len]);
 
             // LLVM assumes bit order should match endianness
             if cfg!(target_endian = "big") {

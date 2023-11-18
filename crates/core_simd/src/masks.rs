@@ -286,7 +286,7 @@ where
     /// The remaining bits are unset.
     #[inline]
     #[must_use = "method returns a new integer and does not mutate the original value"]
-    pub fn to_bitmask_vector(self) -> Simd<T, N> {
+    pub fn to_bitmask_vector(self) -> Simd<u8, N> {
         self.0.to_bitmask_vector()
     }
 
@@ -295,7 +295,7 @@ where
     /// For each bit, if it is set, the corresponding element in the mask is set to `true`.
     #[inline]
     #[must_use = "method returns a new mask and does not mutate the original value"]
-    pub fn from_bitmask_vector(bitmask: Simd<T, N>) -> Self {
+    pub fn from_bitmask_vector(bitmask: Simd<u8, N>) -> Self {
         Self(mask_impl::Mask::from_bitmask_vector(bitmask))
     }
 }
