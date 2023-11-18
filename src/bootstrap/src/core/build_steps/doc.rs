@@ -445,8 +445,9 @@ impl Step for Releases {
             || !up_to_date(&footer, &html)
             || !up_to_date(&favicon, &html)
             || !up_to_date(&full_toc, &html)
-            || !(builder.config.dry_run() || up_to_date(&version_info, &html))
-            || !(builder.config.dry_run() || up_to_date(&rustdoc, &html))
+            || !(builder.config.dry_run()
+                || up_to_date(&version_info, &html)
+                || up_to_date(&rustdoc, &html))
         {
             let mut tmpfile = t!(fs::File::create(&tmppath));
             t!(tmpfile.write_all(b"% Rust Release Notes\n\n"));
