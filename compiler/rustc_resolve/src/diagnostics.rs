@@ -1858,6 +1858,15 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         Applicability::MaybeIncorrect,
                     )),
                 )
+            } else if ident.name == sym::core {
+                (
+                    format!("maybe a missing crate `{ident}`?"),
+                    Some((
+                        vec![(ident.span, "std".to_string())],
+                        "try using `std` instead of `core`".to_string(),
+                        Applicability::MaybeIncorrect,
+                    )),
+                )
             } else if self.tcx.sess.is_rust_2015() {
                 (
                     format!("maybe a missing crate `{ident}`?"),
