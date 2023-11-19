@@ -698,11 +698,12 @@ impl Command {
 
             msg.msg_iov = &mut iov as *mut _ as *mut _;
             msg.msg_iovlen = 1;
-            msg.msg_controllen = mem::size_of_val(&cmsg.buf) as _;
-            msg.msg_control = &mut cmsg.buf as *mut _ as *mut _;
 
             // only attach cmsg if we successfully acquired the pidfd
             if pidfd >= 0 {
+                msg.msg_controllen = mem::size_of_val(&cmsg.buf) as _;
+                msg.msg_control = &mut cmsg.buf as *mut _ as *mut _;
+
                 let hdr = CMSG_FIRSTHDR(&mut msg as *mut _ as *mut _);
                 (*hdr).cmsg_level = SOL_SOCKET;
                 (*hdr).cmsg_type = SCM_RIGHTS;
@@ -719,7 +720,7 @@ impl Command {
             // so we get a consistent SEQPACKET order
             match cvt_r(|| libc::sendmsg(sock.as_raw(), &msg, 0)) {
                 Ok(0) => {}
-                _ => rtabort!("failed to communicate with parent process"),
+                other => rtabort!("failed to communicate with parent process. {:?}", other),
             }
         }
     }
