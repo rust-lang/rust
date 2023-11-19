@@ -1135,11 +1135,25 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             )
                             && self.infcx.predicate_must_hold_modulo_regions(&o)
                         {
-                            err.span_suggestion_verbose(
-                                move_span.shrink_to_hi(),
+                            let sugg = if moved_place
+                                .iter_projections()
+                                .any(|(_, elem)| matches!(elem, ProjectionElem::Deref))
+                            {
+                                vec![
+                                    // We use the fully-qualified path because `.clone()` can
+                                    // sometimes choose `<&T as Clone>` instead of `<T as Clone>`
+                                    // when going through auto-deref, so this ensures that doesn't
+                                    // happen, causing suggestions for `.clone().clone()`.
+                                    (move_span.shrink_to_lo(), format!("<{ty} as Clone>::clone(&")),
+                                    (move_span.shrink_to_hi(), ")".to_string()),
+                                ]
+                            } else {
+                                vec![(move_span.shrink_to_hi(), ".clone()".to_string())]
+                            };
+                            err.multipart_suggestion_verbose(
                                 "you can `clone` the value and consume it, but this might not be \
                                  your desired behavior",
-                                ".clone()".to_string(),
+                                sugg,
                                 Applicability::MaybeIncorrect,
                             );
                         }
