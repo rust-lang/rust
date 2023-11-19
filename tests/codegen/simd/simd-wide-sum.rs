@@ -10,7 +10,7 @@
 #![crate_type = "lib"]
 #![feature(portable_simd)]
 
-use std::simd::{Simd, SimdUint};
+use std::simd::prelude::*;
 const N: usize = 16;
 
 #[no_mangle]
