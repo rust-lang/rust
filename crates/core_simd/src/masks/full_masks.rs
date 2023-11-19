@@ -237,62 +237,36 @@ where
     #[inline]
     pub(crate) fn to_bitmask_integer(self) -> u64 {
         // TODO modify simd_bitmask to zero-extend output, making this unnecessary
-        macro_rules! bitmask {
-            { $($ty:ty: $($len:literal),*;)* } => {
-                match N {
-                    $($(
-                    // Safety: bitmask matches length
-                    $len => unsafe { self.to_bitmask_impl::<$ty, $len>() as u64 },
-                    )*)*
-                    // Safety: bitmask matches length
-                    _ => unsafe { self.to_bitmask_impl::<u64, 64>() },
-                }
-            }
-        }
-        #[cfg(all_lane_counts)]
-        bitmask! {
-            u8: 1, 2, 3, 4, 5, 6, 7, 8;
-            u16: 9, 10, 11, 12, 13, 14, 15, 16;
-            u32: 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32;
-            u64: 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64;
-        }
-        #[cfg(not(all_lane_counts))]
-        bitmask! {
-            u8: 1, 2, 4, 8;
-            u16: 16;
-            u32: 32;
-            u64: 64;
+        if N <= 8 {
+            // Safety: bitmask matches length
+            unsafe { self.to_bitmask_impl::<u8, 8>() as u64 }
+        } else if N <= 16 {
+            // Safety: bitmask matches length
+            unsafe { self.to_bitmask_impl::<u16, 16>() as u64 }
+        } else if N <= 32 {
+            // Safety: bitmask matches length
+            unsafe { self.to_bitmask_impl::<u32, 32>() as u64 }
+        } else {
+            // Safety: bitmask matches length
+            unsafe { self.to_bitmask_impl::<u64, 64>() }
         }
     }
 
     #[inline]
     pub(crate) fn from_bitmask_integer(bitmask: u64) -> Self {
         // TODO modify simd_bitmask_select to truncate input, making this unnecessary
-        macro_rules! bitmask {
-            { $($ty:ty: $($len:literal),*;)* } => {
-                match N {
-                    $($(
-                    // Safety: bitmask matches length
-                    $len => unsafe { Self::from_bitmask_impl::<$ty, $len>(bitmask as $ty) },
-                    )*)*
-                    // Safety: bitmask matches length
-                    _ => unsafe { Self::from_bitmask_impl::<u64, 64>(bitmask) },
-                }
-            }
-        }
-        #[cfg(all_lane_counts)]
-        bitmask! {
-            u8: 1, 2, 3, 4, 5, 6, 7, 8;
-            u16: 9, 10, 11, 12, 13, 14, 15, 16;
-            u32: 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32;
-            u64: 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64;
-        }
-        #[cfg(not(all_lane_counts))]
-        bitmask! {
-            u8: 1, 2, 4, 8;
-            u16: 16;
-            u32: 32;
-            u64: 64;
+        if N <= 8 {
+            // Safety: bitmask matches length
+            unsafe { Self::from_bitmask_impl::<u8, 8>(bitmask as u8) }
+        } else if N <= 16 {
+            // Safety: bitmask matches length
+            unsafe { Self::from_bitmask_impl::<u16, 16>(bitmask as u16) }
+        } else if N <= 32 {
+            // Safety: bitmask matches length
+            unsafe { Self::from_bitmask_impl::<u32, 32>(bitmask as u32) }
+        } else {
+            // Safety: bitmask matches length
+            unsafe { Self::from_bitmask_impl::<u64, 64>(bitmask) }
         }
     }
 
