@@ -929,15 +929,16 @@ fn check_nested_cfg(cx: &EarlyContext<'_>, items: &[NestedMetaItem]) {
 fn check_nested_misused_cfg(cx: &EarlyContext<'_>, items: &[NestedMetaItem]) {
     for item in items {
         if let NestedMetaItem::MetaItem(meta) = item {
-            if meta.has_name(sym!(features))
+            if let Some(ident) = meta.ident()
+                && ident.name.as_str() == "features"
                 && let Some(val) = meta.value_str()
             {
                 span_lint_and_sugg(
                     cx,
                     MAYBE_MISUSED_CFG,
                     meta.span,
-                    "feature may misspelled as features",
-                    "use",
+                    "'feature' may be misspelled as 'features'",
+                    "did you mean",
                     format!("feature = \"{val}\""),
                     Applicability::MaybeIncorrect,
                 );
@@ -953,7 +954,7 @@ fn check_nested_misused_cfg(cx: &EarlyContext<'_>, items: &[NestedMetaItem]) {
                     MAYBE_MISUSED_CFG,
                     meta.span,
                     &format!("'test' may be misspelled as '{}'", ident.name.as_str()),
-                    "do you mean",
+                    "did you mean",
                     "test".to_string(),
                     Applicability::MaybeIncorrect,
                 );
