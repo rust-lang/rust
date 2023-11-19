@@ -7,5 +7,5 @@ LL | fn main() {}
 error: the compiler unexpectedly panicked. this is a bug.
 
 query stack during panic:
-#0 [trigger_delay_span_bug] triggering a delay span bug
+#0 [trigger_delay_span_bug] triggering a delay span bug for testing incremental
 end of query stack
