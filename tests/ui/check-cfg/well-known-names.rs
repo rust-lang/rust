@@ -15,6 +15,7 @@ fn target_os() {}
 fn feature_misspell() {}
 
 #[cfg(feature = "foo")]
+//~^ WARNING unexpected `cfg` condition name
 fn feature() {}
 
 #[cfg(uniw)]
