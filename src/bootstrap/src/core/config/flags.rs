@@ -133,6 +133,13 @@ pub struct Flags {
     /// whether to use color in cargo and rustc output
     pub color: Color,
 
+    #[arg(global(true), long)]
+    /// Bootstrap uses this value to decide whether it should bypass locking the build process.
+    /// This is rarely needed (e.g., compiling the std library for different targets in parallel).
+    ///
+    /// Unless you know exactly what you are doing, you probably don't need this.
+    pub bypass_bootstrap_lock: bool,
+
     /// whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml
     #[arg(global(true), long, value_name = "VALUE")]
     pub llvm_skip_rebuild: Option<bool>,

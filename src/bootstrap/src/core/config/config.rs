@@ -117,6 +117,7 @@ impl Display for DebuginfoLevel {
 pub struct Config {
     pub changelog_seen: Option<usize>, // FIXME: Deprecated field. Remove it at 2024.
     pub change_id: Option<usize>,
+    pub bypass_bootstrap_lock: bool,
     pub ccache: Option<String>,
     /// Call Build::ninja() instead of this.
     pub ninja_in_file: bool,
@@ -1057,6 +1058,7 @@ define_config! {
 impl Config {
     pub fn default_opts() -> Config {
         let mut config = Config::default();
+        config.bypass_bootstrap_lock = false;
         config.llvm_optimize = true;
         config.ninja_in_file = true;
         config.llvm_static_stdcpp = false;
@@ -1135,6 +1137,7 @@ impl Config {
         config.llvm_profile_use = flags.llvm_profile_use;
         config.llvm_profile_generate = flags.llvm_profile_generate;
         config.enable_bolt_settings = flags.enable_bolt_settings;
+        config.bypass_bootstrap_lock = flags.bypass_bootstrap_lock;
 
         // Infer the rest of the configuration.
 
