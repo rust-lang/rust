@@ -411,14 +411,11 @@ impl Step for Releases {
         });
     }
 
-    /// Generates all standalone documentation as compiled by the rustdoc in `stage`
-    /// for the `target` into `out`.
+    /// Generates HTML release notes to include in the final docs bundle.
     ///
-    /// This will list all of `src/doc` looking for markdown files and appropriately
-    /// perform transformations like substituting `VERSION`, `SHORT_HASH`, and
-    /// `STAMP` along with providing the various header/footer HTML we've customized.
-    ///
-    /// In the end, this is just a glorified wrapper around rustdoc!
+    /// This uses the same stylesheet and other tools as Standalone, but the
+    /// RELEASES.md file is included at the root of the repository and gets
+    /// the headline added. In the end, the conversion is done by Rustdoc.
     fn run(self, builder: &Builder<'_>) {
         let target = self.target;
         let compiler = self.compiler;
