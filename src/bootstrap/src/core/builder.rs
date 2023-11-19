@@ -810,6 +810,7 @@ impl<'a> Builder<'a> {
                 doc::StyleGuide,
                 doc::Tidy,
                 doc::Bootstrap,
+                doc::Releases,
             ),
             Kind::Dist => describe!(
                 dist::Docs,
