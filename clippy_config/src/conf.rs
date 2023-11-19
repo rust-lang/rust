@@ -543,6 +543,10 @@ define_Conf! {
     /// for _ in &mut *rmvec {}
     /// ```
     (enforce_iter_loop_reborrow: bool = false),
+    /// Lint: MISSING_SAFETY_DOC, UNNECESSARY_SAFETY_DOC, MISSING_PANICS_DOC, MISSING_ERRORS_DOC
+    ///
+    /// Whether to also run the listed lints on private items.
+    (check_private_items: bool = false),
 }
 
 /// Search for the configuration file.

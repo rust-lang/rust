@@ -15,17 +15,19 @@ pub fn check(
     headers: DocHeaders,
     body_id: Option<BodyId>,
     panic_span: Option<Span>,
+    check_private_items: bool,
 ) {
-    if !cx.effective_visibilities.is_exported(owner_id.def_id) {
+    if !check_private_items && !cx.effective_visibilities.is_exported(owner_id.def_id) {
         return; // Private functions do not require doc comments
     }
 
     // do not lint if any parent has `#[doc(hidden)]` attribute (#7347)
-    if cx
-        .tcx
-        .hir()
-        .parent_iter(owner_id.into())
-        .any(|(id, _node)| is_doc_hidden(cx.tcx.hir().attrs(id)))
+    if !check_private_items
+        && cx
+            .tcx
+            .hir()
+            .parent_iter(owner_id.into())
+            .any(|(id, _node)| is_doc_hidden(cx.tcx.hir().attrs(id)))
     {
         return;
     }
