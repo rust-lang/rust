@@ -717,24 +717,29 @@ where
     /// Parses a float literal as if it was a one to two name ref nodes with a dot inbetween.
     /// This occurs when a float literal is used as a field access.
     fn float_split(&mut self, has_pseudo_dot: bool) {
-        // TODO: FIXME this breaks the hygiene map
-        let (text, _span) = match self.cursor.token_tree() {
+        let (text, span) = match self.cursor.token_tree() {
             Some(tt::buffer::TokenTreeRef::Leaf(tt::Leaf::Literal(lit), _)) => {
                 (lit.text.as_str(), lit.span)
             }
             _ => unreachable!(),
         };
+        // FIXME: Span splitting
         match text.split_once('.') {
             Some((left, right)) => {
                 assert!(!left.is_empty());
+
                 self.inner.start_node(SyntaxKind::NAME_REF);
                 self.inner.token(SyntaxKind::INT_NUMBER, left);
                 self.inner.finish_node();
+                let range = TextRange::at(self.text_pos, TextSize::of(left));
+                self.token_map.insert(range, span);
 
                 // here we move the exit up, the original exit has been deleted in process
                 self.inner.finish_node();
 
                 self.inner.token(SyntaxKind::DOT, ".");
+                let range = TextRange::at(range.end(), TextSize::of("."));
+                self.token_map.insert(range, span);
 
                 if has_pseudo_dot {
                     assert!(right.is_empty(), "{left}.{right}");
@@ -742,11 +747,14 @@ where
                     assert!(!right.is_empty(), "{left}.{right}");
                     self.inner.start_node(SyntaxKind::NAME_REF);
                     self.inner.token(SyntaxKind::INT_NUMBER, right);
+                    let range = TextRange::at(range.end(), TextSize::of(right));
+                    self.token_map.insert(range, span);
                     self.inner.finish_node();
 
                     // the parser creates an unbalanced start node, we are required to close it here
                     self.inner.finish_node();
                 }
+                self.text_pos += TextSize::of(text);
             }
             None => unreachable!(),
         }

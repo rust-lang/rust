@@ -2,6 +2,7 @@
 
 use std::hash::Hash;
 
+use stdx::never;
 use syntax::TextRange;
 use tt::Span;
 
@@ -59,11 +60,10 @@ impl<S: Span> TokenMap<S> {
             .max_by_key(|(_, _, intersection)| intersection.len())
             .map(|(_, &s, _)| s)
             .or_else(|| {
-                if self.real_file {
-                    None
-                } else {
-                    panic!("no span for range {range:?} in {:#?}", self.span_map)
+                if !self.real_file {
+                    never!("no span for range {:?} in {:#?}", range, self.span_map);
                 }
+                None
             })
     }
 

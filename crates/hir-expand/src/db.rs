@@ -103,7 +103,7 @@ pub trait ExpandDatabase: SourceDatabase {
         &self,
         macro_file: MacroFile,
     ) -> ExpandResult<(Parse<SyntaxNode>, Arc<SpanMap>)>;
-    // TODO: transparent?
+    // FIXME: This always allocates one for non macro files which is wasteful.
     #[salsa::transparent]
     fn span_map(&self, file_id: HirFileId) -> Arc<SpanMap>;
 
@@ -116,6 +116,8 @@ pub trait ExpandDatabase: SourceDatabase {
     fn intern_macro_call(&self, macro_call: MacroCallLoc) -> MacroCallId;
     #[salsa::interned]
     fn intern_syntax_context(&self, ctx: SyntaxContextData) -> SyntaxContextId;
+    #[salsa::transparent]
+    fn setup_syntax_context_root(&self) -> ();
     #[salsa::transparent]
     #[salsa::invoke(hygiene::apply_mark)]
     fn apply_mark(
@@ -769,4 +771,8 @@ fn check_tt_count(tt: &tt::Subtree) -> Result<(), ExpandResult<Arc<tt::Subtree>>
     } else {
         Ok(())
     }
+}
+
+fn setup_syntax_context_root(db: &dyn ExpandDatabase) {
+    db.intern_syntax_context(SyntaxContextData::root());
 }

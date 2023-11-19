@@ -1322,6 +1322,7 @@ fn derive_macro_as_call_id(
     item_attr: &AstIdWithPath<ast::Adt>,
     derive_attr_index: AttrId,
     derive_pos: u32,
+    call_site: SyntaxContextId,
     krate: CrateId,
     resolver: impl Fn(path::ModPath) -> Option<(MacroId, MacroDefId)>,
 ) -> Result<(MacroId, MacroDefId, MacroCallId), UnresolvedMacro> {
@@ -1336,8 +1337,7 @@ fn derive_macro_as_call_id(
             derive_index: derive_pos,
             derive_attr_index,
         },
-        //FIXME
-        SyntaxContextId::ROOT,
+        call_site,
     );
     Ok((macro_id, def_id, call_id))
 }
@@ -1367,8 +1367,7 @@ fn attr_macro_as_call_id(
             attr_args: Arc::new(arg),
             invoc_attr_index: macro_attr.id,
         },
-        //FIXME
-        SyntaxContextId::ROOT,
+        macro_attr.ctxt,
     )
 }
 intern::impl_internable!(

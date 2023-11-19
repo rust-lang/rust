@@ -219,6 +219,7 @@ enum MacroDirectiveKind {
         ast_id: AstIdWithPath<ast::Adt>,
         derive_attr: AttrId,
         derive_pos: usize,
+        call_site: SyntaxContextId,
     },
     Attr {
         ast_id: AstIdWithPath<ast::Item>,
@@ -324,7 +325,7 @@ impl DefCollector<'_> {
                     .parse_path_comma_token_tree(self.db.upcast())
                     .into_iter()
                     .flatten()
-                    .filter_map(|feat| match feat.segments() {
+                    .filter_map(|(feat, _)| match feat.segments() {
                         [name] => Some(name.to_smol_str()),
                         _ => None,
                     });
@@ -1139,12 +1140,13 @@ impl DefCollector<'_> {
                         return false;
                     }
                 }
-                MacroDirectiveKind::Derive { ast_id, derive_attr, derive_pos } => {
+                MacroDirectiveKind::Derive { ast_id, derive_attr, derive_pos, call_site } => {
                     let id = derive_macro_as_call_id(
                         self.db,
                         ast_id,
                         *derive_attr,
                         *derive_pos as u32,
+                        *call_site,
                         self.def_map.krate,
                         resolver,
                     );
@@ -1242,7 +1244,7 @@ impl DefCollector<'_> {
                         match attr.parse_path_comma_token_tree(self.db.upcast()) {
                             Some(derive_macros) => {
                                 let mut len = 0;
-                                for (idx, path) in derive_macros.enumerate() {
+                                for (idx, (path, call_site)) in derive_macros.enumerate() {
                                     let ast_id = AstIdWithPath::new(file_id, ast_id.value, path);
                                     self.unresolved_macros.push(MacroDirective {
                                         module_id: directive.module_id,
@@ -1251,6 +1253,7 @@ impl DefCollector<'_> {
                                             ast_id,
                                             derive_attr: attr.id,
                                             derive_pos: idx,
+                                            call_site,
                                         },
                                         container: directive.container,
                                     });
@@ -1438,7 +1441,7 @@ impl DefCollector<'_> {
                         ));
                     }
                 }
-                MacroDirectiveKind::Derive { ast_id, derive_attr, derive_pos } => {
+                MacroDirectiveKind::Derive { ast_id, derive_attr, derive_pos, call_site: _ } => {
                     self.def_map.diagnostics.push(DefDiagnostic::unresolved_macro_call(
                         directive.module_id,
                         MacroCallKind::Derive {
@@ -1828,7 +1831,7 @@ impl ModCollector<'_, '_> {
                 );
                 return;
             };
-            for path in paths {
+            for (path, _) in paths {
                 if let Some(name) = path.as_ident() {
                     single_imports.push(name.clone());
                 }

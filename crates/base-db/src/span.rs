@@ -16,6 +16,12 @@ pub type SpanData = tt::SpanData<SpanAnchor, SyntaxContextId>;
 pub struct SyntaxContextId(InternId);
 crate::impl_intern_key!(SyntaxContextId);
 
+impl fmt::Display for SyntaxContextId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0.as_u32())
+    }
+}
+
 impl SyntaxContext for SyntaxContextId {
     const DUMMY: Self = Self::ROOT;
     // veykril(HACK): salsa doesn't allow us fetching the id of the current input to be allocated so

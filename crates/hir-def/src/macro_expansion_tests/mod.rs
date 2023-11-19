@@ -103,11 +103,11 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
     for (call, exp) in expansions.into_iter().rev() {
         let mut tree = false;
         let mut expect_errors = false;
-        let mut show_token_ids = false;
+        let mut show_spans = false;
         for comment in call.syntax().children_with_tokens().filter(|it| it.kind() == COMMENT) {
             tree |= comment.to_string().contains("+tree");
             expect_errors |= comment.to_string().contains("+errors");
-            show_token_ids |= comment.to_string().contains("+tokenids");
+            show_spans |= comment.to_string().contains("+spans");
         }
 
         let mut expn_text = String::new();
@@ -128,10 +128,8 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
                 parse.syntax_node(),
             );
         }
-        let pp = pretty_print_macro_expansion(
-            parse.syntax_node(),
-            show_token_ids.then_some(&*token_map),
-        );
+        let pp =
+            pretty_print_macro_expansion(parse.syntax_node(), show_spans.then_some(&*token_map));
         let indent = IndentLevel::from_node(call.syntax());
         let pp = reindent(indent, pp);
         format_to!(expn_text, "{}", pp);
@@ -166,9 +164,18 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
             }
             _ => None,
         };
+
         if let Some(src) = src {
             if src.file_id.is_attr_macro(&db) || src.file_id.is_custom_derive(&db) {
-                let pp = pretty_print_macro_expansion(src.value, None);
+                let call = src.file_id.call_node(&db).expect("macro file");
+                let mut show_spans = false;
+                for comment in call.value.children_with_tokens().filter(|it| it.kind() == COMMENT) {
+                    show_spans |= comment.to_string().contains("+spans");
+                }
+                let pp = pretty_print_macro_expansion(
+                    src.value,
+                    show_spans.then_some(&db.span_map(src.file_id)),
+                );
                 format_to!(expanded_text, "\n{}", pp)
             }
         }
@@ -250,7 +257,14 @@ fn pretty_print_macro_expansion(expn: SyntaxNode, map: Option<&SpanMap>) -> Stri
         format_to!(res, "{}", token);
         if let Some(map) = map {
             if let Some(span) = map.span_for_range(token.text_range()) {
-                format_to!(res, "#{:?}@{:?}", span.anchor, span.range);
+                format_to!(
+                    res,
+                    "#{:?}:{:?}@{:?}\\{}#",
+                    span.anchor.file_id,
+                    span.anchor.ast_id.into_raw(),
+                    span.range,
+                    span.ctx
+                );
             }
         }
     }

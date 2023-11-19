@@ -144,6 +144,7 @@ impl RootDatabase {
         db.set_library_roots_with_durability(Default::default(), Durability::HIGH);
         db.set_expand_proc_attr_macros_with_durability(false, Durability::HIGH);
         db.update_parse_query_lru_capacity(lru_capacity);
+        db.setup_syntax_context_root();
         db
     }
 

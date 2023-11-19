@@ -7,7 +7,7 @@ use base_db::{
     AnchoredPath, CrateId, FileId, FileLoader, FileLoaderDelegate, FilePosition, SourceDatabase,
     Upcast,
 };
-use hir_expand::{db::ExpandDatabase, hygiene::SyntaxContextData, InFile};
+use hir_expand::{db::ExpandDatabase, InFile};
 use rustc_hash::FxHashSet;
 use syntax::{algo, ast, AstNode};
 use triomphe::Arc;
@@ -34,7 +34,7 @@ pub(crate) struct TestDB {
 impl Default for TestDB {
     fn default() -> Self {
         let mut this = Self { storage: Default::default(), events: Default::default() };
-        this.intern_syntax_context(SyntaxContextData::root());
+        this.setup_syntax_context_root();
         this.set_expand_proc_attr_macros_with_durability(true, Durability::HIGH);
         this
     }

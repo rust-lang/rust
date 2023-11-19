@@ -2,13 +2,16 @@
 use std::{fmt, ops};
 
 use ::tt::SpanAnchor as _;
-use base_db::{span::SpanAnchor, CrateId};
+use base_db::{
+    span::{SpanAnchor, SyntaxContextId},
+    CrateId,
+};
 use cfg::CfgExpr;
 use either::Either;
 use intern::Interned;
 use mbe::{syntax_node_to_token_tree, DelimiterKind, Punct};
 use smallvec::{smallvec, SmallVec};
-use syntax::{ast, match_ast, AstNode, SmolStr, SyntaxNode};
+use syntax::{ast, match_ast, AstNode, AstToken, SmolStr, SyntaxNode};
 use triomphe::Arc;
 
 use crate::{
@@ -54,6 +57,9 @@ impl RawAttrs {
                     id,
                     input: Some(Interned::new(AttrInput::Literal(SmolStr::new(doc)))),
                     path: Interned::new(ModPath::from(crate::name!(doc))),
+                    ctxt: hygiene
+                        .span_for_range(comment.syntax().text_range())
+                        .map_or(SyntaxContextId::ROOT, |s| s.ctx),
                 }),
             })
             .collect::<Vec<_>>();
@@ -191,6 +197,7 @@ pub struct Attr {
     pub id: AttrId,
     pub path: Interned<ModPath>,
     pub input: Option<Interned<AttrInput>>,
+    pub ctxt: SyntaxContextId,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -235,7 +242,14 @@ impl Attr {
         } else {
             None
         };
-        Some(Attr { id, path, input })
+        Some(Attr {
+            id,
+            path,
+            input,
+            ctxt: hygiene
+                .span_for_range(ast.syntax().text_range())
+                .map_or(SyntaxContextId::ROOT, |s| s.ctx),
+        })
     }
 
     fn from_tt(db: &dyn ExpandDatabase, tt: &tt::Subtree, id: AttrId) -> Option<Attr> {
@@ -284,9 +298,8 @@ impl Attr {
     pub fn parse_path_comma_token_tree<'a>(
         &'a self,
         db: &'a dyn ExpandDatabase,
-    ) -> Option<impl Iterator<Item = ModPath> + 'a> {
+    ) -> Option<impl Iterator<Item = (ModPath, SyntaxContextId)> + 'a> {
         let args = self.token_tree_value()?;
-        dbg!(args);
 
         if args.delimiter.kind != DelimiterKind::Parenthesis {
             return None;
@@ -298,6 +311,11 @@ impl Attr {
                 if tts.is_empty() {
                     return None;
                 }
+                // FIXME: Absolutely wrong
+                let call_site = match tts.first().unwrap() {
+                    tt::TokenTree::Leaf(l) => l.span().ctx,
+                    tt::TokenTree::Subtree(s) => s.delimiter.open.ctx,
+                };
                 // FIXME: This is necessarily a hack. It'd be nice if we could avoid allocation
                 // here.
                 let subtree = tt::Subtree {
@@ -313,7 +331,7 @@ impl Attr {
                     return None;
                 }
                 let path = meta.path()?;
-                ModPath::from_src(db, path, &span_map)
+                Some((ModPath::from_src(db, path, &span_map)?, call_site))
             });
 
         Some(paths)

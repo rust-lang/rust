@@ -23,10 +23,12 @@ macro_rules! f {
     };
 }
 
-// +tokenids
+// +spans
 f!(struct MyTraitMap2);
 "#,
-        // FIXME: #SpanAnchor(FileId(0), 1)@91..92 why is there whitespace annotated with a span here?
+        // FIXME: #SpanAnchor(FileId(0), 1)@91..92\2# why is there whitespace annotated with a span
+        // here? Presumably because the leading `::` is getting two spans instead of one? Sounds
+        // liek glueing might be failing here
         expect![[r#"
 macro_rules! f {
     ( struct $ident:ident ) => {
@@ -36,9 +38,9 @@ macro_rules! f {
     };
 }
 
-struct#SpanAnchor(FileId(0), 1)@58..64 MyTraitMap2#SpanAnchor(FileId(0), 2)@23..34 {#SpanAnchor(FileId(0), 1)@72..73
-    map#SpanAnchor(FileId(0), 1)@86..89:#SpanAnchor(FileId(0), 1)@89..90 #SpanAnchor(FileId(0), 1)@91..92::#SpanAnchor(FileId(0), 1)@92..93std#SpanAnchor(FileId(0), 1)@93..96::#SpanAnchor(FileId(0), 1)@97..98collections#SpanAnchor(FileId(0), 1)@98..109::#SpanAnchor(FileId(0), 1)@110..111HashSet#SpanAnchor(FileId(0), 1)@111..118<#SpanAnchor(FileId(0), 1)@118..119(#SpanAnchor(FileId(0), 1)@119..120)#SpanAnchor(FileId(0), 1)@120..121>#SpanAnchor(FileId(0), 1)@121..122,#SpanAnchor(FileId(0), 1)@122..123
-}#SpanAnchor(FileId(0), 1)@132..133
+struct#FileId(0):1@58..64\2# MyTraitMap2#FileId(0):2@20..31\0# {#FileId(0):1@72..73\2#
+    map#FileId(0):1@86..89\2#:#FileId(0):1@89..90\2# #FileId(0):1@91..92\2#::#FileId(0):1@92..93\2#std#FileId(0):1@93..96\2#::#FileId(0):1@97..98\2#collections#FileId(0):1@98..109\2#::#FileId(0):1@110..111\2#HashSet#FileId(0):1@111..118\2#<#FileId(0):1@118..119\2#(#FileId(0):1@119..120\2#)#FileId(0):1@120..121\2#>#FileId(0):1@121..122\2#,#FileId(0):1@122..123\2#
+}#FileId(0):1@132..133\2#
 "#]],
     );
 }
@@ -49,18 +51,19 @@ fn token_mapping_floats() {
     // (and related issues)
     check(
         r#"
-// +tokenids
+// +spans
 macro_rules! f {
     ($($tt:tt)*) => {
         $($tt)*
     };
 }
 
-// +tokenids
+// +spans
 f! {
     fn main() {
         1;
         1.0;
+        ((1,),).0.0;
         let x = 1;
     }
 }
@@ -68,18 +71,19 @@ f! {
 
 "#,
         expect![[r#"
-// +tokenids
+// +spans
 macro_rules! f {
     ($($tt:tt)*) => {
         $($tt)*
     };
 }
 
-fn#SpanAnchor(FileId(0), 2)@22..24 main#SpanAnchor(FileId(0), 2)@25..29(#SpanAnchor(FileId(0), 2)@29..30)#SpanAnchor(FileId(0), 2)@30..31 {#SpanAnchor(FileId(0), 2)@32..33
-    1#SpanAnchor(FileId(0), 2)@42..43;#SpanAnchor(FileId(0), 2)@43..44
-    1.0#SpanAnchor(FileId(0), 2)@53..56;#SpanAnchor(FileId(0), 2)@56..57
-    let#SpanAnchor(FileId(0), 2)@66..69 x#SpanAnchor(FileId(0), 2)@70..71 =#SpanAnchor(FileId(0), 2)@72..73 1#SpanAnchor(FileId(0), 2)@74..75;#SpanAnchor(FileId(0), 2)@75..76
-}#SpanAnchor(FileId(0), 2)@81..82
+fn#FileId(0):2@19..21\0# main#FileId(0):2@22..26\0#(#FileId(0):2@26..27\0#)#FileId(0):2@27..28\0# {#FileId(0):2@29..30\0#
+    1#FileId(0):2@39..40\0#;#FileId(0):2@40..41\0#
+    1.0#FileId(0):2@50..53\0#;#FileId(0):2@53..54\0#
+    (#FileId(0):2@63..64\0#(#FileId(0):2@64..65\0#1#FileId(0):2@65..66\0#,#FileId(0):2@66..67\0# )#FileId(0):2@67..68\0#,#FileId(0):2@68..69\0# )#FileId(0):2@69..70\0#.#FileId(0):2@70..71\0#0#FileId(0):2@71..74\0#.#FileId(0):2@71..74\0#0#FileId(0):2@71..74\0#;#FileId(0):2@74..75\0#
+    let#FileId(0):2@84..87\0# x#FileId(0):2@88..89\0# =#FileId(0):2@90..91\0# 1#FileId(0):2@92..93\0#;#FileId(0):2@93..94\0#
+}#FileId(0):2@99..100\0#
 
 
 "#]],
@@ -123,7 +127,7 @@ macro_rules! identity {
 }
 
 fn main(foo: ()) {
-    format_args/*+tokenids*/!("{} {} {}", format_args!("{}", 0), foo, identity!(10), "bar")
+    format_args/*+spans*/!("{} {} {}", format_args!("{}", 0), foo, identity!(10), "bar")
 }
 
 "#,
@@ -137,10 +141,33 @@ macro_rules! identity {
 }
 
 fn main(foo: ()) {
-    builtin#SpanAnchor(FileId(0), 0)@0..0 ##SpanAnchor(FileId(0), 0)@0..0format_args#SpanAnchor(FileId(0), 0)@0..0 (#SpanAnchor(FileId(0), 6)@25..26"{} {} {}"#SpanAnchor(FileId(0), 6)@26..36,#SpanAnchor(FileId(0), 6)@36..37 format_args#SpanAnchor(FileId(0), 6)@38..49!#SpanAnchor(FileId(0), 6)@49..50(#SpanAnchor(FileId(0), 6)@50..51"{}"#SpanAnchor(FileId(0), 6)@51..55,#SpanAnchor(FileId(0), 6)@55..56 0#SpanAnchor(FileId(0), 6)@57..58)#SpanAnchor(FileId(0), 6)@58..59,#SpanAnchor(FileId(0), 6)@59..60 foo#SpanAnchor(FileId(0), 6)@61..64,#SpanAnchor(FileId(0), 6)@64..65 identity#SpanAnchor(FileId(0), 6)@66..74!#SpanAnchor(FileId(0), 6)@74..75(#SpanAnchor(FileId(0), 6)@75..7610#SpanAnchor(FileId(0), 6)@76..78)#SpanAnchor(FileId(0), 6)@78..79,#SpanAnchor(FileId(0), 6)@79..80 "bar"#SpanAnchor(FileId(0), 6)@81..86)#SpanAnchor(FileId(0), 6)@86..87
+    builtin#FileId(0):0@0..0\0# ##FileId(0):0@0..0\0#format_args#FileId(0):0@0..0\0# (#FileId(0):6@22..23\0#"{} {} {}"#FileId(0):6@23..33\0#,#FileId(0):6@33..34\0# format_args#FileId(0):6@35..46\0#!#FileId(0):6@46..47\0#(#FileId(0):6@47..48\0#"{}"#FileId(0):6@48..52\0#,#FileId(0):6@52..53\0# 0#FileId(0):6@54..55\0#)#FileId(0):6@55..56\0#,#FileId(0):6@56..57\0# foo#FileId(0):6@58..61\0#,#FileId(0):6@61..62\0# identity#FileId(0):6@63..71\0#!#FileId(0):6@71..72\0#(#FileId(0):6@72..73\0#10#FileId(0):6@73..75\0#)#FileId(0):6@75..76\0#,#FileId(0):6@76..77\0# "bar"#FileId(0):6@78..83\0#)#FileId(0):6@83..84\0#
 }
 
 "##]],
+    );
+}
+
+#[test]
+fn token_mapping_across_files() {
+    check(
+        r#"
+//- /lib.rs
+#[macro_use]
+mod foo;
+
+mk_struct/*+spans*/!(Foo with u32);
+//- /foo.rs
+macro_rules! mk_struct {
+    ($foo:ident with $ty:ty) => { struct $foo($ty); }
+}
+"#,
+        expect![[r#"
+#[macro_use]
+mod foo;
+
+struct#FileId(1):1@59..65\2# Foo#FileId(0):2@21..24\0#(#FileId(1):1@70..71\2#u32#FileId(0):2@30..33\0#)#FileId(1):1@74..75\2#;#FileId(1):1@75..76\2#
+"#]],
     );
 }
 
