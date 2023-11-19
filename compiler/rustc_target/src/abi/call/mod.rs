@@ -584,20 +584,26 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
     /// Only exists because of past ABI mistakes that will take time to fix
     /// (see <https://github.com/rust-lang/rust/issues/115666>).
     pub fn make_direct_deprecated(&mut self) {
-        self.mode = PassMode::Direct(ArgAttributes::new());
+        match self.mode {
+            PassMode::Indirect { .. } => {
+                self.mode = PassMode::Direct(ArgAttributes::new());
+            }
+            PassMode::Ignore | PassMode::Direct(_) | PassMode::Pair(_, _) => return, // already direct
+            _ => panic!("Tried to make {:?} direct", self.mode),
+        }
     }
 
     pub fn make_indirect(&mut self) {
         match self.mode {
-            PassMode::Direct(_) | PassMode::Pair(_, _) => {}
+            PassMode::Direct(_) | PassMode::Pair(_, _) => {
+                self.mode = Self::indirect_pass_mode(&self.layout);
+            }
             PassMode::Indirect { attrs: _, meta_attrs: _, on_stack: false } => {
                 // already indirect
                 return;
             }
             _ => panic!("Tried to make {:?} indirect", self.mode),
         }
-
-        self.mode = Self::indirect_pass_mode(&self.layout);
     }
 
     pub fn make_indirect_byval(&mut self, byval_align: Option<Align>) {
