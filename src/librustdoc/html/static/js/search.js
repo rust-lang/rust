@@ -1318,7 +1318,7 @@ function initSearch(rawSearchIndex) {
          * then this function will try with a different solution, or bail with false if it
          * runs out of candidates.
          *
-         * @param {Array<FunctionType>} fnTypes - The objects to check.
+         * @param {Array<FunctionType>} fnTypesIn - The objects to check.
          * @param {Array<QueryElement>} queryElems - The elements from the parsed query.
          * @param {[FunctionType]} whereClause - Trait bounds for generic items.
          * @param {Map<number,number>|null} mgensIn
@@ -1329,9 +1329,9 @@ function initSearch(rawSearchIndex) {
          */
         function unifyFunctionTypes(fnTypesIn, queryElems, whereClause, mgensIn, solutionCb) {
             /**
-             * @type Map<integer, integer>
+             * @type Map<integer, integer>|null
              */
-            let mgens = new Map(mgensIn);
+            const mgens = mgensIn === null ? null : new Map(mgensIn);
             if (queryElems.length === 0) {
                 return !solutionCb || solutionCb(mgens);
             }
@@ -1339,169 +1339,170 @@ function initSearch(rawSearchIndex) {
                 return false;
             }
             const ql = queryElems.length;
-            let fl = fnTypesIn.length;
+            const fl = fnTypesIn.length;
+
+            // One element fast path / base case
+            if (ql === 1 && queryElems[0].generics.length === 0) {
+                const queryElem = queryElems[0];
+                for (const fnType of fnTypesIn) {
+                    if (!unifyFunctionTypeIsMatchCandidate(fnType, queryElem, whereClause, mgens)) {
+                        continue;
+                    }
+                    if (fnType.id < 0 && queryElem.id < 0) {
+                        if (mgens && mgens.has(fnType.id) &&
+                            mgens.get(fnType.id) !== queryElem.id) {
+                            continue;
+                        }
+                        const mgensScratch = new Map(mgens);
+                        mgensScratch.set(fnType.id, queryElem.id);
+                        if (!solutionCb || solutionCb(mgensScratch)) {
+                            return true;
+                        }
+                    } else if (!solutionCb || solutionCb(mgens ? new Map(mgens) : null)) {
+                        // unifyFunctionTypeIsMatchCandidate already checks that ids match
+                        return true;
+                    }
+                }
+                for (const fnType of fnTypesIn) {
+                    if (!unifyFunctionTypeIsUnboxCandidate(fnType, queryElem, whereClause, mgens)) {
+                        continue;
+                    }
+                    if (fnType.id < 0) {
+                        if (mgens && mgens.has(fnType.id) &&
+                            mgens.get(fnType.id) !== 0) {
+                            continue;
+                        }
+                        const mgensScratch = new Map(mgens);
+                        mgensScratch.set(fnType.id, 0);
+                        if (unifyFunctionTypes(
+                            whereClause[(-fnType.id) - 1],
+                            queryElems,
+                            whereClause,
+                            mgensScratch,
+                            solutionCb
+                        )) {
+                            return true;
+                        }
+                    } else if (unifyFunctionTypes(
+                        fnType.generics,
+                        queryElems,
+                        whereClause,
+                        mgens ? new Map(mgens) : null,
+                        solutionCb
+                    )) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            // Multiple element recursive case
             /**
              * @type Array<FunctionType>
              */
-            let fnTypes = fnTypesIn.slice();
+            const fnTypes = fnTypesIn.slice();
             /**
-             * loop works by building up a solution set in the working arrays
+             * Algorithm works by building up a solution set in the working arrays
              * fnTypes gets mutated in place to make this work, while queryElems
-             * is left alone
+             * is left alone.
              *
-             *                                  vvvvvvv `i` points here
-             * queryElems = [ good, good, good, unknown, unknown ],
-             * fnTypes    = [ good, good, good, unknown, unknown ],
-             *                ----------------  ^^^^^^^^^^^^^^^^ `j` iterates after `i`,
-             *                |                                   looking for candidates
-             *                everything before `i` is the
-             *                current working solution
+             * It works backwards, because arrays can be cheaply truncated that way.
+             *
+             *                         vvvvvvv `queryElem`
+             * queryElems = [ unknown, unknown, good, good, good ]
+             * fnTypes    = [ unknown, unknown, good, good, good ]
+             *                ^^^^^^^^^^^^^^^^ loop over these elements to find candidates
              *
              * Everything in the current working solution is known to be a good
              * match, but it might not be the match we wind up going with, because
              * there might be more than one candidate match, and we need to try them all
              * before giving up. So, to handle this, it backtracks on failure.
-             *
-             * @type Array<{
-             *     "fnTypesScratch": Array<FunctionType>,
-             *     "queryElemsOffset": integer,
-             *     "fnTypesOffset": integer
-             * }>
              */
-            const backtracking = [];
-            let i = 0;
-            let j = 0;
-            const backtrack = () => {
-                while (backtracking.length !== 0) {
-                    // this session failed, but there are other possible solutions
-                    // to backtrack, reset to (a copy of) the old array, do the swap or unboxing
-                    const {
-                        fnTypesScratch,
-                        mgensScratch,
-                        queryElemsOffset,
-                        fnTypesOffset,
-                        unbox,
-                    } = backtracking.pop();
-                    mgens = new Map(mgensScratch);
-                    const fnType = fnTypesScratch[fnTypesOffset];
-                    const queryElem = queryElems[queryElemsOffset];
-                    if (unbox) {
-                        if (fnType.id < 0) {
-                            if (mgens.has(fnType.id) && mgens.get(fnType.id) !== 0) {
-                                continue;
-                            }
-                            mgens.set(fnType.id, 0);
-                        }
-                        const generics = fnType.id < 0 ?
-                            whereClause[(-fnType.id) - 1] :
-                            fnType.generics;
-                        fnTypes = fnTypesScratch.toSpliced(fnTypesOffset, 1, ...generics);
-                        fl = fnTypes.length;
-                        // re-run the matching algorithm on this item
-                        i = queryElemsOffset - 1;
-                    } else {
-                        if (fnType.id < 0) {
-                            if (mgens.has(fnType.id) && mgens.get(fnType.id) !== queryElem.id) {
-                                continue;
-                            }
-                            mgens.set(fnType.id, queryElem.id);
-                        }
-                        fnTypes = fnTypesScratch.slice();
-                        fl = fnTypes.length;
-                        const tmp = fnTypes[queryElemsOffset];
-                        fnTypes[queryElemsOffset] = fnTypes[fnTypesOffset];
-                        fnTypes[fnTypesOffset] = tmp;
-                        // this is known as a good match; go to the next one
-                        i = queryElemsOffset;
-                    }
-                    return true;
+            const flast = fl - 1;
+            const qlast = ql - 1;
+            const queryElem = queryElems[qlast];
+            let queryElemsTmp = null;
+            for (let i = flast; i >= 0; i -= 1) {
+                const fnType = fnTypes[i];
+                if (!unifyFunctionTypeIsMatchCandidate(fnType, queryElem, whereClause, mgens)) {
+                    continue;
                 }
-                return false;
-            };
-            for (i = 0; i !== ql; ++i) {
-                const queryElem = queryElems[i];
-                /**
-                 * list of potential function types that go with the current query element.
-                 * @type Array<integer>
-                 */
-                const matchCandidates = [];
-                let fnTypesScratch = null;
-                let mgensScratch = null;
-                // don't try anything before `i`, because they've already been
-                // paired off with the other query elements
-                for (j = i; j !== fl; ++j) {
-                    const fnType = fnTypes[j];
-                    if (unifyFunctionTypeIsMatchCandidate(fnType, queryElem, whereClause, mgens)) {
-                        if (!fnTypesScratch) {
-                            fnTypesScratch = fnTypes.slice();
+                let mgensScratch;
+                if (fnType.id < 0) {
+                    mgensScratch = new Map(mgens);
+                    if (mgensScratch.has(fnType.id)
+                        && mgensScratch.get(fnType.id) !== queryElem.id) {
+                        continue;
+                    }
+                    mgensScratch.set(fnType.id, queryElem.id);
+                } else {
+                    mgensScratch = mgens;
+                }
+                // fnTypes[i] is a potential match
+                // fnTypes[flast] is the last item in the list
+                // swap them, and drop the potential match from the list
+                // check if the remaining function types also match
+                fnTypes[i] = fnTypes[flast];
+                fnTypes.length = flast;
+                if (!queryElemsTmp) {
+                    queryElemsTmp = queryElems.slice(0, qlast);
+                }
+                const passesUnification = unifyFunctionTypes(
+                    fnTypes,
+                    queryElemsTmp,
+                    whereClause,
+                    mgensScratch,
+                    mgensScratch => {
+                        if (fnType.generics.length === 0 && queryElem.generics.length === 0) {
+                            return !solutionCb || solutionCb(mgensScratch);
                         }
-                        unifyFunctionTypes(
+                        return unifyFunctionTypes(
                             fnType.generics,
                             queryElem.generics,
                             whereClause,
-                            mgens,
-                            mgensScratch => {
-                                matchCandidates.push({
-                                    fnTypesScratch,
-                                    mgensScratch,
-                                    queryElemsOffset: i,
-                                    fnTypesOffset: j,
-                                    unbox: false,
-                                });
-                                return false; // "reject" all candidates to gather all of them
-                            }
+                            mgensScratch,
+                            solutionCb
                         );
                     }
-                    if (unifyFunctionTypeIsUnboxCandidate(fnType, queryElem, whereClause, mgens)) {
-                        if (!fnTypesScratch) {
-                            fnTypesScratch = fnTypes.slice();
-                        }
-                        if (!mgensScratch) {
-                            mgensScratch = new Map(mgens);
-                        }
-                        backtracking.push({
-                            fnTypesScratch,
-                            mgensScratch,
-                            queryElemsOffset: i,
-                            fnTypesOffset: j,
-                            unbox: true,
-                        });
-                    }
+                );
+                if (passesUnification) {
+                    return true;
                 }
-                if (matchCandidates.length === 0) {
-                    if (backtrack()) {
+                // backtrack
+                fnTypes[flast] = fnTypes[i];
+                fnTypes[i] = fnType;
+                fnTypes.length = fl;
+            }
+            for (let i = flast; i >= 0; i -= 1) {
+                const fnType = fnTypes[i];
+                if (!unifyFunctionTypeIsUnboxCandidate(fnType, queryElem, whereClause, mgens)) {
+                    continue;
+                }
+                let mgensScratch;
+                if (fnType.id < 0) {
+                    mgensScratch = new Map(mgens);
+                    if (mgensScratch.has(fnType.id) && mgensScratch.get(fnType.id) !== 0) {
                         continue;
-                    } else {
-                        return false;
                     }
+                    mgensScratch.set(fnType.id, 0);
+                } else {
+                    mgensScratch = mgens;
                 }
-                // use the current candidate
-                const {fnTypesOffset: candidate, mgensScratch: mgensNew} = matchCandidates.pop();
-                if (fnTypes[candidate].id < 0 && queryElems[i].id < 0) {
-                    mgens.set(fnTypes[candidate].id, queryElems[i].id);
-                }
-                for (const [fid, qid] of mgensNew) {
-                    mgens.set(fid, qid);
-                }
-                // `i` and `j` are paired off
-                // `queryElems[i]` is left in place
-                // `fnTypes[j]` is swapped with `fnTypes[i]` to pair them off
-                const tmp = fnTypes[candidate];
-                fnTypes[candidate] = fnTypes[i];
-                fnTypes[i] = tmp;
-                // write other candidates to backtracking queue
-                for (const otherCandidate of matchCandidates) {
-                    backtracking.push(otherCandidate);
-                }
-                // If we're on the last item, check the solution with the callback
-                // backtrack if the callback says its unsuitable
-                while (i === (ql - 1) && solutionCb && !solutionCb(mgens)) {
-                    if (!backtrack()) {
-                        return false;
-                    }
+                const generics = fnType.id < 0 ?
+                    whereClause[(-fnType.id) - 1] :
+                    fnType.generics;
+                const passesUnification = unifyFunctionTypes(
+                    fnTypes.toSpliced(i, 1, ...generics),
+                    queryElems,
+                    whereClause,
+                    mgensScratch,
+                    solutionCb
+                );
+                if (passesUnification) {
+                    return true;
                 }
             }
-            return true;
+            return false;
         }
         function unifyFunctionTypeIsMatchCandidate(fnType, queryElem, whereClause, mgens) {
             // type filters look like `trait:Read` or `enum:Result`
@@ -1514,15 +1515,17 @@ function initSearch(rawSearchIndex) {
             // or, if mgens[fnType.id] = 0, then we've matched this generic with a bare trait
             // and should make that same decision everywhere it appears
             if (fnType.id < 0 && queryElem.id < 0) {
-                if (mgens.has(fnType.id) && mgens.get(fnType.id) !== queryElem.id) {
-                    return false;
-                }
-                for (const [fid, qid] of mgens.entries()) {
-                    if (fnType.id !== fid && queryElem.id === qid) {
+                if (mgens !== null) {
+                    if (mgens.has(fnType.id) && mgens.get(fnType.id) !== queryElem.id) {
                         return false;
                     }
-                    if (fnType.id === fid && queryElem.id !== qid) {
-                        return false;
+                    for (const [fid, qid] of mgens.entries()) {
+                        if (fnType.id !== fid && queryElem.id === qid) {
+                            return false;
+                        }
+                        if (fnType.id === fid && queryElem.id !== qid) {
+                            return false;
+                        }
                     }
                 }
             } else {
@@ -1575,7 +1578,7 @@ function initSearch(rawSearchIndex) {
                 }
                 // mgens[fnType.id] === 0 indicates that we committed to unboxing this generic
                 // mgens[fnType.id] === null indicates that we haven't decided yet
-                if (mgens.has(fnType.id) && mgens.get(fnType.id) !== 0) {
+                if (mgens !== null && mgens.has(fnType.id) && mgens.get(fnType.id) !== 0) {
                     return false;
                 }
                 // This is only a potential unbox if the search query appears in the where clause
