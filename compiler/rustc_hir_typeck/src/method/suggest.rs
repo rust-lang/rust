@@ -2002,6 +2002,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.tcx.get_diagnostic_item(sym::BorrowMut),
                 ];
                 let mut candidate_fields: Vec<_> = fields
+                    .into_iter()
                     .filter_map(|candidate_field| {
                         self.check_for_nested_field_satisfying(
                             span,

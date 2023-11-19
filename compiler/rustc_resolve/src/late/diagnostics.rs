@@ -1749,7 +1749,10 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 // Only assoc fns that return `Self`
                 let fn_sig = self.r.tcx.fn_sig(item.def_id).skip_binder();
                 let ret_ty = fn_sig.output();
-                let ret_ty = self.r.tcx.erase_late_bound_regions(ret_ty);
+                let ret_ty = self
+                    .r
+                    .tcx
+                    .normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), ret_ty);
                 let ty::Adt(def, _args) = ret_ty.kind() else {
                     return None;
                 };
