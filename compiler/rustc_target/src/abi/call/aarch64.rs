@@ -40,6 +40,10 @@ where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout,
 {
+    if !ret.layout.is_sized() {
+        // Not touching this...
+        return;
+    }
     if !ret.layout.is_aggregate() {
         if kind == AbiKind::DarwinPCS {
             // On Darwin, when returning an i8/i16, it must be sign-extended to 32 bits,
@@ -67,6 +71,10 @@ where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout,
 {
+    if !arg.layout.is_sized() {
+        // Not touching this...
+        return;
+    }
     if !arg.layout.is_aggregate() {
         if kind == AbiKind::DarwinPCS {
             // On Darwin, when passing an i8/i16, it must be sign-extended to 32 bits,

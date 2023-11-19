@@ -422,7 +422,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
                 }))
             }
 
-            Abi::ScalarPair(..) | Abi::Aggregate { .. } => {
+            Abi::ScalarPair(..) | Abi::Aggregate { sized: true } => {
                 // Helper for computing `homogeneous_aggregate`, allowing a custom
                 // starting offset (used below for handling variants).
                 let from_fields_at =
@@ -520,6 +520,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
                     Ok(result)
                 }
             }
+            Abi::Aggregate { sized: false } => Err(Heterogeneous),
         }
     }
 }
@@ -555,8 +556,7 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
                 scalar_attrs(&layout, b, a.size(cx).align_to(b.align(cx).abi)),
             ),
             Abi::Vector { .. } => PassMode::Direct(ArgAttributes::new()),
-            // The `Aggregate` ABI should always be adjusted later.
-            Abi::Aggregate { .. } => PassMode::Direct(ArgAttributes::new()),
+            Abi::Aggregate { .. } => Self::indirect_pass_mode(&layout),
         };
         ArgAbi { layout, mode }
     }
@@ -580,14 +580,30 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
         PassMode::Indirect { attrs, meta_attrs, on_stack: false }
     }
 
+    /// Pass this argument directly instead. Should NOT be used!
+    /// Only exists because of past ABI mistakes that will take time to fix
+    /// (see <https://github.com/rust-lang/rust/issues/115666>).
+    pub fn make_direct_deprecated(&mut self) {
+        match self.mode {
+            PassMode::Indirect { .. } => {
+                self.mode = PassMode::Direct(ArgAttributes::new());
+            }
+            PassMode::Ignore | PassMode::Direct(_) | PassMode::Pair(_, _) => return, // already direct
+            _ => panic!("Tried to make {:?} direct", self.mode),
+        }
+    }
+
     pub fn make_indirect(&mut self) {
         match self.mode {
-            PassMode::Direct(_) | PassMode::Pair(_, _) => {}
-            PassMode::Indirect { attrs: _, meta_attrs: None, on_stack: false } => return,
+            PassMode::Direct(_) | PassMode::Pair(_, _) => {
+                self.mode = Self::indirect_pass_mode(&self.layout);
+            }
+            PassMode::Indirect { attrs: _, meta_attrs: _, on_stack: false } => {
+                // already indirect
+                return;
+            }
             _ => panic!("Tried to make {:?} indirect", self.mode),
         }
-
-        self.mode = Self::indirect_pass_mode(&self.layout);
     }
 
     pub fn make_indirect_byval(&mut self, byval_align: Option<Align>) {

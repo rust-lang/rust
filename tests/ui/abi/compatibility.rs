@@ -1,5 +1,14 @@
 // check-pass
 // revisions: host
+// revisions: i686
+//[i686] compile-flags: --target i686-unknown-linux-gnu
+//[i686] needs-llvm-components: x86
+// revisions: x86-64
+//[x86-64] compile-flags: --target x86_64-unknown-linux-gnu
+//[x86-64] needs-llvm-components: x86
+// revisions: x86-64-win
+//[x86-64-win] compile-flags: --target x86_64-pc-windows-msvc
+//[x86-64-win] needs-llvm-components: x86
 // revisions: arm
 //[arm] compile-flags: --target arm-unknown-linux-gnueabi
 //[arm] needs-llvm-components: arm
@@ -37,9 +46,23 @@
 // revisions: wasi
 //[wasi] compile-flags: --target wasm32-wasi
 //[wasi] needs-llvm-components: webassembly
-// revisions: nvptx64
-//[nvptx64] compile-flags: --target nvptx64-nvidia-cuda
-//[nvptx64] needs-llvm-components: nvptx
+// revisions: bpf
+//[bpf] compile-flags: --target bpfeb-unknown-none
+//[bpf] needs-llvm-components: bpf
+// revisions: m68k
+//[m68k] compile-flags: --target m68k-unknown-linux-gnu
+//[m68k] needs-llvm-components: m68k
+// FIXME: disabled on nvptx64 since the target ABI fails the sanity check
+// see https://github.com/rust-lang/rust/issues/117480
+/* revisions: nvptx64
+  [nvptx64] compile-flags: --target nvptx64-nvidia-cuda
+  [nvptx64] needs-llvm-components: nvptx
+*/
+// FIXME: disabled since it fails on CI saying the csky component is missing
+/* revisions: csky
+  [csky] compile-flags: --target csky-unknown-linux-gnuabiv2
+  [csky] needs-llvm-components: csky
+*/
 #![feature(rustc_attrs, unsized_fn_params, transparent_unions)]
 #![cfg_attr(not(host), feature(no_core, lang_items), no_std, no_core)]
 #![allow(unused, improper_ctypes_definitions, internal_features)]
@@ -324,6 +347,7 @@ mod unsized_ {
     use super::*;
     test_transparent_unsized!(str_, str);
     test_transparent_unsized!(slice, [u8]);
+    test_transparent_unsized!(slice_with_prefix, (usize, [u8]));
     test_transparent_unsized!(dyn_trait, dyn Any);
 }
 

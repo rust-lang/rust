@@ -326,6 +326,76 @@ fn adjust_for_rust_scalar<'tcx>(
     }
 }
 
+/// Ensure that the ABI makes basic sense.
+fn fn_abi_sanity_check<'tcx>(cx: &LayoutCx<'tcx, TyCtxt<'tcx>>, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) {
+    fn fn_arg_sanity_check<'tcx>(
+        cx: &LayoutCx<'tcx, TyCtxt<'tcx>>,
+        fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
+        arg: &ArgAbi<'tcx, Ty<'tcx>>,
+    ) {
+        match &arg.mode {
+            PassMode::Ignore => {}
+            PassMode::Direct(_) => {
+                // Here the Rust type is used to determine the actual ABI, so we have to be very
+                // careful. Scalar/ScalarPair is fine, since backends will generally use
+                // `layout.abi` and ignore everything else. We should just reject `Aggregate`
+                // entirely here, but some targets need to be fixed first.
+                if matches!(arg.layout.abi, Abi::Aggregate { .. }) {
+                    // For an unsized type we'd only pass the sized prefix, so there is no universe
+                    // in which we ever want to allow this.
+                    assert!(
+                        arg.layout.is_sized(),
+                        "`PassMode::Direct` for unsized type in ABI: {:#?}",
+                        fn_abi
+                    );
+                    // This really shouldn't happen even for sized aggregates, since
+                    // `immediate_llvm_type` will use `layout.fields` to turn this Rust type into an
+                    // LLVM type. This means all sorts of Rust type details leak into the ABI.
+                    // However wasm sadly *does* currently use this mode so we have to allow it --
+                    // but we absolutely shouldn't let any more targets do that.
+                    // (Also see <https://github.com/rust-lang/rust/issues/115666>.)
+                    //
+                    // The unstable abi `PtxKernel` also uses Direct for now.
+                    // It needs to switch to something else before stabilization can happen.
+                    // (See issue: https://github.com/rust-lang/rust/issues/117271)
+                    assert!(
+                        matches!(&*cx.tcx.sess.target.arch, "wasm32" | "wasm64")
+                            || fn_abi.conv == Conv::PtxKernel,
+                        "`PassMode::Direct` for aggregates only allowed on wasm and `extern \"ptx-kernel\"` fns\nProblematic type: {:#?}",
+                        arg.layout,
+                    );
+                }
+            }
+            PassMode::Pair(_, _) => {
+                // Similar to `Direct`, we need to make sure that backends use `layout.abi` and
+                // ignore the rest of the layout.
+                assert!(
+                    matches!(arg.layout.abi, Abi::ScalarPair(..)),
+                    "PassMode::Pair for type {}",
+                    arg.layout.ty
+                );
+            }
+            PassMode::Cast { .. } => {
+                // `Cast` means "transmute to `CastType`"; that only makes sense for sized types.
+                assert!(arg.layout.is_sized());
+            }
+            PassMode::Indirect { meta_attrs: None, .. } => {
+                // No metadata, must be sized.
+                assert!(arg.layout.is_sized());
+            }
+            PassMode::Indirect { meta_attrs: Some(_), on_stack, .. } => {
+                // With metadata. Must be unsized and not on the stack.
+                assert!(arg.layout.is_unsized() && !on_stack);
+            }
+        }
+    }
+
+    for arg in fn_abi.args.iter() {
+        fn_arg_sanity_check(cx, fn_abi, arg);
+    }
+    fn_arg_sanity_check(cx, fn_abi, &fn_abi.ret);
+}
+
 // FIXME(eddyb) perhaps group the signature/type-containing (or all of them?)
 // arguments of this method, into a separate `struct`.
 #[tracing::instrument(level = "debug", skip(cx, caller_location, fn_def_id, force_thin_self_ptr))]
@@ -452,6 +522,7 @@ fn fn_abi_new_uncached<'tcx>(
     };
     fn_abi_adjust_for_abi(cx, &mut fn_abi, sig.abi, fn_def_id)?;
     debug!("fn_abi_new_uncached = {:?}", fn_abi);
+    fn_abi_sanity_check(cx, &fn_abi);
     Ok(cx.tcx.arena.alloc(fn_abi))
 }
 
@@ -519,13 +590,14 @@ fn fn_abi_adjust_for_abi<'tcx>(
 
                 _ => return,
             }
-            // `Aggregate` ABI must be adjusted to ensure that ABI-compatible Rust types are passed
-            // the same way.
+            // Compute `Aggregate` ABI.
+
+            let is_indirect_not_on_stack =
+                matches!(arg.mode, PassMode::Indirect { on_stack: false, .. });
+            assert!(is_indirect_not_on_stack, "{:?}", arg);
 
             let size = arg.layout.size;
-            if arg.layout.is_unsized() || size > Pointer(AddressSpace::DATA).size(cx) {
-                arg.make_indirect();
-            } else {
+            if !arg.layout.is_unsized() && size <= Pointer(AddressSpace::DATA).size(cx) {
                 // We want to pass small aggregates as immediates, but using
                 // an LLVM aggregate type for this leads to bad optimizations,
                 // so we pick an appropriately sized integer type instead.
