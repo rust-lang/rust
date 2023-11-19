@@ -12,9 +12,9 @@
  * TODO(antoyo): remove the patches.
  */
 
-#![cfg_attr(not(bootstrap), allow(internal_features))]
-#![cfg_attr(not(bootstrap), doc(rust_logo))]
-#![cfg_attr(not(bootstrap), feature(rustdoc_internals))]
+#![allow(internal_features)]
+#![doc(rust_logo)]
+#![feature(rustdoc_internals)]
 #![feature(
     rustc_private,
     decl_macro,
@@ -402,7 +402,7 @@ pub fn target_features(sess: &Session, allow_unstable: bool, target_info: &Locke
         .iter()
         .filter_map(
             |&(feature, gate)| {
-                if sess.is_nightly_build() || allow_unstable || gate.is_none() { Some(feature) } else { None }
+                if sess.is_nightly_build() || allow_unstable || gate.is_stable() { Some(feature) } else { None }
             },
         )
         .filter(|_feature| {
