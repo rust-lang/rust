@@ -1740,9 +1740,9 @@ fn simd_contains(needle: &str, haystack: &str) -> Option<bool> {
     debug_assert!(needle.len() > 1);
 
     use crate::ops::BitAnd;
+    use crate::simd::cmp::SimdPartialEq;
     use crate::simd::mask8x16 as Mask;
     use crate::simd::u8x16 as Block;
-    use crate::simd::{SimdPartialEq, ToBitMask};
 
     let first_probe = needle[0];
     let last_byte_offset = needle.len() - 1;
