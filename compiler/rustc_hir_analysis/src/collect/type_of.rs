@@ -8,9 +8,10 @@ use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, ImplTraitInTraitData, IsSuggestable, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::symbol::Ident;
 use rustc_span::{Span, DUMMY_SP};
+use rustc_trait_selection::traits;
 
-use super::ItemCtxt;
 use super::{bad_placeholder, is_suggestable_infer_ty};
+use super::{AstConv, ItemCtxt};
 pub use opaque::test_opaque_hidden_types;
 
 mod opaque;
@@ -60,35 +61,78 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
                 .expect("const parameter types cannot be generic");
         }
 
-        Node::TypeBinding(binding @ &TypeBinding { hir_id: binding_id, .. })
-            if let Node::TraitRef(trait_ref) = tcx.hir().get(tcx.hir().parent_id(binding_id)) =>
-        {
+        Node::TypeBinding(
+            binding @ &TypeBinding { hir_id: binding_id, ident, gen_args, span, .. },
+        ) if let Node::TraitRef(trait_ref) = tcx.hir().get(tcx.hir().parent_id(binding_id)) => {
             let Some(trait_def_id) = trait_ref.trait_def_id() else {
                 return Ty::new_error_with_message(
                     tcx,
                     tcx.def_span(def_id),
-                    "Could not find trait",
+                    "could not find trait",
                 );
             };
-            let assoc_items = tcx.associated_items(trait_def_id);
-            let assoc_item = assoc_items.find_by_name_and_kind(
-                tcx,
-                binding.ident,
-                ty::AssocKind::Const,
-                def_id.to_def_id(),
+
+            // FIXME(associated_const_equality): We're now performing a full but ad-hoc type-based
+            // resolution of the associated constant. Doing all this work *here* isn't great.
+            // Ideally, we would've computed this already somewhere else (in a query?).
+
+            let icx = ItemCtxt::new(tcx, def_id);
+            let trait_segment = trait_ref.path.segments.last().unwrap();
+            let (trait_args, _) = icx.astconv().create_args_for_ast_path(
+                trait_ref.path.span,
+                trait_def_id,
+                &[],
+                trait_segment,
+                trait_segment.args(),
+                trait_segment.infer_args,
+                // FIXME(associated_const_equality): This isn't correct, it should be the concrete /
+                // instantiated self type. Theoretically, we could search for it in the HIR of the
+                // parent item but that's super fragile and hairy.
+                Some(tcx.types.self_param),
+                ty::BoundConstness::NotConst,
             );
-            return if let Some(assoc_item) = assoc_item {
-                tcx.type_of(assoc_item.def_id)
-                    .no_bound_vars()
-                    .expect("const parameter types cannot be generic")
-            } else {
-                // FIXME(associated_const_equality): add a useful error message here.
-                Ty::new_error_with_message(
+            let trait_ref = ty::Binder::bind_with_vars(
+                ty::TraitRef::new(tcx, trait_def_id, trait_args),
+                tcx.late_bound_vars(trait_ref.hir_ref_id),
+            );
+
+            // We shouldn't need to deal with ambiguity since `add_predicates_for_ast_type_binding`
+            // should've already bailed out early in such case.
+            let Some((assoc_item, parent_args)) =
+                traits::supertraits(tcx, trait_ref).find_map(|trait_ref| {
+                    tcx.associated_items(trait_ref.def_id())
+                        .find_by_name_and_kind(
+                            tcx,
+                            binding.ident,
+                            ty::AssocKind::Const,
+                            trait_ref.def_id(),
+                        )
+                        // FIXME(fmease): `skip_binder` is fishy!
+                        .map(|item| (item, trait_ref.skip_binder().args))
+                })
+            else {
+                return Ty::new_error_with_message(
                     tcx,
                     tcx.def_span(def_id),
-                    "Could not find associated const on trait",
-                )
+                    "could not find associated const on trait",
+                );
             };
+
+            let args = icx.astconv().create_args_for_associated_item(
+                span,
+                assoc_item.def_id,
+                // FIXME(fmease): This is gross as hell!
+                &hir::PathSegment {
+                    ident,
+                    hir_id,
+                    res: def::Res::Def(def::DefKind::AssocConst, assoc_item.def_id),
+                    args: Some(gen_args),
+                    infer_args: false,
+                },
+                parent_args,
+            );
+
+            return tcx.type_of(assoc_item.def_id).instantiate(tcx, args);
         }
 
         // This match arm is for when the def_id appears in a GAT whose
@@ -120,8 +164,7 @@ fn anon_const_type_of<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx> {
                 .unwrap()
                 .0
                 .def_id;
-            let item_ctxt = &ItemCtxt::new(tcx, item_def_id) as &dyn crate::astconv::AstConv<'_>;
-            let ty = item_ctxt.ast_ty_to_ty(hir_ty);
+            let ty = ItemCtxt::new(tcx, item_def_id).to_ty(hir_ty);
 
             // Iterate through the generics of the projection to find the one that corresponds to
             // the def_id that this query was called with. We filter to only type and const args here

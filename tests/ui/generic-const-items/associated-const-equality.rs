@@ -6,15 +6,18 @@
 trait Owner {
     const C<const N: u32>: u32;
     const K<const N: u32>: u32;
+    const Q<T>: Option<T>;
 }
 
 impl Owner for () {
     const C<const N: u32>: u32 = N;
     const K<const N: u32>: u32 = N + 1;
+    const Q<T>: Option<T> = None;
 }
 
 fn take0<const N: u32>(_: impl Owner<C<N> = { N }>) {}
 fn take1(_: impl Owner<K<99> = 100>) {}
+fn take2(_: impl Owner<Q<()> = { Some(()) }>) {}
 
 fn main() {
     take0::<128>(());

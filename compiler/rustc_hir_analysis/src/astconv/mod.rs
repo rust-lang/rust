@@ -345,7 +345,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     /// type itself: `['a]`. The returned `GenericArgsRef` concatenates these two
     /// lists: `[Vec<u8>, u8, 'a]`.
     #[instrument(level = "debug", skip(self, span), ret)]
-    fn create_args_for_ast_path<'a>(
+    pub(crate) fn create_args_for_ast_path<'a>(
         &self,
         span: Span,
         def_id: DefId,
