@@ -567,39 +567,16 @@ impl<'a, 'p, 'tcx> fmt::Debug for PatCtxt<'a, 'p, 'tcx> {
     }
 }
 
-/// A row of the matrix. Represents a pattern-tuple under investigation.
+/// Represents a pattern-tuple under investigation.
 #[derive(Clone)]
 struct PatStack<'p, 'tcx> {
     // Rows of len 1 are very common, which is why `SmallVec[_; 2]` works well.
     pats: SmallVec<[&'p DeconstructedPat<'p, 'tcx>; 2]>,
-    /// Whether the original arm had a guard.
-    is_under_guard: bool,
-    /// When we specialize, we remember which row of the original matrix produced a given row of the
-    /// specialized matrix. When we unspecialize, we use this to propagate reachability back up the
-    /// callstack.
-    /// At the start of the algorithm, this is the id of the arm this comes from (but we don't use
-    /// this fact anywhere).
-    parent_row: usize,
-    /// False when the matrix is just built. This is set to `true` by
-    /// [`compute_exhaustiveness_and_reachability`] if the arm is found to be reachable.
-    reachable: bool,
 }
 
 impl<'p, 'tcx> PatStack<'p, 'tcx> {
-    fn from_pattern(
-        pat: &'p DeconstructedPat<'p, 'tcx>,
-        parent_row: usize,
-        is_under_guard: bool,
-    ) -> Self {
-        PatStack { pats: smallvec![pat], parent_row, is_under_guard, reachable: false }
-    }
-
-    fn from_vec(
-        pats: SmallVec<[&'p DeconstructedPat<'p, 'tcx>; 2]>,
-        parent_row: usize,
-        is_under_guard: bool,
-    ) -> Self {
-        PatStack { pats, parent_row, is_under_guard, reachable: false }
+    fn from_pattern(pat: &'p DeconstructedPat<'p, 'tcx>) -> Self {
+        PatStack { pats: smallvec![pat] }
     }
 
     fn is_empty(&self) -> bool {
@@ -622,10 +599,80 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
     // an or-pattern. Panics if `self` is empty.
     fn expand_or_pat<'a>(&'a self) -> impl Iterator<Item = PatStack<'p, 'tcx>> + Captures<'a> {
         self.head().flatten_or_pat().into_iter().map(move |pat| {
-            let mut new_patstack =
-                PatStack::from_pattern(pat, self.parent_row, self.is_under_guard);
-            new_patstack.pats.extend_from_slice(&self.pats[1..]);
-            new_patstack
+            let mut new_pats = smallvec![pat];
+            new_pats.extend_from_slice(&self.pats[1..]);
+            PatStack { pats: new_pats }
+        })
+    }
+
+    /// This computes `specialize(ctor, self)`. See top of the file for explanations.
+    /// Only call if `ctor.is_covered_by(self.head().ctor())` is true.
+    fn pop_head_constructor(
+        &self,
+        pcx: &PatCtxt<'_, 'p, 'tcx>,
+        ctor: &Constructor<'tcx>,
+    ) -> PatStack<'p, 'tcx> {
+        // We pop the head pattern and push the new fields extracted from the arguments of
+        // `self.head()`.
+        let mut new_pats = self.head().specialize(pcx, ctor);
+        new_pats.extend_from_slice(&self.pats[1..]);
+        PatStack { pats: new_pats }
+    }
+}
+
+impl<'p, 'tcx> fmt::Debug for PatStack<'p, 'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // We pretty-print similarly to the `Debug` impl of `Matrix`.
+        write!(f, "+")?;
+        for pat in self.iter() {
+            write!(f, " {pat:?} +")?;
+        }
+        Ok(())
+    }
+}
+
+/// A row of the matrix.
+#[derive(Clone)]
+struct MatrixRow<'p, 'tcx> {
+    // The patterns in the row.
+    pats: PatStack<'p, 'tcx>,
+    /// Whether the original arm had a guard. This is inherited when specializing.
+    is_under_guard: bool,
+    /// When we specialize, we remember which row of the original matrix produced a given row of the
+    /// specialized matrix. When we unspecialize, we use this to propagate reachability back up the
+    /// callstack.
+    parent_row: usize,
+    /// False when the matrix is just built. This is set to `true` by
+    /// [`compute_exhaustiveness_and_reachability`] if the arm is found to be reachable.
+    /// This is reset to `false` when specializing.
+    reachable: bool,
+}
+
+impl<'p, 'tcx> MatrixRow<'p, 'tcx> {
+    fn is_empty(&self) -> bool {
+        self.pats.is_empty()
+    }
+
+    fn len(&self) -> usize {
+        self.pats.len()
+    }
+
+    fn head(&self) -> &'p DeconstructedPat<'p, 'tcx> {
+        self.pats.head()
+    }
+
+    fn iter(&self) -> impl Iterator<Item = &DeconstructedPat<'p, 'tcx>> {
+        self.pats.iter()
+    }
+
+    // Recursively expand the first or-pattern into its subpatterns. Only useful if the pattern is
+    // an or-pattern. Panics if `self` is empty.
+    fn expand_or_pat<'a>(&'a self) -> impl Iterator<Item = MatrixRow<'p, 'tcx>> + Captures<'a> {
+        self.pats.expand_or_pat().map(|patstack| MatrixRow {
+            pats: patstack,
+            parent_row: self.parent_row,
+            is_under_guard: self.is_under_guard,
+            reachable: false,
         })
     }
 
@@ -636,23 +683,19 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
         pcx: &PatCtxt<'_, 'p, 'tcx>,
         ctor: &Constructor<'tcx>,
         parent_row: usize,
-    ) -> PatStack<'p, 'tcx> {
-        // We pop the head pattern and push the new fields extracted from the arguments of
-        // `self.head()`.
-        let mut new_fields: SmallVec<[_; 2]> = self.head().specialize(pcx, ctor);
-        new_fields.extend_from_slice(&self.pats[1..]);
-        PatStack::from_vec(new_fields, parent_row, self.is_under_guard)
+    ) -> MatrixRow<'p, 'tcx> {
+        MatrixRow {
+            pats: self.pats.pop_head_constructor(pcx, ctor),
+            parent_row,
+            is_under_guard: self.is_under_guard,
+            reachable: false,
+        }
     }
 }
 
-/// Pretty-printing for a matrix row.
-impl<'p, 'tcx> fmt::Debug for PatStack<'p, 'tcx> {
+impl<'p, 'tcx> fmt::Debug for MatrixRow<'p, 'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "+")?;
-        for pat in self.iter() {
-            write!(f, " {pat:?} +")?;
-        }
-        Ok(())
+        self.pats.fmt(f)
     }
 }
 
@@ -668,7 +711,7 @@ impl<'p, 'tcx> fmt::Debug for PatStack<'p, 'tcx> {
 /// the matrix will correspond to `scrutinee.0.Some.0` and the second column to `scrutinee.1`.
 #[derive(Clone)]
 struct Matrix<'p, 'tcx> {
-    rows: Vec<PatStack<'p, 'tcx>>,
+    rows: Vec<MatrixRow<'p, 'tcx>>,
     /// Stores an extra fictitious row full of wildcards. Mostly used to keep track of the type of
     /// each column. This must obey the same invariants as the real rows.
     wildcard_row: PatStack<'p, 'tcx>,
@@ -677,7 +720,7 @@ struct Matrix<'p, 'tcx> {
 impl<'p, 'tcx> Matrix<'p, 'tcx> {
     /// Pushes a new row to the matrix. If the row starts with an or-pattern, this recursively
     /// expands it. Internal method, prefer [`Matrix::new`].
-    fn expand_and_push(&mut self, row: PatStack<'p, 'tcx>) {
+    fn expand_and_push(&mut self, row: MatrixRow<'p, 'tcx>) {
         if !row.is_empty() && row.head().is_or_pat() {
             // Expand nested or-patterns.
             for new_row in row.expand_or_pat() {
@@ -698,10 +741,15 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         'p: 'a,
     {
         let wild_pattern = cx.pattern_arena.alloc(DeconstructedPat::wildcard(scrut_ty, DUMMY_SP));
-        let wildcard_row = PatStack::from_pattern(wild_pattern, usize::MAX, false);
+        let wildcard_row = PatStack::from_pattern(wild_pattern);
         let mut matrix = Matrix { rows: vec![], wildcard_row };
         for (row_id, arm) in iter.enumerate() {
-            let v = PatStack::from_pattern(arm.pat, row_id, arm.has_guard);
+            let v = MatrixRow {
+                pats: PatStack::from_pattern(arm.pat),
+                parent_row: row_id, // dummy, we won't read it
+                is_under_guard: arm.has_guard,
+                reachable: false,
+            };
             matrix.expand_and_push(v);
         }
         matrix
@@ -733,13 +781,13 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
 
     fn rows<'a>(
         &'a self,
-    ) -> impl Iterator<Item = &'a PatStack<'p, 'tcx>> + Clone + DoubleEndedIterator + ExactSizeIterator
+    ) -> impl Iterator<Item = &'a MatrixRow<'p, 'tcx>> + Clone + DoubleEndedIterator + ExactSizeIterator
     {
         self.rows.iter()
     }
     fn rows_mut<'a>(
         &'a mut self,
-    ) -> impl Iterator<Item = &'a mut PatStack<'p, 'tcx>> + DoubleEndedIterator + ExactSizeIterator
+    ) -> impl Iterator<Item = &'a mut MatrixRow<'p, 'tcx>> + DoubleEndedIterator + ExactSizeIterator
     {
         self.rows.iter_mut()
     }
@@ -757,7 +805,7 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         pcx: &PatCtxt<'_, 'p, 'tcx>,
         ctor: &Constructor<'tcx>,
     ) -> Matrix<'p, 'tcx> {
-        let wildcard_row = self.wildcard_row.pop_head_constructor(pcx, ctor, usize::MAX);
+        let wildcard_row = self.wildcard_row.pop_head_constructor(pcx, ctor);
         let mut matrix = Matrix { rows: vec![], wildcard_row };
         for (i, row) in self.rows().enumerate() {
             if ctor.is_covered_by(pcx, row.head().ctor()) {
